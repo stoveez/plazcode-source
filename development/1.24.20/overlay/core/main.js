@@ -4563,6 +4563,12 @@ return result`;
       ui.toast("Open a new chat first, then Start");
       return;
     }
+    // A cancelled startup can finish its provider await before the native
+    // stream stops. Never start another Vani handshake into that live reply.
+    if (P.id === "vani" && P.isBusyNow()) {
+      ui.toast("Vani is still replying. Stop that reply or wait before restarting.");
+      return;
+    }
     A.userStopped = false;
     A._confirmedStartup = false;
     A.stop = false;               // clear any halt left by a prior aborted bootstrap
@@ -4663,6 +4669,9 @@ return result`;
       // answered the first request as prose and then showed "Startup handshake failed"
       // although they worked on the next message).
       if (listRes.kind === "text" && !isProviderPolicyRefusal(listRes.text) &&
+          // Vani may retain a live native generation after a stable text read.
+          // Never turn that read into another startup request while it replies.
+          (P.id !== "vani" || !P.isBusyNow()) &&
           (!P.startupReplySettled || P.startupReplySettled())) {
         diag("start.protocolCorrection", { provider: P.id });
         const correctionBase = await submitAndGetBase(P.id === "notion"
@@ -4813,7 +4822,12 @@ return result`;
     } finally {
       // Only tear down our OWN starting state. If we were superseded (the user
       // opened another chat), the newer flow / syncSessionState owns it now.
-      if (A.startupOwner === myGen) A.startupOwner = null;
+      if (A.startupOwner === myGen) {
+        A.startupOwner = null;
+        // A Stop invalidates alive() on purpose, but its cancelled ownership
+        // indicator still needs repainting once the original await settles.
+        if (!alive()) { try { ui.setStarting(false); } catch {} }
+      }
       if (alive()) {
         if(P.requireConfirmedStartup && !A._confirmedStartup) {
           A.started=false;
@@ -5771,6 +5785,31 @@ return result`;
       // (not just the bar). Meta's turn root is full-width with the reply in a
       // nested centered column, so whole-turn chips (result/sys) need re-centering.
       document.documentElement.classList.add(`rs-site-${P.id}`);
+      if (P.id === "vani") {
+        // Vani's late-loaded element resets must not paint our dark UI black
+        // or remove native-looking action buttons. Only extension-owned nodes
+        // are selected; no host subtree content/attributes are rewritten.
+        // Keep the normal theme/palette and Ultra label rules authoritative.
+        const isolation = document.createElement("style");
+        isolation.id = "rs-vani-ui-isolation";
+        isolation.textContent = `
+          html.rs-site-vani #rs-root {
+            color-scheme:dark;color:#eef4ff;font-family:system-ui,sans-serif;
+            --pc-ink:#eef4ff;--pc-muted:#b7c4d9;isolation:isolate;
+          }
+          html.rs-site-vani #rs-root :where(span,b,strong,label,small,p,button,input,textarea,select):not(.pc-ultra-label) {
+            color:inherit;font-family:inherit;-webkit-text-fill-color:currentColor;
+          }
+          html.rs-site-vani #rs-root #rs-state,
+          html.rs-site-vani #rs-root #rs-state .rs-state-txt {color:#b7c4d9!important}
+          html.rs-site-vani #rs-root #rs-state b {color:#eef4ff!important}
+          html.rs-site-vani #rs-root #rs-bar #rs-action:not([hidden]),
+          html.rs-site-vani #rs-root #rs-bar #rs-stop:not([hidden]),
+          html.rs-site-vani #rs-root #rs-bar .rs-mode-btn:not([hidden]) {display:inline-flex!important;align-items:center;justify-content:center}
+          html.rs-site-vani #rs-root [hidden] {display:none!important}
+        `;
+        root.appendChild(isolation);
+      }
       // Experiment flags — easy revert: set FLAGS.* to false in core/config.js
       try {
         if (RS.FLAGS && RS.FLAGS.uiGlass) document.documentElement.setAttribute("data-rs-glass", "true");
@@ -8074,6 +8113,14 @@ function renderCards(panel) {
         const _engineStarting = currentEngine === "local" ? "AgentScript" : "Roblox";
         msg = `Starting ${_engineStarting} agent…`;
         label = "Starting…"; kind = "starting"; disabled = true;
+      } else if (A.startupOwner) {
+        toneClass = "standby";
+        msg = "Startup cancelled. Waiting for the previous delivery to settle…";
+        kind = ""; disabled = true;
+      } else if (P.id === "vani" && !A.started && P.isBusyNow()) {
+        toneClass = "standby";
+        msg = "Vani is still replying. Stop that reply or wait before restarting.";
+        label = "↻ Restart Agent"; kind = "restart"; disabled = true;
       } else if (A.bridge && A.bridge.connected && A.bridge.studio_checking === true && currentEngine !== "local" && !A.bridge.roblox_connected) {
         toneClass = "starting";
         indicator = `<span class="rs-spin"></span>`;
@@ -8378,7 +8425,8 @@ function renderCards(panel) {
       // The Stop button replaces the action button while the agent is busy.
       // With no kind (e.g. agent active, or an existing chat) there's no primary
       // action to offer, so the button is hidden entirely.
-      actionBtn.style.display = (busy || !kind) ? "none" : "";
+      actionBtn.hidden = busy || !kind;
+      actionBtn.style.display = actionBtn.hidden ? "none" : "";
       // AI selector + tips/support: only once a session is live. Discord stays
       // visible in every state (it's the help link).
     }
@@ -8386,7 +8434,13 @@ function renderCards(panel) {
 
     // Thin wrappers kept for the core's call sites; the decision lives in renderBar.
     function setStarted() { try{updateExtraButton();}catch{}; renderBar(); }
-    function setStarting() { try{updateExtraButton();}catch{}; renderBar(); }
+    function setStarting() {
+      try{updateExtraButton();}catch{};
+      // This runs before prepareSessionStart/ensureTools/composer/send awaits.
+      // Do not rely on a later meter tick to make startup cancellable.
+      showStop(A.starting || A.enhancing || A.running || A.toolRunning || A.stopping || (A.started && P.isHardGenerating()));
+      renderBar();
+    }
 
     function setStatus(s) {
       if (!s) return;
@@ -8532,9 +8586,9 @@ function renderCards(panel) {
 
     // Show (v=true) / hide the "■ Stop" button while the agent is busy. The
     // primary action button swaps out for it (handled in renderBar via busy).
-    // Forced hidden during bootstrap (A.starting) so the bar stays on "Starting…"
-    // (else it flickers Starting → Stop → Starting as generation toggles). The
-    // caller decides the rest, including native-stop de-duplication.
+    // Startup is cancellable too: keep Stop visible for its whole lifetime,
+    // independently of a provider's momentary native generation signal.
+    // The caller decides the rest, including native-stop de-duplication.
     function showStop(v) {
       if (!stopBtn) return;
       // Stay visible while winding down (A.stopping), so the button doesn't blink
@@ -8635,7 +8689,9 @@ function renderCards(panel) {
     // box and where a child reflows cleanly). If a provider doesn't supply one,
     // we fall back to the floating bar rather than risk overlapping its layout.
     function computeBarMount() {
-      if (!P.barMount) return null;
+      // Vani hydrates/reconciles its composer. Its barAnchor provides read-only
+      // geometry; keep the extension bar outside the React-owned subtree.
+      if (P.id === "vani" || !P.barMount) return null;
       try {
         const m = P.barMount();
         return (m && m.parent && m.parent.isConnected) ? m : null;
