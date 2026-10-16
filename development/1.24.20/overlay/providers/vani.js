@@ -12,7 +12,7 @@ const RSProvider = (() => {
   const closest=(el,sel)=>el?safeRead(()=>el.closest(sel)):null;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const norm=x=>String(x??'').replace(/\r\n?/g,'\n').replace(/\u00a0/g,' ').trim();
-  let diag=()=>{},isStopped=()=>false,locked=false,inFlight=false,committed=false,failure='',writing=false,performingEdit=false;
+  let diag=()=>{},isStopped=()=>false,locked=false,inFlight=false,committed=false,failure='',writing=false,performingEdit=false,sendGeneration=0;
   const originals=new WeakMap();let guardInstalled=false,nativeCommitForm=null;
   let pageId=typeof crypto.randomUUID==='function'?crypto.randomUUID():String(Date.now()),epoch=0;
   function allowed(){return location.hostname==='c.vani.ai' && /^\/(?:c|chat)(?:\/[^/]+)?\/?$/.test(location.pathname);}
@@ -32,8 +32,12 @@ const RSProvider = (() => {
   }
   const composerFrame=()=>safeRead(()=>closest(getEditor(),'form'));
   const barAnchor=composerFrame;
-  const sendButton=()=>q(composerFrame(),S.send);
-  const stopButton=()=>q(composerFrame(),S.stop);
+  // Host transitions can retain a hidden old Send/Stop control. Never click it
+  // or treat it as a live generation; multiple visible controls are ambiguous.
+  const nativeButtons=sel=>qa(composerFrame(),sel).filter(shown);
+  const nativeButton=sel=>{const buttons=nativeButtons(sel);return buttons.length===1?buttons[0]:null;};
+  const sendButton=()=>nativeButton(S.send);
+  const stopButton=()=>nativeButton(S.stop);
   function actionable(b){return !!b&&shown(b)&&!b.disabled&&safeRead(()=>b.getAttribute('aria-disabled'))!=='true'&&!safeRead(()=>closest(b,'[inert]'))&&safeRead(()=>{const r=b.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(b).pointerEvents!=='none';},false);}
   function editorValue(el){if(!el)return '';return el.tagName==='TEXTAREA'?el.value:String(el.innerText??el.textContent??'').replace(/\u00a0/g,' ');}
   const editorText=()=>editorValue(getEditor());
@@ -105,7 +109,7 @@ const RSProvider = (() => {
   const streamLen=item=>itemText(item===undefined?lastAssistant():item).length;
   const snapshot=()=>({th:0,rp:streamLen()});
   const chatIsEmpty=()=>allItems().length===0,isFreshChat=()=>chatIsEmpty()&&!!getEditor();
-  const isHardGenerating=()=>!!stopButton();
+  const isHardGenerating=()=>nativeButtons(S.stop).length>0;
   // Native Stop is authoritative. A long thinking pause is not completion.
   const isGenerating=isHardGenerating,isBusyNow=isHardGenerating;
   function applyLock(el){
@@ -151,12 +155,15 @@ const RSProvider = (() => {
   const stagedAttachments=new Set();
   function fileFromImage(img,i){if(typeof PlazCodeMedia!=='undefined')return PlazCodeMedia.fileFrom(img,i);const bytes=Uint8Array.from(atob(img.data),c=>c.charCodeAt(0));return new File([bytes],'plazcode-'+Date.now()+'-'+i+'.png',{type:img.mimeType||'image/png'});}
   async function attachImages(images){
-    if(!images?.length)return true;const editor=getEditor(),key=conversationKey(),input=q(composerFrame(),'input[type="file"]');
+    if(!images?.length)return true;const generation=sendGeneration,canceled=()=>isStopped()||generation!==sendGeneration;
+    if(canceled())throw Error('Stopped before Vani image upload.');
+    const editor=getEditor(),key=conversationKey(),input=q(composerFrame(),'input[type="file"]');
     if(!editor||!input||input.disabled)throw Error('This Vani chat cannot accept images. Nothing was sent. Use an image-enabled signed-in Vani chat.');
     if(images.length>1&&!input.multiple)throw Error('This Vani chat only accepts one image at a time. Nothing was sent.');
     const before=new Set(attachmentNodes()),dt=new DataTransfer();for(let i=0;i<images.length;i++)dt.items.add(fileFromImage(images[i],i));
     input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));
-    const accepted=await waitFor(()=>getEditor()!==editor||conversationKey()!==key||attachmentNodes().filter(n=>!before.has(n)).length>=images.length,12000);
+    const accepted=await waitFor(()=>canceled()||getEditor()!==editor||conversationKey()!==key||attachmentNodes().filter(n=>!before.has(n)).length>=images.length,12000);
+    if(canceled())throw Error('Stopped during Vani image upload. Inspect pending attachments before retrying.');
     if(getEditor()!==editor||conversationKey()!==key||!accepted)throw Error('Vani image upload was not confirmed. Nothing was sent; inspect pending attachments before retrying.');
     const added=attachmentNodes().filter(n=>!before.has(n));if(added.length!==images.length||new Set(added.map(n=>safeRead(()=>n.getAttribute('data-attachment-id'))||n)).size!==images.length||added.some(n=>!attachmentReady(n)))throw Error('Vani image upload is incomplete or failed. Nothing was sent.');
     added.forEach(n=>stagedAttachments.add(n));return true;
@@ -175,9 +182,15 @@ const RSProvider = (() => {
   async function typeAndSend(text,images){
     if(inFlight)throw Error('A Vani send is already pending. It was not duplicated.');
     installGuard();inFlight=true;committed=false;failure='';let attempted=false,wrote=false,touched=false,rejected=false;
-    const editor=getEditor(),key=conversationKey(),prior=editorValue(editor),oldWriting=writing;
+    const editor=getEditor(),key=conversationKey(),prior=editorValue(editor),oldWriting=writing,generation=sendGeneration;
+    const canceled=()=>isStopped()||generation!==sendGeneration;
+    // An unchanged preexisting advisory/error belongs to earlier UI state, not
+    // this delivery. Any new node or changed alert still vetoes the receipt;
+    // explicit failure on the new user row is always checked separately.
+    const oldAlerts=new Map(alertNodes().map(n=>[n,n.textContent.trim()]));
+    const newError=()=>alertNodes().some(n=>oldAlerts.get(n)!==n.textContent.trim());
     text=String(text??'');const oldUsers=new Set(allItems().filter(isUserItem).map(itemKey));
-    const check=()=>{if(isStopped())throw Error('Stopped before Vani send.');if(!key||conversationKey()!==key||getEditor()!==editor)throw Error('Vani changed chats or replaced the chat box. Inspect the draft before retrying.');};
+    const check=()=>{if(canceled())throw Error('Stopped before Vani send.');if(!key||conversationKey()!==key||getEditor()!==editor)throw Error('Vani changed chats or replaced the chat box. Inspect the draft before retrying.');};
     const onInput=e=>{if(e.isTrusted&&!performingEdit&&e.target===editor)touched=true;};
     for(const name of ['beforeinput','input','paste'])document.addEventListener(name,onInput,true);
     try{
@@ -188,18 +201,18 @@ const RSProvider = (() => {
       if(attachmentNodes().some(n=>!stagedAttachments.has(n)))throw Error('Vani has an attachment added outside this send. It was preserved; inspect it before retrying.');
       if(!prior.trim()&&!attachmentNodes().length&&actionable(sendButton()))throw Error('Vani is still settling its empty draft. Wait for Send to become disabled, then retry. Nothing was written or submitted.');
       if(images?.length&&!supportsVision())throw Error('This Vani chat is text-only and cannot accept images. Nothing was written or sent.');
-      writing=true;applyLock(editor);await writeDraft(text);wrote=true;
+      writing=true;applyLock(editor);await writeDraft(text);wrote=true;check();
       if(images?.length)await attachImages(images);
-      await waitFor(()=>isStopped()||getEditor()!==editor||conversationKey()!==key||touched||norm(editorValue(editor))!==norm(text)||actionable(sendButton()),12000);
+      await waitFor(()=>canceled()||getEditor()!==editor||conversationKey()!==key||touched||norm(editorValue(editor))!==norm(text)||actionable(sendButton()),12000);
       check();if(touched||norm(editorValue(editor))!==norm(text))throw Error('The Vani draft changed. It was preserved; nothing was submitted.');
       const button=sendButton();if(!actionable(button))throw Error('Vani Send is unavailable. Nothing was submitted.');
       if(attachmentNodes().some(n=>!stagedAttachments.has(n)||!attachmentReady(n)))throw Error('Vani attachment changed or failed before Send. Nothing was submitted.');
       attempted=true;committed=true;nativeCommitForm=composerFrame();try{button.click();}finally{nativeCommitForm=null;}
       // A cleared textarea/Stop button alone is not proof of delivery. Require a
       // new, correctly authored user turn with this exact rendered message.
-      const received=await waitFor(()=>{if(isStopped()||conversationKey()!==key)return true;const users=allItems().filter(n=>isUserItem(n)&&!oldUsers.has(itemKey(n)));rejected=users.some(nativeFailure);return rejected||(!scanError()&&norm(editorValue(getEditor()))===''&&users.some(n=>norm(itemText(n))===norm(text)));},20000);
+      const received=await waitFor(()=>{if(canceled()||conversationKey()!==key)return true;const users=allItems().filter(n=>isUserItem(n)&&!oldUsers.has(itemKey(n)));rejected=users.some(nativeFailure);return rejected||(!newError()&&norm(editorValue(getEditor()))===''&&users.some(n=>norm(itemText(n))===norm(text)));},20000);
       if(rejected){committed=false;throw Error('Vani marked the message as failed. No automatic resend was attempted.');}
-      if(isStopped()||conversationKey()!==key||!received)throw Error('Vani send was not confirmed. It may have reached the chat. PlazCode will not resend automatically; inspect the conversation before retrying.');
+      if(canceled()||conversationKey()!==key||!received)throw Error('Vani send was not confirmed. It may have reached the chat. PlazCode will not resend automatically; inspect the conversation before retrying.');
       committed=false;diag('vani.send.confirmed',{characters:text.length});return true;
     }catch(error){
       // Only remove our definitely-unsent startup paste, never a foreign draft,
@@ -208,12 +221,13 @@ const RSProvider = (() => {
       failure=String(error.message||error);throw Error(failure);
     }finally{for(const name of ['beforeinput','input','paste'])document.removeEventListener(name,onInput,true);writing=oldWriting;inFlight=false;applyLock(getEditor());}
   }
-  function stopGeneration(){const b=stopButton();if(actionable(b))b.click();}
-  function scanError(){const root=chatRoot();return qa(root,'[role="alert"],[data-sonner-toast]').filter(shown).map(n=>n.textContent.trim()).find(t=>t.length>3&&t.length<800)||'';}
+  function stopGeneration(){sendGeneration++;const b=stopButton();if(actionable(b))b.click();}
+  function alertNodes(){return qa(chatRoot(),'[role="alert"],[data-sonner-toast]').filter(n=>shown(n)&&n.textContent.trim().length>3&&n.textContent.trim().length<800);}
+  function scanError(){return alertNodes().map(n=>n.textContent.trim())[0]||'';}
   function installSendHooks(h){
     installGuard();const notify=e=>{if(inFlight||h.isBlocked()){if(e.isTrusted){if(e.cancelable)e.preventDefault();e.stopImmediatePropagation();}return;}if(h.onCoworkSend&&h.onCoworkSend(e))return;if(h.isBlocked())return;if(!h.isStarted()){if(chatIsEmpty())h.onBlockedAttempt();return;}h.onUserMessage(assistantCount());};
     document.addEventListener('keydown',e=>{if(e.key!=='Enter'||e.shiftKey||e.isComposing||e.ctrlKey||e.metaKey||e.altKey||e.target!==getEditor()||!editorText().trim())return;notify(e);},true);
-    document.addEventListener('click',e=>{const b=safeRead(()=>closest(e.target,'button'));if(b&&b===stopButton()){h.onNativeStop?.();return;}if(b&&b===sendButton()&&actionable(b))notify(e);},true);
+    document.addEventListener('click',e=>{const b=safeRead(()=>closest(e.target,'button'));if(b&&b===stopButton()){sendGeneration++;h.onNativeStop?.();return;}if(b&&b===sendButton()&&actionable(b))notify(e);},true);
   }
   function findToolBlockSpot(item){if(!isAssistantItem(item))return null;let spot=null;for(const pre of qa(item,'pre')){if(safeRead(()=>closest(pre,S.owned+','+S.thinking))||!(/"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i.test(pre.textContent)))continue;pre.classList.add('rs-tool-hide');if(!spot)spot={parent:pre.parentElement,ref:pre};}return spot;}
   const loginGatePresent=()=>/^\/(?:login|signup|sign-up)(?:\/|$)/.test(location.pathname);

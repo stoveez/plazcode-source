@@ -33,3 +33,14 @@ Development only. No permission has been given to publish 1.24.20. Do not update
 ### Literal command markers and native validation
 - JSON command source containing marker examples is preserved instead of dropping its prefix. Only actual leading/terminal Lua wrappers are unwrapped; completed JSON examples do not keep the response watcher waiting. MCP JSON is decoded before raw marker fallback.
 - Native route test now supplies Ultra effort for hidden GUI reads and explicitly checks rejection at other efforts. Debug build, authenticated routes, and Studio reconnection use separate CI steps so failures are visible on every platform.
+
+## Test build 2: Vani startup and controls
+
+- Stop is available as soon as connection starts, rather than appearing after a short delay. Stopping also cancels pending typing/upload waits so they cannot send later.
+- An old notice or an invisible leftover Stop button no longer makes a new send look stuck. New errors and failed messages still stop safely; uncertain sends are never automatically repeated.
+- Vani's page styling can no longer hide or darken PlazCode's controls. Start/Restart stays available after a failed or declined connection.
+- If the AI declines the connection request, PlazCode explains that and stops. It does not keep asking or bypass the AI's safeguards.
+
+The reported case was a signed-in, fresh chat. Live checks here used the signed-out public chat, where both the old and updated adapters confirmed a harmless native submission. That does **not** reproduce or establish the cause of the reported timeout. Captured public markup/styles and synthetic signed-in fixtures supplement—not replace—signed-in verification. React hydration error 418 was not reproduced, so no claim is made that its cause is fixed. Local tests independently reproduced and closed stale hidden Stop, pre-existing advisory, and cancellation-during-acceptance defects.
+
+The latest provider and core changes are gated by captured-DOM regressions in Chromium and Firefox, alongside existing compatibility tests. Results bind to the committed candidate; native platform and security validation remain required before attaching the new test archive. No publication or feed updates are authorized.

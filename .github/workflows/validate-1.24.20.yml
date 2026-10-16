@@ -71,6 +71,36 @@ jobs:
         working-directory: build-src-1.24.20/PlazCode
         env:
           PLAZCODE_TEST_BROWSER: firefox
+      - name: Vani public-receipt-regressions in chromium
+        run: node release-tools/test-vani-public-receipt-regressions.cjs
+        working-directory: build-src-1.24.20/PlazCode
+        env:
+          PLAZCODE_TEST_BROWSER: chromium
+      - name: Vani independent-regressions in chromium
+        run: node release-tools/test-vani-independent-regressions.cjs
+        working-directory: build-src-1.24.20/PlazCode
+        env:
+          PLAZCODE_TEST_BROWSER: chromium
+      - name: Vani core-ui-lifecycle in chromium
+        run: node release-tools/test-vani-core-ui-lifecycle.cjs
+        working-directory: build-src-1.24.20/PlazCode
+        env:
+          PLAZCODE_TEST_BROWSER: chromium
+      - name: Vani public-receipt-regressions in firefox
+        run: node release-tools/test-vani-public-receipt-regressions.cjs
+        working-directory: build-src-1.24.20/PlazCode
+        env:
+          PLAZCODE_TEST_BROWSER: firefox
+      - name: Vani independent-regressions in firefox
+        run: node release-tools/test-vani-independent-regressions.cjs
+        working-directory: build-src-1.24.20/PlazCode
+        env:
+          PLAZCODE_TEST_BROWSER: firefox
+      - name: Vani core-ui-lifecycle in firefox
+        run: node release-tools/test-vani-core-ui-lifecycle.cjs
+        working-directory: build-src-1.24.20/PlazCode
+        env:
+          PLAZCODE_TEST_BROWSER: firefox
       - name: Ultra enhanced package and deterministic builder verification in scratch
         # Builder has no --check mode; this test rebuilds only in scratch and
         # compares all six generated outputs without changing prepared sources.
