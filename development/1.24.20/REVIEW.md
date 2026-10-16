@@ -8,6 +8,10 @@
 - Ultra still activates only at Ultra effort. Its name and animated shine are unchanged.
 - The latest package adds clearer interface-style guidance and warns that its example texture must be checked before use.
 
+## Claude result-delivery safeguard
+
+A local native-editing fixture reproduced prefix loss when selection or the editor changed during a long result insertion. The old sender checked only a tail fingerprint and could still click Send. Claude now checks the complete non-newline character sequence throughout composition and before committing, binds it to the same editor/chat, and stops on failed native edits, stop requests, remounts or caret drift. No result characters are stripped or encoded. This is a safe failure guard, not proof of the reported live cause or byte-exact backend/newline preservation; the exact user command/result is still needed to verify that case.
+
 ## Source and activation
 
 Authoritative input: `UltraLab_pre-alpha_fixed (1).zip`.
@@ -25,3 +29,7 @@ Public Vani markup and one harmless native send were checked live. Local provide
 ## Release status
 
 Development only. No permission has been given to publish 1.24.20. Do not update main, releases or update feeds until the user explicitly approves publication after final validation.
+
+### Literal command markers and native validation
+- JSON command source containing marker examples is preserved instead of dropping its prefix. Only actual leading/terminal Lua wrappers are unwrapped; completed JSON examples do not keep the response watcher waiting. MCP JSON is decoded before raw marker fallback.
+- Native route test now supplies Ultra effort for hidden GUI reads and explicitly checks rejection at other efforts. Debug build, authenticated routes, and Studio reconnection use separate CI steps so failures are visible on every platform.

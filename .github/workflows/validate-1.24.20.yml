@@ -48,6 +48,9 @@ jobs:
         working-directory: build-src-1.24.20/PlazCode
       - run: node release-tools/node_modules/playwright/cli.js install --with-deps chromium firefox
         working-directory: build-src-1.24.20/PlazCode
+      - name: Claude lossless result draft regression in Chromium
+        run: node release-tools/test-claude-result-delivery.cjs
+        working-directory: build-src-1.24.20/PlazCode
       - name: Vani provider fixtures in Chromium
         run: node release-tools/test-vani-browser.cjs
         working-directory: build-src-1.24.20/PlazCode
@@ -206,11 +209,14 @@ jobs:
         if: ${{ always() && !cancelled() }}
         run: cargo +stable test --locked --manifest-path agent/Cargo.toml
         working-directory: build-src-1.24.20/PlazCode
-      - name: Build debug binary and test authenticated routes
-        run: |
-          cargo +stable build --locked --manifest-path agent/Cargo.toml
-          python test-skills-native.py
-          python test-studio-autoconnect.py
+      - name: Build debug binary
+        run: cargo +stable build --locked --manifest-path agent/Cargo.toml
+        working-directory: build-src-1.24.20/PlazCode
+      - name: Test authenticated native routes and Ultra effort gating
+        run: python test-skills-native.py
+        working-directory: build-src-1.24.20/PlazCode
+      - name: Test native Studio auto-connect
+        run: python test-studio-autoconnect.py
         working-directory: build-src-1.24.20/PlazCode
       - name: Build native executable
         run: cargo +stable build --release --locked --manifest-path agent/Cargo.toml
