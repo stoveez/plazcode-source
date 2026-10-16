@@ -1,1 +1,5 @@
 development/1.23.0/overlay/** text eol=lf
+
+# Keep the supplied Ultra replacement byte-identical on every build host.
+development/1.24.20/overlay/** text eol=lf
+development/1.24.20/overlay/ultra/** -text

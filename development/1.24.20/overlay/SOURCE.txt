@@ -1,0 +1,5 @@
+PlazCode 1.24.20 development
+Not a published release; final validation and publication approval remain required.
+Based on published PlazCode 1.24.19 plus Vani integration and the complete newest Ultra package.
+PlazCode source: https://github.com/stoveez/PlazCode/tree/codex/plazcode-1.24.20
+License: GPL-3.0-or-later. Bundled third-party resources retain their respective notices; see Ultra's provenance and legal notices.
