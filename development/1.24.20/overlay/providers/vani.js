@@ -6,10 +6,10 @@ const RSProvider = (() => {
   const S={turn:'[data-turn-id]',thinking:'[aria-label="Thinking"],.reasoning,[data-is-thinking="true"],[data-role="thinking"],[data-testid="thinking"]',
     owned:'#rs-root,#rs-input-cover,#rs-diag-log,.rs-chip,.rs-chat-activity',send:'button[aria-label="Send message"],button[aria-label="Send"]',stop:'button[aria-label="Stop generating"],button[aria-label="Stop generation"]'};
   const timings={GEN_IDLE_MS:1600,REASON_IDLE_MS:16000,WARMUP_MS:45000,REASON_NOREPLY_MS:120000,STABLE_MS:8000,RESPONSE_TIMEOUT_MS:300000};
-  const safe=(fn,fallback=null)=>{try{return fn();}catch{return fallback;}};
-  const q=(root,sel)=>root?safe(()=>root.querySelector(sel)):null;
-  const qa=(root,sel)=>root?safe(()=>Array.from(root.querySelectorAll(sel)),[]):[];
-  const closest=(el,sel)=>el?safe(()=>el.closest(sel)):null;
+  const safeRead=(fn,fallback=null)=>{try{return fn();}catch{return fallback;}};
+  const q=(root,sel)=>root?safeRead(()=>root.querySelector(sel)):null;
+  const qa=(root,sel)=>root?safeRead(()=>Array.from(root.querySelectorAll(sel)),[]):[];
+  const closest=(el,sel)=>el?safeRead(()=>el.closest(sel)):null;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const norm=x=>String(x??'').replace(/\r\n?/g,'\n').replace(/\u00a0/g,' ').trim();
   let diag=()=>{},isStopped=()=>false,locked=false,inFlight=false,committed=false,failure='',writing=false,performingEdit=false;
@@ -17,45 +17,45 @@ const RSProvider = (() => {
   let pageId=typeof crypto.randomUUID==='function'?crypto.randomUUID():String(Date.now()),epoch=0;
   function allowed(){return location.hostname==='c.vani.ai' && /^\/(?:c|chat)(?:\/[^/]+)?\/?$/.test(location.pathname);}
   function shown(el){
-    if(!el||!el.isConnected||closest(el,S.owned+', [hidden],[aria-hidden="true"],dialog,[role="dialog"],nav,header,[role="navigation"]'))return false;
-    return safe(()=>{for(let n=el;n;n=n.parentElement){const s=getComputedStyle(n);if(s.display==='none'||s.visibility==='hidden'||s.visibility==='collapse'||s.opacity==='0')return false;}return true;},false);
+    if(!el||!el.isConnected||safeRead(()=>closest(el,S.owned+', [hidden],[aria-hidden="true"],dialog,[role="dialog"],nav,header,[role="navigation"]')))return false;
+    return safeRead(()=>{for(let n=el;n;n=n.parentElement){const s=getComputedStyle(n);if(s.display==='none'||s.visibility==='hidden'||s.visibility==='collapse'||s.opacity==='0')return false;}return true;},false);
   }
   function chatRoot(){if(!allowed())return null;const roots=qa(document,'main').filter(shown);return roots.length===1?roots[0]:null;}
   function getEditor(){
     const root=chatRoot();if(!root)return null;
     const editors=qa(root,'textarea,[contenteditable][role="textbox"],.ProseMirror[contenteditable],.tiptap[contenteditable]').filter(el=>{
-      if(!shown(el)||el.disabled||closest(el,S.turn)||closest(el,'[role="search"], [data-slot="sidebar"]'))return false;
-      const form=closest(el,'form');return form&&root.contains(form)&&!!q(form,S.send+','+S.stop);
+      if(!shown(el)||el.disabled||safeRead(()=>closest(el,S.turn))||safeRead(()=>closest(el,'[role="search"], [data-slot="sidebar"]')))return false;
+      const form=safeRead(()=>closest(el,'form'));return form&&safeRead(()=>root.contains(form))&&!!q(form,S.send+','+S.stop);
     });
     // Multiple chat boxes are ambiguous; never guess the first textarea.
     return editors.length===1?editors[0]:null;
   }
-  const composerFrame=()=>closest(getEditor(),'form');
+  const composerFrame=()=>safeRead(()=>closest(getEditor(),'form'));
   const barAnchor=composerFrame;
   const sendButton=()=>q(composerFrame(),S.send);
   const stopButton=()=>q(composerFrame(),S.stop);
-  function actionable(b){return !!b&&shown(b)&&!b.disabled&&b.getAttribute('aria-disabled')!=='true'&&!closest(b,'[inert]')&&safe(()=>{const r=b.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(b).pointerEvents!=='none';},false);}
+  function actionable(b){return !!b&&shown(b)&&!b.disabled&&safeRead(()=>b.getAttribute('aria-disabled'))!=='true'&&!safeRead(()=>closest(b,'[inert]'))&&safeRead(()=>{const r=b.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(b).pointerEvents!=='none';},false);}
   function editorValue(el){if(!el)return '';return el.tagName==='TEXTAREA'?el.value:String(el.innerText??el.textContent??'').replace(/\u00a0/g,' ');}
   const editorText=()=>editorValue(getEditor());
   const conversationKey=()=>allowed()?location.pathname.replace(/\/$/,'')+'|'+(/^\/(?:c|chat)\/?$/.test(location.pathname)?pageId+':'+epoch:'saved'):null;
   function roleOf(item){
-    if(!item||!item.matches(S.turn))return '';
-    const explicit=(item.getAttribute('data-message-role')||item.getAttribute('data-role')||'').toLowerCase();
+    if(!item||!safeRead(()=>item.matches(S.turn)))return '';
+    const explicit=(safeRead(()=>item.getAttribute('data-message-role'))||safeRead(()=>item.getAttribute('data-role'))||'').toLowerCase();
     const user=explicit==='user'||!!q(item,'[data-message-actions="user"]')||!!q(item,':scope > .items-end');
     const assistant=explicit==='assistant'||!!q(item,'[data-message-actions="assistant"],[data-turn-model]');
     return user===assistant?'':user?'user':'assistant';
   }
   let observer=null,dirty=true,cache=null,cacheRoute='';const textCache=new WeakMap();
-  function owned(node){return !!closest(node?.nodeType===1?node:node?.parentElement,S.owned);}
+  function owned(node){return !!safeRead(()=>closest(node?.nodeType===1?node:node?.parentElement,S.owned));}
   function invalidateItems(records){
     if(!records){dirty=true;return;}
     for(const r of records){
       if(owned(r.target))continue;
       const changed=[...(r.addedNodes||[]),...(r.removedNodes||[])];
       if(changed.length&&changed.every(owned))continue;
-      const el=r.target.nodeType===1?r.target:r.target.parentElement,item=closest(el,S.turn);
+      const el=r.target.nodeType===1?r.target:r.target.parentElement,item=safeRead(()=>closest(el,S.turn));
       if(item)textCache.delete(item);
-      if(!item||r.type==='attributes'||r.type==='childList'||changed.some(n=>n.nodeType===1&&(n.matches(S.turn)||q(n,S.turn))))dirty=true;
+      if(!item||r.type==='attributes'||r.type==='childList'||changed.some(n=>n.nodeType===1&&(safeRead(()=>n.matches(S.turn))||q(n,S.turn))))dirty=true;
     }
   }
   function drain(){
@@ -64,7 +64,7 @@ const RSProvider = (() => {
   }
   function rawItems(){
     drain();const root=chatRoot();if(!root)return [];
-    if(dirty||cache?.root!==root){cache={root,items:qa(root,S.turn).filter(el=>shown(el)&&!closest(el,S.owned)&&roleOf(el))};dirty=false;}
+    if(dirty||cache?.root!==root){cache={root,items:qa(root,S.turn).filter(el=>shown(el)&&!safeRead(()=>closest(el,S.owned))&&roleOf(el))};dirty=false;}
     return cache.items.filter(el=>el.isConnected&&shown(el));
   }
   function textWithout(root,exclude=''){
@@ -74,14 +74,14 @@ const RSProvider = (() => {
     // discard only the class records generated by this bounded temporary unmask.
     if(observer)invalidateItems(observer.takeRecords());
     const maskClasses=['rs-hidden','rs-tool-hide','rs-code-hide'],masked=[];
-    for(const n of [root,...qa(root,'.rs-hidden,.rs-tool-hide,.rs-code-hide')]){if(maskClasses.some(c=>n.classList.contains(c))){masked.push([n,n.getAttribute('class')]);maskClasses.forEach(c=>n.classList.remove(c));}}
+    for(const n of [root,...qa(root,'.rs-hidden,.rs-tool-hide,.rs-code-hide')]){if(maskClasses.some(c=>safeRead(()=>n.classList.contains(c)))){masked.push([n,safeRead(()=>n.getAttribute('class'))]);maskClasses.forEach(c=>n.classList.remove(c));}}
     try{let out='';const skip=S.owned+', [data-message-actions],[data-turn-model],time,button,[hidden],[aria-hidden="true"],'+S.thinking+(exclude?','+exclude:'');
     // Iterative traversal avoids recursion limits on a deeply nested code reply.
     const stack=[{node:root,end:false}];
     while(stack.length){const {node:n,end}=stack.pop();if(n.nodeType===3){out+=n.nodeValue||'';continue;}if(n.nodeType!==1)continue;
-      if(n.matches(skip))continue;
+      if(safeRead(()=>n.matches(skip)))continue;
       // Ignore native hidden copies, but retain source deliberately hidden by our own tool cards.
-      if(!end){const cs=getComputedStyle(n);if(cs.display==='none'||cs.visibility==='hidden'||cs.visibility==='collapse'||cs.opacity==='0')continue;}
+      if(!end){const cs=safeRead(()=>getComputedStyle(n),{display:'none',visibility:'hidden',opacity:'0',pointerEvents:'none'});if(cs.display==='none'||cs.visibility==='hidden'||cs.visibility==='collapse'||cs.opacity==='0')continue;}
       const block=/^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(n.tagName);
       if(end){if(block&&!out.endsWith('\n'))out+='\n';continue;}
       if(n.tagName==='BR'){out+='\n';continue;}if(block&&out&&!out.endsWith('\n'))out+='\n';
@@ -89,17 +89,17 @@ const RSProvider = (() => {
     }return out.trim();
     }finally{for(const [n,cls] of masked){if(cls===null)n.removeAttribute('class');else n.setAttribute('class',cls);}if(observer){const own=new Set(masked.map(([n])=>n));invalidateItems(observer.takeRecords().filter(r=>!(r.type==='attributes'&&r.attributeName==='class'&&own.has(r.target))));}}
   }
-  function itemText(item){drain();if(!item||!shown(item)||closest(item,'[data-slot="sidebar"],[role="complementary"]')||!chatRoot()?.contains(item)||!roleOf(item))return '';if(!textCache.has(item))textCache.set(item,textWithout(item));return textCache.get(item);}
+  function itemText(item){drain();if(!item||!shown(item)||safeRead(()=>closest(item,'[data-slot="sidebar"],[role="complementary"]'))||!safeRead(()=>chatRoot()?.contains(item))||!roleOf(item))return '';if(!textCache.has(item))textCache.set(item,textWithout(item));return textCache.get(item);}
   function classifyText(item,exclude){if(!itemText(item))return '';return exclude?textWithout(item,exclude):itemText(item);}
   function isUserItem(item){drain();return roleOf(item)==='user';}
   function isAssistantItem(item){drain();return roleOf(item)==='assistant';}
   function allItems(){const items=rawItems();for(const item of items){if(roleOf(item)!=='user')continue;const text=itemText(item),injected=text.startsWith('⟦RS-SYS⟧')||(typeof RSParse!=='undefined'&&RSParse.isInjectedFeedback(text));
-      if(injected){if(!item.hasAttribute('data-rs-vani-injected')){item.setAttribute('data-rs-vani-injected','1');item.classList.add('rs-hidden');}}
-      else if(item.hasAttribute('data-rs-vani-injected')){item.removeAttribute('data-rs-vani-injected');item.classList.remove('rs-hidden');}
+      if(injected){if(!safeRead(()=>item.hasAttribute('data-rs-vani-injected'))){item.setAttribute('data-rs-vani-injected','1');item.classList.add('rs-hidden');}}
+      else if(safeRead(()=>item.hasAttribute('data-rs-vani-injected'))){item.removeAttribute('data-rs-vani-injected');item.classList.remove('rs-hidden');}
     }return items;}
   const assistantItems=()=>allItems().filter(isAssistantItem),assistantCount=()=>assistantItems().length,userCount=()=>allItems().filter(isUserItem).length;
   const lastAssistant=()=>assistantItems().at(-1)||null;
-  function itemKey(item){if(!item||!roleOf(item))return null;const id=item.getAttribute('data-turn-id');return id?conversationKey()+'|'+roleOf(item)+':'+id:null;}
+  function itemKey(item){if(!item||!roleOf(item))return null;const id=safeRead(()=>item.getAttribute('data-turn-id'));return id?conversationKey()+'|'+roleOf(item)+':'+id:null;}
   const lastAssistantId=()=>itemKey(lastAssistant());
   function readAssistant(){const item=lastAssistant();return {present:!!item,item,reply:itemText(item),thinking:''};}
   const streamLen=item=>itemText(item===undefined?lastAssistant():item).length;
@@ -110,17 +110,17 @@ const RSProvider = (() => {
   const isGenerating=isHardGenerating,isBusyNow=isHardGenerating;
   function applyLock(el){
     if(!el)return;
-    if(!originals.has(el))originals.set(el,{readonly:el.readOnly,editable:el.getAttribute('contenteditable')});
+    if(!originals.has(el))originals.set(el,{readonly:el.readOnly,editable:safeRead(()=>el.getAttribute('contenteditable'))});
     const old=originals.get(el);
     if(el.tagName==='TEXTAREA')el.readOnly=locked?true:old.readonly;
     else if(locked&&!writing)el.setAttribute('contenteditable','false');else if(old.editable===null)el.removeAttribute('contenteditable');else el.setAttribute('contenteditable',old.editable);
   }
   function installGuard(){if(guardInstalled)return;guardInstalled=true;
-    const block=e=>{if(!locked||!e.isTrusted)return;const ed=getEditor();if(ed&&(e.target===ed||ed.contains(e.target))){if(e.cancelable)e.preventDefault();e.stopImmediatePropagation();}};
+    const block=e=>{if(!locked||!e.isTrusted)return;const ed=getEditor();if(ed&&(e.target===ed||safeRead(()=>ed.contains(e.target)))){if(e.cancelable)e.preventDefault();e.stopImmediatePropagation();}};
     for(const name of ['beforeinput','paste','drop','cut','keydown'])document.addEventListener(name,block,true);
-    const blockSend=e=>{if(!e.isTrusted||(!locked&&!inFlight))return;const form=composerFrame(),button=closest(e.target,'button');if(e.type==='submit'&&e.target===nativeCommitForm)return;if(form&&((e.type==='submit'&&e.target===form)||(e.type==='click'&&button===sendButton()))){if(e.cancelable)e.preventDefault();e.stopImmediatePropagation();}};
+    const blockSend=e=>{if(!e.isTrusted||(!locked&&!inFlight))return;const form=composerFrame(),button=safeRead(()=>closest(e.target,'button'));if(e.type==='submit'&&e.target===nativeCommitForm)return;if(form&&((e.type==='submit'&&e.target===form)||(e.type==='click'&&button===sendButton()))){if(e.cancelable)e.preventDefault();e.stopImmediatePropagation();}};
     document.addEventListener('click',blockSend,true);document.addEventListener('submit',blockSend,true);
-    document.addEventListener('click',e=>{const b=closest(e.target,'button');if(b&&b.textContent.trim()==='New chat'&&chatRoot()){epoch++;dirty=true;}},true);
+    document.addEventListener('click',e=>{const b=safeRead(()=>closest(e.target,'button'));if(b&&b.textContent.trim()==='New chat'&&chatRoot()){epoch++;dirty=true;}},true);
   }
   function setInputLock(on){installGuard();locked=!!on;applyLock(getEditor());}
   function enforceComposer(){installGuard();const e=getEditor();applyLock(e);return {ready:!!e};}
@@ -146,8 +146,8 @@ const RSProvider = (() => {
     }finally{performingEdit=false;writing=previous;applyLock(editor);}
   }
   function supportsVision(){return !!q(composerFrame(),'input[type="file"]');}
-  const attachmentNodes=()=>{const nodes=qa(composerFrame(),'[data-attachment-id],[data-testid="attachment-preview"],[data-attachment-preview]');return nodes.filter(n=>!nodes.some(parent=>parent!==n&&parent.contains(n)));};
-  function attachmentReady(n){if(!n.isConnected||!composerFrame()?.contains(n))return false;const bad='[data-state="uploading"],[data-state="pending"],[data-state="error"],[data-state="failed"],[data-status="uploading"],[data-status="pending"],[data-status="error"],[data-status="failed"],[aria-busy="true"],[role="alert"],[role="progressbar"]';return !n.matches(bad)&&!q(n,bad);}
+  const attachmentNodes=()=>{const nodes=qa(composerFrame(),'[data-attachment-id],[data-testid="attachment-preview"],[data-attachment-preview]');return nodes.filter(n=>!nodes.some(parent=>parent!==n&&safeRead(()=>parent.contains(n))));};
+  function attachmentReady(n){if(!n.isConnected||!safeRead(()=>composerFrame()?.contains(n)))return false;const bad='[data-state="uploading"],[data-state="pending"],[data-state="error"],[data-state="failed"],[data-status="uploading"],[data-status="pending"],[data-status="error"],[data-status="failed"],[aria-busy="true"],[role="alert"],[role="progressbar"]';return !safeRead(()=>n.matches(bad))&&!q(n,bad);}
   const stagedAttachments=new Set();
   function fileFromImage(img,i){if(typeof PlazCodeMedia!=='undefined')return PlazCodeMedia.fileFrom(img,i);const bytes=Uint8Array.from(atob(img.data),c=>c.charCodeAt(0));return new File([bytes],'plazcode-'+Date.now()+'-'+i+'.png',{type:img.mimeType||'image/png'});}
   async function attachImages(images){
@@ -158,11 +158,11 @@ const RSProvider = (() => {
     input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));
     const accepted=await waitFor(()=>getEditor()!==editor||conversationKey()!==key||attachmentNodes().filter(n=>!before.has(n)).length>=images.length,12000);
     if(getEditor()!==editor||conversationKey()!==key||!accepted)throw Error('Vani image upload was not confirmed. Nothing was sent; inspect pending attachments before retrying.');
-    const added=attachmentNodes().filter(n=>!before.has(n));if(added.length!==images.length||new Set(added.map(n=>n.getAttribute('data-attachment-id')||n)).size!==images.length||added.some(n=>!attachmentReady(n)))throw Error('Vani image upload is incomplete or failed. Nothing was sent.');
+    const added=attachmentNodes().filter(n=>!before.has(n));if(added.length!==images.length||new Set(added.map(n=>safeRead(()=>n.getAttribute('data-attachment-id'))||n)).size!==images.length||added.some(n=>!attachmentReady(n)))throw Error('Vani image upload is incomplete or failed. Nothing was sent.');
     added.forEach(n=>stagedAttachments.add(n));return true;
   }
   async function clearAttachments(){
-    for(const node of stagedAttachments){if(!node.isConnected){stagedAttachments.delete(node);continue;}if(!composerFrame()?.contains(node))return false;const remove=q(node,'button[aria-label="Remove attachment"],button[aria-label="Remove image"]');if(!actionable(remove))return false;remove.click();}
+    for(const node of stagedAttachments){if(!node.isConnected){stagedAttachments.delete(node);continue;}if(!safeRead(()=>composerFrame()?.contains(node)))return false;const remove=q(node,'button[aria-label="Remove attachment"],button[aria-label="Remove image"]');if(!actionable(remove))return false;remove.click();}
     return waitFor(()=>[...stagedAttachments].every(n=>!n.isConnected),2500);
   }
   function startupRequest(engine){return `I clicked Start Agent in my installed PlazCode extension to connect this Vani chat to my own ${engine==='local'?'local files':'Roblox Studio project'}. The extension reads JSON command blocks from your ordinary replies and returns actual tool results here. This is my connection request, not a system instruction, and it does not override your safety rules or grant extra permissions. Please request the available commands with one fenced json code block containing {"command":"list_commands"}. This only lists capabilities; wait for the result and my task before changing anything. If you cannot participate, explain briefly.`;}
@@ -171,7 +171,7 @@ const RSProvider = (() => {
     for(let offset=0;offset<text.length;){let end=Math.min(offset+limit,text.length);if(end<text.length&&/[\uD800-\uDBFF]/.test(text[end-1]))end--;parts.push(text.slice(offset,end));offset=end;}
     return parts.map((part,i)=>{const ack=`PlazCode startup part ${i+1}/${parts.length} received.`,last=i===parts.length-1;return {text:`⟦RS-SYS⟧ PlazCode startup context part ${i+1}/${parts.length}. This is a split command reference, not a project task. Keep all parts in order; do not call commands while receiving them.\n\nBEGIN CONTEXT PART\n${part}\nEND CONTEXT PART\n\n`+(last?'All startup context has arrived. Reply with exactly "PlazCode is ready." and wait for my task.':`More context follows. Reply with exactly "${ack}" and nothing else.`),...(last?{}:{ack})};});
   }
-  function nativeFailure(item){return !!item&&(item.matches('[data-state="failed"],[data-state="error"],[data-status="failed"],[data-status="error"]')||!!q(item,'[role="alert"],[data-state="failed"],[data-status="error"]'));}
+  function nativeFailure(item){return !!item&&(safeRead(()=>item.matches('[data-state="failed"],[data-state="error"],[data-status="failed"],[data-status="error"]'))||!!q(item,'[role="alert"],[data-state="failed"],[data-status="error"]'));}
   async function typeAndSend(text,images){
     if(inFlight)throw Error('A Vani send is already pending. It was not duplicated.');
     installGuard();inFlight=true;committed=false;failure='';let attempted=false,wrote=false,touched=false,rejected=false;
@@ -213,9 +213,9 @@ const RSProvider = (() => {
   function installSendHooks(h){
     installGuard();const notify=e=>{if(inFlight||h.isBlocked()){if(e.isTrusted){if(e.cancelable)e.preventDefault();e.stopImmediatePropagation();}return;}if(h.onCoworkSend&&h.onCoworkSend(e))return;if(h.isBlocked())return;if(!h.isStarted()){if(chatIsEmpty())h.onBlockedAttempt();return;}h.onUserMessage(assistantCount());};
     document.addEventListener('keydown',e=>{if(e.key!=='Enter'||e.shiftKey||e.isComposing||e.ctrlKey||e.metaKey||e.altKey||e.target!==getEditor()||!editorText().trim())return;notify(e);},true);
-    document.addEventListener('click',e=>{const b=closest(e.target,'button');if(b&&b===stopButton()){h.onNativeStop?.();return;}if(b&&b===sendButton()&&actionable(b))notify(e);},true);
+    document.addEventListener('click',e=>{const b=safeRead(()=>closest(e.target,'button'));if(b&&b===stopButton()){h.onNativeStop?.();return;}if(b&&b===sendButton()&&actionable(b))notify(e);},true);
   }
-  function findToolBlockSpot(item){if(!isAssistantItem(item))return null;let spot=null;for(const pre of qa(item,'pre')){if(closest(pre,S.owned+','+S.thinking)||!(/"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i.test(pre.textContent)))continue;pre.classList.add('rs-tool-hide');if(!spot)spot={parent:pre.parentElement,ref:pre};}return spot;}
+  function findToolBlockSpot(item){if(!isAssistantItem(item))return null;let spot=null;for(const pre of qa(item,'pre')){if(safeRead(()=>closest(pre,S.owned+','+S.thinking))||!(/"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i.test(pre.textContent)))continue;pre.classList.add('rs-tool-hide');if(!spot)spot={parent:pre.parentElement,ref:pre};}return spot;}
   const loginGatePresent=()=>/^\/(?:login|signup|sign-up)(?:\/|$)/.test(location.pathname);
   function modeWarning(){return !getEditor()?'<b>Vani AI</b> — open a Vani chat at <b>c.vani.ai/c</b> or sign in to your Vani chat. Close other dialogs, then refresh.':'';}
   return {id:'vani',displayName:'Vani AI',get supportsVision(){return supportsVision();},timings,
