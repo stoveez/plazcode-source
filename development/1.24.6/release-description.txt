@@ -1,0 +1,39 @@
+## ✨ PlazCode 1.24.6
+
+Recover from stuck command waits, continue safely after Stop, and import your own skills.
+
+### 🛠️ Commands and continuation
+
+- **Bounded waits:** MCP chatter, blocked pipes, missing worker replies and stale generation flags no longer keep these waits alive indefinitely.
+- **Stop → Continue:** the next request waits for cancellation to settle. Partial or uncertain commands are never replayed automatically.
+- **DOM recovery:** safer reads and editor cleanup across AI adapters, with bounded lookups and no extra polling.
+
+### ☑️ Stable task checklist
+
+- **Keep the main tasks:** continue and keep going retain the plan, including after a tab refresh. Change it only when asked; update statuses or append requested work.
+- **Cleaner spacing:** more room between rows, icons and headings; message timestamps are excluded from task labels.
+
+### 📥 Import skills
+
+- **Simple Skills:** type instructions and Save. Import/Export JSON or text; saved guidance adapts to the current project.
+
+### 🔧 Windows updater
+
+- **Current helper:** automatic updates use the helper embedded in this build. Built-in and manual launchers set a process-level execution policy; checksum and rollback checks stay in place.
+
+### 🎨 Interface fixes
+
+- **Spacing and versions:** separate Debug report cards, align effort under PlazCode and prefix displayed versions with v.
+
+### ✅ Checked before release
+
+- Regression fixtures and native platform checks. Live signed-in AI accounts and Studio behavior remain unverified.
+
+### 📥 How to update
+
+- Open PlazCode, or choose **Updates → Update now**.
+- Manual downloads: **PlazCode-1.24.6.zip** for Windows, **PlazCode-macOS-1.24.6.zip** for Mac, or **PlazCode-Firefox-1.24.6.zip** for Firefox.
+- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
+- Your settings, memory and connections are kept.
+
+Test details are included in VALIDATION.txt.

@@ -1,0 +1,165 @@
+name: Publish PlazCode 1.23.0 verified update
+on:
+  push:
+    branches: [codex/plazcode-release-1.23]
+    paths: [.github/workflows/promote-1.23.yml, development/1.23.0/promote.py, development/1.23.0/release-entry.json]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+  attestations: write
+  id-token: write
+concurrency:
+  group: plazcode-release-1.23
+  cancel-in-progress: false
+jobs:
+  windows_package:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Require identical reviewed runtime source
+        run: git diff --exit-code a93610aa8411e8b3e7aaa4d45172eed18f53b4bc -- development/1.23.0/overlay
+      - run: python development/1.23.0/prepare.py
+      - run: rustup update stable --no-self-update
+      - name: Build identical native source and rerun Windows release checks
+        shell: pwsh
+        working-directory: build-src/PlazCode
+        run: |
+          cargo +stable build --release --locked --manifest-path agent/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item agent/target/release/PlazCode.exe PlazCode.exe
+          python test-launcher.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./test-updater.ps1
+          powershell.exe -NoProfile -File ./test-application-icon.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-AuthenticodeSignature PlazCode.exe | Format-List | Out-File windows-signature.txt
+      - run: python development/1.23.0/package.py
+      - name: Defender scan availability and result
+        shell: pwsh
+        working-directory: build-src/PlazCode
+        run: |
+          try { $status=Get-MpComputerStatus -ErrorAction Stop } catch { 'Defender unavailable on this runner; no clean verdict claimed.' | Out-File defender-result.txt; exit 0 }
+          if (-not $status.AntivirusEnabled) { 'Defender not enabled on this runner; no clean verdict claimed.' | Out-File defender-result.txt; exit 0 }
+          $scanner=Get-ChildItem 'C:/ProgramData/Microsoft/Windows Defender/Platform/*/MpCmdRun.exe' | Sort-Object FullName | Select-Object -Last 1
+          if (-not $scanner) { throw 'Defender enabled but scanner unavailable.' }
+          $zip=Resolve-Path '../../artifacts/PlazCode-1.23.0-development.zip'
+          Get-FileHash $zip -Algorithm SHA256 | Format-List | Out-File defender-package-sha256.txt
+          $status | Select-Object AMProductVersion,AMEngineVersion,AntivirusSignatureVersion,AntivirusSignatureLastUpdated | ConvertTo-Json | Out-File defender-engine.json
+          Expand-Archive $zip -DestinationPath defender-scan
+          & $scanner.FullName -Scan -ScanType 3 -File "$PWD/defender-scan" -DisableRemediation 2>&1 | Tee-Object defender-result.txt
+          if ($LASTEXITCODE -ne 0) { throw "Defender scan failed or reported a detection ($LASTEXITCODE)." }
+      - name: Record successful Windows release validation
+        run: python -c 'import json,os; json.dump({"native_source":"a93610aa8411e8b3e7aaa4d45172eed18f53b4bc","run_id":os.environ["GITHUB_RUN_ID"],"pe_and_updater_verified":True,"icon_verified":True},open("artifacts/windows-repackage.json","w"))'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plazcode-1.23-Windows-repackaged
+          path: |
+            artifacts/*
+            build-src/PlazCode/windows-signature.txt
+            build-src/PlazCode/defender-result.txt
+            build-src/PlazCode/defender-package-sha256.txt
+            build-src/PlazCode/defender-engine.json
+  mac_package:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify compiled Mac artifact belongs to the validated source
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/11520264469" > mac-artifact.json
+          python3 -c 'import json; a=json.load(open("mac-artifact.json")); assert a["workflow_run"]["head_sha"]=="a93610aa8411e8b3e7aaa4d45172eed18f53b4bc" and not a["expired"]'
+          gh run download 37707590040 --repo "$GITHUB_REPOSITORY" --name plazcode-1.23-macOS-validation --dir recovered
+          codesign --verify --deep --strict recovered/artifacts/staging/PlazCode/PlazCode.app
+          lipo recovered/artifacts/staging/PlazCode/PlazCode.app/Contents/MacOS/PlazCode -verify_arch x86_64 arm64
+      - name: Repackage verified native build with corrected lipo arguments
+        run: |
+          python3 development/1.23.0/prepare.py
+          mkdir -p build-src/PlazCode/agent/target/release
+          cp recovered/artifacts/staging/PlazCode/PlazCode.app/Contents/MacOS/PlazCode build-src/PlazCode/agent/target/release/PlazCode
+          chmod +x build-src/PlazCode/agent/target/release/PlazCode
+          python3 development/1.23.0/package.py
+          python3 -c 'import json,os; json.dump({"native_source":"a93610aa8411e8b3e7aaa4d45172eed18f53b4bc","artifact_id":11520264469,"run_id":os.environ["GITHUB_RUN_ID"],"codesign_verified":True,"architectures_verified":["x86_64","arm64"]},open("artifacts/mac-repackage.json","w"))'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plazcode-1.23-macOS-repackaged
+          path: artifacts/*.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plazcode-1.23-macOS-repackage-evidence
+          path: artifacts/mac-repackage.json
+  publish:
+    needs: [mac_package, windows_package]
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VALIDATED_SHA: a93610aa8411e8b3e7aaa4d45172eed18f53b4bc
+      VALIDATION_RUN: '37707590040'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require successful exact-source platform and browser validation
+        run: |
+          mkdir ci-artifacts
+          for attempt in $(seq 1 90); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN" > ci-artifacts/run.json
+            state=$(python3 -c 'import json; print(json.load(open("ci-artifacts/run.json"))["status"])')
+            if [ "$state" = completed ]; then break; fi
+            sleep 30
+          done
+          python3 -c 'import json,os; r=json.load(open("ci-artifacts/run.json")); assert r["head_sha"]==os.environ["VALIDATED_SHA"] and r["status"]=="completed"'
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN/jobs" > ci-artifacts/jobs.json
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name plazcode-1.23-Windows-repackaged --dir ci-artifacts/plazcode-1.23-Windows-validation
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name plazcode-1.23-macOS-repackaged --dir ci-artifacts/plazcode-1.23-macOS-validation
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name plazcode-1.23-macOS-repackage-evidence --dir ci-artifacts
+      - name: Assemble versioned archives, check platform contents and update feeds
+        run: python3 development/1.23.0/promote.py
+      - name: Attest exact release archives
+        id: provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            PlazCode-1.23.0.zip
+            PlazCode-macOS-1.23.0.zip
+            PlazCode-source-1.23.0.zip
+            PlazCode-Firefox-1.23.0.zip
+      - name: Publish repository update in the existing format
+        env:
+          PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          cp "$PROVENANCE_BUNDLE" PlazCode-1.23.0.sigstore.json
+          gh attestation verify PlazCode-1.23.0.zip --repo "$GITHUB_REPOSITORY"
+          gh attestation verify PlazCode-macOS-1.23.0.zip --repo "$GITHUB_REPOSITORY"
+          gh attestation verify PlazCode-source-1.23.0.zip --repo "$GITHUB_REPOSITORY"
+          gh attestation verify PlazCode-Firefox-1.23.0.zip --repo "$GITHUB_REPOSITORY"
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = cbfe1eef5ed9f91dc6b23633d2fcba79f055ca2b
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add PlazCode-1.23.0.zip PlazCode-macOS-1.23.0.zip PlazCode-source-1.23.0.zip PlazCode-Firefox-1.23.0.zip PlazCode-1.23.0.sigstore.json latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.23.0.txt README.md release-validation-1.23.0 development/1.23.0/REVIEW.md
+          git commit -m 'Release PlazCode 1.23.0: saved skills, Studio Explorer and provider resilience'
+          git push origin HEAD:main
+      - name: Publish verified GitHub release page and assets
+        run: |
+          export GITHUB_SHA=$(git rev-parse HEAD)
+          python3 publish_release.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plazcode-1.23-release-evidence
+          path: |
+            release-validation-1.23.0/*
+            release-metadata.json
+          if-no-files-found: warn

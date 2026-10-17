@@ -1,0 +1,3 @@
+PlazCode 1.24.16 private development build. GPL-3.0-or-later.
+Editable overlay and build instructions: https://github.com/stoveez/PlazCode/tree/codex/plazcode-1.24.16/development/1.24.16
+Complete matching source is included in the private validation artifacts. Not a public update.

@@ -1,0 +1,57 @@
+{
+  "version": "1.24.8",
+  "title": "Quick replies, clear tasks and Notion fixes",
+  "summary": "Small requests stay brief, checklists follow your goals, and Notion handles results and connection status more reliably.",
+  "added": [],
+  "improved": [
+    "Quick command lists use a shorter reference, without project setup.",
+    "Real work keeps its project guidance and original goals when you say continue."
+  ],
+  "fixed": [
+    "Greetings, help and command lists no longer become tracked tasks.",
+    "Command names no longer become checklist steps.",
+    "Message timestamps no longer run into checklist labels.",
+    "Notion tool results stay in compact cards instead of showing raw source text.",
+    "Working Notion chats keep their connection status when messages are redrawn or hidden."
+  ],
+  "notes": [
+    "Automated regressions cover startup, commands, Studio detection fixtures and updating. Live AI accounts, response speed and real Studio sessions were not tested."
+  ],
+  "github": {
+    "sections": [
+      {
+        "title": "💬 Quick replies for small requests",
+        "items": [
+          "**Greetings stay simple:** hello, thanks, help and quick questions no longer start a project task or checklist.",
+          "**Faster command discovery:** asking to list commands skips project memory, skills, templates and checkpoint setup, and uses a shorter command reference."
+        ]
+      },
+      {
+        "title": "✅ Tasks follow your goal",
+        "items": [
+          "**Meaningful task names:** checklists describe what you want accomplished, rather than tool names such as list_commands. Old command-list entries no longer become the active checklist goal.",
+          "**Continue keeps the plan:** real work retains its original goal and project guidance when you ask to continue."
+        ]
+      },
+      {
+        "title": "🎨 Cleaner checklist text",
+        "items": [
+          "**Readable labels:** chat timestamps no longer get copied against the task name. Times written inside your instructions stay intact."
+        ]
+      },
+      {
+        "title": "🛠️ Notion reliability",
+        "items": [
+          "**Readable results:** tool results show as compact cards instead of raw source text.",
+          "**Accurate connection:** working chats stay connected when Notion redraws or hides older messages."
+        ]
+      },
+      {
+        "title": "🧪 Regression checks",
+        "items": [
+          "Automated checks cover quick requests, task retention, command schemas, startup, Studio detection fixtures, updating and Windows/Mac builds. Live AI accounts, response speed and real Studio sessions were not tested."
+        ]
+      }
+    ]
+  }
+}

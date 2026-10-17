@@ -1,0 +1,186 @@
+name: Validate PlazCode 1.24.5 development
+on:
+  push:
+    branches: [codex/plazcode-1.24.5-deepseek]
+  pull_request:
+    paths: [development/1.24.5/**, learned-skills/**, .github/workflows/validate-1.24.5.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: plazcode-1.24.5-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/checkout@v4
+        with:
+          repository: luau-lang/luau
+          ref: 74f768309c380d40601b28c4c4cdda27da415cef
+          path: validation-luau
+      - name: Build official Luau test VM
+        run: |
+          cmake -S validation-luau -B validation-luau/build -DLUAU_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build validation-luau/build --target Luau.Repl.CLI -j 4
+      - run: python3 development/1.24.5/prepare.py
+      - name: Test production Explorer Luau transactions
+        run: python3 test-explorer-luau.py
+        working-directory: build-src/PlazCode
+        env:
+          PLAZCODE_LUAU: ${{ github.workspace }}/validation-luau/build/luau
+      - run: npm ci --prefix release-tools --ignore-scripts
+        working-directory: build-src/PlazCode
+      - run: node release-tools/node_modules/playwright/cli.js install --with-deps chromium firefox
+        working-directory: build-src/PlazCode
+      - name: Notion startup with native Chromium and Firefox clipboard events
+        run: node release-tools/test-notion-bootstrap.cjs
+        working-directory: build-src/PlazCode
+      - run: node release-tools/test-browsers.cjs
+        working-directory: build-src/PlazCode
+      - run: node release-tools/test-ultracode-appearance.cjs
+        working-directory: build-src/PlazCode
+      - run: node release-tools/test-sidebar-explorer.cjs
+        working-directory: build-src/PlazCode
+      - run: node release-tools/test-workspace-scroll.cjs
+        working-directory: build-src/PlazCode
+      - run: node release-tools/test-desktop-performance.cjs
+        working-directory: build-src/PlazCode
+      - run: python3 development/1.24.5/test-package-size.py
+      - run: node release-tools/test-checklist-appearance.cjs
+        working-directory: build-src/PlazCode
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: '1'
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_CODEGEN_UNITS: '1'
+      CARGO_PROFILE_TEST_CODEGEN_UNITS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python development/1.24.5/prepare.py
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: build-src/PlazCode/agent
+          cache-on-failure: true
+      - name: Shared service protocol and database regressions
+        run: |
+          node --experimental-strip-types learning-service/test-protocol.mjs
+          python learning-service/test-sql.py
+          python development/1.24.5/test-starter-pack.py
+          python test-release-feed.py
+          python test-release-notes.py
+      - run: rustup update stable --no-self-update
+      - run: npm ci --prefix release-tools --ignore-scripts
+        working-directory: build-src/PlazCode
+      - name: JavaScript regression suite
+        run: python release-tools/test-javascript.py
+        working-directory: build-src/PlazCode
+        env:
+          NODE_PATH: release-tools/node_modules
+      - name: Native regression suite
+        run: cargo +stable test --locked --manifest-path agent/Cargo.toml
+        working-directory: build-src/PlazCode
+      - name: Build debug binary and test authenticated routes
+        run: |
+          cargo +stable build --locked --manifest-path agent/Cargo.toml
+          python test-skills-native.py
+        working-directory: build-src/PlazCode
+      - name: Build native executable
+        run: cargo +stable build --release --locked --manifest-path agent/Cargo.toml
+        working-directory: build-src/PlazCode
+      - name: Windows PE and updater regressions
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: build-src/PlazCode
+        run: |
+          Copy-Item agent/target/release/PlazCode.exe PlazCode.exe
+          python test-launcher.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./test-updater.ps1
+          powershell.exe -NoProfile -File ./test-update-presentation.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell.exe -NoProfile -File ./test-application-icon.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $signature = Get-AuthenticodeSignature PlazCode.exe
+          $signature | Format-List | Out-File windows-signature.txt
+          # This development workflow does not possess a publisher certificate.
+          # Never represent an unsigned development build as a signed release.
+      - name: Verify Windows automatic launch and later update handoff
+        if: runner.os == 'Windows'
+        working-directory: build-src/PlazCode
+        run: |
+          python test-auto-update-launch.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python test-auto-update-after-launch.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Package fresh Windows artifacts
+        if: runner.os == 'Windows'
+        run: python development/1.24.5/package.py
+      - name: Install the complete Windows package with PowerShell 5.1
+        if: runner.os == 'Windows'
+        working-directory: build-src/PlazCode
+        run: python test-updater-package.py
+      - name: Windows Defender scan availability and result
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: build-src/PlazCode
+        run: |
+          try { $status=Get-MpComputerStatus -ErrorAction Stop } catch { 'Defender unavailable on this runner; no clean verdict claimed.' | Out-File defender-result.txt; exit 0 }
+          if (-not $status.AntivirusEnabled) { 'Defender not enabled on this runner; no clean verdict claimed.' | Out-File defender-result.txt; exit 0 }
+          $scanner=Get-ChildItem 'C:/ProgramData/Microsoft/Windows Defender/Platform/*/MpCmdRun.exe' | Sort-Object FullName | Select-Object -Last 1
+          if (-not $scanner) { throw 'Defender enabled but scanner unavailable.' }
+          $zip=Resolve-Path '../../artifacts/PlazCode-1.24.5-development.zip'
+          Get-FileHash $zip -Algorithm SHA256 | Format-List | Out-File defender-package-sha256.txt
+          Update-MpSignature -ErrorAction Stop
+          $status=Get-MpComputerStatus -ErrorAction Stop
+          Get-FileHash PlazCode.exe -Algorithm SHA256 | Format-List | Out-File defender-executable-sha256.txt
+          $status | Select-Object AMProductVersion,AMEngineVersion,AntivirusSignatureVersion,AntivirusSignatureLastUpdated | ConvertTo-Json | Out-File defender-engine.json
+          Expand-Archive $zip -DestinationPath defender-scan
+          & $scanner.FullName -Scan -ScanType 3 -File "$PWD/defender-scan" -DisableRemediation 2>&1 | Tee-Object defender-result.txt
+          if ($LASTEXITCODE -ne 0) { throw "Defender scan failed or reported a detection ($LASTEXITCODE)." }
+      - name: Build both macOS architectures
+        if: runner.os == 'macOS'
+        working-directory: build-src/PlazCode
+        run: |
+          rustup target add --toolchain stable x86_64-apple-darwin aarch64-apple-darwin
+          cargo +stable build --release --locked --manifest-path agent/Cargo.toml --target x86_64-apple-darwin
+          cargo +stable build --release --locked --manifest-path agent/Cargo.toml --target aarch64-apple-darwin
+          lipo -create agent/target/x86_64-apple-darwin/release/PlazCode agent/target/aarch64-apple-darwin/release/PlazCode -output agent/target/release/PlazCode
+      - name: Verify automatic launch and later update handoff
+        if: runner.os == 'macOS'
+        working-directory: build-src/PlazCode
+        run: |
+          python test-auto-update-launch.py
+          python test-auto-update-after-launch.py
+      - name: Package fresh native artifacts
+        if: runner.os == 'macOS'
+        run: python development/1.24.5/package.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plazcode-1.24.5-${{ runner.os }}-validation
+          path: |
+            artifacts/*
+            build-src/PlazCode/windows-signature.txt
+            build-src/PlazCode/defender-result.txt
+            build-src/PlazCode/defender-package-sha256.txt
+            build-src/PlazCode/defender-engine.json
+            build-src/PlazCode/defender-executable-sha256.txt
+          if-no-files-found: warn

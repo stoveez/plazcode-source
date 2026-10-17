@@ -1,0 +1,55 @@
+{
+  "version": "1.24.15",
+  "title": "ClickUp, Ultra and recoverable Skills",
+  "summary": "Use PlazCode in ClickUp Brain and existing AI-agent chats, activate the unified Ultra effort, recover deleted skills, and find clearly labelled donation links.",
+  "added": [
+    "ClickUp Ask Brain and existing AI-agent chats support the usual PlazCode Studio, Blender and local-file commands.",
+    "Deleted Skills tab with Restore, confirmed permanent deletion and a separate Delete All for deleted items.",
+    "Desktop Donations page after Templates with labelled 50, 100, 500 and 1,000 Robux links opening in the current/default browser."
+  ],
+  "improved": [
+    "Ultra replaces the visible UltraCode effort label and adds animated gradient text with reduced-motion and forced-colour accessibility fallbacks.",
+    "UltraCode and UltraGUI work as hidden internal components; relevant UltraLab companion enhancements activate only at Ultra effort. The eleven starter skills remain visible.",
+    "ClickUp startup sends bounded, acknowledged context parts without truncating instructions or automatically replaying uncertain sends.",
+    "Updated donation destinations and amounts everywhere in the shared bar settings and desktop page."
+  ],
+  "fixed": [
+    "ClickUp toolbar follows the actual chatbox width and position while Ask/Agents tabs stay visible and clickable.",
+    "Injected ClickUp startup/tool messages stay hidden after UI remounts; failed startup cannot restore a false Ready state.",
+    "Removed Condo Lock classification, strikes and cooldown lockouts across all supported providers, including migration of old stored locks. Other permissions and safety controls are unchanged."
+  ],
+  "notes": [
+    "User-tested build 3 was approved for publication after successful ClickUp use. Exact-source Windows/macOS/Linux and Chromium/Firefox CI passed; packaged macOS desktop lifetime checks gate publication.",
+    "Older hard-deleted skills cannot be recovered. Permanent deletion is irreversible through PlazCode, not forensic erasure of external backups.",
+    "UltraLab is a bundled reference toolkit with scoped task routing. External services, credentials, dependencies and asset rights remain subject to setup and verification.",
+    "Windows is unsigned; macOS is ad-hoc signed, not notarized. Custom agents and real affected Studio/Blender/file projects are not claimed as exhaustively live-tested."
+  ],
+  "github": {
+    "summary": "ClickUp support, unified Ultra effort, recoverable Skills and updated donations.",
+    "sections": [
+      {
+        "title": "✨ New features",
+        "items": [
+          "Use PlazCode tools in ClickUp Brain and existing AI-agent chats.",
+          "Ultra effort combines hidden UltraCode/UltraGUI methods with selected-only UltraLab enhancements and animated labels.",
+          "Restore Deleted Skills or permanently remove them, including a separate trash Delete All.",
+          "Donation links are updated and clearly labelled, with a new desktop Donations page."
+        ]
+      },
+      {
+        "title": "🛠️ Fixes",
+        "items": [
+          "Bounded, confirmed ClickUp startup and a chatbox-aligned toolbar with usable Ask/Agents tabs.",
+          "Condo Lock removed across supported sites; unrelated permissions remain."
+        ]
+      },
+      {
+        "title": "🧪 Checks",
+        "items": [
+          "Approved after the user tested build 3 in ClickUp; platform/browser and packaged Mac checks passed.",
+          "Older hard-deleted skills are not recoverable. Windows unsigned; Mac not notarized."
+        ]
+      }
+    ]
+  }
+}

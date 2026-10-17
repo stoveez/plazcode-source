@@ -1,0 +1,37 @@
+{
+  "version": "1.24.1",
+  "title": "Reliable results and a browsable Skills page",
+  "summary": "Keep repeated tool results flowing, wait for complete ChatGPT replies, and browse, inspect or add adaptable project skills.",
+  "added": [
+    "A searchable desktop Skills menu with readable names, detailed descriptions, method steps and checks for all 11 starter skills and saved methods.",
+    "Add skill and Ask AI to add skill, with generated names for unnamed methods and full paginated starter instructions."
+  ],
+  "improved": [
+    "Skills are applied by inspecting project context, adapting relevant methods and verifying behavior. AI-created candidates stay unverified until checked."
+  ],
+  "fixed": [
+    "Identical results from separate command turns are now delivered independently. Only the same confirmed delivery is deduplicated.",
+    "ChatGPT output pauses no longer finalize a command while the native Stop control is present; a stuck reply pauses safely without auto-stopping the AI.",
+    "CodeMirror command text refreshes after same-length replacements."
+  ],
+  "notes": [
+    "Automated fixtures and platform checks cover these cases; live signed-in provider conversations remain untested. Windows remains unsigned."
+  ],
+  "github": {
+    "summary": "Reliable tool-result delivery and a searchable Skills page.",
+    "added": [
+      "Browse all 11 starter skills and saved methods; click for details and read full starter instructions.",
+      "Add a skill manually or ask AI to name and describe one."
+    ],
+    "improved": [
+      "Adapt skills to the current game’s systems and constraints."
+    ],
+    "fixed": [
+      "Equal results from new commands are delivered; confirmed retries are coalesced.",
+      "Wait for ChatGPT’s native completion; refresh equal-length code edits."
+    ],
+    "notes": [
+      "Fixture/platform validation included. Live signed-in provider chats remain untested."
+    ]
+  }
+}

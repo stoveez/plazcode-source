@@ -1,0 +1,5 @@
+PlazCode is GPL-3.0-or-later. This private 1.24.15 development build is based on the checksum-verified published 1.24.14 source with the development/1.24.15 overlay.
+Source and build instructions: https://github.com/stoveez/PlazCode/tree/codex/plazcode-1.24.15/development/1.24.15
+Stable release history: https://github.com/stoveez/PlazCode/releases
+This is not a published release and does not change stable update feeds.
+Private validation build 3: ClickUp startup/placement, retired Condo Lock, donation links/page, recoverable Deleted Skills, and selected-only Ultra rebrand/companion.

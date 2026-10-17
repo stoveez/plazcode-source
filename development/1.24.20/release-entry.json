@@ -1,0 +1,38 @@
+{
+  "version": "1.24.20",
+  "title": "ClickUp Ask Brain connects again",
+  "summary": "Fixes Start Agent on ClickUp's Ask Brain, which used to stop right after the AI's first reply and never finish connecting. Nothing else changes.",
+  "added": [],
+  "improved": [],
+  "fixed": [
+    "Start Agent now finishes connecting in a new ClickUp Ask Brain chat. Before, PlazCode stopped about a second after Brain's first reply, the bar said \"Not connected to this chat yet\", and the rest of the setup was never sent.",
+    "Why it happened: ClickUp changes the page address as soon as a new chat gets its first message, and PlazCode took that for a different chat. It now treats it as the same chat.",
+    "Everything else is unchanged: other AI sites, ClickUp agent chats, and your settings, memory and connections."
+  ],
+  "notes": [
+    "Tried on a real ClickUp Ask Brain chat in AgentScript mode: all five setup steps went through and PlazCode reported it was ready. Before the fix, the same test stopped after the first reply.",
+    "ClickUp agent chats and Firefox were not changed and were not tried on a live account. Automated tests on Windows, Mac and Linux must pass before this is published.",
+    "The Windows app is unsigned and the Mac app is not notarized, as in earlier versions. Your computer may ask you to confirm opening it."
+  ],
+  "github": {
+    "summary": "Fixes Start Agent on ClickUp's Ask Brain, which stopped right after the AI's first reply and never finished connecting.",
+    "sections": [
+      {
+        "title": "🛠️ What's fixed",
+        "items": [
+          "Start Agent now finishes connecting in a new ClickUp Ask Brain chat. Before, it stopped a second after Brain's first reply and said \"Not connected to this chat yet\".",
+          "ClickUp changes the page address when a new chat gets its first message, and PlazCode mistook that for a different chat. It now knows it is the same chat.",
+          "Nothing else changes: other AI sites, ClickUp agent chats, and your settings, memory and connections stay as they were."
+        ]
+      },
+      {
+        "title": "🧪 What was checked",
+        "items": [
+          "Tried on a real ClickUp Ask Brain chat: all five setup steps went through and PlazCode said it was ready. The same test failed before the fix.",
+          "ClickUp agent chats and Firefox were not changed and not tried on a live account.",
+          "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+        ]
+      }
+    ]
+  }
+}

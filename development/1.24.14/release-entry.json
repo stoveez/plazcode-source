@@ -1,0 +1,38 @@
+{
+  "version": "1.24.14",
+  "title": "Co-Work cleanup, Claude replies and Studio startup",
+  "summary": "Sent Co-Work requests clear immediately, completed Claude replies are read reliably, and Studio connection starts automatically with stronger Windows launcher discovery.",
+  "added": [],
+  "improved": [
+    "Discover the running Windows Studio MCP helper or a complete installed version when the batch launcher is missing.",
+    "Attempt Studio connection at app launch and retry when Studio opens later, even when process-name scans miss it."
+  ],
+  "fixed": [
+    "Confirmed Co-Work follow-ups disappear immediately; queued and unconfirmed requests remain visible.",
+    "Read one owning Claude assistant turn and all non-thinking answer blocks so nested empty nodes do not hide a completed reply."
+  ],
+  "notes": [
+    "Validated on Windows, macOS and Linux with Chromium/Firefox regressions and packaged macOS desktop lifetime checks.",
+    "Automated fixtures cover the reported failures; the affected live Edge account and Windows Studio installation were not reproduced. Windows is unsigned; macOS is ad-hoc signed, not notarized."
+  ],
+  "github": {
+    "summary": "Fixes for sent Co-Work cards, completed Claude replies and automatic Studio connection.",
+    "sections": [
+      {
+        "title": "🛠️ Fixes",
+        "items": [
+          "Sent Co-Work cards clear immediately.",
+          "Completed Claude replies stay readable across nested response nodes.",
+          "More robust Studio MCP discovery and startup retry."
+        ]
+      },
+      {
+        "title": "🧪 Validation and limitations",
+        "items": [
+          "Windows, macOS, Linux and browser checks passed; packaged Mac desktop lifetime is checked before publishing.",
+          "Live affected Edge/Studio installations were not reproduced. Windows is unsigned; Mac is not notarized."
+        ]
+      }
+    ]
+  }
+}

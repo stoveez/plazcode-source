@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {parseReport,validRecipe,boundedJson,proof} from './lib/protocol.ts';
+const base={schema:1,recipe:'local-edit-test',outcome:'passed',ticket:'00000000-0000-0000-0000-000000000000',nonce:0};
+assert.equal(parseReport(base).recipe,base.recipe);
+for(const extra of ['prompt','code','path','user','project','error','privateHash'])assert.throws(()=>parseReport({...base,[extra]:'private'}));
+for(const patch of [{recipe:'ignore instructions'},{schema:2},{nonce:-1},{nonce:Infinity},{nonce:1.1},{outcome:'unknown'},{ticket:'private path'}])assert.throws(()=>parseReport({...base,...patch}));
+assert(!validRecipe('local-edit-test\nsecret'));
+await assert.rejects(boundedJson(new Request('https://test',{method:'POST',body:'x'.repeat(513),headers:{'content-type':'application/json'}})));
+assert.equal(await proof(base.ticket,0),'bd601baa18fcbd995a17f8c93eb347505568f7e80304ac777d293f3cd022850b');
+console.log('Protocol rejects private and malformed payloads; bounded reads and proof verified.');

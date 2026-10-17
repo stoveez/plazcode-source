@@ -1,0 +1,36 @@
+{
+  "version": "1.24.0",
+  "title": "Starter skills, automatic learning and reliable updates",
+  "summary": "Start with 11 Roblox skills, reuse privacy-safe workflow methods automatically and prevent oversized update feeds.",
+  "added": [
+    "Eleven bundled SyphoDev Roblox starter skills, with complete instructions, references and helpers. Relevant skills are matched automatically; users can add their own methods.",
+    "Automatic retrieval and contribution of predefined local edit workflows after recorded test commands. Offline reports queue locally without prompts, code, paths or user identifiers."
+  ],
+  "improved": [
+    "Shared learning is always active; local free-text candidates remain private and separate manual contributions still require review."
+  ],
+  "fixed": [
+    "Fixed “Release feed is too large” for existing installations. Feeds retain five recent entries with a byte budget; the full changelog remains separate.",
+    "macOS background launches apply window state after desktop startup; agent and updater logs stay outside the signed app bundle."
+  ],
+  "notes": [
+    "Workflow reports do not train provider model weights or prove benchmark gains. Unsupported workflows remain local. Live signed-in providers and Studio/Blender are untested; Windows remains unsigned."
+  ],
+  "github": {
+    "summary": "11 Roblox starter skills, automatic privacy-safe workflow reuse and reliable updates.",
+    "added": [
+      "11 SyphoDev Roblox starter skills, full references and helpers; add your own anytime.",
+      "Always-active shared workflows with bounded reports and offline retry."
+    ],
+    "improved": [
+      "Private prompts, code, paths and identifiers stay local."
+    ],
+    "fixed": [
+      "Oversized update feeds blocked older installations; compact feeds now have a release gate.",
+      "macOS background window state and logs outside the signed app bundle."
+    ],
+    "notes": [
+      "Workflow reuse does not train model weights. No benchmark gain claimed. See ZIP validation."
+    ]
+  }
+}

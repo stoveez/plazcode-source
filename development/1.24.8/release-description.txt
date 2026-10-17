@@ -1,0 +1,17 @@
+💬 Quick replies for small requests
+- **Greetings stay simple:** hello, thanks, help and quick questions no longer start a project task or checklist.
+- **Faster command discovery:** asking to list commands skips project memory, skills, templates and checkpoint setup, and uses a shorter command reference.
+
+✅ Tasks follow your goal
+- **Meaningful task names:** checklists describe what you want accomplished, rather than tool names such as list_commands. Old command-list entries no longer become the active checklist goal.
+- **Continue keeps the plan:** real work retains its original goal and project guidance when you ask to continue.
+
+🎨 Cleaner checklist text
+- **Readable labels:** chat timestamps no longer get copied against the task name. Times written inside your instructions stay intact.
+
+🛠️ Notion reliability
+- **Readable results:** tool results show as compact cards instead of raw source text.
+- **Accurate connection:** working chats stay connected when Notion redraws or hides older messages.
+
+🧪 Regression checks
+- Automated checks cover quick requests, task retention, command schemas, startup, Studio detection fixtures, updating and Windows/Mac builds. Live AI accounts, response speed and real Studio sessions were not tested.

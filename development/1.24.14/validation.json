@@ -1,0 +1,56 @@
+{
+  "version": "1.24.14",
+  "public_release": false,
+  "validated_sha": "8c06d97da7e6c41129d89efc317f6189c0e6a651",
+  "workflow_run": 38666981941,
+  "workflow_url": "https://github.com/stoveez/PlazCode/actions/runs/38666981941",
+  "status": "completed",
+  "conclusion": "success",
+  "local_javascript": {
+    "passed": 155,
+    "failed": 0
+  },
+  "jobs": [
+    {
+      "name": "native (macos-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/stoveez/PlazCode/actions/runs/38666981941/job/116201095098"
+    },
+    {
+      "name": "native (windows-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/stoveez/PlazCode/actions/runs/38666981941/job/116201095337"
+    },
+    {
+      "name": "browsers",
+      "conclusion": "success",
+      "url": "https://github.com/stoveez/PlazCode/actions/runs/38666981941/job/116201095381"
+    },
+    {
+      "name": "native (ubuntu-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/stoveez/PlazCode/actions/runs/38666981941/job/116201095473"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 11943343483,
+      "name": "plazcode-1.24.14-macOS-validation",
+      "digest": "sha256:0e27fb639ea343a073de0e65ab7d3183e7f0d5d6e387c9900b03b144d9ef53da",
+      "bytes": 39994172,
+      "url": "https://github.com/stoveez/PlazCode/actions/runs/38666981941/artifacts/11943343483"
+    },
+    {
+      "id": 11942263701,
+      "name": "plazcode-1.24.14-Windows-validation",
+      "digest": "sha256:a40d346d4559e5dec0bdc1f83d66a08284446755b247b33570718760e0fb2228",
+      "bytes": 29078683,
+      "url": "https://github.com/stoveez/PlazCode/actions/runs/38666981941/artifacts/11942263701"
+    }
+  ],
+  "limitations": [
+    "Live signed-in Edge/Claude and the affected Windows Studio installation still require user testing.",
+    "The separate packaged macOS 210-second desktop lifetime/relaunch gate remains required before public publication.",
+    "No public release, feed promotion, publisher signing or notarization is claimed."
+  ]
+}

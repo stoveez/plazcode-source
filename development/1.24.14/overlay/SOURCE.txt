@@ -1,0 +1,6 @@
+PlazCode is GPL-3.0-or-later. This is the unpublished 1.24.14 private test build.
+Editable changes and build instructions:
+https://github.com/stoveez/PlazCode/tree/codex/plazcode-1.24.14/development/1.24.14
+The complete PlazCode-source-1.24.14-development.zip accompanies the test packages.
+No public release, update-feed promotion or release provenance is claimed for this test build.
+GitHub provenance is separate from Windows Authenticode and Apple notarization.

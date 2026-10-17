@@ -1,0 +1,56 @@
+{
+  "version": "1.24.13",
+  "title": "Skills, connection and Blender fixes",
+  "summary": "The approved test build 6: faster startup, reliable connection status, improved Skills controls, a one-click Save as skill card, and the user-tested Blender screenshot and dashboard fixes.",
+  "added": [
+    "Favourite stars and two-click skill deletion. Delete all keeps favourites, starter skills, UltraGUI references and shared workflows.",
+    "A one-click Save as skill card above the chat box for lasting preferences. It closes after 45 seconds without hover or focus; closing saves nothing."
+  ],
+  "improved": [
+    "MCP add-ons start in parallel in the background instead of blocking Studio startup.",
+    "Up to 8 favourite skills are always included within their project, engine and domain, followed by the 3 best other matches.",
+    "Short task checklist labels on other providers; Notion keeps its established startup wording.",
+    "Packaged launchers, Firefox extension copies and checksum manifests now match the reviewed source."
+  ],
+  "fixed": [
+    "False disconnected status and stale dashboard connection labels.",
+    "Blender screenshots use an off-screen viewport capture and a unique receipt; no stale image is returned without a receipt.",
+    "Automatic completed-task skill candidates are disabled, duplicate saves are refused, and untouched duplicate candidates are cleaned up.",
+    "Clarification panels no longer sit behind overlays; the typing mask is lifted while questions wait.",
+    "Native paste and editing shortcuts work in PlazCode text boxes on pages with capture handlers.",
+    "Claude waits for an enabled Send control instead of clicking a guessed composer button.",
+    "OS Error 1450 recovery, provider startup handshakes and verifiably unsent Notion tool results."
+  ],
+  "notes": [
+    "The user approved test build 6 for publication. Exact-source automated checks passed on Linux, Windows and macOS, with Chromium/Firefox and real Blender CI checks. Live provider accounts and real Roblox Studio imports were not tested by CI.",
+    "The user-tested Studio heal guard is preserved. Automatic helper restart remains inactive because the bridge has no mcp_status handler.",
+    "Windows binaries are unsigned. The Mac app is ad-hoc signed, not notarized. GLM HTML server errors are unchanged."
+  ],
+  "github": {
+    "summary": "Approved build 6 with Skills improvements, faster startup, and the user-tested Blender screenshot and dashboard fixes.",
+    "sections": [
+      {
+        "title": "⭐ Skills",
+        "items": [
+          "Favourite stars, safe deletion and duplicate protection; automatic task candidates are off.",
+          "Up to 8 favourites are always used within their scope. Save as skill appears above the chat box and closes after 45 seconds."
+        ]
+      },
+      {
+        "title": "🛠️ Fixes",
+        "items": [
+          "Parallel add-on startup and accurate Studio status. The tested heal guard is unchanged; automatic helper restart remains inactive.",
+          "Blender off-screen screenshots with unique capture receipts.",
+          "Visible clarification panels, working paste, safer Claude sends and Notion startup fixes."
+        ]
+      },
+      {
+        "title": "🧪 Checks",
+        "items": [
+          "Exact-source Linux/Windows/Mac and browser checks passed; the user approved build 6. CI did not test live provider accounts or real Studio imports.",
+          "Windows is unsigned; Mac is ad-hoc signed, not notarized."
+        ]
+      }
+    ]
+  }
+}

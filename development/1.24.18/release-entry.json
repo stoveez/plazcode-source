@@ -1,0 +1,51 @@
+{
+  "version": "1.24.18",
+  "title": "Interface languages and ClickUp startup reliability",
+  "summary": "Adds 14 offline interface-language choices and improves ClickUp startup draft acceptance and repeated history reads while preserving protected user content and send safeguards.",
+  "added": [
+    "Choose English, Spanish, French, Russian, Arabic, Simplified or Traditional Chinese, Japanese, Korean, German, Brazilian Portuguese, Italian, Hindi or Turkish in desktop, extension and bar settings.",
+    "Search language names and codes; persist the selection with existing preferences and use scoped Arabic right-to-left layout."
+  ],
+  "improved": [
+    "Translate built-in interface text offline while leaving user-authored content, paths, commands and PlazCode/Ultra branding unchanged.",
+    "Cache ClickUp history reads and avoid redundant owned-message masking work during tool-result loops."
+  ],
+  "fixed": [
+    "Keep the exact ClickUp composer protected but natively writable while delayed draft/model acceptance enables Send; repeated lock sweeps no longer close that acceptance window.",
+    "Stop before sending if the composer remounts or a different unsent draft is already present. Preserve exact-route rollback and never force disabled Send or replay uncertain delivery.",
+    "Retain startup staging, complete tool-result paging, native launch/update behavior and existing features."
+  ],
+  "notes": [
+    "Publication requires successful exact-source browser and Linux/Windows/macOS validation plus actual packaged Mac desktop lifetime, visibility and updater-relaunch checks.",
+    "Local delayed-model tests are sanitized model-bound fixtures, not actual Quill or live ClickUp accounts. Hosted browser fixtures use a mocked bridge; a signed-in ClickUp connection and labelled feedback transport also passed without project tools. Affected accounts, Microsoft Edge binary and real project edits were not tested.",
+    "Windows binaries are unsigned. The Mac app is ad-hoc signed, not notarized. Final native bytes are reused from validated artifacts; there is no separate user test-build delivery."
+  ],
+  "github": {
+    "summary": "Adds 14 offline UI languages and fixes locally reproduced ClickUp acceptance and repeated-scan problems without bypassing native send safety.",
+    "sections": [
+      {
+        "title": "🌐 Interface languages",
+        "items": [
+          "Fourteen choices across desktop, extension and bar settings, searchable by native/English name or code.",
+          "Offline catalogs, preference persistence, scoped Arabic RTL and protected authored/technical content."
+        ]
+      },
+      {
+        "title": "🛠️ ClickUp reliability",
+        "items": [
+          "Protected native-editability window for delayed draft acceptance, with exact editor/route checks and remount aborts.",
+          "Different existing drafts are preserved without clicking; disabled controls are never forced and ambiguous sends are not replayed.",
+          "Cached history reads and mutation-safe masking reduce repeated work between tool calls; existing result paging and startup features remain."
+        ]
+      },
+      {
+        "title": "🧪 Validation and limitations",
+        "items": [
+          "Exact-source platform/browser and real packaged Mac desktop lifetime gates are required before publication; validated native bytes are not rebuilt during promotion.",
+          "Delayed-model evidence is from local sanitized fixtures, not actual Quill. Signed-in ClickUp connection/feedback transport also passed. Affected accounts, Microsoft Edge binary and real-project edits were not tested.",
+          "Windows unsigned; Mac ad-hoc signed and not notarized. GitHub provenance does not replace platform signing."
+        ]
+      }
+    ]
+  }
+}

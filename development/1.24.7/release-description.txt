@@ -1,0 +1,30 @@
+## ✨ PlazCode 1.24.7
+
+Give your skills a name, or let PlazCode name them for you. Learning and library options now have clearer spacing.
+
+### ✏️ Name your skills
+
+- **Choose a name:** a new optional name box sits above Skill instructions.
+- **Automatic naming:** leave the name blank and PlazCode makes a short name from what you wrote. You can rename saved skills too.
+
+### 🎨 Clearer Skills layout
+
+- **More breathing room:** Learning and library options is separated from the editor. Opening it keeps its buttons and settings from crowding each other.
+- **Keep your workflow:** saving, project scope, importing JSON or text, and exporting JSON work as before.
+
+### 📝 Easier release notes
+
+- **Plain language:** update descriptions explain what changed and how it helps, without requiring scripting knowledge.
+
+### ✅ Checked before release
+
+- Automated checks cover Skills, startup, commands, updating and Windows/Mac builds. Live AI accounts and real Studio sessions were not tested.
+
+### 📥 How to update
+
+- Open PlazCode, or choose **Updates → Update now**.
+- Manual downloads: **PlazCode-1.24.7.zip** for Windows, **PlazCode-macOS-1.24.7.zip** for Mac, or **PlazCode-Firefox-1.24.7.zip** for Firefox.
+- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
+- Your settings, memory and connections are kept.
+
+Test details are included in VALIDATION.txt.

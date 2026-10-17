@@ -1,0 +1,68 @@
+{
+  "version": "1.24.9",
+  "title": "Reliable chats, simpler skills and Blender fixes",
+  "summary": "More reliable AI chats, simpler skills, complete tool results and a cleaner desktop.",
+  "added": [
+    "Import Markdown skills and remove saved skills.",
+    "Ultracode uses relevant UltraGUI references for interface work.",
+    "Choose input and tool-result limits, or turn them off.",
+    "Enlarge screenshots with Copy and Use as feedback controls."
+  ],
+  "improved": [
+    "Tasks show the AI’s objective and keep it when you say continue.",
+    "Desktop UI and model builders are removed. Ask your AI to build UI or use Blender for models.",
+    "Large tool results can be read in complete pages without repeating commands."
+  ],
+  "fixed": [
+    "Notion startup checks survive editor redraws; DeepSeek uses a smaller first handshake.",
+    "Question fields accept typing; stopped operations release their input locks.",
+    "Stalled tool, file, web and stream waits have bounded exits.",
+    "Skills Save works in the initial editor and keeps its confirmation.",
+    "Blender primitives, export geometry and screenshot file reads are corrected.",
+    "One missed reply no longer falsely reports a disconnected Blender addon.",
+    "Settings header alignment, hidden task styling and the Ultracode label are corrected."
+  ],
+  "notes": [
+    "Default task time limits are disabled; command deadlines remain active.",
+    "Automated platform/browser regressions and real Blender tests passed. Live signed-in AI chats, Studio imports and AI response latency were not verified."
+  ],
+  "github": {
+    "sections": [
+      {
+        "title": "🛠️ More reliable chats",
+        "items": [
+          "**Startup and commands:** Notion draft checks and DeepSeek handshakes are improved. Stalled waits end safely without repeating commands.",
+          "**Answer boxes:** you can type responses to the AI’s questions."
+        ]
+      },
+      {
+        "title": "🧩 Skills and Ultracode",
+        "items": [
+          "**Simpler skills:** name, write and save; import JSON, text or Markdown; remove skills you no longer need.",
+          "**UltraGUI:** relevant UI guidance is included with Ultracode, loaded only when needed."
+        ]
+      },
+      {
+        "title": "🎨 Cleaner desktop",
+        "items": [
+          "**Builders removed:** ask your AI to make UI, or use Blender for models.",
+          "**Clearer tasks:** names describe the AI’s goal; continue keeps the plan. Spacing and Settings alignment are improved.",
+          "**Screenshots:** click to enlarge, copy or use as feedback. Unopened captures disappear after 10 seconds."
+        ]
+      },
+      {
+        "title": "⚙️ Large scripts and Blender",
+        "items": [
+          "**Complete results:** customize character limits and read large results in pages. Default task time limits are off.",
+          "**Blender fixes:** corrected primitives, detailed mesh exports and screenshot reads."
+        ]
+      },
+      {
+        "title": "🧪 Checks",
+        "items": [
+          "Platform/browser regressions and real Blender tests passed. Live AI chats, Studio imports and AI response speed were not verified."
+        ]
+      }
+    ]
+  }
+}

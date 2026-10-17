@@ -1,0 +1,254 @@
+[
+  {
+    "id": "bundled-ultragui-gui-syntax",
+    "title": "UltraGUI: Gui Syntax",
+    "description": "every GUI script, before it is marked done. Apply it to any code that creates or changes ScreenGui, Frame, TextButton, TextLabel, ImageLabel, UI modifiers or gradients.",
+    "domain": "ui",
+    "scope": "",
+    "steps": [
+      "Read plazcode_skills with action read and id bundled-ultragui-gui-syntax. Follow next_offset for the complete reference.",
+      "Adapt this method to the current project and current user request."
+    ],
+    "pitfalls": [
+      "Do not assume old paths, assets, settings or APIs exist."
+    ],
+    "verification": [
+      "Inspect and test the actual requested interface using available tools."
+    ],
+    "confirmed": false,
+    "enabled": false,
+    "revision": 1,
+    "community": false
+  },
+  {
+    "id": "bundled-ultragui-check-ui-standard",
+    "title": "UltraGUI: Check Ui Standard",
+    "description": "building a cartoon, simulator or tycoon interface, or when the user names Check-UI. Full recipes: references/check-ui/SKILL.md (or --full).",
+    "domain": "ui",
+    "scope": "",
+    "steps": [
+      "Read plazcode_skills with action read and id bundled-ultragui-check-ui-standard. Follow next_offset for the complete reference.",
+      "Adapt this method to the current project and current user request."
+    ],
+    "pitfalls": [
+      "Do not assume old paths, assets, settings or APIs exist."
+    ],
+    "verification": [
+      "Inspect and test the actual requested interface using available tools."
+    ],
+    "confirmed": false,
+    "enabled": false,
+    "revision": 1,
+    "community": false
+  },
+  {
+    "id": "bundled-ultragui-reference-library",
+    "title": "UltraGUI: Reference Library",
+    "description": "any task that needs icon style, a Check-UI recipe, or a hat or icon example.",
+    "domain": "ui",
+    "scope": "",
+    "steps": [
+      "Read plazcode_skills with action read and id bundled-ultragui-reference-library. Follow next_offset for the complete reference.",
+      "Adapt this method to the current project and current user request."
+    ],
+    "pitfalls": [
+      "Do not assume old paths, assets, settings or APIs exist."
+    ],
+    "verification": [
+      "Inspect and test the actual requested interface using available tools."
+    ],
+    "confirmed": false,
+    "enabled": false,
+    "revision": 1,
+    "community": false
+  },
+  {
+    "id": "bundled-ultragui-check-cycle",
+    "title": "UltraGUI: Check Cycle",
+    "description": "every item, before it is marked done. This is the check step of the cycle.",
+    "domain": "ui",
+    "scope": "",
+    "steps": [
+      "Read plazcode_skills with action read and id bundled-ultragui-check-cycle. Follow next_offset for the complete reference.",
+      "Adapt this method to the current project and current user request."
+    ],
+    "pitfalls": [
+      "Do not assume old paths, assets, settings or APIs exist."
+    ],
+    "verification": [
+      "Inspect and test the actual requested interface using available tools."
+    ],
+    "confirmed": false,
+    "enabled": false,
+    "revision": 1,
+    "community": false
+  },
+  {
+    "id": "bundled-ultragui-gui-layout",
+    "title": "UltraGUI: Gui Layout",
+    "description": "building or changing any ScreenGui, Frame, button, label, list, menu or HUD element.",
+    "domain": "ui",
+    "scope": "",
+    "steps": [
+      "Read plazcode_skills with action read and id bundled-ultragui-gui-layout. Follow next_offset for the complete reference.",
+      "Adapt this method to the current project and current user request."
+    ],
+    "pitfalls": [
+      "Do not assume old paths, assets, settings or APIs exist."
+    ],
+    "verification": [
+      "Inspect and test the actual requested interface using available tools."
+    ],
+    "confirmed": false,
+    "enabled": false,
+    "revision": 1,
+    "community": false
+  },
+  {
+    "id": "bundled-ultragui-gui-packs",
+    "title": "UltraGUI: Gui Packs",
+    "description": "choosing how to build a screen: plain Roblox objects, or a library pack. Also when a project already uses a library.",
+    "domain": "ui",
+    "scope": "",
+    "steps": [
+      "Read plazcode_skills with action read and id bundled-ultragui-gui-packs. Follow next_offset for the complete reference.",
+      "Adapt this method to the current project and current user request."
+    ],
+    "pitfalls": [
+      "Do not assume old paths, assets, settings or APIs exist."
+    ],
+    "verification": [
+      "Inspect and test the actual requested interface using available tools."
+    ],
+    "confirmed": false,
+    "enabled": false,
+    "revision": 1,
+    "community": false
+  },
+  {
+    "id": "bundled-ultragui-gui-references",
+    "title": "UltraGUI: Gui References",
+    "description": "looking for examples, layouts, design ideas or how other games solve an interface problem.",
+    "domain": "ui",
+    "scope": "",
+    "steps": [
+      "Read plazcode_skills with action read and id bundled-ultragui-gui-references. Follow next_offset for the complete reference.",
+      "Adapt this method to the current project and current user request."
+    ],
+    "pitfalls": [
+      "Do not assume old paths, assets, settings or APIs exist."
+    ],
+    "verification": [
+      "Inspect and test the actual requested interface using available tools."
+    ],
+    "confirmed": false,
+    "enabled": false,
+    "revision": 1,
+    "community": false
+  },
+  {
+    "id": "bundled-ultragui-gui-toolbox",
+    "title": "UltraGUI: Gui Toolbox",
+    "description": "the user asks for good GUI pieces, or a screen needs a ready-made interface kit, button style, icon set, or HUD template.",
+    "domain": "ui",
+    "scope": "",
+    "steps": [
+      "Read plazcode_skills with action read and id bundled-ultragui-gui-toolbox. Follow next_offset for the complete reference.",
+      "Adapt this method to the current project and current user request."
+    ],
+    "pitfalls": [
+      "Do not assume old paths, assets, settings or APIs exist."
+    ],
+    "verification": [
+      "Inspect and test the actual requested interface using available tools."
+    ],
+    "confirmed": false,
+    "enabled": false,
+    "revision": 1,
+    "community": false
+  },
+  {
+    "id": "bundled-ultragui-gui-verify",
+    "title": "UltraGUI: Gui Verify",
+    "description": "any screen before it is called done, and any change to an existing screen.",
+    "domain": "ui",
+    "scope": "",
+    "steps": [
+      "Read plazcode_skills with action read and id bundled-ultragui-gui-verify. Follow next_offset for the complete reference.",
+      "Adapt this method to the current project and current user request."
+    ],
+    "pitfalls": [
+      "Do not assume old paths, assets, settings or APIs exist."
+    ],
+    "verification": [
+      "Inspect and test the actual requested interface using available tools."
+    ],
+    "confirmed": false,
+    "enabled": false,
+    "revision": 1,
+    "community": false
+  },
+  {
+    "id": "bundled-ultragui-project-layout",
+    "title": "UltraGUI: Project Layout",
+    "description": "starting a project, adding a system, or deciding where interface code belongs.",
+    "domain": "ui",
+    "scope": "",
+    "steps": [
+      "Read plazcode_skills with action read and id bundled-ultragui-project-layout. Follow next_offset for the complete reference.",
+      "Adapt this method to the current project and current user request."
+    ],
+    "pitfalls": [
+      "Do not assume old paths, assets, settings or APIs exist."
+    ],
+    "verification": [
+      "Inspect and test the actual requested interface using available tools."
+    ],
+    "confirmed": false,
+    "enabled": false,
+    "revision": 1,
+    "community": false
+  },
+  {
+    "id": "bundled-ultragui-review-for-exploits",
+    "title": "UltraGUI: Review For Exploits",
+    "description": "any screen that sends a request to the server, shows a price, or handles a Toolbox asset.",
+    "domain": "ui",
+    "scope": "",
+    "steps": [
+      "Read plazcode_skills with action read and id bundled-ultragui-review-for-exploits. Follow next_offset for the complete reference.",
+      "Adapt this method to the current project and current user request."
+    ],
+    "pitfalls": [
+      "Do not assume old paths, assets, settings or APIs exist."
+    ],
+    "verification": [
+      "Inspect and test the actual requested interface using available tools."
+    ],
+    "confirmed": false,
+    "enabled": false,
+    "revision": 1,
+    "community": false
+  },
+  {
+    "id": "bundled-ultragui-report-what-you-verified",
+    "title": "UltraGUI: Report What You Verified",
+    "description": "the end of every UltraGUI task.",
+    "domain": "ui",
+    "scope": "",
+    "steps": [
+      "Read plazcode_skills with action read and id bundled-ultragui-report-what-you-verified. Follow next_offset for the complete reference.",
+      "Adapt this method to the current project and current user request."
+    ],
+    "pitfalls": [
+      "Do not assume old paths, assets, settings or APIs exist."
+    ],
+    "verification": [
+      "Inspect and test the actual requested interface using available tools."
+    ],
+    "confirmed": false,
+    "enabled": false,
+    "revision": 1,
+    "community": false
+  }
+]

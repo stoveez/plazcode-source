@@ -1,0 +1,78 @@
+# Final publication uses the successful native release checks and preserves executable modes.
+name: Publish final PlazCode 1.23.0 update
+on:
+  push:
+    branches: [codex/plazcode-publish-1.23]
+    paths: [.github/workflows/publish-1.23.yml, development/1.23.0/promote.py]
+permissions:
+  contents: write
+  actions: read
+  attestations: write
+  id-token: write
+concurrency:
+  group: plazcode-final-1.23
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require passing Windows and Mac release checks from exact reviewed runtime
+        run: |
+          git diff --exit-code a93610aa8411e8b3e7aaa4d45172eed18f53b4bc -- development/1.23.0/overlay
+          mkdir ci-artifacts
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/37708936067" > ci-artifacts/recovery-run.json
+          python3 -c 'import json; r=json.load(open("ci-artifacts/recovery-run.json")); assert r["head_sha"]=="2b75df6062a791b5bdf4f80fd209c7c524b068d0"'
+          for attempt in $(seq 1 40); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/37708936067/jobs" > ci-artifacts/recovery-jobs.json
+            state=$(python3 -c 'import json; j=[j for j in json.load(open("ci-artifacts/recovery-jobs.json"))["jobs"] if j["name"] in ["windows_package","mac_package"]]; print("ready" if len(j)==2 and all(x["status"]=="completed" for x in j) else "waiting")')
+            if [ "$state" = ready ]; then break; fi
+            sleep 30
+          done
+          python3 -c 'import json; j=[j for j in json.load(open("ci-artifacts/recovery-jobs.json"))["jobs"] if j["name"] in ["windows_package","mac_package"]]; assert len(j)==2 and all(x["conclusion"]=="success" for x in j)'
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/37707590040" > ci-artifacts/run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/37707590040/jobs" > ci-artifacts/jobs.json
+          gh run download 37708936067 --repo "$GITHUB_REPOSITORY" --name plazcode-1.23-Windows-repackaged --dir ci-artifacts/plazcode-1.23-Windows-validation
+          gh run download 37708936067 --repo "$GITHUB_REPOSITORY" --name plazcode-1.23-macOS-repackaged --dir ci-artifacts/plazcode-1.23-macOS-validation
+          gh run download 37708936067 --repo "$GITHUB_REPOSITORY" --name plazcode-1.23-macOS-repackage-evidence --dir ci-artifacts
+      - name: Assemble and validate final versioned packages and update feeds
+        run: python3 development/1.23.0/promote.py
+      - name: Attest exact final release archives
+        id: provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            PlazCode-1.23.0.zip
+            PlazCode-macOS-1.23.0.zip
+            PlazCode-source-1.23.0.zip
+            PlazCode-Firefox-1.23.0.zip
+      - name: Publish repository update in the existing format
+        env:
+          PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          cp "$PROVENANCE_BUNDLE" PlazCode-1.23.0.sigstore.json
+          for file in PlazCode-1.23.0.zip PlazCode-macOS-1.23.0.zip PlazCode-source-1.23.0.zip PlazCode-Firefox-1.23.0.zip; do gh attestation verify "$file" --repo "$GITHUB_REPOSITORY"; done
+          git fetch origin main
+          git merge-base --is-ancestor origin/main HEAD
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add PlazCode-1.23.0.zip PlazCode-macOS-1.23.0.zip PlazCode-source-1.23.0.zip PlazCode-Firefox-1.23.0.zip PlazCode-1.23.0.sigstore.json latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.23.0.txt README.md release-validation-1.23.0 development/1.23.0/REVIEW.md
+          git commit -m 'Release PlazCode 1.23.0: saved skills, Studio Explorer and provider resilience'
+          git push origin HEAD:main
+      - name: Publish GitHub release page and all verified assets
+        run: |
+          export GITHUB_SHA=$(git rev-parse HEAD)
+          python3 publish_release.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plazcode-final-1.23-evidence
+          path: |
+            release-validation-1.23.0/*
+            release-metadata.json
+          if-no-files-found: warn

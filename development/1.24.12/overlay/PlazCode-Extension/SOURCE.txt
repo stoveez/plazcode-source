@@ -1,0 +1,5 @@
+PlazCode is GPL-3.0-or-later. Editable source and build instructions:
+https://github.com/stoveez/PlazCode/releases/tag/v1.24.12
+Download PlazCode-source-1.24.12.zip.
+Verify GitHub build provenance using gh attestation verify <archive> --repo stoveez/PlazCode.
+GitHub provenance is separate from Windows Authenticode and Apple notarization.

@@ -1,0 +1,49 @@
+{
+  "version": "1.24.4",
+  "title": "Faster Ultracode and more reliable chat",
+  "summary": "Less repeated work, easier Settings and fixes for Notion and screenshots.",
+  "added": [
+    "Updates is back as its own sidebar page.",
+    "Settings sections expand and collapse while keeping their title and description visible."
+  ],
+  "improved": [
+    "Ultracode uses a 62% smaller instruction pack, reuses verified information and avoids repeated planning and checks. Core skills and verification requirements are preserved.",
+    "Workspace pages and the sidebar scroll within the window and use visible theme-matched scrollbars.",
+    "The full effort label matches its selected level. Indicators show Ultracode; the Settings dropdown keeps Ultracode (Beta)."
+  ],
+  "fixed": [
+    "Notion finds send controls in tall composers, ignores hidden old controls and waits for rich-editor controls to become ready.",
+    "Large locked Notion tool feedback can use verified small text pastes when native editing and file uploads fail.",
+    "Studio screenshots use the Roblox bridge even when AgentScript is selected.",
+    "ChatGPT screenshot uploads use one transport, verify a new attachment and commit once. Failed uploads are reported without sending text-only feedback."
+  ],
+  "notes": [
+    "Automated checks use production code and browser fixtures. Live signed-in providers and Studio/Blender sessions are not verified. The instruction-size reduction is not a measured provider speedup or benchmark result."
+  ],
+  "github": {
+    "sections": [
+      {
+        "title": "⚡ Faster Ultracode",
+        "items": [
+          "**Less waiting:** a 62% smaller instruction pack, less repeated planning, and reuse of verified information.",
+          "**Careful problem solving:** keeps its skills, safety checks and verification."
+        ]
+      },
+      {
+        "title": "🖥️ Easier workspace",
+        "items": [
+          "**Scrolling:** reach the bottom of pages, with scrollbars that match your theme.",
+          "**Settings:** click a section to open or close it. Updates is back in the sidebar.",
+          "**Effort labels:** the whole label matches the level’s color. The bar says Ultracode; Settings keeps Ultracode (Beta)."
+        ]
+      },
+      {
+        "title": "🔧 Chat and screenshot fixes",
+        "items": [
+          "**Notion:** better send-button detection, including tall composers and delayed startup controls. Large tool replies have a verified text-send fallback.",
+          "**Screenshots:** Studio captures use the right bridge. ChatGPT waits for an attachment and sends it once; failed uploads show an error."
+        ]
+      }
+    ]
+  }
+}

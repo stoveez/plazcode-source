@@ -1,0 +1,47 @@
+const assert = require('node:assert/strict');
+const version = require('./core/version');
+const now = Date.now();
+const status = {latest:'1.18.81',checked_at:now};
+assert.equal(version.describe('1.18.9',status,now).label,'Outdated');
+assert.equal(version.describe('1.18.81',status,now).label,'Up to date');
+assert.equal(version.describe('1.18.82',status,now).label,'Up to date');
+assert.equal(version.describe('1.18.81.0',status,now).label,'Up to date');
+assert.equal(version.describe('1.18.81',{...status,check_error:'Offline'},now).label,'Check unavailable');
+assert.equal(version.describe('1.18.81',{...status,checked_at:now-16*60000},now).label,'Not checked');
+assert.equal(version.describe('bad',status,now).label,'Not checked');
+assert.equal(version.describe('1.18.81',null,now).label,'Not checked');
+const element={style:{},setAttribute(){}};
+version.render(element,'1.18.9',status,'v',' · Night');
+assert.equal(element.textContent,'v1.18.9 - Outdated · Night');
+assert.equal(element.style.color,'#ff696c');
+console.log('Version comparison, freshness, unavailable status and rendering passed.');
+assert.equal(version.display('1.19.9'),'1.19.09');
+assert.equal(version.display('1.19.09'),'1.19.09');
+assert.equal(version.display('1.19.99'),'1.19.99');
+assert.equal(version.display('1.20.0'),'1.20.00');
+assert.equal(version.display('1.18.109'),'1.18.109');
+assert.equal(version.describe('1.19.9',{latest:'1.19.09',checked_at:now},now).label,'Up to date');
+assert.equal(version.describe('1.19.99',{latest:'1.20.00',checked_at:now},now).label,'Outdated');
+version.render(element,'1.19.9',{latest:'1.19.09',checked_at:now});
+assert.equal(element.textContent,'v1.19.09 (Up to date)');
+console.log('Padded display keeps numeric equality and increasing rollover from 1.19.99 to 1.20.00.');
+assert.equal(version.browserPage({userAgent:'Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0'}),'edge://extensions');
+assert.equal(version.browserPage({userAgent:'Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36'}),'chrome://extensions');
+assert.equal(version.browserPage({userAgentData:{brands:[{brand:'Brave'},{brand:'Chromium'}]}}),'brave://extensions');
+assert.equal(version.browserPage({userAgent:'Chrome/140',userAgentData:{brands:[{brand:'Chromium'},{brand:'Not A Brand'}]}}),'');
+for (const userAgent of ['Firefox/140','Version/18 Safari/605','Chrome/140 OPR/125','Chrome/140 Vivaldi/7','Chrome/140 SamsungBrowser/25']) assert.equal(version.browserPage({userAgent}),'');
+(async()=>{
+  await version.detectBrowser({userAgent:'Chrome/140',brave:{isBrave:async()=>true}});
+  version.render(element,'1.18.9',status);
+  assert.equal(element.textContent,'v1.18.9 - Outdated, update the desktop app first, then go to brave://extensions and reload the extension.');
+  await version.detectBrowser({userAgent:'Chrome/140 Edg/140'});
+  assert(version.describe('1.18.9',status,now).label.includes('edge://extensions'));
+  await version.detectBrowser({userAgent:'Chrome/140'});
+  assert(version.describe('1.18.9',status,now).label.includes('chrome://extensions'));
+  await version.detectBrowser({userAgent:'Firefox/140'});
+  assert.equal(version.describe('1.18.9',status,now).label,'Outdated');
+  console.log('Chrome, Edge, Brave and other browser update instructions passed.');
+})().catch(error=>{console.error(error);process.exitCode=1;});
+
+for(const prefix of ['', 'v', 'PlazCode ', 'PlazCode v']){version.render(element,'1.24.6',{latest:'1.24.6',checked_at:Date.now()},prefix);assert.match(element.textContent,/^(?:PlazCode )?v1\.24\.06 \(Up to date\)$/);assert.match(element.title,/v1\.24\.06/);}
+console.log('Every rendered version has exactly one v prefix, including desktop title, update and settings labels.');

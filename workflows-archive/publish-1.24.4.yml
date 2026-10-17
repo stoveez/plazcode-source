@@ -1,0 +1,148 @@
+# Includes the reviewed Notion startup recovery test matrix.
+name: Publish PlazCode 1.24.4 verified update
+on:
+  push:
+    branches: [codex/plazcode-publish-1.24.4]
+    paths: [.github/workflows/publish-1.24.4.yml, development/1.24.4/promote.py]
+permissions:
+  contents: write
+  actions: read
+  attestations: write
+  id-token: write
+concurrency:
+  group: plazcode-final-1.24.4
+  cancel-in-progress: true
+jobs:
+  wait-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VALIDATED_SHA: 69d0406568fdeabbdccc232b24c694fa1213ecc2
+      VALIDATION_RUN: '37850855523'
+    steps:
+      - name: Wait for exact-source native validation without occupying a Mac runner
+        run: |
+          for attempt in $(seq 1 80); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN" > run.json
+            state=$(python3 -c 'import json; print(json.load(open("run.json"))["status"])')
+            if [ "$state" = completed ]; then break; fi
+            sleep 30
+          done
+          python3 -c 'import json,os; r=json.load(open("run.json")); assert r["head_sha"]==os.environ["VALIDATED_SHA"] and r["status"]=="completed" and r["conclusion"]=="success"'
+  mac-desktop:
+    needs: wait-native
+    runs-on: macos-latest
+    timeout-minutes: 50
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VALIDATED_SHA: 69d0406568fdeabbdccc232b24c694fa1213ecc2
+      VALIDATION_RUN: '37850855523'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Wait for the verified native artifact
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN" > run.json
+          python3 -c 'import json,os; r=json.load(open("run.json")); assert r["head_sha"]==os.environ["VALIDATED_SHA"] and r["status"]=="completed" and r["conclusion"]=="success"'
+          gh run download "$VALIDATION_RUN" --repo "$GITHUB_REPOSITORY" --name plazcode-1.24.4-macOS-validation --dir native-artifact
+          zip=$(find native-artifact -name PlazCode-macOS-1.24.4-development.zip)
+          test -n "$zip"
+          ditto -x -k "$zip" mac-desktop-install
+      - name: Real macOS desktop lifetime and updater relaunch
+        env:
+          PLAZCODE_MAC_TEST_INSTALL: ${{ github.workspace }}/mac-desktop-install/PlazCode
+        run: python3 development/1.24.4/test-macos-desktop.py
+      - name: Record desktop validation source and run
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > desktop-validation-run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" > desktop-validation-jobs.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plazcode-1.24.4-mac-desktop-validation
+          path: |
+            mac-desktop-result.json
+            desktop-validation-run.json
+            desktop-validation-jobs.json
+            ~/Library/Application Support/PlazCode/logs/agent.log
+            ~/Library/Application Support/PlazCode/logs/updater.log
+          if-no-files-found: warn
+  publish:
+    needs: mac-desktop
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VALIDATED_SHA: 69d0406568fdeabbdccc232b24c694fa1213ecc2
+      VALIDATION_RUN: '37850855523'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require successful exact-source validation on all platforms
+        run: |
+          git diff --exit-code "$VALIDATED_SHA" -- development/1.24.4/overlay development/1.24.4/prepare.py development/1.24.4/package.py
+          mkdir ci-artifacts
+          for attempt in $(seq 1 80); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN" > ci-artifacts/run.json
+            state=$(python3 -c 'import json; print(json.load(open("ci-artifacts/run.json"))["status"])')
+            if [ "$state" = completed ]; then break; fi
+            sleep 30
+          done
+          python3 -c 'import json,os; r=json.load(open("ci-artifacts/run.json")); assert r["head_sha"]==os.environ["VALIDATED_SHA"] and r["status"]=="completed" and r["conclusion"]=="success"'
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN/jobs" > ci-artifacts/jobs.json
+          for platform in Windows macOS; do
+            gh run download "$VALIDATION_RUN" --repo "$GITHUB_REPOSITORY" --name "plazcode-1.24.4-$platform-validation" --dir "ci-artifacts/plazcode-1.24.4-$platform-validation"
+          done
+      - name: Download macOS desktop lifetime evidence
+        run: gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name plazcode-1.24.4-mac-desktop-validation --dir ci-artifacts/mac-desktop
+      - name: Assemble immutable archives and compact feeds
+        run: |
+          python3 development/1.24.4/promote.py
+          python3 test-release-feed.py
+          python3 test-release-notes.py
+          python3 test-release-archives.py
+      - name: Attest final release archives
+        id: provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            PlazCode-1.24.4.zip
+            PlazCode-macOS-1.24.4.zip
+            PlazCode-source-1.24.4.zip
+            PlazCode-Firefox-1.24.4.zip
+      - name: Push the GitHub update in the established format
+        env:
+          PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          cp "$PROVENANCE_BUNDLE" PlazCode-1.24.4.sigstore.json
+          for file in PlazCode-1.24.4.zip PlazCode-macOS-1.24.4.zip PlazCode-source-1.24.4.zip PlazCode-Firefox-1.24.4.zip; do gh attestation verify "$file" --repo "$GITHUB_REPOSITORY"; done
+          git fetch origin main
+          git merge-base --is-ancestor origin/main HEAD
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add PlazCode-1.24.4.zip PlazCode-macOS-1.24.4.zip PlazCode-source-1.24.4.zip PlazCode-Firefox-1.24.4.zip PlazCode-1.24.4.sigstore.json latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.24.4.txt README.md release-validation-1.24.4 development/1.24.4/REVIEW.md
+          git commit -m 'Release PlazCode 1.24.4: faster Ultracode, reliable chat and easier Settings'
+          git push origin HEAD:codex/plazcode-publish-1.24.4
+      - name: Publish verified assets before exposing the update feed
+        run: |
+          export GITHUB_SHA=$(git rev-parse HEAD)
+          python3 publish_release.py
+      - name: Expose the update only after all release assets are published
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor origin/main HEAD
+          git push origin HEAD:main
+          gh release edit v1.24.4 --repo "$GITHUB_REPOSITORY" --latest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plazcode-final-1.24.4-evidence
+          path: |
+            release-validation-1.24.4/*
+            release-metadata.json
+          if-no-files-found: warn
+

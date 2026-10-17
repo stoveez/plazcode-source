@@ -1,0 +1,45 @@
+{
+  "version": "1.24.5",
+  "title": "DeepSeek Ultracode and smoother Notion startup",
+  "summary": "A focused DeepSeek thinking mode, less repeated work and more reliable Notion startup.",
+  "added": [
+    "DeepSeek has its own Ultracode method with 13 context-aware Roblox skills. Replies follow your latest request’s language."
+  ],
+  "improved": [
+    "DeepSeek Ultracode receives its full method once per confirmed conversation session, then uses short reminders. Other providers keep the existing global Ultracode method.",
+    "Notion starts with a short handshake and receives the full task rules with the existing tool-list reply. No extra startup round trip is added."
+  ],
+  "fixed": [
+    "Firefox now receives the complete Notion paste payload when the browser creates a separate clipboard transfer.",
+    "Startup errors stop safely and release the chat lock. The agent only becomes ready after the required handshake succeeds."
+  ],
+  "notes": [
+    "Production-code browser fixtures pass in Chromium and Firefox. Live signed-in provider latency and all account-specific behavior have not been verified."
+  ],
+  "github": {
+    "sections": [
+      {
+        "title": "🧠 DeepSeek Ultracode",
+        "items": [
+          "**13 skills:** a focused Roblox method, including safer data saving, UI and API checks. Replies use your language.",
+          "**Less repeated work:** sends the full method once per session, then uses short reminders. Keeps careful checks and asks once before an unapproved large build.",
+          "**Other AIs:** keep the existing Ultracode method."
+        ]
+      },
+      {
+        "title": "⚡ Smoother Notion startup",
+        "items": [
+          "**Shorter first message:** startup uses a small handshake. Full task instructions follow in the existing tool-list reply.",
+          "**Firefox fix:** startup pastes now carry the complete message.",
+          "**Error recovery:** failed startup releases the chat lock. PlazCode only says it is ready after the handshake succeeds."
+        ]
+      },
+      {
+        "title": "✅ Checked before release",
+        "items": [
+          "Chromium, Firefox and platform regression checks, plus the macOS desktop lifetime check. Live signed-in account behavior remains unverified."
+        ]
+      }
+    ]
+  }
+}

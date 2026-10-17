@@ -1,0 +1,39 @@
+{
+  "version": "1.24.16",
+  "title": "Reliable ClickUp startup receipts",
+  "summary": "ClickUp startup continues after accepted context parts, uses compact defaults, and stops clearly when the selected AI model declines the connection.",
+  "added": [],
+  "improved": [
+    "Use compact default ClickUp startup instructions and bounded saved-note previews; keep full notes available through the memory reader and preserve custom instructions exactly.",
+    "Observe a startup acknowledgement through the existing response timeout when its receipt is delayed."
+  ],
+  "fixed": [
+    "Confirm each startup context part from a persisted new user row and its exact new assistant acknowledgement when rich-text rendering changes the user row.",
+    "Recognize explicit ClickUp model refusals before sending a protocol correction; leave startup stopped and the composer unlocked.",
+    "Cancel receipt observation on Stop or a known conversation change without sending again."
+  ],
+  "notes": [
+    "Validated on Windows, macOS and Linux with Chromium/Firefox regressions and packaged macOS desktop checks before publishing.",
+    "Affected live ClickUp accounts were not reproduced. AI models can still decline the connection request. Windows is unsigned; macOS is not notarized."
+  ],
+  "github": {
+    "summary": "ClickUp startup receipt and model-refusal fixes.",
+    "sections": [
+      {
+        "title": "🛠️ Fixes",
+        "items": [
+          "Accepted startup parts continue after rendered text changes or delayed acknowledgements.",
+          "Compact defaults reduce startup context while preserving custom instructions.",
+          "Explicit model refusals stop without repeated handshake requests."
+        ]
+      },
+      {
+        "title": "🧪 Validation and limitations",
+        "items": [
+          "Windows, macOS, Linux and Chromium/Firefox checks; packaged Mac desktop lifetime checked before publication.",
+          "Affected live accounts were not reproduced. A ClickUp model can still decline. Windows unsigned; Mac not notarized."
+        ]
+      }
+    ]
+  }
+}

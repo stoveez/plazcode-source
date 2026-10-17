@@ -1,0 +1,223 @@
+## PlazCode 1.19.14: Creators, native macOS and launch updates
+
+### Model and UI creators
+
+- A compact prompt row, Preview/Blueprint tabs, export/insert controls above the preview, and an "Ask for a change…" row below it.
+- Models: Realistic, Low poly, Cartoon and Blocky styles; shape/detail passes; part colour/material edits; undo; recolour; resize; ground alignment; optional welded insertion; .rbxmx and preview PNG export.
+- UI: Phone/Tablet/PC preview, list/grid layout support, gradients, readability/tap-target checks and optional hover/click/panel animations.
+- Saved drafts and explicit likes/improvement notes inform later creation prompts. Revisions target stable node IDs instead of replacing the complete build.
+- Use an active RobloxScript chat to Generate, revise or Insert. AgentScript remains available for ordinary project work. Draft previews do not modify Studio until you choose Insert.
+
+### Desktop updates and macOS
+
+- Desktop launch checks quietly and installs the latest complete release directly when outdated. The app shows progress for the actual download/install; extension reload and chat-tab refresh remain manual.
+- A native universal macOS app supports Apple Silicon and Intel. macOS launchers, StudioMCP discovery, startup locking and file/browser opening have platform-specific handling.
+- Creator drafts join settings, memory, templates and MCP configuration outside the replaceable installation. Corrupt creator libraries are reported rather than overwritten.
+
+### Scope and validation
+
+Creation uses the current browser AI, with bounded completed build passes rather than token-by-token rendering. Advanced UI layouts, live Studio appearance and reference fidelity still require Studio review. The Mac app is ad-hoc signed, not Developer ID notarized; first-launch approval may be required. Native automated tests do not establish live signed-in AI-site, desktop GUI or Roblox Studio compatibility.
+
+After updating, reload the extension AND refresh open AI tabs.
+
+## PlazCode 1.19.13: Stable mode switching and manual work folding
+
+- Completed Working/Worked sections retain your chosen expanded or folded state. Click their heading to fold or reopen them manually.
+- Storage and message notifications for the same script-mode change no longer reset the connection twice. Retired sockets are detached before reconnecting, and stale startup settings cannot reverse a recent manual choice.
+- Double-clicking a mode segment no longer cycles back. Transitional disconnected status is held behind the Switching message until the new connection settles.
+- Arena has no custom Working/Worked foldout; its replies and tool execution remain available. ChatGPT and Notion exclusions remain unchanged.
+- Claude hides single command frames including CodeMirror content and language-label paragraphs, preserving narration, ordinary code, thinking and message actions.
+
+Reload the extension AND refresh open AI tabs after updating. Saved settings, memory, templates and MCP configuration remain preserved.
+
+## PlazCode 1.19.12: Consistent package versions and current release checks
+
+- Sidebar, title, Settings and Updates display the same installed package version. An independently versioned app binary no longer produces a contradictory outdated badge.
+- BAT update checks request uncached current release metadata. Both update paths select the latest complete package directly, including across multiple skipped releases.
+- Native build and extension are both 1.19.12 in this package. Existing settings, memory, templates and MCP configuration remain preserved.
+- BRANDING-NOTICE.txt identifies the official repository/release channel and distinguishes unofficial modified distributions. Existing GPL and third-party licenses remain unchanged. This notice and update SHA256 verification do not prevent copying or modification.
+
+Reload the extension AND refresh open AI tabs after updating.
+
+## PlazCode 1.19.11: Urgent tool-result loop fix
+
+- Fixed `toSend is not defined`, which interrupted normal tool-result delivery after a command executed.
+- Outgoing feedback is initialized directly from the completed result. Successful results, formatted errors and screenshots retain their send path and changed-memory context.
+- Periodic command-list reminders remain disabled. Existing repeated-failure pause, startup, Stop and recovery behavior remain intact.
+- Extension-only hotfix: the native executable remains the unchanged 1.19.10 binary; no Rust/agent rebuild was required.
+
+Reload the extension AND refresh open AI tabs after updating. Settings, memory, templates and MCP configuration remain preserved. Do not assume a command was undone because the old result-delivery error appeared; inspect its result/project state before repeating a mutation.
+
+## PlazCode 1.19.10: Notion startup status and meaningful chat continuation
+
+- Startup command outcomes survive Notion settling under a replacement event anchor. Matching stays scoped to the conversation, original assistant position, preceding user message and command text; later identical commands remain distinct.
+- Bootstrap identity is captured before card rendering, and restored completed/error outcomes also prevent re-dispatch.
+- Notion result attachments use `plazcode_tool_result_*.txt` and tell the AI to continue the existing handshake or task. The second attachment is the command result, not a second startup.
+- New-chat continuation is offered only for chats with real user requests or pending follow-ups. Startup-only records, including legacy exports, are excluded.
+
+Reload the extension AND refresh open AI tabs after updating. Saved settings, memory, templates and enabled MCP servers remain preserved.
+
+## PlazCode 1.19.09: Normal chat flow and targeted command recovery
+
+- Normal replies release the composer before checkpoint bookkeeping. Notion retains its pre-send response identity; stale/duplicate send callbacks cannot start another loop.
+- Idle Co-work messages use the site’s normal composer/send path, matching Co-work Off. Active follow-ups keep their existing queue and safe-boundary delivery.
+- Removed periodic command-list reminders, full-prompt riders and idle reminder sends. Changed memory context remains supported.
+- Explicit command-access refusal triggers a connected-engine check and one same-chat restart handshake, then resumes the unfinished request. Stop, changed chat/engine, disconnected engine and unsent drafts prevent recovery. A repeated refusal stops rather than repeatedly restarting.
+- Delayed injection cleanup cannot clear a newer send, and stale cover requests cannot block an idle composer.
+- Display versions use 1.19.09, 1.19.10 … 1.19.99, then 1.20.00. Internal Chrome/native versions remain 1.19.9, 1.19.10 … 1.20.0 for valid update comparisons.
+
+Reload the extension AND refresh open AI tabs after updating. Settings, memory, templates and enabled MCP servers retain their preservation rules.
+
+## PlazCode 1.18.109: Stable startup and session reminders
+
+- Automatic context reminders preserve the active task and follow-ups. They no longer reissue the startup handshake, request a readiness reply or wait for a new first request. This applies to both engines and both reminder paths.
+- Startup list_commands is recorded before execution and its confirmed result survives message replacements, preventing stale “not run” cards and watchdog replay.
+- Notion uses its stable transcript row to identify commands. Pending navigation startup is cleared on composer preparation or an active session; delayed requests check again before starting.
+- Duplicate Start on an already-started populated chat is harmless. Explicit Restart and fresh-chat startup remain available.
+- Working/Worked progress circles continue to reflect explicit assistant Plan/Checklist steps; unknown totals animate. Custom grouping remains disabled for Notion and ChatGPT.
+
+Reload the extension AND refresh open AI tabs after updating. Saved settings, memory, templates and enabled MCP servers retain their existing preservation rules.
+
+## PlazCode 1.18.108: Work indicators and Notion startup controls
+
+- Removes the empty bordered bar beneath expanded Working/Worked headings. Waiting text clears when a real reply arrives.
+- Disables custom browser chat foldouts and bar work indicators on Notion and ChatGPT; other supported sites keep them.
+- Working circles fill with explicit assistant Plan/Checklist checkbox progress. Unknown totals stay animated, successful completion fills the ring, and interrupted work keeps its partial state.
+- Notion startup locks input before composer preparation, guards typing/paste/drop/Send across remounts, and covers a bounded composer card. Internal writes, copy, navigation and Stop remain available.
+- Protocol upload no longer opens Notion’s general plus menu. Existing file-input/direct-drop upload, exact content, single-send confirmation and owned cleanup remain required.
+
+Reload the extension AND refresh open AI tabs after updating.
+
+## PlazCode 1.18.107: Visible paused work and accurate Co-work state
+
+- Interrupted, stopped and budget-paused work stays expanded, so replies remain visible. Completed work still folds and can be reopened; ChatGPT keeps its native presentation.
+- Work messages only fold when their expandable heading is successfully mounted. Missing or failed headings leave the original messages visible, and temporary mount failures retry.
+- Co-work Off hides the empty queue panel and stale Paused/Resume buttons. Stop does not pause an empty disabled queue; real pending requests remain saved and reviewable.
+- The Notion startup provider confirmed working by the user is unchanged. All other provider files are also unchanged.
+
+Reload the extension AND refresh open AI tabs after updating.
+
+## PlazCode 1.18.106: Notion uploaded-file preview recognition
+
+- Fixes the supplied visible-file timeout: Notion protocol cards may be siblings of the smaller editor/send frame or show a shortened filename. Attachment inspection now stays within the bounded composer shell and recognizes those labels.
+- Upload readiness waits for busy indicators on detected file cards. Stop cleanup supports the owned card’s Close or small unlabeled icon button.
+- Complete protocol text, one acknowledged send, preserved foreign drafts and exact-name delayed cleanup remain required. ChatGPT, Claude and DeepSeek providers are unchanged.
+
+Reload the extension AND refresh open AI tabs. Remove any old failed-upload card before retrying. Live signed-in Notion startup remains unverified.
+
+## PlazCode 1.18.105: Notion upload and Claude command cards
+
+- Fixes the reported startup crash: Notion page drag handlers could not see transfer types/files on generic events dispatched by the extension. Upload fallback now uses native DragEvent fields.
+- Ends the drop sequence with dragleave so the site can reset its drag overlay and cursor.
+- Claude hides the empty JSON label/border around a tool command, preserving adjacent narration, thinking, normal code and response actions.
+- Full protocol files, confirmed uploads, one acknowledged send, Stop cleanup and existing draft preservation remain unchanged.
+
+Reload the extension AND refresh all open AI tabs. Live Notion startup remains unverified; this release fixes the specific supplied drag-event exception.
+
+PlazCode 1.18.104: Animated installer and Notion protocol files
+
+- A rounded dark installer window with PlazCode orange gradients, an animated shimmer and swirl, stage text and real file-copy progress.
+- The installer UI runs on its own STA message loop so download, verification, backup, extraction and process waits cannot freeze its animation. File replacement progress advances from actual completed file counts.
+- Notion long protocol messages use one named .txt file containing the complete original text, plus a short native composer instruction. Upload readiness and one confirmed send are required; text is not truncated.
+- Notion no longer retries a 33k+ text paste that the site converts into a Pasted text attachment. Existing draft attachments are preserved and receive a specific fresh-chat/remove-draft explanation. Stopped owned uploads are cleaned up.
+- Short protocol messages retain the native composer path. Saved settings, MCP configuration, memory, templates, installation process scope, checksums and rollback behavior are preserved.
+
+The refreshed helper window is used after this version is installed; the already-installed old helper can still appear during the update to 1.18.104. Notion remains experimental until live startup is confirmed. Open a fresh Notion AI chat if old Pasted text draft cards remain. Reload the extension AND refresh existing AI tabs after updating.
+
+PlazCode 1.18.103: Notion controlled paste and Co-work
+
+- Notion sends complete startup and tool-result text through one literal controlled paste transaction, verifies retention through two renders, and commits at most once. No prompt truncation or repeated tiny inserts.
+- Co-work uses Follow up in the native composer while enabled, including idle time and after Stop. Internal startup/tool injection retains its temporary input mask. Turning Co-work off restores the original placeholder.
+- Notion no longer uses bulk execCommand or direct React-owned DOM replacement as the large-send fallback. Short native edits rely on Chromium input events instead of duplicate synthetic model events.
+- Notion input cover targets only the editable, preventing a growing ancestor from becoming the click-blocking mask. Start on a populated AI landing first opens a fresh chat.
+
+Notion remains experimental: simulated model/DOM tests cannot confirm live Notion behavior. After updating, reload the extension AND refresh all open AI tabs.
+
+## PlazCode 1.18.102: Updates, Stop, Notion and Co-work
+
+- The default GitHub updater checks the current repository revision every two seconds and fetches metadata by immutable commit. Unchanged metadata is reused; quiet automatic checks and the eight-second request budget remain. Custom feeds retain their configured path. Network delays and browser suspension still apply; this is not guaranteed instant push.
+- Notion large startup drafts use one complete native beforeinput/insertText/input write instead of chunked clipboard pastes. Editable/readonly attributes are temporarily restored during the write, focus is acquired after unlocking, and the complete draft must survive two renders before Send.
+- Co-work tracks placeholder nodes introduced by composer remounts, and ChatGPT Work literal placeholder labels display Follow up without changing user text or replacing the native input.
+- Stop releases the composer immediately and prevents late work from restoring the Agent is working cover until a new user action resumes work. Tool cancellation and Safe/Immediate semantics remain unchanged.
+- PlazCode Working/Worked transcript summaries and bar disclosure are disabled on ChatGPT. Activity records remain available to desktop; other providers retain their collapsible groups.
+- Default update checks avoid the cached mutable branch feed when current revision discovery succeeds. Older cached metadata cannot replace a newer known release.
+
+Notion remains experimental. Native draft checks and placeholder/group tests use simulated DOMs; live Notion startup still needs confirmation.
+
+After updating, reload the extension AND refresh every existing AI tab.
+
+## PlazCode 1.18.101: Notion startup and engine switching
+
+- All Notion literal pastes, including startup chunks, use escaped code HTML to avoid rich-text Markdown conversion. Complete normalized text must be retained before Send; sampled near-match acceptance is removed.
+- The browser bar shows Switching while AgentScript/RobloxScript reconnects, disables Start, ignores old-engine status and restores actual health on completion or after an eight-second bound.
+- A rejected retained large paste no longer falls into repeated tiny inserts and full rewrites. One initial empty hydration rejection may retry; partial failures stop without sending.
+- Intentional engine reconnection does not flash a bridge-down banner. A genuine failure remains visible after the transition timeout.
+
+Notion remains experimental. Tests use simulated rich-text imports and provider DOMs; live Notion startup still needs confirmation.
+
+After updating, reload the extension AND refresh every existing AI tab.
+
+## PlazCode 1.18.100: Browser bar startup and placement fix
+
+- Fixed the 1.18.99 shared UI initialization order. When a composer already existed, placeholder state was read before initialization and startup aborted, leaving the bar missing or unpositioned. This affects multiple providers and Chromium browsers.
+- ChatGPT anchors to the actual bounded composer card, rather than a full-page form or its inner text scroller. Existing DeepSeek/Claude/Notion placement rules are preserved.
+- Desktop browser status now reports bar visible, bar hidden or refresh AI tab separately from bridge connectivity. A worker connection alone does not establish that the page UI loaded.
+- Full content-script startup tests cover preloaded ChatGPT, DeepSeek, Claude and Notion composers. Native Co-work and Stop behavior are preserved. Live tester layouts still require confirmation.
+
+After updating, reload the extension in chrome://extensions or edge://extensions AND refresh existing AI tabs.
+
+PlazCode 1.18.99: Native Co-work, continuation and reliability. Updates preserve chat-history.json as well as existing settings, memory and MCP data. GitHub Releases include both ZIPs and matching change notes. Reload the extension and refresh AI tabs after updating.
+
+PlazCode 1.18.98: Keeps Immediate Stop latched and blocks new tool dispatch while cancellation settles. Includes all 1.18.97 changes. Reload the extension and refresh AI tabs.
+
+PlazCode 1.18.97
+Immediate Stop is the default; Safe Stop waits for the current tool step. External operations may continue and partial changes can remain. Do not promise rollback. Reload the extension AND refresh AI tabs after updating. Keep tray, media and work folding separate from provider parsing/startup contracts.
+
+Fresh downloads use PlazCode/ with browser files inside PlazCode/PlazCode-Extension/. Compatibility update archives also include legacy root extension copies so older installers continue working. Existing installation paths and user data are preserved.
+
+Desktop Updates tab: click Check now, then Update now. The app downloads the
+release and shows progress. A separate verified installer replaces files and
+relaunches PlazCode. Afterwards reload the extension and refresh AI chat tabs.
+
+PlazCode automatic updater
+
+Double-click Update-PlazCode.bat. It checks the latest published release at:
+https://github.com/stoveez/PlazCodeneww
+If a newer version exists, it downloads the ZIP, verifies its SHA256, backs up
+changed files, installs it and restarts PlazCode. Otherwise it reports that you
+are already up to date. Afterwards reload the extension in chrome://extensions
+AND refresh open AI chat tabs. No manual ZIP selection is needed.
+
+One-time setup for installations before 1.18.78:
+Download PlazCode-1.18.80.zip and run your current Update-PlazCode.bat with that
+ZIP selected. Future runs use the configured repository automatically, even
+when the old update-source.json still has an empty feedUrl.
+
+The stable feed is:
+https://raw.githubusercontent.com/stoveez/PlazCodeneww/main/latest.json
+A custom non-empty feedUrl in update-source.json takes precedence.
+You can still drag a local release ZIP onto the BAT to install it manually.
+
+Publishing future updates:
+1. Produce the complete PlazCode-VERSION.zip with a PlazCode/ top-level folder.
+2. Upload that ZIP to the main branch of stoveez/PlazCodeneww.
+3. Update latest.json with version, the ZIP's raw HTTPS URL, and its SHA256.
+Publish the ZIP and feed together when possible. The feed must point at bytes
+that have already been uploaded; never change a published ZIP in place.
+Each release must have a higher extension version. Agent and extension version
+numbers may differ when the agent was not changed.
+
+The updater leaves Roblox Studio running. It stops only PlazCode agent
+processes from this installation. It preserves config.json, custom feed
+settings and LOCALAPPDATA/PlazCode data, including memory and optional runtimes.
+It validates/stages the ZIP before replacing files and keeps overwritten-file
+backups under Windows TEMP. On failure it attempts restoration and prints the
+recovery location. It does not remove obsolete files automatically.
+
+Windows PowerShell 5.1 is required (included with supported Windows versions).
+Live Windows updater execution has not been verified here.
+
+Release-note publishing: update release-notes.json with the version, title,
+summary, added, improved and fixed lists. Include the same array under
+release_notes in latest.json and generate the README sections from that array.
+Every new published version must document its actual changes.

@@ -1,0 +1,67 @@
+{
+  "version": "1.24.3",
+  "title": "Faster desktop, smaller downloads and a better Explorer",
+  "summary": "Less wasted work, a smaller Windows download and a refreshed workspace.",
+  "added": [
+    "Effort indicators on the desktop and browser bar, with colors from Low through Ultracode."
+  ],
+  "improved": [
+    "Unchanged tool lists and logs stay in place instead of rebuilding every second.",
+    "MCP listings reuse recent data and share simultaneous requests; hidden windows poll less often.",
+    "Explorer has a themed hierarchy, class icons, search and polished script/property panels.",
+    "Windows downloads contain the Windows app; Mac has its own complete download."
+  ],
+  "fixed": [
+    "Collapsed sidebar icons are centered; pages follow the requested order.",
+    "Ultracode changes the selected page outline while preserving the theme glow.",
+    "Notion startup can use small verified text pastes when native editing and file uploads fail.",
+    "Co-Work leaves idle or disconnected chats available for ordinary messages.",
+    "Notion recognizes localized completion controls to avoid waiting after a reply has finished.",
+    "A delayed settings read no longer resets a newly selected AgentScript mode.",
+    "Windows starts without unnecessary process scans and detects stale agents in any display language."
+  ],
+  "notes": [
+    "Automated platform and browser checks passed. Live signed-in providers and Studio sessions remain untested."
+  ],
+  "github": {
+    "sections": [
+      {
+        "title": "⚡ Smoother performance",
+        "items": [
+          "**Less lag:** unchanged tools and logs stay in place. New log lines append without rebuilding the list.",
+          "**Less background work:** fewer repeated requests and refreshes while hidden."
+        ]
+      },
+      {
+        "title": "📦 Smaller downloads",
+        "items": [
+          "**Windows:** no longer bundles the Mac app and Mac memory helpers. Mac keeps its own complete download. Features and starter skills are preserved."
+        ]
+      },
+      {
+        "title": "📁 Better workspace",
+        "items": [
+          "**Explorer:** a cleaner game tree, class icons, search, and script/property panels that match your theme.",
+          "**Navigation:** centered collapsed icons and your requested page order. Updates is in Settings."
+        ]
+      },
+      {
+        "title": "🧠 See your effort level",
+        "items": [
+          "**Desktop and bar:** show your selected effort. Low starts yellow, Max is red, and Ultracode is purple.",
+          "**Ultracode:** selected pages get a purple outline while keeping your theme glow, with a smooth transition."
+        ]
+      },
+      {
+        "title": "🔧 Startup and chat fixes",
+        "items": [
+          "**Windows startup:** skips unnecessary process scans and detects old agents across display languages.",
+          "**Startup:** another verified text-send path when Notion file uploads fail.",
+          "**Normal chat:** idle or disconnected chats no longer turn ordinary messages into queued follow-ups.",
+          "**Faster reply detection:** recognize finished responses in more languages, removing avoidable waiting after Notion finishes.",
+          "**Engine selection:** a delayed settings load no longer overrides your choice of AgentScript."
+        ]
+      }
+    ]
+  }
+}

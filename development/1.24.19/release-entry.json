@@ -1,0 +1,50 @@
+{
+  "version": "1.24.19",
+  "title": "Polish and shared reply recovery",
+  "summary": "Adds Polish throughout the PlazCode interface and improves shared reply recovery across verified assistant remounts, with ownership checks before tool dispatch.",
+  "added": [
+    "Polski — Polish in desktop, extension bar and popup language settings, with all 877 interface strings translated.",
+    "Fifteen searchable offline language choices; English remains the default and user-authored content is not translated."
+  ],
+  "improved": [
+    "Carry the exact parsed assistant text into dispatch bookkeeping when a verified reply is temporarily blank or remounted.",
+    "Explain unreadable replies accurately and direct stopped-loop recovery to Start or Restart in the PlazCode bar."
+  ],
+  "fixed": [
+    "Keep same-turn reply evidence only with unchanged fresh identity and conversation/send/session ownership; discard evidence when a node is reused for another turn.",
+    "Recheck reply ownership after visibility waits before dispatch. Pause without dispatching that reply if ownership cannot be verified."
+  ],
+  "notes": [
+    "Publication requires exact-source browser and Linux/Windows/macOS validation plus actual packaged Mac desktop lifetime, visibility and updater-relaunch checks.",
+    "Recovery evidence uses local unit/offline browser fixtures, including the real Claude reader and asynchronous loop handoffs. The affected live Claude account, real Studio projects and Microsoft Edge binary were not tested. Provider identity fallbacks remain a limitation; this is not a comprehensive no-replay guarantee.",
+    "Windows binaries are unsigned. The Mac app is ad-hoc signed, not notarized. Validated native bytes are reused without rebuilding during promotion."
+  ],
+  "github": {
+    "summary": "Polish joins the offline interface languages, and the shared reply loop handles verified remounts more reliably without borrowing another turn’s command.",
+    "sections": [
+      {
+        "title": "🌐 Polish interface",
+        "items": [
+          "Polski — Polish across desktop, bar and popup: 877 translated interface strings, searchable by name or code.",
+          "Fifteen offline language choices. English stays default; AI replies, prompts, code and tool arguments are unchanged."
+        ]
+      },
+      {
+        "title": "🛠️ Shared reply recovery",
+        "items": [
+          "Retain exact assistant evidence across verified same-turn remounts; clear it on changed turn/chat/send/session identity.",
+          "Check ownership again after visibility waits and before tool dispatch; pause if it cannot be verified.",
+          "Clearer stopped-loop instructions point to Start or Restart in the PlazCode bar. Existing ClickUp, Studio, Blender, Ultra and skill features remain."
+        ]
+      },
+      {
+        "title": "🧪 Validation and limits",
+        "items": [
+          "Exact-source platform/browser checks and actual packaged Mac lifetime/update-relaunch gates are required. Validated native bytes are reused.",
+          "Offline/unit fixtures include the real Claude reader and async loop handoffs, not the affected live account. Real Studio projects and the Edge binary were not tested; unreliable provider identities remain a limitation.",
+          "Windows unsigned; Mac ad-hoc signed, not notarized. GitHub provenance does not replace platform signing."
+        ]
+      }
+    ]
+  }
+}

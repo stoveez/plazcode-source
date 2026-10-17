@@ -1,0 +1,35 @@
+{
+  "version": "1.24.11",
+  "title": "Notion startup send fix",
+  "summary": "Fixes Notion startup getting stuck with a half-written command list in the chat box, which then left every command as not run.",
+  "added": [],
+  "improved": [
+    "If Notion stops accepting a long startup message part-way, PlazCode switches to sending it as a file straight away instead of waiting again."
+  ],
+  "fixed": [
+    "Notion no longer leaves part of PlazCode's command list in the chat box with “Message was not confirmed” after Start Agent.",
+    "Commands no longer stay “not run” after that startup failure, because PlazCode clears its own leftover draft."
+  ],
+  "notes": [
+    "Text you typed yourself is still never cleared.",
+    "Automated platform/browser regressions passed. This fix was not tested on a live Notion account."
+  ],
+  "github": {
+    "sections": [
+      {
+        "title": "🛠️ Notion startup fixed",
+        "items": [
+          "**No half-written drafts:** if Notion stops accepting the long startup message, PlazCode clears its own leftover text and sends the full message as a file.",
+          "**Commands run again:** the leftover draft no longer blocks every later command.",
+          "**Less waiting:** after one stalled attempt, later long messages go straight to the file method."
+        ]
+      },
+      {
+        "title": "🧪 Checks",
+        "items": [
+          "Platform/browser regressions passed. Text you typed is never cleared. Not yet tested on a live Notion account."
+        ]
+      }
+    ]
+  }
+}

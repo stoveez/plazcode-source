@@ -1,0 +1,5 @@
+PlazCode 1.24.18 private development validation source, GPL-3.0-or-later.
+Based on published PlazCode-source-1.24.17.zip, SHA256 35af2180823382c057580fab9a41455f5f907e232c249af087d25c97b7873e24.
+Source and build instructions: https://github.com/stoveez/PlazCode/tree/codex/plazcode-1.24.18/development/1.24.18
+Complete matching source accompanies private validation artifacts.
+Not a published release or publisher-signed build. Browser, native, package and live-provider validation remain required; stable releases and update feeds are unchanged.

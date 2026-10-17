@@ -1,0 +1,7 @@
+PlazCode 1.24.19 development is GPL-3.0-or-later. This is not a published stable release.
+Editable overlay and reproducible preparation/build scripts:
+https://github.com/stoveez/PlazCode/tree/codex/plazcode-1.24.19/development/1.24.19
+Pinned baseline source: PlazCode-source-1.24.18.zip from
+https://github.com/stoveez/PlazCode/releases/tag/v1.24.18
+Existing stable update feeds are unchanged. Native validation remains required.
+GitHub build provenance is separate from Windows Authenticode and Apple notarization.

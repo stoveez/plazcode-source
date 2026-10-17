@@ -1,0 +1,66 @@
+{
+  "version": "1.24.2",
+  "title": "Ultracode, task checklists and smoother creation",
+  "summary": "Follow your AI’s progress, try Ultracode and create with fewer interruptions.",
+  "added": [
+    "Ultracode (Beta) after Max: deeper planning, review and verification when selected.",
+    "Show approach summary: an optional paragraph before each command; off by default.",
+    "Pinned task checklist with progress and green checks; hide the bar to drag the checklist anywhere."
+  ],
+  "improved": [
+    "Shorter, simpler release and update descriptions.",
+    "More reliable model and UI creation.",
+    "Solar Dusk is now the Default theme; the separate option is removed.",
+    "Ultracode smoothly fades purple accents and glow in and out while keeping your theme.",
+    "Faster Notion startup when its editor accepts the complete setup text."
+  ],
+  "fixed": [
+    "Saved previews insert and export without extra errors.",
+    "Editing saved creations no longer causes repeated errors.",
+    "Failed updates show the actual error and log location.",
+    "Updates handle missing or incomplete saved update settings.",
+    "Notion startup handles slow responses and localized editors, and restores typing after cancellation."
+  ],
+  "notes": [
+    "Platform checks passed. Live AI chats remain untested; no performance gain is claimed."
+  ],
+  "github": {
+    "summary": "Follow your AI’s progress, try Ultracode and create with fewer interruptions.",
+    "sections": [
+      {
+        "title": "🧠 Ultracode (Beta)",
+        "items": [
+          "**A new option after Max:** asks the AI to plan carefully, review its work and check the result. Turn it on when you want a more thorough approach."
+        ]
+      },
+      {
+        "title": "✅ Follow the task",
+        "items": [
+          "**Pinned checklist:** task steps, a progress circle and a percentage above the bar. Finished steps turn green with a check. Hide the bar to turn it into a box you can drag anywhere; hide the checklist separately.",
+          "**Show approach summary:** turn on a short explanation before each command. Off by default. This explains the approach; it does not reveal hidden thoughts."
+        ]
+      },
+      {
+        "title": "🎨 A fresh look",
+        "items": [
+          "**New Default theme:** the former Solar Dusk look is now built in.",
+          "**Purple Ultracode accents:** your theme stays, with purple details that fade smoothly in and out. The checklist matches too."
+        ]
+      },
+      {
+        "title": "🛠️ Fewer interruptions",
+        "items": [
+          "**Creation tools:** saved previews, edits and exports work with fewer errors.",
+          "**Notion:** better startup recovery, localized chat boxes and typing unlocked after failed starts; fewer unnecessary setup uploads.",
+          "**Updates:** handles incomplete update settings and shows the actual reason if installation fails."
+        ]
+      },
+      {
+        "title": "🧪 Checks",
+        "items": [
+          "Windows, Mac, Linux and browser checks passed. Live AI chats are not tested; speed and benchmark gains are not guaranteed."
+        ]
+      }
+    ]
+  }
+}

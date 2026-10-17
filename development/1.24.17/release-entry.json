@@ -1,0 +1,38 @@
+{
+  "version": "1.24.17",
+  "title": "ClickUp tool results and Blender command lists",
+  "summary": "ClickUp reads large tool results through complete retained pages and correctly selects Blender when its catalog request places server outside params.",
+  "added": [],
+  "improved": [
+    "Send ClickUp-sized result pages while keeping every original character available through plazcode_result_read, without rerunning the original tool.",
+    "Recheck final tool feedback after appended status and reference context."
+  ],
+  "fixed": [
+    "Large Blender results and full command references no longer exceed ClickUp’s outgoing transport bound.",
+    "Read-only command-list requests preserve an unambiguous top-level server selector; conflicting selectors are rejected."
+  ],
+  "notes": [
+    "Exact-source Windows/macOS/Linux/browser and packaged Mac desktop checks are required before publication.",
+    "Browser fixtures use a mocked bridge; affected live ClickUp accounts and real Blender/Studio work are not claimed tested. Windows is unsigned; macOS is not notarized."
+  ],
+  "github": {
+    "summary": "Fixes oversized ClickUp tool feedback and Blender command-list selection.",
+    "sections": [
+      {
+        "title": "🛠️ Fixes",
+        "items": [
+          "Large results and complete Blender/Roblox GUI catalogs use retained pages, without repeating the operation.",
+          "Blender catalog requests preserve server when supplied outside params.",
+          "Final feedback sizing includes appended status and references."
+        ]
+      },
+      {
+        "title": "🧪 Validation and limitations",
+        "items": [
+          "Platform/browser and packaged Mac desktop gates run before publication.",
+          "Fixtures use a mocked bridge; affected accounts and real projects were not tested. Windows unsigned; Mac not notarized."
+        ]
+      }
+    ]
+  }
+}
