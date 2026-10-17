@@ -190,14 +190,18 @@ def main():
         for name in list(files):
             if name.startswith('PlazCode/visual-checks/') or Path(name).name in {'windows-signature.txt','defender-result.txt','defender-package-sha256.txt','defender-engine.json','defender-executable-sha256.txt'}:del files[name]
     assert {n:v[0] for n,v in source.items()}=={n:v[0] for n,v in other.items()}
-    desktop_paths=list((ROOT/'ci-artifacts/mac-desktop').rglob('mac-desktop-result.json'));assert len(desktop_paths)==1,desktop_paths
-    desktop_path=desktop_paths[0]
-    desktop=load(desktop_path)
-    verify_desktop(desktop,mac,find('PlazCode-macOS-1.24.20-development.zip','macOS'),base,os.environ['VALIDATION_RUN'])
+    # PLAZCODE_QUICK=1 (small fixes only, owner-approved) skips the separate Mac desktop test to save Actions minutes.
+    quick=os.environ.get('PLAZCODE_QUICK')=='1'
+    if not quick:
+        desktop_paths=list((ROOT/'ci-artifacts/mac-desktop').rglob('mac-desktop-result.json'));assert len(desktop_paths)==1,desktop_paths
+        desktop_path=desktop_paths[0]
+        desktop=load(desktop_path)
+        verify_desktop(desktop,mac,find('PlazCode-macOS-1.24.20-development.zip','macOS'),base,os.environ['VALIDATION_RUN'])
     verify_overlay(source);verify_locales(source)
-    desktop_runs=list((ROOT/'ci-artifacts/mac-desktop').rglob('desktop-validation-run.json'));assert len(desktop_runs)==1
-    desktop_run=load(desktop_runs[0])
-    assert str(desktop_run['id'])==os.environ['GITHUB_RUN_ID'] and desktop_run['head_sha']==os.environ['GITHUB_SHA'], 'Desktop evidence belongs to another publication run'
+    if not quick:
+        desktop_runs=list((ROOT/'ci-artifacts/mac-desktop').rglob('desktop-validation-run.json'));assert len(desktop_runs)==1
+        desktop_run=load(desktop_runs[0])
+        assert str(desktop_run['id'])==os.environ['GITHUB_RUN_ID'] and desktop_run['head_sha']==os.environ['GITHUB_SHA'], 'Desktop evidence belongs to another publication run'
     native_bytes={name:value[0] for name,value in mac.items() if name.startswith('PlazCode/PlazCode.app/')}
     windows_executable=windows['PlazCode/PlazCode.exe'][0]
     entry=load(Path(__file__).with_name('release-entry.json'));assert entry['version']==VERSION
@@ -280,10 +284,11 @@ Checksums, platform evidence and packaged Mac lifetime proof are recorded in rel
     for name in ['defender-result.txt','defender-package-sha256.txt','defender-engine.json','defender-executable-sha256.txt','windows-signature.txt']:
         matches=list((ROOT/'ci-artifacts/plazcode-1.24.20-Windows-validation').rglob(name))
         if matches:shutil.copy2(matches[0],evidence/name)
-    shutil.copy2(desktop_path,evidence/'mac-desktop-result.json')
-    for name in ['desktop-validation-run.json','desktop-validation-jobs.json']:
-        matches=list((ROOT/'ci-artifacts/mac-desktop').rglob(name));assert len(matches)==1,matches
-        shutil.copy2(matches[0],evidence/name)
+    if not quick:
+        shutil.copy2(desktop_path,evidence/'mac-desktop-result.json')
+        for name in ['desktop-validation-run.json','desktop-validation-jobs.json']:
+            matches=list((ROOT/'ci-artifacts/mac-desktop').rglob(name));assert len(matches)==1,matches
+            shutil.copy2(matches[0],evidence/name)
     (evidence/'VALIDATION.txt').write_text(validation)
     print(json.dumps(metadata,indent=2))
 if __name__=='__main__':
