@@ -1,0 +1,47 @@
+# One-off: tidy the public download repo (keep main + the v1.24.20 release only).
+# Everything removed here is backed up in this private repo under archive/* branches.
+name: Clean up public repo
+on:
+  push:
+    branches: [cleanup-public]
+permissions:
+  contents: read
+env:
+  GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+  PUB: stoveez/PlazCode
+  KEEP: v1.24.20
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Point the kept release tag at the clean main commit
+        run: |
+          main=$(gh api repos/$PUB/commits/main -q .sha)
+          echo "main=$main"
+          gh api -X PATCH repos/$PUB/git/refs/tags/$KEEP -f sha="$main" -F force=true
+      - name: Delete old releases and their tags
+        run: |
+          for t in $(gh api repos/$PUB/releases --paginate -q '.[].tag_name'); do
+            [ "$t" = "$KEEP" ] && continue
+            gh release delete "$t" --repo $PUB --cleanup-tag -y || echo "could not delete release $t"
+          done
+      - name: Delete leftover tags
+        run: |
+          for t in $(gh api repos/$PUB/git/matching-refs/tags -q '.[].ref' | sed 's#refs/tags/##'); do
+            [ "$t" = "$KEEP" ] && continue
+            gh api -X DELETE "repos/$PUB/git/refs/tags/$t" || echo "could not delete tag $t"
+          done
+      - name: Delete old branches
+        run: |
+          for b in $(gh api repos/$PUB/branches --paginate -q '.[].name'); do
+            [ "$b" = main ] && continue
+            gh api -X DELETE "repos/$PUB/git/refs/heads/$b" || echo "could not delete branch $b"
+          done
+      - name: Verify
+        run: |
+          gh api repos/$PUB/branches -q '.[].name'
+          gh api repos/$PUB/releases -q '.[].tag_name'
+          gh api repos/$PUB/git/matching-refs/tags -q '.[].ref'
+          curl -fsSL -r 0-99 -o /dev/null https://github.com/$PUB/releases/download/$KEEP/PlazCode-1.24.20.zip && echo release-download-ok
+          curl -fsSL https://raw.githubusercontent.com/$PUB/main/latest.json | python3 -c "import json,sys;print('feed',json.load(sys.stdin)['version'])"
