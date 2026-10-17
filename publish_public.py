@@ -34,9 +34,14 @@ def main():
     url = f'https://github.com/{repo}.git' if proxy_auth else f'https://x-access-token:{token}@github.com/{repo}.git'
     run('git', 'clone', '--depth', '1', '--branch', 'main', url, str(work), env=env)
     base = run('git', 'rev-parse', 'HEAD', cwd=work)
+    # Keep the public root tidy: only the current version's downloads stay in main.
+    # Installed copies only follow latest*.json, which this same commit replaces.
+    stale = [p.name for p in work.iterdir() if p.is_file() and p.name not in files and
+             re.fullmatch(r'(PlazCode(-macOS|-Firefox|-source)?-\d+\.\d+\.\d+\.zip|PlazCode-\d+\.\d+\.\d+\.sigstore\.json|release-description-\d+\.\d+\.\d+\.txt)', p.name)]
+    if stale: run('git', 'rm', '-q', '--', *stale, cwd=work)
     for name in files: shutil.copy2(source / name, work / name)
-    run('git', 'config', 'user.name', 'plazcode-release-bot', cwd=work)
-    run('git', 'config', 'user.email', 'plazcode-release-bot@users.noreply.github.com', cwd=work)
+    run('git', 'config', 'user.name', 'stoveez', cwd=work)
+    run('git', 'config', 'user.email', 'stoveez@users.noreply.github.com', cwd=work)
     run('git', 'add', *files, cwd=work)
     run('git', 'commit', '-m', f'Release PlazCode {version}', cwd=work)
     commit = run('git', 'rev-parse', 'HEAD', cwd=work)
@@ -49,6 +54,8 @@ def main():
         raise SystemExit('Public main moved during release; update feed NOT exposed')
     run('git', 'push', url, f'{commit}:refs/heads/main', cwd=work, env=env)
     subprocess.run(['gh', 'release', 'edit', f'v{version}', '--repo', repo, '--latest'], env=env, check=True)
+    # The temporary release branch is no longer needed once main carries the commit.
+    subprocess.run(['git', 'push', url, '--delete', f'refs/heads/{branch}'], cwd=work, env=env, check=False, capture_output=True)
     print(f'Exposed {version} on {repo}')
 
 if __name__ == '__main__':

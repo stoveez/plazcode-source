@@ -1,0 +1,155 @@
+# Private build -> public downloads. Requires exact-source validation (and, unless
+# quick mode is on, the packaged macOS desktop lifetime test). Only the finished
+# downloads and update feeds go to the public repo; no source code is published.
+name: Publish PlazCode 1.24.21 verified update
+on:
+  push:
+    branches: [release/1.24.21-publish]
+    paths: [.github/workflows/publish-1.24.21.yml, development/1.24.21/promote.py, development/1.24.21/release-entry.json, development/1.24.21/test-promote-permissions.py, development/1.24.21/test-macos-desktop.py]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+env:
+  GH_TOKEN: ${{ github.token }}
+  # Set only after the final source commit has a successful validation run.
+  VALIDATED_SHA: 'SET_VALIDATED_SHA_AFTER_SUCCESS'
+  VALIDATION_RUN: 'SET_VALIDATION_RUN_AFTER_SUCCESS'
+  # Owner-approved quick mode for small fixes: '1' skips the Mac desktop lifetime test.
+  PLAZCODE_QUICK: '0'
+  PUBLIC_REPO: stoveez/PlazCode
+concurrency:
+  group: plazcode-final-1.24.21
+  cancel-in-progress: true
+jobs:
+  wait-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Wait for exact-source native validation without occupying a Mac runner
+        run: |
+          [[ "$VALIDATED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$VALIDATION_RUN" =~ ^[1-9][0-9]*$ ]]
+          mkdir ci-artifacts
+          for attempt in $(seq 1 80); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN" > ci-artifacts/run.json
+            state=$(python3 -c 'import json; print(json.load(open("ci-artifacts/run.json"))["status"])')
+            if [ "$state" = completed ]; then break; fi
+            sleep 30
+          done
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN/jobs?per_page=100" > ci-artifacts/jobs.json
+          python3 development/1.24.21/promote.py --check-validation
+      - id: mode
+        run: echo "quick=$PLAZCODE_QUICK" >> "$GITHUB_OUTPUT"
+    outputs:
+      quick: ${{ steps.mode.outputs.quick }}
+  mac-desktop:
+    needs: wait-native
+    # Quick mode never starts the (expensive) Mac runner.
+    if: ${{ needs.wait-native.result == 'success' && needs.wait-native.outputs.quick != '1' }}
+    runs-on: macos-15-intel
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Wait for the verified native artifact
+        run: |
+          mkdir ci-artifacts
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN" > ci-artifacts/run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN/jobs?per_page=100" > ci-artifacts/jobs.json
+          python3 development/1.24.21/promote.py --check-validation
+          gh run download "$VALIDATION_RUN" --repo "$GITHUB_REPOSITORY" --name plazcode-1.24.21-macOS-validation --dir native-artifact
+          zip=$(python3 -c 'from pathlib import Path; p=list(Path("native-artifact").rglob("PlazCode-macOS-1.24.21-development.zip")); assert len(p)==1,p; print(p[0].resolve())')
+          echo "PLAZCODE_MAC_TEST_ARCHIVE=$zip" >> "$GITHUB_ENV"
+          ditto -x -k "$zip" mac-desktop-install
+      - name: Real macOS desktop lifetime and updater relaunch
+        env:
+          PLAZCODE_MAC_TEST_INSTALL: ${{ github.workspace }}/mac-desktop-install/PlazCode
+        run: python3 development/1.24.21/test-macos-desktop.py
+      - name: Record desktop validation source and run
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > desktop-validation-run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" > desktop-validation-jobs.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plazcode-1.24.21-mac-desktop-validation
+          path: |
+            mac-desktop-result.json
+            desktop-validation-run.json
+            desktop-validation-jobs.json
+            ~/Library/Application Support/PlazCode/logs/agent.log
+            ~/Library/Application Support/PlazCode/logs/updater.log
+          if-no-files-found: warn
+  publish:
+    permissions:
+      contents: write
+      actions: read
+    needs: [wait-native, mac-desktop]
+    if: ${{ always() && needs.wait-native.result == 'success' && (needs.mac-desktop.result == 'success' || (needs.wait-native.outputs.quick == '1' && needs.mac-desktop.result == 'skipped')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require successful exact-source validation on all platforms
+        run: |
+          mkdir ci-artifacts
+          for attempt in $(seq 1 80); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN" > ci-artifacts/run.json
+            state=$(python3 -c 'import json; print(json.load(open("ci-artifacts/run.json"))["status"])')
+            if [ "$state" = completed ]; then break; fi
+            sleep 30
+          done
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN/jobs?per_page=100" > ci-artifacts/jobs.json
+          python3 development/1.24.21/promote.py --check-validation
+          for platform in Windows macOS; do
+            gh run download "$VALIDATION_RUN" --repo "$GITHUB_REPOSITORY" --name "plazcode-1.24.21-$platform-validation" --dir "ci-artifacts/plazcode-1.24.21-$platform-validation"
+          done
+      - name: Download macOS desktop lifetime evidence
+        if: ${{ env.PLAZCODE_QUICK != '1' }}
+        run: gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name plazcode-1.24.21-mac-desktop-validation --dir ci-artifacts/mac-desktop
+      - name: Assemble immutable archives and compact feeds
+        run: |
+          python3 development/1.24.21/test-promote-permissions.py
+          python3 development/1.24.21/promote.py
+          python3 test-release-feed.py
+          python3 test-release-notes.py
+          python3 test-release-archives.py
+      - name: Keep the private build record (source baseline for the next version)
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor origin/main HEAD
+          git config user.name 'plazcode-release-bot'
+          git config user.email 'plazcode-release-bot@users.noreply.github.com'
+          git add PlazCode-source-1.24.21.zip latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.24.21.txt release-validation-1.24.21
+          git commit -m 'Release PlazCode 1.24.21: New Fix connection button'
+          git push origin HEAD:refs/heads/release-record-1.24.21
+      - name: Publish downloads and update feeds to the public repo (no source)
+        env:
+          PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          VERSION: '1.24.21'
+          PLAZCODE_PUBLISH_SOURCE: 0
+          PLAZCODE_PROVENANCE: 0
+        run: python3 publish_public.py
+      - name: Record the release on private main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor origin/main HEAD
+          git push origin HEAD:main
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plazcode-final-1.24.21-evidence
+          path: |
+            release-validation-1.24.21/*
+            release-metadata.json
+          if-no-files-found: warn

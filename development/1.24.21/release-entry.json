@@ -1,0 +1,39 @@
+{
+  "version": "1.24.21",
+  "title": "New Fix connection button",
+  "summary": "When PlazCode isn't connected, a new Fix connection button checks everything for you, fixes what it safely can, and tells you in plain words what to do about the rest.",
+  "added": [
+    "A new 🔧 Fix connection button appears in the PlazCode bar whenever something isn't connected. It is hidden when everything works. It's also in the PlazCode popup.",
+    "It checks five things in order: the page, the PlazCode app, Roblox Studio (or AgentScript), the chat box, and whether PlazCode is connected to this chat.",
+    "It fixes safe things on its own: it reconnects to the PlazCode app, restarts a dropped Roblox Studio connection once, and looks for the chat box again.",
+    "For everything else it tells you exactly what to do, like \"Open Roblox Studio\" or \"Refresh the page\", with a button for the next step."
+  ],
+  "improved": [],
+  "fixed": [],
+  "notes": [
+    "Fix connection never sends anything to the AI by itself. Connecting a chat always waits for you to click Connect this chat.",
+    "Available in all 15 interface languages.",
+    "The Windows app is unsigned and the Mac app is not notarized, as in earlier versions. Your computer may ask you to confirm opening it."
+  ],
+  "github": {
+    "summary": "A new Fix connection button checks why PlazCode isn't connected, fixes what it safely can, and tells you what to do about the rest.",
+    "sections": [
+      {
+        "title": "✨ What's new",
+        "items": [
+          "A 🔧 Fix connection button appears in the PlazCode bar whenever something isn't connected, and in the PlazCode popup.",
+          "It checks the page, the PlazCode app, Roblox Studio or AgentScript, the chat box, and this chat, in that order.",
+          "It reconnects the PlazCode app and a dropped Roblox Studio connection by itself, and tells you in plain words what to do about anything else."
+        ]
+      },
+      {
+        "title": "🧪 Good to know",
+        "items": [
+          "It never sends anything to the AI by itself. Connecting a chat always waits for your click.",
+          "Works in all 15 interface languages.",
+          "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+        ]
+      }
+    ]
+  }
+}
