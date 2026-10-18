@@ -217,6 +217,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [
@@ -277,6 +280,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [
@@ -328,6 +334,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [
@@ -376,6 +385,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [
@@ -427,6 +439,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [
@@ -475,6 +490,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [
@@ -523,6 +541,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [
@@ -574,6 +595,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [
@@ -632,6 +656,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [
@@ -690,6 +717,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [
@@ -739,6 +769,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [
@@ -790,6 +823,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [
@@ -842,6 +878,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [
@@ -890,6 +929,9 @@
         "core/reliability.js",
         "providers/media.js",
         "core/connection-doctor.js",
+        "core/safety.js",
+        "core/action-log.js",
+        "core/site-setups.js",
         "core/main.js"
       ],
       "css": [

@@ -63,6 +63,12 @@ jobs:
       - name: Fix connection button with the full core in Chromium and Firefox
         run: node release-tools/test-fix-connection-browser.cjs
         working-directory: build-src-1.24.21/PlazCode
+      - name: Safety, What happened, site setups and shared skills (unit)
+        run: node test-1.24.21-power-features.js
+        working-directory: build-src-1.24.21/PlazCode
+      - name: Safety, What happened and site setups with the full core in Chromium
+        run: node release-tools/test-power-features-browser.cjs
+        working-directory: build-src-1.24.21/PlazCode
       - name: ClickUp Brain and agent startup, tool feedback and composer fixtures
         run: node release-tools/test-clickup-browser.cjs
         working-directory: build-src-1.24.21/PlazCode

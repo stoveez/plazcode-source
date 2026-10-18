@@ -1,8 +1,13 @@
 {
   "version": "1.24.21",
-  "title": "New Fix connection button",
-  "summary": "When PlazCode isn't connected, a new Fix connection button checks everything for you, fixes what it safely can, and tells you in plain words what to do about the rest.",
+  "title": "Safety limits, a What happened log, site setups and more",
+  "summary": "PlazCode can now keep the AI read-only, ask before it deletes anything, and show you a plain list of what it did with Undo. You can save a setup for each site, share skills with a code or link, and connect Figma, Unity and a browser. Plus a new Fix connection button.",
   "added": [
+    "Safety settings: Read-only mode lets the AI look at files, Studio and tools without changing anything. Confirm before deleting (on by default) asks you before the AI deletes files or runs a delete command. Allowed folders limits Full PC access to the folders you list.",
+    "What happened: a plain list of everything the AI did on your computer, in Studio and in other tools, newest first, with an Undo button for changed files and scripts. Open it from the PlazCode menu or the app's home page. Deleted files can be brought back too.",
+    "Setup for this site: save your engine, effort, access, safety, instructions, memory project, skills and tools for a site like ClickUp, Notion or Claude, then apply it in one click or every time you open that site.",
+    "Share skills: pick skills and download them as a pack file, or copy a share code to paste anywhere. Import a pack, a share code or a link from GitHub, Gist, Pastebin or Discord. Imported skills arrive as new, untested skills and never replace yours.",
+    "New tool connectors: Figma (read your designs from the Figma desktop app), Unity (control the Unity Editor) and Browser (the AI opens its own browser window to test sites). Turn them on in the app. Connectors now also work in AgentScript mode.",
     "A new 🔧 Fix connection button appears in the PlazCode bar whenever something isn't connected. It is hidden when everything works. It's also in the PlazCode popup.",
     "It checks five things in order: the page, the PlazCode app, Roblox Studio (or AgentScript), the chat box, and whether PlazCode is connected to this chat.",
     "It fixes safe things on its own: it reconnects to the PlazCode app, restarts a dropped Roblox Studio connection once, and looks for the chat box again.",
@@ -17,16 +22,23 @@
   ],
   "fixed": [],
   "notes": [
+    "Read-only mode and delete confirmations are checked twice: in the browser and again in the PlazCode app.",
+    "Undo only puts back a file if nobody changed it after the AI did, so your own edits are never overwritten.",
     "Fix connection never sends anything to the AI by itself. Connecting a chat always waits for you to click Connect this chat.",
     "Available in all 15 interface languages.",
     "The Windows app is unsigned and the Mac app is not notarized, as in earlier versions. Your computer may ask you to confirm opening it."
   ],
   "github": {
-    "summary": "A new Fix connection button checks why PlazCode isn't connected, fixes what it safely can, and tells you what to do about the rest.",
+    "summary": "Safety limits, a What happened log with Undo, saved setups per site, shareable skills, Figma, Unity and Browser connectors, and a new Fix connection button.",
     "sections": [
       {
         "title": "✨ What's new",
         "items": [
+          "Safety: Read-only mode, Confirm before deleting (on by default) and Allowed folders for Full PC access.",
+          "What happened: a plain list of what the AI did on your computer, Studio and tools, with Undo for changed and deleted files and scripts.",
+          "Setup for this site: save engine, effort, access, safety, instructions, memory project, skills and tools per site, and apply them in one click or automatically.",
+          "Share skills as a pack file or a share code, and import from a file, a code or a GitHub, Gist, Pastebin or Discord link. Imports arrive untested and never replace yours.",
+          "New connectors: Figma, Unity and Browser. Connectors now work in AgentScript mode too.",
           "A 🔧 Fix connection button appears in the PlazCode bar whenever something isn't connected, and in the PlazCode popup.",
           "It checks the page, the PlazCode app, Roblox Studio or AgentScript, the chat box, and this chat, in that order.",
           "It reconnects the PlazCode app and a dropped Roblox Studio connection by itself, and tells you in plain words what to do about anything else.",
@@ -44,7 +56,8 @@
       {
         "title": "🧪 Good to know",
         "items": [
-          "It never sends anything to the AI by itself. Connecting a chat always waits for your click.",
+          "Safety limits are checked in the browser and again in the PlazCode app. Undo never overwrites edits made after the AI's change.",
+          "Fix connection never sends anything to the AI by itself. Connecting a chat always waits for your click.",
           "Works in all 15 interface languages.",
           "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
         ]

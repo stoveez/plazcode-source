@@ -427,7 +427,7 @@ input[type=number]{direction:ltr;unicode-bidi:isolate}
           </div>
           <p class="supported-ai-local-note">Ollama opens its website. For local models, use <strong>Open Ollama chat</strong> in the browser extension.</p>
         </details>
-        <details id="homeTasks" class="settingcard"><summary>Task checkpoints &amp; workflows</summary><div id="taskCenter" dir="auto"></div></details>
+        <details id="homeActionLog" class="settingcard"><summary>What happened</summary><div id="actionLog" dir="auto"></div></details><details id="homeTasks" class="settingcard"><summary>Task checkpoints &amp; workflows</summary><div id="taskCenter" dir="auto"></div></details>
         <details id="homeActivity" class="settingcard" hidden><summary id="homeActivityLabel" data-i18n-user-content dir="auto">Working</summary><div id="homeActivityDetails" data-i18n-user-content dir="auto"></div></details>
         <div class="stats">
           <div class="stat" data-tone="green"><div class="stat-head"><span id="bridgeDot" class="dot"></span>Bridge</div><div id="bridgeVal" class="stat-val">Waiting</div><div class="stat-sub">Browser extension link</div></div>
@@ -492,6 +492,14 @@ input[type=number]{direction:ltr;unicode-bidi:isolate}
             <div class="settingrow"><label>Stop mode</label><select data-pref="rsStopMode"><option value="immediate">Immediate Stop (default)</option><option value="safe">Safe Stop</option></select></div><p class="settinghelp"><strong>Immediate:</strong> stop AI generation and stop waiting for tools right away; cancel helper processes that PlazCode owns where possible. <strong>Safe:</strong> stop AI generation and new commands, then let the current command finish. Neither option undoes edits already made, and some external tools cannot be cancelled.</p>
             <div class="settingrow"><label>Permissions</label><select data-pref="rsPermMode"><option value="sandbox">Sandbox</option><option value="ask">Ask</option><option value="full">Full</option></select></div><p class="settinghelp"><strong>Sandbox:</strong> AgentScript stays inside the connected project folder. <strong>Ask:</strong> request approval for writes and command execution. <strong>Full:</strong> allow AgentScript to work outside the project folder and run PC commands. Roblox actions still use the connected Studio bridge.</p>
           </div>
+          <div class="settingcard" id="safetySettings"><h3>Safety</h3><p>Limits on what the AI may change. Shared with the browser extension.</p>
+            <div class="settingrow"><label>Read-only mode</label><div class="toggle" data-pref="rsReadOnly" role="switch" aria-label="Read-only mode"></div></div><p class="settinghelp">The AI can look at files, Studio and tools, but can't change anything.</p>
+            <div class="settingrow"><label>Confirm before deleting</label><div class="toggle" data-pref="rsConfirmDelete" role="switch" aria-label="Confirm before deleting"></div></div><p class="settinghelp">PlazCode asks you before the AI deletes files or runs a delete command.</p>
+            <label class="settinghelp" for="allowedFolders"><strong>Allowed folders (Full access)</strong></label>
+            <textarea class="instructions-text" id="allowedFolders" dir="ltr" rows="3" maxlength="10000" placeholder="One folder per line, e.g. C:\Users\you\Projects"></textarea>
+            <p class="settinghelp">With Full access, files outside the workspace must be in one of these folders. Leave empty to allow the whole PC. Commands can still reach other folders, so use Read-only or Ask mode to control them.</p>
+            <div class="instructions-actions"><button class="softbtn" id="saveAllowedFolders">Save folders</button><span class="instructions-status" id="allowedFoldersStatus" role="status"></span></div>
+          </div>
           <div class="settingcard"><h3>Reasoning</h3><p>Matches the extension work and thinking controls.</p>
             <div class="settingrow"><label>Work mode</label><select data-pref="rsWorkMode"><option value="fast">Fast</option><option value="balanced">Balanced</option><option value="thorough">Thorough</option></select></div>
             <div class="settingrow"><label>Reasoning</label><select data-pref="rsThinkingLevel"><option value="default">Default</option><option value="low">Low</option><option value="mid">Medium</option><option value="high">High</option><option value="max">Max</option><option value="ultracode">Ultra</option></select></div>
@@ -529,6 +537,8 @@ __PLAZCODE_EXPLORER_UI__
 __PLAZCODE_MEDIA_UI__
 __PLAZCODE_MEMORY_UI__
 __PLAZCODE_TASK_UI__
+__PLAZCODE_ACTION_LOG_UI__
+__PLAZCODE_SAFETY_UI__
 __PLAZCODE_TEMPLATE_UI__
 __PLAZCODE_TOOLKIT_UI__
 __PLAZCODE_VERSION_UI__
@@ -594,6 +604,19 @@ __PLAZCODE_VERSION_UI__
   Byid("sidebarCollapse").onclick=function(){var collapsed=!document.documentElement.hasAttribute("data-sidebar-collapsed");document.documentElement.toggleAttribute("data-sidebar-collapsed",collapsed);this.setAttribute("aria-expanded",String(!collapsed));Api("/api/desktop/preferences",{method:"POST",body:JSON.stringify({rsSidebarCollapsed:collapsed})}).catch(function(Error){Notice("Sidebar setting",Error.message,"error");});};
   var Toolkitui=PlazCodeToolkitUI.mount(Byid("toolkitWorkspace"),Request=>Api("/api/toolkit",{method:"POST",body:JSON.stringify(Request)}),Prompt=>Api("/api/desktop/agent",{method:"POST",body:JSON.stringify({action:"task-send",prompt:Prompt,request_id:crypto.randomUUID()})}),()=>State,Ipc,Notice);
   Byid("homeTasks").ontoggle = function () { if (this.open) Taskcenter.refresh(); };
+  try{var Logstyle=document.createElement("style");Logstyle.textContent=PlazCodeActionLog.CSS;(document.head||document.documentElement).appendChild(Logstyle);}catch(Error){}
+  var Actionlog = PlazCodeActionLog.mount(Byid("actionLog"), function (Request) { return Api("/api/checkpoints", {method:"POST",body:JSON.stringify(Request)}); });
+  var Actionlogtimer = null;
+  Byid("homeActionLog").ontoggle = function () { clearInterval(Actionlogtimer); Actionlogtimer = null; if (this.open) { Actionlog.refresh(); Actionlogtimer = setInterval(function () { if (!document.hidden) Actionlog.refresh(); }, 3000); } };
+  (function () {
+    var Folders = Byid("allowedFolders"), Save = Byid("saveAllowedFolders"), Status = Byid("allowedFoldersStatus");
+    Folders.oninput = function () { Folders.dataset.dirty = "1"; };
+    Save.onclick = function () {
+      var List = PlazCodeSafety.normalizeFolders(Folders.value);
+      Save.disabled = true;
+      Patchpref("rsAllowedFolders", List).then(function () { Folders.dataset.dirty = ""; Folders.value = List.join("\n"); Status.textContent = List.length ? "Saved" : "Saved: whole PC allowed"; }).catch(function (Error) { Status.textContent = Error && Error.message || String(Error); }).finally(function () { Save.disabled = false; setTimeout(function () { Status.textContent = ""; }, 2400); });
+    };
+  })();
   var Activityloading = false, Activitykey = '', Activityrevision = -1;
   Byid("homeActivity").ontoggle = function () { if (this.open) Refreshactivitydetails(); };
   function Refreshactivitydetails() {
@@ -894,6 +917,10 @@ __PLAZCODE_VERSION_UI__
       Appearancemigrated=true;
       var Legacy;try { Legacy=JSON.parse(window.localStorage.getItem('plazcodeDesktopAppearance') || 'null'); }catch(Error){}
       if(Legacy) Saveappearance();
+    }
+    var Folders = Byid("allowedFolders");
+    if (Folders && document.activeElement !== Folders && !Folders.dataset.dirty) {
+      Folders.value = (Array.isArray(Preferences.rsAllowedFolders) ? Preferences.rsAllowedFolders : []).join("\n");
     }
     var Instructions = Byid("customInstructions");
     if (!Instructionsdirty && document.activeElement !== Instructions) {
@@ -1419,6 +1446,7 @@ function pcEnhanceSelects(scopeRoots){
   let queued=false;
   const run=()=>{queued=false;try{document.querySelectorAll(scopeRoots.split(',').map(r=>r.trim()+' select').join(',')).forEach(pcEnhanceSelect);}catch{}};
   const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(run);};
+  if(typeof MutationObserver==='undefined'||typeof requestAnimationFrame==='undefined')return;
   new MutationObserver(muts=>{for(const m of muts){const t=m.target,el=t.nodeType===1?t:t.parentElement;if(!el)continue;
     if(el.closest&&el.closest(scopeRoots)){schedule();return;}
     if(el===document.body||el===document.documentElement){for(const n of m.addedNodes){if(n.nodeType===1&&((n.matches&&n.matches(scopeRoots))||(n.querySelector&&n.querySelector(scopeRoots)))){schedule();return;}}}}}).observe(document.documentElement,{childList:true,subtree:true});

@@ -7,7 +7,7 @@ const baseline = {
   "core/config.js": "54e14472bb723ed02c949c2a3db2c8aad26ce6f8",
   "core/headless-builder.js": "b343a897a17fc05d79ab469aeea55c8abaa8c4e5",
   "core/luau-knowledge.js": "234c1ca2155d3ef5f38927d85893b70fd6bde6e6",
-  "core/main.js": "304aaddecbdfade6dd2993388902c4f774b582a1",
+  "core/main.js": "fb26b9185dac0ebcaafb96a28ca2204562daf557",
   "core/motion-interchange.js": "038afa13a5b59c030a809abf7d617a36f2fae82d",
   "core/motion-preview.js": "ae0ab0526fbc762dfbf7cae9c248239e217e7a2f",
   "core/motion-tools.js": "8ac81b4a4a9f634fef9285aeee06db4a15af578e",
@@ -110,7 +110,7 @@ for (const forbidden of [
 for (const removed of ['Model Builder','UI Creator','modelWorkspace','uiWorkspace','PlazCodeCreatorUI','Mountbuilder','__PLAZCODE_CREATOR','__PLAZCODE_HEADLESS']) if (desktopHtml.includes(removed)) throw Error('Removed desktop creator leaked: '+removed);
 // Approved localization guards/hooks; behavioral Toolkit/Notifications fixtures remain.
 const toolkit=fs.readFileSync('core/toolkit-ui.js','utf8');if(crypto.createHash('sha256').update(toolkit.replace(/\r\n/g,'\n')).digest('hex')!=='75e54f096a1682f5fc545c6b69e3e52bfbb60fc7aabd4a966c3e04e7744f1320')throw Error('Toolkit localization baseline changed');
-const desktopScript = desktopHtml.match(/<script>([\s\S]*?)<\/script>/)?.[1]?.replace("__PLAZCODE_I18N_CATALOG__", "").replace("__PLAZCODE_I18N__", "").replace("__PLAZCODE_SKILLS_UI__", fs.readFileSync("core/skills-ui.js", "utf8")).replace("__PLAZCODE_EXPLORER_UI__", fs.readFileSync("core/explorer-ui.js", "utf8")).replace("__PLAZCODE_TOOLKIT_UI__", fs.readFileSync("core/toolkit-ui.js", "utf8")).replace("__PLAZCODE_TEMPLATE_UI__", fs.readFileSync("core/templates.js", "utf8")).replace("__PLAZCODE_TASK_UI__", fs.readFileSync("core/task-center.js", "utf8")).replace("__PLAZCODE_MEDIA_UI__", fs.readFileSync("core/media.js", "utf8")).replace("__PLAZCODE_MEMORY_UI__", fs.readFileSync("core/memory.js", "utf8")).replace("__PLAZCODE_VERSION_UI__", fs.readFileSync("core/version.js", "utf8")).replace(/__PLAZCODE_VERSION__/g, "1.19.33");
+const desktopScript = desktopHtml.match(/<script>([\s\S]*?)<\/script>/)?.[1]?.replace("__PLAZCODE_I18N_CATALOG__", "").replace("__PLAZCODE_I18N__", "").replace("__PLAZCODE_SKILLS_UI__", fs.readFileSync("core/skills-ui.js", "utf8")).replace("__PLAZCODE_EXPLORER_UI__", fs.readFileSync("core/explorer-ui.js", "utf8")).replace("__PLAZCODE_TOOLKIT_UI__", fs.readFileSync("core/toolkit-ui.js", "utf8")).replace("__PLAZCODE_TEMPLATE_UI__", fs.readFileSync("core/templates.js", "utf8")).replace("__PLAZCODE_TASK_UI__", fs.readFileSync("core/task-center.js", "utf8")).replace("__PLAZCODE_ACTION_LOG_UI__", fs.readFileSync("core/action-log.js", "utf8")).replace("__PLAZCODE_SAFETY_UI__", fs.readFileSync("core/safety.js", "utf8")).replace("__PLAZCODE_MEDIA_UI__", fs.readFileSync("core/media.js", "utf8")).replace("__PLAZCODE_MEMORY_UI__", fs.readFileSync("core/memory.js", "utf8")).replace("__PLAZCODE_VERSION_UI__", fs.readFileSync("core/version.js", "utf8")).replace(/__PLAZCODE_VERSION__/g, "1.19.33");
 if (!desktopScript) throw new Error("Desktop WebView script block missing");
 new Function(desktopScript);
 
