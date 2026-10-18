@@ -10,7 +10,7 @@ use serde_json::Value;
 /// engine counts as a change (deny by default).
 const LOCAL_READ: &[&str] = &[
     "workspace_info", "list_directory", "tree", "read_file", "read_file_base64", "search_files",
-    "grep_files", "file_info", "env_info", "process_list", "screen_capture", "list_windows",
+    "grep_files", "file_info", "env_info", "process_list", "screen_capture", "screen_record", "list_windows",
     "window_screenshot",
 ];
 

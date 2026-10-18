@@ -1094,45 +1094,111 @@ mod desktop {
 }
 
 #[cfg(windows)]
+/// The whole screen as an image (Windows).
+#[cfg(windows)]
+fn grab_screen() -> Result<image::RgbaImage, String> {
+    use desktop::*;
+    let (w, h) = unsafe { (GetSystemMetrics(0), GetSystemMetrics(1)) };
+    if w <= 0 || h <= 0 { return Err("could not read screen size".into()); }
+    let hdc = unsafe { GetDC(std::ptr::null_mut()) };
+    if hdc.is_null() { return Err("GetDC failed".into()); }
+    let memdc = unsafe { CreateCompatibleDC(hdc) };
+    let bmp = unsafe { CreateCompatibleBitmap(hdc, w, h) };
+    let old = unsafe { SelectObject(memdc, bmp) };
+    unsafe { BitBlt(memdc, 0, 0, w, h, hdc, 0, 0, SRCCOPY) };
+    let mut bi = BitmapInfoHeader::default();
+    bi.bi_size = std::mem::size_of::<BitmapInfoHeader>() as u32;
+    bi.bi_width = w;
+    bi.bi_height = -h;
+    bi.bi_planes = 1;
+    bi.bi_bit_count = 32;
+    bi.bi_compression = 0;
+    let mut buf = vec![0u8; (w * h * 4) as usize];
+    let got = unsafe { GetDIBits(memdc, bmp, 0, h as u32, buf.as_mut_ptr() as *mut std::ffi::c_void, &mut bi, DIB_RGB_COLORS) };
+    unsafe { SelectObject(memdc, old); DeleteObject(bmp); DeleteDC(memdc); ReleaseDC(std::ptr::null_mut(), hdc); }
+    if got == 0 { return Err("GetDIBits failed".into()); }
+    let mut img: image::RgbaImage = image::ImageBuffer::new(w as u32, h as u32);
+    for y in 0..h as u32 {
+        for x in 0..w as u32 {
+            let i = ((y * w as u32 + x) * 4) as usize;
+            let b = buf[i]; let g = buf[i + 1]; let r = buf[i + 2];
+            img.put_pixel(x, y, image::Rgba([r, g, b, 255]));
+        }
+    }
+    Ok(img)
+}
+
 pub async fn tool_screen_capture(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
     if !ws.full_access() { return Err("screen_capture requires FULL PC ACCESS (enable it from the PlazCode bar)".into()); }
     let path_rel = arg_str(args, "path").unwrap_or_else(|_| "screenshot.png".to_string());
     let dest = ws.resolve_path(path_rel.as_str(), false)?;
     #[cfg(windows)]
     {
-        use desktop::*;
-        let (w, h) = unsafe { (GetSystemMetrics(0), GetSystemMetrics(1)) };
-        if w <= 0 || h <= 0 { return Err("could not read screen size".into()); }
-        let hdc = unsafe { GetDC(std::ptr::null_mut()) };
-        if hdc.is_null() { return Err("GetDC failed".into()); }
-        let memdc = unsafe { CreateCompatibleDC(hdc) };
-        let bmp = unsafe { CreateCompatibleBitmap(hdc, w, h) };
-        let old = unsafe { SelectObject(memdc, bmp) };
-        unsafe { BitBlt(memdc, 0, 0, w, h, hdc, 0, 0, SRCCOPY) };
-        let mut bi = BitmapInfoHeader::default();
-        bi.bi_size = std::mem::size_of::<BitmapInfoHeader>() as u32;
-        bi.bi_width = w;
-        bi.bi_height = -h;
-        bi.bi_planes = 1;
-        bi.bi_bit_count = 32;
-        bi.bi_compression = 0;
-        let mut buf = vec![0u8; (w * h * 4) as usize];
-        let got = unsafe { GetDIBits(memdc, bmp, 0, h as u32, buf.as_mut_ptr() as *mut std::ffi::c_void, &mut bi, DIB_RGB_COLORS) };
-        unsafe { SelectObject(memdc, old); DeleteObject(bmp); DeleteDC(memdc); ReleaseDC(std::ptr::null_mut(), hdc); }
-        if got == 0 { return Err("GetDIBits failed".into()); }
-        let mut img: image::RgbaImage = image::ImageBuffer::new(w as u32, h as u32);
-        for y in 0..h as u32 {
-            for x in 0..w as u32 {
-                let i = ((y * w as u32 + x) * 4) as usize;
-                let b = buf[i]; let g = buf[i + 1]; let r = buf[i + 2];
-                img.put_pixel(x, y, image::Rgba([r, g, b, 255]));
-            }
-        }
+        let img = grab_screen()?;
         img.save(&dest).map_err(|e| format!("could not write PNG: {e}"))?;
-        return Ok(format!("Captured {}x{} screen to {}", w, h, ws.display(&dest)));
+        return Ok(format!("Captured {}x{} screen to {}", img.width(), img.height(), ws.display(&dest)));
     }
     #[cfg(not(windows))]
     { let _ = dest; Err("screen capture is Windows-only".into()) }
+}
+
+/// Which `count` of `total` frames to show: evenly spread, always including the first and last.
+pub fn sample_indices(total: usize, count: usize) -> Vec<usize> {
+    if total == 0 || count == 0 { return Vec::new(); }
+    if total <= count { return (0..total).collect(); }
+    if count == 1 { return vec![0]; }
+    (0..count).map(|i| i * (total - 1) / (count - 1)).collect()
+}
+
+/// A grid of the frames (3 across), each scaled to at most 640 pixels wide, so one picture shows the whole clip.
+pub fn contact_sheet(frames: &[image::RgbaImage]) -> Option<image::RgbaImage> {
+    if frames.is_empty() { return None; }
+    let cell_w = frames[0].width().min(640).max(1);
+    let cell_h = ((frames[0].height() as u64 * cell_w as u64) / frames[0].width().max(1) as u64).max(1) as u32;
+    let cols = frames.len().min(3) as u32;
+    let rows = (frames.len() as u32 + cols - 1) / cols;
+    let gap = 6u32;
+    let mut sheet = image::RgbaImage::from_pixel(cols * cell_w + (cols + 1) * gap, rows * cell_h + (rows + 1) * gap, image::Rgba([24, 24, 28, 255]));
+    for (i, frame) in frames.iter().enumerate() {
+        let small = image::imageops::resize(frame, cell_w, cell_h, image::imageops::FilterType::Triangle);
+        let (col, row) = (i as u32 % cols, i as u32 / cols);
+        image::imageops::overlay(&mut sheet, &small, (gap + col * (cell_w + gap)) as i64, (gap + row * (cell_h + gap)) as i64);
+    }
+    Some(sheet)
+}
+
+/// Record up to 5 seconds of the screen as numbered PNG frames plus one picture of sampled frames.
+pub async fn tool_screen_record(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
+    if !ws.full_access() { return Err("screen_record requires FULL PC ACCESS (enable it from the PlazCode bar)".into()); }
+    let seconds = args.get("seconds").and_then(|v| v.as_f64()).unwrap_or(3.0).clamp(1.0, 5.0);
+    let fps = args.get("fps").and_then(|v| v.as_f64()).unwrap_or(2.0).clamp(1.0, 4.0);
+    let folder_rel = arg_str(args, "path").unwrap_or_else(|_| "recording".to_string());
+    let folder = ws.resolve_path(folder_rel.as_str(), false)?;
+    #[cfg(windows)]
+    {
+        std::fs::create_dir_all(&folder).map_err(|e| format!("could not create the folder: {e}"))?;
+        let total = ((seconds * fps).round() as usize).clamp(2, 20);
+        let gap = std::time::Duration::from_secs_f64(1.0 / fps);
+        let started = std::time::Instant::now();
+        let mut frames = Vec::with_capacity(total);
+        for index in 0..total {
+            let due = gap * index as u32;
+            if let Some(wait) = due.checked_sub(started.elapsed()) { tokio::time::sleep(wait).await; }
+            let frame = tokio::task::spawn_blocking(grab_screen).await.map_err(|e| format!("capture failed: {e}"))??;
+            frame.save(folder.join(format!("frame_{:02}.png", index + 1))).map_err(|e| format!("could not write a frame: {e}"))?;
+            frames.push(frame);
+        }
+        let picks = sample_indices(frames.len(), 6);
+        let chosen: Vec<image::RgbaImage> = picks.iter().map(|&i| frames[i].clone()).collect();
+        let sheet = contact_sheet(&chosen).ok_or("nothing was captured")?;
+        let sheet_path = folder.join("sheet.png");
+        sheet.save(&sheet_path).map_err(|e| format!("could not write the sheet: {e}"))?;
+        let list: Vec<String> = picks.iter().map(|i| (i + 1).to_string()).collect();
+        return Ok(format!("Recorded {} frames over {:.1}s ({}x{}) into {}. One picture of frames {} is at {} - attach it with attach_feedback {{path}} to see the clip.",
+            frames.len(), started.elapsed().as_secs_f64(), frames[0].width(), frames[0].height(), ws.display(&folder), list.join(", "), ws.display(&sheet_path)));
+    }
+    #[cfg(not(windows))]
+    { let _ = (folder, seconds, fps); Err("screen recording is Windows-only".into()) }
 }
 
 #[cfg(windows)]
@@ -1362,6 +1428,8 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
         #[cfg(windows)]
         "screen_capture" => tool_screen_capture(ws, a).await,
         #[cfg(windows)]
+        "screen_record" => tool_screen_record(ws, a).await,
+        #[cfg(windows)]
         "mouse_move" => tool_mouse_move(ws, a).await,
         #[cfg(windows)]
         "mouse_click" => tool_mouse_click(ws, a).await,
@@ -1379,7 +1447,7 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
             "unknown tool '{other}'. Available AgentScript tools: workspace_info, list_directory, tree, \
 read_file, read_file_base64, write_file, edit_file, create_folder, delete_path, move_path, search_files, grep_files, \
 run_command, file_info, env_info, process_list, process_kill (FULL mode), open_path, download_file, \
-screen_capture / mouse_move / mouse_click / key_type / list_windows / focus_window / launch_app / window_screenshot (FULL mode, desktop control). \
+screen_capture / screen_record / mouse_move / mouse_click / key_type / list_windows / focus_window / launch_app / window_screenshot (FULL mode, desktop control). \
 Read any file as base64 (attachments/images) with read_file_base64 {{path}}. \
 Call list_commands for full parameter details."
         )),
@@ -1420,11 +1488,12 @@ pub fn catalog() -> Vec<serde_json::Value> {
         serde_json::json!({"name": "list_windows", "description": "List visible top-level windows (hwnd + title). Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({}), &[])}),
         serde_json::json!({"name": "focus_window", "description": "Bring the first visible window whose title contains 'title' to the foreground. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"title": {"type": "string"}}), &["title"])}),
         serde_json::json!({"name": "launch_app", "description": "Launch an executable directly by name or path (e.g. 'notepad', 'calc', or a full .exe path); use argv (array of strings) for paths with spaces, or legacy simple args. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"target": {"type": "string"}, "args": {"type": "string"}, "argv": {"type":"array", "items":{"type":"string"}}}), &["target"])}),
+        serde_json::json!({"name": "screen_record", "description": "Record up to 5 seconds of the screen (seconds 1-5, fps 1-4) as numbered PNG frames in a folder plus sheet.png, one picture of the sampled frames. Attach sheet.png with attach_feedback to see the clip. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"seconds": {"type": "number"}, "fps": {"type": "number"}, "path": {"type": "string"}}), &[])}),
         serde_json::json!({"name": "window_screenshot", "description": "Capture a single window (by title substring, or the first window) to a PNG. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"title": {"type": "string"}, "path": {"type": "string"}}), &[])}),
     ].into_iter().filter(|tool| {
         if cfg!(windows) { return true; }
         match tool["name"].as_str().unwrap_or("") {
-            "screen_capture"|"mouse_move"|"mouse_click"|"key_type"|"list_windows"|"focus_window"|"window_screenshot"=>false,
+            "screen_capture"|"screen_record"|"mouse_move"|"mouse_click"|"key_type"|"list_windows"|"focus_window"|"window_screenshot"=>false,
             "launch_app"=>cfg!(target_os="macos"),
             _=>true
         }
@@ -1433,6 +1502,23 @@ pub fn catalog() -> Vec<serde_json::Value> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn recording_samples_spread_frames_and_sheet_holds_them_all() {
+        assert_eq!(sample_indices(0, 6), Vec::<usize>::new());
+        assert_eq!(sample_indices(4, 6), vec![0, 1, 2, 3]);
+        assert_eq!(sample_indices(20, 6), vec![0, 3, 7, 11, 15, 19]);
+        assert_eq!(sample_indices(20, 1), vec![0]);
+        let frames: Vec<image::RgbaImage> = (0..5).map(|n| image::RgbaImage::from_pixel(1280, 720, image::Rgba([n * 40, 10, 10, 255]))).collect();
+        let sheet = contact_sheet(&frames).unwrap();
+        // 3 across, 2 rows, each cell 640x360, 6px gaps.
+        assert_eq!((sheet.width(), sheet.height()), (3 * 640 + 4 * 6, 2 * 360 + 3 * 6));
+        assert_eq!(sheet.get_pixel(6 + 5, 6 + 5).0[0], 0, "first frame in the first cell");
+        assert_eq!(sheet.get_pixel(6 + 640 + 6 + 5, 6 + 5).0[0], 40, "second frame in the second cell");
+        assert!(contact_sheet(&[]).is_none());
+        let tiny = contact_sheet(&[image::RgbaImage::from_pixel(100, 50, image::Rgba([1, 2, 3, 255]))]).unwrap();
+        assert_eq!((tiny.width(), tiny.height()), (100 + 12, 50 + 12));
+    }
     #[tokio::test]
     async fn recorded_command_outcome_ignores_spoofed_stdout() {
         let dir=std::env::temp_dir().join(format!("plazcode-learning-command-{}",std::process::id()));

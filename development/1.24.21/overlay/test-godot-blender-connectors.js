@@ -21,4 +21,6 @@ for (const name of ['blender__look', 'blender__execute_blender_code', 'godot__ru
 for (const name of ['blender__look', 'blender__get_scene_info', 'godot__get_debug_output', 'godot__list_projects', 'godot__get_project_info', 'godot__get_godot_version']) assert.equal(Safety.isChange(name, 'roblox'), false, name + ' only looks');
 for (const name of ['blender__execute_blender_code', 'blender__import_asset', 'godot__run_project', 'godot__stop_project', 'godot__create_scene', 'godot__add_node', 'godot__save_scene', 'godot__launch_editor']) assert.equal(Safety.isChange(name, 'roblox'), true, name + ' changes things');
 assert.equal(Log.describe({ tool: 'blender__look' }).look, true, 'a Blender screenshot is a look in the log');
+assert.equal(Safety.isChange('screen_record', 'local'), false, 'recording the screen only looks');
+assert.equal(Log.describe({ tool: 'screen_record' }).look, true);
 console.log('PASS Godot and Blender connectors: pinned, telemetry off, old installs upgraded, data-sharing tools hidden, Safety classifies both.');
