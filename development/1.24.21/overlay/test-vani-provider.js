@@ -37,6 +37,8 @@ function load(url, body) {
   assert.equal(p.userCount(), 1); assert.equal(p.assistantCount(), 1);
   assert.match(p.readAssistant().reply, /list_commands/);
   assert.equal(p.conversationKey(), 'abc123');
+  for (const fresh of ['/c', '/chat', '/']) { w.history.replaceState({}, '', fresh); assert.equal(p.conversationKey(), '', 'a new chat with no id reports no key at ' + fresh); }
+  w.history.replaceState({}, '', '/chat/0a169bbd-1473-40c1-9842-271055e66b19'); assert.equal(p.conversationKey(), '0a169bbd-1473-40c1-9842-271055e66b19');
   assert.equal(p.loginGatePresent(), false, 'anonymous chat is not a sign-in wall');
   assert.equal(p.modeWarning(), '');
   w.close(); }

@@ -459,7 +459,10 @@ const RSProvider = (() => {
 
   const conversationKey = () => {
     const m = (location.pathname || "").match(/\/(?:chat|c|conversation|thread)\/([A-Za-z0-9_-]+)/);
-    return m ? m[1] : location.pathname;
+    // A brand-new chat (/c or /chat) has no id yet: report "" like the other
+    // sites do, so the core can tell "this chat just got its address" apart from
+    // "this is a different chat".
+    return m ? m[1] : "";
   };
 
   function installSendHooks(handlers) {

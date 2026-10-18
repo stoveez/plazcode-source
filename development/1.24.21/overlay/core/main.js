@@ -1084,7 +1084,7 @@
     // different conversation, send, or logical assistant turn.
     const sendOwner = { session: A.sessionGen, sendToken: A.sendToken };
     const readChat = () => P.conversationKey ? P.conversationKey() : null;
-    const sendChat = readChat();
+    let sendChat = readChat();
     const toolResponse = (calls, item, text, token, chat) => ({
       kind: "tool", calls, item, text,
       responseOwner: { ...sendOwner, token, chat, item },
@@ -1223,6 +1223,13 @@
       // up" symptom (scrolling re-attached old turns and bumped the count).
       const curTok = P.lastAssistantId ?  P.lastAssistantId() : undefined;
       const chat = readChat();
+      // A brand-new chat that gets its address a moment after the send (Vani
+      // assigns /chat/<id> about a second later) is the SAME chat gaining its id,
+      // not a different conversation: adopt the id instead of abandoning the reply.
+      if (!sendChat && chat && A.sessionGen === sendOwner.session && A.sendToken === sendOwner.sendToken) {
+        diag("response.chatIdAssigned", {});
+        sendChat = chat;
+      }
       if (A.sessionGen !== sendOwner.session || A.sendToken !== sendOwner.sendToken || chat !== sendChat) {
         diag("response.ownerChanged", {});
         return { kind: "stopped" };

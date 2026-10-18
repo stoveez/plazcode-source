@@ -23,7 +23,8 @@
   ],
   "fixed": [
     "On sites that redraw the whole page, like Vani AI, the PlazCode bar no longer loses its colours and shows black labels.",
-    "Stray marks no longer appear in the top-left corner of the PlazCode bar with the Starglaze, Sakura, Autumn and Blood Moon themes. The Ultra glow is one clean line again."
+    "Stray marks no longer appear in the top-left corner of the PlazCode bar with the Starglaze, Sakura, Autumn and Blood Moon themes. The Ultra glow is one clean line again.",
+    "Starting the agent in a brand-new chat now works on sites that give the chat its address a moment after you send, like Vani AI. Before, the bar could drop to \"Not connected to this chat yet\" right after Start Agent."
   ],
   "notes": [
     "Read-only mode and delete confirmations are checked twice: in the browser and again in the PlazCode app.",
@@ -57,7 +58,8 @@
           "Selected Effort and Access options are easier to read, and spacing is tidier for Stop mode, Save and Memory summary.",
           "The AI no longer asks you to turn on Full PC access when it is already on.",
           "The PlazCode bar keeps its colours on sites that redraw the whole page, like Vani AI.",
-          "No more stray marks in the bar's top-left corner with some themes."
+          "No more stray marks in the bar's top-left corner with some themes.",
+          "Start Agent works in a brand-new Vani AI chat; the bar no longer drops to \"Not connected\" while the AI is still replying."
         ]
       },
       {
