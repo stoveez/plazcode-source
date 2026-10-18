@@ -18,7 +18,9 @@ async function run(page, assignAfterMs) {
       setTimeout(() => { const ack = sent[n - 1].text.match(/More context follows\. Reply with exactly "([^"]+)"/); addItem('assistant', n === 1 ? '```json\n{"command":"list_commands"}\n```' : (ack ? ack[1] : 'PlazCode is ready.'), 'ai-' + n); }, assignAfterMs + 250);
     };
     const result = await fixture.startSession();
-    return {started: fixture.A.started, starting: fixture.A.starting, ready: !!(result && result.ready), key: window.__key};
+    await new Promise((r) => setTimeout(r, 800)); // let the page's sweep redraw the chips
+    const chips = [...document.querySelectorAll('.rs-chip')].map((c) => c.className);
+    return {started: fixture.A.started, starting: fixture.A.starting, ready: !!(result && result.ready), key: window.__key, chips};
   }, assignAfterMs);
 }
 
@@ -30,6 +32,8 @@ async function run(page, assignAfterMs) {
       const result = await run(page, delay);
       assert.deepEqual([result.started, result.starting, result.ready], [true, false, true], 'startup finishes after the id arrives at +' + delay + 'ms: ' + JSON.stringify(result));
       assert.equal(result.key, 'abc-123');
+      assert(result.chips.length > 0, 'the startup command shows a chip');
+      assert(!result.chips.some((c) => /\bidle\b/.test(c)), 'the startup command is not shown as "not run": ' + JSON.stringify(result.chips));
       assert.deepEqual(errors, []);
       await page.close();
     }

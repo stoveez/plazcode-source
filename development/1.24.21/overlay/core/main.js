@@ -1229,6 +1229,7 @@
       if (!sendChat && chat && A.sessionGen === sendOwner.session && A.sendToken === sendOwner.sendToken) {
         diag("response.chatIdAssigned", {});
         sendChat = chat;
+        try { adoptChatId(chat); } catch {}
       }
       if (A.sessionGen !== sendOwner.session || A.sendToken !== sendOwner.sendToken || chat !== sendChat) {
         diag("response.ownerChanged", {});
@@ -4402,6 +4403,17 @@ return result`;
       }
     }
     return null;
+  }
+  // A brand-new chat is remembered under an empty address until the site
+  // assigns one (Vani). Re-file those memories under the real address so the
+  // startup command keeps its "ran" state instead of falling back to "not run".
+  function adoptChatId(chat) {
+    if (!chat) return;
+    const refile = (map) => { for (const [key, value] of [...map]) if (key.startsWith("|")) { map.delete(key); map.set(chat + key, value); } };
+    refile(executed); refile(halted);
+    for (const [key, value] of [...startupOutcomes]) if (key.startsWith("|")) {
+      startupOutcomes.delete(key); startupOutcomes.set(chat + key, {...value, key: chat + key, chat});
+    }
   }
   let reliabilitySettings={rsToolBudget:0,rsTaskMinutes:0,rsRunLimitsEnabled:false,rsVisualCheck:true,rsContinuationOffer:true,rsCommandCooldown:0},savedHandoff=null;
   const normalizeReliability = value => ({rsRunLimitsEnabled:value.rsRunLimitsEnabled===true,rsToolBudget:Math.max(0,Math.min(1000,Number.isFinite(Number(value.rsToolBudget))?Math.floor(Number(value.rsToolBudget)):0)),rsTaskMinutes:Math.max(0,Math.min(240,Number.isFinite(Number(value.rsTaskMinutes))?Math.floor(Number(value.rsTaskMinutes)):0)),rsVisualCheck:value.rsVisualCheck!==false,rsContinuationOffer:value.rsContinuationOffer!==false,rsCommandCooldown:normalizeCooldown(value.rsCommandCooldown)});

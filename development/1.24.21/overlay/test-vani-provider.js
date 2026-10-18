@@ -39,6 +39,11 @@ function load(url, body) {
   assert.equal(p.conversationKey(), 'abc123');
   for (const fresh of ['/c', '/chat', '/']) { w.history.replaceState({}, '', fresh); assert.equal(p.conversationKey(), '', 'a new chat with no id reports no key at ' + fresh); }
   w.history.replaceState({}, '', '/chat/0a169bbd-1473-40c1-9842-271055e66b19'); assert.equal(p.conversationKey(), '0a169bbd-1473-40c1-9842-271055e66b19');
+  { // Vani redraws a reply's element after the chat gets its address: the key follows the turn, not the element.
+    const turn = w.document.querySelector('[data-turn-id="2"]'), key = p.itemKey(turn);
+    const redrawn = turn.cloneNode(true); turn.replaceWith(redrawn);
+    assert.equal(p.itemKey(redrawn), key, 'turn key survives the redraw');
+    assert.notEqual(p.itemKey(w.document.querySelector('[data-turn-id="1"]')), key, 'turns have different keys'); }
   assert.equal(p.loginGatePresent(), false, 'anonymous chat is not a sign-in wall');
   assert.equal(p.modeWarning(), '');
   w.close(); }

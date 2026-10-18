@@ -193,6 +193,10 @@ const RSProvider = (() => {
   let _idSeq = 0;
   function itemKey(item) {
     if (!item) return null;
+    // Vani redraws a reply's element once the chat gets its address, so a key
+    // tied to the element would change; the turn's own id survives the redraw.
+    const turn = safeRead(() => item.getAttribute("data-turn-id"), null);
+    if (turn) return "t" + turn;
     let id = _idMap.get(item);
     if (!id) { id = ++_idSeq; _idMap.set(item, id); }
     return id;
