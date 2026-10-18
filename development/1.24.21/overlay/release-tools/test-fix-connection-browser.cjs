@@ -69,6 +69,18 @@ async function checks(browser, name) {
     assert.deepEqual(errors, []); await page.close();
     console.log('PASS ' + name + ' Fix connection explains a closed PlazCode app'); }
 
+  // 3b. Panel updates by itself when the app comes up later (no click).
+  { const {page, errors} = await pageFor(browser, false, true);
+    await mockBridge(page, {comesBack: false});
+    await page.locator('#rs-fix').click();
+    await waitDone(page);
+    assert.equal(await steps(page), 'extension:ok app:action');
+    await page.evaluate(() => { bridge.up = true; });
+    await page.waitForFunction(() => /app:ok/.test([...document.querySelectorAll('#rs-fix-list li')].map(li => li.dataset.step + ':' + li.dataset.state).join(' ')), null, {timeout: 15000});
+    assert.equal(await page.locator('#rs-fix-panel').isVisible(), true, 'panel stays open');
+    assert.deepEqual(errors, []); await page.close();
+    console.log('PASS ' + name + ' Fix connection panel updates by itself'); }
+
   // 4. Studio open with its MCP off: one restart, fixed.
   { const {page, errors} = await pageFor(browser, false, true);
     await mockBridge(page, {comesBack: true, studio: 'mcp-off'});

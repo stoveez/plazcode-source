@@ -6004,19 +6004,20 @@ return result`;
     // Runs PlazCodeConnectionDoctor: safe fixes (reconnect the app, restart a
     // dead Studio connection once, re-find the chat box) happen automatically;
     // anything that would send to the AI (Start/Restart Agent) needs a click.
-    let fixBtn = null, fixPanel = null, fixRunning = false, fixNext = "";
+    let fixBtn = null, fixPanel = null, fixRunning = false, fixNext = "", fixTimer = null;
+    function stopFixTimer() { if (fixTimer) { clearInterval(fixTimer); fixTimer = null; } }
     function setupFixConnection() {
       fixBtn = root.querySelector("#rs-fix");
       fixPanel = root.querySelector("#rs-fix-panel");
       if (!fixBtn || !fixPanel) return;
       const style = document.createElement("style");
-      style.textContent = "#rs-fix-panel[hidden]{display:none!important}#rs-fix-panel{position:fixed;right:16px;bottom:90px;z-index:2147483000;width:390px;max-width:calc(100vw - 32px);max-height:70vh;overflow:auto;padding:16px 18px;background:#091522;color:#f5f8ff;border:1px solid #ff9226;border-radius:14px;box-shadow:0 12px 40px #0008;font:13px/1.5 system-ui}.rs-fix-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}#rs-fix-close{background:none;border:0;color:#fff;font-size:24px;cursor:pointer}#rs-fix-list{list-style:none;margin:0;padding:0}#rs-fix-list li{display:flex;gap:8px;padding:6px 0;border-top:1px solid #ffffff14}#rs-fix-list li:first-child{border-top:0}#rs-fix-list .rs-fix-icon{flex:0 0 18px;text-align:center}.rs-fix-acts{display:flex;gap:8px;margin-top:12px}.rs-fix-acts button{padding:8px 13px;border-radius:8px;border:1px solid #ff922699;background:transparent;color:#fff;font-weight:600;cursor:pointer}#rs-fix-go{background:linear-gradient(180deg,#ffc052,#ff9226);color:#09111d;border:0}.rs-fix-acts button:disabled{opacity:.55;cursor:wait}";
+      style.textContent = "#rs-fix-panel[hidden]{display:none!important}#rs-fix-panel{position:fixed;right:16px;bottom:90px;z-index:2147483000;width:390px;max-width:calc(100vw - 32px);max-height:70vh;overflow:auto;padding:16px 18px;background:var(--pc-bg,#091522);color:#f5f8ff;border:1px solid var(--pc-accent,#ff9226);border-radius:14px;box-shadow:0 12px 40px #0008;font:13px/1.5 system-ui}.rs-fix-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}#rs-fix-close{background:none;border:0;color:#fff;font-size:24px;cursor:pointer}#rs-fix-list{list-style:none;margin:0;padding:0}#rs-fix-list li{display:flex;gap:8px;padding:6px 0;border-top:1px solid #ffffff14}#rs-fix-list li:first-child{border-top:0}#rs-fix-list .rs-fix-icon{flex:0 0 18px;text-align:center}.rs-fix-acts{display:flex;gap:8px;margin-top:12px}.rs-fix-acts button{padding:8px 13px;border-radius:8px;border:1px solid var(--pc-accent,#ff9226)99;background:transparent;color:#fff;font-weight:600;cursor:pointer}#rs-fix-go{background:linear-gradient(135deg,var(--pc-light,#ffc052),var(--pc-accent,#ff9226));color:#09111d;border:0}.rs-fix-acts button:disabled{opacity:.55;cursor:wait}";
       root.appendChild(style);
       fixBtn.addEventListener("click", () => openFixConnection());
-      root.querySelector("#rs-fix-close").addEventListener("click", () => { fixPanel.hidden = true; });
+      root.querySelector("#rs-fix-close").addEventListener("click", () => { fixPanel.hidden = true; stopFixTimer(); });
       root.querySelector("#rs-fix-again").addEventListener("click", () => runFixConnection());
       root.querySelector("#rs-fix-go").addEventListener("click", () => {
-        const next = fixNext; fixPanel.hidden = true;
+        const next = fixNext; fixPanel.hidden = true; stopFixTimer();
         diag("doctor.action", { action: next });
         if (next === "reload") location.reload();
         else if (next === "start") { try { playSfx("start"); } catch {} startSession(); }
@@ -6027,6 +6028,9 @@ return result`;
       if (!fixPanel) return;
       fixPanel.hidden = false;
       runFixConnection();
+      // Keep the panel up to date by itself while it is open (checks only; no restarts).
+      stopFixTimer();
+      fixTimer = setInterval(() => { if (fixPanel.hidden) stopFixTimer(); else runFixConnection(true); }, 1000);
     }
     function renderFixSteps(steps) {
       const list = root.querySelector("#rs-fix-list");
@@ -6038,15 +6042,17 @@ return result`;
         li.dataset.step = step.id; li.dataset.state = step.state;
         const icon = document.createElement("span"); icon.className = "rs-fix-icon"; icon.textContent = icons[step.state] || "•";
         const text = document.createElement("span"); text.textContent = step.text;
-        li.append(icon, text); list.appendChild(li);
+        li.append(icon, text);
+        if (step.detail) { const d = document.createElement("small"); d.className = "rs-fix-detail"; d.style.cssText = "display:block;opacity:.6;font-size:11px;margin-top:3px;word-break:break-word"; d.textContent = step.detail; text.appendChild(d); }
+        list.appendChild(li);
       }
     }
-    async function runFixConnection() {
+    async function runFixConnection(passive = false) {
       if (fixRunning || typeof PlazCodeConnectionDoctor === "undefined") return;
-      fixRunning = true; fixNext = "";
+      fixRunning = true;
       const go = root.querySelector("#rs-fix-go"), again = root.querySelector("#rs-fix-again");
-      go.hidden = true; again.disabled = true;
-      renderFixSteps([{ id: "start", state: "working", text: (globalThis.PlazCodeI18n?.t || (x => x))("Checking the connection…") }]);
+      if (!passive) { fixNext = ""; go.hidden = true; again.disabled = true; }
+      if (!passive) renderFixSteps([{ id: "start", state: "working", text: (globalThis.PlazCodeI18n?.t || (x => x))("Checking the connection…") }]);
       const status = async () => {
         const s = await bg({ type: "status" });
         if (s && s.kind === "stale-extension") { staleExtensionAlert(); return { connected: false, stale: true }; }
@@ -6067,20 +6073,21 @@ return result`;
           status,
           reconnect: () => bg({ type: "reconnect" }),
           restartMcp: () => bg({ type: "restart_mcp" }),
-        }, { onStep: (step, steps) => renderFixSteps(steps) });
+        }, passive ? { passive: true, bridgeWaitMs: 300, mcpWaitMs: 300, stepMs: 150 } : { onStep: (step, steps) => renderFixSteps(steps) });
+        if (passive && fixPanel.hidden) return;
         renderFixSteps(result.steps);
-        fixNext = result.action;
+        fixNext = result.action; go.hidden = true;
         diag("doctor.result", { steps: result.steps.map(x => x.id + ":" + x.state).join(" "), action: result.action });
         if (fixNext) {
           go.textContent = (globalThis.PlazCodeI18n?.t || (x => x))(fixNext === "reload" ? "Refresh page" : "Connect this chat");
           go.hidden = false;
         }
       } catch (e) {
-        renderFixSteps([{ id: "error", state: "action", text: (globalThis.PlazCodeI18n?.t || (x => x))("The check could not finish. Refresh the page and try again.") }]);
+        if (!passive) renderFixSteps([{ id: "error", state: "action", text: (globalThis.PlazCodeI18n?.t || (x => x))("The check could not finish. Refresh the page and try again.") }]);
         diag("doctor.error", { error: String(e && e.message || e) });
       } finally {
         fixRunning = false; again.disabled = false;
-        try { renderBar(); } catch {}
+        if (!passive) try { renderBar(); } catch {}
       }
     }
     function onActionClick() {

@@ -35,7 +35,7 @@ const PlazCodeConnectionDoctor = (() => {
 
   // ctx: { stale, engine, status, chatConnected, chatAction ("start"|"restart"|""), composer() }
   // act: { status(), reconnect(), restartMcp() }
-  // opts: { bridgeWaitMs, mcpWaitMs, stepMs, onStep(step) }
+  // opts: { bridgeWaitMs, mcpWaitMs, stepMs, onStep(step), passive }  (passive = background re-check: no restarts, no progress rows)
   async function run(ctx, act, opts = {}) {
     const steps = [], push = step => { steps.push(step); try { opts.onStep && opts.onStep(step, steps); } catch {} return step; };
     const stepMs = opts.stepMs ?? 1000, done = action => ({ steps, action: action || "" });
@@ -52,18 +52,21 @@ const PlazCodeConnectionDoctor = (() => {
     // 2. The PlazCode desktop app must be reachable.
     let status = ctx.status || {};
     if (!status.connected) {
-      push({ id: "app", state: "working", text: tr("Reconnecting to the PlazCode app…") });
+      if (!opts.passive) push({ id: "app", state: "working", text: tr("Reconnecting to the PlazCode app…") });
       try { await act.reconnect(); } catch {}
       status = await waitUntil(s => !!(s && s.connected), act.status, opts.bridgeWaitMs ?? 10000, stepMs) || {};
       if (!status.connected) {
-        const pairing = /pair|token|protocol/i.test(String(status.bridge_error || ""));
-        steps.pop();
+        // Only an explicit HTTP 401/403 from the app is a refusal. "Failed to fetch",
+        // timeouts and aborted requests just mean the app is not running.
+        const pairing = /\bHTTP 40[13]\b/.test(String(status.bridge_error || ""));
+        if (!opts.passive) steps.pop();
         push({ id: "app", state: "action", text: pairing
           ? tr("The PlazCode app refused this browser. Close and reopen the PlazCode app, then click Fix connection again.")
-          : tr("The PlazCode app isn't running. Open PlazCode on your computer, then click Fix connection again.") });
+          : tr("The PlazCode app isn't running. Open PlazCode on your computer, then click Fix connection again."),
+          detail: String(status.bridge_error || "").replace(/\s+/g, " ").slice(0, 240) });
         return done("");
       }
-      steps.pop();
+      if (!opts.passive) steps.pop();
       push({ id: "app", state: "fixed", text: tr("Reconnected to the PlazCode app.") });
     } else {
       push({ id: "app", state: "ok", text: tr("The PlazCode app is connected.") });
@@ -75,7 +78,7 @@ const PlazCodeConnectionDoctor = (() => {
       status = await waitUntil(s => { const e = engineState(s, engine); return e.ok || !e.checking; }, act.status, opts.mcpWaitMs ?? 15000, stepMs) || status;
       eng = engineState(status, engine);
     }
-    if (!eng.ok && engine === "roblox" && eng.studioOpen && eng.mcpOff) {
+    if (!eng.ok && engine === "roblox" && eng.studioOpen && eng.mcpOff && !opts.passive) {
       // Studio is open but its connection died: restart it once.
       push({ id: "engine", state: "working", text: tr("Restarting the connection to {tool}…", { tool }) });
       try { await act.restartMcp(); } catch {}

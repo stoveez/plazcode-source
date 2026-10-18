@@ -40,10 +40,14 @@ const ids = r => r.steps.map(s => s.id + ":" + s.state).join(" ");
     const r = await D.run({ engine: "roblox", status: { connected: false }, composer: ready }, act, fast);
     assert.equal(ids(r), "extension:ok app:action"); assert.match(r.steps[1].text, /Open PlazCode on your computer/); }
 
-  // Pairing error gets its own message.
-  { const { act } = actions([{ connected: false, bridge_error: "pairing token rejected" }]);
+  // Only an explicit HTTP 401/403 refusal gets the "refused" message.
+  { const { act } = actions([{ connected: false, bridge_error: "Local bridge pairing failed: Automatic pairing failed (HTTP 403). Update the desktop and extension together" }]);
     const r = await D.run({ engine: "roblox", status: { connected: false }, composer: ready }, act, fast);
     assert.match(r.steps[1].text, /refused this browser/); }
+  // A closed app makes the pairing request fail to fetch: that is "not running", not "refused".
+  { const { act } = actions([{ connected: false, bridge_error: "Local bridge pairing failed: Failed to fetch. In Edge or Brave, check that PlazCode is enabled" }]);
+    const r = await D.run({ engine: "roblox", status: { connected: false }, composer: ready }, act, fast);
+    assert.match(r.steps[1].text, /isn't running/); }
 
   // Studio open, MCP off: restart MCP once; comes back -> fixed.
   { const down = { connected: true, studioProc: true, studioApp: false, roblox_connected: false };
