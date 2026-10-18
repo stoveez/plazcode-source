@@ -1652,8 +1652,11 @@
       let env = "";
       if (local) {
         const root = typeof bridge.local_root === "string" ? bridge.local_root : "";
-        const full = bridge.local_full === true;
+        // The agent's own flag is the truth; before its first status arrives, trust the menu choice.
+        const full = bridge.local_full === true || (typeof bridge.local_full !== "boolean" && perm === "full");
         env = ` | WORKSPACE ${root || "active"} | ${full ? "FULL PC" : "SANDBOX"}`;
+        if (full) env += " | ACCESS ALREADY ON: never ask the user to turn on Full access or change Permissions, just run the tool";
+        else if (perm === "full") env += " | MENU=Full, agent still applying it: retry the tool once before saying anything about access";
       } else {
         env = connected ? " | STUDIO LINKED" : " | STUDIO UNLINKED";
       }
