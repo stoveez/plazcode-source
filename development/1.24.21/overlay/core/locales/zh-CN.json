@@ -975,5 +975,8 @@
   "Fetching the link…": "正在获取链接…",
   "Share code copied. Paste it anywhere; the other person pastes it into Import.": "分享码已复制。粘贴到任何地方；对方把它粘贴到“导入”中。",
   "Select the code above and copy it.": "选中上面的代码并复制。",
-  "Save a skill first, then share it here.": "先保存一个技能，再在这里分享。"
+  "Save a skill first, then share it here.": "先保存一个技能，再在这里分享。",
+  "15 browser AIs + Ollama": "15 款浏览器 AI + Ollama",
+  "Open Vani AI in the browser": "在浏览器中打开 Vani AI",
+  "Vani AI": "Vani AI"
 }

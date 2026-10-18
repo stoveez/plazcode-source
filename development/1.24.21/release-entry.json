@@ -12,7 +12,8 @@
     "It checks five things in order: the page, the PlazCode app, Roblox Studio (or AgentScript), the chat box, and whether PlazCode is connected to this chat.",
     "It fixes safe things on its own: it reconnects to the PlazCode app, restarts a dropped Roblox Studio connection once, and looks for the chat box again.",
     "For everything else it tells you exactly what to do, like \"Open Roblox Studio\" or \"Refresh the page\", with a button for the next step.",
-    "Co-work follow-ups: press Ctrl+Enter (Cmd+Enter on Mac) to send your queued follow-ups right now. It stops the AI's current reply and sends them at once, instead of waiting for the next safe moment. A small hint under queued follow-ups reminds you."
+    "Co-work follow-ups: press Ctrl+Enter (Cmd+Enter on Mac) to send your queued follow-ups right now. It stops the AI's current reply and sends them at once, instead of waiting for the next safe moment. A small hint under queued follow-ups reminds you.",
+    "Vani AI (c.vani.ai) is now a supported chat. Open it and PlazCode's bar appears, no sign-up needed. It's also in the app's list of supported AIs."
   ],
   "improved": [
     "Dropdown lists in PlazCode now use PlazCode's own rounded, themed menus in the app, the extension and the popup, with a clean arrow.",
@@ -20,7 +21,9 @@
     "Spacing is tidier for the Stop mode, Save and Memory summary controls.",
     "The AI no longer asks you to turn on Full PC access when it is already on."
   ],
-  "fixed": [],
+  "fixed": [
+    "On sites that redraw the whole page, like Vani AI, the PlazCode bar no longer loses its colours and shows black labels."
+  ],
   "notes": [
     "Read-only mode and delete confirmations are checked twice: in the browser and again in the PlazCode app.",
     "Undo only puts back a file if nobody changed it after the AI did, so your own edits are never overwritten.",
@@ -42,7 +45,8 @@
           "A 🔧 Fix connection button appears in the PlazCode bar whenever something isn't connected, and in the PlazCode popup.",
           "It checks the page, the PlazCode app, Roblox Studio or AgentScript, the chat box, and this chat, in that order.",
           "It reconnects the PlazCode app and a dropped Roblox Studio connection by itself, and tells you in plain words what to do about anything else.",
-          "Co-work: press Ctrl+Enter to send queued follow-ups right now. It stops the AI's current reply and sends them at once. A hint under queued follow-ups shows the shortcut."
+          "Co-work: press Ctrl+Enter to send queued follow-ups right now. It stops the AI's current reply and sends them at once. A hint under queued follow-ups shows the shortcut.",
+          "Vani AI (c.vani.ai) is now supported."
         ]
       },
       {
@@ -50,7 +54,8 @@
         "items": [
           "Dropdowns use PlazCode's own rounded, themed menus with a clean arrow, in the app, the extension and the popup.",
           "Selected Effort and Access options are easier to read, and spacing is tidier for Stop mode, Save and Memory summary.",
-          "The AI no longer asks you to turn on Full PC access when it is already on."
+          "The AI no longer asks you to turn on Full PC access when it is already on.",
+          "The PlazCode bar keeps its colours on sites that redraw the whole page, like Vani AI."
         ]
       },
       {

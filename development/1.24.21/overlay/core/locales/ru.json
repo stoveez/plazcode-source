@@ -975,5 +975,8 @@
   "Fetching the link…": "Загрузка по ссылке…",
   "Share code copied. Paste it anywhere; the other person pastes it into Import.": "Код скопирован. Вставьте его куда угодно; другой человек вставит его в «Импорт».",
   "Select the code above and copy it.": "Выделите код выше и скопируйте его.",
-  "Save a skill first, then share it here.": "Сначала сохраните навык, затем поделитесь им здесь."
+  "Save a skill first, then share it here.": "Сначала сохраните навык, затем поделитесь им здесь.",
+  "15 browser AIs + Ollama": "15 браузерных ИИ + Ollama",
+  "Open Vani AI in the browser": "Открыть Vani AI в браузере",
+  "Vani AI": "Vani AI"
 }

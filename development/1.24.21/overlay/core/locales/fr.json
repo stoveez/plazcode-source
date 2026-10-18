@@ -975,5 +975,8 @@
   "Fetching the link…": "Récupération du lien…",
   "Share code copied. Paste it anywhere; the other person pastes it into Import.": "Code copié. Collez-le où vous voulez ; l'autre personne le colle dans Importer.",
   "Select the code above and copy it.": "Sélectionnez le code ci-dessus et copiez-le.",
-  "Save a skill first, then share it here.": "Enregistrez d'abord une compétence, puis partagez-la ici."
+  "Save a skill first, then share it here.": "Enregistrez d'abord une compétence, puis partagez-la ici.",
+  "15 browser AIs + Ollama": "15 IA dans le navigateur + Ollama",
+  "Open Vani AI in the browser": "Ouvrir Vani AI dans le navigateur",
+  "Vani AI": "Vani AI"
 }

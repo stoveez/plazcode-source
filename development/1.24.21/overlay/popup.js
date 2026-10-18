@@ -17,7 +17,7 @@ const SUPPORTED_HOSTS = [
   "claude.ai", "claude.com",
   "gemini.google.com", "www.kimi.com", "kimi.com",
   "chat.z.ai", "chat.qwen.ai", "arena.ai", "freebuff.ai", "freebuff.com", "notion.so", "notion.com",
-  "gpt.crax.lol", "use.ai", "www.use.ai", "oxalpha.com", "www.oxalpha.com", "oxalpha.org", "www.oxalpha.org",
+  "gpt.crax.lol", "use.ai", "www.use.ai", "c.vani.ai", "oxalpha.com", "www.oxalpha.com", "oxalpha.org", "www.oxalpha.org",
   "localhost", "127.0.0.1", "ollama.com",
 ];
 const DEFAULT_AI_URL = "https://chat.deepseek.com/";

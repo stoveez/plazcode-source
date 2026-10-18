@@ -975,5 +975,8 @@
   "Fetching the link…": "リンクを取得しています…",
   "Share code copied. Paste it anywhere; the other person pastes it into Import.": "共有コードをコピーしました。好きな場所に貼り付けてください。相手は読み込み欄に貼り付けます。",
   "Select the code above and copy it.": "上のコードを選択してコピーしてください。",
-  "Save a skill first, then share it here.": "先にスキルを保存してから、ここで共有してください。"
+  "Save a skill first, then share it here.": "先にスキルを保存してから、ここで共有してください。",
+  "15 browser AIs + Ollama": "15 種のブラウザー AI + Ollama",
+  "Open Vani AI in the browser": "ブラウザーで Vani AI を開く",
+  "Vani AI": "Vani AI"
 }

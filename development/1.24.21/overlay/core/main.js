@@ -473,6 +473,38 @@
   }
   let plazcodeTheme = "night";
   applySharedAppearance({theme:"default",glow:"subtle",gradients:"on"});
+  // Some sites (Vani's Next.js app) re-render <html> on client-side navigation
+  // and drop every attribute they did not set themselves, which wiped the bar's
+  // theme and left its labels black. When all of PlazCode's own marks vanish at
+  // once, put them back; the site's own attributes are never touched.
+  (function guardRootMarks() {
+    const html = document.documentElement;
+    if (!html || typeof MutationObserver !== "function") return;
+    const PC_VARS = ["--pc-accent", "--pc-light", "--pc-bg", "--pc-rgb", "--pc-glow-strength"];
+    const owned = () => {
+      const attrs = {};
+      for (const at of html.attributes) if (at.name.startsWith("data-rs-")) attrs[at.name] = at.value;
+      const vars = {};
+      for (const k of PC_VARS) { const v = html.style.getPropertyValue(k); if (v) vars[k] = v; }
+      return {attrs, classes: [...html.classList].filter((c) => c.startsWith("rs-")), vars, count: Object.keys(attrs).length};
+    };
+    let saved = owned();
+    const mo = new MutationObserver(() => {
+      const now = owned();
+      if (saved.count >= 2 && now.count === 0) {
+        try {
+          for (const [k, v] of Object.entries(saved.attrs)) html.setAttribute(k, v);
+          for (const c of saved.classes) html.classList.add(c);
+          for (const [k, v] of Object.entries(saved.vars)) if (!html.style.getPropertyValue(k)) html.style.setProperty(k, v);
+        } catch {}
+        mo.takeRecords();
+        saved = owned();
+        return;
+      }
+      saved = now;
+    });
+    try { mo.observe(html, {attributes: true}); } catch {}
+  })();
   let soundOn = true;
   try {
     chrome.storage.local.get(["rsTheme", "rsSounds", "rsAppearance"], (r) => {
@@ -558,6 +590,7 @@
     { name: "Freebuff", url: "https://freebuff.ai/chat" },
     { name: "Crax GPT", url: "https://gpt.crax.lol/" },
     { name: "Use AI", url: "https://use.ai/chat" },
+    { name: "Vani AI", url: "https://c.vani.ai/c" },
     { name: "Ox Alpha", url: "https://oxalpha.com/chat" },
     { name: "Ollama", url: "ollama://local" },
   ];

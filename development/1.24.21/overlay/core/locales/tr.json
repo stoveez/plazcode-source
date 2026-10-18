@@ -975,5 +975,8 @@
   "Fetching the link…": "Bağlantı alınıyor…",
   "Share code copied. Paste it anywhere; the other person pastes it into Import.": "Paylaşım kodu kopyalandı. İstediğiniz yere yapıştırın; karşı taraf İçe aktar'a yapıştırır.",
   "Select the code above and copy it.": "Yukarıdaki kodu seçip kopyalayın.",
-  "Save a skill first, then share it here.": "Önce bir beceri kaydedin, sonra burada paylaşın."
+  "Save a skill first, then share it here.": "Önce bir beceri kaydedin, sonra burada paylaşın.",
+  "15 browser AIs + Ollama": "15 tarayıcı yapay zekâsı + Ollama",
+  "Open Vani AI in the browser": "Vani AI'ı tarayıcıda aç",
+  "Vani AI": "Vani AI"
 }

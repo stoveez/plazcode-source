@@ -975,5 +975,8 @@
   "Fetching the link…": "جارٍ جلب الرابط…",
   "Share code copied. Paste it anywhere; the other person pastes it into Import.": "تم نسخ رمز المشاركة. الصقه في أي مكان؛ يلصقه الشخص الآخر في الاستيراد.",
   "Select the code above and copy it.": "حدّد الرمز أعلاه وانسخه.",
-  "Save a skill first, then share it here.": "احفظ مهارة أولًا، ثم شاركها هنا."
+  "Save a skill first, then share it here.": "احفظ مهارة أولًا، ثم شاركها هنا.",
+  "15 browser AIs + Ollama": "15 خدمة ذكاء اصطناعي في المتصفح + Ollama",
+  "Open Vani AI in the browser": "فتح Vani AI في المتصفح",
+  "Vani AI": "Vani AI"
 }
