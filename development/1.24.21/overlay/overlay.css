@@ -5650,10 +5650,10 @@ html[data-rs-palette][data-rs-theme] #rs-fix-panel .rs-fix-acts button:not(#rs-f
 #rs-menu .rs-execution-limit label{display:block;margin:0;line-height:1.5;overflow-wrap:anywhere}
 #rs-menu .rs-execution-limit input{width:100%;min-width:0;margin:0}
 #rs-menu .rs-execution-settings small{display:block;margin:0;font-size:11px;line-height:1.65;color:var(--pc-muted,#b5c3d7);overflow-wrap:anywhere}
-#rs-menu .rs-prompt-field:has(>#rs-stop-mode){display:grid;gap:8px;margin-top:14px;padding:14px;box-sizing:border-box;border:1px solid rgb(var(--pc-rgb,255 146 38) / .25);border-radius:12px;background:rgb(var(--pc-rgb,255 146 38) / .04);min-width:0}
+#rs-menu .rs-prompt-field:has(#rs-stop-mode){display:grid;gap:8px;margin-top:14px;padding:14px;box-sizing:border-box;border:1px solid rgb(var(--pc-rgb,255 146 38) / .25);border-radius:12px;background:rgb(var(--pc-rgb,255 146 38) / .04);min-width:0}
 #rs-menu .rs-prompt-field>label[for=rs-stop-mode]{display:block;margin:0;font-weight:600;line-height:1.5}
 #rs-menu #rs-stop-mode{display:block;width:100%;margin:0}
-#rs-menu .rs-prompt-field:has(>#rs-stop-mode)>small{display:block;margin:2px 0 0;font-size:11px;line-height:1.65;color:var(--pc-muted,#b5c3d7);overflow-wrap:anywhere}
+#rs-menu .rs-prompt-field:has(#rs-stop-mode)>small{display:block;margin:2px 0 0;font-size:11px;line-height:1.65;color:var(--pc-muted,#b5c3d7);overflow-wrap:anywhere}
 /* Instructions section: Save + Memory summary */
 #rs-menu .rs-set-row:has(>#rs-set-save){margin-top:12px;gap:12px}
 #rs-menu #rs-set-save{box-sizing:border-box;min-width:84px;padding:9px 18px!important;border-radius:10px!important;font-weight:700;border:1px solid rgb(var(--pc-rgb,255 146 38) / .55)!important;background:rgb(var(--pc-rgb,255 146 38) / .16)!important;color:var(--pc-light,#ffe5be)!important;cursor:pointer}
