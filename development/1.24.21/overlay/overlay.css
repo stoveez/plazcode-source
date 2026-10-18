@@ -5607,8 +5607,8 @@ html[data-rs-palette][data-rs-theme][data-rs-gradients=off] :is(#rs-action[data-
 html[data-rs-palette][data-rs-theme][data-rs-gradients=off] :is(#rs-root,#rs-menu,#rs-cards-panel) [data-transfer-download]{background:var(--pc-accent)!important}
 
 /* Selected Effort / Access / mode options sit on the bright accent: every line of text inside must be dark so none of it washes out. */
-html[data-rs-palette][data-rs-theme] :is(.rs-work-card.on,.rs-lvl-btn.on,.rs-mode-btn.on,.rs-tgl.on) :is(.rs-work-name,.rs-work-sub,.rs-work-glyph,span,small,b,i){color:#08111d!important;-webkit-text-fill-color:#08111d!important;opacity:1!important;text-shadow:none!important}
-html[data-rs-palette][data-rs-theme] :is(.rs-work-card.on,.rs-lvl-btn.on,.rs-mode-btn.on) .rs-work-sub{font-weight:600!important}
+html[data-rs-palette] :is(.rs-work-card.on,.rs-lvl-btn.on,.rs-mode-btn.on,.rs-tgl.on) :is(.rs-work-name,.rs-work-sub,.rs-work-glyph,span,small,b,i){color:#08111d!important;-webkit-text-fill-color:#08111d!important;opacity:1!important;text-shadow:none!important}
+html[data-rs-palette] :is(.rs-work-card.on,.rs-lvl-btn.on,.rs-mode-btn.on) .rs-work-sub{font-weight:600!important}
 html[data-rs-palette][data-rs-theme] :is(#rs-enhancer-send,#rs-cowork-resume){background:linear-gradient(135deg,var(--pc-light),var(--pc-accent))!important;color:#08111d!important;border-color:var(--pc-light)!important;box-shadow:0 0 16px rgb(var(--pc-rgb) / var(--pc-glow-strength))!important}
 html[data-rs-palette][data-rs-theme][data-rs-gradients=off] :is(#rs-enhancer-send,#rs-cowork-resume){background:var(--pc-accent)!important}
 
