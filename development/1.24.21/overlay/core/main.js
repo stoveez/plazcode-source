@@ -10812,5 +10812,41 @@ if (A.userStopped) return;                          // user halted → never rel
   // what they were typing).
   // No periodic/idle prompt injection: recovery is explicitly gated by a command-access refusal.
 
+  // Replace the browser's plain dropdown lists inside PlazCode panels only (never the host site's own selects).
+function pcEnhanceSelect(select){
+  if(!select||select.tagName!=='SELECT'||select._pcDD||select.multiple||select.size>1||select.hidden||select.closest('.pc-effort-picker'))return;
+  const doc=select.ownerDocument,parentW=select.parentElement?select.parentElement.getBoundingClientRect().width:0,selfW=select.getBoundingClientRect().width;
+  const wrap=doc.createElement('div');wrap.className='pc-effort-picker pc-dd';if(parentW&&selfW>=parentW*.9)wrap.classList.add('pc-dd-block');
+  select.before(wrap);wrap.append(select);select.hidden=true;
+  const trigger=doc.createElement('button');trigger.type='button';trigger.className='pc-effort-trigger';trigger.setAttribute('aria-haspopup','listbox');trigger.setAttribute('aria-expanded','false');
+  const label=doc.createElement('span'),arrow=doc.createElement('span');arrow.textContent='⌄';arrow.setAttribute('aria-hidden','true');trigger.append(label,arrow);
+  const name=(select.labels&&select.labels[0]&&select.labels[0].textContent||select.getAttribute('aria-label')||'Choose an option').trim();
+  const panel=doc.createElement('div');panel.className='pc-effort-options';panel.hidden=true;panel.setAttribute('role','listbox');panel.setAttribute('aria-label',name);
+  wrap.append(trigger,panel);
+  let options=[],sig='';
+  const signature=()=>Array.from(select.options).map(o=>o.value+'|'+o.textContent+'|'+o.disabled).join('\n');
+  function rebuild(){sig=signature();panel.textContent='';options=Array.from(select.options).map(o=>{const b=doc.createElement('button');b.type='button';b.setAttribute('role','option');b.tabIndex=-1;b.dataset.value=o.value;b.disabled=o.disabled;const t=doc.createElement('span');t.textContent=o.textContent;b.append(t);b.onclick=()=>choose(o.value);panel.append(b);return b;});}
+  function refresh(){if(signature()!==sig)rebuild();const cur=select.options[select.selectedIndex],text=cur?cur.textContent:'';if(label.textContent!==text)label.textContent=text;trigger.disabled=select.disabled;trigger.setAttribute('aria-label',name+': '+text);for(const b of options)b.setAttribute('aria-selected',String(b.dataset.value===select.value));}
+  function close(focus){panel.hidden=true;trigger.setAttribute('aria-expanded','false');if(focus)trigger.focus();}
+  function open(index){refresh();if(trigger.disabled)return;const r=trigger.getBoundingClientRect(),vh=doc.defaultView.innerHeight;wrap.toggleAttribute('data-open-up',vh-r.bottom<260&&r.top>260);panel.hidden=false;trigger.setAttribute('aria-expanded','true');const t=options[index]||options.find(b=>b.dataset.value===select.value)||options[0];if(t){t.focus();t.scrollIntoView({block:'nearest'});}}
+  function choose(v){if(panel.hidden)return;select.value=v;select.dispatchEvent(new Event('input',{bubbles:true}));select.dispatchEvent(new Event('change',{bubbles:true}));refresh();close(true);}
+  trigger.onclick=()=>panel.hidden?open():close();
+  trigger.onkeydown=e=>{if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();open(e.key==='Home'?0:e.key==='End'?options.length-1:undefined);}};
+  panel.onkeydown=e=>{const i=options.indexOf(doc.activeElement);if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close(true);}else if(e.key==='Tab')close();else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const n=e.key==='Home'?0:e.key==='End'?options.length-1:(i+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;options[n].focus();}else if(e.key==='Enter'||e.key===' '){e.preventDefault();if(i>=0)choose(options[i].dataset.value);}};
+  const outside=e=>{if(!wrap.contains(e.target))close();};doc.addEventListener('pointerdown',outside);select.addEventListener('change',refresh);
+  const timer=setInterval(()=>{if(!wrap.isConnected){clearInterval(timer);doc.removeEventListener('pointerdown',outside);return;}refresh();},500);
+  rebuild();refresh();select._pcDD=true;
+}
+function pcEnhanceSelects(scopeRoots){
+  let queued=false;
+  const run=()=>{queued=false;try{document.querySelectorAll(scopeRoots.split(',').map(r=>r.trim()+' select').join(',')).forEach(pcEnhanceSelect);}catch{}};
+  const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(run);};
+  new MutationObserver(muts=>{for(const m of muts){const t=m.target,el=t.nodeType===1?t:t.parentElement;if(!el)continue;
+    if(el.closest&&el.closest(scopeRoots)){schedule();return;}
+    if(el===document.body||el===document.documentElement){for(const n of m.addedNodes){if(n.nodeType===1&&((n.matches&&n.matches(scopeRoots))||(n.querySelector&&n.querySelector(scopeRoots)))){schedule();return;}}}}}).observe(document.documentElement,{childList:true,subtree:true});
+  schedule();
+}
+  pcEnhanceSelects("#rs-menu,#rs-cards-panel,#rs-memory-panel,#rs-enhancer-panel,#rs-cowork-panel,#rs-tasks-panel,#rs-approve");
+
   log(`PlazCode content script ready (provider: ${P.id})`);
 })();
