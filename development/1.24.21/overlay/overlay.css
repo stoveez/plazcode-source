@@ -5654,6 +5654,15 @@ html[data-rs-palette][data-rs-theme] #rs-fix-panel .rs-fix-acts button:not(#rs-f
 #rs-menu .rs-prompt-field>label[for=rs-stop-mode]{display:block;margin:0;font-weight:600;line-height:1.5}
 #rs-menu #rs-stop-mode{display:block;width:100%;margin:0}
 #rs-menu .rs-prompt-field:has(>#rs-stop-mode)>small{display:block;margin:2px 0 0;font-size:11px;line-height:1.65;color:var(--pc-muted,#b5c3d7);overflow-wrap:anywhere}
+/* Instructions section: Save + Memory summary */
+#rs-menu .rs-set-row:has(>#rs-set-save){margin-top:12px;gap:12px}
+#rs-menu #rs-set-save{box-sizing:border-box;min-width:84px;padding:9px 18px!important;border-radius:10px!important;font-weight:700;border:1px solid rgb(var(--pc-rgb,255 146 38) / .55)!important;background:rgb(var(--pc-rgb,255 146 38) / .16)!important;color:var(--pc-light,#ffe5be)!important;cursor:pointer}
+#rs-menu #rs-set-save:hover{background:rgb(var(--pc-rgb,255 146 38) / .26)!important;box-shadow:0 0 14px rgb(var(--pc-rgb,255 146 38) / .25)}
+#rs-menu #rs-memory-settings{box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;margin:14px 0 0;padding:11px 14px;border:1px solid rgb(var(--pc-rgb,255 146 38) / .3);border-radius:12px;background:rgb(var(--pc-rgb,255 146 38) / .06);color:var(--rs-text,#edf3ff);font:600 13px/1.4 system-ui;text-align:left;cursor:pointer;transition:border-color .2s,background .2s,box-shadow .2s}
+#rs-menu #rs-memory-settings::before{content:"\1F9E0";font-size:15px;line-height:1}
+#rs-menu #rs-memory-settings::after{content:"\203A";margin-left:auto;font-size:18px;line-height:1;color:var(--pc-light,#ffbc67);opacity:.8}
+#rs-menu #rs-memory-settings:hover{border-color:var(--pc-light,#ffbc67);background:rgb(var(--pc-rgb,255 146 38) / .12);box-shadow:0 0 14px rgb(var(--pc-rgb,255 146 38) / .22)}
+#rs-menu #rs-memory-settings:focus-visible,#rs-menu #rs-set-save:focus-visible{outline:2px solid var(--pc-light,#ffbe65);outline-offset:2px}
 #rs-menu .rs-execution-review{display:flex;align-items:center;gap:10px;margin:0;line-height:1.5;font-weight:600;cursor:pointer}
 #rs-menu .rs-execution-review input{flex:none;width:16px;height:16px;margin:0;accent-color:var(--pc-accent,#ffac43)}
 #rs-menu .rs-execution-actions{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px}
