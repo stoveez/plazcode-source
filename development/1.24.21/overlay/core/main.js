@@ -3000,6 +3000,8 @@ return result`;
     const wantTab = target === "tab" || target === "chat" || target === "page" || target === "self";
     if (wantStudio) await tryMcp("screen_capture", "studio");
     if (wantBlend && !shots.length) await tryMcp("get_viewport_screenshot", "blender");
+    // Newer Blender servers call their screenshot tool "look".
+    if (wantBlend && !shots.length) await tryMcp("look", "blender");
     if (wantTab || (target === "auto" && !shots.length)) {
       try {
         const r = await bg({ type: "capture_tab" });
