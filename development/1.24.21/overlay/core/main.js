@@ -3576,6 +3576,13 @@ return result`;
   let coworkPumping = false;
   async function pumpCowork() {
     if (coworkPumping || A.running || A.starting || A.enhancing || A.injecting || A.stopping || A.budgetResume || A.pendingToolSettles || A.coworkDraftWrite) return;
+    if (A.coworkSendNow) {
+      // Ctrl+Enter asked to send the queue now: the AI has finished winding down, so lift the stop
+      // we used to cut it off and let the queued follow-up go out as a fresh user message.
+      A.coworkSendNow = false; A.stop = false; A.userStopped = false;
+      const resumed = cowork.resume();
+      if (!resumed.ok) { try { ui.toast(resumed.error); } catch {} return; }
+    }
     coworkPumping = true;
     try {
       const next = await cowork.take();
@@ -3584,6 +3591,29 @@ return result`;
   }
   rsInterval(pumpCowork, 750);
   rsInterval(()=>{try{ui.renderCowork();}catch{}},750);
+  // Ctrl+Enter (Cmd+Enter on Mac) = send the queued follow-ups now instead of waiting for a safe
+  // boundary: cut off the AI's current reply, keep the queue, and deliver it as soon as the chat is quiet.
+  function coworkSendNow() {
+    const state = cowork.snapshot();
+    if (!state.enabled || !A.started || A.staleExtension || !state.pending.some(item => item.status === "queued")) return { ok: false };
+    const taskActive = A.running || (P.isHardGenerating ? P.isHardGenerating() : P.isGenerating());
+    if (!taskActive) { pumpCowork(); return { ok: true, idle: true }; }
+    if (A.stopping) return { ok: true };
+    try { ui.toast((globalThis.PlazCodeI18n?.t || (x => x))("Stopping the AI's reply and sending your follow-up now.")); } catch {}
+    stopLoop();                         // pauses the queue; the pump resumes it once the chat is quiet
+    A.coworkSendNow = true;             // set AFTER stopLoop, which clears it so a manual Stop never sends
+    return { ok: true };
+  }
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Enter" || !(event.ctrlKey || event.metaKey) || event.isComposing || !event.isTrusted || event.defaultPrevented) return;
+    const state = cowork.snapshot();
+    if (!state.enabled || !A.started || !state.pending.some(item => item.status === "queued")) return;
+    if (ui.isCoworkCoverTarget && ui.isCoworkCoverTarget(event.target)) return;   // its own handler enqueues the draft first
+    if (String(P.editorText() || "").trim()) return;                              // the composer hook enqueues the draft first
+    if (!(A.running || (P.isHardGenerating ? P.isHardGenerating() : P.isGenerating()))) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    coworkSendNow();
+  }, true);
 
   const creatorPromptEnhancer=PlazCodeChatCreators.createEnhancer({
     context:()=>JSON.stringify([P.conversationKey(),activeEngine(),A.sessionGen]),
@@ -4317,6 +4347,7 @@ return result`;
   function stopLoop({ native = false } = {}) {
     clarification.cancel();
     if (A.stopping) return; // already winding down - ignore double-clicks
+    A.coworkSendNow = false; // a manual Stop cancels any pending Ctrl+Enter send-now
     diag("stopLoop");
     const coworkState = cowork.snapshot();
     if (coworkState.enabled || coworkState.pending.length || coworkState.sending) {
@@ -9222,11 +9253,14 @@ function renderCards(panel) {
           const result = cowork.enqueue(editor.value);
           if (!result.ok) { toast(result.error); return; }
           coworkCoverDrafts.delete(coworkComposer.context); editor.value = '';
+          if (event.type === 'keydown' && (event.ctrlKey || event.metaKey)) coworkSendNow();
           renderCowork(); pumpCowork(); inputCover(!!A.running);
         };
         form.addEventListener('submit', submit);
         editor.addEventListener('keydown', event => {
-          if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) submit(event);
+          if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+          if ((event.ctrlKey || event.metaKey) && !editor.value.trim()) { event.preventDefault(); event.stopPropagation(); coworkSendNow(); return; }
+          submit(event);
         });
       }
       const context = coworkCoverContext();
@@ -9651,6 +9685,11 @@ function renderCards(panel) {
         const remove = document.createElement("button"); remove.textContent = "Remove"; remove.disabled = item.status === "sending";
         remove.onclick = () => cowork.remove(item.id); entry.append(text, remove); list.appendChild(entry);
       });
+      if (state.pending.some(item => item.status === "queued")) {
+        const hint = document.createElement("div"); hint.className = "rs-cowork-hint";
+        hint.textContent = (globalThis.PlazCodeI18n?.t || (x => x))("Press Ctrl+Enter to send now. This stops the AI's current reply.");
+        list.appendChild(hint);
+      }
     }
     function renderCoworkReceipts(receipts) {
       // Confirmed requests are already in the chat. Keep queued, sending and
@@ -9678,6 +9717,13 @@ function renderCards(panel) {
         const label = 'Co-work follow-up · ' + (labels[item.status] || item.status);
         if (node.firstChild.textContent !== label) node.firstChild.textContent = label;
         if (node.dataset.status !== item.status) node.dataset.status = item.status;
+        // Under queued follow-ups: the shortcut that sends them right now.
+        let hint = node.querySelector('.rs-cowork-hint');
+        if (item.status === 'queued') {
+          const hintText = (globalThis.PlazCodeI18n?.t || (x => x))("Press Ctrl+Enter to send now. This stops the AI's current reply.");
+          if (!hint) { hint = document.createElement('small'); hint.className = 'rs-cowork-hint'; node.append(hint); }
+          if (hint.textContent !== hintText) hint.textContent = hintText;
+        } else if (hint) hint.remove();
       }
     }
     function desktopAgentState() {
@@ -10001,7 +10047,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
       if (action === "stop" && state.canStop) { stopLoop(); return { ok: true }; }
       return { ok: false, error: "The AI chat is no longer ready for this action." };
     }
-    return { captureHandoff, invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast, banner, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
+    return { isCoworkCoverTarget: node => !!(coworkComposer && node === coworkComposer.host), captureHandoff, invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast, banner, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
   })();
 
   const clarification = PlazCodeClarification.create({
@@ -10668,6 +10714,7 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
       event.preventDefault();event.stopImmediatePropagation();
       const result=cowork.enqueue(text);
       if(!result.ok){ui.toast(result.error);return true;}
+      if(event.type==='keydown' && (event.ctrlKey||event.metaKey)) coworkSendNow();
       const operation=Promise.resolve(P.writeDraft('',text)).then(cleared=>{if(!cleared || !cleared.ok)ui.toast('Follow-up accepted. Your draft changed, so PlazCode kept the text.');}).finally(()=>{if(A.coworkDraftWrite===operation)A.coworkDraftWrite=null;pumpCowork();});
       A.coworkDraftWrite=operation;return true;
     },

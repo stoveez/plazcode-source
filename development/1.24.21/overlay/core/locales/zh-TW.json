@@ -904,5 +904,7 @@
   "PlazCode is connected to this chat.": "PlazCode 已連線到此聊天。",
   "PlazCode isn't connected to this chat yet. Click Connect this chat.": "PlazCode 尚未連線到此聊天。請點選「連線此聊天」。",
   "Open an AI chat first": "請先開啟一個 AI 聊天",
-  "Refresh your AI chat tab": "請重新整理你的 AI 聊天分頁"
+  "Refresh your AI chat tab": "請重新整理你的 AI 聊天分頁",
+  "Press Ctrl+Enter to send now. This stops the AI's current reply.": "按 Ctrl+Enter 立即傳送。這會停止 AI 目前的回覆。",
+  "Stopping the AI's reply and sending your follow-up now.": "正在停止 AI 的回覆並立即傳送你的後續請求。"
 }

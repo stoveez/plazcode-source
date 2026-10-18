@@ -904,5 +904,7 @@
   "PlazCode is connected to this chat.": "PlazCode подключён к этому чату.",
   "PlazCode isn't connected to this chat yet. Click Connect this chat.": "PlazCode ещё не подключён к этому чату. Нажмите «Подключить этот чат».",
   "Open an AI chat first": "Сначала откройте чат с ИИ",
-  "Refresh your AI chat tab": "Обновите вкладку с чатом ИИ"
+  "Refresh your AI chat tab": "Обновите вкладку с чатом ИИ",
+  "Press Ctrl+Enter to send now. This stops the AI's current reply.": "Нажмите Ctrl+Enter, чтобы отправить сейчас. Это остановит текущий ответ ИИ.",
+  "Stopping the AI's reply and sending your follow-up now.": "Останавливаю ответ ИИ и отправляю ваше уточнение сейчас."
 }

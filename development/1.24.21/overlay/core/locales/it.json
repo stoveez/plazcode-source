@@ -904,5 +904,7 @@
   "PlazCode is connected to this chat.": "PlazCode è collegato a questa chat.",
   "PlazCode isn't connected to this chat yet. Click Connect this chat.": "PlazCode non è ancora collegato a questa chat. Fai clic su Collega questa chat.",
   "Open an AI chat first": "Apri prima una chat IA",
-  "Refresh your AI chat tab": "Aggiorna la scheda della chat IA"
+  "Refresh your AI chat tab": "Aggiorna la scheda della chat IA",
+  "Press Ctrl+Enter to send now. This stops the AI's current reply.": "Premi Ctrl+Invio per inviare ora. Questo interrompe la risposta attuale dell'IA.",
+  "Stopping the AI's reply and sending your follow-up now.": "Interruzione della risposta dell'IA e invio del tuo seguito in corso."
 }

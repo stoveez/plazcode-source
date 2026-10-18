@@ -904,5 +904,7 @@
   "PlazCode is connected to this chat.": "PlazCode はこのチャットに接続されています。",
   "PlazCode isn't connected to this chat yet. Click Connect this chat.": "PlazCode はまだこのチャットに接続されていません。「このチャットに接続」をクリックしてください。",
   "Open an AI chat first": "まず AI チャットを開いてください",
-  "Refresh your AI chat tab": "AI チャットのタブを更新してください"
+  "Refresh your AI chat tab": "AI チャットのタブを更新してください",
+  "Press Ctrl+Enter to send now. This stops the AI's current reply.": "Ctrl+Enter で今すぐ送信します。AI の現在の返信は停止されます。",
+  "Stopping the AI's reply and sending your follow-up now.": "AI の返信を停止して、フォローアップを今すぐ送信しています。"
 }

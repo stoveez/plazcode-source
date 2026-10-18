@@ -904,5 +904,7 @@
   "PlazCode is connected to this chat.": null,
   "PlazCode isn't connected to this chat yet. Click Connect this chat.": null,
   "Open an AI chat first": null,
-  "Refresh your AI chat tab": null
+  "Refresh your AI chat tab": null,
+  "Press Ctrl+Enter to send now. This stops the AI's current reply.": "Press Ctrl+Enter to send now. This stops the AI's current reply.",
+  "Stopping the AI's reply and sending your follow-up now.": "Stopping the AI's reply and sending your follow-up now."
 }

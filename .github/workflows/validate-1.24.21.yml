@@ -57,6 +57,9 @@ jobs:
       - name: Fix connection checks (unit)
         run: node test-connection-doctor.js
         working-directory: build-src-1.24.21/PlazCode
+      - name: Co-work Ctrl+Enter send-now checks
+        run: node test-cowork-send-now.js
+        working-directory: build-src-1.24.21/PlazCode
       - name: Fix connection button with the full core in Chromium and Firefox
         run: node release-tools/test-fix-connection-browser.cjs
         working-directory: build-src-1.24.21/PlazCode

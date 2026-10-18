@@ -904,5 +904,7 @@
   "PlazCode is connected to this chat.": "PlazCode가 이 채팅에 연결되어 있습니다.",
   "PlazCode isn't connected to this chat yet. Click Connect this chat.": "PlazCode가 아직 이 채팅에 연결되지 않았습니다. 이 채팅 연결을 클릭하세요.",
   "Open an AI chat first": "먼저 AI 채팅을 여세요",
-  "Refresh your AI chat tab": "AI 채팅 탭을 새로고침하세요"
+  "Refresh your AI chat tab": "AI 채팅 탭을 새로고침하세요",
+  "Press Ctrl+Enter to send now. This stops the AI's current reply.": "Ctrl+Enter를 누르면 지금 보냅니다. AI의 현재 답변이 중지됩니다.",
+  "Stopping the AI's reply and sending your follow-up now.": "AI의 답변을 중지하고 후속 요청을 지금 보내는 중입니다."
 }
