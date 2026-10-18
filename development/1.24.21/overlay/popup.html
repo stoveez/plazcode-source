@@ -277,6 +277,22 @@
 @media(prefers-reduced-motion:reduce){.pc-ultra-label{animation:none!important;background-position:38% 50%}}
 @media(forced-colors:active){.pc-ultra-label{animation:none!important;background:none!important;color:Highlight!important;-webkit-text-fill-color:currentColor!important}}
 
+/* Dropdowns (popup) */
+select{appearance:none;-webkit-appearance:none;box-sizing:border-box;padding:9px 38px 9px 13px!important;border-radius:11px!important;border:1px solid color-mix(in srgb,var(--orange,#ffbc67) 38%,transparent)!important;font-weight:600;cursor:pointer;background-image:linear-gradient(45deg,transparent 50%,var(--orange,#ffbc67) 50%),linear-gradient(135deg,var(--orange,#ffbc67) 50%,transparent 50%)!important;background-position:calc(100% - 19px) 52%,calc(100% - 13px) 52%!important;background-size:6px 6px,6px 6px!important;background-repeat:no-repeat!important;transition:border-color .2s,box-shadow .2s,background-color .2s}
+select:hover:not(:disabled){border-color:var(--orange,#ffbc67)!important;box-shadow:0 0 12px color-mix(in srgb,var(--orange,#ffbc67) 25%,transparent)}
+select:focus-visible{outline:2px solid var(--orange,#ffbc67);outline-offset:2px}
+select:disabled{opacity:.5;cursor:not-allowed}
+select option{background:#10151f;color:#eef4ff;padding:8px 12px}
+select option:checked{background:color-mix(in srgb,var(--orange,#ffbc67) 35%,#10151f);color:#fff}
+.pc-effort-trigger{padding:9px 13px!important;border-radius:11px!important;border:1px solid color-mix(in srgb,var(--orange,#ffbc67) 38%,transparent)!important;font-weight:600;transition:border-color .2s,box-shadow .2s}
+.pc-effort-trigger:hover:not(:disabled){border-color:var(--orange,#ffbc67)!important;box-shadow:0 0 12px color-mix(in srgb,var(--orange,#ffbc67) 25%,transparent)}
+.pc-effort-trigger>span:last-child{font-size:17px;line-height:1;color:var(--orange,#ffbc67);transition:transform .2s}
+.pc-effort-trigger[aria-expanded=true]>span:last-child{transform:rotate(180deg)}
+.pc-effort-options{padding:6px!important;border-radius:13px!important;border:1px solid color-mix(in srgb,var(--orange,#ffbc67) 35%,transparent)!important;box-shadow:0 14px 34px #0008,0 0 18px color-mix(in srgb,var(--orange,#ffbc67) 14%,transparent)!important}
+.pc-effort-options>button{padding:9px 12px!important;border-radius:9px!important;font-weight:600;transition:background .15s}
+.pc-effort-options>button:hover{background:color-mix(in srgb,var(--orange,#ffbc67) 14%,transparent)!important}
+.pc-effort-options>button[aria-selected=true]{background:color-mix(in srgb,var(--orange,#ffbc67) 22%,transparent)!important;border-color:var(--orange,#ffbc67)!important}
+@media(prefers-reduced-motion:reduce){select,.pc-effort-trigger,.pc-effort-trigger>span:last-child{transition:none}}
 </style>
 </head>
 <body>
