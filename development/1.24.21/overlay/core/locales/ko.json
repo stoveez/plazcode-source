@@ -978,5 +978,15 @@
   "Save a skill first, then share it here.": "먼저 스킬을 저장한 다음 여기서 공유하세요.",
   "15 browser AIs + Ollama": "브라우저 AI 15개 + Ollama",
   "Open Vani AI in the browser": "브라우저에서 Vani AI 열기",
-  "Vani AI": "Vani AI"
+  "Vani AI": "Vani AI",
+  "Settings backup": "설정 백업",
+  "Copy your choices to move them to another browser or restore them later. Passwords, keys and chats are never included.": "선택한 설정을 복사해 다른 브라우저로 옮기거나 나중에 복원하세요. 비밀번호, 키, 채팅은 포함되지 않습니다.",
+  "Copy backup": "백업 복사",
+  "Restore backup": "백업 복원",
+  "Paste a backup here": "여기에 백업을 붙여넣기",
+  "Copied": "복사됨",
+  "Select the text and copy it": "텍스트를 선택해 복사하세요",
+  "That is not a PlazCode backup.": "PlazCode 백업이 아닙니다.",
+  "Nothing to change.": "변경할 내용이 없습니다.",
+  "Restored. Reload the page to apply.": "복원했습니다. 적용하려면 페이지를 새로 고치세요."
 }

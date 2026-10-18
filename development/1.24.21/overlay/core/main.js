@@ -6965,6 +6965,14 @@ return result`;
               </div>
               <button type="button" class="rs-action-log-btn" id="rs-action-log-open">What happened</button>
             </section>
+            <section class="rs-menu-sec" id="rs-backup-sec">
+              <div class="rs-sec-label"><span>Settings backup</span></div>
+              <div class="rs-menu-note">Copy your choices to move them to another browser or restore them later. Passwords, keys and chats are never included.</div>
+              <div class="rs-prompt-field">
+                <textarea id="rs-backup-text" rows="3" dir="ltr" spellcheck="false" placeholder="Paste a backup here"></textarea>
+                <div class="rs-set-row"><button type="button" id="rs-backup-copy">Copy backup</button><button type="button" id="rs-backup-restore">Restore backup</button><span id="rs-backup-status" data-i18n-user-content></span></div>
+              </div>
+            </section>
             <section class="rs-menu-sec">
               <div class="rs-sec-label"><span>Reasoning</span></div>
               <div class="rs-menu-note">How much the AI plans and self-reviews. Higher is slower and more careful. Extra Thinking is a separate toggle.</div>
@@ -7129,6 +7137,29 @@ return result`;
           folderStatus.textContent = (globalThis.PlazCodeI18n?.t || ((x) => x))(list.length ? "Saved" : "Saved: whole PC allowed");
           setTimeout(() => { folderStatus.textContent = ""; }, 2200);
         };
+        {
+          const text = menuEl.querySelector("#rs-backup-text"), status = menuEl.querySelector("#rs-backup-status");
+          const tr = (x) => (globalThis.PlazCodeI18n?.t || ((y) => y))(x);
+          const say = (words) => { if (!status) return; status.textContent = tr(words); setTimeout(() => { status.textContent = ""; }, 3500); };
+          const copyBtn = menuEl.querySelector("#rs-backup-copy"), restoreBtn = menuEl.querySelector("#rs-backup-restore");
+          if (copyBtn) copyBtn.onclick = () => {
+            chrome.storage.local.get(null, async (values) => {
+              text.value = PlazCodeSettingsBackup.create(values || {});
+              let copied = false;
+              try { await navigator.clipboard.writeText(text.value); copied = true; } catch {}
+              if (!copied) { text.focus(); text.select(); }
+              say(copied ? "Copied" : "Select the text and copy it");
+            });
+          };
+          if (restoreBtn) restoreBtn.onclick = () => {
+            chrome.storage.local.get(null, (values) => {
+              const result = PlazCodeSettingsBackup.parse(text.value, values || {});
+              if (!result.ok) { say("That is not a PlazCode backup."); return; }
+              if (!Object.keys(result.changes).length) { say("Nothing to change."); return; }
+              chrome.storage.local.set(result.changes, () => say("Restored. Reload the page to apply."));
+            });
+          };
+        }
         const setupApply = menuEl.querySelector("#rs-setup-apply"), setupSave = menuEl.querySelector("#rs-setup-save"), setupRemove = menuEl.querySelector("#rs-setup-remove");
         const setupMore = menuEl.querySelector("#rs-setup-more"), setupProject = menuEl.querySelector("#rs-setup-project");
         const setupSkills = menuEl.querySelector("#rs-setup-skills"), setupTools = menuEl.querySelector("#rs-setup-tools");

@@ -978,5 +978,15 @@
   "Save a skill first, then share it here.": "Önce bir beceri kaydedin, sonra burada paylaşın.",
   "15 browser AIs + Ollama": "15 tarayıcı yapay zekâsı + Ollama",
   "Open Vani AI in the browser": "Vani AI'ı tarayıcıda aç",
-  "Vani AI": "Vani AI"
+  "Vani AI": "Vani AI",
+  "Settings backup": "Ayar yedeği",
+  "Copy your choices to move them to another browser or restore them later. Passwords, keys and chats are never included.": "Seçimlerinizi başka bir tarayıcıya taşımak veya sonra geri yüklemek için kopyalayın. Parolalar, anahtarlar ve sohbetler asla dahil edilmez.",
+  "Copy backup": "Yedeği kopyala",
+  "Restore backup": "Yedeği geri yükle",
+  "Paste a backup here": "Yedeği buraya yapıştırın",
+  "Copied": "Kopyalandı",
+  "Select the text and copy it": "Metni seçip kopyalayın",
+  "That is not a PlazCode backup.": "Bu bir PlazCode yedeği değil.",
+  "Nothing to change.": "Değiştirilecek bir şey yok.",
+  "Restored. Reload the page to apply.": "Geri yüklendi. Uygulamak için sayfayı yenileyin."
 }

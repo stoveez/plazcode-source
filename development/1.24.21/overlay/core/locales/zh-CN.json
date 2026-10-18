@@ -978,5 +978,15 @@
   "Save a skill first, then share it here.": "先保存一个技能，再在这里分享。",
   "15 browser AIs + Ollama": "15 款浏览器 AI + Ollama",
   "Open Vani AI in the browser": "在浏览器中打开 Vani AI",
-  "Vani AI": "Vani AI"
+  "Vani AI": "Vani AI",
+  "Settings backup": "设置备份",
+  "Copy your choices to move them to another browser or restore them later. Passwords, keys and chats are never included.": "复制你的设置，以便迁移到其他浏览器或日后恢复。绝不包含密码、密钥和聊天记录。",
+  "Copy backup": "复制备份",
+  "Restore backup": "恢复备份",
+  "Paste a backup here": "在此粘贴备份",
+  "Copied": "已复制",
+  "Select the text and copy it": "请选中文本并复制",
+  "That is not a PlazCode backup.": "这不是 PlazCode 备份。",
+  "Nothing to change.": "没有需要更改的内容。",
+  "Restored. Reload the page to apply.": "已恢复。请刷新页面以应用。"
 }

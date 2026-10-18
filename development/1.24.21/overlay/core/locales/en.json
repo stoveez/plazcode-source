@@ -978,5 +978,15 @@
   "Save a skill first, then share it here.": "Save a skill first, then share it here.",
   "15 browser AIs + Ollama": null,
   "Open Vani AI in the browser": null,
-  "Vani AI": null
+  "Vani AI": null,
+  "Settings backup": null,
+  "Copy your choices to move them to another browser or restore them later. Passwords, keys and chats are never included.": null,
+  "Copy backup": null,
+  "Restore backup": null,
+  "Paste a backup here": null,
+  "Copied": null,
+  "Select the text and copy it": null,
+  "That is not a PlazCode backup.": null,
+  "Nothing to change.": null,
+  "Restored. Reload the page to apply.": null
 }

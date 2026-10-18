@@ -978,5 +978,15 @@
   "Save a skill first, then share it here.": "Salve uma habilidade primeiro e depois compartilhe aqui.",
   "15 browser AIs + Ollama": "15 IAs no navegador + Ollama",
   "Open Vani AI in the browser": "Abrir Vani AI no navegador",
-  "Vani AI": "Vani AI"
+  "Vani AI": "Vani AI",
+  "Settings backup": "Backup das configurações",
+  "Copy your choices to move them to another browser or restore them later. Passwords, keys and chats are never included.": "Copie suas escolhas para levá-las a outro navegador ou restaurá-las depois. Senhas, chaves e chats nunca são incluídos.",
+  "Copy backup": "Copiar backup",
+  "Restore backup": "Restaurar backup",
+  "Paste a backup here": "Cole um backup aqui",
+  "Copied": "Copiado",
+  "Select the text and copy it": "Selecione o texto e copie",
+  "That is not a PlazCode backup.": "Isso não é um backup do PlazCode.",
+  "Nothing to change.": "Nada para alterar.",
+  "Restored. Reload the page to apply.": "Restaurado. Recarregue a página para aplicar."
 }

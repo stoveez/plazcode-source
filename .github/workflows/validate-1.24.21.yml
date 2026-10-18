@@ -81,6 +81,9 @@ jobs:
       - name: A new chat gaining its address mid-startup still connects, in Chromium
         run: node release-tools/test-new-chat-id-browser.cjs
         working-directory: build-src-1.24.21/PlazCode
+      - name: Settings backup copies choices only and restores them, in Chromium
+        run: node release-tools/test-settings-backup-browser.cjs
+        working-directory: build-src-1.24.21/PlazCode
       - name: ClickUp Brain and agent startup, tool feedback and composer fixtures
         run: node release-tools/test-clickup-browser.cjs
         working-directory: build-src-1.24.21/PlazCode

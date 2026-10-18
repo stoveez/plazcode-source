@@ -13,18 +13,24 @@
     "It fixes safe things on its own: it reconnects to the PlazCode app, restarts a dropped Roblox Studio connection once, and looks for the chat box again.",
     "For everything else it tells you exactly what to do, like \"Open Roblox Studio\" or \"Refresh the page\", with a button for the next step.",
     "Co-work follow-ups: press Ctrl+Enter (Cmd+Enter on Mac) to send your queued follow-ups right now. It stops the AI's current reply and sends them at once, instead of waiting for the next safe moment. A small hint under queued follow-ups reminds you.",
-    "Vani AI (c.vani.ai) is now a supported chat. Open it and PlazCode's bar appears, no sign-up needed. It's also in the app's list of supported AIs."
+    "Vani AI (c.vani.ai) is now a supported chat. Open it and PlazCode's bar appears, no sign-up needed. It's also in the app's list of supported AIs.",
+    "Godot connector: the AI can open Godot, run and stop a project, read its output and build scenes. PlazCode finds your Godot editor by itself.",
+    "Settings backup: copy all your choices as text to move them to another browser or restore them later. Passwords, keys and chats are never included.",
+    "The AI no longer goes in circles: a read repeated with nothing changed, or a failing call resent unchanged, is stopped and the AI is told what to do instead."
   ],
   "improved": [
     "Dropdown lists in PlazCode now use PlazCode's own rounded, themed menus in the app, the extension and the popup, with a clean arrow.",
     "Selected options in the Effort and Access settings are easier to read.",
     "Spacing is tidier for the Stop mode, Save and Memory summary controls.",
-    "The AI no longer asks you to turn on Full PC access when it is already on."
+    "The AI no longer asks you to turn on Full PC access when it is already on.",
+    "When the AI sends a tool the wrong way, PlazCode now fixes more of it for you (nested wrappers, near-miss names, coordinates, out-of-range numbers) and tells the AI what it changed so it gets it right next time."
   ],
   "fixed": [
     "On sites that redraw the whole page, like Vani AI, the PlazCode bar no longer loses its colours and shows black labels.",
     "Stray marks no longer appear in the top-left corner of the PlazCode bar with the Starglaze, Sakura, Autumn and Blood Moon themes. The Ultra glow is one clean line again.",
-    "Starting the agent in a brand-new chat now works on sites that give the chat its address a moment after you send, like Vani AI. Before, the bar could drop to \"Not connected to this chat yet\" right after Start Agent."
+    "Starting the agent in a brand-new chat now works on sites that give the chat its address a moment after you send, like Vani AI. Before, the bar could drop to \"Not connected to this chat yet\" right after Start Agent.",
+    "The Blender connector now runs a tested, pinned version with usage reporting turned off, and hides the two tools that send feedback to its maker. Existing installs are moved over.",
+    "Blender's screenshot tool no longer counts as a change, so Read-only mode lets the AI look at your scene."
   ],
   "notes": [
     "Read-only mode and delete confirmations are checked twice: in the browser and again in the PlazCode app.",
@@ -48,7 +54,8 @@
           "It checks the page, the PlazCode app, Roblox Studio or AgentScript, the chat box, and this chat, in that order.",
           "It reconnects the PlazCode app and a dropped Roblox Studio connection by itself, and tells you in plain words what to do about anything else.",
           "Co-work: press Ctrl+Enter to send queued follow-ups right now. It stops the AI's current reply and sends them at once. A hint under queued follow-ups shows the shortcut.",
-          "Vani AI (c.vani.ai) is now supported."
+          "Vani AI (c.vani.ai) is now supported.",
+          "Godot connector, plus Settings backup to copy your choices as text and restore them later."
         ]
       },
       {
@@ -68,7 +75,9 @@
           "Safety limits are checked in the browser and again in the PlazCode app. Undo never overwrites edits made after the AI's change.",
           "Fix connection never sends anything to the AI by itself. Connecting a chat always waits for your click.",
           "Works in all 15 interface languages.",
-          "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+          "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it.",
+          "Fewer wasted turns: more tool mistakes are fixed automatically, and the AI is stopped from repeating the same step.",
+          "Blender connector pinned with usage reporting off."
         ]
       }
     ]
