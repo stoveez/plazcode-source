@@ -22,7 +22,8 @@
     "The AI no longer asks you to turn on Full PC access when it is already on."
   ],
   "fixed": [
-    "On sites that redraw the whole page, like Vani AI, the PlazCode bar no longer loses its colours and shows black labels."
+    "On sites that redraw the whole page, like Vani AI, the PlazCode bar no longer loses its colours and shows black labels.",
+    "Stray marks no longer appear in the top-left corner of the PlazCode bar with the Starglaze, Sakura, Autumn and Blood Moon themes. The Ultra glow is one clean line again."
   ],
   "notes": [
     "Read-only mode and delete confirmations are checked twice: in the browser and again in the PlazCode app.",
@@ -55,7 +56,8 @@
           "Dropdowns use PlazCode's own rounded, themed menus with a clean arrow, in the app, the extension and the popup.",
           "Selected Effort and Access options are easier to read, and spacing is tidier for Stop mode, Save and Memory summary.",
           "The AI no longer asks you to turn on Full PC access when it is already on.",
-          "The PlazCode bar keeps its colours on sites that redraw the whole page, like Vani AI."
+          "The PlazCode bar keeps its colours on sites that redraw the whole page, like Vani AI.",
+          "No more stray marks in the bar's top-left corner with some themes."
         ]
       },
       {
