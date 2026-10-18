@@ -52,7 +52,7 @@ pub fn catalog() -> Vec<CatalogEntry> {
             name: "Blender",
             description: "Install and enable the Blender MCP addon inside Blender first. Keep Blender open, press N in the 3D viewport, open Blender MCP / MCP for Blender, and click Start MCP Server (default port 9876). Enable here starts the MCP process only; Test Blender connection checks the actual scene response.",
             command: "uvx",
-            args: &["blender-mcp"],
+            args: &["--from", "mcp-for-blender==2.1.9", "mcp-for-blender"],
         },
         // 1.24.21 connectors. Versions are pinned so an upstream release can't
         // change what runs on people's computers without a PlazCode update.
@@ -69,6 +69,13 @@ pub fn catalog() -> Vec<CatalogEntry> {
             description: "Control the Unity Editor: scenes, GameObjects, C# scripts, assets, tests and builds. First add the MCP for Unity package in Unity (Package Manager, Add package from git URL: https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity) and keep the Unity project open. Needs uv (installed with the Blender connector).",
             command: "uvx",
             args: &["--from", "mcpforunityserver==10.3.0", "mcp-for-unity", "--transport", "stdio"],
+        },
+        CatalogEntry {
+            id: "godot",
+            name: "Godot",
+            description: "Work with Godot projects: open the editor, run and stop a project, read its debug output, list projects, make scenes, add nodes and save them. PlazCode finds your Godot editor by itself; if it cannot, set GODOT_PATH to the Godot program in this server's settings. Open your project in Godot or give the AI the project folder.",
+            command: "npx",
+            args: &["-y", "@coding-solo/godot-mcp@0.1.1"],
         },
         CatalogEntry {
             id: "playwright",
@@ -115,6 +122,70 @@ pub fn catalog() -> Vec<CatalogEntry> {
     ]
 }
 
+/// Where Godot's editor usually lives. An explicit GODOT_PATH wins; otherwise
+/// the first program found in the usual install places, the Downloads and
+/// Desktop folders (Godot ships as a loose .exe), or on PATH.
+pub fn find_godot() -> Option<PathBuf> {
+    if let Some(path) = std::env::var_os("GODOT_PATH").map(PathBuf::from).filter(|p| p.is_file()) { return Some(path); }
+    let mut folders: Vec<PathBuf> = Vec::new();
+    let mut add = |value: Option<std::ffi::OsString>, tail: &str| { if let Some(base) = value { folders.push(PathBuf::from(base).join(tail)); } };
+    for key in ["USERPROFILE", "HOME"] {
+        let home = std::env::var_os(key);
+        add(home.clone(), "Downloads"); add(home.clone(), "Desktop"); add(home.clone(), "Godot");
+        add(home.clone(), "Applications"); add(home, "scoop/apps/godot/current");
+    }
+    add(std::env::var_os("ProgramFiles"), "Godot"); add(std::env::var_os("ProgramFiles(x86)"), "Godot");
+    add(std::env::var_os("LOCALAPPDATA"), "Programs/Godot");
+    folders.push(PathBuf::from("/Applications")); folders.push(PathBuf::from("/usr/local/bin")); folders.push(PathBuf::from("/usr/bin"));
+    if let Some(path) = std::env::var_os("PATH") { folders.extend(std::env::split_paths(&path)); }
+    folders.into_iter().find_map(|folder| godot_program_in(&folder))
+}
+
+/// A Godot editor program inside `folder`: godot / godot4 on PATH-like folders,
+/// "Godot_v4.x-stable_win64.exe" style downloads, or Godot.app on macOS. The
+/// console build and export templates are skipped.
+pub fn godot_program_in(folder: &std::path::Path) -> Option<PathBuf> {
+    let mut best: Option<PathBuf> = None;
+    for entry in std::fs::read_dir(folder).ok()?.flatten() {
+        let name = entry.file_name().to_string_lossy().to_lowercase();
+        let path = entry.path();
+        if name.starts_with("godot") && name.ends_with(".app") {
+            let inner = path.join("Contents/MacOS/Godot");
+            if inner.is_file() { return Some(inner); }
+            continue;
+        }
+        let stem = name.trim_end_matches(".exe");
+        let looks_right = stem == "godot" || stem == "godot4" || (stem.starts_with("godot_v") && !stem.contains("console") && !stem.contains("template") && !stem.contains("export"));
+        if looks_right && path.is_file() && !name.ends_with(".zip") && !name.ends_with(".tpz") {
+            if best.as_ref().map_or(true, |current| path > *current) { best = Some(path); }
+        }
+    }
+    best
+}
+
+/// Settings a connector always starts with. Blender's server can send usage
+/// data to its maker; PlazCode turns that off.
+fn catalog_env(id: &str) -> HashMap<String, String> {
+    let mut env = HashMap::new();
+    if id == "blender" { env.insert("DISABLE_TELEMETRY".to_string(), "true".to_string()); }
+    env
+}
+
+/// Earlier PlazCode versions started Blender's unpinned latest server
+/// (`uvx blender-mcp`). Move that default to the tested, pinned server with
+/// telemetry off, keeping any host/port the user set.
+fn upgrade_blender_spec(cfg: &mut McpConfig) {
+    let Some(spec) = cfg.servers.get_mut("blender") else { return };
+    let old_default = spec.command == "uvx" && spec.args.len() == 1 && spec.args[0] == "blender-mcp";
+    if old_default {
+        if let Some(entry) = catalog().into_iter().find(|e| e.id == "blender") {
+            spec.args = entry.args.iter().map(|v| (*v).to_string()).collect();
+        }
+    }
+    let ours = spec.command == "uvx" && spec.args.iter().any(|a| a.starts_with("mcp-for-blender"));
+    if ours && !spec.env.contains_key("DISABLE_TELEMETRY") { spec.env.insert("DISABLE_TELEMETRY".into(), "true".into()); }
+}
+
 pub fn config_path() -> PathBuf {
     #[cfg(target_os = "macos")]
     { return crate::platform::configuration_root().join("config.json"); }
@@ -131,6 +202,7 @@ pub fn read_config() -> McpConfig {
         .ok()
         .and_then(|raw| serde_json::from_str::<McpConfig>(&raw).ok())
         .unwrap_or_default();
+    upgrade_blender_spec(&mut cfg);
     cfg.servers.entry("roblox".to_string()).or_insert_with(|| ServerSpec {
         command: "launch_studio_mcp.py".to_string(),
         args: Vec::new(),
@@ -163,7 +235,7 @@ pub fn set_catalog_enabled(id: &str, enabled: bool) -> anyhow::Result<()> {
         cfg.servers.insert(id.to_string(), ServerSpec {
             command: entry.command.to_string(),
             args: entry.args.iter().map(|v| (*v).to_string()).collect(),
-            env: HashMap::new(),
+            env: catalog_env(id),
         });
     } else {
         cfg.servers.remove(id);
@@ -207,7 +279,10 @@ pub(crate) struct AddonRuntime {
 }
 
 impl AddonRuntime {
-    pub(crate) fn new(id: String, spec: ServerSpec) -> Self {
+    pub(crate) fn new(id: String, mut spec: ServerSpec) -> Self {
+        if id == "godot" && !spec.env.contains_key("GODOT_PATH") {
+            if let Some(found) = find_godot() { spec.env.insert("GODOT_PATH".into(), found.to_string_lossy().into_owned()); }
+        }
         Self {
             id,
             spec,
@@ -629,6 +704,40 @@ mod tests {
             args: vec!["--ignored".into(), "--exact".into(), "mcp_addons::tests::stdio_fixture".into(), "--nocapture".into()],
             env,
         })
+    }
+
+    #[test]
+    fn old_unpinned_blender_server_moves_to_the_pinned_one_with_telemetry_off() {
+        let mut cfg = McpConfig::default();
+        let mut env = HashMap::new(); env.insert("BLENDER_PORT".to_string(), "9999".to_string());
+        cfg.servers.insert("blender".into(), ServerSpec { command: "uvx".into(), args: vec!["blender-mcp".into()], env });
+        upgrade_blender_spec(&mut cfg);
+        let spec = &cfg.servers["blender"];
+        assert_eq!(spec.args, vec!["--from", "mcp-for-blender==2.1.9", "mcp-for-blender"]);
+        assert_eq!(spec.env["DISABLE_TELEMETRY"], "true");
+        assert_eq!(spec.env["BLENDER_PORT"], "9999", "the user's port is kept");
+        // A server the user chose themselves is left alone.
+        let mut cfg = McpConfig::default();
+        cfg.servers.insert("blender".into(), ServerSpec { command: "python".into(), args: vec!["my_server.py".into()], env: HashMap::new() });
+        upgrade_blender_spec(&mut cfg);
+        assert_eq!(cfg.servers["blender"].args, vec!["my_server.py"]);
+        assert!(cfg.servers["blender"].env.is_empty());
+        assert_eq!(catalog_env("blender")["DISABLE_TELEMETRY"], "true");
+        assert!(catalog_env("godot").is_empty());
+    }
+
+    #[test]
+    fn godot_editor_is_found_among_downloads_and_never_the_console_or_templates() {
+        let dir = std::env::temp_dir().join(format!("plazcode-godot-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        for name in ["Godot_v4.2-stable_win64_console.exe", "Godot_v4.2_export_templates.tpz", "notes.txt", "Godot_v4.2-stable_win64.exe"] { std::fs::write(dir.join(name), b"x").unwrap(); }
+        let found = godot_program_in(&dir).unwrap();
+        assert_eq!(found.file_name().unwrap(), "Godot_v4.2-stable_win64.exe");
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(godot_program_in(std::path::Path::new("/definitely/not/here")).is_none());
+        let entry = catalog().into_iter().find(|e| e.id == "godot").unwrap();
+        assert_eq!(entry.args, &["-y", "@coding-solo/godot-mcp@0.1.1"]);
     }
 
     #[tokio::test]

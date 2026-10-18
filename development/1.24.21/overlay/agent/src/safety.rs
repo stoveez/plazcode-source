@@ -21,7 +21,7 @@ fn studio_read(bare: &str) -> bool {
     const EXACT: &[&str] = &[
         "script_read", "script_grep", "script_search", "script_analysis", "screen_capture",
         "browser_snapshot", "browser_take_screenshot", "browser_console_messages",
-        "browser_network_requests", "browser_tabs", "browser_wait_for",
+        "browser_network_requests", "browser_tabs", "browser_wait_for", "look",
     ];
     PREFIXES.iter().any(|p| bare.starts_with(p)) || EXACT.contains(&bare)
 }
@@ -82,11 +82,12 @@ mod tests {
     #[test]
     fn read_only_blocks_changes_and_allows_looking() {
         for (engine, name) in [("local", "write_file"), ("local", "run_command"), ("local", "mouse_click"), ("local", "some_new_tool"),
-            ("roblox", "execute_luau"), ("roblox", "multi_edit"), ("roblox", "playwright__browser_click"), ("roblox", "blender__execute_blender_code")] {
+            ("roblox", "execute_luau"), ("roblox", "multi_edit"), ("roblox", "playwright__browser_click"), ("roblox", "blender__execute_blender_code"), ("roblox", "blender__import_asset"), ("roblox", "godot__run_project"), ("roblox", "godot__create_scene"), ("roblox", "godot__add_node"), ("roblox", "godot__save_scene"), ("roblox", "godot__launch_editor")] {
             assert!(gate(true, false, engine, name, &json!({}), false).is_err(), "{engine} {name} must be blocked");
         }
         for (engine, name) in [("local", "read_file"), ("local", "grep_files"), ("roblox", "script_read"), ("roblox", "get_studio_state"),
-            ("roblox", "inspect_instance"), ("roblox", "figma__get_design_context"), ("roblox", "playwright__browser_snapshot")] {
+            ("roblox", "inspect_instance"), ("roblox", "figma__get_design_context"), ("roblox", "playwright__browser_snapshot"),
+            ("roblox", "blender__look"), ("roblox", "blender__get_scene_info"), ("roblox", "godot__get_debug_output"), ("roblox", "godot__list_projects"), ("roblox", "godot__get_project_info")] {
             assert!(gate(true, false, engine, name, &json!({}), false).is_ok(), "{engine} {name} must be allowed");
         }
         assert!(gate(false, false, "local", "write_file", &json!({}), false).is_ok());

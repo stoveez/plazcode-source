@@ -1753,6 +1753,8 @@
   const isBlockedTool = (name) => {
     const bare = bareToolName(name);
     if (ALWAYS_BLOCKED_TOOLS.has(bare)) return true;
+    // Blender's server has tools that send usage data / feedback to its maker.
+    if (/(?:^|__)(?:record_trajectory_feedback|disable_telemetry)$/.test(String(name || ""))) return true;
     if (VISION_TOOLS.has(bare) && !P.supportsVision) return true;
     return false;
   };
@@ -2433,10 +2435,17 @@ return result`;
 
   async function runTool(call) {
     if(A.stop || A.pendingToolSettles)return "ERROR: the command was not run — stopped by the user or waiting for cancellation.";
+    const stalled=typeof PlazCodeStallGuard!=="undefined"?(A.stallGuard||(A.stallGuard=PlazCodeStallGuard.create())).before(call):null;
+    if(stalled)return stalled;
     let timer,settled=false,draining=false;
     const operation=runToolImpl(call).finally(()=>{settled=true;if(draining)A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);});
     const stop=new Promise(resolve=>{timer=setInterval(()=>{if(A.stop && A.stopMode!=="safe"){if(!settled){draining=true;A.pendingToolSettles=(A.pendingToolSettles||0)+1;}clearInterval(timer);resolve("ERROR: Immediate Stop requested. The tool may have partial effects; inspect state before retrying.");}},50);});
-    try{return await Promise.race([operation,stop]);}finally{clearInterval(timer);}
+    try{
+      const out=await Promise.race([operation,stop]);
+      if(A.stallGuard&&typeof out==="string"){if(!/stopped by the user|waiting for cancellation|Immediate Stop|offline|not connected/i.test(out.slice(0,200)))A.stallGuard.after(call,!/^ERROR/.test(out));}
+      // Tell the model which harmless argument mistakes were fixed so it sends them right next time.
+      return typeof out==="string"&&call&&Array.isArray(call.repairs)&&call.repairs.length&&!/^ERROR/.test(out)?out+"\n[PlazCode adjusted your arguments: "+call.repairs.join("; ")+". Send them this way next time.]":out;
+    }finally{clearInterval(timer);}
   }
   async function runToolImpl(call) {
     if (A.stop) return "ERROR: the command was not run — stopped by the user.";
@@ -4686,6 +4695,7 @@ return result`;
       return;
     }
     if (A.running || A.starting || A.startupOwner || A.enhancing || A.injecting || A.stopping || A.pendingToolSettles) return;
+    if (A.stallGuard) A.stallGuard.reset();
     // "Start session" is normally allowed ONLY on a blank conversation.
     // A "Restart" (existing chat, user explicitly clicked ↻ Restart) bypasses
     // this and injects the system prompt mid-chat so the AI will work.

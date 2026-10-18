@@ -9,7 +9,7 @@ const PlazCodeSafety = (() => {
     "grep_files", "file_info", "env_info", "process_list", "screen_capture", "list_windows", "window_screenshot"]);
   const READ_PREFIXES = ["get_", "list_", "search_", "inspect_", "read_", "find_", "describe_", "query_"];
   const READ_EXACT = new Set(["script_read", "script_grep", "script_search", "script_analysis", "screen_capture",
-    "browser_snapshot", "browser_take_screenshot", "browser_console_messages", "browser_network_requests", "browser_tabs", "browser_wait_for"]);
+    "browser_snapshot", "browser_take_screenshot", "browser_console_messages", "browser_network_requests", "browser_tabs", "browser_wait_for", "look"]);
   // PlazCode's own helpers that never touch the PC, Studio or Blender.
   const PLAZCODE_OWN = /^plazcode_|^list_commands$|^web_fetch$|^web_search$/;
   const DELETE_WORDS = new Set(["rm", "rmdir", "del", "erase", "rd", "remove-item", "ri", "unlink", "shred", "rimraf"]);

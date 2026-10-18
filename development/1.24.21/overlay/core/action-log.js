@@ -14,7 +14,7 @@ const PlazCodeActionLog = (() => {
     inspect_instance: "Inspected", search_game_tree: "Searched Studio for", get_studio_state: "Checked Studio",
     start_stop_play: "Started or stopped Play", insert_asset: "Inserted asset", execute_blender_code: "Ran Blender code",
   };
-  const LOOK = /^(get_|list_|search_|inspect_|read_|find_|describe_|query_)|^(tree|grep_files|file_info|script_read|script_grep|screen_capture|window_screenshot|browser_snapshot|browser_take_screenshot)$/;
+  const LOOK = /^(get_|list_|search_|inspect_|read_|find_|describe_|query_)|^(tree|grep_files|file_info|script_read|script_grep|screen_capture|window_screenshot|browser_snapshot|browser_take_screenshot|look)$/;
   const bare = (tool) => String(tool || "").split("__").pop();
   const server = (tool) => String(tool || "").includes("__") ? String(tool).split("__")[0] : "";
   const words = (tool) => bare(tool).replace(/^browser_/, "").replace(/_/g, " ");
