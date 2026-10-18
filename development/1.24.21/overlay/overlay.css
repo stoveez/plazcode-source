@@ -5650,6 +5650,10 @@ html[data-rs-palette][data-rs-theme] #rs-fix-panel .rs-fix-acts button:not(#rs-f
 #rs-menu .rs-execution-limit label{display:block;margin:0;line-height:1.5;overflow-wrap:anywhere}
 #rs-menu .rs-execution-limit input{width:100%;min-width:0;margin:0}
 #rs-menu .rs-execution-settings small{display:block;margin:0;font-size:11px;line-height:1.65;color:var(--pc-muted,#b5c3d7);overflow-wrap:anywhere}
+#rs-menu .rs-prompt-field:has(>#rs-stop-mode){display:grid;gap:8px;margin-top:14px;padding:14px;box-sizing:border-box;border:1px solid rgb(var(--pc-rgb,255 146 38) / .25);border-radius:12px;background:rgb(var(--pc-rgb,255 146 38) / .04);min-width:0}
+#rs-menu .rs-prompt-field>label[for=rs-stop-mode]{display:block;margin:0;font-weight:600;line-height:1.5}
+#rs-menu #rs-stop-mode{display:block;width:100%;margin:0}
+#rs-menu .rs-prompt-field:has(>#rs-stop-mode)>small{display:block;margin:2px 0 0;font-size:11px;line-height:1.65;color:var(--pc-muted,#b5c3d7);overflow-wrap:anywhere}
 #rs-menu .rs-execution-review{display:flex;align-items:center;gap:10px;margin:0;line-height:1.5;font-weight:600;cursor:pointer}
 #rs-menu .rs-execution-review input{flex:none;width:16px;height:16px;margin:0;accent-color:var(--pc-accent,#ffac43)}
 #rs-menu .rs-execution-actions{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px}
