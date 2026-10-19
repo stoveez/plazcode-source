@@ -10,7 +10,8 @@ Decisions made: Cloudflare Workers + D1 server; separate release after 1.24.21; 
 
 ## Keys
 - Format: 20 characters in total including one underscore after the 10th: XXXXXXXXXX_XXXXXXXXX (19 random uppercase letters and digits, no 0/O/1/I, plus the underscore), generated randomly on the server. Stored hashed.
-- Types: license (has a duration), developer (lifetime), admin (lifetime). Only the owner makes developer and admin keys.
+- Types: free license (has a duration; basic features), paid license (has a duration; paid features too), developer (lifetime), admin (lifetime). The owner and developers can generate free and paid keys; only the owner makes developer and admin keys. The "Get a 24-hour key" button on the login screen gives a free key only.
+- Paid features: the list is decided by the owner (open question). The server stores each account's tier; the app turns the paid features on only for paid, developer, admin and owner accounts, and a free account that tries one sees a plain "this needs a paid key" message. Redeeming a paid key on a free account upgrades it; when the paid time ends the account falls back to free (if it still has free time) or to the key prompt.
 - Redeeming: logged-in user enters a key; the time starts when redeemed and adds to any time left.
 
 ## HWID lock
