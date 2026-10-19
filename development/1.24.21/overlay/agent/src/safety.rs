@@ -12,6 +12,10 @@ const LOCAL_READ: &[&str] = &[
     "workspace_info", "list_directory", "tree", "read_file", "read_file_base64", "search_files",
     "grep_files", "file_info", "env_info", "process_list", "screen_capture", "screen_record", "list_windows",
     "window_screenshot",
+    "godot_project_info", "godot_scene_tree", "godot_check_script", "godot_find_uses",
+    "unity_project_info", "unity_list_assets", "unity_scene_objects", "unity_packages",
+    "roblox_place_info", "roblox_place_scripts", "roblox_place_search", "roblox_lint_script",
+    "blender_file_info", "blender_script_check",
 ];
 
 /// Studio / add-on tools that only look, matched on the tool name after any

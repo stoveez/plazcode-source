@@ -9,12 +9,12 @@ const PlazCodeActionLog = (() => {
     grep_files: "Searched files for", file_info: "Checked", run_command: "Ran command", process_kill: "Closed program",
     open_path: "Opened", launch_app: "Started app", focus_window: "Switched to window", key_type: "Typed text",
     mouse_click: "Clicked", mouse_move: "Moved the mouse", screen_capture: "Took a screenshot",
-    window_screenshot: "Took a screenshot of", screen_record: "Recorded the screen", ultralab_read: "Read an Ultra skill file", roblox_docs: "Looked up the Roblox docs", execute_luau: "Ran Studio code", multi_edit: "Edited script",
+    window_screenshot: "Took a screenshot of", screen_record: "Recorded the screen", godot_project_info: "Read the Godot project", godot_scene_tree: "Read the Godot scene", godot_add_node: "Added a Godot node to", godot_create_script: "Created Godot script", godot_check_script: "Checked Godot script", godot_find_uses: "Found uses in Godot of", unity_project_info: "Read the Unity project", unity_list_assets: "Listed Unity assets", unity_scene_objects: "Read the Unity scene", unity_create_script: "Created Unity script", unity_packages: "Read the Unity packages", roblox_place_info: "Read the Roblox place file", roblox_place_scripts: "Read scripts in", roblox_place_search: "Searched the place file for", roblox_lint_script: "Checked Luau script", blender_file_info: "Read the Blender file", blender_script_check: "Checked Blender script", ultralab_read: "Read an Ultra skill file", roblox_docs: "Looked up the Roblox docs", execute_luau: "Ran Studio code", multi_edit: "Edited script",
     script_set_source: "Replaced script", script_read: "Read script", script_grep: "Searched scripts for",
     inspect_instance: "Inspected", search_game_tree: "Searched Studio for", get_studio_state: "Checked Studio",
     start_stop_play: "Started or stopped Play", insert_asset: "Inserted asset", execute_blender_code: "Ran Blender code",
   };
-  const LOOK = /^(get_|list_|search_|inspect_|read_|find_|describe_|query_)|^(tree|grep_files|file_info|script_read|script_grep|screen_capture|screen_record|window_screenshot|browser_snapshot|browser_take_screenshot|look|ultralab_read|roblox_docs)$/;
+  const LOOK = /^(get_|list_|search_|inspect_|read_|find_|describe_|query_)|^(tree|grep_files|file_info|script_read|script_grep|screen_capture|screen_record|window_screenshot|browser_snapshot|browser_take_screenshot|look|ultralab_read|roblox_docs|godot_project_info|godot_scene_tree|godot_check_script|godot_find_uses|unity_project_info|unity_list_assets|unity_scene_objects|unity_packages|roblox_place_info|roblox_place_scripts|roblox_place_search|roblox_lint_script|blender_file_info|blender_script_check)$/;
   const bare = (tool) => String(tool || "").split("__").pop();
   const server = (tool) => String(tool || "").includes("__") ? String(tool).split("__")[0] : "";
   const words = (tool) => bare(tool).replace(/^browser_/, "").replace(/_/g, " ");

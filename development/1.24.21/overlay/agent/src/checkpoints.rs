@@ -147,8 +147,8 @@ impl Journal {
         anyhow::ensure!(task.workspace.is_empty() || task.workspace==root,"Task belongs to a different workspace.");
         task.workspace=root;
         self.step(id, name);
-        if matches!(name,"write_file"|"edit_file"|"delete_path"|"download_file"|"move_path"|"create_folder"|"run_command"){self.check_protection(ws,id,"local",name,args)?;}
-        let keys: &[&str] = match name { "write_file" | "edit_file" | "delete_path" | "download_file" => &["path"], "move_path" => &["source", "destination"], _ => &[] };
+        if matches!(name,"write_file"|"edit_file"|"delete_path"|"download_file"|"move_path"|"create_folder"|"run_command"|"godot_add_node"|"godot_create_script"|"unity_create_script"){self.check_protection(ws,id,"local",name,args)?;}
+        let keys: &[&str] = match name { "write_file" | "edit_file" | "delete_path" | "download_file" | "godot_add_node" | "godot_create_script" | "unity_create_script" => &["path"], "move_path" => &["source", "destination"], _ => &[] };
         if name=="run_command" {self.check_protection(ws,id,"local",name,args)?;}
         if keys.is_empty() {
             if matches!(name, "run_command" | "create_folder" | "process_kill" | "key_type" | "mouse_click") { self.warn(id, "This task includes commands, folders or external side effects without a complete inverse. Revert is disabled for the whole task.");self.save()?; }
@@ -283,6 +283,34 @@ mod tests {
         let paths=journal.prepare_files(&ws,&id,"edit_file",&json!({"path":"code.txt"})).unwrap();std::fs::write(&path,b"after\r\n").unwrap();journal.commit_files(&ws,&id,&paths).unwrap();journal.finish(&id,true).unwrap();
         let mut journal=Journal::load(dir.join("history.json"));std::fs::write(&path,b"manual").unwrap();assert!(journal.revert_files(&ws,&id).is_err());assert_eq!(std::fs::read(&path).unwrap(),b"manual");
         std::fs::write(&path,b"after\r\n").unwrap();journal.revert_files(&ws,&id).unwrap();assert_eq!(std::fs::read(&path).unwrap(),b"before\r\n");let _=std::fs::remove_dir_all(dir);
+    }
+    #[tokio::test]
+    async fn engine_file_tools_are_journaled_undoable_and_sandboxed() {
+        let dir=std::env::temp_dir().join(format!("plazcode-engine-journal-{}",std::process::id()));let _=std::fs::remove_dir_all(&dir);
+        let ws=Workspace::new(dir.to_str()).unwrap();
+        let scene="[gd_scene format=3]\n\n[node name=\"Main\" type=\"Node2D\"]\n";std::fs::write(dir.join("main.tscn"),scene).unwrap();
+        let mut journal=Journal::load(dir.join("history.json"));let id=journal.begin(&json!({"engine":"local"})).unwrap();
+        // A changing engine tool: snapshot, run through the real dispatcher, record, then Undo.
+        let args=json!({"path":"main.tscn","name":"Hero","type":"Sprite2D","parent":"."});
+        let paths=journal.prepare_files(&ws,&id,"godot_add_node",&args).unwrap();assert_eq!(paths,vec!["main.tscn".to_string()]);
+        let reply=crate::workspace::dispatch(&ws,"godot_add_node",args.clone()).await.unwrap();assert!(reply.contains("Added node"),"{reply}");
+        journal.commit_files(&ws,&id,&paths).unwrap();journal.event(&id,"local","godot_add_node",&args,"ok","");
+        assert!(std::fs::read_to_string(dir.join("main.tscn")).unwrap().contains("Hero"));
+        let summary=journal.summaries();assert_eq!(summary[0]["changes"][0]["path"],"main.tscn");assert_eq!(summary[0]["events"][0]["target"],"main.tscn");
+        journal.finish(&id,true).unwrap();journal.revert_files(&ws,&id).unwrap();
+        assert_eq!(std::fs::read_to_string(dir.join("main.tscn")).unwrap(),scene,"Undo puts the scene back exactly");
+        // A new script is Undone by deleting it; read tools never touch files.
+        let id=journal.begin(&json!({"engine":"local"})).unwrap();
+        let args=json!({"path":"player.gd","template":"node"});let paths=journal.prepare_files(&ws,&id,"godot_create_script",&args).unwrap();
+        crate::workspace::dispatch(&ws,"godot_create_script",args).await.unwrap();journal.commit_files(&ws,&id,&paths).unwrap();assert!(dir.join("player.gd").exists());
+        journal.finish(&id,true).unwrap();journal.revert_files(&ws,&id).unwrap();assert!(!dir.join("player.gd").exists());
+        for name in crate::engine_tools::NAMES { assert_eq!(crate::safety::is_change("local",name),crate::engine_tools::WRITERS.contains(name),"{name}"); }
+        // The workspace sandbox applies: nothing outside the folder can be read or written.
+        assert!(crate::workspace::dispatch(&ws,"godot_scene_tree",json!({"path":"../outside.tscn"})).await.is_err());
+        assert!(crate::workspace::dispatch(&ws,"godot_create_script",json!({"path":"../escape.gd"})).await.is_err());
+        assert!(!dir.parent().unwrap().join("escape.gd").exists());
+        assert!(crate::workspace::catalog().iter().any(|t|t["name"]=="roblox_place_info"));
+        let _=std::fs::remove_dir_all(dir);
     }
     #[tokio::test]
     async fn multifile_restore_is_prevalidated_and_protection_persists() {

@@ -6,7 +6,9 @@ const PlazCodeSafety = (() => {
   const KEYS = ["rsReadOnly", "rsConfirmDelete", "rsAllowedFolders"];
   // AgentScript (local) tools that only look; every other local tool is a change.
   const LOCAL_READ = new Set(["workspace_info", "list_directory", "tree", "read_file", "read_file_base64", "search_files",
-    "grep_files", "file_info", "env_info", "process_list", "screen_capture", "screen_record", "list_windows", "window_screenshot"]);
+    "grep_files", "file_info", "env_info", "process_list", "screen_capture", "screen_record", "list_windows", "window_screenshot",
+    "godot_project_info", "godot_scene_tree", "godot_check_script", "godot_find_uses", "unity_project_info", "unity_list_assets", "unity_scene_objects", "unity_packages",
+    "roblox_place_info", "roblox_place_scripts", "roblox_place_search", "roblox_lint_script", "blender_file_info", "blender_script_check"]);
   const READ_PREFIXES = ["get_", "list_", "search_", "inspect_", "read_", "find_", "describe_", "query_"];
   const READ_EXACT = new Set(["script_read", "script_grep", "script_search", "script_analysis", "screen_capture",
     "browser_snapshot", "browser_take_screenshot", "browser_console_messages", "browser_network_requests", "browser_tabs", "browser_wait_for", "look"]);

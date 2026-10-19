@@ -68,6 +68,7 @@ fn init_file_logger(ui: Option<Arc<gui::UiShared>>) {
 mod gui;
 mod workspace;
 mod safety;
+mod engine_tools;
 mod security;
 mod preferences;
 mod memory;

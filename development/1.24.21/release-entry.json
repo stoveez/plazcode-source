@@ -19,7 +19,8 @@
     "The AI no longer goes in circles: a read repeated with nothing changed, or a failing call resent unchanged, is stopped and the AI is told what to do instead.",
     "Screen recording: with Full PC access the AI can record up to 5 seconds of your screen and look at the result, to check animations and menus that a single screenshot misses (Windows).",
     "Ultra effort is now the UltraLab pack by SyphoDev (used with his permission, credit: youtube.com/@SyphoDev). At Ultra the AI gets a full Roblox game-building toolkit: 53 skills covering UI, scripting, maps, 3D models, effects, tests and more, plus 7 helper roles and 18 reference notes. It only reads the ones that match your request, so it stays quick.",
-    "The AI can open any of Ultra's skill files itself and look things up in the official Roblox docs, and it still asks you first before it uploads, uses a paid service, installs something or publishes."
+    "The AI can open any of Ultra's skill files itself and look things up in the official Roblox docs, and it still asks you first before it uploads, uses a paid service, installs something or publishes.",
+    "Engine file tools (AgentScript): 17 new tools that read and work on project files without the editor being open. Godot: read a project, show a scene's node tree, add a node, make a script from a template, check a script for mistakes, find where a file is used. Unity: read a project, list assets, list a scene's objects, make a C# script, list packages. Roblox: read a saved place file, list and search its scripts, check Luau code. Blender: look inside a saved .blend file and check a Python script or add-on."
   ],
   "improved": [
     "Dropdown lists in PlazCode now use PlazCode's own rounded, themed menus in the app, the extension and the popup, with a clean arrow.",
@@ -42,7 +43,8 @@
     "Available in all 15 interface languages.",
     "The Windows app is unsigned and the Mac app is not notarized, as in earlier versions. Your computer may ask you to confirm opening it.",
     "Ultra replaces the old Ultra. The old built-in Ultra skills are removed once on update; skills you made or imported are never touched.",
-    "Sites with small prompt limits (Notion, Copilot, ClickUp, ChatGPT) get a shorter Ultra so nothing is cut off. DeepSeek uses the pack's short version instead of the old Chinese Ultra."
+    "Sites with small prompt limits (Notion, Copilot, ClickUp, ChatGPT) get a shorter Ultra so nothing is cut off. DeepSeek uses the pack's short version instead of the old Chinese Ultra.",
+    "The three tools that change files (add a Godot node, make a Godot script, make a Unity script) follow Read-only mode, appear in What happened and can be undone."
   ],
   "github": {
     "summary": "Safety limits, a What happened log with Undo, saved setups per site, shareable skills, Figma, Unity and Browser connectors, and a new Fix connection button.",
@@ -63,7 +65,8 @@
           "Godot connector, plus Settings backup to copy your choices as text and restore them later.",
           "Screen recording (Windows): the AI can record up to 5 seconds of the screen and view a picture of the clip.",
           "Ultra effort is now the UltraLab pack by SyphoDev (used with his permission, credit: youtube.com/@SyphoDev). At Ultra the AI gets a full Roblox game-building toolkit: 53 skills covering UI, scripting, maps, 3D models, effects, tests and more, plus 7 helper roles and 18 reference notes. It only reads the ones that match your request, so it stays quick.",
-          "The AI can open any of Ultra's skill files itself and look things up in the official Roblox docs, and it still asks you first before it uploads, uses a paid service, installs something or publishes."
+          "The AI can open any of Ultra's skill files itself and look things up in the official Roblox docs, and it still asks you first before it uploads, uses a paid service, installs something or publishes.",
+          "Engine file tools (AgentScript): 17 new tools that read and work on project files without the editor being open. Godot: read a project, show a scene's node tree, add a node, make a script from a template, check a script for mistakes, find where a file is used. Unity: read a project, list assets, list a scene's objects, make a C# script, list packages. Roblox: read a saved place file, list and search its scripts, check Luau code. Blender: look inside a saved .blend file and check a Python script or add-on."
         ]
       },
       {

@@ -1425,6 +1425,7 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
         "process_kill" => tool_process_kill(ws, a).await,
         "open_path" => tool_open_path(ws, a).await,
         "download_file" => tool_download_file(ws, a).await,
+        name if crate::engine_tools::is_engine_tool(name) => crate::engine_tools::run(ws, name, a).await,
         #[cfg(windows)]
         "screen_capture" => tool_screen_capture(ws, a).await,
         #[cfg(windows)]
@@ -1448,6 +1449,7 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
 read_file, read_file_base64, write_file, edit_file, create_folder, delete_path, move_path, search_files, grep_files, \
 run_command, file_info, env_info, process_list, process_kill (FULL mode), open_path, download_file, \
 screen_capture / screen_record / mouse_move / mouse_click / key_type / list_windows / focus_window / launch_app / window_screenshot (FULL mode, desktop control). \
+Engine file tools (no editor needed): godot_project_info / godot_scene_tree / godot_add_node / godot_create_script / godot_check_script / godot_find_uses, unity_project_info / unity_list_assets / unity_scene_objects / unity_create_script / unity_packages, roblox_place_info / roblox_place_scripts / roblox_place_search / roblox_lint_script, blender_file_info / blender_script_check. \
 Read any file as base64 (attachments/images) with read_file_base64 {{path}}. \
 Call list_commands for full parameter details."
         )),
@@ -1490,7 +1492,7 @@ pub fn catalog() -> Vec<serde_json::Value> {
         serde_json::json!({"name": "launch_app", "description": "Launch an executable directly by name or path (e.g. 'notepad', 'calc', or a full .exe path); use argv (array of strings) for paths with spaces, or legacy simple args. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"target": {"type": "string"}, "args": {"type": "string"}, "argv": {"type":"array", "items":{"type":"string"}}}), &["target"])}),
         serde_json::json!({"name": "screen_record", "description": "Record up to 5 seconds of the screen (seconds 1-5, fps 1-4) as numbered PNG frames in a folder plus sheet.png, one picture of the sampled frames. Attach sheet.png with attach_feedback to see the clip. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"seconds": {"type": "number"}, "fps": {"type": "number"}, "path": {"type": "string"}}), &[])}),
         serde_json::json!({"name": "window_screenshot", "description": "Capture a single window (by title substring, or the first window) to a PNG. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"title": {"type": "string"}, "path": {"type": "string"}}), &[])}),
-    ].into_iter().filter(|tool| {
+    ].into_iter().chain(crate::engine_tools::catalog()).filter(|tool| {
         if cfg!(windows) { return true; }
         match tool["name"].as_str().unwrap_or("") {
             "screen_capture"|"screen_record"|"mouse_move"|"mouse_click"|"key_type"|"list_windows"|"focus_window"|"window_screenshot"=>false,
