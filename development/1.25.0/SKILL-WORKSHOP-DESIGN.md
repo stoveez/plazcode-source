@@ -25,3 +25,11 @@ Decisions made: owner approves every shared skill before it is public; built in 
 
 ## Build order
 1. Server and tests 2. App Workshop screen (browse/install/share/rate/report) 3. Owner review queue in the owner page 4. Notices and release notes 5. Windows + Mac validation.
+
+## Content: skills and virtual specialists (added at owner request)
+Goal: the workshop starts full, not empty, with skills and "virtual specialists" (a specialist is a skill that sets a persona and working method, e.g. "Roblox UI designer").
+- Own content only. Multi-Script's skills and specialists are GPL and belong to someone else, so none are copied or adapted.
+- Seed sources: PlazCode's starter skills; skills written fresh for PlazCode in reviewed batches, each tested by the same checks as Ultra (header, no hidden instructions, no secrets); the UltraLab pack's skills only if SyphoDev agrees to workshop distribution (his licence allows no sale or paid bundle; credit is required) — to be confirmed with him; later, community submissions through the owner queue.
+- Honest scale: 897 + 300 is a number to grow toward, not a launch promise. Quality beats count: the AI follows these, so each one must be tested. Proposed launch target: about 60 skills and 20 specialists, then batches.
+- Specialists get their own filter and badge in the Workshop and install as a persona the user turns on per task.
+- Every seed item shows "reviewed by PlazCode", with its author credited.
