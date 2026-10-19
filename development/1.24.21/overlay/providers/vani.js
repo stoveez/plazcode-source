@@ -469,12 +469,33 @@ const RSProvider = (() => {
     return m ? m[1] : "";
   };
 
+  // Co-work: replace the composer text without sending (used to move a queued follow-up out of the box and back).
+  async function writeDraft(value, expectedCurrent) {
+    const ed = getEditor();
+    if (!ed || editorText().trim() !== String(expectedCurrent).trim()) return { ok: false, reason: "draft-changed" };
+    const text = String(value);
+    const relock = safeRead(() => ed.getAttribute("contenteditable"), null) === "false" || safeRead(() => ed.hasAttribute("readonly"), false);
+    try {
+      setInputLock(false);
+      if (text === "" && ed.isContentEditable) {
+        ed.focus();
+        try { document.execCommand("selectAll", false); document.execCommand("delete", false); } catch {}
+        if (editorText().trim() !== "") {
+          ed.textContent = "";
+          try { ed.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" })); } catch { ed.dispatchEvent(new Event("input", { bubbles: true })); }
+        }
+      } else setRichText(ed, text);
+      await sleep(30);
+      return { ok: text === "" ? editorText().trim() === "" : editorText().trim() === text.trim() };
+    } finally { if (relock) setInputLock(true); }
+  }
   function installSendHooks(handlers) {
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
       const ed = getEditor();
       if (!ed || !safeRead(() => ed.contains(e.target), false)) return;
       if (editorText().trim() === "") return;
+      if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (!chatIsEmpty()) return;
@@ -486,6 +507,8 @@ const RSProvider = (() => {
     document.addEventListener("click", (e) => {
       if (!getEditor()) return;
       const t = e.target;
+      // PlazCode's own bar buttons (Fix connection, Enhance, ...) are never the site's Send button.
+      if (safeClosest(t, "#rs-root")) return;
       const stop = safeRead(() => t.closest, null) && safeClosest(t, "button");
       if (stop && S.stopAria.test(ariaOf(stop))) { handlers.onNativeStop(); return; }
       const btn = safeRead(() => t.closest, null) && safeClosest(t, "button");
@@ -493,6 +516,7 @@ const RSProvider = (() => {
       const isSend = S.sendAria.test(ariaOf(btn)) || safeRead(() => btn.type, "") === "submit";
       if (!isSend) return;
       if (safeRead(() => btn.disabled, true)) return;
+      if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (!chatIsEmpty()) return;
@@ -532,7 +556,7 @@ const RSProvider = (() => {
     assistantCount, userCount, lastAssistant, lastAssistantId, itemKey, readAssistant,
     streamLen, snapshot,
     getEditor, editorText, chatIsEmpty, isFreshChat, composerFrame, barAnchor,
-    setInputLock, typeAndSend, stopGeneration,
+    setInputLock, writeDraft, typeAndSend, stopGeneration,
     isGenerating, isBusyNow, isHardGenerating,
     enforceComposer() { return { ready: true }; },
     async ensureComposerReady(reason) {

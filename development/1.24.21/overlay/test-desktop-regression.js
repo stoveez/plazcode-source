@@ -24,17 +24,17 @@ const baseline = {
   "providers/crax-net.js": "a3c1bfb62a62594a2d6eef3615f66d4aa53b9157",
   "providers/crax.js": "501518b20c4b609d8230181eab1ddb6c77e5e852",
   "providers/deepseek.js": "6e7901e32f9186afd6b7ca9f93f526424b3cff2c",
-  "providers/freebuff.js": "4642a361b9f80753f265fc6818b743454b6e1063",
+  "providers/freebuff.js": "926e457981a40802b966c4506340fb46a806e73c",
   "providers/gemini.js": "c7882ad7133928cdeacb6d3026ce0fd203c61460",
   "providers/glm.js": "5791b81c089f12ac0022654569d7920bbf0412c5",
   "providers/kimi.js": "e38ebb381e0ca54ed57866b63e1a864e14f61f26",
   "providers/meta.js": "84f3c1fb4f144685bd404b86bad9588e52fc8985",
   "providers/notion.js": "2155eab0a66f03794f8a6b964422be06e8dd62b8",
-  "providers/oxalpha.js": "bb167464f4c2360ea05849eeac0bc6b24752b929",
+  "providers/oxalpha.js": "d45e13f00d754b7243c76736ee3b96c0b09bf034",
   "providers/qwen-net.js": "6073141989f67e4ad2dd57444af6f55e48ff0b71",
   "providers/qwen.js": "9c7ae960fb3942e8ce6f1712126af7645eb896b4",
-  "providers/useai.js": "c34cd22f3dda940d98e5c1fe12050cb464855815",
-  "providers/vani.js": "0ade0d5be73e595a2eceba1f511b462167c81d24"
+  "providers/useai.js": "2d4da606476ef70e355bc8d3213b30f085f1fa4b",
+  "providers/vani.js": "abda7180b12266eab04eb0995f5cf8192dffcae4"
 };
 const requiredProviders = [
   "providers/clickup.js",

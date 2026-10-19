@@ -119,7 +119,10 @@ const PlazCodeActionLog = (() => {
         const reply = await request({ action: "list" });
         if (!reply || reply.ok === false) throw new Error(reply && reply.error || "The PlazCode app isn't running, so the log can't be shown.");
         lastTasks = Array.isArray(reply.tasks) ? reply.tasks : [];
-        if (status.dataset.kind === "error") { status.textContent = ""; status.dataset.kind = ""; }
+        // An older PlazCode app (before 1.24.21) only reports changed files, never the commands and reads.
+        const oldApp = lastTasks.length > 0 && lastTasks.every((task) => !Array.isArray(task.events));
+        if (oldApp) { status.textContent = (globalThis.PlazCodeI18n?.t || ((x) => x))("Your PlazCode app is older than this extension, so it can only list changed files. Update the PlazCode app to also see commands, reads and searches."); status.dataset.kind = "error"; }
+        else if (status.dataset.kind === "error") { status.textContent = ""; status.dataset.kind = ""; }
         render();
       } catch (error) { status.textContent = error.message || String(error); status.dataset.kind = "error"; }
       finally { busy = false; refresh.disabled = false; }

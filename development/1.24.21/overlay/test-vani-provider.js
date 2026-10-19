@@ -61,3 +61,40 @@ function load(url, body) {
   w.close(); }
 
 console.log('PASS Vani AI: registered on c.vani.ai only, reads Vani turns, anonymous chat works, login page and limits recognised.');
+
+// Clicking PlazCode's own bar buttons (Fix connection, Enhance...) must never count as the site's Send button.
+{
+  const fs2 = fs;
+  for (const name of ['vani', 'freebuff', 'oxalpha', 'useai']) {
+    const src = fs2.readFileSync(require('path').join(__dirname, 'providers', name + '.js'), 'utf8');
+    const click = src.indexOf('document.addEventListener("click"');
+    assert(click > 0, name + ' has a click hook');
+    const guard = src.indexOf('if (safeClosest(t, "#rs-root")) return;', click);
+    const send = src.indexOf('btn.type', click);
+    assert(guard > click && guard < send, name + ': PlazCode bar clicks are ignored before Send detection');
+  }
+  console.log('PASS PlazCode bar buttons are never mistaken for the site Send button');
+}
+
+// Co-work on Vani: the provider can replace the composer text, and Enter / Send are offered to Co-work first.
+(async () => {
+  for (const [kind, box] of [['textarea', '<textarea></textarea>'], ['editable', '<div contenteditable="true" role="textbox"></div>']]) {
+    const {w, p} = load('https://c.vani.ai/c/abc123', '<form>' + box + '<button type="submit" aria-label="Send message">Send</button></form>');
+    assert.equal(typeof p.writeDraft, 'function', kind + ': Vani offers writeDraft');
+    const ed = p.getEditor();
+    if (kind === 'textarea') ed.value = 'my follow-up'; else ed.textContent = 'my follow-up';
+    assert.deepEqual({...await p.writeDraft('', 'something else')}, {ok: false, reason: 'draft-changed'}, kind + ': a changed draft is never overwritten');
+    assert.equal(p.editorText(), 'my follow-up');
+    const cleared = await p.writeDraft('', 'my follow-up');
+    assert.equal(cleared.ok, true, kind + ': draft cleared'); assert.equal(p.editorText().trim(), '');
+    const back = await p.writeDraft('my follow-up', '');
+    assert.equal(back.ok, true, kind + ': draft restored'); assert.equal(p.editorText().trim(), 'my follow-up');
+    let seen = 0;
+    p.installSendHooks({onCoworkSend: () => { seen++; return true; }, isBlocked: () => { throw new Error('Co-work must be asked first'); }, isStarted: () => true, onBlockedAttempt() {}, onUserMessage() { throw new Error('not a normal send'); }, onNativeStop() {}});
+    ed.dispatchEvent(new w.KeyboardEvent('keydown', {key: 'Enter', bubbles: true, cancelable: true}));
+    w.document.querySelector('button').dispatchEvent(new w.MouseEvent('click', {bubbles: true, cancelable: true}));
+    assert.equal(seen, 2, kind + ': Enter and the Send button both go to Co-work first');
+    w.close();
+  }
+  console.log('PASS Vani supports Co-work (draft swap on a textarea and a rich editor, Enter and Send offered to Co-work first)');
+})().catch((e) => { console.error(e); process.exit(1); });
