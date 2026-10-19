@@ -13,6 +13,9 @@ concurrency:
 jobs:
   browsers:
     runs-on: ubuntu-latest
+    env:
+      # The unit tests load jsdom from the tools folder that npm ci fills.
+      NODE_PATH: ${{ github.workspace }}/build-src-1.24.21/PlazCode/release-tools/node_modules
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
