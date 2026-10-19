@@ -63,6 +63,7 @@ html=html.replace(/__PLAZCODE_VERSION__/g,'1.24.18').replace(/__PLAZCODE_PAIRING
 const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
 new vm.Script(script, {filename:'desktop-injected.js'});
 
+const pick=(select,value)=>select.evaluate((node,value)=>{node.value=value;node.dispatchEvent(new Event('change',{bubbles:true}));},value); // PlazCode's themed menus hide the native <select>
 (async()=>{
   const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'plazcode-language-fixture-'));
   const prefsPath=path.join(temporary,'settings.json');
@@ -103,14 +104,14 @@ new vm.Script(script, {filename:'desktop-injected.js'});
     await page.waitForFunction(()=>window.PlazCodeDesktop && document.documentElement.dataset.desktopThinking==='ultracode');
     await page.evaluate(()=>PlazCodeDesktop.go('settings'));
     const host=page.locator('#desktopLanguagePicker'), select=host.locator('select'), search=host.locator('input[type=search], input[type=text]').first();
-    await select.waitFor({state:'visible'});
+    await select.waitFor({state:'attached'});
     assert.equal(await select.inputValue(),'en','old settings without language default to English');
     assert.equal(await page.locator('html').getAttribute('lang'),'en');
     assert.equal(await page.locator('html').getAttribute('dir'),'ltr');
     assert.equal(await select.locator('option').count(),15);
     assert.deepEqual(await select.locator('option').evaluateAll(nodes=>nodes.map(n=>n.value)),codes);
     assert(await page.locator('[data-settings-section="languageSettings"]').evaluate(n=>n.open),'Language defaults expanded');
-    const searchBox=await search.boundingBox(),selectBox=await select.boundingBox();
+    const searchBox=await search.boundingBox(),selectBox=await (await select.evaluate(n=>n.parentElement.classList.contains('pc-dd')) ? select.locator('xpath=..') : select).boundingBox();
     assert(searchBox.y+searchBox.height<=selectBox.y+1,'search must be ABOVE the real dropdown');
     if(!actual)assert(await page.evaluate(()=>window.__staticMountedBeforeData));
     assert.equal(await page.locator('#customInstructions').inputValue(),authored);
@@ -118,7 +119,7 @@ new vm.Script(script, {filename:'desktop-injected.js'});
     assert((await select.locator('option').evaluateAll(nodes=>nodes.map(n=>n.value))).includes('ja'),'search supports native language names');
     await search.fill('');
     for(const code of codes.slice(1)) {
-      await select.selectOption(code);
+      await pick(select,code);
       await page.waitForFunction(code=>document.documentElement.lang===code && PlazCodeI18n.getLanguage()===code,code);
       assert.equal(await page.locator('html').getAttribute('dir'),code==='ar'?'rtl':'ltr');
       assert.equal(JSON.parse(fs.readFileSync(prefsPath,'utf8')).rsLanguage,code);
@@ -148,7 +149,7 @@ new vm.Script(script, {filename:'desktop-injected.js'});
     preferences.rsLanguage='not-supported';await page.evaluate(()=>PlazCodeDesktop.refresh());
     assert.equal(await select.inputValue(),'en');assert.equal(await page.locator('html').getAttribute('lang'),'en');
     preferences.rsLanguage='en';
-    failNext=true;await select.selectOption('es');
+    failNext=true;await pick(select,'es');
     await page.waitForFunction(()=>document.getElementById('fatal').textContent.includes('Fixture save refused'));
     await page.waitForFunction(()=>{const node=document.querySelector('#desktopLanguagePicker select');return !node.disabled && node.value==='en';});
     assert.equal(await select.inputValue(),'en','failed saves revert the picker');
@@ -162,7 +163,7 @@ new vm.Script(script, {filename:'desktop-injected.js'});
     await page.locator('#mcpGrid .mcpcommand').last().waitFor();
     assert.equal(await page.locator('#mcpGrid .mcpcommand').last().innerText(),'C:\\Game\\main.exe --language en');
     await page.evaluate(()=>PlazCodeDesktop.go('settings'));
-    await select.selectOption('ar');await page.waitForFunction(()=>document.documentElement.lang==='ar');
+    await pick(select,'ar');await page.waitForFunction(()=>document.documentElement.lang==='ar');
     await page.locator('[data-settings-section="languageSettings"] > summary').click();
     await page.waitForFunction(()=>JSON.parse(localStorage.getItem('plazcodeSettingsSections')).languageSettings===false);
     preferences=JSON.parse(fs.readFileSync(prefsPath,'utf8'));await page.reload();
