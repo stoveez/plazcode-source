@@ -17,7 +17,9 @@
     "Godot connector: the AI can open Godot, run and stop a project, read its output and build scenes. PlazCode finds your Godot editor by itself.",
     "Settings backup: copy all your choices as text to move them to another browser or restore them later. Passwords, keys and chats are never included.",
     "The AI no longer goes in circles: a read repeated with nothing changed, or a failing call resent unchanged, is stopped and the AI is told what to do instead.",
-    "Screen recording: with Full PC access the AI can record up to 5 seconds of your screen and look at the result, to check animations and menus that a single screenshot misses (Windows)."
+    "Screen recording: with Full PC access the AI can record up to 5 seconds of your screen and look at the result, to check animations and menus that a single screenshot misses (Windows).",
+    "Ultra effort is now the UltraLab pack by SyphoDev (used with his permission, credit: youtube.com/@SyphoDev). At Ultra the AI gets a full Roblox game-building toolkit: 53 skills covering UI, scripting, maps, 3D models, effects, tests and more, plus 7 helper roles and 18 reference notes. It only reads the ones that match your request, so it stays quick.",
+    "The AI can open any of Ultra's skill files itself and look things up in the official Roblox docs, and it still asks you first before it uploads, uses a paid service, installs something or publishes."
   ],
   "improved": [
     "Dropdown lists in PlazCode now use PlazCode's own rounded, themed menus in the app, the extension and the popup, with a clean arrow.",
@@ -38,7 +40,9 @@
     "Undo only puts back a file if nobody changed it after the AI did, so your own edits are never overwritten.",
     "Fix connection never sends anything to the AI by itself. Connecting a chat always waits for you to click Connect this chat.",
     "Available in all 15 interface languages.",
-    "The Windows app is unsigned and the Mac app is not notarized, as in earlier versions. Your computer may ask you to confirm opening it."
+    "The Windows app is unsigned and the Mac app is not notarized, as in earlier versions. Your computer may ask you to confirm opening it.",
+    "Ultra replaces the old Ultra. The old built-in Ultra skills are removed once on update; skills you made or imported are never touched.",
+    "Sites with small prompt limits (Notion, Copilot, ClickUp, ChatGPT) get a shorter Ultra so nothing is cut off. DeepSeek uses the pack's short version instead of the old Chinese Ultra."
   ],
   "github": {
     "summary": "Safety limits, a What happened log with Undo, saved setups per site, shareable skills, Figma, Unity and Browser connectors, and a new Fix connection button.",
@@ -57,7 +61,9 @@
           "Co-work: press Ctrl+Enter to send queued follow-ups right now. It stops the AI's current reply and sends them at once. A hint under queued follow-ups shows the shortcut.",
           "Vani AI (c.vani.ai) is now supported.",
           "Godot connector, plus Settings backup to copy your choices as text and restore them later.",
-          "Screen recording (Windows): the AI can record up to 5 seconds of the screen and view a picture of the clip."
+          "Screen recording (Windows): the AI can record up to 5 seconds of the screen and view a picture of the clip.",
+          "Ultra effort is now the UltraLab pack by SyphoDev (used with his permission, credit: youtube.com/@SyphoDev). At Ultra the AI gets a full Roblox game-building toolkit: 53 skills covering UI, scripting, maps, 3D models, effects, tests and more, plus 7 helper roles and 18 reference notes. It only reads the ones that match your request, so it stays quick.",
+          "The AI can open any of Ultra's skill files itself and look things up in the official Roblox docs, and it still asks you first before it uploads, uses a paid service, installs something or publishes."
         ]
       },
       {

@@ -12,6 +12,8 @@ const PlazCodeSafety = (() => {
     "browser_snapshot", "browser_take_screenshot", "browser_console_messages", "browser_network_requests", "browser_tabs", "browser_wait_for", "look"]);
   // PlazCode's own helpers that never touch the PC, Studio or Blender.
   const PLAZCODE_OWN = /^plazcode_|^list_commands$|^web_fetch$|^web_search$/;
+  // Ultra's pack reader and Roblox docs lookup are answered by PlazCode itself (also when named with a server prefix).
+  const PLAZCODE_OWN_BARE = /^(?:ultralab_read|roblox_docs)$/;
   const DELETE_WORDS = new Set(["rm", "rmdir", "del", "erase", "rd", "remove-item", "ri", "unlink", "shred", "rimraf"]);
 
   const bare = (name) => String(name || "").split("__").pop();
@@ -41,7 +43,7 @@ const PlazCodeSafety = (() => {
   // engine: "local" for AgentScript file/PC tools, anything else for Studio/add-ons.
   function isChange(name, engine) {
     const raw = String(name || "");
-    if (PLAZCODE_OWN.test(raw)) return false;
+    if (PLAZCODE_OWN.test(raw) || PLAZCODE_OWN_BARE.test(bare(raw))) return false;
     if (engine === "local" && !raw.includes("__")) return !LOCAL_READ.has(raw);
     const b = bare(raw);
     return !(READ_PREFIXES.some((p) => b.startsWith(p)) || READ_EXACT.has(b));

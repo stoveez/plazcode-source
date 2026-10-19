@@ -20,14 +20,14 @@ impl Store {
    for value in crate::starter_skills::catalog() {if let Ok(skill)=serde_json::from_value::<Skill>(value){if !data.deleted.contains_key(&skill.id)&&!data.suppressed.contains(&skill.id){data.skills.entry(skill.id.clone()).or_insert(skill);}}}
    data.starter_pack_version=1;
   }
-  // UltraGUI pack 2 (1.24.12) replaces the original 12 reference cards with the
-  // user's completed UltraGUI. Retired bundled cards are removed, current ones
-  // refreshed (keeping the user's enabled choice); user skills are untouched.
-  if error.is_none() && data.ultragui_pack_version<2 {
-   let cards:Vec<Skill>=crate::starter_skills::ultragui_catalog().into_iter().filter_map(|value|serde_json::from_value::<Skill>(value).ok()).collect();
-   data.skills.retain(|id,_|!id.starts_with("bundled-ultragui-")||cards.iter().any(|card|&card.id==id));
-   for mut card in cards {if data.deleted.contains_key(&card.id)||data.suppressed.contains(&card.id){continue;}if let Some(old)=data.skills.get(&card.id){card.enabled=old.enabled;}data.skills.insert(card.id.clone(),card);}
-   data.ultragui_pack_version=2;
+  // 1.24.21: Ultra's built-in reference cards (UltraGUI) moved into the Ultra pack, which
+  // the AI opens with the ultralab_read tool. Retire every old bundled card once; user
+  // skills, starter skills and their trash are untouched.
+  if error.is_none() && data.ultragui_pack_version<3 {
+   data.skills.retain(|id,_|!id.starts_with("bundled-ultragui-"));
+   data.deleted.retain(|id,_|!id.starts_with("bundled-ultragui-"));
+   data.suppressed.retain(|id|!id.starts_with("bundled-ultragui-"));
+   data.ultragui_pack_version=3;
   }
   // 1.24.13: earlier builds saved one automatic candidate per finished task,
   // so a repeated label filled the library with identical cards. Collapse
@@ -62,19 +62,16 @@ impl Store {
   if action=="match" {
    let query=request["query"].as_str().unwrap_or("").to_lowercase();let domain=request["domain"].as_str().unwrap_or("");let scope=request["scope"].as_str().unwrap_or("");
    let mut terms=query.split(|c:char|!c.is_alphanumeric()).filter(|s|s.len()>2&&!STOPWORDS.contains(s)).take(80).collect::<Vec<_>>();terms.sort_unstable();terms.dedup();
-   let mut hits=self.data.skills.values().filter(|s|request["effort"]=="ultracode"||!s.id.starts_with("bundled-ultragui-")).filter(|s|(s.confirmed||s.enabled||s.favorite)&&(s.scope.is_empty()||s.scope==scope)&&(s.domain=="all"||s.domain==domain||(domain=="roblox"&&matches!(s.domain.as_str(),"model"|"ui"))||(domain=="local"&&s.domain=="blender"))).filter_map(|s|{let title=s.title.to_lowercase();let hay=format!("{} {} {}",title,s.description,s.steps.join(" ")).to_lowercase();let score=terms.iter().filter(|word|hay.contains(**word)).count()+terms.iter().filter(|word|title.contains(**word)).count();(score>0||s.enabled||s.favorite).then_some((score+if s.scope.is_empty(){0}else{3}+if s.enabled{8}else{0}+if s.favorite{6}else{0},s))}).collect::<Vec<_>>();hits.sort_by_key(|(score,_)|std::cmp::Reverse(*score));
+   let mut hits=self.data.skills.values().filter(|s|(s.confirmed||s.enabled||s.favorite)&&(s.scope.is_empty()||s.scope==scope)&&(s.domain=="all"||s.domain==domain||(domain=="roblox"&&matches!(s.domain.as_str(),"model"|"ui"))||(domain=="local"&&s.domain=="blender"))).filter_map(|s|{let title=s.title.to_lowercase();let hay=format!("{} {} {}",title,s.description,s.steps.join(" ")).to_lowercase();let score=terms.iter().filter(|word|hay.contains(**word)).count()+terms.iter().filter(|word|title.contains(**word)).count();(score>0||s.enabled||s.favorite).then_some((score+if s.scope.is_empty(){0}else{3}+if s.enabled{8}else{0}+if s.favorite{6}else{0},s))}).collect::<Vec<_>>();hits.sort_by_key(|(score,_)|std::cmp::Reverse(*score));
    // 1.24.13: favourites are always used in their project/engine: every starred
    // skill (up to 8) comes first, then the 3 best other matches.
    let (starred,rest):(Vec<_>,Vec<_>)=hits.into_iter().partition(|(_,s)|s.favorite);
    return Ok(json!({"ok":true,"skills":starred.into_iter().take(8).chain(rest.into_iter().take(3)).map(|(_,skill)|skill).collect::<Vec<_>>() }));
   }
   let id=request["id"].as_str().unwrap_or("");
-  if action=="read"&&id.starts_with("bundled-ultra-"){return crate::starter_skills::read_ultra(&crate::platform::installation_root().join("PlazCode-Extension/ultra"),id,request);}
-  // Hidden GUI methods remain usable at Ultra even if their old library card was deleted.
-  if action=="read"&&id.starts_with("bundled-ultragui-")&&request["effort"]=="ultracode" {let skill=crate::starter_skills::ultragui_catalog().into_iter().find(|s|s["id"]==id).ok_or_else(||anyhow::anyhow!("Unknown built-in Ultra method"))?;let bundle=crate::starter_skills::read_ultragui(&crate::platform::installation_root().join("PlazCode-Extension/ultragui"),id,request)?;return Ok(json!({"ok":true,"skill":skill,"bundle":bundle}));}
+  if action=="read"&&(id.starts_with("bundled-ultra-")||id.starts_with("bundled-ultragui-")||id.starts_with("bundled-ultracode-")){anyhow::bail!("The built-in Ultra skills moved into the Ultra pack. At Ultra effort, open them with the ultralab_read tool.");}
   if action=="read"||action=="export" {let skill=self.data.skills.get(id).ok_or_else(||anyhow::anyhow!("Skill not found."))?;let mut result=json!({"ok":true,"skill":if action=="export"{public(skill)}else{serde_json::to_value(skill)?}});
    if action=="read" && id.starts_with("starter-syphodev-") {result["bundle"]=crate::starter_skills::read(&crate::platform::installation_root().join("PlazCode-Extension/starter-skills/syphodev"),id,request)?;}
-   if action=="read" && id.starts_with("bundled-ultragui-") {result["bundle"]=crate::starter_skills::read_ultragui(&crate::platform::installation_root().join("PlazCode-Extension/ultragui"),id,request)?;}
    return Ok(result);}
   let mut data=self.data.clone();
   match action {
@@ -112,7 +109,7 @@ fn normal_title(title:&str)->String{title.to_lowercase().split(|c:char|!c.is_alp
 fn placeholder_title(title:&str)->bool{let t=normal_title(title);t.is_empty()||matches!(t.as_str(),"planning project work"|"task checklist"|"task"|"continue"|"keep going"|"go on"|"proceed"|"yes"|"ok"|"okay"|"next"|"done"|"untitled"|"skill"|"new skill"|"hi"|"hello"|"thanks"|"thank you")}
 /// An automatic candidate the user never edited, tested, enabled or starred.
 fn untouched_auto_candidate(s:&Skill)->bool{s.id.starts_with("task-")&&s.revision<=1&&!s.confirmed&&!s.enabled&&!s.favorite&&!s.community&&s.description==CANDIDATE_TEXT}
-fn kept_by_delete_all(id:&str)->bool{id.starts_with("starter-syphodev-")||id.starts_with("bundled-ultragui-")||id.starts_with("global-workflow-")}
+fn kept_by_delete_all(id:&str)->bool{id.starts_with("starter-syphodev-")||id.starts_with("global-workflow-")}
 fn public(skill:&Skill)->Value {json!({"id":skill.id,"title":skill.title,"description":skill.description,"domain":skill.domain,"scope":"","steps":skill.steps,"pitfalls":skill.pitfalls,"verification":skill.verification,"confirmed":skill.confirmed,"revision":1,"community":true})}
 static STORE:once_cell::sync::Lazy<tokio::sync::Mutex<Store>>=once_cell::sync::Lazy::new(||{let base=std::env::var_os("LOCALAPPDATA").or_else(||std::env::var_os("XDG_CONFIG_HOME")).map(PathBuf::from).unwrap_or_else(||PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".config"));tokio::sync::Mutex::new(Store::load(base.join("PlazCode/skills.json")))});
 fn repository()->anyhow::Result<String>{let value=std::env::var("PLAZCODE_LEARNING_REPOSITORY").unwrap_or_else(|_|"stoveez/PlazCode".into());let parts=value.split('/').collect::<Vec<_>>();anyhow::ensure!(parts.len()==2&&parts.iter().all(|s|!s.is_empty()&&s.len()<=100&&s.bytes().all(|b|b.is_ascii_alphanumeric()||b"_- .".contains(&b))&&!s.contains(' ')),"Learning repository must be owner/repository on GitHub.");Ok(value)}
@@ -220,32 +217,34 @@ pub async fn post(State(state):State<crate::AppState>,Json(request):Json<Value>)
  }
  fn skill()->Skill{Skill{id:"test".into(),title:"Inventory".into(),description:"Inventory menu".into(),domain:"roblox".into(),scope:"project:A".into(),steps:vec!["Inspect existing UI conventions".into()],pitfalls:vec![],verification:vec!["Test open and close".into()],confirmed:true,enabled:false,revision:0,community:false,favorite:false}}
  #[test]fn scope_revision_and_corruption(){let path=std::env::temp_dir().join(format!("plazcode-skills-{}.json",std::process::id()));let _=std::fs::remove_file(&path);let mut store=Store::load(path.clone());let s=skill();store.request(&json!({"action":"save","skill":s,"revision":0})).unwrap();assert!(store.request(&json!({"action":"save","skill":s,"revision":0})).is_err());assert_eq!(store.request(&json!({"action":"match","domain":"roblox","scope":"project:B","query":"inventory"})).unwrap()["skills"].as_array().unwrap().iter().filter(|s|s["id"]=="test").count(),0);assert_eq!(store.request(&json!({"action":"match","domain":"roblox","scope":"project:A","query":"inventory"})).unwrap()["skills"].as_array().unwrap().iter().filter(|s|s["id"]=="test").count(),1);assert_eq!(public(&s)["scope"],"");std::fs::write(&path,b"broken").unwrap();let mut broken=Store::load(path.clone());assert!(broken.request(&json!({"action":"save","skill":s})).is_err());assert_eq!(std::fs::read(&path).unwrap(),b"broken");let _=std::fs::remove_file(path.with_extension("json.backup"));let _=std::fs::remove_file(path);}
- #[test]fn ultragui_pack_two_replaces_retired_cards(){
+ #[test]fn old_ultra_cards_are_retired_once_and_user_skills_stay(){
   let path=std::env::temp_dir().join(format!("plazcode-ultragui-pack-{}.json",std::process::id()));let _=std::fs::remove_file(&path);
   let mut old=serde_json::from_value::<Skill>(json!({"id":"bundled-ultragui-gui-syntax","title":"Old","description":"old","domain":"ui","steps":["x"],"enabled":true})).unwrap();old.revision=1;
-  let mut retired=old.clone();retired.id="bundled-ultragui-gui-layout".into();let mut mine=skill();mine.id="mine".into();
-  let mut catalog=Catalog{starter_pack_version:1,ultragui_pack_version:1,..Default::default()};for s in [old,retired,mine]{catalog.skills.insert(s.id.clone(),s);}
+  let mut other=old.clone();other.id="bundled-ultragui-expert-gui".into();let mut mine=skill();mine.id="mine".into();let mut starter=skill();starter.id="starter-syphodev-roblox-code".into();
+  let mut catalog=Catalog{starter_pack_version:1,ultragui_pack_version:2,..Default::default()};for s in [old.clone(),other,mine,starter]{catalog.skills.insert(s.id.clone(),s);}
+  catalog.deleted.insert("bundled-ultragui-toolbox".into(),DeletedSkill{skill:old,deleted_at:1});catalog.suppressed.insert("bundled-ultragui-check-cycle".into());
   std::fs::write(&path,serde_json::to_vec(&catalog).unwrap()).unwrap();
-  let store=Store::load(path.clone());assert_eq!(store.data.ultragui_pack_version,2);
-  assert!(!store.data.skills.contains_key("bundled-ultragui-gui-layout"));assert!(store.data.skills.contains_key("mine"));
-  let syntax=&store.data.skills["bundled-ultragui-gui-syntax"];assert!(syntax.enabled);assert_ne!(syntax.title,"Old");
-  assert_eq!(store.data.skills.keys().filter(|id|id.starts_with("bundled-ultragui-")).count(),8);
+  let store=Store::load(path.clone());assert_eq!(store.data.ultragui_pack_version,3);
+  assert_eq!(store.data.skills.keys().filter(|id|id.starts_with("bundled-ultragui-")).count(),0,"every old Ultra card is retired");
+  assert!(store.data.deleted.is_empty()&&store.data.suppressed.is_empty(),"their trash and suppression records go too");
+  assert!(store.data.skills.contains_key("mine")&&store.data.skills.contains_key("starter-syphodev-roblox-code"),"user and starter skills stay");
+  let mut again=Store::load(path.clone());assert_eq!(again.data.skills.len(),store.data.skills.len(),"the retirement runs once");
+  for id in ["bundled-ultra-server-authority","bundled-ultragui-expert-gui","bundled-ultracode-x"]{let err=again.request(&json!({"action":"read","id":id})).unwrap_err().to_string();assert!(err.contains("ultralab_read"),"{id}: {err}");}
   std::fs::remove_file(path).unwrap();
  }
  #[test]fn starter_seed_preserves_user_data_and_deletions(){
   let path=std::env::temp_dir().join(format!("plazcode-starter-store-{}.json",std::process::id()));let _=std::fs::remove_file(&path);
-  let mut store=Store::load(path.clone());assert_eq!(store.data.skills.len(),19);
+  let mut store=Store::load(path.clone());assert_eq!(store.data.skills.len(),11);
   let s=skill();store.request(&json!({"action":"save","skill":s,"revision":0})).unwrap();
   store.request(&json!({"action":"delete","id":"starter-syphodev-roblox-code","revision":1})).unwrap();
-  store.request(&json!({"action":"delete","id":"bundled-ultragui-expert-gui","revision":1})).unwrap();
-  let reloaded=Store::load(path.clone());assert!(!reloaded.data.skills.contains_key("bundled-ultragui-expert-gui"));assert_eq!(reloaded.data.ultragui_pack_version,2);assert!(reloaded.data.skills.contains_key("test"));assert!(!reloaded.data.skills.contains_key("starter-syphodev-roblox-code"));
+  let reloaded=Store::load(path.clone());assert_eq!(reloaded.data.ultragui_pack_version,3);assert!(reloaded.data.skills.contains_key("test"));assert!(!reloaded.data.skills.contains_key("starter-syphodev-roblox-code"));
   std::fs::remove_file(path.with_extension("json.backup")).unwrap();std::fs::remove_file(path).unwrap();
  }
 
  fn auto(id:&str,title:&str)->Skill{Skill{id:id.into(),title:title.into(),description:CANDIDATE_TEXT.into(),domain:"roblox".into(),scope:"chat:x".into(),steps:vec!["execute_luau".into(),"get_children".into(),"execute_luau".into()],pitfalls:vec![],verification:vec![],confirmed:false,enabled:false,revision:1,community:false,favorite:false}}
  #[test]fn cleanup_collapses_untouched_duplicates_once(){
   let path=std::env::temp_dir().join(format!("plazcode-candidate-cleanup-{}.json",std::process::id()));let _=std::fs::remove_file(&path);
-  let mut catalog=Catalog{starter_pack_version:1,ultragui_pack_version:2,..Default::default()};
+  let mut catalog=Catalog{starter_pack_version:1,ultragui_pack_version:3,..Default::default()};
   for n in 0..6 {let s=auto(&format!("task-a{n}"),"Back up the full current map, terrain and lighting");catalog.skills.insert(s.id.clone(),s);}
   for n in 0..4 {let s=auto(&format!("task-p{n}"),"Planning project work");catalog.skills.insert(s.id.clone(),s);}
   let mut edited=auto("task-a9","Back up the full current map, terrain and lighting");edited.revision=2;catalog.skills.insert(edited.id.clone(),edited);

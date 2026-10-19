@@ -9,12 +9,12 @@ const PlazCodeActionLog = (() => {
     grep_files: "Searched files for", file_info: "Checked", run_command: "Ran command", process_kill: "Closed program",
     open_path: "Opened", launch_app: "Started app", focus_window: "Switched to window", key_type: "Typed text",
     mouse_click: "Clicked", mouse_move: "Moved the mouse", screen_capture: "Took a screenshot",
-    window_screenshot: "Took a screenshot of", screen_record: "Recorded the screen", execute_luau: "Ran Studio code", multi_edit: "Edited script",
+    window_screenshot: "Took a screenshot of", screen_record: "Recorded the screen", ultralab_read: "Read an Ultra skill file", roblox_docs: "Looked up the Roblox docs", execute_luau: "Ran Studio code", multi_edit: "Edited script",
     script_set_source: "Replaced script", script_read: "Read script", script_grep: "Searched scripts for",
     inspect_instance: "Inspected", search_game_tree: "Searched Studio for", get_studio_state: "Checked Studio",
     start_stop_play: "Started or stopped Play", insert_asset: "Inserted asset", execute_blender_code: "Ran Blender code",
   };
-  const LOOK = /^(get_|list_|search_|inspect_|read_|find_|describe_|query_)|^(tree|grep_files|file_info|script_read|script_grep|screen_capture|screen_record|window_screenshot|browser_snapshot|browser_take_screenshot|look)$/;
+  const LOOK = /^(get_|list_|search_|inspect_|read_|find_|describe_|query_)|^(tree|grep_files|file_info|script_read|script_grep|screen_capture|screen_record|window_screenshot|browser_snapshot|browser_take_screenshot|look|ultralab_read|roblox_docs)$/;
   const bare = (tool) => String(tool || "").split("__").pop();
   const server = (tool) => String(tool || "").includes("__") ? String(tool).split("__")[0] : "";
   const words = (tool) => bare(tool).replace(/^browser_/, "").replace(/_/g, " ");

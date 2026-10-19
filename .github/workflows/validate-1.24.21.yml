@@ -31,6 +31,8 @@ jobs:
       - name: Verify committed catalogs and manifest i18n wiring without source regeneration
         run: python3 development/1.24.21/test-locales.py
       - run: python3 development/1.24.21/test-prepare-overlay.py
+      - name: Ultra generated files match the generator
+        run: python3 development/1.24.21/test-ultralab-generated.py
       - run: python3 development/1.24.21/prepare.py
       - run: npm ci --prefix release-tools --ignore-scripts
         working-directory: build-src-1.24.21/PlazCode
@@ -114,6 +116,10 @@ jobs:
       - name: Ultra effort labels, animations and Deleted Skills controls
         timeout-minutes: 5
         run: node release-tools/test-ultra-trash-browser.cjs
+        working-directory: build-src-1.24.21/PlazCode
+      - name: Ultra pack loads in the real extension
+        timeout-minutes: 5
+        run: node release-tools/test-ultra-extension-browser.cjs
         working-directory: build-src-1.24.21/PlazCode
       - run: node release-tools/test-1.24.14-browser.cjs
         working-directory: build-src-1.24.21/PlazCode
