@@ -8,16 +8,28 @@ Format:
 ## In progress
 - (none yet)
 
-## Ready to start (from `development/1.25.0/NEXT-UPDATE-PLAN.md`)
-- Hang recovery (stall guard: Stop then continue, resend cut-off block, retry undelivered message, wrong Studio mode, Studio not answering). Files: `core/stall-guard.js`, `core/main.js`, tests.
-- Keep-awake and reload recovery. Files: `background.js`, `core/main.js`, desktop app power handling.
-- Luau helper library, building helpers, build self-checks, effects module (high effort).
-- History and rollback app, export as report or replay.
-- Notion Dev log / project log switch.
-- Studio plugin chat; Blender and Figma previews.
-- License server and login (Cloudflare Workers + D1) and the Skill Workshop (high effort, own folder, no extension files).
-- Website: deploy `PlazCode-website.zip` to Cloudflare Pages once the owner has the domain; point download buttons at the new links.
-- Add "Response changed - run paused" fix once a tester sends a debug report.
+## Ready to start
+Full details for every item are in `development/1.25.0/NEXT-UPDATE-PLAN.md` (section C = the owner's final Brickwire list, A = license/login, B = Skill Workshop). Read the item there before claiming it. The owner wants each item ADDED and IMPROVED, not copied. Brickwire is MIT: write our own versions, keep the licence text and credit "Brickwire contributors" in `THIRD-PARTY-NOTICES.txt` for anything derived. All of this is for the NEXT update, not 1.24.21. Suggested order: 9 and 10, then 1+2+3, then 7, 12, 14, then 11 and 13; 17 and the Workshop in parallel on the server track.
+
+| # | Task | Main files | Effort |
+|---|---|---|---|
+| 9 | Hang recovery (Stop + "continue", resend cut-off block, retry undelivered, wrong Studio mode, Studio not answering) | `core/stall-guard.js`, `core/main.js` | normal |
+| 10 | Keep-awake and tab/reload recovery | `background.js`, `core/main.js`, app power code | normal |
+| 1 | Luau helper library (own code, error lines point to the AI's lines, agrees with Ultra names) | new files, Ultra generator | HIGH |
+| 2 | Building helpers (rooms, roofs, stairs, fences, trees, furnish, style palettes, numeric plan check) | new files | normal |
+| 3 | Automatic build self-checks (floating, sunk, overlapping, unanchored, UI/effects) reported in What happened | new files, `core/action-log.js` | HIGH |
+| 7 | Effects module (4 layers max, part cap, animation-marker triggers, budget check) | new files | normal |
+| 12 | History and rollback app, report/replay export, library of selections/prompts/recipes | `core/action-log.js`, `agent/src/checkpoints.rs` | normal |
+| 14 | Notion Dev log, generalised to a project-log switch | `providers/notion.js`, app file log | normal |
+| 11 | Studio plugin chat (image attach, send selection; follows safety settings) | new plugin, `agent/src` | normal |
+| 13 | Blender and Figma previews in chat (respect Read-only) | `agent/src/connectors`, UI | normal |
+| 17 / A | License key and login server (Cloudflare Workers + D1) | own folder, no extension files | HIGH |
+| B | Skill Workshop (owner-approved moderation, seed content) | own folder | HIGH |
+
+Other ready tasks:
+- Release notes lines for 1.24.21 tester fixes (`release-entry.json`) - single owner of this file at a time.
+- Website: deploy `PlazCode-website.zip` to Cloudflare Pages once the owner has a domain.
+- "Response changed - run paused" fix once a tester sends a debug report (HIGH).
 - Mac app opens then closes: needs the tester's app version or crash report.
 
 ## Done (handoff notes)

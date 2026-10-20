@@ -227,5 +227,5 @@ Good tasks to run in parallel: the license server and website (no extension file
 - Platform of the owner: Windows PC; testers use Windows and Mac, mostly Chrome-family browsers (Brave, Helium) and some Firefox.
 - The owner's test folder: `C:\Users\plazm\Downloads\PlazCode-Power-Features-Test\PlazCode-Extension-FixTest`.
 - A friend will buy the owner a domain for a simple website (Cloudflare Pages). The login and license system and the Skill Workshop run on Cloudflare Workers + D1 (designs in `development/1.25.0/`). The site files are in `PlazCode-website.zip`/`index.html` (not deployed yet).
-- Brickwire ideas chosen for the next update: items 1, 2, 3, 7, 9, 10, 11, 12, 13, 14, 17 (see `development/1.25.0/NEXT-UPDATE-PLAN.md`).
+- Brickwire ideas chosen for the next update: items 1, 2, 3, 7, 9, 10, 11, 12, 13, 14, 17. Each is described, with the improvement the owner wants, in `development/1.25.0/NEXT-UPDATE-PLAN.md` section C and listed as a task in `docs/TASK-BOARD.md`. They stay out of 1.24.21.
 - High effort (careful tracing) is expected for: the license server, the Luau helper library and build self-checks, hard bug hunts and planning big features.
