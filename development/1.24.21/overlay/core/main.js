@@ -968,7 +968,11 @@
                 tries++; continue;
               }
             }
-            if (retryable) {
+            // 1.24.21: a result file the provider PROVED was not taken (its own file was still in
+            // the composer after the whole wait) is delivered once more, whatever its size.
+            const notTaken = !A.stop && !retriedUnsent && !(images && images.length) && typeof P.sendNotTaken === "function" &&
+              P.sendNotTaken() === true && !(P.sendFailureAmbiguous && P.sendFailureAmbiguous()) && !landed();
+            if (retryable || notTaken) {
               retriedUnsent = true;
               diag("send.retryUnsent", { provider: P.id });
               await sleep(2000);
