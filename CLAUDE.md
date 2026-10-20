@@ -1,6 +1,6 @@
 # PlazCode private repo: instructions for any AI working here
 
-Read this first, then `development/1.25.0/NEXT-UPDATE-PLAN.md`.
+Read this first, then `docs/MAINTAINER-GUIDE.md` (the full guide), `docs/TASK-BOARD.md` (who is working on what) and `development/1.25.0/NEXT-UPDATE-PLAN.md`. Codex reads `AGENTS.md`, which says the same rules. If you and another AI work at the same time, follow section 11 of the guide (claim a task on the board, own branch and worktree).
 
 ## What this is
 PlazCode is a closed-source browser extension plus a Rust desktop app that turns an AI chat site into an agent for Roblox Studio and the user's computer.
