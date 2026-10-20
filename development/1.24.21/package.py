@@ -57,22 +57,32 @@ with zipfile.ZipFile(output/name,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as ar
  for path in sorted(package.rglob('*')):
   if path.is_file():archive.write(path,path.relative_to(install).as_posix())
 print(name,hashlib.sha256((output/name).read_bytes()).hexdigest())
-# Small test download: the same package without the large memory helper (engram), the Firefox copy on Mac (the Windows download keeps it) and the legacy root copy of the extension.
-# Testers already have those from an earlier install; copy this over it and say yes to replace files.
+# Small test download: everything the full package has (the app, the memory helper and both extensions) with the
+# duplicate copies removed. The Firefox extension is the Chrome one with a different manifest, so it ships as that one
+# manifest plus a one-click script that makes the Firefox folder. The old root copy of core/ and providers/ is a legacy
+# duplicate that the updater treats as old files, so it is left out too.
 lean_name='PlazCode-1.24.21-test-lean.zip' if osname=='Windows' else 'PlazCode-macOS-1.24.21-test-lean.zip'
 lean_root=output/'lean';shutil.rmtree(lean_root,ignore_errors=True)
 shutil.copytree(package,lean_root/'PlazCode',symlinks=True)
-# The root core/ and providers/ are a legacy duplicate of PlazCode-Extension (the updater treats them as old files), so the small download leaves them out too.
-for folder in list((lean_root/'PlazCode').rglob('engram'))+([lean_root/'PlazCode/PlazCode-Extension-Firefox'] if osname!='Windows' else [])+[lean_root/'PlazCode/core',lean_root/'PlazCode/providers']:
+lean=lean_root/'PlazCode'
+firefox=lean/'PlazCode-Extension-Firefox'
+extra=lean/'Firefox-files';extra.mkdir()
+shutil.copy2(firefox/'manifest.json',extra/'manifest.json')
+if (firefox/'FIREFOX-INSTALL.txt').exists():shutil.copy2(firefox/'FIREFOX-INSTALL.txt',extra/'FIREFOX-INSTALL.txt')
+for folder in [firefox,lean/'core',lean/'providers']:
  if folder.is_dir():shutil.rmtree(folder)
-(lean_root/'PlazCode/READ-ME-FIRST.txt').write_text('PlazCode 1.24.21 small test download. It does NOT contain the memory helper (the app downloads it the first time memory is used), the old root copy of core/providers, or on Mac the Firefox copy (use the full download for Firefox on Mac).\nInstall over your existing PlazCode folder: copy everything in here into it and choose Replace. Do not delete the old folder first.\nFor a clean first-time install use the full download instead.\n')
-if osname!='Windows':
- lean_app=lean_root/'PlazCode/PlazCode.app'
- subprocess.run(['codesign','--force','--deep','--sign','-',str(lean_app)],check=True)
- subprocess.run(['codesign','--verify','--deep','--strict',str(lean_app)],check=True)
+if osname=='Windows':
+ (lean/'Make-Firefox-Extension.bat').write_text('@echo off\r\nrem Makes the PlazCode-Extension-Firefox folder from the Chrome one.\r\npowershell -NoProfile -ExecutionPolicy Bypass -Command "$r=\'%~dp0\'; $t=Join-Path $r \'PlazCode-Extension-Firefox\'; if(Test-Path $t){Remove-Item -Recurse -Force $t}; Copy-Item -Recurse (Join-Path $r \'PlazCode-Extension\') $t; Copy-Item -Force (Join-Path $r \'Firefox-files\\*\') $t; Write-Host \'Done: PlazCode-Extension-Firefox is ready. See FIREFOX-INSTALL.txt inside it.\'"\r\npause\r\n')
+else:
+ script=lean/'Make-Firefox-Extension.command'
+ script.write_text('#!/bin/bash\n# Makes the PlazCode-Extension-Firefox folder from the Chrome one.\ncd "$(dirname "$0")" || exit 1\nrm -rf PlazCode-Extension-Firefox\ncp -R PlazCode-Extension PlazCode-Extension-Firefox\ncp -f Firefox-files/* PlazCode-Extension-Firefox/\necho "Done: PlazCode-Extension-Firefox is ready. See FIREFOX-INSTALL.txt inside it."\n')
+ script.chmod(0o755)
+(lean/'READ-ME-FIRST.txt').write_text('PlazCode 1.24.21 small test download. It has the app, the memory helper and the Chrome/Edge/Brave extension.\nThe Firefox extension is not a separate folder here to keep the download small: run Make-Firefox-Extension once and it creates PlazCode-Extension-Firefox next to the Chrome one.\nInstall over your existing PlazCode folder: copy everything in here into it and choose Replace. For a clean first install this works too.\n')
 with zipfile.ZipFile(output/lean_name,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
  for path in sorted(lean_root.rglob('*')):
-  if path.is_file() or path.is_symlink():archive.write(path,path.relative_to(lean_root).as_posix())
+  if path.is_file() or path.is_symlink():
+   info=zipfile.ZipInfo.from_file(path,path.relative_to(lean_root).as_posix());info.compress_type=zipfile.ZIP_DEFLATED
+   archive.writestr(info,path.read_bytes(),compresslevel=9)
 shutil.rmtree(lean_root)
 print(lean_name,(output/lean_name).stat().st_size)
 # Firefox and source are the exact reviewed development source, never old native files.
