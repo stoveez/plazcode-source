@@ -27,3 +27,6 @@ Use maximum care (high reasoning effort) for the license and login server, the L
 - All JavaScript tests: `cd build-src-1.24.21/PlazCode && NODE_PATH=release-tools/node_modules PLAZCODE_TEST_BROWSER=chromium python3 release-tools/test-javascript.py`
 - App tests: `cargo test --manifest-path agent/Cargo.toml`
 - Validation in CI: `gh workflow run validate-1.24.21.yml --ref <branch>` (about 30 minutes; all four jobs must pass)
+
+## Next-update work
+The Brickwire-inspired items are specified in detail in `development/1.25.0/BRICKWIRE-ITEMS-SPEC.md`; claim them on `docs/TASK-BOARD.md`.
