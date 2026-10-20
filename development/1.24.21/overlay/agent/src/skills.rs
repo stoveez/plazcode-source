@@ -116,7 +116,10 @@ fn repository()->anyhow::Result<String>{let value=std::env::var("PLAZCODE_LEARNI
 fn client()->anyhow::Result<reqwest::Client>{Ok(reqwest::Client::builder().user_agent("PlazCode-skills").timeout(std::time::Duration::from_secs(25)).build()?)}
 async fn github(client:&reqwest::Client,method:reqwest::Method,path:&str,body:Option<Value>,token:&str)->anyhow::Result<Value>{let mut req=client.request(method,format!("https://api.github.com/{path}")).bearer_auth(token).header("Accept","application/vnd.github+json");if let Some(body)=body{req=req.json(&body);}let response=req.send().await?;let status=response.status();let value:Value=response.json().await?;anyhow::ensure!(status.is_success(),"Shared Git request failed ({}): {}",status,value["message"].as_str().unwrap_or("GitHub rejected the operation"));Ok(value)}
 async fn sync()->anyhow::Result<Value>{
- let repo=repository()?;let response=client()?.get(format!("https://raw.githubusercontent.com/{repo}/main/learned-skills/index.json")).send().await?.error_for_status()?;
+ let repo=repository()?;let response=client()?.get(format!("https://raw.githubusercontent.com/{repo}/main/learned-skills/index.json")).send().await?;
+ // The public repo only carries downloads and update feeds, so there may be no community index yet. That means "nothing to sync", not a problem.
+ if response.status()==reqwest::StatusCode::NOT_FOUND{return Ok(json!({"ok":true,"count":0,"note":"No community skills are published yet."}));}
+ let response=response.error_for_status()?;
  anyhow::ensure!(response.content_length().unwrap_or(0)<=1024*1024,"Community index is too large.");
  let mut chunks=response.bytes_stream();let mut bytes=Vec::new();while let Some(chunk)=chunks.next().await{let chunk=chunk?;anyhow::ensure!(bytes.len()+chunk.len()<=1024*1024,"Community index is too large.");bytes.extend_from_slice(&chunk);}let lessons:Vec<Skill>=serde_json::from_slice(&bytes)?;anyhow::ensure!(lessons.len()<=100,"Too many community lessons.");
  let mut store=STORE.lock().await;let mut data=store.data.clone();let mut count=0;
