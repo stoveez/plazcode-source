@@ -31,26 +31,24 @@ Full details: `SKILL-WORKSHOP-DESIGN.md`. Summary:
 - Seed it with the owner's own content, and with bigger content: the owner wants roughly 897 skills and 300 virtual specialists (to match what Multi-Script advertises), written by us, not copied.
 - Ask SyphoDev before putting any UltraLab material in the Workshop.
 
-## C. Ideas taken from Brickwire 3.1.0 (new)
+## C. Ideas taken from Brickwire 3.1.0 (owner's final list, 2026-10-20)
 Source: `Brickwire-3.1.0.zip` (the owner attached it to the chat; it may need to be attached again). Licence is MIT: reuse is allowed if the licence text and copyright notice stay, and the credit is "Brickwire contributors". Prefer to write our own versions and keep a credit line in `THIRD-PARTY-NOTICES.txt` for anything derived from it.
-Build in this order (the owner approved the list on 2026-10-19):
+The numbers below are the numbers in the comparison table the AI gave the owner. The owner chose items 1, 2, 3, 7, 9, 10, 11, 12, 13, 14 and 17. Not chosen: 4, 5, 6, 8, 15, 16 (asset packs, resource library tab, UI style kit, cutscene kits, "asks you questions" which PlazCode already has, many AI sites which PlazCode already has). The owner wants each chosen item ADDED and IMPROVED UPON, not copied.
+All of this stays out of 1.24.21 (owner's decision).
 
-1. **Helper library and build self-checks.** Biggest gain.
-   - Write a PlazCode helper library in Luau, our own from scratch. Short, tested helper commands for building (rooms with doors and windows, roofs, stairs, fences, trees, "furnish this room", style palettes), UI, effects, animation and gameplay. It is added to the AI's code automatically when used. Error messages must point to the AI's own line numbers.
-   - Add a "check my build" step that runs automatically after each build and finds parts floating in the air, sunk into the ground, overlapping or not anchored. Also check UI and effects. Brickwire only offers this as a tool the AI must remember to call; ours should run on its own.
-   - Test the library against a real Luau compiler and a Luau test VM (CI already builds one). Check how it fits with the existing Ultra pack and `core/headless-builder.js`.
-2. **Hang recovery.** Small, fixes real tester pain.
-   - Add to the existing stall guard (`core/stall-guard.js`): when the AI stops growing its reply for about 90 seconds, press Stop and send "continue exactly from where you stopped" (once per reply); when a reply ends in the middle of a tool block, ask the AI to resend only that block; retry undelivered messages a couple of times with backoff; detect Studio being in the wrong mode and tell the AI which datamodel to use.
-   - Test on the fake provider pages the test suite already has.
-3. **Asset packs and resource library.**
-   - Ship as a separate, optional download, not inside the extension (Brickwire's packs are 6.7 MB of Roblox files).
-   - FIRST check the licences. Brickwire's NDC kit is Roblox's own content, so redistributing it may not be allowed. Do not ship anything whose licence is unclear.
-   - Add a Library tab with previews and "Build this" / "Make something like it" buttons.
-4. **Effects, UI styles and cutscene kits.** Ultra already covers a lot, so turn the best parts into ready modules: lightweight effects (limit live parts, trigger from animation markers), around a dozen UI styles with a "restyle my UI" button, camera fly-ins, and "open a case / egg / dice" kits with rarity styling.
-5. **Step-by-step rollback and export.** Build on Undo and "What happened": roll back to before any step, export the history as a report or a replay.
-6. **Studio plugin chat and Blender/Figma previews.** Bigger jobs; later version. A chat window inside Roblox Studio (with image and selection attach), a live Blender link with 3D previews in the chat, and Figma layouts in the chat.
+1. **Helper library (item 1).** A PlazCode helper library in Luau, our own from scratch: short, tested commands for building, UI, effects, animation and gameplay, added to the AI's code automatically when used. Error messages must point to the AI's own line numbers. Improve: make the Ultra pack and the library agree on the same names, and test against a real Luau compiler and the Luau test VM CI already builds.
+2. **Building helpers (item 2).** Rooms with doors and windows, roofs, stairs, fences, trees, "furnish this room", and style palettes (medieval, modern, sci-fi, nature, desert, snow, japanese, candy). Improve: let the AI describe a plan in numbers first and have PlazCode check it before building.
+3. **Build self-checks (item 3).** After each build PlazCode runs a check by itself and finds parts floating in the air, sunk into the ground, overlapping or not anchored, and checks UI and effects. Brickwire only offers this as a tool the AI must remember to call; ours should run on its own and report in What happened.
+7. **Effects module (item 7).** Lightweight effects (explosion, sword slash and so on): at most 4 layers per effect, short life, no collisions, a cap on live parts (oldest removed first), and a way to trigger them from animation markers. Improve: connect with the helper library and the build self-checks (performance budget check).
+9. **Hang recovery (item 9).** Add to the existing stall guard (`core/stall-guard.js`): when the AI stops growing its reply for about 90 seconds, press Stop and send "continue exactly from where you stopped" (once per reply); when a reply ends in the middle of a tool block, ask the AI to resend only that block; retry undelivered messages a couple of times with backoff; detect Studio being in the wrong mode and tell the AI which datamodel to use; warn when Studio does not answer for about 2 minutes. Test on the fake provider pages the test suite already has.
+10. **Keep-awake and tab recovery (item 10).** Keep the computer awake during a run (ask first, restore after), and let a run continue after a page reload (F5) without repeating a tool call that was already running. Improve: show a clear message on the bar when it resumes.
+11. **Studio plugin chat (item 11).** A chat window inside Roblox Studio with image attach and a "send my selection" button, talking to the same PlazCode app. Improve: it must follow the same safety settings (Read-only, confirm before deleting, allowed folders) and show up in What happened.
+12. **History and rollback app (item 12).** A history of every step with rollback to before any step, export as a plain report or a replay, and a library of saved selections, prompts and recipes. Build on Undo and What happened.
+13. **Blender and Figma previews (item 13).** A live Blender link with one-click add-on install, 3D previews and snapshots shown in the chat with "send to Studio" and "upload to Roblox" buttons, and Figma layouts shown in the chat. Improve: previews must respect Read-only mode.
+14. **Notion Dev log (item 14).** In Notion, an optional switch that keeps a "Roblox Dev Log" page up to date with what was done, the paths in Studio and how it was checked. Improve: make it a general "project log" switch that other sites can use through PlazCode's own file log.
+17. **Licence key app (item 17).** Already planned: see section A (login and license system).
 
-Skipped on purpose: Notion "Dev log" (Notion-only), extra AI-site adapters (PlazCode already has about 20), asking the user questions (already in PlazCode), Brickwire's own licence-key app (we have our own plan in section A).
+Suggested order: 9 and 10 first (small and fix tester pain), then 1, 2 and 3 together, then 7, then 12, then 14, then 11 and 13, with 17 and the Workshop (sections A and B) on the server track in parallel.
 
 ## D. Open items carried over
 - "Response changed — run paused" banner: needs a debug report from a tester.
