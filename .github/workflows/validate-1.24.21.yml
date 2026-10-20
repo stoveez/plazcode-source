@@ -296,6 +296,13 @@ jobs:
         if: runner.os == 'macOS'
         run: python development/1.24.21/package.py
       - uses: actions/upload-artifact@v4
+        if: runner.os != 'Linux'
+        with:
+          name: plazcode-1.24.21-${{ runner.os }}-test-lean
+          path: artifacts/*-test-lean.zip
+          compression-level: 0
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: plazcode-1.24.21-${{ runner.os }}-validation
