@@ -6,6 +6,10 @@ const PlazCodeStallGuard = (() => {
   const LIVE = /(?:console|output|log|state|status|wait|capture|screenshot|poll|progress|job|play|checklist|clarify|memory|skill|engram|template)/i;
   const READ = /^(?:get|list|read|search|find|inspect|grep|describe|query|fetch|check|view|show|lookup)(?:_|$)|(?:_read|_get|_list|_search|_inspect|_grep)$/i;
   const isRead = name => READ.test(name) && !LIVE.test(name);
+  // Reference text that never changes during a run (the Ultra pack, the Roblox docs): a repeat is never
+  // useful, and a slow chat like Notion takes longer than the normal window between turns.
+  const STATIC = /^(?:ultralab_read|roblox_docs)$/;
+  const STATIC_WINDOW_MS = 600000;
   const sig = call => `${call.tool}|${stable(call.arguments)}`;
   function stable(v) {
     if (v === null || typeof v !== 'object') return JSON.stringify(v);
@@ -21,7 +25,7 @@ const PlazCodeStallGuard = (() => {
         if (!call || !call.tool) return null;
         const key = sig(call), n = name(call);
         if (failed === key) { failed = ''; stalls++; return stop(`That exact call already failed. Change the arguments or try a different approach; do not resend it unchanged.`, stalls, limit); }
-        if (isRead(n) && reads.has(key) && now() - reads.get(key) < windowMs) { stalls++; return stop(`You already made this exact read and nothing has changed since. Use the earlier result, read something different, or make a change first.`, stalls, limit); }
+        if (isRead(n) && reads.has(key) && now() - reads.get(key) < (STATIC.test(n) ? Math.max(windowMs, STATIC_WINDOW_MS) : windowMs)) { stalls++; return stop(`You already made this exact read and nothing has changed since. Use the earlier result, read something different, or make a change first.`, stalls, limit); }
         return null;
       },
       // ok = the tool ran and did not return an error.

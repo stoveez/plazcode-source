@@ -24,4 +24,11 @@ g.before(bad); g.after(bad, false); g.before(bad); g.after(bad, false);
 assert.match(g.before(bad), /Stop calling tools now/);
 g.after({ tool: 'execute_luau', arguments: { code: 'ok()' } }, true); assert.equal(g.stalls(), 0);
 assert.equal(g.before(null), null);
+// Ultra pack and Roblox docs never change in a run, so a slow chat (Notion) cannot slip a repeat past the 90 s window.
+{ let t = 0; const slow = SG.create({ now: () => t });
+  const skill = { tool: 'ultralab_read', arguments: { action: 'read', path: 'skills/ul-check-suite/SKILL.md' } };
+  assert.equal(slow.before(skill), null); slow.after(skill, true);
+  t = 200000; assert.match(slow.before(skill), /already made this exact read/, 'repeat 200 s later is still stopped');
+  t = 700000; assert.equal(slow.before(skill), null, 'after 10 minutes it may be read again');
+  const other = { tool: 'get_something', arguments: {} }; slow.after(other, true); t = 700000 + 200000; assert.equal(slow.before(other), null, 'ordinary reads keep the 90 s window'); }
 console.log('Stall guard blocks unchanged repeats, spares live-state reads, and escalates after three.');
