@@ -49,7 +49,8 @@ Everything below ships today. Do not break any of it.
 7. **Respect licences.** Do not copy code from Multi-Script (GPL, no permission). UltraLab is used with SyphoDev's permission (no sale, no paid bundle, credit youtube.com/@SyphoDev). Brickwire is MIT: keep its licence and credit "Brickwire contributors" for anything derived from it. Keep `THIRD-PARTY-NOTICES.txt` up to date.
 8. **No secrets** (publish token, keys, passwords) in files, commits or chat.
 9. **New features need full validation**, including the Mac desktop test, before a release.
-10. **Be honest about what was and was not tested.** Say "not tested on live X" when it is true.
+10. **Extension fixes must work by reloading the extension.** A fix in `core/`, `providers/`, `overlay.css`, `background.js` or `popup.*` has to take effect on a test build when the tester reloads the extension and refreshes the AI tab, with no app update. Keep fixes on the extension side when you can. Say in one line which it is: "reload extension is enough" or "the app must be replaced too". Never make an extension fix depend on a new app without telling the owner.
+11. **Be honest about what was and was not tested.** Say "not tested on live X" when it is true.
 
 ---
 

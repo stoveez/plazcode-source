@@ -16,6 +16,7 @@ PlazCode is a closed-source browser extension plus a Rust desktop app that turns
 6. Test builds must include the apps (Windows and Mac) as well as the extension. Check that files reach the owner's test folder by comparing them.
 7. Respect licences. Do not copy code from Multi-Script (GPL, no permission). UltraLab is used with SyphoDev's permission (no sale or paid bundle, credit youtube.com/@SyphoDev). Brickwire is MIT: keep its licence and credit "Brickwire contributors" if anything is derived from it.
 8. Never put secrets (publish token, keys) in files or chat.
+9. **Extension fixes must work by reloading the extension.** When a bug fix is for the extension (anything in `core/`, `providers/`, `overlay.css`, `background.js`, `popup.*`), it must take effect for a tester who is on a test build just by reloading the extension in the browser and refreshing the AI tab. No app update, reinstall or new desktop app should be needed. Where possible, fix the extension side only. If a fix also needs a new app, say so plainly. When handing over a fix, tell the owner in one line whether reloading the extension is enough, or whether the app must be replaced too. The test build still includes the apps (rule 6).
 
 ## Effort (the owner's rule)
 Use HIGH effort (think longer and trace carefully) for these four kinds of work. If you cannot change your own effort setting, hand the work to a helper agent that runs at high effort, or tell the owner to switch it before you start:

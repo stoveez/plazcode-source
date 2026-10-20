@@ -12,6 +12,7 @@ This is the private source repo for PlazCode (`stoveez/plazcode-source`). **Read
 7. Respect licences. Do not copy code from Multi-Script. Keep credits for UltraLab (SyphoDev), Brickwire (MIT) and the other third parties.
 8. No secrets in files, commits or chat.
 9. Say honestly what was tested and what was not.
+10. An extension fix must take effect when the owner reloads the extension (and refreshes the AI tab) on a test build, with no app update needed. Prefer extension-only fixes, and say plainly in one line whether a reload is enough or the app must be replaced too. The test build still contains the apps.
 
 ## Where to edit
 Edit files in `development/<version>/overlay/`, never in `build-src-<version>/` (it is rebuilt by `python3 development/<version>/prepare.py`). After editing a protected file, update its hash pin in `test-desktop-regression.js`.
