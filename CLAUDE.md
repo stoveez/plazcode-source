@@ -24,6 +24,16 @@ PlazCode is a closed-source browser extension plus a Rust desktop app that turns
 - CI: `.github/workflows/validate-1.24.21.yml` (jobs `browsers` and `native` on Windows, macOS and Ubuntu). Branch `release/1.24.21`.
 - The finished apps are the CI artifacts `plazcode-1.24.21-Windows-validation` and `plazcode-1.24.21-macOS-validation` (about 53 MB and 65 MB; most of it is the memory helper `engram`).
 
+## How to publish (only when the owner says "publish")
+Publishing is done by the GitHub workflow `.github/workflows/publish-1.24.21.yml`, never by hand and never by pushing files to the public repo.
+1. The version being published must already have a fully green validation run (`validate-1.24.21.yml`) on its exact final commit. Read `VALIDATION_RUN` from that run and `VALIDATED_SHA` from its commit.
+2. Put those two values in the `env:` block of the publish workflow and make sure `development/1.24.21/release-entry.json` has the final plain-language notes. Commit.
+3. Do a dry run first: set `PUBLIC_REPO` to the throwaway repo `stoveez/plazcode-publish-test`, run the workflow, and check the feeds (`latest.json`, `latest-macos.json`), the zip checksums and the release page there.
+4. Ask the owner for a clear "yes" to publish for real. Then set `PUBLIC_REPO` back to `stoveez/PlazCode` and start the workflow (push to branch `release/1.24.21-publish`, or run it by hand). It uses the repository secret `PUBLIC_REPO_TOKEN`; never print or copy it.
+5. Afterwards fetch the public `latest.json` and `latest-macos.json` and one release download, and confirm the version, link and sha256 match. An older installed copy must still find and install the new version.
+Read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first publish; this list is a summary, and the workflow is the source of truth. `PLAZCODE_QUICK` skips the Mac desktop test and is only for small fixes the owner approves.
+For a new version number, copy the 1.24.21 workflows and `development/1.24.21` folder to the new number and update the names inside.
+
 ## Where things stand
 - 1.24.21 is built, CI is fully green on commit 9fb157a, and it is NOT published. Publishing waits for the owner and goes through the private workflow (set `VALIDATED_SHA` / `VALIDATION_RUN` in `publish-1.24.21.yml`, test against `stoveez/plazcode-publish-test` first).
 - The release notes in `development/1.24.21/release-entry.json` still need lines for the tester fixes: the Vani Fix-connection freeze (also fixed in Freebuff, Oxalpha, UseAI), Co-work on Vani, and the older-app message in What happened.
