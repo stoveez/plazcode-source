@@ -57,15 +57,15 @@ with zipfile.ZipFile(output/name,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as ar
  for path in sorted(package.rglob('*')):
   if path.is_file():archive.write(path,path.relative_to(install).as_posix())
 print(name,hashlib.sha256((output/name).read_bytes()).hexdigest())
-# Small test download: the same package without the large memory helper (engram), the Firefox copy (a separate download) and the legacy root copy of the extension.
+# Small test download: the same package without the large memory helper (engram), the Firefox copy on Mac (the Windows download keeps it) and the legacy root copy of the extension.
 # Testers already have those from an earlier install; copy this over it and say yes to replace files.
 lean_name='PlazCode-1.24.21-test-lean.zip' if osname=='Windows' else 'PlazCode-macOS-1.24.21-test-lean.zip'
 lean_root=output/'lean';shutil.rmtree(lean_root,ignore_errors=True)
 shutil.copytree(package,lean_root/'PlazCode',symlinks=True)
 # The root core/ and providers/ are a legacy duplicate of PlazCode-Extension (the updater treats them as old files), so the small download leaves them out too.
-for folder in list((lean_root/'PlazCode').rglob('engram'))+[lean_root/'PlazCode/PlazCode-Extension-Firefox',lean_root/'PlazCode/core',lean_root/'PlazCode/providers']:
+for folder in list((lean_root/'PlazCode').rglob('engram'))+([lean_root/'PlazCode/PlazCode-Extension-Firefox'] if osname!='Windows' else [])+[lean_root/'PlazCode/core',lean_root/'PlazCode/providers']:
  if folder.is_dir():shutil.rmtree(folder)
-(lean_root/'PlazCode/READ-ME-FIRST.txt').write_text('PlazCode 1.24.21 small test download. It does NOT contain the memory helper (engram), the Firefox copy (separate download) or the old root copy of core/providers.\nInstall over your existing PlazCode folder: copy everything in here into it and choose Replace. Do not delete the old folder first.\nFor a clean first-time install use the full download instead.\n')
+(lean_root/'PlazCode/READ-ME-FIRST.txt').write_text('PlazCode 1.24.21 small test download. It does NOT contain the memory helper (the app downloads it the first time memory is used), the old root copy of core/providers, or on Mac the Firefox copy (use the full download for Firefox on Mac).\nInstall over your existing PlazCode folder: copy everything in here into it and choose Replace. Do not delete the old folder first.\nFor a clean first-time install use the full download instead.\n')
 if osname!='Windows':
  lean_app=lean_root/'PlazCode/PlazCode.app'
  subprocess.run(['codesign','--force','--deep','--sign','-',str(lean_app)],check=True)

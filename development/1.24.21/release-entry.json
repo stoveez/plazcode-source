@@ -44,7 +44,8 @@
     "The Windows app is unsigned and the Mac app is not notarized, as in earlier versions. Your computer may ask you to confirm opening it.",
     "Ultra replaces the old Ultra. The old built-in Ultra skills are removed once on update; skills you made or imported are never touched.",
     "Sites with small prompt limits (Notion, Copilot, ClickUp, ChatGPT) get a shorter Ultra so nothing is cut off. DeepSeek uses the pack's short version instead of the old Chinese Ultra.",
-    "The three tools that change files (add a Godot node, make a Godot script, make a Unity script) follow Read-only mode, appear in What happened and can be undone."
+    "The three tools that change files (add a Godot node, make a Godot script, make a Unity script) follow Read-only mode, appear in What happened and can be undone.",
+    "The memory helper is downloaded from the official source the first time memory is used if it is not already installed, and checked against a fixed checksum before it runs. Full downloads still include it."
   ],
   "github": {
     "summary": "Safety limits, a What happened log with Undo, saved setups per site, shareable skills, Figma, Unity and Browser connectors, and a new Fix connection button.",
