@@ -17,6 +17,14 @@ PlazCode is a closed-source browser extension plus a Rust desktop app that turns
 7. Respect licences. Do not copy code from Multi-Script (GPL, no permission). UltraLab is used with SyphoDev's permission (no sale or paid bundle, credit youtube.com/@SyphoDev). Brickwire is MIT: keep its licence and credit "Brickwire contributors" if anything is derived from it.
 8. Never put secrets (publish token, keys) in files or chat.
 
+## Effort (the owner's rule)
+Use HIGH effort (think longer and trace carefully) for these four kinds of work. If you cannot change your own effort setting, hand the work to a helper agent that runs at high effort, or tell the owner to switch it before you start:
+1. The login and license server (security matters, a gap is costly).
+2. The Luau helper library and the build self-checks (they must be correct against a real Luau compiler).
+3. Hunting hard bugs such as the Notion send problem or the "Response changed" banner (careful tracing through large files).
+4. Planning big features before building them.
+Normal effort is fine for small fixes, packaging, release notes and questions.
+
 ## How the build works
 - 1.24.21 = pinned official 1.24.20 source + overlay in `development/1.24.21/overlay`, applied by `python3 development/1.24.21/prepare.py` into `build-src-1.24.21/PlazCode`.
 - JavaScript tests: `python3 release-tools/test-javascript.py` (needs jsdom; set `NODE_PATH` to `release-tools/node_modules`). Native tests: `cargo test --manifest-path agent/Cargo.toml`.
