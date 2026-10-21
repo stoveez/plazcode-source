@@ -5847,3 +5847,18 @@ html[data-rs-palette][data-rs-theme] #rs-alog-panel #rs-alog-close{border:0!impo
 #rs-menu .rs-setup-skills label{display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer}
 html.rs-light #rs-menu .rs-allowed-field textarea,html.rs-light #rs-menu .rs-setup-field :is(textarea,input[type=text]){background:#fff;color:#1d2433;border-color:#cfd6e3}
 html.rs-light #rs-menu .rs-setup-summary{background:#f4f6fa;color:#334;border-color:#dde3ec}
+
+/* Effort in the PlazCode bar is a button: it shows a hover box, a hand cursor and opens the list of levels. */
+#rs-root #rs-effort{cursor:pointer;display:inline-flex;align-items:center;gap:4px;margin:0 0 0 -6px;padding:2px 7px;border:1px solid transparent;border-radius:7px;transition:background .15s,border-color .15s,color .42s ease}
+#rs-root #rs-effort::after{content:"\2304";font-size:10px;line-height:1;opacity:.7;transform:translateY(-2px)}
+#rs-root #rs-effort:hover,#rs-root #rs-effort[aria-expanded=true]{background:color-mix(in srgb,currentColor 16%,transparent);border-color:color-mix(in srgb,currentColor 55%,transparent)}
+#rs-root #rs-effort:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.pc-effort-menu{position:fixed;z-index:2147483646;min-width:150px;padding:6px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(20,22,28,.97);box-shadow:0 14px 34px rgba(0,0,0,.55);font:500 13px/1.3 ui-sans-serif,"Segoe UI",sans-serif;color:#f2f4f8}
+.pc-effort-menu .pc-effort-item{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:8px;cursor:pointer}
+.pc-effort-menu .pc-effort-item:hover,.pc-effort-menu .pc-effort-item:focus-visible{background:rgba(255,255,255,.12)}
+.pc-effort-menu .pc-effort-item[aria-checked=true]{background:rgba(255,255,255,.07);font-weight:650}
+.pc-effort-menu .pc-effort-item span{flex:1}
+.pc-effort-menu .pc-effort-item em{font-style:normal;width:14px;text-align:right}
+.pc-effort-dot{width:9px;height:9px;border-radius:50%;background:#e9ba53;flex:none}
+.pc-effort-item[data-level=low] .pc-effort-dot{background:#fff1a8}.pc-effort-item[data-level=mid] .pc-effort-dot{background:#ffc56b}.pc-effort-item[data-level=high] .pc-effort-dot{background:#ff9255}.pc-effort-item[data-level=max] .pc-effort-dot{background:#ff6267}.pc-effort-item[data-level=ultracode] .pc-effort-dot{background:#c5a1f9}
+@media(prefers-reduced-motion:reduce){#rs-root #rs-effort{transition:none}}

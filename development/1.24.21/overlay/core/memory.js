@@ -223,7 +223,7 @@ const PlazCodeMemory = (() => {
     alias: '<path d="m15 14 5-5-5-5"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/>', calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
     text: '<path d="M17 6H3M21 12H3M15 18H3"/>', more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
     panel: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>', archive: '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/>',
-    collapse: '<path d="m7 20 5-5 5 5M7 4l5 5 5-5"/>', expand: '<path d="m7 15 5 5 5-5M7 9l5-5 5 5"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>'
+    plus: '<path d="M12 5v14M5 12h14"/>', trash: '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6"/>', collapse: '<path d="m7 20 5-5 5 5M7 4l5 5 5-5"/>', expand: '<path d="m7 15 5 5 5-5M7 9l5-5 5 5"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>'
   };
   function ico(name, size) { size = size || 16; return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (PCV_ICONS[name] || '') + '</svg>'; }
   const vvEsc = value => String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -418,6 +418,7 @@ const PlazCodeMemory = (() => {
     + '.pcv-tab{background:linear-gradient(180deg,rgb(var(--v-rgb) / .30),rgb(var(--v-rgb) / .08)),var(--v-bg);border-color:rgb(var(--v-rgb) / .5);box-shadow:0 -2px 14px rgb(var(--v-rgb) / calc(var(--v-g)*2.2)),inset 0 2px 0 var(--v-light)}'
     + '#pcv-root .pcv-ib:hover{box-shadow:0 0 12px rgb(var(--v-rgb) / calc(var(--v-g)*2.5))}#pcv-root .pcv-ib[aria-pressed="true"],#pcv-root .pcv-ib.pcv-on{background:linear-gradient(135deg,rgb(var(--v-rgb) / .38),rgb(var(--v-rgb) / .12));box-shadow:0 0 14px rgb(var(--v-rgb) / calc(var(--v-g)*3))}'
     + '.pcv-search input{background:linear-gradient(180deg,rgb(var(--v-rgb) / .08),transparent),var(--v-bg)}.pcv-search input:focus{box-shadow:0 0 0 3px rgb(var(--v-rgb) / .22),0 0 16px rgb(var(--v-rgb) / calc(var(--v-g)*3))}'
+    + '#pcv-root .pcv-plus{display:inline-flex;align-items:center;justify-content:center;flex:none;width:22px;height:22px;margin-left:2px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--v-muted);cursor:pointer;opacity:0;transition:opacity .12s,background .12s,color .12s}#pcv-root .pcv-row:hover .pcv-plus,#pcv-root .pcv-row:focus-within .pcv-plus,#pcv-root .pcv-plus:focus-visible{opacity:1}#pcv-root .pcv-plus:hover{background:rgb(var(--v-rgb) / .35);color:#fff}@media(hover:none) and (pointer:coarse){#pcv-root .pcv-plus{opacity:.75}}.pcv-newrow{padding:3px 8px 5px}.pcv-newrow input{width:100%;box-sizing:border-box;padding:6px 9px;border-radius:8px;border:1px solid rgb(var(--v-rgb) / .6);background:rgb(var(--v-rgb) / .08);color:inherit;font:inherit;font-size:13px;outline:none}'
     + '.pcv-row:hover{background:linear-gradient(90deg,rgb(var(--v-rgb) / .20),rgb(var(--v-rgb) / .04))}.pcv-row.pcv-active{background:linear-gradient(90deg,rgb(var(--v-rgb) / .42),rgb(var(--v-rgb) / .10));box-shadow:inset 3px 0 0 var(--v-light),0 0 16px rgb(var(--v-rgb) / calc(var(--v-g)*2.6));color:#fff}'
     + '.pcv-foot{background:linear-gradient(0deg,rgb(var(--v-rgb) / .16),transparent)}.pcv-status{background:linear-gradient(0deg,rgb(var(--v-rgb) / .12),transparent)}'
     + '.pcv-title{background:linear-gradient(100deg,#fff 0%,var(--v-light) 45%,var(--v-accent) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 calc(var(--v-g)*60px) rgb(var(--v-rgb) / .55))}'
@@ -448,14 +449,14 @@ const PlazCodeMemory = (() => {
       + '<div class="pcv-body"><nav class="pcv-rail"><button type="button" class="pcv-ib pcv-on" data-act="files" aria-label="' + vvEsc(vvT('Files')) + '">' + ico('folder', 18) + '</button><button type="button" class="pcv-ib" data-act="find" aria-label="' + vvEsc(vvT('Search')) + '">' + ico('search', 18) + '</button></nav>'
       + '<aside class="pcv-side"><div class="pcv-side-tools"><button type="button" class="pcv-ib" data-act="collapse" aria-label="' + vvEsc(vvT('Collapse all')) + '">' + ico('collapse', 17) + '</button><button type="button" class="pcv-ib" data-act="expand" aria-label="' + vvEsc(vvT('Expand all')) + '">' + ico('expand', 17) + '</button></div><div class="pcv-search"><input type="text" data-search placeholder="' + vvEsc(vvT('Search')) + '" aria-label="' + vvEsc(vvT('Search')) + '" maxlength="120" autocomplete="off" spellcheck="false"></div><div class="pcv-tree" role="tree" data-tree></div><div class="pcv-foot"><b data-vname></b><button type="button" class="pcv-ib" data-act="folder" aria-label="' + vvEsc(vvT('Open vault folder')) + '">' + ico('folder', 16) + '</button></div></aside>'
       + '<section class="pcv-main"><div class="pcv-nav"><button type="button" class="pcv-ib" data-act="back" aria-label="' + vvEsc(vvT('Back')) + '">' + ico('back', 17) + '</button><button type="button" class="pcv-ib" data-act="forward" aria-label="' + vvEsc(vvT('Forward')) + '">' + ico('forward', 17) + '</button><div class="pcv-crumb" data-crumb></div><span data-nav-actions></span><button type="button" class="pcv-ib" data-act="menu" aria-label="' + vvEsc(vvT('More options')) + '">' + ico('more', 17) + '</button></div>'
-      + '<div class="pcv-menu" data-menu hidden><button type="button" data-act="edit">' + ico('pencil', 15) + '<span>' + vvEsc(vvT('Edit note')) + '</span></button><button type="button" data-act="archive" class="pcv-danger">' + ico('archive', 15) + '<span data-archive-label>' + vvEsc(vvT('Move to archive')) + '</span></button></div>'
+      + '<div class="pcv-menu" data-menu hidden><button type="button" data-act="edit">' + ico('pencil', 15) + '<span>' + vvEsc(vvT('Edit note')) + '</span></button><button type="button" data-act="archive" class="pcv-danger">' + ico('archive', 15) + '<span data-archive-label>' + vvEsc(vvT('Move to archive')) + '</span></button><button type="button" data-act="delete" class="pcv-danger">' + ico('trash', 15) + '<span data-delete-label>' + vvEsc(vvT('Delete note')) + '</span></button></div>'
       + '<div class="pcv-scroll" data-scroll><article class="pcv-note" data-note></article></div><div class="pcv-status" data-status></div><div class="pcv-toast" data-toast role="status" hidden></div></section></div>';
     document.body.appendChild(root);
     pcvRoot = root;
     const q = selector => root.querySelector(selector);
     const tree = q('[data-tree]'), note = q('[data-note]'), crumb = q('[data-crumb]'), status = q('[data-status]'), toast = q('[data-toast]'), menu = q('[data-menu]'), search = q('[data-search]'), navActions = q('[data-nav-actions]'), scroll = q('[data-scroll]');
     let entries = [], kids = new Map(), nameMap = new Map(), imageMap = new Map(), kindOf = new Map(), expanded = new Set(['00 Start Here']);
-    let current = null, history = [], hpos = -1, editing = false, propsOpen = true, archiveArmed = false, toastTimer = 0, searchTimer = 0, openToken = 0;
+    let current = null, history = [], hpos = -1, editing = false, propsOpen = true, archiveArmed = false, deleteArmed = false, toastTimer = 0, searchTimer = 0, openToken = 0;
     const imageCache = new Map();
     const say = text => { toast.textContent = text; toast.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { toast.hidden = true; }, 4200); };
     const failure = error => say((error && error.message) || String(error));
@@ -494,6 +495,7 @@ const PlazCodeMemory = (() => {
           const chev = document.createElement('span'); chev.className = 'pcv-chev'; if (entry.kind === 'folder') chev.innerHTML = ico('chevron', 13);
           const label = document.createElement('span'); label.className = 'pcv-name'; label.textContent = entry.kind === 'note' ? name.replace(/\.md$/i, '') : name;
           row.append(chev, label);
+          if (entry.kind === 'folder' && !/^_(Archive|Templates)(\/|$)/.test(entry.path) && entry.path !== '08 References/refs') { const add = document.createElement('button'); add.type = 'button'; add.className = 'pcv-plus'; add.dataset.act = 'newnote'; add.dataset.folder = entry.path; add.title = vvT('New note'); add.setAttribute('aria-label', vvT('New note in') + ' ' + name); add.innerHTML = ico('plus', 14); row.append(add); }
           if (entry.kind === 'image') { const ext = document.createElement('span'); ext.className = 'pcv-pill-ext'; ext.textContent = (name.split('.').pop() || '').slice(0, 4); label.textContent = name.replace(/\.[^.]+$/, ''); row.append(ext); }
           if (entry.kind === 'folder') { const isOpen = expanded.has(entry.path); if (isOpen) row.classList.add('pcv-open'); row.setAttribute('aria-expanded', isOpen ? 'true' : 'false'); }
           into.appendChild(row);
@@ -543,7 +545,7 @@ const PlazCodeMemory = (() => {
       const path = current;
       root.querySelector('[data-tab]').textContent = path ? baseName(path) : vvT('Vault');
       crumb.innerHTML = path ? path.split('/').map((part, i, all) => i === all.length - 1 ? '<b>' + vvEsc(part.replace(/\.md$/i, '')) + '</b>' : vvEsc(part)).join(' / ') : '';
-      setNavActions(); archiveArmed = false; q('[data-archive-label]').textContent = vvT('Move to archive');
+      setNavActions(); archiveArmed = false; deleteArmed = false; q('[data-archive-label]').textContent = vvT('Move to archive'); q('[data-delete-label]').textContent = vvT('Delete note');
       drawTree();
       status.textContent = extra || '';
     }
@@ -593,6 +595,33 @@ const PlazCodeMemory = (() => {
       if (!archiveArmed) { archiveArmed = true; q('[data-archive-label]').textContent = vvT('Click again to confirm'); return; }
       try { await vaultCall({ action: 'archive', path: current, reason: 'Moved to the archive by you' }); menu.hidden = true; await loadTree(); current = null; await open('00 Start Here/Home.md', true); say(vvT('Moved to the archive. Nothing was deleted.')); } catch (error) { failure(error); }
     }
+    async function deleteCurrent() {
+      if (!current || kindOf.get(current) !== 'note') return;
+      if (!deleteArmed) { deleteArmed = true; q('[data-delete-label]').textContent = vvT('Click again to delete for good'); return; }
+      try { await vaultCall({ action: 'delete', path: current }); menu.hidden = true; await loadTree(); current = null; await open('00 Start Here/Home.md', true); say(vvT('Note deleted.')); } catch (error) { failure(error); }
+    }
+    function startNewNote(folder) {
+      if (editing) { say(vvT('Save or cancel your edit first.')); return; }
+      root.querySelectorAll('.pcv-newrow').forEach(node => node.remove());
+      expanded.add(folder); drawTree();
+      const parent = Array.prototype.find.call(tree.querySelectorAll('.pcv-row[data-kind="folder"]'), node => node.dataset.path === folder);
+      if (!parent) return;
+      const depth = folder.split('/').length;
+      const holder = document.createElement('div'); holder.className = 'pcv-newrow'; holder.style.paddingLeft = (8 + depth * 16) + 'px';
+      const input = document.createElement('input'); input.type = 'text'; input.maxLength = 80; input.placeholder = vvT('Name the new note, then press Enter'); input.setAttribute('aria-label', vvT('New note name'));
+      holder.appendChild(input); parent.after(holder); input.focus();
+      let done = false;
+      const finish = async create => {
+        if (done) return; done = true;
+        const name = input.value.replace(/[\\/:*?"<>|#^\[\]]/g, ' ').replace(/\s+/g, ' ').trim().replace(/\.md$/i, '');
+        holder.remove();
+        if (!create || !name) return;
+        const path = folder + '/' + name + '.md';
+        try { await vaultCall({ action: 'write', mode: 'create', path, content: '# ' + name + '\n\n' }); await loadTree(); await open(path, true); startEdit(); } catch (error) { failure(error); }
+      };
+      input.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); finish(true); } else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); finish(false); } });
+      input.addEventListener('blur', () => { setTimeout(() => finish(false), 120); });
+    }
     function go(delta) { const next = hpos + delta; if (next < 0 || next >= history.length || editing) return; hpos = next; open(history[hpos], false); }
     async function runSearch(text) {
       if (text.trim().length < 2) { drawTree(); return; }
@@ -617,6 +646,8 @@ const PlazCodeMemory = (() => {
       if (props) { propsOpen = !propsOpen; props.parentElement.classList.toggle('pcv-props-closed', !propsOpen); props.setAttribute('aria-expanded', propsOpen ? 'true' : 'false'); return; }
       const link = target.closest('a.pcv-link');
       if (link) { event.preventDefault(); const path = link.getAttribute('data-path') || resolveNote(link.getAttribute('data-link')); if (path) open(path, true); else say(vvT('There is no note with that name yet.')); return; }
+      const plus = target.closest('[data-act="newnote"]');
+      if (plus) { event.stopPropagation(); startNewNote(plus.dataset.folder); return; }
       const row = target.closest('[data-path][data-kind]');
       if (row) { if (window.innerWidth <= 760 && row.dataset.kind !== 'folder') root.classList.remove('pcv-side-open'); open(row.dataset.path, true); return; }
       if (!act) return;
@@ -630,11 +661,12 @@ const PlazCodeMemory = (() => {
       else if (name === 'folder') vaultCall({ action: 'reveal' }).catch(failure);
       else if (name === 'back') go(-1);
       else if (name === 'forward') go(1);
-      else if (name === 'menu') { menu.hidden = !menu.hidden; archiveArmed = false; q('[data-archive-label]').textContent = vvT('Move to archive'); }
+      else if (name === 'menu') { menu.hidden = !menu.hidden; archiveArmed = false; deleteArmed = false; q('[data-archive-label]').textContent = vvT('Move to archive'); q('[data-delete-label]').textContent = vvT('Delete note'); }
       else if (name === 'edit') { menu.hidden = true; startEdit(); }
       else if (name === 'save') saveEdit();
       else if (name === 'cancel') cancelEdit();
       else if (name === 'archive') archiveCurrent();
+      else if (name === 'delete') deleteCurrent();
     });
     root.addEventListener('keydown', event => {
       if (event.key === 'Escape') { event.stopPropagation(); if (!menu.hidden) menu.hidden = true; else if (editing) cancelEdit(); else root.hidden = true; return; }

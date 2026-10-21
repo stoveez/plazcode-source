@@ -2118,6 +2118,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       case "rs-set-engine": {
         const next=normalizeEngine(msg.engine);
         if (!Number.isInteger(tabId)) {sendResponse({ok:false,error:"Select an AI tab before changing its engine."});break;}
+        // Leaving AgentScript for Roblox needs a connected Studio: otherwise stay on AgentScript and say why.
+        if (next==="roblox" && (tabEngines.get(tabId)||mode)==="local") {
+          let studioUp=false;
+          try {
+            const live=await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/status`,{method:"GET",signal:AbortSignal.timeout(4000)});
+            studioUp=live.ok && (await live.json()).roblox_connected===true;
+          } catch {}
+          if (!studioUp) {sendResponse({ok:false,engine:"local",error:"studio_not_connected",message:"Roblox Studio isn't connected. Open Roblox Studio and connect it to PlazCode, then switch to Roblox again."});break;}
+        }
         tabEngines.set(tabId,next);
         try {await chrome.storage.session.set({["rs-tab-engine-"+tabId]:next});}catch{}
         try {await chrome.tabs.sendMessage(tabId,{type:"rs-engine",engine:next});}catch{}

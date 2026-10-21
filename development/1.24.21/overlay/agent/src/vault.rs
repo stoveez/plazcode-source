@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! 1.24.21 vault memory: an Obsidian-compatible folder of Markdown notes that the AI reads and keeps up to date.
 //! The vault is plain files, so it works without Obsidian; if the user has Obsidian they can open the same folder.
-//! Every path is checked to stay inside the vault, notes are never deleted (they are archived), writes are atomic,
-//! and anything that looks like a key or password is refused.
+//! Every path is checked to stay inside the vault, the AI can only archive notes (only the user can delete one, from the viewer),
+//! writes are atomic, and anything that looks like a key or password is refused.
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde_json::{json, Value};
@@ -627,36 +627,117 @@ fn ensure_structure(root: &Path) -> anyhow::Result<()> {
     }
     Ok(())
 }
-/// One-time copy of the old flat memory (memory.json) into 10 Inbox/Imported. The old file is kept as a backup.
-fn migrate_old_memory(root: &Path, entries: &[(u64, String, String, String)]) -> anyhow::Result<usize> {
-    let marker = root.join(".plazcode-migrated");
-    if marker.exists() {
-        return Ok(0);
+const SYNC_NAME: &str = ".plazcode-memory-sync.json";
+/// Small stable fingerprint, used to tell whether a note was changed by hand after PlazCode wrote it.
+fn fnv(text: &str) -> u64 {
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for byte in text.bytes() {
+        hash ^= byte as u64;
+        hash = hash.wrapping_mul(0x100000001b3);
     }
-    let mut count = 0;
+    hash
+}
+type MemoryRow = (u64, String, String, String);
+fn memory_rows() -> Vec<MemoryRow> {
+    #[cfg(test)]
+    {
+        Vec::new()
+    }
+    #[cfg(not(test))]
+    {
+        crate::memory::STORE.snapshot().entries.iter().map(|e| (e.id, e.title.clone(), e.text.clone(), e.project.clone())).collect()
+    }
+}
+fn memory_note(id: u64, title: &str, text: &str, project: &str) -> (String, String) {
+    let name = format!("{}-{}.md", slug(if title.is_empty() { text } else { title }), id);
+    let mut note = Parsed::default();
+    note.set("tags", "[imported]".into());
+    if !project.is_empty() {
+        note.set("project", yaml_value(project));
+    }
+    note.set("source", "memory.json".into());
+    note.set("memory_id", id.to_string());
+    note.set("updated", today());
+    note.body = format!("# {}\n\n{}\n", if title.is_empty() { clip(text.lines().next().unwrap_or("Imported note"), 60) } else { title.to_string() }, clip(text, MAX_NOTE_CHARS));
+    (format!("10 Inbox/Imported/{name}"), render(&note))
+}
+fn load_sync(root: &Path) -> serde_json::Map<String, Value> {
+    fs::read_to_string(root.join(SYNC_NAME)).ok().and_then(|t| serde_json::from_str::<Value>(&t).ok()).and_then(|v| v.as_object().cloned()).unwrap_or_default()
+}
+fn save_sync(root: &Path, map: &serde_json::Map<String, Value>) -> anyhow::Result<()> {
+    atomic_write(&root.join(SYNC_NAME), serde_json::to_string(&Value::Object(map.clone()))?.as_bytes())
+}
+/// Keeps every Quick note (memory.json) as a note in the vault, so all memory lives in one place.
+/// New notes are copied in, a note edited in Quick notes is updated in the vault unless you changed the vault copy yourself,
+/// and a note removed from Quick notes is removed from the vault if you never edited it. Call with the vault lock held.
+fn sync_memory(root: &Path, entries: &[MemoryRow]) -> anyhow::Result<usize> {
+    let mut map = load_sync(root);
+    let before = Value::Object(map.clone());
+    let mut added = 0;
+    let mut changed = 0;
+    let mut removed = 0;
+    let mut seen = std::collections::HashSet::new();
     for (id, title, text, project) in entries {
-        let name = format!("{}-{}.md", slug(if title.is_empty() { text } else { title }), id);
-        let path = root.join("10 Inbox/Imported").join(name);
-        if path.exists() {
-            continue;
+        let key = id.to_string();
+        seen.insert(key.clone());
+        let (rel, content) = memory_note(*id, title, text, project);
+        let full = root.join(&rel);
+        let text_hash = fnv(&format!("{title}\n{project}\n{text}"));
+        match map.get(&key).cloned() {
+            None => {
+                if full.is_file() {
+                    // Copied in earlier by the one-time import of an older build: just start tracking it.
+                    let on_disk = fs::read_to_string(&full).unwrap_or_default();
+                    map.insert(key, json!({"path": rel, "text": text_hash, "file": fnv(&on_disk)}));
+                } else {
+                    atomic_write(&full, content.as_bytes())?;
+                    map.insert(key, json!({"path": rel, "text": text_hash, "file": fnv(&content)}));
+                    added += 1;
+                }
+            }
+            Some(tracked) => {
+                if tracked["gone"].as_bool() == Some(true) || tracked["text"].as_u64() == Some(text_hash) {
+                    continue;
+                }
+                let tracked_path = tracked["path"].as_str().unwrap_or(&rel).to_string();
+                let tracked_full = root.join(&tracked_path);
+                let on_disk = fs::read_to_string(&tracked_full).ok();
+                if on_disk.as_deref().map(fnv) == tracked["file"].as_u64() && tracked_full.is_file() {
+                    if tracked_path == rel {
+                        atomic_write(&tracked_full, content.as_bytes())?;
+                        map.insert(key, json!({"path": rel, "text": text_hash, "file": fnv(&content)}));
+                        changed += 1;
+                    } else {
+                        map.insert(key, json!({"path": tracked_path, "text": text_hash, "file": tracked["file"]}));
+                    }
+                } else {
+                    // The vault copy was changed or removed by hand: leave it alone.
+                    map.insert(key, json!({"path": tracked_path, "text": text_hash, "file": tracked["file"], "gone": !tracked_full.is_file()}));
+                }
+            }
         }
-        let mut note = Parsed::default();
-        note.set("tags", "[imported]".into());
-        if !project.is_empty() {
-            note.set("project", yaml_value(project));
-        }
-        note.set("source", "memory.json".into());
-        note.set("updated", today());
-        note.body = format!("# {}\n\n{}\n", if title.is_empty() { clip(text.lines().next().unwrap_or("Imported note"), 60) } else { title.clone() }, clip(text, MAX_NOTE_CHARS));
-        atomic_write(&path, render(&note).as_bytes())?;
-        count += 1;
     }
-    atomic_write(&marker, today().as_bytes())?;
-    if count > 0 {
+    let stale: Vec<String> = map.keys().filter(|k| !seen.contains(*k)).cloned().collect();
+    for key in stale {
+        if let Some(tracked) = map.remove(&key) {
+            let path = root.join(tracked["path"].as_str().unwrap_or(""));
+            if tracked["path"].as_str().map(|p| !p.is_empty()).unwrap_or(false) && path.is_file() {
+                let on_disk = fs::read_to_string(&path).ok();
+                if on_disk.as_deref().map(fnv) == tracked["file"].as_u64() {
+                    let _ = fs::remove_file(&path);
+                    removed += 1;
+                }
+            }
+        }
+    }
+    if Value::Object(map.clone()) != before {
+        save_sync(root, &map)?;
+    }
+    if added + changed + removed > 0 {
         rebuild_index(root)?;
-        add_log(root, &format!("imported {count} saved notes from the old memory"))?;
+        add_log(root, &format!("synced saved notes: {added} added, {changed} updated, {removed} removed"))?;
     }
-    Ok(count)
+    Ok(added)
 }
 
 // ───────────────────────────── index and log ─────────────────────────────
@@ -970,6 +1051,33 @@ fn do_archive(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<V
     add_log(root, &format!("archived [[{}]]{}", rel_text.trim_end_matches(".md"), if reason.is_empty() { String::new() } else { format!(" - {reason}") }))?;
     Ok(json!({"ok": true, "archived_to": rel_string(target.strip_prefix(root).unwrap_or(&target))}))
 }
+/// Only the user deletes a note (the viewer asks twice). The AI can only archive. If the note came from Quick notes, its id is returned so that entry goes too.
+fn do_delete(root: &Path, req: &Value) -> anyhow::Result<Value> {
+    anyhow::ensure!(req["ai"].as_bool() != Some(true), "Only you can delete a note. The AI can move a note to the archive instead.");
+    let rel = note_rel(text_field(req, "path"))?;
+    let rel_text = rel_string(&rel);
+    anyhow::ensure!(!is_system_note(&rel_text) && rel_text != "00 Start Here/Glossary.md" && !rel_text.starts_with("_Templates/"), "That note is part of the vault and cannot be deleted.");
+    let full = root.join(&rel);
+    ensure_inside(root, &full)?;
+    anyhow::ensure!(full.is_file(), "That note does not exist.");
+    let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    fs::remove_file(&full)?;
+    let mut map = load_sync(root);
+    let mut memory_id = None;
+    let found: Option<String> = map.iter().find(|(_, v)| v["path"].as_str() == Some(rel_text.as_str())).map(|(k, _)| k.clone());
+    if let Some(key) = found {
+        if let Some(mut tracked) = map.remove(&key) {
+            memory_id = key.parse::<u64>().ok();
+            tracked["gone"] = json!(true);
+            // Keep a marker so a note removed here is never copied back in.
+            map.insert(key, tracked);
+            save_sync(root, &map)?;
+        }
+    }
+    rebuild_index(root)?;
+    add_log(root, &format!("deleted the note {}", rel_text.trim_end_matches(".md")))?;
+    Ok(json!({"ok": true, "path": rel_text, "memory_id": memory_id}))
+}
 /// The user editing a note by hand in the viewer: the whole file (header and text) is replaced.
 fn do_save_raw(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<Value> {
     ai_may_write(req, settings)?;
@@ -1081,16 +1189,21 @@ fn describe(root: &Path, settings: &Settings) -> Value {
 fn execute_in(root: &Path, settings: &Settings, req: &Value) -> anyhow::Result<Value> {
     let action = text_field(req, "action");
     match action {
-        "init" | "index" | "search" | "read" | "write" | "backlinks" | "archive" | "add_image" | "read_image" | "tree" | "save_raw" => {
+        "init" | "index" | "search" | "read" | "write" | "backlinks" | "archive" | "add_image" | "read_image" | "tree" | "save_raw" | "delete" => {
             ensure_structure(root)?;
         }
         _ => {}
     }
+    // Every Quick note is kept as a vault note, so all memory is in one place (see sync_memory).
+    let mut imported = 0;
+    if matches!(action, "init" | "index" | "search" | "tree" | "settings") && root.is_dir() {
+        let rows = memory_rows();
+        let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        imported = sync_memory(root, &rows)?;
+    }
     match action {
         "init" => {
-            let entries: Vec<(u64, String, String, String)> = crate::memory::STORE.snapshot().entries.iter().map(|e| (e.id, e.title.clone(), e.text.clone(), e.project.clone())).collect();
             let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
-            let imported = migrate_old_memory(root, &entries)?;
             if !root.join(INDEX_NAME).exists() { rebuild_index(root)?; }
             drop(_guard);
             let mut value = describe(root, settings);
@@ -1107,6 +1220,14 @@ fn execute_in(root: &Path, settings: &Settings, req: &Value) -> anyhow::Result<V
         "read_image" => do_read_image(root, req),
         "tree" => do_tree(root),
         "save_raw" => do_save_raw(root, req, settings),
+        "delete" => {
+            let done = do_delete(root, req)?;
+            #[cfg(not(test))]
+            if let Some(id) = done["memory_id"].as_u64() {
+                let _ = crate::memory::STORE.update(json!({"action": "remove", "id": id}));
+            }
+            Ok(done)
+        }
         "settings" => Ok(describe(root, settings)),
         "reveal" => {
             ensure_structure(root)?;
@@ -1303,16 +1424,54 @@ mod tests {
         let _ = fs::remove_dir_all(root.parent().unwrap());
     }
     #[test]
-    fn migration_keeps_every_old_note_once() {
-        let (root, _s) = fresh("migrate");
+    fn saved_notes_are_kept_in_the_vault_and_stay_in_step() {
+        let (root, s) = fresh("sync");
         ensure_structure(&root).unwrap();
-        let old = vec![(1u64, "Fonts".to_string(), "Use GothamSSm".to_string(), "".to_string()), (2, "".into(), "No underscores in names".into(), "Game A".into())];
-        assert_eq!(migrate_old_memory(&root, &old).unwrap(), 2);
-        assert_eq!(migrate_old_memory(&root, &old).unwrap(), 0, "only once");
+        let mut rows = vec![(1u64, "Fonts".to_string(), "Use GothamSSm".to_string(), "".to_string()), (2, "".into(), "No underscores in names".into(), "Game A".into())];
+        assert_eq!(sync_memory(&root, &rows).unwrap(), 2);
+        assert_eq!(sync_memory(&root, &rows).unwrap(), 0, "already there");
         let files: Vec<_> = fs::read_dir(root.join("10 Inbox/Imported")).unwrap().flatten().collect();
         assert_eq!(files.len(), 2);
         let all = files.iter().map(|f| fs::read_to_string(f.path()).unwrap()).collect::<String>();
-        assert!(all.contains("Use GothamSSm") && all.contains("No underscores in names") && all.contains("project: \"Game A\"") || all.contains("project: Game A"));
+        assert!(all.contains("Use GothamSSm") && all.contains("No underscores in names") && all.contains("memory_id: 1"));
+        // A new Quick note and an edited one arrive; an edit does not overwrite a note you changed in the vault.
+        rows.push((3, "Sounds".into(), "Use the Sounds folder".into(), "".into()));
+        rows[0].2 = "Use Gotham".into();
+        assert_eq!(sync_memory(&root, &rows).unwrap(), 1);
+        let fonts = fs::read_to_string(root.join("10 Inbox/Imported/Fonts-1.md")).unwrap();
+        assert!(fonts.contains("Use Gotham") && !fonts.contains("GothamSSm"));
+        fs::write(root.join("10 Inbox/Imported/Fonts-1.md"), format!("{fonts}\nMy own line")).unwrap();
+        rows[0].2 = "Use Gotham Bold".into();
+        sync_memory(&root, &rows).unwrap();
+        let kept = fs::read_to_string(root.join("10 Inbox/Imported/Fonts-1.md")).unwrap();
+        assert!(kept.contains("My own line") && !kept.contains("Gotham Bold"));
+        // Deleting in the vault removes the Quick note too, and it never comes back.
+        let done = run(&root, &s, json!({"action":"delete","path":"10 Inbox/Imported/Sounds-3.md"})).unwrap();
+        assert_eq!(done["memory_id"], 3);
+        assert!(!root.join("10 Inbox/Imported/Sounds-3.md").exists());
+        assert_eq!(sync_memory(&root, &rows).unwrap(), 0, "a deleted note is not copied back");
+        assert!(!root.join("10 Inbox/Imported/Sounds-3.md").exists());
+        rows.retain(|r| r.0 != 3);
+        sync_memory(&root, &rows).unwrap();
+        // A note removed from Quick notes goes from the vault if nobody edited it, and stays if you did.
+        rows.retain(|r| r.0 != 2);
+        sync_memory(&root, &rows).unwrap();
+        assert!(!root.join("10 Inbox/Imported/No-underscores-in-names-2.md").exists());
+        rows.retain(|r| r.0 != 1);
+        sync_memory(&root, &rows).unwrap();
+        assert!(root.join("10 Inbox/Imported/Fonts-1.md").exists(), "an edited note stays");
+        let _ = fs::remove_dir_all(root.parent().unwrap());
+    }
+    #[test]
+    fn only_the_user_deletes_notes() {
+        let (root, s) = fresh("delete");
+        write(&root, &s, "07 Lessons And Decisions/Floating trees", "Trees float when anchored wrong.");
+        assert!(run(&root, &s, json!({"action":"delete","ai":true,"path":"07 Lessons And Decisions/Floating trees"})).is_err());
+        assert!(run(&root, &s, json!({"action":"delete","path":"00 Start Here/Home.md"})).is_err());
+        assert!(run(&root, &s, json!({"action":"delete","path":"../x.md"})).is_err());
+        run(&root, &s, json!({"action":"delete","path":"07 Lessons And Decisions/Floating trees"})).unwrap();
+        assert!(!root.join("07 Lessons And Decisions/Floating trees.md").exists());
+        assert!(fs::read_to_string(root.join(LOG_NAME)).unwrap().contains("deleted the note"));
         let _ = fs::remove_dir_all(root.parent().unwrap());
     }
     #[test]

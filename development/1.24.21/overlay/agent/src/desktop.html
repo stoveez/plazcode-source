@@ -507,9 +507,10 @@ html[data-look-rainbow] :is(.nx-card,.nx-row,.nx-theme,html[data-desktop-theme] 
 .settingcard .exgroup h4{margin:0 0 4px;font-size:14.5px;font-weight:700;letter-spacing:-.2px;color:var(--text,#fff)}
 .settingcard .exgroup p.exlead{margin:0 0 10px;font-size:12px;line-height:1.55;color:var(--ink-soft,#9299aa)}
 .settingcard .exgroup .settingrow{min-height:52px;padding:8px 0;gap:16px}
-.settingcard .exgroup .settingrow.exrow{flex-direction:column;align-items:stretch;gap:9px;padding:12px 0 6px;border-top:1px solid var(--stroke,#293d59)}
-.settingcard .exgroup .settingrow.exrow label{font-size:12.5px;font-weight:650}
-.settingcard .exgroup .settingrow.exrow select{width:100%;max-width:100%}
+.settingcard .settingrow.exrow,.settingcard:not(.appearance-card) .settingrow:has(>select,>.pc-effort-picker){flex-direction:column;align-items:stretch;gap:9px;padding:12px 0 6px;border-top:1px solid var(--stroke,#293d59)}
+.settingcard .settingrow.exrow label,.settingcard:not(.appearance-card) .settingrow:has(>select,>.pc-effort-picker)>label{font-size:12.5px;font-weight:650}
+.settingcard .settingrow.exrow :is(select,.pc-effort-picker,.pc-effort-trigger),.settingcard:not(.appearance-card) .settingrow:has(>select,>.pc-effort-picker) :is(select,.pc-effort-picker,.pc-effort-trigger){width:100%;max-width:100%;box-sizing:border-box}
+.settingcard .settingrow.exrow .pc-effort-picker{display:block}
 .settingcard .exgroup p.settinghelp{margin:10px 0 12px;font-size:12px;line-height:1.6;color:var(--ink-soft,#9299aa)}
 .settingcard .exgroup p.exdefs strong{display:block;margin-top:8px;color:var(--text,#fff)}
 .settingcard .exgroup p.exdefs strong:first-child{margin-top:0}
@@ -859,8 +860,8 @@ html[data-desktop-theme] .dx-card{box-shadow:var(--p-lift)}
             <div class="instructions-actions"><button class="softbtn" id="saveAllowedFolders">Save folders</button><span class="instructions-status" id="allowedFoldersStatus" role="status"></span></div>
           </div>
           <div class="settingcard"><h3>Reasoning</h3><p>Matches the extension work and thinking controls.</p>
-            <div class="settingrow"><label>Work mode</label><select data-pref="rsWorkMode"><option value="fast">Fast</option><option value="balanced">Balanced</option><option value="thorough">Thorough</option></select></div>
-            <div class="settingrow"><label>Reasoning</label><select data-pref="rsThinkingLevel"><option value="default">Default</option><option value="low">Low</option><option value="mid">Medium</option><option value="high">High</option><option value="max">Max</option><option value="ultracode">Ultra</option></select></div>
+            <div class="settingrow exrow"><label>Work mode</label><select data-pref="rsWorkMode"><option value="fast">Fast</option><option value="balanced">Balanced</option><option value="thorough">Thorough</option></select></div>
+            <div class="settingrow exrow"><label>Reasoning</label><select data-pref="rsThinkingLevel"><option value="default">Default</option><option value="low">Low</option><option value="mid">Medium</option><option value="high">High</option><option value="max">Max</option><option value="ultracode">Ultra</option></select></div>
             <div class="settingrow"><label>Extra Thinking</label><div class="toggle" data-pref="rsExtraThinking"></div></div>
             <div class="settingrow"><label>Show approach summary</label><div class="toggle" data-pref="rsShowApproach" title="A short explanation, then a blank line before each command. Off by default."></div></div>
             <div class="settingrow"><label>Plan Mode</label><div class="toggle" data-pref="rsPlanMode"></div></div>
@@ -1308,6 +1309,8 @@ __PLAZCODE_VERSION_UI__
       body: JSON.stringify((function () {
         var Body = {};
         Body[Name] = Value;
+        // Work mode sets the matching effort, like the extension does: Fast = Low, Balanced = Mid, Thorough = Max.
+        if (Name === 'rsWorkMode') { var Level = {fast: 'low', balanced: 'mid', thorough: 'max'}[Value]; if (Level) { Body.rsThinkingLevel = Level; document.documentElement.dataset.desktopThinking = Level; Rendereffort(Level); } }
         return Body;
       })())
     }).then(function (Result) {

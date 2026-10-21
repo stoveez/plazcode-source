@@ -28,7 +28,7 @@ const WORK_MODES = ["fast", "balanced", "thorough"];
 const WORK_PRESETS = {
   fast: { thinking: "low", extra: false },
   balanced: { thinking: "mid", extra: false },
-  thorough: { thinking: "high", extra: true },
+  thorough: { thinking: "max", extra: true },
 };
 
 const PERM_MODES = ["sandbox", "ask", "full"];
@@ -48,7 +48,7 @@ const settings = {
 
 async function activeTab() { const tabs=await chrome.tabs.query({active:true,currentWindow:true});return tabs[0]; }
 async function getEngine() {try {const tab=await activeTab(); const value=await chrome.runtime.sendMessage({type:"rs-get-engine",tab_id:tab?.id});return value?.engine==="local"?"local":"roblox";}catch{return "roblox";}}
-async function setEngine(v) {try {const tab=await activeTab();const value=await chrome.runtime.sendMessage({type:"rs-set-engine",tab_id:tab?.id,engine:v});if(value?.engine)renderEngine(value.engine);}catch{}}
+async function setEngine(v) {try {const tab=await activeTab();const value=await chrome.runtime.sendMessage({type:"rs-set-engine",tab_id:tab?.id,engine:v});if(value?.engine)renderEngine(value.engine);const note=document.getElementById("engine-note");if(note){note.textContent=value?.error==="studio_not_connected"?(value.message||"Roblox Studio isn't connected."):"";note.hidden=!note.textContent;}}catch{}}
 function renderEngine(v) {
   const isLocal = v === "local";
   const rob = document.getElementById("engine-roblox");

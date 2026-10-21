@@ -5712,7 +5712,7 @@ return result`;
           <div class="rs-cluster rs-cluster-left">
           <span id="rs-dot" class="off" title=""></span>
           <span id="rs-ornament" aria-hidden="true"></span>
-          <div id="rs-brand-stack"><span id="rs-brand">${BRAND_NAME}</span><span id="rs-bar-version" data-plazcode-version>v${EXT_VERSION} (Not checked)</span><span id="rs-effort">Effort: <span>Default</span></span></div>
+          <div id="rs-brand-stack"><span id="rs-brand">${BRAND_NAME}</span><span id="rs-bar-version" data-plazcode-version>v${EXT_VERSION} (Not checked)</span><span id="rs-effort" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" title="Click to change the effort">Effort: <span>Default</span></span></div>
           <div id="rs-engine" data-engine="roblox">
             <span id="rs-engine-thumb"></span>
             <button data-mode="roblox" class="rs-mode-btn on" title="RobloxScript">RS</button>
@@ -6159,14 +6159,20 @@ return result`;
           toast("Engine: " + name + extra);
           try { markModesChanged(); } catch {}
         };
+        // AgentScript -> Roblox needs a connected Studio; otherwise stay on AgentScript and tell the user.
+        const studioMissing = async () => {
+          try { const live = await bg({ type: "live-status" }); return !(live && live.ok && live.roblox_connected); } catch { return true; }
+        };
+        const blockedNote = () => toast("Roblox Studio isn't connected. Open Roblox Studio and connect it to PlazCode, then switch to Roblox again.");
         // Segmented control: clicks on inner buttons switch mode
-        engineEl.addEventListener("click", (e)=>{
+        engineEl.addEventListener("click", async (e)=>{
           const btn = e.target.closest(".rs-mode-btn");
           if (!btn) return;
           e.stopPropagation();
           const mode = btn.dataset.mode;
           const next = mode === "local" ? "local" : "roblox";
           if (next === currentMode) return;
+          if (next === "roblox" && currentMode === "local" && await studioMissing()) { blockedNote(); return; }
           lastManualEngineAt = Date.now();
           // Persist only this tab through the background service worker.
           try { chrome.runtime.sendMessage({type:"rs-set-engine", engine: next}).catch(()=>{}); } catch {}
@@ -6174,10 +6180,11 @@ return result`;
           engineToast(next);
         });
         // Fallback: clicking the container cycles RS -> AS -> AN
-        engineEl.addEventListener("dblclick", (e)=>{
+        engineEl.addEventListener("dblclick", async (e)=>{
           e.stopPropagation();
           if (e.target.closest(".rs-mode-btn")) return;
           const next = currentMode==="local" ? "roblox" : "local";
+          if (next === "roblox" && await studioMissing()) { blockedNote(); return; }
           lastManualEngineAt = Date.now();
           // Persist only this tab through the background service worker.
           try { chrome.runtime.sendMessage({type:"rs-set-engine", engine: next}).catch(()=>{}); } catch {}
@@ -6543,6 +6550,51 @@ return result`;
       buildMenu(); markModesChanged();
       if (v !== "default") toast("Thinking level: " + (v==="ultracode"?"Ultra":v.toUpperCase()));
     }
+    // ── Effort picker: clicking "Effort: …" in the bar opens a short list of levels ──
+    (function(){
+      const LEVELS=[["default","Default"],["low","Low"],["mid","Mid"],["high","High"],["max","Max"],["ultracode","Ultra"]];
+      let menu=null,cleanup=null;
+      function close(focusBack){
+        if(menu){menu.remove();menu=null;}
+        if(cleanup){cleanup();cleanup=null;}
+        const node=document.getElementById("rs-effort");
+        if(node){node.setAttribute("aria-expanded","false");if(focusBack)node.focus();}
+      }
+      function open(node){
+        close(false);
+        menu=document.createElement("div");menu.className="pc-effort-menu";menu.setAttribute("role","menu");menu.setAttribute("aria-label","Effort");
+        for(const [value,name] of LEVELS){
+          const item=document.createElement("button");item.type="button";item.className="pc-effort-item";item.dataset.level=value;
+          item.setAttribute("role","menuitemradio");item.setAttribute("aria-checked",String(thinkingLevel===value));
+          const dot=document.createElement("i"),label=document.createElement("span"),tick=document.createElement("em");
+          dot.className="pc-effort-dot";label.textContent=name;if(value==="ultracode")label.className="pc-ultra-label";
+          tick.textContent=thinkingLevel===value?"\u2713":"";tick.setAttribute("aria-hidden","true");
+          item.append(dot,label,tick);
+          item.onclick=()=>{setThinkingLevel(value);close(true);};
+          menu.append(item);
+        }
+        document.body.appendChild(menu);
+        const rect=node.getBoundingClientRect(),height=menu.offsetHeight||250,width=menu.offsetWidth||150,vh=window.innerHeight,vw=window.innerWidth;
+        const up=vh-rect.bottom<height+14&&rect.top>height+14;
+        menu.style.left=Math.max(8,Math.min(rect.left,vw-width-8))+"px";
+        menu.style.top=(up?rect.top-height-6:rect.bottom+6)+"px";
+        node.setAttribute("aria-expanded","true");
+        const items=Array.from(menu.querySelectorAll("button"));
+        (items.find(b=>b.dataset.level===thinkingLevel)||items[0]).focus();
+        const onDown=e=>{if(menu&&!menu.contains(e.target)&&!node.contains(e.target))close(false);};
+        const onKey=e=>{
+          if(!menu)return;const i=items.indexOf(document.activeElement);
+          if(e.key==="Escape"){e.preventDefault();e.stopPropagation();close(true);}
+          else if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();e.stopPropagation();items[(i+(e.key==="ArrowDown"?1:-1)+items.length)%items.length].focus();}
+          else if(e.key==="Tab")close(false);
+        };
+        document.addEventListener("pointerdown",onDown,true);document.addEventListener("keydown",onKey,true);
+        cleanup=()=>{document.removeEventListener("pointerdown",onDown,true);document.removeEventListener("keydown",onKey,true);};
+      }
+      const toggle=node=>{if(menu)close(false);else open(node);};
+      document.addEventListener("click",e=>{const node=e.target&&e.target.closest&&e.target.closest("#rs-effort");if(node){e.preventDefault();e.stopPropagation();toggle(node);}},true);
+      document.addEventListener("keydown",e=>{const node=e.target&&e.target.closest&&e.target.closest("#rs-effort");if(node&&(e.key==="Enter"||e.key===" ")){e.preventDefault();e.stopPropagation();toggle(node);}},true);
+    })();
     // ── Smart Checkpoint & Undo (auto-snapshot before mutating tools) ──
     let rsCheckpoints = [];
     try{ chrome.storage.local.get("rsCheckpoints", r=>{ if(Array.isArray(r.rsCheckpoints)) rsCheckpoints=r.rsCheckpoints; }); }catch{}
@@ -6633,7 +6685,7 @@ return result`;
       const preset = {
         fast: { thinking: "low" },
         balanced: { thinking: "mid" },
-        thorough: { thinking: "high" },
+        thorough: { thinking: "max" },
       }[id];
       thinkingLevel = preset.thinking;
       try {
@@ -6995,7 +7047,7 @@ return result`;
               <div class="rs-work-row">
                 <button type="button" class="rs-work-card ${workMode==="fast"?"on":""}" data-work="fast"><span class="rs-work-name">Fast</span><span class="rs-work-sub">Short path, low thinking</span></button>
                 <button type="button" class="rs-work-card ${workMode==="balanced"?"on":""}" data-work="balanced"><span class="rs-work-name">Balanced</span><span class="rs-work-sub">Plan, build, one check</span></button>
-                <button type="button" class="rs-work-card ${workMode==="thorough"?"on":""}" data-work="thorough"><span class="rs-work-name">Thorough</span><span class="rs-work-sub">High thinking, then verify</span></button>
+                <button type="button" class="rs-work-card ${workMode==="thorough"?"on":""}" data-work="thorough"><span class="rs-work-name">Thorough</span><span class="rs-work-sub">Max thinking, then verify</span></button>
               </div>
             </section>
             <section class="rs-menu-sec">
