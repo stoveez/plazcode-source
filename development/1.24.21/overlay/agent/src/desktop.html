@@ -394,7 +394,7 @@ html[data-desktop-theme] .sidebar .side-status{margin:0 0 8px!important;padding:
 .nx-avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;color:#1a1306;background:linear-gradient(135deg,var(--orange2,#ffe0a1),var(--orange,#e9ba53));flex:none}
 .nx-account b{display:block;font-size:13px}.nx-account small{display:block;font-size:11px;color:var(--ink-soft,#9299aa)}
 .nx-ver{display:flex;flex-direction:column;gap:1px;padding:8px 6px 0;font-size:10.5px;color:var(--ink-soft,#9299aa)}
-.nx-ver .desktop-effort{font-size:10.5px;opacity:.8}
+.nx-ver .desktop-effort{font-size:10.5px;opacity:1}.desktop-effort:not([data-effort=low]):not([data-effort=mid]):not([data-effort=high]):not([data-effort=max]):not([data-effort=ultracode]){color:color-mix(in srgb,var(--orange,#e9ba53) 45%,#fff)}
 .nx-ver #sidebarVersion{font-size:10.5px}
 html[data-desktop-theme] .sidebar .version,html[data-desktop-theme] .sidebar .desktop-effort{margin:0}
 /* collapsed sidebar */
