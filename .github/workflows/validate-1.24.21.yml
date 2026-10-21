@@ -105,7 +105,13 @@ jobs:
         run: node release-tools/test-clickup-startup-model.cjs
         working-directory: build-src-1.24.21/PlazCode
       - name: ClickUp long-history bounded reads and cache correctness
-        run: node release-tools/test-clickup-performance.cjs
+        # Same test as before. On failure it also prints the reason as a run annotation,
+        # which can be read without opening the full log.
+        run: |
+          node release-tools/test-clickup-performance.cjs > "$RUNNER_TEMP/clickup-performance.log" 2>&1 && { cat "$RUNNER_TEMP/clickup-performance.log"; exit 0; }
+          cat "$RUNNER_TEMP/clickup-performance.log"
+          echo "::error title=ClickUp performance check failed::$(grep -E '^ - |^FAIL|Error' "$RUNNER_TEMP/clickup-performance.log" | head -8 | cut -c1-300 | tr '\n' '|')"
+          exit 1
         working-directory: build-src-1.24.21/PlazCode
       - name: Mixed widgets preserve user content across language changes
         run: node release-tools/test-language-widgets.cjs
