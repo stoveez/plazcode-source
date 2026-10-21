@@ -19,10 +19,14 @@ const MAX_IMAGE_BYTES: usize = 12 * 1024 * 1024;
 const MAX_READ_CHARS: usize = 30_000;
 const MAX_FILE_SCAN_BYTES: u64 = 400_000;
 const LOG_LIMIT: usize = 150;
-const START_NAME: &str = "00-START-HERE.md";
+const START_NAME: &str = "00 Start Here/Home.md";
+const INDEX_NAME: &str = "00 Start Here/Index.md";
+const LOG_NAME: &str = "00 Start Here/Log.md";
+const IMAGE_DIR: &str = "08 References/refs";
+// Numbered folders, like a hand-made Obsidian vault: they sort in reading order and each has one job.
 const FOLDERS: &[&str] = &[
-    "Preferences", "Coding-Style", "Models-and-Styles", "Projects", "Decisions", "Lessons", "Journeys",
-    "References", "Inbox/Imported", "How-to", "_attachments", "_Archive", "_Templates",
+    "00 Start Here", "01 About You", "02 How We Work", "03 Coding Style", "04 Models And Styles", "05 Projects",
+    "06 Journeys", "07 Lessons And Decisions", "08 References", "08 References/refs", "09 How To", "10 Inbox", "_Archive", "_Templates",
 ];
 const TYPES: &[&str] = &[
     "preference", "coding-style", "style", "project", "decision", "lesson", "journey", "reference", "imported", "guide",
@@ -238,39 +242,98 @@ fn mime_for(path: &Path) -> Option<&'static str> {
 }
 
 // ───────────────────────────── note files ─────────────────────────────
+/// A note split into its header lines and its body. The header lines are kept exactly as they were written, so editing
+/// one property never loses the others (Obsidian headers can hold lists, comments and fields PlazCode does not know).
 #[derive(Clone, Default)]
 struct Parsed {
-    front: Vec<(String, String)>,
+    lines: Vec<String>,
     body: String,
 }
+fn key_of(line: &str) -> Option<&str> {
+    if line.starts_with(' ') || line.starts_with('\t') || line.starts_with('-') || line.starts_with('#') {
+        return None;
+    }
+    let (k, _) = line.split_once(':')?;
+    let k = k.trim();
+    (!k.is_empty() && !k.contains(' ')).then_some(k)
+}
+fn is_continuation(line: &str) -> bool {
+    line.starts_with(' ') || line.starts_with('\t') || line.trim_start().starts_with("- ") || line.trim() == "-"
+}
+fn unquote(value: &str) -> String {
+    let v = value.trim();
+    if v.len() >= 2 && ((v.starts_with('"') && v.ends_with('"')) || (v.starts_with('\'') && v.ends_with('\''))) {
+        v[1..v.len() - 1].to_string()
+    } else {
+        v.to_string()
+    }
+}
 impl Parsed {
-    fn get(&self, key: &str) -> &str {
-        self.front.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str()).unwrap_or("")
+    fn index_of(&self, key: &str) -> Option<usize> {
+        self.lines.iter().position(|l| key_of(l) == Some(key))
+    }
+    /// The value as one line. A list written over several lines comes back as `[a, b]`.
+    fn get(&self, key: &str) -> String {
+        let Some(i) = self.index_of(key) else { return String::new() };
+        let inline = self.lines[i].split_once(':').map(|(_, v)| v.trim().to_string()).unwrap_or_default();
+        if !inline.is_empty() {
+            return inline;
+        }
+        let items: Vec<String> = self.lines[i + 1..].iter().take_while(|l| is_continuation(l)).filter_map(|l| l.trim_start().strip_prefix("- ").map(|v| unquote(v))).collect();
+        if items.is_empty() { String::new() } else { format!("[{}]", items.join(", ")) }
+    }
+    fn list(&self, key: &str) -> Vec<String> {
+        let v = self.get(key);
+        let v = v.trim();
+        let inner = v.strip_prefix('[').and_then(|x| x.strip_suffix(']')).unwrap_or(v);
+        inner.split(',').map(unquote).map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()
     }
     fn set(&mut self, key: &str, value: String) {
-        match self.front.iter_mut().find(|(k, _)| k == key) {
-            Some(slot) => slot.1 = value,
-            None => self.front.push((key.to_string(), value)),
+        let line = format!("{key}: {value}");
+        match self.index_of(key) {
+            Some(i) => {
+                let end = i + 1 + self.lines[i + 1..].iter().take_while(|l| is_continuation(l)).count();
+                self.lines.splice(i..end, [line]);
+            }
+            None => self.lines.push(line),
         }
+    }
+    fn remove(&mut self, key: &str) {
+        if let Some(i) = self.index_of(key) {
+            let end = i + 1 + self.lines[i + 1..].iter().take_while(|l| is_continuation(l)).count();
+            self.lines.drain(i..end);
+        }
+    }
+    /// For a brand-new note: tags, then aliases, then the rest, the way Obsidian shows them.
+    fn tidy(&mut self) {
+        let mut blocks: Vec<(String, Vec<String>)> = vec![];
+        for line in self.lines.drain(..) {
+            match key_of(&line) {
+                Some(k) => blocks.push((k.to_string(), vec![line])),
+                None => match blocks.last_mut() {
+                    Some(b) => b.1.push(line),
+                    None => blocks.push((String::new(), vec![line])),
+                },
+            }
+        }
+        let rank = |k: &str| match k { "tags" => 0, "aliases" => 1, "updated" => 3, _ => 2 };
+        blocks.sort_by_key(|(k, _)| rank(k));
+        self.lines = blocks.into_iter().flat_map(|(_, l)| l).collect();
+    }
+    fn front_text(&self) -> String {
+        self.lines.join("\n")
     }
 }
 fn parse(text: &str) -> Parsed {
     let text = text.replace("\r\n", "\n");
     if let Some(rest) = text.strip_prefix("---\n") {
-        let end = rest.find("\n---\n").map(|i| (i, i + 5)).or_else(|| rest.strip_suffix("\n---").map(|r| (r.len(), rest.len())));
+        let end = rest.find("\n---\n").map(|i| (i, i + 5)).or_else(|| rest.strip_suffix("\n---").map(|r| (r.len(), rest.len()))).or_else(|| rest.strip_prefix("---\n").map(|_| (0usize, 4usize)));
         if let Some((close, after)) = end {
-            let front = rest[..close]
-                .lines()
-                .filter_map(|line| {
-                    let (k, v) = line.split_once(':')?;
-                    let k = k.trim();
-                    (!k.is_empty() && !k.contains(' ')).then(|| (k.to_string(), v.trim().to_string()))
-                })
-                .collect();
-            return Parsed { front, body: rest[after.min(rest.len())..].trim_start_matches('\n').to_string() };
+            let lines = if close == 0 { vec![] } else { rest[..close].lines().map(String::from).collect() };
+            return Parsed { lines, body: rest[after.min(rest.len())..].trim_start_matches('\n').to_string() };
         }
     }
-    Parsed { front: vec![], body: text }
+    Parsed { lines: vec![], body: text }
 }
 fn yaml_value(value: &str) -> String {
     let simple = !value.is_empty() && value.chars().all(|c| c.is_ascii_alphanumeric() || " _-./".contains(c)) && !value.starts_with(' ') && !value.ends_with(' ');
@@ -279,8 +342,9 @@ fn yaml_value(value: &str) -> String {
 }
 fn render(note: &Parsed) -> String {
     let mut out = String::from("---\n");
-    for (k, v) in &note.front {
-        out.push_str(&format!("{k}: {v}\n"));
+    for line in &note.lines {
+        out.push_str(line);
+        out.push('\n');
     }
     out.push_str("---\n\n");
     out.push_str(note.body.trim_start_matches('\n'));
@@ -308,11 +372,42 @@ fn summary_of(body: &str) -> String {
     let line = body.lines().map(str::trim).find(|l| !l.is_empty() && !l.starts_with('#') && !l.starts_with("---")).unwrap_or("");
     clip(line.trim_start_matches(|c| c == '-' || c == '*' || c == ' '), 110)
 }
-fn is_note_dir_skipped(rel: &str) -> bool {
-    rel.starts_with("_Archive/") || rel.starts_with("_Templates/") || rel.starts_with("_attachments/")
-}
 fn is_system_note(rel: &str) -> bool {
-    rel == "Index.md" || rel == "Log.md" || rel == START_NAME
+    rel == INDEX_NAME || rel == LOG_NAME || rel == START_NAME
+}
+fn is_generated(rel: &str) -> bool {
+    rel == INDEX_NAME || rel == LOG_NAME
+}
+/// What kind of note this is: the `type` header if there is one, a known tag, or else the numbered folder it lives in.
+fn kind_of(rel: &str, parsed: &Parsed) -> String {
+    let declared = unquote(&parsed.get("type"));
+    if !declared.is_empty() {
+        return declared;
+    }
+    if let Some(tag) = parsed.list("tags").into_iter().find(|t| TYPES.contains(&t.as_str())) {
+        return tag;
+    }
+    let top = rel.split('/').next().unwrap_or("");
+    if !FOLDERS.contains(&top) {
+        return "note".to_string();
+    }
+    match top.get(..2).unwrap_or("") {
+        "00" | "02" | "09" => "guide",
+        "01" => "preference",
+        "03" => "coding-style",
+        "04" => "style",
+        "05" => "project",
+        "06" => "journey",
+        "07" => "lesson",
+        "08" => "reference",
+        "10" => "imported",
+        _ => "note",
+    }
+    .to_string()
+}
+fn is_image_name(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    [".png", ".jpg", ".jpeg", ".gif", ".webp"].iter().any(|e| lower.ends_with(e))
 }
 struct Note {
     rel: String,
@@ -358,13 +453,21 @@ fn all_notes(root: &Path, include_archive: bool, include_system: bool) -> Vec<No
 }
 
 // ───────────────────────────── default notes ─────────────────────────────
-const START_NOTE: &str = "# Start here
+const START_NOTE: &str = "---
+tags: [guide, index]
+aliases: [Home, Start Here]
+updated: {DATE}
+---
 
-This folder is your long-term memory about the user. It is an ordinary folder of Markdown notes (it also opens in Obsidian).
+# Home
+
+> [!info] Home · [[Glossary]] · [[Index]]
+> The AI reads this note at the start of every chat. It is your long-term memory about the user, kept as plain Markdown notes that also open in Obsidian.
 
 ## How to use it
-- Read this note first. Use `plazcode_vault` with action `index` to see the notes, `search` to find one, `read` to open it.
+- Use `plazcode_vault` with action `index` to see the notes, `search` to find one, `read` to open it.
 - Learn as you go. When the user corrects you or says how they like things, when a job is finished, or when you hit a trap, update the right note. Search first and update the existing note instead of making a duplicate.
+- Start every note with a short info box: `> [!info] [[Home]] · [[Folder note]]` then `> Read this when: ...`. Give it `tags` and `aliases` in the header.
 - Facts about a project can go stale. Check anything older than a few weeks against the real project before relying on it.
 - Never write passwords, keys or tokens here.
 
@@ -372,37 +475,64 @@ This folder is your long-term memory about the user. It is an ordinary folder of
 (Nothing learned yet. Fill this in as you learn it.)
 
 ## Where things go
-- Preferences: how the user likes things. Coding-Style: code habits. Models-and-Styles: one note per art or model style.
-- Projects: one folder per project. Decisions: why something was chosen. Lessons: mistakes and their fixes.
-- Journeys: the story of one job, with tries, scores and what fixed it. References: reference images and what they show.
-- For matching a reference image, read `How-to/Reference-critic-loop.md` first.
+- 01 About You: how the user likes things and answers.
+- 02 How We Work: working rules. 03 Coding Style: code habits and conventions.
+- 04 Models And Styles: one note per art or model style, with a rubric.
+- 05 Projects: one folder per project. 06 Journeys: the story of one job, with tries, scores and what fixed it.
+- 07 Lessons And Decisions: mistakes and their fixes, and why something was chosen.
+- 08 References: reference pictures live in `refs`. 09 How To: guides, including [[Reference Critic Loop]].
+- To match a reference picture, read [[Reference Critic Loop]] first.
 ";
-const CRITIC_NOTE: &str = "---
-type: guide
-status: active
-confidence: high
+const GLOSSARY_NOTE: &str = "---
+tags: [index, glossary]
+aliases: [Terms, Definitions]
+updated: {DATE}
 ---
 
-# Reference and critic loop
+# Glossary
 
-Use this when the user wants something built to look like a reference image (a model, a UI, a scene).
+> [!info] [[Home]] · Glossary
+> Plain-words meanings of the terms this vault uses, with the note that explains each one properly.
 
-1. Find the style: search the vault for the style or reference. Read its note and its rubric. If none exists, create a style note from `_Templates/Style.md` and ask the user to confirm the rubric. Store the reference picture with `add_image` and link it in the note.
+| Term | Meaning | More |
+|---|---|---|
+| Vault | This folder of linked notes. The AI reads it and keeps it up to date. | [[Home]] |
+| Note | One Markdown file about one thing. | [[Home]] |
+| Journey | The story of one job: the tries, the scores and what finally worked. | [[Reference Critic Loop]] |
+| Style | How a kind of model or screen should look, with a rubric to score it. | [[Reference Critic Loop]] |
+| Critic | The strict second pair of eyes that scores a result against the reference picture. | [[Reference Critic Loop]] |
+| Pass mark | The score (default 80 percent) at which the critic says APPROVED. | [[Reference Critic Loop]] |
+";
+const CRITIC_NOTE: &str = "---
+tags: [guide, critic]
+aliases: [Critic loop, Reference loop]
+updated: {DATE}
+---
+
+# Reference Critic Loop
+
+> [!info] [[Home]] · [[Glossary]]
+> Read this when: the user wants something built to look like a reference picture (a model, a UI, a scene).
+
+1. Find the style: search the vault for the style or reference. Read its note and its rubric. If none exists, create a style note from `_Templates/Style` and ask the user to confirm the rubric. Store the reference picture with `add_image` and link it in the note.
 2. Build one attempt with the normal tools.
 3. Take a picture of the result with `plazcode_screenshot`. Then use `read_image` on the reference so both pictures are in front of you.
 4. Switch to the CRITIC role. The critic is strict. Score every line of the rubric from 1 to 10 with one sentence of evidence, add the total as a percent, and list exactly what is missing or wrong. Only write APPROVED when the total is at least the pass mark (default 80 percent).
 5. If not approved, fix exactly the listed gaps, take a new picture and score again. Stop after 5 rounds (or the limit in the style note) and say honestly what is still off.
-6. When approved (or finished), write a Journey note from `_Templates/Journey.md`: rounds, scores, what was wrong each time, what fixed it. Add the final picture with `add_image`. Then update the style note with the new lessons and link the journey to it.
+6. When approved (or finished), write a Journey note from `_Templates/Journey`: rounds, scores, what was wrong each time, what fixed it. Add the final picture with `add_image`. Then update the style note with the new lessons and link the journey to it.
 ";
 const STYLE_TEMPLATE: &str = "---
-type: style
-status: active
-confidence: medium
+tags: [style]
+aliases: []
 pass_mark: 80
 max_rounds: 5
+updated: {DATE}
 ---
 
 # Style name
+
+> [!info] [[Home]] · 04 Models And Styles
+> Read this when: building or judging anything in this style.
 
 What this style looks like in one or two sentences.
 
@@ -414,7 +544,7 @@ What this style looks like in one or two sentences.
 - Matches the reference mood:
 
 ## Reference pictures
-(link the pictures here, for example ![[_attachments/example.png]])
+(link the pictures here, for example ![[example.png]])
 
 ## Lessons so far
 - (what worked, what failed)
@@ -423,14 +553,17 @@ What this style looks like in one or two sentences.
 - (links to Journey notes)
 ";
 const JOURNEY_TEMPLATE: &str = "---
-type: journey
-status: active
-confidence: medium
+tags: [journey]
+aliases: []
+updated: {DATE}
 ---
 
 # What was made
 
-Link to the style note: [[Models-and-Styles/Style name]]
+> [!info] [[Home]] · 06 Journeys
+> Read this when: doing something like this again.
+
+Style note: [[Style name]]
 
 ## Rounds
 1. Score, what the critic said was missing, what was changed.
@@ -440,36 +573,61 @@ Link to the style note: [[Models-and-Styles/Style name]]
 ## Traps to avoid next time
 ";
 const LESSON_TEMPLATE: &str = "---
-type: lesson
-status: active
-confidence: medium
+tags: [lesson]
+aliases: []
+updated: {DATE}
 ---
 
 # The mistake in a few words
 
+> [!info] [[Home]] · 07 Lessons And Decisions
+> Read this when: working on the thing this lesson is about.
+
 What happened, why, and the fix. Link the project or style it belongs to.
 ";
+/// Sets the vault folder up. A new, empty folder gets the numbered layout and the guide notes. A folder that already holds
+/// notes (for example your own Obsidian vault) is adopted as it is: nothing is added except the Home, Index and Log notes.
 fn ensure_structure(root: &Path) -> anyhow::Result<()> {
     fs::create_dir_all(root)?;
-    for folder in FOLDERS {
-        fs::create_dir_all(root.join(folder))?;
+    let marker = root.join(".plazcode-vault");
+    let mode = match fs::read_to_string(&marker) {
+        Ok(text) => text.trim().to_string(),
+        Err(_) => {
+            let mut existing = vec![];
+            walk(root, root, &mut existing);
+            let mode = if existing.is_empty() { "own" } else { "adopted" };
+            atomic_write(&marker, mode.as_bytes())?;
+            mode.to_string()
+        }
+    };
+    let own = mode != "adopted";
+    if own {
+        for folder in FOLDERS {
+            fs::create_dir_all(root.join(folder))?;
+        }
+    } else {
+        fs::create_dir_all(root.join("00 Start Here"))?;
     }
-    let defaults: [(&str, String); 5] = [
-        (START_NAME, START_NOTE.to_string()),
-        ("How-to/Reference-critic-loop.md", CRITIC_NOTE.to_string()),
-        ("_Templates/Style.md", STYLE_TEMPLATE.to_string()),
-        ("_Templates/Journey.md", JOURNEY_TEMPLATE.to_string()),
-        ("_Templates/Lesson.md", LESSON_TEMPLATE.to_string()),
+    let defaults: [(&str, &str, bool); 6] = [
+        (START_NAME, START_NOTE, false),
+        ("00 Start Here/Glossary.md", GLOSSARY_NOTE, true),
+        ("09 How To/Reference Critic Loop.md", CRITIC_NOTE, true),
+        ("_Templates/Style.md", STYLE_TEMPLATE, true),
+        ("_Templates/Journey.md", JOURNEY_TEMPLATE, true),
+        ("_Templates/Lesson.md", LESSON_TEMPLATE, true),
     ];
-    for (rel, text) in defaults {
+    for (rel, text, own_only) in defaults {
+        if own_only && !own {
+            continue;
+        }
         let path = root.join(rel);
         if !path.exists() {
-            atomic_write(&path, text.as_bytes())?;
+            atomic_write(&path, text.replace("{DATE}", &today()).as_bytes())?;
         }
     }
     Ok(())
 }
-/// One-time copy of the old flat memory (memory.json) into Inbox/Imported. The old file is kept as a backup.
+/// One-time copy of the old flat memory (memory.json) into 10 Inbox/Imported. The old file is kept as a backup.
 fn migrate_old_memory(root: &Path, entries: &[(u64, String, String, String)]) -> anyhow::Result<usize> {
     let marker = root.join(".plazcode-migrated");
     if marker.exists() {
@@ -478,19 +636,16 @@ fn migrate_old_memory(root: &Path, entries: &[(u64, String, String, String)]) ->
     let mut count = 0;
     for (id, title, text, project) in entries {
         let name = format!("{}-{}.md", slug(if title.is_empty() { text } else { title }), id);
-        let path = root.join("Inbox/Imported").join(name);
+        let path = root.join("10 Inbox/Imported").join(name);
         if path.exists() {
             continue;
         }
         let mut note = Parsed::default();
-        note.set("type", "imported".into());
+        note.set("tags", "[imported]".into());
         if !project.is_empty() {
             note.set("project", yaml_value(project));
         }
-        note.set("status", "active".into());
-        note.set("confidence", "medium".into());
         note.set("source", "memory.json".into());
-        note.set("created", today());
         note.set("updated", today());
         note.body = format!("# {}\n\n{}\n", if title.is_empty() { clip(text.lines().next().unwrap_or("Imported note"), 60) } else { title.clone() }, clip(text, MAX_NOTE_CHARS));
         atomic_write(&path, render(&note).as_bytes())?;
@@ -508,41 +663,33 @@ fn migrate_old_memory(root: &Path, entries: &[(u64, String, String, String)]) ->
 fn rebuild_index(root: &Path) -> anyhow::Result<()> {
     let mut notes = all_notes(root, false, false);
     notes.sort_by(|a, b| a.rel.cmp(&b.rel));
-    let mut out = String::from("# Index\n\nGenerated by PlazCode. Do not edit by hand; it is rebuilt after every change.\n");
-    for kind in TYPES {
-        let group: Vec<&Note> = notes.iter().filter(|n| n.parsed.get("type") == *kind).collect();
-        if group.is_empty() {
-            continue;
+    let mut out = String::from("---\ntags: [index]\naliases: [Notes]\n---\n\n# Index\n\n> [!info] [[Home]] · [[Glossary]]\n> Made by PlazCode and rebuilt after every change. Do not edit it by hand.\n");
+    let mut folder = String::new();
+    for note in &notes {
+        let top = note.rel.split('/').next().filter(|_| note.rel.contains('/')).unwrap_or("Loose notes").to_string();
+        if top != folder {
+            out.push_str(&format!("\n## {top}\n"));
+            folder = top;
         }
-        out.push_str(&format!("\n## {kind}\n"));
-        for note in group {
-            let target = note.rel.trim_end_matches(".md");
-            let project = note.parsed.get("project");
-            out.push_str(&format!(
-                "- [[{target}|{}]] - {}{} ({})\n",
-                note.title,
-                summary_of(&note.parsed.body),
-                if project.is_empty() { String::new() } else { format!(" [{}]", project.trim_matches('"')) },
-                note.parsed.get("updated")
-            ));
-        }
+        let project = note.parsed.get("project");
+        out.push_str(&format!(
+            "- [[{}|{}]] - {}{} ({})\n",
+            note.rel.trim_end_matches(".md"),
+            note.title,
+            summary_of(&note.parsed.body),
+            if project.is_empty() { String::new() } else { format!(" [{}]", project.trim_matches('"')) },
+            note.parsed.get("updated")
+        ));
     }
-    let other: Vec<&Note> = notes.iter().filter(|n| !TYPES.contains(&n.parsed.get("type"))).collect();
-    if !other.is_empty() {
-        out.push_str("\n## other\n");
-        for note in other {
-            out.push_str(&format!("- [[{}|{}]] - {}\n", note.rel.trim_end_matches(".md"), note.title, summary_of(&note.parsed.body)));
-        }
-    }
-    atomic_write(&root.join("Index.md"), out.as_bytes())
+    atomic_write(&root.join(INDEX_NAME), out.as_bytes())
 }
 fn add_log(root: &Path, line: &str) -> anyhow::Result<()> {
-    let path = root.join("Log.md");
+    let path = root.join(LOG_NAME);
     let old = fs::read_to_string(&path).unwrap_or_default();
     let mut lines: Vec<String> = old.lines().filter(|l| l.starts_with("- ")).map(String::from).collect();
     lines.insert(0, format!("- {} {}", stamp(), clip(line, 220)));
     lines.truncate(LOG_LIMIT);
-    atomic_write(&path, format!("# Log\n\nNewest first. Kept to the last {LOG_LIMIT} changes.\n\n{}\n", lines.join("\n")).as_bytes())
+    atomic_write(&path, format!("---\ntags: [index]\n---\n\n# Log\n\n> [!info] [[Home]] · [[Index]]\n> Newest first. Kept to the last {LOG_LIMIT} changes.\n\n{}\n", lines.join("\n")).as_bytes())
 }
 
 // ───────────────────────────── actions ─────────────────────────────
@@ -556,21 +703,20 @@ fn ai_may_write(req: &Value, settings: &Settings) -> anyhow::Result<()> {
 fn text_field<'a>(req: &'a Value, key: &str) -> &'a str {
     req[key].as_str().unwrap_or("")
 }
+fn note_json(n: &Note) -> Value {
+    json!({"path": n.rel, "title": n.title, "type": kind_of(&n.rel, &n.parsed), "tags": n.parsed.list("tags"), "project": unquote(&n.parsed.get("project")), "status": n.parsed.get("status"), "updated": n.parsed.get("updated"), "summary": summary_of(&n.parsed.body)})
+}
 fn do_index(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<Value> {
     let project = text_field(req, "project").trim().to_string();
     let limit = req["limit"].as_u64().unwrap_or(40).clamp(1, 200) as usize;
     let mut notes = all_notes(root, false, false);
     notes.retain(|n| {
-        let p = n.parsed.get("project").trim_matches('"');
+        let p = unquote(&n.parsed.get("project"));
         project.is_empty() || p.is_empty() || p == project
     });
-    notes.sort_by(|a, b| b.parsed.get("updated").cmp(a.parsed.get("updated")).then(a.rel.cmp(&b.rel)));
+    notes.sort_by(|a, b| b.parsed.get("updated").cmp(&a.parsed.get("updated")).then(a.rel.cmp(&b.rel)));
     let total = notes.len();
-    let list: Vec<Value> = notes
-        .iter()
-        .take(limit)
-        .map(|n| json!({"path": n.rel, "title": n.title, "type": n.parsed.get("type"), "project": n.parsed.get("project").trim_matches('"'), "status": n.parsed.get("status"), "updated": n.parsed.get("updated"), "summary": summary_of(&n.parsed.body)}))
-        .collect();
+    let list: Vec<Value> = notes.iter().take(limit).map(note_json).collect();
     let start = parse(&fs::read_to_string(root.join(START_NAME)).unwrap_or_default()).body;
     Ok(json!({"ok": true, "start": clip(&start, MAX_START_CHARS), "notes": list, "total": total, "learning": settings.learning, "vault": root.to_string_lossy()}))
 }
@@ -584,18 +730,18 @@ fn do_search(root: &Path, req: &Value) -> anyhow::Result<Value> {
     let include_archive = req["include_archive"].as_bool().unwrap_or(false);
     let mut scored: Vec<(usize, Note, Vec<String>)> = vec![];
     for note in all_notes(root, include_archive, true) {
-        if note.rel == "Index.md" || note.rel == "Log.md" {
+        if is_generated(&note.rel) {
             continue;
         }
-        if !kind.is_empty() && note.parsed.get("type") != kind {
+        if !kind.is_empty() && kind_of(&note.rel, &note.parsed) != kind && !note.parsed.list("tags").contains(&kind) {
             continue;
         }
-        let p = note.parsed.get("project").trim_matches('"');
+        let p = unquote(&note.parsed.get("project"));
         if !project.is_empty() && !p.is_empty() && p != project {
             continue;
         }
         let title = note.title.to_lowercase();
-        let front = note.parsed.front.iter().map(|(k, v)| format!("{k} {v}")).collect::<Vec<_>>().join(" ").to_lowercase();
+        let front = note.parsed.front_text().to_lowercase();
         let body = note.parsed.body.to_lowercase();
         let mut score = 0usize;
         for w in &words {
@@ -609,8 +755,8 @@ fn do_search(root: &Path, req: &Value) -> anyhow::Result<Value> {
         let snippets: Vec<String> = note.parsed.body.lines().filter(|l| { let low = l.to_lowercase(); words.iter().any(|w| low.contains(w.as_str())) }).take(3).map(|l| clip(l.trim(), 160)).collect();
         scored.push((score, note, snippets));
     }
-    scored.sort_by(|a, b| b.0.cmp(&a.0).then(b.1.parsed.get("updated").cmp(a.1.parsed.get("updated"))));
-    let results: Vec<Value> = scored.iter().take(limit).map(|(score, n, s)| json!({"path": n.rel, "title": n.title, "type": n.parsed.get("type"), "project": n.parsed.get("project").trim_matches('"'), "status": n.parsed.get("status"), "updated": n.parsed.get("updated"), "score": score, "snippets": s})).collect();
+    scored.sort_by(|a, b| b.0.cmp(&a.0).then(b.1.parsed.get("updated").cmp(&a.1.parsed.get("updated"))));
+    let results: Vec<Value> = scored.iter().take(limit).map(|(score, n, s)| { let mut v = note_json(n); v["score"] = json!(score); v["snippets"] = json!(s); v }).collect();
     Ok(json!({"ok": true, "count": scored.len(), "results": results}))
 }
 fn wikilinks(body: &str) -> Vec<String> {
@@ -620,18 +766,69 @@ fn wikilinks(body: &str) -> Vec<String> {
     out.dedup();
     out
 }
+fn front_json(parsed: &Parsed) -> Value {
+    let mut map = serde_json::Map::new();
+    let mut order: Vec<String> = vec![];
+    for line in &parsed.lines {
+        if let Some(key) = key_of(line) {
+            if !order.iter().any(|k| k == key) {
+                order.push(key.to_string());
+            }
+            map.insert(key.to_string(), json!(parsed.get(key)));
+        }
+    }
+    json!({"fields": Value::Object(map), "order": order, "tags": parsed.list("tags"), "aliases": parsed.list("aliases")})
+}
 fn do_read(root: &Path, req: &Value) -> anyhow::Result<Value> {
     let rel = note_rel(text_field(req, "path"))?;
     let full = root.join(&rel);
     ensure_inside(root, &full)?;
     anyhow::ensure!(full.is_file(), "That note does not exist. Use search or index to find the right path.");
     let text = fs::read_to_string(&full)?;
+    if req["view"].as_bool() == Some(true) {
+        // The whole note, split into its header and its text, for the viewer window.
+        let parsed = parse(&text);
+        return Ok(json!({"ok": true, "path": rel_string(&rel), "raw": clip(&text, MAX_NOTE_CHARS + 4_000), "body": clip(&parsed.body, MAX_NOTE_CHARS), "front": front_json(&parsed), "chars": text.chars().count(), "words": parsed.body.split_whitespace().count(), "links": wikilinks(&text)}));
+    }
     let chars: Vec<char> = text.chars().collect();
     let offset = req["offset"].as_u64().unwrap_or(0) as usize;
     let limit = req["limit"].as_u64().unwrap_or(12_000).clamp(500, MAX_READ_CHARS as u64) as usize;
     let end = (offset + limit).min(chars.len());
     let chunk: String = chars.get(offset.min(chars.len())..end).unwrap_or(&[]).iter().collect();
     Ok(json!({"ok": true, "path": rel_string(&rel), "text": chunk, "total_chars": chars.len(), "next_offset": if end < chars.len() { json!(end) } else { Value::Null }, "links": wikilinks(&text)}))
+}
+/// Every folder, note and picture in the vault, for the viewer's file list. Hidden folders (like .obsidian) are left out.
+fn do_tree(root: &Path) -> anyhow::Result<Value> {
+    let mut entries: Vec<Value> = vec![];
+    fn visit(dir: &Path, root: &Path, out: &mut Vec<Value>, depth: usize) {
+        if depth > 12 || out.len() >= MAX_NOTES + 2_000 {
+            return;
+        }
+        let Ok(read) = fs::read_dir(dir) else { return };
+        for entry in read.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            let Ok(kind) = entry.file_type() else { continue };
+            if name.starts_with('.') || kind.is_symlink() {
+                continue;
+            }
+            let path = entry.path();
+            let Ok(relp) = path.strip_prefix(root) else { continue };
+            let rel = rel_string(relp);
+            if kind.is_dir() {
+                out.push(json!({"path": rel, "kind": "folder"}));
+                visit(&path, root, out, depth + 1);
+            } else if kind.is_file() && name.to_ascii_lowercase().ends_with(".md") {
+                let head: String = fs::read(&path).map(|b| String::from_utf8_lossy(&b[..b.len().min(4_000)]).to_string()).unwrap_or_default();
+                let parsed = parse(&head);
+                out.push(json!({"path": rel, "kind": "note", "aliases": parsed.list("aliases")}));
+            } else if kind.is_file() && is_image_name(&name) {
+                out.push(json!({"path": rel, "kind": "image"}));
+            }
+        }
+    }
+    visit(root, root, &mut entries, 0);
+    entries.sort_by(|a, b| a["path"].as_str().unwrap_or("").to_lowercase().cmp(&b["path"].as_str().unwrap_or("").to_lowercase()));
+    Ok(json!({"ok": true, "entries": entries}))
 }
 fn replace_section(body: &str, heading: &str, content: &str) -> String {
     let want = heading.trim().trim_start_matches('#').trim().to_lowercase();
@@ -656,8 +853,8 @@ fn do_write(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<Val
     ai_may_write(req, settings)?;
     let rel = note_rel(text_field(req, "path"))?;
     let rel_text = rel_string(&rel);
-    anyhow::ensure!(rel_text != "Index.md" && rel_text != "Log.md", "Index.md and Log.md are written by PlazCode itself.");
-    anyhow::ensure!(!rel_text.starts_with("_Archive/") && !rel_text.starts_with("_Templates/") && !rel_text.starts_with("_attachments/"), "Write notes into the normal folders, not _Archive, _Templates or _attachments.");
+    anyhow::ensure!(!is_generated(&rel_text), "Index and Log are written by PlazCode itself.");
+    anyhow::ensure!(!rel_text.starts_with("_Archive/") && !rel_text.starts_with("_Templates/"), "Write notes into the numbered folders, not _Archive or _Templates.");
     let full = root.join(&rel);
     ensure_inside(root, &full)?;
     let mode = text_field(req, "mode");
@@ -694,25 +891,30 @@ fn do_write(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<Val
         anyhow::ensure!(note.body.chars().count() <= MAX_START_CHARS, "The start note must stay short (3,500 characters). Move detail into other notes and link to them.");
     }
     if let Some(map) = req["frontmatter"].as_object() {
-        anyhow::ensure!(map.len() <= 14, "Too many frontmatter fields.");
+        anyhow::ensure!(map.len() <= 14, "Too many header fields.");
         for (key, value) in map {
-            anyhow::ensure!(Regex::new(r"^[a-z][a-z0-9_]{0,29}$").unwrap().is_match(key), "Frontmatter field names are lowercase words like type, project, status.");
+            anyhow::ensure!(Regex::new(r"^[a-z][a-z0-9_]{0,29}$").unwrap().is_match(key), "Header field names are lowercase words like tags, aliases, project.");
             if key == "created" || key == "updated" { continue; }
+            if key == "type" {
+                // A kind given as `type` becomes a tag, so the header looks like a normal Obsidian note.
+                let kind = value.as_str().unwrap_or("").trim().to_string();
+                anyhow::ensure!(TYPES.contains(&kind.as_str()), "Give the kind as one of: {}.", TYPES.join(", "));
+                if !map.contains_key("tags") && note.list("tags").is_empty() { note.set("tags", format!("[{kind}]")); }
+                continue;
+            }
             if let Some(text) = front_value(value) {
-                anyhow::ensure!(text.chars().count() <= 400, "A frontmatter value is too long.");
-                refuse_secrets("frontmatter", &text)?;
+                anyhow::ensure!(text.chars().count() <= 400, "A header value is too long.");
+                refuse_secrets("header", &text)?;
                 note.set(key, text);
             }
         }
     }
-    if rel_text != START_NAME {
-        let kind = note.get("type").trim_matches('"').to_string();
-        anyhow::ensure!(TYPES.contains(&kind.as_str()), "Give frontmatter type as one of: {}.", TYPES.join(", "));
+    if note.list("tags").is_empty() {
+        let kind = kind_of(&rel_text, &note);
+        if kind != "note" { note.set("tags", format!("[{kind}]")); }
     }
-    if note.get("status").is_empty() { note.set("status", "active".into()); }
-    if note.get("confidence").is_empty() { note.set("confidence", "medium".into()); }
-    if !exists { note.set("created", today()); }
     note.set("updated", today());
+    if !exists { note.tidy(); }
     let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     atomic_write(&full, render(&note).as_bytes())?;
     rebuild_index(root)?;
@@ -722,12 +924,19 @@ fn do_write(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<Val
 }
 fn do_backlinks(root: &Path, req: &Value) -> anyhow::Result<Value> {
     let rel = note_rel(text_field(req, "path"))?;
-    let stem = title_of(&rel);
-    let full_target = rel_string(&rel).trim_end_matches(".md").to_lowercase();
+    let me = rel_string(&rel);
+    let stem = title_of(&rel).to_lowercase();
+    let full_target = me.trim_end_matches(".md").to_lowercase();
+    let own = fs::read_to_string(root.join(&rel)).map(|t| parse(&t)).unwrap_or_default();
+    let aliases: Vec<String> = own.list("aliases").into_iter().map(|a| a.to_lowercase()).collect();
     let mut found = vec![];
     for note in all_notes(root, false, true) {
-        if note.rel == rel_string(&rel) || note.rel == "Index.md" || note.rel == "Log.md" { continue; }
-        if wikilinks(&note.parsed.body).iter().chain(note.parsed.get("related").split('"').collect::<Vec<_>>().iter().map(|s| s.to_string()).collect::<Vec<_>>().iter()).any(|l| { let l = l.trim_matches(|c| c == '[' || c == ']').to_lowercase(); l == stem.to_lowercase() || l == full_target }) {
+        if note.rel == me || is_generated(&note.rel) { continue; }
+        let hit = wikilinks(&note.parsed.body).iter().chain(wikilinks(&note.parsed.front_text()).iter()).any(|l| {
+            let l = l.to_lowercase();
+            l == stem || l == full_target || aliases.contains(&l)
+        });
+        if hit {
             found.push(json!({"path": note.rel, "title": note.title}));
         }
     }
@@ -737,7 +946,7 @@ fn do_archive(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<V
     ai_may_write(req, settings)?;
     let rel = note_rel(text_field(req, "path"))?;
     let rel_text = rel_string(&rel);
-    anyhow::ensure!(!is_system_note(&rel_text) && !rel_text.starts_with("_Archive/") && !rel_text.starts_with("_Templates/"), "That note cannot be archived.");
+    anyhow::ensure!(!is_system_note(&rel_text) && rel_text != "00 Start Here/Glossary.md" && !rel_text.starts_with("_Archive/") && !rel_text.starts_with("_Templates/"), "That note cannot be archived.");
     let full = root.join(&rel);
     ensure_inside(root, &full)?;
     anyhow::ensure!(full.is_file(), "That note does not exist.");
@@ -761,6 +970,33 @@ fn do_archive(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<V
     add_log(root, &format!("archived [[{}]]{}", rel_text.trim_end_matches(".md"), if reason.is_empty() { String::new() } else { format!(" - {reason}") }))?;
     Ok(json!({"ok": true, "archived_to": rel_string(target.strip_prefix(root).unwrap_or(&target))}))
 }
+/// The user editing a note by hand in the viewer: the whole file (header and text) is replaced.
+fn do_save_raw(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<Value> {
+    ai_may_write(req, settings)?;
+    let rel = note_rel(text_field(req, "path"))?;
+    let rel_text = rel_string(&rel);
+    anyhow::ensure!(!is_generated(&rel_text), "Index and Log are written by PlazCode itself.");
+    let full = root.join(&rel);
+    ensure_inside(root, &full)?;
+    anyhow::ensure!(full.is_file(), "That note does not exist.");
+    let text = text_field(req, "text").replace("\r\n", "\n");
+    anyhow::ensure!(!text.trim().is_empty(), "A note cannot be empty. Use Move to archive instead.");
+    anyhow::ensure!(text.chars().count() <= MAX_NOTE_CHARS + 4_000, "That note is longer than 60,000 characters. Split it into two linked notes.");
+    refuse_secrets("note text", &text)?;
+    let mut note = parse(&text);
+    if rel_text == START_NAME {
+        anyhow::ensure!(note.body.chars().count() <= MAX_START_CHARS, "The Home note must stay short (3,500 characters). Move detail into other notes and link to them.");
+    }
+    if note.index_of("updated").is_some() {
+        note.set("updated", today());
+    }
+    let out = if note.lines.is_empty() && !text.starts_with("---") { text.clone() } else { render(&note) };
+    let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    atomic_write(&full, out.as_bytes())?;
+    rebuild_index(root)?;
+    add_log(root, &format!("edited [[{}]] by hand", rel_text.trim_end_matches(".md")))?;
+    Ok(json!({"ok": true, "path": rel_text}))
+}
 fn do_add_image(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<Value> {
     ai_may_write(req, settings)?;
     let data = text_field(req, "data");
@@ -772,15 +1008,15 @@ fn do_add_image(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result
     let base = slug(text_field(req, "name").trim_end_matches(|c: char| c != ' ' && !c.is_alphanumeric() && c != '-' && c != '_').split('.').next().unwrap_or("picture"));
     let mut name = format!("{base}.{ext}");
     let mut n = 2;
-    while root.join("_attachments").join(&name).exists() {
+    while root.join(IMAGE_DIR).join(&name).exists() {
         name = format!("{base}-{n}.{ext}");
         n += 1;
     }
-    let full = root.join("_attachments").join(&name);
+    let full = root.join(IMAGE_DIR).join(&name);
     ensure_inside(root, &full)?;
     let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     atomic_write(&full, &bytes)?;
-    let rel = format!("_attachments/{name}");
+    let rel = format!("{IMAGE_DIR}/{name}");
     let mut linked = Value::Null;
     if let Some(note_path) = req["note"].as_str().filter(|s| !s.trim().is_empty()) {
         let nrel = note_rel(note_path)?;
@@ -788,7 +1024,7 @@ fn do_add_image(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result
         ensure_inside(root, &nfull)?;
         anyhow::ensure!(nfull.is_file() && !rel_string(&nrel).starts_with("_"), "The note to link the picture in does not exist.");
         let mut note = parse(&fs::read_to_string(&nfull)?);
-        note.body = format!("{}\n\n![[{rel}]]\n", note.body.trim_end());
+        note.body = format!("{}\n\n![[{name}]]\n", note.body.trim_end());
         note.set("updated", today());
         atomic_write(&nfull, render(&note).as_bytes())?;
         linked = json!(rel_string(&nrel));
@@ -799,7 +1035,6 @@ fn do_add_image(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result
 fn do_read_image(root: &Path, req: &Value) -> anyhow::Result<Value> {
     let rel = clean_rel(text_field(req, "path"))?;
     let text = rel_string(&rel);
-    anyhow::ensure!(text.starts_with("_attachments/"), "Pictures live in _attachments/.");
     let mime = mime_for(&rel).ok_or_else(|| anyhow::anyhow!("That is not a picture the vault can return."))?;
     let full = root.join(&rel);
     ensure_inside(root, &full)?;
@@ -846,7 +1081,7 @@ fn describe(root: &Path, settings: &Settings) -> Value {
 fn execute_in(root: &Path, settings: &Settings, req: &Value) -> anyhow::Result<Value> {
     let action = text_field(req, "action");
     match action {
-        "init" | "index" | "search" | "read" | "write" | "backlinks" | "archive" | "add_image" | "read_image" => {
+        "init" | "index" | "search" | "read" | "write" | "backlinks" | "archive" | "add_image" | "read_image" | "tree" | "save_raw" => {
             ensure_structure(root)?;
         }
         _ => {}
@@ -856,7 +1091,7 @@ fn execute_in(root: &Path, settings: &Settings, req: &Value) -> anyhow::Result<V
             let entries: Vec<(u64, String, String, String)> = crate::memory::STORE.snapshot().entries.iter().map(|e| (e.id, e.title.clone(), e.text.clone(), e.project.clone())).collect();
             let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
             let imported = migrate_old_memory(root, &entries)?;
-            if !root.join("Index.md").exists() { rebuild_index(root)?; }
+            if !root.join(INDEX_NAME).exists() { rebuild_index(root)?; }
             drop(_guard);
             let mut value = describe(root, settings);
             value["imported"] = json!(imported);
@@ -870,6 +1105,8 @@ fn execute_in(root: &Path, settings: &Settings, req: &Value) -> anyhow::Result<V
         "archive" => do_archive(root, req, settings),
         "add_image" => do_add_image(root, req, settings),
         "read_image" => do_read_image(root, req),
+        "tree" => do_tree(root),
+        "save_raw" => do_save_raw(root, req, settings),
         "settings" => Ok(describe(root, settings)),
         "reveal" => {
             ensure_structure(root)?;
@@ -944,12 +1181,13 @@ mod tests {
         for bad in ["../x.md", "a/../../x.md", "/etc/passwd", "C:/x.md", "..\\x.md", ".hidden/x.md", "a/./b.md", "", "con.md", "a/nul.txt", "a:b.md", "x.md."] {
             assert!(clean_rel(bad).is_err(), "should refuse {bad}");
         }
-        assert!(clean_rel("Lessons/My note.md").is_ok());
-        assert!(note_rel("Lessons/notes.txt").is_err());
-        assert_eq!(rel_string(&note_rel("Lessons/Trees").unwrap()), "Lessons/Trees.md");
+        assert!(clean_rel("07 Lessons And Decisions/My note.md").is_ok());
+        assert!(note_rel("07 Lessons And Decisions/notes.txt").is_err());
+        assert_eq!(rel_string(&note_rel("07 Lessons And Decisions/Trees").unwrap()), "07 Lessons And Decisions/Trees.md");
         let (root, s) = fresh("escape");
         assert!(run(&root, &s, json!({"action":"write","path":"../out.md","content":"x","frontmatter":{"type":"lesson"}})).is_err());
         assert!(run(&root, &s, json!({"action":"read","path":"../../etc/hosts"})).is_err());
+        assert!(run(&root, &s, json!({"action":"save_raw","path":"../out.md","text":"x"})).is_err());
         let _ = fs::remove_dir_all(root.parent().unwrap());
     }
     #[cfg(unix)]
@@ -959,77 +1197,109 @@ mod tests {
         run(&root, &s, json!({"action":"init"})).unwrap();
         let outside = root.parent().unwrap().join("outside");
         fs::create_dir_all(&outside).unwrap();
-        std::os::unix::fs::symlink(&outside, root.join("Lessons/link")).unwrap();
-        assert!(run(&root, &s, json!({"action":"write","path":"Lessons/link/x.md","content":"x","frontmatter":{"type":"lesson"}})).is_err());
+        std::os::unix::fs::symlink(&outside, root.join("07 Lessons And Decisions/link")).unwrap();
+        assert!(run(&root, &s, json!({"action":"write","path":"07 Lessons And Decisions/link/x.md","content":"x","frontmatter":{"type":"lesson"}})).is_err());
         assert!(!outside.join("x.md").exists());
+        let tree = run(&root, &s, json!({"action":"tree"})).unwrap();
+        assert!(!tree["entries"].as_array().unwrap().iter().any(|e| e["path"].as_str().unwrap().ends_with("/link")), "links are not followed in the file list");
         let _ = fs::remove_dir_all(root.parent().unwrap());
     }
     #[test]
     fn create_update_section_and_duplicates() {
         let (root, s) = fresh("write");
-        let created = write(&root, &s, "Lessons/Floating trees", "Trees float when the pivot is wrong.");
+        let created = write(&root, &s, "07 Lessons And Decisions/Floating trees", "Trees float when the pivot is wrong.");
         assert_eq!(created["created"], true);
-        assert!(run(&root, &s, json!({"action":"write","path":"Lessons/Floating trees.md","content":"again","frontmatter":{"type":"lesson"}})).is_err(), "no duplicate create");
-        run(&root, &s, json!({"action":"write","path":"Lessons/Floating trees","mode":"append","content":"Fix: anchor the base."})).unwrap();
-        run(&root, &s, json!({"action":"write","path":"Lessons/Floating trees","mode":"section","section":"Fix","content":"Set PrimaryPart first."})).unwrap();
-        run(&root, &s, json!({"action":"write","path":"Lessons/Floating trees","mode":"section","section":"Fix","content":"Set PrimaryPart, then anchor."})).unwrap();
-        let text = fs::read_to_string(root.join("Lessons/Floating trees.md")).unwrap();
-        assert!(text.starts_with("---\n") && text.contains("type: lesson") && text.contains("created:") && text.contains("updated:"));
+        assert!(run(&root, &s, json!({"action":"write","path":"07 Lessons And Decisions/Floating trees.md","content":"again","frontmatter":{"type":"lesson"}})).is_err(), "no duplicate create");
+        run(&root, &s, json!({"action":"write","path":"07 Lessons And Decisions/Floating trees","mode":"append","content":"Fix: anchor the base."})).unwrap();
+        run(&root, &s, json!({"action":"write","path":"07 Lessons And Decisions/Floating trees","mode":"section","section":"Fix","content":"Set PrimaryPart first."})).unwrap();
+        run(&root, &s, json!({"action":"write","path":"07 Lessons And Decisions/Floating trees","mode":"section","section":"Fix","content":"Set PrimaryPart, then anchor."})).unwrap();
+        let text = fs::read_to_string(root.join("07 Lessons And Decisions/Floating trees.md")).unwrap();
+        assert!(text.starts_with("---\n") && text.contains("tags: [lesson]") && text.contains("updated:") && !text.contains("type:"), "{text}");
         assert!(text.contains("Fix: anchor the base.") && text.contains("Set PrimaryPart, then anchor.") && !text.contains("Set PrimaryPart first."));
         assert_eq!(text.matches("## Fix").count(), 1);
-        assert!(run(&root, &s, json!({"action":"write","path":"Lessons/Other","content":"x","frontmatter":{"type":"nonsense"}})).is_err());
-        assert!(run(&root, &s, json!({"action":"write","path":"Index.md","content":"x","frontmatter":{"type":"lesson"}})).is_err());
-        assert!(run(&root, &s, json!({"action":"write","path":"_Archive/x.md","content":"x","frontmatter":{"type":"lesson"}})).is_err());
-        assert!(run(&root, &s, json!({"action":"write","path":"Lessons/Big","content":"a".repeat(60_001),"frontmatter":{"type":"lesson"}})).is_err());
+        assert!(run(&root, &s, json!({"action":"write","path":"07 Lessons And Decisions/Other","content":"x","frontmatter":{"type":"nonsense"}})).is_err());
+        assert!(run(&root, &s, json!({"action":"write","path":"00 Start Here/Index.md","content":"x"})).is_err());
+        assert!(run(&root, &s, json!({"action":"write","path":"_Archive/x.md","content":"x"})).is_err());
+        assert!(run(&root, &s, json!({"action":"write","path":"07 Lessons And Decisions/Big","content":"a".repeat(60_001)})).is_err());
+        // A note with no kind at all still works: the numbered folder says what it is.
+        run(&root, &s, json!({"action":"write","path":"06 Journeys/Sword","content":"Built a sword."})).unwrap();
+        assert!(fs::read_to_string(root.join("06 Journeys/Sword.md")).unwrap().contains("tags: [journey]"));
+        let _ = fs::remove_dir_all(root.parent().unwrap());
+    }
+    #[test]
+    fn an_obsidian_header_survives_edits_untouched() {
+        let (root, s) = fresh("header");
+        let original = "---\ntags:\n  - index\n  - glossary\naliases:\n  - Terms\n  - Definitions\nupdated: 2026-09-28\ncssclasses: wide # keep me\n---\n\n# Glossary\n\nBody.\n";
+        fs::create_dir_all(root.join("00 Start Here")).unwrap();
+        fs::write(root.join("00 Start Here/Glossary.md"), original).unwrap();
+        run(&root, &s, json!({"action":"write","path":"00 Start Here/Glossary","mode":"append","content":"More."})).unwrap();
+        let text = fs::read_to_string(root.join("00 Start Here/Glossary.md")).unwrap();
+        for keep in ["tags:\n  - index\n  - glossary", "aliases:\n  - Terms\n  - Definitions", "cssclasses: wide # keep me"] {
+            assert!(text.contains(keep), "lost {keep:?} in {text}");
+        }
+        assert!(text.contains("updated: 20") && !text.contains("2026-09-28") && text.contains("Body.\n\nMore."));
+        let read = run(&root, &s, json!({"action":"read","path":"00 Start Here/Glossary","view":true})).unwrap();
+        assert_eq!(read["front"]["tags"], json!(["index", "glossary"]));
+        assert_eq!(read["front"]["aliases"], json!(["Terms", "Definitions"]));
+        assert!(read["body"].as_str().unwrap().starts_with("# Glossary"));
+        // A link by alias counts as a backlink.
+        fs::write(root.join("00 Start Here/Other.md"), "See [[Terms]] and [[Glossary#Body|the glossary]].").unwrap();
+        let back = run(&root, &s, json!({"action":"backlinks","path":"00 Start Here/Glossary"})).unwrap();
+        let from: Vec<String> = back["backlinks"].as_array().unwrap().iter().map(|b| b["path"].as_str().unwrap().to_string()).collect();
+        assert!(from.contains(&"00 Start Here/Other.md".to_string()) && !from.iter().any(|p| p.ends_with("Index.md") || p.ends_with("Log.md")), "{from:?}");
         let _ = fs::remove_dir_all(root.parent().unwrap());
     }
     #[test]
     fn secrets_are_refused() {
         let (root, s) = fresh("secrets");
         for bad in ["my key is sk-abcdefghijklmnopqrstuvwxyz123456", "token: ghp_abcdefghijklmnopqrstuvwxyz0123456789", "password = hunter2hunter2", "AKIAABCDEFGHIJKLMNOP", "-----BEGIN RSA PRIVATE KEY-----"] {
-            assert!(run(&root, &s, json!({"action":"write","path":"Lessons/S","content":bad,"frontmatter":{"type":"lesson"}})).is_err(), "should refuse {bad}");
+            assert!(run(&root, &s, json!({"action":"write","path":"07 Lessons And Decisions/S","content":bad,"frontmatter":{"type":"lesson"}})).is_err(), "should refuse {bad}");
         }
-        assert!(run(&root, &s, json!({"action":"write","path":"Lessons/S","content":"fine","frontmatter":{"type":"lesson","source":"api_key: abcdefghijklmn"}})).is_err());
-        assert!(!root.join("Lessons/S.md").exists());
+        assert!(run(&root, &s, json!({"action":"write","path":"07 Lessons And Decisions/S","content":"fine","frontmatter":{"type":"lesson","source":"api_key: abcdefghijklmn"}})).is_err());
+        assert!(!root.join("07 Lessons And Decisions/S.md").exists());
         let _ = fs::remove_dir_all(root.parent().unwrap());
     }
     #[test]
-    fn learning_switch_blocks_the_ai_but_not_reading() {
+    fn learning_switch_blocks_the_ai_but_not_reading_or_the_user() {
         let (root, mut s) = fresh("learning");
-        write(&root, &s, "Lessons/Keep", "keep me");
+        write(&root, &s, "07 Lessons And Decisions/Keep", "keep me");
         s.learning = false;
-        assert!(run(&root, &s, json!({"action":"write","ai":true,"path":"Lessons/New","content":"x","frontmatter":{"type":"lesson"}})).is_err());
-        assert!(run(&root, &s, json!({"action":"archive","ai":true,"path":"Lessons/Keep"})).is_err());
-        assert!(run(&root, &s, json!({"action":"read","path":"Lessons/Keep"})).is_ok());
+        assert!(run(&root, &s, json!({"action":"write","ai":true,"path":"07 Lessons And Decisions/New","content":"x","frontmatter":{"type":"lesson"}})).is_err());
+        assert!(run(&root, &s, json!({"action":"archive","ai":true,"path":"07 Lessons And Decisions/Keep"})).is_err());
+        assert!(run(&root, &s, json!({"action":"save_raw","ai":true,"path":"07 Lessons And Decisions/Keep","text":"changed"})).is_err());
+        assert!(run(&root, &s, json!({"action":"read","path":"07 Lessons And Decisions/Keep"})).is_ok());
         assert!(run(&root, &s, json!({"action":"search","query":"keep"})).is_ok());
-        assert!(run(&root, &s, json!({"action":"write","path":"Lessons/ByUser","content":"x","frontmatter":{"type":"lesson"}})).is_ok(), "the user's own edits still work");
+        assert!(run(&root, &s, json!({"action":"write","path":"07 Lessons And Decisions/ByUser","content":"x","frontmatter":{"type":"lesson"}})).is_ok(), "the user's own edits still work");
+        assert!(run(&root, &s, json!({"action":"save_raw","path":"07 Lessons And Decisions/Keep","text":"---\ntags: [lesson]\nupdated: 2026-01-01\n---\n\nEdited by hand."})).is_ok());
+        assert!(fs::read_to_string(root.join("07 Lessons And Decisions/Keep.md")).unwrap().contains("Edited by hand."));
         let _ = fs::remove_dir_all(root.parent().unwrap());
     }
     #[test]
     fn search_index_backlinks_and_archive_never_delete() {
         let (root, s) = fresh("search");
-        write(&root, &s, "Lessons/Floating trees", "Trees float when the pivot is wrong. See [[Models-and-Styles/Low poly]].");
-        run(&root, &s, json!({"action":"write","path":"Models-and-Styles/Low poly","content":"Soft colours and chunky shapes.","frontmatter":{"type":"style","project":"Game B"}})).unwrap();
+        write(&root, &s, "07 Lessons And Decisions/Floating trees", "Trees float when the pivot is wrong. See [[04 Models And Styles/Low poly]].");
+        run(&root, &s, json!({"action":"write","path":"04 Models And Styles/Low poly","content":"Soft colours and chunky shapes.","frontmatter":{"type":"style","project":"Game B"}})).unwrap();
         let found = run(&root, &s, json!({"action":"search","query":"pivot trees"})).unwrap();
-        assert_eq!(found["results"][0]["path"], "Lessons/Floating trees.md");
+        assert_eq!(found["results"][0]["path"], "07 Lessons And Decisions/Floating trees.md");
         assert!(found["results"][0]["snippets"][0].as_str().unwrap().contains("pivot"));
         let scoped = run(&root, &s, json!({"action":"search","query":"colours","project":"Game A"})).unwrap();
         assert_eq!(scoped["count"], 0, "other project notes stay out");
         let index = run(&root, &s, json!({"action":"index","project":"Game A"})).unwrap();
-        assert!(index["start"].as_str().unwrap().contains("Start here"));
+        assert!(index["start"].as_str().unwrap().contains("Home"));
         let paths: Vec<String> = index["notes"].as_array().unwrap().iter().map(|n| n["path"].as_str().unwrap().to_string()).collect();
-        assert!(paths.contains(&"Lessons/Floating trees.md".to_string()) && paths.contains(&"How-to/Reference-critic-loop.md".to_string()));
+        assert!(paths.contains(&"07 Lessons And Decisions/Floating trees.md".to_string()) && paths.contains(&"09 How To/Reference Critic Loop.md".to_string()));
         assert!(!paths.iter().any(|p| p.contains("Low poly")), "another project's notes stay out of the index");
-        assert!(fs::read_to_string(root.join("Index.md")).unwrap().contains("Floating trees"));
-        let back = run(&root, &s, json!({"action":"backlinks","path":"Models-and-Styles/Low poly"})).unwrap();
+        let listing = fs::read_to_string(root.join(INDEX_NAME)).unwrap();
+        assert!(listing.contains("Floating trees") && listing.contains("## 07 Lessons And Decisions"));
+        let back = run(&root, &s, json!({"action":"backlinks","path":"04 Models And Styles/Low poly"})).unwrap();
         assert_eq!(back["count"], 1);
-        run(&root, &s, json!({"action":"archive","path":"Lessons/Floating trees","reason":"replaced"})).unwrap();
-        assert!(!root.join("Lessons/Floating trees.md").exists());
+        run(&root, &s, json!({"action":"archive","path":"07 Lessons And Decisions/Floating trees","reason":"replaced"})).unwrap();
+        assert!(!root.join("07 Lessons And Decisions/Floating trees.md").exists());
         let archived = fs::read_to_string(root.join("_Archive/Floating trees.md")).unwrap();
         assert!(archived.contains("status: superseded") && archived.contains("Trees float"));
         assert_eq!(run(&root, &s, json!({"action":"search","query":"pivot"})).unwrap()["count"], 0);
         assert_eq!(run(&root, &s, json!({"action":"search","query":"pivot","include_archive":true})).unwrap()["count"], 1);
-        assert!(fs::read_to_string(root.join("Log.md")).unwrap().contains("archived"));
+        assert!(fs::read_to_string(root.join(LOG_NAME)).unwrap().contains("archived"));
         let _ = fs::remove_dir_all(root.parent().unwrap());
     }
     #[test]
@@ -1039,7 +1309,7 @@ mod tests {
         let old = vec![(1u64, "Fonts".to_string(), "Use GothamSSm".to_string(), "".to_string()), (2, "".into(), "No underscores in names".into(), "Game A".into())];
         assert_eq!(migrate_old_memory(&root, &old).unwrap(), 2);
         assert_eq!(migrate_old_memory(&root, &old).unwrap(), 0, "only once");
-        let files: Vec<_> = fs::read_dir(root.join("Inbox/Imported")).unwrap().flatten().collect();
+        let files: Vec<_> = fs::read_dir(root.join("10 Inbox/Imported")).unwrap().flatten().collect();
         assert_eq!(files.len(), 2);
         let all = files.iter().map(|f| fs::read_to_string(f.path()).unwrap()).collect::<String>();
         assert!(all.contains("Use GothamSSm") && all.contains("No underscores in names") && all.contains("project: \"Game A\"") || all.contains("project: Game A"));
@@ -1051,38 +1321,82 @@ mod tests {
         let png = [0x89u8, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4, 5];
         let data = b64_encode(&png);
         assert_eq!(b64_decode(&data).unwrap(), png);
-        let added = run(&root, &s, json!({"action":"add_image","name":"Low poly ref.png","data":format!("data:image/png;base64,{data}")})).unwrap();
+        write(&root, &s, "04 Models And Styles/Low poly", "Chunky.");
+        let added = run(&root, &s, json!({"action":"add_image","name":"Low poly ref.png","data":format!("data:image/png;base64,{data}"),"note":"04 Models And Styles/Low poly"})).unwrap();
         let rel = added["path"].as_str().unwrap().to_string();
-        assert!(rel.starts_with("_attachments/") && rel.ends_with(".png"));
+        assert!(rel.starts_with("08 References/refs/") && rel.ends_with(".png"), "{rel}");
+        assert!(fs::read_to_string(root.join("04 Models And Styles/Low poly.md")).unwrap().contains("![[Low-poly-ref.png]]"));
         let back = run(&root, &s, json!({"action":"read_image","path":rel})).unwrap();
         assert_eq!(back["mimeType"], "image/png");
         assert_eq!(b64_decode(back["data"].as_str().unwrap()).unwrap(), png);
+        let tree = run(&root, &s, json!({"action":"tree"})).unwrap();
+        assert!(tree["entries"].as_array().unwrap().iter().any(|e| e["kind"] == "image" && e["path"] == rel.as_str()));
         assert!(run(&root, &s, json!({"action":"add_image","name":"x","data":b64_encode(b"not a picture")})).is_err());
-        assert!(run(&root, &s, json!({"action":"read_image","path":"Lessons/x.png"})).is_err());
-        assert!(run(&root, &s, json!({"action":"read_image","path":"_attachments/../00-START-HERE.md"})).is_err());
+        assert!(run(&root, &s, json!({"action":"read_image","path":"07 Lessons And Decisions/x.md"})).is_err());
+        assert!(run(&root, &s, json!({"action":"read_image","path":"08 References/../00 Start Here/Home.md"})).is_err());
+        let _ = fs::remove_dir_all(root.parent().unwrap());
+    }
+    #[test]
+    fn an_existing_obsidian_vault_is_adopted_without_adding_folders() {
+        let (root, s) = fresh("adopt");
+        fs::create_dir_all(root.join("01 Game Design")).unwrap();
+        fs::create_dir_all(root.join("05 UI Design/refs")).unwrap();
+        fs::create_dir_all(root.join(".obsidian")).unwrap();
+        let mine = "---\ntags:\n  - ui\naliases:\n  - UI Review\nupdated: 2026-09-29\n---\n\n# UI Checklist\n\n> [!info] [[Home]]\n> Run this on every screen.\n";
+        fs::write(root.join("05 UI Design/UI Checklist.md"), mine).unwrap();
+        fs::write(root.join("01 Game Design/Core Loops.md"), "# Core Loops\n").unwrap();
+        run(&root, &s, json!({"action":"init"})).unwrap();
+        assert!(!root.join("01 About You").exists() && !root.join("_Templates").exists() && !root.join("09 How To").exists(), "no default folders are added to someone else's vault");
+        assert!(root.join(START_NAME).is_file() && root.join(INDEX_NAME).is_file(), "Home and Index are still made");
+        assert_eq!(fs::read_to_string(root.join("05 UI Design/UI Checklist.md")).unwrap(), mine, "their notes are untouched");
+        run(&root, &s, json!({"action":"write","path":"05 UI Design/UI Checklist","mode":"append","content":"- Check the font."})).unwrap();
+        let text = fs::read_to_string(root.join("05 UI Design/UI Checklist.md")).unwrap();
+        assert!(text.contains("tags:\n  - ui") && text.contains("aliases:\n  - UI Review") && text.contains("- Check the font.") && !text.contains("2026-09-29"), "{text}");
+        let index = run(&root, &s, json!({"action":"index"})).unwrap();
+        let kinds: Vec<&str> = index["notes"].as_array().unwrap().iter().map(|n| n["type"].as_str().unwrap()).collect();
+        assert!(kinds.iter().all(|k| *k == "note" || *k == "guide"), "their folder numbers are not mistaken for ours: {kinds:?}");
+        let tree = run(&root, &s, json!({"action":"tree"})).unwrap();
+        assert!(tree["entries"].as_array().unwrap().iter().any(|e| e["path"] == "05 UI Design/UI Checklist.md"));
+        let _ = fs::remove_dir_all(root.parent().unwrap());
+    }
+    #[test]
+    fn the_tree_lists_folders_notes_and_aliases_but_not_hidden_folders() {
+        let (root, s) = fresh("tree");
+        run(&root, &s, json!({"action":"init"})).unwrap();
+        fs::create_dir_all(root.join(".obsidian")).unwrap();
+        fs::write(root.join(".obsidian/app.json"), "{}").unwrap();
+        let tree = run(&root, &s, json!({"action":"tree"})).unwrap();
+        let entries = tree["entries"].as_array().unwrap();
+        let has = |p: &str, k: &str| entries.iter().any(|e| e["path"] == p && e["kind"] == k);
+        assert!(has("00 Start Here", "folder") && has("00 Start Here/Home.md", "note") && has("00 Start Here/Glossary.md", "note") && has("05 Projects", "folder"));
+        assert!(!entries.iter().any(|e| e["path"].as_str().unwrap().contains(".obsidian")));
+        let glossary = entries.iter().find(|e| e["path"] == "00 Start Here/Glossary.md").unwrap();
+        assert_eq!(glossary["aliases"], json!(["Terms", "Definitions"]));
         let _ = fs::remove_dir_all(root.parent().unwrap());
     }
     #[test]
     fn start_note_stays_short_and_defaults_exist() {
         let (root, s) = fresh("start");
         run(&root, &s, json!({"action":"init"})).unwrap();
-        for file in ["00-START-HERE.md", "Index.md", "How-to/Reference-critic-loop.md", "_Templates/Style.md", "_Templates/Journey.md"] {
+        for file in ["00 Start Here/Home.md", "00 Start Here/Glossary.md", "00 Start Here/Index.md", "09 How To/Reference Critic Loop.md", "_Templates/Style.md", "_Templates/Journey.md"] {
             assert!(root.join(file).is_file(), "{file}");
         }
-        assert!(run(&root, &s, json!({"action":"write","path":"00-START-HERE.md","mode":"replace","content":"a".repeat(3501)})).is_err());
-        assert!(run(&root, &s, json!({"action":"write","path":"00-START-HERE.md","mode":"replace","content":"# Start here\n\nShort."})).is_ok());
+        assert!(fs::read_to_string(root.join("00 Start Here/Home.md")).unwrap().chars().count() < MAX_START_CHARS, "default Home fits its own limit");
+        assert!(run(&root, &s, json!({"action":"write","path":"00 Start Here/Home.md","mode":"replace","content":"a".repeat(3501)})).is_err());
+        assert!(run(&root, &s, json!({"action":"write","path":"00 Start Here/Home.md","mode":"replace","content":"# Home\n\nShort."})).is_ok());
         let index = run(&root, &s, json!({"action":"index"})).unwrap();
-        assert!(index["start"].as_str().unwrap().starts_with("# Start here") && !index["start"].as_str().unwrap().contains("confidence:"), "the start note is returned without its header");
+        assert!(index["start"].as_str().unwrap().starts_with("# Home") && !index["start"].as_str().unwrap().contains("tags:"), "the start note is returned without its header");
+        assert!(run(&root, &s, json!({"action":"save_raw","path":"00 Start Here/Home.md","text":format!("---\ntags: [guide]\n---\n\n{}", "a".repeat(3501))})).is_err());
         let _ = fs::remove_dir_all(root.parent().unwrap());
     }
     #[test]
     fn concurrent_writes_do_not_corrupt_notes() {
         let (root, s) = fresh("concurrent");
         run(&root, &s, json!({"action":"init"})).unwrap();
-        let handles: Vec<_> = (0..8).map(|i| { let root = root.clone(); let s = s.clone(); std::thread::spawn(move || run(&root, &s, json!({"action":"write","path":format!("Lessons/Note {i}"),"content":format!("body {i}"),"frontmatter":{"type":"lesson"}})).unwrap()) }).collect();
+        let handles: Vec<_> = (0..8).map(|i| { let root = root.clone(); let s = s.clone(); std::thread::spawn(move || run(&root, &s, json!({"action":"write","path":format!("07 Lessons And Decisions/Note {i}"),"content":format!("body {i}"),"frontmatter":{"type":"lesson"}})).unwrap()) }).collect();
         for h in handles { h.join().unwrap(); }
-        for i in 0..8 { assert!(fs::read_to_string(root.join(format!("Lessons/Note {i}.md"))).unwrap().contains(&format!("body {i}"))); }
-        let index = fs::read_to_string(root.join("Index.md")).unwrap();
+        for i in 0..8 { assert!(fs::read_to_string(root.join(format!("07 Lessons And Decisions/Note {i}.md"))).unwrap().contains(&format!("body {i}"))); }
+        let index = fs::read_to_string(root.join(INDEX_NAME)).unwrap();
         for i in 0..8 { assert!(index.contains(&format!("Note {i}"))); }
         let _ = fs::remove_dir_all(root.parent().unwrap());
     }

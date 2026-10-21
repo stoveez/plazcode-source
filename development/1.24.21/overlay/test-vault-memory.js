@@ -19,10 +19,10 @@ const Memory = require("./core/memory.js");
       case "init": return { ok: true };
       case "index": return { ok: true, start: "# Start here\nThe user likes short answers.", notes, total: notes.length, learning };
       case "search": return { ok: true, count: 1, results: [{ path: notes[0].path, type: "lesson", updated: "2026-10-20", snippets: ["Anchor the base first."] }] };
-      case "read": return { ok: true, text: "Body text", total_chars: 9, next_offset: null, links: ["Models-and-Styles/Low poly"] };
+      case "read": return { ok: true, text: "Body text", total_chars: 9, next_offset: null, links: ["04 Models And Styles/Low poly"] };
       case "write": return { ok: true, path: r.path.endsWith(".md") ? r.path : r.path + ".md", created: r.mode === "create", chars: String(r.content).length };
       case "read_image": return { ok: true, path: r.path, mimeType: "image/png", data: "QUJD" };
-      case "add_image": return { ok: true, path: "_attachments/ref.png", linked_in: r.note || null };
+      case "add_image": return { ok: true, path: "08 References/refs/ref.png", linked_in: r.note || null };
       default: return { ok: true };
     }
   };
@@ -55,7 +55,7 @@ const Memory = require("./core/memory.js");
     if (request.action === "index") return { ok: true, start: "# Start here\nThe user likes short answers.", notes, total: 2, learning };
     if (request.action === "write") return { ok: true, path: "Lessons/X.md", created: request.mode === "create", chars: 5 };
     if (request.action === "read_image") return { ok: true, path: request.path, mimeType: "image/png", data: "QUJD" };
-    if (request.action === "add_image") return { ok: true, path: "_attachments/ref.png", linked_in: request.note || null };
+    if (request.action === "add_image") return { ok: true, path: "08 References/refs/ref.png", linked_in: request.note || null };
     if (request.action === "search") return { ok: true, count: 1, results: [{ path: notes[0].path, type: "lesson", updated: "2026-10-20", snippets: ["Anchor the base first."] }] };
     if (request.action === "read") return { ok: true, text: "Body text", total_chars: 9, next_offset: 4, links: ["A", "B"] };
     return { ok: true };
@@ -91,9 +91,9 @@ const Memory = require("./core/memory.js");
   const wrote = await M.vaultTool({ action: "write", path: "Lessons/X", mode: "create", content: "hello", frontmatter: { type: "lesson" }, project_specific: true }, ctx);
   assert(wrote.includes("created") && calls.filter((c) => c.action === "write").pop().ai === true, "AI writes are flagged so the app can enforce the learning switch");
   assert.strictEqual(calls.filter((c) => c.action === "write").pop().frontmatter.project, "Game A", "project_specific notes get the current project");
-  const attached = await M.vaultTool({ action: "read_image", paths: ["_attachments/ref.png"], with_last_screenshot: true }, ctx);
-  assert(attached.includes("_attachments/ref.png") && attached.includes("latest-screenshot") && imgs.length === 2 && imgs[0].data === "QUJD");
-  assert((await M.vaultTool({ action: "add_image", name: "Ref", from: "last_screenshot", note: "Models-and-Styles/Low poly" }, ctx)).includes("linked in Models-and-Styles/Low poly"));
+  const attached = await M.vaultTool({ action: "read_image", paths: ["08 References/refs/ref.png"], with_last_screenshot: true }, ctx);
+  assert(attached.includes("08 References/refs/ref.png") && attached.includes("latest-screenshot") && imgs.length === 2 && imgs[0].data === "QUJD");
+  assert((await M.vaultTool({ action: "add_image", name: "Ref", from: "last_screenshot", note: "04 Models And Styles/Low poly" }, ctx)).includes("linked in 04 Models And Styles/Low poly"));
   assert.strictEqual(calls.filter((c) => c.action === "add_image").pop().data, "TEFTVA==", "the last screenshot is what gets stored");
   await assert.rejects(M.vaultTool({ action: "delete" }, ctx), /Use action/);
   await assert.rejects(M.vaultTool({ action: "add_image", from: "last_screenshot" }, { lastImage: () => null }), /no picture/);
@@ -126,7 +126,8 @@ const Memory = require("./core/memory.js");
   assert.strictEqual(Safety.isChange("plazcode_vault", "studio"), false, "vault writes are allowed in Read-only mode");
   assert.strictEqual(Safety.isChange("plazcode_vault", "local"), false);
   const settings = fs.readFileSync("core/memory.js", "utf8");
-  for (const key of ["Vault (the AI's brain)", "Open vault folder", "Open in Obsidian", "Use this folder", "notes in the vault"]) {
+  assert(!settings.includes("the AI's brain"), "the old wording is gone");
+  for (const key of ["Vault", "Open vault", "Open vault folder", "Open in Obsidian", "Use this folder", "notes in the vault", "Properties", "Move to archive", "Edit note", "Linked from"]) {
     assert(settings.includes(key.replace("'", "\\'")), "settings text present: " + key);
     const catalog = JSON.parse(fs.readFileSync("core/locales/de.json", "utf8")); assert(catalog[key], "translated: " + key);
   }

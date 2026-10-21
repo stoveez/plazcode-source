@@ -130,3 +130,11 @@ Files (all under `development/1.24.21/overlay/`):
 - obsidian-second-brain project (rewrite over append, redirects instead of delete, freshness and duplicate linting, abstain when unsure): https://github.com/eugeniughelbur/obsidian-second-brain
 - Obsidian memory for agents, staleness and "memory lying" write-up (not fetched in full): https://zchmael.substack.com/p/how-i-keep-my-ai-agents-obsidian
 - Code facts verified in this repo: `agent/src/memory.rs`, `core/memory.js`, `agent/src/engram.rs`, `core/main.js` (plazcode_agent roles, plazcode_screenshot, attachImages), `agent/src/blender.rs`, `core/ultralab/skills/reference-library`.
+
+## Update 2026-10-20: it must look and be structured like Obsidian
+The owner showed their own Obsidian vault (numbered folders, a Properties block with tags/aliases/updated, blue info boxes with a Home breadcrumb, clickable links, reference pictures in a `refs` folder) and asked for the same. Changes made:
+- Layout is now numbered like theirs: `00 Start Here` (Home = the AI's start note, Glossary, Index, Log), `01 About You`, `02 How We Work`, `03 Coding Style`, `04 Models And Styles`, `05 Projects`, `06 Journeys`, `07 Lessons And Decisions`, `08 References` (pictures in `refs`), `09 How To`, `10 Inbox`, `_Archive`, `_Templates`. This replaces the first layout in this document (Preferences, Coding-Style, `_attachments`, `00-START-HERE.md` and so on).
+- Notes use Obsidian properties (`tags`, `aliases`, `updated`) instead of a required `type`; the kind is read from a tag or the numbered folder. Every note starts with an info box (`> [!info] [[Home]] ...` and a "Read this when" line).
+- Note headers are now stored line for line, so lists, comments and unknown fields survive an edit. A folder that already holds notes (the owner's own vault) is adopted as it is.
+- New app actions: `tree` (file list), `read` with `view` (header and text split), `save_raw` (the user's own edit). Pictures can live anywhere in the vault.
+- New window: Open vault in Memory settings opens a dark Obsidian-style window (file tree, Properties, callouts, tables, task lists, links, pictures, backlinks, search, edit, move to archive). Note text is always escaped and never run as HTML.
