@@ -153,6 +153,10 @@ Reading results:
 
 ## 8. Test builds (what to hand to testers)
 
+**The standard way (the owner's choice, always use it):** push or run CI for the branch, then give the owner the two small zips from the run's Artifacts page: `plazcode-<version>-Windows-test-lean` (about 25 MB) and `plazcode-<version>-macOS-test-lean` (about 36 MB). Each contains the app, the memory helper, `PlazCode-Extension` (Chrome/Edge/Brave) and the ready-made `PlazCode-Extension-Firefox`. The owner must never need to run a script to get Firefox. Always give the run link, list the fixes inside, and say if reloading the extension is enough. Test builds are private CI artifacts, not a publish. The bigger `-validation` artifacts are for the release process only. If the Mac job says "The job was not acquired by Runner of type hosted", GitHub is out of Mac machines: re-run just that job every 20 minutes (`gh run rerun <id> --failed`); it took about 7 tries one afternoon. Rebuilding the same commit gives the same code, so an earlier green Mac `-validation` artifact of identical code is an acceptable stand-in if the owner agrees.
+
+More detail follows.
+
 A "test build" for the owner or testers is always:
 1. **The full Windows zip** and **the full Mac zip**, each containing the desktop app AND the extension (Chrome-family) AND the Firefox extension. They come from CI (workflow `validate`, job `native`), as the artifacts `plazcode-<version>-Windows-validation` and `plazcode-<version>-macOS-validation`. Each artifact holds `PlazCode-<version>-development.zip` (Windows) or `PlazCode-macOS-<version>-development.zip` (Mac), plus the source zip and a Firefox zip.
 2. **Small test zips** (under about 20 MB on Windows) built by the `lean` block in `development/<version>/package.py`: the same package with the duplicate extension copies removed. The Firefox extension is made with one click from `Make-Firefox-Extension` (`.bat` on Windows, `.command` on Mac). Mac is about 31 MB because it ships the memory helper for both chips.

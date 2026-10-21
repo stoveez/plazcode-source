@@ -8,7 +8,7 @@ This is the private source repo for PlazCode (`stoveez/plazcode-source`). **Read
 3. Never push, publish, deploy or buy anything without the owner's clear "yes" for that exact action. Committing locally is fine.
 4. Publish only through the private-repo publish workflow, never by hand.
 5. Talk to the owner and write release notes in plain, non-coder language.
-6. A test build always contains the Windows and Mac apps and the extension, never the extension alone.
+6. A test build always contains the Windows and Mac apps and the extension, never the extension alone. Deliver it as the two small CI artifacts `plazcode-<version>-Windows-test-lean` and `plazcode-<version>-macOS-test-lean` (app + memory helper + Chrome extension + ready-made Firefox extension, no scripts to run). Details: guide section 8.
 7. Respect licences. Do not copy code from Multi-Script. Keep credits for UltraLab (SyphoDev), Brickwire (MIT) and the other third parties.
 8. No secrets in files, commits or chat.
 9. Say honestly what was tested and what was not.
