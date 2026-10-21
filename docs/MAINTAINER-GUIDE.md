@@ -6,6 +6,8 @@ The owner is not a programmer. Talk to them in plain words. Ask before anything 
 
 ---
 
+**Branch note:** current work is on `release/1.24.21`; the default branch `main` is old and lacks this guide. Always start from `release/1.24.21` and branch from it (`codex/<task>` or `claude/<task>`).
+
 ## 1. What PlazCode is
 
 PlazCode turns the AI chat sites people already use (ChatGPT, Claude, Gemini, DeepSeek, Notion AI, ClickUp, Vani and more) into an agent that can build in Roblox Studio and work on the user's computer. It has two parts that talk to each other:

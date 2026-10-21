@@ -2,6 +2,9 @@
 
 This is the private source repo for PlazCode (`stoveez/plazcode-source`). **Read `docs/MAINTAINER-GUIDE.md` completely before you change anything**, then `docs/TASK-BOARD.md`, then `development/1.25.0/NEXT-UPDATE-PLAN.md`. This page is only the short version of the rules; the guide has the details, commands and procedures.
 
+## Which branch to use (important)
+The repo's default branch `main` is old and does NOT contain these instructions. All current work lives on **`release/1.24.21`**. When you start (in Codex, pick this branch when setting up the environment), work from `release/1.24.21`, and create your own branch from it named `codex/<task>`. Do not commit to `main`, and do not push to `release/1.24.21` itself without the owner's yes. If you can't see `AGENTS.md` or `docs/MAINTAINER-GUIDE.md`, you are on the wrong branch: switch to `release/1.24.21` before doing anything.
+
 ## Rules that never bend
 1. Never break the auto-updater (the feed addresses and format in `latest.json` / `latest-macos.json` must keep working for every installed copy).
 2. Commits go under the owner's name (stoveez, freetwoomy@gmail.com). Never add Co-Authored-By, session links, "Generated with" or any AI credit.
