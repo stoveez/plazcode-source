@@ -4892,8 +4892,20 @@ return result`;
           : listRes.calls.find((c) => c && (c.tool === "list_commands" || c.tool === "list_tools")) || null)
         : null;
       if (!startupCall || (startupCall.tool !== "list_commands" && startupCall.tool !== "list_tools")) {
-        diag("start.handshakeFailed", { kind: listRes.kind, chars: String(listRes.text || "").length });
+        diag("start.handshakeFailed", { kind: listRes.kind, chars: String(listRes.text || "").length, detail: String(listRes.detail || "").slice(0, 200) });
         if(isProviderPolicyRefusal(listRes.text)){showStartupRefusal();return;}
+        // 1.24.21: say what really happened. A site notice is quoted as it is; no reply at all is
+        // not a "limit" and not a missing command, so it is not reported as either.
+        if (listRes.kind === "context_limit") {
+          ui.banner("limit", `${P.displayName} showed a notice`,
+            `${P.displayName} said: "${String(listRes.detail || "").slice(0, 160)}". PlazCode stayed stopped. Open a fresh chat and press Start again.`);
+          return;
+        }
+        if (listRes.kind === "empty" || listRes.kind === "timeout" || listRes.kind === "busy_timeout") {
+          ui.banner("warn", `${P.displayName} did not answer`,
+            `PlazCode's startup message was sent, but ${P.displayName} gave no answer. PlazCode stayed stopped. Look at the chat to see whether the message arrived, then press Start again.`);
+          return;
+        }
         ui.banner("warn", "Startup handshake failed",
           `${P.displayName} did not produce the required list_commands tool call. PlazCode stayed stopped instead of pretending it was ready. Try Start again.`);
         return;

@@ -45,7 +45,10 @@ function inspect(f){const p=f.p,r=p.readAssistant();return {editor:!!p.getEditor
  for(const name of Object.keys(matrix)){
   const old=setup(name,true),current=setup(name,false);
   try{
-   const before=inspect(old);assert(before.editor,name+' baseline editor');assert(before.reply.includes(command),name+' baseline reply fixture must be meaningful');
+   const before=inspect(old);
+   // 1.24.21 (intentional): v1.22.1 Freebuff reported "generating" for text that was already on the page when it first looked, which made an idle or brand-new chat look busy. See test-freebuff-provider.
+   if(name==='freebuff')before.generating=false;
+   assert(before.editor,name+' baseline editor');assert(before.reply.includes(command),name+' baseline reply fixture must be meaningful');
    assert.deepEqual(inspect(current),before,name+' healthy message detection unchanged');checks++;
    for(const f of [old,current]){
     f.advance(60000);f.setText('user draft');assert.equal(f.p.editorText(),'user draft',name+' native draft read');f.p.setInputLock(true);f.p.setInputLock(false);assert.equal(f.p.editorText(),'user draft',name+' locking preserves draft');

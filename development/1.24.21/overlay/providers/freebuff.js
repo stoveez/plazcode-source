@@ -100,7 +100,12 @@ const RSProvider = (() => {
     return t;
   }
 
+  // PlazCode locks the box while it works (see setInputLock). A locked box must
+  // still be found, and must never be mistaken for the site being busy.
+  let lockedEditor = null;
+  const isOurLock = (ed) => !!ed && ed === lockedEditor;
   const getEditor = () => {
+    if (lockedEditor && safeRead(() => lockedEditor.isConnected, false) && visible(lockedEditor)) return lockedEditor;
     const sels = S.editor.split(",").map((s) => s.trim());
     for (const sel of sels) {
       for (const el of safeQueryAll(document, sel)) {
@@ -131,7 +136,17 @@ const RSProvider = (() => {
     return "";
   }
 
-  function allItems() {
+  // Page furniture is never a chat turn: menus and sidebars, dialogs, or any
+  // wrapper that holds the chat box itself.
+  const FURNITURE = "nav, [role='navigation'], [role='menu'], [role='listbox'], [role='dialog'], [role='tooltip']";
+  function notATurn(el, ed) {
+    return !!safeClosest(el, FURNITURE) || (!!ed && safeRead(() => el.contains(ed), false));
+  }
+  // What PlazCode itself puts into a chat: proof that a chat is no longer new.
+  const ARTEFACT = /⟦RS-SYS⟧|(^|\n)\s*Output of '[^'\n]+':|\(System note:/;
+  const isArtefact = (el) => ARTEFACT.test(safeRead(() => el.textContent, "") || "");
+  function rawItems() {
+    const ed = getEditor();
     const sels = [
       "[data-message-role]",
       "[data-role='user']",
@@ -143,7 +158,7 @@ const RSProvider = (() => {
     const out = [];
     for (const s of sels) {
       for (const el of safeQueryAll(document, s)) {
-        if (seen.has(el) || !visible(el)) continue;
+        if (seen.has(el) || !visible(el) || notATurn(el, ed)) continue;
         seen.add(el);
         out.push(el);
       }
@@ -153,11 +168,20 @@ const RSProvider = (() => {
       const log = safeQuery(document, "[role='log'], [role='feed'], main [class*='thread'], main [class*='messages']");
       if (log) {
         for (const el of safeRead(() => log.children, [])) {
-          if (safeRead(() => el.nodeType, 0) === 1 && visible(el)) out.push(el);
+          if (safeRead(() => el.nodeType, 0) === 1 && visible(el) && !notATurn(el, ed)) out.push(el);
         }
       }
     }
     return out;
+  }
+  function allItems() {
+    const out = rawItems();
+    // A new chat has no address yet. The generic selectors above can then match
+    // page text that is not a conversation (a welcome card, a tip). Unless
+    // something on the page is a turn with a real role, or PlazCode's own
+    // message, there is no conversation here.
+    if (!out.length || conversationKey()) return out;
+    return out.some((el) => roleOf(el) !== "" || isArtefact(el)) ? out : [];
   }
 
   function isUserItem(item) {
@@ -200,7 +224,15 @@ const RSProvider = (() => {
   }
   const lastAssistantId = () => itemKey(lastAssistant());
 
-  const chatIsEmpty = () => allItems().length === 0;
+  // A chat with an address (/chat/<id>) is a saved chat. Without one it only
+  // counts as started once a user turn exists, so a greeting from the site
+  // does not turn a brand-new chat into an existing one.
+  function chatIsEmpty() {
+    const items = allItems();
+    if (!items.length) return true;
+    if (conversationKey()) return false;
+    return !items.some((el) => /user|human/.test(roleOf(el)) || isArtefact(el));
+  }
   const isFreshChat = () => chatIsEmpty() && !!getEditor();
 
   function composerFrame() {
@@ -226,15 +258,22 @@ const RSProvider = (() => {
   function setInputLock(on) {
     const ed = getEditor();
     if (!ed) return;
-    if (ed.isContentEditable || safeRead(() => ed.getAttribute("contenteditable"), null) === "true") {
-      ed.setAttribute("contenteditable", on ? "false" : "true");
+    // A box we locked reads contenteditable="false" (and isContentEditable false),
+    // so unlocking must recognise that value too or the box stays dead for good.
+    const editable = safeRead(() => ed.getAttribute("contenteditable"), null);
+    if (ed.isContentEditable || editable === "true" || editable === "false" || editable === "plaintext-only") {
+      if (on && editable !== "false") ed.dataset.rsEditable = editable || "true";
+      ed.setAttribute("contenteditable", on ? "false" : (ed.dataset.rsEditable || "true"));
+      lockedEditor = on ? ed : null;
       return;
     }
     if (on) {
+      lockedEditor = ed;
       if (!ed.dataset.rsPlaceholder) ed.dataset.rsPlaceholder = safeRead(() => ed.getAttribute("placeholder"), null) || "";
       ed.setAttribute("readonly", "");
       ed.setAttribute("placeholder", "⏳ Agent working… please wait");
     } else {
+      lockedEditor = null;
       ed.removeAttribute("readonly");
       if (ed.dataset.rsPlaceholder != null) ed.setAttribute("placeholder", ed.dataset.rsPlaceholder);
     }
@@ -284,11 +323,17 @@ const RSProvider = (() => {
   }
   const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
 
-  let _streamMax = -1, _streamAt = 0, _streamItem = null;
+  let _streamMax = -1, _streamAt = 0, _streamItem = null, _streamSeen = false;
   function sampleStream() {
     const item = lastAssistant();
     const len = streamText(item).length;
     const now = Date.now();
+    if (!_streamSeen) {
+      // The first look is only a baseline. Text that is already on the page
+      // (a welcome card, a restored chat) has not "just grown", and counting it
+      // as growth made a brand-new empty chat look like it was generating.
+      _streamSeen = true; _streamItem = item; _streamMax = len; _streamAt = 0; return;
+    }
     if (item !== _streamItem || len < _streamMax - 400) {
       _streamItem = item; _streamMax = len; _streamAt = now; return;
     }
@@ -298,40 +343,51 @@ const RSProvider = (() => {
 
   const WEDGE_MS = 30000;
   let _stopSince = 0;
+  // Says WHY the page looks busy ("" = not busy). The reason goes into the
+  // diagnostic log, so a wrong "generating" can be traced to its signal.
   function busyChrome() {
     const ui = safeRead(() => document.getElementById("rs-root"), null);
     const ours = (el) => ui && el && safeRead(() => ui.contains(el), false);
     for (const el of safeQueryAll(document, '[aria-busy="true"]')) {
-      if (!ours(el) && visible(el)) return true;
+      if (!ours(el) && visible(el)) return "aria-busy";
     }
-    const send = sendButton();
-    if (send && (safeRead(() => send.disabled, true) || safeRead(() => send.getAttribute("aria-disabled"), null) === "true")) return true;
     const ed = getEditor();
-    if (ed && (safeRead(() => ed.disabled, true) || safeRead(() => ed.getAttribute("contenteditable"), null) === "false" || safeRead(() => ed.getAttribute("aria-disabled"), null) === "true")) return true;
+    // A greyed-out Send button is how EVERY empty chat box looks, so it only
+    // means "busy" when there is a draft that Send refuses to take.
+    if (ed && editorText().trim() !== "") {
+      const send = sendButton();
+      if (send && (safeRead(() => send.disabled, true) || safeRead(() => send.getAttribute("aria-disabled"), null) === "true")) return "send-disabled";
+    }
+    // The box PlazCode itself locked (contenteditable=false) is not the site being busy.
+    if (ed && (safeRead(() => ed.disabled, true) || (!isOurLock(ed) && safeRead(() => ed.getAttribute("contenteditable"), null) === "false") || safeRead(() => ed.getAttribute("aria-disabled"), null) === "true")) return "composer-disabled";
     for (const b of allButtons()) {
       if (!visible(b)) continue;
       const t = (ariaOf(b) + " " + (safeRead(() => b.textContent, "") || "")).toLowerCase();
-      if (/\b(stop generating|stop response|cancel generation|abort|interrupt)\b/.test(t) || /^stop$/.test(t.trim())) return true;
+      if (/\b(stop generating|stop response|cancel generation|abort|interrupt)\b/.test(t) || /^stop$/.test(t.trim())) return "stop-text";
     }
     for (const sel of ['[data-streaming="true"]', '[data-status="generating"]', '[class*="is-generating"]', '[class*="streaming"]']) {
       for (const el of safeQueryAll(document, sel)) {
-        if (!ours(el) && visible(el)) return true;
+        if (!ours(el) && visible(el)) return "streaming-marker";
       }
     }
-    return false;
+    return "";
   }
-  function genActive() {
+  function genWhy() {
     sampleStream();
-    if (busyChrome()) return true;
+    const busy = busyChrome();
+    if (busy) return busy;
     const stop = !!stopButton();
     const now = Date.now();
     if (stop) {
       if (!_stopSince) _stopSince = now;
       // Stop still up = still generating. Slow Freebuff pauses many seconds between tokens.
-      return true;
+      return "stop-button";
     }
     _stopSince = 0;
-    return grewWithin(timings.GEN_IDLE_MS);
+    return grewWithin(timings.GEN_IDLE_MS) ? "growing" : "";
+  }
+  function genActive() {
+    return genWhy() !== "";
   }
   const isGenerating = genActive;
   const isBusyNow = genActive;
@@ -415,35 +471,160 @@ const RSProvider = (() => {
     editor.dispatchEvent(new KeyboardEvent("keyup", o));
   }
 
+  // ── Sending ────────────────────────────────────────────────────────────
+  // Type the text, CHECK it really is in the box, submit, then CHECK it went.
+  // The result is true only when the message is confirmed sent, so PlazCode
+  // stops with a clear message instead of waiting for a reply that cannot come.
+  const squash = (s) => String(s || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+  let _sendDetail = "", _sendAmbiguous = false, _sendRetryable = false, _lastHas = null;
+
+  // The SITE refuses input (not PlazCode's own lock).
+  const boxRefusesInput = (ed) => !!ed && (safeRead(() => ed.disabled, false) === true || safeRead(() => ed.getAttribute("aria-disabled"), null) === "true");
+  function pasteText(el, text) {
+    el.focus();
+    try {
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch {}
+    const dt = new DataTransfer();
+    dt.setData("text/plain", text);
+    el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+  }
+  function directText(el, text) {
+    if (safeRead(() => el.tagName, "") === "TEXTAREA" || safeRead(() => el.tagName, "") === "INPUT") { setTextareaValue(el, text); return; }
+    el.focus();
+    el.textContent = text;
+    try { el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text })); }
+    catch { el.dispatchEvent(new Event("input", { bubbles: true })); }
+  }
+  // Remove PlazCode's own unsent text from the box (never anything else).
+  function clearOwnDraft(has) {
+    const ed = getEditor();
+    if (!ed || typeof has !== "function" || !has()) return false;
+    try {
+      if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") setTextareaValue(ed, "");
+      else {
+        ed.focus();
+        try {
+          const range = document.createRange();
+          range.selectNodeContents(ed);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          document.execCommand("delete", false);
+        } catch {}
+        if (editorText().trim() !== "") {
+          ed.textContent = "";
+          try { ed.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" })); } catch { ed.dispatchEvent(new Event("input", { bubbles: true })); }
+        }
+      }
+    } catch {}
+    return editorText().trim() === "";
+  }
+  const clearEditor = () => clearOwnDraft(_lastHas);
+  const sendReadyNow = () => {
+    const b = sendButton();
+    return !!b && !safeRead(() => b.disabled, true) && safeRead(() => b.getAttribute("aria-disabled"), null) !== "true";
+  };
+
   async function typeAndSend(text, images) {
+    _sendDetail = ""; _sendAmbiguous = false; _sendRetryable = false;
+    // The box can still be loading, or swapping between the home view and a chat.
+    await waitFor(() => { const e = getEditor(); return !!e && !boxRefusesInput(e); }, 15000);
+    // Never type over a reply that is still streaming.
+    if (isHardGenerating()) await waitFor(() => !isHardGenerating(), 10000);
     const editor = getEditor();
     if (!editor) throw new Error("Freebuff chat box not found — log in and open Chat first");
-    editor.focus();
-    await sleep(40);
+    markExistingNotices();
     text = truncateForSend(text);
-    setRichText(editor, text);
-    await sleep(80);
-    if (images && images.length) {
-      try { await attachImages(images); } catch {}
-    }
-    const sendReady = () => {
-      const b = sendButton();
-      return !!b && !safeRead(() => b.disabled, true) && safeRead(() => b.getAttribute("aria-disabled"), null) !== "true";
+    const full = squash(text), want = full.slice(-48);
+    // "Our text is in the box": its ending is there, or - if the box reformats text
+    // (markdown, list markers) - most of it is.
+    const has = () => {
+      const now = squash(editorText());
+      return now.includes(want) || (now.length >= 20 && now.length >= full.length * 0.6);
     };
-    await waitFor(sendReady, 2500);
-    diag("freebuff.send", { editorLen: editorText().length, textLen: text.length });
-    let sent = false;
-    for (let i = 0; i < 5 && !sent; i++) {
-      const b = sendButton();
-      if (b && !safeRead(() => b.disabled, true)) { try { b.click(); } catch {} }
-      else {
-        try {
-          const form = safeClosest(editor, "form");
-          if (form && typeof form.requestSubmit === "function") form.requestSubmit();
-          else pressEnter(editor);
-        } catch { pressEnter(editor); }
+    _lastHas = has;
+    // PlazCode's own lock would make the box refuse the text. Open it for the
+    // write and close it again afterwards.
+    const relock = isOurLock(editor);
+    if (relock) setInputLock(false);
+    try {
+      const before = { users: userCount(), replies: assistantCount(), key: conversationKey(), stop: isHardGenerating() };
+      // 1) Put the text in the box. Try the usual way first, then a paste, then a direct write.
+      const writers = [
+        (el) => { el.focus(); setRichText(el, text); },
+        (el) => pasteText(el, text),
+        (el) => directText(el, text),
+      ];
+      let typed = false, writer = -1;
+      for (let i = 0; i < writers.length && !typed; i++) {
+        const el = getEditor() || editor;
+        if (i === 0) { el.focus(); await sleep(40); }
+        try { writers[i](el); } catch {}
+        await sleep(80);
+        typed = has() || await waitFor(has, 400);
+        if (typed) writer = i;
       }
-      sent = await waitFor(() => editorText().trim() === "" || isHardGenerating(), 800);
+      if (images && images.length) {
+        try { await attachImages(images); } catch {}
+      }
+      await waitFor(sendReadyNow, 2500);
+      // Some boxes fold a very long paste into a chip and show nothing: an empty
+      // box with a ready Send button is then accepted.
+      const folded = !typed && editorText().trim() === "" && sendReadyNow();
+      diag("freebuff.send", { editorLen: editorText().length, textLen: text.length, typed, writer, folded, unlocked: relock });
+      if (!typed && !folded) {
+        _sendRetryable = true;
+        _sendDetail = "Freebuff's chat box did not take the text, so nothing was sent. Click once inside the Freebuff chat box, then press Start again.";
+        diag("freebuff.send.failed", { why: "text-not-in-box" });
+        return false;
+      }
+      // 2) Submit, and look for proof that Freebuff took the message.
+      const evidence = () => {
+        if (userCount() > before.users) return "user-turn";
+        if (assistantCount() > before.replies) return "reply-turn";
+        if (conversationKey() !== before.key) return "new-address";
+        if (!before.stop && isHardGenerating()) return "generating";
+        if (typed && getEditor() && !has()) return "box-cleared";
+        return "";
+      };
+      const submitters = [
+        () => { const b = sendButton(); if (!b || safeRead(() => b.disabled, true)) return false; b.click(); return true; },
+        () => { const form = safeClosest(getEditor() || editor, "form"); if (!form || typeof form.requestSubmit !== "function") return false; form.requestSubmit(); return true; },
+        () => { pressEnter(getEditor() || editor); return true; },
+      ];
+      let last = -1, proof = "", attempts = 0;
+      for (let attempt = 0; attempt < 4 && !proof; attempt++) {
+        // Resend only while our text is verifiably still in the box; if it left, judge by the evidence.
+        if (attempt > 0 && typed && !has()) break;
+        let used = -1;
+        for (let step = 1; step <= submitters.length && used < 0; step++) {
+          const idx = (last + step + submitters.length) % submitters.length;
+          let ok = false;
+          try { ok = submitters[idx](); } catch {}
+          if (ok) used = idx;
+        }
+        if (used >= 0) last = used;
+        attempts++;
+        await waitFor(() => (proof = evidence()) !== "", attempt === 0 ? 5000 : 3500);
+      }
+      diag("freebuff.send.result", { ok: !!proof, proof, attempts, via: last });
+      if (proof) { await sleep(60); return true; }
+      if (typed && has()) {
+        clearOwnDraft(has);
+        _sendRetryable = true;
+        _sendDetail = "Freebuff did not accept the message: it stayed in the chat box. PlazCode removed its own text and stopped.";
+      } else {
+        _sendAmbiguous = true;
+        _sendDetail = "PlazCode could not tell whether Freebuff took the message (no new message appeared in the chat). Check the chat before trying again.";
+      }
+      return false;
+    } finally {
+      if (relock) setInputLock(true);
     }
   }
 
@@ -452,15 +633,39 @@ const RSProvider = (() => {
     if (b) { try { b.click(); } catch {} }
   }
 
+  // A limit message counts only if it is a real, visible notice of the site:
+  // not chat text (ours or the model's), not the chat box, and not something
+  // that was already on the page before PlazCode sent its message.
+  const _oldNotices = new WeakMap();
+  function limitNotices() {
+    const out = [];
+    const ed = getEditor(), items = allItems();
+    for (const el of safeQueryAll(document, S.errorSurfaces)) {
+      if (!visible(el)) continue;
+      if (ed && (el === ed || safeRead(() => el.contains(ed) || ed.contains(el), false))) continue;
+      if (items.some((it) => it === el || safeRead(() => it.contains(el) || el.contains(it), false))) continue;
+      const t = (safeRead(() => el.innerText, "") || "").trim();
+      if (t.length > 8 && t.length < 600 && RE.contextLimit.test(t)) out.push([el, t]);
+    }
+    return out;
+  }
+  function markExistingNotices() {
+    try { for (const [el, t] of limitNotices()) _oldNotices.set(el, t); } catch {}
+  }
+  let _noEditorSince = 0;
   function scanError() {
     try {
-      for (const el of safeQueryAll(document, S.errorSurfaces)) {
-        if (!visible(el)) continue;
-        const t = (safeRead(() => el.innerText, "") || "").trim();
-        if (t.length > 8 && t.length < 600 && RE.contextLimit.test(t)) return t.slice(0, 240);
+      for (const [el, t] of limitNotices()) {
+        if (_oldNotices.get(el) === t) continue;
+        return t.slice(0, 240);
       }
     } catch {}
-    if (!getEditor() && !loginGatePresent()) return "The input box disappeared (session ended?).";
+    // The box can be missing for a moment while the page swaps between the home
+    // view and a chat. Only report it when it stays gone.
+    if (!getEditor() && !loginGatePresent()) {
+      if (!_noEditorSince) _noEditorSince = Date.now();
+      if (Date.now() - _noEditorSince > 10000) return "The input box disappeared (session ended?).";
+    } else _noEditorSince = 0;
     return null;
   }
   const isTooLongMsg = (text) => RE.tooLong.test(text);
@@ -496,10 +701,16 @@ const RSProvider = (() => {
     return false;
   }
 
-  const conversationKey = () => {
-    const m = (location.pathname || "").match(/\/(?:chat|c|conversation|thread)\/([A-Za-z0-9_-]+)/);
-    return m ? m[1] : location.pathname;
-  };
+  // "" = a new chat that has no address yet (the home page, or the bare chat
+  // page). The core treats that differently from "a different chat", so a chat
+  // that gains its address after the first message is still the same chat.
+  function conversationKey() {
+    const path = location.pathname || "";
+    const m = path.match(/\/(?:chat|c|conversation|thread)\/([A-Za-z0-9_-]+)/);
+    if (m) return /^(?:new|index)$/i.test(m[1]) ? "" : m[1];
+    if (/^\/(?:chat|c|web|cloud|desktop|new|home)?\/?$/i.test(path)) return "";
+    return path;
+  }
 
   function installSendHooks(handlers) {
     document.addEventListener("keydown", (e) => {
@@ -560,18 +771,30 @@ const RSProvider = (() => {
     init({ diag: d } = {}) {
       if (d) diag = d;
       try { document.documentElement.setAttribute("data-rs-freebuff-ver", "2026-09"); } catch {}
-      diag("freebuff.init", { hasEditor: !!getEditor(), login: loginGatePresent(), path: location.pathname });
+      diag("freebuff.init", { hasEditor: !!getEditor(), login: loginGatePresent(), path: location.pathname, fresh: chatIsEmpty(), items: allItems().length, why: genWhy() });
     },
     allItems, isUserItem, isAssistantItem, itemText, classifyText,
     assistantCount, userCount, lastAssistant, lastAssistantId, itemKey, readAssistant,
     streamLen, snapshot,
     getEditor, editorText, chatIsEmpty, isFreshChat, composerFrame, barAnchor,
-    setInputLock, typeAndSend, stopGeneration,
+    setInputLock, typeAndSend, clearEditor, stopGeneration,
+    // typeAndSend answers true only when Freebuff is confirmed to have taken the message.
+    authoritativeSendResult: true,
+    sendRetryable: () => _sendRetryable && !_sendAmbiguous,
+    sendFailureAmbiguous: () => _sendAmbiguous,
+    sendFailureDetail: () => _sendDetail,
     isGenerating, isBusyNow, isHardGenerating,
+    genDebug: genWhy,
     enforceComposer() { return { ready: true }; },
     async ensureComposerReady(reason) {
-      diag("freebuff.mode_ready", { reason, hasEditor: !!getEditor(), login: loginGatePresent() });
-      return { ready: !!getEditor() && !loginGatePresent() };
+      // The page may still be loading, or swapping between the home view and a chat.
+      if (!loginGatePresent()) await waitFor(() => !!getEditor() && !boxRefusesInput(getEditor()), 8000);
+      markExistingNotices();
+      const login = loginGatePresent(), hasEditor = !!getEditor();
+      diag("freebuff.mode_ready", { reason, hasEditor, login, fresh: chatIsEmpty(), items: allItems().length, why: genWhy() });
+      if (login) return { ready: false, detail: "Log in to Freebuff first (GitHub or Google), open a chat, then press Start." };
+      if (!hasEditor) return { ready: false, detail: "Couldn't find Freebuff's chat box. Open a new Freebuff chat, wait for it to load, then press Start." };
+      return { ready: true };
     },
     turnHalted, findContinueBtn, clickContinueBtn,
     scanError, isTooLongMsg, isBusyMsg,
