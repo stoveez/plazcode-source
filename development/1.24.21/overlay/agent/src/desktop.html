@@ -527,15 +527,99 @@ html[data-look-rainbow] :is(.nx-card,.nx-row,.nx-theme,html[data-desktop-theme] 
 @keyframes nxSlide{0%{left:-40%}100%{left:102%}}
 @media(prefers-reduced-motion:reduce){.nx-splash *,.nx-splash *::before,.nx-splash *::after{animation-duration:.01s!important;animation-delay:0s!important}.nx-splash{transition-duration:.01s}}
 @media(max-width:1000px){.nx-area span{display:none}.nx-area{padding:0 10px}.nx-grid{grid-template-columns:1fr}html[data-desktop-theme] .stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ===== Documentation (dx) ===== */
+.dg-violet{--g1:#b8b4ff;--g2:#dccfff;--g3:#8c6bff;--g4:#f1e9ff}
+.dg-lime{--g1:#dff56a;--g2:#7fe3c0;--g3:#c8ee5a;--g4:#f4ffd0}
+.dg-sky{--g1:#58e1c9;--g2:#b7e9ff;--g3:#3fb7ff;--g4:#e9fbff}
+.dg-orange{--g1:#ffa65c;--g2:#ff6f91;--g3:#ff8a3d;--g4:#ffe6d1}
+.dg-rose{--g1:#ff9ac1;--g2:#ffc9a8;--g3:#ff5f93;--g4:#fff0f4}
+.dg-teal{--g1:#6be3c9;--g2:#4aa6ff;--g3:#2dd4bf;--g4:#d9fff6}
+.dg-mint{--g1:#c4f2a8;--g2:#6dd5ed;--g3:#8ee06a;--g4:#f0ffe3}
+.dg-sunset{--g1:#ffd36e;--g2:#ff7a8a;--g3:#ff9d3d;--g4:#fff1c9}
+.dx-thumb,.dx-banner{background:radial-gradient(circle at 82% 14%,rgb(255 255 255/.6),transparent 38%),radial-gradient(circle at 24% 86%,var(--g3),transparent 58%),linear-gradient(135deg,var(--g1),var(--g2))}
+.dx-top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:-22px -26px 22px;padding:0 26px;border-bottom:1px solid var(--stroke,#2b303b);background:color-mix(in srgb,var(--canvas,#0c0e13) 70%,transparent);position:sticky;top:-22px;z-index:5;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.dx-tabs{display:flex;gap:4px}
+.dx-tabs button{display:flex;align-items:center;gap:8px;height:50px;padding:0 12px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--ink-soft,#9299aa);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:-1px}
+.dx-tabs button svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dx-tabs button:hover{color:#fff}.dx-tabs button.active{color:#fff;border-bottom-color:var(--orange2,#ffe0a1)}
+.dx-search{position:relative;width:min(380px,44%)}
+.dx-search>svg{position:absolute;left:14px;top:11px;width:16px;height:16px;fill:none;stroke:var(--ink-soft,#9299aa);stroke-width:2;stroke-linecap:round;pointer-events:none}
+html[data-desktop-theme] .dx-top .dx-search input{width:100%;height:38px;border-radius:999px;border:1px solid var(--stroke,#2b303b);background:rgb(255 255 255/.04);color:#fff;padding:0 44px 0 42px!important;font-size:13px;outline:none;box-shadow:none}
+html[data-desktop-theme] .dx-top .dx-search input:focus{border-color:rgb(var(--nx-rgb)/.7);box-shadow:0 0 0 3px rgb(var(--nx-rgb)/.14)}
+.dx-search kbd{position:absolute;right:10px;top:8px;min-width:22px;height:22px;display:grid;place-items:center;border-radius:6px;background:rgb(255 255 255/.08);color:var(--ink-soft,#9299aa);font:600 11px ui-monospace,Consolas,monospace;pointer-events:none}
+.dx-results{position:absolute;left:0;right:0;top:44px;border-radius:var(--nx-r);border:1px solid var(--stroke,#2b303b);background:var(--surface,#12151c);box-shadow:0 24px 50px rgb(0 0 0/.5);padding:6px;z-index:20;max-height:420px;overflow:auto}
+.dx-hit{display:block;width:100%;text-align:left;padding:9px 11px;border-radius:calc(var(--nx-r) - 4px);border:0;background:transparent;color:#fff;cursor:pointer}
+.dx-hit.on,.dx-hit:hover{background:rgb(var(--nx-rgb)/.14)}
+.dx-hit-head{display:flex;align-items:center;gap:8px}.dx-hit b{font-size:13px}.dx-hit small{display:block;margin-top:3px;font-size:11.5px;color:var(--ink-soft,#9299aa);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.dx-tag{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--orange2,#ffe0a1);background:rgb(var(--nx-rgb)/.14);border-radius:999px;padding:2px 7px}
+.dx-none{padding:14px;font-size:12.5px;color:var(--ink-soft,#9299aa)}
+.dx-layout{display:grid;grid-template-columns:170px minmax(0,1fr);gap:30px;align-items:start}
+.dx-rail{position:sticky;top:48px;border-left:1px solid var(--stroke,#2b303b);padding-left:14px;display:flex;flex-direction:column;gap:2px;font-size:12.5px}
+.dx-rail-h{color:var(--ink-soft,#9299aa);font-weight:600;margin-bottom:8px}
+.dx-rail a{color:var(--ink-soft,#9299aa);text-decoration:none;padding:6px 0;font-weight:600}.dx-rail a:hover{color:#fff}
+.dx-main,.dx-article{min-width:0}
+.dx-hero{text-align:center;padding:26px 0 30px}
+.dx-eyebrow{font-size:11px;font-weight:800;letter-spacing:1.2px;color:var(--ink-soft,#9299aa);text-transform:uppercase}
+.dx-hero h1{margin:8px 0 10px;font-size:44px;line-height:1.05;font-weight:800;letter-spacing:-1.4px}
+.dx-hero p{margin:0 auto;max-width:560px;font-size:14px;color:var(--ink-soft,#9299aa);line-height:1.6}
+.dx-listhead{display:flex;align-items:flex-end;justify-content:space-between;margin:6px 0 16px}
+.dx-listhead h2{margin:4px 0 0;font-size:34px;font-weight:800;letter-spacing:-1px;line-height:1.1}
+.dx-count{font-size:12.5px;color:var(--ink-soft,#9299aa)}
+.dx-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.dx-card{display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:0;border:0;background:transparent;color:#fff;text-align:left;cursor:pointer;min-width:0}
+.dx-thumb{display:grid;place-items:center;width:100%;aspect-ratio:1.82;border-radius:calc(var(--nx-r) - 2px);color:#fff;overflow:hidden;position:relative;transition:transform .25s var(--ui-ease,ease),box-shadow .25s ease}
+.dx-thumb .dx-ico svg{filter:drop-shadow(0 2px 6px rgb(0 0 0/.18));stroke-width:1.9}
+.dx-card:hover .dx-thumb{transform:translateY(-3px);box-shadow:0 14px 34px rgb(0 0 0/.4)}
+.dx-pill{display:inline-block;margin-top:12px;padding:4px 9px;border-radius:7px;background:rgb(255 255 255/.09);color:#e4e7ee;font-size:11px;font-weight:750}
+.dx-card-title{margin-top:10px;font-size:19px;font-weight:800;letter-spacing:-.4px;line-height:1.2}
+.dx-card-sum{margin-top:6px;font-size:13px;line-height:1.5;color:var(--ink-soft,#9299aa);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.dx-skel{height:260px;border-radius:var(--nx-r);background:linear-gradient(100deg,rgb(255 255 255/.03) 30%,rgb(255 255 255/.08) 50%,rgb(255 255 255/.03) 70%);background-size:200% 100%;animation:dxSkel 1.4s linear infinite}
+@keyframes dxSkel{to{background-position:-200% 0}}
+.dx-state{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px 16px;text-align:center;border:1px dashed var(--stroke,#2b303b);border-radius:var(--nx-r)}
+.dx-state p{margin:0;color:var(--ink-soft,#9299aa);font-size:13.5px}
+.dx-offline{margin:0 0 14px;padding:9px 14px;border-radius:calc(var(--nx-r) - 4px);background:rgb(var(--nx-rgb)/.1);border:1px solid rgb(var(--nx-rgb)/.3);font-size:12.5px;color:var(--orange2,#ffe0a1)}
+.dx-cats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:0 0 30px}
+.dx-cat{display:flex;align-items:center;gap:16px;padding:16px;border-radius:var(--nx-r);border:var(--nx-bw) solid var(--stroke,#2b303b);background:color-mix(in srgb,var(--surface,#12151c) calc(var(--nx-panel)*100%),transparent);color:#fff;text-align:left;cursor:pointer;transition:border-color .2s ease,transform .2s var(--ui-ease,ease)}
+.dx-cat:hover{border-color:rgb(var(--nx-rgb)/.6);transform:translateY(-2px)}
+.dx-cat .dx-thumb{width:96px;aspect-ratio:1;flex:none;border-radius:calc(var(--nx-r) - 4px)}.dx-cat .dx-thumb svg{width:38px;height:38px}
+.dx-cat b{display:block;font-size:18px;font-weight:800;letter-spacing:-.3px}.dx-cat small{display:block;margin-top:4px;color:var(--ink-soft,#9299aa);font-size:12.5px;line-height:1.5}
+/* reader */
+.dx-article{max-width:760px}
+.dx-back{margin:0 0 14px;padding:7px 12px;border-radius:999px;border:1px solid var(--stroke,#2b303b);background:rgb(255 255 255/.04);color:#e4e7ee;font-size:12.5px;font-weight:650;cursor:pointer}
+.dx-back:hover{border-color:rgb(var(--nx-rgb)/.6)}
+.dx-dochead h1{margin:6px 0 10px;font-size:38px;line-height:1.08;font-weight:800;letter-spacing:-1.2px}
+.dx-lede{margin:0;font-size:15px;line-height:1.6;color:var(--ink-soft,#9299aa)}
+.dx-meta{display:flex;align-items:center;gap:12px;margin:14px 0 18px}.dx-meta .dx-pill{margin:0}.dx-date{font-size:12px;color:var(--ink-soft,#9299aa)}
+.dx-banner{display:grid;place-items:center;height:170px;border-radius:var(--nx-r);color:#fff;margin:0 0 26px}.dx-banner .dx-ico svg{filter:drop-shadow(0 2px 8px rgb(0 0 0/.2))}
+.dx-prose{font-size:14.5px;line-height:1.75;color:#e3e6ee}
+.dx-prose h2{margin:34px 0 10px;font-size:23px;font-weight:800;letter-spacing:-.5px;color:#fff;scroll-margin-top:70px}
+.dx-prose h3{margin:24px 0 8px;font-size:17px;font-weight:750;color:#fff;scroll-margin-top:70px}
+.dx-prose p{margin:0 0 14px}.dx-prose ul,.dx-prose ol{margin:0 0 16px;padding-left:22px}.dx-prose li{margin:5px 0}
+.dx-prose strong{color:#fff}
+.dx-prose code{font-family:ui-monospace,"Cascadia Code",Consolas,Menlo,monospace;font-size:.9em;padding:2px 6px;border-radius:6px;background:rgb(255 255 255/.08)}
+.dx-prose pre{margin:0 0 16px;padding:14px 16px;border-radius:calc(var(--nx-r) - 4px);background:rgb(0 0 0/.35);border:1px solid var(--stroke,#2b303b);overflow:auto}.dx-prose pre code{background:none;padding:0}
+.dx-link{color:var(--orange2,#ffe0a1);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.dx-callout{margin:0 0 16px;padding:12px 16px;border-radius:calc(var(--nx-r) - 4px);border:1px solid rgb(var(--nx-rgb)/.35);border-left-width:4px;background:rgb(var(--nx-rgb)/.09);font-size:13.5px}
+.dx-fig{display:block;margin:0 0 18px}.dx-fig img{display:block;max-width:100%;border-radius:calc(var(--nx-r) - 4px);border:1px solid var(--stroke,#2b303b);cursor:zoom-in}
+span.dx-fig{display:inline-block;margin:0}span.dx-fig img{max-height:1.4em;vertical-align:middle;border:0;border-radius:4px}
+.dx-fig figcaption{margin-top:7px;text-align:center;font-size:12px;color:var(--ink-soft,#9299aa)}
+.dx-missing{font-size:12.5px;color:var(--ink-soft,#9299aa);font-style:italic}
+.dx-loading{color:var(--ink-soft,#9299aa)}
+.dx-next{display:block;width:100%;margin-top:34px;padding:14px 18px;text-align:left;border-radius:var(--nx-r);border:var(--nx-bw) solid var(--stroke,#2b303b);background:color-mix(in srgb,var(--surface,#12151c) calc(var(--nx-panel)*100%),transparent);color:#fff;cursor:pointer}
+.dx-next:hover{border-color:rgb(var(--nx-rgb)/.6)}.dx-next small{display:block;font-size:11px;color:var(--ink-soft,#9299aa);text-transform:uppercase;letter-spacing:.8px;font-weight:700}.dx-next b{font-size:16px}
+.dx-lightbox{position:fixed;inset:0;z-index:2147482000;display:grid;place-items:center;background:rgb(0 0 0/.82);cursor:zoom-out;padding:30px}.dx-lightbox img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 30px 80px rgb(0 0 0/.6)}
+@media(max-width:1100px){.dx-layout{grid-template-columns:minmax(0,1fr)}.dx-rail{display:none}.dx-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.dx-grid,.dx-cats{grid-template-columns:1fr}.dx-hero h1{font-size:34px}.dx-search{width:100%}.dx-top{flex-wrap:wrap;padding-bottom:10px}}
 </style>
 </head>
 <body>
 <div class="nx-splash" id="nxSplash" data-phase="check" role="status" aria-live="polite"><div class="nx-splash-in"><div class="nx-splash-mark"><svg viewBox="0 0 100 100" aria-hidden="true"><rect class="ring" x="6" y="6" width="88" height="88" rx="24"/><g class="glyph-g" transform="translate(7 5) scale(.86)"><path class="glyph" d="M27 18v42M27 18h31M27 42h29"/><path class="glyph" d="M56 18c20 0 26 9 26 21S75 60 56 60"/><path class="glyph" d="M31 70 18 91M48 70 35 91"/></g></svg></div><div class="nx-splash-word" aria-label="PlazCode"><span style="animation-delay:0.55s">P</span><span style="animation-delay:0.61s">l</span><span style="animation-delay:0.66s">a</span><span style="animation-delay:0.72s">z</span><span class="c" style="animation-delay:0.77s">C</span><span class="c" style="animation-delay:0.83s">o</span><span class="c" style="animation-delay:0.88s">d</span><span class="c" style="animation-delay:0.94s">e</span></div><div class="nx-splash-title" id="nxSplashTitle">Checking for updates…</div><div class="nx-splash-msg" id="nxSplashMsg">Talking to the update server.</div><div class="nx-splash-bar" id="nxSplashBar"></div></div><div class="nx-splash-ver">PlazCode v__PLAZCODE_VERSION__</div></div>
 <div class="app"><div class="nx-wall" id="nxWall" aria-hidden="true"></div><div class="nx-wall-dim" aria-hidden="true"></div>
-  <aside class="sidebar"><div class="nx-sidehead"><h2 id="sideTitle">Home</h2><button class="softbtn" id="sidebarCollapse" aria-label="Collapse page names" aria-expanded="true" title="Show or hide page names"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button></div><div class="nx-sidesearch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/></svg><input id="nxSideSearch" type="search" placeholder="Search pages" aria-label="Search pages" autocomplete="off"></div><nav class="nav" aria-label="Pages"><button class="navbtn active" data-page="home" data-area="home"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="m2.5 10.6 9.5-8.1 9.5 8.1-1.8 2.1L12 6l-7.7 6.7z"/><path d="M5.5 12v9h4v-6h5v6h4v-9M16.5 6V3.5h2V8"/></svg><span class="navlabel">Overview</span></button><button class="navbtn" data-page="account" data-area="home"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><span class="navlabel">Account</span></button><button class="navbtn" data-page="updates" data-area="home"><svg class="navicon" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg><span class="navlabel">Update Log</span></button><button class="navbtn" data-page="explorer" data-area="workspace" title="Explorer"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v5H4zM14 15h6v5h-6zM4 15h6v5H4zM7 9v6M7 12h10v3"/></svg><span class="navlabel">Explorer</span></button><button class="navbtn" data-page="skills" data-area="workspace" title="Skills"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h7l2 3h7v15H4zM8 10h8M8 14h8M8 18h5"/></svg><span class="navlabel">Skills</span></button><button class="navbtn" data-page="templates" data-area="workspace"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19V6a2 2 0 0 1 2-2h2M7 14V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7M10 5h6M10 8h4M19 7a3 3 0 0 1 3 3v1"/><path d="m3 19 3.2-7a3 3 0 0 1 2.7-1.8h12a1.5 1.5 0 0 1 1.4 2l-2.7 7a3 3 0 0 1-2.8 1.8H5a2 2 0 0 1-2-2z"/></svg><span class="navlabel">Templates</span></button><button class="navbtn" data-page="toolkit" data-area="workspace"><svg class="navicon" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="3"/><path d="M8 7V4h8v3M3 12h18M10 12v3h4v-3"/></svg><span class="navlabel">Toolkit</span></button><button class="navbtn" data-page="tools" data-area="connections"><svg class="navicon" viewBox="32.2 -15.8 592.5 590.5" aria-hidden="true"><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M512,1 L527,1 L537,6 L603,72 L609,86 L607,100 L603,107 L404,305 L438,339 L468,333 L494,334 L512,338 L539,350 L552,359 L568,375 L584,402 L589,417 L592,434 L591,464 L583,491 L578,495 L569,494 L503,427 L494,425 L489,427 L460,456 L458,459 L458,468 L488,499 L490,499 L518,528 L526,534 L528,538 L526,547 L519,551 L498,557 L465,558 L437,551 L421,543 L408,534 L391,517 L381,502 L372,482 L366,454 L366,431 L372,406 L312,347 L183,476 L169,502 L162,510 L122,536 L88,559 L80,559 L51,531 L51,519 L99,447 L107,440 L134,425 L262,296 L203,237 L179,243 L151,243 L139,241 L122,236 L103,227 L78,207 L78,205 L69,196 L59,179 L50,149 L50,117 L54,98 L59,85 L66,81 L73,83 L138,149 L142,151 L151,151 L183,120 L184,109 L115,42 L113,37 L114,32 L121,26 L141,20 L155,18 L180,19 L210,28 L235,44 L249,58 L261,76 L271,101 L275,122 L275,147 L269,170 L305,205 L306,202 L502,6 Z M518,19 L515,20 L319,216 L318,222 L320,225 L320,231 L316,236 L288,247 L288,256 L353,321 L359,322 L363,320 L372,295 L376,290 L393,290 L589,94 L590,87 L588,83 L527,22 L522,19 Z M154,37 L142,39 L141,41 L189,88 L191,88 L200,99 L203,108 L203,120 L198,131 L164,165 L153,170 L140,170 L127,164 L73,109 L71,109 L69,116 L68,143 L71,158 L79,177 L88,190 L101,203 L116,213 L135,221 L158,225 L170,224 L185,223 L200,218 L213,221 L276,283 L282,275 L270,262 L268,252 L269,244 L277,231 L289,227 L295,224 L295,222 L254,182 L252,178 L251,164 L255,154 L257,139 L256,119 L249,94 L237,73 L219,55 L200,44 L180,38 Z M510,49 L520,51 L523,57 L522,63 L361,223 L354,223 L350,220 L348,216 L350,208 Z M549,86 L558,89 L560,93 L559,101 L401,259 L396,260 L394,261 L387,257 L387,246 L546,87 Z M295,290 L145,440 L115,457 L71,523 L71,525 L84,538 L91,534 L152,494 L168,465 L319,315 L319,312 L297,290 Z M386,313 L378,332 L368,339 L351,340 L345,338 L334,327 L332,327 L326,334 L386,393 L390,400 L391,408 L385,430 L385,455 L393,484 L407,507 L429,526 L454,537 L473,540 L501,537 L445,483 L442,476 L439,470 L439,458 L444,446 L478,412 L485,408 L495,406 L504,407 L514,412 L569,468 L571,468 L573,459 L573,432 L569,415 L564,403 L552,385 L541,374 L528,365 L504,355 L488,352 L466,352 L444,358 L431,357 L426,354 Z"/></svg><span class="navlabel">Tools</span></button><button class="navbtn" data-page="mcp" data-area="connections"><svg class="navicon" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/><circle cx="6" cy="5" r="1"/><circle cx="18" cy="12" r="1"/><circle cx="9" cy="19" r="1"/></svg><span class="navlabel">MCP Servers</span></button><button class="navbtn" data-page="settings" data-area="settings"><svg class="navicon" viewBox="20 20 220 220" aria-hidden="true" style="stroke-width:11"><path d="M168 98L183 105L197 94L213 110L201 123L209 142H227V167H209L201 185L214 198L196 216L182 204L165 211V229H141V211L123 204L109 217L92 199L105 185L99 169"/><circle cx="154" cy="155" r="32"/><path d="M143 35C116 28 92 51 103 80L62 146C42 143 25 161 31 179C37 199 62 207 78 194C89 185 94 173 87 160L129 100C157 104 180 79 164 49L145 76L122 61Z"/><circle cx="60" cy="173" r="12"/></svg><span class="navlabel">General</span></button><button class="navbtn" data-page="appearance" data-area="settings"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.6 0 2.2-1.1 1.6-2.4-.6-1.4.3-2.6 1.8-2.6H18a3 3 0 0 0 3-3c0-5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7.5" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><span class="navlabel">Appearance</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="memory"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a2 2 0 0 0-3-1zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/></svg><span class="navlabel">Memory</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="safety"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span class="navlabel">Safety</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="debug"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/></svg><span class="navlabel">Debug</span></button><button class="navbtn" data-page="terminal" data-area="support"><svg class="navicon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg><span class="navlabel">Terminal</span></button><button class="navbtn" data-page="donations" data-area="support"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/></svg><span class="navlabel">Donations</span></button></nav><div class="nx-spacer"></div><div class="nx-sep"></div><div class="nx-links"><button type="button" class="nx-link" data-ipc="open:discord"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M7 7c3-1.2 7-1.2 10 0l2 9c-1.5 1.4-3 2-4.5 2.4l-1-1.6M17 7l-2-.6M7 7l2-.6M5 16c1.5 1.4 3 2 4.5 2.4l1-1.6"/><circle cx="9.3" cy="12" r="1"/><circle cx="14.7" cy="12" r="1"/></svg><div><b>Discord</b><small>Join the community</small></div><span class="nx-arrow">↗</span></button><button type="button" class="nx-link" data-ipc="open:github"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M9 19c-4 1.3-4-2-6-2.5m12 4.5v-3.2a2.8 2.8 0 0 0-.8-2.2c2.700-.3 5.500-1.300 5.500-6a4.600 4.600 0 0 0-1.300-3.200 4.300 4.300 0 0 0-.1-3.200s-1-.3-3.300 1.300a11.400 11.400 0 0 0-6 0C6.700 3 5.700 3.300 5.700 3.300a4.300 4.300 0 0 0-.1 3.200A4.600 4.600 0 0 0 4.300 9.700c0 4.600 2.800 5.600 5.500 6a2.800 2.800 0 0 0-.8 2.200V21"/></svg><div><b>GitHub</b><small>Downloads &amp; updates</small></div><span class="nx-arrow">↗</span></button></div><div class="nx-sep"></div><button id="killStudio" class="dangerbtn" style="margin-top:auto;margin-bottom:10px;padding:10px" title="Force-close Roblox Studio, including frozen processes">Kill Roblox Studio</button><div class="side-status" style="margin-top:0"><div class="status-row"><span id="sideDot" class="dot"></span><span id="sideStatus">Bridge waiting</span></div><div class="side-sub">127.0.0.1:3000</div><div class="status-row" style="margin-top:10px" title="Studio process and MCP connection status"><span id="sideStudioDot" class="dot"></span><span id="sideStudioStatus">Studio waiting</span></div></div><button type="button" class="nx-account" data-page="account" data-area="home"><span class="nx-avatar">G</span><div><b>Guest</b><small>Not signed in</small></div></button><div class="nx-ver"><span id="sidebarVersion">v__PLAZCODE_VERSION__ (Not checked)</span><div class="desktop-effort" id="sidebarEffort">Effort: <span data-effort-value>Default</span></div></div></aside>
+  <aside class="sidebar"><div class="nx-sidehead"><h2 id="sideTitle">Home</h2><button class="softbtn" id="sidebarCollapse" aria-label="Collapse page names" aria-expanded="true" title="Show or hide page names"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button></div><div class="nx-sidesearch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/></svg><input id="nxSideSearch" type="search" placeholder="Search pages" aria-label="Search pages" autocomplete="off"></div><nav class="nav" aria-label="Pages"><button class="navbtn active" data-page="home" data-area="home"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="m2.5 10.6 9.5-8.1 9.5 8.1-1.8 2.1L12 6l-7.7 6.7z"/><path d="M5.5 12v9h4v-6h5v6h4v-9M16.5 6V3.5h2V8"/></svg><span class="navlabel">Overview</span></button><button class="navbtn" data-page="account" data-area="home"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><span class="navlabel">Account</span></button><button class="navbtn" data-page="updates" data-area="home"><svg class="navicon" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg><span class="navlabel">Update Log</span></button><button class="navbtn" data-page="explorer" data-area="workspace" title="Explorer"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v5H4zM14 15h6v5h-6zM4 15h6v5H4zM7 9v6M7 12h10v3"/></svg><span class="navlabel">Explorer</span></button><button class="navbtn" data-page="skills" data-area="workspace" title="Skills"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h7l2 3h7v15H4zM8 10h8M8 14h8M8 18h5"/></svg><span class="navlabel">Skills</span></button><button class="navbtn" data-page="templates" data-area="workspace"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19V6a2 2 0 0 1 2-2h2M7 14V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7M10 5h6M10 8h4M19 7a3 3 0 0 1 3 3v1"/><path d="m3 19 3.2-7a3 3 0 0 1 2.7-1.8h12a1.5 1.5 0 0 1 1.4 2l-2.7 7a3 3 0 0 1-2.8 1.8H5a2 2 0 0 1-2-2z"/></svg><span class="navlabel">Templates</span></button><button class="navbtn" data-page="toolkit" data-area="workspace"><svg class="navicon" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="3"/><path d="M8 7V4h8v3M3 12h18M10 12v3h4v-3"/></svg><span class="navlabel">Toolkit</span></button><button class="navbtn" data-page="tools" data-area="connections"><svg class="navicon" viewBox="32.2 -15.8 592.5 590.5" aria-hidden="true"><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M512,1 L527,1 L537,6 L603,72 L609,86 L607,100 L603,107 L404,305 L438,339 L468,333 L494,334 L512,338 L539,350 L552,359 L568,375 L584,402 L589,417 L592,434 L591,464 L583,491 L578,495 L569,494 L503,427 L494,425 L489,427 L460,456 L458,459 L458,468 L488,499 L490,499 L518,528 L526,534 L528,538 L526,547 L519,551 L498,557 L465,558 L437,551 L421,543 L408,534 L391,517 L381,502 L372,482 L366,454 L366,431 L372,406 L312,347 L183,476 L169,502 L162,510 L122,536 L88,559 L80,559 L51,531 L51,519 L99,447 L107,440 L134,425 L262,296 L203,237 L179,243 L151,243 L139,241 L122,236 L103,227 L78,207 L78,205 L69,196 L59,179 L50,149 L50,117 L54,98 L59,85 L66,81 L73,83 L138,149 L142,151 L151,151 L183,120 L184,109 L115,42 L113,37 L114,32 L121,26 L141,20 L155,18 L180,19 L210,28 L235,44 L249,58 L261,76 L271,101 L275,122 L275,147 L269,170 L305,205 L306,202 L502,6 Z M518,19 L515,20 L319,216 L318,222 L320,225 L320,231 L316,236 L288,247 L288,256 L353,321 L359,322 L363,320 L372,295 L376,290 L393,290 L589,94 L590,87 L588,83 L527,22 L522,19 Z M154,37 L142,39 L141,41 L189,88 L191,88 L200,99 L203,108 L203,120 L198,131 L164,165 L153,170 L140,170 L127,164 L73,109 L71,109 L69,116 L68,143 L71,158 L79,177 L88,190 L101,203 L116,213 L135,221 L158,225 L170,224 L185,223 L200,218 L213,221 L276,283 L282,275 L270,262 L268,252 L269,244 L277,231 L289,227 L295,224 L295,222 L254,182 L252,178 L251,164 L255,154 L257,139 L256,119 L249,94 L237,73 L219,55 L200,44 L180,38 Z M510,49 L520,51 L523,57 L522,63 L361,223 L354,223 L350,220 L348,216 L350,208 Z M549,86 L558,89 L560,93 L559,101 L401,259 L396,260 L394,261 L387,257 L387,246 L546,87 Z M295,290 L145,440 L115,457 L71,523 L71,525 L84,538 L91,534 L152,494 L168,465 L319,315 L319,312 L297,290 Z M386,313 L378,332 L368,339 L351,340 L345,338 L334,327 L332,327 L326,334 L386,393 L390,400 L391,408 L385,430 L385,455 L393,484 L407,507 L429,526 L454,537 L473,540 L501,537 L445,483 L442,476 L439,470 L439,458 L444,446 L478,412 L485,408 L495,406 L504,407 L514,412 L569,468 L571,468 L573,459 L573,432 L569,415 L564,403 L552,385 L541,374 L528,365 L504,355 L488,352 L466,352 L444,358 L431,357 L426,354 Z"/></svg><span class="navlabel">Tools</span></button><button class="navbtn" data-page="mcp" data-area="connections"><svg class="navicon" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/><circle cx="6" cy="5" r="1"/><circle cx="18" cy="12" r="1"/><circle cx="9" cy="19" r="1"/></svg><span class="navlabel">MCP Servers</span></button><button class="navbtn" data-page="docs" data-area="docs"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M9 7h6"/></svg><span class="navlabel">Overview</span></button><button class="navbtn" data-page="guides" data-area="docs"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg><span class="navlabel">Guides</span></button><button class="navbtn" data-page="troubleshooting" data-area="docs"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/></svg><span class="navlabel">Troubleshooting</span></button><button class="navbtn" data-page="settings" data-area="settings"><svg class="navicon" viewBox="20 20 220 220" aria-hidden="true" style="stroke-width:11"><path d="M168 98L183 105L197 94L213 110L201 123L209 142H227V167H209L201 185L214 198L196 216L182 204L165 211V229H141V211L123 204L109 217L92 199L105 185L99 169"/><circle cx="154" cy="155" r="32"/><path d="M143 35C116 28 92 51 103 80L62 146C42 143 25 161 31 179C37 199 62 207 78 194C89 185 94 173 87 160L129 100C157 104 180 79 164 49L145 76L122 61Z"/><circle cx="60" cy="173" r="12"/></svg><span class="navlabel">General</span></button><button class="navbtn" data-page="appearance" data-area="settings"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.6 0 2.2-1.1 1.6-2.4-.6-1.4.3-2.6 1.8-2.6H18a3 3 0 0 0 3-3c0-5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7.5" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><span class="navlabel">Appearance</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="memory"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a2 2 0 0 0-3-1zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/></svg><span class="navlabel">Memory</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="safety"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span class="navlabel">Safety</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="debug"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/></svg><span class="navlabel">Debug</span></button><button class="navbtn" data-page="terminal" data-area="support"><svg class="navicon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg><span class="navlabel">Terminal</span></button><button class="navbtn" data-page="donations" data-area="support"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/></svg><span class="navlabel">Donations</span></button></nav><div class="nx-spacer"></div><div class="nx-sep"></div><div class="nx-links"><button type="button" class="nx-link" data-ipc="open:discord"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M7 7c3-1.2 7-1.2 10 0l2 9c-1.5 1.4-3 2-4.5 2.4l-1-1.6M17 7l-2-.6M7 7l2-.6M5 16c1.5 1.4 3 2 4.5 2.4l1-1.6"/><circle cx="9.3" cy="12" r="1"/><circle cx="14.7" cy="12" r="1"/></svg><div><b>Discord</b><small>Join the community</small></div><span class="nx-arrow">↗</span></button><button type="button" class="nx-link" data-ipc="open:github"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M9 19c-4 1.3-4-2-6-2.5m12 4.5v-3.2a2.8 2.8 0 0 0-.8-2.2c2.700-.3 5.500-1.300 5.500-6a4.600 4.600 0 0 0-1.300-3.200 4.300 4.300 0 0 0-.1-3.200s-1-.3-3.300 1.300a11.400 11.400 0 0 0-6 0C6.700 3 5.700 3.300 5.700 3.300a4.300 4.300 0 0 0-.1 3.200A4.600 4.600 0 0 0 4.300 9.700c0 4.600 2.800 5.600 5.500 6a2.800 2.800 0 0 0-.8 2.200V21"/></svg><div><b>GitHub</b><small>Downloads &amp; updates</small></div><span class="nx-arrow">↗</span></button></div><div class="nx-sep"></div><button id="killStudio" class="dangerbtn" style="margin-top:auto;margin-bottom:10px;padding:10px" title="Force-close Roblox Studio, including frozen processes">Kill Roblox Studio</button><div class="side-status" style="margin-top:0"><div class="status-row"><span id="sideDot" class="dot"></span><span id="sideStatus">Bridge waiting</span></div><div class="side-sub">127.0.0.1:3000</div><div class="status-row" style="margin-top:10px" title="Studio process and MCP connection status"><span id="sideStudioDot" class="dot"></span><span id="sideStudioStatus">Studio waiting</span></div></div><button type="button" class="nx-account" data-page="account" data-area="home"><span class="nx-avatar">G</span><div><b>Guest</b><small>Not signed in</small></div></button><div class="nx-ver"><span id="sidebarVersion">v__PLAZCODE_VERSION__ (Not checked)</span><div class="desktop-effort" id="sidebarEffort">Effort: <span data-effort-value>Default</span></div></div></aside>
   <main class="shell">
     <div class="titlebar" id="dragbar">
-      <div class="tb-brand"><span class="tb-logo"><svg viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="var(--orange2,#ffe0a1)" stroke-width="9" stroke-linecap="round"><path d="M27 18v42M27 18h31M27 42h29"/><path d="M56 18c20 0 26 9 26 21S75 60 56 60"/><path d="M31 70 18 91M48 70 35 91"/></g></svg></span><span>Plaz<em>Code</em></span></div><nav class="nx-areabar" id="areaBar" aria-label="Sections"><button type="button" class="nx-area active" data-area="home" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-7.5 9 7.5M5.5 9.5V20h13V9.5M10 20v-6h4v6"/></svg><span>Home</span></button><button type="button" class="nx-area" data-area="workspace" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Workspace</span></button><button type="button" class="nx-area" data-area="connections" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></svg><span>Connections</span></button><button type="button" class="nx-area" data-area="settings" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg><span>Settings</span></button><button type="button" class="nx-area" data-area="support" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="m5.6 5.6 3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9"/></svg><span>Support</span></button></nav><div class="title-spacer"></div><div id="notificationCenter" dir="auto"></div><div class="desktop-version-stack"><div class="title-version" id="titleVersion">PlazCode v__PLAZCODE_VERSION__ (Not checked)</div><div class="desktop-effort" id="titleEffort">Effort: <span data-effort-value>Default</span></div></div>
+      <div class="tb-brand"><span class="tb-logo"><svg viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="var(--orange2,#ffe0a1)" stroke-width="9" stroke-linecap="round"><path d="M27 18v42M27 18h31M27 42h29"/><path d="M56 18c20 0 26 9 26 21S75 60 56 60"/><path d="M31 70 18 91M48 70 35 91"/></g></svg></span><span>Plaz<em>Code</em></span></div><nav class="nx-areabar" id="areaBar" aria-label="Sections"><button type="button" class="nx-area active" data-area="home" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-7.5 9 7.5M5.5 9.5V20h13V9.5M10 20v-6h4v6"/></svg><span>Home</span></button><button type="button" class="nx-area" data-area="workspace" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Workspace</span></button><button type="button" class="nx-area" data-area="connections" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></svg><span>Connections</span></button><button type="button" class="nx-area" data-area="docs" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M9 7h6"/></svg><span>Documentation</span></button><button type="button" class="nx-area" data-area="settings" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg><span>Settings</span></button><button type="button" class="nx-area" data-area="support" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="m5.6 5.6 3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9"/></svg><span>Support</span></button></nav><div class="title-spacer"></div><div id="notificationCenter" dir="auto"></div><div class="desktop-version-stack"><div class="title-version" id="titleVersion">PlazCode v__PLAZCODE_VERSION__ (Not checked)</div><div class="desktop-effort" id="titleEffort">Effort: <span data-effort-value>Default</span></div></div>
       <button class="winbtn" data-ipc="minimize" aria-label="Minimize"><span class="winicon min"></span></button><button class="winbtn" data-ipc="maximize" aria-label="Maximize"><span class="winicon max"></span></button><button class="winbtn close" data-ipc="hide" aria-label="Close"><span class="winicon close"></span></button>
     </div>
     <div class="content" id="content">
@@ -628,6 +712,30 @@ html[data-look-rainbow] :is(.nx-card,.nx-row,.nx-theme,html[data-desktop-theme] 
         <div id="updateReleaseNotes" data-i18n-user-content dir="auto" class="update-release-notes" aria-label="Release notes"></div>
       </section>
       <div id="updateOverlay" class="enhancer-modal" hidden role="dialog" aria-modal="true" aria-label="PlazCode update progress"><div class="settingcard update-progress"><div class="update-spinner" aria-hidden="true"><svg viewBox="0 0 80 80"><circle class="swirl-track" cx="40" cy="40" r="31"/><circle class="swirl-outer" cx="40" cy="40" r="31"/><circle class="swirl-inner" cx="40" cy="40" r="21"/><circle class="swirl-core" cx="40" cy="40" r="5"/></svg></div><span class="eyebrow update-eyebrow">PLAZCODE UPDATE</span><h2 id="updateOverlayTitle">PlazCode is updating</h2><p id="updateOverlayMessage" data-i18n-user-content dir="auto" role="status">Downloading the verified release…</p><progress id="updateProgress" max="100" value="0"></progress><p id="updateOverlayHint">Keep this window open. PlazCode will reopen when it finishes.</p><pre id="updateError" data-i18n-user-content dir="ltr" hidden></pre><button id="closeUpdateError" class="softbtn" hidden>Close</button></div></div>
+      <section class="page" id="page-docs">
+        <div class="dx-top"><nav class="dx-tabs" aria-label="Documentation"><button type="button" data-go="guides"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg><span>Guides</span></button><button type="button" data-go="troubleshooting"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/></svg><span>Troubleshooting</span></button><button type="button" data-go="updates"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6"/></svg><span>Release notes</span></button></nav><div class="dx-search" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/></svg><input type="search" placeholder="Search guides" aria-label="Search guides" autocomplete="off" spellcheck="false"><kbd>/</kbd><div class="dx-results nx-off" role="listbox"></div></div></div><div class="dx-offline nx-off" data-dx-offline>You are offline. Showing the last guides saved on this computer.</div>
+        <header class="dx-hero"><div class="dx-eyebrow">PLAZCODE DOCUMENTATION</div><h1>Learn PlazCode</h1><p>Step-by-step guides for setting things up, and fixes for when something goes wrong.</p></header>
+        <div class="dx-cats"><button type="button" class="dx-cat" data-dx-cat="guides"><span class="dx-thumb dg-violet"><span class="dx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M9 7h6"/></svg></span></span><span><b>Guides</b><small>Install, connect your AI and learn every feature.</small><small data-dx-count="guides"></small></span></button><button type="button" class="dx-cat" data-dx-cat="troubleshooting"><span class="dx-thumb dg-orange"><span class="dx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/></svg></span></span><span><b>Troubleshooting</b><small>Quick fixes for common problems.</small><small data-dx-count="troubleshooting"></small></span></button></div>
+        <div class="dx-listhead"><div><div class="dx-eyebrow">LATEST</div><h2>Newest articles</h2></div></div><div class="dx-grid" data-dx-list="latest"></div>
+      </section>
+      <section class="page" id="page-guides">
+        <div class="dx-top"><nav class="dx-tabs" aria-label="Documentation"><button type="button" data-go="guides" class="active"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg><span>Guides</span></button><button type="button" data-go="troubleshooting"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/></svg><span>Troubleshooting</span></button><button type="button" data-go="updates"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6"/></svg><span>Release notes</span></button></nav><div class="dx-search" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/></svg><input type="search" placeholder="Search guides" aria-label="Search guides" autocomplete="off" spellcheck="false"><kbd>/</kbd><div class="dx-results nx-off" role="listbox"></div></div></div><div class="dx-offline nx-off" data-dx-offline>You are offline. Showing the last guides saved on this computer.</div>
+        <div class="dx-layout"><aside class="dx-rail"><div class="dx-rail-h">On this page</div><a href="#" data-dx-anchor="dx-guides-top">Overview</a><a href="#" data-dx-anchor="dx-guides-list">Guides</a></aside>
+          <div class="dx-main"><header class="dx-hero" id="dx-guides-top"><div class="dx-eyebrow">PLAZCODE DOCUMENTATION</div><h1>Guides</h1><p>Install PlazCode, connect your AI, and learn every feature.</p></header>
+            <section id="dx-guides-list"><div class="dx-listhead"><div><div class="dx-eyebrow">GUIDES</div><h2>Browse guides</h2></div><span class="dx-count" data-dx-count="guides"></span></div><div class="dx-grid" data-dx-list="guides"></div></section>
+          </div></div>
+      </section>
+      <section class="page" id="page-troubleshooting">
+        <div class="dx-top"><nav class="dx-tabs" aria-label="Documentation"><button type="button" data-go="guides"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg><span>Guides</span></button><button type="button" data-go="troubleshooting" class="active"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/></svg><span>Troubleshooting</span></button><button type="button" data-go="updates"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6"/></svg><span>Release notes</span></button></nav><div class="dx-search" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/></svg><input type="search" placeholder="Search guides" aria-label="Search guides" autocomplete="off" spellcheck="false"><kbd>/</kbd><div class="dx-results nx-off" role="listbox"></div></div></div><div class="dx-offline nx-off" data-dx-offline>You are offline. Showing the last guides saved on this computer.</div>
+        <div class="dx-layout"><aside class="dx-rail"><div class="dx-rail-h">On this page</div><a href="#" data-dx-anchor="dx-troubleshooting-top">Overview</a><a href="#" data-dx-anchor="dx-troubleshooting-list">Articles</a></aside>
+          <div class="dx-main"><header class="dx-hero" id="dx-troubleshooting-top"><div class="dx-eyebrow">PLAZCODE DOCUMENTATION</div><h1>Troubleshooting</h1><p>Find a fix for the problem you are seeing, one short article at a time.</p></header>
+            <section id="dx-troubleshooting-list"><div class="dx-listhead"><div><div class="dx-eyebrow">TROUBLESHOOTING</div><h2>Browse troubleshooting</h2></div><span class="dx-count" data-dx-count="troubleshooting"></span></div><div class="dx-grid" data-dx-list="troubleshooting"></div></section>
+          </div></div>
+      </section>
+      <section class="page" id="page-doc">
+        <div class="dx-top"><nav class="dx-tabs" aria-label="Documentation"><button type="button" data-go="guides"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg><span>Guides</span></button><button type="button" data-go="troubleshooting"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/></svg><span>Troubleshooting</span></button><button type="button" data-go="updates"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6"/></svg><span>Release notes</span></button></nav><div class="dx-search" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/></svg><input type="search" placeholder="Search guides" aria-label="Search guides" autocomplete="off" spellcheck="false"><kbd>/</kbd><div class="dx-results nx-off" role="listbox"></div></div></div>
+        <div class="dx-layout"><aside class="dx-rail" id="dxDocRail"></aside><article class="dx-article"><button type="button" class="dx-back" id="dxBack">← Back</button><div id="dxDocBody"></div></article></div>
+      </section>
       <section class="page" id="page-appearance">
         <div class="nx-pagehead"><div><h1>Appearance</h1><p>Make PlazCode look the way you like. Looks are saved on this computer.</p></div><button type="button" class="nx-btn ghost" id="nxLookReset">Reset look</button></div>
         <div class="nx-block"><h2>Color theme</h2><p>Themes also color the PlazCode bar in your browser. A custom color only changes this app.</p><div class="nx-themes" id="nxThemes" role="group" aria-label="Color theme"></div><div class="nx-custom nx-off" id="nxCustomPanel"><input type="color" id="nxCustomColor" value="#e9ba53" aria-label="Custom color"><input type="text" id="nxCustomHex" maxlength="7" placeholder="#e9ba53" aria-label="Custom color code"><button type="button" class="nx-btn" id="nxCustomApply">Use this color</button><button type="button" class="nx-btn ghost" id="nxCustomRemove">Remove custom</button></div></div>
@@ -889,7 +997,7 @@ __PLAZCODE_VERSION_UI__
     if(Name === "explorer")Explorerui.refresh();
     if(Name === "skills")Skillsui.refresh();
     if(Name === "toolkit")Toolkitui.refresh();
-    try { Nxarea(Name, Cat); } catch (Error) {}
+    try { Nxarea(Name, Cat); } catch (Error) {} try { Dxshow(Name); } catch (Error) {}
     var Content = Byid("content");
     if (Content) {
       Content.scrollTop = 0;
@@ -1324,8 +1432,8 @@ __PLAZCODE_VERSION_UI__
     return Appearancewrites;
   }
   /* ===== New layout: areas, overview, look, startup intro ===== */
-  var NXAREAS = {home:'Home',workspace:'Workspace',connections:'Connections',settings:'Settings',support:'Support'};
-  var NXAREAHOME = {home:['home',''],workspace:['explorer',''],connections:['tools',''],settings:['settings',''],support:['terminal','']};
+  var NXAREAS = {home:'Home',workspace:'Workspace',connections:'Connections',docs:'Documentation',settings:'Settings',support:'Support'};
+  var NXAREAHOME = {home:['home',''],workspace:['explorer',''],connections:['tools',''],docs:['docs',''],settings:['settings',''],support:['terminal','']};
   var NXSETTINGSCAT = {languageSettings:'general',savedChatLogs:'memory',memorySettings:'memory',safetySettings:'safety',debugReport:'debug'};
   var NXCATLABEL = {general:'General',memory:'Memory',safety:'Safety',debug:'Debug'};
   var NXTHEMENAMES = {default:'Default',amethyst:'Amethyst',cyan:'Polar Cyan',rose:'Rose',emerald:'Emerald',graphite:'Graphite',crimson:'Crimson',ocean:'Oceanic',copper:'Copper Atelier',aurora:'Aurora',orchid:'Orchid Noir'};
@@ -1596,12 +1704,270 @@ __PLAZCODE_VERSION_UI__
     };
   }
 
+  /* ===== Documentation: guides and troubleshooting, posted by the owner ===== */
+  var DXBASE = 'https://raw.githubusercontent.com/stoveez/PlazCode/main/guides/';
+  var DXPAGES = ['docs', 'guides', 'troubleshooting', 'doc'];
+  var DXICONS = {
+    download: '<path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/>', user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
+    plug: '<path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/>', rocket: '<path d="M5 19c1-4 3-6 6-7M14 4c4 0 6 2 6 6-2 4-5 7-9 8l-5-5c1-4 4-7 8-9zM15 9h.01M5 15l-2 4 4-2"/>',
+    brain: '<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a2 2 0 0 0-3-1zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/>',
+    palette: '<path d="M12 3a9 9 0 1 0 0 18c1.6 0 2.2-1.1 1.6-2.4-.6-1.4.3-2.6 1.8-2.6H18a3 3 0 0 0 3-3c0-5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7.5" r="1"/><circle cx="15" cy="7.5" r="1"/>',
+    refresh: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/>', cube: '<path d="M12 2 3 7v10l9 5 9-5V7zM3 7l9 5 9-5M12 12v10"/>',
+    eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', warning: '<path d="M12 3 2 20h20zM12 10v5M12 18h.01"/>',
+    bug: '<rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/>', book: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M9 7h6"/>',
+    bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>', folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    terminal: '<path d="M3 5h18v14H3zM7 9l3 3-3 3M13 15h4"/>', wrench: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-3 3-3-1-1-3z"/>',
+    shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>', question: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7M12 17h.01"/>',
+    link: '<path d="M10 14a4 4 0 0 0 5.700 0l3-3a4 4 0 0 0-5.700-5.700l-1 1M14 10a4 4 0 0 0-5.700 0l-3 3a4 4 0 0 0 5.700 5.700l1-1"/>', heart: '<path d="M20.800 4.600a5.500 5.500 0 0 0-7.800 0L12 5.700l-1.100-1.100a5.500 5.500 0 0 0-7.800 7.800L12 21l8.800-8.600a5.500 5.500 0 0 0 0-7.800z"/>'
+  };
+  var Dx = {index: null, status: 'idle', loading: null, loadedAt: 0, bodies: {}, current: null, origin: 'guides', searchBusy: false};
+
+  function Dxel(Tag, Class, Text) { var Node = document.createElement(Tag); if (Class) Node.className = Class; if (Text != null) Node.textContent = Text; return Node; }
+  function Dxsvg(Name, Size) {
+    var Wrap = Dxel('span', 'dx-ico'); Wrap.setAttribute('aria-hidden', 'true');
+    var Body = DXICONS[Name] || DXICONS.book;
+    Wrap.innerHTML = '<svg viewBox="0 0 24 24" width="' + (Size || 24) + '" height="' + (Size || 24) + '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + Body + '</svg>';
+    return Wrap;
+  }
+  function Dxfetch(Url, AsJson) {
+    var Ctl = typeof AbortController === 'function' ? new AbortController() : null, Timer = Ctl ? window.setTimeout(function () { Ctl.abort(); }, 9000) : 0;
+    return fetch(Url, {cache: 'no-cache', signal: Ctl ? Ctl.signal : undefined}).then(function (R) {
+      if (!R.ok) { var E = new Error('HTTP ' + R.status); E.status = R.status; throw E; }
+      return AsJson ? R.json() : R.text();
+    }).finally(function () { if (Timer) window.clearTimeout(Timer); });
+  }
+  function Dxsane(Index) {
+    if (!Index || Index.version !== 1 || !Array.isArray(Index.guides)) return null;
+    var Ok = Index.guides.filter(function (G) { return G && /^[a-z0-9][a-z0-9-]{2,59}$/.test(G.id) && typeof G.title === 'string' && (G.category === 'guides' || G.category === 'troubleshooting'); });
+    return {version: 1, updated: Index.updated, guides: Ok.map(function (G) { return {id: G.id, title: String(G.title).slice(0, 120), summary: String(G.summary || '').slice(0, 300), category: G.category, icon: DXICONS[G.icon] ? G.icon : 'book', gradient: /^[a-z]+$/.test(G.gradient || '') ? G.gradient : 'violet', minutes: Math.max(1, Math.min(60, Number(G.minutes) || 1)), date: String(G.date || ''), order: Number(G.order) || 0}; })};
+  }
+  function Dxloadindex(Force) {
+    if (Dx.loading) return Dx.loading;
+    if (!Force && Dx.index && Date.now() - Dx.loadedAt < 600000) return Promise.resolve(Dx.index);
+    Dx.status = Dx.index ? Dx.status : 'loading'; Dxrenderall();
+    Dx.loading = Dxfetch(DXBASE + 'index.json', true).then(function (Raw) {
+      var Clean = Dxsane(Raw); if (!Clean) throw new Error('bad index');
+      Dx.index = Clean; Dx.status = Clean.guides.length ? 'ok' : 'empty'; Dx.loadedAt = Date.now();
+      try { window.localStorage.setItem('plazcodeDocsIndex', JSON.stringify(Clean)); } catch (Error) {}
+      Dxprefetch();
+    }).catch(function (Error) {
+      if (!Dx.index) {
+        try { var Saved = Dxsane(JSON.parse(window.localStorage.getItem('plazcodeDocsIndex') || 'null')); if (Saved) { Dx.index = Saved; Dx.status = Saved.guides.length ? 'cached' : 'empty'; Dxprefetch(); } } catch (E2) {}
+      }
+      if (!Dx.index) Dx.status = Error && Error.status === 404 ? 'empty' : 'offline';
+    }).then(function () { Dx.loading = null; Dxrenderall(); return Dx.index; });
+    return Dx.loading;
+  }
+  function Dxbody(Id) {
+    if (Dx.bodies[Id] != null) return Promise.resolve(Dx.bodies[Id]);
+    return Dxfetch(DXBASE + encodeURIComponent(Id) + '/guide.md', false).then(function (Text) {
+      Dx.bodies[Id] = Text; try { window.localStorage.setItem('plazcodeDocsBody:' + Id, Text); } catch (Error) {} return Text;
+    }).catch(function (Error) {
+      var Saved = null; try { Saved = window.localStorage.getItem('plazcodeDocsBody:' + Id); } catch (E2) {}
+      if (Saved != null) { Dx.bodies[Id] = Saved; return Saved; }
+      throw Error;
+    });
+  }
+  function Dxprefetch() {
+    if (!Dx.index) return;
+    var Queue = Dx.index.guides.map(function (G) { return G.id; }).filter(function (Id) { return Dx.bodies[Id] == null; }).slice(0, 80);
+    function Next() { var Id = Queue.shift(); if (!Id) return Promise.resolve(); return Dxbody(Id).catch(function () {}).then(Next); }
+    Next(); Next(); Next();
+  }
+
+  /* ----- cards and lists ----- */
+  function Dxcard(G, Big) {
+    var Card = Dxel('button', 'dx-card'); Card.type = 'button'; Card.setAttribute('data-dx-open', G.id);
+    var Thumb = Dxel('span', 'dx-thumb dg-' + G.gradient); Thumb.appendChild(Dxsvg(G.icon, 58)); Card.appendChild(Thumb);
+    Card.appendChild(Dxel('span', 'dx-pill', G.minutes + ' min read'));
+    Card.appendChild(Dxel('span', 'dx-card-title', G.title)); Card.appendChild(Dxel('span', 'dx-card-sum', G.summary));
+    Card.onclick = function () { Dxopen(G.id); };
+    return Card;
+  }
+  function Dxstate(Host, Message, Retry) {
+    Host.replaceChildren(); var Box = Dxel('div', 'dx-state'); Box.appendChild(Dxel('p', '', Message));
+    if (Retry) { var Btn = Dxel('button', 'nx-btn', 'Try again'); Btn.type = 'button'; Btn.onclick = function () { Dxloadindex(true); }; Box.appendChild(Btn); }
+    Host.appendChild(Box);
+  }
+  function Dxlist(Host, Category, Limit) {
+    if (!Host) return;
+    if (!Dx.index) {
+      if (Dx.status === 'loading' || Dx.status === 'idle') { Host.replaceChildren(); for (var I = 0; I < 3; I++) Host.appendChild(Dxel('div', 'dx-card dx-skel')); return; }
+      Dxstate(Host, Dx.status === 'empty' ? 'Nothing has been posted here yet. Check back soon.' : "Documentation couldn't be loaded. Check your internet connection.", Dx.status !== 'empty'); return;
+    }
+    var Items = Dx.index.guides.filter(function (G) { return !Category || G.category === Category; });
+    if (Limit) Items = Items.slice().sort(function (A, B) { return String(B.date).localeCompare(String(A.date)) || A.order - B.order; }).slice(0, Limit);
+    Host.replaceChildren();
+    if (!Items.length) { Dxstate(Host, 'Nothing has been posted here yet. Check back soon.', false); return; }
+    Items.forEach(function (G) { Host.appendChild(Dxcard(G)); });
+  }
+  function Dxrenderall() {
+    Array.prototype.slice.call(document.querySelectorAll('[data-dx-list]')).forEach(function (Host) { var Kind = Host.getAttribute('data-dx-list'); Dxlist(Host, Kind === 'latest' ? '' : Kind, Kind === 'latest' ? 3 : 0); });
+    var Guides = Dx.index ? Dx.index.guides.filter(function (G) { return G.category === 'guides'; }).length : 0, Fix = Dx.index ? Dx.index.guides.filter(function (G) { return G.category === 'troubleshooting'; }).length : 0;
+    Array.prototype.slice.call(document.querySelectorAll('[data-dx-count]')).forEach(function (Node) {
+      var N = Node.getAttribute('data-dx-count') === 'guides' ? Guides : Fix; Node.textContent = Dx.index ? N + (N === 1 ? (Node.getAttribute('data-dx-count') === 'guides' ? ' guide' : ' article') : (Node.getAttribute('data-dx-count') === 'guides' ? ' guides' : ' articles')) : '';
+    });
+    var Banner = document.querySelector('[data-dx-offline]'); if (Banner) Banner.classList.toggle('nx-off', Dx.status !== 'cached');
+  }
+
+  /* ----- safe guide rendering (no HTML from the guide is ever inserted) ----- */
+  function Dxinline(Text, Parent, Id) {
+    var Re = /\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*|`([^`]+)`|!\[([^\]]*)\]\(([^)\s]+)\)|\[([^\]]+)\]\(([^)\s]+)\)/g, Last = 0, M;
+    while ((M = Re.exec(Text))) {
+      if (M.index > Last) Parent.appendChild(document.createTextNode(Text.slice(Last, M.index)));
+      if (M[1] != null) Parent.appendChild(Dxel('strong', '', M[1]));
+      else if (M[2] != null) Parent.appendChild(Dxel('em', '', M[2]));
+      else if (M[3] != null) Parent.appendChild(Dxel('code', '', M[3]));
+      else if (M[5] != null) Parent.appendChild(Dximage(M[4], M[5], Id, true));
+      else Parent.appendChild(Dxlink(M[6], M[7]));
+      Last = Re.lastIndex;
+    }
+    if (Last < Text.length) Parent.appendChild(document.createTextNode(Text.slice(Last)));
+  }
+  function Dximage(Alt, Ref, Id, Inline) {
+    var Fig = Dxel(Inline ? 'span' : 'figure', 'dx-fig');
+    if (!/^[A-Za-z0-9._-]+$/.test(Ref)) { Fig.appendChild(Dxel('span', 'dx-missing', Alt || 'picture')); return Fig; }
+    var Img = document.createElement('img'); Img.alt = Alt || ''; Img.loading = 'lazy'; Img.draggable = false; Img.src = DXBASE + encodeURIComponent(Id) + '/' + Ref;
+    Img.onerror = function () { Fig.replaceChildren(Dxel('span', 'dx-missing', (Alt || 'Picture') + ' (could not load)')); };
+    Img.onclick = function () { Dxlightbox(Img.src, Alt); };
+    Fig.appendChild(Img); if (!Inline && Alt) Fig.appendChild(Dxel('figcaption', '', Alt));
+    return Fig;
+  }
+  function Dxlink(Label, Url) {
+    var Ids = Dx.index ? Dx.index.guides.map(function (G) { return G.id; }) : [];
+    if (/^https:\/\/[^\s]+$/.test(Url)) {
+      var A = Dxel('a', 'dx-link', Label); A.href = Url; A.rel = 'noopener noreferrer'; A.onclick = function (E) { E.preventDefault(); try { Ipc('open-url:' + Url); } catch (Error) {} }; return A;
+    }
+    if (Ids.indexOf(Url) >= 0) { var B = Dxel('a', 'dx-link', Label); B.href = '#'; B.onclick = function (E) { E.preventDefault(); Dxopen(Url); }; return B; }
+    return document.createTextNode(Label);
+  }
+  function Dxmd(Text, Id) {
+    var Out = document.createDocumentFragment(), Heads = [], Lines = String(Text || '').replace(/\r\n/g, '\n').split('\n'), I = 0, Para = [];
+    function Flush() { if (!Para.length) return; var P = Dxel('p'); Dxinline(Para.join(' '), P, Id); Out.appendChild(P); Para = []; }
+    while (I < Lines.length) {
+      var L = Lines[I];
+      if (/^```/.test(L)) { Flush(); var Code = []; I++; while (I < Lines.length && !/^```/.test(Lines[I])) Code.push(Lines[I++]); I++; var Pre = Dxel('pre'); Pre.appendChild(Dxel('code', '', Code.join('\n'))); Out.appendChild(Pre); continue; }
+      var H = /^(#{2,3})\s+(.+)$/.exec(L);
+      if (H) { Flush(); var Hd = Dxel(H[1].length === 2 ? 'h2' : 'h3'); Hd.id = 'dx-h-' + Heads.length; Dxinline(H[2], Hd, Id); Heads.push({id: Hd.id, text: H[2].replace(/[*`]/g, ''), level: H[1].length}); Out.appendChild(Hd); I++; continue; }
+      if (/^>\s?/.test(L)) { Flush(); var Quote = []; while (I < Lines.length && /^>\s?/.test(Lines[I])) Quote.push(Lines[I++].replace(/^>\s?/, '')); var Box = Dxel('div', 'dx-callout'); Dxinline(Quote.join(' '), Box, Id); Out.appendChild(Box); continue; }
+      if (/^\s*[-*]\s+/.test(L) || /^\s*\d+\.\s+/.test(L)) {
+        Flush(); var Ordered = /^\s*\d+\./.test(L), List = Dxel(Ordered ? 'ol' : 'ul');
+        while (I < Lines.length && (Ordered ? /^\s*\d+\.\s+/.test(Lines[I]) : /^\s*[-*]\s+/.test(Lines[I]))) { var Li = Dxel('li'); Dxinline(Lines[I].replace(/^\s*(?:[-*]|\d+\.)\s+/, ''), Li, Id); List.appendChild(Li); I++; }
+        Out.appendChild(List); continue;
+      }
+      var Pic = /^!\[([^\]]*)\]\(([^)\s]+)\)\s*$/.exec(L);
+      if (Pic) { Flush(); Out.appendChild(Dximage(Pic[1], Pic[2], Id, false)); I++; continue; }
+      if (!L.trim()) { Flush(); I++; continue; }
+      Para.push(L.trim()); I++;
+    }
+    Flush();
+    return {fragment: Out, headings: Heads};
+  }
+  function Dxlightbox(Src, Alt) {
+    var Old = Byid('dxLightbox'); if (Old) Old.remove();
+    var Box = Dxel('div', 'dx-lightbox'); Box.id = 'dxLightbox'; Box.setAttribute('role', 'dialog'); Box.setAttribute('aria-label', 'Picture'); var Img = document.createElement('img'); Img.src = Src; Img.alt = Alt || '';
+    Box.appendChild(Img); Box.onclick = function () { Box.remove(); }; document.body.appendChild(Box);
+  }
+
+  /* ----- reader ----- */
+  function Dxfind(Id) { return Dx.index ? Dx.index.guides.filter(function (G) { return G.id === Id; })[0] : null; }
+  function Dxopen(Id) {
+    var Page = document.querySelector('.page.active'); var From = Page ? Page.id.replace('page-', '') : 'guides'; if (From !== 'doc') Dx.origin = From === 'docs' ? 'docs' : From;
+    Dx.current = Id; Go('doc'); Dxreader();
+  }
+  function Dxreader() {
+    var Body = Byid('dxDocBody'), Rail = Byid('dxDocRail'); if (!Body) return;
+    var Id = Dx.current, Tok = (Dx.tok = (Dx.tok || 0) + 1); Body.replaceChildren(); if (Rail) Rail.replaceChildren();
+    function Draw() {
+      var G = Dxfind(Id); if (!G) { Dxstate(Body, 'That guide is not available.', false); return; }
+      var Cat = G.category === 'guides' ? 'guides' : 'troubleshooting';
+      Array.prototype.slice.call(document.querySelectorAll('.navbtn')).forEach(function (B) { B.classList.toggle('active', B.getAttribute('data-page') === Cat); });
+      var Head = Dxel('header', 'dx-dochead'); Head.appendChild(Dxel('div', 'dx-eyebrow', G.category === 'guides' ? 'GUIDE' : 'TROUBLESHOOTING')); Head.appendChild(Dxel('h1', '', G.title)); Head.appendChild(Dxel('p', 'dx-lede', G.summary));
+      var Meta = Dxel('div', 'dx-meta'); Meta.appendChild(Dxel('span', 'dx-pill', G.minutes + ' min read')); if (G.date) Meta.appendChild(Dxel('span', 'dx-date', 'Updated ' + G.date)); Head.appendChild(Meta);
+      var Banner = Dxel('div', 'dx-banner dg-' + G.gradient); Banner.appendChild(Dxsvg(G.icon, 64));
+      Body.appendChild(Head); Body.appendChild(Banner);
+      var Content = Dxel('div', 'dx-prose'); Content.appendChild(Dxel('p', 'dx-loading', 'Loading…')); Body.appendChild(Content);
+      Dxbody(Id).then(function (Text) {
+        if (Dx.current !== Id || Dx.tok !== Tok) return;
+        var R = Dxmd(Text, Id); Content.replaceChildren(R.fragment);
+        if (Rail) {
+          Rail.appendChild(Dxel('div', 'dx-rail-h', 'On this page'));
+          R.headings.filter(function (X) { return X.level === 2; }).forEach(function (X) { var A = Dxel('a', '', X.text); A.href = '#'; A.onclick = function (E) { E.preventDefault(); var T = Byid(X.id); if (T) T.scrollIntoView({behavior: 'smooth', block: 'start'}); }; Rail.appendChild(A); });
+        }
+        var Same = Dx.index.guides.filter(function (X) { return X.category === G.category; }), At = Same.indexOf(G), Next = Same[At + 1];
+        if (Next) { var N = Dxel('button', 'dx-next'); N.type = 'button'; N.appendChild(Dxel('small', '', 'Next')); N.appendChild(Dxel('b', '', Next.title)); N.onclick = function () { Dxopen(Next.id); }; Body.appendChild(N); }
+      }).catch(function () { if (Dx.current === Id && Dx.tok === Tok) Dxstate(Content, "This guide couldn't be loaded. Check your internet connection.", false); });
+    }
+    if (Dx.index) Draw(); else Dxloadindex().then(function () { if (Dx.tok === Tok) Draw(); });
+  }
+
+  /* ----- search ----- */
+  function Dxplain(Md) { return String(Md || '').replace(/!\[[^\]]*\]\([^)]*\)/g, ' ').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[#>*`_-]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function Dxsearch(Query) {
+    var Words = String(Query || '').toLowerCase().split(/\s+/).filter(Boolean).slice(0, 6); if (!Words.length || !Dx.index) return [];
+    var Hits = [];
+    Dx.index.guides.forEach(function (G) {
+      var Title = G.title.toLowerCase(), Sum = G.summary.toLowerCase(), Text = Dxplain(Dx.bodies[G.id] || ''), Low = Text.toLowerCase(), Score = 0, Snip = '', Matched = 0;
+      Words.forEach(function (W) {
+        var Got = 0; if (Title.indexOf(W) >= 0) Got += 6; if (Sum.indexOf(W) >= 0) Got += 3;
+        var At = Low.indexOf(W); if (At >= 0) { Got += 1; if (!Snip) Snip = (At > 40 ? '…' : '') + Text.slice(Math.max(0, At - 40), At + 90) + '…'; }
+        if (Got) Matched++; Score += Got;
+      });
+      if (Matched === Words.length) Hits.push({guide: G, score: Score, snippet: Snip || G.summary});
+    });
+    return Hits.sort(function (A, B) { return B.score - A.score; }).slice(0, 8);
+  }
+  function Dxbindsearch(Wrap) {
+    var Input = Wrap.querySelector('input'), Panel = Wrap.querySelector('.dx-results'), Picked = -1, Items = [];
+    function Close() { Panel.classList.add('nx-off'); Picked = -1; }
+    function Draw() {
+      var Query = Input.value.trim(); if (!Query) { Close(); return; }
+      Items = Dxsearch(Query); Panel.replaceChildren(); Panel.classList.remove('nx-off'); Picked = Items.length ? 0 : -1;
+      if (!Dx.index) { Panel.appendChild(Dxel('div', 'dx-none', Dx.status === 'loading' ? 'Loading guides…' : "Documentation couldn't be loaded.")); return; }
+      if (!Items.length) { Panel.appendChild(Dxel('div', 'dx-none', 'No guides match "' + Query.slice(0, 60) + '".')); return; }
+      Items.forEach(function (Hit, N) {
+        var Row = Dxel('button', 'dx-hit' + (N === 0 ? ' on' : '')); Row.type = 'button'; Row.setAttribute('role', 'option');
+        var Head = Dxel('span', 'dx-hit-head'); Head.appendChild(Dxel('b', '', Hit.guide.title)); Head.appendChild(Dxel('span', 'dx-tag', Hit.guide.category === 'guides' ? 'Guide' : 'Troubleshooting')); Row.appendChild(Head); Row.appendChild(Dxel('small', '', Hit.snippet));
+        Row.onmousedown = function (E) { E.preventDefault(); Input.value = ''; Close(); Dxopen(Hit.guide.id); };
+        Panel.appendChild(Row);
+      });
+    }
+    function Mark() { Array.prototype.slice.call(Panel.children).forEach(function (Node, N) { Node.classList.toggle('on', N === Picked); }); }
+    Input.oninput = function () { if (!Dx.index) Dxloadindex(); Draw(); };
+    Input.onfocus = function () { if (!Dx.index) Dxloadindex(); if (Input.value.trim()) Draw(); };
+    Input.onblur = function () { window.setTimeout(Close, 120); };
+    Input.onkeydown = function (E) {
+      if (E.key === 'ArrowDown' && Items.length) { E.preventDefault(); Picked = (Picked + 1) % Items.length; Mark(); }
+      else if (E.key === 'ArrowUp' && Items.length) { E.preventDefault(); Picked = (Picked - 1 + Items.length) % Items.length; Mark(); }
+      else if (E.key === 'Enter' && Picked >= 0 && Items[Picked]) { E.preventDefault(); var Id = Items[Picked].guide.id; Input.value = ''; Close(); Input.blur(); Dxopen(Id); }
+      else if (E.key === 'Escape') { Input.value = ''; Close(); Input.blur(); }
+    };
+  }
+  function Dxshow(Name) {
+    if (DXPAGES.indexOf(Name) < 0) return;
+    Dxloadindex(false);
+    if (Name === 'doc' && !Dx.current) Go('docs');
+  }
+  function Dxsetup() {
+    Array.prototype.slice.call(document.querySelectorAll('.dx-search')).forEach(Dxbindsearch);
+    Array.prototype.slice.call(document.querySelectorAll('[data-dx-anchor]')).forEach(function (A) { A.onclick = function (E) { E.preventDefault(); var T = Byid(A.getAttribute('data-dx-anchor')); if (T) T.scrollIntoView({behavior: 'smooth', block: 'start'}); }; });
+    Array.prototype.slice.call(document.querySelectorAll('[data-dx-cat]')).forEach(function (B) { B.onclick = function () { Go(B.getAttribute('data-dx-cat')); }; });
+    var Back = Byid('dxBack'); if (Back) Back.onclick = function () { Go(Dx.origin === 'docs' || Dx.origin === 'troubleshooting' || Dx.origin === 'guides' ? Dx.origin : 'guides'); };
+    document.addEventListener('keydown', function (E) {
+      if (E.key !== '/' || E.ctrlKey || E.metaKey || E.altKey) return;
+      var T = E.target; if (T && (T.tagName === 'INPUT' || T.tagName === 'TEXTAREA' || T.isContentEditable)) return;
+      var Page = document.querySelector('.page.active'); if (!Page || DXPAGES.indexOf(Page.id.replace('page-', '')) < 0) return;
+      var Input = Page.querySelector('.dx-search input'); if (Input) { E.preventDefault(); Input.focus(); }
+    });
+    try { var Saved = Dxsane(JSON.parse(window.localStorage.getItem('plazcodeDocsIndex') || 'null')); if (Saved) { Dx.index = Saved; Dx.status = 'cached'; Dxrenderall(); } } catch (Error) {}
+  }
+
   function Bind() {
     if (I18n) Languagepicker = I18n.mountPicker(Byid("desktopLanguagePicker"), {
       value: "en",
       onChange: function (Code) { return Patchpref("rsLanguage", I18n.normalize(Code)); }
     });
-    try{Nxsetup();Nxarea('home','');}catch(Error){}try{Nxstartup();}catch(Error){var Sp=Byid('nxSplash');if(Sp&&Sp.parentNode)Sp.parentNode.removeChild(Sp);}
+    try{Nxsetup();Nxarea('home','');}catch(Error){}try{Dxsetup();}catch(Error){}try{Nxstartup();}catch(Error){var Sp=Byid('nxSplash');if(Sp&&Sp.parentNode)Sp.parentNode.removeChild(Sp);}
     var Savedappearance;try { Savedappearance=JSON.parse(window.localStorage.getItem('plazcodeDesktopAppearance') || '{}'); }catch(Error){}
     Applyappearance(Savedappearance);
     ['desktopTheme','desktopGlow','desktopGradients'].forEach(function (Id) { Byid(Id).onchange=Saveappearance; });

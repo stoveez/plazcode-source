@@ -34,6 +34,18 @@ fn toolkit_store_url(action:&str)->Option<String>{
     url.query_pairs_mut().append_pair("keyword",query);Some(url.to_string())
 }
 
+// Guides may link to any https page; nothing else is ever opened from a guide.
+fn guide_link_url(action: &str) -> Option<String> {
+    let raw = action.strip_prefix("open-url:")?;
+    if raw.len() > 2048 || raw.chars().any(|c| c.is_control() || c.is_whitespace()) { return None; }
+    let url = reqwest::Url::parse(raw).ok()?;
+    if url.scheme() != "https" || !url.username().is_empty() || url.password().is_some() { return None; }
+    // Public websites only: never this computer, a local network name or a bare IP address.
+    let host = url.host_str()?.to_ascii_lowercase();
+    if !host.contains('.') || host.parse::<std::net::IpAddr>().is_ok() || host.starts_with('[') || host.ends_with(".local") || host.ends_with(".localhost") || host.ends_with(".internal") { return None; }
+    Some(url.to_string())
+}
+
 fn donation_url(action: &str) -> Option<&'static str> {
     match action {
         "open:donation-small" => Some("https://www.roblox.com/game-pass/2025206972/plazcode-small-donation"),
@@ -328,6 +340,7 @@ pub fn run_gui(
                 "open:discord" => Some(UiEvent::OpenExternal("https://discord.gg/ggXhZKnXPH".to_owned())),
                 "open:blender-guide" => Some(UiEvent::OpenExternal("https://github.com/ahujasid/blender-mcp#installation".to_owned())),
                 _ if body.starts_with("toolkit-store:") => toolkit_store_url(body).map(UiEvent::OpenExternal),
+                _ if body.starts_with("open-url:") => guide_link_url(body).map(UiEvent::OpenExternal),
                 _ => donation_url(body).or_else(|| supported_ai_url(body)).map(|url|UiEvent::OpenExternal(url.to_owned())).or_else(|| body.strip_prefix("js-error:").map(|message| UiEvent::JsError(message.to_string()))),
             };
             if let Some(event) = event {
@@ -554,5 +567,18 @@ mod tests {
         assert!(rows.iter().any(|row| row.name == "tree" && row.source == "AgentScript"));
         assert!(rows.iter().any(|row| row.name == "web_fetch" && row.source == "PlazCode"));
         assert!(!rows.iter().any(|row| row.name == "web_search" && row.source == "PlazCode"));
+    }
+}
+
+#[cfg(test)]
+mod guide_link_tests {
+    use super::guide_link_url;
+    #[test]
+    fn guides_open_only_plain_https_links() {
+        assert_eq!(guide_link_url("open-url:https://discord.gg/ggXhZKnXPH").as_deref(), Some("https://discord.gg/ggXhZKnXPH"));
+        for bad in ["open-url:http://example.com", "open-url:javascript:alert(1)", "open-url:file:///C:/Windows", "open-url:https://user:pw@example.com/", "open-url:https://exa mple.com", "open-url:", "open-url:https:///nohost", "open-url:https://127.0.0.1:3000/", "open-url:https://localhost/", "open-url:https://[::1]/", "open-url:https://printer.local/", "open-url:ftp://example.com"] {
+            assert!(guide_link_url(bad).is_none(), "{bad}");
+        }
+        assert!(guide_link_url(&format!("open-url:https://example.com/{}", "a".repeat(2100))).is_none());
     }
 }

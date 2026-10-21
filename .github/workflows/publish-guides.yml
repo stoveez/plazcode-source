@@ -1,0 +1,53 @@
+# Posts the Documentation guides (the `guides/` folder of this private repo) to the
+# public downloads repo, where every PlazCode app reads them. Only people who can run
+# workflows in this private repo (the owner) can post. It touches ONLY the public
+# repo's `guides/` folder: never the update feeds, release files or downloads.
+name: Publish guides to the public repo
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'test = throwaway repo (dry run), real = what everyone sees'
+        type: choice
+        options: [test, real]
+        default: test
+permissions:
+  contents: read
+concurrency:
+  group: plazcode-guides
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PUBLIC_REPO: ${{ inputs.target == 'real' && 'stoveez/PlazCode' || 'stoveez/plazcode-publish-test' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check the guides and build them
+        run: |
+          python3 guides/test_guides.py
+          python3 guides/build_guides.py dist/guides
+      - name: Copy only the guides folder into the public repo
+        env:
+          PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          set +x
+          [ -n "$PUBLIC_REPO_TOKEN" ]
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$PUBLIC_REPO_TOKEN" | base64 -w0)"
+          echo "::add-mask::$(printf 'x-access-token:%s' "$PUBLIC_REPO_TOKEN" | base64 -w0)"
+          git -c http.extraheader="$auth" clone --depth 1 "https://github.com/$PUBLIC_REPO.git" public
+          rm -rf public/guides
+          cp -r dist/guides public/guides
+          cd public
+          git config user.name 'stoveez'
+          git config user.email 'freetwoomy@gmail.com'
+          git add -A guides
+          # Safety: nothing outside guides/ may change (updater feeds and downloads stay untouched).
+          if git status --porcelain | grep -v ' guides/' | grep -q .; then echo 'Refusing: files outside guides/ changed'; exit 1; fi
+          if git diff --cached --quiet; then echo 'No guide changes to publish.'; exit 0; fi
+          git commit -m 'Update guides'
+          git -c http.extraheader="$auth" push origin HEAD:main
