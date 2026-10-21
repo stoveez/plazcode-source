@@ -325,6 +325,7 @@ pub fn run_gui(
                 "drag" => Some(UiEvent::Drag),
                 "ui-ready" => Some(UiEvent::Ready),
                 "open:github" => Some(UiEvent::OpenExternal("https://github.com/stoveez/PlazCode".to_owned())),
+                "open:discord" => Some(UiEvent::OpenExternal("https://discord.gg/ggXhZKnXPH".to_owned())),
                 "open:blender-guide" => Some(UiEvent::OpenExternal("https://github.com/ahujasid/blender-mcp#installation".to_owned())),
                 _ if body.starts_with("toolkit-store:") => toolkit_store_url(body).map(UiEvent::OpenExternal),
                 _ => donation_url(body).or_else(|| supported_ai_url(body)).map(|url|UiEvent::OpenExternal(url.to_owned())).or_else(|| body.strip_prefix("js-error:").map(|message| UiEvent::JsError(message.to_string()))),
