@@ -37,6 +37,10 @@ const RSProvider = (() => {
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   let diag = () => {};
+  // Hooks handed over by core/main.js (same ones the Notion provider uses).
+  let isStopped = () => false;
+  let isSessionActive = () => false;
+  let requestStart = () => {};
 
   const S = {
     editor:
@@ -62,6 +66,98 @@ const RSProvider = (() => {
     STABLE_MS: 9000,
     RESPONSE_TIMEOUT_MS: 300000,
   };
+
+  // ── Home page vs. chat page ────────────────────────────────────────────────
+  // Ox Alpha's HOME page has a big "ask anything" box. It is not a chat: sending
+  // from it makes the site open /chat?q=<everything that was typed>. PlazCode's
+  // start prompt is ~14,000 characters, so nginx answered 414 Request-URI Too
+  // Large and the page was lost. The real chat (/chat, /chat/<id>) has a normal
+  // composer that sends in place. So: never type or send from a non-chat page;
+  // leave for the clean chat URL first and resume the start there.
+  const CHAT_ROUTE_RE = /^\/(?:chats?|c|conversations?|threads?)(?:\/|$)/i;
+  const onChatRoute = () => CHAT_ROUTE_RE.test(safeRead(() => location.pathname, "") || "");
+  const URL_TEXT_CAP = 1500; // no address we open may carry more than this much text
+  // The only address this provider ever opens on its own. Always the plain chat
+  // page on the current site (oxalpha.com or oxalpha.org): never a query string.
+  function cleanChatUrl() {
+    const u = new URL("/chat", location.origin);
+    u.search = ""; u.hash = "";
+    const href = u.href;
+    if (href.length > URL_TEXT_CAP) throw new Error("Ox Alpha: refusing to open an over-long address.");
+    return href;
+  }
+
+  const PENDING_START_KEY = "plazcode.oxalpha.pendingStart";
+  const PENDING_MAX_MS = 120000;
+  const PENDING_MAX_NAVS = 3;
+  function readPendingStart() {
+    try {
+      const v = JSON.parse(sessionStorage.getItem(PENDING_START_KEY) || "null");
+      return v && typeof v.at === "number" ? v : null;
+    } catch { return null; }
+  }
+  function writePendingStart(v) { try { sessionStorage.setItem(PENDING_START_KEY, JSON.stringify(v)); } catch {} }
+  function clearPendingStart() { try { sessionStorage.removeItem(PENDING_START_KEY); } catch {} }
+
+  // Takes the tab to the clean chat page and remembers (per tab) that a Start was
+  // asked for, so the new page can finish it by itself. Only text-free state is saved.
+  function leaveHomeForChat(reason) {
+    const prev = readPendingStart();
+    const now = Date.now();
+    const state = {
+      at: prev && now - prev.at < PENDING_MAX_MS ? prev.at : now,
+      navs: (prev && now - prev.at < PENDING_MAX_MS ? prev.navs || 0 : 0) + 1,
+      lastNav: now,
+      reason: reason || "startup",
+    };
+    if (state.navs > PENDING_MAX_NAVS) {
+      clearPendingStart();
+      diag("oxalpha.start.navGiveUp", { path: location.pathname, navs: state.navs });
+      return { ready: false, detail: "Ox Alpha kept sending this tab back to its home page. Open oxalpha.com/chat yourself, then press Start." };
+    }
+    writePendingStart(state);
+    const target = cleanChatUrl();
+    diag("oxalpha.start.navigate", { from: location.pathname, to: "/chat", navs: state.navs, reason: state.reason });
+    try { location.assign(target); } catch { try { location.href = target; } catch {} }
+    return { ready: false, navigating: true };
+  }
+
+  // After the page changed, finish the Start that was asked for (once).
+  function armPendingAutoStart() {
+    if (!readPendingStart()) return;
+    let done = false;
+    const startedAt = Date.now();
+    let iv = null;
+    const finish = () => { done = true; if (iv) clearInterval(iv); };
+    const tick = () => {
+      if (done) return;
+      const p = readPendingStart();
+      if (!p) { finish(); return; }
+      if (isStopped() || isSessionActive()) { clearPendingStart(); finish(); return; }
+      const now = Date.now();
+      if (now - p.at > PENDING_MAX_MS || now - startedAt > PENDING_MAX_MS) {
+        clearPendingStart(); finish();
+        diag("oxalpha.start.pendingExpired", { path: location.pathname, navs: p.navs });
+        return;
+      }
+      if (loginGatePresent()) return;
+      if (onChatRoute()) {
+        if (!getEditor()) return;
+        // Clear BEFORE starting so a second timer tick or a reload cannot start twice.
+        clearPendingStart(); finish();
+        diag("oxalpha.start.autoResume", { path: location.pathname, waited: now - startedAt });
+        setTimeout(() => { if (!isStopped() && !isSessionActive()) requestStart(); }, 800);
+        return;
+      }
+      // Still on a non-chat page (the site sent us back): try the clean URL again.
+      if (now - (p.lastNav || 0) > 8000) {
+        const res = leaveHomeForChat(p.reason);
+        if (!res.navigating) finish();
+      }
+    };
+    iv = setInterval(tick, 400);
+    setTimeout(tick, 0);
+  }
 
   function visible(el) {
     if (!el || safeClosest(el, "#rs-root")) return false;
@@ -415,6 +511,17 @@ const RSProvider = (() => {
     }
   }
 
+  // What the rest of PlazCode calls. The home page's box turns whatever is typed
+  // into a web address (/chat?q=...), so refuse to type there at all: the text must
+  // only ever go into a real chat. (typeAndSend itself is left exactly as it was.)
+  async function sendToChat(text, images, options) {
+    if (!onChatRoute()) {
+      diag("oxalpha.send.refusedHome", { path: location.pathname, textLen: String(text || "").length });
+      throw new Error("Ox Alpha: this is the home page, not a chat. Open oxalpha.com/chat first, then try again.");
+    }
+    return typeAndSend(text, images, options);
+  }
+
   function stopGeneration() {
     const b = stopButton();
     if (b) { try { b.click(); } catch {} }
@@ -525,20 +632,29 @@ const RSProvider = (() => {
     supportsVision: true,
     timings,
     thinkingSel: ".reasoning, [class*='thinking'], [class*='reason'], [class*='thought'], [data-testid*='reasoning']",
-    init({ diag: d } = {}) {
+    init({ diag: d, isStopped: st, isSessionActive: sa, requestStart: rs } = {}) {
       if (d) diag = d;
+      if (typeof st === "function") isStopped = st;
+      if (typeof sa === "function") isSessionActive = sa;
+      if (typeof rs === "function") requestStart = rs;
       try { document.documentElement.setAttribute("data-rs-oxalpha-ver", "2026-09"); } catch {}
       diag("oxalpha.init", { hasEditor: !!getEditor(), login: loginGatePresent(), path: location.pathname });
+      try { armPendingAutoStart(); } catch {}
     },
     allItems, isUserItem, isAssistantItem, itemText, classifyText,
     assistantCount, userCount, lastAssistant, lastAssistantId, itemKey, readAssistant,
     streamLen, snapshot,
     getEditor, editorText, chatIsEmpty, isFreshChat, composerFrame, barAnchor,
-    setInputLock, typeAndSend, stopGeneration,
+    setInputLock, typeAndSend: sendToChat, stopGeneration,
     isGenerating, isBusyNow, isHardGenerating,
     enforceComposer() { return { ready: true }; },
     async ensureComposerReady(reason) {
-      diag("oxalpha.mode_ready", { reason, hasEditor: !!getEditor(), login: loginGatePresent() });
+      diag("oxalpha.mode_ready", { reason, hasEditor: !!getEditor(), login: loginGatePresent(), chat: onChatRoute() });
+      // Start / Restart pressed on the home page (or any non-chat page): its box
+      // would put the whole start prompt into the address. Go to the plain chat
+      // page instead and let that page finish the Start. Other callers (fix
+      // connection, UI cards) pass no "startup" reason and never navigate.
+      if (reason === "startup" && !onChatRoute() && !loginGatePresent()) return leaveHomeForChat(reason);
       return { ready: !!getEditor() && !loginGatePresent() };
     },
     turnHalted, findContinueBtn, clickContinueBtn,

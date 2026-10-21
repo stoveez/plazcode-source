@@ -806,6 +806,69 @@
     A.sendToken = P.lastAssistantId ?  P.lastAssistantId() : undefined;
   }
 
+  // ── Long-address guard (all sites) ──────────────────────────────────────────
+  // Some sites' home pages turn what is typed into a web address (/chat?q=<text>).
+  // A long prompt then gets "414 Request-URI Too Large" and the page is lost.
+  // While a message is being sent, any form submit or page navigation whose address
+  // is longer than URL_TEXT_CAP AND carries the start of that message is cancelled.
+  // The text is never put in an address by PlazCode itself; this is the safety net.
+  const URL_TEXT_CAP = 1500;
+  const urlGuard = { until: 0, probe: "", installed: false, blocked: 0 };
+  function urlGuardProbe(text) {
+    return String(text || "").replace(/\s+/g, " ").trim().slice(0, 40).toLowerCase();
+  }
+  function urlCarriesPrompt(url) {
+    try {
+      const href = String(url || "");
+      if (href.length <= URL_TEXT_CAP || !urlGuard.probe) return false;
+      let dec = href;
+      try { dec = decodeURIComponent(href.replace(/\+/g, " ")); } catch (e0) {}
+      return dec.replace(/\s+/g, " ").toLowerCase().includes(urlGuard.probe);
+    } catch (e) { return false; }
+  }
+  function noteLongUrlBlocked(chars, via) {
+    urlGuard.blocked++;
+    try { diag("send.longUrlBlocked", { chars, via }); } catch (e0) {}
+    try { ui.toast("Blocked: this site tried to put your message in its web address, which is too long. Open a normal chat and try again."); } catch (e1) {}
+  }
+  function armUrlGuard(text) {
+    urlGuard.probe = urlGuardProbe(text);
+    urlGuard.until = Date.now() + 20000;
+    if (urlGuard.installed) return;
+    urlGuard.installed = true;
+    try {
+      document.addEventListener("submit", (e) => {
+        if (Date.now() > urlGuard.until) return;
+        const f = e.target;
+        if (!f || f.tagName !== "FORM") return;
+        const method = String((e.submitter && e.submitter.getAttribute && e.submitter.getAttribute("formmethod")) || f.getAttribute("method") || "get").toLowerCase();
+        if (method !== "get") return;
+        let qs = "";
+        try {
+          const sp = new URLSearchParams();
+          for (const [k, v] of new FormData(f)) if (typeof v === "string") sp.append(k, v);
+          qs = sp.toString();
+        } catch (e0) {}
+        const url = String(f.action || location.href).split("?")[0] + "?" + qs;
+        if (!urlCarriesPrompt(url)) return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        noteLongUrlBlocked(url.length, "form");
+      }, true);
+    } catch (e) {}
+    try {
+      const nav = window.navigation;
+      if (nav && typeof nav.addEventListener === "function") {
+        nav.addEventListener("navigate", (e) => {
+          if (Date.now() > urlGuard.until) return;
+          const dest = e && e.destination && e.destination.url;
+          if (!urlCarriesPrompt(dest) || !e.cancelable) return;
+          e.preventDefault();
+          noteLongUrlBlocked(String(dest).length, "navigate");
+        });
+      }
+    } catch (e) {}
+  }
+
   async function submitAndGetBase(text, images, userPrompt = false) {
     if (A.stop && !userPrompt) throw new SendAbortedError("Stopped before feedback delivery.");
     if (!userPrompt && A.running && !A.starting && !A.enhancing && !A.stop && !A.stopping) {
@@ -930,6 +993,7 @@
         if (A.stop) break;
         await jitterBeforeSend();
         diag("submit.typeAndSend", { hasImages: !!(images && images.length) });
+        try { armUrlGuard(text); } catch (eGuard) {} // the safety net must never stop a send
         const sendResult = await P.typeAndSend(typeof window !== "undefined" && typeof window.__rsLimitOutgoing === "function" ? window.__rsLimitOutgoing(text) : text, images, { userPrompt: userPrompt === true });
         if (P.authoritativeSendResult) {
           if (sendResult === true) messageSent = true;
@@ -4818,6 +4882,10 @@ return result`;
       }
       const modeState = await P.ensureComposerReady("startup");
       if (!alive()) return;
+      // The provider is moving this tab to a proper chat page (for example Ox Alpha's
+      // home page, whose box would turn the prompt into a web address). It finishes the
+      // Start by itself once the new page is up, so stop quietly here.
+      if (modeState && modeState.navigating) { diag("start.navigating", { provider: P.id }); return; }
       if (!modeState || !modeState.ready) {
         ui.banner("warn", `${P.displayName} isn't ready`,
           (modeState && (modeState.detail || modeState.error)) ||
@@ -8052,6 +8120,7 @@ let cardsUiStyle = "modern";
       let sent = false;
       try {
         if (P.ensureComposerReady) { try { await P.ensureComposerReady(); } catch (e0) {} }
+        try { armUrlGuard(text); } catch (eGuard) {}
         await P.typeAndSend(text, imgs.length ? imgs : undefined);
         sent = true;
       } catch (e) {
@@ -8162,6 +8231,7 @@ function renderCards(panel) {
       let sent = false;
       try {
         if (typeof P !== "undefined" && P.typeAndSend) {
+          try { armUrlGuard(cardEmbedText(card)); } catch (eGuard) {}
           await P.typeAndSend(cardEmbedText(card));
           sent = true;
         }
