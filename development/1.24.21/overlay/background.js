@@ -2157,6 +2157,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         try { const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/engram",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{}),signal:controller.signal});sendResponse(await response.json()); }
         catch(error){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timer);}break;
       }
+      case "vault": {
+        const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
+        try { const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/vault",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{}),signal:controller.signal});sendResponse(await response.json()); }
+        catch(error){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timer);}break;
+      }
       case "chat-history": {
         const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),5000);
         try{const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/chat-history",msg.request?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request),signal:controller.signal}:{signal:controller.signal});sendResponse(await response.json());}catch(error){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timeout);}break;

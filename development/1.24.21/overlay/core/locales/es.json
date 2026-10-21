@@ -988,5 +988,14 @@
   "Select the text and copy it": "Selecciona el texto y cópialo",
   "That is not a PlazCode backup.": "Eso no es una copia de PlazCode.",
   "Nothing to change.": "Nada que cambiar.",
-  "Restored. Reload the page to apply.": "Restaurado. Recarga la página para aplicar."
+  "Restored. Reload the page to apply.": "Restaurado. Recarga la página para aplicar.",
+  "Vault (the AI's brain)": "Bóveda (el cerebro de la IA)",
+  "A folder of notes the AI reads and keeps up to date: how you like things, your coding style, model styles and what it learned. It also opens in Obsidian.": "Una carpeta de notas que la IA lee y mantiene al día: cómo te gustan las cosas, tu estilo de código, estilos de modelos y lo que aprendió. También se abre en Obsidian.",
+  "Let the AI learn from my work (it writes notes automatically)": "Dejar que la IA aprenda de mi trabajo (escribe notas automáticamente)",
+  "Open vault folder": "Abrir la carpeta de la bóveda",
+  "Open in Obsidian": "Abrir en Obsidian",
+  "Use another folder for the vault (full path)": "Usar otra carpeta para la bóveda (ruta completa)",
+  "Use this folder": "Usar esta carpeta",
+  "notes in the vault": "notas en la bóveda",
+  "The vault needs the newest PlazCode desktop app. Update the app to use it.": "La bóveda necesita la aplicación de escritorio PlazCode más reciente. Actualiza la aplicación para usarla."
 }

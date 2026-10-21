@@ -988,5 +988,14 @@
   "Select the text and copy it": "حدّد النص وانسخه",
   "That is not a PlazCode backup.": "هذه ليست نسخة احتياطية من PlazCode.",
   "Nothing to change.": "لا شيء لتغييره.",
-  "Restored. Reload the page to apply.": "تمت الاستعادة. أعد تحميل الصفحة للتطبيق."
+  "Restored. Reload the page to apply.": "تمت الاستعادة. أعد تحميل الصفحة للتطبيق.",
+  "Vault (the AI's brain)": "الخزنة (دماغ الذكاء الاصطناعي)",
+  "A folder of notes the AI reads and keeps up to date: how you like things, your coding style, model styles and what it learned. It also opens in Obsidian.": "مجلد ملاحظات يقرؤه الذكاء الاصطناعي ويحدّثه: ما تفضّله، وأسلوب برمجتك، وأساليب النماذج، وما تعلّمه. ويُفتح أيضًا في Obsidian.",
+  "Let the AI learn from my work (it writes notes automatically)": "السماح للذكاء الاصطناعي بالتعلّم من عملي (يكتب الملاحظات تلقائيًا)",
+  "Open vault folder": "فتح مجلد الخزنة",
+  "Open in Obsidian": "فتح في Obsidian",
+  "Use another folder for the vault (full path)": "استخدام مجلد آخر للخزنة (المسار الكامل)",
+  "Use this folder": "استخدام هذا المجلد",
+  "notes in the vault": "ملاحظات في الخزنة",
+  "The vault needs the newest PlazCode desktop app. Update the app to use it.": "تحتاج الخزنة إلى أحدث تطبيق PlazCode لسطح المكتب. حدّث التطبيق لاستخدامها."
 }

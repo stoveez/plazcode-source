@@ -988,5 +988,14 @@
   "Select the text and copy it": "請選取文字並複製",
   "That is not a PlazCode backup.": "這不是 PlazCode 備份。",
   "Nothing to change.": "沒有需要變更的內容。",
-  "Restored. Reload the page to apply.": "已還原。請重新載入頁面以套用。"
+  "Restored. Reload the page to apply.": "已還原。請重新載入頁面以套用。",
+  "Vault (the AI's brain)": "知識庫（AI 的大腦）",
+  "A folder of notes the AI reads and keeps up to date: how you like things, your coding style, model styles and what it learned. It also opens in Obsidian.": "一個 AI 會讀取並持續更新的筆記資料夾：你的喜好、程式風格、模型風格以及它學到的內容。也可以在 Obsidian 中開啟。",
+  "Let the AI learn from my work (it writes notes automatically)": "允許 AI 從我的工作中學習（自動寫筆記）",
+  "Open vault folder": "開啟知識庫資料夾",
+  "Open in Obsidian": "在 Obsidian 中開啟",
+  "Use another folder for the vault (full path)": "為知識庫使用其他資料夾（完整路徑）",
+  "Use this folder": "使用此資料夾",
+  "notes in the vault": "知識庫中的筆記",
+  "The vault needs the newest PlazCode desktop app. Update the app to use it.": "知識庫需要最新的 PlazCode 桌面應用程式。請更新應用程式後使用。"
 }

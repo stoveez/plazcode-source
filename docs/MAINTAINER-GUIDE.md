@@ -27,6 +27,7 @@ Everything below ships today. Do not break any of it.
 - **Setup for this site**, saved per site (`core/site-setups.js`). **Settings backup** (`core/settings-backup.js`).
 - **Skills**: starter skills, user skills, share by pack, code or link, import from GitHub, Gist, Pastebin or Discord (`core/skills-ui.js`, `agent/src/skills.rs`, `agent/src/starter_skills.rs`).
 - **Ultra effort**: the UltraLab pack by SyphoDev (53 skills, 7 agents, 18 notes) read with the `ultralab_read` tool and the `roblox_docs` tool. Generated from `development/1.24.21/ultralab/build_ultralab.py`.
+- **Vault memory** (new in 1.24.21): an Obsidian-compatible folder of linked Markdown notes (`agent/src/vault.rs`, `core/memory.js`, tool `plazcode_vault`). The AI reads a short start note each chat, searches and reads notes on demand, and updates them itself (switch in Memory settings). Notes are never deleted (archived), secrets are refused, writes stay inside the vault and are allowed in Read-only mode. Includes the reference-and-critic loop (`How-to/Reference-critic-loop.md` inside the vault). Older flat notes (`memory.json`) are copied in once and the file is kept.
 - **Memory** (Engram, a helper program) with a per-project database; chat history; checklists; templates.
 - **Connectors**: Blender, Figma, Unity, Godot, Browser (own browser window), plus add-on MCP servers (`agent/src/mcp_addons.rs`).
 - **17 engine file tools** that work on Godot, Unity, Roblox place and Blender files without the editor (`agent/src/engine_tools.rs`).

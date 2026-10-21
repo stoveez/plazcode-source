@@ -91,6 +91,7 @@ mod media;
 mod cancellation;
 mod chat_history;
 mod engram;
+mod vault;
 mod debug_report;
 
 #[cfg(windows)]
@@ -1248,6 +1249,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/media/convert", post(media::post).layer(axum::extract::DefaultBodyLimit::max(64 * 1024 * 1024)))
         .route("/api/memory", get(memory::get).post(memory::post).layer(axum::extract::DefaultBodyLimit::max(4*1024*1024)))
         .route("/api/engram",post(engram::post).layer(axum::extract::DefaultBodyLimit::max(64000)))
+        .route("/api/vault",post(vault::post).layer(axum::extract::DefaultBodyLimit::max(18*1024*1024)))
         .route("/api/chat-history",get(chat_history::get).post(chat_history::post).layer(axum::extract::DefaultBodyLimit::max(6*1024*1024)))
         .route("/api/desktop/update", get(updater::get).post(updater::post))
         .route("/api/desktop/restart", post(desktop_restart_handler))

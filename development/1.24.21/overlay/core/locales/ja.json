@@ -988,5 +988,14 @@
   "Select the text and copy it": "テキストを選択してコピーしてください",
   "That is not a PlazCode backup.": "これは PlazCode のバックアップではありません。",
   "Nothing to change.": "変更する内容はありません。",
-  "Restored. Reload the page to apply.": "復元しました。ページを再読み込みして反映してください。"
+  "Restored. Reload the page to apply.": "復元しました。ページを再読み込みして反映してください。",
+  "Vault (the AI's brain)": "ボールト（AI の頭脳）",
+  "A folder of notes the AI reads and keeps up to date: how you like things, your coding style, model styles and what it learned. It also opens in Obsidian.": "AI が読み取り、最新の状態に保つノートのフォルダーです。あなたの好み、コードのスタイル、モデルのスタイル、学んだことが入ります。Obsidian でも開けます。",
+  "Let the AI learn from my work (it writes notes automatically)": "自分の作業から AI に学習させる（ノートを自動で書き込みます）",
+  "Open vault folder": "ボールトのフォルダーを開く",
+  "Open in Obsidian": "Obsidian で開く",
+  "Use another folder for the vault (full path)": "ボールトに別のフォルダーを使う（フルパス）",
+  "Use this folder": "このフォルダーを使う",
+  "notes in the vault": "ボールト内のノート",
+  "The vault needs the newest PlazCode desktop app. Update the app to use it.": "ボールトを使うには最新の PlazCode デスクトップアプリが必要です。アプリを更新してください。"
 }

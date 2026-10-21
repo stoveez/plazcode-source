@@ -988,5 +988,14 @@
   "Select the text and copy it": null,
   "That is not a PlazCode backup.": null,
   "Nothing to change.": null,
-  "Restored. Reload the page to apply.": null
+  "Restored. Reload the page to apply.": null,
+  "Vault (the AI's brain)": null,
+  "A folder of notes the AI reads and keeps up to date: how you like things, your coding style, model styles and what it learned. It also opens in Obsidian.": null,
+  "Let the AI learn from my work (it writes notes automatically)": null,
+  "Open vault folder": null,
+  "Open in Obsidian": null,
+  "Use another folder for the vault (full path)": null,
+  "Use this folder": null,
+  "notes in the vault": null,
+  "The vault needs the newest PlazCode desktop app. Update the app to use it.": null
 }

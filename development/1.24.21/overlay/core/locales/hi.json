@@ -988,5 +988,14 @@
   "Select the text and copy it": "टेक्स्ट चुनकर कॉपी करें",
   "That is not a PlazCode backup.": "यह PlazCode का बैकअप नहीं है।",
   "Nothing to change.": "बदलने के लिए कुछ नहीं है।",
-  "Restored. Reload the page to apply.": "बहाल हो गया। लागू करने के लिए पेज रीलोड करें।"
+  "Restored. Reload the page to apply.": "बहाल हो गया। लागू करने के लिए पेज रीलोड करें।",
+  "Vault (the AI's brain)": "वॉल्ट (AI का दिमाग़)",
+  "A folder of notes the AI reads and keeps up to date: how you like things, your coding style, model styles and what it learned. It also opens in Obsidian.": "नोट्स का एक फ़ोल्डर जिसे AI पढ़ता है और अपडेट रखता है: आपकी पसंद, आपकी कोडिंग शैली, मॉडल शैलियाँ और जो उसने सीखा। यह Obsidian में भी खुलता है।",
+  "Let the AI learn from my work (it writes notes automatically)": "AI को मेरे काम से सीखने दें (यह नोट्स अपने आप लिखता है)",
+  "Open vault folder": "वॉल्ट फ़ोल्डर खोलें",
+  "Open in Obsidian": "Obsidian में खोलें",
+  "Use another folder for the vault (full path)": "वॉल्ट के लिए दूसरा फ़ोल्डर इस्तेमाल करें (पूरा पथ)",
+  "Use this folder": "यह फ़ोल्डर इस्तेमाल करें",
+  "notes in the vault": "वॉल्ट में नोट्स",
+  "The vault needs the newest PlazCode desktop app. Update the app to use it.": "वॉल्ट के लिए PlazCode का नवीनतम डेस्कटॉप ऐप चाहिए। इसे इस्तेमाल करने के लिए ऐप अपडेट करें।"
 }

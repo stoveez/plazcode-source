@@ -45,8 +45,10 @@ Read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first
 For a new version number, copy the 1.24.21 workflows and `development/1.24.21` folder to the new number and update the names inside.
 
 ## Where things stand
-- 1.24.21 is built, CI is fully green on commit 9fb157a, and it is NOT published. Publishing waits for the owner and goes through the private workflow (set `VALIDATED_SHA` / `VALIDATION_RUN` in `publish-1.24.21.yml`, test against `stoveez/plazcode-publish-test` first).
-- The release notes in `development/1.24.21/release-entry.json` still need lines for the tester fixes: the Vani Fix-connection freeze (also fixed in Freebuff, Oxalpha, UseAI), Co-work on Vani, and the older-app message in What happened.
+- 1.24.21 is NOT published. The owner added the **Vault memory** (an Obsidian-compatible folder of linked notes the AI reads and updates, plus a score-and-redo reference loop) to this version, so the exact final commit needs a fresh fully green validation run (including the Mac desktop test) before publishing. Design: `development/1.24.21/VAULT-MEMORY-DESIGN.md`. Code: `agent/src/vault.rs`, `core/memory.js`, tool wiring in `core/main.js`, `background.js`.
+- Release notes in `development/1.24.21/release-entry.json` now include the vault and the tester fixes. The GitHub release text is limited to under 2,000 characters (checked: about 1,360).
+- Publishing waits for the owner and goes through the private workflow (set `VALIDATED_SHA` / `VALIDATION_RUN` in `publish-1.24.21.yml`, test against `stoveez/plazcode-publish-test` first).
+- Test builds: use the lean zips (see rule 6). GitHub's Mac runners were scarce on 2026-10-20; re-run the Mac job every 20 minutes if it is cancelled with "not acquired by Runner".
 - Next update plan (login/license system, Skill Workshop, Brickwire ideas, a simple website) is in `development/1.25.0/`.
 
 ## Open items

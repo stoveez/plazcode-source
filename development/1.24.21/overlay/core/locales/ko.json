@@ -988,5 +988,14 @@
   "Select the text and copy it": "텍스트를 선택해 복사하세요",
   "That is not a PlazCode backup.": "PlazCode 백업이 아닙니다.",
   "Nothing to change.": "변경할 내용이 없습니다.",
-  "Restored. Reload the page to apply.": "복원했습니다. 적용하려면 페이지를 새로 고치세요."
+  "Restored. Reload the page to apply.": "복원했습니다. 적용하려면 페이지를 새로 고치세요.",
+  "Vault (the AI's brain)": "볼트(AI의 두뇌)",
+  "A folder of notes the AI reads and keeps up to date: how you like things, your coding style, model styles and what it learned. It also opens in Obsidian.": "AI가 읽고 최신 상태로 유지하는 노트 폴더입니다. 선호하는 방식, 코딩 스타일, 모델 스타일, 그리고 AI가 배운 내용이 담깁니다. Obsidian에서도 열 수 있습니다.",
+  "Let the AI learn from my work (it writes notes automatically)": "내 작업에서 AI가 배우도록 허용(노트를 자동으로 작성)",
+  "Open vault folder": "볼트 폴더 열기",
+  "Open in Obsidian": "Obsidian에서 열기",
+  "Use another folder for the vault (full path)": "볼트에 다른 폴더 사용(전체 경로)",
+  "Use this folder": "이 폴더 사용",
+  "notes in the vault": "볼트의 노트",
+  "The vault needs the newest PlazCode desktop app. Update the app to use it.": "볼트를 사용하려면 최신 PlazCode 데스크톱 앱이 필요합니다. 앱을 업데이트하세요."
 }

@@ -988,5 +988,14 @@
   "Select the text and copy it": "Metni seçip kopyalayın",
   "That is not a PlazCode backup.": "Bu bir PlazCode yedeği değil.",
   "Nothing to change.": "Değiştirilecek bir şey yok.",
-  "Restored. Reload the page to apply.": "Geri yüklendi. Uygulamak için sayfayı yenileyin."
+  "Restored. Reload the page to apply.": "Geri yüklendi. Uygulamak için sayfayı yenileyin.",
+  "Vault (the AI's brain)": "Kasa (yapay zekânın beyni)",
+  "A folder of notes the AI reads and keeps up to date: how you like things, your coding style, model styles and what it learned. It also opens in Obsidian.": "Yapay zekânın okuduğu ve güncel tuttuğu bir not klasörü: nasıl sevdiğiniz, kodlama tarzınız, model stilleri ve öğrendikleri. Obsidian'da da açılır.",
+  "Let the AI learn from my work (it writes notes automatically)": "Yapay zekânın çalışmamdan öğrenmesine izin ver (notları otomatik yazar)",
+  "Open vault folder": "Kasa klasörünü aç",
+  "Open in Obsidian": "Obsidian'da aç",
+  "Use another folder for the vault (full path)": "Kasa için başka bir klasör kullan (tam yol)",
+  "Use this folder": "Bu klasörü kullan",
+  "notes in the vault": "notlar kasada",
+  "The vault needs the newest PlazCode desktop app. Update the app to use it.": "Kasa için en yeni PlazCode masaüstü uygulaması gerekir. Kullanmak için uygulamayı güncelleyin."
 }

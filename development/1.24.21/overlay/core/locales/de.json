@@ -988,5 +988,14 @@
   "Select the text and copy it": "Markiere den Text und kopiere ihn",
   "That is not a PlazCode backup.": "Das ist keine PlazCode-Sicherung.",
   "Nothing to change.": "Nichts zu ändern.",
-  "Restored. Reload the page to apply.": "Wiederhergestellt. Lade die Seite neu, um es anzuwenden."
+  "Restored. Reload the page to apply.": "Wiederhergestellt. Lade die Seite neu, um es anzuwenden.",
+  "Vault (the AI's brain)": "Tresor (das Gehirn der KI)",
+  "A folder of notes the AI reads and keeps up to date: how you like things, your coding style, model styles and what it learned. It also opens in Obsidian.": "Ein Ordner mit Notizen, den die KI liest und aktuell hält: wie Sie es mögen, Ihr Programmierstil, Modellstile und was sie gelernt hat. Er lässt sich auch in Obsidian öffnen.",
+  "Let the AI learn from my work (it writes notes automatically)": "Die KI aus meiner Arbeit lernen lassen (sie schreibt Notizen automatisch)",
+  "Open vault folder": "Tresor-Ordner öffnen",
+  "Open in Obsidian": "In Obsidian öffnen",
+  "Use another folder for the vault (full path)": "Anderen Ordner für den Tresor verwenden (vollständiger Pfad)",
+  "Use this folder": "Diesen Ordner verwenden",
+  "notes in the vault": "Notizen im Tresor",
+  "The vault needs the newest PlazCode desktop app. Update the app to use it.": "Der Tresor benötigt die neueste PlazCode-Desktop-App. Aktualisieren Sie die App, um ihn zu nutzen."
 }

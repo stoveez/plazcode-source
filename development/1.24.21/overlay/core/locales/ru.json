@@ -988,5 +988,14 @@
   "Select the text and copy it": "Выделите текст и скопируйте его",
   "That is not a PlazCode backup.": "Это не копия PlazCode.",
   "Nothing to change.": "Нечего менять.",
-  "Restored. Reload the page to apply.": "Восстановлено. Перезагрузите страницу, чтобы применить."
+  "Restored. Reload the page to apply.": "Восстановлено. Перезагрузите страницу, чтобы применить.",
+  "Vault (the AI's brain)": "Хранилище (мозг ИИ)",
+  "A folder of notes the AI reads and keeps up to date: how you like things, your coding style, model styles and what it learned. It also opens in Obsidian.": "Папка с заметками, которую ИИ читает и обновляет: как вам нравится, ваш стиль кода, стили моделей и то, чему он научился. Она также открывается в Obsidian.",
+  "Let the AI learn from my work (it writes notes automatically)": "Позволить ИИ учиться на моей работе (он сам пишет заметки)",
+  "Open vault folder": "Открыть папку хранилища",
+  "Open in Obsidian": "Открыть в Obsidian",
+  "Use another folder for the vault (full path)": "Использовать другую папку для хранилища (полный путь)",
+  "Use this folder": "Использовать эту папку",
+  "notes in the vault": "заметок в хранилище",
+  "The vault needs the newest PlazCode desktop app. Update the app to use it.": "Для хранилища нужна новейшая настольная программа PlazCode. Обновите программу, чтобы им пользоваться."
 }

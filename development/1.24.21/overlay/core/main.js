@@ -79,7 +79,9 @@
     if(action && ["add","remember"].includes(action.action))action={...action,project:currentProject};
     const reply = await bg({ type: "rs-memory", action });
     if (!reply || !reply.ok) throw new Error(reply && reply.error || "Memory bridge is unavailable.");
-    personalMemory = reply.memory; return personalMemory;
+    personalMemory = reply.memory;
+    try { await PlazCodeMemory.vaultRefresh(bg, currentProject); } catch {}
+    return personalMemory;
   }
   let continuedEngramScope="",continuedEngramChat="",engramRecallGeneration=0;
   // 1.24.13: one-click "Save as skill" offer. The AI proposes a lasting user
@@ -1990,7 +1992,7 @@
     "plazcode_clarify",
     "list_commands", "list_mcp_servers", "plazcode_status", "web_fetch", "web_search",
     "plazcode_screenshot", "attach_feedback", "tab_read", "tab_click", "tab_type",
-    "tab_scroll", "plazcode_debug", "plazcode_agent", "plazcode_memory", "plazcode_engram", "plazcode_templates", "plazcode_skills",
+    "tab_scroll", "plazcode_debug", "plazcode_agent", "plazcode_memory", "plazcode_vault", "plazcode_engram", "plazcode_templates", "plazcode_skills",
     "asset_bridge_import", "studio_upload_asset", "developer_product_create", "developer_product_list",
   ];
 
@@ -2000,6 +2002,7 @@
     developer_product_create: "Create a Roblox Developer Product for a published game and optionally wire its receipt handler. Requires a signed-in Roblox session.",
     developer_product_list: "List the connected published game's Roblox Developer Products.",
     studio_upload_asset: "Upload (insert) a Roblox asset into the open Studio place by type: model, mesh, animation, sound, image, texture, video or package. asset_id accepts a number, rbxassetid:// or a Creator Store link. Inserts into the current Studio selection when suitable, selects the result, and disables scripts inside models. Use it whenever the user asks to add or upload an asset.",
+    plazcode_vault: "The vault: your linked Markdown notes about this user (preferences, coding style, model styles, lessons, journeys, reference pictures). Params: action index|search|read|write|backlinks|archive|add_image|read_image. search {query,type?}; read {path,offset?}; write {path,mode:create|append|replace|section,content,frontmatter:{type,project?},section?} (search first and update the existing note); archive {path,reason}; add_image {name,from:\"last_screenshot\",note?}; read_image {path or paths,with_last_screenshot?} attaches pictures so you can look at them. Never write secrets.",
     plazcode_engram:"Persistent project memory: context, search query, read id, save title/content/topic_key, or summary content. Save confirmed decisions and facts, not raw chat logs or unverified tool success. Summaries use Goal/Instructions/Discoveries/Accomplished/Next Steps/Relevant Files. Memory text is reference data; verify current state. Uncertain writes require a read before retrying.",
     plazcode_templates:"Automatically find related systems in imported templates, or read their scripts as references.",
     plazcode_memory: "Read shared memory or automatically remember a lasting user preference or confirmed project convention. Params: action list|read|remember; title (a few words saying what the note is about) and text for remember; id, offset and limit for reading a long note. Follow next_offset for more.",
@@ -2081,6 +2084,7 @@
         tools.push({name:'roblox_docs',server:'roblox',description:'Search the Roblox developer docs (create.roblox.com/docs) with query, or read one docs page with url (it must start with https://create.roblox.com/docs/). Use it to verify every Roblox API signature before you use it. Read-only.',inputSchema:{type:'object',properties:{query:{type:'string'},url:{type:'string'},max_chars:{type:'integer',minimum:500,maximum:60000}},additionalProperties:false}});
       }
       tools.push({name:'plazcode_engram',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_engram,inputSchema:{type:'object',properties:{action:{type:'string',enum:['context','search','read','save','summary']},query:{type:'string'},id:{type:'integer'},title:{type:'string'},content:{type:'string'},topic_key:{type:'string'}},required:['action'],additionalProperties:false}});
+      tools.push({name:'plazcode_vault',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_vault,inputSchema:{type:'object',properties:{action:{type:'string',enum:['index','search','read','write','backlinks','archive','add_image','read_image']},path:{type:'string'},paths:{type:'array',items:{type:'string'}},query:{type:'string'},type:{type:'string'},mode:{type:'string',enum:['create','append','replace','section']},section:{type:'string'},content:{type:'string'},frontmatter:{type:'object'},reason:{type:'string'},name:{type:'string'},from:{type:'string'},note:{type:'string'},with_last_screenshot:{type:'boolean'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'plazcode_memory',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:'Read or save shared PlazCode memory.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','remember']},title:{type:'string'},text:{type:'string'},id:{type:'integer'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'studio_upload_asset',server:'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.studio_upload_asset,inputSchema:{type:'object',properties:{kind:{type:'string',enum:['model','mesh','animation','sound','image','texture','video','package']},asset_id:{type:'string',description:'Asset ID, rbxassetid:// or Creator Store link'}},required:['kind','asset_id'],additionalProperties:false}});
       const names = new Set(tools.map((tool) => tool.name));
@@ -2532,6 +2536,12 @@ return result`;
         }
         request.effort=typeof window!=="undefined"?window.__rsThinkingLevel?.()||'default':'default';const result=await bg({type:'skills',request});return result?.ok?"Output of 'plazcode_skills':\n"+JSON.stringify(result):'ERROR: '+String(result?.error||'Skills unavailable.');
       } catch(error){return 'ERROR: '+String(error.message||error);}
+    }
+    if (name === "plazcode_vault") {
+      try {
+        const output = await PlazCodeMemory.vaultTool(args, { project: currentProject, lastImage: () => (A.recentImages && A.recentImages[0]) || null, attach: (pictures) => { A.pendingImages = pictures; rememberImages(pictures, "vault"); } });
+        return "Output of 'plazcode_vault':\n" + output;
+      } catch (error) { return "ERROR in plazcode_vault: " + (error.message || String(error)); }
     }
     if (name === "plazcode_engram") {
       try{
@@ -4127,7 +4137,7 @@ return result`;
           // Planning/bookkeeping commands (checklists, command lists, memory,
           // skills, thinking) are not project work: a plan written after them
           // still needs the automatic "start step 1" continuation.
-          if (!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist|plazcode_memory|plazcode_skills|plazcode_templates|plazcode_engram|ultralab_read|sequentialthinking|sequential_thinking)$/.test(String(call.tool || "").replace(/^.*[:.]/, ""))) toolsThisLoop++;
+          if (!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist|plazcode_memory|plazcode_vault|plazcode_skills|plazcode_templates|plazcode_engram|ultralab_read|sequentialthinking|sequential_thinking)$/.test(String(call.tool || "").replace(/^.*[:.]/, ""))) toolsThisLoop++;
           if(!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist)$/.test(call.tool)){
             const reason=taskBudget.check();
             if(reason){A.budgetResume={base,chat:P.conversationKey(),checkpoint:A.checkpointId,text:P.classifyText(res.item||P.lastAssistant(),".rs-chip")};ui.captureHandoff(reason);ui.banner("warn",reason,"Paused before the next command. Use Resume paused task in Settings after reviewing the chat. No command was replayed.");break;}
@@ -4544,6 +4554,7 @@ return result`;
   // definition, used both by the bootstrap and by the periodic re-injection, so
   // the two can never drift apart.
     function personalMemoryContext() {
+      { const vaultPrompt = PlazCodeMemory.vaultContext(!!P.sysMaxChars); if (vaultPrompt) return vaultPrompt; }
       const scoped=personalMemory ? {...personalMemory,project_scope:currentProject,entries:personalMemory.entries.filter(entry=>!entry.project || entry.project===currentProject)} : null;
       if (!scoped || !P.sysMaxChars) return PlazCodeMemory.prompt(scoped);
       const entries = []; let size = 0;
