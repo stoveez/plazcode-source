@@ -2086,7 +2086,7 @@ async function runCritic(msg) {
   clearTimeout(timer);
   return answer || { ok: false, error: "no answer from the critic window" };
 }
-chrome.windows.onRemoved.addListener((windowId) => { if (criticWin && criticWin.windowId === windowId) criticWin = null; });
+try { if (chrome.windows && chrome.windows.onRemoved) chrome.windows.onRemoved.addListener((windowId) => { if (criticWin && criticWin.windowId === windowId) criticWin = null; }); } catch {}
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
