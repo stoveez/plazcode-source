@@ -39,4 +39,22 @@ must_fail({'bad-link/guide.md': ok + '[x](javascript:alert(1))'}, 'script link')
 must_fail({'bad-link2/guide.md': ok + '[x](http://insecure.example)'}, 'http link')
 must_fail({'Bad_Slug/guide.md': ok + 'x'}, 'bad folder name')
 must_fail({'no-front/guide.md': 'just text'}, 'no front matter')
+# translations: a good one is accepted and listed; bad ones are refused
+with tempfile.TemporaryDirectory() as tmp:
+    src = os.path.join(tmp, 'guides'); shutil.copytree(HERE, src, ignore=shutil.ignore_patterns('__pycache__'))
+    base = open(os.path.join(src, 'install-plazcode', 'guide.md')).read()
+    fm = '---\ntitle: Titulo\nsummary: Resumen\n---\n'
+    body = base.split('---\n', 2)[2]
+    open(os.path.join(src, 'install-plazcode', 'guide.es.md'), 'w').write(fm + body)
+    r = subprocess.run([sys.executable, os.path.join(src, 'build_guides.py'), os.path.join(tmp, 'o')], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    idx = json.load(open(os.path.join(tmp, 'o', 'index.json')))
+    entry = [g for g in idx['guides'] if g['id'] == 'install-plazcode'][0]
+    assert entry['langs']['es']['title'] == 'Titulo'
+    assert os.path.isfile(os.path.join(tmp, 'o', 'install-plazcode', 'guide.es.md'))
+fmok = '---\ntitle: T\nsummary: S\n---\n'
+english = open(os.path.join(HERE, 'install-plazcode', 'guide.md')).read().split('---\n', 2)[2]
+must_fail({'install-plazcode/guide.es.md': fmok + 'No headings here'}, 'translation with different structure')
+must_fail({'install-plazcode/guide.xx.md': fmok + english}, 'unknown language code')
+must_fail({'install-plazcode/guide.es.md': '---\ntitle: T\n---\n' + english}, 'translation without summary')
 print('guides: all checks passed')
