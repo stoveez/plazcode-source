@@ -21,7 +21,7 @@
     "Ultra effort is now the UltraLab pack by SyphoDev (used with his permission, credit: youtube.com/@SyphoDev). At Ultra the AI gets a full Roblox game-building toolkit: 53 skills covering UI, scripting, maps, 3D models, effects, tests and more, plus 7 helper roles and 18 reference notes. It only reads the ones that match your request, so it stays quick.",
     "The AI can open any of Ultra's skill files itself and look things up in the official Roblox docs, and it still asks you first before it uploads, uses a paid service, installs something or publishes.",
     "Engine file tools (AgentScript): 17 new tools that read and work on project files without the editor being open. Godot: read a project, show a scene's node tree, add a node, make a script from a template, check a script for mistakes, find where a file is used. Unity: read a project, list assets, list a scene's objects, make a C# script, list packages. Roblox: read a saved place file, list and search its scripts, check Luau code. Blender: look inside a saved .blend file and check a Python script or add-on.",
-    "Vault: the AI now has a real long-term memory, a folder of linked notes it reads at the start of every chat and keeps up to date by itself: how you like things, your coding style, model styles, mistakes and fixes, and reference pictures. Press Open vault in Memory settings to browse it in a window that looks and works like Obsidian: a file list, note properties, info boxes, clickable links, pictures, search, and editing. The notes are plain files in numbered folders, so Obsidian opens them too (an Open in Obsidian button shows if you have it), and you can point the vault at your own Obsidian folder. It replaces the old flat list of 200 notes; your old notes are copied in and the old file is kept. You can turn off the AI writing notes. The AI can build to match a reference picture with a score-and-redo check, then saves what it learned. Needs the newest PlazCode app."
+    "Vault: the AI now has a real long-term memory, a folder of linked notes it reads at the start of every chat and keeps up to date by itself: how you like things, your coding style, model styles, mistakes and fixes, and reference pictures. Press Open vault in Memory settings to browse it in a window that looks and works like Obsidian: a file list, note properties, info boxes, clickable links, pictures, search, and editing. The notes are plain files in numbered folders, so Obsidian opens them too (an Open in Obsidian button shows if you have it), and you can point the vault at your own Obsidian folder. It replaces the old flat list of 200 notes; your old notes are copied in and the old file is kept. You can turn off the AI writing notes. The AI can build to match a reference picture: a separate critic chat (a new chat on the same AI site, in its own small window) scores the result against the picture and lists fixes, up to 5 rounds, then the AI saves what it learned. If the separate chat can't open, it falls back to judging itself. Needs the newest PlazCode app."
   ],
   "improved": [
     "Dropdown lists in PlazCode now use PlazCode's own rounded, themed menus in the app, the extension and the popup, with a clean arrow.",
@@ -41,7 +41,8 @@
     "On Notion, if a result file is not accepted, PlazCode now removes its own file and tries once more, instead of showing 'Message was not confirmed'.",
     "The AI no longer re-reads the same Ultra file again and again.",
     "A harmless 'community skills 404' warning no longer appears when no community skills are published yet.",
-    "What happened now says so when your PlazCode app is older than the extension, instead of showing nothing."
+    "What happened now says so when your PlazCode app is older than the extension, instead of showing nothing.",
+    "A command card no longer keeps spinning (seen on Notion) while the PlazCode bar says the AI is finished: PlazCode now notices the reply is done and runs the command, and a card settles as an error if the run crashed."
   ],
   "notes": [
     "Read-only mode and delete confirmations are checked twice: in the browser and again in the PlazCode app.",
@@ -61,7 +62,7 @@
       {
         "title": "✨ What's new",
         "items": [
-          "Vault: an Obsidian-style notes window the AI reads and updates itself. Opens in Obsidian too. Needs the newest app.",
+          "Vault: an Obsidian-style notes window the AI reads and updates itself, with a separate critic chat that scores results against your reference picture. Opens in Obsidian too. Needs the newest app.",
           "Safety: Read-only mode, Confirm before deleting, Allowed folders.",
           "What happened: a plain list of what the AI did, with Undo.",
           "Setups per site, skill sharing, Settings backup, 🔧 Fix connection.",
@@ -72,7 +73,7 @@
       {
         "title": "✨ Polish",
         "items": [
-          "Fixes: Fix connection freeze on Vani, Freebuff, Oxalpha and UseAI; Notion file retry; repeated Ultra reads; bar colours on Vani."
+          "Fixes: stuck command card on Notion; Fix connection freeze on Vani, Freebuff, Oxalpha and UseAI; Notion file retry; repeated Ultra reads; bar colours on Vani."
         ]
       },
       {

@@ -516,9 +516,9 @@ updated: {DATE}
 
 1. Find the style: search the vault for the style or reference. Read its note and its rubric. If none exists, create a style note from `_Templates/Style` and ask the user to confirm the rubric. Store the reference picture with `add_image` and link it in the note.
 2. Build one attempt with the normal tools.
-3. Take a picture of the result with `plazcode_screenshot`. Then use `read_image` on the reference so both pictures are in front of you.
-4. Switch to the CRITIC role. The critic is strict. Score every line of the rubric from 1 to 10 with one sentence of evidence, add the total as a percent, and list exactly what is missing or wrong. Only write APPROVED when the total is at least the pass mark (default 80 percent).
-5. If not approved, fix exactly the listed gaps, take a new picture and score again. Stop after 5 rounds (or the limit in the style note) and say honestly what is still off.
+3. Take a picture of the result with `plazcode_screenshot`.
+4. Ask the independent critic: call `plazcode_critic` with `references` (the vault paths of the reference pictures), `rubric` (the style note) and `goal`. A separate chat that never saw your work scores the picture and lists exact fixes. If it says it is not available, use the same-chat critic instead: use `read_image` on the reference, switch to the CRITIC role, score every rubric line from 1 to 10 with one sentence of evidence, add the total as a percent and list what is missing. Tell the user the critic was not independent that round.
+5. Only APPROVED at the pass mark (default 80 percent) counts. If not approved, fix exactly the listed gaps, take a new picture and ask again. Stop after 5 rounds (or the limit in the style note) and say honestly what is still off.
 6. When approved (or finished), write a Journey note from `_Templates/Journey`: rounds, scores, what was wrong each time, what fixed it. Add the final picture with `add_image`. Then update the style note with the new lessons and link the journey to it.
 ";
 const STYLE_TEMPLATE: &str = "---

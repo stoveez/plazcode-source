@@ -2018,6 +2018,76 @@ async function readReleaseStatus() {
   } finally { releaseStatusReading = false; }
 }
 setInterval(() => { if (rustMode) readReleaseStatus(); }, 1000);
+// ── Independent critic window ───────────────────────────────────────────────
+// plazcode_critic asks a SEPARATE chat to judge a screenshot. This opens a small window with a fresh chat on the
+// same AI site as the builder, hands the question to that tab's content script and returns the reply. Any failure
+// comes back as { ok:false, error } and the builder falls back to the same-chat critic.
+const CRITIC_NEW_CHAT = [
+  [/^(chatgpt\.com|chat\.openai\.com)$/, "https://chatgpt.com/"],
+  [/^(claude\.ai|www\.claude\.ai)$/, "https://claude.ai/new"],
+  [/^gemini\.google\.com$/, "https://gemini.google.com/app"],
+  [/^chat\.deepseek\.com$/, "https://chat.deepseek.com/"],
+  [/^(www\.)?kimi\.(com|ai)$/, "https://www.kimi.com/"],
+  [/^chat\.qwen\.ai$/, "https://chat.qwen.ai/"],
+  [/^chat\.z\.ai$/, "https://chat.z.ai/"],
+];
+let criticWin = null; // { windowId, tabId, host }
+const criticSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function criticClose() {
+  const win = criticWin; criticWin = null;
+  if (win && win.windowId != null) { try { await chrome.windows.remove(win.windowId); } catch {} }
+}
+async function criticTabAlive(win) {
+  if (!win) return false;
+  try { const tab = await chrome.tabs.get(win.tabId); return !!tab; } catch { return false; }
+}
+async function criticPing(tabId) {
+  for (let i = 0; i < 40; i++) {
+    try {
+      const reply = await chrome.tabs.sendMessage(tabId, { type: "rs-critic-ping" });
+      if (reply && reply.ok) return reply;
+    } catch {}
+    await criticSleep(750);
+  }
+  return null;
+}
+async function criticTabReady(tabId) {
+  for (let i = 0; i < 60; i++) {
+    try { const tab = await chrome.tabs.get(tabId); if (tab.status === "complete") return true; } catch { return false; }
+    await criticSleep(500);
+  }
+  return false;
+}
+async function runCritic(msg) {
+  if (msg.op === "close") { await criticClose(); return { ok: true }; }
+  const host = String(msg.host || "");
+  const entry = CRITIC_NEW_CHAT.find(([re]) => re.test(host));
+  if (!entry) return { ok: false, error: "this AI site has no separate critic chat support yet" };
+  const url = entry[1];
+  let reuse = !msg.fresh && criticWin && criticWin.host === host && await criticTabAlive(criticWin);
+  if (!reuse) {
+    await criticClose();
+    const created = await chrome.windows.create({ url, type: "popup", focused: false, width: 560, height: 760 });
+    const tab = created && created.tabs && created.tabs[0];
+    if (!created || !tab) return { ok: false, error: "the critic window could not be opened" };
+    criticWin = { windowId: created.id, tabId: tab.id, host };
+  }
+  if (!(await criticTabReady(criticWin.tabId))) { await criticClose(); return { ok: false, error: "the critic chat did not load" }; }
+  const ready = await criticPing(criticWin.tabId);
+  if (!ready) { await criticClose(); return { ok: false, error: "PlazCode is not running in the critic window (is the site signed in?)" }; }
+  if (!ready.idle) return { ok: false, error: "the critic window is busy" };
+  await criticSleep(1500); // let the new chat finish drawing its message box
+  const timeoutMs = Math.min(Math.max(Number(msg.timeoutMs) || 180000, 30000), 300000);
+  let timer;
+  const answer = await Promise.race([
+    chrome.tabs.sendMessage(criticWin.tabId, { type: "rs-critic-run", prompt: msg.prompt, images: msg.images, timeoutMs }),
+    new Promise((resolve) => { timer = setTimeout(() => resolve({ ok: false, error: "the critic chat did not answer in time" }), timeoutMs + 20000); }),
+  ]).catch((error) => ({ ok: false, error: String(error && error.message || error).slice(0, 160) }));
+  clearTimeout(timer);
+  return answer || { ok: false, error: "no answer from the critic window" };
+}
+chrome.windows.onRemoved.addListener((windowId) => { if (criticWin && criticWin.windowId === windowId) criticWin = null; });
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     const tabId = _sender.tab?.id ?? msg.tab_id;
@@ -2156,6 +2226,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),28000);
         try { const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/engram",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{}),signal:controller.signal});sendResponse(await response.json()); }
         catch(error){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timer);}break;
+      }
+      case "rs-critic": {
+        try { sendResponse(await runCritic(msg)); }
+        catch (error) { sendResponse({ ok: false, error: String(error && error.message || error).slice(0, 200) }); }
+        break;
       }
       case "vault": {
         const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);

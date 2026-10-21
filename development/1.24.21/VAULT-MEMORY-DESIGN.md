@@ -138,3 +138,6 @@ The owner showed their own Obsidian vault (numbered folders, a Properties block 
 - Note headers are now stored line for line, so lists, comments and unknown fields survive an edit. A folder that already holds notes (the owner's own vault) is adopted as it is.
 - New app actions: `tree` (file list), `read` with `view` (header and text split), `save_raw` (the user's own edit). Pictures can live anywhere in the vault.
 - New window: Open vault in Memory settings opens a dark Obsidian-style window (file tree, Properties, callouts, tables, task lists, links, pictures, backlinks, search, edit, move to archive). Note text is always escaped and never run as HTML.
+
+## Update 2026-10-21: independent critic chat
+The owner asked for the separate critic chat in 1.24.21 (it was planned for 1.25.0). Built as the `plazcode_critic` tool: a fresh chat on the same AI site in a small unfocused window, vision-capable sites only (ChatGPT, Claude, Gemini, DeepSeek, Kimi, Qwen, GLM). The critic sees only the reference picture(s), the latest screenshot, the goal and the rubric, and answers in a fixed format (SCORES, SCORE %, VERDICT, FIXES). 5 rounds max, 80 percent pass mark. Falls back to the same-chat critic role on any failure. Cross-site critics (judge on a different AI site) remain follow-up work.

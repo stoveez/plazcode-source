@@ -121,6 +121,72 @@ const PlazCodeMemory = (() => {
     ctx.attach(pictures);
     return 'Attached to this message, in this order: ' + pictures.map(p => p.name).join(', ') + '. Look at them now.';
   }
+  // ── Independent critic ────────────────────────────────────────────────────────
+  // The plazcode_critic tool asks a SEPARATE chat (a new conversation on the same AI site, opened by the
+  // background worker) to score the latest screenshot against the reference picture(s). That chat never saw the
+  // builder's reasoning, so it cannot grade its own homework. Any failure returns plain advice to fall back to
+  // the same-chat critic role in the vault note "Reference Critic Loop".
+  const CRITIC_MAX_ROUNDS = 5, CRITIC_PASS = 80;
+  const criticRounds = new Map();
+  function criticParse(reply) {
+    const text = String(reply || '');
+    const labelled = text.match(/SCORE\s*[:=]\s*(\d{1,3})\s*%/i);
+    let score = labelled ? Number(labelled[1]) : null;
+    if (score == null) { const all = [...text.matchAll(/(\d{1,3})\s*%/g)]; if (all.length) score = Number(all[all.length - 1][1]); }
+    if (score != null && score > 100) score = null;
+    const verdict = /VERDICT\s*[:=]\s*APPROVED/i.test(text) ? 'APPROVED' : /VERDICT\s*[:=]\s*REVISE/i.test(text) ? 'REVISE' : null;
+    return { score, verdict };
+  }
+  function criticPrompt(options) {
+    const lines = [
+      'You are a strict, independent visual critic. You did NOT build this and you have no stake in it. Be honest and specific.',
+      'The attached pictures, in order: ' + options.names.join(', ') + '. The LAST picture is the result to judge. The ones before it are the reference the result must match.',
+    ];
+    if (options.goal) lines.push('What the builder was asked to make: ' + options.goal);
+    if (options.rubric) lines.push('Score every line of this rubric from 1 to 10, one sentence of evidence each:\n' + options.rubric);
+    else lines.push('No rubric was given. Judge these five things from 1 to 10, one sentence of evidence each: overall shape and proportions, colours and materials, important details, style match, polish.');
+    lines.push('This is round ' + options.round + ' of ' + CRITIC_MAX_ROUNDS + '. The pass mark is ' + CRITIC_PASS + ' percent.');
+    lines.push('Reply in exactly this form and nothing else:\nSCORES:\n- <item>: <n>/10 - <evidence>\nSCORE: <total as a whole percent>%\nVERDICT: APPROVED or REVISE\nFIXES:\n1. <one exact, measurable change, for example "make the blade 30% longer">\n2. ...');
+    lines.push('Do not write code. Do not praise to be polite. APPROVED only if the total reaches the pass mark and nothing important is missing. Every fix must be something the builder can do in the next round.');
+    return lines.join('\n\n');
+  }
+  function criticFallback(reason) {
+    return 'The independent critic chat was not available (' + reason + '). Fall back to the same-chat critic: read the vault note "09 How To/Reference Critic Loop", switch to the CRITIC role, score every rubric line honestly, and continue the loop. Tell the user the critic was not independent this round.';
+  }
+  // args: { references:[vault paths], rubric?: vault path, goal?, new_job? }  ctx: { chat, project, lastImage(), ask({prompt, images}) }
+  async function criticTool(args, ctx) {
+    args = args || {}; ctx = ctx || {};
+    const refs = (Array.isArray(args.references) && args.references.length ? args.references : [args.reference]).filter(Boolean).map(String).slice(0, 3);
+    if (!refs.length) throw new Error('Give references: the vault path of the reference picture(s), for example ["08 References/refs/sword.png"]. Add one first with plazcode_vault add_image if there is none.');
+    const shot = typeof ctx.lastImage === 'function' ? ctx.lastImage() : null;
+    if (!shot || !shot.data) throw new Error('There is no screenshot of your result yet. Take one with plazcode_screenshot first, then call plazcode_critic again.');
+    const key = String(ctx.chat || '') + '|' + refs.join(',');
+    if (args.new_job === true) criticRounds.delete(key);
+    const round = (criticRounds.get(key) || 0) + 1;
+    if (round > CRITIC_MAX_ROUNDS) {
+      criticRounds.delete(key);
+      if (typeof ctx.close === 'function') { try { ctx.close(); } catch (error) { /* ignore */ } }
+      return 'Round limit reached (' + CRITIC_MAX_ROUNDS + ' rounds). Stop looping: show the user your best result, say what is still missing, and ask whether to continue. Log the journey in the vault.';
+    }
+    let rubric = '';
+    if (args.rubric) { try { const note = await vaultCall({ action: 'read', path: String(args.rubric), limit: 6000 }); rubric = clipText(note.text, 6000); } catch (error) { rubric = ''; } }
+    const images = []; const names = [];
+    try {
+      for (const path of refs) { const r = await vaultCall({ action: 'read_image', path }); images.push({ mimeType: r.mimeType, data: r.data, name: r.path || path }); names.push('reference ' + (names.length + 1)); }
+    } catch (error) { throw new Error('Could not read a reference picture from the vault: ' + (error.message || error)); }
+    images.push({ mimeType: shot.mimeType || 'image/png', data: shot.data, name: 'latest-screenshot' }); names.push('RESULT (latest screenshot)');
+    if (typeof ctx.ask !== 'function') return criticFallback('this PlazCode version cannot open a second chat here');
+    let answer;
+    try { answer = await ctx.ask({ prompt: criticPrompt({ names, goal: clipText(args.goal || '', 600), rubric, round }), images, round }); }
+    catch (error) { return criticFallback(String(error && error.message || error).slice(0, 160)); }
+    if (!answer || !answer.ok || !String(answer.reply || '').trim()) return criticFallback(String(answer && answer.error || 'no answer came back').slice(0, 160));
+    criticRounds.set(key, round);
+    const parsed = criticParse(answer.reply);
+    const approved = parsed.verdict === 'APPROVED' || (parsed.verdict == null && parsed.score != null && parsed.score >= CRITIC_PASS);
+    if (approved || round >= CRITIC_MAX_ROUNDS) { if (approved) criticRounds.delete(key); if (typeof ctx.close === 'function') { try { ctx.close(); } catch (error) { /* the window is only a convenience */ } } }
+    return 'Independent critic (a separate chat), round ' + round + ' of ' + CRITIC_MAX_ROUNDS + ': ' + (parsed.score != null ? parsed.score + '%' : 'no score found') + ' - ' + (approved ? 'APPROVED' : 'REVISE') + '\n' + clipText(answer.reply, 6000)
+      + '\n' + (approved ? 'Approved: finish up, then record the journey in the vault (the scores and what fixed it).' : 'Apply the numbered fixes, take a new screenshot, then call plazcode_critic again. Add this round to the journey note in the vault.');
+  }
   async function vaultSettings() { return vaultCall({ action: 'settings' }); }
   function mountVault(box, localize) {
     box.innerHTML = '<div data-vault-card><div data-vault-head><h3>Vault</h3><small><span data-vault-count></span> <span>notes in the vault</span></small></div><p>Your notes about how you work. The AI reads them before it starts and keeps them up to date. They open in Obsidian too.</p><p data-vault-path data-i18n-user-content></p><div data-vault-buttons><button type="button" data-vault-view>Open vault</button><button type="button" data-vault-open>Open vault folder</button><button type="button" data-vault-obsidian hidden>Open in Obsidian</button></div><label data-vault-learn><input type="checkbox" data-vault-learning> Let the AI learn from my work (it writes notes automatically)</label><details data-vault-more><summary>Use another folder for the vault (full path)</summary><input data-vault-folder aria-label="Vault folder" maxlength="400"> <button type="button" data-vault-save>Use this folder</button></details><p data-vault-unavailable hidden>The vault needs the newest PlazCode desktop app. Update the app to use it.</p><div data-vault-status role="status" data-i18n-user-content></div></div><hr>';
@@ -735,6 +801,6 @@ const PlazCodeMemory = (() => {
     for(const entry of scoped.slice(offset)){const item={id:entry.id,title:titleOf(entry),project:entry.project || "",source:entry.source || "",text:entry.text.slice(0,500),total_chars:entry.text.length,preview_limited:entry.text.length>500};const chars=JSON.stringify(item).length;if(entries.length && size+chars>7000)break;entries.push(item);size+=chars;}
     return {automatic:memory.automatic,entries,total_entries:scoped.length,offset,next_offset:offset+entries.length<scoped.length?offset+entries.length:null};
   }
-  return { prompt, mount, parseTransfer, exportPackage, read, titleOf, vaultRefresh, vaultContext, vaultTool, vaultActive, vaultLearning, vaultCall, openVault: openVaultViewer, renderMarkdown };
+  return { prompt, mount, parseTransfer, exportPackage, read, titleOf, vaultRefresh, vaultContext, vaultTool, vaultActive, vaultLearning, vaultCall, criticTool, criticParse, criticPrompt, openVault: openVaultViewer, renderMarkdown };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = PlazCodeMemory;

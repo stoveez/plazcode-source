@@ -119,7 +119,7 @@ const Memory = require("./core/memory.js");
   const main = fs.readFileSync("core/main.js", "utf8"), background = fs.readFileSync("background.js", "utf8"), rust = fs.readFileSync("agent/src/main.rs", "utf8");
   assert(main.includes('"plazcode_vault"') && main.includes("name === \"plazcode_vault\"") && main.includes("name:'plazcode_vault'") && main.includes("plazcode_vault:"));
   assert(main.includes("PlazCodeMemory.vaultContext(") && main.includes("PlazCodeMemory.vaultRefresh(bg, currentProject)"));
-  assert(/plazcode_memory\|plazcode_vault\|plazcode_skills/.test(main), "vault calls do not count as project work");
+  assert(/plazcode_memory\|plazcode_vault\|(?:plazcode_critic\|)?plazcode_skills/.test(main), "vault calls do not count as project work");
   assert(background.includes('case "vault"') && background.includes('"/api/vault"'));
   assert(rust.includes("mod vault;") && rust.includes('"/api/vault"'));
   const Safety = require("./core/safety.js");

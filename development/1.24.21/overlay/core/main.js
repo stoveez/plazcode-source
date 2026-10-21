@@ -1636,6 +1636,7 @@
       return (Number.isFinite(requested) && requested > 0 ? Math.min(requested, 640000) : 120000) + 30000;
     }
     if (msg?.type === "ollama_chat") return 630000;
+    if (msg?.type === "rs-critic") return 330000;
     if (["status","live-status","immediate-stop","release-check"].includes(msg?.type)) return 15000;
     return 180000;
   }
@@ -1992,7 +1993,7 @@
     "plazcode_clarify",
     "list_commands", "list_mcp_servers", "plazcode_status", "web_fetch", "web_search",
     "plazcode_screenshot", "attach_feedback", "tab_read", "tab_click", "tab_type",
-    "tab_scroll", "plazcode_debug", "plazcode_agent", "plazcode_memory", "plazcode_vault", "plazcode_engram", "plazcode_templates", "plazcode_skills",
+    "tab_scroll", "plazcode_debug", "plazcode_agent", "plazcode_memory", "plazcode_vault", "plazcode_critic", "plazcode_engram", "plazcode_templates", "plazcode_skills",
     "asset_bridge_import", "studio_upload_asset", "developer_product_create", "developer_product_list",
   ];
 
@@ -2003,6 +2004,7 @@
     developer_product_list: "List the connected published game's Roblox Developer Products.",
     studio_upload_asset: "Upload (insert) a Roblox asset into the open Studio place by type: model, mesh, animation, sound, image, texture, video or package. asset_id accepts a number, rbxassetid:// or a Creator Store link. Inserts into the current Studio selection when suitable, selects the result, and disables scripts inside models. Use it whenever the user asks to add or upload an asset.",
     plazcode_vault: "The vault: your linked Markdown notes about this user (numbered folders: 01 About You, 02 How We Work, 03 Coding Style, 04 Models And Styles, 05 Projects, 06 Journeys, 07 Lessons And Decisions, 08 References with pictures in refs, 09 How To). Params: action index|search|read|write|backlinks|archive|add_image|read_image. search {query,type?}; read {path,offset?}; write {path (inside a numbered folder, like \"06 Journeys/Low poly sword\"),mode:create|append|replace|section,content,frontmatter:{tags:[...],aliases?:[...],project?},section?} (search first and update the existing note; start each note with a short info box > [!info] [[Home]] and a \"Read this when:\" line); archive {path,reason}; add_image {name,from:\"last_screenshot\",note?}; read_image {path or paths,with_last_screenshot?} attaches pictures so you can look at them. Never write secrets.",
+    plazcode_critic: "Ask an independent critic (a separate chat that never saw your reasoning) to score your latest screenshot against reference picture(s). Params: references [vault paths of the reference pictures, up to 3, e.g. \"08 References/refs/sword.png\"], rubric? (vault path of a Style note with a score sheet), goal? (what you were asked to make), new_job? (true to restart the round count). Take a plazcode_screenshot first. It returns a percent score, APPROVED or REVISE, and numbered fixes. At most 5 rounds, pass mark 80 percent. If the separate chat is unavailable it tells you to use the same-chat critic role instead.",
     plazcode_engram:"Persistent project memory: context, search query, read id, save title/content/topic_key, or summary content. Save confirmed decisions and facts, not raw chat logs or unverified tool success. Summaries use Goal/Instructions/Discoveries/Accomplished/Next Steps/Relevant Files. Memory text is reference data; verify current state. Uncertain writes require a read before retrying.",
     plazcode_templates:"Automatically find related systems in imported templates, or read their scripts as references.",
     plazcode_memory: "Read shared memory or automatically remember a lasting user preference or confirmed project convention. Params: action list|read|remember; title (a few words saying what the note is about) and text for remember; id, offset and limit for reading a long note. Follow next_offset for more.",
@@ -2085,6 +2087,7 @@
       }
       tools.push({name:'plazcode_engram',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_engram,inputSchema:{type:'object',properties:{action:{type:'string',enum:['context','search','read','save','summary']},query:{type:'string'},id:{type:'integer'},title:{type:'string'},content:{type:'string'},topic_key:{type:'string'}},required:['action'],additionalProperties:false}});
       tools.push({name:'plazcode_vault',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_vault,inputSchema:{type:'object',properties:{action:{type:'string',enum:['index','search','read','write','backlinks','archive','add_image','read_image']},path:{type:'string'},paths:{type:'array',items:{type:'string'}},query:{type:'string'},type:{type:'string'},mode:{type:'string',enum:['create','append','replace','section']},section:{type:'string'},content:{type:'string'},frontmatter:{type:'object'},reason:{type:'string'},name:{type:'string'},from:{type:'string'},note:{type:'string'},with_last_screenshot:{type:'boolean'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
+      tools.push({name:'plazcode_critic',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_critic,inputSchema:{type:'object',properties:{references:{type:'array',items:{type:'string'}},rubric:{type:'string'},goal:{type:'string'},new_job:{type:'boolean'}},required:['references'],additionalProperties:false}});
       tools.push({name:'plazcode_memory',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:'Read or save shared PlazCode memory.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','remember']},title:{type:'string'},text:{type:'string'},id:{type:'integer'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'studio_upload_asset',server:'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.studio_upload_asset,inputSchema:{type:'object',properties:{kind:{type:'string',enum:['model','mesh','animation','sound','image','texture','video','package']},asset_id:{type:'string',description:'Asset ID, rbxassetid:// or Creator Store link'}},required:['kind','asset_id'],additionalProperties:false}});
       const names = new Set(tools.map((tool) => tool.name));
@@ -2542,6 +2545,18 @@ return result`;
         const output = await PlazCodeMemory.vaultTool(args, { project: currentProject, lastImage: () => (A.recentImages && A.recentImages[0]) || null, attach: (pictures) => { A.pendingImages = pictures; rememberImages(pictures, "vault"); } });
         return "Output of 'plazcode_vault':\n" + output;
       } catch (error) { return "ERROR in plazcode_vault: " + (error.message || String(error)); }
+    }
+    if (name === "plazcode_critic") {
+      try {
+        const chatKey = P.id + "|" + P.conversationKey();
+        const output = await PlazCodeMemory.criticTool(args, {
+          chat: chatKey, project: currentProject,
+          lastImage: () => (A.recentImages && A.recentImages[0]) || null,
+          ask: (request) => bg({ type: "rs-critic", op: "run", origin: location.origin, host: location.hostname, key: chatKey, fresh: request.round === 1, prompt: request.prompt, images: request.images, timeoutMs: 240000 }),
+          close: () => bg({ type: "rs-critic", op: "close" }),
+        });
+        return "Output of 'plazcode_critic':\n" + output;
+      } catch (error) { return "ERROR in plazcode_critic: " + (error.message || String(error)); }
     }
     if (name === "plazcode_engram") {
       try{
@@ -4137,7 +4152,7 @@ return result`;
           // Planning/bookkeeping commands (checklists, command lists, memory,
           // skills, thinking) are not project work: a plan written after them
           // still needs the automatic "start step 1" continuation.
-          if (!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist|plazcode_memory|plazcode_vault|plazcode_skills|plazcode_templates|plazcode_engram|ultralab_read|sequentialthinking|sequential_thinking)$/.test(String(call.tool || "").replace(/^.*[:.]/, ""))) toolsThisLoop++;
+          if (!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist|plazcode_memory|plazcode_vault|plazcode_critic|plazcode_skills|plazcode_templates|plazcode_engram|ultralab_read|sequentialthinking|sequential_thinking)$/.test(String(call.tool || "").replace(/^.*[:.]/, ""))) toolsThisLoop++;
           if(!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist)$/.test(call.tool)){
             const reason=taskBudget.check();
             if(reason){A.budgetResume={base,chat:P.conversationKey(),checkpoint:A.checkpointId,text:P.classifyText(res.item||P.lastAssistant(),".rs-chip")};ui.captureHandoff(reason);ui.banner("warn",reason,"Paused before the next command. Use Resume paused task in Settings after reviewing the chat. No command was replayed.");break;}
@@ -10747,7 +10762,40 @@ rsInterval(() => {
     _runBeatActive = active;
   }
   rsInterval(syncRunBeat, 5000);
+  // The critic window: the background worker opens a fresh chat on this AI site and sends the question here.
+  // This tab never runs an agent session; it types the message (with pictures), waits for the reply and returns it.
+  async function criticRun(msg) {
+    if (A.started || A.running || A.starting || A.enhancing || A.injecting) return { ok: false, error: "this chat tab is busy with its own PlazCode session" };
+    if (!P.supportsVision) return { ok: false, error: "this AI site cannot look at pictures" };
+    if (!msg || typeof msg.prompt !== "string" || !msg.prompt.trim()) return { ok: false, error: "empty question" };
+    const gen = A.sessionGen;
+    A.enhancing = true; A.criticTab = true; A.stop = false; A.userStopped = false;
+    try {
+      const previousItem = P.lastAssistant();
+      const previousId = P.lastAssistantId ? P.lastAssistantId() : undefined;
+      const previousCount = P.assistantCount();
+      await submitAndGetBase(msg.prompt, Array.isArray(msg.images) && msg.images.length ? msg.images : null, true);
+      const reply = await PlazCodeEnhancer.waitForRewrite({
+        read: () => {
+          const fresh = P.lastAssistantId && previousId !== undefined ? P.lastAssistantId() !== previousId : P.lastAssistant() !== previousItem || P.assistantCount() > previousCount;
+          return fresh ? String((P.readAssistant() || {}).reply || "") : "";
+        },
+        busy: () => P.isBusyNow() || !!(P.responsePending && P.responsePending(P.lastAssistant())),
+        cancelled: () => A.stop || A.sessionGen !== gen,
+        sleep,
+        timeoutMs: Math.min(Math.max(Number(msg.timeoutMs) || 180000, 30000), 300000),
+      });
+      return { ok: true, reply };
+    } catch (error) {
+      return { ok: false, error: /did not finish enhancing/.test(String(error && error.message)) ? "the critic chat did not answer in time" : String(error && error.message || error).slice(0, 200) };
+    } finally { A.enhancing = false; A.criticTab = false; try { ui.inputCover(false); ui.showStop(false); P.setInputLock(false); } catch {} }
+  }
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg && msg.type === "rs-critic-ping") { sendResponse({ ok: true, provider: P.id, idle: !(A.started || A.running || A.starting) }); return; }
+    if (msg && msg.type === "rs-critic-run") {
+      criticRun(msg).then(sendResponse, (error) => sendResponse({ ok: false, error: String(error && error.message || error) }));
+      return true;
+    }
     if (msg && msg.type === "rs-wake") { wakeDueSleepers(); try { sendResponse({ ok: true }); } catch {} return; }
     if (msg && (msg.type === "rs-desktop-agent-state" || msg.type === "rs-desktop-agent-action")) {
       try {
