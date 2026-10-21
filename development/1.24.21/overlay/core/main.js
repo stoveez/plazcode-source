@@ -4276,6 +4276,8 @@ return result`;
       } else {
         diag("loop.error", { msg: String((e && e.message) || e) });
         ui.banner("warn", "Internal loop error", String((e && e.message) || e));
+        // An error while a command was running must not leave its card spinning forever.
+        if (A.toolRunning && A.toolItem) { try { decorate.toolBox(A.toolItem, A.toolName, "err", "interrupted", true, "", RS.toolCategory(A.toolName)); } catch {} }
         try { A._sfxErr = true; } catch {}
       }
     } finally {
@@ -11148,7 +11150,19 @@ rsInterval(() => {
 if (!A.started || A.running || A.starting || A.injecting || A.enhancing || A.budgetResume || A.pendingToolSettles) return;
 if (document.hidden && !bgMode) return;              // parking mode: don't parse/exec off-screen (agentLoop gate
 if (A.userStopped) return;                          // user halted → never relaunch
-    if (P.isGenerating()) return;
+    if (P.isGenerating()) {
+      // The loop is idle but the site's soft "still generating" signal may be stuck on (seen on Notion: the
+      // command card stays "in progress" while the bar says finished). Same rule the loop uses: with no real
+      // Stop button and the reply text frozen for STABLE_MS, the reply is finished, so fall through and run
+      // its command. A command that is still being written (open block) or a live Stop button always wins.
+      const live = P.lastAssistant(), liveTxt = live ? P.itemText(live) : "";
+      const norm = liveTxt.replace(/\s+/g, " ").trim();
+      if (norm !== A._wdNorm) { A._wdNorm = norm; A._wdChangeAt = Date.now(); }
+      const hardOn = P.isHardGenerating ? !!P.isHardGenerating() : false;
+      const frozen = Date.now() - (A._wdChangeAt || Date.now()) > T.STABLE_MS;
+      if (hardOn || !frozen || !norm || RSParse.hasOpenToolBlock(liveTxt)) return;
+      if (A._wdStuckAt !== A._wdChangeAt) { A._wdStuckAt = A._wdChangeAt; diag("resume.genStuck", { chars: norm.length, hard: hardOn }); }
+    } else { A._wdNorm = ""; }
     if (Date.now() - A.lastGenAt > RESUME_FRESH_MS) return; // not a fresh live turn
     const item = P.lastAssistant();
     if (!item || item.dataset.zloop) return;
@@ -11189,10 +11203,10 @@ if (A.userStopped) return;                          // user halted → never rel
     // loop or a prior resume). The dataset guards below are wiped when the site
     // recreates the node on scroll, so without this off-DOM check the watchdog
     // re-runs a historical tool with no live generation. See the `executed` map.
-    if (isRememberedExecuted(item, txt)) return;
+    if (isRememberedExecuted(item, txt)) { if (A._wdWhy !== 'executed:' + txt.length) { A._wdWhy = 'executed:' + txt.length; diag('resume.blocked', { why: 'alreadyExecuted', chars: txt.length }); } return; }
     // Resume only when a COMPLETE, parseable command is present - and re-attempt
     // if the turn has GROWN since our last try.
-    if (!RSParse.parseToolCalls(txt).length) return;
+    if (!RSParse.parseToolCalls(txt).length) { if (A._wdWhy !== 'parse:' + txt.length) { A._wdWhy = 'parse:' + txt.length; diag('resume.blocked', { why: 'commandNotParseable', chars: txt.length }); } return; }
     const len = txt.length;
     if (item.dataset.zResume && Number(item.dataset.zResumeLen || 0) >= len) return;
     item.dataset.zResume = "1";
