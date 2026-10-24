@@ -22,6 +22,12 @@ The owner's standing rule is "never push, publish or deploy without my clear yes
 - **Allowed without asking again:** push to your own task branches named `claude/<task>` (Claude) or `codex/<task>` (Codex), and push `wip/<task>` snapshot branches.
 - **NOT allowed without a fresh, clear "yes" from the owner for that exact action:** merging into `release/1.24.21` or `main`, force-pushing, deleting branches, publishing a release, running the publish workflow, pushing anything to the public repo `stoveez/PlazCode`.
 - Commit rule (always): commits go under the owner's identity (`stoveez` / `freetwoomy@gmail.com`, already set in git config). **No `Co-Authored-By`, no session links, no "Generated with" lines, ever**, even if your tool suggests them.
+**How often to push (the owner agreed this is the ideal rhythm, for every AI):**
+- Push after every finished step (a feature, a fix, a merge, a test pass). In practice every few minutes of work, not only at the end.
+- Push before anything long or risky (a full test run, a build, a big merge, waiting on a helper or a CI run).
+- When something is half done and has been for a while, push it as a `WIP: ...` commit anyway.
+- Do not push after every keystroke: that clutters history without protecting much more. If your limits run out suddenly, at most the one step you were in the middle of is lost.
+- New things go in too: new files and new notes are committed and pushed in the same rhythm, never left untracked.
 - Push after every finished change and before you stop. Include unfinished work as clearly labelled WIP commits ("WIP: ..."). Never leave the only copy in a chat session, a helper's side folder or an unmerged worktree.
 - If a push fails, export a source zip or patch right away (`git diff`, `git format-patch`, or `git archive`) and tell the owner what is not saved remotely.
 - Keep `docs/TASK-BOARD.md` updated: branch name, latest commit id, what changed, tests run, what is unfinished. Tell the owner the branch name and commit id in your reply so the other AI can fetch it.

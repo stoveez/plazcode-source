@@ -43,3 +43,6 @@ The Brickwire-inspired items are specified in detail in `development/1.25.0/BRIC
 
 ## Your own branch and constant pushes (important)
 Make your own branch `codex/<task>` first (from the newest branch named in `docs/HANDOFF.md`) and work only there. Commit and push early and often, including unfinished work labelled `WIP: ...`, so Claude can restart exactly where you stopped if your limits run out. Keep `docs/TASK-BOARD.md` current (branch, latest commit, what changed, tests, unfinished work, next step) and always tell the owner your branch name and commit id. Full details: the "Codex: your own branch, WIP and constant pushes" section of `docs/HANDOFF.md`.
+
+## How often to push (the owner's ideal rhythm)
+Push after every finished step (a feature, a fix, a merge, a test pass), before anything long or risky (full test run, build, big merge, waiting on a helper or CI), and push half-done work as `WIP: ...` commits. New files and notes are committed and pushed in the same rhythm. Not after every keystroke. Details: `docs/HANDOFF.md`.

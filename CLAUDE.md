@@ -60,3 +60,6 @@ For a new version number, copy the 1.24.21 workflows and `development/1.24.21` f
 - Not live-tested: Ultra on real Studio and AI sites, Vani Co-work, Firefox appearance.
 - The simple website is in `PlazCode-website.zip` (single `index.html`), not yet deployed. The owner will get a domain and host it on Cloudflare Pages.
 - Lawyer review of licence notices; GitHub Support request about the locked `v1.24.20` tag; delete the `cleanup-public` branch.
+
+## How often to push (the owner's ideal rhythm)
+Push to your own task branch after every finished step (a feature, a fix, a merge, a test pass), before anything long or risky (full test run, build, big merge, waiting on a helper or CI), and push half-done work as `WIP: ...` commits. New files and notes go in at the same rhythm. Not after every keystroke. Details: `docs/HANDOFF.md`.
