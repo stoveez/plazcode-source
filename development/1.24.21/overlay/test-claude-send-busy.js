@@ -41,5 +41,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await b.P.typeAndSend('Output of tree: ok result text here', null, {});
   assert.ok(b.events.includes('claude.send.retype'), 'typed again');
   assert.equal(b.log.clicks, 1, 'then sent once');
+  // 3. A Stop button in another language (Portuguese UI) is recognised, so PlazCode waits for it.
+  const c = page(), pt = c.d.createElement('button'); pt.setAttribute('aria-label', 'Parar resposta'); c.d.querySelector('fieldset').appendChild(pt);
+  assert.equal(c.P.isHardGenerating(), true, 'Portuguese Stop button is seen');
+  pt.remove(); assert.equal(c.P.isHardGenerating(), false);
+  const v = page(), mic = v.d.createElement('button'); mic.setAttribute('aria-label', 'Parar ditado por voz'); v.d.querySelector('fieldset').appendChild(mic);
+  assert.equal(v.P.isHardGenerating(), false, 'a voice-dictation stop is not the response Stop');
   console.log('Claude send: waits out a streaming reply, never presses Enter into a busy composer, retypes lost text.');
 })().catch((e) => { console.error(e); process.exit(1); });

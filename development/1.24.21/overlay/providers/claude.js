@@ -390,8 +390,17 @@ const RSProvider = (() => {
       const l = labelOf(b);
       if (l.includes("stop") && (l.includes("response") || l.includes("generat") || l === "stop")) return b;
     }
+    // Claude labels this button in the UI language ("Parar resposta", "Antwort stoppen", ...). Without this a
+    // Portuguese or German page never showed a Stop button to PlazCode, so results were typed while Claude was
+    // still streaming and the editor dropped them.
+    for (const b of safeQueryAll(document, "button")) {
+      if (!visibleBtn(b) || inTurn(b)) continue;
+      if (STOP_LABEL_RE.test(labelOf(b)) && !NOT_STOP_RE.test(labelOf(b))) return b;
+    }
     return null;
   }
+  const STOP_LABEL_RE = /\b(?:parar|detener|arr[êe]ter|interromp\w*|stoppen|beenden|fermare|ferma|zatrzymaj|zastav\w*|durdur|остановить|прервать|停止|中止|중지)\b.*\b(?:resposta|respuesta|r[ée]ponse|antwort|risposta|odpowied\w*|odpov\w*|yan[ıi]t|ответ\w*|gera\w*|generaci\w*|g[ée]n[ée]r\w*|erzeug\w*|生成|回答|응답)\b|^(?:parar|detener|arr[êe]ter|stoppen|fermare|остановить|停止|중지)$/i;
+  const NOT_STOP_RE = /voice|voz|dictat|micro|mikro|sprach|ditado/i;
   // 1.24.13: Claude labels its send control in the UI language ("Send message",
   // "Nachricht senden", "Envoyer le message", ...). The old fallback returned the
   // LAST visible composer button whenever no English label matched, and also while
@@ -535,6 +544,9 @@ const RSProvider = (() => {
     const relock = _locked;
     try {
       if (relock) ed.setAttribute("contenteditable", "true");
+      // Claude drops text typed while it is still streaming. Wait until the reply is really finished before typing,
+      // whatever language the page is in (the Stop button label is not always recognised).
+      if (isGenerating()) { diag("claude.send.waitIdle", {}); await waitFor(() => !isGenerating(), 45000); }
       await typeEditorText(ed, text);
       if (images && images.length) {
         if (!await attachImages(images)) throw new Error("Claude did not confirm the screenshot upload. The message was not submitted.");
