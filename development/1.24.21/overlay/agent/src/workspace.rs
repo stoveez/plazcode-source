@@ -132,17 +132,22 @@ impl Workspace {
     /// Sandbox core. `rel` must be relative; ".." may not climb above the
     /// root; the deepest existing ancestor is canonicalized against the
     /// canonical root to defeat symlink/junction escapes.
-    /// In FULL PC ACCESS mode absolute paths anywhere are allowed.
+    /// In FULL PC ACCESS mode absolute paths anywhere are allowed, `~` and
+    /// `%VAR%` are expanded, and a relative path may climb out of the workspace
+    /// (the allowed-folders list still applies).
     pub(crate) fn resolve_path(&self, rel: &str, must_exist: bool) -> Result<PathBuf, String> {
-        let raw = rel.trim();
+        let full = self.full_access.load(Ordering::Relaxed);
+        // Models often send the path with quotes around it; in Full access they
+        // also write ~ or %USERPROFILE% for the user's own folders.
+        let cleaned = clean_path_arg(rel);
+        let expanded = if full { expand_user_path(&cleaned, &|name| std::env::var(name).ok()) } else { cleaned };
+        let raw = expanded.trim();
         if raw.is_empty() || raw == "." || raw == "/" || raw == "\\" {
             return Ok(self.canon_root.clone());
         }
         // FULL ACCESS: absolute paths bypass the sandbox entirely. Relative
         // paths still anchor at the workspace root (a sane default cwd).
-        if self.full_access.load(Ordering::Relaxed)
-            && (Path::new(raw).is_absolute() || is_windows_absolute(raw) || raw.starts_with('/'))
-        {
+        if full && (Path::new(raw).is_absolute() || is_windows_absolute(raw) || raw.starts_with('/')) {
             let p = PathBuf::from(raw);
             if !self.inside_allowed(&p) {
                 return Err(format!("'{raw}' is outside the folders PlazCode may use. Add its folder under Safety → Allowed folders, or work inside the workspace."));
@@ -155,21 +160,28 @@ impl Workspace {
         let raw = raw.replace('\\', "/");
         if raw.is_empty() { return Ok(self.canon_root.clone()); }
         if raw.starts_with('/') || Path::new(&raw).is_absolute() || is_windows_absolute(&raw) {
-            return Err(format!("paths must be relative to the workspace root, got '{raw}'"));
+            return Err(format!(
+                "'{raw}' is an absolute path, but Full PC access is OFF, so PlazCode only allows paths inside the workspace ({}). Use a path relative to the workspace, or ask the user to switch Permissions to Full (PlazCode menu, or the desktop app's Execution page).",
+                self.root_display()));
+        }
+        // FULL ACCESS: `../other` climbs out of the workspace on purpose.
+        if full && escapes_root(&raw) {
+            let p = normalize_lexically(&self.canon_root.join(&raw));
+            if !self.inside_allowed(&p) {
+                return Err(format!("'{raw}' is outside the folders PlazCode may use. Add its folder under Safety → Allowed folders, or work inside the workspace."));
+            }
+            if must_exist && !p.exists() {
+                return Err(format!("'{raw}' does not exist"));
+            }
+            return Ok(p);
         }
         // Lexical walk: reject escapes without touching the filesystem.
-        let mut depth: i64 = 0;
+        if escapes_root(&raw) {
+            return Err(format!("path '{raw}' is outside the workspace. Full PC access is OFF, so PlazCode cannot leave the workspace folder; ask the user to switch Permissions to Full if the task needs it."));
+        }
         for comp in Path::new(&raw).components() {
-            match comp {
-                Component::Normal(_) => depth += 1,
-                Component::CurDir => {}
-                Component::ParentDir => {
-                    depth -= 1;
-                    if depth < 0 {
-                        return Err(format!("path '{raw}' is outside the workspace"));
-                    }
-                }
-                _ => return Err(format!("path '{raw}' is outside the workspace")),
+            if !matches!(comp, Component::Normal(_) | Component::CurDir | Component::ParentDir) {
+                return Err(format!("path '{raw}' is outside the workspace"));
             }
         }
         let joined = self.canon_root.join(&raw);
@@ -223,6 +235,81 @@ fn deverbatim_string(p: &Path) -> String {
 fn is_windows_absolute(raw: &str) -> bool {
     let bytes = raw.as_bytes();
     bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':'
+}
+
+/// Trim a path argument and remove one pair of matching quotes around it.
+pub(crate) fn clean_path_arg(raw: &str) -> String {
+    let t = raw.trim();
+    let bytes = t.as_bytes();
+    if bytes.len() >= 2 && (bytes[0] == b'"' || bytes[0] == b'\'') && bytes[bytes.len() - 1] == bytes[0] {
+        return t[1..t.len() - 1].trim().to_string();
+    }
+    t.to_string()
+}
+
+/// Full access only: expand `~`, `%NAME%`, `$env:NAME` and `${env:NAME}` the way
+/// the user would write a folder. Unknown names are left exactly as written.
+pub(crate) fn expand_user_path(raw: &str, env: &dyn Fn(&str) -> Option<String>) -> String {
+    let mut text = raw.to_string();
+    if text == "~" || text.starts_with("~/") || text.starts_with("~\\") {
+        let home = env("USERPROFILE").filter(|v| !v.is_empty()).or_else(|| env("HOME").filter(|v| !v.is_empty()));
+        if let Some(home) = home { text = format!("{}{}", home.trim_end_matches(['/', '\\']), &text[1..]); }
+    }
+    let mut out = String::new();
+    let chars: Vec<char> = text.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i] == '%' {
+            if let Some(end) = chars[i + 1..].iter().position(|c| *c == '%') {
+                let name: String = chars[i + 1..i + 1 + end].iter().collect();
+                if !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '(' || c == ')') {
+                    if let Some(value) = env(&name) { out.push_str(&value); i += end + 2; continue; }
+                }
+            }
+        } else if chars[i] == '$' {
+            let rest: String = chars[i + 1..].iter().collect();
+            let lower = rest.to_lowercase();
+            let (prefix_len, braced) = if lower.starts_with("{env:") { (5, true) } else if lower.starts_with("env:") { (4, false) } else { (0, false) };
+            if prefix_len > 0 {
+                let tail: Vec<char> = rest.chars().skip(prefix_len).collect();
+                let name_len = tail.iter().take_while(|c| c.is_ascii_alphanumeric() || **c == '_').count();
+                let closed = !braced || tail.get(name_len) == Some(&'}');
+                let name: String = tail[..name_len].iter().collect();
+                if name_len > 0 && closed {
+                    if let Some(value) = env(&name) { out.push_str(&value); i += 1 + prefix_len + name_len + usize::from(braced); continue; }
+                }
+            }
+        }
+        out.push(chars[i]);
+        i += 1;
+    }
+    out
+}
+
+/// True when a workspace-relative path (forward slashes) climbs above its root.
+fn escapes_root(raw: &str) -> bool {
+    let mut depth: i64 = 0;
+    for part in raw.split('/') {
+        match part {
+            "" | "." => {}
+            ".." => { depth -= 1; if depth < 0 { return true; } }
+            _ => depth += 1,
+        }
+    }
+    false
+}
+
+/// Fold `.` and `..` without touching the disk (verbatim `\\?\` paths keep `..` literally).
+fn normalize_lexically(p: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for comp in p.components() {
+        match comp {
+            Component::ParentDir => { if !out.pop() { out.push(".."); } }
+            Component::CurDir => {}
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
 }
 
 fn clip(text: &str, limit: usize) -> String {
@@ -674,7 +761,11 @@ async fn move_any(src: &Path, dst: &Path) -> Result<(), String> {
 pub async fn tool_search_files(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
     let pattern = arg_str(args, "pattern")?.trim().to_string();
     if pattern.is_empty() { return Err("'pattern' is required, e.g. \"**/*.py\"".into()); }
-    let globbed = format!("{}/{}", ws.canon_root.to_string_lossy().replace('\\', "/"), pattern);
+    // `path` = the folder to search in (the workspace root by default; any folder in Full access).
+    let base = ws.resolve_path(opt_path(args).as_str(), true)?;
+    if !base.is_dir() { return Err(format!("'{}' is a file, not a folder", ws.display(&base))); }
+    // Escape the folder part so a name like "Game [old]" is not read as a pattern.
+    let globbed = format!("{}/{}", glob::Pattern::escape(&deverbatim_string(&base).replace('\\', "/")), pattern);
     let paths = glob::glob(&globbed).map_err(|e| format!("invalid pattern '{pattern}': {e}"))?;
     let mut matches: Vec<String> = Vec::new();
     for m in paths.flatten() {
@@ -703,7 +794,10 @@ pub async fn tool_grep_files(ws: &Workspace, args: &serde_json::Value) -> Result
 
     // Candidate files: honor include-glob, skip ignored dirs + oversized files.
     let mut candidates: Vec<PathBuf> = Vec::new();
-    collect_files(&ws.canon_root, include, &mut candidates).await;
+    // `path` = the folder to search in (the workspace root by default; any folder in Full access).
+    let base = ws.resolve_path(opt_path(args).as_str(), true)?;
+    if !base.is_dir() { return Err(format!("'{}' is a file, not a folder", ws.display(&base))); }
+    collect_files(&base, include, &mut candidates).await;
 
     let mut hits: Vec<String> = Vec::new();
     let mut scanned = 0usize;
@@ -757,6 +851,154 @@ async fn collect_files(dir: &Path, include: &str, out: &mut Vec<PathBuf>) {
     }
 }
 
+// ── terminal commands (cmd / PowerShell / sh) ─────────────────────────────
+//
+// 1.24.21 AgentScript fix. What used to go wrong on Windows testers' PCs:
+//   * the command was handed to cmd.exe as a normal argument, so Rust wrapped it
+//     in quotes and escaped every inner quote as \" (which cmd does not
+//     understand): commands with quoted paths, python -c "...", powershell
+//     -Command "..." silently ran as something else or failed;
+//   * there was no PowerShell at all and no way to choose a folder (cwd);
+//   * the folder passed to cmd.exe was a \\?\ path, which cmd and many programs
+//     do not accept;
+//   * a command that started a program and left it running (start notepad)
+//     kept the output pipes open, so the call hung until the timeout;
+//   * output in the PC's own code page came back garbled, and a timeout threw
+//     away everything the command had printed.
+// The pieces below are plain functions so they are unit-tested on every OS;
+// only the few lines that start the process are Windows-specific.
+
+/// Which shell runs a command.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Shell { Cmd, PowerShell, Pwsh, Bash, Sh }
+
+impl Shell {
+    fn label(self) -> &'static str {
+        match self { Shell::Cmd => "cmd", Shell::PowerShell => "PowerShell", Shell::Pwsh => "PowerShell 7 (pwsh)", Shell::Bash => "bash", Shell::Sh => "sh" }
+    }
+}
+
+/// Choose the shell from the optional `shell` argument (any case, a few spellings).
+pub(crate) fn parse_shell(raw: Option<&str>, windows: bool) -> Result<Shell, String> {
+    let default = if windows { Shell::Cmd } else { Shell::Sh };
+    let key: String = raw.unwrap_or("").trim().to_lowercase().chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+    Ok(match key.as_str() {
+        "" | "auto" | "default" | "terminal" | "shell" => default,
+        "cmd" | "cmdexe" | "commandprompt" | "batch" | "bat" => {
+            if !windows { return Err("the cmd shell exists only on Windows; this computer uses sh. Leave 'shell' out, or use \"sh\", \"bash\" or \"pwsh\".".into()); }
+            Shell::Cmd
+        }
+        "powershell" | "powershellexe" | "windowspowershell" | "ps" | "ps1" => Shell::PowerShell,
+        "pwsh" | "pwshexe" | "powershell7" | "powershellcore" => Shell::Pwsh,
+        "bash" | "gitbash" => Shell::Bash,
+        "sh" | "zsh" => Shell::Sh,
+        _ => return Err(format!("unknown shell '{}'. Use \"cmd\", \"powershell\", \"pwsh\", \"bash\" or \"sh\", or leave 'shell' out for the default ({}).", raw.unwrap_or(""), default.label())),
+    })
+}
+
+/// The argument text for cmd.exe. The whole command sits inside ONE pair of
+/// quotes and `/S` removes exactly that pair, so every quote inside the command
+/// reaches cmd untouched. Passed with `raw_arg` so Rust does not re-quote it.
+#[allow(dead_code)] // used by the Windows build
+pub(crate) fn cmd_exe_args(command: &str) -> String { format!("/D /S /C \"{command}\"") }
+
+/// cmd.exe stops reading a `/C` command at the first line break, so a
+/// several-line command has to go through a batch file instead.
+#[allow(dead_code)] // used by the Windows build
+pub(crate) fn needs_script_file(command: &str) -> bool { command.contains('\n') || command.contains('\r') }
+
+/// The batch file for a several-line cmd command (UTF-8 code page so non-English file names survive).
+#[allow(dead_code)] // used by the Windows build
+pub(crate) fn batch_file_text(command: &str) -> String {
+    format!("@echo off\r\nchcp 65001>nul\r\n{}\r\n", normalize_lf(command).replace('\n', "\r\n"))
+}
+
+/// The PowerShell script that actually runs: UTF-8 output, quiet progress bars,
+/// and an exit code that reflects whether the last step worked.
+pub(crate) fn powershell_script(command: &str) -> String {
+    format!(
+        "$ProgressPreference='SilentlyContinue'\ntry {{ [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false }} catch {{}}\n{}\nexit $(if ($?) {{ 0 }} elseif ($LASTEXITCODE) {{ $LASTEXITCODE }} else {{ 1 }})",
+        normalize_lf(command)
+    )
+}
+
+/// PowerShell's -EncodedCommand text: base64 of the script as UTF-16LE. It has
+/// no quotes or spaces, so no shell can mangle it.
+pub(crate) fn powershell_encoded(script: &str) -> String {
+    let bytes: Vec<u8> = script.encode_utf16().flat_map(|unit| unit.to_le_bytes()).collect();
+    base64_encode(&bytes)
+}
+
+/// Longest encoded script passed on the command line (Windows allows 32,767 characters in total).
+#[allow(dead_code)] // used by the Windows build
+const PS_ENCODED_LIMIT: usize = 24_000;
+
+/// Turn the bytes a command printed into text. UTF-8 (and UTF-16 with a byte-order
+/// mark) are read as they are; anything else is read in the PC's own console
+/// code page on Windows, so accents and other alphabets are not garbled.
+pub(crate) fn decode_console_bytes(bytes: &[u8]) -> String {
+    let bytes = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF][..]).unwrap_or(bytes);
+    let utf16 = |data: &[u8]| -> String {
+        let units: Vec<u16> = data.chunks_exact(2).map(|pair| u16::from_le_bytes([pair[0], pair[1]])).collect();
+        String::from_utf16_lossy(&units)
+    };
+    if bytes.starts_with(&[0xFF, 0xFE]) { return utf16(&bytes[2..]); }
+    // UTF-16 text without a mark: plain English text has a zero after most letters.
+    if bytes.len() >= 4 && bytes.len() % 2 == 0 {
+        let odd_zero = bytes.iter().skip(1).step_by(2).filter(|b| **b == 0).count();
+        let even_zero = bytes.iter().step_by(2).filter(|b| **b == 0).count();
+        if odd_zero * 10 >= bytes.len() * 4 && even_zero == 0 { return utf16(bytes); }
+    }
+    match std::str::from_utf8(bytes) {
+        Ok(text) => text.to_string(),
+        Err(_) => oem_decode(bytes).unwrap_or_else(|| String::from_utf8_lossy(bytes).to_string()),
+    }
+}
+
+#[cfg(windows)]
+fn oem_decode(bytes: &[u8]) -> Option<String> {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn MultiByteToWideChar(code_page: u32, flags: u32, source: *const u8, source_len: i32, dest: *mut u16, dest_len: i32) -> i32;
+    }
+    const CP_OEMCP: u32 = 1;
+    let needed = unsafe { MultiByteToWideChar(CP_OEMCP, 0, bytes.as_ptr(), bytes.len() as i32, std::ptr::null_mut(), 0) };
+    if needed <= 0 { return None; }
+    let mut wide = vec![0u16; needed as usize];
+    let written = unsafe { MultiByteToWideChar(CP_OEMCP, 0, bytes.as_ptr(), bytes.len() as i32, wide.as_mut_ptr(), needed) };
+    if written <= 0 { return None; }
+    Some(String::from_utf16_lossy(&wide[..written as usize]))
+}
+#[cfg(not(windows))]
+fn oem_decode(_bytes: &[u8]) -> Option<String> { None }
+
+/// Keep the start and the END of long output (build errors are at the end).
+fn clip_middle(text: &str, limit: usize) -> String {
+    let count = text.chars().count();
+    if count <= limit { return text.to_string(); }
+    let head = limit / 2;
+    let tail = limit - head;
+    let first: String = text.chars().take(head).collect();
+    let last: String = text.chars().skip(count - tail).collect();
+    format!("{first}\n... [{} characters left out of the middle; the end of the output follows] ...\n{last}", count - limit)
+}
+
+fn preview(text: &str, limit: usize) -> String {
+    let one: String = text.chars().take(limit).collect();
+    if text.chars().count() > limit { format!("{one} ...[{} more characters]", text.chars().count() - limit) } else { one }
+}
+
+fn spawn_failure_message(shell: Shell, error: &std::io::Error) -> String {
+    let hint = match (shell, error.kind()) {
+        (Shell::Pwsh, std::io::ErrorKind::NotFound) => " PowerShell 7 (pwsh) is not installed on this computer; use shell \"powershell\" (Windows PowerShell) instead.",
+        (Shell::PowerShell, std::io::ErrorKind::NotFound) if !cfg!(windows) => " PowerShell is not installed on this computer; leave 'shell' out to use the default shell.",
+        (Shell::Bash, std::io::ErrorKind::NotFound) if cfg!(windows) => " bash is not installed on this computer (Git for Windows or WSL provide it); use \"cmd\" or \"powershell\".",
+        (_, std::io::ErrorKind::PermissionDenied) => " Windows or security software refused to start it (check antivirus or Controlled folder access).",
+        _ => "",
+    };
+    format!("could not start {}: {error}.{hint}", shell.label())
+}
+
 pub async fn tool_run_command(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
     tool_run_command_observed(ws,args).await.map(|(text,_)|text)
 }
@@ -765,64 +1007,155 @@ pub async fn tool_run_command_observed(ws: &Workspace, args: &serde_json::Value)
     if command.is_empty() {
         return Err("'command' is required, e.g. \"python main.py\" or \"npm install\"".into());
     }
+    let shell = parse_shell(args.get("shell").and_then(|v| v.as_str()), cfg!(windows))?;
+    // `cwd` is a folder inside the workspace (or any folder in Full PC access).
+    let cwd = match ["cwd", "working_directory", "workdir"].iter().find_map(|key| args.get(*key).and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty())) {
+        Some(folder) => {
+            let resolved = ws.resolve_path(folder, true)?;
+            if !resolved.is_dir() { return Err(format!("cwd '{}' is a file, not a folder", ws.display(&resolved))); }
+            resolved
+        }
+        None => ws.canon_root.clone(),
+    };
     let timeout_secs = j_u64(args, "timeout_seconds", DEFAULT_RUN_TIMEOUT).clamp(1, MAX_RUN_TIMEOUT);
+    let where_ = { let shown = ws.display(&cwd); if shown == "." { "the workspace root".to_string() } else { shown } };
 
     let t0 = Instant::now();
-    let output = run_shell(&command, &ws.canon_root, timeout_secs).await;
+    let output = run_shell(shell, &command, &cwd, timeout_secs).await;
     let elapsed = t0.elapsed().as_secs_f64();
     let proc_out = match output {
         Ok(o) => o,
-        Err(RunErr::Spawn(e)) => return Err(format!("could not run command: {e}")),
-        Err(RunErr::Timeout) => return Ok((format!(
-            "Command TIMED OUT after {timeout_secs}s: {command}\nIt may still have had partial effects. For long-running servers/tests, run them differently (background job, shorter test subset) instead of blocking."
-        ),false)),
+        Err(RunErr::Spawn(e)) => return Err(spawn_failure_message(shell, &e)),
+        Err(RunErr::Timeout { stdout, stderr }) => {
+            let mut text = format!(
+                "Command TIMED OUT after {timeout_secs}s ({}, in {where_}): {}\nIt may still have had partial effects. For long-running servers/tests, run them differently (background job, shorter test subset) instead of blocking.",
+                shell.label(), preview(&command, 400)
+            );
+            let (out, err) = (decode_console_bytes(&stdout), decode_console_bytes(&stderr));
+            if !out.trim().is_empty() { text.push_str("\n--- stdout before the timeout ---\n"); text.push_str(&clip_middle(out.trim(), MAX_RUN_OUTPUT)); }
+            if !err.trim().is_empty() { text.push_str("\n--- stderr before the timeout ---\n"); text.push_str(&clip_middle(err.trim(), MAX_RUN_OUTPUT)); }
+            return Ok((clip(&text, MAX_TEXT_CHARS), false));
+        }
     };
-    let mut stdout = String::from_utf8_lossy(&proc_out.stdout).trim().to_string();
-    let mut stderr = String::from_utf8_lossy(&proc_out.stderr).trim().to_string();
-    if stdout.chars().count() > MAX_RUN_OUTPUT {
-        stdout = stdout.chars().take(MAX_RUN_OUTPUT).collect::<String>()
-            + &format!("\n... [stdout truncated at {MAX_RUN_OUTPUT} chars]");
-    }
-    if stderr.chars().count() > MAX_RUN_OUTPUT {
-        stderr = stderr.chars().take(MAX_RUN_OUTPUT).collect::<String>()
-            + &format!("\n... [stderr truncated at {MAX_RUN_OUTPUT} chars]");
-    }
+    let stdout = clip_middle(decode_console_bytes(&proc_out.stdout).trim(), MAX_RUN_OUTPUT);
+    let stderr = clip_middle(decode_console_bytes(&proc_out.stderr).trim(), MAX_RUN_OUTPUT);
     let code = proc_out.status.code().unwrap_or(-1);
     let mut parts = vec![
-        format!("$ {command}"),
-        format!("(ran in the workspace root, exit code {code}, {elapsed:.1}s)"),
+        format!("$ {}", preview(&command, 400)),
+        format!("(ran in {where_} with {}, exit code {code}, {elapsed:.1}s)", shell.label()),
     ];
-    if !stdout.is_empty() { parts.push("--- stdout ---".to_string()); parts.push(stdout); }
-    if !stderr.is_empty() { parts.push("--- stderr ---".to_string()); parts.push(stderr); }
-    if code != 0 && proc_out.stderr.is_empty() {
+    if !stdout.is_empty() { parts.push("--- stdout ---".to_string()); parts.push(stdout.clone()); }
+    if !stderr.is_empty() { parts.push("--- stderr ---".to_string()); parts.push(stderr.clone()); }
+    if stdout.is_empty() && stderr.is_empty() {
+        parts.push(if code == 0 { "(the command finished and printed nothing)".to_string() } else { "(the command printed nothing; the exit code above is the only information it gave)".to_string() });
+    } else if code != 0 && stderr.is_empty() {
         parts.push("(non-zero exit code with empty stderr - check stdout above)".to_string());
     }
     Ok((clip(&parts.join("\n"), MAX_TEXT_CHARS),proc_out.status.success()))
 }
 
-enum RunErr { Spawn(std::io::Error), Timeout }
+/// What a finished command produced.
+struct Captured { stdout: Vec<u8>, stderr: Vec<u8>, status: std::process::ExitStatus }
+enum RunErr { Spawn(std::io::Error), Timeout { stdout: Vec<u8>, stderr: Vec<u8> } }
+
+/// A script file written for one command and removed afterwards.
+#[cfg(windows)]
+struct TempScript(PathBuf);
+#[cfg(windows)]
+impl TempScript {
+    fn create(extension: &str, bytes: &[u8]) -> std::io::Result<Self> {
+        static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let path = std::env::temp_dir().join(format!("plazcode-run-{}-{n}.{extension}", std::process::id()));
+        std::fs::write(&path, bytes)?;
+        Ok(Self(path))
+    }
+}
+#[cfg(windows)]
+impl Drop for TempScript { fn drop(&mut self) { let _ = std::fs::remove_file(&self.0); } }
+
+/// The folder handed to a child process: no \\?\ prefix (cmd.exe and many
+/// programs reject it) unless the path is too long to do without it.
+fn child_cwd(path: &Path) -> PathBuf {
+    let plain = deverbatim_string(path);
+    if cfg!(windows) && plain.len() < 248 { PathBuf::from(plain) } else { path.to_path_buf() }
+}
 
 #[cfg(windows)]
-async fn run_shell(command: &str, cwd: &Path, timeout_secs: u64) -> Result<std::process::Output, RunErr> {
+fn windows_powershell_path() -> String {
+    std::env::var("SystemRoot").ok()
+        .map(|root| Path::new(&root).join("System32").join("WindowsPowerShell").join("v1.0").join("powershell.exe"))
+        .filter(|path| path.is_file())
+        .map(|path| path.to_string_lossy().to_string())
+        .unwrap_or_else(|| "powershell.exe".to_string())
+}
+
+#[cfg(windows)]
+async fn run_shell(shell: Shell, command: &str, cwd: &Path, timeout_secs: u64) -> Result<Captured, RunErr> {
     use std::process::Stdio;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    let mut cmd = tokio::process::Command::new("cmd");
-    cmd.args(["/D", "/C", command])
-        .current_dir(cwd)
+    let mut temp: Option<TempScript> = None;
+    let mut cmd = match shell {
+        Shell::Cmd => {
+            let program = std::env::var("ComSpec").ok().filter(|value| !value.is_empty()).unwrap_or_else(|| "cmd.exe".to_string());
+            let mut cmd = tokio::process::Command::new(program);
+            if needs_script_file(command) {
+                let script = TempScript::create("cmd", batch_file_text(command).as_bytes()).map_err(RunErr::Spawn)?;
+                cmd.raw_arg(cmd_exe_args(&format!("call \"{}\"", script.0.display())));
+                temp = Some(script);
+            } else {
+                cmd.raw_arg(cmd_exe_args(command));
+            }
+            cmd
+        }
+        Shell::PowerShell | Shell::Pwsh => {
+            let program = if shell == Shell::Pwsh { "pwsh.exe".to_string() } else { windows_powershell_path() };
+            let mut cmd = tokio::process::Command::new(program);
+            cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass"]);
+            let script = powershell_script(command);
+            let encoded = powershell_encoded(&script);
+            if encoded.len() <= PS_ENCODED_LIMIT {
+                cmd.arg("-EncodedCommand").arg(encoded);
+            } else {
+                // Too long for a command line: a UTF-8 file with a byte-order mark.
+                let mut bytes = vec![0xEF, 0xBB, 0xBF];
+                bytes.extend_from_slice(script.as_bytes());
+                let file = TempScript::create("ps1", &bytes).map_err(RunErr::Spawn)?;
+                cmd.arg("-File").arg(&file.0);
+                temp = Some(file);
+            }
+            cmd
+        }
+        Shell::Bash | Shell::Sh => {
+            let mut cmd = tokio::process::Command::new(if shell == Shell::Bash { "bash" } else { "sh" });
+            cmd.arg("-c").arg(command);
+            cmd
+        }
+    };
+    cmd.current_dir(child_cwd(cwd))
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(false)
         .creation_flags(CREATE_NO_WINDOW);
-    finish(cmd, timeout_secs).await
+    let result = finish(cmd, timeout_secs).await;
+    drop(temp);
+    result
 }
 
 #[cfg(not(windows))]
-async fn run_shell(command: &str, cwd: &Path, timeout_secs: u64) -> Result<std::process::Output, RunErr> {
+async fn run_shell(shell: Shell, command: &str, cwd: &Path, timeout_secs: u64) -> Result<Captured, RunErr> {
     use std::process::Stdio;
-    let mut cmd = tokio::process::Command::new("sh");
-    cmd.arg("-c").arg(command)
-        .current_dir(cwd)
+    let mut cmd = match shell {
+        Shell::Bash => { let mut cmd = tokio::process::Command::new("bash"); cmd.arg("-c").arg(command); cmd }
+        Shell::PowerShell | Shell::Pwsh => {
+            let mut cmd = tokio::process::Command::new("pwsh");
+            cmd.args(["-NoProfile", "-NonInteractive", "-EncodedCommand"]).arg(powershell_encoded(&powershell_script(command)));
+            cmd
+        }
+        _ => { let mut cmd = tokio::process::Command::new("sh"); cmd.arg("-c").arg(command); cmd }
+    };
+    cmd.current_dir(child_cwd(cwd))
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -844,16 +1177,58 @@ impl Drop for OwnedCommandTree {
         }
     }
 }
-async fn finish(mut cmd: tokio::process::Command, timeout_secs: u64) -> Result<std::process::Output, RunErr> {
-    let child=cmd.spawn().map_err(RunErr::Spawn)?;
-    let mut owned=OwnedCommandTree {pid:child.id().unwrap_or(0),finished:false};
-    match tokio::time::timeout(std::time::Duration::from_secs(timeout_secs), child.wait_with_output()).await {
-        Ok(Ok(o)) => {owned.finished=true;Ok(o)},
-        Ok(Err(e)) => Err(RunErr::Spawn(e)),
-        Err(_) => Err(RunErr::Timeout),
+
+/// Most output kept per stream while a command runs (the rest is read and dropped).
+const MAX_CAPTURE: usize = 4 * 1024 * 1024;
+/// After the shell exits, how long to wait for the output pipes to close. A
+/// program the command started and left running (a server, `start notepad`)
+/// keeps them open for as long as it lives; waiting for it would hang the call.
+const PIPE_GRACE_MS: u64 = 1500;
+
+async fn drain<R: tokio::io::AsyncRead + Unpin>(mut reader: R, sink: Arc<std::sync::Mutex<Vec<u8>>>) {
+    use tokio::io::AsyncReadExt;
+    let mut chunk = [0u8; 8192];
+    loop {
+        match reader.read(&mut chunk).await {
+            Ok(0) | Err(_) => break,
+            Ok(n) => {
+                if let Ok(mut buffer) = sink.lock() {
+                    let room = MAX_CAPTURE.saturating_sub(buffer.len());
+                    buffer.extend_from_slice(&chunk[..n.min(room)]);
+                }
+            }
+        }
     }
 }
+fn take_buffer(sink: &Arc<std::sync::Mutex<Vec<u8>>>) -> Vec<u8> { sink.lock().map(|buffer| buffer.clone()).unwrap_or_default() }
 
+async fn finish(mut cmd: tokio::process::Command, timeout_secs: u64) -> Result<Captured, RunErr> {
+    let mut child = cmd.spawn().map_err(RunErr::Spawn)?;
+    let mut owned = OwnedCommandTree { pid: child.id().unwrap_or(0), finished: false };
+    let out_sink = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let err_sink = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let out_task = child.stdout.take().map(|pipe| tokio::spawn(drain(pipe, Arc::clone(&out_sink))));
+    let err_task = child.stderr.take().map(|pipe| tokio::spawn(drain(pipe, Arc::clone(&err_sink))));
+    let waited = tokio::time::timeout(std::time::Duration::from_secs(timeout_secs), child.wait()).await;
+    match waited {
+        Ok(Ok(status)) => {
+            owned.finished = true;
+            let grace = std::time::Duration::from_millis(PIPE_GRACE_MS);
+            let readers: Vec<_> = [out_task, err_task].into_iter().flatten().collect();
+            let aborts: Vec<_> = readers.iter().map(|task| task.abort_handle()).collect();
+            let all_closed = async { for task in readers { let _ = task.await; } };
+            if tokio::time::timeout(grace, all_closed).await.is_err() { for abort in aborts { abort.abort(); } }
+            Ok(Captured { stdout: take_buffer(&out_sink), stderr: take_buffer(&err_sink), status })
+        }
+        Ok(Err(error)) => Err(RunErr::Spawn(error)),
+        Err(_) => {
+            // Keep what it printed so far; `owned` stops the whole command tree when it is dropped here.
+            let partial = RunErr::Timeout { stdout: take_buffer(&out_sink), stderr: take_buffer(&err_sink) };
+            for task in [out_task, err_task].into_iter().flatten() { task.abort(); }
+            Err(partial)
+        }
+    }
+}
 // ── extended system tools (AgentScript+) ─────────────────────────────────
 
 pub async fn tool_file_info(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
@@ -880,13 +1255,14 @@ pub async fn tool_env_info(ws: &Workspace, _args: &serde_json::Value) -> Result<
     let mem_total = sys.total_memory();
     let mem_free = sys.available_memory();
     Ok(format!(
-        "Host: {host}\nOS: {os}\nArch: {}\nCPUs: {}\nMemory: {} total, {} available\nUser: {}\nWorkspace root: {}\nFULL PC ACCESS: {}",
+        "Host: {host}\nOS: {os}\nArch: {}\nCPUs: {}\nMemory: {} total, {} available\nUser: {}\nWorkspace root: {}\nTerminal: run_command uses {} by default; pass shell:\"powershell\" for PowerShell and cwd:\"<folder>\" to run in another folder.\nFULL PC ACCESS: {}",
         std::env::consts::ARCH,
         std::thread::available_parallelism().map(|n| n.get()).unwrap_or(0),
         human_size(mem_total as f64),
         human_size(mem_free as f64),
         whoami_fallback(),
         ws.root_display(),
+        if cfg!(windows) { "cmd.exe" } else { "sh" },
         if ws.full_access() { "ON" } else { "off (workspace sandbox)" },
     ))
 }
@@ -949,33 +1325,144 @@ pub async fn tool_process_kill(ws: &Workspace, args: &serde_json::Value) -> Resu
     else { Err(format!("could not kill process {pid} (not found or access denied)")) }
 }
 
-pub async fn tool_open_path(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
-    let target = arg_str(args, "path")?;
-    let resolved;
+/// Link types the AI may never open, even with Full access (they run script text).
+const BLOCKED_SCHEMES: &[&str] = &["javascript", "vbscript", "data", "ms-msdt"];
+
+/// The scheme of `target` ("steam" for "steam://x"), when it has one. A single
+/// letter before the colon is a drive ("C:"), not a link.
+fn url_scheme(target: &str) -> Option<String> {
+    let (scheme, rest) = target.split_once(':')?;
+    let valid = scheme.len() >= 2 && scheme.len() <= 32
+        && scheme.chars().next().map_or(false, |c| c.is_ascii_alphabetic())
+        && scheme.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '.' | '-'));
+    let looks_like_path = rest.starts_with('\\') && !rest.starts_with("\\\\");
+    if valid && !looks_like_path { Some(scheme.to_lowercase()) } else { None }
+}
+
+/// What to hand to the operating system for `open_path`. Workspace paths (and, in
+/// Full access, any path) are resolved without the \\?\ prefix, which Windows
+/// programs and file associations often reject. Full access may also open a
+/// program by name (notepad, calc, chrome) and links such as ms-settings: or mailto:.
+pub(crate) fn open_target(ws: &Workspace, raw: &str) -> Result<String, String> {
+    let target = clean_path_arg(raw);
     let lower = target.to_lowercase();
-    if lower.starts_with("http://") || lower.starts_with("https://") {
-        resolved = target.clone(); // URLs are safe to hand to the OS handler
-    } else {
-        let p = ws.resolve_path(target.as_str(), true)?;
-        resolved = p.to_string_lossy().to_string();
+    if lower.starts_with("http://") || lower.starts_with("https://") { return Ok(target); }
+    if let Some(scheme) = url_scheme(&target) {
+        if BLOCKED_SCHEMES.contains(&scheme.as_str()) { return Err(format!("'{scheme}:' links run script text, so open_path will not open them.")); }
+        if ws.full_access() { return Ok(target); }
+        return Err(format!("Only http and https links can be opened while Full PC access is OFF, so '{scheme}:' was not opened. Ask the user to switch Permissions to Full, or use a web link."));
     }
+    match ws.resolve_path(&target, true) {
+        Ok(path) => Ok(deverbatim_string(&path)),
+        Err(error) => {
+            let bare_name = !target.contains('/') && !target.contains('\\') && !target.contains(':');
+            if ws.full_access() && bare_name && !target.is_empty() { Ok(target) }
+            else if !ws.full_access() && bare_name { Err(format!("{error}. Programs can only be opened by name when Full PC access is ON; a file in the workspace can be opened by its path.")) }
+            else { Err(error) }
+        }
+    }
+}
+
+/// Plain-words reason for a failed ShellExecute call (its return value below 33).
+#[allow(dead_code)] // used by the Windows build
+pub(crate) fn shell_execute_error(code: isize) -> String {
+    let reason = match code {
+        0 => "Windows ran out of memory or resources",
+        2 => "the file or program was not found",
+        3 => "the folder was not found",
+        5 => "access was denied",
+        8 => "Windows ran out of memory",
+        26 => "the file is in use by another program",
+        27 => "the file type has an incomplete association",
+        28 | 29 | 30 => "the program did not answer",
+        31 => "no program is set to open this kind of file",
+        32 => "a needed library was not found",
+        _ => "Windows could not open it",
+    };
+    format!("{reason} (Windows code {code})")
+}
+
+#[cfg(windows)]
+mod windows_open {
+    use std::os::windows::ffi::OsStrExt;
+    #[link(name = "shell32")]
+    unsafe extern "system" {
+        fn ShellExecuteW(hwnd: *mut std::ffi::c_void, operation: *const u16, file: *const u16, parameters: *const u16, directory: *const u16, show: i32) -> isize;
+    }
+    fn wide(text: &str) -> Vec<u16> { std::ffi::OsStr::new(text).encode_wide().chain(Some(0)).collect() }
+    /// Open `target` the way double-clicking it would (file association, program
+    /// name from the App Paths registry, link handler). No cmd/start: those can
+    /// run AutoRun commands and reinterpret characters in paths and links.
+    pub fn open(target: &str, parameters: Option<&str>) -> Result<(), String> {
+        if target.contains('\0') || parameters.map_or(false, |p| p.contains('\0')) { return Err("it contains an invalid character".into()); }
+        let file = wide(target);
+        let operation = wide("open");
+        let params = parameters.map(wide);
+        let code = unsafe {
+            ShellExecuteW(std::ptr::null_mut(), operation.as_ptr(), file.as_ptr(), params.as_ref().map_or(std::ptr::null(), |p| p.as_ptr()), std::ptr::null(), 1)
+        };
+        if code > 32 { Ok(()) } else { Err(super::shell_execute_error(code)) }
+    }
+}
+
+/// One argument as Windows programs read it from a command line (quotes only when
+/// needed, inner quotes escaped, backslashes before a quote doubled).
+pub(crate) fn quote_windows_arg(arg: &str) -> String {
+    if !arg.is_empty() && !arg.chars().any(|c| c == ' ' || c == '\t' || c == '"') { return arg.to_string(); }
+    let mut out = String::from("\"");
+    let mut backslashes = 0usize;
+    for c in arg.chars() {
+        match c {
+            '\\' => backslashes += 1,
+            '"' => { out.push_str(&"\\".repeat(backslashes * 2 + 1)); out.push('"'); backslashes = 0; }
+            other => { out.push_str(&"\\".repeat(backslashes)); backslashes = 0; out.push(other); }
+        }
+    }
+    out.push_str(&"\\".repeat(backslashes * 2));
+    out.push('"');
+    out
+}
+
+/// The `argv` list (preferred) or `args` text of launch_app as one parameter string.
+#[allow(dead_code)]
+pub(crate) fn launch_parameters(args: &serde_json::Value) -> Result<Option<String>, String> {
+    if let Some(values) = args.get("argv").and_then(|value| value.as_array()) {
+        let mut parts = Vec::new();
+        for value in values { parts.push(quote_windows_arg(value.as_str().ok_or("argv must contain strings")?)); }
+        return Ok(if parts.is_empty() { None } else { Some(parts.join(" ")) });
+    }
+    Ok(text_of(args, "args"))
+}
+
+pub async fn tool_open_path(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
+    let target = arg_str(args, "path").or_else(|_| arg_str(args, "target")).or_else(|_| arg_str(args, "url"))?;
+    let resolved = open_target(ws, &target)?;
+    // Arguments are only for programs, and only with Full access.
+    let parameters = text_of(args, "args").filter(|_| ws.full_access());
     #[cfg(windows)]
-    let ok = {
-        // Use the OS file association directly; cmd/start can execute AutoRun
-        // commands and reinterpret metacharacters in paths and URLs.
-        use std::os::windows::ffi::OsStrExt;
-        #[link(name="shell32")]
-        unsafe extern "system" {fn ShellExecuteW(hwnd:*mut std::ffi::c_void,operation:*const u16,file:*const u16,parameters:*const u16,directory:*const u16,show:i32)->isize;}
-        let file:Vec<u16>=std::ffi::OsStr::new(&resolved).encode_wide().chain(Some(0)).collect();
-        let operation:Vec<u16>="open".encode_utf16().chain(Some(0)).collect();
-        !resolved.contains('\0') && unsafe{ShellExecuteW(std::ptr::null_mut(),operation.as_ptr(),file.as_ptr(),std::ptr::null(),std::ptr::null(),1)>32}
-    };
+    {
+        let (path, params) = (resolved.clone(), parameters.clone());
+        return match tokio::task::spawn_blocking(move || windows_open::open(&path, params.as_deref())).await {
+            Ok(Ok(())) => Ok(format!("Opened {resolved} with Windows (the same as double-clicking it).")),
+            Ok(Err(reason)) => Err(format!("could not open '{resolved}': {reason}")),
+            Err(error) => Err(format!("could not open '{resolved}': {error}")),
+        };
+    }
     #[cfg(not(windows))]
-    let ok = {
-        std::process::Command::new(if cfg!(target_os="macos") { "/usr/bin/open" } else { "xdg-open" }).arg(&resolved).spawn().is_ok()
-    };
-    if ok { Ok(format!("Opened {resolved} with the default application.")) }
-    else { Err(format!("could not open '{resolved}'")) }
+    {
+        let mut command = std::process::Command::new(if cfg!(target_os="macos") { "/usr/bin/open" } else { "xdg-open" });
+        command.arg(&resolved);
+        if let Some(extra) = &parameters { command.args(extra.split_whitespace()); }
+        match command.spawn() {
+            Ok(_) => Ok(format!("Opened {resolved} with the default application.")),
+            Err(error) => Err(format!("could not open '{resolved}': {error}")),
+        }
+    }
+}
+
+/// A non-empty string argument.
+fn text_of(args: &serde_json::Value, key: &str) -> Option<String> {
+    args.get(key).and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty()).map(str::to_string)
 }
 
 const DOWNLOAD_MAX_BYTES: u64 = 200 * 1024 * 1024;
@@ -1323,8 +1810,9 @@ pub async fn tool_focus_window(ws: &Workspace, args: &serde_json::Value) -> Resu
 
 #[cfg(any(windows,target_os="macos"))]
 pub async fn tool_launch_app(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
-    if !ws.full_access() { return Err("launch_app requires FULL PC ACCESS".into()); }
-    let target = arg_str(args, "target")?;
+    if !ws.full_access() { return Err("launch_app requires FULL PC ACCESS. It is OFF now: ask the user to switch Permissions to Full (PlazCode menu, or the desktop app's Execution page). open_path can still open a workspace file or a web link.".into()); }
+    let target = arg_str(args, "target").or_else(|_| arg_str(args, "path")).or_else(|_| arg_str(args, "app")).or_else(|_| arg_str(args, "name"))?;
+    let target = clean_path_arg(&target);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -1344,9 +1832,20 @@ pub async fn tool_launch_app(ws: &Workspace, args: &serde_json::Value) -> Result
         if let Some(parent) = std::path::Path::new(&target).parent().filter(|p| p.is_dir()) {
             command.current_dir(parent);
         }
-        command.creation_flags(CREATE_NO_WINDOW).spawn()
-            .map_err(|error| format!("could not launch '{target}': {error}"))?;
-        Ok(format!("Launched '{target}'."))
+        match command.creation_flags(CREATE_NO_WINDOW).spawn() {
+            Ok(_) => Ok(format!("Launched '{target}'.")),
+            Err(spawn_error) => {
+                // Not on PATH, or not a program file (chrome, winword, a shortcut, a
+                // folder, a .bat): let Windows find it the way Start > Run would.
+                let extra = launch_parameters(args)?;
+                let (shell_target, shell_params) = (target.clone(), extra);
+                match tokio::task::spawn_blocking(move || windows_open::open(&shell_target, shell_params.as_deref())).await {
+                    Ok(Ok(())) => Ok(format!("Launched '{target}' through Windows (it is not a plain program on PATH: {spawn_error}).")),
+                    Ok(Err(reason)) => Err(format!("could not launch '{target}': {spawn_error}. Windows could not open it either: {reason}. Check the name, or use the full path of the .exe.")),
+                    Err(join_error) => Err(format!("could not launch '{target}': {spawn_error} ({join_error})")),
+                }
+            }
+        }
     }
     #[cfg(target_os="macos")]
     {
@@ -1474,14 +1973,14 @@ pub fn catalog() -> Vec<serde_json::Value> {
         serde_json::json!({"name": "create_folder", "description": "Create a folder (and missing parents).", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
         serde_json::json!({"name": "delete_path", "description": "Permanently DELETE a file or folder (folders recursive). Confirm scope with the user before deleting anything broad.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
         serde_json::json!({"name": "move_path", "description": "Move or rename a file/folder. If destination is an existing folder, the source moves INSIDE it keeping its name.", "inputSchema": schema(serde_json::json!({"source": {"type": "string"}, "destination": {"type": "string"}}), &["source", "destination"])}),
-        serde_json::json!({"name": "search_files", "description": "Find files/folders by NAME using glob patterns, e.g. \"**/*.py\", \"src/**/*.js\".", "inputSchema": schema(serde_json::json!({"pattern": {"type": "string"}}), &["pattern"])}),
-        serde_json::json!({"name": "grep_files", "description": "Search INSIDE file contents. Case-insensitive substring by default; regex:true for regular expressions. Narrow with include globs like \"src/**/*.ts\".", "inputSchema": schema(serde_json::json!({"query": {"type": "string"}, "include": {"type": "string"}, "regex": {"type": "boolean"}, "ignore_case": {"type": "boolean"}}), &["query"])}),
-        serde_json::json!({"name": "run_command", "description": "Run a terminal command in the workspace root: installs, builds, tests, git. Captures stdout/stderr and exit code. Blocks until done (hard timeout); never start interactive apps or dev servers.", "inputSchema": schema(serde_json::json!({"command": {"type": "string"}, "timeout_seconds": {"type": "integer"}, "cwd_note": {"type": "string", "description": "In FULL PC ACCESS mode use cd inside command to roam; relative paths resolve from the workspace root."}}), &["command"])}),
+        serde_json::json!({"name": "search_files", "description": "Find files/folders by NAME using glob patterns, e.g. \"**/*.py\", \"src/**/*.js\". Searches the workspace; pass path to search another folder (any folder in FULL PC ACCESS).", "inputSchema": schema(serde_json::json!({"pattern": {"type": "string"}, "path": {"type": "string"}}), &["pattern"])}),
+        serde_json::json!({"name": "grep_files", "description": "Search INSIDE file contents. Case-insensitive substring by default; regex:true for regular expressions. Narrow with include globs like \"src/**/*.ts\". Searches the workspace; pass path to search another folder (any folder in FULL PC ACCESS).", "inputSchema": schema(serde_json::json!({"query": {"type": "string"}, "include": {"type": "string"}, "regex": {"type": "boolean"}, "ignore_case": {"type": "boolean"}, "path": {"type": "string"}}), &["query"])}),
+        serde_json::json!({"name": "run_command", "description": "Run a terminal command: installs, builds, tests, git, PowerShell scripts. Captures stdout/stderr and the exit code. Default shell: cmd on Windows, sh elsewhere; pass shell:\"powershell\" (or \"pwsh\", \"bash\") to use another one - PowerShell scripts need no quote escaping and may span several lines. Runs in the workspace root unless cwd names another folder (any folder in FULL PC ACCESS). Blocks until done (hard timeout, timeout_seconds up to 600); never start interactive apps or dev servers (use open_path or launch_app to open a program).", "inputSchema": schema(serde_json::json!({"command": {"type": "string"}, "shell": {"type": "string", "description": "cmd, powershell, pwsh, bash or sh. Leave out for the default."}, "cwd": {"type": "string", "description": "Folder to run in: relative to the workspace, or absolute in FULL PC ACCESS."}, "timeout_seconds": {"type": "integer"}}), &["command"])}),
         serde_json::json!({"name": "file_info", "description": "Metadata for one path: kind, size, modified/created timestamps, readonly flag.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
         serde_json::json!({"name": "env_info", "description": "Machine overview: host, OS, arch, CPU count, memory, user, workspace root, and whether FULL PC ACCESS is on.", "inputSchema": schema(serde_json::json!({}), &[])}),
         serde_json::json!({"name": "process_list", "description": "List running processes sorted by memory (top N by limit, default 40). Read-only.", "inputSchema": schema(serde_json::json!({"limit": {"type": "integer"}}), &[])}),
         serde_json::json!({"name": "process_kill", "description": "Kill a process by PID. Requires FULL PC ACCESS mode - refused otherwise by design.", "inputSchema": schema(serde_json::json!({"pid": {"type": "integer"}}), &["pid"])}),
-        serde_json::json!({"name": "open_path", "description": "Open a file/folder (workspace-relative, absolute in FULL mode) or an http(s) URL with the OS default application.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
+        serde_json::json!({"name": "open_path", "description": "Open a file/folder (workspace-relative, absolute in FULL mode) or an http(s) URL with the OS default application. In FULL PC ACCESS it also opens a program by name (notepad, calc, chrome) and links like ms-settings: or mailto:; args passes arguments to a program. Returns the exact reason when Windows cannot open it.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "args": {"type": "string"}}), &["path"])}),
         serde_json::json!({"name": "download_file", "description": "Download an http(s) URL to a path (200 MB cap, streamed). Path follows sandbox rules.", "inputSchema": schema(serde_json::json!({"url": {"type": "string"}, "path": {"type": "string"}}), &["url", "path"])}),
         serde_json::json!({"name": "screen_capture", "description": "Capture the full screen to a PNG file. Requires FULL PC ACCESS. Returns the saved path.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &[])}),
         serde_json::json!({"name": "mouse_move", "description": "Move the mouse cursor to absolute screen (x, y). Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"x": {"type": "integer"}, "y": {"type": "integer"}}), &["x", "y"])}),
@@ -1489,7 +1988,7 @@ pub fn catalog() -> Vec<serde_json::Value> {
         serde_json::json!({"name": "key_type", "description": "Type a string of text via synthetic keystrokes into the focused window. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"text": {"type": "string"}}), &["text"])}),
         serde_json::json!({"name": "list_windows", "description": "List visible top-level windows (hwnd + title). Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({}), &[])}),
         serde_json::json!({"name": "focus_window", "description": "Bring the first visible window whose title contains 'title' to the foreground. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"title": {"type": "string"}}), &["title"])}),
-        serde_json::json!({"name": "launch_app", "description": "Launch an executable directly by name or path (e.g. 'notepad', 'calc', or a full .exe path); use argv (array of strings) for paths with spaces, or legacy simple args. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"target": {"type": "string"}, "args": {"type": "string"}, "argv": {"type":"array", "items":{"type":"string"}}}), &["target"])}),
+        serde_json::json!({"name": "launch_app", "description": "Launch a program by name or path (e.g. 'notepad', 'calc', 'chrome', or a full .exe path); if it is not a plain program on PATH, Windows finds it like Start > Run. Use argv (array of strings) for paths with spaces, or legacy simple args. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"target": {"type": "string"}, "args": {"type": "string"}, "argv": {"type":"array", "items":{"type":"string"}}}), &["target"])}),
         serde_json::json!({"name": "screen_record", "description": "Record up to 5 seconds of the screen (seconds 1-5, fps 1-4) as numbered PNG frames in a folder plus sheet.png, one picture of the sampled frames. Attach sheet.png with attach_feedback to see the clip. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"seconds": {"type": "number"}, "fps": {"type": "number"}, "path": {"type": "string"}}), &[])}),
         serde_json::json!({"name": "window_screenshot", "description": "Capture a single window (by title substring, or the first window) to a PNG. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"title": {"type": "string"}, "path": {"type": "string"}}), &[])}),
     ].into_iter().chain(crate::engine_tools::catalog()).filter(|tool| {
@@ -1613,7 +2112,7 @@ mod tests {
     #[tokio::test]
     async fn cancelled_command_does_not_leave_a_running_child() {
         let root=std::env::temp_dir().join(format!("plazcode-stop-test-{}",std::process::id()));std::fs::create_dir_all(&root).unwrap();let marker=root.join("pid");let cwd=root.clone();
-        let task=tokio::spawn(async move{run_shell("echo $$ > pid; sleep 30",&cwd,60).await});
+        let task=tokio::spawn(async move{run_shell(Shell::Sh,"echo $$ > pid; sleep 30",&cwd,60).await});
         for _ in 0..100 {if marker.exists(){break;}tokio::time::sleep(std::time::Duration::from_millis(10)).await;}
         let pid=std::fs::read_to_string(&marker).unwrap();task.abort();let _=task.await;
         for _ in 0..100 {if !std::process::Command::new("kill").args(["-0",pid.trim()]).stderr(std::process::Stdio::null()).status().unwrap().success(){std::fs::remove_dir_all(root).unwrap();return;}tokio::time::sleep(std::time::Duration::from_millis(10)).await;}
@@ -1710,5 +2209,256 @@ mod tests {
         let own = std::process::id();
         let self_kill = tool_process_kill(&ws, &serde_json::json!({"pid": own})).await;
         assert!(self_kill.is_err());
+    }
+
+    // ── 1.24.21 AgentScript fix: shells, quoting, folders, output, opening things ──
+
+    #[test]
+    fn shell_choice_accepts_common_spellings_and_explains_mistakes() {
+        assert_eq!(parse_shell(None, true).unwrap(), Shell::Cmd);
+        assert_eq!(parse_shell(Some(""), false).unwrap(), Shell::Sh);
+        assert_eq!(parse_shell(Some("PowerShell"), true).unwrap(), Shell::PowerShell);
+        assert_eq!(parse_shell(Some("powershell.exe"), true).unwrap(), Shell::PowerShell);
+        assert_eq!(parse_shell(Some(" pwsh "), true).unwrap(), Shell::Pwsh);
+        assert_eq!(parse_shell(Some("Command Prompt"), true).unwrap(), Shell::Cmd);
+        assert_eq!(parse_shell(Some("bash"), true).unwrap(), Shell::Bash);
+        assert!(parse_shell(Some("cmd"), false).unwrap_err().contains("only on Windows"));
+        let unknown = parse_shell(Some("fish"), true).unwrap_err();
+        assert!(unknown.contains("unknown shell 'fish'") && unknown.contains("powershell"), "{unknown}");
+    }
+
+    #[test]
+    fn cmd_exe_keeps_every_quote_of_the_command() {
+        // The old code passed the command as a normal argument; Rust then wrote every inner
+        // quote as \" which cmd.exe does not understand, so quoted paths and
+        // python -c "..." ran as something else.
+        let command = r#""C:\Program Files\nodejs\npm.cmd" install --prefix "D:\my project""#;
+        let args = cmd_exe_args(command);
+        assert_eq!(args, format!("/D /S /C \"{command}\""));
+        assert!(!args.contains("\\\""), "no backslash-escaped quotes: {args}");
+        let python = r#"python -c "print('hi')""#;
+        assert_eq!(cmd_exe_args(python), r#"/D /S /C "python -c "print('hi')"""#);
+    }
+
+    #[test]
+    fn several_line_cmd_commands_go_through_a_batch_file() {
+        assert!(!needs_script_file("dir"));
+        assert!(needs_script_file("echo a\necho b"));
+        assert!(needs_script_file("echo a\r\necho b"));
+        assert_eq!(batch_file_text("echo a\r\necho b\necho c"), "@echo off\r\nchcp 65001>nul\r\necho a\r\necho b\r\necho c\r\n");
+    }
+
+    #[test]
+    fn powershell_runs_encoded_so_quotes_cannot_break_it() {
+        // "hi" as UTF-16LE is 68 00 69 00, which is aABpAA== in base64.
+        assert_eq!(powershell_encoded("hi"), "aABpAA==");
+        let script = powershell_script("Write-Output \"it's \\\"fine\\\"\"\r\nGet-Date");
+        assert!(script.contains("UTF8Encoding $false"), "{script}");
+        assert!(script.contains("Write-Output \"it's \\\"fine\\\"\"\nGet-Date"), "{script}");
+        assert!(script.ends_with("exit $(if ($?) { 0 } elseif ($LASTEXITCODE) { $LASTEXITCODE } else { 1 })"), "{script}");
+        let encoded = powershell_encoded(&script);
+        assert!(!encoded.contains(['"', ' ', '\\']), "the command line text has nothing a shell could change");
+    }
+
+    #[test]
+    fn console_output_is_decoded_not_garbled() {
+        assert_eq!(decode_console_bytes("héllo ✓".as_bytes()), "héllo ✓");
+        assert_eq!(decode_console_bytes(&[0xEF, 0xBB, 0xBF, b'o', b'k']), "ok");
+        let mut marked = vec![0xFF, 0xFE];
+        for unit in "ok é".encode_utf16() { marked.extend_from_slice(&unit.to_le_bytes()); }
+        assert_eq!(decode_console_bytes(&marked), "ok é");
+        let bare: Vec<u8> = "Volume in drive C".encode_utf16().flat_map(|unit| unit.to_le_bytes()).collect();
+        assert_eq!(decode_console_bytes(&bare), "Volume in drive C");
+        assert!(!decode_console_bytes(&[b'a', 0xE9, b'b']).is_empty(), "a code-page byte never turns into nothing");
+    }
+
+    #[test]
+    fn long_output_keeps_the_end_where_build_errors_are() {
+        let text = format!("{}ERROR at the end", "x".repeat(20_000));
+        let clipped = clip_middle(&text, 8_000);
+        assert!(clipped.ends_with("ERROR at the end"), "{}", &clipped[clipped.len().saturating_sub(60)..]);
+        assert!(clipped.contains("left out of the middle"));
+        assert!(clipped.chars().count() < 8_300);
+        assert_eq!(clip_middle("short", 8_000), "short");
+    }
+
+    #[test]
+    fn windows_argument_quoting_matches_what_programs_read() {
+        assert_eq!(quote_windows_arg("plain"), "plain");
+        assert_eq!(quote_windows_arg(""), "\"\"");
+        assert_eq!(quote_windows_arg("C:\\Program Files\\x"), "\"C:\\Program Files\\x\"");
+        assert_eq!(quote_windows_arg("say \"hi\""), "\"say \\\"hi\\\"\"");
+        assert_eq!(quote_windows_arg("dir \\"), "\"dir \\\\\"");
+        let args = serde_json::json!({"argv": ["--open", "C:\\My Files\\a.txt"]});
+        assert_eq!(launch_parameters(&args).unwrap().unwrap(), "--open \"C:\\My Files\\a.txt\"");
+        assert_eq!(launch_parameters(&serde_json::json!({"args": "-x -y"})).unwrap().unwrap(), "-x -y");
+        assert!(launch_parameters(&serde_json::json!({"argv": [1]})).is_err());
+        assert!(launch_parameters(&serde_json::json!({})).unwrap().is_none());
+    }
+
+    #[test]
+    fn windows_open_errors_are_in_plain_words() {
+        assert!(shell_execute_error(2).contains("not found"));
+        assert!(shell_execute_error(5).contains("denied"));
+        assert!(shell_execute_error(31).contains("no program is set"));
+        assert!(shell_execute_error(31).contains("31"));
+    }
+
+    #[test]
+    fn child_folders_never_carry_the_verbatim_prefix() {
+        assert_eq!(deverbatim_string(Path::new(r"\\?\C:\Users\me\Game")), r"C:\Users\me\Game");
+        assert_eq!(deverbatim_string(Path::new(r"\\?\UNC\srv\share\x")), r"\\srv\share\x");
+        #[cfg(windows)]
+        assert_eq!(child_cwd(Path::new(r"\\?\C:\Users\me\Game")), PathBuf::from(r"C:\Users\me\Game"));
+    }
+
+    #[test]
+    fn user_folder_words_expand_only_when_known() {
+        let env = |name: &str| match name {
+            "USERPROFILE" => Some(r"C:\Users\Me".to_string()),
+            "DOCS" => Some("D:\\Docs".to_string()),
+            _ => None,
+        };
+        assert_eq!(expand_user_path("~/Desktop", &env), r"C:\Users\Me/Desktop");
+        assert_eq!(expand_user_path("~", &env), r"C:\Users\Me");
+        assert_eq!(expand_user_path("%USERPROFILE%\\Desktop\\a.txt", &env), r"C:\Users\Me\Desktop\a.txt");
+        assert_eq!(expand_user_path("$env:DOCS\\x", &env), "D:\\Docs\\x");
+        assert_eq!(expand_user_path("${env:DOCS}/x", &env), "D:\\Docs/x");
+        assert_eq!(expand_user_path("%NOPE%\\x", &env), "%NOPE%\\x");
+        assert_eq!(expand_user_path("100%\\done", &env), "100%\\done");
+        assert_eq!(clean_path_arg("  \"C:\\a b\\c\" "), "C:\\a b\\c");
+        assert_eq!(clean_path_arg("'x'"), "x");
+        assert_eq!(clean_path_arg("it's"), "it's");
+    }
+
+    #[test]
+    fn full_access_understands_quotes_and_climbing_out_and_sandbox_explains_itself() {
+        let ws = temp_ws("fullpaths");
+        let outside = ws.canon_root.parent().unwrap().join(format!("plazcode-outside-{}", std::process::id()));
+        std::fs::create_dir_all(&outside).unwrap();
+        std::fs::write(outside.join("note.txt"), "hi").unwrap();
+        let name = outside.file_name().unwrap().to_string_lossy().to_string();
+        ws.set_full_access(true);
+        assert!(ws.resolve_path(&format!("\"{}\"", outside.join("note.txt").display()), true).is_ok(), "quotes around a path are ignored");
+        let climbed = ws.resolve_path(&format!("../{name}/note.txt"), true).unwrap();
+        assert!(climbed.exists() && !climbed.to_string_lossy().contains(".."), "{climbed:?}");
+        assert!(ws.resolve_path(&format!("../{name}/missing.txt"), true).unwrap_err().contains("does not exist"));
+        ws.set_full_access(false);
+        let relative = ws.resolve_path(&format!("../{name}/note.txt"), true).unwrap_err();
+        assert!(relative.contains("Full PC access is OFF"), "{relative}");
+        let absolute = ws.resolve_path(&outside.join("note.txt").to_string_lossy(), true).unwrap_err();
+        assert!(absolute.contains("Full PC access is OFF") && absolute.contains("Permissions"), "{absolute}");
+        let _ = std::fs::remove_dir_all(&outside);
+        let _ = std::fs::remove_dir_all(&ws.canon_root);
+    }
+
+    #[tokio::test]
+    async fn run_command_uses_the_folder_it_is_given_and_says_so() {
+        let ws = temp_ws("runcwd");
+        std::fs::create_dir_all(ws.canon_root.join("sub dir")).unwrap();
+        let show_folder = if cfg!(windows) { "cd" } else { "pwd" };
+        let out = tool_run_command(&ws, &serde_json::json!({"command": show_folder, "cwd": "sub dir"})).await.unwrap();
+        assert!(out.contains("sub dir") && out.contains("in sub dir") && out.contains("exit code 0"), "{out}");
+        let root = tool_run_command(&ws, &serde_json::json!({"command": "echo hi"})).await.unwrap();
+        assert!(root.contains("in the workspace root"), "{root}");
+        let outside = tool_run_command(&ws, &serde_json::json!({"command": "echo hi", "cwd": ".."})).await.unwrap_err();
+        assert!(outside.contains("outside the workspace"), "{outside}");
+        let file = { std::fs::write(ws.canon_root.join("f.txt"), "x").unwrap(); tool_run_command(&ws, &serde_json::json!({"command": "echo hi", "cwd": "f.txt"})).await.unwrap_err() };
+        assert!(file.contains("is a file"), "{file}");
+        let _ = std::fs::remove_dir_all(&ws.canon_root);
+    }
+
+    #[tokio::test]
+    async fn run_command_keeps_quotes_several_lines_and_says_when_nothing_printed() {
+        let ws = temp_ws("runquotes");
+        let quoted = tool_run_command(&ws, &serde_json::json!({"command": "echo \"a b\" done"})).await.unwrap();
+        assert!(quoted.contains("a b") && quoted.contains("done") && !quoted.contains("\\\"a b"), "{quoted}");
+        let lines = tool_run_command(&ws, &serde_json::json!({"command": "echo one\necho two"})).await.unwrap();
+        assert!(lines.contains("one") && lines.contains("two"), "every line runs: {lines}");
+        let quiet = tool_run_command(&ws, &serde_json::json!({"command": if cfg!(windows) { "rem" } else { "true" }})).await.unwrap();
+        assert!(quiet.contains("printed nothing") && quiet.contains("exit code 0"), "{quiet}");
+        let unknown = tool_run_command(&ws, &serde_json::json!({"command": "echo hi", "shell": "fish"})).await.unwrap_err();
+        assert!(unknown.contains("unknown shell 'fish'"), "{unknown}");
+        let _ = std::fs::remove_dir_all(&ws.canon_root);
+    }
+
+    #[tokio::test]
+    async fn powershell_can_be_chosen_and_failures_say_why() {
+        let ws = temp_ws("runps");
+        let present = std::process::Command::new(if cfg!(windows) { "powershell" } else { "pwsh" }).arg("-NoProfile").arg("-Command").arg("exit 0").output().map(|o| o.status.success()).unwrap_or(false);
+        let result = tool_run_command(&ws, &serde_json::json!({"command": "Write-Output \"x y 'z'\"\nexit 3", "shell": "powershell"})).await;
+        if present {
+            let text = result.unwrap();
+            assert!(text.contains("x y 'z'") && text.contains("exit code 3") && text.contains("PowerShell"), "{text}");
+        } else {
+            let error = result.unwrap_err();
+            assert!(error.contains("PowerShell"), "{error}");
+        }
+        let _ = std::fs::remove_dir_all(&ws.canon_root);
+    }
+
+    #[tokio::test]
+    async fn a_timeout_keeps_what_the_command_already_printed() {
+        let ws = temp_ws("partial");
+        let command = if cfg!(windows) { "echo started & ping -n 30 127.0.0.1 > nul" } else { "echo started; sleep 30" };
+        let out = tool_run_command(&ws, &serde_json::json!({"command": command, "timeout_seconds": 1})).await.unwrap();
+        assert!(out.contains("TIMED OUT") && out.contains("started"), "{out}");
+        let _ = std::fs::remove_dir_all(&ws.canon_root);
+    }
+
+    #[cfg(not(windows))]
+    #[tokio::test]
+    async fn a_program_left_running_does_not_hang_the_call() {
+        // `start notepad`, a dev server in the background: the program keeps the output
+        // pipes open, and the call used to wait for it (until the timeout) and then report
+        // a timeout. It must return when the shell is done.
+        let ws = temp_ws("bg");
+        let started = std::time::Instant::now();
+        let out = tool_run_command(&ws, &serde_json::json!({"command": "echo launched; sleep 6 &", "timeout_seconds": 30})).await.unwrap();
+        assert!(started.elapsed().as_secs_f64() < 4.5, "took {:?}: {out}", started.elapsed());
+        assert!(out.contains("launched") && out.contains("exit code 0"), "{out}");
+        let _ = std::fs::remove_dir_all(&ws.canon_root);
+    }
+
+    #[test]
+    fn open_path_targets_are_checked_and_plain() {
+        let ws = temp_ws("open");
+        std::fs::write(ws.canon_root.join("a.txt"), "x").unwrap();
+        assert_eq!(open_target(&ws, "https://example.com/a?b=1").unwrap(), "https://example.com/a?b=1");
+        let file = open_target(&ws, "a.txt").unwrap();
+        assert!(file.ends_with("a.txt") && !file.starts_with(r"\\?\"), "{file}");
+        // Sandbox: only web links and workspace files.
+        assert!(open_target(&ws, "ms-settings:network").unwrap_err().contains("Full PC access"));
+        assert!(open_target(&ws, "notepad").unwrap_err().contains("Full PC access"));
+        assert!(open_target(&ws, "javascript:alert(1)").unwrap_err().contains("script"));
+        ws.set_full_access(true);
+        assert_eq!(open_target(&ws, "ms-settings:network").unwrap(), "ms-settings:network");
+        assert_eq!(open_target(&ws, "notepad").unwrap(), "notepad");
+        assert_eq!(open_target(&ws, "\"calc.exe\"").unwrap(), "calc.exe");
+        assert!(open_target(&ws, "javascript:alert(1)").is_err());
+        assert!(open_target(&ws, "C:/definitely/missing/file.txt").unwrap_err().contains("does not exist"));
+        assert!(open_target(&ws, "missing\\file.txt").is_err(), "a path is never guessed to be a program");
+        assert_eq!(url_scheme("C:\\Users"), None);
+        assert_eq!(url_scheme("steam://run/1"), Some("steam".to_string()));
+        let _ = std::fs::remove_dir_all(&ws.canon_root);
+    }
+
+    #[tokio::test]
+    async fn search_tools_can_target_a_folder_and_survive_brackets_in_the_name() {
+        let root = std::env::temp_dir().join(format!("Game [old] {}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::write(root.join("src").join("a.py"), "needle\n").unwrap();
+        let ws = Workspace::new(root.to_str()).unwrap();
+        // A "[old]" in the workspace folder name used to be read as a pattern and find nothing.
+        let all = tool_search_files(&ws, &serde_json::json!({"pattern": "**/*.py"})).await.unwrap();
+        assert!(all.contains("src/a.py"), "{all}");
+        let narrowed = tool_search_files(&ws, &serde_json::json!({"pattern": "*.py", "path": "src"})).await.unwrap();
+        assert!(narrowed.contains("a.py"), "{narrowed}");
+        let found = tool_grep_files(&ws, &serde_json::json!({"query": "needle", "path": "src"})).await.unwrap();
+        assert!(found.contains("a.py:1"), "{found}");
+        let outside = tool_grep_files(&ws, &serde_json::json!({"query": "x", "path": ".."})).await.unwrap_err();
+        assert!(outside.contains("outside the workspace"), "{outside}");
+        let _ = std::fs::remove_dir_all(&root);
     }
 }
