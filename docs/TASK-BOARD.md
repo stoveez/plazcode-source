@@ -8,6 +8,7 @@ Format:
 ## In progress
 - Vault graph view + vault as the AI's brain on startup + Vani startup + remove the "Working for" fold | AI: claude | branch: claude/vault-brain-and-cleanups | files: core/memory.js, core/main.js, core/lean-startup.js, providers/vani.js, agent/src/vault.rs | started: 2026-10-23 | CI run: none yet
   - Latest state: Vani startup merged (plain first-person request, calm follow-up, clear "AI declined" banner); "Working for" chat fold and bar button removed for every AI. Tests: activity tests, test-vani-startup, test-desktop-regression pass locally. Unfinished: vault graph view, brain-on-startup, full test suite, CI run.
+- AgentScript Full access: commands in cmd/PowerShell and opening files/programs do not work on Windows | AI: claude | branch: claude/agentscript-full-access | files: agent/src/workspace.rs, agent/src/safety.rs, agent/src/main.rs (permission handlers only), core/safety.js, core/tool-guard.js (only if needed), core/main.js (tiny comments-marked edits), background.js (Full access sync) | started: 2026-10-23 | CI run: none yet
 
 ## Ready to start
 The full detailed spec of every Brickwire item (goal, what Brickwire did, what to build, how to improve it, files, tests, what cannot be tested offline) is `development/1.25.0/BRICKWIRE-ITEMS-SPEC.md`. Read it before claiming one.
