@@ -15,3 +15,10 @@ Official releases live in the public repo `stoveez/PlazCode`, branch `main`: onl
 6. Remind the owner to set the repo back to Private.
 
 Read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first real publish. Moving work into `release/1.24.21` needs the owner's clear yes. See also [owner-rules](owner-rules.md).
+
+## Extra details
+- Release text must stay under 2,000 characters (checked once: about 1,360).
+- `PLAZCODE_QUICK` skips the Mac desktop test; only for small fixes the owner approves.
+- For a new version number, copy the 1.24.21 workflows and `development/1.24.21` to the new number and update the names inside. One release branch per version.
+- Practice runs go to the throwaway repo `stoveez/plazcode-publish-test` first. Never push to the public repo by hand; only the publish workflow writes there.
+- The private repo's own `main` is the old line (about 105 commits behind `claude/plazcode-dev` on 2026-10-24). Do not use it for a release.
