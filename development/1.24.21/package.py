@@ -57,15 +57,15 @@ with zipfile.ZipFile(output/name,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as ar
  for path in sorted(package.rglob('*')):
   if path.is_file():archive.write(path,path.relative_to(install).as_posix())
 print(name,hashlib.sha256((output/name).read_bytes()).hexdigest())
-# Small test download: everything the full package has (the app, the memory helper and both ready-made extensions)
-# except the old root copy of core/ and providers/, a legacy duplicate that the updater treats as old files.
+# Test download (the zip the owner gives testers): exactly the same files, folders and layout as the real
+# update zips (one PlazCode folder, app, memory helper, both extensions, root extension copies), so testers
+# extract it, open the PlazCode folder and see everything with no extra steps. Only DEVELOPMENT.txt (a note that
+# the real update zips do not carry) is left out. Nothing is added.
 lean_name='PlazCode-1.24.21-test-lean.zip' if osname=='Windows' else 'PlazCode-macOS-1.24.21-test-lean.zip'
 lean_root=output/'lean';shutil.rmtree(lean_root,ignore_errors=True)
 shutil.copytree(package,lean_root/'PlazCode',symlinks=True)
 lean=lean_root/'PlazCode'
-for folder in [lean/'core',lean/'providers']:
- if folder.is_dir():shutil.rmtree(folder)
-(lean/'READ-ME-FIRST.txt').write_text('PlazCode 1.24.21 test download. It has the app, the memory helper, the Chrome/Edge/Brave extension (PlazCode-Extension) and the Firefox extension (PlazCode-Extension-Firefox), all ready to use.\nInstall over your existing PlazCode folder: copy everything in here into it and choose Replace. For a clean first install this works too.\n')
+(lean/'DEVELOPMENT.txt').unlink(missing_ok=True)
 with zipfile.ZipFile(output/lean_name,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
  for path in sorted(lean_root.rglob('*')):
   if path.is_file() or path.is_symlink():
