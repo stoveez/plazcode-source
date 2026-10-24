@@ -1318,10 +1318,46 @@ const RSProvider = (() => {
   const assistantItems = () => roleItems().assistants;
   const assistantCount = () => roleItems().assistants.length;
   const userCount = () => roleItems().users.length;
-  const lastAssistant = () => {
+  // The very last assistant item on the page (what older versions called the last turn).
+  const tailAssistant = () => {
     const it = roleItems().assistants;
     return it.length ? it[it.length - 1] : null;
   };
+  // 1.24.21: Notion lays ONE answer out as several top-level parts (a block-editor root or
+  // event row each), e.g. [command][spoken line "Please share the Studio result..."]. Reading
+  // only the very last part showed plain words, so the command was never run and its card
+  // stayed "not run" (also the way a new workspace's first reply could fail the start
+  // handshake). The part that holds a complete command is the turn that counts, as long as no
+  // request of the user sits between it and the end of the answer. Everything that asks for the
+  // current turn (text, id, card, watchdog) goes through this, so they always agree; a plain
+  // answer or a command that is already the last part behaves exactly as before.
+  const TURN_COMMAND_SHAPE_RE = /["'](?:command|tool)["']\s*:\s*["'][A-Za-z0-9_.:\/-]+["']|###\s*(?:LUA|LUAU)\s*###|<tool_call>/i;
+  const TURN_LOOKBACK = 6;
+  let _turnPick = null;
+  function partHasCommand(item, complete) {
+    const text = transcriptText(item);
+    if (!text || !TURN_COMMAND_SHAPE_RE.test(text)) return false;
+    if (!complete) return true;
+    if (typeof RSParse === "undefined" || !RSParse.parseToolCalls) return true;
+    try { return RSParse.parseToolCalls(text).length > 0; } catch { return false; }
+  }
+  function lastAssistant() {
+    const tail = tailAssistant();
+    if (!tail || partHasCommand(tail, false)) return tail;
+    const all = allItems(), at = all.lastIndexOf(tail);
+    if (at < 1) return tail;
+    if (_turnPick && _turnPick.all === all && _turnPick.tail === tail && (!_turnPick.item || safeRead(() => _turnPick.item.isConnected, false))) {
+      return _turnPick.item || tail;
+    }
+    let picked = null;
+    for (let i = at - 1, n = 0; i >= 0 && n < TURN_LOOKBACK; i--, n++) {
+      const it = all[i];
+      if (isUserItem(it)) break;               // the user's own message ends the answer
+      if (partHasCommand(it, true)) { picked = it; break; }
+    }
+    _turnPick = { all, tail, item: picked };
+    return picked || tail;
+  }
   const _idMap = new WeakMap();
   let _idSeq = 0;
   function lastAssistantId() {
@@ -1380,7 +1416,9 @@ const RSProvider = (() => {
   const streamLen = (item) => streamText(item).length;
   let _streamMax = -1, _streamAt = 0, _streamItem = null;
   function sampleStream() {
-    const item = lastAssistant();
+    // Growth is watched on the very last part: a spoken part still being written after a
+    // finished command part is still generation.
+    const item = tailAssistant();
     const len = streamText(item).length;
     const now = Date.now();
     if (item !== _streamItem || len < _streamMax - 400) {
@@ -1415,12 +1453,43 @@ const RSProvider = (() => {
   const isBusyNow = genActive;
   function startupReplySettled() {
     sampleStream();
-    if (stopButton() || activeWorkflowProgress(lastAssistant())) return false;
+    if (stopButton() || activeWorkflowProgress(tailAssistant())) return false;
     const reply = streamText(lastAssistant());
     if (Date.now() - _streamAt < 1500) return false;
     if (typeof RSParse === "undefined" || RSParse.hasOpenToolBlock(reply)) return !genActive();
     // This hook is used only after startup parsed and ran the closed tool call.
     return RSParse.parseToolCalls(reply).length > 0 || !genActive();
+  }
+  // 1.24.21: what the page looked like when the start handshake got no command. Plain facts for
+  // the diagnostics (never the user's text), and a banner worded from them when they show
+  // something specific. Returns null banner when nothing specific can be said.
+  const NOTION_NOTICE_RE = /\b(?:limit|quota|credits?|upgrade|trial|free plan|plan|subscription|usage|too many|try again|something went wrong|error|unavailable|not available|permission|access)\b/i;
+  function startupEvidence(res) {
+    const out = {};
+    try {
+      const thread = isAiThread(), landing = isAiLanding();
+      const items = allItems();
+      const tail = tailAssistant(), turn = lastAssistant();
+      const reply = String((res && res.text) || "").replace(/\s+/g, " ").trim();
+      Object.assign(out, {
+        page: thread ? "chat" : landing ? "home" : isAiSurface() ? "ai" : "other",
+        newChatUrl: thread, hasQuery: !!(location.search || ""), mode: _itemsMode,
+        items: items.length, assistants: assistantCount(), users: userCount(),
+        splitReply: !!(tail && turn && tail !== turn), stopButton: !!stopButton(), editor: !!findEditorRaw(),
+        kind: res && res.kind, replyChars: reply.length, replyHead: reply.slice(0, 120),
+      });
+      const next = "Open Notion AI > New chat, then press Start.";
+      if ((!reply || (res && /^(?:empty|timeout|busy_timeout)$/.test(res.kind))) && out.page === "home" && out.items === 0) {
+        out.banner = { title: "Notion AI did not open a chat",
+          text: `PlazCode sent its message, but Notion AI is still on its home page and no chat appeared. PlazCode stayed stopped. ${next}` };
+      } else if (reply && res && res.kind === "text") {
+        const quoted = reply.length > 160 ? reply.slice(0, 157) + "..." : reply;
+        out.banner = NOTION_NOTICE_RE.test(reply) && reply.length < 400
+          ? { title: "Notion AI showed a notice", text: `Notion AI said: "${quoted}" instead of the command. PlazCode stayed stopped. ${next}` }
+          : { title: "Notion AI answered in words", text: `Notion AI replied "${quoted}" instead of the command PlazCode needs. PlazCode stayed stopped. ${next} If it happens again, check that Notion AI is not asking a question or showing a notice.` };
+      }
+    } catch {}
+    return out;
   }
   const isHardGenerating = () => !!stopButton();
 
@@ -3341,6 +3410,7 @@ const RSProvider = (() => {
     compactStartup: true,
     settleStartupReply: true,
     startupReplySettled,
+    startupEvidence,
     sysMaxChars: 8000,
     // Never spend a 90-second response window after all send attempts failed.
     failHardOnSendFailure: true,
