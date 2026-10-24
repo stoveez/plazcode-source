@@ -110,6 +110,13 @@ Windows steps, run from the repo root (written from the CI workflow and `develop
 5. Give the owner `artifacts/PlazCode-1.24.21-test-lean.zip`. It is already the single zip (extract, open the `PlazCode` folder, everything is there), so no wrapper to unpack. Check its file list against the last release zip first (rule 6). Say plainly whether an extension reload is enough or the app must be replaced.
 Limits: the Mac zip can only be built on a Mac or by GitHub's Mac runners (public-then-private plan). A test zip built locally is not a validated build and is never a substitute for the full green CI run needed to publish. Still follow the push and tell-the-owner rules, and never publish without the owner's clear yes.
 
+## Where releases live: which repo and which branch (owner asked for this, 2026-10-24)
+- Official releases (what installed copies download): the PUBLIC repo `stoveez/PlazCode`, branch `main`. It holds only the release zips and the update feeds `latest.json` and `latest-macos.json`. Latest published: 1.24.20. Never edit it by hand and never push to it yourself; only the publish workflow writes to it.
+- Where the release is prepared and published from: the PRIVATE repo `stoveez/plazcode-source`, branch `release/1.24.21` (one release branch per version number; a new version copies the workflows and `development/1.24.21`). The checks (`validate-1.24.21.yml`) must be fully green on the exact final commit of that branch, and the publish workflow (`publish-1.24.21.yml`, started from branch `release/1.24.21-publish` or by hand) pushes the zips and feeds to the public repo.
+- Practice runs go to the throwaway repo `stoveez/plazcode-publish-test` first.
+- The private repo's own `main` branch is the old long-term source line. It is NOT where releases come from, and it is far behind (about 105 commits behind `claude/plazcode-dev` on 2026-10-24). Do not switch to it for a release.
+- Day-to-day work: start from `claude/plazcode-dev` and use your own `claude/<task>` branch. Moving finished work into `release/1.24.21` (or `main`) needs the owner's clear yes. Then follow "How to publish a real update" and the public-then-private plan, and publish only with the owner's clear yes for that exact update.
+
 ## 4. How the build and tests work
 - Source = pinned official 1.24.20 plus an overlay in `development/1.24.21/overlay`. **Edit only the overlay.** Never edit `build-src-1.24.21/` (it is regenerated). A file not yet in the overlay is first copied from `build-src-1.24.21/PlazCode/` into the overlay, then edited there.
 - Build: `python3 development/1.24.21/prepare.py` (writes `build-src-1.24.21/PlazCode`). Do not run it while the full test suite is running.

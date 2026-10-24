@@ -44,6 +44,13 @@ Normal effort is fine for small fixes, packaging, release notes and questions.
 - CI: `.github/workflows/validate-1.24.21.yml` (jobs `browsers` and `native` on Windows, macOS and Ubuntu). Branch `release/1.24.21`.
 - The finished apps are the CI artifacts `plazcode-1.24.21-Windows-validation` and `plazcode-1.24.21-macOS-validation` (about 53 MB and 65 MB; most of it is the memory helper `engram`).
 
+## Where releases live: which repo and which branch (owner asked for this, 2026-10-24)
+- Official releases (what installed copies download): the PUBLIC repo `stoveez/PlazCode`, branch `main`. It holds only the release zips and the update feeds `latest.json` and `latest-macos.json`. Latest published: 1.24.20. Never edit it by hand and never push to it yourself; only the publish workflow writes to it.
+- Where the release is prepared and published from: the PRIVATE repo `stoveez/plazcode-source`, branch `release/1.24.21` (one release branch per version number; a new version copies the workflows and `development/1.24.21`). The checks (`validate-1.24.21.yml`) must be fully green on the exact final commit of that branch, and the publish workflow (`publish-1.24.21.yml`, started from branch `release/1.24.21-publish` or by hand) pushes the zips and feeds to the public repo.
+- Practice runs go to the throwaway repo `stoveez/plazcode-publish-test` first.
+- The private repo's own `main` branch is the old long-term source line. It is NOT where releases come from, and it is far behind (about 105 commits behind `claude/plazcode-dev` on 2026-10-24). Do not switch to it for a release.
+- Day-to-day work: start from `claude/plazcode-dev` and use your own `claude/<task>` branch. Moving finished work into `release/1.24.21` (or `main`) needs the owner's clear yes. Then follow "How to publish a real update" and the public-then-private plan, and publish only with the owner's clear yes for that exact update.
+
 ## How to publish a real update, with the public-then-private plan (owner's walkthrough, 2026-10-23)
 A real update is the same build that passed the full check, promoted by the private-repo publish workflow. Nothing is rebuilt at publish time, and the feed addresses and formats never change. Whenever the owner asks for an update, walk them through this in plain words (resend it every time), in this order:
 1. Owner makes the repo PUBLIC (send https://github.com/stoveez/plazcode-source/settings, Danger Zone, Change visibility). It must stay public from here until step 5 is finished, because the checks, the dry run and the publish all need free builds.

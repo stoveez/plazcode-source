@@ -51,6 +51,13 @@ Read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first
 ## Local build option
 - Option (owner, 2026-10-24): an AI running on the owner's own Windows PC (Claude Code or another code/CLI agent) can build the Windows test zip locally for free, with no public window. Steps and limits: `docs/HANDOFF.md`, section "Option: build the test zip on the owner's own computer". The Mac zip still needs a Mac or CI.
 
+## Where releases live: which repo and which branch (owner asked for this, 2026-10-24)
+- Official releases (what installed copies download): the PUBLIC repo `stoveez/PlazCode`, branch `main`. It holds only the release zips and the update feeds `latest.json` and `latest-macos.json`. Latest published: 1.24.20. Never edit it by hand and never push to it yourself; only the publish workflow writes to it.
+- Where the release is prepared and published from: the PRIVATE repo `stoveez/plazcode-source`, branch `release/1.24.21` (one release branch per version number; a new version copies the workflows and `development/1.24.21`). The checks (`validate-1.24.21.yml`) must be fully green on the exact final commit of that branch, and the publish workflow (`publish-1.24.21.yml`, started from branch `release/1.24.21-publish` or by hand) pushes the zips and feeds to the public repo.
+- Practice runs go to the throwaway repo `stoveez/plazcode-publish-test` first.
+- The private repo's own `main` branch is the old long-term source line. It is NOT where releases come from, and it is far behind (about 105 commits behind `claude/plazcode-dev` on 2026-10-24). Do not switch to it for a release.
+- Day-to-day work: start from `claude/plazcode-dev` and use your own `claude/<task>` branch. Moving finished work into `release/1.24.21` (or `main`) needs the owner's clear yes. Then follow "How to publish a real update" and the public-then-private plan, and publish only with the owner's clear yes for that exact update.
+
 ## Effort
 Use maximum care (high reasoning effort) for the license and login server, the Luau helper library and build self-checks, hard bug hunts (for example the Notion send problem) and the planning of big features.
 
