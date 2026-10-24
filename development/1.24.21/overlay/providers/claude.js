@@ -551,10 +551,20 @@ const RSProvider = (() => {
       const before = userCount();
       const tail = String(text).replace(/\s+/g, "").slice(-24);
       const stillDraft = () => tail.length > 0 && String(editorText()).replace(/\s+/g, "").includes(tail);
-      const sent = () => !!stopButton() || userCount() > before || !stillDraft();
+      // A Stop button that was already up before we sent is Claude still streaming its last reply, not proof that
+      // our message was taken. Only a Stop button that appears after the send counts.
+      const stopBefore = !!stopButton();
+      const sent = () => (!stopBefore && !!stopButton()) || userCount() > before || !stillDraft();
+      // The editor sometimes loses the typed text when Claude re-renders it. An empty box then looked like a sent
+      // message and the run waited a minute for a reply that was never asked for. Type it once more.
+      if (!stillDraft()) { diag("claude.send.retype", {}); await typeEditorText(ed, text); }
+      // Claude refuses a new message while it is still streaming. Wait for the Stop button to go away instead of
+      // pressing Enter into a busy composer.
+      if (stopBefore) { diag("claude.send.waitStopGone", {}); await waitFor(() => !stopButton(), 45000); }
       await waitFor(() => !!sendButton(), Math.min(15000, 2500 + Math.ceil(String(text).length / 25)));
       const btn = sendButton();
       if (btn) { diag("claude.send.click", {}); btn.click(); }
+      else if (stopButton()) { diag("claude.send.stillStreaming", {}); return; }
       else { diag("claude.send.enter", { candidates: sendCandidates().length }); pressEnter(getEditor() || ed); }
       // The draft is still there untouched and nothing started: the first attempt
       // provably did not submit, so one Enter cannot duplicate the message.
