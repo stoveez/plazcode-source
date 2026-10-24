@@ -26,6 +26,9 @@ Builds on this private repo are blocked by GitHub billing, so the repo is made P
 ## Tell the owner after every push (owner, 2026-10-23)
 Every time you push a WIP or finished change that another AI could pick up, tell the owner in the same reply, in plain words: the branch name, the short commit ID, and one line on what is in it (and whether it is unfinished). Say it even for small pushes, so the owner always knows what another AI can see and work from.
 
+## Remind the owner to set the repo back to Private (owner, 2026-10-23)
+The owner does not want to forget this step of the public-then-private plan. Whenever the repo is public, remind them to set it back to Private at the moment the plan says to (right after the build finishes and you have downloaded and sent the zips, or right after a publish finishes), and again in every later reply until it is private. Give the settings link each time: https://github.com/stoveez/plazcode-source/settings (Danger Zone, Change visibility, Private). Check `gh api repos/stoveez/plazcode-source --jq '{private,visibility}'` before you stop working and tell the owner plainly if it is still public. If you are about to end a session while it is public, say so in your last message. Never change visibility yourself.
+
 ## Effort (the owner's rule)
 Use HIGH effort (think longer and trace carefully) for these four kinds of work. If you cannot change your own effort setting, hand the work to a helper agent that runs at high effort, or tell the owner to switch it before you start:
 1. The login and license server (security matters, a gap is costly).
