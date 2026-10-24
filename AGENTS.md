@@ -1,6 +1,8 @@
 # AGENTS.md - instructions for any AI working in this repo (Codex, Claude, or others)
 
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
+>
+> Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.
 
 This is the private source repo for PlazCode (`stoveez/plazcode-source`). For anything beyond these rules read `docs/MAINTAINER-GUIDE.md`, `docs/TASK-BOARD.md` and `docs/HANDOFF.md`; build, release and status details are in `docs/vault/`.
 
