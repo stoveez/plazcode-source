@@ -33,7 +33,6 @@ Other ready tasks:
 - Release notes lines for 1.24.21 tester fixes (`release-entry.json`) - single owner of this file at a time.
 - Website: deploy `PlazCode-website.zip` to Cloudflare Pages once the owner has a domain.
 - "Response changed - run paused" fix once a tester sends a debug report (HIGH).
-- Mac app opens then closes: needs the tester's app version or crash report.
 
 ## Done (handoff notes)
 - (none yet)
