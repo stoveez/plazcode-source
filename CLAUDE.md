@@ -64,6 +64,7 @@ For a new version number, copy the 1.24.21 workflows and `development/1.24.21` f
 - Next update plan (login/license system, Skill Workshop, Brickwire ideas, a simple website) is in `development/1.25.0/`.
 
 ## Open items
+- Several desktop-layout browser tests in the `browsers` CI job are out of date for the owner's new desktop layout (they were never reached before, because an earlier ClickUp step always failed first): `test-ultra-trash-browser.cjs`, `test-ultracode-appearance.cjs`, `test-sidebar-explorer.cjs`, `test-workspace-scroll.cjs`, `test-desktop-performance.cjs` (colours, hidden effort picker, settings categories, sidebar). They need updating to the new layout (settings now show one category at a time via `PlazCodeDesktop.go('settings','<category>')`). `test-command-watchers.cjs`, `test-browsers.cjs`, `test-checklist-appearance.cjs`, `test-clarification-input.cjs` also need Firefox, which is not installed in the Claude sandbox; check them in CI. Publishing needs a fully green run, so fix these before any publish. Test builds are not blocked by them (the apps build green on Windows, Mac and Linux). Found 2026-10-23, run 40056181833.
 - "Response changed - run paused" banner: needs a debug report from a tester.
 - Mac app opens then closes: needs the tester's app version or crash report (likely an older app with a newer extension).
 - Not live-tested: Ultra on real Studio and AI sites, Vani Co-work, Firefox appearance.
