@@ -983,24 +983,29 @@ async function refreshProcStatus() {
     localReady = nl;
     localFull = nf;
     localRoot = nrRoot;
-    // One-shot re-sync: if the agent restarted with FULL off but the user's
-    // persisted toggle says ON, re-apply their choice once.
+    if (changed) broadcastStatus();
+    await pullDesktopPreferences();
+    // Full access re-sync (one-shot, only ever turns Full ON). The old code
+    // copied a stale "rs-local-full" value from browser storage back to the
+    // agent after every extension restart, which could flip the agent's Full
+    // switch against what the user chose on the desktop. Now the agent is the
+    // source of truth: we only re-apply Full when the user's saved permission
+    // choice (rsPermMode) is "full" while the agent reports it OFF, and we
+    // never switch it off from here.
     if (!fullSyncedOnce) {
       fullSyncedOnce = true;
       try {
-        chrome.storage.local.get("rs-local-full", (o) => {
-          const want = o && o["rs-local-full"];
-          if (typeof want === "boolean" && want !== nf) {
-            bridgeFetch("http://127.0.0.1:3000/api/local-full", {
+        chrome.storage.local.get("rsPermMode", (o) => {
+          const wantFull = o && o.rsPermMode === "full";
+          if (wantFull && !localFull) {
+            bridgeFetch(`${RUST_ROBLOX_HTTP}/api/local-full`, {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ enabled: want }), signal: AbortSignal.timeout(5000),
+              body: JSON.stringify({ enabled: true }), signal: AbortSignal.timeout(5000),
             }).then((r2) => r2.json()).then((j2) => { localFull = j2.local_full === true; broadcastStatus(); }).catch(() => {});
           }
         });
       } catch {}
     }
-    if (changed) broadcastStatus();
-    await pullDesktopPreferences();
   } catch {} finally { procStatusReading = false; }
 }
 // Single-flight: the 5 s interval must never stack status reads on a slow bridge.

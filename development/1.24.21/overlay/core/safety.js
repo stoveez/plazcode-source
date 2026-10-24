@@ -67,6 +67,34 @@ const PlazCodeSafety = (() => {
   function declinedDelete(name) {
     return "ERROR in " + bare(name) + ": the user did not allow this delete. Do not retry it or delete the same files another way unless they ask.";
   }
+  // Plain-language explanation for the USER when a local tool result says the PC
+  // refused (Full access off, folder not allowed, program would not start).
+  // Pure: returns {kind,title,text} or null. `opts` = {permMode, agentFull}:
+  // permMode is what the bar menu says, agentFull is what the desktop app reports
+  // (null/undefined when unknown). The AI already gets the exact reason in the
+  // tool result; this is so the person sees it too instead of a silent stall.
+  function accessHint(name, resultText, opts) {
+    const b = bare(name), text = String(resultText || "");
+    if (!text || (!/^ERROR/i.test(text.trim()) && !/\bTIMED OUT\b/.test(text))) return null;
+    const o = opts || {};
+    if (/Full PC access is OFF|requires FULL PC ACCESS|needs Full PC access|switch Permissions to Full/i.test(text)) {
+      if (o.permMode === "full" && o.agentFull === false) {
+        return { kind: "full-mismatch", title: "Full access is not on in the desktop app",
+          text: "The PlazCode menu says Full, but the desktop app still has Full PC access OFF, so '" + b + "' was refused. Open the desktop app, go to Execution, and switch Full on. If it will not stay on, update the desktop app." };
+      }
+      return { kind: "full-off", title: "The AI needs Full PC access",
+        text: "'" + b + "' was refused because Full PC access is off, so the AI can only use the workspace folder. Switch Permissions to Full in the PlazCode menu if you want it to work outside the workspace." };
+    }
+    if (/outside the folders PlazCode may use/i.test(text)) {
+      return { kind: "folders", title: "That folder is not on your allowed list",
+        text: "'" + b + "' tried a folder you have not allowed. Add it under Safety, Allowed folders, or tell the AI to stay in the workspace." };
+    }
+    if (b === "run_command" && /could not start /i.test(text)) {
+      return { kind: "spawn", title: "The command could not start",
+        text: "Windows or security software refused to start the shell for 'run_command'. " + (text.match(/could not start [^\n]*/i) || [""])[0].slice(0, 300) };
+    }
+    return null;
+  }
   // One short line for the AI's state block.
   function stateLine(settings) {
     const s = settings || DEFAULTS, parts = [];
@@ -75,6 +103,6 @@ const PlazCodeSafety = (() => {
     if (s.allowedFolders && s.allowedFolders.length) parts.push("with Full access, files outside the workspace are limited to: " + s.allowedFolders.join("; "));
     return parts.length ? "SAFETY: " + parts.join(". ") + "." : "";
   }
-  return { DEFAULTS, KEYS, fromStorage, normalizeFolders, commandDeletes, isChange, isDelete, describeDelete, readOnlyRefusal, declinedDelete, stateLine };
+  return { DEFAULTS, KEYS, fromStorage, normalizeFolders, commandDeletes, isChange, isDelete, describeDelete, readOnlyRefusal, declinedDelete, stateLine, accessHint };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = PlazCodeSafety;
