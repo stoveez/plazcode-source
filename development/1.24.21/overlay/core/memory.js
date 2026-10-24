@@ -466,7 +466,7 @@ const PlazCodeMemory = (() => {
     + '.pcv-gcanvas{display:block;width:100%;height:100%;outline:none;touch-action:none;cursor:grab}.pcv-gcanvas:focus-visible{box-shadow:inset 0 0 0 2px var(--v-accent)}'
     + '.pcv-gtools{position:absolute;top:10px;right:10px;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px 12px;max-width:calc(100% - 20px);padding:6px 8px;border:1px solid var(--v-line);border-radius:12px;background:color-mix(in srgb,var(--v-side) 90%,transparent);color:var(--v-muted);font-size:12px;box-sizing:border-box}'
     + '#pcv-root .pcv-gtools input[type="text"]{all:unset;box-sizing:border-box;width:140px;height:26px;padding:0 9px;background:var(--v-bg);border:1px solid var(--v-line);border-radius:8px;color:var(--v-text);font-size:12px}#pcv-root .pcv-gtools input[type="text"]:focus{border-color:var(--v-accent)}'
-    + '.pcv-gopt{display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}#pcv-root .pcv-gopt input{appearance:auto;-webkit-appearance:checkbox;width:14px;height:14px;margin:0;accent-color:var(--v-accent);cursor:pointer}'
+    + '.pcv-gopt{display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}#pcv-root .pcv-gsize input[type="range"]{appearance:auto;-webkit-appearance:auto;width:84px;height:14px;margin:0;accent-color:var(--v-accent);cursor:pointer}#pcv-root .pcv-gsize input[type="range"]:disabled{opacity:.4;cursor:default}#pcv-root .pcv-gopt input{appearance:auto;-webkit-appearance:checkbox;width:14px;height:14px;margin:0;accent-color:var(--v-accent);cursor:pointer}'
     + '.pcv-ginfo{position:absolute;left:12px;bottom:12px;display:flex;flex-direction:column;gap:2px;max-width:min(380px,60%);padding:8px 12px;border:1px solid var(--v-line);border-radius:10px;background:color-mix(in srgb,var(--v-side) 92%,transparent);color:var(--v-muted);font-size:12px;pointer-events:none}.pcv-ginfo[hidden]{display:none}.pcv-ginfo b{color:var(--v-text);font-size:13px}.pcv-ginfo em{font-style:normal;color:var(--v-faint)}'
     + '.pcv-glegend{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:3px;max-width:230px;padding:0;color:var(--v-muted);font-size:11px;pointer-events:none}.pcv-glegend:empty{display:none}.pcv-glegend div{display:flex;align-items:center}.pcv-glegend i{display:inline-block;flex:none;width:9px;height:9px;margin-right:6px;border-radius:50%}'
     + '.pcv-gempty{position:absolute;inset:0;display:grid;place-items:center;color:var(--v-muted)}.pcv-gempty[hidden]{display:none}'
@@ -552,11 +552,14 @@ const PlazCodeMemory = (() => {
       + '<label class="pcv-gopt"><input type="checkbox" data-gopt="orphans" checked><span>' + esc(T('Notes without links')) + '</span></label>'
       + '<label class="pcv-gopt"><input type="checkbox" data-gopt="home"><span>' + esc(T('Links to Home')) + '</span></label>'
       + '<label class="pcv-gopt"><input type="checkbox" data-gopt="colors" checked><span>' + esc(T('Folder colors')) + '</span></label>'
+      + '<label class="pcv-gopt"><input type="checkbox" data-gopt="grid" checked><span>' + esc(T('Grid')) + '</span></label>'
+      + '<label class="pcv-gopt pcv-gsize"><span>' + esc(T('Grid size')) + '</span><input type="range" data-gsize min="16" max="120" step="4" value="48" aria-label="' + esc(T('Grid size')) + '"></label>'
       + '<button type="button" class="pcv-ib" data-gact="out" aria-label="' + esc(T('Zoom out')) + '">' + ico('minus', 16) + '</button><button type="button" class="pcv-ib" data-gact="in" aria-label="' + esc(T('Zoom in')) + '">' + ico('plus', 16) + '</button><button type="button" class="pcv-ib" data-gact="fit" aria-label="' + esc(T('Fit to window')) + '">' + ico('fit', 16) + '</button></div>'
       + '<div class="pcv-ginfo" data-ginfo hidden></div><div class="pcv-glegend" data-glegend></div><div class="pcv-gempty" data-gempty hidden></div>';
     const canvas = host.querySelector('canvas'), ctx = canvas.getContext('2d');
     const infoBox = host.querySelector('[data-ginfo]'), legend = host.querySelector('[data-glegend]'), emptyBox = host.querySelector('[data-gempty]'), filterBox = host.querySelector('[data-gfilter]');
     const opt = name => host.querySelector('[data-gopt="' + name + '"]').checked;
+    const gridSize = () => Math.max(16, Math.min(120, Number(host.querySelector('[data-gsize]').value) || 48));
     const reduce = () => { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch { return false; } };
     let data = null, nodes = [], edges = [], deg = [], sim = null, view = { x: 0, y: 0, k: 1 }, hover = -1, matches = null, frameId = 0, w = 0, h = 0, dpr = 1, fitted = false, colors = null, dirColor = new Map(), keep = new Map();
     const css = (name, fallback) => { try { return (getComputedStyle(host).getPropertyValue(name) || '').trim() || fallback; } catch { return fallback; } };
@@ -611,31 +614,72 @@ const PlazCodeMemory = (() => {
     function draw() {
       if (!w || !sim) return;
       const text = css('--v-text', '#eef4ff'), muted = css('--v-muted', '#9fb0c7'), accent = css('--v-accent', '#e9ba53');
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
-      ctx.save(); ctx.translate(view.x, view.y); ctx.scale(view.k, view.k);
-      const near = hover >= 0 ? neighbours(hover) : null, k = view.k;
-      ctx.lineCap = 'round';
+      const colored = opt('colors'), k = view.k, near = hover >= 0 ? neighbours(hover) : null;
+      const hue = i => dirColor.get(nodes[i].dir || '');
+      const tone = (i, l, a) => colored ? 'hsla(' + hue(i) + ',72%,' + l + '%,' + (a == null ? 1 : a) + ')' : 'hsla(215,18%,' + (l + 6) + '%,' + (a == null ? 1 : a) + ')';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h); ctx.globalCompositeOperation = 'source-over';
+      // A soft pool of light in the middle, so the map sits in a space instead of on a flat sheet.
+      const pool = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.62);
+      pool.addColorStop(0, accent); pool.addColorStop(1, 'rgba(0,0,0,0)'); ctx.globalAlpha = 0.09; ctx.fillStyle = pool; ctx.fillRect(0, 0, w, h); ctx.globalAlpha = 1;
+      ctx.save(); ctx.translate(view.x, view.y); ctx.scale(view.k, view.k); ctx.lineCap = 'round';
+      // Semi-transparent grid that moves and zooms with the map; every fifth line is a little stronger.
+      if (opt('grid')) {
+        let step = gridSize(); while (step * k < 14) step *= 2;
+        const gx0 = -view.x / k, gy0 = -view.y / k, gx1 = (w - view.x) / k, gy1 = (h - view.y) / k;
+        ctx.strokeStyle = muted; ctx.lineWidth = 1 / k;
+        for (const major of [false, true]) {
+          ctx.beginPath();
+          for (let gx = Math.floor(gx0 / step) * step; gx <= gx1; gx += step) { if ((Math.round(gx / step) % 5 === 0) === major) { ctx.moveTo(gx, gy0); ctx.lineTo(gx, gy1); } }
+          for (let gy = Math.floor(gy0 / step) * step; gy <= gy1; gy += step) { if ((Math.round(gy / step) % 5 === 0) === major) { ctx.moveTo(gx0, gy); ctx.lineTo(gx1, gy); } }
+          ctx.globalAlpha = major ? 0.2 : 0.09; ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+      const faded = i => (near && !near.has(i)) || (matches && !matches.has(i));
+      // Lines: a wide faint glow under a thin bright core, blending from one note's colour to the other's.
+      ctx.globalCompositeOperation = 'lighter';
       for (const e of edges) {
-        const a = e[0], b = e[1], active = near && (a === hover || b === hover);
-        const dim = (near && !active) || (matches && !(matches.has(a) || matches.has(b)));
-        ctx.globalAlpha = active ? 1 : dim ? 0.07 : 0.38; ctx.strokeStyle = active ? accent : muted; ctx.lineWidth = (active ? 1.7 : 1) / k;
-        ctx.beginPath(); ctx.moveTo(sim.x[a], sim.y[a]); ctx.lineTo(sim.x[b], sim.y[b]); ctx.stroke();
+        const a = e[0], b = e[1], active = near && (a === hover || b === hover), dim = (near && !active) || (matches && !(matches.has(a) || matches.has(b)));
+        const x0 = sim.x[a], y0 = sim.y[a], x1 = sim.x[b], y1 = sim.y[b];
+        let stroke;
+        if (active) stroke = accent;
+        else { stroke = ctx.createLinearGradient(x0, y0, x1, y1); stroke.addColorStop(0, tone(a, 62, 1)); stroke.addColorStop(1, tone(b, 62, 1)); }
+        ctx.strokeStyle = stroke;
+        ctx.globalAlpha = active ? 0.34 : dim ? 0.015 : 0.16; ctx.lineWidth = (active ? 9 : 6) / k;
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+        ctx.globalAlpha = active ? 1 : dim ? 0.08 : 0.85; ctx.lineWidth = (active ? 2.1 : 1.3) / k;
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
       }
-      const colored = opt('colors');
+      // Notes: a halo of light, then a small glowing orb with a bright highlight.
       for (let i = 0; i < nodes.length; i++) {
-        const lit = near ? near.has(i) : true, found = matches ? matches.has(i) : true;
-        ctx.globalAlpha = (lit && found) ? 1 : 0.16;
-        ctx.fillStyle = i === hover ? accent : colored ? 'hsl(' + dirColor.get(nodes[i].dir || '') + ' 62% 64%)' : muted;
-        ctx.beginPath(); ctx.arc(sim.x[i], sim.y[i], radius(i) * (i === hover ? 1.3 : 1), 0, 6.2832); ctx.fill();
+        const r = radius(i) * (i === hover ? 1.3 : 1), x = sim.x[i], y = sim.y[i], lit = !faded(i);
+        const halo = ctx.createRadialGradient(x, y, 0, x, y, r * (i === hover ? 5.8 : 4.4));
+        halo.addColorStop(0, i === hover ? accent : tone(i, 62, 1)); halo.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.globalAlpha = lit ? (i === hover ? 0.7 : near ? 0.5 : 0.42) : 0.03; ctx.fillStyle = halo;
+        ctx.beginPath(); ctx.arc(x, y, r * (i === hover ? 5.8 : 4.4), 0, 6.2832); ctx.fill();
       }
-      ctx.font = (11.5 / k) + 'px system-ui, -apple-system, Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = text;
+      ctx.globalCompositeOperation = 'source-over';
       for (let i = 0; i < nodes.length; i++) {
-        const lit = near ? near.has(i) : true, found = matches ? matches.has(i) : true;
+        const r = radius(i) * (i === hover ? 1.3 : 1), x = sim.x[i], y = sim.y[i], lit = !faded(i);
+        const orb = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+        if (i === hover) { orb.addColorStop(0, '#ffffff'); orb.addColorStop(0.35, accent); orb.addColorStop(1, accent); }
+        else { orb.addColorStop(0, tone(i, 90, 1)); orb.addColorStop(0.45, tone(i, 68, 1)); orb.addColorStop(1, tone(i, 52, 1)); }
+        ctx.globalAlpha = lit ? 1 : 0.16; ctx.fillStyle = orb;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+        ctx.globalAlpha = lit ? 0.5 : 0.1; ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 0.8 / k; ctx.stroke();
+      }
+      // Names: soft dark edge so they stay readable over lines and glow.
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 5 * dpr;
+      for (let i = 0; i < nodes.length; i++) {
         const showLabel = (near && near.has(i)) || (matches && matches.has(i)) || (!near && !matches && (k >= 0.55 || (k >= 0.3 && deg[i] >= 2)));
         if (!showLabel) continue;
-        ctx.globalAlpha = (lit && found) ? 0.92 : 0.2; ctx.fillText(nodes[i].title, sim.x[i], sim.y[i] + radius(i) + 3 / k);
+        const hub = deg[i] >= 3 || i === hover;
+        ctx.font = (hub ? '600 ' : '500 ') + (12 / k) + 'px system-ui, -apple-system, Segoe UI, sans-serif';
+        ctx.fillStyle = i === hover ? '#ffffff' : text; ctx.globalAlpha = faded(i) ? 0.2 : hub ? 0.98 : 0.8;
+        ctx.fillText(nodes[i].title, sim.x[i], sim.y[i] + radius(i) * (i === hover ? 1.3 : 1) + 4 / k);
       }
-      ctx.restore(); ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+      ctx.restore(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     }
     function frame() {
       frameId = 0;
@@ -703,7 +747,11 @@ const PlazCodeMemory = (() => {
       const a = target.dataset.gact;
       if (a === 'in') zoomAt(1.25, w / 2, h / 2); else if (a === 'out') zoomAt(1 / 1.25, w / 2, h / 2); else if (a === 'fit') { fit(); draw(); }
     });
-    host.addEventListener('change', event => { if (event.target.matches && event.target.matches('[data-gopt]')) build(); });
+    host.addEventListener('change', event => {
+      const box = event.target.matches && event.target.matches('[data-gopt]') ? event.target : null; if (!box) return;
+      if (box.dataset.gopt === 'grid') { host.querySelector('[data-gsize]').disabled = !box.checked; draw(); } else build();
+    });
+    host.querySelector('[data-gsize]').addEventListener('input', () => draw());
     filterBox.addEventListener('input', () => { applyFilter(); draw(); });
     if (typeof ResizeObserver === 'function') new ResizeObserver(() => resize()).observe(host);
     return {
