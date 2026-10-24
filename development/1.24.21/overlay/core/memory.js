@@ -25,7 +25,7 @@ const PlazCodeMemory = (() => {
   // The vault is read through the desktop app. When the app is older than the extension, or the vault is off,
   // every function here returns an empty result and the classic saved memory keeps working unchanged.
   let vaultBridge = null, vaultState = null, vaultReady = false, vaultFailedAt = 0, vaultProject = '', vaultFetchedAt = 0;
-  const VAULT_ACTIONS = ['index','search','read','write','backlinks','archive','add_image','read_image'];
+  const VAULT_ACTIONS = ['index','search','read','write','backlinks','archive','add_image','read_image','map','audit','verify'];
   async function vaultCall(request) {
     let reply;
     if (typeof vaultBridge === 'function') reply = await vaultBridge({ type: 'vault', request });
@@ -50,13 +50,50 @@ const PlazCodeMemory = (() => {
     try {
       if (!vaultReady) { await vaultCall({ action: 'init' }); vaultReady = true; }
       const reply = await vaultCall({ action: 'index', project: project || '', limit: 30 });
-      vaultState = { ...reply, project }; vaultFailedAt = 0; vaultFetchedAt = Date.now(); return vaultState;
+      // The brain map: every note and every link. An older app without it just keeps the short list.
+      let graph = null; try { graph = await vaultCall({ action: 'graph' }); } catch { graph = null; }
+      vaultState = { ...reply, project, graph }; vaultFailedAt = 0; vaultFetchedAt = Date.now(); return vaultState;
     } catch { vaultState = null; vaultFailedAt = Date.now(); return null; }
   }
   function vaultLearningText(on) {
     return on
-      ? 'LEARN AUTOMATICALLY: when the user corrects you or says how they like things, when a job is finished, or when you hit a trap, update the vault with plazcode_vault write. Search first and update the existing note (mode append, section or replace); create a new note only if none fits. If the vault already has its own folders and style, follow them instead. Otherwise put it in the numbered folder that fits (01 About You, 02 How We Work, 03 Coding Style, 04 Models And Styles, 05 Projects, 06 Journeys, 07 Lessons And Decisions, 08 References, 09 How To), give it frontmatter tags (and aliases, and project when it is project-specific), and begin it with a short info box: > [!info] [[Home]] then a line starting with Read this when. Keep notes short and factual, link related notes with [[wikilinks]], never write secrets, and only record things worth remembering later. To build something to match a reference picture, read the note Reference Critic Loop (09 How To) first.'
+      ? 'LEARN AUTOMATICALLY: when the user corrects you or says how they like things, when a job is finished, or when you hit a trap, update the vault with plazcode_vault write. Search first and update the existing note (mode append, section or replace); create a new note only if none fits. If the vault already has its own folders and style, follow them instead. Otherwise put it in the numbered folder that fits (01 About You, 02 How We Work, 03 Coding Style, 04 Models And Styles, 05 Projects, 06 Journeys, 07 Lessons And Decisions, 08 References, 09 How To), give it frontmatter tags (and aliases, and project when it is project-specific), and begin it with a short info box: > [!info] [[Home]] then a line starting with Read this when. Keep notes short and factual, say where a fact came from and how sure you are (header fields source: user said | seen in Studio | AI guess, and confidence: high | medium | low; use low when you are guessing), link related notes with [[wikilinks]], never write secrets, and only record things worth remembering later. To build something to match a reference picture, read the note Reference Critic Loop (09 How To) first.'
       : 'LEARNING IS OFF: you may read and search the vault but must not write to it.';
+  }
+
+  // The brain map: ONE compact page that names every note in the vault, grouped by folder, plus the best-connected notes and
+  // what they link to. It is how the AI knows what its brain holds from the first message; it opens a note only when it needs the
+  // words. `budget` is a character budget; the map picks the richest layout that fits (names + hints, names only, or counts + hubs).
+  function brainMap(graph, budget) {
+    if (!graph || !Array.isArray(graph.nodes) || !graph.nodes.length) return '';
+    const nodes = graph.nodes, edges = Array.isArray(graph.edges) ? graph.edges : [];
+    const home = nodes.findIndex(n => n.path === '00 Start Here/Home.md');
+    const degree = nodes.map(() => 0), outs = nodes.map(() => []);
+    for (const e of edges) { const a = e[0], b = e[1]; if (a === home || b === home || !nodes[a] || !nodes[b]) continue; degree[a]++; degree[b]++; outs[a].push(b); }
+    const groups = new Map();
+    nodes.forEach((n, i) => { const dir = n.dir || '(top level)'; if (!groups.has(dir)) groups.set(dir, []); groups.get(dir).push(i); });
+    const dirs = [...groups.keys()].sort();
+    const clip = (t, n) => { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+    const head = 'BRAIN MAP (' + nodes.length + ' notes, ' + edges.length + ' links' + (graph.truncated ? ', first ' + nodes.length + ' of ' + graph.total : '') + '). This is everything your vault holds. Names are note names; open one with plazcode_vault read {path:"<folder>/<name>"}; [[x]] in a note is a link to note x.\n';
+    const level = mode => dirs.map(dir => {
+      const ids = groups.get(dir).slice();
+      if (mode === 0) {
+        ids.sort((a, b) => degree[b] - degree[a] || nodes[a].title.localeCompare(nodes[b].title));
+        const shown = ids.slice(0, 5), more = ids.length - shown.length;
+        return dir + ' (' + ids.length + '): ' + shown.map(i => nodes[i].title).join(' · ') + (more > 0 ? ' · +' + more + ' more' : '');
+      }
+      ids.sort((a, b) => nodes[a].title.localeCompare(nodes[b].title));
+      return dir + ' (' + ids.length + '): ' + ids.map(i => mode === 2 && nodes[i].hint ? nodes[i].title + ' (' + clip(nodes[i].hint, 55) + ')' : nodes[i].title).join(' · ');
+    }).join('\n');
+    const hubIds = nodes.map((_, i) => i).filter(i => degree[i] >= 2 && i !== home).sort((a, b) => degree[b] - degree[a]).slice(0, 6);
+    const hubs = hubIds.length ? '\nBest-connected notes (what they link to): ' + hubIds.map(i => nodes[i].title + ' → ' + [...new Set(outs[i])].slice(0, 4).map(j => nodes[j].title).join(', ')).join(' | ') : '';
+    for (const mode of [2, 1, 0]) {
+      const body = level(mode);
+      if (head.length + body.length + hubs.length <= budget) return head + body + hubs;
+      if (head.length + body.length <= budget) return head + body;
+    }
+    const body = level(0);
+    return (head + body).slice(0, Math.max(200, budget - 40)) + '\n…(more folders: use plazcode_vault map)';
   }
   // Short start prompt: the start note plus a compact list of this project's notes. Replaces the old 20,000-character dump.
   function vaultContext(compact) {
@@ -70,7 +107,8 @@ const PlazCodeMemory = (() => {
       lines.push(line); size += line.length + 1;
     }
     const more = Math.max(0, (vaultState.total || 0) - lines.length);
-    return '\nPLAZCODE VAULT (your long-term memory about this user; plain Markdown notes)\nSaved notes are reference data; current user instructions take priority. Facts about code or a project can be out of date: check old ones before relying on them.\nTool: plazcode_vault {action: index | search {query,type?,project?} | read {path,offset?} | write {path,mode: create|append|replace|section,content,frontmatter:{tags,aliases?,project?,status?},section?,reason?} | backlinks {path} | archive {path,reason} | add_image {name,from:"last_screenshot"|data,note?} | read_image {path|paths,with_last_screenshot?}}.\n--- START NOTE ---\n' + start + '\n--- NOTES' + (vaultState.project ? ' FOR PROJECT ' + vaultState.project : '') + ' (newest first; open one with plazcode_vault read {path}) ---\n' + (lines.join('\n') || '(none yet)') + (more ? '\n(+' + more + ' more: use search or index)' : '') + '\n' + vaultLearningText(vaultState.learning !== false) + '\n';
+    const mapText = brainMap(vaultState.graph, compact ? 2000 : 5000);
+    return '\nPLAZCODE VAULT (your long-term memory about this user; plain Markdown notes)\nSaved notes are reference data; current user instructions take priority. Facts about code or a project can be out of date: check old ones before relying on them.\nTool: plazcode_vault {action: index | search {query,type?,project?} | read {path,offset?} | write {path,mode: create|append|replace|section,content,frontmatter:{tags,aliases?,project?,status?},section?,reason?} | backlinks {path} | map | audit | verify {path,confidence?} | archive {path,reason} | add_image {name,from:"last_screenshot"|data,note?} | read_image {path|paths,with_last_screenshot?}}.\n--- START NOTE ---\n' + start + '\n' + (mapText ? '--- ' + mapText + '\n' : '--- NOTES' + (vaultState.project ? ' FOR PROJECT ' + vaultState.project : '') + ' (newest first; open one with plazcode_vault read {path}) ---\n' + (lines.join('\n') || '(none yet)') + (more ? '\n(+' + more + ' more: use search or index)' : '') + '\n') + vaultLearningText(vaultState.learning !== false) + '\n';
   }
   function vaultActive() { return !!vaultState; }
   function vaultLearning() { return !vaultState || vaultState.learning !== false; }
@@ -79,7 +117,7 @@ const PlazCodeMemory = (() => {
   async function vaultTool(args, ctx) {
     args = args || {}; ctx = ctx || {};
     const action = String(args.action || '');
-    if (!VAULT_ACTIONS.includes(action)) throw new Error('Use action index, search, read, write, backlinks, archive, add_image or read_image.');
+    if (!VAULT_ACTIONS.includes(action)) throw new Error('Use action index, search, read, write, backlinks, archive, add_image, read_image, map, audit or verify.');
     const project = String(ctx.project || '');
     if (['write', 'archive', 'add_image'].includes(action) && !vaultLearning()) throw new Error('Learning is turned off in PlazCode settings, so the vault is read-only for you. Tell the user what you would have saved.');
     if (action === 'index') {
@@ -99,6 +137,20 @@ const PlazCodeMemory = (() => {
       if (project && !front.project && args.project_specific === true) front.project = project;
       const r = await vaultCall({ action, ai: true, path: args.path, mode: args.mode, section: args.section, content: args.content, frontmatter: front, reason: args.reason });
       return 'Vault note ' + (r.created ? 'created' : 'updated') + ': ' + r.path + ' (' + r.chars + ' characters). The index and log were updated.';
+    }
+    if (action === 'map') {
+      const g = await vaultCall({ action: 'graph' });
+      return brainMap(g, 14000) || 'The vault has no notes yet.';
+    }
+    if (action === 'audit') {
+      const r = await vaultCall({ action });
+      if (!r.count) return 'Memory audit: no note points at things inside the Roblox place and none is marked low confidence, so there is nothing to check.';
+      return 'Memory audit: ' + r.count + ' note(s) point into the Roblox place or are low confidence; ' + r.due + ' not checked in the last 30 days (listed first).\nFor each one: look at the listed places in Studio with your READ-ONLY tools. If a note is still true, call plazcode_vault verify {path} (add confidence high|medium|low). If it is wrong or out of date, fix it with plazcode_vault write (mode replace or section) and then verify it, or archive it if it no longer applies. Never change the place itself during an audit.\n' + r.notes.map(n => '- ' + n.path + (n.due ? ' [due]' : ' [checked ' + n.verified + ']') + (n.confidence ? ' | confidence ' + n.confidence : '') + (n.source ? ' | source: ' + clipText(n.source, 50) : '') + (n.studio_paths.length ? '\n    places: ' + n.studio_paths.join(', ') : '')).join('\n');
+    }
+    if (action === 'verify') {
+      if (!args.path) throw new Error('Give the path of the note you checked.');
+      const r = await vaultCall({ action, ai: true, path: args.path, confidence: args.confidence });
+      return 'Marked as checked on ' + r.verified + ': ' + r.path + '.';
     }
     if (action === 'backlinks') {
       const r = await vaultCall({ action, path: args.path });
@@ -223,7 +275,7 @@ const PlazCodeMemory = (() => {
     alias: '<path d="m15 14 5-5-5-5"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/>', calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
     text: '<path d="M17 6H3M21 12H3M15 18H3"/>', more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
     panel: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>', archive: '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/>',
-    plus: '<path d="M12 5v14M5 12h14"/>', trash: '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6"/>', collapse: '<path d="m7 20 5-5 5 5M7 4l5 5 5-5"/>', expand: '<path d="m7 15 5 5 5-5M7 9l5-5 5 5"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>'
+    plus: '<path d="M12 5v14M5 12h14"/>', minus: '<path d="M5 12h14"/>', fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', graph: '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.3 6.7l7.4.8M7.2 8.2l3.6 7.6M16.9 10.3l-3.6 5.9"/>', trash: '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6"/>', collapse: '<path d="m7 20 5-5 5 5M7 4l5 5 5-5"/>', expand: '<path d="m7 15 5 5 5-5M7 9l5-5 5 5"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>'
   };
   function ico(name, size) { size = size || 16; return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (PCV_ICONS[name] || '') + '</svg>'; }
   const vvEsc = value => String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -410,6 +462,14 @@ const PlazCodeMemory = (() => {
     + '.pcv-status{display:flex;justify-content:flex-end;gap:14px;height:26px;align-items:center;padding:0 14px;border-top:1px solid var(--v-line);color:var(--v-muted);font-size:12px;flex:none}'
     + '.pcv-toast{position:absolute;left:50%;bottom:38px;transform:translateX(-50%);max-width:80%;padding:8px 14px;border-radius:10px;background:var(--v-side);border:1px solid var(--v-line);color:var(--v-text);font-size:13px;box-shadow:0 8px 24px #0008}.pcv-toast[hidden]{display:none}'
     + '.pcv-menu{position:absolute;right:10px;top:40px;z-index:3;min-width:190px;padding:6px;background:var(--v-side);border:1px solid rgb(var(--v-rgb) / .4);border-radius:10px;box-shadow:0 12px 30px #000a}.pcv-menu[hidden]{display:none}#pcv-root .pcv-menu button{display:flex!important;align-items:center;gap:10px;width:100%;padding:7px 10px;border-radius:7px;font-size:13px;color:var(--v-text)}#pcv-root .pcv-menu button:hover{background:var(--v-hover)}#pcv-root .pcv-menu .pcv-danger{color:#f08a80}'
+    + '.pcv-graph{position:relative;flex:1;min-height:0;overflow:hidden;background:var(--v-bg)}.pcv-graph[hidden]{display:none}.pcv-main.pcv-graph-on .pcv-scroll{display:none}.pcv-main.pcv-graph-on [data-act="menu"]{visibility:hidden}'
+    + '.pcv-gcanvas{display:block;width:100%;height:100%;outline:none;touch-action:none;cursor:grab}.pcv-gcanvas:focus-visible{box-shadow:inset 0 0 0 2px var(--v-accent)}'
+    + '.pcv-gtools{position:absolute;top:10px;right:10px;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px 12px;max-width:calc(100% - 20px);padding:6px 8px;border:1px solid var(--v-line);border-radius:12px;background:color-mix(in srgb,var(--v-side) 90%,transparent);color:var(--v-muted);font-size:12px;box-sizing:border-box}'
+    + '#pcv-root .pcv-gtools input[type="text"]{all:unset;box-sizing:border-box;width:140px;height:26px;padding:0 9px;background:var(--v-bg);border:1px solid var(--v-line);border-radius:8px;color:var(--v-text);font-size:12px}#pcv-root .pcv-gtools input[type="text"]:focus{border-color:var(--v-accent)}'
+    + '.pcv-gopt{display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}#pcv-root .pcv-gopt input{appearance:auto;-webkit-appearance:checkbox;width:14px;height:14px;margin:0;accent-color:var(--v-accent);cursor:pointer}'
+    + '.pcv-ginfo{position:absolute;left:12px;bottom:12px;display:flex;flex-direction:column;gap:2px;max-width:min(380px,60%);padding:8px 12px;border:1px solid var(--v-line);border-radius:10px;background:color-mix(in srgb,var(--v-side) 92%,transparent);color:var(--v-muted);font-size:12px;pointer-events:none}.pcv-ginfo[hidden]{display:none}.pcv-ginfo b{color:var(--v-text);font-size:13px}.pcv-ginfo em{font-style:normal;color:var(--v-faint)}'
+    + '.pcv-glegend{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:3px;max-width:230px;padding:0;color:var(--v-muted);font-size:11px;pointer-events:none}.pcv-glegend:empty{display:none}.pcv-glegend div{display:flex;align-items:center}.pcv-glegend i{display:inline-block;flex:none;width:9px;height:9px;margin-right:6px;border-radius:50%}'
+    + '.pcv-gempty{position:absolute;inset:0;display:grid;place-items:center;color:var(--v-muted)}.pcv-gempty[hidden]{display:none}'
     + '#pcv-root{--v-g:var(--pc-glow-strength,.13)}'
     + '#pcv-root{background:radial-gradient(ellipse 70% 55% at 100% 0%,rgb(var(--v-rgb) / .26),transparent 65%),radial-gradient(ellipse 60% 50% at 0% 100%,rgb(var(--v-rgb) / .14),transparent 65%),linear-gradient(160deg,color-mix(in srgb,var(--v-bg) 88%,var(--v-accent)),var(--v-bg) 55%);border-color:rgb(var(--v-rgb) / .6);box-shadow:0 0 0 1px rgb(var(--v-rgb) / .12),0 0 calc(30px + var(--v-g)*90px) rgb(var(--v-rgb) / calc(var(--v-g)*2.4)),0 22px 60px #000b}'
     + '.pcv-top{background:linear-gradient(180deg,rgb(var(--v-rgb) / .20),rgb(var(--v-rgb) / .05)),var(--v-bar);box-shadow:0 1px 14px rgb(var(--v-rgb) / calc(var(--v-g)*1.2))}'
@@ -439,6 +499,220 @@ const PlazCodeMemory = (() => {
   }
 
   let pcvRoot = null;
+  // ───────────── graph view (Obsidian-style): dots are notes, lines are the [[links]] between them ─────────────
+  // graphSim is a small force layout with no libraries: notes push each other apart, links pull their two notes together, and a
+  // weak pull toward the middle keeps separate groups on screen. Deterministic for a given start, so it is testable.
+  function graphSim(count, edges, init) {
+    const x = new Float64Array(count), y = new Float64Array(count), vx = new Float64Array(count), vy = new Float64Array(count);
+    const pinned = new Uint8Array(count);
+    for (let i = 0; i < count; i++) {
+      const seeded = init && init[i];
+      if (seeded) { x[i] = seeded[0]; y[i] = seeded[1]; }
+      else { const r = 14 * Math.sqrt(i + 1), a = i * 2.399963; x[i] = Math.cos(a) * r; y[i] = Math.sin(a) * r; }
+    }
+    const sim = { x, y, alpha: 1, count };
+    const MIN = 0.004, DECAY = 1 - Math.pow(MIN, 1 / 300);
+    sim.tick = function () {
+      if (!count) { sim.alpha = 0; return false; }
+      sim.alpha += (0 - sim.alpha) * DECAY;
+      const a = sim.alpha;
+      for (let i = 0; i < count; i++) {
+        for (let j = i + 1; j < count; j++) {
+          let dx = x[j] - x[i], dy = y[j] - y[i], d2 = dx * dx + dy * dy;
+          if (d2 > 160000) continue;
+          if (d2 < 1) { dx = (i % 2 ? 1 : -1) * 0.5; dy = (j % 2 ? 1 : -1) * 0.5; d2 = 1; }
+          const f = 700 * a / d2;
+          vx[i] -= dx * f; vy[i] -= dy * f; vx[j] += dx * f; vy[j] += dy * f;
+        }
+      }
+      for (const e of edges) {
+        const i = e[0], j = e[1];
+        const dx = x[j] - x[i], dy = y[j] - y[i], d = Math.sqrt(dx * dx + dy * dy) || 1;
+        const f = (d - 42) / d * 0.25 * a;
+        vx[i] += dx * f; vy[i] += dy * f; vx[j] -= dx * f; vy[j] -= dy * f;
+      }
+      for (let i = 0; i < count; i++) {
+        vx[i] -= x[i] * 0.09 * a; vy[i] -= y[i] * 0.09 * a;
+        vx[i] *= 0.62; vy[i] *= 0.62;
+        if (!pinned[i]) { x[i] += vx[i]; y[i] += vy[i]; }
+      }
+      return sim.alpha > MIN;
+    };
+    sim.settle = function (max) { let n = max || 300; while (n-- > 0 && sim.tick()); };
+    sim.reheat = function (to) { sim.alpha = Math.max(sim.alpha, to == null ? 0.3 : to); };
+    sim.pin = function (i, px, py) { pinned[i] = 1; x[i] = px; y[i] = py; vx[i] = 0; vy[i] = 0; };
+    sim.release = function (i) { pinned[i] = 0; };
+    return sim;
+  }
+  const VV_GRAPH_COLORS = [205, 155, 35, 280, 345, 95, 255, 15, 185, 55, 315, 130];
+  function vvGraph(host, api) {
+    const T = api.t, esc = api.esc, ico = api.ico;
+    host.innerHTML = '<canvas class="pcv-gcanvas" tabindex="0" role="img" aria-label="' + esc(T('Graph of how your notes link together. Dots are notes and lines are links.')) + '"></canvas>'
+      + '<div class="pcv-gtools"><input type="text" data-gfilter maxlength="60" autocomplete="off" spellcheck="false" placeholder="' + esc(T('Find in graph')) + '" aria-label="' + esc(T('Find in graph')) + '">'
+      + '<label class="pcv-gopt"><input type="checkbox" data-gopt="orphans" checked><span>' + esc(T('Notes without links')) + '</span></label>'
+      + '<label class="pcv-gopt"><input type="checkbox" data-gopt="home"><span>' + esc(T('Links to Home')) + '</span></label>'
+      + '<label class="pcv-gopt"><input type="checkbox" data-gopt="colors" checked><span>' + esc(T('Folder colors')) + '</span></label>'
+      + '<button type="button" class="pcv-ib" data-gact="out" aria-label="' + esc(T('Zoom out')) + '">' + ico('minus', 16) + '</button><button type="button" class="pcv-ib" data-gact="in" aria-label="' + esc(T('Zoom in')) + '">' + ico('plus', 16) + '</button><button type="button" class="pcv-ib" data-gact="fit" aria-label="' + esc(T('Fit to window')) + '">' + ico('fit', 16) + '</button></div>'
+      + '<div class="pcv-ginfo" data-ginfo hidden></div><div class="pcv-glegend" data-glegend></div><div class="pcv-gempty" data-gempty hidden></div>';
+    const canvas = host.querySelector('canvas'), ctx = canvas.getContext('2d');
+    const infoBox = host.querySelector('[data-ginfo]'), legend = host.querySelector('[data-glegend]'), emptyBox = host.querySelector('[data-gempty]'), filterBox = host.querySelector('[data-gfilter]');
+    const opt = name => host.querySelector('[data-gopt="' + name + '"]').checked;
+    const reduce = () => { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch { return false; } };
+    let data = null, nodes = [], edges = [], deg = [], sim = null, view = { x: 0, y: 0, k: 1 }, hover = -1, matches = null, frameId = 0, w = 0, h = 0, dpr = 1, fitted = false, colors = null, dirColor = new Map(), keep = new Map();
+    const css = (name, fallback) => { try { return (getComputedStyle(host).getPropertyValue(name) || '').trim() || fallback; } catch { return fallback; } };
+    // Dots keep a steady size on screen (they grow a little as you zoom in), so a zoomed-out map is still readable.
+    const radius = i => (3.6 + Math.sqrt(deg[i]) * 1.8) * Math.max(0.85, Math.min(2.2, Math.sqrt(view.k))) / view.k;
+    function build() {
+      if (sim && nodes.length) nodes.forEach((n, i) => { keep.set(n.path, [sim.x[i], sim.y[i]]); });
+      const all = data.nodes, home = all.findIndex(n => n.path === '00 Start Here/Home.md');
+      const useEdges = data.edges.filter(e => e[0] !== e[1] && all[e[0]] && all[e[1]] && (opt('home') || (e[0] !== home && e[1] !== home)));
+      const linked = new Set(); useEdges.forEach(e => { linked.add(e[0]); linked.add(e[1]); });
+      const show = []; const map = new Map();
+      all.forEach((n, i) => { if (opt('orphans') || linked.has(i)) { map.set(i, show.length); show.push(n); } });
+      nodes = show; edges = useEdges.map(e => [map.get(e[0]), map.get(e[1])]).filter(e => e[0] != null && e[1] != null);
+      deg = nodes.map(() => 0); edges.forEach(e => { deg[e[0]]++; deg[e[1]]++; });
+      sim = graphSim(nodes.length, edges, nodes.map(n => keep.get(n.path) || null));
+      const dirs = [...new Set(nodes.map(n => n.dir || ''))].sort(); dirColor = new Map(dirs.map((d, i) => [d, VV_GRAPH_COLORS[i % VV_GRAPH_COLORS.length]]));
+      if (nodes.some(n => keep.has(n.path))) sim.alpha = 0.35;
+      paintLegend(dirs); applyFilter(); hover = -1; infoBox.hidden = true;
+      emptyBox.hidden = nodes.length > 0; if (!nodes.length) emptyBox.textContent = T('No notes yet.');
+      if (reduce()) { sim.settle(400); } 
+      kick();
+    }
+    function paintLegend(dirs) {
+      legend.textContent = '';
+      if (!opt('colors') || dirs.length < 2) return;
+      for (const d of dirs) { const row = document.createElement('div'); const dot = document.createElement('i'); dot.style.background = 'hsl(' + dirColor.get(d) + ' 62% 64%)'; const label = document.createElement('span'); label.textContent = d || T('Top level'); row.append(dot, label); legend.appendChild(row); }
+    }
+    function applyFilter() {
+      const text = filterBox.value.trim().toLowerCase();
+      matches = text ? new Set(nodes.map((n, i) => (n.title + ' ' + n.path).toLowerCase().includes(text) ? i : -1).filter(i => i >= 0)) : null;
+    }
+    function resize() {
+      const rect = host.getBoundingClientRect(); if (!(rect.width > 0 && rect.height > 0)) return;
+      dpr = Math.min(2, window.devicePixelRatio || 1); w = rect.width; h = rect.height;
+      canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+      if (!fitted && sim) { fit(); fitted = true; }
+      draw();
+    }
+    function fit() {
+      if (!sim || !nodes.length || !w) return;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let i = 0; i < nodes.length; i++) { x0 = Math.min(x0, sim.x[i]); x1 = Math.max(x1, sim.x[i]); y0 = Math.min(y0, sim.y[i]); y1 = Math.max(y1, sim.y[i]); }
+      const bw = Math.max(40, x1 - x0), bh = Math.max(40, y1 - y0);
+      view.k = Math.max(0.15, Math.min(2, (w - 120) / bw, (h - 140) / bh));
+      view.x = w / 2 - ((x0 + x1) / 2) * view.k; view.y = h / 2 - ((y0 + y1) / 2) * view.k;
+    }
+    function zoomAt(factor, cx, cy) {
+      const k = Math.max(0.1, Math.min(5, view.k * factor)); factor = k / view.k;
+      view.x = cx - (cx - view.x) * factor; view.y = cy - (cy - view.y) * factor; view.k = k; draw();
+    }
+    function neighbours(i) { const set = new Set([i]); for (const e of edges) { if (e[0] === i) set.add(e[1]); else if (e[1] === i) set.add(e[0]); } return set; }
+    function draw() {
+      if (!w || !sim) return;
+      const text = css('--v-text', '#eef4ff'), muted = css('--v-muted', '#9fb0c7'), accent = css('--v-accent', '#e9ba53');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+      ctx.save(); ctx.translate(view.x, view.y); ctx.scale(view.k, view.k);
+      const near = hover >= 0 ? neighbours(hover) : null, k = view.k;
+      ctx.lineCap = 'round';
+      for (const e of edges) {
+        const a = e[0], b = e[1], active = near && (a === hover || b === hover);
+        const dim = (near && !active) || (matches && !(matches.has(a) || matches.has(b)));
+        ctx.globalAlpha = active ? 1 : dim ? 0.07 : 0.38; ctx.strokeStyle = active ? accent : muted; ctx.lineWidth = (active ? 1.7 : 1) / k;
+        ctx.beginPath(); ctx.moveTo(sim.x[a], sim.y[a]); ctx.lineTo(sim.x[b], sim.y[b]); ctx.stroke();
+      }
+      const colored = opt('colors');
+      for (let i = 0; i < nodes.length; i++) {
+        const lit = near ? near.has(i) : true, found = matches ? matches.has(i) : true;
+        ctx.globalAlpha = (lit && found) ? 1 : 0.16;
+        ctx.fillStyle = i === hover ? accent : colored ? 'hsl(' + dirColor.get(nodes[i].dir || '') + ' 62% 64%)' : muted;
+        ctx.beginPath(); ctx.arc(sim.x[i], sim.y[i], radius(i) * (i === hover ? 1.3 : 1), 0, 6.2832); ctx.fill();
+      }
+      ctx.font = (11.5 / k) + 'px system-ui, -apple-system, Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = text;
+      for (let i = 0; i < nodes.length; i++) {
+        const lit = near ? near.has(i) : true, found = matches ? matches.has(i) : true;
+        const showLabel = (near && near.has(i)) || (matches && matches.has(i)) || (!near && !matches && (k >= 0.55 || (k >= 0.3 && deg[i] >= 2)));
+        if (!showLabel) continue;
+        ctx.globalAlpha = (lit && found) ? 0.92 : 0.2; ctx.fillText(nodes[i].title, sim.x[i], sim.y[i] + radius(i) + 3 / k);
+      }
+      ctx.restore(); ctx.globalAlpha = 1;
+    }
+    function frame() {
+      frameId = 0;
+      if (host.hidden || !sim) return;
+      let running = false;
+      if (!reduce()) { for (let n = 0; n < 2; n++) running = sim.tick(); }
+      draw();
+      if (running || dragging) kick();
+    }
+    function kick() { if (!frameId && !host.hidden) frameId = requestAnimationFrame(frame); }
+    // Pointer: drag a dot to move it, drag the background to pan, wheel to zoom, click a dot to open the note.
+    let dragging = -1, panning = false, last = null, moved = 0;
+    const local = event => { const r = canvas.getBoundingClientRect(); return [event.clientX - r.left, event.clientY - r.top]; };
+    const hit = (sx, sy) => {
+      let best = -1, bd = 1e9;
+      for (let i = 0; i < nodes.length; i++) { const dx = sim.x[i] * view.k + view.x - sx, dy = sim.y[i] * view.k + view.y - sy, d = Math.sqrt(dx * dx + dy * dy); if (d <= radius(i) * view.k + 6 && d < bd) { bd = d; best = i; } }
+      return best;
+    };
+    function showInfo(i) {
+      if (i < 0) { infoBox.hidden = true; return; }
+      const n = nodes[i]; infoBox.textContent = '';
+      const title = document.createElement('b'); title.textContent = n.title;
+      const line = document.createElement('span'); line.textContent = (n.dir || T('Top level')) + ' · ' + deg[i] + ' ' + (deg[i] === 1 ? T('link') : T('links'));
+      infoBox.append(title, line);
+      if (n.hint) { const hint = document.createElement('em'); hint.textContent = n.hint; infoBox.appendChild(hint); }
+      infoBox.hidden = false;
+    }
+    canvas.addEventListener('pointerdown', event => {
+      if (!sim) return; const [sx, sy] = local(event); last = [sx, sy]; moved = 0;
+      const i = hit(sx, sy);
+      if (i >= 0) dragging = i; else panning = true;
+      try { canvas.setPointerCapture(event.pointerId); } catch {}
+      canvas.focus && canvas.focus({ preventScroll: true });
+    });
+    canvas.addEventListener('pointermove', event => {
+      if (!sim) return; const [sx, sy] = local(event);
+      if (dragging >= 0) {
+        moved += Math.abs(sx - last[0]) + Math.abs(sy - last[1]); last = [sx, sy];
+        if (moved > 5) { sim.pin(dragging, (sx - view.x) / view.k, (sy - view.y) / view.k); if (!reduce()) sim.reheat(0.3); canvas.style.cursor = 'grabbing'; kick(); if (reduce()) draw(); }
+      } else if (panning) { view.x += sx - last[0]; view.y += sy - last[1]; moved += Math.abs(sx - last[0]) + Math.abs(sy - last[1]); last = [sx, sy]; canvas.style.cursor = 'grabbing'; draw(); }
+      else { const i = hit(sx, sy); if (i !== hover) { hover = i; canvas.style.cursor = i >= 0 ? 'pointer' : 'grab'; showInfo(i); draw(); } }
+    });
+    const release = event => {
+      if (!sim) return;
+      if (dragging >= 0) { if (moved <= 5) api.onOpen(nodes[dragging].path); sim.release(dragging); }
+      dragging = -1; panning = false; canvas.style.cursor = hover >= 0 ? 'pointer' : 'grab';
+      try { canvas.releasePointerCapture(event.pointerId); } catch {}
+    };
+    canvas.addEventListener('pointerup', release); canvas.addEventListener('pointercancel', release);
+    canvas.addEventListener('pointerleave', () => { if (dragging < 0 && !panning && hover !== -1) { hover = -1; showInfo(-1); draw(); } });
+    canvas.addEventListener('dblclick', event => { const [sx, sy] = local(event); if (hit(sx, sy) < 0) { fit(); draw(); } });
+    canvas.addEventListener('wheel', event => { event.preventDefault(); const [sx, sy] = local(event); zoomAt(Math.pow(1.0016, -event.deltaY), sx, sy); }, { passive: false });
+    canvas.addEventListener('keydown', event => {
+      const step = 60; let used = true;
+      if (event.key === '+' || event.key === '=') zoomAt(1.2, w / 2, h / 2);
+      else if (event.key === '-' || event.key === '_') zoomAt(1 / 1.2, w / 2, h / 2);
+      else if (event.key === '0' || event.key === 'Home') { fit(); draw(); }
+      else if (event.key === 'ArrowLeft') { view.x += step; draw(); } else if (event.key === 'ArrowRight') { view.x -= step; draw(); }
+      else if (event.key === 'ArrowUp') { view.y += step; draw(); } else if (event.key === 'ArrowDown') { view.y -= step; draw(); }
+      else used = false;
+      if (used) event.preventDefault();
+    });
+    host.addEventListener('click', event => {
+      const target = event.target.closest ? event.target.closest('[data-gact]') : null; if (!target) return;
+      const a = target.dataset.gact;
+      if (a === 'in') zoomAt(1.25, w / 2, h / 2); else if (a === 'out') zoomAt(1 / 1.25, w / 2, h / 2); else if (a === 'fit') { fit(); draw(); }
+    });
+    host.addEventListener('change', event => { if (event.target.matches && event.target.matches('[data-gopt]')) build(); });
+    filterBox.addEventListener('input', () => { applyFilter(); draw(); });
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => resize()).observe(host);
+    return {
+      show(graph) { data = graph; keep.clear(); sim = null; nodes = []; fitted = false; host.hidden = false; build(); resize(); if (sim) { if (!reduce()) sim.settle(40); fit(); fitted = true; draw(); kick(); } canvas.style.cursor = 'grab'; },
+      hide() { host.hidden = true; if (frameId) { cancelAnimationFrame(frameId); frameId = 0; } },
+      stats() { return { nodes: nodes.length, edges: edges.length }; }
+    };
+  }
+
   function openVaultViewer(options) {
     options = options || {};
     vvInjectStyle();
@@ -446,11 +720,11 @@ const PlazCodeMemory = (() => {
     const root = document.createElement('div');
     root.id = 'pcv-root'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', vvT('Vault'));
     root.innerHTML = '<div class="pcv-top"><button type="button" class="pcv-ib" data-act="side" aria-label="' + vvEsc(vvT('Show or hide the file list')) + '">' + ico('panel', 17) + '</button><div class="pcv-tab"><span data-tab></span></div><div class="pcv-spacer"></div><button type="button" class="pcv-ib" data-act="close" aria-label="' + vvEsc(vvT('Close')) + '">' + ico('x', 17) + '</button></div>'
-      + '<div class="pcv-body"><nav class="pcv-rail"><button type="button" class="pcv-ib pcv-on" data-act="files" aria-label="' + vvEsc(vvT('Files')) + '">' + ico('folder', 18) + '</button><button type="button" class="pcv-ib" data-act="find" aria-label="' + vvEsc(vvT('Search')) + '">' + ico('search', 18) + '</button></nav>'
+      + '<div class="pcv-body"><nav class="pcv-rail"><button type="button" class="pcv-ib pcv-on" data-act="files" aria-label="' + vvEsc(vvT('Files')) + '">' + ico('folder', 18) + '</button><button type="button" class="pcv-ib" data-act="find" aria-label="' + vvEsc(vvT('Search')) + '">' + ico('search', 18) + '</button><button type="button" class="pcv-ib" data-act="graph" aria-label="' + vvEsc(vvT('Graph view')) + '" title="' + vvEsc(vvT('Graph view')) + '">' + ico('graph', 18) + '</button></nav>'
       + '<aside class="pcv-side"><div class="pcv-side-tools"><button type="button" class="pcv-ib" data-act="collapse" aria-label="' + vvEsc(vvT('Collapse all')) + '">' + ico('collapse', 17) + '</button><button type="button" class="pcv-ib" data-act="expand" aria-label="' + vvEsc(vvT('Expand all')) + '">' + ico('expand', 17) + '</button></div><div class="pcv-search"><input type="text" data-search placeholder="' + vvEsc(vvT('Search')) + '" aria-label="' + vvEsc(vvT('Search')) + '" maxlength="120" autocomplete="off" spellcheck="false"></div><div class="pcv-tree" role="tree" data-tree></div><div class="pcv-foot"><b data-vname></b><button type="button" class="pcv-ib" data-act="folder" aria-label="' + vvEsc(vvT('Open vault folder')) + '">' + ico('folder', 16) + '</button></div></aside>'
       + '<section class="pcv-main"><div class="pcv-nav"><button type="button" class="pcv-ib" data-act="back" aria-label="' + vvEsc(vvT('Back')) + '">' + ico('back', 17) + '</button><button type="button" class="pcv-ib" data-act="forward" aria-label="' + vvEsc(vvT('Forward')) + '">' + ico('forward', 17) + '</button><div class="pcv-crumb" data-crumb></div><span data-nav-actions></span><button type="button" class="pcv-ib" data-act="menu" aria-label="' + vvEsc(vvT('More options')) + '">' + ico('more', 17) + '</button></div>'
       + '<div class="pcv-menu" data-menu hidden><button type="button" data-act="edit">' + ico('pencil', 15) + '<span>' + vvEsc(vvT('Edit note')) + '</span></button><button type="button" data-act="archive" class="pcv-danger">' + ico('archive', 15) + '<span data-archive-label>' + vvEsc(vvT('Move to archive')) + '</span></button><button type="button" data-act="delete" class="pcv-danger">' + ico('trash', 15) + '<span data-delete-label>' + vvEsc(vvT('Delete note')) + '</span></button></div>'
-      + '<div class="pcv-scroll" data-scroll><article class="pcv-note" data-note></article></div><div class="pcv-status" data-status></div><div class="pcv-toast" data-toast role="status" hidden></div></section></div>';
+      + '<div class="pcv-scroll" data-scroll><article class="pcv-note" data-note></article></div><div class="pcv-graph" data-graph hidden></div><div class="pcv-status" data-status></div><div class="pcv-toast" data-toast role="status" hidden></div></section></div>';
     document.body.appendChild(root);
     pcvRoot = root;
     const q = selector => root.querySelector(selector);
@@ -458,6 +732,25 @@ const PlazCodeMemory = (() => {
     let entries = [], kids = new Map(), nameMap = new Map(), imageMap = new Map(), kindOf = new Map(), expanded = new Set(['00 Start Here']);
     let current = null, history = [], hpos = -1, editing = false, propsOpen = true, archiveArmed = false, deleteArmed = false, toastTimer = 0, searchTimer = 0, openToken = 0;
     const imageCache = new Map();
+    // Graph view: every note as a dot, every [[link]] as a line (see vvGraph).
+    const graphHost = q('[data-graph]'), mainPane = q('.pcv-main');
+    let graphView = null, graphOpen = false;
+    function markRail(name) { root.querySelectorAll('.pcv-rail [data-act="files"],.pcv-rail [data-act="graph"]').forEach(button => button.classList.toggle('pcv-on', button.dataset.act === name)); }
+    async function showGraph() {
+      if (editing) { say(vvT('Save or cancel your edit first.')); return; }
+      try {
+        const data = await vaultCall({ action: 'graph' });
+        if (!graphView) graphView = vvGraph(graphHost, { t: vvT, esc: vvEsc, ico, onOpen: path => { hideGraph(); open(path, true); } });
+        graphOpen = true; menu.hidden = true; mainPane.classList.add('pcv-graph-on'); markRail('graph');
+        q('[data-tab]').textContent = vvT('Graph view'); crumb.innerHTML = '<b>' + vvEsc(vvT('Graph view')) + '</b>'; navActions.textContent = '';
+        status.textContent = data.nodes.length + ' ' + vvT('notes') + ' · ' + data.edges.length + ' ' + vvT('links') + (data.truncated ? ' · ' + vvT('showing the first') + ' ' + data.nodes.length : '');
+        graphView.show(data);
+      } catch (error) { say(/unknown vault action/i.test((error && error.message) || '') ? vvT('The graph view needs the newest PlazCode desktop app. Update the app to use it.') : ((error && error.message) || String(error))); }
+    }
+    function hideGraph() {
+      if (!graphOpen) return;
+      graphOpen = false; if (graphView) graphView.hide(); mainPane.classList.remove('pcv-graph-on'); markRail('files'); paint();
+    }
     const say = text => { toast.textContent = text; toast.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { toast.hidden = true; }, 4200); };
     const failure = error => say((error && error.message) || String(error));
     const baseName = path => String(path).split('/').pop().replace(/\.md$/i, '');
@@ -551,6 +844,7 @@ const PlazCodeMemory = (() => {
     }
     async function open(path, push) {
       if (editing) { say(vvT('Save or cancel your edit first.')); return; }
+      if (graphOpen) hideGraph();
       const kind = kindOf.get(path);
       if (kind === 'folder') { if (expanded.has(path)) expanded.delete(path); else expanded.add(path); drawTree(); return; }
       const token = ++openToken;
@@ -655,7 +949,8 @@ const PlazCodeMemory = (() => {
       if (name === 'close') { if (!editing) { root.hidden = true; } else say(vvT('Save or cancel your edit first.')); }
       else if (name === 'side') root.classList.toggle('pcv-side-open');
       else if (name === 'find') { root.classList.add('pcv-side-open'); search.focus(); }
-      else if (name === 'files') { search.value = ''; drawTree(); }
+      else if (name === 'files') { hideGraph(); search.value = ''; drawTree(); }
+      else if (name === 'graph') { if (graphOpen) hideGraph(); else showGraph(); }
       else if (name === 'collapse') { expanded.clear(); drawTree(); }
       else if (name === 'expand') { for (const entry of entries) if (entry.kind === 'folder') expanded.add(entry.path); drawTree(); }
       else if (name === 'folder') vaultCall({ action: 'reveal' }).catch(failure);
@@ -865,6 +1160,6 @@ const PlazCodeMemory = (() => {
     for(const entry of scoped.slice(offset)){const item={id:entry.id,title:titleOf(entry),project:entry.project || "",source:entry.source || "",text:entry.text.slice(0,500),total_chars:entry.text.length,preview_limited:entry.text.length>500};const chars=JSON.stringify(item).length;if(entries.length && size+chars>7000)break;entries.push(item);size+=chars;}
     return {automatic:memory.automatic,entries,total_entries:scoped.length,offset,next_offset:offset+entries.length<scoped.length?offset+entries.length:null};
   }
-  return { prompt, mount, parseTransfer, exportPackage, read, titleOf, vaultRefresh, vaultContext, vaultTool, vaultActive, vaultLearning, vaultCall, criticTool, criticParse, criticPrompt, openVault: openVaultViewer, renderMarkdown };
+  return { prompt, mount, parseTransfer, exportPackage, read, titleOf, brainMap, graphSim, vaultRefresh, vaultContext, vaultTool, vaultActive, vaultLearning, vaultCall, criticTool, criticParse, criticPrompt, openVault: openVaultViewer, renderMarkdown };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = PlazCodeMemory;

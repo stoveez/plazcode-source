@@ -1023,6 +1023,100 @@ fn do_backlinks(root: &Path, req: &Value) -> anyhow::Result<Value> {
     }
     Ok(json!({"ok": true, "count": found.len(), "backlinks": found}))
 }
+const MAX_GRAPH_NODES: usize = 800;
+/// Every note and every link between notes, for the graph view and for the AI's startup map.
+/// A link is a [[wikilink]] that matches another note's file name, full path or alias.
+fn do_graph(root: &Path) -> anyhow::Result<Value> {
+    let mut notes: Vec<Note> = all_notes(root, false, true).into_iter().filter(|n| !is_generated(&n.rel)).collect();
+    notes.sort_by(|a, b| a.rel.cmp(&b.rel));
+    let total = notes.len();
+    notes.truncate(MAX_GRAPH_NODES);
+    let mut lookup: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for (i, n) in notes.iter().enumerate() {
+        lookup.entry(n.rel.trim_end_matches(".md").to_lowercase()).or_insert(i);
+    }
+    for (i, n) in notes.iter().enumerate() {
+        lookup.entry(n.title.to_lowercase()).or_insert(i);
+    }
+    for (i, n) in notes.iter().enumerate() {
+        for alias in n.parsed.list("aliases") {
+            lookup.entry(alias.to_lowercase()).or_insert(i);
+        }
+    }
+    let mut edges: Vec<Value> = vec![];
+    let mut seen: std::collections::HashSet<(usize, usize)> = std::collections::HashSet::new();
+    let mut unresolved = 0usize;
+    for (i, n) in notes.iter().enumerate() {
+        let mut links = wikilinks(&n.parsed.body);
+        links.extend(wikilinks(&n.parsed.front_text()));
+        links.sort();
+        links.dedup();
+        for link in links {
+            let low = link.to_lowercase();
+            if is_image_name(&link) || ["index", "log", "00 start here/index", "00 start here/log"].contains(&low.as_str()) { continue; }
+            match lookup.get(&low) {
+                Some(&j) if j != i => {
+                    if seen.insert((i, j)) { edges.push(json!([i, j])); }
+                }
+                Some(_) => {}
+                None => unresolved += 1,
+            }
+        }
+    }
+    let nodes: Vec<Value> = notes
+        .iter()
+        .map(|n| {
+            let dir = n.rel.rsplit_once('/').map(|(d, _)| d.to_string()).unwrap_or_default();
+            json!({"path": n.rel, "title": n.title, "dir": dir, "type": kind_of(&n.rel, &n.parsed), "hint": summary_of(&n.parsed.body), "updated": n.parsed.get("updated")})
+        })
+        .collect();
+    Ok(json!({"ok": true, "nodes": nodes, "edges": edges, "unresolved": unresolved, "total": total, "truncated": total > MAX_GRAPH_NODES}))
+}
+static STUDIO_PATH: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"\b(?:game\.)?(?:Workspace|ReplicatedStorage|ReplicatedFirst|ServerStorage|ServerScriptService|StarterGui|StarterPack|StarterPlayer|StarterPlayerScripts|StarterCharacterScripts|Lighting|SoundService|Teams|TextChatService|MaterialService)(?:\.[A-Za-z_][A-Za-z0-9_]*|\["[^"\]]+"\]|/[A-Za-z0-9_]+)+"#).unwrap()
+});
+/// Memory audit. Lists notes that point at things inside the Roblox place (like game.ReplicatedStorage.Client.DoubleJump)
+/// or that are marked low confidence, and which of them have not been checked for 30 days. The AI then checks those
+/// places in Studio with its own read-only tools and marks each note verified, fixes it or archives it.
+fn do_audit(root: &Path) -> anyhow::Result<Value> {
+    let cutoff = (chrono::Local::now() - chrono::Duration::days(30)).format("%Y-%m-%d").to_string();
+    let mut items: Vec<(bool, Value)> = vec![];
+    for n in all_notes(root, false, false) {
+        let mut paths: Vec<String> = STUDIO_PATH.find_iter(&n.parsed.body).map(|m| m.as_str().to_string()).collect();
+        paths.sort();
+        paths.dedup();
+        let confidence = n.parsed.get("confidence").to_lowercase();
+        if paths.is_empty() && confidence != "low" { continue; }
+        paths.truncate(12);
+        let verified = n.parsed.get("verified");
+        let due = verified.trim().is_empty() || verified.trim() < cutoff.as_str();
+        items.push((due, json!({"path": n.rel, "title": n.title, "source": n.parsed.get("source"), "confidence": confidence, "verified": verified, "due": due, "updated": n.parsed.get("updated"), "studio_paths": paths})));
+    }
+    items.sort_by(|a, b| b.0.cmp(&a.0).then(a.1["path"].as_str().unwrap_or("").cmp(b.1["path"].as_str().unwrap_or(""))));
+    let due = items.iter().filter(|i| i.0).count();
+    Ok(json!({"ok": true, "count": items.len(), "due": due, "notes": items.into_iter().map(|i| i.1).collect::<Vec<_>>()}))
+}
+/// Marks a note as checked today (and optionally sets how sure the note is) without touching its text.
+fn do_verify(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<Value> {
+    ai_may_write(req, settings)?;
+    let rel = note_rel(text_field(req, "path"))?;
+    let rel_text = rel_string(&rel);
+    anyhow::ensure!(!is_generated(&rel_text) && !rel_text.starts_with("_Archive/") && !rel_text.starts_with("_Templates/"), "That note cannot be marked checked.");
+    let full = root.join(&rel);
+    ensure_inside(root, &full)?;
+    anyhow::ensure!(full.is_file(), "That note does not exist.");
+    let mut note = parse(&fs::read_to_string(&full)?);
+    let confidence = text_field(req, "confidence").trim().to_lowercase();
+    if !confidence.is_empty() {
+        anyhow::ensure!(["high", "medium", "low"].contains(&confidence.as_str()), "Confidence is high, medium or low.");
+        note.set("confidence", confidence.clone());
+    }
+    note.set("verified", today());
+    let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    atomic_write(&full, render(&note).as_bytes())?;
+    add_log(root, &format!("checked [[{}]]", rel_text.trim_end_matches(".md")))?;
+    Ok(json!({"ok": true, "path": rel_text, "verified": today()}))
+}
 fn do_archive(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<Value> {
     ai_may_write(req, settings)?;
     let rel = note_rel(text_field(req, "path"))?;
@@ -1189,14 +1283,14 @@ fn describe(root: &Path, settings: &Settings) -> Value {
 fn execute_in(root: &Path, settings: &Settings, req: &Value) -> anyhow::Result<Value> {
     let action = text_field(req, "action");
     match action {
-        "init" | "index" | "search" | "read" | "write" | "backlinks" | "archive" | "add_image" | "read_image" | "tree" | "save_raw" | "delete" => {
+        "init" | "index" | "search" | "read" | "write" | "backlinks" | "archive" | "add_image" | "read_image" | "tree" | "graph" | "audit" | "verify" | "save_raw" | "delete" => {
             ensure_structure(root)?;
         }
         _ => {}
     }
     // Every Quick note is kept as a vault note, so all memory is in one place (see sync_memory).
     let mut imported = 0;
-    if matches!(action, "init" | "index" | "search" | "tree" | "settings") && root.is_dir() {
+    if matches!(action, "init" | "index" | "search" | "tree" | "graph" | "settings") && root.is_dir() {
         let rows = memory_rows();
         let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
         imported = sync_memory(root, &rows)?;
@@ -1219,6 +1313,9 @@ fn execute_in(root: &Path, settings: &Settings, req: &Value) -> anyhow::Result<V
         "add_image" => do_add_image(root, req, settings),
         "read_image" => do_read_image(root, req),
         "tree" => do_tree(root),
+        "graph" => do_graph(root),
+        "audit" => do_audit(root),
+        "verify" => do_verify(root, req, settings),
         "save_raw" => do_save_raw(root, req, settings),
         "delete" => {
             let done = do_delete(root, req)?;
@@ -1296,6 +1393,51 @@ mod tests {
     }
     fn write(root: &Path, s: &Settings, path: &str, content: &str) -> Value {
         run(root, s, json!({"action":"write","path":path,"content":content,"frontmatter":{"type":"lesson","project":"Game A"}})).unwrap()
+    }
+    #[test]
+    fn the_graph_lists_every_note_and_its_links() {
+        let (root, s) = fresh("graph");
+        run(&root, &s, json!({"action":"init"})).unwrap();
+        let before = run(&root, &s, json!({"action":"graph"})).unwrap()["unresolved"].as_u64().unwrap();
+        write(&root, &s, "03 Coding Style/Luau style.md", "# Luau style\n\nSee [[Services]] and [[Glossary]]. Also [[Nothing here]] and ![[pic.png]].\n");
+        write(&root, &s, "03 Coding Style/Services.md", "# Services\n\nBack to [[Luau style]] and [[Luau style]] again, and itself [[Services]].\n");
+        let g = run(&root, &s, json!({"action":"graph"})).unwrap();
+        let nodes = g["nodes"].as_array().unwrap();
+        let find = |t: &str| nodes.iter().position(|n| n["title"] == t).unwrap_or_else(|| panic!("no node {t}"));
+        assert!(!nodes.iter().any(|n| n["title"] == "Index" || n["title"] == "Log"), "generated pages are not nodes");
+        let (a, b, c) = (find("Luau style"), find("Services"), find("Glossary"));
+        let edges: Vec<(u64, u64)> = g["edges"].as_array().unwrap().iter().map(|e| (e[0].as_u64().unwrap(), e[1].as_u64().unwrap())).collect();
+        assert!(edges.contains(&(a as u64, b as u64)) && edges.contains(&(b as u64, a as u64)) && edges.contains(&(a as u64, c as u64)));
+        assert_eq!(edges.iter().filter(|e| e.0 == b as u64 && e.1 == a as u64).count(), 1, "a repeated link is one line");
+        assert!(!edges.iter().any(|e| e.0 == e.1), "no note links to itself");
+        assert_eq!(g["unresolved"].as_u64().unwrap(), before + 1, "only the missing note counts; the picture embed is not a link");
+        let _ = fs::remove_dir_all(root.parent().unwrap());
+    }
+    #[test]
+    fn the_audit_lists_notes_that_point_into_the_place() {
+        let (root, s) = fresh("audit");
+        run(&root, &s, json!({"action":"init"})).unwrap();
+        write(&root, &s, "05 Projects/Double jump.md", "# Double jump\n\nThe module is game.ReplicatedStorage.Client.DoubleJump and it reads Workspace.Lobby.Spawn.\n");
+        run(&root, &s, json!({"action":"write","path":"07 Lessons And Decisions/Guess.md","content":"Maybe jumps are capped.","frontmatter":{"confidence":"low","source":"AI guess"}})).unwrap();
+        write(&root, &s, "07 Lessons And Decisions/Plain.md", "# Plain\n\nNothing about the place here.\n");
+        let a = run(&root, &s, json!({"action":"audit"})).unwrap();
+        let notes = a["notes"].as_array().unwrap();
+        assert_eq!(notes.len(), 2, "only the place note and the low-confidence note");
+        let dj = notes.iter().find(|n| n["title"] == "Double jump").unwrap();
+        let paths: Vec<&str> = dj["studio_paths"].as_array().unwrap().iter().map(|p| p.as_str().unwrap()).collect();
+        assert!(paths.contains(&"game.ReplicatedStorage.Client.DoubleJump") && paths.contains(&"Workspace.Lobby.Spawn"), "{paths:?}");
+        assert_eq!(dj["due"], true);
+        assert_eq!(a["due"], 2);
+        let done = run(&root, &s, json!({"action":"verify","path":"05 Projects/Double jump","confidence":"high","ai":true})).unwrap();
+        assert_eq!(done["ok"], true);
+        let after = run(&root, &s, json!({"action":"audit"})).unwrap();
+        assert_eq!(after["due"], 1, "the checked note is no longer due");
+        let dj = after["notes"].as_array().unwrap().iter().find(|n| n["title"] == "Double jump").unwrap().clone();
+        assert_eq!(dj["confidence"], "high");
+        assert!(run(&root, &s, json!({"action":"verify","path":"05 Projects/Double jump","confidence":"sure"})).is_err());
+        let read = run(&root, &s, json!({"action":"read","path":"05 Projects/Double jump"})).unwrap();
+        assert!(read["text"].as_str().unwrap().contains("The module is game.ReplicatedStorage"), "the text is untouched");
+        let _ = fs::remove_dir_all(root.parent().unwrap());
     }
     #[test]
     fn paths_cannot_escape_the_vault() {

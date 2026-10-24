@@ -118,7 +118,7 @@ async fn github(client:&reqwest::Client,method:reqwest::Method,path:&str,body:Op
 async fn sync()->anyhow::Result<Value>{
  let repo=repository()?;let response=client()?.get(format!("https://raw.githubusercontent.com/{repo}/main/learned-skills/index.json")).send().await?;
  // The public repo only carries downloads and update feeds, so there may be no community index yet. That means "nothing to sync", not a problem.
- if response.status()==reqwest::StatusCode::NOT_FOUND{return Ok(json!({"ok":true,"count":0,"note":"No community skills are published yet."}));}
+ if response.status().is_client_error(){return Ok(json!({"ok":true,"count":0,"note":"No community skills are published yet."}));}
  let response=response.error_for_status()?;
  anyhow::ensure!(response.content_length().unwrap_or(0)<=1024*1024,"Community index is too large.");
  let mut chunks=response.bytes_stream();let mut bytes=Vec::new();while let Some(chunk)=chunks.next().await{let chunk=chunk?;anyhow::ensure!(bytes.len()+chunk.len()<=1024*1024,"Community index is too large.");bytes.extend_from_slice(&chunk);}let lessons:Vec<Skill>=serde_json::from_slice(&bytes)?;anyhow::ensure!(lessons.len()<=100,"Too many community lessons.");
@@ -145,7 +145,7 @@ static LAST_COMMUNITY_SYNC:std::sync::atomic::AtomicI64=std::sync::atomic::Atomi
 fn maybe_sync(){
  let now=chrono::Utc::now().timestamp();let previous=LAST_COMMUNITY_SYNC.load(std::sync::atomic::Ordering::Relaxed);
  if now-previous<3600{return;}
- if LAST_COMMUNITY_SYNC.compare_exchange(previous,now,std::sync::atomic::Ordering::SeqCst,std::sync::atomic::Ordering::Relaxed).is_ok(){tokio::spawn(async{if let Err(error)=sync().await{tracing::warn!("Community skill sync unavailable: {error}");}});}
+ if LAST_COMMUNITY_SYNC.compare_exchange(previous,now,std::sync::atomic::Ordering::SeqCst,std::sync::atomic::Ordering::Relaxed).is_ok(){tokio::spawn(async{if let Err(error)=sync().await{tracing::debug!("Community skill sync skipped: {error}");}});}
 }
 async fn refresh_global(force:bool)->usize{
   let lessons=crate::shared_learning::lessons(force).await;let mut store=STORE.lock().await;
