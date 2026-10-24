@@ -336,6 +336,8 @@ html[data-desktop-thinking=ultracode] .explorer-layout{border-color:#a879e866;bo
 html[data-desktop-thinking=ultracode][data-desktop-theme] .app .sidebar .navbtn.active,html[data-desktop-thinking=ultracode] .navbtn.active{border-color:#c5a1f9}.pc-effort-picker[data-open-up] .pc-effort-options{top:auto;bottom:calc(100% + 5px)}.pc-effort-options>button{display:block;width:100%;padding:8px 10px;min-height:32px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--ink,var(--text,#e8ebf3));text-align:left;font:inherit;cursor:pointer}.pc-effort-options>button[aria-selected=true]{border-color:var(--orange,var(--accent,#c5a1f9))}.pc-effort-options>button:hover{background:#ffffff12}
 /* Glow off means no glow or highlight shadow on the active page button, even with the newer themed layout. */
 html[data-desktop-glow=off][data-desktop-theme] .app .sidebar .navbtn.active{box-shadow:none}
+/* Short windows: the sidebar scrolls as one column so every page, link and the account/version rows stay reachable (before, the page list was squeezed to a sliver and the rest was cut off). */
+@media(max-height:780px){html .app .sidebar{overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}html .app .sidebar .nav{flex:none;min-height:auto;overflow:visible}}
 @media(prefers-reduced-motion:reduce){.pc-ultra-label{animation:none!important;background-position:38% 50%}}
 @media(forced-colors:active){.pc-ultra-label{animation:none!important;background:none!important;color:Highlight!important;-webkit-text-fill-color:currentColor!important}}
 
@@ -423,7 +425,9 @@ html[data-desktop-theme] .titlebar{height:52px;flex:0 0 52px;padding:0 12px 0 16
 .nx-area.active{background:rgb(var(--nx-rgb)/.15);border-color:rgb(var(--nx-rgb)/.28);color:#fff}
 .nx-area.active svg{color:var(--orange2,#ffe0a1)}
 html[data-desktop-theme] .title-label{display:none}
-html[data-desktop-theme] .desktop-version-stack{display:none}
+/* The Effort label stays visible in the title bar with a theme on (the version text stays hidden). */
+html[data-desktop-theme] .desktop-version-stack .title-version{display:none}.desktop-effort{white-space:nowrap}
+@media(max-width:900px){html[data-desktop-theme] .desktop-version-stack{display:none}}
 /* content */
 html[data-desktop-theme] .content{padding:22px 26px 28px;background:transparent}
 html[data-desktop-theme] .shell{background:transparent;position:relative;z-index:1}
