@@ -2,6 +2,9 @@
 
 This is the private source repo for PlazCode (`stoveez/plazcode-source`). **Read `docs/MAINTAINER-GUIDE.md` completely before you change anything**, then `docs/TASK-BOARD.md`, then `development/1.25.0/NEXT-UPDATE-PLAN.md`. This page is only the short version of the rules; the guide has the details, commands and procedures.
 
+## Latest work (read `docs/HANDOFF.md` first)
+The newest finished work is on branch **`claude/vault-brain-and-cleanups`** (not yet merged into `release/1.24.21`). `docs/HANDOFF.md` on that branch lists every branch, how to build and test, how to push, and what is unfinished. Start from that branch and make your own `codex/<task>` branch from it.
+
 ## Which branch to use (important)
 The repo's default branch `main` is old and does NOT contain these instructions. All current work lives on **`release/1.24.21`**. When you start (in Codex, pick this branch when setting up the environment), work from `release/1.24.21`, and create your own branch from it named `codex/<task>`. Do not commit to `main`, and do not push to `release/1.24.21` itself without the owner's yes. If you can't see `AGENTS.md` or `docs/MAINTAINER-GUIDE.md`, you are on the wrong branch: switch to `release/1.24.21` before doing anything.
 
@@ -9,6 +12,7 @@ The repo's default branch `main` is old and does NOT contain these instructions.
 1. Never break the auto-updater (the feed addresses and format in `latest.json` / `latest-macos.json` must keep working for every installed copy).
 2. Commits go under the owner's name (stoveez, freetwoomy@gmail.com). Never add Co-Authored-By, session links, "Generated with" or any AI credit.
 3. Never push, publish, deploy or buy anything without the owner's clear "yes" for that exact action. Committing locally is fine.
+   **Exception (owner, 2026-10-23):** pushing to your own task branches `codex/<task>` (or `claude/<task>`) and `wip/<task>` snapshot branches is allowed without asking again. Merging into `release/1.24.21` or `main`, force-pushes, deleting branches, publishing and anything on the public repo still need the owner's clear "yes". Push after each finished change and before stopping.
 4. Publish only through the private-repo publish workflow, never by hand.
 5. Talk to the owner and write release notes in plain, non-coder language.
 6. A test build always contains the Windows and Mac apps and the extension, never the extension alone. Deliver it as the two small CI artifacts `plazcode-<version>-Windows-test-lean` and `plazcode-<version>-macOS-test-lean` (app + memory helper + Chrome extension + ready-made Firefox extension, no scripts to run). Details: guide section 8.
