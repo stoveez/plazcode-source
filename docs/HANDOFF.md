@@ -74,6 +74,9 @@ What stays true while this is the process:
 - Nothing is published without the owner's clear "yes" for that update. Test builds are not publishing.
 - When the owner can pay for billing, they keep the repo private and this plan is no longer needed (they will say so; then remove this section).
 
+## Tell the owner after every push (owner, 2026-10-23)
+Every time you push a WIP or finished change that another AI could pick up, tell the owner in the same reply, in plain words: the branch name, the short commit ID, and one line on what is in it (and whether it is unfinished). Say it even for small pushes, so the owner always knows what another AI can see and work from.
+
 ## 4. How the build and tests work
 - Source = pinned official 1.24.20 plus an overlay in `development/1.24.21/overlay`. **Edit only the overlay.** Never edit `build-src-1.24.21/` (it is regenerated). A file not yet in the overlay is first copied from `build-src-1.24.21/PlazCode/` into the overlay, then edited there.
 - Build: `python3 development/1.24.21/prepare.py` (writes `build-src-1.24.21/PlazCode`). Do not run it while the full test suite is running.
