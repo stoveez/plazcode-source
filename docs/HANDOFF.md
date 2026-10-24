@@ -53,6 +53,27 @@ The owner uses several AIs and they take turns, usually when one runs out of lim
 5. If a push fails, immediately export a zip or patch of your work and say what is not saved remotely.
 6. Same limits as everyone: no merge into `release/1.24.21` or `main`, no force-push, no publish, nothing on the public repo, commits under the owner's identity with no AI credit lines.
 
+## Public-then-private plan for test builds and publishing (owner's plan, 2026-10-23)
+
+Why: GitHub's free build minutes for this private repo are blocked (the owner has no money for billing right now: "recent account payments have failed or your spending limit needs to be increased"). Builds on a PUBLIC repo are free. So until the owner can pay, the repo is switched to public only while a build or a publish runs, then back to private. The plan is the same every time.
+
+Link to give the owner every time (repo settings, visibility switch is at the bottom in the Danger Zone):
+https://github.com/stoveez/plazcode-source/settings
+
+Every time you are ready for a TEST BUILD or an UPDATE (publish), do this, and walk the owner through all of it again in plain words (resend this plan each time, do not assume they remember):
+1. Send the owner the settings link above. Ask them to set the repo to Public (Settings, Danger Zone, Change visibility, Public) and tell you when done. Only the owner can do this; never try to change visibility yourself.
+2. Check it is public (`gh api repos/stoveez/plazcode-source --jq '{private,visibility}'`), then start the build on your task branch (`gh workflow run validate-1.24.21.yml --ref <your-branch>`). For a publish, you also need the owner's clear "yes" for that exact update, a fully green run on the exact final commit, and the dry run first (see CLAUDE.md "How to publish"); the publish must also happen while the repo is public.
+3. As soon as the run finishes, download the two lean zips (`plazcode-<version>-Windows-test-lean`, `plazcode-<version>-macOS-test-lean`) and send them to the owner, with a plain note on what is inside and whether reloading the extension is enough or the app must be replaced. If the Mac job says "job was not acquired by Runner", re-run only that job (`gh run rerun <id> --failed`) every 20 minutes.
+4. Tell the owner to switch the repo back to Private right away (same settings link). Keep the public window as short as possible. Do not leave it public longer than needed.
+5. The owner shares the zips with testers themselves (for example in Discord, or through a Drive link if too big). Once the repo is private again, people without access cannot download the artifacts.
+
+What stays true while this is the process:
+- A public window means anyone could copy or fork the code in that time; deleting or privatising later does not remove copies or forks. Tell the owner this again if they ask, and keep windows short.
+- Before the first public window the full git history was scanned for keys and tokens on 2026-10-23 (only fake test values were found). If you add anything sensitive since then, scan again before the owner flips the repo to public.
+- Never put secrets in files or chat. The publish token stays in the repository secret `PUBLIC_REPO_TOKEN`.
+- Nothing is published without the owner's clear "yes" for that update. Test builds are not publishing.
+- When the owner can pay for billing, they keep the repo private and this plan is no longer needed (they will say so; then remove this section).
+
 ## 4. How the build and tests work
 - Source = pinned official 1.24.20 plus an overlay in `development/1.24.21/overlay`. **Edit only the overlay.** Never edit `build-src-1.24.21/` (it is regenerated). A file not yet in the overlay is first copied from `build-src-1.24.21/PlazCode/` into the overlay, then edited there.
 - Build: `python3 development/1.24.21/prepare.py` (writes `build-src-1.24.21/PlazCode`). Do not run it while the full test suite is running.

@@ -29,6 +29,9 @@ Edit files in `development/<version>/overlay/`, never in `build-src-<version>/` 
 ## Running two AIs at once
 The owner may run Claude Code and you at the same time. Claim a task on `docs/TASK-BOARD.md`, work in your own branch and git worktree (`git worktree add ../plazcode-<task> -b codex/<task> release/1.24.21`), stay inside your claimed files, start CI for your branch with `gh workflow run validate-1.24.21.yml --ref <branch>`, and leave a short handoff note when you finish. Section 11 of the guide has the full protocol.
 
+## Public-then-private plan for test builds and publishing (owner's plan, 2026-10-23)
+Builds on this private repo are blocked by GitHub billing, so the repo is made PUBLIC only while a build or publish runs, then PRIVATE again. Every time you are ready for a test build or an update: (1) send the owner the settings link https://github.com/stoveez/plazcode-source/settings and walk them through the whole plan again in plain words (resend it each time); (2) after they make it public, start the build on your task branch; (3) send them the two lean zips as soon as the run ends; (4) tell them to set the repo back to Private right away. Publishing still needs their clear "yes" for that exact update. Full steps, risks and rules: `docs/HANDOFF.md` section "Public-then-private plan". Never change repo visibility yourself.
+
 ## Effort
 Use maximum care (high reasoning effort) for the license and login server, the Luau helper library and build self-checks, hard bug hunts (for example the Notion send problem) and the planning of big features.
 

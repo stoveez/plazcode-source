@@ -20,6 +20,9 @@ PlazCode is a closed-source browser extension plus a Rust desktop app that turns
 8. Never put secrets (publish token, keys) in files or chat.
 9. **Extension fixes must work by reloading the extension.** When a bug fix is for the extension (anything in `core/`, `providers/`, `overlay.css`, `background.js`, `popup.*`), it must take effect for a tester who is on a test build just by reloading the extension in the browser and refreshing the AI tab. No app update, reinstall or new desktop app should be needed. Where possible, fix the extension side only. If a fix also needs a new app, say so plainly. When handing over a fix, tell the owner in one line whether reloading the extension is enough, or whether the app must be replaced too. The test build still includes the apps (rule 6).
 
+## Public-then-private plan for test builds and publishing (owner's plan, 2026-10-23)
+Builds on this private repo are blocked by GitHub billing, so the repo is made PUBLIC only while a build or publish runs, then PRIVATE again. Every time you are ready for a test build or an update: (1) send the owner the settings link https://github.com/stoveez/plazcode-source/settings and walk them through the whole plan again in plain words (resend it each time); (2) after they make it public, start the build on your task branch; (3) send them the two lean zips as soon as the run ends; (4) tell them to set the repo back to Private right away. Publishing still needs their clear "yes" for that exact update. Full steps, risks and rules: `docs/HANDOFF.md` section "Public-then-private plan". Never change repo visibility yourself.
+
 ## Effort (the owner's rule)
 Use HIGH effort (think longer and trace carefully) for these four kinds of work. If you cannot change your own effort setting, hand the work to a helper agent that runs at high effort, or tell the owner to switch it before you start:
 1. The login and license server (security matters, a gap is costly).
