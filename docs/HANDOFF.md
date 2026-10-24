@@ -90,6 +90,16 @@ A real update is the same build that passed the full check, promoted by the priv
 6. Right after the publish has finished, remind the owner to set the repo back to Private (same settings link). Repeat until it is private.
 Read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first real publish; they are the source of truth and this list is a summary. Test builds are not publishing and need only steps 1, the build and the zips, then the Private reminder.
 
+## What is in the latest test zips and what is NOT yet (kept up to date by every AI)
+Latest test zips given to the owner: CI run 40056181833, built from commit `9607466` on branch `claude/plazcode-dev` (Windows + Mac apps, Chrome/Firefox extensions). They contain everything up to that commit: the stall, Notion, Claude reply-key and AgentScript Full-access fixes, vault graph/brain/audit, the memory-button name fix, and the test-zip layout change.
+NOT yet in any test build or real app (all tested only in my sandbox, Chromium): `c11558b`, `80c334b`, `cf6bd9c` (desktop app only, so the desktop app must be replaced to see them):
+- Reasoning and Language dropdown lists no longer open behind the next settings card (`core/effort-picker.js` lift class + CSS).
+- Ultra purple border and glow-off shadow on the active page button restored.
+- The sidebar scrolls as one column on short windows (max height 780px).
+- No Effort or version text in the title bar (owner choice); the sidebar still shows them.
+- Five desktop tests updated for the new layout.
+When you add or change anything after the last test build, add it to this list; when a new test build is made, move the list into the "contained" paragraph and update the run number and commit. Tell the owner plainly whether the new things need the extension reloaded or the desktop app replaced.
+
 ## 4. How the build and tests work
 - Source = pinned official 1.24.20 plus an overlay in `development/1.24.21/overlay`. **Edit only the overlay.** Never edit `build-src-1.24.21/` (it is regenerated). A file not yet in the overlay is first copied from `build-src-1.24.21/PlazCode/` into the overlay, then edited there.
 - Build: `python3 development/1.24.21/prepare.py` (writes `build-src-1.24.21/PlazCode`). Do not run it while the full test suite is running.
