@@ -20,6 +20,8 @@ const MAX_READ_CHARS: usize = 30_000;
 const MAX_FILE_SCAN_BYTES: u64 = 400_000;
 const LOG_LIMIT: usize = 150;
 const START_NAME: &str = "00 Start Here/Home.md";
+const NOW_NAME: &str = "00 Start Here/Now.md";
+const MAX_NOW_CHARS: usize = 1_500;
 const INDEX_NAME: &str = "00 Start Here/Index.md";
 const LOG_NAME: &str = "00 Start Here/Log.md";
 const IMAGE_DIR: &str = "08 References/refs";
@@ -483,6 +485,23 @@ updated: {DATE}
 - 08 References: reference pictures live in `refs`. 09 How To: guides, including [[Reference Critic Loop]].
 - To match a reference picture, read [[Reference Critic Loop]] first.
 ";
+const NOW_NOTE: &str = "---
+tags: [guide, status]
+aliases: [Now, Live note]
+updated: {DATE}
+---
+
+# Now
+
+> [!info] [[Home]] · Now
+> Read this when: starting any chat. This is the live note: where the work stands right now. Rewrite it (mode replace) at the end of every job. Keep it under 1,500 characters.
+
+- Project:
+- Last job:
+- Unfinished:
+- Next step:
+- Watch out for:
+";
 const GLOSSARY_NOTE: &str = "---
 tags: [index, glossary]
 aliases: [Terms, Definitions]
@@ -608,8 +627,9 @@ fn ensure_structure(root: &Path) -> anyhow::Result<()> {
     } else {
         fs::create_dir_all(root.join("00 Start Here"))?;
     }
-    let defaults: [(&str, &str, bool); 6] = [
+    let defaults: [(&str, &str, bool); 7] = [
         (START_NAME, START_NOTE, false),
+        (NOW_NAME, NOW_NOTE, false),
         ("00 Start Here/Glossary.md", GLOSSARY_NOTE, true),
         ("09 How To/Reference Critic Loop.md", CRITIC_NOTE, true),
         ("_Templates/Style.md", STYLE_TEMPLATE, true),
@@ -799,7 +819,8 @@ fn do_index(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<Val
     let total = notes.len();
     let list: Vec<Value> = notes.iter().take(limit).map(note_json).collect();
     let start = parse(&fs::read_to_string(root.join(START_NAME)).unwrap_or_default()).body;
-    Ok(json!({"ok": true, "start": clip(&start, MAX_START_CHARS), "notes": list, "total": total, "learning": settings.learning, "vault": root.to_string_lossy()}))
+    let now = parse(&fs::read_to_string(root.join(NOW_NAME)).unwrap_or_default()).body;
+    Ok(json!({"ok": true, "start": clip(&start, MAX_START_CHARS), "now": clip(&now, MAX_NOW_CHARS), "notes": list, "total": total, "learning": settings.learning, "vault": root.to_string_lossy()}))
 }
 fn do_search(root: &Path, req: &Value) -> anyhow::Result<Value> {
     let query = text_field(req, "query").to_lowercase();
@@ -970,6 +991,9 @@ fn do_write(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<Val
     anyhow::ensure!(note.body.chars().count() <= MAX_NOTE_CHARS, "That note would be longer than 60,000 characters. Split it into two linked notes.");
     if rel_text == START_NAME {
         anyhow::ensure!(note.body.chars().count() <= MAX_START_CHARS, "The start note must stay short (3,500 characters). Move detail into other notes and link to them.");
+    }
+    if rel_text == NOW_NAME {
+        anyhow::ensure!(note.body.chars().count() <= MAX_NOW_CHARS, "The Now note must stay short (1,500 characters). Keep only where the work stands and move detail into other notes.");
     }
     if let Some(map) = req["frontmatter"].as_object() {
         anyhow::ensure!(map.len() <= 14, "Too many header fields.");
@@ -1189,6 +1213,9 @@ fn do_save_raw(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<
     if rel_text == START_NAME {
         anyhow::ensure!(note.body.chars().count() <= MAX_START_CHARS, "The Home note must stay short (3,500 characters). Move detail into other notes and link to them.");
     }
+    if rel_text == NOW_NAME {
+        anyhow::ensure!(note.body.chars().count() <= MAX_NOW_CHARS, "The Now note must stay short (1,500 characters). Keep only where the work stands and move detail into other notes.");
+    }
     if note.index_of("updated").is_some() {
         note.set("updated", today());
     }
@@ -1393,6 +1420,23 @@ mod tests {
     }
     fn write(root: &Path, s: &Settings, path: &str, content: &str) -> Value {
         run(root, s, json!({"action":"write","path":path,"content":content,"frontmatter":{"type":"lesson","project":"Game A"}})).unwrap()
+    }
+    #[test]
+    fn live_note_is_seeded_sent_and_capped() {
+        let (root, s) = fresh("live-note");
+        run(&root, &s, json!({"action":"init"})).unwrap();
+        assert!(root.join("00 Start Here/Now.md").is_file(), "the live note is created");
+        let idx = run(&root, &s, json!({"action":"index"})).unwrap();
+        assert!(idx["now"].as_str().unwrap().contains("Next step"), "index carries the live note");
+        run(&root, &s, json!({"action":"write","path":"00 Start Here/Now","mode":"replace","content":"- Project: Obby\n- Next step: checkpoints"})).unwrap();
+        let idx = run(&root, &s, json!({"action":"index"})).unwrap();
+        assert!(idx["now"].as_str().unwrap().contains("checkpoints"), "the AI can rewrite it");
+        let long = "x".repeat(MAX_NOW_CHARS + 50);
+        assert!(run(&root, &s, json!({"action":"write","path":"00 Start Here/Now","mode":"replace","content":long})).is_err(), "too long is refused");
+        let again = run(&root, &s, json!({"action":"init"})).unwrap();
+        assert!(again["ok"].as_bool().unwrap_or(true));
+        let idx = run(&root, &s, json!({"action":"index"})).unwrap();
+        assert!(idx["now"].as_str().unwrap().contains("checkpoints"), "init never overwrites the user's live note");
     }
     #[test]
     fn the_graph_lists_every_note_and_its_links() {

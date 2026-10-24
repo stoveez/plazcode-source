@@ -8703,6 +8703,8 @@ function renderCards(panel) {
         // ("Parse failed. Message not sent."). Those stay staged in the panel.
         const media = payloads.filter((p) => p.ref.kind === "image" || p.ref.kind === "video");
         for (const p of payloads) if (media.indexOf(p) === -1) p.ref.delivered = false;
+        // So "add this picture to your memory" works for pictures the user attached here: keep the newest ones where the vault's add_image can find them.
+        try { rememberImages(media.filter((p) => p.ref.kind === "image").map((p) => ({ mimeType: p.mimeType, data: p.data })), "attached"); } catch {}
         let ok = false;
         if (media.length) {
           try { ok = !!(await P.attachImages(media.map((p) => ({ mimeType: p.mimeType, data: p.data, name: p.ref.name })))); } catch { ok = false; }
