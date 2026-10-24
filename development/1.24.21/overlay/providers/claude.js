@@ -266,17 +266,20 @@ const RSProvider = (() => {
   // CHANGED while it streamed and after it settled, and two consecutive replies that start alike (back-to-back
   // commands of the same tool) got the SAME key. The core then believed no new reply had arrived and paused with
   // "Response changed - run paused", and its "already ran this command" memory missed. For an assistant turn the
-  // key is now its position among the assistant turns (Claude does not virtualize its list) plus the site's own id
-  // when it has one: stable for the whole turn and different for every turn. Other turns keep the old key.
+  // key is now the site's own id when it has one, otherwise an id tied to the page element: stable for the whole turn and different for every turn. Other turns keep the old key.
+  const turnUids = new WeakMap(); let turnUidCount = 0;
   const itemKey = (item) => {
     if (!item || !safeRead(() => item.getAttribute, null)) return null;
     const own = safeRead(() => item.getAttribute("data-message-id"), null);
     if (own) return own;
     if (isAssistantItem(item)) {
-      // One document-order query (cheap enough for the per-sweep callers); nested matches only ever come AFTER
-      // their turn, so the turn's own position never shifts while it streams.
-      const at = safeQueryAll(document, S.assistant).indexOf(item);
-      if (at >= 0) return "a" + at;
+      // A key tied to this exact page element: it stays the same while the turn streams and settles, and it is
+      // different for every turn. If the site REPLACES the element (a remount, or Retry/regenerate in the same
+      // spot), the new element gets a new key, so text from the old one is never trusted as the new reply
+      // (test-response-remount "missing-id"). A position number would wrongly match the replacement.
+      let uid = turnUids.get(item);
+      if (uid == null) { uid = "a" + (++turnUidCount); turnUids.set(item, uid); }
+      return uid;
     }
     return safeRead(() => item.getAttribute("data-testid"), null) + ":" + (safeRead(() => item.textContent, "") || "").slice(0, 24)
       || null;
