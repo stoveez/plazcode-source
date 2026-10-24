@@ -278,7 +278,25 @@
     permMode = id;
     try { window.__rsPermMode = () => permMode; } catch {}
     try { chrome.storage.local.set({ rsPermMode: id }); } catch {}
-    try { chrome.runtime.sendMessage({ type: "rs-set-full", enabled: id === "full" }).catch(() => {}); } catch {}
+    // Fix: the answer used to be thrown away, so a desktop app that refused or
+    // could not be reached left the menu saying Full while nothing changed.
+    try { chrome.runtime.sendMessage({ type: "rs-set-full", enabled: id === "full" }).then((r) => {
+      if (r && r.ok === false) { try { ui.banner("warn", "Full access did not change", "The desktop app did not confirm the switch" + (r.error ? " (" + String(r.error).slice(0, 120) + ")" : "") + ". Make sure the PlazCode desktop app is running and up to date, then choose " + (id === "full" ? "Full" : "the mode") + " again."); } catch {} }
+    }).catch(() => {}); } catch {}
+  }
+  // Show the person WHY the PC refused a local tool (Full access off, folder not
+  // allowed, shell would not start). The AI already has the reason in the tool
+  // result; without this the user only saw "nothing happened". Once per kind per minute.
+  const accessBannerSeen = {};
+  function accessBanner(name, text) {
+    try {
+      if (typeof PlazCodeSafety === "undefined" || !PlazCodeSafety.accessHint) return;
+      const agentFull = typeof window.__rsFullAccess === "function" ? !!window.__rsFullAccess() : null;
+      const hint = PlazCodeSafety.accessHint(name, text, { permMode, agentFull });
+      if (!hint || Date.now() - (accessBannerSeen[hint.kind] || 0) < 60000) return;
+      accessBannerSeen[hint.kind] = Date.now();
+      ui.banner("warn", hint.title, hint.text);
+    } catch {}
   }
   // Thrown by submitAndGetBase when the message VERIFIABLY never landed (the
   // composer never cleared and no new turn appeared after all retries). Callers
@@ -2539,6 +2557,7 @@ return result`;
     const stop=new Promise(resolve=>{timer=setInterval(()=>{if(A.stop && A.stopMode!=="safe"){if(!settled){draining=true;A.pendingToolSettles=(A.pendingToolSettles||0)+1;}clearInterval(timer);resolve("ERROR: Immediate Stop requested. The tool may have partial effects; inspect state before retrying.");}},50);});
     try{
       const out=await Promise.race([operation,stop]);
+      if(typeof out==="string"&&typeof accessBanner==="function"&&/^ERROR|TIMED OUT/.test(out))accessBanner(call&&call.tool,out); // tell the user why the PC refused
       if(A.stallGuard&&typeof out==="string"){if(!/stopped by the user|waiting for cancellation|Immediate Stop|offline|not connected/i.test(out.slice(0,200)))A.stallGuard.after(call,!/^ERROR/.test(out));}
       // Tell the model which harmless argument mistakes were fixed so it sends them right next time.
       return typeof out==="string"&&call&&Array.isArray(call.repairs)&&call.repairs.length&&!/^ERROR/.test(out)?out+"\n[PlazCode adjusted your arguments: "+call.repairs.join("; ")+". Send them this way next time.]":out;
@@ -2687,8 +2706,10 @@ return result`;
       }
       return `ERROR: the '${bareName}' command timed out and is unavailable in this environment. Do NOT call it again - complete the task yourself using the other commands (execute_luau, multi_edit, etc.).`;
     }
-    if (permMode !== "full" && /^(process_kill)$/.test(bareName)) {
-      return `ERROR: '${bareName}' needs Full PC access. Switch Permissions to Full in the PlazCode menu, or stay in Sandbox.`;
+    // Fix: also accept the desktop app's own Full flag (the bar's Full switch sets
+    // that without changing this menu), so process_kill is not refused while Full is on.
+    if (permMode !== "full" && !(typeof window.__rsFullAccess === "function" && window.__rsFullAccess()) && /^(process_kill)$/.test(bareName)) {
+      return `ERROR: '${bareName}' needs Full PC access, which is OFF. Ask the user to switch Permissions to Full (PlazCode menu), or stay in Sandbox.`;
     }
     const safetyEngine = activeEngine() === "local" && !String(name).includes("__") ? "local" : "studio";
     if (safetySettings.readOnly && PlazCodeSafety.isChange(bareName, safetyEngine)) {
@@ -3202,6 +3223,8 @@ return result`;
   // 30 s, at least 340 s and at most 640 s. Built-in tools keep 20 s / 120 s.
   function toolCallTimeoutMs(name, args) {
     if (name === "execute_luau") return 20000;
+    // run_command may ask for a longer timeout_seconds; wait for it (+15 s, same as the app) up to 640 s.
+    if (name === "run_command") { const s = Number(args && args.timeout_seconds); return Number.isFinite(s) && s > 0 ? Math.min(640000, Math.max(120000, (s + 15) * 1000)) : 120000; }
     if (!String(name || "").includes("__")) return 120000;
     const a = args && typeof args === "object" ? args : {};
     const ms = Number(a.timeoutMs ?? a.timeout_ms), secs = Number(a.timeout_seconds ?? a.timeoutSeconds);

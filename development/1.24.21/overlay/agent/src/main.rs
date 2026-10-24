@@ -1343,7 +1343,46 @@ struct LocalFullReq { enabled: bool }
 async fn local_full_handler(State(state): State<AppState>, Json(req): Json<LocalFullReq>) -> impl IntoResponse {
     state.workspace.set_full_access(req.enabled);
     info!("local_full set to {} via HTTP", req.enabled);
+    // 1.24.21 AgentScript fix: the bar's Full switch used to change only the live flag, so the
+    // saved Permissions setting still said Sandbox and the next settings change from the desktop
+    // page or the extension quietly turned Full access off again. Keep the two in step.
+    let saved = state.preferences.update(|prefs| {
+        if req.enabled { prefs.perm_mode = "full".to_string(); }
+        else if prefs.perm_mode == "full" { prefs.perm_mode = "sandbox".to_string(); }
+    });
+    if let Err(error) = &saved { tracing::warn!("Full access changed but the settings file could not be saved: {error}"); }
+    let _ = state.ui.desktop_events.send(serde_json::json!({"type":"desktop_preferences","preferences":state.preferences.snapshot()}));
     Json(serde_json::json!({"ok": true, "local_full": req.enabled}))
+}
+
+/// Whether Full PC access is on after a settings change. Only a change that names
+/// Permissions (rsPermMode) may touch it: language, theme or any other setting leaves it alone.
+fn full_access_after(patch: &serde_json::Value, perm_mode: &str, current: bool) -> bool {
+    if patch.get("rsPermMode").is_some() { perm_mode == "full" } else { current }
+}
+
+/// The reply to a settings change from the desktop page or the browser extension.
+/// A settings file that cannot be written (read-only install folder, a locked file) still
+/// leaves the new values in use, so Full access and the folder list follow them anyway
+/// and the reply says what happened instead of failing the whole change.
+fn preferences_response(state: &AppState, patch: &serde_json::Value, outcome: anyhow::Result<preferences::DesktopPreferences>) -> axum::response::Response {
+    let (prefs, warning) = match outcome {
+        Ok(prefs) => (prefs, None),
+        Err(error) => match error.downcast_ref::<preferences::SaveFailed>() {
+            Some(failed) => { tracing::warn!("{failed}"); (state.preferences.snapshot(), Some(failed.to_string())) }
+            None => return (
+                axum::http::StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"ok": false, "error": error.to_string()})),
+            ).into_response(),
+        },
+    };
+    let full = full_access_after(patch, &prefs.perm_mode, state.workspace.full_access());
+    if full != state.workspace.full_access() { state.workspace.set_full_access(full); }
+    state.workspace.set_allowed_folders(&prefs.allowed_folders);
+    let _ = state.ui.desktop_events.send(serde_json::json!({"type":"desktop_preferences","preferences":prefs}));
+    let mut body = serde_json::json!({"ok": true, "preferences": prefs});
+    if let Some(warning) = warning { body["warning"] = serde_json::Value::String(warning); }
+    Json(body).into_response()
 }
 
 async fn checkpoint_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> axum::response::Response {
@@ -1403,6 +1442,21 @@ async fn immediate_stop_handler(State(state):State<AppState>,Json(req):Json<serd
 }
 fn native_tool_timeout(name: &str, requested: Option<u64>) -> Duration {
     Duration::from_millis(requested.unwrap_or(if name.contains("__") { 640000 } else { 120000 }).clamp(1000,640000))
+}
+/// run_command may ask for up to 600 seconds (timeout_seconds); the overall budget around the call
+/// must be longer than that, or a slow install is cut off at 120 s and reported as a deadline error.
+fn tool_budget(name: &str, requested: Option<u64>, args: &serde_json::Value) -> Duration {
+    let base = native_tool_timeout(name, requested);
+    if name != "run_command" { return base; }
+    let asked = match args.get("timeout_seconds") {
+        Some(serde_json::Value::Number(n)) => n.as_u64(),
+        Some(serde_json::Value::String(s)) => s.trim().parse::<u64>().ok(),
+        _ => None,
+    };
+    match asked {
+        Some(seconds) => base.max(Duration::from_secs(seconds.clamp(1, 600) + 15)).min(Duration::from_millis(640000)),
+        None => base,
+    }
 }
 /// 1.24.21: every AI tool call (non-empty checkpoint id) passes the safety
 /// limits, then runs, then lands in the task's "What happened" log.
@@ -1483,15 +1537,17 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
     }
     if id.is_empty() { return match engine { "local"=>workspace::dispatch(&state.workspace,name,args).await.map(|text|McpOutput{text,images:Vec::new()}).map_err(anyhow::Error::msg), "roblox"=>roblox_tool(state,name,args).await,_=>Err(anyhow::anyhow!("unknown engine")) }; }
     let mut journal=checkpoints::STORE.lock().await;
-    anyhow::ensure!(journal.task(id)?.status=="working" && journal.task(id)?.engine==engine,"Checkpoint belongs to a different or finished task.");
+    anyhow::ensure!(journal.task(id)?.status=="working" && journal.task(id)?.engine==engine,"This command was not run: its task has already ended, or it belongs to the other mode (Roblox / AgentScript). Send a new message in the chat to start a fresh task.");
     if engine=="local" {
         let paths=journal.prepare_files(&state.workspace,id,name,&args)?;
         let (result,success)=if name=="run_command" {
             match workspace::tool_run_command_observed(&state.workspace,&args).await {Ok((text,success))=>(Ok(McpOutput{text,images:Vec::new()}),success),Err(error)=>(Err(anyhow::Error::msg(error)),false)}
         }else{let result=workspace::dispatch(&state.workspace,name,args.clone()).await.map(|text|McpOutput{text,images:Vec::new()}).map_err(anyhow::Error::msg);let success=result.is_ok();(result,success)};
         journal.set_outcome(id,success);
-        let task=journal.task_mut(id)?;if task.learning.len()<101{task.learning.push(shared_learning::observation(name,&args,success));}
-        journal.save()?;
+        // 1.24.21 AgentScript fix: the tool has already run here. A journal that cannot be updated or
+        // written (locked file, full disk) must never replace the tool's result with an error.
+        if let Ok(task)=journal.task_mut(id){if task.learning.len()<101{task.learning.push(shared_learning::observation(name,&args,success));}}
+        let _=journal.save();
         if let Err(error)=journal.commit_files(&state.workspace,id,&paths) { journal.warn(id,&format!("Checkpoint verification failed: {error}"));journal.task_mut(id)?.learning.push(shared_learning::observation("checkpoint_verification_failed",&serde_json::Value::Null,false));let _=journal.save(); }
         return result;
     }
@@ -1606,18 +1662,8 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
 }
 
 async fn desktop_preferences_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
-    match state.preferences.patch(req) {
-        Ok(prefs) => {
-            state.workspace.set_full_access(prefs.perm_mode == "full");
-            state.workspace.set_allowed_folders(&prefs.allowed_folders);
-            let _ = state.ui.desktop_events.send(serde_json::json!({"type":"desktop_preferences","preferences":prefs}));
-            Json(serde_json::json!({"ok": true, "preferences": prefs})).into_response()
-        }
-        Err(error) => (
-            axum::http::StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"ok": false, "error": error.to_string()})),
-        ).into_response(),
-    }
+    let outcome = state.preferences.patch(req.clone());
+    preferences_response(&state, &req, outcome)
 }
 
 async fn desktop_kill_studio_handler(State(state): State<AppState>) -> impl IntoResponse {
@@ -1797,18 +1843,8 @@ async fn preferences_get_handler(State(state): State<AppState>) -> impl IntoResp
 
 async fn preferences_post_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
     state.ui.mark_extension_seen();
-    match state.preferences.patch(req) {
-        Ok(prefs) => {
-            state.workspace.set_full_access(prefs.perm_mode == "full");
-            state.workspace.set_allowed_folders(&prefs.allowed_folders);
-            let _ = state.ui.desktop_events.send(serde_json::json!({"type":"desktop_preferences","preferences":prefs}));
-            Json(serde_json::json!({"ok": true, "preferences": prefs})).into_response()
-        }
-        Err(error) => (
-            axum::http::StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"ok": false, "error": error.to_string()})),
-        ).into_response(),
-    }
+    let outcome = state.preferences.patch(req.clone());
+    preferences_response(&state, &req, outcome)
 }
 
 #[derive(serde::Deserialize)]
@@ -2293,7 +2329,7 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                     "call_tool" => {
                         let name = val.get("name").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
                         let args = val.get("arguments").cloned().unwrap_or(serde_json::Value::Null);
-                        let budget = native_tool_timeout(&name,val.get("timeout").and_then(|v|v.as_u64()));
+                        let budget = tool_budget(&name,val.get("timeout").and_then(|v|v.as_u64()),&args);
                         let state2 = state.clone();
                         let eng = engine.clone();
                         let checkpoint_id = val.get("checkpoint_id").and_then(|v|v.as_str()).unwrap_or("").to_string();
@@ -2411,5 +2447,84 @@ mod studio_detection_tests {
         assert!(should_clear_competitors(2));
         assert!(!should_clear_competitors(3));
         assert!(should_clear_competitors(30));
+    }
+}
+
+#[cfg(test)]
+mod full_access_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn test_state(tag: &str) -> (AppState, PathBuf) {
+        let alive = Arc::new(AtomicBool::new(true));
+        let ui = Arc::new(gui::UiShared::new(alive.clone()));
+        let folder = std::env::temp_dir().join(format!("plazcode-full-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&folder);
+        let workspace = Arc::new(workspace::Workspace::new(Some(folder.to_str().unwrap())).unwrap());
+        let settings = folder.join("settings.json");
+        let state = AppState::new(broadcast::channel(16).0, alive, Arc::new(AtomicBool::new(false)), workspace, Arc::new("test".into()),
+            Arc::new(preferences::PreferencesStore::load_from(settings)), ui);
+        (state, folder)
+    }
+
+    #[test]
+    fn only_a_permissions_change_touches_full_access() {
+        assert!(full_access_after(&json!({"rsLanguage": "fr", "rsSounds": false}), "sandbox", true), "an unrelated setting leaves Full on");
+        assert!(!full_access_after(&json!({"rsLanguage": "fr"}), "full", false), "an unrelated setting never turns it on");
+        assert!(full_access_after(&json!({"rsPermMode": "full"}), "full", false));
+        assert!(!full_access_after(&json!({"rsPermMode": "ask"}), "ask", true));
+        assert!(!full_access_after(&json!({"rsPermMode": "sandbox"}), "sandbox", true));
+    }
+
+    #[tokio::test]
+    async fn the_bar_switch_is_saved_and_other_settings_do_not_undo_it() {
+        let (state, folder) = test_state("bar");
+        assert!(!state.workspace.full_access());
+        let _ = local_full_handler(State(state.clone()), Json(LocalFullReq { enabled: true })).await.into_response();
+        assert!(state.workspace.full_access());
+        assert_eq!(state.preferences.snapshot().perm_mode, "full", "saved as the Permissions setting");
+        // This used to switch Full access off: any settings change re-read the old saved value.
+        let _ = desktop_preferences_handler(State(state.clone()), Json(json!({"rsLanguage": "fr"}))).await.into_response();
+        assert!(state.workspace.full_access(), "a language change left Full access on");
+        let _ = preferences_post_handler(State(state.clone()), Json(json!({"rsSounds": false}))).await.into_response();
+        assert!(state.workspace.full_access(), "a change from the extension left Full access on");
+        // Choosing Sandbox in Permissions still turns it off, and so does the bar switch.
+        let _ = desktop_preferences_handler(State(state.clone()), Json(json!({"rsPermMode": "sandbox"}))).await.into_response();
+        assert!(!state.workspace.full_access());
+        let _ = desktop_preferences_handler(State(state.clone()), Json(json!({"rsPermMode": "full"}))).await.into_response();
+        assert!(state.workspace.full_access());
+        let _ = local_full_handler(State(state.clone()), Json(LocalFullReq { enabled: false })).await.into_response();
+        assert!(!state.workspace.full_access());
+        assert_eq!(state.preferences.snapshot().perm_mode, "sandbox");
+        let _ = std::fs::remove_dir_all(folder);
+    }
+
+    #[tokio::test]
+    async fn full_access_applies_even_when_the_settings_file_cannot_be_written() {
+        let (state, folder) = test_state("unwritable");
+        // A file where the settings folder should be: saving fails, as in a read-only install folder.
+        let blocker = folder.join("blocked");
+        std::fs::write(&blocker, "x").unwrap();
+        let alive = Arc::new(AtomicBool::new(true));
+        let ui = Arc::new(gui::UiShared::new(alive.clone()));
+        let workspace = state.workspace.clone();
+        let state = AppState::new(broadcast::channel(16).0, alive, Arc::new(AtomicBool::new(false)), workspace,
+            Arc::new("test".into()), Arc::new(preferences::PreferencesStore::load_from(blocker.join("settings.json"))), ui);
+        let response = desktop_preferences_handler(State(state.clone()), Json(json!({"rsPermMode": "full"}))).await.into_response();
+        assert_eq!(response.status(), axum::http::StatusCode::OK, "a save problem is a warning, not a refused change");
+        assert!(state.workspace.full_access(), "Full access followed the choice although the file could not be saved");
+        let bad = desktop_preferences_handler(State(state.clone()), Json(json!({"rsPermMode": ["not", "text"]}))).await.into_response();
+        assert_eq!(bad.status(), axum::http::StatusCode::BAD_REQUEST, "a malformed change is still refused");
+        let _ = std::fs::remove_dir_all(folder);
+    }
+
+    #[test]
+    fn run_command_budget_outlasts_its_own_timeout() {
+        let none = json!({"command": "x"});
+        assert_eq!(tool_budget("run_command", Some(120000), &none), Duration::from_secs(120));
+        assert_eq!(tool_budget("run_command", Some(120000), &json!({"timeout_seconds": 300})), Duration::from_secs(315));
+        assert_eq!(tool_budget("run_command", Some(120000), &json!({"timeout_seconds": "600"})), Duration::from_secs(615));
+        assert_eq!(tool_budget("run_command", Some(120000), &json!({"timeout_seconds": 5000})), Duration::from_secs(615), "the app caps commands at 600 s");
+        assert_eq!(tool_budget("read_file", Some(120000), &json!({"timeout_seconds": 300})), Duration::from_secs(120));
     }
 }

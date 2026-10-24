@@ -151,7 +151,7 @@ impl Journal {
         let keys: &[&str] = match name { "write_file" | "edit_file" | "delete_path" | "download_file" | "godot_add_node" | "godot_create_script" | "unity_create_script" => &["path"], "move_path" => &["source", "destination"], _ => &[] };
         if name=="run_command" {self.check_protection(ws,id,"local",name,args)?;}
         if keys.is_empty() {
-            if matches!(name, "run_command" | "create_folder" | "process_kill" | "key_type" | "mouse_click") { self.warn(id, "This task includes commands, folders or external side effects without a complete inverse. Revert is disabled for the whole task.");self.save()?; }
+            if matches!(name, "run_command" | "create_folder" | "process_kill" | "key_type" | "mouse_click") { self.warn(id, "This task includes commands, folders or external side effects without a complete inverse. Revert is disabled for the whole task.");let _ = self.save(); }
             return Ok(Vec::new());
         }
         if name=="move_path" && args["destination"].as_str().and_then(|p|ws.resolve_path(p,false).ok()).map_or(false,|p|p.is_dir()) {
@@ -170,7 +170,9 @@ impl Journal {
             } else { task.files.push(FileChange { path: path.clone(), before: before.clone(), after: before, unsafe_restore: false }); }
             paths.push(path);
         }
-        self.save()?; Ok(paths)
+        // 1.24.21 AgentScript fix: a journal file that cannot be written (locked, full disk) must not
+        // stop the command from running; the undo list is simply incomplete.
+        let _ = self.save(); Ok(paths)
     }
     pub fn commit_files(&mut self, ws: &Workspace, id: &str, paths: &[String]) -> anyhow::Result<()> {
         if paths.is_empty(){return Ok(());}

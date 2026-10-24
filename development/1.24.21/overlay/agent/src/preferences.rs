@@ -161,6 +161,16 @@ impl DesktopPreferences {
     }
 }
 
+/// The new settings are in memory and in use, but the settings file could not be written.
+#[derive(Debug)]
+pub struct SaveFailed(pub String);
+impl std::fmt::Display for SaveFailed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "The settings are in use but could not be saved to disk ({}), so they will be forgotten when PlazCode closes. Check that the PlazCode folder is writable.", self.0)
+    }
+}
+impl std::error::Error for SaveFailed {}
+
 pub struct PreferencesStore {
     path: PathBuf,
     inner: RwLock<DesktopPreferences>,
@@ -171,7 +181,7 @@ impl PreferencesStore {
         Self::load_from(settings_path())
     }
 
-    fn load_from(path: PathBuf) -> Self {
+    pub(crate) fn load_from(path: PathBuf) -> Self {
         let mut prefs = std::fs::read_to_string(&path)
             .ok()
             .and_then(|raw| serde_json::from_str::<DesktopPreferences>(&raw).ok())
@@ -194,7 +204,9 @@ impl PreferencesStore {
             let mut guard = self.inner.write().map_err(|_| anyhow::anyhow!("preferences lock poisoned"))?;
             *guard = prefs.clone();
         }
-        self.save(&prefs)?;
+        // The new values are already in use above. If the file cannot be written, say exactly that
+        // (SaveFailed) so callers can keep using them instead of treating the change as rejected.
+        if let Err(error) = self.save(&prefs) { return Err(anyhow::Error::new(SaveFailed(error.to_string()))); }
         Ok(prefs)
     }
 

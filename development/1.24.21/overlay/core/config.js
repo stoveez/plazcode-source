@@ -484,7 +484,8 @@ IMPORTANT: after the list_commands result, reply with exactly "PlazCode is ready
 The user has lifted the workspace sandbox for this session. You now have:
 - ABSOLUTE PATHS anywhere on their machine (C:\\Users\\..., D:\\, network drives) in every file tool.
 - process_kill {pid} to stop processes (never kill anything you did not start or that the user named).
-- open_path on ANY file/folder/URL, download_file to anywhere.
+- open_path on ANY file/folder/URL or program name (e.g. "notepad", "ms-settings:"), download_file to anywhere.
+- run_command takes "cwd" (any folder) and "shell" ("cmd", "powershell", "pwsh", "bash"): use shell "powershell" for PowerShell commands, and "cwd" instead of "cd D:\\x" (cd does not change drive in cmd). "~" and %USERPROFILE% work in paths.
 Rules that still apply: confirm with the user BEFORE destructive actions outside the project folder
 (deleting folders, killing unknown processes, changing system files). Stay inside the project unless
 the task genuinely requires otherwise. Say "FULL PC ACCESS" is active only while the state line confirms it.`;
@@ -628,7 +629,7 @@ IMPORTANT: Your very first action is to write \`list_commands\` to get the full 
     tree:
       "Best first step to orient yourself in an unknown project. Generated folders (.git, node_modules, __pycache__, .venv, dist...) are skipped automatically. Follow up with read_file/grep_files on what looks relevant.",
     run_command:
-      "Runs in the workspace ROOT and BLOCKS until the command exits (~60s default; pass timeout_seconds up to 600 for slow installs/builds). Output is capped - redirect long logs to a file and read_file them instead. Non-zero exit codes are reported, not errors - read stderr/stdout and fix. Never launch interactive apps, watchers or dev servers: they would hang until the timeout.",
+      "Runs in the workspace ROOT by default (pass cwd for another folder; any folder with Full PC access) and BLOCKS until the command exits (~60s default; pass timeout_seconds up to 600 for slow installs/builds). Default shell is cmd on Windows and sh elsewhere; pass shell \"powershell\" (or \"pwsh\", \"bash\") to use another - quotes and multi-line scripts work. The result starts with the folder, shell, exit code and time; the START and END of long output are kept. Non-zero exit codes are reported, not errors - read stderr/stdout and fix. A program started in the background does not block the call. Never launch interactive apps, watchers or dev servers: they would hang until the timeout.",
     delete_path:
       "PERMANENT deletion, no undo, folders recursive. Confirm scope with the user before anything broad. Prefer move_path into a trash/ folder when the intent is 'get this out of here'.",
     move_path:
@@ -651,7 +652,7 @@ IMPORTANT: Your very first action is to write \`list_commands\` to get the full 
     process_kill:
       "Kills by PID. Requires the user's FULL PC ACCESS toggle; refuses the agent's own PID always. Confirm with the user unless they named the process.",
     open_path:
-      "Opens a file/folder/URL with the OS default app - good for showing the user a result in Explorer or a browser.",
+      "Opens a file/folder/URL with the OS default app - good for showing the user a result in Explorer or a browser. With Full PC access it also opens a program by name (\"notepad\", \"chrome\") with optional args, and system links like ms-settings:. Without Full access only workspace files and http(s) links open.",
     download_file:
       "Streams an http(s) URL to disk (200 MB cap). Prefer this over run_command curl for reliability and size caps.",
     // ── Blender materials (node-based, version-safe 3.x/4.x) ──
