@@ -396,6 +396,15 @@ const PROVIDER_URLS = ["https://app.clickup.com/*", "https://chat.deepseek.com/*
 
 const RECONNECT_MIN = 500;
 const RECONNECT_MAX = 500;
+// Item 9 hang recovery, case 6: an app restart or update is back within a few seconds, so the first attempts stay at
+// 500 ms. If the app is still not answering after that, back off 1 s, 2 s, 4 s ... up to 30 s so a stopped app is not hammered.
+const RECONNECT_FAST_TRIES = 10;
+const RECONNECT_BACKOFF_MAX = 30000;
+function reconnectDelayFor(attempt) {
+  if (attempt < RECONNECT_FAST_TRIES) return RECONNECT_MIN;
+  return Math.min(RECONNECT_BACKOFF_MAX, 1000 * Math.pow(2, attempt - RECONNECT_FAST_TRIES));
+}
+let reconnectAttempts = 0;
 const HEARTBEAT_MS = 10000;
 // If no message (incl. pong) arrives within this window while we believe we're
 // connected, the socket is half-open: force a reconnect instead of letting
@@ -600,6 +609,7 @@ async function connect() {
     connected = true;
     bridgeError = "";
     reconnectDelay = RECONNECT_MIN;
+    reconnectAttempts = 0;
     lastMessageAt = Date.now();
     lastSocketOpenAt = Date.now();
     log(`connected to ${engineLabel()} bridge (${url})`);
@@ -647,7 +657,8 @@ async function connect() {
 
 function scheduleReconnect() {
   clearTimeout(reconnectTimer);
-  reconnectTimer = setTimeout(connect, reconnectDelay);
+  reconnectTimer = setTimeout(connect, reconnectDelayFor(reconnectAttempts));
+  reconnectAttempts++;
   reconnectDelay = Math.min(reconnectDelay * 1.7, RECONNECT_MAX);
 }
 
@@ -2359,6 +2370,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       }
       case "reconnect":
         reconnectDelay = RECONNECT_MIN;
+        reconnectAttempts = 0;
         connect();
         sendResponse({ ok: true });
         break;

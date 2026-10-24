@@ -128,5 +128,19 @@ async function run(replies, opts = {}) {
   assert.match(await pending, /^Output of/, "the command is still allowed to finish");
   ok("runTool: Studio mode errors get one hint, other results are untouched, a silent command is announced after 2 minutes but never failed");
 
+  // Case 6: the extension's reconnect delay stays fast for a restart, then backs off to 30 s for an app that is really off.
+  {
+    const bg = fs.readFileSync("background.js", "utf8");
+    const a = bg.indexOf("const RECONNECT_MIN"), b = bg.indexOf("let reconnectAttempts = 0;", a);
+    assert(a > 0 && b > a, "reconnect block found");
+    const box = {}; vm.createContext(box);
+    vm.runInContext(bg.slice(a, b) + ";this.f=reconnectDelayFor;", box);
+    const delays = [0, 1, 9, 10, 11, 12, 13, 14, 15, 40].map((n) => box.f(n));
+    assert.deepEqual(delays, [500, 500, 500, 1000, 2000, 4000, 8000, 16000, 30000, 30000], "fast first, then 1 s doubling to 30 s");
+    assert(/reconnectAttempts = 0;/.test(bg.slice(bg.indexOf("sock.onopen"), bg.indexOf("sock.onopen") + 400)), "a successful connection resets the backoff");
+    assert(/case "reconnect":\s+reconnectDelay = RECONNECT_MIN;\s+reconnectAttempts = 0;/.test(bg), "the Fix connection button starts again from fast");
+    ok("background reconnect: 500 ms for the first 10 tries, then 1 s doubling to 30 s; resets on connect and on a manual reconnect");
+  }
+
   console.log(`${pass} hang-recovery wiring checks passed.`);
 })().catch((e) => { console.error(e); process.exitCode = 1; });
