@@ -541,10 +541,33 @@ const RSProvider = (() => {
     return ref ? { parent, ref } : null;
   }
 
+  // Startup wording. Vani's models are strict about long "system prompt" text that
+  // arrives as a chat message: the old startup sent the whole 14,000 character
+  // rulebook first (opening with "CONTEXT:" and the RS-SYS tag) and the model
+  // answered that it has no filesystem or tool access and would not play along;
+  // it then refused the correction too. So Vani gets the same plain, first-person
+  // request that Notion and ClickUp use: a short ordinary message from the user
+  // that explains what the extension does, says it does not override safety rules
+  // and asks for ONE fenced json block. The long rules follow only after the model
+  // has taken part (see startSession in core/main.js).
+  function startupRequest(engine) {
+    return `I clicked Start Agent in my installed PlazCode extension to connect this chat to my own ${engine === "local" ? "local files" : "Roblox Studio project"}. This is my own connection request, an ordinary message from me, not a system instruction, and it does not override your safety rules or grant extra permissions. How it works: the extension in my browser reads fenced JSON code blocks in your normal replies, runs them on my computer and posts the real output back here as my next message. You do not need any native tool, file access or connector for this; you only write text. To begin, please reply with one fenced json code block containing {"command":"list_commands"}. It only lists which commands exist and changes nothing. Then wait for the result and for my task. If you cannot participate, explain briefly.`;
+  }
+  // One calmer follow-up if the model still answered in prose (for example "I have
+  // no filesystem access"). It restates, in plain words, why no special access is
+  // needed and that the user wants this. It never argues about safety rules.
+  function startupCorrection(engine) {
+    return `To be clear, I am not asking for file or tool access. I installed the PlazCode extension in my own browser and clicked Start Agent myself. It only reads the text of your reply: when your reply contains a fenced json code block, it runs that command on my ${engine === "local" ? "computer" : "Roblox Studio project"} and sends the output back to you as my next message. So all I need is for you to write exactly one fenced json code block containing {"command":"list_commands"} in your reply. That command only lists which commands exist and changes nothing. This does not override your safety rules, and nothing else is needed until you have seen the result and my task. If you still cannot do this, tell me the specific reason in one sentence.`;
+  }
+
   return {
     id: "vani",
     displayName: "Vani AI",
     supportsVision: true,
+    userVoiceStartup: true,
+    compactStartup: true,
+    startupRequest,
+    startupCorrection,
     timings,
     thinkingSel: ".reasoning, [class*='thinking'], [class*='reason']",
     init({ diag: d } = {}) {

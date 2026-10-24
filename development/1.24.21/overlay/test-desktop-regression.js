@@ -7,7 +7,7 @@ const baseline = {
   "core/config.js": "394480d49da0068e811f3349bf98510073e5bbec",
   "core/headless-builder.js": "b343a897a17fc05d79ab469aeea55c8abaa8c4e5",
   "core/luau-knowledge.js": "234c1ca2155d3ef5f38927d85893b70fd6bde6e6",
-  "core/main.js": "bea52889cb25e41fbce932e0baa1d202e5a26144",
+  "core/main.js": "d71d6ceee1a91bfd237c3130f492372fc45c92b1",
   "core/motion-interchange.js": "038afa13a5b59c030a809abf7d617a36f2fae82d",
   "core/motion-preview.js": "ae0ab0526fbc762dfbf7cae9c248239e217e7a2f",
   "core/motion-tools.js": "8ac81b4a4a9f634fef9285aeee06db4a15af578e",
@@ -34,7 +34,7 @@ const baseline = {
   "providers/qwen-net.js": "6073141989f67e4ad2dd57444af6f55e48ff0b71",
   "providers/qwen.js": "9c7ae960fb3942e8ce6f1712126af7645eb896b4",
   "providers/useai.js": "2d4da606476ef70e355bc8d3213b30f085f1fa4b",
-  "providers/vani.js": "abda7180b12266eab04eb0995f5cf8192dffcae4"
+  "providers/vani.js": "08a77d54e855296cfbca5d1bb9b95b15f7a3220b"
 };
 const requiredProviders = [
   "providers/clickup.js",

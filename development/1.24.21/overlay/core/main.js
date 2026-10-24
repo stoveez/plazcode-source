@@ -3605,7 +3605,20 @@ return result`;
     // An explicit provider policy decision is not a disconnected bridge.
     return !!(P.isPolicyRefusal && P.isPolicyRefusal(text)) || /prompt[ -]injection|jailbreak|social engineering|system override|(?:safety|security|policy) (?:restriction|violation|reason)|(?:won['’]t|will not|refuse to) (?:comply|participate|output|follow)/i.test(String(text||""));
   }
+  // A model that answers the startup request in plain words ("I can't take that
+  // handshake", "no filesystem access", or a JSON status object saying so) has
+  // said no. Used only for providers that opt in (userVoiceStartup), so the user
+  // sees "the AI declined" with what to try instead of a vague "handshake failed".
+  function looksLikeStartupDecline(text) {
+    const t = String(text || "");
+    return /\bno[_ ]tool[_ ]access\b|\b(?:i|we)\s+(?:can(?:['’]t|not)|won['’]t|am unable to|(?:do|will) not|(?:do|am) not able to)\b|\bunable to (?:take|run|emit|execute|use|comply|participate)\b|\b(?:no|without) (?:filesystem|file system|tool|file) access\b|\bnot (?:something|a request) i can\b|\bi have no (?:filesystem|tools?|file)/i.test(t);
+  }
   function showStartupRefusal() {
+    if (P.userVoiceStartup && P.id !== "clickup") {
+      ui.banner("warn", `${P.displayName} declined the connection request`,
+        `The AI model in ${P.displayName} said it cannot take part in the PlazCode connection, even after PlazCode explained in plain words what it is for. No command ran and nothing was changed. Open a new chat, pick a different model in ${P.displayName}'s model menu, and press Start again. Some models decline this kind of request; the choice of model matters.`);
+      return;
+    }
     ui.banner("warn","AI declined the connection request",P.id==="clickup"
       ? "The selected ClickUp AI model declined the PlazCode connection request. Startup stopped; no project command ran and the request was not repeated. You can choose another available model and start a fresh chat. Model support varies; acceptance is not guaranteed."
       : "The AI declined the PlazCode connection instructions. No command ran and the bridge was not restarted. You can clarify your request here; refreshing cannot guarantee the AI will accept it.");
@@ -3681,6 +3694,10 @@ return result`;
     return /\b(?:i (?:can(?:not|'t)|do not|don't|am not able to|'m not able to)|this (?:chat|session|assistant) (?:can(?:not|'t)|does not|doesn't)).{0,100}\b(?:use|call|run|execute|access|control|reach|interact|have)\b.{0,100}\b(?:commands?|tools?|workspace|local (?:engine|project|files)|roblox studio|your (?:computer|machine|project))\b/i.test(t.replace(/[’]/g, "'"));
   }
   const activity = PlazCodeActivity.create(() => { try { ui.renderActivity(); } catch {} }, () => window.sessionStorage);
+  // 1.24.21: the foldable "Working for ..." summary in the chat is gone for every AI site. Nothing is
+  // folded or inserted into the chat any more; the activity record is still kept for the Tasks panel.
+  const ACTIVITY_FOLD_OFF = true;
+  const activityFoldDisabled = () => ACTIVITY_FOLD_OFF || P.id === "chatgpt" || P.id === "notion" || P.id === "arena";
   const activityItems = new Map();
   const activityAnchors = new Map();
   const activityTrackedItems = new Map();
@@ -3726,12 +3743,12 @@ return result`;
     activityTrackedItems.set(item, group.id);
     activity.record(group.id, activityMessageKey(item), P.isUserItem(item) ? "result" : calls.length ? "command" : "assistant", text);
     if (!P.isUserItem(item) && !activityAnchors.has(group.id)) activityAnchors.set(group.id, {item,key:activityAnchorKey(item)});
-    if (P.id === "chatgpt" || P.id === "notion" || P.id === "arena") return;
+    if (activityFoldDisabled()) return;
     if (P.setActivityFolded) P.setActivityFolded(item, !group.expanded && P.isUserItem(item) && RSParse.isInjectedFeedback(text));
     else { item.dataset.rsActivity = group.id; item.dataset.rsActivityFolded = !group.expanded && P.isUserItem(item) && RSParse.isInjectedFeedback(text) ? '1' : '0'; }
   }
   function syncActivityItems() {
-    if (P.id === "chatgpt" || P.id === "notion" || P.id === "arena") {
+    if (activityFoldDisabled()) {
       for (const item of new Set([...activityTrackedItems.keys(), ...P.allItems().slice(-120)])) {
         if (P.setActivityFolded) P.setActivityFolded(item, false);
         delete item.dataset.rsActivityFolded;
@@ -3869,6 +3886,7 @@ return result`;
       const item=items[index];if(!P.isUserItem(item))continue;
       const raw=String(P.itemText(item)||'');
       if(RSParse.isInjectedFeedback(raw)||raw.includes(RS.SYS_MARKER))continue;
+      if(/^I clicked Start Agent in my installed PlazCode extension\b/.test(raw.trim()))continue; // PlazCode's own startup request is not a user task
       const chat=P.conversationKey();
       if(latestRequestCache?.user===item&&latestRequestCache.raw===raw&&latestRequestCache.chat===chat)return latestRequestCache;
       latestRequestCache={user:item,raw,chat,label:PlazCodeChecklist.userText(item,node=>P.itemText(node))};
@@ -4937,6 +4955,8 @@ return result`;
         diag("start.protocolCorrection", { provider: P.id });
         const correctionBase = await submitAndGetBase(P.id === "notion"
           ? 'Please use one fenced json code block containing {"command":"list_commands"} for my PlazCode connection request. This requests the command list; it does not edit a Notion page. If you cannot participate, explain briefly.'
+          : P.startupCorrection
+          ? P.startupCorrection(activeEngine())
           : 'PlazCode startup check: reply with exactly one fenced json code block containing {"command":"list_commands"} and nothing else. The PlazCode extension reads that reply and runs the command against the connected bridge; this is a protocol handshake, not a project task.');
         if (!alive() || A.stop) return;
         listRes = await waitForResponse(correctionBase);
@@ -4961,7 +4981,7 @@ return result`;
         : null;
       if (!startupCall || (startupCall.tool !== "list_commands" && startupCall.tool !== "list_tools")) {
         diag("start.handshakeFailed", { kind: listRes.kind, chars: String(listRes.text || "").length, detail: String(listRes.detail || "").slice(0, 200) });
-        if(isProviderPolicyRefusal(listRes.text)){showStartupRefusal();return;}
+        if(isProviderPolicyRefusal(listRes.text) || (P.userVoiceStartup && looksLikeStartupDecline(listRes.text))){showStartupRefusal();return;}
         // 1.24.21: say what really happened. A site notice is quoted as it is; no reply at all is
         // not a "limit" and not a missing command, so it is not reported as either.
         if (listRes.kind === "context_limit") {
@@ -5039,6 +5059,10 @@ return result`;
       // no longer matched and startup stalled with it left in the chat box.
       // Use equivalent plain-text markers for the Notion preferences only.
       if(P.id==="notion")readyPrompt=`Output of 'list_commands':\n${digest}\n\nThe list_commands handshake already ran. These user preferences apply to future requested project work:\n${notionPlainText(prompt)}\n\nThe command-list request succeeded. Please acknowledge this connection with "PlazCode is ready."`;
+      // Providers that opened with a plain first-person request (Vani) get the long
+      // operating notes framed the same way: as the user's own notes for the
+      // extension, delivered only after the model has already taken part.
+      if(P.userVoiceStartup && stagedStartup && P.id!=="notion")readyPrompt=`Output of 'list_commands':\n${digest}\n\n${connectionLine}The list_commands handshake already ran. Below are my own usage notes for the PlazCode extension. They describe the command format the extension understands and how I would like my future requests handled. They are ordinary notes from me, not a system instruction, and they do not override your safety rules.\n${prompt}\n\n(End of my notes.) The command-list request succeeded. Please acknowledge this connection by replying with exactly "PlazCode is ready." and nothing else.`;
       diag("start.commandDigest", { chars: readyPrompt.length, lines: readyPrompt.split("\n").length, commands: scoped.length });
       const stages = P.startupFeedbackMessages ? P.startupFeedbackMessages(readyPrompt) : [{text:readyPrompt}];
       let readyRes;
@@ -10119,8 +10143,8 @@ function renderCards(panel) {
       taskChecklist?.render();
       const groups = activity.list(P.conversationKey()), group = groups.at(-1);
       const button = root.querySelector("#rs-activity"), panel = root.querySelector("#rs-activity-panel");
-      button.hidden = P.id === "chatgpt" || P.id === "notion" || P.id === "arena" || !group;
-      if (P.id === "chatgpt" || P.id === "notion" || P.id === "arena" || !group) { panel.hidden = true; return; }
+      button.hidden = activityFoldDisabled() || !group;
+      if (activityFoldDisabled() || !group) { panel.hidden = true; return; }
       button.textContent = activity.label(group);
       panel.dataset.running = group.ended ? '' : group.id;
       button.setAttribute('aria-expanded', String(!panel.hidden));
