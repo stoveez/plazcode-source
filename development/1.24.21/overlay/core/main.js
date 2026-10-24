@@ -2574,13 +2574,21 @@ return result`;
     let timer,settled=false,draining=false;
     const operation=runToolImpl(call).finally(()=>{settled=true;if(draining)A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);});
     const stop=new Promise(resolve=>{timer=setInterval(()=>{if(A.stop && A.stopMode!=="safe"){if(!settled){draining=true;A.pendingToolSettles=(A.pendingToolSettles||0)+1;}clearInterval(timer);resolve("ERROR: Immediate Stop requested. The tool may have partial effects; inspect state before retrying.");}},50);});
+    // Item 9 hang recovery, case 4: say so (once) when a command has had no answer for 2 minutes. Nothing is cancelled or
+    // failed here: some commands legitimately run for minutes, and a command that may still finish is never replayed.
+    const quietNote=setTimeout(()=>{if(!settled&&!A.stop){diag("hang.toolSilent",{tool:call&&call.tool});try{ui.toast(`No answer to ${bareToolName(call&&call.tool)} for 2 minutes. Studio or the app may be busy; PlazCode is still waiting and has not run it again.`);}catch{}}},120000);
     try{
-      const out=await Promise.race([operation,stop]);
+      let out=await Promise.race([operation,stop]);
       if(typeof out==="string"&&typeof accessBanner==="function"&&/^ERROR|TIMED OUT/.test(out))accessBanner(call&&call.tool,out); // tell the user why the PC refused
       if(A.stallGuard&&typeof out==="string"){if(!/stopped by the user|waiting for cancellation|Immediate Stop|offline|not connected/i.test(out.slice(0,200)))A.stallGuard.after(call,!/^ERROR/.test(out));}
+      // Item 9, case 5: wrong Studio mode. One hint per failed call; PlazCode never switches the mode itself.
+      if(typeof out==="string"&&/^ERROR/.test(out)&&typeof PlazCodeStallGuard!=="undefined"&&PlazCodeStallGuard.studioModeHint){
+        const hint=PlazCodeStallGuard.studioModeHint(out);
+        if(hint){diag("hang.studioMode",{state:hint.state});out+="\n[PlazCode hint: "+hint.text+"]";}
+      }
       // Tell the model which harmless argument mistakes were fixed so it sends them right next time.
       return typeof out==="string"&&call&&Array.isArray(call.repairs)&&call.repairs.length&&!/^ERROR/.test(out)?out+"\n[PlazCode adjusted your arguments: "+call.repairs.join("; ")+". Send them this way next time.]":out;
-    }finally{clearInterval(timer);}
+    }finally{clearInterval(timer);clearTimeout(quietNote);}
   }
   async function runToolImpl(call) {
     if (A.stop) return "ERROR: the command was not run — stopped by the user.";

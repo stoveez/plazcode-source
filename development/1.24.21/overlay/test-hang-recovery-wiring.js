@@ -97,5 +97,36 @@ async function run(replies, opts = {}) {
   assert(!r.toasts.some((m) => /asking you a question/.test(m)), "ordinary answers stay quiet");
   ok("agentLoop: a question to the user is announced and never auto-answered");
 
+  // Cases 4 and 5 in the real runTool: a Studio mode error gets one hint; a command with no answer for 2 minutes is announced, not failed.
+  async function runToolWith(impl) {
+    const toasts = [], timeouts = [], cleared = [];
+    const box = { A: { stop: false }, PlazCodeStallGuard: guard, diag() {}, ui: { toast: (m) => toasts.push(m) },
+      bareToolName: (n) => String(n || "").split("/").pop(), runToolImpl: impl,
+      setInterval: () => 1, clearInterval() {}, setTimeout: (fn, ms) => { timeouts.push({ fn, ms }); return timeouts.length; }, clearTimeout: (id) => cleared.push(id), Promise };
+    vm.createContext(box);
+    const a = main.indexOf("  async function runTool(call) {"), b = main.indexOf("  async function runToolImpl(call) {", a);
+    assert(a > 0 && b > a, "runTool slice found");
+    vm.runInContext(main.slice(a, b) + ";this.rt=runTool;", box);
+    return { box, toasts, timeouts, cleared };
+  }
+  let t = await runToolWith(async () => "ERROR: Edit datamodel is not available in Play mode");
+  let out = await t.box.rt({ tool: "execute_luau", arguments: { code: "x" } });
+  assert.match(out, /^ERROR: Edit datamodel is not available in Play mode\n\[PlazCode hint: .*"server" datamodel/s, "the original error is kept and the hint follows");
+  t = await runToolWith(async () => "ERROR: syntax error on line 3");
+  out = await t.box.rt({ tool: "execute_luau", arguments: { code: "y" } });
+  assert(!/PlazCode hint/.test(out), "other errors get no hint");
+  t = await runToolWith(async () => "Output of 'x':\nok");
+  out = await t.box.rt({ tool: "get_studio_state", arguments: {} });
+  assert.equal(out, "Output of 'x':\nok", "successful results are untouched");
+  assert(t.timeouts.some((x) => x.ms === 120000) && t.cleared.length === 1, "the 2-minute notice is armed and cleared when the command finishes");
+  let release; t = await runToolWith(() => new Promise((res) => { release = res; }));
+  const pending = t.box.rt({ tool: "studio/execute_luau", arguments: {} });
+  await Promise.resolve();
+  t.timeouts.find((x) => x.ms === 120000).fn();
+  assert(t.toasts.some((m) => /No answer to execute_luau for 2 minutes/.test(m) && /not run it again/.test(m)), "the user is told after 2 minutes");
+  release("Output of 'execute_luau':\nok");
+  assert.match(await pending, /^Output of/, "the command is still allowed to finish");
+  ok("runTool: Studio mode errors get one hint, other results are untouched, a silent command is announced after 2 minutes but never failed");
+
   console.log(`${pass} hang-recovery wiring checks passed.`);
 })().catch((e) => { console.error(e); process.exitCode = 1; });
