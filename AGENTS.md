@@ -3,6 +3,8 @@
 This is the private source repo for PlazCode (`stoveez/plazcode-source`). **Read `docs/MAINTAINER-GUIDE.md` completely before you change anything**, then `docs/TASK-BOARD.md`, then `development/1.25.0/NEXT-UPDATE-PLAN.md`. This page is only the short version of the rules; the guide has the details, commands and procedures.
 
 ## Latest work (read `docs/HANDOFF.md` first)
+**Ignore the branch `claude/vault-brain-and-cleanups`: it is old and retired.** Use `claude/plazcode-dev`.
+
 The newest finished work is on branch **`claude/plazcode-dev`** (not yet merged into `release/1.24.21`). `docs/HANDOFF.md` on that branch lists every branch, how to build and test, how to push, and what is unfinished. Start from that branch and make your own `codex/<task>` branch from it.
 
 ## Which branch to use (important)
