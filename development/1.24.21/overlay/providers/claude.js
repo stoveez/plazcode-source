@@ -491,6 +491,10 @@ const RSProvider = (() => {
     sel.addRange(range);
   }
   async function typeEditorText(ed, text) {
+    // execCommand types into the FOCUSED editable only. While PlazCode has the composer locked the box cannot
+    // hold focus, so after it is unlocked for a send the text went nowhere (seen live: the box stayed empty, no
+    // message was sent, and the run paused a minute later). Focus it first.
+    try { ed.focus({ preventScroll: true }); } catch {}
     selectAll(ed);
     document.execCommand("insertText", false, "");
     const lines = String(text).split("\n");
@@ -573,8 +577,12 @@ const RSProvider = (() => {
       const sent = () => (!stopBefore && !!stopButton()) || userCount() > before || !stillDraft();
       // The editor sometimes loses the typed text when Claude re-renders it. An empty box then looked like a sent
       // message and the run waited a minute for a reply that was never asked for. Type it once more.
-      if (!stillDraft()) {
-        diag("claude.send.retype", { stale: !ed.isConnected });
+      // Claude keeps its composer read-only for about three seconds after a reply ends (measured live: typing does
+      // nothing until then, with no error). Keep typing it again, half a second apart, until the text is really in
+      // the box, instead of "sending" an empty one.
+      for (let attempt = 1; attempt <= 20 && !stillDraft(); attempt++) {
+        diag("claude.send.retype", { attempt, stale: !ed.isConnected, ce: safeRead(() => ed.getAttribute("contenteditable"), null) });
+        await sleep(500);
         ed = getEditor() || ed;
         if (relock) ed.setAttribute("contenteditable", "true");
         await typeEditorText(ed, text);
