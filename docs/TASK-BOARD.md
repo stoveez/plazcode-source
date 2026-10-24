@@ -3,7 +3,7 @@
 Read `docs/MAINTAINER-GUIDE.md` section 11 first. Claim a task by adding a line under "In progress" in your own small commit. Move it to "Done" with a handoff note when finished. Do not take a task someone else has claimed.
 
 Format:
-`- [task name] | AI: claude or codex | branch: <ai>/<task> | files: <the files you will touch> | started: <date> | CI run: <link or none>`
+`- [task name] | AI: claude, codex or any other AI | branch: <ai>/<task> | files: <the files you will touch> | started: <date> | CI run: <link or none>`
 
 ## In progress
 - Vault graph view + vault as the AI's brain on startup + Vani startup + remove the "Working for" fold | AI: claude | branch: claude/plazcode-dev | files: core/memory.js, core/main.js, core/lean-startup.js, providers/vani.js, agent/src/vault.rs | started: 2026-10-23 | CI run: none yet

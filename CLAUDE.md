@@ -11,7 +11,7 @@ PlazCode is a closed-source browser extension plus a Rust desktop app that turns
 1. Never break the auto-updater. Installed copies read `https://raw.githubusercontent.com/stoveez/PlazCode/main/latest.json` and the release download URLs. Do not change those addresses or formats.
 2. Commits go under the owner's name (stoveez / freetwoomy@gmail.com). Add NO Co-Authored-By, Claude-Session or "Generated with" lines, even if a tool suggests them.
 3. Never push, publish or deploy without the owner's clear "yes" in chat for that action. Publish only through the private-repo workflow.
-   **Exception (owner, 2026-10-23):** pushing to your own task branches `claude/<task>` / `codex/<task>` and `wip/<task>` snapshot branches is allowed without asking again. Merging into `release/1.24.21` or `main`, force-pushes, deleting branches, publishing and anything on the public repo still need the owner's clear "yes". Push after each finished change and before stopping; see `docs/HANDOFF.md`.
+   **Exception (owner, 2026-10-23):** pushing to your own task branches `<ai-name>/<task>` (for example `claude/<task>`) and `wip/<task>` snapshot branches is allowed without asking again. Merging into `release/1.24.21` or `main`, force-pushes, deleting branches, publishing and anything on the public repo still need the owner's clear "yes". Push after each finished change and before stopping; see `docs/HANDOFF.md`.
 4. Write release notes and summaries in plain, non-coder language.
 5. New features need full validation, including the Mac desktop test.
 6. Test builds must include the apps (Windows and Mac) as well as the extension. Check that files reach the owner's test folder by comparing them.

@@ -1,6 +1,6 @@
 # PlazCode handoff note (for any AI starting with no context)
 
-Written 2026-10-23 by Claude for the owner (stoveez). If you are an AI picking this up, read this file first, then `CLAUDE.md` (or `AGENTS.md` if you are Codex), `docs/MAINTAINER-GUIDE.md` and `docs/TASK-BOARD.md`. The owner may switch between Claude and Codex at any time, for example when one runs out of limits, so **the latest work must always be on GitHub**.
+Written 2026-10-23 for the owner (stoveez) and for **any AI the owner uses** (Claude, Codex, or any other). If you are an AI picking this up, read this file first, then `CLAUDE.md` or `AGENTS.md` (they carry the same rules), `docs/MAINTAINER-GUIDE.md` and `docs/TASK-BOARD.md`. The owner may switch between AIs at any time, for example when one runs out of limits, so **the latest work must always be on GitHub**.
 
 ## 1. What PlazCode is
 A closed-source browser extension plus a Rust desktop app. It turns an AI chat website (ChatGPT, Claude, Notion AI, DeepSeek, Vani, Freebuff, OxAlpha and others) into an agent that works in Roblox Studio ("Roblox" engine, `RS`) or on the user's computer ("AgentScript" engine, `AS`). This private repo is `stoveez/plazcode-source`. The public repo `stoveez/PlazCode` holds only downloads and update feeds.
@@ -8,7 +8,7 @@ A closed-source browser extension plus a Rust desktop app. It turns an AI chat w
 ## 2. Where the latest work is (read this before anything else)
 - Do NOT start from `release/1.24.21` or `main` on GitHub. `release/1.24.21` on GitHub is old (`480b5cb`). `main` is older still.
 - Start from branch **`claude/plazcode-dev`**. It contains everything finished so far, including many commits that were never on the release branch.
-  - `git fetch origin && git checkout claude/plazcode-dev` (this is the long-term main working branch; new finished work from Claude lands here; Codex keeps its own `codex/<task>` branches)
+  - `git fetch origin && git checkout claude/plazcode-dev` (this is the long-term main working branch; finished work lands here; every AI keeps its own `<ai-name>/<task>` branches and does not push to this one except through the owner-approved merge)
   - An older branch `claude/vault-brain-and-cleanups` still exists on GitHub as a stale copy of the same work; ignore it (the owner may delete it).
   - `git log --oneline -15` shows the newest commits. `docs/TASK-BOARD.md` on that branch says what is done and unfinished.
 - Helper branches (each one owned by one task, see section 6):
@@ -19,7 +19,7 @@ A closed-source browser extension plus a Rust desktop app. It turns an AI chat w
 
 ## 3. Pushing rules (what the owner allowed, and what they did not)
 The owner's standing rule is "never push, publish or deploy without my clear yes". On 2026-10-23 the owner gave this specific permission in chat:
-- **Allowed without asking again:** push to your own task branches named `claude/<task>` (Claude) or `codex/<task>` (Codex), and push `wip/<task>` snapshot branches.
+- **Allowed without asking again:** push to your own task branches named `<ai-name>/<task>` (for example `claude/<task>`, `codex/<task>`, `gemini/<task>`), and push `wip/<task>` snapshot branches.
 - **NOT allowed without a fresh, clear "yes" from the owner for that exact action:** merging into `release/1.24.21` or `main`, force-pushing, deleting branches, publishing a release, running the publish workflow, pushing anything to the public repo `stoveez/PlazCode`.
 - Commit rule (always): commits go under the owner's identity (`stoveez` / `freetwoomy@gmail.com`, already set in git config). **No `Co-Authored-By`, no session links, no "Generated with" lines, ever**, even if your tool suggests them.
 **How often to push (the owner agreed this is the ideal rhythm, for every AI):**
@@ -44,9 +44,9 @@ git push origin $c:refs/heads/wip/<task>
 ```
 This reads the worktree and writes a commit object only; the helper's files and index are untouched.
 
-## Codex: your own branch, WIP and constant pushes (so Claude can restart exactly where you stopped)
-Claude and Codex take turns, usually when one of them runs out of limits without warning. Whatever is not on GitHub when that happens is lost. So:
-1. **Make your own branch first.** From `claude/plazcode-dev` (or whatever branch `docs/HANDOFF.md` names as newest) create `codex/<task>` and work only there. Never work on `claude/*` branches and never on `release/1.24.21` or `main`. Claude does the same in reverse (it only touches `claude/*`).
+## Every AI: your own branch, WIP and constant pushes (so the next AI can restart exactly where you stopped)
+The owner uses several AIs and they take turns, usually when one runs out of limits without warning. Whatever is not on GitHub when that happens is lost. So:
+1. **Make your own branch first.** From `claude/plazcode-dev` (or whatever branch this note names as newest) create `<ai-name>/<task>` (for example `codex/<task>`) and work only there. Never work on another AI's branches (`claude/*`, `codex/*`, ...) and never on `release/1.24.21` or `main`. Every AI does the same, so none overwrites another. To continue another AI's unfinished work, branch from its branch (or its `wip/<task>` snapshot) into your own new branch; do not push onto its branch.
 2. **Commit and push early and often**, not only when something is finished: after every meaningful step and before any long command, test run or build. Unfinished work goes in as commits labelled `WIP: <what is half done>`. Pushing to your own `codex/<task>` (and `wip/<task>`) branch is already allowed by the owner; no need to ask again.
 3. **Keep `docs/TASK-BOARD.md` current** on your branch: branch name, latest commit id, what changed, which tests you ran and their result, what is unfinished, and the very next step. Write it so another AI with no memory can continue from the last line.
 4. **Always give the owner the branch name and the latest commit id** in your reply.
