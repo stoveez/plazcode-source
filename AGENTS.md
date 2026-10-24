@@ -3,7 +3,7 @@
 This is the private source repo for PlazCode (`stoveez/plazcode-source`). **Read `docs/MAINTAINER-GUIDE.md` completely before you change anything**, then `docs/TASK-BOARD.md`, then `development/1.25.0/NEXT-UPDATE-PLAN.md`. This page is only the short version of the rules; the guide has the details, commands and procedures.
 
 ## Latest work (read `docs/HANDOFF.md` first)
-The newest finished work is on branch **`claude/vault-brain-and-cleanups`** (not yet merged into `release/1.24.21`). `docs/HANDOFF.md` on that branch lists every branch, how to build and test, how to push, and what is unfinished. Start from that branch and make your own `codex/<task>` branch from it.
+The newest finished work is on branch **`claude/plazcode-dev`** (not yet merged into `release/1.24.21`). `docs/HANDOFF.md` on that branch lists every branch, how to build and test, how to push, and what is unfinished. Start from that branch and make your own `codex/<task>` branch from it.
 
 ## Which branch to use (important)
 The repo's default branch `main` is old and does NOT contain these instructions. All current work lives on **`release/1.24.21`**. When you start (in Codex, pick this branch when setting up the environment), work from `release/1.24.21`, and create your own branch from it named `codex/<task>`. Do not commit to `main`, and do not push to `release/1.24.21` itself without the owner's yes. If you can't see `AGENTS.md` or `docs/MAINTAINER-GUIDE.md`, you are on the wrong branch: switch to `release/1.24.21` before doing anything.

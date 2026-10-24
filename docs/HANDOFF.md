@@ -7,8 +7,9 @@ A closed-source browser extension plus a Rust desktop app. It turns an AI chat w
 
 ## 2. Where the latest work is (read this before anything else)
 - Do NOT start from `release/1.24.21` or `main` on GitHub. `release/1.24.21` on GitHub is old (`480b5cb`). `main` is older still.
-- Start from branch **`claude/vault-brain-and-cleanups`**. It contains everything finished so far, including many commits that were never on the release branch.
-  - `git fetch origin && git checkout claude/vault-brain-and-cleanups`
+- Start from branch **`claude/plazcode-dev`**. It contains everything finished so far, including many commits that were never on the release branch.
+  - `git fetch origin && git checkout claude/plazcode-dev` (this is the long-term main working branch; new finished work from Claude lands here; Codex keeps its own `codex/<task>` branches)
+  - An older branch `claude/vault-brain-and-cleanups` still exists on GitHub as a stale copy of the same work; ignore it (the owner may delete it).
   - `git log --oneline -15` shows the newest commits. `docs/TASK-BOARD.md` on that branch says what is done and unfinished.
 - Helper branches (each one owned by one task, see section 6):
   - `claude/chatgpt-claude-stall`: ChatGPT random pauses, Claude gets stuck, tool chip stuck "in progress", "I've sent the command" prose with no command.
@@ -39,7 +40,7 @@ This reads the worktree and writes a commit object only; the helper's files and 
 
 ## Codex: your own branch, WIP and constant pushes (so Claude can restart exactly where you stopped)
 Claude and Codex take turns, usually when one of them runs out of limits without warning. Whatever is not on GitHub when that happens is lost. So:
-1. **Make your own branch first.** From `claude/vault-brain-and-cleanups` (or whatever branch `docs/HANDOFF.md` names as newest) create `codex/<task>` and work only there. Never work on `claude/*` branches and never on `release/1.24.21` or `main`. Claude does the same in reverse (it only touches `claude/*`).
+1. **Make your own branch first.** From `claude/plazcode-dev` (or whatever branch `docs/HANDOFF.md` names as newest) create `codex/<task>` and work only there. Never work on `claude/*` branches and never on `release/1.24.21` or `main`. Claude does the same in reverse (it only touches `claude/*`).
 2. **Commit and push early and often**, not only when something is finished: after every meaningful step and before any long command, test run or build. Unfinished work goes in as commits labelled `WIP: <what is half done>`. Pushing to your own `codex/<task>` (and `wip/<task>`) branch is already allowed by the owner; no need to ask again.
 3. **Keep `docs/TASK-BOARD.md` current** on your branch: branch name, latest commit id, what changed, which tests you ran and their result, what is unfinished, and the very next step. Write it so another AI with no memory can continue from the last line.
 4. **Always give the owner the branch name and the latest commit id** in your reply.
@@ -64,7 +65,7 @@ Claude and Codex take turns, usually when one of them runs out of limits without
 5. High effort (careful tracing) for: the login/license server, the Luau helper library, hard bug hunts, planning big features.
 6. Respect licences (no Multi-Script code; UltraLab only with SyphoDev's permission; Brickwire is MIT with credit).
 
-## 6. What was done on 2026-10-23 (branch `claude/vault-brain-and-cleanups`)
+## 6. What was done on 2026-10-23 (branch `claude/plazcode-dev`)
 - Vani startup: plain first-person request instead of the 14,000-character rulebook, one calm follow-up, clear "AI declined" banner (`providers/vani.js`, `core/main.js`, test `test-vani-startup.js`).
 - Removed the foldable "Working for ..." summary from the chat and the PlazCode bar for every provider (`ACTIVITY_FOLD_OFF` in `core/main.js`, test `test-no-working-for-fold.js`; `test-activity-folding.js` keeps the old logic covered).
 - Vault (Obsidian-style folder of linked notes, `agent/src/vault.rs`, viewer in `core/memory.js`):
@@ -75,7 +76,7 @@ Claude and Codex take turns, usually when one of them runs out of limits without
 - Earlier in the same session (also on this branch): Freebuff and OxAlpha startup fixes, simpler Memory page, grouped Execution settings, clickable Effort list, Thorough work mode sets Effort to Max, Studio-connected check before switching to Roblox, vault "+" and delete, memory notes kept in the vault, startup intro fixes, lean-startup groundwork (not wired in).
 
 ## 7. Open work and known bugs (as reported by testers/owner)
-- `claude/chatgpt-claude-stall` and `claude/notion-new-workspace` are ALREADY MERGED into `claude/vault-brain-and-cleanups`. Still to merge: `claude/agentscript-full-access` (helper may still be working; check `wip/agentscript-full-access` and the board) - use this method: apply with `git apply --3way` or cherry-pick, resolve conflicts in `core/main.js` by keeping both sides, recompute pins, run the full suite and cargo tests.
+- `claude/chatgpt-claude-stall` and `claude/notion-new-workspace` are ALREADY MERGED into `claude/plazcode-dev`. Still to merge: `claude/agentscript-full-access` (helper may still be working; check `wip/agentscript-full-access` and the board) - use this method: apply with `git apply --3way` or cherry-pick, resolve conflicts in `core/main.js` by keeping both sides, recompute pins, run the full suite and cargo tests.
 - Then a fresh CI run and the standard lean test build for the owner (needs the owner's "yes" only for publishing; test builds are private CI artifacts).
 - Notion: startup fails for some users in new workspaces (Notion AI home page), and commands sometimes show "not run" in chat.
 - ChatGPT AgentScript sometimes pauses; Claude (claude.ai) starts up but gets stuck while working for some users; tool chip sometimes still looks "in progress" after finishing.
