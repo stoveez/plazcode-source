@@ -38,3 +38,6 @@ Use maximum care (high reasoning effort) for the license and login server, the L
 
 ## Next-update work
 The Brickwire-inspired items are specified in detail in `development/1.25.0/BRICKWIRE-ITEMS-SPEC.md`; claim them on `docs/TASK-BOARD.md`.
+
+## Your own branch and constant pushes (important)
+Make your own branch `codex/<task>` first (from the newest branch named in `docs/HANDOFF.md`) and work only there. Commit and push early and often, including unfinished work labelled `WIP: ...`, so Claude can restart exactly where you stopped if your limits run out. Keep `docs/TASK-BOARD.md` current (branch, latest commit, what changed, tests, unfinished work, next step) and always tell the owner your branch name and commit id. Full details: the "Codex: your own branch, WIP and constant pushes" section of `docs/HANDOFF.md`.

@@ -37,6 +37,15 @@ git push origin $c:refs/heads/wip/<task>
 ```
 This reads the worktree and writes a commit object only; the helper's files and index are untouched.
 
+## Codex: your own branch, WIP and constant pushes (so Claude can restart exactly where you stopped)
+Claude and Codex take turns, usually when one of them runs out of limits without warning. Whatever is not on GitHub when that happens is lost. So:
+1. **Make your own branch first.** From `claude/vault-brain-and-cleanups` (or whatever branch `docs/HANDOFF.md` names as newest) create `codex/<task>` and work only there. Never work on `claude/*` branches and never on `release/1.24.21` or `main`. Claude does the same in reverse (it only touches `claude/*`).
+2. **Commit and push early and often**, not only when something is finished: after every meaningful step and before any long command, test run or build. Unfinished work goes in as commits labelled `WIP: <what is half done>`. Pushing to your own `codex/<task>` (and `wip/<task>`) branch is already allowed by the owner; no need to ask again.
+3. **Keep `docs/TASK-BOARD.md` current** on your branch: branch name, latest commit id, what changed, which tests you ran and their result, what is unfinished, and the very next step. Write it so another AI with no memory can continue from the last line.
+4. **Always give the owner the branch name and the latest commit id** in your reply.
+5. If a push fails, immediately export a zip or patch of your work and say what is not saved remotely.
+6. Same limits as everyone: no merge into `release/1.24.21` or `main`, no force-push, no publish, nothing on the public repo, commits under the owner's identity with no AI credit lines.
+
 ## 4. How the build and tests work
 - Source = pinned official 1.24.20 plus an overlay in `development/1.24.21/overlay`. **Edit only the overlay.** Never edit `build-src-1.24.21/` (it is regenerated). A file not yet in the overlay is first copied from `build-src-1.24.21/PlazCode/` into the overlay, then edited there.
 - Build: `python3 development/1.24.21/prepare.py` (writes `build-src-1.24.21/PlazCode`). Do not run it while the full test suite is running.
