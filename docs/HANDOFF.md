@@ -1,5 +1,7 @@
 # PlazCode handoff note (for any AI starting with no context)
 
+> 2026-10-24: the short live handoff is now `docs/NOW.md` and long-term notes are in `docs/vault/` (start at `Home.md`). Read those first; this file is the detailed reference.
+
 Written 2026-10-23 for the owner (stoveez) and for **any AI the owner uses** (Claude, Codex, or any other). If you are an AI picking this up, read this file first, then `CLAUDE.md` or `AGENTS.md` (they carry the same rules), `docs/MAINTAINER-GUIDE.md` and `docs/TASK-BOARD.md`. The owner may switch between AIs at any time, for example when one runs out of limits, so **the latest work must always be on GitHub**.
 
 ## 1. What PlazCode is

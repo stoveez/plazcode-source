@@ -1,5 +1,7 @@
 # AGENTS.md - instructions for any AI working in this repo (Codex, Claude, or others)
 
+> **Start here (handoff system, 2026-10-24):** read `docs/NOW.md` first (about 20 lines: where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md` (long-term knowledge, plain Markdown, opens in Obsidian). At the end of a session rewrite `docs/NOW.md` and file anything permanent in the vault. Details: `docs/vault/how-we-work.md`. The rules below stay binding.
+
 This is the private source repo for PlazCode (`stoveez/plazcode-source`). **Read `docs/MAINTAINER-GUIDE.md` completely before you change anything**, then `docs/TASK-BOARD.md`, then `development/1.25.0/NEXT-UPDATE-PLAN.md`. This page is only the short version of the rules; the guide has the details, commands and procedures.
 
 ## Latest work (read `docs/HANDOFF.md` first)

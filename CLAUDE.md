@@ -1,5 +1,7 @@
 # PlazCode private repo: instructions for any AI working here
 
+> **Start here (handoff system, 2026-10-24):** read `docs/NOW.md` first (about 20 lines: where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md` (long-term knowledge, plain Markdown, opens in Obsidian). At the end of a session rewrite `docs/NOW.md` and file anything permanent in the vault. Details: `docs/vault/how-we-work.md`. The rules below stay binding.
+
 Read this first, then `docs/HANDOFF.md` (where the latest work is and how to push it), then `docs/MAINTAINER-GUIDE.md` (the full guide), `docs/TASK-BOARD.md` (who is working on what) and `development/1.25.0/NEXT-UPDATE-PLAN.md`. Codex reads `AGENTS.md`, which says the same rules. If you and another AI work at the same time, follow section 11 of the guide (claim a task on the board, own branch and worktree).
 
 ## What this is
