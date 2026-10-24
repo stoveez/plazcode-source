@@ -538,7 +538,7 @@ const RSProvider = (() => {
   }
 
   async function typeAndSend(text, images) {
-    const ed = getEditor();
+    let ed = getEditor();
     if (!ed) throw new Error("Claude input box not found");
     text = truncateForSend(text);
     const relock = _locked;
@@ -547,6 +547,10 @@ const RSProvider = (() => {
       // Claude drops text typed while it is still streaming. Wait until the reply is really finished before typing,
       // whatever language the page is in (the Stop button label is not always recognised).
       if (isGenerating()) { diag("claude.send.waitIdle", {}); await waitFor(() => !isGenerating(), 45000); }
+      // Claude swaps its composer for a new one when a reply finishes. Type into the editor that is on the page
+      // NOW, not the one found before the wait: text typed into the old, detached editor is lost.
+      ed = getEditor() || ed;
+      if (relock && ed) ed.setAttribute("contenteditable", "true");
       await typeEditorText(ed, text);
       if (images && images.length) {
         if (!await attachImages(images)) throw new Error("Claude did not confirm the screenshot upload. The message was not submitted.");
@@ -569,7 +573,12 @@ const RSProvider = (() => {
       const sent = () => (!stopBefore && !!stopButton()) || userCount() > before || !stillDraft();
       // The editor sometimes loses the typed text when Claude re-renders it. An empty box then looked like a sent
       // message and the run waited a minute for a reply that was never asked for. Type it once more.
-      if (!stillDraft()) { diag("claude.send.retype", {}); await typeEditorText(ed, text); }
+      if (!stillDraft()) {
+        diag("claude.send.retype", { stale: !ed.isConnected });
+        ed = getEditor() || ed;
+        if (relock) ed.setAttribute("contenteditable", "true");
+        await typeEditorText(ed, text);
+      }
       // Claude refuses a new message while it is still streaming. Wait for the Stop button to go away instead of
       // pressing Enter into a busy composer.
       if (stopBefore) { diag("claude.send.waitStopGone", {}); await waitFor(() => !stopButton(), 45000); }

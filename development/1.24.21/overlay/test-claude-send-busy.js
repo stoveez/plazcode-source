@@ -11,13 +11,16 @@ function page() {
   w.HTMLElement.prototype.getBoundingClientRect = function () { return {left: 0, top: 0, width: 40, height: 40, right: 40, bottom: 40}; };
   const ed = d.querySelector('.ProseMirror'), log = {enter: 0, clicks: 0, types: 0};
   let dropNext = 0;
-  d.execCommand = (cmd, _ui, v) => { if (cmd === 'insertText' && v) { log.types++; if (dropNext > 0) { dropNext--; return true; } ed.textContent += v; } else if (cmd === 'insertText') ed.textContent = ''; return true; };
-  ed.addEventListener('keydown', (e) => { if (e.key === 'Enter') { log.enter++; ed.textContent = ''; } });
+  // Text goes to the editor the selection is in; an editor that left the page loses it (as a swapped composer does).
+  const target = () => { const n = w.getSelection().anchorNode, el = n && (n.nodeType === 1 ? n : n.parentElement), box = el && el.closest('.ProseMirror'); return box && box.isConnected ? box : null; };
+  d.execCommand = (cmd, _ui, v) => { const t = target(); if (cmd === 'insertText' && v) { log.types++; if (dropNext > 0) { dropNext--; return true; } if (t) t.textContent += v; } else if (cmd === 'insertText' && t) t.textContent = ''; return true; };
+  const wire = (el) => el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { log.enter++; el.textContent = ''; } });
+  wire(ed);
   d.querySelector('button[aria-label="Send message"]').addEventListener('click', () => { log.clicks++; ed.textContent = ''; });
   const events = [];
   w.eval(src + ';window.__P = RSProvider;');
   const P = w.__P; P.init({diag: (n) => events.push(n)});
-  return {w, d, P, ed, log, events, dropFirst: (n) => { dropNext = n; }};
+  return {w, d, P, ed, log, events, wire, dropFirst: (n) => { dropNext = n; }};
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -41,6 +44,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await b.P.typeAndSend('Output of tree: ok result text here', null, {});
   assert.ok(b.events.includes('claude.send.retype'), 'typed again');
   assert.equal(b.log.clicks, 1, 'then sent once');
+  // 2b. Claude swaps the composer for a new one when the reply finishes: type into the NEW editor.
+  const e = page(), stopE = e.d.createElement('button'); stopE.setAttribute('data-testid', 'stop-button'); stopE.setAttribute('aria-label', 'Stop response'); e.d.querySelector('fieldset').appendChild(stopE);
+  const sendE = e.d.querySelector('button[aria-label="Send message"]'); sendE.style.display = 'none';
+  const runE = e.P.typeAndSend('Output of tree: ok result text here', null, {});
+  await sleep(300);
+  const fresh = e.d.createElement('div'); fresh.className = 'ProseMirror'; fresh.setAttribute('contenteditable', 'true'); e.wire(fresh);
+  e.ed.replaceWith(fresh); stopE.remove(); sendE.style.display = '';
+  sendE.addEventListener('click', () => { fresh.textContent = ''; });
+  await runE;
+  assert.equal(e.log.clicks, 1, 'sent once after the composer was swapped');
+  assert.equal(e.log.enter, 0, 'no Enter');
   // 3. A Stop button in another language (Portuguese UI) is recognised, so PlazCode waits for it.
   const c = page(), pt = c.d.createElement('button'); pt.setAttribute('aria-label', 'Parar resposta'); c.d.querySelector('fieldset').appendChild(pt);
   assert.equal(c.P.isHardGenerating(), true, 'Portuguese Stop button is seen');
