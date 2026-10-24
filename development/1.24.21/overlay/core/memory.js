@@ -1091,8 +1091,8 @@ const PlazCodeMemory = (() => {
           const text = document.createElement('textarea'); text.setAttribute('data-entry-text',''); text.setAttribute('aria-label','Saved memory'); text.dir='auto';text.maxLength = 500000; text.value = entry.text;
           const titleLabel = document.createElement('label'); titleLabel.append('Title', title); const textLabel = document.createElement('label'); textLabel.append('Note', text);
           const buttons = document.createElement('div'); buttons.className = 'pcm-buttons';
-          const save = document.createElement('button'); save.setAttribute('data-memory-save',''); save.textContent = 'Save changes'; save.onclick = () => mutate({action:'edit',id:entry.id,title:title.value,text:text.value});
-          const remove = document.createElement('button'); remove.setAttribute('data-memory-remove',''); remove.textContent = 'Remove note'; remove.onclick = () => mutate({action:'remove',id:entry.id});
+          const save = document.createElement('button'); save.setAttribute('data-memory-save',''); save.textContent = 'Save edit'; save.onclick = () => mutate({action:'edit',id:entry.id,title:title.value,text:text.value});
+          const remove = document.createElement('button'); remove.setAttribute('data-memory-remove',''); remove.textContent = 'Remove'; remove.onclick = () => mutate({action:'remove',id:entry.id});
           buttons.append(save, remove); form.append(titleLabel, textLabel, buttons);
           row.dataset.memorySearch = (titleOf(entry) + ' ' + entry.text + ' ' + (entry.project || '') + ' ' + noteSource(entry)).toLowerCase();
           row.append(summary, form); list.appendChild(row);

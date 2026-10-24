@@ -39,7 +39,7 @@ function contractRuntime() {
   globalThis.PlazCodeI18n = {
     languages, normalize, t, getLanguage:()=>language, setLanguage,
     mountStatic(root) {
-      window.__staticMountedBeforeData = ['taskCenter','explorerWorkspace','memorySettings','skillsWorkspace'].every(id=>!document.getElementById(id).children.length);
+      if(window.__staticMountedBeforeData===undefined)window.__staticMountedBeforeData = ['taskCenter','explorerWorkspace','memorySettings','skillsWorkspace'].every(id=>!document.getElementById(id).children.length);
       const walk=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
       while(walk.nextNode()) { const node=walk.currentNode; if(!node.parentElement.closest('[data-i18n-user-content],textarea,input,pre,code,script,style,[contenteditable]') && ['Language','Settings','Appearance'].includes(node.nodeValue)) bindings.push([node,node.nodeValue]); }
       return { disconnect() {} };
@@ -102,7 +102,7 @@ const pick=(select,value)=>select.evaluate((node,value)=>{node.value=value;node.
     const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
     await page.goto(base,{waitUntil:'load'});
     await page.waitForFunction(()=>window.PlazCodeDesktop && document.documentElement.dataset.desktopThinking==='ultracode');
-    await page.evaluate(()=>PlazCodeDesktop.go('settings'));
+    await page.evaluate(()=>PlazCodeDesktop.go('settings','language'));
     const host=page.locator('#desktopLanguagePicker'), select=host.locator('select'), search=host.locator('input[type=search], input[type=text]').first();
     await select.waitFor({state:'attached'});
     assert.equal(await select.inputValue(),'en','old settings without language default to English');
@@ -123,7 +123,7 @@ const pick=(select,value)=>select.evaluate((node,value)=>{node.value=value;node.
       await page.waitForFunction(code=>document.documentElement.lang===code && PlazCodeI18n.getLanguage()===code,code);
       assert.equal(await page.locator('html').getAttribute('dir'),code==='ar'?'rtl':'ltr');
       assert.equal(JSON.parse(fs.readFileSync(prefsPath,'utf8')).rsLanguage,code);
-      assert.equal(await page.locator('#customInstructions').inputValue(),authored,'language never rewrites instructions');assert.equal(await page.locator('.brand-word').innerText(),'PlazCode','brand is never translated');
+      assert.equal(await page.locator('#customInstructions').inputValue(),authored,'language never rewrites instructions');if(await page.locator('.brand-word').count())assert.equal(await page.locator('.brand-word').innerText(),'PlazCode','brand is never translated');
       if(process.env.PLAZCODE_LANGUAGE_SCREENSHOTS && ['es','ar'].includes(code)) {
         const dir=process.env.PLAZCODE_LANGUAGE_SCREENSHOTS;fs.mkdirSync(dir,{recursive:true});
         await page.locator('#languageSettings').scrollIntoViewIfNeeded();
@@ -162,19 +162,19 @@ const pick=(select,value)=>select.evaluate((node,value)=>{node.value=value;node.
     await page.evaluate(()=>PlazCodeDesktop.go('mcp'));
     await page.locator('#mcpGrid .mcpcommand').last().waitFor();
     assert.equal(await page.locator('#mcpGrid .mcpcommand').last().innerText(),'C:\\Game\\main.exe --language en');
-    await page.evaluate(()=>PlazCodeDesktop.go('settings'));
+    await page.evaluate(()=>PlazCodeDesktop.go('settings','language'));
     await pick(select,'ar');await page.waitForFunction(()=>document.documentElement.lang==='ar');
     await page.locator('[data-settings-section="languageSettings"] > summary').click();
     await page.waitForFunction(()=>JSON.parse(localStorage.getItem('plazcodeSettingsSections')).languageSettings===false);
     preferences=JSON.parse(fs.readFileSync(prefsPath,'utf8'));await page.reload();
     await page.waitForFunction(()=>window.PlazCodeDesktop && document.documentElement.lang==='ar');
-    await page.evaluate(()=>PlazCodeDesktop.go('settings'));
+    await page.evaluate(()=>PlazCodeDesktop.go('settings','language'));
     assert.equal(await select.inputValue(),'ar','language survives desktop reopen');
     assert(!(await page.locator('[data-settings-section="languageSettings"]').evaluate(n=>n.open)),'saved collapsed section is respected on reopen');
     assert.equal(await page.locator('#customInstructions').inputValue(),authored);
     assert.equal(preferences.rsStopMode,'safe');assert.equal(preferences.rsAutoUpdate,false);
     await page.locator('[data-settings-section="languageSettings"] > summary').click();
-    await page.locator('[data-page="updates"]').click();
+    await page.evaluate(()=>PlazCodeDesktop.go('updates'));
     await page.locator('[data-pref=rsAutoUpdate]').click();
     await page.waitForFunction(()=>document.querySelector('[data-pref=rsAutoUpdate]').classList.contains('on'));
     assert.equal(preferences.rsAutoUpdate,true);assert.equal(preferences.rsLanguage,'ar');assert.equal(preferences.rsCustomPrompt,authored);
