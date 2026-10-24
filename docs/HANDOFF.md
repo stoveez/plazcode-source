@@ -100,6 +100,16 @@ NOT yet in any test build or real app (all tested only in my sandbox, Chromium):
 - Five desktop tests updated for the new layout.
 When you add or change anything after the last test build, add it to this list; when a new test build is made, move the list into the "contained" paragraph and update the run number and commit. Tell the owner plainly whether the new things need the extension reloaded or the desktop app replaced.
 
+## Option: build the test zip on the owner's own computer (Claude Code or any other CLI/code agent)
+If the AI is running on the owner's own Windows PC (for example Claude Code, Codex CLI or another code/CLI agent) and not in a cloud sandbox, it can build the Windows test zip locally. This is free, needs NO public window and no GitHub billing, and it can also test the real Windows app and real AI sites on that machine. Cloud sandboxes cannot do this (they have no Windows, no real app, and cannot download CI files). The owner chose to keep this as an option (2026-10-24).
+Windows steps, run from the repo root (written from the CI workflow and `development/1.24.21/package.py`; not yet run end to end locally by the AI who wrote this, so fix this note if a step differs):
+1. Install the tools once: Git, Python 3.12, Node 24, and Rust (rustup, stable toolchain).
+2. `python development/1.24.21/prepare.py` (builds `build-src-1.24.21/PlazCode` from the overlay).
+3. `cargo +stable build --release --locked --manifest-path build-src-1.24.21/PlazCode/agent/Cargo.toml` (builds `PlazCode.exe`).
+4. `python development/1.24.21/package.py` (needs `PlazCode-1.23.0.zip` in the repo root, which is tracked; it assembles the package, rebuilds the Firefox extension and writes `artifacts/PlazCode-1.24.21-test-lean.zip`).
+5. Give the owner `artifacts/PlazCode-1.24.21-test-lean.zip`. It is already the single zip (extract, open the `PlazCode` folder, everything is there), so no wrapper to unpack. Check its file list against the last release zip first (rule 6). Say plainly whether an extension reload is enough or the app must be replaced.
+Limits: the Mac zip can only be built on a Mac or by GitHub's Mac runners (public-then-private plan). A test zip built locally is not a validated build and is never a substitute for the full green CI run needed to publish. Still follow the push and tell-the-owner rules, and never publish without the owner's clear yes.
+
 ## 4. How the build and tests work
 - Source = pinned official 1.24.20 plus an overlay in `development/1.24.21/overlay`. **Edit only the overlay.** Never edit `build-src-1.24.21/` (it is regenerated). A file not yet in the overlay is first copied from `build-src-1.24.21/PlazCode/` into the overlay, then edited there.
 - Build: `python3 development/1.24.21/prepare.py` (writes `build-src-1.24.21/PlazCode`). Do not run it while the full test suite is running.

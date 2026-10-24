@@ -48,6 +48,9 @@ A real update is the same build that passed the full check, promoted by the priv
 6. Right after the publish has finished, remind the owner to set the repo back to Private (same settings link). Repeat until it is private.
 Read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first real publish; they are the source of truth and this list is a summary. Test builds are not publishing and need only steps 1, the build and the zips, then the Private reminder.
 
+## Local build option
+- Option (owner, 2026-10-24): an AI running on the owner's own Windows PC (Claude Code or another code/CLI agent) can build the Windows test zip locally for free, with no public window. Steps and limits: `docs/HANDOFF.md`, section "Option: build the test zip on the owner's own computer". The Mac zip still needs a Mac or CI.
+
 ## Effort
 Use maximum care (high reasoning effort) for the license and login server, the Luau helper library and build self-checks, hard bug hunts (for example the Notion send problem) and the planning of big features.
 
