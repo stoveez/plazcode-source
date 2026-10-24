@@ -425,9 +425,8 @@ html[data-desktop-theme] .titlebar{height:52px;flex:0 0 52px;padding:0 12px 0 16
 .nx-area.active{background:rgb(var(--nx-rgb)/.15);border-color:rgb(var(--nx-rgb)/.28);color:#fff}
 .nx-area.active svg{color:var(--orange2,#ffe0a1)}
 html[data-desktop-theme] .title-label{display:none}
-/* The Effort label stays visible in the title bar with a theme on (the version text stays hidden). */
-html[data-desktop-theme] .desktop-version-stack .title-version{display:none}.desktop-effort{white-space:nowrap}
-@media(max-width:900px){html[data-desktop-theme] .desktop-version-stack{display:none}}
+/* Owner 2026-10-24: no Effort/version text in the title bar. The sidebar still shows Effort and the version. */
+.desktop-version-stack{display:none!important}
 /* content */
 html[data-desktop-theme] .content{padding:22px 26px 28px;background:transparent}
 html[data-desktop-theme] .shell{background:transparent;position:relative;z-index:1}

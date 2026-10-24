@@ -75,7 +75,7 @@ For a new version number, copy the 1.24.21 workflows and `development/1.24.21` f
 
 ## Open items
 - Desktop-layout browser tests: on 2026-10-24 the five that were out of date (`test-ultra-trash-browser`, `test-ultracode-appearance`, `test-sidebar-explorer`, `test-workspace-scroll`, `test-desktop-performance`) were updated for the new layout and pass in Chromium here; the Firefox halves of these tests, plus `test-command-watchers`, `test-browsers`, `test-checklist-appearance` and `test-clarification-input`, need Firefox and must be checked in CI (Firefox is not installed in the Claude sandbox). Real app fixes found on the way: dropdown lists (Reasoning, Language) were hidden behind the next settings card (fixed with a lift class set by `core/effort-picker.js`), the Ultra purple border on the active page button was lost, and glow-off left a shadow on it.
-- Owner answers 2026-10-24: the title-bar "Effort: ..." label was brought back (version text stays hidden; hidden below 900px width where the sidebar shows it), and the sidebar now scrolls as one column on short windows (max-height 780px) so every page, link and the account/version rows stay reachable.
+- Owner answers 2026-10-24: the sidebar now scrolls as one column on short windows (max-height 780px) so every page, link and the account/version rows stay reachable. The title bar shows NO Effort or version text (owner choice: removed after trying it back); the sidebar still shows Effort and the version.
 - "Response changed - run paused" banner: needs a debug report from a tester.
 - Mac app opens then closes: needs the tester's app version or crash report (likely an older app with a newer extension).
 - Not live-tested: Ultra on real Studio and AI sites, Vani Co-work, Firefox appearance.
