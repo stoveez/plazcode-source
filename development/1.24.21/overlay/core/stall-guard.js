@@ -52,6 +52,7 @@ const PlazCodeStallGuard = (() => {
   const CLAIM_WAIT = /\b(?:(?:when|once|after|as soon as|until)\b[^.\n]{0,60}\b(?:output|results?|responses?|replies|reply)\b[^.\n]{0,30}\b(?:returns?|comes? back|arrives?|is back|are back|is ready|appears?)|(?:waiting|wait)\s+(?:for|on)\s+(?:the |its |that |this )?(?:command(?:'s)? )?(?:output|results?|responses?))\b/i;
   const CLAIM_INTENT = /(?:\bi(?:'ll|\s+will)\s+(?:now|next|first|then)\b|\bi'm going to\s+(?:now|next|first)\b|\b(?:now|next|first|then),?\s+i(?:'ll|\s+will)\b)\s*(?:send|issue|run|execute|call|read|check|inspect|open|fetch|search|list|look|grep|write|edit|update|create|apply|test|verify)\b/i;
   const ASKS_USER = /\?\s*$|\b(?:let me know|tell me|which (?:one|option)|do you (?:want|prefer)|would you (?:like|prefer)|shall i|should i)\b/i;
+  const asksUser = text => ASKS_USER.test(String(text || '').trim().slice(-300));
   function claimsUnsentCommand(text) {
     const t = String(text || '').replace(/[’]/g, "'").trim();
     if (t.length < 20 || t.length > 2500) return false;
@@ -146,6 +147,6 @@ const PlazCodeStallGuard = (() => {
   function stop(reason, stalls, limit) {
     return `ERROR: command was not executed. ${reason}` + (stalls >= limit ? ` You have repeated yourself ${stalls} times in a row. Stop calling tools now and tell the user, in one or two sentences, what is blocking you.` : '');
   }
-  return { create, isRead, claimsUnsentCommand, hangDecision, hangConfig, endsInsideToolBlock, studioModeHint, backoffMs, HANG_DEFAULTS };
+  return { create, isRead, claimsUnsentCommand, asksUser, hangDecision, hangConfig, endsInsideToolBlock, studioModeHint, backoffMs, HANG_DEFAULTS };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = PlazCodeStallGuard;
