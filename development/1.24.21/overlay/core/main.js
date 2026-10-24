@@ -5037,8 +5037,14 @@ return result`;
           : listRes.calls.find((c) => c && (c.tool === "list_commands" || c.tool === "list_tools")) || null)
         : null;
       if (!startupCall || (startupCall.tool !== "list_commands" && startupCall.tool !== "list_tools")) {
-        diag("start.handshakeFailed", { kind: listRes.kind, chars: String(listRes.text || "").length, detail: String(listRes.detail || "").slice(0, 200) });
+        // 1.24.21 (Notion new workspace): record what the page really showed (page type, whether a
+        // chat address appeared, how many parts, the start of the reply) so a failure can be
+        // explained from the log. A provider may also word the banner from that evidence.
+        let seen = null;
+        try { seen = P.startupEvidence ? P.startupEvidence(listRes) : null; } catch {}
+        diag("start.handshakeFailed", { kind: listRes.kind, chars: String(listRes.text || "").length, detail: String(listRes.detail || "").slice(0, 200), seen });
         if(isProviderPolicyRefusal(listRes.text) || (P.userVoiceStartup && looksLikeStartupDecline(listRes.text))){showStartupRefusal();return;}
+        if (seen && seen.banner && listRes.kind !== "context_limit") { ui.banner("warn", seen.banner.title, seen.banner.text); return; }
         // 1.24.21: say what really happened. A site notice is quoted as it is; no reply at all is
         // not a "limit" and not a missing command, so it is not reported as either.
         if (listRes.kind === "context_limit") {

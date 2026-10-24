@@ -75,7 +75,7 @@ Claude and Codex take turns, usually when one of them runs out of limits without
 - Earlier in the same session (also on this branch): Freebuff and OxAlpha startup fixes, simpler Memory page, grouped Execution settings, clickable Effort list, Thorough work mode sets Effort to Max, Studio-connected check before switching to Roblox, vault "+" and delete, memory notes kept in the vault, startup intro fixes, lean-startup groundwork (not wired in).
 
 ## 7. Open work and known bugs (as reported by testers/owner)
-- Merge the three helper branches (section 2) into `claude/vault-brain-and-cleanups` after review: apply with `git apply --3way` or cherry-pick, resolve conflicts in `core/main.js` by keeping both sides, recompute pins, run the full suite and cargo tests.
+- `claude/chatgpt-claude-stall` and `claude/notion-new-workspace` are ALREADY MERGED into `claude/vault-brain-and-cleanups`. Still to merge: `claude/agentscript-full-access` (helper may still be working; check `wip/agentscript-full-access` and the board) - use this method: apply with `git apply --3way` or cherry-pick, resolve conflicts in `core/main.js` by keeping both sides, recompute pins, run the full suite and cargo tests.
 - Then a fresh CI run and the standard lean test build for the owner (needs the owner's "yes" only for publishing; test builds are private CI artifacts).
 - Notion: startup fails for some users in new workspaces (Notion AI home page), and commands sometimes show "not run" in chat.
 - ChatGPT AgentScript sometimes pauses; Claude (claude.ai) starts up but gets stuck while working for some users; tool chip sometimes still looks "in progress" after finishing.
