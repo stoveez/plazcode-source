@@ -955,6 +955,13 @@
           P.streamLen(_settleItem) > _settleLen0) {
         await waitFor(() => !P.isGenerating(), 4000);
       }
+      // 1.24.21 stall fix: the site's real Stop button still showing means the site cannot take a new message yet
+      // (ChatGPT and Claude refuse it, and the send then failed with "Message didn't send" after a few seconds).
+      // For a result PlazCode sends itself, give the button a bounded moment to go away first.
+      if (!userPrompt && !A.stop && typeof P.isHardGenerating === "function" && P.isHardGenerating()) {
+        diag("send.waitStopGone", {});
+        await waitFor(() => A.stop || !P.isHardGenerating(), 15000);
+      }
       const base = P.assistantCount();
       const preUser = P.userCount();
       // Arm the optimistic pre-hide for the result turn we're about to inject:
@@ -1169,7 +1176,7 @@
     const STABLE_MS = T.STABLE_MS; // generating-flag stuck ON but text frozen → done
     let started = false, doneSince = 0, lastLimitScan = 0;
     let lastText = null, lastChangeAt = Date.now(), genFalseSince = 0;
-    let hardProgressText = null, hardProgressAt = Date.now();
+    let hardProgressText = null, hardProgressAt = Date.now(), hardNoticeShown = false;
     // ── DIAG: finalisation-latency instrumentation (multi_edit "slow" probe) ──
     // genOffFirstAt: the FIRST moment gen went false after streaming began (does
     // NOT reset on flicker, unlike genFalseSince). genFlickers: how many times gen
@@ -1225,6 +1232,7 @@
 
     while (Date.now() - lastActiveAt < TIMEOUT) {
       if (A.stop) return { kind: "stopped" };
+      A.loopBeatAt = Date.now(); // liveness stamp for the stuck-run monitor (see "Stuck run monitor")
       // NEVER let a deadline expire while the tab is in the background. A hidden
       // tab has no layout (innerText reads come back "", getBoundingClientRect is
       // 0x0) and Chrome throttles its timers, so every read here is unreliable -
@@ -1278,7 +1286,17 @@
       let d = P.readAssistant();
       const progress = ((d.reply || "") + "\n" + (d.thinking || "")).replace(/\s+/g, " ").trim();
       if (progress !== hardProgressText) { hardProgressText = progress; hardProgressAt = Date.now(); }
-      if (Date.now() - hardProgressAt >= TIMEOUT) {
+      // 1.24.21 stall fix: while the site's REAL Stop button is up the AI is still working. ChatGPT Thinking and
+      // Claude extended thinking can show no new text for many minutes, and giving up at the normal 5 minute
+      // limit paused the run ("stops mid-task, nothing happens until I poke it"). A provider may allow a longer
+      // quiet period while Stop is showing (timings.HARD_STALL_MS); say so once instead of waiting in silence.
+      const hardLimit = hardGenerating ? Math.max(TIMEOUT, Number(T.HARD_STALL_MS) || 0) : TIMEOUT;
+      if (hardGenerating && hardLimit > TIMEOUT && !hardNoticeShown && Date.now() - hardProgressAt >= TIMEOUT) {
+        hardNoticeShown = true;
+        diag("response.longThinking", { quietMs: Date.now() - hardProgressAt });
+        try { if (typeof ui !== "undefined") ui.toast(`${P.displayName} has shown no new text for ${Math.round(TIMEOUT / 60000)} minutes but is still working. PlazCode keeps waiting.`); } catch {}
+      }
+      if (Date.now() - hardProgressAt >= hardLimit) {
         return {kind:"busy_timeout"};
       }
       // Sites virtualize their lists, so the absolute assistant count can DROP
@@ -3650,7 +3668,8 @@ return result`;
       return /\b(?:game:GetService|local\s+\w+\s*=|script\.Parent|workspace\b|Instance\.new|:FindFirstChild|task\.wait|function\s*\w*\s*\()/.test(code);
     });
   }
-  const PLAN_CONTINUE_FEEDBACK = "(PlazCode: plan received. Do not stop or wait for approval; Plan Mode means plan, then implement. Start step 1 now: send exactly ONE command using the exact list_commands schemas. Do not repeat the plan.)";
+  const CLAIM_NUDGE_FEEDBACK = '(PlazCode: your last reply said a command was sent, but no command block reached PlazCode, so nothing ran. If you still need it, send it now as ONE fenced json block, exactly like {"command": "name", "params": {...}}, and write nothing after the block. If you are actually finished, reply with a short final summary and do not mention sending commands.)';
+  const PLAN_CONTINUE_FEEDBACK ="(PlazCode: plan received. Do not stop or wait for approval; Plan Mode means plan, then implement. Start step 1 now: send exactly ONE command using the exact list_commands schemas. Do not repeat the plan.)";
   function planWantsImplementation() {
     let plan = false, lvl = "default";
     try { plan = !!(window.__rsPlanMode && window.__rsPlanMode()); } catch {}
@@ -3986,6 +4005,9 @@ return result`;
     // Some sites end the turn after the plan, which used to finish the run with
     // nothing built. Continue such a plan-only reply once per loop.
     let planContinues = 0, toolsThisLoop = 0;
+    // 1.24.21: a reply that says a command was sent (or will be) but holds no command block. One calm nudge, then
+    // a clear banner; the counter resets whenever a real command arrives so it can never loop.
+    let claimNudges = 0;
     let refuseRetries = recoveryAttempt;
     let pasteReminders = 0;
     let recoverSession = null;
@@ -3996,10 +4018,12 @@ return result`;
     ui.showStop(true);
     P.setInputLock(true); // prevent user from typing while the agent is active
     ui.inputCover(true);  // keep the "Agent is working" cover up for the WHOLE loop
+    A.loopBeatAt = Date.now();
     diag("loop.start", { base });
     try {
       try { await beginTaskCheckpoint(); } catch(error) { A.checkpointId=null;ui.toast("Task checkpoint unavailable: "+(error.message||String(error))); }
       while (!A.stop) {
+        A.loopBeatAt = Date.now(); // liveness stamp for the stuck-run monitor
         // Gate the WHOLE cycle on tab visibility. We only advance - read the
         // reply, PARSE it, EXECUTE a tool, inject the result - while the AI tab
         // is the FOREGROUND tab of its Edge window. document.visibilityState
@@ -4032,8 +4056,11 @@ return result`;
         // backoff, then resend the same message. No attempt cap: only Stop ends it.
         {
           let busyDetail = res.kind === "busy" ? String(res.detail || "busy") : null;
-          if (!busyDetail && P.isBusyMsg && res.item) {
-            try { const t = String(res.item.innerText || "").trim(); if (t && t.length < 400 && !RSParse.hasOpenToolBlock(t) && P.isBusyMsg(t)) busyDetail = t; } catch {}
+          // 1.24.21 stall fix: only a reply with NO command can be a site notice. A short real command whose
+          // arguments merely contain a word like "capacity" or "rate limit" used to be read as "rate limiting" and
+          // the previous result was re-sent in a loop, so the run looked stuck.
+          if (!busyDetail && P.isBusyMsg && res.item && (res.kind === "text" || res.kind === "empty")) {
+            try { const t = String(res.item.innerText || "").trim(); if (t && t.length < 400 && !RSParse.hasOpenToolBlock(t) && !RSParse.hasToolSignature(t) && P.isBusyMsg(t)) busyDetail = t; } catch {}
           }
           if (busyDetail) {
             busyWaits++;
@@ -4065,7 +4092,7 @@ return result`;
         }
         if (res.kind === "busy_timeout") {
           ui.banner("warn", `${P.displayName} is still generating`,
-            "No progress was observed before the wait limit. PlazCode paused without sending feedback or stopping the AI. Let it finish, or stop it yourself before continuing.");
+            "No new text appeared for a very long time while the AI still showed its Stop button. PlazCode paused without sending anything or stopping the AI. If the AI finishes with a command, PlazCode picks it up by itself; otherwise stop it yourself and press Restart in the PlazCode bar.");
           break;
         }
         if (res.kind === "timeout") {
@@ -4203,6 +4230,21 @@ return result`;
             base = await submitAndGetBase(PLAN_CONTINUE_FEEDBACK);
             continue;
           }
+          // 1.24.21 stall fix: "I've sent the command ... when its output returns I'll update" with no command
+          // block used to count as a finished answer and the run just sat there. Nudge once, then say so plainly.
+          if (!A.stop && typeof PlazCodeStallGuard !== "undefined" && PlazCodeStallGuard.claimsUnsentCommand && PlazCodeStallGuard.claimsUnsentCommand(body)) {
+            if (claimNudges < 1) {
+              claimNudges++;
+              diag("loop.claimNudge", { chars: body.length });
+              ui.toast(`${P.displayName} said it sent a command but none arrived. Asking once for the command block.`);
+              base = await submitAndGetBase(CLAIM_NUDGE_FEEDBACK);
+              continue;
+            }
+            diag("loop.claimGiveUp", { chars: body.length });
+            ui.banner("warn", "The AI did not send its command",
+              `${P.displayName} said a command was sent, but no command block arrived, even after one reminder. Nothing was run. Ask it to resend the command, or press Restart in the PlazCode bar.`);
+            break;
+          }
           completed = true;
           ui.inputCover(false);
           P.setInputLock(false);
@@ -4230,6 +4272,7 @@ return result`;
             continue;
           }
           invalidToolAttempts = 0;
+          claimNudges = 0; // a real command arrived: the next unsent-command claim gets its own nudge
           const call = calls[0];
           // Planning/bookkeeping commands (checklists, command lists, memory,
           // skills, thinking) are not project work: a plan written after them
@@ -4309,6 +4352,7 @@ return result`;
             // stopped call still going green a moment later).
             if (res.item) { res.item.dataset.zStopped = "1"; rememberHalted(res.item); }
             decorate.toolBox(res.item, call.tool, "err", "stopped", true, "", category);
+            try { ui.trackCard(call.tool, "err", "stopped", category); } catch {} // 1.24.21: the Activity card must not stay on "executing"
             break;
           }
           const isErr = feedbackIsError(feedback);
@@ -4361,7 +4405,9 @@ return result`;
           // 1.21.0: repeated failures no longer pause the run; the model is told to change approach.
           const toSendFinal = failedToolAttempts>=3 ? toSend + "\n\n(System note: " + failedToolAttempts + " commands in a row failed. Do not repeat the same command. Re-read the error, inspect the current state, then try a different approach.)" : toSend;
           if(failedToolAttempts===3) diag("loop.failStreak",{n:failedToolAttempts});
+          A.loopBeatAt = Date.now();
           base = await submitAndGetBase(prepareToolFeedback(toSendFinal), images);
+          A.loopBeatAt = Date.now();
           markActivity(P.allItems().filter(P.isUserItem).at(-1));
         }
       }
@@ -4378,6 +4424,16 @@ return result`;
         try { A._sfxErr = true; } catch {}
       }
     } finally {
+      // 1.24.21 chip fix: whichever way the loop ends (stop, send aborted, internal error), a command card that is
+      // still "running" gets a final state. Before this only the generic error path settled it, so a card could
+      // keep counting seconds after the work was over.
+      if (A.toolRunning && A.toolItem) {
+        try {
+          const zp = A.toolItem.dataset && A.toolItem.dataset.zphase;
+          if (zp !== "err" && zp !== "done") decorate.toolBox(A.toolItem, A.toolName, "err", A.stop ? "stopped" : "interrupted", true, "", RS.toolCategory(A.toolName));
+          ui.trackCard(A.toolName, "err", A.stop ? "stopped" : "interrupted", RS.toolCategory(A.toolName));
+        } catch {}
+      }
       void finishTaskCheckpoint(completed);
       if (!completed && !recoverSession && cowork.snapshot().pending.length) cowork.pause("The agent stopped before finishing. Check the chat, then resume the queue.");
       try { playSfx(A.stop ? "stop" : (A._sfxErr ? "error" : "done")); A._sfxErr = false; } catch {}
@@ -4636,6 +4692,7 @@ return result`;
       A.toolItem.dataset.zStopped = "1";
       rememberHalted(A.toolItem);
       decorate.toolBox(A.toolItem, A.toolName, "err", stopMode === "safe" ? "stopping safely" : "stopped — check partial changes", true, "", RS.toolCategory(A.toolName));
+      try { ui.trackCard(A.toolName, "err", "stopped", RS.toolCategory(A.toolName)); } catch {}
     }
     ui.inputCover(false);
     try { P.setInputLock(false); } catch {}
@@ -5582,8 +5639,9 @@ return result`;
         // anchor slides with generation and expires ~2.5s after it truly stops.
         const resumeGrace = A.resumeArmed && item === P.lastAssistant() &&
           Date.now() - (A.resumeArmedAt || 0) < 2500;
+        const isLastItem = item === P.lastAssistant();
         const live = !stopped && (
-          inFlight || resumeGrace || (item === P.lastAssistant() && P.isGenerating())
+          inFlight || resumeGrace || (isLastItem && P.isGenerating())
         );
         // Orphaned command: a COMPLETE command turn that is the last assistant with
         // NO result below it, not live and not loop-owned, whose generation is now
@@ -5617,7 +5675,13 @@ return result`;
         // window) a command that WAS about to run got labelled dead first.
         const staleLastOrphan = neverRun && item === P.lastAssistant() && !live &&
           Date.now() - A.lastGenAt > RESUME_FRESH_MS;
-        const orphanPending = !stopped && (supersededOrphan || staleLastOrphan);
+        // 1.24.21 chip fix: the restart watchdog has already decided this command will NOT run (it cannot be
+        // parsed, or the task budget paused the run). Say "not run" now instead of spinning until the 3 minute
+        // freshness window ends.
+        const wdGaveUp = neverRun && isLastItem && !live && (
+          (A._wdNoRun && A._wdNoRun.item === item && A._wdNoRun.len === txt.length && Date.now() - A._wdNoRun.at > 4000) ||
+          (A.budgetResume && A.budgetResume.chat === P.conversationKey()));
+        const orphanPending = !stopped && (supersededOrphan || staleLastOrphan || wdGaveUp);
         // Handoff window: a JUST-finished last-assistant command with no result yet
         // that the loop has not taken over (A.running not yet true, so `live` is
         // false). Without this it flashes a premature ✓ "done" for the frames
@@ -7647,7 +7711,8 @@ return result`;
     }
     function trackCard(tool, status, detail, category) {
       const top = recentCards[0];
-      if (top && top.tool === tool && top.status === "run" && status !== "run") {
+      // (A Stop settles the card from several places; a repeat "err" for the same call updates it, never duplicates it.)
+      if (top && top.tool === tool && status !== "run" && (top.status === "run" || (top.status === "err" && status === "err" && Date.now() - top.at < 15000))) {
         top.status = status;
         top.detail = String(detail || "").slice(0, 120);
         top.at = Date.now();
@@ -10637,6 +10702,19 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
     return (Date.now() - t0) / 1000;
   }
 
+  // Ticking seconds on the card of the command that is executing right now. True while a command runs (the caller
+  // then skips the streaming meter). 1.24.21 chip fix: a card already settled (stopped, failed, done) keeps its final
+  // text; only a card that is still "run" gets the ticking seconds.
+  function tickToolChip() {
+    if (!(A.toolRunning && A.toolItem)) return false;
+    const zp = A.toolItem.dataset && A.toolItem.dataset.zphase;
+    if (zp !== "err" && zp !== "done") {
+      const s = elapsedOn(A.toolItem, "rsToolT0", A.toolStart).toFixed(1);
+      setChipDetail(A.toolItem, (A.toolArg ?  A.toolArg + " · " : "") + `${s}s`);
+    }
+    return true;
+  }
+
   // Timestamp of the user's last REAL click on the site (trusted event, outside
   // RobloxScript's own UI). A genuine "regenerate ↻" is always such a click;
   // DeepSeek's post-stop phantom generations and stop-button re-mount flickers
@@ -10871,18 +10949,14 @@ rsInterval(() => {
 
     // Tool is executing on the MCP → timer on its chip.
     if (A.waitingForClarification) return;
-    if (A.toolRunning && A.toolItem) {
-      const s = elapsedOn(A.toolItem, "rsToolT0", A.toolStart).toFixed(1);
-      setChipDetail(A.toolItem, (A.toolArg ?  A.toolArg + " · " : "") + `${s}s`);
-      return;
-    }
+    if (tickToolChip()) return;
     // The site is streaming a tool call → token count + timer on its chip.
     if (gen) {
       const item = P.lastAssistant();
       const reply = item ?  P.itemText(item) : ""; // non-thinking only
       const zphase = item && item.dataset.zphase;
       // Skip items already settled (done/err) - don't overwrite the finished chip.
-      if (item && zphase !== "done" && zphase !== "err" && RSParse.hasToolSignature(reply)) {
+      if (item && zphase !== "done" && zphase !== "err" && zphase !== "idle" && RSParse.hasToolSignature(reply)) {
         // Live-correct the label as soon as the real name streams in.
         const name = RSParse.toolNameFromText(reply);
         if (name && name !== "command") setChipLabel(item, name);
@@ -10920,6 +10994,25 @@ rsInterval(() => {
     _runBeatActive = active;
   }
   rsInterval(syncRunBeat, 5000);
+  // ── Stuck run monitor (1.24.21) ───────────────────────────────────────────
+  // The loop stamps A.loopBeatAt every time it turns over (each read of the reply, each send, each command). If a
+  // run is "running" but has not turned over for 3 minutes while nothing legitimate is holding it (a command
+  // executing, a question or approval waiting for the user, the tab parked by the user's own setting), say so
+  // plainly instead of staying silent. It never stops or restarts anything by itself. A page that was frozen or
+  // throttled (the check itself ran late) is never blamed.
+  let _liveCheckAt = 0, _stallShownFor = 0;
+  rsInterval(() => {
+    const now = Date.now(), gap = now - _liveCheckAt;
+    _liveCheckAt = now;
+    if (!A.running || A.stop || A.toolRunning || A.parked || A.waitingForClarification || A.enhancing || A.pendingToolSettles) return;
+    const approval = document.getElementById("rs-approve");
+    if (!A.loopBeatAt || gap > 20000 || (approval && !approval.hidden)) { A.loopBeatAt = now; return; }
+    if (now - A.loopBeatAt < 180000 || _stallShownFor === A.loopBeatAt) return;
+    _stallShownFor = A.loopBeatAt;
+    diag("loop.stalled", { silentMs: now - A.loopBeatAt, sending: !!A.pendingSubmit, injecting: !!A.injecting });
+    ui.banner("warn", "PlazCode has made no progress for 3 minutes",
+      `${P.displayName} and PlazCode are both quiet. Check the chat. If nothing is happening, press Stop, then Start or Restart in the PlazCode bar. Nothing was stopped or sent for you.`);
+  }, 5000);
   // The critic window: the background worker opens a fresh chat on this AI site and sends the question here.
   // This tab never runs an agent session; it types the message (with pictures), waits for the reply and returns it.
   async function criticRun(msg) {
@@ -11243,7 +11336,9 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
     // converges while the user is on another site (background mode).
     rsInterval(scheduleSweep, 3000);
   // When the user returns to the tab, immediately refresh camouflage/state.
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) { scheduleSweep();bg({type:"release-check"}).catch(()=>{}); } });
+  // 1.24.21: coming back to the tab also wakes every loop sleep that is already due and refreshes the run's liveness
+  // stamp, so a throttled background timer never leaves the run waiting for its next (up to one minute late) tick.
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { try { wakeDueSleepers(); } catch {} if (A.running) A.loopBeatAt = Date.now(); scheduleSweep();bg({type:"release-check"}).catch(()=>{}); } });
 
   syncSessionState();
 
@@ -11412,7 +11507,12 @@ if (A.userStopped) return;                          // user halted → never rel
     if (isRememberedExecuted(item, txt)) { if (A._wdWhy !== 'executed:' + txt.length) { A._wdWhy = 'executed:' + txt.length; diag('resume.blocked', { why: 'alreadyExecuted', chars: txt.length }); } return; }
     // Resume only when a COMPLETE, parseable command is present - and re-attempt
     // if the turn has GROWN since our last try.
-    if (!RSParse.parseToolCalls(txt).length) { if (A._wdWhy !== 'parse:' + txt.length) { A._wdWhy = 'parse:' + txt.length; diag('resume.blocked', { why: 'commandNotParseable', chars: txt.length }); } return; }
+    if (!RSParse.parseToolCalls(txt).length) {
+      // 1.24.21 chip fix: remember the verdict so the command card says "not run" instead of spinning (see wdGaveUp).
+      if (!A._wdNoRun || A._wdNoRun.item !== item || A._wdNoRun.len !== txt.length) A._wdNoRun = { item, len: txt.length, at: Date.now() };
+      if (A._wdWhy !== 'parse:' + txt.length) { A._wdWhy = 'parse:' + txt.length; diag('resume.blocked', { why: 'commandNotParseable', chars: txt.length }); }
+      return;
+    }
     const len = txt.length;
     if (item.dataset.zResume && Number(item.dataset.zResumeLen || 0) >= len) return;
     item.dataset.zResume = "1";
