@@ -5501,6 +5501,7 @@ return result`;
     const chip = item.querySelector(".rs-chip");
     if (chip) chip.remove();
     item.classList.remove("rs-hidden");
+    try { P.syncHiddenShell && P.syncHiddenShell(item); } catch {}
     item.querySelectorAll(".rs-tool-hide").forEach((e) => e.classList.remove("rs-tool-hide"));
     item.querySelectorAll(".rs-cmd-mask").forEach((e) => e.classList.remove("rs-cmd-mask"));
     delete item.dataset.rs;
@@ -5567,8 +5568,10 @@ return result`;
         // Fully injected turn (result / sys) → hide the whole item.
         if (chip.parentElement !== item) item.insertBefore(chip, item.firstChild);
         item.classList.add("rs-hidden");
+        try { P.syncHiddenShell && P.syncHiddenShell(item); } catch {}
       } else {
         item.classList.remove("rs-hidden");
+        try { P.syncHiddenShell && P.syncHiddenShell(item); } catch {}
         // findToolBlockSpot ALSO applies the .rs-tool-hide classes (its real job);
         // we call it for that even when we don't use its returned position.
         const spot = P.findToolBlockSpot(item, chip);
@@ -11633,6 +11636,7 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
       if (last && !last.classList.contains("rs-hidden") &&
           users.length > (A.injectPreUser || 0)) {
         last.classList.add("rs-hidden");
+        try { P.syncHiddenShell && P.syncHiddenShell(last); } catch {}
         A.injectHideUntil = 0; // one-shot: this turn is now masked
         diag("result.prehide", { users: users.length });
       }
@@ -11643,6 +11647,7 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
       if (txt.includes(RS.SYS_MARKER) ||
           (P.isUserItem(item) && RSParse.isInjectedFeedback(txt))) {
         item.classList.add("rs-hidden");
+        try { P.syncHiddenShell && P.syncHiddenShell(item); } catch {}
       }
     }
   }

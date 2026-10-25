@@ -722,7 +722,10 @@ const RSProvider = (() => {
             const buttons = [...safeQueryAll(parent, "button, [role='button']")];
             if (buttons.some((button) => !/^(?:copy(?: code)?(?: to clipboard)?|download(?: code| file)?|expand(?: code)?|collapse(?: code)?|toggle (?:line )?wrap(?:ping)?)$/i.test(
               (safeRead(() => button.getAttribute("aria-label"), null) || safeRead(() => button.title, "") || safeRead(() => button.textContent, "") || "").trim()))) break;
-            const extra = (safeRead(() => parent.textContent, "") || "").replace(safeRead(() => pre.textContent, "") || "", "").replace(/\s+/g, " ").trim();
+            // Button text is left out, and icon-font glyphs (private-use characters such as Claude's copy icon) and zero-width marks are dropped, so a frame holding only a "json" label and a copy button is hidden whole.
+            let extra = (safeRead(() => parent.textContent, "") || "").replace(safeRead(() => pre.textContent, "") || "", "");
+            for (const button of buttons) { const label = safeRead(() => button.textContent, "") || ""; if (label) extra = extra.replace(label, ""); }
+            extra = extra.replace(/[\uE000-\uF8FF\u200B-\u200D\u2060\uFEFF]/g, "").replace(/\s+/g, " ").trim();
             if (!/^(?:(?:json|javascript|lua|luau|text|code|copy|download|expand|collapse|to|clipboard|file|toggle|line|wrap|wrapping)(?: code)?\s*)*$/i.test(extra)) break;
             wrapper = parent;
           }
@@ -735,6 +738,18 @@ const RSProvider = (() => {
       if (CMD_SHAPE.test(safeRead(() => el.textContent, "") || "")) hide(el);
     });
     return hidAny;
+  }
+
+  // A PlazCode turn hidden with no chip left in it (a result before its chip lands, or a masked startup) still left Claude's
+  // empty grey message bubble and its action row behind. Hide that user row while the turn shows nothing; show it again otherwise.
+  function syncHiddenShell(item) {
+    if (!item) return;
+    const scope = safeClosest(item, "[data-user-scope]");
+    if (!scope || safeQuery(scope, '[data-testid="user-message"]:not(.rs-hidden)')) { if (scope) scope.classList.remove("rs-empty-turn"); return; }
+    const hidden = safeRead(() => item.classList.contains("rs-hidden"), false);
+    const chip = [...(safeRead(() => item.children, null) || [])].find((child) => safeRead(() => child.classList.contains("rs-chip"), false));
+    const chipShown = !!chip && safeRead(() => getComputedStyle(chip).display !== "none", true);
+    scope.classList.toggle("rs-empty-turn", hidden && !chipShown);
   }
 
   const PROMPT_EXTRA =
@@ -767,6 +782,6 @@ const RSProvider = (() => {
     turnHalted, findContinueBtn, clickContinueBtn,
     scanError, isTooLongMsg, isBusyMsg,
     attachImages, clearAttachments, conversationKey,
-    installSendHooks, findToolBlockSpot,
+    installSendHooks, findToolBlockSpot, syncHiddenShell,
   };
 })();
