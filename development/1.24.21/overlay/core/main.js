@@ -178,6 +178,10 @@
     multi_agent: "plazcode_agent",
     spawn_agent: "plazcode_agent",
     status: "plazcode_status",
+    features: "plazcode_features",
+    feature_help: "plazcode_features",
+    plazcode_feature_help: "plazcode_features",
+    plazcode_feature_guide: "plazcode_features",
     plazcode_attach: "attach_feedback",
     plazcode_attach_feedback: "attach_feedback",
     attach_image: "attach_feedback",
@@ -2229,7 +2233,7 @@
 
   const DESKTOP_UTILITY_TOOLS = [
     "plazcode_clarify",
-    "list_commands", "list_mcp_servers", "plazcode_status", "web_fetch", "web_search",
+    "list_commands", "list_mcp_servers", "plazcode_status", "plazcode_features", "web_fetch", "web_search",
     "plazcode_screenshot", "attach_feedback", "tab_read", "tab_click", "tab_type",
     "tab_scroll", "plazcode_debug", "plazcode_agent", "plazcode_memory", "plazcode_vault", "plazcode_critic", "plazcode_engram", "plazcode_templates", "plazcode_skills",
     "asset_bridge_import", "studio_upload_asset", "developer_product_create", "developer_product_list",
@@ -2249,6 +2253,7 @@
     list_commands: "List the available commands and their parameters.",
     list_mcp_servers: "Show connected MCP servers and their status.",
     plazcode_status: "Check the local bridge, engines, and available tools.",
+    plazcode_features: "How to use PlazCode itself: where to click and the steps for any PlazCode feature or setting. Params: topic (a feature id or a few words); leave it empty to list every feature.",
     web_fetch: "Fetch and read a web page.",
     web_search: "Search the web for relevant information.",
     plazcode_screenshot: "Capture the current browser tab for visual feedback.",
@@ -2318,6 +2323,7 @@
       A._bridgeToolNames = bridgeTools.map((tool) => tool.name);
       const tools = bridgeTools.slice();
       tools.push({name:'plazcode_templates',server:activeEngine(),description:'Read-only template references. match query describes a system and finds related script paths/code identifiers with up to 8 matches (limit); read id lists scripts, read id and path returns source with optional offset/limit.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['match','read']},query:{type:'string'},id:{type:'string'},path:{type:'string'},script_id:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:24000}},required:['action']}});
+      tools.push({name:'plazcode_features',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_features,inputSchema:{type:'object',properties:{topic:{type:'string'}}}});
       tools.push({name:'plazcode_skills',server:activeEngine(),description:'Read reusable methods with list/read/match. Bundled starter read returns full paginated instructions, resources and bundle_root; read required references before applying them. Use resource, offset and limit for full files. When the user states a lasting preference or rule about how or when to work (coding style, naming, structure, workflow), apply it and call action suggest once with a short title, a description and the instructions as steps; PlazCode shows the user a one-click Save as skill button and only their click saves it. Never save such preferences yourself; use save only when the user explicitly asks you to save a skill, with user_approved:true. Never suggest routine task steps or repeat a suggestion. Give it a concise descriptive title and detailed description explaining when it is useful, adaptable steps, pitfalls and verification checks. List before saving; update an existing skill with the same purpose (its id and revision) instead of adding a duplicate. Use a new unique ID only for a new method; set confirmed:false unless actually verified. Keep private project details in a project scope. Save observable methods, never hidden reasoning or raw chat logs. The user verifies candidates in Skills. Adapt methods to the current project; never blindly copy code.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','match','save','suggest']},id:{type:'string'},resource:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:24000},revision:{type:'integer'},query:{type:'string'},title:{type:'string'},description:{type:'string'},domain:{type:'string',enum:['all','roblox','local','blender','model','ui']},steps:{type:'array',items:{type:'string'}},pitfalls:{type:'array',items:{type:'string'}},verification:{type:'array',items:{type:'string'}},user_approved:{type:'boolean',description:'true only when the user asked for or agreed to this skill'},project_only:{type:'boolean',description:'suggest: true when the preference applies only to the current project'}},required:['action'],additionalProperties:false}});
       if (window.__rsThinkingLevel?.() === 'ultracode' && activeEngine() === 'roblox' && typeof PlazCodeUltracode !== 'undefined' && PlazCodeUltracode.runTool) {
         tools.push({name:'ultralab_read',server:'roblox',description:'Open the Ultra pack: every skill, agent, reference, script and vault note. action list {prefix?} lists files; read {path, offset?, limit?} returns exact text in pages (follow next_offset for more); search {query, prefix?} finds matching lines in text files. Open the skills, scripts and Check-UI modules a task needs before you build. Read-only.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','search']},path:{type:'string'},prefix:{type:'string'},query:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:40000}},required:['action'],additionalProperties:false}});
@@ -2719,6 +2725,10 @@ return result`;
       if (A.stop) throw new SendAbortedError("Clarification was stopped.");
       try { return "Output of 'plazcode_clarify':\n" + JSON.stringify(await clarification.request(args)); }
       catch (error) { if (error.name === 'AbortError') throw new SendAbortedError(error.message); throw error; }
+    }
+    if (name === "plazcode_features") {
+      if (typeof PlazCodeFeatureGuide === "undefined") return "ERROR: the feature guide is not loaded.";
+      return "Output of 'plazcode_features':\n" + PlazCodeFeatureGuide.answer(args && (args.topic || args.query || args.feature || args.id));
     }
     if (name === "plazcode_result_read") return readRetainedToolResult(args);
     if (name === "plazcode_checklist") {
@@ -3178,7 +3188,7 @@ return result`;
       const animLines = requested === "roblox" ? RSAnim.describeCommands() : [];
       const skillLines = (requested === "roblox" && typeof RobloxScriptSkills !== "undefined") ? RobloxScriptSkills.describeCommands() : [];
       const agentLines = (requested === "local" && typeof AgentScriptSkills !== "undefined") ? AgentScriptSkills.describeCommands() : [];
-      const webLines = [`— Retained results: plazcode_result_read {id,offset?,limit?} — read successive exact pages of a completed command result without executing the command again. Follow next_offset until null.`, `— Task checklist: plazcode_checklist {steps:[{label,status:pending|in_progress|completed}]} — keep 1–20 concrete main task steps; update statuses and append requested work without replacing existing labels. Continue/keep going preserves the plan. Replace tasks only when the user explicitly changes or stops following them; mark completed only after verified success. Never treat tool-call counts or time as completion.`, `— PlazCode Status: plazcode_status {} — live engine, work mode, extra thinking, bridge, blender. Call this if you are unsure which mode you are in.`, `— Web Tools (bridge-level, no Studio needed): web_fetch {url?, query?, max_chars?} — fetch a URL, PlazCode pass query to search the web then fetch the top result; web_search {query, limit?} — DuckDuckGo titles+URLs`, `— Screenshot: plazcode_screenshot {target?: auto|studio|tab|blender} — take a screenshot of Studio, this chat tab, or Blender and attach it to your next message so you can see it. Aliases: screenshot, take_screenshot, send_screenshot.`, `— Attach images: attach_feedback {index?, path?, source?, copy?, paste?, send?} — re-send the most recent screenshot (or any workspace file via path) as an attachment on this message and copy it to the clipboard so the user can paste it. Aliases: attach_image, attach_file, attach_screenshot, attach_last_screenshot, attach_recent_image, copy_screenshot, paste_screenshot.`, `— Browser tab control (no Studio needed): tab_read {tabId?, url_contains?} — read the target tab's URL, title, page text and a numbered list of clickable elements; tab_click {selector?|text?|tabId?|url_contains?} — click an element by CSS selector or visible text; tab_type {text, selector?, submit?, tabId?, url_contains?} — type into a field (optionally press Enter); tab_scroll {amount?, tabId?, url_contains?} — scroll the page. By default they act on the active tab that is NOT this chat; pass url_contains to pick a specific site, or tabId for an exact tab.`
+      const webLines = [`— Retained results: plazcode_result_read {id,offset?,limit?} — read successive exact pages of a completed command result without executing the command again. Follow next_offset until null.`, `— Task checklist: plazcode_checklist {steps:[{label,status:pending|in_progress|completed}]} — keep 1–20 concrete main task steps; update statuses and append requested work without replacing existing labels. Continue/keep going preserves the plan. Replace tasks only when the user explicitly changes or stops following them; mark completed only after verified success. Never treat tool-call counts or time as completion.`, `— PlazCode Features: plazcode_features {topic?} — where to click and the steps for any PlazCode feature or setting; empty topic lists them all.`, `— PlazCode Status: plazcode_status {} — live engine, work mode, extra thinking, bridge, blender. Call this if you are unsure which mode you are in.`, `— Web Tools (bridge-level, no Studio needed): web_fetch {url?, query?, max_chars?} — fetch a URL, PlazCode pass query to search the web then fetch the top result; web_search {query, limit?} — DuckDuckGo titles+URLs`, `— Screenshot: plazcode_screenshot {target?: auto|studio|tab|blender} — take a screenshot of Studio, this chat tab, or Blender and attach it to your next message so you can see it. Aliases: screenshot, take_screenshot, send_screenshot.`, `— Attach images: attach_feedback {index?, path?, source?, copy?, paste?, send?} — re-send the most recent screenshot (or any workspace file via path) as an attachment on this message and copy it to the clipboard so the user can paste it. Aliases: attach_image, attach_file, attach_screenshot, attach_last_screenshot, attach_recent_image, copy_screenshot, paste_screenshot.`, `— Browser tab control (no Studio needed): tab_read {tabId?, url_contains?} — read the target tab's URL, title, page text and a numbered list of clickable elements; tab_click {selector?|text?|tabId?|url_contains?} — click an element by CSS selector or visible text; tab_type {text, selector?, submit?, tabId?, url_contains?} — type into a field (optionally press Enter); tab_scroll {amount?, tabId?, url_contains?} — scroll the page. By default they act on the active tab that is NOT this chat; pass url_contains to pick a specific site, or tabId for an exact tab.`
 , `— Debugger: plazcode_debug {} — Studio LogService errors/warnings. Automatic Debugger (Settings) appends new errors after mutating commands.`, `— Multi-Agent: plazcode_agent {role: planner|builder|reviewer|debugger, task?} — hand off to a specialist. Enable Multi-Agent in Settings.`, `— Developer Products: developer_product_create {name, price, description?, reward?} — create a real Roblox Developer Product on this published universe (sign into roblox.com in Chrome). developer_product_list {} lists them. Aliases: create_developer_product, create_dev_product.`];
       webLines.push(PlazCodeClarification.DESCRIPTION);
       if(A.requestKind==='quick'&&A.quickCatalogue&&!A.catalogueDetail&&!A.starting){
@@ -4515,7 +4525,7 @@ return result`;
           // Planning/bookkeeping commands (checklists, command lists, memory,
           // skills, thinking) are not project work: a plan written after them
           // still needs the automatic "start step 1" continuation.
-          if (!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist|plazcode_memory|plazcode_vault|plazcode_critic|plazcode_skills|plazcode_templates|plazcode_engram|ultralab_read|sequentialthinking|sequential_thinking)$/.test(String(call.tool || "").replace(/^.*[:.]/, ""))) toolsThisLoop++;
+          if (!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist|plazcode_features|plazcode_memory|plazcode_vault|plazcode_critic|plazcode_skills|plazcode_templates|plazcode_engram|ultralab_read|sequentialthinking|sequential_thinking)$/.test(String(call.tool || "").replace(/^.*[:.]/, ""))) toolsThisLoop++;
           if(!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist)$/.test(call.tool)){
             const reason=taskBudget.check();
             if(reason){A.budgetResume={base,chat:P.conversationKey(),checkpoint:A.checkpointId,text:P.classifyText(res.item||P.lastAssistant(),".rs-chip")};ui.captureHandoff(reason);ui.banner("warn",reason,"Paused before the next command. Use Resume paused task in Settings after reviewing the chat. No command was replayed.");break;}
@@ -8821,7 +8831,7 @@ function renderCards(panel) {
       const add = (rows) => { for (const row of rows || []) names.add(typeof row === "string" ? row : row && row.name); };
       if (currentEngine === "local") { if (typeof AgentScriptSkills !== "undefined") add(AgentScriptSkills.SKILL_OPS); }
       else { if (typeof RSAnim !== "undefined") add(RSAnim.ANIM_COMMANDS); if (typeof RobloxScriptSkills !== "undefined") add(RobloxScriptSkills.SKILL_COMMANDS); }
-      add(["list_commands","list_mcp_servers","plazcode_status","plazcode_checklist","web_fetch","web_search","plazcode_screenshot","attach_feedback","tab_read","tab_click","tab_type","tab_scroll","plazcode_debug","plazcode_agent"]);
+      add(["list_commands","list_mcp_servers","plazcode_status","plazcode_features","plazcode_checklist","web_fetch","web_search","plazcode_screenshot","attach_feedback","tab_read","tab_click","tab_type","tab_scroll","plazcode_debug","plazcode_agent"]);
       names.delete(undefined); return names.size;
     }
 

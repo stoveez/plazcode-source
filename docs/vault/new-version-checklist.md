@@ -13,4 +13,5 @@ Many notes, rules and scripts name the current version, today **1.24.21**. When 
 4. Rewrite [`../NOW.md`](../NOW.md) and say plainly what moved to the new version and what is still open.
 5. Re-pin the protected files' hashes in the new overlay's `test-desktop-regression.js` ([build-and-tests](build-and-tests.md)).
 6. Copy the changed notes into the owner's PC vault folder and refresh `.pc-sync.json`.
-7. Never change the updater addresses (`latest.json`, release download URLs) while doing this.
+7. The feature guide is version independent, but `guides/build_guides.py` takes the newest overlay's `core/feature-guide.js`: copy it into the new overlay unchanged (the test `test-feature-guide.js` goes with it).
+8. Never change the updater addresses (`latest.json`, release download URLs) while doing this.

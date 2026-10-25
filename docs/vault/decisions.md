@@ -32,3 +32,4 @@ The owner chose that PlazCode writes the chat summary itself (free, always works
 - Answers: short plain steps with where to click, one example, an offer to do it when the AI can.
 - One feature guide in the code that the app, the website guides and the AI all read; a test fails if a feature has no entry, so new features cannot ship unexplained.
 - 2026-10-25: "Always approve" button on approval cards (not on plans). Remembers the action type everywhere, also for deletes and code running (owner's choice, after being warned). Removed one by one from the Safety list in the PlazCode menu. Stored as `rsAlwaysApprove`.
+- 2026-10-25: Feature guide built as decided: one JSON list in `core/feature-guide.js`; AI command is `plazcode_features` (not `plazcode_help`, which lean startup reserves); startup index is ids only, steps are fetched on demand. When you add a menu item, switch or bar button you must add an entry (the test enforces it).

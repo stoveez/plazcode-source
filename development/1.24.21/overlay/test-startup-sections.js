@@ -28,7 +28,7 @@ const windowStub = {
   __rsWorkMode: () => flags.work || '',
 };
 const context = vm.createContext({ window: windowStub, console });
-for (const file of ['core/luau-knowledge.js', 'core/chat-creators.js', 'core/ultracode.js', 'core/clarification.js', 'core/config.js']) {
+for (const file of ['core/luau-knowledge.js', 'core/chat-creators.js', 'core/ultracode.js', 'core/clarification.js', 'core/feature-guide.js', 'core/config.js']) {
   vm.runInContext(read(file), context, { filename: file });
 }
 const RS = vm.runInContext('RS', context);
@@ -61,7 +61,7 @@ const COMMON_TAIL = [
   ['mode-auto-debugger', '━━━ AUTOMATIC DEBUGGER'], ['mode-multi-agent', '━━━ MULTI-AGENT'], ['mode-forge-gui', '━━━ FORGE GUI MODE'],
   ['mode-blender', '━━━ BLENDER MCP IS CONNECTED'], ['mode-work', '━━━ WORK MODE'], ['mode-autofix-note', '(Auto-fix is watching'],
   ['site-rules', '━━━ ADDITIONAL RULES FOR THIS SITE'], ['custom-prompt', "━━━ USER'S CUSTOM PROMPT"],
-  ['request-scope', 'REQUEST SCOPE:'], ['mcp-policy', 'CONTEXTUAL MCP USE:'], ['chat-creators', 'CHAT MODEL/UI CREATION:'],
+  ['request-scope', 'REQUEST SCOPE:'], ['feature-help', 'FEATURE HELP:'], ['mcp-policy', 'CONTEXTUAL MCP USE:'], ['chat-creators', 'CHAT MODEL/UI CREATION:'],
   ['ultra', 'ULTRA —'], ['approach-summary', 'VISIBLE APPROACH SUMMARY'], ['approach-off', 'SHOW_APPROACH=OFF'],
   ['task-checklist', 'TASK CHECKLIST:'], ['clarification', '\nBEFORE ACTING:'],
 ];
@@ -171,19 +171,19 @@ if (process.argv.includes('--table') || UPDATE) console.log(table());
 // ── Golden pins (lean OFF must reproduce these exactly) ──
 const GOLDEN = {
   /*GOLDEN-START*/
-  'roblox-full': { chars: 43166, sha256: 'a6b75b446f3c766d4cc929e9db29db72de2faa497dee5d63343f8472686f817d' },
-  'roblox-compact-14000': { chars: 11779, sha256: '872ba57ad3e06f47ac92a3c1221712ffdf1c8f6482b3c6fc29f1daf1fc71cd47' },
-  'roblox-full-all-modes': { chars: 51207, sha256: '3da91346f368119918d2ee07eff317ba776b88950047e62040e02b451282a5cd' },
-  'roblox-compact-all-modes': { chars: 19820, sha256: '05099a6343f1de1856649ffd3573074c23a4066d9a2c6642dca3aaeda35ec22c' },
-  'roblox-full-ultra': { chars: 68280, sha256: 'dfaf1cf30033654edbe7facfd49430e344ca9fb5062ffc7cf5a711b56738a240' },
-  'roblox-compact-ultra': { chars: 13940, sha256: 'b9ee1959ffce571c427d78d08e217632d618d5a568024dea75352ab6f368cb9d' },
-  'roblox-full-custom-site': { chars: 43321, sha256: '80772be25032a5d9c41a97afeffb9d6337f395ba05e1f5699d3f3c8fe90247c2' },
-  'local-full': { chars: 9385, sha256: 'de4954a66c2d273258459a68c00de41fed16bbf186d87b8758594a51eaa2f50d' },
-  'local-compact-14000': { chars: 9385, sha256: 'de4954a66c2d273258459a68c00de41fed16bbf186d87b8758594a51eaa2f50d' },
-  'local-full-access': { chars: 10353, sha256: '32ed7aa07e15b78f9d3a5748862e999b799ddf5a02839050eaa8e3364de033c4' },
-  'local-custom-site': { chars: 9507, sha256: '954b2003cdebe6a96c4aa5148ce147eb45178a63c6fc617b649009becd0b6c4d' },
-  'notion-roblox': { chars: 6610, sha256: '90800aba27ed4cb489ba4d104e7474a537ca270a7fc06ec04f295c11ee35cdc5' },
-  'notion-local': { chars: 5107, sha256: '2f7f3bd393437f8f242ee8648e67bbcf82cc5121b640a3d4fe947803a6c62cf2' },
+  'roblox-full': { chars: 43765, sha256: 'd233ba7a1b0fb825ecb22f59f2d123428a6f09d4fe4cbe2ac4f42881042f050f' },
+  'roblox-compact-14000': { chars: 12378, sha256: '45d751d827bbf27cb790114c0aa37245a277dde824347b830551c5c9d07a92e3' },
+  'roblox-full-all-modes': { chars: 51806, sha256: '5102e4f8dc1b0323620b511f07e85e20e6927a323dd067f5481b73d79fb6093b' },
+  'roblox-compact-all-modes': { chars: 20419, sha256: '5612c8929941c6485d5d1875906ccb387f8ca439e5a124a3bdc59580708c073f' },
+  'roblox-full-ultra': { chars: 68879, sha256: 'b11aca7c06d94a4385bc81893dde260467013c4ea0255a2a1fd5a3ae0af74534' },
+  'roblox-compact-ultra': { chars: 14539, sha256: '1fa4f498bc1f3754820d4d23200de15ee964391a42c95ba4c366ec3c17920db8' },
+  'roblox-full-custom-site': { chars: 43920, sha256: 'd6f79c0c448415f55577bb70035e85e0ff24ad50c684d2e2bb21d04fd6fadcce' },
+  'local-full': { chars: 9984, sha256: '97e5707186c5a63e8e19abf4640c978e6515d431410bf61324f663da2a0d3964' },
+  'local-compact-14000': { chars: 9984, sha256: '97e5707186c5a63e8e19abf4640c978e6515d431410bf61324f663da2a0d3964' },
+  'local-full-access': { chars: 10952, sha256: '2094b020dc8a85286e34bc2d65e4a3b814e046f5fb00012e36b71f38a8aed04d' },
+  'local-custom-site': { chars: 10106, sha256: '820dcd4d30b99491be2a9e79b2e61beff85cd0de97684282c98e4274a627efeb' },
+  'notion-roblox': { chars: 7063, sha256: 'ec18861e2ba94da43cb21435443d9cb373a33b853ceb5231683f5f47c0c29002' },
+  'notion-local': { chars: 5560, sha256: 'ecba68d3df08e3224623599b9e7c80a2d2eeb81021bf55c8bcdd5cdc0a326c37' },
   /*GOLDEN-END*/
 };
 if (UPDATE) {

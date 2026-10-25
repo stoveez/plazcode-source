@@ -6,6 +6,7 @@ updated: 2026-10-24
 
 - **Edit only the overlay** (`development/1.24.21/overlay`). Never edit `build-src-1.24.21/` (regenerated). A file not in the overlay is first copied there from `build-src-1.24.21/PlazCode/`.
 - Build: `python3 development/1.24.21/prepare.py`. Do not run it while the full suite runs.
+- Feature guide: `test-feature-guide.js` reads the real menu and bar in `core/main.js` and fails for any control with no entry in `core/feature-guide.js`. After editing the guide, regenerate nothing: the JSON in that file is the source. Startup text changes need `node test-startup-sections.js --update-golden` and new pins for `core/config.js` and `core/main.js`.
 - One JS test: from `build-src-1.24.21/PlazCode`, `NODE_PATH=release-tools/node_modules node test-<name>.js`.
 - Full JS suite (10 to 15 minutes): from the build folder, `NODE_PATH=release-tools/node_modules PLAZCODE_TEST_BROWSER=chromium python3 release-tools/test-javascript.py`.
 - Rust: `cargo test --manifest-path build-src-1.24.21/PlazCode/agent/Cargo.toml` (about 180 tests).

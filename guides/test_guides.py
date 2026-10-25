@@ -19,7 +19,13 @@ with tempfile.TemporaryDirectory() as tmp:
     data = json.load(open(os.path.join(out, 'index.json')))
     assert data == index
     # nothing but index.json and guide folders may leave the build
-    assert sorted(os.listdir(out)) == sorted(ids + ['index.json'])
+    extra = ['features.json'] if B.feature_guide_source() else []
+    assert sorted(os.listdir(out)) == sorted(ids + ['index.json'] + extra)
+    if extra:
+        feats = json.load(open(os.path.join(out, 'features.json')))
+        assert feats['version'] == 1 and len(feats['features']) >= 45
+        assert len({f['id'] for f in feats['features']}) == len(feats['features'])
+        assert all(f['steps'] and f['where'] and f['does'] for f in feats['features'])
 
 def must_fail(files, why):
     with tempfile.TemporaryDirectory() as tmp:

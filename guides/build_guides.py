@@ -35,6 +35,41 @@ def parse(path, slug):
         meta[k.strip()] = v.strip()
     return meta, m.group(2).strip() + '\n'
 
+FEATURE_GUIDE = re.compile(r'/\*GUIDE-JSON-START\*/(.*?)/\*GUIDE-JSON-END\*/', re.S)
+
+def feature_guide_source():
+    """The one list of PlazCode features (also read by the AI inside the extension): newest overlay that has it."""
+    root = os.path.join(os.path.dirname(HERE), 'development')
+    if not os.path.isdir(root):
+        return None
+    def key(name):
+        return tuple(int(x) if x.isdigit() else 0 for x in name.split('.'))
+    for version in sorted(os.listdir(root), key=key, reverse=True):
+        path = os.path.join(root, version, 'overlay', 'core', 'feature-guide.js')
+        if os.path.isfile(path):
+            return path
+    return None
+
+def build_feature_guide(out):
+    """Write <out>/features.json from the extension's feature guide, or nothing if the source is not there."""
+    path = feature_guide_source()
+    if not path:
+        return 0
+    m = FEATURE_GUIDE.search(open(path, encoding='utf-8').read())
+    if not m:
+        fail('feature-guide.js: the GUIDE-JSON markers are missing')
+    try:
+        entries = json.loads(m.group(1))
+    except ValueError as error:
+        fail('feature-guide.js: the list between the markers is not valid JSON (%s)' % error)
+    for entry in entries:
+        for key in ('id', 'title', 'group', 'where', 'does', 'steps', 'keywords'):
+            if not entry.get(key):
+                fail('feature-guide.js: entry "%s" has no "%s"' % (entry.get('id'), key))
+    open(os.path.join(out, 'features.json'), 'w', encoding='utf-8', newline='\n').write(
+        json.dumps({'version': 1, 'features': entries}, indent=1, ensure_ascii=False) + '\n')
+    return len(entries)
+
 def build(out):
     slugs = sorted(d for d in os.listdir(HERE) if os.path.isfile(os.path.join(HERE, d, 'guide.md')))
     entries, files = [], {}
@@ -113,9 +148,10 @@ def build(out):
         for ref in used:
             shutil.copyfile(os.path.join(HERE, slug, ref), os.path.join(out, slug, ref))
     open(os.path.join(out, 'index.json'), 'w', encoding='utf-8', newline='\n').write(json.dumps(index, indent=1, ensure_ascii=False) + '\n')
+    build.features = build_feature_guide(out)
     return index
 
 if __name__ == '__main__':
     out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(HERE), 'dist', 'guides')
     result = build(out)
-    print('built %d guides into %s' % (len(result['guides']), out))
+    print('built %d guides and %d features into %s' % (len(result['guides']), getattr(build, 'features', 0), out))
