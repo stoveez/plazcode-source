@@ -3800,6 +3800,31 @@ return result`;
   // Full args / code, shown in a tool chip's expandable body.
   // An older card for the same tool on the same target folds under an "Earlier call" (or "Retry of failed call") tag.
   // Only the last 40 cards keep their full diff; older ones keep a short summary.
+  // Cards by call, so a turn the site re-draws (Claude re-renders and virtualizes old turns, which drops the chip
+  // and its card) gets the same card back instead of the old plain chip.
+  const cardBook = new Map();
+  function cardKey(call) {
+    let args = "";
+    try { args = JSON.stringify((call && call.arguments) || {}); } catch {}
+    return bareToolName(String((call && call.tool) || "")).toLowerCase() + "|" + args;
+  }
+  function rememberCard(call, model) {
+    if (!call || !model) return;
+    const key = cardKey(call);
+    cardBook.delete(key); cardBook.set(key, model);
+    while (cardBook.size > 120) cardBook.delete(cardBook.keys().next().value);
+  }
+  function cardForTurn(txt, name, feedback) {
+    if (typeof PlazCodeToolCards === "undefined") return null;
+    let calls = [];
+    try { calls = RSParse.parseToolCalls(txt) || []; } catch {}
+    const call = calls.find((c) => c && bareToolName(String(c.tool || "")) === bareToolName(String(name || ""))) || calls[0];
+    if (!call) return null;
+    const known = cardBook.get(cardKey(call));
+    if (known && (known.output || !feedback)) return known;
+    // After a page reload the result turn below still holds the output: show it in the card's OUTPUT tab.
+    try { const model = PlazCodeToolCards.model(call, feedback || undefined); rememberCard(call, model); return model; } catch { return null; }
+  }
   function noteCardCall(item, model) {
     const trail = A.cardTrail = A.cardTrail || [];
     const prev = trail[trail.length - 1];
@@ -4566,7 +4591,7 @@ return result`;
           }
           // Loading chip with the real args (loop owns this item from here).
           let runCard = null;
-          try { runCard = PlazCodeToolCards.model(call); noteCardCall(res.item, runCard); } catch {}
+          try { runCard = PlazCodeToolCards.model(call); noteCardCall(res.item, runCard); rememberCard(call, runCard); } catch {}
           decorate.toolBox(res.item, call.tool, "run", argSummary(call), true, callBody(call), category, runCard);
           A.toolSettle = null; // a fresh call: no settled outcome yet
           A.toolRunning = true;
@@ -4627,7 +4652,7 @@ return result`;
           if (hasImages) rememberImageTool(call.tool);
           const resultCat = hasImages ?  "screen" : category;
           let doneCard = null;
-          try { doneCard = PlazCodeToolCards.model(call, outBody); if (A.cardTrail && A.cardTrail.length) { const last = A.cardTrail[A.cardTrail.length - 1]; if (last.item === res.item) { last.err = !!isErr; last.model = doneCard; } } } catch {}
+          try { doneCard = PlazCodeToolCards.model(call, outBody); rememberCard(call, doneCard); if (A.cardTrail && A.cardTrail.length) { const last = A.cardTrail[A.cardTrail.length - 1]; if (last.item === res.item) { last.err = !!isErr; last.model = doneCard; } } } catch {}
           decorate.toolBox(res.item, call.tool, isErr ?  "err" : "done", outSummary(feedback),
             true, outBody, resultCat, doneCard);
           try { ui.trackCard(call.tool, isErr ?  "err" : "ok", outSummary(feedback), resultCat); } catch {}
@@ -6049,7 +6074,7 @@ return result`;
               ...(P.genDebug ?  { g: P.genDebug() } : {}),
             });
           }
-          this.toolBox(item, nm, phase, detail, false, undefined, cat);
+          this.toolBox(item, nm, phase, detail, false, undefined, cat, cardForTurn(txt, nm, resultAfter ? P.classifyText(next, ".rs-chip") : ""));
         }
         return;
       }

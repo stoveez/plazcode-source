@@ -35,13 +35,21 @@ try {
   um.classList.add("rs-hidden"); p.syncHiddenShell(um);
   assert(row.classList.contains("rs-empty-turn"), "a hidden turn with no chip hides its whole row");
   assert.equal(dom.window.getComputedStyle(row).display, "none");
-  const chip = d.createElement("div"); chip.className = "rs-chip result"; um.prepend(chip); p.syncHiddenShell(um);
-  assert(!row.classList.contains("rs-empty-turn"), "once the result chip is there the row shows again");
+  const chip = d.createElement("div"); chip.className = "rs-chip cat-read result"; um.prepend(chip); p.syncHiddenShell(um);
+  assert(row.classList.contains("rs-empty-turn"), "a plain '· result' chip repeats the card's OUTPUT tab, so its row stays hidden");
+  chip.className = "rs-chip cat-read err"; p.syncHiddenShell(um);
+  assert(!row.classList.contains("rs-empty-turn"), "an error result stays visible");
+  chip.className = "rs-chip sys"; p.syncHiddenShell(um);
+  assert(!row.classList.contains("rs-empty-turn"), "other PlazCode chips (for example Starting Up) show the row again");
   chip.remove(); p.syncHiddenShell(um); assert(row.classList.contains("rs-empty-turn"));
   um.classList.remove("rs-hidden"); p.syncHiddenShell(um);
   assert(!row.classList.contains("rs-empty-turn"), "a normal user message is never hidden");
   p.syncHiddenShell(null); // no crash
 
+  // A command turn the site re-draws gets its card back (not the old plain chip), with the output from the result turn.
+  const mainSrc = fs.readFileSync("core/main.js", "utf8");
+  assert(/this\.toolBox\(item, nm, phase, detail, false, undefined, cat, cardForTurn\(txt, nm,/.test(mainSrc), "the sweep passes a card");
+  assert(/rememberCard\(call, runCard\)/.test(mainSrc) && /rememberCard\(call, doneCard\)/.test(mainSrc), "the loop keeps each card by call");
   // main.js calls the hook wherever it hides or shows a turn.
   const main = fs.readFileSync("core/main.js", "utf8");
   assert((main.match(/P\.syncHiddenShell && P\.syncHiddenShell\(/g) || []).length >= 5, "main.js syncs the row at every hide/show");

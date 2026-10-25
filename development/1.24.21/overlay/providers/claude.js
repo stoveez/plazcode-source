@@ -774,7 +774,10 @@ const RSProvider = (() => {
     if (!scope || safeQuery(scope, '[data-testid="user-message"]:not(.rs-hidden)')) { if (scope) scope.classList.remove("rs-empty-turn"); return; }
     const hidden = safeRead(() => item.classList.contains("rs-hidden"), false);
     const chip = [...(safeRead(() => item.children, null) || [])].find((child) => safeRead(() => child.classList.contains("rs-chip"), false));
-    const chipShown = !!chip && safeRead(() => getComputedStyle(chip).display !== "none", true);
+    // A plain "· result" chip repeats what the command's card already shows in its OUTPUT tab, so that row is hidden
+    // too (errors stay visible).
+    const resultOnly = !!chip && safeRead(() => chip.classList.contains("result") && !chip.classList.contains("err"), false);
+    const chipShown = !!chip && !resultOnly && safeRead(() => getComputedStyle(chip).display !== "none", true);
     scope.classList.toggle("rs-empty-turn", hidden && !chipShown);
   }
 
