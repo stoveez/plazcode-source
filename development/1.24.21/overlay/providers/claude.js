@@ -390,8 +390,17 @@ const RSProvider = (() => {
       const l = labelOf(b);
       if (l.includes("stop") && (l.includes("response") || l.includes("generat") || l === "stop")) return b;
     }
+    // Claude labels this button in the UI language ("Parar resposta", "Antwort stoppen", ...). Without this a
+    // Portuguese or German page never showed a Stop button to PlazCode, so results were typed while Claude was
+    // still streaming and the editor dropped them.
+    for (const b of safeQueryAll(document, "button")) {
+      if (!visibleBtn(b) || inTurn(b)) continue;
+      if (STOP_LABEL_RE.test(labelOf(b)) && !NOT_STOP_RE.test(labelOf(b))) return b;
+    }
     return null;
   }
+  const STOP_LABEL_RE = /\b(?:parar|detener|arr[êe]ter|interromp\w*|stoppen|beenden|fermare|ferma|zatrzymaj|zastav\w*|durdur|остановить|прервать|停止|中止|중지)\b.*\b(?:resposta|respuesta|r[ée]ponse|antwort|risposta|odpowied\w*|odpov\w*|yan[ıi]t|ответ\w*|gera\w*|generaci\w*|g[ée]n[ée]r\w*|erzeug\w*|生成|回答|응답)\b|^(?:parar|detener|arr[êe]ter|stoppen|fermare|остановить|停止|중지)$/i;
+  const NOT_STOP_RE = /voice|voz|dictat|micro|mikro|sprach|ditado/i;
   // 1.24.13: Claude labels its send control in the UI language ("Send message",
   // "Nachricht senden", "Envoyer le message", ...). The old fallback returned the
   // LAST visible composer button whenever no English label matched, and also while
@@ -482,6 +491,10 @@ const RSProvider = (() => {
     sel.addRange(range);
   }
   async function typeEditorText(ed, text) {
+    // execCommand types into the FOCUSED editable only. While PlazCode has the composer locked the box cannot
+    // hold focus, so after it is unlocked for a send the text went nowhere (seen live: the box stayed empty, no
+    // message was sent, and the run paused a minute later). Focus it first.
+    try { ed.focus({ preventScroll: true }); } catch {}
     selectAll(ed);
     document.execCommand("insertText", false, "");
     const lines = String(text).split("\n");
@@ -529,12 +542,19 @@ const RSProvider = (() => {
   }
 
   async function typeAndSend(text, images) {
-    const ed = getEditor();
+    let ed = getEditor();
     if (!ed) throw new Error("Claude input box not found");
     text = truncateForSend(text);
     const relock = _locked;
     try {
       if (relock) ed.setAttribute("contenteditable", "true");
+      // Claude drops text typed while it is still streaming. Wait until the reply is really finished before typing,
+      // whatever language the page is in (the Stop button label is not always recognised).
+      if (isGenerating()) { diag("claude.send.waitIdle", {}); await waitFor(() => !isGenerating(), 45000); }
+      // Claude swaps its composer for a new one when a reply finishes. Type into the editor that is on the page
+      // NOW, not the one found before the wait: text typed into the old, detached editor is lost.
+      ed = getEditor() || ed;
+      if (relock && ed) ed.setAttribute("contenteditable", "true");
       await typeEditorText(ed, text);
       if (images && images.length) {
         if (!await attachImages(images)) throw new Error("Claude did not confirm the screenshot upload. The message was not submitted.");
@@ -551,10 +571,29 @@ const RSProvider = (() => {
       const before = userCount();
       const tail = String(text).replace(/\s+/g, "").slice(-24);
       const stillDraft = () => tail.length > 0 && String(editorText()).replace(/\s+/g, "").includes(tail);
-      const sent = () => !!stopButton() || userCount() > before || !stillDraft();
+      // A Stop button that was already up before we sent is Claude still streaming its last reply, not proof that
+      // our message was taken. Only a Stop button that appears after the send counts.
+      const stopBefore = !!stopButton();
+      const sent = () => (!stopBefore && !!stopButton()) || userCount() > before || !stillDraft();
+      // The editor sometimes loses the typed text when Claude re-renders it. An empty box then looked like a sent
+      // message and the run waited a minute for a reply that was never asked for. Type it once more.
+      // Claude keeps its composer read-only for about three seconds after a reply ends (measured live: typing does
+      // nothing until then, with no error). Keep typing it again, half a second apart, until the text is really in
+      // the box, instead of "sending" an empty one.
+      for (let attempt = 1; attempt <= 20 && !stillDraft(); attempt++) {
+        diag("claude.send.retype", { attempt, stale: !ed.isConnected, ce: safeRead(() => ed.getAttribute("contenteditable"), null) });
+        await sleep(500);
+        ed = getEditor() || ed;
+        if (relock) ed.setAttribute("contenteditable", "true");
+        await typeEditorText(ed, text);
+      }
+      // Claude refuses a new message while it is still streaming. Wait for the Stop button to go away instead of
+      // pressing Enter into a busy composer.
+      if (stopBefore) { diag("claude.send.waitStopGone", {}); await waitFor(() => !stopButton(), 45000); }
       await waitFor(() => !!sendButton(), Math.min(15000, 2500 + Math.ceil(String(text).length / 25)));
       const btn = sendButton();
       if (btn) { diag("claude.send.click", {}); btn.click(); }
+      else if (stopButton()) { diag("claude.send.stillStreaming", {}); return; }
       else { diag("claude.send.enter", { candidates: sendCandidates().length }); pressEnter(getEditor() || ed); }
       // The draft is still there untouched and nothing started: the first attempt
       // provably did not submit, so one Enter cannot duplicate the message.

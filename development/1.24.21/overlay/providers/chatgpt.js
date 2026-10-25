@@ -418,8 +418,14 @@ const RSProvider = (() => {
     }
   }
   const allItems = () => {
+    // ChatGPT keeps the previous conversation's turns in the page, hidden (zero size), after the user opens a
+    // new chat from the sidebar. Counting them made a blank chat look like the old started one ("PlazCode
+    // running" never cleared until a refresh). Skip turns that are not rendered. A page with no layout at all
+    // (test DOM) keeps every turn, as before.
+    const hasLayout = safeRead(() => document.documentElement.getClientRects().length > 0, false);
     const signals = [...safeQueryAll(document, `${S.msg}, [data-user-message-bubble], ${S.reply}, ${S.workItem}`)]
-      .filter((e) => !safeClosest(e, "#rs-root"));
+      .filter((e) => !safeClosest(e, "#rs-root"))
+      .filter((e) => !hasLayout || safeRead(() => e.getClientRects().length > 0, true));
     const items = [];
     const seen = new Set();
     for (const signal of signals) {

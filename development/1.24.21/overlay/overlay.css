@@ -5850,7 +5850,7 @@ html.rs-light #rs-menu .rs-setup-summary{background:#f4f6fa;color:#334;border-co
 
 /* Effort in the PlazCode bar is a button: it shows a hover box, a hand cursor and opens the list of levels. */
 #rs-root #rs-effort{cursor:pointer;display:inline-flex;align-items:center;gap:4px;margin:0 0 0 -6px;padding:2px 7px;border:1px solid transparent;border-radius:7px;transition:background .15s,border-color .15s,color .42s ease}
-#rs-root #rs-effort::after{content:"\2304";font-size:10px;line-height:1;opacity:.7;transform:translateY(-2px)}
+#rs-root #rs-effort::after{content:"";flex:none;width:5px;height:5px;box-sizing:border-box;border:solid currentColor;border-width:0 1.6px 1.6px 0;opacity:.85;transform:translateY(-2px) rotate(45deg);transition:transform .15s}#rs-root #rs-effort[aria-expanded=true]::after{transform:translateY(1px) rotate(-135deg)}
 #rs-root #rs-effort:hover,#rs-root #rs-effort[aria-expanded=true]{background:color-mix(in srgb,currentColor 16%,transparent);border-color:color-mix(in srgb,currentColor 55%,transparent)}
 #rs-root #rs-effort:focus-visible{outline:2px solid currentColor;outline-offset:2px}
 .pc-effort-menu{position:fixed;z-index:2147483646;min-width:150px;padding:6px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(20,22,28,.97);box-shadow:0 14px 34px rgba(0,0,0,.55);font:500 13px/1.3 ui-sans-serif,"Segoe UI",sans-serif;color:#f2f4f8}
