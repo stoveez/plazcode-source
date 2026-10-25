@@ -50,10 +50,10 @@ The owner does not want to forget this step of the public-then-private plan. Rem
 - Next update (Brickwire items, login/license, Skill Workshop): `development/1.25.0/` (claim items on `docs/TASK-BOARD.md`)
 
 ## Effort
-Use maximum care (high reasoning effort) for the license and login server, the Luau helper library and build self-checks, hard bug hunts (for example the Notion send problem) and the planning of big features.
+Use maximum care (high reasoning effort) for the license and login server, the Luau helper library and build self-checks, hard bug hunts (for example the Notion send problem) and the planning of big features. Do this work yourself; never hand it to a helper agent or subagent (owner, 2026-10-25).
 
 ## One branch and constant pushes (important)
 Work on `claude/plazcode-dev` and push there early and often, including unfinished work labelled `WIP: ...`, so the next AI can restart exactly where you stopped if your limits run out. Rewrite `docs/NOW.md` in the same commit as every push (newest change first) and always tell the owner the branch name and commit id. Do not leave `claude/plazcode-dev` broken: say plainly in the commit message and in `docs/NOW.md` when something is unfinished. Full details: `docs/HANDOFF.md`.
 
 ## How often to push (the owner's ideal rhythm)
-Push after every finished step (a feature, a fix, a merge, a test pass), before anything long or risky (full test run, build, big merge, waiting on a helper or CI), and push half-done work as `WIP: ...` commits. New files and notes are committed and pushed in the same rhythm. Not after every keystroke. Details: `docs/HANDOFF.md`.
+Push after every finished step (a feature, a fix, a merge, a test pass), before anything long or risky (full test run, build, big merge, waiting on CI), and push half-done work as `WIP: ...` commits. New files and notes are committed and pushed in the same rhythm. Not after every keystroke. Details: `docs/HANDOFF.md`.

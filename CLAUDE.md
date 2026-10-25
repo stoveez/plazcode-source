@@ -37,7 +37,7 @@ Every time you push a WIP or finished change that another AI could pick up, tell
 The owner does not want to forget this step of the public-then-private plan. Remind them at exactly two moments: (1) right after they have received the test zips from you (say it in the same message that delivers the zips), and (2) right after a publish has finished. Do not remind them before those moments (for example while a build is still running). After one of those moments, repeat the reminder in later replies until the repo is private. Give the settings link each time: https://github.com/stoveez/plazcode-source/settings (Danger Zone, Change visibility, Private). Check `gh api repos/stoveez/plazcode-source --jq '{private,visibility}'` before you stop working and tell the owner plainly if it is still public. If you are about to end a session while it is public, say so in your last message. Never change visibility yourself.
 
 ## Effort (the owner's rule)
-Use HIGH effort (think longer and trace carefully) for these four kinds of work. If you cannot change your own effort setting, hand the work to a helper agent that runs at high effort, or tell the owner to switch it before you start:
+Use HIGH effort (think longer and trace carefully) for these four kinds of work. Do the work yourself: never hand it to a helper agent or subagent (owner, 2026-10-25). If your effort seems low, tell the owner instead:
 1. The login and license server (security matters, a gap is costly).
 2. The Luau helper library and the build self-checks (they must be correct against a real Luau compiler).
 3. Hunting hard bugs such as the Notion send problem or the "Response changed" banner (careful tracing through large files).
@@ -55,4 +55,4 @@ Normal effort is fine for small fixes, packaging, release notes and questions.
 - Local Windows test-zip build with a CLI agent: `docs/HANDOFF.md`, "Option: build the test zip on the owner's own computer"
 
 ## How often to push (the owner's ideal rhythm)
-Push to `claude/plazcode-dev` after every finished step (a feature, a fix, a merge, a test pass), before anything long or risky (full test run, build, big merge, waiting on a helper or CI), and push half-done work as `WIP: ...` commits. New files and notes go in at the same rhythm. Not after every keystroke. Details: `docs/HANDOFF.md`.
+Push to `claude/plazcode-dev` after every finished step (a feature, a fix, a merge, a test pass), before anything long or risky (full test run, build, big merge, waiting on CI), and push half-done work as `WIP: ...` commits. New files and notes go in at the same rhythm. Not after every keystroke. Details: `docs/HANDOFF.md`.
