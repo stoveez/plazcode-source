@@ -11,7 +11,7 @@ Updated: 2026-10-24 by claude. Keep under about 25 lines. Long-term knowledge is
 
 **State:**
 - Start from `claude/plazcode-dev` (see `git log`). Work directly on it; no task branches (owner decision 2026-10-24). Rewrite this file with every push.
-- NOT in any test build yet: items 1 to 3 and 5 (hang recovery, Effort arrow, vault live note, desktop app changes). Latest test zips: CI run 40056181833, commit `9607466`.
+- Latest test zips: CI run 40152156785 (all jobs green), commit `d169eb1`. They hold items 1 to 3 and 5 (hang recovery, Effort arrow, vault live note, desktop app changes). Not yet tried on real sites or the real apps; the owner downloads the zips from the run's Artifacts (the cloud session cannot download them).
 - Repo is Private now. A new test build needs the public window ([vault/test-builds.md](vault/test-builds.md)).
 - Unfinished: Firefox checks (CI only), real Windows/Mac app tests, lean startup phases 2 to 3 (offered, owner has not said yes).
 - Next step: ask the owner if they want a new test build (try hang recovery with the 15-tool test, Effort arrow, vault live note); if yes, follow the public-then-private plan.
