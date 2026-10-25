@@ -10,7 +10,7 @@ updated: 2026-10-24
 
 - Include the merged vault live note (`claude/vault-live-note`) in the next test build. Pictures pasted directly into an AI site's composer are not captured yet.
 
-- Unmerged work waiting for the owner's yes (check `git branch -r`): `claude/new-chat-state-effort-arrow` (Claude send fixes, Effort chevron, ChatGPT old-chat fix, one-step checklist) and the hang-recovery work (`claude/hang-recovery`, being finished on `claude/hang-recovery-finish`). They are NOT in the latest test zips.
+- Merged into `claude/plazcode-dev` but NOT proven on real sites or in any test build: hang recovery (Claude stops mid-task), Claude send fixes, Effort chevron, ChatGPT old-chat fix, one-step checklist. Test with the 15-tool-call job on Claude. Hang recovery cases 2 (reply cut inside a command) and 3 (message not delivered) are not wired yet.
 
 ## Bugs
 - "Response changed - run paused" banner: needs a debug report from a tester (high effort).

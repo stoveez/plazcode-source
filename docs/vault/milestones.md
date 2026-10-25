@@ -4,6 +4,8 @@ updated: 2026-10-24
 ---
 # Finished work
 
+## 2026-10-24 (on `claude/plazcode-dev`): hang recovery for Claude, Claude send fixes, Effort chevron, one-step checklist; native-vault notes. Only fixture-tested; not in a test build.
+
 ## 2026-10-24 (merged into `claude/plazcode-dev`): vault live note `Now.md` at startup, attached pictures can be stored with add_image. See [vault-memory](vault-memory.md).
 
 ## 2026-10-24 (on `claude/plazcode-dev`, not in any test build yet; desktop app must be replaced)

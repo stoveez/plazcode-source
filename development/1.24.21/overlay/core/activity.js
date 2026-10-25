@@ -133,10 +133,12 @@ const PlazCodeActivity = (() => {
       if (!saved && requestKind(label)!=='work')return;
       if (!saved || options.replace) {
         let seeded=requestSteps(label);
+        // A bare "replace the tasks / start a new task" command is not itself a step; only a longer request seeds a list.
+        if(seeded.length<2&&(replacesTask(label)||((seeded[0]||'').split(' ').length<3&&!/\b(?:build|create|make|add|fix|change|edit|implement|investigate|debug|test|verify|run|optimi[sz]e)\b/i.test(seeded[0]||''))))seeded=[];
         // A one-sentence request used to leave the box on "Waiting for the AI to describe the project goal" for
         // the whole run, so its steps never moved. Show the request itself as the single step: it completes when
         // the run ends, and the AI's own plan (checklist call or a written plan) replaces it as before.
-        if(!seeded.length){const only=condenseStep(label)||cleanLabel(label);if(only&&only.split(' ').length>=2&&!commandLabel(only))seeded=[only];}
+        if(!seeded.length&&!replacesTask(label)){const only=condenseStep(label)||cleanLabel(label);if(only&&only.split(' ').length>=3&&!commandLabel(only))seeded=[only];}
         saved={label:String(label || 'Current task').slice(0,300),key,objective:'',
           plan:seeded.length>=1?{auto:'request',total:seeded.length,done:0,items:seeded.map((item,index)=>({label:item,status:index===0?'in_progress':'pending'}))}:null};
         tasks.set(current.chat,saved);

@@ -4,7 +4,7 @@ updated: 2026-10-24
 ---
 # PlazCode vault: start here
 
-This folder is the long-term memory for every AI that works on PlazCode (Claude, Codex or any other). It is plain Markdown, so GitHub shows it and Obsidian can open it (open the folder `docs/vault` as a vault).
+This folder is the long-term memory for every AI that works on PlazCode (Claude, Codex or any other). **Terms:** this folder is the *PlazCode vault* (notes for AIs that build PlazCode). The *native vault* is the app's own Memory feature, see the map. It is plain Markdown, so GitHub shows it and Obsidian can open it (open the folder `docs/vault` as a vault).
 
 **Read order for a new AI:** [`../NOW.md`](../NOW.md) (the live handoff, 20 lines), then only the notes below that your task needs. Do not read the whole vault.
 
@@ -16,7 +16,7 @@ This folder is the long-term memory for every AI that works on PlazCode (Claude,
 - Test builds for the owner: [test-builds](test-builds.md)
 - Publishing an update: [releasing](releasing.md)
 - Desktop layout, guides, website: [app-and-guides](app-and-guides.md)
-- The in-app vault memory feature: [vault-memory](vault-memory.md)
+- The app's own Memory feature, the "native vault": [vault-memory](vault-memory.md) and [native-vault-internals](native-vault-internals.md)
 - Why things are the way they are: [decisions](decisions.md)
 - What is finished: [milestones](milestones.md)
 - What is still open: [open-work](open-work.md)

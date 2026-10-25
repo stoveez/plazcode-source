@@ -1,17 +1,18 @@
 # NOW (live handoff, overwrite at the end of every session)
 Updated: 2026-10-24 by claude. Keep under about 25 lines. Long-term knowledge is in [`vault/Home.md`](vault/Home.md).
 
-**In progress (unfinished, not merged):** branch `claude/hang-recovery-finish` (commit `4f37dca` and later). Owner reported two bugs: (a) Claude randomly stops mid-task (15-tool test) while the bar still says working, (b) the arrow next to Effort on the PlazCode bar is tiny and off-centre. Findings: both were already fixed today by other sessions in UNMERGED branches, so they are not in the test zips. (a) hang recovery (press Stop and ask the AI to continue after 90 s of no text while Stop shows) is on `claude/hang-recovery` (owner told me to take it over, so I continue it on `claude/hang-recovery-finish`); Claude send fixes (wait for the reply to end, keep retyping the result into the composer) are on `claude/new-chat-state-effort-arrow`. (b) the clean Effort chevron is commit `ec2852d` on that same branch. Plan: combine both on my own branch, run the full suite, then ask the owner's yes to merge into `claude/plazcode-dev`. Not wired yet from hang recovery: cases 2 (reply cut inside a command) and 3 (message not delivered; mostly covered by existing send retries).
-
 **Latest change (newest first):**
-1. Vault live note: the app's vault now has `00 Start Here/Now.md`, sent to the AI at startup and rewritten by it after every job. Pictures attached with PlazCode's media button can be stored with `add_image`. Details: [vault/vault-memory.md](vault/vault-memory.md). Merged into `claude/plazcode-dev` (owner yes, 2026-10-24). Full JS suite 0 failures, cargo 205 passed. Needs the desktop app replaced and the extension reloaded.
-2. Handoff system: this file, `docs/vault/`, trimmed `CLAUDE.md` and `AGENTS.md`, and the owner's personal vault repo `stoveez/stoveez` (private; pointer line in both rules files).
-3. Desktop app fixes: dropdown lists no longer hide behind cards, Ultra border and glow-off on the active page button, sidebar scrolls on short windows, no Effort/version text in the title bar, five desktop tests updated.
+1. Hang and Effort-arrow fixes are now merged into `claude/plazcode-dev`. (a) Claude no longer sits "working" forever: after 90 s with the Stop button showing and no new reply text, PlazCode presses Stop once and asks Claude to continue (also asks the owner if a question is stuck, pings Studio after a 2-minute silent command, retries the connection with waits). Claude sending also waits for the old reply to end and keeps retyping. (b) The Effort arrow is now a clean centred chevron. Needs the extension reloaded only (the new native-vault bits need the desktop app replaced). NOT proven on the real Claude site yet: needs a test build.
+   Not wired yet from hang recovery: case 2 (reply cut inside a command) and case 3 (message not delivered; mostly covered by existing send retries).
+2. Native vault docs: [vault/vault-memory.md](vault/vault-memory.md) (how the owner uses the app's Memory feature) and [vault/native-vault-internals.md](vault/native-vault-internals.md) (for AIs). "PlazCode vault" = `docs/vault`; "native vault" = the app's feature.
+3. Vault live note: the app's vault now has `00 Start Here/Now.md`, sent to the AI at startup and rewritten by it after every job. Pictures attached with PlazCode's media button can be stored with `add_image`. Details: [vault/vault-memory.md](vault/vault-memory.md). Merged into `claude/plazcode-dev` (owner yes, 2026-10-24). Full JS suite 0 failures, cargo 205 passed. Needs the desktop app replaced and the extension reloaded.
+4. Handoff system: this file, `docs/vault/`, trimmed `CLAUDE.md` and `AGENTS.md`, and the owner's personal vault repo `stoveez/stoveez` (private; pointer line in both rules files).
+5. Desktop app fixes: dropdown lists no longer hide behind cards, Ultra border and glow-off on the active page button, sidebar scrolls on short windows, no Effort/version text in the title bar, five desktop tests updated.
 
 **State:**
 - Start from `claude/plazcode-dev` (see `git log`). Work directly on it; no task branches (owner decision 2026-10-24). Rewrite this file with every push.
-- NOT in any test build yet: items 1 and 3 (desktop app changes). Latest test zips: CI run 40056181833, commit `9607466`.
+- NOT in any test build yet: items 1 to 3 and 5 (hang recovery, Effort arrow, vault live note, desktop app changes). Latest test zips: CI run 40056181833, commit `9607466`.
 - Repo is Private now. A new test build needs the public window ([vault/test-builds.md](vault/test-builds.md)).
 - Unfinished: Firefox checks (CI only), real Windows/Mac app tests, lean startup phases 2 to 3 (offered, owner has not said yes).
-- Next step: ask the owner if they want a new test build; if yes, follow the public-then-private plan.
+- Next step: ask the owner if they want a new test build (try hang recovery with the 15-tool test, Effort arrow, vault live note); if yes, follow the public-then-private plan.
 - Open bugs: [vault/open-work.md](vault/open-work.md).
