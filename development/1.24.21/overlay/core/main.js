@@ -1304,6 +1304,25 @@
       let d = P.readAssistant();
       const progress = ((d.reply || "") + "\n" + (d.thinking || "")).replace(/\s+/g, " ").trim();
       if (progress !== hardProgressText) { hardProgressText = progress; hardProgressAt = Date.now(); }
+      // Item 9 hang recovery, case 1: the site's Stop button is up, the reply already has text, and nothing has
+      // grown for the quiet period. Press Stop once and ask the AI to continue. A reply with no text yet (a
+      // thinking phase), a draft being typed or an open Confirm prompt are all left alone by the decision.
+      if (hardGenerating && !A.stop && typeof PlazCodeStallGuard !== "undefined" && PlazCodeStallGuard.hangDecision) {
+        const approvalBox = document.getElementById("rs-approve");
+        const hang = PlazCodeStallGuard.hangDecision({
+          now: Date.now(), stopVisible: true, replyText: d.reply || "", lastGrowthAt: hardProgressAt,
+          userTyping: !!(P.editorText && String(P.editorText() || "").trim()), confirmOpen: !!(approvalBox && !approvalBox.hidden),
+          tries: A.hangTries || {},
+        });
+        if (hang.action === "stop_and_continue") {
+          A.hangTries = { ...(A.hangTries || {}), stopContinue: ((A.hangTries || {}).stopContinue | 0) + 1 };
+          diag("hang.stopContinue", { quietMs: Date.now() - hardProgressAt, chars: String(d.reply || "").length });
+          try { ui.toast(hang.line); } catch {}
+          try { P.stopGeneration(); } catch {}
+          await sleep(1500);
+          return { kind: "hang_continue", text: hang.text, item: d.item };
+        }
+      }
       // 1.24.21 stall fix: while the site's REAL Stop button is up the AI is still working. ChatGPT Thinking and
       // Claude extended thinking can show no new text for many minutes, and giving up at the normal 5 minute
       // limit paused the run ("stops mid-task, nothing happens until I poke it"). A provider may allow a longer
@@ -2555,13 +2574,21 @@ return result`;
     let timer,settled=false,draining=false;
     const operation=runToolImpl(call).finally(()=>{settled=true;if(draining)A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);});
     const stop=new Promise(resolve=>{timer=setInterval(()=>{if(A.stop && A.stopMode!=="safe"){if(!settled){draining=true;A.pendingToolSettles=(A.pendingToolSettles||0)+1;}clearInterval(timer);resolve("ERROR: Immediate Stop requested. The tool may have partial effects; inspect state before retrying.");}},50);});
+    // Item 9 hang recovery, case 4: say so (once) when a command has had no answer for 2 minutes. Nothing is cancelled or
+    // failed here: some commands legitimately run for minutes, and a command that may still finish is never replayed.
+    const quietNote=setTimeout(()=>{if(!settled&&!A.stop){diag("hang.toolSilent",{tool:call&&call.tool});try{ui.toast(`No answer to ${bareToolName(call&&call.tool)} for 2 minutes. Studio or the app may be busy; PlazCode is still waiting and has not run it again.`);}catch{}}},120000);
     try{
-      const out=await Promise.race([operation,stop]);
+      let out=await Promise.race([operation,stop]);
       if(typeof out==="string"&&typeof accessBanner==="function"&&/^ERROR|TIMED OUT/.test(out))accessBanner(call&&call.tool,out); // tell the user why the PC refused
       if(A.stallGuard&&typeof out==="string"){if(!/stopped by the user|waiting for cancellation|Immediate Stop|offline|not connected/i.test(out.slice(0,200)))A.stallGuard.after(call,!/^ERROR/.test(out));}
+      // Item 9, case 5: wrong Studio mode. One hint per failed call; PlazCode never switches the mode itself.
+      if(typeof out==="string"&&/^ERROR/.test(out)&&typeof PlazCodeStallGuard!=="undefined"&&PlazCodeStallGuard.studioModeHint){
+        const hint=PlazCodeStallGuard.studioModeHint(out);
+        if(hint){diag("hang.studioMode",{state:hint.state});out+="\n[PlazCode hint: "+hint.text+"]";}
+      }
       // Tell the model which harmless argument mistakes were fixed so it sends them right next time.
       return typeof out==="string"&&call&&Array.isArray(call.repairs)&&call.repairs.length&&!/^ERROR/.test(out)?out+"\n[PlazCode adjusted your arguments: "+call.repairs.join("; ")+". Send them this way next time.]":out;
-    }finally{clearInterval(timer);}
+    }finally{clearInterval(timer);clearTimeout(quietNote);}
   }
   async function runToolImpl(call) {
     if (A.stop) return "ERROR: the command was not run — stopped by the user.";
@@ -4113,6 +4140,10 @@ return result`;
             `${P.displayName} says it's getting too long. Time for a fresh session.`);
           break;
         }
+        if (res.kind === "hang_continue") {
+          base = await submitAndGetBase(res.text);
+          continue;
+        }
         if (res.kind === "busy_timeout") {
           ui.banner("warn", `${P.displayName} is still generating`,
             "No new text appeared for a very long time while the AI still showed its Stop button. PlazCode paused without sending anything or stopping the AI. If the AI finishes with a command, PlazCode picks it up by itself; otherwise stop it yourself and press Restart in the PlazCode bar.");
@@ -4268,6 +4299,11 @@ return result`;
               `${P.displayName} said a command was sent, but no command block arrived, even after one reminder. Nothing was run. Ask it to resend the command, or press Restart in the PlazCode bar.`);
             break;
           }
+          if (typeof PlazCodeStallGuard !== "undefined" && PlazCodeStallGuard.hangDecision &&
+              PlazCodeStallGuard.hangDecision({ now: Date.now(), replyDone: true, hasToolCall: false, askingUser: PlazCodeStallGuard.asksUser(body) }).action === "notify_question") {
+            diag("hang.question");
+            try { ui.toast(`${P.displayName} is asking you a question. Nothing was sent for you.`); } catch {}
+          }
           completed = true;
           ui.inputCover(false);
           P.setInputLock(false);
@@ -4283,6 +4319,7 @@ return result`;
         }
 
         if (res.kind === "tool") {
+          A.hangTries = {}; // a command arrived, so the next stall in this run gets its own single recovery
           const calls = res.calls;
           const preflight = calls.flatMap(call => PlazCodeToolGuard.check(PlazCodeToolGuard.repair(call, A.toolList), A.toolList));
           if (preflight.length) {
@@ -4920,6 +4957,7 @@ return result`;
     }
     if (A.running || A.starting || A.startupOwner || A.enhancing || A.injecting || A.stopping || A.pendingToolSettles) return;
     if (A.stallGuard) A.stallGuard.reset();
+    A.hangTries = {};
     // "Start session" is normally allowed ONLY on a blank conversation.
     // A "Restart" (existing chat, user explicitly clicked ↻ Restart) bypasses
     // this and injects the system prompt mid-chat so the AI will work.

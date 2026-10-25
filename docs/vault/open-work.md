@@ -10,9 +10,12 @@ updated: 2026-10-24
 
 - Include the merged vault live note (`claude/vault-live-note`) in the next test build. Pictures pasted directly into an AI site's composer are not captured yet.
 
+- Unmerged work waiting for the owner's yes (check `git branch -r`): `claude/new-chat-state-effort-arrow` (Claude send fixes, Effort chevron, ChatGPT old-chat fix, one-step checklist) and the hang-recovery work (`claude/hang-recovery`, being finished on `claude/hang-recovery-finish`). They are NOT in the latest test zips.
+
 ## Bugs
 - "Response changed - run paused" banner: needs a debug report from a tester (high effort).
 - Notion startup in new workspaces; commands sometimes shown "not run".
+- Claude randomly stops mid-task while the bar says working (owner report 2026-10-24): fixed in the unmerged branches above, untested on the real site.
 - ChatGPT AgentScript sometimes pauses; Claude sometimes stuck; tool chip sometimes still "in progress". All fixture-tested only.
 
 ## Not started / optional
