@@ -1,5 +1,7 @@
 # PlazCode handoff note (for any AI starting with no context)
 
+> 2026-10-24: the short live handoff is now `docs/NOW.md` and long-term notes are in `docs/vault/` (start at `Home.md`). Read those first; this file is the detailed reference.
+
 Written 2026-10-23 for the owner (stoveez) and for **any AI the owner uses** (Claude, Codex, or any other). If you are an AI picking this up, read this file first, then `CLAUDE.md` or `AGENTS.md` (they carry the same rules), `docs/MAINTAINER-GUIDE.md` and `docs/TASK-BOARD.md`. The owner may switch between AIs at any time, for example when one runs out of limits, so **the latest work must always be on GitHub**.
 
 ## 1. What PlazCode is
@@ -92,7 +94,8 @@ Read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first
 
 ## What is in the latest test zips and what is NOT yet (kept up to date by every AI)
 Latest test zips given to the owner: CI run 40056181833, built from commit `9607466` on branch `claude/plazcode-dev` (Windows + Mac apps, Chrome/Firefox extensions). They contain everything up to that commit: the stall, Notion, Claude reply-key and AgentScript Full-access fixes, vault graph/brain/audit, the memory-button name fix, and the test-zip layout change.
-NOT yet in any test build or real app (all tested only in my sandbox, Chromium): `c11558b`, `80c334b`, `cf6bd9c` (desktop app only, so the desktop app must be replaced to see them):
+NOT yet in any test build or real app (all tested only in my sandbox, Chromium): `c11558b`, `80c334b`, `cf6bd9c` (desktop app only, so the desktop app must be replaced to see them), plus the vault live note and attached-picture storage (2026-10-24, merged as `0cabc3c`..`06a6a85`; needs the desktop app replaced AND the extension reloaded):
+- Vault live note `00 Start Here/Now.md`: sent to the AI at startup and rewritten after every job (`agent/src/vault.rs`, `core/memory.js`). Pictures attached with the media button can be stored with `plazcode_vault add_image` (`core/main.js`).
 - Reasoning and Language dropdown lists no longer open behind the next settings card (`core/effort-picker.js` lift class + CSS).
 - Ultra purple border and glow-off shadow on the active page button restored.
 - The sidebar scrolls as one column on short windows (max height 780px).
@@ -109,6 +112,13 @@ Windows steps, run from the repo root (written from the CI workflow and `develop
 4. `python development/1.24.21/package.py` (needs `PlazCode-1.23.0.zip` in the repo root, which is tracked; it assembles the package, rebuilds the Firefox extension and writes `artifacts/PlazCode-1.24.21-test-lean.zip`).
 5. Give the owner `artifacts/PlazCode-1.24.21-test-lean.zip`. It is already the single zip (extract, open the `PlazCode` folder, everything is there), so no wrapper to unpack. Check its file list against the last release zip first (rule 6). Say plainly whether an extension reload is enough or the app must be replaced.
 Limits: the Mac zip can only be built on a Mac or by GitHub's Mac runners (public-then-private plan). A test zip built locally is not a validated build and is never a substitute for the full green CI run needed to publish. Still follow the push and tell-the-owner rules, and never publish without the owner's clear yes.
+
+## Where releases live: which repo and which branch (owner asked for this, 2026-10-24)
+- Official releases (what installed copies download): the PUBLIC repo `stoveez/PlazCode`, branch `main`. It holds only the release zips and the update feeds `latest.json` and `latest-macos.json`. Latest published: 1.24.20. Never edit it by hand and never push to it yourself; only the publish workflow writes to it.
+- Where the release is prepared and published from: the PRIVATE repo `stoveez/plazcode-source`, branch `release/1.24.21` (one release branch per version number; a new version copies the workflows and `development/1.24.21`). The checks (`validate-1.24.21.yml`) must be fully green on the exact final commit of that branch, and the publish workflow (`publish-1.24.21.yml`, started from branch `release/1.24.21-publish` or by hand) pushes the zips and feeds to the public repo.
+- Practice runs go to the throwaway repo `stoveez/plazcode-publish-test` first.
+- The private repo's own `main` branch is the old long-term source line. It is NOT where releases come from, and it is far behind (about 105 commits behind `claude/plazcode-dev` on 2026-10-24). Do not switch to it for a release.
+- Day-to-day work: start from `claude/plazcode-dev` and use your own `claude/<task>` branch. Moving finished work into `release/1.24.21` (or `main`) needs the owner's clear yes. Then follow "How to publish a real update" and the public-then-private plan, and publish only with the owner's clear yes for that exact update.
 
 ## 4. How the build and tests work
 - Source = pinned official 1.24.20 plus an overlay in `development/1.24.21/overlay`. **Edit only the overlay.** Never edit `build-src-1.24.21/` (it is regenerated). A file not yet in the overlay is first copied from `build-src-1.24.21/PlazCode/` into the overlay, then edited there.
@@ -139,7 +149,7 @@ Limits: the Mac zip can only be built on a Mac or by GitHub's Mac runners (publi
 - Earlier in the same session (also on this branch): Freebuff and OxAlpha startup fixes, simpler Memory page, grouped Execution settings, clickable Effort list, Thorough work mode sets Effort to Max, Studio-connected check before switching to Roblox, vault "+" and delete, memory notes kept in the vault, startup intro fixes, lean-startup groundwork (not wired in).
 
 ## 7. Open work and known bugs (as reported by testers/owner)
-- Desktop-layout browser tests: on 2026-10-24 the five that were out of date (`test-ultra-trash-browser`, `test-ultracode-appearance`, `test-sidebar-explorer`, `test-workspace-scroll`, `test-desktop-performance`) were updated for the new layout and pass in Chromium here; the Firefox halves of these tests, plus `test-command-watchers`, `test-browsers`, `test-checklist-appearance` and `test-clarification-input`, need Firefox and must be checked in CI (Firefox is not installed in the Claude sandbox). Real app fixes found on the way: dropdown lists (Reasoning, Language) were hidden behind the next settings card (fixed with a lift class set by `core/effort-picker.js`), the Ultra purple border on the active page button was lost, and glow-off left a shadow on it.
+- Desktop-layout browser tests were updated for the new layout on 2026-10-24 and pass in Chromium. The Firefox checks (and the Firefox-only tests) cannot run in the Claude sandbox; they run automatically in CI, so nothing extra is needed. Real app fixes found on the way: dropdown lists no longer hide behind the next settings card, the Ultra border and glow-off on the active page button were restored.
 - Owner answers 2026-10-24: the sidebar now scrolls as one column on short windows (max-height 780px) so every page, link and the account/version rows stay reachable. The title bar shows NO Effort or version text (owner choice: removed after trying it back); the sidebar still shows Effort and the version.
 - `claude/chatgpt-claude-stall` and `claude/notion-new-workspace` are ALREADY MERGED into `claude/plazcode-dev`. Still to merge: `claude/agentscript-full-access` (helper may still be working; check `wip/agentscript-full-access` and the board) - use this method: apply with `git apply --3way` or cherry-pick, resolve conflicts in `core/main.js` by keeping both sides, recompute pins, run the full suite and cargo tests.
 - Then a fresh CI run and the standard lean test build for the owner (needs the owner's "yes" only for publishing; test builds are private CI artifacts).

@@ -1,14 +1,13 @@
 # AGENTS.md - instructions for any AI working in this repo (Codex, Claude, or others)
 
-This is the private source repo for PlazCode (`stoveez/plazcode-source`). **Read `docs/MAINTAINER-GUIDE.md` completely before you change anything**, then `docs/TASK-BOARD.md`, then `development/1.25.0/NEXT-UPDATE-PLAN.md`. This page is only the short version of the rules; the guide has the details, commands and procedures.
+> **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
+>
+> Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.
 
-## Latest work (read `docs/HANDOFF.md` first)
-**Ignore the branch `claude/vault-brain-and-cleanups`: it is old and retired.** Use `claude/plazcode-dev`.
+This is the private source repo for PlazCode (`stoveez/plazcode-source`). For anything beyond these rules read `docs/MAINTAINER-GUIDE.md`, `docs/TASK-BOARD.md` and `docs/HANDOFF.md`; build, release and status details are in `docs/vault/`.
 
-The newest finished work is on branch **`claude/plazcode-dev`** (not yet merged into `release/1.24.21`). `docs/HANDOFF.md` on that branch lists every branch, how to build and test, how to push, and what is unfinished. Start from that branch and make your own `codex/<task>` branch from it.
-
-## Which branch to use (important)
-The repo's default branch `main` is old and does NOT contain these instructions. All current work lives on **`release/1.24.21`**. When you start (in Codex, pick this branch when setting up the environment), work from `release/1.24.21`, and create your own branch from it named `codex/<task>`. Do not commit to `main`, and do not push to `release/1.24.21` itself without the owner's yes. If you can't see `AGENTS.md` or `docs/MAINTAINER-GUIDE.md`, you are on the wrong branch: switch to `release/1.24.21` before doing anything.
+## Which branch to use
+Start from **`claude/plazcode-dev`** (the newest finished work; the repo's `main` is old and `release/1.24.21` is behind). Make your own `codex/<task>` branch from it. Do not push to `claude/plazcode-dev`, `release/1.24.21` or `main` without the owner's yes. Ignore the old branch `claude/vault-brain-and-cleanups`. If you cannot see `docs/NOW.md`, you are on the wrong branch: `git fetch origin` and switch to `claude/plazcode-dev`.
 
 ## Rules that never bend
 1. Never break the auto-updater (the feed addresses and format in `latest.json` / `latest-macos.json` must keep working for every installed copy).
@@ -27,7 +26,7 @@ The repo's default branch `main` is old and does NOT contain these instructions.
 Edit files in `development/<version>/overlay/`, never in `build-src-<version>/` (it is rebuilt by `python3 development/<version>/prepare.py`). After editing a protected file, update its hash pin in `test-desktop-regression.js`.
 
 ## Running two AIs at once
-The owner may run Claude Code and you at the same time. Claim a task on `docs/TASK-BOARD.md`, work in your own branch and git worktree (`git worktree add ../plazcode-<task> -b codex/<task> release/1.24.21`), stay inside your claimed files, start CI for your branch with `gh workflow run validate-1.24.21.yml --ref <branch>`, and leave a short handoff note when you finish. Section 11 of the guide has the full protocol.
+The owner may run Claude Code and you at the same time. Claim a task on `docs/TASK-BOARD.md`, work in your own branch and git worktree (`git worktree add ../plazcode-<task> -b codex/<task> claude/plazcode-dev`), stay inside your claimed files, start CI for your branch with `gh workflow run validate-1.24.21.yml --ref <branch>`, and leave a short handoff note when you finish (`docs/NOW.md`). Section 11 of the guide has the full protocol.
 
 ## Public-then-private plan for test builds and publishing (owner's plan, 2026-10-23)
 Builds on this private repo are blocked by GitHub billing, so the repo is made PUBLIC only while a build or publish runs, then PRIVATE again. Every time you are ready for a test build or an update: (1) send the owner the settings link https://github.com/stoveez/plazcode-source/settings and walk them through the whole plan again in plain words (resend it each time); (2) after they make it public, start the build on your task branch; (3) send them the two lean zips as soon as the run ends; (4) tell them to set the repo back to Private right away. Publishing still needs their clear "yes" for that exact update. Full steps, risks and rules: `docs/HANDOFF.md` section "Public-then-private plan". Never change repo visibility yourself.
@@ -38,30 +37,16 @@ Every time you push a WIP or finished change that another AI could pick up, tell
 ## Remind the owner to set the repo back to Private (owner, 2026-10-23)
 The owner does not want to forget this step of the public-then-private plan. Remind them at exactly two moments: (1) right after they have received the test zips from you (say it in the same message that delivers the zips), and (2) right after a publish has finished. Do not remind them before those moments (for example while a build is still running). After one of those moments, repeat the reminder in later replies until the repo is private. Give the settings link each time: https://github.com/stoveez/plazcode-source/settings (Danger Zone, Change visibility, Private). Check `gh api repos/stoveez/plazcode-source --jq '{private,visibility}'` before you stop working and tell the owner plainly if it is still public. If you are about to end a session while it is public, say so in your last message. Never change visibility yourself.
 
-## How to publish a real update, with the public-then-private plan (owner's walkthrough, 2026-10-23)
-A real update is the same build that passed the full check, promoted by the private-repo publish workflow. Nothing is rebuilt at publish time, and the feed addresses and formats never change. Whenever the owner asks for an update, walk them through this in plain words (resend it every time), in this order:
-1. Owner makes the repo PUBLIC (send https://github.com/stoveez/plazcode-source/settings, Danger Zone, Change visibility). It must stay public from here until step 5 is finished, because the checks, the dry run and the publish all need free builds.
-2. You run the full validation (`validate-1.24.21.yml`) on the exact final commit. Everything must be green on Windows, Mac and Linux, including the Mac desktop test. Fix anything red first (see Open items in CLAUDE.md: several desktop-layout browser tests are out of date and block a green run).
-3. You write the final plain-language notes in `development/1.24.21/release-entry.json` (release text under 2,000 characters), put `VALIDATION_RUN` and `VALIDATED_SHA` in `.github/workflows/publish-1.24.21.yml`, and do the dry run into the throwaway repo `stoveez/plazcode-publish-test`. Check its feeds (`latest.json`, `latest-macos.json`), the zip checksums and the release page.
-4. Ask the owner for a clear "yes" to publish THAT exact update. A yes for a test build, an earlier update or a dry run does not count. Then set `PUBLIC_REPO` back to `stoveez/PlazCode` and start the workflow (it uses the repository secret `PUBLIC_REPO_TOKEN`; never print or copy it).
-5. Check afterwards: fetch the live public `latest.json` and `latest-macos.json` and one release download, and confirm the version, link and sha256 match; an older installed copy must still find and install the new version.
-6. Right after the publish has finished, remind the owner to set the repo back to Private (same settings link). Repeat until it is private.
-Read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first real publish; they are the source of truth and this list is a summary. Test builds are not publishing and need only steps 1, the build and the zips, then the Private reminder.
-
-## Local build option
-- Option (owner, 2026-10-24): an AI running on the owner's own Windows PC (Claude Code or another code/CLI agent) can build the Windows test zip locally for free, with no public window. Steps and limits: `docs/HANDOFF.md`, section "Option: build the test zip on the owner's own computer". The Mac zip still needs a Mac or CI.
+## Where the detail lives (moved out of this file on 2026-10-24 to save tokens)
+- Build, tests, hash pins, CI, quick commands: `docs/vault/build-and-tests.md`
+- Test builds and the zips: `docs/vault/test-builds.md`
+- Publishing a real update, which repo and branch holds releases: `docs/vault/releasing.md` (then read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first real publish)
+- Open bugs: `docs/vault/open-work.md`; what is in the latest test zips: `docs/HANDOFF.md`
+- Local Windows test-zip build with a CLI agent: `docs/HANDOFF.md`, "Option: build the test zip on the owner's own computer"
+- Next update (Brickwire items, login/license, Skill Workshop): `development/1.25.0/` (claim items on `docs/TASK-BOARD.md`)
 
 ## Effort
 Use maximum care (high reasoning effort) for the license and login server, the Luau helper library and build self-checks, hard bug hunts (for example the Notion send problem) and the planning of big features.
-
-## Quick commands
-- Build the source tree: `python3 development/1.24.21/prepare.py`
-- All JavaScript tests: `cd build-src-1.24.21/PlazCode && NODE_PATH=release-tools/node_modules PLAZCODE_TEST_BROWSER=chromium python3 release-tools/test-javascript.py`
-- App tests: `cargo test --manifest-path agent/Cargo.toml`
-- Validation in CI: `gh workflow run validate-1.24.21.yml --ref <branch>` (about 30 minutes; all four jobs must pass)
-
-## Next-update work
-The Brickwire-inspired items are specified in detail in `development/1.25.0/BRICKWIRE-ITEMS-SPEC.md`; claim them on `docs/TASK-BOARD.md`.
 
 ## Your own branch and constant pushes (important)
 Make your own branch `<ai-name>/<task>` (for example `codex/<task>`) first, from the newest branch named in `docs/HANDOFF.md`, and work only there. Never work on another AI's branches. Commit and push early and often, including unfinished work labelled `WIP: ...`, so the next AI can restart exactly where you stopped if your limits run out. Keep `docs/TASK-BOARD.md` current (branch, latest commit, what changed, tests, unfinished work, next step) and always tell the owner your branch name and commit id. Full details: the "Every AI: your own branch, WIP and constant pushes" section of `docs/HANDOFF.md`.

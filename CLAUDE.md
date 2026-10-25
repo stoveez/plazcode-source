@@ -1,6 +1,10 @@
 # PlazCode private repo: instructions for any AI working here
 
-Read this first, then `docs/HANDOFF.md` (where the latest work is and how to push it), then `docs/MAINTAINER-GUIDE.md` (the full guide), `docs/TASK-BOARD.md` (who is working on what) and `development/1.25.0/NEXT-UPDATE-PLAN.md`. Codex reads `AGENTS.md`, which says the same rules. If you and another AI work at the same time, follow section 11 of the guide (claim a task on the board, own branch and worktree).
+> **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
+>
+> Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.
+
+Codex reads `AGENTS.md`, which says the same rules. For the details of building, test builds, publishing, releases and open bugs, use the vault (`docs/vault/`), `docs/HANDOFF.md` and `docs/MAINTAINER-GUIDE.md` (section 11 if another AI works at the same time: claim a task on `docs/TASK-BOARD.md`, own branch and worktree).
 
 ## What this is
 PlazCode is a closed-source browser extension plus a Rust desktop app that turns an AI chat site into an agent for Roblox Studio and the user's computer.
@@ -37,52 +41,14 @@ Use HIGH effort (think longer and trace carefully) for these four kinds of work.
 4. Planning big features before building them.
 Normal effort is fine for small fixes, packaging, release notes and questions.
 
-## How the build works
-- 1.24.21 = pinned official 1.24.20 source + overlay in `development/1.24.21/overlay`, applied by `python3 development/1.24.21/prepare.py` into `build-src-1.24.21/PlazCode`.
-- JavaScript tests: `python3 release-tools/test-javascript.py` (needs jsdom; set `NODE_PATH` to `release-tools/node_modules`). Native tests: `cargo test --manifest-path agent/Cargo.toml`.
-- After editing a protected file, update its hash pin in `test-desktop-regression.js` (`git hash-object`).
-- CI: `.github/workflows/validate-1.24.21.yml` (jobs `browsers` and `native` on Windows, macOS and Ubuntu). Branch `release/1.24.21`.
-- The finished apps are the CI artifacts `plazcode-1.24.21-Windows-validation` and `plazcode-1.24.21-macOS-validation` (about 53 MB and 65 MB; most of it is the memory helper `engram`).
-
-## How to publish a real update, with the public-then-private plan (owner's walkthrough, 2026-10-23)
-A real update is the same build that passed the full check, promoted by the private-repo publish workflow. Nothing is rebuilt at publish time, and the feed addresses and formats never change. Whenever the owner asks for an update, walk them through this in plain words (resend it every time), in this order:
-1. Owner makes the repo PUBLIC (send https://github.com/stoveez/plazcode-source/settings, Danger Zone, Change visibility). It must stay public from here until step 5 is finished, because the checks, the dry run and the publish all need free builds.
-2. You run the full validation (`validate-1.24.21.yml`) on the exact final commit. Everything must be green on Windows, Mac and Linux, including the Mac desktop test. Fix anything red first (see Open items in CLAUDE.md: several desktop-layout browser tests are out of date and block a green run).
-3. You write the final plain-language notes in `development/1.24.21/release-entry.json` (release text under 2,000 characters), put `VALIDATION_RUN` and `VALIDATED_SHA` in `.github/workflows/publish-1.24.21.yml`, and do the dry run into the throwaway repo `stoveez/plazcode-publish-test`. Check its feeds (`latest.json`, `latest-macos.json`), the zip checksums and the release page.
-4. Ask the owner for a clear "yes" to publish THAT exact update. A yes for a test build, an earlier update or a dry run does not count. Then set `PUBLIC_REPO` back to `stoveez/PlazCode` and start the workflow (it uses the repository secret `PUBLIC_REPO_TOKEN`; never print or copy it).
-5. Check afterwards: fetch the live public `latest.json` and `latest-macos.json` and one release download, and confirm the version, link and sha256 match; an older installed copy must still find and install the new version.
-6. Right after the publish has finished, remind the owner to set the repo back to Private (same settings link). Repeat until it is private.
-Read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first real publish; they are the source of truth and this list is a summary. Test builds are not publishing and need only steps 1, the build and the zips, then the Private reminder.
-
-## How to publish (only when the owner says "publish")
-Publishing is done by the GitHub workflow `.github/workflows/publish-1.24.21.yml`, never by hand and never by pushing files to the public repo.
-1. The version being published must already have a fully green validation run (`validate-1.24.21.yml`) on its exact final commit. Read `VALIDATION_RUN` from that run and `VALIDATED_SHA` from its commit.
-2. Put those two values in the `env:` block of the publish workflow and make sure `development/1.24.21/release-entry.json` has the final plain-language notes. Commit.
-3. Do a dry run first: set `PUBLIC_REPO` to the throwaway repo `stoveez/plazcode-publish-test`, run the workflow, and check the feeds (`latest.json`, `latest-macos.json`), the zip checksums and the release page there.
-4. Ask the owner for a clear "yes" to publish for real. Then set `PUBLIC_REPO` back to `stoveez/PlazCode` and start the workflow (push to branch `release/1.24.21-publish`, or run it by hand). It uses the repository secret `PUBLIC_REPO_TOKEN`; never print or copy it.
-5. Afterwards fetch the public `latest.json` and `latest-macos.json` and one release download, and confirm the version, link and sha256 match. An older installed copy must still find and install the new version.
-Read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first publish; this list is a summary, and the workflow is the source of truth. `PLAZCODE_QUICK` skips the Mac desktop test and is only for small fixes the owner approves.
-For a new version number, copy the 1.24.21 workflows and `development/1.24.21` folder to the new number and update the names inside.
-
-## Where things stand
-- Option (owner, 2026-10-24): an AI running on the owner's own Windows PC (Claude Code or another code/CLI agent) can build the Windows test zip locally for free, with no public window. Steps and limits: `docs/HANDOFF.md`, section "Option: build the test zip on the owner's own computer". The Mac zip still needs a Mac or CI.
-- Test zips: latest given to the owner are from CI run 40056181833 (commit `9607466`). Newer changes that are NOT in them yet are listed in `docs/HANDOFF.md` under "What is in the latest test zips and what is NOT yet"; keep that list up to date.
-- 1.24.21 is NOT published. The owner added the **Vault memory** (an Obsidian-style folder of linked notes the AI reads and updates, an Obsidian-looking viewer window opened from Memory settings, plus a score-and-redo reference loop judged by a separate critic chat, `plazcode_critic`, not yet tried on real AI sites) to this version, so the exact final commit needs a fresh fully green validation run (including the Mac desktop test) before publishing. Design: `development/1.24.21/VAULT-MEMORY-DESIGN.md`. Code: `agent/src/vault.rs`, `core/memory.js`, tool wiring in `core/main.js`, `background.js`.
-- The desktop app got a new layout (top area bar, bold area name over its pages in the sidebar, Overview cards, Account placeholder, Appearance page with themes and custom look, startup intro that checks for updates). It lives in `agent/src/desktop.html` (CSS/JS blocks marked `nx`). Not yet tried in the real app on Windows/Mac; the Discord link is `open:discord` in `agent/src/gui.rs`.
-- Documentation: a new top-bar area with Guides and Troubleshooting (search, picture cards, reader, images). Guides are written in `guides/` (see `guides/README.md`) and posted to the public repo `guides/` folder only by the workflow `publish-guides.yml` (owner only; test first). The app reads `https://raw.githubusercontent.com/stoveez/PlazCode/main/guides/index.json`. An in-app editor for posting is NOT built yet (owner chose chat posting first, editor later with the login system).
-- Release notes in `development/1.24.21/release-entry.json` now include the vault and the tester fixes. The GitHub release text is limited to under 2,000 characters (checked: about 1,360).
-- Publishing waits for the owner and goes through the private workflow (set `VALIDATED_SHA` / `VALIDATION_RUN` in `publish-1.24.21.yml`, test against `stoveez/plazcode-publish-test` first).
-- Test builds: use the lean zips (see rule 6). GitHub's Mac runners were scarce on 2026-10-20; re-run the Mac job every 20 minutes if it is cancelled with "not acquired by Runner".
-- Next update plan (login/license system, Skill Workshop, Brickwire ideas, a simple website) is in `development/1.25.0/`.
-
-## Open items
-- Desktop-layout browser tests: on 2026-10-24 the five that were out of date (`test-ultra-trash-browser`, `test-ultracode-appearance`, `test-sidebar-explorer`, `test-workspace-scroll`, `test-desktop-performance`) were updated for the new layout and pass in Chromium here; the Firefox halves of these tests, plus `test-command-watchers`, `test-browsers`, `test-checklist-appearance` and `test-clarification-input`, need Firefox and must be checked in CI (Firefox is not installed in the Claude sandbox). Real app fixes found on the way: dropdown lists (Reasoning, Language) were hidden behind the next settings card (fixed with a lift class set by `core/effort-picker.js`), the Ultra purple border on the active page button was lost, and glow-off left a shadow on it.
-- Owner answers 2026-10-24: the sidebar now scrolls as one column on short windows (max-height 780px) so every page, link and the account/version rows stay reachable. The title bar shows NO Effort or version text (owner choice: removed after trying it back); the sidebar still shows Effort and the version.
-- "Response changed - run paused" banner: needs a debug report from a tester.
-- Mac app opens then closes: needs the tester's app version or crash report (likely an older app with a newer extension).
-- Not live-tested: Ultra on real Studio and AI sites, Vani Co-work, Firefox appearance.
-- The simple website is in `PlazCode-website.zip` (single `index.html`), not yet deployed. The owner will get a domain and host it on Cloudflare Pages.
-- Lawyer review of licence notices; GitHub Support request about the locked `v1.24.20` tag; delete the `cleanup-public` branch.
+## Where the detail lives (moved out of this file on 2026-10-24 to save tokens)
+- Build and tests, hash pins, CI: `docs/vault/build-and-tests.md`
+- Test builds and the zips: `docs/vault/test-builds.md`
+- Publishing a real update, which repo and which branch: `docs/vault/releasing.md` (steps), then read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first real publish
+- Vault memory, desktop layout, guides, website: `docs/vault/vault-memory.md`, `docs/vault/app-and-guides.md`
+- Open bugs and not-yet-tested items: `docs/vault/open-work.md`; what is in the latest test zips: `docs/HANDOFF.md` section "What is in the latest test zips and what is NOT yet" (keep it up to date)
+- Next update (login/license, Skill Workshop, Brickwire): `development/1.25.0/`
+- Local Windows test-zip build with a CLI agent: `docs/HANDOFF.md`, "Option: build the test zip on the owner's own computer"
 
 ## How often to push (the owner's ideal rhythm)
 Push to your own task branch after every finished step (a feature, a fix, a merge, a test pass), before anything long or risky (full test run, build, big merge, waiting on a helper or CI), and push half-done work as `WIP: ...` commits. New files and notes go in at the same rhythm. Not after every keystroke. Details: `docs/HANDOFF.md`.
