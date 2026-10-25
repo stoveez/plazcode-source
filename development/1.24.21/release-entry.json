@@ -21,14 +21,18 @@
     "Ultra effort is now the UltraLab pack by SyphoDev (used with his permission, credit: youtube.com/@SyphoDev). At Ultra the AI gets a full Roblox game-building toolkit: 53 skills covering UI, scripting, maps, 3D models, effects, tests and more, plus 7 helper roles and 18 reference notes. It only reads the ones that match your request, so it stays quick.",
     "The AI can open any of Ultra's skill files itself and look things up in the official Roblox docs, and it still asks you first before it uploads, uses a paid service, installs something or publishes.",
     "Engine file tools (AgentScript): 17 new tools that read and work on project files without the editor being open. Godot: read a project, show a scene's node tree, add a node, make a script from a template, check a script for mistakes, find where a file is used. Unity: read a project, list assets, list a scene's objects, make a C# script, list packages. Roblox: read a saved place file, list and search its scripts, check Luau code. Blender: look inside a saved .blend file and check a Python script or add-on.",
-    "Vault: the AI now has a real long-term memory, a folder of linked notes it reads at the start of every chat and keeps up to date by itself: how you like things, your coding style, model styles, mistakes and fixes, and reference pictures. Press Open vault in Memory settings to browse it in a window that looks and works like Obsidian: a file list, note properties, info boxes, clickable links, pictures, search, and editing. The notes are plain files in numbered folders, so Obsidian opens them too (an Open in Obsidian button shows if you have it), and you can point the vault at your own Obsidian folder. It replaces the old flat list of 200 notes; your old notes are copied in and the old file is kept. You can turn off the AI writing notes. The AI can build to match a reference picture: a separate critic chat (a new chat on the same AI site, in its own small window) scores the result against the picture and lists fixes, up to 5 rounds, then the AI saves what it learned. If the separate chat can't open, it falls back to judging itself. Needs the newest PlazCode app."
+    "Vault: the AI now has a real long-term memory, a folder of linked notes it reads at the start of every chat and keeps up to date by itself: how you like things, your coding style, model styles, mistakes and fixes, and reference pictures. Press Open vault in Memory settings to browse it in a window that looks and works like Obsidian: a file list, note properties, info boxes, clickable links, pictures, search, and editing. The notes are plain files in numbered folders, so Obsidian opens them too (an Open in Obsidian button shows if you have it), and you can point the vault at your own Obsidian folder. It replaces the old flat list of 200 notes; your old notes are copied in and the old file is kept. You can turn off the AI writing notes. The AI can build to match a reference picture: a separate critic chat (a new chat on the same AI site, in its own small window) scores the result against the picture and lists fixes, up to 5 rounds, then the AI saves what it learned. If the separate chat can't open, it falls back to judging itself. Needs the newest PlazCode app.",
+    "Ask the AI about PlazCode itself: it can look up how any PlazCode feature works and explain it in plain words."
   ],
   "improved": [
     "Dropdown lists in PlazCode now use PlazCode's own rounded, themed menus in the app, the extension and the popup, with a clean arrow.",
     "Selected options in the Effort and Access settings are easier to read.",
     "Spacing is tidier for the Stop mode, Save and Memory summary controls.",
     "The AI no longer asks you to turn on Full PC access when it is already on.",
-    "When the AI sends a tool the wrong way, PlazCode now fixes more of it for you (nested wrappers, near-miss names, coordinates, out-of-range numbers) and tells the AI what it changed so it gets it right next time."
+    "When the AI sends a tool the wrong way, PlazCode now fixes more of it for you (nested wrappers, near-miss names, coordinates, out-of-range numbers) and tells the AI what it changed so it gets it right next time.",
+    "Command cards have a new navy and gold look on every AI site, including Notion, and they now show every time instead of sometimes falling back to the old plain chip.",
+    "The 'continue your previous project' popup has a new look, no longer appears when your last chat only had the startup message, and has a new button: Start new project, and don't show this again.",
+    "The desktop app's Updates page is spaced out and easier to read (needs the new app)."
   ],
   "fixed": [
     "On sites that redraw the whole page, like Vani AI, the PlazCode bar no longer loses its colours and shows black labels.",
@@ -42,7 +46,11 @@
     "The AI no longer re-reads the same Ultra file again and again.",
     "A harmless 'community skills 404' warning no longer appears when no community skills are published yet.",
     "What happened now says so when your PlazCode app is older than the extension, instead of showing nothing.",
-    "A command card no longer keeps spinning (seen on Notion) while the PlazCode bar says the AI is finished: PlazCode now notices the reply is done and runs the command, and a card settles as an error if the run crashed."
+    "A command card no longer keeps spinning (seen on Notion) while the PlazCode bar says the AI is finished: PlazCode now notices the reply is done and runs the command, and a card settles as an error if the run crashed.",
+    "Claude no longer pauses at random in the middle of a long run of tool calls: a result that never made it into the reply box is now typed again instead of being treated as sent.",
+    "On every site where PlazCode can count messages, an empty reply box is no longer taken as proof a result was sent. PlazCode waits briefly for proof, tries once more, and then says 'Message didn't send' straight away.",
+    "The empty 'json' frame and small empty grey bubble that appeared after a command on Claude are gone.",
+    "The bar no longer says 'AgentScript is offline' while the PlazCode app is running."
   ],
   "notes": [
     "Read-only mode and delete confirmations are checked twice: in the browser and again in the PlazCode app.",
@@ -73,7 +81,7 @@
       {
         "title": "✨ Polish",
         "items": [
-          "Fixes: stuck command card on Notion; Fix connection freeze on Vani, Freebuff, Oxalpha and UseAI; Notion file retry; repeated Ultra reads; bar colours on Vani."
+          "Fixes: stuck command card on Notion; Fix connection freeze on Vani, Freebuff, Oxalpha and UseAI; Notion file retry; repeated Ultra reads; bar colours on Vani; random pauses on Claude; sends that never landed; Claude's empty json frame."
         ]
       },
       {
