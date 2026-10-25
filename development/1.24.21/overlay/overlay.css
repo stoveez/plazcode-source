@@ -5972,17 +5972,16 @@ html.rs-light #rs-approve.rs-approve-docked { color: #1d222c; }
 html.rs-light .rs-approve-summary, html.rs-light .rs-approve-steps li { color: #1d222c; }
 @media (max-width: 480px) { #rs-approve.rs-approve-docked { inset: auto 0 72px 0; } .rs-approve-actions { flex-wrap: wrap; } #rs-approve-all { flex-basis: 100%; margin-bottom: 4px; } }
 
-/* Always approve button + the list in the menu */
-#rs-approve-all { margin-right: 16px; }
+/* Always approve: a gold button like Approve, plus the list in the menu */
+#rs-approve-all { margin-right: auto; white-space: nowrap; }
+#rs-approve.rs-approve-docked .rs-approve-actions { flex-wrap: wrap; row-gap: 12px; }
 #rs-approve-deny { margin-left: auto; }
 #rs-approve-changes:not([hidden]) { margin-left: auto; }
 #rs-approve-changes:not([hidden]) + #rs-approve-deny { margin-left: 0; }
-#rs-approve-all, #rs-approve-always { white-space: nowrap; flex: 0 0 auto; }
-#rs-approve.rs-approve-docked .rs-approve-actions { flex-wrap: wrap; row-gap: 12px; }
-#rs-approve-always { flex: 1 1 auto; margin-right: 0; padding: 0 !important; min-height: 0 !important; border: 0 !important; background: none !important; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; color: var(--pc-gold-bright,#f0cf7a) !important; text-align: left; }
-#rs-approve-always:hover { text-decoration: underline; filter: brightness(1.15); }
+#rs-approve-all:not([hidden]) ~ #rs-approve-deny { margin-left: 0; }
+#rs-approve-always { border-radius: 3px 12px 3px 12px !important; background: linear-gradient(135deg, color-mix(in srgb, var(--pc-gold,#d9ad52) 68%, #000) 0%, var(--pc-gold-bright,#f0cf7a) 100%) !important; color: var(--pc-navy,#071426) !important; border: 1px solid var(--pc-gold-bright,#f0cf7a) !important; font-weight: 800 !important; box-shadow: 0 4px 20px color-mix(in srgb, var(--pc-gold,#d9ad52) 40%, transparent), inset 0 1px 0 rgba(255,255,255,.35) !important; transition: filter .15s, box-shadow .15s, transform .12s; }
+#rs-approve-always:hover { filter: brightness(1.08); transform: translateY(-1px); }
 #rs-approve-always[hidden] { display: none !important; }
-#rs-approve-all[hidden] + #rs-approve-always { margin-left: 0; }
 .rs-always-box { margin: 10px 0; padding: 11px 13px; border: 1px solid color-mix(in srgb, var(--pc-gold,#d9ad52) 26%, transparent); border-radius: 3px 12px 3px 12px; background: linear-gradient(135deg, color-mix(in srgb, var(--pc-gold,#d9ad52) 9%, transparent), transparent); }
 .rs-always-head { font-weight: 700; font-size: 12.5px; margin-bottom: 6px; color: var(--pc-gold-bright,#f0cf7a); }
 .rs-always-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 5px; }

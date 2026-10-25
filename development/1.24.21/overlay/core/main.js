@@ -329,7 +329,7 @@
         const canAlways = !!(info && call && !opts.plan && opts.always !== false && typeof PlazCodeApproval.alwaysAdd === "function");
         if (alwaysBtn) {
           alwaysBtn.hidden = !canAlways;
-          if (canAlways) { alwaysBtn.textContent = "Always approve “" + PlazCodeApproval.nice(call.tool) + "”"; alwaysBtn.title = "Never ask about this action again. You can remove it in the PlazCode menu under Safety."; }
+          if (canAlways) { alwaysBtn.textContent = "Always approve"; const nm = PlazCodeApproval.nice(call.tool); alwaysBtn.title = "Never ask about “" + nm + "” again. You can remove it in the PlazCode menu under Safety."; alwaysBtn.setAttribute("aria-label", "Always approve " + nm); }
         }
         const canRepeatAll = !!(info && !info.destructive && call && !opts.failClosed && !opts.plan);
         if (allBtn) {
@@ -6229,9 +6229,9 @@ return result`;
             <div id="rs-approve-details" hidden></div>
             <div class="rs-approve-actions">
               <button type="button" id="rs-approve-all" hidden></button>
-              <button type="button" id="rs-approve-always" hidden></button>
               <button type="button" id="rs-approve-changes" hidden>Ask for changes</button>
               <button type="button" id="rs-approve-deny">Deny</button>
+              <button type="button" id="rs-approve-always" hidden>Always approve</button>
               <button type="button" id="rs-approve-allow">Allow</button>
             </div>
           </div>

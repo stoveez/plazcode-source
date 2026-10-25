@@ -32,7 +32,7 @@ const $ = (w, id) => w.document.getElementById(id);
   let { w, store, changed } = page();
   const args = { target_file: "Main", edits: [{ old_string: "a", new_string: "b" }] };
   let p = w.requestApproval("multi_edit", args, { call: { tool: "multi_edit", arguments: args }, engine: "studio" }); await tick();
-  assert.equal($(w, "rs-approve-always").hidden, false); assert.equal($(w, "rs-approve-always").textContent, "Always approve “Multi edit”");
+  assert.equal($(w, "rs-approve-always").hidden, false); assert.equal($(w, "rs-approve-always").textContent, "Always approve"); assert(/Multi edit/.test($(w, "rs-approve-always").title), "the tooltip names the action");
   assert.equal(w.alwaysHas("multi_edit"), false);
   $(w, "rs-approve-always").click();
   assert.equal(await p, true, "Always approve also approves this one");
