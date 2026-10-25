@@ -224,6 +224,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -288,6 +289,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -343,6 +345,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -395,6 +398,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -450,6 +454,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -502,6 +507,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -554,6 +560,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -609,6 +616,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -671,6 +679,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -733,6 +742,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -786,6 +796,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -838,6 +849,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -893,6 +905,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -949,6 +962,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -1001,6 +1015,7 @@
         "providers/media.js",
         "core/connection-doctor.js",
         "core/safety.js",
+        "core/tool-cards.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"

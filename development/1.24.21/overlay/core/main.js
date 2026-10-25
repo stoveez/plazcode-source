@@ -242,14 +242,19 @@
     }
     return clean;
   }
+  // The approval prompt that is on screen right now (Stop closes it as "denied").
+  let approvalCancel = null;
   function requestApproval(op, args, opts) {
     return new Promise((resolve) => {
+      try {
       const root = document.getElementById("rs-approve");
       const body = document.getElementById("rs-approve-body");
       const allow = document.getElementById("rs-approve-allow");
       const deny = document.getElementById("rs-approve-deny");
-      // 1.24.21: delete confirmations fail closed when the prompt is missing.
-      if (!root || !allow || !deny) { resolve(!(opts && opts.failClosed)); return; }
+      // Fails closed: when the prompt cannot be shown, the change is NOT approved
+      // (this used to approve everything except deletes).
+      if (!root || !allow || !deny) { resolve(false); return; }
+      if (approvalCancel) { try { approvalCancel(); } catch {} }
       const kicker = root.querySelector(".rs-approve-kicker"), title = root.querySelector(".rs-approve-title");
       const oldKicker = kicker ? kicker.textContent : "", oldTitle = title ? title.textContent : "";
       if (opts && kicker) kicker.textContent = opts.kicker || oldKicker;
@@ -257,9 +262,20 @@
       const preview = (() => {
         try { return JSON.stringify(args || {}, null, 0).slice(0, 280); } catch { return ""; }
       })();
-      if (body) body.innerHTML = `<b>${op}</b>${preview ? `<pre>${preview.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</pre>` : ""}`;
+      // Plain text only: the delete path is chosen by the AI and must never become HTML.
+      if (body) {
+        body.textContent = "";
+        const strong = document.createElement("b");
+        strong.textContent = String(op);
+        body.appendChild(strong);
+        if (preview) { const pre = document.createElement("pre"); pre.textContent = preview; body.appendChild(pre); }
+      }
       root.hidden = false;
+      let finished = false;
       const done = (ok) => {
+        if (finished) return;
+        finished = true;
+        if (approvalCancel === cancel) approvalCancel = null;
         root.hidden = true;
         if (kicker) kicker.textContent = oldKicker;
         if (title) title.textContent = oldTitle;
@@ -269,8 +285,11 @@
       };
       const onAllow = () => done(true);
       const onDeny = () => done(false);
+      const cancel = () => done(false);
+      approvalCancel = cancel;
       allow.addEventListener("click", onAllow);
       deny.addEventListener("click", onDeny);
+      } catch { resolve(false); }
     });
   }
   function setPermMode(id) {
@@ -2748,7 +2767,8 @@ return result`;
       if (!ok) return PlazCodeSafety.declinedDelete(bareName);
       deleteConfirmation = {key: deleteKey(bareName, args), expires: Date.now() + 120000};
     }
-    if (!deletes && permMode === "ask" && ASK_OPS.has(bareName)) {
+    // Ask mode: the hand-kept list, plus anything the safety module calls a change (unknown tools count as changes).
+    if (!deletes && permMode === "ask" && (ASK_OPS.has(bareName) || PlazCodeSafety.isChange(bareName, safetyEngine))) {
       const ok = await requestApproval(bareName, args);
       if (!ok) return `ERROR in ${bareName}: the user declined this action (Ask mode). Do not retry unless they ask.`;
     }
@@ -3660,6 +3680,27 @@ return result`;
   }
 
   // Full args / code, shown in a tool chip's expandable body.
+  // An older card for the same tool on the same target folds under an "Earlier call" (or "Retry of failed call") tag.
+  // Only the last 40 cards keep their full diff; older ones keep a short summary.
+  function noteCardCall(item, model) {
+    const trail = A.cardTrail = A.cardTrail || [];
+    const prev = trail[trail.length - 1];
+    if (prev && prev.item !== item && PlazCodeToolCards.sameCall(prev.model, model)) {
+      const tag = prev.err ? "Retry of failed call" : "Earlier call";
+      try {
+        if (prev.item.__rsChip) prev.item.__rsChip = { ...prev.item.__rsChip, tag };
+        const meta = prev.item.querySelector && prev.item.querySelector(".rs-card-meta");
+        if (meta && !meta.querySelector(".rs-card-tag")) { const span = document.createElement("span"); span.className = "rs-card-tag"; span.textContent = tag; meta.appendChild(span); }
+        const chipEl = prev.item.querySelector && prev.item.querySelector(".rs-chip");
+        if (chipEl) chipEl.classList.remove("open");
+      } catch {}
+    }
+    if (!prev || prev.item !== item) trail.push({ item, model, err: false });
+    while (trail.length > 40) {
+      const old = trail.shift();
+      try { if (old.item.__rsChip && old.item.__rsChip.card) old.item.__rsChip = { ...old.item.__rsChip, card: PlazCodeToolCards.slim(old.item.__rsChip.card) }; } catch {}
+    }
+  }
   function callBody(call) {
     const a = call.arguments || {};
     if (call.tool === "execute_luau") return (a.code || "").trim();
@@ -4378,7 +4419,9 @@ return result`;
             break;
           }
           // Loading chip with the real args (loop owns this item from here).
-          decorate.toolBox(res.item, call.tool, "run", argSummary(call), true, callBody(call), category);
+          let runCard = null;
+          try { runCard = PlazCodeToolCards.model(call); noteCardCall(res.item, runCard); } catch {}
+          decorate.toolBox(res.item, call.tool, "run", argSummary(call), true, callBody(call), category, runCard);
           A.toolSettle = null; // a fresh call: no settled outcome yet
           A.toolRunning = true;
           A.toolStart = Date.now();
@@ -4437,8 +4480,10 @@ return result`;
           const hasImages = !!(A.pendingImages && A.pendingImages.length);
           if (hasImages) rememberImageTool(call.tool);
           const resultCat = hasImages ?  "screen" : category;
+          let doneCard = null;
+          try { doneCard = PlazCodeToolCards.model(call, outBody); if (A.cardTrail && A.cardTrail.length) { const last = A.cardTrail[A.cardTrail.length - 1]; if (last.item === res.item) { last.err = !!isErr; last.model = doneCard; } } } catch {}
           decorate.toolBox(res.item, call.tool, isErr ?  "err" : "done", outSummary(feedback),
-            true, outBody, resultCat);
+            true, outBody, resultCat, doneCard);
           try { ui.trackCard(call.tool, isErr ?  "err" : "ok", outSummary(feedback), resultCat); } catch {}
           // Snapshot the settled outcome. If the site swaps this turn's DOM node
           // while we wait for the model's next turn (wiping the chip AND the
@@ -4447,7 +4492,7 @@ return result`;
           // chip on an already-executed call.
           A.toolSettle = {
             phase: isErr ?  "err" : "done", detail: outSummary(feedback),
-            body: outBody, category: resultCat, count: P.assistantCount(),
+            body: outBody, category: resultCat, card: doneCard, count: P.assistantCount(),
             // Node IDENTITY of the settled turn (virtualization-proof), when the
             // provider exposes it. The count guard alone misfires on Qwen: the
             // list virtualizes so assistantCount() doesn't grow for the model's
@@ -4720,6 +4765,7 @@ return result`;
       cowork.pause("Stopped. Pending requests are saved here until you resume.");
     }
     A.stop = true;
+    if (approvalCancel) { try { approvalCancel(); } catch {} }
     A.nativeSendIntent = null;
     for (const record of A.inflightTools || []) if (!record.draining) {
       record.draining = true; A.pendingToolSettles = (A.pendingToolSettles || 0) + 1;
@@ -5320,7 +5366,7 @@ return result`;
   const decorate = {
     // Core renderer. opts: {label, detail, body, category, phase, cls, whole}
     chip(item, opts) {
-      const { label, detail = "", body = "", category = "tool", phase, cls, whole } = opts;
+      const { label, detail = "", body = "", category = "tool", phase, cls, whole, card } = opts;
       if (P.immutableTranscript && P.renderImmutableChip && (!whole || (P.canRenderImmutableChip && P.canRenderImmutableChip(item, opts)))) {
         P.renderImmutableChip(item, opts);
         item.dataset.rs = cls || "1";
@@ -5328,7 +5374,7 @@ return result`;
         return null;
       }
       let chip = item.querySelector(".rs-chip");
-      const hasBody = !!body;
+      const hasBody = !!body || !!card;
       // While a command streams, the site re-renders the raw block on every token
       // and we get called on nearly every sweep. If what we'd draw is identical,
       // we must NOT rebuild the chip's innerHTML: doing so re-creates the
@@ -5337,7 +5383,7 @@ return result`;
       // markup ONLY when the rendered content actually changes; otherwise reuse
       // the existing element (and keep its expand/collapse state) so the spinner
       // keeps spinning smoothly. Re-anchoring + masking below still run each pass.
-      const sig = `${category}|${phase}|${cls || ""}|${whole ?  1 : 0}|${label}|${detail}|${hasBody ?  body.length : 0}`;
+      const sig = `${category}|${phase}|${cls || ""}|${whole ?  1 : 0}|${label}|${detail}|${card ? card.sig + "|" + (opts.tag || "") : (hasBody ?  body.length : 0)}`;
       if (!chip) chip = document.createElement("div");
       if (chip.dataset.csig !== sig) {
         chip.dataset.csig = sig;
@@ -5349,14 +5395,18 @@ return result`;
             `<span class="rs-chip-dt"></span>` +
             (hasBody ?  `<span class="rs-chip-cv">${SVG('<polyline points="6 9 12 15 18 9"/>')}</span>` : "") +
           `</div>` +
-          (hasBody ?  `<div class="rs-chip-body"><pre></pre></div>` : "");
+          (hasBody ?  (card ? `<div class="rs-chip-body"></div>` : `<div class="rs-chip-body"><pre></pre></div>`) : "");
         chip.querySelector(".rs-chip-tx").textContent = label;
         if (detail) chip.querySelector(".rs-chip-dt").textContent = detail;
         if (hasBody) {
-          chip.querySelector(".rs-chip-body pre").textContent = body;
+          const bodyEl = chip.querySelector(".rs-chip-body");
+          if (card && typeof PlazCodeToolCards !== "undefined") {
+            // Tool card: tabs (CHANGES / RAW REQUEST / OUTPUT); the diff is only drawn once the card is opened.
+            try { PlazCodeToolCards.render(bodyEl, card, { tag: opts.tag, open: false }); } catch { bodyEl.innerHTML = "<pre></pre>"; bodyEl.querySelector("pre").textContent = body || card.raw || ""; }
+          } else bodyEl.querySelector("pre").textContent = body;
           const head = chip.querySelector(".rs-chip-head");
           head.style.cursor = "pointer";
-          head.onclick = () => chip.classList.toggle("open");
+          head.onclick = () => { chip.classList.toggle("open"); if (bodyEl.__rsEnsure) { try { bodyEl.__rsEnsure(); } catch {} } };
         }
       }
 
@@ -5463,7 +5513,7 @@ return result`;
     },
 
     // owned=true → the agentic loop manages this item; the observer backs off.
-    toolBox(item, name, phase, detail, owned, body, category) {
+    toolBox(item, name, phase, detail, owned, body, category, card) {
       if (!item) return;
       // Tracker: every phase TRANSITION of a command chip, with who drove it.
       // "loop" = the agentic loop (authoritative), "sweep" = DOM classification.
@@ -5477,6 +5527,7 @@ return result`;
       this.chip(item, {
         label: name, detail: detail || "", body: body || "",
         category: category || RS.toolCategory(name), phase, cls, owned: !!owned,
+        ...(card ? { card, tag: (item.__rsChip && item.__rsChip.card && item.__rsChip.card.sig === card.sig ? item.__rsChip.tag : "") || "" } : {}),
       });
       item.dataset.zphase = phase;
       if (owned) item.dataset.zloop = "1";
@@ -5681,7 +5732,7 @@ return result`;
             RSParse.toolNameFromText(txt) === A.toolName) {
           diag("chip.reown", { name: A.toolName, phase: A.toolSettle.phase });
           this.toolBox(item, A.toolName, A.toolSettle.phase, A.toolSettle.detail,
-            true, A.toolSettle.body, A.toolSettle.category);
+            true, A.toolSettle.body, A.toolSettle.category, A.toolSettle.card);
           return;
         }
         // Is this command turn the IN-FLIGHT call - the one a running loop or the

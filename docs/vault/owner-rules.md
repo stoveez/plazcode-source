@@ -17,3 +17,4 @@ The full, binding list is `CLAUDE.md` / `AGENTS.md`. This is the short form; if 
 - No secrets in files or chat.
 - Respect licences: no Multi-Script code; UltraLab only with SyphoDev's permission (credit youtube.com/@SyphoDev); Brickwire is MIT (keep licence, credit "Brickwire contributors").
 - High effort (careful tracing) for: the login/license server, the Luau helper library and build self-checks, hard bug hunts, planning big features.
+- Ask deep, root-level questions before building any new feature, especially a vague one (2026-10-24). Details: [how-we-work](how-we-work.md).

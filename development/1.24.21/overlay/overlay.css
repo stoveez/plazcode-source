@@ -5862,3 +5862,38 @@ html.rs-light #rs-menu .rs-setup-summary{background:#f4f6fa;color:#334;border-co
 .pc-effort-dot{width:9px;height:9px;border-radius:50%;background:#e9ba53;flex:none}
 .pc-effort-item[data-level=low] .pc-effort-dot{background:#fff1a8}.pc-effort-item[data-level=mid] .pc-effort-dot{background:#ffc56b}.pc-effort-item[data-level=high] .pc-effort-dot{background:#ff9255}.pc-effort-item[data-level=max] .pc-effort-dot{background:#ff6267}.pc-effort-item[data-level=ultracode] .pc-effort-dot{background:#c5a1f9}
 @media(prefers-reduced-motion:reduce){#rs-root #rs-effort{transition:none}}
+
+/* ── Tool cards (1.24.21): CHANGES / RAW REQUEST / OUTPUT tabs, red and green diff lines ── */
+.rs-card { font-size: 12px; }
+.rs-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 13px 2px; color: #aab0c0; }
+.rs-card-target { font-family: ui-monospace, "Cascadia Code", monospace; font-size: 11.5px; color: #cdd2e0; word-break: break-all; }
+.rs-card-stat { font-weight: 600; }
+.rs-stat-add { color: #5cbf9a; }
+.rs-stat-del { color: #ef6b6b; }
+.rs-card-tag { padding: 1px 8px; border-radius: 999px; border: 1px solid rgba(170, 176, 192, 0.35); color: #aab0c0; font-size: 11px; }
+.rs-card-tabs { display: flex; gap: 2px; padding: 4px 10px 0; border-bottom: 1px solid rgba(170, 176, 192, 0.18); }
+.rs-card-tab { appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; padding: 5px 8px; color: #8d94a6; font: inherit; font-size: 11px; letter-spacing: 0.04em; cursor: pointer; }
+.rs-card-tab:hover { color: #cdd2e0; }
+.rs-card-tab.on { color: #e4e8f2; border-bottom-color: var(--cat, #8b8b93); }
+.rs-card-tab:focus-visible, .rs-card-more:focus-visible, .rs-card-copy:focus-visible { outline: 2px solid var(--cat, #8b8b93); outline-offset: 1px; }
+.rs-card-pane { padding: 6px 0 8px; }
+.rs-card-sub { padding: 6px 13px 2px; color: #8d94a6; font-size: 11px; }
+.rs-card-note { padding: 4px 13px; color: #8d94a6; font-size: 11px; }
+.rs-card-pre { margin: 0; padding: 8px 13px; font-family: ui-monospace, "Cascadia Code", monospace; font-size: 12px; line-height: 1.5; color: #cdd2e0; white-space: pre-wrap; word-break: break-word; }
+.rs-dl { display: flex; font-family: ui-monospace, "Cascadia Code", monospace; font-size: 11.5px; line-height: 1.5; }
+.rs-dl-sign { flex: none; width: 22px; text-align: center; opacity: 0.8; user-select: none; }
+.rs-dl-tx { white-space: pre-wrap; word-break: break-word; min-width: 0; flex: 1; padding-right: 10px; }
+.rs-dl-add { background: rgba(92, 191, 154, 0.14); color: #b9ecd6; }
+.rs-dl-del { background: rgba(239, 107, 107, 0.15); color: #f3bcbc; }
+.rs-dl-ctx { color: #8d94a6; }
+.rs-dl-gap { color: #6f7688; font-style: italic; background: rgba(170, 176, 192, 0.06); }
+.rs-card-more, .rs-card-copy { appearance: none; margin: 6px 13px 0; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(170, 176, 192, 0.35); background: transparent; color: #cdd2e0; font: inherit; font-size: 11px; cursor: pointer; }
+html.rs-light .rs-card-meta, html.rs-light .rs-card-sub, html.rs-light .rs-card-note, html.rs-light .rs-dl-ctx { color: #5b6272; }
+html.rs-light .rs-card-target, html.rs-light .rs-card-pre, html.rs-light .rs-card-more, html.rs-light .rs-card-copy { color: #2b313d; }
+html.rs-light .rs-card-tab { color: #5b6272; }
+html.rs-light .rs-card-tab.on { color: #1d222c; }
+html.rs-light .rs-dl-add { background: rgba(32, 140, 100, 0.14); color: #14583f; }
+html.rs-light .rs-dl-del { background: rgba(200, 50, 50, 0.12); color: #8a2020; }
+html.rs-light .rs-stat-add { color: #1f8a60; }
+html.rs-light .rs-stat-del { color: #c0392b; }
+.rs-chip.open .rs-chip-body:has(.rs-card) { max-height: 560px; }
