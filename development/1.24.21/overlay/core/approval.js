@@ -67,6 +67,27 @@ const PlazCodeApproval = (() => {
     return { title: "Proposed plan", kind: "plan", badge: "Plan", note: "Nothing is changed until you approve. After you approve, the AI works through the steps without asking again; deletes still ask.", target: "", summary: planGoal(planText), steps: planSteps(planText), destructive: false };
   }
 
-  return { describe, describePlan, planSteps, planGoal, needsApproval, freeze, nice };
+  // ── "Always approve" list (kept in the browser's storage as rsAlwaysApprove): action names the person chose to stop being asked about ──
+  const ALWAYS_MAX = 100;
+  const alwaysName = (tool) => { const n = bare(tool); return /^[A-Za-z0-9_.-]{1,80}$/.test(n) ? n : ""; };
+  function alwaysNormalize(list) {
+    const out = [], seen = new Set();
+    for (const item of Array.isArray(list) ? list : []) {
+      const n = alwaysName(item && typeof item === "object" ? item.tool : item);
+      if (!n || seen.has(n)) continue;
+      seen.add(n); out.push({ tool: n, at: Number(item && item.at) > 0 ? Number(item.at) : 0 });
+      if (out.length >= ALWAYS_MAX) break;
+    }
+    return out;
+  }
+  const alwaysHas = (list, tool) => { const n = alwaysName(tool); return !!n && alwaysNormalize(list).some((x) => x.tool === n); };
+  function alwaysAdd(list, tool, now) {
+    const n = alwaysName(tool), base = alwaysNormalize(list);
+    if (!n || base.some((x) => x.tool === n)) return base;
+    return alwaysNormalize(base.concat([{ tool: n, at: now || Date.now() }]));
+  }
+  const alwaysRemove = (list, tool) => alwaysNormalize(list).filter((x) => x.tool !== alwaysName(tool));
+
+  return { describe, describePlan, planSteps, planGoal, needsApproval, freeze, nice, alwaysNormalize, alwaysHas, alwaysAdd, alwaysRemove };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = PlazCodeApproval;

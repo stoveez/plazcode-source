@@ -31,4 +31,4 @@ The owner chose that PlazCode writes the chat summary itself (free, always works
 - Scope: everything in PlazCode's menus and settings (permission modes, Plan mode, Memory and vault, chat notes, Stop modes, effort, skills, connectors, safety limits). Not the long tool-command list, not the user's current settings, not desktop/website extras (can be added later).
 - Answers: short plain steps with where to click, one example, an offer to do it when the AI can.
 - One feature guide in the code that the app, the website guides and the AI all read; a test fails if a feature has no entry, so new features cannot ship unexplained.
-
+- 2026-10-25: "Always approve" button on approval cards (not on plans). Remembers the action type everywhere, also for deletes and code running (owner's choice, after being warned). Removed one by one from the Safety list in the PlazCode menu. Stored as `rsAlwaysApprove`.

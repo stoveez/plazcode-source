@@ -233,6 +233,7 @@
   // One-shot permission for the exact delete the user just allowed. The app
   // refuses deletes without it, and the AI can never set it through arguments.
   let deleteConfirmation = null;
+  try { window.__rsAlwaysChanged = (tool) => { try { toast("Always approving “" + PlazCodeApproval.nice(tool) + "”. Remove it in the PlazCode menu under Safety."); if (menuEl && !menuEl.hidden) buildMenu(); } catch {} }; } catch {}
   const deleteKey = (name, args) => String(name || "").split("__").pop() + "|" + String(args && (args.path || args.command) || "");
   function withDeleteConfirmation(msg) {
     const { confirmed, ...clean } = msg || {};
@@ -244,6 +245,11 @@
   }
   // The approval card that is on screen right now (Stop closes it as "denied").
   let approvalCancel = null, approvalChain = Promise.resolve(), approvalWaiting = 0;
+  // "Always approve": action names the person chose to stop being asked about (rsAlwaysApprove). Plans can never be always-approved.
+  let alwaysList = [];
+  try { chrome.storage.local.get("rsAlwaysApprove", (r) => { alwaysList = PlazCodeApproval.alwaysNormalize(r && r.rsAlwaysApprove); }); } catch {}
+  const alwaysHas = (tool) => { try { return PlazCodeApproval.alwaysHas(alwaysList, tool); } catch { return false; } };
+  const alwaysSet = (next) => { alwaysList = PlazCodeApproval.alwaysNormalize(next); try { chrome.storage.local.set({ rsAlwaysApprove: alwaysList }); } catch {} };
   // One card at a time, first come first served. Never approves by itself: it waits for the person.
   function requestApproval(op, args, opts) {
     approvalWaiting++;
@@ -319,6 +325,12 @@
         if (details) details.textContent = "";
         if (more) { more.hidden = !(info && details); more.onclick = () => setDetails(details.hidden); }
         setDetails(!!(info && (info.destructive || opts.plan)));
+        const alwaysBtn = document.getElementById("rs-approve-always");
+        const canAlways = !!(info && call && !opts.plan && opts.always !== false && typeof PlazCodeApproval.alwaysAdd === "function");
+        if (alwaysBtn) {
+          alwaysBtn.hidden = !canAlways;
+          if (canAlways) { alwaysBtn.textContent = "Always approve “" + PlazCodeApproval.nice(call.tool) + "”"; alwaysBtn.title = "Never ask about this action again. You can remove it in the PlazCode menu under Safety."; }
+        }
         const canRepeatAll = !!(info && !info.destructive && call && !opts.failClosed && !opts.plan);
         if (allBtn) {
           allBtn.hidden = !canRepeatAll;
@@ -347,6 +359,7 @@
           allow.removeEventListener("click", onAllow);
           deny.removeEventListener("click", onDeny);
           if (allBtn) allBtn.removeEventListener("click", onAll);
+          if (alwaysBtn) { alwaysBtn.removeEventListener("click", onAlways); alwaysBtn.hidden = true; }
           if (changesBtn) { changesBtn.removeEventListener("click", onChanges); changesBtn.hidden = true; }
           // The command runs only if its request is exactly what the card showed.
           if (ok && frozen && typeof PlazCodeApproval !== "undefined" && PlazCodeApproval.freeze(args) !== frozen) ok = false;
@@ -355,6 +368,7 @@
         const onAllow = () => done(true);
         const onDeny = () => done(false);
         const onAll = () => { try { (A.approveAll = A.approveAll || new Set()).add(String(call.tool)); } catch {} done(true); };
+        const onAlways = () => { try { alwaysSet(PlazCodeApproval.alwaysAdd(alwaysList, call.tool)); } catch {} done(true); try { window.__rsAlwaysChanged && window.__rsAlwaysChanged(String(call.tool)); } catch {} };
         const cancel = () => done(false);
         const onChanges = () => done("changes");
         // Esc denies. Enter is never handled here, so typing in the AI site's own box can never approve.
@@ -370,6 +384,7 @@
         allow.addEventListener("click", onAllow);
         deny.addEventListener("click", onDeny);
         if (allBtn) allBtn.addEventListener("click", onAll);
+        if (alwaysBtn) alwaysBtn.addEventListener("click", onAlways);
         if (changesBtn) changesBtn.addEventListener("click", onChanges);
         // Deletes start on Deny. Other cards do not take the keyboard away from the chat.
         if (info && info.destructive) { try { deny.focus({ preventScroll: true }); } catch {} }
@@ -2847,19 +2862,20 @@ return result`;
     }
     const deletes = safetySettings.confirmDelete && PlazCodeSafety.isDelete(bareName, args, safetyEngine);
     if (deletes) {
-      const ok = await requestApproval(PlazCodeSafety.describeDelete(bareName, args), args, {kicker:"Safety", title:"Allow this delete?", failClosed:true});
+      // "Always approve" for this action (chosen by the person): no prompt, but the one-shot delete permission is still set.
+      const ok = alwaysHas(bareName) ? true : await requestApproval(PlazCodeSafety.describeDelete(bareName, args), args, {kicker:"Safety", title:"Allow this delete?", failClosed:true, call: { tool: bareName, arguments: args }, engine: safetyEngine});
       if (!ok) return PlazCodeSafety.declinedDelete(bareName);
       deleteConfirmation = {key: deleteKey(bareName, args), expires: Date.now() + 120000};
     }
     // Plan Mode: until the person approves a plan, every change asks first. (Deletes have their own prompt above.)
     let planAsked = false;
     if (!deletes && planOnNow() && !A.planApproved && PlazCodeSafety.isChange(bareName, safetyEngine) && !(A.approveAll && A.approveAll.has("*"))) {
-      const okPlan = await requestApproval(bareName, args, { kicker: "Plan Mode: no approved plan yet", call: { tool: bareName, arguments: args }, engine: safetyEngine });
+      const okPlan = await requestApproval(bareName, args, { kicker: "Plan Mode: no approved plan yet", call: { tool: bareName, arguments: args }, engine: safetyEngine, always: false });
       if (!okPlan) return `ERROR in ${bareName}: Plan Mode is on and the user did not approve this change. Write your plan first (Goal, then ordered steps); PlazCode shows it to the user for approval. Do not retry unless the user asks.`;
       planAsked = true;
     }
     // Ask mode: the hand-kept list, plus anything the safety module calls a change (unknown tools count as changes).
-    if (!deletes && permMode === "ask" && (ASK_OPS.has(bareName) || PlazCodeSafety.isChange(bareName, safetyEngine)) && !planAsked && !(A.approveAll && (A.approveAll.has("*") || A.approveAll.has(String(bareName))))) {
+    if (!deletes && permMode === "ask" && (ASK_OPS.has(bareName) || PlazCodeSafety.isChange(bareName, safetyEngine)) && !planAsked && !alwaysHas(bareName) && !(A.approveAll && (A.approveAll.has("*") || A.approveAll.has(String(bareName))))) {
       const ok = await requestApproval(bareName, args, { call: { tool: bareName, arguments: args }, engine: safetyEngine });
       if (!ok) return `ERROR in ${bareName}: the user declined this action (Ask mode). Do not retry unless they ask.`;
     }
@@ -6213,6 +6229,7 @@ return result`;
             <div id="rs-approve-details" hidden></div>
             <div class="rs-approve-actions">
               <button type="button" id="rs-approve-all" hidden></button>
+              <button type="button" id="rs-approve-always" hidden></button>
               <button type="button" id="rs-approve-changes" hidden>Ask for changes</button>
               <button type="button" id="rs-approve-deny">Deny</button>
               <button type="button" id="rs-approve-allow">Allow</button>
@@ -6902,6 +6919,7 @@ return result`;
         if (changes.rsReadOnly || changes.rsConfirmDelete || changes.rsAllowedFolders) {
           chrome.storage.local.get(PlazCodeSafety.KEYS, (values) => { safetySettings = PlazCodeSafety.fromStorage(values); if (!menuEl.hidden) buildMenu(); });
         }
+        if (changes.rsAlwaysApprove) { try { alwaysList = PlazCodeApproval.alwaysNormalize(changes.rsAlwaysApprove.newValue); if (!menuEl.hidden) buildMenu(); } catch {} }
         if (changes.rsReleaseStatus) { releaseStatus = changes.rsReleaseStatus.newValue || null; renderVersionIndicators(); }
         if (changes.rsCowork) { cowork.setEnabled(changes.rsCowork.newValue === true); dirty = true; }
         if (changes.rsCustomPrompt && typeof changes.rsCustomPrompt.newValue === "string") {
@@ -7511,6 +7529,10 @@ return result`;
                 <span class="rs-tgl-sub">Ask me before the AI deletes files or runs a delete command.</span></span>
                 <span class="rs-tgl ${safetySettings.confirmDelete ? "on" : ""}"></span>
               </div>
+              <div class="rs-always-box" id="rs-always-box">
+                <div class="rs-always-head">Always approved</div>
+                ${alwaysList.length ? `<ul class="rs-always-list">${alwaysList.map((x) => `<li><span class="rs-always-name" data-i18n-user-content>${esc(PlazCodeApproval.nice(x.tool))}</span><button type="button" data-always-remove="${esc(x.tool)}" aria-label="Stop always approving ${esc(PlazCodeApproval.nice(x.tool))}">Remove</button></li>`).join("")}</ul><button type="button" class="rs-always-clear" id="rs-always-clear">Remove all</button>` : `<div class="rs-menu-note">Nothing yet. When an approval card shows, "Always approve" stops PlazCode asking about that action. Deleting and running code can be added too, so be careful with those.</div>`}
+              </div>
               <div class="rs-prompt-field rs-allowed-field">
                 <label for="rs-allowed-folders">Allowed folders (Full access)</label>
                 <textarea id="rs-allowed-folders" rows="3" dir="ltr" placeholder="One folder per line, e.g. C:\\Users\\you\\Projects"></textarea>
@@ -7786,6 +7808,9 @@ return result`;
           if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); }
         });
       });
+      menuEl.querySelectorAll("[data-always-remove]").forEach((btn) => btn.addEventListener("click", () => { alwaysSet(PlazCodeApproval.alwaysRemove(alwaysList, btn.getAttribute("data-always-remove"))); try { buildMenu(); toast("PlazCode will ask again"); } catch {} }));
+      const alwaysClear = menuEl.querySelector("#rs-always-clear");
+      if (alwaysClear) alwaysClear.addEventListener("click", () => { alwaysSet([]); try { buildMenu(); toast("PlazCode will ask about everything again"); } catch {} });
       // ── Image → Model: paste the vision builder template ──
       const i2mBtn = menuEl.querySelector("#rs-i2m-btn");
       if (i2mBtn) i2mBtn.addEventListener("click", () => {

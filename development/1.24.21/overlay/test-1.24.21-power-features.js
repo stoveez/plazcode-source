@@ -40,7 +40,7 @@ const flush = () => new Promise((r) => setTimeout(r, 20));
   // Wiring: refusal before Ask mode, prompt fails closed, frame forwarded, prefs synced, menu + app controls.
   const gate = main.indexOf("if (safetySettings.readOnly && PlazCodeSafety.isChange(bareName, safetyEngine))");
   assert(gate > 0 && gate < main.indexOf('if (!deletes && permMode === "ask" && (ASK_OPS.has(bareName)'), "read-only and delete checks run before Ask mode");
-  assert(main.includes('{kicker:"Safety", title:"Allow this delete?", failClosed:true}'));
+  assert(main.includes('{kicker:"Safety", title:"Allow this delete?", failClosed:true,'));
   assert(!main.includes("resolve(!(opts && opts.failClosed))"), "a missing prompt never auto-allows anything");
   assert(/if \(!root \|\| !allow \|\| !deny\) \{ resolve\(false\); return; \}/.test(main), "a missing prompt denies every change");
   assert(!/body\.innerHTML\s*=\s*`<b>\$\{op\}/.test(main), "the approval text is never put in as HTML");
