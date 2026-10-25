@@ -8,19 +8,19 @@ updated: 2026-10-24
 - A new test build to carry the 2026-10-24 desktop changes. See [test-builds](test-builds.md).
 - Firefox checks run only in CI. Not live-tested: Ultra on real Studio and AI sites, Vani Co-work, Firefox appearance, Windows/Mac desktop apps.
 
-- Include the merged vault live note (`claude/vault-live-note`) in the next test build. Pictures pasted directly into an AI site's composer are not captured yet.
+- Pictures pasted directly into an AI site's composer are not captured by the vault yet. (The vault live note and picture storage are already in the test zips of CI run 40152156785.)
 
 - Merged into `claude/plazcode-dev` but NOT proven on real sites or in any test build: hang recovery (Claude stops mid-task), Claude send fixes, Effort chevron, ChatGPT old-chat fix, one-step checklist. Test with the 15-tool-call job on Claude. Hang recovery cases 2 (reply cut inside a command) and 3 (message not delivered) are not wired yet.
 
 - Per-chat AS/RS mode (2026-10-24): each chat keeps its mode across refresh (`rsChatEngines`); jsdom-tested only, extension reload is enough.
-- Built 2026-10-24, jsdom-tested only, extension reload is enough: plan-mode approval cards, output cards, several vaults, folder import (see [vault-memory](vault-memory.md)). Left for the next desktop app: native folder picker, real folder rename, batch import, vault list in the desktop window.
+- Built 2026-10-24, jsdom-tested only, extension reload is enough: plan-mode approval cards, Always approve (with its Remove list in the menu), output cards, the navy and gold look, several vaults, folder import (see [vault-memory](vault-memory.md)). Left for the next desktop app: native folder picker, real folder rename, batch import, vault list in the desktop window.
 - Still queued (owner decisions in [decisions](decisions.md)): an in-chat feature guide so the AI can explain PlazCode's own features (index + on-demand help command, one guide source with a test).
 - Chat notes and the after-startup continue popup (2026-10-24): fixture-tested only, not tried on a real site. Queued next, each needs its own plan: several vaults with a switcher (like Obsidian's), and importing a whole folder of notes into the vault when asked.
 
 ## Bugs
 - "Response changed - run paused" banner: needs a debug report from a tester (high effort).
 - Notion startup in new workspaces; commands sometimes shown "not run".
-- Claude randomly stops mid-task while the bar says working (owner report 2026-10-24): fixed in the unmerged branches above, untested on the real site.
+- Claude randomly stops mid-task while the bar says working (owner report 2026-10-24): hang recovery (case 1) is in the test zips of CI run 40152156785, untested on the real site; cases 2 and 3 are not wired yet.
 - ChatGPT AgentScript sometimes pauses; Claude sometimes stuck; tool chip sometimes still "in progress". All fixture-tested only.
 
 ## Not started / optional
