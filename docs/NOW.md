@@ -10,3 +10,4 @@ Updated: 2026-10-24 by claude. Keep under about 25 lines. Long-term knowledge is
 - Unfinished: Firefox checks (CI only), real Windows/Mac app tests, lean startup phases 2 to 3 (offered, owner has not said yes).
 - Next step: ask the owner if they want a new test build; if yes, follow the public-then-private plan.
 - Open bugs: [vault/open-work.md](vault/open-work.md).
+- In progress, finished and pushed: branch `claude/vault-live-note` (vault live note `Now.md` at startup; attached pictures storable with add_image). Full JS suite 0 failures, cargo 205 passed. NOT merged; needs the owner's yes. Needs desktop app replaced to try.

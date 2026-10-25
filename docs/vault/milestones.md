@@ -4,6 +4,8 @@ updated: 2026-10-24
 ---
 # Finished work
 
+## 2026-10-24 (branch `claude/vault-live-note`, not merged): vault live note `Now.md` at startup, attached pictures can be stored with add_image. See [vault-memory](vault-memory.md).
+
 ## 2026-10-24 (on `claude/plazcode-dev`, not in any test build yet; desktop app must be replaced)
 - Dropdown lists no longer open behind the next settings card (`core/effort-picker.js` lift class).
 - Ultra purple border and glow-off shadow on the active page button restored.
