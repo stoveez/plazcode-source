@@ -10806,6 +10806,7 @@ function renderCards(panel) {
       no.onclick=()=>{rememberChoice(key);currentProject='';continuedEngramScope='';continuedEngramChat='';engramRecallGeneration++;A.engramContext='';A.taskRequest='';savedHandoff=null;chrome.storage.local.remove('rsLatestHandoff');closeOffer();};
       // Same as "start a new project", and the question is turned off (the same switch as in the PlazCode menu and the desktop Settings).
       never.onclick=()=>{no.onclick();reliabilitySettings={...reliabilitySettings,rsContinuationOffer:false};try{chrome.storage.local.set({rsContinuationOffer:false});}catch{}try{toast("Won't ask again. Turn it back on in the PlazCode menu under Automation.");}catch{}};
+      const actions=document.createElement('div');actions.className='rs-co-actions';actions.append(no,yes);
       yes.onclick=async()=>{
         if(offerBusy)return;offerBusy=true;yes.disabled=true;no.disabled=true;never.disabled=true;const page=location.href;const generation=A.sessionGen;
         try{
@@ -10838,7 +10839,6 @@ function renderCards(panel) {
           rememberChoice(key);closeOffer();agentLoop(base);
         }catch(error){status.textContent=error.message||String(error);yes.disabled=false;no.disabled=false;never.disabled=false;}finally{offerBusy=false;}
       };
-      const actions=document.createElement('div');actions.className='rs-co-actions';actions.append(no,yes);
       offerNode.append(kicker,title,from,detail,actions,never,status);root.appendChild(offerNode);
     },1000);
     function captureHandoff(reason,onlyLong=false){
