@@ -10473,7 +10473,8 @@ function renderCards(panel) {
     function closeOffer(){if(offerNode){offerNode.remove();offerNode=null;}}
     function rememberChoice(key){continuationChoices[key]=Date.now();const keys=Object.keys(continuationChoices).sort((a,b)=>continuationChoices[b]-continuationChoices[a]);for(const old of keys.slice(100))delete continuationChoices[old];chrome.storage.local.set({rsContinuationChoices:continuationChoices});offerDecision=true;}
     rsInterval(()=>{
-      const fresh=!!P.getEditor()&&(P.isFreshChat?P.isFreshChat():!P.conversationKey()&&!P.allItems().length)&&!P.allItems().length;
+      try{captureExportHistory(false);}catch{}
+      const fresh=PlazCodeReliability.continuationScene({editor:!!P.getEditor(),started:A.started,starting:A.starting,startupOwner:A.startupOwner,conversationKey:P.conversationKey(),realRequest:hasRealRequest()});
       if(!fresh){offerFreshSince=0;offerDecision=false;if(!offerBusy)closeOffer();return;}
       // Settings toggle (default on). Off: never show the prompt; close one that
       // is open unless the user already chose "Yes" and it is loading.
