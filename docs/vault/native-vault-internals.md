@@ -22,8 +22,11 @@ Actions: `index`, `search`, `read`, `write` (modes create, append, replace, sect
 - `audit` lists notes that point into the Roblox place or are low confidence or unchecked for 30 days; `verify` marks one checked.
 - The compact startup prompt (small sites) must stay under about 4,500 characters (`test-vault-memory.js`).
 
+## Chat notes
+Built in `core/reliability.js` (`chatNote`, `chatNotePath`, `tasksSection`, `trackTimes`, `redact`, `continuationScene`), written by `core/memory.js` (`chatNoteSave`, `chatNoteLatest`, `withoutChatNotes`), hooked in `core/main.js` (`saveChatNote`, `noteChatSoon`, the continue popup). Writes use plain `write` without `ai:true`, so they work when learning is off. `redact` mirrors the vault's secret patterns so a write is never refused. Per-chat state is in `chrome.storage` keys `rsChatNotes` and `rsLatestChatNote`. Task changes save within about 10 s, plain text at most every 2 minutes (each write adds a Log line).
+
 ## Tests
-Rust: `cargo test vault` (18 tests, includes `live_note_is_seeded_sent_and_capped`). JS: `test-vault-memory.js`, `test-vault-brain.js`, `test-vault-graph.js`, `test-vault-live-note.js`, `test-critic-chat.js`, `test-bar-and-vault-controls.js`.
+Rust: `cargo test vault` (18 tests, includes `live_note_is_seeded_sent_and_capped`). JS: `test-vault-memory.js`, `test-vault-brain.js`, `test-vault-graph.js`, `test-vault-live-note.js`, `test-chat-note.js`, `test-chat-note-wiring.js`, `test-continuation-gate.js`, `test-critic-chat.js`, `test-bar-and-vault-controls.js`.
 
 ## Gotchas
 - `memory.js` strings are single-quoted: an apostrophe inside breaks the whole file (it happened once).

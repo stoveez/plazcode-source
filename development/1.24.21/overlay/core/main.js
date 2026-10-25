@@ -3762,7 +3762,7 @@ return result`;
     if (/###\s*LUA\s*###|"command"\s*:\s*"/i.test(t)) return false;
     return /\b(?:i (?:can(?:not|'t)|do not|don't|am not able to|'m not able to)|this (?:chat|session|assistant) (?:can(?:not|'t)|does not|doesn't)).{0,100}\b(?:use|call|run|execute|access|control|reach|interact|have)\b.{0,100}\b(?:commands?|tools?|workspace|local (?:engine|project|files)|roblox studio|your (?:computer|machine|project))\b/i.test(t.replace(/[’]/g, "'"));
   }
-  const activity = PlazCodeActivity.create(() => { try { ui.renderActivity(); } catch {} }, () => window.sessionStorage);
+  const activity = PlazCodeActivity.create(() => { try { ui.renderActivity(); } catch {} try { ui.noteChatSoon('activity'); } catch {} }, () => window.sessionStorage);
   // 1.24.21: the foldable "Working for ..." summary in the chat is gone for every AI site. Nothing is
   // folded or inserted into the chat any more; the activity record is still kept for the Tasks panel.
   const ACTIVITY_FOLD_OFF = true;
@@ -4013,6 +4013,7 @@ return result`;
     if (!A.checkpointId) { try { ui.toast("Task checkpoint unavailable: "+String(response?.error || "Bridge did not confirm it")); } catch {} }
   }
   async function finishTaskCheckpoint(complete) {
+    try { ui.noteChatSoon('finish'); } catch {}
     const id=A.checkpointId,scope=engramScope(),chat=P.id+'|'+P.conversationKey(); A.checkpointId=null;
     if (id) {
       const result=await Promise.race([bg({type:"checkpoints",request:{action:"finish",id,complete}}),sleep(5000)]);
@@ -10468,8 +10469,33 @@ function renderCards(panel) {
         if(result?.ok)archiveSignature=signature;
       }catch{}finally{archiveBusy=false;}
     }
-    rsInterval(()=>{if(!document.hidden||A.running)logChat();},10000);
-    document.addEventListener('visibilitychange',()=>{if(document.hidden){try{captureExportHistory();}catch{}logChat();}});
+    rsInterval(()=>{if(!document.hidden||A.running){logChat();saveChatNote('tick');}},10000);
+    document.addEventListener('visibilitychange',()=>{if(document.hidden){try{captureExportHistory();}catch{}logChat();saveChatNote('hidden');}});
+    // 1.24.21: every chat is also saved into the vault as a note under "11 Chats" (summary, key points and a "Current tasks:" section).
+    // PlazCode writes it itself; it is on by default and works even when the AI may not write notes.
+    let chatNoteStates={},latestChatNote=null,chatNoteBusy=false,chatNoteLastAt=0,chatNoteTimer=0,chatNoteForce=false;const chatNoteTasks={};
+    chrome.storage.local.get(['rsChatNotes','rsLatestChatNote'],value=>{if(value&&value.rsChatNotes&&typeof value.rsChatNotes==='object')chatNoteStates=value.rsChatNotes;if(value&&value.rsLatestChatNote)latestChatNote=value.rsLatestChatNote;});
+    async function saveChatNote(reason){
+      if(chatNoteBusy)return;const key=P.conversationKey();if(!key)return;
+      try{captureExportHistory(false);}catch{}
+      if(!hasRealRequest())return;
+      const force=reason==='hidden'||reason==='finish'||chatNoteForce,now=Date.now();chatNoteForce=false;
+      const plan=(activity.active()&&activity.active().plan)||(activity.saved(key)&&activity.saved(key).plan)||null;
+      const tasksSig=JSON.stringify(((plan&&plan.items)||[]).map(item=>item.label+'|'+item.status)),id=P.id+'|'+key;
+      // Task changes are written within about 10 s; plain chat text is refreshed at most every 2 minutes (each write adds a Log line).
+      if(!force&&now-chatNoteLastAt<(tasksSig!==chatNoteTasks[id]?10000:120000))return;
+      chatNoteBusy=true;
+      try{
+        const state=chatNoteStates[id]||{};
+        const next=await PlazCodeMemory.chatNoteSave(state,{provider:P.displayName,chatId:id,project:currentProject,rows:exportRows,plan},now);
+        if(next&&next.path&&next.created){
+          chatNoteStates[id]=next;chatNoteTasks[id]=tasksSig;chatNoteLastAt=now;latestChatNote={path:next.path,chat_id:id,at:now};
+          const keep={};for(const k of Object.keys(chatNoteStates).slice(-100)){const s=chatNoteStates[k];keep[k]={path:s.path,startedAt:s.startedAt,times:s.times,created:true};}
+          chrome.storage.local.set({rsChatNotes:keep,rsLatestChatNote:latestChatNote});
+        }
+      }catch{}finally{chatNoteBusy=false;}
+    }
+    function noteChatSoon(reason){if(reason==='finish'||reason==='hidden')chatNoteForce=true;if(chatNoteTimer)return;/* not reset by each change: a busy run must still save */chatNoteTimer=setTimeout(()=>{chatNoteTimer=0;saveChatNote(reason||'activity');},3000);}
     function closeOffer(){if(offerNode){offerNode.remove();offerNode=null;}}
     function rememberChoice(key){continuationChoices[key]=Date.now();const keys=Object.keys(continuationChoices).sort((a,b)=>continuationChoices[b]-continuationChoices[a]);for(const old of keys.slice(100))delete continuationChoices[old];chrome.storage.local.set({rsContinuationChoices:continuationChoices});offerDecision=true;}
     rsInterval(()=>{
@@ -10485,7 +10511,7 @@ function renderCards(panel) {
       const transfer=JSON.parse(JSON.stringify(savedHandoff));offerKey=key;
       offerNode=document.createElement('section');offerNode.className='rs-continuation-offer';offerNode.setAttribute('role','dialog');offerNode.setAttribute('aria-label','Continue previous chat');
       const title=document.createElement('h3');title.textContent='Want to continue where you left off in your previous chat?';
-      const detail=document.createElement('p');detail.textContent='Previous chat: '+transfer.provider+'. PlazCode will load a bounded context reference after startup, then inspect current state before continuing. Older or unloaded messages may be missing.';
+      const detail=document.createElement('p');detail.textContent='Previous chat: '+transfer.provider+'. PlazCode will have the AI read the summary note it saved from that chat (its key points and current tasks), then inspect the current state before continuing. If no saved note is found it uses a short excerpt of the chat instead.';
       const yes=document.createElement('button'),no=document.createElement('button'),status=document.createElement('p');yes.type=no.type='button';yes.textContent='Yes, continue.';no.textContent='No, I wanna start a new project.';
       no.onclick=()=>{rememberChoice(key);currentProject='';continuedEngramScope='';continuedEngramChat='';engramRecallGeneration++;A.engramContext='';A.taskRequest='';savedHandoff=null;chrome.storage.local.remove('rsLatestHandoff');closeOffer();};
       yes.onclick=async()=>{
@@ -10499,6 +10525,9 @@ function renderCards(panel) {
           if(A.running||A.injecting||A.enhancing||A.pendingToolSettles||String(P.editorText()||'').trim())throw Error('Wait for an idle chat with an empty composer.');
           status.textContent='Loading context and continuing…';
           let context=PlazCodeMemory.parseTransfer(JSON.stringify(transfer)).context;if(context.length>40000)throw Error('Continuation is too large. Use a shorter summary.');
+          // The newest chat note PlazCode saved (never this chat's own). If there is one, the AI reads that summary instead of the raw excerpt.
+          try{const own=chatNoteStates[P.id+'|'+P.conversationKey()];const note=await Promise.race([PlazCodeMemory.chatNoteLatest(latestChatNote&&latestChatNote.path,own&&own.path),sleep(3500).then(()=>null)]);
+            if(note&&note.text&&note.text.trim())context='PREVIOUS CHAT NOTE (vault path: '+note.path+'). PlazCode saved this summary from your previous chat; read the note with plazcode_vault for more.\n'+note.text.slice(0,6000);}catch{}
           if(P.conversationKey() && typeof transfer.project==='string' && transfer.project.trim() && [...transfer.project].length<=80){
             const assigned=await bg({type:'checkpoints',request:{action:'project',chat:P.id+'|'+P.conversationKey(),project:transfer.project}});
             if(!assigned?.ok)throw Error(assigned?.error || 'Previous project memory could not be assigned.');
@@ -10718,7 +10747,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
       if (action === "stop" && state.canStop) { stopLoop(); return { ok: true }; }
       return { ok: false, error: "The AI chat is no longer ready for this action." };
     }
-    return { captureHandoff, isCoworkCoverTarget: node => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast, banner, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
+    return { captureHandoff, noteChatSoon, latestChatNotePath: () => latestChatNote && latestChatNote.path || '', isCoworkCoverTarget: node => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast, banner, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
   })();
 
   const clarification = PlazCodeClarification.create({

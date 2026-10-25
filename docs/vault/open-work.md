@@ -12,6 +12,8 @@ updated: 2026-10-24
 
 - Merged into `claude/plazcode-dev` but NOT proven on real sites or in any test build: hang recovery (Claude stops mid-task), Claude send fixes, Effort chevron, ChatGPT old-chat fix, one-step checklist. Test with the 15-tool-call job on Claude. Hang recovery cases 2 (reply cut inside a command) and 3 (message not delivered) are not wired yet.
 
+- Chat notes and the after-startup continue popup (2026-10-24): fixture-tested only, not tried on a real site. Queued next, each needs its own plan: several vaults with a switcher (like Obsidian's), and importing a whole folder of notes into the vault when asked.
+
 ## Bugs
 - "Response changed - run paused" banner: needs a debug report from a tester (high effort).
 - Notion startup in new workspaces; commands sometimes shown "not run".

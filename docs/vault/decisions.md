@@ -14,3 +14,6 @@ updated: 2026-10-24
 - **2026-10-23 (replaced on 2026-10-24 by the one-branch decision above): AIs may push to their own `<ai>/<task>` and `wip/<task>` branches** without asking; everything else needs a yes. See [owner-rules](owner-rules.md).
 - **Extension fixes must work by reloading the extension;** app changes are called out separately.
 - **Brickwire ideas are added and improved, not copied** (MIT, keep credit). No Multi-Script code.
+
+## 2026-10-24: chat notes are written by PlazCode, kept forever, Now.md stays
+The owner chose that PlazCode writes the chat summary itself (free, always works, plainer wording) rather than the AI; the global `00 Start Here/Now.md` stays as is; chat notes are never auto-archived. The notes live in `11 Chats` and are hidden from the AI's startup map so they do not crowd out real notes.

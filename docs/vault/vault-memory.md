@@ -16,6 +16,11 @@ Numbered folders: `00 Start Here` (Home, Glossary, Index, Log, **Now**), `01 Abo
 - It writes notes itself when the owner corrects it, a job finishes, or it hits a trap, and rewrites `Now.md` after every job (max 1,500 characters; never overwritten at startup).
 - Pictures the owner attaches with PlazCode's media button can be stored with `add_image` ("add this picture to memory"). Pictures pasted straight into the AI site's own box are not seen.
 
+## Chats are saved as notes (new, 2026-10-24)
+PlazCode itself (not the AI, no extra usage, works even when "Let the AI write notes" is off) saves every chat as a note in `11 Chats`, named like `2026-10-24 2200 ChatGPT Build-rounds`. It has a Summary, Key points and a section titled **Current tasks:** (done, in progress and pending tasks with times; several at once). It updates when a task starts, changes or finishes, every 10 seconds if the tasks changed, and when the tab is hidden. Notes carry the tag `previous-chat`. They are kept forever and are left out of the AI's startup list and map, but the AI can still search them.
+
+**The continue popup** now appears only after the AI says "PlazCode is ready." and before your first real request. Yes makes the AI read the newest chat note (never the current chat's own); if none exists it falls back to the old short excerpt. No starts fresh. Needs the new desktop app plus an extension reload.
+
 ## How the owner uses it
 Memory settings in the desktop app: **Open vault** (Obsidian-style window: file tree, links, graph, search, edit, pictures, backlinks, move to archive), **Open vault folder**, **Open in Obsidian** (only if installed), **Let the AI write notes** switch, **Use a different folder**. Quick notes (the older short-fact list) still exist next to it.
 
