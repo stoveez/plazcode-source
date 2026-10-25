@@ -11,7 +11,7 @@ Start from **`claude/plazcode-dev`** (the newest finished work; the repo's `main
 
 ## Rules that never bend
 1. Never break the auto-updater (the feed addresses and format in `latest.json` / `latest-macos.json` must keep working for every installed copy).
-2. Commits go under the owner's name (stoveez, freetwoomy@gmail.com). Never add Co-Authored-By, session links, "Generated with" or any AI credit.
+2. Commits go under the owner's name (stoveez, name only: never write the owner's email in any file or commit, it can change). Never add Co-Authored-By, session links, "Generated with" or any AI credit.
 3. Never push, publish, deploy or buy anything without the owner's clear "yes" for that exact action. Committing locally is fine.
    **Owner decision (2026-10-24): one branch, `claude/plazcode-dev`.** The owner uses one AI at a time, so work happens directly on `claude/plazcode-dev`: commit and push there after each finished step, and push half-done work as `WIP: ...` commits. Do not create task branches. Still needing the owner's clear "yes": merging into `release/1.24.21` or `main`, force-pushes, deleting branches, publishing and anything on the public repo. Keep the branch healthy: call a step finished only when its own tests pass, and say plainly in the commit and in `docs/NOW.md` when something is unfinished. If the owner ever runs two AIs at once, use own `<ai-name>/<task>` branches for that time. Push after each finished change and before stopping; see `docs/HANDOFF.md`.
 4. Publish only through the private-repo publish workflow, never by hand.

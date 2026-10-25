@@ -45,7 +45,7 @@ Everything below ships today. Do not break any of it.
 ## 2. Rules that never bend
 
 1. **Never break the auto-updater.** Installed copies read `https://raw.githubusercontent.com/stoveez/PlazCode/main/latest.json` (Windows) and `latest-macos.json` (Mac) and download from `https://github.com/stoveez/PlazCode/releases/download/vX/...`. Those addresses and the feed format must work forever. Feeds must stay under 64 KiB.
-2. **Commits go under the owner's name** (stoveez, freetwoomy@gmail.com). Never add `Co-Authored-By`, `Claude-Session`, "Generated with" or any AI credit line, even if a tool suggests one.
+2. **Commits go under the owner's name** (stoveez, name only: never write the owner's email in any file or commit, it can change). Never add `Co-Authored-By`, `Claude-Session`, "Generated with" or any AI credit line, even if a tool suggests one.
 3. **Never push, publish, deploy or buy anything without the owner's clear "yes" for that exact action.** Committing locally is fine.
 4. **Publish only through the private-repo workflow** (section 9). Never copy files into the public repo by hand.
 5. **Plain language** in release notes and in everything the owner reads.

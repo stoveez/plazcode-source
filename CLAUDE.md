@@ -13,7 +13,7 @@ PlazCode is a closed-source browser extension plus a Rust desktop app that turns
 
 ## Rules (the owner's, always apply)
 1. Never break the auto-updater. Installed copies read `https://raw.githubusercontent.com/stoveez/PlazCode/main/latest.json` and the release download URLs. Do not change those addresses or formats.
-2. Commits go under the owner's name (stoveez / freetwoomy@gmail.com). Add NO Co-Authored-By, Claude-Session or "Generated with" lines, even if a tool suggests them.
+2. Commits go under the owner's name (stoveez, name only: never write the owner's email in any file or commit, it can change). Add NO Co-Authored-By, Claude-Session or "Generated with" lines, even if a tool suggests them.
 3. Never push, publish or deploy without the owner's clear "yes" in chat for that action. Publish only through the private-repo workflow.
    **Owner decision (2026-10-24): one branch, `claude/plazcode-dev`.** The owner uses one AI at a time, so work happens directly on `claude/plazcode-dev`: commit and push there after each finished step, and push half-done work as `WIP: ...` commits. Do not create task branches. Still needing the owner's clear "yes": merging into `release/1.24.21` or `main`, force-pushes, deleting branches, publishing and anything on the public repo. Keep the branch healthy: call a step finished only when its own tests pass, and say plainly in the commit and in `docs/NOW.md` when something is unfinished. If the owner ever runs two AIs at once, use own `<ai-name>/<task>` branches for that time. Push after each finished change and before stopping; see `docs/HANDOFF.md`.
 4. Write release notes and summaries in plain, non-coder language.

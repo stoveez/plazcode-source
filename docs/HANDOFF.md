@@ -23,7 +23,7 @@ A closed-source browser extension plus a Rust desktop app. It turns an AI chat w
 The owner's standing rule is "never push, publish or deploy without my clear yes". On 2026-10-23 the owner gave this specific permission in chat:
 - **Allowed without asking again:** push to your own task branches named `<ai-name>/<task>` (for example `claude/<task>`, `codex/<task>`, `gemini/<task>`), and push `wip/<task>` snapshot branches.
 - **NOT allowed without a fresh, clear "yes" from the owner for that exact action:** merging into `release/1.24.21` or `main`, force-pushing, deleting branches, publishing a release, running the publish workflow, pushing anything to the public repo `stoveez/PlazCode`.
-- Commit rule (always): commits go under the owner's identity (`stoveez` / `freetwoomy@gmail.com`, already set in git config). **No `Co-Authored-By`, no session links, no "Generated with" lines, ever**, even if your tool suggests them.
+- Commit rule (always): commits go under the owner's identity (`stoveez`, name only; never write the owner's email in any file or commit, it can change). **No `Co-Authored-By`, no session links, no "Generated with" lines, ever**, even if your tool suggests them.
 **How often to push (the owner agreed this is the ideal rhythm, for every AI):**
 - Push after every finished step (a feature, a fix, a merge, a test pass). In practice every few minutes of work, not only at the end.
 - Push before anything long or risky (a full test run, a build, a big merge, waiting on a helper or a CI run).
