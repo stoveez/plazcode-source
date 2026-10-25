@@ -709,6 +709,21 @@ html[data-desktop-theme] .supported-ai-link:hover{background:rgb(255 255 255/.06
 html[data-desktop-theme] .dx-card{box-shadow:var(--p-lift)}
 @media(prefers-reduced-motion:reduce){html[data-desktop-theme] details.settingcard>summary::before,html[data-desktop-theme] .toggle:after{transition:none}}
 /* ===== nx3 polish end ===== */
+/* Updates page spacing (1.24.21): cards were stacked with no gap and cramped inside. */
+#page-updates.active{display:flex;flex-direction:column;gap:20px}
+#page-updates>.page-head{margin:0;padding:4px 0 6px}
+#page-updates>.settingcard{padding:26px 28px;margin:0}
+#page-updates .update-versions{gap:24px;margin:0 0 24px;padding:20px 26px;border:1px solid var(--stroke,#293d59);border-radius:12px;background:var(--canvas,#08111e);align-items:center}
+#page-updates .update-versions>span{height:auto}
+#page-updates .update-versions strong{margin-top:10px;font-size:19px}
+#page-updates #updateMessage{margin:0 0 20px;font-size:13px;line-height:1.7}
+#page-updates .instructions-actions{margin:0 0 20px;gap:12px}
+#page-updates .instructions-actions+p{margin:0;padding-top:18px;border-top:1px solid var(--stroke,#293d59);font-size:12px;line-height:1.75}
+#page-updates .settingrow{min-height:40px;gap:16px;padding:0}
+#page-updates .settingrow label{font-size:14px}
+#page-updates .settinghelp{margin:18px 0 0;padding-top:18px;border-top:1px solid var(--stroke,#293d59);font-size:12px;line-height:1.8}
+#page-updates .update-release-notes{margin:0;display:flex;flex-direction:column;gap:14px}
+#page-updates .release-note{margin:0;padding:22px 26px}
 </style>
 </head>
 <body>
