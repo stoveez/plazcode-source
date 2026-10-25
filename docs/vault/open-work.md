@@ -8,7 +8,7 @@ updated: 2026-10-24
 - A new test build to carry the 2026-10-24 desktop changes. See [test-builds](test-builds.md).
 - Firefox checks run only in CI. Not live-tested: Ultra on real Studio and AI sites, Vani Co-work, Firefox appearance, Windows/Mac desktop apps.
 
-- Merge `claude/vault-live-note` into `claude/plazcode-dev` (needs the owner's yes), then include it in the next test build. Pictures pasted directly into an AI site's composer are not captured yet.
+- Include the merged vault live note (`claude/vault-live-note`) in the next test build. Pictures pasted directly into an AI site's composer are not captured yet.
 
 ## Bugs
 - "Response changed - run paused" banner: needs a debug report from a tester (high effort).
