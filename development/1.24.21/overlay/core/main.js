@@ -6546,7 +6546,11 @@ return result`;
         // A chat with no saved mode waits (up to 3 s) for the background page to say which mode this tab is in.
         if (!saved && !tabEngineAnswered && Date.now() - chatEngineBootAt < 3000) return;
         chatEngineKey = id;
-        if (saved && saved !== currentMode && Date.now() - lastManualEngineAt > 5000) setEngine(saved);
+        if (saved && saved !== currentMode && Date.now() - lastManualEngineAt > 5000) {
+          setEngine(saved);
+          // The background page keeps the mode per tab and builds the bar status from it: tell it too, or the bar checks Roblox Studio while showing AS ("AgentScript is offline").
+          try { Promise.resolve(chrome.runtime.sendMessage({ type: "rs-set-engine", engine: saved })).then((o) => { if (o && o.ok === false && o.engine === "local" && currentMode !== "local") setEngine("local"); }).catch(() => {}); } catch {}
+        }
         else if (!saved) { if (tabEngine === "local" && !lastManualEngineAt && currentMode !== "local") setEngine("local"); chatEngines[id] = currentMode; saveChatEngines(); }
       }, 1000);
       const engineEl = root.querySelector("#rs-engine");

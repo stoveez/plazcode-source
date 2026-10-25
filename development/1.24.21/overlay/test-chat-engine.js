@@ -11,7 +11,7 @@ async function run(stored,url='https://chatgpt.com/c/startup-chat',started=true)
  const w=dom.window,context=dom.getInternalVMContext(),intervals=[],changed=[];let data={rsLatestHandoff:handoff,...(started?{rsStartedSessions:['/c/startup-chat']}:{}),...stored};
  const get=(keys,cb)=>{const d={};for(const k of [].concat(keys||Object.keys(data)))if(k in data)d[k]=data[k];if(cb)queueMicrotask(()=>cb(d));return Promise.resolve(d);};
  const set=v=>{const changes={};for(const [k,n] of Object.entries(v)){changes[k]={oldValue:data[k],newValue:n};data[k]=n;}for(const fn of changed)fn(changes,'local');return Promise.resolve();};
- w.chrome={runtime:{id:'test',getManifest:()=>manifest,getURL:p=>'chrome-extension://test/'+p,onMessage:{addListener(){}},sendMessage:(msg,cb)=>{const r=msg&&msg.type==='rs-get-engine'?{ok:true,engine:tab}:{ok:true,connected:false,tools:[],servers:[]};if(cb)queueMicrotask(()=>cb(r));return Promise.resolve(r);}},storage:{local:{get,set,remove:()=>Promise.resolve()},onChanged:{addListener:fn=>changed.push(fn)}}};
+ w.chrome={runtime:{id:'test',getManifest:()=>manifest,getURL:p=>'chrome-extension://test/'+p,onMessage:{addListener(){}},sendMessage:(msg,cb)=>{(w.__sent=w.__sent||[]).push(msg);const r=msg&&msg.type==='rs-get-engine'?{ok:true,engine:tab}:{ok:true,connected:false,tools:[],servers:[]};if(cb)queueMicrotask(()=>cb(r));return Promise.resolve(r);}},storage:{local:{get,set,remove:()=>Promise.resolve()},onChanged:{addListener:fn=>changed.push(fn)}}};
  w.ResizeObserver=class{observe(){}disconnect(){}};w.setInterval=(fn,ms)=>{intervals.push({fn,ms});return intervals.length;};w.setTimeout=()=>1;w.requestAnimationFrame=()=>1;w.cancelAnimationFrame=()=>{};
  w.console={log(){},warn(){},error:(...x)=>process.stderr.write(x.map(String).join(' ')+'\n')};
  w.HTMLElement.prototype.getBoundingClientRect=function(){return {left:200,top:700,width:700,height:120,right:900,bottom:820};};
@@ -29,7 +29,7 @@ const engine=t=>t.w.__rsEngine&&t.w.__rsEngine();
 (async()=>{
  // 1. A chat with a saved mode comes back in that mode after a refresh (AgentScript).
  let t=await run({rsChatEngines:{'chatgpt|/c/aaa':'local'}},'https://chatgpt.com/c/aaa','');
- try{await t.tick(1000);await t.tick(1000);assert.equal(engine(t),'local','saved AS comes back as AS after a refresh');}finally{t.dom.window.close();}
+ try{await t.tick(1000);await t.tick(1000);assert.equal(engine(t),'local','saved AS comes back as AS after a refresh');assert.ok((t.w.__sent||[]).some(m=>m&&m.type==='rs-set-engine'&&m.engine==='local'),'the background page is told the restored mode, so the bar does not check Roblox Studio while showing AS');}finally{t.dom.window.close();}
  // 2. A chat saved as RS stays RS even when the tab-wide mode says AS.
  t=await run({rsChatEngines:{'chatgpt|/c/bbb':'roblox'}},'https://chatgpt.com/c/bbb','local');
  try{await t.tick(1000);await t.tick(1000);await t.tick(3000);assert.equal(engine(t),'roblox','saved RS is not overridden by the tab-wide mode');assert.equal(t.data.rsChatEngines['chatgpt|/c/bbb'],'roblox');}finally{t.dom.window.close();}
