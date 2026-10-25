@@ -12,7 +12,7 @@ must("logChat();saveChatNote('hidden');", "tab hidden saves");
 must("ui.noteChatSoon('activity')", "task changes save (start and mid-task)");
 must("ui.noteChatSoon('finish')", "task finish saves");
 must("PlazCodeMemory.chatNoteLatest(", "Yes reads the newest chat note");
-must("chatNoteStates[P.id+'|'+P.conversationKey()]", "never reads this chat's own note");
+must("chatNoteStates[noteKey(P.id+'|'+P.conversationKey())]", "never reads this chat's own note");
 assert(!/rsChatNotes\s*===\s*false/.test(main), "always on by default, no switch hides it");
 const hidden = fs.readFileSync(__dirname + "/core/memory.js", "utf8");
 assert(hidden.includes("graph: withoutChatNotes(graph)") && hidden.includes("reply.notes.filter"), "chat notes stay out of the AI's startup list and map");

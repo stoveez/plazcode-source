@@ -26,6 +26,60 @@ const PlazCodeMemory = (() => {
   // every function here returns an empty result and the classic saved memory keeps working unchanged.
   let vaultBridge = null, vaultState = null, vaultReady = false, vaultFailedAt = 0, vaultProject = '', vaultFetchedAt = 0;
   const VAULT_ACTIONS = ['index','search','read','write','backlinks','archive','add_image','read_image','map','audit','verify'];
+  // ---- Several vaults (1.24.21): the list of vaults lives in browser storage; the desktop app holds the one ACTIVE vault ----
+  const vaultRegistry = (() => {
+    const norm = p => String(p || '').trim().replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    const nested = (a, b) => !!a && !!b && (a === b || a.startsWith(b + '/') || b.startsWith(a + '/'));
+    const cleanName = n => String(n || '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+    const baseName = p => { const parts = String(p || '').trim().replace(/\\/g, '/').replace(/\/+$/, '').split('/'); return cleanName(parts[parts.length - 1]) || 'Vault'; };
+    const newId = list => { let id; do { id = 'v' + Math.random().toString(36).slice(2, 8); } while ((list || []).some(v => v.id === id)); return id; };
+    const withDefault = list => {
+      const out = (Array.isArray(list) ? list : []).filter(v => v && typeof v.id === 'string' && v.id !== 'default').map(v => ({ id: v.id, name: cleanName(v.name) || baseName(v.path), path: String(v.path || '').slice(0, 400) })).filter(v => v.path);
+      return [{ id: 'default', name: 'PlazCode vault', path: '' }, ...out].slice(0, 30);
+    };
+    const activeId = (list, info) => {
+      if (!info || !info.custom) return 'default';
+      const want = norm(info.path);
+      const hit = withDefault(list).find(v => v.id !== 'default' && norm(v.path) === want);
+      return hit ? hit.id : null;
+    };
+    // The active vault is always in the list, even if the folder was set the old way.
+    const adopt = (list, info) => {
+      const base = withDefault(list);
+      if (!info || !info.custom || activeId(base, info)) return base;
+      return [...base, { id: newId(base), name: baseName(info.path), path: String(info.path).slice(0, 400) }].slice(0, 30);
+    };
+    const add = (list, name, path) => {
+      const base = withDefault(list), clean = String(path || '').trim();
+      if (!clean) throw new Error('Type the full path of the folder, for example D:\\Game notes.');
+      if (!/^([a-zA-Z]:[\\/]|\/|\\\\)/.test(clean)) throw new Error('Use the full path of the folder, starting with the drive (D:\\...) or a slash (/Users/...).');
+      const key = norm(clean);
+      for (const v of base) if (v.path && nested(norm(v.path), key)) throw new Error(norm(v.path) === key ? 'That folder is already in your list.' : 'A vault cannot be inside another vault, or hold one. Pick a separate folder.');
+      return [...base, { id: newId(base), name: cleanName(name) || baseName(clean), path: clean.slice(0, 400) }].slice(0, 30);
+    };
+    const rename = (list, id, name) => { const n = cleanName(name); if (!n) throw new Error('Type a name.'); return withDefault(list).map(v => v.id === id ? { ...v, name: n } : v); };
+    const forget = (list, id, active) => {
+      if (id === 'default') throw new Error('The PlazCode vault stays in the list.');
+      if (id === active) throw new Error('Switch to another vault first. This one is open now.');
+      return withDefault(list).filter(v => v.id !== id);
+    };
+    return { norm, nested, cleanName, baseName, withDefault, activeId, adopt, add, rename, forget };
+  })();
+  const storeApi = () => (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) ? chrome.storage.local : null;
+  const storeGet = keys => new Promise(resolve => { const st = storeApi(); if (!st) return resolve({}); try { st.get(keys, v => resolve(v || {})); } catch (e) { resolve({}); } });
+  const storeSet = values => new Promise(resolve => { const st = storeApi(); if (!st) return resolve(false); try { st.set(values, () => resolve(true)); } catch (e) { resolve(false); } });
+  let seenVault = null, vaultSwitchNotice = '';
+  // Every tab calls this: when another tab or the settings page switched vaults, drop what this tab cached.
+  async function syncActiveVault() {
+    const got = (await storeGet(['rsActiveVault'])).rsActiveVault;
+    if (!got || typeof got.id !== 'string') return;
+    if (seenVault && seenVault !== got.id) {
+      vaultState = null; vaultReady = false; vaultFetchedAt = 0; vaultFailedAt = 0;
+      vaultSwitchNotice = 'Note from PlazCode: the active vault is now "' + vaultRegistry.cleanName(got.name) + '". What you read from the old vault earlier is out of date. Read Home (and the index) again before you continue.';
+    }
+    seenVault = got.id;
+  }
+  const takeSwitchNotice = () => { const n = vaultSwitchNotice; vaultSwitchNotice = ''; return n; };
   async function vaultCall(request) {
     let reply;
     if (typeof vaultBridge === 'function') reply = await vaultBridge({ type: 'vault', request });
@@ -44,6 +98,7 @@ const PlazCodeMemory = (() => {
   }
   async function vaultRefresh(bridge, project) {
     vaultBridge = bridge; project = project || '';
+    await syncActiveVault();
     if (vaultFailedAt && Date.now() - vaultFailedAt < 60000) return null;
     if (vaultState && vaultProject === project && Date.now() - vaultFetchedAt < 15000) return vaultState;
     vaultProject = project;
@@ -161,6 +216,12 @@ const PlazCodeMemory = (() => {
   function clipText(text, max) { text = String(text == null ? '' : text); return text.length > max ? text.slice(0, max) + '…' : text; }
   // The plazcode_vault tool. ctx = { project, lastImage(), attach(img) }. Returns plain text for the AI.
   async function vaultTool(args, ctx) {
+    await syncActiveVault();
+    const out = await vaultToolInner(args, ctx);
+    const notice = takeSwitchNotice();
+    return notice ? notice + '\n' + out : out;
+  }
+  async function vaultToolInner(args, ctx) {
     args = args || {}; ctx = ctx || {};
     const action = String(args.action || '');
     if (!VAULT_ACTIONS.includes(action)) throw new Error('Use action index, search, read, write, backlinks, archive, add_image, read_image, map, audit or verify.');
@@ -292,7 +353,7 @@ const PlazCodeMemory = (() => {
   }
   async function vaultSettings() { return vaultCall({ action: 'settings' }); }
   function mountVault(box, localize) {
-    box.innerHTML = '<div data-vault-card><div data-vault-head><div><h3>Vault</h3><p>A folder of linked notes. The AI reads it before it starts and keeps it up to date. It opens in Obsidian too.</p></div><small><span data-vault-count></span> <span>notes in the vault</span></small></div><div data-vault-buttons><button type="button" data-vault-view>Open vault</button></div><details data-vault-more><summary>More options</summary><div data-vault-options><p data-vault-folderline><span>Vault folder</span> <code data-vault-path data-i18n-user-content></code></p><div data-vault-buttons><button type="button" data-vault-open>Open vault folder</button><button type="button" data-vault-obsidian hidden>Open in Obsidian</button></div><label data-vault-learn><input type="checkbox" data-vault-learning><span><strong>Let the AI write notes</strong><small>It saves what it learns from your work. Turn this off and the AI can still read the vault.</small></span></label><label data-vault-folderlabel>Use a different folder<input data-vault-folder aria-label="Vault folder" maxlength="400" placeholder="Full path, for example D:\\PlazCode Vault"></label><button type="button" data-vault-save>Use this folder</button></div></details><p data-vault-unavailable hidden>The vault could not start. Close PlazCode fully (also from the background icon), open the newest PlazCode app, then try again.</p><div data-vault-status role="status" data-i18n-user-content></div></div>';
+    box.innerHTML = '<div data-vault-card><div data-vault-head><div><h3>Vault</h3><p>A folder of linked notes. The AI reads it before it starts and keeps it up to date. It opens in Obsidian too.</p></div><small><span data-vault-count></span> <span>notes in the vault</span></small></div><div data-vault-buttons><button type="button" data-vault-view>Open vault</button><button type="button" data-vault-import hidden>Import a folder of notes</button></div><details data-vault-more><summary>More options</summary><div data-vault-options><section data-vault-switch hidden><h4>Your vaults</h4><ul data-vault-list></ul><div data-vault-addrow><input data-vault-newname aria-label="Vault name" maxlength="60" placeholder="Name (optional)"><input data-vault-newpath aria-label="Vault folder to add" maxlength="400" placeholder="Folder, for example D:\\Game notes"><button type="button" data-vault-add>Add and open</button></div><p data-vault-switchnote>Opening another vault changes which notes every chat reads and writes. Your files are never deleted: removing a vault only takes it off this list.</p></section><p data-vault-folderline><span>Vault folder</span> <code data-vault-path data-i18n-user-content></code></p><div data-vault-buttons><button type="button" data-vault-open>Open vault folder</button><button type="button" data-vault-obsidian hidden>Open in Obsidian</button></div><label data-vault-learn><input type="checkbox" data-vault-learning><span><strong>Let the AI write notes</strong><small>It saves what it learns from your work. Turn this off and the AI can still read the vault.</small></span></label><label data-vault-folderlabel>Use a different folder<input data-vault-folder aria-label="Vault folder" maxlength="400" placeholder="Full path, for example D:\\PlazCode Vault"></label><button type="button" data-vault-save>Use this folder</button></div></details><p data-vault-unavailable hidden>The vault could not start. Close PlazCode fully (also from the background icon), open the newest PlazCode app, then try again.</p><div data-vault-status role="status" data-i18n-user-content></div></div>';
     const q = sel => box.querySelector(sel), status = q('[data-vault-status]');
     const say = text => { status.textContent = text; };
     const show = info => {
@@ -306,7 +367,77 @@ const PlazCodeMemory = (() => {
     q('[data-vault-open]').onclick = async () => { try { await vaultCall({ action: 'reveal' }); } catch (error) { say(error.message); } };
     q('[data-vault-obsidian]').onclick = async () => { try { await vaultCall({ action: 'open_obsidian' }); say('Asked Obsidian to open the vault. The first time, Obsidian may ask you to open the folder as a vault.'); } catch (error) { say(error.message); } };
     q('[data-vault-save]').onclick = async () => { try { show(await vaultCall({ action: 'configure', path: q('[data-vault-folder]').value.trim() })); vaultFetchedAt = 0; vaultReady = false; await vaultRefresh(vaultBridge, vaultProject); say('The vault folder was changed. Notes in the old folder stay where they are.'); } catch (error) { say(error.message); } };
-    localize(); load();
+    // Import a folder of notes: opens PlazCode's own import page (extension only; the desktop window gets it with the next app update).
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage && storeApi()) {
+      q('[data-vault-import]').hidden = false;
+      q('[data-vault-import]').onclick = () => { try { chrome.runtime.sendMessage({ type: 'rs-open-vault-import' }, reply => { if (reply && reply.ok === false) say(reply.error || 'The import page could not open.'); }); } catch (error) { say('The import page could not open.'); } };
+    }
+    // ── the list of vaults (only where browser storage exists; the desktop window gets this with the next app update) ──
+    const section = q('[data-vault-switch]');
+    let list = vaultRegistry.withDefault([]), lastInfo = null, editing = '', removing = '';
+    const saveList = async () => { await storeSet({ rsVaults: list }); };
+    const renderList = () => {
+      const ul = q('[data-vault-list]'); ul.textContent = '';
+      const active = vaultRegistry.activeId(list, lastInfo);
+      for (const v of list) {
+        const li = document.createElement('li'); li.dataset.vaultId = v.id; if (v.id === active) li.dataset.active = 'true';
+        const text = document.createElement('div'); text.dataset.vaultText = '';
+        if (editing === v.id) {
+          const input = document.createElement('input'); input.value = v.name; input.maxLength = 60; input.setAttribute('aria-label', 'New name'); input.dataset.vaultRenameInput = '';
+          const ok = document.createElement('button'); ok.type = 'button'; ok.textContent = 'Save name'; ok.onclick = async () => { try { list = vaultRegistry.rename(list, v.id, input.value); editing = ''; await saveList(); renderList(); say('Renamed.'); } catch (e) { say(e.message); } };
+          const no = document.createElement('button'); no.type = 'button'; no.textContent = 'Cancel'; no.onclick = () => { editing = ''; renderList(); };
+          text.append(input, ok, no);
+        } else {
+          const name = document.createElement('strong'); name.textContent = v.name; name.setAttribute('data-i18n-user-content', '');
+          const path = document.createElement('code'); path.textContent = v.id === 'default' ? (lastInfo && !lastInfo.custom ? lastInfo.path : 'The default PlazCode folder') : v.path; path.setAttribute('data-i18n-user-content', '');
+          text.append(name, path);
+          if (v.id === active) { const badge = document.createElement('span'); badge.dataset.vaultBadge = ''; badge.textContent = 'Open now'; text.append(badge); }
+        }
+        li.append(text);
+        const row = document.createElement('div'); row.dataset.vaultActions = '';
+        if (v.id !== active && editing !== v.id) {
+          const open = document.createElement('button'); open.type = 'button'; open.textContent = 'Open'; open.onclick = () => switchTo(v); row.append(open);
+        }
+        if (editing !== v.id && v.id !== 'default') { const rn = document.createElement('button'); rn.type = 'button'; rn.textContent = 'Rename'; rn.onclick = () => { editing = v.id; removing = ''; renderList(); }; row.append(rn); }
+        if (editing !== v.id && v.id !== 'default' && v.id !== active) {
+          const rm = document.createElement('button'); rm.type = 'button'; rm.textContent = removing === v.id ? 'Click again: take off the list (files stay)' : 'Remove from list';
+          rm.onclick = async () => { if (removing !== v.id) { removing = v.id; renderList(); return; } try { list = vaultRegistry.forget(list, v.id, active); removing = ''; await saveList(); renderList(); say('Taken off the list. The folder and its notes were not touched.'); } catch (e) { say(e.message); } };
+          row.append(rm);
+        }
+        li.append(row); ul.append(li);
+      }
+    };
+    const switchTo = async v => {
+      try {
+        const info = await vaultCall({ action: 'configure', path: v.path });
+        vaultFetchedAt = 0; vaultReady = false; vaultState = null; vaultFailedAt = 0;
+        await storeSet({ rsActiveVault: { id: v.id, name: v.name, at: Date.now() } }); seenVault = v.id;
+        vaultSwitchNotice = 'Note from PlazCode: the active vault is now "' + v.name + '". What you read from the old vault earlier is out of date. Read Home (and the index) again before you continue.';
+        show(info); lastInfo = info; renderList(); await vaultRefresh(vaultBridge, vaultProject);
+        say('"' + v.name + '" is open. Chats now read and write its notes. A task that is running keeps what it already read until the AI reads Home again.');
+      } catch (e) { say(e && e.message ? e.message : 'The vault could not be opened.'); }
+    };
+    q('[data-vault-add]').onclick = async () => {
+      try {
+        list = vaultRegistry.add(list, q('[data-vault-newname]').value, q('[data-vault-newpath]').value);
+        const v = list[list.length - 1]; await saveList();
+        q('[data-vault-newname]').value = ''; q('[data-vault-newpath]').value = '';
+        await switchTo(v);
+      } catch (e) { say(e.message); }
+    };
+    const loadList = async () => {
+      if (!storeApi()) return;
+      try {
+        const got = await storeGet(['rsVaults']); list = vaultRegistry.withDefault(got.rsVaults);
+        lastInfo = await vaultSettings(); const before = JSON.stringify(list); list = vaultRegistry.adopt(list, lastInfo);
+        if (JSON.stringify(list) !== before || !got.rsVaults) await saveList();
+        const id = vaultRegistry.activeId(list, lastInfo), entry = list.find(v => v.id === id);
+        if (entry) await storeSet({ rsActiveVault: { id: entry.id, name: entry.name, at: Date.now() } }), seenVault = entry.id;
+        section.hidden = false; renderList();
+      } catch (e) { /* the app may be older; the single-folder box above still works */ }
+    };
+    q('[data-vault-save]').addEventListener('click', () => { setTimeout(loadList, 400); });
+    localize(); load().then(loadList);
   }
   // ── 1.24.21 vault window: an Obsidian-style reader and editor for the vault ─────────────────────────────────
   // Plain DOM and text only: note text is always escaped, never inserted as HTML. Pictures load through the app.
@@ -1092,7 +1223,7 @@ const PlazCodeMemory = (() => {
     const localize=()=>globalThis.PlazCodeI18n?.mountStatic?.(root);
     root.setAttribute('data-pcm', '');
     root.innerHTML = '<div data-memory-intro><p>PlazCode remembers things about you and your projects so you do not have to repeat yourself in every chat. Use the Vault for a whole folder of notes, and Quick notes for short facts.</p></div><div data-vault-box></div><section data-pcm-card><div data-pcm-head><div><h3>Quick notes</h3><p>Short facts the AI reads before each task. Open a note to edit or remove it.</p></div><span data-pcm-count></span></div><label data-pcm-switch><input type="checkbox" data-memory-auto><span><strong>Learn as I work</strong><small>PlazCode saves useful notes by itself while you use it.</small></span></label><div data-memory-status role="status" data-i18n-user-content></div><div data-pcm-tools><input type="search" data-memory-filter placeholder="Search your notes" aria-label="Search your notes" maxlength="120" hidden><button type="button" data-memory-refresh>Reload</button></div><div data-memory-list></div><details data-memory-new-box><summary>Add a note</summary><div data-pcm-form><label>Title<input data-memory-new-title aria-label="Note title" placeholder="Short title, for example Combat cooldown" maxlength="120"></label><label>What should PlazCode remember?<textarea data-memory-new aria-label="New memory" placeholder="Write the note here\u2026"></textarea></label><div data-pcm-actions><button type="button" data-memory-add>Add note</button> <button type="button" data-memory-paste>Paste from clipboard</button></div><label data-memory-import-label>Or import notes from a file (.md, .json or .txt) <input type="file" data-memory-import aria-label="Import notes from .md, .json or .txt files" accept=".md,.markdown,.json,.txt,text/markdown,application/json,text/plain" multiple></label></div></details><p data-pcm-storage><small data-memory-capacity role="status"></small></p></section>';
-    const style = document.createElement('style'); style.textContent = '[data-pcm]{display:grid;gap:16px;font-size:13px}\n[data-pcm] h3{margin:0;font-size:17px;font-weight:700;letter-spacing:-.012em}\n[data-pcm] p{margin:0;line-height:1.55}\n[data-pcm] small{font-size:12px}\n[data-memory-intro] p{margin-top:5px;max-width:64ch;color:var(--pc-soft,#a3acbc)}\n[data-vault-card],[data-pcm-card]{padding:18px;border:1px solid rgb(var(--pc-rgb,233 186 83) / .24);border-radius:14px;background:rgb(var(--pc-rgb,233 186 83) / .05);box-shadow:0 1px 0 rgb(255 255 255 / .05) inset}\n[data-vault-head],[data-pcm-head]{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}\n[data-vault-head] p,[data-pcm-head] p{margin-top:4px;max-width:60ch;color:var(--pc-soft,#a3acbc)}\n[data-vault-head]>small,[data-pcm-count]{flex:none;padding:3px 11px;border:1px solid rgb(var(--pc-rgb,233 186 83) / .32);border-radius:999px;color:var(--pc-light,#ffe0a1);white-space:nowrap}\n[data-vault-buttons]{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 2px}\n:is(#memorySettings,[data-pcm]) :is([data-vault-buttons],[data-vault-options],[data-pcm-tools],[data-pcm-actions],[data-pcm-form],[data-memory-entry]) button{margin:0;min-height:34px;padding:7px 15px;border-radius:10px;border:1px solid rgb(255 255 255 / .14);background:rgb(255 255 255 / .06);color:inherit;font:inherit;font-size:13px;font-weight:600;cursor:pointer}\n:is(#memorySettings,[data-pcm]) :is([data-vault-buttons],[data-vault-options],[data-pcm-tools],[data-pcm-actions],[data-pcm-form],[data-memory-entry]) button:hover{border-color:rgb(var(--pc-rgb,233 186 83) / .6);background:rgb(255 255 255 / .1)}\n:is(#memorySettings,[data-pcm]) :is([data-vault-view],[data-memory-add],[data-memory-save]){background:linear-gradient(135deg,var(--pc-light,#ffe0a1),var(--pc-accent,#e9ba53));border-color:var(--pc-light,#ffe0a1);color:#0a0d14;font-weight:700}\n:is(#memorySettings,[data-pcm]) :is([data-vault-view],[data-memory-add],[data-memory-save]):hover{background:linear-gradient(135deg,var(--pc-light,#ffe0a1),var(--pc-accent,#e9ba53));filter:brightness(1.06)}\n:is(#memorySettings,[data-pcm]) [data-memory-remove]{color:#ff8f98;border-color:rgb(255 120 130 / .35)}\n[data-vault-more]{margin-top:12px;border-top:1px solid rgb(255 255 255 / .08);padding-top:10px}\n[data-vault-more]>summary{cursor:pointer;color:var(--pc-soft,#a3acbc);font-weight:600}\n[data-vault-options]{display:grid;gap:12px;padding:12px 0 2px}\n[data-vault-folderline]{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;color:var(--pc-soft,#a3acbc)}\n[data-vault-path]{word-break:break-all;color:var(--pc-light,#ffe0a1);font:12px/1.5 ui-monospace,Consolas,monospace}\n[data-vault-learn],[data-pcm-switch]{display:flex!important;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid rgb(255 255 255 / .08);border-radius:12px;background:rgb(255 255 255 / .03);cursor:pointer;margin:14px 0 0}\n[data-vault-options] [data-vault-learn]{margin:0}\n[data-vault-learn] input,[data-pcm-switch] input{flex:none;width:17px;height:17px;margin:2px 0 0;accent-color:var(--pc-accent,#e9ba53)}\n[data-vault-learn] strong,[data-pcm-switch] strong{display:block;font-size:14px}\n[data-vault-learn] small,[data-pcm-switch] small{display:block;margin-top:2px;color:var(--pc-soft,#a3acbc)}\n[data-vault-folderlabel]{display:grid;gap:6px;color:var(--pc-soft,#a3acbc)}\n:is(#memorySettings,[data-pcm]) :is([data-vault-folder],[data-pcm-form] input:not([type=file]),[data-pcm-form] textarea,[data-pcm-tools] input,[data-memory-entry] input,[data-memory-entry] textarea){display:block;box-sizing:border-box;width:100%;margin:0;padding:9px 11px;border:1px solid rgb(255 255 255 / .14);border-radius:9px;background:rgb(0 0 0 / .25);color:#fff;font:13px/1.5 inherit}\n[data-vault-unavailable]{margin-top:10px;padding:10px 12px;border:1px solid rgb(255 160 80 / .4);border-radius:10px;background:rgb(255 160 80 / .08);color:#ffd3a8}\n[data-vault-status]:not(:empty),[data-memory-status]:not(:empty){margin:10px 0 0;padding:9px 12px;border-radius:10px;background:rgb(255 255 255 / .05);color:var(--pc-light,#ffe0a1)}\n[data-pcm-tools]{display:flex;gap:8px;align-items:center;margin:14px 0 4px}\n[data-pcm-tools] input{flex:1}\n[data-pcm-tools] input[hidden]{display:none}\n[data-pcm-tools] button{margin-left:auto}\n[data-memory-entry]{margin:8px 0;padding:0;border:1px solid rgb(255 255 255 / .09);border-radius:12px;background:rgb(255 255 255 / .025);overflow:hidden}\n[data-memory-entry]:hover,[data-memory-entry][open]{border-color:rgb(var(--pc-rgb,233 186 83) / .4)}\n[data-memory-entry]>summary{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:12px 14px;cursor:pointer;list-style:none}\n[data-memory-entry]>summary::-webkit-details-marker{display:none}\n[data-memory-entry]>summary::before{content:"";flex:none;width:7px;height:7px;border:solid currentColor;border-width:0 1.7px 1.7px 0;opacity:.6;transform:rotate(-45deg);transition:transform .2s}\n[data-memory-entry][open]>summary::before{transform:rotate(45deg);opacity:1}\n.pcm-main{flex:1;min-width:0;display:grid;gap:2px}\n.pcm-main strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:650}\n.pcm-main small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--pc-soft,#a3acbc)}\n.pcm-chips{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}\n.pcm-chips em{font-style:normal;font-size:11.5px;padding:2px 9px;border-radius:999px;background:rgb(255 255 255 / .07);color:var(--pc-soft,#a3acbc);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n[data-memory-entry][open]>summary{border-bottom:1px solid rgb(255 255 255 / .08)}\n.pcm-edit{display:grid;gap:10px;padding:14px}\n.pcm-edit label,[data-pcm-form] label{display:grid;gap:6px;color:var(--pc-soft,#a3acbc);font-weight:600}\n.pcm-edit textarea,[data-pcm-form] textarea{min-height:110px;resize:vertical}\n.pcm-edit .pcm-buttons,[data-pcm-actions]{display:flex;flex-wrap:wrap;gap:8px}\n[data-pcm-empty]{margin:10px 0;padding:22px 16px;border:1px dashed rgb(255 255 255 / .18);border-radius:12px;text-align:center}\n[data-pcm-empty] strong{display:block;font-size:14px;margin-bottom:4px}\n[data-pcm-empty] p{color:var(--pc-soft,#a3acbc)}\n[data-memory-new-box]{margin-top:12px;border:1px dashed rgb(var(--pc-rgb,233 186 83) / .45);border-radius:12px}\n[data-memory-new-box]>summary{padding:12px 14px;cursor:pointer;font-weight:700;color:var(--pc-light,#ffe0a1);list-style:none}\n[data-memory-new-box]>summary::-webkit-details-marker{display:none}\n[data-memory-new-box]>summary::before{content:"+";display:inline-block;width:18px;font-weight:800}\n[data-memory-new-box][open]>summary::before{content:"\\2212"}\n[data-pcm-form]{display:grid;gap:12px;padding:4px 14px 14px}\n[data-memory-import-label]{font-weight:500!important;cursor:pointer}\n[data-memory-import-label] input{max-width:100%}\n[data-pcm-storage]{margin-top:12px!important;color:var(--pc-soft,#a3acbc)}\n[data-memory-transfer]>summary{cursor:pointer;font-weight:600}'; root.appendChild(style);
+    const style = document.createElement('style'); style.textContent = '[data-pcm]{display:grid;gap:16px;font-size:13px}\n[data-pcm] h3{margin:0;font-size:17px;font-weight:700;letter-spacing:-.012em}\n[data-pcm] p{margin:0;line-height:1.55}\n[data-pcm] small{font-size:12px}\n[data-memory-intro] p{margin-top:5px;max-width:64ch;color:var(--pc-soft,#a3acbc)}\n[data-vault-card],[data-pcm-card]{padding:18px;border:1px solid rgb(var(--pc-rgb,233 186 83) / .24);border-radius:14px;background:rgb(var(--pc-rgb,233 186 83) / .05);box-shadow:0 1px 0 rgb(255 255 255 / .05) inset}\n[data-vault-head],[data-pcm-head]{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}\n[data-vault-head] p,[data-pcm-head] p{margin-top:4px;max-width:60ch;color:var(--pc-soft,#a3acbc)}\n[data-vault-head]>small,[data-pcm-count]{flex:none;padding:3px 11px;border:1px solid rgb(var(--pc-rgb,233 186 83) / .32);border-radius:999px;color:var(--pc-light,#ffe0a1);white-space:nowrap}\n[data-vault-buttons]{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 2px}\n:is(#memorySettings,[data-pcm]) :is([data-vault-buttons],[data-vault-options],[data-pcm-tools],[data-pcm-actions],[data-pcm-form],[data-memory-entry]) button{margin:0;min-height:34px;padding:7px 15px;border-radius:10px;border:1px solid rgb(255 255 255 / .14);background:rgb(255 255 255 / .06);color:inherit;font:inherit;font-size:13px;font-weight:600;cursor:pointer}\n:is(#memorySettings,[data-pcm]) :is([data-vault-buttons],[data-vault-options],[data-pcm-tools],[data-pcm-actions],[data-pcm-form],[data-memory-entry]) button:hover{border-color:rgb(var(--pc-rgb,233 186 83) / .6);background:rgb(255 255 255 / .1)}\n:is(#memorySettings,[data-pcm]) :is([data-vault-view],[data-memory-add],[data-memory-save]){background:linear-gradient(135deg,var(--pc-light,#ffe0a1),var(--pc-accent,#e9ba53));border-color:var(--pc-light,#ffe0a1);color:#0a0d14;font-weight:700}\n:is(#memorySettings,[data-pcm]) :is([data-vault-view],[data-memory-add],[data-memory-save]):hover{background:linear-gradient(135deg,var(--pc-light,#ffe0a1),var(--pc-accent,#e9ba53));filter:brightness(1.06)}\n:is(#memorySettings,[data-pcm]) [data-memory-remove]{color:#ff8f98;border-color:rgb(255 120 130 / .35)}\n[data-vault-more]{margin-top:12px;border-top:1px solid rgb(255 255 255 / .08);padding-top:10px}\n[data-vault-more]>summary{cursor:pointer;color:var(--pc-soft,#a3acbc);font-weight:600}\n[data-vault-options]{display:grid;gap:12px;padding:12px 0 2px}\n[data-vault-switch]{display:grid;gap:8px}[data-vault-switch][hidden]{display:none}[data-vault-switch] h4{margin:0;font-size:13px}\n[data-vault-list]{list-style:none;margin:0;padding:0;display:grid;gap:6px}\n[data-vault-list] li{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:9px 11px;border:1px solid rgb(255 255 255 / .12);border-radius:10px}\n[data-vault-list] li[data-active=true]{border-color:rgb(var(--pc-rgb,233 186 83) / .6);background:rgb(var(--pc-rgb,233 186 83) / .08)}\n[data-vault-text]{display:grid;gap:2px;min-width:0;flex:1 1 200px}[data-vault-text] code{font-size:11px;opacity:.7;overflow-wrap:anywhere}\n[data-vault-badge]{justify-self:start;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;border:1px solid rgb(var(--pc-rgb,233 186 83) / .6)}\n[data-vault-actions]{display:flex;flex-wrap:wrap;gap:6px}[data-vault-actions] button{min-height:30px;padding:4px 10px;font-size:12px}\n[data-vault-addrow]{display:flex;flex-wrap:wrap;gap:6px}[data-vault-addrow] input{flex:1 1 150px;min-width:0}\n[data-vault-switchnote]{margin:0;font-size:12px;opacity:.75}\n[data-vault-folderline]{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;color:var(--pc-soft,#a3acbc)}\n[data-vault-path]{word-break:break-all;color:var(--pc-light,#ffe0a1);font:12px/1.5 ui-monospace,Consolas,monospace}\n[data-vault-learn],[data-pcm-switch]{display:flex!important;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid rgb(255 255 255 / .08);border-radius:12px;background:rgb(255 255 255 / .03);cursor:pointer;margin:14px 0 0}\n[data-vault-options] [data-vault-learn]{margin:0}\n[data-vault-learn] input,[data-pcm-switch] input{flex:none;width:17px;height:17px;margin:2px 0 0;accent-color:var(--pc-accent,#e9ba53)}\n[data-vault-learn] strong,[data-pcm-switch] strong{display:block;font-size:14px}\n[data-vault-learn] small,[data-pcm-switch] small{display:block;margin-top:2px;color:var(--pc-soft,#a3acbc)}\n[data-vault-folderlabel]{display:grid;gap:6px;color:var(--pc-soft,#a3acbc)}\n:is(#memorySettings,[data-pcm]) :is([data-vault-folder],[data-pcm-form] input:not([type=file]),[data-pcm-form] textarea,[data-pcm-tools] input,[data-memory-entry] input,[data-memory-entry] textarea){display:block;box-sizing:border-box;width:100%;margin:0;padding:9px 11px;border:1px solid rgb(255 255 255 / .14);border-radius:9px;background:rgb(0 0 0 / .25);color:#fff;font:13px/1.5 inherit}\n[data-vault-unavailable]{margin-top:10px;padding:10px 12px;border:1px solid rgb(255 160 80 / .4);border-radius:10px;background:rgb(255 160 80 / .08);color:#ffd3a8}\n[data-vault-status]:not(:empty),[data-memory-status]:not(:empty){margin:10px 0 0;padding:9px 12px;border-radius:10px;background:rgb(255 255 255 / .05);color:var(--pc-light,#ffe0a1)}\n[data-pcm-tools]{display:flex;gap:8px;align-items:center;margin:14px 0 4px}\n[data-pcm-tools] input{flex:1}\n[data-pcm-tools] input[hidden]{display:none}\n[data-pcm-tools] button{margin-left:auto}\n[data-memory-entry]{margin:8px 0;padding:0;border:1px solid rgb(255 255 255 / .09);border-radius:12px;background:rgb(255 255 255 / .025);overflow:hidden}\n[data-memory-entry]:hover,[data-memory-entry][open]{border-color:rgb(var(--pc-rgb,233 186 83) / .4)}\n[data-memory-entry]>summary{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:12px 14px;cursor:pointer;list-style:none}\n[data-memory-entry]>summary::-webkit-details-marker{display:none}\n[data-memory-entry]>summary::before{content:"";flex:none;width:7px;height:7px;border:solid currentColor;border-width:0 1.7px 1.7px 0;opacity:.6;transform:rotate(-45deg);transition:transform .2s}\n[data-memory-entry][open]>summary::before{transform:rotate(45deg);opacity:1}\n.pcm-main{flex:1;min-width:0;display:grid;gap:2px}\n.pcm-main strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:650}\n.pcm-main small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--pc-soft,#a3acbc)}\n.pcm-chips{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}\n.pcm-chips em{font-style:normal;font-size:11.5px;padding:2px 9px;border-radius:999px;background:rgb(255 255 255 / .07);color:var(--pc-soft,#a3acbc);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n[data-memory-entry][open]>summary{border-bottom:1px solid rgb(255 255 255 / .08)}\n.pcm-edit{display:grid;gap:10px;padding:14px}\n.pcm-edit label,[data-pcm-form] label{display:grid;gap:6px;color:var(--pc-soft,#a3acbc);font-weight:600}\n.pcm-edit textarea,[data-pcm-form] textarea{min-height:110px;resize:vertical}\n.pcm-edit .pcm-buttons,[data-pcm-actions]{display:flex;flex-wrap:wrap;gap:8px}\n[data-pcm-empty]{margin:10px 0;padding:22px 16px;border:1px dashed rgb(255 255 255 / .18);border-radius:12px;text-align:center}\n[data-pcm-empty] strong{display:block;font-size:14px;margin-bottom:4px}\n[data-pcm-empty] p{color:var(--pc-soft,#a3acbc)}\n[data-memory-new-box]{margin-top:12px;border:1px dashed rgb(var(--pc-rgb,233 186 83) / .45);border-radius:12px}\n[data-memory-new-box]>summary{padding:12px 14px;cursor:pointer;font-weight:700;color:var(--pc-light,#ffe0a1);list-style:none}\n[data-memory-new-box]>summary::-webkit-details-marker{display:none}\n[data-memory-new-box]>summary::before{content:"+";display:inline-block;width:18px;font-weight:800}\n[data-memory-new-box][open]>summary::before{content:"\\2212"}\n[data-pcm-form]{display:grid;gap:12px;padding:4px 14px 14px}\n[data-memory-import-label]{font-weight:500!important;cursor:pointer}\n[data-memory-import-label] input{max-width:100%}\n[data-pcm-storage]{margin-top:12px!important;color:var(--pc-soft,#a3acbc)}\n[data-memory-transfer]>summary{cursor:pointer;font-weight:600}'; root.appendChild(style);
     mountVault(root.querySelector('[data-vault-box]'), localize);
     // Import/transfer status can include filenames, raw errors and site notices.
     const status = root.querySelector('[data-memory-status]');
@@ -1252,6 +1383,6 @@ const PlazCodeMemory = (() => {
     for(const entry of scoped.slice(offset)){const item={id:entry.id,title:titleOf(entry),project:entry.project || "",source:entry.source || "",text:entry.text.slice(0,500),total_chars:entry.text.length,preview_limited:entry.text.length>500};const chars=JSON.stringify(item).length;if(entries.length && size+chars>7000)break;entries.push(item);size+=chars;}
     return {automatic:memory.automatic,entries,total_entries:scoped.length,offset,next_offset:offset+entries.length<scoped.length?offset+entries.length:null};
   }
-  return { prompt, mount, parseTransfer, exportPackage, read, titleOf, brainMap, graphSim, vaultRefresh, vaultContext, vaultTool, vaultActive, vaultLearning, vaultCall, chatNoteSave, chatNoteLatest, withoutChatNotes, criticTool, criticParse, criticPrompt, openVault: openVaultViewer, renderMarkdown };
+  return { prompt, mount, parseTransfer, exportPackage, read, titleOf, brainMap, graphSim, vaultRefresh, vaultRegistry, vaultContext, vaultTool, vaultActive, vaultLearning, vaultCall, chatNoteSave, chatNoteLatest, withoutChatNotes, criticTool, criticParse, criticPrompt, openVault: openVaultViewer, renderMarkdown };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = PlazCodeMemory;

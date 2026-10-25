@@ -2257,6 +2257,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         catch (error) { sendResponse({ ok: false, error: String(error && error.message || error).slice(0, 200) }); }
         break;
       }
+      case "rs-open-vault-import": {
+        // The import page is a PlazCode page, so an AI site can never see the files that are picked there.
+        try { await chrome.tabs.create({ url: chrome.runtime.getURL("core/vault-import.html") }); sendResponse({ ok: true }); }
+        catch (error) { sendResponse({ ok: false, error: String(error && error.message || error).slice(0, 160) }); }
+        break;
+      }
       case "vault": {
         const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
         try { const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/vault",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{}),signal:controller.signal});sendResponse(await response.json()); }

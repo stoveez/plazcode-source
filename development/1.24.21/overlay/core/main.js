@@ -10674,23 +10674,28 @@ function renderCards(panel) {
     document.addEventListener('visibilitychange',()=>{if(document.hidden){try{captureExportHistory();}catch{}logChat();saveChatNote('hidden');}});
     // 1.24.21: every chat is also saved into the vault as a note under "11 Chats" (summary, key points and a "Current tasks:" section).
     // PlazCode writes it itself; it is on by default and works even when the AI may not write notes.
+    let activeVaultId='default';const noteKey=id=>activeVaultId==='default'?id:activeVaultId+'|'+id;
+    chrome.storage.local.get(['rsActiveVault'],v=>{if(v&&v.rsActiveVault&&typeof v.rsActiveVault.id==='string')activeVaultId=v.rsActiveVault.id;});
+    try{chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.rsActiveVault&&changes.rsActiveVault.newValue&&typeof changes.rsActiveVault.newValue.id==='string')activeVaultId=changes.rsActiveVault.newValue.id;});}catch{}
     let chatNoteStates={},latestChatNote=null,chatNoteBusy=false,chatNoteLastAt=0,chatNoteTimer=0,chatNoteForce=false;const chatNoteTasks={};
     chrome.storage.local.get(['rsChatNotes','rsLatestChatNote'],value=>{if(value&&value.rsChatNotes&&typeof value.rsChatNotes==='object')chatNoteStates=value.rsChatNotes;if(value&&value.rsLatestChatNote)latestChatNote=value.rsLatestChatNote;});
+    // Each vault has its own note for a chat and its own "latest chat" pointer (the pointer is ignored after a switch).
+    const latestHere=()=>latestChatNote&&(latestChatNote.vault||'default')===activeVaultId?latestChatNote:null;
     async function saveChatNote(reason){
       if(chatNoteBusy)return;const key=P.conversationKey();if(!key)return;
       try{captureExportHistory(false);}catch{}
       if(!hasRealRequest())return;
       const force=reason==='hidden'||reason==='finish'||chatNoteForce,now=Date.now();chatNoteForce=false;
       const plan=(activity.active()&&activity.active().plan)||(activity.saved(key)&&activity.saved(key).plan)||null;
-      const tasksSig=JSON.stringify(((plan&&plan.items)||[]).map(item=>item.label+'|'+item.status)),id=P.id+'|'+key;
+      const tasksSig=JSON.stringify(((plan&&plan.items)||[]).map(item=>item.label+'|'+item.status)),id=P.id+'|'+key,sk=noteKey(id);
       // Task changes are written within about 10 s; plain chat text is refreshed at most every 2 minutes (each write adds a Log line).
-      if(!force&&now-chatNoteLastAt<(tasksSig!==chatNoteTasks[id]?10000:120000))return;
+      if(!force&&now-chatNoteLastAt<(tasksSig!==chatNoteTasks[sk]?10000:120000))return;
       chatNoteBusy=true;
       try{
-        const state=chatNoteStates[id]||{};
+        const state=chatNoteStates[sk]||{};
         const next=await PlazCodeMemory.chatNoteSave(state,{provider:P.displayName,chatId:id,project:currentProject,rows:exportRows,plan},now);
         if(next&&next.path&&next.created){
-          chatNoteStates[id]=next;chatNoteTasks[id]=tasksSig;chatNoteLastAt=now;latestChatNote={path:next.path,chat_id:id,at:now};
+          chatNoteStates[sk]=next;chatNoteTasks[sk]=tasksSig;chatNoteLastAt=now;latestChatNote={path:next.path,chat_id:id,at:now,vault:activeVaultId};
           const keep={};for(const k of Object.keys(chatNoteStates).slice(-100)){const s=chatNoteStates[k];keep[k]={path:s.path,startedAt:s.startedAt,times:s.times,created:true};}
           chrome.storage.local.set({rsChatNotes:keep,rsLatestChatNote:latestChatNote});
         }
@@ -10727,7 +10732,7 @@ function renderCards(panel) {
           status.textContent='Loading context and continuing…';
           let context=PlazCodeMemory.parseTransfer(JSON.stringify(transfer)).context;if(context.length>40000)throw Error('Continuation is too large. Use a shorter summary.');
           // The newest chat note PlazCode saved (never this chat's own). If there is one, the AI reads that summary instead of the raw excerpt.
-          try{const own=chatNoteStates[P.id+'|'+P.conversationKey()];const note=await Promise.race([PlazCodeMemory.chatNoteLatest(latestChatNote&&latestChatNote.path,own&&own.path),sleep(3500).then(()=>null)]);
+          try{const own=chatNoteStates[noteKey(P.id+'|'+P.conversationKey())];const note=await Promise.race([PlazCodeMemory.chatNoteLatest(latestHere()&&latestHere().path,own&&own.path),sleep(3500).then(()=>null)]);
             if(note&&note.text&&note.text.trim())context='PREVIOUS CHAT NOTE (vault path: '+note.path+'). PlazCode saved this summary from your previous chat; read the note with plazcode_vault for more.\n'+note.text.slice(0,6000);}catch{}
           if(P.conversationKey() && typeof transfer.project==='string' && transfer.project.trim() && [...transfer.project].length<=80){
             const assigned=await bg({type:'checkpoints',request:{action:'project',chat:P.id+'|'+P.conversationKey(),project:transfer.project}});
@@ -10948,7 +10953,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
       if (action === "stop" && state.canStop) { stopLoop(); return { ok: true }; }
       return { ok: false, error: "The AI chat is no longer ready for this action." };
     }
-    return { captureHandoff, noteChatSoon, latestChatNotePath: () => latestChatNote && latestChatNote.path || '', isCoworkCoverTarget: node => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast, banner, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
+    return { captureHandoff, noteChatSoon, latestChatNotePath: () => latestHere() && latestHere().path || '', isCoworkCoverTarget: node => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast, banner, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
   })();
 
   const clarification = PlazCodeClarification.create({

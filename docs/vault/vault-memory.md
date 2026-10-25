@@ -21,6 +21,11 @@ PlazCode itself (not the AI, no extra usage, works even when "Let the AI write n
 
 **The continue popup** now appears only after the AI says "PlazCode is ready." and before your first real request. Yes makes the AI read the newest chat note (never the current chat's own); if none exists it falls back to the old short excerpt. No starts fresh. Needs the new desktop app plus an extension reload.
 
+## Several vaults and folder import (new, 2026-10-24, extension only)
+**Vaults list:** Memory, Vault, More options, "Your vaults" (shown only in the browser panel; the desktop window gets it with the next app). The list is kept in browser storage (`rsVaults`); the desktop app still holds ONE active vault (`configure {path}`), so every tab and chat uses it. Open switches (and records `rsActiveVault`), Rename changes only the shown name, Remove takes it off the list and never touches files. A vault cannot sit inside another. After a switch every tab drops its cache and the next vault tool result tells the AI to read Home again. Chat notes and the "latest chat" pointer are kept per vault. Code: `vaultRegistry` and `mountVault` in `core/memory.js`; test `test-vault-switcher.js`.
+
+**Import a folder:** the button "Import a folder of notes" opens PlazCode's own page `core/vault-import.html` (the AI site never sees the files). Notes go to `10 Inbox/Imported <folder>/`, subfolders kept, text kept exactly (`write create`, then `save_raw`). Skipped and listed in an `Import report` note (names only): hidden/system folders, pictures, other files, empty, over 60,000 characters, secret-looking, same name, beyond 300 notes. Code: `core/vault-import.js`, `core/vault-import-page.js`; test `test-vault-import.js`. Still for the next desktop app: a native folder picker, real folder renames, fast batch import, pictures.
+
 ## How the owner uses it
 Memory settings in the desktop app: **Open vault** (Obsidian-style window: file tree, links, graph, search, edit, pictures, backlinks, move to archive), **Open vault folder**, **Open in Obsidian** (only if installed), **Let the AI write notes** switch, **Use a different folder**. Quick notes (the older short-fact list) still exist next to it.
 
