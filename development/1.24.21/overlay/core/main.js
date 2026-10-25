@@ -6319,9 +6319,26 @@ return result`;
       };
       supportBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleMenu(false); });
       // Engine toggle (Roblox ↔ AgentScript ↔ Animation)
+      // 1.24.21: each chat keeps its own mode (RS or AS), also after a refresh or closing and reopening the page.
+      // Saved per chat in chrome.storage (rsChatEngines). A chat opened for the first time keeps the mode it is in now.
+      let chatEngines = {}, chatEngineKey = "", chatEnginesLoaded = false, tabEngine = "", tabEngineAnswered = false; const chatEngineBootAt = Date.now();
+      const chatEngineId = () => { const k = P.conversationKey(); return k ? P.id + "|" + k : ""; };
+      const saveChatEngines = () => { const keys = Object.keys(chatEngines); if (keys.length > 300) for (const k of keys.slice(0, keys.length - 300)) delete chatEngines[k]; try { chrome.storage.local.set({ rsChatEngines: chatEngines }); } catch {} };
+      try { chrome.storage.local.get("rsChatEngines", value => { chatEngines = value && value.rsChatEngines && typeof value.rsChatEngines === "object" ? value.rsChatEngines : {}; chatEnginesLoaded = true; }); } catch { chatEnginesLoaded = true; }
+      rsInterval(() => {
+        const id = chatEngineId();
+        if (!chatEnginesLoaded || !id || id === chatEngineKey) return;
+        const saved = chatEngines[id];
+        // A chat with no saved mode waits (up to 3 s) for the background page to say which mode this tab is in.
+        if (!saved && !tabEngineAnswered && Date.now() - chatEngineBootAt < 3000) return;
+        chatEngineKey = id;
+        if (saved && saved !== currentMode && Date.now() - lastManualEngineAt > 5000) setEngine(saved);
+        else if (!saved) { if (tabEngine === "local" && !lastManualEngineAt && currentMode !== "local") setEngine("local"); chatEngines[id] = currentMode; saveChatEngines(); }
+      }, 1000);
       const engineEl = root.querySelector("#rs-engine");
       currentEngine = "roblox";
-      try { chrome.runtime.sendMessage({type:"rs-get-engine"}, o => { if (!lastManualEngineAt && o?.engine === "local") setEngine("local"); }); } catch {}
+      // The tab-wide mode (kept by the background page) applies to a new chat; a chat that has its own saved mode restores that instead.
+      try { chrome.runtime.sendMessage({type:"rs-get-engine"}, o => { tabEngineAnswered = true; if (o?.engine !== "local" || lastManualEngineAt) return; tabEngine = "local"; if (!chatEngineId()) setEngine("local"); }); } catch {}
       chrome.runtime.onMessage.addListener((m)=>{
         if (!(m && m.type === "rs-engine" && m.engine)) return;
         const v = m.engine === "local" ? "local" : "roblox";
@@ -6345,6 +6362,8 @@ return result`;
         currentEngine = v==="local" ? "local" : "roblox";
         currentMode = currentEngine;
         try { window.__rsMode = () => currentMode; window.__rsEngine = () => currentMode; } catch {}
+        // Remember the mode for this chat, but only after its saved mode has been restored (a startup default must not overwrite it).
+        try { const id = chatEngineId(); if (id && id === chatEngineKey && chatEngines[id] !== currentMode) { chatEngines[id] = currentMode; saveChatEngines(); } } catch {}
         if (engineEl) {
           const isLocal = currentMode==="local";
           try {
