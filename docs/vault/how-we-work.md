@@ -10,12 +10,12 @@ Two layers, so a new AI starts fast and spends few tokens.
 2. **Long-term anchor: this vault.** Permanent knowledge: how things work, why decisions were made, finished milestones. Notes are short, one topic each, and link to each other.
 
 ## Start of a session
-1. `git fetch origin` and check out `claude/plazcode-dev` (or your own `<ai>/<task>` branch from it).
+1. `git fetch origin` and check out `claude/plazcode-dev`.
 2. Read `docs/NOW.md`. Read `CLAUDE.md` (or `AGENTS.md`) for the owner's rules.
 3. Open only the vault notes the task needs. Follow links; do not load everything.
 
 ## During a session
-- Work on your own `<ai>/<task>` branch, claim the task on `docs/TASK-BOARD.md`, push after every finished step (see [owner-rules](owner-rules.md)).
+- Work directly on `claude/plazcode-dev` (one AI at a time; no task branches). Push after every finished step and push `WIP:` commits before anything long or risky. Rewrite `docs/NOW.md` in the same commit as every push (see [owner-rules](owner-rules.md)).
 - If you learn something permanent (a gotcha, a decision, how a part works), write or update a vault note right away.
 
 ## End of a session (do all four)

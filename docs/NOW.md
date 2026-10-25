@@ -7,7 +7,7 @@ Updated: 2026-10-24 by claude. Keep under about 25 lines. Long-term knowledge is
 3. Desktop app fixes: dropdown lists no longer hide behind cards, Ultra border and glow-off on the active page button, sidebar scrolls on short windows, no Effort/version text in the title bar, five desktop tests updated.
 
 **State:**
-- Start from `claude/plazcode-dev` (see `git log`). Your own work goes on `<ai>/<task>`.
+- Start from `claude/plazcode-dev` (see `git log`). Work directly on it; no task branches (owner decision 2026-10-24). Rewrite this file with every push.
 - NOT in any test build yet: items 1 and 3 (desktop app changes). Latest test zips: CI run 40056181833, commit `9607466`.
 - Repo is Private now. A new test build needs the public window ([vault/test-builds.md](vault/test-builds.md)).
 - Unfinished: Firefox checks (CI only), real Windows/Mac app tests, lean startup phases 2 to 3 (offered, owner has not said yes).

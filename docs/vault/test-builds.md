@@ -8,7 +8,7 @@ Builds on the private repo are blocked by GitHub billing, so the repo is made **
 
 ## Every time you are ready for a test build
 1. Send the owner https://github.com/stoveez/plazcode-source/settings and walk them through the plan again in plain words (resend every time).
-2. After they make it public, start the build on your task branch.
+2. After they make it public, start the build on `claude/plazcode-dev`.
 3. Send them the two lean zips as soon as the run ends, in the same message remind them to set the repo back to Private (Danger Zone, Change visibility, Private).
 4. Repeat the reminder in later replies until it is private. Before stopping run `gh api repos/stoveez/plazcode-source --jq '{private,visibility}'`.
 
