@@ -94,7 +94,8 @@ Read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first
 
 ## What is in the latest test zips and what is NOT yet (kept up to date by every AI)
 Latest test zips given to the owner: CI run 40056181833, built from commit `9607466` on branch `claude/plazcode-dev` (Windows + Mac apps, Chrome/Firefox extensions). They contain everything up to that commit: the stall, Notion, Claude reply-key and AgentScript Full-access fixes, vault graph/brain/audit, the memory-button name fix, and the test-zip layout change.
-NOT yet in any test build or real app (all tested only in my sandbox, Chromium): `c11558b`, `80c334b`, `cf6bd9c` (desktop app only, so the desktop app must be replaced to see them):
+NOT yet in any test build or real app (all tested only in my sandbox, Chromium): `c11558b`, `80c334b`, `cf6bd9c` (desktop app only, so the desktop app must be replaced to see them), plus the vault live note and attached-picture storage (2026-10-24, merged as `0cabc3c`..`06a6a85`; needs the desktop app replaced AND the extension reloaded):
+- Vault live note `00 Start Here/Now.md`: sent to the AI at startup and rewritten after every job (`agent/src/vault.rs`, `core/memory.js`). Pictures attached with the media button can be stored with `plazcode_vault add_image` (`core/main.js`).
 - Reasoning and Language dropdown lists no longer open behind the next settings card (`core/effort-picker.js` lift class + CSS).
 - Ultra purple border and glow-off shadow on the active page button restored.
 - The sidebar scrolls as one column on short windows (max height 780px).
