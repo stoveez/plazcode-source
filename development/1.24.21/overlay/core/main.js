@@ -1234,6 +1234,17 @@
           else if (edNow.length < sentTail.length || !edNow.includes(sentTail.slice(-40))) messageSent = true;
           return messageSent || landed();
         }, 3500);
+        // 1.24.21, every site: an empty box is not proof the message went out (seen on Claude: the text never got into
+        // the box, nothing was sent, and the run waited a minute and paused). On sites that count messages reliably,
+        // wait a little for real proof: a new message in the chat, our text in the last message, or the AI answering.
+        // Without it, type the message again once; if that fails too, the "Message didn't send" notice below shows.
+        if (messageSent && !landed() && P.reliableCounts && !A.stop && !(images && images.length)) {
+          const proof = await waitFor(() => landed() || sendLandedProof(sentTail), 6000);
+          if (!proof && !A.stop && !landed() && !sendLandedProof(sentTail)) {
+            diag("send.notLanded", { provider: P.id, tries });
+            messageSent = false;
+          }
+        }
         tries++;
       }
       if (messageSent) diag("send.cleared", { tries });
@@ -3800,6 +3811,18 @@ return result`;
   // Full args / code, shown in a tool chip's expandable body.
   // An older card for the same tool on the same target folds under an "Earlier call" (or "Retry of failed call") tag.
   // Only the last 40 cards keep their full diff; older ones keep a short summary.
+  // Proof that a message we sent is in the chat: the AI is answering, or the last user message holds the end of our text.
+  function sendLandedProof(tail) {
+    try { if (P.isGenerating()) return true; } catch {}
+    try {
+      const norm = (v) => String(v || "").replace(/\s+/g, " ").trim();
+      const want = norm(tail).slice(-40);
+      if (want.length < 8) return false;
+      const users = P.allItems().filter((it) => P.isUserItem(it));
+      const last = users[users.length - 1];
+      return !!last && norm(last.textContent).includes(want);
+    } catch { return false; }
+  }
   // Cards by call, so a turn the site re-draws (Claude re-renders and virtualizes old turns, which drops the chip
   // and its card) gets the same card back instead of the old plain chip.
   const cardBook = new Map();
