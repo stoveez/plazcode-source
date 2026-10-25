@@ -52,8 +52,53 @@ const PlazCodeMemory = (() => {
       const reply = await vaultCall({ action: 'index', project: project || '', limit: 30 });
       // The brain map: every note and every link. An older app without it just keeps the short list.
       let graph = null; try { graph = await vaultCall({ action: 'graph' }); } catch { graph = null; }
-      vaultState = { ...reply, project, graph }; vaultFailedAt = 0; vaultFetchedAt = Date.now(); return vaultState;
+      { const R = chatR(); if (R && Array.isArray(reply.notes)) reply.notes = reply.notes.filter(n => !R.isChatNotePath(n.path)); } vaultState = { ...reply, project, graph: withoutChatNotes(graph) }; vaultFailedAt = 0; vaultFetchedAt = Date.now(); return vaultState;
     } catch { vaultState = null; vaultFailedAt = Date.now(); return null; }
+  }
+  // ---- Chat notes: PlazCode saves every chat into the vault as a note under 11 Chats (see core/reliability.js chatNote) ----
+  const chatR = () => (typeof PlazCodeReliability !== 'undefined' ? PlazCodeReliability : globalThis.PlazCodeReliability);
+  // `state` is a small object the caller keeps per chat: {path, startedAt, times, signature, created}. Returns it updated.
+  async function chatNoteSave(state, input, now) {
+    const R = chatR(); now = now || Date.now(); state = state || {};
+    if (!R || !input || (!vaultBridge && typeof globalThis.PlazCodeVaultApi !== 'function')) return state;
+    if (vaultFailedAt && now - vaultFailedAt < 60000) return state;
+    state.startedAt = state.startedAt || now; state.times = state.times || {};
+    R.trackTimes(state.times, input.plan && input.plan.items, now);
+    const note = R.chatNote({ ...input, startedAt: state.startedAt, times: state.times, now, status: input.status || 'open' });
+    state.path = state.path || R.chatNotePath({ provider: input.provider, startedAt: state.startedAt, title: note.title });
+    const signature = note.content + '|' + note.frontmatter.status;
+    if (state.signature === signature) return state;
+    const send = mode => vaultCall({ action: 'write', path: state.path, mode, content: note.content, frontmatter: note.frontmatter, reason: 'chat saved' });
+    try { await send(state.created ? 'replace' : 'create'); }
+    catch (error) {
+      const text = String(error && error.message || error);
+      if (/already exists/i.test(text)) await send('replace');
+      else if (/does not exist/i.test(text)) await send('create');
+      else throw error;
+    }
+    state.created = true; state.signature = signature; state.writtenAt = now;
+    return state;
+  }
+  // The newest saved chat note other than `exclude` (the chat being continued from). `known` is the caller's remembered pointer.
+  async function chatNoteLatest(known, exclude) {
+    const R = chatR(); let path = known && known !== exclude ? known : '';
+    if (!path) {
+      try {
+        const found = await vaultCall({ action: 'search', query: 'chat', type: 'previous-chat', limit: 30 });
+        path = (found.results || []).map(r => r.path).filter(x => R.isChatNotePath(x) && x !== exclude).sort().reverse()[0] || '';
+      } catch { path = ''; }
+    }
+    if (!path) return null;
+    try { const read = await vaultCall({ action: 'read', path }); return { path, text: String(read.text || read.body || '') }; } catch { return null; }
+  }
+  // Chat notes stay out of the AI's startup list and brain map (they would crowd out the real notes); the AI can still search them.
+  function withoutChatNotes(graph) {
+    const R = chatR();
+    if (!graph || !Array.isArray(graph.nodes) || !R) return graph;
+    const keep = [], remap = new Map();
+    graph.nodes.forEach((n, i) => { if (!R.isChatNotePath(n.path)) { remap.set(i, keep.length); keep.push(n); } });
+    const edges = (graph.edges || []).filter(e => remap.has(e[0]) && remap.has(e[1])).map(e => [remap.get(e[0]), remap.get(e[1]), ...e.slice(2)]);
+    return { ...graph, nodes: keep, edges };
   }
   function vaultLearningText(on, compact) {
     return on
@@ -1207,6 +1252,6 @@ const PlazCodeMemory = (() => {
     for(const entry of scoped.slice(offset)){const item={id:entry.id,title:titleOf(entry),project:entry.project || "",source:entry.source || "",text:entry.text.slice(0,500),total_chars:entry.text.length,preview_limited:entry.text.length>500};const chars=JSON.stringify(item).length;if(entries.length && size+chars>7000)break;entries.push(item);size+=chars;}
     return {automatic:memory.automatic,entries,total_entries:scoped.length,offset,next_offset:offset+entries.length<scoped.length?offset+entries.length:null};
   }
-  return { prompt, mount, parseTransfer, exportPackage, read, titleOf, brainMap, graphSim, vaultRefresh, vaultContext, vaultTool, vaultActive, vaultLearning, vaultCall, criticTool, criticParse, criticPrompt, openVault: openVaultViewer, renderMarkdown };
+  return { prompt, mount, parseTransfer, exportPackage, read, titleOf, brainMap, graphSim, vaultRefresh, vaultContext, vaultTool, vaultActive, vaultLearning, vaultCall, chatNoteSave, chatNoteLatest, withoutChatNotes, criticTool, criticParse, criticPrompt, openVault: openVaultViewer, renderMarkdown };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = PlazCodeMemory;

@@ -1439,6 +1439,25 @@ mod tests {
         assert!(idx["now"].as_str().unwrap().contains("checkpoints"), "init never overwrites the user's live note");
     }
     #[test]
+    fn chat_notes_are_written_by_plazcode_even_when_the_ai_may_not_write() {
+        let (root, mut s) = fresh("chat-notes");
+        run(&root, &s, json!({"action":"init"})).unwrap();
+        s.learning = false;
+        let path = "11 Chats/2026-10-24 2200 ChatGPT Build-rounds";
+        let front = json!({"tags":["chat","previous-chat"],"origin":"previous-chat","chat_id":"chatgpt|/c/abc","provider":"ChatGPT","status":"open","started":"2026-10-25T03:00:00.000Z","last_active":"2026-10-25T03:05:00.000Z"});
+        let body = "# Build rounds\n\n## Summary\nFirst request: build rounds\n\n## Current tasks:\n- [/] Build rounds";
+        run(&root, &s, json!({"action":"write","path":path,"mode":"create","content":body,"frontmatter":front})).unwrap();
+        run(&root, &s, json!({"action":"write","path":path,"mode":"replace","content":format!("{body}\n- [ ] Test it"),"frontmatter":front})).unwrap();
+        assert!(run(&root, &s, json!({"action":"write","ai":true,"path":"11 Chats/other","mode":"create","content":"x"})).is_err(), "the AI itself still cannot write when learning is off");
+        let found = run(&root, &s, json!({"action":"search","query":"chat","type":"previous-chat","limit":30})).unwrap();
+        let hits = found["results"].as_array().unwrap();
+        assert_eq!(hits.len(), 1, "found by the previous-chat tag");
+        assert_eq!(hits[0]["path"].as_str().unwrap(), "11 Chats/2026-10-24 2200 ChatGPT Build-rounds.md");
+        let read = run(&root, &s, json!({"action":"read","path":path})).unwrap();
+        assert!(read["text"].as_str().unwrap().contains("## Current tasks:") && read["text"].as_str().unwrap().contains("Test it"));
+        assert!(run(&root, &s, json!({"action":"write","path":"11 Chats/leak","mode":"create","content":"password: hunter2hunter2"})).is_err(), "secrets are still refused");
+    }
+    #[test]
     fn the_graph_lists_every_note_and_its_links() {
         let (root, s) = fresh("graph");
         run(&root, &s, json!({"action":"init"})).unwrap();
