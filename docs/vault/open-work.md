@@ -20,8 +20,8 @@ updated: 2026-10-24
 ## Bugs
 - "Response changed - run paused" banner: needs a debug report from a tester (high effort).
 - Notion startup in new workspaces; commands sometimes shown "not run".
-- Claude randomly stops mid-task while the bar says working (owner report 2026-10-24): hang recovery (case 1) is in the test zips of CI run 40152156785, untested on the real site; cases 2 and 3 are not wired yet.
-- ChatGPT AgentScript sometimes pauses; Claude sometimes stuck; tool chip sometimes still "in progress". All fixture-tested only.
+- Claude randomly stops mid-task: one real cause FOUND and fixed 2026-10-25 (clearing an empty reply box made Claude refuse the typed result; `providers/claude.js`), verified live with two 15-call runs (15/15). Not yet in a test zip. If pauses still happen, capture `#rs-diag-log` from the page at the moment it stops.
+- ChatGPT AgentScript sometimes pauses; tool chip sometimes still "in progress". Fixture-tested only. (Claude: see the line above; Claude chips now keep the new card after re-draws, verified live.)
 
 ## Not started / optional
 - Lean startup phases 2 and 3 (`development/1.24.21/overlay/core/lean-startup.js`, unwired, off).
