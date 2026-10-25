@@ -5,35 +5,49 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Import notes into PlazCode</title>
 <style>
-  :root { --bg: #14161c; --fg: #eef0f6; --muted: #9aa1b2; --line: rgba(255,255,255,.16); --accent: #e9ba53; --ok: #5cbf9a; --bad: #ef6b6b; }
-  @media (prefers-color-scheme: light) { :root { --bg: #f7f7f4; --fg: #1d222c; --muted: #5b6272; --line: rgba(0,0,0,.18); --accent: #a8741a; --ok: #1f8a60; --bad: #c0392b; } }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; }
-  main { max-width: 680px; margin: 0 auto; padding: 28px 16px 60px; }
-  h1 { font-size: 22px; margin: 0 0 6px; }
+  :root { --bg: #071426; --panel: #0b213b; --fg: #eef4ff; --muted: #9fb0c7; --line: rgba(217,173,82,.26); --gold: #d9ad52; --gold-bright: #f0cf7a; --ok: #4fd8a2; --bad: #ff7b84; --soft: rgba(255,255,255,.06); color-scheme: dark; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; min-height: 100vh; color: var(--fg); font: 15px/1.55 system-ui, "Segoe UI", sans-serif; background: radial-gradient(900px 480px at 15% -8%, rgba(217,173,82,.20), transparent 60%), radial-gradient(700px 420px at 100% 0%, rgba(60,120,200,.18), transparent 60%), linear-gradient(180deg, #0b213b 0%, #071426 55%); background-attachment: fixed; }
+  main { max-width: 660px; margin: 0 auto; padding: 52px 18px 90px; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 10px; background: linear-gradient(135deg, #fff 30%, var(--gold-bright)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { margin: 0 0 24px; font-size: 15.5px; }
   p, li { color: var(--muted); }
-  .card { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 14px 0; }
-  button, .pick { appearance: none; font: inherit; font-weight: 600; padding: 9px 16px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--fg); cursor: pointer; display: inline-block; }
-  button.primary { background: var(--accent); color: #1a140e; border-color: transparent; }
-  button:disabled { opacity: .5; cursor: default; }
-  button:focus-visible, .pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  code { font: 12.5px ui-monospace, Consolas, monospace; background: rgba(217,173,82,.12); padding: 1px 7px; border-radius: 6px; color: var(--gold-bright); }
+  .card { position: relative; background: linear-gradient(135deg, rgba(17,50,82,.75), rgba(7,20,38,.9)); border: 1px solid var(--line); border-radius: 3px 18px 3px 18px; padding: 18px 20px; margin: 16px 0; box-shadow: 0 16px 40px rgba(0,0,0,.4), 0 0 40px rgba(217,173,82,.07), inset 0 1px 0 rgba(255,255,255,.06); }
+  .card::before { content: ""; position: absolute; left: 20px; right: 20px; top: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-bright), transparent); opacity: .6; }
+  .card p { margin: 10px 0 0; font-size: 13.5px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 4px 0; }
+  .num { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--fg); }
+  #vault { padding: 3px 12px; border-radius: 999px; background: linear-gradient(135deg, rgba(217,173,82,.28), rgba(217,173,82,.1)); border: 1px solid rgba(217,173,82,.45); color: var(--gold-bright); box-shadow: 0 0 16px rgba(217,173,82,.2); }
+  button, .pick { appearance: none; font: inherit; font-weight: 700; padding: 11px 20px; border-radius: 3px 12px 3px 12px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06); color: var(--fg); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background .15s, border-color .15s, box-shadow .15s, transform .12s; }
+  button:hover, .pick:hover { border-color: rgba(217,173,82,.7); background: rgba(255,255,255,.1); }
+  button.primary { background: linear-gradient(135deg, #b8872f, var(--gold-bright)); color: #071426; border-color: var(--gold-bright); box-shadow: 0 4px 22px rgba(217,173,82,.4), inset 0 1px 0 rgba(255,255,255,.35); }
+  button.primary:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 6px 28px rgba(217,173,82,.55), inset 0 1px 0 rgba(255,255,255,.4); }
+  button:disabled { opacity: .5; cursor: default; transform: none; }
+  button:focus-visible, .pick:focus-within { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+  .pick { display: flex; width: 100%; flex-direction: column; gap: 4px; padding: 34px 18px; border: 2px dashed rgba(217,173,82,.45); border-radius: 3px 20px 3px 20px; background: radial-gradient(120% 140% at 50% 0%, rgba(217,173,82,.14), transparent 65%), rgba(7,20,38,.5); font-size: 17px; text-align: center; color: var(--gold-bright); box-shadow: 0 0 36px rgba(217,173,82,.08); }
+  .pick:hover { border-color: var(--gold-bright); box-shadow: 0 0 44px rgba(217,173,82,.22); }
+  .pick small { font-weight: 500; color: var(--muted); font-size: 13px; }
   input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
-  progress { width: 100%; height: 10px; }
-  .row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
-  .num { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--fg); }
-  details { margin: 4px 0; } summary { cursor: pointer; }
-  pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; max-height: 220px; overflow: auto; margin: 6px 0; }
-  #msg.bad { color: var(--bad); } #msg.ok { color: var(--ok); }
+  progress { width: 100%; height: 10px; border: 0; border-radius: 999px; overflow: hidden; accent-color: var(--gold); background: rgba(0,0,0,.4); margin-bottom: 10px; }
+  progress::-webkit-progress-bar { background: rgba(0,0,0,.4); }
+  progress::-webkit-progress-value { background: linear-gradient(90deg, #b8872f, var(--gold-bright)); box-shadow: 0 0 12px rgba(217,173,82,.6); }
+  #progressText { font-size: 13.5px; margin-bottom: 12px; }
+  details { margin: 6px 0; } summary { cursor: pointer; font-weight: 700; color: var(--gold-bright); }
+  pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; max-height: 220px; overflow: auto; margin: 6px 0; padding: 10px 12px; border-radius: 10px; background: rgba(0,0,0,.3); border: 1px solid rgba(255,255,255,.08); color: #d6e0f2; }
+  #msg { min-height: 1.4em; font-weight: 650; } #msg.bad { color: var(--bad); } #msg.ok { color: var(--ok); }
 </style>
 </head>
 <body>
 <main>
   <h1>Import notes into your vault</h1>
-  <p>Pick a folder of notes, for example an Obsidian vault. PlazCode copies the notes into your open vault so every AI can use them. The original folder is never changed.</p>
+  <p class="lead">Pick a folder of notes, for example an Obsidian vault. PlazCode copies the notes into your open vault so every AI can use them. The original folder is never changed.</p>
   <div class="card">
     <div class="row"><span>Vault that will receive the notes</span><span class="num" id="vault">Checking...</span></div>
     <p style="margin:6px 0 0">Notes go into <code>10 Inbox/Imported &lt;folder name&gt;</code>. Notes with a password or key inside, notes that already exist, empty notes, pictures and hidden folders are skipped, and listed in a report note.</p>
   </div>
-  <label class="pick" id="pickLabel">Choose a folder<input type="file" id="folder" webkitdirectory multiple></label>
+  <label class="pick" id="pickLabel">Choose a folder<small>For example your Obsidian vault. Nothing is changed in it.</small><input type="file" id="folder" webkitdirectory multiple></label>
   <div id="preview" class="card" hidden></div>
   <div id="progressBox" class="card" hidden><progress id="bar" value="0" max="1" aria-label="Import progress"></progress><div id="progressText" role="status"></div><button id="cancel" type="button">Stop after this note</button></div>
   <p id="msg" role="status"></p>

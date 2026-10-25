@@ -227,8 +227,8 @@ const PlazCodeToolCards = (() => {
   function render(host, m, opts) {
     const doc = host.ownerDocument;
     host.textContent = "";
-    const root = el(doc, "div", "rs-card");
-    const meta = el(doc, "div", "rs-card-meta");
+    const root = el(doc, "div", "rs-tcard");
+    const meta = el(doc, "div", "rs-tcard-meta");
     if (m.target) meta.appendChild(el(doc, "span", "rs-card-target", m.target));
     if (m.stats) {
       const stat = el(doc, "span", "rs-card-stat");
@@ -257,13 +257,28 @@ const PlazCodeToolCards = (() => {
       buttons[name] = button;
       bar.appendChild(button);
     }
-    root.appendChild(bar);
+    if (names.length > 1) root.appendChild(bar);
     root.appendChild(pane);
     host.appendChild(root);
     host.__rsEnsure = () => { if (!built) { built = true; select(m.defaultTab); } };
     host.__rsBuilt = () => built;
     if (opts && opts.open) host.__rsEnsure();
     return root;
+  }
+
+  // The pieces of the chip header: a file pill and a coloured +/- count. Returns an array of elements.
+  function headBits(doc, m) {
+    const out = [];
+    if (!m) return out;
+    if (m.target) { const tg = el(doc, "span", "rs-chip-tg"); tg.title = m.target; tg.appendChild(el(doc, "bdi", "", m.target)); out.push(tg); }
+    if (m.stats) {
+      const st = el(doc, "span", "rs-chip-st");
+      st.appendChild(el(doc, "span", "rs-stat-add", "+" + m.stats.added));
+      st.appendChild(el(doc, "span", "rs-stat-del", "\u2212" + m.stats.removed));
+      if (m.stats.edits > 1) st.appendChild(el(doc, "span", "rs-stat-edits", m.stats.edits + " edits"));
+      out.push(st);
+    }
+    return out;
   }
 
   // A short version for old cards: keeps the header and the first part of the request/output, drops the diff.
@@ -275,6 +290,6 @@ const PlazCodeToolCards = (() => {
     return out;
   }
 
-  return { model, render, slim, summary, tabs, sameCall, diffLines, compact, hash, nice, limits: { MAX_SIDE, MAX_CELLS, PAGE, FIRST_PAGE, RAW_CAP, OUT_CAP } };
+  return { model, render, slim, summary, headBits, tabs, sameCall, diffLines, compact, hash, nice, limits: { MAX_SIDE, MAX_CELLS, PAGE, FIRST_PAGE, RAW_CAP, OUT_CAP } };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = PlazCodeToolCards;

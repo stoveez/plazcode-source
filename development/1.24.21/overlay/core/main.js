@@ -5520,6 +5520,9 @@ return result`;
           (hasBody ?  (card ? `<div class="rs-chip-body"></div>` : `<div class="rs-chip-body"><pre></pre></div>`) : "");
         chip.querySelector(".rs-chip-tx").textContent = label;
         if (detail) chip.querySelector(".rs-chip-dt").textContent = detail;
+        if (card && typeof PlazCodeToolCards !== "undefined") {
+          try { const dtEl = chip.querySelector(".rs-chip-dt"); for (const bit of PlazCodeToolCards.headBits(document, card)) dtEl.parentNode.insertBefore(bit, dtEl); } catch {}
+        }
         if (hasBody) {
           const bodyEl = chip.querySelector(".rs-chip-body");
           if (card && typeof PlazCodeToolCards !== "undefined") {
