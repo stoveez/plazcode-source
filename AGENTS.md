@@ -38,6 +38,7 @@ Every time you push a WIP or finished change that another AI could pick up, tell
 The owner does not want to forget this step of the public-then-private plan. Remind them at exactly two moments: (1) right after they have received the test zips from you (say it in the same message that delivers the zips), and (2) right after a publish has finished. Do not remind them before those moments (for example while a build is still running). After one of those moments, repeat the reminder in later replies until the repo is private. Give the settings link each time: https://github.com/stoveez/plazcode-source/settings (Danger Zone, Change visibility, Private). Check `gh api repos/stoveez/plazcode-source --jq '{private,visibility}'` before you stop working and tell the owner plainly if it is still public. If you are about to end a session while it is public, say so in your last message. Never change visibility yourself.
 
 ## Where the detail lives (moved out of this file on 2026-10-24 to save tokens)
+- When the version number changes (1.24.22, ...): `docs/vault/new-version-checklist.md` (every note naming 1.24.21 must be updated)
 - Build, tests, hash pins, CI, quick commands: `docs/vault/build-and-tests.md`
 - Test builds and the zips: `docs/vault/test-builds.md`
 - Publishing a real update, which repo and branch holds releases: `docs/vault/releasing.md` (then read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first real publish)
