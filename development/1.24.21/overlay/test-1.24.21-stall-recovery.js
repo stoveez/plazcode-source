@@ -188,7 +188,7 @@ async function run(replies, opts = {}) {
         budgetResume: budget ? { chat: "chat-a" } : null, _wdNoRun: noRunAgeMs == null ? null : { item: node, len: text.length, at: Date.now() - noRunAgeMs } },
       P: { isAssistantItem: () => true, isUserItem: () => false, classifyText: () => text, lastAssistant: () => node, isGenerating: () => false, conversationKey: () => "chat-a", allItems: () => [node] },
       startupOutcome: () => null, isRememberedHalted: () => false, isRememberedExecuted: () => false, forgetHalted() {}, resetDecoration() {}, feedbackIsError: () => false,
-      bareToolName: (n) => n, diag() {}, rememberImageTool() {},
+      bareToolName: (n) => n, diag() {}, rememberImageTool() {}, cardForTurn: () => null,
     };
     vm.createContext(env);
     vm.runInContext("this.d={" + main.slice(cs, ce).replace(/,\s*$/, "") + "\n,toolBox(i,name,phase,detail){this.last={name,phase,detail};},ensureOwnedChip(){},chip(){}};", env);
