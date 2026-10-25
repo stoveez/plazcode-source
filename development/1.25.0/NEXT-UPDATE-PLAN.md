@@ -3,6 +3,14 @@
 This note is written so an AI in a brand-new chat can pick it up. Read it fully, then read the two design files next to it:
 `LICENSE-SYSTEM-DESIGN.md` and `SKILL-WORKSHOP-DESIGN.md` (same folder). Nothing here is built yet unless it says so.
 
+## Update 2026-10-24 (read this first; it overrides the older lines below)
+- Work now happens directly on `claude/plazcode-dev` (no task branches); see `CLAUDE.md` and `docs/NOW.md`. Ignore "work in a branch" in section E.
+- Item 9 (hang recovery) is partly done inside 1.24.21: the "AI stops mid-task" case is merged and fixture-tested; the two cases "reply cut inside a command" and "message not delivered" are not wired yet.
+- New things the owner added after this note was first written (live status is in `docs/vault/open-work.md`):
+  - Done in 1.24.21 work, not yet in a test build: chat notes saved into the vault, the continue popup after "PlazCode is ready.", no limit on saved memory, each chat keeps its AS or RS mode.
+  - Queued, each needs a high-effort plan first: plan-mode overhaul with approval cards ("Proposed <tool> - Needs your approval"), nicer output cards (diff card with changes / raw request, thought blocks), several vaults with a switcher like Obsidian's, importing a folder of notes into a vault.
+- When the version number changes, follow `docs/vault/new-version-checklist.md`; this folder is named after the *next* update, so rename or copy it when the number is decided.
+
 ## Where things stand (as of 2026-10-19)
 - PlazCode is closed source. Public repo `stoveez/PlazCode` holds only downloads and update feeds. The real source is the private repo `stoveez/plazcode-source`.
 - 1.24.21 is built on the official 1.24.20 source plus an overlay in `development/1.24.21/overlay`. It is in validation; this plan is for the update AFTER it (working name 1.25.0).

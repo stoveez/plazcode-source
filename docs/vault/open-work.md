@@ -23,7 +23,7 @@ updated: 2026-10-24
 
 ## Not started / optional
 - Lean startup phases 2 and 3 (`development/1.24.21/overlay/core/lean-startup.js`, unwired, off).
-- Next update (1.25.0): login/license server, Skill Workshop, Brickwire list, hang recovery, keep-awake. See `development/1.25.0/` and `docs/TASK-BOARD.md`.
+- Next update (1.25.0): login/license server, Skill Workshop, Brickwire list, hang recovery, keep-awake. (The plan file has a 2026-10-24 update block at its top; keep it current.) See `development/1.25.0/` and `docs/TASK-BOARD.md`.
 - Website: `PlazCode-website.zip`, to deploy on Cloudflare Pages once the owner has a domain.
 - Lawyer review of licence notices; GitHub Support request about the locked `v1.24.20` tag; delete the `cleanup-public` branch.
 
