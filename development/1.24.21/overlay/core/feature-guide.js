@@ -1092,9 +1092,10 @@ const PlazCodeFeatureGuide = (() => {
   "title": "Continue a previous chat",
   "group": "Menu",
   "where": "PlazCode menu (gear button on the bar) > Automation > Offer to continue / Save continuation file",
-  "does": "A new chat can offer to continue where your last chat stopped. You can also save a continuation file and load it into a fresh chat.",
+  "does": "A new chat can offer to continue where your last chat stopped (only if that chat had real work, not just the startup). You can also save a continuation file and load it into a fresh chat.",
   "steps": [
    "Open the PlazCode menu, then Automation.",
+   "When the question appears, click Yes, continue, start a new project, or Start new project, and don't show this again.",
    "Use Offer to continue the previous chat to turn the question on or off.",
    "Click Save continuation file to download your unfinished work.",
    "In a new chat open Memory and use Load into selected chat."

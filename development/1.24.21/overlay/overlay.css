@@ -5619,7 +5619,29 @@ html[data-rs-palette][data-rs-theme] #rs-fix-go{background:linear-gradient(135de
 html[data-rs-palette][data-rs-theme][data-rs-gradients=off] #rs-fix-go{background:var(--pc-accent)!important}
 html[data-rs-palette][data-rs-theme] #rs-fix-panel .rs-fix-acts button:not(#rs-fix-go){border-color:rgb(var(--pc-rgb) / .45)!important;color:var(--pc-light)!important}
 
-.rs-continuation-offer{position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:2147483640;width:min(510px,calc(100vw - 32px));padding:22px;border:1px solid var(--rs-ember,#ff9226);border-radius:18px;background:var(--rs-panel-bg,#14161b);color:var(--rs-accent,#f5f5f5);box-shadow:0 16px 70px #0009;font:14px/1.5 system-ui}.rs-continuation-offer h3{font-size:18px;margin:0 0 12px}.rs-continuation-offer p{opacity:.85}.rs-continuation-offer button{font:inherit;padding:10px 14px;margin:6px 8px 0 0;border-radius:10px;border:1px solid var(--rs-ember,#ff9226);background:transparent;color:inherit;cursor:pointer;transition:transform .2s,box-shadow .2s}.rs-continuation-offer button:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 0 18px color-mix(in srgb,var(--rs-ember,#ff9226) 35%,transparent)}.rs-continuation-offer button:disabled{opacity:.5;cursor:wait}
+/* Continue-previous-chat question (1.24.21): same navy and gold card look as the approval card; follows the palette. */
+.rs-continuation-offer{position:fixed;left:50%;top:20%;transform:translateX(-50%);z-index:2147483640;box-sizing:border-box;width:min(520px,calc(100vw - 32px));padding:24px 26px 20px;border:1px solid color-mix(in srgb,var(--pc-gold,#d9ad52) 38%,transparent);border-radius:4px 22px 4px 22px;background:radial-gradient(ellipse 80% 70% at 0% 0%,color-mix(in srgb,var(--pc-gold,#d9ad52) 14%,transparent),transparent 70%),linear-gradient(160deg,var(--pc-navy-2,#0b213b) 0%,var(--pc-navy,#071426) 70%);color:var(--pc-ink,#eef4ff);box-shadow:0 24px 80px rgba(0,0,0,.6),0 0 46px color-mix(in srgb,var(--pc-gold,#d9ad52) 16%,transparent),inset 0 1px 0 rgba(255,255,255,.05);font:14px/1.55 "Inter","Segoe UI Variable","Segoe UI",system-ui,sans-serif;animation:rsCoIn .28s cubic-bezier(.2,.8,.2,1)}
+.rs-continuation-offer::before{content:"";position:absolute;left:22px;right:22px;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--pc-gold-bright,#f0cf7a),transparent);opacity:.75;pointer-events:none}
+@keyframes rsCoIn{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+@media (prefers-reduced-motion:reduce){.rs-continuation-offer{animation:none}}
+.rs-continuation-offer .rs-co-kicker{display:flex;align-items:center;gap:8px;margin:0 0 10px;color:var(--pc-gold-bright,#f0cf7a);font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
+.rs-continuation-offer .rs-co-dot{width:7px;height:7px;border-radius:50%;background:var(--pc-gold-bright,#f0cf7a);box-shadow:0 0 10px var(--pc-gold,#d9ad52)}
+.rs-continuation-offer h3{margin:0 0 12px;font-size:19px;line-height:1.3;font-weight:700;color:var(--pc-ink,#eef4ff);letter-spacing:-.01em}
+.rs-continuation-offer .rs-co-from{display:inline-flex;align-items:center;gap:8px;margin:0 0 12px;padding:4px 12px;border-radius:2px 10px 2px 10px;border:1px solid color-mix(in srgb,var(--pc-gold,#d9ad52) 30%,transparent);background:color-mix(in srgb,var(--pc-gold,#d9ad52) 9%,transparent);font-size:12px;color:var(--pc-muted,#9fb0c7)}
+.rs-continuation-offer .rs-co-from b{color:var(--pc-gold-bright,#f0cf7a);font-weight:700}
+.rs-continuation-offer .rs-co-detail{margin:0 0 18px;font-size:13px;line-height:1.6;color:var(--pc-muted,#9fb0c7)}
+.rs-continuation-offer .rs-co-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px}
+.rs-continuation-offer button{font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s,background .18s,color .18s}
+.rs-continuation-offer .rs-co-no{padding:10px 16px;border-radius:3px 12px 3px 12px;border:1px solid color-mix(in srgb,var(--pc-gold,#d9ad52) 36%,transparent);background:rgba(0,0,0,.22);color:var(--pc-ink,#eef4ff)}
+.rs-continuation-offer .rs-co-no:hover:not(:disabled){border-color:color-mix(in srgb,var(--pc-gold,#d9ad52) 65%,transparent);background:color-mix(in srgb,var(--pc-gold,#d9ad52) 10%,rgba(0,0,0,.22))}
+.rs-continuation-offer .rs-co-yes{padding:10px 20px;border-radius:3px 12px 3px 12px;border:1px solid var(--pc-gold-bright,#f0cf7a);background:linear-gradient(135deg,color-mix(in srgb,var(--pc-gold,#d9ad52) 68%,#000),var(--pc-gold-bright,#f0cf7a));color:var(--pc-navy,#071426);box-shadow:0 4px 18px color-mix(in srgb,var(--pc-gold,#d9ad52) 40%,transparent)}
+.rs-continuation-offer .rs-co-yes:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 24px color-mix(in srgb,var(--pc-gold,#d9ad52) 55%,transparent)}
+.rs-continuation-offer .rs-co-never{display:block;margin:14px 0 0 auto;padding:4px 2px;border:0;background:none;color:var(--pc-muted,#9fb0c7);font-weight:600;font-size:12.5px;text-align:right;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--pc-gold,#d9ad52) 40%,transparent);text-underline-offset:3px}
+.rs-continuation-offer .rs-co-never:hover:not(:disabled){color:var(--pc-gold-bright,#f0cf7a);text-decoration-color:var(--pc-gold-bright,#f0cf7a)}
+.rs-continuation-offer button:focus-visible{outline:2px solid var(--pc-gold-bright,#f0cf7a);outline-offset:2px}
+.rs-continuation-offer button:disabled{opacity:.5;cursor:wait}
+.rs-continuation-offer .rs-co-status{margin:8px 0 0;font-size:12px;color:var(--pc-muted,#9fb0c7)}
+.rs-continuation-offer .rs-co-status:empty{display:none}
 
 /* Native controls inside PlazCode panels inherit the active theme. */
 :is(#rs-root,#rs-menu,#rs-memory-panel,#rs-cards-panel,#rs-enhancer-panel,#rs-cowork-panel,#rs-activity-panel,#rs-tasks-panel,#rs-approve){color-scheme:dark}

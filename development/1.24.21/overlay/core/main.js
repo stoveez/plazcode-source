@@ -10744,7 +10744,7 @@ function renderCards(panel) {
       try{
         const transfer=PlazCodeReliability.handoff({provider:P.displayName,chat:P.id+'|'+P.conversationKey(),history:exportRows,pending:cowork.snapshot().pending,reason:'Latest captured chat',engine:activeEngine(),checkpoint:A.checkpointId||'',request:A.taskRequest||''});
         transfer.engram_scope=engramScope();transfer.project=currentProject;
-        if(document.hasFocus()||(!savedHandoff||savedHandoff.chat_id===transfer.chat_id)){savedHandoff=transfer;chrome.storage.local.set({rsLatestHandoff:transfer});}
+        if(document.hasFocus()||(!savedHandoff||savedHandoff.chat_id===transfer.chat_id)){savedHandoff=transfer;chrome.storage.local.set({rsLatestHandoff:transfer});try{noteChatUsed(transfer.chat_id);}catch{}}
         const result=await bg({type:'chat-history',request:{chat_id:transfer.chat_id,provider:P.displayName,history:exportRows.slice(-2000),handoff:transfer,omitted:exportOverflow?1:0}});
         if(result?.ok)archiveSignature=signature;
       }catch{}finally{archiveBusy=false;}
@@ -10791,16 +10791,23 @@ function renderCards(panel) {
       // is open unless the user already chose "Yes" and it is loading.
       if(reliabilitySettings.rsContinuationOffer===false){offerFreshSince=0;if(!offerBusy)closeOffer();return;}
       if(document.hidden||!offerReady||offerBusy||offerDecision||A.running||A.starting||A.enhancing||!savedHandoff||!PlazCodeReliability.canContinue(savedHandoff)||String(P.editorText()||'').trim())return;
+      // The chat used last before this one only had the startup (no real request was ever saved for it): nothing to continue.
+      {const prevChat=previousUsedChat(P.id+'|'+P.conversationKey());if(prevChat&&prevChat!==savedHandoff.chat_id)return;}
       if(!offerFreshSince){offerFreshSince=Date.now();return;}if(Date.now()-offerFreshSince<2000)return;
       const key=P.id+'|'+location.href+'|'+savedHandoff.chat_id;if(continuationChoices[key]||offerNode)return;
       const transfer=JSON.parse(JSON.stringify(savedHandoff));offerKey=key;
       offerNode=document.createElement('section');offerNode.className='rs-continuation-offer';offerNode.setAttribute('role','dialog');offerNode.setAttribute('aria-label','Continue previous chat');
+      const kicker=document.createElement('div');kicker.className='rs-co-kicker';const dot=document.createElement('span');dot.className='rs-co-dot';kicker.append(dot,document.createTextNode('Previous chat found'));
       const title=document.createElement('h3');title.textContent='Want to continue where you left off in your previous chat?';
-      const detail=document.createElement('p');detail.textContent='Previous chat: '+transfer.provider+'. PlazCode will have the AI read the summary note it saved from that chat (its key points and current tasks), then inspect the current state before continuing. If no saved note is found it uses a short excerpt of the chat instead.';
-      const yes=document.createElement('button'),no=document.createElement('button'),status=document.createElement('p');yes.type=no.type='button';yes.textContent='Yes, continue.';no.textContent='No, I wanna start a new project.';
+      const from=document.createElement('div');from.className='rs-co-from';const fromLabel=document.createElement('span');fromLabel.textContent='From';const fromName=document.createElement('b');fromName.textContent=String(transfer.provider||'your last chat');from.append(fromLabel,fromName);
+      const detail=document.createElement('p');detail.className='rs-co-detail';detail.textContent='PlazCode has the AI read the summary note it saved from that chat (key points and current tasks), then check the current state before continuing. Without a saved note it uses a short excerpt of the chat.';
+      const yes=document.createElement('button'),no=document.createElement('button'),never=document.createElement('button'),status=document.createElement('p');yes.type=no.type=never.type='button';yes.className='rs-co-yes';no.className='rs-co-no';never.className='rs-co-never';status.className='rs-co-status';status.setAttribute('role','status');
+      yes.textContent='Yes, continue.';no.textContent='No, I wanna start a new project.';never.textContent="Start new project, and don't show this again.";never.title='You can turn this question back on in the PlazCode menu: Automation, Offer to continue the previous chat.';
       no.onclick=()=>{rememberChoice(key);currentProject='';continuedEngramScope='';continuedEngramChat='';engramRecallGeneration++;A.engramContext='';A.taskRequest='';savedHandoff=null;chrome.storage.local.remove('rsLatestHandoff');closeOffer();};
+      // Same as "start a new project", and the question is turned off (the same switch as in the PlazCode menu and the desktop Settings).
+      never.onclick=()=>{no.onclick();reliabilitySettings={...reliabilitySettings,rsContinuationOffer:false};try{chrome.storage.local.set({rsContinuationOffer:false});}catch{}try{toast("Won't ask again. Turn it back on in the PlazCode menu under Automation.");}catch{}};
       yes.onclick=async()=>{
-        if(offerBusy)return;offerBusy=true;yes.disabled=true;no.disabled=true;const page=location.href;const generation=A.sessionGen;
+        if(offerBusy)return;offerBusy=true;yes.disabled=true;no.disabled=true;never.disabled=true;const page=location.href;const generation=A.sessionGen;
         try{
           status.textContent='Connecting PlazCode…';
           const startup=!A.started ? await startSession() : {ready:true,chat:P.conversationKey(),generation:A.sessionGen};
@@ -10829,9 +10836,10 @@ function renderCards(panel) {
           if(typeof transfer.project==='string' && transfer.project.trim() && [...transfer.project].length<=80 && P.conversationKey()){const assigned=await bg({type:'checkpoints',request:{action:'project',chat:P.id+'|'+P.conversationKey(),project:transfer.project}});if(assigned?.ok){currentProject=transfer.project;projectChat=P.id+'|'+P.conversationKey();projectChecked=Date.now();}}
           if(continuedPage!==P.conversationKey() || continuedSession!==A.sessionGen || A.stop || A.userStopped)throw Error('The chat changed or stopped before continuation started.');
           rememberChoice(key);closeOffer();agentLoop(base);
-        }catch(error){status.textContent=error.message||String(error);yes.disabled=false;no.disabled=false;}finally{offerBusy=false;}
+        }catch(error){status.textContent=error.message||String(error);yes.disabled=false;no.disabled=false;never.disabled=false;}finally{offerBusy=false;}
       };
-      offerNode.append(title,detail,yes,no,status);root.appendChild(offerNode);
+      const actions=document.createElement('div');actions.className='rs-co-actions';actions.append(no,yes);
+      offerNode.append(kicker,title,from,detail,actions,never,status);root.appendChild(offerNode);
     },1000);
     function captureHandoff(reason,onlyLong=false){
       const history=captureExportHistory();
@@ -11490,6 +11498,21 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
     if (startedSessions.has(path)) return true;
     try { return (typeof P.conversationAliases === "function" ? P.conversationAliases() : []).some(alias => alias && startedSessions.has(alias)); } catch { return false; }
   }
+  // 1.24.21: the chats used most recently (started, or real work done in them), newest last. The "continue your
+  // previous chat?" question only offers the chat used last; if that chat only ever had the startup, there is
+  // nothing to continue and the question is not asked.
+  let lastUsedChats = [];
+  try { chrome.storage.local.get("rsLastUsedChats", (r) => { if (r && Array.isArray(r.rsLastUsedChats)) lastUsedChats = r.rsLastUsedChats.filter((x) => x && typeof x.id === "string"); }); } catch {}
+  try { chrome.storage.onChanged.addListener((c) => { if (c && c.rsLastUsedChats && Array.isArray(c.rsLastUsedChats.newValue)) lastUsedChats = c.rsLastUsedChats.newValue.filter((x) => x && typeof x.id === "string"); }); } catch {}
+  function noteChatUsed(id) {
+    if (!id || (lastUsedChats.length && lastUsedChats[lastUsedChats.length - 1].id === id)) return;
+    lastUsedChats = lastUsedChats.filter((x) => x.id !== id).concat({ id, at: Date.now() }).slice(-20);
+    try { chrome.storage.local.set({ rsLastUsedChats: lastUsedChats }); } catch {}
+  }
+  function previousUsedChat(current) {
+    for (let i = lastUsedChats.length - 1; i >= 0; i--) if (lastUsedChats[i].id !== current) return lastUsedChats[i].id;
+    return "";
+  }
   function rememberSession(path) {
     // A falsy key = a TRANSIENT conversation URL (e.g. Gemini's /app before an
     // id is assigned). Remembering it would mark every future fresh chat as
@@ -11498,6 +11521,7 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
     if (!path) return;
     if (startedSessions.has(path)) return;
     startedSessions.add(path);
+    try { noteChatUsed(P.id + "|" + path); } catch {}
     try { for (const alias of (typeof P.conversationAliases === "function" ? P.conversationAliases() : [])) if (alias) startedSessions.add(alias); } catch {}
     try { chrome.storage.local.set({ rsStartedSessions: [...startedSessions].slice(-300) }); } catch {}
   }

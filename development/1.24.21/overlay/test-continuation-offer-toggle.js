@@ -46,6 +46,27 @@ const offer=d=>d.querySelector('.rs-continuation-offer');
  const off=await run({rsContinuationOffer:false});
  try{for(let i=0;i<6;i++)await off.tick(1500);assert.equal(offer(off.d),null,'off: the prompt never appears');}
  finally{off.dom.window.close();}
+ // 1.24.21: the chat used last only had the startup (no real request was saved for it): nothing to continue, no question.
+ const startupOnly=await run({rsLastUsedChats:[{id:'chatgpt|previous',at:1},{id:'chatgpt|/c/startup-only',at:2}]});
+ try{for(let i=0;i<6;i++)await startupOnly.tick(1500);assert.equal(offer(startupOnly.d),null,'previous chat had only the startup: no prompt');}
+ finally{startupOnly.dom.window.close();}
+ // The chat used last is the one with the saved work: the question is asked (this chat itself is skipped).
+ const lastReal=await run({rsLastUsedChats:[{id:'chatgpt|/c/startup-only',at:1},{id:'chatgpt|previous',at:2},{id:'chatgpt|/c/startup-chat',at:3}]});
+ try{await lastReal.tick(1000);await lastReal.tick(1000);await lastReal.tick(2100);assert(offer(lastReal.d),'previous chat had real work: the prompt appears');
+  // New look and the third choice.
+  const o=offer(lastReal.d);
+  assert(o.querySelector('.rs-co-kicker')&&o.querySelector('.rs-co-from b').textContent==='ChatGPT','kicker and the previous chat name');
+  const never=o.querySelector('.rs-co-never');assert.equal(never.textContent,"Start new project, and don't show this again.");
+  assert.equal(o.querySelector('.rs-co-yes').textContent,'Yes, continue.');assert.equal(o.querySelector('.rs-co-no').textContent,'No, I wanna start a new project.');
+  never.click();await lastReal.tick(1000);
+  assert.equal(offer(lastReal.d),null,"don't show again closes the prompt");
+  assert.equal(lastReal.data.rsContinuationOffer,false,"don't show again turns the question off (same switch as the menu)");
+  for(let i=0;i<4;i++)await lastReal.tick(1500);assert.equal(offer(lastReal.d),null,'and it stays closed');
+ }finally{lastReal.dom.window.close();}
+ // Starting a chat marks it as the one used last; real work in a chat does too.
+ const mainSrc=fs.readFileSync(root+'/core/main.js','utf8');
+ assert(/startedSessions\.add\(path\);\s*try \{ noteChatUsed\(P\.id \+ "\|" \+ path\); \} catch \{\}/.test(mainSrc),'a started chat is noted as used');
+ assert(mainSrc.includes("chrome.storage.local.set({rsLatestHandoff:transfer});try{noteChatUsed(transfer.chat_id);}catch{}"),'a chat with real work is noted as used');
  // Bar settings control and desktop sync wiring.
  const main=fs.readFileSync(root+'/core/main.js','utf8'),bg=fs.readFileSync(root+'/background.js','utf8'),desk=fs.readFileSync(root+'/agent/src/desktop.html','utf8'),prefs=fs.readFileSync(root+'/agent/src/preferences.rs','utf8');
  assert(main.includes('id="rs-continuation-offer" type="checkbox"'),'bar settings has the toggle');
