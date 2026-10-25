@@ -24,6 +24,10 @@ Two layers, so a new AI starts fast and spends few tokens.
 2. File anything permanent as a vault note; add the link to [Home](Home.md). Move finished work into [milestones](milestones.md), new reasons into [decisions](decisions.md).
 3. Update [open-work](open-work.md) if bugs were found or fixed.
 4. Push to your branch and tell the owner the branch name, short commit ID and one line on what is in it.
+5. End your last message with a checklist: each step above marked done, then the short commit ID and one line on what is in it.
+
+## Starting a session from a copy of this folder
+The owner may hand an AI only this folder. Read `NOW.md` first, then [Home](Home.md), then `CLAUDE.md` or `AGENTS.md` (the binding rules). Continue from the "Next step" in `NOW.md`. Work on branch `claude/plazcode-dev` of the private repo `stoveez/plazcode-source` if the repo is attached; if it is not attached you cannot push, so say so and give the owner the notes to apply. Follow the same end-of-session steps.
 
 ## Note format
 - A short title, then `updated: YYYY-MM-DD` in the header.
