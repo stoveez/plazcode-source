@@ -1,0 +1,16 @@
+---
+title: New version checklist
+updated: 2026-10-24
+---
+# When the version number changes (1.24.22, 1.24.23, ...)
+
+Many notes, rules and scripts name the current version, today **1.24.21**. When the owner moves to a new number, update all of them in one commit, so no AI follows a stale path. Do not touch old `development/<old version>` folders; they stay as history.
+
+## Steps
+1. Copy `development/1.24.21` to `development/<new>`; rename the workflows `publish-<new>.yml` and `validate-<new>.yml`; change the version inside the scripts (details: [releasing](releasing.md)).
+2. Find every mention in notes and rules: `git grep -n "1\.24\.21" -- . ':!development' ':!build-src*'`. Change the live ones (current version, release branch name, test-zip names, build folder `build-src-<new>`). Leave historical lines (milestones, decisions) as they were.
+3. Files that always carry it: `CLAUDE.md`, `AGENTS.md`, `docs/HANDOFF.md`, `docs/MAINTAINER-GUIDE.md`, `docs/TASK-BOARD.md`, and these vault notes: Home, app-and-guides, build-and-tests, open-work, owner-rules, project-overview, releasing, test-builds, vault-memory.
+4. Rewrite [`../NOW.md`](../NOW.md) and say plainly what moved to the new version and what is still open.
+5. Re-pin the protected files' hashes in the new overlay's `test-desktop-regression.js` ([build-and-tests](build-and-tests.md)).
+6. Copy the changed notes into the owner's PC vault folder and refresh `.pc-sync.json`.
+7. Never change the updater addresses (`latest.json`, release download URLs) while doing this.

@@ -42,6 +42,7 @@ Use HIGH effort (think longer and trace carefully) for these four kinds of work.
 Normal effort is fine for small fixes, packaging, release notes and questions.
 
 ## Where the detail lives (moved out of this file on 2026-10-24 to save tokens)
+- When the version number changes (1.24.22, ...): `docs/vault/new-version-checklist.md` (every note naming 1.24.21 must be updated)
 - Build and tests, hash pins, CI: `docs/vault/build-and-tests.md`
 - Test builds and the zips: `docs/vault/test-builds.md`
 - Publishing a real update, which repo and which branch: `docs/vault/releasing.md` (steps), then read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first real publish
