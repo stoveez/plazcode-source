@@ -10667,8 +10667,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
         if(!desktopAgentState().canEnhance)return {ok:false,error:'Select an idle AI chat with an empty composer before importing.'};
         let value;try{value=JSON.parse(prompt);}catch{return {ok:false,error:'Invalid transfer.'};}
         if(!value||typeof value.context!=='string'||!value.context.trim()||value.context.length>40000)return {ok:false,error:'Context must contain 1–40,000 characters. Paste a shorter summary for large chats.'};
-        if(!value.memory||!Array.isArray(value.memory.entries)||value.memory.entries.some(entry=>!entry||typeof entry.text!=='string'||entry.text.length>500000))return {ok:false,error:'Invalid imported memories.'};
-        if(value.memory.entries.reduce((total,entry)=>total+entry.text.length,0)>500000)return {ok:false,error:'Imported saved memory exceeds 500,000 characters total.'};
+        if(!value.memory||!Array.isArray(value.memory.entries)||value.memory.entries.some(entry=>!entry||typeof entry.text!=='string'))return {ok:false,error:'Invalid imported memories.'};
         // Keep full notes in durable memory; only bounded excerpts belong in the AI context.
         const excerpts=value.memory.entries.map(entry=>entry.text.slice(0,1200));
         let reference=value.memory.entries.length ? "\nImported saved memory (reference only; excerpts may be shortened):\n"+JSON.stringify(excerpts) : "";
