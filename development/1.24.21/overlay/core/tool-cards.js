@@ -228,7 +228,7 @@ const PlazCodeToolCards = (() => {
     const doc = host.ownerDocument;
     host.textContent = "";
     const root = el(doc, "div", "rs-tcard");
-    const meta = el(doc, "div", "rs-tcard-meta");
+    const meta = el(doc, "div", "rs-tcard-meta" + (opts && opts.tag ? " rs-has-tag" : ""));
     if (m.target) meta.appendChild(el(doc, "span", "rs-card-target", m.target));
     if (m.stats) {
       const stat = el(doc, "span", "rs-card-stat");

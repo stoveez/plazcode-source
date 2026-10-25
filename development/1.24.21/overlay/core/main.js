@@ -298,6 +298,7 @@
           }
         }
         if (badge) { badge.textContent = info ? info.badge : ""; badge.hidden = !info; badge.dataset.kind = info ? info.kind : ""; }
+        root.dataset.kind = info ? info.kind : "";
         if (noteEl) { noteEl.textContent = info ? info.note : ""; noteEl.hidden = !info; }
         if (queue) { queue.textContent = approvalWaiting > 1 ? "+" + (approvalWaiting - 1) + " more waiting" : ""; queue.hidden = approvalWaiting <= 1; }
         // Details: the same card used in the chat (CHANGES / RAW REQUEST / OUTPUT). Opened for deletes, collapsed otherwise.
@@ -5536,6 +5537,7 @@ return result`;
           (hasBody ?  (card ? `<div class="rs-chip-body"></div>` : `<div class="rs-chip-body"><pre></pre></div>`) : "");
         chip.querySelector(".rs-chip-tx").textContent = label;
         if (detail) chip.querySelector(".rs-chip-dt").textContent = detail;
+        if (card) chip.classList.add("rs-tc");
         if (card && typeof PlazCodeToolCards !== "undefined") {
           try { const dtEl = chip.querySelector(".rs-chip-dt"); for (const bit of PlazCodeToolCards.headBits(document, card)) dtEl.parentNode.insertBefore(bit, dtEl); } catch {}
         }
