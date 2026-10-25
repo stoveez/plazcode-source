@@ -5705,6 +5705,13 @@ return result`;
         });
       }
       const cls = phase === "run" ? "run" : phase === "err" ? "err" : phase === "idle" ? "idle" : "done";
+      // Every command chip is a card, on every site: a phase change (stopped, interrupted, failed) keeps this turn's
+      // card, and a chip painted without one finds it from the command in the turn.
+      if (!card) {
+        const prevChip = item.__rsChip;
+        if (prevChip && prevChip.card && bareToolName(String(prevChip.label || "")) === bareToolName(String(name || ""))) card = prevChip.card;
+        else { try { card = cardForTurn(P.classifyText(item, ".rs-chip"), name) || null; } catch { card = null; } }
+      }
       this.chip(item, {
         label: name, detail: detail || "", body: body || "",
         category: category || RS.toolCategory(name), phase, cls, owned: !!owned,

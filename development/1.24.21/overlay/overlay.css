@@ -5864,13 +5864,13 @@ html.rs-light #rs-menu .rs-setup-summary{background:#f4f6fa;color:#334;border-co
 @media(prefers-reduced-motion:reduce){#rs-root #rs-effort{transition:none}}
 
 /* ── Tool cards (1.24.21): same navy and gold look as the PlazCode bar and vault ── */
-.rs-chip.rs-tc { width: 100%; max-width: 720px; position: relative; border-radius: 3px 16px 3px 16px; background-color: var(--pc-navy,#071426) !important; background-image: linear-gradient(135deg, var(--pc-navy-2,#0b213b) 0%, var(--pc-navy,#071426) 60%) !important; border: 1px solid color-mix(in srgb, var(--pc-gold,#d9ad52) 30%, transparent); box-shadow: 0 10px 28px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05); }
-.rs-chip.rs-tc:hover { border-color: color-mix(in srgb, var(--pc-gold,#d9ad52) 55%, transparent); box-shadow: 0 12px 32px rgba(0,0,0,.4), 0 0 24px color-mix(in srgb, var(--cat) 16%, transparent), inset 0 1px 0 rgba(255,255,255,.06); }
-.rs-chip.rs-tc::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, var(--cat), color-mix(in srgb, var(--cat) 35%, transparent)); box-shadow: 0 0 14px var(--cat); }
-.rs-chip.rs-tc::after { content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--pc-gold-bright,#f0cf7a), transparent); opacity: .5; pointer-events: none; }
-.rs-chip.rs-tc .rs-chip-head { padding: 11px 14px 11px 18px; gap: 10px !important; }
-.rs-chip.rs-tc .rs-chip-tx { color: var(--pc-ink,#eef4ff); }
-.rs-chip.rs-tc .rs-chip-ic { filter: drop-shadow(0 0 5px var(--cat)); }
+.rs-chip.rs-tc, .rs-chip:not(.rs-tc) { width: 100%; max-width: 720px; position: relative; border-radius: 3px 16px 3px 16px; background-color: var(--pc-navy,#071426) !important; background-image: linear-gradient(135deg, var(--pc-navy-2,#0b213b) 0%, var(--pc-navy,#071426) 60%) !important; border: 1px solid color-mix(in srgb, var(--pc-gold,#d9ad52) 30%, transparent); box-shadow: 0 10px 28px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05); }
+.rs-chip.rs-tc:hover, .rs-chip:not(.rs-tc):hover { border-color: color-mix(in srgb, var(--pc-gold,#d9ad52) 55%, transparent); box-shadow: 0 12px 32px rgba(0,0,0,.4), 0 0 24px color-mix(in srgb, var(--cat) 16%, transparent), inset 0 1px 0 rgba(255,255,255,.06); }
+.rs-chip.rs-tc::before, .rs-chip:not(.rs-tc)::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, var(--cat), color-mix(in srgb, var(--cat) 35%, transparent)); box-shadow: 0 0 14px var(--cat); }
+.rs-chip.rs-tc::after, .rs-chip:not(.rs-tc)::after { content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--pc-gold-bright,#f0cf7a), transparent); opacity: .5; pointer-events: none; }
+.rs-chip.rs-tc .rs-chip-head, .rs-chip:not(.rs-tc) .rs-chip-head { padding: 11px 14px 11px 18px; gap: 10px !important; }
+.rs-chip.rs-tc .rs-chip-tx, .rs-chip:not(.rs-tc) .rs-chip-tx { color: var(--pc-ink,#eef4ff); }
+.rs-chip.rs-tc .rs-chip-ic, .rs-chip:not(.rs-tc) .rs-chip-ic { filter: drop-shadow(0 0 5px var(--cat)); }
 .rs-chip-tg { flex: 0 1 auto; min-width: 0; max-width: 58%; padding: 3px 10px; border-radius: 2px 8px 2px 8px; background: linear-gradient(135deg, color-mix(in srgb, var(--pc-gold,#d9ad52) 16%, transparent), color-mix(in srgb, var(--pc-gold,#d9ad52) 6%, transparent)); border: 1px solid color-mix(in srgb, var(--pc-gold,#d9ad52) 26%, transparent); color: var(--pc-gold-bright,#f0cf7a); font: 11.5px/1.5 ui-monospace, "Cascadia Code", "Cascadia Mono", monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
 .rs-chip-tg bdi { direction: ltr; unicode-bidi: isolate; }
 .rs-chip-st { flex: none; display: inline-flex; align-items: baseline; gap: 7px; font: 700 11.5px/1.5 ui-monospace, "Cascadia Code", "Cascadia Mono", monospace; }
@@ -5880,7 +5880,7 @@ html.rs-light #rs-menu .rs-setup-summary{background:#f4f6fa;color:#334;border-co
 .rs-chip.rs-tc .rs-chip-dt { max-width: 30% !important; white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; color: var(--pc-muted,#9fb0c7); opacity: 1; }
 .rs-chip.rs-tc .rs-chip-tg ~ .rs-chip-dt, .rs-chip.rs-tc .rs-chip-st ~ .rs-chip-dt { margin-left: 0; }
 .rs-chip.rs-tc .rs-chip-tg:first-of-type { margin-left: 2px; }
-.rs-chip.rs-tc.open .rs-chip-body { max-height: 560px; border-top-color: color-mix(in srgb, var(--pc-gold,#d9ad52) 22%, transparent); }
+.rs-chip.rs-tc.open .rs-chip-body, .rs-chip:not(.rs-tc).open .rs-chip-body { max-height: 560px; border-top-color: color-mix(in srgb, var(--pc-gold,#d9ad52) 22%, transparent); }
 .rs-tcard { font-size: 12px; color: var(--pc-ink,#eef4ff); }
 .rs-tcard-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 12px 16px 4px; color: var(--pc-muted,#9fb0c7); }
 .rs-chip .rs-tcard-meta { padding: 10px 16px 0; }
@@ -5990,7 +5990,7 @@ html.rs-light .rs-approve-summary, html.rs-light .rs-approve-steps li { color: #
 .rs-always-box button { appearance: none; font: inherit; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 2px 8px 2px 8px; border: 1px solid rgba(255,255,255,.2); background: transparent; color: inherit; cursor: pointer; }
 .rs-always-box button:hover { border-color: var(--pc-gold-bright,#f0cf7a); }
 /* Palette themes (1.24.21): the cards keep the same visible sweep and glow as the navy look, using the palette's accent. */
-html[data-rs-palette][data-rs-theme] .rs-chip.rs-tc { background-image: radial-gradient(ellipse 70% 140% at 0% 0%, rgb(var(--pc-rgb) / .20), transparent 70%), linear-gradient(135deg, var(--pc-navy-2) 0%, var(--pc-navy) 62%) !important; border-color: rgb(var(--pc-rgb) / .42); box-shadow: 0 10px 28px rgba(0,0,0,.4), 0 0 22px rgb(var(--pc-rgb) / .10), inset 0 1px 0 rgba(255,255,255,.05); }
-html[data-rs-palette][data-rs-theme] .rs-chip.rs-tc.open { background-image: linear-gradient(180deg, var(--pc-navy-2) 0%, var(--pc-navy) 46%) !important; }
+html[data-rs-palette][data-rs-theme] .rs-chip.rs-tc, html[data-rs-palette][data-rs-theme] .rs-chip:not(.rs-tc) { background-image: radial-gradient(ellipse 70% 140% at 0% 0%, rgb(var(--pc-rgb) / .20), transparent 70%), linear-gradient(135deg, var(--pc-navy-2) 0%, var(--pc-navy) 62%) !important; border-color: rgb(var(--pc-rgb) / .42); box-shadow: 0 10px 28px rgba(0,0,0,.4), 0 0 22px rgb(var(--pc-rgb) / .10), inset 0 1px 0 rgba(255,255,255,.05); }
+html[data-rs-palette][data-rs-theme] .rs-chip.rs-tc.open, html[data-rs-palette][data-rs-theme] .rs-chip:not(.rs-tc).open { background-image: linear-gradient(180deg, var(--pc-navy-2) 0%, var(--pc-navy) 46%) !important; }
 /* Claude: a PlazCode turn that shows nothing (no chip) leaves no empty grey bubble behind (class set by providers/claude.js). */
 .rs-empty-turn { display: none !important; }

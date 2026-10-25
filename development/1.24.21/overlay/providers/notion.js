@@ -804,6 +804,11 @@ const RSProvider = (() => {
     const color = card.phase === "err" ? "#ef8b8b" : card.phase === "run" ? "#8fa7ff" : card.phase === "idle" ? "#a8a8b0" : "#6fd0a7";
     return { color, label: cssText(`${icon} ${card.label || "command"}${detail}`) };
   }
+  // 1.24.21: command cards on Notion use the same navy and gold card look as on every other site. They are drawn in
+  // CSS because Notion's blocks cannot hold PlazCode's own card; the phase colour is the stripe on the left.
+  const CARD_BG = "linear-gradient(135deg,var(--pc-navy-2,#0b213b) 0%,var(--pc-navy,#071426) 60%)";
+  const CARD_BORDER = "1px solid color-mix(in srgb,var(--pc-gold,#d9ad52) 34%,transparent)";
+  const cardShadow = (color) => `inset 4px 0 0 ${color},0 10px 24px rgba(0,0,0,.28)`;
   function immutableSelector(key) {
     return key.startsWith("row:")
       ? `[data-agent-service-scroll-anchor="${cssAttr(key.slice(4))}"]`
@@ -818,8 +823,8 @@ const RSProvider = (() => {
       `border-radius:0!important;background:transparent!important}` +
       `${sel}>*{display:none!important}` +
       `${sel}::before{content:"${label}";display:block!important;font:600 13px/22px ui-sans-serif,-apple-system,"Segoe UI",sans-serif!important;` +
-      `box-sizing:border-box!important;padding:9px 12px!important;border:1px solid color-mix(in srgb,${color} 38%,transparent)!important;border-radius:10px!important;background:color-mix(in srgb,${color} 8%,transparent)!important;` +
-      `letter-spacing:.1px!important;color:${color}!important;white-space:normal!important;text-align:left!important;overflow-wrap:anywhere!important}`;
+      `box-sizing:border-box!important;padding:10px 14px 10px 18px!important;border:${CARD_BORDER}!important;border-radius:3px 16px 3px 16px!important;background:${CARD_BG}!important;box-shadow:${cardShadow(color)}!important;` +
+      `letter-spacing:.1px!important;color:#eef4ff!important;white-space:normal!important;text-align:left!important;overflow-wrap:anywhere!important}`;
   }
   function insertImmutableRules(style, key, card) {
     const sheet = style && style.sheet;
@@ -832,7 +837,7 @@ const RSProvider = (() => {
       i = sheet.cssRules.length;
       sheet.insertRule(`${sel}>*{display:none!important}`, i);
       i = sheet.cssRules.length;
-      sheet.insertRule(`${sel}::before{display:block!important;box-sizing:border-box!important;padding:9px 12px!important;border-radius:10px!important;font:600 13px/22px ui-sans-serif,-apple-system,"Segoe UI",sans-serif!important;letter-spacing:.1px!important;white-space:normal!important;text-align:left!important;overflow-wrap:anywhere!important}`, i);
+      sheet.insertRule(`${sel}::before{display:block!important;box-sizing:border-box!important;padding:10px 14px 10px 18px!important;border-radius:3px 16px 3px 16px!important;font:600 13px/22px ui-sans-serif,-apple-system,"Segoe UI",sans-serif!important;letter-spacing:.1px!important;white-space:normal!important;text-align:left!important;overflow-wrap:anywhere!important}`, i);
       card.sheet = sheet;
       card.rules = { host: hostRule, before: sheet.cssRules[i] };
       return true;
@@ -850,10 +855,11 @@ const RSProvider = (() => {
     const { color, label } = immutableVisual(card);
     try {
       const hs = card.rules.host.style, bs = card.rules.before.style;
-      bs.setProperty("border", `1px solid color-mix(in srgb,${color} 38%,transparent)`, "important");
-      bs.setProperty("background", `color-mix(in srgb,${color} 8%,transparent)`, "important");
+      bs.setProperty("border", CARD_BORDER, "important");
+      bs.setProperty("background", CARD_BG, "important");
+      bs.setProperty("box-shadow", cardShadow(color), "important");
       bs.setProperty("content", `"${label}"`, "important");
-      bs.setProperty("color", color, "important");
+      bs.setProperty("color", "#eef4ff", "important");
       return true;
     } catch { return false; }
   }
