@@ -47,6 +47,26 @@ const PlazCodeApproval = (() => {
   // A short fingerprint of the arguments, so the command runs only if they still match what the card showed.
   function freeze(args) { try { return JSON.stringify(args === undefined ? null : args); } catch { return String(args); } }
 
-  return { describe, needsApproval, freeze, nice };
+  // ── plans (Plan Mode) ──
+  const clean = (line) => String(line || "").replace(/[*_`#]+/g, "").replace(/\s+/g, " ").trim().slice(0, 200);
+  function planSteps(planText) {
+    const t = String(planText || "");
+    const numbered = [...t.matchAll(/^ {0,3}(\d+)[.)]\s+([^\n]+)$/gm)].map((m) => clean(m[2])).filter(Boolean);
+    if (numbered.length >= 2) return numbered.slice(0, 12);
+    const bullets = [...t.matchAll(/^ {0,3}[-*+•]\s+(?!\[[ xX]\])([^\n]+)$/gm)].map((m) => clean(m[1])).filter(Boolean);
+    return bullets.slice(0, 12);
+  }
+  function planGoal(planText) {
+    const t = String(planText || "");
+    const m = /(?:^|\n)\s*(?:[-*#\s]*)(?:\*\*)?goal(?:\*\*)?\s*[:\-–—]\s*([^\n]+)/i.exec(t);
+    if (m && clean(m[1])) return clean(m[1]);
+    const line = t.split("\n").map(clean).find((l) => l.length > 20 && !/^(plan|goal|steps?|approach)\b[:\s]*$/i.test(l));
+    return line || "The AI wrote a plan.";
+  }
+  function describePlan(planText) {
+    return { title: "Proposed plan", kind: "plan", badge: "Plan", note: "Nothing is changed until you approve. After you approve, the AI works through the steps without asking again; deletes still ask.", target: "", summary: planGoal(planText), steps: planSteps(planText), destructive: false };
+  }
+
+  return { describe, describePlan, planSteps, planGoal, needsApproval, freeze, nice };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = PlazCodeApproval;

@@ -269,13 +269,17 @@
         const oldKicker = kicker ? kicker.textContent : "", oldTitle = title ? title.textContent : "", oldAllow = allow.textContent;
         const call = opts.call || null;
         let info = null;
-        if (call && typeof PlazCodeApproval !== "undefined") {
+        if (opts.plan && typeof PlazCodeApproval !== "undefined") {
+          try { info = PlazCodeApproval.describePlan(opts.plan.text); } catch { info = null; }
+        } else if (call && typeof PlazCodeApproval !== "undefined") {
           try { info = PlazCodeApproval.describe(call.tool, call.arguments, opts.engine || "studio", PlazCodeSafety); } catch { info = null; }
         }
+        const changesBtn = document.getElementById("rs-approve-changes");
         const frozen = typeof PlazCodeApproval !== "undefined" ? PlazCodeApproval.freeze(args) : "";
         if (kicker) kicker.textContent = opts.kicker || (info ? "Needs your approval" : oldKicker);
         if (title) title.textContent = opts.title || (info ? info.title : oldTitle);
-        allow.textContent = info ? "Approve" : oldAllow;
+        allow.textContent = opts.plan ? "Approve plan" : info ? "Approve" : oldAllow;
+        if (changesBtn) changesBtn.hidden = !(opts.plan && opts.changesButton);
         const preview = (() => { try { return JSON.stringify(args || {}, null, 0).slice(0, 280); } catch { return ""; } })();
         // Plain text only: the delete path is chosen by the AI and must never become HTML.
         if (body) {
@@ -293,6 +297,14 @@
         // Details: the same card used in the chat (CHANGES / RAW REQUEST / OUTPUT). Opened for deletes, collapsed otherwise.
         let detailsDrawn = false;
         const drawDetails = () => {
+          if (opts.plan && details && !detailsDrawn) {
+            detailsDrawn = true;
+            const list = document.createElement("ol"); list.className = "rs-approve-steps";
+            for (const step of (info && info.steps) || []) { const li = document.createElement("li"); li.textContent = step; list.appendChild(li); }
+            if (!list.children.length) { const li = document.createElement("li"); li.textContent = "The AI did not list clear steps. Ask for changes if you need them."; list.appendChild(li); }
+            details.textContent = ""; details.appendChild(list);
+            return;
+          }
           if (!details || detailsDrawn || !call || typeof PlazCodeToolCards === "undefined") return;
           detailsDrawn = true;
           try { PlazCodeToolCards.render(details, PlazCodeToolCards.model({ tool: call.tool, arguments: call.arguments }), { open: true }); } catch { details.textContent = preview; }
@@ -306,8 +318,8 @@
         };
         if (details) details.textContent = "";
         if (more) { more.hidden = !(info && details); more.onclick = () => setDetails(details.hidden); }
-        setDetails(!!(info && info.destructive));
-        const canRepeatAll = !!(info && !info.destructive && call && !opts.failClosed);
+        setDetails(!!(info && (info.destructive || opts.plan)));
+        const canRepeatAll = !!(info && !info.destructive && call && !opts.failClosed && !opts.plan);
         if (allBtn) {
           allBtn.hidden = !canRepeatAll;
           if (canRepeatAll) allBtn.textContent = "Approve all “" + PlazCodeApproval.nice(call.tool) + "” for this task";
@@ -335,6 +347,7 @@
           allow.removeEventListener("click", onAllow);
           deny.removeEventListener("click", onDeny);
           if (allBtn) allBtn.removeEventListener("click", onAll);
+          if (changesBtn) { changesBtn.removeEventListener("click", onChanges); changesBtn.hidden = true; }
           // The command runs only if its request is exactly what the card showed.
           if (ok && frozen && typeof PlazCodeApproval !== "undefined" && PlazCodeApproval.freeze(args) !== frozen) ok = false;
           resolve(ok);
@@ -343,6 +356,7 @@
         const onDeny = () => done(false);
         const onAll = () => { try { (A.approveAll = A.approveAll || new Set()).add(String(call.tool)); } catch {} done(true); };
         const cancel = () => done(false);
+        const onChanges = () => done("changes");
         // Esc denies. Enter is never handled here, so typing in the AI site's own box can never approve.
         const onKey = (event) => {
           if (event.key !== "Escape") return;
@@ -356,6 +370,7 @@
         allow.addEventListener("click", onAllow);
         deny.addEventListener("click", onDeny);
         if (allBtn) allBtn.addEventListener("click", onAll);
+        if (changesBtn) changesBtn.addEventListener("click", onChanges);
         // Deletes start on Deny. Other cards do not take the keyboard away from the chat.
         if (info && info.destructive) { try { deny.focus({ preventScroll: true }); } catch {} }
       } catch { resolve(false); }
@@ -2836,8 +2851,15 @@ return result`;
       if (!ok) return PlazCodeSafety.declinedDelete(bareName);
       deleteConfirmation = {key: deleteKey(bareName, args), expires: Date.now() + 120000};
     }
+    // Plan Mode: until the person approves a plan, every change asks first. (Deletes have their own prompt above.)
+    let planAsked = false;
+    if (!deletes && planOnNow() && !A.planApproved && PlazCodeSafety.isChange(bareName, safetyEngine) && !(A.approveAll && A.approveAll.has("*"))) {
+      const okPlan = await requestApproval(bareName, args, { kicker: "Plan Mode: no approved plan yet", call: { tool: bareName, arguments: args }, engine: safetyEngine });
+      if (!okPlan) return `ERROR in ${bareName}: Plan Mode is on and the user did not approve this change. Write your plan first (Goal, then ordered steps); PlazCode shows it to the user for approval. Do not retry unless the user asks.`;
+      planAsked = true;
+    }
     // Ask mode: the hand-kept list, plus anything the safety module calls a change (unknown tools count as changes).
-    if (!deletes && permMode === "ask" && (ASK_OPS.has(bareName) || PlazCodeSafety.isChange(bareName, safetyEngine)) && !(A.approveAll && A.approveAll.has(String(bareName)))) {
+    if (!deletes && permMode === "ask" && (ASK_OPS.has(bareName) || PlazCodeSafety.isChange(bareName, safetyEngine)) && !planAsked && !(A.approveAll && (A.approveAll.has("*") || A.approveAll.has(String(bareName))))) {
       const ok = await requestApproval(bareName, args, { call: { tool: bareName, arguments: args }, engine: safetyEngine });
       if (!ok) return `ERROR in ${bareName}: the user declined this action (Ask mode). Do not retry unless they ask.`;
     }
@@ -3830,6 +3852,21 @@ return result`;
   }
   const CLAIM_NUDGE_FEEDBACK = '(PlazCode: your last reply said a command was sent, but no command block reached PlazCode, so nothing ran. If you still need it, send it now as ONE fenced json block, exactly like {"command": "name", "params": {...}}, and write nothing after the block. If you are actually finished, reply with a short final summary and do not mention sending commands.)';
   const PLAN_CONTINUE_FEEDBACK ="(PlazCode: plan received. Do not stop or wait for approval; Plan Mode means plan, then implement. Start step 1 now: send exactly ONE command using the exact list_commands schemas. Do not repeat the plan.)";
+  const PLAN_APPROVED_FEEDBACK = "(PlazCode: the user approved your plan. Start step 1 now: send exactly ONE command using the exact list_commands schemas. Do not repeat the plan. Deletes still need the user's confirmation.)";
+  function planOnNow() { try { return !!(window.__rsPlanMode && window.__rsPlanMode()); } catch { return false; } }
+  // "Ask for changes": put the start of a reply in the AI site's own box (never sends it).
+  function stagePlanChange() {
+    try {
+      const ed = P.getEditor && P.getEditor();
+      if (!ed) return false;
+      ed.focus();
+      const isInput = ed.tagName === "TEXTAREA" || ed.tagName === "INPUT";
+      if (isInput) { const L = (ed.value || "").length; ed.setSelectionRange(L, L); }
+      else { const sel = window.getSelection(), range = document.createRange(); range.selectNodeContents(ed); range.collapse(false); sel.removeAllRanges(); sel.addRange(range); }
+      document.execCommand("insertText", false, ((isInput ? ed.value : ed.textContent) || "").trim() ? "\n\nChange the plan: " : "Change the plan: ");
+      return true;
+    } catch { return false; }
+  }
   function planWantsImplementation() {
     let plan = false, lvl = "default";
     try { plan = !!(window.__rsPlanMode && window.__rsPlanMode()); } catch {}
@@ -4389,7 +4426,20 @@ return result`;
               continue;
             }
           }
-          if (planContinues < 2 && toolsThisLoop === 0 && !A.stop && planWantsImplementation() && looksLikePlanOnly(body)) {
+          // Plan Mode (switched on by the person): show the plan for approval instead of carrying on by itself.
+          if (!A.planApproved && toolsThisLoop === 0 && !A.stop && planOnNow() && looksLikePlanOnly(body)) {
+            const decision = await requestApproval("plan", {}, { plan: { text: body }, kicker: "Plan Mode", title: "Proposed plan", changesButton: true });
+            if (A.stop) break;
+            if (decision === true) {
+              A.planApproved = true; A.approveAll = new Set(["*"]); planContinues++;
+              diag("loop.planApproved", { chars: body.length });
+              base = await submitAndGetBase(PLAN_APPROVED_FEEDBACK);
+              continue;
+            }
+            if (decision === "changes") stagePlanChange();
+            diag("loop.planNotApproved", { decision: String(decision) });
+          }
+          if (planContinues < 2 && toolsThisLoop === 0 && !A.stop && (!planOnNow() || A.planApproved) && planWantsImplementation() && looksLikePlanOnly(body)) {
             planContinues++;
             diag("loop.planContinue", { chars: body.length });
             base = await submitAndGetBase(PLAN_CONTINUE_FEEDBACK);
@@ -4614,6 +4664,7 @@ return result`;
       try { playSfx(A.stop ? "stop" : (A._sfxErr ? "error" : "done")); A._sfxErr = false; } catch {}
       A.running = false;
       A.approveAll = null; // "Approve all like this" lasts for one task
+      A.planApproved = false; // an approved plan covers one task
       activity.sync(false, P.conversationKey(), undefined, {collapse: completed}); syncActivityItems();
       if (!A.pendingToolSettles) A.stop = false;
       // Keep the "Stopping…" state while the site's stream is still draining
@@ -4835,7 +4886,7 @@ return result`;
       cowork.pause("Stopped. Pending requests are saved here until you resume.");
     }
     A.stop = true;
-    A.approveAll = null;
+    A.approveAll = null; A.planApproved = false;
     if (approvalCancel) { try { approvalCancel(); } catch {} }
     A.nativeSendIntent = null;
     for (const record of A.inflightTools || []) if (!record.draining) {
@@ -6159,6 +6210,7 @@ return result`;
             <div id="rs-approve-details" hidden></div>
             <div class="rs-approve-actions">
               <button type="button" id="rs-approve-all" hidden></button>
+              <button type="button" id="rs-approve-changes" hidden>Ask for changes</button>
               <button type="button" id="rs-approve-deny">Deny</button>
               <button type="button" id="rs-approve-allow">Allow</button>
             </div>

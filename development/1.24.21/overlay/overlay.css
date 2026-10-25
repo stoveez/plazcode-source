@@ -5925,3 +5925,9 @@ html.rs-light .rs-stat-del { color: #c0392b; }
 html.rs-light #rs-approve.rs-approve-docked { background: #fff; color: #1d222c; border-color: rgba(0,0,0,.18); }
 html.rs-light .rs-approve-summary { color: #1d222c; }
 @media (max-width: 480px) { #rs-approve.rs-approve-docked { inset: auto 0 72px 0; } .rs-approve-actions { flex-wrap: wrap; } #rs-approve-all { flex-basis: 100%; margin-bottom: 4px; } }
+#rs-approve-badge[data-kind="plan"] { color: #7fb4ff; border-color: rgba(127,180,255,.55); }
+.rs-approve-steps { margin: 0; padding: 8px 14px 8px 32px; font-size: 12.5px; line-height: 1.5; }
+.rs-approve-steps li { margin: 2px 0; }
+#rs-approve-changes { font-family: inherit; font-size: 13px; font-weight: 600; border-radius: 10px; padding: 8px 14px; cursor: pointer; border: 1px solid var(--or-line, rgba(255,255,255,.16)); background: transparent; color: inherit; }
+#rs-approve-changes[hidden] { display: none !important; }
+#rs-approve-changes:focus-visible { outline: 2px solid #ffbc67; outline-offset: 2px; }
