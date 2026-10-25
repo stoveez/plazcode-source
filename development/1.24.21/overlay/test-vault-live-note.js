@@ -31,8 +31,8 @@ const Memory = require("./core/memory.js");
   assert(!/LIVE NOTE/.test(Memory.vaultContext(false)), "no live note section when the app has none");
 
   // 4. The learning instructions tell the AI to keep the live note current, and how to store an attached picture.
-  assert(/rewrite the live note 00 Start Here\/Now\.md/.test(Memory.vaultContext(false)), "learning text mentions the live note");
-  assert(/media button, call plazcode_vault add_image/.test(Memory.vaultContext(false)), "learning text explains saving an attached picture");
+  assert(/rewrite 00 Start Here\/Now\.md/.test(Memory.vaultContext(false)), "learning text mentions the live note");
+  assert(/media button, call plazcode_vault add_image/.test(Memory.vaultContext(false)) && !/media button, call plazcode_vault add_image/.test(Memory.vaultContext(true)), "learning text explains saving an attached picture (full prompt only, so small sites stay small)");
   await Memory.vaultRefresh(bridge("x"), "p4");
   assert(/LEARNING IS OFF|LEARN AUTOMATICALLY/.test(Memory.vaultContext(false)));
 
