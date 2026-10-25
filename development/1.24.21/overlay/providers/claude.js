@@ -496,12 +496,32 @@ const RSProvider = (() => {
     // message was sent, and the run paused a minute later). Focus it first.
     try { ed.focus({ preventScroll: true }); } catch {}
     selectAll(ed);
-    document.execCommand("insertText", false, "");
+    // Type straight over the selection. Deleting first (insertText "") removed the hidden line break Claude keeps in
+    // an empty box; until Claude put it back, the browser had no place for the caret and refused every line typed
+    // next, so the tool result was never sent and the run paused (seen live on call 4 of a 15-call run, 2026-10-25).
     const lines = String(text).split("\n");
+    let typed = false;
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i]) document.execCommand("insertText", false, lines[i]);
-      if (i < lines.length - 1) document.execCommand("insertLineBreak");
+      if (lines[i]) { await caretReady(ed, typed); document.execCommand("insertText", false, lines[i]); typed = true; }
+      if (i < lines.length - 1) { await caretReady(ed, typed); document.execCommand("insertLineBreak"); typed = true; }
       if (i && i % INSERT_CHUNK_LINES === 0) await sleep(0);
+    }
+    if (!typed) document.execCommand("insertText", false, "");
+  }
+  // When the browser has no place to type (Claude is still restoring an emptied box), wait a moment for Claude to
+  // repair it, then select again: the whole box before anything is typed, otherwise the end of what is there.
+  function canInsert() { try { return document.queryCommandEnabled("insertText") !== false; } catch { return true; } }
+  async function caretReady(ed, typed) {
+    for (let attempt = 0; attempt < 5 && !canInsert(); attempt++) {
+      await sleep(30);
+      try { ed.focus({ preventScroll: true }); } catch {}
+      if (!typed) selectAll(ed);
+      else {
+        try {
+          const range = document.createRange(); range.selectNodeContents(ed); range.collapse(false);
+          const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+        } catch {}
+      }
     }
   }
 
@@ -586,6 +606,12 @@ const RSProvider = (() => {
         ed = getEditor() || ed;
         if (relock) ed.setAttribute("contenteditable", "true");
         await typeEditorText(ed, text);
+      }
+      // The text never got into the box: pressing Enter on an empty box sends nothing, and the empty box then looked
+      // like a sent message, so the run waited a minute for a reply and paused. Say so instead.
+      if (!stillDraft() && userCount() === before && !(!stopBefore && stopButton())) {
+        diag("claude.send.notTyped", {});
+        throw new Error("Claude's reply box would not take the text, so nothing was sent.");
       }
       // Claude refuses a new message while it is still streaming. Wait for the Stop button to go away instead of
       // pressing Enter into a busy composer.
