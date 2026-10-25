@@ -55,7 +55,11 @@ function inspect(f){const p=f.p,r=p.readAssistant();return {editor:!!p.getEditor
     // Native send counts must be identical, and no duplicate submission is allowed.
     await f.p.typeAndSend('PlazCode regression prompt');assert.equal(f.p.editorText().trim(),'',name+' draft consumed');assert.equal(f.counts().clicks+f.counts().enters,1,name+' one submission');
    }
-   assert.deepEqual(current.counts(),old.counts(),name+' native event behavior unchanged');checks+=3;
+   // 1.24.21: Claude types straight over the selection instead of deleting it first (deleting an empty box removed
+   // Claude's hidden line break and every typed line was refused; covered by test-claude-empty-box-typing), so one
+   // input event fewer. Clicks and Enters, the submission count, must still be identical.
+   if(name==='claude'){const a=current.counts(),b=old.counts();assert.deepEqual({clicks:a.clicks,enters:a.enters},{clicks:b.clicks,enters:b.enters},name+' native submissions unchanged');assert.equal(a.inputs,b.inputs-1,name+' only the separate clearing input is gone');checks+=3;}
+   else{assert.deepEqual(current.counts(),old.counts(),name+' native event behavior unchanged');checks+=3;}
    // Virtualized editor replacement after a successful send.
    for(const f of [old,current]){f.input.replaceWith(f.input.cloneNode(true));assert.equal(f.p.getEditor(),f.w.document.querySelector('textarea,[contenteditable]'),name+' detects replacement');}
    checks++;console.log('PASS '+name+' healthy transcript, draft, lock/unlock, send and remount');
