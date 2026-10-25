@@ -225,6 +225,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -290,6 +291,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -346,6 +348,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -399,6 +402,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -455,6 +459,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -508,6 +513,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -561,6 +567,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -617,6 +624,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -680,6 +688,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -743,6 +752,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -797,6 +807,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -850,6 +861,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -906,6 +918,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -963,6 +976,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"
@@ -1016,6 +1030,7 @@
         "core/connection-doctor.js",
         "core/safety.js",
         "core/tool-cards.js",
+        "core/approval.js",
         "core/action-log.js",
         "core/site-setups.js",
         "core/main.js"

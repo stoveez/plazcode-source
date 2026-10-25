@@ -242,53 +242,122 @@
     }
     return clean;
   }
-  // The approval prompt that is on screen right now (Stop closes it as "denied").
-  let approvalCancel = null;
+  // The approval card that is on screen right now (Stop closes it as "denied").
+  let approvalCancel = null, approvalChain = Promise.resolve(), approvalWaiting = 0;
+  // One card at a time, first come first served. Never approves by itself: it waits for the person.
   function requestApproval(op, args, opts) {
+    approvalWaiting++;
+    const job = approvalChain.then(() => showApproval(op, args, opts || {}));
+    approvalChain = job.then(() => {}, () => {});
+    return job.then((ok) => { approvalWaiting--; return ok; }, () => { approvalWaiting--; return false; });
+  }
+  function showApproval(op, args, opts) {
     return new Promise((resolve) => {
       try {
-      const root = document.getElementById("rs-approve");
-      const body = document.getElementById("rs-approve-body");
-      const allow = document.getElementById("rs-approve-allow");
-      const deny = document.getElementById("rs-approve-deny");
-      // Fails closed: when the prompt cannot be shown, the change is NOT approved
-      // (this used to approve everything except deletes).
-      if (!root || !allow || !deny) { resolve(false); return; }
-      if (approvalCancel) { try { approvalCancel(); } catch {} }
-      const kicker = root.querySelector(".rs-approve-kicker"), title = root.querySelector(".rs-approve-title");
-      const oldKicker = kicker ? kicker.textContent : "", oldTitle = title ? title.textContent : "";
-      if (opts && kicker) kicker.textContent = opts.kicker || oldKicker;
-      if (opts && title) title.textContent = opts.title || oldTitle;
-      const preview = (() => {
-        try { return JSON.stringify(args || {}, null, 0).slice(0, 280); } catch { return ""; }
-      })();
-      // Plain text only: the delete path is chosen by the AI and must never become HTML.
-      if (body) {
-        body.textContent = "";
-        const strong = document.createElement("b");
-        strong.textContent = String(op);
-        body.appendChild(strong);
-        if (preview) { const pre = document.createElement("pre"); pre.textContent = preview; body.appendChild(pre); }
-      }
-      root.hidden = false;
-      let finished = false;
-      const done = (ok) => {
-        if (finished) return;
-        finished = true;
-        if (approvalCancel === cancel) approvalCancel = null;
-        root.hidden = true;
-        if (kicker) kicker.textContent = oldKicker;
-        if (title) title.textContent = oldTitle;
-        allow.removeEventListener("click", onAllow);
-        deny.removeEventListener("click", onDeny);
-        resolve(ok);
-      };
-      const onAllow = () => done(true);
-      const onDeny = () => done(false);
-      const cancel = () => done(false);
-      approvalCancel = cancel;
-      allow.addEventListener("click", onAllow);
-      deny.addEventListener("click", onDeny);
+        if (A.stop) { resolve(false); return; }
+        const root = document.getElementById("rs-approve");
+        const body = document.getElementById("rs-approve-body");
+        const allow = document.getElementById("rs-approve-allow");
+        const deny = document.getElementById("rs-approve-deny");
+        // Fails closed: when the card cannot be shown, the change is NOT approved.
+        if (!root || !allow || !deny) { resolve(false); return; }
+        if (approvalCancel) { try { approvalCancel(); } catch {} }
+        const kicker = root.querySelector(".rs-approve-kicker"), title = root.querySelector(".rs-approve-title");
+        const badge = document.getElementById("rs-approve-badge"), queue = document.getElementById("rs-approve-queue");
+        const noteEl = document.getElementById("rs-approve-note"), more = document.getElementById("rs-approve-more");
+        const details = document.getElementById("rs-approve-details"), allBtn = document.getElementById("rs-approve-all");
+        const oldKicker = kicker ? kicker.textContent : "", oldTitle = title ? title.textContent : "", oldAllow = allow.textContent;
+        const call = opts.call || null;
+        let info = null;
+        if (call && typeof PlazCodeApproval !== "undefined") {
+          try { info = PlazCodeApproval.describe(call.tool, call.arguments, opts.engine || "studio", PlazCodeSafety); } catch { info = null; }
+        }
+        const frozen = typeof PlazCodeApproval !== "undefined" ? PlazCodeApproval.freeze(args) : "";
+        if (kicker) kicker.textContent = opts.kicker || (info ? "Needs your approval" : oldKicker);
+        if (title) title.textContent = opts.title || (info ? info.title : oldTitle);
+        allow.textContent = info ? "Approve" : oldAllow;
+        const preview = (() => { try { return JSON.stringify(args || {}, null, 0).slice(0, 280); } catch { return ""; } })();
+        // Plain text only: the delete path is chosen by the AI and must never become HTML.
+        if (body) {
+          body.textContent = "";
+          if (info) {
+            const line = document.createElement("div"); line.className = "rs-approve-summary"; line.textContent = info.summary; body.appendChild(line);
+          } else {
+            const strong = document.createElement("b"); strong.textContent = String(op); body.appendChild(strong);
+            if (preview) { const pre = document.createElement("pre"); pre.textContent = preview; body.appendChild(pre); }
+          }
+        }
+        if (badge) { badge.textContent = info ? info.badge : ""; badge.hidden = !info; badge.dataset.kind = info ? info.kind : ""; }
+        if (noteEl) { noteEl.textContent = info ? info.note : ""; noteEl.hidden = !info; }
+        if (queue) { queue.textContent = approvalWaiting > 1 ? "+" + (approvalWaiting - 1) + " more waiting" : ""; queue.hidden = approvalWaiting <= 1; }
+        // Details: the same card used in the chat (CHANGES / RAW REQUEST / OUTPUT). Opened for deletes, collapsed otherwise.
+        let detailsDrawn = false;
+        const drawDetails = () => {
+          if (!details || detailsDrawn || !call || typeof PlazCodeToolCards === "undefined") return;
+          detailsDrawn = true;
+          try { PlazCodeToolCards.render(details, PlazCodeToolCards.model({ tool: call.tool, arguments: call.arguments }), { open: true }); } catch { details.textContent = preview; }
+        };
+        const setDetails = (open) => {
+          if (!details || !more) return;
+          details.hidden = !open;
+          more.textContent = open ? "Hide details" : "Show details";
+          more.setAttribute("aria-expanded", open ? "true" : "false");
+          if (open) drawDetails();
+        };
+        if (details) details.textContent = "";
+        if (more) { more.hidden = !(info && details); more.onclick = () => setDetails(details.hidden); }
+        setDetails(!!(info && info.destructive));
+        const canRepeatAll = !!(info && !info.destructive && call && !opts.failClosed);
+        if (allBtn) {
+          allBtn.hidden = !canRepeatAll;
+          if (canRepeatAll) allBtn.textContent = "Approve all “" + PlazCodeApproval.nice(call.tool) + "” for this task";
+        }
+        root.setAttribute("role", "alertdialog");
+        root.setAttribute("aria-label", (title && title.textContent) || "Needs your approval");
+        root.classList.add("rs-approve-docked");
+        root.hidden = false;
+        // The chat chip says it is waiting, so the transcript matches the card.
+        let chipDt = null, oldDt = "";
+        try { chipDt = A.toolItem && A.toolItem.querySelector && A.toolItem.querySelector(".rs-chip-dt"); if (chipDt) { oldDt = chipDt.textContent; chipDt.textContent = "waiting for approval"; } } catch {}
+        let finished = false;
+        const done = (ok) => {
+          if (finished) return;
+          finished = true;
+          if (approvalCancel === cancel) approvalCancel = null;
+          document.removeEventListener("keydown", onKey, true);
+          root.hidden = true;
+          root.classList.remove("rs-approve-docked");
+          if (kicker) kicker.textContent = oldKicker;
+          if (title) title.textContent = oldTitle;
+          allow.textContent = oldAllow;
+          if (details) details.textContent = "";
+          try { if (chipDt && chipDt.textContent === "waiting for approval") chipDt.textContent = oldDt; } catch {}
+          allow.removeEventListener("click", onAllow);
+          deny.removeEventListener("click", onDeny);
+          if (allBtn) allBtn.removeEventListener("click", onAll);
+          // The command runs only if its request is exactly what the card showed.
+          if (ok && frozen && typeof PlazCodeApproval !== "undefined" && PlazCodeApproval.freeze(args) !== frozen) ok = false;
+          resolve(ok);
+        };
+        const onAllow = () => done(true);
+        const onDeny = () => done(false);
+        const onAll = () => { try { (A.approveAll = A.approveAll || new Set()).add(String(call.tool)); } catch {} done(true); };
+        const cancel = () => done(false);
+        // Esc denies. Enter is never handled here, so typing in the AI site's own box can never approve.
+        const onKey = (event) => {
+          if (event.key !== "Escape") return;
+          const active = document.activeElement;
+          const typing = active && !root.contains(active) && (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName));
+          if (typing) return;
+          event.preventDefault(); event.stopPropagation(); done(false);
+        };
+        approvalCancel = cancel;
+        document.addEventListener("keydown", onKey, true);
+        allow.addEventListener("click", onAllow);
+        deny.addEventListener("click", onDeny);
+        if (allBtn) allBtn.addEventListener("click", onAll);
+        // Deletes start on Deny. Other cards do not take the keyboard away from the chat.
+        if (info && info.destructive) { try { deny.focus({ preventScroll: true }); } catch {} }
       } catch { resolve(false); }
     });
   }
@@ -2768,8 +2837,8 @@ return result`;
       deleteConfirmation = {key: deleteKey(bareName, args), expires: Date.now() + 120000};
     }
     // Ask mode: the hand-kept list, plus anything the safety module calls a change (unknown tools count as changes).
-    if (!deletes && permMode === "ask" && (ASK_OPS.has(bareName) || PlazCodeSafety.isChange(bareName, safetyEngine))) {
-      const ok = await requestApproval(bareName, args);
+    if (!deletes && permMode === "ask" && (ASK_OPS.has(bareName) || PlazCodeSafety.isChange(bareName, safetyEngine)) && !(A.approveAll && A.approveAll.has(String(bareName)))) {
+      const ok = await requestApproval(bareName, args, { call: { tool: bareName, arguments: args }, engine: safetyEngine });
       if (!ok) return `ERROR in ${bareName}: the user declined this action (Ask mode). Do not retry unless they ask.`;
     }
     if (A.stop) return "ERROR: the command was not run — stopped by the user.";
@@ -4544,6 +4613,7 @@ return result`;
       if (!completed && !recoverSession && cowork.snapshot().pending.length) cowork.pause("The agent stopped before finishing. Check the chat, then resume the queue.");
       try { playSfx(A.stop ? "stop" : (A._sfxErr ? "error" : "done")); A._sfxErr = false; } catch {}
       A.running = false;
+      A.approveAll = null; // "Approve all like this" lasts for one task
       activity.sync(false, P.conversationKey(), undefined, {collapse: completed}); syncActivityItems();
       if (!A.pendingToolSettles) A.stop = false;
       // Keep the "Stopping…" state while the site's stream is still draining
@@ -4765,6 +4835,7 @@ return result`;
       cowork.pause("Stopped. Pending requests are saved here until you resume.");
     }
     A.stop = true;
+    A.approveAll = null;
     if (approvalCancel) { try { approvalCancel(); } catch {} }
     A.nativeSendIntent = null;
     for (const record of A.inflightTools || []) if (!record.draining) {
@@ -6076,10 +6147,18 @@ return result`;
         <div id="rs-menu" hidden></div>
         <div id="rs-approve" hidden>
           <div class="rs-approve-card">
-            <div class="rs-approve-kicker">Ask mode</div>
+            <div class="rs-approve-head">
+              <div class="rs-approve-kicker">Ask mode</div>
+              <span id="rs-approve-badge" hidden></span>
+              <span id="rs-approve-queue" hidden></span>
+            </div>
             <div class="rs-approve-title">Allow this action?</div>
             <div id="rs-approve-body"></div>
+            <div id="rs-approve-note" hidden></div>
+            <button type="button" id="rs-approve-more" hidden aria-expanded="false">Show details</button>
+            <div id="rs-approve-details" hidden></div>
             <div class="rs-approve-actions">
+              <button type="button" id="rs-approve-all" hidden></button>
               <button type="button" id="rs-approve-deny">Deny</button>
               <button type="button" id="rs-approve-allow">Allow</button>
             </div>
