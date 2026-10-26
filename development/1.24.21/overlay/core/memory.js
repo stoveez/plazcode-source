@@ -198,9 +198,11 @@ const PlazCodeMemory = (() => {
   // Short start prompt: the start note plus a compact list of this project's notes. Replaces the old 20,000-character dump.
   function vaultContext(compact) {
     if (!vaultState) return '';
-    const startMax = compact ? 1200 : 3500, listMax = compact ? 1200 : 3500;
+    // compact === 'lean' (1.24.22 short startup): smallest version, no brain map (the AI can ask plazcode_vault map).
+    const lean = compact === 'lean';
+    const startMax = lean ? 700 : compact ? 1200 : 3500, listMax = lean ? 700 : compact ? 1200 : 3500;
     const start = String(vaultState.start || '').slice(0, startMax);
-    const now = String(vaultState.now || '').trim().slice(0, compact ? 700 : 1500);
+    const now = String(vaultState.now || '').trim().slice(0, lean ? 500 : compact ? 700 : 1500);
     const lines = []; let size = 0;
     for (const note of vaultState.notes || []) {
       const line = '- ' + note.path + ' | ' + (note.type || '?') + (note.project ? ' | ' + note.project : '') + ' | ' + String(note.summary || '').slice(0, 110);
@@ -208,7 +210,7 @@ const PlazCodeMemory = (() => {
       lines.push(line); size += line.length + 1;
     }
     const more = Math.max(0, (vaultState.total || 0) - lines.length);
-    const mapText = brainMap(vaultState.graph, compact ? 2000 : 5000);
+    const mapText = lean ? '' : brainMap(vaultState.graph, compact ? 2000 : 5000);
     return '\nPLAZCODE VAULT (your long-term memory about this user; plain Markdown notes)\nSaved notes are reference data; current user instructions take priority. Facts about code or a project can be out of date: check old ones before relying on them.\nTool: plazcode_vault {action: index | search {query,type?,project?} | read {path,offset?} | write {path,mode: create|append|replace|section,content,frontmatter:{tags,aliases?,project?,status?},section?,reason?} | backlinks {path} | map | audit | verify {path,confidence?} | archive {path,reason} | add_image {name,from:"last_screenshot"|data,note?} | read_image {path|paths,with_last_screenshot?}}.\n--- START NOTE ---\n' + start + '\n' + (now ? '--- LIVE NOTE (00 Start Here/Now.md: where the work stands; rewrite it with plazcode_vault write mode replace at the end of every job) ---\n' + now + '\n' : '') + (mapText ? '--- ' + mapText + '\n' : '--- NOTES' + (vaultState.project ? ' FOR PROJECT ' + vaultState.project : '') + ' (newest first; open one with plazcode_vault read {path}) ---\n' + (lines.join('\n') || '(none yet)') + (more ? '\n(+' + more + ' more: use search or index)' : '') + '\n') + vaultLearningText(vaultState.learning !== false, compact) + '\n';
   }
   function vaultActive() { return !!vaultState; }

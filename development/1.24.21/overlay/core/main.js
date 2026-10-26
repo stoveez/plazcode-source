@@ -179,6 +179,8 @@
     spawn_agent: "plazcode_agent",
     status: "plazcode_status",
     features: "plazcode_features",
+    help: "plazcode_help",
+    plazcode_reference: "plazcode_help",
     feature_help: "plazcode_features",
     plazcode_feature_help: "plazcode_features",
     plazcode_feature_guide: "plazcode_features",
@@ -2244,7 +2246,7 @@
 
   const DESKTOP_UTILITY_TOOLS = [
     "plazcode_clarify",
-    "list_commands", "list_mcp_servers", "plazcode_status", "plazcode_features", "web_fetch", "web_search",
+    "list_commands", "list_mcp_servers", "plazcode_status", "plazcode_features", "plazcode_help", "web_fetch", "web_search",
     "plazcode_screenshot", "attach_feedback", "tab_read", "tab_click", "tab_type",
     "tab_scroll", "plazcode_debug", "plazcode_agent", "plazcode_memory", "plazcode_vault", "plazcode_critic", "plazcode_engram", "plazcode_templates", "plazcode_skills",
     "asset_bridge_import", "studio_upload_asset", "developer_product_create", "developer_product_list",
@@ -2264,6 +2266,7 @@
     list_commands: "List the available commands and their parameters.",
     list_mcp_servers: "Show connected MCP servers and their status.",
     plazcode_status: "Check the local bridge, engines, and available tools.",
+    plazcode_help: "The full PlazCode rules for one area or one command (1.24.22 short startup). Params: topic (for example luau, studio-gui, animation, rules) or command (a command name); leave both empty for the topic list.",
     plazcode_features: "How to use PlazCode itself: where to click and the steps for any PlazCode feature or setting. Params: topic (a feature id or a few words); leave it empty to list every feature.",
     web_fetch: "Fetch and read a web page.",
     web_search: "Search the web for relevant information.",
@@ -2335,6 +2338,7 @@
       const tools = bridgeTools.slice();
       tools.push({name:'plazcode_templates',server:activeEngine(),description:'Read-only template references. match query describes a system and finds related script paths/code identifiers with up to 8 matches (limit); read id lists scripts, read id and path returns source with optional offset/limit.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['match','read']},query:{type:'string'},id:{type:'string'},path:{type:'string'},script_id:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:24000}},required:['action']}});
       tools.push({name:'plazcode_features',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_features,inputSchema:{type:'object',properties:{topic:{type:'string'}}}});
+      if (typeof PlazCodeLeanStartup !== 'undefined') tools.push({name:'plazcode_help',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_help,inputSchema:{type:'object',properties:{topic:{type:'string'},command:{type:'string'}}}});
       tools.push({name:'plazcode_skills',server:activeEngine(),description:'Read reusable methods with list/read/match. Bundled starter read returns full paginated instructions, resources and bundle_root; read required references before applying them. Use resource, offset and limit for full files. When the user states a lasting preference or rule about how or when to work (coding style, naming, structure, workflow), apply it and call action suggest once with a short title, a description and the instructions as steps; PlazCode shows the user a one-click Save as skill button and only their click saves it. Never save such preferences yourself; use save only when the user explicitly asks you to save a skill, with user_approved:true. Never suggest routine task steps or repeat a suggestion. Give it a concise descriptive title and detailed description explaining when it is useful, adaptable steps, pitfalls and verification checks. List before saving; update an existing skill with the same purpose (its id and revision) instead of adding a duplicate. Use a new unique ID only for a new method; set confirmed:false unless actually verified. Keep private project details in a project scope. Save observable methods, never hidden reasoning or raw chat logs. The user verifies candidates in Skills. Adapt methods to the current project; never blindly copy code.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','match','save','suggest']},id:{type:'string'},resource:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:24000},revision:{type:'integer'},query:{type:'string'},title:{type:'string'},description:{type:'string'},domain:{type:'string',enum:['all','roblox','local','blender','model','ui']},steps:{type:'array',items:{type:'string'}},pitfalls:{type:'array',items:{type:'string'}},verification:{type:'array',items:{type:'string'}},user_approved:{type:'boolean',description:'true only when the user asked for or agreed to this skill'},project_only:{type:'boolean',description:'suggest: true when the preference applies only to the current project'}},required:['action'],additionalProperties:false}});
       if (window.__rsThinkingLevel?.() === 'ultracode' && activeEngine() === 'roblox' && typeof PlazCodeUltracode !== 'undefined' && PlazCodeUltracode.runTool) {
         tools.push({name:'ultralab_read',server:'roblox',description:'Open the Ultra pack: every skill, agent, reference, script and vault note. action list {prefix?} lists files; read {path, offset?, limit?} returns exact text in pages (follow next_offset for more); search {query, prefix?} finds matching lines in text files. Open the skills, scripts and Check-UI modules a task needs before you build. Read-only.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','search']},path:{type:'string'},prefix:{type:'string'},query:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:40000}},required:['action'],additionalProperties:false}});
@@ -2736,6 +2740,11 @@ return result`;
       if (A.stop) throw new SendAbortedError("Clarification was stopped.");
       try { return "Output of 'plazcode_clarify':\n" + JSON.stringify(await clarification.request(args)); }
       catch (error) { if (error.name === 'AbortError') throw new SendAbortedError(error.message); throw error; }
+    }
+    if (name === "plazcode_help") {
+      if (typeof PlazCodeLeanStartup === "undefined") return "ERROR: plazcode_help is not available in this build. Use list_commands for command details.";
+      try { return "Output of 'plazcode_help':\n" + PlazCodeLeanStartup.helpFor({ topic: args && (args.topic || args.area || args.query), command: args && (args.command || args.name), engine: activeEngine(), siteName: P.displayName }); }
+      catch (error) { return "ERROR: " + error.message; }
     }
     if (name === "plazcode_features") {
       if (typeof PlazCodeFeatureGuide === "undefined") return "ERROR: the feature guide is not loaded.";
@@ -3202,7 +3211,10 @@ return result`;
       const webLines = [`— Retained results: plazcode_result_read {id,offset?,limit?} — read successive exact pages of a completed command result without executing the command again. Follow next_offset until null.`, `— Task checklist: plazcode_checklist {steps:[{label,status:pending|in_progress|completed}]} — keep 1–20 concrete main task steps; update statuses and append requested work without replacing existing labels. Continue/keep going preserves the plan. Replace tasks only when the user explicitly changes or stops following them; mark completed only after verified success. Never treat tool-call counts or time as completion.`, `— PlazCode Features: plazcode_features {topic?} — where to click and the steps for any PlazCode feature or setting; empty topic lists them all.`, `— PlazCode Status: plazcode_status {} — live engine, work mode, extra thinking, bridge, blender. Call this if you are unsure which mode you are in.`, `— Web Tools (bridge-level, no Studio needed): web_fetch {url?, query?, max_chars?} — fetch a URL, PlazCode pass query to search the web then fetch the top result; web_search {query, limit?} — DuckDuckGo titles+URLs`, `— Screenshot: plazcode_screenshot {target?: auto|studio|tab|blender} — take a screenshot of Studio, this chat tab, or Blender and attach it to your next message so you can see it. Aliases: screenshot, take_screenshot, send_screenshot.`, `— Attach images: attach_feedback {index?, path?, source?, copy?, paste?, send?} — re-send the most recent screenshot (or any workspace file via path) as an attachment on this message and copy it to the clipboard so the user can paste it. Aliases: attach_image, attach_file, attach_screenshot, attach_last_screenshot, attach_recent_image, copy_screenshot, paste_screenshot.`, `— Browser tab control (no Studio needed): tab_read {tabId?, url_contains?} — read the target tab's URL, title, page text and a numbered list of clickable elements; tab_click {selector?|text?|tabId?|url_contains?} — click an element by CSS selector or visible text; tab_type {text, selector?, submit?, tabId?, url_contains?} — type into a field (optionally press Enter); tab_scroll {amount?, tabId?, url_contains?} — scroll the page. By default they act on the active tab that is NOT this chat; pass url_contains to pick a specific site, or tabId for an exact tab.`
 , `— Debugger: plazcode_debug {} — Studio LogService errors/warnings. Automatic Debugger (Settings) appends new errors after mutating commands.`, `— Multi-Agent: plazcode_agent {role: planner|builder|reviewer|debugger, task?} — hand off to a specialist. Enable Multi-Agent in Settings.`, `— Developer Products: developer_product_create {name, price, description?, reward?} — create a real Roblox Developer Product on this published universe (sign into roblox.com in Chrome). developer_product_list {} lists them. Aliases: create_developer_product, create_dev_product.`];
       webLines.push(PlazCodeClarification.DESCRIPTION);
-      if(A.requestKind==='quick'&&A.quickCatalogue&&!A.catalogueDetail&&!A.starting){
+      // 1.24.22 short startup: the startup command list is names plus one line each; the AI asks list_commands {command} for one command's full parameters.
+      const oneCommand=String((args&&(args.command||args.name||args.tool))||'').trim();
+      if(oneCommand){const hit=scoped.filter(t=>t.name===oneCommand||bareToolName(t.name)===bareToolName(oneCommand));if(hit.length)scoped.splice(0,scoped.length,...hit);}
+      if(!oneCommand&&((A.requestKind==='quick'&&A.quickCatalogue&&!A.catalogueDetail&&!A.starting)||(A.starting&&leanStartupOn()))){
         const names=new Set();
         for(const line of [...animLines,...skillLines,...agentLines,...webLines]){
           const heading=line.match(/^([a-z][a-z0-9_]+):/);if(heading)names.add(heading[1]);
@@ -4573,7 +4585,7 @@ return result`;
           // Planning/bookkeeping commands (checklists, command lists, memory,
           // skills, thinking) are not project work: a plan written after them
           // still needs the automatic "start step 1" continuation.
-          if (!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist|plazcode_features|plazcode_memory|plazcode_vault|plazcode_critic|plazcode_skills|plazcode_templates|plazcode_engram|ultralab_read|sequentialthinking|sequential_thinking)$/.test(String(call.tool || "").replace(/^.*[:.]/, ""))) toolsThisLoop++;
+          if (!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist|plazcode_features|plazcode_help|plazcode_memory|plazcode_vault|plazcode_critic|plazcode_skills|plazcode_templates|plazcode_engram|ultralab_read|sequentialthinking|sequential_thinking)$/.test(String(call.tool || "").replace(/^.*[:.]/, ""))) toolsThisLoop++;
           if(!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist)$/.test(call.tool)){
             const reason=taskBudget.check();
             if(reason){A.budgetResume={base,chat:P.conversationKey(),checkpoint:A.checkpointId,text:P.classifyText(res.item||P.lastAssistant(),".rs-chip")};ui.captureHandoff(reason);ui.banner("warn",reason,"Paused before the next command. Use Resume paused task in Settings after reviewing the chat. No command was replayed.");break;}
@@ -4925,12 +4937,14 @@ return result`;
       startupOutcomes.delete(key); startupOutcomes.set(chat + key, {...value, key: chat + key, chat});
     }
   }
-  let reliabilitySettings={rsToolBudget:0,rsTaskMinutes:0,rsRunLimitsEnabled:false,rsVisualCheck:true,rsContinuationOffer:true,rsCommandCooldown:0},savedHandoff=null;
-  const normalizeReliability = value => ({rsRunLimitsEnabled:value.rsRunLimitsEnabled===true,rsToolBudget:Math.max(0,Math.min(1000,Number.isFinite(Number(value.rsToolBudget))?Math.floor(Number(value.rsToolBudget)):0)),rsTaskMinutes:Math.max(0,Math.min(240,Number.isFinite(Number(value.rsTaskMinutes))?Math.floor(Number(value.rsTaskMinutes)):0)),rsVisualCheck:value.rsVisualCheck!==false,rsContinuationOffer:value.rsContinuationOffer!==false,rsCommandCooldown:normalizeCooldown(value.rsCommandCooldown)});
-  chrome.storage.local.get(["rsRunLimitsEnabled","rsToolBudget","rsTaskMinutes","rsVisualCheck","rsContinuationOffer","rsCommandCooldown","rsLatestHandoff"],value=>{reliabilitySettings=normalizeReliability(value||{});savedHandoff=value&&value.rsLatestHandoff||null;});
+  let reliabilitySettings={rsToolBudget:0,rsTaskMinutes:0,rsRunLimitsEnabled:false,rsVisualCheck:true,rsContinuationOffer:true,rsCommandCooldown:0,rsFullStartup:false},savedHandoff=null;
+  const normalizeReliability = value => ({rsRunLimitsEnabled:value.rsRunLimitsEnabled===true,rsToolBudget:Math.max(0,Math.min(1000,Number.isFinite(Number(value.rsToolBudget))?Math.floor(Number(value.rsToolBudget)):0)),rsTaskMinutes:Math.max(0,Math.min(240,Number.isFinite(Number(value.rsTaskMinutes))?Math.floor(Number(value.rsTaskMinutes)):0)),rsVisualCheck:value.rsVisualCheck!==false,rsContinuationOffer:value.rsContinuationOffer!==false,rsCommandCooldown:normalizeCooldown(value.rsCommandCooldown),rsFullStartup:value.rsFullStartup===true});
+  // 1.24.22: the short startup is used unless the user switched on "Full startup" (off by default).
+  function leanStartupOn() { return reliabilitySettings.rsFullStartup !== true && typeof PlazCodeLeanStartup !== "undefined"; }
+  chrome.storage.local.get(["rsRunLimitsEnabled","rsToolBudget","rsTaskMinutes","rsVisualCheck","rsContinuationOffer","rsCommandCooldown","rsFullStartup","rsLatestHandoff"],value=>{reliabilitySettings=normalizeReliability(value||{});savedHandoff=value&&value.rsLatestHandoff||null;});
   chrome.storage.onChanged.addListener((changes,area)=>{
     if(area!=='local')return;
-    const fields={};for(const key of ['rsRunLimitsEnabled','rsToolBudget','rsTaskMinutes','rsVisualCheck','rsContinuationOffer','rsCommandCooldown'])if(changes[key])fields[key]=changes[key].newValue;
+    const fields={};for(const key of ['rsRunLimitsEnabled','rsToolBudget','rsTaskMinutes','rsVisualCheck','rsContinuationOffer','rsCommandCooldown','rsFullStartup'])if(changes[key])fields[key]=changes[key].newValue;
     if(Object.keys(fields).length)reliabilitySettings=normalizeReliability({...reliabilitySettings,...fields});
   });
   chrome.storage.onChanged.addListener(changes=>{const merged={...reliabilitySettings};for(const key of Object.keys(merged))if(changes[key])merged[key]=changes[key].newValue;reliabilitySettings=normalizeReliability(merged);if(changes.rsLatestHandoff)savedHandoff=changes.rsLatestHandoff.newValue||null;});
@@ -5014,9 +5028,10 @@ return result`;
   // definition, used both by the bootstrap and by the periodic re-injection, so
   // the two can never drift apart.
     function personalMemoryContext() {
-      { const vaultPrompt = PlazCodeMemory.vaultContext(!!P.sysMaxChars); if (vaultPrompt) return vaultPrompt; }
+      const smallContext = !!P.sysMaxChars || leanStartupOn();
+      { const vaultPrompt = PlazCodeMemory.vaultContext(leanStartupOn() ? 'lean' : !!P.sysMaxChars); if (vaultPrompt) return vaultPrompt; }
       const scoped=personalMemory ? {...personalMemory,project_scope:currentProject,entries:personalMemory.entries.filter(entry=>!entry.project || entry.project===currentProject)} : null;
-      if (!scoped || !P.sysMaxChars) return PlazCodeMemory.prompt(scoped);
+      if (!scoped || !smallContext) return PlazCodeMemory.prompt(scoped);
       const entries = []; let size = 0;
       for (const entry of [...scoped.entries].reverse()) {
         const preview=entry.text.length>600 ? entry.text.slice(0,600)+"… [Read full saved note with plazcode_memory action read, id "+entry.id+"]" : entry.text;
@@ -5036,6 +5051,7 @@ return result`;
         providerNotes: P.promptExtra || "",
         engine,
         fullAccess: !!(typeof window.__rsFullAccess === "function" && window.__rsFullAccess()),
+        leanStartup: leanStartupOn(),
         maxChars: P.sysMaxChars ? Math.max(1000, P.sysMaxChars - memoryContext.length - PlazCodeClarification.INSTRUCTION.length) : 0,
       }) + PlazCodeClarification.INSTRUCTION + memoryContext;
       // Context-meter cache: the bar shows an approximate token cost next to
@@ -5412,7 +5428,16 @@ return result`;
       // schema index now; it can call list_commands again whenever it needs the full
       // description of a specific command during work. Required parameters stay in
       // the startup digest so the first real tool call has enough structure.
-      const digest = offline ? toolFeedback : scoped.map((t) => {
+      // 1.24.22 short startup: names plus required parameters only, all on a few lines; list_commands {command} gives the rest.
+      const leanDigest = () => {
+        const items = scoped.map((t) => {
+          const schema = t.inputSchema || {};
+          const req = (schema.required || []).filter((k) => schema.properties && schema.properties[k]);
+          return `${t.name}${req.length ? `{${req.join(",")}}` : ""}`;
+        });
+        return `${items.join(", ")}\nThese are the command names (required parameters in braces). Before using a command for the first time, get its full parameters with list_commands {"command":"name"}; plazcode_help {"topic":"..."} has the rules for an area.`;
+      };
+      const digest = offline ? toolFeedback : leanStartupOn() ? leanDigest() + (typeof connectedAddonsNote === "function" && connectedAddonsNote(cur) ? "\n" + connectedAddonsNote(cur) : "") : scoped.map((t) => {
         const schema = t.inputSchema || {};
         const props = schema.properties || {};
         const req = new Set(schema.required || []);
@@ -7678,6 +7703,8 @@ return result`;
               <small>Visual review sends up to three Studio screenshots to an image-capable AI to check visible changes; it does not replace playtesting.</small>
               <label class="rs-execution-review" for="rs-continuation-offer"><input id="rs-continuation-offer" type="checkbox" ${reliabilitySettings.rsContinuationOffer?'checked':''}><span>Offer to continue the previous chat</span></label>
               <small>When on, a new chat asks whether to continue where your previous chat left off or start a new project. Turn it off to always start fresh without the prompt. Saved chats and memory are not deleted.</small>
+              <label class="rs-execution-review" for="rs-full-startup"><input id="rs-full-startup" type="checkbox" ${reliabilitySettings.rsFullStartup?'checked':''}><span>Full startup</span></label>
+              <small>Off (recommended): Start Agent sends a short startup that fits free plans, and the AI looks up the rest only when it needs it. On: sends every instruction at once, which is much longer and can use up a free plan or be refused as too long. Takes effect the next time you start the agent.</small>
               <div class="rs-execution-actions"><button type="button" id="rs-save-handoff">Save continuation file</button><button type="button" id="rs-budget-resume">Resume paused task</button></div>
               <small>Save downloads a JSON handoff with the active request, recent excerpts and unfinished queued requests, not the whole chat or a game backup. In a fresh chat, open Memory → Load into selected chat, review the imported context, then ask the AI to continue. Resume restarts the allowance for a task paused by its command or time limit.</small>
             </div>
@@ -7772,7 +7799,7 @@ return result`;
         setTimeout(() => { status.textContent = ""; }, 1600);
       });
       for(const [id,key] of [["rs-input-limit-enabled","rsInputLimitEnabled"],["rs-input-char-limit","rsInputCharLimit"],["rs-output-limit-enabled","rsOutputLimitEnabled"],["rs-output-char-limit","rsOutputCharLimit"]])menuEl.querySelector("#"+id).onchange=event=>{try{const toggle=key.endsWith('Enabled');if(!toggle&&(event.target.value.trim()===''||!event.target.checkValidity()))return;characterLimits=normalizeCharacterLimits({...characterLimits,[key]:toggle?event.target.checked:Number(event.target.value)});chrome.storage.local.set({[key]:characterLimits[key]});}catch(error){log('Message size setting failed',error);}};
-      for(const [id,key] of [["rs-run-limits","rsRunLimitsEnabled"],["rs-tool-budget","rsToolBudget"],["rs-task-minutes","rsTaskMinutes"],["rs-visual-check","rsVisualCheck"],["rs-continuation-offer","rsContinuationOffer"],["rs-command-cooldown","rsCommandCooldown"]])menuEl.querySelector("#"+id).onchange=event=>{const toggle=key==='rsRunLimitsEnabled'||key==='rsVisualCheck'||key==='rsContinuationOffer';if(!toggle && (event.target.value.trim()==='' || !event.target.checkValidity()))return;const value=toggle?event.target.checked:Number(event.target.value);reliabilitySettings=normalizeReliability({...reliabilitySettings,[key]:value});chrome.storage.local.set({[key]:reliabilitySettings[key]});};
+      for(const [id,key] of [["rs-run-limits","rsRunLimitsEnabled"],["rs-tool-budget","rsToolBudget"],["rs-task-minutes","rsTaskMinutes"],["rs-visual-check","rsVisualCheck"],["rs-continuation-offer","rsContinuationOffer"],["rs-full-startup","rsFullStartup"],["rs-command-cooldown","rsCommandCooldown"]])menuEl.querySelector("#"+id).onchange=event=>{const toggle=key==='rsRunLimitsEnabled'||key==='rsVisualCheck'||key==='rsContinuationOffer'||key==='rsFullStartup';if(!toggle && (event.target.value.trim()==='' || !event.target.checkValidity()))return;const value=toggle?event.target.checked:Number(event.target.value);reliabilitySettings=normalizeReliability({...reliabilitySettings,[key]:value});chrome.storage.local.set({[key]:reliabilitySettings[key]});};
       menuEl.querySelector("#rs-save-handoff").onclick=()=>{const value=captureHandoff("User requested continuation");downloadHandoff(value);};
       menuEl.querySelector("#rs-budget-resume").onclick=()=>{const result=desktopAgentAction("budget-resume");if(!result.ok)ui.toast(result.error);};
       menuEl.querySelector("#rs-stop-mode").onchange = event => { stopMode=event.target.value;chrome.storage.local.set({rsStopMode:stopMode}); };
@@ -8893,7 +8920,7 @@ function renderCards(panel) {
       const add = (rows) => { for (const row of rows || []) names.add(typeof row === "string" ? row : row && row.name); };
       if (currentEngine === "local") { if (typeof AgentScriptSkills !== "undefined") add(AgentScriptSkills.SKILL_OPS); }
       else { if (typeof RSAnim !== "undefined") add(RSAnim.ANIM_COMMANDS); if (typeof RobloxScriptSkills !== "undefined") add(RobloxScriptSkills.SKILL_COMMANDS); }
-      add(["list_commands","list_mcp_servers","plazcode_status","plazcode_features","plazcode_checklist","web_fetch","web_search","plazcode_screenshot","attach_feedback","tab_read","tab_click","tab_type","tab_scroll","plazcode_debug","plazcode_agent"]);
+      add(["list_commands","list_mcp_servers","plazcode_status","plazcode_features","plazcode_help","plazcode_checklist","web_fetch","web_search","plazcode_screenshot","attach_feedback","tab_read","tab_click","tab_type","tab_scroll","plazcode_debug","plazcode_agent"]);
       names.delete(undefined); return names.size;
     }
 

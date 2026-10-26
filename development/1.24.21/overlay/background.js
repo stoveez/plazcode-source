@@ -230,6 +230,7 @@ const DESKTOP_PREF_KEYS = [
   "rsTaskMinutes",
   "rsVisualCheck",
   "rsContinuationOffer",
+  "rsFullStartup",
   "rsCommandCooldown",
   "rsExtraThinking",
   "rsShowApproach",
