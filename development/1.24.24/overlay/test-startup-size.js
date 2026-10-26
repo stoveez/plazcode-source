@@ -49,12 +49,17 @@ assert(/rsFullStartup:false,/.test(main) && /id="rs-full-startup"/.test(main), '
 assert(/if \(name === "plazcode_help"\) \{[\s\S]{0,300}PlazCodeLeanStartup\.helpFor\(/.test(main), 'plazcode_help runs');
 assert(/tools\.push\(\{name:'plazcode_help'/.test(main), 'plazcode_help is in the command list');
 assert(/vaultContext\(\(typeof leanStartupOn === \"function\" && leanStartupOn\(\)\) \? 'lean'/.test(main), 'the vault summary is the smallest one at startup');
-assert(/const digest = offline \? toolFeedback : \(typeof leanStartupOn === \"function\" && leanStartupOn\(\)\) \? leanDigest\(\)/.test(main), 'the startup command list is names only');
+assert(/let digest = offline \? toolFeedback : leanOn \? leanDigest\(0\) \+ addonsNote : fullDigest\(\);/.test(main) && /const leanOn = typeof leanStartupOn === \"function\" && leanStartupOn\(\);/.test(main), 'the short startup uses the compact command list');
+// 1.24.24: richest list that still fits the site in ONE message (ClickUp would split it otherwise).
+assert(/for \(const level of \[1, 2\]\) \{ if \(fitsOne\(readyPrompt\)\) break; digest = leanDigest\(level\) \+ addonsNote; readyPrompt = readyFor\(digest\);/.test(main), 'falls back to required-only, then names-only');
 // The lean digest for a big Studio command list stays small.
-const start = main.indexOf('const leanDigest = () => {'), end = main.indexOf('\n      };', start) + 8;
+const start = main.indexOf('const leanDigest = (level = 0) => {'), end = main.indexOf('\n      };', start) + 8;
 const scoped = Array.from({ length: 160 }, (_, i) => ({ name: 'studio_command_' + i, inputSchema: { properties: { path: {}, value: {} }, required: ['path'] } }));
 const leanDigest = vm.runInNewContext(main.slice(start, end).replace('const leanDigest = ', '(') + ')', { scoped });
 const digestText = leanDigest();
+const required = leanDigest(1), names = leanDigest(2);
+assert(required.includes('studio_command_0{path}') && !required.includes('value?') && names.split('\n')[0].includes('studio_command_0,') && !names.split('\n')[0].includes('{'), 'required-only and names-only levels');
+assert(names.length < required.length && required.length < digestText.length);
 assert(digestText.length < 8000, 'startup command list for 160 commands is ' + digestText.length + ' characters');
 // 1.24.24: every parameter is listed (? = optional) so the AI calls commands directly, without a lookup round trip each.
 assert(digestText.includes('studio_command_0{path,value?}') && /Call them directly/.test(digestText) && !/Before using a command for the first time/.test(digestText));
