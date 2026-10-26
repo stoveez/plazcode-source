@@ -32,4 +32,4 @@ updated: 2026-10-24
 Release: see [releasing](releasing.md).
 - Antivirus false positive on the 1.24.21 Windows app (2 of 69 on VirusTotal). Fix plan for 1.24.23 in `development/1.24.23/NEXT-UPDATE-PLAN.md` (no encoded PowerShell, app manifest, signing decision).
 - The live 1.24.21 release text needs the owner's version pasted in by hand (this session cannot edit GitHub releases).
-- 1.24.22 (next update): make the startup small enough for free plans by wiring the lean startup (`core/lean-startup.js`) and shrinking the first list_commands result. In progress.
+- 1.24.22 (next update): short startup on every site, Plan/License cards removed, DeepSeek pacing. Built and unit-tested; needs a live check on Claude free, ClickUp free, ChatGPT free and DeepSeek, then the version move to 1.24.22 and a test build.
