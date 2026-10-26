@@ -132,7 +132,7 @@ jobs:
           git config user.email 'plazcode-release-bot@users.noreply.github.com'
           git add PlazCode-source-1.24.21.zip latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.24.21.txt release-validation-1.24.21
           git commit -m 'Release PlazCode 1.24.21: New Fix connection button'
-          git push origin HEAD:refs/heads/release-record-1.24.21
+          git push origin HEAD:refs/heads/release-record-1.24.21-final
       - name: Publish downloads and update feeds to the public repo (no source)
         env:
           PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
