@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-26. Branch: `claude/plazcode-dev`.
 
-**Latest change: full suite found two outdated test fixtures (the status fixture lacked the browser manifest API; the screenshot fixture still selected img). Updated the fixtures, retained the real-browser pixel checks, and added a real authenticated three-node creation-preview round trip to each native platform. Revalidation required.
+**Latest change: guarded browser manifest access when the API is unavailable; updated the older status fixture to include the new version state. Two further status regressions reproduced locally; rerun required.
+
+**Previous change: full suite found two outdated test fixtures (the status fixture lacked the browser manifest API; the screenshot fixture still selected img). Updated the fixtures, retained the real-browser pixel checks, and added a real authenticated three-node creation-preview round trip to each native platform. Revalidation required.
 
 **Previous change: removed the superseded .js screenshot fixture so native jobs use unit tests only; the browser job runs its .cjs replacement on both engines.
 

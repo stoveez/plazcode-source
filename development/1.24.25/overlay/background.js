@@ -963,7 +963,7 @@ function statusObj(mode = engine) {
     robloxProc, roblox_connected: robloxEditorConnected, studio_checking: studioChecking,
     local_connected: localReady, local_full: localFull,
     local_root: localRoot,
-    version_warning: extensionVersionWarning(desktopVersion, chrome.runtime.getManifest().version),
+    version_warning: extensionVersionWarning(desktopVersion, loadedExtensionVersion()),
     tools: mergeBlenderTools(mode === "local" ? localTools() : toolsCache).length,
     // Blender (and any other live add-on) is listed in AgentScript too, so the bar,
     // the popup, list_mcp_servers and the startup note all tell the AI it is connected.
@@ -986,6 +986,9 @@ async function creatorResponse(response) {
   return value;
 }
 let desktopVersion = "";
+function loadedExtensionVersion() {
+  try { return chrome.runtime.getManifest().version; } catch { return ""; }
+}
 function extensionVersionWarning(desktop, extension) {
   if (!/^\d+\.\d+\.\d+$/.test(desktop) || !/^\d+\.\d+\.\d+$/.test(extension) || desktop === extension) return "";
   return "Desktop " + desktop + ", browser extension " + extension + ". Updating only the app cannot update an extension loaded from another folder. Use Update now for the complete update. In your browser's Extensions page, check PlazCode's loaded folder; load PlazCode-Extension from the updated PlazCode folder, reload it, then refresh your AI tabs. In Firefox, load the updated Firefox add-on.";
