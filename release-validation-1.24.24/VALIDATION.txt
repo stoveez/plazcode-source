@@ -1,0 +1,12 @@
+PlazCode 1.24.24 — exact-source platform/browser gates and packaged macOS desktop lifetime checks passed before promotion.
+Validated source: ae33b255e92480dedd94520ea23cb0ee609f56d2
+Validation run: private build 40340881855
+Changes: input-limit and usage fix. PlazCode's own extras on a command result (changed vault summary, one-time task reference, notes) now fit the user's input limit (shortened or held for the next result) instead of raising the input-limit error; the short-startup command list includes every parameter so the AI calls commands without a lookup round trip; Ultra mode no longer attaches the 25,000-character pack to every request; template reference capped at 8,000 characters; the AI's own vault writes are not echoed back.
+All other features, safeguards and native launch/update behavior are retained. Final native executable and macOS app bytes are reused from validated development artifacts, not rebuilt during publication. Only release notices, checksums and package metadata change.
+Unit tests cover every check path; a browser fixture with the full production core and a mocked PlazCode app covers reconnect, closed app, dropped Studio connection, click-only chat connection and translation. Hosted browser fixtures use a mocked bridge.
+Windows binaries are unsigned. macOS uses ad-hoc signing and is not notarized.
+Microsoft Defender runner availability/result for the exact native artifact before release-notice assembly:
+Scan starting...
+Scan finished.
+Scanning D:\a\plazcode-source\plazcode-source\build-src-1.24.24\PlazCode/defender-scan found no threats.
+Checksums and platform evidence are recorded in release-validation-1.24.24.

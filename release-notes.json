@@ -1,5 +1,45 @@
 [
   {
+    "version": "1.24.24",
+    "title": "Fewer limit errors and lower usage",
+    "summary": "Fixes the \"message exceeds your input limit\" error that stopped Claude in the middle of normal work, and makes PlazCode use noticeably less of your AI plan.",
+    "added": [],
+    "improved": [
+      "PlazCode uses less of your AI plan: the AI no longer has to look up each command before using it, Ultra mode no longer re-sends its whole skill pack with every request, and the extra reference PlazCode adds to a request is smaller.",
+      "When the AI saves a note to your vault, PlazCode no longer sends the whole vault summary straight back to it."
+    ],
+    "fixed": [
+      "Claude (and other sites) stopped with \"This message exceeds your 12000 character input limit\" even after a normal prompt. The extra notes PlazCode adds now always fit your limit: they are shortened, or wait for the next message. Command results themselves are never cut."
+    ],
+    "notes": [
+      "Your Input characters setting still works the same for everything you type.",
+      "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+    ],
+    "github": {
+      "summary": "***Fewer limit errors, lower usage:*** fixes the input-limit error that stopped Claude mid-work, and PlazCode now uses less of your AI plan.",
+      "sections": [
+        {
+          "title": "🛠️ What's fixed",
+          "items": [
+            "Claude stopped with \"This message exceeds your 12000 character input limit\" even after a normal prompt. PlazCode's own extra notes now always fit your limit.",
+            "The AI no longer looks up each command before using it, which used extra messages.",
+            "Ultra mode no longer re-sends its whole skill pack with every request.",
+            "The extra reference added to each request is smaller, and vault saves are not echoed back to the AI."
+          ]
+        },
+        {
+          "title": "🧪 What was checked",
+          "items": [
+            "Full tests passed on Windows, Mac and Linux, including the Mac app.",
+            "The exact limit error from the report was recreated in a test and now fits the limit.",
+            "Command results are never cut; only PlazCode's own extra notes are shortened or wait.",
+            "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+          ]
+        }
+      ]
+    }
+  },
+  {
     "version": "1.24.20",
     "title": "ClickUp Ask Brain connects again",
     "summary": "Fixes Start Agent on ClickUp's Ask Brain, which used to stop right after the AI's first reply and never finish connecting. Nothing else changes.",

@@ -1,0 +1,20 @@
+✨ **PlazCode 1.24.24**
+***Fewer limit errors, lower usage:*** fixes the input-limit error that stopped Claude mid-work, and PlazCode now uses less of your AI plan.
+
+***🛠️ What's fixed***
+- Claude stopped with "This message exceeds your 12000 character input limit" even after a normal prompt. PlazCode's own extra notes now always fit your limit.
+- The AI no longer looks up each command before using it, which used extra messages.
+- Ultra mode no longer re-sends its whole skill pack with every request.
+- The extra reference added to each request is smaller, and vault saves are not echoed back to the AI.
+
+***🧪 What was checked***
+- Full tests passed on Windows, Mac and Linux, including the Mac app.
+- The exact limit error from the report was recreated in a test and now fits the limit.
+- Command results are never cut; only PlazCode's own extra notes are shortened or wait.
+- The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it.
+
+***📥 How to update***
+- Open PlazCode, or choose Updates → Update now.
+- Manual downloads: PlazCode-1.24.24.zip for Windows, PlazCode-macOS-1.24.24.zip for Mac, or PlazCode-Firefox-1.24.24.zip for Firefox.
+- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
+- Your settings, memory and connections are kept.
