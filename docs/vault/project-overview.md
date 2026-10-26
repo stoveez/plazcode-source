@@ -17,4 +17,4 @@ A closed-source browser extension plus a Rust desktop app. It turns an AI chat w
 - Vault memory: [vault-memory](vault-memory.md).
 
 ## Version
-1.24.23 = pinned official 1.24.20 source plus the overlay in `development/1.24.23/overlay` (carries 1.24.21 and 1.24.22). Latest published: 1.24.22 (2026-10-25). 1.24.23 (antivirus false-positive fix) is in progress.
+1.24.23 = pinned official 1.24.20 source plus the overlay in `development/1.24.23/overlay` (carries 1.24.21 and 1.24.22). Latest published: 1.24.23 (2026-10-26, antivirus false-positive fix). Next: 1.24.24.
