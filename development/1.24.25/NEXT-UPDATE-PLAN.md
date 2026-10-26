@@ -1,9 +1,13 @@
-# PlazCode 1.24.25
+# PlazCode 1.24.25 — reliability fixes
 
 Updated: 2026-10-26
 
-Reserved for a new issue the owner wants to address. Scope is pending the owner's description.
+Owner reports, with screenshots:
+- Screen capture sometimes displays a blank/grey image.
+- Approve all for this task still repeats the proposed-action popup (shown in Plan Mode).
+- App updates can leave a loaded extension on older files after reload.
+- creation_preview repeatedly fails parsing the desktop response as JSON, even for a small draft.
 
-All work previously scheduled here is deferred to 1.24.26, including accounts, code protection, Skill Workshop, Brickwire and remaining carried-over items. See [`../1.24.26/NEXT-UPDATE-PLAN.md`](../1.24.26/NEXT-UPDATE-PLAN.md).
+Investigate and fix each cause, add regression coverage and run appropriate checks. Real Studio, Windows/Mac and browser checks remain necessary before claiming live verification.
 
-Latest published: 1.24.24 (input-limit error and lower usage fix).
+Accounts, code protection, Skill Workshop, Brickwire and carried-over feature work remain deferred to 1.24.26.

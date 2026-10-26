@@ -1,7 +1,9 @@
 # NOW (live handoff, overwrite at the end of every session)
 Updated: 2026-10-26. Long-term knowledge: [vault/Home.md](vault/Home.md).
 
-**Latest change:** the owner reserved 1.24.25 for a new issue (scope pending). All work previously planned for 1.24.25 is moved to **1.24.26**: accounts, code protection, Skill Workshop, Brickwire and remaining carried-over items. Plans moved to `development/1.24.26/`; links and scheduling notes updated. Documentation only; no app or updater changes.
+**Latest change (WIP):** investigating the four owner-reported reliability bugs for 1.24.25 (screen capture display, repeated task approvals, stale loaded extension after update, creation_preview JSON errors). Development copy and workflows prepared; no fixes verified yet.
+
+**Previous change:** the owner reserved 1.24.25 for a new issue (scope pending). All work previously planned for 1.24.25 is moved to **1.24.26**: accounts, code protection, Skill Workshop, Brickwire and remaining carried-over items. Plans moved to `development/1.24.26/`; links and scheduling notes updated. Documentation only; no app or updater changes.
 
 **Latest published: 1.24.24**, 2026-10-26 (validation 40340881855 on ae33b25; publish 40344067698). Live feed and zip verified by the previous session. Fixes Claude input-limit errors and excess usage; extension reload is enough. Full platform tests passed; not live-tested on a real Claude account with a 12,000 limit.
 
@@ -15,4 +17,4 @@ Updated: 2026-10-26. Long-term knowledge: [vault/Home.md](vault/Home.md).
 
 **Still open:** [open-work](vault/open-work.md) contains site checks and queued work. Earlier Claude typing/card fixes were live-checked; other site behavior, Firefox appearance and desktop features still need real-user checks. Desktop feature guide and lean startup phases 2–3 remain unfinished.
 
-**Next step:** ask the owner what needs addressing in 1.24.25, then investigate it. Plan placeholder: `development/1.24.25/NEXT-UPDATE-PLAN.md`. Do not build the deferred 1.24.26 work as part of 1.24.25.
+**Next step:** fix and test the four reliability reports for 1.24.25. Plan placeholder: `development/1.24.25/NEXT-UPDATE-PLAN.md`. Do not build the deferred 1.24.26 work as part of 1.24.25.
