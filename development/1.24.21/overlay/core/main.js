@@ -451,7 +451,8 @@
     return Math.min(120, Math.round(n * 10) / 10);
   }
   async function waitCommandCooldown(userPrompt, stopped = () => false) {
-    const seconds = normalizeCooldown(typeof reliabilitySettings === "object" && reliabilitySettings ? reliabilitySettings.rsCommandCooldown : 0);
+    // A site can ask for a minimum pause (DeepSeek: 5 s, 1.24.22); the user's own setting wins when it is longer.
+    const seconds = Math.max(normalizeCooldown(typeof reliabilitySettings === "object" && reliabilitySettings ? reliabilitySettings.rsCommandCooldown : 0), normalizeCooldown(P.minSecondsBetweenSends));
     if (!userPrompt && seconds > 0 && _lastCommandSendAt) {
       let remaining = _lastCommandSendAt + seconds * 1000 - Date.now();
       if (remaining > 0) diag("send.cooldown", { ms: Math.round(remaining) });
@@ -5206,6 +5207,11 @@ return result`;
   //  SESSION BOOTSTRAP  ("Starting Up" animated chip, shown in the conversation)
   // ════════════════════════════════════════════════════════════════════════
   async function startSession(opts = {}) {
+    // A site's one-time notice (DeepSeek accounts, 1.24.22): shown the first time the agent starts there.
+    if (P.startNotice) {
+      const noticeKey = "rsNoticeSeen:" + P.id;
+      try { chrome.storage.local.get(noticeKey, (r) => { if (r && r[noticeKey]) return; try { ui.banner("warn", P.startNotice.title, P.startNotice.text); } catch {} try { chrome.storage.local.set({ [noticeKey]: true }); } catch {} }); } catch {}
+    }
     const isRestart = !!(opts && opts.restart);
     if (!isRestart && A.started && !P.chatIsEmpty()) {
       diag("start.alreadyReady", { path: P.conversationKey() });

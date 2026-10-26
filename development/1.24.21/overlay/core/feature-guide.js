@@ -1061,6 +1061,40 @@ const PlazCodeFeatureGuide = (() => {
   "index": true
  },
  {
+  "id": "full-start",
+  "title": "Full startup",
+  "group": "Menu",
+  "where": "PlazCode menu (gear button on the bar) > Automation > Full startup",
+  "does": "Off (recommended): Start Agent sends a short startup that fits free plans, and the AI looks up the rest only when it needs it. On: sends every instruction at once, which is much longer.",
+  "steps": [
+   "Open the PlazCode menu, then Automation.",
+   "Leave Full startup off unless the AI keeps missing PlazCode rules on a big paid model.",
+   "Start the agent again in a new chat for the change to apply."
+  ],
+  "tips": [
+   "On free plans keep it off: the full startup can use up the plan or be refused as too long."
+  ],
+  "related": [],
+  "keywords": [
+   "startup",
+   "start",
+   "short",
+   "full",
+   "free",
+   "plan",
+   "limit",
+   "tokens",
+   "long"
+  ],
+  "anchors": [
+   "ctl:rs-full-startup"
+  ],
+  "surfaces": [
+   "extension"
+  ],
+  "index": true
+ },
+ {
   "id": "visual-check",
   "title": "Automatic visual review",
   "group": "Menu",
