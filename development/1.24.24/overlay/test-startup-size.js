@@ -32,7 +32,9 @@ for (const mark of ['PLAN MODE', 'EXTRA THINKING', 'MULTI-AGENT', 'FORGE GUI', '
 assert(busy.length < 12000, 'with every mode on the startup is ' + busy.length);
 flags.all = false; flags.approach = false; flags.level = 'ultracode';
 const ultra = RS.buildSystemPrompt({ siteName: 'ChatGPT', engine: 'roblox', leanStartup: true });
-assert(ultra.includes('ULTRA MODE IS ON') && ultra.length < LIMIT, 'Ultra is a pointer, not the whole pack');
+// 1.24.24: Ultra's compact guide (about 2,200 characters) rides in the startup instead of a forced 25,000-character lookup.
+assert(ultra.includes('ULTRA MODE IS ON') && ultra.length < 8000, 'Ultra is the compact guide, not the whole pack: ' + ultra.length);
+assert(!/before your first task, call plazcode_help/.test(ultra), 'no forced Ultra lookup before the first task');
 flags.level = 'default';
 // Notion keeps its own short preferences.
 assert(!RS.buildSystemPrompt({ siteName: 'Notion', providerId: 'notion', engine: 'roblox', leanStartup: true }).includes('HELP ON DEMAND'));
@@ -53,8 +55,9 @@ const start = main.indexOf('const leanDigest = () => {'), end = main.indexOf('\n
 const scoped = Array.from({ length: 160 }, (_, i) => ({ name: 'studio_command_' + i, inputSchema: { properties: { path: {}, value: {} }, required: ['path'] } }));
 const leanDigest = vm.runInNewContext(main.slice(start, end).replace('const leanDigest = ', '(') + ')', { scoped });
 const digestText = leanDigest();
-assert(digestText.length < 6500, 'startup command list for 160 commands is ' + digestText.length + ' characters');
-assert(digestText.includes('studio_command_0{path}') && digestText.includes('list_commands {"command":"name"}'));
+assert(digestText.length < 8000, 'startup command list for 160 commands is ' + digestText.length + ' characters');
+// 1.24.24: every parameter is listed (? = optional) so the AI calls commands directly, without a lookup round trip each.
+assert(digestText.includes('studio_command_0{path,value?}') && /Call them directly/.test(digestText) && !/Before using a command for the first time/.test(digestText));
 // list_commands {command} returns one command's full parameters.
 assert(/const oneCommand=String\(\(args&&\(args\.command\|\|args\.name\|\|args\.tool\)\)/.test(main));
 // The manifest loads the module on every AI site.

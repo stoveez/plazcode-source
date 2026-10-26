@@ -252,7 +252,12 @@ ${opts.customPrompt ? 'My additional project preferences: '+opts.customPrompt : 
     const engine = opts.engine === "local" ? "local" : "roblox";
     const parts = [PlazCodeLeanStartup.buildLeanCore({ engine, siteName: opts.siteName, fullAccess: opts.fullAccess === true })];
     if (engine !== "local") { const modes = robloxModeExtra(true).trim(); if (modes) parts.push(modes); }
-    if (typeof window !== "undefined" && window.__rsThinkingLevel?.() === "ultracode") parts.push('ULTRA MODE IS ON: before your first task, call plazcode_help {"topic":"ultra"} and follow it.');
+    // 1.24.24: Ultra's own compact guide (about 2,200 characters, the version small-limit sites already use)
+    // instead of a forced 25,000-character plazcode_help lookup, which cost extra round trips and usage.
+    if (typeof window !== "undefined" && window.__rsThinkingLevel?.() === "ultracode") {
+      const compactUltra = typeof PlazCodeUltracode !== "undefined" ? PlazCodeUltracode.build(engine, opts.providerId, 4000) : "";
+      parts.push("ULTRA MODE IS ON." + (compactUltra ? "\n" + compactUltra.trim() : "") + '\nThe full Ultra pack is in plazcode_help {"topic":"ultra"} and ultralab_read; open them only when a task needs more than this.');
+    }
     if (typeof window !== "undefined" && window.__rsShowApproach?.() === true) parts.push(approachSummaryPolicy(true));
     if (typeof PlazCodeFeatureGuide !== "undefined") parts.push('FEATURE HELP: if I ask how to use PlazCode itself (where to click, a setting), call plazcode_features {"topic":"a few words"}, then answer in my language in a few short steps. Never guess PlazCode steps.');
     const notes = String(opts.providerNotes || "").trim();
