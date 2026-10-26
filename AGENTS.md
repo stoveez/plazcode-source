@@ -44,7 +44,7 @@ The owner does not want to forget this step of the public-then-private plan. Rem
 - When the version number changes (1.24.22, ...): `docs/vault/new-version-checklist.md` (every note naming 1.24.21 must be updated)
 - Build, tests, hash pins, CI, quick commands: `docs/vault/build-and-tests.md`
 - Test builds and the zips: `docs/vault/test-builds.md`
-- Publishing a real update, which repo and branch holds releases: `docs/vault/releasing.md` (then read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first real publish)
+- Publishing a real update, which repo and branch holds releases: `docs/vault/releasing.md` (then read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first real publish); release description wording and format: `docs/vault/release-format.md` (non-coder words, bold marks, under 2,000 characters)
 - Open bugs: `docs/vault/open-work.md`; what is in the latest test zips: `docs/HANDOFF.md`
 - Local Windows test-zip build with a CLI agent: `docs/HANDOFF.md`, "Option: build the test zip on the owner's own computer"
 - Next update (Brickwire items, login/license, Skill Workshop): `development/1.25.0/` (claim items on `docs/TASK-BOARD.md`)

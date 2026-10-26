@@ -15,6 +15,7 @@ This folder is the long-term memory for every AI that works on PlazCode (Claude,
 - Build and tests: [build-and-tests](build-and-tests.md)
 - Test builds for the owner: [test-builds](test-builds.md)
 - Publishing an update: [releasing](releasing.md)
+- Release description wording and format: [release-format](release-format.md)
 - Version number changes (1.24.22, ...): [new-version-checklist](new-version-checklist.md)
 - Desktop layout, guides, website: [app-and-guides](app-and-guides.md)
 - The app's own Memory feature, the "native vault": [vault-memory](vault-memory.md) and [native-vault-internals](native-vault-internals.md)

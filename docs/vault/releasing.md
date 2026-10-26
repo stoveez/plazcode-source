@@ -22,3 +22,4 @@ Read `publish-1.24.21.yml` and `development/1.24.21/promote.py` before the first
 - For a new version number, copy the 1.24.21 workflows and `development/1.24.21` to the new number and update the names inside. One release branch per version. Then update every note that names the version: [new-version-checklist](new-version-checklist.md).
 - Practice runs go to the throwaway repo `stoveez/plazcode-publish-test` first. Never push to the public repo by hand; only the publish workflow writes there.
 - The private repo's own `main` is the old line (about 105 commits behind `claude/plazcode-dev` on 2026-10-24). Do not use it for a release.
+- Release description wording and bold marks: always follow [release-format](release-format.md) (plain words, under 2,000 characters, no role mention).
