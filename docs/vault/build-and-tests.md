@@ -25,3 +25,4 @@ Cannot download GitHub artifacts, cannot install Firefox, no real Windows/Mac ap
 - Themed `.settingcard` has `backdrop-filter`, which traps open dropdown lists (fixed with a lift class in `core/effort-picker.js`).
 - `:has()` selectors are slow on big re-rendering pages; use a JS-set class.
 - Do not `pkill -f` patterns that can match your own shell.
+- Windows exe antivirus check (1.24.23): `python test-exe-av-signals.py PlazCode.exe` runs in the Windows CI job right after the release build; it fails if the exe contains -EncodedCommand, ExecutionPolicy Bypass or rundll32 url.dll,FileProtocolHandler, or lacks the manifest/company details. Windows-only Rust code cannot be compiled in the cloud session (the Windows std download is blocked), so CI is the first compile of it.

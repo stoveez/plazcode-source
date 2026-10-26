@@ -33,3 +33,4 @@ Release: see [releasing](releasing.md).
 - 1.24.23 (in progress): antivirus false positive (Chrome blocks the 1.24.22 zip as "Virus detected"; VirusTotal showed 2 of 69 on the 1.24.21 app). Earlier fix plan in `development/1.24.24/NEXT-UPDATE-PLAN.md` (no encoded PowerShell, app manifest, signing decision).
 - The live 1.24.21 release text needs the owner's version pasted in by hand (this session cannot edit GitHub releases).
 - 1.24.22 SHIPPED 2026-10-25. Still worth a live check on Claude free, ClickUp free, ChatGPT free and DeepSeek to confirm the startup fits each plan (only practice-page tested).
+- Antivirus: after 1.24.23 ships, the owner can report the new download as a false positive to Google (https://safebrowsing.google.com/safebrowsing/report_error/) and Microsoft (https://www.microsoft.com/wdsi/filesubmission). Code signing (Azure Artifact Signing) is the lasting fix: every new unsigned build starts with no reputation.
