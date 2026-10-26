@@ -72,7 +72,8 @@ def verify_overlay(source):
     for path in overlay.rglob('*'):
         if path.is_file():
             name='PlazCode/'+path.relative_to(overlay).as_posix()
-            assert source[name][0]==path.read_bytes().replace(b'\r\n',b'\n'), 'Source archive differs from validated overlay: '+name
+            raw=path.read_bytes()  # pictures and other binary files may contain CR LF bytes; compare them exactly, text files with line endings normalised
+            assert source[name][0] in (raw,raw.replace(b'\r\n',b'\n')), 'Source archive differs from validated overlay: '+name
 
 def verify_locales(files,prefix='PlazCode/core/'):
     names={name[len(prefix+'locales/'):-5] for name in files if name.startswith(prefix+'locales/') and name.endswith('.json')}
