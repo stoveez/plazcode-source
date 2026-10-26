@@ -1,3 +1,4 @@
+# Publish the exact validated 1.24.25 artifacts; no rebuild or quick-mode bypass.
 # Private build -> public downloads. Requires exact-source validation (and, unless
 # quick mode is on, the packaged macOS desktop lifetime test). Only the finished
 # downloads and update feeds go to the public repo; no source code is published.

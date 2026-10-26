@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-26. Branch: `claude/plazcode-dev`.
 
-**Latest change: 1.24.25 validation passed; publication configured.** Exact source `810676d`, validation run 40362663766; all browser and Windows/Mac/Linux jobs green. Publication still requires its packaged Mac desktop gate. Owner authorized release, with no separate test build.
+**Latest change: publication branch created, but GitHub did not register the new workflow on its first push. A publication-file follow-up push triggers the existing branch; validated source remains unchanged.
+
+**Previous change: 1.24.25 validation passed; publication configured.** Exact source `810676d`, validation run 40362663766; all browser and Windows/Mac/Linux jobs green. Publication still requires its packaged Mac desktop gate. Owner authorized release, with no separate test build.
 
 **Fixes:** canvas screenshot display avoids site image-URL blocks; unreadable data reports an error. Plan Mode respects per-command task approvals. Creator response handling explains missing endpoint, size limit and invalid responses. Real three-node preview HTTP save/read tested on each platform. Desktop shows recent browser extension versions and mismatches; known outdated versions stay red through failed/stale checks.
 
