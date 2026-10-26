@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-26. Branch: `claude/plazcode-dev`.
 
-**Latest change: screenshot browser fixtures run only in the browser job (Chromium and Firefox), not in native jobs without browser binaries.
+**Latest change: removed the superseded .js screenshot fixture so native jobs use unit tests only; the browser job runs its .cjs replacement on both engines.
+
+**Previous change: screenshot browser fixtures run only in the browser job (Chromium and Firefox), not in native jobs without browser binaries.
 
 **Previous change: validation workflow now runs on pushes to claude/plazcode-dev so new version workflows register without touching main.
 
