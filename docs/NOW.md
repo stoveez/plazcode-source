@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-26. Branch: `claude/plazcode-dev`.
 
-**Latest change: publication branch created, but GitHub did not register the new workflow on its first push. A publication-file follow-up push triggers the existing branch; validated source remains unchanged.
+**Latest change: packaged Mac desktop gate passed in publication run 40366849411. Assembly stopped before publication because its pin-format guard requires single quotes. Corrected pin formatting; app source and binaries are unchanged.
+
+**Previous change: publication branch created, but GitHub did not register the new workflow on its first push. A publication-file follow-up push triggers the existing branch; validated source remains unchanged.
 
 **Previous change: 1.24.25 validation passed; publication configured.** Exact source `810676d`, validation run 40362663766; all browser and Windows/Mac/Linux jobs green. Publication still requires its packaged Mac desktop gate. Owner authorized release, with no separate test build.
 
