@@ -37,7 +37,7 @@
       {
         "title": "🧪 What was checked",
         "items": [
-          "Automated approval, response and version checks; screenshot display tested with a strict browser image policy.",
+          "Full Windows, Mac and Linux tests, including the packaged Mac app; screenshot pixels checked in Chromium and Firefox. Small creation drafts checked through the real desktop endpoint.",
           "The affected computer and real Studio captures were not tested live. Updating only the EXE cannot update a separate extension folder.",
           "The Windows app is unsigned and the Mac app is not notarized, as before."
         ]

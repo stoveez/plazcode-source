@@ -1,26 +1,16 @@
 # NOW
 Updated: 2026-10-26. Branch: `claude/plazcode-dev`.
 
-**Latest change: guarded browser manifest access when the API is unavailable; updated the older status fixture to include the new version state. Two further status regressions reproduced locally; rerun required.
+**Latest change: 1.24.25 validation passed; publication configured.** Exact source `810676d`, validation run 40362663766; all browser and Windows/Mac/Linux jobs green. Publication still requires its packaged Mac desktop gate. Owner authorized release, with no separate test build.
 
-**Previous change: full suite found two outdated test fixtures (the status fixture lacked the browser manifest API; the screenshot fixture still selected img). Updated the fixtures, retained the real-browser pixel checks, and added a real authenticated three-node creation-preview round trip to each native platform. Revalidation required.
+**Fixes:** canvas screenshot display avoids site image-URL blocks; unreadable data reports an error. Plan Mode respects per-command task approvals. Creator response handling explains missing endpoint, size limit and invalid responses. Real three-node preview HTTP save/read tested on each platform. Desktop shows recent browser extension versions and mismatches; known outdated versions stay red through failed/stale checks.
 
-**Previous change: removed the superseded .js screenshot fixture so native jobs use unit tests only; the browser job runs its .cjs replacement on both engines.
+**Latest published remains 1.24.24.** 1.24.25 is pending publish-1.24.25.yml on the publication branch. Windows/Mac binaries are reused from validation, never rebuilt during promotion.
 
-**Previous change: screenshot browser fixtures run only in the browser job (Chromium and Firefox), not in native jobs without browser binaries.
+**Limits:** actual affected Studio captures/accounts not tested live. Replacing only an EXE cannot replace an extension loaded from a separate folder; the warning explains loading the updated folder. PC vault sync unavailable (no PC connection).
 
-**Previous change: validation workflow now runs on pushes to claude/plazcode-dev so new version workflows register without touching main.
+**Next:** monitor publication and Mac desktop gate, verify live release/feed checksums, remind owner to restore Private. Source repo is currently public.
 
-**Previous change: 1.24.25 reliability fixes implemented; validation pending.** Canvas screenshot display avoids site image-URL blocks; corrupt captures report an error. Plan Mode honors per-command task approvals. Creator response handling distinguishes missing endpoint, size limits and invalid replies. Desktop reports active browser extension versions and EXE-only/old-folder mismatches; known outdated versions stay red after failed/stale checks.
+**Deferred:** accounts, code protection, Skill Workshop, Brickwire and carried-over features stay in 1.24.26.
 
-**Checks:** approval, creator response and version unit tests pass; actual Chromium screenshot pixels passed with img-src none, including corrupt-image error and cleanup. Rust is unavailable locally; required platform/browser checks run in CI. Full regression run is next. No affected user account or real Studio capture tested.
-
-**Publishing authorized by owner:** source repo is public; publish 1.24.25 after required checks pass, with release notes in the owner's format. Do not change visibility. Remind the owner to restore Private after publication.
-
-**Latest published remains 1.24.24** (validation 40340881855; publish 40344067698). 1.24.25 is not published yet.
-
-**Deferred work:** all prior feature plans remain in 1.24.26 (accounts, code protection, Skill Workshop, Brickwire and carried-over work).
-
-**Next:** finish local regressions, run validate-1.24.25.yml on the exact final commit; publish through publish-1.24.25.yml only after full validation and Mac desktop check.
-
-**Rules:** no task branches or helpers; update NOW/open-work/vault with each push. PC vault sync unavailable (no PC connection). More: [Home](vault/Home.md), [open work](vault/open-work.md).
+**Rules:** work directly on claude/plazcode-dev; no helper agents; rewrite NOW with every push; update open-work and vault. See [Home](vault/Home.md).
