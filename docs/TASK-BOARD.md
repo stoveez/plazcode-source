@@ -12,8 +12,8 @@ Format:
 - AgentScript Full access: commands in cmd/PowerShell and opening files/programs do not work on Windows | AI: claude | branch: claude/agentscript-full-access | files: agent/src/workspace.rs, agent/src/safety.rs, agent/src/main.rs (permission handlers only), core/safety.js, core/tool-guard.js (only if needed), core/main.js (tiny comments-marked edits), background.js (Full access sync) | started: 2026-10-23 | CI run: none yet
 
 ## Ready to start
-The full detailed spec of every Brickwire item (goal, what Brickwire did, what to build, how to improve it, files, tests, what cannot be tested offline) is `development/1.24.23/BRICKWIRE-ITEMS-SPEC.md`. Read it before claiming one.
-Full details for every item are in `development/1.24.23/NEXT-UPDATE-PLAN.md` (section C = the owner's final Brickwire list, A = license/login, B = Skill Workshop). Read the item there before claiming it. The owner wants each item ADDED and IMPROVED, not copied. Brickwire is MIT: write our own versions, keep the licence text and credit "Brickwire contributors" in `THIRD-PARTY-NOTICES.txt` for anything derived. All of this is for the NEXT update, not 1.24.21. Suggested order: 9 and 10, then 1+2+3, then 7, 12, 14, then 11 and 13; 17 and the Workshop in parallel on the server track.
+The full detailed spec of every Brickwire item (goal, what Brickwire did, what to build, how to improve it, files, tests, what cannot be tested offline) is `development/1.24.24/BRICKWIRE-ITEMS-SPEC.md`. Read it before claiming one.
+Full details for every item are in `development/1.24.24/NEXT-UPDATE-PLAN.md` (section C = the owner's final Brickwire list, A = license/login, B = Skill Workshop). Read the item there before claiming it. The owner wants each item ADDED and IMPROVED, not copied. Brickwire is MIT: write our own versions, keep the licence text and credit "Brickwire contributors" in `THIRD-PARTY-NOTICES.txt` for anything derived. All of this is for the NEXT update, not 1.24.21. Suggested order: 9 and 10, then 1+2+3, then 7, 12, 14, then 11 and 13; 17 and the Workshop in parallel on the server track.
 
 | # | Task | Main files | Effort |
 |---|---|---|---|

@@ -1,0 +1,4072 @@
+[
+ {
+  "path": "CHANGES.md",
+  "bytes": 4085,
+  "kind": "text"
+ },
+ {
+  "path": "GUIDE.md",
+  "bytes": 3003,
+  "kind": "text"
+ },
+ {
+  "path": "LICENSE-SyphoDev.txt",
+  "bytes": 728,
+  "kind": "text"
+ },
+ {
+  "path": "ONLINE-SOURCES.md",
+  "bytes": 4298,
+  "kind": "text"
+ },
+ {
+  "path": "PLAZCODE-NOTES.md",
+  "bytes": 1029,
+  "kind": "text"
+ },
+ {
+  "path": "README.md",
+  "bytes": 3852,
+  "kind": "text"
+ },
+ {
+  "path": "agents/ul-agent-animation.md",
+  "bytes": 1661,
+  "kind": "text"
+ },
+ {
+  "path": "agents/ul-agent-map.md",
+  "bytes": 2456,
+  "kind": "text"
+ },
+ {
+  "path": "agents/ul-agent-market-scout.md",
+  "bytes": 1816,
+  "kind": "text"
+ },
+ {
+  "path": "agents/ul-agent-mesh.md",
+  "bytes": 3855,
+  "kind": "text"
+ },
+ {
+  "path": "agents/ul-agent-sfx.md",
+  "bytes": 1771,
+  "kind": "text"
+ },
+ {
+  "path": "agents/ul-agent-ui.md",
+  "bytes": 1564,
+  "kind": "text"
+ },
+ {
+  "path": "agents/ul-agent-vfx.md",
+  "bytes": 2347,
+  "kind": "text"
+ },
+ {
+  "path": "references/button-art/buttons-1-shop-codes-daily.jpg",
+  "bytes": 114402,
+  "kind": "binary"
+ },
+ {
+  "path": "references/button-art/buttons-2-leaderboard-rebirth-daily.jpg",
+  "bytes": 89036,
+  "kind": "binary"
+ },
+ {
+  "path": "references/check-ui/Copy_And_Paste_Skill.txt",
+  "bytes": 3443,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui/Copy_And_Paste_Skill_full_rules.txt",
+  "bytes": 3443,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui/SKILL.md",
+  "bytes": 28056,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui-repo/DESIGN_SYSTEM.md",
+  "bytes": 20149,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui-repo/README.md",
+  "bytes": 10739,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui-repo/SKILL.md",
+  "bytes": 27597,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui-repo/assets/all_menus_harmonized.png",
+  "bytes": 796993,
+  "kind": "binary"
+ },
+ {
+  "path": "references/check-ui-repo/assets/shop_compact_comparison.png",
+  "bytes": 949343,
+  "kind": "binary"
+ },
+ {
+  "path": "references/check-ui-repo/assets/standard_button_studio.png",
+  "bytes": 245793,
+  "kind": "binary"
+ },
+ {
+  "path": "references/check-ui-repo/examples/DailyRewardsMenuExample.luau",
+  "bytes": 4061,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui-repo/examples/HarmonizedMenusExample.luau",
+  "bytes": 37835,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui-repo/examples/RebirthMenuExample.luau",
+  "bytes": 5160,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui-repo/examples/ShopMenuExample.luau",
+  "bytes": 25482,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui-repo/examples/StandardButtonExample.luau",
+  "bytes": 3429,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui-repo/release_notes.md",
+  "bytes": 2365,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui-repo/src/CheckUIComponents.luau",
+  "bytes": 40847,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui-repo/src/CheckUIController.luau",
+  "bytes": 8879,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui-repo/src/CheckUIIcons.luau",
+  "bytes": 128454,
+  "kind": "text"
+ },
+ {
+  "path": "references/check-ui-repo/src/CheckUITheme.luau",
+  "bytes": 10925,
+  "kind": "text"
+ },
+ {
+  "path": "references/check_gui_syntax.py",
+  "bytes": 7705,
+  "kind": "text"
+ },
+ {
+  "path": "references/gui-syntax/example.lua",
+  "bytes": 1834,
+  "kind": "text"
+ },
+ {
+  "path": "references/gui-syntax/test-bad.lua",
+  "bytes": 343,
+  "kind": "text"
+ },
+ {
+  "path": "references/gui-syntax/test-good.lua",
+  "bytes": 484,
+  "kind": "text"
+ },
+ {
+  "path": "references/gui-verify/gui_rules.lua",
+  "bytes": 2405,
+  "kind": "text"
+ },
+ {
+  "path": "references/gui-verify/test_gui_rules.lua",
+  "bytes": 1901,
+  "kind": "text"
+ },
+ {
+  "path": "references/gui-verify/verify_gui.client.lua",
+  "bytes": 3822,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-blue-256.png",
+  "bytes": 2376,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-blue-64.png",
+  "bytes": 791,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-blue-outline-256.png",
+  "bytes": 3559,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-blue-outline-64.png",
+  "bytes": 1076,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-blue-outline.svg",
+  "bytes": 2078,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-blue.svg",
+  "bytes": 1407,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-green-256.png",
+  "bytes": 2376,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-green-64.png",
+  "bytes": 791,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-green-outline-256.png",
+  "bytes": 3559,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-green-outline-64.png",
+  "bytes": 1076,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-green-outline.svg",
+  "bytes": 2079,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-green.svg",
+  "bytes": 1408,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-red-256.png",
+  "bytes": 2354,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-red-64.png",
+  "bytes": 797,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-red-outline-256.png",
+  "bytes": 3563,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-red-outline-64.png",
+  "bytes": 1083,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-red-outline.svg",
+  "bytes": 2067,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-red.svg",
+  "bytes": 1396,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-yellow-256.png",
+  "bytes": 2376,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-yellow-64.png",
+  "bytes": 791,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-yellow-outline-256.png",
+  "bytes": 3560,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-yellow-outline-64.png",
+  "bytes": 1076,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-yellow-outline.svg",
+  "bytes": 2070,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Baseball Cap/baseball-cap-yellow.svg",
+  "bytes": 1399,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-black-256.png",
+  "bytes": 1898,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-black-64.png",
+  "bytes": 624,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-black-outline-256.png",
+  "bytes": 3082,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-black-outline-64.png",
+  "bytes": 889,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-black-outline.svg",
+  "bytes": 1414,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-black.svg",
+  "bytes": 1004,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-blue-256.png",
+  "bytes": 1897,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-blue-64.png",
+  "bytes": 624,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-blue-outline-256.png",
+  "bytes": 3090,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-blue-outline-64.png",
+  "bytes": 897,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-blue-outline.svg",
+  "bytes": 1413,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-blue.svg",
+  "bytes": 1003,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-brown-256.png",
+  "bytes": 1897,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-brown-64.png",
+  "bytes": 624,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-brown-outline-256.png",
+  "bytes": 3086,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-brown-outline-64.png",
+  "bytes": 891,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-brown-outline.svg",
+  "bytes": 1414,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-brown.svg",
+  "bytes": 1004,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-green-256.png",
+  "bytes": 1897,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-green-64.png",
+  "bytes": 624,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-green-outline-256.png",
+  "bytes": 3086,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-green-outline-64.png",
+  "bytes": 891,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-green-outline.svg",
+  "bytes": 1414,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-green.svg",
+  "bytes": 1004,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-grey-256.png",
+  "bytes": 1898,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-grey-64.png",
+  "bytes": 624,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-grey-outline-256.png",
+  "bytes": 3089,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-grey-outline-64.png",
+  "bytes": 896,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-grey-outline.svg",
+  "bytes": 1413,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-grey.svg",
+  "bytes": 1003,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-purple-256.png",
+  "bytes": 1897,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-purple-64.png",
+  "bytes": 624,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-purple-outline-256.png",
+  "bytes": 3086,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-purple-outline-64.png",
+  "bytes": 892,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-purple-outline.svg",
+  "bytes": 1412,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-purple.svg",
+  "bytes": 1002,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-red-256.png",
+  "bytes": 1898,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-red-64.png",
+  "bytes": 624,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-red-outline-256.png",
+  "bytes": 3084,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-red-outline-64.png",
+  "bytes": 897,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-red-outline.svg",
+  "bytes": 1412,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-red.svg",
+  "bytes": 1002,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-yellow-256.png",
+  "bytes": 1898,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-yellow-64.png",
+  "bytes": 624,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-yellow-outline-256.png",
+  "bytes": 3089,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-yellow-outline-64.png",
+  "bytes": 897,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-yellow-outline.svg",
+  "bytes": 1415,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beanie/beanie-yellow.svg",
+  "bytes": 1005,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-black-256.png",
+  "bytes": 1940,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-black-64.png",
+  "bytes": 676,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-black-outline-256.png",
+  "bytes": 3035,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-black-outline-64.png",
+  "bytes": 928,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-black-outline.svg",
+  "bytes": 1930,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-black.svg",
+  "bytes": 1267,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-green-256.png",
+  "bytes": 1958,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-green-64.png",
+  "bytes": 681,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-green-outline-256.png",
+  "bytes": 3061,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-green-outline-64.png",
+  "bytes": 934,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-green-outline.svg",
+  "bytes": 1930,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-green.svg",
+  "bytes": 1267,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-red-256.png",
+  "bytes": 1939,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-red-64.png",
+  "bytes": 670,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-red-outline-256.png",
+  "bytes": 3044,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-red-outline-64.png",
+  "bytes": 925,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-red-outline.svg",
+  "bytes": 1928,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Beret/beret-red.svg",
+  "bytes": 1265,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-black-256.png",
+  "bytes": 2648,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-black-64.png",
+  "bytes": 872,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-black-outline-256.png",
+  "bytes": 3648,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-black-outline-64.png",
+  "bytes": 1115,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-black-outline.svg",
+  "bytes": 2138,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-black.svg",
+  "bytes": 1629,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-blue-256.png",
+  "bytes": 2722,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-blue-64.png",
+  "bytes": 907,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-blue-outline-256.png",
+  "bytes": 3743,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-blue-outline-64.png",
+  "bytes": 1157,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-blue-outline.svg",
+  "bytes": 2137,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-blue.svg",
+  "bytes": 1628,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-brown-256.png",
+  "bytes": 2718,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-brown-64.png",
+  "bytes": 901,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-brown-outline-256.png",
+  "bytes": 3742,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-brown-outline-64.png",
+  "bytes": 1152,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-brown-outline.svg",
+  "bytes": 2138,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-brown.svg",
+  "bytes": 1629,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-lightBrown-256.png",
+  "bytes": 2721,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-lightBrown-64.png",
+  "bytes": 901,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-lightBrown-outline-256.png",
+  "bytes": 3743,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-lightBrown-outline-64.png",
+  "bytes": 1152,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-lightBrown-outline.svg",
+  "bytes": 2143,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-lightBrown.svg",
+  "bytes": 1634,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-red-256.png",
+  "bytes": 2710,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-red-64.png",
+  "bytes": 899,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-red-outline-256.png",
+  "bytes": 3728,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-red-outline-64.png",
+  "bytes": 1151,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-red-outline.svg",
+  "bytes": 2136,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Boater/boater-red.svg",
+  "bytes": 1627,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-blue-256.png",
+  "bytes": 2943,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-blue-64.png",
+  "bytes": 927,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-blue-outline-256.png",
+  "bytes": 4382,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-blue-outline-64.png",
+  "bytes": 1216,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-blue-outline.svg",
+  "bytes": 2415,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-blue.svg",
+  "bytes": 1764,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-christmas-256.png",
+  "bytes": 2869,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-christmas-64.png",
+  "bytes": 880,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-christmas-outline-256.png",
+  "bytes": 4306,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-christmas-outline-64.png",
+  "bytes": 1166,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-christmas-outline.svg",
+  "bytes": 2373,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-christmas.svg",
+  "bytes": 1722,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-green-256.png",
+  "bytes": 2943,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-green-64.png",
+  "bytes": 927,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-green-outline-256.png",
+  "bytes": 4381,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-green-outline-64.png",
+  "bytes": 1217,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-green-outline.svg",
+  "bytes": 2416,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-green.svg",
+  "bytes": 1765,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-orange-black-256.png",
+  "bytes": 2869,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-orange-black-64.png",
+  "bytes": 880,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-orange-black-outline-256.png",
+  "bytes": 4306,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-orange-black-outline-64.png",
+  "bytes": 1166,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-orange-black-outline.svg",
+  "bytes": 2379,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-orange-black.svg",
+  "bytes": 1740,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-pink-256.png",
+  "bytes": 2944,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-pink-64.png",
+  "bytes": 927,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-pink-outline-256.png",
+  "bytes": 4382,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-pink-outline-64.png",
+  "bytes": 1216,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-pink-outline.svg",
+  "bytes": 2415,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-pink.svg",
+  "bytes": 1764,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-red-blue-256.png",
+  "bytes": 2869,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-red-blue-64.png",
+  "bytes": 880,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-red-blue-outline-256.png",
+  "bytes": 4305,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-red-blue-outline-64.png",
+  "bytes": 1166,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-red-blue-outline.svg",
+  "bytes": 2375,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-red-blue.svg",
+  "bytes": 1736,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-yellow-blue-256.png",
+  "bytes": 2868,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-yellow-blue-64.png",
+  "bytes": 880,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-yellow-blue-outline-256.png",
+  "bytes": 4306,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-yellow-blue-outline-64.png",
+  "bytes": 1166,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-yellow-blue-outline.svg",
+  "bytes": 2378,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-yellow-blue.svg",
+  "bytes": 1739,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-yellow-red-256.png",
+  "bytes": 2944,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-yellow-red-64.png",
+  "bytes": 926,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-yellow-red-outline-256.png",
+  "bytes": 4382,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-yellow-red-outline-64.png",
+  "bytes": 1216,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-yellow-red-outline.svg",
+  "bytes": 2421,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bobble Hat/bobble-hat-yellow-red.svg",
+  "bytes": 1770,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bowler Hat/bowler-hat-256.png",
+  "bytes": 3001,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bowler Hat/bowler-hat-64.png",
+  "bytes": 946,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bowler Hat/bowler-hat-outline-256.png",
+  "bytes": 4228,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bowler Hat/bowler-hat-outline-64.png",
+  "bytes": 1211,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Bowler Hat/bowler-hat-outline.svg",
+  "bytes": 2658,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Bowler Hat/bowler-hat.svg",
+  "bytes": 2239,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-black-256.png",
+  "bytes": 2440,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-black-64.png",
+  "bytes": 819,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-black-outline-256.png",
+  "bytes": 3655,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-black-outline-64.png",
+  "bytes": 1079,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-black-outline.svg",
+  "bytes": 2747,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-black.svg",
+  "bytes": 1890,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-purple-256.png",
+  "bytes": 2577,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-purple-64.png",
+  "bytes": 858,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-purple-outline-256.png",
+  "bytes": 3801,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-purple-outline-64.png",
+  "bytes": 1129,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-purple-outline.svg",
+  "bytes": 2788,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-purple.svg",
+  "bytes": 1943,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-red-256.png",
+  "bytes": 2575,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-red-64.png",
+  "bytes": 858,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-red-outline-256.png",
+  "bytes": 3799,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-red-outline-64.png",
+  "bytes": 1124,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-red-outline.svg",
+  "bytes": 2782,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-red.svg",
+  "bytes": 1925,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-yellow-256.png",
+  "bytes": 2576,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-yellow-64.png",
+  "bytes": 857,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-yellow-outline-256.png",
+  "bytes": 3800,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-yellow-outline-64.png",
+  "bytes": 1128,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-yellow-outline.svg",
+  "bytes": 2788,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Cavalier Hat/cavalier-hat-yellow.svg",
+  "bytes": 1943,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Chef Hat/chef-hat-256.png",
+  "bytes": 2616,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Chef Hat/chef-hat-64.png",
+  "bytes": 781,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Chef Hat/chef-hat-outline-256.png",
+  "bytes": 3896,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Chef Hat/chef-hat-outline-64.png",
+  "bytes": 1063,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Chef Hat/chef-hat-outline.svg",
+  "bytes": 1690,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Chef Hat/chef-hat.svg",
+  "bytes": 1165,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-black-256.png",
+  "bytes": 3068,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-black-64.png",
+  "bytes": 910,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-black-outline-256.png",
+  "bytes": 4166,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-black-outline-64.png",
+  "bytes": 1148,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-black-outline.svg",
+  "bytes": 2325,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-black.svg",
+  "bytes": 1768,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-brown-256.png",
+  "bytes": 3210,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-brown-64.png",
+  "bytes": 980,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-brown-outline-256.png",
+  "bytes": 4377,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-brown-outline-64.png",
+  "bytes": 1244,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-brown-outline.svg",
+  "bytes": 2372,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-brown.svg",
+  "bytes": 1815,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-lightBrown-256.png",
+  "bytes": 3211,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-lightBrown-64.png",
+  "bytes": 979,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-lightBrown-outline-256.png",
+  "bytes": 4384,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-lightBrown-outline-64.png",
+  "bytes": 1246,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-lightBrown-outline.svg",
+  "bytes": 2377,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Detective Hat/detective-hat-lightBrown.svg",
+  "bytes": 1820,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Fez/fez-256.png",
+  "bytes": 2403,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Fez/fez-64.png",
+  "bytes": 786,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Fez/fez-outline-256.png",
+  "bytes": 3393,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Fez/fez-outline-64.png",
+  "bytes": 1042,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Fez/fez-outline.svg",
+  "bytes": 1757,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Fez/fez.svg",
+  "bytes": 1432,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Graduation Cap/graduation-cap-256.png",
+  "bytes": 2246,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Graduation Cap/graduation-cap-64.png",
+  "bytes": 820,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Graduation Cap/graduation-cap-outline-256.png",
+  "bytes": 3289,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Graduation Cap/graduation-cap-outline-64.png",
+  "bytes": 1081,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Graduation Cap/graduation-cap-outline.svg",
+  "bytes": 1918,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Graduation Cap/graduation-cap.svg",
+  "bytes": 1337,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Hard Hat/hard-hat-256.png",
+  "bytes": 1590,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Hard Hat/hard-hat-64.png",
+  "bytes": 537,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Hard Hat/hard-hat-outline-256.png",
+  "bytes": 2605,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Hard Hat/hard-hat-outline-64.png",
+  "bytes": 766,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Hard Hat/hard-hat-outline.svg",
+  "bytes": 1242,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Hard Hat/hard-hat.svg",
+  "bytes": 893,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/License.url",
+  "bytes": 112,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Miner Hat/miner-hat-256.png",
+  "bytes": 2394,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Miner Hat/miner-hat-64.png",
+  "bytes": 788,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Miner Hat/miner-hat-outline-256.png",
+  "bytes": 3386,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Miner Hat/miner-hat-outline-64.png",
+  "bytes": 1023,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Miner Hat/miner-hat-outline.svg",
+  "bytes": 1624,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Miner Hat/miner-hat.svg",
+  "bytes": 1253,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/More icons.url",
+  "bytes": 129,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Nurse Hat/nurse-hat-256.png",
+  "bytes": 2108,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Nurse Hat/nurse-hat-64.png",
+  "bytes": 666,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Nurse Hat/nurse-hat-outline-256.png",
+  "bytes": 3083,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Nurse Hat/nurse-hat-outline-64.png",
+  "bytes": 914,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Nurse Hat/nurse-hat-outline.svg",
+  "bytes": 1649,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Nurse Hat/nurse-hat.svg",
+  "bytes": 1282,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-black-256.png",
+  "bytes": 3303,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-black-64.png",
+  "bytes": 976,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-black-outline-256.png",
+  "bytes": 4509,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-black-outline-64.png",
+  "bytes": 1271,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-black-outline.svg",
+  "bytes": 1868,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-black.svg",
+  "bytes": 1148,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-blue-256.png",
+  "bytes": 3293,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-blue-64.png",
+  "bytes": 970,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-blue-outline-256.png",
+  "bytes": 4511,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-blue-outline-64.png",
+  "bytes": 1265,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-blue-outline.svg",
+  "bytes": 1867,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-blue.svg",
+  "bytes": 1147,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-green-256.png",
+  "bytes": 3303,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-green-64.png",
+  "bytes": 978,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-green-outline-256.png",
+  "bytes": 4516,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-green-outline-64.png",
+  "bytes": 1273,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-green-outline.svg",
+  "bytes": 1868,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-green.svg",
+  "bytes": 1148,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-pink-256.png",
+  "bytes": 3312,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-pink-64.png",
+  "bytes": 979,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-pink-outline-256.png",
+  "bytes": 4516,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-pink-outline-64.png",
+  "bytes": 1274,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-pink-outline.svg",
+  "bytes": 1867,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-pink.svg",
+  "bytes": 1147,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-purple-256.png",
+  "bytes": 3311,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-purple-64.png",
+  "bytes": 979,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-purple-outline-256.png",
+  "bytes": 4516,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-purple-outline-64.png",
+  "bytes": 1274,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-purple-outline.svg",
+  "bytes": 1869,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-purple.svg",
+  "bytes": 1149,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-red-256.png",
+  "bytes": 3312,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-red-64.png",
+  "bytes": 979,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-red-outline-256.png",
+  "bytes": 4516,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-red-outline-64.png",
+  "bytes": 1274,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-red-outline.svg",
+  "bytes": 1866,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-red.svg",
+  "bytes": 1146,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-white-256.png",
+  "bytes": 3259,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-white-64.png",
+  "bytes": 958,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-white-outline-256.png",
+  "bytes": 4474,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-white-outline-64.png",
+  "bytes": 1253,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-white-outline.svg",
+  "bytes": 1865,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-white.svg",
+  "bytes": 1145,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-yellow-256.png",
+  "bytes": 3312,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-yellow-64.png",
+  "bytes": 979,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-yellow-outline-256.png",
+  "bytes": 4517,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-yellow-outline-64.png",
+  "bytes": 1274,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-yellow-outline.svg",
+  "bytes": 1869,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat/party-hat-yellow.svg",
+  "bytes": 1149,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-blue-256.png",
+  "bytes": 3263,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-blue-64.png",
+  "bytes": 1075,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-blue-outline-256.png",
+  "bytes": 4209,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-blue-outline-64.png",
+  "bytes": 1284,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-blue-outline.svg",
+  "bytes": 2336,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-blue-yellow-256.png",
+  "bytes": 3325,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-blue-yellow-64.png",
+  "bytes": 1114,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-blue-yellow-outline-256.png",
+  "bytes": 4276,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-blue-yellow-outline-64.png",
+  "bytes": 1324,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-blue-yellow-outline.svg",
+  "bytes": 2393,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-blue-yellow.svg",
+  "bytes": 2007,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-blue.svg",
+  "bytes": 1950,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-green-256.png",
+  "bytes": 3318,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-green-64.png",
+  "bytes": 1114,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-green-blue-256.png",
+  "bytes": 3324,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-green-blue-64.png",
+  "bytes": 1113,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-green-blue-outline-256.png",
+  "bytes": 4276,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-green-blue-outline-64.png",
+  "bytes": 1319,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-green-blue-outline.svg",
+  "bytes": 2392,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-green-blue.svg",
+  "bytes": 2006,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-green-outline-256.png",
+  "bytes": 4255,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-green-outline-64.png",
+  "bytes": 1320,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-green-outline.svg",
+  "bytes": 2387,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-green.svg",
+  "bytes": 2001,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-pink-yellow-256.png",
+  "bytes": 3318,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-pink-yellow-64.png",
+  "bytes": 1114,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-pink-yellow-outline-256.png",
+  "bytes": 4257,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-pink-yellow-outline-64.png",
+  "bytes": 1324,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-pink-yellow-outline.svg",
+  "bytes": 2393,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-pink-yellow.svg",
+  "bytes": 2007,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-rainbow-256.png",
+  "bytes": 3656,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-rainbow-64.png",
+  "bytes": 1354,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-rainbow-outline-256.png",
+  "bytes": 4565,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-rainbow-outline-64.png",
+  "bytes": 1537,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-rainbow-outline.svg",
+  "bytes": 2579,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-rainbow.svg",
+  "bytes": 2191,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-red-256.png",
+  "bytes": 3268,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-red-64.png",
+  "bytes": 1081,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-red-outline-256.png",
+  "bytes": 4215,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-red-outline-64.png",
+  "bytes": 1286,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-red-outline.svg",
+  "bytes": 2338,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-red.svg",
+  "bytes": 1952,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-yellow-256.png",
+  "bytes": 3260,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-yellow-64.png",
+  "bytes": 1078,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-yellow-outline-256.png",
+  "bytes": 4205,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-yellow-outline-64.png",
+  "bytes": 1286,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-yellow-outline.svg",
+  "bytes": 2341,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Party Hat 2/party-hat-2-yellow.svg",
+  "bytes": 1955,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-blue-256.png",
+  "bytes": 3328,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-blue-64.png",
+  "bytes": 975,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-blue-outline-256.png",
+  "bytes": 4533,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-blue-outline-64.png",
+  "bytes": 1260,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-blue-outline.svg",
+  "bytes": 2272,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-blue.svg",
+  "bytes": 1782,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-green-256.png",
+  "bytes": 3328,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-green-64.png",
+  "bytes": 975,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-green-outline-256.png",
+  "bytes": 4532,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-green-outline-64.png",
+  "bytes": 1260,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-green-outline.svg",
+  "bytes": 2273,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-green.svg",
+  "bytes": 1783,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-red-256.png",
+  "bytes": 3329,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-red-64.png",
+  "bytes": 974,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-red-outline-256.png",
+  "bytes": 4532,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-red-outline-64.png",
+  "bytes": 1260,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-red-outline.svg",
+  "bytes": 2271,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-red.svg",
+  "bytes": 1781,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-yellow-256.png",
+  "bytes": 3328,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-yellow-64.png",
+  "bytes": 975,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-yellow-outline-256.png",
+  "bytes": 4532,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-yellow-outline-64.png",
+  "bytes": 1260,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-yellow-outline.svg",
+  "bytes": 2274,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Propellor Cap/propellor-cap-yellow.svg",
+  "bytes": 1784,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-blue-256.png",
+  "bytes": 2936,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-blue-64.png",
+  "bytes": 1001,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-blue-outline-256.png",
+  "bytes": 4252,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-blue-outline-64.png",
+  "bytes": 1285,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-blue-outline.svg",
+  "bytes": 2460,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-blue.svg",
+  "bytes": 1667,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-green-256.png",
+  "bytes": 2924,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-green-64.png",
+  "bytes": 1001,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-green-outline-256.png",
+  "bytes": 4237,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-green-outline-64.png",
+  "bytes": 1285,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-green-outline.svg",
+  "bytes": 2469,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-green.svg",
+  "bytes": 1676,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-red-256.png",
+  "bytes": 2920,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-red-64.png",
+  "bytes": 994,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-red-outline-256.png",
+  "bytes": 4229,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-red-outline-64.png",
+  "bytes": 1271,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-red-outline.svg",
+  "bytes": 2456,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Robin Hood Cap/robin-hood-cap-red.svg",
+  "bytes": 1651,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Santa Hat/santa-hat-256.png",
+  "bytes": 2916,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Santa Hat/santa-hat-64.png",
+  "bytes": 944,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Santa Hat/santa-hat-outline-256.png",
+  "bytes": 4183,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Santa Hat/santa-hat-outline-64.png",
+  "bytes": 1227,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Santa Hat/santa-hat-outline.svg",
+  "bytes": 2060,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Santa Hat/santa-hat.svg",
+  "bytes": 1570,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Sleeping Cap/sleeping-cap-256.png",
+  "bytes": 4061,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Sleeping Cap/sleeping-cap-64.png",
+  "bytes": 1333,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Sleeping Cap/sleeping-cap-outline-256.png",
+  "bytes": 5326,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Sleeping Cap/sleeping-cap-outline-64.png",
+  "bytes": 1586,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Sleeping Cap/sleeping-cap-outline.svg",
+  "bytes": 3218,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Sleeping Cap/sleeping-cap.svg",
+  "bytes": 2532,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Sombrero/sombrero-black-256.png",
+  "bytes": 2240,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Sombrero/sombrero-black-64.png",
+  "bytes": 756,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Sombrero/sombrero-black-outline-256.png",
+  "bytes": 3185,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Sombrero/sombrero-black-outline-64.png",
+  "bytes": 991,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Sombrero/sombrero-black-outline.svg",
+  "bytes": 1613,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Sombrero/sombrero-black.svg",
+  "bytes": 1308,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Sombrero/sombrero-yellow-256.png",
+  "bytes": 2239,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Sombrero/sombrero-yellow-64.png",
+  "bytes": 756,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Sombrero/sombrero-yellow-outline-256.png",
+  "bytes": 3199,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Sombrero/sombrero-yellow-outline-64.png",
+  "bytes": 992,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Sombrero/sombrero-yellow-outline.svg",
+  "bytes": 1617,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Sombrero/sombrero-yellow.svg",
+  "bytes": 1324,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Top Hat/top-hat-256.png",
+  "bytes": 3390,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Top Hat/top-hat-64.png",
+  "bytes": 936,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Top Hat/top-hat-outline-256.png",
+  "bytes": 4742,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Top Hat/top-hat-outline-64.png",
+  "bytes": 1236,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Top Hat/top-hat-outline.svg",
+  "bytes": 1742,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Top Hat/top-hat.svg",
+  "bytes": 1374,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-black-256.png",
+  "bytes": 2720,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-black-64.png",
+  "bytes": 918,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-black-outline-256.png",
+  "bytes": 3913,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-black-outline-64.png",
+  "bytes": 1188,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-black-outline.svg",
+  "bytes": 1896,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-black.svg",
+  "bytes": 1144,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-blue-256.png",
+  "bytes": 3609,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-blue-64.png",
+  "bytes": 1167,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-blue-outline-256.png",
+  "bytes": 4808,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-blue-outline-64.png",
+  "bytes": 1434,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-blue-outline.svg",
+  "bytes": 2619,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-blue.svg",
+  "bytes": 1867,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-brown-256.png",
+  "bytes": 2729,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-brown-64.png",
+  "bytes": 925,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-brown-outline-256.png",
+  "bytes": 3920,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-brown-outline-64.png",
+  "bytes": 1195,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-brown-outline.svg",
+  "bytes": 1896,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Tricorn Hat/tricorn-hat-brown.svg",
+  "bytes": 1144,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-blue-256.png",
+  "bytes": 3409,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-blue-64.png",
+  "bytes": 1022,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-blue-outline-256.png",
+  "bytes": 4457,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-blue-outline-64.png",
+  "bytes": 1279,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-blue-outline.svg",
+  "bytes": 3295,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-blue.svg",
+  "bytes": 2743,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-green-256.png",
+  "bytes": 3408,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-green-64.png",
+  "bytes": 1022,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-green-outline-256.png",
+  "bytes": 4464,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-green-outline-64.png",
+  "bytes": 1286,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-green-outline.svg",
+  "bytes": 3296,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-green.svg",
+  "bytes": 2744,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-red-256.png",
+  "bytes": 3410,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-red-64.png",
+  "bytes": 1022,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-red-outline-256.png",
+  "bytes": 4466,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-red-outline-64.png",
+  "bytes": 1286,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-red-outline.svg",
+  "bytes": 3294,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-red.svg",
+  "bytes": 2742,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-yellow-256.png",
+  "bytes": 3409,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-yellow-64.png",
+  "bytes": 1022,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-yellow-outline-256.png",
+  "bytes": 4459,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-yellow-outline-64.png",
+  "bytes": 1286,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-yellow-outline.svg",
+  "bytes": 3297,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Umbrella Hat/umbrella-hat-yellow.svg",
+  "bytes": 2745,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-blue-256.png",
+  "bytes": 2653,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-blue-64.png",
+  "bytes": 856,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-blue-outline-256.png",
+  "bytes": 4052,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-blue-outline-64.png",
+  "bytes": 1155,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-blue-outline.svg",
+  "bytes": 2339,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-blue.svg",
+  "bytes": 1513,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-gold-256.png",
+  "bytes": 2649,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-gold-64.png",
+  "bytes": 852,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-gold-outline-256.png",
+  "bytes": 4050,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-gold-outline-64.png",
+  "bytes": 1150,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-gold-outline.svg",
+  "bytes": 2289,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-gold.svg",
+  "bytes": 1451,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-red-256.png",
+  "bytes": 2651,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-red-64.png",
+  "bytes": 854,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-red-outline-256.png",
+  "bytes": 4053,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-red-outline-64.png",
+  "bytes": 1155,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-red-outline.svg",
+  "bytes": 2338,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Viking Helmet/viking-helmet-red.svg",
+  "bytes": 1512,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Wizard Hat/wizard-hat-blue-256.png",
+  "bytes": 3348,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Wizard Hat/wizard-hat-blue-64.png",
+  "bytes": 978,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Wizard Hat/wizard-hat-blue-outline-256.png",
+  "bytes": 4701,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Wizard Hat/wizard-hat-blue-outline-64.png",
+  "bytes": 1297,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Wizard Hat/wizard-hat-blue-outline.svg",
+  "bytes": 2799,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Wizard Hat/wizard-hat-blue.svg",
+  "bytes": 2309,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Wizard Hat/wizard-hat-purple-256.png",
+  "bytes": 3348,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Wizard Hat/wizard-hat-purple-64.png",
+  "bytes": 978,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Wizard Hat/wizard-hat-purple-outline-256.png",
+  "bytes": 4701,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Wizard Hat/wizard-hat-purple-outline-64.png",
+  "bytes": 1297,
+  "kind": "binary"
+ },
+ {
+  "path": "references/vector-hats/Wizard Hat/wizard-hat-purple-outline.svg",
+  "bytes": 2824,
+  "kind": "text"
+ },
+ {
+  "path": "references/vector-hats/Wizard Hat/wizard-hat-purple.svg",
+  "bytes": 2346,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ROQER-ADOPTION.md",
+  "bytes": 785,
+  "kind": "text"
+ },
+ {
+  "path": "skills/api-watchlist/SKILL.md",
+  "bytes": 1666,
+  "kind": "text"
+ },
+ {
+  "path": "skills/check-cycle/SKILL.md",
+  "bytes": 1003,
+  "kind": "text"
+ },
+ {
+  "path": "skills/check-ui-rules/SKILL.md",
+  "bytes": 5340,
+  "kind": "text"
+ },
+ {
+  "path": "skills/check-ui-standard/SKILL.md",
+  "bytes": 2072,
+  "kind": "text"
+ },
+ {
+  "path": "skills/client-ui-safety/SKILL.md",
+  "bytes": 778,
+  "kind": "text"
+ },
+ {
+  "path": "skills/datastore-safety/SKILL.md",
+  "bytes": 993,
+  "kind": "text"
+ },
+ {
+  "path": "skills/docs-lookup/SKILL.md",
+  "bytes": 833,
+  "kind": "text"
+ },
+ {
+  "path": "skills/expert-gui/SKILL.md",
+  "bytes": 2701,
+  "kind": "text"
+ },
+ {
+  "path": "skills/gui-syntax/SKILL.md",
+  "bytes": 1707,
+  "kind": "text"
+ },
+ {
+  "path": "skills/gui-verify/SKILL.md",
+  "bytes": 1038,
+  "kind": "text"
+ },
+ {
+  "path": "skills/lifecycle-cleanup/SKILL.md",
+  "bytes": 1306,
+  "kind": "text"
+ },
+ {
+  "path": "skills/luau-accuracy/SKILL.md",
+  "bytes": 1283,
+  "kind": "text"
+ },
+ {
+  "path": "skills/luau-compile-gate/SKILL.md",
+  "bytes": 1594,
+  "kind": "text"
+ },
+ {
+  "path": "skills/luau-compile-gate/scripts/compile_check.lua",
+  "bytes": 595,
+  "kind": "text"
+ },
+ {
+  "path": "skills/luau-lint-review/SKILL.md",
+  "bytes": 1264,
+  "kind": "text"
+ },
+ {
+  "path": "skills/luau-performance/SKILL.md",
+  "bytes": 2012,
+  "kind": "text"
+ },
+ {
+  "path": "skills/luau-profiling/SKILL.md",
+  "bytes": 1277,
+  "kind": "text"
+ },
+ {
+  "path": "skills/map-placement/SKILL.md",
+  "bytes": 1205,
+  "kind": "text"
+ },
+ {
+  "path": "skills/parallel-luau/SKILL.md",
+  "bytes": 1444,
+  "kind": "text"
+ },
+ {
+  "path": "skills/project-layout/SKILL.md",
+  "bytes": 971,
+  "kind": "text"
+ },
+ {
+  "path": "skills/reference-library/SKILL.md",
+  "bytes": 2707,
+  "kind": "text"
+ },
+ {
+  "path": "skills/remote-events/SKILL.md",
+  "bytes": 621,
+  "kind": "text"
+ },
+ {
+  "path": "skills/report-what-you-verified/SKILL.md",
+  "bytes": 1026,
+  "kind": "text"
+ },
+ {
+  "path": "skills/review-for-exploits/SKILL.md",
+  "bytes": 692,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-analytics/SKILL.md",
+  "bytes": 1696,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-audio/SKILL.md",
+  "bytes": 1597,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-camera/SKILL.md",
+  "bytes": 1949,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-gotchas/SKILL.md",
+  "bytes": 1112,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-input/SKILL.md",
+  "bytes": 2253,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-localization/SKILL.md",
+  "bytes": 1765,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-monetization/SKILL.md",
+  "bytes": 1920,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-npc-ai/SKILL.md",
+  "bytes": 2187,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-physics/SKILL.md",
+  "bytes": 2240,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-publish-checklist/SKILL.md",
+  "bytes": 2172,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-server-data/SKILL.md",
+  "bytes": 2174,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-tooling/SKILL.md",
+  "bytes": 2779,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-tooling/configs/rokit.toml",
+  "bytes": 310,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-tooling/configs/selene.toml",
+  "bytes": 113,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-tooling/configs/stylua.toml",
+  "bytes": 188,
+  "kind": "text"
+ },
+ {
+  "path": "skills/server-authority/SKILL.md",
+  "bytes": 665,
+  "kind": "text"
+ },
+ {
+  "path": "skills/studio-verify/SKILL.md",
+  "bytes": 1793,
+  "kind": "text"
+ },
+ {
+  "path": "skills/toolbox/SKILL.md",
+  "bytes": 1464,
+  "kind": "text"
+ },
+ {
+  "path": "skills/tunables-config/SKILL.md",
+  "bytes": 583,
+  "kind": "text"
+ },
+ {
+  "path": "skills/typed-luau/SKILL.md",
+  "bytes": 1219,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/LOCAL.template.md",
+  "bytes": 1578,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/SKILL.md",
+  "bytes": 42497,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/references/example-cow.paint.json",
+  "bytes": 4678,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/references/example-manifest.json",
+  "bytes": 1170,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/references/example-pig.paint.json",
+  "bytes": 3031,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/references/example-rifle.kiln.js",
+  "bytes": 2663,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/references/hard-surface-route.md",
+  "bytes": 3402,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/references/kiln-route.md",
+  "bytes": 4393,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/references/licences.md",
+  "bytes": 2275,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/references/studio-wire.lua",
+  "bytes": 3917,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/references/studio_import.lua",
+  "bytes": 4907,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/references/traps.md",
+  "bytes": 24166,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/axes_probe.py",
+  "bytes": 4575,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/batch.py",
+  "bytes": 25985,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/check_colours.py",
+  "bytes": 3928,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/check_prop.py",
+  "bytes": 4944,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/compare_sheet.py",
+  "bytes": 5100,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/concept_image.py",
+  "bytes": 20320,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/export_for_studio.py",
+  "bytes": 5455,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/export_skinned.py",
+  "bytes": 5051,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/fill_meshbank_ids.py",
+  "bytes": 5018,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/finish_creature.py",
+  "bytes": 4660,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/gen_concepts_cf.py",
+  "bytes": 10405,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/glb_tool.py",
+  "bytes": 9662,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/grass_clump.py",
+  "bytes": 5209,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/image_to_3d.py",
+  "bytes": 6204,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/kaggle_flux.py",
+  "bytes": 10948,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/kaggle_hi3dgen.py",
+  "bytes": 29714,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/kaggle_run.py",
+  "bytes": 21447,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/kiln_to_roblox.mjs",
+  "bytes": 4959,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/landmarks.py",
+  "bytes": 3415,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/make_paint_spec.py",
+  "bytes": 17880,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/measure_set.py",
+  "bytes": 2752,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/mesh_bank.py",
+  "bytes": 9268,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/mesh_pipeline.py",
+  "bytes": 23390,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/orient_sheet.py",
+  "bytes": 5827,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/paint_texture.py",
+  "bytes": 16213,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/pair_sheet.py",
+  "bytes": 3996,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/probe_rig.py",
+  "bytes": 1456,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/quadruped_anim.py",
+  "bytes": 8099,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/quadruped_rig.py",
+  "bytes": 12052,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/render_check.py",
+  "bytes": 6511,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/serve_assets.py",
+  "bytes": 1557,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/texture_bake.py",
+  "bytes": 23658,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/tier3_props.py",
+  "bytes": 5521,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/upload_asset.py",
+  "bytes": 6877,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/verify.py",
+  "bytes": 7081,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/verify_texture.py",
+  "bytes": 7749,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/wedge_slice.py",
+  "bytes": 4111,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-3d-model/scripts/zprofile.py",
+  "bytes": 1383,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/LOCAL.template.md",
+  "bytes": 727,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/SKILL.md",
+  "bytes": 19138,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/references/example-fk-punch.json",
+  "bytes": 8896,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/references/example-fk-roundhouse.json",
+  "bytes": 11789,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/references/example-fk-wave.json",
+  "bytes": 9151,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/references/example-uppercut.json",
+  "bytes": 5991,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/references/pose-recipes.md",
+  "bytes": 4164,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/references/studio-binder.lua",
+  "bytes": 4575,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/references/traps.md",
+  "bytes": 19755,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/scripts/anim_render.py",
+  "bytes": 51020,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/scripts/calibrate_rig.py",
+  "bytes": 6941,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/scripts/fk_crouch.py",
+  "bytes": 3613,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/scripts/fk_probe.py",
+  "bytes": 10843,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/scripts/probe_bone.py",
+  "bytes": 3350,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/scripts/sweep_control.py",
+  "bytes": 6410,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-animation/scripts/to_roblox.py",
+  "bytes": 8039,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-build-orchestrator/LOCAL.template.md",
+  "bytes": 489,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-build-orchestrator/SKILL.md",
+  "bytes": 15237,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-build-orchestrator/agents/roblox-asset-anim.md",
+  "bytes": 1762,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-build-orchestrator/agents/roblox-asset-mesh.md",
+  "bytes": 3966,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-build-orchestrator/agents/roblox-asset-sfx.md",
+  "bytes": 1894,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-build-orchestrator/agents/roblox-asset-ui.md",
+  "bytes": 1665,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-build-orchestrator/agents/roblox-asset-vfx.md",
+  "bytes": 2448,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-build-orchestrator/agents/roblox-market-scout.md",
+  "bytes": 1939,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-build-orchestrator/references/stage-briefs.md",
+  "bytes": 7757,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-build-orchestrator/references/write-boundary.md",
+  "bytes": 4142,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-build-orchestrator/scripts/run_log.py",
+  "bytes": 23815,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-check-suite/SKILL.md",
+  "bytes": 34852,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-check-suite/check_code.py",
+  "bytes": 5123,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-check-suite/examples/bad.luau",
+  "bytes": 477,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-check-suite/examples/good.luau",
+  "bytes": 526,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/LOCAL.template.md",
+  "bytes": 1608,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/SKILL.md",
+  "bytes": 87681,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/references/game-plan.md",
+  "bytes": 4365,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/references/mcp.md",
+  "bytes": 7432,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/references/pipeline.md",
+  "bytes": 11689,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/references/recovery.md",
+  "bytes": 6776,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/scripts/capture_frames.ps1",
+  "bytes": 7301,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/scripts/gen_config.py",
+  "bytes": 7559,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/scripts/new_game.py",
+  "bytes": 8168,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/scripts/place_state.py",
+  "bytes": 8417,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/scripts/preflight.py",
+  "bytes": 10711,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/scripts/recover_mcp.py",
+  "bytes": 5890,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/scripts/section.py",
+  "bytes": 29562,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/scripts/studio_mcp.py",
+  "bytes": 5046,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/scripts/validate.py",
+  "bytes": 22592,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/scripts/verify_sync.py",
+  "bytes": 5249,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-game-pipeline/scripts/verify_wired.py",
+  "bytes": 18716,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-luau-code/LOCAL.template.md",
+  "bytes": 310,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-luau-code/SKILL.md",
+  "bytes": 13017,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-luau-code/references/patterns.md",
+  "bytes": 7246,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-luau-code/references/traps.md",
+  "bytes": 6724,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-luau-code/scripts/check.py",
+  "bytes": 4757,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-luau-code/scripts/json_to_luau.py",
+  "bytes": 4088,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-luau-code/scripts/new_project.py",
+  "bytes": 15608,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/LOCAL.template.md",
+  "bytes": 1068,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/SKILL.md",
+  "bytes": 50923,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/profiles/default.json",
+  "bytes": 1880,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/profiles/wallrun_example.json",
+  "bytes": 4777,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/references/map-design.md",
+  "bytes": 10632,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/references/movement-numbers.md",
+  "bytes": 4869,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/blockout.py",
+  "bytes": 23528,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/build_map.py",
+  "bytes": 4777,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/capture_receiver.py",
+  "bytes": 3899,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/checks_budget.py",
+  "bytes": 5785,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/checks_design.py",
+  "bytes": 21609,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/checks_terrain.py",
+  "bytes": 34670,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/emit.py",
+  "bytes": 17629,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/geom.py",
+  "bytes": 14123,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/lighting.py",
+  "bytes": 12981,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/ambient.lua",
+  "bytes": 5484,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/build.lua",
+  "bytes": 17816,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/build_terrain.lua",
+  "bytes": 5871,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/calibrate.lua",
+  "bytes": 6747,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/capture_views.lua",
+  "bytes": 3415,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/horizon_ocean.lua",
+  "bytes": 2730,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/install_dressing.lua",
+  "bytes": 3003,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/sample_view.lua",
+  "bytes": 4967,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/spawn_probe.server.lua",
+  "bytes": 2816,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/tide.lua",
+  "bytes": 4304,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/verify_build.lua",
+  "bytes": 8229,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/verify_ground.lua",
+  "bytes": 4939,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/verify_placement.lua",
+  "bytes": 3534,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/luau/verify_terrain.lua",
+  "bytes": 3475,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/outline.py",
+  "bytes": 4022,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/plan.py",
+  "bytes": 11374,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/preview.py",
+  "bytes": 9161,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/prove.py",
+  "bytes": 27151,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/reach.py",
+  "bytes": 19354,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/serve_map.py",
+  "bytes": 16129,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/spec.py",
+  "bytes": 25779,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/terrain.py",
+  "bytes": 26081,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/theme.py",
+  "bytes": 10186,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/scripts/verify_map.py",
+  "bytes": 6718,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/specs/duel_arena.json",
+  "bytes": 3648,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/specs/meadow_island.json",
+  "bytes": 3590,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/specs/minimal.json",
+  "bytes": 989,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/specs/sky_citadel.json",
+  "bytes": 13713,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-map-builder/themes/sky_citadel.json",
+  "bytes": 2075,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-setup-check/SKILL.md",
+  "bytes": 6912,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-setup-check/scripts/check_setup.py",
+  "bytes": 6482,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-sfx-finder/LOCAL.template.md",
+  "bytes": 363,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-sfx-finder/SKILL.md",
+  "bytes": 9776,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-sfx-finder/examples/spec.example.json",
+  "bytes": 440,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-sfx-finder/scripts/emit_bank.py",
+  "bytes": 8583,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-sfx-finder/scripts/emit_probe.py",
+  "bytes": 4676,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-sfx-finder/scripts/find_sfx.py",
+  "bytes": 8970,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-sfx-finder/scripts/pick.py",
+  "bytes": 5621,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-texture-gen/LOCAL.template.md",
+  "bytes": 575,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-texture-gen/SKILL.md",
+  "bytes": 8075,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-texture-gen/scripts/generate_texture.py",
+  "bytes": 3547,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/LOCAL.template.md",
+  "bytes": 882,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/SKILL.md",
+  "bytes": 25163,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/examples/coin_hud.json",
+  "bytes": 1553,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/references/UIBind.luau",
+  "bytes": 1972,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/references/UIController.client.lua",
+  "bytes": 12125,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/references/UIFormat.luau",
+  "bytes": 1685,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/references/UIToast.luau",
+  "bytes": 3246,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/references/fonts/Fredoka-Bold.ttf",
+  "bytes": 48588,
+  "kind": "binary"
+ },
+ {
+  "path": "skills/ul-ui-builder/references/fonts/Fredoka-SemiBold.ttf",
+  "bytes": 48768,
+  "kind": "binary"
+ },
+ {
+  "path": "skills/ul-ui-builder/references/fonts/FredokaOne-Regular.ttf",
+  "bytes": 42068,
+  "kind": "binary"
+ },
+ {
+  "path": "skills/ul-ui-builder/references/fonts/OFL.txt",
+  "bytes": 4486,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/references/icons.example.json",
+  "bytes": 1437,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/references/theme.json",
+  "bytes": 970,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/references/ui-recipes.md",
+  "bytes": 11146,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/references/ui-roadmap.md",
+  "bytes": 12900,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/check_contrast.py",
+  "bytes": 2901,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/gen_icon_bank.py",
+  "bytes": 2253,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/gen_icons_cf.py",
+  "bytes": 8728,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/glyphs.py",
+  "bytes": 7304,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/icon_cutout.py",
+  "bytes": 17232,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/kaggle_icon_ab.py",
+  "bytes": 8535,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/patterns.py",
+  "bytes": 5441,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/ui_build.py",
+  "bytes": 62723,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/ui_kit.py",
+  "bytes": 12193,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/upload_icons.py",
+  "bytes": 3468,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/verify_icon_wiring.py",
+  "bytes": 4368,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/verify_labels.py",
+  "bytes": 6052,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/verify_name_contract.py",
+  "bytes": 5097,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-ui-builder/scripts/verify_ui.py",
+  "bytes": 29116,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/LOCAL.template.md",
+  "bytes": 797,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/SKILL.md",
+  "bytes": 47443,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/references/CharacterVFX.server.lua",
+  "bytes": 3890,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/references/VFXKit.lua",
+  "bytes": 7479,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/references/property-surface.md",
+  "bytes": 2824,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/audition.py",
+  "bytes": 6017,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/classify_lib.py",
+  "bytes": 20286,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/compose.py",
+  "bytes": 10432,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/curate.py",
+  "bytes": 5848,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/emit_luau.py",
+  "bytes": 10827,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/emit_scenes.py",
+  "bytes": 4239,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/find_vfx.py",
+  "bytes": 5735,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/luau/build.lua",
+  "bytes": 5548,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/luau/codec.lua",
+  "bytes": 3521,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/luau/demo_controller.lua",
+  "bytes": 4559,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/luau/engine.lua",
+  "bytes": 40537,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/luau/harvest.lua",
+  "bytes": 11588,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/luau/runtime.lua",
+  "bytes": 6382,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/luau/scene.lua",
+  "bytes": 4534,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/luau/selftest_client.lua",
+  "bytes": 3252,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/luau/stage.lua",
+  "bytes": 4717,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/payload.py",
+  "bytes": 2626,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/recipe_server.py",
+  "bytes": 5577,
+  "kind": "text"
+ },
+ {
+  "path": "skills/ul-vfx-library/scripts/verify_vfx.py",
+  "bytes": 16045,
+  "kind": "text"
+ },
+ {
+  "path": "skills/vfx-and-animation/SKILL.md",
+  "bytes": 2514,
+  "kind": "text"
+ },
+ {
+  "path": "ultralab.py",
+  "bytes": 77508,
+  "kind": "text"
+ },
+ {
+  "path": "vault/00-Index.md",
+  "bytes": 1342,
+  "kind": "text"
+ },
+ {
+  "path": "vault/README.md",
+  "bytes": 1435,
+  "kind": "text"
+ },
+ {
+  "path": "vault/api/camera-viewportsize.md",
+  "bytes": 512,
+  "kind": "text"
+ },
+ {
+  "path": "vault/api/enum-font-fredokaone.md",
+  "bytes": 255,
+  "kind": "text"
+ },
+ {
+  "path": "vault/api/guibase2d-selectiongroup.md",
+  "bytes": 501,
+  "kind": "text"
+ },
+ {
+  "path": "vault/api/guiobject-selectionorder.md",
+  "bytes": 349,
+  "kind": "text"
+ },
+ {
+  "path": "vault/api/guiservice-select.md",
+  "bytes": 516,
+  "kind": "text"
+ },
+ {
+  "path": "vault/api/instance-destroying.md",
+  "bytes": 438,
+  "kind": "text"
+ },
+ {
+  "path": "vault/decisions/check-userinputservice-gamepadenabled.md",
+  "bytes": 445,
+  "kind": "text"
+ },
+ {
+  "path": "vault/decisions/pick-one-ui-system.md",
+  "bytes": 319,
+  "kind": "text"
+ },
+ {
+  "path": "vault/lessons/a-documented-feature-with-no-code-behind-it.md",
+  "bytes": 463,
+  "kind": "text"
+ },
+ {
+  "path": "vault/lessons/module-nothing-requires.md",
+  "bytes": 439,
+  "kind": "text"
+ },
+ {
+  "path": "vault/lessons/responsive-scale-uses-the-safe-area-by-mistake.md",
+  "bytes": 366,
+  "kind": "text"
+ },
+ {
+  "path": "vault/lessons/theme-text-fails-wcag-contrast.md",
+  "bytes": 495,
+  "kind": "text"
+ },
+ {
+  "path": "vault/lessons/tween-close-races-with-reopen.md",
+  "bytes": 479,
+  "kind": "text"
+ },
+ {
+  "path": "vault/patterns/one-scale-owner-per-job.md",
+  "bytes": 339,
+  "kind": "text"
+ },
+ {
+  "path": "vault/patterns/sentinel-placeholder-with-a-gate.md",
+  "bytes": 371,
+  "kind": "text"
+ },
+ {
+  "path": "vault/sessions/gui-fixes-and-modules.md",
+  "bytes": 342,
+  "kind": "text"
+ }
+]

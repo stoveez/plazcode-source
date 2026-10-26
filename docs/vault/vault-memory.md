@@ -4,7 +4,7 @@ updated: 2026-10-24
 ---
 # Native vault: the app's Memory feature
 
-**Two vaults, do not mix them up.** The *PlazCode vault* is `docs/vault`: notes for the AIs that BUILD PlazCode. The *native vault* is this note's subject: the feature inside the PlazCode app where the AI on a chat site (ChatGPT, Claude and others) keeps long-term memory about the owner's Roblox and coding work. Internals: [native-vault-internals](native-vault-internals.md). Design: `development/1.24.22/VAULT-MEMORY-DESIGN.md`.
+**Two vaults, do not mix them up.** The *PlazCode vault* is `docs/vault`: notes for the AIs that BUILD PlazCode. The *native vault* is this note's subject: the feature inside the PlazCode app where the AI on a chat site (ChatGPT, Claude and others) keeps long-term memory about the owner's Roblox and coding work. Internals: [native-vault-internals](native-vault-internals.md). Design: `development/1.24.23/VAULT-MEMORY-DESIGN.md`.
 
 ## What it is
 A folder of linked Markdown notes (Obsidian-compatible, Obsidian is optional). Default folder: `Vault` next to the app's data; the owner can pick another folder in Memory settings, and an existing folder is adopted as it is.

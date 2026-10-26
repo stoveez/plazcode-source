@@ -25,11 +25,11 @@ updated: 2026-10-24
 
 ## Not started / optional
 - Lean startup phases 2 and 3 (`development/1.24.21/overlay/core/lean-startup.js`, unwired, off).
-- Update 1.24.23: accounts (no license keys), code protection, antivirus fix, Skill Workshop, Brickwire list, hang recovery, keep-awake. (The plan file has a 2026-10-24 update block at its top; keep it current.) See `development/1.24.23/` and `docs/TASK-BOARD.md`.
+- Update 1.24.24: accounts (no license keys), code protection, antivirus fix, Skill Workshop, Brickwire list, hang recovery, keep-awake. (The plan file has a 2026-10-24 update block at its top; keep it current.) See `development/1.24.24/` and `docs/TASK-BOARD.md`.
 - Website: `PlazCode-website.zip`, to deploy on Cloudflare Pages once the owner has a domain.
 - Lawyer review of licence notices; GitHub Support request about the locked `v1.24.20` tag; delete the `cleanup-public` branch.
 
 Release: see [releasing](releasing.md).
-- Antivirus false positive on the 1.24.21 Windows app (2 of 69 on VirusTotal). Fix plan for 1.24.23 in `development/1.24.23/NEXT-UPDATE-PLAN.md` (no encoded PowerShell, app manifest, signing decision).
+- 1.24.23 (in progress): antivirus false positive (Chrome blocks the 1.24.22 zip as "Virus detected"; VirusTotal showed 2 of 69 on the 1.24.21 app). Earlier fix plan in `development/1.24.24/NEXT-UPDATE-PLAN.md` (no encoded PowerShell, app manifest, signing decision).
 - The live 1.24.21 release text needs the owner's version pasted in by hand (this session cannot edit GitHub releases).
 - 1.24.22 SHIPPED 2026-10-25. Still worth a live check on Claude free, ClickUp free, ChatGPT free and DeepSeek to confirm the startup fits each plan (only practice-page tested).

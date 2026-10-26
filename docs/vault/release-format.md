@@ -18,7 +18,7 @@ The text shown on the release page and posted to Discord. Write it for people wh
 **Template** (replace the version number and the lines)
 
 ```
-✨ **PlazCode 1.24.22**
+✨ **PlazCode 1.24.23**
 ***One plain sentence on what this update is about.***
 
 ***✨ What's new***
@@ -33,9 +33,9 @@ The text shown on the release page and posted to Discord. Write it for people wh
 
 ***📥 How to update***
 - Open PlazCode, or choose Updates → Update now.
-- Manual downloads: PlazCode-1.24.22.zip for Windows, PlazCode-macOS-1.24.22.zip for Mac, or PlazCode-Firefox-1.24.22.zip for Firefox.
+- Manual downloads: PlazCode-1.24.23.zip for Windows, PlazCode-macOS-1.24.23.zip for Mac, or PlazCode-Firefox-1.24.23.zip for Firefox.
 - Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
 - Your settings, memory and connections are kept.
 ```
 
-Where it goes in the repo: the `github` block of `development/1.24.22/release-entry.json` (`summary`, `sections`). `publish_release.py` turns it into the page text and adds the How to update section itself; keep the final text matching this template and under 2,000 characters. See [releasing](releasing.md).
+Where it goes in the repo: the `github` block of `development/1.24.23/release-entry.json` (`summary`, `sections`). `publish_release.py` turns it into the page text and adds the How to update section itself; keep the final text matching this template and under 2,000 characters. See [releasing](releasing.md).
