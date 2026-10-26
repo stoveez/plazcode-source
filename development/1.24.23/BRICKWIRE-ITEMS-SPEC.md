@@ -3,7 +3,7 @@
 Read `NEXT-UPDATE-PLAN.md` section C first (the short list), then this file (the detail). Written 2026-10-20 for any AI (Codex, Claude Code) that picks one of these up from `docs/TASK-BOARD.md`.
 
 ## Ground rules for every item
-- These are for the NEXT update (1.25.0). Nothing here goes into 1.24.21.
+- These are for the update 1.24.23. Nothing here goes into 1.24.21.
 - **Write our own code.** Brickwire 3.1.0 is MIT, so ideas and small reuse are legal, but the plan is our own versions. If anything is derived from its files, keep its licence text and add the credit "Brickwire contributors" to `THIRD-PARTY-NOTICES.txt`. Never copy from Multi-Script (GPL).
 - The owner wants every item ADDED and IMPROVED, not copied. Each item below says what to improve.
 - Follow `docs/MAINTAINER-GUIDE.md`: edit the overlay, add tests, hash pins, all 15 languages for new text, safety settings respected, plain-language notes.
@@ -47,7 +47,7 @@ Suggested order: 9, 10, then 1+2+3 together, 7, 12, 14, then 11 and 13. Item 17 
 **Goal:** short, tested building blocks (build, UI, effects, animation, gameplay) the AI can call instead of writing hundreds of lines. Fewer tokens, fewer bugs.
 **Brickwire reference:** `shared/src/bw-helpers.luau` (core `BW.*` helpers), `shared/src/library/bw-library.luau` (kits, VFX, Cinema, Cutscene), `docs/LIBRARY.md` (catalog), `shared/src/bw-luau.ts` (the library is injected only into code that uses `BW.`), `scripts/gen-library.ts`, `scripts/library/dump.luau`.
 **Build (our own, from scratch):**
-1. A module `PlazLib` written in Luau, in a source folder under `development/1.25.0/` (or the overlay), compiled into a generated JS/JSON file the same way Ultra is generated. A generator script plus a test that the generated file is up to date (like `test-ultralab-generated.py`).
+1. A module `PlazLib` written in Luau, in a source folder under `development/1.24.23/` (or the overlay), compiled into a generated JS/JSON file the same way Ultra is generated. A generator script plus a test that the generated file is up to date (like `test-ultralab-generated.py`).
 2. Injection: when the AI's Luau uses `PL.` calls, the app/extension prepends only the needed part of the library, so code that does not use it stays untouched. Detect usage with a plain pattern check; cap the injected size.
 3. **Error messages that point at the AI's own line numbers:** when injected code fails, translate the line number back (subtract the prelude length) so the AI sees "line 12 of your code".
 4. Start with a small, solid core, grow later: `PL.part`, `PL.weld`, `PL.model`, `PL.tween`, `PL.sound`, safe `PL.find`/`PL.wait`, UI helpers (frames, buttons, rounded styles), simple gameplay helpers (touch pad, leaderboard stat, respawn point). Every helper validates its arguments and returns clear errors.

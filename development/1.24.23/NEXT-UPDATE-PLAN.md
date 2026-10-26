@@ -1,5 +1,7 @@
 # PlazCode next update — everything the owner wants to add
 
+> **Owner, 2026-10-25: this plan is for 1.24.23.** 1.24.22 comes first and only makes the startup small enough for free plans.
+
 > **Owner, 2026-10-25: PlazCode stays free. No paid plan or paid features.** Everything about paid keys and paid features below is cancelled. License keys, key types, HWID lock and the 24-hour key are dropped. Accounts stay: users sign in once with a username and password (no email); accounts carry settings and skills across computers and the username on shared skills; only the owner sees users, on a private owner page; signed-in users can change their password and may add an optional recovery email (Forgot password emails a reset link to it; otherwise the owner resets it from the owner page; the Forgot password screen must never attach a new email). See `docs/vault/decisions.md`.
 
 This note is written so an AI in a brand-new chat can pick it up. Read it fully, then read the two design files next to it:
