@@ -1,5 +1,7 @@
 # PlazCode login and license system — design (draft for owner sign-off)
 
+> **Owner, 2026-10-25: PlazCode stays free. No paid plan or paid features.** Everything about paid keys and paid features below is cancelled. Whether a free login/key system stays is not decided yet; ask the owner before building any of it.
+
 Decisions made: Cloudflare Workers + D1 server; separate release after 1.24.21; login enforced in the desktop app only.
 
 ## Roles

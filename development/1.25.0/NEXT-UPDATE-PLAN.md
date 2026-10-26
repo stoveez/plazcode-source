@@ -1,5 +1,7 @@
 # PlazCode next update — everything the owner wants to add
 
+> **Owner, 2026-10-25: PlazCode stays free. No paid plan or paid features.** Everything about paid keys and paid features below is cancelled. Whether a free login/key system stays is not decided yet; ask the owner before building any of it.
+
 This note is written so an AI in a brand-new chat can pick it up. Read it fully, then read the two design files next to it:
 `LICENSE-SYSTEM-DESIGN.md` and `SKILL-WORKSHOP-DESIGN.md` (same folder). Nothing here is built yet unless it says so.
 
