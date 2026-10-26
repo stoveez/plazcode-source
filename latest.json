@@ -1,9 +1,96 @@
 {
-  "version": "1.24.20",
-  "desktop_version": "1.24.20",
-  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.20.zip",
-  "sha256": "b67d5525f72447fba87da0610b53796026f531b309e5aee7a46ad76946530041",
+  "version": "1.24.25",
+  "desktop_version": "1.24.25",
+  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.25.zip",
+  "sha256": "8fc9a186e3f463a7f00fdef0e15aa390c67e53361046b4ce5b8c88286463718b",
   "release_notes": [
+    {
+      "version": "1.24.25",
+      "title": "Screenshots, approvals and update warnings",
+      "summary": "Improves screenshot display, remembers task approvals in Plan Mode, and makes mismatched app and extension versions clear.",
+      "added": [],
+      "improved": [
+        "The desktop Updates page shows active browser extension versions. Known outdated versions stay red when a later check fails."
+      ],
+      "fixed": [
+        "Screenshot previews render from image bytes instead of image URLs that AI sites can block. Unreadable image data shows an error.",
+        "Approve all for this task now applies to the same command in Plan Mode.",
+        "Creation previews explain missing app support, oversized requests and invalid responses instead of showing a JSON parsing error."
+      ],
+      "notes": [
+        "Replacing only the EXE does not update an extension loaded from another folder. Use the full update and load the updated extension folder.",
+        "Real Studio captures and the reported creation-preview failure were not reproduced on the affected computer.",
+        "The Windows app is unsigned and the Mac app is not notarized."
+      ],
+      "github": {
+        "summary": "***Screenshots, approvals and updates:*** clearer results and fewer repeated prompts.",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "The Updates page shows active browser extension versions and warns when the app and extension do not match."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Screenshot previews can display even when an AI site blocks image URLs; unreadable captures show an error.",
+              "Approve all for this task now skips repeats of that command in Plan Mode.",
+              "Known outdated versions stay red when a later update check fails.",
+              "Creation previews explain missing app support, large requests and invalid replies instead of a JSON parsing error."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Full Windows, Mac and Linux tests, including the packaged Mac app; screenshot pixels checked in Chromium and Firefox. Small creation drafts checked through the real desktop endpoint.",
+              "The affected computer and real Studio captures were not tested live. Updating only the EXE cannot update a separate extension folder.",
+              "The Windows app is unsigned and the Mac app is not notarized, as before."
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "version": "1.24.24",
+      "title": "Fewer limit errors and lower usage",
+      "summary": "Fixes the \"message exceeds your input limit\" error that stopped Claude in the middle of normal work, and makes PlazCode use noticeably less of your AI plan.",
+      "added": [],
+      "improved": [
+        "PlazCode uses less of your AI plan: the AI no longer has to look up each command before using it, Ultra mode no longer re-sends its whole skill pack with every request, and the extra reference PlazCode adds to a request is smaller.",
+        "When the AI saves a note to your vault, PlazCode no longer sends the whole vault summary straight back to it."
+      ],
+      "fixed": [
+        "Claude (and other sites) stopped with \"This message exceeds your 12000 character input limit\" even after a normal prompt. The extra notes PlazCode adds now always fit your limit: they are shortened, or wait for the next message. Command results themselves are never cut."
+      ],
+      "notes": [
+        "Your Input characters setting still works the same for everything you type.",
+        "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***Fewer limit errors, lower usage:*** fixes the input-limit error that stopped Claude mid-work, and PlazCode now uses less of your AI plan.",
+        "sections": [
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Claude stopped with \"This message exceeds your 12000 character input limit\" even after a normal prompt. PlazCode's own extra notes now always fit your limit.",
+              "The AI no longer looks up each command before using it, which used extra messages.",
+              "Ultra mode no longer re-sends its whole skill pack with every request.",
+              "The extra reference added to each request is smaller, and vault saves are not echoed back to the AI."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Full tests passed on Windows, Mac and Linux, including the Mac app.",
+              "The exact limit error from the report was recreated in a test and now fits the limit.",
+              "Command results are never cut; only PlazCode's own extra notes are shortened or wait.",
+              "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+            ]
+          }
+        ]
+      }
+    },
     {
       "version": "1.24.20",
       "title": "ClickUp Ask Brain connects again",
@@ -142,89 +229,12 @@
           }
         ]
       }
-    },
-    {
-      "version": "1.24.17",
-      "title": "ClickUp tool results and Blender command lists",
-      "summary": "ClickUp reads large tool results through complete retained pages and correctly selects Blender when its catalog request places server outside params.",
-      "added": [],
-      "improved": [
-        "Send ClickUp-sized result pages while keeping every original character available through plazcode_result_read, without rerunning the original tool.",
-        "Recheck final tool feedback after appended status and reference context."
-      ],
-      "fixed": [
-        "Large Blender results and full command references no longer exceed ClickUp’s outgoing transport bound.",
-        "Read-only command-list requests preserve an unambiguous top-level server selector; conflicting selectors are rejected."
-      ],
-      "notes": [
-        "Exact-source Windows/macOS/Linux/browser and packaged Mac desktop checks are required before publication.",
-        "Browser fixtures use a mocked bridge; affected live ClickUp accounts and real Blender/Studio work are not claimed tested. Windows is unsigned; macOS is not notarized."
-      ],
-      "github": {
-        "summary": "Fixes oversized ClickUp tool feedback and Blender command-list selection.",
-        "sections": [
-          {
-            "title": "🛠️ Fixes",
-            "items": [
-              "Large results and complete Blender/Roblox GUI catalogs use retained pages, without repeating the operation.",
-              "Blender catalog requests preserve server when supplied outside params.",
-              "Final feedback sizing includes appended status and references."
-            ]
-          },
-          {
-            "title": "🧪 Validation and limitations",
-            "items": [
-              "Platform/browser and packaged Mac desktop gates run before publication.",
-              "Fixtures use a mocked bridge; affected accounts and real projects were not tested. Windows unsigned; Mac not notarized."
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "version": "1.24.16",
-      "title": "Reliable ClickUp startup receipts",
-      "summary": "ClickUp startup continues after accepted context parts, uses compact defaults, and stops clearly when the selected AI model declines the connection.",
-      "added": [],
-      "improved": [
-        "Use compact default ClickUp startup instructions and bounded saved-note previews; keep full notes available through the memory reader and preserve custom instructions exactly.",
-        "Observe a startup acknowledgement through the existing response timeout when its receipt is delayed."
-      ],
-      "fixed": [
-        "Confirm each startup context part from a persisted new user row and its exact new assistant acknowledgement when rich-text rendering changes the user row.",
-        "Recognize explicit ClickUp model refusals before sending a protocol correction; leave startup stopped and the composer unlocked.",
-        "Cancel receipt observation on Stop or a known conversation change without sending again."
-      ],
-      "notes": [
-        "Validated on Windows, macOS and Linux with Chromium/Firefox regressions and packaged macOS desktop checks before publishing.",
-        "Affected live ClickUp accounts were not reproduced. AI models can still decline the connection request. Windows is unsigned; macOS is not notarized."
-      ],
-      "github": {
-        "summary": "ClickUp startup receipt and model-refusal fixes.",
-        "sections": [
-          {
-            "title": "🛠️ Fixes",
-            "items": [
-              "Accepted startup parts continue after rendered text changes or delayed acknowledgements.",
-              "Compact defaults reduce startup context while preserving custom instructions.",
-              "Explicit model refusals stop without repeated handshake requests."
-            ]
-          },
-          {
-            "title": "🧪 Validation and limitations",
-            "items": [
-              "Windows, macOS, Linux and Chromium/Firefox checks; packaged Mac desktop lifetime checked before publication.",
-              "Affected live accounts were not reproduced. A ClickUp model can still decline. Windows unsigned; Mac not notarized."
-            ]
-          }
-        ]
-      }
     }
   ],
   "platforms": {
     "macos": {
-      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.20.zip",
-      "sha256": "b28b897d70bbc2cc1f43ac4e28fd13d06012caa342c01ba68817147d64254143"
+      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.25.zip",
+      "sha256": "3f90694dab50953905e16505571087fced70c46735976c2eb4340ffb093c48dd"
     }
   }
 }
