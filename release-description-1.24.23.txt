@@ -1,0 +1,21 @@
+✨ **PlazCode 1.24.23**
+***Fixes the false virus warning:*** Chrome and some antivirus programs wrongly flagged the PlazCode download. This update removes what made the app look suspicious to them.
+
+***🛠️ What's fixed***
+- Chrome and some antivirus programs called the 1.24.22 download a virus. It was a false alarm.
+- PowerShell commands from the AI now run as a normal script file instead of a scrambled command line, and PowerShell's safety setting stays on.
+- Links and Obsidian notes open the normal Windows way.
+- Updates and add-on setup keep PowerShell's safety setting on too.
+- The app now has standard Windows program details (company, copyright, manifest).
+
+***🧪 What was checked***
+- Full tests passed on Windows, Mac and Linux, including the Mac app.
+- A new check confirms the Windows app no longer contains any of the patterns scanners flagged.
+- Commands, updates, links and add-ons work as before.
+- The Windows app is unsigned and the Mac app is not notarized, as before. A new unsigned app can still be flagged until it builds a reputation.
+
+***📥 How to update***
+- Open PlazCode, or choose Updates → Update now.
+- Manual downloads: PlazCode-1.24.23.zip for Windows, PlazCode-macOS-1.24.23.zip for Mac, or PlazCode-Firefox-1.24.23.zip for Firefox.
+- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
+- Your settings, memory and connections are kept.

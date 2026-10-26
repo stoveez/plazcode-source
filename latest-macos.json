@@ -1,9 +1,53 @@
 {
-  "version": "1.24.20",
-  "desktop_version": "1.24.20",
-  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.20.zip",
-  "sha256": "b28b897d70bbc2cc1f43ac4e28fd13d06012caa342c01ba68817147d64254143",
+  "version": "1.24.23",
+  "desktop_version": "1.24.23",
+  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.23.zip",
+  "sha256": "6e1be28551fa625b680251c4f7556afe9889054cd10f9a7b55ec1d1c88963087",
   "release_notes": [
+    {
+      "version": "1.24.23",
+      "title": "Fix for the false virus warning",
+      "summary": "Some browsers and antivirus programs wrongly called the PlazCode download a virus. This update removes the things in the PlazCode app that made it look suspicious to them.",
+      "added": [],
+      "improved": [
+        "The PlazCode app now carries standard Windows program details (company name, copyright and a proper application manifest), like most normal programs."
+      ],
+      "fixed": [
+        "Chrome and some antivirus programs flagged the 1.24.22 download as a virus. It was a false alarm: PlazCode is not malware.",
+        "When the AI runs a PowerShell command, PlazCode now uses a normal script file instead of a scrambled command line, and no longer turns off PowerShell's safety setting. These two things are what real malware often does, so scanners were suspicious.",
+        "Links and Obsidian notes now open the normal Windows way instead of through an old Windows helper that scanners also watch for.",
+        "Updates and add-on setup no longer switch off PowerShell's safety setting either."
+      ],
+      "notes": [
+        "Everything works the same as before: commands, updates, links and add-ons.",
+        "A brand-new unsigned app can still be flagged until it builds up a good reputation; code signing is the full cure.",
+        "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***Fixes the false virus warning:*** Chrome and some antivirus programs wrongly flagged the PlazCode download. This update removes what made the app look suspicious to them.",
+        "sections": [
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Chrome and some antivirus programs called the 1.24.22 download a virus. It was a false alarm.",
+              "PowerShell commands from the AI now run as a normal script file instead of a scrambled command line, and PowerShell's safety setting stays on.",
+              "Links and Obsidian notes open the normal Windows way.",
+              "Updates and add-on setup keep PowerShell's safety setting on too.",
+              "The app now has standard Windows program details (company, copyright, manifest)."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Full tests passed on Windows, Mac and Linux, including the Mac app.",
+              "A new check confirms the Windows app no longer contains any of the patterns scanners flagged.",
+              "Commands, updates, links and add-ons work as before.",
+              "The Windows app is unsigned and the Mac app is not notarized, as before. A new unsigned app can still be flagged until it builds a reputation."
+            ]
+          }
+        ]
+      }
+    },
     {
       "version": "1.24.20",
       "title": "ClickUp Ask Brain connects again",
@@ -176,45 +220,6 @@
             "items": [
               "Platform/browser and packaged Mac desktop gates run before publication.",
               "Fixtures use a mocked bridge; affected accounts and real projects were not tested. Windows unsigned; Mac not notarized."
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "version": "1.24.16",
-      "title": "Reliable ClickUp startup receipts",
-      "summary": "ClickUp startup continues after accepted context parts, uses compact defaults, and stops clearly when the selected AI model declines the connection.",
-      "added": [],
-      "improved": [
-        "Use compact default ClickUp startup instructions and bounded saved-note previews; keep full notes available through the memory reader and preserve custom instructions exactly.",
-        "Observe a startup acknowledgement through the existing response timeout when its receipt is delayed."
-      ],
-      "fixed": [
-        "Confirm each startup context part from a persisted new user row and its exact new assistant acknowledgement when rich-text rendering changes the user row.",
-        "Recognize explicit ClickUp model refusals before sending a protocol correction; leave startup stopped and the composer unlocked.",
-        "Cancel receipt observation on Stop or a known conversation change without sending again."
-      ],
-      "notes": [
-        "Validated on Windows, macOS and Linux with Chromium/Firefox regressions and packaged macOS desktop checks before publishing.",
-        "Affected live ClickUp accounts were not reproduced. AI models can still decline the connection request. Windows is unsigned; macOS is not notarized."
-      ],
-      "github": {
-        "summary": "ClickUp startup receipt and model-refusal fixes.",
-        "sections": [
-          {
-            "title": "🛠️ Fixes",
-            "items": [
-              "Accepted startup parts continue after rendered text changes or delayed acknowledgements.",
-              "Compact defaults reduce startup context while preserving custom instructions.",
-              "Explicit model refusals stop without repeated handshake requests."
-            ]
-          },
-          {
-            "title": "🧪 Validation and limitations",
-            "items": [
-              "Windows, macOS, Linux and Chromium/Firefox checks; packaged Mac desktop lifetime checked before publication.",
-              "Affected live accounts were not reproduced. A ClickUp model can still decline. Windows unsigned; Mac not notarized."
             ]
           }
         ]
