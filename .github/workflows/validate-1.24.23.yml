@@ -241,6 +241,8 @@ jobs:
         working-directory: build-src-1.24.23/PlazCode
         run: |
           Copy-Item agent/target/release/PlazCode.exe PlazCode.exe
+          python test-exe-av-signals.py PlazCode.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python test-launcher.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./test-updater.ps1

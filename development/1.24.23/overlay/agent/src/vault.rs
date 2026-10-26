@@ -1294,8 +1294,11 @@ fn percent_encode(text: &str) -> String {
     text.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect()
 }
 fn open_target(target: &str) -> anyhow::Result<()> {
+    // 1.24.23: obsidian:// links open with ShellExecuteW, not "rundll32 url.dll,FileProtocolHandler" (an antivirus red flag).
+    #[cfg(windows)]
+    if target.starts_with("obsidian://") { return crate::workspace::windows_open::open(target, None).map_err(|e| anyhow::anyhow!("Could not open it: {e}")); }
     let result = if cfg!(windows) {
-        if target.starts_with("obsidian://") { std::process::Command::new("rundll32").arg("url.dll,FileProtocolHandler").arg(target).spawn() } else { std::process::Command::new("explorer").arg(target).spawn() }
+        std::process::Command::new("explorer").arg(target).spawn()
     } else if cfg!(target_os = "macos") {
         std::process::Command::new("open").arg(target).spawn()
     } else {

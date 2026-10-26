@@ -394,10 +394,9 @@ pub fn run_gui(
             }
             Event::UserEvent(UiEvent::OpenExternal(url)) => {
                 #[cfg(windows)]
-                let opened = {
-                    use std::os::windows::process::CommandExt;
-                    std::process::Command::new("rundll32.exe").arg("url.dll,FileProtocolHandler").arg(url).creation_flags(0x0800_0000).spawn()
-                };
+                // 1.24.23: open links with ShellExecuteW (what a double-click does), not
+                // "rundll32 url.dll,FileProtocolHandler", which antivirus heuristics flag.
+                let opened = crate::workspace::windows_open::open(&url, None);
                 #[cfg(target_os = "macos")]
                 let opened = std::process::Command::new("/usr/bin/open").arg(url).spawn();
                 if let Err(error) = opened { shared.log(&format!("Could not open browser: {error}")); }

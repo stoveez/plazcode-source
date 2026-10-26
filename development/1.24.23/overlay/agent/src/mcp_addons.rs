@@ -426,15 +426,24 @@ impl AddonRuntime {
         #[cfg(windows)]
         let command = match command {
             Err(error) if matches!(self.spec.command.to_ascii_lowercase().as_str(), "npx" | "uvx") => {
-                let app = config_path().parent().unwrap_or_else(|| std::path::Path::new(".")).to_path_buf();
-                let script = app.join("Setup-Mcp-Runtime.ps1");
-                anyhow::ensure!(script.is_file(), "[{}] Runtime setup script missing: {} ({error})", self.id, script.display());
+                // 1.24.23: run the app's own built-in copy of Setup-Mcp-Runtime.ps1, written to a temp file
+                // by PlazCode itself, with RemoteSigned. The copy in the install folder can carry Windows'
+                // "downloaded from the internet" mark (unzipped with Explorer), which is why it needed
+                // Bypass before, and "-ExecutionPolicy Bypass" is a classic malware sign for scanners.
+                let _ = &error;
+                static SETUP_RUN: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+                let script = std::env::temp_dir().join(format!("plazcode-runtime-setup-{}-{}.ps1", std::process::id(),
+                    SETUP_RUN.fetch_add(1, std::sync::atomic::Ordering::Relaxed)));
+                std::fs::write(&script, include_str!("../../Setup-Mcp-Runtime.ps1"))
+                    .map_err(|e| anyhow::anyhow!("[{}] Could not prepare the runtime setup: {e}", self.id))?;
                 tracing::info!("[{}] Preparing {} runtime for first use; download is cached for later launches", self.id, self.spec.command);
                 let mut setup = Command::new("powershell.exe");
-                setup.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File"])
-                    .arg(script).arg("-Runtime").arg(self.spec.command.to_ascii_lowercase())
+                setup.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "RemoteSigned", "-File"])
+                    .arg(&script).arg("-Runtime").arg(self.spec.command.to_ascii_lowercase())
                     .creation_flags(CREATE_NO_WINDOW).kill_on_drop(true);
-                let output = tokio::time::timeout(std::time::Duration::from_secs(300), setup.output()).await
+                let output = tokio::time::timeout(std::time::Duration::from_secs(300), setup.output()).await;
+                let _ = std::fs::remove_file(&script);
+                let output = output
                     .map_err(|_| anyhow::anyhow!("[{}] Runtime setup timed out; check internet access and retry", self.id))??;
                 anyhow::ensure!(output.status.success(), "[{}] Runtime setup failed: {}", self.id,
                     String::from_utf8_lossy(&output.stderr).chars().take(4000).collect::<String>());

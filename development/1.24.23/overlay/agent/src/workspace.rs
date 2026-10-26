@@ -922,16 +922,15 @@ pub(crate) fn powershell_script(command: &str) -> String {
     )
 }
 
-/// PowerShell's -EncodedCommand text: base64 of the script as UTF-16LE. It has
-/// no quotes or spaces, so no shell can mangle it.
-pub(crate) fn powershell_encoded(script: &str) -> String {
-    let bytes: Vec<u8> = script.encode_utf16().flat_map(|unit| unit.to_le_bytes()).collect();
-    base64_encode(&bytes)
-}
-
-/// Longest encoded script passed on the command line (Windows allows 32,767 characters in total).
+/// PowerShell scripts run from a UTF-8 file with a byte-order mark (1.24.23). Before, short
+/// scripts went on the command line as -EncodedCommand base64 with -ExecutionPolicy Bypass:
+/// that pair is the most common signature of PowerShell malware and got PlazCode.exe flagged.
 #[allow(dead_code)] // used by the Windows build
-const PS_ENCODED_LIMIT: usize = 24_000;
+pub(crate) fn powershell_file_bytes(script: &str) -> Vec<u8> {
+    let mut bytes = vec![0xEF, 0xBB, 0xBF];
+    bytes.extend_from_slice(script.as_bytes());
+    bytes
+}
 
 /// Turn the bytes a command printed into text. UTF-8 (and UTF-16 with a byte-order
 /// mark) are read as they are; anything else is read in the PC's own console
@@ -1111,19 +1110,12 @@ async fn run_shell(shell: Shell, command: &str, cwd: &Path, timeout_secs: u64) -
         Shell::PowerShell | Shell::Pwsh => {
             let program = if shell == Shell::Pwsh { "pwsh.exe".to_string() } else { windows_powershell_path() };
             let mut cmd = tokio::process::Command::new(program);
-            cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass"]);
-            let script = powershell_script(command);
-            let encoded = powershell_encoded(&script);
-            if encoded.len() <= PS_ENCODED_LIMIT {
-                cmd.arg("-EncodedCommand").arg(encoded);
-            } else {
-                // Too long for a command line: a UTF-8 file with a byte-order mark.
-                let mut bytes = vec![0xEF, 0xBB, 0xBF];
-                bytes.extend_from_slice(script.as_bytes());
-                let file = TempScript::create("ps1", &bytes).map_err(RunErr::Spawn)?;
-                cmd.arg("-File").arg(&file.0);
-                temp = Some(file);
-            }
+            // PlazCode writes this file itself (no "downloaded from the internet" mark), so
+            // RemoteSigned runs it exactly as Bypass did, without the malware-like flag.
+            cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "RemoteSigned"]);
+            let file = TempScript::create("ps1", &powershell_file_bytes(&powershell_script(command))).map_err(RunErr::Spawn)?;
+            cmd.arg("-File").arg(&file.0);
+            temp = Some(file);
             cmd
         }
         Shell::Bash | Shell::Sh => {
@@ -1150,7 +1142,8 @@ async fn run_shell(shell: Shell, command: &str, cwd: &Path, timeout_secs: u64) -
         Shell::Bash => { let mut cmd = tokio::process::Command::new("bash"); cmd.arg("-c").arg(command); cmd }
         Shell::PowerShell | Shell::Pwsh => {
             let mut cmd = tokio::process::Command::new("pwsh");
-            cmd.args(["-NoProfile", "-NonInteractive", "-EncodedCommand"]).arg(powershell_encoded(&powershell_script(command)));
+            // No shell sits between us and pwsh here (argv is passed as is), so the script goes as one argument.
+            cmd.args(["-NoProfile", "-NonInteractive", "-Command"]).arg(powershell_script(command));
             cmd
         }
         _ => { let mut cmd = tokio::process::Command::new("sh"); cmd.arg("-c").arg(command); cmd }
@@ -1383,7 +1376,7 @@ pub(crate) fn shell_execute_error(code: isize) -> String {
 }
 
 #[cfg(windows)]
-mod windows_open {
+pub(crate) mod windows_open {
     use std::os::windows::ffi::OsStrExt;
     #[link(name = "shell32")]
     unsafe extern "system" {
@@ -2249,15 +2242,19 @@ mod tests {
     }
 
     #[test]
-    fn powershell_runs_encoded_so_quotes_cannot_break_it() {
-        // "hi" as UTF-16LE is 68 00 69 00, which is aABpAA== in base64.
-        assert_eq!(powershell_encoded("hi"), "aABpAA==");
+    fn powershell_runs_from_a_file_so_quotes_cannot_break_it() {
         let script = powershell_script("Write-Output \"it's \\\"fine\\\"\"\r\nGet-Date");
         assert!(script.contains("UTF8Encoding $false"), "{script}");
         assert!(script.contains("Write-Output \"it's \\\"fine\\\"\"\nGet-Date"), "{script}");
         assert!(script.ends_with("exit $(if ($?) { 0 } elseif ($LASTEXITCODE) { $LASTEXITCODE } else { 1 })"), "{script}");
-        let encoded = powershell_encoded(&script);
-        assert!(!encoded.contains(['"', ' ', '\\']), "the command line text has nothing a shell could change");
+        let bytes = powershell_file_bytes(&script);
+        assert_eq!(&bytes[..3], &[0xEF, 0xBB, 0xBF], "UTF-8 with a byte-order mark so Windows PowerShell 5.1 reads accents right");
+        assert_eq!(&bytes[3..], script.as_bytes());
+        // 1.24.23 antivirus fix: the app never passes base64 scripts or Bypass to PowerShell.
+        let source = include_str!("workspace.rs");
+        let encoded = ["-Encoded", "Command"].concat();
+        let bypass = String::from_utf8(vec![34, 66, 121, 112, 97, 115, 115, 34]).unwrap(); // the word Bypass in quotes
+        assert!(!source.lines().filter(|l| !l.trim_start().starts_with("//")).any(|l| l.contains(&encoded) || l.contains(&bypass)), "no encoded command or Bypass in the command runner");
     }
 
     #[test]
