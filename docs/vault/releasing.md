@@ -23,3 +23,9 @@ Read `publish-1.24.22.yml` and `development/1.24.22/promote.py` before the first
 - Practice runs go to the throwaway repo `stoveez/plazcode-publish-test` first. Never push to the public repo by hand; only the publish workflow writes there.
 - The private repo's own `main` is the old line (about 105 commits behind `claude/plazcode-dev` on 2026-10-24). Do not use it for a release.
 - Release description wording and bold marks: always follow [release-format](release-format.md) (plain words, under 2,000 characters, no role mention).
+
+## The main-ancestry gate (learned 2026-10-25, 1.24.22)
+The publish workflow gates on `git merge-base --is-ancestor origin/main HEAD` and later pushes the release commit to `main`. That release commit lives OFF the `claude/plazcode-dev` line, so after one release `main` no longer sits on dev's history and the next publish from dev fails the gate ("Keep the private build record"). Two things fix it, both now done:
+1. The workflow fetches the LIVE main first: `git fetch origin main:refs/remotes/origin/main` then `--is-ancestor refs/remotes/origin/main HEAD` (a stale cached `origin/main` made the check look fine locally while CI saw the real, newer main).
+2. After each publish, merge `origin/main` back into `claude/plazcode-dev` with `git merge -s ours` (keeps dev's exact source, just records main as a parent) so the next release descends from main. Done for 1.24.22. Do this again after 1.24.23.
+If a publish still fails this gate, on the publish branch run `git fetch origin main:refs/remotes/origin/main && git merge -s ours origin/main` (source stays identical) before re-running.
