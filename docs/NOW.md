@@ -1,20 +1,16 @@
-# NOW (live handoff, overwrite at the end of every session)
-Updated: 2026-10-26. Long-term knowledge: [vault/Home.md](vault/Home.md).
+# NOW
+Updated: 2026-10-26. Branch: `claude/plazcode-dev`.
 
-**Latest change (WIP):** investigating the four owner-reported reliability bugs for 1.24.25 (screen capture display, repeated task approvals, stale loaded extension after update, creation_preview JSON errors). Development copy and workflows prepared; no fixes verified yet.
+**Latest change: 1.24.25 reliability fixes implemented; validation pending.** Canvas screenshot display avoids site image-URL blocks; corrupt captures report an error. Plan Mode honors per-command task approvals. Creator response handling distinguishes missing endpoint, size limits and invalid replies. Desktop reports active browser extension versions and EXE-only/old-folder mismatches; known outdated versions stay red after failed/stale checks.
 
-**Previous change:** the owner reserved 1.24.25 for a new issue (scope pending). All work previously planned for 1.24.25 is moved to **1.24.26**: accounts, code protection, Skill Workshop, Brickwire and remaining carried-over items. Plans moved to `development/1.24.26/`; links and scheduling notes updated. Documentation only; no app or updater changes.
+**Checks:** approval, creator response and version unit tests pass; actual Chromium screenshot pixels passed with img-src none, including corrupt-image error and cleanup. Rust is unavailable locally; required platform/browser checks run in CI. Full regression run is next. No affected user account or real Studio capture tested.
 
-**Latest published: 1.24.24**, 2026-10-26 (validation 40340881855 on ae33b25; publish 40344067698). Live feed and zip verified by the previous session. Fixes Claude input-limit errors and excess usage; extension reload is enough. Full platform tests passed; not live-tested on a real Claude account with a 12,000 limit.
+**Publishing authorized by owner:** source repo is public; publish 1.24.25 after required checks pass, with release notes in the owner's format. Do not change visibility. Remind the owner to restore Private after publication.
 
-**Previously shipped:** 1.24.23 antivirus false-positive fix (validation 40325619553 on bff6768; publish 40328989177); 1.24.22 lean startup.
+**Latest published remains 1.24.24** (validation 40340881855; publish 40344067698). 1.24.25 is not published yet.
 
-**1.24.26 decisions:** PlazCode stays free; username/password accounts, optional recovery email added only while signed in, owner-only user page; code protection checks program files only, including test builds. See [decisions](vault/decisions.md) and `development/1.24.26/NEXT-UPDATE-PLAN.md`.
+**Deferred work:** all prior feature plans remain in 1.24.26 (accounts, code protection, Skill Workshop, Brickwire and carried-over work).
 
-**Working rules:** use `claude/plazcode-dev`; no task branches or helper agents. Update affected notes and this handoff with each push; keep PC vault copies in sync when linked. See [how-we-work](vault/how-we-work.md).
+**Next:** finish local regressions, run validate-1.24.25.yml on the exact final commit; publish through publish-1.24.25.yml only after full validation and Mac desktop check.
 
-**Checks for this change:** 22 plan references checked, design documents preserved, diff whitespace check passed; no build needed for documentation-only scheduling. PC vault cannot be synced from this session (no PC connection).
-
-**Still open:** [open-work](vault/open-work.md) contains site checks and queued work. Earlier Claude typing/card fixes were live-checked; other site behavior, Firefox appearance and desktop features still need real-user checks. Desktop feature guide and lean startup phases 2–3 remain unfinished.
-
-**Next step:** fix and test the four reliability reports for 1.24.25. Plan placeholder: `development/1.24.25/NEXT-UPDATE-PLAN.md`. Do not build the deferred 1.24.26 work as part of 1.24.25.
+**Rules:** no task branches or helpers; update NOW/open-work/vault with each push. PC vault sync unavailable (no PC connection). More: [Home](vault/Home.md), [open work](vault/open-work.md).

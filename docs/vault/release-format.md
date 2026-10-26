@@ -38,4 +38,4 @@ The text shown on the release page and posted to Discord. Write it for people wh
 - Your settings, memory and connections are kept.
 ```
 
-Where it goes in the repo: the `github` block of `development/1.24.24/release-entry.json` (`summary`, `sections`). `publish_release.py` turns it into the page text and adds the How to update section itself; keep the final text matching this template and under 2,000 characters. See [releasing](releasing.md).
+Where it goes in the repo: the `github` block of `development/1.24.25/release-entry.json` (`summary`, `sections`). `publish_release.py` turns it into the page text and adds the How to update section itself; keep the final text matching this template and under 2,000 characters. See [releasing](releasing.md).

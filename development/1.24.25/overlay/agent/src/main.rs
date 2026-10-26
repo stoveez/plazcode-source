@@ -1898,6 +1898,7 @@ async fn mcp_toggle_handler(State(state): State<AppState>, Json(req): Json<McpTo
 async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {
     state.ui.mark_extension_seen();
     Json(serde_json::json!({
+        "version": env!("CARGO_PKG_VERSION"),
         "blender_connected": blender::connected(),
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "roblox_bridge_connected": state.roblox_clients.read().await.len() > 0,

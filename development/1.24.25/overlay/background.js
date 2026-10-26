@@ -963,6 +963,7 @@ function statusObj(mode = engine) {
     robloxProc, roblox_connected: robloxEditorConnected, studio_checking: studioChecking,
     local_connected: localReady, local_full: localFull,
     local_root: localRoot,
+    version_warning: extensionVersionWarning(desktopVersion, chrome.runtime.getManifest().version),
     tools: mergeBlenderTools(mode === "local" ? localTools() : toolsCache).length,
     // Blender (and any other live add-on) is listed in AgentScript too, so the bar,
     // the popup, list_mcp_servers and the startup note all tell the AI it is connected.
@@ -971,6 +972,24 @@ function statusObj(mode = engine) {
   };
 }
 
+// Read the body once. Axum's missing-route and request-limit replies may be empty/plain text.
+async function creatorResponse(response) {
+  const text = await response.text();
+  let value;
+  try { value = JSON.parse(text); } catch {
+    if (response.status === 404) throw Error("This running PlazCode app does not provide creation previews. Exit all old PlazCode apps and open the latest complete download.");
+    if (response.status === 413) throw Error("Creation draft exceeds the desktop request limit. Send a smaller draft patch.");
+    throw Error("Creation service returned " + (response.ok ? "an invalid response" : "HTTP " + response.status) + ". Restart the updated PlazCode app and try again. No Studio changes were made.");
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw Error("Creation service returned an invalid response. Restart the updated PlazCode app.");
+  if (!response.ok) return {ok:false,error:typeof value.error === "string" ? value.error : "Creation request failed (HTTP " + response.status + ")."};
+  return value;
+}
+let desktopVersion = "";
+function extensionVersionWarning(desktop, extension) {
+  if (!/^\d+\.\d+\.\d+$/.test(desktop) || !/^\d+\.\d+\.\d+$/.test(extension) || desktop === extension) return "";
+  return "Desktop " + desktop + ", browser extension " + extension + ". Updating only the app cannot update an extension loaded from another folder. Use Update now for the complete update. In your browser's Extensions page, check PlazCode's loaded folder; load PlazCode-Extension from the updated PlazCode folder, reload it, then refresh your AI tabs. In Firefox, load the updated Firefox add-on.";
+}
 async function refreshProcStatus() {
   if (procStatusReading) return;
   procStatusReading = true;
@@ -990,7 +1009,9 @@ async function refreshProcStatus() {
     const nl = j.local_ready === true;
     const nf = j.local_full === true;
     const nrRoot = typeof j.local_root === "string" ? j.local_root : localRoot;
-    const changed = editorChanged || nr !== robloxProc || nl !== localReady || nf !== localFull || nrRoot !== localRoot;
+    const nextDesktopVersion = typeof j.version === "string" ? j.version : "";
+    const changed = nextDesktopVersion !== desktopVersion || editorChanged || nr !== robloxProc || nl !== localReady || nf !== localFull || nrRoot !== localRoot;
+    desktopVersion = nextDesktopVersion;
     robloxProc = nr;
     localReady = nl;
     localFull = nf;
@@ -2031,7 +2052,7 @@ async function readReleaseStatus() {
     const status={latest:value.latest,checked_at:value.checked_at,check_error:value.check_error || null},signature=JSON.stringify(status);
     if(signature!==lastReleaseSignature){await chrome.storage.local.set({rsReleaseStatus:status});lastReleaseSignature=signature;}
   } catch (error) {
-    const status={check_error:"Bridge unavailable."},signature=JSON.stringify(status);if(signature!==lastReleaseSignature){await chrome.storage.local.set({rsReleaseStatus:status}).catch(()=>{});lastReleaseSignature=signature;}
+    const previous=await chrome.storage.local.get("rsReleaseStatus").catch(()=>({}));const status={...(previous.rsReleaseStatus||{}),check_error:"Bridge unavailable."},signature=JSON.stringify(status);if(signature!==lastReleaseSignature){await chrome.storage.local.set({rsReleaseStatus:status}).catch(()=>{});lastReleaseSignature=signature;}
   } finally { releaseStatusReading = false; }
 }
 setInterval(() => { if (rustMode) readReleaseStatus(); }, 1000);
@@ -2235,7 +2256,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       }
       case "creations": {
         const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
-        try{const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/creations",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{action:"list"}),signal:controller.signal});const value=await response.json();sendResponse(response.ok?value:{ok:false,error:value.error||"Creator request failed."});}catch(error){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timer);}break;
+        try{const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/creations",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{action:"list"}),signal:controller.signal});const value=await creatorResponse(response);sendResponse(response.ok?value:{ok:false,error:value.error||"Creator request failed."});}catch(error){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timer);}break;
       }
       case "templates":
         try {

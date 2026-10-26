@@ -374,7 +374,7 @@
         };
         const onAllow = () => done(true);
         const onDeny = () => done(false);
-        const onAll = () => { try { (A.approveAll = A.approveAll || new Set()).add(String(call.tool)); } catch {} done(true); };
+        const onAll = () => { if (A.stop || (frozen && PlazCodeApproval.freeze(args) !== frozen)) { done(false); return; } try { (A.approveAll = A.approveAll || new Set()).add(String(call.tool)); } catch {} done(true); };
         const onAlways = () => { try { alwaysSet(PlazCodeApproval.alwaysAdd(alwaysList, call.tool)); } catch {} done(true); try { window.__rsAlwaysChanged && window.__rsAlwaysChanged(String(call.tool)); } catch {} };
         const cancel = () => done(false);
         const onChanges = () => done("changes");
@@ -2911,7 +2911,7 @@ return result`;
     }
     // Plan Mode: until the person approves a plan, every change asks first. (Deletes have their own prompt above.)
     let planAsked = false;
-    if (!deletes && planOnNow() && !A.planApproved && PlazCodeSafety.isChange(bareName, safetyEngine) && !(A.approveAll && A.approveAll.has("*"))) {
+    if (!deletes && planOnNow() && !A.planApproved && PlazCodeSafety.isChange(bareName, safetyEngine) && !(A.approveAll && (A.approveAll.has("*") || A.approveAll.has(String(bareName))))) {
       const okPlan = await requestApproval(bareName, args, { kicker: "Plan Mode: no approved plan yet", call: { tool: bareName, arguments: args }, engine: safetyEngine, always: false });
       if (!okPlan) return `ERROR in ${bareName}: Plan Mode is on and the user did not approve this change. Write your plan first (Goal, then ordered steps); PlazCode shows it to the user for approval. Do not retry unless the user asks.`;
       planAsked = true;
@@ -10589,8 +10589,28 @@ function renderCards(panel) {
       };
       close.addEventListener("click", cleanup);
       for (const img of images) {
-        const el = document.createElement("img"); el.className = "rs-shot-img";
-        el.src = `data:${img.mimeType || "image/jpeg"};base64,${img.data}`; el.alt = "PlazCode screenshot";
+        // Decode bytes directly: an AI site's img-src policy may block data URLs.
+        const el = document.createElement("canvas"); el.className = "rs-shot-img";
+        el.setAttribute("aria-label", "PlazCode screenshot loading");
+        void (async () => {
+          let bitmap, expired = false;
+          try {
+            const decoding = createImageBitmap(imageToBlob(img));
+            void decoding.then(value => { if (expired) value.close(); }, () => {});
+            bitmap = await boundedImageOperation(decoding);
+            if (disposed) return;
+            el.width = bitmap.width; el.height = bitmap.height;
+            const ctx = el.getContext("2d");
+            if (!ctx) throw Error("Screenshot display is unavailable.");
+            ctx.drawImage(bitmap, 0, 0);
+            el.setAttribute("aria-label", "Enlarge screenshot");
+          } catch (error) {
+            if (disposed) return;
+            const message = document.createElement("div");
+            message.textContent = "Screenshot could not be displayed. Try a new capture. " + String(error.message || error);
+            el.replaceWith(message);
+          } finally { expired = true; if (bitmap) bitmap.close(); }
+        })();
         el.tabIndex = 0; el.setAttribute("role", "button"); el.setAttribute("aria-label", "Enlarge screenshot");
         el.addEventListener("click", enlarge);
         el.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); enlarge(); } });
@@ -11560,6 +11580,7 @@ rsInterval(() => {
       return;
     }
     if (msg && msg.type === "rs-status") {
+      checkVersionNotice(msg);
       ui.setStatus({ connected: msg.connected, mcpAlive: msg.mcpAlive, studio: msg.studio, studioApp: msg.studioApp, studioProc: msg.studioProc, robloxProc: msg.robloxProc, roblox_connected: msg.roblox_connected, studio_checking: msg.studio_checking, engine: msg.engine, tools: msg.tools, servers: msg.servers, local_connected: msg.local_connected, local_full: msg.local_full, local_root: msg.local_root, blender: msg.blender, blender_shim: msg.blender_shim, blender_error: msg.blender_error, bridge_error: msg.bridge_error });
     }
     if (msg && msg.type === "rs-fix-connection") {
@@ -11579,7 +11600,14 @@ rsInterval(() => {
   // before setStatus, say the right thing, and stop polling: the context can
   // never come back, so every later tick would just repeat the same failure.
   let statusTimer = null;
+  let versionNotice = "";
+  function checkVersionNotice(s) {
+    if (!s || !s.version_warning || versionNotice === s.version_warning) return;
+    versionNotice = s.version_warning;
+    ui.banner("warn", "PlazCode versions do not match", s.version_warning);
+  }
   function onStatus(s) {
+    checkVersionNotice(s);
     if (!s) return;
     if (s.kind === "stale-extension") {
       if (statusTimer) statusTimer();

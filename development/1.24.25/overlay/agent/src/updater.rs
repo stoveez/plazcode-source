@@ -10,7 +10,7 @@ const DEFAULT_FEED: &str = "https://raw.githubusercontent.com/stoveez/PlazCode/m
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ReleaseNotes { pub version: String, pub title: String, pub summary: String, #[serde(default)] pub added: Vec<String>, #[serde(default)] pub improved: Vec<String>, #[serde(default)] pub fixed: Vec<String> }
 #[derive(Clone, Serialize)]
-pub struct Status { desktop_version: String, desktop_latest: Option<String>, installed: String, latest: Option<String>, available: bool, busy: bool, progress: u8, message: String, error: Option<String>, checked_at: u64, check_error: Option<String>, background: bool, release_notes: Vec<ReleaseNotes> }
+pub struct Status { browser_extension_versions: Vec<String>, extension_warning: String, desktop_version: String, desktop_latest: Option<String>, installed: String, latest: Option<String>, available: bool, busy: bool, progress: u8, message: String, error: Option<String>, checked_at: u64, check_error: Option<String>, background: bool, release_notes: Vec<ReleaseNotes> }
 fn folder() -> PathBuf { crate::platform::installation_root() }
 fn installed_at(root: &std::path::Path) -> String {
     ["PlazCode-Extension/manifest.json", "manifest.json"].iter().find_map(|path| {
@@ -42,7 +42,7 @@ fn windows_helper_command() -> std::process::Command {
     command.env_remove("PSModulePath").args(["-NoProfile","-ExecutionPolicy","RemoteSigned","-File"]);
     command
 }
-static STATUS: once_cell::sync::Lazy<Mutex<Status>> = once_cell::sync::Lazy::new(|| Mutex::new(Status { desktop_version: env!("CARGO_PKG_VERSION").into(), desktop_latest: None, installed: installed(), latest: None, available: false, busy: false, progress: 0, message: "Check for the latest published update.".into(), error: None, checked_at: 0, check_error: None, background: false, release_notes: serde_json::from_str(include_str!("../../release-notes.json")).unwrap_or_default() }));
+static STATUS: once_cell::sync::Lazy<Mutex<Status>> = once_cell::sync::Lazy::new(|| Mutex::new(Status { browser_extension_versions: Vec::new(), extension_warning: String::new(), desktop_version: env!("CARGO_PKG_VERSION").into(), desktop_latest: None, installed: installed(), latest: None, available: false, busy: false, progress: 0, message: "Check for the latest published update.".into(), error: None, checked_at: 0, check_error: None, background: false, release_notes: serde_json::from_str(include_str!("../../release-notes.json")).unwrap_or_default() }));
 static MANUAL_WAITERS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 struct ManualWaiter;
 impl Drop for ManualWaiter { fn drop(&mut self) { MANUAL_WAITERS.fetch_sub(1,std::sync::atomic::Ordering::SeqCst); } }
@@ -435,7 +435,16 @@ pub fn start_checker() {
         }
     });
 }
-pub async fn get() -> Json<Status> { Json(state().clone()) }
+fn extension_warning(desktop: &str, disk: &str, browsers: &[String]) -> String {
+    if disk == desktop && browsers.iter().all(|v| v == desktop) { return String::new(); }
+    format!("The app is {desktop}, extension files here are {disk}, and active browsers report {}. Replacing only the EXE does not update extension files. Use Update now or extract the complete update ZIP. Reload PlazCode from the updated PlazCode-Extension folder in your browser, then refresh your AI tabs. Firefox: load the updated Firefox add-on.", if browsers.is_empty() { "no version yet".to_string() } else { browsers.join(", ") })
+}
+pub async fn get() -> Json<Status> {
+    let mut snapshot = state().clone();
+    snapshot.browser_extension_versions = crate::debug_report::recent_extension_versions();
+    snapshot.extension_warning = extension_warning(env!("CARGO_PKG_VERSION"), &installed(), &snapshot.browser_extension_versions);
+    Json(snapshot)
+}
 pub async fn post(Json(value): Json<Value>) -> axum::response::Response {
     if value["action"]=="launch" { request_launch_update();return Json(serde_json::json!({"ok":true,"queued":true})).into_response(); }
     let install=match value["action"].as_str() { Some("check")=>false,Some("install")|Some("launch")=>true,_=>return (axum::http::StatusCode::BAD_REQUEST,Json(serde_json::json!({"error":"Unknown update action."}))).into_response() };
@@ -746,5 +755,16 @@ mod transport_fallback_tests {
     #[test]
     fn fallback_still_rejects_bad_checksum() {
         assert!(official_asset_fallback("1.20.0", "zz", false).is_err());
+    }
+}
+
+#[cfg(test)]
+mod extension_update_tests {
+    #[test] fn detects_exe_only_and_old_browser_folder() {
+        use super::extension_warning;
+        assert!(extension_warning("1.24.25", "1.24.25", &["1.24.25".into()]).is_empty());
+        assert!(!extension_warning("1.24.25", "1.24.24", &[]).is_empty());
+        assert!(!extension_warning("1.24.25", "1.24.25", &["1.24.24".into()]).is_empty());
+        assert!(!extension_warning("1.24.25", "1.24.25", &["1.24.25".into(), "1.24.24".into()]).is_empty());
     }
 }

@@ -820,7 +820,7 @@ html[data-desktop-theme] .dx-card{box-shadow:var(--p-lift)}
       <section class="page" id="page-templates"><div class="page-head"><h1>Templates</h1><p>Add examples once. PlazCode finds useful scripts automatically.</p></div><div class="settingcard" id="templateLibrary" dir="auto"></div></section>
       <section class="page" id="page-updates">
         <div class="page-head"><div><div class="page-title">Updates</div><div class="page-sub">Update the desktop app, bridge and extension files together.</div></div><button id="checkUpdates" class="softbtn" style="margin-left:auto">Check now</button></div>
-        <div class="settingcard"><div class="update-versions"><div><small>INSTALLED</small><strong id="updateInstalled">v__PLAZCODE_VERSION__</strong></div><span>→</span><div><small>LATEST</small><strong id="updateLatest">Not checked</strong></div></div><p id="updateMessage" data-i18n-user-content dir="auto" role="status">Check for the latest published release.</p><div class="instructions-actions"><button class="accentbtn" id="installUpdate" disabled>Update now</button><button class="softbtn" data-ipc="open:github">View on GitHub</button></div><p>PlazCode reopens when installation finishes. Afterwards reload the extension and refresh open AI chat tabs.</p></div>
+        <div class="settingcard"><div class="update-versions"><div><small>INSTALLED</small><strong id="updateInstalled">v__PLAZCODE_VERSION__</strong></div><span>→</span><div><small>LATEST</small><strong id="updateLatest">Not checked</strong></div></div><div id="updateExtensions" role="status"></div><p id="updateMessage" data-i18n-user-content dir="auto" role="status">Check for the latest published release.</p><div class="instructions-actions"><button class="accentbtn" id="installUpdate" disabled>Update now</button><button class="softbtn" data-ipc="open:github">View on GitHub</button></div><p>PlazCode reopens when installation finishes. Afterwards reload the extension and refresh open AI chat tabs.</p></div>
         <div class="settingcard"><div class="settingrow"><label>Automatic updates</label><div class="toggle" data-pref="rsAutoUpdate" role="switch" aria-label="Automatic updates"></div></div><p class="settinghelp"><strong>On:</strong> PlazCode installs new versions automatically once it has been idle. <strong>Off:</strong> PlazCode only shows that an update is available; choose <strong>Update now</strong> to install it.</p></div>
         <div id="updateReleaseNotes" data-i18n-user-content dir="auto" class="update-release-notes" aria-label="Release notes"></div>
       </section>
@@ -1488,8 +1488,11 @@ __PLAZCODE_VERSION_UI__
       PlazCodeVersion.render(Byid('settingsVersion'), Value.desktop_version || Value.installed || '__PLAZCODE_VERSION__', Object.assign({},Value,{latest:Value.desktop_latest || Value.latest}), '');
       if (Value.latest) PlazCodeVersion.render(Byid('updateLatest'), Value.latest, Object.assign({},Value,{latest:Value.desktop_latest || Value.latest}), '');
       else Byid('updateLatest').textContent = 'Not checked';
+      var Extensions=Byid('updateExtensions');
+      if(Extensions){Extensions.textContent='';(Value.browser_extension_versions||[]).forEach(function(Version){var Line=document.createElement('p');PlazCodeVersion.render(Line,Version,Object.assign({},Value,{latest:Value.latest||Value.desktop_version,checked_at:Value.checked_at||Date.now()}),'Browser extension ');Extensions.appendChild(Line);});}
       Renderreleasenotes(Value.release_notes);try{Nxoverview(Value);}catch(Error){}
-      Byid('updateMessage').textContent = Value.error || Value.message || '';
+      Byid('updateMessage').textContent = Value.error || Value.extension_warning || Value.message || '';
+      if(Value.extension_warning) Notice('Extension needs updating',Value.extension_warning,'warn','extension-version:'+Value.extension_warning);
       Byid('installUpdate').disabled = Updating || Value.available !== true;
       Byid('checkUpdates').disabled = Updating;
       Byid('updateOverlay').hidden = (!Updating || Value.background === true) && (!Value.error || UpdateerrorDismissed);

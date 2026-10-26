@@ -7,7 +7,7 @@ const baseline = {
   "core/config.js": "899272a13417569d45a6c63d10ba28152d29e55e",
   "core/headless-builder.js": "b343a897a17fc05d79ab469aeea55c8abaa8c4e5",
   "core/luau-knowledge.js": "234c1ca2155d3ef5f38927d85893b70fd6bde6e6",
-  "core/main.js": "676850ce5384f59a3b7f408d1d6ac78c92f3a717",
+  "core/main.js": "011b769bb017f7c539aa5e103feccdacb16e4d58",
   "core/motion-interchange.js": "038afa13a5b59c030a809abf7d617a36f2fae82d",
   "core/motion-preview.js": "ae0ab0526fbc762dfbf7cae9c248239e217e7a2f",
   "core/motion-tools.js": "8ac81b4a4a9f634fef9285aeee06db4a15af578e",
@@ -359,7 +359,7 @@ async function runDesktopInteractionRegression() {
   fakeUpdate.latest="1.19.34";window.PlazCodeDesktop.go("updates");await new Promise(resolve=>setTimeout(resolve,0));
   if (!elementsById.get("sidebarVersion").textContent.includes("- Outdated") || elementsById.get("updateInstalled").style.color!=="#ff696c") throw new Error("Outdated version indicator missing");
   fakeUpdate.check_error="Offline";window.PlazCodeDesktop.go("updates");await new Promise(resolve=>setTimeout(resolve,0));
-  if (!elementsById.get("titleVersion").textContent.includes("(Check unavailable)")) throw new Error("Unavailable version check must not claim current");
+  if (!elementsById.get("titleVersion").textContent.includes("- Outdated")) throw new Error("A known outdated version must stay red when the next check fails");
   fakeUpdate.check_error=null;fakeUpdate.latest="1.19.33";fakeUpdate.busy=true;fakeUpdate.background=true;
   window.PlazCodeDesktop.go("updates");await new Promise(resolve=>setTimeout(resolve,0));
   if (!elementsById.get("updateOverlay").hidden) throw new Error("Automatic check must not open update overlay");

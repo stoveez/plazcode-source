@@ -25,7 +25,7 @@ updated: 2026-10-26
 
 ## Not started / optional
 - Lean startup phases 2 and 3 (`development/1.24.21/overlay/core/lean-startup.js`, unwired, off).
-- Update 1.24.25: WIP reliability fixes: blank screenshot display, repeated Plan Mode task approvals, stale loaded extension after app update, creation_preview JSON response failures. See `development/1.24.25/NEXT-UPDATE-PLAN.md`.
+- Update 1.24.25: Implemented; validation pending for reliability fixes: blank screenshot display, repeated Plan Mode task approvals, stale loaded extension after app update, creation_preview JSON response failures. See `development/1.24.25/NEXT-UPDATE-PLAN.md`.
 - Update 1.24.26: accounts (no license keys), code protection, Skill Workshop, Brickwire list, hang recovery, keep-awake. (The plan file has a 2026-10-24 update block at its top; keep it current.) See `development/1.24.26/` and `docs/TASK-BOARD.md`.
 - Website: `PlazCode-website.zip`, to deploy on Cloudflare Pages once the owner has a domain.
 - Lawyer review of licence notices; GitHub Support request about the locked `v1.24.20` tag; delete the `cleanup-public` branch.

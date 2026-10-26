@@ -24,4 +24,4 @@ This folder is the long-term memory for every AI that works on PlazCode (Claude,
 - What is still open: [open-work](open-work.md)
 
 ## Deeper documents (outside the vault)
-[`../HANDOFF.md`](../HANDOFF.md), [`../MAINTAINER-GUIDE.md`](../MAINTAINER-GUIDE.md), [`../TASK-BOARD.md`](../TASK-BOARD.md), `development/1.24.26/NEXT-UPDATE-PLAN.md`, `development/1.24.24/VAULT-MEMORY-DESIGN.md`.
+[`../HANDOFF.md`](../HANDOFF.md), [`../MAINTAINER-GUIDE.md`](../MAINTAINER-GUIDE.md), [`../TASK-BOARD.md`](../TASK-BOARD.md), `development/1.24.26/NEXT-UPDATE-PLAN.md`, `development/1.24.25/VAULT-MEMORY-DESIGN.md`.

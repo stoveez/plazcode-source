@@ -53,6 +53,11 @@ jobs:
         working-directory: build-src-1.24.25/PlazCode
       - run: node release-tools/node_modules/playwright/cli.js install --with-deps chromium firefox
         working-directory: build-src-1.24.25/PlazCode
+      - name: Screenshot display under strict image policy in Firefox
+        run: node test-screenshot-display.js
+        working-directory: build-src-1.24.25/PlazCode
+        env:
+          PLAZCODE_TEST_BROWSER: firefox
       - name: Test Claude reply remount recovery in offline Chromium
         run: node release-tools/test-response-remount.cjs
         working-directory: build-src-1.24.25/PlazCode
