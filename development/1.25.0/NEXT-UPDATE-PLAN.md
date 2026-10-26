@@ -1,6 +1,6 @@
 # PlazCode next update — everything the owner wants to add
 
-> **Owner, 2026-10-25: PlazCode stays free. No paid plan or paid features.** Everything about paid keys and paid features below is cancelled. License keys, key types, HWID lock and the 24-hour key are dropped. Accounts stay: users sign in with a username and password (what accounts are for is still to be asked before building).
+> **Owner, 2026-10-25: PlazCode stays free. No paid plan or paid features.** Everything about paid keys and paid features below is cancelled. License keys, key types, HWID lock and the 24-hour key are dropped. Accounts stay: users sign in once with a username and password (no email); accounts carry settings and skills across computers and the username on shared skills; only the owner sees users, on a private owner page; signed-in users can change their password. See `docs/vault/decisions.md`.
 
 This note is written so an AI in a brand-new chat can pick it up. Read it fully, then read the two design files next to it:
 `LICENSE-SYSTEM-DESIGN.md` and `SKILL-WORKSHOP-DESIGN.md` (same folder). Nothing here is built yet unless it says so.
