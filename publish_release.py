@@ -26,16 +26,18 @@ def checked_release_body(body):
 def notes(feed):
     version=feed['version'];entry=next(x for x in feed['release_notes'] if x['version']==version)
     entry={**entry,**entry.get('github',{})}
-    lines=['## ✨ PlazCode '+version,'',entry['summary'],'']
+    # Owner's format (2026-10-25, docs/vault/release-format.md): Discord bold marks, ***...*** for the
+    # section titles, every item on its own "- " line, no role mention, under 2,000 characters.
+    lines=['✨ **PlazCode '+version+'**',entry['summary'],'']
     sections=entry.get('sections')
     if sections is None:
-        sections=[{'title':title,'items':entry.get(key,[])} for key,title in [('added','✨ New features'),('improved','💡 Improvements'),('fixed','🛠️ Fixes'),('notes','🧪 Checks')]]
+        sections=[{'title':title,'items':entry.get(key,[])} for key,title in [('added',"✨ What's new"),('improved','💡 Improvements'),('fixed',"🛠️ What's fixed"),('notes','🧪 What was checked')]]
     for section in sections:
-        if section.get('items'):lines+=['### '+section['title'],'']+['- '+x for x in section['items']]+['']
-    lines+=['### 📥 How to update','','- Open PlazCode, or choose **Updates → Update now**.',
-            '- Manual downloads: **PlazCode-'+version+'.zip** for Windows, **PlazCode-macOS-'+version+'.zip** for Mac, or **PlazCode-Firefox-'+version+'.zip** for Firefox.',
+        if section.get('items'):lines+=['***'+section['title']+'***']+['- '+x for x in section['items']]+['']
+    lines+=['***📥 How to update***','- Open PlazCode, or choose Updates → Update now.',
+            '- Manual downloads: PlazCode-'+version+'.zip for Windows, PlazCode-macOS-'+version+'.zip for Mac, or PlazCode-Firefox-'+version+'.zip for Firefox.',
             '- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.',
-            '- Your settings, memory and connections are kept.','','Test details are included in VALIDATION.txt.']
+            '- Your settings, memory and connections are kept.']
     return 'PlazCode '+version+': '+entry['title'],checked_release_body('\n'.join(lines)+'\n')
 
 def validate_archive(data,version,platform="windows"):

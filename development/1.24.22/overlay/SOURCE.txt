@@ -1,0 +1,3 @@
+PlazCode 1.24.22
+Downloads and updates: https://github.com/stoveez/PlazCode/releases
+The source code for this version is not published.
