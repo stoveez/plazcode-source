@@ -1,6 +1,6 @@
 # PlazCode next update — everything the owner wants to add
 
-> **Owner, 2026-10-25: PlazCode stays free. No paid plan or paid features.** Everything about paid keys and paid features below is cancelled. Whether a free login/key system stays is not decided yet; ask the owner before building any of it.
+> **Owner, 2026-10-25: PlazCode stays free. No paid plan or paid features.** Everything about paid keys and paid features below is cancelled. License keys, key types, HWID lock and the 24-hour key are dropped. Accounts stay: users sign in with a username and password (what accounts are for is still to be asked before building).
 
 This note is written so an AI in a brand-new chat can pick it up. Read it fully, then read the two design files next to it:
 `LICENSE-SYSTEM-DESIGN.md` and `SKILL-WORKSHOP-DESIGN.md` (same folder). Nothing here is built yet unless it says so.
@@ -71,3 +71,6 @@ Suggested order: 9 and 10 first (small and fix tester pain), then 1, 2 and 3 tog
 1. Read this note and both design files.
 2. Ask the owner which section to start with (default: C1, then C2, then C3).
 3. Work in a branch of the private repo, add tests, run the same checks CI runs, show the owner plain-language results, and wait for a "yes" before any push or publish.
+
+## Code protection (owner, 2026-10-25, next update)
+Obfuscate the Chrome/Edge/Brave and Firefox extensions when the release zip is built (test zips too, still 1:1 with the real update). Record a fingerprint of every PlazCode program file at build time; the compiled desktop app checks them when the extension connects, and a modified copy stops working with a message to download the official version from the PlazCode releases page. The user's own skills, vault notes and settings are never checked. Keep a private decoder map per release so error reports stay readable. Plan it in full (high effort) before building. See `docs/vault/decisions.md`.
