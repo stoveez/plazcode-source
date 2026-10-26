@@ -1,0 +1,12 @@
+PlazCode 1.24.21 — exact-source platform/browser gates and packaged macOS desktop lifetime checks passed before promotion.
+Validated source: fb8e770d962d25a2d941b8aea4cd29aa244ffe7e
+Validation run: private build 40247208967
+Changes: safety limits (Read-only mode, confirm before delete, allowed folders), a What happened list with Undo, the Vault, saved setups per site, skill sharing, the Fix connection button, the UltraLab Ultra pack, new command cards on every AI site, and fixes for random pauses between tool calls (a result that never reached the chat box is now typed again or reported at once). Fix connection never sends to the AI chat without a click.
+All other features, safeguards and native launch/update behavior are retained. Final native executable and macOS app bytes are reused from validated development artifacts, not rebuilt during publication. Only release notices, checksums and package metadata change.
+Unit tests cover every check path; a browser fixture with the full production core and a mocked PlazCode app covers reconnect, closed app, dropped Studio connection, click-only chat connection and translation. Hosted browser fixtures use a mocked bridge.
+Windows binaries are unsigned. macOS uses ad-hoc signing and is not notarized.
+Microsoft Defender runner availability/result for the exact native artifact before release-notice assembly:
+Scan starting...
+Scan finished.
+Scanning D:\a\plazcode-source\plazcode-source\build-src-1.24.21\PlazCode/defender-scan found no threats.
+Checksums and platform evidence are recorded in release-validation-1.24.21.

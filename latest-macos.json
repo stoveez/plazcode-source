@@ -1,9 +1,111 @@
 {
-  "version": "1.24.20",
-  "desktop_version": "1.24.20",
-  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.20.zip",
-  "sha256": "b28b897d70bbc2cc1f43ac4e28fd13d06012caa342c01ba68817147d64254143",
+  "version": "1.24.21",
+  "desktop_version": "1.24.21",
+  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.21.zip",
+  "sha256": "3d2355fa77125ffaeb38e7e778f477a42758f5de1d27bbc66b52ac2eb700820e",
   "release_notes": [
+    {
+      "version": "1.24.21",
+      "title": "Safety limits, a What happened log, site setups and more",
+      "summary": "PlazCode can now keep the AI read-only, ask before it deletes anything, and show you a plain list of what it did with Undo. You can save a setup for each site, share skills with a code or link, and connect Figma, Unity and a browser. Plus a new Fix connection button.",
+      "added": [
+        "Safety settings: Read-only mode lets the AI look at files, Studio and tools without changing anything. Confirm before deleting (on by default) asks you before the AI deletes files or runs a delete command. Allowed folders limits Full PC access to the folders you list.",
+        "What happened: a plain list of everything the AI did on your computer, in Studio and in other tools, newest first, with an Undo button for changed files and scripts. Open it from the PlazCode menu or the app's home page. Deleted files can be brought back too.",
+        "Setup for this site: save your engine, effort, access, safety, instructions, memory project, skills and tools for a site like ClickUp, Notion or Claude, then apply it in one click or every time you open that site.",
+        "Share skills: pick skills and download them as a pack file, or copy a share code to paste anywhere. Import a pack, a share code or a link from GitHub, Gist, Pastebin or Discord. Imported skills arrive as new, untested skills and never replace yours.",
+        "New tool connectors: Figma (read your designs from the Figma desktop app), Unity (control the Unity Editor) and Browser (the AI opens its own browser window to test sites). Turn them on in the app. Connectors now also work in AgentScript mode.",
+        "A new 🔧 Fix connection button appears in the PlazCode bar whenever something isn't connected. It is hidden when everything works. It's also in the PlazCode popup.",
+        "It checks five things in order: the page, the PlazCode app, Roblox Studio (or AgentScript), the chat box, and whether PlazCode is connected to this chat.",
+        "It fixes safe things on its own: it reconnects to the PlazCode app, restarts a dropped Roblox Studio connection once, and looks for the chat box again.",
+        "For everything else it tells you exactly what to do, like \"Open Roblox Studio\" or \"Refresh the page\", with a button for the next step.",
+        "Co-work follow-ups: press Ctrl+Enter (Cmd+Enter on Mac) to send your queued follow-ups right now. It stops the AI's current reply and sends them at once, instead of waiting for the next safe moment. A small hint under queued follow-ups reminds you.",
+        "Vani AI (c.vani.ai) is now a supported chat. Open it and PlazCode's bar appears, no sign-up needed. It's also in the app's list of supported AIs.",
+        "Godot connector: the AI can open Godot, run and stop a project, read its output and build scenes. PlazCode finds your Godot editor by itself.",
+        "Settings backup: copy all your choices as text to move them to another browser or restore them later. Passwords, keys and chats are never included.",
+        "The AI no longer goes in circles: a read repeated with nothing changed, or a failing call resent unchanged, is stopped and the AI is told what to do instead.",
+        "Screen recording: with Full PC access the AI can record up to 5 seconds of your screen and look at the result, to check animations and menus that a single screenshot misses (Windows).",
+        "Ultra effort is now the UltraLab pack by SyphoDev (used with his permission, credit: youtube.com/@SyphoDev). At Ultra the AI gets a full Roblox game-building toolkit: 53 skills covering UI, scripting, maps, 3D models, effects, tests and more, plus 7 helper roles and 18 reference notes. It only reads the ones that match your request, so it stays quick.",
+        "The AI can open any of Ultra's skill files itself and look things up in the official Roblox docs, and it still asks you first before it uploads, uses a paid service, installs something or publishes.",
+        "Engine file tools (AgentScript): 17 new tools that read and work on project files without the editor being open. Godot: read a project, show a scene's node tree, add a node, make a script from a template, check a script for mistakes, find where a file is used. Unity: read a project, list assets, list a scene's objects, make a C# script, list packages. Roblox: read a saved place file, list and search its scripts, check Luau code. Blender: look inside a saved .blend file and check a Python script or add-on.",
+        "Vault: the AI now has a real long-term memory, a folder of linked notes it reads at the start of every chat and keeps up to date by itself: how you like things, your coding style, model styles, mistakes and fixes, and reference pictures. Press Open vault in Memory settings to browse it in a window that looks and works like Obsidian: a file list, note properties, info boxes, clickable links, pictures, search, and editing. The notes are plain files in numbered folders, so Obsidian opens them too (an Open in Obsidian button shows if you have it), and you can point the vault at your own Obsidian folder. It replaces the old flat list of 200 notes; your old notes are copied in and the old file is kept. You can turn off the AI writing notes. The AI can build to match a reference picture: a separate critic chat (a new chat on the same AI site, in its own small window) scores the result against the picture and lists fixes, up to 5 rounds, then the AI saves what it learned. If the separate chat can't open, it falls back to judging itself. Needs the newest PlazCode app.",
+        "Ask the AI about PlazCode itself: it can look up how any PlazCode feature works and explain it in plain words."
+      ],
+      "improved": [
+        "Dropdown lists in PlazCode now use PlazCode's own rounded, themed menus in the app, the extension and the popup, with a clean arrow.",
+        "Selected options in the Effort and Access settings are easier to read.",
+        "Spacing is tidier for the Stop mode, Save and Memory summary controls.",
+        "The AI no longer asks you to turn on Full PC access when it is already on.",
+        "When the AI sends a tool the wrong way, PlazCode now fixes more of it for you (nested wrappers, near-miss names, coordinates, out-of-range numbers) and tells the AI what it changed so it gets it right next time.",
+        "Command cards have a new navy and gold look on every AI site, including Notion, and they now show every time instead of sometimes falling back to the old plain chip.",
+        "The 'continue your previous project' popup has a new look, no longer appears when your last chat only had the startup message, and has a new button: Start new project, and don't show this again.",
+        "The desktop app's Updates page is spaced out and easier to read (needs the new app)."
+      ],
+      "fixed": [
+        "On sites that redraw the whole page, like Vani AI, the PlazCode bar no longer loses its colours and shows black labels.",
+        "Stray marks no longer appear in the top-left corner of the PlazCode bar with the Starglaze, Sakura, Autumn and Blood Moon themes. The Ultra glow is one clean line again.",
+        "Starting the agent in a brand-new chat now works on sites that give the chat its address a moment after you send, like Vani AI. Before, the bar could drop to \"Not connected to this chat yet\" right after Start Agent.",
+        "The Blender connector now runs a tested, pinned version with usage reporting turned off, and hides the two tools that send feedback to its maker. Existing installs are moved over.",
+        "Blender's screenshot tool no longer counts as a change, so Read-only mode lets the AI look at your scene.",
+        "The Fix connection button no longer freezes the chat on Vani, Freebuff, Oxalpha and UseAI.",
+        "Co-work now works on Vani.",
+        "On Notion, if a result file is not accepted, PlazCode now removes its own file and tries once more, instead of showing 'Message was not confirmed'.",
+        "The AI no longer re-reads the same Ultra file again and again.",
+        "A harmless 'community skills 404' warning no longer appears when no community skills are published yet.",
+        "What happened now says so when your PlazCode app is older than the extension, instead of showing nothing.",
+        "A command card no longer keeps spinning (seen on Notion) while the PlazCode bar says the AI is finished: PlazCode now notices the reply is done and runs the command, and a card settles as an error if the run crashed.",
+        "Claude no longer pauses at random in the middle of a long run of tool calls: a result that never made it into the reply box is now typed again instead of being treated as sent.",
+        "On every site where PlazCode can count messages, an empty reply box is no longer taken as proof a result was sent. PlazCode waits briefly for proof, tries once more, and then says 'Message didn't send' straight away.",
+        "The empty 'json' frame and small empty grey bubble that appeared after a command on Claude are gone.",
+        "The bar no longer says 'AgentScript is offline' while the PlazCode app is running."
+      ],
+      "notes": [
+        "Read-only mode and delete confirmations are checked twice: in the browser and again in the PlazCode app.",
+        "Undo only puts back a file if nobody changed it after the AI did, so your own edits are never overwritten.",
+        "Fix connection never sends anything to the AI by itself. Connecting a chat always waits for you to click Connect this chat.",
+        "Available in all 15 interface languages.",
+        "The Windows app is unsigned and the Mac app is not notarized, as in earlier versions. Your computer may ask you to confirm opening it.",
+        "Ultra replaces the old Ultra. The old built-in Ultra skills are removed once on update; skills you made or imported are never touched.",
+        "Sites with small prompt limits (Notion, Copilot, ClickUp, ChatGPT) get a shorter Ultra so nothing is cut off. DeepSeek uses the pack's short version instead of the old Chinese Ultra.",
+        "The three tools that change files (add a Godot node, make a Godot script, make a Unity script) follow Read-only mode, appear in What happened and can be undone.",
+        "The memory helper is downloaded from the official source the first time memory is used if it is not already installed, and checked against a fixed checksum before it runs. Full downloads still include it.",
+        "The vault is stored in plain Markdown files in a folder you can see. The AI never saves passwords or keys in it, never deletes notes (old ones move to an Archive folder), and it is allowed even in Read-only mode because it only touches the vault folder."
+      ],
+      "github": {
+        "summary": "The biggest update in a while: safety controls, a plain list of what the AI did (with Undo), a notes vault the AI keeps up to date, and fixes for the AI pausing in the middle of long jobs.",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "Read-only mode: the AI can look but not change anything. It also asks before deleting files.",
+              "What happened: a simple list of what the AI did, with an Undo button.",
+              "Vault: notes the AI reads and updates itself.",
+              "Save a setup for each site, share skills with a link, back up your settings.",
+              "Ask the AI how any PlazCode feature works.",
+              "A new look for command cards on every AI site."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Claude no longer stops at random in the middle of a long run of tools.",
+              "If a result never reached the chat box, PlazCode now tries again, or tells you right away instead of waiting a minute.",
+              "Leftover empty boxes after commands on Claude are gone.",
+              "The bar no longer says \"AgentScript is offline\" while the app is running.",
+              "Fix connection button no longer freezes some sites. Notion retries files it rejects.",
+              "The popup to continue your last project is cleaner and skips chats that only had the startup message."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Full tests passed on Windows, Mac and Linux, including the Mac app.",
+              "On Claude, two live runs of 15 tools in a row finished with no pause. Other sites were tested with practice pages, not live.",
+              "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+            ]
+          }
+        ]
+      }
+    },
     {
       "version": "1.24.20",
       "title": "ClickUp Ask Brain connects again",
@@ -176,45 +278,6 @@
             "items": [
               "Platform/browser and packaged Mac desktop gates run before publication.",
               "Fixtures use a mocked bridge; affected accounts and real projects were not tested. Windows unsigned; Mac not notarized."
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "version": "1.24.16",
-      "title": "Reliable ClickUp startup receipts",
-      "summary": "ClickUp startup continues after accepted context parts, uses compact defaults, and stops clearly when the selected AI model declines the connection.",
-      "added": [],
-      "improved": [
-        "Use compact default ClickUp startup instructions and bounded saved-note previews; keep full notes available through the memory reader and preserve custom instructions exactly.",
-        "Observe a startup acknowledgement through the existing response timeout when its receipt is delayed."
-      ],
-      "fixed": [
-        "Confirm each startup context part from a persisted new user row and its exact new assistant acknowledgement when rich-text rendering changes the user row.",
-        "Recognize explicit ClickUp model refusals before sending a protocol correction; leave startup stopped and the composer unlocked.",
-        "Cancel receipt observation on Stop or a known conversation change without sending again."
-      ],
-      "notes": [
-        "Validated on Windows, macOS and Linux with Chromium/Firefox regressions and packaged macOS desktop checks before publishing.",
-        "Affected live ClickUp accounts were not reproduced. AI models can still decline the connection request. Windows is unsigned; macOS is not notarized."
-      ],
-      "github": {
-        "summary": "ClickUp startup receipt and model-refusal fixes.",
-        "sections": [
-          {
-            "title": "🛠️ Fixes",
-            "items": [
-              "Accepted startup parts continue after rendered text changes or delayed acknowledgements.",
-              "Compact defaults reduce startup context while preserving custom instructions.",
-              "Explicit model refusals stop without repeated handshake requests."
-            ]
-          },
-          {
-            "title": "🧪 Validation and limitations",
-            "items": [
-              "Windows, macOS, Linux and Chromium/Firefox checks; packaged Mac desktop lifetime checked before publication.",
-              "Affected live accounts were not reproduced. A ClickUp model can still decline. Windows unsigned; Mac not notarized."
             ]
           }
         ]

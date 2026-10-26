@@ -1,26 +1,26 @@
 [
   {
-    "file": "PlazCode-1.24.20.zip",
+    "file": "PlazCode-1.24.21.zip",
     "platform": "windows",
-    "bytes": 26618517,
-    "sha256": "b67d5525f72447fba87da0610b53796026f531b309e5aee7a46ad76946530041"
+    "bytes": 33524656,
+    "sha256": "993d185b6f7520b36a9c74bbfb619b7f4f5441d4eb433540df70805569cb7c99"
   },
   {
-    "file": "PlazCode-macOS-1.24.20.zip",
+    "file": "PlazCode-macOS-1.24.21.zip",
     "platform": "macos",
-    "bytes": 37924767,
-    "sha256": "b28b897d70bbc2cc1f43ac4e28fd13d06012caa342c01ba68817147d64254143"
+    "bytes": 45103258,
+    "sha256": "3d2355fa77125ffaeb38e7e778f477a42758f5de1d27bbc66b52ac2eb700820e"
   },
   {
-    "file": "PlazCode-source-1.24.20.zip",
+    "file": "PlazCode-source-1.24.21.zip",
     "platform": "source",
-    "bytes": 13797512,
-    "sha256": "a359139c301580762d20508f15a02bc52caa1e2383df16d1106fda960a5a0762"
+    "bytes": 15863314,
+    "sha256": "599fc1940703de7b66ba3786972ae83cf51e6dfadaf4899672f67aece05203ff"
   },
   {
-    "file": "PlazCode-Firefox-1.24.20.zip",
+    "file": "PlazCode-Firefox-1.24.21.zip",
     "platform": "firefox",
-    "bytes": 1723531,
-    "sha256": "e86a0bdedd260af767d83e599fb8485fa3a06833020d9912fe5858932993ca97"
+    "bytes": 6407727,
+    "sha256": "d482df37c01bce97138fc5e09198ba89e02ed3cf3661d20c9e6830c3f6549dcb"
   }
 ]
