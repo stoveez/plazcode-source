@@ -6,7 +6,7 @@ The owner is not a programmer. Talk to them in plain words. Ask before anything 
 
 ---
 
-**Branch note:** current work is on `release/1.24.23`; the default branch `main` is old and lacks this guide. Always start from `release/1.24.23` and branch from it (`codex/<task>` or `claude/<task>`).
+**Branch note:** current work is on `release/1.24.24`; the default branch `main` is old and lacks this guide. Always start from `release/1.24.24` and branch from it (`codex/<task>` or `claude/<task>`).
 
 ## 1. What PlazCode is
 
@@ -26,7 +26,7 @@ Everything below ships today. Do not break any of it.
 - **Fix connection** button and the connection doctor (`core/connection-doctor.js`).
 - **Setup for this site**, saved per site (`core/site-setups.js`). **Settings backup** (`core/settings-backup.js`).
 - **Skills**: starter skills, user skills, share by pack, code or link, import from GitHub, Gist, Pastebin or Discord (`core/skills-ui.js`, `agent/src/skills.rs`, `agent/src/starter_skills.rs`).
-- **Ultra effort**: the UltraLab pack by SyphoDev (53 skills, 7 agents, 18 notes) read with the `ultralab_read` tool and the `roblox_docs` tool. Generated from `development/1.24.23/ultralab/build_ultralab.py`.
+- **Ultra effort**: the UltraLab pack by SyphoDev (53 skills, 7 agents, 18 notes) read with the `ultralab_read` tool and the `roblox_docs` tool. Generated from `development/1.24.24/ultralab/build_ultralab.py`.
 - **Vault memory** (new in 1.24.21): an Obsidian-compatible folder of linked Markdown notes (`agent/src/vault.rs`, `core/memory.js`, tool `plazcode_vault`). The AI reads a short start note each chat, searches and reads notes on demand, and updates them itself (switch in Memory settings). Notes are never deleted (archived), secrets are refused, writes stay inside the vault and are allowed in Read-only mode. Includes the reference-and-critic loop (`09 How To/Reference Critic Loop.md` inside the vault). Older flat notes (`memory.json`) are copied in once and the file is kept. The layout copies a hand-made Obsidian vault: numbered folders (`00 Start Here` with Home, Glossary, Index, Log; `01 About You` ... `10 Inbox`, `_Archive`, `_Templates`), notes with `tags`/`aliases`/`updated` properties, `> [!info]` header boxes, pictures in `08 References/refs`. Note headers are kept line for line when the AI edits a note, so a user's own Obsidian vault can be used as the vault (a folder that already has notes is adopted without adding folders). The viewer window (`openVault` in `core/memory.js`, opened by Open vault in Memory settings) is a safe Markdown reader and editor built to look like Obsidian; tests are `test-vault-viewer.js`, `test-vault-memory.js` and the Rust tests in `vault.rs`. **Independent critic chat** (`plazcode_critic`): `criticTool` in `core/memory.js` sends the reference picture(s) from the vault, the latest screenshot and the rubric to a SEPARATE chat. The background worker (`runCritic` in `background.js`) opens a small unfocused window with a fresh chat on the same AI site (supported: ChatGPT, Claude, Gemini, DeepSeek, Kimi, Qwen, GLM; others such as Notion fall back), and that tab's content script (`criticRun` in `core/main.js`, messages `rs-critic-ping` / `rs-critic-run`) types the message with pictures, waits for the reply and returns it. Max 5 rounds, pass mark 80 percent. Any failure returns text telling the AI to use the same-chat critic role. It never runs in a tab that has its own PlazCode session. Extension only: reloading the extension is enough (the vault itself still needs the new app). Not yet tried on real AI sites. Test: `test-critic-chat.js`.
 - **Stuck command card fix** (1.24.21): the restart check (`autoResume` watchdog in `core/main.js`) now also acts when a site's soft "still generating" signal is stuck on (no real Stop button, reply text frozen for the provider's STABLE_MS, no open command block); it logs `resume.genStuck` / `resume.blocked`. A loop error settles a spinning command card as an error. Test: `test-1.24.21-stuck-generation.js`.
 - **Memory** (Engram, a helper program) with a per-project database; chat history; checklists; templates.
@@ -65,17 +65,17 @@ PlazCode is NOT stored as a normal source tree. A release is built like this:
 ```
 PlazCode-source-1.24.20.zip  (the pinned official 1.24.20 source, hash-checked)
         +
-development/1.24.23/overlay/  (every file we changed or added for 1.24.21)
+development/1.24.24/overlay/  (every file we changed or added for 1.24.21)
         =
-build-src-1.24.23/PlazCode/   (the built source tree, made by prepare.py)
+build-src-1.24.24/PlazCode/   (the built source tree, made by prepare.py)
 ```
 
-- Run `python3 development/1.24.23/prepare.py` to rebuild `build-src-1.24.23/PlazCode`. It deletes and recreates that folder.
-- **Edit files in `development/1.24.23/overlay/`, never in `build-src-1.24.23/`.** The build folder is thrown away every time prepare.py runs. If a file you need to change is not in the overlay yet, copy it from the build folder into the same path in the overlay, then edit the overlay copy.
+- Run `python3 development/1.24.24/prepare.py` to rebuild `build-src-1.24.24/PlazCode`. It deletes and recreates that folder.
+- **Edit files in `development/1.24.24/overlay/`, never in `build-src-1.24.24/`.** The build folder is thrown away every time prepare.py runs. If a file you need to change is not in the overlay yet, copy it from the build folder into the same path in the overlay, then edit the overlay copy.
 - `prepare.py` also copies `core/`, `providers/` and the main files into `PlazCode-Extension/` (the folder users load into the browser) and removes some old files.
-- For a new version number, copy `development/1.24.23` to `development/<new>`, change the version and the base archive name inside the scripts, and copy the two workflows in `.github/workflows/`.
-- Generated files must be regenerated, not edited: Ultra (`development/1.24.23/ultralab/build_ultralab.py` writes `core/ultracode.js`, `core/ultralab-pack.json`, `core/ultralab/INDEX.json`; test with `test-ultralab-generated.py`) and language files (`development/1.24.23/build-locales.py`; test with `test-locales.py`).
-- **Hash pins.** `test-desktop-regression.js` pins the exact git hash of protected files such as `providers/*.js` and `core/main.js`. After you edit a protected file, run `git hash-object <overlay file>` and update the pin in `development/1.24.23/overlay/test-desktop-regression.js`. If that test fails with a hash message, this is why.
+- For a new version number, copy `development/1.24.24` to `development/<new>`, change the version and the base archive name inside the scripts, and copy the two workflows in `.github/workflows/`.
+- Generated files must be regenerated, not edited: Ultra (`development/1.24.24/ultralab/build_ultralab.py` writes `core/ultracode.js`, `core/ultralab-pack.json`, `core/ultralab/INDEX.json`; test with `test-ultralab-generated.py`) and language files (`development/1.24.24/build-locales.py`; test with `test-locales.py`).
+- **Hash pins.** `test-desktop-regression.js` pins the exact git hash of protected files such as `providers/*.js` and `core/main.js`. After you edit a protected file, run `git hash-object <overlay file>` and update the pin in `development/1.24.24/overlay/test-desktop-regression.js`. If that test fails with a hash message, this is why.
 - `test-provider-preservation.js` guards each AI-site provider's control flow. A deliberate change to a provider's send logic needs an exception entry with a comment explaining why.
 
 ### Where things live
@@ -99,13 +99,13 @@ build-src-1.24.23/PlazCode/   (the built source tree, made by prepare.py)
 ## 4. Everyday workflow
 
 1. **Branch.** Never work directly on a shared branch when someone else may be working. See section 11 for working in parallel.
-2. **Build the source:** `python3 development/1.24.23/prepare.py`.
+2. **Build the source:** `python3 development/1.24.24/prepare.py`.
 3. **Edit the overlay**, then run prepare.py again to see the result in the build folder.
-4. **Run the tests** from `build-src-1.24.23/PlazCode`:
+4. **Run the tests** from `build-src-1.24.24/PlazCode`:
    - JavaScript, everything: `NODE_PATH=release-tools/node_modules PLAZCODE_TEST_BROWSER=chromium python3 release-tools/test-javascript.py` (about 12 minutes; runs every `test-*.js`).
    - One JavaScript test: `NODE_PATH=release-tools/node_modules node test-<name>.js`. First run `npm ci --prefix release-tools --ignore-scripts` (and `node release-tools/node_modules/playwright/cli.js install --with-deps chromium firefox` for the browser tests in `release-tools/*.cjs`).
    - App: `cargo test --manifest-path agent/Cargo.toml` (add `--offline` if there is no network).
-   - Overlay and packaging checks: `python3 development/1.24.23/test-prepare-overlay.py`, `test-locales.py`, `test-ultralab-generated.py`.
+   - Overlay and packaging checks: `python3 development/1.24.24/test-prepare-overlay.py`, `test-locales.py`, `test-ultralab-generated.py`.
    - **Lesson learned:** tests that need `jsdom` fail with "Cannot find module 'jsdom'" unless `NODE_PATH` points at `release-tools/node_modules`. This broke CI once.
 5. **Add a test for every fix.** A fix with no test comes back.
 6. **Interface text** goes through the translation system. New visible text needs entries in all 15 languages (see `build-locales.py`) or the locale test fails.
@@ -122,8 +122,8 @@ Chat sites change their pages and are hard to test live. Rules that were learned
 
 ## 5. Continuous integration (GitHub Actions)
 
-Workflow `.github/workflows/validate-1.24.23.yml` ("Validate PlazCode 1.24.21 development"):
-- It runs on a push to `release/1.24.23`, on pull requests that touch `development/1.24.23/**`, and **by hand on any branch** (`gh workflow run validate-1.24.23.yml --ref <branch>`).
+Workflow `.github/workflows/validate-1.24.24.yml` ("Validate PlazCode 1.24.21 development"):
+- It runs on a push to `release/1.24.24`, on pull requests that touch `development/1.24.24/**`, and **by hand on any branch** (`gh workflow run validate-1.24.24.yml --ref <branch>`).
 - Concurrency is per branch, so a push cancels the older run on the SAME branch only.
 - Jobs: `browsers` (Linux; unit tests and real-Chromium/Firefox tests) and `native` on Windows, macOS and Ubuntu (Rust tests, builds the apps, runs the updater tests, packages the downloads).
 - It takes about 30 minutes. A run is "green" only when all four jobs succeed.
@@ -151,7 +151,7 @@ Reading results:
 - Testers report: browser, AI site, what happened, how often, a recording if possible. Ask for the **debug report** (Settings in the desktop app > Copy debug report) for anything that is not obvious. It removes keys, tokens, cookies and chat text.
 - Reproduce on a fake page or a unit test first. Fix. Add a test. Say plainly what was verified.
 - Typical suspects: the site changed its page, the app is older than the extension (the What happened list is then missing commands and reads and now says so), a timeout (Notion turns can take longer than 90 seconds).
-- Known open items are in `CLAUDE.md` and `development/1.24.24/NEXT-UPDATE-PLAN.md`.
+- Known open items are in `CLAUDE.md` and `development/1.24.25/NEXT-UPDATE-PLAN.md`.
 
 ---
 
@@ -178,12 +178,12 @@ Before telling the owner a build is ready:
 
 ## 9. Releasing to everyone (only when the owner says "publish")
 
-Publishing is done by the workflow `.github/workflows/publish-1.24.23.yml`, never by hand.
+Publishing is done by the workflow `.github/workflows/publish-1.24.24.yml`, never by hand.
 1. The exact final commit must have a fully green validation run.
 2. Put its full commit id in `VALIDATED_SHA` and the run number in `VALIDATION_RUN` in the publish workflow's `env:` and commit.
-3. Make sure `development/1.24.23/release-entry.json` has the final plain-language notes (fields: `version`, `title`, `summary`, `added`, `improved`, `fixed`, `notes`, and a shorter `github` block). Rules in `RELEASE_RULES.md`: GitHub release description under 2,000 characters, feeds under 64 KiB, at most five recent entries in the feed, the full history stays in `release-notes.json`, published archives are immutable.
+3. Make sure `development/1.24.24/release-entry.json` has the final plain-language notes (fields: `version`, `title`, `summary`, `added`, `improved`, `fixed`, `notes`, and a shorter `github` block). Rules in `RELEASE_RULES.md`: GitHub release description under 2,000 characters, feeds under 64 KiB, at most five recent entries in the feed, the full history stays in `release-notes.json`, published archives are immutable.
 4. **Dry run first** against the throwaway repo `stoveez/plazcode-publish-test` (set `PUBLIC_REPO` to it). Check the two feeds, zip checksums and the release page.
-5. Ask the owner for a clear "yes". Then set `PUBLIC_REPO` back to `stoveez/PlazCode` and run it (push to branch `release/1.24.23-publish`, or run by hand). It uses the secret `PUBLIC_REPO_TOKEN` and runs the real Mac desktop lifetime test unless `PLAZCODE_QUICK` is `1` (only for small fixes the owner approves).
+5. Ask the owner for a clear "yes". Then set `PUBLIC_REPO` back to `stoveez/PlazCode` and run it (push to branch `release/1.24.24-publish`, or run by hand). It uses the secret `PUBLIC_REPO_TOKEN` and runs the real Mac desktop lifetime test unless `PLAZCODE_QUICK` is `1` (only for small fixes the owner approves).
 6. Afterwards fetch the public `latest.json` and `latest-macos.json` and one download; confirm version, link and sha256. An older installed copy must still find and install the new version.
 7. Never delete or rewrite published releases. Never force-push. There is an open request to GitHub Support about the locked `v1.24.20` tag.
 
@@ -204,7 +204,7 @@ Every release:
 Regularly:
 - Watch for AI sites changing their pages (a provider that suddenly says "Message was not confirmed" or "Not connected to this chat yet").
 - Keep the pinned third-party versions (Engram, Blender add-on, Luau test VM used by CI) deliberate: update on purpose, with the hash, never by accident.
-- Keep `CLAUDE.md`, `AGENTS.md` and `development/1.24.24/NEXT-UPDATE-PLAN.md` current when decisions change.
+- Keep `CLAUDE.md`, `AGENTS.md` and `development/1.24.25/NEXT-UPDATE-PLAN.md` current when decisions change.
 
 ---
 
@@ -216,16 +216,16 @@ The owner may run Claude Code and Codex at the same time. To avoid overwriting e
 2. **One branch and one worktree per task.** Do not share a working folder.
    ```
    git fetch origin
-   git worktree add ../plazcode-<task> -b <ai>/<task> release/1.24.23    # <ai> = codex or claude
+   git worktree add ../plazcode-<task> -b <ai>/<task> release/1.24.24    # <ai> = codex or claude
    cd ../plazcode-<task>
-   python3 development/1.24.23/prepare.py
+   python3 development/1.24.24/prepare.py
    ```
-   Each worktree has its own `build-src-1.24.23` folder, so builds never collide.
+   Each worktree has its own `build-src-1.24.24` folder, so builds never collide.
 3. **Stay inside your files.** The claim says which files you touch. If you must change a file someone else claimed (very common: `core/main.js`, `test-desktop-regression.js`), stop and tell the owner, or keep your change tiny and rebase often.
 4. **Shared hot spots** that cause merge conflicts: `core/main.js`, `agent/src/workspace.rs`, `agent/src/main.rs`, `test-desktop-regression.js` (hash pins), `release-entry.json`, `.github/workflows/*`. After merging, recompute the hash pins with `git hash-object`.
-5. **CI per branch.** Start validation for your branch with `gh workflow run validate-1.24.23.yml --ref <branch>`. Runs on different branches do not cancel each other.
+5. **CI per branch.** Start validation for your branch with `gh workflow run validate-1.24.24.yml --ref <branch>`. Runs on different branches do not cancel each other.
 6. **Only one AI at a time touches** `.github/workflows/publish-*.yml`, `promote.py`, `package.py` and the release feed files. Say so on the board.
-7. **Merging is the owner's decision.** Open a pull request into `release/1.24.23` (or ask the owner), with a plain summary and the test results. Never push directly to the shared release branch without the owner's yes.
+7. **Merging is the owner's decision.** Open a pull request into `release/1.24.24` (or ask the owner), with a plain summary and the test results. Never push directly to the shared release branch without the owner's yes.
 8. **Handoff log:** at the end of a task, add 3-5 plain lines to the board: what changed, what was tested, what was not, what is next. A new chat with no memory must be able to continue from this file alone.
 
 Good tasks to run in parallel: the license server and website (no extension files) versus extension and app fixes; hang recovery versus the Luau helper library; documentation versus code.
@@ -235,6 +235,6 @@ Good tasks to run in parallel: the license server and website (no extension file
 ## 12. Things to remember about the owner's setup
 - Platform of the owner: Windows PC; testers use Windows and Mac, mostly Chrome-family browsers (Brave, Helium) and some Firefox.
 - The owner's test folder: `C:\Users\plazm\Downloads\PlazCode-Power-Features-Test\PlazCode-Extension-FixTest`.
-- A friend will buy the owner a domain for a simple website (Cloudflare Pages). The login and license system and the Skill Workshop run on Cloudflare Workers + D1 (designs in `development/1.24.24/`). The site files are in `PlazCode-website.zip`/`index.html` (not deployed yet).
-- Brickwire ideas chosen for the next update: items 1, 2, 3, 7, 9, 10, 11, 12, 13, 14, 17. Each is described, with the improvement the owner wants, in `development/1.24.24/NEXT-UPDATE-PLAN.md` section C, in full detail in `development/1.24.24/BRICKWIRE-ITEMS-SPEC.md`, and listed as a task in `docs/TASK-BOARD.md`. They stay out of 1.24.21.
+- A friend will buy the owner a domain for a simple website (Cloudflare Pages). The login and license system and the Skill Workshop run on Cloudflare Workers + D1 (designs in `development/1.24.25/`). The site files are in `PlazCode-website.zip`/`index.html` (not deployed yet).
+- Brickwire ideas chosen for the next update: items 1, 2, 3, 7, 9, 10, 11, 12, 13, 14, 17. Each is described, with the improvement the owner wants, in `development/1.24.25/NEXT-UPDATE-PLAN.md` section C, in full detail in `development/1.24.25/BRICKWIRE-ITEMS-SPEC.md`, and listed as a task in `docs/TASK-BOARD.md`. They stay out of 1.24.21.
 - High effort (careful tracing) is expected for: the license server, the Luau helper library and build self-checks, hard bug hunts and planning big features.

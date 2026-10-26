@@ -1,0 +1,44 @@
+{
+  "version": "1.24.24",
+  "title": "Fix for the false virus warning",
+  "summary": "Some browsers and antivirus programs wrongly called the PlazCode download a virus. This update removes the things in the PlazCode app that made it look suspicious to them.",
+  "added": [],
+  "improved": [
+    "The PlazCode app now carries standard Windows program details (company name, copyright and a proper application manifest), like most normal programs."
+  ],
+  "fixed": [
+    "Chrome and some antivirus programs flagged the 1.24.22 download as a virus. It was a false alarm: PlazCode is not malware.",
+    "When the AI runs a PowerShell command, PlazCode now uses a normal script file instead of a scrambled command line, and no longer turns off PowerShell's safety setting. These two things are what real malware often does, so scanners were suspicious.",
+    "Links and Obsidian notes now open the normal Windows way instead of through an old Windows helper that scanners also watch for.",
+    "Updates and add-on setup no longer switch off PowerShell's safety setting either."
+  ],
+  "notes": [
+    "Everything works the same as before: commands, updates, links and add-ons.",
+    "A brand-new unsigned app can still be flagged until it builds up a good reputation; code signing is the full cure.",
+    "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+  ],
+  "github": {
+    "summary": "***Fixes the false virus warning:*** Chrome and some antivirus programs wrongly flagged the PlazCode download. This update removes what made the app look suspicious to them.",
+    "sections": [
+      {
+        "title": "🛠️ What's fixed",
+        "items": [
+          "Chrome and some antivirus programs called the 1.24.22 download a virus. It was a false alarm.",
+          "PowerShell commands from the AI now run as a normal script file instead of a scrambled command line, and PowerShell's safety setting stays on.",
+          "Links and Obsidian notes open the normal Windows way.",
+          "Updates and add-on setup keep PowerShell's safety setting on too.",
+          "The app now has standard Windows program details (company, copyright, manifest)."
+        ]
+      },
+      {
+        "title": "🧪 What was checked",
+        "items": [
+          "Full tests passed on Windows, Mac and Linux, including the Mac app.",
+          "A new check confirms the Windows app no longer contains any of the patterns scanners flagged.",
+          "Commands, updates, links and add-ons work as before.",
+          "The Windows app is unsigned and the Mac app is not notarized, as before. A new unsigned app can still be flagged until it builds a reputation."
+        ]
+      }
+    ]
+  }
+}
