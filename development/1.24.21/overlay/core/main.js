@@ -452,7 +452,7 @@
   }
   async function waitCommandCooldown(userPrompt, stopped = () => false) {
     // A site can ask for a minimum pause (DeepSeek: 5 s, 1.24.22); the user's own setting wins when it is longer.
-    const seconds = Math.max(normalizeCooldown(typeof reliabilitySettings === "object" && reliabilitySettings ? reliabilitySettings.rsCommandCooldown : 0), normalizeCooldown(P.minSecondsBetweenSends));
+    const seconds = Math.max(normalizeCooldown(typeof reliabilitySettings === "object" && reliabilitySettings ? reliabilitySettings.rsCommandCooldown : 0), normalizeCooldown(typeof P !== "undefined" && P ? P.minSecondsBetweenSends : 0));
     if (!userPrompt && seconds > 0 && _lastCommandSendAt) {
       let remaining = _lastCommandSendAt + seconds * 1000 - Date.now();
       if (remaining > 0) diag("send.cooldown", { ms: Math.round(remaining) });
@@ -3215,7 +3215,7 @@ return result`;
       // 1.24.22 short startup: the startup command list is names plus one line each; the AI asks list_commands {command} for one command's full parameters.
       const oneCommand=String((args&&(args.command||args.name||args.tool))||'').trim();
       if(oneCommand){const hit=scoped.filter(t=>t.name===oneCommand||bareToolName(t.name)===bareToolName(oneCommand));if(hit.length)scoped.splice(0,scoped.length,...hit);}
-      if(!oneCommand&&((A.requestKind==='quick'&&A.quickCatalogue&&!A.catalogueDetail&&!A.starting)||(A.starting&&leanStartupOn()))){
+      if(!oneCommand&&((A.requestKind==='quick'&&A.quickCatalogue&&!A.catalogueDetail&&!A.starting)||(A.starting&&(typeof leanStartupOn === "function" && leanStartupOn())))){
         const names=new Set();
         for(const line of [...animLines,...skillLines,...agentLines,...webLines]){
           const heading=line.match(/^([a-z][a-z0-9_]+):/);if(heading)names.add(heading[1]);
@@ -4938,14 +4938,14 @@ return result`;
       startupOutcomes.delete(key); startupOutcomes.set(chat + key, {...value, key: chat + key, chat});
     }
   }
-  let reliabilitySettings={rsToolBudget:0,rsTaskMinutes:0,rsRunLimitsEnabled:false,rsVisualCheck:true,rsContinuationOffer:true,rsCommandCooldown:0,rsFullStartup:false},savedHandoff=null;
+  let reliabilitySettings={rsToolBudget:0,rsTaskMinutes:0,rsRunLimitsEnabled:false,rsVisualCheck:true,rsFullStartup:false,rsContinuationOffer:true,rsCommandCooldown:0},savedHandoff=null;
   const normalizeReliability = value => ({rsRunLimitsEnabled:value.rsRunLimitsEnabled===true,rsToolBudget:Math.max(0,Math.min(1000,Number.isFinite(Number(value.rsToolBudget))?Math.floor(Number(value.rsToolBudget)):0)),rsTaskMinutes:Math.max(0,Math.min(240,Number.isFinite(Number(value.rsTaskMinutes))?Math.floor(Number(value.rsTaskMinutes)):0)),rsVisualCheck:value.rsVisualCheck!==false,rsContinuationOffer:value.rsContinuationOffer!==false,rsCommandCooldown:normalizeCooldown(value.rsCommandCooldown),rsFullStartup:value.rsFullStartup===true});
   // 1.24.22: the short startup is used unless the user switched on "Full startup" (off by default).
   function leanStartupOn() { return reliabilitySettings.rsFullStartup !== true && typeof PlazCodeLeanStartup !== "undefined"; }
-  chrome.storage.local.get(["rsRunLimitsEnabled","rsToolBudget","rsTaskMinutes","rsVisualCheck","rsContinuationOffer","rsCommandCooldown","rsFullStartup","rsLatestHandoff"],value=>{reliabilitySettings=normalizeReliability(value||{});savedHandoff=value&&value.rsLatestHandoff||null;});
+  chrome.storage.local.get(["rsRunLimitsEnabled","rsToolBudget","rsTaskMinutes","rsVisualCheck","rsFullStartup","rsContinuationOffer","rsCommandCooldown","rsLatestHandoff"],value=>{reliabilitySettings=normalizeReliability(value||{});savedHandoff=value&&value.rsLatestHandoff||null;});
   chrome.storage.onChanged.addListener((changes,area)=>{
     if(area!=='local')return;
-    const fields={};for(const key of ['rsRunLimitsEnabled','rsToolBudget','rsTaskMinutes','rsVisualCheck','rsContinuationOffer','rsCommandCooldown','rsFullStartup'])if(changes[key])fields[key]=changes[key].newValue;
+    const fields={};for(const key of ['rsRunLimitsEnabled','rsToolBudget','rsTaskMinutes','rsVisualCheck','rsFullStartup','rsContinuationOffer','rsCommandCooldown'])if(changes[key])fields[key]=changes[key].newValue;
     if(Object.keys(fields).length)reliabilitySettings=normalizeReliability({...reliabilitySettings,...fields});
   });
   chrome.storage.onChanged.addListener(changes=>{const merged={...reliabilitySettings};for(const key of Object.keys(merged))if(changes[key])merged[key]=changes[key].newValue;reliabilitySettings=normalizeReliability(merged);if(changes.rsLatestHandoff)savedHandoff=changes.rsLatestHandoff.newValue||null;});
@@ -5029,8 +5029,8 @@ return result`;
   // definition, used both by the bootstrap and by the periodic re-injection, so
   // the two can never drift apart.
     function personalMemoryContext() {
-      const smallContext = !!P.sysMaxChars || leanStartupOn();
-      { const vaultPrompt = PlazCodeMemory.vaultContext(leanStartupOn() ? 'lean' : !!P.sysMaxChars); if (vaultPrompt) return vaultPrompt; }
+      const smallContext = !!P.sysMaxChars || (typeof leanStartupOn === "function" && leanStartupOn());
+      { const vaultPrompt = PlazCodeMemory.vaultContext((typeof leanStartupOn === "function" && leanStartupOn()) ? 'lean' : !!P.sysMaxChars); if (vaultPrompt) return vaultPrompt; }
       const scoped=personalMemory ? {...personalMemory,project_scope:currentProject,entries:personalMemory.entries.filter(entry=>!entry.project || entry.project===currentProject)} : null;
       if (!scoped || !smallContext) return PlazCodeMemory.prompt(scoped);
       const entries = []; let size = 0;
@@ -5052,7 +5052,7 @@ return result`;
         providerNotes: P.promptExtra || "",
         engine,
         fullAccess: !!(typeof window.__rsFullAccess === "function" && window.__rsFullAccess()),
-        leanStartup: leanStartupOn(),
+        leanStartup: (typeof leanStartupOn === "function" && leanStartupOn()),
         maxChars: P.sysMaxChars ? Math.max(1000, P.sysMaxChars - memoryContext.length - PlazCodeClarification.INSTRUCTION.length) : 0,
       }) + PlazCodeClarification.INSTRUCTION + memoryContext;
       // Context-meter cache: the bar shows an approximate token cost next to
@@ -5443,7 +5443,7 @@ return result`;
         });
         return `${items.join(", ")}\nThese are the command names (required parameters in braces). Before using a command for the first time, get its full parameters with list_commands {"command":"name"}; plazcode_help {"topic":"..."} has the rules for an area.`;
       };
-      const digest = offline ? toolFeedback : leanStartupOn() ? leanDigest() + (typeof connectedAddonsNote === "function" && connectedAddonsNote(cur) ? "\n" + connectedAddonsNote(cur) : "") : scoped.map((t) => {
+      const digest = offline ? toolFeedback : (typeof leanStartupOn === "function" && leanStartupOn()) ? leanDigest() + (typeof connectedAddonsNote === "function" && connectedAddonsNote(cur) ? "\n" + connectedAddonsNote(cur) : "") : scoped.map((t) => {
         const schema = t.inputSchema || {};
         const props = schema.properties || {};
         const req = new Set(schema.required || []);

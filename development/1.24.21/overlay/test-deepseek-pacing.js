@@ -18,7 +18,7 @@ vm.createContext(env); vm.runInContext(main.slice(a, b) + ';this.wait=waitComman
   env.P = {}; env.reliabilitySettings.rsCommandCooldown = 0; now += 100; waits.length = 0;
   vm.runInContext('P = this.P', env);
   // Other sites: no pause unless the user set one.
-  assert(/Math\.max\(normalizeCooldown\([^)]*rsCommandCooldown : 0\), normalizeCooldown\(P\.minSecondsBetweenSends\)\)/.test(main));
+  assert(/Math\.max\(normalizeCooldown\([^)]*rsCommandCooldown : 0\), normalizeCooldown\(typeof P !== \"undefined\" && P \? P\.minSecondsBetweenSends : 0\)\)/.test(main));
   // The notice is shown once per site.
   assert(/if \(P\.startNotice\) \{\s*const noticeKey = "rsNoticeSeen:" \+ P\.id;/.test(main) && /chrome\.storage\.local\.set\(\{ \[noticeKey\]: true \}\)/.test(main));
   console.log('DeepSeek: at least 5 seconds between automatic messages, and a one-time notice about account suspensions.');

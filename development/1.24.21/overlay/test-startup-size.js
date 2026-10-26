@@ -41,13 +41,13 @@ assert(/PlazCode help - topic "luau"/.test(Lean.helpFor({ topic: 'luau', engine:
 
 // main.js wiring.
 const main = read('core/main.js');
-assert(/leanStartup: leanStartupOn\(\),/.test(main), 'systemPrompt asks for the short startup');
+assert(/leanStartup: \(typeof leanStartupOn === \"function\" && leanStartupOn\(\)\),/.test(main), 'systemPrompt asks for the short startup');
 assert(/function leanStartupOn\(\) \{ return reliabilitySettings\.rsFullStartup !== true/.test(main), 'Full startup is off by default');
-assert(/rsFullStartup:false\}/.test(main) && /id="rs-full-startup"/.test(main), 'the Full startup switch exists, off by default');
+assert(/rsFullStartup:false,/.test(main) && /id="rs-full-startup"/.test(main), 'the Full startup switch exists, off by default');
 assert(/if \(name === "plazcode_help"\) \{[\s\S]{0,300}PlazCodeLeanStartup\.helpFor\(/.test(main), 'plazcode_help runs');
 assert(/tools\.push\(\{name:'plazcode_help'/.test(main), 'plazcode_help is in the command list');
-assert(/vaultContext\(leanStartupOn\(\) \? 'lean'/.test(main), 'the vault summary is the smallest one at startup');
-assert(/const digest = offline \? toolFeedback : leanStartupOn\(\) \? leanDigest\(\)/.test(main), 'the startup command list is names only');
+assert(/vaultContext\(\(typeof leanStartupOn === \"function\" && leanStartupOn\(\)\) \? 'lean'/.test(main), 'the vault summary is the smallest one at startup');
+assert(/const digest = offline \? toolFeedback : \(typeof leanStartupOn === \"function\" && leanStartupOn\(\)\) \? leanDigest\(\)/.test(main), 'the startup command list is names only');
 // The lean digest for a big Studio command list stays small.
 const start = main.indexOf('const leanDigest = () => {'), end = main.indexOf('\n      };', start) + 8;
 const scoped = Array.from({ length: 160 }, (_, i) => ({ name: 'studio_command_' + i, inputSchema: { properties: { path: {}, value: {} }, required: ['path'] } }));
