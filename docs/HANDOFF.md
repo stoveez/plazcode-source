@@ -94,6 +94,7 @@ Read `publish-1.24.24.yml` and `development/1.24.24/promote.py` before the first
 
 ## What is in the latest test zips and what is NOT yet (kept up to date by every AI)
 Latest builds people have: the PUBLISHED releases 1.24.21 (2026-10-25) and 1.24.22 (2026-10-25, short startup for free plans; validated run 40261223434, commit `a2ebc5a`). Everything in the old test-zip list (vault live note, Claude hang recovery, dropdown fixes, sidebar scroll and the rest) shipped in those releases. No separate test zip was made for 1.24.22 (owner: small update).
+NOT yet in any build: 1.24.24 (input-limit error + usage fix, extension-only: reloading the extension is enough). See docs/NOW.md.
 PUBLISHED as 1.24.23 on 2026-10-26 (antivirus false-positive fix; needs the new desktop app, which the auto-updater installs):
 - PowerShell commands from the AI run from a temp script file with `-ExecutionPolicy RemoteSigned` (no `-EncodedCommand`, no Bypass) (`agent/src/workspace.rs`).
 - Updater helper and add-on runtime setup use RemoteSigned; the add-on setup runs the app's own built-in copy of `Setup-Mcp-Runtime.ps1` (`updater.rs`, `mcp_addons.rs`).
