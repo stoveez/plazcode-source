@@ -184,9 +184,6 @@ def main():
         matches=list((ROOT/'ci-artifacts/plazcode-1.23-Windows-validation').rglob(name))
         if matches:shutil.copy2(matches[0],evidence/name)
     (evidence/'VALIDATION.txt').write_text(validation)
-    review=ROOT/'development/1.23.0/REVIEW.md'
-    if review.exists():
-        review.write_text(review.read_text()+'\nRelease status: the user authorized publication after automated validation while accepting that live browser/Studio/Blender checks are unavailable. Platform results and actual Defender availability are recorded in release-validation-1.23.0. Earlier pending release gates above describe the development-stage investigation, not a claim that those live checks subsequently ran.\n')
     print(json.dumps(metadata,indent=2))
 
 if __name__=='__main__':main()

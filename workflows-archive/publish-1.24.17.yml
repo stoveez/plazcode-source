@@ -125,7 +125,7 @@ jobs:
           git merge-base --is-ancestor origin/main HEAD
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add PlazCode-1.24.17.zip PlazCode-macOS-1.24.17.zip PlazCode-source-1.24.17.zip PlazCode-Firefox-1.24.17.zip PlazCode-1.24.17.sigstore.json latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.24.17.txt README.md release-validation-1.24.17 development/1.24.17/REVIEW.md
+          git add PlazCode-1.24.17.zip PlazCode-macOS-1.24.17.zip PlazCode-source-1.24.17.zip PlazCode-Firefox-1.24.17.zip PlazCode-1.24.17.sigstore.json latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.24.17.txt README.md release-validation-1.24.17
           git commit -m 'Release PlazCode 1.24.17: ClickUp tool-result paging and Blender catalogs'
           git push origin HEAD:codex/plazcode-publish-1.24.17
       - name: Publish verified assets before exposing the update feed
