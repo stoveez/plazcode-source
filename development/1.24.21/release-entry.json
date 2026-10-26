@@ -65,29 +65,36 @@
     "The vault is stored in plain Markdown files in a folder you can see. The AI never saves passwords or keys in it, never deletes notes (old ones move to an Archive folder), and it is allowed even in Read-only mode because it only touches the vault folder."
   ],
   "github": {
-    "summary": "Safety limits, What happened with Undo, a Vault memory the AI keeps up to date, saved setups per site and a Fix connection button.",
+    "summary": "The biggest update in a while: safety controls, a plain list of what the AI did (with Undo), a notes vault the AI keeps up to date, and fixes for the AI pausing in the middle of long jobs.",
     "sections": [
       {
         "title": "✨ What's new",
         "items": [
-          "Vault: an Obsidian-style notes window the AI reads and updates itself, with a separate critic chat that scores results against your reference picture. Opens in Obsidian too. Needs the newest app.",
-          "Safety: Read-only mode, Confirm before deleting, Allowed folders.",
-          "What happened: a plain list of what the AI did, with Undo.",
-          "Setups per site, skill sharing, Settings backup, 🔧 Fix connection.",
-          "Connectors: Figma, Unity, Godot, Browser. Vani AI supported.",
-          "Ultra is now the UltraLab pack by SyphoDev, used with his permission (youtube.com/@SyphoDev)."
+          "Read-only mode: the AI can look but not change anything. It also asks before deleting files.",
+          "What happened: a simple list of what the AI did, with an Undo button.",
+          "Vault: notes the AI reads and updates itself.",
+          "Save a setup for each site, share skills with a link, back up your settings.",
+          "Ask the AI how any PlazCode feature works.",
+          "A new look for command cards on every AI site."
         ]
       },
       {
-        "title": "✨ Polish",
+        "title": "🛠️ What's fixed",
         "items": [
-          "Fixes: stuck command card on Notion; Fix connection freeze on Vani, Freebuff, Oxalpha and UseAI; Notion file retry; repeated Ultra reads; bar colours on Vani; random pauses on Claude; sends that never landed; Claude's empty json frame."
+          "Claude no longer stops at random in the middle of a long run of tools.",
+          "If a result never reached the chat box, PlazCode now tries again, or tells you right away instead of waiting a minute.",
+          "Leftover empty boxes after commands on Claude are gone.",
+          "The bar no longer says \"AgentScript is offline\" while the app is running.",
+          "Fix connection button no longer freezes some sites. Notion retries files it rejects.",
+          "The popup to continue your last project is cleaner and skips chats that only had the startup message."
         ]
       },
       {
-        "title": "🧪 Good to know",
+        "title": "🧪 What was checked",
         "items": [
-          "The Windows app is unsigned and the Mac app is not notarized, so your computer may ask you to confirm opening it."
+          "Full tests passed on Windows, Mac and Linux, including the Mac app.",
+          "On Claude, two live runs of 15 tools in a row finished with no pause. Other sites were tested with practice pages, not live.",
+          "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
         ]
       }
     ]
