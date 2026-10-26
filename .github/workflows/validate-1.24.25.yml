@@ -1,7 +1,7 @@
 name: Validate PlazCode 1.24.25 development
 on:
   push:
-    branches: [release/1.24.25]
+    branches: [release/1.24.25, claude/plazcode-dev]
   pull_request:
     paths: [development/1.24.25/**, learned-skills/**, .github/workflows/validate-1.24.25.yml]
   workflow_dispatch:

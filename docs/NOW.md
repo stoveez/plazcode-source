@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-26. Branch: `claude/plazcode-dev`.
 
-**Latest change: 1.24.25 reliability fixes implemented; validation pending.** Canvas screenshot display avoids site image-URL blocks; corrupt captures report an error. Plan Mode honors per-command task approvals. Creator response handling distinguishes missing endpoint, size limits and invalid replies. Desktop reports active browser extension versions and EXE-only/old-folder mismatches; known outdated versions stay red after failed/stale checks.
+**Latest change: validation workflow now runs on pushes to claude/plazcode-dev so new version workflows register without touching main.
+
+**Previous change: 1.24.25 reliability fixes implemented; validation pending.** Canvas screenshot display avoids site image-URL blocks; corrupt captures report an error. Plan Mode honors per-command task approvals. Creator response handling distinguishes missing endpoint, size limits and invalid replies. Desktop reports active browser extension versions and EXE-only/old-folder mismatches; known outdated versions stay red after failed/stale checks.
 
 **Checks:** approval, creator response and version unit tests pass; actual Chromium screenshot pixels passed with img-src none, including corrupt-image error and cleanup. Rust is unavailable locally; required platform/browser checks run in CI. Full regression run is next. No affected user account or real Studio capture tested.
 
