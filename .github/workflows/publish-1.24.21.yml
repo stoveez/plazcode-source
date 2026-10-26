@@ -16,8 +16,8 @@ env:
   VALIDATED_SHA: 'fb8e770d962d25a2d941b8aea4cd29aa244ffe7e'
   VALIDATION_RUN: '40247208967'
   # Owner-approved quick mode for small fixes: '1' skips the Mac desktop lifetime test.
-  PLAZCODE_QUICK: '1'
-  PUBLIC_REPO: stoveez/plazcode-publish-test
+  PLAZCODE_QUICK: '0'
+  PUBLIC_REPO: stoveez/PlazCode
 concurrency:
   group: plazcode-final-1.24.21
   cancel-in-progress: true
