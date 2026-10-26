@@ -30,3 +30,5 @@ updated: 2026-10-24
 - Lawyer review of licence notices; GitHub Support request about the locked `v1.24.20` tag; delete the `cleanup-public` branch.
 
 Release: see [releasing](releasing.md).
+- Antivirus false positive on the 1.24.21 Windows app (2 of 69 on VirusTotal). Fix plan for the next update in `development/1.25.0/NEXT-UPDATE-PLAN.md` (no encoded PowerShell, app manifest, signing decision).
+- The live 1.24.21 release text needs the owner's version pasted in by hand (this session cannot edit GitHub releases).

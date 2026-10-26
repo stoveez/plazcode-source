@@ -74,3 +74,17 @@ Suggested order: 9 and 10 first (small and fix tester pain), then 1, 2 and 3 tog
 
 ## Code protection (owner, 2026-10-25, next update)
 Obfuscate the Chrome/Edge/Brave and Firefox extensions when the release zip is built (test zips too, still 1:1 with the real update). Record a fingerprint of every PlazCode program file at build time; the compiled desktop app checks them when the extension connects, and a modified copy stops working with a message to download the official version from the PlazCode releases page. The user's own skills, vault notes and settings are never checked. Keep a private decoder map per release so error reports stay readable. Plan it in full (high effort) before building. See `docs/vault/decisions.md`.
+
+## Antivirus false positive on PlazCode.exe (owner, 2026-10-25, next update)
+VirusTotal: 2 of 69 flag the 1.24.21 Windows app (sha256 4f0d4f6a...2702296): Skyhigh "BehavesLike.Win64.Backdoor.rh" and Trapmine "Malicious.moderate.ml.score". Both are behaviour/AI guesses, not a known virus. What in the file looks like a remote-control tool to them:
+- Unsigned (no publisher).
+- No Windows application manifest (resources only have icon and version info).
+- Runs hidden PowerShell with `-ExecutionPolicy Bypass` and `-EncodedCommand` (base64 scripts) in `workspace.rs` (run commands) and `updater.rs`/`mcp_addons.rs`; encoded commands are a classic malware sign.
+- Screen capture (BitBlt), fake mouse/keyboard input (SendInput), key state reading, process launching, plus a self-updater that downloads and runs code. These are real PlazCode features (computer use, updates), so they stay.
+Fix plan (each must keep every test green, including the Mac desktop test and the updater):
+1. Stop using `-EncodedCommand`: write the script to a temp .ps1 next to the app's data and run it with `-File`, or feed it through standard input (`-Command -`). Keep the exact same behaviour and output.
+2. Use `-ExecutionPolicy Bypass` only where a `-File` script needs it; prefer `-Command -` (not affected by the policy).
+3. Embed a proper application manifest (asInvoker, supported Windows versions, DPI aware) and keep full version info (add CompanyName and LegalCopyright).
+4. Code signing is the real cure for these warnings; options to show the owner with prices (for example Azure Trusted Signing). Needs the owner's decision and an identity check, so it is not done without him.
+5. After the release, scan the new exe on VirusTotal and, if any vendor still flags it, the owner sends a false-positive report to that vendor (Skyhigh, Trapmine/Palo Alto).
+
