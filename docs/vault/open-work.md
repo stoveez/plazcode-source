@@ -1,6 +1,6 @@
 ---
 title: Open work and known bugs
-updated: 2026-10-24
+updated: 2026-10-26
 ---
 # Open work
 
@@ -25,13 +25,14 @@ updated: 2026-10-24
 
 ## Not started / optional
 - Lean startup phases 2 and 3 (`development/1.24.21/overlay/core/lean-startup.js`, unwired, off).
-- Update 1.24.25: accounts (no license keys), code protection, antivirus fix, Skill Workshop, Brickwire list, hang recovery, keep-awake. (The plan file has a 2026-10-24 update block at its top; keep it current.) See `development/1.24.25/` and `docs/TASK-BOARD.md`.
+- Update 1.24.25: reserved for the owner's new issue; scope pending.
+- Update 1.24.26: accounts (no license keys), code protection, Skill Workshop, Brickwire list, hang recovery, keep-awake. (The plan file has a 2026-10-24 update block at its top; keep it current.) See `development/1.24.26/` and `docs/TASK-BOARD.md`.
 - Website: `PlazCode-website.zip`, to deploy on Cloudflare Pages once the owner has a domain.
 - Lawyer review of licence notices; GitHub Support request about the locked `v1.24.20` tag; delete the `cleanup-public` branch.
 
 Release: see [releasing](releasing.md).
 - 1.24.24 SHIPPED 2026-10-26: Claude false "12000 character input limit" error and higher plan usage. Still needs a live check on a real Claude account with a 12,000 limit (only simulated and practice-page tested).
-- 1.24.23 SHIPPED 2026-10-26: antivirus false positive (Chrome blocks the 1.24.22 zip as "Virus detected"; VirusTotal showed 2 of 69 on the 1.24.21 app). Earlier fix plan in `development/1.24.25/NEXT-UPDATE-PLAN.md` (no encoded PowerShell, app manifest, signing decision).
+- 1.24.23 SHIPPED 2026-10-26: antivirus false positive (Chrome blocks the 1.24.22 zip as "Virus detected"; VirusTotal showed 2 of 69 on the 1.24.21 app). Earlier fix plan in `development/1.24.26/NEXT-UPDATE-PLAN.md` (no encoded PowerShell, app manifest, signing decision).
 - The live 1.24.21 release text needs the owner's version pasted in by hand (this session cannot edit GitHub releases).
 - 1.24.22 SHIPPED 2026-10-25. Still worth a live check on Claude free, ClickUp free, ChatGPT free and DeepSeek to confirm the startup fits each plan (only practice-page tested).
 - Antivirus: after 1.24.23 ships, the owner can report the new download as a false positive to Google (https://safebrowsing.google.com/safebrowsing/report_error/) and Microsoft (https://www.microsoft.com/wdsi/filesubmission). Code signing (Azure Artifact Signing) is the lasting fix: every new unsigned build starts with no reputation.

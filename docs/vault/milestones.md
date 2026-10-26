@@ -1,8 +1,11 @@
 ---
 title: Milestones (finished work)
-updated: 2026-10-24
+updated: 2026-10-26
 ---
 # Finished work
+
+## 2026-10-26: schedule updated
+All work previously planned for 1.24.25 is deferred to 1.24.26. The next update, 1.24.25, is reserved for a new issue the owner will describe. The four plan documents now live in `development/1.24.26/`, and the task board, rules and vault links follow them. No program or updater changes.
 
 ## 2026-10-24 (on `claude/plazcode-dev`): hang recovery for Claude, Claude send fixes, Effort chevron, one-step checklist; native-vault notes. Only fixture-tested; not in a test build.
 

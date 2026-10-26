@@ -151,7 +151,7 @@ Reading results:
 - Testers report: browser, AI site, what happened, how often, a recording if possible. Ask for the **debug report** (Settings in the desktop app > Copy debug report) for anything that is not obvious. It removes keys, tokens, cookies and chat text.
 - Reproduce on a fake page or a unit test first. Fix. Add a test. Say plainly what was verified.
 - Typical suspects: the site changed its page, the app is older than the extension (the What happened list is then missing commands and reads and now says so), a timeout (Notion turns can take longer than 90 seconds).
-- Known open items are in `CLAUDE.md` and `development/1.24.25/NEXT-UPDATE-PLAN.md`.
+- Known open items are in `CLAUDE.md` and `development/1.24.26/NEXT-UPDATE-PLAN.md`.
 
 ---
 
@@ -204,7 +204,7 @@ Every release:
 Regularly:
 - Watch for AI sites changing their pages (a provider that suddenly says "Message was not confirmed" or "Not connected to this chat yet").
 - Keep the pinned third-party versions (Engram, Blender add-on, Luau test VM used by CI) deliberate: update on purpose, with the hash, never by accident.
-- Keep `CLAUDE.md`, `AGENTS.md` and `development/1.24.25/NEXT-UPDATE-PLAN.md` current when decisions change.
+- Keep `CLAUDE.md`, `AGENTS.md` and `development/1.24.26/NEXT-UPDATE-PLAN.md` current when decisions change.
 
 ---
 
@@ -235,6 +235,6 @@ Good tasks to run in parallel: the license server and website (no extension file
 ## 12. Things to remember about the owner's setup
 - Platform of the owner: Windows PC; testers use Windows and Mac, mostly Chrome-family browsers (Brave, Helium) and some Firefox.
 - The owner's test folder: `C:\Users\plazm\Downloads\PlazCode-Power-Features-Test\PlazCode-Extension-FixTest`.
-- A friend will buy the owner a domain for a simple website (Cloudflare Pages). The login and license system and the Skill Workshop run on Cloudflare Workers + D1 (designs in `development/1.24.25/`). The site files are in `PlazCode-website.zip`/`index.html` (not deployed yet).
-- Brickwire ideas chosen for the next update: items 1, 2, 3, 7, 9, 10, 11, 12, 13, 14, 17. Each is described, with the improvement the owner wants, in `development/1.24.25/NEXT-UPDATE-PLAN.md` section C, in full detail in `development/1.24.25/BRICKWIRE-ITEMS-SPEC.md`, and listed as a task in `docs/TASK-BOARD.md`. They stay out of 1.24.21.
+- A friend will buy the owner a domain for a simple website (Cloudflare Pages). The login and license system and the Skill Workshop run on Cloudflare Workers + D1 (designs in `development/1.24.26/`). The site files are in `PlazCode-website.zip`/`index.html` (not deployed yet).
+- Brickwire ideas deferred to 1.24.26 (1.24.25 is reserved for a new issue): items 1, 2, 3, 7, 9, 10, 11, 12, 13, 14, 17. Each is described, with the improvement the owner wants, in `development/1.24.26/NEXT-UPDATE-PLAN.md` section C, in full detail in `development/1.24.26/BRICKWIRE-ITEMS-SPEC.md`, and listed as a task in `docs/TASK-BOARD.md`. They stay out of 1.24.21.
 - High effort (careful tracing) is expected for: the license server, the Luau helper library and build self-checks, hard bug hunts and planning big features.
