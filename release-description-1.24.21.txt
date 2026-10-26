@@ -1,0 +1,36 @@
+## ✨ PlazCode 1.24.21
+
+The biggest update in a while: safety controls, a plain list of what the AI did (with Undo), a notes vault the AI keeps up to date, and fixes for the AI pausing in the middle of long jobs.
+
+### ✨ What's new
+
+- Read-only mode: the AI can look but not change anything. It also asks before deleting files.
+- What happened: a simple list of what the AI did, with an Undo button.
+- Vault: notes the AI reads and updates itself.
+- Save a setup for each site, share skills with a link, back up your settings.
+- Ask the AI how any PlazCode feature works.
+- A new look for command cards on every AI site.
+
+### 🛠️ What's fixed
+
+- Claude no longer stops at random in the middle of a long run of tools.
+- If a result never reached the chat box, PlazCode now tries again, or tells you right away instead of waiting a minute.
+- Leftover empty boxes after commands on Claude are gone.
+- The bar no longer says "AgentScript is offline" while the app is running.
+- Fix connection button no longer freezes some sites. Notion retries files it rejects.
+- The popup to continue your last project is cleaner and skips chats that only had the startup message.
+
+### 🧪 What was checked
+
+- Full tests passed on Windows, Mac and Linux, including the Mac app.
+- On Claude, two live runs of 15 tools in a row finished with no pause. Other sites were tested with practice pages, not live.
+- The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it.
+
+### 📥 How to update
+
+- Open PlazCode, or choose **Updates → Update now**.
+- Manual downloads: **PlazCode-1.24.21.zip** for Windows, **PlazCode-macOS-1.24.21.zip** for Mac, or **PlazCode-Firefox-1.24.21.zip** for Firefox.
+- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
+- Your settings, memory and connections are kept.
+
+Test details are included in VALIDATION.txt.
