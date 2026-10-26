@@ -4,6 +4,8 @@ updated: 2026-10-26
 ---
 # Decisions (newest first)
 
+- **2026-10-26: 1.24.25 released directly after full validation (owner authorization).** No separate test build. Outdated extensions must show red Outdated text, including when a later update check fails. EXE-only replacement cannot change files in a separately loaded extension folder; the desktop now shows recent browser versions and recovery instructions. Accounts, code protection, Skill Workshop and Brickwire stay in 1.24.26.
+
 - **2026-10-24: one branch, `claude/plazcode-dev`.** The owner uses one AI at a time and found many task branches confusing. All work, including `WIP:` commits, goes directly on it; `NOW.md` is rewritten with every push. Still needing a clear yes: `release/1.24.21` or `main`, force-pushes, deleting branches, publishing, the public repo. If two AIs ever run at once, use `<ai>/<task>` branches for that time.
 - **2026-10-24: the app's vault gets a live note (`00 Start Here/Now.md`).** Same idea as `docs/NOW.md` for the builders: the AI reads where the work stands at startup and rewrites it after every job. Capped at 1,500 characters so small sites stay small; an existing note is never overwritten. Pictures attached with the media button can be stored with `add_image`; pictures pasted straight into an AI site's own box are not seen. See [vault-memory](vault-memory.md).
 - **2026-10-24: handoff = short `NOW.md` + linked vault.** The old `HANDOFF.md` grew long; new AIs paid tokens to read all of it. See [how-we-work](how-we-work.md). Old docs are kept, not deleted.

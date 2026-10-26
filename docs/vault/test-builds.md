@@ -20,3 +20,6 @@ From the run's Artifacts: `plazcode-<version>-Windows-test-lean` and `plazcode-<
 If the Mac job is cancelled with "job was not acquired by Runner", re-run only that job every 20 minutes (`gh run rerun <id> --failed`).
 
 Option: an AI on the owner's own Windows PC can build the Windows zip locally for free (`docs/HANDOFF.md`, "Option: build the test zip on the owner's own computer").
+
+## 1.24.25 (2026-10-26)
+The owner requested a direct release with no separate test build. Full platform/browser validation and the packaged Mac desktop gate passed; validated native bytes were published without rebuilding. No test zips were delivered.

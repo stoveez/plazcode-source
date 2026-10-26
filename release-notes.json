@@ -1,5 +1,52 @@
 [
   {
+    "version": "1.24.25",
+    "title": "Screenshots, approvals and update warnings",
+    "summary": "Improves screenshot display, remembers task approvals in Plan Mode, and makes mismatched app and extension versions clear.",
+    "added": [],
+    "improved": [
+      "The desktop Updates page shows active browser extension versions. Known outdated versions stay red when a later check fails."
+    ],
+    "fixed": [
+      "Screenshot previews render from image bytes instead of image URLs that AI sites can block. Unreadable image data shows an error.",
+      "Approve all for this task now applies to the same command in Plan Mode.",
+      "Creation previews explain missing app support, oversized requests and invalid responses instead of showing a JSON parsing error."
+    ],
+    "notes": [
+      "Replacing only the EXE does not update an extension loaded from another folder. Use the full update and load the updated extension folder.",
+      "Real Studio captures and the reported creation-preview failure were not reproduced on the affected computer.",
+      "The Windows app is unsigned and the Mac app is not notarized."
+    ],
+    "github": {
+      "summary": "***Screenshots, approvals and updates:*** clearer results and fewer repeated prompts.",
+      "sections": [
+        {
+          "title": "✨ What's new",
+          "items": [
+            "The Updates page shows active browser extension versions and warns when the app and extension do not match."
+          ]
+        },
+        {
+          "title": "🛠️ What's fixed",
+          "items": [
+            "Screenshot previews can display even when an AI site blocks image URLs; unreadable captures show an error.",
+            "Approve all for this task now skips repeats of that command in Plan Mode.",
+            "Known outdated versions stay red when a later update check fails.",
+            "Creation previews explain missing app support, large requests and invalid replies instead of a JSON parsing error."
+          ]
+        },
+        {
+          "title": "🧪 What was checked",
+          "items": [
+            "Full Windows, Mac and Linux tests, including the packaged Mac app; screenshot pixels checked in Chromium and Firefox. Small creation drafts checked through the real desktop endpoint.",
+            "The affected computer and real Studio captures were not tested live. Updating only the EXE cannot update a separate extension folder.",
+            "The Windows app is unsigned and the Mac app is not notarized, as before."
+          ]
+        }
+      ]
+    }
+  },
+  {
     "version": "1.24.24",
     "title": "Fewer limit errors and lower usage",
     "summary": "Fixes the \"message exceeds your input limit\" error that stopped Claude in the middle of normal work, and makes PlazCode use noticeably less of your AI plan.",

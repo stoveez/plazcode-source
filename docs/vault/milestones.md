@@ -4,6 +4,9 @@ updated: 2026-10-26
 ---
 # Finished work
 
+## 2026-10-26: 1.24.25 published
+Screenshot display, Plan Mode task approvals, creator response diagnostics and red outdated/version-mismatch warnings shipped. Full Windows/Mac/Linux and both browser engines passed; real three-node preview HTTP save/read passed on all platforms, and the packaged Mac desktop lifetime/relaunch gate passed. Validation 40362663766; publication 40368356121. Windows/Mac feeds and release asset checksums verified; Windows ZIP and exact extension code verified. Original affected account/Studio captures remain untested live.
+
 ## 2026-10-26: schedule updated
 All work previously planned for 1.24.25 is deferred to 1.24.26. The next update, 1.24.25, is reserved for a new issue the owner will describe. The four plan documents now live in `development/1.24.26/`, and the task board, rules and vault links follow them. No program or updater changes.
 

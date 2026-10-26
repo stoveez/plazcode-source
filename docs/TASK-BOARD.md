@@ -1,5 +1,7 @@
 # PlazCode task board
 
+**Current, 2026-10-26:** 1.24.25 is published (reliability fixes; validation 40362663766, publish 40368356121). No separate test build. Next planned work is 1.24.26. Start with `docs/NOW.md`; older entries below retain their historical context.
+
 Read `docs/MAINTAINER-GUIDE.md` section 11 first. Claim a task by adding a line under "In progress" in your own small commit. Move it to "Done" with a handoff note when finished. Do not take a task someone else has claimed.
 
 Format:

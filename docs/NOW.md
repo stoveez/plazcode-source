@@ -1,20 +1,16 @@
 # NOW
-Updated: 2026-10-26. Branch: `claude/plazcode-dev`.
+Updated: 2026-10-26. Work directly on `claude/plazcode-dev`; no helper agents.
 
-**Latest change: packaged Mac desktop gate passed in publication run 40366849411. Assembly stopped before publication because its pin-format guard requires single quotes. Corrected pin formatting; app source and binaries are unchanged.
+**Latest: PlazCode 1.24.25 PUBLISHED and verified.** Validation 40362663766 on `810676d`; publish 40368356121. All Windows/Mac/Linux and Chromium/Firefox checks passed, including real small-preview HTTP requests and packaged Mac desktop lifetime/relaunch. Public release, Windows/Mac feeds and asset checksums checked; downloaded Windows ZIP hash, manifests and exact extension code checked.
 
-**Previous change: publication branch created, but GitHub did not register the new workflow on its first push. A publication-file follow-up push triggers the existing branch; validated source remains unchanged.
+**Contents:** screenshots decode bytes into canvas (avoids blocked image URLs; corrupt images report an error); Plan Mode honors per-command task approvals; creation HTTP errors explain missing app support, size limits and invalid responses; desktop shows recent browser extension versions/mismatches; known outdated versions stay red through failed/stale checks.
 
-**Previous change: 1.24.25 validation passed; publication configured.** Exact source `810676d`, validation run 40362663766; all browser and Windows/Mac/Linux jobs green. Publication still requires its packaged Mac desktop gate. Owner authorized release, with no separate test build.
+**Install the full update**, then reload the extension and refresh AI tabs. Replacing only an EXE cannot update an extension loaded from another folder. No separate test build was delivered (owner request). Release notes use the owner's format, 1,430 characters.
 
-**Fixes:** canvas screenshot display avoids site image-URL blocks; unreadable data reports an error. Plan Mode respects per-command task approvals. Creator response handling explains missing endpoint, size limit and invalid responses. Real three-node preview HTTP save/read tested on each platform. Desktop shows recent browser extension versions and mismatches; known outdated versions stay red through failed/stale checks.
+**Limits:** original affected Studio captures/accounts were not tested live. Keep live confirmation of grey captures and the reported creation error on the open-work list. PC vault sync unavailable (no PC connection).
 
-**Latest published remains 1.24.24.** 1.24.25 is pending publish-1.24.25.yml on the publication branch. Windows/Mac binaries are reused from validation, never rebuilt during promotion.
+**Next update: 1.24.26.** Accounts, code protection, Skill Workshop, Brickwire and carried-over work remain in `development/1.24.26/`; see [open work](vault/open-work.md).
 
-**Limits:** actual affected Studio captures/accounts not tested live. Replacing only an EXE cannot replace an extension loaded from a separate folder; the warning explains loading the updated folder. PC vault sync unavailable (no PC connection).
+**Release gotchas:** new workflow registered only after a follow-up push on its existing publication branch. Validation pins must use the single-quoted form accepted by test-promote-permissions.py; run that script before publishing. No published archive or tag was overwritten.
 
-**Next:** monitor publication and Mac desktop gate, verify live release/feed checksums, remind owner to restore Private. Source repo is currently public.
-
-**Deferred:** accounts, code protection, Skill Workshop, Brickwire and carried-over features stay in 1.24.26.
-
-**Rules:** work directly on claude/plazcode-dev; no helper agents; rewrite NOW with every push; update open-work and vault. See [Home](vault/Home.md).
+**Handoff:** release record merged into dev's ancestry while retaining dev source; current release metadata copied from main. Remind owner to restore source repo to Private until verified private. More: [Home](vault/Home.md).

@@ -1,0 +1,22 @@
+✨ **PlazCode 1.24.25**
+***Screenshots, approvals and updates:*** clearer results and fewer repeated prompts.
+
+***✨ What's new***
+- The Updates page shows active browser extension versions and warns when the app and extension do not match.
+
+***🛠️ What's fixed***
+- Screenshot previews can display even when an AI site blocks image URLs; unreadable captures show an error.
+- Approve all for this task now skips repeats of that command in Plan Mode.
+- Known outdated versions stay red when a later update check fails.
+- Creation previews explain missing app support, large requests and invalid replies instead of a JSON parsing error.
+
+***🧪 What was checked***
+- Full Windows, Mac and Linux tests, including the packaged Mac app; screenshot pixels checked in Chromium and Firefox. Small creation drafts checked through the real desktop endpoint.
+- The affected computer and real Studio captures were not tested live. Updating only the EXE cannot update a separate extension folder.
+- The Windows app is unsigned and the Mac app is not notarized, as before.
+
+***📥 How to update***
+- Open PlazCode, or choose Updates → Update now.
+- Manual downloads: PlazCode-1.24.25.zip for Windows, PlazCode-macOS-1.24.25.zip for Mac, or PlazCode-Firefox-1.24.25.zip for Firefox.
+- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
+- Your settings, memory and connections are kept.

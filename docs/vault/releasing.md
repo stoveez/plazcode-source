@@ -1,6 +1,6 @@
 ---
 title: Releasing an update
-updated: 2026-10-24
+updated: 2026-10-26
 ---
 # Releasing
 
@@ -29,3 +29,9 @@ The publish workflow gates on `git merge-base --is-ancestor origin/main HEAD` an
 1. The workflow fetches the LIVE main first: `git fetch origin main:refs/remotes/origin/main` then `--is-ancestor refs/remotes/origin/main HEAD` (a stale cached `origin/main` made the check look fine locally while CI saw the real, newer main).
 2. After each publish, merge `origin/main` back into `claude/plazcode-dev` with `git merge -s ours` (keeps dev's exact source, just records main as a parent) so the next release descends from main. Done for 1.24.22. Do this again after 1.24.23.
 If a publish still fails this gate, on the publish branch run `git fetch origin main:refs/remotes/origin/main && git merge -s ours origin/main` (source stays identical) before re-running.
+
+## 1.24.25 publication lessons (2026-10-26)
+- A new publication branch's first push did not register its workflow; a follow-up change to the publication file on the existing branch did.
+- Use one global single-quoted VALIDATED_SHA/VALIDATION_RUN pair. Double-quoted YAML is valid, but the existing pin-format guard rejects it. Run `python3 development/1.24.25/test-promote-permissions.py` before starting publication.
+- Preserve the previous published changelog when dev's root metadata is older than main. Publication-only metadata can change after validation; program/packaging inputs must match the validated commit exactly.
+- The owner requested direct release, no separate test build. Full validation and the packaged Mac desktop gate still ran.
