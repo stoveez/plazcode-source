@@ -1,9 +1,62 @@
 {
-  "version": "1.24.20",
-  "desktop_version": "1.24.20",
-  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.20.zip",
-  "sha256": "b28b897d70bbc2cc1f43ac4e28fd13d06012caa342c01ba68817147d64254143",
+  "version": "1.24.22",
+  "desktop_version": "1.24.22",
+  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.22.zip",
+  "sha256": "123f4c035f90891f1ad186e2cb59f7c0ec4c71181a0b7f779f823a786033131f",
   "release_notes": [
+    {
+      "version": "1.24.22",
+      "title": "Shorter startup for free plans",
+      "summary": "Start Agent now sends a much shorter first message, so free plans on Claude, ClickUp and ChatGPT no longer run out or refuse it. The AI looks up the rest only when it needs it.",
+      "added": [
+        "A Full startup switch in the PlazCode menu (Automation). It is off by default; turn it on only if you want every instruction sent at once on a big paid model."
+      ],
+      "improved": [
+        "The startup message is about 6,000 characters instead of about 44,000, on every AI site.",
+        "The command list at startup shows command names only; the AI fetches a command's details the first time it uses it.",
+        "Your notes summary at startup is shorter.",
+        "On DeepSeek, PlazCode waits at least 5 seconds between the messages it sends by itself, and tells you once that DeepSeek may suspend accounts that use automated tools."
+      ],
+      "fixed": [
+        "Claude and ClickUp free plans no longer use up their limit on the startup alone.",
+        "ChatGPT's free plan no longer refuses the startup as too long.",
+        "The Plan and License cards are gone from the app: PlazCode is free and has no key system."
+      ],
+      "notes": [
+        "Switched-on modes (Plan mode, thinking level, your custom prompt and the rest) still go into the startup.",
+        "The Plan and License change is in the desktop app, so it arrives with the app update.",
+        "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***Start Agent now fits free plans:*** a much shorter startup, so Claude, ClickUp and ChatGPT free plans no longer run out or refuse it.",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "A Full startup switch in the PlazCode menu (Automation), off by default, for people who want every instruction sent at once."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "The startup is about 6,000 characters instead of about 44,000, on every AI site.",
+              "Claude and ClickUp free plans no longer use up their limit on the startup alone.",
+              "ChatGPT's free plan no longer refuses the startup as too long.",
+              "On DeepSeek, PlazCode waits at least 5 seconds between its own messages and tells you once that DeepSeek may suspend accounts that use automated tools.",
+              "The Plan and License cards are gone from the app. PlazCode is free."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Full tests passed on Windows, Mac and Linux, including the Mac app.",
+              "The shorter startup was tested with practice pages, not yet live on each site's free plan.",
+              "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+            ]
+          }
+        ]
+      }
+    },
     {
       "version": "1.24.20",
       "title": "ClickUp Ask Brain connects again",
@@ -176,45 +229,6 @@
             "items": [
               "Platform/browser and packaged Mac desktop gates run before publication.",
               "Fixtures use a mocked bridge; affected accounts and real projects were not tested. Windows unsigned; Mac not notarized."
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "version": "1.24.16",
-      "title": "Reliable ClickUp startup receipts",
-      "summary": "ClickUp startup continues after accepted context parts, uses compact defaults, and stops clearly when the selected AI model declines the connection.",
-      "added": [],
-      "improved": [
-        "Use compact default ClickUp startup instructions and bounded saved-note previews; keep full notes available through the memory reader and preserve custom instructions exactly.",
-        "Observe a startup acknowledgement through the existing response timeout when its receipt is delayed."
-      ],
-      "fixed": [
-        "Confirm each startup context part from a persisted new user row and its exact new assistant acknowledgement when rich-text rendering changes the user row.",
-        "Recognize explicit ClickUp model refusals before sending a protocol correction; leave startup stopped and the composer unlocked.",
-        "Cancel receipt observation on Stop or a known conversation change without sending again."
-      ],
-      "notes": [
-        "Validated on Windows, macOS and Linux with Chromium/Firefox regressions and packaged macOS desktop checks before publishing.",
-        "Affected live ClickUp accounts were not reproduced. AI models can still decline the connection request. Windows is unsigned; macOS is not notarized."
-      ],
-      "github": {
-        "summary": "ClickUp startup receipt and model-refusal fixes.",
-        "sections": [
-          {
-            "title": "🛠️ Fixes",
-            "items": [
-              "Accepted startup parts continue after rendered text changes or delayed acknowledgements.",
-              "Compact defaults reduce startup context while preserving custom instructions.",
-              "Explicit model refusals stop without repeated handshake requests."
-            ]
-          },
-          {
-            "title": "🧪 Validation and limitations",
-            "items": [
-              "Windows, macOS, Linux and Chromium/Firefox checks; packaged Mac desktop lifetime checked before publication.",
-              "Affected live accounts were not reproduced. A ClickUp model can still decline. Windows unsigned; Mac not notarized."
             ]
           }
         ]

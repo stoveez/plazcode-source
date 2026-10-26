@@ -1,0 +1,12 @@
+PlazCode 1.24.22 — exact-source platform/browser gates and packaged macOS desktop lifetime checks passed before promotion.
+Validated source: a2ebc5adb0932f8ad4a753ba4cc4ba94ae096cb5
+Validation run: private build 40261223434
+Changes: a much shorter startup on every AI site (about 6,000 instead of 44,000 characters; the AI fetches the rest with plazcode_help), a Full startup switch that is off by default, names-only command list at startup, a smaller notes summary, at least 5 seconds between automatic messages on DeepSeek with a one-time notice, and the Plan and License cards removed from the app.
+All other features, safeguards and native launch/update behavior are retained. Final native executable and macOS app bytes are reused from validated development artifacts, not rebuilt during publication. Only release notices, checksums and package metadata change.
+Unit tests cover every check path; a browser fixture with the full production core and a mocked PlazCode app covers reconnect, closed app, dropped Studio connection, click-only chat connection and translation. Hosted browser fixtures use a mocked bridge.
+Windows binaries are unsigned. macOS uses ad-hoc signing and is not notarized.
+Microsoft Defender runner availability/result for the exact native artifact before release-notice assembly:
+Scan starting...
+Scan finished.
+Scanning D:\a\plazcode-source\plazcode-source\build-src-1.24.22\PlazCode/defender-scan found no threats.
+Checksums and platform evidence are recorded in release-validation-1.24.22.

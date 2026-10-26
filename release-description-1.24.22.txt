@@ -1,0 +1,23 @@
+✨ **PlazCode 1.24.22**
+***Start Agent now fits free plans:*** a much shorter startup, so Claude, ClickUp and ChatGPT free plans no longer run out or refuse it.
+
+***✨ What's new***
+- A Full startup switch in the PlazCode menu (Automation), off by default, for people who want every instruction sent at once.
+
+***🛠️ What's fixed***
+- The startup is about 6,000 characters instead of about 44,000, on every AI site.
+- Claude and ClickUp free plans no longer use up their limit on the startup alone.
+- ChatGPT's free plan no longer refuses the startup as too long.
+- On DeepSeek, PlazCode waits at least 5 seconds between its own messages and tells you once that DeepSeek may suspend accounts that use automated tools.
+- The Plan and License cards are gone from the app. PlazCode is free.
+
+***🧪 What was checked***
+- Full tests passed on Windows, Mac and Linux, including the Mac app.
+- The shorter startup was tested with practice pages, not yet live on each site's free plan.
+- The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it.
+
+***📥 How to update***
+- Open PlazCode, or choose Updates → Update now.
+- Manual downloads: PlazCode-1.24.22.zip for Windows, PlazCode-macOS-1.24.22.zip for Mac, or PlazCode-Firefox-1.24.22.zip for Firefox.
+- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
+- Your settings, memory and connections are kept.
