@@ -219,7 +219,7 @@ def main():
     validation=f'''PlazCode {VERSION} — exact-source platform/browser gates{' (quick mode: separate Mac desktop lifetime test skipped)' if quick else ' and packaged macOS desktop lifetime checks'} passed before promotion.
 Validated source: {base}
 Validation run: private build {run['id']}
-Changes: new Fix connection button. When PlazCode is not connected it checks the page, the PlazCode app, Roblox Studio or AgentScript, the chat box and the chat; it reconnects the app, restarts a dropped Studio MCP connection once and re-checks the chat box automatically, and explains every other step. It never sends to the AI chat without a click.
+Changes: safety limits (Read-only mode, confirm before delete, allowed folders), a What happened list with Undo, the Vault, saved setups per site, skill sharing, the Fix connection button, the UltraLab Ultra pack, new command cards on every AI site, and fixes for random pauses between tool calls (a result that never reached the chat box is now typed again or reported at once). Fix connection never sends to the AI chat without a click.
 All other features, safeguards and native launch/update behavior are retained. Final native executable and macOS app bytes are reused from validated development artifacts, not rebuilt during publication. Only release notices, checksums and package metadata change.
 Unit tests cover every check path; a browser fixture with the full production core and a mocked PlazCode app covers reconnect, closed app, dropped Studio connection, click-only chat connection and translation. Hosted browser fixtures use a mocked bridge.
 Windows binaries are unsigned. macOS uses ad-hoc signing and is not notarized.
@@ -244,12 +244,13 @@ Checksums and platform evidence are recorded in release-validation-{VERSION}.
     # Notices differ from the private build; regenerate listed checksums without
     # touching validated code or executables. Ultra references live once under
     # PlazCode-Extension and are served by the shared native Skills API for all browsers.
-    resources=json.loads(source['PlazCode/agent/src/ultra-resources.json'][0])
-    entries=json.loads(source['PlazCode/agent/src/ultra-index.json'][0])
-    assert len(resources)==776 and len(entries)==48
+    # Ultra is the UltraLab pack in 1.24.21: its files live once under PlazCode-Extension/core/ultralab
+    # (and core/ultralab); each must reach both packages byte for byte.
+    ultra_prefix='PlazCode/PlazCode-Extension/core/ultralab/'
+    ultra=[n for n in source if n.startswith(ultra_prefix)]
+    assert len(ultra)>100,len(ultra)
     for files in [windows,mac]:
-        for resource in resources:
-            name='PlazCode/PlazCode-Extension/ultra/'+resource
+        for name in ultra:
             assert files[name][0]==source[name][0],name
         refresh_checksums(files)
         assert b'pc-ultra-shine' in files['PlazCode/core/main.js'][0] or b'pc-ultra-label' in files['PlazCode/core/main.js'][0]
