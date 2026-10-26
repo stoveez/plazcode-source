@@ -171,7 +171,7 @@ for sha,run,valid in [
  else:rejected(verify_workflow_pins,fixture)
 rejected(verify_workflow_pins,"  VALIDATED_SHA: '"+'a'*40+"'\n")
 rejected(verify_workflow_pins,fixture+fixture)
-for expected in ['promote.py --check-validation','PLAZCODE_MAC_TEST_ARCHIVE','needs: wait-native','needs: [wait-native, mac-desktop]','git merge-base --is-ancestor origin/main HEAD','python3 publish_public.py','PLAZCODE_PUBLISH_SOURCE: 0','secrets.PUBLIC_REPO_TOKEN']:
+for expected in ['promote.py --check-validation','PLAZCODE_MAC_TEST_ARCHIVE','needs: wait-native','needs: [wait-native, mac-desktop]','git fetch origin main:refs/remotes/origin/main','git merge-base --is-ancestor refs/remotes/origin/main HEAD','python3 publish_public.py','PLAZCODE_PUBLISH_SOURCE: 0','secrets.PUBLIC_REPO_TOKEN']:
  assert expected in workflow,expected
 # Closed source: never push the source archive to the public repo; publish before recording on private main.
 assert 'PLAZCODE_PUBLISH_SOURCE: 1' not in workflow

@@ -219,7 +219,7 @@ def main():
     validation=f'''PlazCode {VERSION} — exact-source platform/browser gates{' (quick mode: separate Mac desktop lifetime test skipped)' if quick else ' and packaged macOS desktop lifetime checks'} passed before promotion.
 Validated source: {base}
 Validation run: private build {run['id']}
-Changes: a much shorter startup on every AI site (about 6,000 instead of 44,000 characters; the AI fetches the rest with plazcode_help), a Full startup switch that is off by default, names-only command list at startup, a smaller notes summary, at least 5 seconds between automatic messages on DeepSeek with a one-time notice, and the Plan and License cards removed from the app.
+Changes: antivirus false-positive fix. PowerShell commands run from a script file with RemoteSigned (no -EncodedCommand, no -ExecutionPolicy Bypass) in the command runner, the updater helper and the add-on runtime setup; links and obsidian:// open with ShellExecuteW instead of rundll32 url.dll,FileProtocolHandler; the Windows app embeds an application manifest and CompanyName/LegalCopyright. A CI check scans the built executable for these patterns.
 All other features, safeguards and native launch/update behavior are retained. Final native executable and macOS app bytes are reused from validated development artifacts, not rebuilt during publication. Only release notices, checksums and package metadata change.
 Unit tests cover every check path; a browser fixture with the full production core and a mocked PlazCode app covers reconnect, closed app, dropped Studio connection, click-only chat connection and translation. Hosted browser fixtures use a mocked bridge.
 Windows binaries are unsigned. macOS uses ad-hoc signing and is not notarized.
