@@ -33,6 +33,13 @@ with tempfile.TemporaryDirectory(prefix='plazcode-skills-native-') as temporary:
    for removed in ['Model Builder','UI Creator','modelWorkspace','uiWorkspace','PlazCodeCreatorUI','Mountbuilder']:
     assert removed not in desktop,removed
    assert 'PlazCodeToolkitUI' in desktop and '__PLAZCODE_TOOLKIT_UI__' not in desktop
+   # The reported three-node preview must round-trip through the real HTTP service.
+   blueprint={'build_id':'reliability-preview','root_id':'root','root_name':'Preview','mode':'model','nodes':[{'id':'root','class':'Model'},{'id':'one','class':'Part','parent':'root'},{'id':'two','class':'Part','parent':'root'}]}
+   assert call('/api/creations',{'action':'list'},False)[0]==401
+   status,saved=call('/api/creations',{'action':'save','build_id':'reliability-preview','blueprint':blueprint,'revision':0})
+   assert status==200 and saved['ok'] and saved['revision']==1,(status,saved)
+   status,read=call('/api/creations',{'action':'read','build_id':'reliability-preview'})
+   assert status==200 and read['record']['blueprint']==blueprint,(status,read)
    assert call('/api/skills',{'action':'list'},False)[0]==401
    starters=call('/api/skills',{'action':'list'})[1]['skills'];assert len([x for x in starters if x['id'].startswith('starter-syphodev-')])==11
    assert len([x for x in starters if x['id'].startswith('bundled-ultragui-')])==0,'the old Ultra cards are retired'
