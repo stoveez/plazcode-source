@@ -37,3 +37,4 @@ The owner may hand an AI only this folder. Read `NOW.md` first, then [Home](Home
 - One topic per note, plain language, no pasted logs.
 - Link with relative Markdown links, for example `[releasing](releasing.md)`, so links work on GitHub and in Obsidian.
 - Never put secrets (tokens, keys) in any note.
+- **Previews (owner, 2026-10-25):** show the change in the real app or the real extension on the AI site, as the owner would see it. Do not open `desktop.html` or an extension page on its own in a browser and call that a preview. If the real thing is out of reach, say so and ask for a screenshot.
