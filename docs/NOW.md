@@ -1,7 +1,9 @@
 # NOW (live handoff, overwrite at the end of every session)
-Updated: 2026-10-25 by claude. Keep under about 25 lines. Long-term knowledge is in [`vault/Home.md`](vault/Home.md).
+Updated: 2026-10-26 by claude. Keep under about 25 lines. Long-term knowledge is in [`vault/Home.md`](vault/Home.md).
 
 **Notes checklist (do before every push):** (1) rewrite this file; (2) fix every note that mentions what you changed (open-work, milestones, test-builds, decisions, plan files, HANDOFF); (3) copy changed vault notes to the PC folder (or say it is behind); (4) tell the owner branch, short commit ID, one line. Why and how: [vault/how-we-work.md](vault/how-we-work.md).
+
+**PUBLISHED 2026-10-26: PlazCode 1.24.24 is LIVE** (validated run 40340881855 on ae33b25; publish run 40344067698). Live feed and zip verified (sha256 match; release has 3 assets, 1,380-char notes). Latest published: 1.24.24. Extension reload is enough for it. Not live-tested on a real Claude account with a 12,000 limit. Next update: 1.24.25 (accounts, code protection, Skill Workshop, Brickwire; `development/1.24.25/`). Repo must be set back to Private.
 
 **PUBLISHED 2026-10-25: PlazCode 1.24.21 is live on stoveez/PlazCode (validated run 40247208967 on fb8e770; publish run 40251481584). Live feeds and downloads verified (versions, links, sha256). Release text uses the "What's new / What's fixed / What was checked" format. Publish tool fixes made on the way: JPEG compare, UltraLab file check, fresh record branch `release-record-1.24.21-final`. The practice repo cannot be used (PUBLIC_REPO_TOKEN only reaches stoveez/PlazCode). Repo must be set back to Private.**
 
