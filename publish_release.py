@@ -26,7 +26,7 @@ def checked_release_body(body):
 def notes(feed):
     version=feed['version'];entry=next(x for x in feed['release_notes'] if x['version']==version)
     entry={**entry,**entry.get('github',{})}
-    # Release format: Discord bold marks, ***...*** for the
+    # Owner's format (2026-10-25, docs/vault/release-format.md): Discord bold marks, ***...*** for the
     # section titles, every item on its own "- " line, no role mention, under 2,000 characters.
     lines=['✨ **PlazCode '+version+'**',entry['summary'],'']
     sections=entry.get('sections')
