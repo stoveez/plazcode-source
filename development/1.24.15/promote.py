@@ -171,5 +171,6 @@ The scanned checksum and availability are recorded in release-validation-{VERSIO
         matches=list((ROOT/'ci-artifacts/mac-desktop').rglob(name));assert len(matches)==1,matches
         shutil.copy2(matches[0],evidence/name)
     (evidence/'VALIDATION.txt').write_text(validation)
+    p=ROOT/'development/1.24.15/REVIEW.md';p.write_text(re.sub(r'(?m)^Validation:.*$', 'Validation: all exact-source platform CI jobs and the packaged macOS desktop check passed. See release-validation-1.24.15.', p.read_text()))
     print(json.dumps(metadata,indent=2))
 if __name__=='__main__':main()

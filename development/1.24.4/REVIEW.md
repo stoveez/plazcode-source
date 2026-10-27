@@ -1,0 +1,15 @@
+# PlazCode 1.24.4
+
+Validation: all exact-source platform CI jobs passed. See release-validation-1.24.4.
+
+Ultracode's injected Roblox method pack drops from 10,592 to 4,067 characters (62%). All ten complete original skill references remain in the module; concise summaries preserve server validation order, imported script inspection, measured bounds, networking checks, timed waits, Stop Play before editing, and truthful verification. The active mode tells the provider to reuse verified evidence and focus deep work on uncertainty rather than repeat passing checks. A short turn reminder applies when selected during a conversation. Other effort levels receive no Ultracode instructions. This measures instruction overhead, not live provider latency, model weights or benchmark accuracy.
+
+The desktop grid stays within the viewport. The sidebar scrolls independently and workspace content has visible themed scrollbars. Updates has its own navigation entry again. Native details elements make Settings sections keyboard-accessible and collapsible, preserve the existing controls/listeners/IDs, and save expansion preferences locally. Memory refresh runs while its Settings section is visible and expanded. Entire effort labels share the selected level color; indicators show Ultracode and the selector retains Ultracode (Beta).
+
+Notion locates semantic send/stop controls without a composer height limit and rechecks cached frames during hydration. Hidden old controls cannot override a live send control. Mounted disabled controls are not bypassed with Enter; rich editors wait for a real send control. Locked large protocol feedback can use the existing verified native/small-paste path, preserving complete text and refusing foreign attachments, changed/remounted drafts, partial writes and duplicate commits. The file fallback and upload retry guards remain.
+
+Explicit Studio screenshot requests select the Roblox bridge even when AgentScript is active, preserve a requested Studio ID and omit incompatible local checkpoints. Explicit capture failure does not silently capture another screen. ChatGPT image support is no longer globally disabled; the actual upload must confirm a new preview, using one transport and one commit. Existing avatars and failed/disabled uploads cannot establish success. Full original provider preservation checks permit only the reviewed helper changes.
+
+Browser fixtures check scrolling at 1280×720, 1140×800 and 700×500, accessible Settings toggles, preserved control values/listeners, Updates selection and whole-label colors. Notion fixtures include a tall nested German composer, hidden stale controls, delayed controls, startup/catalogue/tool feedback, rejected writes, Stop, remounts and foreign attachments. Screenshot fixtures check routing, attachment confirmation and at-most-once submission.
+
+Live signed-in providers and actual Studio/Blender sessions have not been tested. Windows remains unsigned and Mac is ad-hoc signed rather than notarized. No promise is made that every antivirus vendor or provider account behaves identically.

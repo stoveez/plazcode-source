@@ -148,7 +148,7 @@ jobs:
           test "$(git rev-parse origin/main)" = cbfe1eef5ed9f91dc6b23633d2fcba79f055ca2b
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add PlazCode-1.23.0.zip PlazCode-macOS-1.23.0.zip PlazCode-source-1.23.0.zip PlazCode-Firefox-1.23.0.zip PlazCode-1.23.0.sigstore.json latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.23.0.txt README.md release-validation-1.23.0
+          git add PlazCode-1.23.0.zip PlazCode-macOS-1.23.0.zip PlazCode-source-1.23.0.zip PlazCode-Firefox-1.23.0.zip PlazCode-1.23.0.sigstore.json latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.23.0.txt README.md release-validation-1.23.0 development/1.23.0/REVIEW.md
           git commit -m 'Release PlazCode 1.23.0: saved skills, Studio Explorer and provider resilience'
           git push origin HEAD:main
       - name: Publish verified GitHub release page and assets
