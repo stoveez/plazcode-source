@@ -4,7 +4,7 @@ updated: 2026-10-27
 ---
 # Open work
 
-- 2026-10-27: all 58 repository notes restored at the owner's request, including the 1.24.26 plans. The separate Windows `PlazCode-Vault` folder was not changed by this cloud session.
+- 2026-10-27: all 58 repository notes restored on `main` and `claude/plazcode-dev` at the owner's request, including the 1.24.26 plans. The separate Windows `PlazCode-Vault` folder was not changed by this cloud session.
 
 ## Needs a test or build
 - A new test build to carry the 2026-10-24 desktop changes. See [test-builds](test-builds.md).
