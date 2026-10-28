@@ -4,7 +4,7 @@ updated: 2026-10-28
 ---
 # Open work
 
-- 2026-10-28: 1.24.26 published. Validation 40772509288 on `a74ae17`; publish run 40781780030. Permanent approvals and code protection are complete. Live feed/download verification and Private visibility restoration remain. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
+- 2026-10-28: 1.24.26 published. Validation 40772509288 on `a74ae17`; publish run 40781780030. Permanent approvals and code protection are complete. Live signed feeds/download verification passed. Private visibility restoration remains: both workflow credential and direct integration denied administration with HTTP 403; owner asked to use GitHub settings. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
 
 
 

@@ -51,7 +51,7 @@ Normal effort is fine for small fixes, packaging, release notes and questions.
 - Publishing a real update, which repo and which branch: `docs/vault/releasing.md` (steps), then read `publish-1.24.26.yml` and `development/1.24.26/promote.py` before the first real publish; release description wording and format: `docs/vault/release-format.md` (non-coder words, bold marks, under 2,000 characters)
 - Vault memory, desktop layout, guides, website: `docs/vault/vault-memory.md`, `docs/vault/app-and-guides.md`
 - Open bugs and not-yet-tested items: `docs/vault/open-work.md`; what is in the latest test zips: `docs/HANDOFF.md` section "What is in the latest test zips and what is NOT yet" (keep it up to date)
-- Deferred to 1.24.26 (accounts, code protection, Skill Workshop, Brickwire): `development/1.24.26/`. Latest published: 1.24.25 (screenshots, approvals and update warnings; see `docs/NOW.md`)
+- Remaining deferred plans (accounts, Skill Workshop, Brickwire; code protection shipped in 1.24.26): `development/1.24.26/`. Latest published: 1.24.26 (signed program/update checks and permanent approvals; see `docs/NOW.md`)
 - Local Windows test-zip build with a CLI agent: `docs/HANDOFF.md`, "Option: build the test zip on the owner's own computer"
 
 ## How often to push (the owner's ideal rhythm)

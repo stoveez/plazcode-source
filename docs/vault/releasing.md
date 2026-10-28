@@ -6,7 +6,7 @@ updated: 2026-10-28
 
 **Current 1.24.26:** owner authorized direct publication with no separate test build and no app signing. Validate `claude/plazcode-dev`, pin its exact successful SHA/run in `publish-1.24.26.yml`, then publish from `release/1.24.26-publish`. Run the packaged Mac lifetime gate. Both automated source pushes rewrite NOW; after success the workflow attempts the owner-authorized Private restore. A 403 means the owner must restore visibility in GitHub settings. Publishing credentials never enter files/logs.
 
-Official releases live in the public repo `stoveez/PlazCode`, branch `main`: only zips and the feeds. They are prepared and published from the private repo, branch `release/1.24.25`, by the workflow `publish-1.24.25.yml`. Nothing is rebuilt at publish time. Private `main` is the old line and is not used for releases.
+Official releases live in the public repo `stoveez/PlazCode`, branch `main`: only zips and the feeds. They are prepared and published from the private repo, branch `release/1.24.26-publish`, by the workflow `publish-1.24.26.yml`. Nothing is rebuilt at publish time. Private `main` is the old line and is not used for releases.
 
 ## Steps (walk the owner through them in plain words every time)
 1. Owner makes the repo public.
@@ -37,3 +37,6 @@ If a publish still fails this gate, on the publish branch run `git fetch origin 
 - Use one global single-quoted VALIDATED_SHA/VALIDATION_RUN pair. Double-quoted YAML is valid, but the existing pin-format guard rejects it. Run `python3 development/1.24.25/test-promote-permissions.py` before starting publication.
 - Preserve the previous published changelog when dev's root metadata is older than main. Publication-only metadata can change after validation; program/packaging inputs must match the validated commit exactly.
 - The owner requested direct release, no separate test build. Full validation and the packaged Mac desktop gate still ran.
+
+## 1.24.26 publication record (2026-10-28)
+Published in 40781780030 using exact-source validation 40772509288 / a74ae17, with packaged Mac desktop gate passed. Public commit d514655; signed feeds and downloaded Windows signed tree verified. Canonicalize generated Firefox metadata BEFORE signing; signatures cover bytes. Promotion permits only exact LF/CRLF checkout variants for the directly read protection loader source template, while verifying signed output bytes and pinned key/channel. Encrypted decoder maps and checksum index are retained in the private release record after real decryption checks outside the repo. Both credentials denied automatic source Private restoration (403); owner action is pending.

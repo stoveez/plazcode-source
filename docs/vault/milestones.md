@@ -5,7 +5,7 @@ updated: 2026-10-26
 # Finished work
 
 ## 2026-10-28: 1.24.26 published
-Signed program/update checks, protected Chromium/Firefox code and permanent per-tool Approve all. Validation 40772509288 (`a74ae17`), publication 40781780030, packaged Mac lifetime/relaunch passed. No app signing or new end-user setup. User data stays editable; original affected live Studio/account setups were not tested.
+Signed program/update checks, protected Chromium/Firefox code and permanent per-tool Approve all. Validation 40772509288 (`a74ae17`), publication 40781780030, packaged Mac lifetime/relaunch passed. Live feed signatures, Windows archive checksum and full program/browser signed trees verified at public commit d514655. No app signing or new end-user setup. User data stays editable; original affected live Studio/account setups were not tested.
 
 ## 2026-10-26: 1.24.25 published
 Screenshot display, Plan Mode task approvals, creator response diagnostics and red outdated/version-mismatch warnings shipped. Full Windows/Mac/Linux and both browser engines passed; real three-node preview HTTP save/read passed on all platforms, and the packaged Mac desktop lifetime/relaunch gate passed. Validation 40362663766; publication 40368356121. Windows/Mac feeds and release asset checksums verified; Windows ZIP and exact extension code verified. Original affected account/Studio captures remain untested live.
