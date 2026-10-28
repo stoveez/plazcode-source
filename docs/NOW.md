@@ -13,7 +13,7 @@ Updated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.
 
 **Environment:** local Chromium blocks installed extensions by administrator policy; the unchanged 1.24.25 extension fails too. CI requires installed-extension validation. No workaround or policy changes.
 
-**Key setup blocker:** integration API and the existing publisher token both reject source-secret management (403; bootstrap run 40705538648 failed before key generation). Owner must add one private integrity seed/PEM as `PLAZCODE_RELEASE_SIGNING_KEY` in repository Actions secrets. Built-in PowerShell instructions are ready in [code protection](vault/code-protection.md); no Node/Git install is needed. Never paste the secret in chat. A trusted bootstrap job then commits only its derived public key and NOW.
+**Key setup blocker:** integration API and the existing publisher token both reject source-secret management (403; bootstrap run 40705538648 failed before key generation). Owner must add one private integrity seed/PEM as `PLAZCODE_RELEASE_SIGNING_KEY` in repository Actions secrets. Built-in PowerShell instructions are ready in [code protection](vault/code-protection.md); no Node/Git install is needed. Never paste the secret in chat. A trusted bootstrap job then commits only its derived public key and NOW. While waiting for that required owner action, browser-only release checks can run without producing any app/test packages.
 
 **Release blockers:** The repo is now public and hosted runners start; private billing previously blocked run 40696596361. GitHub also denies this session access to Actions secrets (403). Protected production builds require a private release key in a secret and matching pinned public key. Never ship a test key or disable verification.
 

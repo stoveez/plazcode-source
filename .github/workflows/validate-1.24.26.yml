@@ -10,6 +10,10 @@ on:
         description: Configure public trust from the private integrity Actions secret; no builds or release
         type: boolean
         default: false
+      browser_only:
+        description: Run browser release checks only; produce no app packages
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -206,7 +210,7 @@ jobs:
       - run: node release-tools/test-checklist-appearance.cjs
         working-directory: build-src-1.24.26/PlazCode
   native:
-    if: ${{ !inputs.bootstrap_integrity_key }}
+    if: ${{ !inputs.bootstrap_integrity_key && !inputs.browser_only }}
     strategy:
       fail-fast: false
       matrix:
