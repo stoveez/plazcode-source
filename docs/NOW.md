@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: release notes finalized in the owner format.** Under 2,000 characters, triple-emphasis section titles, plain language and honest live-testing/signing limits. Publication remains gated on final validation 40715893481 (`d17badc`) and the packaged Mac lifetime check.
+**Latest: full hosted browser gate passed.** Production validation 40715893481 on `d17badc` passed its complete browser job: protected Chromium/Firefox, screenshot policies, provider fixtures, languages and interface regressions. Windows/Mac/Linux native jobs are still running; no publication yet.
+
+**Release notes finalized in the owner format.** Under 2,000 characters, triple-emphasis section titles, plain language and honest live-testing/signing limits. Publication remains gated on final validation 40715893481 (`d17badc`) and the packaged Mac lifetime check.
 
 **Preserve valid read-only installations.** Integrity checks no longer require writing a migration marker after all files verify. A native regression exercises read-only installation roots; missing markers can restore only authenticated official bytes and never waive verification. Full release checks rerun on this compatibility fix.
 

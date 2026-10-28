@@ -54,3 +54,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-28: valid read-only installation roots no longer need permission to write a migration marker; native regression added. Every signature/hash check remains required. Final platform/browser validation must rerun on this compatibility change.
 
 - 2026-10-28: final release-note draft follows the four-section owner format and states live-testing limits. Production validation 40715893481 on d17badc is running; packaged Mac gate and publication remain.
+
+- 2026-10-28: complete hosted browser gate passed in 40715893481 on d17badc, including the storage-failure regression. Native Windows/Mac/Linux jobs are still running; publication and packaged Mac lifetime gate remain.
