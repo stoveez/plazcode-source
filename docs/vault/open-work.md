@@ -68,3 +68,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-28: browser diagnostic 40761757580 identified worker readiness polling using setTimeout before worker globals existed. Poll moved into Node; actual installed-extension verification remains required. Full final validation reruns; no release yet.
 
 - 2026-10-28: full browser job passed in final-source run 40762506114 (2f775f0). Native Windows/Mac/Linux jobs continue; no release yet.
+
+- 2026-10-28: Windows handoff annotation in 40762506114 exposed a fixture Cargo.lock match using executable name instead of package name. Corrected to plazcode-agent and verified one match in actual manifest/lockfile. Browser/Linux passed; full new-source gates remain required.

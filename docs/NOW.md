@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-28. Work directly on `claude/plazcode-dev`; no helper agents.
 
-**Latest: complete browser gate passed on final source.** Run 40762506114 on `2f775f0` passed all browser checks including protected workers and languages. Three native jobs continue; updater handoff, packaging and packaged Mac lifetime still must pass. No publication.
+**Latest: WIP updater fixture package-name correction.** Run 40762506114 passed browser/Linux; Windows reached the corrected handoff fixture but its Cargo.lock rewrite matched the executable name instead of package name `plazcode-agent`. The match is corrected and checked against both actual source files locally. Full validation must rerun; no release.
+
+**Complete browser gate passed on preceding source.** Run 40762506114 on `2f775f0` passed all browser checks including protected workers and languages. Three native jobs continue; updater handoff, packaging and packaged Mac lifetime still must pass. No publication.
 
 **Protected-browser fixture race diagnosed and fixed.** Browser-only run 40761757580 exposed `setTimeout is not defined` because Playwright announces worker contexts before browser timer globals exist. Readiness polling now runs in Node; actual extension initialization/signature verification stays mandatory. Full exact-source validation reruns with this fix and the updater debug-fixture correction. Nothing published yet.
 
