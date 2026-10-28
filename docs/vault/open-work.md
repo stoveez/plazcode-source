@@ -66,3 +66,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-28: WIP 40761358270 protected browser check failed after earlier green runs. Job-log storage returns 403; stack annotations added to diagnose without bypassing access restrictions. No release; fresh full exact-source validation remains required.
 
 - 2026-10-28: browser diagnostic 40761757580 identified worker readiness polling using setTimeout before worker globals existed. Poll moved into Node; actual installed-extension verification remains required. Full final validation reruns; no release yet.
+
+- 2026-10-28: full browser job passed in final-source run 40762506114 (2f775f0). Native Windows/Mac/Linux jobs continue; no release yet.
