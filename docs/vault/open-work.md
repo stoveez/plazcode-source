@@ -50,3 +50,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-28: integrity secret is now configured by owner; bootstrap 40713055559 committed public key 6229d98. No further secret setup needed. Hosted protected-extension checks passed; language-storage race diagnosed as an unrelated asynchronous chat-mode autosave rejection and fixed with a deterministic regression. Final production platform gates remain open.
 
 - 2026-10-28: production validation 40715015896 runs on f1e928e. Publication workflow now records NOW with each automated source push and attempts authorized Private restoration after success; source administration may still be denied.
+
+- 2026-10-28: valid read-only installation roots no longer need permission to write a migration marker; native regression added. Every signature/hash check remains required. Final platform/browser validation must rerun on this compatibility change.

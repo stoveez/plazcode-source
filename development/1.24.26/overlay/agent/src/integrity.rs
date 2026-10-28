@@ -159,7 +159,10 @@ fn verify_installation_with(root: &Path,key: &[u8],version: &str,platform: &str,
     if result.is_err() && present.is_none() {
         bootstrap_legacy(root,key,version,platform,channel)?;
     } else {result?;}
-    if present.is_none() {std::fs::OpenOptions::new().write(true).create_new(true).open(marker)?;}
+    // The marker only avoids repeating an authenticated legacy repair. Valid program files
+    // must still run from read-only installations (for example a managed Applications folder).
+    // Missing markers never waive signature/hash verification; repair can only restore signed bytes.
+    if present.is_none() {let _=std::fs::OpenOptions::new().write(true).create_new(true).open(marker);}
     Ok(())
 }
 pub async fn check_work() -> Result<()> {
@@ -263,6 +266,14 @@ mod tests {
         std::fs::write(root.join("PlazCode-Extension/plazcode-installation-integrity.json"),signed(&key,value.clone())).unwrap();
         let check=||verify_tree_with(&root,key.public_key().as_ref(),"1.24.26","linux","release");
         assert!(check().is_ok());
+        #[cfg(unix)] {
+            use std::os::unix::fs::PermissionsExt;
+            let original=std::fs::metadata(&root).unwrap().permissions();
+            std::fs::set_permissions(&root,std::fs::Permissions::from_mode(0o555)).unwrap();
+            let result=verify_installation_with(&root,key.public_key().as_ref(),"1.24.26","linux","release");
+            std::fs::set_permissions(&root,original).unwrap();
+            assert!(result.is_ok(),"valid read-only installations need no marker-writing permission: {result:?}");
+        }
         let value=manifest(&root,key.public_key().as_ref(),"1.24.26","linux","release").unwrap();
         let copied=root.join("copied-native");std::fs::write(&copied,b"original").unwrap();assert!(verify_running_executable(&copied,&value,"linux").is_ok());
         std::fs::write(&copied,b"modified").unwrap();assert!(verify_running_executable(&copied,&value,"linux").is_err());

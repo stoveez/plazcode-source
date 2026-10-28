@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: publication handoff automation prepared.** Each automated source push now includes a fresh NOW; successful publication records milestones/open work and attempts the owner-authorized Private restore. Final source validation is running on `f1e928e` (40715015896).
+**Latest: preserve valid read-only installations.** Integrity checks no longer require writing a migration marker after all files verify. A native regression exercises read-only installation roots; missing markers can restore only authenticated official bytes and never waive verification. Full release checks rerun on this compatibility fix.
+
+**Publication handoff automation prepared.** Each automated source push now includes a fresh NOW; successful publication records milestones/open work and attempts the owner-authorized Private restore. The preceding source validation was `f1e928e` (40715015896); the final run must match this compatibility fix.
 
 **Browser storage race fixed.** Hosted diagnostics identified rejected `rsChatEngines` autosaves escaping the synchronous catch. Best-effort autosaves now also catch asynchronous failures; the browser fixture forces that failure deterministically. Focused checks passed; final full release gates must rerun on this source.
 
