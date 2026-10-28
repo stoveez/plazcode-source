@@ -41,7 +41,7 @@ def main():
     if stale: run('git', 'rm', '-q', '--', *stale, cwd=work)
     for name in files: shutil.copy2(source / name, work / name)
     run('git', 'config', 'user.name', 'stoveez', cwd=work)
-    run('git', 'config', 'user.email', 'stoveez@users.noreply.github.com', cwd=work)
+    run('git', 'config', 'user.email', '', cwd=work)
     run('git', 'add', *files, cwd=work)
     run('git', 'commit', '-m', f'Release PlazCode {version}', cwd=work)
     commit = run('git', 'rev-parse', 'HEAD', cwd=work)

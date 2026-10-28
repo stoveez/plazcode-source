@@ -15,7 +15,7 @@ Owner authorized the original 1.24.26 protection plan plus signed manifests, ver
 
 Implementation lives in `development/1.24.26/overlay`. Production and test packages must share the same protection path, with normal and negative tests across platforms/browsers.
 
-**Setup blocker:** GitHub denies this session access to Actions secrets (403). Production requires a maintainer-provisioned private release key and matching pinned public key. Never ship a validation key or silently disable verification. Repo was verified private on 2026-10-28; never change visibility automatically.
+**Production key configured:** owner added the private integrity secret; bootstrap 40713055559 derived only the public key in commit `6229d98`. Never request or expose the private value. Validation keys are forbidden in releases. Owner opened the temporary public release window and authorized the assistant to restore Private afterward; API administration access remains restricted.
 
 ## Compatibility and release boundaries
 Chrome 111-136 can ask an extension-origin-only native endpoint to verify signed public metadata when WebCrypto lacks Ed25519. File hashes still run in the extension. The endpoint has no tool dispatch, filesystem access or private credentials, and requires the pinned key/version/channel; no new account or pairing step.

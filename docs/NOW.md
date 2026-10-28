@@ -1,10 +1,14 @@
 # NOW
 Updated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: production integrity key provisioned inside GitHub Actions.** The private key is stored only in `PLAZCODE_RELEASE_SIGNING_KEY`; only the matching public key is committed. No private key is printed or included in an artifact. The private key is never written to the runner filesystem. Keep an owner backup in a password manager; never retrieve plaintext keys through chat.
+**Latest: production integrity key configured.** Owner added `PLAZCODE_RELEASE_SIGNING_KEY`; trusted bootstrap 40713055559 derived and committed only the public key in `6229d98`. No private key was exposed, written to runner files or uploaded. Do not ask for key setup again.
 
-**Next:** run all 1.24.26 release gates on this exact public-key commit, then publish using the owner's release-note format. No separate test build delivery. Normal users need no new login/setup; skills, notes and settings remain editable.
+**1.24.26 scope:** original code protection plus signed file/update checks, native enforcement, conservative browser obfuscation/private encrypted maps and permanent per-tool Approve all across tasks/chats/AI sites. No app signing, required login or extra user setup; user skills/notes/settings remain editable. See [code protection](vault/code-protection.md).
 
-**Local checks:** 219 JS files and 213 native tests passed, plus optimized native signature/authenticated-work/Stop and Chromium/Firefox cryptography tests. Hosted Windows/Mac and installed-extension checks remain required.
+**Local checks passed:** all 219 JS files, 213 native tests, optimized native signature/authentication/Stop/migration tests, Chromium/Firefox cryptography, preparation/locales/Ultra and promotion guards. The actual protected extension also passed hosted Chromium/Firefox checks in 40709317960.
 
-**Visibility:** public build/publish window authorized; restore Private immediately afterward. The session's integration cannot edit repository visibility (403), so owner assistance may be required. Separate Windows PC vault folder is not linked. See [code protection](vault/code-protection.md) and [open work](vault/open-work.md).
+**Current release check:** the hosted language fixture caught a storage-rejection race. Local language checks pass; better diagnostics and a focused browser-only workflow are being run while the full production Windows/Mac/Linux/browser gates start on the configured key. No separate test build is delivered. Publish only when all four gates and Mac lifetime check pass; use the existing ***bold*** release-note format under 2,000 characters.
+
+**Visibility:** owner opened the temporary PUBLIC build/publish window and authorized automatic switching. Integration's repo-settings API returns 403; attempt the authorized restore and request owner help only if still denied. Restore Private after publication. PC vault folder is not connected.
+
+**Latest published remains 1.24.25.** Other deferred feature plans are not part of this security release. Next: finish browser issue, validate exact source, pin successful SHA/run, publish and verify live feeds/packages, then record the handoff.

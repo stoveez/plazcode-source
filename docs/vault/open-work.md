@@ -46,3 +46,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-28: public build window is open. Automated integrity-key setup also hit 403 with the publishing token (40705538648); owner must add `PLAZCODE_RELEASE_SIGNING_KEY` once. The public-key-only bootstrap and production gates are ready. No separate test-build delivery.
 
 - 2026-10-28: production integrity key provisioned by the one-time workflow; only its public key is committed. Arrange an external owner key backup securely. Full release validation and publication remain pending.
+
+- 2026-10-28: integrity secret is now configured by owner; bootstrap 40713055559 committed public key 6229d98. No further secret setup needed. Hosted protected-extension checks passed; final production platform gates and language-storage race remain open.

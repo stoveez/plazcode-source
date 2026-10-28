@@ -14,7 +14,7 @@
     "The Windows app is unsigned and the Mac app is not notarized."
   ],
   "github": {
-    "summary": "**Remember approvals across chats and check program files automatically.**",
+    "summary": "***Remember approvals across chats, with automatic checks for program changes.***",
     "added": [],
     "improved": [
       "Program files and future updates are checked for changes. No new login or setup steps; offline use stays available."
@@ -27,7 +27,7 @@
     ],
     "sections": [
       {
-        "title": "💡 Improvements",
+        "title": "✨ What's new",
         "items": [
           "Program files and future updates are checked for changes. No new login or setup steps; offline use stays available."
         ]

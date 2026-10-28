@@ -1,0 +1,24 @@
+name: Check extension language persistence
+on:
+  push:
+    branches: [claude/plazcode-dev]
+    paths: [.github/workflows/check-extension-language.yml, development/1.24.26/overlay/release-tools/test-extension-language.cjs]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  language:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: python3 development/1.24.26/prepare.py
+      - run: npm ci --prefix release-tools --ignore-scripts
+        working-directory: build-src-1.24.26/PlazCode
+      - run: node release-tools/node_modules/playwright/cli.js install --with-deps chromium
+        working-directory: build-src-1.24.26/PlazCode
+      - run: node release-tools/test-extension-language.cjs
+        working-directory: build-src-1.24.26/PlazCode
