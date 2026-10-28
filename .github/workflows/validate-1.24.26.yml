@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       bootstrap_integrity_key:
-        description: Provision the production integrity key using the existing publishing credential; no builds or release
+        description: Configure public trust from the private integrity Actions secret; no builds or release
         type: boolean
         default: false
 permissions:
@@ -29,35 +29,29 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
-      - name: Provision the private key directly into Actions secrets
+      - name: Derive and commit the public verification key
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          PLAZCODE_RELEASE_SIGNING_KEY: ${{ secrets.PLAZCODE_RELEASE_SIGNING_KEY }}
         run: |
           set -euo pipefail
-          if grep -q '[a-f0-9]' development/1.24.26/overlay/release-public-key.hex; then
-            echo 'Production public key already configured; refusing automatic rotation.'
+          test -n "$PLAZCODE_RELEASE_SIGNING_KEY" || { echo '::error::Add the private integrity key as PLAZCODE_RELEASE_SIGNING_KEY in repository Actions secrets. No key value should be sent through chat.'; exit 1; }
+          node development/1.24.26/protection.mjs export-public
+          if git diff --quiet -- development/1.24.26/overlay/release-public-key.hex; then
+            echo 'Configured private key matches the existing public verification key.'
             exit 0
           fi
-          test -n "$GH_TOKEN" || { echo '::error::Existing publishing credential is unavailable for one-time key provisioning.'; exit 1; }
-          # Check access before generating any key. Never inspect or print credential values.
-          gh api "repos/$GITHUB_REPOSITORY/actions/secrets/public-key" > "$RUNNER_TEMP/plazcode-repository-public-key.json"
-          node development/1.24.26/protection.mjs provision "$RUNNER_TEMP/plazcode-private-release-key.pem"
           echo "::notice title=Production public key::$(cat development/1.24.26/overlay/release-public-key.hex)"
           python3 - <<'PY'
           from pathlib import Path
           p=Path('docs/NOW.md')
-          p.write_text('# NOW\nUpdated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.\n\n**Latest: production integrity key provisioned inside GitHub Actions.** The private key is stored only in `PLAZCODE_RELEASE_SIGNING_KEY`; only the matching public key is committed. No private key is printed or included in an artifact. The temporary runner backup is deleted. An external owner backup is still to be arranged; never retrieve plaintext keys through chat.\n\n**Next:** run all 1.24.26 release gates on this exact public-key commit, then publish using the owner\'s release-note format. No separate test build delivery. Normal users need no new login/setup; skills, notes and settings remain editable.\n\n**Local checks:** 219 JS files and 213 native tests passed, plus optimized native signature/authenticated-work/Stop and Chromium/Firefox cryptography tests. Hosted Windows/Mac and installed-extension checks remain required.\n\n**Visibility:** public build/publish window authorized; restore Private immediately afterward. The session\'s integration cannot edit repository visibility (403), so owner assistance may be required. Separate Windows PC vault folder is not linked. See [code protection](vault/code-protection.md) and [open work](vault/open-work.md).\n')
+          p.write_text('# NOW\nUpdated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.\n\n**Latest: production integrity key provisioned inside GitHub Actions.** The private key is stored only in `PLAZCODE_RELEASE_SIGNING_KEY`; only the matching public key is committed. No private key is printed or included in an artifact. The private key is never written to the runner filesystem. Keep an owner backup in a password manager; never retrieve plaintext keys through chat.\n\n**Next:** run all 1.24.26 release gates on this exact public-key commit, then publish using the owner\'s release-note format. No separate test build delivery. Normal users need no new login/setup; skills, notes and settings remain editable.\n\n**Local checks:** 219 JS files and 213 native tests passed, plus optimized native signature/authenticated-work/Stop and Chromium/Firefox cryptography tests. Hosted Windows/Mac and installed-extension checks remain required.\n\n**Visibility:** public build/publish window authorized; restore Private immediately afterward. The session\'s integration cannot edit repository visibility (403), so owner assistance may be required. Separate Windows PC vault folder is not linked. See [code protection](vault/code-protection.md) and [open work](vault/open-work.md).\n')
           p=Path('docs/vault/open-work.md')
           p.write_text(p.read_text()+'\n- 2026-10-28: production integrity key provisioned by the one-time workflow; only its public key is committed. Arrange an external owner key backup securely. Full release validation and publication remain pending.\n')
           PY
           git -c user.name=stoveez -c user.email= add development/1.24.26/overlay/release-public-key.hex docs/NOW.md docs/vault/open-work.md
           git -c user.name=stoveez -c user.email= commit -m 'Configure production integrity verification key [skip ci]'
           git push origin HEAD:claude/plazcode-dev
-      - name: Remove the temporary private key
-        if: always()
-        shell: bash
-        run: rm -f "$RUNNER_TEMP/plazcode-private-release-key.pem"
   browsers:
     if: ${{ !inputs.bootstrap_integrity_key }}
     runs-on: ubuntu-latest

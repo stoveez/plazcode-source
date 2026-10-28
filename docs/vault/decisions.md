@@ -4,6 +4,8 @@ updated: 2026-10-28
 ---
 # Decisions (newest first)
 
+- **2026-10-28: release 1.24.26 directly, no separate test-build delivery (owner).** Full permission to publish once production protection keys and all release gates are ready. Use the established release-note format. Owner authorized the assistant to manage the temporary public/private build window; current API tokens lack repository administration, so the owner made it public manually.
+
 - **2026-10-28: Approve all is permanent for that tool type (owner).** Remember across tasks, chats and AI sites in the existing extension-wide Safety list. Keep Remove/Remove all, Read-only and other permission boundaries; a plan approval itself remains task-specific.
 
 - **2026-10-28: implement code protection plus signed manifests, verified updates and bridge hardening, without app signing (owner).** No mandatory account, new setup/approval steps or online requirement. Preserve automatic pairing and editable user skills, notes and settings. Work in 1.24.26; production keys remain private and need maintainer setup.

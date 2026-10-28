@@ -50,6 +50,12 @@ sha='a'*40;run_id='123456'
 run={'id':int(run_id),'head_sha':sha,'path':'.github/workflows/validate-1.24.26.yml','repository':{'full_name':'stoveez/PlazCode'},'status':'completed','conclusion':'success'}
 jobs={'jobs':[{'name':name,'status':'completed','conclusion':'success'} for name in sorted(promotion.REQUIRED_JOBS)]}
 promotion.verify_validation(run,jobs,sha,run_id,'stoveez/PlazCode')
+with_bootstrap=copy.deepcopy(jobs);with_bootstrap['jobs'].append({'name':'bootstrap-integrity','status':'completed','conclusion':'skipped'})
+promotion.verify_validation(run,with_bootstrap,sha,run_id,'stoveez/PlazCode')
+for conclusion in ['success','failure','cancelled']:
+ bad=copy.deepcopy(with_bootstrap);bad['jobs'][-1]['conclusion']=conclusion;rejected(promotion.verify_validation,run,bad,sha,run_id)
+bad=copy.deepcopy(with_bootstrap);bad['jobs'].append(bad['jobs'][-1]);rejected(promotion.verify_validation,run,bad,sha,run_id)
+bad=copy.deepcopy(with_bootstrap);bad['jobs'][0]['conclusion']='skipped';rejected(promotion.verify_validation,run,bad,sha,run_id)
 for field,value in [('id',654321),('head_sha','b'*40),('path','.github/workflows/other.yml'),('status','in_progress'),('conclusion','failure')]:
  bad=copy.deepcopy(run);bad[field]=value;rejected(promotion.verify_validation,bad,jobs,sha,run_id,'stoveez/PlazCode')
 for value in ['failure','cancelled','skipped',None]:

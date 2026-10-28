@@ -19,6 +19,17 @@ function outside(root, target) {
 }
 export const digest = data => createHash('sha256').update(data).digest('hex');
 export function publicHex(key) { return createPublicKey(key).export({format:'der',type:'spki'}).subarray(-32).toString('hex'); }
+export function parseSigningKey(input) {
+  const text=String(input).trim(),prefix='ed25519-seed:';
+  if(text.startsWith(prefix)) {
+    const seed=text.slice(prefix.length);
+    if(!/^[a-f0-9]{64}$/i.test(seed)) throw new Error('Invalid private Ed25519 seed.');
+    return createPrivateKey({key:Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),Buffer.from(seed,'hex')]),format:'der',type:'pkcs8'});
+  }
+  const key=createPrivateKey(text);
+  if(key.asymmetricKeyType!=='ed25519') throw new Error('An Ed25519 release key is required.');
+  return key;
+}
 function verificationKey(hex) {
   if (!/^[a-f0-9]{64}$/.test(hex)) throw new Error('A pinned Ed25519 public key is required.');
   return createPublicKey({key:Buffer.from('302a300506032b6570032100'+hex,'hex'),type:'spki',format:'der'});
@@ -158,9 +169,7 @@ async function signingKey() {
   if(file && !outside(path.resolve(here,'../..'),file)) throw new Error('Private signing keys must be outside the source repository.');
   const pem=process.env.PLAZCODE_RELEASE_SIGNING_KEY || (file ? await fs.readFile(file,'utf8') : '');
   if(!pem) throw new Error('Missing release signing key. Protected packages cannot be built unsigned.');
-  const key=createPrivateKey(pem);
-  if(key.asymmetricKeyType!=='ed25519') throw new Error('An Ed25519 release key is required.');
-  return key;
+  return parseSigningKey(pem);
 }
 async function main([command,...args]) {
   if(command==='provision') {
@@ -187,6 +196,11 @@ async function main([command,...args]) {
   }
   if(command==='verify') {await verifyTree(args[0],args[1],args[2]);return;}
   const key=await signingKey();
+  if(command==='export-public') {
+    const file=path.join(here,'overlay/release-public-key.hex'),hex=publicHex(key),existing=(await fs.readFile(file,'utf8')).trim();
+    if(existing && existing!==hex) throw new Error('Configured public key differs; automatic key rotation is forbidden.');
+    await fs.writeFile(file,hex+'\n');console.log('Production public key derived; no private key was written or printed.');return;
+  }
   if(command==='decrypt-maps') {await decryptMaps(args[0],args[1],key);return;}
   if(command==='protect') {
     const [root,maps,sourceRoot,platform,encryptedMaps]=args;

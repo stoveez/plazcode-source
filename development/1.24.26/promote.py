@@ -57,6 +57,10 @@ def verify_validation(run,jobs,sha,run_id,repository=None):
     if repository:assert run['repository']['full_name']==repository, 'Wrong validation repository'
     assert run['status']=='completed' and run['conclusion']=='success', 'Validation must finish successfully'
     rows=jobs['jobs']
+    bootstrap=[j for j in rows if j['name']=='bootstrap-integrity']
+    if bootstrap:
+        assert len(bootstrap)==1 and bootstrap[0]['status']=='completed' and bootstrap[0]['conclusion']=='skipped', 'Key-setup runs are not release validation'
+        rows=[j for j in rows if j['name']!='bootstrap-integrity']
     assert len(rows)==4 and {j['name'] for j in rows}==REQUIRED_JOBS, 'Require browser and all three native jobs'
     assert all(j['status']=='completed' and j['conclusion']=='success' for j in rows), 'No failed, cancelled, skipped or incomplete platform job is promotable'
 

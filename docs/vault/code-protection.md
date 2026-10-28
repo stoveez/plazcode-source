@@ -25,12 +25,19 @@ Native signatures live inside `PlazCode-Extension`, which old installers already
 Decoder maps are AES-256-GCM encrypted using a key derived from the private release key; only ciphertext reaches build artifacts. Private maps and signing keys stay outside packages and source archives. CI uses explicit ephemeral validation keys when production trust is absent; promotion rejects those artifacts. New workflow actions are pinned to immutable commits.
 
 ## Maintainer key setup (not an end-user step)
-On a trusted machine, in a current `claude/plazcode-dev` checkout with Node and authenticated GitHub CLI access to Actions secrets, run:
+The integration and the existing publishing token both lack source-repository secret-management permission (403 confirmed in run 40705538648). Publishing permission does not grant those API scopes. Add one free integrity secret through GitHub's owner settings:
+
+1. In Windows PowerShell, generate a private random seed straight to the clipboard, without printing it:
 
 ```powershell
-node development/1.24.26/protection.mjs provision "$env:USERPROFILE\plazcode-release-key.pem"
+$plazcodeKeyBytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($plazcodeKeyBytes)
+Set-Clipboard -Value ("ed25519-seed:" + (($plazcodeKeyBytes | ForEach-Object { $_.ToString("x2") }) -join ""))
 ```
 
-The command generates an Ed25519 key, saves a private backup outside the repo, puts the private key in the `PLAZCODE_RELEASE_SIGNING_KEY` Actions secret, and writes ONLY the public key to `development/1.24.26/overlay/release-public-key.hex`. Keep the backup private; do not upload or paste it. Commit the public key with NOW, then rerun all platform gates. Do not replace an established production key without a rotation plan.
+2. Open https://github.com/stoveez/plazcode-source/settings/secrets/actions/new . Name the secret `PLAZCODE_RELEASE_SIGNING_KEY` and paste the clipboard value. Keep a private backup in a password manager. Never paste the value in chat or commit it.
+3. The assistant dispatches `validate-1.24.26.yml` with `bootstrap_integrity_key=true`. This reads the secret only inside the trusted GitHub job, derives and commits ONLY its public key, then the assistant runs the full production release gates. The job cannot rotate an established public key automatically. No private key is printed, written to a runner file or uploaded.
 
-Before production key setup, tests can use the explicit validation channel. This is not a releasable update. No protected build or release has shipped; Windows/Mac and installed-extension gates are still required.
+The original trusted-PC alternative remains available: `node development/1.24.26/protection.mjs provision <absolute-private-backup-path-outside-repo>` with authenticated GitHub CLI secret permissions. Both standard Ed25519 PKCS8 PEM and the explicitly labeled random seed are accepted. All signing and decoder-map encryption uses the same resulting private key.
+
+Before key setup, explicit validation keys are suitable only for internal checks. They cannot be published. No protected release has shipped; Windows/Mac and installed-extension gates are still required. No separate test-build delivery (owner instruction).

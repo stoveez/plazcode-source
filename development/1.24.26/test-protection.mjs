@@ -5,7 +5,7 @@ import os from 'node:os';
 import vm from 'node:vm';
 import {generateKeyPairSync,webcrypto} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {envelope,openEnvelope,publicHex,protect,verifyTree,signInstallation,encryptMaps,decryptMaps,safePath,FILE_MANIFEST,EXT_MANIFEST} from './protection.mjs';
+import {envelope,openEnvelope,publicHex,parseSigningKey,protect,verifyTree,signInstallation,encryptMaps,decryptMaps,safePath,FILE_MANIFEST,EXT_MANIFEST} from './protection.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const source=path.resolve(here,'../../build-src-1.24.26/PlazCode');
@@ -13,6 +13,9 @@ const directory=await fs.mkdtemp(path.join(os.tmpdir(),'plazcode-protection-'));
 const root=path.join(directory,'package'),maps=path.join(directory,'private-maps');
 const {privateKey}=generateKeyPairSync('ed25519'),other=generateKeyPairSync('ed25519');
 const hex=publicHex(privateKey);
+const seed=privateKey.export({format:'der',type:'pkcs8'}).subarray(-32).toString('hex');
+assert.equal(publicHex(parseSigningKey('ed25519-seed:'+seed)),hex);
+assert.throws(()=>parseSigningKey('ed25519-seed:not-a-private-seed'));
 try {
   for(const base of ['', 'PlazCode-Extension','PlazCode-Extension-Firefox']) {
     await fs.mkdir(path.join(root,base,'core'),{recursive:true});
@@ -26,6 +29,8 @@ try {
   await fs.mkdir(path.join(root,'skills'));await fs.writeFile(path.join(root,'skills/custom.md'),'user skill');
   await protect(root,maps,source,privateKey,'validation','linux');
   await verifyTree(root,hex);
+  const portable=await fs.readFile(path.join(root,'PlazCode-Extension',EXT_MANIFEST),'utf8');
+  assert(!Object.values(JSON.parse(JSON.parse(portable).payload).files).some(row=>'mode' in row),'browser signatures do not depend on Windows versus Unix modes');
   for(const base of ['', 'PlazCode-Extension','PlazCode-Extension-Firefox']) {
     const folder=path.join(root,base);await verifyTree(folder,hex,EXT_MANIFEST);
     const code=await fs.readFile(path.join(folder,'background.js'),'utf8');

@@ -24,8 +24,14 @@ try {
   const profile=path.join(temporary,'chromium-profile'),ext=path.join(root,'PlazCode-Extension');
   const context=await chromium.launchPersistentContext(profile,{headless:true,channel:'chromium',args:['--disable-extensions-except='+ext,'--load-extension='+ext,'--no-sandbox']});
   try {
-    let worker=context.serviceWorkers()[0];if(!worker)worker=await context.waitForEvent('serviceworker',{timeout:30000});
-    assert.equal(await worker.evaluate(async()=>{await PlazCodeIntegrity.check();return true;}),true);
+    let worker=context.serviceWorkers().find(worker=>worker.url().endsWith('/background.js'));
+    if(!worker)worker=await context.waitForEvent('serviceworker',{predicate:worker=>worker.url().endsWith('/background.js'),timeout:30000});
+    assert.equal(await worker.evaluate(async()=>{
+      // Playwright announces a worker execution context before its initial script/imports finish.
+      for(let attempt=0;attempt<200 && !globalThis.PlazCodeIntegrity;attempt++) await new Promise(resolve=>setTimeout(resolve,50));
+      if(!globalThis.PlazCodeIntegrity) throw new Error('Extension worker did not initialize integrity verification.');
+      await globalThis.PlazCodeIntegrity.check();return true;
+    }),true);
     assert.equal(await worker.evaluate(()=>chrome.runtime.getManifest().version),'1.24.26');
     console.log('PASS actual protected Chromium service worker: signed assets verified, normal startup reached.');
   } finally {await context.close();}

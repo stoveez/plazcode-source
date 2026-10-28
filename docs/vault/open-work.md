@@ -42,3 +42,5 @@ Release: see [releasing](releasing.md).
 - The live 1.24.21 release text needs the owner's version pasted in by hand (this session cannot edit GitHub releases).
 - 1.24.22 SHIPPED 2026-10-25. Still worth a live check on Claude free, ClickUp free, ChatGPT free and DeepSeek to confirm the startup fits each plan (only practice-page tested).
 - Antivirus: after 1.24.23 ships, the owner can report the new download as a false positive to Google (https://safebrowsing.google.com/safebrowsing/report_error/) and Microsoft (https://www.microsoft.com/wdsi/filesubmission). Code signing (Azure Artifact Signing) is the lasting fix: every new unsigned build starts with no reputation.
+
+- 2026-10-28: public build window is open. Automated integrity-key setup also hit 403 with the publishing token (40705538648); owner must add `PLAZCODE_RELEASE_SIGNING_KEY` once. The public-key-only bootstrap and production gates are ready. No separate test-build delivery.
