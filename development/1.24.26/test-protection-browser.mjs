@@ -66,4 +66,7 @@ try {
   } finally {await browser.close();}
   }
   await new Promise(resolve=>server.close(resolve));
+} catch(error) {
+  console.error('::error title=Protected browser verification::'+String(error.stack || error).replaceAll('%','%25').replaceAll('\r','').replaceAll('\n','%0A'));
+  throw error;
 } finally {await fs.rm(temporary,{recursive:true,force:true});}

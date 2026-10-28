@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-28. Work directly on `claude/plazcode-dev`; no helper agents.
 
-**Latest: updater-handoff fixture corrected.** Validation 40715893481 passed browser/Linux and compiled Windows/universal Mac, but both platform handoff fixtures tried feeding released 1.24.25 to unreleased 1.24.26. The new production anti-downgrade guard correctly refused it. The separately compiled debug fixture now uses the current published version; real release binaries, production guards and sources are restored unchanged. Full validation must rerun.
+**Latest: WIP browser diagnostics.** Run 40761358270 failed the protected browser check, which passed previously. Raw job logs are inaccessible (storage host 403); the fixture now reports its real stack as a GitHub annotation. Run a browser-only diagnostic, then full exact-source gates after resolving it. No publication.
+
+**Updater-handoff fixture corrected.** Validation 40715893481 passed browser/Linux and compiled Windows/universal Mac, but both platform handoff fixtures tried feeding released 1.24.25 to unreleased 1.24.26. The new production anti-downgrade guard correctly refused it. The separately compiled debug fixture now uses the current published version; real release binaries, production guards and sources are restored unchanged. Full validation must rerun.
 
 **Scope:** 1.24.26 signed file/update checks, browser obfuscation, durable encrypted private decoder maps and permanent per-tool approvals across tasks/chats/AI sites. No app signing, required login, extra user setup or separate test-build delivery. User data/offline use retained. Production integrity secret and public key configured; never ask for the key.
 

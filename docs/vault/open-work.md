@@ -62,3 +62,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-28: browser and Linux gates passed in 40715893481. Private-record retention also passed actual encrypted-map recovery with isolated ephemeral trust, ciphertext-only persistence and overwrite rejection. Windows/Mac, packaged Mac lifetime gate and publication remain.
 
 - 2026-10-28: 40715893481 passed browser/Linux and both native release builds; Windows/Mac handoff fixtures failed because the published feed is older than the new protected binary. Debug fixture now compiles at the live published version without weakening production anti-downgrade checks. Final validation rerun required; no release yet.
+
+- 2026-10-28: WIP 40761358270 protected browser check failed after earlier green runs. Job-log storage returns 403; stack annotations added to diagnose without bypassing access restrictions. No release; fresh full exact-source validation remains required.
