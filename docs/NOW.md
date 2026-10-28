@@ -5,7 +5,7 @@ Updated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.
 
 **WIP: 1.24.26 code protection, owner authorized.** Development overlay copied from released 1.24.25; existing 1.24.26 feature plans retained. No app signing, mandatory account, new setup/approval steps or online requirement. User skills, vault notes and settings stay editable. Design: [code protection](vault/code-protection.md).
 
-**WIP security implementation:** signing, native/extension verification, authenticated update checks, CSP-safe obfuscation, encrypted private maps, legacy migration and staged rollback are implemented. Linux native suite: 212 passed; real Chromium/Firefox cryptography checks passed. Full JS run found three outdated fixtures (approval module stub, version regex, Firefox preload list); fixes are ready for recheck. Optimized native integration and hosted Windows/Mac/full-extension gates remain pending.
+**WIP security implementation:** signing, native/extension verification, authenticated update checks, CSP-safe obfuscation, encrypted private maps, legacy migration and staged rollback are implemented. Linux native suite: 213 passed; real Chromium/Firefox cryptography checks passed. The three outdated JS fixtures were fixed and passed targeted rechecks; the complete JS rerun is in progress. Optimized native signature/authenticated-work/Stop tests passed, including the no-setup older-browser fallback. Hosted Windows/Mac/full-extension gates remain blocked by Actions billing (run 40696596361 did not start any jobs).
 
 **Environment:** local Chromium blocks installed extensions by administrator policy; the unchanged 1.24.25 extension fails too. CI requires installed-extension validation. No workaround or policy changes.
 

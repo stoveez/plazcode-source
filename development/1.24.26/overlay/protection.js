@@ -21,8 +21,19 @@ globalThis.PlazCodeIntegrity = (() => {
     if (!/^[a-f0-9]{64}$/.test(key) || !["release","validation"].includes(channel)) throw new Error(recovery);
     const signed = JSON.parse(new TextDecoder().decode(await read("plazcode-extension-integrity.json", 4*1024*1024)));
     if (typeof signed.payload !== "string" || !/^[a-f0-9]{128}$/.test(signed.signature)) throw new Error(recovery);
-    const publicKey = await crypto.subtle.importKey("raw",unhex(key),{name:"Ed25519"},false,["verify"]);
-    if (!await crypto.subtle.verify("Ed25519",publicKey,unhex(signed.signature),new TextEncoder().encode("PlazCode release v1\n"+signed.payload))) throw new Error(recovery);
+    try {
+      const publicKey = await crypto.subtle.importKey("raw",unhex(key),{name:"Ed25519"},false,["verify"]);
+      if (!await crypto.subtle.verify("Ed25519",publicKey,unhex(signed.signature),new TextEncoder().encode("PlazCode release v1\n"+signed.payload))) throw new Error(recovery);
+    } catch (error) {
+      if (!error || error.name !== "NotSupportedError") throw error;
+      // Chrome 111-136 has SHA-256 but lacks Ed25519. The native app verifies metadata only.
+      const identity = new URL(chrome.runtime.getURL("")).host;
+      const unavailable = () => Object.assign(new Error("Open the updated PlazCode app to verify the extension. PlazCode retries automatically; no pairing or browser setup is needed."),{name:"PlazCodeVerificationUnavailable"});
+      let response;
+      try {response = await fetch("http://127.0.0.1:3000/api/integrity/extension", {method:"POST",credentials:"omit",redirect:"error",headers:{"Content-Type":"application/json","X-PlazCode-Extension":identity},body:JSON.stringify(signed),signal:AbortSignal.timeout(15000)});} catch {throw unavailable();}
+      if (response.status===404 || response.status>=500) throw unavailable();
+      if (!response.ok || !(await response.json()).ok) throw new Error(recovery);
+    }
     const value=JSON.parse(signed.payload), version=chrome.runtime.getManifest().version;
     if (value.schema!==1 || value.kind!=="files" || value.platform!=="extension" || value.channel!==channel || value.version!==version || !value.files) throw new Error(recovery);
     const entries=Object.entries(value.files);
@@ -42,7 +53,10 @@ globalThis.PlazCodeIntegrity = (() => {
     if (pending && Date.now()-checkedAt<30000) return pending;
     if (!pending || checkedAt) {
       checkedAt=0;
-      pending=verify().catch(()=>{throw new Error(recovery);});
+      pending=verify().catch(error=>{
+        if(error && error.name==="PlazCodeVerificationUnavailable") {pending=null;throw error;}
+        throw new Error(recovery);
+      });
     }
     return pending;
   }

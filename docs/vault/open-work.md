@@ -6,7 +6,7 @@ updated: 2026-10-28
 
 - 2026-10-28: persistent Approve all implemented for 1.24.26; focused tests passed. Extension reload plus AI-tab refresh is sufficient for this fix; full browser validation remains.
 
-- 2026-10-28: 1.24.26 code protection implementation started, without app signing or extra user steps. See [code-protection](code-protection.md). Signing/verification, encrypted maps, package integration and migration are implemented. Linux native and browser cryptography tests passed; production key provisioning (GitHub secret permissions), Windows/Mac and installed-extension validation remain open.
+- 2026-10-28: 1.24.26 code protection implementation started, without app signing or extra user steps. See [code-protection](code-protection.md). Signing/verification, encrypted maps, package integration and migration are implemented. Linux native and browser cryptography tests passed; production key provisioning (GitHub secret permissions) and hosted Windows/Mac/installed-extension validation remain open. Run 40696596361 was blocked before job startup by GitHub billing/spending limits.
 
 - 2026-10-27: all 58 repository notes restored on `main` and `claude/plazcode-dev` at the owner's request, including the 1.24.26 plans. The separate Windows `PlazCode-Vault` folder was not changed by this cloud session.
 

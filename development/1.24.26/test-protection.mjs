@@ -58,13 +58,21 @@ try {
   for(const name of ['../escape','/absolute','a\\b','C:/escape','a//b','a./b']) assert(!safePath(name));
   // Run the real packaged extension verifier, including its Ed25519 and file-hash operations.
   const extension=path.join(root,'PlazCode-Extension');
-  function verifier() {
-    const context={crypto:webcrypto,TextEncoder,TextDecoder,Uint8Array,AbortSignal,Date,Promise,JSON,Error,chrome:{runtime:{getManifest:()=>({version:'1.24.26'}),getURL:n=>n}},fetch:async name=>{
+  let fallbackCalls=0,nativeOnline=true;
+  function verifier(legacy=false) {
+    const crypto=legacy?{subtle:{importKey:()=>Promise.reject(Object.assign(new Error('Unsupported algorithm'),{name:'NotSupportedError'})),digest:webcrypto.subtle.digest.bind(webcrypto.subtle)}}:webcrypto;
+    const context={crypto,URL,TextEncoder,TextDecoder,Uint8Array,AbortSignal,Date,Promise,JSON,Error,chrome:{runtime:{getManifest:()=>({version:'1.24.26'}),getURL:n=>'chrome-extension://'+'a'.repeat(32)+'/'+n}},fetch:async (url,options)=>{
+      if(url==='http://127.0.0.1:3000/api/integrity/extension') {fallbackCalls++;if(!nativeOnline)throw new Error('Connection refused');openEnvelope(options.body,hex);return new Response('{"ok":true}');}
+      const name=decodeURIComponent(new URL(url).pathname.slice(1));
       try {const bytes=await fs.readFile(path.join(extension,name));return new Response(bytes);} catch {return new Response('',{status:404});}
     }};
     vm.createContext(context);return context;
   }
   let context=verifier();vm.runInContext(await fs.readFile(path.join(extension,'protection.js'),'utf8'),context);await context.PlazCodeIntegrity.check();
+  context=verifier(true);vm.runInContext(await fs.readFile(path.join(extension,'protection.js'),'utf8'),context);await context.PlazCodeIntegrity.check();assert.equal(fallbackCalls,1,'older browsers use offline native signature verification without setup');
+  nativeOnline=false;context=verifier(true);vm.runInContext(await fs.readFile(path.join(extension,'protection.js'),'utf8'),context);
+  await assert.rejects(context.PlazCodeIntegrity.check(),/Open the updated PlazCode app/);
+  nativeOnline=true;await context.PlazCodeIntegrity.check();assert.equal(fallbackCalls,3,'opening the app recovers without reloading the extension or changing setup');
   await fs.writeFile(path.join(extension,'core/main.js'),'modified in loaded extension folder');
   context=verifier();vm.runInContext(await fs.readFile(path.join(extension,'protection.js'),'utf8'),context);await assert.rejects(context.PlazCodeIntegrity.check(),/official version/);
   console.log('PASS signed manifests, wrong keys/payloads, missing/modified files, symlinks, user-data edits, CSP-safe obfuscation, private maps and packaged extension verification.');

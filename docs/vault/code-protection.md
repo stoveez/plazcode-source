@@ -18,6 +18,8 @@ Implementation lives in `development/1.24.26/overlay`. Production and test packa
 **Setup blocker:** GitHub denies this session access to Actions secrets (403). Production requires a maintainer-provisioned private release key and matching pinned public key. Never ship a validation key or silently disable verification. Repo was verified private on 2026-10-28; never change visibility automatically.
 
 ## Compatibility and release boundaries
+Chrome 111-136 can ask an extension-origin-only native endpoint to verify signed public metadata when WebCrypto lacks Ed25519. File hashes still run in the extension. The endpoint has no tool dispatch, filesystem access or private credentials, and requires the pinned key/version/channel; no new account or pairing step.
+
 Native signatures live inside `PlazCode-Extension`, which old installers already replace. A signed bootstrap restores skipped legacy mirrors on the first launch of each new version, without touching user data. After migration, changed program files block work; Stop and recovery/update controls remain available. The bootstrap itself is authenticated before any repair. A removed migration marker can only restore official signed bytes, never authorize arbitrary edits.
 
 Decoder maps are AES-256-GCM encrypted using a key derived from the private release key; only ciphertext reaches build artifacts. Private maps and signing keys stay outside packages and source archives. CI uses explicit ephemeral validation keys when production trust is absent; promotion rejects those artifacts. New workflow actions are pinned to immutable commits.
@@ -32,4 +34,3 @@ node development/1.24.26/protection.mjs provision "$env:USERPROFILE\plazcode-rel
 The command generates an Ed25519 key, saves a private backup outside the repo, puts the private key in the `PLAZCODE_RELEASE_SIGNING_KEY` Actions secret, and writes ONLY the public key to `development/1.24.26/overlay/release-public-key.hex`. Keep the backup private; do not upload or paste it. Commit the public key with NOW, then rerun all platform gates. Do not replace an established production key without a rotation plan.
 
 Before production key setup, tests can use the explicit validation channel. This is not a releasable update. No protected build or release has shipped; Windows/Mac and installed-extension gates are still required.
-

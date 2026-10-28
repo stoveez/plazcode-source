@@ -147,6 +147,21 @@ pub fn verify_update(feed: &serde_json::Value, version: &str, hash: &str, platfo
     ensure!(channel()=="release","Validation packages cannot install production updates");
     verify_update_with(&key,feed,version,hash,platform)
 }
+fn verify_extension_with(key: &[u8],raw: &[u8],version: &str,channel: &str)->Result<()> {
+    let value:Files=serde_json::from_str(&signed_payload(key,raw)?)?;
+    ensure!(value.schema==1 && value.kind=="files" && value.platform=="extension" && value.version==version && value.channel==channel,"Wrong extension signature metadata");
+    ensure!(!value.files.is_empty() && value.files.len()<=12000,"Invalid extension manifest");
+    for required in ["background.js","manifest.json","protection.js"] {ensure!(value.files.contains_key(required),"Missing extension file");}
+    for (name,record) in value.files {ensure!(safe_path(&name) && record.bytes<=MAX_FILE && record.sha256.len()==64 && record.sha256.bytes().all(|c|c.is_ascii_hexdigit()),"Unsafe extension file metadata");}
+    Ok(())
+}
+pub async fn extension_signature(headers: axum::http::HeaderMap,axum::Json(value): axum::Json<serde_json::Value>)->axum::response::Response {
+    use axum::response::IntoResponse;
+    // Public crypto verification only: no credentials, filesystem access or tool dispatch.
+    if !crate::security::can_auto_pair(&headers) {return axum::http::StatusCode::FORBIDDEN.into_response();}
+    let result=(||{let key=public_key()?.context("Release verification unavailable in this debug build")?;verify_extension_with(&key,&serde_json::to_vec(&value)?,env!("CARGO_PKG_VERSION"),channel())})();
+    match result {Ok(())=>axum::Json(serde_json::json!({"ok":true})).into_response(),Err(_)=>(axum::http::StatusCode::FORBIDDEN,axum::Json(serde_json::json!({"ok":false,"error":RECOVERY}))).into_response()}
+}
 fn verify_update_with(key: &[u8],feed: &serde_json::Value,version: &str,hash: &str,platform: &str)->Result<()> {
     let signed=feed.get("security").context("This update is missing its release signature; installation was not changed")?;
     let value: Update=serde_json::from_str(&signed_payload(&key,&serde_json::to_vec(signed)?)?)?;
@@ -172,6 +187,15 @@ mod tests {
         assert!(verify_update_with(public,&feed,"1.24.26",&hash,"macos").is_err());
         assert!(verify_update_with(public,&feed,"1.24.26",&"b".repeat(64),"windows").is_err());
         assert!(verify_update_with(public,&serde_json::json!({}),"1.24.26",&hash,"windows").is_err());
+    }
+    #[test] fn old_browser_metadata_fallback_requires_the_pinned_key_version_and_channel() {
+        let key=Ed25519KeyPair::from_seed_unchecked(&[7;32]).unwrap();
+        let row=serde_json::json!({"bytes":1,"sha256":"a".repeat(64)});
+        let raw=signed(&key,serde_json::json!({"schema":1,"kind":"files","platform":"extension","version":"1.24.26","channel":"release","files":{"background.js":row,"manifest.json":row,"protection.js":row}}));
+        assert!(verify_extension_with(key.public_key().as_ref(),&raw,"1.24.26","release").is_ok());
+        assert!(verify_extension_with(key.public_key().as_ref(),&raw,"1.24.25","release").is_err());
+        assert!(verify_extension_with(key.public_key().as_ref(),&raw,"1.24.26","validation").is_err());
+        let other=Ed25519KeyPair::from_seed_unchecked(&[8;32]).unwrap();assert!(verify_extension_with(other.public_key().as_ref(),&raw,"1.24.26","release").is_err());
     }
     #[test] fn signed_bootstrap_migrates_old_installers_without_touching_user_data_then_blocks_edits() {
         use base64::Engine;

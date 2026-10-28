@@ -1292,6 +1292,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         // Public shell contains no key; the native WebView injects credentials.
         // Register after pairing middleware; every API remains authenticated.
         .route("/desktop-ui", get(desktop_shell_handler))
+        .route("/api/integrity/extension",post(integrity::extension_signature).layer(axum::extract::DefaultBodyLimit::max(4*1024*1024)))
         .layer(cors);
     info!("PlazCode bridge listening on http://{} (WS /ws)", addr);
     info!("Legacy WS on ws://127.0.0.1:17613 (roblox) and 17615 (AgentScript FS: {})", ws_root_display);
