@@ -6,7 +6,7 @@ updated: 2026-10-28
 
 - 2026-10-28: persistent Approve all implemented for 1.24.26; focused tests passed. Extension reload plus AI-tab refresh is sufficient for this fix; full browser validation remains.
 
-- 2026-10-28: 1.24.26 code protection implementation started, without app signing or extra user steps. See [code-protection](code-protection.md). Signing/verification, encrypted maps, package integration and migration are implemented. Linux native and browser cryptography tests passed; production key provisioning (GitHub secret permissions) and hosted Windows/Mac/installed-extension validation remain open. Run 40696596361 was blocked before job startup by GitHub billing/spending limits.
+- 2026-10-28: 1.24.26 code protection implementation started, without app signing or extra user steps. See [code-protection](code-protection.md). Signing/verification, encrypted maps, package integration and migration are implemented. Linux native and browser cryptography tests passed; production key is configured; hosted Windows/Mac validation remains open. Installed-extension checks passed. Run 40696596361 was blocked before job startup by GitHub billing/spending limits.
 
 - 2026-10-27: all 58 repository notes restored on `main` and `claude/plazcode-dev` at the owner's request, including the 1.24.26 plans. The separate Windows `PlazCode-Vault` folder was not changed by this cloud session.
 
@@ -43,8 +43,8 @@ Release: see [releasing](releasing.md).
 - 1.24.22 SHIPPED 2026-10-25. Still worth a live check on Claude free, ClickUp free, ChatGPT free and DeepSeek to confirm the startup fits each plan (only practice-page tested).
 - Antivirus: after 1.24.23 ships, the owner can report the new download as a false positive to Google (https://safebrowsing.google.com/safebrowsing/report_error/) and Microsoft (https://www.microsoft.com/wdsi/filesubmission). Code signing (Azure Artifact Signing) is the lasting fix: every new unsigned build starts with no reputation.
 
-- 2026-10-28: public build window is open. Automated integrity-key setup also hit 403 with the publishing token (40705538648); owner must add `PLAZCODE_RELEASE_SIGNING_KEY` once. The public-key-only bootstrap and production gates are ready. No separate test-build delivery.
+- 2026-10-28: public build window is open. Automated secret-management hit 403 with the publishing token (40705538648); owner has since added `PLAZCODE_RELEASE_SIGNING_KEY`. The public-key-only bootstrap and production gates are ready. No separate test-build delivery.
 
 - 2026-10-28: production integrity key provisioned by the one-time workflow; only its public key is committed. Arrange an external owner key backup securely. Full release validation and publication remain pending.
 
-- 2026-10-28: integrity secret is now configured by owner; bootstrap 40713055559 committed public key 6229d98. No further secret setup needed. Hosted protected-extension checks passed; final production platform gates and language-storage race remain open.
+- 2026-10-28: integrity secret is now configured by owner; bootstrap 40713055559 committed public key 6229d98. No further secret setup needed. Hosted protected-extension checks passed; language-storage race diagnosed as an unrelated asynchronous chat-mode autosave rejection and fixed with a deterministic regression. Final production platform gates remain open.

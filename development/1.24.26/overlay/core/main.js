@@ -6703,7 +6703,7 @@ return result`;
       // Saved per chat in chrome.storage (rsChatEngines). A chat opened for the first time keeps the mode it is in now.
       let chatEngines = {}, chatEngineKey = "", chatEnginesLoaded = false, tabEngine = "", tabEngineAnswered = false; const chatEngineBootAt = Date.now();
       const chatEngineId = () => { const k = P.conversationKey(); return k ? P.id + "|" + k : ""; };
-      const saveChatEngines = () => { const keys = Object.keys(chatEngines); if (keys.length > 300) for (const k of keys.slice(0, keys.length - 300)) delete chatEngines[k]; try { chrome.storage.local.set({ rsChatEngines: chatEngines }); } catch {} };
+      const saveChatEngines = () => { const keys = Object.keys(chatEngines); if (keys.length > 300) for (const k of keys.slice(0, keys.length - 300)) delete chatEngines[k]; try { Promise.resolve(chrome.storage.local.set({ rsChatEngines: chatEngines })).catch(() => {}); } catch {} };
       try { chrome.storage.local.get("rsChatEngines", value => { chatEngines = value && value.rsChatEngines && typeof value.rsChatEngines === "object" ? value.rsChatEngines : {}; chatEnginesLoaded = true; }); } catch { chatEnginesLoaded = true; }
       rsInterval(() => {
         const id = chatEngineId();
