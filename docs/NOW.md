@@ -5,7 +5,7 @@ Updated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.
 
 **WIP: 1.24.26 code protection, owner authorized.** Development overlay copied from released 1.24.25; existing 1.24.26 feature plans retained. No app signing, mandatory account, new setup/approval steps or online requirement. User skills, vault notes and settings stay editable. Design: [code protection](vault/code-protection.md).
 
-**WIP security implementation:** Ed25519 signing/verification tools, native startup/work checks, extension verification, signed update checks and loopback-authority hardening are written. Native compilation, packaging integration and tamper/browser tests are in progress; protection is not complete or shipped.
+**WIP security implementation:** Ed25519 signing/verification tools, native startup/work checks, extension verification, signed update checks and loopback-authority hardening are written. All 212 Linux native tests passed, including migration and signature/tamper cases. Packaging/promotion integration, private encrypted decoder maps and production browser tests are written; full validation is in progress. Protection is not shipped.
 
 **Setup blocker:** GitHub denies this session access to Actions secrets (403). Protected production builds require a private release key in a secret and matching pinned public key. Never ship a test key or disable verification.
 

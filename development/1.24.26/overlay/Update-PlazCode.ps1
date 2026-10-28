@@ -201,7 +201,7 @@ try {
     if (!$packageRoot) { throw 'Release ZIP is empty.' }
     $package = Join-Path $unpacked $packageRoot
     $packageExtension = Get-ExtensionRoot $package
-    if ($RequireSignedPackage -or (Test-Path -LiteralPath (Join-Path $InstallRoot 'plazcode-integrity.json'))) {
+    if ($RequireSignedPackage -or (Test-Path -LiteralPath (Join-Path $InstallRoot 'PlazCode-Extension/plazcode-installation-integrity.json'))) {
         # Verify with the trusted installed executable, never the downloaded candidate.
         $signedVersion = if ($ExpectedVersion) { $ExpectedVersion } else { (Get-Content (Join-Path $packageExtension 'manifest.json') -Raw | ConvertFrom-Json).version }
         & (Join-Path $InstallRoot 'PlazCode.exe') --verify-package $package --verify-version $signedVersion

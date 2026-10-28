@@ -1,5 +1,6 @@
 // Release signing uses Node's built-in Ed25519 implementation. Private keys never enter packages.
-import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify } from 'node:crypto';
+import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify, hkdfSync, randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
+import {gzipSync,gunzipSync} from 'node:zlib';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -7,7 +8,9 @@ import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 
 export const DOMAIN = 'PlazCode release v1\n';
-export const FILE_MANIFEST = 'plazcode-integrity.json';
+// Old updaters replace this entire directory. Keeping bootstrap metadata here makes migration automatic.
+export const FILE_MANIFEST = 'PlazCode-Extension/plazcode-installation-integrity.json';
+export const BOOTSTRAP = 'PlazCode-Extension/plazcode-bootstrap.json';
 export const EXT_MANIFEST = 'plazcode-extension-integrity.json';
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const digest = data => createHash('sha256').update(data).digest('hex');
@@ -50,6 +53,7 @@ export const extensionFile=name=>extensionRoots.has(name.split('/')[0]) || exten
 const userNames=new Set(['config.json','config.local.json','plazcode-settings.json','bridge-pairing.json','memory.json','chat-history.json','checkpoints.json','catalog.json','creations.json','update-source.json']);
 export function programFile(name) {
   const first=name.split('/')[0];
+  if(['PlazCode-Extension','PlazCode-Extension-Firefox'].includes(first) && ['SOURCE.txt','FIREFOX-INSTALL.txt'].includes(name.split('/').at(-1))) return false;
   if(userNames.has(name) || ['logs','skills','vault','vaults','memory','cache','caches','node_modules','target','.git'].includes(first)) return false;
   if([FILE_MANIFEST,'SHA256SUMS.txt','DEVELOPMENT.txt'].includes(name)) return false;
   // Program assets and fixed helpers, not arbitrary files a user keeps beside the app.
@@ -71,6 +75,14 @@ export async function signInstallation(root, key, platform, channel) {
   const names=(await walk(root)).filter(programFile);
   const version=JSON.parse(await fs.readFile(path.join(root,'manifest.json'),'utf8')).version;
   await writeEnvelope(path.join(root,FILE_MANIFEST),{schema:1,kind:'files',version,platform,channel,files:await fileRecords(root,names)},key);
+}
+async function writeBootstrap(root) {
+  const files={};
+  for(const name of (await walk(root)).filter(programFile)) {
+    if(name.startsWith('PlazCode-Extension/') || name.startsWith('PlazCode.app/') || name==='PlazCode.exe' || name==='PlazCode') continue;
+    files[name]=(await fs.readFile(path.join(root,name))).toString('base64');
+  }
+  await fs.writeFile(path.join(root,BOOTSTRAP),JSON.stringify(files));
 }
 export async function verifyTree(root, hex, manifest=FILE_MANIFEST) {
   const record=openEnvelope(await fs.readFile(path.join(root,manifest),'utf8'),hex);
@@ -110,12 +122,31 @@ export async function obfuscate(root, maps, sourceRoot, publicKey, channel, key)
 }
 // The CLI provides the private key only in memory; obfuscate does not export it or add it to reports.
 export async function protect(root, maps, sourceRoot, key, channel, platform) {
+  const relative=path.relative(path.resolve(root),path.resolve(maps));
+  if(!relative.startsWith('..') && !path.isAbsolute(relative)) throw new Error('Private decoder maps must be outside the package.');
   const publicKey=publicHex(key);
   {
     const report=await obfuscate(root,maps,sourceRoot,publicKey,channel,key);
-    await fs.writeFile(path.join(root,'production-build.json'),JSON.stringify({schema:1,channel,public_key:publicKey,files:report})+'\n');
+    await fs.writeFile(path.join(root,'PlazCode-Extension/production-build.json'),JSON.stringify({schema:1,channel,public_key:publicKey,files:report})+'\n');
+    await writeBootstrap(root);
     await signInstallation(root,key,platform,channel);
   }
+}
+function mapKey(key) {return hkdfSync('sha256',key.export({format:'der',type:'pkcs8'}),Buffer.alloc(0),Buffer.from('PlazCode private decoder maps v1'),32);}
+export async function encryptMaps(directory, output, key) {
+  const files={};for(const name of await walk(directory)) files[name]=await fs.readFile(path.join(directory,name),'utf8');
+  const nonce=randomBytes(12),cipher=createCipheriv('aes-256-gcm',mapKey(key),nonce);
+  const raw=gzipSync(Buffer.from(JSON.stringify(files)));
+  const ciphertext=Buffer.concat([cipher.update(raw),cipher.final()]);
+  await fs.writeFile(output,JSON.stringify({schema:1,public_key:publicHex(key),nonce:nonce.toString('hex'),tag:cipher.getAuthTag().toString('hex'),ciphertext:ciphertext.toString('base64')})+'\n');
+}
+export async function decryptMaps(input,directory,key) {
+  const value=JSON.parse(await fs.readFile(input,'utf8'));
+  if(value.schema!==1 || value.public_key!==publicHex(key)) throw new Error('Wrong decoder key.');
+  const decipher=createDecipheriv('aes-256-gcm',mapKey(key),Buffer.from(value.nonce,'hex'));decipher.setAuthTag(Buffer.from(value.tag,'hex'));
+  const clear=Buffer.concat([decipher.update(Buffer.from(value.ciphertext,'base64')),decipher.final()]);
+  const files=JSON.parse(gunzipSync(clear,{maxOutputLength:128*1024*1024}));
+  for(const [name,text] of Object.entries(files)) {if(!safePath(name)) throw new Error('Unsafe decoder path.');const file=path.join(directory,name);await fs.mkdir(path.dirname(file),{recursive:true,mode:0o700});await fs.writeFile(file,text,{mode:0o600});}
 }
 async function signingKey() {
   const file=process.env.PLAZCODE_SIGNING_KEY_FILE;
@@ -127,13 +158,18 @@ async function signingKey() {
 }
 async function main([command,...args]) {
   if(command==='provision') {
-    // Owner runs this on a trusted machine with gh secret permissions. No private key is printed or written.
+    // Owner runs this on a trusted machine. Keep the backup outside every source/package directory.
+    const backup=args[0];
+    if(!backup || !path.isAbsolute(backup) || !path.relative(path.resolve(here,'../..'),backup).startsWith('..')) throw new Error('Supply an absolute private-key backup path outside this repository.');
+    const pinned=(await fs.readFile(path.join(here,'overlay/release-public-key.hex'),'utf8')).trim();
+    if(pinned) throw new Error('A production key already exists. Use an explicit key-rotation plan rather than replacing it.');
     const {privateKey,publicKey}=generateKeyPairSync('ed25519');
     const pem=privateKey.export({format:'pem',type:'pkcs8'});
+    await fs.writeFile(backup,pem,{mode:0o600,flag:'wx'});
     execFileSync('gh',['secret','set','PLAZCODE_RELEASE_SIGNING_KEY','--repo','stoveez/plazcode-source'],{input:pem,stdio:['pipe','inherit','inherit']});
     const hex=publicKey.export({format:'der',type:'spki'}).subarray(-32).toString('hex');
     await fs.writeFile(path.join(here,'overlay/release-public-key.hex'),hex+'\n');
-    console.log('Release key stored in GitHub Actions. Commit overlay/release-public-key.hex; never replace an established key without a rotation plan.');return;
+    console.log('Release key stored in GitHub Actions; private backup saved at the supplied path. Keep that backup private. Commit only overlay/release-public-key.hex.');return;
   }
   if(command==='validation-key') {
     const [directory]=args;await fs.mkdir(directory,{recursive:true,mode:0o700});
@@ -143,13 +179,16 @@ async function main([command,...args]) {
   }
   if(command==='verify') {await verifyTree(args[0],args[1],args[2]);return;}
   const key=await signingKey();
+  if(command==='decrypt-maps') {await decryptMaps(args[0],args[1],key);return;}
   if(command==='protect') {
-    const [root,maps,sourceRoot,platform]=args;
+    const [root,maps,sourceRoot,platform,encryptedMaps]=args;
     const channel=process.env.PLAZCODE_PROTECTION_CHANNEL || 'release';
     if(!['release','validation'].includes(channel)) throw new Error('Invalid protection channel.');
     const pinned=(await fs.readFile(path.join(here,'overlay/release-public-key.hex'),'utf8')).trim();
     if(channel==='release' && publicHex(key)!==pinned) throw new Error('Signing key does not match the pinned production key.');
-    await protect(root,maps,sourceRoot,key,channel,platform);return;
+    await protect(root,maps,sourceRoot,key,channel,platform);
+    if(encryptedMaps) await encryptMaps(maps,encryptedMaps,key);
+    return;
   }
   if(command==='sign-update') {
     const [feedPath,platform]=args;const feed=JSON.parse(await fs.readFile(feedPath,'utf8'));

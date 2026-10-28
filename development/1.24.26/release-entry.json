@@ -1,47 +1,10 @@
 {
   "version": "1.24.26",
-  "title": "Screenshots, approvals and update warnings",
-  "summary": "Improves screenshot display, remembers task approvals in Plan Mode, and makes mismatched app and extension versions clear.",
+  "title": "Remembered approvals and protected program files",
+  "summary": "Approve all remembers your choice across tasks, chats and AI sites. Program files and future updates are checked for changes automatically.",
   "added": [],
-  "improved": [
-    "The desktop Updates page shows active browser extension versions. Known outdated versions stay red when a later check fails."
-  ],
-  "fixed": [
-    "Screenshot previews render from image bytes instead of image URLs that AI sites can block. Unreadable image data shows an error.",
-    "Approve all for this task now applies to the same command in Plan Mode.",
-    "Creation previews explain missing app support, oversized requests and invalid responses instead of showing a JSON parsing error."
-  ],
-  "notes": [
-    "Replacing only the EXE does not update an extension loaded from another folder. Use the full update and load the updated extension folder.",
-    "Real Studio captures and the reported creation-preview failure were not reproduced on the affected computer.",
-    "The Windows app is unsigned and the Mac app is not notarized."
-  ],
-  "github": {
-    "summary": "***Screenshots, approvals and updates:*** clearer results and fewer repeated prompts.",
-    "sections": [
-      {
-        "title": "✨ What's new",
-        "items": [
-          "The Updates page shows active browser extension versions and warns when the app and extension do not match."
-        ]
-      },
-      {
-        "title": "🛠️ What's fixed",
-        "items": [
-          "Screenshot previews can display even when an AI site blocks image URLs; unreadable captures show an error.",
-          "Approve all for this task now skips repeats of that command in Plan Mode.",
-          "Known outdated versions stay red when a later update check fails.",
-          "Creation previews explain missing app support, large requests and invalid replies instead of a JSON parsing error."
-        ]
-      },
-      {
-        "title": "🧪 What was checked",
-        "items": [
-          "Full Windows, Mac and Linux tests, including the packaged Mac app; screenshot pixels checked in Chromium and Firefox. Small creation drafts checked through the real desktop endpoint.",
-          "The affected computer and real Studio captures were not tested live. Updating only the EXE cannot update a separate extension folder.",
-          "The Windows app is unsigned and the Mac app is not notarized, as before."
-        ]
-      }
-    ]
-  }
+  "improved": ["Program files are protected with signed checks and less readable browser code, without a new login, setup step or internet requirement."],
+  "fixed": ["Approve all remembers that tool type until you remove it under Safety > Always approved."],
+  "notes": ["Your own skills, notes and settings stay editable. Reload the extension and refresh AI tabs after the complete update.", "Windows has no publisher signature. macOS keeps its existing local signature and is not notarized."],
+  "github": {"summary": "**Remember approvals across chats and check program files automatically.**", "added": [], "improved": ["Program files and future updates are checked for changes. No new login or setup steps; offline use stays available."], "fixed": ["Approve all remembers that tool type across tasks, chats and AI sites. Remove it in Safety to be asked again."], "notes": ["Validation is still in progress. No publisher signing; user skills, notes and settings stay editable."]}
 }

@@ -18,11 +18,11 @@ jobs:
       NODE_PATH: ${{ github.workspace }}/build-src-1.24.26/PlazCode/release-tools/node_modules
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: luau-lang/luau
           ref: 74f768309c380d40601b28c4c4cdda27da415cef
@@ -53,6 +53,8 @@ jobs:
         working-directory: build-src-1.24.26/PlazCode
       - run: node release-tools/node_modules/playwright/cli.js install --with-deps chromium firefox
         working-directory: build-src-1.24.26/PlazCode
+      - name: Real protected Chromium and Firefox integrity tests
+        run: node development/1.24.26/test-protection-browser.mjs
       - name: Screenshot display under strict image policy in Chromium
         run: node test-screenshot-display.cjs
         working-directory: build-src-1.24.26/PlazCode
@@ -174,16 +176,25 @@ jobs:
       CARGO_PROFILE_DEV_CODEGEN_UNITS: '1'
       CARGO_PROFILE_TEST_CODEGEN_UNITS: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.12'
       - run: python development/1.24.26/test-prepare-overlay.py
       - run: python development/1.24.26/prepare.py
-      - uses: Swatinem/rust-cache@v2
+      - name: Configure public release trust or isolated validation keys
+        shell: bash
+        run: |
+          if [ ! -s development/1.24.26/overlay/release-public-key.hex ] || ! grep -q '[a-f0-9]' development/1.24.26/overlay/release-public-key.hex || [ "${{ github.event_name }}" = pull_request ]; then
+            node development/1.24.26/protection.mjs validation-key "$RUNNER_TEMP/plazcode-validation-key"
+            echo "PLAZCODE_PROTECTION_CHANNEL=validation" >> "$GITHUB_ENV"
+            echo "PLAZCODE_RELEASE_PUBLIC_KEY=$(cat "$RUNNER_TEMP/plazcode-validation-key/public.hex")" >> "$GITHUB_ENV"
+            echo "PLAZCODE_SIGNING_KEY_FILE=$RUNNER_TEMP/plazcode-validation-key/key.pem" >> "$GITHUB_ENV"
+          fi
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         with:
           workspaces: build-src-1.24.26/PlazCode/agent
           cache-on-failure: true
@@ -202,7 +213,7 @@ jobs:
         run: |
           set -o pipefail
           cargo +stable test --locked --manifest-path development/1.24.26/preferences-test/Cargo.toml 2>&1 | tee native-preference-tests.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: plazcode-1.24.26-native-preferences-${{ runner.os }}
@@ -230,6 +241,8 @@ jobs:
         working-directory: build-src-1.24.26/PlazCode
         env:
           NODE_PATH: release-tools/node_modules
+      - name: Signed integrity and obfuscation regressions
+        run: node development/1.24.26/test-protection.mjs
       - name: Native regression suite
         if: ${{ always() && !cancelled() }}
         run: cargo +stable test --locked --manifest-path agent/Cargo.toml
@@ -272,6 +285,8 @@ jobs:
           python test-update-handoff.py
       - name: Package fresh Windows artifacts
         if: runner.os == 'Windows'
+        env:
+          PLAZCODE_RELEASE_SIGNING_KEY: ${{ github.event_name != 'pull_request' && secrets.PLAZCODE_RELEASE_SIGNING_KEY || '' }}
         run: python development/1.24.26/package.py
       - name: Install the complete Windows package with PowerShell 5.1
         if: runner.os == 'Windows'
@@ -310,15 +325,17 @@ jobs:
           python test-update-handoff.py
       - name: Package fresh native artifacts
         if: runner.os == 'macOS'
+        env:
+          PLAZCODE_RELEASE_SIGNING_KEY: ${{ github.event_name != 'pull_request' && secrets.PLAZCODE_RELEASE_SIGNING_KEY || '' }}
         run: python development/1.24.26/package.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: runner.os != 'Linux'
         with:
           name: plazcode-1.24.26-${{ runner.os }}-test-lean
           path: artifacts/*-test-lean.zip
           compression-level: 0
           if-no-files-found: warn
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: plazcode-1.24.26-${{ runner.os }}-validation

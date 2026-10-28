@@ -292,6 +292,7 @@ async fn run(install: bool, background: bool) -> anyhow::Result<()> {
     let feed: Value = serde_json::from_slice(&raw)?;
     let (latest,download,hash)=validate(&feed)?;
     crate::integrity::verify_update(&feed,&latest,&hash,crate::integrity::platform())?;
+    anyhow::ensure!(version(&latest)? >= version(env!("CARGO_PKG_VERSION"))?, "Refusing an update older than this desktop version.");
     let mut download=download.strip_prefix("https://raw.githubusercontent.com/stoveez/PlazCodeneww/").map(|tail| format!("https://raw.githubusercontent.com/stoveez/PlazCode/{tail}")).unwrap_or(download);
     if let Some(previous) = state().latest.as_ref() { anyhow::ensure!(version(&latest)? >= version(previous)?, "Release source returned an older cached version; retaining the latest known release."); }
     let notes = feed.get("release_notes").and_then(|value| serde_json::from_value::<Vec<ReleaseNotes>>(value.clone()).ok());

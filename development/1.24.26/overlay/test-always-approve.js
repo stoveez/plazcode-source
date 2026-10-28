@@ -12,7 +12,7 @@ assert.equal(Approval.alwaysHas(list, "multi_edit"), true); assert.equal(Approva
 assert.deepEqual(Approval.alwaysAdd([], "bad name!<script>"), [], "odd names are refused");
 assert.deepEqual(Approval.alwaysRemove(Approval.alwaysAdd(list, "write_file", 6), "multi_edit"), [{ tool: "write_file", at: 6 }]);
 assert.deepEqual(Approval.alwaysNormalize("nope"), []); assert.deepEqual(Approval.alwaysNormalize(["a", "a", { tool: "b" }]).map((x) => x.tool), ["a", "b"]);
-assert.equal(Approval.alwaysNormalize(Array.from({ length: 300 }, (_, i) => "t" + i)).length, 100);
+assert.equal(Approval.alwaysNormalize(Array.from({ length: 300 }, (_, i) => "t" + i)).length, 300);
 
 // the card
 const start = main.indexOf("  let approvalCancel = null"), end = main.indexOf("  function setPermMode(id)");

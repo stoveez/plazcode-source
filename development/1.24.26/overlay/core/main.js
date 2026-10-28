@@ -381,6 +381,7 @@
             await alwaysReady;
             if (finished || A.stop || (frozen && PlazCodeApproval.freeze(args) !== frozen)) { done(false); return; }
             const next = PlazCodeApproval.alwaysAdd(alwaysList, call.tool);
+            if (!PlazCodeApproval.alwaysHas(next, call.tool)) throw new Error("Invalid saved action");
             await chrome.storage.local.set({ rsAlwaysApprove: next });
             alwaysList = next;
           } catch {

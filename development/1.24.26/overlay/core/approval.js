@@ -68,7 +68,7 @@ const PlazCodeApproval = (() => {
   }
 
   // ── "Always approve" list (kept in the browser's storage as rsAlwaysApprove): action names the person chose to stop being asked about ──
-  const ALWAYS_MAX = 100;
+  const ALWAYS_MAX = 4096;
   const alwaysName = (tool) => { const n = bare(tool); return /^[A-Za-z0-9_.-]{1,80}$/.test(n) ? n : ""; };
   function alwaysNormalize(list) {
     const out = [], seen = new Set();
@@ -84,6 +84,7 @@ const PlazCodeApproval = (() => {
   function alwaysAdd(list, tool, now) {
     const n = alwaysName(tool), base = alwaysNormalize(list);
     if (!n || base.some((x) => x.tool === n)) return base;
+    if (base.length >= ALWAYS_MAX) throw new Error("The saved approval list is full. Remove an entry in Safety first.");
     return alwaysNormalize(base.concat([{ tool: n, at: now || Date.now() }]));
   }
   const alwaysRemove = (list, tool) => alwaysNormalize(list).filter((x) => x.tool !== alwaysName(tool));

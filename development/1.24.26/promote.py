@@ -1,6 +1,6 @@
 """Promote only successful exact-source artifacts; never overwrite release archives."""
 from pathlib import Path
-import argparse,json,os,hashlib,shutil,re,zipfile,plistlib,struct,subprocess
+import argparse,json,os,hashlib,shutil,re,zipfile,plistlib,struct,subprocess,tempfile
 ROOT=Path(__file__).resolve().parents[2]
 VERSION='1.24.26'
 # Keep the small validated archive helpers local; publication must not depend
@@ -31,6 +31,9 @@ SOURCE_INPUTS=(
     'development/1.24.26/overlay',
     'development/1.24.26/prepare.py',
     'development/1.24.26/package.py',
+    'development/1.24.26/protection.mjs',
+    'development/1.24.26/test-protection.mjs',
+    'development/1.24.26/test-protection-browser.mjs',
     'development/1.24.26/build-locales.py',
     'development/1.24.26/preferences-test',
     'development/1.24.26/test-locales.py',
@@ -84,19 +87,41 @@ def verify_locales(files,prefix='PlazCode/core/'):
         assert rows.keys()==english.keys() and all(isinstance(v,str) and v.strip() for v in rows.values()), code+' incomplete catalog'
     assert files[prefix+'i18n-catalog.js'][0] and files[prefix+'i18n.js'][0]
 
+def verify_protected(files,platform):
+    pinned=(ROOT/'development/1.24.26/overlay/release-public-key.hex').read_text().strip()
+    assert re.fullmatch('[a-f0-9]{64}',pinned), 'Production signing key is not configured'
+    signed=json.loads(files['PlazCode/PlazCode-Extension/plazcode-installation-integrity.json'][0])
+    with tempfile.TemporaryDirectory(prefix='plazcode-promote-verify-') as directory:
+        root=Path(directory)/'PlazCode'
+        for name,(raw,_) in files.items():
+            target=Path(directory)/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(raw)
+        subprocess.run(['node',str(ROOT/'development/1.24.26/protection.mjs'),'verify',str(root),pinned],check=True)
+    payload=json.loads(signed['payload'])
+    assert payload['channel']=='release' and payload['version']==VERSION and payload['platform']==platform, 'Validation-key or mismatched package cannot be published'
+    report=json.loads(files['PlazCode/PlazCode-Extension/production-build.json'][0])
+    assert report['channel']=='release' and report['public_key']==pinned
+    return report
+
 def verify_shared_code(source,native_packages,firefox):
-    # Firefox changes manifest/event wiring, not these reviewed program bytes.
+    reports=[json.loads(files['PlazCode/PlazCode-Extension/production-build.json'][0]) for files in native_packages]
     for name,(raw,_) in source.items():
         relative=name.removeprefix('PlazCode/')
-        shared=relative.startswith(('core/','providers/')) or relative in {'background.js','popup.js','popup.html','overlay.css','ollama-page.js'}
+        shared=relative.startswith(('core/','providers/')) or relative in {'background.js','protection.js','popup.js','popup.html','overlay.css','ollama-page.js'}
         if not shared:continue
-        assert firefox[relative][0]==raw, 'Standalone Firefox source mismatch: '+relative
-        for files in native_packages:
-            for prefix in ['PlazCode/','PlazCode/PlazCode-Extension/','PlazCode/PlazCode-Extension-Firefox/']:
-                assert files[prefix+relative][0]==raw, 'Native/browser source mismatch: '+prefix+relative
+        for files,report in zip(native_packages,reports):
+            for prefix in ['','PlazCode-Extension/','PlazCode-Extension-Firefox/']:
+                key=prefix+relative;actual=files['PlazCode/'+key][0]
+                expected=raw
+                if relative=='protection.js':
+                    expected=raw.replace(b'UNCONFIGURED_RELEASE_PUBLIC_KEY',report['public_key'].encode(),1).replace(b'UNCONFIGURED_RELEASE_CHANNEL',b'release',1)
+                if key in report['files']:
+                    row=report['files'][key]
+                    assert row['source_sha256']==hashlib.sha256(expected).hexdigest(), 'Obfuscation used different source: '+key
+                    assert row['sha256']==hashlib.sha256(actual).hexdigest(), 'Obfuscation report does not match package: '+key
+                else:assert actual==raw, 'Native/browser source mismatch: '+key
+        assert firefox[relative][0]==native_packages[0]['PlazCode/PlazCode-Extension-Firefox/'+relative][0], 'Standalone Firefox differs from protected native package'
     for relative in ['launch_studio_mcp.py','launch_blender_mcp.py','blender_ops.py']:
-        for files in native_packages:
-            assert files['PlazCode/'+relative][0]==source['PlazCode/'+relative][0], 'Native launcher source mismatch: '+relative
+        for files in native_packages:assert files['PlazCode/'+relative][0]==source['PlazCode/'+relative][0]
 
 def verify_desktop(desktop,mac,package,sha,run_id):
     assert len(desktop)==3 and {d['mode'] for d in desktop}=={'foreground','background','restore'}
@@ -181,8 +206,9 @@ def main():
     check_validation(ROOT/'ci-artifacts')
     base=os.environ['VALIDATED_SHA'];run=load(ROOT/'ci-artifacts/run.json')
     windows=unpack_package(find('PlazCode-1.24.26-development.zip','Windows'));mac=unpack_package(find('PlazCode-macOS-1.24.26-development.zip','macOS'))
+    verify_protected(windows,'windows');verify_protected(mac,'macos')
     for name,value in windows.items():
-        if name.startswith(('PlazCode/core/','PlazCode/providers/','PlazCode/PlazCode-Extension/')):assert mac[name][0]==value[0],name
+        if name.startswith(('PlazCode/core/','PlazCode/providers/','PlazCode/PlazCode-Extension/')) and not name.endswith(('plazcode-installation-integrity.json','production-build.json','plazcode-bootstrap.json')):assert mac[name][0]==value[0],name
     firefox=firefox_text(unpack_package(find('PlazCode-Firefox-1.24.26-development.zip','Windows')))
     other=firefox_text(unpack_package(find('PlazCode-Firefox-1.24.26-development.zip','macOS')))
     assert {n:v[0] for n,v in firefox.items()}=={n:v[0] for n,v in other.items()}
@@ -219,7 +245,7 @@ def main():
     validation=f'''PlazCode {VERSION} — exact-source platform/browser gates{' (quick mode: separate Mac desktop lifetime test skipped)' if quick else ' and packaged macOS desktop lifetime checks'} passed before promotion.
 Validated source: {base}
 Validation run: private build {run['id']}
-Changes: screenshot popup renders decoded image bytes without relying on site image URLs; Plan Mode respects command-specific task approvals; creator HTTP failures have actionable diagnostics; desktop and browser version mismatches are visible; known outdated versions remain red after failed or stale checks. Actual affected Studio captures were not reproduced live.
+Changes: permanent per-tool approval across tasks/chats/AI sites; protected Chromium/Firefox code; signed file manifests and update metadata; native integrity enforcement and automatic legacy layout migration. User skills, notes, settings and offline use remain available. No publisher signing or required account.
 All other features, safeguards and native launch/update behavior are retained. Final native executable and macOS app bytes are reused from validated development artifacts, not rebuilt during publication. Only release notices, checksums and package metadata change.
 Unit tests cover every check path; a browser fixture with the full production core and a mocked PlazCode app covers reconnect, closed app, dropped Studio connection, click-only chat connection and translation. Hosted browser fixtures use a mocked bridge.
 Windows binaries are unsigned. macOS uses ad-hoc signing and is not notarized.
@@ -257,6 +283,7 @@ Checksums and platform evidence are recorded in release-validation-{VERSION}.
         assert b'Deleted Skills' in files['PlazCode/core/skills-ui.js'][0]
     refresh_checksums(source,require_all=False)
     validate(windows,'windows');validate(mac,'macos')
+    verify_protected(windows,'windows');verify_protected(mac,'macos')
     for files in [windows,mac]:verify_locales(files)
     verify_shared_code(source,[windows,mac],firefox)
     assert windows['PlazCode/PlazCode.exe'][0]==windows_executable, 'Native Windows bytes changed during promotion'
@@ -276,6 +303,7 @@ Checksums and platform evidence are recorded in release-validation-{VERSION}.
         feed=load(ROOT/path);feed.update(version=VERSION,desktop_version=VERSION,url='https://raw.githubusercontent.com/stoveez/PlazCode/main/'+byplatform[platform]['file'],sha256=byplatform[platform]['sha256'])
         if platform=='windows':feed['platforms']['macos'].update(url='https://raw.githubusercontent.com/stoveez/PlazCode/main/'+byplatform['macos']['file'],sha256=byplatform['macos']['sha256'])
         write_json(ROOT/path,compact_feed(feed,notes))
+        subprocess.run(['node',str(ROOT/'development/1.24.26/protection.mjs'),'sign-update',str(ROOT/path),platform],check=True)
     import publish_release
     _,body=publish_release.notes(load(ROOT/'latest.json'));(ROOT/f'release-description-{VERSION}.txt').write_text(body)
     # 1.24.26: the public repo keeps its own short README; nothing is prepended here.

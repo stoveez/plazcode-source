@@ -2,7 +2,7 @@
 Does not change release feeds or publish a release.
 """
 from pathlib import Path
-import zipfile,hashlib,platform,plistlib,subprocess,shutil,json
+import zipfile,hashlib,platform,plistlib,subprocess,shutil,json,tempfile,os
 root=Path(__file__).resolve().parents[2];source=root/'build-src-1.24.26/PlazCode';output=root/'artifacts';output.mkdir(exist_ok=True)
 osname=platform.system();baseline=root/('PlazCode-1.23.0.zip' if osname=='Windows' else 'PlazCode-macOS-1.23.0.zip')
 expected='09b0db8e85ef969bd7e1eb60eb26a219bd80ed60e5d221970e1b3af6750e510b' if osname=='Windows' else 'fc004c0416c9be1d84fca9a026f62ca939eec15d294b89ec465f0986641ab21c'
@@ -17,7 +17,7 @@ with zipfile.ZipFile(baseline) as archive:
 package=install/'PlazCode'
 for folder in ['core','providers','PlazCode-Extension']:
  shutil.copytree(source/folder,package/folder,dirs_exist_ok=True)
-for name in ['manifest.json','background.js','popup.js','popup.html','overlay.css','ollama-page.js','launch_studio_mcp.py','launch_blender_mcp.py','SOURCE.txt','Update-PlazCode.bat','Update-PlazCode.ps1','Updater-Progress.cs','blender_ops.py','blender_once.py','blender_once.ps1']:
+for name in ['manifest.json','background.js','protection.js','popup.js','popup.html','overlay.css','ollama-page.js','launch_studio_mcp.py','launch_blender_mcp.py','SOURCE.txt','Update-PlazCode.bat','Update-PlazCode.ps1','Updater-Progress.cs','blender_ops.py','blender_once.py','blender_once.ps1']:
  shutil.copy2(source/name,package/name)
 if osname=='Windows':
  shutil.copy2(source/'agent/target/release/PlazCode.exe',package/'PlazCode.exe')
@@ -51,6 +51,22 @@ assert (package/'PlazCode-Extension/background.js').read_bytes()==(source/'backg
 assert (package/'PlazCode-Extension-Firefox/background.js').read_bytes()==(source/'background.js').read_bytes()
 for line in (sums.read_text().splitlines() if sums.exists() else []):
  digest,item=line.split(None,1);assert hashlib.sha256((package/item).read_bytes()).hexdigest()==digest,item+' checksum'
+# Protect precisely the files that ship, after both browser variants and the native app exist.
+# The running binary must contain the same pinned key/channel used to sign these files.
+native=package/('PlazCode.exe' if osname=='Windows' else 'PlazCode.app/Contents/MacOS/PlazCode')
+info=json.loads(subprocess.check_output([str(native.resolve()),'--protection-info'],text=True))
+channel=os.environ.get('PLAZCODE_PROTECTION_CHANNEL','release')
+assert info['channel']==channel and info['version']=='1.24.26' and len(info['public_key'])==64, 'Native protection is not configured'
+with tempfile.TemporaryDirectory(prefix='plazcode-private-maps-') as maps:
+ subprocess.run(['node',str(Path(__file__).with_name('protection.mjs')),'protect',str(package),maps,str(source),'windows' if osname=='Windows' else 'macos',str(output/f'PlazCode-1.24.26-{osname}-private-maps.encrypted.json')],check=True)
+ subprocess.run(['node',str(Path(__file__).with_name('protection.mjs')),'verify',str(package),info['public_key']],check=True)
+# Keep existing checksum listings truthful after transformation.
+if sums.exists():
+ listed=[line.split(None,1)[1].strip().lstrip('*') for line in sums.read_text().splitlines() if line.strip()]
+ sums.write_text(''.join(hashlib.sha256((package/item).read_bytes()).hexdigest()+'  '+item+'\n' for item in listed if (package/item).is_file()))
+with zipfile.ZipFile(output/'PlazCode-Firefox-1.24.26-development.zip','w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
+ for path in sorted((package/'PlazCode-Extension-Firefox').rglob('*')):
+  if path.is_file():archive.write(path,path.relative_to(package/'PlazCode-Extension-Firefox').as_posix())
 (package/'DEVELOPMENT.txt').write_text('PlazCode 1.24.26 development build. Validation and live-provider/Studio checks remain required before release. This build is not publisher-signed. Existing stable update feeds are unchanged.\n')
 name='PlazCode-1.24.26-development.zip' if osname=='Windows' else 'PlazCode-macOS-1.24.26-development.zip'
 with zipfile.ZipFile(output/name,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
@@ -74,8 +90,8 @@ with zipfile.ZipFile(output/lean_name,'w',zipfile.ZIP_DEFLATED,compresslevel=9) 
 shutil.rmtree(lean_root)
 print(lean_name,(output/lean_name).stat().st_size)
 # Firefox and source are the exact reviewed development source, never old native files.
-subprocess.run(['python',str(source/'release-tools/build-firefox.py'),str(source/'PlazCode-Extension'),str(output/'firefox'),str(output/'PlazCode-Firefox-1.24.26-development.zip')],check=True)
+# The standalone Firefox ZIP above contains the exact protected package bytes.
 with zipfile.ZipFile(output/'PlazCode-source-1.24.26-development.zip','w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
  for path in sorted(source.rglob('*')):
   if path.is_file() and not any(part in ['node_modules','target','__pycache__'] for part in path.parts) and path.name!='PlazCode.exe':archive.write(path,'PlazCode/'+path.relative_to(source).as_posix())
-shutil.rmtree(install);shutil.rmtree(output/'firefox')
+shutil.rmtree(install)

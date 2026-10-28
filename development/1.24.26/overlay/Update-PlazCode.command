@@ -39,7 +39,7 @@ stage=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/PlazCode-update.XXXXXX")
 backup="$stage/backup";mkdir -p "$backup"
 /usr/bin/ditto -x -k "$zip" "$stage/extracted"
 source="$stage/extracted/PlazCode"
-if [[ "${7:-}" == signed || -f "$root/plazcode-integrity.json" ]];then
+if [[ "${7:-}" == signed || -f "$root/PlazCode-Extension/plazcode-installation-integrity.json" ]];then
  "$root/PlazCode.app/Contents/MacOS/PlazCode" --verify-package "$source" --verify-version "$version"
 fi
 [[ "$(/usr/bin/plutil -extract version raw -o - "$source/PlazCode-Extension/manifest.json")" == "$version" ]]
