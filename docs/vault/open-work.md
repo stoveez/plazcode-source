@@ -78,3 +78,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-28: 40772509288 Windows passed all code, updater and package installation checks, then Defender definition download failed before scan. Connected GitHub job logs confirmed Update-MpSignature error, not a detection. Retry failed Windows job after Mac completes; GitHub rejects rerun while active. No source change or scan bypass.
 
 - 2026-10-28: Mac completed successfully in 40772509288; failed Windows job alone restarted on same a74ae17 source. Scan/update requirements unchanged. Wait for retry, then refresh publication branch/pins and run full packaged Mac gate.
+
+- 2026-10-28: 40772509288 now SUCCESS on a74ae17 after failed Windows job retried; all four gates passed, including Defender. Refresh publication pins/source, run packaged Mac gate, publish and verify live release, then restore Private.

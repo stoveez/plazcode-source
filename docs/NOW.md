@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-28. Work directly on `claude/plazcode-dev`; no helper agents.
 
-**Latest: exact-source Windows retry underway.** Mac completed successfully in 40772509288 on a74ae17, joining browsers/Linux. Only failed Windows job restarted, preserving the same source and all scan requirements; failure was definition-update download, not detection. Wait for its retry to pass before pinning publication.
+**Latest: all four canonical-source gates passed.** Run 40772509288 completed successfully on a74ae17802681c0ec30f5b5b6ee0547bead217d3, including the retried Windows Defender check. Refresh release branch and pins to this source; packaged Mac gate and publication remain required.
+
+**Exact-source Windows retry completed.** Mac completed successfully in 40772509288 on a74ae17, joining browsers/Linux. Only failed Windows job restarted, preserving the same source and all scan requirements; failure was definition-update download, not detection. Wait for its retry to pass before pinning publication.
 
 **Transient Windows Defender definition-update failure.** On a74ae17, run 40772509288 passed browsers/Linux and every Windows build/updater/installation check. Windows stopped at `Update-MpSignature` with definition-update errors BEFORE scanning; no detection occurred. Retry only the failed Windows job after Mac finishes (GitHub rejects rerun while this run is active). Do not skip scans or loosen gates.
 
