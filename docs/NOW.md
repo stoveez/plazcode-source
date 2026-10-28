@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: preserve valid read-only installations.** Integrity checks no longer require writing a migration marker after all files verify. A native regression exercises read-only installation roots; missing markers can restore only authenticated official bytes and never waive verification. Full release checks rerun on this compatibility fix.
+**Latest: release notes finalized in the owner format.** Under 2,000 characters, triple-emphasis section titles, plain language and honest live-testing/signing limits. Publication remains gated on final validation 40715893481 (`d17badc`) and the packaged Mac lifetime check.
+
+**Preserve valid read-only installations.** Integrity checks no longer require writing a migration marker after all files verify. A native regression exercises read-only installation roots; missing markers can restore only authenticated official bytes and never waive verification. Full release checks rerun on this compatibility fix.
 
 **Publication handoff automation prepared.** Each automated source push now includes a fresh NOW; successful publication records milestones/open work and attempts the owner-authorized Private restore. The preceding source validation was `f1e928e` (40715015896); the final run must match this compatibility fix.
 

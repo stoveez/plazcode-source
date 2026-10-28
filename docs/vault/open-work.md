@@ -52,3 +52,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-28: production validation 40715015896 runs on f1e928e. Publication workflow now records NOW with each automated source push and attempts authorized Private restoration after success; source administration may still be denied.
 
 - 2026-10-28: valid read-only installation roots no longer need permission to write a migration marker; native regression added. Every signature/hash check remains required. Final platform/browser validation must rerun on this compatibility change.
+
+- 2026-10-28: final release-note draft follows the four-section owner format and states live-testing limits. Production validation 40715893481 on d17badc is running; packaged Mac gate and publication remain.

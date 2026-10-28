@@ -53,11 +53,15 @@ def record(phase):
             'No app signing or new end-user setup. User data stays editable; original affected live Studio/account setups were not tested.\n', 1)
         p.write_text(text)
         current = f'**Current, {stamp}:** {result} Start with `docs/NOW.md`. Older entries below are historical.'
-        for name in ['docs/HANDOFF.md', 'docs/TASK-BOARD.md']:
+        for name in ['docs/HANDOFF.md', 'docs/TASK-BOARD.md', 'docs/MAINTAINER-GUIDE.md']:
             prepend_current(name, current)
         p = ROOT / 'docs/vault/code-protection.md'
         p.write_text(p.read_text().replace('No protected release has shipped; Windows/Mac and installed-extension gates are still required.',
             f'Protected release 1.24.26 shipped after all platform/browser and packaged Mac gates passed (validation {run}, publication {publish}).'))
+        p = ROOT / 'development/1.24.26/NEXT-UPDATE-PLAN.md'
+        text = p.read_text()
+        text = text.replace('code protection and permanent tool approvals are now in progress.', 'code protection and permanent tool approvals shipped in 1.24.26.')
+        p.write_text(text)
         p = ROOT / 'docs/vault/test-builds.md'
         p.write_text(p.read_text() + f'\n## 1.24.26 ({stamp})\nOwner requested direct release. Full production validation and packaged Mac desktop lifetime gate passed; validated bytes were published without rebuilding. No separate test zips were delivered.\n')
 
