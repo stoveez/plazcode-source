@@ -132,12 +132,23 @@ fn bootstrap_legacy(root: &Path, key: &[u8], version: &str, platform: &str, chan
 pub fn platform() -> &'static str {
     if cfg!(windows) {"windows"} else if cfg!(target_os="macos") {"macos"} else {"linux"}
 }
+fn verify_running_executable(executable:&Path,value:&Files,platform:&str)->Result<()> {
+    let name=match platform {"windows"=>"PlazCode.exe","macos"=>"PlazCode.app/Contents/MacOS/PlazCode",_=>"PlazCode"};
+    let expected=value.files.get(name).context("Native fingerprint missing")?;
+    let parent=executable.parent().context("Executable parent missing")?;
+    let filename=executable.file_name().and_then(|s|s.to_str()).context("Executable filename missing")?;
+    hash_file(parent,filename,expected)
+}
 pub fn verify_package(root: &Path, version: &str) -> Result<()> {
     let key=public_key()?.context("Signed-package verification requires a configured public key")?;
     verify_tree_with(root,&key,version,platform(),channel()).context(RECOVERY)
 }
 pub fn verify_installation(root: &Path) -> Result<()> {
     let Some(key)=public_key()? else {return Ok(());}; // Debug builds only.
+    // macOS can resolve a recorded root from a translocated/copied app. Authenticate the running
+    // executable itself as well, so an untouched installation cannot vouch for a modified copy.
+    let value=manifest(root,&key,env!("CARGO_PKG_VERSION"),platform(),channel()).context(RECOVERY)?;
+    verify_running_executable(&std::env::current_exe()?,&value,platform()).context(RECOVERY)?;
     verify_installation_with(root,&key,env!("CARGO_PKG_VERSION"),platform(),channel()).context(RECOVERY)
 }
 fn verify_installation_with(root: &Path,key: &[u8],version: &str,platform: &str,channel: &str)->Result<()> {
@@ -252,6 +263,9 @@ mod tests {
         std::fs::write(root.join("PlazCode-Extension/plazcode-installation-integrity.json"),signed(&key,value.clone())).unwrap();
         let check=||verify_tree_with(&root,key.public_key().as_ref(),"1.24.26","linux","release");
         assert!(check().is_ok());
+        let value=manifest(&root,key.public_key().as_ref(),"1.24.26","linux","release").unwrap();
+        let copied=root.join("copied-native");std::fs::write(&copied,b"original").unwrap();assert!(verify_running_executable(&copied,&value,"linux").is_ok());
+        std::fs::write(&copied,b"modified").unwrap();assert!(verify_running_executable(&copied,&value,"linux").is_err());
         std::fs::write(root.join("config.json"),b"user edits").unwrap();std::fs::create_dir_all(root.join("skills")).unwrap();std::fs::write(root.join("skills/user.md"),b"editable").unwrap();assert!(check().is_ok());
         assert!(verify_tree_with(&root,key.public_key().as_ref(),"1.24.27","linux","release").is_err());
         assert!(verify_tree_with(&root,key.public_key().as_ref(),"1.24.26","windows","release").is_err());
