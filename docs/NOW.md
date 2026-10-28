@@ -1,16 +1,10 @@
 # NOW
 Updated: 2026-10-28. Work directly on `claude/plazcode-dev`; no helper agents.
 
-**Latest: all four exact-source release gates passed.** Validation 40765879729 completed successfully on `6891f461d09be0832d92c52c12ee71e57958962c`: Windows, universal Mac, Linux and browsers. Both platform updater handoff checks and protected packaging passed. Next: pin this run for the authorized 1.24.26 publication, run packaged Mac lifetime gate, publish and verify live downloads, then restore Private. No separate test-build delivery.
+**Latest: Firefox canonical-byte packaging correction.** All four validation jobs passed on 6891f46 (40765879729), and packaged Mac desktop lifetime/relaunch passed in publication 40771295797. Promotion stopped before public publication because Firefox Windows/Mac artifacts differ: builder used platform-dependent text writes before signing. Firefox manifest/install instructions now use explicit UTF-8 LF bytes before protection. Fresh full exact-source validation is required. Do not normalize already signed artifacts or weaken cross-platform equality.
 
-**Complete browser gate passed on preceding source.** Run 40762506114 on `2f775f0` passed all browser checks including protected workers and languages. Three native jobs continue; updater handoff, packaging and packaged Mac lifetime still must pass. No publication.
+**Publication:** nothing shipped; latest public release remains 1.24.25. Release branch 77e44b7 has OLD validation pins; update only after new validation succeeds, preserving all completed source/packaging checks and full Mac gate. Direct release authorized; no separate test build, no app signing, owner release-note format (1,250 chars).
 
-**Protected-browser fixture race diagnosed and fixed.** Browser-only run 40761757580 exposed `setTimeout is not defined` because Playwright announces worker contexts before browser timer globals exist. Readiness polling now runs in Node; actual extension initialization/signature verification stays mandatory. Full exact-source validation reruns with this fix and the updater debug-fixture correction. Nothing published yet.
+**Scope:** signed program/update checks, conservative browser obfuscation, permanently retained encrypted private decoder maps, permanent per-tool Approve all across tasks/chats/AI sites. No required login/setup/online dependency; user skills/notes/settings editable. Production integrity secret/public key already configured.
 
-**Updater-handoff fixture corrected.** Validation 40715893481 passed browser/Linux and compiled Windows/universal Mac, but both platform handoff fixtures tried feeding released 1.24.25 to unreleased 1.24.26. The new production anti-downgrade guard correctly refused it. The separately compiled debug fixture now uses the current published version; real release binaries, production guards and sources are restored unchanged. Full validation must rerun.
-
-**Scope:** 1.24.26 signed file/update checks, browser obfuscation, durable encrypted private decoder maps and permanent per-tool approvals across tasks/chats/AI sites. No app signing, required login, extra user setup or separate test-build delivery. User data/offline use retained. Production integrity secret and public key configured; never ask for the key.
-
-**Release:** not published. Final notes use the owner format (1,250 characters). Publication pins remain unset until exact-source validation passes; packaged Mac lifetime gate also required.
-
-**Visibility:** source remains PUBLIC during the authorized build window. Restore Private after publication; owner authorized automatic restore, but administration API previously returned 403. PC vault is not linked. See [open work](vault/open-work.md) and [code protection](vault/code-protection.md).
+**Visibility:** source PUBLIC during authorized build/publish window. Restore Private immediately after publication; owner authorized automatic changes, but API administration may return 403. The PC vault folder is not linked. See [open work](vault/open-work.md) and [code protection](vault/code-protection.md).

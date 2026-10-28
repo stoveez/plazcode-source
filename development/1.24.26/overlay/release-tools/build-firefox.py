@@ -39,8 +39,8 @@ def build(extension, destination, archive):
         shutil.copytree(extension / name, destination / name)
     for name in ['LICENSE', 'SOURCE.txt', 'BRANDING-NOTICE.txt']:
         shutil.copy2(extension.parent / name, destination / name)
-    (destination / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
-    (destination / 'FIREFOX-INSTALL.txt').write_text(
+    (destination / 'manifest.json').write_bytes((json.dumps(manifest, indent=2) + '\n').encode('utf-8'))
+    (destination / 'FIREFOX-INSTALL.txt').write_bytes((
         'PlazCode ' + manifest['version'] + ' for Firefox 140 or newer\n\n'
         '1. Update and open the PlazCode desktop app first.\n'
         '2. Open about:debugging#/runtime/this-firefox in Firefox.\n'
@@ -55,7 +55,7 @@ def build(extension, destination, archive):
         'status to the local desktop bridge, and requested prompts, feedback and media to the '
         'selected AI service. These are needed for chat control, tools, memory and continuation. '
         'Use only trusted AI services and review tool permissions. No PlazCode telemetry service is added.\n'
-    )
+    ).encode('utf-8'))
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as output:
         for path in sorted(destination.rglob('*')):
             if path.is_file():

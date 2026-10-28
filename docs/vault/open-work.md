@@ -72,3 +72,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-28: Windows handoff annotation in 40762506114 exposed a fixture Cargo.lock match using executable name instead of package name. Corrected to plazcode-agent and verified one match in actual manifest/lockfile. Browser/Linux passed; full new-source gates remain required.
 
 - 2026-10-28: all four exact-source jobs passed in 40765879729 on 6891f46, including Windows/Mac updater handoff and production protected packages. Publication, packaged Mac lifetime gate, live verification and Private restoration remain.
+
+- 2026-10-28: 40765879729 all four gates green; packaged Mac gate green in publish 40771295797. Promotion blocked BEFORE publication on Firefox Windows/Mac byte inequality. Builder now writes canonical UTF-8 LF manifest/instructions before signing. Fresh full validation required; no signed bytes altered or equality checks weakened.
