@@ -10,6 +10,6 @@ for(const file of ['popup.js','background.js','core/main.js'])assert(fs.readFile
 for(const file of ['providers/clickup.js','core/main.js','background.js','manifest.json'])assert.equal(fs.readFileSync(file,'utf8'),fs.readFileSync('PlazCode-Extension/'+file,'utf8'),file+' extension copy');
 const code=fs.readFileSync('providers/clickup.js','utf8');assert(code.includes('authoritativeSendResult:true'));assert(code.includes('compactStartup:true'));assert(code.includes('sendRetryable:()=>false'));assert(code.includes('barOutside:true'));
 assert(!code.includes('90141771095'),'no private workspace identifier in shipped source');
-assert.equal(manifest.version,'1.24.26');assert.match(fs.readFileSync('agent/Cargo.toml','utf8'),/version = "1\.24\.25"/);
+assert.equal(manifest.version,'1.24.26');assert.match(fs.readFileSync('agent/Cargo.toml','utf8'),/version = "1\.24\.26"/);
 const browser=fs.readFileSync('release-tools/test-clickup-browser.cjs','utf8');assert(browser.includes('firefox'));assert(browser.includes('fixture.startSession()'));assert(browser.includes('fixture.agentLoop(base)'));
 console.log('PASS ClickUp manifest, popup, background, provider/core wiring, extension parity, private-workspace hygiene and browser fixture coverage');

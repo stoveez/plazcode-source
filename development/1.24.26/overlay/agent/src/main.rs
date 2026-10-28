@@ -998,8 +998,14 @@ fn main() {
     }));
     if let Err(e) = start() {
         let msg = format!("{e:#}");
+        #[cfg(any(windows,target_os="macos"))]
+        let verification_mode=std::env::args().any(|arg|matches!(arg.as_str(),"--verify-package"|"--protection-info"));
         #[cfg(windows)]
-        win_alert("PlazCode Agent failed to start", &msg);
+        if !verification_mode {win_alert("PlazCode Agent failed to start", &msg);}
+        #[cfg(target_os="macos")]
+        if !verification_mode {
+            let _=std::process::Command::new("/usr/bin/osascript").args(["-e","on run argv","-e","display alert \"PlazCode could not start\" message (item 1 of argv) as critical","-e","end run",&msg]).status();
+        }
         eprintln!("PlazCode Agent failed to start: {msg}");
         std::process::exit(1);
     }
@@ -1307,7 +1313,7 @@ fn is_work_request(method: &axum::http::Method, path: &str) -> bool {
         "/api/desktop/restart" | "/api/desktop/clear-logs" | "/api/connect" | "/api/disconnect" | "/api/pair" | "/api/local-full" | "/api/mcp/toggle" | "/api/debug/browser-log")
 }
 async fn track_tool_activity(request: axum::extract::Request, next: axum::middleware::Next) -> axum::response::Response {
-    if is_work_request(request.method(),request.uri().path()) {
+    if is_work_request(request.method(),request.uri().path()) && request.uri().path()!="/api/stop" {
         if integrity::check_work().await.is_err() {
             return (axum::http::StatusCode::CONFLICT,Json(serde_json::json!({"error":integrity::RECOVERY}))).into_response();
         }
@@ -2258,7 +2264,7 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
         if let tokio_tungstenite::tungstenite::Message::Text(txt) = msg {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(&txt) {
                 let typ = val.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                if !matches!(typ,"ping"|"status"|"get_status"|"list_tools") && integrity::check_work().await.is_err() {break;}
+                if !matches!(typ,"ping"|"status"|"get_status"|"list_tools"|"stop"|"cancel") && integrity::check_work().await.is_err() {break;}
                 let id = val.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
                 match typ {
                     "ping" => { send_json(&out_tx, serde_json::json!({"type":"pong","id":id})); },

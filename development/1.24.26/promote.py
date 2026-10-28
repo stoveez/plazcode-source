@@ -34,6 +34,7 @@ SOURCE_INPUTS=(
     'development/1.24.26/protection.mjs',
     'development/1.24.26/test-protection.mjs',
     'development/1.24.26/test-protection-browser.mjs',
+    'development/1.24.26/test-release-verifier.mjs',
     'development/1.24.26/build-locales.py',
     'development/1.24.26/preferences-test',
     'development/1.24.26/test-locales.py',

@@ -60,6 +60,7 @@ assert info['channel']==channel and info['version']=='1.24.26' and len(info['pub
 with tempfile.TemporaryDirectory(prefix='plazcode-private-maps-') as maps:
  subprocess.run(['node',str(Path(__file__).with_name('protection.mjs')),'protect',str(package),maps,str(source),'windows' if osname=='Windows' else 'macos',str(output/f'PlazCode-1.24.26-{osname}-private-maps.encrypted.json')],check=True)
  subprocess.run(['node',str(Path(__file__).with_name('protection.mjs')),'verify',str(package),info['public_key']],check=True)
+ subprocess.run([str(native.resolve()),'--verify-package',str(package.resolve()),'--verify-version','1.24.26'],check=True)
 # Keep existing checksum listings truthful after transformation.
 if sums.exists():
  listed=[line.split(None,1)[1].strip().lstrip('*') for line in sums.read_text().splitlines() if line.strip()]

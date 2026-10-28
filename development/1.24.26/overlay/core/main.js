@@ -255,7 +255,7 @@
   let alwaysList = [];
   const alwaysReady = new Promise((resolve) => {
     let loaded = false;
-    const finish = (r) => { if (loaded) return; loaded = true; alwaysList = PlazCodeApproval.alwaysNormalize(r && r.rsAlwaysApprove); resolve(); };
+    const finish = (r) => { if (loaded) return; loaded = true; alwaysList = typeof PlazCodeApproval !== "undefined" ? PlazCodeApproval.alwaysNormalize(r && r.rsAlwaysApprove) : []; resolve(); };
     try { const result = chrome.storage.local.get("rsAlwaysApprove", finish); if (result && typeof result.then === "function") result.then(finish, () => finish()); } catch { finish(); }
   });
   const alwaysHas = (tool) => { try { return PlazCodeApproval.alwaysHas(alwaysList, tool); } catch { return false; } };

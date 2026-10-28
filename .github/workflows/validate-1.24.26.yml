@@ -188,7 +188,7 @@ jobs:
       - name: Configure public release trust or isolated validation keys
         shell: bash
         run: |
-          if [ ! -s development/1.24.26/overlay/release-public-key.hex ] || ! grep -q '[a-f0-9]' development/1.24.26/overlay/release-public-key.hex || [ "${{ github.event_name }}" = pull_request ]; then
+          if [ "${{ runner.os }}" = Linux ] || [ ! -s development/1.24.26/overlay/release-public-key.hex ] || ! grep -q '[a-f0-9]' development/1.24.26/overlay/release-public-key.hex || [ "${{ github.event_name }}" = pull_request ]; then
             node development/1.24.26/protection.mjs validation-key "$RUNNER_TEMP/plazcode-validation-key"
             echo "PLAZCODE_PROTECTION_CHANNEL=validation" >> "$GITHUB_ENV"
             echo "PLAZCODE_RELEASE_PUBLIC_KEY=$(cat "$RUNNER_TEMP/plazcode-validation-key/public.hex")" >> "$GITHUB_ENV"
@@ -256,6 +256,9 @@ jobs:
       - name: Build native executable
         run: cargo +stable build --release --locked --manifest-path agent/Cargo.toml
         working-directory: build-src-1.24.26/PlazCode
+      - name: Optimized native signed-file and authenticated-work integration
+        if: runner.os == 'Linux'
+        run: node development/1.24.26/test-release-verifier.mjs
       - name: Windows PE and updater regressions
         if: runner.os == 'Windows'
         shell: pwsh

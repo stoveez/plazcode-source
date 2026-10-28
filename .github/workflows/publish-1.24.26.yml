@@ -119,11 +119,11 @@ jobs:
         if: ${{ env.PLAZCODE_QUICK != '1' }}
         run: gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name plazcode-1.24.26-mac-desktop-validation --dir ci-artifacts/mac-desktop
       - name: Assemble immutable archives and compact feeds
+        env:
+          PLAZCODE_RELEASE_SIGNING_KEY: ${{ secrets.PLAZCODE_RELEASE_SIGNING_KEY }}
         run: |
           python3 development/1.24.26/test-promote-permissions.py
           python3 development/1.24.26/promote.py
-        env:
-          PLAZCODE_RELEASE_SIGNING_KEY: ${{ secrets.PLAZCODE_RELEASE_SIGNING_KEY }}
           python3 test-release-feed.py
           python3 test-release-notes.py
           python3 test-release-archives.py
@@ -134,7 +134,7 @@ jobs:
           git config user.name 'stoveez'
           git config user.email ''
           git add PlazCode-source-1.24.26.zip latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.24.26.txt release-validation-1.24.26
-          git commit -m 'Release PlazCode 1.24.26: Screenshots approvals and updates'
+          git commit -m 'Release PlazCode 1.24.26: Protected files and remembered approvals'
           git push origin HEAD:refs/heads/release-record-1.24.26
       - name: Publish downloads and update feeds to the public repo (no source)
         env:

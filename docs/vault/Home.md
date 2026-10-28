@@ -1,6 +1,6 @@
 ---
 title: Home
-updated: 2026-10-26
+updated: 2026-10-28
 ---
 # PlazCode vault: start here
 
