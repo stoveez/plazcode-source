@@ -44,3 +44,5 @@ Release: see [releasing](releasing.md).
 - Antivirus: after 1.24.23 ships, the owner can report the new download as a false positive to Google (https://safebrowsing.google.com/safebrowsing/report_error/) and Microsoft (https://www.microsoft.com/wdsi/filesubmission). Code signing (Azure Artifact Signing) is the lasting fix: every new unsigned build starts with no reputation.
 
 - 2026-10-28: public build window is open. Automated integrity-key setup also hit 403 with the publishing token (40705538648); owner must add `PLAZCODE_RELEASE_SIGNING_KEY` once. The public-key-only bootstrap and production gates are ready. No separate test-build delivery.
+
+- 2026-10-28: production integrity key provisioned by the one-time workflow; only its public key is committed. Arrange an external owner key backup securely. Full release validation and publication remain pending.
