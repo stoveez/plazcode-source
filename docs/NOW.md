@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: full hosted browser gate passed.** Production validation 40715893481 on `d17badc` passed its complete browser job: protected Chromium/Firefox, screenshot policies, provider fixtures, languages and interface regressions. Windows/Mac/Linux native jobs are still running; no publication yet.
+**Latest: durable private decoder retention added to publication.** CI artifacts expire, so publication verifies real decryption outside the repo and stores only encrypted maps plus their checksum index in the private release record. Public downloads/source archives never include maps. Publication guard checks passed; final native validation continues unchanged.
+
+**Full hosted browser gate passed.** Production validation 40715893481 on `d17badc` passed its complete browser job: protected Chromium/Firefox, screenshot policies, provider fixtures, languages and interface regressions. Windows/Mac/Linux native jobs are still running; no publication yet.
 
 **Release notes finalized in the owner format.** Under 2,000 characters, triple-emphasis section titles, plain language and honest live-testing/signing limits. Publication remains gated on final validation 40715893481 (`d17badc`) and the packaged Mac lifetime check.
 

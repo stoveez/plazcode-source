@@ -207,6 +207,27 @@ def refresh_checksums(files,require_all=True):
         lines.append(hashlib.sha256(files[item][0]).hexdigest()+'  '+relative+'\n')
     files[name]=(''.join(lines).encode(),mode)
 
+def retain_decoder_maps(evidence):
+    # CI artifacts expire. Keep authenticated ciphertext with the private release record,
+    # never in a public download/source archive; test real decryption outside the repo.
+    pinned=(ROOT/'development/1.24.26/overlay/release-public-key.hex').read_text().strip()
+    records=[]
+    for platform,osname in [('Windows','Windows'),('macOS','Darwin')]:
+        path=find(f'PlazCode-{VERSION}-{osname}-private-maps.encrypted.json',platform)
+        value=load(path)
+        assert set(value)=={'schema','public_key','nonce','tag','ciphertext'} and value['schema']==1 and value['public_key']==pinned, 'Wrong decoder archive trust/format'
+        assert re.fullmatch('[a-f0-9]{24}',value['nonce']) and re.fullmatch('[a-f0-9]{32}',value['tag']), 'Invalid decoder encryption metadata'
+        with tempfile.TemporaryDirectory(prefix='plazcode-private-decoder-check-') as temporary:
+            decoded=Path(temporary)/'maps'
+            subprocess.run(['node',str(ROOT/'development/1.24.26/protection.mjs'),'decrypt-maps',str(path),str(decoded)],check=True)
+            assert any(decoded.rglob('*.map')), 'Empty decoder archive'
+        target=evidence/path.name
+        assert not target.exists(), 'Never overwrite retained decoder maps'
+        shutil.copy2(path,target)
+        raw=target.read_bytes()
+        records.append({'platform':platform,'file':target.name,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()})
+    write_json(evidence/'private-decoder-maps.json',{'version':VERSION,'validated_sha':os.environ['VALIDATED_SHA'],'validation_run':os.environ['VALIDATION_RUN'],'files':records})
+
 def main():
     check_validation(ROOT/'ci-artifacts')
     base=os.environ['VALIDATED_SHA'];run=load(ROOT/'ci-artifacts/run.json')
@@ -315,6 +336,7 @@ Checksums and platform evidence are recorded in release-validation-{VERSION}.
     _,body=publish_release.notes(load(ROOT/'latest.json'));(ROOT/f'release-description-{VERSION}.txt').write_text(body)
     # 1.24.26: the public repo keeps its own short README; nothing is prepended here.
     evidence=ROOT/f'release-validation-{VERSION}';evidence.mkdir(exist_ok=True)
+    retain_decoder_maps(evidence)
     for name in ['run.json','jobs.json']:shutil.copy2(ROOT/'ci-artifacts'/name,evidence/name)
     for name in ['defender-result.txt','defender-package-sha256.txt','defender-engine.json','defender-executable-sha256.txt','windows-signature.txt']:
         matches=list((ROOT/'ci-artifacts/plazcode-1.24.26-Windows-validation').rglob(name))
