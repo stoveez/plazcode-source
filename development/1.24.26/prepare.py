@@ -23,6 +23,6 @@ for name in REMOVED:
  if path.is_dir():shutil.rmtree(path)
  else:path.unlink(missing_ok=True)
 for folder in ['core','providers']:shutil.copytree(source/folder,source/'PlazCode-Extension'/folder,dirs_exist_ok=True)
-for name in ['manifest.json','background.js','popup.js','popup.html','overlay.css','blender_ops.py','blender_once.py','blender_once.ps1','SOURCE.txt']:shutil.copy2(source/name,source/'PlazCode-Extension'/name)
+for name in ['manifest.json','background.js','protection.js','popup.js','popup.html','overlay.css','blender_ops.py','blender_once.py','blender_once.ps1','SOURCE.txt']:shutil.copy2(source/name,source/'PlazCode-Extension'/name)
 assert json.loads((source/'manifest.json').read_text())['version']=='1.24.26'
 print(source)

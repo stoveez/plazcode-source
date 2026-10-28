@@ -84,6 +84,17 @@ END
 
 fn main() {
     let root = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
+    let profile=env::var("PROFILE").unwrap_or_default();
+    let channel=env::var("PLAZCODE_PROTECTION_CHANNEL").unwrap_or_else(|_| "release".into());
+    let pinned=std::fs::read_to_string(root.join("../release-public-key.hex")).expect("release public key file");
+    let public=if channel=="validation" {env::var("PLAZCODE_RELEASE_PUBLIC_KEY").unwrap_or_default()} else {pinned.trim().to_owned()};
+    assert!(matches!(channel.as_str(),"release"|"validation"), "invalid protection channel");
+    if profile=="release" {assert!(public.len()==64 && public.bytes().all(|c|c.is_ascii_hexdigit()), "Configure the production release public key, or use an explicit validation key for non-production checks");}
+    println!("cargo:rustc-env=PLAZCODE_RELEASE_PUBLIC_KEY={public}");
+    println!("cargo:rustc-env=PLAZCODE_PROTECTION_CHANNEL={channel}");
+    println!("cargo:rerun-if-changed=../release-public-key.hex");
+    println!("cargo:rerun-if-env-changed=PLAZCODE_RELEASE_PUBLIC_KEY");
+    println!("cargo:rerun-if-env-changed=PLAZCODE_PROTECTION_CHANNEL");
     windows_icon(&root);
     println!("cargo:rerun-if-changed=assets/plazcode.ico");
     println!("cargo:rerun-if-changed=assets/plazcode.png");

@@ -7,6 +7,8 @@
 // Contract with content.js: every sendMessage ALWAYS gets a response object,
 // even when the bridge is offline. The agentic loop must never hang waiting.
 
+if (typeof importScripts === "function") importScripts("protection.js");
+const protectionCheck = () => typeof PlazCodeIntegrity !== "undefined" ? PlazCodeIntegrity.check() : Promise.resolve();
 const PAIRING_KEY = "plazcode-pairing-key";
 let fullSyncedOnce = false;
 let pairingKey = "";
@@ -16,6 +18,7 @@ const pairingReady = chrome.storage.local.get(PAIRING_KEY).then((value) => {
   pairingKey = value[PAIRING_KEY] || "";
 }).catch(() => {});
 async function ensurePairing(force = false) {
+  await protectionCheck();
   await pairingReady;
   if (pairingInFlight) return pairingInFlight;
   if (!force && /^[a-f0-9]{64}$/i.test(pairingKey)) return pairingKey;

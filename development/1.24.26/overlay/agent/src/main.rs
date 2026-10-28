@@ -70,6 +70,7 @@ mod workspace;
 mod safety;
 mod engine_tools;
 mod security;
+mod integrity;
 mod preferences;
 mod memory;
 mod templates;
@@ -121,6 +122,12 @@ fn win_alert(title: &str, msg: &str) {
 #[derive(Parser, Debug)]
 #[command(name = "plazcode-agent", version = env!("CARGO_PKG_VERSION"), about = "PlazCode Native Agent — Roblox Studio MCP + AgentScript")]
 struct Args {
+    #[arg(long, hide = true)]
+    protection_info: bool,
+    #[arg(long, hide = true)]
+    verify_package: Option<PathBuf>,
+    #[arg(long, hide = true)]
+    verify_version: Option<String>,
     #[arg(long, help = "Run without the status window (for autostart/background use)")]
     headless: bool,
     #[arg(long, help = "Open the desktop in the background after an automatic update")]
@@ -1001,10 +1008,19 @@ fn main() {
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
     let args = Arc::new(Args::parse());
+    if args.protection_info {
+        let key=integrity::public_key()?.unwrap_or_default().iter().map(|b|format!("{b:02x}")).collect::<String>();
+        println!("{}",serde_json::json!({"public_key":key,"channel":integrity::channel(),"version":env!("CARGO_PKG_VERSION")}));
+        return Ok(());
+    }
+    if let Some(root)=&args.verify_package {
+        return integrity::verify_package(root,args.verify_version.as_deref().unwrap_or(env!("CARGO_PKG_VERSION")));
+    }
     #[cfg(target_os="macos")]
     platform::prepare_application_path();
     #[cfg(target_os="macos")]
     platform::remember_installation_root();
+    integrity::verify_installation(&platform::installation_root())?;
     std::env::set_current_dir(platform::installation_root())?;
     let addr: SocketAddr = args.roblox_addr.parse().unwrap_or_else(|_| SocketAddr::from(([127, 0, 0, 1], 3000)));
     anyhow::ensure!(addr.ip().is_loopback(), "The bridge must bind to a loopback address");
@@ -1291,6 +1307,11 @@ fn is_work_request(method: &axum::http::Method, path: &str) -> bool {
         "/api/desktop/restart" | "/api/desktop/clear-logs" | "/api/connect" | "/api/disconnect" | "/api/pair" | "/api/local-full" | "/api/mcp/toggle" | "/api/debug/browser-log")
 }
 async fn track_tool_activity(request: axum::extract::Request, next: axum::middleware::Next) -> axum::response::Response {
+    if is_work_request(request.method(),request.uri().path()) {
+        if integrity::check_work().await.is_err() {
+            return (axum::http::StatusCode::CONFLICT,Json(serde_json::json!({"error":integrity::RECOVERY}))).into_response();
+        }
+    }
     let _activity = is_work_request(request.method(), request.uri().path()).then(updater::ActivityGuard::enter);
     next.run(request).await
 }
@@ -2120,6 +2141,7 @@ async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
         if let axum::extract::ws::Message::Text(txt) = msg {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(&txt) {
                 if val.get("code").is_some() {
+                    if integrity::check_work().await.is_err() {break;}
                     let engine = val.get("engine").and_then(|v| v.as_str()).unwrap_or("roblox").to_string();
                     let payload = Payload{ id: val.get("id").and_then(|v| v.as_str()).unwrap_or("p-1").to_string(), target: engine.clone(), code: val.get("code").and_then(|v| v.as_str()).unwrap_or("").to_string(), language: "luau".into(), meta: val.clone()};
                     state.roblox_queue.lock().await.push_back(payload);
@@ -2236,6 +2258,7 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
         if let tokio_tungstenite::tungstenite::Message::Text(txt) = msg {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(&txt) {
                 let typ = val.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                if !matches!(typ,"ping"|"status"|"get_status"|"list_tools") && integrity::check_work().await.is_err() {break;}
                 let id = val.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
                 match typ {
                     "ping" => { send_json(&out_tx, serde_json::json!({"type":"pong","id":id})); },
