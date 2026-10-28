@@ -1,7 +1,7 @@
 # NOW
 Updated: 2026-10-28. Work directly on `claude/plazcode-dev`; no helper agents.
 
-**Latest: WIP updater fixture package-name correction.** Run 40762506114 passed browser/Linux; Windows reached the corrected handoff fixture but its Cargo.lock rewrite matched the executable name instead of package name `plazcode-agent`. The match is corrected and checked against both actual source files locally. Full validation must rerun; no release.
+**Latest: all four exact-source release gates passed.** Validation 40765879729 completed successfully on `6891f461d09be0832d92c52c12ee71e57958962c`: Windows, universal Mac, Linux and browsers. Both platform updater handoff checks and protected packaging passed. Next: pin this run for the authorized 1.24.26 publication, run packaged Mac lifetime gate, publish and verify live downloads, then restore Private. No separate test-build delivery.
 
 **Complete browser gate passed on preceding source.** Run 40762506114 on `2f775f0` passed all browser checks including protected workers and languages. Three native jobs continue; updater handoff, packaging and packaged Mac lifetime still must pass. No publication.
 
