@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-28. Work directly on `claude/plazcode-dev`; no helper agents.
 
-**Latest: transient Windows Defender definition-update failure.** On a74ae17, run 40772509288 passed browsers/Linux and every Windows build/updater/installation check. Windows stopped at `Update-MpSignature` with definition-update errors BEFORE scanning; no detection occurred. Retry only the failed Windows job after Mac finishes (GitHub rejects rerun while this run is active). Do not skip scans or loosen gates.
+**Latest: exact-source Windows retry underway.** Mac completed successfully in 40772509288 on a74ae17, joining browsers/Linux. Only failed Windows job restarted, preserving the same source and all scan requirements; failure was definition-update download, not detection. Wait for its retry to pass before pinning publication.
+
+**Transient Windows Defender definition-update failure.** On a74ae17, run 40772509288 passed browsers/Linux and every Windows build/updater/installation check. Windows stopped at `Update-MpSignature` with definition-update errors BEFORE scanning; no detection occurred. Retry only the failed Windows job after Mac finishes (GitHub rejects rerun while this run is active). Do not skip scans or loosen gates.
 
 **Firefox canonical-byte packaging correction.** All four validation jobs passed on 6891f46 (40765879729), and packaged Mac desktop lifetime/relaunch passed in publication 40771295797. Promotion stopped before public publication because Firefox Windows/Mac artifacts differ: builder used platform-dependent text writes before signing. Firefox manifest/install instructions now use explicit UTF-8 LF bytes before protection. Fresh full exact-source validation is required. Do not normalize already signed artifacts or weaken cross-platform equality.
 
