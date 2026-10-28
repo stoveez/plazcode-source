@@ -135,6 +135,7 @@ for name,value in shared.items():
  if relative.startswith(('core/','providers/')):
   firefox[relative]=value
   for prefix in ['PlazCode/PlazCode-Extension/','PlazCode/PlazCode-Extension-Firefox/']:native[prefix+relative]=value
+native['PlazCode/PlazCode-Extension/production-build.json']=(json.dumps({'channel':'release','public_key':'a'*64,'files':{}}).encode(),mode)
 promotion.verify_shared_code(shared,[native,dict(native)],firefox)
 bad=dict(native);bad['PlazCode/PlazCode-Extension-Firefox/providers/clickup.js']=(b'stale composer',mode)
 rejected(promotion.verify_shared_code,shared,[bad],firefox)

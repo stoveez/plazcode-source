@@ -55,24 +55,33 @@ if [[ "$mode" == background ]];then /usr/bin/osascript -e 'display notification 
 /bin/kill -TERM "$pid"
 for ((attempt=0;attempt<100;attempt++));do if ! /bin/kill -0 "$pid" 2>/dev/null;then break;fi;/bin/sleep .1;done
 if /bin/kill -0 "$pid" 2>/dev/null;then echo 'PlazCode did not exit. Installation unchanged.' >&2;exit 6;fi
+# Track every owned replacement, including root helpers, so rollback restores a coherent signed layout.
+: > "$stage/installed-list"
 rollback(){
- for name in PlazCode.app PlazCode-Extension PlazCode-Extension-Firefox core providers;do
-  if [[ -e "$backup/$name" ]];then
-   if [[ -e "$root/$name" ]];then /bin/mv "$root/$name" "$stage/failed-$name";fi
-   /bin/mv "$backup/$name" "$root/$name"
-  fi
- done
+ while IFS= read -r name;do
+  if [[ -e "$root/$name" ]];then /bin/mv "$root/$name" "$stage/failed-$name";fi
+  if [[ -e "$backup/$name" ]];then /bin/mv "$backup/$name" "$root/$name";fi
+ done < "$stage/installed-list"
  relaunch || true
  echo "Update failed; restored installation. Diagnostic files: $stage" >&2
 }
-trap rollback ERR
-for name in PlazCode.app PlazCode-Extension PlazCode-Extension-Firefox core providers;do
+install_owned(){
+ local name="$1"
+ [[ -e "$source/$name" ]] || return 0
  [[ ! -e "$root/$name" ]] || /bin/mv "$root/$name" "$backup/$name"
+ echo "$name" >> "$stage/installed-list"
  /bin/mv "$source/$name" "$root/$name"
-done
-# Only owned launchers/docs are refreshed; settings, MCP configuration and user data are preserved.
-for name in MacOS_Setup.command Start-PlazCode.command Update-PlazCode.command Configure-MacOS-Updates.command UPDATE.txt README.md release-notes.json plazcode-integrity.json plazcode-extension-integrity.json protection.js manifest.json background.js popup.js popup.html overlay.css ollama-page.js;do
- if [[ -f "$source/$name" ]];then /bin/cp "$source/$name" "$root/$name";fi
+}
+trap rollback ERR
+for name in PlazCode.app PlazCode-Extension PlazCode-Extension-Firefox core providers runtime macos ui agent;do install_owned "$name";done
+# Refresh only program helpers and release documents. User settings, skills, notes and caches stay in place.
+for candidate in "$source"/*;do
+ [[ -f "$candidate" ]] || continue
+ name="${candidate##*/}"
+ case "$name" in
+  *.js|*.cjs|*.py|*.ps1|*.cs|*.command|*.cmd|*.bat|*.dll|manifest.json|overlay.css|popup.html|ollama.html|icon.png|plazcode-extension-integrity.json|UPDATE.txt|README.md|release-notes.json)
+   install_owned "$name";;
+ esac
 done
 /bin/chmod 755 "$root/PlazCode.app/Contents/MacOS/PlazCode" "$root/Start-PlazCode.command" "$root/MacOS_Setup.command" "$root/Update-PlazCode.command"
 /bin/bash "$root/Configure-MacOS-Updates.command"

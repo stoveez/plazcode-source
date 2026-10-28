@@ -3,8 +3,48 @@
   "title": "Remembered approvals and protected program files",
   "summary": "Approve all remembers your choice across tasks, chats and AI sites. Program files and future updates are checked for changes automatically.",
   "added": [],
-  "improved": ["Program files are protected with signed checks and less readable browser code, without a new login, setup step or internet requirement."],
-  "fixed": ["Approve all remembers that tool type until you remove it under Safety > Always approved."],
-  "notes": ["Your own skills, notes and settings stay editable. Reload the extension and refresh AI tabs after the complete update.", "Windows has no publisher signature. macOS keeps its existing local signature and is not notarized."],
-  "github": {"summary": "**Remember approvals across chats and check program files automatically.**", "added": [], "improved": ["Program files and future updates are checked for changes. No new login or setup steps; offline use stays available."], "fixed": ["Approve all remembers that tool type across tasks, chats and AI sites. Remove it in Safety to be asked again."], "notes": ["Validation is still in progress. No publisher signing; user skills, notes and settings stay editable."]}
+  "improved": [
+    "Program files are protected with signed checks and less readable browser code, without a new login, setup step or internet requirement."
+  ],
+  "fixed": [
+    "Approve all remembers that tool type until you remove it under Safety > Always approved."
+  ],
+  "notes": [
+    "Your own skills, notes and settings stay editable. Reload the extension and refresh AI tabs after the complete update.",
+    "The Windows app is unsigned and the Mac app is not notarized."
+  ],
+  "github": {
+    "summary": "**Remember approvals across chats and check program files automatically.**",
+    "added": [],
+    "improved": [
+      "Program files and future updates are checked for changes. No new login or setup steps; offline use stays available."
+    ],
+    "fixed": [
+      "Approve all remembers that tool type across tasks, chats and AI sites. Remove it in Safety to be asked again."
+    ],
+    "notes": [
+      "Validation is still in progress. No publisher signing; user skills, notes and settings stay editable."
+    ],
+    "sections": [
+      {
+        "title": "💡 Improvements",
+        "items": [
+          "Program files and future updates are checked for changes. No new login or setup steps; offline use stays available."
+        ]
+      },
+      {
+        "title": "🛠️ What's fixed",
+        "items": [
+          "Approve all remembers that tool type across tasks, chats and AI sites. Remove it in Safety to be asked again."
+        ]
+      },
+      {
+        "title": "🧪 What was checked",
+        "items": [
+          "Validation is in progress; this update has not shipped.",
+          "Windows is unsigned and Mac is not notarized. Your skills, notes and settings remain editable."
+        ]
+      }
+    ]
+  }
 }

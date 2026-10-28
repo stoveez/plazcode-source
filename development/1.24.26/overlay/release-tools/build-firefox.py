@@ -33,7 +33,7 @@ def build(extension, destination, archive):
     if destination.exists():
         shutil.rmtree(destination)
     destination.mkdir(parents=True)
-    for name in ['background.js', 'popup.js', 'popup.html', 'ollama-page.js', 'overlay.css', 'icon.png']:
+    for name in ['background.js', 'protection.js', 'popup.js', 'popup.html', 'ollama-page.js', 'overlay.css', 'icon.png']:
         shutil.copy2(extension / name, destination / name)
     for name in ['core', 'providers', 'ui']:
         shutil.copytree(extension / name, destination / name)

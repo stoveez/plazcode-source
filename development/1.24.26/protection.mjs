@@ -13,6 +13,10 @@ export const FILE_MANIFEST = 'PlazCode-Extension/plazcode-installation-integrity
 export const BOOTSTRAP = 'PlazCode-Extension/plazcode-bootstrap.json';
 export const EXT_MANIFEST = 'plazcode-extension-integrity.json';
 const here = path.dirname(fileURLToPath(import.meta.url));
+function outside(root, target) {
+  const relative=path.relative(path.resolve(root),path.resolve(target));
+  return relative==='..' || relative.startsWith('..'+path.sep) || path.isAbsolute(relative);
+}
 export const digest = data => createHash('sha256').update(data).digest('hex');
 export function publicHex(key) { return createPublicKey(key).export({format:'der',type:'spki'}).subarray(-32).toString('hex'); }
 function verificationKey(hex) {
@@ -122,8 +126,7 @@ export async function obfuscate(root, maps, sourceRoot, publicKey, channel, key)
 }
 // The CLI provides the private key only in memory; obfuscate does not export it or add it to reports.
 export async function protect(root, maps, sourceRoot, key, channel, platform) {
-  const relative=path.relative(path.resolve(root),path.resolve(maps));
-  if(!relative.startsWith('..') && !path.isAbsolute(relative)) throw new Error('Private decoder maps must be outside the package.');
+  if(!outside(root,maps)) throw new Error('Private decoder maps must be outside the package.');
   const publicKey=publicHex(key);
   {
     const report=await obfuscate(root,maps,sourceRoot,publicKey,channel,key);
@@ -150,6 +153,7 @@ export async function decryptMaps(input,directory,key) {
 }
 async function signingKey() {
   const file=process.env.PLAZCODE_SIGNING_KEY_FILE;
+  if(file && !outside(path.resolve(here,'../..'),file)) throw new Error('Private signing keys must be outside the source repository.');
   const pem=process.env.PLAZCODE_RELEASE_SIGNING_KEY || (file ? await fs.readFile(file,'utf8') : '');
   if(!pem) throw new Error('Missing release signing key. Protected packages cannot be built unsigned.');
   const key=createPrivateKey(pem);
@@ -160,7 +164,7 @@ async function main([command,...args]) {
   if(command==='provision') {
     // Owner runs this on a trusted machine. Keep the backup outside every source/package directory.
     const backup=args[0];
-    if(!backup || !path.isAbsolute(backup) || !path.relative(path.resolve(here,'../..'),backup).startsWith('..')) throw new Error('Supply an absolute private-key backup path outside this repository.');
+    if(!backup || !path.isAbsolute(backup) || !outside(path.resolve(here,'../..'),backup)) throw new Error('Supply an absolute private-key backup path outside this repository.');
     const pinned=(await fs.readFile(path.join(here,'overlay/release-public-key.hex'),'utf8')).trim();
     if(pinned) throw new Error('A production key already exists. Use an explicit key-rotation plan rather than replacing it.');
     const {privateKey,publicKey}=generateKeyPairSync('ed25519');
@@ -172,7 +176,9 @@ async function main([command,...args]) {
     console.log('Release key stored in GitHub Actions; private backup saved at the supplied path. Keep that backup private. Commit only overlay/release-public-key.hex.');return;
   }
   if(command==='validation-key') {
-    const [directory]=args;await fs.mkdir(directory,{recursive:true,mode:0o700});
+    const [directory]=args;
+    if(!directory || !outside(path.resolve(here,'../..'),directory)) throw new Error('Validation keys must stay outside the source repository.');
+    await fs.mkdir(directory,{recursive:true,mode:0o700});
     const {privateKey}=generateKeyPairSync('ed25519');
     await fs.writeFile(path.join(directory,'key.pem'),privateKey.export({format:'pem',type:'pkcs8'}),{mode:0o600});
     await fs.writeFile(path.join(directory,'public.hex'),publicHex(privateKey)+'\n');return;

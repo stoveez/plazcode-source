@@ -253,7 +253,11 @@
   let approvalCancel = null, approvalChain = Promise.resolve(), approvalWaiting = 0;
   // "Always approve": action names the person chose to stop being asked about (rsAlwaysApprove). Plans can never be always-approved.
   let alwaysList = [];
-  const alwaysReady = new Promise((resolve) => { try { chrome.storage.local.get("rsAlwaysApprove", (r) => { alwaysList = PlazCodeApproval.alwaysNormalize(r && r.rsAlwaysApprove); resolve(); }); } catch { resolve(); } });
+  const alwaysReady = new Promise((resolve) => {
+    let loaded = false;
+    const finish = (r) => { if (loaded) return; loaded = true; alwaysList = PlazCodeApproval.alwaysNormalize(r && r.rsAlwaysApprove); resolve(); };
+    try { const result = chrome.storage.local.get("rsAlwaysApprove", finish); if (result && typeof result.then === "function") result.then(finish, () => finish()); } catch { finish(); }
+  });
   const alwaysHas = (tool) => { try { return PlazCodeApproval.alwaysHas(alwaysList, tool); } catch { return false; } };
   const alwaysSet = (next) => { alwaysList = PlazCodeApproval.alwaysNormalize(next); try { chrome.storage.local.set({ rsAlwaysApprove: alwaysList }); } catch {} };
   // One card at a time, first come first served. Never approves by itself: it waits for the person.

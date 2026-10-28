@@ -16,9 +16,11 @@ const {privateKey}=generateKeyPairSync('ed25519');
 try {
   await fs.cp(path.join(source,'PlazCode-Extension'),root,{recursive:true});
   await fs.cp(path.join(source,'PlazCode-Extension'),path.join(root,'PlazCode-Extension'),{recursive:true});
+  for(const name of ['LICENSE','SOURCE.txt','BRANDING-NOTICE.txt']) await fs.copyFile(path.join(source,name),path.join(root,name));
   execFileSync(process.env.PYTHON || 'python3',[path.join(source,'release-tools/build-firefox.py'),path.join(root,'PlazCode-Extension'),path.join(root,'PlazCode-Extension-Firefox'),path.join(temporary,'raw-firefox.zip')]);
   await fs.writeFile(path.join(root,'PlazCode'),'browser-fixture native placeholder');
   await protect(root,path.join(temporary,'private-maps'),source,privateKey,'validation','linux');
+  if(process.env.PLAZCODE_PROTECTION_BROWSER_MODE!=='crypto') {
   const profile=path.join(temporary,'chromium-profile'),ext=path.join(root,'PlazCode-Extension');
   const context=await chromium.launchPersistentContext(profile,{headless:true,channel:'chromium',args:['--disable-extensions-except='+ext,'--load-extension='+ext,'--no-sandbox']});
   try {
@@ -29,6 +31,7 @@ try {
   } finally {await context.close();}
   // The established real-extension fixture checks that the transformed Ultra pack still works.
   execFileSync(process.execPath,[path.join(source,'release-tools/test-ultra-extension-browser.cjs')],{cwd:root,stdio:'inherit',timeout:120000});
+  } else console.log('Installed Chromium extension test not run: explicit crypto-only local mode. CI requires the full extension check.');
   const folder=path.join(root,'PlazCode-Extension-Firefox');
   const server=http.createServer(async(req,res)=>{
     try {
@@ -39,8 +42,10 @@ try {
     } catch {res.writeHead(404).end();}
   });
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-  const browser=await firefox.launch({headless:true});
+  for(const [browserName,launcher] of [['Chromium',chromium],['Firefox',firefox]]) {
+  const browser=await launcher.launch({headless:true,args:browserName==='Chromium'?['--no-sandbox']:[]});
   try {
+    const originalMain=await fs.readFile(path.join(folder,'core/main.js'));
     const page=await browser.newPage(),base='http://127.0.0.1:'+server.address().port+'/';
     async function load() {
       await page.goto(base);await page.evaluate(base=>{globalThis.chrome={runtime:{getURL:name=>base+name,getManifest:()=>({version:'1.24.26'})}};},base);
@@ -50,6 +55,9 @@ try {
     assert.equal(await load(),'verified');
     await fs.appendFile(path.join(folder,'core/main.js'),'\n// modified');
     assert.match(await load(),/official version/);
-    console.log('PASS Firefox: real packaged obfuscated verifier accepts intact files and rejects modified code.');
-  } finally {await browser.close();await new Promise(resolve=>server.close(resolve));}
+    await fs.writeFile(path.join(folder,'core/main.js'),originalMain);
+    console.log('PASS '+browserName+': real packaged obfuscated verifier accepts intact files and rejects modified code.');
+  } finally {await browser.close();}
+  }
+  await new Promise(resolve=>server.close(resolve));
 } finally {await fs.rm(temporary,{recursive:true,force:true});}

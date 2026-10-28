@@ -5,7 +5,7 @@ import os from 'node:os';
 import vm from 'node:vm';
 import {generateKeyPairSync,webcrypto} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {envelope,openEnvelope,publicHex,protect,verifyTree,signInstallation,safePath,FILE_MANIFEST,EXT_MANIFEST} from './protection.mjs';
+import {envelope,openEnvelope,publicHex,protect,verifyTree,signInstallation,encryptMaps,decryptMaps,safePath,FILE_MANIFEST,EXT_MANIFEST} from './protection.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const source=path.resolve(here,'../../build-src-1.24.26/PlazCode');
@@ -34,6 +34,13 @@ try {
   const report=JSON.parse(await fs.readFile(path.join(root,'PlazCode-Extension/production-build.json')));
   assert(report.files['core/main.js'].source_sha256);assert.equal(report.channel,'validation');
   assert((await fs.readdir(maps)).length>0,'decoder maps retained outside package');
+  const encrypted=path.join(directory,'decoder.encrypted.json'),decoded=path.join(directory,'decoded');
+  await encryptMaps(maps,encrypted,privateKey);await decryptMaps(encrypted,decoded,privateKey);
+  assert.equal(await fs.readFile(path.join(decoded,'core/main.js.map'),'utf8'),await fs.readFile(path.join(maps,'core/main.js.map'),'utf8'));
+  await assert.rejects(decryptMaps(encrypted,path.join(directory,'wrong'),other.privateKey),/Wrong decoder key/);
+  const ciphertext=JSON.parse(await fs.readFile(encrypted,'utf8'));const forged=Buffer.from(ciphertext.ciphertext,'base64');forged[0]^=1;ciphertext.ciphertext=forged.toString('base64');await fs.writeFile(encrypted,JSON.stringify(ciphertext));
+  await assert.rejects(decryptMaps(encrypted,path.join(directory,'forged'),privateKey));
+
   assert(!(await fs.readdir(root)).some(n=>n.endsWith('.map')||n.endsWith('.pem')));
   await fs.writeFile(path.join(root,'config.json'),'edited settings');await fs.writeFile(path.join(root,'skills/custom.md'),'edited skill');await verifyTree(root,hex);
   const original=await fs.readFile(path.join(root,'core/main.js'));

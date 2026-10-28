@@ -1,5 +1,5 @@
 //! Offline release integrity. Only a pinned public key is shipped; no browser claim grants trust.
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, io::Read, path::Path};
