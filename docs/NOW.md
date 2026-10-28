@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: durable private decoder retention added to publication.** CI artifacts expire, so publication verifies real decryption outside the repo and stores only encrypted maps plus their checksum index in the private release record. Public downloads/source archives never include maps. Publication guard checks passed; final native validation continues unchanged.
+**Latest: browser and Linux gates passed; decoder recovery checked.** Validation 40715893481 has green browser/Linux jobs; Windows/Mac continue. A real local encrypted-map round trip exercised private-record retention, both platform paths, no raw key/maps in the record and overwrite rejection using isolated ephemeral test trust. Production decryption is additionally required during promotion.
+
+**Durable private decoder retention added to publication.** CI artifacts expire, so publication verifies real decryption outside the repo and stores only encrypted maps plus their checksum index in the private release record. Public downloads/source archives never include maps. Publication guard checks passed; final native validation continues unchanged.
 
 **Full hosted browser gate passed.** Production validation 40715893481 on `d17badc` passed its complete browser job: protected Chromium/Firefox, screenshot policies, provider fixtures, languages and interface regressions. Windows/Mac/Linux native jobs are still running; no publication yet.
 
