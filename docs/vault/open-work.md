@@ -60,3 +60,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-28: publication now retains encrypted per-platform decoder maps in the private release record after checking real decryption outside the repo. This preserves future error decoding after CI artifacts expire; no raw maps or private key enter Git/downloads.
 
 - 2026-10-28: browser and Linux gates passed in 40715893481. Private-record retention also passed actual encrypted-map recovery with isolated ephemeral trust, ciphertext-only persistence and overwrite rejection. Windows/Mac, packaged Mac lifetime gate and publication remain.
+
+- 2026-10-28: 40715893481 passed browser/Linux and both native release builds; Windows/Mac handoff fixtures failed because the published feed is older than the new protected binary. Debug fixture now compiles at the live published version without weakening production anti-downgrade checks. Final validation rerun required; no release yet.
