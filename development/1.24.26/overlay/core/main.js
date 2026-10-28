@@ -253,7 +253,7 @@
   let approvalCancel = null, approvalChain = Promise.resolve(), approvalWaiting = 0;
   // "Always approve": action names the person chose to stop being asked about (rsAlwaysApprove). Plans can never be always-approved.
   let alwaysList = [];
-  try { chrome.storage.local.get("rsAlwaysApprove", (r) => { alwaysList = PlazCodeApproval.alwaysNormalize(r && r.rsAlwaysApprove); }); } catch {}
+  const alwaysReady = new Promise((resolve) => { try { chrome.storage.local.get("rsAlwaysApprove", (r) => { alwaysList = PlazCodeApproval.alwaysNormalize(r && r.rsAlwaysApprove); resolve(); }); } catch { resolve(); } });
   const alwaysHas = (tool) => { try { return PlazCodeApproval.alwaysHas(alwaysList, tool); } catch { return false; } };
   const alwaysSet = (next) => { alwaysList = PlazCodeApproval.alwaysNormalize(next); try { chrome.storage.local.set({ rsAlwaysApprove: alwaysList }); } catch {} };
   // One card at a time, first come first served. Never approves by itself: it waits for the person.
@@ -341,7 +341,7 @@
         const canRepeatAll = !!(info && !info.destructive && call && !opts.failClosed && !opts.plan);
         if (allBtn) {
           allBtn.hidden = !canRepeatAll;
-          if (canRepeatAll) allBtn.textContent = "Approve all “" + PlazCodeApproval.nice(call.tool) + "” for this task";
+          if (canRepeatAll) { allBtn.textContent = "Approve all “" + PlazCodeApproval.nice(call.tool) + "” forever"; allBtn.title = "Remember this action across tasks, chats and AI sites. Remove it under Safety > Always approved."; }
         }
         root.setAttribute("role", "alertdialog");
         root.setAttribute("aria-label", (title && title.textContent) || "Needs your approval");
@@ -374,8 +374,23 @@
         };
         const onAllow = () => done(true);
         const onDeny = () => done(false);
-        const onAll = () => { if (A.stop || (frozen && PlazCodeApproval.freeze(args) !== frozen)) { done(false); return; } try { (A.approveAll = A.approveAll || new Set()).add(String(call.tool)); } catch {} done(true); };
-        const onAlways = () => { try { alwaysSet(PlazCodeApproval.alwaysAdd(alwaysList, call.tool)); } catch {} done(true); try { window.__rsAlwaysChanged && window.__rsAlwaysChanged(String(call.tool)); } catch {} };
+        const onAll = () => onAlways();
+        const onAlways = async () => {
+          if (finished || !call || opts.plan || A.stop || (frozen && PlazCodeApproval.freeze(args) !== frozen)) { done(false); return; }
+          try {
+            await alwaysReady;
+            if (finished || A.stop || (frozen && PlazCodeApproval.freeze(args) !== frozen)) { done(false); return; }
+            const next = PlazCodeApproval.alwaysAdd(alwaysList, call.tool);
+            await chrome.storage.local.set({ rsAlwaysApprove: next });
+            alwaysList = next;
+          } catch {
+            const note = document.getElementById("rs-approve-note");
+            if (note) note.textContent = "Could not save this approval. Try again, or choose Approve for this action only.";
+            return;
+          }
+          done(!A.stop);
+          try { window.__rsAlwaysChanged && window.__rsAlwaysChanged(String(call.tool)); } catch {}
+        };
         const cancel = () => done(false);
         const onChanges = () => done("changes");
         // Esc denies. Enter is never handled here, so typing in the AI site's own box can never approve.
@@ -2902,6 +2917,7 @@ return result`;
     if (safetySettings.readOnly && PlazCodeSafety.isChange(bareName, safetyEngine)) {
       return PlazCodeSafety.readOnlyRefusal(bareName);
     }
+    await alwaysReady;
     const deletes = safetySettings.confirmDelete && PlazCodeSafety.isDelete(bareName, args, safetyEngine);
     if (deletes) {
       // "Always approve" for this action (chosen by the person): no prompt, but the one-shot delete permission is still set.
@@ -2911,7 +2927,7 @@ return result`;
     }
     // Plan Mode: until the person approves a plan, every change asks first. (Deletes have their own prompt above.)
     let planAsked = false;
-    if (!deletes && planOnNow() && !A.planApproved && PlazCodeSafety.isChange(bareName, safetyEngine) && !(A.approveAll && (A.approveAll.has("*") || A.approveAll.has(String(bareName))))) {
+    if (!deletes && planOnNow() && !A.planApproved && !alwaysHas(bareName) && PlazCodeSafety.isChange(bareName, safetyEngine) && !(A.approveAll && (A.approveAll.has("*") || A.approveAll.has(String(bareName))))) {
       const okPlan = await requestApproval(bareName, args, { kicker: "Plan Mode: no approved plan yet", call: { tool: bareName, arguments: args }, engine: safetyEngine, always: false });
       if (!okPlan) return `ERROR in ${bareName}: Plan Mode is on and the user did not approve this change. Write your plan first (Goal, then ordered steps); PlazCode shows it to the user for approval. Do not retry unless the user asks.`;
       planAsked = true;
@@ -4787,7 +4803,7 @@ return result`;
       if (!completed && !recoverSession && cowork.snapshot().pending.length) cowork.pause("The agent stopped before finishing. Check the chat, then resume the queue.");
       try { playSfx(A.stop ? "stop" : (A._sfxErr ? "error" : "done")); A._sfxErr = false; } catch {}
       A.running = false;
-      A.approveAll = null; // "Approve all like this" lasts for one task
+      A.approveAll = null; // Plan approval lasts for one task; saved tool approvals persist.
       A.planApproved = false; // an approved plan covers one task
       activity.sync(false, P.conversationKey(), undefined, {collapse: completed}); syncActivityItems();
       if (!A.pendingToolSettles) A.stop = false;

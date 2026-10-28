@@ -3,7 +3,7 @@ const main = fs.readFileSync('core/main.js','utf8'), bg = fs.readFileSync('backg
 const creator = bg.slice(bg.indexOf('async function creatorResponse('),bg.indexOf('async function refreshProcStatus('));
 const ctx = {Error}; vm.createContext(ctx); vm.runInContext(creator,ctx);
 const planGate = main.slice(main.indexOf('    // Plan Mode: until'), main.indexOf('    // Ask mode:'));
-const gate = new Function('A','bareName','PlazCodeSafety','requestApproval',`return (async()=>{const deletes=false,safetyEngine='studio',args={};const planOnNow=()=>true;${planGate}return 'ran';})()`);
+const gate = new Function('A','bareName','PlazCodeSafety','requestApproval','alwaysHas',`return (async()=>{alwaysHas=alwaysHas||(()=>false);const deletes=false,safetyEngine='studio',args={};const planOnNow=()=>true;${planGate}return 'ran';})()`);
 (async()=>{
   let prompts=0;
   const A={planApproved:false,approveAll:new Set(['execute_luau'])}, safety={isChange:()=>true};
@@ -11,6 +11,7 @@ const gate = new Function('A','bareName','PlazCodeSafety','requestApproval',`ret
   assert.equal(prompts,0,'task approval is honored in Plan Mode');
   await gate(A,'write_file',safety,async()=>{prompts++;return true;}); assert.equal(prompts,1,'other changes still ask');
   A.approveAll=null; await gate(A,'execute_luau',safety,async()=>{prompts++;return true;}); assert.equal(prompts,2,'a new task asks again');
+  await gate(A,'execute_luau',safety,async()=>{prompts++;return true;},tool=>tool==='execute_luau'); assert.equal(prompts,2,'saved approval survives a new task in Plan Mode');
   await assert.rejects(ctx.creatorResponse(new Response('',{status:404})),/does not provide creation previews/);
   await assert.rejects(ctx.creatorResponse(new Response('body too large',{status:413})),/smaller draft/);
   await assert.rejects(ctx.creatorResponse(new Response('',{status:200})),/invalid response/);

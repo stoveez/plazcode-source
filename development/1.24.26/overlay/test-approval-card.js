@@ -29,6 +29,7 @@ const html = markup.slice(0, markup.indexOf("      `;")).trim();
 function page(withMarkup = true) {
   const dom = new JSDOM("<!doctype html><body>" + (withMarkup ? html : "") + '<div id="chip"><span class="rs-chip-dt">patching</span></div><textarea id="site-box"></textarea></body>', { runScripts: "outside-only" });
   const w = dom.window;
+  w.chrome = { storage: { local: { get(k, cb) { cb({}); }, set() { return Promise.resolve(); } } } };
   w.A = { stop: false, toolItem: w.document.getElementById("chip") };
   w.PlazCodeApproval = Approval; w.PlazCodeSafety = Safety; w.PlazCodeToolCards = Cards;
   w.eval(main.slice(start, end) + "\nwindow.requestApproval = requestApproval; window.getCancel = () => approvalCancel;");
@@ -62,8 +63,8 @@ const $ = (w, id) => w.document.getElementById(id);
 
   // Approve all like this
   p = w.requestApproval("multi_edit", args, { call: { tool: "multi_edit", arguments: args }, engine: "studio" }); await tick();
-  assert.equal($(w, "rs-approve-all").hidden, false); assert(/Approve all .Multi edit. for this task/.test($(w, "rs-approve-all").textContent));
-  $(w, "rs-approve-all").click(); assert.equal(await p, true); assert(w.A.approveAll.has("multi_edit"));
+  assert.equal($(w, "rs-approve-all").hidden, false); assert(/Approve all .Multi edit. forever/.test($(w, "rs-approve-all").textContent));
+  $(w, "rs-approve-all").click(); assert.equal(await p, true);
 
   // Esc denies; Esc is ignored while typing in the site's own box
   p = w.requestApproval("multi_edit", args, { call: { tool: "multi_edit", arguments: args } }); await tick();
@@ -113,7 +114,7 @@ const $ = (w, id) => w.document.getElementById(id);
 
   // wiring: the gate uses the card, run end clears Approve-all, the module loads before main.js
   assert(main.includes('requestApproval(bareName, args, { call: { tool: bareName, arguments: args }, engine: safetyEngine })'));
-  assert(main.includes('A.approveAll = null; // "Approve all like this" lasts for one task'));
+  assert(main.includes('A.approveAll = null; // Plan approval lasts for one task; saved tool approvals persist.'));
   const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
   for (const entry of manifest.content_scripts || []) { const js = entry.js || []; if (js.includes("core/main.js")) assert(js.indexOf("core/approval.js") > -1 && js.indexOf("core/approval.js") < js.indexOf("core/main.js")); }
   console.log("approval card: description, docked card, details, Approve all, Esc, queue, Stop and fail-closed checks passed.");

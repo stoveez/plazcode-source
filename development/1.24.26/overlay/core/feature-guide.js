@@ -1592,7 +1592,7 @@ const PlazCodeFeatureGuide = (() => {
   "steps": [
    "Read the card. Click Show details to see exactly what changes.",
    "Click Approve to run it, or Deny (or press Esc) to refuse.",
-   "Approve all for this task skips repeats for the current task. Always approve stops asking about that action for good."
+   "Approve all remembers that action across tasks, chats and AI sites, just like Always approve. Remove it under Safety > Always approved to be asked again."
   ],
   "tips": [],
   "related": [

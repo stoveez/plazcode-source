@@ -17,9 +17,9 @@ assert.equal(Approval.alwaysNormalize(Array.from({ length: 300 }, (_, i) => "t" 
 // the card
 const start = main.indexOf("  let approvalCancel = null"), end = main.indexOf("  function setPermMode(id)");
 const mk = main.indexOf('<div id="rs-approve" hidden>'), html = main.slice(mk, mk + 1800).split("      `;")[0].trim();
-function page() {
+function page(store = {}) {
   const dom = new JSDOM("<!doctype html><body>" + html + "</body>", { runScripts: "outside-only" });
-  const w = dom.window; const store = {};
+  const w = dom.window;
   w.chrome = { storage: { local: { get(k, cb) { cb({ rsAlwaysApprove: store.rsAlwaysApprove }); }, set(o) { Object.assign(store, o); } } } };
   w.A = { stop: false, toolItem: null }; w.PlazCodeApproval = Approval; w.PlazCodeSafety = Safety; w.PlazCodeToolCards = Cards;
   const changed = []; w.__rsAlwaysChanged = (t) => changed.push(t);
@@ -38,6 +38,24 @@ const $ = (w, id) => w.document.getElementById(id);
   assert.equal(await p, true, "Always approve also approves this one");
   assert.equal(w.alwaysHas("multi_edit"), true); assert.deepEqual(store.rsAlwaysApprove.map((x) => x.tool), ["multi_edit"]); assert.deepEqual(changed, ["multi_edit"]);
   assert.equal($(w, "rs-approve").hidden, true); assert.equal($(w, "rs-approve-always").hidden, true, "the button is cleared after the card closes");
+
+  // Approve all saves the same durable action-specific choice, including the Plan Mode card.
+  p = w.requestApproval("execute_luau", { code: "print(1)" }, { call: { tool: "execute_luau" }, engine: "studio", always: false }); await tick();
+  $(w, "rs-approve-all").click(); assert.equal(await p, true);
+  assert.equal(w.alwaysHas("execute_luau"), true);
+  w.A.approveAll = null; w.A.planApproved = false;
+  assert.equal(w.alwaysHas("execute_luau"), true, "ending or stopping a task retains the saved choice");
+  const otherSite = page(store);
+  assert.equal(otherSite.w.alwaysHas("execute_luau"), true, "a fresh chat/AI site loads the extension-wide stored choice");
+  assert.equal(otherSite.w.alwaysHas("write_file"), false, "approval stays scoped to the chosen tool type");
+
+  const failed = page(); failed.w.chrome.storage.local.set = () => Promise.reject(new Error("Storage unavailable"));
+  let resolved = false;
+  const pending = failed.w.requestApproval("multi_edit", args, { call: { tool: "multi_edit", arguments: args }, engine: "studio" }).then((ok) => { resolved = true; return ok; });
+  await tick(); $(failed.w, "rs-approve-all").click(); await tick();
+  assert.equal(resolved, false, "a failed save does not pretend approval was remembered");
+  assert.equal(failed.w.alwaysHas("multi_edit"), false);
+  $(failed.w, "rs-approve-allow").click(); assert.equal(await pending, true, "approve once still works if storage fails");
 
   // a plan has no Always approve
   p = w.requestApproval("plan", {}, { plan: { text: "Goal: x\n1. a\n2. b" }, changesButton: true }); await tick();
