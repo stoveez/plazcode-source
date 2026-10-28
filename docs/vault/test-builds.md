@@ -23,3 +23,6 @@ Option: an AI on the owner's own Windows PC can build the Windows zip locally fo
 
 ## 1.24.25 (2026-10-26)
 The owner requested a direct release with no separate test build. Full platform/browser validation and the packaged Mac desktop gate passed; validated native bytes were published without rebuilding. No test zips were delivered.
+
+## 1.24.26 (2026-10-28)
+Owner requested direct release. Full production validation and packaged Mac desktop lifetime gate passed; validated bytes were published without rebuilding. No separate test zips were delivered.

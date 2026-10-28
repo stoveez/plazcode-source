@@ -40,4 +40,4 @@ Set-Clipboard -Value ("ed25519-seed:" + (($plazcodeKeyBytes | ForEach-Object { $
 
 The original trusted-PC alternative remains available: `node development/1.24.26/protection.mjs provision <absolute-private-backup-path-outside-repo>` with authenticated GitHub CLI secret permissions. Both standard Ed25519 PKCS8 PEM and the explicitly labeled random seed are accepted. All signing and decoder-map encryption uses the same resulting private key.
 
-Before key setup, explicit validation keys are suitable only for internal checks. They cannot be published. No protected release has shipped; Windows/Mac and installed-extension gates are still required. No separate test-build delivery (owner instruction).
+Before key setup, explicit validation keys are suitable only for internal checks. They cannot be published. Protected release 1.24.26 shipped after all platform/browser and packaged Mac gates passed (validation 40772509288, publication 40781780030). No separate test-build delivery (owner instruction).

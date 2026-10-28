@@ -1,6 +1,6 @@
 # PlazCode handoff note (for any AI starting with no context)
 
-**Current, 2026-10-26:** 1.24.25 is published (reliability fixes; validation 40362663766, publish 40368356121). No separate test build. Next planned work is 1.24.26. Start with `docs/NOW.md`; older entries below retain their historical context.
+**Current, 2026-10-28:** 1.24.26 published. Validation 40772509288 on `a74ae17`; publish run 40781780030. Start with `docs/NOW.md`. Older entries below are historical.
 
 > 2026-10-24: the short live handoff is now `docs/NOW.md` and long-term notes are in `docs/vault/` (start at `Home.md`). Read those first; this file is the detailed reference.
 
