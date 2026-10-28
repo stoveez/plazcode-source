@@ -1,0 +1,21 @@
+✨ **PlazCode 1.24.26**
+***Remember approvals across chats, with automatic checks for program changes.***
+
+***✨ What's new***
+- Program files and updates now carry signed checks. Changed program files are blocked; your skills, notes and settings stay editable.
+- Browser program code is protected. No new login, setup steps or internet requirement.
+
+***🛠️ What's fixed***
+- Approve all remembers that tool type across tasks, chats and AI sites. Remove it in Safety to be asked again.
+- Chat-mode saves now handle browser storage failures cleanly.
+
+***🧪 What was checked***
+- Windows, Mac and Linux checks, protected Chromium/Firefox, approvals, changed-file rejection, updates and Mac startup/relaunch.
+- Tested on practice pages. Real AI accounts and Studio projects were not tested live.
+- Windows is unsigned and Mac is not notarized; opening prompts may still appear.
+
+***📥 How to update***
+- Open PlazCode, or choose Updates → Update now.
+- Manual downloads: PlazCode-1.24.26.zip for Windows, PlazCode-macOS-1.24.26.zip for Mac, or PlazCode-Firefox-1.24.26.zip for Firefox.
+- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
+- Your settings, memory and connections are kept.

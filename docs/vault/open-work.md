@@ -4,9 +4,10 @@ updated: 2026-10-28
 ---
 # Open work
 
-- 2026-10-28: persistent Approve all implemented for 1.24.26; focused tests passed. Extension reload plus AI-tab refresh is sufficient for this fix; full browser validation remains.
+- 2026-10-28: 1.24.26 assembled; public publication pending. Validation 40772509288 on `a74ae17`; publish run 40781780030. Permanent approvals and code protection are complete. Public publication remains. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
 
-- 2026-10-28: 1.24.26 code protection implementation started, without app signing or extra user steps. See [code-protection](code-protection.md). Signing/verification, encrypted maps, package integration and migration are implemented. Linux native and browser cryptography tests passed; production key is configured; hosted Windows/Mac validation remains open. Installed-extension checks passed. Run 40696596361 was blocked before job startup by GitHub billing/spending limits.
+
+
 
 - 2026-10-27: all 58 repository notes restored on `main` and `claude/plazcode-dev` at the owner's request, including the 1.24.26 plans. The separate Windows `PlazCode-Vault` folder was not changed by this cloud session.
 
@@ -43,44 +44,23 @@ Release: see [releasing](releasing.md).
 - 1.24.22 SHIPPED 2026-10-25. Still worth a live check on Claude free, ClickUp free, ChatGPT free and DeepSeek to confirm the startup fits each plan (only practice-page tested).
 - Antivirus: after 1.24.23 ships, the owner can report the new download as a false positive to Google (https://safebrowsing.google.com/safebrowsing/report_error/) and Microsoft (https://www.microsoft.com/wdsi/filesubmission). Code signing (Azure Artifact Signing) is the lasting fix: every new unsigned build starts with no reputation.
 
-- 2026-10-28: public build window is open. Automated secret-management hit 403 with the publishing token (40705538648); owner has since added `PLAZCODE_RELEASE_SIGNING_KEY`. The public-key-only bootstrap and production gates are ready. No separate test-build delivery.
 
-- 2026-10-28: production integrity key provisioned by the one-time workflow; only its public key is committed. Arrange an external owner key backup securely. Full release validation and publication remain pending.
 
-- 2026-10-28: integrity secret is now configured by owner; bootstrap 40713055559 committed public key 6229d98. No further secret setup needed. Hosted protected-extension checks passed; language-storage race diagnosed as an unrelated asynchronous chat-mode autosave rejection and fixed with a deterministic regression. Final production platform gates remain open.
 
-- 2026-10-28: production validation 40715015896 runs on f1e928e. Publication workflow now records NOW with each automated source push and attempts authorized Private restoration after success; source administration may still be denied.
 
-- 2026-10-28: valid read-only installation roots no longer need permission to write a migration marker; native regression added. Every signature/hash check remains required. Final platform/browser validation must rerun on this compatibility change.
 
-- 2026-10-28: final release-note draft follows the four-section owner format and states live-testing limits. Production validation 40715893481 on d17badc is running; packaged Mac gate and publication remain.
 
-- 2026-10-28: complete hosted browser gate passed in 40715893481 on d17badc, including the storage-failure regression. Native Windows/Mac/Linux jobs are still running; publication and packaged Mac lifetime gate remain.
 
-- 2026-10-28: publication now retains encrypted per-platform decoder maps in the private release record after checking real decryption outside the repo. This preserves future error decoding after CI artifacts expire; no raw maps or private key enter Git/downloads.
 
-- 2026-10-28: browser and Linux gates passed in 40715893481. Private-record retention also passed actual encrypted-map recovery with isolated ephemeral trust, ciphertext-only persistence and overwrite rejection. Windows/Mac, packaged Mac lifetime gate and publication remain.
 
-- 2026-10-28: 40715893481 passed browser/Linux and both native release builds; Windows/Mac handoff fixtures failed because the published feed is older than the new protected binary. Debug fixture now compiles at the live published version without weakening production anti-downgrade checks. Final validation rerun required; no release yet.
 
-- 2026-10-28: WIP 40761358270 protected browser check failed after earlier green runs. Job-log storage returns 403; stack annotations added to diagnose without bypassing access restrictions. No release; fresh full exact-source validation remains required.
 
-- 2026-10-28: browser diagnostic 40761757580 identified worker readiness polling using setTimeout before worker globals existed. Poll moved into Node; actual installed-extension verification remains required. Full final validation reruns; no release yet.
 
-- 2026-10-28: full browser job passed in final-source run 40762506114 (2f775f0). Native Windows/Mac/Linux jobs continue; no release yet.
 
-- 2026-10-28: Windows handoff annotation in 40762506114 exposed a fixture Cargo.lock match using executable name instead of package name. Corrected to plazcode-agent and verified one match in actual manifest/lockfile. Browser/Linux passed; full new-source gates remain required.
 
-- 2026-10-28: all four exact-source jobs passed in 40765879729 on 6891f46, including Windows/Mac updater handoff and production protected packages. Publication, packaged Mac lifetime gate, live verification and Private restoration remain.
 
-- 2026-10-28: 40765879729 all four gates green; packaged Mac gate green in publish 40771295797. Promotion blocked BEFORE publication on Firefox Windows/Mac byte inequality. Builder now writes canonical UTF-8 LF manifest/instructions before signing. Fresh full validation required; no signed bytes altered or equality checks weakened.
 
-- 2026-10-28: 40772509288 Windows passed all code, updater and package installation checks, then Defender definition download failed before scan. Connected GitHub job logs confirmed Update-MpSignature error, not a detection. Retry failed Windows job after Mac completes; GitHub rejects rerun while active. No source change or scan bypass.
 
-- 2026-10-28: Mac completed successfully in 40772509288; failed Windows job alone restarted on same a74ae17 source. Scan/update requirements unchanged. Wait for retry, then refresh publication branch/pins and run full packaged Mac gate.
 
-- 2026-10-28: 40772509288 now SUCCESS on a74ae17 after failed Windows job retried; all four gates passed, including Defender. Refresh publication pins/source, run packaged Mac gate, publish and verify live release, then restore Private.
 
-- 2026-10-28: publication branch refreshed with canonical Firefox source and exact successful validation pins (40772509288 / a74ae17); full Mac lifetime gate retained.
 
-- 2026-10-28: 40779688114 packaged Mac gate passed and Firefox equality passed. Promotion stopped before publication on loader provenance LF/CRLF difference. Promotion-only check now accepts only exact Windows/POSIX newline forms after fixed public-key/channel substitution, retaining authenticated output hashes and all signatures/source gates. Focused positive/negative regressions added; retry same validated source/run.

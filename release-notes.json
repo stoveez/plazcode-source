@@ -1,5 +1,63 @@
 [
   {
+    "version": "1.24.26",
+    "title": "Remembered approvals and protected program files",
+    "summary": "Approve all remembers your choice across tasks, chats and AI sites. Program files and future updates are checked for changes automatically.",
+    "added": [],
+    "improved": [
+      "Program files are protected with signed checks and less readable browser code, without a new login, setup step or internet requirement."
+    ],
+    "fixed": [
+      "Approve all remembers that tool type until you remove it under Safety > Always approved.",
+      "Chat-mode saves handle browser storage failures cleanly."
+    ],
+    "notes": [
+      "Your own skills, notes and settings stay editable. Reload the extension and refresh AI tabs after the complete update.",
+      "The Windows app is unsigned and the Mac app is not notarized."
+    ],
+    "github": {
+      "summary": "***Remember approvals across chats, with automatic checks for program changes.***",
+      "added": [],
+      "improved": [
+        "Program files and updates now carry signed checks. Changed program files are blocked; your skills, notes and settings stay editable.",
+        "Browser program code is protected. No new login, setup steps or internet requirement."
+      ],
+      "fixed": [
+        "Approve all remembers that tool type across tasks, chats and AI sites. Remove it in Safety to be asked again.",
+        "Chat-mode saves now handle browser storage failures cleanly."
+      ],
+      "notes": [
+        "Windows, Mac and Linux checks, protected Chromium/Firefox, approvals, changed-file rejection, updates and Mac startup/relaunch.",
+        "Tested on practice pages. Real AI accounts and Studio projects were not tested live.",
+        "Windows is unsigned and Mac is not notarized; opening prompts may still appear."
+      ],
+      "sections": [
+        {
+          "title": "✨ What's new",
+          "items": [
+            "Program files and updates now carry signed checks. Changed program files are blocked; your skills, notes and settings stay editable.",
+            "Browser program code is protected. No new login, setup steps or internet requirement."
+          ]
+        },
+        {
+          "title": "🛠️ What's fixed",
+          "items": [
+            "Approve all remembers that tool type across tasks, chats and AI sites. Remove it in Safety to be asked again.",
+            "Chat-mode saves now handle browser storage failures cleanly."
+          ]
+        },
+        {
+          "title": "🧪 What was checked",
+          "items": [
+            "Windows, Mac and Linux checks, protected Chromium/Firefox, approvals, changed-file rejection, updates and Mac startup/relaunch.",
+            "Tested on practice pages. Real AI accounts and Studio projects were not tested live.",
+            "Windows is unsigned and Mac is not notarized; opening prompts may still appear."
+          ]
+        }
+      ]
+    }
+  },
+  {
     "version": "1.24.25",
     "title": "Screenshots, approvals and update warnings",
     "summary": "Improves screenshot display, remembers task approvals in Plan Mode, and makes mismatched app and extension versions clear.",

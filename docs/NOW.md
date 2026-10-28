@@ -1,8 +1,12 @@
 # NOW
-Updated: 2026-10-28. Publication branch `release/1.24.26-publish`; no helper agents.
+Updated: 2026-10-28. No helper agents.
 
-**Latest: loader provenance newline correction in promotion only.** All four validation gates passed on a74ae17 in 40772509288. Packaged Mac gate passed in 40779688114; Firefox packages now match after the builder fix. Promotion stopped BEFORE publication at protection.js source-hash comparison: packaging reads the Windows CRLF checkout template, while prepared source is LF. Promotion now recognizes only these exact newline-equivalent loader inputs with the pinned public key/release channel. Signed output byte hashes, signatures, cross-platform bytes and exact-source checks remain unchanged. Focused regressions exercise LF/CRLF and reject edited code, wrong key and changed hashes.
+**Latest: 1.24.26 assembled; public publication pending. Validation 40772509288 on `a74ae17`; publish run 40781780030.** Signed program/update checks, conservative browser obfuscation and permanent per-tool Approve all across tasks, chats and AI sites. No app signing, login requirement or extra setup; offline use and editable user skills/notes/settings are preserved.
 
-**Next:** retry publication with the SAME validated source/run, full packaged Mac gate and owner-formatted release notes. Nothing published; latest public is 1.24.25. No app signing, separate test delivery or extra user setup. Private integrity secret/public key already configured; never ask for it again.
+**Validation:** all four production gates passed on the exact source, plus the packaged Mac desktop lifetime/relaunch gate. Browser fixtures and real protected Chromium/Firefox cryptography passed; original affected Studio/account setups were not tested live. No separate test build was delivered. Full app update plus extension reload and AI-tab refresh is required for the complete security update.
 
-**Handoff:** after success verify live signed feeds/download, record NOW/open work/milestones, merge publication/main back into dev while retaining exact source. Source is PUBLIC temporarily; owner authorized automatic Private restore, API administration may return 403. Separate PC vault is not linked.
+**Publication:** archives/feed checks passed; public release has not yet been confirmed.
+
+**Visibility:** temporary public build window; restore Private after publication. Owner authorized automatic restore; integration administration previously returned 403. Check the actual visibility before stopping.
+
+**Handoff:** work directly on `claude/plazcode-dev`; after publication merge private main ancestry back into dev without changing validated program source. Other account/Workshop/Brickwire plans remain deferred. GitHub vault updated; the separate PC PlazCode-Vault folder is not linked. See [open work](vault/open-work.md) and [code protection](vault/code-protection.md).
