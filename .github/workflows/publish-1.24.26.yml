@@ -14,8 +14,8 @@ permissions:
 env:
   GH_TOKEN: ${{ github.token }}
   # Set only after the final source commit has a successful validation run.
-  VALIDATED_SHA: '6891f461d09be0832d92c52c12ee71e57958962c'
-  VALIDATION_RUN: '40765879729'
+  VALIDATED_SHA: 'a74ae17802681c0ec30f5b5b6ee0547bead217d3'
+  VALIDATION_RUN: '40772509288'
   # Owner-approved quick mode for small fixes: '1' skips the Mac desktop lifetime test.
   PLAZCODE_QUICK: '0'
   PUBLIC_REPO: stoveez/PlazCode
