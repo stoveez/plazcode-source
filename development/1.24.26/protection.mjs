@@ -81,12 +81,14 @@ export async function signInstallation(root, key, platform, channel) {
   await writeEnvelope(path.join(root,FILE_MANIFEST),{schema:1,kind:'files',version,platform,channel,files:await fileRecords(root,names)},key);
 }
 async function writeBootstrap(root) {
-  const files={};
+  const files={},blobs={};
   for(const name of (await walk(root)).filter(programFile)) {
     if(name.startsWith('PlazCode-Extension/') || name.startsWith('PlazCode.app/') || name==='PlazCode.exe' || name==='PlazCode') continue;
-    files[name]=(await fs.readFile(path.join(root,name))).toString('base64');
+    const raw=await fs.readFile(path.join(root,name)),hash=digest(raw);
+    files[name]=hash;
+    if(!blobs[hash]) blobs[hash]=raw.toString('base64');
   }
-  await fs.writeFile(path.join(root,BOOTSTRAP),JSON.stringify(files));
+  await fs.writeFile(path.join(root,BOOTSTRAP),JSON.stringify({files,blobs}));
 }
 export async function verifyTree(root, hex, manifest=FILE_MANIFEST) {
   const record=openEnvelope(await fs.readFile(path.join(root,manifest),'utf8'),hex);

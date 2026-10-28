@@ -296,7 +296,9 @@ Checksums and platform evidence are recorded in release-validation-{VERSION}.
     packages=[(f'PlazCode-{VERSION}.zip','windows',windows),(f'PlazCode-macOS-{VERSION}.zip','macos',mac),(f'PlazCode-source-{VERSION}.zip','source',source),(f'PlazCode-Firefox-{VERSION}.zip','firefox',firefox)]
     metadata=[]
     for name,platform,files in packages:
-        pack(ROOT/name,files);raw=(ROOT/name).read_bytes();metadata.append({'file':name,'platform':platform,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()})
+        pack(ROOT/name,files);raw=(ROOT/name).read_bytes()
+        if platform in {'windows','macos'}:assert len(raw)<=64*1024*1024, 'Release exceeds the installed updater limit'
+        metadata.append({'file':name,'platform':platform,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()})
     write_json(ROOT/'release-metadata.json',metadata);byplatform={m['platform']:m for m in metadata}
     import sys
     sys.path.insert(0,str(ROOT));from release_feed import compact_feed

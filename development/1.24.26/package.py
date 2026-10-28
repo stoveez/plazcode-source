@@ -74,6 +74,7 @@ with zipfile.ZipFile(output/name,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as ar
  for path in sorted(package.rglob('*')):
   if path.is_file():archive.write(path,path.relative_to(install).as_posix())
 print(name,hashlib.sha256((output/name).read_bytes()).hexdigest())
+assert (output/name).stat().st_size<=64*1024*1024, 'Protected package exceeds the installed updater limit'
 # Test download (the zip the owner gives testers): exactly the same files, folders and layout as the real
 # update zips (one PlazCode folder, app, memory helper, both extensions, root extension copies), so testers
 # extract it, open the PlazCode folder and see everything with no extra steps. Only DEVELOPMENT.txt (a note that
@@ -90,6 +91,7 @@ with zipfile.ZipFile(output/lean_name,'w',zipfile.ZIP_DEFLATED,compresslevel=9) 
    archive.writestr(info,path.read_bytes(),compresslevel=9)
 shutil.rmtree(lean_root)
 print(lean_name,(output/lean_name).stat().st_size)
+assert (output/lean_name).stat().st_size<=64*1024*1024, 'Protected test package exceeds the installed updater limit'
 # Firefox and source are the exact reviewed development source, never old native files.
 # The standalone Firefox ZIP above contains the exact protected package bytes.
 with zipfile.ZipFile(output/'PlazCode-source-1.24.26-development.zip','w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:

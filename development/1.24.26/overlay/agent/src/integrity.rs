@@ -21,6 +21,9 @@ struct Files { schema: u32, kind: String, version: String, platform: String, cha
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Update { schema: u32, kind: String, channel: String, version: String, platform: String, sha256: String }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Bootstrap {files:BTreeMap<String,String>,blobs:BTreeMap<String,String>}
 
 fn unhex(text: &str) -> Result<Vec<u8>> {
     ensure!(text.len()%2==0 && text.bytes().all(|b| b.is_ascii_hexdigit()), "Invalid signed metadata encoding");
@@ -97,11 +100,14 @@ fn bootstrap_legacy(root: &Path, key: &[u8], version: &str, platform: &str, chan
     for (name,record) in &value.files {if !bootstrap_path(name) {hash_file(root,name,record)?;}}
     let raw=std::fs::read(root.join(blob))?;
     ensure!(raw.len()<=128*1024*1024,"Bootstrap is too large");
-    let encoded:BTreeMap<String,String>=serde_json::from_slice(&raw)?;
+    let encoded:Bootstrap=serde_json::from_slice(&raw)?;
+    ensure!(encoded.files.len()<=12000 && encoded.blobs.len()<=12000,"Invalid bootstrap file count");
     let mut pending=Vec::new();let mut total=0usize;
-    for (name,text) in encoded {
+    for (name,hash) in encoded.files {
         ensure!(bootstrap_path(&name),"User data or an unsafe path in bootstrap");
         let expected=value.files.get(&name).context("Bootstrap file is not signed")?;
+        ensure!(hash==expected.sha256,"Bootstrap hash is not signed");
+        let text=encoded.blobs.get(&hash).context("Missing bootstrap bytes")?;
         let bytes=base64::engine::general_purpose::STANDARD.decode(text)?;total+=bytes.len();
         ensure!(total<=128*1024*1024 && bytes.len() as u64==expected.bytes && format!("{:x}",Sha256::digest(&bytes))==expected.sha256,"Bootstrap bytes do not match signed files");
         let mut path=root.to_owned();for part in name.split('/') {path.push(part);if let Ok(meta)=std::fs::symlink_metadata(&path) {ensure!(!meta.file_type().is_symlink(),"Symlink in migration path");}}
@@ -212,7 +218,8 @@ mod tests {
             std::fs::write(root.join(name),b"original").unwrap();files.insert(name.into(),serde_json::json!({"bytes":8,"sha256":format!("{:x}",Sha256::digest(b"original"))}));
         }
         files.insert("helper.command".into(),serde_json::json!({"bytes":8,"sha256":format!("{:x}",Sha256::digest(b"original")),"mode":0o755}));
-        let blob="PlazCode-Extension/plazcode-bootstrap.json";let raw=serde_json::to_vec(&serde_json::json!({"core/main.js":base64::engine::general_purpose::STANDARD.encode(b"original"),"helper.command":base64::engine::general_purpose::STANDARD.encode(b"original")})).unwrap();
+        let hash=format!("{:x}",Sha256::digest(b"original"));
+        let blob="PlazCode-Extension/plazcode-bootstrap.json";let raw=serde_json::to_vec(&serde_json::json!({"files":{"core/main.js":hash,"helper.command":hash},"blobs":{hash:base64::engine::general_purpose::STANDARD.encode(b"original")}})).unwrap();
         std::fs::write(root.join(blob),&raw).unwrap();files.insert(blob.into(),serde_json::json!({"bytes":raw.len(),"sha256":format!("{:x}",Sha256::digest(&raw))}));
         let value=serde_json::json!({"schema":1,"kind":"files","version":"1.24.26","platform":"linux","channel":"release","files":files});
         std::fs::write(root.join("PlazCode-Extension/plazcode-installation-integrity.json"),signed(&key,value)).unwrap();
