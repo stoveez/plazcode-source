@@ -26,12 +26,16 @@ try {
   try {
     let worker=context.serviceWorkers().find(worker=>worker.url().endsWith('/background.js'));
     if(!worker)worker=await context.waitForEvent('serviceworker',{predicate:worker=>worker.url().endsWith('/background.js'),timeout:30000});
-    assert.equal(await worker.evaluate(async()=>{
-      // Playwright announces a worker execution context before its initial script/imports finish.
-      for(let attempt=0;attempt<200 && !globalThis.PlazCodeIntegrity;attempt++) await new Promise(resolve=>setTimeout(resolve,50));
-      if(!globalThis.PlazCodeIntegrity) throw new Error('Extension worker did not initialize integrity verification.');
-      await globalThis.PlazCodeIntegrity.check();return true;
-    }),true);
+    // Playwright can announce a worker before even its timer globals are installed.
+    // Poll from Node, then run verification only after the actual extension imported it.
+    let ready=false;
+    for(let attempt=0;attempt<200;attempt++) {
+      ready=await worker.evaluate(()=>typeof globalThis.PlazCodeIntegrity !== 'undefined');
+      if(ready)break;
+      await new Promise(resolve=>setTimeout(resolve,50));
+    }
+    assert(ready,'Extension worker did not initialize integrity verification.');
+    assert.equal(await worker.evaluate(async()=>{await globalThis.PlazCodeIntegrity.check();return true;}),true);
     assert.equal(await worker.evaluate(()=>chrome.runtime.getManifest().version),'1.24.26');
     console.log('PASS actual protected Chromium service worker: signed assets verified, normal startup reached.');
   } finally {await context.close();}
