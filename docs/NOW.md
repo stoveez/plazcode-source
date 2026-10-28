@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-28. Work directly on `claude/plazcode-dev`; no helper agents.
 
-**Latest: Firefox canonical-byte packaging correction.** All four validation jobs passed on 6891f46 (40765879729), and packaged Mac desktop lifetime/relaunch passed in publication 40771295797. Promotion stopped before public publication because Firefox Windows/Mac artifacts differ: builder used platform-dependent text writes before signing. Firefox manifest/install instructions now use explicit UTF-8 LF bytes before protection. Fresh full exact-source validation is required. Do not normalize already signed artifacts or weaken cross-platform equality.
+**Latest: transient Windows Defender definition-update failure.** On a74ae17, run 40772509288 passed browsers/Linux and every Windows build/updater/installation check. Windows stopped at `Update-MpSignature` with definition-update errors BEFORE scanning; no detection occurred. Retry only the failed Windows job after Mac finishes (GitHub rejects rerun while this run is active). Do not skip scans or loosen gates.
+
+**Firefox canonical-byte packaging correction.** All four validation jobs passed on 6891f46 (40765879729), and packaged Mac desktop lifetime/relaunch passed in publication 40771295797. Promotion stopped before public publication because Firefox Windows/Mac artifacts differ: builder used platform-dependent text writes before signing. Firefox manifest/install instructions now use explicit UTF-8 LF bytes before protection. Fresh full exact-source validation is required. Do not normalize already signed artifacts or weaken cross-platform equality.
 
 **Publication:** nothing shipped; latest public release remains 1.24.25. Release branch 77e44b7 has OLD validation pins; update only after new validation succeeds, preserving all completed source/packaging checks and full Mac gate. Direct release authorized; no separate test build, no app signing, owner release-note format (1,250 chars).
 

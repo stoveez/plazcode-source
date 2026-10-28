@@ -74,3 +74,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-28: all four exact-source jobs passed in 40765879729 on 6891f46, including Windows/Mac updater handoff and production protected packages. Publication, packaged Mac lifetime gate, live verification and Private restoration remain.
 
 - 2026-10-28: 40765879729 all four gates green; packaged Mac gate green in publish 40771295797. Promotion blocked BEFORE publication on Firefox Windows/Mac byte inequality. Builder now writes canonical UTF-8 LF manifest/instructions before signing. Fresh full validation required; no signed bytes altered or equality checks weakened.
+
+- 2026-10-28: 40772509288 Windows passed all code, updater and package installation checks, then Defender definition download failed before scan. Connected GitHub job logs confirmed Update-MpSignature error, not a detection. Retry failed Windows job after Mac completes; GitHub rejects rerun while active. No source change or scan bypass.
