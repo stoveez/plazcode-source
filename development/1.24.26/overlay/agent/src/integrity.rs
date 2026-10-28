@@ -14,7 +14,7 @@ const MAX_FILE: u64 = 256 * 1024 * 1024;
 struct Envelope { payload: String, signature: String }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct FileRecord { sha256: String, bytes: u64 }
+struct FileRecord { sha256: String, bytes: u64, #[serde(default)] mode: Option<u32> }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Files { schema: u32, kind: String, version: String, platform: String, channel: String, files: BTreeMap<String,FileRecord> }
@@ -105,13 +105,20 @@ fn bootstrap_legacy(root: &Path, key: &[u8], version: &str, platform: &str, chan
         let bytes=base64::engine::general_purpose::STANDARD.decode(text)?;total+=bytes.len();
         ensure!(total<=128*1024*1024 && bytes.len() as u64==expected.bytes && format!("{:x}",Sha256::digest(&bytes))==expected.sha256,"Bootstrap bytes do not match signed files");
         let mut path=root.to_owned();for part in name.split('/') {path.push(part);if let Ok(meta)=std::fs::symlink_metadata(&path) {ensure!(!meta.file_type().is_symlink(),"Symlink in migration path");}}
-        if hash_file(root,&name,expected).is_err() {pending.push((path,bytes));}
+        if let Some(mode)=expected.mode {ensure!(mode<=0o777,"Unsafe bootstrap permissions");}
+        if hash_file(root,&name,expected).is_err() {pending.push((path,bytes,expected.mode));}
     }
-    for (path,bytes) in pending {
+    for (path,bytes,mode) in pending {
         std::fs::create_dir_all(path.parent().context("Invalid migration parent")?)?;
         let temporary=path.with_extension(format!("plazcode-stage-{}",std::process::id()));
         let mut file=std::fs::OpenOptions::new().write(true).create_new(true).open(&temporary)?;
         std::io::Write::write_all(&mut file,&bytes)?;file.sync_all()?;drop(file);
+        #[cfg(unix)] {
+            use std::os::unix::fs::PermissionsExt;
+            let permissions=mode.or_else(||std::fs::metadata(&path).ok().map(|meta|meta.permissions().mode()&0o777)).unwrap_or(0o644);
+            std::fs::set_permissions(&temporary,std::fs::Permissions::from_mode(permissions))?;
+        }
+        #[cfg(not(unix))] let _=mode;
         std::fs::rename(temporary,path)?;
     }
     verify_tree_with(root,key,version,platform,channel)
@@ -204,13 +211,15 @@ mod tests {
         for name in ["manifest.json","background.js","core/main.js","PlazCode-Extension/manifest.json","PlazCode"] {
             std::fs::write(root.join(name),b"original").unwrap();files.insert(name.into(),serde_json::json!({"bytes":8,"sha256":format!("{:x}",Sha256::digest(b"original"))}));
         }
-        let blob="PlazCode-Extension/plazcode-bootstrap.json";let raw=serde_json::to_vec(&serde_json::json!({"core/main.js":base64::engine::general_purpose::STANDARD.encode(b"original")})).unwrap();
+        files.insert("helper.command".into(),serde_json::json!({"bytes":8,"sha256":format!("{:x}",Sha256::digest(b"original")),"mode":0o755}));
+        let blob="PlazCode-Extension/plazcode-bootstrap.json";let raw=serde_json::to_vec(&serde_json::json!({"core/main.js":base64::engine::general_purpose::STANDARD.encode(b"original"),"helper.command":base64::engine::general_purpose::STANDARD.encode(b"original")})).unwrap();
         std::fs::write(root.join(blob),&raw).unwrap();files.insert(blob.into(),serde_json::json!({"bytes":raw.len(),"sha256":format!("{:x}",Sha256::digest(&raw))}));
         let value=serde_json::json!({"schema":1,"kind":"files","version":"1.24.26","platform":"linux","channel":"release","files":files});
         std::fs::write(root.join("PlazCode-Extension/plazcode-installation-integrity.json"),signed(&key,value)).unwrap();
         std::fs::write(root.join("config.json"),b"user settings").unwrap();std::fs::write(root.join("core/main.js"),b"old mirror").unwrap();
         let check=||verify_installation_with(&root,key.public_key().as_ref(),"1.24.26","linux","release");
         assert!(check().is_ok());assert_eq!(std::fs::read(root.join("core/main.js")).unwrap(),b"original");assert_eq!(std::fs::read(root.join("config.json")).unwrap(),b"user settings");
+        #[cfg(unix)] {use std::os::unix::fs::PermissionsExt;assert_eq!(std::fs::metadata(root.join("helper.command")).unwrap().permissions().mode()&0o111,0o111);}
         std::fs::write(root.join("core/main.js"),b"modified after migration").unwrap();assert!(check().is_err());
         std::fs::remove_file(root.join(".plazcode-layout-1.24.26")).unwrap();std::fs::write(root.join(blob),b"forged repair data").unwrap();assert!(check().is_err());
         assert_eq!(std::fs::read(root.join("core/main.js")).unwrap(),b"modified after migration");

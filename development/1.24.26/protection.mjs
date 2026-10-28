@@ -67,7 +67,7 @@ export function programFile(name) {
 async function writeEnvelope(file, value, key) { await fs.writeFile(file,JSON.stringify(envelope(value,key))+'\n'); }
 async function fileRecords(root, names) {
   const records={};
-  for(const name of names) {const raw=await fs.readFile(path.join(root,name));records[name]={sha256:digest(raw),bytes:raw.length};}
+  for(const name of names) {const raw=await fs.readFile(path.join(root,name)),stat=await fs.stat(path.join(root,name));records[name]={sha256:digest(raw),bytes:raw.length,mode:stat.mode&0o777};}
   return records;
 }
 export async function signExtension(root, key, channel) {

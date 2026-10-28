@@ -48,7 +48,7 @@ Normal effort is fine for small fixes, packaging, release notes and questions.
 - When the version number changes (1.24.26, ...): `docs/vault/new-version-checklist.md` (every note naming 1.24.25 must be updated)
 - Build and tests, hash pins, CI: `docs/vault/build-and-tests.md`
 - Test builds and the zips: `docs/vault/test-builds.md`
-- Publishing a real update, which repo and which branch: `docs/vault/releasing.md` (steps), then read `publish-1.24.25.yml` and `development/1.24.25/promote.py` before the first real publish; release description wording and format: `docs/vault/release-format.md` (non-coder words, bold marks, under 2,000 characters)
+- Publishing a real update, which repo and which branch: `docs/vault/releasing.md` (steps), then read `publish-1.24.26.yml` and `development/1.24.26/promote.py` before the first real publish; release description wording and format: `docs/vault/release-format.md` (non-coder words, bold marks, under 2,000 characters)
 - Vault memory, desktop layout, guides, website: `docs/vault/vault-memory.md`, `docs/vault/app-and-guides.md`
 - Open bugs and not-yet-tested items: `docs/vault/open-work.md`; what is in the latest test zips: `docs/HANDOFF.md` section "What is in the latest test zips and what is NOT yet" (keep it up to date)
 - Deferred to 1.24.26 (accounts, code protection, Skill Workshop, Brickwire): `development/1.24.26/`. Latest published: 1.24.25 (screenshots, approvals and update warnings; see `docs/NOW.md`)

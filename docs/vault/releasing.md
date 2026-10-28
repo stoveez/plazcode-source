@@ -14,7 +14,7 @@ Official releases live in the public repo `stoveez/PlazCode`, branch `main`: onl
 5. Verify the live `latest.json`, `latest-macos.json` and one download (version, link, sha256). An older installed copy must still update.
 6. Remind the owner to set the repo back to Private.
 
-Read `publish-1.24.25.yml` and `development/1.24.25/promote.py` before the first real publish. Moving work into `release/1.24.25` needs the owner's clear yes. See also [owner-rules](owner-rules.md).
+Read `publish-1.24.26.yml` and `development/1.24.26/promote.py` before the first real publish. Moving work into `release/1.24.25` needs the owner's clear yes. See also [owner-rules](owner-rules.md).
 
 ## Extra details
 - Release text must stay under 2,000 characters (checked once: about 1,360).

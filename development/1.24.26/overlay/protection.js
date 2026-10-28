@@ -9,7 +9,7 @@ globalThis.PlazCodeIntegrity = (() => {
   const safe = name => typeof name === "string" && name.length > 0 && name.length <= 512 && !/[\\:\x00-\x1f]/.test(name) && name.split("/").every(p => p && p !== "." && p !== ".." && !/[. ]$/.test(p));
   async function read(name, limit) {
     if (!safe(name)) throw new Error(recovery);
-    const response = await fetch(chrome.runtime.getURL(name), {cache:"no-store", credentials:"omit", redirect:"error", signal:AbortSignal.timeout(15000)});
+    const response = await fetch(chrome.runtime.getURL(name.split("/").map(encodeURIComponent).join("/")), {cache:"no-store", credentials:"omit", redirect:"error", signal:AbortSignal.timeout(15000)});
     if (!response.ok) throw new Error(recovery);
     const bytes = await response.arrayBuffer();
     if (bytes.byteLength > limit) throw new Error(recovery);

@@ -19,6 +19,7 @@ try {
     await fs.writeFile(path.join(root,base,'manifest.json'),JSON.stringify({version:'1.24.26',manifest_version:3}));
     await fs.writeFile(path.join(root,base,'background.js'),'function addNumbers(first, second) { return first + second; } globalThis.answer = addNumbers(3, 4);\n');
     await fs.writeFile(path.join(root,base,'core/main.js'),'globalThis.mainLoaded = true;\n');
+    await fs.writeFile(path.join(root,base,'core/space # %.txt'),'packaged asset with URL-sensitive characters');
   }
   await fs.writeFile(path.join(root,'PlazCode'),'test native executable');
   await fs.writeFile(path.join(root,'config.json'),'user settings');
