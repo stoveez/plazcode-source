@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: browser storage race fixed.** Hosted diagnostics identified rejected `rsChatEngines` autosaves escaping the synchronous catch. Best-effort autosaves now also catch asynchronous failures; the browser fixture forces that failure deterministically. Focused checks passed; final full release gates must rerun on this source.
+**Latest: publication handoff automation prepared.** Each automated source push now includes a fresh NOW; successful publication records milestones/open work and attempts the owner-authorized Private restore. Final source validation is running on `f1e928e` (40715015896).
+
+**Browser storage race fixed.** Hosted diagnostics identified rejected `rsChatEngines` autosaves escaping the synchronous catch. Best-effort autosaves now also catch asynchronous failures; the browser fixture forces that failure deterministically. Focused checks passed; final full release gates must rerun on this source.
 
 **Production integrity key configured.** Owner added `PLAZCODE_RELEASE_SIGNING_KEY`; trusted bootstrap 40713055559 derived and committed only the public key in `6229d98`. No private key was exposed, written to runner files or uploaded. Do not ask for key setup again.
 

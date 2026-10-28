@@ -133,7 +133,8 @@ jobs:
           git merge-base --is-ancestor refs/remotes/origin/main HEAD
           git config user.name 'stoveez'
           git config user.email ''
-          git add PlazCode-source-1.24.26.zip latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.24.26.txt release-validation-1.24.26
+          python3 development/1.24.26/record-release.py prepared
+          git add docs/NOW.md docs/vault/open-work.md PlazCode-source-1.24.26.zip latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.24.26.txt release-validation-1.24.26
           git commit -m 'Release PlazCode 1.24.26: Protected files and remembered approvals'
           git push origin HEAD:refs/heads/release-record-1.24.26
       - name: Publish downloads and update feeds to the public repo (no source)
@@ -147,6 +148,9 @@ jobs:
         run: |
           git fetch origin main:refs/remotes/origin/main
           git merge-base --is-ancestor refs/remotes/origin/main HEAD
+          python3 development/1.24.26/record-release.py published
+          git add docs
+          git commit -m 'Record published PlazCode 1.24.26 handoff [skip ci]'
           git push origin HEAD:main
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
@@ -156,3 +160,11 @@ jobs:
             release-validation-1.24.26/*
             release-metadata.json
           if-no-files-found: warn
+      - name: Restore source repository to Private after publication
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          # Owner explicitly authorized automatic visibility restoration.
+          # This credential may lack source administration; never claim success on a 403.
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY" -f visibility=private --jq '{private,visibility}'
