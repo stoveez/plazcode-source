@@ -107,6 +107,15 @@ def verify_protected(files,platform):
     assert report['channel']=='release' and report['public_key']==pinned
     return report
 
+def expected_source_hashes(relative,raw,public_key):
+    if relative=='protection.js':
+        # Packaging reads this template straight from the validated checkout;
+        # Windows checkout CRLF differs from prepare.py's canonical LF source.
+        raw=raw.replace(b'UNCONFIGURED_RELEASE_PUBLIC_KEY',public_key.encode(),1).replace(b'UNCONFIGURED_RELEASE_CHANNEL',b'release',1)
+        canonical=raw.replace(b'\r\n',b'\n')
+        return {hashlib.sha256(text).hexdigest() for text in (canonical,canonical.replace(b'\n',b'\r\n'))}
+    return {hashlib.sha256(raw).hexdigest()}
+
 def verify_shared_code(source,native_packages,firefox):
     reports=[json.loads(files['PlazCode/PlazCode-Extension/production-build.json'][0]) for files in native_packages]
     for name,(raw,_) in source.items():
@@ -116,12 +125,9 @@ def verify_shared_code(source,native_packages,firefox):
         for files,report in zip(native_packages,reports):
             for prefix in ['','PlazCode-Extension/','PlazCode-Extension-Firefox/']:
                 key=prefix+relative;actual=files['PlazCode/'+key][0]
-                expected=raw
-                if relative=='protection.js':
-                    expected=raw.replace(b'UNCONFIGURED_RELEASE_PUBLIC_KEY',report['public_key'].encode(),1).replace(b'UNCONFIGURED_RELEASE_CHANNEL',b'release',1)
                 if key in report['files']:
                     row=report['files'][key]
-                    assert row['source_sha256']==hashlib.sha256(expected).hexdigest(), 'Obfuscation used different source: '+key
+                    assert row['source_sha256'] in expected_source_hashes(relative,raw,report['public_key']), 'Obfuscation used different source: '+key
                     assert row['sha256']==hashlib.sha256(actual).hexdigest(), 'Obfuscation report does not match package: '+key
                 else:assert actual==raw, 'Native/browser source mismatch: '+key
         assert firefox[relative][0]==native_packages[0]['PlazCode/PlazCode-Extension-Firefox/'+relative][0], 'Standalone Firefox differs from protected native package'

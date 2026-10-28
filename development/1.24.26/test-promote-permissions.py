@@ -198,3 +198,28 @@ _,body=notes({'version':entry['version'],'release_notes':[entry]})
 assert len(body.encode('utf-16-le'))//2<2000
 assert len(encode(compact_feed({'version':entry['version']},[entry])))<48*1024
 print('PASS factual GitHub release copy stays below 2000 UTF-16 units and the compact feed budget.')
+
+# Real report/source comparisons: recognize only checkout newline translation of
+# the directly read loader template; edited code, wrong key and changed output fail.
+loader=b'const key="UNCONFIGURED_RELEASE_PUBLIC_KEY",channel="UNCONFIGURED_RELEASE_CHANNEL";\n'
+public='a'*64
+fixture_source={'PlazCode/protection.js':(loader,0)}
+fixture_native=[]
+for newline in [b'\r\n',b'\n']:
+ expected=loader.replace(b'UNCONFIGURED_RELEASE_PUBLIC_KEY',public.encode(),1).replace(b'UNCONFIGURED_RELEASE_CHANNEL',b'release',1).replace(b'\n',newline)
+ report={'public_key':public,'files':{}}
+ files={}
+ for prefix in ['', 'PlazCode-Extension/', 'PlazCode-Extension-Firefox/']:
+  relative=prefix+'protection.js';files['PlazCode/'+relative]=(b'verified transformed output',0)
+  report['files'][relative]={'source_sha256':hashlib.sha256(expected).hexdigest(),'sha256':hashlib.sha256(b'verified transformed output').hexdigest()}
+ files['PlazCode/PlazCode-Extension/production-build.json']=(json.dumps(report).encode(),0)
+ for name in ['launch_studio_mcp.py','launch_blender_mcp.py','blender_ops.py']:files['PlazCode/'+name]=(b'fixed helper',0);fixture_source['PlazCode/'+name]=(b'fixed helper',0)
+ fixture_native.append(files)
+promotion.verify_shared_code(fixture_source,fixture_native,{'protection.js':(b'verified transformed output',0)})
+changed=copy.deepcopy(fixture_source);changed['PlazCode/protection.js']=(loader+b'edited code',0)
+rejected(promotion.verify_shared_code,changed,fixture_native,{'protection.js':(b'verified transformed output',0)})
+for field,value in [('source_sha256','b'*64),('sha256','c'*64)]:
+ bad=copy.deepcopy(fixture_native);record=json.loads(bad[0]['PlazCode/PlazCode-Extension/production-build.json'][0]);record['files']['protection.js'][field]=value;bad[0]['PlazCode/PlazCode-Extension/production-build.json']=(json.dumps(record).encode(),0)
+ rejected(promotion.verify_shared_code,fixture_source,bad,{'protection.js':(b'verified transformed output',0)})
+assert promotion.expected_source_hashes('protection.js',loader,public)!=promotion.expected_source_hashes('protection.js',loader,'d'*64)
+print('PASS authenticated loader source provenance accepts only exact LF/CRLF checkout forms; changed code/key/output rejected.')

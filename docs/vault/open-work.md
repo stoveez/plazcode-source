@@ -82,3 +82,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-28: 40772509288 now SUCCESS on a74ae17 after failed Windows job retried; all four gates passed, including Defender. Refresh publication pins/source, run packaged Mac gate, publish and verify live release, then restore Private.
 
 - 2026-10-28: publication branch refreshed with canonical Firefox source and exact successful validation pins (40772509288 / a74ae17); full Mac lifetime gate retained.
+
+- 2026-10-28: 40779688114 packaged Mac gate passed and Firefox equality passed. Promotion stopped before publication on loader provenance LF/CRLF difference. Promotion-only check now accepts only exact Windows/POSIX newline forms after fixed public-key/channel substitution, retaining authenticated output hashes and all signatures/source gates. Focused positive/negative regressions added; retry same validated source/run.
