@@ -4,6 +4,8 @@ updated: 2026-10-27
 ---
 # Decisions (newest first)
 
+- **2026-10-28: implement code protection plus signed manifests, verified updates and bridge hardening, without app signing (owner).** No mandatory account, new setup/approval steps or online requirement. Preserve automatic pairing and editable user skills, notes and settings. Work in 1.24.26; production keys remain private and need maintainer setup.
+
 - **2026-10-27: restore all deleted repository notes (owner request).** Reverse the note cleanup on both `claude/plazcode-dev` and `main`: restore the documentation vault, agent instructions, handoffs, reviews and development plans, together with their release-script references. Keep app source and published releases unchanged. This supersedes the earlier request to remove these notes.
 
 - **2026-10-26: 1.24.25 released directly after full validation (owner authorization).** No separate test build. Outdated extensions must show red Outdated text, including when a later update check fails. EXE-only replacement cannot change files in a separately loaded extension folder; the desktop now shows recent browser versions and recovery instructions. Accounts, code protection, Skill Workshop and Brickwire stay in 1.24.26.

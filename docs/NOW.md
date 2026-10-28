@@ -1,18 +1,12 @@
 # NOW
-Updated: 2026-10-27. Work directly on `claude/plazcode-dev`; no helper agents.
+Updated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: all deleted repository notes restored on `claude/plazcode-dev` and `main` at the owner's request.** Restored all 58 internal note files from before the cleanup, including the documentation vault, agent instructions, handoffs, reviews and 1.24.26 plans. Restored the accompanying release-script and archived-workflow references. File-presence, Python syntax and release-metadata checks passed; no history rewrite or app release.
+**WIP: 1.24.26 code protection, owner authorized.** Development overlay copied from released 1.24.25; existing 1.24.26 feature plans retained. No app signing, mandatory account, new setup/approval steps or online requirement. User skills, vault notes and settings stay editable. Design: [code protection](vault/code-protection.md).
 
-**Latest: PlazCode 1.24.25 PUBLISHED and verified.** Validation 40362663766 on `810676d`; publish 40368356121. All Windows/Mac/Linux and Chromium/Firefox checks passed, including real small-preview HTTP requests and packaged Mac desktop lifetime/relaunch. Public release, Windows/Mac feeds and asset checksums checked; downloaded Windows ZIP hash, manifests and exact extension code checked.
+**Next:** implement signed file manifests, native/extension verification, signed updates, conservative obfuscation/private maps and loopback hardening. Test normal use and tampering on every platform. No security feature is complete yet.
 
-**Contents:** screenshots decode bytes into canvas (avoids blocked image URLs; corrupt images report an error); Plan Mode honors per-command task approvals; creation HTTP errors explain missing app support, size limits and invalid responses; desktop shows recent browser extension versions/mismatches; known outdated versions stay red through failed/stale checks.
+**Setup blocker:** GitHub denies this session access to Actions secrets (403). Protected production builds require a private release key in a secret and matching pinned public key. Never ship a test key or disable verification.
 
-**Install the full update**, then reload the extension and refresh AI tabs. Replacing only an EXE cannot update an extension loaded from another folder. No separate test build was delivered (owner request). Release notes use the owner's format, 1,430 characters.
+**Latest published: 1.24.25.** Validation 40362663766 on `810676d`; publish 40368356121. Original affected Studio/account behavior remains unverified. Accounts, Workshop, Brickwire and other deferred work stay planned, outside this job.
 
-**Limits:** original affected Studio captures/accounts were not tested live. Keep live confirmation of grey captures and the reported creation error on the open-work list. PC vault sync unavailable (no PC connection).
-
-**Next update: 1.24.26.** Accounts, code protection, Skill Workshop, Brickwire and carried-over work remain in `development/1.24.26/`; see [open work](vault/open-work.md).
-
-**Release gotchas:** new workflow registered only after a follow-up push on its existing publication branch. Validation pins must use the single-quoted form accepted by test-promote-permissions.py; run that script before publishing. No published archive or tag was overwritten.
-
-**Handoff:** main's restoration record is merged into dev history while retaining dev's newer notes. Continue from the restored notes and 1.24.26 plans. This session can update the GitHub repo but cannot write the separate Windows `PlazCode-Vault` project folder. Source repo was verified public on 2026-10-27; remind owner to restore Private. More: [Home](vault/Home.md).
+**Repo private verified 2026-10-28.** No new release or visibility changes. Separate Windows `PlazCode-Vault` folder is inaccessible to this cloud session. See [open work](vault/open-work.md).
