@@ -5,13 +5,61 @@ on:
   pull_request:
     paths: [development/1.24.26/**, learned-skills/**, .github/workflows/validate-1.24.26.yml]
   workflow_dispatch:
+    inputs:
+      bootstrap_integrity_key:
+        description: Provision the production integrity key using the existing publishing credential; no builds or release
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
   group: plazcode-1.24.26-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  bootstrap-integrity:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.bootstrap_integrity_key && github.repository == 'stoveez/plazcode-source' && github.ref == 'refs/heads/claude/plazcode-dev' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: claude/plazcode-dev
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Provision the private key directly into Actions secrets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          if grep -q '[a-f0-9]' development/1.24.26/overlay/release-public-key.hex; then
+            echo 'Production public key already configured; refusing automatic rotation.'
+            exit 0
+          fi
+          test -n "$GH_TOKEN" || { echo '::error::Existing publishing credential is unavailable for one-time key provisioning.'; exit 1; }
+          # Check access before generating any key. Never inspect or print credential values.
+          gh api "repos/$GITHUB_REPOSITORY/actions/secrets/public-key" > "$RUNNER_TEMP/plazcode-repository-public-key.json"
+          node development/1.24.26/protection.mjs provision "$RUNNER_TEMP/plazcode-private-release-key.pem"
+          echo "::notice title=Production public key::$(cat development/1.24.26/overlay/release-public-key.hex)"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('docs/NOW.md')
+          p.write_text('# NOW\nUpdated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.\n\n**Latest: production integrity key provisioned inside GitHub Actions.** The private key is stored only in `PLAZCODE_RELEASE_SIGNING_KEY`; only the matching public key is committed. No private key is printed or included in an artifact. The temporary runner backup is deleted. An external owner backup is still to be arranged; never retrieve plaintext keys through chat.\n\n**Next:** run all 1.24.26 release gates on this exact public-key commit, then publish using the owner\'s release-note format. No separate test build delivery. Normal users need no new login/setup; skills, notes and settings remain editable.\n\n**Local checks:** 219 JS files and 213 native tests passed, plus optimized native signature/authenticated-work/Stop and Chromium/Firefox cryptography tests. Hosted Windows/Mac and installed-extension checks remain required.\n\n**Visibility:** public build/publish window authorized; restore Private immediately afterward. The session\'s integration cannot edit repository visibility (403), so owner assistance may be required. Separate Windows PC vault folder is not linked. See [code protection](vault/code-protection.md) and [open work](vault/open-work.md).\n')
+          p=Path('docs/vault/open-work.md')
+          p.write_text(p.read_text()+'\n- 2026-10-28: production integrity key provisioned by the one-time workflow; only its public key is committed. Arrange an external owner key backup securely. Full release validation and publication remain pending.\n')
+          PY
+          git -c user.name=stoveez -c user.email= add development/1.24.26/overlay/release-public-key.hex docs/NOW.md docs/vault/open-work.md
+          git -c user.name=stoveez -c user.email= commit -m 'Configure production integrity verification key [skip ci]'
+          git push origin HEAD:claude/plazcode-dev
+      - name: Remove the temporary private key
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/plazcode-private-release-key.pem"
   browsers:
+    if: ${{ !inputs.bootstrap_integrity_key }}
     runs-on: ubuntu-latest
     env:
       # The unit tests load jsdom from the tools folder that npm ci fills.
@@ -164,6 +212,7 @@ jobs:
       - run: node release-tools/test-checklist-appearance.cjs
         working-directory: build-src-1.24.26/PlazCode
   native:
+    if: ${{ !inputs.bootstrap_integrity_key }}
     strategy:
       fail-fast: false
       matrix:

@@ -65,15 +65,15 @@ export function programFile(name) {
     /\.(exe|dll|cmd|bat|ps1|command|py|cjs|cs)$/.test(name) && !name.includes('/') || name===EXT_MANIFEST;
 }
 async function writeEnvelope(file, value, key) { await fs.writeFile(file,JSON.stringify(envelope(value,key))+'\n'); }
-async function fileRecords(root, names) {
+async function fileRecords(root, names, withModes=true) {
   const records={};
-  for(const name of names) {const raw=await fs.readFile(path.join(root,name)),stat=await fs.stat(path.join(root,name));records[name]={sha256:digest(raw),bytes:raw.length,mode:stat.mode&0o777};}
+  for(const name of names) {const raw=await fs.readFile(path.join(root,name));records[name]={sha256:digest(raw),bytes:raw.length};if(withModes)records[name].mode=(await fs.stat(path.join(root,name))).mode&0o777;}
   return records;
 }
 export async function signExtension(root, key, channel) {
   const names=(await walk(root)).filter(extensionFile);
   const version=JSON.parse(await fs.readFile(path.join(root,'manifest.json'),'utf8')).version;
-  await writeEnvelope(path.join(root,EXT_MANIFEST),{schema:1,kind:'files',version,platform:'extension',channel,files:await fileRecords(root,names)},key);
+  await writeEnvelope(path.join(root,EXT_MANIFEST),{schema:1,kind:'files',version,platform:'extension',channel,files:await fileRecords(root,names,false)},key);
 }
 export async function signInstallation(root, key, platform, channel) {
   const names=(await walk(root)).filter(programFile);

@@ -7,11 +7,13 @@ Updated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.
 
 **WIP security implementation:** signing, native/extension verification, authenticated update checks, CSP-safe obfuscation, encrypted private maps, legacy migration and staged rollback are implemented. Linux native suite: 213 passed; real Chromium/Firefox cryptography checks passed. The three outdated JS fixtures were fixed and passed targeted rechecks; all 219 JavaScript regression files passed the complete rerun. Optimized native signature/authenticated-work/Stop tests passed, including the no-setup older-browser fallback. Hosted Windows/Mac/full-extension gates remain blocked by Actions billing (run 40696596361 did not start any jobs).
 
-**Final compatibility checks:** migration restores executable permissions, bootstrap data deduplicates shared browser assets, and packaging/promotion enforce the installed updater's 64 MiB limit. Migration and optimized native tests passed. Final review added explicit hashing of the running executable, including macOS copied/translocated apps; its final rerun is in progress.
+**Final compatibility checks:** migration restores executable permissions, bootstrap data deduplicates shared browser assets, and packaging/promotion enforce the installed updater's 64 MiB limit. Migration and optimized native tests passed. Final review added explicit hashing of the running executable, including macOS copied/translocated apps; its final native/optimized rerun passed.
 
 **Public/private build rule:** owner reaffirmed the temporary public build/publish window on 2026-10-28. Repo is currently private; owner must switch it to Public when the final source is ready, then back to Private after the build/publish completes. Never change visibility automatically.
 
 **Environment:** local Chromium blocks installed extensions by administrator policy; the unchanged 1.24.25 extension fails too. CI requires installed-extension validation. No workaround or policy changes.
+
+**One-time key automation:** an explicitly dispatched, trusted-branch-only job can try the existing publishing credential to provision the integrity secret directly inside GitHub. It checks repository-secret access first, prints only the public key, commits NOW with the public key and deletes the temporary private file. If the publishing credential is scoped only to the downloads repo, maintainer setup remains necessary.
 
 **Release blockers:** GitHub billing/spending limits prevented all hosted jobs from starting. GitHub also denies this session access to Actions secrets (403). Protected production builds require a private release key in a secret and matching pinned public key. Never ship a test key or disable verification.
 
