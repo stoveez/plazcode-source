@@ -23,32 +23,3 @@ vm.createContext(env); vm.runInContext(main.slice(a, b) + ';this.wait=waitComman
   assert(/if \(P\.startNotice\) \{\s*const noticeKey = "rsNoticeSeen:" \+ P\.id;/.test(main) && /chrome\.storage\.local\.set\(\{ \[noticeKey\]: true \}\)/.test(main));
   console.log('DeepSeek: at least 5 seconds between automatic messages, and a one-time notice about account suspensions.');
 })().catch((e) => { console.error(e); process.exit(1); });
-
-// The provider-level guard covers direct UI sends as well as the core sender.
-const guard=ds.slice(ds.indexOf('  let sendQueue ='),ds.indexOf('  async function typeAndSendRaw('));
-function paced(raw,random=()=>0){
- let clock=0;const waits=[],events=[];
- const scope={Promise,Math:{max:Math.max,floor:Math.floor,random},Date:{now:()=>clock},
-  sleep:async ms=>{waits.push(ms);clock+=ms;},diag:(name,data)=>events.push({name,...data}),
-  typeAndSendRaw:(...args)=>raw({now:()=>clock,advance:ms=>clock+=ms},...args)};
- vm.createContext(scope);vm.runInContext(guard+';this.send=typeAndSend;',scope);
- return {send:scope.send,waits,events,advance:ms=>clock+=ms};
-}
-(async()=>{
- const starts=[],images=[{data:'image'}];let release;
- const blocker=new Promise(resolve=>release=resolve);
- const q=paced(async(clock,text,media)=>{starts.push({at:clock.now(),text,media});if(text==='creator'){await blocker;clock.advance(12000);}return text;},()=>0.5);
- const first=q.send('creator',images),second=q.send('library',images);
- await Promise.resolve();assert.equal(starts.length,1,'concurrent UI sends never overlap');assert.equal(starts[0].at,0,'first send has no wait');
- release();assert.equal(await first,'creator');assert.equal(await second,'library');
- assert.equal(starts[1].at,20900,'pause starts after the slow first send finishes');assert.equal(starts[1].media,images,'images pass through unchanged');
- assert.deepEqual(q.waits,[8900]);assert.equal(q.events[0].name,'send.pace');assert.equal(q.events[0].waitMs,8900);
- q.advance(8000);await q.send('long reply');assert.equal(q.waits.length,1,'eight-second replies add no delay');
- q.advance(1000);await q.send('fast reply');assert.equal(q.waits[1],7900,'wait only the remaining interval plus jitter');
- let attempt=0;const errors=paced(async()=>{if(++attempt===1)throw Error('send failed');return 'recovered';});
- const failed=errors.send('one'),recovered=errors.send('two');await assert.rejects(failed,/send failed/);assert.equal(await recovered,'recovered');assert.deepEqual(errors.waits,[8000],'failures are paced and do not poison queued sends');
- for(const [random,expected] of [[()=>0,8000],[()=>0.999999,9800]]){const edge=paced(async()=>{},random);await edge.send('first');await edge.send('second');assert.equal(edge.waits[0],expected);}
- assert.equal((ds.match(/function typeAndSend\(/g)||[]).length,1);assert.equal((ds.match(/function typeAndSendRaw\(/g)||[]).length,1);
- assert(/setInputLock, writeDraft, typeAndSend, stopGeneration/.test(ds),'provider export uses the paced wrapper');
- console.log('PASS DeepSeek shared send queue: first send immediate, completion-based interval, jitter, long replies, direct calls and failure recovery.');
-})().catch(error=>{console.error(error);process.exitCode=1;});

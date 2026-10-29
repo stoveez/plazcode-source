@@ -1,5 +1,6 @@
 # PlazCode private repo: instructions for any AI working here
 
+**Current development: 1.24.27 — DeepSeek pacing merged from the owner archive; latest published remains 1.24.26.** See `docs/NOW.md`.
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.
@@ -48,7 +49,7 @@ Normal effort is fine for small fixes, packaging, release notes and questions.
 - When the version number changes (1.24.26, ...): `docs/vault/new-version-checklist.md` (every note naming 1.24.25 must be updated)
 - Build and tests, hash pins, CI: `docs/vault/build-and-tests.md`
 - Test builds and the zips: `docs/vault/test-builds.md`
-- Publishing a real update, which repo and which branch: `docs/vault/releasing.md` (steps), then read `publish-1.24.26.yml` and `development/1.24.26/promote.py` before the first real publish; release description wording and format: `docs/vault/release-format.md` (non-coder words, bold marks, under 2,000 characters)
+- Publishing a real update, which repo and which branch: `docs/vault/releasing.md` (steps), then read `publish-1.24.27.yml` and `development/1.24.27/promote.py` before the first real publish; release description wording and format: `docs/vault/release-format.md` (non-coder words, bold marks, under 2,000 characters)
 - Vault memory, desktop layout, guides, website: `docs/vault/vault-memory.md`, `docs/vault/app-and-guides.md`
 - Open bugs and not-yet-tested items: `docs/vault/open-work.md`; what is in the latest test zips: `docs/HANDOFF.md` section "What is in the latest test zips and what is NOT yet" (keep it up to date)
 - Remaining deferred plans (accounts, Skill Workshop, Brickwire; code protection shipped in 1.24.26): `development/1.24.26/`. Latest published: 1.24.26 (signed program/update checks and permanent approvals; see `docs/NOW.md`)

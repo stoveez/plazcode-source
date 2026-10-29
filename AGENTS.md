@@ -1,5 +1,6 @@
 # AGENTS.md - instructions for any AI working in this repo (Codex, Claude, or others)
 
+**Current development: 1.24.27 — DeepSeek pacing merged from the owner archive; latest published remains 1.24.26.** See `docs/NOW.md`.
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.
@@ -26,7 +27,7 @@ Start from **`claude/plazcode-dev`** (the newest finished work; the repo's `main
 Edit files in `development/<version>/overlay/`, never in `build-src-<version>/` (it is rebuilt by `python3 development/<version>/prepare.py`). After editing a protected file, update its hash pin in `test-desktop-regression.js`.
 
 ## Running two AIs at once
-Only if the owner says two AIs run at once (normally they do not): the owner may run Claude Code and you at the same time. Claim a task on `docs/TASK-BOARD.md`, work in your own branch and git worktree (`git worktree add ../plazcode-<task> -b codex/<task> claude/plazcode-dev`), stay inside your claimed files, start CI for your branch with `gh workflow run validate-1.24.26.yml --ref <branch>`, and leave a short handoff note when you finish (`docs/NOW.md`). Section 11 of the guide has the full protocol.
+Only if the owner says two AIs run at once (normally they do not): the owner may run Claude Code and you at the same time. Claim a task on `docs/TASK-BOARD.md`, work in your own branch and git worktree (`git worktree add ../plazcode-<task> -b codex/<task> claude/plazcode-dev`), stay inside your claimed files, start CI for your branch with `gh workflow run validate-1.24.27.yml --ref <branch>`, and leave a short handoff note when you finish (`docs/NOW.md`). Section 11 of the guide has the full protocol.
 - **Vault folder copies stay in step with GitHub, both ways (owner, 2026-10-24):** a note edited in the owner's PC folder (PlazCode-Vault or Stoveez-Vault) must be applied to its matching file in the repo, and a note changed in the repo must be copied to the PC folder. How: `docs/vault/how-we-work.md`.
 - **Keep every vault note and plan file current (owner, 2026-10-24).** When you change something, fix every note that mentions it in the same commit (NOW, open-work, milestones, test-builds, plan files). Stale notes are a bug. How: `docs/vault/how-we-work.md`.
 - **Ask deep questions before building a feature (owner, 2026-10-24).** When the owner asks for a new feature, especially a vague one, first ask them in-depth questions that look at it from a fundamental angle: what they are really trying to achieve, who uses it and when, what "great" looks like, edge cases, what to avoid, how it should feel. Offer a recommended answer for each so they can just say yes. The goal is a feature that matches what they were shooting for, not a literal reading of the words. Skip this only for small bug fixes, a request that is already fully specific, or unattended runs. How: `docs/vault/how-we-work.md`.
@@ -44,7 +45,7 @@ The owner does not want to forget this step of the public-then-private plan. Rem
 - When the version number changes (1.24.26, ...): `docs/vault/new-version-checklist.md` (every note naming 1.24.25 must be updated)
 - Build, tests, hash pins, CI, quick commands: `docs/vault/build-and-tests.md`
 - Test builds and the zips: `docs/vault/test-builds.md`
-- Publishing a real update, which repo and branch holds releases: `docs/vault/releasing.md` (then read `publish-1.24.26.yml` and `development/1.24.26/promote.py` before the first real publish); release description wording and format: `docs/vault/release-format.md` (non-coder words, bold marks, under 2,000 characters)
+- Publishing a real update, which repo and branch holds releases: `docs/vault/releasing.md` (then read `publish-1.24.27.yml` and `development/1.24.27/promote.py` before the first real publish); release description wording and format: `docs/vault/release-format.md` (non-coder words, bold marks, under 2,000 characters)
 - Open bugs: `docs/vault/open-work.md`; what is in the latest test zips: `docs/HANDOFF.md`
 - Local Windows test-zip build with a CLI agent: `docs/HANDOFF.md`, "Option: build the test zip on the owner's own computer"
 - Remaining deferred plans (accounts, Skill Workshop, Brickwire; code protection shipped in 1.24.26): `development/1.24.26/`. Latest published: 1.24.26 (signed program/update checks and permanent approvals; see `docs/NOW.md`)

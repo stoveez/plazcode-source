@@ -1,6 +1,6 @@
 # PlazCode maintainer guide
 
-**Current, 2026-10-28:** 1.24.26 published. Validation 40772509288 on `a74ae17`; publish run 40781780030. Start with `docs/NOW.md`. Older entries below are historical.
+**Current, 2026-10-29:** working on 1.24.27 (DeepSeek shared send pacing from the owner archive). Latest published remains 1.24.26. Start with `docs/NOW.md`; older entries below are historical.
 
 For any AI (Codex, Claude Code or another) or person who works on PlazCode. Read this whole file before changing anything. The short rules are in `AGENTS.md` / `CLAUDE.md`; this file explains everything behind them.
 
@@ -67,17 +67,17 @@ PlazCode is NOT stored as a normal source tree. A release is built like this:
 ```
 PlazCode-source-1.24.20.zip  (the pinned official 1.24.20 source, hash-checked)
         +
-development/1.24.26/overlay/  (every file we changed or added for 1.24.21)
+development/1.24.27/overlay/  (every file we changed or added for 1.24.21)
         =
-build-src-1.24.26/PlazCode/   (the built source tree, made by prepare.py)
+build-src-1.24.27/PlazCode/   (the built source tree, made by prepare.py)
 ```
 
-- Run `python3 development/1.24.26/prepare.py` to rebuild `build-src-1.24.26/PlazCode`. It deletes and recreates that folder.
-- **Edit files in `development/1.24.26/overlay/`, never in `build-src-1.24.26/`.** The build folder is thrown away every time prepare.py runs. If a file you need to change is not in the overlay yet, copy it from the build folder into the same path in the overlay, then edit the overlay copy.
+- Run `python3 development/1.24.27/prepare.py` to rebuild `build-src-1.24.27/PlazCode`. It deletes and recreates that folder.
+- **Edit files in `development/1.24.27/overlay/`, never in `build-src-1.24.27/`.** The build folder is thrown away every time prepare.py runs. If a file you need to change is not in the overlay yet, copy it from the build folder into the same path in the overlay, then edit the overlay copy.
 - `prepare.py` also copies `core/`, `providers/` and the main files into `PlazCode-Extension/` (the folder users load into the browser) and removes some old files.
 - For a new version number, copy `development/1.24.24` to `development/<new>`, change the version and the base archive name inside the scripts, and copy the two workflows in `.github/workflows/`.
 - Generated files must be regenerated, not edited: Ultra (`development/1.24.25/ultralab/build_ultralab.py` writes `core/ultracode.js`, `core/ultralab-pack.json`, `core/ultralab/INDEX.json`; test with `test-ultralab-generated.py`) and language files (`development/1.24.25/build-locales.py`; test with `test-locales.py`).
-- **Hash pins.** `test-desktop-regression.js` pins the exact git hash of protected files such as `providers/*.js` and `core/main.js`. After you edit a protected file, run `git hash-object <overlay file>` and update the pin in `development/1.24.26/overlay/test-desktop-regression.js`. If that test fails with a hash message, this is why.
+- **Hash pins.** `test-desktop-regression.js` pins the exact git hash of protected files such as `providers/*.js` and `core/main.js`. After you edit a protected file, run `git hash-object <overlay file>` and update the pin in `development/1.24.27/overlay/test-desktop-regression.js`. If that test fails with a hash message, this is why.
 - `test-provider-preservation.js` guards each AI-site provider's control flow. A deliberate change to a provider's send logic needs an exception entry with a comment explaining why.
 
 ### Where things live
@@ -101,9 +101,9 @@ build-src-1.24.26/PlazCode/   (the built source tree, made by prepare.py)
 ## 4. Everyday workflow
 
 1. **Branch.** Never work directly on a shared branch when someone else may be working. See section 11 for working in parallel.
-2. **Build the source:** `python3 development/1.24.26/prepare.py`.
+2. **Build the source:** `python3 development/1.24.27/prepare.py`.
 3. **Edit the overlay**, then run prepare.py again to see the result in the build folder.
-4. **Run the tests** from `build-src-1.24.26/PlazCode`:
+4. **Run the tests** from `build-src-1.24.27/PlazCode`:
    - JavaScript, everything: `NODE_PATH=release-tools/node_modules PLAZCODE_TEST_BROWSER=chromium python3 release-tools/test-javascript.py` (about 12 minutes; runs every `test-*.js`).
    - One JavaScript test: `NODE_PATH=release-tools/node_modules node test-<name>.js`. First run `npm ci --prefix release-tools --ignore-scripts` (and `node release-tools/node_modules/playwright/cli.js install --with-deps chromium firefox` for the browser tests in `release-tools/*.cjs`).
    - App: `cargo test --manifest-path agent/Cargo.toml` (add `--offline` if there is no network).
@@ -124,8 +124,8 @@ Chat sites change their pages and are hard to test live. Rules that were learned
 
 ## 5. Continuous integration (GitHub Actions)
 
-Workflow `.github/workflows/validate-1.24.26.yml` ("Validate PlazCode 1.24.21 development"):
-- It runs on a push to `release/1.24.25`, on pull requests that touch `development/1.24.25/**`, and **by hand on any branch** (`gh workflow run validate-1.24.26.yml --ref <branch>`).
+Workflow `.github/workflows/validate-1.24.27.yml` ("Validate PlazCode 1.24.21 development"):
+- It runs on a push to `release/1.24.25`, on pull requests that touch `development/1.24.25/**`, and **by hand on any branch** (`gh workflow run validate-1.24.27.yml --ref <branch>`).
 - Concurrency is per branch, so a push cancels the older run on the SAME branch only.
 - Jobs: `browsers` (Linux; unit tests and real-Chromium/Firefox tests) and `native` on Windows, macOS and Ubuntu (Rust tests, builds the apps, runs the updater tests, packages the downloads).
 - It takes about 30 minutes. A run is "green" only when all four jobs succeed.
@@ -220,12 +220,12 @@ The owner may run Claude Code and Codex at the same time. To avoid overwriting e
    git fetch origin
    git worktree add ../plazcode-<task> -b <ai>/<task> release/1.24.25    # <ai> = codex or claude
    cd ../plazcode-<task>
-   python3 development/1.24.26/prepare.py
+   python3 development/1.24.27/prepare.py
    ```
    Each worktree has its own `build-src-1.24.24` folder, so builds never collide.
 3. **Stay inside your files.** The claim says which files you touch. If you must change a file someone else claimed (very common: `core/main.js`, `test-desktop-regression.js`), stop and tell the owner, or keep your change tiny and rebase often.
 4. **Shared hot spots** that cause merge conflicts: `core/main.js`, `agent/src/workspace.rs`, `agent/src/main.rs`, `test-desktop-regression.js` (hash pins), `release-entry.json`, `.github/workflows/*`. After merging, recompute the hash pins with `git hash-object`.
-5. **CI per branch.** Start validation for your branch with `gh workflow run validate-1.24.26.yml --ref <branch>`. Runs on different branches do not cancel each other.
+5. **CI per branch.** Start validation for your branch with `gh workflow run validate-1.24.27.yml --ref <branch>`. Runs on different branches do not cancel each other.
 6. **Only one AI at a time touches** `.github/workflows/publish-*.yml`, `promote.py`, `package.py` and the release feed files. Say so on the board.
 7. **Merging is the owner's decision.** Open a pull request into `release/1.24.25` (or ask the owner), with a plain summary and the test results. Never push directly to the shared release branch without the owner's yes.
 8. **Handoff log:** at the end of a task, add 3-5 plain lines to the board: what changed, what was tested, what was not, what is next. A new chat with no memory must be able to continue from this file alone.

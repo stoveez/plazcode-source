@@ -4,8 +4,8 @@ updated: 2026-10-26
 ---
 # Finished work
 
-## 2026-10-29: DeepSeek shared send guard implemented (unreleased)
-Provider-level serialization and completion-based pacing cover core and direct UI sends. Focused timing/concurrency/failure tests, raw-send AST preservation, protected hash pins and root/Chromium/Firefox copy checks passed. Live DeepSeek and release validation remain.
+## 2026-10-29: 1.24.27 initialized with owner-provided DeepSeek guard (unreleased)
+The owner archive guard is merged into 1.24.27: provider-level serialization, optional-argument forwarding, 250 ms sleep slices and a sampled 8–9.8 second completion-based cooldown cover core and direct UI sends. Previous 1.24.26 provider files were restored to their released baseline. Focused timing/concurrency/failure tests, raw-send AST preservation, protected hash pins and root/Chromium/Firefox copy checks passed. Live DeepSeek and release validation remain.
 
 ## 2026-10-28: 1.24.26 published
 Signed program/update checks, protected Chromium/Firefox code and permanent per-tool Approve all. Validation 40772509288 (`a74ae17`), publication 40781780030, packaged Mac lifetime/relaunch passed. Live feed signatures, Windows archive checksum and full program/browser signed trees verified at public commit d514655. No app signing or new end-user setup. User data stays editable; original affected live Studio/account setups were not tested.

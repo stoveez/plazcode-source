@@ -4,25 +4,25 @@ updated: 2026-10-28
 ---
 # Build and tests
 
-- **Edit only the overlay** (`development/1.24.26/overlay`). Never edit `build-src-1.24.26/` (regenerated). A file not in the overlay is first copied there from `build-src-1.24.26/PlazCode/`.
-- Build: `python3 development/1.24.26/prepare.py`. Do not run it while the full suite runs.
+- **Edit only the overlay** (`development/1.24.27/overlay`). Never edit `build-src-1.24.27/` (regenerated). A file not in the overlay is first copied there from `build-src-1.24.27/PlazCode/`.
+- Build: `python3 development/1.24.27/prepare.py`. Do not run it while the full suite runs.
 - Feature guide: `test-feature-guide.js` reads the real menu and bar in `core/main.js` and fails for any control with no entry in `core/feature-guide.js`. After editing the guide, regenerate nothing: the JSON in that file is the source. Startup text changes need `node test-startup-sections.js --update-golden` and new pins for `core/config.js` and `core/main.js`.
-- One JS test: from `build-src-1.24.26/PlazCode`, `NODE_PATH=release-tools/node_modules node test-<name>.js`.
+- One JS test: from `build-src-1.24.27/PlazCode`, `NODE_PATH=release-tools/node_modules node test-<name>.js`.
 - Full JS suite (10 to 15 minutes): from the build folder, `NODE_PATH=release-tools/node_modules PLAZCODE_TEST_BROWSER=chromium python3 release-tools/test-javascript.py`.
-- Rust: `cargo test --manifest-path build-src-1.24.26/PlazCode/agent/Cargo.toml` (213 passing tests locally, plus 2 ignored; run the full suite).
+- Rust: `cargo test --manifest-path build-src-1.24.27/PlazCode/agent/Cargo.toml` (213 passing tests locally, plus 2 ignored; run the full suite).
 - Desktop tests: `node release-tools/test-*.cjs` (Chromium works in the sandbox; Firefox halves run only in CI).
 
 ## Hash pins
-Protected files (`core/main.js`, `core/config.js`, `providers/vani.js`, `claude.js`, `chatgpt.js`, `notion.js`) have pins in the overlay's `test-desktop-regression.js`. After editing one: run `prepare.py`, then `git hash-object build-src-1.24.26/PlazCode/<file>` and update the pin. Redo after every merge touching them.
+Protected files (`core/main.js`, `core/config.js`, `providers/vani.js`, `claude.js`, `chatgpt.js`, `notion.js`) have pins in the overlay's `test-desktop-regression.js`. After editing one: run `prepare.py`, then `git hash-object build-src-1.24.27/PlazCode/<file>` and update the pin. Redo after every merge touching them.
 
 ## Code protection checks
-- `node development/1.24.26/test-protection.mjs`: signatures, file tampering, encrypted maps, obfuscation and old-browser recovery.
-- `node development/1.24.26/test-protection-browser.mjs`: real protected Chromium extension and browser cryptography. The explicit local `PLAZCODE_PROTECTION_BROWSER_MODE=crypto` subset does not cover extension loading; CI requires the full check.
-- Optimized Linux proof: `PLAZCODE_SIGNING_KEY_FILE=<temporary-validation-key> node development/1.24.26/test-release-verifier.mjs`; the binary must be compiled for that validation key.
+- `node development/1.24.27/test-protection.mjs`: signatures, file tampering, encrypted maps, obfuscation and old-browser recovery.
+- `node development/1.24.27/test-protection-browser.mjs`: real protected Chromium extension and browser cryptography. The explicit local `PLAZCODE_PROTECTION_BROWSER_MODE=crypto` subset does not cover extension loading; CI requires the full check.
+- Optimized Linux proof: `PLAZCODE_SIGNING_KEY_FILE=<temporary-validation-key> node development/1.24.27/test-release-verifier.mjs`; the binary must be compiled for that validation key.
 - Never publish validation-key packages. Production needs the pinned public key and private Actions secret; see [code-protection](code-protection.md).
 
 ## CI
-`.github/workflows/validate-1.24.26.yml` (jobs `browsers` and `native` on Windows, macOS, Ubuntu). Start with `gh workflow run validate-1.24.26.yml --ref <branch>`. The `browsers` job stops at the first failing step. Builds need the public window, see [test-builds](test-builds.md).
+`.github/workflows/validate-1.24.27.yml` (jobs `browsers` and `native` on Windows, macOS, Ubuntu). Start with `gh workflow run validate-1.24.27.yml --ref <branch>`. The `browsers` job stops at the first failing step. Builds need the public window, see [test-builds](test-builds.md).
 
 ## Sandbox limits
 Cannot download GitHub artifacts, cannot install Firefox, no real Windows/Mac app, cannot flip repo visibility.

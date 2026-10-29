@@ -791,28 +791,7 @@ const RSProvider = (() => {
     return text.slice(0, headLen) + marker + text.slice(text.length - tailLen);
   }
 
-  // Every programmatic send (including creator/library cards) uses this export.
-  // Measure from completion, so slow uploads/sends never consume the next pause.
-  let sendQueue = Promise.resolve(), lastSendFinishedAt = null;
-  function typeAndSend(text, images) {
-    const send = sendQueue.then(async () => {
-      if (lastSendFinishedAt !== null) {
-        const remaining = 8000 - Math.max(0, Date.now() - lastSendFinishedAt);
-        if (remaining > 0) {
-          const waitMs = remaining + Math.floor(Math.random() * 1801);
-          try { diag("send.pace", { waitMs }); } catch {}
-          await sleep(waitMs);
-        }
-      }
-      try { return await typeAndSendRaw(text, images); }
-      finally { lastSendFinishedAt = Date.now(); }
-    });
-    // A failed send still starts the cooldown, without poisoning the queue.
-    sendQueue = send.catch(() => {});
-    return send;
-  }
-
-  async function typeAndSendRaw(text, images) {
+  async function typeAndSend(text, images) {
     const editor = getEditor();
     if (!editor) throw new Error("DeepSeek input box not found");
     editor.focus();
