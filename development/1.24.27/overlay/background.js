@@ -219,6 +219,7 @@ const DESKTOP_PREF_KEYS = [
   "rsLanguage",
   "rsReadOnly",
   "rsConfirmDelete",
+  "rsApprovalMode",
   "rsAllowedFolders",
   "rsWorkMode",
   "rsPermMode",

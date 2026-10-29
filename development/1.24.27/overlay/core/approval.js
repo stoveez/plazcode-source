@@ -14,6 +14,27 @@ const PlazCodeApproval = (() => {
   const SAFE_TO_REPEAT = /(_set|_set_source)$|^(write_file|write_json|patch_json|selection_set|set_property|move_path|instance_rename|instance_reparent)$/;
   const REPEATS = /(_create|_add|_at)$|^(append_file|script_append|multi_edit|edit_file|replace_once|replace_in_files|copy_file|create_folder|spawn_box|insert_from_creator_store|download_file)$|^spawn_/;
 
+  const MODES = Object.freeze([
+    {value:"ask",label:"Ask for approval",description:"Ask before every command that changes something."},
+    {value:"auto",label:"Approve for me",description:"Ask only before commands that delete or remove things."},
+    {value:"bypass",label:"Bypass approval",description:"Automatically approve commands without popups."},
+  ]);
+  const normalizeMode = value => MODES.some(mode=>mode.value===value) ? value : value===undefined||value==="" ? "" : "ask";
+  function removes(tool,args,engine,safety) {
+    try { if(safety.isDelete(tool,args,engine))return true; } catch {}
+    const name=bare(tool),a=args||{};
+    if(/(?:^|_)(?:delete|remove|destroy|clear)(?:_|$)/i.test(name))return true;
+    if(Array.isArray(a.edits)&&a.edits.some(edit=>/^(delete|remove|destroy)$/i.test(String(edit.op||edit.action||edit.type||""))))return true;
+    const code=String(a.code||a.script||"");
+    return /:(?:Destroy|ClearAllChildren)\s*\(|table\.(?:remove|clear)\s*\(|\.Parent\s*=\s*nil\b|bpy\.ops\.object\.delete\s*\(|bpy\.data\.[\w.]+\.remove\s*\(/i.test(code);
+  }
+  function commandDecision(mode,tool,args,engine,safety) {
+    mode=normalizeMode(mode);if(!mode)return "legacy";
+    if(mode==="bypass")return "allow";
+    if(removes(tool,args,engine,safety))return "ask";
+    return mode==="ask"&&needsApproval(tool,engine,safety)?"ask":"allow";
+  }
+
   function needsApproval(tool, engine, safety) {
     try { return !!safety.isChange(tool, engine); } catch { return true; }
   }
@@ -89,6 +110,6 @@ const PlazCodeApproval = (() => {
   }
   const alwaysRemove = (list, tool) => alwaysNormalize(list).filter((x) => x.tool !== alwaysName(tool));
 
-  return { describe, describePlan, planSteps, planGoal, needsApproval, freeze, nice, alwaysNormalize, alwaysHas, alwaysAdd, alwaysRemove };
+  return { MODES, normalizeMode, removes, commandDecision, describe, describePlan, planSteps, planGoal, needsApproval, freeze, nice, alwaysNormalize, alwaysHas, alwaysAdd, alwaysRemove };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = PlazCodeApproval;

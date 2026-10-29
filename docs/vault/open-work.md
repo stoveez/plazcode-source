@@ -84,3 +84,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29: owner effort-cutoff recording reproduced in a desktop-style browser fixture: Ultra was covered by Instructions. Synced stale desktop inline picker with shared lift behavior and added viewport-bounded scrolling. All effort choices passed at large/short/narrow sizes with keyboard/close cleanup. Include in 1.24.27 test packages; new app required. Fresh full CI starts with this push.
 
 - 2026-10-29 WIP: owner requested persistent Ask/Approve for me/Bypass approval controls below Effort and in desktop Settings, plus actual running-UI screenshots and robust ChatGPT bar placement. Include with existing 1.24.27 changes in test builds; earlier CI sources superseded.
+
+- 2026-10-29 WIP: approval mode policy, shared preference/native schema, actual bar/app controls and fresh-composer collapsed-tab geometry implemented. Local policy/legacy approval and collapse regressions passed. Browser integration/screenshots, native compilation and final full CI remain; do not deliver earlier test sources.

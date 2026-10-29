@@ -14,6 +14,8 @@ pub struct DesktopPreferences {
     pub work_mode: String,
     #[serde(rename = "rsPermMode")]
     pub perm_mode: String,
+    #[serde(rename = "rsApprovalMode", deserialize_with = "deserialize_approval_mode")]
+    pub approval_mode: String,
     #[serde(rename = "rsStopMode")]
     pub stop_mode: String,
     #[serde(rename = "rsToolBudget")]
@@ -94,6 +96,7 @@ impl Default for DesktopPreferences {
             engine: "roblox".to_string(),
             work_mode: "balanced".to_string(),
             perm_mode: "sandbox".to_string(),
+            approval_mode: String::new(),
             sounds: true,
             stop_mode: "immediate".into(),
             input_limit_enabled:true,input_char_limit:120000,output_limit_enabled:true,output_char_limit:32000,tool_budget:0,run_limits_enabled:false,task_minutes:0,visual_check:true,continuation_offer:true,command_cooldown:0.0,
@@ -127,6 +130,11 @@ fn deserialize_language<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Re
     Ok(normalize_language(value.as_str().unwrap_or("en")).to_string())
 }
 
+fn deserialize_approval_mode<'de,D:serde::Deserializer<'de>>(deserializer:D)->Result<String,D::Error>{
+    let value=serde_json::Value::deserialize(deserializer)?;
+    Ok(match value.as_str(){Some("ask")=>"ask",Some("auto")=>"auto",Some("bypass")=>"bypass",Some("")=>"",_=>"ask"}.to_string())
+}
+
 impl DesktopPreferences {
     pub fn normalize(&mut self) {
         self.language = normalize_language(&self.language).to_string();
@@ -155,6 +163,8 @@ impl DesktopPreferences {
         if !matches!(self.perm_mode.as_str(), "sandbox" | "ask" | "full") {
             self.perm_mode = "sandbox".to_string();
         }
+        if self.approval_mode.is_empty(){self.approval_mode=if self.perm_mode=="ask"{"ask"}else if !self.confirm_delete{"bypass"}else{"auto"}.into();}
+        if !matches!(self.approval_mode.as_str(),"ask"|"auto"|"bypass"){self.approval_mode="ask".into();}
         if !matches!(self.thinking_level.as_str(), "default" | "low" | "mid" | "high" | "max" | "ultracode") {
             self.thinking_level = "default".to_string();
         }
@@ -468,4 +478,16 @@ mod tests {
 
         let _ = std::fs::remove_file(path);
     }
+    #[test] fn approval_mode_migrates_and_invalid_values_never_enable_bypass() {
+        for (perm,delete,expected) in [("sandbox",true,"auto"),("ask",true,"ask"),("full",false,"bypass")] {
+            let mut prefs=DesktopPreferences::default();prefs.perm_mode=perm.into();prefs.confirm_delete=delete;prefs.normalize();assert_eq!(prefs.approval_mode,expected);
+        }
+        for value in [serde_json::json!("bad"),serde_json::json!(true),serde_json::json!(null)] {
+            let mut prefs:DesktopPreferences=serde_json::from_value(serde_json::json!({"rsApprovalMode":value,"rsThinkingLevel":"max"})).unwrap();prefs.normalize();assert_eq!(prefs.approval_mode,"ask");assert_eq!(prefs.thinking_level,"max");
+        }
+        for mode in ["ask","auto","bypass"] {
+            let mut prefs:DesktopPreferences=serde_json::from_value(serde_json::json!({"rsApprovalMode":mode})).unwrap();prefs.normalize();let encoded=serde_json::to_value(&prefs).unwrap();assert_eq!(encoded["rsApprovalMode"],mode);
+        }
+    }
+
 }

@@ -6016,3 +6016,9 @@ html[data-rs-palette][data-rs-theme] .rs-chip.rs-tc, html[data-rs-palette][data-
 html[data-rs-palette][data-rs-theme] .rs-chip.rs-tc.open, html[data-rs-palette][data-rs-theme] .rs-chip:not(.rs-tc).open { background-image: linear-gradient(180deg, var(--pc-navy-2) 0%, var(--pc-navy) 46%) !important; }
 /* Claude: a PlazCode turn that shows nothing (no chip) leaves no empty grey bubble behind (class set by providers/claude.js). */
 .rs-empty-turn { display: none !important; }
+
+/* Command approval selector lives below Effort in the actual bar. */
+#rs-root #rs-approval-mode{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:4px;color:var(--pc-light,#ffbc67);font:500 9px/1.4 ui-sans-serif,"Segoe UI",sans-serif;cursor:pointer;white-space:nowrap}
+#rs-root #rs-approval-mode span{font-weight:650}#rs-root #rs-approval-mode::after{content:"⌄";font-size:11px}#rs-root #rs-approval-mode:focus-visible{outline:2px solid var(--pc-light,#ffbc67);outline-offset:3px;border-radius:3px}
+.pc-approval-menu{width:min(340px,calc(100vw - 16px));box-sizing:border-box;overflow:auto}.pc-approval-menu .pc-effort-item{gap:12px;padding:11px 12px}.pc-approval-menu strong{display:block;font-size:13px;font-weight:650}.pc-approval-menu small{display:block;margin-top:4px;font-size:11px;line-height:1.45;color:#aaa9a6}.pc-approval-menu button:disabled{opacity:.65;cursor:wait}
+#rs-show-tab{transform:none!important;margin:0!important}

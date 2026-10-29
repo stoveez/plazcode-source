@@ -236,6 +236,18 @@
   let safetySettings = typeof PlazCodeSafety !== "undefined" ? PlazCodeSafety.fromStorage({}) : {readOnly:false,confirmDelete:true,allowedFolders:[]};
   try { chrome.storage.local.get(["rsReadOnly","rsConfirmDelete","rsAllowedFolders"], (values) => { safetySettings = PlazCodeSafety.fromStorage(values); try { window.__rsSafety = () => safetySettings; } catch {} }); } catch {}
   try { window.__rsSafety = () => safetySettings; } catch {}
+  let approvalMode = "";
+  const approvalModeReady = new Promise(resolve=>{
+    let loaded=false;
+    const finish=values=>{if(loaded)return;loaded=true;approvalMode=typeof PlazCodeApproval!=="undefined"&&typeof PlazCodeApproval.normalizeMode==="function"?PlazCodeApproval.normalizeMode(values&&values.rsApprovalMode):"";resolve();};
+    try {const pending=chrome.storage.local.get("rsApprovalMode",finish);if(pending&&typeof pending.then==="function")pending.then(finish,()=>finish());}catch{finish();}
+  });
+  function approvalModeLabel(){const mode=approvalMode||(permMode==="ask"?"ask":"auto");return PlazCodeApproval.MODES.find(item=>item.value===mode)?.label||"Approve for me";}
+  function renderApprovalMode(){const node=document.getElementById("rs-approval-mode");if(node){node.querySelector("span").textContent=approvalModeLabel();node.dataset.mode=approvalMode||"legacy";}}
+  async function setApprovalMode(value){
+    const next=PlazCodeApproval.normalizeMode(value);if(!next)return;
+    await chrome.storage.local.set({rsApprovalMode:next});approvalMode=next;renderApprovalMode();
+  }
   // One-shot permission for the exact delete the user just allowed. The app
   // refuses deletes without it, and the AI can never set it through arguments.
   let deleteConfirmation = null;
@@ -262,6 +274,7 @@
   const alwaysSet = (next) => { alwaysList = PlazCodeApproval.alwaysNormalize(next); try { chrome.storage.local.set({ rsAlwaysApprove: alwaysList }); } catch {} };
   // One card at a time, first come first served. Never approves by itself: it waits for the person.
   function requestApproval(op, args, opts) {
+    if(typeof approvalMode!=="undefined"&&(approvalMode==="bypass"||(approvalMode==="auto"&&opts&&opts.plan)))return Promise.resolve(true);
     approvalWaiting++;
     const job = approvalChain.then(() => showApproval(op, args, opts || {}));
     approvalChain = job.then(() => {}, () => {});
@@ -342,7 +355,7 @@
           alwaysBtn.hidden = !canAlways;
           if (canAlways) { alwaysBtn.textContent = "Always approve"; const nm = PlazCodeApproval.nice(call.tool); alwaysBtn.title = "Never ask about “" + nm + "” again. You can remove it in the PlazCode menu under Safety."; alwaysBtn.setAttribute("aria-label", "Always approve " + nm); }
         }
-        const canRepeatAll = !!(info && !info.destructive && call && !opts.failClosed && !opts.plan);
+        const canRepeatAll = !!(info && !info.destructive && call && !opts.failClosed && !opts.plan && opts.always !== false);
         if (allBtn) {
           allBtn.hidden = !canRepeatAll;
           if (canRepeatAll) { allBtn.textContent = "Approve all “" + PlazCodeApproval.nice(call.tool) + "” forever"; allBtn.title = "Remember this action across tasks, chats and AI sites. Remove it under Safety > Always approved."; }
@@ -2922,6 +2935,16 @@ return result`;
     if (safetySettings.readOnly && PlazCodeSafety.isChange(bareName, safetyEngine)) {
       return PlazCodeSafety.readOnlyRefusal(bareName);
     }
+    if(typeof approvalModeReady!=="undefined")await approvalModeReady;
+    if(typeof approvalMode!=="undefined"&&approvalMode){
+      const deletion=PlazCodeApproval.removes(bareName,args,safetyEngine,PlazCodeSafety);
+      const decision=PlazCodeApproval.commandDecision(approvalMode,bareName,args,safetyEngine,PlazCodeSafety);
+      if(decision==="ask"){
+        const allowed=await requestApproval(bareName,args,{call:{tool:bareName,arguments:args},engine:safetyEngine,always:false,kicker:deletion?"Delete approval":"Command approval"});
+        if(!allowed)return `ERROR in ${bareName}: the user declined this command. Do not retry unless they ask.`;
+      }
+      if(deletion)deleteConfirmation={key:deleteKey(bareName,args),expires:Date.now()+120000};
+    }else{
     await alwaysReady;
     const deletes = safetySettings.confirmDelete && PlazCodeSafety.isDelete(bareName, args, safetyEngine);
     if (deletes) {
@@ -2941,6 +2964,7 @@ return result`;
     if (!deletes && permMode === "ask" && (ASK_OPS.has(bareName) || PlazCodeSafety.isChange(bareName, safetyEngine)) && !planAsked && !alwaysHas(bareName) && !(A.approveAll && (A.approveAll.has("*") || A.approveAll.has(String(bareName))))) {
       const ok = await requestApproval(bareName, args, { call: { tool: bareName, arguments: args }, engine: safetyEngine });
       if (!ok) return `ERROR in ${bareName}: the user declined this action (Ask mode). Do not retry unless they ask.`;
+    }
     }
     if (A.stop) return "ERROR: the command was not run — stopped by the user.";
     // Web tools — bridge-level, no Studio needed. Uses background fetch so it works
@@ -6318,7 +6342,7 @@ return result`;
           <div class="rs-cluster rs-cluster-left">
           <span id="rs-dot" class="off" title=""></span>
           <span id="rs-ornament" aria-hidden="true"></span>
-          <div id="rs-brand-stack"><span id="rs-brand">${BRAND_NAME}</span><span id="rs-bar-version" data-plazcode-version>v${EXT_VERSION} (Not checked)</span><span id="rs-effort" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" title="Click to change the effort">Effort: <span>Default</span></span></div>
+          <div id="rs-brand-stack"><span id="rs-brand">${BRAND_NAME}</span><span id="rs-bar-version" data-plazcode-version>v${EXT_VERSION} (Not checked)</span><span id="rs-effort" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" title="Click to change the effort">Effort: <span>Default</span></span><button id="rs-approval-mode" type="button" aria-haspopup="menu" aria-expanded="false" title="Choose how task commands are approved">Approval: <span>${approvalModeLabel()}</span></button></div>
           <div id="rs-engine" data-engine="roblox">
             <span id="rs-engine-thumb"></span>
             <button data-mode="roblox" class="rs-mode-btn on" title="RobloxScript">RS</button>
@@ -7101,6 +7125,7 @@ return result`;
         if (changes.rsReadOnly || changes.rsConfirmDelete || changes.rsAllowedFolders) {
           chrome.storage.local.get(PlazCodeSafety.KEYS, (values) => { safetySettings = PlazCodeSafety.fromStorage(values); if (!menuEl.hidden) buildMenu(); });
         }
+        if (changes.rsApprovalMode) { approvalMode=PlazCodeApproval.normalizeMode(changes.rsApprovalMode.newValue);renderApprovalMode(); }
         if (changes.rsAlwaysApprove) { try { alwaysList = PlazCodeApproval.alwaysNormalize(changes.rsAlwaysApprove.newValue); if (!menuEl.hidden) buildMenu(); } catch {} }
         if (changes.rsReleaseStatus) { releaseStatus = changes.rsReleaseStatus.newValue || null; renderVersionIndicators(); }
         if (changes.rsCowork) { cowork.setEnabled(changes.rsCowork.newValue === true); dirty = true; }
@@ -7234,6 +7259,24 @@ return result`;
       const toggle=node=>{if(menu)close(false);else open(node);};
       document.addEventListener("click",e=>{const node=e.target&&e.target.closest&&e.target.closest("#rs-effort");if(node){e.preventDefault();e.stopPropagation();toggle(node);}},true);
       document.addEventListener("keydown",e=>{const node=e.target&&e.target.closest&&e.target.closest("#rs-effort");if(node&&(e.key==="Enter"||e.key===" ")){e.preventDefault();e.stopPropagation();toggle(node);}},true);
+    })();
+    // Approval controls use saved extension/desktop preferences, independent of effort.
+    (function(){
+      let menu=null;
+      function close(){if(menu){menu.remove();menu=null;}const button=document.getElementById("rs-approval-mode");if(button)button.setAttribute("aria-expanded","false");}
+      function open(button){
+        close();menu=document.createElement("div");menu.className="pc-effort-menu pc-approval-menu";menu.setAttribute("role","menu");menu.setAttribute("aria-label","Command approvals");
+        for(const option of PlazCodeApproval.MODES){
+          const item=document.createElement("button");item.type="button";item.className="pc-effort-item";item.dataset.mode=option.value;item.setAttribute("role","menuitemradio");item.setAttribute("aria-checked",String((approvalMode||(permMode==="ask"?"ask":"auto"))===option.value));
+          const copy=document.createElement("span"),title=document.createElement("strong"),description=document.createElement("small");title.textContent=option.label;description.textContent=option.description;copy.append(title,description);const tick=document.createElement("em");tick.textContent=item.getAttribute("aria-checked")==="true"?"✓":"";item.append(copy,tick);
+          item.onclick=async()=>{item.disabled=true;try{await setApprovalMode(option.value);close();button.focus();}catch{item.disabled=false;toast("Could not save approval mode. Try again.");}};menu.append(item);
+        }
+        document.body.append(menu);const r=button.getBoundingClientRect(),width=menu.offsetWidth,height=menu.offsetHeight;menu.style.left=Math.max(8,Math.min(r.left,innerWidth-width-8))+"px";menu.style.maxHeight=Math.max(40,innerHeight-16)+"px";menu.style.top=Math.max(8,Math.min(r.bottom+6,innerHeight-height-8))+"px";button.setAttribute("aria-expanded","true");menu.querySelector('[aria-checked="true"]')?.focus();
+      }
+      document.addEventListener("click",event=>{const button=event.target.closest?.("#rs-approval-mode");if(button){event.preventDefault();event.stopPropagation();if(menu)close();else open(button);}},true);
+      document.addEventListener("pointerdown",event=>{if(menu&&!menu.contains(event.target)&&!event.target.closest?.("#rs-approval-mode"))close();},true);
+      document.addEventListener("keydown",event=>{const button=event.target.closest?.("#rs-approval-mode");if(button&&(event.key==="Enter"||event.key===" ")){event.preventDefault();if(menu)close();else open(button);}else if(menu&&event.key==="Escape"){event.preventDefault();close();document.getElementById("rs-approval-mode")?.focus();}else if(menu&&(event.key==="ArrowDown"||event.key==="ArrowUp")){event.preventDefault();const items=[...menu.querySelectorAll("button")],index=items.indexOf(document.activeElement);items[(index+(event.key==="ArrowDown"?1:-1)+items.length)%items.length].focus();}else if(menu&&event.key==="Tab")close();},true);
+      approvalModeReady.then(renderApprovalMode);
     })();
     // ── Smart Checkpoint & Undo (auto-snapshot before mutating tools) ──
     let rsCheckpoints = [];
@@ -10028,12 +10071,15 @@ function renderCards(panel) {
       if (!barCollapsed || !br || !br.width || !br.height) { if (!showTab.hidden) showTab.hidden = true; return; }
       if (showTab.hidden) showTab.hidden = false;
       const tw = showTab.offsetWidth || 40, th = showTab.offsetHeight || 28;
-      const left = Math.max(4, Math.min(window.innerWidth - tw - 4, br.right - tw - 6));
+      const anchor=(P.barAnchor&&P.barAnchor())||(P.getEditor&&P.getEditor());
+      const current=anchor&&anchor.isConnected?anchor.getBoundingClientRect():br;
+      const dock=current&&current.width?current:br;
+      const left = Math.max(4, Math.min(window.innerWidth - tw - 4, dock.right - tw - 6));
       // The hidden bar no longer reserves a strip inside the chat box, so sit
       // just above the box's top edge instead of over the first line of input.
       // Bars that already float outside the box keep the old inside spot.
       const outside = !!P.barOutside && !bar.classList.contains("rs-bar-inline");
-      const wanted = !outside && br.top - th - 6 >= 4 ? br.top - th - 6 : br.top + 6;
+      const wanted = dock.top - th - 8;
       const top = Math.max(4, Math.min(window.innerHeight - th - 4, wanted));
       const l = Math.round(left) + "px", t = Math.round(top) + "px";
       if (showTab.style.left !== l) showTab.style.left = l;
@@ -10147,6 +10193,7 @@ function renderCards(panel) {
       if (anchorEl && anchorEl.isConnected) {
         bar.classList.remove("rs-bar-inline", "rs-bar-inside", "rs-bar-float");
         bar.classList.add("rs-bar-anchored");
+        bar.style.position="fixed";bar.style.transform="none";bar.style.margin="0";
         if (root && bar.parentElement !== root) root.appendChild(bar);
         let r = anchorEl.getBoundingClientRect();
         if (!r.width) { bar.style.display = "none"; clearAnchorPad(); if (menuEl) menuEl.hidden = true; return; }
@@ -10197,9 +10244,13 @@ function renderCards(panel) {
             }
           } catch {}
         }
-        bar.style.left = Math.round(r.left) + "px";
-        bar.style.top = Math.round(outside ? Math.max(4, r.top - bh - BAR_GAP) : r.top) + "px";
-        bar.style.width = Math.round(r.width) + "px";
+        const viewportWidth=window.innerWidth,viewportHeight=window.innerHeight;
+        const anchoredWidth=Math.min(r.width,Math.max(0,viewportWidth-16));
+        const anchoredLeft=Math.max(8,Math.min(r.left,viewportWidth-anchoredWidth-8));
+        const below=outside&&r.top<bh+BAR_GAP+4&&r.bottom+bh+BAR_GAP<viewportHeight-4;
+        bar.style.left = Math.round(anchoredLeft) + "px";
+        bar.style.top = Math.round(outside ? (below?r.bottom+BAR_GAP:Math.max(4,r.top-bh-BAR_GAP)) : r.top) + "px";
+        bar.style.width = Math.round(anchoredWidth) + "px";
         bar.style.borderRadius = "";
         if (menuEl && !menuEl.hidden) {
           bar.classList.remove("rs-bar-inline"); // ensure fixed geometry for menu math
