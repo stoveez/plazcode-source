@@ -1052,7 +1052,8 @@ fn main() {
     if let Err(e) = start() {
         let msg = format!("{e:#}");
         #[cfg(any(windows,target_os="macos"))]
-        let verification_mode=std::env::args().any(|arg|matches!(arg.as_str(),"--verify-package"|"--protection-info"));
+        // Headless and verification commands must fail on stderr, never wait for a modal dialog.
+        let verification_mode=std::env::args().any(|arg|matches!(arg.as_str(),"--headless"|"--verify-package"|"--protection-info"));
         #[cfg(windows)]
         if !verification_mode {win_alert("PlazCode Agent failed to start", &msg);}
         #[cfg(target_os="macos")]
