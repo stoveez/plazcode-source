@@ -112,6 +112,42 @@ const PlazCodeFeatureGuide = (() => {
   "index": true
  },
  {
+  "id": "approvals",
+  "title": "Choose when commands ask for approval",
+  "group": "Bar",
+  "where": "PlazCode bar > Approval, directly below Effort; also desktop Settings > General > Reasoning > Command approvals",
+  "does": "Ask for approval prompts for every editing command. Approve for me prompts for detected deletion/removal commands. Bypass approval automatically approves commands and plans.",
+  "steps": [
+   "Open the Approval dropdown under Effort.",
+   "Choose Ask for approval, Approve for me or Bypass approval.",
+   "The saved choice syncs with desktop Settings and applies across chats and AI sites."
+  ],
+  "tips": [
+   "Read-only mode and allowed-folder limits still apply.",
+   "Approve for me detects deletion commands and common deletion code; it cannot predict every effect of arbitrary code."
+  ],
+  "related": [
+   "effort",
+   "access"
+  ],
+  "keywords": [
+   "approval",
+   "bypass",
+   "delete",
+   "remove",
+   "ask",
+   "permission"
+  ],
+  "anchors": [
+   "bar:rs-approval-mode"
+  ],
+  "surfaces": [
+   "extension",
+   "desktop"
+  ],
+  "index": true
+ },
+ {
   "id": "work-mode",
   "title": "Fast, Balanced or Thorough",
   "group": "Menu",

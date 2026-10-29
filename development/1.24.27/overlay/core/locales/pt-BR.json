@@ -1022,5 +1022,17 @@
   "property": "propriedade",
   "properties": "propriedades",
   "words": "palavras",
-  "characters": "caracteres"
+  "characters": "caracteres",
+  "Ask for approval": "Pedir aprovação",
+  "Approve for me": "Aprovar por mim",
+  "Bypass approval": "Ignorar aprovações",
+  "Ask before every command that changes something.": "Perguntar antes de cada comando que altere algo.",
+  "Ask only before commands that delete or remove things.": "Perguntar apenas antes de comandos que excluam ou removam algo.",
+  "Automatically approve commands without popups.": "Aprovar comandos automaticamente sem janelas de confirmação.",
+  "Command approvals": "Aprovação de comandos",
+  "Ask before every edit, only before deletions, or automatically approve task commands.": "Perguntar antes de cada edição, apenas antes de exclusões ou aprovar automaticamente os comandos das tarefas.",
+  "Choose how task commands are approved": "Escolher como os comandos das tarefas são aprovados",
+  "Could not save approval mode. Try again.": "Não foi possível salvar o modo de aprovação. Tente novamente.",
+  "Command approval": "Aprovação de comando",
+  "Delete approval": "Aprovação de exclusão"
 }

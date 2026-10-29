@@ -1022,5 +1022,17 @@
   "property": "属性",
   "properties": "属性",
   "words": "字词",
-  "characters": "字符"
+  "characters": "字符",
+  "Ask for approval": "请求批准",
+  "Approve for me": "替我批准",
+  "Bypass approval": "跳过批准",
+  "Ask before every command that changes something.": "在执行任何会更改内容的命令前询问。",
+  "Ask only before commands that delete or remove things.": "仅在执行删除或移除内容的命令前询问。",
+  "Automatically approve commands without popups.": "自动批准命令，不显示弹窗。",
+  "Command approvals": "命令批准方式",
+  "Ask before every edit, only before deletions, or automatically approve task commands.": "每次编辑前询问、仅在删除前询问，或自动批准任务命令。",
+  "Choose how task commands are approved": "选择任务命令的批准方式",
+  "Could not save approval mode. Try again.": "无法保存批准模式。请重试。",
+  "Command approval": "批准命令",
+  "Delete approval": "批准删除"
 }

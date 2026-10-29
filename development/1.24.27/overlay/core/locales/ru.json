@@ -1022,5 +1022,17 @@
   "property": "свойство",
   "properties": "свойства",
   "words": "слов",
-  "characters": "символов"
+  "characters": "символов",
+  "Ask for approval": "Запрашивать подтверждение",
+  "Approve for me": "Подтверждать за меня",
+  "Bypass approval": "Без подтверждений",
+  "Ask before every command that changes something.": "Спрашивать перед каждой командой, которая что-либо изменяет.",
+  "Ask only before commands that delete or remove things.": "Спрашивать только перед командами удаления.",
+  "Automatically approve commands without popups.": "Автоматически подтверждать команды без всплывающих окон.",
+  "Command approvals": "Подтверждение команд",
+  "Ask before every edit, only before deletions, or automatically approve task commands.": "Спрашивать перед каждой правкой, только перед удалением или автоматически подтверждать команды задач.",
+  "Choose how task commands are approved": "Выберите способ подтверждения команд задач",
+  "Could not save approval mode. Try again.": "Не удалось сохранить режим подтверждения. Повторите попытку.",
+  "Command approval": "Подтверждение команды",
+  "Delete approval": "Подтверждение удаления"
 }

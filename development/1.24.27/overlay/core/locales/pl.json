@@ -1022,5 +1022,17 @@
   "property": "właściwość",
   "properties": "właściwości",
   "words": "słów",
-  "characters": "znaków"
+  "characters": "znaków",
+  "Ask for approval": "Pytaj o zgodę",
+  "Approve for me": "Zatwierdzaj za mnie",
+  "Bypass approval": "Pomijaj zatwierdzanie",
+  "Ask before every command that changes something.": "Pytaj przed każdym poleceniem, które coś zmienia.",
+  "Ask only before commands that delete or remove things.": "Pytaj tylko przed poleceniami usuwającymi elementy.",
+  "Automatically approve commands without popups.": "Automatycznie zatwierdzaj polecenia bez wyskakujących okien.",
+  "Command approvals": "Zatwierdzanie poleceń",
+  "Ask before every edit, only before deletions, or automatically approve task commands.": "Pytaj przed każdą edycją, tylko przed usuwaniem lub automatycznie zatwierdzaj polecenia zadań.",
+  "Choose how task commands are approved": "Wybierz sposób zatwierdzania poleceń zadań",
+  "Could not save approval mode. Try again.": "Nie udało się zapisać trybu zatwierdzania. Spróbuj ponownie.",
+  "Command approval": "Zatwierdzenie polecenia",
+  "Delete approval": "Zatwierdzenie usunięcia"
 }

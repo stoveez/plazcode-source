@@ -1022,5 +1022,17 @@
   "property": "屬性",
   "properties": "屬性",
   "words": "字詞",
-  "characters": "字元"
+  "characters": "字元",
+  "Ask for approval": "要求核准",
+  "Approve for me": "替我核准",
+  "Bypass approval": "略過核准",
+  "Ask before every command that changes something.": "在執行任何會變更內容的命令前詢問。",
+  "Ask only before commands that delete or remove things.": "僅在執行刪除或移除內容的命令前詢問。",
+  "Automatically approve commands without popups.": "自動核准命令，不顯示彈出視窗。",
+  "Command approvals": "命令核准方式",
+  "Ask before every edit, only before deletions, or automatically approve task commands.": "每次編輯前詢問、僅在刪除前詢問，或自動核准工作命令。",
+  "Choose how task commands are approved": "選擇工作命令的核准方式",
+  "Could not save approval mode. Try again.": "無法儲存核准模式。請重試。",
+  "Command approval": "核准命令",
+  "Delete approval": "核准刪除"
 }

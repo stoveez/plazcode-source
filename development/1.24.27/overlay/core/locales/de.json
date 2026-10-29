@@ -1022,5 +1022,17 @@
   "property": "Eigenschaft",
   "properties": "Eigenschaften",
   "words": "Wörter",
-  "characters": "Zeichen"
+  "characters": "Zeichen",
+  "Ask for approval": "Genehmigung anfordern",
+  "Approve for me": "Für mich genehmigen",
+  "Bypass approval": "Genehmigungen überspringen",
+  "Ask before every command that changes something.": "Vor jedem Befehl fragen, der etwas verändert.",
+  "Ask only before commands that delete or remove things.": "Nur vor Befehlen fragen, die etwas löschen oder entfernen.",
+  "Automatically approve commands without popups.": "Befehle automatisch ohne Bestätigungsfenster genehmigen.",
+  "Command approvals": "Befehlsgenehmigungen",
+  "Ask before every edit, only before deletions, or automatically approve task commands.": "Vor jeder Änderung fragen, nur vor Löschungen fragen oder Aufgabenbefehle automatisch genehmigen.",
+  "Choose how task commands are approved": "Genehmigung von Aufgabenbefehlen festlegen",
+  "Could not save approval mode. Try again.": "Der Genehmigungsmodus konnte nicht gespeichert werden. Erneut versuchen.",
+  "Command approval": "Befehl genehmigen",
+  "Delete approval": "Löschung genehmigen"
 }

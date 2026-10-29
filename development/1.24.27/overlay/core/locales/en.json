@@ -1022,5 +1022,17 @@
   "property": null,
   "properties": null,
   "words": null,
-  "characters": null
+  "characters": null,
+  "Ask for approval": "Ask for approval",
+  "Approve for me": "Approve for me",
+  "Bypass approval": "Bypass approval",
+  "Ask before every command that changes something.": "Ask before every command that changes something.",
+  "Ask only before commands that delete or remove things.": "Ask only before commands that delete or remove things.",
+  "Automatically approve commands without popups.": "Automatically approve commands without popups.",
+  "Command approvals": "Command approvals",
+  "Ask before every edit, only before deletions, or automatically approve task commands.": "Ask before every edit, only before deletions, or automatically approve task commands.",
+  "Choose how task commands are approved": "Choose how task commands are approved",
+  "Could not save approval mode. Try again.": "Could not save approval mode. Try again.",
+  "Command approval": "Command approval",
+  "Delete approval": "Delete approval"
 }

@@ -1022,5 +1022,17 @@
   "property": "속성",
   "properties": "속성",
   "words": "단어",
-  "characters": "글자"
+  "characters": "글자",
+  "Ask for approval": "승인 요청",
+  "Approve for me": "대신 승인",
+  "Bypass approval": "승인 건너뛰기",
+  "Ask before every command that changes something.": "변경하는 모든 명령을 실행하기 전에 묻습니다.",
+  "Ask only before commands that delete or remove things.": "삭제하거나 제거하는 명령을 실행하기 전에만 묻습니다.",
+  "Automatically approve commands without popups.": "팝업 없이 명령을 자동으로 승인합니다.",
+  "Command approvals": "명령 승인",
+  "Ask before every edit, only before deletions, or automatically approve task commands.": "모든 편집 전에 묻거나, 삭제 전에만 묻거나, 작업 명령을 자동으로 승인합니다.",
+  "Choose how task commands are approved": "작업 명령의 승인 방법 선택",
+  "Could not save approval mode. Try again.": "승인 모드를 저장하지 못했습니다. 다시 시도하세요.",
+  "Command approval": "명령 승인",
+  "Delete approval": "삭제 승인"
 }

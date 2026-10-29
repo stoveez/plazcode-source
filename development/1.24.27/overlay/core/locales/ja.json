@@ -1022,5 +1022,17 @@
   "property": "プロパティ",
   "properties": "プロパティ",
   "words": "語",
-  "characters": "文字"
+  "characters": "文字",
+  "Ask for approval": "承認を求める",
+  "Approve for me": "代わりに承認",
+  "Bypass approval": "承認を省略",
+  "Ask before every command that changes something.": "変更を行うすべてのコマンドの前に確認します。",
+  "Ask only before commands that delete or remove things.": "削除や除去を行うコマンドの前だけ確認します。",
+  "Automatically approve commands without popups.": "確認画面を表示せず、コマンドを自動承認します。",
+  "Command approvals": "コマンドの承認",
+  "Ask before every edit, only before deletions, or automatically approve task commands.": "編集のたびに確認、削除時のみ確認、またはタスクのコマンドを自動承認します。",
+  "Choose how task commands are approved": "タスクのコマンドを承認する方法を選択",
+  "Could not save approval mode. Try again.": "承認モードを保存できませんでした。もう一度お試しください。",
+  "Command approval": "コマンドの承認",
+  "Delete approval": "削除の承認"
 }

@@ -4,11 +4,11 @@ updated: 2026-10-29
 ---
 # Open work
 
-- 2026-10-29: owner requested full 1.24.27 test builds. Ready to run full platform/browser validation on dev once owner makes source Public. Visibility API denied (403); request sent. Deliver both verified inner lean ZIPs with apps and Chromium/Firefox, then restore Private. No public release authorized by this test-build request.
+- 2026-10-29: owner requested full 1.24.27 test builds. Source is PUBLIC for the owner-authorized build window; final scope includes approval menus, composer alignment, effort clipping and Linux visible startup. Visibility API denied (403); request sent. Deliver both verified inner lean ZIPs with apps and Chromium/Firefox, then restore Private. No public release authorized by this test-build request.
 
-- 2026-10-29: 1.24.27 initialized, incorporating the actual owner-uploaded DeepSeek guard. Fast follow-ups observe an 8–9.8 second completion-based cooldown, sliced waits and forwarded options. Local targeted/version/package checks passed, including three-copy parity, provider preservation, locales, Ultra and promotion guards; full production CI and live DeepSeek remain. Historical 1.24.26 overlay restored to its released provider baseline. Source stays Private.
+- 2026-10-29: 1.24.27 initialized, incorporating the actual owner-uploaded DeepSeek guard. Fast follow-ups observe an 8–9.8 second completion-based cooldown, sliced waits and forwarded options. Local targeted/version/package checks passed, including three-copy parity, provider preservation, locales, Ultra and promotion guards; full production CI and live DeepSeek remain. Historical 1.24.26 overlay restored to its released provider baseline. Source is now PUBLIC for the authorized build window.
 
-- 2026-10-29: DeepSeek shared send queue implemented and locally verified; unreleased. Covers direct UI sends, completion-based eight-second pause plus jitter for fast replies, diagnostics and failure recovery. See [DeepSeek pacing](deepseek-send-pacing.md). Next signed version/build and live DeepSeek verification remain. Source repo is confirmed Private.
+- 2026-10-29: DeepSeek shared send queue implemented and locally verified; unreleased. Covers direct UI sends, completion-based eight-second pause plus jitter for fast replies, diagnostics and failure recovery. See [DeepSeek pacing](deepseek-send-pacing.md). Next signed version/build and live DeepSeek verification remain. Source is now PUBLIC for the authorized build window.
 
 - 2026-10-28: 1.24.26 published. Validation 40772509288 on `a74ae17`; publish run 40781780030. Permanent approvals and code protection are complete. Live signed feeds/download verification passed. Private visibility restoration was later confirmed complete on 2026-10-29. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
 
@@ -86,3 +86,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29 WIP: owner requested persistent Ask/Approve for me/Bypass approval controls below Effort and in desktop Settings, plus actual running-UI screenshots and robust ChatGPT bar placement. Include with existing 1.24.27 changes in test builds; earlier CI sources superseded.
 
 - 2026-10-29 WIP: approval mode policy, shared preference/native schema, actual bar/app controls and fresh-composer collapsed-tab geometry implemented. Local policy/legacy approval and collapse regressions passed. Browser integration/screenshots, native compilation and final full CI remain; do not deliver earlier test sources.
+
+- 2026-10-29: real compiled desktop and extension frontend screenshots captured; all three approval modes persist/sync and respect read-only/folder limits. New Linux report reproduced in source: GUI stub always fails and continues headless. Native visible Linux frontend/package are now required before final test delivery.

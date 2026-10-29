@@ -5,3 +5,5 @@ Scope: merge owner-supplied DeepSeek provider pacing from PlazCode-Extension.rar
 Additional owner-reported fix: desktop effort options are hidden beneath the following Instructions card. Keep the desktop inline picker synchronized with the shared picker, raise its card while open and size its scrollable menu to available viewport space. Exercise actual desktop CSS/cards at large, short and narrow sizes and keep keyboard/change events intact. This needs the rebuilt desktop app in the test package.
 
 Other feature designs copied alongside this plan are deferred, not part of this update. Local verification and then full production platform/browser plus packaged Mac gates are required before publishing. Latest published stays 1.24.26 until release.
+
+Additional owner scope: persistent Ask/Approve for me/Bypass selectors in the bar and app Settings; strict edit/deletion/no-prompt policy with existing access limits; composer-relative expanded/collapsed bar positioning and actual screenshots. Also fix native Linux headless-only startup and provide a Linux package. Full Windows/Mac test packages remain required; no stable release requested.

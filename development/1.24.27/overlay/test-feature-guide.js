@@ -36,7 +36,7 @@ const menuStart = main.indexOf("menuEl.innerHTML =");
 const menuEnd = main.indexOf('class="rs-menu-foot"', menuStart);
 ok(menuStart > 0 && menuEnd > menuStart, "could not find the menu template in main.js");
 const menu = main.slice(menuStart, menuEnd);
-const barStart = main.indexOf('<div id="rs-engine"');
+const barStart = main.indexOf('<div id="rs-brand-stack"');
 const barEnd = main.indexOf('id="rs-enhancer-panel"', barStart);
 ok(barStart > 0 && barEnd > barStart, "could not find the bar template in main.js");
 const bar = main.slice(barStart, barEnd);

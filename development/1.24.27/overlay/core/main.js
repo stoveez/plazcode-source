@@ -242,7 +242,7 @@
     const finish=values=>{if(loaded)return;loaded=true;approvalMode=typeof PlazCodeApproval!=="undefined"&&typeof PlazCodeApproval.normalizeMode==="function"?PlazCodeApproval.normalizeMode(values&&values.rsApprovalMode):"";resolve();};
     try {const pending=chrome.storage.local.get("rsApprovalMode",finish);if(pending&&typeof pending.then==="function")pending.then(finish,()=>finish());}catch{finish();}
   });
-  function approvalModeLabel(){const mode=approvalMode||(permMode==="ask"?"ask":"auto");return PlazCodeApproval.MODES.find(item=>item.value===mode)?.label||"Approve for me";}
+  function approvalModeLabel(){const mode=approvalMode||(permMode==="ask"?"ask":"auto");const label=PlazCodeApproval.MODES.find(item=>item.value===mode)?.label||"Approve for me";return globalThis.PlazCodeI18n?.t(label)||label;}
   function renderApprovalMode(){const node=document.getElementById("rs-approval-mode");if(node){node.querySelector("span").textContent=approvalModeLabel();node.dataset.mode=approvalMode||"legacy";}}
   async function setApprovalMode(value){
     const next=PlazCodeApproval.normalizeMode(value);if(!next)return;
@@ -7120,7 +7120,7 @@ return result`;
       chrome.storage.onChanged.addListener((changes, area) => {
         if (area !== "local" || !changes) return;
         let dirty = false;
-        if (changes.rsLanguage) globalThis.PlazCodeI18n?.setLanguage(changes.rsLanguage.newValue || 'en');
+        if (changes.rsLanguage) {globalThis.PlazCodeI18n?.setLanguage(changes.rsLanguage.newValue || 'en');renderApprovalMode();}
         if (changes.rsPersonalMemory) personalMemory = changes.rsPersonalMemory.newValue || null;
         if (changes.rsReadOnly || changes.rsConfirmDelete || changes.rsAllowedFolders) {
           chrome.storage.local.get(PlazCodeSafety.KEYS, (values) => { safetySettings = PlazCodeSafety.fromStorage(values); if (!menuEl.hidden) buildMenu(); });
@@ -7268,10 +7268,10 @@ return result`;
         close();menu=document.createElement("div");menu.className="pc-effort-menu pc-approval-menu";menu.setAttribute("role","menu");menu.setAttribute("aria-label","Command approvals");
         for(const option of PlazCodeApproval.MODES){
           const item=document.createElement("button");item.type="button";item.className="pc-effort-item";item.dataset.mode=option.value;item.setAttribute("role","menuitemradio");item.setAttribute("aria-checked",String((approvalMode||(permMode==="ask"?"ask":"auto"))===option.value));
-          const copy=document.createElement("span"),title=document.createElement("strong"),description=document.createElement("small");title.textContent=option.label;description.textContent=option.description;copy.append(title,description);const tick=document.createElement("em");tick.textContent=item.getAttribute("aria-checked")==="true"?"✓":"";item.append(copy,tick);
+          const copy=document.createElement("span"),title=document.createElement("strong"),description=document.createElement("small");title.textContent=globalThis.PlazCodeI18n?.t(option.label)||option.label;description.textContent=globalThis.PlazCodeI18n?.t(option.description)||option.description;copy.append(title,description);const tick=document.createElement("em");tick.textContent=item.getAttribute("aria-checked")==="true"?"✓":"";item.append(copy,tick);
           item.onclick=async()=>{item.disabled=true;try{await setApprovalMode(option.value);close();button.focus();}catch{item.disabled=false;toast("Could not save approval mode. Try again.");}};menu.append(item);
         }
-        document.body.append(menu);const r=button.getBoundingClientRect(),width=menu.offsetWidth,height=menu.offsetHeight;menu.style.left=Math.max(8,Math.min(r.left,innerWidth-width-8))+"px";menu.style.maxHeight=Math.max(40,innerHeight-16)+"px";menu.style.top=Math.max(8,Math.min(r.bottom+6,innerHeight-height-8))+"px";button.setAttribute("aria-expanded","true");menu.querySelector('[aria-checked="true"]')?.focus();
+        document.body.append(menu);const r=button.getBoundingClientRect(),width=menu.offsetWidth,height=menu.offsetHeight;menu.style.left=Math.max(8,Math.min(r.left,innerWidth-width-8))+"px";menu.style.maxHeight=Math.max(40,innerHeight-16)+"px";const desired=r.top>=height+14?r.top-height-6:r.bottom+6;menu.style.top=Math.max(8,Math.min(desired,innerHeight-height-8))+"px";button.setAttribute("aria-expanded","true");menu.querySelector('[aria-checked="true"]')?.focus();
       }
       document.addEventListener("click",event=>{const button=event.target.closest?.("#rs-approval-mode");if(button){event.preventDefault();event.stopPropagation();if(menu)close();else open(button);}},true);
       document.addEventListener("pointerdown",event=>{if(menu&&!menu.contains(event.target)&&!event.target.closest?.("#rs-approval-mode"))close();},true);

@@ -1022,5 +1022,17 @@
   "property": "özellik",
   "properties": "özellik",
   "words": "kelime",
-  "characters": "karakter"
+  "characters": "karakter",
+  "Ask for approval": "Onay iste",
+  "Approve for me": "Benim için onayla",
+  "Bypass approval": "Onayları atla",
+  "Ask before every command that changes something.": "Değişiklik yapan her komuttan önce sor.",
+  "Ask only before commands that delete or remove things.": "Yalnızca silen veya kaldıran komutlardan önce sor.",
+  "Automatically approve commands without popups.": "Komutları açılır pencere göstermeden otomatik onayla.",
+  "Command approvals": "Komut onayları",
+  "Ask before every edit, only before deletions, or automatically approve task commands.": "Her düzenlemeden önce, yalnızca silmeden önce sor veya görev komutlarını otomatik onayla.",
+  "Choose how task commands are approved": "Görev komutlarının nasıl onaylanacağını seç",
+  "Could not save approval mode. Try again.": "Onay modu kaydedilemedi. Yeniden deneyin.",
+  "Command approval": "Komut onayı",
+  "Delete approval": "Silme onayı"
 }

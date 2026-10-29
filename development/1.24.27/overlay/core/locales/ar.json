@@ -1022,5 +1022,17 @@
   "property": "خاصية",
   "properties": "خصائص",
   "words": "كلمات",
-  "characters": "أحرف"
+  "characters": "أحرف",
+  "Ask for approval": "طلب الموافقة",
+  "Approve for me": "الموافقة بالنيابة عني",
+  "Bypass approval": "تجاوز الموافقات",
+  "Ask before every command that changes something.": "السؤال قبل كل أمر يغيّر شيئًا.",
+  "Ask only before commands that delete or remove things.": "السؤال فقط قبل الأوامر التي تحذف عناصر أو تزيلها.",
+  "Automatically approve commands without popups.": "الموافقة على الأوامر تلقائيًا دون نوافذ منبثقة.",
+  "Command approvals": "موافقات الأوامر",
+  "Ask before every edit, only before deletions, or automatically approve task commands.": "السؤال قبل كل تعديل أو قبل الحذف فقط أو الموافقة تلقائيًا على أوامر المهام.",
+  "Choose how task commands are approved": "اختيار كيفية الموافقة على أوامر المهام",
+  "Could not save approval mode. Try again.": "تعذر حفظ وضع الموافقة. حاول مجددًا.",
+  "Command approval": "الموافقة على الأمر",
+  "Delete approval": "الموافقة على الحذف"
 }
