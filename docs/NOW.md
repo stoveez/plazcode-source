@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-29. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: owner requested full 1.24.27 test builds.** Windows and Mac packages must include both browser extensions, use production integrity trust and preserve the official ZIP layout. Source is ready; waiting for the owner to open the temporary Public build window because private CI billing is blocked and visibility API returned HTTP 403. Settings link/request sent. Once public, push a fresh NOW commit without skip-ci to start validate-1.24.27 on dev. Deliver verified inner lean ZIPs; do not publish feeds/releases. Restore Private immediately after delivery.
+**Latest: 1.24.27 full test-build run starting.** Owner made source Public and visibility was verified. This push starts validate-1.24.27 on `claude/plazcode-dev` for Windows, Mac, Linux and browsers; no separate browser-only mode. Deliver both verified inner lean ZIPs after all four jobs pass. No stable publication.
+
+**Owner requested full 1.24.27 test builds.** Windows and Mac packages must include both browser extensions, use production integrity trust and preserve the official ZIP layout. Source is ready; owner opened the temporary Public build window after visibility API returned HTTP 403. Settings link/request sent. Once public, push a fresh NOW commit without skip-ci to start validate-1.24.27 on dev. Deliver verified inner lean ZIPs; do not publish feeds/releases. Restore Private immediately after delivery.
 
 **1.24.27 implementation.** Extracted only the provider from PlazCode-Extension.rar for comparison; its sole difference is the pacing wrapper. Merged that wrapper into `development/1.24.27/overlay/providers/deepseek.js`, retaining a null initial timestamp and defensive diagnostics. It serializes every programmatic send, forwards optional arguments, waits the remaining sampled 8–9.8 second cooldown after prior completion in ≤250 ms slices, and logs `send.pace`. First send has no delay. Long replies beyond the cooldown add no wait. Raw sending logic remains unchanged.
 
