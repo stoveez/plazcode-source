@@ -331,7 +331,14 @@ jobs:
         run: |
           export PLAZCODE_PROTECTION_CHANNEL=release
           unset PLAZCODE_RELEASE_PUBLIC_KEY PLAZCODE_SIGNING_KEY_FILE
-          cargo +stable build --release --locked --manifest-path build-src-1.24.27/PlazCode/agent/Cargo.toml
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+          rustup target add --toolchain stable x86_64-unknown-linux-musl
+          export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc
+          export CC_x86_64_unknown_linux_musl=musl-gcc
+          cargo +stable build --release --locked --manifest-path build-src-1.24.27/PlazCode/agent/Cargo.toml --target x86_64-unknown-linux-musl
+          cp build-src-1.24.27/PlazCode/agent/target/x86_64-unknown-linux-musl/release/PlazCode build-src-1.24.27/PlazCode/agent/target/release/PlazCode
+          if readelf -l build-src-1.24.27/PlazCode/agent/target/release/PlazCode | grep -q INTERP; then echo 'Linux delivery must be statically linked'; exit 1; fi
           python development/1.24.27/package.py
       - name: Windows PE and updater regressions
         if: runner.os == 'Windows'

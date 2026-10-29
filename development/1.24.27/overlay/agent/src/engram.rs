@@ -32,6 +32,7 @@ fn pinned_archive()->Option<(&'static str,&'static str,&'static str)>{
     if cfg!(all(target_os="windows",target_arch="x86_64")){Some(("engram_3.0.0_windows_amd64.zip","bb410e4a578bee96888f848764dbbf9e7dd78971204c05bb7fb81a4a8db324a3","engram.exe"))}
     else if cfg!(all(target_os="macos",target_arch="x86_64")){Some(("engram_3.0.0_darwin_amd64.tar.gz","68cc3eebbb265d1c45999a429d1e6774150ba71ac008f4dd381b9d73b10c79dd","engram"))}
     else if cfg!(all(target_os="macos",target_arch="aarch64")){Some(("engram_3.0.0_darwin_arm64.tar.gz","54e080ed64a1d1b7b8a5d59e5a6d17100adbd69a6aafbb73d270dbeb37c03266","engram"))}
+    else if cfg!(all(target_os="linux",target_arch="x86_64")){Some(("engram_3.0.0_linux_amd64.tar.gz","22bbfd81ee9071a04d446f653842c383a3101b594e8829519a63a7c747602e69","engram"))}
     else {None}
 }
 fn verify_sha256(bytes:&[u8],expected:&str)->anyhow::Result<()>{
@@ -58,7 +59,7 @@ async fn executable_or_download()->anyhow::Result<PathBuf>{
     let (archive,sha,program)=pinned_archive().ok_or_else(||anyhow::anyhow!("The bundled Engram runtime is unavailable. Existing memory and chat logging remain available."))?;
     let _guard=DOWNLOAD.lock().await;
     if let Ok(path)=executable(){return Ok(path);}
-    let platform=if cfg!(target_os="windows"){"windows"}else{"darwin"};let arch=if cfg!(target_arch="aarch64"){"arm64"}else{"amd64"};
+    let platform=if cfg!(target_os="windows"){"windows"}else if cfg!(target_os="macos"){"darwin"}else{"linux"};let arch=if cfg!(target_arch="aarch64"){"arm64"}else{"amd64"};
     let filename=format!("engram-{platform}-{arch}{}",if cfg!(windows){".exe"}else{""});
     let destination=crate::platform::installation_root().join("runtime").join("engram").join(&filename);
     let client=reqwest::Client::builder().user_agent("PlazCode-memory").timeout(std::time::Duration::from_secs(120)).build()?;

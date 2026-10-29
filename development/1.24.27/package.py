@@ -25,6 +25,18 @@ elif osname=='Linux':
  shutil.copy2(source/'agent/target/release/PlazCode',package/'PlazCode');(package/'PlazCode').chmod(0o755)
  shutil.rmtree(package/'PlazCode.app',ignore_errors=True)
  shutil.rmtree(package/'macos',ignore_errors=True)
+ # Bundle the pinned official Linux memory helper; no first-use setup/download.
+ import urllib.request,tarfile,io
+ with urllib.request.urlopen('https://github.com/Gentleman-Programming/engram/releases/download/v3.0.0/engram_3.0.0_linux_amd64.tar.gz',timeout=120) as response:helper_archive=response.read(30*1024*1024+1)
+ assert len(helper_archive)<=30*1024*1024 and hashlib.sha256(helper_archive).hexdigest()=='22bbfd81ee9071a04d446f653842c383a3101b594e8829519a63a7c747602e69','Linux memory helper archive mismatch'
+ with tarfile.open(fileobj=io.BytesIO(helper_archive),mode='r:gz') as archive:
+  entries=[entry for entry in archive.getmembers() if entry.isfile() and Path(entry.name).name=='engram'];assert len(entries)==1
+  helper_bytes=archive.extractfile(entries[0]).read()
+ helper=package/'runtime/engram/engram-linux-amd64';helper.parent.mkdir(parents=True,exist_ok=True);helper.write_bytes(helper_bytes);helper.chmod(0o755)
+ (helper.parent/'SHA256SUMS.txt').write_text(hashlib.sha256(helper_bytes).hexdigest()+'  '+helper.name+'\n')
+ subprocess.run([str(helper.resolve()),'version'],check=True)
+ (package/'README.md').write_text('# PlazCode for Linux\n\nExtract the complete archive, open the PlazCode folder, then open the PlazCode executable. The app interface opens in your default browser; keep the full folder together. This build requires a Linux x86-64 desktop with a default browser; the app is statically linked and does not require WebKit or a particular glibc version. It is a native Linux program; do not use the Windows EXE or Mac app.\n\nChrome: load PlazCode-Extension. Firefox: load PlazCode-Extension-Firefox. Refresh AI tabs after reloading the extension. Memory helper is included. Linux automatic updates are not published yet; use complete native Linux downloads.\n')
+
  for path in package.iterdir():
   if path.is_file() and path.suffix.lower() in ('.exe','.bat','.ps1','.cs','.command'):path.unlink()
 else:

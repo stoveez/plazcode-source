@@ -7,3 +7,5 @@ Additional owner-reported fix: desktop effort options are hidden beneath the fol
 Other feature designs copied alongside this plan are deferred, not part of this update. Local verification and then full production platform/browser plus packaged Mac gates are required before publishing. Latest published stays 1.24.26 until release.
 
 Additional owner scope: persistent Ask/Approve for me/Bypass selectors in the bar and app Settings; strict edit/deletion/no-prompt policy with existing access limits; composer-relative expanded/collapsed bar positioning and actual screenshots. Also fix native Linux headless-only startup and provide a Linux package. Full Windows/Mac test packages remain required; no stable release requested.
+
+Mac screenshot confirmed port 17613 held during startup; implement same-user targeted PlazCode recovery and real Mac process regression. Linux real desktop integration passes; package a signed static x86-64 binary and pinned memory helper. Linux stable auto-update feed remains unavailable; never use Windows/Mac packages there. Full hosted validation and final inner packages remain pending.

@@ -9,6 +9,8 @@ This folder is the long-term memory for every AI that works on PlazCode (Claude,
 **Read order for a new AI:** [`../NOW.md`](../NOW.md) (the live handoff, 20 lines), then only the notes below that your task needs. Do not read the whole vault.
 
 ## Map
+- Approval modes and bar placement: [approval-modes-and-bar](approval-modes-and-bar.md)
+- Linux and Mac startup: [linux-and-mac-startup](linux-and-mac-startup.md)
 - DeepSeek send pacing: [deepseek-send-pacing](deepseek-send-pacing.md)
 - Code protection: [code-protection](code-protection.md)
 - How we work: [how-we-work](how-we-work.md)

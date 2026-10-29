@@ -1,6 +1,6 @@
 # PlazCode task board
 
-**Current, 2026-10-29:** working on 1.24.27 (DeepSeek shared send pacing from the owner archive). Latest published remains 1.24.26. Start with `docs/NOW.md`; older entries below are historical.
+**Current, 2026-10-29:** working on 1.24.27 (DeepSeek pacing, approval modes, accessible effort choices, bar alignment and Linux/Mac startup fixes). Latest published remains 1.24.26. Start with `docs/NOW.md`; older entries below are historical.
 
 Read `docs/MAINTAINER-GUIDE.md` section 11 first. Claim a task by adding a line under "In progress" in your own small commit. Move it to "Done" with a handoff note when finished. Do not take a task someone else has claimed.
 

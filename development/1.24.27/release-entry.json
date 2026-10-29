@@ -1,36 +1,44 @@
 {
   "version": "1.24.27",
-  "title": "DeepSeek pacing and visible effort choices",
-  "summary": "DeepSeek sends share one paced queue, and the desktop effort menu keeps every choice accessible.",
-  "added": [],
+  "title": "Approval choices and more reliable startup",
+  "summary": "Choose how commands are approved, see every effort option, and keep the bar beside your chat. Includes paced DeepSeek sends and Mac/Linux startup fixes.",
+  "added": [
+    "Choose Ask for approval, Approve for me, or Bypass approval in the bar and app Settings.",
+    "Native Linux app opens the PlazCode interface in your browser with the memory helper included."
+  ],
   "improved": [],
   "fixed": [
-    "DeepSeek sends no longer overlap or bypass pacing through Creator and library cards.",
-    "Desktop effort choices stay above neighboring settings cards and remain accessible in short windows."
+    "The PlazCode bar and collapsed tab follow the current chat box after resizing or page changes.",
+    "Every desktop effort choice stays reachable.",
+    "DeepSeek messages share one queue and wait 8–9.8 seconds from the last send finishing.",
+    "Mac can recover a bridge port still held by an older PlazCode process."
   ],
   "notes": [
-    "Windows is unsigned and Mac is not notarized. This update is in development."
+    "Test build in preparation; latest stable remains 1.24.26.",
+    "Linux automatic updates are not published yet; use complete native Linux downloads."
   ],
   "github": {
-    "summary": "***Calmer DeepSeek sends and an effort menu that stays visible.***",
+    "summary": "***Your approval choices, steadier sends, and more reliable startup.***",
     "sections": [
       {
         "title": "✨ What's new",
         "items": [
-          "All PlazCode messages to DeepSeek share one queue."
+          "Pick Ask for approval, Approve for me, or Bypass approval below Effort or in app Settings. Your choice stays saved across chats and AI sites.",
+          "Native Linux download opens the real app interface in your browser."
         ]
       },
       {
         "title": "🛠️ What's fixed",
         "items": [
-          "Creator and library sends follow the same 8–9.8 second spacing after the previous send finishes. Long replies add no extra wait.",
-          "The desktop effort menu stays above other settings cards, with reachable options in short windows."
+          "Every effort option stays reachable; the bar and collapsed tab follow your chat box.",
+          "DeepSeek sends share one queue with 8–9.8 second spacing after a send finishes.",
+          "Mac recovers ports held by stale PlazCode processes and leaves other programs alone."
         ]
       },
       {
         "title": "🧪 What was checked",
         "items": [
-          "Development checks are in progress; not tested on a live DeepSeek account.",
+          "Native and browser checks are in progress. Live AI accounts and the original affected devices remain untested.",
           "Windows is unsigned and Mac is not notarized, as before."
         ]
       }

@@ -1,0 +1,10 @@
+# Linux and Mac startup fixes
+Updated: 2026-10-29. Unreleased 1.24.27; final platform CI/packages pending.
+
+Mac screenshot: 127.0.0.1:17613 address already in use. Found reclaim_port was a no-op outside Windows. Mac now queries the listener PID with lsof, checks proc_pidpath and the owning UID before signaling only a same-user PlazCode process. Graceful exit precedes bounded escalation; process identity is rechecked before forcing exit. Other programs remain running with an actionable error. New real Mac process regression starts a native orphan on another API port, verifies takeover, then verifies an unrelated listener survives. Hosted Mac verification remains.
+
+Linux previously compiled only a headless bridge; GUI always returned an error. Windows EXEs do not run natively on Linux. New Linux native GUI entry opens the same real desktop frontend in the default browser. Browser launch uses a random single-use 60-second ticket in a fragment, clears it immediately, exchanges it only on the same localhost origin and keeps bootstrap state in tab sessionStorage. Permanent pairing keys never enter URLs/logs. API authentication and all signed program checks remain. Reopening requests Show; explicit Quit stops the process. Closing the browser tab leaves the bridge running.
+
+Linux packaging builds a statically linked x86-64 musl executable, preserves executable permissions in ZIP and tar.gz, bundles verified official Engram 3.0.0 (archive SHA256 22bbfd81ee9071a04d446f653842c383a3101b594e8829519a63a7c747602e69), both extension variants and the root extension. No macOS app or Windows EXE is presented as Linux-compatible. Linux automatic updates are not published yet; the UI states this and never tries installing Windows/Mac packages. A desktop browser/default opener is required; no WebKit or version-specific glibc dependency is introduced. Linux ARM builds are not provided in this update.
+
+Verified locally: 216 native tests plus 4 build tests (2 ignored); actual native Linux frontend launch/save/reload/reopen/Quit and ticket replay/wrong-origin/auth rejection. Hosted signed static package verification and affected users' devices remain.

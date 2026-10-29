@@ -1,6 +1,6 @@
 # PlazCode handoff note (for any AI starting with no context)
 
-**Current, 2026-10-29:** working on 1.24.27 (DeepSeek shared send pacing from the owner archive). Latest published remains 1.24.26. Start with `docs/NOW.md`; older entries below are historical.
+**Current, 2026-10-29:** working on 1.24.27 (DeepSeek pacing, approval modes, accessible effort choices, bar alignment and Linux/Mac startup fixes). Latest published remains 1.24.26. Start with `docs/NOW.md`; older entries below are historical.
 
 > 2026-10-24: the short live handoff is now `docs/NOW.md` and long-term notes are in `docs/vault/` (start at `Home.md`). Read those first; this file is the detailed reference.
 

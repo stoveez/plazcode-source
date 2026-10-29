@@ -35,7 +35,8 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   await page.locator('#desktopApprovalMode').waitFor({state:'attached'});
   await page.evaluate(()=>{const card=document.querySelector('#desktopApprovalMode').closest('details');if(card)card.open=true;});
   for(const mode of ['ask','bypass','auto']){
-   await page.locator('#desktopApprovalMode').selectOption(mode);
+   const wrapper=page.locator('#desktopApprovalMode').locator('xpath=..');
+   await wrapper.locator('.pc-effort-trigger').click();await wrapper.locator('[data-value="'+mode+'"]').click();
    await waitFor(()=>JSON.parse(fs.readFileSync(path.join(install,'plazcode-settings.json'),'utf8')).rsApprovalMode===mode,'mode persists to real disk');
   }
   await page.reload();await page.locator('#nxSplash').waitFor({state:'hidden',timeout:30000});
@@ -43,9 +44,9 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   assert.equal(await page.locator('#desktopApprovalMode').inputValue(),'auto');
   assert.equal((await call('/api/show',{})).status,200);await waitFor(()=>launch().length===2,'relaunch shows real Linux desktop');
   assert.notEqual(launch()[1],url,'every launch uses a fresh ticket');
-  if(process.env.PLAZCODE_UI_PREVIEW_DIR){fs.mkdirSync(process.env.PLAZCODE_UI_PREVIEW_DIR,{recursive:true});await page.evaluate(()=>{document.querySelector('#desktopApprovalMode').closest('details').open=true;});await page.locator('#desktopApprovalMode + .pc-select-wrap').count();await page.screenshot({path:path.join(process.env.PLAZCODE_UI_PREVIEW_DIR,'plazcode-linux-native-settings.png')});}
+  if(process.env.PLAZCODE_UI_PREVIEW_DIR){fs.mkdirSync(process.env.PLAZCODE_UI_PREVIEW_DIR,{recursive:true});await page.evaluate(()=>{document.querySelector('#desktopApprovalMode').closest('details').open=true;});await page.locator('#desktopApprovalMode').locator('xpath=..').locator('.pc-effort-trigger').click();await page.screenshot({path:path.join(process.env.PLAZCODE_UI_PREVIEW_DIR,'plazcode-linux-native-settings.png')});}
   assert.deepEqual(errors,[]);
-  assert.equal((await call('/api/desktop/browser-action',{message:'open-url:https://example.com'})).status,400,'arbitrary external launch rejected');
+  assert.equal((await call('/api/desktop/browser-action',{message:'open-url:javascript:alert(1)'})).status,400,'unsafe external URI rejected');
   assert.equal((await call('/api/desktop/browser-action',{message:'quit'})).status,200);
   await waitFor(()=>agent.exitCode!==null,'Quit exits actual Linux bridge');assert.equal(agent.exitCode,0);
   console.log('PASS real Linux desktop launch, authenticated single-use browser bootstrap, wrong-origin/replay rejection, settings save/reload, reopen and Quit.');

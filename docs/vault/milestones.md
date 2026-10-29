@@ -33,3 +33,6 @@ All work previously planned for 1.24.25 is deferred to 1.24.26. The next update,
 
 ## 2026-10-23
 - Vani startup rewrite; removed the "Working for ..." fold; community-skill sync treats any 4xx as nothing to sync; Freebuff and OxAlpha startup fixes; simpler Memory page; grouped Execution settings; clickable Effort list; lean-startup groundwork (not wired). Details: `docs/HANDOFF.md` section 6.
+
+## 2026-10-29: 1.24.27 local UI/native checks
+Persistent command-approval modes and composer-relative bar placement pass real frontend regressions. All effort choices remain accessible. Linux now opens the actual frontend and passes authentication/save/reload/reopen/Quit integration; 216 native and 4 build tests passed (2 ignored). Mac stale-process recovery and final signed platform test builds await hosted validation.
