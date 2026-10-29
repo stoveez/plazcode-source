@@ -4,7 +4,7 @@ updated: 2026-10-29
 ---
 # Open work
 
-**Current 2026-10-29:** 1.24.27 full test builds delivered. CI 40932400772 / 962899c passed Windows, Mac, Linux and browsers. Archive/signature/source/version/layout verification complete; Windows/Mac exact current release file lists. See [verification](test-build-1.24.27-verification.json). DeepSeek pacing, effort clipping, approval controls, bar alignment and Mac/Linux startup fixes are in these test packages. Original user devices and live AI accounts remain untested.
+**Current 2026-10-29:** 1.24.27 full test builds delivered. CI 40932400772 / 962899c passed Windows, Mac, Linux and browsers. Archive/signature/source/version/layout verification complete; Windows/Mac exact current release file lists. See [verification](test-build-1.24.27-verification.json). DeepSeek pacing, effort clipping, approval controls, bar alignment and Mac/Linux startup fixes are in these test packages. Original user devices and live AI accounts remain untested. Release-note metadata records completed test delivery; the stable feed stays at 1.24.26.
 
 **Outstanding visibility:** source still PUBLIC after delivery; authorized Private API change denied HTTP 403. Owner asked to restore Private at repository settings. Keep checking/reminding. PC vault folder is not connected.
 

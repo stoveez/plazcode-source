@@ -14,7 +14,7 @@
     "Mac can recover a bridge port still held by an older PlazCode process."
   ],
   "notes": [
-    "Test build in preparation; latest stable remains 1.24.26.",
+    "Test builds verified and delivered; latest stable remains 1.24.26.",
     "Linux automatic updates are not published yet; use complete native Linux downloads."
   ],
   "github": {
