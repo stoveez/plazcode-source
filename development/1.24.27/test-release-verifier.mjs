@@ -23,7 +23,7 @@ try {
   await fs.writeFile(path.join(root,'config.local.json'),'{}');
   await signInstallation(root,key,'linux','validation');
   execFileSync(binary,['--verify-package',root,'--verify-version','1.24.27']);
-  assert.throws(()=>execFileSync(binary,['--verify-package',root,'--verify-version','1.24.27'],{stdio:'pipe'}));
+  assert.throws(()=>execFileSync(binary,['--verify-package',root,'--verify-version','0.0.0'],{stdio:'pipe'}));
   await fs.writeFile(path.join(root,'core/main.js'),'modified');
   assert.throws(()=>execFileSync(binary,['--verify-package',root,'--verify-version','1.24.27'],{stdio:'pipe'}));
   await fs.writeFile(path.join(root,'core/main.js'),'original');

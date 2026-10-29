@@ -78,3 +78,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29: 40898279700 / 2563eb2 browser job passed. Windows/Linux continue; Mac runner queued. Test delivery remains pending full success and ZIP verification.
 
 - 2026-10-29: initial 1.24.27 CI caught two wrong-version fixtures made equal to the valid version during rollover. Corrected both to invalid 0.0.0. JS protection suite passes locally; native/full packaging validation reruns in CI (no local Rust toolchain). No runtime guard relaxed; no ZIPs delivered.
+
+- 2026-10-29: audit of all pre-existing 1.24.27 literals in the 26 tree found the third identical rollover case in optimized native verifier tests. Its wrong-version CLI request now uses 0.0.0 too; correct-version tamper check remains 1.24.27. All three future-version fixtures accounted for.
