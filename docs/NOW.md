@@ -1,6 +1,8 @@
 # NOW
 Updated: 2026-10-29. Branch `claude/plazcode-dev`; no helper agents.
 
+**Latest: profile labels stay correct through language changes.** Signed-in state is shown on Overview, usernames/initials are marked as user content, and saved cards read the last saved theme immediately. Five native account tests and desktop/screen regressions pass. Final source still needs full signed CI. Previous full JS pass had one Notion copy-sync assertion while prepare rewrote generated files; rerun that check after generation stops before treating it as a product failure.
+
 **Latest: real online profile integration and isolation verified locally.** Native account manager uses encrypted remembered tokens, fixed HTTPS service and per-profile settings/memory/skills/vault/history/template data. Existing data is copied (never removed) to the first account. New launch shows saved profiles; selecting and Log in uses a remembered session, including offline use. Remove forgets sign-in and preserves data. Profile changes cancel tools and reject stale browser epochs; extension storage is partitioned.
 
 **Actual preview captured:** /workspace/PlazCode-test-builds/previews/plazcode-sign-in-selected.png from the running compiled app, using real hosted private registration/session operations. No JavaScript errors. Themed selected glow and green/red buttons work. Loading→picker and profile→desktop transitions connected; login skips a second loading sequence. New core sign-in labels translated in all 15 catalogs.

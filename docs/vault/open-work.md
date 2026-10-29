@@ -115,3 +115,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29 WIP: encrypted account manager, saved login, legacy-data migration and native API profile/epoch gate compile. Three native account crypto/protocol tests passed. Startup, sync and extension integration remain unfinished; no new preview/build delivered.
 
 - 2026-10-29 WIP: actual desktop startup/profile actions and native portable settings/skills merge sync connected; 2 sync tests and desktop regression pass. Extension storage/profile epochs and socket closure implemented, integration checks pending. Actual empty native picker captured, no completed sign-in preview or new build yet.
+
+- 2026-10-29: account names protected from translation, Overview signed-in label fixed and remembered picker appearance reads the latest saved theme. Five native account tests and desktop/profile UI checks pass; final full CI pending.
