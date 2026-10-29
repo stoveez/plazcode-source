@@ -38,7 +38,7 @@
       {
         "title": "🧪 What was checked",
         "items": [
-          "Native and browser checks are in progress. Live AI accounts and the original affected devices remain untested.",
+          "Windows, Mac, Linux and browser checks passed. Live AI accounts and the original affected devices remain untested.",
           "Windows is unsigned and Mac is not notarized, as before."
         ]
       }

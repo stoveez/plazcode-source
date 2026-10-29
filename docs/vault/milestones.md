@@ -36,3 +36,6 @@ All work previously planned for 1.24.25 is deferred to 1.24.26. The next update,
 
 ## 2026-10-29: 1.24.27 local UI/native checks
 Persistent command-approval modes and composer-relative bar placement pass real frontend regressions. All effort choices remain accessible. Linux now opens the actual frontend and passes authentication/save/reload/reopen/Quit integration; 216 native and 4 build tests passed (2 ignored). Mac stale-process recovery and final signed platform test builds await hosted validation.
+
+## 2026-10-29: 1.24.27 full test builds delivered
+CI 40932400772 / 962899c passed Windows, Mac, Linux and browsers. All downloaded signatures/source hashes/archive versions/layouts verified; Windows/Mac exactly retain official file lists. Actual signed Linux frontend and Mac stale-process recovery passed. Includes approval controls, effort/bar fixes and DeepSeek pacing. Stable remains 1.24.26. Source Private restoration needs owner action after API 403.

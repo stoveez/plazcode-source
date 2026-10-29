@@ -8,3 +8,5 @@ Removal detection covers named removal tools, local delete/run-command safety cl
 The real bar measures its current composer for both expanded positioning and collapsed restore tab, resets host transforms/margins, clamps viewport bounds and follows composer movement/remount. Approval menu opens above its control when possible. Actual frontend tests exercise these behaviors; they cannot guarantee compatibility with future host DOM changes.
 
 Verified: policy/legacy approval suites, actual bar browser regression, desktop effort regression, 11 native preferences tests, compiled native desktop saving/reload of all modes. Screenshots come from actual app UI/native backend and actual extension UI on a local composer fixture, not drawn mockups. Full hosted platforms and final packages remain pending. Desktop Settings/effort changes require replacing the app too, then reloading extension and AI tabs.
+
+Final status (2026-10-29): included in delivered 1.24.27 test builds, source 962899c / CI 40932400772; Windows/Mac/Linux and full browser jobs passed. Final signed Linux native Settings screenshot captured. Original AI accounts/devices remain for owner testing.

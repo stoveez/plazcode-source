@@ -10,3 +10,5 @@ Linux packaging builds a statically linked x86-64 musl executable, preserves exe
 Verified locally: 216 native tests plus 4 build tests (2 ignored); actual native Linux frontend launch/save/reload/reopen/Quit and ticket replay/wrong-origin/auth rejection. Hosted signed static package verification and affected users' devices remain.
 
 Hosted run 40911856672: signed static Linux package and actual protected frontend test passed. Mac native takeover passed, but expected unrelated-port failure opened a modal even under --headless. Headless startup errors now use stderr/exit only; ordinary GUI failures retain the alert. Full final rerun remains.
+
+Final verified build: 962899c / 40932400772; all hosted jobs passed. Real Mac takeover/unrelated-listener regression, universal Mac packaging and app/update handoff passed. Signed static Linux package and actual frontend passed in CI and locally. Windows/Mac/Linux downloads delivered; original devices remain untested.

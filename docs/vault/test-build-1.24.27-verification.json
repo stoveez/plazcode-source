@@ -1,0 +1,71 @@
+{
+  "version": "1.24.27",
+  "type": "test build",
+  "date": "2026-10-29",
+  "source_commit": "962899cb96c5368f96fbaff8897a73aa1c2359bc",
+  "branch": "claude/plazcode-dev",
+  "validation_run": 40932400772,
+  "validation_url": "https://github.com/stoveez/plazcode-source/actions/runs/40932400772",
+  "platform_jobs": [
+    "Windows",
+    "macOS",
+    "Linux",
+    "browsers"
+  ],
+  "result": "success",
+  "packages": [
+    {
+      "platform": "windows",
+      "file": "PlazCode-1.24.27-test-lean.zip",
+      "bytes": 50318348,
+      "sha256": "0cb911bd2c40f75be5344011e5a9e9b8c72ae704f6e1178070d2d148d189f641",
+      "files": 3038,
+      "productionSignatures": "verified",
+      "sourceParity": "verified",
+      "officialLayout": "exact 1.24.26 file list"
+    },
+    {
+      "platform": "macos",
+      "file": "PlazCode-macOS-1.24.27-test-lean.zip",
+      "bytes": 51754904,
+      "sha256": "16c4893a08b8e6d8d3e70281bfc9aa96115aa18bf24f0f4c47b556fa6fabe01c",
+      "files": 3041,
+      "productionSignatures": "verified",
+      "sourceParity": "verified",
+      "officialLayout": "exact 1.24.26 file list"
+    },
+    {
+      "platform": "linux",
+      "file": "PlazCode-Linux-1.24.27-test-lean.zip",
+      "bytes": 49424025,
+      "sha256": "0c5e2d16dce89935d0596fadce0c41fe565234375795f815bae59f5d2326e2d3",
+      "files": 3028,
+      "productionSignatures": "verified",
+      "sourceParity": "verified",
+      "officialLayout": "native Linux ZIP/tar parity"
+    }
+  ],
+  "linux_tar": {
+    "file": "PlazCode-Linux-1.24.27-test-lean.tar.gz",
+    "bytes": 47703249,
+    "sha256": "d6e9d27925c56e19e4dadf2d67b5836ae7f5bff318b089fe713b7b45953684a5"
+  },
+  "checks": [
+    "Archive CRC/path checks; no development note or private decoder maps",
+    "Production Ed25519 native/extension signatures verified against committed public key",
+    "Exact reviewed source hashes for main, approval policy, locales and DeepSeek in root/Chrome/Firefox",
+    "Windows/Mac exact 1.24.26 release file lists",
+    "Windows PE version; Mac universal Intel/Apple Silicon version/plist",
+    "Static Linux binary/package verification, executable modes and ZIP/tar byte parity",
+    "Actual signed Linux frontend launch, secure bootstrap, save/reload, reopen and Quit",
+    "Mac stale PlazCode takeover and unrelated listener preservation",
+    "Actual Windows/Mac automatic launch/update handoff; Windows Defender gate"
+  ],
+  "limitations": [
+    "Live DeepSeek/other AI accounts and original affected user devices not tested",
+    "Linux automatic updates are not published; x86-64 native downloads only",
+    "Separate PC vault folder is not connected"
+  ],
+  "stable_release": "1.24.26 unchanged",
+  "source_visibility": "PUBLIC after delivery; GitHub rejected authorized Private change with HTTP 403; owner action requested"
+}

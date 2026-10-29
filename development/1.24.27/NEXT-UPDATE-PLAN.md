@@ -1,11 +1,9 @@
 # PlazCode 1.24.27
 
-Scope: merge owner-supplied DeepSeek provider pacing from PlazCode-Extension.rar. Preserve the original raw sender, serialize every exported send, and measure an 8–9.8 second cooldown from send completion. First send is immediate; log waits as send.pace. No core send changes.
+Full test builds delivered 2026-10-29. Source 962899c, validation 40932400772 passed Windows, Mac, Linux and browsers. Latest stable remains 1.24.26.
 
-Additional owner-reported fix: desktop effort options are hidden beneath the following Instructions card. Keep the desktop inline picker synchronized with the shared picker, raise its card while open and size its scrollable menu to available viewport space. Exercise actual desktop CSS/cards at large, short and narrow sizes and keep keyboard/change events intact. This needs the rebuilt desktop app in the test package.
+Included: owner archive DeepSeek send guard (serialized completion-based 8–9.8 second spacing, first send immediate, send.pace diagnostics); reachable desktop effort choices; persistent Ask for approval / Approve for me / Bypass approval under Effort and in app Settings; composer-relative expanded bar/collapsed restore tab; targeted same-user Mac stale-port recovery; headless errors without modal dialogs; signed static Linux x64 app with actual browser frontend and pinned memory helper.
 
-Other feature designs copied alongside this plan are deferred, not part of this update. Local verification and then full production platform/browser plus packaged Mac gates are required before publishing. Latest published stays 1.24.26 until release.
+Production trust, read-only/folder limits, update feeds and exact Windows/Mac package layouts preserved. Downloaded signatures/source hashes/versions/archive integrity verified. Actual Linux frontend saving/reload/reopen/Quit and real Mac stale takeover/unrelated-listener/launch/update handoff passed. Original user devices and live AI accounts remain for owner testing. Linux auto-updates/ARM are not published; stable Linux promotion wiring needs review before a future public release.
 
-Additional owner scope: persistent Ask/Approve for me/Bypass selectors in the bar and app Settings; strict edit/deletion/no-prompt policy with existing access limits; composer-relative expanded/collapsed bar positioning and actual screenshots. Also fix native Linux headless-only startup and provide a Linux package. Full Windows/Mac test packages remain required; no stable release requested.
-
-Mac screenshot confirmed port 17613 held during startup; implement same-user targeted PlazCode recovery and real Mac process regression. Linux real desktop integration passes; package a signed static x86-64 binary and pinned memory helper. Linux stable auto-update feed remains unavailable; never use Windows/Mac packages there. Full hosted validation and final inner packages remain pending.
+Next: verify source restored Private (API 403 requires owner action), collect test feedback, then validate the exact final source before any separately authorized stable publication. Deferred accounts/Skill Workshop/Brickwire plans remain deferred.

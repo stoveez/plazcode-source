@@ -4,6 +4,13 @@ updated: 2026-10-29
 ---
 # Open work
 
+**Current 2026-10-29:** 1.24.27 full test builds delivered. CI 40932400772 / 962899c passed Windows, Mac, Linux and browsers. Archive/signature/source/version/layout verification complete; Windows/Mac exact current release file lists. See [verification](test-build-1.24.27-verification.json). DeepSeek pacing, effort clipping, approval controls, bar alignment and Mac/Linux startup fixes are in these test packages. Original user devices and live AI accounts remain untested.
+
+**Outstanding visibility:** source still PUBLIC after delivery; authorized Private API change denied HTTP 403. Owner asked to restore Private at repository settings. Keep checking/reminding. PC vault folder is not connected.
+
+The dated progress entries below record earlier stages and are superseded by this delivery status.
+
+
 - 2026-10-29: owner requested full 1.24.27 test builds. Source is PUBLIC for the owner-authorized build window; final scope includes approval menus, composer alignment, effort clipping and Linux visible startup. Visibility API denied (403); request sent. Deliver both verified inner lean ZIPs with apps and Chromium/Firefox, then restore Private. No public release authorized by this test-build request.
 
 - 2026-10-29: 1.24.27 initialized, incorporating the actual owner-uploaded DeepSeek guard. Fast follow-ups observe an 8–9.8 second completion-based cooldown, sliced waits and forwarded options. Local targeted/version/package checks passed, including three-copy parity, provider preservation, locales, Ultra and promotion guards; full production CI and live DeepSeek remain. Historical 1.24.26 overlay restored to its released provider baseline. Source is now PUBLIC for the authorized build window.
