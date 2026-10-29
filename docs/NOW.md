@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-29. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: final packaging adds a real signed static Linux frontend smoke test and frame/referrer protection.** The public desktop shell blocks embedding and suppresses referrers. Linux package creation reruns the actual browser/bootstrap/settings/reopen/Quit test against its exact production-signed static native binary and protected shipped files before upload. Full hosted validation next.
+**Latest: CI browser job passed; native JS caught the intentionally expanded feature-guide startup index.** Verified old guide reproduces every old startup hash exactly; updated saved expectations for the new approval-guide index. Linux native tests also passed (216). Full rerun required; no test packages delivered yet.
+
+**Packaging adds a real signed static Linux frontend smoke test and frame/referrer protection.** The public desktop shell blocks embedding and suppresses referrers. Linux package creation reruns the actual browser/bootstrap/settings/reopen/Quit test against its exact production-signed static native binary and protected shipped files before upload. Full hosted validation next.
 
 **Linux desktop end-to-end passed.** Real compiled Linux binary launches the actual desktop frontend through its default browser. One-use 60-second launch tickets keep permanent credentials out of URLs; wrong-origin/replay/unauthenticated requests rejected. Settings changes persist to disk/reload; Show reopens and Quit exits the real process. Native tests passed: 216 + 4 build tests, 2 ignored. App/bar approval and effort browser regressions passed. Screenshots are actual frontend/native UI; bar screenshot uses a local composer fixture, not a live AI account.
 

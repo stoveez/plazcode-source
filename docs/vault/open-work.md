@@ -94,3 +94,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29: native Linux real frontend integration passed (launch, secure bootstrap, save/reload, Show, Quit); 216 native tests + 4 build tests passed, 2 ignored. Mac targeted recovery implemented, hosted verification pending. Final Windows/Mac/Linux test artifacts and full browser validation remain. Linux auto-updates have no published feed yet; manual native downloads only.
 
 - 2026-10-29: final Linux package smoke test now runs the exact signed static shipped binary/files, not just debug. Browser shell denies frames and suppresses referrers. Hosted validation remains pending.
+
+- 2026-10-29: CI 40909881281 browser job passed; native JS had one failure: startup golden text expected the pre-approval feature index. Verified old guide restores every previous hash; update golden expectations for intended new guide entry and rerun full validation. Linux native tests passed 216; final packages remain pending.
