@@ -109,3 +109,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29: CI 40911856672 / 671b833 passed Windows, Linux and browsers, including actual signed static Linux frontend/package checks. Mac stale native takeover passed; expected unrelated-listener rejection blocked on a modal alert under --headless. Fixed headless startup errors to log/exit without dialogs; full rerun and final download verification remain.
 
 - 2026-10-29: owner confirmed online profiles, saved login and separated data. Account API deployed owner-private and passed real auth/sync checks; reviewed source mirrored in account-service/. Native path/store foundations and cache/upload isolation WIP. Account manager, API/session gates, migration/sync and actual startup integration still required.
+
+- 2026-10-29: corrected accidental generated preference-harness target files in WIP 6318a5d; removed them from tracking and ignored the harness target path. No credentials were in these generated test artifacts. Account/session integration still in progress.

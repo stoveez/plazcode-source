@@ -7,3 +7,6 @@ __pycache__/
 *.py[cod]
 /release-signing-key*.pem
 /private-release-keys/
+
+# Generated native preference harness builds
+development/*/preferences-test/target/

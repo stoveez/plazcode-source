@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-29. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: WIP native profile storage foundation and hosted account API verified.** Dedicated account service deployed owner-private at https://plazcode-accounts-stoveez.mistysong24.chatgpt.site (project appgprj_6ae3b330d8b481919934a74c73dc7874; source 0176721). Four local protocol/SQL/crypto tests and hosted private signup/KDF/session/sync/revoke passed. Only test account data used. Source mirror in account-service/. Service must not receive a shared bypass credential in release apps. Public API audience will need an explicit decision once the complete app is reviewable.
+**Latest: generated preference-test build output removed from tracking and ignored.** The previous WIP accidentally included local target files; removed them without rewriting history. Native account manager/encrypted session work is still in progress.
+
+**Native profile storage foundation and hosted account API verified.** Dedicated account service deployed owner-private at https://plazcode-accounts-stoveez.mistysong24.chatgpt.site (project appgprj_6ae3b330d8b481919934a74c73dc7874; source 0176721). Four local protocol/SQL/crypto tests and hosted private signup/KDF/session/sync/revoke passed. Only test account data used. Source mirror in account-service/. Service must not receive a shared bypass credential in release apps. Public API audience will need an explicit decision once the complete app is reviewable.
 
 **Storage WIP:** new profile_paths module selects independent stores; preference retargeting, memory/skills/checkpoints/vault/Engram/template/MCP paths are being isolated. Initial native check, 13 preference/path-harness tests and 2 direct path tests passed; latest cache/upload isolation changes need recheck. No account manager, native gates, cloud sync or startup connection yet. UI controller remains unmounted; no actual login preview or new app build delivered.
 
