@@ -1,10 +1,12 @@
 ---
 title: Open work and known bugs
-updated: 2026-10-28
+updated: 2026-10-29
 ---
 # Open work
 
-- 2026-10-28: 1.24.26 published. Validation 40772509288 on `a74ae17`; publish run 40781780030. Permanent approvals and code protection are complete. Live signed feeds/download verification passed. Private visibility restoration remains: both workflow credential and direct integration denied administration with HTTP 403; owner asked to use GitHub settings. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
+- 2026-10-29: DeepSeek shared send queue implemented and locally verified; unreleased. Covers direct UI sends, completion-based eight-second pause plus jitter for fast replies, diagnostics and failure recovery. See [DeepSeek pacing](deepseek-send-pacing.md). Next signed version/build and live DeepSeek verification remain. Source repo is confirmed Private.
+
+- 2026-10-28: 1.24.26 published. Validation 40772509288 on `a74ae17`; publish run 40781780030. Permanent approvals and code protection are complete. Live signed feeds/download verification passed. Private visibility restoration was later confirmed complete on 2026-10-29. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
 
 
 

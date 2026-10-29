@@ -1,14 +1,10 @@
 # NOW
-Updated: 2026-10-28. No helper agents.
+Updated: 2026-10-29. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: 1.24.26 published and verified live. Validation 40772509288 on `a74ae17`; publish run 40781780030.** Signed program/update checks, conservative browser obfuscation and permanent per-tool Approve all across tasks, chats and AI sites. No app signing, login requirement or extra setup; offline use and editable user skills/notes/settings are preserved.
+**Latest: DeepSeek shared send pacing implemented, unreleased.** The exported provider sender queues every programmatic call, including UI Creator/library cards. First send is immediate. Subsequent calls within eight seconds of the previous send FINISHING wait out the remaining interval plus 0–1.8 seconds jitter and log `send.pace`. Replies taking at least eight seconds add no delay. Failed sends start the same cooldown and cannot poison the queue. Original raw sending logic, existing core cooldown/user settings and one-time notice are preserved; no core changes.
 
-**Validation:** all four production gates passed on the exact source, plus the packaged Mac desktop lifetime/relaunch gate. Browser fixtures and real protected Chromium/Firefox cryptography passed; original affected Studio/account setups were not tested live. No separate test build was delivered. Full app update plus extension reload and AI-tab refresh is required for the complete security update.
+**Checks passed:** fake-clock tests cover concurrency, slow-send completion timing, direct calls/images, fast/long replies, jitter bounds and failure recovery. Provider AST preservation and desktop hash regression passed. Root, generated Chromium and generated Firefox copies are byte-identical, syntax-valid and each define one paced sender and one raw sender. Not tested on a live DeepSeek account; pacing does not establish that account bans are prevented.
 
-**Release:** https://github.com/stoveez/PlazCode/releases/tag/v1.24.26
+**Shipping:** changes are in the active `development/1.24.26/overlay`, pending the next versioned signed release. Do not modify published 1.24.26 archives or install edited files over integrity-protected copies. No new build/release was requested or produced for this task. Latest public release remains 1.24.26 (validation 40772509288 / a74ae17; publication 40781780030). See [DeepSeek pacing](vault/deepseek-send-pacing.md).
 
-**Visibility: STILL PUBLIC, owner action pending.** Both workflow publishing credentials and direct integration were denied Private restoration (HTTP 403). Owner was sent https://github.com/stoveez/plazcode-source/settings → Danger Zone → Change visibility → Private after publication. Recheck until private; do not claim restoration occurred.
-
-**Handoff:** work directly on `claude/plazcode-dev`; publication/main was fast-forwarded back into dev, including the private release record and encrypted decoder maps. Validated program inputs remain unchanged. Other account/Workshop/Brickwire plans remain deferred. GitHub vault updated; the separate PC PlazCode-Vault folder is not linked. See [open work](vault/open-work.md) and [code protection](vault/code-protection.md).
-
-**Live proof:** public commit d51465561b740b46c67cd6d819feeaab183f111e; both live feeds report 1.24.26 and verify under the production public key. Downloaded Windows archive SHA256 matches feed, all native signed files and Chromium/Firefox signatures verify. Three release assets and the 1,250-character formatted notes verified. Feed sizes: Windows 15,499 bytes; Mac 15,278 bytes. Decoder ciphertext/index retained in `release-validation-1.24.26`; no raw maps/key in Git or downloads.
+**Visibility:** source repository confirmed PRIVATE. The previous post-release visibility action is resolved. GitHub vault notes updated; the separate PC vault folder is not linked.
