@@ -1,6 +1,9 @@
 //! Test-only harness: compile the real overlay preferences module unchanged.
 #![allow(dead_code)]
 
+#[path = "../../overlay/agent/src/profile_paths.rs"]
+mod profile_paths;
+
 #[path = "../../overlay/agent/src/preferences.rs"]
 mod preferences;
 

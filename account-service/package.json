@@ -1,0 +1,1 @@
+{"name":"plazcode-accounts","version":"1.0.0","private":true,"type":"module","scripts":{"build":"node scripts/build.mjs","test":"node --experimental-strip-types test/accounts.test.mjs","db:generate":"drizzle-kit generate"},"dependencies":{"@noble/hashes":"2.0.1","drizzle-orm":"0.45.2"},"devDependencies":{"drizzle-kit":"0.31.10","esbuild":"0.25.12"}}

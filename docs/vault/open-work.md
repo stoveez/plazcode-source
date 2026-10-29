@@ -107,3 +107,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29: CI 40909881281 browser job passed; native JS had one failure: startup golden text expected the pre-approval feature index. Verified old guide restores every previous hash; update golden expectations for intended new guide entry and rerun full validation. Linux native tests passed 216; final packages remain pending.
 
 - 2026-10-29: CI 40911856672 / 671b833 passed Windows, Linux and browsers, including actual signed static Linux frontend/package checks. Mac stale native takeover passed; expected unrelated-listener rejection blocked on a modal alert under --headless. Fixed headless startup errors to log/exit without dialogs; full rerun and final download verification remain.
+
+- 2026-10-29: owner confirmed online profiles, saved login and separated data. Account API deployed owner-private and passed real auth/sync checks; reviewed source mirrored in account-service/. Native path/store foundations and cache/upload isolation WIP. Account manager, API/session gates, migration/sync and actual startup integration still required.

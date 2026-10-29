@@ -182,7 +182,7 @@ impl std::fmt::Display for SaveFailed {
 impl std::error::Error for SaveFailed {}
 
 pub struct PreferencesStore {
-    path: PathBuf,
+    path: RwLock<PathBuf>,
     inner: RwLock<DesktopPreferences>,
 }
 
@@ -197,11 +197,11 @@ impl PreferencesStore {
             .and_then(|raw| serde_json::from_str::<DesktopPreferences>(&raw).ok())
             .unwrap_or_default();
         prefs.normalize();
-        Self { path, inner: RwLock::new(prefs) }
+        Self { path: RwLock::new(path), inner: RwLock::new(prefs) }
     }
 
     pub fn persisted(&self) -> bool {
-        self.path.exists()
+        self.path.read().map(|p|p.exists()).unwrap_or(false)
     }
 
     pub fn snapshot(&self) -> DesktopPreferences {
@@ -243,33 +243,23 @@ impl PreferencesStore {
         self.replace(next)
     }
 
-    fn save(&self, prefs: &DesktopPreferences) -> anyhow::Result<()> {
-        if let Some(parent) = self.path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        let tmp = self.path.with_extension("json.tmp");
-        std::fs::write(&tmp, serde_json::to_vec_pretty(prefs)?)?;
-        if self.path.exists() {
-            std::fs::remove_file(&self.path)?;
-        }
-        std::fs::rename(&tmp, &self.path)?;
-        Ok(())
+    pub fn select_path(&self,path:PathBuf)->anyhow::Result<()> {
+        let loaded=Self::load_from(path.clone());
+        let mut target=self.path.write().map_err(|_|anyhow::anyhow!("preferences path lock poisoned"))?;
+        let mut inner=self.inner.write().map_err(|_|anyhow::anyhow!("preferences lock poisoned"))?;
+        *target=path;*inner=loaded.snapshot();Ok(())
     }
+    fn save(&self,prefs:&DesktopPreferences)->anyhow::Result<()> {
+        let path=self.path.read().map_err(|_|anyhow::anyhow!("preferences path lock poisoned"))?;
+        if let Some(parent)=path.parent(){std::fs::create_dir_all(parent)?;}
+        let tmp=path.with_extension("json.tmp");std::fs::write(&tmp,serde_json::to_vec_pretty(prefs)?)?;
+        if path.exists(){std::fs::remove_file(&*path)?;}std::fs::rename(&tmp,&*path)?;Ok(())
+    }
+    pub fn path(&self)->PathBuf {self.path.read().unwrap_or_else(|e|e.into_inner()).clone()}
 
-    pub fn path(&self) -> &Path {
-        &self.path
-    }
 }
 
-fn settings_path() -> PathBuf {
-    #[cfg(target_os = "macos")]
-    { return crate::platform::configuration_root().join("plazcode-settings.json"); }
-    #[cfg(not(target_os = "macos"))]
-    std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|d| d.join("plazcode-settings.json")))
-        .unwrap_or_else(|| PathBuf::from("plazcode-settings.json"))
-}
+fn settings_path() -> PathBuf { crate::profile_paths::settings_path() }
 
 
 #[cfg(test)]

@@ -187,6 +187,7 @@ fn upgrade_blender_spec(cfg: &mut McpConfig) {
 }
 
 pub fn config_path() -> PathBuf {
+    if crate::profile_paths::initialized(){return crate::profile_paths::data_root().join("config.json");}
     #[cfg(target_os = "macos")]
     { return crate::platform::configuration_root().join("config.json"); }
     #[cfg(not(target_os = "macos"))]

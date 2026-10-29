@@ -44,11 +44,8 @@ pub struct Task {
 }
 #[derive(Default, Serialize, Deserialize)]
 pub struct Journal { #[serde(default)] pub projects: std::collections::HashMap<String,String>, tasks: Vec<Task>, #[serde(default)] pub protected: Vec<String>, #[serde(skip)] path: PathBuf, #[serde(skip)] outcomes: std::collections::HashMap<String,bool> }
-pub static STORE: once_cell::sync::Lazy<tokio::sync::Mutex<Journal>> = once_cell::sync::Lazy::new(|| {
-    let root = std::env::var_os("LOCALAPPDATA").or_else(|| std::env::var_os("XDG_CONFIG_HOME")).map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".config"));
-    tokio::sync::Mutex::new(Journal::load(root.join("PlazCode").join("checkpoints.json")))
-});
+pub static STORE:once_cell::sync::Lazy<crate::profile_paths::ProfiledMutex<Journal>>=once_cell::sync::Lazy::new(||crate::profile_paths::ProfiledMutex::new("checkpoints.json",|path|tokio::sync::Mutex::new(Journal::load(path))));
+
 impl Journal {
     fn load(path: PathBuf) -> Self {
         let mut journal: Self = std::fs::read(&path).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();

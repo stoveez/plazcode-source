@@ -9,7 +9,7 @@ struct Entry { runtime:Arc<Mutex<Runtime>>, touched:u64 }
 #[derive(Default)]struct Registry { entries:HashMap<String,Entry>, tick:u64 }
 static REGISTRY:once_cell::sync::Lazy<Mutex<Registry>>=once_cell::sync::Lazy::new(||Mutex::new(Registry::default()));
 fn key(text:&str)->String {let mut hash=14695981039346656037u64;for byte in text.as_bytes(){hash^=*byte as u64;hash=hash.wrapping_mul(1099511628211);}format!("{hash:016x}")}
-fn data_root()->PathBuf{let base=std::env::var_os("LOCALAPPDATA").or_else(||std::env::var_os("XDG_CONFIG_HOME")).map(PathBuf::from).unwrap_or_else(||PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".config"));base.join("PlazCode").join("engram")}
+fn data_root()->PathBuf{crate::profile_paths::data_root().join("engram")}
 fn executable()->anyhow::Result<PathBuf>{
     let root=crate::platform::installation_root();
     let platform=if cfg!(target_os="windows"){"windows"}else if cfg!(target_os="macos"){"darwin"}else{"linux"};
@@ -77,8 +77,9 @@ async fn executable_or_download()->anyhow::Result<PathBuf>{
     Ok(destination)
 }
 async fn runtime(scope:&str)->anyhow::Result<Arc<Mutex<Runtime>>>{
+    let registry_key=format!("{}:{scope}",data_root().display());
     let mut registry=REGISTRY.lock().await;registry.tick+=1;let tick=registry.tick;
-    if let Some(entry)=registry.entries.get_mut(scope){entry.touched=tick;return Ok(entry.runtime.clone());}
+    if let Some(entry)=registry.entries.get_mut(&registry_key){entry.touched=tick;return Ok(entry.runtime.clone());}
     if registry.entries.len()>=4 {
         let oldest=registry.entries.iter().filter(|(_,v)|Arc::strong_count(&v.runtime)==1).min_by_key(|(_,v)|v.touched).map(|(k,_)|k.clone());
         if let Some(oldest)=oldest{if let Some(entry)=registry.entries.remove(&oldest){entry.runtime.lock().await.process.reset().await;}}
@@ -90,7 +91,7 @@ async fn runtime(scope:&str)->anyhow::Result<Arc<Mutex<Runtime>>>{
     else{tokio::fs::write(&marker,serde_json::to_vec(scope)?).await?;}
     let mut env=HashMap::new();env.insert("ENGRAM_DATA_DIR".into(),dir.to_string_lossy().into_owned());env.insert("ENGRAM_PROJECT".into(),scope.into());env.insert("ENGRAM_CLOUD_AUTOSYNC".into(),"0".into());
     let process=AddonRuntime::new("plazcode-engram".into(),ServerSpec{command:path.to_string_lossy().into_owned(),args:vec!["mcp".into(),"--tools=agent,admin".into()],env});
-    let runtime=Arc::new(Mutex::new(Runtime{process,sessions:HashSet::new()}));registry.entries.insert(scope.into(),Entry{runtime:runtime.clone(),touched:tick});Ok(runtime)
+    let runtime=Arc::new(Mutex::new(Runtime{process,sessions:HashSet::new()}));registry.entries.insert(registry_key,Entry{runtime:runtime.clone(),touched:tick});Ok(runtime)
 }
 fn string(value:&Value,name:&str,max:usize)->anyhow::Result<String>{let text=value[name].as_str().unwrap_or("");anyhow::ensure!(!text.trim().is_empty()&&text.len()<=max,"Invalid or oversized {name}");Ok(text.into())}
 async fn execute(value:Value)->anyhow::Result<Value>{
@@ -134,3 +135,5 @@ pub async fn post(axum::Json(value):axum::Json<Value>)->axum::response::Response
 #[cfg(unix)]#[test]fn program_is_found_inside_a_tar_archive(){let dir=std::env::temp_dir().join(format!("plazcode-engram-test-{}",std::process::id()));let _=std::fs::remove_dir_all(&dir);std::fs::create_dir_all(dir.join("pack/sub")).unwrap();std::fs::write(dir.join("pack/sub/engram"),b"PROGRAM").unwrap();std::fs::write(dir.join("pack/README"),b"x").unwrap();
  let ok=std::process::Command::new("tar").args(["-czf"]).arg(dir.join("a.tar.gz")).arg("-C").arg(dir.join("pack")).arg(".").status().unwrap().success();assert!(ok);
  let bytes=std::fs::read(dir.join("a.tar.gz")).unwrap();assert_eq!(extract_program(&bytes,"a.tar.gz","engram").unwrap(),b"PROGRAM");assert!(extract_program(&bytes,"a.tar.gz","missing").is_err());let _=std::fs::remove_dir_all(&dir);}}
+
+pub async fn clear_profile_cache(){let entries={let mut registry=REGISTRY.lock().await;registry.entries.drain().map(|(_,entry)|entry).collect::<Vec<_>>()};for entry in entries{entry.runtime.lock().await.process.reset().await;}}

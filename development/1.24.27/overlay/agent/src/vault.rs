@@ -55,13 +55,8 @@ pub struct Settings {
     pub path: Option<String>,
     pub learning: bool,
 }
-fn data_root() -> PathBuf {
-    std::env::var_os("LOCALAPPDATA")
-        .or_else(|| std::env::var_os("XDG_CONFIG_HOME"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".config"))
-        .join("PlazCode")
-}
+fn data_root() -> PathBuf {crate::profile_paths::data_root()}
+
 fn settings_file() -> PathBuf {
     data_root().join("vault-settings.json")
 }

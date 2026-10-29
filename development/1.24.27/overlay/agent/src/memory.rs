@@ -75,11 +75,13 @@ impl Store {
         *lock = next.clone(); Ok(next)
     }
 }
-pub static STORE: once_cell::sync::Lazy<Store> = once_cell::sync::Lazy::new(|| {
-    let root = std::env::var_os("LOCALAPPDATA").or_else(|| std::env::var_os("XDG_CONFIG_HOME")).map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".config"));
-    Store::load(root.join("PlazCode").join("memory.json"))
-});
+pub struct ProfileMemory { stores:crate::profile_paths::Profiled<Store> }
+impl ProfileMemory {
+ pub fn snapshot(&self)->Memory{self.stores.selected().snapshot()}
+ pub fn update(&self,req:Value)->anyhow::Result<Memory>{self.stores.selected().update(req)}
+ pub fn clear_cache(&self){self.stores.clear_cache();}
+}
+pub static STORE:once_cell::sync::Lazy<ProfileMemory>=once_cell::sync::Lazy::new(||ProfileMemory{stores:crate::profile_paths::Profiled::new("memory.json",Store::load)});
 pub async fn get() -> axum::Json<Memory> { axum::Json(STORE.snapshot()) }
 pub async fn post(axum::Json(req): axum::Json<Value>) -> axum::response::Response {
     use axum::response::IntoResponse;

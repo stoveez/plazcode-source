@@ -88,10 +88,19 @@ fn matching_with_limit(catalog:&Catalog,query:&str,limit:usize)->Vec<Value>{
     for (score,template,script) in found {let n=counts.entry(&template.id).or_insert(0);if *n>=limit{continue;}*n+=1;result.push(json!({"id":template.id,"name":template.name,"script_id":script.script_id,"path":script.path,"class":script.class,"score":score,"source":script.source.chars().take(24000/limit.max(1).min(8)).collect::<String>(),"preview_limited":script.source.chars().count()>24000/limit.max(1).min(8)}));if result.len()==limit{break;}}
     result
 }
-pub static STORE:once_cell::sync::Lazy<Store>=once_cell::sync::Lazy::new(||{let root=std::env::var_os("LOCALAPPDATA").or_else(||std::env::var_os("XDG_CONFIG_HOME")).map(PathBuf::from).unwrap_or_else(||PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".config"));Store::new(root.join("PlazCode").join("templates"))});
-pub async fn post(axum::Json(req):axum::Json<Value>)->axum::response::Response {reply(tokio::task::spawn_blocking(move||STORE.request(&req)).await.unwrap_or_else(|e|Err(anyhow::anyhow!("Template request failed: {e}"))))}
+static STORES:once_cell::sync::Lazy<crate::profile_paths::Profiled<Store>>=once_cell::sync::Lazy::new(||crate::profile_paths::Profiled::new("templates",Store::new));
+fn store()->std::sync::Arc<Store>{STORES.selected()}
+pub async fn clear_profile_cache(){
+ let uploads={let mut uploads=UPLOADS.lock().await;uploads.drain().map(|(_,upload)|upload).collect::<Vec<_>>()};
+ for upload in uploads{let _=tokio::fs::remove_file(upload.path).await;}
+ UPLOAD_RESULTS.lock().await.clear();
+ // A background indexer owns its original store; retain that store until it finishes.
+ if INDEXING.available_permits()==1{STORES.clear_cache();}
+}
+
+pub async fn post(axum::Json(req):axum::Json<Value>)->axum::response::Response {reply(tokio::task::spawn_blocking(move||store().request(&req)).await.unwrap_or_else(|e|Err(anyhow::anyhow!("Template request failed: {e}"))))}
 #[derive(Deserialize)]pub struct Import {name:String,#[serde(default)]description:String}
-pub async fn import(axum::extract::Query(req):axum::extract::Query<Import>,bytes:axum::body::Bytes)->axum::response::Response {let permit=match INDEXING.clone().try_acquire_owned(){Ok(p)=>p,Err(_)=>return reply(Err(anyhow::anyhow!("Another template is being indexed. Try again when it finishes.")))};let result=tokio::task::spawn_blocking(move||{let _permit=permit;STORE.import(&req.name,&req.description,&bytes)}).await;reply(result.unwrap_or_else(|e|Err(anyhow::anyhow!("Template indexing failed: {e}"))))}
+pub async fn import(axum::extract::Query(req):axum::extract::Query<Import>,bytes:axum::body::Bytes)->axum::response::Response {let permit=match INDEXING.clone().try_acquire_owned(){Ok(p)=>p,Err(_)=>return reply(Err(anyhow::anyhow!("Another template is being indexed. Try again when it finishes.")))};let result=tokio::task::spawn_blocking(move||{let _permit=permit;store().import(&req.name,&req.description,&bytes)}).await;reply(result.unwrap_or_else(|e|Err(anyhow::anyhow!("Template indexing failed: {e}"))))}
 fn reply(result:anyhow::Result<Value>)->axum::response::Response{use axum::response::IntoResponse;match result{Ok(v)=>axum::Json(v).into_response(),Err(e)=>(axum::http::StatusCode::BAD_REQUEST,axum::Json(json!({"ok":false,"error":e.to_string()}))).into_response()}}
 #[cfg(test)]mod tests{
     use super::*;use rbx_dom_weak::InstanceBuilder;
@@ -123,13 +132,13 @@ fn reply(result:anyhow::Result<Value>)->axum::response::Response{use axum::respo
 
 // Large games arrive in small ordered chunks and are parsed from disk on a worker.
 static INDEXING:once_cell::sync::Lazy<std::sync::Arc<tokio::sync::Semaphore>>=once_cell::sync::Lazy::new(||std::sync::Arc::new(tokio::sync::Semaphore::new(1)));
-struct Upload {name:String,description:String,size:u64,offset:u64,path:PathBuf,updated:std::time::Instant}
+struct Upload {owner:PathBuf,name:String,description:String,size:u64,offset:u64,path:PathBuf,updated:std::time::Instant}
 static UPLOADS:once_cell::sync::Lazy<tokio::sync::Mutex<std::collections::HashMap<String,Upload>>>=once_cell::sync::Lazy::new(||tokio::sync::Mutex::new(Default::default()));
 static UPLOAD_RESULTS:once_cell::sync::Lazy<tokio::sync::Mutex<std::collections::HashMap<String,Value>>>=once_cell::sync::Lazy::new(||tokio::sync::Mutex::new(Default::default()));
 fn valid_upload(id:&str)->bool{id.len()==32 && id.bytes().all(|b|b.is_ascii_hexdigit())}
 pub async fn upload(axum::Json(req):axum::Json<Value>)->axum::response::Response{reply(upload_request(req).await)}
 async fn upload_request(req:Value)->anyhow::Result<Value>{
-    let action=req["action"].as_str().unwrap_or("");let id=req["id"].as_str().unwrap_or("");
+    let action=req["action"].as_str().unwrap_or("");let id=req["id"].as_str().unwrap_or("");let key=format!("{}:{id}",store().root.display());
     if action=="upload-begin" {
         let name=req["name"].as_str().unwrap_or("");let description=req["description"].as_str().unwrap_or("");let size=req["size"].as_u64().unwrap_or(0);
         anyhow::ensure!(!name.is_empty() && name.len()<=1000 && description.len()<=4000 && size>0 && size<=MAX_FILE as u64,"Choose a Roblox place/model up to 512 MB and a short description.");
@@ -138,27 +147,27 @@ async fn upload_request(req:Value)->anyhow::Result<Value>{
         for id in expired {if let Some(upload)=uploads.remove(&id){let _=tokio::fs::remove_file(upload.path).await;}}
         anyhow::ensure!(uploads.len()<2,"Two template uploads are already active. Finish or cancel one first.");
         let mut random=[0u8;16];getrandom::getrandom(&mut random).map_err(|e|anyhow::anyhow!("Upload identity failed: {e}"))?;let id=random.iter().map(|b|format!("{b:02x}")).collect::<String>();
-        let dir=STORE.root.join(".uploads");tokio::fs::create_dir_all(&dir).await?;
+        let dir=store().root.join(".uploads");tokio::fs::create_dir_all(&dir).await?;
         // Remove abandoned staging files after a bridge restart; active entries are excluded.
         let mut files=tokio::fs::read_dir(&dir).await?;while let Some(file)=files.next_entry().await?{let filename=file.file_name().to_string_lossy().into_owned();if valid_upload(&filename)&&!uploads.contains_key(&filename)&&file.metadata().await?.modified()?.elapsed().unwrap_or_default()>std::time::Duration::from_secs(1800){let _=tokio::fs::remove_file(file.path()).await;}}
         let path=dir.join(&id);tokio::fs::File::create(&path).await?;
-        uploads.insert(id.clone(),Upload{name:name.into(),description:description.into(),size,offset:0,path,updated:std::time::Instant::now()});
+        uploads.insert(id.clone(),Upload{owner:store().root.clone(),name:name.into(),description:description.into(),size,offset:0,path,updated:std::time::Instant::now()});
         return Ok(json!({"ok":true,"id":id,"chunk_bytes":CHUNK_SIZE,"max_bytes":MAX_FILE}));
     }
     anyhow::ensure!(valid_upload(id),"Invalid upload identity.");
-    if action=="upload-status" {return UPLOAD_RESULTS.lock().await.get(id).cloned().ok_or_else(||anyhow::anyhow!("Upload status expired."));}
-    if action=="upload-finish" {if let Some(result)=UPLOAD_RESULTS.lock().await.get(id).cloned(){return Ok(result);}}
-    if action=="upload-cancel" {if UPLOAD_RESULTS.lock().await.get(id).map_or(false,|v|v["state"]=="indexing"){anyhow::bail!("Indexing is already running. Wait for its result; no partial template is added.");}UPLOAD_RESULTS.lock().await.remove(id);if let Some(upload)=UPLOADS.lock().await.remove(id){let _=tokio::fs::remove_file(upload.path).await;}return Ok(json!({"ok":true}));}
+    if action=="upload-status" {return UPLOAD_RESULTS.lock().await.get(&key).cloned().ok_or_else(||anyhow::anyhow!("Upload status expired."));}
+    if action=="upload-finish" {if let Some(result)=UPLOAD_RESULTS.lock().await.get(&key).cloned(){return Ok(result);}}
+    if action=="upload-cancel" {if UPLOAD_RESULTS.lock().await.get(&key).map_or(false,|v|v["state"]=="indexing"){anyhow::bail!("Indexing is already running. Wait for its result; no partial template is added.");}UPLOAD_RESULTS.lock().await.remove(&key);if let Some(upload)=UPLOADS.lock().await.remove(id){let _=tokio::fs::remove_file(upload.path).await;}return Ok(json!({"ok":true}));}
     anyhow::ensure!(action=="upload-finish","Unknown upload action.");
     let permit=INDEXING.clone().try_acquire_owned().map_err(|_|anyhow::anyhow!("Another template is being indexed. Try again when it finishes."))?;
-    let upload={let mut uploads=UPLOADS.lock().await;let u=uploads.get(id).ok_or_else(||anyhow::anyhow!("Upload expired or was cancelled."))?;anyhow::ensure!(u.offset==u.size,"The upload is incomplete.");uploads.remove(id).unwrap()};
+    let upload={let mut uploads=UPLOADS.lock().await;let u=uploads.get(id).ok_or_else(||anyhow::anyhow!("Upload expired or was cancelled."))?;anyhow::ensure!(u.owner==store().root,"This upload belongs to another profile.");anyhow::ensure!(u.offset==u.size,"The upload is incomplete.");uploads.remove(id).unwrap()};
     let accepted=json!({"ok":true,"state":"indexing","upload_id":id});
-    {let mut results=UPLOAD_RESULTS.lock().await;if results.len()>=16 {let old=results.iter().filter(|(_,v)|v["state"]!="indexing").map(|(k,_)|k.clone()).next();if let Some(old)=old{results.remove(&old);}}results.insert(id.into(),accepted.clone());}
-    let id=id.to_owned();
+    {let mut results=UPLOAD_RESULTS.lock().await;if results.len()>=16 {let old=results.iter().filter(|(_,v)|v["state"]!="indexing").map(|(k,_)|k.clone()).next();if let Some(old)=old{results.remove(&old);}}results.insert(key.clone(),accepted.clone());}
+    let selected_store=store();
     tokio::spawn(async move {
-        let result=tokio::task::spawn_blocking(move||{let _permit=permit;let result=STORE.import_file(&upload.name,&upload.description,&upload.path);let _=std::fs::remove_file(&upload.path);result}).await.unwrap_or_else(|e|Err(anyhow::anyhow!("Template indexing failed: {e}")));
+        let result=tokio::task::spawn_blocking(move||{let _permit=permit;let result=selected_store.import_file(&upload.name,&upload.description,&upload.path);let _=std::fs::remove_file(&upload.path);result}).await.unwrap_or_else(|e|Err(anyhow::anyhow!("Template indexing failed: {e}")));
         let result=match result{Ok(value)=>json!({"ok":true,"state":"complete","result":value}),Err(error)=>json!({"ok":true,"state":"failed","error":error.to_string()})};
-        UPLOAD_RESULTS.lock().await.insert(id,result);
+        UPLOAD_RESULTS.lock().await.insert(key,result);
     });Ok(accepted)
 }
 #[derive(Deserialize)]pub struct Chunk {offset:u64}
@@ -167,6 +176,7 @@ pub async fn upload_chunk(axum::extract::Path(id):axum::extract::Path<String>,ax
         use tokio::io::AsyncWriteExt;
         anyhow::ensure!(valid_upload(&id)&&!bytes.is_empty()&&bytes.len()<=CHUNK_SIZE,"Invalid upload chunk.");
         let mut uploads=UPLOADS.lock().await;let upload=uploads.get_mut(&id).ok_or_else(||anyhow::anyhow!("Upload expired or was cancelled."))?;
+        anyhow::ensure!(upload.owner==store().root,"This upload belongs to another profile.");
         anyhow::ensure!(req.offset==upload.offset&&upload.offset+bytes.len() as u64<=upload.size,"Upload offset or size mismatch. No chunk was appended.");
         anyhow::ensure!(tokio::fs::metadata(&upload.path).await?.len()==upload.offset,"Staged file changed or a previous chunk failed; cancel and upload again.");
         let mut file=tokio::fs::OpenOptions::new().append(true).open(&upload.path).await?;file.write_all(&bytes).await?;file.flush().await?;

@@ -74,6 +74,7 @@ mod engine_tools;
 mod security;
 mod integrity;
 mod preferences;
+mod profile_paths;
 mod memory;
 mod templates;
 mod creations;

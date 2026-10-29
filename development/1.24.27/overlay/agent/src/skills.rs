@@ -12,7 +12,7 @@ struct Skill {id:String,#[serde(default)]title:String,description:String,domain:
 struct DeletedSkill {#[serde(flatten)]skill:Skill,deleted_at:u64}
 #[derive(Default,Clone,Serialize,Deserialize)]
 struct Catalog {skills:BTreeMap<String,Skill>,#[serde(default)]deleted:BTreeMap<String,DeletedSkill>,#[serde(default)]suppressed:BTreeSet<String>,#[serde(default)]trash_revision:u64,#[serde(default)]starter_pack_version:u64,#[serde(default)]ultragui_pack_version:u64,#[serde(default)]candidate_cleanup_version:u64}
-struct Store {path:PathBuf,data:Catalog,error:Option<String>}
+pub struct Store {path:PathBuf,data:Catalog,error:Option<String>}
 impl Store {
  fn load(path:PathBuf)->Self {
   let (mut data,error): (Catalog,Option<String>)=match std::fs::read(&path){Ok(bytes)=>match serde_json::from_slice(&bytes){Ok(data)=>(data,None),Err(e)=>(Catalog::default(),Some(e.to_string()))},Err(e) if e.kind()==std::io::ErrorKind::NotFound=>(Catalog::default(),None),Err(e)=>(Catalog::default(),Some(e.to_string()))};
@@ -111,7 +111,7 @@ fn placeholder_title(title:&str)->bool{let t=normal_title(title);t.is_empty()||m
 fn untouched_auto_candidate(s:&Skill)->bool{s.id.starts_with("task-")&&s.revision<=1&&!s.confirmed&&!s.enabled&&!s.favorite&&!s.community&&s.description==CANDIDATE_TEXT}
 fn kept_by_delete_all(id:&str)->bool{id.starts_with("starter-syphodev-")||id.starts_with("global-workflow-")}
 fn public(skill:&Skill)->Value {json!({"id":skill.id,"title":skill.title,"description":skill.description,"domain":skill.domain,"scope":"","steps":skill.steps,"pitfalls":skill.pitfalls,"verification":skill.verification,"confirmed":skill.confirmed,"revision":1,"community":true})}
-static STORE:once_cell::sync::Lazy<tokio::sync::Mutex<Store>>=once_cell::sync::Lazy::new(||{let base=std::env::var_os("LOCALAPPDATA").or_else(||std::env::var_os("XDG_CONFIG_HOME")).map(PathBuf::from).unwrap_or_else(||PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".config"));tokio::sync::Mutex::new(Store::load(base.join("PlazCode/skills.json")))});
+pub static STORE:once_cell::sync::Lazy<crate::profile_paths::ProfiledMutex<Store>>=once_cell::sync::Lazy::new(||crate::profile_paths::ProfiledMutex::new("skills.json",|path|tokio::sync::Mutex::new(Store::load(path))));
 fn repository()->anyhow::Result<String>{let value=std::env::var("PLAZCODE_LEARNING_REPOSITORY").unwrap_or_else(|_|"stoveez/PlazCode".into());let parts=value.split('/').collect::<Vec<_>>();anyhow::ensure!(parts.len()==2&&parts.iter().all(|s|!s.is_empty()&&s.len()<=100&&s.bytes().all(|b|b.is_ascii_alphanumeric()||b"_- .".contains(&b))&&!s.contains(' ')),"Learning repository must be owner/repository on GitHub.");Ok(value)}
 fn client()->anyhow::Result<reqwest::Client>{Ok(reqwest::Client::builder().user_agent("PlazCode-skills").timeout(std::time::Duration::from_secs(25)).build()?)}
 async fn github(client:&reqwest::Client,method:reqwest::Method,path:&str,body:Option<Value>,token:&str)->anyhow::Result<Value>{let mut req=client.request(method,format!("https://api.github.com/{path}")).bearer_auth(token).header("Accept","application/vnd.github+json");if let Some(body)=body{req=req.json(&body);}let response=req.send().await?;let status=response.status();let value:Value=response.json().await?;anyhow::ensure!(status.is_success(),"Shared Git request failed ({}): {}",status,value["message"].as_str().unwrap_or("GitHub rejected the operation"));Ok(value)}
