@@ -75,6 +75,7 @@ mod security;
 mod integrity;
 mod preferences;
 mod profile_paths;
+mod accounts;
 mod memory;
 mod templates;
 mod creations;
@@ -151,6 +152,9 @@ struct Payload { id: String, target: String, code: String, language: String, #[s
 #[derive(Clone)]
 struct AppState {
     pairing_key: Arc<String>,
+    accounts: Arc<accounts::Manager>,
+    profile_switch:Arc<Mutex<()>>,
+    profile_change:Arc<tokio::sync::watch::Sender<u64>>,
     cancellation: Arc<cancellation::Hub>,
     roblox_queue: Arc<Mutex<VecDeque<Payload>>>,
     roblox_clients: Arc<RwLock<HashMap<String, String>>>,
@@ -186,6 +190,9 @@ impl AppState {
     ) -> Self {
         Self {
             pairing_key,
+            accounts: Arc::new(accounts::Manager::disabled()),
+            profile_switch:Arc::new(Mutex::new(())),
+            profile_change:Arc::new(tokio::sync::watch::channel(0).0),
             cancellation: Arc::new(cancellation::Hub::default()),
             roblox_queue: Arc::new(Mutex::new(VecDeque::new())),
             roblox_clients: Arc::new(RwLock::new(HashMap::new())),
@@ -1106,6 +1113,7 @@ async fn start() -> anyhow::Result<()> {
     let listener = bind_required(addr, Duration::from_secs(8)).await?;
     let legacy_roblox = bind_required("127.0.0.1:17613".parse()?, Duration::from_secs(8)).await?;
     let legacy_local = bind_required("127.0.0.1:17615".parse()?, Duration::from_secs(8)).await?;
+    let accounts=Arc::new(accounts::Manager::load(args.headless)?);
     let ws_override = env_first(&["PLAZCODE_WORKSPACE_ROOT", "ROBLOXSCRIPT_WORKSPACE_ROOT"])
         .or_else(|| args.workspace.clone());
     let workspace = Arc::new(workspace::Workspace::new(ws_override.as_deref())?);
@@ -1122,7 +1130,7 @@ async fn start() -> anyhow::Result<()> {
     if workspace.full_access() { shared.log("FULL PC ACCESS enabled at boot (PLAZCODE_FULL_ACCESS=1)"); }
     shared.log("listening: http://127.0.0.1:3000 · ws 17613 (roblox) · 17615 (agentscript)");
     shared.log("keys: [R] restart mcp · [C] clear console · [1-4] filter level");
-    let state = AppState::new(
+    let mut state = AppState::new(
         result_tx,
         mcp_alive,
         roblox_proc.clone(),
@@ -1131,6 +1139,7 @@ async fn start() -> anyhow::Result<()> {
         preferences.clone(),
         shared.clone(),
     );
+    state.accounts=accounts;
     let (restart_tx, mut restart_rx) = tokio::sync::mpsc::unbounded_channel::<()>();
     let rr_state = state.clone();
     tokio::spawn(async move {
@@ -1220,13 +1229,14 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
     });
     let addon_state = state.clone();
     tokio::spawn(async move {
-        let _ = refresh_addons(&addon_state).await;
+        if !addon_state.accounts.required()||addon_state.accounts.active().is_some(){let _ = refresh_addons(&addon_state).await;}
     });
     let autoconnect_state = state.clone();
     tokio::spawn(async move {
         let mut previous_error = String::new();
         let mut misses: u32 = 0;
         loop {
+            if autoconnect_state.accounts.required()&&autoconnect_state.accounts.active().is_none(){tokio::time::sleep(Duration::from_millis(500)).await;continue;}
             // Process discovery is advisory, including for the FIRST connection.
             // Start the helper at launch and retry discovery when Studio opens
             // later, even if the host cannot enumerate its process name.
@@ -1306,6 +1316,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/disconnect", post(disconnect_handler))
         .route("/api/status", get(status_handler))
         .route("/desktop", get(desktop_handler))
+        .route("/api/desktop/profiles",get(profile_portal_handler).post(profile_action_handler).layer(axum::extract::DefaultBodyLimit::max(4096)))
         .route("/api/desktop/state", get(desktop_state_handler))
         .route("/api/desktop/preferences", post(desktop_preferences_handler))
         .route("/api/desktop/agent", post(desktop_agent_handler).layer(axum::extract::DefaultBodyLimit::max(18 * 1024 * 1024)))
@@ -1344,6 +1355,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/ws", get(ws_handler))
         .layer(axum::middleware::from_fn(track_tool_activity))
         .merge(linux_authenticated_routes())
+        .layer(axum::middleware::from_fn_with_state(state.clone(), profile_access))
         .layer(axum::middleware::from_fn_with_state(state.pairing_key.clone(), security::require_pairing))
         .with_state(state)
         // Public shell contains no key; the native WebView injects credentials.
@@ -1368,7 +1380,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
 // heartbeat, which also covers long model replies with no tool calls.
 fn is_work_request(method: &axum::http::Method, path: &str) -> bool {
     method == axum::http::Method::POST && !matches!(path,
-        "/api/desktop/update" | "/api/desktop/browser-agent" | "/api/show" | "/api/shutdown" | "/api/desktop/preferences" | "/api/preferences" |
+        "/api/desktop/profiles" | "/api/desktop/update" | "/api/desktop/browser-agent" | "/api/show" | "/api/shutdown" | "/api/desktop/preferences" | "/api/preferences" |
         "/api/desktop/restart" | "/api/desktop/clear-logs" | "/api/connect" | "/api/disconnect" | "/api/pair" | "/api/local-full" | "/api/mcp/toggle" | "/api/debug/browser-log")
 }
 async fn track_tool_activity(request: axum::extract::Request, next: axum::middleware::Next) -> axum::response::Response {
@@ -1398,11 +1410,14 @@ async fn connect_handler(State(state): State<AppState>, Json(req): Json<serde_js
         "client_id": client_id,
     }))
 }
-async fn poll_handler(State(state): State<AppState>, Query(_q): Query<HashMap<String,String>>) -> impl IntoResponse {
+async fn poll_handler(State(state): State<AppState>, Query(_q): Query<HashMap<String,String>>) -> axum::response::Response {
+    let epoch=state.accounts.active().map(|p|p.epoch);
     let queue = &state.roblox_queue;
     for _ in 0..50 {
+        let guard=accounts::ACCESS.read().await;
+        if state.accounts.required()&&(epoch.is_none()||epoch!=state.accounts.active().map(|p|p.epoch)){return (axum::http::StatusCode::LOCKED,Json(serde_json::json!({"ok":false,"code":"profile_changed","error":"PlazCode profile changed."}))).into_response();}
         { let mut guard = queue.lock().await; if let Some(p) = guard.pop_front() { return Json(serde_json::json!({"ok": true, "payload": p})).into_response(); } }
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        drop(guard);tokio::time::sleep(Duration::from_millis(500)).await;
     }
     Json(serde_json::json!({"ok": true, "payload": null})).into_response()
 }
@@ -1693,6 +1708,90 @@ fn linux_launch_routes(state: AppState) -> Router {
 #[cfg(not(target_os="linux"))]
 fn linux_launch_routes(_state: AppState) -> Router { Router::new() }
 
+// A profile transition waits for every data request to leave its original
+// namespace. Long polls take short read leases inside their polling loop.
+async fn profile_access(State(state):State<AppState>,request:axum::extract::Request,next:axum::middleware::Next)->axum::response::Response{
+    let path=request.uri().path();
+    let control=matches!(path,"/"|"/api/status"|"/api/pair"|"/api/desktop/profiles"|"/api/show"|"/api/shutdown"|"/api/desktop/update"|"/api/desktop/browser-action");
+    if control{return next.run(request).await;}
+    let guard=accounts::ACCESS.read().await;
+    if state.accounts.required(){
+        let Some(active)=state.accounts.active()else{return(axum::http::StatusCode::LOCKED,Json(serde_json::json!({"ok":false,"code":"profile_required","error":"Open PlazCode, choose a profile and log in before using tools."}))).into_response();};
+        let expected=request.headers().get("x-plazcode-profile").and_then(|v|v.to_str().ok()).map(str::to_string)
+            .or_else(||request.headers().get("sec-websocket-protocol").and_then(|v|v.to_str().ok()).and_then(|v|v.split(',').find_map(|part|part.trim().strip_prefix("plazcode-profile.").map(str::to_string))));
+        let engine_callback=matches!(path,"/api/connect"|"/api/disconnect"|"/api/poll"|"/api/result");
+        if expected.as_deref()!=Some(active.epoch.as_str())&&!engine_callback{
+            return(axum::http::StatusCode::CONFLICT,Json(serde_json::json!({"ok":false,"code":"profile_changed","error":"The PlazCode profile changed. Refresh this AI tab to use the selected profile."}))).into_response();
+        }
+    }
+    if path=="/api/poll"{drop(guard);return next.run(request).await;}
+    next.run(request).await
+}
+async fn profile_portal_handler(State(state):State<AppState>)->impl IntoResponse{Json(state.accounts.portal().await)}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ProfileAction {action:String,#[serde(default)]id:Option<String>,#[serde(default)]username:Option<String>,#[serde(default)]password:Option<String>}
+fn profile_result(result:anyhow::Result<serde_json::Value>)->axum::response::Response{
+    match result{Ok(value)=>Json(value).into_response(),Err(error)=>{
+        let (status,code)=error.downcast_ref::<accounts::AccountError>().map(|e|(e.status,e.code)).unwrap_or((400,"account_error"));
+        (axum::http::StatusCode::from_u16(status).unwrap_or(axum::http::StatusCode::BAD_REQUEST),Json(serde_json::json!({"ok":false,"code":code,"error":error.to_string()}))).into_response()
+    }}
+}
+async fn reset_profile_runtime(state:&AppState){
+    state.roblox_queue.lock().await.clear();
+    state.roblox_clients.write().await.clear();state.local_clients.write().await.clear();
+    state.addons.lock().await.reset_all().await;
+    *state.addons.lock().await=mcp_addons::AddonManager::new();
+    state.roblox_mcp.lock().await.reset().await;
+    state.addon_cache.lock().unwrap_or_else(|e|e.into_inner()).0.clear();
+    state.addon_cache.lock().unwrap_or_else(|e|e.into_inner()).1.clear();
+    state.ui.clear_logs();
+    *state.ui.browser_agent.lock().unwrap_or_else(|e|e.into_inner())=None;
+    state.ui.desktop_action_results.lock().unwrap_or_else(|e|e.into_inner()).clear();
+    state.ui.tools.lock().unwrap_or_else(|e|e.into_inner()).clear();
+    state.ui.servers.lock().unwrap_or_else(|e|e.into_inner()).clear();
+    memory::STORE.clear_cache();skills::STORE.clear_cache();checkpoints::STORE.clear_cache();
+    chat_history::clear_profile_cache();creations::clear_profile_cache();templates::clear_profile_cache().await;
+    engram::clear_profile_cache().await;debug_report::clear_profile();
+}
+async fn profile_action_handler(State(state):State<AppState>,headers:axum::http::HeaderMap,Json(action):Json<ProfileAction>)->axum::response::Response{
+    let result=async{
+        let _transition=state.profile_switch.lock().await;
+        match action.action.as_str(){
+            "login"|"register"=>{
+                anyhow::ensure!(state.accounts.active().is_none(),"Sign out before switching profiles.");
+                let candidate=state.accounts.authenticate(action.id.as_deref(),action.username.as_deref().unwrap_or(""),action.password.as_deref().unwrap_or(""),action.action=="register").await?;
+                state.accounts.begin_profile_mode();state.cancellation.cancel_all();
+                let _guard=accounts::ACCESS.write().await;
+                reset_profile_runtime(&state).await;
+                let entered=async{
+                    let active=state.accounts.commit(candidate).await?;
+                    profile_paths::select(Some(profile_paths::profile_root(&active.id)?));
+                    state.preferences.select_path(profile_paths::settings_path())?;
+                    let prefs=state.preferences.snapshot();state.workspace.set_full_access(prefs.perm_mode=="full");state.workspace.set_allowed_folders(&prefs.allowed_folders);
+                    state.profile_change.send_modify(|value|*value=value.wrapping_add(1));
+                    Ok::<_,anyhow::Error>(serde_json::json!({"ok":true,"profile":active,"preferences":prefs}))
+                }.await;
+                if entered.is_err(){state.accounts.lock();profile_paths::select(None);let _=state.preferences.select_path(profile_paths::settings_path());}
+                entered
+            },
+            "remove"=>{state.accounts.remove(action.id.as_deref().unwrap_or("")).await?;Ok(serde_json::json!({"ok":true}))},
+            "logout"|"ui-migrated"=>{
+                let active=state.accounts.active().ok_or_else(||anyhow::anyhow!("Choose a profile first."))?;
+                anyhow::ensure!(headers.get("x-plazcode-profile").and_then(|v|v.to_str().ok())==Some(active.epoch.as_str()),"The active profile changed. Reopen PlazCode.");
+                if action.action=="ui-migrated"{state.accounts.acknowledge_ui().await?;return Ok(serde_json::json!({"ok":true}));}
+                state.cancellation.cancel_all();let _guard=accounts::ACCESS.write().await;
+                reset_profile_runtime(&state).await;state.accounts.lock();profile_paths::select(None);state.preferences.select_path(profile_paths::settings_path())?;
+                state.workspace.set_full_access(false);state.workspace.set_allowed_folders(&[]);
+                state.profile_change.send_modify(|value|*value=value.wrapping_add(1));
+                Ok(serde_json::json!({"ok":true}))
+            },
+            _=>anyhow::bail!("Unknown profile action.")
+        }
+    }.await;
+    profile_result(result)
+}
+
 async fn desktop_shell_handler() -> impl IntoResponse {
     let html = include_str!("desktop.html")
         .replace("__PLAZCODE_I18N_CATALOG__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/i18n-catalog.js")))
@@ -1758,6 +1857,7 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
         "fatal": fatal,
         "preferences": state.preferences.snapshot(),
         "browser_agent": state.ui.browser_agent_snapshot(),
+        "profile":state.accounts.active(),
     }))
 }
 
@@ -1938,6 +2038,7 @@ async fn preferences_get_handler(State(state): State<AppState>) -> impl IntoResp
     if let Some(object) = value.as_object_mut() {
         object.insert("_plazcodePersisted".to_string(), serde_json::Value::Bool(state.preferences.persisted()));
     }
+    if let Some(profile)=state.accounts.active(){value["_plazcodeProfile"]=serde_json::to_value(profile).unwrap_or_default();}
     Json(value)
 }
 
@@ -1997,8 +2098,11 @@ async fn mcp_toggle_handler(State(state): State<AppState>, Json(req): Json<McpTo
 
 async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {
     state.ui.mark_extension_seen();
+    if state.accounts.required()&&state.accounts.active().is_none(){return Json(serde_json::json!({"version":env!("CARGO_PKG_VERSION"),"profile_required":true,"profile":null}));}
     Json(serde_json::json!({
         "version": env!("CARGO_PKG_VERSION"),
+        "profile_required":state.accounts.required()&&state.accounts.active().is_none(),
+        "profile":state.accounts.active(),
         "blender_connected": blender::connected(),
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "roblox_bridge_connected": state.roblox_clients.read().await.len() > 0,

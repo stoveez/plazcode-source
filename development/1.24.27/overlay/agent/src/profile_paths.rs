@@ -19,6 +19,7 @@ pub fn profile_root(id:&str)->anyhow::Result<PathBuf> {
 }
 pub fn initialize(required:bool){let mut location=LOCATION.write().unwrap_or_else(|e|e.into_inner());location.initialized=required;location.root=None;}
 pub fn select(root:Option<PathBuf>){let mut location=LOCATION.write().unwrap_or_else(|e|e.into_inner());location.initialized=true;location.root=root;}
+pub fn has_active_profile()->bool{LOCATION.read().unwrap_or_else(|e|e.into_inner()).root.is_some()}
 pub fn initialized()->bool{LOCATION.read().unwrap_or_else(|e|e.into_inner()).initialized}
 pub fn settings_path()->PathBuf {
     let location=LOCATION.read().unwrap_or_else(|e|e.into_inner());

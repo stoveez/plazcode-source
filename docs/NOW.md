@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-29. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: generated preference-test build output removed from tracking and ignored.** The previous WIP accidentally included local target files; removed them without rewriting history. Native account manager/encrypted session work is still in progress.
+**Latest WIP: encrypted remembered accounts and native profile gate compile.** Native signup/login, local encrypted token storage, migration, profile switch cancellation and API epoch checks are implemented but not yet connected to startup or cloud sync. Three account crypto/protocol tests and native cargo check passed. Real integration, cross-profile tests, screenshot and fresh builds remain.
+
+**Previous: generated preference-test build output removed from tracking and ignored.** The previous WIP accidentally included local target files; removed them without rewriting history. Native account manager/encrypted session work is still in progress.
 
 **Native profile storage foundation and hosted account API verified.** Dedicated account service deployed owner-private at https://plazcode-accounts-stoveez.mistysong24.chatgpt.site (project appgprj_6ae3b330d8b481919934a74c73dc7874; source 0176721). Four local protocol/SQL/crypto tests and hosted private signup/KDF/session/sync/revoke passed. Only test account data used. Source mirror in account-service/. Service must not receive a shared bypass credential in release apps. Public API audience will need an explicit decision once the complete app is reviewable.
 

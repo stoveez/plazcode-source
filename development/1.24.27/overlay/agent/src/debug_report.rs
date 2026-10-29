@@ -392,3 +392,5 @@ pub fn recent_extension_versions() -> Vec<String> {
         .map(|b| b.version.clone()).collect();
     versions.sort(); versions.dedup(); versions
 }
+
+pub fn clear_profile(){*STORE.lock().unwrap_or_else(|e|e.into_inner())=Store::default();}

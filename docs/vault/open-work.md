@@ -111,3 +111,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29: owner confirmed online profiles, saved login and separated data. Account API deployed owner-private and passed real auth/sync checks; reviewed source mirrored in account-service/. Native path/store foundations and cache/upload isolation WIP. Account manager, API/session gates, migration/sync and actual startup integration still required.
 
 - 2026-10-29: corrected accidental generated preference-harness target files in WIP 6318a5d; removed them from tracking and ignored the harness target path. No credentials were in these generated test artifacts. Account/session integration still in progress.
+
+- 2026-10-29 WIP: encrypted account manager, saved login, legacy-data migration and native API profile/epoch gate compile. Three native account crypto/protocol tests passed. Startup, sync and extension integration remain unfinished; no new preview/build delivered.

@@ -406,7 +406,7 @@ static LAUNCH_UPDATE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicB
 static CHECK_REQUEST: once_cell::sync::Lazy<tokio::sync::Notify> = once_cell::sync::Lazy::new(tokio::sync::Notify::new);
 /// The Updates page toggle (rsAutoUpdate). Read fresh on each check so a change
 /// applies without restarting PlazCode. Manual "Update now" ignores it.
-fn auto_updates_enabled() -> bool { crate::preferences::PreferencesStore::load().snapshot().auto_update }
+fn auto_updates_enabled() -> bool {if crate::profile_paths::initialized()&&!crate::profile_paths::has_active_profile(){return false;} crate::preferences::PreferencesStore::load().snapshot().auto_update }
 pub fn request_launch_update() { AUTO_INSTALL.store(true, std::sync::atomic::Ordering::SeqCst);LAUNCH_UPDATE.store(true, std::sync::atomic::Ordering::SeqCst);CHECK_REQUEST.notify_one(); }
 const LINUX_UPDATE_MESSAGE: &str = "Linux automatic updates are not published yet. Use the native Linux download; Windows EXE and Mac packages cannot update Linux.";
 pub fn start_checker() {
