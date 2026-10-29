@@ -82,3 +82,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29: audit of all pre-existing 1.24.27 literals in the 26 tree found the third identical rollover case in optimized native verifier tests. Its wrong-version CLI request now uses 0.0.0 too; correct-version tamper check remains 1.24.27. All three future-version fixtures accounted for.
 
 - 2026-10-29: owner effort-cutoff recording reproduced in a desktop-style browser fixture: Ultra was covered by Instructions. Synced stale desktop inline picker with shared lift behavior and added viewport-bounded scrolling. All effort choices passed at large/short/narrow sizes with keyboard/close cleanup. Include in 1.24.27 test packages; new app required. Fresh full CI starts with this push.
+
+- 2026-10-29 WIP: owner requested persistent Ask/Approve for me/Bypass approval controls below Effort and in desktop Settings, plus actual running-UI screenshots and robust ChatGPT bar placement. Include with existing 1.24.27 changes in test builds; earlier CI sources superseded.
