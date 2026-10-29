@@ -80,3 +80,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29: initial 1.24.27 CI caught two wrong-version fixtures made equal to the valid version during rollover. Corrected both to invalid 0.0.0. JS protection suite passes locally; native/full packaging validation reruns in CI (no local Rust toolchain). No runtime guard relaxed; no ZIPs delivered.
 
 - 2026-10-29: audit of all pre-existing 1.24.27 literals in the 26 tree found the third identical rollover case in optimized native verifier tests. Its wrong-version CLI request now uses 0.0.0 too; correct-version tamper check remains 1.24.27. All three future-version fixtures accounted for.
+
+- 2026-10-29: owner effort-cutoff recording reproduced in a desktop-style browser fixture: Ultra was covered by Instructions. Synced stale desktop inline picker with shared lift behavior and added viewport-bounded scrolling. All effort choices passed at large/short/narrow sizes with keyboard/close cleanup. Include in 1.24.27 test packages; new app required. Fresh full CI starts with this push.

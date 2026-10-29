@@ -1,17 +1,18 @@
 {
   "version": "1.24.27",
-  "title": "Calmer DeepSeek message pacing",
-  "summary": "DeepSeek messages share one queue and wait after the previous send finishes, including Creator and library messages.",
+  "title": "DeepSeek pacing and visible effort choices",
+  "summary": "DeepSeek sends share one paced queue, and the desktop effort menu keeps every choice accessible.",
   "added": [],
   "improved": [],
   "fixed": [
-    "DeepSeek sends no longer overlap or bypass pacing through Creator and library cards."
+    "DeepSeek sends no longer overlap or bypass pacing through Creator and library cards.",
+    "Desktop effort choices stay above neighboring settings cards and remain accessible in short windows."
   ],
   "notes": [
     "Windows is unsigned and Mac is not notarized. This update is in development."
   ],
   "github": {
-    "summary": "***More consistent spacing between DeepSeek messages.***",
+    "summary": "***Calmer DeepSeek sends and an effort menu that stays visible.***",
     "sections": [
       {
         "title": "✨ What's new",
@@ -22,7 +23,8 @@
       {
         "title": "🛠️ What's fixed",
         "items": [
-          "Creator and library sends follow the same 8–9.8 second spacing after the previous send finishes. Long replies add no extra wait."
+          "Creator and library sends follow the same 8–9.8 second spacing after the previous send finishes. Long replies add no extra wait.",
+          "The desktop effort menu stays above other settings cards, with reachable options in short windows."
         ]
       },
       {

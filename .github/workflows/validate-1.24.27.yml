@@ -133,6 +133,9 @@ jobs:
       - name: Vani AI provider registration and turn reading
         run: node test-vani-provider.js
         working-directory: build-src-1.24.27/PlazCode
+      - name: Desktop effort menu stays above neighboring cards and inside the window
+        run: node release-tools/test-effort-picker-browser.cjs
+        working-directory: build-src-1.24.27/PlazCode
       - name: Theme marks survive a site re-rendering the page root, in Chromium
         run: node release-tools/test-root-marks-browser.cjs
         working-directory: build-src-1.24.27/PlazCode

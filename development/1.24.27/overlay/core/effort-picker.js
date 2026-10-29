@@ -10,7 +10,17 @@ function PlazCodeMountEffortPicker(select){
  function refresh(){const value=select.value,text=Array.from(select.options).find(o=>o.value===value)?.textContent||'Default';if(label.textContent!==text)label.textContent=text;label.classList.toggle('pc-ultra-label',value==='ultracode');trigger.disabled=select.disabled;trigger.setAttribute('aria-label','Reasoning effort: '+text);for(const b of options)b.setAttribute('aria-selected',String(b.dataset.value===value));}
  let lifted=null;function lift(on){try{if(on){lifted=wrap.closest('.settingcard,.panel');if(lifted)lifted.classList.add('pc-effort-lift');}else if(lifted){lifted.classList.remove('pc-effort-lift');lifted=null;}}catch{}}
  function close(focus=false){lift(false);panel.hidden=true;trigger.setAttribute('aria-expanded','false');if(focus)trigger.focus();}
- function open(index){refresh();if(trigger.disabled)return;const rect=trigger.getBoundingClientRect();wrap.toggleAttribute('data-open-up',innerHeight-rect.bottom<260&&rect.top>260);panel.hidden=false;lift(true);trigger.setAttribute('aria-expanded','true');(options[index]||options.find(b=>b.dataset.value===select.value)||options[0])?.focus();}
+ function open(index){
+  refresh();if(trigger.disabled)return;const rect=trigger.getBoundingClientRect();
+  panel.hidden=false;lift(true);
+  const bounds=wrap.closest('.content,#rs-menu')?.getBoundingClientRect();
+  const top=Math.max(0,bounds?bounds.top:0),bottom=Math.min(innerHeight,bounds?bounds.bottom:innerHeight);
+  const below=Math.max(0,bottom-rect.bottom-12),above=Math.max(0,rect.top-top-12);
+  const up=below<Math.min(280,panel.scrollHeight)&&above>below;
+  wrap.toggleAttribute('data-open-up',up);panel.style.maxHeight=Math.min(280,up?above:below)+'px';
+  trigger.setAttribute('aria-expanded','true');const target=options[index]||options.find(b=>b.dataset.value===select.value)||options[0];
+  if(target){target.focus();target.scrollIntoView?.({block:'nearest'});}
+ }
  function choose(value){if(panel.hidden)return;select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));refresh();close(true);}
  trigger.onclick=()=>panel.hidden?open():close();trigger.onkeydown=e=>{if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();open(e.key==='Home'?0:e.key==='End'?options.length-1:undefined);}};
  panel.onkeydown=e=>{const index=options.indexOf(document.activeElement);if(e.key==='Escape'){e.preventDefault();close(true);}else if(e.key==='Tab')close();else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?options.length-1:(index+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;options[next].focus();}else if(e.key==='Enter'||e.key===' '){e.preventDefault();if(index>=0)choose(options[index].dataset.value);}};
