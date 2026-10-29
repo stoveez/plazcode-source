@@ -92,3 +92,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29: Mac screenshot reports occupied legacy bridge port 17613. Found Mac port reclamation was a no-op. WIP same-user targeted PlazCode recovery and real Mac process regression added alongside native Linux browser desktop and signed Linux packaging; full checks pending.
 
 - 2026-10-29: native Linux real frontend integration passed (launch, secure bootstrap, save/reload, Show, Quit); 216 native tests + 4 build tests passed, 2 ignored. Mac targeted recovery implemented, hosted verification pending. Final Windows/Mac/Linux test artifacts and full browser validation remain. Linux auto-updates have no published feed yet; manual native downloads only.
+
+- 2026-10-29: final Linux package smoke test now runs the exact signed static shipped binary/files, not just debug. Browser shell denies frames and suppresses referrers. Hosted validation remains pending.

@@ -1709,7 +1709,7 @@ async fn desktop_shell_handler() -> impl IntoResponse {
         .replace("__PLAZCODE_VERSION__", env!("CARGO_PKG_VERSION"));
     #[cfg(target_os="linux")]
     let html = html.replace("  var Boot = window.__PLAZCODE_BOOT__ || {};", &format!("{}\n  var Boot = window.__PLAZCODE_BOOT__ || {{}};", linux_desktop::BOOT));
-    ([(axum::http::header::CACHE_CONTROL, "no-store")], Html(html))
+    ([(axum::http::header::CACHE_CONTROL, "no-store"), (axum::http::header::X_FRAME_OPTIONS, "DENY"), (axum::http::header::REFERRER_POLICY, "no-referrer")], Html(html))
 }
 
 async fn desktop_handler(State(state): State<AppState>) -> Html<String> {

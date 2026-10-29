@@ -118,4 +118,6 @@ assert (output/lean_name).stat().st_size<=64*1024*1024, 'Protected test package 
 with zipfile.ZipFile(output/'PlazCode-source-1.24.27-development.zip','w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
  for path in sorted(source.rglob('*')):
   if path.is_file() and not any(part in ['node_modules','target','__pycache__'] for part in path.parts) and path.name!='PlazCode.exe':archive.write(path,'PlazCode/'+path.relative_to(source).as_posix())
+if osname=='Linux':
+ subprocess.run(['node',str(source/'release-tools/test-linux-desktop.cjs')],cwd=source,env={**os.environ,'PLAZCODE_NATIVE_INSTALL_ROOT':str(package.resolve())},check=True)
 shutil.rmtree(install)

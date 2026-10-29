@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-29. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: Linux desktop end-to-end passed; full hosted validation next.** Real compiled Linux binary launches the actual desktop frontend through its default browser. One-use 60-second launch tickets keep permanent credentials out of URLs; wrong-origin/replay/unauthenticated requests rejected. Settings changes persist to disk/reload; Show reopens and Quit exits the real process. Native tests passed: 216 + 4 build tests, 2 ignored. App/bar approval and effort browser regressions passed. Screenshots are actual frontend/native UI; bar screenshot uses a local composer fixture, not a live AI account.
+**Latest: final packaging adds a real signed static Linux frontend smoke test and frame/referrer protection.** The public desktop shell blocks embedding and suppresses referrers. Linux package creation reruns the actual browser/bootstrap/settings/reopen/Quit test against its exact production-signed static native binary and protected shipped files before upload. Full hosted validation next.
+
+**Linux desktop end-to-end passed.** Real compiled Linux binary launches the actual desktop frontend through its default browser. One-use 60-second launch tickets keep permanent credentials out of URLs; wrong-origin/replay/unauthenticated requests rejected. Settings changes persist to disk/reload; Show reopens and Quit exits the real process. Native tests passed: 216 + 4 build tests, 2 ignored. App/bar approval and effort browser regressions passed. Screenshots are actual frontend/native UI; bar screenshot uses a local composer fixture, not a live AI account.
 
 **Mac startup fix:** screenshot showed occupied port 17613. Mac reclaim_port was a no-op. It now finds the listening process, verifies same user and actual PlazCode executable name/path, requests exit and targets that PID if stuck, then retries binding. Real Mac regression covers stale PlazCode takeover and preserving unrelated listeners; hosted Mac compile/run still required.
 
