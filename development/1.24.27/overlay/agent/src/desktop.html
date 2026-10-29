@@ -872,7 +872,7 @@ html[data-desktop-theme] .dx-card{box-shadow:var(--p-lift)}
       </section>
       <section class="page" id="page-account">
         <div class="nx-pagehead"><div><h1>Account</h1><p>Your profile and sync.</p></div></div>
-        <div class="nx-card nx-empty"><span class="nx-avatar" id="profileAccountAvatar">P</span><div class="nx-v" style="justify-content:center" data-profile-name>PlazCode</div><div class="nx-s">Your settings and skills follow your account. Files, memory and device permissions stay on this computer.</div><p id="profileSyncStatus" role="status"></p><div style="margin-top:14px"><button type="button" class="nx-btn" id="profileSignOut">Switch profile / Sign out</button></div></div>
+        <div class="nx-card nx-empty"><span class="nx-avatar" id="profileAccountAvatar">P</span><div class="nx-v" style="justify-content:center" data-profile-name>PlazCode</div><div class="nx-s">Your settings and skills follow your account. Files, memory and device permissions stay on this computer.</div><p id="profileSyncStatus" role="status"></p><div style="margin-top:14px"><button type="button" class="nx-btn" id="profileSyncNow">Sync now</button> <button type="button" class="nx-btn" id="profileSignOut">Switch profile / Sign out</button></div></div>
         
         <p class="nx-s" style="margin:12px 2px">Switching profiles stops current tools. Removing a saved profile only forgets its sign-in on this computer.</p>
       </section>
@@ -1818,7 +1818,7 @@ __PLAZCODE_VERSION_UI__
   /* ----- Startup intro: check for updates, then fade into the app ----- */
   var Nxsplashstarted = false;
   function Nxstartup() {
-    var Splash = Byid('nxSplash'); if (!Splash || Nxsplashstarted) return; Nxsplashstarted = true;
+    var Splash = Byid('nxSplash'); if(Boot.profiles&&ProfileContext&&sessionStorage.getItem('plazcode-profile-handoff')===ProfileContext.id){sessionStorage.removeItem('plazcode-profile-handoff');if(Splash)Splash.remove();if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.querySelector('.app').animate([{opacity:0},{opacity:1}],{duration:600,easing:'ease-out'});return;} if (!Splash || Nxsplashstarted) return; Nxsplashstarted = true;
     var Title = Byid('nxSplashTitle'), Message = Byid('nxSplashMsg'), Bar = Byid('nxSplashBar'), Began = Date.now(), Finished = false, Installing = false;
     function Say(Head, Sub, Mode) {
       if (Title.textContent === Head && Message.textContent === Sub) return;
@@ -2406,7 +2406,7 @@ __PLAZCODE_VERSION_UI__
           await Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify({action:'ui-migrated'})});
         }
         function Action(Value){return Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify(Value)});}
-        ProfileScreen=MountProfileSignIn({create:function(U,P){return Action({action:'register',username:U,password:P});},login:function(Id,U,P){return Action({action:'login',id:Id,username:U,password:P});},remove:function(Id){return Action({action:'remove',id:Id});}},{previewTheme:Applyappearance,enter:async function(Result){ProfileContext=Result.profile;sessionStorage.setItem('plazcode-profile-context',ProfileContext.id);document.body.style.opacity='0';await new Promise(function(R){setTimeout(R,220);});location.reload();}});
+        ProfileScreen=MountProfileSignIn({create:function(U,P){return Action({action:'register',username:U,password:P});},login:function(Id,U,P){return Action({action:'login',id:Id,username:U,password:P});},remove:function(Id){return Action({action:'remove',id:Id});}},{previewTheme:Applyappearance,enter:async function(Result){ProfileContext=Result.profile;sessionStorage.setItem('plazcode-profile-context',ProfileContext.id);sessionStorage.setItem('plazcode-profile-handoff',ProfileContext.id);if(Result.preferences&&Result.preferences.rsAppearance)ProfileStorage.setItem('plazcodeDesktopAppearance',JSON.stringify(Result.preferences.rsAppearance));document.body.style.transition='opacity .22s ease';document.body.style.opacity='0';await new Promise(function(R){setTimeout(R,220);});location.reload();}});
       }
 
       Bind();
@@ -2419,6 +2419,7 @@ __PLAZCODE_VERSION_UI__
         document.querySelectorAll('.nx-account b').forEach(function(N){N.textContent=ProfileContext.username;});
         document.querySelectorAll('.nx-account small').forEach(function(N){N.textContent='Signed in';});
         document.querySelectorAll('.nx-account .nx-avatar,#profileAccountAvatar').forEach(function(N){N.textContent=Array.from(ProfileContext.username).slice(0,2).join('').toUpperCase();});
+        Byid('profileSyncNow').onclick=async function(){try{var R=await Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify({action:'sync'})});Byid('profileSyncStatus').textContent=R.status;}catch(Error){Byid('profileSyncStatus').textContent=Error.message;}};
         Byid('profileSignOut').onclick=async function(){try{await Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify({action:'logout'})});sessionStorage.setItem('plazcode-profile-context','locked');location.reload();}catch(Error){Showerror(Error);}};
       }
       Ipc("ui-ready");

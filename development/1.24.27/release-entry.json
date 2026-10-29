@@ -1,8 +1,9 @@
 {
   "version": "1.24.27",
-  "title": "Approval choices and more reliable startup",
-  "summary": "Choose how commands are approved, see every effort option, and keep the bar beside your chat. Includes paced DeepSeek sends and Mac/Linux startup fixes.",
+  "title": "Your profiles, synced settings and smoother startup",
+  "summary": "Sign in with your own themed profile, remember your login, and keep settings and skills across computers. Includes approval choices, paced DeepSeek sends and Mac/Linux startup fixes.",
   "added": [
+    "Online username/password profiles with remembered login, separate local data and settings/skills sync.",
     "Choose Ask for approval, Approve for me, or Bypass approval in the bar and app Settings.",
     "Native Linux app opens the PlazCode interface in your browser with the memory helper included."
   ],
@@ -14,15 +15,16 @@
     "Mac can recover a bridge port still held by an older PlazCode process."
   ],
   "notes": [
-    "Test builds verified and delivered; latest stable remains 1.24.26.",
+    "New profile test builds are being validated; latest stable remains 1.24.26.",
     "Linux automatic updates are not published yet; use complete native Linux downloads."
   ],
   "github": {
-    "summary": "***Your approval choices, steadier sends, and more reliable startup.***",
+    "summary": "***Your own profile, remembered login, and settings that follow you.***",
     "sections": [
       {
         "title": "✨ What's new",
         "items": [
+          "Create a profile, choose it with your theme, and log in without retyping next time. Settings and private skills sync; local files, memory and access grants stay on your device.",
           "Pick Ask for approval, Approve for me, or Bypass approval below Effort or in app Settings. Your choice stays saved across chats and AI sites.",
           "Native Linux download opens the real app interface in your browser."
         ]
@@ -38,7 +40,7 @@
       {
         "title": "🧪 What was checked",
         "items": [
-          "Windows, Mac, Linux and browser checks passed. Live AI accounts and the original affected devices remain untested.",
+          "Profile isolation, remembered/offline login and cross-computer sync passed local checks. Fresh Windows, Mac, Linux and browser validation is pending.",
           "Windows is unsigned and Mac is not notarized, as before."
         ]
       }

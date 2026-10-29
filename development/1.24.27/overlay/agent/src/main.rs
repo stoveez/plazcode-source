@@ -1147,6 +1147,7 @@ async fn start() -> anyhow::Result<()> {
     tokio::spawn(async move {
         while let Some(()) = restart_rx.recv().await {
             info!("status window requested MCP restart — resetting helper then re-ensuring");
+            let _lease=accounts::ACCESS.read().await;if rr_state.accounts.required()&&rr_state.accounts.active().is_none(){continue;}
             {
                 let mut mcp = rr_state.roblox_mcp.lock().await;
                 mcp.reset().await;
@@ -1500,7 +1501,7 @@ async fn checkpoint_handler(State(state): State<AppState>, Json(req): Json<serde
             "begin" => Ok(serde_json::json!({"ok":true,"id":journal.begin(&req)?})),
             "finish" => { journal.finish(id, req["complete"].as_bool().unwrap_or(false))?;
                 let task=journal.task(id)?;
-                if let Some(report)=shared_learning::report(&task.engine,&task.status,&task.learning){let id=id.to_owned();tokio::spawn(async move{let _=shared_learning::enqueue(&id,report).await;});}
+                if let Some(report)=shared_learning::report(&task.engine,&task.status,&task.learning){let id=id.to_owned();let root=profile_paths::data_root();tokio::spawn(async move{let _lease=accounts::ACCESS.read().await;if profile_paths::data_root()==root{let _=shared_learning::enqueue(&id,report).await;}});}
                 Ok(serde_json::json!({"ok":true})) },
             "context" => Ok(serde_json::json!({"ok":true,"project":journal.project(req["chat"].as_str().unwrap_or(""))})),
             "project" => {journal.set_project(&req)?;Ok(serde_json::json!({"ok":true}))},
@@ -1782,9 +1783,10 @@ async fn profile_action_handler(State(state):State<AppState>,headers:axum::http:
                 entered
             },
             "remove"=>{state.accounts.remove(action.id.as_deref().unwrap_or("")).await?;Ok(serde_json::json!({"ok":true}))},
-            "logout"|"ui-migrated"=>{
+            "logout"|"ui-migrated"|"sync"=>{
                 let active=state.accounts.active().ok_or_else(||anyhow::anyhow!("Choose a profile first."))?;
                 anyhow::ensure!(headers.get("x-plazcode-profile").and_then(|v|v.to_str().ok())==Some(active.epoch.as_str()),"The active profile changed. Reopen PlazCode.");
+                if action.action=="sync"{let _lease=accounts::ACCESS.read().await;account_sync::run(&state).await?;return Ok(serde_json::json!({"ok":true,"status":account_sync::status(&active.id)}));}
                 if action.action=="ui-migrated"{state.accounts.acknowledge_ui().await?;return Ok(serde_json::json!({"ok":true}));}
                 state.cancellation.cancel_all();let _guard=accounts::ACCESS.write().await;
                 reset_profile_runtime(&state).await;state.accounts.lock();profile_paths::select(None);state.preferences.select_path(profile_paths::settings_path())?;
@@ -2091,7 +2093,9 @@ async fn mcp_toggle_handler(State(state): State<AppState>, Json(req): Json<McpTo
             // list_tools syncs only changed configuration without restarting peers.
             // Return before waiting on slow server startup or the manager lock.
             let refresh_state = state.clone();
+            let expected=state.accounts.active().map(|p|p.epoch);
             tokio::spawn(async move {
+                let _lease=accounts::ACCESS.read().await;if refresh_state.accounts.required()&&(expected.is_none()||expected!=refresh_state.accounts.active().map(|p|p.epoch)){return;}
                 let _ = refresh_addons(&refresh_state).await;
             });
             Json(serde_json::json!({"ok": true, "id": req.id, "enabled": req.enabled})).into_response()
@@ -2105,9 +2109,10 @@ async fn mcp_toggle_handler(State(state): State<AppState>, Json(req): Json<McpTo
 
 async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {
     state.ui.mark_extension_seen();
-    if state.accounts.required()&&state.accounts.active().is_none(){return Json(serde_json::json!({"version":env!("CARGO_PKG_VERSION"),"profile_required":true,"profile":null}));}
+    if state.accounts.required()&&state.accounts.active().is_none(){return Json(serde_json::json!({"version":env!("CARGO_PKG_VERSION"),"accounts_enabled":true,"profile_required":true,"profile":null}));}
     Json(serde_json::json!({
         "version": env!("CARGO_PKG_VERSION"),
+        "accounts_enabled":state.accounts.required(),
         "profile_required":state.accounts.required()&&state.accounts.active().is_none(),
         "profile":state.accounts.active(),
         "account_sync":state.accounts.active().map(|p|account_sync::status(&p.id)),
@@ -2283,7 +2288,9 @@ async fn addon_snapshot(state: &AppState) -> Vec<serde_json::Value> {
         return cached(state);
     }
     let refresh_state = state.clone();
+    let expected=state.accounts.active().map(|p|p.epoch);
     let task = tokio::spawn(async move {
+        let _lease=accounts::ACCESS.read().await;if refresh_state.accounts.required()&&(expected.is_none()||expected!=refresh_state.accounts.active().map(|p|p.epoch)){refresh_state.addon_refreshing.store(false,Ordering::Release);return Vec::new();}
         let tools = refresh_addons(&refresh_state).await;
         refresh_state.addon_refreshing.store(false, Ordering::Release);
         tools
@@ -2329,8 +2336,9 @@ async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
     let mut changed=state.profile_change.subscribe();
     let (mut send, mut recv) = socket.split();
     let mut rx = state.result_tx.subscribe();
+    let socket_state=state.clone();let send_epoch=epoch.clone();
     let mut send_changed=state.profile_change.subscribe();
-    let send_task = tokio::spawn(async move { while let Ok(res) = tokio::select!{v=rx.recv()=>v,_=send_changed.changed()=>Err(broadcast::error::RecvError::Closed)} { let txt = serde_json::to_string(&res).unwrap_or_default(); if send.send(axum::extract::ws::Message::Text(txt)).await.is_err() { break; } } });
+    let send_task = tokio::spawn(async move { while let Ok(res) = tokio::select!{v=rx.recv()=>v,_=send_changed.changed()=>Err(broadcast::error::RecvError::Closed)} { let _lease=accounts::ACCESS.read().await;if socket_state.accounts.required()&&(send_epoch.is_none()||send_epoch!=socket_state.accounts.active().map(|p|p.epoch)){break;}let txt = serde_json::to_string(&res).unwrap_or_default(); if send.send(axum::extract::ws::Message::Text(txt)).await.is_err() { break; } } });
     while let Some(Ok(msg)) = tokio::select!{value=recv.next()=>value,_=changed.changed()=>None} {
         let _lease=accounts::ACCESS.read().await;if state.accounts.required()&&(epoch.is_none()||epoch!=state.accounts.active().map(|p|p.epoch)){break;}
         if let axum::extract::ws::Message::Text(txt) = msg {
@@ -2388,10 +2396,11 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
     let (out_tx, mut out_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
     let mut desktop_rx = state.ui.desktop_events.subscribe();
     let desktop_tx = out_tx.clone();
+    let event_state=state.clone();let event_epoch=epoch.clone();
     let desktop_forwarder = tokio::spawn(async move {
         loop {
             match desktop_rx.recv().await {
-                Ok(event) => if desktop_tx.send(event.to_string()).is_err() { break; },
+                Ok(event) => {let _lease=accounts::ACCESS.read().await;if event_state.accounts.required()&&(event_epoch.is_none()||event_epoch!=event_state.accounts.active().map(|p|p.epoch)){break;}if desktop_tx.send(event.to_string()).is_err(){break;}},
                 Err(broadcast::error::RecvError::Lagged(_)) => continue,
                 Err(_) => break,
             }
@@ -2418,7 +2427,9 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
     let intro_state = state.clone();
     let intro_engine = engine.clone();
     let intro_tx = out_tx.clone();
+    let intro_epoch=epoch.clone();
     let intro_task = tokio::spawn(async move {
+    let _lease=accounts::ACCESS.read().await;if intro_state.accounts.required()&&(intro_epoch.is_none()||intro_epoch!=intro_state.accounts.active().map(|p|p.epoch)){return;}
     let state = intro_state;
     let engine = intro_engine;
     let intro = tokio::time::timeout(Duration::from_secs(8), async {

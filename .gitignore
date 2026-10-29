@@ -10,3 +10,6 @@ __pycache__/
 
 # Generated native preference harness builds
 development/*/preferences-test/target/
+
+# Local account-service dependencies
+/account-service/node_modules/

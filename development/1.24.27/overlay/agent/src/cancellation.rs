@@ -18,6 +18,7 @@ impl Hub {
 #[cfg(test)]
 mod tests{
     use super::*;
+    #[test]fn profile_switch_cancels_old_tasks_and_new_tasks_start_clean(){let hub=Hub::default();let old=hub.register("a");hub.cancel_all();assert!(*old.borrow());assert!(!*hub.register("a").borrow());}
     #[tokio::test]
     async fn cancellation_is_scoped_and_survives_a_signal_before_wait(){let hub=Hub::default();let mut first=hub.register("a");let second=hub.register("b");assert!(hub.cancel("a"));first.changed().await.unwrap();assert!(*first.borrow());assert!(!*second.borrow());assert!(*hub.register("a").borrow());assert!(!hub.cancel("missing"));}
 }

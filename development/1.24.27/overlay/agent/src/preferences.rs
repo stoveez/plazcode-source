@@ -182,6 +182,7 @@ impl std::fmt::Display for SaveFailed {
 impl std::error::Error for SaveFailed {}
 
 pub struct PreferencesStore {
+    operation:std::sync::Mutex<()>,
     path: RwLock<PathBuf>,
     inner: RwLock<DesktopPreferences>,
 }
@@ -197,7 +198,7 @@ impl PreferencesStore {
             .and_then(|raw| serde_json::from_str::<DesktopPreferences>(&raw).ok())
             .unwrap_or_default();
         prefs.normalize();
-        Self { path: RwLock::new(path), inner: RwLock::new(prefs) }
+        Self { operation:std::sync::Mutex::new(()), path: RwLock::new(path), inner: RwLock::new(prefs) }
     }
 
     pub fn persisted(&self) -> bool {
@@ -208,7 +209,8 @@ impl PreferencesStore {
         self.inner.read().map(|p| p.clone()).unwrap_or_default()
     }
 
-    pub fn replace(&self, mut prefs: DesktopPreferences) -> anyhow::Result<DesktopPreferences> {
+    pub fn replace(&self,prefs:DesktopPreferences)->anyhow::Result<DesktopPreferences>{let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;self.replace_unlocked(prefs)}
+    fn replace_unlocked(&self, mut prefs: DesktopPreferences) -> anyhow::Result<DesktopPreferences> {
         prefs.normalize();
         {
             let mut guard = self.inner.write().map_err(|_| anyhow::anyhow!("preferences lock poisoned"))?;
@@ -221,6 +223,7 @@ impl PreferencesStore {
     }
 
     pub fn patch(&self, patch: serde_json::Value) -> anyhow::Result<DesktopPreferences> {
+        let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;
         let current = self.snapshot();
         let mut value = serde_json::to_value(current)?;
         let dst = value.as_object_mut().ok_or_else(|| anyhow::anyhow!("preferences are not an object"))?;
@@ -231,19 +234,27 @@ impl PreferencesStore {
             }
         }
         let next = serde_json::from_value::<DesktopPreferences>(value)?;
-        self.replace(next)
+        self.replace_unlocked(next)
     }
 
     pub fn update<F>(&self, mut edit: F) -> anyhow::Result<DesktopPreferences>
     where
         F: FnMut(&mut DesktopPreferences),
     {
+        let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;
         let mut next = self.snapshot();
         edit(&mut next);
-        self.replace(next)
+        self.replace_unlocked(next)
     }
 
+    pub fn patch_if_unchanged(&self,before:&serde_json::Value,incoming:&serde_json::Value)->anyhow::Result<DesktopPreferences>{
+        let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;
+        let mut current=serde_json::to_value(self.snapshot())?;
+        for(key,value)in incoming.as_object().ok_or_else(||anyhow::anyhow!("Invalid synced preferences"))?{if current.get(key)==before.get(key){current[key]=value.clone();}}
+        self.replace_unlocked(serde_json::from_value(current)?)
+    }
     pub fn select_path(&self,path:PathBuf)->anyhow::Result<()> {
+        let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;
         let loaded=Self::load_from(path.clone());
         let mut target=self.path.write().map_err(|_|anyhow::anyhow!("preferences path lock poisoned"))?;
         let mut inner=self.inner.write().map_err(|_|anyhow::anyhow!("preferences lock poisoned"))?;
@@ -481,3 +492,5 @@ mod tests {
     }
 
 }
+
+#[cfg(test)]mod sync_tests{use super::*;#[test]fn sync_preserves_changes_made_during_network_wait(){let path=std::env::temp_dir().join(format!("plazcode-sync-prefs-{}-{}.json",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));let store=PreferencesStore::load_from(path.clone());let before=serde_json::to_value(store.snapshot()).unwrap();store.patch(serde_json::json!({"rsSounds":false})).unwrap();store.patch_if_unchanged(&before,&serde_json::json!({"rsSounds":true,"rsLanguage":"fr"})).unwrap();assert!(!store.snapshot().sounds);assert_eq!(store.snapshot().language,"fr");let _=std::fs::remove_file(path);}}

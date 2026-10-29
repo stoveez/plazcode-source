@@ -49,7 +49,7 @@ async function ensureAccountContext(){
     const response=await fetch('http://127.0.0.1:3000/api/status',{headers:{Authorization:'Bearer '+pairingKey},signal:AbortSignal.timeout(5000),redirect:'error'});
     if(!response.ok)throw new Error('Cannot check the PlazCode profile.');
     const status=await response.json();
-    if(!('profile_required' in status))return; // Older desktops and account-free headless tools.
+    if(!('profile_required' in status)||status.accounts_enabled===false)return; // Older desktops and account-free headless tools.
     if(status.profile_required||!status.profile){accountEpoch='';throw new Error('Open PlazCode, choose a profile and log in.');}
     const next=status.profile;
     if(accountEpoch&&accountEpoch!==next.epoch){accountEpoch='';chrome.runtime.reload();throw new Error('PlazCode profile changed. Refresh this AI tab.');}

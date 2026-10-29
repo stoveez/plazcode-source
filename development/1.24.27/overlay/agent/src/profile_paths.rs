@@ -14,7 +14,7 @@ pub fn data_root()->PathBuf {
     location.root.clone().unwrap_or_else(||if location.initialized {legacy_data_root().join("profiles/locked")}else{legacy_data_root()})
 }
 pub fn profile_root(id:&str)->anyhow::Result<PathBuf> {
-    anyhow::ensure!(id.len()==36&&id.bytes().enumerate().all(|(i,b)|if matches!(i,8|13|18|23){b==b'-'}else{b.is_ascii_hexdigit()}),"Invalid profile identifier");
+    anyhow::ensure!(id.len()==36&&id.bytes().enumerate().all(|(i,b)|if matches!(i,8|13|18|23){b==b'-'}else{(b.is_ascii_digit()||(b'a'..=b'f').contains(&b))}),"Invalid profile identifier");
     Ok(legacy_data_root().join("profiles").join(id))
 }
 pub fn initialize(required:bool){let mut location=LOCATION.write().unwrap_or_else(|e|e.into_inner());location.initialized=required;location.root=None;}

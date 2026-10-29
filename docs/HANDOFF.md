@@ -1,5 +1,8 @@
 # PlazCode handoff note (for any AI starting with no context)
 
+
+2026-10-29: online profile sign-in/settings and skills sync are implemented and verified locally for 1.24.27. Actual selected-profile native screenshot captured; fresh full test packages and public account-API audience decision remain pending. Previous delivered test archives do not include profiles. See docs/NOW.md and docs/vault/desktop-profile-sign-in.md.
+
 **Current, 2026-10-29:** working on 1.24.27 (DeepSeek pacing, approval modes, accessible effort choices, bar alignment and Linux/Mac startup fixes). Latest published remains 1.24.26. Full test builds delivered and verified: CI 40932400772 / source 962899c. Source Private restoration needs owner action after API 403. Start with `docs/NOW.md`; older entries below are historical.
 
 > 2026-10-24: the short live handoff is now `docs/NOW.md` and long-term notes are in `docs/vault/` (start at `Home.md`). Read those first; this file is the detailed reference.

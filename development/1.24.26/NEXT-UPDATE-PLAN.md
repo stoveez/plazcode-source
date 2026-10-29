@@ -1,5 +1,8 @@
 # PlazCode 1.24.26 — feature plan
 
+
+2026-10-29: online profile sign-in/settings and skills sync are implemented and verified locally for 1.24.27. Actual selected-profile native screenshot captured; fresh full test packages and public account-API audience decision remain pending. Previous delivered test archives do not include profiles. See docs/NOW.md and docs/vault/desktop-profile-sign-in.md.
+
 > **2026-10-28: code protection and permanent tool approvals are now in progress.** Owner wants the original protection plus signed manifests/updates and bridge hardening, with no app signing or additional user setup/login/approvals. Details and release-key setup: `docs/vault/code-protection.md`. 1.24.25 has already shipped. Other feature sections remain deferred until separately implemented.
 
 > **Owner, 2026-10-26: this plan is for 1.24.26. All work previously scheduled for 1.24.25 moves here; 1.24.25 is reserved for a new issue (scope pending).** 1.24.22 shipped the short startup, 1.24.23 the antivirus fix, and 1.24.24 fixes the input-limit error and the higher usage.

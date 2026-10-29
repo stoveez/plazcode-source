@@ -4,7 +4,7 @@ updated: 2026-10-29
 ---
 # Open work
 
-**New active work:** themed desktop profile sign-in/profile creation requested after the previous test delivery. Native account/session and storage design plus actual UI/screenshot and fresh test builds are required. Frontend screen/controller and isolated browser behavior tests are implemented, but it is not mounted and has no authentication backend yet. Owner confirmed online/sync, saved-profile login and separate profile data; actual backend/session/storage implementation remains; no fresh build or actual native preview yet. See [desktop profile sign-in](desktop-profile-sign-in.md).
+**New active work:** online desktop profiles implemented and verified locally; actual running-app selected-profile preview captured. Native encrypted login, separate profile stores, legacy first-profile copy, portable settings/skills sync and extension epoch boundaries are connected. 227 native tests and real Worker/SQL + two-install integration pass. Fresh full CI/build delivery and explicit public account-service audience approval remain. See [desktop profile sign-in](desktop-profile-sign-in.md).
 
 **Current 2026-10-29:** 1.24.27 full test builds delivered. CI 40932400772 / 962899c passed Windows, Mac, Linux and browsers. Archive/signature/source/version/layout verification complete; Windows/Mac exact current release file lists. See [verification](test-build-1.24.27-verification.json). DeepSeek pacing, effort clipping, approval controls, bar alignment and Mac/Linux startup fixes are in these test packages. Original user devices and live AI accounts remain untested. Release-note metadata records completed test delivery; the stable feed stays at 1.24.26.
 

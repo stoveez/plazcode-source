@@ -306,12 +306,20 @@ jobs:
           python test-skills-native.py
           python test-studio-autoconnect.py
         working-directory: build-src-1.24.27/PlazCode
+      - name: Real account service and native profile integration
+        if: runner.os == 'Linux'
+        run: |
+          npm ci --prefix account-service --ignore-scripts
+          npm test --prefix account-service
+          cd build-src-1.24.27/PlazCode
+          node release-tools/test-profile-accounts.cjs
       - name: Real Linux visible desktop and browser authentication
         if: runner.os == 'Linux'
         working-directory: build-src-1.24.27/PlazCode
         run: |
           npm ci --prefix release-tools --ignore-scripts
           node release-tools/node_modules/playwright/cli.js install --with-deps chromium
+          node release-tools/test-profile-sign-in-ui.cjs
           node release-tools/test-linux-desktop.cjs
       - name: Real macOS stale-process startup recovery
         if: runner.os == 'macOS'
