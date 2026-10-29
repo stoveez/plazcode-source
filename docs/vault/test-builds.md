@@ -1,6 +1,6 @@
 ---
 title: Test builds and the public-then-private plan
-updated: 2026-10-28
+updated: 2026-10-29
 ---
 # Test builds
 
@@ -26,3 +26,8 @@ The owner requested a direct release with no separate test build. Full platform/
 
 ## 1.24.26 (2026-10-28)
 Owner requested direct release. Full production validation and packaged Mac desktop lifetime gate passed; validated bytes were published without rebuilding. No separate test zips were delivered.
+
+## 1.24.27 requested (2026-10-29)
+DeepSeek shared send guard merged from the owner archive: all programmatic sends queue and wait the remaining 8–9.8 second interval after the previous send completes. First send is immediate; long replies add no extra wait. Generate full Windows and Mac lean ZIPs with both browser extensions through validate-1.24.27 on dev. Keep production integrity signing and exact official update layout; direct edits to an installed protected extension are unsuitable. Update the app/full folder, reload the extension and refresh AI tabs.
+
+Build window pending: source is Private, GitHub billing blocks private builds, and the available integration cannot change visibility (HTTP 403). Owner sent settings instructions. No CI started and no test ZIPs delivered yet. No stable release/feed publication is part of this request. Restore Private immediately after verified delivery.

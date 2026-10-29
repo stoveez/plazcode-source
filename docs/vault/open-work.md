@@ -4,6 +4,8 @@ updated: 2026-10-29
 ---
 # Open work
 
+- 2026-10-29: owner requested full 1.24.27 test builds. Ready to run full platform/browser validation on dev once owner makes source Public. Visibility API denied (403); request sent. Deliver both verified inner lean ZIPs with apps and Chromium/Firefox, then restore Private. No public release authorized by this test-build request.
+
 - 2026-10-29: 1.24.27 initialized, incorporating the actual owner-uploaded DeepSeek guard. Fast follow-ups observe an 8–9.8 second completion-based cooldown, sliced waits and forwarded options. Local targeted/version/package checks passed, including three-copy parity, provider preservation, locales, Ultra and promotion guards; full production CI and live DeepSeek remain. Historical 1.24.26 overlay restored to its released provider baseline. Source stays Private.
 
 - 2026-10-29: DeepSeek shared send queue implemented and locally verified; unreleased. Covers direct UI sends, completion-based eight-second pause plus jitter for fast replies, diagnostics and failure recovery. See [DeepSeek pacing](deepseek-send-pacing.md). Next signed version/build and live DeepSeek verification remain. Source repo is confirmed Private.
