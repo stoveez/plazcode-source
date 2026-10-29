@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-29. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: 1.24.27 full test-build run starting.** Owner made source Public and visibility was verified. This push starts validate-1.24.27 on `claude/plazcode-dev` for Windows, Mac, Linux and browsers; no separate browser-only mode. Deliver both verified inner lean ZIPs after all four jobs pass. No stable publication.
+**Latest: test-build browser gate passed.** Full run 40898279700 builds exact source 2563eb2. Browsers completed successfully; Windows/Linux regression suites continue; Mac is waiting for a hosted runner. No ZIPs delivered yet. Verify both packages and deliver inner lean ZIPs after all four jobs pass, then restore Private.
+
+**1.24.27 full test-build run started.** Owner made source Public and visibility was verified. This push starts validate-1.24.27 on `claude/plazcode-dev` for Windows, Mac, Linux and browsers; no separate browser-only mode. Deliver both verified inner lean ZIPs after all four jobs pass. No stable publication.
 
 **Owner requested full 1.24.27 test builds.** Windows and Mac packages must include both browser extensions, use production integrity trust and preserve the official ZIP layout. Source is ready; owner opened the temporary Public build window after visibility API returned HTTP 403. Settings link/request sent. Once public, push a fresh NOW commit without skip-ci to start validate-1.24.27 on dev. Deliver verified inner lean ZIPs; do not publish feeds/releases. Restore Private immediately after delivery.
 

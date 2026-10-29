@@ -74,3 +74,5 @@ Release: see [releasing](releasing.md).
 
 
 - 2026-10-29: owner confirmed Public; API verified. Full validate-1.24.27 run starts with this dev push. Deliver Windows/Mac inner test ZIPs only after full success and package checks; no stable publication.
+
+- 2026-10-29: 40898279700 / 2563eb2 browser job passed. Windows/Linux continue; Mac runner queued. Test delivery remains pending full success and ZIP verification.
