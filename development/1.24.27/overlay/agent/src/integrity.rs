@@ -278,7 +278,7 @@ mod tests {
         let copied=root.join("copied-native");std::fs::write(&copied,b"original").unwrap();assert!(verify_running_executable(&copied,&value,"linux").is_ok());
         std::fs::write(&copied,b"modified").unwrap();assert!(verify_running_executable(&copied,&value,"linux").is_err());
         std::fs::write(root.join("config.json"),b"user edits").unwrap();std::fs::create_dir_all(root.join("skills")).unwrap();std::fs::write(root.join("skills/user.md"),b"editable").unwrap();assert!(check().is_ok());
-        assert!(verify_tree_with(&root,key.public_key().as_ref(),"1.24.27","linux","release").is_err());
+        assert!(verify_tree_with(&root,key.public_key().as_ref(),"0.0.0","linux","release").is_err());
         assert!(verify_tree_with(&root,key.public_key().as_ref(),"1.24.27","windows","release").is_err());
         assert!(verify_tree_with(&root,key.public_key().as_ref(),"1.24.27","linux","validation").is_err());
         std::fs::write(root.join("core/main.js"),b"modified").unwrap();assert!(check().is_err());std::fs::write(root.join("core/main.js"),b"original").unwrap();

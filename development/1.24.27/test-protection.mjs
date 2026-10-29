@@ -53,7 +53,7 @@ try {
   await fs.writeFile(path.join(root,'core/main.js'),'tampered');await assert.rejects(verifyTree(root,hex),/changed/);
   await fs.writeFile(path.join(root,'core/main.js'),original);await verifyTree(root,hex);
   await assert.rejects(verifyTree(root,publicHex(other.privateKey)),/signature/);
-  const raw=await fs.readFile(path.join(root,FILE_MANIFEST),'utf8');const bad=JSON.parse(raw);bad.payload=bad.payload.replace('1.24.27','1.24.27');
+  const raw=await fs.readFile(path.join(root,FILE_MANIFEST),'utf8');const bad=JSON.parse(raw);bad.payload=bad.payload.replace('1.24.27','0.0.0');
   assert.throws(()=>openEnvelope(JSON.stringify(bad),hex),/signature/);
   const update=envelope({schema:1,kind:'update',version:'1.24.27',platform:'windows',sha256:'a'.repeat(64)},privateKey);
   assert.equal(openEnvelope(JSON.stringify(update),hex).platform,'windows');

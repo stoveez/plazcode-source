@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-29. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: test-build browser gate passed.** Full run 40898279700 builds exact source 2563eb2. Browsers completed successfully; Windows/Linux regression suites continue; Mac is waiting for a hosted runner. No ZIPs delivered yet. Verify both packages and deliver inner lean ZIPs after all four jobs pass, then restore Private.
+**Latest: wrong-version security fixtures corrected.** Initial 1.24.27 CI 40898279700 passed browsers and all JavaScript suites, then caught two rollover mistakes in rejection tests: a tampered payload replaced 1.24.27 with itself, and a wrong-version native check requested the valid version. Both now use 0.0.0 as the invalid version. JavaScript protection suite passed locally. No Rust toolchain is installed locally; the fresh full CI run must verify native tests. No runtime security check changed and no test ZIP delivered.
+
+**Initial test-build browser gate passed.** Full run 40898279700 builds exact source 2563eb2. Browsers completed successfully; Windows/Linux regression suites continue; Mac is waiting for a hosted runner. No ZIPs delivered yet. Verify both packages and deliver inner lean ZIPs after all four jobs pass, then restore Private.
 
 **1.24.27 full test-build run started.** Owner made source Public and visibility was verified. This push starts validate-1.24.27 on `claude/plazcode-dev` for Windows, Mac, Linux and browsers; no separate browser-only mode. Deliver both verified inner lean ZIPs after all four jobs pass. No stable publication.
 
