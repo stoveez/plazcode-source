@@ -1,5 +1,5 @@
 # Desktop profile sign-in
-Updated: 2026-10-29. New owner request; not implemented yet.
+Updated: 2026-10-29. WIP frontend implemented; backend integration and account choices pending.
 
 ## Requested experience
 The existing desktop loading screen fades into an actual PlazCode sign-in/profile screen. Users create a username/password profile, select a saved profile and see its theme-colored glow. Only after selection, show a glowing green Log in button and red Remove profile button. The entire screen uses PlazCode's actual theme, glow settings, typography and premium panel styling. Respect reduced motion, keyboard focus and smaller windows. After successful login, fade into the desktop without flashing the unselected theme or guest screen. Match the owner's reference composition without copying its branding/assets. Preview must be a screenshot of the running real app, then deliver full Windows/Mac/Linux test packages.
@@ -15,3 +15,6 @@ Desktop has a Guest/account placeholder and reusable theme/glow CSS, plus Nxstar
 
 ## Work and validation
 Work directly on claude/plazcode-dev in the 1.24.27 overlay; keep stable 1.24.26 feeds unchanged. Preserve existing account-free tool behavior until the actual account flow and native/session boundary are ready, rather than shipping an unusable sign-in gate. Verify credential handling, login failure, saved selection, theme changes, remove confirmation/data preservation, keyboard/reduced motion, startup transitions and real native startup. Full test builds and actual screenshots remain outstanding.
+
+## Frontend progress
+The actual desktop HTML contains the themed responsive screen and controller, but it is not mounted yet. Account operations are explicit backend adapters; no fake authentication or credentials storage is shipped. Browser interaction tests use the actual extracted controller/markup/CSS with test adapters solely for unit QA, never as a user preview. Passed selection/theme callback, conditional buttons, untrusted-name text safety, confirmation before remove, remembered-profile username forwarding, failed-login password clearing, creation, empty/narrow/reduced-motion behavior and existing protected desktop regression. Quit remains usable while an account request is busy. Real native integration/screenshot and full test packages remain outstanding pending the account/storage choices.
