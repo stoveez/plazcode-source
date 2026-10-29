@@ -58,7 +58,7 @@ pub async fn exchange(State(state): State<crate::AppState>, headers: HeaderMap, 
     }
     let valid = consume(&mut TICKETS.lock().unwrap_or_else(|e| e.into_inner()), &launch.ticket, Instant::now());
     if !valid { return StatusCode::UNAUTHORIZED.into_response(); }
-    ([("Cache-Control", "no-store")], Json(serde_json::json!({"key":state.pairing_key.as_str()}))).into_response()
+    ([("Cache-Control", "no-store")], Json(serde_json::json!({"key":state.pairing_key.as_str(),"profiles":state.accounts.required()}))).into_response()
 }
 
 pub async fn action(State(state): State<crate::AppState>, Json(value): Json<serde_json::Value>) -> axum::response::Response {

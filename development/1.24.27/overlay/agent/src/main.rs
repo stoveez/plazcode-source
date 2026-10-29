@@ -76,6 +76,7 @@ mod integrity;
 mod preferences;
 mod profile_paths;
 mod accounts;
+mod account_sync;
 mod memory;
 mod templates;
 mod creations;
@@ -1140,6 +1141,7 @@ async fn start() -> anyhow::Result<()> {
         shared.clone(),
     );
     state.accounts=accounts;
+    let sync_state=state.clone();tokio::spawn(async move{loop{tokio::time::sleep(Duration::from_secs(60)).await;let _lease=accounts::ACCESS.read().await;if sync_state.accounts.active().is_some(){let _=account_sync::run(&sync_state).await;}}});
     let (restart_tx, mut restart_rx) = tokio::sync::mpsc::unbounded_channel::<()>();
     let rr_state = state.clone();
     tokio::spawn(async move {
@@ -1229,6 +1231,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
     });
     let addon_state = state.clone();
     tokio::spawn(async move {
+        let _lease=accounts::ACCESS.read().await;
         if !addon_state.accounts.required()||addon_state.accounts.active().is_some(){let _ = refresh_addons(&addon_state).await;}
     });
     let autoconnect_state = state.clone();
@@ -1237,6 +1240,8 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         let mut misses: u32 = 0;
         loop {
             if autoconnect_state.accounts.required()&&autoconnect_state.accounts.active().is_none(){tokio::time::sleep(Duration::from_millis(500)).await;continue;}
+            let lease=accounts::ACCESS.read().await;
+            if autoconnect_state.accounts.required()&&autoconnect_state.accounts.active().is_none(){continue;}
             // Process discovery is advisory, including for the FIRST connection.
             // Start the helper at launch and retry discovery when Studio opens
             // later, even if the host cannot enumerate its process name.
@@ -1291,7 +1296,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
             }
             let retry = if autoconnect_state.roblox_editor_connected.load(Ordering::Relaxed) { 5000 }
                 else if autoconnect_state.roblox_proc.load(Ordering::Relaxed) { 1000 } else { 5000 };
-            tokio::time::sleep(Duration::from_millis(retry)).await;
+            drop(lease);tokio::time::sleep(Duration::from_millis(retry)).await;
         }
     });
     let s1 = state.clone();
@@ -1768,6 +1773,7 @@ async fn profile_action_handler(State(state):State<AppState>,headers:axum::http:
                     let active=state.accounts.commit(candidate).await?;
                     profile_paths::select(Some(profile_paths::profile_root(&active.id)?));
                     state.preferences.select_path(profile_paths::settings_path())?;
+                    let _=account_sync::run(&state).await;
                     let prefs=state.preferences.snapshot();state.workspace.set_full_access(prefs.perm_mode=="full");state.workspace.set_allowed_folders(&prefs.allowed_folders);
                     state.profile_change.send_modify(|value|*value=value.wrapping_add(1));
                     Ok::<_,anyhow::Error>(serde_json::json!({"ok":true,"profile":active,"preferences":prefs}))
@@ -1858,6 +1864,7 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
         "preferences": state.preferences.snapshot(),
         "browser_agent": state.ui.browser_agent_snapshot(),
         "profile":state.accounts.active(),
+        "account_sync":state.accounts.active().map(|p|account_sync::status(&p.id)),
     }))
 }
 
@@ -2103,6 +2110,7 @@ async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {
         "version": env!("CARGO_PKG_VERSION"),
         "profile_required":state.accounts.required()&&state.accounts.active().is_none(),
         "profile":state.accounts.active(),
+        "account_sync":state.accounts.active().map(|p|account_sync::status(&p.id)),
         "blender_connected": blender::connected(),
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "roblox_bridge_connected": state.roblox_clients.read().await.len() > 0,
@@ -2317,10 +2325,14 @@ async fn roblox_tool(state: &AppState, name: &str, args: serde_json::Value) -> a
 }
 
 async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
+    let epoch=state.accounts.active().map(|p|p.epoch);
+    let mut changed=state.profile_change.subscribe();
     let (mut send, mut recv) = socket.split();
     let mut rx = state.result_tx.subscribe();
-    let send_task = tokio::spawn(async move { while let Ok(res) = rx.recv().await { let txt = serde_json::to_string(&res).unwrap_or_default(); if send.send(axum::extract::ws::Message::Text(txt)).await.is_err() { break; } } });
-    while let Some(Ok(msg)) = recv.next().await {
+    let mut send_changed=state.profile_change.subscribe();
+    let send_task = tokio::spawn(async move { while let Ok(res) = tokio::select!{v=rx.recv()=>v,_=send_changed.changed()=>Err(broadcast::error::RecvError::Closed)} { let txt = serde_json::to_string(&res).unwrap_or_default(); if send.send(axum::extract::ws::Message::Text(txt)).await.is_err() { break; } } });
+    while let Some(Ok(msg)) = tokio::select!{value=recv.next()=>value,_=changed.changed()=>None} {
+        let _lease=accounts::ACCESS.read().await;if state.accounts.required()&&(epoch.is_none()||epoch!=state.accounts.active().map(|p|p.epoch)){break;}
         if let axum::extract::ws::Message::Text(txt) = msg {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(&txt) {
                 if val.get("code").is_some() {
@@ -2342,8 +2354,10 @@ async fn run_legacy_ws(state: AppState, listener: tokio::net::TcpListener, engin
         let eng = engine.to_string();
         tokio::spawn(async move {
             let key = state.pairing_key.clone();
+            let account_required=state.accounts.required();let expected_epoch=state.accounts.active().map(|p|p.epoch);
             let handshake = tokio_tungstenite::accept_hdr_async(stream, move |request: &tokio_tungstenite::tungstenite::handshake::server::Request, mut response: tokio_tungstenite::tungstenite::handshake::server::Response| {
-                if !security::authorized(request.headers(), &key) {
+                let supplied=request.headers().get("sec-websocket-protocol").and_then(|v|v.to_str().ok()).and_then(|v|v.split(',').map(str::trim).find_map(|p|p.strip_prefix("plazcode-profile.")));
+                if !security::authorized(request.headers(), &key)||(account_required&&(expected_epoch.is_none()||supplied!=expected_epoch.as_deref())) {
                     return Err(tokio_tungstenite::tungstenite::http::Response::builder()
                         .status(401).body(Some("PlazCode pairing required".to_string())).unwrap());
                 }
@@ -2358,6 +2372,8 @@ async fn run_legacy_ws(state: AppState, listener: tokio::net::TcpListener, engin
 }
 
 async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>, state: AppState, engine: String) {
+    let epoch=state.accounts.active().map(|p|p.epoch);let mut changed=state.profile_change.subscribe();
+    if state.accounts.required()&&epoch.is_none(){return;}
     static NEXT_CLIENT: AtomicUsize = AtomicUsize::new(1);
     let client_key = format!("ext-{engine}-{}", NEXT_CLIENT.fetch_add(1,Ordering::Relaxed));
     if engine == "local" {
@@ -2437,7 +2453,8 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
     if let Ok(intro) = intro { if !intro.is_null() { let _ = intro_tx.send(intro.to_string()); } }
     });
     let mut last_online: Option<bool> = None;
-    while let Some(Ok(msg)) = read.next().await {
+    while let Some(Ok(msg)) = tokio::select!{value=read.next()=>value,_=changed.changed()=>None} {
+        let _lease=accounts::ACCESS.read().await;if state.accounts.required()&&(epoch.is_none()||epoch!=state.accounts.active().map(|p|p.epoch)){break;}
         if let tokio_tungstenite::tungstenite::Message::Text(txt) = msg {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(&txt) {
                 let typ = val.get("type").and_then(|v| v.as_str()).unwrap_or("");
@@ -2542,7 +2559,9 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                         let checkpoint_id = val.get("checkpoint_id").and_then(|v|v.as_str()).unwrap_or("").to_string();
                         let confirmed = val.get("confirmed").and_then(|v|v.as_bool()).unwrap_or(false);
                         let tx = out_tx.clone();
+                        let task_epoch=epoch.clone();
                         tokio::spawn(async move {
+                            let _lease=accounts::ACCESS.read().await;if state2.accounts.required()&&(task_epoch.is_none()||task_epoch!=state2.accounts.active().map(|p|p.epoch)){return;}
                             let outcome = guarded_tool(&state2, &eng, &checkpoint_id, &name, args, budget, confirmed).await;
                             let response = match outcome {
                                 Ok(out) => {
@@ -2598,7 +2617,7 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
     desktop_forwarder.abort();
     intro_task.abort();
     drop(out_tx);
-    let _ = writer.await;
+    writer.abort();
     if engine == "local" {
         state.local_clients.write().await.remove(&client_key);
     } else {

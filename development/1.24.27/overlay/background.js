@@ -42,9 +42,34 @@ async function ensurePairing(force = false) {
   })();
   try { return await pairingInFlight; } finally { pairingInFlight = null; }
 }
+let accountEpoch = '', accountIdentity = null, accountCheck = null;
+async function ensureAccountContext(){
+  if(accountCheck)return accountCheck;
+  accountCheck=(async()=>{
+    const response=await fetch('http://127.0.0.1:3000/api/status',{headers:{Authorization:'Bearer '+pairingKey},signal:AbortSignal.timeout(5000),redirect:'error'});
+    if(!response.ok)throw new Error('Cannot check the PlazCode profile.');
+    const status=await response.json();
+    if(!('profile_required' in status))return; // Older desktops and account-free headless tools.
+    if(status.profile_required||!status.profile){accountEpoch='';throw new Error('Open PlazCode, choose a profile and log in.');}
+    const next=status.profile;
+    if(accountEpoch&&accountEpoch!==next.epoch){accountEpoch='';chrome.runtime.reload();throw new Error('PlazCode profile changed. Refresh this AI tab.');}
+    const saved=await chrome.storage.local.get(null), previous=saved['plazcode-profile-id'];
+    if(previous!==next.id){
+      const keys=Object.keys(saved).filter(k=>!k.startsWith('plazcode-profile-')&&k!==PAIRING_KEY);
+      const outgoing=Object.fromEntries(keys.map(k=>[k,saved[k]]));
+      if(previous)await chrome.storage.local.set({['plazcode-profile-data:'+previous]:outgoing});
+      const incoming=saved['plazcode-profile-data:'+next.id]||(next.owns_legacy_data&&!previous?outgoing:{});
+      desktopPendingPreferences.clear();desktopRemoteWrites.clear();clearTimeout(desktopSyncPushTimer);
+      desktopSyncApplying=true;try{await chrome.storage.local.remove(keys);await chrome.storage.local.set({...incoming,'plazcode-profile-id':next.id});}finally{desktopSyncApplying=false;}
+      if(typeof chrome.runtime.reload==='function'){chrome.runtime.reload();throw new Error('PlazCode profile selected. Refresh this AI tab.');}
+    }
+    accountEpoch=next.epoch;accountIdentity=next.id;
+  })();
+  try{return await accountCheck;}finally{accountCheck=null;}
+}
 function pairingProtocols() {
   if (!/^[a-f0-9]{64}$/i.test(pairingKey)) throw new Error("Agent pairing is not ready");
-  return ["plazcode", "plazcode-auth." + pairingKey];
+  return ["plazcode", "plazcode-auth." + pairingKey,...(accountEpoch?["plazcode-profile."+accountEpoch]:[])];
 }
 function pairingIdentity() {
   // Firefox's public addon ID differs from its installation-specific origin.
@@ -77,10 +102,13 @@ async function bridgeFetch(url, options = {}) {
 }
 async function bridgeFetchOnce(url, options = {}) {
   await ensurePairing();
+  if(!String(url).endsWith("/api/status"))await ensureAccountContext();
+  const expectedEpoch=accountEpoch;
   const signal = options.signal || AbortSignal.timeout(BRIDGE_FETCH_TIMEOUT_MS);
   for (let attempt = 0; attempt < 2; attempt++) {
     const headers = new Headers(options.headers || {});
     headers.set("Authorization", "Bearer " + pairingKey);
+    if(expectedEpoch)headers.set("X-PlazCode-Profile",expectedEpoch);
     const response = await fetch(url, { ...options, headers, signal, redirect: "error" });
     if (response.status !== 401) return response;
     if (attempt === 0) await ensurePairing(true);
@@ -314,6 +342,7 @@ async function initialDesktopPreferencesSync() {
     const response = await bridgeFetch("http://127.0.0.1:3000/api/preferences", { method: "GET", signal: AbortSignal.timeout(5000) });
     if (!response.ok) return false;
     const remote = await response.json();
+    if(remote&&remote._plazcodeProfile)return await applyDesktopPreferences(remote);
     if (remote && remote._plazcodePersisted === true) {
       if (typeof remote.rsCustomPrompt !== "string") {
         const existing = await chrome.storage.local.get("rsCustomPrompt");
@@ -601,6 +630,7 @@ async function connect() {
   const url = engineUrl();
   let sock;
   try {
+    await ensureAccountContext();
     sock = new WebSocket(url, pairingProtocols());
   } catch (e) {
     log("WebSocket ctor failed", e);
@@ -1412,7 +1442,7 @@ function setBlender(on, err) {
 }
 
 async function sendLocalEngine(obj, timeout = 25000) {
-  try { await ensurePairing(); } catch (error) { return { ok: false, error: error.message }; }
+  try { await ensurePairing();await ensureAccountContext(); } catch (error) { return { ok: false, error: error.message }; }
   if (engine === "local" && connected && ws && ws.readyState === WebSocket.OPEN) {
     return send(obj, timeout);
   }

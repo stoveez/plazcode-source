@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-29. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest WIP: encrypted remembered accounts and native profile gate compile.** Native signup/login, local encrypted token storage, migration, profile switch cancellation and API epoch checks are implemented but not yet connected to startup or cloud sync. Three account crypto/protocol tests and native cargo check passed. Real integration, cross-profile tests, screenshot and fresh builds remain.
+**Latest WIP: startup UI, portable sync and extension profile boundaries connected.** Settings/skills three-way sync, per-profile desktop caches and extension storage partitions are implemented; native sync tests (2), actual frontend interaction and desktop regression pass. Actual native picker screenshot captured, but hosted signup from this sandbox hit its extra TLS proxy trust requirement; debug-only CA trust added for verification. Full account switching/sync checks and new full packages are outstanding. Service remains owner-private, public audience decision pending.
+
+**Previous WIP: encrypted remembered accounts and native profile gate compile.** Native signup/login, local encrypted token storage, migration, profile switch cancellation and API epoch checks are implemented but not yet connected to startup or cloud sync. Three account crypto/protocol tests and native cargo check passed. Real integration, cross-profile tests, screenshot and fresh builds remain.
 
 **Previous: generated preference-test build output removed from tracking and ignored.** The previous WIP accidentally included local target files; removed them without rewriting history. Native account manager/encrypted session work is still in progress.
 

@@ -113,3 +113,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29: corrected accidental generated preference-harness target files in WIP 6318a5d; removed them from tracking and ignored the harness target path. No credentials were in these generated test artifacts. Account/session integration still in progress.
 
 - 2026-10-29 WIP: encrypted account manager, saved login, legacy-data migration and native API profile/epoch gate compile. Three native account crypto/protocol tests passed. Startup, sync and extension integration remain unfinished; no new preview/build delivered.
+
+- 2026-10-29 WIP: actual desktop startup/profile actions and native portable settings/skills merge sync connected; 2 sync tests and desktop regression pass. Extension storage/profile epochs and socket closure implemented, integration checks pending. Actual empty native picker captured, no completed sign-in preview or new build yet.

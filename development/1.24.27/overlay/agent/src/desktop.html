@@ -726,6 +726,7 @@ html[data-desktop-theme] .dx-card{box-shadow:var(--p-lift)}
 #page-updates .release-note{margin:0;padding:22px 26px}
 
 /* Desktop profile gateway shares the app palette, without a second design system. */
+.pc-signin-brand .ring{fill:rgb(var(--theme-rgb)/.08);stroke:rgb(var(--theme-rgb)/.65);stroke-width:2}.pc-signin-brand .glyph{fill:none;stroke:var(--orange2);stroke-width:7;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 8px rgb(var(--theme-rgb)/.6))}
 .pc-signin[hidden]{display:none!important}.pc-signin{position:fixed;inset:0;z-index:850;display:grid;place-items:center;overflow:auto;padding:76px 7vw 52px;background:radial-gradient(ellipse at 14% 38%,rgb(var(--theme-rgb)/.11),transparent 48%),radial-gradient(ellipse at 88% 8%,rgb(var(--theme-rgb)/.055),transparent 42%),var(--canvas);color:var(--text);opacity:0;transition:opacity .65s ease,background-color .45s ease}.pc-signin.is-visible{opacity:1}.pc-signin:before{content:"";position:absolute;inset:28px;border:1px solid rgb(var(--theme-rgb)/.12);border-radius:26px;pointer-events:none}.pc-signin-inner{position:relative;display:grid;grid-template-columns:minmax(260px,1.08fr) minmax(330px,.92fr);gap:clamp(44px,7vw,112px);width:min(1100px,100%);align-items:center;transform:translateY(12px);transition:transform .65s cubic-bezier(.2,.7,.2,1)}.is-visible .pc-signin-inner{transform:none}.pc-signin-brand{display:flex;align-items:center;gap:18px;margin:20px 0}.pc-signin-mark{width:70px;height:70px;display:grid;place-items:center;border-radius:20px;border:1px solid rgb(var(--theme-rgb)/.55);background:linear-gradient(145deg,rgb(var(--theme-rgb)/.15),rgb(var(--theme-rgb)/.03));box-shadow:inset 0 1px 0 #ffffff12,0 0 34px rgb(var(--theme-rgb)/var(--theme-glow));flex:none}.pc-signin-mark svg{width:51px;height:51px;color:var(--orange2)}.pc-signin-word{font-size:clamp(38px,4.3vw,58px);font-weight:800;letter-spacing:-2px;line-height:1.04;margin:0}.pc-signin-word span{color:var(--orange2)}.pc-signin-eyebrow{font-size:10px;font-weight:650;letter-spacing:2.5px;color:var(--orange2);text-transform:uppercase}.pc-signin-intro{font-size:15px;line-height:1.85;color:var(--dim);max-width:380px;margin:22px 0 30px}.pc-signin-features{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:470px}.pc-signin-feature{padding:17px 18px;border:1px solid rgb(var(--theme-rgb)/.17);border-radius:14px;background:linear-gradient(135deg,rgb(var(--theme-rgb)/.065),#ffffff02);box-shadow:inset 0 1px 0 #ffffff04}.pc-signin-feature strong{display:block;font-size:12px;font-weight:650;color:var(--text)}.pc-signin-feature span{display:block;font-size:11px;line-height:1.6;margin-top:6px;color:var(--ink-soft)}.pc-signin-version{margin-top:26px;font-size:10px;letter-spacing:.3px;color:var(--ink-soft)}.pc-signin-panel{padding:30px;border:1px solid rgb(var(--theme-rgb)/.33);border-radius:23px;background:radial-gradient(ellipse at 90% 0,rgb(var(--theme-rgb)/.08),transparent 70%),var(--surface);box-shadow:0 24px 70px #0005,inset 0 1px 0 #ffffff08,0 0 45px rgb(var(--theme-rgb)/calc(var(--theme-glow)*.35));min-width:0}.pc-signin-panel h2{font-size:23px;line-height:1.3;letter-spacing:-.5px;margin:0 0 9px;font-weight:750}.pc-signin-subtitle{font-size:12px;color:var(--ink-soft);line-height:1.6;margin:0 0 24px}.pc-profile-list{display:grid;gap:11px;max-height:min(330px,37vh);overflow:auto;padding:3px;margin:-3px;scrollbar-color:var(--stroke) transparent}.pc-profile-card{appearance:none;width:100%;display:flex;align-items:center;gap:14px;position:relative;padding:17px 18px;text-align:left;border:1px solid var(--stroke);border-radius:14px;background:#ffffff03;color:var(--text);cursor:pointer;transition:border-color .2s,box-shadow .25s,background .25s,transform .2s}.pc-profile-card:hover{border-color:rgb(var(--theme-rgb)/.55);transform:translateY(-1px)}.pc-profile-card[aria-selected=true]{border-color:var(--orange2);background:linear-gradient(110deg,rgb(var(--theme-rgb)/.12),rgb(var(--theme-rgb)/.025));box-shadow:0 0 0 1px rgb(var(--theme-rgb)/.2),0 0 25px rgb(var(--theme-rgb)/var(--theme-glow)),inset 0 1px 0 #ffffff08}.pc-profile-avatar{display:grid;place-items:center;width:43px;height:43px;flex:none;border:1px solid rgb(var(--theme-rgb)/.4);border-radius:13px;color:var(--orange2);background:linear-gradient(145deg,rgb(var(--theme-rgb)/.19),rgb(var(--theme-rgb)/.04));font-size:16px;font-weight:750}.pc-profile-copy{display:block;min-width:0;flex:1}.pc-profile-copy strong{display:block;font-size:13px;overflow-wrap:anywhere}.pc-profile-copy small{display:block;margin-top:6px;font-size:10px;color:var(--ink-soft)}.pc-profile-tick{color:var(--orange2);font-size:18px;opacity:0;transition:opacity .2s}.pc-profile-card[aria-selected=true] .pc-profile-tick{opacity:1}.pc-profile-actions{display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:17px;animation:pc-profile-actions-in .25s ease both}.pc-profile-actions[hidden]{display:none}.pc-profile-login,.pc-profile-remove{border-radius:11px;font-size:12px;font-weight:700;min-height:43px;padding:11px 16px;cursor:pointer;transition:box-shadow .2s,transform .2s,background .2s}.pc-profile-login{color:#caffdf;background:linear-gradient(135deg,#20855444,#123d2c);border:1px solid #53d5928c;box-shadow:inset 0 1px 0 #aaffce12,0 0 24px rgb(53 218 132/calc(var(--theme-glow)*1.2))}.pc-profile-remove{color:#ffc0c5;background:linear-gradient(135deg,#902b3840,#411720);border:1px solid #ef6b7b77;box-shadow:inset 0 1px 0 #ffb3bb0b,0 0 21px rgb(239 85 105/var(--theme-glow))}.pc-profile-login:hover,.pc-profile-remove:hover{transform:translateY(-1px);filter:brightness(1.13)}.pc-signin :is(button,input):focus-visible{outline:2px solid var(--orange2);outline-offset:4px}.pc-signin button:disabled{cursor:wait;opacity:.55;transform:none}.pc-signin-link{display:block;margin:19px auto 0;padding:7px;border:0;background:transparent;color:var(--dim);font-size:11px;cursor:pointer;text-underline-offset:4px}.pc-signin-link:hover{color:var(--orange2);text-decoration:underline}.pc-signin-divider{height:1px;background:linear-gradient(90deg,transparent,rgb(var(--theme-rgb)/.2),transparent);margin-top:22px}.pc-signin-form{display:grid;gap:16px}.pc-signin-field{display:grid;gap:8px;font-size:11px;color:var(--dim)}.pc-signin-field input{width:100%;min-height:44px;padding:12px 14px;border-radius:11px;border:1px solid var(--stroke);color:var(--text);background:var(--canvas);outline:none}.pc-signin-field input:focus{border-color:var(--orange2);box-shadow:0 0 15px rgb(var(--theme-rgb)/var(--theme-glow))}.pc-signin-feedback{font-size:12px;line-height:1.7;color:#ffb5bf;min-height:0;margin:15px 0 0;overflow-wrap:anywhere}.pc-signin-feedback:empty{display:none}.pc-signin-confirm{padding:18px;border:1px solid #ef6b7b55;border-radius:13px;background:#7d263010}.pc-signin-confirm p{font-size:12px;line-height:1.7;color:var(--dim);margin:0 0 14px}.pc-signin-empty{padding:22px 15px;text-align:center;color:var(--ink-soft);font-size:12px;line-height:1.8;border:1px dashed rgb(var(--theme-rgb)/.25);border-radius:14px}.pc-signin-dismiss{position:absolute;right:45px;top:35px}.pc-signin :is(form,[data-profile-view])[hidden]{display:none!important}.pc-signin-status{font-size:10px;color:var(--ink-soft);line-height:1.65;text-align:center;margin-top:20px}@keyframes pc-profile-actions-in{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}@media(max-width:850px){.pc-signin{padding:74px 26px 38px}.pc-signin:before{inset:12px}.pc-signin-inner{grid-template-columns:1fr;gap:32px;max-width:490px}.pc-signin-features,.pc-signin-intro{display:none}.pc-signin-brand{margin:10px 0}.pc-signin-word{font-size:36px}.pc-signin-mark{width:54px;height:54px;border-radius:15px}.pc-signin-mark svg{width:40px;height:40px}.pc-signin-version{display:none}.pc-signin-panel{padding:25px}.pc-signin-dismiss{top:22px;right:26px}}@media(prefers-reduced-motion:reduce){.pc-signin,.pc-signin-inner,.pc-signin *{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -753,7 +754,7 @@ html[data-desktop-theme] .dx-card{box-shadow:var(--p-lift)}
       <section class="page" id="page-skills"><div id="skillsWorkspace" dir="auto"></div></section>
       <section class="page" id="page-explorer"><div id="explorerWorkspace" dir="ltr"></div></section>
       <section class="page active" id="page-home">
-        <div class="nx-pagehead"><div><h1>Overview</h1><p>Your PlazCode at a glance.</p></div></div><div class="nx-grid"><div class="nx-card " data-go="account" style="cursor:pointer"><div class="nx-k">Account</div><div class="nx-v">Guest <span class="nx-pill soon">Coming soon</span></div><div class="nx-s">Not signed in</div></div><div class="nx-card " ><div class="nx-k">Version</div><div class="nx-v"><span id="ovVersion">v__PLAZCODE_VERSION__</span></div><div class="nx-s">Installed on this computer</div></div><div class="nx-card " ><div class="nx-k">Status</div><div class="nx-v"><span class="nx-sdot" id="ovStatusDot" data-state="idle"></span><span id="ovStatus">Not checked</span></div><div class="nx-s">Update status</div></div></div><div class="stats">
+        <div class="nx-pagehead"><div><h1>Overview</h1><p>Your PlazCode at a glance.</p></div></div><div class="nx-grid"><div class="nx-card " data-go="account" style="cursor:pointer"><div class="nx-k">Account</div><div class="nx-v"><span data-profile-name>Guest</span></div><div class="nx-s">Not signed in</div></div><div class="nx-card " ><div class="nx-k">Version</div><div class="nx-v"><span id="ovVersion">v__PLAZCODE_VERSION__</span></div><div class="nx-s">Installed on this computer</div></div><div class="nx-card " ><div class="nx-k">Status</div><div class="nx-v"><span class="nx-sdot" id="ovStatusDot" data-state="idle"></span><span id="ovStatus">Not checked</span></div><div class="nx-s">Update status</div></div></div><div class="stats">
           <div class="stat" data-tone="green"><div class="stat-head"><span id="bridgeDot" class="dot"></span>Bridge</div><div id="bridgeVal" class="stat-val">Waiting</div><div class="stat-sub">Browser extension link</div></div>
           <div class="stat" data-tone="amber"><div class="stat-head"><span id="studioDot" class="dot"></span>Roblox Studio</div><div id="studioVal" class="stat-val">Offline</div><div class="stat-sub">Primary Studio MCP</div></div>
           <div class="stat" data-tone="blue"><div class="stat-head"><span class="dot on" style="background:var(--blue)"></span>Tools</div><div id="toolCount" class="stat-val">0</div><div class="stat-sub">Live tool catalog</div></div>
@@ -870,10 +871,10 @@ html[data-desktop-theme] .dx-card{box-shadow:var(--p-lift)}
         <div class="nx-block"><h2>Glow &amp; gradients</h2><p>These two also change the PlazCode bar in your browser.</p><div class="nx-rows"><div class="nx-row"><span class="nx-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></span><div><b>Glow effects</b><small>Soft light around cards and buttons.</small></div><div class="nx-ctl"><div class="nx-seg"><button type="button" data-nx-glow="off" aria-pressed="false">Off</button><button type="button" data-nx-glow="subtle" aria-pressed="true">Subtle</button><button type="button" data-nx-glow="strong" aria-pressed="false">Strong</button></div></div></div><div class="nx-row"><span class="nx-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 9 11l4 4 8-9"/></svg></span><div><b>Gradients</b><small>Color blends on cards and the sidebar.</small></div><div class="nx-ctl"><button type="button" class="nx-sw" role="switch" aria-checked="true" id="nxGradients" aria-label="Gradients"></button></div></div><div class="nx-row"><span class="nx-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.700M3 4v5h5"/></svg></span><div><b>Restore default theme</b><small>Go back to the original gold theme.</small></div><div class="nx-ctl"><button type="button" class="nx-btn ghost" id="nxThemeReset">Restore</button></div></div></div><div class="nx-legacy"><div class="settingcard appearance-card"><h3>Appearance</h3><div class="palette-preview" role="group" aria-label="Color palette"><button type="button" data-desktop-palette="default" aria-label="Default theme" title="Default" aria-pressed="false">Default</button><button type="button" data-desktop-palette="amethyst" aria-label="Amethyst theme" title="Amethyst" aria-pressed="false">Amethyst</button><button type="button" data-desktop-palette="cyan" aria-label="Polar Cyan theme" title="Polar Cyan" aria-pressed="false">Polar Cyan</button><button type="button" data-desktop-palette="rose" aria-label="Rose theme" title="Rose" aria-pressed="false">Rose</button><button type="button" data-desktop-palette="emerald" aria-label="Emerald theme" title="Emerald" aria-pressed="false">Emerald</button><button type="button" data-desktop-palette="graphite" aria-label="Graphite theme" title="Graphite" aria-pressed="false">Graphite</button><button type="button" data-desktop-palette="ocean" aria-label="Oceanic theme" title="Oceanic" aria-pressed="false">Oceanic</button><button type="button" data-desktop-palette="copper" aria-label="Copper Atelier theme" title="Copper Atelier" aria-pressed="false">Copper Atelier</button><button type="button" data-desktop-palette="aurora" aria-label="Aurora theme" title="Aurora" aria-pressed="false">Aurora</button><button type="button" data-desktop-palette="orchid" aria-label="Orchid Noir theme" title="Orchid Noir" aria-pressed="false">Orchid Noir</button></div><p>Choose a shared palette, glow and gradients. Changes also update the PlazCode browser bar and panels while the bridge is connected.</p><div class="settingrow nx-off"><label for="desktopTheme">Color palette</label><select id="desktopTheme"><option value="default">Default</option><option value="amethyst">Amethyst</option><option value="cyan">Polar Cyan</option><option value="rose">Rose</option><option value="emerald">Emerald</option><option value="graphite">Graphite</option><option value="crimson">Crimson</option><option value="ocean">Oceanic</option><option value="copper">Copper Atelier</option><option value="aurora">Aurora</option><option value="orchid">Orchid Noir</option></select></div><div class="settingrow"><label for="desktopGlow">Glow effects</label><select id="desktopGlow"><option value="off">Off</option><option value="subtle">Subtle</option><option value="strong">Strong</option></select></div><div class="settingrow"><label for="desktopGradients">Gradients</label><select id="desktopGradients"><option value="on">On</option><option value="off">Off</option></select></div><div class="instructions-actions"><button id="resetAppearance" class="softbtn">Restore default theme</button><span id="appearanceStatus" class="instructions-status" role="status"></span></div></div></div></div>
       </section>
       <section class="page" id="page-account">
-        <div class="nx-pagehead"><div><h1>Account</h1><p>Sign-in, plans and licenses.</p></div></div>
-        <div class="nx-card nx-empty"><span class="nx-avatar">G</span><div class="nx-v" style="justify-content:center">Guest</div><div class="nx-s">You are not signed in.</div><div style="margin-top:14px"><button type="button" class="nx-btn" disabled>Sign in · Coming soon</button></div></div>
+        <div class="nx-pagehead"><div><h1>Account</h1><p>Your profile and sync.</p></div></div>
+        <div class="nx-card nx-empty"><span class="nx-avatar" id="profileAccountAvatar">P</span><div class="nx-v" style="justify-content:center" data-profile-name>PlazCode</div><div class="nx-s">Your settings and skills follow your account. Files, memory and device permissions stay on this computer.</div><p id="profileSyncStatus" role="status"></p><div style="margin-top:14px"><button type="button" class="nx-btn" id="profileSignOut">Switch profile / Sign out</button></div></div>
         
-        <p class="nx-s" style="margin:12px 2px">Accounts, plans and licenses are not live yet. Everything in PlazCode works without them.</p>
+        <p class="nx-s" style="margin:12px 2px">Switching profiles stops current tools. Removing a saved profile only forgets its sign-in on this computer.</p>
       </section>
       <section class="page" id="page-settings">
         <div class="page-head"><div><div class="page-title">Settings</div><div class="page-sub">Changes autosave immediately and stay synced with the extension.</div></div><button class="softbtn" data-go="updates" style="align-self:flex-start;margin-top:4px">Updates</button></div>
@@ -945,6 +946,14 @@ __PLAZCODE_VERSION_UI__
   var Boot = window.__PLAZCODE_BOOT__ || {};
   var Key = Boot.key || "__PLAZCODE_PAIRING_KEY__";
   var Apiurl = Boot.apiUrl || "http://127.0.0.1:3000";
+  var ProfileContext = null, ProfilePortal = null, ProfileScreen = null;
+  // Never share desktop caches between accounts. No passwords or tokens enter browser storage.
+  var ProfileStorage = {
+    key:function(Key){if(!Boot.profiles)return Key;var Id=sessionStorage.getItem('plazcode-profile-context');return Boot.profiles?'profile:'+ (Id||'locked')+':'+Key:Key;},
+    getItem:function(Key){return window.localStorage.getItem(this.key(Key));},
+    setItem:function(Key,Value){window.localStorage.setItem(this.key(Key),Value);},
+    removeItem:function(Key){window.localStorage.removeItem(this.key(Key));}
+  };
   var State = null;
   var Toolfilter = "All";
   var Toolquery = "";
@@ -989,7 +998,7 @@ __PLAZCODE_VERSION_UI__
     }
   }
 
-  var Notificationui=PlazCodeNotifications.mount(Byid("notificationCenter"),{getItem:Key=>{try{return window.localStorage.getItem(Key);}catch{return null;}},setItem:(Key,Value)=>{try{window.localStorage.setItem(Key,Value);}catch{}}});
+  var Notificationui=PlazCodeNotifications.mount(Byid("notificationCenter"),{getItem:Key=>{try{return ProfileStorage.getItem(Key);}catch{return null;}},setItem:(Key,Value)=>{try{ProfileStorage.setItem(Key,Value);}catch{}}});
   function Notice(Title,Message,Kind,Id){Notificationui.add(Title,Message,Kind,Id);}
   var Laststudiostate=null,Lastbridgestate=null;
   var Taskcenter = PlazCodeTaskCenter.mount(Byid("taskCenter"), function (Request) { return Api("/api/checkpoints", {method:"POST",body:JSON.stringify(Object.assign({},Request,{chat:State && State.browser_agent && State.browser_agent.chat || ""}))}); }, function (Prompt, Task) { return Api("/api/desktop/agent", {method:"POST",body:JSON.stringify({action:"task-send",prompt:Task?JSON.stringify({format:"plazcode-task-request",prompt:Prompt,task_id:Task.id,engine:Task.engine,chat:Task.chat}):Prompt,request_id:crypto.randomUUID()})}); });
@@ -1067,6 +1076,7 @@ __PLAZCODE_VERSION_UI__
     Options = Options || {};
     var Headersobj = new Headers(Options.headers || {});
     Headersobj.set("Authorization", "Bearer " + Key);
+    if(ProfileContext)Headersobj.set("X-PlazCode-Profile",ProfileContext.epoch);
     if (Options.body && !Headersobj.has("Content-Type")) {
       Headersobj.set("Content-Type", "application/json");
     }
@@ -1078,7 +1088,7 @@ __PLAZCODE_VERSION_UI__
     Requestoptions.headers = Headersobj;
 
     var Controller = new AbortController();
-    var Timeout = window.setTimeout(function () { Controller.abort(); }, Path.indexOf("/api/media/convert")===0 ? 65000 : Path.indexOf("/api/templates/import")===0 ? 60000 : Path === "/api/checkpoints" ? 30000 : Path === "/api/toolkit" || Path === "/api/explorer" || Path === "/api/skills" ? 130000 : Path === "/api/desktop/update" && Options.method === "POST" ? 45000 : Path === "/api/desktop/agent" && Options.body && Options.body.includes('"media-stage"') ? 65000 : 7000);
+    var Timeout = window.setTimeout(function () { Controller.abort(); }, Path === "/api/desktop/profiles" ? 120000 : Path.indexOf("/api/media/convert")===0 ? 65000 : Path.indexOf("/api/templates/import")===0 ? 60000 : Path === "/api/checkpoints" ? 30000 : Path === "/api/toolkit" || Path === "/api/explorer" || Path === "/api/skills" ? 130000 : Path === "/api/desktop/update" && Options.method === "POST" ? 45000 : Path === "/api/desktop/agent" && Options.body && Options.body.includes('"media-stage"') ? 65000 : 7000);
     Requestoptions.signal = Controller.signal;
     return fetch(Apiurl + Path, Requestoptions).then(function (Response) {
       return Response.json().catch(function (Error) {
@@ -1086,7 +1096,7 @@ __PLAZCODE_VERSION_UI__
         return {};
       }).then(function (Body) {
         if (!Response.ok) {
-          throw new Error(Body.error || ("HTTP " + Response.status));
+          var Failure=new Error(Body.error || ("HTTP " + Response.status));Failure.code=Body.code;throw Failure;
         }
         return Body;
       });
@@ -1094,7 +1104,7 @@ __PLAZCODE_VERSION_UI__
   }
 
   function Setupsettingssections(Refreshmemory) {
-    var Saved={};try{Saved=JSON.parse(localStorage.getItem('plazcodeSettingsSections')||'{}')||{};}catch(Error){}
+    var Saved={};try{Saved=JSON.parse(ProfileStorage.getItem('plazcodeSettingsSections')||'{}')||{};}catch(Error){}
     Array.from(document.querySelectorAll('#page-settings .settingcard')).forEach(function(Card,Index){
       if(Card.closest('.settings-section'))return;
       var Heading=Array.from(Card.children).find(function(Node){return Node.tagName==='H3';});
@@ -1104,7 +1114,7 @@ __PLAZCODE_VERSION_UI__
       if(!Heading){Heading=document.createElement('h3');Heading.textContent=Key==='memorySettings'?'Memory':'Settings';}
       if(!Intro){Intro=document.createElement('p');Intro.textContent='View, add and manage saved project notes and chat memory.';}
       Card.before(Section);Summary.append(Heading,Intro);Section.appendChild(Summary);Card.className='settings-section-body';Section.appendChild(Card);Section.open=Object.prototype.hasOwnProperty.call(Saved,Key)?Saved[Key]===true:Key==='languageSettings';
-      Section.addEventListener('toggle',function(){Saved[Key]=Section.open;try{localStorage.setItem('plazcodeSettingsSections',JSON.stringify(Saved));}catch(Error){}if(Key==='memorySettings'&&Section.open&&Refreshmemory)Refreshmemory();});
+      Section.addEventListener('toggle',function(){Saved[Key]=Section.open;try{ProfileStorage.setItem('plazcodeSettingsSections',JSON.stringify(Saved));}catch(Error){}if(Key==='memorySettings'&&Section.open&&Refreshmemory)Refreshmemory();});
     });
   }
   function Go(Name, Cat) {
@@ -1313,7 +1323,7 @@ __PLAZCODE_VERSION_UI__
     if (Preferences.rsAppearance && !Appearancepending) Applyappearance(Preferences.rsAppearance);
     else if (!Preferences.rsAppearance && !Appearancemigrated && !Appearancepending) {
       Appearancemigrated=true;
-      var Legacy;try { Legacy=JSON.parse(window.localStorage.getItem('plazcodeDesktopAppearance') || 'null'); }catch(Error){}
+      var Legacy;try { Legacy=JSON.parse(ProfileStorage.getItem('plazcodeDesktopAppearance') || 'null'); }catch(Error){}
       if(Legacy) Saveappearance();
     }
     var Folders = Byid("allowedFolders");
@@ -1459,11 +1469,13 @@ __PLAZCODE_VERSION_UI__
   }
 
   function Refresh() {
+    if(Boot.profiles&&!ProfileContext)return Promise.resolve();
     if (Refreshing) return Promise.resolve();
     Refreshing = true;
 
     return Api("/api/desktop/state").then(function (Nextstate) {
       State = Nextstate;
+      if(Byid("profileSyncStatus"))Byid("profileSyncStatus").textContent=State.account_sync||"";
       Render();
       return Loadcatalog();
     }).catch(function (Error) {
@@ -1555,7 +1567,7 @@ __PLAZCODE_VERSION_UI__
   }
   function Saveappearance() {
     var Value=Applyappearance({theme:Byid('desktopTheme').value,glow:Byid('desktopGlow').value,gradients:Byid('desktopGradients').value});
-    try { window.localStorage.setItem('plazcodeDesktopAppearance',JSON.stringify(Value));Byid('appearanceStatus').textContent='Theme saved.'; }
+    try { ProfileStorage.setItem('plazcodeDesktopAppearance',JSON.stringify(Value));Byid('appearanceStatus').textContent='Theme saved.'; }
     catch (Error) { Byid('appearanceStatus').textContent='Applied for this window; appearance storage is unavailable.'; }
     Appearancepending++;
     Appearancewrites=Appearancewrites.then(function(){return Api('/api/desktop/preferences',{method:'POST',body:JSON.stringify({rsAppearance:Value})});}).then(function(){
@@ -1617,8 +1629,8 @@ __PLAZCODE_VERSION_UI__
   }
 
   /* ----- Look & feel (desktop only, stored in this window) ----- */
-  function Nxloadlook() { try { var Saved = JSON.parse(window.localStorage.getItem('plazcodeDesktopLook') || '{}'); Nxlook = Object.assign({}, NXLOOKDEFAULT, Saved || {}); } catch (Error) { Nxlook = Object.assign({}, NXLOOKDEFAULT); } }
-  function Nxsavelook() { try { window.localStorage.setItem('plazcodeDesktopLook', JSON.stringify(Nxlook)); } catch (Error) {} }
+  function Nxloadlook() { try { var Saved = JSON.parse(ProfileStorage.getItem('plazcodeDesktopLook') || '{}'); Nxlook = Object.assign({}, NXLOOKDEFAULT, Saved || {}); } catch (Error) { Nxlook = Object.assign({}, NXLOOKDEFAULT); } }
+  function Nxsavelook() { try { ProfileStorage.setItem('plazcodeDesktopLook', JSON.stringify(Nxlook)); } catch (Error) {} }
   function Nxapplylook() {
     var Root = document.documentElement, L = Nxlook;
     Root.style.setProperty('--nx-r', L.radius + 'px');
@@ -1683,7 +1695,7 @@ __PLAZCODE_VERSION_UI__
   function Nxdb(Op, Value) {
     return new Promise(function (Resolve, Reject) {
       try {
-        var Open = window.indexedDB.open('plazcodeLook', 1);
+        var Open = window.indexedDB.open(Boot.profiles?'plazcodeLook:'+sessionStorage.getItem('plazcode-profile-context'):'plazcodeLook', 1);
         Open.onupgradeneeded = function () { Open.result.createObjectStore('files'); };
         Open.onerror = function () { Reject(Open.error); };
         Open.onsuccess = function () {
@@ -1724,7 +1736,7 @@ __PLAZCODE_VERSION_UI__
     var C = Nxparse(Hex); if (!C) return null;
     return {rgb: C.join(' '), accent: Nxtohex(C), light: Nxtohex(Nxmix(C, [255, 255, 255], .5)), bg: Nxtohex(Nxmix([8, 9, 12], C, .08)), canvas: Nxtohex(Nxmix([8, 9, 12], C, .07)), surface: Nxtohex(Nxmix([14, 15, 20], C, .12)), raised: Nxtohex(Nxmix([20, 21, 28], C, .17)), stroke: Nxtohex(Nxmix([40, 42, 52], C, .26)), ink: Nxtohex(Nxmix([150, 154, 168], C, .22))};
   }
-  function Nxcustomactive() { try { return window.localStorage.getItem('plazcodeCustomTheme') || ''; } catch (Error) { return ''; } }
+  function Nxcustomactive() { try { return ProfileStorage.getItem('plazcodeCustomTheme') || ''; } catch (Error) { return ''; } }
   function Nxapplycustom() {
     var Root = document.documentElement, Hex = Nxcustomactive(), Theme = Hex ? Nxcustomtheme(Hex) : null;
     var Props = ['--canvas', '--surface', '--raised', '--stroke', '--ink-soft'];
@@ -1736,7 +1748,7 @@ __PLAZCODE_VERSION_UI__
     var Tile = Byid('nxCustomTile'); if (Tile) Tile.setAttribute('aria-pressed', 'true');
   }
   function Nxclearcustom() {
-    try { window.localStorage.removeItem('plazcodeCustomTheme'); } catch (Error) {}
+    try { ProfileStorage.removeItem('plazcodeCustomTheme'); } catch (Error) {}
     var Root = document.documentElement; Root.removeAttribute('data-nx-custom');
     ['--canvas', '--surface', '--raised', '--stroke', '--ink-soft'].forEach(function (Name) { Root.style.removeProperty(Name); });
     var Tile = Byid('nxCustomTile'); if (Tile) Tile.setAttribute('aria-pressed', 'false');
@@ -1765,10 +1777,10 @@ __PLAZCODE_VERSION_UI__
     Add.onclick = function () { if (Panel) { Panel.classList.toggle('nx-off'); var Current = Nxcustomactive(); if (Color && Current) Color.value = Current; if (Hex) Hex.value = (Color && Color.value) || '#e9ba53'; } };
     if (Color) Color.oninput = function () { if (Hex) Hex.value = Color.value; Nxpreviewcustom(Color.value); };
     if (Hex) Hex.oninput = function () { if (Nxparse(Hex.value)) { var V = Hex.value.charAt(0) === '#' ? Hex.value : '#' + Hex.value; if (Color) Color.value = V; Nxpreviewcustom(V); } };
-    var Apply = Byid('nxCustomApply'); if (Apply) Apply.onclick = function () { var V = Color && Color.value; if (!Nxparse(V)) return; try { window.localStorage.setItem('plazcodeCustomTheme', V); } catch (Error) {} Nxapplycustom(); if (Panel) Panel.classList.add('nx-off'); };
-    var Remove = Byid('nxCustomRemove'); if (Remove) Remove.onclick = function () { Nxclearcustom(); var Saved; try { Saved = JSON.parse(window.localStorage.getItem('plazcodeDesktopAppearance') || '{}'); } catch (Error) {} Applyappearance(Saved || {}); if (Panel) Panel.classList.add('nx-off'); };
+    var Apply = Byid('nxCustomApply'); if (Apply) Apply.onclick = function () { var V = Color && Color.value; if (!Nxparse(V)) return; try { ProfileStorage.setItem('plazcodeCustomTheme', V); } catch (Error) {} Nxapplycustom(); if (Panel) Panel.classList.add('nx-off'); };
+    var Remove = Byid('nxCustomRemove'); if (Remove) Remove.onclick = function () { Nxclearcustom(); var Saved; try { Saved = JSON.parse(ProfileStorage.getItem('plazcodeDesktopAppearance') || '{}'); } catch (Error) {} Applyappearance(Saved || {}); if (Panel) Panel.classList.add('nx-off'); };
   }
-  function Nxpreviewcustom(Hex) { if (!Nxparse(Hex)) return; try { window.localStorage.setItem('plazcodeCustomTheme', Hex); } catch (Error) {} Nxapplycustom(); }
+  function Nxpreviewcustom(Hex) { if (!Nxparse(Hex)) return; try { ProfileStorage.setItem('plazcodeCustomTheme', Hex); } catch (Error) {} Nxapplycustom(); }
 
 
   function MountProfileSignIn(Backend, Hooks) {
@@ -1789,7 +1801,7 @@ __PLAZCODE_VERSION_UI__
       });
     }
     function Credentials(Creating, Profile){View('credentials');Heading.textContent=T(Creating?'Create your profile':'Sign in to PlazCode');Subtitle.textContent=T(Creating?'Make PlazCode yours.':'Welcome back. Enter your details to continue.');Form.dataset.creating=String(Creating);Username.value=Profile?Profile.username:'';Username.readOnly=!!Profile;Password.value='';Password.autocomplete=Creating?'new-password':'current-password';Byid('profileSubmit').textContent=T(Creating?'Create profile':'Log in');(Profile?Password:Username).focus();}
-    async function Complete(Profile, Secret, Creating){if(Busy)return;Lock(true);Status.textContent=T(Creating?'Creating your profile…':'Logging in…');try{var Result=Creating?await Backend.create(Username.value,Secret):await Backend.login(Profile&&Profile.id,Profile?Profile.username:Username.value,Secret);Password.value='';await Hooks.enter(Result);await Close();}catch(Error){Password.value='';Say(Error);requestAnimationFrame(function(){Password.focus();});}finally{Lock(false);}}
+    async function Complete(Profile, Secret, Creating){if(Busy)return;Lock(true);Status.textContent=T(Creating?'Creating your profile…':'Logging in…');try{var Result=Creating?await Backend.create(Username.value,Secret):await Backend.login(Profile&&Profile.id,Profile?Profile.username:Username.value,Secret);Password.value='';await Hooks.enter(Result);await Close();}catch(Error){Password.value='';if(Error.code==='password_required')Credentials(false,Profile);Say(Error);requestAnimationFrame(function(){Password.focus();});}finally{Lock(false);}}
     Form.onsubmit=function(Event){Event.preventDefault();if(!Form.reportValidity())return;Complete(Selected,Password.value,Form.dataset.creating==='true');};
     Byid('profileCreate').onclick=function(){Selected=null;Credentials(true,null);};Byid('profileUseExisting').onclick=function(){Selected=null;Credentials(false,null);};Byid('profileBack').onclick=function(){Password.value='';Selected=null;View('picker');Render();Byid('profileCreate').focus();};
     Byid('profileLogin').onclick=function(){if(!Selected||Busy)return;if(Selected.remembered)Complete(Selected,'',false);else Credentials(false,Selected);};
@@ -1798,7 +1810,7 @@ __PLAZCODE_VERSION_UI__
     List.onkeydown=function(Event){if(!['ArrowDown','ArrowUp','Home','End'].includes(Event.key))return;var Cards=Array.from(List.querySelectorAll('button'));if(!Cards.length)return;Event.preventDefault();var Index=Cards.indexOf(document.activeElement);Cards[Event.key==='Home'?0:Event.key==='End'?Cards.length-1:(Index+(Event.key==='ArrowDown'?1:-1)+Cards.length)%Cards.length].focus();};
     Host.onkeydown=function(Event){if(Event.key==='Escape'&&!Busy&&Mode!=='picker'){Event.preventDefault();Password.value='';View('picker');Render();}};
     var Logo=document.querySelector('.nx-splash-mark svg');if(Logo&&!Byid('profileBrandMark').children.length)Byid('profileBrandMark').appendChild(Logo.cloneNode(true));Byid('profileSignInVersion').textContent='__PLAZCODE_VERSION__';
-    async function Open(State){Profiles=State.profiles||[];Selected=null;Previousfocus=document.activeElement;Host.hidden=false;View('picker');Render();document.querySelector('.app').inert=true;requestAnimationFrame(function(){Host.classList.add('is-visible');var First=List.querySelector('button')||Byid('profileCreate');First.focus();});Byid('profileUseExisting').hidden=!!State.localOnly;Status.textContent='';return Host;}
+    async function Open(State){Profiles=State.profiles||[];Selected=null;Previousfocus=document.activeElement;Host.hidden=false;View('picker');Render();document.querySelector('.app').inert=true;requestAnimationFrame(function(){Host.classList.add('is-visible');var First=List.querySelector('button')||Byid('profileCreate');First.focus();});Byid('profileUseExisting').hidden=!!State.localOnly;Status.textContent=State.warning||'';return Host;}
     async function Close(){Host.classList.remove('is-visible');await new Promise(function(Resolve){window.setTimeout(Resolve,matchMedia('(prefers-reduced-motion: reduce)').matches?0:450);});Host.hidden=true;document.querySelector('.app').inert=false;if(Previousfocus&&Previousfocus.isConnected)Previousfocus.focus();}
     return {open:Open,close:Close,isOpen:function(){return !Host.hidden;},refresh:function(State){Profiles=State.profiles||[];Render();}};
   }
@@ -1817,7 +1829,8 @@ __PLAZCODE_VERSION_UI__
       if (Finished) return; Finished = true;
       var Wait = Math.max(0, 2300 - (Date.now() - Began));
       window.setTimeout(function () {
-        Say('Starting PlazCode…', 'Almost there', 'start');
+        if(Boot.profiles&&ProfilePortal&&!ProfileContext)ProfileScreen.open(ProfilePortal);
+        Say(ProfileContext?'Welcome back':'Starting PlazCode…', 'Almost there', 'start');
         window.setTimeout(function () { Splash.classList.add('out'); window.setTimeout(function () { Splash.hidden = true; Splash.parentNode && Splash.parentNode.removeChild(Splash); }, 750); }, 950);
       }, Wait);
     }
@@ -1940,11 +1953,11 @@ __PLAZCODE_VERSION_UI__
     Dx.loading = Dxfetch(DXBASE + 'index.json', true).then(function (Raw) {
       var Clean = Dxsane(Raw); if (!Clean) throw new Error('bad index');
       Dx.index = Clean; Dx.status = Clean.guides.length ? 'ok' : 'empty'; Dx.loadedAt = Date.now();
-      try { window.localStorage.setItem('plazcodeDocsIndex', JSON.stringify(Clean)); } catch (Error) {}
+      try { ProfileStorage.setItem('plazcodeDocsIndex', JSON.stringify(Clean)); } catch (Error) {}
       Dxprefetch();
     }).catch(function (Error) {
       if (!Dx.index) {
-        try { var Saved = Dxsane(JSON.parse(window.localStorage.getItem('plazcodeDocsIndex') || 'null')); if (Saved) { Dx.index = Saved; Dx.status = Saved.guides.length ? 'cached' : 'empty'; Dxprefetch(); } } catch (E2) {}
+        try { var Saved = Dxsane(JSON.parse(ProfileStorage.getItem('plazcodeDocsIndex') || 'null')); if (Saved) { Dx.index = Saved; Dx.status = Saved.guides.length ? 'cached' : 'empty'; Dxprefetch(); } } catch (E2) {}
       }
       if (!Dx.index) Dx.status = Error && Error.status === 404 ? 'empty' : 'offline';
     }).then(function () { Dx.loading = null; Dxrenderall(); return Dx.index; });
@@ -1955,9 +1968,9 @@ __PLAZCODE_VERSION_UI__
     var Key = Dxbkey(Id), Lang = Key.indexOf('|') > 0 ? Key.split('|')[1] : '';
     if (Dx.bodies[Key] != null) return Promise.resolve(Dx.bodies[Key]);
     return Dxfetch(DXBASE + encodeURIComponent(Id) + '/' + (Lang ? 'guide.' + Lang + '.md' : 'guide.md'), false).then(function (Text) {
-      Dx.bodies[Key] = Text; try { window.localStorage.setItem('plazcodeDocsBody:' + Key, Text); } catch (Error) {} return Text;
+      Dx.bodies[Key] = Text; try { ProfileStorage.setItem('plazcodeDocsBody:' + Key, Text); } catch (Error) {} return Text;
     }).catch(function (Error) {
-      var Saved = null; try { Saved = window.localStorage.getItem('plazcodeDocsBody:' + Key); } catch (E2) {}
+      var Saved = null; try { Saved = ProfileStorage.getItem('plazcodeDocsBody:' + Key); } catch (E2) {}
       if (Saved != null) { Dx.bodies[Key] = Saved; return Saved; }
       throw Error;
     });
@@ -2163,7 +2176,7 @@ __PLAZCODE_VERSION_UI__
       var Page = document.querySelector('.page.active'); if (!Page || DXPAGES.indexOf(Page.id.replace('page-', '')) < 0) return;
       var Input = Page.querySelector('.dx-search input'); if (Input) { E.preventDefault(); Input.focus(); }
     });
-    try { var Saved = Dxsane(JSON.parse(window.localStorage.getItem('plazcodeDocsIndex') || 'null')); if (Saved) { Dx.index = Saved; Dx.status = 'cached'; Dxrenderall(); } } catch (Error) {}
+    try { var Saved = Dxsane(JSON.parse(ProfileStorage.getItem('plazcodeDocsIndex') || 'null')); if (Saved) { Dx.index = Saved; Dx.status = 'cached'; Dxrenderall(); } } catch (Error) {}
   }
 
   function Bind() {
@@ -2172,7 +2185,7 @@ __PLAZCODE_VERSION_UI__
       onChange: function (Code) { return Patchpref("rsLanguage", I18n.normalize(Code)); }
     });
     try{Nxsetup();Nxarea('home','');}catch(Error){}try{Dxsetup();}catch(Error){}try{Nxstartup();}catch(Error){var Sp=Byid('nxSplash');if(Sp&&Sp.parentNode)Sp.parentNode.removeChild(Sp);}
-    var Savedappearance;try { Savedappearance=JSON.parse(window.localStorage.getItem('plazcodeDesktopAppearance') || '{}'); }catch(Error){}
+    var Savedappearance;try { Savedappearance=JSON.parse(ProfileStorage.getItem('plazcodeDesktopAppearance') || '{}'); }catch(Error){}
     Applyappearance(Savedappearance);
     ['desktopTheme','desktopGlow','desktopGradients'].forEach(function (Id) { Byid(Id).onchange=Saveappearance; });
     document.querySelectorAll('[data-desktop-palette]').forEach(function(Button){Button.onclick=function(){Byid('desktopTheme').value=Button.dataset.desktopPalette;Saveappearance();};});
@@ -2381,15 +2394,35 @@ __PLAZCODE_VERSION_UI__
     });
   }
 
-  function Bootstrap() {
+  async function Bootstrap() {
     try {
+      if(Boot.profiles){
+        ProfilePortal=await Api('/api/desktop/profiles');ProfileContext=ProfilePortal.active||null;
+        var ContextId=ProfileContext?ProfileContext.id:'locked';
+        if(sessionStorage.getItem('plazcode-profile-context')!==ContextId){sessionStorage.setItem('plazcode-profile-context',ContextId);location.reload();return;}
+        if(ProfileContext&&ProfileContext.migrate_ui){
+          // Copy old appearance/cache keys only to the first online profile; keep originals intact.
+          Object.keys(window.localStorage).filter(function(K){return K.startsWith('plazcode')&&!K.startsWith('plazcode-linux');}).forEach(function(K){if(ProfileStorage.getItem(K)===null)ProfileStorage.setItem(K,window.localStorage.getItem(K));});
+          await Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify({action:'ui-migrated'})});
+        }
+        function Action(Value){return Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify(Value)});}
+        ProfileScreen=MountProfileSignIn({create:function(U,P){return Action({action:'register',username:U,password:P});},login:function(Id,U,P){return Action({action:'login',id:Id,username:U,password:P});},remove:function(Id){return Action({action:'remove',id:Id});}},{previewTheme:Applyappearance,enter:async function(Result){ProfileContext=Result.profile;sessionStorage.setItem('plazcode-profile-context',ProfileContext.id);document.body.style.opacity='0';await new Promise(function(R){setTimeout(R,220);});location.reload();}});
+      }
+
       Bind();
       window.PlazCodeDesktop = {
         go: Go,
         refresh: Refresh
       };
+      if(ProfileContext){
+        document.querySelectorAll('[data-profile-name]').forEach(function(N){N.textContent=ProfileContext.username;});
+        document.querySelectorAll('.nx-account b').forEach(function(N){N.textContent=ProfileContext.username;});
+        document.querySelectorAll('.nx-account small').forEach(function(N){N.textContent='Signed in';});
+        document.querySelectorAll('.nx-account .nx-avatar,#profileAccountAvatar').forEach(function(N){N.textContent=Array.from(ProfileContext.username).slice(0,2).join('').toUpperCase();});
+        Byid('profileSignOut').onclick=async function(){try{await Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify({action:'logout'})});sessionStorage.setItem('plazcode-profile-context','locked');location.reload();}catch(Error){Showerror(Error);}};
+      }
       Ipc("ui-ready");
-      Refresh();
+      if(!Boot.profiles||ProfileContext)Refresh();
       var Laststatepoll=Date.now();window.setInterval(function(){if(document.hidden&&Date.now()-Laststatepoll<5000)return;Laststatepoll=Date.now();Refresh();},1000);
       function Resumeview(){if(!document.hidden){Refresh();Refreshupdates();}}document.addEventListener('visibilitychange',Resumeview);window.addEventListener('focus',Resumeview);
     } catch (Error) {
