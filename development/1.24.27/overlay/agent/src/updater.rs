@@ -408,7 +408,9 @@ static CHECK_REQUEST: once_cell::sync::Lazy<tokio::sync::Notify> = once_cell::sy
 /// applies without restarting PlazCode. Manual "Update now" ignores it.
 fn auto_updates_enabled() -> bool { crate::preferences::PreferencesStore::load().snapshot().auto_update }
 pub fn request_launch_update() { AUTO_INSTALL.store(true, std::sync::atomic::Ordering::SeqCst);LAUNCH_UPDATE.store(true, std::sync::atomic::Ordering::SeqCst);CHECK_REQUEST.notify_one(); }
+const LINUX_UPDATE_MESSAGE: &str = "Linux automatic updates are not published yet. Use the native Linux download; Windows EXE and Mac packages cannot update Linux.";
 pub fn start_checker() {
+    if cfg!(target_os="linux") { state().message=LINUX_UPDATE_MESSAGE.into(); return; }
     tokio::spawn(async {
         { let root=folder(); let _ = tokio::task::spawn_blocking(move || cleanup_update_leftovers(&std::env::temp_dir(), &root, std::time::SystemTime::now())).await; }
         let mut interval = tokio::time::interval(Duration::from_secs(30));
@@ -448,6 +450,11 @@ pub async fn get() -> Json<Status> {
     Json(snapshot)
 }
 pub async fn post(Json(value): Json<Value>) -> axum::response::Response {
+    if cfg!(target_os="linux") {
+        if !matches!(value["action"].as_str(), Some("launch"|"check"|"install")) {return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"error":"Unknown update action."}))).into_response();}
+        state().message=LINUX_UPDATE_MESSAGE.into();
+        return Json(state().clone()).into_response();
+    }
     if value["action"]=="launch" { request_launch_update();return Json(serde_json::json!({"ok":true,"queued":true})).into_response(); }
     let install=match value["action"].as_str() { Some("check")=>false,Some("install")|Some("launch")=>true,_=>return (axum::http::StatusCode::BAD_REQUEST,Json(serde_json::json!({"error":"Unknown update action."}))).into_response() };
     let silent=value["action"]=="launch" || (!install && value["background"].as_bool().unwrap_or(false));

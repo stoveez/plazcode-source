@@ -457,9 +457,9 @@ pub fn run_gui(
     Ok(())
 }
 
-#[cfg(not(any(windows, target_os = "macos")))]
+#[cfg(target_os = "linux")]
 pub fn run_gui(
-    _shared: Arc<UiShared>,
+    shared: Arc<UiShared>,
     _restart_tx: tokio::sync::mpsc::UnboundedSender<()>,
     _preferences: Arc<preferences::PreferencesStore>,
     addr: std::net::SocketAddr,
@@ -467,8 +467,15 @@ pub fn run_gui(
     start_background: bool,
     update_ready_file: Option<std::path::PathBuf>,
 ) -> anyhow::Result<()> {
-    let _ = (addr, pairing_key, start_background, update_ready_file);
-    anyhow::bail!("PlazCode desktop UI currently requires Windows")
+    let _ = (pairing_key, update_ready_file);
+    if !start_background { crate::linux_desktop::open(addr)?; }
+    loop {
+        if shared.quit_requested.swap(false, Ordering::Relaxed) { return Ok(()); }
+        if shared.show_requested.swap(false, Ordering::Relaxed) {
+            if let Err(error) = crate::linux_desktop::open(addr) { tracing::error!("Cannot open Linux desktop: {error}"); }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
 }
 
 #[cfg(test)]
@@ -579,5 +586,16 @@ mod guide_link_tests {
             assert!(guide_link_url(bad).is_none(), "{bad}");
         }
         assert!(guide_link_url(&format!("open-url:https://example.com/{}", "a".repeat(2100))).is_none());
+    }
+}
+
+#[cfg(target_os="linux")]
+pub fn external_url(message: &str) -> Option<String> {
+    match message {
+        "open:github" => Some("https://github.com/stoveez/PlazCode".into()),
+        "open:discord" => Some("https://discord.gg/ggXhZKnXPH".into()),
+        "open:blender-guide" => Some("https://github.com/ahujasid/blender-mcp#installation".into()),
+        _ => toolkit_store_url(message).or_else(||guide_link_url(message))
+            .or_else(||donation_url(message).or_else(||supported_ai_url(message)).map(str::to_owned)),
     }
 }

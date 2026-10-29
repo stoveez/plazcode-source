@@ -66,6 +66,8 @@ fn init_file_logger(ui: Option<Arc<gui::UiShared>>) {
 }
 
 mod gui;
+#[cfg(target_os="linux")]
+mod linux_desktop;
 mod workspace;
 mod safety;
 mod engine_tools;
@@ -511,8 +513,37 @@ fn tcp_listener_owner(table:&[u32],ipv6:bool,port:u16)->Option<u32> {
     }
     None
 }
-#[cfg(not(windows))]
+#[cfg(not(any(windows,target_os="macos")))]
 fn port_owner_pid(_port: u16) -> Option<u32> { None }
+
+#[cfg(target_os="macos")]
+fn port_owner_pid(port: u16) -> Option<u32> {
+    let output=std::process::Command::new("/usr/sbin/lsof")
+        .args(["-nP", &format!("-iTCP:{port}"), "-sTCP:LISTEN", "-t"])
+        .stdin(Stdio::null()).stderr(Stdio::null()).output().ok()?;
+    String::from_utf8_lossy(&output.stdout).lines().find_map(|line|line.trim().parse::<u32>().ok())
+}
+#[cfg(target_os="macos")]
+fn mac_process_path(pid:u32) -> Option<PathBuf> {
+    #[link(name="proc")]
+    unsafe extern "C" { fn proc_pidpath(pid:libc::c_int,buffer:*mut std::ffi::c_void,buffersize:u32)->libc::c_int; }
+    let mut bytes=vec![0u8;4096];
+    let size=unsafe {proc_pidpath(pid as libc::c_int,bytes.as_mut_ptr().cast(),bytes.len() as u32)};
+    if size<=0 {return None;}
+    let length=bytes.iter().position(|b|*b==0).unwrap_or(size as usize);
+    Some(PathBuf::from(String::from_utf8(bytes[..length].to_vec()).ok()?))
+}
+#[cfg(target_os="macos")]
+fn mac_owned_plazcode(pid:u32) -> Option<PathBuf> {
+    let path=mac_process_path(pid)?;
+    let name=path.file_name()?.to_str()?;
+    if !is_plazcode_image(name) {return None;}
+    let user=std::process::Command::new("/bin/ps").args(["-p",&pid.to_string(),"-o","uid="])
+        .stdin(Stdio::null()).stderr(Stdio::null()).output().ok()?;
+    let uid=String::from_utf8_lossy(&user.stdout).trim().parse::<u32>().ok()?;
+    if uid!=unsafe {libc::getuid()} {return None;}
+    Some(path)
+}
 
 #[cfg(windows)]
 fn process_image(pid: u32) -> Option<String> {
@@ -537,7 +568,7 @@ fn process_image(_pid: u32) -> Option<String> { None }
 fn is_plazcode_image(image: &str) -> bool {
     matches!(
         image.trim().to_ascii_lowercase().as_str(),
-        "plazcode.exe" | "plazcode-agent.exe"
+        "plazcode.exe" | "plazcode-agent.exe" | "plazcode" | "plazcode-agent"
     )
 }
 
@@ -565,7 +596,29 @@ fn reclaim_port(port: u16) -> anyhow::Result<()> {
         \ndifferent port, then start the agent again."
     );
 }
-#[cfg(not(windows))]
+#[cfg(target_os="macos")]
+fn reclaim_port(port:u16) -> anyhow::Result<()> {
+    let Some(pid)=port_owner_pid(port) else {return Ok(());};
+    if pid==std::process::id() {return Ok(());}
+    let Some(path)=mac_owned_plazcode(pid) else {
+        anyhow::bail!("Port {port} is occupied by another program (pid {pid}). PlazCode left it running. Close that program and reopen PlazCode.");
+    };
+    tracing::info!("Requesting stale PlazCode process {pid} release port {port}");
+    unsafe {libc::kill(pid as libc::pid_t,libc::SIGTERM);}
+    let began=std::time::Instant::now();let mut forced=false;
+    while port_owner_pid(port)==Some(pid) {
+        if began.elapsed()>Duration::from_secs(2) && !forced {
+            // Recheck PID identity/ownership immediately before escalation.
+            anyhow::ensure!(mac_owned_plazcode(pid).as_ref()==Some(&path),"Port {port} owner changed while waiting; leaving it running");
+            unsafe {libc::kill(pid as libc::pid_t,libc::SIGKILL);}
+            forced=true;
+        }
+        anyhow::ensure!(began.elapsed()<Duration::from_secs(5),"The older PlazCode process has not released port {port}. Retry shortly.");
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    Ok(())
+}
+#[cfg(not(any(windows,target_os="macos")))]
 fn reclaim_port(_port: u16) -> anyhow::Result<()> { Ok(()) }
 
 #[cfg(windows)]
@@ -1240,6 +1293,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         security::allowed_origin(&headers)
     })).allow_methods([Method::GET, Method::POST, Method::OPTIONS]).allow_headers(Any);
     updater::start_checker();
+    let linux_launch = linux_launch_routes(state.clone());
     let app = Router::new()
         .route("/", get(|| async { Json(serde_json::json!({"ok": true, "service": "plazcode-agent", "version": env!("CARGO_PKG_VERSION")})) }))
         .route("/api/pair", post(|| async { axum::http::StatusCode::FORBIDDEN }))
@@ -1287,11 +1341,13 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/mcp/toggle", post(mcp_toggle_handler))
         .route("/ws", get(ws_handler))
         .layer(axum::middleware::from_fn(track_tool_activity))
+        .merge(linux_authenticated_routes())
         .layer(axum::middleware::from_fn_with_state(state.pairing_key.clone(), security::require_pairing))
         .with_state(state)
         // Public shell contains no key; the native WebView injects credentials.
         // Register after pairing middleware; every API remains authenticated.
         .route("/desktop-ui", get(desktop_shell_handler))
+        .merge(linux_launch)
         .route("/api/integrity/extension",post(integrity::extension_signature).layer(axum::extract::DefaultBodyLimit::max(4*1024*1024)))
         .layer(cors);
     info!("PlazCode bridge listening on http://{} (WS /ws)", addr);
@@ -1623,6 +1679,18 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
     journal.save()?;outcome
 }
 
+#[cfg(target_os="linux")]
+fn linux_authenticated_routes() -> Router<AppState> { Router::new().route("/api/desktop/browser-action", post(linux_desktop::action)) }
+#[cfg(not(target_os="linux"))]
+fn linux_authenticated_routes() -> Router<AppState> { Router::new() }
+#[cfg(target_os="linux")]
+fn linux_launch_routes(state: AppState) -> Router {
+    Router::new().route("/desktop-start", get(linux_desktop::start))
+        .route("/api/desktop/browser-session", post(linux_desktop::exchange)).with_state(state)
+}
+#[cfg(not(target_os="linux"))]
+fn linux_launch_routes(_state: AppState) -> Router { Router::new() }
+
 async fn desktop_shell_handler() -> impl IntoResponse {
     let html = include_str!("desktop.html")
         .replace("__PLAZCODE_I18N_CATALOG__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/i18n-catalog.js")))
@@ -1639,6 +1707,8 @@ async fn desktop_shell_handler() -> impl IntoResponse {
         .replace("__PLAZCODE_VERSION_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/version.js")))
         .replace("__PLAZCODE_PAIRING_KEY__", "")
         .replace("__PLAZCODE_VERSION__", env!("CARGO_PKG_VERSION"));
+    #[cfg(target_os="linux")]
+    let html = html.replace("  var Boot = window.__PLAZCODE_BOOT__ || {};", &format!("{}\n  var Boot = window.__PLAZCODE_BOOT__ || {{}};", linux_desktop::BOOT));
     ([(axum::http::header::CACHE_CONTROL, "no-store")], Html(html))
 }
 

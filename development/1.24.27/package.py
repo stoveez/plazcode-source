@@ -4,7 +4,7 @@ Does not change release feeds or publish a release.
 from pathlib import Path
 import zipfile,hashlib,platform,plistlib,subprocess,shutil,json,tempfile,os
 root=Path(__file__).resolve().parents[2];source=root/'build-src-1.24.27/PlazCode';output=root/'artifacts';output.mkdir(exist_ok=True)
-osname=platform.system();baseline=root/('PlazCode-1.23.0.zip' if osname=='Windows' else 'PlazCode-macOS-1.23.0.zip')
+osname=platform.system();assert osname in ('Windows','Darwin','Linux');platform_name={'Windows':'windows','Darwin':'macos','Linux':'linux'}[osname];baseline=root/('PlazCode-1.23.0.zip' if osname=='Windows' else 'PlazCode-macOS-1.23.0.zip')
 expected='09b0db8e85ef969bd7e1eb60eb26a219bd80ed60e5d221970e1b3af6750e510b' if osname=='Windows' else 'fc004c0416c9be1d84fca9a026f62ca939eec15d294b89ec465f0986641ab21c'
 assert hashlib.sha256(baseline.read_bytes()).hexdigest()==expected
 install=output/'staging';install.mkdir(exist_ok=True)
@@ -21,6 +21,12 @@ for name in ['manifest.json','background.js','protection.js','popup.js','popup.h
  shutil.copy2(source/name,package/name)
 if osname=='Windows':
  shutil.copy2(source/'agent/target/release/PlazCode.exe',package/'PlazCode.exe')
+elif osname=='Linux':
+ shutil.copy2(source/'agent/target/release/PlazCode',package/'PlazCode');(package/'PlazCode').chmod(0o755)
+ shutil.rmtree(package/'PlazCode.app',ignore_errors=True)
+ shutil.rmtree(package/'macos',ignore_errors=True)
+ for path in package.iterdir():
+  if path.is_file() and path.suffix.lower() in ('.exe','.bat','.ps1','.cs','.command'):path.unlink()
 else:
  shutil.copy2(source/'Update-PlazCode.command',package/'Update-PlazCode.command')
  app=package/'PlazCode.app';shutil.copy2(source/'agent/target/release/PlazCode',app/'Contents/MacOS/PlazCode');(app/'Contents/MacOS/PlazCode').chmod(0o755)
@@ -53,12 +59,12 @@ for line in (sums.read_text().splitlines() if sums.exists() else []):
  digest,item=line.split(None,1);assert hashlib.sha256((package/item).read_bytes()).hexdigest()==digest,item+' checksum'
 # Protect precisely the files that ship, after both browser variants and the native app exist.
 # The running binary must contain the same pinned key/channel used to sign these files.
-native=package/('PlazCode.exe' if osname=='Windows' else 'PlazCode.app/Contents/MacOS/PlazCode')
+native=package/('PlazCode.exe' if osname=='Windows' else 'PlazCode' if osname=='Linux' else 'PlazCode.app/Contents/MacOS/PlazCode')
 info=json.loads(subprocess.check_output([str(native.resolve()),'--protection-info'],text=True))
 channel=os.environ.get('PLAZCODE_PROTECTION_CHANNEL','release')
 assert info['channel']==channel and info['version']=='1.24.27' and len(info['public_key'])==64, 'Native protection is not configured'
 with tempfile.TemporaryDirectory(prefix='plazcode-private-maps-') as maps:
- subprocess.run(['node',str(Path(__file__).with_name('protection.mjs')),'protect',str(package),maps,str(source),'windows' if osname=='Windows' else 'macos',str(output/f'PlazCode-1.24.27-{osname}-private-maps.encrypted.json')],check=True)
+ subprocess.run(['node',str(Path(__file__).with_name('protection.mjs')),'protect',str(package),maps,str(source),platform_name,str(output/f'PlazCode-1.24.27-{osname}-private-maps.encrypted.json')],check=True)
  subprocess.run(['node',str(Path(__file__).with_name('protection.mjs')),'verify',str(package),info['public_key']],check=True)
  subprocess.run([str(native.resolve()),'--verify-package',str(package.resolve()),'--verify-version','1.24.27'],check=True)
 # Keep existing checksum listings truthful after transformation.
@@ -69,7 +75,7 @@ with zipfile.ZipFile(output/'PlazCode-Firefox-1.24.27-development.zip','w',zipfi
  for path in sorted((package/'PlazCode-Extension-Firefox').rglob('*')):
   if path.is_file():archive.write(path,path.relative_to(package/'PlazCode-Extension-Firefox').as_posix())
 (package/'DEVELOPMENT.txt').write_text('PlazCode 1.24.27 development build. Validation and live-provider/Studio checks remain required before release. This build is not publisher-signed. Existing stable update feeds are unchanged.\n')
-name='PlazCode-1.24.27-development.zip' if osname=='Windows' else 'PlazCode-macOS-1.24.27-development.zip'
+name='PlazCode-1.24.27-development.zip' if osname=='Windows' else f'PlazCode-{"Linux" if osname=="Linux" else "macOS"}-1.24.27-development.zip'
 with zipfile.ZipFile(output/name,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
  for path in sorted(package.rglob('*')):
   if path.is_file():archive.write(path,path.relative_to(install).as_posix())
@@ -79,7 +85,7 @@ assert (output/name).stat().st_size<=64*1024*1024, 'Protected package exceeds th
 # update zips (one PlazCode folder, app, memory helper, both extensions, root extension copies), so testers
 # extract it, open the PlazCode folder and see everything with no extra steps. Only DEVELOPMENT.txt (a note that
 # the real update zips do not carry) is left out. Nothing is added.
-lean_name='PlazCode-1.24.27-test-lean.zip' if osname=='Windows' else 'PlazCode-macOS-1.24.27-test-lean.zip'
+lean_name='PlazCode-1.24.27-test-lean.zip' if osname=='Windows' else f'PlazCode-{"Linux" if osname=="Linux" else "macOS"}-1.24.27-test-lean.zip'
 lean_root=output/'lean';shutil.rmtree(lean_root,ignore_errors=True)
 shutil.copytree(package,lean_root/'PlazCode',symlinks=True)
 lean=lean_root/'PlazCode'
@@ -89,6 +95,9 @@ with zipfile.ZipFile(output/lean_name,'w',zipfile.ZIP_DEFLATED,compresslevel=9) 
   if path.is_file() or path.is_symlink():
    info=zipfile.ZipInfo.from_file(path,path.relative_to(lean_root).as_posix());info.compress_type=zipfile.ZIP_DEFLATED
    archive.writestr(info,path.read_bytes(),compresslevel=9)
+if osname=='Linux':
+ import tarfile
+ with tarfile.open(output/'PlazCode-Linux-1.24.27-test-lean.tar.gz','w:gz',compresslevel=9) as archive:archive.add(lean,arcname='PlazCode')
 shutil.rmtree(lean_root)
 print(lean_name,(output/lean_name).stat().st_size)
 assert (output/lean_name).stat().st_size<=64*1024*1024, 'Protected test package exceeds the installed updater limit'

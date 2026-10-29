@@ -88,3 +88,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29 WIP: approval mode policy, shared preference/native schema, actual bar/app controls and fresh-composer collapsed-tab geometry implemented. Local policy/legacy approval and collapse regressions passed. Browser integration/screenshots, native compilation and final full CI remain; do not deliver earlier test sources.
 
 - 2026-10-29: real compiled desktop and extension frontend screenshots captured; all three approval modes persist/sync and respect read-only/folder limits. New Linux report reproduced in source: GUI stub always fails and continues headless. Native visible Linux frontend/package are now required before final test delivery.
+
+- 2026-10-29: Mac screenshot reports occupied legacy bridge port 17613. Found Mac port reclamation was a no-op. WIP same-user targeted PlazCode recovery and real Mac process regression added alongside native Linux browser desktop and signed Linux packaging; full checks pending.

@@ -306,12 +306,33 @@ jobs:
           python test-skills-native.py
           python test-studio-autoconnect.py
         working-directory: build-src-1.24.27/PlazCode
+      - name: Real Linux visible desktop and browser authentication
+        if: runner.os == 'Linux'
+        working-directory: build-src-1.24.27/PlazCode
+        run: |
+          npm ci --prefix release-tools --ignore-scripts
+          node release-tools/node_modules/playwright/cli.js install --with-deps chromium
+          node release-tools/test-linux-desktop.cjs
+      - name: Real macOS stale-process startup recovery
+        if: runner.os == 'macOS'
+        working-directory: build-src-1.24.27/PlazCode
+        run: python test-macos-startup-recovery.py
       - name: Build native executable
         run: cargo +stable build --release --locked --manifest-path agent/Cargo.toml
         working-directory: build-src-1.24.27/PlazCode
       - name: Optimized native signed-file and authenticated-work integration
         if: runner.os == 'Linux'
         run: node development/1.24.27/test-release-verifier.mjs
+      - name: Build signed native Linux test package
+        if: runner.os == 'Linux' && github.event_name != 'pull_request'
+        env:
+          PLAZCODE_RELEASE_SIGNING_KEY: ${{ secrets.PLAZCODE_RELEASE_SIGNING_KEY }}
+        shell: bash
+        run: |
+          export PLAZCODE_PROTECTION_CHANNEL=release
+          unset PLAZCODE_RELEASE_PUBLIC_KEY PLAZCODE_SIGNING_KEY_FILE
+          cargo +stable build --release --locked --manifest-path build-src-1.24.27/PlazCode/agent/Cargo.toml
+          python development/1.24.27/package.py
       - name: Windows PE and updater regressions
         if: runner.os == 'Windows'
         shell: pwsh
@@ -385,10 +406,11 @@ jobs:
           PLAZCODE_RELEASE_SIGNING_KEY: ${{ github.event_name != 'pull_request' && secrets.PLAZCODE_RELEASE_SIGNING_KEY || '' }}
         run: python development/1.24.27/package.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: runner.os != 'Linux'
         with:
           name: plazcode-1.24.27-${{ runner.os }}-test-lean
-          path: artifacts/*-test-lean.zip
+          path: |
+            artifacts/*-test-lean.zip
+            artifacts/*-test-lean.tar.gz
           compression-level: 0
           if-no-files-found: warn
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
