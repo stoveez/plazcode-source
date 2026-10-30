@@ -56,7 +56,7 @@ fn update_available(latest: &str, extension: &str, desktop_latest: &str, desktop
     anyhow::ensure!(version(desktop_latest)? <= version(latest)?,"Desktop build cannot exceed release version.");
     // A test desktop can legitimately be ahead of the published stable feed.
     // Even an older extension must never cause that desktop to install a downgrade.
-    if version(latest)? < version(desktop)? {return Ok(false);}
+    if version(latest)? < version(desktop)? || version(desktop_latest)? < version(desktop)? {return Ok(false);}
     Ok(version(latest)? > version(extension)? || version(desktop_latest)? > version(desktop)?)
 }
 fn no_update(status: &mut Status, ahead: bool) {
@@ -305,10 +305,10 @@ async fn run(install: bool, background: bool) -> anyhow::Result<()> {
     let notes = feed.get("release_notes").and_then(|value| serde_json::from_value::<Vec<ReleaseNotes>>(value.clone()).ok());
     let desktop_latest=feed.get("desktop_version").and_then(Value::as_str).unwrap_or(&latest).to_owned();
     let available=update_available(&latest,&installed(),&desktop_latest,env!("CARGO_PKG_VERSION"))?;
-    { let mut s=state();s.installed=installed();s.latest=Some(latest.clone());s.desktop_latest=Some(desktop_latest);s.available=available;s.checked_at=std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64;s.check_error=None; if let Some(notes) = notes { s.release_notes = notes; } }
-    if !available { no_update(&mut state(),version(&latest)?<version(env!("CARGO_PKG_VERSION"))?);return Ok(()); }
+    { let mut s=state();s.installed=installed();s.latest=Some(latest.clone());s.desktop_latest=Some(desktop_latest.clone());s.available=available;s.checked_at=std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64;s.check_error=None; if let Some(notes) = notes { s.release_notes = notes; } }
+    if !available { no_update(&mut state(),version(&desktop_latest)?<version(env!("CARGO_PKG_VERSION"))?);return Ok(()); }
     // Defense in depth: no download or installer may target an older desktop.
-    anyhow::ensure!(version(&latest)? >= version(env!("CARGO_PKG_VERSION"))?, "Refusing an update older than this desktop version.");
+    anyhow::ensure!(version(&latest)? >= version(env!("CARGO_PKG_VERSION"))? && version(&desktop_latest)? >= version(env!("CARGO_PKG_VERSION"))?, "Refusing an update older than this desktop version.");
     if !install { progress(0,"A newer version is ready to install.");return Ok(()); }
     // Automatic installs of a version whose installation just failed wait with
     // a growing delay. Without it, a persistent lock relaunches the desktop,
@@ -479,6 +479,7 @@ pub async fn post(Json(value): Json<Value>) -> axum::response::Response {
     #[test] fn ahead_of_stable_is_not_an_update_even_with_an_older_extension() {
         assert!(!update_available("1.24.26","1.24.27","1.24.26","1.24.27").unwrap());
         assert!(!update_available("1.24.26","1.24.25","1.24.26","1.24.27").unwrap());
+        assert!(!update_available("1.24.28","1.24.26","1.24.26","1.24.27").unwrap(),"a newer extension release cannot replace a newer test desktop with an older executable");
         assert!(update_available("1.24.27","1.24.26","1.24.27","1.24.27").unwrap(),"same-version complete repair still updates an old extension");
         assert!(update_available("1.24.28","1.24.27","1.24.28","1.24.27").unwrap(),"newer stable release must still update a test desktop");
     }

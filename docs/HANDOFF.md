@@ -169,3 +169,6 @@ Limits: the Mac zip can only be built on a Mac or by GitHub's Mac runners (publi
 
 ## Current follow-up
 Plus/approval chevrons and splash crossfade implemented; native startup verification optimized without skipping checks. Ahead-of-stable update error fixed locally with 21 updater tests passing; Windows/Mac integration added to CI. Profile-picture JPEG/PNG/GIF request is next. No replacement ZIPs yet; delivered Drive archives are still 9c175eb. Immediate actual preview and test ZIP delivery via Google Drive are now binding owner rules. See docs/NOW.md and startup-performance.md.
+
+## Final local profile-picture/startup verification (2026-10-30)
+Profile-picture/startup follow-ups now pass local verification: 234 native + 4 library tests, real account/picture two-install sync, actual PNG/JPEG/two-frame GIF upload/removal/rejection, actual i18n all 15 languages, UI/design/storage/approval and Linux startup. Bold sync status is in refreshed real Drive preview. Matching public account service deployed at source 1326d5e; live private picture sync and older-client retention passed. Full replacement Windows/Mac/Linux/browser build remains pending Public source; existing Drive test ZIPs are old 9c175eb and contain no follow-ups.

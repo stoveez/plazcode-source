@@ -13,3 +13,5 @@ Plus badge now uses a centered SVG; approval arrow uses the same geometric chevr
 - [Drive video](https://drive.google.com/file/d/18Wq7TADPI4dp6lncj5pq7gxVupEW_0Le/view?usp=drivesdk)
 
 Ahead-of-stable updater bug: 1.24.27 against stable 1.24.26 was classified as an error before availability was checked. Valid signed older feeds now mean no update; no installer/download is permitted, stale failure state clears, signature checks and last-known-release rollback rejection remain. Same-version complete repairs and newer releases remain allowed. Targeted updater tests pass; real Windows/Mac Check/Install regression is added to CI, pending next full build.
+
+Final local follow-up: all 234 native + 4 library tests pass (2 ignored). The updater blocks a lower bundled desktop even when the extension release version is higher. Actual splash overlap, approval, design and 15-language checks pass; Windows/Mac ahead-of-stable native integration is wired in CI but awaits the next Public build window. Full replacement package/device startup validation remains; do not claim measured Windows startup improvement.

@@ -1749,7 +1749,8 @@ async fn profile_portal_handler(State(state):State<AppState>)->impl IntoResponse
 #[derive(Deserialize)] #[serde(deny_unknown_fields)] struct PictureChange{picture:serde_json::Value}
 async fn profile_picture_get(State(state):State<AppState>,axum::extract::Query(query):axum::extract::Query<PictureQuery>)->axum::response::Response{
     let _lease=accounts::ACCESS.read().await;
-    profile_result(async{anyhow::ensure!(state.accounts.has_saved(&query.id).await,"Choose a saved profile");Ok(serde_json::json!({"picture":profile_picture::read(&query.id)?}))}.await)
+    let mut response=profile_result(async{anyhow::ensure!(state.accounts.has_saved(&query.id).await,"Choose a saved profile");Ok(serde_json::json!({"picture":profile_picture::read(&query.id)?}))}.await);
+    response.headers_mut().insert(axum::http::header::CACHE_CONTROL,axum::http::HeaderValue::from_static("no-store"));response
 }
 async fn profile_picture_set(State(state):State<AppState>,headers:axum::http::HeaderMap,Json(change):Json<PictureChange>)->axum::response::Response{
     let _lease=accounts::ACCESS.read().await;

@@ -1,6 +1,6 @@
 # PlazCode task board
 
-**Current, 2026-10-30:** 2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is now PRIVATE, verified after owner restored visibility. Earlier integration visibility attempts were denied HTTP 403. Latest stable remains 1.24.26. Start with `docs/NOW.md`; older entries below are historical.
+**Current, 2026-10-30:** Profile-picture/startup follow-ups now pass local verification: 234 native + 4 library tests, real account/picture two-install sync, actual PNG/JPEG/two-frame GIF upload/removal/rejection, actual i18n all 15 languages, UI/design/storage/approval and Linux startup. Bold sync status is in refreshed real Drive preview. Matching public account service deployed at source 1326d5e; live private picture sync and older-client retention passed. Full replacement Windows/Mac/Linux/browser build remains pending Public source; existing Drive test ZIPs are old 9c175eb and contain no follow-ups. Start with docs/NOW.md.
 
 Read `docs/MAINTAINER-GUIDE.md` section 11 first. Claim a task by adding a line under "In progress" in your own small commit. Move it to "Done" with a handoff note when finished. Do not take a task someone else has claimed.
 

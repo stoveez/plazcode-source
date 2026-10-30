@@ -1,9 +1,9 @@
 {
   "version": "1.24.27",
-  "title": "Your profiles, synced settings and smoother startup",
+  "title": "Your profiles, pictures and smoother startup",
   "summary": "Sign in with your own themed profile, remember your login, and keep settings and skills across computers. Includes approval choices, paced DeepSeek sends and Mac/Linux startup fixes.",
   "added": [
-    "Themed profile cards with glowing actions, remembered login, separate local data, and settings/private skills sync.",
+    "Themed profiles with JPEG, PNG or animated GIF pictures, remembered login, separate local data, and settings/private skills sync.",
     "Choose Ask for approval, Approve for me, or Bypass approval in the bar and app Settings.",
     "Native Linux app opens the PlazCode interface in your browser with the memory helper included."
   ],
@@ -13,10 +13,13 @@
     "Every desktop effort choice stays reachable.",
     "DeepSeek messages share one queue and wait 8–9.8 seconds from the last send finishing.",
     "Mac can recover a bridge port still held by an older PlazCode process.",
-    "Settings that fail to save keep their error visible until a successful retry."
+    "Settings that fail to save keep their error visible until a successful retry.",
+    "Profile plus and approval chevrons align; loading fades smoothly into saved profiles.",
+    "Ahead-of-stable test builds no longer show a failed-update popup.",
+    "Startup verifies protected files in parallel without skipping checks."
   ],
   "notes": [
-    "Full profile test builds passed Windows, Mac, Linux and browser checks; latest stable remains 1.24.26.",
+    "Profile-picture/startup follow-up passes local checks; replacement platform test builds are pending; latest stable remains 1.24.26.",
     "Linux automatic updates are not published yet; use complete native Linux downloads."
   ],
   "github": {
@@ -25,7 +28,7 @@
       {
         "title": "✨ What's new",
         "items": [
-          "Glowing profiles follow your theme. Create a profile and log in without retyping next time; settings/private skills sync while files, memory and access grants stay local.",
+          "Themed profiles now support JPEG, PNG and animated GIF pictures. Remember your login and sync settings/private skills; files, memory and access grants stay local.",
           "Pick Ask for approval, Approve for me, or Bypass approval below Effort or in app Settings. Your choice stays saved across chats and AI sites.",
           "Native Linux download opens the real app interface in your browser."
         ]
@@ -36,13 +39,15 @@
           "Every effort option stays reachable; the bar and collapsed tab follow your chat box.",
           "DeepSeek sends share one queue with 8–9.8 second spacing after a send finishes.",
           "Mac recovers ports held by stale PlazCode processes and leaves other programs alone.",
-          "Settings that fail to save keep their error visible until a successful retry."
+          "Settings that fail to save keep their error visible until a successful retry.",
+          "Centered profile/approval icons and a smooth loading-to-sign-in fade.",
+          "Faster protected-file checks; ahead-of-stable test builds no longer show a false update failure."
         ]
       },
       {
         "title": "🧪 What was checked",
         "items": [
-          "Windows, Mac, Linux and browser checks passed, including profile isolation, remembered/offline login and settings/skills sync. Original user setups were not tested.",
+          "Native, picture/profile/sync and browser checks passed locally. Replacement platform builds are pending; original user setups remain untested.",
           "Windows is unsigned and Mac is not notarized, as before."
         ]
       }
