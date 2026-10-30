@@ -6,6 +6,8 @@ updated: 2026-10-30
 
 2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is now PRIVATE, verified after owner restored visibility. Earlier integration visibility attempts were denied HTTP 403. Latest stable remains 1.24.26.
 
+**Latest 2026-10-30:** owner made source Public; verified visibility and dispatched full replacement CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952) on `38fd7d2`. Includes pictures/bold sync/icons/fade/startup/update follow-ups. Running; new Drive packages not delivered yet. Older visibility/delivery entries below are historical.
+
 # Test builds
 
 Builds on the private repo are blocked by GitHub billing, so the repo is made **public only while a build or publish runs**, then private again. The owner flips visibility; AIs never do.
