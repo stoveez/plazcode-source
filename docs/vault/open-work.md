@@ -4,7 +4,7 @@ updated: 2026-10-29
 ---
 # Open work
 
-**New active work:** online desktop profiles implemented and verified locally; actual running-app selected-profile preview captured. Native encrypted login, separate profile stores, legacy first-profile copy, portable settings/skills sync and extension epoch boundaries are connected. 227 native tests and real Worker/SQL + two-install integration pass. Fresh full CI/build delivery and explicit public account-service audience approval remain. See [desktop profile sign-in](desktop-profile-sign-in.md).
+**New active work:** online desktop profiles implemented and verified locally; actual running-app selected-profile preview captured. Native encrypted login, separate profile stores, legacy first-profile copy, portable settings/skills sync and extension epoch boundaries are connected. 227 native tests and real Worker/SQL + two-install integration pass. Fresh full CI/build delivery remain; owner approved public account API on 2026-10-30 and live public auth/sync checks pass. See [desktop profile sign-in](desktop-profile-sign-in.md).
 
 **Current 2026-10-29:** 1.24.27 full test builds delivered. CI 40932400772 / 962899c passed Windows, Mac, Linux and browsers. Archive/signature/source/version/layout verification complete; Windows/Mac exact current release file lists. See [verification](test-build-1.24.27-verification.json). DeepSeek pacing, effort clipping, approval controls, bar alignment and Mac/Linux startup fixes are in these test packages. Original user devices and live AI accounts remain untested. Release-note metadata records completed test delivery; the stable feed stays at 1.24.26.
 
@@ -127,3 +127,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-30: first-profile UI migration includes the existing IndexedDB wallpaper; originals and profile edits retained. Migration acknowledgement prevents deleted wallpaper reappearing. Real browser storage checks + seven native account tests pass. Full final runtime CI pending.
 
 - 2026-10-30: CI 40979067378 native regression steps pass on all three platforms; browser check exposed preference errors being erased by polling. Fixed sticky save-failure feedback with successful-retry clearing. Actual 15-language test passes three consecutive runs and explicit polling/retry assertions; desktop regression passes. Next full runtime CI pending.
+
+- 2026-10-30: owner authorized public account API; audience changed to Public and real public signup/session/sync/revoke passed without bypass. Stronger requested desktop glow captured in actual gold/cyan previews. Failed-login focus is synchronous; five consecutive Chromium 141 screen tests pass. Full final packages pending.

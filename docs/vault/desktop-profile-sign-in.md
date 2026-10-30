@@ -1,5 +1,5 @@
 # Desktop profiles and sign-in
-Updated: 2026-10-30. Implemented; final signed test-build validation and public API audience decision pending.
+Updated: 2026-10-30. Implemented; final signed test-build validation and public account API verified; final test packages pending.
 
 The existing loading screen fades into the profile picker. Each new app process starts signed out. Users choose a saved profile, see its theme-colored selection and then green Log in/red Remove controls. First sign-in creates or uses an online username/password account; later launches use the remembered session without retyping. Valid remembered sessions also open local data offline. The Account page provides sync and sign-out/profile switching. Removing a saved profile asks for confirmation, revokes that device session when reachable, and keeps the online account and local data.
 
@@ -19,7 +19,7 @@ Profile changes cancel tasks, reset runtime state and reject stale API epochs. S
 
 ## Account service
 Fixed HTTPS endpoint: https://plazcode-accounts-stoveez.mistysong24.chatgpt.site
-Sites project: appgprj_6ae3b330d8b481919934a74c73dc7874. Dedicated service source 0176721; review mirror in account-service/. Existing deployed audience is owner-private. An explicit request to make the account API Public is pending: do not change its audience without that answer. This is independent of GitHub's public-for-builds/private-after-delivery rule. Release apps contain no private Sites bypass; debug-only test access stays in session memory.
+Sites project: appgprj_6ae3b330d8b481919934a74c73dc7874. Dedicated service source 0176721; review mirror in account-service/. Owner explicitly approved Public audience on 2026-10-30; it is now Public. Real public signup/session/private-sync/revoke checks pass without a Sites bypass. This is independent of GitHub's public-for-builds/private-after-delivery rule. Release apps contain no private Sites bypass; debug-only test access stays in session memory.
 
 Passwords use salted scrypt; server sessions store token hashes. Native saved sign-ins use an authenticated encrypted device registry, private filesystem permissions and atomic recovery backups. Passwords are never persisted. Proof challenges, bounded requests and quotas protect the public credential routes. No account-list endpoint or required email/paid key.
 
@@ -33,3 +33,6 @@ Portable settings and private skills use revision checks and a three-way merge. 
 - Actual screen interactions and desktop regression pass; actual shared-i18n desktop language checks pass all 15 languages. Failed saves remain visible through polling and clear after successful retry (explicit browser assertions).
 - Extension partition/locked-access checks pass. Old v1.18 fixture now models the account status prerequisite and browser AbortSignal API.
 - Full Windows/Mac/Linux/browser CI and fresh production-signed test archive verification remain pending. Older delivered archives do not include accounts. Latest stable remains 1.24.26; no stable release is authorized in this test-build request.
+
+## Latest polish
+Owner requested stronger glow: panel/selected-card halos, avatar/brand highlights, luminous green/red actions and edge lighting now follow the desktop glow treatment. Updated actual gold/cyan images above. Failed-login focus is restored synchronously after unlocking, preventing Escape reaching the page during a frame gap; five consecutive Chromium 141 interaction runs pass with a focus assertion. Optional local appearance caching cannot block a successful account login. Final signed packaging remains pending.

@@ -3,7 +3,7 @@
   "title": "Your profiles, synced settings and smoother startup",
   "summary": "Sign in with your own themed profile, remember your login, and keep settings and skills across computers. Includes approval choices, paced DeepSeek sends and Mac/Linux startup fixes.",
   "added": [
-    "Online username/password profiles with remembered login, separate local data and settings/skills sync.",
+    "Themed profile cards with glowing actions, remembered login, separate local data, and settings/private skills sync.",
     "Choose Ask for approval, Approve for me, or Bypass approval in the bar and app Settings.",
     "Native Linux app opens the PlazCode interface in your browser with the memory helper included."
   ],
@@ -25,7 +25,7 @@
       {
         "title": "✨ What's new",
         "items": [
-          "Create a profile, choose it with your theme, and log in without retyping next time. Settings and private skills sync; local files, memory and access grants stay on your device.",
+          "Glowing profiles follow your theme. Create a profile and log in without retyping next time; settings/private skills sync while files, memory and access grants stay local.",
           "Pick Ask for approval, Approve for me, or Bypass approval below Effort or in app Settings. Your choice stays saved across chats and AI sites.",
           "Native Linux download opens the real app interface in your browser."
         ]
