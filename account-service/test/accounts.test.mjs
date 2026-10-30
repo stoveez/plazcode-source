@@ -23,3 +23,15 @@ test('single-use/expired challenge, bounded requests, origin and strict schemas'
 fixtureProof(db);db.sqlite.prepare('UPDATE challenges SET expires_at=1').run();assert.equal((await call(db,'/v1/login','POST',body)).status,401);assert.equal((await call(db,'/v1/login','POST',{...body,extra:'forbidden'})).status,400);assert.equal((await call(db,'/v1/login','POST',body,null,{Origin:'https://attacker.example'})).status,403);assert.equal((await call(db,'/v1/login','POST',{username:'X'.repeat(5000)})).status,413);db.sqlite.close();});
 test('portable sync rejects credentials, local paths and oversized/unrecognized data',()=>{assert.throws(()=>document({settings:{rsAllowedFolders:['/private']},skills:{}}));assert.throws(()=>document({settings:{rsPermMode:'full'},skills:{}}));assert.throws(()=>document({settings:{},skills:{bad:{password:'test-only-secret'}}}));assert.throws(()=>document({settings:{rsAppearance:{theme:'garbage',glow:'strong',gradients:'on'}},skills:{}}));assert.throws(()=>document({settings:{rsLanguage:{code:'en'}},skills:{}}));assert.throws(()=>document({settings:{},skills:{'../bad':{}}}));});
 test('KDF is deterministic, salted and bounded to one operation per isolate',async()=>{const first=verifier('test-only-password','salt-one');await assert.rejects(verifier('test-only-password','salt-two'),e=>e.status===429);const value=await first;assert.equal(value,await verifier('test-only-password','salt-one'));assert.notEqual(value,await verifier('test-only-password','salt-two'));assert(same(value,value));assert(!same(value,'x'.repeat(value.length)));});
+
+test('profile picture formats, private sync, older-client retention and explicit removal',async()=>{
+ const db=database(),picture='data:image/gif;base64,'+Buffer.from('GIF89a preserved animation bytes').toString('base64');
+ assert.throws(()=>document({settings:{rsProfilePicture:'data:image/svg+xml;base64,PHN2Zy8+'},skills:{}}));
+ assert.throws(()=>document({settings:{rsProfilePicture:'data:image/png;base64,R0lGODlh'},skills:{}}));
+ assert.throws(()=>document({settings:{rsProfilePicture:'data:image/gif;base64,'+Buffer.alloc(1048577).toString('base64')},skills:{}}));
+ const registered=await call(db,'/v1/register','POST',{username:'AvatarOwner',password:'test-only-picture-password',proof:fixtureProof(db)});assert.equal(registered.status,201);const token=registered.data.token;
+ let result=await call(db,'/v1/sync','PUT',{revision:0,document:{settings:{rsProfilePicture:picture},skills:{}}},token);assert.equal(result.status,200);assert.equal(result.data.document.settings.rsProfilePicture,picture);
+ result=await call(db,'/v1/sync','PUT',{revision:1,document:{settings:{rsSounds:false},skills:{}}},token);assert.equal(result.status,200);assert.equal(result.data.document.settings.rsProfilePicture,picture,'old clients cannot erase a picture they do not understand');
+ result=await call(db,'/v1/sync','PUT',{revision:2,document:{settings:{rsProfilePicture:null},skills:{}}},token);assert.equal(result.status,200);assert.equal(result.data.document.settings.rsProfilePicture,null);
+ assert.equal((await call(db,'/v1/sync')).status,401);db.sqlite.close();
+});

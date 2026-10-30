@@ -145,3 +145,6 @@ Native startup checks now compile and pass all 230 native + 4 library tests (2 i
 
 ## Current follow-up
 Plus/approval chevrons and splash crossfade implemented; native startup verification optimized without skipping checks. Ahead-of-stable update error fixed locally with 21 updater tests passing; Windows/Mac integration added to CI. Profile-picture JPEG/PNG/GIF request is next. No replacement ZIPs yet; delivered Drive archives are still 9c175eb. Immediate actual preview and test ZIP delivery via Google Drive are now binding owner rules. See docs/NOW.md and startup-performance.md.
+
+## Profile pictures WIP
+WIP profile pictures: Account change/remove controls, JPEG/PNG resize and original animated GIF upload, picture rendering on cards/account/sidebar, separate bounded private image files and lazy bearer-authenticated reads. Status polls/remembered registry carry revisions only, not image bytes. Settings sync carries the picture; older clients preserve it server-side and explicit null removes it. Two native picture tests and five actual Worker/SQL tests pass. Still pending: actual compiled upload/preview, two-install integration, translations, public service deployment and full replacement packages. Do not treat the current Drive ZIPs as including pictures.

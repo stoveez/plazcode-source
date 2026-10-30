@@ -40,6 +40,9 @@ export default {async fetch(request,env){
   if(path==='/v1/sync'&&request.method==='GET'){const auth=await session(db,request,now);const row=await first(db,'SELECT revision,document FROM documents WHERE account_id=?',auth.id);return json({revision:row?.revision||0,document:row?JSON.parse(row.document):{settings:{},skills:{}}});}
   if(path==='/v1/sync'&&request.method==='PUT'){
    const auth=await session(db,request,now);await budget(db,'sync:'+auth.id+':'+Math.floor(now/900000),240,now+900000);const body=strict(await boundedJson(request,BODY_LIMIT),['revision','document']);if(!Number.isSafeInteger(body.revision)||body.revision<0)throw new ApiError(400,'Invalid sync revision.');const document=cleanDocument(body.document);
+   // Older clients do not know about profile pictures. An omitted field must
+   // preserve the existing picture; only an explicit null removes it.
+   if(!Object.hasOwn(document.settings,'rsProfilePicture')&&body.revision>0){const previous=await first(db,'SELECT document FROM documents WHERE account_id=? AND revision=?',auth.id,body.revision);if(previous){const settings=JSON.parse(previous.document).settings;if(Object.hasOwn(settings,'rsProfilePicture')){document.settings.rsProfilePicture=settings.rsProfilePicture;cleanDocument(document);}}}
    const row=body.revision===0?await first(db,'INSERT INTO documents (account_id,revision,document,updated_at) VALUES (?,1,?,?) ON CONFLICT(account_id) DO NOTHING RETURNING revision',auth.id,JSON.stringify(document),now):await first(db,'UPDATE documents SET revision=revision+1,document=?,updated_at=? WHERE account_id=? AND revision=? RETURNING revision',JSON.stringify(document),now,auth.id,body.revision);
    if(!row)throw new ApiError(409,'Settings changed on another computer. Retry after reading the latest revision.');return json({revision:row.revision,document});
   }

@@ -1,7 +1,7 @@
 import {scryptAsync} from '@noble/hashes/scrypt.js';
 export const SESSION_MS=90*24*60*60*1000;
 export const BODY_LIMIT=2*1024*1024;
-export const SETTINGS=new Set(['rsLanguage','rsWorkMode','rsThinkingLevel','rsSounds','rsExtraThinking','rsShowApproach','rsPlanMode','rsAppearance','rsVisualCheck','rsContinuationOffer','rsInputLimitEnabled','rsInputCharLimit','rsOutputLimitEnabled','rsOutputCharLimit','rsForgeMode','rsAutoFix']);
+export const SETTINGS=new Set(['rsProfilePicture','rsLanguage','rsWorkMode','rsThinkingLevel','rsSounds','rsExtraThinking','rsShowApproach','rsPlanMode','rsAppearance','rsVisualCheck','rsContinuationOffer','rsInputLimitEnabled','rsInputCharLimit','rsOutputLimitEnabled','rsOutputCharLimit','rsForgeMode','rsAutoFix']);
 export class ApiError extends Error{constructor(status,message){super(message);this.status=status;}}
 export const bytes=text=>new TextEncoder().encode(text);
 export const hex=value=>Array.from(value,b=>b.toString(16).padStart(2,'0')).join('');
@@ -25,12 +25,20 @@ export async function boundedJson(request,limit=4096){
  try{return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(raw));}catch{throw new ApiError(400,'Invalid JSON request.');}
 }
 function plain(value){return value&&typeof value==='object'&&!Array.isArray(value);}
+export function profilePicture(value){
+ if(value===null)return value;
+ if(typeof value!=='string'||value.length>Math.ceil(1048576/3)*4+64)throw new ApiError(400,'Profile pictures must be 1 MB or smaller.');
+ const match=/^data:image\/(png|jpeg|gif);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);if(!match)throw new ApiError(400,'Choose a JPEG, PNG or GIF picture.');
+ let raw;try{raw=atob(match[2]);}catch{throw new ApiError(400,'Invalid profile picture.');}
+ if(raw.length>1048576||!(match[1]==='png'?raw.startsWith('\x89PNG\r\n\x1a\n'):match[1]==='gif'?raw.startsWith('GIF87a')||raw.startsWith('GIF89a'):raw.startsWith('\xff\xd8\xff')&&raw.endsWith('\xff\xd9')))throw new ApiError(400,'Choose a JPEG, PNG or GIF picture.');return value;
+}
 export function document(value){
  strict(value,['settings','skills']);const settings=value.settings||{},skills=value.skills||{};
  if(!plain(settings)||!plain(skills)||Object.keys(settings).some(k=>!SETTINGS.has(k)))throw new ApiError(400,'Only portable settings and skills can sync.');
  const out={settings:{},skills:{}};
  for(const [key,item]of Object.entries(settings)){
-  if(key==='rsAppearance'){strict(item,['theme','glow','gradients']);if(!['default','amethyst','cyan','rose','emerald','graphite','crimson','ocean','copper','aurora','orchid'].includes(item.theme)||!['off','subtle','strong'].includes(item.glow)||!['on','off'].includes(item.gradients))throw new ApiError(400,'Invalid appearance.');}
+  if(key==='rsProfilePicture'){profilePicture(item);}
+  else if(key==='rsAppearance'){strict(item,['theme','glow','gradients']);if(!['default','amethyst','cyan','rose','emerald','graphite','crimson','ocean','copper','aurora','orchid'].includes(item.theme)||!['off','subtle','strong'].includes(item.glow)||!['on','off'].includes(item.gradients))throw new ApiError(400,'Invalid appearance.');}
   else if(key==='rsLanguage'){if(typeof item!=='string'||item.length>10)throw new ApiError(400,'Invalid language.');}
   else if(['rsWorkMode','rsThinkingLevel'].includes(key)){if(typeof item!=='string'||item.length>24)throw new ApiError(400,'Invalid setting.');}
   else if(['rsInputCharLimit','rsOutputCharLimit'].includes(key)){if(!Number.isSafeInteger(item)||item<1000||item>2000000)throw new ApiError(400,'Invalid limit.');}

@@ -1,0 +1,6 @@
+# Profile pictures
+Updated: 2026-10-30. Work in progress, not in delivered test builds.
+
+WIP profile pictures: Account change/remove controls, JPEG/PNG resize and original animated GIF upload, picture rendering on cards/account/sidebar, separate bounded private image files and lazy bearer-authenticated reads. Status polls/remembered registry carry revisions only, not image bytes. Settings sync carries the picture; older clients preserve it server-side and explicit null removes it. Two native picture tests and five actual Worker/SQL tests pass. Still pending: actual compiled upload/preview, two-install integration, translations, public service deployment and full replacement packages. Do not treat the current Drive ZIPs as including pictures.
+
+Pictures belong to the account. JPEG/PNG are resized to at most 512 pixels in the desktop; GIF bytes remain animated and must be at most 1 MB. Native/cloud validation permits only bounded JPEG/PNG/GIF data with matching magic bytes; SVG/external URLs are rejected. Pictures are user data, excluded from program integrity checks. Profile switching and write epochs isolate changes. Saved-profile reads require the device bearer and a saved account ID. Cloud storage is private to the account.

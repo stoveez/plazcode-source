@@ -767,6 +767,9 @@ html[data-desktop-glow=off] .pc-profile-login{box-shadow:inset 0 1px 0 #ffffff80
 @media(prefers-reduced-motion:reduce){.pc-profile-card:before,.pc-profile-login:before,.pc-profile-remove:after{animation:none!important;transition:none!important;background-position:0 0,100% 0}}
 
 .pc-profile-create-icon svg{display:block;flex:none}
+/* Profile pictures retain the theme border and the original animated GIF bytes. */
+.pc-profile-avatar,.nx-avatar{overflow:hidden}.pc-profile-avatar img,.nx-avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.pc-picture-actions{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;margin:16px 0 8px}.pc-picture-actions .nx-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;box-shadow:inset 0 1px 0 #ffffff12,0 0 18px rgb(var(--nx-rgb)/.09)}.pc-picture-actions svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.pc-picture-remove{color:#f0a6b2!important;border-color:#d3607040!important}.pc-picture-hint{font-size:11px;color:var(--ink-soft);margin:5px 0}.pc-picture-status{font-size:12px;color:var(--orange2);margin:6px 0 14px;min-height:0}.pc-picture-status:empty{display:none}
 /* Compact profile rectangles match the owner's reference. */
 .pc-profile-list{grid-template-columns:minmax(0,1fr);gap:12px;max-height:min(340px,38vh)}
 .pc-profile-card{flex-direction:row;justify-content:flex-start;align-items:center;min-height:86px;padding:17px 18px;gap:16px;border-radius:14px;text-align:left}.pc-profile-card:hover{transform:translateX(2px)}.pc-profile-avatar{width:48px;height:48px;border-radius:14px;font-size:18px;letter-spacing:-.4px}.pc-profile-card[aria-selected=true] .pc-profile-avatar{transform:none}.pc-profile-copy{flex:1;width:auto;padding-right:28px}.pc-profile-copy strong{font-size:14px;font-weight:600}.pc-profile-copy small{font-size:11px;margin-top:5px}.pc-profile-tick{right:18px;top:50%;transform:translateY(-50%) scale(.8)}.pc-profile-card[aria-selected=true] .pc-profile-tick{transform:translateY(-50%) scale(1)}
@@ -928,7 +931,7 @@ html[data-desktop-glow=off] .pc-signin :is(.pc-profile-card,.pc-profile-avatar,.
       </section>
       <section class="page" id="page-account">
         <div class="nx-pagehead"><div><h1>Account</h1><p>Your profile and sync.</p></div></div>
-        <div class="nx-card nx-empty"><span class="nx-avatar" id="profileAccountAvatar">P</span><div class="nx-v" style="justify-content:center" data-profile-name data-i18n-user-content dir="auto">PlazCode</div><div class="nx-s">Your settings and skills follow your account. Files, memory and device permissions stay on this computer.</div><p id="profileSyncStatus" role="status"></p><div style="margin-top:14px"><button type="button" class="nx-btn" id="profileSyncNow">Sync now</button> <button type="button" class="nx-btn" id="profileSignOut">Switch profile / Sign out</button></div></div>
+        <div class="nx-card nx-empty"><span class="nx-avatar" id="profileAccountAvatar">P</span><div class="pc-picture-actions"><button type="button" class="nx-btn" id="changeProfilePicture"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg><span>Change profile picture</span></button><button type="button" class="nx-btn pc-picture-remove" id="removeProfilePicture" hidden>Remove picture</button></div><input type="file" id="profilePictureFile" accept="image/jpeg,image/png,image/gif,.jpg,.jpeg,.png,.gif" hidden><p class="pc-picture-hint">JPEG, PNG or GIF · GIFs up to 1 MB</p><p id="profilePictureStatus" class="pc-picture-status" role="status" aria-live="polite"></p><div class="nx-v" style="justify-content:center" data-profile-name data-i18n-user-content dir="auto">PlazCode</div><div class="nx-s">Your settings and skills follow your account. Files, memory and device permissions stay on this computer.</div><p id="profileSyncStatus" role="status"></p><div style="margin-top:14px"><button type="button" class="nx-btn" id="profileSyncNow">Sync now</button> <button type="button" class="nx-btn" id="profileSignOut">Switch profile / Sign out</button></div></div>
         
         <p class="nx-s" style="margin:12px 2px">Switching profiles stops current tools. Removing a saved profile only forgets its sign-in on this computer.</p>
       </section>
@@ -1448,6 +1451,7 @@ __PLAZCODE_VERSION_UI__
 
   function Render() {
     if (!State) return;
+    if(ProfileContext)ProfilePictures.current(State.profile_picture_revision);
 
     var Bridge = !!State.bridge_connected;
     // 1.24.13: Connected only when the editor link is really up (not just Studio + helper running).
@@ -1854,6 +1858,34 @@ __PLAZCODE_VERSION_UI__
   function Nxpreviewcustom(Hex) { if (!Nxparse(Hex)) return; try { ProfileStorage.setItem('plazcodeCustomTheme', Hex); } catch (Error) {} Nxapplycustom(); }
 
 
+  // Pictures are fetched on demand; status polling carries only a small revision.
+  var ProfilePictures=(function(){
+    var Cache=new Map(),Current=null;
+    function T(Text){return I18n?I18n.t(Text):Text;}
+    function Initials(Node,Name){Node.textContent=Array.from(Name||'').slice(0,2).join('').toUpperCase();}
+    function Display(Node,Picture,Name){Initials(Node,Name);if(!Picture)return;var Image=document.createElement('img');Image.alt='';Image.setAttribute('aria-hidden','true');Image.src=Picture;Image.onerror=function(){Initials(Node,Name);};Node.replaceChildren(Image);}
+    function Render(Node,Id,Name,Revision){if(!Node)return;var Key=Id+':'+(Revision||'none');Node.dataset.pictureKey=Key;Initials(Node,Name);if(!Revision)return;if(!Cache.has(Key))Cache.set(Key,Api('/api/desktop/profile-picture?id='+encodeURIComponent(Id)).then(function(Value){return Value.picture;}).catch(function(){return null;}));Cache.get(Key).then(function(Picture){if(Node.isConnected&&Node.dataset.pictureKey===Key)Display(Node,Picture,Name);});}
+    function Currentpicture(Revision,Force){if(!ProfileContext)return;var Key=ProfileContext.id+':'+(Revision||'none');if(!Force&&Current===Key)return;Current=Key;document.querySelectorAll('.nx-account .nx-avatar,#profileAccountAvatar').forEach(function(Node){Render(Node,ProfileContext.id,ProfileContext.username,Revision);});Byid('removeProfilePicture').hidden=!Revision;}
+    async function Prepare(File){
+      if(File.size>20*1024*1024)throw Error(T('Choose a picture smaller than 20 MB.'));
+      var Bytes=new Uint8Array(await File.slice(0,12).arrayBuffer());
+      var Gif=String.fromCharCode.apply(null,Bytes.slice(0,6));var Type=Gif==='GIF87a'||Gif==='GIF89a'?'image/gif':Bytes[0]===137&&Bytes[1]===80&&Bytes[2]===78&&Bytes[3]===71?'image/png':Bytes[0]===255&&Bytes[1]===216&&Bytes[2]===255?'image/jpeg':null;
+      if(!Type)throw Error(T('Choose a JPEG, PNG or GIF picture.'));
+      if(Type==='image/gif'&&File.size>1024*1024)throw Error(T('Choose a GIF smaller than 1 MB.'));
+      var Url=URL.createObjectURL(File),Image=new window.Image();
+      try{Image.src=Url;await Image.decode();if(!Image.naturalWidth||!Image.naturalHeight||Image.naturalWidth*Image.naturalHeight>32000000)throw Error(T('This picture is too large.'));
+        if(Type==='image/gif')return await new Promise(function(Resolve,Reject){var Reader=new FileReader();Reader.onload=function(){Resolve('data:image/gif;base64,'+String(Reader.result).split(',')[1]);};Reader.onerror=Reject;Reader.readAsDataURL(File);});
+        var Ratio=Math.min(1,512/Math.max(Image.naturalWidth,Image.naturalHeight)),Canvas=document.createElement('canvas');Canvas.width=Math.max(1,Math.round(Image.naturalWidth*Ratio));Canvas.height=Math.max(1,Math.round(Image.naturalHeight*Ratio));Canvas.getContext('2d').drawImage(Image,0,0,Canvas.width,Canvas.height);return Canvas.toDataURL(Type,0.88);
+      }finally{URL.revokeObjectURL(Url);}
+    }
+    async function Save(Picture){var Result=await Api('/api/desktop/profile-picture',{method:'POST',body:JSON.stringify({picture:Picture})});Cache.clear();if(Result.revision)Cache.set(ProfileContext.id+':'+Result.revision,Promise.resolve(Result.picture));Current=null;Currentpicture(Result.revision,true);Byid('profilePictureStatus').textContent=T(Picture?'Profile picture saved.':'Profile picture removed.');}
+    function Bind(){var File=Byid('profilePictureFile'),Change=Byid('changeProfilePicture'),Remove=Byid('removeProfilePicture'),Status=Byid('profilePictureStatus');
+      async function Busy(Action){Change.disabled=true;Remove.disabled=true;Status.textContent=T('Saving profile picture…');try{await Action();}catch(Error){Status.textContent=Error.message||T('Could not save profile picture.');}finally{Change.disabled=false;Remove.disabled=false;File.value='';}}
+      Change.onclick=function(){File.click();};File.onchange=function(){var Selected=File.files&&File.files[0];if(Selected)Busy(async function(){await Save(await Prepare(Selected));});};Remove.onclick=function(){Busy(function(){return Save(null);});};
+    }
+    return {render:Render,current:Currentpicture,bind:Bind};
+  })();
+
   function MountProfileSignIn(Backend, Hooks) {
     var Host=Byid('profileSignIn'), Selected=null, Profiles=[], Busy=false, Mode='picker', Previousfocus=null;
     var Heading=Byid('profileSignInHeading'), Subtitle=Byid('profileSignInSubtitle'), List=Byid('savedProfileList'), Actions=Byid('profileActions'), Form=Byid('profileCredentials'), Username=Byid('profileUsername'), Password=Byid('profilePassword'), Feedback=Byid('profileSignInError'), Status=Byid('profileSignInStatus');
@@ -1866,7 +1898,7 @@ __PLAZCODE_VERSION_UI__
       if(!Profiles.length){var Empty=document.createElement('div');Empty.className='pc-signin-empty';Empty.textContent=T('Create your first profile to get started.');List.appendChild(Empty);}
       Profiles.forEach(function(Profile){
         var Card=document.createElement('button');Card.type='button';Card.className='pc-profile-card';Card.dataset.profileId=Profile.id;if(typeof Desktopthemes==='object'){var Palette=Desktopthemes[Profile.appearance&&Profile.appearance.theme];if(Palette)Card.style.setProperty('--profile-rgb',Palette.rgb);}Card.setAttribute('role','option');Card.setAttribute('aria-selected',String(!!Selected&&Selected.id===Profile.id));
-        var Avatar=document.createElement('span');Avatar.className='pc-profile-avatar';Avatar.setAttribute('data-i18n-user-content','');Avatar.textContent=Array.from(Profile.username||'').slice(0,2).join('').toUpperCase();Avatar.setAttribute('aria-hidden','true');
+        var Avatar=document.createElement('span');Avatar.className='pc-profile-avatar';Avatar.setAttribute('data-i18n-user-content','');Avatar.textContent=Array.from(Profile.username||'').slice(0,2).join('').toUpperCase();Avatar.setAttribute('aria-hidden','true');if(typeof ProfilePictures!=='undefined')ProfilePictures.render(Avatar,Profile.id,Profile.username,Profile.picture_revision);
         var Copy=document.createElement('span');Copy.className='pc-profile-copy';var Name=document.createElement('strong');Name.setAttribute('data-i18n-user-content','');Name.dir='auto';Name.textContent=Profile.username;var Detail=document.createElement('small');Detail.textContent=T(Profile.remembered?'Ready to log in':'Enter your password to log in');Copy.append(Name,Detail);var Tick=document.createElement('span');Tick.className='pc-profile-tick';Tick.textContent='✓';Tick.setAttribute('aria-hidden','true');Card.append(Avatar,Copy,Tick);
         Card.onclick=function(Event){if(Busy)return;Host.dataset.profilePointerFocus=Event.detail>0?'true':'false';Selected=Profile;Hooks.previewTheme(Profile.appearance);Render();List.querySelector('[data-profile-id="'+CSS.escape(Profile.id)+'"]').focus();};List.append(Card);
       });
@@ -2498,7 +2530,8 @@ __PLAZCODE_VERSION_UI__
         document.querySelectorAll('.nx-account b').forEach(function(N){N.textContent=ProfileContext.username;});
         function SignedInLabels(){document.querySelectorAll('.nx-account small,#profileOverviewState').forEach(function(N){N.textContent=I18n?I18n.t('Signed in'):'Signed in';});}SignedInLabels();if(I18n)I18n.onChange(SignedInLabels);
         document.querySelectorAll('.nx-account .nx-avatar,#profileAccountAvatar').forEach(function(N){N.textContent=Array.from(ProfileContext.username).slice(0,2).join('').toUpperCase();});
-        Byid('profileSyncNow').onclick=async function(){try{var R=await Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify({action:'sync'})});Byid('profileSyncStatus').textContent=R.status;}catch(Error){Byid('profileSyncStatus').textContent=Error.message;}};
+        ProfilePictures.bind();
+        Byid('profileSyncNow').onclick=async function(){try{var R=await Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify({action:'sync'})});Byid('profileSyncStatus').textContent=R.status;Refresh();}catch(Error){Byid('profileSyncStatus').textContent=Error.message;}};
         Byid('profileSignOut').onclick=async function(){try{await Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify({action:'logout'})});sessionStorage.setItem('plazcode-profile-context','locked');location.reload();}catch(Error){Showerror(Error);}};
       }
       Ipc("ui-ready");

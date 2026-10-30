@@ -76,6 +76,7 @@ mod integrity;
 mod preferences;
 mod profile_paths;
 mod accounts;
+mod profile_picture;
 mod account_sync;
 mod memory;
 mod templates;
@@ -1331,6 +1332,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/status", get(status_handler))
         .route("/desktop", get(desktop_handler))
         .route("/api/desktop/profiles",get(profile_portal_handler).post(profile_action_handler).layer(axum::extract::DefaultBodyLimit::max(4096)))
+        .route("/api/desktop/profile-picture",get(profile_picture_get).post(profile_picture_set).layer(axum::extract::DefaultBodyLimit::max(profile_picture::MAX_ENCODED+128)))
         .route("/api/desktop/state", get(desktop_state_handler))
         .route("/api/desktop/preferences", post(desktop_preferences_handler))
         .route("/api/desktop/agent", post(desktop_agent_handler).layer(axum::extract::DefaultBodyLimit::max(18 * 1024 * 1024)))
@@ -1394,7 +1396,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
 // heartbeat, which also covers long model replies with no tool calls.
 fn is_work_request(method: &axum::http::Method, path: &str) -> bool {
     method == axum::http::Method::POST && !matches!(path,
-        "/api/desktop/profiles" | "/api/desktop/update" | "/api/desktop/browser-agent" | "/api/show" | "/api/shutdown" | "/api/desktop/preferences" | "/api/preferences" |
+        "/api/desktop/profiles" | "/api/desktop/profile-picture" | "/api/desktop/update" | "/api/desktop/browser-agent" | "/api/show" | "/api/shutdown" | "/api/desktop/preferences" | "/api/preferences" |
         "/api/desktop/restart" | "/api/desktop/clear-logs" | "/api/connect" | "/api/disconnect" | "/api/pair" | "/api/local-full" | "/api/mcp/toggle" | "/api/debug/browser-log")
 }
 async fn track_tool_activity(request: axum::extract::Request, next: axum::middleware::Next) -> axum::response::Response {
@@ -1727,7 +1729,7 @@ fn linux_launch_routes(_state: AppState) -> Router { Router::new() }
 // namespace. Long polls take short read leases inside their polling loop.
 async fn profile_access(State(state):State<AppState>,request:axum::extract::Request,next:axum::middleware::Next)->axum::response::Response{
     let path=request.uri().path();
-    let control=matches!(path,"/"|"/api/status"|"/api/pair"|"/api/desktop/profiles"|"/api/show"|"/api/shutdown"|"/api/desktop/update"|"/api/desktop/browser-action");
+    let control=matches!(path,"/"|"/api/status"|"/api/pair"|"/api/desktop/profiles"|"/api/desktop/profile-picture"|"/api/show"|"/api/shutdown"|"/api/desktop/update"|"/api/desktop/browser-action");
     if control{return next.run(request).await;}
     let guard=accounts::ACCESS.read().await;
     if state.accounts.required(){
@@ -1743,6 +1745,19 @@ async fn profile_access(State(state):State<AppState>,request:axum::extract::Requ
     next.run(request).await
 }
 async fn profile_portal_handler(State(state):State<AppState>)->impl IntoResponse{Json(state.accounts.portal().await)}
+#[derive(Deserialize)] #[serde(deny_unknown_fields)] struct PictureQuery{id:String}
+#[derive(Deserialize)] #[serde(deny_unknown_fields)] struct PictureChange{picture:serde_json::Value}
+async fn profile_picture_get(State(state):State<AppState>,axum::extract::Query(query):axum::extract::Query<PictureQuery>)->axum::response::Response{
+    let _lease=accounts::ACCESS.read().await;
+    profile_result(async{anyhow::ensure!(state.accounts.has_saved(&query.id).await,"Choose a saved profile");Ok(serde_json::json!({"picture":profile_picture::read(&query.id)?}))}.await)
+}
+async fn profile_picture_set(State(state):State<AppState>,headers:axum::http::HeaderMap,Json(change):Json<PictureChange>)->axum::response::Response{
+    let _lease=accounts::ACCESS.read().await;
+    let result=async{let active=state.accounts.active().ok_or_else(||anyhow::anyhow!("Sign in before changing your picture"))?;anyhow::ensure!(headers.get("x-plazcode-profile").and_then(|v|v.to_str().ok())==Some(active.epoch.as_str()),"The active profile changed. Reopen PlazCode.");profile_picture::set(&active.id,&change.picture)?;Ok(serde_json::json!({"picture":change.picture,"revision":profile_picture::revision(&active.id)}))}.await;
+    if result.is_ok(){let sync=state.clone();tokio::spawn(async move{let _lease=accounts::ACCESS.read().await;if sync.accounts.active().is_some(){let _=account_sync::run(&sync).await;}});}
+    profile_result(result)
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ProfileAction {action:String,#[serde(default)]id:Option<String>,#[serde(default)]username:Option<String>,#[serde(default)]password:Option<String>}
@@ -1876,6 +1891,7 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
         "preferences": state.preferences.snapshot(),
         "browser_agent": state.ui.browser_agent_snapshot(),
         "profile":state.accounts.active(),
+        "profile_picture_revision":state.accounts.active().and_then(|p|profile_picture::revision(&p.id)),
         "account_sync":state.accounts.active().map(|p|account_sync::status(&p.id)),
     }))
 }
@@ -2125,6 +2141,7 @@ async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {
         "accounts_enabled":state.accounts.required(),
         "profile_required":state.accounts.required()&&state.accounts.active().is_none(),
         "profile":state.accounts.active(),
+        "profile_picture_revision":state.accounts.active().and_then(|p|profile_picture::revision(&p.id)),
         "account_sync":state.accounts.active().map(|p|account_sync::status(&p.id)),
         "blender_connected": blender::connected(),
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
