@@ -38,3 +38,9 @@ The owner may hand an AI only this folder. Read `NOW.md` first, then [Home](Home
 - Link with relative Markdown links, for example `[releasing](releasing.md)`, so links work on GitHub and in Obsidian.
 - Never put secrets (tokens, keys) in any note.
 - **Previews (owner, 2026-10-25):** show the change in the real app or the real extension on the AI site, as the owner would see it. Do not open `desktop.html` or an extension page on its own in a browser and call that a preview. If the real thing is out of reach, say so and ask for a screenshot.
+
+## Feature previews and test ZIP delivery (owner, 2026-10-30)
+- As soon as each requested feature is ready, immediately show an actual screenshot or video of it running in PlazCode through Google Drive. Do not wait until every other feature, check or build is finished. No generated mockups or recreated preview pages.
+- Upload the screenshot/video to the connected Google Drive, read back its metadata, and give the normal Drive file link so the owner can open/download it. This is the exact delivery method the owner approved. Workspace-only file links do not work in this client.
+- Deliver test builds through Google Drive too: upload the exact verified INNER Windows/Mac/Linux ZIPs (app, memory helper and extensions; official layout), verify metadata/sizes, then give normal Drive file links and tell the owner to click Download. Do not substitute GitHub's artifact wrapper ZIP or silently change sharing permissions.
+- Keep the source public-build/private-after-delivery rule. Keep the separately approved account API Public. No stable publishing is implied by a test-build request.

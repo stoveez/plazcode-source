@@ -166,3 +166,6 @@ Limits: the Mac zip can only be built on a Mac or by GitHub's Mac runners (publi
 
 ## Startup/icon follow-up
 2026-10-30 follow-up (not in the delivered ZIPs): replaced the font plus beside Create a new profile with a centered SVG badge and the approval-mode font arrow with the same geometric chevron as Effort. Loading and profile picker now overlap in one fade; the local picker no longer waits on update-network requests (native automatic updates remain independent). Actual screen/crossfade, approval browser, desktop regression and theme checks pass. Owner clarified the long delay is before any window; investigating native protected-file verification separately. Source stays Private. Replacement packages pending.
+
+## Current follow-up
+Plus/approval chevrons and splash crossfade implemented; native startup verification optimized without skipping checks. Ahead-of-stable update error fixed locally with 21 updater tests passing; Windows/Mac integration added to CI. Profile-picture JPEG/PNG/GIF request is next. No replacement ZIPs yet; delivered Drive archives are still 9c175eb. Immediate actual preview and test ZIP delivery via Google Drive are now binding owner rules. See docs/NOW.md and startup-performance.md.

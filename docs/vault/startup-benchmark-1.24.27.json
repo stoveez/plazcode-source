@@ -1,0 +1,26 @@
+{
+  "source": "ffad37d",
+  "sameSignedPackage": true,
+  "runsSeconds": {
+    "previous_serial": [
+      0.3182,
+      0.2761,
+      0.2844,
+      0.2883,
+      0.2952
+    ],
+    "new_parallel": [
+      0.1624,
+      0.16,
+      0.153,
+      0.1542,
+      0.1659
+    ]
+  },
+  "medianSeconds": {
+    "previous_serial": 0.2883,
+    "new_parallel": 0.16
+  },
+  "optimizedTamperAndMissingFileRejection": "passed",
+  "limits": "Warm Linux component comparison only, not Windows startup; previous binary uses musl and local comparison binary uses glibc."
+}

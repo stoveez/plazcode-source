@@ -54,7 +54,14 @@ fn version(text: &str) -> anyhow::Result<Vec<u32>> {
 }
 fn update_available(latest: &str, extension: &str, desktop_latest: &str, desktop: &str) -> anyhow::Result<bool> {
     anyhow::ensure!(version(desktop_latest)? <= version(latest)?,"Desktop build cannot exceed release version.");
+    // A test desktop can legitimately be ahead of the published stable feed.
+    // Even an older extension must never cause that desktop to install a downgrade.
+    if version(latest)? < version(desktop)? {return Ok(false);}
     Ok(version(latest)? > version(extension)? || version(desktop_latest)? > version(desktop)?)
+}
+fn no_update(status: &mut Status, ahead: bool) {
+    status.available=false;status.error=None;status.check_error=None;status.progress=100;
+    status.message=if ahead {"This desktop is newer than the latest published release."} else {"Already up to date."}.into();
 }
 fn validate(feed: &Value) -> anyhow::Result<(String,String,String)> {
     let ver=feed["version"].as_str().unwrap_or("");version(ver)?;
@@ -292,14 +299,16 @@ async fn run(install: bool, background: bool) -> anyhow::Result<()> {
     let feed: Value = serde_json::from_slice(&raw)?;
     let (latest,download,hash)=validate(&feed)?;
     crate::integrity::verify_update(&feed,&latest,&hash,crate::integrity::platform())?;
-    anyhow::ensure!(version(&latest)? >= version(env!("CARGO_PKG_VERSION"))?, "Refusing an update older than this desktop version.");
+
     let mut download=download.strip_prefix("https://raw.githubusercontent.com/stoveez/PlazCodeneww/").map(|tail| format!("https://raw.githubusercontent.com/stoveez/PlazCode/{tail}")).unwrap_or(download);
     if let Some(previous) = state().latest.as_ref() { anyhow::ensure!(version(&latest)? >= version(previous)?, "Release source returned an older cached version; retaining the latest known release."); }
     let notes = feed.get("release_notes").and_then(|value| serde_json::from_value::<Vec<ReleaseNotes>>(value.clone()).ok());
     let desktop_latest=feed.get("desktop_version").and_then(Value::as_str).unwrap_or(&latest).to_owned();
     let available=update_available(&latest,&installed(),&desktop_latest,env!("CARGO_PKG_VERSION"))?;
     { let mut s=state();s.installed=installed();s.latest=Some(latest.clone());s.desktop_latest=Some(desktop_latest);s.available=available;s.checked_at=std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64;s.check_error=None; if let Some(notes) = notes { s.release_notes = notes; } }
-    if !available { progress(100,"Already up to date.");return Ok(()); }
+    if !available { no_update(&mut state(),version(&latest)?<version(env!("CARGO_PKG_VERSION"))?);return Ok(()); }
+    // Defense in depth: no download or installer may target an older desktop.
+    anyhow::ensure!(version(&latest)? >= version(env!("CARGO_PKG_VERSION"))?, "Refusing an update older than this desktop version.");
     if !install { progress(0,"A newer version is ready to install.");return Ok(()); }
     // Automatic installs of a version whose installation just failed wait with
     // a growing delay. Without it, a persistent lock relaunches the desktop,
@@ -467,6 +476,17 @@ pub async fn post(Json(value): Json<Value>) -> axum::response::Response {
     Json(serde_json::json!({"ok":true})).into_response()
 }
 #[cfg(test)] mod tests {
+    #[test] fn ahead_of_stable_is_not_an_update_even_with_an_older_extension() {
+        assert!(!update_available("1.24.26","1.24.27","1.24.26","1.24.27").unwrap());
+        assert!(!update_available("1.24.26","1.24.25","1.24.26","1.24.27").unwrap());
+        assert!(update_available("1.24.27","1.24.26","1.24.27","1.24.27").unwrap(),"same-version complete repair still updates an old extension");
+        assert!(update_available("1.24.28","1.24.27","1.24.28","1.24.27").unwrap(),"newer stable release must still update a test desktop");
+    }
+    #[test] fn successful_no_update_clears_an_old_failure_overlay() {
+        let mut snapshot=state().clone();snapshot.available=true;snapshot.error=Some("Refusing an update older than this desktop version.".into());snapshot.check_error=Some("old check error".into());
+        no_update(&mut snapshot,true);assert!(!snapshot.available);assert!(snapshot.error.is_none());assert!(snapshot.check_error.is_none());assert_eq!(snapshot.progress,100);assert_eq!(snapshot.message,"This desktop is newer than the latest published release.");
+        no_update(&mut snapshot,false);assert_eq!(snapshot.message,"Already up to date.");
+    }
     #[test]
     fn installer_reason_is_preserved_without_reusing_an_old_failure() {
         let root=std::env::temp_dir().join(format!("plazcode-installer-error-{}",std::process::id()));

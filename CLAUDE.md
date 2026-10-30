@@ -7,6 +7,8 @@
 
 Codex reads `AGENTS.md`, which says the same rules. For the details of building, test builds, publishing, releases and open bugs, use the vault (`docs/vault/`), `docs/HANDOFF.md` and `docs/MAINTAINER-GUIDE.md` (section 11 if another AI works at the same time: claim a task on `docs/TASK-BOARD.md`, own branch and worktree).
 
+**Owner delivery rule (2026-10-30):** immediately send actual running-PlazCode screenshots/videos through Google Drive when each feature is ready, before the rest of testing/builds finish. Deliver the exact verified inner test ZIPs through Google Drive too, with normal file links and metadata/size readback. No mockups or workspace-only download links. See `docs/vault/how-we-work.md`.
+
 ## What this is
 PlazCode is a closed-source browser extension plus a Rust desktop app that turns an AI chat site into an agent for Roblox Studio and the user's computer.
 - This private repo (`stoveez/plazcode-source`) holds the source overlay, build scripts, tests and release tooling.

@@ -7,6 +7,8 @@
 
 This is the private source repo for PlazCode (`stoveez/plazcode-source`). For anything beyond these rules read `docs/MAINTAINER-GUIDE.md`, `docs/TASK-BOARD.md` and `docs/HANDOFF.md`; build, release and status details are in `docs/vault/`.
 
+**Owner delivery rule (2026-10-30):** immediately send actual running-PlazCode screenshots/videos through Google Drive when each feature is ready, before the rest of testing/builds finish. Deliver the exact verified inner test ZIPs through Google Drive too, with normal file links and metadata/size readback. No mockups or workspace-only download links. See `docs/vault/how-we-work.md`.
+
 ## Which branch to use
 Start from **`claude/plazcode-dev`** (the newest finished work; the repo's `main` is old and `release/1.24.25` is behind). Work directly on it (the owner uses one AI at a time): commit and push there, no task branches. Do not push to `release/1.24.25` or `main` without the owner's yes. Ignore the old branch `claude/vault-brain-and-cleanups`. If you cannot see `docs/NOW.md`, you are on the wrong branch: `git fetch origin` and switch to `claude/plazcode-dev`.
 

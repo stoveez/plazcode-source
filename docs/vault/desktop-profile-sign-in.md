@@ -59,3 +59,6 @@ WIP native startup follow-up: preserved every signature/path/size/hash check and
 
 ## Startup local validation
 Native startup checks now compile and pass all 230 native + 4 library tests (2 ignored), including parallel tamper/missing/symlink rejection. Corrected startup timing log placement; existing-instance discovery now explicitly avoids proxies for its loopback-only request. Full verification still completes before bridge/window startup. Optimized before/after timings, actual refreshed preview and replacement platform packages remain pending; delivered Drive ZIPs still contain 9c175eb.
+
+## Current follow-up
+Plus/approval chevrons and splash crossfade implemented; native startup verification optimized without skipping checks. Ahead-of-stable update error fixed locally with 21 updater tests passing; Windows/Mac integration added to CI. Profile-picture JPEG/PNG/GIF request is next. No replacement ZIPs yet; delivered Drive archives are still 9c175eb. Immediate actual preview and test ZIP delivery via Google Drive are now binding owner rules. See docs/NOW.md and startup-performance.md.

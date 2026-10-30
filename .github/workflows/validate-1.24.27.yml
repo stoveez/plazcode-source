@@ -326,6 +326,10 @@ jobs:
         if: runner.os == 'macOS'
         working-directory: build-src-1.24.27/PlazCode
         run: python test-macos-startup-recovery.py
+      - name: Ahead-of-stable native update checks never downgrade
+        if: runner.os == 'Windows' || runner.os == 'macOS'
+        working-directory: build-src-1.24.27/PlazCode
+        run: python test-update-ahead.py
       - name: Build native executable
         run: cargo +stable build --release --locked --manifest-path agent/Cargo.toml
         working-directory: build-src-1.24.27/PlazCode
