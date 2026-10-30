@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-10-30. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: replacement full test builds delivered through Google Drive.** Source `38fd7d2`, full CI 41085855952 passed Windows, universal Mac, Linux and browsers. All current follow-ups included: JPEG/PNG/animated GIF profile pictures; bold Up to date; centered Create-profile plus/approval chevron; overlapping loading/sign-in fade; parallel protected-file verification with checks preserved; loopback proxy avoidance; startup phase timings; ahead-of-stable update no-op instead of failure. Original profiles/sync, DeepSeek, approvals, bar/effort and Mac/Linux fixes retained.
+**Latest WIP: owner recordings show intro replay on fresh native launch and missing motion details.** Fresh locked storage namespace no longer forces a reload; real account changes still reload for isolation. Intro waits for native window-ready acknowledgement/visible paint before animation clock starts; desktop behind sign-in is hidden. Native shell shown with dark background before WebView setup; local existing-instance connect deadline bounded to 150ms. Untested WIP; new screenshot/video and updated builds remain. Windows reduced-motion path explains simultaneous letter fades; preserve accessible behavior and verify both modes.
+
+**Previous delivery: replacement full test builds delivered through Google Drive.** Source `38fd7d2`, full CI 41085855952 passed Windows, universal Mac, Linux and browsers. All current follow-ups included: JPEG/PNG/animated GIF profile pictures; bold Up to date; centered Create-profile plus/approval chevron; overlapping loading/sign-in fade; parallel protected-file verification with checks preserved; loopback proxy avoidance; startup phase timings; ahead-of-stable update no-op instead of failure. Original profiles/sync, DeepSeek, approvals, bar/effort and Mac/Linux fixes retained.
 
 - [Windows](https://drive.google.com/file/d/10qaWb1AFLdzU6QED-r0NOXku3NS0NDD_/view?usp=drivesdk)
 - [Mac](https://drive.google.com/file/d/1n8DJGdxD1rILW82ONJ4B0i-ysAyfiQ7K/view?usp=drivesdk)

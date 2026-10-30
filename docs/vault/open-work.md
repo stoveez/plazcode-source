@@ -141,3 +141,6 @@ Release: see [releasing](releasing.md).
 
 ## Profile-picture/startup follow-ups delivered
 All current follow-ups are in replacement source 38fd7d2 / CI 41085855952, delivered through Drive. See profile-pictures.md, startup-performance.md and test-builds.md. Actual previews were delivered before full tests/builds. All native/platform/browser checks and package verification passed. Device-specific before-window startup timing remains unmeasured. Owner must restore source Private; account service stays Public. Older progress entries above are historical.
+
+## Fresh-window startup replay WIP (owner recordings, 2026-10-30)
+Fresh locked context caused an unnecessary full reload, replaying the intro and changing theme mid-animation. Correcting reload, visible-paint animation gate and earlier dark native shell. Windows reduced-motion uses simultaneous letter fades rather than normal stagger. New actual preview and tests/builds pending; delivered 38fd7d2 ZIPs do not include this WIP.

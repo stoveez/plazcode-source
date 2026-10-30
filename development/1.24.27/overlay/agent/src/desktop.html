@@ -538,6 +538,8 @@ html[data-look-rainbow] :is(.nx-card,.nx-row,.nx-theme,html[data-desktop-theme] 
 .pc-toolkit .pc-kit-card>button{margin:0 12px 6px 0}
 /* ===== startup intro ===== */
 .nx-splash{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 38%,rgb(var(--nx-rgb)/.16),transparent 55%),var(--canvas,#0c0e13);transition:opacity .7s ease,transform .7s var(--ui-ease,ease),filter .7s ease;-webkit-app-region:drag}
+.nx-splash:not([data-intro-ready]) .nx-splash-in{opacity:0}
+.nx-splash:not([data-intro-ready]) *,.nx-splash:not([data-intro-ready]) *::before,.nx-splash:not([data-intro-ready]) *::after{animation-play-state:paused!important}
 .nx-splash.out{opacity:0;transform:scale(1.035);filter:blur(6px);pointer-events:none}
 .nx-splash-in{display:flex;flex-direction:column;align-items:center;text-align:center;gap:0}
 .nx-splash-mark{position:relative;width:104px;height:104px;margin-bottom:22px}
@@ -1923,6 +1925,9 @@ __PLAZCODE_VERSION_UI__
   var Nxsplashstarted = false;
   function Nxstartup() {
     var Splash = Byid('nxSplash'); if(Boot.profiles&&ProfileContext&&sessionStorage.getItem('plazcode-profile-handoff')===ProfileContext.id){sessionStorage.removeItem('plazcode-profile-handoff');if(Splash)Splash.remove();if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.querySelector('.app').animate([{opacity:0},{opacity:1}],{duration:600,easing:'ease-out'});return;} if (!Splash || Nxsplashstarted) return; Nxsplashstarted = true;
+    function BeginIntro(){
+    if(Splash.hasAttribute('data-intro-ready'))return;
+    Splash.setAttribute('data-intro-ready','');
     var Title = Byid('nxSplashTitle'), Message = Byid('nxSplashMsg'), Bar = Byid('nxSplashBar'), Began = Date.now(), Finished = false, Installing = false;
     function Say(Head, Sub, Mode) {
       if (Title.textContent === Head && Message.textContent === Sub) return;
@@ -1968,6 +1973,13 @@ __PLAZCODE_VERSION_UI__
     Say('Checking for updates…', 'Talking to the update server.', 'check');
     Api('/api/desktop/update', {method: 'POST', body: JSON.stringify({action: 'check'})}).catch(function () { return null; }).then(function () { window.setTimeout(Poll, 250); });
     window.setTimeout(function () { if (!Installing) Finish(); }, 10000);
+    }
+    function VisibleIntro(){if(document.hidden)return;document.removeEventListener('visibilitychange',VisibleIntro);requestAnimationFrame(function(){requestAnimationFrame(BeginIntro);});}
+    // Native WebView creation can consume animation time while its window is hidden.
+    // Begin only after the native ready acknowledgement, or visible browser paint.
+    if(window.ipc&&typeof window.ipc.postMessage==='function'&&!window.__PLAZCODE_WINDOW_READY__){window.addEventListener('plazcode-window-ready',VisibleIntro,{once:true});}
+    else VisibleIntro();
+    document.addEventListener('visibilitychange',VisibleIntro);
   }
   function Nxsyncglow(Glow, Gradients) {
     Array.prototype.slice.call(document.querySelectorAll('[data-nx-glow]')).forEach(function (Node) { Node.setAttribute('aria-pressed', String(Node.getAttribute('data-nx-glow') === Glow)); });
@@ -2511,7 +2523,11 @@ __PLAZCODE_VERSION_UI__
       if(Boot.profiles){
         ProfilePortal=await Api('/api/desktop/profiles');ProfileContext=ProfilePortal.active||null;
         var ContextId=ProfileContext?ProfileContext.id:'locked';
-        if(sessionStorage.getItem('plazcode-profile-context')!==ContextId){sessionStorage.setItem('plazcode-profile-context',ContextId);location.reload();return;}
+        var PreviousContext=sessionStorage.getItem('plazcode-profile-context');
+        if(PreviousContext!==ContextId){sessionStorage.setItem('plazcode-profile-context',ContextId);if(PreviousContext||ContextId!=='locked'){location.reload();return;}}
+        // A fresh locked window already used the locked storage namespace. Reloading
+        // here replayed the entire intro; real account changes still reload for isolation.
+        if(!ProfileContext)document.querySelector('.app').style.visibility='hidden';
         if(ProfileContext&&ProfileContext.migrate_ui){
           try{await MigrateProfileUi();await Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify({action:'ui-migrated'})});}
           catch(Error){console.warn('PlazCode kept the original desktop appearance data; migration will retry next launch.');}

@@ -311,7 +311,8 @@ pub fn run_gui(
     let window = WindowBuilder::new()
         .with_title(format!("PlazCode {}", env!("CARGO_PKG_VERSION")))
         .with_decorations(cfg!(target_os = "macos"))
-        .with_visible(false)
+        .with_visible(!start_background)
+        .with_background_color((12,14,19,255))
         .with_focused(!start_background)
         .with_resizable(true)
         .with_inner_size(LogicalSize::new(1460.0, 900.0))
@@ -320,11 +321,13 @@ pub fn run_gui(
         .build(&event_loop)
         .map_err(|error| anyhow::anyhow!("cannot create PlazCode window: {error}"))?;
 
+    tracing::info!("startup: native window created in {:.3}s (before WebView initialization)",desktop_started.elapsed().as_secs_f64());
     let proxy = event_loop.create_proxy();
     let ipc_proxy = proxy.clone();
     let allowed_url = desktop_url.clone();
-    let _webview = WebViewBuilder::new()
+    let webview = WebViewBuilder::new()
         .with_focused(!start_background)
+        .with_background_color((12,14,19,255))
         .with_initialization_script(initialization)
         .with_navigation_handler(move |url| url == allowed_url)
         .with_url(&desktop_url)
@@ -411,6 +414,9 @@ pub fn run_gui(
                 if background_visibility_pending {
                     window.set_minimized(!RESTORE_WINDOW.load(Ordering::Relaxed));
                     background_visibility_pending = false;
+                }
+                if let Err(error)=webview.evaluate_script("window.__PLAZCODE_WINDOW_READY__=true;window.dispatchEvent(new Event('plazcode-window-ready'));") {
+                    shared.log(&format!("Could not start desktop intro: {error}"));
                 }
                 shared.log("desktop WebView UI ready");
                 if let Some(path) = update_ready_file.as_deref() {
