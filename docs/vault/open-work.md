@@ -121,3 +121,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-30: late Studio results now use session-bound IDs and are rejected after profile changes, even when caller IDs repeat. Real Worker/native integration and six account tests pass. Extension partition tests pass. CI 40964100055 fixture/refresh failures fixed; actual desktop language runtime passes 15 languages; next full build pending.
 
 - 2026-10-30: owner rejected initial sign-in appearance. Whole welcome/profile/button styling reworked; actual gold/cyan running-app screenshots shown immediately. Two real local test profiles, no fake UI; no JS errors. Screen and desktop tests pass; fresh full CI for rework remains.
+
+- 2026-10-30: real reworked profile screenshots filed under previews/desktop-profiles-{gold,cyan}.png for direct owner viewing. Runtime unchanged from 4c9fba7; current CI remains the build gate.
