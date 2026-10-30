@@ -15,7 +15,7 @@
   },
   "downloadedSignedLinuxLaunch": "passed bootstrap/profile gate/reopen/Quit",
   "windowsDefender": "runner scan found no threats",
-  "sourceVisibility": "public; authorized Private API change denied HTTP 403; owner action required",
+  "sourceVisibility": "private; verified after owner restored it",
   "archives": [
     {
       "platform": "windows",
@@ -25,7 +25,9 @@
       "files": 3038,
       "productionSignatures": "verified",
       "sourceParity": "verified",
-      "officialLayout": "exact 1.24.26 file list"
+      "officialLayout": "exact 1.24.26 file list",
+      "driveUrl": "https://drive.google.com/file/d/1_7hBb-hxMA8ylgugYMz9xWvLIuSLjB0X/view?usp=drivesdk",
+      "driveUpload": "exact verified local archive; metadata size/name readback passed"
     },
     {
       "platform": "macos",
@@ -35,7 +37,9 @@
       "files": 3041,
       "productionSignatures": "verified",
       "sourceParity": "verified",
-      "officialLayout": "exact 1.24.26 file list"
+      "officialLayout": "exact 1.24.26 file list",
+      "driveUrl": "https://drive.google.com/file/d/1DGNrZcK9KIoPDqKv2gbgX_31iaF3SKQS/view?usp=drivesdk",
+      "driveUpload": "exact verified local archive; metadata size/name readback passed"
     },
     {
       "platform": "linux",
@@ -45,7 +49,9 @@
       "files": 3028,
       "productionSignatures": "verified",
       "sourceParity": "verified",
-      "officialLayout": "native Linux ZIP/tar parity"
+      "officialLayout": "native Linux ZIP/tar parity",
+      "driveUrl": "https://drive.google.com/file/d/1rakPW0e7kCBLJnWcEMoCX4OErlGEZBv2/view?usp=drivesdk",
+      "driveUpload": "exact verified local archive; metadata size/name readback passed"
     }
   ],
   "linuxTar": {

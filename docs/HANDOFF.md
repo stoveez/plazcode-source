@@ -1,7 +1,7 @@
 # PlazCode handoff note (for any AI starting with no context)
 
 
-2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is still PUBLIC: authorized Private change denied HTTP 403; owner must restore Private. Latest stable remains 1.24.26.
+2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is now PRIVATE, verified after owner restored visibility. Earlier integration visibility attempts were denied HTTP 403. Latest stable remains 1.24.26.
 
 **Current, 2026-10-29:** working on 1.24.27 (DeepSeek pacing, approval modes, accessible effort choices, bar alignment and Linux/Mac startup fixes). Latest published remains 1.24.26. Full test builds delivered and verified: CI 40932400772 / source 962899c. Source Private restoration needs owner action after API 403. Start with `docs/NOW.md`; older entries below are historical.
 

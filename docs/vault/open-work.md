@@ -4,11 +4,11 @@ updated: 2026-10-30
 ---
 # Open work
 
-**Current profile delivery:** 2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is still PUBLIC: authorized Private change denied HTTP 403; owner must restore Private. Latest stable remains 1.24.26. See [profile feature](desktop-profile-sign-in.md) and [archive verification](test-build-1.24.27-profiles-verification.json).
+**Current profile delivery:** 2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is now PRIVATE, verified after owner restored visibility. Earlier integration visibility attempts were denied HTTP 403. Latest stable remains 1.24.26. See [profile feature](desktop-profile-sign-in.md) and [archive verification](test-build-1.24.27-profiles-verification.json).
 
 **Current 2026-10-29:** 1.24.27 full test builds delivered. CI 40932400772 / 962899c passed Windows, Mac, Linux and browsers. Archive/signature/source/version/layout verification complete; Windows/Mac exact current release file lists. See [verification](test-build-1.24.27-verification.json). DeepSeek pacing, effort clipping, approval controls, bar alignment and Mac/Linux startup fixes are in these test packages. Original user devices and live AI accounts remain untested. Release-note metadata records completed test delivery; the stable feed stays at 1.24.26.
 
-**Outstanding visibility:** source still PUBLIC after delivery; authorized Private API change denied HTTP 403. Owner asked to restore Private at repository settings. Keep checking/reminding. PC vault folder is not connected.
+**Visibility resolved:** source is now PRIVATE, verified after owner restored it. Account API stays Public independently. PC vault folder is not connected.
 
 The dated progress entries below record earlier stages and are superseded by this delivery status.
 

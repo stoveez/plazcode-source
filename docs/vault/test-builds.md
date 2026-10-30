@@ -4,7 +4,7 @@ title: Test builds and the public-then-private plan
 updated: 2026-10-30
 ---
 
-2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is still PUBLIC: authorized Private change denied HTTP 403; owner must restore Private. Latest stable remains 1.24.26.
+2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is now PRIVATE, verified after owner restored visibility. Earlier integration visibility attempts were denied HTTP 403. Latest stable remains 1.24.26.
 
 # Test builds
 
@@ -38,9 +38,18 @@ Includes: owner archive DeepSeek shared send queue (8–9.8 second completion-ba
 
 Every downloaded archive passed CRC/path/version/production-signature and exact reviewed JS source checks. Windows/Mac lists exactly match 1.24.26; Linux static executable/memory helper, permissions and ZIP/tar contents verified. See [sizes, hashes and full checks](test-build-1.24.27-verification.json). Exact signed Linux frontend also opened locally for the actual final screenshot; settings persistence/reload/reopen/Quit passed. Original user setups and live AI accounts remain untested.
 
-Source still PUBLIC immediately after delivery. Authorized Private API attempt denied HTTP 403; owner sent settings link/status request. Restore Private and verify it. PC vault folder is not connected.
+Historical delivery visibility: the integration could not restore Private (HTTP 403). Owner subsequently restored it; source is now verified PRIVATE. PC vault folder is not connected.
 
 ## Profile test builds delivered (2026-10-30)
-2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is still PUBLIC: authorized Private change denied HTTP 403; owner must restore Private. Latest stable remains 1.24.26.
+2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is now PRIVATE, verified after owner restored visibility. Earlier integration visibility attempts were denied HTTP 403. Latest stable remains 1.24.26.
 
 Actual remembered-login, separate-data and sync integration passed; owner approved the rectangular profile/gloss/full-background screen. Downloaded archives passed production signatures/source/layout checks; the actual signed Linux app passed bootstrap/profile-gate/reopen/Quit. [Full verification](test-build-1.24.27-profiles-verification.json). Quit/replace the desktop and extension before testing. Windows unsigned/Mac not notarized. Original user devices and live AI accounts remain untested.
+
+## Working Drive downloads (2026-10-30)
+Workspace links were not downloadable in the owner's client. Exact verified INNER ZIPs uploaded to the connected Google Drive; readback confirms names, MIME types and exact byte sizes. No rebuild, wrapper ZIP, new public sharing permission or stable release. Use Drive's Download action (the connected account owns the uploads).
+
+- [Windows — 50,461,047 bytes](https://drive.google.com/file/d/1_7hBb-hxMA8ylgugYMz9xWvLIuSLjB0X/view?usp=drivesdk)
+- [Mac — 51,989,456 bytes](https://drive.google.com/file/d/1DGNrZcK9KIoPDqKv2gbgX_31iaF3SKQS/view?usp=drivesdk)
+- [Linux — 49,561,126 bytes](https://drive.google.com/file/d/1rakPW0e7kCBLJnWcEMoCX4OErlGEZBv2/view?usp=drivesdk)
+
+Source is now confirmed Private. Keep the separately authorized account API Public.
