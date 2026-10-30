@@ -155,6 +155,11 @@ const pick=(select,value)=>select.evaluate((node,value)=>{node.value=value;node.
     assert.equal(await select.inputValue(),'en','failed saves revert the picker');
     assert.equal(await page.evaluate(()=>PlazCodeI18n.getLanguage()),'en','failed save must reject onChange');
     assert.equal(preferences.rsLanguage,'en');
+    await page.evaluate(()=>PlazCodeDesktop.refresh());
+    assert((await page.locator('#fatal').textContent()).includes('Fixture save refused'),'polling preserves a failed-save message');
+    await pick(select,'en');
+    await page.waitForFunction(()=>!document.getElementById('fatal').textContent.includes('Fixture save refused'));
+
     assert.equal(await page.locator('#homeActivityLabel').innerText(),'Language','user-authored labels are not localized');
     await page.evaluate(()=>PlazCodeDesktop.go('tools'));
     assert.equal(await page.locator('#toolsGrid .toolname').first().innerText(),'Settings');

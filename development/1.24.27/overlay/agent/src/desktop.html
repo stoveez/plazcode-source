@@ -972,7 +972,7 @@ __PLAZCODE_VERSION_UI__
     setItem:function(Key,Value){window.localStorage.setItem(this.key(Key),Value);},
     removeItem:function(Key){window.localStorage.removeItem(this.key(Key));}
   };
-  var State = null;
+  var State = null, PreferenceError = null;
   var Toolfilter = "All";
   var Toolquery = "";
   var PendingMcp = Object.create(null);
@@ -1060,7 +1060,7 @@ __PLAZCODE_VERSION_UI__
       if(Result.not_modified)return;
       var Scroll=Details.scrollTop;Details.replaceChildren();
       if(Result.omitted){var Notice=document.createElement('div');Notice.className='desktop-work-notice';Notice.textContent='Some older or oversized details exceeded the desktop retention limit. The original browser chat contains the full messages.';Details.appendChild(Notice);}
-      (Result.messages || []).forEach(function(Message){var Row=document.createElement('div');Row.className='desktop-work-message';var Name=document.createElement('strong');Name.setAttribute('data-i18n-user-content','');Name.dir='auto';Name.textContent=Message.role==='result'?'Command result':Message.role==='command'?'AI command':'AI reply';var Text=document.createElement('pre');Text.textContent=Message.text;Row.append(Name,Text);Details.appendChild(Row);});
+      (Result.messages || []).forEach(function(Message){var Row=document.createElement('div');Row.className='desktop-work-message';var Name=document.createElement('strong');Name.textContent=Message.role==='result'?'Command result':Message.role==='command'?'AI command':'AI reply';var Text=document.createElement('pre');Text.textContent=Message.text;Row.append(Name,Text);Details.appendChild(Row);});
       if (!(Result.messages || []).length) { var Empty=document.createElement('div');Empty.className='desktop-work-notice';Empty.textContent='Waiting for the AI reply…';Details.appendChild(Empty); }
       Details.scrollTop=Scroll;
     }).catch(function(Error){Details.textContent=Error.message || String(Error);Activityrevision=-1;}).finally(function(){Activityloading=false;});
@@ -1380,6 +1380,7 @@ __PLAZCODE_VERSION_UI__
         return Body;
       })())
     }).then(function (Result) {
+      PreferenceError=null;
       if (Name === "rsLanguage" && Result.preferences) {
         // Apply the acknowledged preference even if a periodic refresh is in flight.
         if (!State) State = {};
@@ -1388,6 +1389,7 @@ __PLAZCODE_VERSION_UI__
       }
       return Refresh();
     }).catch(function (Error) {
+      PreferenceError="Settings could not be saved: "+(Error.message||String(Error));
       Showerror(Error);
       // The shared picker must not report success after a failed native save.
       // Retain the legacy catch behavior for every other preference control.
@@ -1478,8 +1480,9 @@ __PLAZCODE_VERSION_UI__
     Byid("workspaceSub").textContent = Workspace ? (State.workspace_root || "AgentScript files") : "AgentScript files";
 
     var Fatal = Byid("fatal");
-    Fatal.style.display = State.fatal ? "block" : "none";
-    Fatal.textContent = State.fatal || "";
+    var Fatalmessage=State.fatal||PreferenceError||"";
+    Fatal.style.display = Fatalmessage ? "block" : "none";
+    Fatal.textContent = Fatalmessage;
 
     Renderlogs();
     Rendertools();

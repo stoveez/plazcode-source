@@ -1,6 +1,8 @@
 # NOW
 Updated: 2026-10-30. Branch `claude/plazcode-dev`; no helper agents.
 
+**Latest: failed preference-save messages survive polling until a successful retry.** CI 40979067378 passed native regression steps on Windows/Mac/Linux but browser language QA caught polling erasing a save-failure message. The actual UI now keeps preference-save errors until a later successful save. Actual i18n checks passed three consecutive runs, then passed with explicit forced-poll/error-retention and successful-retry assertions; desktop regression passes. Reworked appearance and actual preview images unchanged. Full signed CI must rerun for this final frontend source. Consolidated the profile vault note to remove superseded implementation-status text.
+
 **Latest: original wallpaper is retained for the first profile.** Browser UI migration now copies the legacy IndexedDB wallpaper as well as appearance/cache keys, keeping originals and existing profile edits. Acknowledgement clears the active migration flag so deleting a wallpaper does not restore it on page reload. Actual browser storage tests and seven native account tests pass; actual screen interaction and desktop regression pass. No appearance change from the reworked gold/cyan previews. Full signed CI must use this runtime source; older 4c9fba7 run is superseded.
 
 **Latest: actual reworked profile screenshots filed in the repo vault.** Gold/cyan native screenshots now under docs/vault/previews/ so the owner can view them directly, rather than depending on the Codex image panel (its file-open request failed authorization). Both use real test accounts and actual compiled frontend; no credentials in images. Runtime source remains 4c9fba7; this documentation-only push skips CI without cancelling its build run.

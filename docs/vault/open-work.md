@@ -125,3 +125,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-30: real reworked profile screenshots filed under previews/desktop-profiles-{gold,cyan}.png for direct owner viewing. Runtime unchanged from 4c9fba7; current CI remains the build gate.
 
 - 2026-10-30: first-profile UI migration includes the existing IndexedDB wallpaper; originals and profile edits retained. Migration acknowledgement prevents deleted wallpaper reappearing. Real browser storage checks + seven native account tests pass. Full final runtime CI pending.
+
+- 2026-10-30: CI 40979067378 native regression steps pass on all three platforms; browser check exposed preference errors being erased by polling. Fixed sticky save-failure feedback with successful-retry clearing. Actual 15-language test passes three consecutive runs and explicit polling/retry assertions; desktop regression passes. Next full runtime CI pending.

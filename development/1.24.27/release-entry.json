@@ -12,7 +12,8 @@
     "The PlazCode bar and collapsed tab follow the current chat box after resizing or page changes.",
     "Every desktop effort choice stays reachable.",
     "DeepSeek messages share one queue and wait 8–9.8 seconds from the last send finishing.",
-    "Mac can recover a bridge port still held by an older PlazCode process."
+    "Mac can recover a bridge port still held by an older PlazCode process.",
+    "Settings that fail to save keep their error visible until a successful retry."
   ],
   "notes": [
     "New profile test builds are being validated; latest stable remains 1.24.26.",
@@ -34,7 +35,8 @@
         "items": [
           "Every effort option stays reachable; the bar and collapsed tab follow your chat box.",
           "DeepSeek sends share one queue with 8–9.8 second spacing after a send finishes.",
-          "Mac recovers ports held by stale PlazCode processes and leaves other programs alone."
+          "Mac recovers ports held by stale PlazCode processes and leaves other programs alone.",
+          "Settings that fail to save keep their error visible until a successful retry."
         ]
       },
       {
