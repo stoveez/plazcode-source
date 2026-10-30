@@ -355,7 +355,6 @@ pub fn run_gui(
     #[cfg(windows)]
     let mut tray = tray::Tray::new(&window, shared.clone());
     if !start_background { window.set_visible(true); window.set_focus(); }
-    tracing::info!("startup: native window/WebView initialized in {:.3}s",desktop_started.elapsed().as_secs_f64());
     else {
         #[cfg(windows)] {
             use tao::platform::windows::WindowExtWindows;
@@ -373,6 +372,8 @@ pub fn run_gui(
         if RESTORE_WINDOW.load(Ordering::Relaxed) { shared.log("Updated desktop restarted with its window open, without taking focus."); }
         else { shared.log("Updated desktop restarted minimized without taking focus; reopen it from the taskbar, Dock or tray."); }
     }
+
+    tracing::info!("startup: native window/WebView initialized in {:.3}s",desktop_started.elapsed().as_secs_f64());
 
     #[cfg(target_os = "macos")]
     let mut background_visibility_pending = start_background;

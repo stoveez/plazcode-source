@@ -139,3 +139,6 @@ Release: see [releasing](releasing.md).
 
 ## Native startup WIP
 WIP native startup follow-up: preserved every signature/path/size/hash check and replaced the serial full-tree scan with four bounded verification workers; startup still waits for all workers, without a cache or mtime bypass. Added tamper/missing/symlink regressions and protection/bridge/WebView phase timings. Rust compile/security tests and before/after package timing are pending; do not deliver old ZIPs as containing this change.
+
+## Startup local validation
+Native startup checks now compile and pass all 230 native + 4 library tests (2 ignored), including parallel tamper/missing/symlink rejection. Corrected startup timing log placement; existing-instance discovery now explicitly avoids proxies for its loopback-only request. Full verification still completes before bridge/window startup. Optimized before/after timings, actual refreshed preview and replacement platform packages remain pending; delivered Drive ZIPs still contain 9c175eb.

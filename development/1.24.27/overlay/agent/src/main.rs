@@ -718,6 +718,8 @@ async fn focus_existing(addr: SocketAddr, pairing_key: &str) -> bool {
     }
 
     let client = match reqwest::Client::builder()
+        // Existing-instance discovery is loopback-only, never an Internet/proxy request.
+        .no_proxy()
         .timeout(Duration::from_millis(900))
         .build()
     {
