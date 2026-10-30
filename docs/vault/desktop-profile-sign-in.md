@@ -4,7 +4,7 @@ Updated: 2026-10-30. Implemented; final signed test-build validation and public 
 The existing loading screen fades into the profile picker. Each new app process starts signed out. Users choose a saved profile, see its theme-colored selection and then green Log in/red Remove controls. First sign-in creates or uses an online username/password account; later launches use the remembered session without retyping. Valid remembered sessions also open local data offline. The Account page provides sync and sign-out/profile switching. Removing a saved profile asks for confirmation, revokes that device session when reachable, and keeps the online account and local data.
 
 ## Appearance and actual previews
-The owner rejected the initial brown row/list preview. The replacement uses a charcoal glass welcome panel, larger heading, two-column avatar tiles with individual theme colors and selected check badges, redesigned green/red actions and a framed creation tile. Keyboard focus, reduced motion, small windows/scrolling and glow-off remain supported. Show actual running-app screenshots immediately when the feature is ready, before the rest of packaging finishes.
+The owner rejected the initial brown row/list preview. The replacement uses a charcoal glass welcome panel, larger heading, compact horizontal profile rows (matching the first reference) with individual theme colors and selected check badges, redesigned green/red actions and a framed creation tile. Keyboard focus, reduced motion, small windows/scrolling and glow-off remain supported. Show actual running-app screenshots immediately when the feature is ready, before the rest of packaging finishes.
 
 Actual compiled native screenshots with two real local Worker/SQL test accounts:
 - [Gold](previews/desktop-profiles-gold.png)
@@ -39,3 +39,6 @@ Owner requested stronger glow: panel/selected-card halos, avatar/brand highlight
 
 ## Arrow and shine refinements
 Login uses a vector arrow centered on the right edge. The desktop lift/inset-light treatment, glossy green primary action, panel/card reflections and restrained shine now apply to sign-in; reduced motion disables animation. Actual compiled screenshots above updated; [actual UI recording](previews/desktop-profiles-shine.mp4) shows the effect and theme switching. UI/desktop regressions pass, no native-preview JS errors.
+
+## Latest owner direction: profile rows and background
+Use compact wide rectangles, not square profile tiles. Avatar/name/detail/check now align horizontally. Full-screen background also has polished ambient lighting and slow reflections; not only the welcome card. Actual screenshots and recording above are refreshed from the compiled app. Reduced motion disables background/shine animation. The design guard allowlist names the three owner-requested effects explicitly rather than allowing arbitrary repeating motion. UI, theme/design and desktop regressions pass; full fresh CI pending.

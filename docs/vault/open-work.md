@@ -131,3 +131,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-30: owner authorized public account API; audience changed to Public and real public signup/session/sync/revoke passed without bypass. Stronger requested desktop glow captured in actual gold/cyan previews. Failed-login focus is synchronous; five consecutive Chromium 141 screen tests pass. Full final packages pending.
 
 - 2026-10-30: owner requested cleaner login arrow and desktop shine. Vector alignment, tactile/glossy primary action, surface reflections and restrained animated shine implemented; real compiled gold/cyan screenshots + actual recording filed in previews/. UI/desktop checks pass; fresh full CI pending.
+
+- 2026-10-30: owner wants compact horizontal profile rectangles from the first reference, not square tiles, plus polished full-screen background lighting/shine. Implemented and captured actual gold/cyan/recording previews. UI/design/desktop checks pass. Existing motion guard now explicitly allows only the requested named effects; full next CI pending.
