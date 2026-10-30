@@ -1057,5 +1057,16 @@
   "Welcome back": "Bentornato",
   "Welcome back. Enter your details to continue.": "Bentornato. Inserisci le credenziali per continuare.",
   "Welcome to PlazCode": "Benvenuto in PlazCode",
-  "Signed in": "Accesso effettuato"
+  "Signed in": "Accesso effettuato",
+  "Change profile picture": "Cambia immagine del profilo",
+  "Remove picture": "Rimuovi immagine",
+  "JPEG, PNG or GIF · GIFs up to 1 MB": "JPEG, PNG o GIF · GIF fino a 1 MB",
+  "Choose a picture smaller than 20 MB.": "Scegli un’immagine inferiore a 20 MB.",
+  "Choose a JPEG, PNG or GIF picture.": "Scegli un’immagine JPEG, PNG o GIF.",
+  "Choose a GIF smaller than 1 MB.": "Scegli una GIF inferiore a 1 MB.",
+  "This picture is too large.": "Questa immagine è troppo grande.",
+  "Profile picture saved.": "Immagine del profilo salvata.",
+  "Profile picture removed.": "Immagine del profilo rimossa.",
+  "Saving profile picture…": "Salvataggio dell’immagine del profilo…",
+  "Could not save profile picture.": "Impossibile salvare l’immagine del profilo."
 }

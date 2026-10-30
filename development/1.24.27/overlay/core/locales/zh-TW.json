@@ -1057,5 +1057,16 @@
   "Welcome back": "歡迎回來",
   "Welcome back. Enter your details to continue.": "歡迎回來。請輸入您的資訊以繼續。",
   "Welcome to PlazCode": "歡迎使用 PlazCode",
-  "Signed in": "已登入"
+  "Signed in": "已登入",
+  "Change profile picture": "變更個人頭像",
+  "Remove picture": "移除頭像",
+  "JPEG, PNG or GIF · GIFs up to 1 MB": "JPEG、PNG 或 GIF · GIF 最大 1 MB",
+  "Choose a picture smaller than 20 MB.": "請選擇小於 20 MB 的圖片。",
+  "Choose a JPEG, PNG or GIF picture.": "請選擇 JPEG、PNG 或 GIF 圖片。",
+  "Choose a GIF smaller than 1 MB.": "請選擇小於 1 MB 的 GIF。",
+  "This picture is too large.": "這張圖片太大。",
+  "Profile picture saved.": "頭像已儲存。",
+  "Profile picture removed.": "頭像已移除。",
+  "Saving profile picture…": "正在儲存頭像…",
+  "Could not save profile picture.": "無法儲存頭像。"
 }

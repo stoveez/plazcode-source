@@ -1057,5 +1057,16 @@
   "Welcome back": null,
   "Welcome back. Enter your details to continue.": null,
   "Welcome to PlazCode": null,
-  "Signed in": null
+  "Signed in": null,
+  "Change profile picture": null,
+  "Remove picture": null,
+  "JPEG, PNG or GIF · GIFs up to 1 MB": null,
+  "Choose a picture smaller than 20 MB.": null,
+  "Choose a JPEG, PNG or GIF picture.": null,
+  "Choose a GIF smaller than 1 MB.": null,
+  "This picture is too large.": null,
+  "Profile picture saved.": null,
+  "Profile picture removed.": null,
+  "Saving profile picture…": null,
+  "Could not save profile picture.": null
 }

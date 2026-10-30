@@ -1057,5 +1057,16 @@
   "Welcome back": "С возвращением",
   "Welcome back. Enter your details to continue.": "С возвращением. Введите данные для входа.",
   "Welcome to PlazCode": "Добро пожаловать в PlazCode",
-  "Signed in": "Вход выполнен"
+  "Signed in": "Вход выполнен",
+  "Change profile picture": "Изменить фото профиля",
+  "Remove picture": "Удалить фото",
+  "JPEG, PNG or GIF · GIFs up to 1 MB": "JPEG, PNG или GIF · GIF до 1 МБ",
+  "Choose a picture smaller than 20 MB.": "Выберите изображение размером менее 20 МБ.",
+  "Choose a JPEG, PNG or GIF picture.": "Выберите изображение JPEG, PNG или GIF.",
+  "Choose a GIF smaller than 1 MB.": "Выберите GIF размером менее 1 МБ.",
+  "This picture is too large.": "Это изображение слишком большое.",
+  "Profile picture saved.": "Фото профиля сохранено.",
+  "Profile picture removed.": "Фото профиля удалено.",
+  "Saving profile picture…": "Сохранение фото профиля…",
+  "Could not save profile picture.": "Не удалось сохранить фото профиля."
 }

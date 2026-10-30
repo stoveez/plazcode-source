@@ -1057,5 +1057,16 @@
   "Welcome back": "欢迎回来",
   "Welcome back. Enter your details to continue.": "欢迎回来。请输入您的信息以继续。",
   "Welcome to PlazCode": "欢迎使用 PlazCode",
-  "Signed in": "已登录"
+  "Signed in": "已登录",
+  "Change profile picture": "更换头像",
+  "Remove picture": "移除头像",
+  "JPEG, PNG or GIF · GIFs up to 1 MB": "JPEG、PNG 或 GIF · GIF 最大 1 MB",
+  "Choose a picture smaller than 20 MB.": "请选择小于 20 MB 的图片。",
+  "Choose a JPEG, PNG or GIF picture.": "请选择 JPEG、PNG 或 GIF 图片。",
+  "Choose a GIF smaller than 1 MB.": "请选择小于 1 MB 的 GIF。",
+  "This picture is too large.": "这张图片太大。",
+  "Profile picture saved.": "头像已保存。",
+  "Profile picture removed.": "头像已移除。",
+  "Saving profile picture…": "正在保存头像…",
+  "Could not save profile picture.": "无法保存头像。"
 }

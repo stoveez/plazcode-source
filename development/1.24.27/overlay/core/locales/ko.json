@@ -1057,5 +1057,16 @@
   "Welcome back": "다시 오신 것을 환영합니다",
   "Welcome back. Enter your details to continue.": "다시 오신 것을 환영합니다. 계속하려면 정보를 입력하세요.",
   "Welcome to PlazCode": "PlazCode에 오신 것을 환영합니다",
-  "Signed in": "로그인됨"
+  "Signed in": "로그인됨",
+  "Change profile picture": "프로필 사진 변경",
+  "Remove picture": "사진 삭제",
+  "JPEG, PNG or GIF · GIFs up to 1 MB": "JPEG, PNG 또는 GIF · GIF는 최대 1MB",
+  "Choose a picture smaller than 20 MB.": "20MB보다 작은 사진을 선택하세요.",
+  "Choose a JPEG, PNG or GIF picture.": "JPEG, PNG 또는 GIF 사진을 선택하세요.",
+  "Choose a GIF smaller than 1 MB.": "1MB보다 작은 GIF를 선택하세요.",
+  "This picture is too large.": "사진이 너무 큽니다.",
+  "Profile picture saved.": "프로필 사진을 저장했습니다.",
+  "Profile picture removed.": "프로필 사진을 삭제했습니다.",
+  "Saving profile picture…": "프로필 사진 저장 중…",
+  "Could not save profile picture.": "프로필 사진을 저장하지 못했습니다."
 }

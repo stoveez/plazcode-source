@@ -1057,5 +1057,16 @@
   "Welcome back": "Tekrar hoş geldin",
   "Welcome back. Enter your details to continue.": "Tekrar hoş geldin. Devam etmek için bilgilerini gir.",
   "Welcome to PlazCode": "PlazCode’a hoş geldin",
-  "Signed in": "Giriş yapıldı"
+  "Signed in": "Giriş yapıldı",
+  "Change profile picture": "Profil fotoğrafını değiştir",
+  "Remove picture": "Fotoğrafı kaldır",
+  "JPEG, PNG or GIF · GIFs up to 1 MB": "JPEG, PNG veya GIF · GIF en fazla 1 MB",
+  "Choose a picture smaller than 20 MB.": "20 MB’tan küçük bir resim seçin.",
+  "Choose a JPEG, PNG or GIF picture.": "JPEG, PNG veya GIF biçiminde bir resim seçin.",
+  "Choose a GIF smaller than 1 MB.": "1 MB’tan küçük bir GIF seçin.",
+  "This picture is too large.": "Bu resim çok büyük.",
+  "Profile picture saved.": "Profil fotoğrafı kaydedildi.",
+  "Profile picture removed.": "Profil fotoğrafı kaldırıldı.",
+  "Saving profile picture…": "Profil fotoğrafı kaydediliyor…",
+  "Could not save profile picture.": "Profil fotoğrafı kaydedilemedi."
 }

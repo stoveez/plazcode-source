@@ -1057,5 +1057,16 @@
   "Welcome back": "おかえりなさい",
   "Welcome back. Enter your details to continue.": "おかえりなさい。情報を入力して続行してください。",
   "Welcome to PlazCode": "PlazCodeへようこそ",
-  "Signed in": "ログイン済み"
+  "Signed in": "ログイン済み",
+  "Change profile picture": "プロフィール画像を変更",
+  "Remove picture": "画像を削除",
+  "JPEG, PNG or GIF · GIFs up to 1 MB": "JPEG、PNG、GIF · GIF は 1 MB まで",
+  "Choose a picture smaller than 20 MB.": "20 MB 未満の画像を選択してください。",
+  "Choose a JPEG, PNG or GIF picture.": "JPEG、PNG、GIF の画像を選択してください。",
+  "Choose a GIF smaller than 1 MB.": "1 MB 未満の GIF を選択してください。",
+  "This picture is too large.": "この画像は大きすぎます。",
+  "Profile picture saved.": "プロフィール画像を保存しました。",
+  "Profile picture removed.": "プロフィール画像を削除しました。",
+  "Saving profile picture…": "プロフィール画像を保存中…",
+  "Could not save profile picture.": "プロフィール画像を保存できませんでした。"
 }

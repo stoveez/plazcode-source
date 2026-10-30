@@ -148,3 +148,6 @@ Plus/approval chevrons and splash crossfade implemented; native startup verifica
 
 ## Profile pictures WIP
 WIP profile pictures: Account change/remove controls, JPEG/PNG resize and original animated GIF upload, picture rendering on cards/account/sidebar, separate bounded private image files and lazy bearer-authenticated reads. Status polls/remembered registry carry revisions only, not image bytes. Settings sync carries the picture; older clients preserve it server-side and explicit null removes it. Two native picture tests and five actual Worker/SQL tests pass. Still pending: actual compiled upload/preview, two-install integration, translations, public service deployment and full replacement packages. Do not treat the current Drive ZIPs as including pictures.
+
+## Picture local feature ready
+Actual compiled upload/sidebar/picker preview delivered immediately via Drive; real two-install sync and isolation passed. All picture labels translated; bold Up to date added. Service publication, final checks and replacement full test builds remain. See profile-pictures.md.
