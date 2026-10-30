@@ -10,13 +10,13 @@ Official releases live in the public repo `stoveez/PlazCode`, branch `main`: onl
 
 ## Steps (walk the owner through them in plain words every time)
 1. Owner makes the repo public.
-2. Full validation (`validate-1.24.25.yml`) green on the exact final commit, on Windows, Mac and Linux, including the Mac desktop test and Firefox checks.
-3. Write the plain release notes in `development/1.24.25/release-entry.json` (under 2,000 characters). Put `VALIDATION_RUN` and `VALIDATED_SHA` in `publish-1.24.25.yml`. Dry run into `stoveez/plazcode-publish-test`; check the feeds, checksums and release page.
+2. Full validation (`validate-1.24.27.yml`) green on the exact final commit, on Windows, Mac and Linux, including the Mac desktop test and Firefox checks.
+3. Write the plain release notes in `development/1.24.27/release-entry.json` (under 2,000 characters). Put `VALIDATION_RUN` and `VALIDATED_SHA` in `publish-1.24.27.yml`. Dry run into `stoveez/plazcode-publish-test`; check the feeds, checksums and release page.
 4. Ask the owner for a clear yes to publish THAT exact update. Then set `PUBLIC_REPO` back to `stoveez/PlazCode` and start the workflow (secret `PUBLIC_REPO_TOKEN`; never print it).
 5. Verify the live `latest.json`, `latest-macos.json` and one download (version, link, sha256). An older installed copy must still update.
 6. Remind the owner to set the repo back to Private.
 
-Read `publish-1.24.27.yml` and `development/1.24.27/promote.py` before the first real publish. Moving work into `release/1.24.25` needs the owner's clear yes. See also [owner-rules](owner-rules.md).
+Read `publish-1.24.27.yml` and `development/1.24.27/promote.py` before the first real publish. Moving work into `release/1.24.27-publish` needs the owner's clear yes. See also [owner-rules](owner-rules.md).
 
 ## Extra details
 - Release text must stay under 2,000 characters (checked once: about 1,360).

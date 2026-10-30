@@ -19,7 +19,7 @@ Quit old PlazCode, replace the complete desktop/extension folder, reload the ext
 
 **Previews delivered as soon as feature was ready:** actual compiled Account picture/bold status screenshot https://drive.google.com/file/d/1ee8T7B8Ueg7jJYKoYieh0ykrPIIfWaKh/view?usp=drivesdk ; actual upload/saved-picker video https://drive.google.com/file/d/1y12-wIsPf63DjPZDcBb3XI4KS5D-JFJ7/view?usp=drivesdk . Repo copies in vault/previews. No mockups. Immediate actual previews and verified inner test ZIPs through Drive are permanent owner rules.
 
-**Visibility:** source was verified Public for the build window and remains Public at delivery. Owner has been reminded to restore Private at repository Settings → Danger Zone → Change visibility. Integration visibility edits previously denied 403; owner action needed. Keep the separately approved account API Public.
+**Visibility:** source is PRIVATE (verified via API 2026-10-30 after the owner restored it). Integration visibility edits are denied (403), so the owner changes it; remind them each time a build or publish window opens. Keep the separately approved account API Public.
 
 **Account API:** https://plazcode-accounts-stoveez.mistysong24.chatgpt.site . Project appgprj_6ae3b330d8b481919934a74c73dc7874; service source 1326d5e092d046e9383a6f01dd38ba938cc8ff41; deployment appgdep_6ae4b3127f048191806e270b5fc43de6 succeeded. Picture sync preserves unknown photo field for older clients, explicit null removes it. Live authenticated/unauthorized/format/old-client/session-revoke checks passed. No schema migration. Keep Public, independent of source privacy.
 
