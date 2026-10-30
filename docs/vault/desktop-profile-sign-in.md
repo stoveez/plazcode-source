@@ -53,3 +53,6 @@ Owner approved the actual rectangular-profile/background screenshot. Keep this d
 
 ## Startup/icon follow-up
 2026-10-30 follow-up (not in the delivered ZIPs): replaced the font plus beside Create a new profile with a centered SVG badge and the approval-mode font arrow with the same geometric chevron as Effort. Loading and profile picker now overlap in one fade; the local picker no longer waits on update-network requests (native automatic updates remain independent). Actual screen/crossfade, approval browser, desktop regression and theme checks pass. Owner clarified the long delay is before any window; investigating native protected-file verification separately. Source stays Private. Replacement packages pending.
+
+## Native startup WIP
+WIP native startup follow-up: preserved every signature/path/size/hash check and replaced the serial full-tree scan with four bounded verification workers; startup still waits for all workers, without a cache or mtime bypass. Added tamper/missing/symlink regressions and protection/bridge/WebView phase timings. Rust compile/security tests and before/after package timing are pending; do not deliver old ZIPs as containing this change.

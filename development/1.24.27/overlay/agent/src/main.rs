@@ -1078,6 +1078,7 @@ fn main() {
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
+    let launch_started=std::time::Instant::now();
     let args = Arc::new(Args::parse());
     if args.protection_info {
         let key=integrity::public_key()?.unwrap_or_default().iter().map(|b|format!("{b:02x}")).collect::<String>();
@@ -1091,7 +1092,9 @@ async fn start() -> anyhow::Result<()> {
     platform::prepare_application_path();
     #[cfg(target_os="macos")]
     platform::remember_installation_root();
+    let protection_started=std::time::Instant::now();
     integrity::verify_installation(&platform::installation_root())?;
+    let protection_elapsed=protection_started.elapsed();
     std::env::set_current_dir(platform::installation_root())?;
     let addr: SocketAddr = args.roblox_addr.parse().unwrap_or_else(|_| SocketAddr::from(([127, 0, 0, 1], 3000)));
     anyhow::ensure!(addr.ip().is_loopback(), "The bridge must bind to a loopback address");
@@ -1174,6 +1177,7 @@ async fn start() -> anyhow::Result<()> {
     tokio::time::timeout(Duration::from_secs(15), ready_rx).await
         .map_err(|_| anyhow::anyhow!("The local bridge did not finish binding within 15 seconds"))?
         .map_err(|_| anyhow::anyhow!("The local bridge failed to bind; inspect the startup log for the port error"))?;
+    info!("startup: protected files checked in {:.3}s; local bridge ready after {:.3}s",protection_elapsed.as_secs_f64(),launch_started.elapsed().as_secs_f64());
     drop(startup_guard);
     if args.headless {
         let _ = server.await;

@@ -1,6 +1,8 @@
 # NOW
 Updated: 2026-10-30. Branch `claude/plazcode-dev`; no helper agents.
 
+**Latest WIP:** WIP native startup follow-up: preserved every signature/path/size/hash check and replaced the serial full-tree scan with four bounded verification workers; startup still waits for all workers, without a cache or mtime bypass. Added tamper/missing/symlink regressions and protection/bridge/WebView phase timings. Rust compile/security tests and before/after package timing are pending; do not deliver old ZIPs as containing this change.
+
 **Latest follow-up:** 2026-10-30 follow-up (not in the delivered ZIPs): replaced the font plus beside Create a new profile with a centered SVG badge and the approval-mode font arrow with the same geometric chevron as Effort. Loading and profile picker now overlap in one fade; the local picker no longer waits on update-network requests (native automatic updates remain independent). Actual screen/crossfade, approval browser, desktop regression and theme checks pass. Owner clarified the long delay is before any window; investigating native protected-file verification separately. Source stays Private. Replacement packages pending.
 
 **Latest: download links repaired; source privacy restored.** Owner could not download the workspace links. Uploaded the exact verified INNER Windows/Mac/Linux ZIPs to the connected Google Drive, checked their metadata/sizes, and supplied normal Drive links. No rebuild or package changes. Links are recorded in `docs/vault/test-builds.md` and the profile verification JSON. Repository is now PRIVATE, verified with GitHub; account API remains Public independently.

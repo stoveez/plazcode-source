@@ -301,6 +301,7 @@ pub fn run_gui(
     start_background: bool,
     update_ready_file: Option<std::path::PathBuf>,
 ) -> anyhow::Result<()> {
+    let desktop_started=std::time::Instant::now();
     let desktop_url = format!("http://{addr}/desktop-ui");
     let boot = serde_json::json!({"key":pairing_key,"apiUrl":format!("http://{addr}"),"profiles":true});
     let initialization = format!("if(location.href === {}) window.__PLAZCODE_BOOT__ = {};",
@@ -354,6 +355,7 @@ pub fn run_gui(
     #[cfg(windows)]
     let mut tray = tray::Tray::new(&window, shared.clone());
     if !start_background { window.set_visible(true); window.set_focus(); }
+    tracing::info!("startup: native window/WebView initialized in {:.3}s",desktop_started.elapsed().as_secs_f64());
     else {
         #[cfg(windows)] {
             use tao::platform::windows::WindowExtWindows;

@@ -82,8 +82,31 @@ fn manifest(root: &Path, key: &[u8], version: &str, platform: &str, channel: &st
 }
 fn verify_tree_with(root: &Path, key: &[u8], version: &str, platform: &str, channel: &str) -> Result<()> {
     let value=manifest(root,key,version,platform,channel)?;
-    for (name,record) in value.files {hash_file(root,&name,&record)?;}
-    Ok(())
+    verify_files(root,&value.files)
+}
+// Bounded parallel reads avoid serializing thousands of filesystem/antivirus
+// round trips before the desktop opens. Every signed entry still goes through
+// the same path, size and SHA-256 checks; nothing is cached or trusted by mtime.
+fn verify_files(root: &Path, files: &BTreeMap<String,FileRecord>) -> Result<()> {
+    if files.len()<32 {
+        for (name,record) in files {hash_file(root,name,record)?;}
+        return Ok(());
+    }
+    let entries:Vec<_>=files.iter().collect();
+    let next=std::sync::atomic::AtomicUsize::new(0);
+    std::thread::scope(|scope| {
+        let workers:Vec<_>=(0..4).map(|_|scope.spawn(|| -> Result<()> {
+            loop {
+                let index=next.fetch_add(1,std::sync::atomic::Ordering::Relaxed);
+                let Some((name,record))=entries.get(index) else {return Ok(());};
+                hash_file(root,name,record).with_context(||format!("Program check failed: {name}"))?;
+            }
+        })).collect();
+        // Join every worker before allowing startup or returning any failure.
+        let outcomes:Vec<_>=workers.into_iter().map(|worker|worker.join()).collect();
+        for outcome in outcomes {outcome.map_err(|_|anyhow::anyhow!("Program verification worker failed"))??;}
+        Ok(())
+    })
 }
 fn bootstrap_path(name: &str) -> bool {
     if !safe_path(name) || name.starts_with("PlazCode-Extension/") || name.starts_with("PlazCode.app/") || matches!(name,"PlazCode"|"PlazCode.exe") {return false;}
@@ -255,6 +278,29 @@ mod tests {
         let mut value:serde_json::Value=serde_json::from_slice(&raw).unwrap();value["payload"]=serde_json::json!("{}");
         assert!(signed_payload(key.public_key().as_ref(),&serde_json::to_vec(&value).unwrap()).is_err());
         assert!(signed_payload(key.public_key().as_ref(),b"{}").is_err());
+    }
+    #[test] fn parallel_program_checks_reject_changes_missing_files_and_symlinks() {
+        let root=std::env::temp_dir().join(format!("plazcode-parallel-integrity-{}",std::process::id()));
+        let _=std::fs::remove_dir_all(&root);std::fs::create_dir_all(root.join("core")).unwrap();
+        let mut files=BTreeMap::new();
+        for index in 0..96 {
+            let name=format!("core/file-{index:03}.js");let bytes=format!("original {index:03}");
+            std::fs::write(root.join(&name),bytes.as_bytes()).unwrap();
+            files.insert(name,FileRecord{sha256:format!("{:x}",Sha256::digest(bytes.as_bytes())),bytes:bytes.len() as u64,mode:None});
+        }
+        assert!(verify_files(&root,&files).is_ok());
+        for index in [0,1,31,32,63,64,94,95] {
+            let name=format!("core/file-{index:03}.js");let original=std::fs::read(root.join(&name)).unwrap();
+            // Same-length edits cannot hide behind size/mtime shortcuts.
+            std::fs::write(root.join(&name),vec![b'x';original.len()]).unwrap();assert!(verify_files(&root,&files).is_err());
+            std::fs::remove_file(root.join(&name)).unwrap();assert!(verify_files(&root,&files).is_err());
+            std::fs::write(root.join(&name),&original).unwrap();
+        }
+        #[cfg(unix)] {
+            let name=root.join("core/file-095.js");std::fs::remove_file(&name).unwrap();
+            std::os::unix::fs::symlink(root.join("core/file-000.js"),&name).unwrap();assert!(verify_files(&root,&files).is_err());
+        }
+        let _=std::fs::remove_dir_all(root);
     }
     #[test] fn files_reject_tampering_missing_files_traversal_symlinks_and_keep_user_data_editable() {
         let root=std::env::temp_dir().join(format!("plazcode-integrity-{}",std::process::id()));let _=std::fs::remove_dir_all(&root);std::fs::create_dir_all(root.join("core")).unwrap();std::fs::create_dir_all(root.join("PlazCode-Extension")).unwrap();
