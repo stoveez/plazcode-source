@@ -320,6 +320,7 @@ jobs:
           npm ci --prefix release-tools --ignore-scripts
           node release-tools/node_modules/playwright/cli.js install --with-deps chromium
           node release-tools/test-profile-sign-in-ui.cjs
+          node release-tools/test-profile-storage.cjs
           node release-tools/test-linux-desktop.cjs
       - name: Real macOS stale-process startup recovery
         if: runner.os == 'macOS'

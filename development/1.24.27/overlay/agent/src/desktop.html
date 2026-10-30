@@ -1724,6 +1724,18 @@ __PLAZCODE_VERSION_UI__
       } catch (Error) { Reject(Error); }
     });
   }
+  async function MigrateProfileUi() {
+    // Copy only first-owner UI data; never consume the original guest stores.
+    Object.keys(window.localStorage).filter(function(K){return K.startsWith('plazcode')&&!K.startsWith('plazcode-linux');}).forEach(function(K){if(ProfileStorage.getItem(K)===null)ProfileStorage.setItem(K,window.localStorage.getItem(K));});
+    if(await Nxdb('get'))return;
+    var Oldwall=await new Promise(function(Resolve,Reject){
+      var Open=indexedDB.open('plazcodeLook',1);
+      Open.onupgradeneeded=function(){Open.result.createObjectStore('files');};
+      Open.onerror=function(){Reject(Open.error);};Open.onblocked=function(){Reject(new Error('Wallpaper migration is waiting for another PlazCode window.'));};
+      Open.onsuccess=function(){var Db=Open.result,Tx=Db.transaction('files','readonly'),Get=Tx.objectStore('files').get('wallpaper');Tx.oncomplete=function(){Db.close();Resolve(Get.result);};Tx.onerror=Tx.onabort=function(){Db.close();Reject(Tx.error);};};
+    });
+    if(Oldwall)await Nxdb('put',Oldwall);
+  }
   function Nxshowwall(Blob) {
     var Wall = Byid('nxWall'); if (!Wall) return;
     if (Nxwallurl) { try { URL.revokeObjectURL(Nxwallurl); } catch (Error) {} Nxwallurl = ''; }
@@ -2419,9 +2431,9 @@ __PLAZCODE_VERSION_UI__
         var ContextId=ProfileContext?ProfileContext.id:'locked';
         if(sessionStorage.getItem('plazcode-profile-context')!==ContextId){sessionStorage.setItem('plazcode-profile-context',ContextId);location.reload();return;}
         if(ProfileContext&&ProfileContext.migrate_ui){
-          // Copy old appearance/cache keys only to the first online profile; keep originals intact.
-          Object.keys(window.localStorage).filter(function(K){return K.startsWith('plazcode')&&!K.startsWith('plazcode-linux');}).forEach(function(K){if(ProfileStorage.getItem(K)===null)ProfileStorage.setItem(K,window.localStorage.getItem(K));});
-          await Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify({action:'ui-migrated'})});
+          try{await MigrateProfileUi();await Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify({action:'ui-migrated'})});}
+          catch(Error){console.warn('PlazCode kept the original desktop appearance data; migration will retry next launch.');}
+
         }
         function Action(Value){return Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify(Value)});}
         ProfileScreen=MountProfileSignIn({create:function(U,P){return Action({action:'register',username:U,password:P});},login:function(Id,U,P){return Action({action:'login',id:Id,username:U,password:P});},remove:function(Id){return Action({action:'remove',id:Id});}},{previewTheme:Applyappearance,enter:async function(Result){ProfileContext=Result.profile;sessionStorage.setItem('plazcode-profile-context',ProfileContext.id);sessionStorage.setItem('plazcode-profile-handoff',ProfileContext.id);if(Result.preferences&&Result.preferences.rsAppearance)ProfileStorage.setItem('plazcodeDesktopAppearance',JSON.stringify(Result.preferences.rsAppearance));document.body.style.transition='opacity .22s ease';document.body.style.opacity='0';await new Promise(function(R){setTimeout(R,220);});location.reload();}});

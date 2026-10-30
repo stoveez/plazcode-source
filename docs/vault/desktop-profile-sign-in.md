@@ -33,3 +33,6 @@ Session-bound Studio wire IDs reject late results without changing the Studio ca
 
 ## Visual rework (owner feedback, latest)
 Initial preview rejected. Replaced brown row/list treatment with a charcoal glass panel, larger heading and profile tiles, per-profile theme accents, avatar blocks/check badges, redesigned green/red actions and a full-width creation tile. Native screenshots from two real local Worker/SQL accounts: plazcode-sign-in-reworked.png and plazcode-sign-in-reworked-cyan.png. Shown before packaging, as requested. Old screenshot superseded. Reduced-motion, narrow-height scrolling, keyboard focus and theme glow-off supported. UI and desktop regressions pass; final CI/packages pending.
+
+## Existing appearance retention
+First owner now also receives the original IndexedDB wallpaper, keeping the legacy blob untouched. Completed migration clears its active flag, so removing a wallpaper later stays removed after page reload. Actual localStorage/IndexedDB tests verify copy, original retention, no overwrite of profile edits and separate second-profile stores. Seven native account tests pass. Preview appearance unchanged.

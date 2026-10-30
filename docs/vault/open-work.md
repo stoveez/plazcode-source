@@ -123,3 +123,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-30: owner rejected initial sign-in appearance. Whole welcome/profile/button styling reworked; actual gold/cyan running-app screenshots shown immediately. Two real local test profiles, no fake UI; no JS errors. Screen and desktop tests pass; fresh full CI for rework remains.
 
 - 2026-10-30: real reworked profile screenshots filed under previews/desktop-profiles-{gold,cyan}.png for direct owner viewing. Runtime unchanged from 4c9fba7; current CI remains the build gate.
+
+- 2026-10-30: first-profile UI migration includes the existing IndexedDB wallpaper; originals and profile edits retained. Migration acknowledgement prevents deleted wallpaper reappearing. Real browser storage checks + seven native account tests pass. Full final runtime CI pending.
