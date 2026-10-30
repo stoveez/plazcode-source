@@ -2,7 +2,7 @@
 title: Open work and known bugs
 updated: 2026-10-30
 ---
-**Latest 2026-10-30:** owner made source Public; verified visibility and dispatched full replacement CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952) on `38fd7d2`. Includes pictures/bold sync/icons/fade/startup/update follow-ups. Running; new Drive packages not delivered yet. Older visibility/delivery entries below are historical.
+**Latest 2026-10-30:** owner made source Public; verified visibility and dispatched full replacement CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952) on `38fd7d2`. Includes pictures/bold sync/icons/fade/startup/update follow-ups. Browser job passed; native jobs running. New Drive packages not delivered yet. Older visibility/delivery entries below are historical.
 
 # Open work
 

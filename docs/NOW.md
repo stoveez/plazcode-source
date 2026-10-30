@@ -1,7 +1,7 @@
 # NOW
 Updated: 2026-10-30. Branch `claude/plazcode-dev`; no helper agents.
 
-**Latest: owner confirmed Public; replacement full CI 41085855952 is running on 38fd7d2.** Windows/universal Mac/Linux/browser jobs started. No replacement ZIPs delivered yet.
+**Latest: owner confirmed Public; replacement full CI 41085855952 is running on 38fd7d2.** Browser job passed; Windows/universal Mac/Linux native jobs remain running. No replacement ZIPs delivered yet.
 
 **Profile pictures and all current follow-ups are ready locally.** Account page has Change/Remove picture for JPEG/PNG/animated GIF; Account/sidebar/saved profile cards show the image. Images sync privately across installations and remain per-profile. JPEG/PNG resize to 512px; GIF bytes stay animated, up to 1 MB. Images are separate user-data files, loaded on demand; status polls and encrypted saved-sign-in registry carry revisions only. Native picture responses use no-store. Bold “Up to date” is in the actual compiled preview.
 
