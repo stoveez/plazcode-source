@@ -119,3 +119,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29: account names protected from translation, Overview signed-in label fixed and remembered picker appearance reads the latest saved theme. Five native account tests and desktop/profile UI checks pass; final full CI pending.
 
 - 2026-10-30: late Studio results now use session-bound IDs and are rejected after profile changes, even when caller IDs repeat. Real Worker/native integration and six account tests pass. Extension partition tests pass. CI 40964100055 fixture/refresh failures fixed; actual desktop language runtime passes 15 languages; next full build pending.
+
+- 2026-10-30: owner rejected initial sign-in appearance. Whole welcome/profile/button styling reworked; actual gold/cyan running-app screenshots shown immediately. Two real local test profiles, no fake UI; no JS errors. Screen and desktop tests pass; fresh full CI for rework remains.

@@ -30,3 +30,6 @@ Native encrypted account registry, offline remembered login, data migration, API
 
 ## Final gate fixes, 2026-10-30
 Session-bound Studio wire IDs reject late results without changing the Studio callback protocol. Real native/Worker integration verifies rejection with reused caller IDs. Six native account tests and extension partition/locked-access tests pass. CI found a desktop refresh race while testing external language updates; requested refreshes now wait for an in-flight refresh and fetch once more. The actual shared i18n desktop test passes all 15 languages. Old v1.18 worker fixture updated to provide account-status/AbortSignal; passes. Pending fresh full CI. Actual screenshot was shown before completion of packaging, as owner clarified.
+
+## Visual rework (owner feedback, latest)
+Initial preview rejected. Replaced brown row/list treatment with a charcoal glass panel, larger heading and profile tiles, per-profile theme accents, avatar blocks/check badges, redesigned green/red actions and a full-width creation tile. Native screenshots from two real local Worker/SQL accounts: plazcode-sign-in-reworked.png and plazcode-sign-in-reworked-cyan.png. Shown before packaging, as requested. Old screenshot superseded. Reduced-motion, narrow-height scrolling, keyboard focus and theme glow-off supported. UI and desktop regressions pass; final CI/packages pending.
