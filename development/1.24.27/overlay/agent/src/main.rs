@@ -154,6 +154,7 @@ struct Payload { id: String, target: String, code: String, language: String, #[s
 struct AppState {
     pairing_key: Arc<String>,
     accounts: Arc<accounts::Manager>,
+    profile_results:Arc<accounts::ResultRoutes>,
     profile_switch:Arc<Mutex<()>>,
     profile_change:Arc<tokio::sync::watch::Sender<u64>>,
     cancellation: Arc<cancellation::Hub>,
@@ -192,6 +193,7 @@ impl AppState {
         Self {
             pairing_key,
             accounts: Arc::new(accounts::Manager::disabled()),
+            profile_results:Arc::new(accounts::ResultRoutes::default()),
             profile_switch:Arc::new(Mutex::new(())),
             profile_change:Arc::new(tokio::sync::watch::channel(0).0),
             cancellation: Arc::new(cancellation::Hub::default()),
@@ -1422,7 +1424,7 @@ async fn poll_handler(State(state): State<AppState>, Query(_q): Query<HashMap<St
     for _ in 0..50 {
         let guard=accounts::ACCESS.read().await;
         if state.accounts.required()&&(epoch.is_none()||epoch!=state.accounts.active().map(|p|p.epoch)){return (axum::http::StatusCode::LOCKED,Json(serde_json::json!({"ok":false,"code":"profile_changed","error":"PlazCode profile changed."}))).into_response();}
-        { let mut guard = queue.lock().await; if let Some(p) = guard.pop_front() { return Json(serde_json::json!({"ok": true, "payload": p})).into_response(); } }
+        { let mut guard = queue.lock().await; if let Some(mut p) = guard.pop_front() {if let Some(active)=state.accounts.active(){p.id=state.profile_results.issue(&active.epoch,&p.id);} return Json(serde_json::json!({"ok": true, "payload": p})).into_response(); } }
         drop(guard);tokio::time::sleep(Duration::from_millis(500)).await;
     }
     Json(serde_json::json!({"ok": true, "payload": null})).into_response()
@@ -1433,9 +1435,10 @@ async fn push_handler(State(state): State<AppState>, Json(req): Json<serde_json:
     state.roblox_queue.lock().await.push_back(payload.clone());
     Json(serde_json::json!({"ok": true, "queued": payload.id}))
 }
-async fn result_handler(State(state): State<AppState>, Json(res): Json<ExecResult>) -> impl IntoResponse {
+async fn result_handler(State(state): State<AppState>, Json(mut res): Json<ExecResult>) -> axum::response::Response {
+    if state.accounts.required(){let Some(active)=state.accounts.active()else{return axum::http::StatusCode::LOCKED.into_response();};let Some(original)=state.profile_results.consume(&active.epoch,&res.id)else{return (axum::http::StatusCode::CONFLICT,Json(serde_json::json!({"ok":false,"error":"This result belongs to an earlier profile or command."}))).into_response();};res.id=original;}
     let _ = state.result_tx.send(res);
-    Json(serde_json::json!({"ok": true}))
+    Json(serde_json::json!({"ok": true})).into_response()
 }
 async fn disconnect_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
     if let Some(id) = req.get("client_id").and_then(|v| v.as_str()) {
@@ -1744,6 +1747,7 @@ fn profile_result(result:anyhow::Result<serde_json::Value>)->axum::response::Res
     }}
 }
 async fn reset_profile_runtime(state:&AppState){
+    state.profile_results.clear();
     state.roblox_queue.lock().await.clear();
     state.roblox_clients.write().await.clear();state.local_clients.write().await.clear();
     state.addons.lock().await.reset_all().await;

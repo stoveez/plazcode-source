@@ -958,7 +958,7 @@ __PLAZCODE_VERSION_UI__
   var Toolfilter = "All";
   var Toolquery = "";
   var PendingMcp = Object.create(null);
-  var Refreshing = false;
+  var Refreshing = false, RefreshPromise=null, RefreshQueued=null;
   var Instructionsdirty = false;
   var Homeenginepending = false;
   var I18n = globalThis.PlazCodeI18n;
@@ -1470,10 +1470,10 @@ __PLAZCODE_VERSION_UI__
 
   function Refresh() {
     if(Boot.profiles&&!ProfileContext)return Promise.resolve();
-    if (Refreshing) return Promise.resolve();
+    if (Refreshing) {if(!RefreshQueued)RefreshQueued=RefreshPromise.then(function(){RefreshQueued=null;return Refresh();});return RefreshQueued;}
     Refreshing = true;
 
-    return Api("/api/desktop/state").then(function (Nextstate) {
+    return RefreshPromise=Api("/api/desktop/state").then(function (Nextstate) {
       State = Nextstate;
       if(Byid("profileSyncStatus"))Byid("profileSyncStatus").textContent=State.account_sync||"";
       Render();

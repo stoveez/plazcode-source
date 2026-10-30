@@ -117,3 +117,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-29 WIP: actual desktop startup/profile actions and native portable settings/skills merge sync connected; 2 sync tests and desktop regression pass. Extension storage/profile epochs and socket closure implemented, integration checks pending. Actual empty native picker captured, no completed sign-in preview or new build yet.
 
 - 2026-10-29: account names protected from translation, Overview signed-in label fixed and remembered picker appearance reads the latest saved theme. Five native account tests and desktop/profile UI checks pass; final full CI pending.
+
+- 2026-10-30: late Studio results now use session-bound IDs and are rejected after profile changes, even when caller IDs repeat. Real Worker/native integration and six account tests pass. Extension partition tests pass. CI 40964100055 fixture/refresh failures fixed; actual desktop language runtime passes 15 languages; next full build pending.

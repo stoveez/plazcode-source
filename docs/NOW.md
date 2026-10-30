@@ -1,5 +1,9 @@
 # NOW
-Updated: 2026-10-29. Branch `claude/plazcode-dev`; no helper agents.
+Updated: 2026-10-30. Branch `claude/plazcode-dev`; no helper agents.
+
+**Latest: late Studio callbacks and refresh timing fixed.** Studio commands get session-specific wire IDs, so an old result cannot reach a new profile even when both callers use p-1. Six native account tests and actual Worker/native integration (including late-result rejection) pass. Extension unit checks pass profile storage partitioning, remembered first-owner migration, pending-write clearing, old-tab invalidation and locked access. The old v1.18 worker fixture now supplies its account-status response and browser AbortSignal API; its full checks pass. Full prior JS run had only that fixture and a Notion copy assertion during generation; Notion rerun passed.
+
+**CI 40964100055 failed before packaging:** v1.18 fixture above and a real refresh timing race in actual desktop language verification. Refresh now coalesces a requested follow-up while another refresh is active; the actual shared-i18n desktop test passes all 15 languages. Optional old mock-runtime-only layout fixture still fails its synthetic search/select geometry assertion; production/actual-runtime fixture passes. Restart complete signed CI on this source. Service public audience approval is still pending; no API access change made.
 
 **Latest: profile labels stay correct through language changes.** Signed-in state is shown on Overview, usernames/initials are marked as user content, and saved cards read the last saved theme immediately. Five native account tests and desktop/screen regressions pass. Final source still needs full signed CI. Previous full JS pass had one Notion copy-sync assertion while prepare rewrote generated files; rerun that check after generation stops before treating it as a product failure.
 
