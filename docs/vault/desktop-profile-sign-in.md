@@ -36,3 +36,6 @@ Portable settings and private skills use revision checks and a three-way merge. 
 
 ## Latest polish
 Owner requested stronger glow: panel/selected-card halos, avatar/brand highlights, luminous green/red actions and edge lighting now follow the desktop glow treatment. Updated actual gold/cyan images above. Failed-login focus is restored synchronously after unlocking, preventing Escape reaching the page during a frame gap; five consecutive Chromium 141 interaction runs pass with a focus assertion. Optional local appearance caching cannot block a successful account login. Final signed packaging remains pending.
+
+## Arrow and shine refinements
+Login uses a vector arrow centered on the right edge. The desktop lift/inset-light treatment, glossy green primary action, panel/card reflections and restrained shine now apply to sign-in; reduced motion disables animation. Actual compiled screenshots above updated; [actual UI recording](previews/desktop-profiles-shine.mp4) shows the effect and theme switching. UI/desktop regressions pass, no native-preview JS errors.

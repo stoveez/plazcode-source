@@ -129,3 +129,5 @@ Release: see [releasing](releasing.md).
 - 2026-10-30: CI 40979067378 native regression steps pass on all three platforms; browser check exposed preference errors being erased by polling. Fixed sticky save-failure feedback with successful-retry clearing. Actual 15-language test passes three consecutive runs and explicit polling/retry assertions; desktop regression passes. Next full runtime CI pending.
 
 - 2026-10-30: owner authorized public account API; audience changed to Public and real public signup/session/sync/revoke passed without bypass. Stronger requested desktop glow captured in actual gold/cyan previews. Failed-login focus is synchronous; five consecutive Chromium 141 screen tests pass. Full final packages pending.
+
+- 2026-10-30: owner requested cleaner login arrow and desktop shine. Vector alignment, tactile/glossy primary action, surface reflections and restrained animated shine implemented; real compiled gold/cyan screenshots + actual recording filed in previews/. UI/desktop checks pass; fresh full CI pending.
