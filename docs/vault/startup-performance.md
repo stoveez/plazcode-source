@@ -1,5 +1,5 @@
 # Native startup and sign-in polish
-Updated: 2026-10-30. Follow-up code is not in the delivered 9c175eb ZIPs.
+Updated: 2026-10-30. Follow-ups are in the replacement 38fd7d2 test ZIPs, verified and delivered through Drive after green full CI 41085855952. Earlier 9c175eb ZIPs lack these fixes.
 
 Owner clarified the long delay occurs before any window. Full signed protected-file verification runs before the bridge/window. It now uses four bounded workers; every signature, safe-path, symlink, size and SHA-256 check remains, and all workers join before startup can proceed. No mtime cache or verification bypass. Loopback existing-instance discovery explicitly avoids proxies. Logs record protection, bridge and native window/WebView phase durations for device-specific diagnosis.
 
@@ -12,6 +12,6 @@ Plus badge now uses a centered SVG; approval arrow uses the same geometric chevr
 - [Drive screenshot](https://drive.google.com/file/d/1xGWwaZO1_h2UIF9SFnW_Z0xcudd4ZzZt/view?usp=drivesdk)
 - [Drive video](https://drive.google.com/file/d/18Wq7TADPI4dp6lncj5pq7gxVupEW_0Le/view?usp=drivesdk)
 
-Ahead-of-stable updater bug: 1.24.27 against stable 1.24.26 was classified as an error before availability was checked. Valid signed older feeds now mean no update; no installer/download is permitted, stale failure state clears, signature checks and last-known-release rollback rejection remain. Same-version complete repairs and newer releases remain allowed. Targeted updater tests pass; real Windows/Mac Check/Install regression is added to CI, pending next full build.
+Ahead-of-stable updater bug: 1.24.27 against stable 1.24.26 was classified as an error before availability was checked. Valid signed older feeds now mean no update; no installer/download is permitted, stale failure state clears, signature checks and last-known-release rollback rejection remain. Same-version complete repairs and newer releases remain allowed. Targeted updater tests and real Windows/Mac Check/Install regression passed in CI 41085855952.
 
-Final local follow-up: all 234 native + 4 library tests pass (2 ignored). The updater blocks a lower bundled desktop even when the extension release version is higher. Actual splash overlap, approval, design and 15-language checks pass; Windows/Mac ahead-of-stable native integration is wired in CI but awaits the next Public build window. Full replacement package/device startup validation remains; do not claim measured Windows startup improvement.
+Final local follow-up: all 234 native + 4 library tests pass (2 ignored). The updater blocks a lower bundled desktop even when the extension release version is higher. Actual splash overlap, approval, design and 15-language checks pass; Windows/Mac ahead-of-stable native integration passed in full CI. Replacement package verification and actual signed Linux startup passed. Original-device startup measurements remain; do not claim measured Windows startup improvement.

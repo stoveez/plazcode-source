@@ -6,7 +6,7 @@ updated: 2026-10-30
 
 2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is now PRIVATE, verified after owner restored visibility. Earlier integration visibility attempts were denied HTTP 403. Latest stable remains 1.24.26.
 
-**Latest 2026-10-30:** owner made source Public; verified visibility and dispatched full replacement CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952) on `38fd7d2`. Includes pictures/bold sync/icons/fade/startup/update follow-ups. Running; new Drive packages not delivered yet. Older visibility/delivery entries below are historical.
+**Latest, 2026-10-30:** replacement full 1.24.27 test ZIPs delivered through Google Drive. CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952), source `38fd7d2`, passed Windows, universal Mac, Linux and browsers. Includes profile pictures, bold Up to date, plus/approval icons, splash fade, parallel protected-file checks and ahead-of-stable update fix. Production signatures, all 235 reviewed JS sources and release layouts verified; actual downloaded Linux startup passed. Source remains Public at delivery; owner reminded to restore Private. Account API stays Public independently. Stable remains 1.24.26. [Verification](test-build-1.24.27-followups-verification.json).
 
 # Test builds
 
@@ -70,3 +70,12 @@ Plus/approval chevrons and splash crossfade implemented; native startup verifica
 
 ## Final local profile-picture/startup verification (2026-10-30)
 Profile-picture/startup follow-ups now pass local verification: 234 native + 4 library tests, real account/picture two-install sync, actual PNG/JPEG/two-frame GIF upload/removal/rejection, actual i18n all 15 languages, UI/design/storage/approval and Linux startup. Bold sync status is in refreshed real Drive preview. Matching public account service deployed at source 1326d5e; live private picture sync and older-client retention passed. Full replacement Windows/Mac/Linux/browser CI 41085855952 is running after the owner made source Public; existing Drive test ZIPs are old 9c175eb and contain no follow-ups.
+
+## Replacement picture/startup builds delivered (2026-10-30)
+**Latest, 2026-10-30:** replacement full 1.24.27 test ZIPs delivered through Google Drive. CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952), source `38fd7d2`, passed Windows, universal Mac, Linux and browsers. Includes profile pictures, bold Up to date, plus/approval icons, splash fade, parallel protected-file checks and ahead-of-stable update fix. Production signatures, all 235 reviewed JS sources and release layouts verified; actual downloaded Linux startup passed. Source remains Public at delivery; owner reminded to restore Private. Account API stays Public independently. Stable remains 1.24.26. [Verification](test-build-1.24.27-followups-verification.json).
+
+- [Windows](https://drive.google.com/file/d/10qaWb1AFLdzU6QED-r0NOXku3NS0NDD_/view?usp=drivesdk)
+- [Mac](https://drive.google.com/file/d/1n8DJGdxD1rILW82ONJ4B0i-ysAyfiQ7K/view?usp=drivesdk)
+- [Linux](https://drive.google.com/file/d/1VQG_16WelXyyW2dqePdByokn-1BjhD9N/view?usp=drivesdk)
+
+These replace the older 9c175eb Drive test ZIPs. Exact inner archives; Drive names/MIME/sizes verified. Quit the old app, replace the complete folder, reload extensions and refresh AI tabs. Desktop replacement is required. No stable publishing/feed changes.

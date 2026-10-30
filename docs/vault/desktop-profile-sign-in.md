@@ -1,4 +1,8 @@
 # Desktop profiles and sign-in
+
+**Latest, 2026-10-30:** replacement full 1.24.27 test ZIPs delivered through Google Drive. CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952), source `38fd7d2`, passed Windows, universal Mac, Linux and browsers. Includes profile pictures, bold Up to date, plus/approval icons, splash fade, parallel protected-file checks and ahead-of-stable update fix. Production signatures, all 235 reviewed JS sources and release layouts verified; actual downloaded Linux startup passed. Source remains Public at delivery; owner reminded to restore Private. Account API stays Public independently. Stable remains 1.24.26. [Verification](/docs/vault/test-build-1.24.27-followups-verification.json).
+
+Older dated entries below are historical; docs/NOW.md is the live handoff.
 Updated: 2026-10-30. Implemented, owner-approved design; full verified test packages delivered. Latest stable remains 1.24.26.
 
 The existing loading screen fades into the profile picker. Each new app process starts signed out. Users choose a saved profile, see its theme-colored selection and then green Log in/red Remove controls. First sign-in creates or uses an online username/password account; later launches use the remembered session without retyping. Valid remembered sessions also open local data offline. The Account page provides sync and sign-out/profile switching. Removing a saved profile asks for confirmation, revokes that device session when reachable, and keeps the online account and local data.

@@ -2,7 +2,7 @@
 title: Open work and known bugs
 updated: 2026-10-30
 ---
-**Latest 2026-10-30:** owner made source Public; verified visibility and dispatched full replacement CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952) on `38fd7d2`. Includes pictures/bold sync/icons/fade/startup/update follow-ups. Browser job passed; native jobs running. New Drive packages not delivered yet. Older visibility/delivery entries below are historical.
+**Latest, 2026-10-30:** replacement full 1.24.27 test ZIPs delivered through Google Drive. CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952), source `38fd7d2`, passed Windows, universal Mac, Linux and browsers. Includes profile pictures, bold Up to date, plus/approval icons, splash fade, parallel protected-file checks and ahead-of-stable update fix. Production signatures, all 235 reviewed JS sources and release layouts verified; actual downloaded Linux startup passed. Source remains Public at delivery; owner reminded to restore Private. Account API stays Public independently. Stable remains 1.24.26. [Verification](test-build-1.24.27-followups-verification.json).
 
 # Open work
 
@@ -139,20 +139,5 @@ Release: see [releasing](releasing.md).
 ## Startup/icon follow-up
 2026-10-30 follow-up (not in the delivered ZIPs): replaced the font plus beside Create a new profile with a centered SVG badge and the approval-mode font arrow with the same geometric chevron as Effort. Loading and profile picker now overlap in one fade; the local picker no longer waits on update-network requests (native automatic updates remain independent). Actual screen/crossfade, approval browser, desktop regression and theme checks pass. Owner clarified the long delay is before any window; investigating native protected-file verification separately. Source stays Private. Replacement packages pending.
 
-## Native startup WIP
-WIP native startup follow-up: preserved every signature/path/size/hash check and replaced the serial full-tree scan with four bounded verification workers; startup still waits for all workers, without a cache or mtime bypass. Added tamper/missing/symlink regressions and protection/bridge/WebView phase timings. Rust compile/security tests and before/after package timing are pending; do not deliver old ZIPs as containing this change.
-
-## Startup local validation
-Native startup checks now compile and pass all 230 native + 4 library tests (2 ignored), including parallel tamper/missing/symlink rejection. Corrected startup timing log placement; existing-instance discovery now explicitly avoids proxies for its loopback-only request. Full verification still completes before bridge/window startup. Optimized before/after timings, actual refreshed preview and replacement platform packages remain pending; delivered Drive ZIPs still contain 9c175eb.
-
-## Current follow-up
-Plus/approval chevrons and splash crossfade implemented; native startup verification optimized without skipping checks. Ahead-of-stable update error fixed locally with 21 updater tests passing; Windows/Mac integration added to CI. Profile-picture JPEG/PNG/GIF request is next. No replacement ZIPs yet; delivered Drive archives are still 9c175eb. Immediate actual preview and test ZIP delivery via Google Drive are now binding owner rules. See docs/NOW.md and startup-performance.md.
-
-## Profile pictures WIP
-WIP profile pictures: Account change/remove controls, JPEG/PNG resize and original animated GIF upload, picture rendering on cards/account/sidebar, separate bounded private image files and lazy bearer-authenticated reads. Status polls/remembered registry carry revisions only, not image bytes. Settings sync carries the picture; older clients preserve it server-side and explicit null removes it. Two native picture tests and five actual Worker/SQL tests pass. Still pending: actual compiled upload/preview, two-install integration, translations, public service deployment and full replacement packages. Do not treat the current Drive ZIPs as including pictures.
-
-## Picture local feature ready
-Actual compiled upload/sidebar/picker preview delivered immediately via Drive; real two-install sync and isolation passed. All picture labels translated; bold Up to date added. Service publication, final checks and replacement full test builds remain. See profile-pictures.md.
-
-## Final local profile-picture/startup verification (2026-10-30)
-Profile-picture/startup follow-ups now pass local verification: 234 native + 4 library tests, real account/picture two-install sync, actual PNG/JPEG/two-frame GIF upload/removal/rejection, actual i18n all 15 languages, UI/design/storage/approval and Linux startup. Bold sync status is in refreshed real Drive preview. Matching public account service deployed at source 1326d5e; live private picture sync and older-client retention passed. Full replacement Windows/Mac/Linux/browser build remains pending Public source; existing Drive test ZIPs are old 9c175eb and contain no follow-ups.
+## Profile-picture/startup follow-ups delivered
+All current follow-ups are in replacement source 38fd7d2 / CI 41085855952, delivered through Drive. See profile-pictures.md, startup-performance.md and test-builds.md. Actual previews were delivered before full tests/builds. All native/platform/browser checks and package verification passed. Device-specific before-window startup timing remains unmeasured. Owner must restore source Private; account service stays Public. Older progress entries above are historical.

@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-30",
+  "source": "38fd7d21add9ee968ef0bdf4a1483f4f2665bbfb",
+  "run": 41085855952,
+  "conclusion": "success",
+  "packages": [
+    {
+      "platform": "windows",
+      "version": "1.24.27",
+      "channel": "release",
+      "signedFiles": 3019,
+      "sourceFiles": 235,
+      "productionSignatures": "verified",
+      "sourceParity": "verified",
+      "file": "PlazCode-1.24.27-test-lean.zip",
+      "bytes": 50508023,
+      "sha256": "f9ac69b2a57d73e8bbb06421a00970b8562d02a8039499db49b01188b3504e74",
+      "files": 3038,
+      "officialLayout": "exact 1.24.26 file list",
+      "drive_url": "https://drive.google.com/file/d/10qaWb1AFLdzU6QED-r0NOXku3NS0NDD_/view?usp=drivesdk",
+      "drive_metadata_size_verified": true
+    },
+    {
+      "platform": "linux",
+      "version": "1.24.27",
+      "channel": "release",
+      "signedFiles": 3009,
+      "sourceFiles": 235,
+      "productionSignatures": "verified",
+      "sourceParity": "verified",
+      "file": "PlazCode-Linux-1.24.27-test-lean.zip",
+      "bytes": 49603042,
+      "sha256": "9e33f5131711f8521656d8288c664f514c4b830e35bf71fcf17fd22dffd2f9c5",
+      "files": 3028,
+      "officialLayout": "ZIP/tar byte parity",
+      "drive_url": "https://drive.google.com/file/d/1VQG_16WelXyyW2dqePdByokn-1BjhD9N/view?usp=drivesdk",
+      "drive_metadata_size_verified": true
+    },
+    {
+      "platform": "macos",
+      "version": "1.24.27",
+      "channel": "release",
+      "signedFiles": 3022,
+      "sourceFiles": 235,
+      "productionSignatures": "verified",
+      "sourceParity": "verified",
+      "file": "PlazCode-macOS-1.24.27-test-lean.zip",
+      "bytes": 52057593,
+      "sha256": "2c8be7da3744b0446dfdca5093956576dddd951f5a5c4b7aa423f445125c8d45",
+      "files": 3041,
+      "officialLayout": "exact 1.24.26 file list",
+      "drive_url": "https://drive.google.com/file/d/1n8DJGdxD1rILW82ONJ4B0i-ysAyfiQ7K/view?usp=drivesdk",
+      "drive_metadata_size_verified": true
+    }
+  ],
+  "checks": [
+    "GitHub wrapper SHA256 digests",
+    "ZIP CRC and safe paths; no symlinks/decoder maps/private keys/development note",
+    "Production installation plus three extension signatures",
+    "All 235 packaged JS provenance records match reviewed generated source (public-key injection and platform line endings accounted for)",
+    "Windows/Mac exact 1.24.26 file lists",
+    "Universal Mac binary and version",
+    "Static native Linux ELF; ZIP/tar byte parity; production native package verification",
+    "Native binaries contain picture route, public account service address and bold sync status CSS",
+    "Downloaded signed Linux actual bootstrap/profile gate/reopen/Quit",
+    "Drive metadata names/MIME/byte sizes read back",
+    "Windows/Mac real Check/Install against older signed stable feed passed in CI"
+  ],
+  "limitations": [
+    "Original user devices and live AI-site accounts untested",
+    "Local Linux component benchmark is not Windows opening-time measurement",
+    "Windows unsigned; Mac not notarized",
+    "PC vault folder not connected"
+  ],
+  "source_visibility": "Public at delivery; owner reminded to restore Private",
+  "account_api": "Keep Public by explicit approval; separate from source privacy",
+  "stable": "1.24.26 unchanged"
+}
