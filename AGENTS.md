@@ -1,6 +1,6 @@
 # AGENTS.md - instructions for any AI working in this repo (Codex, Claude, or others)
 
-**Current development: 1.24.27 — online desktop profiles/sync verified locally; fresh full test builds pending. Prior test builds cover DeepSeek/approval/bar/Linux/Mac fixes; latest published remains 1.24.26.** See `docs/NOW.md`.
+**Current development: 1.24.27 — full profile/sign-in/sync test builds verified and delivered; owner-approved rectangular profile/background design. Latest published remains 1.24.26.** See `docs/NOW.md`.
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.

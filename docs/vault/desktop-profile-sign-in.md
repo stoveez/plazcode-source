@@ -1,5 +1,5 @@
 # Desktop profiles and sign-in
-Updated: 2026-10-30. Implemented; final signed test-build validation and public account API verified; final test packages pending.
+Updated: 2026-10-30. Implemented, owner-approved design; full verified test packages delivered. Latest stable remains 1.24.26.
 
 The existing loading screen fades into the profile picker. Each new app process starts signed out. Users choose a saved profile, see its theme-colored selection and then green Log in/red Remove controls. First sign-in creates or uses an online username/password account; later launches use the remembered session without retyping. Valid remembered sessions also open local data offline. The Account page provides sync and sign-out/profile switching. Removing a saved profile asks for confirmation, revokes that device session when reachable, and keeps the online account and local data.
 
@@ -28,11 +28,11 @@ Portable settings and private skills use revision checks and a three-way merge. 
 ## Verification
 - Hosted private API: actual signup/KDF, session validation, isolated sync, unauthorized rejection and revocation passed.
 - Native + real Worker/SQLite across two separate installations: signup, first-owner migration, encrypted remembered login, profile isolation, stale epoch and late Studio result rejection, remove preserving data, offline login and settings/skills sync without device grants passed.
-- Seven focused native account tests pass; the last full native suite before the final fixes passed 227 tests plus 4 library tests (2 ignored). Final CI provides the current total.
+- Final full CI: Linux 229, Mac 227, Windows 223 native tests plus 4 library tests each passed (2 ignored). Seven focused account tests also passed locally.
 - Actual browser localStorage/IndexedDB tests: first-owner copy, original retention, no overwrite of edits and second-profile isolation pass.
 - Actual screen interactions and desktop regression pass; actual shared-i18n desktop language checks pass all 15 languages. Failed saves remain visible through polling and clear after successful retry (explicit browser assertions).
 - Extension partition/locked-access checks pass. Old v1.18 fixture now models the account status prerequisite and browser AbortSignal API.
-- Full Windows/Mac/Linux/browser CI and fresh production-signed test archive verification remain pending. Older delivered archives do not include accounts. Latest stable remains 1.24.26; no stable release is authorized in this test-build request.
+- Full Windows/Mac/Linux/browser CI 40989215099 / 9c175eb passed; fresh production-integrity-signed inner archives delivered. Signatures/source/layouts verified; actual downloaded signed Linux launch passed. Older 962899c archives do not include profiles. Latest stable remains 1.24.26; no stable release authorized.
 
 ## Latest polish
 Owner requested stronger glow: panel/selected-card halos, avatar/brand highlights, luminous green/red actions and edge lighting now follow the desktop glow treatment. Updated actual gold/cyan images above. Failed-login focus is restored synchronously after unlocking, preventing Escape reaching the page during a frame gap; five consecutive Chromium 141 interaction runs pass with a focus assertion. Optional local appearance caching cannot block a successful account login. Final signed packaging remains pending.
@@ -45,3 +45,8 @@ Use compact wide rectangles, not square profile tiles. Avatar/name/detail/check 
 
 ## Approved design and CI harness correction
 Owner approved the actual rectangular-profile/background screenshot. Keep this design. CI 40987906606 passed browsers, 229 native plus 4 library tests on Linux and real account/native integration. Storage test source extraction used an obsolete exact State declaration; corrected the delimiter and added boundary assertions. Real browser storage and Linux bootstrap/profile-gate/reopen/Quit tests pass locally. Runtime unchanged from 58773d9; final full CI/archive delivery remains pending.
+
+## Final test delivery
+2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is still PUBLIC: authorized Private change denied HTTP 403; owner must restore Private. Latest stable remains 1.24.26.
+
+[Archive verification](test-build-1.24.27-profiles-verification.json) records hashes, sizes, CI/source and checks. Quit the old same-version app and replace the complete folder; reload extensions/AI tabs. Windows is unsigned and Mac is not notarized. The exact approved screenshots/recording remain the implemented design. Earlier pending entries above are historical and superseded by this final result. The separate PC vault folder was not accessible.

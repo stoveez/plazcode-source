@@ -16,7 +16,7 @@
     "Settings that fail to save keep their error visible until a successful retry."
   ],
   "notes": [
-    "New profile test builds are being validated; latest stable remains 1.24.26.",
+    "Full profile test builds passed Windows, Mac, Linux and browser checks; latest stable remains 1.24.26.",
     "Linux automatic updates are not published yet; use complete native Linux downloads."
   ],
   "github": {
@@ -42,7 +42,7 @@
       {
         "title": "🧪 What was checked",
         "items": [
-          "Profile isolation, remembered/offline login and cross-computer sync passed local checks. Fresh Windows, Mac, Linux and browser validation is pending.",
+          "Windows, Mac, Linux and browser checks passed, including profile isolation, remembered/offline login and settings/skills sync. Original user setups were not tested.",
           "Windows is unsigned and Mac is not notarized, as before."
         ]
       }

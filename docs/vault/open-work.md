@@ -1,12 +1,10 @@
 ---
 title: Open work and known bugs
-updated: 2026-10-29
+updated: 2026-10-30
 ---
 # Open work
 
-**Latest 2026-10-30:** owner approved the actual profile-row/background design. CI 40987906606 passed browser and native/account checks, then exposed a stale source-extraction delimiter in the storage test. Harness corrected; real browser storage and Linux startup tests pass locally. Fresh full CI/packages pending.
-
-**New active work:** online desktop profiles implemented and verified locally; actual running-app selected-profile preview captured. Native encrypted login, separate profile stores, legacy first-profile copy, portable settings/skills sync and extension epoch boundaries are connected. 227 native tests and real Worker/SQL + two-install integration pass. Fresh full CI/build delivery remain; owner approved public account API on 2026-10-30 and live public auth/sync checks pass. See [desktop profile sign-in](desktop-profile-sign-in.md).
+**Current profile delivery:** 2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is still PUBLIC: authorized Private change denied HTTP 403; owner must restore Private. Latest stable remains 1.24.26. See [profile feature](desktop-profile-sign-in.md) and [archive verification](test-build-1.24.27-profiles-verification.json).
 
 **Current 2026-10-29:** 1.24.27 full test builds delivered. CI 40932400772 / 962899c passed Windows, Mac, Linux and browsers. Archive/signature/source/version/layout verification complete; Windows/Mac exact current release file lists. See [verification](test-build-1.24.27-verification.json). DeepSeek pacing, effort clipping, approval controls, bar alignment and Mac/Linux startup fixes are in these test packages. Original user devices and live AI accounts remain untested. Release-note metadata records completed test delivery; the stable feed stays at 1.24.26.
 

@@ -1,10 +1,11 @@
 ---
 title: Test builds and the public-then-private plan
 
-2026-10-29: online profile sign-in/settings and skills sync are implemented and verified locally for 1.24.27. Actual selected-profile native screenshot captured; fresh full test packages remain pending; public account API was authorized and verified on 2026-10-30. Previous delivered test archives do not include profiles. See docs/NOW.md and docs/vault/desktop-profile-sign-in.md.
-
-updated: 2026-10-29
+updated: 2026-10-30
 ---
+
+2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is still PUBLIC: authorized Private change denied HTTP 403; owner must restore Private. Latest stable remains 1.24.26.
+
 # Test builds
 
 Builds on the private repo are blocked by GitHub billing, so the repo is made **public only while a build or publish runs**, then private again. The owner flips visibility; AIs never do.
@@ -38,3 +39,8 @@ Includes: owner archive DeepSeek shared send queue (8–9.8 second completion-ba
 Every downloaded archive passed CRC/path/version/production-signature and exact reviewed JS source checks. Windows/Mac lists exactly match 1.24.26; Linux static executable/memory helper, permissions and ZIP/tar contents verified. See [sizes, hashes and full checks](test-build-1.24.27-verification.json). Exact signed Linux frontend also opened locally for the actual final screenshot; settings persistence/reload/reopen/Quit passed. Original user setups and live AI accounts remain untested.
 
 Source still PUBLIC immediately after delivery. Authorized Private API attempt denied HTTP 403; owner sent settings link/status request. Restore Private and verify it. PC vault folder is not connected.
+
+## Profile test builds delivered (2026-10-30)
+2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is still PUBLIC: authorized Private change denied HTTP 403; owner must restore Private. Latest stable remains 1.24.26.
+
+Actual remembered-login, separate-data and sync integration passed; owner approved the rectangular profile/gloss/full-background screen. Downloaded archives passed production signatures/source/layout checks; the actual signed Linux app passed bootstrap/profile-gate/reopen/Quit. [Full verification](test-build-1.24.27-profiles-verification.json). Quit/replace the desktop and extension before testing. Windows unsigned/Mac not notarized. Original user devices and live AI accounts remain untested.

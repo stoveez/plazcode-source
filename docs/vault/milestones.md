@@ -1,10 +1,11 @@
 ---
 title: Milestones (finished work)
 
-2026-10-29: online profile sign-in/settings and skills sync are implemented and verified locally for 1.24.27. Actual selected-profile native screenshot captured; fresh full test packages remain pending; public account API was authorized and verified on 2026-10-30. Previous delivered test archives do not include profiles. See docs/NOW.md and docs/vault/desktop-profile-sign-in.md.
-
-updated: 2026-10-26
+updated: 2026-10-30
 ---
+
+2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is still PUBLIC: authorized Private change denied HTTP 403; owner must restore Private. Latest stable remains 1.24.26.
+
 # Finished work
 
 ## 2026-10-29: 1.24.27 initialized with owner-provided DeepSeek guard (unreleased)
@@ -42,3 +43,8 @@ Persistent command-approval modes and composer-relative bar placement pass real 
 
 ## 2026-10-29: 1.24.27 full test builds delivered
 CI 40932400772 / 962899c passed Windows, Mac, Linux and browsers. All downloaded signatures/source hashes/archive versions/layouts verified; Windows/Mac exactly retain official file lists. Actual signed Linux frontend and Mac stale-process recovery passed. Includes approval controls, effort/bar fixes and DeepSeek pacing. Stable remains 1.24.26. Source Private restoration needs owner action after API 403.
+
+## 2026-10-30: online profile test builds delivered
+2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is still PUBLIC: authorized Private change denied HTTP 403; owner must restore Private. Latest stable remains 1.24.26.
+
+Actual remembered-login, separate-data and sync integration passed; owner approved the rectangular profile/gloss/full-background screen. Downloaded archives passed production signatures/source/layout checks; the actual signed Linux app passed bootstrap/profile-gate/reopen/Quit. [Full verification](test-build-1.24.27-profiles-verification.json). Quit/replace the desktop and extension before testing. Windows unsigned/Mac not notarized. Original user devices and live AI accounts remain untested.

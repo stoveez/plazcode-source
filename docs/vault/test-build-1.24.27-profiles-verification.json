@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-30",
+  "sourceCommit": "9c175ebeb0c38288de19628e85207ce53aef9f7c",
+  "workflowRun": 40989215099,
+  "workflowConclusion": "success",
+  "stableVersion": "1.24.26",
+  "stablePublished": false,
+  "accountApiAccess": "public by explicit owner approval",
+  "nativeTests": {
+    "linux": 229,
+    "macos": 227,
+    "windows": 223,
+    "libraryPerPlatform": 4,
+    "ignoredPerPlatform": 2
+  },
+  "downloadedSignedLinuxLaunch": "passed bootstrap/profile gate/reopen/Quit",
+  "windowsDefender": "runner scan found no threats",
+  "sourceVisibility": "public; authorized Private API change denied HTTP 403; owner action required",
+  "archives": [
+    {
+      "platform": "windows",
+      "file": "PlazCode-1.24.27-test-lean.zip",
+      "bytes": 50461047,
+      "sha256": "55e5fe6ef399b801df7771d5899e5a4a893345945c0306054448a9a0a041e57b",
+      "files": 3038,
+      "productionSignatures": "verified",
+      "sourceParity": "verified",
+      "officialLayout": "exact 1.24.26 file list"
+    },
+    {
+      "platform": "macos",
+      "file": "PlazCode-macOS-1.24.27-test-lean.zip",
+      "bytes": 51989456,
+      "sha256": "ac175315fed86f48173683478fbd135bf2017e31f3d8eb8779da571b18d8b35e",
+      "files": 3041,
+      "productionSignatures": "verified",
+      "sourceParity": "verified",
+      "officialLayout": "exact 1.24.26 file list"
+    },
+    {
+      "platform": "linux",
+      "file": "PlazCode-Linux-1.24.27-test-lean.zip",
+      "bytes": 49561126,
+      "sha256": "5c03626a293dd08d152e9841ef4223dd3fb9a6d75746f1c18fe3b71452251d76",
+      "files": 3028,
+      "productionSignatures": "verified",
+      "sourceParity": "verified",
+      "officialLayout": "native Linux ZIP/tar parity"
+    }
+  ],
+  "linuxTar": {
+    "file": "PlazCode-Linux-1.24.27-test-lean.tar.gz",
+    "bytes": 47837525,
+    "sha256": "427c2e14f0d3c8f59051b305eb131bce63c61f0ed34d242578578f8192a6338f"
+  },
+  "limitations": [
+    "Original user devices and live AI accounts not tested",
+    "Windows unsigned; Mac not notarized",
+    "Separate PC vault folder unavailable"
+  ]
+}
