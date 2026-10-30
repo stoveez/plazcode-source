@@ -6019,6 +6019,6 @@ html[data-rs-palette][data-rs-theme] .rs-chip.rs-tc.open, html[data-rs-palette][
 
 /* Command approval selector lives below Effort in the actual bar. */
 #rs-root #rs-approval-mode{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:4px;color:var(--pc-light,#ffbc67);font:500 9px/1.4 ui-sans-serif,"Segoe UI",sans-serif;cursor:pointer;white-space:nowrap}
-#rs-root #rs-approval-mode span{font-weight:650}#rs-root #rs-approval-mode::after{content:"⌄";font-size:11px}#rs-root #rs-approval-mode:focus-visible{outline:2px solid var(--pc-light,#ffbc67);outline-offset:3px;border-radius:3px}
+#rs-root #rs-approval-mode span{font-weight:650}#rs-root #rs-approval-mode::after{content:"";flex:none;width:5px;height:5px;box-sizing:border-box;border:solid currentColor;border-width:0 1.6px 1.6px 0;opacity:.85;transform:translateY(-2px) rotate(45deg);transition:transform .15s}#rs-root #rs-approval-mode[aria-expanded=true]::after{transform:translateY(1px) rotate(-135deg)}#rs-root #rs-approval-mode:focus-visible{outline:2px solid var(--pc-light,#ffbc67);outline-offset:3px;border-radius:3px}
 .pc-approval-menu{width:min(340px,calc(100vw - 16px));box-sizing:border-box;overflow:auto}.pc-approval-menu .pc-effort-item{gap:12px;padding:11px 12px}.pc-approval-menu strong{display:block;font-size:13px;font-weight:650}.pc-approval-menu small{display:block;margin-top:4px;font-size:11px;line-height:1.45;color:#aaa9a6}.pc-approval-menu button:disabled{opacity:.65;cursor:wait}
 #rs-show-tab{transform:none!important;margin:0!important}

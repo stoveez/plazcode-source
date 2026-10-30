@@ -133,3 +133,6 @@ Release: see [releasing](releasing.md).
 - 2026-10-30: owner requested cleaner login arrow and desktop shine. Vector alignment, tactile/glossy primary action, surface reflections and restrained animated shine implemented; real compiled gold/cyan screenshots + actual recording filed in previews/. UI/desktop checks pass; fresh full CI pending.
 
 - 2026-10-30: owner wants compact horizontal profile rectangles from the first reference, not square tiles, plus polished full-screen background lighting/shine. Implemented and captured actual gold/cyan/recording previews. UI/design/desktop checks pass. Existing motion guard now explicitly allows only the requested named effects; full next CI pending.
+
+## Startup/icon follow-up
+2026-10-30 follow-up (not in the delivered ZIPs): replaced the font plus beside Create a new profile with a centered SVG badge and the approval-mode font arrow with the same geometric chevron as Effort. Loading and profile picker now overlap in one fade; the local picker no longer waits on update-network requests (native automatic updates remain independent). Actual screen/crossfade, approval browser, desktop regression and theme checks pass. Owner clarified the long delay is before any window; investigating native protected-file verification separately. Source stays Private. Replacement packages pending.

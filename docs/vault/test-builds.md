@@ -53,3 +53,6 @@ Workspace links were not downloadable in the owner's client. Exact verified INNE
 - [Linux — 49,561,126 bytes](https://drive.google.com/file/d/1rakPW0e7kCBLJnWcEMoCX4OErlGEZBv2/view?usp=drivesdk)
 
 Source is now confirmed Private. Keep the separately authorized account API Public.
+
+## Startup/icon follow-up
+2026-10-30 follow-up (not in the delivered ZIPs): replaced the font plus beside Create a new profile with a centered SVG badge and the approval-mode font arrow with the same geometric chevron as Effort. Loading and profile picker now overlap in one fade; the local picker no longer waits on update-network requests (native automatic updates remain independent). Actual screen/crossfade, approval browser, desktop regression and theme checks pass. Owner clarified the long delay is before any window; investigating native protected-file verification separately. Source stays Private. Replacement packages pending.
