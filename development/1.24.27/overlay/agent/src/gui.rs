@@ -303,7 +303,7 @@ pub fn run_gui(
 ) -> anyhow::Result<()> {
     let desktop_started=std::time::Instant::now();
     let desktop_url = format!("http://{addr}/desktop-ui");
-    let boot = serde_json::json!({"key":pairing_key,"apiUrl":format!("http://{addr}"),"profiles":true});
+    let boot = serde_json::json!({"key":pairing_key,"apiUrl":format!("http://{addr}"),"profiles":true,"nativeWindow":true});
     let initialization = format!("if(location.href === {}) window.__PLAZCODE_BOOT__ = {};",
         serde_json::to_string(&desktop_url)?, boot);
 

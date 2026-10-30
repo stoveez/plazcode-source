@@ -14,12 +14,12 @@
     "DeepSeek messages share one queue and wait 8–9.8 seconds from the last send finishing.",
     "Mac can recover a bridge port still held by an older PlazCode process.",
     "Settings that fail to save keep their error visible until a successful retry.",
-    "Profile plus and approval chevrons align; loading fades smoothly into saved profiles.",
+    "Profile/approval icons align; fresh-window startup plays once with full intro/shine effects and a smooth sign-in fade, even when Windows effects are off.",
     "Ahead-of-stable test builds no longer show a failed-update popup.",
     "Startup verifies protected files in parallel without skipping checks."
   ],
   "notes": [
-    "Replacement profile-picture/startup test builds passed full platform checks and were delivered through Drive; latest stable remains 1.24.26.",
+    "Fresh-window startup follow-up passes local checks; replacement platform builds are pending. Earlier picture builds passed; stable remains 1.24.26.",
     "Linux automatic updates are not published yet; use complete native Linux downloads."
   ],
   "github": {
@@ -40,14 +40,14 @@
           "DeepSeek sends share one queue with 8–9.8 second spacing after a send finishes.",
           "Mac recovers ports held by stale PlazCode processes and leaves other programs alone.",
           "Settings that fail to save keep their error visible until a successful retry.",
-          "Centered profile/approval icons and a smooth loading-to-sign-in fade.",
+          "Aligned icons; startup plays once with the full logo, letter and shine effects, even when Windows effects are off.",
           "Faster protected-file checks; ahead-of-stable test builds no longer show a false update failure."
         ]
       },
       {
         "title": "🧪 What was checked",
         "items": [
-          "Windows, universal Mac, Linux, profile/picture sync and browser checks passed. Signed packages verified; original user setups remain untested.",
+          "Prior platform builds passed. Fresh-window animation checks pass locally; replacement builds pending. Original user setups remain untested.",
           "Windows is unsigned and Mac is not notarized, as before."
         ]
       }

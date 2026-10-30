@@ -27,6 +27,7 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   browser=await chromium.launch({headless:true,...(process.env.PLAZCODE_CHROMIUM?{executablePath:process.env.PLAZCODE_CHROMIUM}:{}),args:['--no-sandbox']});
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
+  let desktopNavigations=0;page.on('framenavigated',frame=>{if(frame===page.mainFrame()&&new URL(frame.url()).pathname==='/desktop-ui')desktopNavigations++;});
   await page.goto(url);await page.waitForURL('**/desktop-ui');
   const shell=await page.request.get('http://127.0.0.1:3000/desktop-ui');assert.equal(shell.headers()['x-frame-options'],'DENY');assert.equal(shell.headers()['referrer-policy'],'no-referrer');
   await page.locator('#nxSplash').waitFor({state:'hidden',timeout:30000});
@@ -34,6 +35,8 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   assert.equal((await call('/api/desktop/browser-session',{ticket},false)).status,401,'ticket cannot be reused');
   const profileGate=await page.locator('#profileSignIn').isVisible();
   if(profileGate){
+    assert.equal(desktopNavigations,1,'fresh locked window must not reload and replay the startup intro');
+    assert.equal(await page.locator('.app').evaluate(node=>getComputedStyle(node).visibility),'hidden','desktop must not flash behind the sign-in crossfade');
     assert.equal(await page.locator('#profileCreate').isVisible(),true);
     const denied=await fetch('http://127.0.0.1:3000/api/preferences',{headers:{Authorization:'Bearer '+key}});assert.equal(denied.status,423,'locked desktop cannot expose profile preferences');
     assert.equal(await page.locator('.app').evaluate(node=>node.inert),true);

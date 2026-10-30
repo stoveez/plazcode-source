@@ -79,3 +79,6 @@ Profile-picture/startup follow-ups now pass local verification: 234 native + 4 l
 - [Linux](https://drive.google.com/file/d/1VQG_16WelXyyW2dqePdByokn-1BjhD9N/view?usp=drivesdk)
 
 These replace the older 9c175eb Drive test ZIPs. Exact inner archives; Drive names/MIME/sizes verified. Quit the old app, replace the complete folder, reload extensions and refresh AI tabs. Desktop replacement is required. No stable publishing/feed changes.
+
+## Fresh-window intro follow-up awaiting platform builds
+Code removes initial locked-context reload, gates intro on native ready/visible paint, keeps desktop hidden underneath and retains full preview motion even with OS effects off by explicit owner choice. Earlier 38fd7d2 ZIPs lack this fix. Local UI/design/fresh Linux/native tests pass; native Windows/Mac GUI changes need full rebuild. Actual frontend preview: https://drive.google.com/file/d/1pcaZwlVlG7L5-SAcPchk8vY3_lEMuL-E/view?usp=drivesdk . Source is still Public from the authorized build window.

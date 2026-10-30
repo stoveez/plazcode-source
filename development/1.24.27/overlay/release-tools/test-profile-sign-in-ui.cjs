@@ -21,5 +21,24 @@ const began=Date.now();await page.evaluate(()=>Nxstartup());await page.waitForFu
 await page.waitForTimeout(200);const overlap=await page.evaluate(()=>({loading:Number(getComputedStyle(document.querySelector('#nxSplash')).opacity),picker:Number(getComputedStyle(document.querySelector('#profileSignIn')).opacity)}));
 assert(overlap.loading>0&&overlap.loading<1&&overlap.picker>0&&overlap.picker<1,'loading and picker must crossfade together: '+JSON.stringify(overlap));
 await page.locator('#nxSplash').waitFor({state:'detached'});assert(Date.now()-began<3500,'local profile intro should finish without an update-network wait');assert.deepEqual(errors,[]);
+// Native ready acknowledgement must gate the entire drawing/letter timeline.
+await page.evaluate(markup=>{document.querySelector('#profileSignIn').hidden=true;document.querySelector('#profileSignIn').classList.remove('is-visible');document.body.insertAdjacentHTML('afterbegin',markup);window.ipc={postMessage(){}};window.__PLAZCODE_WINDOW_READY__=false;Boot.nativeWindow=true;Nxsplashstarted=false;Nxstartup();},splash);
+await page.waitForTimeout(250);
+assert.equal(await page.locator('#nxSplash').getAttribute('data-intro-ready'),null,'native hidden initialization must not consume intro time');
+assert.equal(await page.locator('.nx-splash-mark .glyph').first().evaluate(node=>getComputedStyle(node).animationPlayState),'paused');
+await page.evaluate(()=>{window.__PLAZCODE_WINDOW_READY__=true;window.dispatchEvent(new Event('plazcode-window-ready'));});
+await page.waitForFunction(()=>document.querySelector('#nxSplash').hasAttribute('data-intro-ready'));
+assert.equal(await page.locator('.nx-splash-mark .glyph').first().evaluate(node=>getComputedStyle(node).animationPlayState),'running');
+await page.locator('#nxSplash').waitFor({state:'detached'});
+// Owner explicitly selected full preview motion even when Windows effects are off.
+await page.emulateMedia({reducedMotion:'reduce'});
+await page.evaluate(markup=>{document.body.insertAdjacentHTML('afterbegin',markup);},splash);
+assert.equal(await page.locator('.nx-splash-word span').first().evaluate(node=>getComputedStyle(node).animationName),'nxRise');
+assert.equal(await page.locator('.nx-splash-word span').last().evaluate(node=>getComputedStyle(node).animationDelay),'0.94s');
+assert.equal(await page.locator('.pc-signin-atmosphere i').first().evaluate(node=>getComputedStyle(node).animationName),'pc-atmosphere-drift');
+assert.equal(await page.locator('.pc-signin-atmosphere').evaluate(node=>getComputedStyle(node,'::after').animationName),'pc-backdrop-shine');
+assert.equal(await page.locator('#profileLogin').evaluate(node=>getComputedStyle(node,'::before').animationName),'pc-control-shine');
+assert.equal(await page.locator('#profileSignIn').evaluate(node=>getComputedStyle(node).transitionDuration.split(',')[0].trim()),'0.65s');
+console.log('PASS native-ready gate preserves intro drawing/letter animation before overlapping fade.');
 console.log('PASS actual splash/picker overlapping fade with no update-network gate.');console.log('PASS actual profile UI selection/theme callback, conditional controls, safe text, confirmation, remembered login, failed-password clearing, creation, reduced motion and empty/narrow states.');
 }finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});
