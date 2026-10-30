@@ -42,3 +42,6 @@ Login uses a vector arrow centered on the right edge. The desktop lift/inset-lig
 
 ## Latest owner direction: profile rows and background
 Use compact wide rectangles, not square profile tiles. Avatar/name/detail/check now align horizontally. Full-screen background also has polished ambient lighting and slow reflections; not only the welcome card. Actual screenshots and recording above are refreshed from the compiled app. Reduced motion disables background/shine animation. The design guard allowlist names the three owner-requested effects explicitly rather than allowing arbitrary repeating motion. UI, theme/design and desktop regressions pass; full fresh CI pending.
+
+## Approved design and CI harness correction
+Owner approved the actual rectangular-profile/background screenshot. Keep this design. CI 40987906606 passed browsers, 229 native plus 4 library tests on Linux and real account/native integration. Storage test source extraction used an obsolete exact State declaration; corrected the delimiter and added boundary assertions. Real browser storage and Linux bootstrap/profile-gate/reopen/Quit tests pass locally. Runtime unchanged from 58773d9; final full CI/archive delivery remains pending.

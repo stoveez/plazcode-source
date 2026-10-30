@@ -4,6 +4,8 @@ updated: 2026-10-29
 ---
 # Open work
 
+**Latest 2026-10-30:** owner approved the actual profile-row/background design. CI 40987906606 passed browser and native/account checks, then exposed a stale source-extraction delimiter in the storage test. Harness corrected; real browser storage and Linux startup tests pass locally. Fresh full CI/packages pending.
+
 **New active work:** online desktop profiles implemented and verified locally; actual running-app selected-profile preview captured. Native encrypted login, separate profile stores, legacy first-profile copy, portable settings/skills sync and extension epoch boundaries are connected. 227 native tests and real Worker/SQL + two-install integration pass. Fresh full CI/build delivery remain; owner approved public account API on 2026-10-30 and live public auth/sync checks pass. See [desktop profile sign-in](desktop-profile-sign-in.md).
 
 **Current 2026-10-29:** 1.24.27 full test builds delivered. CI 40932400772 / 962899c passed Windows, Mac, Linux and browsers. Archive/signature/source/version/layout verification complete; Windows/Mac exact current release file lists. See [verification](test-build-1.24.27-verification.json). DeepSeek pacing, effort clipping, approval controls, bar alignment and Mac/Linux startup fixes are in these test packages. Original user devices and live AI accounts remain untested. Release-note metadata records completed test delivery; the stable feed stays at 1.24.26.
