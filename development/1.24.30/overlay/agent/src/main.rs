@@ -100,6 +100,7 @@ mod chat_history;
 mod engram;
 mod vault;
 mod debug_report;
+mod tidy;
 
 #[cfg(windows)]
 mod win_msg {
@@ -1105,6 +1106,9 @@ async fn start() -> anyhow::Result<()> {
     let protection_started=std::time::Instant::now();
     integrity::verify_installation(&platform::installation_root())?;
     let protection_elapsed=protection_started.elapsed();
+    tidy::spawn_cleanup(platform::installation_root());
+    // 1.24.30: pair only with the extension folder of this verified installation (protected builds only).
+    security::set_official_extension_ids(matches!(integrity::public_key(),Ok(Some(_))).then(||security::official_extension_ids_for(&platform::installation_root())));
     std::env::set_current_dir(platform::installation_root())?;
     let addr: SocketAddr = args.roblox_addr.parse().unwrap_or_else(|_| SocketAddr::from(([127, 0, 0, 1], 3000)));
     anyhow::ensure!(addr.ip().is_loopback(), "The bridge must bind to a loopback address");

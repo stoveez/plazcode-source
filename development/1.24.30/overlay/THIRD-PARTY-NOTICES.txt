@@ -12,4 +12,8 @@ Check-UI components (inside the pack) — MIT; the repository ships without a li
 Hat artwork (references/vector-hats) — the original author's licence is not stated in the pack.
 Fredoka fonts (inside the pack's ui-builder skill) — SIL Open Font License 1.1; the licence text sits next to the fonts (OFL.txt).
 
+Ro-Engineer — MIT, Copyright (c) 2026 excaldev
+https://github.com/excaldev/ro-engineer
+License: PlazCode-Extension/starter-skills/ro-engineer/LICENSE (files shipped unchanged; PlazCode adds PLAZCODE-ADAPTER.md)
+
 Existing third-party package licenses remain in their respective source/runtime folders.

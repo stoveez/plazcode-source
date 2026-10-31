@@ -41,6 +41,8 @@ SOURCE_INPUTS=(
     'development/1.24.30/test-prepare-overlay.py',
     'development/1.24.30/test-package-size.py',
     'development/1.24.30/test-starter-pack.py',
+    'development/1.24.30/test-roengineer-pack.py',
+    'development/1.24.30/ro-engineer-v1.zip',
     '.github/workflows/validate-1.24.30.yml',
     'PlazCode-source-1.24.20.zip',
     'PlazCode-1.23.0.zip',
@@ -286,7 +288,7 @@ Microsoft Defender runner availability/result for the exact native artifact befo
 Checksums and platform evidence are recorded in release-validation-{VERSION}.
 '''
     notice=f'''PlazCode {VERSION}\nDownloads and updates: https://github.com/stoveez/PlazCode/releases\nThe source code for this version is not published.\n'''.encode()
-    common={'PlazCode/release-notes.json':((json.dumps(notes,indent=2,ensure_ascii=False)+'\n').encode(),0o100644<<16),'PlazCode/VALIDATION.txt':(validation.encode(),0o100644<<16),'PlazCode/SOURCE.txt':(notice,0o100644<<16),'PlazCode/PlazCode-Extension/SOURCE.txt':(notice,0o100644<<16)}
+    common={'PlazCode/release-notes.json':((json.dumps(notes,indent=2,ensure_ascii=False)+'\n').encode(),0o100644<<16),'PlazCode/SOURCE.txt':(notice,0o100644<<16),'PlazCode/PlazCode-Extension/SOURCE.txt':(notice,0o100644<<16)}
     firefox['SOURCE.txt']=(notice,0o100644<<16)
     for files in [windows,mac]:
         for name in list(files):

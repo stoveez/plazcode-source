@@ -266,6 +266,11 @@ pub fn verify_package_zip(zip: &Path, version: &str) -> Result<()> {
     let raw=retry_transient(&TRANSIENT_WAITS_MS,transient_io,|ms| std::thread::sleep(std::time::Duration::from_millis(ms)),|| Ok(std::fs::read(zip)?))?;
     verify_zip_with(&raw,&key,version,platform(),channel()).context(RECOVERY)
 }
+/// Names in this version's signed installation list; None in unsigned development builds.
+pub fn signed_names(root: &Path) -> Result<Option<std::collections::BTreeSet<String>>> {
+    let Some(key)=public_key()? else {return Ok(None);};
+    Ok(Some(manifest(root,&key,env!("CARGO_PKG_VERSION"),platform(),channel())?.files.into_keys().collect()))
+}
 pub fn verify_installation(root: &Path) -> Result<()> {
     let Some(key)=public_key()? else {return Ok(());}; // Debug builds only.
     // macOS can resolve a recorded root from a translocated/copied app. Authenticate the running

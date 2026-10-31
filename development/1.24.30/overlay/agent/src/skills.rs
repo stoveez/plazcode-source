@@ -20,6 +20,11 @@ impl Store {
    for value in crate::starter_skills::catalog() {if let Ok(skill)=serde_json::from_value::<Skill>(value){if !data.deleted.contains_key(&skill.id)&&!data.suppressed.contains(&skill.id){data.skills.entry(skill.id.clone()).or_insert(skill);}}}
    data.starter_pack_version=1;
   }
+  // 1.24.30 (owner): add the Ro-Engineer cards once, for new and existing users; a card the user deleted stays deleted.
+  if error.is_none() && data.starter_pack_version<2 {
+   for value in crate::starter_skills::roengineer_catalog() {if let Ok(skill)=serde_json::from_value::<Skill>(value){if !data.deleted.contains_key(&skill.id)&&!data.suppressed.contains(&skill.id){data.skills.entry(skill.id.clone()).or_insert(skill);}}}
+   data.starter_pack_version=2;
+  }
   // 1.24.21: Ultra's built-in reference cards (UltraGUI) moved into the Ultra pack, which
   // the AI opens with the ultralab_read tool. Retire every old bundled card once; user
   // skills, starter skills and their trash are untouched.
@@ -71,7 +76,7 @@ impl Store {
   let id=request["id"].as_str().unwrap_or("");
   if action=="read"&&(id.starts_with("bundled-ultra-")||id.starts_with("bundled-ultragui-")||id.starts_with("bundled-ultracode-")){anyhow::bail!("The built-in Ultra skills moved into the Ultra pack. At Ultra effort, open them with the ultralab_read tool.");}
   if action=="read"||action=="export" {let skill=self.data.skills.get(id).ok_or_else(||anyhow::anyhow!("Skill not found."))?;let mut result=json!({"ok":true,"skill":if action=="export"{public(skill)}else{serde_json::to_value(skill)?}});
-   if action=="read" && id.starts_with("starter-syphodev-") {result["bundle"]=crate::starter_skills::read(&crate::platform::installation_root().join("PlazCode-Extension/starter-skills/syphodev"),id,request)?;}
+   if action=="read" { if let Some(folder)=crate::starter_skills::bundle_folder(&crate::platform::installation_root(),id) {result["bundle"]=crate::starter_skills::read(&folder,id,request)?;} }
    return Ok(result);}
   let mut data=self.data.clone();
   match action {
@@ -109,7 +114,7 @@ fn normal_title(title:&str)->String{title.to_lowercase().split(|c:char|!c.is_alp
 fn placeholder_title(title:&str)->bool{let t=normal_title(title);t.is_empty()||matches!(t.as_str(),"planning project work"|"task checklist"|"task"|"continue"|"keep going"|"go on"|"proceed"|"yes"|"ok"|"okay"|"next"|"done"|"untitled"|"skill"|"new skill"|"hi"|"hello"|"thanks"|"thank you")}
 /// An automatic candidate the user never edited, tested, enabled or starred.
 fn untouched_auto_candidate(s:&Skill)->bool{s.id.starts_with("task-")&&s.revision<=1&&!s.confirmed&&!s.enabled&&!s.favorite&&!s.community&&s.description==CANDIDATE_TEXT}
-fn kept_by_delete_all(id:&str)->bool{id.starts_with("starter-syphodev-")||id.starts_with("global-workflow-")}
+fn kept_by_delete_all(id:&str)->bool{crate::starter_skills::is_starter(id)||id.starts_with("global-workflow-")}
 fn public(skill:&Skill)->Value {json!({"id":skill.id,"title":skill.title,"description":skill.description,"domain":skill.domain,"scope":"","steps":skill.steps,"pitfalls":skill.pitfalls,"verification":skill.verification,"confirmed":skill.confirmed,"revision":1,"community":true})}
 pub static STORE:once_cell::sync::Lazy<crate::profile_paths::ProfiledMutex<Store>>=once_cell::sync::Lazy::new(||crate::profile_paths::ProfiledMutex::new("skills.json",|path|tokio::sync::Mutex::new(Store::load(path))));
 fn repository()->anyhow::Result<String>{let value=std::env::var("PLAZCODE_LEARNING_REPOSITORY").unwrap_or_else(|_|"stoveez/PlazCode".into());let parts=value.split('/').collect::<Vec<_>>();anyhow::ensure!(parts.len()==2&&parts.iter().all(|s|!s.is_empty()&&s.len()<=100&&s.bytes().all(|b|b.is_ascii_alphanumeric()||b"_- .".contains(&b))&&!s.contains(' ')),"Learning repository must be owner/repository on GitHub.");Ok(value)}
@@ -235,9 +240,24 @@ pub async fn post(State(state):State<crate::AppState>,Json(request):Json<Value>)
   for id in ["bundled-ultra-server-authority","bundled-ultragui-expert-gui","bundled-ultracode-x"]{let err=again.request(&json!({"action":"read","id":id})).unwrap_err().to_string();assert!(err.contains("ultralab_read"),"{id}: {err}");}
   std::fs::remove_file(path).unwrap();
  }
+ #[test]fn roengineer_cards_reach_existing_users_once(){
+  let path=std::env::temp_dir().join(format!("plazcode-roe-store-{}.json",std::process::id()));let _=std::fs::remove_file(&path);
+  // A 1.24.29 catalog: SyphoDev cards already seeded, one user skill.
+  let mut old=Catalog{starter_pack_version:1,ultragui_pack_version:3,..Default::default()};let mine=skill();old.skills.insert(mine.id.clone(),mine);
+  std::fs::write(&path,serde_json::to_vec(&old).unwrap()).unwrap();
+  let mut store=Store::load(path.clone());assert_eq!(store.data.starter_pack_version,2);
+  assert_eq!(store.data.skills.keys().filter(|id|id.starts_with("starter-roengineer-")).count(),8);assert!(store.data.skills.contains_key("test"));
+  assert!(store.data.skills["starter-roengineer-core"].enabled,"core standards are on by default");
+  let hit=store.request(&json!({"action":"match","query":"fix my script lag","domain":"roblox","scope":""})).unwrap();
+  assert!(hit["skills"].as_array().unwrap().iter().any(|s|s["id"]=="starter-roengineer-core"),"used by default on Roblox tasks");
+  let rev=store.data.skills["starter-roengineer-design"].revision;
+  store.request(&json!({"action":"delete","id":"starter-roengineer-design","revision":rev})).unwrap();
+  let again=Store::load(path.clone());assert!(!again.data.skills.contains_key("starter-roengineer-design"),"a deleted card stays deleted");
+  let _=std::fs::remove_file(path.with_extension("json.backup"));std::fs::remove_file(path).unwrap();
+ }
  #[test]fn starter_seed_preserves_user_data_and_deletions(){
   let path=std::env::temp_dir().join(format!("plazcode-starter-store-{}.json",std::process::id()));let _=std::fs::remove_file(&path);
-  let mut store=Store::load(path.clone());assert_eq!(store.data.skills.len(),11);
+  let mut store=Store::load(path.clone());assert_eq!(store.data.skills.len(),19,"11 SyphoDev + 8 Ro-Engineer starter cards");
   let s=skill();store.request(&json!({"action":"save","skill":s,"revision":0})).unwrap();
   store.request(&json!({"action":"delete","id":"starter-syphodev-roblox-code","revision":1})).unwrap();
   let reloaded=Store::load(path.clone());assert_eq!(reloaded.data.ultragui_pack_version,3);assert!(reloaded.data.skills.contains_key("test"));assert!(!reloaded.data.skills.contains_key("starter-syphodev-roblox-code"));

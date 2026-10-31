@@ -53,6 +53,23 @@ if osname=='Windows':
  for path in package.glob('*.command'):path.unlink()
 # Do not carry a stale v1.22 minification hash report into development builds.
 (package/'production-build.json').unlink(missing_ok=True)
+# 1.24.30 (owner: tidy the PlazCode folder and keep internal maintenance/build notes out of downloads).
+# These old changelogs, maintainer notes and build records are not read by the app, the extension or any
+# updater; the private source repo keeps them. Everything the app, updaters and old installers use stays
+# where it is (the app, updaters, launchers, helpers, both extension folders, legacy root copies, licences).
+INTERNAL=['.gitignore','MAINTENANCE.md','UPDATE.txt','UPDATER.txt','VALIDATION.txt','agent/embed-plazcode-icon.ps1']
+for name in INTERNAL:(package/name).unlink(missing_ok=True)
+assert not [p for p in package.iterdir() if p.is_file() and p.name.startswith('test-')],'test files must not ship'
+app_name='PlazCode.exe' if osname=='Windows' else 'PlazCode' if osname=='Linux' else 'PlazCode.app'
+if osname!='Linux':(package/'README.md').write_text(
+ '# PlazCode\n\n'
+ f'1. Open **{app_name}** in this folder. Keep the whole folder together; the app uses the files next to it.\n'
+ '2. In Chrome, Edge or Brave: open the extensions page, turn on Developer mode, choose **Load unpacked** and pick the **PlazCode-Extension** folder inside this folder.\n'
+ '   In Firefox: load **PlazCode-Extension-Firefox** instead.\n'
+ '3. Refresh your AI chat tab.\n\n'
+ 'PlazCode only connects to the extension loaded from this PlazCode folder. Updates install from inside the app. '
+ 'Your skills, notes and settings are kept on updates.\n\n'
+ 'Official downloads: https://github.com/stoveez/PlazCode/releases\n',encoding='utf-8')
 # 1.24.30: the Firefox folder inside the native package is rebuilt from this
 # exact source (the 1.23.0 baseline copy was stale), and SHA256SUMS.txt is
 # recomputed for every file it lists so no checksum describes an old file.

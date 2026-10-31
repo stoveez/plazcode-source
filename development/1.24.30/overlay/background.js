@@ -31,13 +31,18 @@ async function ensurePairing(force = false) {
         headers: { "Content-Type": "application/json", "X-PlazCode-Extension": pairingIdentity() },
         body: "{}", signal: controller.signal,
       });
-      if (!response.ok) throw new Error("Automatic pairing failed (HTTP "+response.status+"). Update the desktop and extension together, then reload this browser’s extension and AI tab.");
+      if (!response.ok) {
+        // 1.24.30: the app pairs only with the PlazCode-Extension folder inside its own verified PlazCode folder.
+        const reason = response.status === 403 ? String(await response.text().catch(() => "")).slice(0, 600) : "";
+        if (/not the official one/i.test(reason)) throw Object.assign(new Error(reason), { plazcodeUnofficial: true });
+        throw new Error("Automatic pairing failed (HTTP "+response.status+"). Update the desktop and extension together, then reload this browser’s extension and AI tab.");
+      }
       const data = await response.json();
       if (!/^[a-f0-9]{64}$/i.test(data.key || "")) throw new Error("Agent returned an invalid pairing response");
       pairingKey = data.key;
       try { await chrome.storage.local.set({ [PAIRING_KEY]: pairingKey }); } catch {}
       return pairingKey;
-    } catch(error) { throw new Error("Local bridge pairing failed: "+String(error.message || error)+". In Edge or Brave, check that PlazCode is enabled, its site access includes the AI page and localhost, and local-network access is allowed. Browser permission blocks cannot be fixed by restarting Studio."); }
+    } catch(error) { if (error && error.plazcodeUnofficial) throw error; throw new Error("Local bridge pairing failed: "+String(error.message || error)+". In Edge or Brave, check that PlazCode is enabled, its site access includes the AI page and localhost, and local-network access is allowed. Browser permission blocks cannot be fixed by restarting Studio."); }
     finally { clearTimeout(timer); }
   })();
   try { return await pairingInFlight; } finally { pairingInFlight = null; }
