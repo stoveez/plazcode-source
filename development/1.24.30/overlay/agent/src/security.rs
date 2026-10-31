@@ -177,11 +177,13 @@ mod tests {
         let root=std::env::temp_dir().join(format!("plazcode-ext-ids-{}",std::process::id()));let _=std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(root.join("PlazCode-Extension")).unwrap();
         let ids=official_extension_ids_for(&root);
-        let official=chromium_id_for_path(&std::fs::canonicalize(root.join("PlazCode-Extension")).unwrap());
+        // The real on-disk form, as Chrome records it (Windows: without the \\?\ prefix canonicalize adds).
+        let official=chromium_id_for_path(folder_forms(&root.join("PlazCode-Extension")).last().unwrap());
         assert!(ids.contains(&official));
         let legacy=chromium_id_for_path(&root);assert!(!ids.contains(&legacy),"no root copy, no root ID");
         std::fs::write(root.join("manifest.json"),"{}").unwrap();
-        assert!(official_extension_ids_for(&root).iter().any(|id|*id==legacy||*id==chromium_id_for_path(&std::fs::canonicalize(&root).unwrap())),"legacy root copy accepted");
+        assert!(official_extension_ids_for(&root).iter().any(|id|*id==legacy||*id==chromium_id_for_path(folder_forms(&root).last().unwrap())),"legacy root copy accepted");
+        #[cfg(windows)] assert!(folder_forms(&root).iter().all(|form|!form.to_string_lossy().starts_with(r"\\?\")),"no \\?\ prefix reaches the ID");
         let pinned=Some(ids);let copy="b".repeat(32);
         let headers=|id:&str|{let mut h=HeaderMap::new();h.insert("host","127.0.0.1:3000".parse().unwrap());h.insert("content-type","application/json".parse().unwrap());
             h.insert("x-plazcode-extension",id.parse().unwrap());h.insert("origin",format!("chrome-extension://{id}").parse().unwrap());h};
