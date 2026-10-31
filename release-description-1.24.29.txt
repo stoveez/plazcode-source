@@ -1,0 +1,23 @@
+✨ **PlazCode 1.24.29**
+***The AI reads your whole game and all its memory fast, Studio tools work again, and updates stop failing.***
+
+***✨ What's new***
+- The AI reads many scripts, whole folders or the entire game in one go, instead of one script at a time.
+- Every chat starts with all your vault notes and the project memory (saved chats and the archive stay on demand).
+
+***🛠️ What's fixed***
+- PlazCode's own Studio tools (lighting, UI and effects builders, script analysis) could not run at all. They work again.
+- Updates sometimes failed with "Release signature or file verification failed". The check now reads the download directly, so security software can't break it. No check was loosened.
+- Updates could stay stuck at "Verifying and installing". A stuck updater now stops after 15 minutes without changing anything, and errors name the exact file.
+- The Effort and Approval menus no longer hide Ultra and Bypass approval behind the bar.
+
+***🧪 What was checked***
+- Fast reading was tested on a real 62-script game, Studio tools with the official Luau compiler, updates on real Windows and Mac, menus in a real browser.
+- Big vaults make chats start a little slower. Update fixes apply from 1.24.29 on.
+- Windows is unsigned and Mac is not notarized, as before.
+
+***📥 How to update***
+- Open PlazCode, or choose Updates → Update now.
+- Manual downloads: PlazCode-1.24.29.zip for Windows, PlazCode-macOS-1.24.29.zip for Mac, or PlazCode-Firefox-1.24.29.zip for Firefox.
+- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
+- Your settings, memory and connections are kept.
