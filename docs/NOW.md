@@ -1,11 +1,11 @@
 # NOW
 Updated: 2026-10-31. No helper agents.
 
-**Latest: 1.24.27 assembled; public publication pending. Validation 41157294450 on `5465c3e`; publish run 41204935324.** DeepSeek sends share one queue and a completion-based 8–9.8 second cooldown, including Creator/library calls. Existing program protection and permanent approvals are retained. No app signing, login requirement or extra setup; offline use and editable user skills/notes/settings are preserved.
+**Latest: 1.24.27 published. Validation 41157294450 on `5465c3e`; publish run 41204935324.** DeepSeek sends share one queue and a completion-based 8–9.8 second cooldown, including Creator/library calls. Existing program protection and permanent approvals are retained. No app signing, login requirement or extra setup; offline use and editable user skills/notes/settings are preserved.
 
 **Validation:** all four production gates passed on the exact source, plus the packaged Mac desktop lifetime/relaunch gate. Browser fixtures and real protected Chromium/Firefox cryptography passed; original affected Studio/account setups were not tested live. No separate test build was delivered. Full app update plus extension reload and AI-tab refresh is required for the complete security update.
 
-**Publication:** archives/feed checks passed; public release has not yet been confirmed.
+**Release:** https://github.com/stoveez/PlazCode/releases/tag/v1.24.27
 
 **Visibility:** temporary public build window; restore Private after publication. Owner authorized automatic restore; integration administration previously returned 403. Check the actual visibility before stopping.
 
