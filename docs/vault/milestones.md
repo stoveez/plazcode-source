@@ -8,6 +8,9 @@ updated: 2026-10-30
 
 # Finished work
 
+## 2026-10-31: 1.24.29 published
+DeepSeek shared send serialization and completion-based pacing for all programmatic calls. Validation 41228437428 (`031b800`), publication 41230160364, packaged Mac lifetime/relaunch passed. No app signing or new end-user setup. User data stays editable; original affected live Studio/account setups were not tested.
+
 ## 2026-10-29: 1.24.27 initialized with owner-provided DeepSeek guard (unreleased)
 The owner archive guard is merged into 1.24.27: provider-level serialization, optional-argument forwarding, 250 ms sleep slices and a sampled 8–9.8 second completion-based cooldown cover core and direct UI sends. Previous 1.24.26 provider files were restored to their released baseline. Focused timing/concurrency/failure tests, raw-send AST preservation, protected hash pins and root/Chromium/Firefox copy checks passed. Live DeepSeek and release validation remain.
 

@@ -8,6 +8,9 @@ updated: 2026-10-30
 
 # Open work
 
+- 2026-10-31: 1.24.29 published. Validation 41228437428 on `031b800`; publish run 41230160364. Permanent approvals and code protection are complete. Live feed/download verification and Private visibility restoration remain. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
+
+
 - 2026-10-31: 1.24.29 assembled; public publication pending. Validation 41228437428 on `031b800`; publish run 41230160364. Permanent approvals and code protection are complete. Public publication remains. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
 
 

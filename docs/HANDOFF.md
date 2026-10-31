@@ -1,5 +1,6 @@
 # PlazCode handoff note (for any AI starting with no context)
 
+**Current, 2026-10-31:** 1.24.29 published. Validation 41228437428 on `031b800`; publish run 41230160364. Start with `docs/NOW.md`. Older entries below are historical.
 **Latest, 2026-10-30:** replacement full 1.24.27 test ZIPs delivered through Google Drive. CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952), source `38fd7d2`, passed Windows, universal Mac, Linux and browsers. Includes profile pictures, bold Up to date, plus/approval icons, splash fade, parallel protected-file checks and ahead-of-stable update fix. Production signatures, all 235 reviewed JS sources and release layouts verified; actual downloaded Linux startup passed. Source remains Public at delivery; owner reminded to restore Private. Account API stays Public independently. Stable remains 1.24.26. [Verification](/docs/vault/test-build-1.24.27-followups-verification.json).
 
 Older dated entries below are historical; docs/NOW.md is the live handoff.
@@ -7,7 +8,6 @@ Older dated entries below are historical; docs/NOW.md is the live handoff.
 
 2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is now PRIVATE, verified after owner restored visibility. Earlier integration visibility attempts were denied HTTP 403. Latest stable remains 1.24.26.
 
-**Current, 2026-10-29:** working on 1.24.27 (DeepSeek pacing, approval modes, accessible effort choices, bar alignment and Linux/Mac startup fixes). Latest published remains 1.24.26. Full test builds delivered and verified: CI 40932400772 / source 962899c. Source Private restoration needs owner action after API 403. Start with `docs/NOW.md`; older entries below are historical.
 
 > 2026-10-24: the short live handoff is now `docs/NOW.md` and long-term notes are in `docs/vault/` (start at `Home.md`). Read those first; this file is the detailed reference.
 

@@ -1,10 +1,10 @@
 # PlazCode task board
 
+**Current, 2026-10-31:** 1.24.29 published. Validation 41228437428 on `031b800`; publish run 41230160364. Start with `docs/NOW.md`. Older entries below are historical.
 **Latest, 2026-10-30:** replacement full 1.24.27 test ZIPs delivered through Google Drive. CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952), source `38fd7d2`, passed Windows, universal Mac, Linux and browsers. Includes profile pictures, bold Up to date, plus/approval icons, splash fade, parallel protected-file checks and ahead-of-stable update fix. Production signatures, all 235 reviewed JS sources and release layouts verified; actual downloaded Linux startup passed. Source remains Public at delivery; owner reminded to restore Private. Account API stays Public independently. Stable remains 1.24.26. [Verification](/docs/vault/test-build-1.24.27-followups-verification.json).
 
 Older dated entries below are historical; docs/NOW.md is the live handoff.
 
-**Current, 2026-10-30:** Profile-picture/startup follow-ups now pass local verification: 234 native + 4 library tests, real account/picture two-install sync, actual PNG/JPEG/two-frame GIF upload/removal/rejection, actual i18n all 15 languages, UI/design/storage/approval and Linux startup. Bold sync status is in refreshed real Drive preview. Matching public account service deployed at source 1326d5e; live private picture sync and older-client retention passed. Full replacement Windows/Mac/Linux/browser build remains pending Public source; existing Drive test ZIPs are old 9c175eb and contain no follow-ups. Start with docs/NOW.md.
 
 Read `docs/MAINTAINER-GUIDE.md` section 11 first. Claim a task by adding a line under "In progress" in your own small commit. Move it to "Done" with a handoff note when finished. Do not take a task someone else has claimed.
 
