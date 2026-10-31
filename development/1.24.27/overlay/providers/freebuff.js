@@ -62,6 +62,9 @@ const RSProvider = (() => {
   const timings = {
     // Freebuff streams slowly — 1.6s idle used to look "dead" mid-reply.
     GEN_IDLE_MS: 14000,
+    // 1.24.27 fast tool settle: a complete command with Stop gone runs after 3 s of quiet (not 0.8 s),
+    // because this host pauses for seconds between bursts.
+    FAST_TOOL_SETTLE_MS: 3000,
     REASON_IDLE_MS: 45000,
     WARMUP_MS: 120000,
     REASON_NOREPLY_MS: 180000,

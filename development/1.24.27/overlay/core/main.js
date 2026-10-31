@@ -1409,6 +1409,17 @@
     // -neutral: while a model is genuinely streaming, gen stays true and this is
     // never reached. Slow hosts (Freebuff) override via timings.GEN_STOP_GRACE_MS.
     const GEN_STOP_GRACE_MS = T.GEN_STOP_GRACE_MS || 2500;
+    // 1.24.27 fast tool settle (owner, 2026-10-30: "Claude takes up to 12 seconds between tool calls").
+    // Every site counts "busy" as Stop button OR a soft signal: text grew in the last GEN_IDLE_MS, or a
+    // streaming/thinking marker. When a soft signal lingered after the reply ended, the loop waited for
+    // the STABLE_MS fallback (Claude 8-14 s, most sites 9 s) before running the command. Once the reply
+    // holds a COMPLETE, closed command, the site's real Stop button is gone and the text has not changed
+    // for FAST_TOOL_SETTLE_MS, the reply is finished: run the command now. DeepSeek is excluded on purpose
+    // (its send pacing protects accounts from suspension). A site can set timings.FAST_TOOL_SETTLE_MS
+    // (0 turns it off; a slow host can ask for a longer quiet period).
+    const FAST_TOOL_SETTLE_MS = P.id === "deepseek" ? 0
+      : (Number.isFinite(Number(T.FAST_TOOL_SETTLE_MS)) && T.FAST_TOOL_SETTLE_MS !== undefined ? Math.max(0, Number(T.FAST_TOOL_SETTLE_MS)) : 800);
+    let fastParsedText = null, fastParsedComplete = false, fastSettleNoted = false;
 
     // v1.12.2: deadline sliding while hidden+bgMode (replaces the old
     // park-then-slide). Hidden tabs get throttled timers (>=1s, 1/min after
@@ -1626,6 +1637,27 @@
           }
         } catch {}
       }
+      let fastToolSettled = false;
+      if (gen && !hardGenerating && newReply && FAST_TOOL_SETTLE_MS > 0 && typeof P.isHardGenerating === "function" &&
+          d.reply && lastText !== null && Date.now() - lastChangeAt >= FAST_TOOL_SETTLE_MS) {
+        // Parse once per distinct reply text, not on every 160 ms tick.
+        if (fastParsedText !== lastText) {
+          fastParsedText = lastText;
+          fastParsedComplete = false;
+          try {
+            fastParsedComplete = RSParse.hasToolSignature(d.reply) && !RSParse.hasOpenToolBlock(d.reply) &&
+              RSParse.parseToolCalls(d.reply).length > 0;
+          } catch {}
+        }
+        if (fastParsedComplete) {
+          gen = false;
+          fastToolSettled = true;
+          if (!fastSettleNoted) {
+            fastSettleNoted = true;
+            diag("response.fastToolSettle", { quietMs: Date.now() - lastChangeAt, provider: P.id, softGen: true });
+          }
+        }
+      }
       // How long the generating flag has been OFF. A mid-stream flicker resets
       // this the instant growth resumes and gen flips back on.
       if (gen) genFalseSince = 0; else if (!genFalseSince) genFalseSince = Date.now();
@@ -1709,7 +1741,8 @@
       if (!doneSince) doneSince = Date.now();
       // 500ms settle – DOM is stable. A provider-confirmed finished turn (its
       // completion controls rendered, Stop gone) needs only a short re-read.
-      const settleMs = P.turnComplete && P.turnComplete(d.item) ? 150 : 500;
+      // A fast-settled command reply (above) has already been quiet for FAST_TOOL_SETTLE_MS.
+      const settleMs = fastToolSettled || (P.turnComplete && P.turnComplete(d.item)) ? 150 : 500;
       if (Date.now() - doneSince < settleMs) {
         await sleep(120);
         continue;
@@ -2690,8 +2723,10 @@ return result`;
         "return hs:JSONEncode(out)",
       ].join("\n");
       const r = await Promise.race([
-        bg({ type: "call_tool", name: "execute_luau", arguments: { code: code, datamodel_type: "Edit" }, timeout: 8000 }),
-        new Promise((res) => setTimeout(() => res(null), 8000)),
+        // 1.24.27: this console read runs after a change and before the result is sent, so it adds
+        // straight to the gap between commands. It is optional context: give it 3 s, not 8 s.
+        bg({ type: "call_tool", name: "execute_luau", arguments: { code: code, datamodel_type: "Edit" }, timeout: 3000 }),
+        new Promise((res) => setTimeout(() => res(null), 3000)),
       ]);
       const raw = r && r.ok ? String(r.text || "") : "";
       let lines = [];

@@ -570,7 +570,20 @@ const RSProvider = (() => {
       if (relock) ed.setAttribute("contenteditable", "true");
       // Claude drops text typed while it is still streaming. Wait until the reply is really finished before typing,
       // whatever language the page is in (the Stop button label is not always recognised).
-      if (isGenerating()) { diag("claude.send.waitIdle", {}); await waitFor(() => !isGenerating(), 45000); }
+      // 1.24.27: a streaming/thinking marker can linger on a finished reply. Waiting for it alone held a result
+      // back for seconds. Claude is idle once the Stop button is gone and the reply text has not changed for a
+      // second; text dropped by a still read-only composer is typed again by the retype loop below.
+      if (isGenerating()) {
+        diag("claude.send.waitIdle", {});
+        let quietLen = streamLen(), quietSince = Date.now();
+        await waitFor(() => {
+          if (!isGenerating()) return true;
+          if (stopButton()) { quietSince = Date.now(); return false; }
+          const len = streamLen();
+          if (len !== quietLen) { quietLen = len; quietSince = Date.now(); return false; }
+          return Date.now() - quietSince >= 1000;
+        }, 45000);
+      }
       // Claude swaps its composer for a new one when a reply finishes. Type into the editor that is on the page
       // NOW, not the one found before the wait: text typed into the old, detached editor is lost.
       ed = getEditor() || ed;

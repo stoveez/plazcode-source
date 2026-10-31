@@ -3399,6 +3399,9 @@ const RSProvider = (() => {
     PRE_START_MS: 90000,
     STABLE_MS: 15000,
     GEN_IDLE_MS: 9000,
+    // 1.24.27: Notion keeps its own finished-reply check (softGenerationSettled); the shared fast
+    // tool settle stays off here so its hidden-block rendering is never cut short.
+    FAST_TOOL_SETTLE_MS: 0,
     REASON_NOREPLY_MS: 180000,
     RESPONSE_TIMEOUT_MS: 900000,
   };
