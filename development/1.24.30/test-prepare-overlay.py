@@ -8,7 +8,7 @@ with tempfile.TemporaryDirectory(prefix='plazcode-overlay-') as temporary:
  shutil.copy2(here/'prepare.py',dev/'prepare.py')
  for path in (here/'overlay').rglob('*'):
   if path.is_file():
-   raw=path.read_bytes();binary=path.suffix.lower() in {'.png','.jpg','.jpeg','.gif','.ico','.zip','.exe','.dll','.woff','.woff2','.ttf','.otf','.webp'} or b'\0' in raw[:8192]
+   raw=path.read_bytes();binary=path.suffix.lower() in {'.png','.jpg','.jpeg','.gif','.ico','.zip','.exe','.dll','.woff','.woff2','.ttf','.otf','.webp'} or b'\0' in raw[:8192] or 'ro-engineer' in path.parts  # 1.24.30: -text in .gitattributes, kept byte for byte
    if not binary:raw.decode('utf-8')
    target=dev/'overlay'/path.relative_to(here/'overlay');target.parent.mkdir(parents=True,exist_ok=True)
    target.write_bytes(raw if binary else raw.replace(b'\r\n',b'\n').replace(b'\n',b'\r\n'))
@@ -16,7 +16,7 @@ with tempfile.TemporaryDirectory(prefix='plazcode-overlay-') as temporary:
  source=work/'build-src-1.24.30/PlazCode'
  for path in (dev/'overlay').rglob('*'):
   if path.is_file():
-   target=source/path.relative_to(dev/'overlay');data=path.read_bytes();binary=path.suffix.lower() in {'.png','.jpg','.jpeg','.gif','.ico','.zip','.exe','.dll','.woff','.woff2','.ttf','.otf','.webp'} or b'\0' in data[:8192]
+   target=source/path.relative_to(dev/'overlay');data=path.read_bytes();binary=path.suffix.lower() in {'.png','.jpg','.jpeg','.gif','.ico','.zip','.exe','.dll','.woff','.woff2','.ttf','.otf','.webp'} or b'\0' in data[:8192] or 'ro-engineer' in path.parts
    assert target.read_bytes()==(data if binary else data.replace(b'\r\n',b'\n')),target
  for folder in ['core','providers']:
   for path in (source/folder).glob('*'):

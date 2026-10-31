@@ -1,7 +1,13 @@
 # NOW
-Updated: 2026-10-31 (after 1.24.29). Branch `claude/plazcode-dev`; no helper agents.
+Updated: 2026-10-31 (1.24.30 in progress). Branch `claude/plazcode-dev`; no helper agents.
 
-**2026-10-31 (late), notes only:** owner rule "always work in plan mode" added to CLAUDE.md, AGENTS.md and `docs/vault/how-we-work.md`. Rust release profile already has LTO + strip; `panic=abort` rejected (the app deliberately survives a panicking tokio task). Extension-hardening and prompt-move work is ON HOLD (automated safety stops during planning); ro-engineer skills integration not started (repo and licence not yet read). No code changed; updater untouched.
+
+**IN PROGRESS: 1.24.30 (`development/1.24.30`), test build first, then publish only on the owner's clear yes.** All local tests pass: Rust 244+5, JS suite 0 failures, locales/prepare/ultralab/starter/promote/protection, Ro-Engineer pack, and the signed optimized Linux app end to end.
+- App pairs only with the extension folder of its own verified installation (`security.rs`, IDs checked against the owner's real Chrome IDs). Edited/copied extensions refused with clear steps. Firefox unchanged. Owner's extension-only test folders will no longer pair (agreed).
+- Mac: a fresh download opened from Finder ran translocated and failed "program files changed ... os error 2"; `platform.rs` now asks macOS for the real folder (SecTranslocate) before any older recorded folder. Unit-tested; the macOS-only call was type-checked only, real Mac proof comes from the CI Mac job and the owner's Mac.
+- Tidy: downloads drop internal notes; public zips drop VALIDATION.txt; the app removes old developer leftovers from verified installs in the background (`tidy.rs`). The app, updaters (byte-identical to 1.24.29), launchers and both extension folders stay put.
+- Ro-Engineer (excaldev, MIT) ships unchanged under `PlazCode-Extension/starter-skills/ro-engineer` (+ PLAZCODE-ADAPTER.md), 8 cards, core card always on (`roengineer-index.json`, seeded once via starter_pack_version 2).
+- Next after 1.24.30: 1.24.31 moves the Studio Skills library into the Rust app (see `docs/vault/code-protection.md`).
 
 **ROOT CAUSE of "Release signature or file verification failed" (proven on the owner's PC, 2026-10-31 16:40).** Windows PowerShell 5.1 does not wait for the windowed PlazCode.exe when the updater calls the check with the call operator (`& $exe --verify-package ...`) while its output goes to the log file (as when the app runs it). Owner's PC: the old call returned after 21 ms with an EMPTY exit code (log: "Reason: exit code " with nothing after it, 5 attempts updating 1.24.28 -> 1.24.29); the 1.24.29 call (`[Diagnostics.Process]::Start` + `WaitForExit` + `ExitCode`) returned 0 after 1.8 s. It was never security software; the 1.24.28 retries could not help. Consequence: installs on 1.24.26-1.24.28 on affected PCs cannot auto-update to 1.24.29 and need ONE manual download; from 1.24.29 on, auto-updates use the fixed call (CI real-Windows signed update passes). Guarded by an assertion in `test-updater-package.py`. Diagnostic script left at Downloads/plazcode-update-check (read-only check, owner may delete).
 

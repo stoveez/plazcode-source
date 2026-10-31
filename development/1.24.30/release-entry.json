@@ -1,49 +1,43 @@
 {
- "version": "1.24.29",
- "title": "Fast game reading, full memory and reliable updates",
- "summary": "The AI reads your whole game and all its memory quickly, PlazCode's Studio tools work again, and updates no longer fail or get stuck.",
+ "version": "1.24.30",
+ "title": "Official copies only, Mac start fix and Roblox coding standards",
+ "summary": "PlazCode now only works with its own official extension, opens reliably from a fresh Mac download, cleans old leftover files out of your PlazCode folder, and gives the AI modern Roblox coding standards by default.",
  "added": [
-  "read_scripts: the AI reads many scripts, whole folders or the entire game in one go instead of one script at a time.",
-  "At the start of every chat PlazCode gives the AI all your vault notes (except saved chats and the archive) and the project memory."
+  "Ro-Engineer Roblox standards (by excaldev, MIT licence) are built in: modern typed Luau, safe client/server code, clean-up, performance, system design, game loops and economy. One short set of core standards is used on every Roblox task; the topic guides are used when they fit."
  ],
  "improved": [
-  "The update safety check reads the downloaded package directly, so security software scanning new files can no longer break it. No check was loosened."
+  "The PlazCode app only connects to the extension loaded from its own PlazCode folder. Copies that were edited or loaded from somewhere else are refused with a message saying what to do.",
+  "Your PlazCode folder is tidier: about 90 old test files and old internal notes left behind by earlier versions are removed automatically, and new downloads no longer include internal notes. The app, the extensions, the updaters and your settings stay where they are."
  ],
  "fixed": [
-  "PlazCode's own Studio tools (lighting presets, UI and effects builders, script analysis and more) could not run at all: Roblox Studio refused to load them.",
-  "Updates sometimes stopped with \"Release signature or file verification failed\" even though the download was fine.",
-  "An update could stay stuck at \"Verifying and installing\" behind a hidden error window; a stuck updater is now stopped after 15 minutes without changing anything.",
-  "The Effort and Approval menus hid their last choice (Ultra, Bypass approval) behind the bar."
+  "On Mac, opening PlazCode straight from a freshly downloaded zip could stop with \"PlazCode program files changed or are incomplete ... No such file or directory\"."
  ],
  "notes": [
-  "The update fixes protect updates from 1.24.29 on; updating to 1.24.29 still uses the updater you have, which retries by itself.",
-  "Reading all memory at the start makes chats with a big vault take a little longer to start.",
+  "If PlazCode says the extension is not the official one: remove it from your browser's extensions page and load the PlazCode-Extension folder from the PlazCode folder you use (Firefox is not affected).",
   "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
  ],
  "github": {
-  "summary": "***The AI reads your whole game and all its memory fast, Studio tools work again, and updates stop failing.***",
+  "summary": "***PlazCode only works with its own official extension, opens reliably on Mac, tidies its folder and knows modern Roblox coding standards.***",
   "sections": [
    {
     "title": "✨ What's new",
     "items": [
-     "The AI reads many scripts, whole folders or the entire game in one go, instead of one script at a time.",
-     "Every chat starts with all your vault notes and the project memory (saved chats and the archive stay on demand)."
+     "Built-in Roblox coding standards from Ro-Engineer by excaldev (MIT): typed Luau, safe remotes, clean-up, performance, system design, game loops and economy. Core standards apply to every Roblox task."
     ]
    },
    {
     "title": "🛠️ What's fixed",
     "items": [
-     "PlazCode's own Studio tools (lighting, UI and effects builders, script analysis) could not run at all. They work again.",
-     "Updates sometimes failed with \"Release signature or file verification failed\". The check now reads the download directly, so security software can't break it. No check was loosened.",
-     "Updates could stay stuck at \"Verifying and installing\". A stuck updater now stops after 15 minutes without changing anything, and errors name the exact file.",
-     "The Effort and Approval menus no longer hide Ultra and Bypass approval behind the bar."
+     "Mac: opening PlazCode from a fresh download could fail with \"program files changed or are incomplete\". It now starts normally.",
+     "The app only connects to the official extension from its own PlazCode folder. Edited or copied extensions are refused with clear steps.",
+     "Old test files and internal notes from earlier versions are cleaned out of your PlazCode folder. Nothing you use moves."
     ]
    },
    {
     "title": "🧪 What was checked",
     "items": [
-     "Fast reading was tested on a real 62-script game, Studio tools with the official Luau compiler, updates on real Windows and Mac, menus in a real browser.",
-     "Big vaults make chats start a little slower. Update fixes apply from 1.24.29 on.",
+     "The extension check was matched against real extension IDs from Chrome on Windows and tested on the signed app.",
+     "If you see \"not the official one\", reload PlazCode-Extension from your PlazCode folder. Firefox is unchanged.",
      "Windows is unsigned and Mac is not notarized, as before."
     ]
    }

@@ -3,6 +3,7 @@ import zipfile,hashlib,shutil,json
 root=Path(__file__).resolve().parents[2];here=Path(__file__).parent;archive=root/'PlazCode-source-1.24.20.zip'
 assert hashlib.sha256(archive.read_bytes()).hexdigest()=="a359139c301580762d20508f15a02bc52caa1e2383df16d1106fda960a5a0762"
 # Images and other binary files must keep every byte; only text gets line endings normalised.
+# 1.24.30: the bundled third-party Ro-Engineer pack also ships byte for byte (its LICENSE uses CRLF).
 BINARY={'.png','.jpg','.jpeg','.gif','.ico','.zip','.exe','.dll','.woff','.woff2','.ttf','.otf','.webp'}
 REMOVED=['core/ultracode-deepseek.js','PlazCode-Extension/core/ultracode-deepseek.js','PlazCode-Extension/ultra','PlazCode-Extension/ultragui',
  'test-deepseek-ultracode.js','test-ultracode-efficiency.js','agent/src/ultra-index.json','agent/src/ultra-resources.json','agent/src/ultragui-index.json','agent/src/ultragui-resources.json']
@@ -15,7 +16,7 @@ def extract(archive,destination):
 extract(archive,root/'build-src-1.24.30');source=root/'build-src-1.24.30/PlazCode'
 for path in (here/'overlay').rglob('*'):
  if path.is_file():
-  target=source/path.relative_to(here/'overlay');target.parent.mkdir(parents=True,exist_ok=True);data=path.read_bytes();target.write_bytes(data if (path.suffix.lower() in BINARY or b'\0' in data[:8192]) else data.replace(b'\r\n',b'\n'))
+  target=source/path.relative_to(here/'overlay');target.parent.mkdir(parents=True,exist_ok=True);data=path.read_bytes();target.write_bytes(data if (path.suffix.lower() in BINARY or b'\0' in data[:8192] or 'ro-engineer' in path.parts) else data.replace(b'\r\n',b'\n'))
 # 1.24.30: Ultra is now the UltraLab pack (core/ultralab, read with ultralab_read). The old Ultra
 # bundles, the DeepSeek-only Ultra and the Rust readers for them are removed completely.
 for name in REMOVED:

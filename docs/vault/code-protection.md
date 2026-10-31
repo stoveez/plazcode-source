@@ -1,6 +1,6 @@
 ---
 title: Code protection without extra user steps
-updated: 2026-10-28
+updated: 2026-10-31
 ---
 # Code protection
 
@@ -41,3 +41,8 @@ Set-Clipboard -Value ("ed25519-seed:" + (($plazcodeKeyBytes | ForEach-Object { $
 The original trusted-PC alternative remains available: `node development/1.24.26/protection.mjs provision <absolute-private-backup-path-outside-repo>` with authenticated GitHub CLI secret permissions. Both standard Ed25519 PKCS8 PEM and the explicitly labeled random seed are accepted. All signing and decoder-map encryption uses the same resulting private key.
 
 Before key setup, explicit validation keys are suitable only for internal checks. They cannot be published. Protected release 1.24.26 shipped after all platform/browser and packaged Mac gates passed (validation 40772509288, publication 40781780030). No separate test-build delivery (owner instruction).
+
+## 1.24.30: the app pairs only with its own extension folder
+Gap found 2026-10-31 (owner's screenshot of a tester's edited copy with an extra AI site): the extension's file check runs inside the extension, so an edited copy could remove it, and the app accepted any well-formed extension ID. Now the app (after its own signed folder check) accepts only the Chromium IDs of its own `PlazCode-Extension` folder and the legacy root copy (`security::official_extension_ids_for`; ID = first 16 bytes of SHA-256 of the folder path, UTF-16LE with upper-case drive letter on Windows, letters a-p). Checked against the real IDs Chrome gave the owner's two folders. Refused copies get `UNOFFICIAL_EXTENSION` (pairing and every request, even with a borrowed key). Firefox (random IDs) and unprotected development builds are unchanged. Proven end to end on the signed Linux app (`test-release-verifier.mjs`).
+
+Limits, said plainly: someone who controls the PC can still patch the app itself. Next step agreed with the owner: move the most valuable logic into the compiled app, one part per update (1.24.31: Studio Skills library; then prompts; parser later). Browsers do not let an extension run code it receives, so moving means rewriting in Rust; only text (prompts, generated Luau) can come from the app. No server or hosting (owner, 2026-10-31).
