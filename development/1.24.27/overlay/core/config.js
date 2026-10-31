@@ -104,10 +104,10 @@ const RS = (() => {
       "ERROR: multiple commands in one reply. Write ONE command, wait for its result, then the next. You tried: " +
       names.join(", ") +
       ". Start over and write only the first command you need.",
-    unknownTool: (name, valid) =>
-      `ERROR: unknown command "${name}". It does not exist. Valid commands: ` +
-      valid.join(", ") +
-      ". Use an exact name from list_commands. Call plazcode_status {} if you are unsure which engine you are on.",
+    unknownTool: (name, closest) =>
+      `ERROR: unknown command "${name}". It does not exist and did not run. ` +
+      (closest && closest.length ? "Closest real commands: " + closest.join(", ") + ". " : "") +
+      "Use an exact name; call list_commands to see every command on this engine.",
     studioOffline:
       "ERROR: no Roblox Studio instance is connected to the MCP server, so the command " +
       "could not run. Roblox Studio is closed, has no place open, or its MCP server option " +

@@ -2039,6 +2039,46 @@
   // plain `A.toolNames.has(bare)` misses, and so does bareToolName(bare), which
   // cannot re-add a prefix it never had. Compare bare-to-bare in BOTH directions.
   const bareKey = (n) => String(n || "").split("/").pop().split(".").pop();
+  // 1.24.27: an unknown command used to list every name the bridge reported, which
+  // left out PlazCode's own extras and differed from the startup list (63 vs 65 names
+  // on AgentScript). The AI took the mismatch as an engine switch. It also cost a long
+  // message. Now the error names the few closest real commands and points to
+  // list_commands; candidates include the same extras the startup list advertises.
+  function closestCommandNames(name, limit = 6) {
+    const pool = new Set(A.toolNames);
+    const add = (rows) => { for (const r of rows || []) { const n = typeof r === "string" ? r : r && r.name; if (n) pool.add(n); } };
+    try {
+      if (activeEngine() === "local") { if (typeof AgentScriptSkills !== "undefined") add(AgentScriptSkills.SKILL_OPS); }
+      else {
+        if (typeof RSAnim !== "undefined") add(RSAnim.ANIM_COMMANDS);
+        if (typeof RobloxScriptSkills !== "undefined") add(RobloxScriptSkills.SKILL_OPS);
+      }
+    } catch {}
+    const want = bareKey(name).toLowerCase();
+    const parts = want.split(/[_\-]+/).filter(Boolean);
+    const dist = (a, b) => {
+      const row = Array.from({ length: b.length + 1 }, (_, j) => j);
+      for (let i = 1; i <= a.length; i++) {
+        let prev = row[0]; row[0] = i;
+        for (let j = 1; j <= b.length; j++) {
+          const cur = row[j];
+          row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+          prev = cur;
+        }
+      }
+      return row[b.length];
+    };
+    const scored = [...pool].map((n) => {
+      const b = bareKey(n).toLowerCase();
+      const flatWant = want.replace(/[_\-]+/g, ""), flatB = b.replace(/[_\-]+/g, "");
+      let score = Math.min(dist(want, b), dist(flatWant, flatB));
+      if (flatB.startsWith(flatWant) || flatWant.startsWith(flatB)) score -= 4;   // list_dir -> list_directory
+      score -= 2 * parts.filter((p) => p.length > 2 && b.includes(p)).length;
+      return { n, score };
+    });
+    scored.sort((x, y) => x.score - y.score || x.n.localeCompare(y.n));
+    return scored.slice(0, limit).map((s) => s.n);
+  }
   function knownTool(name) {
     if (!name || !A.toolNames.size) return false;
     if (A.toolNames.has(name) || A.toolNames.has(bareToolName(name))) return true;
@@ -3636,7 +3676,7 @@ return result`;
       return `ERROR calling '${name}': ${r.error || "Blender call failed"}`;
     }
     if (A.toolNames.size && !A.toolNames.has(name) && !A.toolNames.has(bareName)) {
-      return RS.FEEDBACK.unknownTool(name, [...A.toolNames]);
+      return RS.FEEDBACK.unknownTool(name, closestCommandNames(name));
     }
     // The Roblox MCP REQUIRES datamodel_type on execute_luau (enum Edit/Client/
     // Server). The ###LUA### parser already fills it in, but the model may also

@@ -108,5 +108,20 @@ const fake = async ({ tool, arguments: a }) => {
   // 8. The desktop app's size labels divide by 1024 (they printed raw bytes as "TB").
   const rs = fs.readFileSync(__dirname + "/agent/src/workspace.rs", "utf8");
   assert(/value \/= 1024\.0;/.test(rs) && /human_size\(17179869184\.0\), "16\.0 GB"/.test(rs), "human_size divides and is unit-tested");
+  // 9. An unknown command names the closest real commands (same pool as the startup list)
+  // instead of a partial dump that differed from the startup list.
+  const main = fs.readFileSync(__dirname + "/core/main.js", "utf8");
+  const from = main.indexOf("  function closestCommandNames("), to = main.indexOf("  function knownTool(name) {");
+  const near = { A: { toolNames: new Set(["workspace_info", "list_directory", "tree", "read_file", "write_file", "file_info", "env_info", "search_files", "grep_files", "run_command"]) },
+    activeEngine: () => "local", bareKey: (n) => String(n).split("/").pop().split(".").pop(), AgentScriptSkills: S, Math, Array, Set };
+  vm.createContext(near);
+  vm.runInContext(main.slice(from, to) + ";this.f=closestCommandNames;", near);
+  assert.equal(near.f("list_dir")[0], "list_directory");
+  assert.equal(near.f("listdir")[0], "list_directory");
+  assert(near.f("list_dir").includes("list_recent"), "PlazCode's own extras are suggested too");
+  assert(/RS\.FEEDBACK\.unknownTool\(name, closestCommandNames\(name\)\)/.test(main), "the unknown-command error uses the closest names");
+  const cfg = fs.readFileSync(__dirname + "/core/config.js", "utf8");
+  const fb = new Function(cfg.slice(cfg.indexOf("    unknownTool: (name, closest) =>"), cfg.indexOf("    studioOffline:")).replace(/^\s*unknownTool:/, "return ").replace(/,\s*$/, ""))();
+  assert.equal(fb("list_dir", ["list_directory", "list_recent"]), 'ERROR: unknown command "list_dir". It does not exist and did not run. Closest real commands: list_directory, list_recent. Use an exact name; call list_commands to see every command on this engine.');
   console.log("DSML tool calls run on DeepSeek and are hidden behind the card; extras answer under their own name; sizes use the right unit.");
 })().catch((e) => { console.error(e); process.exit(1); });
