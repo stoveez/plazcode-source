@@ -1402,7 +1402,10 @@ fn is_work_request(method: &axum::http::Method, path: &str) -> bool {
 }
 async fn track_tool_activity(request: axum::extract::Request, next: axum::middleware::Next) -> axum::response::Response {
     if is_work_request(request.method(),request.uri().path()) && request.uri().path()!="/api/stop" {
-        if integrity::check_work().await.is_err() {
+        let mut check = integrity::check_work().await;
+        if check.is_err() { tokio::time::sleep(Duration::from_millis(300)).await; check = integrity::check_work().await; }
+        if let Err(error) = check {
+            tracing::warn!("program check failed, {} refused: {error:#}", request.uri().path());
             return (axum::http::StatusCode::CONFLICT,Json(serde_json::json!({"error":integrity::RECOVERY}))).into_response();
         }
     }
@@ -2493,15 +2496,56 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
     if let Ok(intro) = intro { if !intro.is_null() { let _ = intro_tx.send(intro.to_string()); } }
     });
     let mut last_online: Option<bool> = None;
-    while let Some(Ok(msg)) = tokio::select!{value=read.next()=>value,_=changed.changed()=>None} {
-        let _lease=accounts::ACCESS.read().await;if state.accounts.required()&&(epoch.is_none()||epoch!=state.accounts.active().map(|p|p.epoch)){break;}
+    // 1.24.27: every disconnect is logged with its reason. Before, the Terminal only said
+    // "client disconnected", so a tester's repeated drops could not be traced to a side.
+    let mut end_reason = String::from("the browser ended the connection without a close message (its background worker stopped, or the browser or computer was suspended)");
+    loop {
+        let next = tokio::select!{value=read.next()=>Some(value),_=changed.changed()=>None};
+        let msg = match next {
+            None => { end_reason = "the PlazCode profile changed".into(); break; }
+            Some(None) => break,
+            Some(Some(Err(error))) => { end_reason = format!("connection error: {error}"); break; }
+            Some(Some(Ok(msg))) => msg,
+        };
+        if let tokio_tungstenite::tungstenite::Message::Close(frame) = &msg {
+            end_reason = match frame {
+                Some(frame) => format!("the browser closed it (code {}{})", u16::from(frame.code), if frame.reason.is_empty() { String::new() } else { format!(", {}", frame.reason) }),
+                None => "the browser closed it".into(),
+            };
+            break;
+        }
+        let _lease=accounts::ACCESS.read().await;if state.accounts.required()&&(epoch.is_none()||epoch!=state.accounts.active().map(|p|p.epoch)){end_reason="the PlazCode profile is no longer active".into();break;}
         if let tokio_tungstenite::tungstenite::Message::Text(txt) = msg {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(&txt) {
                 let typ = val.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                if !matches!(typ,"ping"|"status"|"get_status"|"list_tools"|"stop"|"cancel") && integrity::check_work().await.is_err() {break;}
+                // 1.24.27: read-only status polls (every 10 s) no longer re-hash the whole installation, and a
+                // failed program check no longer drops the connection silently: the request is refused with
+                // the recovery message (Stop and recovery keep working) and the reason is logged. A single
+                // unreadable file (antivirus or cloud sync holding it) is retried once before refusing.
+                if !matches!(typ,"ping"|"status"|"get_status"|"list_tools"|"stop"|"cancel"|"studio_status"|"mcp_status"|"list_servers"|"client_note") {
+                    let mut check = integrity::check_work().await;
+                    if check.is_err() { tokio::time::sleep(Duration::from_millis(300)).await; check = integrity::check_work().await; }
+                    if let Err(error) = check {
+                        tracing::warn!("program check failed, request refused: {error:#}");
+                        let id = val.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
+                        if typ == "call_tool" {
+                            send_json(&out_tx, serde_json::json!({"type":"tool_result","id":id,"ok":false,"kind":"integrity","error":integrity::RECOVERY}));
+                        } else {
+                            send_json(&out_tx, serde_json::json!({"type":"error","id":id,"ok":false,"kind":"integrity","error":integrity::RECOVERY}));
+                        }
+                        continue;
+                    }
+                }
                 let id = val.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
                 match typ {
                     "ping" => { send_json(&out_tx, serde_json::json!({"type":"pong","id":id})); },
+                    // 1.24.27: the extension reports, once per new connection, why its previous connection ended
+                    // and whether its background worker had been stopped by the browser. Shown in the Terminal.
+                    "client_note" => {
+                        let note: String = val.get("text").and_then(|v| v.as_str()).unwrap_or("").chars()
+                            .filter(|c| !c.is_control()).take(300).collect();
+                        if !note.is_empty() { info!("browser [{engine}]: {note}"); }
+                    },
                     "list_tools" => {
                         let response = if engine == "local" {
                             let ready = state.workspace.ready();
@@ -2664,7 +2708,7 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
         state.roblox_clients.write().await.remove(&client_key);
     }
     // Disconnecting a browser tab does not disconnect Studio's MCP server.
-    info!("legacy WS [{engine}] client disconnected");
+    info!("legacy WS [{engine}] client disconnected: {end_reason}");
 }
 
 #[cfg(test)]

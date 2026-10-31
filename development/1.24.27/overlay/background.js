@@ -614,6 +614,31 @@ function log(...a) {
   console.log("[plazcode-bg]", ...a);
 }
 
+// ── Connection diagnostics (1.24.27) ──────────────────────────────────────
+// A tester's link to the app dropped every 15-70 minutes and came back about 20 s later, and nothing said why.
+// The worker now remembers how its last connection ended, and notices when the browser stopped and restarted
+// it (session storage survives a worker restart but not a browser restart). The first message on each new
+// connection reports this to the app, which shows it in its Terminal.
+const WORKER_STARTED_AT = Date.now();
+let workerRestartNote = "";
+let lastCloseNote = "", lastCloseAt = 0;
+const workerGapRead = (async () => {
+  try {
+    const saved = await chrome.storage.session.get("rsWorkerAliveAt");
+    const at = Number(saved && saved.rsWorkerAliveAt) || 0;
+    if (at && WORKER_STARTED_AT - at > 0) workerRestartNote = "the browser stopped and restarted PlazCode's background worker; it was last active " +
+      Math.round((WORKER_STARTED_AT - at) / 1000) + " s before this restart";
+  } catch {}
+})();
+function markWorkerAlive() { try { chrome.storage.session.set({ rsWorkerAliveAt: Date.now() }); } catch {} }
+function connectionNote() {
+  const parts = [];
+  if (workerRestartNote) { parts.push(workerRestartNote); workerRestartNote = ""; }
+  else if (lastCloseNote) parts.push(lastCloseNote + "; reconnected " + Math.round((Date.now() - lastCloseAt) / 1000) + " s later");
+  lastCloseNote = "";
+  return parts.join("; ");
+}
+
 // ── WebSocket lifecycle ─────────────────────────────────────────────────
 async function connect() {
   try { await ensurePairing(true); } catch (error) {
@@ -648,6 +673,13 @@ async function connect() {
     lastMessageAt = Date.now();
     lastSocketOpenAt = Date.now();
     log(`connected to ${engineLabel()} bridge (${url})`);
+    workerGapRead.then(() => {
+      const note = connectionNote();
+      if (!note || sock !== ws || sock.readyState !== WebSocket.OPEN) return;
+      try { sock.send(JSON.stringify({ type: "client_note", id: 0, text: note })); } catch {}
+      try { debugRecord({ source: "extension", level: "warn", kind: "bridge", text: "Bridge reconnected: " + note, where: ["background.js › connect"] }); } catch {}
+    });
+    markWorkerAlive();
     startHeartbeat();
     studioChecking = engine !== "local";
     refreshProcStatus();
@@ -667,8 +699,14 @@ async function connect() {
     handleBridgeMessage(msg);
   };
 
-  sock.onclose = () => {
+  sock.onclose = (event) => {
     if (sock !== ws) return;
+    try {
+      const code = event && event.code, reason = event && event.reason ? ", " + String(event.reason).slice(0, 80) : "";
+      lastCloseNote = "the previous connection closed (code " + code + reason + (event && event.wasClean ? ", clean" : ", not clean") + ")";
+      lastCloseAt = Date.now();
+      log("bridge connection closed", code, event && event.reason);
+    } catch {}
     connected = false;
     mcpAlive = false;
     studioConnected = null;
@@ -714,6 +752,7 @@ function startHeartbeat() {
       // Keeps the MV3 service worker alive AND detects a half-open socket.
       // Use short timeout so pending ping doesn't leak for 130s
       send({ type: "ping" }, 12000).catch(() => {});
+      markWorkerAlive();
       refreshStudioStatus();
       // ── MCP auto-heal (v1.12) ────────────────────────────────────────────
       // The StudioMCP helper the agent spawns can die on its own (Studio

@@ -3,7 +3,7 @@
 globalThis.PlazCodeIntegrity = (() => {
   const key = "UNCONFIGURED_RELEASE_PUBLIC_KEY", channel = "UNCONFIGURED_RELEASE_CHANNEL";
   const recovery = "PlazCode files changed or are incomplete. Download the complete official version from https://github.com/stoveez/PlazCode/releases . Your skills, notes and settings are kept.";
-  let pending = null, checkedAt = 0;
+  let pending = null, checkedAt = 0, failedAt = 0;
   const unhex = text => Uint8Array.from(text.match(/../g) || [], byte => parseInt(byte, 16));
   const hex = bytes => Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2,"0")).join("");
   const safe = name => typeof name === "string" && name.length > 0 && name.length <= 512 && !/[\\:\x00-\x1f]/.test(name) && name.split("/").every(p => p && p !== "." && p !== ".." && !/[. ]$/.test(p));
@@ -49,12 +49,17 @@ globalThis.PlazCodeIntegrity = (() => {
     }));
     checkedAt=Date.now();
   }
+  // 1.24.27: a failed check used to stay failed until the browser restarted the worker, because the rejected
+  // promise was returned forever (checkedAt stayed 0). One unreadable file then blocked pairing and every
+  // reconnect. A failure now holds for 10 s and is then checked again; really changed files still fail.
   function check() {
+    if (pending && failedAt && Date.now()-failedAt>=10000) {pending=null;failedAt=0;}
     if (pending && Date.now()-checkedAt<30000) return pending;
     if (!pending || checkedAt) {
       checkedAt=0;
       pending=verify().catch(error=>{
         if(error && error.name==="PlazCodeVerificationUnavailable") {pending=null;throw error;}
+        failedAt=Date.now();
         throw new Error(recovery);
       });
     }
