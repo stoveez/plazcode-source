@@ -1,36 +1,49 @@
 {
  "version": "1.24.29",
- "title": "Reliable updates",
- "summary": "Updates check the download itself, never stay stuck, and explain any problem.",
- "added": [],
+ "title": "Fast game reading, full memory and reliable updates",
+ "summary": "The AI reads your whole game and all its memory quickly, PlazCode's Studio tools work again, and updates no longer fail or get stuck.",
+ "added": [
+  "read_scripts: the AI reads many scripts, whole folders or the entire game in one go instead of one script at a time.",
+  "At the start of every chat PlazCode gives the AI all your vault notes (except saved chats and the archive) and the project memory."
+ ],
  "improved": [
-  "The update safety check now reads the downloaded package directly, so security software scanning freshly unpacked files can no longer make it fail. Every signature and file check stays the same."
+  "The update safety check reads the downloaded package directly, so security software scanning new files can no longer break it. No check was loosened."
  ],
  "fixed": [
+  "PlazCode's own Studio tools (lighting presets, UI and effects builders, script analysis and more) could not run at all: Roblox Studio refused to load them.",
   "Updates sometimes stopped with \"Release signature or file verification failed\" even though the download was fine.",
-  "An update could stay stuck at \"Verifying and installing\" when a hidden error window was waiting behind other windows. PlazCode now shows the error itself, and a stuck updater is stopped after 15 minutes without changing your installation.",
-  "If the check still fails, the message names the exact file and reason."
+  "An update could stay stuck at \"Verifying and installing\" behind a hidden error window; a stuck updater is now stopped after 15 minutes without changing anything.",
+  "The Effort and Approval menus hid their last choice (Ultra, Bypass approval) behind the bar."
  ],
  "notes": [
-  "The new check protects updates from 1.24.29 onward; updating to 1.24.29 still uses the updater you have, which retries by itself.",
+  "The update fixes protect updates from 1.24.29 on; updating to 1.24.29 still uses the updater you have, which retries by itself.",
+  "Reading all memory at the start makes chats with a big vault take a little longer to start.",
   "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
  ],
  "github": {
-  "summary": "***Updates check the download itself, never stay stuck, and explain any problem.***",
+  "summary": "***The AI reads your whole game and all its memory fast, Studio tools work again, and updates stop failing.***",
   "sections": [
+   {
+    "title": "✨ What's new",
+    "items": [
+     "The AI reads many scripts, whole folders or the entire game in one go, instead of one script at a time.",
+     "Every chat starts with all your vault notes and the project memory (saved chats and the archive stay on demand)."
+    ]
+   },
    {
     "title": "🛠️ What's fixed",
     "items": [
-     "Updates sometimes stopped with \"Release signature or file verification failed\" though the download was fine. The safety check now reads the downloaded package directly, so security software scanning new files can't break it. No check was loosened.",
-     "Updates could stay stuck at \"Verifying and installing\" behind a hidden error window. PlazCode now shows the error itself, and a stuck updater is stopped after 15 minutes without changing anything.",
-     "If an update still fails, the message names the exact file and reason."
+     "PlazCode's own Studio tools (lighting, UI and effects builders, script analysis) could not run at all. They work again.",
+     "Updates sometimes failed with \"Release signature or file verification failed\". The check now reads the download directly, so security software can't break it. No check was loosened.",
+     "Updates could stay stuck at \"Verifying and installing\". A stuck updater now stops after 15 minutes without changing anything, and errors name the exact file.",
+     "The Effort and Approval menus no longer hide Ultra and Bypass approval behind the bar."
     ]
    },
    {
     "title": "🧪 What was checked",
     "items": [
-     "The new check passed on the real 1.24.28 Windows and Mac downloads and refused a changed file. Windows, Mac and Linux builds, both browsers, real Windows installs and Mac startup were tested.",
-     "These fixes protect updates from 1.24.29 on. If updating to 1.24.29 fails, PlazCode retries by itself, or choose Update now.",
+     "Fast reading was tested on a real 62-script game, Studio tools with the official Luau compiler, updates on real Windows and Mac, menus in a real browser.",
+     "Big vaults make chats start a little slower. Update fixes apply from 1.24.29 on.",
      "Windows is unsigned and Mac is not notarized, as before."
     ]
    }

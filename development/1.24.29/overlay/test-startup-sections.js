@@ -171,13 +171,13 @@ if (process.argv.includes('--table') || UPDATE) console.log(table());
 // ── Golden pins (lean OFF must reproduce these exactly) ──
 const GOLDEN = {
   /*GOLDEN-START*/
-  'roblox-full': { chars: 43788, sha256: '71ce88b968816f6c99fb88bd946c34aef77d53d1db5a266c678da1f6b60fa201' },
-  'roblox-compact-14000': { chars: 12401, sha256: '39968c0a0637500051539312b3aa0a24c6d859acc30d8c4f762600613f8d8ed3' },
-  'roblox-full-all-modes': { chars: 51829, sha256: '65cc360313ef7b520aab9c59bf4733c2ddbd8a7aa2e9f311fabc00515e9a031d' },
-  'roblox-compact-all-modes': { chars: 20442, sha256: 'fe961416de88eaaed0160c97ec24aed0bf00e416440eaa096243b094b349d1e1' },
-  'roblox-full-ultra': { chars: 68902, sha256: '91a756514c82b4d7857355d561077afeae866b2c6cb5fc9c6dfbb45c030e9166' },
-  'roblox-compact-ultra': { chars: 14562, sha256: '8c8074eb1dcbcab9a5beeaec34ef9a97fe6c5d43c612eea3dd66da76538c1f98' },
-  'roblox-full-custom-site': { chars: 43943, sha256: '300d0e6f738a3855f3ffa9e1ffb27f7b835abb1c0798f64d176279c6153fe4c2' },
+  'roblox-full': { chars: 43837, sha256: '87e823ae7a13906302c8d527ebb98f208d73c2ad28ccf79edf3ee5cdee54ad62' },
+  'roblox-compact-14000': { chars: 12829, sha256: '6103b4589c3fad0b0c27c0d0e8016d5bcbdc7cebcd17c3b592b7dbb8aec26e99' },
+  'roblox-full-all-modes': { chars: 51878, sha256: '9a2bb424645de6e0f1057e083a6487be3b0af82a17d4e12531a63d36c98a2bb7' },
+  'roblox-compact-all-modes': { chars: 20870, sha256: '7dc836bd4aebeed141699607cf96df61b7e011da732e9df17fc4eced221b19bb' },
+  'roblox-full-ultra': { chars: 68951, sha256: '54595a3e933751fa7cd563a3e0de3336f068238b96fa01b42be7b8ab0da60387' },
+  'roblox-compact-ultra': { chars: 14990, sha256: 'a3400c4037f3725ec627704e9c55d5febea4db30cb0f591010908df8dfc414d7' },
+  'roblox-full-custom-site': { chars: 43992, sha256: '9fab15c8ef477caab3e0e906d3f6ac8442407faa1e434dd4fcfcf5a31d4b0fc9' },
   'local-full': { chars: 10007, sha256: '247726b69c57ae7b620e6314e6d6e5dfd62054eed84b73fff21d37b0656fcd09' },
   'local-compact-14000': { chars: 10007, sha256: '247726b69c57ae7b620e6314e6d6e5dfd62054eed84b73fff21d37b0656fcd09' },
   'local-full-access': { chars: 10975, sha256: '53597096939b9f04848d645054eb0a0daed485fd5369ce8acbf8d58855cb92ef' },

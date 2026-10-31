@@ -76,7 +76,7 @@ jobs:
       - name: Build official Luau test VM
         run: |
           cmake -S validation-luau -B validation-luau/build -DLUAU_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
-          cmake --build validation-luau/build --target Luau.Repl.CLI -j 4
+          cmake --build validation-luau/build --target Luau.Repl.CLI Luau.Compile.CLI -j 4
       - name: Verify committed catalogs and manifest i18n wiring without source regeneration
         run: python3 development/1.24.29/test-locales.py
       - run: python3 development/1.24.29/test-prepare-overlay.py
@@ -95,6 +95,12 @@ jobs:
         working-directory: build-src-1.24.29/PlazCode
         env:
           PLAZCODE_LUAU: ${{ github.workspace }}/validation-luau/build/luau
+      - name: Every studio skill's Luau compiles with the official Luau compiler
+        run: node test-luau-library-compiles.js
+        working-directory: build-src-1.24.29/PlazCode
+        env:
+          PLAZCODE_LUAU_COMPILE: ${{ github.workspace }}/validation-luau/build/luau-compile
+          PLAZCODE_REQUIRE_LUAU: '1'
       - run: npm ci --prefix release-tools --ignore-scripts
         working-directory: build-src-1.24.29/PlazCode
       - run: node release-tools/node_modules/playwright/cli.js install --with-deps chromium firefox

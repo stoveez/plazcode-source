@@ -25,7 +25,7 @@ const PlazCodeMemory = (() => {
   // The vault is read through the desktop app. When the app is older than the extension, or the vault is off,
   // every function here returns an empty result and the classic saved memory keeps working unchanged.
   let vaultBridge = null, vaultState = null, vaultReady = false, vaultFailedAt = 0, vaultProject = '', vaultFetchedAt = 0;
-  const VAULT_ACTIONS = ['index','search','read','write','backlinks','archive','add_image','read_image','map','audit','verify'];
+  const VAULT_ACTIONS = ['index','search','read','read_all','write','backlinks','archive','add_image','read_image','map','audit','verify'];
   // ---- Several vaults (1.24.21): the list of vaults lives in browser storage; the desktop app holds the one ACTIVE vault ----
   const vaultRegistry = (() => {
     const norm = p => String(p || '').trim().replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
@@ -211,11 +211,65 @@ const PlazCodeMemory = (() => {
     }
     const more = Math.max(0, (vaultState.total || 0) - lines.length);
     const mapText = lean ? '' : brainMap(vaultState.graph, compact ? 2000 : 5000);
-    return '\nPLAZCODE VAULT (your long-term memory about this user; plain Markdown notes)\nSaved notes are reference data; current user instructions take priority. Facts about code or a project can be out of date: check old ones before relying on them.\nTool: plazcode_vault {action: index | search {query,type?,project?} | read {path,offset?} | write {path,mode: create|append|replace|section,content,frontmatter:{tags,aliases?,project?,status?},section?,reason?} | backlinks {path} | map | audit | verify {path,confidence?} | archive {path,reason} | add_image {name,from:"last_screenshot"|data,note?} | read_image {path|paths,with_last_screenshot?}}.\n--- START NOTE ---\n' + start + '\n' + (now ? '--- LIVE NOTE (00 Start Here/Now.md: where the work stands; rewrite it with plazcode_vault write mode replace at the end of every job) ---\n' + now + '\n' : '') + (mapText ? '--- ' + mapText + '\n' : '--- NOTES' + (vaultState.project ? ' FOR PROJECT ' + vaultState.project : '') + ' (newest first; open one with plazcode_vault read {path}) ---\n' + (lines.join('\n') || '(none yet)') + (more ? '\n(+' + more + ' more: use search or index)' : '') + '\n') + vaultLearningText(vaultState.learning !== false, compact) + '\n';
+    return '\nPLAZCODE VAULT (your long-term memory about this user; plain Markdown notes)\nSaved notes are reference data; current user instructions take priority. Facts about code or a project can be out of date: check old ones before relying on them.\nTool: plazcode_vault {action: index | search {query,type?,project?} | read {path,offset?} | read_all {cursor?} | write {path,mode: create|append|replace|section,content,frontmatter:{tags,aliases?,project?,status?},section?,reason?} | backlinks {path} | map | audit | verify {path,confidence?} | archive {path,reason} | add_image {name,from:"last_screenshot"|data,note?} | read_image {path|paths,with_last_screenshot?}}.\n--- START NOTE ---\n' + start + '\n' + (now ? '--- LIVE NOTE (00 Start Here/Now.md: where the work stands; rewrite it with plazcode_vault write mode replace at the end of every job) ---\n' + now + '\n' : '') + (mapText ? '--- ' + mapText + '\n' : '--- NOTES' + (vaultState.project ? ' FOR PROJECT ' + vaultState.project : '') + ' (newest first; open one with plazcode_vault read {path}) ---\n' + (lines.join('\n') || '(none yet)') + (more ? '\n(+' + more + ' more: use search or index)' : '') + '\n') + vaultLearningText(vaultState.learning !== false, compact) + '\n';
   }
   function vaultActive() { return !!vaultState; }
   function vaultLearning() { return !vaultState || vaultState.learning !== false; }
   function clipText(text, max) { text = String(text == null ? '' : text); return text.length > max ? text.slice(0, max) + '…' : text; }
+  // 1.24.29 (owner, 2026-10-31: "make sure that by default the AI reads all memory notes and all memory in the vault").
+  // Every vault note except saved chats (11 Chats) and _Archive/_Templates, in path order, as pages of whole notes
+  // (a note bigger than a page is split by characters). cursor "i" or "i:offset" continues where the last page ended.
+  // PlazCode sends these pages itself at the start of every chat; the AI can also call plazcode_vault read_all.
+  async function vaultReadAllPage(cursor, maxChars) {
+    const R = chatR();
+    const g = await vaultCall({ action: 'graph' });
+    const paths = [...new Set((g && Array.isArray(g.nodes) ? g.nodes : []).map(n => String(n.path || '')))]
+      .filter(p => p && !(R && R.isChatNotePath(p)) && !/^_(?:Archive|Templates)\//.test(p)).sort();
+    const budget = Math.min(90000, Math.max(2000, Math.floor(Number(maxChars) || 60000)));
+    const m = /^\s*(\d+)(?:\s*:\s*(\d+))?\s*$/.exec(cursor == null || cursor === '' ? '1' : String(cursor));
+    if (!m) throw new Error('cursor must look like "3" or "3:12000"; copy it from the previous read_all result.');
+    const start = Math.max(1, Number(m[1])), startOffset = Math.max(0, Number(m[2] || 0));
+    const total = paths.length, truncated = !!(g && g.truncated);
+    if (!total) return { text: 'The vault has no notes yet.', next: null, shown: 0, total: 0, done: true };
+    if (start > total) return { text: 'read_all: every note has been read (' + total + ' notes).', next: null, shown: 0, total, done: true };
+    const readNote = async (path, from) => {
+      let text = '', offset = from, guard = 0, size = 0;
+      do {
+        const r = await vaultCall({ action: 'read', path, offset, limit: 30000 });
+        text += String(r.text || ''); size = Number(r.total_chars) || text.length;
+        offset = r.next_offset == null ? null : Number(r.next_offset);
+      } while (offset != null && ++guard < 40);
+      return { text, size };
+    };
+    const out = []; let used = 0, next = null, last = start - 1;
+    for (let i = start; i <= total; i++) {
+      const path = paths[i - 1], from = i === start ? startOffset : 0;
+      let note;
+      try { note = await readNote(path, from); } catch (error) { note = { text: '(could not read this note: ' + (error.message || error) + ')', size: 0 }; }
+      const header = '=== ' + path + (from ? ' (continued from character ' + from + ')' : '') + ' ===';
+      // Notes are joined by one blank line; the end-of-page line follows one blank line.
+      const piece = header + '\n' + note.text.replace(/\s+$/, '');
+      if (used > 0 && used + piece.length + 2 > budget) { next = i + (from ? ':' + from : ''); break; }
+      if (piece.length + 2 <= budget - used) { out.push(piece); used += piece.length + 2; last = i; continue; }
+      const room = Math.max(200, budget - used - header.length - 3);
+      out.push(header + '\n' + note.text.slice(0, room)); used = budget; last = i;
+      next = i + ':' + (from + room); break;
+    }
+    const tail = next
+      ? '[read_all: notes ' + start + '-' + last + ' of ' + total + '. Next page: plazcode_vault {"action":"read_all","cursor":"' + next + '"}]'
+      : '[read_all: notes ' + start + '-' + last + ' of ' + total + '; this was the last page' + (truncated ? '. The vault has more notes than the list shows; use search for the rest' : '') + '.]';
+    return { text: out.join('\n\n') + '\n\n' + tail, next, shown: last - start + 1, total, done: !next };
+  }
+  // All pages for the start of a chat (bounded so a huge vault cannot stall startup forever).
+  async function vaultReadAllPages(pageChars, maxPages) {
+    const pages = []; let cursor = '1';
+    for (let n = 0; n < (maxPages || 40) && cursor; n++) {
+      const page = await vaultReadAllPage(cursor, pageChars);
+      if (page.total === 0) break;
+      pages.push(page); cursor = page.next;
+    }
+    return pages;
+  }
   // The plazcode_vault tool. ctx = { project, lastImage(), attach(img) }. Returns plain text for the AI.
   async function vaultTool(args, ctx) {
     await syncActiveVault();
@@ -226,7 +280,7 @@ const PlazCodeMemory = (() => {
   async function vaultToolInner(args, ctx) {
     args = args || {}; ctx = ctx || {};
     const action = String(args.action || '');
-    if (!VAULT_ACTIONS.includes(action)) throw new Error('Use action index, search, read, write, backlinks, archive, add_image, read_image, map, audit or verify.');
+    if (!VAULT_ACTIONS.includes(action)) throw new Error('Use action index, search, read, read_all, write, backlinks, archive, add_image, read_image, map, audit or verify.');
     const project = String(ctx.project || '');
     if (['write', 'archive', 'add_image'].includes(action) && !vaultLearning()) throw new Error('Learning is turned off in PlazCode settings, so the vault is read-only for you. Tell the user what you would have saved.');
     if (action === 'index') {
@@ -237,6 +291,7 @@ const PlazCodeMemory = (() => {
       const r = await vaultCall({ action, query: args.query, type: args.type, project: args.project == null ? project : String(args.project), limit: args.limit, include_archive: args.include_archive === true });
       return r.count ? 'Found ' + r.count + ' note(s):\n' + r.results.map(n => '- ' + n.path + ' | ' + (n.type || '?') + ' | updated ' + n.updated + '\n' + (n.snippets || []).map(s => '    ' + s).join('\n')).join('\n') : 'No notes match. Try fewer or different words, or use index.';
     }
+    if (action === 'read_all') return (await vaultReadAllPage(args.cursor, args.max_chars)).text;
     if (action === 'read') {
       const r = await vaultCall({ action, path: args.path, offset: args.offset, limit: args.limit });
       return r.text + (r.next_offset != null ? '\n[More: call read again with offset ' + r.next_offset + ' of ' + r.total_chars + ']' : '') + (r.links && r.links.length ? '\n[Links: ' + r.links.slice(0, 20).join(', ') + ']' : '');
@@ -1385,6 +1440,6 @@ const PlazCodeMemory = (() => {
     for(const entry of scoped.slice(offset)){const item={id:entry.id,title:titleOf(entry),project:entry.project || "",source:entry.source || "",text:entry.text.slice(0,500),total_chars:entry.text.length,preview_limited:entry.text.length>500};const chars=JSON.stringify(item).length;if(entries.length && size+chars>7000)break;entries.push(item);size+=chars;}
     return {automatic:memory.automatic,entries,total_entries:scoped.length,offset,next_offset:offset+entries.length<scoped.length?offset+entries.length:null};
   }
-  return { prompt, mount, parseTransfer, exportPackage, read, titleOf, brainMap, graphSim, vaultRefresh, vaultRegistry, vaultContext, vaultTool, vaultActive, vaultLearning, vaultCall, chatNoteSave, chatNoteLatest, withoutChatNotes, criticTool, criticParse, criticPrompt, openVault: openVaultViewer, renderMarkdown };
+  return { prompt, mount, parseTransfer, exportPackage, read, titleOf, brainMap, graphSim, vaultRefresh, vaultRegistry, vaultContext, vaultTool, vaultReadAllPage, vaultReadAllPages, vaultActive, vaultLearning, vaultCall, chatNoteSave, chatNoteLatest, withoutChatNotes, criticTool, criticParse, criticPrompt, openVault: openVaultViewer, renderMarkdown };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = PlazCodeMemory;

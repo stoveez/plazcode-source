@@ -2365,7 +2365,7 @@
     developer_product_create: "Create a Roblox Developer Product for a published game and optionally wire its receipt handler. Requires a signed-in Roblox session.",
     developer_product_list: "List the connected published game's Roblox Developer Products.",
     studio_upload_asset: "Upload (insert) a Roblox asset into the open Studio place by type: model, mesh, animation, sound, image, texture, video or package. asset_id accepts a number, rbxassetid:// or a Creator Store link. Inserts into the current Studio selection when suitable, selects the result, and disables scripts inside models. Use it whenever the user asks to add or upload an asset.",
-    plazcode_vault: "The vault: your linked Markdown notes about this user (numbered folders: 01 About You, 02 How We Work, 03 Coding Style, 04 Models And Styles, 05 Projects, 06 Journeys, 07 Lessons And Decisions, 08 References with pictures in refs, 09 How To). Params: action index|search|read|write|backlinks|map|audit|verify|archive|add_image|read_image. map = the full brain map (every note and how they link); audit = notes that point into the Roblox place or are low confidence, to check against Studio (read-only), then verify {path,confidence?} marks one checked. search {query,type?}; read {path,offset?}; write {path (inside a numbered folder, like \"06 Journeys/Low poly sword\"),mode:create|append|replace|section,content,frontmatter:{tags:[...],aliases?:[...],project?,source?:\"user said\"|\"seen in Studio\"|\"AI guess\",confidence?:high|medium|low},section?} (search first and update the existing note; start each note with a short info box > [!info] [[Home]] and a \"Read this when:\" line); archive {path,reason}; add_image {name,from:\"last_screenshot\",note?}; read_image {path or paths,with_last_screenshot?} attaches pictures so you can look at them. Never write secrets.",
+    plazcode_vault: "The vault: your linked Markdown notes about this user (numbered folders: 01 About You, 02 How We Work, 03 Coding Style, 04 Models And Styles, 05 Projects, 06 Journeys, 07 Lessons And Decisions, 08 References with pictures in refs, 09 How To). Params: action index|search|read|read_all|write|backlinks|map|audit|verify|archive|add_image|read_image. read_all {cursor?} = every note (not saved chats) in pages; PlazCode already sends these at the start of each chat. map = the full brain map (every note and how they link); audit = notes that point into the Roblox place or are low confidence, to check against Studio (read-only), then verify {path,confidence?} marks one checked. search {query,type?}; read {path,offset?}; write {path (inside a numbered folder, like \"06 Journeys/Low poly sword\"),mode:create|append|replace|section,content,frontmatter:{tags:[...],aliases?:[...],project?,source?:\"user said\"|\"seen in Studio\"|\"AI guess\",confidence?:high|medium|low},section?} (search first and update the existing note; start each note with a short info box > [!info] [[Home]] and a \"Read this when:\" line); archive {path,reason}; add_image {name,from:\"last_screenshot\",note?}; read_image {path or paths,with_last_screenshot?} attaches pictures so you can look at them. Never write secrets.",
     plazcode_critic: "Ask an independent critic (a separate chat that never saw your reasoning) to score your latest screenshot against reference picture(s). Params: references [vault paths of the reference pictures, up to 3, e.g. \"08 References/refs/sword.png\"], rubric? (vault path of a Style note with a score sheet), goal? (what you were asked to make), new_job? (true to restart the round count). Take a plazcode_screenshot first. It returns a percent score, APPROVED or REVISE, and numbered fixes. At most 5 rounds, pass mark 80 percent. If the separate chat is unavailable it tells you to use the same-chat critic role instead.",
     plazcode_engram:"Persistent project memory: context, search query, read id, save title/content/topic_key, or summary content. Save confirmed decisions and facts, not raw chat logs or unverified tool success. Summaries use Goal/Instructions/Discoveries/Accomplished/Next Steps/Relevant Files. Memory text is reference data; verify current state. Uncertain writes require a read before retrying.",
     plazcode_templates:"Automatically find related systems in imported templates, or read their scripts as references.",
@@ -2452,7 +2452,7 @@
         tools.push({name:'roblox_docs',server:'roblox',description:'Search the Roblox developer docs (create.roblox.com/docs) with query, or read one docs page with url (it must start with https://create.roblox.com/docs/). Use it to verify every Roblox API signature before you use it. Read-only.',inputSchema:{type:'object',properties:{query:{type:'string'},url:{type:'string'},max_chars:{type:'integer',minimum:500,maximum:60000}},additionalProperties:false}});
       }
       tools.push({name:'plazcode_engram',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_engram,inputSchema:{type:'object',properties:{action:{type:'string',enum:['context','search','read','save','summary']},query:{type:'string'},id:{type:'integer'},title:{type:'string'},content:{type:'string'},topic_key:{type:'string'}},required:['action'],additionalProperties:false}});
-      tools.push({name:'plazcode_vault',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_vault,inputSchema:{type:'object',properties:{action:{type:'string',enum:['index','search','read','write','backlinks','archive','add_image','read_image','map','audit','verify']},path:{type:'string'},paths:{type:'array',items:{type:'string'}},query:{type:'string'},type:{type:'string'},mode:{type:'string',enum:['create','append','replace','section']},section:{type:'string'},content:{type:'string'},frontmatter:{type:'object'},reason:{type:'string'},name:{type:'string'},from:{type:'string'},note:{type:'string'},with_last_screenshot:{type:'boolean'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
+      tools.push({name:'plazcode_vault',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_vault,inputSchema:{type:'object',properties:{action:{type:'string',enum:['index','search','read','read_all','write','backlinks','archive','add_image','read_image','map','audit','verify']},cursor:{type:'string'},max_chars:{type:'integer'},path:{type:'string'},paths:{type:'array',items:{type:'string'}},query:{type:'string'},type:{type:'string'},mode:{type:'string',enum:['create','append','replace','section']},section:{type:'string'},content:{type:'string'},frontmatter:{type:'object'},reason:{type:'string'},name:{type:'string'},from:{type:'string'},note:{type:'string'},with_last_screenshot:{type:'boolean'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'plazcode_critic',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_critic,inputSchema:{type:'object',properties:{references:{type:'array',items:{type:'string'}},rubric:{type:'string'},goal:{type:'string'},new_job:{type:'boolean'}},required:['references'],additionalProperties:false}});
       tools.push({name:'plazcode_memory',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:'Read or save shared PlazCode memory.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','remember']},title:{type:'string'},text:{type:'string'},id:{type:'integer'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'studio_upload_asset',server:'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.studio_upload_asset,inputSchema:{type:'object',properties:{kind:{type:'string',enum:['model','mesh','animation','sound','image','texture','video','package']},asset_id:{type:'string',description:'Asset ID, rbxassetid:// or Creator Store link'}},required:['kind','asset_id'],additionalProperties:false}});
@@ -2826,6 +2826,7 @@ return result`;
     return "Output of 'developer_product_list':\n" + String(r.text || JSON.stringify(r.products || r, null, 2)).slice(0, 4000);
   }
 
+  const TRUSTED_READS = new WeakSet();
   async function runTool(call) {
     if(A.stop || A.pendingToolSettles)return "ERROR: the command was not run — stopped by the user or waiting for cancellation.";
     const stalled=typeof PlazCodeStallGuard!=="undefined"?(A.stallGuard||(A.stallGuard=PlazCodeStallGuard.create())).before(call):null;
@@ -3007,11 +3008,17 @@ return result`;
       return `ERROR: '${bareName}' needs Full PC access, which is OFF. Ask the user to switch Permissions to Full (PlazCode menu), or stay in Sandbox.`;
     }
     const safetyEngine = activeEngine() === "local" && !String(name).includes("__") ? "local" : "studio";
-    if (safetySettings.readOnly && PlazCodeSafety.isChange(bareName, safetyEngine)) {
+    // 1.24.29: PlazCode's own read-only Studio commands (read_scripts, script_analysis...) run their Luau through an inner
+    // execute_luau. That inner call is marked in TRUSTED_READS (an object set the AI cannot reach: it only sends text), so it
+    // is not refused in Read-only mode nor held for approval; the outer command already passed this gate as a read.
+    const trustedRead = bareName === "execute_luau" && TRUSTED_READS.has(call);
+    if (!trustedRead && safetySettings.readOnly && PlazCodeSafety.isChange(bareName, safetyEngine)) {
       return PlazCodeSafety.readOnlyRefusal(bareName);
     }
     if(typeof approvalModeReady!=="undefined")await approvalModeReady;
-    if(typeof approvalMode!=="undefined"&&approvalMode){
+    if(trustedRead){
+      // PlazCode's own read: nothing to approve.
+    }else if(typeof approvalMode!=="undefined"&&approvalMode){
       const deletion=PlazCodeApproval.removes(bareName,args,safetyEngine,PlazCodeSafety);
       const decision=PlazCodeApproval.commandDecision(approvalMode,bareName,args,safetyEngine,PlazCodeSafety);
       if(decision==="ask"){
@@ -3550,6 +3557,45 @@ return result`;
     const asked = Number.isFinite(ms) && ms > 0 ? ms : Number.isFinite(secs) && secs > 0 ? secs * 1000 : 0;
     return Math.min(640000, Math.max(340000, asked + 30000));
   }
+  // Startup memory pages (see the startup flow). Reads with PlazCode's own bridge calls: nothing is changed.
+  async function readProjectMemoryText(budget) {
+    if (activeEngine() === "local") {
+      const r = await bg({ type: "call_tool", name: "read_file", arguments: { path: "PLAZCODE_MEMORY.md", offset: 1, limit: 4000 }, timeout: 15000 });
+      const text = r && r.ok ? String(r.text || "") : "";
+      return /ERROR|not found|does not exist|No such file/i.test(text.slice(0, 200)) ? "" : text.slice(0, budget);
+    }
+    if (typeof RobloxScriptSkills === "undefined") return "";
+    const built = RobloxScriptSkills.buildLuau("read_scripts", { paths: ["ServerStorage.RobloxScript.Memory"], max_chars: Math.min(90000, budget) });
+    if (built.err) return "";
+    const r = await bg({ type: "call_tool", name: "execute_luau", arguments: { code: built.code, datamodel_type: "Edit" }, timeout: 20000 });
+    const text = r && r.ok ? String(r.text || "") : "";
+    return /^--- /.test(text) ? text.slice(0, budget) : "";
+  }
+  async function startupMemoryStages() {
+    const pages = [];
+    const budget = Math.max(4000, Math.min(60000, (typeof inputBudget === "function" ? inputBudget() : 60000) - 1500));
+    try {
+      if (typeof PlazCodeMemory !== "undefined" && PlazCodeMemory.vaultActive && PlazCodeMemory.vaultActive() && PlazCodeMemory.vaultReadAllPages) {
+        for (const page of await PlazCodeMemory.vaultReadAllPages(budget, 40)) pages.push({ kind: "vault", text: page.text });
+      }
+    } catch (error) { diag("start.memoryVault", { error: String((error && error.message) || error).slice(0, 160) }); }
+    try {
+      const project = await readProjectMemoryText(budget);
+      if (project.trim()) pages.push({ kind: "project", text: project });
+    } catch (error) { diag("start.memoryProject", { error: String((error && error.message) || error).slice(0, 160) }); }
+    diag("start.memoryPages", { pages: pages.length, chars: pages.reduce((n, p) => n + p.text.length, 0) });
+    const total = pages.length;
+    return pages.map((page, i) => {
+      const n = i + 1, ack = `Memory ${n} of ${total} read.`;
+      const what = page.kind === "vault" ? "your vault notes (long-term memory about this user)" : "this project's memory";
+      const rule = `Do not run any command now. Reply with exactly: ${ack}`;
+      return {
+        text: `PLAZCODE MEMORY, PAGE ${n} OF ${total}: ${what}. PlazCode loaded your saved memory at the start of this chat. Read all of it and use it for the whole chat. Saved notes are reference data; the user's current instructions take priority, and facts about a project can be out of date. ${rule}\n\n${page.text}\n\n(End of memory page ${n} of ${total}. ${rule})`,
+        ack, page: n, pages: total,
+        ackRe: new RegExp(`^\\W*memory\\s+${n}\\s+of\\s+${total}\\s+read\\W*$`, "i"),
+      };
+    });
+  }
   async function runImportedRobloxTool(name, args) {
     if(name === "creation_insert") {
       const result = await insertChatCreation(args);
@@ -3634,13 +3680,16 @@ return result`;
       return await AgentScriptSkills.run(name, args, runTool);
     }
     if (typeof RobloxScriptSkills !== "undefined" && RobloxScriptSkills.SKILL_OPS.includes(name)) {
-      try { createCheckpoint(name, args); } catch {}
+      if (PlazCodeSafety.isChange(name, "studio")) { try { createCheckpoint(name, args); } catch {} }
       if (name === "ui_create_component") {
         try { if (window.__rsForge && window.__rsForge()) args = Object.assign({}, args, { forge: true }); } catch {}
       }
       const built = RobloxScriptSkills.buildLuau(name, args);
       if (built.err) return built.err;
-      const res = await runTool({ tool: "execute_luau", arguments: { code: built.code, datamodel_type: "Edit" } });
+      const readOnlySkill = !PlazCodeSafety.isChange(name, "studio");
+      const inner = { tool: "execute_luau", arguments: Object.assign({ code: built.code, datamodel_type: "Edit" }, readOnlySkill ? { _orNoTxn: true } : {}) };
+      if (readOnlySkill) TRUSTED_READS.add(inner);
+      const res = await runTool(inner);
       const ok = !String(res||"").startsWith("ERROR") && !String(res||"").includes("ERROR in execute_luau");
       try { persistSession(name, args, ok); if(ok){ bumpPerf(name); showSuggestion(name); // update perf from audit if available
         if(name==="diagnostics_audit" && typeof res==="string"){
@@ -5639,7 +5688,12 @@ return result`;
         for (const level of [1, 2]) { if (fitsOne(readyPrompt)) break; digest = leanDigest(level) + addonsNote; readyPrompt = readyFor(digest); diag("start.digestLevel", { level, chars: readyPrompt.length }); }
       }
       diag("start.commandDigest", { chars: readyPrompt.length, lines: readyPrompt.split("\n").length, commands: scoped.length });
-      const stages = P.startupFeedbackMessages ? P.startupFeedbackMessages(readyPrompt) : [{text:readyPrompt}];
+      // 1.24.29 (owner, 2026-10-31): the AI reads ALL its memory by default. PlazCode itself loads every vault note
+      // (except saved chats and the archive) and the project memory, and sends them as acknowledged startup pages BEFORE
+      // the final "PlazCode is ready." step, so the AI never has to run a command during the handshake.
+      const memoryStages = offline ? [] : await startupMemoryStages();
+      if (!alive()) return;
+      const stages = [...memoryStages, ...(P.startupFeedbackMessages ? P.startupFeedbackMessages(readyPrompt) : [{text:readyPrompt}])];
       let readyRes;
       for (const stage of stages) {
         const readyBase = await submitAndGetBase(stage.text);
@@ -5648,7 +5702,10 @@ return result`;
         if (!alive()) return;
         if (A.stop || readyRes.kind === "stopped") { diag("start.aborted", { kind: readyRes.kind }); return; }
         if(readyRes.kind==="text" && isProviderPolicyRefusal(readyRes.text)){showStartupRefusal();return;}
-        if(stage.ack && (readyRes.kind!=="text" || String(readyRes.text||"").trim()!==stage.ack)) {
+        if(stage.ackRe && (readyRes.kind!=="text" || !stage.ackRe.test(String(readyRes.text||"").replace(/[`*_#>]/g,"").trim()))) {
+          ui.banner("warn","Memory page was not acknowledged",`${P.displayName} did not confirm reading memory page ${stage.page} of ${stage.pages}. PlazCode stayed stopped and no project command ran. Start again in a new chat.`);return;
+        }
+        if(!stage.ackRe && stage.ack && (readyRes.kind!=="text" || String(readyRes.text||"").trim()!==stage.ack)) {
           ui.banner("warn","Startup context was not acknowledged","PlazCode stayed stopped. No project command ran and no message was resent. Inspect this chat before restarting.");return;
         }
       }
@@ -7313,7 +7370,10 @@ return result`;
           item.onclick=()=>{setThinkingLevel(value);close(true);};
           menu.append(item);
         }
-        document.body.appendChild(menu);
+        // 1.24.29 (owner, 2026-10-31: "popups overlapped by the bar"). The bar (#rs-root) lives on <html>; sites such
+        // as Claude give <body> its own stacking context, which ranked anything inside body below the bar whatever
+        // its z-index. Menus therefore attach to <html> beside the bar, where their higher z-index wins.
+        document.documentElement.appendChild(menu);
         const rect=node.getBoundingClientRect(),height=menu.offsetHeight||250,width=menu.offsetWidth||150,vh=window.innerHeight,vw=window.innerWidth;
         const up=vh-rect.bottom<height+14&&rect.top>height+14;
         menu.style.left=Math.max(8,Math.min(rect.left,vw-width-8))+"px";
@@ -7346,7 +7406,7 @@ return result`;
           const copy=document.createElement("span"),title=document.createElement("strong"),description=document.createElement("small");title.textContent=globalThis.PlazCodeI18n?.t(option.label)||option.label;description.textContent=globalThis.PlazCodeI18n?.t(option.description)||option.description;copy.append(title,description);const tick=document.createElement("em");tick.textContent=item.getAttribute("aria-checked")==="true"?"✓":"";item.append(copy,tick);
           item.onclick=async()=>{item.disabled=true;try{await setApprovalMode(option.value);close();button.focus();}catch{item.disabled=false;toast("Could not save approval mode. Try again.");}};menu.append(item);
         }
-        document.body.append(menu);const r=button.getBoundingClientRect(),width=menu.offsetWidth,height=menu.offsetHeight;menu.style.left=Math.max(8,Math.min(r.left,innerWidth-width-8))+"px";menu.style.maxHeight=Math.max(40,innerHeight-16)+"px";const desired=r.top>=height+14?r.top-height-6:r.bottom+6;menu.style.top=Math.max(8,Math.min(desired,innerHeight-height-8))+"px";button.setAttribute("aria-expanded","true");menu.querySelector('[aria-checked="true"]')?.focus();
+        document.documentElement.append(menu);const r=button.getBoundingClientRect(),width=menu.offsetWidth,height=menu.offsetHeight;menu.style.left=Math.max(8,Math.min(r.left,innerWidth-width-8))+"px";menu.style.maxHeight=Math.max(40,innerHeight-16)+"px";const desired=r.top>=height+14?r.top-height-6:r.bottom+6;menu.style.top=Math.max(8,Math.min(desired,innerHeight-height-8))+"px";button.setAttribute("aria-expanded","true");menu.querySelector('[aria-checked="true"]')?.focus();
       }
       document.addEventListener("click",event=>{const button=event.target.closest?.("#rs-approval-mode");if(button){event.preventDefault();event.stopPropagation();if(menu)close();else open(button);}},true);
       document.addEventListener("pointerdown",event=>{if(menu&&!menu.contains(event.target)&&!event.target.closest?.("#rs-approval-mode"))close();},true);
