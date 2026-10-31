@@ -33,6 +33,7 @@ impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for FileLog {
 impl std::io::Write for FileLog {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         if let Some(ui) = &self.ui { ui.log(&String::from_utf8_lossy(buf)); }
+        events::from_app_log(&String::from_utf8_lossy(buf)); // warnings and errors also go to the Logs page
         let mut f = self.file.lock().unwrap_or_else(|e| e.into_inner());
         std::io::Write::write(&mut *f, buf)
     }
@@ -50,6 +51,7 @@ fn init_file_logger(ui: Option<Arc<gui::UiShared>>) {
         .and_then(|p| p.parent().map(|d| d.join("logs")))
         .unwrap_or_else(|| PathBuf::from("logs"));
     let _ = std::fs::create_dir_all(&dir);
+    events::init(&dir); // 1.24.30: logs/events/<day>.jsonl, read by the desktop Logs page
     let path = dir.join("agent.log");
     match File::options().create(true).append(true).open(&path) {
         Ok(file) => {
@@ -102,6 +104,7 @@ mod vault;
 mod debug_report;
 mod tidy;
 mod text_pack;
+mod events;
 
 #[cfg(windows)]
 mod win_msg {
@@ -1107,7 +1110,6 @@ async fn start() -> anyhow::Result<()> {
     let protection_started=std::time::Instant::now();
     integrity::verify_installation(&platform::installation_root())?;
     let protection_elapsed=protection_started.elapsed();
-    tidy::spawn_cleanup(platform::installation_root());
     // 1.24.30: pair only with the extension folder of this verified installation (protected builds only).
     security::set_official_extension_ids(matches!(integrity::public_key(),Ok(Some(_))).then(||security::official_extension_ids_for(&platform::installation_root())));
     std::env::set_current_dir(platform::installation_root())?;
@@ -1120,6 +1122,7 @@ async fn start() -> anyhow::Result<()> {
     let shared = Arc::new(gui::UiShared::new(mcp_alive.clone()));
     init_file_logger(Some(shared.clone()));
     info!("=== PlazCode Rust Agent v{} start (pid={}) ===", env!("CARGO_PKG_VERSION"), std::process::id());
+    tidy::spawn_cleanup(platform::installation_root()); // after the logger, so what it removes is logged
     let start = std::time::Instant::now();
     let (result_tx, _) = broadcast::channel::<ExecResult>(128);
     if !args.headless {
@@ -1131,6 +1134,8 @@ async fn start() -> anyhow::Result<()> {
     }
     // Bind every required endpoint before announcing readiness. Reclaim only the
     // PlazCode process holding that endpoint, never all similarly named launches.
+    events::record("app", "info", "app.start", &format!("PlazCode {} started", env!("CARGO_PKG_VERSION")),
+        serde_json::json!({"platform": integrity::platform(), "file_check_ms": protection_elapsed.as_millis() as u64, "headless": args.headless}));
     let listener = bind_required(addr, Duration::from_secs(8)).await?;
     let legacy_roblox = bind_required("127.0.0.1:17613".parse()?, Duration::from_secs(8)).await?;
     let legacy_local = bind_required("127.0.0.1:17615".parse()?, Duration::from_secs(8)).await?;
@@ -1337,6 +1342,11 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/", get(|| async { Json(serde_json::json!({"ok": true, "service": "plazcode-agent", "version": env!("CARGO_PKG_VERSION")})) }))
         .route("/api/pair", post(|| async { axum::http::StatusCode::FORBIDDEN }))
         .route("/api/text-pack", get(text_pack::serve))
+        .route("/api/logs/days", get(|| async { Json(events::days()) }))
+        .route("/api/logs/day", get(|Query(q): Query<HashMap<String,String>>| async move { Json(tokio::task::spawn_blocking(move || events::day(&q)).await.unwrap_or_default()) }))
+        .route("/api/logs/around", get(|Query(q): Query<HashMap<String,String>>| async move { Json(tokio::task::spawn_blocking(move || events::around(&q)).await.unwrap_or_default()) }))
+        .route("/api/logs/export", get(|Query(q): Query<HashMap<String,String>>| async move { Json(tokio::task::spawn_blocking(move || events::export(&q)).await.unwrap_or_default()) }))
+        .route("/api/logs/open", post(|| async { match events::open_folder() { Ok(()) => Json(serde_json::json!({"ok": true})), Err(error) => Json(serde_json::json!({"ok": false, "error": error})) } }))
         .route("/api/connect", post(connect_handler))
         .route("/api/poll", get(poll_handler))
         .route("/api/push", post(push_handler))

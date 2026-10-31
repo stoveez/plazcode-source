@@ -215,9 +215,12 @@ function debugAcceptTab(msg, sender) {
     if (entry && typeof entry === "object") debugRecord({ ...entry, tab: host });
   }
   if (Number(msg.dropped) > 0) debugDropped += Number(msg.dropped);
-  if (Array.isArray(msg.diag) && tabId != null) {
+  const previous = tabId != null ? debugTabs.get(tabId) : null;
+  // 1.24.30: events not yet written to the PlazCode logs on disk (sent once by core/debug-capture.js).
+  const fresh = (previous && previous.fresh || []).concat(Array.isArray(msg.diagNew) ? msg.diagNew.slice(-150) : []).slice(-400);
+  if ((Array.isArray(msg.diag) || fresh.length) && tabId != null) {
     debugTabs.delete(tabId);
-    debugTabs.set(tabId, { host, path: debugRedact(page.path || "").slice(0, 80), at: Date.now(), diag: msg.diag.slice(-40) });
+    debugTabs.set(tabId, { host, path: debugRedact(page.path || "").slice(0, 80), at: Date.now(), diag: Array.isArray(msg.diag) ? msg.diag.slice(-40) : (previous && previous.diag || []), fresh });
     while (debugTabs.size > DEBUG_TAB_CAP) debugTabs.delete(debugTabs.keys().next().value);
     debugDirty = true;
   }
@@ -227,7 +230,8 @@ async function debugUpload() {
   debugUploading = true;
   try {
     const entries = debugProblems.concat(debugInfo).filter((e) => e.seq > debugSentSeq).sort((a, b) => a.seq - b.seq).slice(0, 200);
-    const tabs = [...debugTabs.entries()].filter(([, v]) => v.at > debugTabsSentAt).map(([id, v]) => ({ id: String(id), ...v }));
+    const tabs = [...debugTabs.entries()].filter(([, v]) => v.at > debugTabsSentAt).map(([id, v]) => { const { fresh, ...rest } = v; return { id: String(id), ...rest, diag_new: fresh || [] }; });
+    const sentFresh = new Map([...debugTabs.entries()].map(([id, v]) => [id, (v.fresh || []).length]));
     const top = entries.length ? entries[entries.length - 1].seq : debugSentSeq, tabsAt = Date.now();
     let version = "";
     try { version = chrome.runtime.getManifest().version; } catch {}
@@ -236,6 +240,7 @@ async function debugUpload() {
       body: JSON.stringify({ browser_id: browserIdentity, extension_version: version, user_agent: String(globalThis.navigator && navigator.userAgent || "").slice(0, 200), dropped: debugDropped, entries, tabs }),
     });
     if (response.ok) {
+      for (const [id, count] of sentFresh) { const tab = debugTabs.get(id); if (tab && tab.fresh) tab.fresh = tab.fresh.slice(count); }
       debugSentSeq = top; debugTabsSentAt = tabsAt; debugDropped = 0;
       debugDirty = debugProblems.concat(debugInfo).some((e) => e.seq > debugSentSeq);
     }

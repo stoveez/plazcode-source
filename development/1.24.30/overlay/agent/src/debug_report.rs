@@ -128,6 +128,9 @@ pub fn accept(body: &Value) -> Result<usize, String> {
     while browser.tabs.len() > TAB_CAP {
         if let Some(key) = browser.tabs.keys().next().cloned() { browser.tabs.remove(&key); }
     }
+    // 1.24.30: the same batch also goes to the on-disk logs (logs/events), read by the desktop Logs page.
+    #[cfg(not(test))]
+    crate::events::from_browser(body, &short);
     let stored = entries.len();
     for entry in entries {
         let (list, cap) = if entry["level"] == "info" { (&mut store.info, INFO_CAP) } else { (&mut store.problems, PROBLEM_CAP) };

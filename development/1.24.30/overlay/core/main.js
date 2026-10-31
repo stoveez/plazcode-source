@@ -4393,6 +4393,7 @@ return result`;
     A.quickCatalogue=/\b(?:commands?|tools?)\b|^(?:`?list_commands`?|`?list_tools`?)$/i.test(label);
     A.catalogueDetail=/\b(?:full|complete|schemas?|parameters?|arguments?)\b/i.test(label);
     A.taskRequest=label;A.creatorTask=false;A.creatorBrief='';
+    try{A.turnStartedAt=Date.now();diag('turn.start',{kind:A.requestKind,preview:String(label||'').slice(0,80)});}catch{} // 1.24.30: Logs page groups events by turn
     if(!trackedRequest(label,P.conversationKey())){
       A.checkpointId=null;A.resumeCheckpointId=null;
       activity.sync(false,P.conversationKey(),undefined,{collapse:false});
@@ -4954,6 +4955,7 @@ return result`;
           ui.trackCard(A.toolName, "err", A.stop ? "stopped" : "interrupted", RS.toolCategory(A.toolName));
         } catch {}
       }
+      try{diag('turn.end',{completed:!!completed,stopped:!!A.stop,ms:A.turnStartedAt?Date.now()-A.turnStartedAt:null});}catch{} // 1.24.30
       void finishTaskCheckpoint(completed);
       if (!completed && !recoverSession && cowork.snapshot().pending.length) cowork.pause("The agent stopped before finishing. Check the chat, then resume the queue.");
       try { playSfx(A.stop ? "stop" : (A._sfxErr ? "error" : "done")); A._sfxErr = false; } catch {}

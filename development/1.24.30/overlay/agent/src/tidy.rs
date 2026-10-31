@@ -61,6 +61,7 @@ pub fn spawn_cleanup(root: PathBuf) {
         let removed = remove_leftovers(&root, &signed);
         if !removed.is_empty() {
             tracing::info!("Removed {} old developer files left by earlier PlazCode versions", removed.len());
+            crate::events::record("app", "info", "app.tidy", &format!("Removed {} old developer files left by earlier PlazCode versions", removed.len()), serde_json::Value::Null);
         }
     });
 }
