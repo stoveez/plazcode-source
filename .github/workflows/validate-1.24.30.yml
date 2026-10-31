@@ -105,6 +105,8 @@ jobs:
         working-directory: build-src-1.24.30/PlazCode
       - run: node release-tools/node_modules/playwright/cli.js install --with-deps chromium firefox
         working-directory: build-src-1.24.30/PlazCode
+      - name: Text moved into the app gives byte-identical prompts and skills
+        run: node development/1.24.30/test-text-pack.mjs build-src-1.24.30/PlazCode
       - name: Real protected Chromium and Firefox integrity tests
         run: node development/1.24.30/test-protection-browser.mjs
       - name: Persistent approval modes and composer-relative bar placement
@@ -437,6 +439,12 @@ jobs:
         env:
           PLAZCODE_RELEASE_SIGNING_KEY: ${{ github.event_name != 'pull_request' && secrets.PLAZCODE_RELEASE_SIGNING_KEY || '' }}
         run: python development/1.24.30/package.py
+      - name: Packaged text pack gives byte-identical prompts and skills
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          zip=$(ls artifacts/*-test-lean.zip | head -1)
+          node development/1.24.30/test-text-pack.mjs build-src-1.24.30/PlazCode "$zip"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: plazcode-1.24.30-${{ runner.os }}-test-lean

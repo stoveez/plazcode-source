@@ -2331,6 +2331,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         sendResponse({ ok, tools, error: r.ok ? undefined : r.error });
         break;
       }
+      case "textPack": {
+        // 1.24.30: release builds keep the long instructions inside the PlazCode app (core/text-pack.js).
+        // bridgeFetch pairs first, so only the official extension of this installation receives them.
+        try{const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/text-pack",{signal:AbortSignal.timeout(15000)});
+          if(!response.ok){const reason=String(await response.text().catch(()=>"")).slice(0,600);throw new Error(response.status===404?"This PlazCode app is older than the extension. Update the PlazCode app and the extension together, then refresh this AI tab.":reason||("HTTP "+response.status));}
+          sendResponse({ok:true,pack:await response.json()});
+        }catch(error){sendResponse({ok:false,error:String(error&&error.message||error)});}
+        break;
+      }
       case "skills": {
         const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),28000);
         try{const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/skills",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{action:"list"}),signal:controller.signal});const value=await response.json();sendResponse(response.ok?value:{ok:false,error:value.error||"Skill request failed."});}catch(error){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timer);}break;

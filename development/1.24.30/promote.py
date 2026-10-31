@@ -42,6 +42,7 @@ SOURCE_INPUTS=(
     'development/1.24.30/test-package-size.py',
     'development/1.24.30/test-starter-pack.py',
     'development/1.24.30/test-roengineer-pack.py',
+    'development/1.24.30/test-text-pack.mjs',
     'development/1.24.30/ro-engineer-v1.zip',
     '.github/workflows/validate-1.24.30.yml',
     'PlazCode-source-1.24.20.zip',

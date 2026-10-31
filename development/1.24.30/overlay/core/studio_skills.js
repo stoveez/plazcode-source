@@ -16,7 +16,8 @@
 //
 // All commands return JSON strings from Luau: {"ok":true,"data":...} or {"ok":false,"error":...}.
 
-const SKILLS_LIB_LUA = `local HttpService = game:GetService("HttpService")
+// 1.24.30: a function, so the library is read when a skill runs (release builds keep its text in the PlazCode app).
+function skillsLibLua() { return `local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
@@ -2727,7 +2728,7 @@ local ok2, res = pcall(function()
 end)
 if not ok2 then return fail("studio skill error: " .. tostring(res)) end
 return res
-`;
+`; }
 
 const SKILL_COMMANDS = [
   {
@@ -3229,7 +3230,7 @@ function buildLuau(op, args) {
   try {
     const json = JSON.stringify(base);
     if (json.includes("]==]")) return { err: "ERROR: internal serialization conflict." };
-    const code = SKILLS_LIB_LUA.replace("__ARGS_JSON__", json);
+    const code = skillsLibLua().replace("__ARGS_JSON__", json);
     return { code };
   } catch (e) {
     return { err: `ERROR building studio skill command: ${e}` };
@@ -3260,7 +3261,7 @@ function describeCommands() {
 }
 
 const RobloxScriptSkills = {
-  SKILLS_LIB_LUA,
+  get SKILLS_LIB_LUA() { return skillsLibLua(); },
   SKILL_COMMANDS,
   SKILL_OPS: SKILL_COMMANDS.map((c) => c.name),
   buildLuau,

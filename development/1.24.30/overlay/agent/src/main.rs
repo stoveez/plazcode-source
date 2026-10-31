@@ -101,6 +101,7 @@ mod engram;
 mod vault;
 mod debug_report;
 mod tidy;
+mod text_pack;
 
 #[cfg(windows)]
 mod win_msg {
@@ -1335,6 +1336,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
     let app = Router::new()
         .route("/", get(|| async { Json(serde_json::json!({"ok": true, "service": "plazcode-agent", "version": env!("CARGO_PKG_VERSION")})) }))
         .route("/api/pair", post(|| async { axum::http::StatusCode::FORBIDDEN }))
+        .route("/api/text-pack", get(text_pack::serve))
         .route("/api/connect", post(connect_handler))
         .route("/api/poll", get(poll_handler))
         .route("/api/push", post(push_handler))
@@ -1743,7 +1745,7 @@ fn linux_launch_routes(_state: AppState) -> Router { Router::new() }
 // namespace. Long polls take short read leases inside their polling loop.
 async fn profile_access(State(state):State<AppState>,request:axum::extract::Request,next:axum::middleware::Next)->axum::response::Response{
     let path=request.uri().path();
-    let control=matches!(path,"/"|"/api/status"|"/api/pair"|"/api/desktop/profiles"|"/api/desktop/profile-picture"|"/api/show"|"/api/shutdown"|"/api/desktop/update"|"/api/desktop/browser-action");
+    let control=matches!(path,"/"|"/api/status"|"/api/pair"|"/api/text-pack"|"/api/desktop/profiles"|"/api/desktop/profile-picture"|"/api/show"|"/api/shutdown"|"/api/desktop/update"|"/api/desktop/browser-action");
     if control{return next.run(request).await;}
     let guard=accounts::ACCESS.read().await;
     if state.accounts.required(){

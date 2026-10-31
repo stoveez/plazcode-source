@@ -7,6 +7,7 @@
  ],
  "improved": [
   "The PlazCode app only connects to the extension loaded from its own PlazCode folder. Copies that were edited or loaded from somewhere else are refused with a message saying what to do.",
+  "PlazCode's instructions and its Studio tools' Luau now live inside the PlazCode app and are only given to the official extension, so they can no longer be copied out of the extension files. Everything works exactly as before.",
   "Your PlazCode folder is tidier: about 90 old test files and old internal notes left behind by earlier versions are removed automatically, and new downloads no longer include internal notes. The app, the extensions, the updaters and your settings stay where they are."
  ],
  "fixed": [
@@ -14,6 +15,7 @@
  ],
  "notes": [
   "If PlazCode says the extension is not the official one: remove it from your browser's extensions page and load the PlazCode-Extension folder from the PlazCode folder you use (Firefox is not affected).",
+  "Update the PlazCode app and the extension together (the app's updater does this). An extension newer than the app now says \"PlazCode app needed\" instead of starting.",
   "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
  ],
  "github": {
@@ -30,6 +32,7 @@
     "items": [
      "Mac: opening PlazCode from a fresh download could fail with \"program files changed or are incomplete\". It now starts normally.",
      "The app only connects to the official extension from its own PlazCode folder. Edited or copied extensions are refused with clear steps.",
+     "PlazCode's instructions and Studio tool code now live inside the app and only go to the official extension. Nothing changes in how it works.",
      "Old test files and internal notes from earlier versions are cleaned out of your PlazCode folder. Nothing you use moves."
     ]
    },

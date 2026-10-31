@@ -113,25 +113,97 @@ export async function verifyTree(root, hex, manifest=FILE_MANIFEST) {
   }
   return record;
 }
+// 1.24.30 (owner: move PlazCode's valuable text into the native app, without breaking startup or updates).
+// At packaging time only, long string/template literals that run inside functions are cut out of these
+// files and replaced by PlazCodeText.t(id) / PlazCodeText.f(id,[values]); the text goes into a sealed
+// core/text-pack.bin that only the PlazCode app opens (agent/src/text_pack.rs) and serves to the paired,
+// official extension. Development source and tests keep the text inline. Load-time text is never moved,
+// so nothing runs before the app has answered.
+export const TEXT_PACK_FILES={'core/config.js':'config','core/lean-startup.js':'lean','core/studio_skills.js':'skills'};
+export const TEXT_PACK_FILE='core/text-pack.bin';
+const TEXT_PACK_MIN=200;
+const TEXT_PACK_SALT='071787836aa53f54c4e672124a99ea635483f6085f8b45c6822af1c11deb81a0';
+export function textPackKey(version){return createHash('sha256').update('PlazCode text pack v1\n'+TEXT_PACK_SALT+'\n'+version).digest();}
+export function moveText(source, prefix, acorn) {
+  const ast=acorn.parse(source,{ecmaVersion:'latest',sourceType:'script'});
+  const found=[];
+  (function visit(node,deferred,parent,key){
+    if(!node||typeof node.type!=='string')return;
+    let later=deferred;
+    if(/Function/.test(node.type)){
+      const immediate=parent&&parent.type==='CallExpression'&&(parent.callee===node||(!deferred&&parent.arguments.includes(node)));
+      if(!immediate)later=true;
+    }
+    const keyPosition=parent&&((parent.type==='Property'||parent.type==='MethodDefinition'||parent.type==='PropertyDefinition')&&key==='key'&&!parent.computed);
+    const tagged=parent&&parent.type==='TaggedTemplateExpression';
+    const directive=parent&&parent.type==='ExpressionStatement'&&parent.directive;
+    if(later&&!keyPosition&&!tagged&&!directive&&node.end-node.start>=TEXT_PACK_MIN&&((node.type==='Literal'&&typeof node.value==='string')||node.type==='TemplateLiteral'))found.push(node);
+    for(const name of Object.keys(node)){const value=node[name];if(Array.isArray(value))value.forEach(child=>visit(child,later,node,name));else if(value&&typeof value.type==='string')visit(value,later,node,name);}
+  })(ast,false,null,null);
+  found.sort((a,b)=>a.start-b.start);
+  const pack={};let counter=0;
+  const inside=(outer,inner)=>inner.start>=outer.start&&inner.end<=outer.end&&inner!==outer;
+  function rewrite(start,end,candidates){
+    let out='',at=start;
+    for(const node of candidates){
+      if(node.start<at||node.end>end)continue; // nested in an earlier one: rendered by it
+      out+=source.slice(at,node.start)+render(node,candidates.filter(other=>inside(node,other)));at=node.end;
+    }
+    return out+source.slice(at,end);
+  }
+  function render(node,nested){
+    const id=prefix+':'+(counter++);
+    if(node.type==='Literal'){pack[id]=node.value;return ' PlazCodeText.t('+JSON.stringify(id)+')';}
+    pack[id]=node.quasis.map(q=>{if(typeof q.value.cooked!=='string')throw new Error('Template without cooked text: '+id);return q.value.cooked;});
+    return ' PlazCodeText.f('+JSON.stringify(id)+',['+node.expressions.map(e=>'('+rewrite(e.start,e.end,nested)+')').join(',')+'])';
+  }
+  const code=rewrite(0,source.length,found);
+  acorn.parse(code,{ecmaVersion:'latest',sourceType:'script'});
+  return {code,pack,moved:found.filter(node=>!found.some(other=>inside(other,node))).length};
+}
+export function sealTextPack(pack,version){
+  const nonce=randomBytes(12),cipher=createCipheriv('aes-256-gcm',textPackKey(version),nonce);
+  const body=Buffer.concat([cipher.update(gzipSync(Buffer.from(JSON.stringify(pack)),{level:9})),cipher.final()]);
+  return Buffer.concat([Buffer.from('PCTP1'),nonce,body,cipher.getAuthTag()]);
+}
+export function openTextPack(raw,version){
+  if(raw.subarray(0,5).toString()!=='PCTP1')throw new Error('Not a PlazCode text pack.');
+  const nonce=raw.subarray(5,17),tag=raw.subarray(raw.length-16),decipher=createDecipheriv('aes-256-gcm',textPackKey(version),nonce);
+  decipher.setAuthTag(tag);
+  return JSON.parse(gunzipSync(Buffer.concat([decipher.update(raw.subarray(17,raw.length-16)),decipher.final()])).toString());
+}
 export async function obfuscate(root, maps, sourceRoot, publicKey, channel, key) {
   // No eval, string-array runtime, property renaming or control-flow flattening: preserve extension CSP and performance.
   const require=createRequire(path.join(sourceRoot,'release-tools/package.json'));
   const {minify}=require('terser');
-  const report={};
+  const acorn=require('acorn');
+  const report={};let sharedPack=null;
   await fs.mkdir(maps,{recursive:true,mode:0o700});
   for(const folder of ['', 'PlazCode-Extension', 'PlazCode-Extension-Firefox']) {
     const base=path.join(root,folder);
     try {await fs.access(path.join(base,'manifest.json'));} catch {continue;}
     const template=await fs.readFile(path.join(here,'overlay/protection.js'),'utf8');
     await fs.writeFile(path.join(base,'protection.js'),template.replace('UNCONFIGURED_RELEASE_PUBLIC_KEY',publicKey).replace('UNCONFIGURED_RELEASE_CHANNEL',channel));
+    const version=JSON.parse(await fs.readFile(path.join(base,'manifest.json'),'utf8')).version;
+    const pack={};
     for(const name of (await walk(base)).filter(n=>extensionFile(n) && n.endsWith('.js') && !n.startsWith('core/ultralab/'))) {
       const original=await fs.readFile(path.join(base,name),'utf8');
       const label=(folder ? folder+'/' : '')+name;
-      const result=await minify({[label]:original},{mangle:{toplevel:false},compress:{defaults:false,dead_code:true,conditionals:true,booleans:true},keep_fnames:true,format:{comments:/SPDX-License-Identifier|@license|@preserve/i},sourceMap:{filename:label,url:false,includeSources:true}});
+      let code=original;
+      if(TEXT_PACK_FILES[name]){const moved=moveText(original,TEXT_PACK_FILES[name],acorn);code=moved.code;Object.assign(pack,moved.pack);}
+      if(name==='core/text-pack.js'){if(!original.includes('const REQUIRED = false;'))throw new Error('text-pack.js switch not found');code=original.replace('const REQUIRED = false;','const REQUIRED = true;');}
+      const result=await minify({[label]:code},{mangle:{toplevel:false},compress:{defaults:false,dead_code:true,conditionals:true,booleans:true},keep_fnames:true,format:{comments:/SPDX-License-Identifier|@license|@preserve/i},sourceMap:{filename:label,url:false,includeSources:true}});
       if(!result.code || !result.map) throw new Error('Obfuscation failed: '+label);
       await fs.writeFile(path.join(base,name),result.code+'\n');
       const mapPath=path.join(maps,label+'.map');await fs.mkdir(path.dirname(mapPath),{recursive:true});await fs.writeFile(mapPath,result.map,{mode:0o600});
       report[label]={source_sha256:digest(original),sha256:digest(result.code+'\n')};
+    }
+    // Every packaged folder must move exactly the same text, and only alongside the loader that fetches it.
+    if(Object.keys(pack).length){
+      if(!(await walk(base)).includes('core/text-pack.js'))throw new Error('Text moved without core/text-pack.js: '+(folder||'root'));
+      const text=JSON.stringify(pack,Object.keys(pack).sort());
+      if(sharedPack!==null&&sharedPack!==text)throw new Error('Packaged folders moved different text');sharedPack=text;
+      await fs.writeFile(path.join(base,TEXT_PACK_FILE),sealTextPack(pack,version));
     }
     await signExtension(base,key,channel);
   }

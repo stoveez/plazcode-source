@@ -7,7 +7,7 @@ import {createPrivateKey} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {execFileSync,spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {signInstallation,publicHex,envelope} from './protection.mjs';
+import {signInstallation,publicHex,envelope,sealTextPack} from './protection.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const binary=path.resolve(here,'../../build-src-1.24.30/PlazCode/agent/target/release/PlazCode');
 assert.equal(process.platform,'linux','this headless integration fixture is Linux-only');
@@ -22,6 +22,10 @@ try {
   await fs.writeFile(path.join(root,'background.js'),'original');await fs.writeFile(path.join(root,'core/main.js'),'original');
   await fs.copyFile(binary,path.join(root,'PlazCode'));await fs.chmod(path.join(root,'PlazCode'),0o755);
   await fs.writeFile(path.join(root,'config.local.json'),'{}');
+  // 1.24.30: text moved out of the extension, sealed by the packaging script for this version.
+  const textPack={'config:0':'Long instruction text ✓','skills:1':['local x = ',' -- end']};
+  await fs.mkdir(path.join(root,'PlazCode-Extension/core'),{recursive:true});
+  await fs.writeFile(path.join(root,'PlazCode-Extension/core/text-pack.bin'),sealTextPack(textPack,'1.24.30'));
   await signInstallation(root,key,'linux','validation');
   execFileSync(binary,['--verify-package',root,'--verify-version','1.24.30']);
   assert.throws(()=>execFileSync(binary,['--verify-package',root,'--verify-version','0.0.0'],{stdio:'pipe'}));
@@ -56,6 +60,10 @@ try {
   const refused=await pair(copyId);assert.equal(refused.status,403);assert.match(await refused.text(),/not the official one/,'a copied or edited extension is refused with a clear reason');
   const borrowed=await fetch('http://127.0.0.1:3000/api/skills',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+bearer,Origin:'chrome-extension://'+copyId},body:'{"action":"list"}',signal:AbortSignal.timeout(5000)});
   assert.equal(borrowed.status,403,'a copy that somehow holds the pairing key is still refused');
+  const text=origin=>fetch('http://127.0.0.1:3000/api/text-pack',{headers:{Authorization:'Bearer '+bearer,...(origin?{Origin:'chrome-extension://'+origin}:{})},signal:AbortSignal.timeout(5000)});
+  const served=await text(officialId);assert.equal(served.status,200,'the app opens the text sealed by the packaging script');assert.deepEqual(await served.json(),textPack);
+  assert.equal((await text(copyId)).status,403,'an unofficial extension never receives the text');
+  assert.equal((await fetch('http://127.0.0.1:3000/api/text-pack',{signal:AbortSignal.timeout(5000)})).status,401,'not without pairing');
   await fs.writeFile(path.join(root,'config.local.json'),'{"user_setting":true}');
   assert.equal((await call('/api/skills',{action:'list'})).status,200,'user settings are outside integrity checks');
   await fs.writeFile(path.join(root,'core/main.js'),'modified after startup');
