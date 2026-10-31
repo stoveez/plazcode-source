@@ -8,6 +8,9 @@ updated: 2026-10-30
 
 **Latest, 2026-10-30:** replacement full 1.24.27 test ZIPs delivered through Google Drive. CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952), source `38fd7d2`, passed Windows, universal Mac, Linux and browsers. Includes profile pictures, bold Up to date, plus/approval icons, splash fade, parallel protected-file checks and ahead-of-stable update fix. Production signatures, all 235 reviewed JS sources and release layouts verified; actual downloaded Linux startup passed. Source remains Public at delivery; owner reminded to restore Private. Account API stays Public independently. Stable remains 1.24.26. [Verification](test-build-1.24.27-followups-verification.json).
 
+## 1.24.27 test builds from `5465c3e` (2026-10-30, evening)
+CI run [41157294450](https://github.com/stoveez/plazcode-source/actions/runs/41157294450) green (browsers, Windows, Mac, Linux). Earlier push-triggered runs failed only because GitHub billing blocked the jobs while the repo was Private. Inner zips (file lists identical to the previous 1.24.27 build, zip integrity tested) are on the owner's PC in `Downloads\x\Windows`, `\macOS`, `\Linux`. Windows 50,521,972 B, Mac 52,069,390 B, Linux 49,616,536 B. **Not on Google Drive:** no Drive connector was available in that session (Chrome upload is capped at 10 MB), so Drive links still need a session with Drive connected. Includes DSML tool calls, helper-name fixes, fast gap between tool calls (extension reload), plus the size-label fix and bridge diagnostics (new app needed).
+
 # Test builds
 
 Builds on the private repo are blocked by GitHub billing, so the repo is made **public only while a build or publish runs**, then private again. The owner flips visibility; AIs never do.
