@@ -9,7 +9,7 @@ This folder is the long-term memory for every AI that works on PlazCode (Claude,
 **Read order for a new AI:** [`../NOW.md`](../NOW.md) (the live handoff, 20 lines), then only the notes below that your task needs. Do not read the whole vault.
 
 ## Map
-- Tool-call consistency (DeepSeek DSML, helper results, sizes): [tool-call-consistency](tool-call-consistency.md)
+- Tool-call consistency and speed (DeepSeek DSML, helper results, sizes, gap between calls): [tool-call-consistency](tool-call-consistency.md)
 - Profile pictures: [profile-pictures](profile-pictures.md)
 - Native startup and sign-in polish: [startup-performance](startup-performance.md)
 - Desktop profile sign-in: [desktop-profile-sign-in](desktop-profile-sign-in.md)
