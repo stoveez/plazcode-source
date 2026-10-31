@@ -1,9 +1,54 @@
 {
-  "version": "1.24.26",
-  "desktop_version": "1.24.26",
-  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.26.zip",
-  "sha256": "7490816b3873b01bb842f21cc9b43e56d1ed17984dd5e1924eebf218f344fac1",
+  "version": "1.24.28",
+  "desktop_version": "1.24.28",
+  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.28.zip",
+  "sha256": "46c8d5842541861a911f89d552ff1127c4c7f67ba5116f64a9496c5d7f33fa1d",
   "release_notes": [
+    {
+      "version": "1.24.28",
+      "title": "Update and Codex fixes",
+      "summary": "A quick fix for updates that sometimes failed their safety check, plus Codex support.",
+      "added": [
+        "PlazCode now finds Codex's chat box on chatgpt.com/codex."
+      ],
+      "improved": [],
+      "fixed": [
+        "Updates sometimes stopped with \"Release signature or file verification failed\" even though the download was fine. Security software scanning the new files could block the check for a moment; PlazCode now waits and checks again (up to three times) before giving up, and shows the real reason if it still fails.",
+        "PlazCode's own program check retries files that are briefly in use by another program, without relaxing any check."
+      ],
+      "notes": [
+        "The update fix starts working from the update after this one; a failed update to 1.24.28 retries by itself every 40 minutes, or choose Update now.",
+        "Codex was checked on a test page with a Codex-like layout; it was not tried live.",
+        "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***Updates no longer fail at random, and Codex now works.***",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "PlazCode finds Codex's chat box on chatgpt.com/codex."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Updates sometimes stopped with \"Release signature or file verification failed\" though the download was fine. Security software scanning the new files could block the check for a moment. PlazCode now waits and checks again, and shows the real reason if it still fails.",
+              "PlazCode's own file check retries files briefly in use by another program. No check is relaxed."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Windows, Mac and Linux builds, both browsers, updates and Mac startup.",
+              "Codex was checked on a practice page, not live.",
+              "This fix protects your next update. If updating to 1.24.28 fails, PlazCode retries by itself, or choose Update now.",
+              "Windows is unsigned and Mac is not notarized, as before."
+            ]
+          }
+        ]
+      }
+    },
     {
       "version": "1.24.26",
       "title": "Remembered approvals and protected program files",
@@ -186,60 +231,10 @@
           }
         ]
       }
-    },
-    {
-      "version": "1.24.19",
-      "title": "Polish and shared reply recovery",
-      "summary": "Adds Polish throughout the PlazCode interface and improves shared reply recovery across verified assistant remounts, with ownership checks before tool dispatch.",
-      "added": [
-        "Polski — Polish in desktop, extension bar and popup language settings, with all 877 interface strings translated.",
-        "Fifteen searchable offline language choices; English remains the default and user-authored content is not translated."
-      ],
-      "improved": [
-        "Carry the exact parsed assistant text into dispatch bookkeeping when a verified reply is temporarily blank or remounted.",
-        "Explain unreadable replies accurately and direct stopped-loop recovery to Start or Restart in the PlazCode bar."
-      ],
-      "fixed": [
-        "Keep same-turn reply evidence only with unchanged fresh identity and conversation/send/session ownership; discard evidence when a node is reused for another turn.",
-        "Recheck reply ownership after visibility waits before dispatch. Pause without dispatching that reply if ownership cannot be verified."
-      ],
-      "notes": [
-        "Publication requires exact-source browser and Linux/Windows/macOS validation plus actual packaged Mac desktop lifetime, visibility and updater-relaunch checks.",
-        "Recovery evidence uses local unit/offline browser fixtures, including the real Claude reader and asynchronous loop handoffs. The affected live Claude account, real Studio projects and Microsoft Edge binary were not tested. Provider identity fallbacks remain a limitation; this is not a comprehensive no-replay guarantee.",
-        "Windows binaries are unsigned. The Mac app is ad-hoc signed, not notarized. Validated native bytes are reused without rebuilding during promotion."
-      ],
-      "github": {
-        "summary": "Polish joins the offline interface languages, and the shared reply loop handles verified remounts more reliably without borrowing another turn’s command.",
-        "sections": [
-          {
-            "title": "🌐 Polish interface",
-            "items": [
-              "Polski — Polish across desktop, bar and popup: 877 translated interface strings, searchable by name or code.",
-              "Fifteen offline language choices. English stays default; AI replies, prompts, code and tool arguments are unchanged."
-            ]
-          },
-          {
-            "title": "🛠️ Shared reply recovery",
-            "items": [
-              "Retain exact assistant evidence across verified same-turn remounts; clear it on changed turn/chat/send/session identity.",
-              "Check ownership again after visibility waits and before tool dispatch; pause if it cannot be verified.",
-              "Clearer stopped-loop instructions point to Start or Restart in the PlazCode bar. Existing ClickUp, Studio, Blender, Ultra and skill features remain."
-            ]
-          },
-          {
-            "title": "🧪 Validation and limits",
-            "items": [
-              "Exact-source platform/browser checks and actual packaged Mac lifetime/update-relaunch gates are required. Validated native bytes are reused.",
-              "Offline/unit fixtures include the real Claude reader and async loop handoffs, not the affected live account. Real Studio projects and the Edge binary were not tested; unreliable provider identities remain a limitation.",
-              "Windows unsigned; Mac ad-hoc signed, not notarized. GitHub provenance does not replace platform signing."
-            ]
-          }
-        ]
-      }
     }
   ],
   "security": {
-    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.26\",\"platform\":\"macos\",\"sha256\":\"7490816b3873b01bb842f21cc9b43e56d1ed17984dd5e1924eebf218f344fac1\"}",
-    "signature": "9f956d4299c452487a9c30bcd9713476191c319c0f90db1fe4b70d905670ff0af841ec6340156af6101ad12f54bf447ba81309229bed81906cf6f807484bed02"
+    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.28\",\"platform\":\"macos\",\"sha256\":\"46c8d5842541861a911f89d552ff1127c4c7f67ba5116f64a9496c5d7f33fa1d\"}",
+    "signature": "e129decd78f1b7d874cafea6d86895857633a5d99fb9e683cdf93f276354a8d0b3f71a276a0a0fc6df51c4523fe0f2d742de239fca9bff1f5c4e2f759728cf06"
   }
 }

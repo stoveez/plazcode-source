@@ -1,5 +1,50 @@
 [
   {
+    "version": "1.24.28",
+    "title": "Update and Codex fixes",
+    "summary": "A quick fix for updates that sometimes failed their safety check, plus Codex support.",
+    "added": [
+      "PlazCode now finds Codex's chat box on chatgpt.com/codex."
+    ],
+    "improved": [],
+    "fixed": [
+      "Updates sometimes stopped with \"Release signature or file verification failed\" even though the download was fine. Security software scanning the new files could block the check for a moment; PlazCode now waits and checks again (up to three times) before giving up, and shows the real reason if it still fails.",
+      "PlazCode's own program check retries files that are briefly in use by another program, without relaxing any check."
+    ],
+    "notes": [
+      "The update fix starts working from the update after this one; a failed update to 1.24.28 retries by itself every 40 minutes, or choose Update now.",
+      "Codex was checked on a test page with a Codex-like layout; it was not tried live.",
+      "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+    ],
+    "github": {
+      "summary": "***Updates no longer fail at random, and Codex now works.***",
+      "sections": [
+        {
+          "title": "✨ What's new",
+          "items": [
+            "PlazCode finds Codex's chat box on chatgpt.com/codex."
+          ]
+        },
+        {
+          "title": "🛠️ What's fixed",
+          "items": [
+            "Updates sometimes stopped with \"Release signature or file verification failed\" though the download was fine. Security software scanning the new files could block the check for a moment. PlazCode now waits and checks again, and shows the real reason if it still fails.",
+            "PlazCode's own file check retries files briefly in use by another program. No check is relaxed."
+          ]
+        },
+        {
+          "title": "🧪 What was checked",
+          "items": [
+            "Windows, Mac and Linux builds, both browsers, updates and Mac startup.",
+            "Codex was checked on a practice page, not live.",
+            "This fix protects your next update. If updating to 1.24.28 fails, PlazCode retries by itself, or choose Update now.",
+            "Windows is unsigned and Mac is not notarized, as before."
+          ]
+        }
+      ]
+    }
+  },
+  {
     "version": "1.24.26",
     "title": "Remembered approvals and protected program files",
     "summary": "Approve all remembers your choice across tasks, chats and AI sites. Program files and future updates are checked for changes automatically.",

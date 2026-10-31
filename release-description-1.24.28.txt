@@ -1,0 +1,21 @@
+✨ **PlazCode 1.24.28**
+***Updates no longer fail at random, and Codex now works.***
+
+***✨ What's new***
+- PlazCode finds Codex's chat box on chatgpt.com/codex.
+
+***🛠️ What's fixed***
+- Updates sometimes stopped with "Release signature or file verification failed" though the download was fine. Security software scanning the new files could block the check for a moment. PlazCode now waits and checks again, and shows the real reason if it still fails.
+- PlazCode's own file check retries files briefly in use by another program. No check is relaxed.
+
+***🧪 What was checked***
+- Windows, Mac and Linux builds, both browsers, updates and Mac startup.
+- Codex was checked on a practice page, not live.
+- This fix protects your next update. If updating to 1.24.28 fails, PlazCode retries by itself, or choose Update now.
+- Windows is unsigned and Mac is not notarized, as before.
+
+***📥 How to update***
+- Open PlazCode, or choose Updates → Update now.
+- Manual downloads: PlazCode-1.24.28.zip for Windows, PlazCode-macOS-1.24.28.zip for Mac, or PlazCode-Firefox-1.24.28.zip for Firefox.
+- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
+- Your settings, memory and connections are kept.

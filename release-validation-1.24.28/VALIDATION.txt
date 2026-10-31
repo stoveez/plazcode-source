@@ -1,0 +1,12 @@
+PlazCode 1.24.28 — exact-source platform/browser gates and packaged macOS desktop lifetime checks passed before promotion.
+Validated source: b288203e5c11ccdbc69efed5db2ff91e60e5dea3
+Validation run: private build 41214837106
+Changes: DeepSeek provider-level send serialization and completion-based 8–9.8 second pacing, including Creator/library calls. Existing permanent approvals, signed program/update checks and native integrity enforcement are retained. User skills, notes, settings and offline use remain available. No publisher signing or required account.
+All other features, safeguards and native launch/update behavior are retained. Final native executable and macOS app bytes are reused from validated development artifacts, not rebuilt during publication. Only release notices, checksums and package metadata change.
+Unit tests cover every check path; a browser fixture with the full production core and a mocked PlazCode app covers reconnect, closed app, dropped Studio connection, click-only chat connection and translation. Hosted browser fixtures use a mocked bridge.
+Windows binaries are unsigned. macOS uses ad-hoc signing and is not notarized.
+Microsoft Defender runner availability/result for the exact native artifact before release-notice assembly:
+Scan starting...
+Scan finished.
+Scanning D:\a\plazcode-source\plazcode-source\build-src-1.24.28\PlazCode/defender-scan found no threats.
+Checksums and platform evidence are recorded in release-validation-1.24.28.
