@@ -71,7 +71,12 @@ await vm.runInContext('PlazCodeText.ready()',packaged);
 assert.equal(vm.runInContext('PlazCodeText.loaded()',packaged),true);
 let compared=0;
 function same(label,expression){
-  const run=context=>{try{return {value:vm.runInContext(expression,context)};}catch(error){return {error:String(error&&error.message||error)};}};
+  // Errors compare by type: minified code names its variables differently inside engine messages
+  // ("(e || "").includes is not a function"). Moved text must never be the cause of an error.
+  const run=context=>{try{return {value:vm.runInContext(expression,context)};}catch(error){
+    const message=String(error&&error.message||error);
+    assert(!/\(missing (config|lean|skills):\d+\)/.test(message),label+': moved text was missing: '+message);
+    return {error:error&&error.constructor&&error.constructor.name||'Error'};}};
   const a=run(original),b=run(packaged);
   assert.deepEqual(b,a,label);compared++;
 }
