@@ -75,3 +75,14 @@ with tempfile.TemporaryDirectory(prefix="PlazCode user's tampered update ",ignor
  after={p.relative_to(install):p.read_bytes() for p in install.rglob('*') if p.is_file() and 'logs' not in p.parts}
  assert after==before,'a refused update must not change any installed file'
 print('PASS changed package: refused before any installed file changed, and the reason names the changed file.')
+
+# 1.24.29 root cause, proven on the owner's PC on 2026-10-31: Windows PowerShell 5.1 does NOT wait for the windowed
+# PlazCode.exe when called with the call operator (`& $exe ...`) while the updater's output goes to a log file. The check
+# "returned" after 21 ms with an empty exit code, so 1.24.26-1.24.28 updates failed with "Release signature or file
+# verification failed" on such PCs. An explicit process start that waits returned exit code 0 after 1.8 s. Never call
+# the check through the call operator again.
+import re as _re
+_check = source[source.index('$verifyExe = Join-Path $InstallRoot'):source.index("throw ('Release signature or file verification failed")]
+assert '[Diagnostics.Process]::Start($info)' in _check and '$checker.WaitForExit(120000)' in _check and '$checker.ExitCode' in _check, 'the package check waits for PlazCode.exe and reads its real exit code'
+assert not _re.search(r'&\s*\$verifyExe', _check) and '$LASTEXITCODE' not in _check, 'the package check never relies on the call operator or $LASTEXITCODE'
+print('PASS the package check starts PlazCode.exe as a process it waits for (PowerShell 5.1 does not wait for windowed programs called with &).')
