@@ -258,7 +258,7 @@ function api.lighting_set_preset(a)
 	local pName = tostring(a.preset or "realistic_noon"):lower():gsub("[%s%-]+", "_"):gsub("_+", "_")
 	local cfg = LIGHTING_PRESETS[pName]
 	-- alias: "warm night" / "warm-night" with space/dash → warm_night
-	if not cfg and pName:find("warm") and pName:find("night") then cfg = LIGHTING_PRESETS["warm_night"]; if cfg then pName = "warm_night" end
+	if not cfg and pName:find("warm") and pName:find("night") then cfg = LIGHTING_PRESETS["warm_night"]; if cfg then pName = "warm_night" end end
 	if not cfg then
 		local valid = {}
 		for k in pairs(LIGHTING_PRESETS) do valid[#valid + 1] = k end
@@ -1054,6 +1054,7 @@ function api.ui_create_component(a)
 		copy.Text = "Forge workbench ready.\\nGold hairline, metal rail, inset body.\\nBuild your content here."
 		copy.Parent = card
 		return okdata({ path = pathOf(win), type = kind, forge = true }, "created Forge window at " .. pathOf(win))
+	end
 
 	return fail("unknown component_type '" .. compType .. "' (use health_stamina_hud, dialog_box, notification_toast, card_inventory, forge_panel, forge_hud, forge_button, forge_inventory, forge_shop)")
 end
@@ -3158,7 +3159,7 @@ for i,cd in ipairs(cards) do
   local btn=Instance.new("TextButton") btn.Name="ClickTarget" btn.Size=UDim2.new(1,0,1,0) btn.BackgroundTransparency=1 btn.Text="" btn.Parent=card
 end
 ${dropup ? `local drop=Instance.new("Frame") drop.Name="DropupPicker" drop.Size=UDim2.new(0,120,0,44) drop.Position=UDim2.new(0,8,0,-50) drop.BackgroundColor3=Color3.fromRGB(28,30,38) drop.BackgroundTransparency=0.05 drop.Parent=root corner(drop,10) stroke(drop)
-local hint=Instance.new("TextLabel") hint.Size=UDim2.new(1,-8,1,0) hint.Position=UDim2.new(0,4,0,0) hint.BackgroundTransparency=1 hint.Font=Enum.Font.Gotham hint.TextSize=9 hint.TextColor3=Color3.fromRGB(170,175,190) hint.TextWrapped=true hint.Text="Drop a card \\u25b2 or describe a mechanic\\u2026" hint.Parent=drop` : ""}
+local hint=Instance.new("TextLabel") hint.Size=UDim2.new(1,-8,1,0) hint.Position=UDim2.new(0,4,0,0) hint.BackgroundTransparency=1 hint.Font=Enum.Font.Gotham hint.TextSize=9 hint.TextColor3=Color3.fromRGB(170,175,190) hint.TextWrapped=true hint.Text="Drop a card \\u{25b2} or describe a mechanic\\u{2026}" hint.Parent=drop` : ""}
 return HttpService:JSONEncode({ok=true,data={path=root:GetFullName(),cards=${count},dropup=${dropup}},text="created card inventory '${title}' with ${count} collectible cards${dropup ? " + dropup picker" : ""}"})`;
   return { code: lua };
 }

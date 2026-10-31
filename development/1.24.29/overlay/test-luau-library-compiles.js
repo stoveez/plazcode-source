@@ -8,8 +8,10 @@
 // Run: PLAZCODE_LUAU_COMPILE=/path/to/luau-compile node test-luau-library-compiles.js
 const fs = require("fs"), os = require("os"), path = require("path"), cp = require("child_process"), assert = require("node:assert/strict");
 const compiler = process.env.PLAZCODE_LUAU_COMPILE;
+// In GitHub Actions, failures are also written as annotations so they can be read without the full log.
+const annotate = (text) => { if (process.env.GITHUB_ACTIONS === "true") for (const line of String(text).split("\n").filter(Boolean).slice(0, 40)) console.log("::error::" + line.slice(0, 900)); };
 if (!compiler || !fs.existsSync(compiler)) {
-  if (process.env.PLAZCODE_REQUIRE_LUAU === "1") { console.error("FAIL: the official Luau compiler is required here (PLAZCODE_LUAU_COMPILE)."); process.exit(1); }
+  if (process.env.PLAZCODE_REQUIRE_LUAU === "1") { const why = "the official Luau compiler is required here but was not found at " + compiler; annotate(why); console.error("FAIL: " + why); process.exit(1); }
   console.log("SKIP no Luau compiler (CI builds the official one and runs this test).");
   process.exit(0);
 }
@@ -33,7 +35,7 @@ for (const cmd of S.SKILL_COMMANDS) {
 }
 assert(files.size >= 2, "the shared library and the special builders were generated");
 const result = cp.spawnSync(compiler, ["--null", ...files.values()], { encoding: "utf8" });
-if (result.status !== 0) { console.error(result.stdout + result.stderr); process.exit(1); }
+if (result.status !== 0) { annotate(result.stdout + result.stderr + (result.error ? String(result.error) : "")); console.error(result.stdout + result.stderr); process.exit(1); }
 // The compiler really rejects broken code (guards against a silently passing setup).
 const broken = path.join(dir, "broken.luau"); fs.writeFileSync(broken, 'local s = ""\ns = s:gsub("%-%-[^\n]*", " ")\nreturn s');
 assert.notEqual(cp.spawnSync(compiler, ["--null", broken], { encoding: "utf8" }).status, 0, "the compiler rejects a string broken by a line break");
