@@ -16,9 +16,16 @@ assert(/document\.documentElement\.appendChild\(root\)/.test(main), "the bar its
 console.log("PASS Effort and Approval menus attach beside the bar on <html>");
 
 (async () => {
-  if (process.env.PLAZCODE_TEST_BROWSER === "skip") { console.log("SKIP real-browser layering check"); return; }
-  const { chromium } = require("playwright");
-  const browser = await chromium.launch();
+  // The real-browser half needs Playwright with Chromium. The native CI jobs have none and skip it; the browsers job
+  // installs Chromium and requires it (PLAZCODE_REQUIRE_BROWSER=1).
+  let browser = null, why = "";
+  if (process.env.PLAZCODE_TEST_BROWSER !== "skip") {
+    try { const { chromium } = require("playwright"); browser = await chromium.launch(); } catch (error) { why = String((error && error.message) || error).split("\n")[0]; }
+  } else why = "PLAZCODE_TEST_BROWSER=skip";
+  if (!browser) {
+    if (process.env.PLAZCODE_REQUIRE_BROWSER === "1") throw new Error("Chromium is required for the menu layering check: " + why);
+    console.log("SKIP real-browser layering check (" + why.slice(0, 120) + ")"); return;
+  }
   try {
     const page = await browser.newPage({ viewport: { width: 900, height: 700 } });
     // A Claude-like page: <body> forms its own stacking context.

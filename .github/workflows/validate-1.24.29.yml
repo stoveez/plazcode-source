@@ -110,6 +110,11 @@ jobs:
       - name: Persistent approval modes and composer-relative bar placement
         run: node release-tools/test-approval-modes-browser.cjs
         working-directory: build-src-1.24.29/PlazCode
+      - name: Effort and Approval menus stay above the bar in real Chromium
+        run: node test-bar-menu-layer.js
+        working-directory: build-src-1.24.29/PlazCode
+        env:
+          PLAZCODE_REQUIRE_BROWSER: '1'
       - name: Screenshot display under strict image policy in Chromium
         run: node test-screenshot-display.cjs
         working-directory: build-src-1.24.29/PlazCode
