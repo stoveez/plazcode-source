@@ -2,6 +2,8 @@
 title: Open work and known bugs
 updated: 2026-10-30
 ---
+**Newest, 2026-10-30:** tool-call consistency fixes (DeepSeek DSML calls, extras' result names, `env_info`/`list_dir`, unknown-command suggestions, desktop size units). See [tool-call-consistency](tool-call-consistency.md). Not in any test zip; live DeepSeek not tested.
+
 **Latest, 2026-10-30:** replacement full 1.24.27 test ZIPs delivered through Google Drive. CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952), source `38fd7d2`, passed Windows, universal Mac, Linux and browsers. Includes profile pictures, bold Up to date, plus/approval icons, splash fade, parallel protected-file checks and ahead-of-stable update fix. Production signatures, all 235 reviewed JS sources and release layouts verified; actual downloaded Linux startup passed. Source remains Public at delivery; owner reminded to restore Private. Account API stays Public independently. Stable remains 1.24.26. [Verification](test-build-1.24.27-followups-verification.json).
 
 # Open work
