@@ -183,7 +183,7 @@ mod tests {
         let legacy=chromium_id_for_path(&root);assert!(!ids.contains(&legacy),"no root copy, no root ID");
         std::fs::write(root.join("manifest.json"),"{}").unwrap();
         assert!(official_extension_ids_for(&root).iter().any(|id|*id==legacy||*id==chromium_id_for_path(folder_forms(&root).last().unwrap())),"legacy root copy accepted");
-        #[cfg(windows)] assert!(folder_forms(&root).iter().all(|form|!form.to_string_lossy().starts_with(r"\\?\")),"no \\?\ prefix reaches the ID");
+        #[cfg(windows)] assert!(folder_forms(&root).iter().all(|form|!form.to_string_lossy().starts_with(r"\\?\")),"the long-path prefix never reaches the ID");
         let pinned=Some(ids);let copy="b".repeat(32);
         let headers=|id:&str|{let mut h=HeaderMap::new();h.insert("host","127.0.0.1:3000".parse().unwrap());h.insert("content-type","application/json".parse().unwrap());
             h.insert("x-plazcode-extension",id.parse().unwrap());h.insert("origin",format!("chrome-extension://{id}").parse().unwrap());h};

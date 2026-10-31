@@ -46,7 +46,8 @@ const main = read('core/main.js');
 assert(/leanStartup: \(typeof leanStartupOn === \"function\" && leanStartupOn\(\)\),/.test(main), 'systemPrompt asks for the short startup');
 assert(/function leanStartupOn\(\) \{ return reliabilitySettings\.rsFullStartup !== true/.test(main), 'Full startup is off by default');
 assert(/rsFullStartup:false,/.test(main) && /id="rs-full-startup"/.test(main), 'the Full startup switch exists, off by default');
-assert(/if \(name === "plazcode_help"\) \{[\s\S]{0,300}PlazCodeLeanStartup\.helpFor\(/.test(main), 'plazcode_help runs');
+// 1.24.30: the branch first waits for the instruction text kept in the PlazCode app, so the window is wider.
+assert(/if \(name === "plazcode_help"\) \{[\s\S]{0,500}PlazCodeLeanStartup\.helpFor\(/.test(main), 'plazcode_help runs');
 assert(/tools\.push\(\{name:'plazcode_help'/.test(main), 'plazcode_help is in the command list');
 assert(/vaultContext\(\(typeof leanStartupOn === \"function\" && leanStartupOn\(\)\) \? 'lean'/.test(main), 'the vault summary is the smallest one at startup');
 assert(/let digest = offline \? toolFeedback : leanOn \? leanDigest\(0\) \+ addonsNote : fullDigest\(\);/.test(main) && /const leanOn = typeof leanStartupOn === \"function\" && leanStartupOn\(\);/.test(main), 'the short startup uses the compact command list');

@@ -2827,10 +2827,6 @@ return result`;
   }
 
   const TRUSTED_READS = new WeakSet();
-  // 1.24.30: release builds keep the long instructions in the PlazCode app (core/text-pack.js). Wait for them
-  // before anything that uses them; development builds (no text-pack loader or nothing moved) never wait.
-  async function textReady() { return typeof PlazCodeText === "undefined" || await PlazCodeText.ready(); }
-  function textError() { return typeof PlazCodeText === "undefined" ? "" : PlazCodeText.error(); }
   async function runTool(call) {
     if(A.stop || A.pendingToolSettles)return "ERROR: the command was not run — stopped by the user or waiting for cancellation.";
     const stalled=typeof PlazCodeStallGuard!=="undefined"?(A.stallGuard||(A.stallGuard=PlazCodeStallGuard.create())).before(call):null;
@@ -2867,7 +2863,7 @@ return result`;
     }
     if (name === "plazcode_help") {
       if (typeof PlazCodeLeanStartup === "undefined") return "ERROR: plazcode_help is not available in this build. Use list_commands for command details.";
-      if (!(await textReady())) return "ERROR: " + textError();
+      if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) return "ERROR: " + PlazCodeText.error();
       try { return "Output of 'plazcode_help':\n" + PlazCodeLeanStartup.helpFor({ topic: args && (args.topic || args.area || args.query), command: args && (args.command || args.name), engine: activeEngine(), siteName: P.displayName }); }
       catch (error) { return "ERROR: " + error.message; }
     }
@@ -3569,7 +3565,7 @@ return result`;
       const text = r && r.ok ? String(r.text || "") : "";
       return /ERROR|not found|does not exist|No such file/i.test(text.slice(0, 200)) ? "" : text.slice(0, budget);
     }
-    if (typeof RobloxScriptSkills === "undefined" || !(await textReady())) return "";
+    if (typeof RobloxScriptSkills === "undefined" || !(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) return "";
     const built = RobloxScriptSkills.buildLuau("read_scripts", { paths: ["ServerStorage.RobloxScript.Memory"], max_chars: Math.min(90000, budget) });
     if (built.err) return "";
     const r = await bg({ type: "call_tool", name: "execute_luau", arguments: { code: built.code, datamodel_type: "Edit" }, timeout: 20000 });
@@ -3689,7 +3685,7 @@ return result`;
       if (name === "ui_create_component") {
         try { if (window.__rsForge && window.__rsForge()) args = Object.assign({}, args, { forge: true }); } catch {}
       }
-      if (!(await textReady())) return "ERROR: " + textError();
+      if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) return "ERROR: " + PlazCodeText.error();
       const built = RobloxScriptSkills.buildLuau(name, args);
       if (built.err) return built.err;
       const readOnlySkill = !PlazCodeSafety.isChange(name, "studio");
@@ -5002,7 +4998,7 @@ return result`;
       ui.toast("The AI lost command access. Reconnecting this chat once…");
       const ready = await startSession({restart:true});
       if (!ready || !ready.ready || A.userStopped || A.stop || saved.chat !== P.conversationKey() || saved.engine !== activeEngine()) return;
-      if (!(await textReady())) { ui.banner("warn", "PlazCode app needed", textError()); return; }
+      if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) { ui.banner("warn", "PlazCode app needed", PlazCodeText.error()); return; }
       const base = await submitAndGetBase(sessionReminderPrompt() + "\n\nContinue the existing unfinished request after reconnecting. Do not repeat completed or uncertain mutations; inspect current state first.\nOriginal request: " + saved.task);
       if (!A.userStopped && !A.stop) await agentLoop(base, attempt);
     } catch (error) {
@@ -5494,9 +5490,9 @@ return result`;
         ui.banner("warn", "Bridge isn't talking", tip);
         return;
       }
-      if (!(await textReady())) {
+      if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) {
         if (!alive()) return;
-        ui.banner("warn", "PlazCode app needed", textError());
+        ui.banner("warn", "PlazCode app needed", PlazCodeText.error());
         return;
       }
       if (!alive()) return;
@@ -8202,7 +8198,7 @@ return result`;
           toast("This chat is image-blind — on DeepSeek start a NEW chat; otherwise try Gemini, GLM, Qwen, Meta, Kimi or Freebuff.");
           return;
         }
-        if (!(await textReady())) { toast(textError()); return; }
+        if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) { toast(PlazCodeText.error()); return; }
         const tpl = RS.buildImageToModelPrompt("", activeEngine());
         const fakeCard = { prompt: tpl, title: "Image \u2192 Model", icon: "\u{1F5BC}\uFE0F", cat: "Vision", engine: "rs", desc: "" };
         const pasted = pasteLibraryCard(fakeCard, { silent: true });
