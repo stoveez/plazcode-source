@@ -1,6 +1,11 @@
 # NOW
 Updated: 2026-10-31. Branch `claude/plazcode-dev`; no helper agents.
 
+**1.24.28 HOTFIX in progress (owner, 2026-10-31: release directly, no test build).**
+- Updates "sometimes" failed with "Release signature or file verification failed". The published 1.24.27 package verifies perfectly under the 1.24.26 key and code (checked every file), so the cause is on the user's PC: security software holding the just-unpacked files in Temp. Fix: `integrity.rs` retries only Windows access-denied/in-use/lock errors for about 7 s (never size/content changes); `Update-PlazCode.ps1` checks up to 3 times (0/3/8 s), always waits for the exe's real exit code, and shows the real reason; Mac script retries the same way. Works from the NEXT update after 1.24.28 (old installs run their own updater); failed updates retry every 40 minutes.
+- Codex (chatgpt.com/codex): composer not found. `providers/chatgpt.js` falls back, only when nothing else matched, to the wide visible editable box in the lower window outside the transcript/sidebar/menus/search. Test `test-codex-composer.js` (practice page). Live Codex DOM was not inspected (Chrome unreachable); reading Codex replies assumes the standard ChatGPT message layout.
+- Ask the testers for `logs/updater.log` lines after a failure to confirm the exact file.
+
 **PUBLISHED 1.24.27 (2026-10-31)** from validated source `5465c3e` / CI 41157294450 via publish run 41204935324 (all three jobs green, incl. packaged Mac gate). Live `latest.json`/`latest-macos.json` say 1.24.27; downloaded Windows and Mac zips match the feed sha256 and are intact. GitHub release v1.24.27 has Windows, Mac and Firefox zips; notes 1,644 characters. Main points: profiles/pictures/sync, approval modes, Linux app, DSML, faster tool calls, bridge diagnostics. Owner must set the source repo back to Private; the old-build-updates-to-new check was not run. Tester's random bridge drops still unexplained (see bridge-stability.md).
 
 

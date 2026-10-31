@@ -1,0 +1,447 @@
+name: Validate PlazCode 1.24.28 development
+on:
+  push:
+    branches: [release/1.24.28, claude/plazcode-dev]
+  pull_request:
+    paths: [development/1.24.28/**, learned-skills/**, .github/workflows/validate-1.24.28.yml]
+  workflow_dispatch:
+    inputs:
+      bootstrap_integrity_key:
+        description: Configure public trust from the private integrity Actions secret; no builds or release
+        type: boolean
+        default: false
+      browser_only:
+        description: Run browser release checks only; produce no app packages
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: plazcode-1.24.28-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  bootstrap-integrity:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.bootstrap_integrity_key && github.repository == 'stoveez/plazcode-source' && github.ref == 'refs/heads/claude/plazcode-dev' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: claude/plazcode-dev
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Derive and commit the public verification key
+        shell: bash
+        env:
+          PLAZCODE_RELEASE_SIGNING_KEY: ${{ secrets.PLAZCODE_RELEASE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$PLAZCODE_RELEASE_SIGNING_KEY" || { echo '::error::Add the private integrity key as PLAZCODE_RELEASE_SIGNING_KEY in repository Actions secrets. No key value should be sent through chat.'; exit 1; }
+          node development/1.24.28/protection.mjs export-public
+          if git diff --quiet -- development/1.24.28/overlay/release-public-key.hex; then
+            echo 'Configured private key matches the existing public verification key.'
+            exit 0
+          fi
+          echo "::notice title=Production public key::$(cat development/1.24.28/overlay/release-public-key.hex)"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('docs/NOW.md')
+          p.write_text('# NOW\nUpdated: 2026-10-28. Branch `claude/plazcode-dev`; no helper agents.\n\n**Latest: production integrity key provisioned inside GitHub Actions.** The private key is stored only in `PLAZCODE_RELEASE_SIGNING_KEY`; only the matching public key is committed. No private key is printed or included in an artifact. The private key is never written to the runner filesystem. Keep an owner backup in a password manager; never retrieve plaintext keys through chat.\n\n**Next:** run all 1.24.28 release gates on this exact public-key commit, then publish using the owner\'s release-note format. No separate test build delivery. Normal users need no new login/setup; skills, notes and settings remain editable.\n\n**Local checks:** 219 JS files and 213 native tests passed, plus optimized native signature/authenticated-work/Stop and Chromium/Firefox cryptography tests. Hosted Windows/Mac and installed-extension checks remain required.\n\n**Visibility:** public build/publish window authorized; restore Private immediately afterward. The session\'s integration cannot edit repository visibility (403), so owner assistance may be required. Separate Windows PC vault folder is not linked. See [code protection](vault/code-protection.md) and [open work](vault/open-work.md).\n')
+          p=Path('docs/vault/open-work.md')
+          p.write_text(p.read_text()+'\n- 2026-10-28: production integrity key provisioned by the one-time workflow; only its public key is committed. Arrange an external owner key backup securely. Full release validation and publication remain pending.\n')
+          PY
+          git -c user.name=stoveez -c user.email= add development/1.24.28/overlay/release-public-key.hex docs/NOW.md docs/vault/open-work.md
+          git -c user.name=stoveez -c user.email= commit -m 'Configure production integrity verification key [skip ci]'
+          git push origin HEAD:claude/plazcode-dev
+  browsers:
+    if: ${{ !inputs.bootstrap_integrity_key }}
+    runs-on: ubuntu-latest
+    env:
+      # The unit tests load jsdom from the tools folder that npm ci fills.
+      NODE_PATH: ${{ github.workspace }}/build-src-1.24.28/PlazCode/release-tools/node_modules
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: luau-lang/luau
+          ref: 74f768309c380d40601b28c4c4cdda27da415cef
+          path: validation-luau
+      - name: Build official Luau test VM
+        run: |
+          cmake -S validation-luau -B validation-luau/build -DLUAU_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build validation-luau/build --target Luau.Repl.CLI -j 4
+      - name: Verify committed catalogs and manifest i18n wiring without source regeneration
+        run: python3 development/1.24.28/test-locales.py
+      - run: python3 development/1.24.28/test-prepare-overlay.py
+      - name: Ultra generated files match the generator
+        run: python3 development/1.24.28/test-ultralab-generated.py
+      - run: python3 development/1.24.28/prepare.py
+      - run: npm ci --prefix release-tools --ignore-scripts
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Test production mesh transfer transactions
+        run: python3 test-mesh-import-luau.py
+        working-directory: build-src-1.24.28/PlazCode
+        env:
+          PLAZCODE_LUAU: ${{ github.workspace }}/validation-luau/build/luau
+      - name: Test production Explorer Luau transactions
+        run: python3 test-explorer-luau.py
+        working-directory: build-src-1.24.28/PlazCode
+        env:
+          PLAZCODE_LUAU: ${{ github.workspace }}/validation-luau/build/luau
+      - run: npm ci --prefix release-tools --ignore-scripts
+        working-directory: build-src-1.24.28/PlazCode
+      - run: node release-tools/node_modules/playwright/cli.js install --with-deps chromium firefox
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Real protected Chromium and Firefox integrity tests
+        run: node development/1.24.28/test-protection-browser.mjs
+      - name: Persistent approval modes and composer-relative bar placement
+        run: node release-tools/test-approval-modes-browser.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Screenshot display under strict image policy in Chromium
+        run: node test-screenshot-display.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Screenshot display under strict image policy in Firefox
+        run: node test-screenshot-display.cjs
+        working-directory: build-src-1.24.28/PlazCode
+        env:
+          PLAZCODE_TEST_BROWSER: firefox
+      - name: Test Claude reply remount recovery in offline Chromium
+        run: node release-tools/test-response-remount.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Notion startup with native Chromium and Firefox clipboard events
+        run: node release-tools/test-notion-bootstrap.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Fix connection checks (unit)
+        run: node test-connection-doctor.js
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Co-work Ctrl+Enter send-now checks
+        run: node test-cowork-send-now.js
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Fix connection button with the full core in Chromium and Firefox
+        run: node release-tools/test-fix-connection-browser.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Safety, What happened, site setups and shared skills (unit)
+        run: node test-1.24.21-power-features.js
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Safety, What happened and site setups with the full core in Chromium
+        run: node release-tools/test-power-features-browser.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Vani AI provider registration and turn reading
+        run: node test-vani-provider.js
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Desktop effort menu stays above neighboring cards and inside the window
+        run: node release-tools/test-effort-picker-browser.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Theme marks survive a site re-rendering the page root, in Chromium
+        run: node release-tools/test-root-marks-browser.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: The Ultra line is one clean line in every theme, in Chromium
+        run: node release-tools/test-bar-ultra-line-browser.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: A new chat gaining its address mid-startup still connects, in Chromium
+        run: node release-tools/test-new-chat-id-browser.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Settings backup copies choices only and restores them, in Chromium
+        run: node release-tools/test-settings-backup-browser.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: ClickUp Brain and agent startup, tool feedback and composer fixtures
+        run: node release-tools/test-clickup-browser.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: ClickUp accepted multipart startup and model refusal regressions
+        run: node release-tools/test-clickup-startup.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: ClickUp paged tool results, Blender routing and complete GUI schemas
+        run: node release-tools/test-clickup-results.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: ClickUp send readiness and uncertain-send protection
+        run: node release-tools/test-clickup-send-readiness.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: ClickUp delayed model acceptance and protected existing drafts
+        run: node release-tools/test-clickup-startup-model.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: ClickUp long-history bounded reads and cache correctness
+        # Same test as before. On failure it also prints the reason as a run annotation,
+        # which can be read without opening the full log.
+        run: |
+          node release-tools/test-clickup-performance.cjs > "$RUNNER_TEMP/clickup-performance.log" 2>&1 && { cat "$RUNNER_TEMP/clickup-performance.log"; exit 0; }
+          cat "$RUNNER_TEMP/clickup-performance.log"
+          echo "::error title=ClickUp performance check failed::$(grep -E '^ - |^FAIL|Error' "$RUNNER_TEMP/clickup-performance.log" | head -8 | cut -c1-300 | tr '\n' '|')"
+          exit 1
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Mixed widgets preserve user content across language changes
+        run: node release-tools/test-language-widgets.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Extension language search, persistence and scoped RTL
+        run: node release-tools/test-extension-language.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Desktop language persistence with actual shared i18n runtime
+        run: node release-tools/test-desktop-language.cjs --actual-i18n
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Ultra effort labels, animations and Deleted Skills controls
+        timeout-minutes: 5
+        run: node release-tools/test-ultra-trash-browser.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Ultra pack loads in the real extension
+        timeout-minutes: 5
+        run: node release-tools/test-ultra-extension-browser.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - run: node release-tools/test-1.24.14-browser.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - run: node release-tools/test-notion-block-cards.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Editable answers survive provider keyboard capture
+        run: node release-tools/test-clarification-input.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - run: node release-tools/test-command-watchers.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - run: node release-tools/test-browsers.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - run: node release-tools/test-ultracode-appearance.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - run: node release-tools/test-sidebar-explorer.cjs
+        timeout-minutes: 5
+        working-directory: build-src-1.24.28/PlazCode
+      - run: node release-tools/test-workspace-scroll.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - run: node release-tools/test-desktop-performance.cjs
+        working-directory: build-src-1.24.28/PlazCode
+      - run: python3 development/1.24.28/test-package-size.py
+      - run: node release-tools/test-checklist-appearance.cjs
+        working-directory: build-src-1.24.28/PlazCode
+  native:
+    if: ${{ !inputs.bootstrap_integrity_key && !inputs.browser_only }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: '1'
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_CODEGEN_UNITS: '1'
+      CARGO_PROFILE_TEST_CODEGEN_UNITS: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - run: python development/1.24.28/test-prepare-overlay.py
+      - run: python development/1.24.28/prepare.py
+      - name: Configure public release trust or isolated validation keys
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = Linux ] || [ ! -s development/1.24.28/overlay/release-public-key.hex ] || ! grep -q '[a-f0-9]' development/1.24.28/overlay/release-public-key.hex || [ "${{ github.event_name }}" = pull_request ]; then
+            node development/1.24.28/protection.mjs validation-key "$RUNNER_TEMP/plazcode-validation-key"
+            echo "PLAZCODE_PROTECTION_CHANNEL=validation" >> "$GITHUB_ENV"
+            echo "PLAZCODE_RELEASE_PUBLIC_KEY=$(cat "$RUNNER_TEMP/plazcode-validation-key/public.hex")" >> "$GITHUB_ENV"
+            echo "PLAZCODE_SIGNING_KEY_FILE=$RUNNER_TEMP/plazcode-validation-key/key.pem" >> "$GITHUB_ENV"
+          fi
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          workspaces: build-src-1.24.28/PlazCode/agent
+          cache-on-failure: true
+      - name: Shared service protocol and database regressions
+        run: |
+          node --experimental-strip-types learning-service/test-protocol.mjs
+          python learning-service/test-sql.py
+          python development/1.24.28/test-starter-pack.py
+          python test-release-feed.py
+          python test-release-notes.py
+          python build-src-1.24.28/PlazCode/test-update-marker.py
+          python build-src-1.24.28/PlazCode/test-process-cleanup.py
+      - run: rustup update stable --no-self-update
+      - name: Isolated native preference persistence regressions
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo +stable test --locked --manifest-path development/1.24.28/preferences-test/Cargo.toml 2>&1 | tee native-preference-tests.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: plazcode-1.24.28-native-preferences-${{ runner.os }}
+          path: native-preference-tests.log
+          if-no-files-found: warn
+      - run: npm ci --prefix release-tools --ignore-scripts
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Install real Blender on Linux
+        if: runner.os == 'Linux'
+        timeout-minutes: 6
+        run: |
+          curl --fail --location --retry 2 --retry-max-time 240 --connect-timeout 20 --max-time 180 \
+            https://download.blender.org/release/Blender4.5/blender-4.5.3-linux-x64.tar.xz \
+            --output "$RUNNER_TEMP/blender.tar.xz"
+          echo '975c58fcb244273838534bba771e64ad87739216b0f9b39a888531a49a72d845  blender.tar.xz' > "$RUNNER_TEMP/blender.sha256"
+          (cd "$RUNNER_TEMP" && sha256sum --check blender.sha256)
+          tar -xJf "$RUNNER_TEMP/blender.tar.xz" -C "$RUNNER_TEMP"
+          echo "PLAZCODE_BLENDER=$RUNNER_TEMP/blender-4.5.3-linux-x64/blender" >> "$GITHUB_ENV"
+      - name: Real Blender geometry and primitive regressions
+        if: runner.os == 'Linux'
+        run: python test-blender-real.py --require
+        working-directory: build-src-1.24.28/PlazCode
+      - name: JavaScript regression suite
+        run: python release-tools/test-javascript.py
+        working-directory: build-src-1.24.28/PlazCode
+        env:
+          NODE_PATH: release-tools/node_modules
+      - name: Signed integrity and obfuscation regressions
+        run: node development/1.24.28/test-protection.mjs
+      - name: Native regression suite
+        if: ${{ always() && !cancelled() }}
+        run: cargo +stable test --locked --manifest-path agent/Cargo.toml
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Build debug binary and test authenticated routes
+        run: |
+          cargo +stable build --locked --manifest-path agent/Cargo.toml
+          python test-skills-native.py
+          python test-studio-autoconnect.py
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Real account service and native profile integration
+        if: runner.os == 'Linux'
+        run: |
+          npm ci --prefix account-service --ignore-scripts
+          npm test --prefix account-service
+          cd build-src-1.24.28/PlazCode
+          node release-tools/test-profile-accounts.cjs
+      - name: Real Linux visible desktop and browser authentication
+        if: runner.os == 'Linux'
+        working-directory: build-src-1.24.28/PlazCode
+        run: |
+          npm ci --prefix release-tools --ignore-scripts
+          node release-tools/node_modules/playwright/cli.js install --with-deps chromium
+          node release-tools/test-profile-sign-in-ui.cjs
+          node release-tools/test-profile-storage.cjs
+          node release-tools/test-linux-desktop.cjs
+      - name: Real macOS stale-process startup recovery
+        if: runner.os == 'macOS'
+        working-directory: build-src-1.24.28/PlazCode
+        run: python test-macos-startup-recovery.py
+      - name: Ahead-of-stable native update checks never downgrade
+        if: runner.os == 'Windows' || runner.os == 'macOS'
+        working-directory: build-src-1.24.28/PlazCode
+        run: python test-update-ahead.py
+      - name: Build native executable
+        run: cargo +stable build --release --locked --manifest-path agent/Cargo.toml
+        working-directory: build-src-1.24.28/PlazCode
+      - name: Optimized native signed-file and authenticated-work integration
+        if: runner.os == 'Linux'
+        run: node development/1.24.28/test-release-verifier.mjs
+      - name: Build signed native Linux test package
+        if: runner.os == 'Linux' && github.event_name != 'pull_request'
+        env:
+          PLAZCODE_RELEASE_SIGNING_KEY: ${{ secrets.PLAZCODE_RELEASE_SIGNING_KEY }}
+        shell: bash
+        run: |
+          export PLAZCODE_PROTECTION_CHANNEL=release
+          unset PLAZCODE_RELEASE_PUBLIC_KEY PLAZCODE_SIGNING_KEY_FILE
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+          rustup target add --toolchain stable x86_64-unknown-linux-musl
+          export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc
+          export CC_x86_64_unknown_linux_musl=musl-gcc
+          cargo +stable build --release --locked --manifest-path build-src-1.24.28/PlazCode/agent/Cargo.toml --target x86_64-unknown-linux-musl
+          cp build-src-1.24.28/PlazCode/agent/target/x86_64-unknown-linux-musl/release/PlazCode build-src-1.24.28/PlazCode/agent/target/release/PlazCode
+          if readelf -l build-src-1.24.28/PlazCode/agent/target/release/PlazCode | grep -q INTERP; then echo 'Linux delivery must be statically linked'; exit 1; fi
+          python development/1.24.28/package.py
+      - name: Windows PE and updater regressions
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: build-src-1.24.28/PlazCode
+        run: |
+          Copy-Item agent/target/release/PlazCode.exe PlazCode.exe
+          python test-exe-av-signals.py PlazCode.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python test-launcher.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./test-updater.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./test-updater-policy.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell.exe -NoProfile -File ./test-update-presentation.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell.exe -NoProfile -File ./test-application-icon.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $signature = Get-AuthenticodeSignature PlazCode.exe
+          $signature | Format-List | Out-File windows-signature.txt
+          # This development workflow does not possess a publisher certificate.
+          # Never represent an unsigned development build as a signed release.
+      - name: Verify Windows automatic launch and later update handoff
+        if: runner.os == 'Windows'
+        working-directory: build-src-1.24.28/PlazCode
+        run: |
+          python test-update-handoff.py
+      - name: Package fresh Windows artifacts
+        if: runner.os == 'Windows'
+        env:
+          PLAZCODE_RELEASE_SIGNING_KEY: ${{ github.event_name != 'pull_request' && secrets.PLAZCODE_RELEASE_SIGNING_KEY || '' }}
+        run: python development/1.24.28/package.py
+      - name: Install the complete Windows package with PowerShell 5.1
+        if: runner.os == 'Windows'
+        working-directory: build-src-1.24.28/PlazCode
+        run: python test-updater-package.py
+      - name: Windows Defender scan availability and result
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: build-src-1.24.28/PlazCode
+        run: |
+          try { $status=Get-MpComputerStatus -ErrorAction Stop } catch { 'Defender unavailable on this runner; no clean verdict claimed.' | Out-File defender-result.txt; exit 0 }
+          if (-not $status.AntivirusEnabled) { 'Defender not enabled on this runner; no clean verdict claimed.' | Out-File defender-result.txt; exit 0 }
+          $scanner=Get-ChildItem 'C:/ProgramData/Microsoft/Windows Defender/Platform/*/MpCmdRun.exe' | Sort-Object FullName | Select-Object -Last 1
+          if (-not $scanner) { throw 'Defender enabled but scanner unavailable.' }
+          $zip=Resolve-Path '../../artifacts/PlazCode-1.24.28-development.zip'
+          Get-FileHash $zip -Algorithm SHA256 | Format-List | Out-File defender-package-sha256.txt
+          Update-MpSignature -ErrorAction Stop
+          $status=Get-MpComputerStatus -ErrorAction Stop
+          Get-FileHash PlazCode.exe -Algorithm SHA256 | Format-List | Out-File defender-executable-sha256.txt
+          $status | Select-Object AMProductVersion,AMEngineVersion,AntivirusSignatureVersion,AntivirusSignatureLastUpdated | ConvertTo-Json | Out-File defender-engine.json
+          Expand-Archive $zip -DestinationPath defender-scan
+          & $scanner.FullName -Scan -ScanType 3 -File "$PWD/defender-scan" -DisableRemediation 2>&1 | Tee-Object defender-result.txt
+          if ($LASTEXITCODE -ne 0) { throw "Defender scan failed or reported a detection ($LASTEXITCODE)." }
+      - name: Build both macOS architectures
+        if: runner.os == 'macOS'
+        working-directory: build-src-1.24.28/PlazCode
+        run: |
+          rustup target add --toolchain stable x86_64-apple-darwin aarch64-apple-darwin
+          cargo +stable build --release --locked --manifest-path agent/Cargo.toml --target x86_64-apple-darwin
+          cargo +stable build --release --locked --manifest-path agent/Cargo.toml --target aarch64-apple-darwin
+          lipo -create agent/target/x86_64-apple-darwin/release/PlazCode agent/target/aarch64-apple-darwin/release/PlazCode -output agent/target/release/PlazCode
+      - name: Verify automatic launch and later update handoff
+        if: runner.os == 'macOS'
+        working-directory: build-src-1.24.28/PlazCode
+        run: |
+          python test-update-handoff.py
+      - name: Package fresh native artifacts
+        if: runner.os == 'macOS'
+        env:
+          PLAZCODE_RELEASE_SIGNING_KEY: ${{ github.event_name != 'pull_request' && secrets.PLAZCODE_RELEASE_SIGNING_KEY || '' }}
+        run: python development/1.24.28/package.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: plazcode-1.24.28-${{ runner.os }}-test-lean
+          path: |
+            artifacts/*-test-lean.zip
+            artifacts/*-test-lean.tar.gz
+          compression-level: 0
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: plazcode-1.24.28-${{ runner.os }}-validation
+          path: |
+            artifacts/*
+            build-src-1.24.28/PlazCode/windows-signature.txt
+            build-src-1.24.28/PlazCode/defender-result.txt
+            build-src-1.24.28/PlazCode/defender-package-sha256.txt
+            build-src-1.24.28/PlazCode/defender-engine.json
+            build-src-1.24.28/PlazCode/defender-executable-sha256.txt
+          if-no-files-found: warn

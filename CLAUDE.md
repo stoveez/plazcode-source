@@ -1,6 +1,6 @@
 # PlazCode private repo: instructions for any AI working here
 
-**Current development: 1.24.27 — replacement profile-picture/startup/update test builds delivered through Drive, source 38fd7d2 / green full CI 41085855952. Source is Private (verified 2026-10-30). Newer fix `5746f98` (fresh-window startup) has green CI 41092415126 but no zips yet. Latest published remains 1.24.26.** See `docs/NOW.md`.
+**Current development: 1.24.28 hotfix (updates that sometimes failed their safety check; Codex chat box). Latest published: 1.24.27 (2026-10-31).** See `docs/NOW.md`.
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.
@@ -51,10 +51,10 @@ Normal effort is fine for small fixes, packaging, release notes and questions.
 - When the version number changes (1.24.26, ...): `docs/vault/new-version-checklist.md` (every note naming 1.24.25 must be updated)
 - Build and tests, hash pins, CI: `docs/vault/build-and-tests.md`
 - Test builds and the zips: `docs/vault/test-builds.md`
-- Publishing a real update, which repo and which branch: `docs/vault/releasing.md` (steps), then read `publish-1.24.27.yml` and `development/1.24.27/promote.py` before the first real publish; release description wording and format: `docs/vault/release-format.md` (non-coder words, bold marks, under 2,000 characters)
+- Publishing a real update, which repo and which branch: `docs/vault/releasing.md` (steps), then read `publish-1.24.28.yml` and `development/1.24.28/promote.py` before the first real publish; release description wording and format: `docs/vault/release-format.md` (non-coder words, bold marks, under 2,000 characters)
 - Vault memory, desktop layout, guides, website: `docs/vault/vault-memory.md`, `docs/vault/app-and-guides.md`
 - Open bugs and not-yet-tested items: `docs/vault/open-work.md`; what is in the latest test zips: `docs/HANDOFF.md` section "What is in the latest test zips and what is NOT yet" (keep it up to date)
-- Remaining deferred plans (accounts, Skill Workshop, Brickwire; code protection shipped in 1.24.26): `development/1.24.26/`. Latest published: 1.24.26 (signed program/update checks and permanent approvals; see `docs/NOW.md`)
+- Remaining deferred plans (accounts, Skill Workshop, Brickwire; code protection shipped in 1.24.26): `development/1.24.26/`. Latest published: 1.24.27 (profiles, approval modes, faster tool calls; see `docs/NOW.md`)
 - Local Windows test-zip build with a CLI agent: `docs/HANDOFF.md`, "Option: build the test zip on the owner's own computer"
 
 ## How often to push (the owner's ideal rhythm)

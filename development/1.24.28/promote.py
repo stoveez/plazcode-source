@@ -1,0 +1,369 @@
+"""Promote only successful exact-source artifacts; never overwrite release archives."""
+from pathlib import Path
+import argparse,json,os,hashlib,shutil,re,zipfile,plistlib,struct,subprocess,tempfile
+ROOT=Path(__file__).resolve().parents[2]
+VERSION='1.24.28'
+# Keep the small validated archive helpers local; publication must not depend
+# on an older development script being present in a sparse checkout.
+def load(path):
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+def write_json(path,value):
+    Path(path).write_text(json.dumps(value,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
+
+def unpack(path):
+    with zipfile.ZipFile(path) as archive:
+        assert archive.testzip() is None
+        names=archive.namelist()
+        assert len(names)==len(set(names)), 'Duplicate archive paths'
+        assert all(not Path(n).is_absolute() and '..' not in Path(n).parts and '\\' not in n and not re.match(r'^[A-Za-z]:',n) for n in names), 'Unsafe archive path'
+        return {i.filename:(archive.read(i),i.external_attr) for i in archive.infolist() if not i.is_dir()}
+
+def firefox_text(files):
+    for name in ['manifest.json','FIREFOX-INSTALL.txt']:
+        raw,mode=files[name];files[name]=(raw.replace(b'\r\n',b'\n'),mode)
+    return files
+
+# Publication-only files are intentionally excluded: they can be added after
+# validation. Every preparation/packaging input, language catalog and validation
+# recipe must still match the successful source commit exactly.
+SOURCE_INPUTS=(
+    'development/1.24.28/overlay',
+    'development/1.24.28/prepare.py',
+    'development/1.24.28/package.py',
+    'development/1.24.28/protection.mjs',
+    'development/1.24.28/test-protection.mjs',
+    'development/1.24.28/test-protection-browser.mjs',
+    'development/1.24.28/test-release-verifier.mjs',
+    'development/1.24.28/build-locales.py',
+    'development/1.24.28/preferences-test',
+    'development/1.24.28/test-locales.py',
+    'development/1.24.28/test-prepare-overlay.py',
+    'development/1.24.28/test-package-size.py',
+    'development/1.24.28/test-starter-pack.py',
+    '.github/workflows/validate-1.24.28.yml',
+    'PlazCode-source-1.24.20.zip',
+    'PlazCode-1.23.0.zip',
+    'PlazCode-macOS-1.23.0.zip',
+)
+REQUIRED_JOBS={'browsers','native (ubuntu-latest)','native (windows-latest)','native (macos-latest)'}
+LANGUAGES={'en','es','fr','ru','ar','zh-CN','zh-TW','ja','ko','de','pt-BR','it','hi','tr','pl'}
+
+def verify_validation(run,jobs,sha,run_id,repository=None):
+    assert re.fullmatch(r'[0-9a-f]{40}',sha), 'Set VALIDATED_SHA to the exact successful source commit'
+    assert re.fullmatch(r'[1-9][0-9]*',str(run_id)), 'Set VALIDATION_RUN to the exact successful validation run'
+    assert str(run['id'])==str(run_id) and run['head_sha']==sha, 'Validation run/source mismatch'
+    assert run['path'].split('@',1)[0]=='.github/workflows/validate-1.24.28.yml', 'Wrong validation workflow'
+    if repository:assert run['repository']['full_name']==repository, 'Wrong validation repository'
+    assert run['status']=='completed' and run['conclusion']=='success', 'Validation must finish successfully'
+    rows=jobs['jobs']
+    bootstrap=[j for j in rows if j['name']=='bootstrap-integrity']
+    if bootstrap:
+        assert len(bootstrap)==1 and bootstrap[0]['status']=='completed' and bootstrap[0]['conclusion']=='skipped', 'Key-setup runs are not release validation'
+        rows=[j for j in rows if j['name']!='bootstrap-integrity']
+    assert len(rows)==4 and {j['name'] for j in rows}==REQUIRED_JOBS, 'Require browser and all three native jobs'
+    assert all(j['status']=='completed' and j['conclusion']=='success' for j in rows), 'No failed, cancelled, skipped or incomplete platform job is promotable'
+
+def verify_source_inputs(sha):
+    assert all((ROOT/path).exists() for path in SOURCE_INPUTS), 'A source preparation/package input is missing'
+    subprocess.run(['git','diff','--exit-code',sha,'--',*SOURCE_INPUTS],cwd=ROOT,check=True)
+    dirty=subprocess.check_output(['git','status','--porcelain','--untracked-files=all','--',*SOURCE_INPUTS],cwd=ROOT,text=True)
+    assert not dirty.strip(), 'Uncommitted source preparation/package inputs'
+
+def check_validation(directory):
+    base=os.environ['VALIDATED_SHA'];run_id=os.environ['VALIDATION_RUN']
+    verify_validation(load(directory/'run.json'),load(directory/'jobs.json'),base,run_id,os.environ.get('GITHUB_REPOSITORY'))
+    verify_source_inputs(base)
+
+def verify_overlay(source):
+    overlay=ROOT/'development/1.24.28/overlay'
+    for path in overlay.rglob('*'):
+        if path.is_file():
+            name='PlazCode/'+path.relative_to(overlay).as_posix()
+            raw=path.read_bytes()  # pictures and other binary files may contain CR LF bytes; compare them exactly, text files with line endings normalised
+            assert source[name][0] in (raw,raw.replace(b'\r\n',b'\n')), 'Source archive differs from validated overlay: '+name
+
+def verify_locales(files,prefix='PlazCode/core/'):
+    names={name[len(prefix+'locales/'):-5] for name in files if name.startswith(prefix+'locales/') and name.endswith('.json')}
+    assert names==LANGUAGES, 'All 15 language catalogs must be included'
+    english=json.loads(files[prefix+'locales/en.json'][0]);assert english
+    for code in LANGUAGES-{'en'}:
+        rows=json.loads(files[prefix+'locales/'+code+'.json'][0])
+        assert rows.keys()==english.keys() and all(isinstance(v,str) and v.strip() for v in rows.values()), code+' incomplete catalog'
+    assert files[prefix+'i18n-catalog.js'][0] and files[prefix+'i18n.js'][0]
+
+def verify_protected(files,platform):
+    pinned=(ROOT/'development/1.24.28/overlay/release-public-key.hex').read_text().strip()
+    assert re.fullmatch('[a-f0-9]{64}',pinned), 'Production signing key is not configured'
+    signed=json.loads(files['PlazCode/PlazCode-Extension/plazcode-installation-integrity.json'][0])
+    with tempfile.TemporaryDirectory(prefix='plazcode-promote-verify-') as directory:
+        root=Path(directory)/'PlazCode'
+        for name,(raw,_) in files.items():
+            target=Path(directory)/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(raw)
+        subprocess.run(['node',str(ROOT/'development/1.24.28/protection.mjs'),'verify',str(root),pinned],check=True)
+    payload=json.loads(signed['payload'])
+    assert payload['channel']=='release' and payload['version']==VERSION and payload['platform']==platform, 'Validation-key or mismatched package cannot be published'
+    report=json.loads(files['PlazCode/PlazCode-Extension/production-build.json'][0])
+    assert report['channel']=='release' and report['public_key']==pinned
+    return report
+
+def expected_source_hashes(relative,raw,public_key):
+    if relative=='protection.js':
+        # Packaging reads this template straight from the validated checkout;
+        # Windows checkout CRLF differs from prepare.py's canonical LF source.
+        raw=raw.replace(b'UNCONFIGURED_RELEASE_PUBLIC_KEY',public_key.encode(),1).replace(b'UNCONFIGURED_RELEASE_CHANNEL',b'release',1)
+        canonical=raw.replace(b'\r\n',b'\n')
+        return {hashlib.sha256(text).hexdigest() for text in (canonical,canonical.replace(b'\n',b'\r\n'))}
+    return {hashlib.sha256(raw).hexdigest()}
+
+def verify_shared_code(source,native_packages,firefox):
+    reports=[json.loads(files['PlazCode/PlazCode-Extension/production-build.json'][0]) for files in native_packages]
+    for name,(raw,_) in source.items():
+        relative=name.removeprefix('PlazCode/')
+        shared=relative.startswith(('core/','providers/')) or relative in {'background.js','protection.js','popup.js','popup.html','overlay.css','ollama-page.js'}
+        if not shared:continue
+        for files,report in zip(native_packages,reports):
+            for prefix in ['','PlazCode-Extension/','PlazCode-Extension-Firefox/']:
+                key=prefix+relative;actual=files['PlazCode/'+key][0]
+                if key in report['files']:
+                    row=report['files'][key]
+                    assert row['source_sha256'] in expected_source_hashes(relative,raw,report['public_key']), 'Obfuscation used different source: '+key
+                    assert row['sha256']==hashlib.sha256(actual).hexdigest(), 'Obfuscation report does not match package: '+key
+                else:assert actual==raw, 'Native/browser source mismatch: '+key
+        assert firefox[relative][0]==native_packages[0]['PlazCode/PlazCode-Extension-Firefox/'+relative][0], 'Standalone Firefox differs from protected native package'
+    for relative in ['launch_studio_mcp.py','launch_blender_mcp.py','blender_ops.py']:
+        for files in native_packages:assert files['PlazCode/'+relative][0]==source['PlazCode/'+relative][0]
+
+def verify_desktop(desktop,mac,package,sha,run_id):
+    assert len(desktop)==3 and {d['mode'] for d in desktop}=={'foreground','background','restore'}
+    for row in desktop:
+        assert row['desktop_ready'] and row['version']==VERSION and row['alive_seconds']>=15
+        assert row['window_visible']==(row['mode']!='background')
+        assert row['validated_sha']==sha and str(row['validation_run_id'])==str(run_id), 'Desktop tested a different source/run'
+        assert row['native_package_sha256']==hashlib.sha256(package.read_bytes()).hexdigest(), 'Desktop tested a different Mac ZIP'
+        assert row['native_binary_sha256']==hashlib.sha256(mac['PlazCode/PlazCode.app/Contents/MacOS/PlazCode'][0]).hexdigest(), 'Desktop tested a different native executable'
+    assert next(d for d in desktop if d['mode']=='foreground')['alive_seconds']>=210
+
+
+def pack(path,files):
+    assert not path.exists(),'Never overwrite published archives: '+str(path)
+    with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
+        for name,(data,mode) in sorted(files.items()):
+            info=zipfile.ZipInfo(name,(2026,10,15,0,0,0));info.external_attr=mode
+            archive.writestr(info,data,compress_type=zipfile.ZIP_DEFLATED,compresslevel=9)
+    with zipfile.ZipFile(path) as archive:assert archive.testzip() is None
+
+def validate(files, platform):
+    for manifest in ['manifest.json', 'PlazCode-Extension/manifest.json', 'PlazCode-Extension-Firefox/manifest.json']:
+        assert json.loads(files['PlazCode/'+manifest][0])['version'] == VERSION
+    for folder in ['core', 'providers']:
+        prefix = 'PlazCode/'+folder+'/'
+        for name, value in files.items():
+            if name.startswith(prefix):
+                assert files['PlazCode/PlazCode-Extension/'+name[len('PlazCode/'):]][0] == value[0], name
+    assert ('PlazCode/PlazCode.exe' in files) == (platform == 'windows')
+    if platform == 'windows':
+        assert files['PlazCode/PlazCode.exe'][0][:2] == b'MZ'
+    if platform == 'windows':
+        assert not any(n.startswith('PlazCode/PlazCode.app/') or n.endswith('.command') for n in files)
+    app = 'PlazCode/PlazCode.app/Contents/'
+    if platform == 'macos':
+        info = plistlib.loads(files[app+'Info.plist'][0])
+        assert info['CFBundleShortVersionString'] == VERSION
+        binary = files[app+'MacOS/PlazCode'][0]
+        assert binary[:4] == bytes.fromhex('cafebabe')
+        count = struct.unpack('>I', binary[4:8])[0]
+        assert {0x01000007, 0x0100000c}.issubset({struct.unpack('>I', binary[8+i*20:12+i*20])[0] for i in range(count)})
+        assert files[app+'MacOS/PlazCode'][1] >> 16 & 0o111
+    for name in files:
+        assert not any(part in {'node_modules','target','config.local.json','plazcode-settings.json','bridge-pairing.json','memory.json','chat-history.json'} for part in Path(name).parts), name
+        assert not name.endswith('.old.exe'), name
+
+def find(name,platform):
+    matches=list((ROOT/'ci-artifacts'/('plazcode-1.24.28-'+platform+'-validation')).rglob(name))
+    assert len(matches)==1,(name,matches)
+    return matches[0]
+
+def unpack_package(path):
+    files=unpack(path)
+    # Added text notices and the shell helper use canonical LF line endings.
+    # Preserve all supplied files, fonts and validated executable bytes.
+    notices=('starter-skills/syphodev/PLAZCODE-ADAPTER.md',
+             'starter-skills/syphodev/skills/roblox-ui/references/fonts/OFL.txt')
+    for name,(raw,mode) in files.items():
+        if name.endswith(notices) or name == 'PlazCode/Update-PlazCode.command':
+            files[name]=(raw.replace(b'\r\n',b'\n'),mode)
+        if name == 'PlazCode/Update-PlazCode.command':
+            # copy2 from the extracted source can replace the Mac baseline's
+            # executable mode with 0644. Restore only this known shell helper's
+            # execute bits; its verified contents and native binaries stay intact.
+            files[name]=(files[name][0],mode | (0o111 << 16))
+    return files
+
+def refresh_checksums(files,require_all=True):
+    name='PlazCode/SHA256SUMS.txt'
+    if name not in files:return
+    raw,mode=files[name];lines=[]
+    for line in raw.decode().splitlines():
+        if not line.strip():continue
+        _,relative=line.split(None,1);relative=relative.strip().lstrip('*');item='PlazCode/'+relative
+        if item not in files:
+            assert not require_all,item
+            continue
+        lines.append(hashlib.sha256(files[item][0]).hexdigest()+'  '+relative+'\n')
+    files[name]=(''.join(lines).encode(),mode)
+
+def retain_decoder_maps(evidence):
+    # CI artifacts expire. Keep authenticated ciphertext with the private release record,
+    # never in a public download/source archive; test real decryption outside the repo.
+    pinned=(ROOT/'development/1.24.28/overlay/release-public-key.hex').read_text().strip()
+    records=[]
+    for platform,osname in [('Windows','Windows'),('macOS','Darwin')]:
+        path=find(f'PlazCode-{VERSION}-{osname}-private-maps.encrypted.json',platform)
+        value=load(path)
+        assert set(value)=={'schema','public_key','nonce','tag','ciphertext'} and value['schema']==1 and value['public_key']==pinned, 'Wrong decoder archive trust/format'
+        assert re.fullmatch('[a-f0-9]{24}',value['nonce']) and re.fullmatch('[a-f0-9]{32}',value['tag']), 'Invalid decoder encryption metadata'
+        with tempfile.TemporaryDirectory(prefix='plazcode-private-decoder-check-') as temporary:
+            decoded=Path(temporary)/'maps'
+            subprocess.run(['node',str(ROOT/'development/1.24.28/protection.mjs'),'decrypt-maps',str(path),str(decoded)],check=True)
+            assert any(decoded.rglob('*.map')), 'Empty decoder archive'
+        target=evidence/path.name
+        assert not target.exists(), 'Never overwrite retained decoder maps'
+        shutil.copy2(path,target)
+        raw=target.read_bytes()
+        records.append({'platform':platform,'file':target.name,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()})
+    write_json(evidence/'private-decoder-maps.json',{'version':VERSION,'validated_sha':os.environ['VALIDATED_SHA'],'validation_run':os.environ['VALIDATION_RUN'],'files':records})
+
+def main():
+    check_validation(ROOT/'ci-artifacts')
+    base=os.environ['VALIDATED_SHA'];run=load(ROOT/'ci-artifacts/run.json')
+    windows=unpack_package(find('PlazCode-1.24.28-development.zip','Windows'));mac=unpack_package(find('PlazCode-macOS-1.24.28-development.zip','macOS'))
+    verify_protected(windows,'windows');verify_protected(mac,'macos')
+    for name,value in windows.items():
+        if name.startswith(('PlazCode/core/','PlazCode/providers/','PlazCode/PlazCode-Extension/')) and not name.endswith(('plazcode-installation-integrity.json','production-build.json','plazcode-bootstrap.json')):assert mac[name][0]==value[0],name
+    firefox=firefox_text(unpack_package(find('PlazCode-Firefox-1.24.28-development.zip','Windows')))
+    other=firefox_text(unpack_package(find('PlazCode-Firefox-1.24.28-development.zip','macOS')))
+    assert {n:v[0] for n,v in firefox.items()}=={n:v[0] for n,v in other.items()}
+    source=unpack_package(find('PlazCode-source-1.24.28-development.zip','macOS'));other=unpack_package(find('PlazCode-source-1.24.28-development.zip','Windows'))
+    for files in [source,other]:
+        for name in list(files):
+            if name.startswith('PlazCode/visual-checks/') or Path(name).name in {'windows-signature.txt','defender-result.txt','defender-package-sha256.txt','defender-engine.json','defender-executable-sha256.txt'}:del files[name]
+    assert {n:v[0] for n,v in source.items()}=={n:v[0] for n,v in other.items()}
+    # PLAZCODE_QUICK=1 (small fixes only, owner-approved) skips the separate Mac desktop test to save Actions minutes.
+    quick=os.environ.get('PLAZCODE_QUICK')=='1'
+    if not quick:
+        desktop_paths=list((ROOT/'ci-artifacts/mac-desktop').rglob('mac-desktop-result.json'));assert len(desktop_paths)==1,desktop_paths
+        desktop_path=desktop_paths[0]
+        desktop=load(desktop_path)
+        verify_desktop(desktop,mac,find('PlazCode-macOS-1.24.28-development.zip','macOS'),base,os.environ['VALIDATION_RUN'])
+    verify_overlay(source);verify_locales(source)
+    if not quick:
+        desktop_runs=list((ROOT/'ci-artifacts/mac-desktop').rglob('desktop-validation-run.json'));assert len(desktop_runs)==1
+        desktop_run=load(desktop_runs[0])
+        assert str(desktop_run['id'])==os.environ['GITHUB_RUN_ID'] and desktop_run['head_sha']==os.environ['GITHUB_SHA'], 'Desktop evidence belongs to another publication run'
+    native_bytes={name:value[0] for name,value in mac.items() if name.startswith('PlazCode/PlazCode.app/')}
+    windows_executable=windows['PlazCode/PlazCode.exe'][0]
+    entry=load(Path(__file__).with_name('release-entry.json'));assert entry['version']==VERSION
+    notes=[entry]+[n for n in load(ROOT/'release-notes.json') if n['version']!=VERSION]
+    write_json(ROOT/'release-notes.json',notes)
+    defender=find('defender-result.txt','Windows').read_text(encoding='utf-8-sig').strip();assert defender
+    # Bind the scan evidence to the actual Windows bytes promoted into the final ZIP.
+    scanned_package=find('defender-package-sha256.txt','Windows') if 'unavailable' not in defender.lower() and 'not enabled' not in defender.lower() else None
+    if scanned_package:
+        hashes=re.findall(r'\b[0-9A-Fa-f]{64}\b',scanned_package.read_text(encoding='utf-8-sig'))
+        assert hashlib.sha256(find('PlazCode-1.24.28-development.zip','Windows').read_bytes()).hexdigest() in [h.lower() for h in hashes]
+        hashes=re.findall(r'\b[0-9A-Fa-f]{64}\b',find('defender-executable-sha256.txt','Windows').read_text(encoding='utf-8-sig'))
+        assert hashlib.sha256(windows['PlazCode/PlazCode.exe'][0]).hexdigest() in [h.lower() for h in hashes]
+    validation=f'''PlazCode {VERSION} — exact-source platform/browser gates{' (quick mode: separate Mac desktop lifetime test skipped)' if quick else ' and packaged macOS desktop lifetime checks'} passed before promotion.
+Validated source: {base}
+Validation run: private build {run['id']}
+Changes: DeepSeek provider-level send serialization and completion-based 8–9.8 second pacing, including Creator/library calls. Existing permanent approvals, signed program/update checks and native integrity enforcement are retained. User skills, notes, settings and offline use remain available. No publisher signing or required account.
+All other features, safeguards and native launch/update behavior are retained. Final native executable and macOS app bytes are reused from validated development artifacts, not rebuilt during publication. Only release notices, checksums and package metadata change.
+Unit tests cover every check path; a browser fixture with the full production core and a mocked PlazCode app covers reconnect, closed app, dropped Studio connection, click-only chat connection and translation. Hosted browser fixtures use a mocked bridge.
+Windows binaries are unsigned. macOS uses ad-hoc signing and is not notarized.
+Microsoft Defender runner availability/result for the exact native artifact before release-notice assembly:
+{defender}
+Checksums and platform evidence are recorded in release-validation-{VERSION}.
+'''
+    notice=f'''PlazCode {VERSION}\nDownloads and updates: https://github.com/stoveez/PlazCode/releases\nThe source code for this version is not published.\n'''.encode()
+    common={'PlazCode/release-notes.json':((json.dumps(notes,indent=2,ensure_ascii=False)+'\n').encode(),0o100644<<16),'PlazCode/VALIDATION.txt':(validation.encode(),0o100644<<16),'PlazCode/SOURCE.txt':(notice,0o100644<<16),'PlazCode/PlazCode-Extension/SOURCE.txt':(notice,0o100644<<16)}
+    firefox['SOURCE.txt']=(notice,0o100644<<16)
+    for files in [windows,mac]:
+        for name in list(files):
+            if name.startswith('PlazCode/PlazCode-Extension-Firefox/') or name=='PlazCode/DEVELOPMENT.txt':del files[name]
+        for name,value in firefox.items():
+            relative=name.split('/',1)[1] if name.startswith('PlazCode-Extension-Firefox/') else name
+            files['PlazCode/PlazCode-Extension-Firefox/'+relative]=value
+        files.update(common)
+    # Separate feeds already supply the matching platform package. Windows must
+    # not download or install the two Mac memory helpers and universal Mac app.
+    assert not any(n.startswith('PlazCode/PlazCode.app/') or n.endswith('.command') for n in windows)
+    source.update(common);source['PlazCode/README.md']=(f"PlazCode {VERSION} — {entry['title']}\n\n{entry['summary']}\n".encode(),0o100644<<16)
+    # Notices differ from the private build; regenerate listed checksums without
+    # touching validated code or executables. Ultra references live once under
+    # PlazCode-Extension and are served by the shared native Skills API for all browsers.
+    # Ultra is the UltraLab pack in 1.24.28: its files live once under PlazCode-Extension/core/ultralab
+    # (and core/ultralab); each must reach both packages byte for byte.
+    ultra_prefix='PlazCode/PlazCode-Extension/core/ultralab/'
+    ultra=[n for n in source if n.startswith(ultra_prefix)]
+    assert len(ultra)>100,len(ultra)
+    for files in [windows,mac]:
+        for name in ultra:
+            assert files[name][0]==source[name][0],name
+        refresh_checksums(files)
+        assert b'pc-ultra-shine' in files['PlazCode/core/main.js'][0] or b'pc-ultra-label' in files['PlazCode/core/main.js'][0]
+        assert b'Deleted Skills' in files['PlazCode/core/skills-ui.js'][0]
+    refresh_checksums(source,require_all=False)
+    validate(windows,'windows');validate(mac,'macos')
+    verify_protected(windows,'windows');verify_protected(mac,'macos')
+    for files in [windows,mac]:verify_locales(files)
+    verify_shared_code(source,[windows,mac],firefox)
+    assert windows['PlazCode/PlazCode.exe'][0]==windows_executable, 'Native Windows bytes changed during promotion'
+    assert all(mac[name][0]==raw for name,raw in native_bytes.items()), 'Signed Mac app bytes changed during promotion'
+    for files in [windows,mac]:
+        for name,value in files.items():
+            if name.endswith('.command'):assert value[1]>>16&0o111,name
+    for name in source:assert not name.endswith('.exe') and '/target/' not in name and '/node_modules/' not in name,name
+    packages=[(f'PlazCode-{VERSION}.zip','windows',windows),(f'PlazCode-macOS-{VERSION}.zip','macos',mac),(f'PlazCode-source-{VERSION}.zip','source',source),(f'PlazCode-Firefox-{VERSION}.zip','firefox',firefox)]
+    metadata=[]
+    for name,platform,files in packages:
+        pack(ROOT/name,files);raw=(ROOT/name).read_bytes()
+        if platform in {'windows','macos'}:assert len(raw)<=64*1024*1024, 'Release exceeds the installed updater limit'
+        metadata.append({'file':name,'platform':platform,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()})
+    write_json(ROOT/'release-metadata.json',metadata);byplatform={m['platform']:m for m in metadata}
+    import sys
+    sys.path.insert(0,str(ROOT));from release_feed import compact_feed
+    for path,platform in [('latest.json','windows'),('latest-macos.json','macos')]:
+        feed=load(ROOT/path);feed.update(version=VERSION,desktop_version=VERSION,url='https://raw.githubusercontent.com/stoveez/PlazCode/main/'+byplatform[platform]['file'],sha256=byplatform[platform]['sha256'])
+        if platform=='windows':feed['platforms']['macos'].update(url='https://raw.githubusercontent.com/stoveez/PlazCode/main/'+byplatform['macos']['file'],sha256=byplatform['macos']['sha256'])
+        write_json(ROOT/path,compact_feed(feed,notes))
+        subprocess.run(['node',str(ROOT/'development/1.24.28/protection.mjs'),'sign-update',str(ROOT/path),platform],check=True)
+    import publish_release
+    _,body=publish_release.notes(load(ROOT/'latest.json'));(ROOT/f'release-description-{VERSION}.txt').write_text(body)
+    # 1.24.28: the public repo keeps its own short README; nothing is prepended here.
+    evidence=ROOT/f'release-validation-{VERSION}';evidence.mkdir(exist_ok=True)
+    retain_decoder_maps(evidence)
+    for name in ['run.json','jobs.json']:shutil.copy2(ROOT/'ci-artifacts'/name,evidence/name)
+    for name in ['defender-result.txt','defender-package-sha256.txt','defender-engine.json','defender-executable-sha256.txt','windows-signature.txt']:
+        matches=list((ROOT/'ci-artifacts/plazcode-1.24.28-Windows-validation').rglob(name))
+        if matches:shutil.copy2(matches[0],evidence/name)
+    if not quick:
+        shutil.copy2(desktop_path,evidence/'mac-desktop-result.json')
+        for name in ['desktop-validation-run.json','desktop-validation-jobs.json']:
+            matches=list((ROOT/'ci-artifacts/mac-desktop').rglob(name));assert len(matches)==1,matches
+            shutil.copy2(matches[0],evidence/name)
+    (evidence/'VALIDATION.txt').write_text(validation)
+    print(json.dumps(metadata,indent=2))
+if __name__=='__main__':
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--check-validation',action='store_true',help='Read-only exact-source and four-job validation gate')
+    args=parser.parse_args()
+    if args.check_validation:check_validation(ROOT/'ci-artifacts')
+    else:
+        try:main()
+        except BaseException as error:
+            # Surface the real failure as a GitHub annotation (hosted logs are not always readable).
+            import traceback
+            text=traceback.format_exc()[-1500:].replace('%','%25').replace('\r','').replace('\n','%0A')
+            print('::error title=promote failed::'+type(error).__name__+': '+str(error)[:300].replace('\n',' ')+'%0A'+text,flush=True)
+            raise
