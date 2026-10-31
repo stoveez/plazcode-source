@@ -211,7 +211,7 @@
     {
       name: "memory", engines: BOTH, aliases: ["project-memory", "notes", "handoff"],
       title: "the project memory: when to read it, how to create and update it",
-      must: ["PROJECT MEMORY", "READ IT WHEN THE WORK NEEDS IT", "KEEP IT UPDATED", "IF SOMETHING CONTRADICTS THE MEMORY", "NEVER PERSIST A GUESS AS A FACT", "PLAZCODE_MEMORY.md"],
+      must: ["PROJECT MEMORY", "PLAZCODE LOADS IT FOR YOU", "KEEP IT UPDATED", "IF SOMETHING CONTRADICTS THE MEMORY", "NEVER PERSIST A GUESS AS A FACT", "PLAZCODE_MEMORY.md"],
       build: s => cut(s.full(), "━━━ PROJECT MEMORY", "━━━ YOU CAN ACT DIRECTLY"),
     },
     {
@@ -394,11 +394,10 @@
       "- Act directly: run commands yourself rather than giving the user instructions; show code only if asked.",
       "- Final answers: one short plain-text sentence, no Markdown or fences, then stop. A greeting, thanks, question or command list is conversation, not a task: answer briefly, no checklist.",
       '- A multi-step task: call plazcode_checklist first and start that reply with "Goal: <at most 8 words>". Unclear scope: plazcode_clarify before changing anything.',
-      "- READ FAST: read code with read_scripts: many scripts per call (paths), every script under folders (folders:[\"ServerScriptService\"]) or the whole game (no params); follow its cursor for the next page. Use script_read only for the one script you are about to multi_edit.",
-      "- Memory: PlazCode sends your vault notes and the project memory (game.ServerStorage.RobloxScript.Memory, or PLAZCODE_MEMORY.md for local files) at the start of every chat; use them. Re-read the project memory after it changes.",
+      "- READ FAST: read_scripts reads many scripts/folders/the whole game per call; script_read only before multi_edit. Use the memory pages sent at start.",
       "- If the user names another app (Blender, Sketchfab...), run list_mcp_servers FIRST, before replying.",
       "",
-      "COMMANDS (parameters come from list_commands): read_scripts, execute_luau, multi_edit, script_read, inspect_instance, start_stop_play | ui_build, ui_set_*, ui_list_tree | lighting_*, fx_*, audio_*, terrain_*, camera_set_style, diagnostics_*, datastore_setup, remote_setup, teams_setup, npc_spawn_pathfinding, proximity_setup, tween_create, marketplace_setup, script_analysis | animation_*, motion_*, vfx_build | web_search, web_fetch, plazcode_screenshot, attach_feedback | plazcode_status, plazcode_debug, plazcode_agent, plazcode_checklist, plazcode_clarify, plazcode_skills | list_mcp_servers.",
+      "COMMANDS (parameters come from list_commands): execute_luau, multi_edit, script_read, inspect_instance, start_stop_play | ui_build, ui_set_*, ui_list_tree | lighting_*, fx_*, audio_*, terrain_*, camera_set_style, diagnostics_*, datastore_setup, remote_setup, teams_setup, npc_spawn_pathfinding, proximity_setup, tween_create, marketplace_setup, script_analysis | animation_*, motion_*, vfx_build | web_search, web_fetch, plazcode_screenshot, attach_feedback | plazcode_status, plazcode_debug, plazcode_agent, plazcode_checklist, plazcode_clarify, plazcode_skills | list_mcp_servers.",
       "",
       "HELP ON DEMAND: the rules above cover normal work. Only for detailed rules you lack (big UI, animation), call plazcode_help {topic} once (or {command:\"name\"}). Topics: luau, studio-gui (UI/HUD), animation, motion (VFX), studio-skills, play-mode, rules, memory, checklist, scope, mcp, creators, web, screenshots, blender, debug-agents, modes. An unknown topic returns the list.",
       "",
@@ -451,7 +450,7 @@
     roblox: Object.freeze([
       "list_commands", "list_mcp_servers", "PlazCode is ready.", "FORMATTING RULE (MANDATORY)", "###LUA###", "###END_LUA###", "###LUA:Server###", "###LUA:Client###",
       "ONE command block per reply", "NEVER HALLUCINATE a Studio", "PLAY-MODE RULE", "NEVER DELETE", "PERFECT CREATION", "UNDERSTAND THE REQUEST", "NEVER CLAIM THE BRIDGE",
-      "WaitForChild", "SYSTEM_STATE", "PROJECT MEMORY", "READ IT WHEN THE WORK NEEDS IT", "KEEP IT UPDATED", "IF SOMETHING CONTRADICTS THE MEMORY", "NEVER PERSIST A GUESS AS A FACT",
+      "WaitForChild", "SYSTEM_STATE", "PROJECT MEMORY", "PLAZCODE LOADS IT FOR YOU", "KEEP IT UPDATED", "IF SOMETHING CONTRADICTS THE MEMORY", "NEVER PERSIST A GUESS AS A FACT",
       "UNIVERSAL ROBLOX/LUAU ENGINEERING DOCTRINE", "SCOPE CONTAINMENT + EVIDENCE", "LIFECYCLE + RESOURCE OWNERSHIP", "NATIVE-FIRST ARCHITECTURE", "NATIVE-FIRST HOUSE STYLE",
       "CONFIGURATION SINGLE SOURCE", "SCRIPT ORGANIZATION + DECLARATION LOCALITY", "PRESENTATION DIVIDE", "VERSION + MEMORY HONESTY", "luau_guidance",
       "MOTION/VFX RULES", "motion_scan", "motion_bundle_copy", "STUDIO SKILLS & VIRTUAL TOOLS", "lighting_set_preset", "MODERN UI & HUD", "ui_build", "GUI MUTATION",

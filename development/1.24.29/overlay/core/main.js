@@ -5691,7 +5691,7 @@ return result`;
       // 1.24.29 (owner, 2026-10-31): the AI reads ALL its memory by default. PlazCode itself loads every vault note
       // (except saved chats and the archive) and the project memory, and sends them as acknowledged startup pages BEFORE
       // the final "PlazCode is ready." step, so the AI never has to run a command during the handshake.
-      const memoryStages = offline ? [] : await startupMemoryStages();
+      const memoryStages = offline || typeof startupMemoryStages !== "function" ? [] : await startupMemoryStages();
       if (!alive()) return;
       const stages = [...memoryStages, ...(P.startupFeedbackMessages ? P.startupFeedbackMessages(readyPrompt) : [{text:readyPrompt}])];
       let readyRes;

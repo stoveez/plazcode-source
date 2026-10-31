@@ -38,7 +38,7 @@ const flush = () => new Promise((r) => setTimeout(r, 20));
     assert.equal(box.wrap(frame).confirmed, undefined, "and only once");
   }
   // Wiring: refusal before Ask mode, prompt fails closed, frame forwarded, prefs synced, menu + app controls.
-  const gate = main.indexOf("if (safetySettings.readOnly && PlazCodeSafety.isChange(bareName, safetyEngine))");
+  const gate = main.indexOf("if (!trustedRead && safetySettings.readOnly && PlazCodeSafety.isChange(bareName, safetyEngine))"); // 1.24.29: PlazCode's own trusted reads skip it
   assert(gate > 0 && gate < main.indexOf('if (!deletes && permMode === "ask" && (ASK_OPS.has(bareName)'), "read-only and delete checks run before Ask mode");
   assert(main.includes('{kicker:"Safety", title:"Allow this delete?", failClosed:true,'));
   assert(!main.includes("resolve(!(opts && opts.failClosed))"), "a missing prompt never auto-allows anything");

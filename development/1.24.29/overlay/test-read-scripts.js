@@ -83,6 +83,6 @@ console.log("PASS trusted reads: only PlazCode's own read-only skills skip Read-
 // ── 4. The AI uses it by default. ─────────────────────────────────────────────────────────────────────────────
 const cfg = fs.readFileSync(dir + "/core/config.js", "utf8"), lean = fs.readFileSync(dir + "/core/lean-startup.js", "utf8");
 assert(/READ FAST: read code with read_scripts/.test(cfg) && /Never read scripts one by one with script_read/.test(cfg), "full startup prompt");
-assert(/- READ FAST: read code with read_scripts/.test(lean) && /COMMANDS \(parameters come from list_commands\): read_scripts, /.test(lean), "short startup prompt");
+assert(/- READ FAST: read_scripts reads many scripts\/folders\/the whole game per call; script_read only before multi_edit\. Use the memory pages sent at start\./.test(lean), "short startup prompt");
 assert(/script_read\|read_scripts\|script_search/.test(cfg), "counted as a read tool");
 console.log("PASS the startup prompts tell the AI to read with read_scripts by default");
