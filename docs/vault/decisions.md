@@ -1,9 +1,11 @@
 ---
 title: Decision log
-updated: 2026-10-28
+updated: 2026-10-31
 ---
 # Decisions (newest first)
 
+- **2026-10-31: always work in plan mode (owner).** Before any bug fix or update: inspect the code extensively, then form the best, most efficient plan for a near-perfect result, then change code. Written in [how-we-work](how-we-work.md) and `CLAUDE.md`/`AGENTS.md`.
+- **2026-10-31: code-protection hardening, scoped down (owner).** Owner chose: stronger CSP-safe extension hardening, moving prompts/rules into the app, safe Rust build settings, test build first as 1.24.30, updater untouched. Only the safe Rust build settings and extra tamper tests are being done now; the extension-code and prompt-move parts are on hold. Updater files must stay byte-identical to 1.24.29. Owner (2026-10-31): keep startup time and download size as low as possible, but protection has priority over both.
 - **2026-10-28: release 1.24.26 directly, no separate test-build delivery (owner).** Full permission to publish once production protection keys and all release gates are ready. Use the established release-note format. Owner authorized the assistant to manage the temporary public/private build window; current API tokens lack repository administration, so the owner made it public manually.
 
 - **2026-10-28: Approve all is permanent for that tool type (owner).** Remember across tasks, chats and AI sites in the existing extension-wide Safety list. Keep Remove/Remove all, Read-only and other permission boundaries; a plan approval itself remains task-specific.
