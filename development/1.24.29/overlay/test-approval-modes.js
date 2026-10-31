@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const policy=require('./core/approval.js'),safety=require('./core/safety.js');
+const decision=(mode,name,args={},engine='studio')=>policy.commandDecision(mode,name,args,engine,safety);
+for(const mode of ['ask','auto','bypass'])assert.equal(decision(mode,'read_file',{},'local'),'allow');
+for(const name of ['write_file','some_new_mutating_tool','set_property']){assert.equal(decision('ask',name),'ask');assert.equal(decision('auto',name),'allow');assert.equal(decision('bypass',name),'allow');}
+for(const [name,args,engine] of [['delete_path',{path:'old.txt'},'local'],['run_command',{command:'rm -rf old'},'local'],['roblox__delete_instance',{},'studio'],['execute_luau',{code:'workspace.Part:Destroy()'},'studio'],['execute_luau',{code:'workspace:ClearAllChildren()'},'studio'],['multi_edit',{edits:[{op:'delete'}]},'studio'],['execute_blender_code',{code:'bpy.ops.object.delete()'},'studio']]){assert.equal(decision('ask',name,args,engine),'ask');assert.equal(decision('auto',name,args,engine),'ask');assert.equal(decision('bypass',name,args,engine),'allow');}
+assert.equal(decision('auto','execute_luau',{code:'workspace.Part.Color=Color3.new(1,0,0)'}),'allow');assert.equal(decision('ask','execute_luau',{code:'workspace.Part.Color=Color3.new(1,0,0)'}),'ask');
+assert.equal(decision('invalid','write_file'),'ask');assert.equal(policy.normalizeMode('invalid'),'ask');assert.equal(policy.normalizeMode(undefined),'');assert.equal(policy.MODES.length,3);
+const main=fs.readFileSync('core/main.js','utf8'),background=fs.readFileSync('background.js','utf8'),desktop=fs.readFileSync('agent/src/desktop.html','utf8');assert(main.includes('id="rs-approval-mode"'));assert(background.includes('"rsApprovalMode"'));assert(desktop.includes('data-pref="rsApprovalMode"'));
+console.log('PASS approval policy: all edits in Ask; only detected removals in Approve for me; no command prompts in Bypass; safe legacy fallback and matching shared preference.');

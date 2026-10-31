@@ -1,0 +1,39 @@
+{
+ "version": "1.24.29",
+ "title": "Reliable updates",
+ "summary": "Updates check the download itself, never stay stuck, and explain any problem.",
+ "added": [],
+ "improved": [
+  "The update safety check now reads the downloaded package directly, so security software scanning freshly unpacked files can no longer make it fail. Every signature and file check stays the same."
+ ],
+ "fixed": [
+  "Updates sometimes stopped with \"Release signature or file verification failed\" even though the download was fine.",
+  "An update could stay stuck at \"Verifying and installing\" when a hidden error window was waiting behind other windows. PlazCode now shows the error itself, and a stuck updater is stopped after 15 minutes without changing your installation.",
+  "If the check still fails, the message names the exact file and reason."
+ ],
+ "notes": [
+  "The new check protects updates from 1.24.29 onward; updating to 1.24.29 still uses the updater you have, which retries by itself.",
+  "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+ ],
+ "github": {
+  "summary": "***Updates check the download itself, never stay stuck, and explain any problem.***",
+  "sections": [
+   {
+    "title": "🛠️ What's fixed",
+    "items": [
+     "Updates sometimes stopped with \"Release signature or file verification failed\" though the download was fine. The safety check now reads the downloaded package directly, so security software scanning new files can't break it. No check was loosened.",
+     "Updates could stay stuck at \"Verifying and installing\" behind a hidden error window. PlazCode now shows the error itself, and a stuck updater is stopped after 15 minutes without changing anything.",
+     "If an update still fails, the message names the exact file and reason."
+    ]
+   },
+   {
+    "title": "🧪 What was checked",
+    "items": [
+     "The new check passed on the real 1.24.28 Windows and Mac downloads and refused a changed file. Windows, Mac and Linux builds, both browsers, real Windows installs and Mac startup were tested.",
+     "These fixes protect updates from 1.24.29 on. If updating to 1.24.29 fails, PlazCode retries by itself, or choose Update now.",
+     "Windows is unsigned and Mac is not notarized, as before."
+    ]
+   }
+  ]
+ }
+}

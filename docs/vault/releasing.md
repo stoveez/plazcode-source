@@ -4,19 +4,19 @@ updated: 2026-10-28
 ---
 # Releasing
 
-**Current development 1.24.28 (hotfix; 1.24.27 published 2026-10-31):** owner designated the merged DeepSeek guard as the next update. Local source is prepared; full validation and publication are still pending. No new release is published. No app signing. Validate `claude/plazcode-dev`, pin its exact successful SHA/run in `publish-1.24.28.yml`, then publish from `release/1.24.28-publish`. Run the packaged Mac lifetime gate. Both automated source pushes rewrite NOW; after success the workflow attempts the owner-authorized Private restore. A 403 means the owner must restore visibility in GitHub settings. Publishing credentials never enter files/logs.
+**Current development 1.24.29 (hotfix; 1.24.28 published 2026-10-31):** owner designated the merged DeepSeek guard as the next update. Local source is prepared; full validation and publication are still pending. No new release is published. No app signing. Validate `claude/plazcode-dev`, pin its exact successful SHA/run in `publish-1.24.29.yml`, then publish from `release/1.24.29-publish`. Run the packaged Mac lifetime gate. Both automated source pushes rewrite NOW; after success the workflow attempts the owner-authorized Private restore. A 403 means the owner must restore visibility in GitHub settings. Publishing credentials never enter files/logs.
 
-Official releases live in the public repo `stoveez/PlazCode`, branch `main`: only zips and the feeds. They are prepared and published from the private repo, branch `release/1.24.28-publish`, by the workflow `publish-1.24.28.yml`. Nothing is rebuilt at publish time. Private `main` is the old line and is not used for releases.
+Official releases live in the public repo `stoveez/PlazCode`, branch `main`: only zips and the feeds. They are prepared and published from the private repo, branch `release/1.24.29-publish`, by the workflow `publish-1.24.29.yml`. Nothing is rebuilt at publish time. Private `main` is the old line and is not used for releases.
 
 ## Steps (walk the owner through them in plain words every time)
 1. Owner makes the repo public.
-2. Full validation (`validate-1.24.28.yml`) green on the exact final commit, on Windows, Mac and Linux, including the Mac desktop test and Firefox checks.
-3. Write the plain release notes in `development/1.24.28/release-entry.json` (under 2,000 characters). Put `VALIDATION_RUN` and `VALIDATED_SHA` in `publish-1.24.28.yml`. Dry run into `stoveez/plazcode-publish-test`; check the feeds, checksums and release page.
+2. Full validation (`validate-1.24.29.yml`) green on the exact final commit, on Windows, Mac and Linux, including the Mac desktop test and Firefox checks.
+3. Write the plain release notes in `development/1.24.29/release-entry.json` (under 2,000 characters). Put `VALIDATION_RUN` and `VALIDATED_SHA` in `publish-1.24.29.yml`. Dry run into `stoveez/plazcode-publish-test`; check the feeds, checksums and release page.
 4. Ask the owner for a clear yes to publish THAT exact update. Then set `PUBLIC_REPO` back to `stoveez/PlazCode` and start the workflow (secret `PUBLIC_REPO_TOKEN`; never print it).
 5. Verify the live `latest.json`, `latest-macos.json` and one download (version, link, sha256). An older installed copy must still update.
 6. Remind the owner to set the repo back to Private.
 
-Read `publish-1.24.28.yml` and `development/1.24.28/promote.py` before the first real publish. Moving work into `release/1.24.28-publish` needs the owner's clear yes. See also [owner-rules](owner-rules.md).
+Read `publish-1.24.29.yml` and `development/1.24.29/promote.py` before the first real publish. Moving work into `release/1.24.29-publish` needs the owner's clear yes. See also [owner-rules](owner-rules.md).
 
 ## Extra details
 - Release text must stay under 2,000 characters (checked once: about 1,360).
