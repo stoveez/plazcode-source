@@ -13,3 +13,6 @@ development/*/preferences-test/target/
 
 # Local account-service dependencies
 /account-service/node_modules/
+
+# Cargo output left by compiling inside an overlay (it broke the 1.24.28 promotion)
+development/*/overlay/agent/target/
