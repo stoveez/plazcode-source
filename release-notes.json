@@ -1,5 +1,67 @@
 [
   {
+    "version": "1.24.27",
+    "title": "Profiles, pictures and smoother tool calls",
+    "summary": "Sign in with your own profile, add a picture, pick how commands are approved, and enjoy faster, steadier tool calls.",
+    "added": [
+      "Themed profiles with JPEG, PNG or animated GIF pictures, remembered login, separate local data, and settings/private skills sync.",
+      "Choose Ask for approval, Approve for me, or Bypass approval in the bar and app Settings.",
+      "Native Linux app opens the PlazCode interface in your browser with the memory helper included.",
+      "DeepSeek's own tool-call format now runs instead of showing as raw text.",
+      "Every disconnect between the app and browser is now logged with a reason, to track down random drops."
+    ],
+    "improved": [],
+    "fixed": [
+      "Claude and other sites now run a command about 1 second after it finishes, not up to 12 seconds later. DeepSeek keeps its safe pacing.",
+      "Helper commands answer under their own name, so results are no longer mixed up; unknown-command errors name the closest real commands.",
+      "File sizes read correctly (16 GB no longer shows as TB). Needs the new app.",
+      "Bridge: no silent drops on status checks, and a failed check refuses one request instead of cutting the link.",
+      "The PlazCode bar and collapsed tab follow the current chat box; every effort choice stays reachable.",
+      "DeepSeek messages share one queue and wait 8–9.8 seconds from the last send finishing.",
+      "Mac recovers a bridge port held by an older PlazCode; failed settings saves keep their error visible.",
+      "Startup plays once with a smooth sign-in fade, checks protected files faster, and ahead-of-stable builds show no false update error."
+    ],
+    "notes": [
+      "Random bridge disconnects reported by one tester are not fully explained yet; the new logging should show the cause.",
+      "Linux automatic updates are not published yet; use complete native Linux downloads.",
+      "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+    ],
+    "github": {
+      "summary": "***Your own profile and picture, approval choices, and faster, steadier tool calls.***",
+      "sections": [
+        {
+          "title": "✨ What's new",
+          "items": [
+            "Profiles with JPEG, PNG or animated GIF pictures, remembered login, and settings/private skills that sync. Files, memory and access stay local.",
+            "Pick Ask, Approve for me or Bypass approval in the bar or Settings.",
+            "Native Linux app opens in your browser.",
+            "DeepSeek's own tool-call format now runs.",
+            "Disconnects are logged with a reason."
+          ]
+        },
+        {
+          "title": "🛠️ What's fixed",
+          "items": [
+            "Claude and most sites run a command about 1 second after it finishes, not up to 12 (DeepSeek keeps safe pacing).",
+            "Helper results carry their own names; unknown-command errors suggest real ones; file sizes no longer show TB.",
+            "The bridge no longer drops silently on status checks.",
+            "The bar follows your chat box; every effort option stays reachable.",
+            "DeepSeek sends share one queue, 8–9.8 seconds apart.",
+            "Mac recovers a stuck port; startup plays once and checks faster."
+          ]
+        },
+        {
+          "title": "🧪 What was checked",
+          "items": [
+            "Windows, Mac and Linux builds, both browsers, updates and Mac startup passed on practice pages. Live AI speed and real accounts were not tested.",
+            "Random disconnects from one tester are not fully explained yet.",
+            "Windows is unsigned and Mac is not notarized, as before."
+          ]
+        }
+      ]
+    }
+  },
+  {
     "version": "1.24.26",
     "title": "Remembered approvals and protected program files",
     "summary": "Approve all remembers your choice across tasks, chats and AI sites. Program files and future updates are checked for changes automatically.",

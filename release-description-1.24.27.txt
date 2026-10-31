@@ -1,0 +1,28 @@
+✨ **PlazCode 1.24.27**
+***Your own profile and picture, approval choices, and faster, steadier tool calls.***
+
+***✨ What's new***
+- Profiles with JPEG, PNG or animated GIF pictures, remembered login, and settings/private skills that sync. Files, memory and access stay local.
+- Pick Ask, Approve for me or Bypass approval in the bar or Settings.
+- Native Linux app opens in your browser.
+- DeepSeek's own tool-call format now runs.
+- Disconnects are logged with a reason.
+
+***🛠️ What's fixed***
+- Claude and most sites run a command about 1 second after it finishes, not up to 12 (DeepSeek keeps safe pacing).
+- Helper results carry their own names; unknown-command errors suggest real ones; file sizes no longer show TB.
+- The bridge no longer drops silently on status checks.
+- The bar follows your chat box; every effort option stays reachable.
+- DeepSeek sends share one queue, 8–9.8 seconds apart.
+- Mac recovers a stuck port; startup plays once and checks faster.
+
+***🧪 What was checked***
+- Windows, Mac and Linux builds, both browsers, updates and Mac startup passed on practice pages. Live AI speed and real accounts were not tested.
+- Random disconnects from one tester are not fully explained yet.
+- Windows is unsigned and Mac is not notarized, as before.
+
+***📥 How to update***
+- Open PlazCode, or choose Updates → Update now.
+- Manual downloads: PlazCode-1.24.27.zip for Windows, PlazCode-macOS-1.24.27.zip for Mac, or PlazCode-Firefox-1.24.27.zip for Firefox.
+- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
+- Your settings, memory and connections are kept.

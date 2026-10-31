@@ -1,9 +1,71 @@
 {
-  "version": "1.24.26",
-  "desktop_version": "1.24.26",
-  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.26.zip",
-  "sha256": "75587d4ec1ae259068758fd49ccc86558f5139045f1e1fa7b6808da2fc819ff9",
+  "version": "1.24.27",
+  "desktop_version": "1.24.27",
+  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.27.zip",
+  "sha256": "7bee0f55b2fe825dbea42bb195cfa1d628d2c1003aa200a92fc3d3212484c28d",
   "release_notes": [
+    {
+      "version": "1.24.27",
+      "title": "Profiles, pictures and smoother tool calls",
+      "summary": "Sign in with your own profile, add a picture, pick how commands are approved, and enjoy faster, steadier tool calls.",
+      "added": [
+        "Themed profiles with JPEG, PNG or animated GIF pictures, remembered login, separate local data, and settings/private skills sync.",
+        "Choose Ask for approval, Approve for me, or Bypass approval in the bar and app Settings.",
+        "Native Linux app opens the PlazCode interface in your browser with the memory helper included.",
+        "DeepSeek's own tool-call format now runs instead of showing as raw text.",
+        "Every disconnect between the app and browser is now logged with a reason, to track down random drops."
+      ],
+      "improved": [],
+      "fixed": [
+        "Claude and other sites now run a command about 1 second after it finishes, not up to 12 seconds later. DeepSeek keeps its safe pacing.",
+        "Helper commands answer under their own name, so results are no longer mixed up; unknown-command errors name the closest real commands.",
+        "File sizes read correctly (16 GB no longer shows as TB). Needs the new app.",
+        "Bridge: no silent drops on status checks, and a failed check refuses one request instead of cutting the link.",
+        "The PlazCode bar and collapsed tab follow the current chat box; every effort choice stays reachable.",
+        "DeepSeek messages share one queue and wait 8–9.8 seconds from the last send finishing.",
+        "Mac recovers a bridge port held by an older PlazCode; failed settings saves keep their error visible.",
+        "Startup plays once with a smooth sign-in fade, checks protected files faster, and ahead-of-stable builds show no false update error."
+      ],
+      "notes": [
+        "Random bridge disconnects reported by one tester are not fully explained yet; the new logging should show the cause.",
+        "Linux automatic updates are not published yet; use complete native Linux downloads.",
+        "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***Your own profile and picture, approval choices, and faster, steadier tool calls.***",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "Profiles with JPEG, PNG or animated GIF pictures, remembered login, and settings/private skills that sync. Files, memory and access stay local.",
+              "Pick Ask, Approve for me or Bypass approval in the bar or Settings.",
+              "Native Linux app opens in your browser.",
+              "DeepSeek's own tool-call format now runs.",
+              "Disconnects are logged with a reason."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Claude and most sites run a command about 1 second after it finishes, not up to 12 (DeepSeek keeps safe pacing).",
+              "Helper results carry their own names; unknown-command errors suggest real ones; file sizes no longer show TB.",
+              "The bridge no longer drops silently on status checks.",
+              "The bar follows your chat box; every effort option stays reachable.",
+              "DeepSeek sends share one queue, 8–9.8 seconds apart.",
+              "Mac recovers a stuck port; startup plays once and checks faster."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Windows, Mac and Linux builds, both browsers, updates and Mac startup passed on practice pages. Live AI speed and real accounts were not tested.",
+              "Random disconnects from one tester are not fully explained yet.",
+              "Windows is unsigned and Mac is not notarized, as before."
+            ]
+          }
+        ]
+      }
+    },
     {
       "version": "1.24.26",
       "title": "Remembered approvals and protected program files",
@@ -186,66 +248,16 @@
           }
         ]
       }
-    },
-    {
-      "version": "1.24.19",
-      "title": "Polish and shared reply recovery",
-      "summary": "Adds Polish throughout the PlazCode interface and improves shared reply recovery across verified assistant remounts, with ownership checks before tool dispatch.",
-      "added": [
-        "Polski — Polish in desktop, extension bar and popup language settings, with all 877 interface strings translated.",
-        "Fifteen searchable offline language choices; English remains the default and user-authored content is not translated."
-      ],
-      "improved": [
-        "Carry the exact parsed assistant text into dispatch bookkeeping when a verified reply is temporarily blank or remounted.",
-        "Explain unreadable replies accurately and direct stopped-loop recovery to Start or Restart in the PlazCode bar."
-      ],
-      "fixed": [
-        "Keep same-turn reply evidence only with unchanged fresh identity and conversation/send/session ownership; discard evidence when a node is reused for another turn.",
-        "Recheck reply ownership after visibility waits before dispatch. Pause without dispatching that reply if ownership cannot be verified."
-      ],
-      "notes": [
-        "Publication requires exact-source browser and Linux/Windows/macOS validation plus actual packaged Mac desktop lifetime, visibility and updater-relaunch checks.",
-        "Recovery evidence uses local unit/offline browser fixtures, including the real Claude reader and asynchronous loop handoffs. The affected live Claude account, real Studio projects and Microsoft Edge binary were not tested. Provider identity fallbacks remain a limitation; this is not a comprehensive no-replay guarantee.",
-        "Windows binaries are unsigned. The Mac app is ad-hoc signed, not notarized. Validated native bytes are reused without rebuilding during promotion."
-      ],
-      "github": {
-        "summary": "Polish joins the offline interface languages, and the shared reply loop handles verified remounts more reliably without borrowing another turn’s command.",
-        "sections": [
-          {
-            "title": "🌐 Polish interface",
-            "items": [
-              "Polski — Polish across desktop, bar and popup: 877 translated interface strings, searchable by name or code.",
-              "Fifteen offline language choices. English stays default; AI replies, prompts, code and tool arguments are unchanged."
-            ]
-          },
-          {
-            "title": "🛠️ Shared reply recovery",
-            "items": [
-              "Retain exact assistant evidence across verified same-turn remounts; clear it on changed turn/chat/send/session identity.",
-              "Check ownership again after visibility waits and before tool dispatch; pause if it cannot be verified.",
-              "Clearer stopped-loop instructions point to Start or Restart in the PlazCode bar. Existing ClickUp, Studio, Blender, Ultra and skill features remain."
-            ]
-          },
-          {
-            "title": "🧪 Validation and limits",
-            "items": [
-              "Exact-source platform/browser checks and actual packaged Mac lifetime/update-relaunch gates are required. Validated native bytes are reused.",
-              "Offline/unit fixtures include the real Claude reader and async loop handoffs, not the affected live account. Real Studio projects and the Edge binary were not tested; unreliable provider identities remain a limitation.",
-              "Windows unsigned; Mac ad-hoc signed, not notarized. GitHub provenance does not replace platform signing."
-            ]
-          }
-        ]
-      }
     }
   ],
   "platforms": {
     "macos": {
-      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.26.zip",
-      "sha256": "7490816b3873b01bb842f21cc9b43e56d1ed17984dd5e1924eebf218f344fac1"
+      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.27.zip",
+      "sha256": "065a7c544e11e48ad7dc8ae7c468d53a67c270407a07c9fba8d6a8ea2ce3c70a"
     }
   },
   "security": {
-    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.26\",\"platform\":\"windows\",\"sha256\":\"75587d4ec1ae259068758fd49ccc86558f5139045f1e1fa7b6808da2fc819ff9\"}",
-    "signature": "7c0a72821db12cfe0bd7da8ebb41f142353df5d301bf5dde7db64e225268d56255b44dc21cdfdd60fee0dd649a86f45983098be028be3b55831cc02c1dec350c"
+    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.27\",\"platform\":\"windows\",\"sha256\":\"7bee0f55b2fe825dbea42bb195cfa1d628d2c1003aa200a92fc3d3212484c28d\"}",
+    "signature": "cfb0b95a8dab6f5e54fff548e79a4a665fbacd27f971ae418412f007894d7a4bb0643b7451ec8e74c2963d7df5958ba22e993b682d53049d52fd0e304bd90108"
   }
 }
