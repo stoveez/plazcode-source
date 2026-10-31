@@ -319,13 +319,35 @@ fn clip(text: &str, limit: usize) -> String {
     format!("{}\n... [output truncated at {limit} characters]", &text[..cut])
 }
 
+// 1.24.27: the old loop never divided by 1024, so anything of 1 KB or more was
+// printed as its raw byte count labelled "TB" (16 GB of memory read
+// "17179869184.0 TB"). Divide once per step.
 fn human_size(n: f64) -> String {
-    for unit in ["B", "KB", "MB", "GB", "TB"] {
-        if n < 1024.0 || unit == "TB" {
-            return if unit == "B" { format!("{n} B") } else { format!("{n:.1} {unit}") };
-        }
+    let mut value = if n.is_finite() && n > 0.0 { n } else { 0.0 };
+    let units = ["B", "KB", "MB", "GB", "TB"];
+    let mut index = 0;
+    while value >= 1024.0 && index + 1 < units.len() {
+        value /= 1024.0;
+        index += 1;
     }
-    format!("{n} B")
+    if index == 0 { format!("{} B", value as u64) } else { format!("{value:.1} {}", units[index]) }
+}
+
+#[cfg(test)]
+mod human_size_tests {
+    use super::human_size;
+    #[test]
+    fn sizes_use_the_right_unit() {
+        assert_eq!(human_size(0.0), "0 B");
+        assert_eq!(human_size(512.0), "512 B");
+        assert_eq!(human_size(1023.0), "1023 B");
+        assert_eq!(human_size(1024.0), "1.0 KB");
+        assert_eq!(human_size(1536.0), "1.5 KB");
+        assert_eq!(human_size(5.0 * 1024.0 * 1024.0), "5.0 MB");
+        assert_eq!(human_size(17179869184.0), "16.0 GB");
+        assert_eq!(human_size(2.0 * 1024f64.powi(4)), "2.0 TB");
+        assert_eq!(human_size(3.0 * 1024f64.powi(5)), "3072.0 TB");
+    }
 }
 
 async fn read_text(path: &Path) -> Result<(String, bool), String> {

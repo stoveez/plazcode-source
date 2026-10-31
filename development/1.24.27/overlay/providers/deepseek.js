@@ -1058,8 +1058,15 @@ const RSProvider = (() => {
   // insert the chip: {parent, ref} - or null if no tool block was found.
   function findToolBlockSpot(item, chip) {
     const P = RSParse;
-    const hasStart = (t) => P.LUA_START_RE.test(t) || t.includes("###mcp_tool###");
-    const hasEnd = (t) => P.LUA_END_RE.test(t) || t.includes("###end_mcp_tool###") || t.includes("###end-mcp_tool###");
+    // DeepSeek's own DSML tool-call markup (1.24.27) is hidden the same way; its
+    // block ends at the wrapper closer, or at the invoke closer when unwrapped.
+    const BAR = "[\\s|\\uFF5C\\u2502\\u2223\\u01C0]*";
+    const dsmlEnd = new RegExp("<\\s*\\/" + BAR + "dsml" + BAR + "(?:[a-z_]*calls|invoke)\\s*>", "i");
+    const dsmlWrapStart = new RegExp("<\\s*" + BAR + "dsml" + BAR + "[a-z_]*calls", "i");
+    const dsmlWrapEnd = new RegExp("<\\s*\\/" + BAR + "dsml" + BAR + "[a-z_]*calls\\s*>", "i");
+    const dsmlStart = (t) => !!(P.DSML_SIG_RE && P.DSML_SIG_RE.test(t));
+    const hasStart = (t) => P.LUA_START_RE.test(t) || t.includes("###mcp_tool###") || dsmlStart(t);
+    const hasEnd = (t) => P.LUA_END_RE.test(t) || t.includes("###end_mcp_tool###") || t.includes("###end-mcp_tool###") || dsmlEnd.test(t);
     const isJson = (t) => /\{\s*"(?:command|tool)"\s*:/.test(t);
     // The reply markdown containers (never the reasoning/think area).
     const containers = [...safeQueryAll(item, S.markdown)].filter((m) => !safeClosest(m, S.thinking));
@@ -1076,13 +1083,15 @@ const RSProvider = (() => {
         // Found the start of a tool block. Hide this child…
         const runStart = i;
         let runEnd = i;
-        if (startsBlock && !hasEnd(tLow)) {
+        // A wrapped DSML call ends at its wrapper closer, not at the first invoke closer.
+        const endOf = dsmlWrapStart.test(tLow) ? (t) => dsmlWrapEnd.test(t) : hasEnd;
+        if (startsBlock && !endOf(tLow)) {
           // multi-element LUA/MCP block → extend until the end marker (or, if the
           // turn is still truncated, to the end of this container).
           let j = i + 1;
           runEnd = -1;
           for (; j < kids.length; j++) {
-            if (hasEnd((safeRead(() => kids[j].textContent, "") || "").toLowerCase())) { runEnd = j; break; }
+            if (endOf((safeRead(() => kids[j].textContent, "") || "").toLowerCase())) { runEnd = j; break; }
           }
         }
         if (runEnd < runStart) { i++; continue; }

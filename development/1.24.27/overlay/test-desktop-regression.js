@@ -2,7 +2,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 
 const baseline = {
-  "core/agent_skills.js": "86e63d2ecefeafd586744411650cb446c0db2a5f",
+  "core/agent_skills.js": "a264c3e24440ef2c1a64557d941eb2cd43bc4101",
   "core/animlib.js": "420ea8eb69637b27ca9856b974d44181e57d3420",
   "core/config.js": "899272a13417569d45a6c63d10ba28152d29e55e",
   "core/headless-builder.js": "b343a897a17fc05d79ab469aeea55c8abaa8c4e5",
@@ -11,7 +11,7 @@ const baseline = {
   "core/motion-interchange.js": "038afa13a5b59c030a809abf7d617a36f2fae82d",
   "core/motion-preview.js": "ae0ab0526fbc762dfbf7cae9c248239e217e7a2f",
   "core/motion-tools.js": "8ac81b4a4a9f634fef9285aeee06db4a15af578e",
-  "core/parser.js": "0c07fb4907aaa4550b04af6a5ca15def24212955",
+  "core/parser.js": "3a5d0febfb696e645054edbcc128dac2d9043bc7",
   "core/studio_daily.js": "56632a6bd1a81ddeded243ff9d740e4b75a4fa34",
   "core/studio_gui.js": "726793b63c24b3fd128be60e6f3fb98e60a19243",
   "core/studio_plus.js": "c149c47cc7d178e3aa87f39539cc3c1420bff065",
@@ -23,7 +23,7 @@ const baseline = {
   "providers/copilot.js": "2f0bd280402a94578a249baa7731b235a3d8a712",
   "providers/crax-net.js": "a3c1bfb62a62594a2d6eef3615f66d4aa53b9157",
   "providers/crax.js": "501518b20c4b609d8230181eab1ddb6c77e5e852",
-  "providers/deepseek.js": "8dd9cba4f0bab594b7f61302fa20416baf02e5d9",
+  "providers/deepseek.js": "18c2bb3d24e36409e05a1ee04704df1f2b91398a",
   "providers/freebuff.js": "5dc322640adc748445917ded11bf75fef10e9917",
   "providers/gemini.js": "c7882ad7133928cdeacb6d3026ce0fd203c61460",
   "providers/glm.js": "5791b81c089f12ac0022654569d7920bbf0412c5",
