@@ -1,7 +1,8 @@
 # NOW
-Updated: 2026-10-31. Branch `claude/plazcode-dev`; no helper agents.
+Updated: 2026-10-31 (after 1.24.29). Branch `claude/plazcode-dev`; no helper agents.
 
-**1.24.29 HOTFIX in progress (owner, 2026-10-31: "updater still having issues and sometimes gets stuck"; full permission to release when done).**
+**PUBLISHED 1.24.29 (2026-10-31)**: validated source `031b800` / CI 41228437428, publish run 41230160364 (all green, packaged Mac gate). Live feeds say 1.24.29; downloaded Windows/Mac zips match the feed sha256, contain read_scripts, no build caches. Release notes 1,653 characters. Owner must restore Private.
+**What 1.24.29 contains** (owner asked: updater fixes, menus, fast reading, memory by default):
 - Testers still saw "Release signature or file verification failed" (those screenshots were updates TO 1.24.28, run by the old updater, so 1.24.28's retry could not apply). All deterministic causes ruled out: published zips verify under the old key and code, no non-ASCII names, no case clashes, paths under 260, test builds use the production key. Fix: the trusted installed exe checks the downloaded ZIP itself (`--verify-package-zip`, `integrity::verify_zip_with`), same signature/version/platform/channel and per-file size+SHA-256, no unpacked Temp files read; refuses links, duplicates (also by case), encryption, ZIP64. Proven on the real published 1.24.28 Windows and Mac zips (opt-in test `PLAZCODE_TEST_RELEASE_ZIPS`).
 - Stuck at "Verifying and installing": a modal MessageBox from the hidden updater kept the app waiting (shown behind windows). Removed for app-launched runs; each check limited to 2 min; the app stops a helper still running after 15 min (the helper closes the app before changing any file, so nothing is changed) - `updater::wait_for_helper`.
 - New Windows CI cases in `test-updater-package.py`: real signed check on PowerShell 5.1 passes; a zip with one changed file is refused, names it, install unchanged.

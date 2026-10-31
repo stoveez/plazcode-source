@@ -1,6 +1,6 @@
 # AGENTS.md - instructions for any AI working in this repo (Codex, Claude, or others)
 
-**Current development: 1.24.29 hotfix (updates check the downloaded ZIP; no stuck updates). Latest published: 1.24.28 (2026-10-31).** See `docs/NOW.md`.
+**Current development: none open. Latest published: 1.24.29 (2026-10-31: fast read_scripts, memory loaded at chat start, Studio Skills compile again, reliable updates).** See `docs/NOW.md`.
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.
@@ -50,7 +50,7 @@ The owner does not want to forget this step of the public-then-private plan. Rem
 - Publishing a real update, which repo and branch holds releases: `docs/vault/releasing.md` (then read `publish-1.24.29.yml` and `development/1.24.29/promote.py` before the first real publish); release description wording and format: `docs/vault/release-format.md` (non-coder words, bold marks, under 2,000 characters)
 - Open bugs: `docs/vault/open-work.md`; what is in the latest test zips: `docs/HANDOFF.md`
 - Local Windows test-zip build with a CLI agent: `docs/HANDOFF.md`, "Option: build the test zip on the owner's own computer"
-- Remaining deferred plans (accounts, Skill Workshop, Brickwire; code protection shipped in 1.24.26): `development/1.24.26/`. Latest published: 1.24.28 (update retry and Codex fixes; see `docs/NOW.md`)
+- Remaining deferred plans (accounts, Skill Workshop, Brickwire; code protection shipped in 1.24.26): `development/1.24.26/`. Latest published: 1.24.29 (see `docs/NOW.md`)
 
 ## Effort
 Use maximum care (high reasoning effort) for the license and login server, the Luau helper library and build self-checks, hard bug hunts (for example the Notion send problem) and the planning of big features. Do this work yourself; never hand it to a helper agent or subagent (owner, 2026-10-25).
