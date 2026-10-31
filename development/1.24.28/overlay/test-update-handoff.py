@@ -28,8 +28,8 @@ manifest=root/'agent/Cargo.toml';lock=root/'agent/Cargo.lock'
 original={p:p.read_bytes() for p in [*paths,manifest,lock]}
 try:
  for p,text in paths.items():p.write_text(text,encoding='utf-8',newline='\n')
- text=manifest.read_text();text,count=re.subn(r'(?m)^version = "1\.24\.27"$', 'version = "'+published+'"',text,count=1);assert count==1;manifest.write_text(text)
- text=lock.read_text();text,count=re.subn(r'(name = "plazcode-agent"\nversion = ")1\.24\.27(")',lambda m:m[1]+published+m[2],text,count=1);assert count==1;lock.write_text(text)
+ text=manifest.read_text();text,count=re.subn(r'(?m)^version = "1\.24\.28"$', 'version = "'+published+'"',text,count=1);assert count==1;manifest.write_text(text)
+ text=lock.read_text();text,count=re.subn(r'(name = "plazcode-agent"\nversion = ")1\.24\.28(")',lambda m:m[1]+published+m[2],text,count=1);assert count==1;lock.write_text(text)
  subprocess.run(['cargo','+stable','build','--locked','--manifest-path','agent/Cargo.toml'],cwd=root,check=True)
  env={**os.environ,'PLAZCODE_TEST_BINARY':str(root/'agent/target/debug'/('PlazCode.exe' if os.name=='nt' else 'PlazCode'))}
  if os.name=='nt':env['PSExecutionPolicyPreference']='Restricted'
