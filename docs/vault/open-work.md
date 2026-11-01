@@ -151,3 +151,6 @@ All current follow-ups are in replacement source 38fd7d2 / CI 41085855952, deliv
 
 ## Fresh-window startup replay follow-up (2026-10-30)
 Replay corrected for fresh locked context; actual account changes retain isolation reload. Intro waits for native ready/visible paint and desktop stays hidden underneath. Owner explicitly chose full preview animations even with Windows effects off. Actual compiled frontend recording delivered via Drive, fresh Linux/native-ready UI checks passed; full replacement platform builds pending. Native dark shell opens before WebView setup, loopback connect limit 150ms; original Windows startup timing unmeasured. Delivered 38fd7d2 ZIPs lack this follow-up. See startup-performance.md.
+
+## Anti-copy implementation authorized (2026-10-31)
+Owner requested implementing anti-copy-plan.md. Inspected existing protection, packaging, CI and promotion. Planned compatibility: signed core variant record, unchanged manifest schema and updaters; derived per-version variant from existing release key. No code implemented yet. Luau analysis request is additional; stage/policy/version answers pending.
