@@ -33,7 +33,7 @@ fn open_with_seed(raw:&[u8],version:&str,seed:&[u8;32])->Result<Vec<u8>> {
     let sealer=LessSafeKey::new(UnboundKey::new(&AES_256_GCM,&key).map_err(|_|anyhow::anyhow!("Invalid pack key"))?);
     let aad=[magic.as_slice(),pad].concat();let mut body=[body,tag].concat();
     let plain=sealer.open_in_place(nonce,Aad::from(&aad),&mut body).map_err(|_|anyhow::anyhow!("Text pack release verification failed"))?;
-    let mut json=Vec::new();flate2::read::GzDecoder::new(plain).take(MAX_OPEN+1).read_to_end(&mut json)?;
+    let mut json=Vec::new();flate2::read::GzDecoder::new(&plain[..]).take(MAX_OPEN+1).read_to_end(&mut json)?;
     ensure!(json.len() as u64<=MAX_OPEN,"Text pack is too large");
     let value:serde_json::Value=serde_json::from_slice(&json).context("Invalid text pack contents")?;
     ensure!(value.as_object().is_some_and(|map|!map.is_empty()),"Empty text pack");Ok(json)
