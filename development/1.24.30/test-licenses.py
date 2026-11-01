@@ -1,6 +1,6 @@
 """Check prospective first-party terms and unchanged dependency notices."""
 from pathlib import Path
-import copy, hashlib, json, tempfile
+import copy, hashlib, json, tempfile, re
 from collect_licenses import collect
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -15,8 +15,8 @@ for name in ['BRANDING-NOTICE.txt','THIRD-PARTY-NOTICES.txt']:
 assert 'license-file = "../LICENSE"' in (SOURCE/'agent/Cargo.toml').read_text()
 for path in SOURCE.rglob('*'):
     if not path.is_file() or any(part in {'node_modules','target','__pycache__','test-support','ultralab','starter-skills'} for part in path.relative_to(SOURCE).parts):continue
-    if path.suffix in {'.js','.cjs','.rs','.py'}:
-        assert not path.read_bytes().startswith((b'// SPDX-License-Identifier: GPL-',b'# SPDX-License-Identifier: GPL-')),path
+    with path.open('rb') as stream:header=stream.read(1024)
+    assert not re.search(rb'SPDX-License-Identifier:\s*(?:A?GPL|LGPL)-',header),path
 for row in json.loads((HERE/'dependency-notices/PROVENANCE.json').read_text()):
     assert hashlib.sha256((HERE/'dependency-notices'/row['file']).read_bytes()).hexdigest()==row['sha256']
 
