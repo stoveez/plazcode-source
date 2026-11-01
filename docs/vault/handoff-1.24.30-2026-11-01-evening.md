@@ -1,0 +1,30 @@
+# 1.24.30 handoff for Codex — 2026-11-01 evening (Claude out of usage)
+
+Branch `claude/plazcode-dev` only. No publish/merge without the owner's clear "yes". Commits: stoveez name only, no email, no Co-Authored-By/Claude-Session/"Generated with" lines. Read `docs/NOW.md`, then this note.
+
+## Where things are
+- Last pushed commit: **a853e60** (WIP label; everything below is in it). Latest build run **41359449874** (commit 6dd5cc9): Windows/Mac/Linux native jobs GREEN, but `browsers` job FAILED (and so release-check). Cause: `release-tools/test-sidebar-explorer.cjs` expects the Ultra active page button to keep the same glow (box-shadow) as normal. My first Ultra-outline CSS forced a box-shadow. **Already fixed in a853e60** (removed that rule; Chromium part of the test passes locally). So the next run should pass; confirm.
+- Pending: a full local JS suite was running (`for t in test-*.js` in `build-src-1.24.30/PlazCode`, `NODE_PATH=$PWD/release-tools/node_modules`). Only `test-bridges.js` printed FAIL and that one just needs a live bridge (`PLAZCODE_TEST_KEY`), ignore. Re-run the suite once to be sure, then start the build.
+- The repo is PUBLIC right now (needed for CI). Remind the owner to set it Private after delivering zips: https://github.com/stoveez/plazcode-source/settings (Danger Zone, Change visibility). Never change visibility yourself.
+
+## What changed this session (all pushed, all need the NEW app, not reload-only)
+1. Arena empty-turn handling (regenerate once, then reconnect like Restart; 4s detection). `providers/arena.js`, `core/main.js`.
+2. MiMo startup: plain first-person wording, "PlazCode is ready." + own sentences accepted, "Not ready:" = decline. MiMo busy notice (服务器繁忙) and conversation-limit line recognised (limit counts only with a busy reply). `providers/mimo.js`.
+3. `grep_files` (Rust, `agent/src/workspace.rs`): 20 s time budget with a plain note, skips cache/build folders and non-text files, one quick whole-file check. Test `grep_skips_cache_folders_and_non_text_files`; 33 workspace tests pass. Was the 60 s+ freeze in the live 15-call test.
+4. Home card now says "16 browser AIs + Ollama" (app + all 15 language files; catalog regenerated with `development/1.24.30/build-locales.py`, verified by `test-locales.py`).
+5. Skills panel: spacing between "Save a finished task" label and dropdown (`desktop.html`).
+6. Ultra: removed the purple outline/border around the selected page button (`desktop.html`, rule after `html[data-desktop-thinking=ultracode] .navbtn.active{...}`).
+7. `list_commands` full reply now names the PlazCode helper tools (plazcode_checklist, status, debug, agent, features...) at the TOP (`core/main.js`, `helperTop`). Cause of "tools left out": long replies are paged and the helpers sit at the end, so an AI that saw only page one said `plazcode_checklist` did not exist. main.js hash pin in `test-desktop-regression.js` updated.
+
+## Still open (do these next, in order)
+A. **Start a fresh CI test build** on the latest commit: `gh workflow run validate-1.24.30.yml -R stoveez/plazcode-source --ref claude/plazcode-dev`. A push also triggers old-version validate workflows (1.24.27/28/29) and a duplicate 1.24.30 run; cancel those so the dispatched run is not cancelled by concurrency. Needs all jobs green. Give the owner the run link and the Windows/macOS/Linux `test-lean` artifact names and sizes (owner downloads the INNER zips from the run page; the cloud workspace cannot download artifacts). Say: needs the new app/folder, not reload-only (signed files + sealed text).
+B. **Luau checks time out sometimes** (owner screenshot: "GameConfig's Luau check timed out, I'll re-check later with analyze_luau"). Look in `agent/src/luau_check.rs`: `ADVISORY_WAIT` 1.5 s, `BLOCKING_WAIT` 12 s, `BACKGROUND_LIMIT` 45 s, per-check timeout, "the Luau checker ran out of time" at line ~192; first run may also be downloading the checker (reqwest timeout 120 s, line ~56). Find why big/busy scripts exceed it (cold start of the checker process, no warm LSP, large `GameConfig`, many checks queued), then fix (reuse a warm checker, retry once, raise the background limit, never block the AI turn). Add a Rust test.
+C. **Arena `execute_luau` hang** (owner log 17:28-17:30): the Arena page's main thread froze ~55 s (`stall.detected` ms 9655 and 55572, no PlazCode events in between), so the command never ran; read tools were fine. Parser tested fast (<3 ms) on a realistic Luau reply, so it is not the parser. Suspects: very long Arena chat (each list_commands result is ~42,000 chars, 19 user messages), per-mutation work in `core/main.js` (`result.prehide`, `chip.rebuild` for a stale `script_read` chip in phase `err` firing every ~0.2-3 s), and Arena DOM reads. Needs a live Arena session with Performance profiling (owner's Chrome with the extension; Claude-in-Chrome tools can drive it). Also consider making `list_commands` results shorter for Arena (it posts the whole list as a message).
+D. **Rerun the 15-call read-only test** (1 call per turn, read tools only, never edit) on MiMo UltraSpeed first, then MiMo Chat, AgentScript mode, after the owner installs the new build. Fix any error/pause. Known: MiMo Chat is a thinking model; startup takes 1-3 min (UltraSpeed takes seconds) — tell the owner to prefer UltraSpeed.
+E. Ask the owner for a real screenshot of the installed new build for the Ultra outline fix (my renders were rejected as "not the real app"; I cannot run the .exe).
+F. Optional: "Call N of 15" progress notes advancing the checklist (offered, not requested).
+
+## Reminders
+- Edit only `development/1.24.30/overlay`; `build-src-1.24.30/PlazCode` is generated by `python3 development/1.24.30/prepare.py`. After editing a protected file, update its pin: `git hash-object build-src-1.24.30/PlazCode/<file>` into `test-desktop-regression.js`.
+- Language catalog: never hand-edit `core/i18n-catalog.js`; run `build-locales.py`.
+- Tell the owner after every push: branch, short SHA, one line. Plain non-coder words. Update `docs/NOW.md` in the same commit as any change.
