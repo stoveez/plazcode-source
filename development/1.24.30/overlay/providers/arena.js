@@ -475,10 +475,12 @@ const RSProvider = (() => {
       // never an earlier one such as "+" or the mode/model picker.
       const btns = [...safeQueryAll(frame, "button")].filter(visibleBtn);
       const last = btns[btns.length - 1];
-      const typed = btns.find((b) => safeRead(() => b.type, "") === "submit" && !isNotSend(b)) || (last && !isNotSend(last) ? last : null);
+      // A <button> with no type attribute inside a form ALSO reports type "submit", so only an explicit
+      // type="submit" counts (Arena's pickers are plain buttons inside the composer form).
+      const typed = btns.find((b) => safeRead(() => b.getAttribute("type"), "") === "submit" && !isNotSend(b)) || (last && !isNotSend(last) ? last : null);
       if (typed) return typed;
     }
-    return allButtons().find((b) => safeRead(() => b.type, "") === "submit" && visibleBtn(b) && !isNotSend(b)) || null;
+    return allButtons().find((b) => safeRead(() => b.getAttribute("type"), "") === "submit" && visibleBtn(b) && !isNotSend(b)) || null;
   };
   const stopButton = () =>
     allButtons().find((b) => S.stopAria.test(ariaOf(b)) && visibleBtn(b)) || null;
@@ -672,7 +674,9 @@ const RSProvider = (() => {
     };
     for (let i = 0; i < 8 && !sent; i++) {
       if (sendReady()) {
-        try { sendButton().click(); } catch {}
+        const b = sendButton();
+        diag("arena.tas.click", { try: i, aria: ariaOf(b).slice(0, 30), text: (safeRead(() => b.textContent, "") || "").trim().slice(0, 30), type: safeRead(() => b.getAttribute("type"), "") || "" });
+        try { b.click(); } catch {}
       } else if (!isHardGenerating()) {
         pressEnter();
         try {

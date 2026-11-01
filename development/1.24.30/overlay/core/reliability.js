@@ -11,10 +11,22 @@ const PlazCodeReliability = (() => {
     return name==='execute_luau'&&/ScreenGui|SurfaceGui|BillboardGui|Color3|Lighting|Terrain|BasePart|\.CFrame\s*=|\.Position\s*=/.test(String(call.arguments?.code || ''));
   }
   function fingerprint(image) {let hash=2166136261;const s=String(image.data || '');for(let i=0;i<s.length;i++){hash^=s.charCodeAt(i);hash=Math.imul(hash,16777619);}return s.length+':'+(hash>>>0);}
+  // 1.24.30 (owner, 2026-11-01: "sometimes i make a new chat or switch ai but the [continue] pop up never pops up").
+  // Messages PlazCode itself sends during startup are not the user's request: the plain first-person startup
+  // (Notion, Vani, ClickUp, MiMo), its one follow-up, and the saved-memory pages sent before "PlazCode is ready.".
+  // Counting them as a request made every fresh chat look already in use, so the offer never appeared.
+  function startupMessage(text) {
+    const t=String(text||'').trim();
+    return /^I clicked Start Agent in my installed PlazCode extension\b/.test(t) ||
+      /^PLAZCODE MEMORY, PAGE \d+ OF \d+:/.test(t) ||
+      /^To be clear, I am not asking for file or tool access\. I installed the PlazCode extension/.test(t) ||
+      /^PlazCode startup check: reply with exactly one fenced json code block/.test(t) ||
+      /^Please use one fenced json code block containing \{"command":"list_commands"\} for my PlazCode connection request/.test(t);
+  }
   function userRequest(row) {
     const text=String(row?.text||'').trim();
     return row?.role==='user' && !!text && !/⟦RS-SYS⟧|^Output of ['"]|^PLAZCODE CONTINUATION REFERENCE|\(System note:/.test(text) &&
-      !/^PlazCode protocol message\nThe complete PlazCode message is in the attached file /.test(text);
+      !/^PlazCode protocol message\nThe complete PlazCode message is in the attached file /.test(text) && !startupMessage(text);
   }
   function canContinue(transfer) {
     if(typeof transfer?.handoff?.has_user_request==='boolean')return transfer.handoff.has_user_request;
@@ -82,6 +94,6 @@ const PlazCodeReliability = (() => {
     const keys=Object.keys(times);if(keys.length>60)for(const k of keys.slice(0,keys.length-60))delete times[k];
     return times;
   }
-  return {createBudget,visual,fingerprint,userRequest,canContinue,handoff,continuationScene,redact,chatNotePath,isChatNotePath,tasksSection,chatNote,trackTimes,CHAT_DIR};
+  return {createBudget,visual,fingerprint,userRequest,startupMessage,canContinue,handoff,continuationScene,redact,chatNotePath,isChatNotePath,tasksSection,chatNote,trackTimes,CHAT_DIR};
 })();
 if(typeof module!=='undefined'&&module.exports)module.exports=PlazCodeReliability;

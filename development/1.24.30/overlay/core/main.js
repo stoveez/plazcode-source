@@ -4403,7 +4403,7 @@ return result`;
       const item=items[index];if(!P.isUserItem(item))continue;
       const raw=String(P.itemText(item)||'');
       if(RSParse.isInjectedFeedback(raw)||raw.includes(RS.SYS_MARKER))continue;
-      if(/^I clicked Start Agent in my installed PlazCode extension\b/.test(raw.trim()))continue; // PlazCode's own startup request is not a user task
+      if(/^I clicked Start Agent in my installed PlazCode extension\b/.test(raw.trim())||(typeof PlazCodeReliability!=='undefined'&&PlazCodeReliability.startupMessage(raw)))continue; // PlazCode's own startup messages (request, follow-up, memory pages) are not a user task
       const chat=P.conversationKey();
       if(latestRequestCache?.user===item&&latestRequestCache.raw===raw&&latestRequestCache.chat===chat)return latestRequestCache;
       latestRequestCache={user:item,raw,chat,label:PlazCodeChecklist.userText(item,node=>P.itemText(node))};
