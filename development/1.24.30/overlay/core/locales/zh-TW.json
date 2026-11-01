@@ -1068,5 +1068,21 @@
   "Profile picture saved.": "頭像已儲存。",
   "Profile picture removed.": "頭像已移除。",
   "Saving profile picture…": "正在儲存頭像…",
-  "Could not save profile picture.": "無法儲存頭像。"
+  "Could not save profile picture.": "無法儲存頭像。",
+  "Logs": "日誌",
+  "Every startup, AI turn and problem is saved for 14 days, so you can look back at what happened.": "每次啟動、每輪 AI 回覆和每個問題都會保存 14 天，方便你回顧發生了什麼。",
+  "Open logs folder": "開啟日誌資料夾",
+  "Copy day for AI": "複製當天日誌給 AI",
+  "All": "全部",
+  "Problems": "問題",
+  "Startups": "啟動",
+  "Turns": "輪次",
+  "Studio": "Studio",
+  "App": "應用程式",
+  "Search this day": "搜尋當天",
+  "No events match this filter.": "沒有符合此篩選的事件。",
+  "What led up to this": "導致此問題的過程",
+  "Copy for AI": "複製給 AI",
+  "Show more": "顯示更多",
+  "Today": "今天"
 }

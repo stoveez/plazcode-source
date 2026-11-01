@@ -1068,5 +1068,21 @@
   "Profile picture saved.": "プロフィール画像を保存しました。",
   "Profile picture removed.": "プロフィール画像を削除しました。",
   "Saving profile picture…": "プロフィール画像を保存中…",
-  "Could not save profile picture.": "プロフィール画像を保存できませんでした。"
+  "Could not save profile picture.": "プロフィール画像を保存できませんでした。",
+  "Logs": "ログ",
+  "Every startup, AI turn and problem is saved for 14 days, so you can look back at what happened.": "起動、AI のターン、問題はすべて 14 日間保存されるので、何が起きたかを後から確認できます。",
+  "Open logs folder": "ログフォルダーを開く",
+  "Copy day for AI": "この日のログを AI 用にコピー",
+  "All": "すべて",
+  "Problems": "問題",
+  "Startups": "起動",
+  "Turns": "ターン",
+  "Studio": "Studio",
+  "App": "アプリ",
+  "Search this day": "この日を検索",
+  "No events match this filter.": "このフィルターに一致するイベントはありません。",
+  "What led up to this": "ここに至るまでの経過",
+  "Copy for AI": "AI 用にコピー",
+  "Show more": "もっと見る",
+  "Today": "今日"
 }

@@ -2355,7 +2355,7 @@
     "plazcode_clarify",
     "list_commands", "list_mcp_servers", "plazcode_status", "plazcode_features", "plazcode_help", "web_fetch", "web_search",
     "plazcode_screenshot", "attach_feedback", "tab_read", "tab_click", "tab_type",
-    "tab_scroll", "plazcode_debug", "plazcode_agent", "plazcode_memory", "plazcode_vault", "plazcode_critic", "plazcode_engram", "plazcode_templates", "plazcode_skills",
+    "tab_scroll", "plazcode_debug", "plazcode_logs", "plazcode_agent", "plazcode_memory", "plazcode_vault", "plazcode_critic", "plazcode_engram", "plazcode_templates", "plazcode_skills",
     "asset_bridge_import", "studio_upload_asset", "developer_product_create", "developer_product_list",
   ];
 
@@ -2384,6 +2384,7 @@
     tab_type: "Enter text into a field in the current browser tab.",
     tab_scroll: "Scroll the current browser tab.",
     plazcode_debug: "Collect PlazCode diagnostics for troubleshooting.",
+    plazcode_logs: "Read PlazCode's own recent logs (read-only): startup steps, your turns and commands, bridge and pairing problems, AI-site console errors and failed requests. Use it to find out why something failed or got stuck before guessing. Params: filter (all|problems|startup|turn|studio|bridge|update|app), query (words to find), limit (default 60, max 200), day (YYYY-MM-DD, default today).",
     plazcode_agent: "Control the PlazCode agent session.",
   };
 
@@ -2445,6 +2446,7 @@
       const tools = bridgeTools.slice();
       tools.push({name:'plazcode_templates',server:activeEngine(),description:'Read-only template references. match query describes a system and finds related script paths/code identifiers with up to 8 matches (limit); read id lists scripts, read id and path returns source with optional offset/limit.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['match','read']},query:{type:'string'},id:{type:'string'},path:{type:'string'},script_id:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:24000}},required:['action']}});
       tools.push({name:'plazcode_features',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_features,inputSchema:{type:'object',properties:{topic:{type:'string'}}}});
+      tools.push({name:'plazcode_logs',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_logs,inputSchema:{type:'object',properties:{filter:{type:'string'},query:{type:'string'},limit:{type:'number'},day:{type:'string'}}}});
       if (typeof PlazCodeLeanStartup !== 'undefined') tools.push({name:'plazcode_help',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_help,inputSchema:{type:'object',properties:{topic:{type:'string'},command:{type:'string'}}}});
       tools.push({name:'plazcode_skills',server:activeEngine(),description:'Read reusable methods with list/read/match. Bundled starter read returns full paginated instructions, resources and bundle_root; read required references before applying them. Use resource, offset and limit for full files. When the user states a lasting preference or rule about how or when to work (coding style, naming, structure, workflow), apply it and call action suggest once with a short title, a description and the instructions as steps; PlazCode shows the user a one-click Save as skill button and only their click saves it. Never save such preferences yourself; use save only when the user explicitly asks you to save a skill, with user_approved:true. Never suggest routine task steps or repeat a suggestion. Give it a concise descriptive title and detailed description explaining when it is useful, adaptable steps, pitfalls and verification checks. List before saving; update an existing skill with the same purpose (its id and revision) instead of adding a duplicate. Use a new unique ID only for a new method; set confirmed:false unless actually verified. Keep private project details in a project scope. Save observable methods, never hidden reasoning or raw chat logs. The user verifies candidates in Skills. Adapt methods to the current project; never blindly copy code.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','match','save','suggest']},id:{type:'string'},resource:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:24000},revision:{type:'integer'},query:{type:'string'},title:{type:'string'},description:{type:'string'},domain:{type:'string',enum:['all','roblox','local','blender','model','ui']},steps:{type:'array',items:{type:'string'}},pitfalls:{type:'array',items:{type:'string'}},verification:{type:'array',items:{type:'string'}},user_approved:{type:'boolean',description:'true only when the user asked for or agreed to this skill'},project_only:{type:'boolean',description:'suggest: true when the preference applies only to the current project'}},required:['action'],additionalProperties:false}});
       if (window.__rsThinkingLevel?.() === 'ultracode' && activeEngine() === 'roblox' && typeof PlazCodeUltracode !== 'undefined' && PlazCodeUltracode.runTool) {
@@ -2866,6 +2868,19 @@ return result`;
       if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) return "ERROR: " + PlazCodeText.error();
       try { return "Output of 'plazcode_help':\n" + PlazCodeLeanStartup.helpFor({ topic: args && (args.topic || args.area || args.query), command: args && (args.command || args.name), engine: activeEngine(), siteName: P.displayName }); }
       catch (error) { return "ERROR: " + error.message; }
+    }
+    // 1.24.30 (owner): the AI reads PlazCode's on-disk logs (desktop app, logs/events) to find out what went wrong.
+    if (name === "plazcode_logs") {
+      const a = args || {};
+      const filter = /^(all|problems|errors|startup|turn|studio|bridge|update|app)$/.test(String(a.filter || "all")) ? String(a.filter || "all") : "all";
+      const limit = Math.max(1, Math.min(200, Number(a.limit) || 60));
+      const day = /^\d{4}-\d{2}-\d{2}$/.test(String(a.day || "")) ? String(a.day) : "";
+      const r = await bg({ type: "logs", request: { filter, q: String(a.query || a.q || "").slice(0, 80), limit, day } });
+      if (!r || !r.ok) return "ERROR: " + String((r && r.error) || "PlazCode logs are not available. Make sure the PlazCode app is running.");
+      const pad = (n) => String(n).padStart(2, "0");
+      const lines = (r.events || []).slice().reverse().map((e) => { const d = new Date(Number(e.t) || 0); return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds()) + " " + String(e.lvl || "").padEnd(5) + " " + String(e.cat || "").padEnd(7) + " " + String(e.what || "") + " " + String(e.text || "").slice(0, 200); });
+      const head = "Output of 'plazcode_logs': " + lines.length + " of " + (Number(r.total) || 0) + " events (" + filter + (day ? ", " + day : ", today") + "), oldest first. Read-only; secrets and chat text are not stored.\n";
+      return (head + (lines.length ? lines.join("\n") : "(no events match)")).slice(0, 9000);
     }
     if (name === "plazcode_features") {
       if (typeof PlazCodeFeatureGuide === "undefined") return "ERROR: the feature guide is not loaded.";
@@ -4776,7 +4791,7 @@ return result`;
           // Planning/bookkeeping commands (checklists, command lists, memory,
           // skills, thinking) are not project work: a plan written after them
           // still needs the automatic "start step 1" continuation.
-          if (!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist|plazcode_features|plazcode_help|plazcode_memory|plazcode_vault|plazcode_critic|plazcode_skills|plazcode_templates|plazcode_engram|ultralab_read|sequentialthinking|sequential_thinking)$/.test(String(call.tool || "").replace(/^.*[:.]/, ""))) toolsThisLoop++;
+          if (!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist|plazcode_features|plazcode_help|plazcode_logs|plazcode_memory|plazcode_vault|plazcode_critic|plazcode_skills|plazcode_templates|plazcode_engram|ultralab_read|sequentialthinking|sequential_thinking)$/.test(String(call.tool || "").replace(/^.*[:.]/, ""))) toolsThisLoop++;
           if(!/^(?:list_commands|list_tools|plazcode_clarify|plazcode_checklist)$/.test(call.tool)){
             const reason=taskBudget.check();
             if(reason){A.budgetResume={base,chat:P.conversationKey(),checkpoint:A.checkpointId,text:P.classifyText(res.item||P.lastAssistant(),".rs-chip")};ui.captureHandoff(reason);ui.banner("warn",reason,"Paused before the next command. Use Resume paused task in Settings after reviewing the chat. No command was replayed.");break;}
@@ -9193,7 +9208,7 @@ function renderCards(panel) {
       const add = (rows) => { for (const row of rows || []) names.add(typeof row === "string" ? row : row && row.name); };
       if (currentEngine === "local") { if (typeof AgentScriptSkills !== "undefined") add(AgentScriptSkills.SKILL_OPS); }
       else { if (typeof RSAnim !== "undefined") add(RSAnim.ANIM_COMMANDS); if (typeof RobloxScriptSkills !== "undefined") add(RobloxScriptSkills.SKILL_COMMANDS); }
-      add(["list_commands","list_mcp_servers","plazcode_status","plazcode_features","plazcode_help","plazcode_checklist","web_fetch","web_search","plazcode_screenshot","attach_feedback","tab_read","tab_click","tab_type","tab_scroll","plazcode_debug","plazcode_agent"]);
+      add(["list_commands","list_mcp_servers","plazcode_status","plazcode_features","plazcode_help","plazcode_checklist","web_fetch","web_search","plazcode_screenshot","attach_feedback","tab_read","tab_click","tab_type","tab_scroll","plazcode_debug","plazcode_logs","plazcode_agent"]);
       names.delete(undefined); return names.size;
     }
 

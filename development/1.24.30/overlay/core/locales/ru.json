@@ -1068,5 +1068,21 @@
   "Profile picture saved.": "Фото профиля сохранено.",
   "Profile picture removed.": "Фото профиля удалено.",
   "Saving profile picture…": "Сохранение фото профиля…",
-  "Could not save profile picture.": "Не удалось сохранить фото профиля."
+  "Could not save profile picture.": "Не удалось сохранить фото профиля.",
+  "Logs": "Журналы",
+  "Every startup, AI turn and problem is saved for 14 days, so you can look back at what happened.": "Каждый запуск, ход ИИ и проблема сохраняются на 14 дней, чтобы можно было посмотреть, что произошло.",
+  "Open logs folder": "Открыть папку журналов",
+  "Copy day for AI": "Скопировать день для ИИ",
+  "All": "Все",
+  "Problems": "Проблемы",
+  "Startups": "Запуски",
+  "Turns": "Ходы",
+  "Studio": "Studio",
+  "App": "Приложение",
+  "Search this day": "Поиск за этот день",
+  "No events match this filter.": "Нет событий для этого фильтра.",
+  "What led up to this": "Что к этому привело",
+  "Copy for AI": "Скопировать для ИИ",
+  "Show more": "Показать ещё",
+  "Today": "Сегодня"
 }

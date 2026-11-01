@@ -1068,5 +1068,21 @@
   "Profile picture saved.": "Zdjęcie profilowe zapisane.",
   "Profile picture removed.": "Zdjęcie profilowe usunięte.",
   "Saving profile picture…": "Zapisywanie zdjęcia profilowego…",
-  "Could not save profile picture.": "Nie udało się zapisać zdjęcia profilowego."
+  "Could not save profile picture.": "Nie udało się zapisać zdjęcia profilowego.",
+  "Logs": "Dzienniki",
+  "Every startup, AI turn and problem is saved for 14 days, so you can look back at what happened.": "Każde uruchomienie, tura AI i problem są zapisywane przez 14 dni, więc możesz sprawdzić, co się stało.",
+  "Open logs folder": "Otwórz folder dzienników",
+  "Copy day for AI": "Kopiuj dzień dla AI",
+  "All": "Wszystko",
+  "Problems": "Problemy",
+  "Startups": "Uruchomienia",
+  "Turns": "Tury",
+  "Studio": "Studio",
+  "App": "Aplikacja",
+  "Search this day": "Szukaj w tym dniu",
+  "No events match this filter.": "Żadne zdarzenia nie pasują do tego filtra.",
+  "What led up to this": "Co do tego doprowadziło",
+  "Copy for AI": "Kopiuj dla AI",
+  "Show more": "Pokaż więcej",
+  "Today": "Dzisiaj"
 }

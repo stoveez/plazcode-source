@@ -221,6 +221,10 @@ jobs:
       - run: node release-tools/test-sidebar-explorer.cjs
         timeout-minutes: 5
         working-directory: build-src-1.24.30/PlazCode
+      - name: Logs page in real Chromium (days, filters, what led up to an error, Copy for AI)
+        run: node release-tools/test-logs-page.cjs
+        timeout-minutes: 5
+        working-directory: build-src-1.24.30/PlazCode
       - run: node release-tools/test-workspace-scroll.cjs
         working-directory: build-src-1.24.30/PlazCode
       - run: node release-tools/test-desktop-performance.cjs
@@ -304,6 +308,12 @@ jobs:
         run: python test-blender-real.py --require
         working-directory: build-src-1.24.30/PlazCode
       - name: JavaScript regression suite
+        run: python release-tools/test-javascript.py
+        working-directory: build-src-1.24.30/PlazCode
+        env:
+          NODE_PATH: release-tools/node_modules
+      - name: JavaScript regression suite, second run (catches tests that only fail sometimes)
+        if: runner.os == 'Linux'
         run: python release-tools/test-javascript.py
         working-directory: build-src-1.24.30/PlazCode
         env:
@@ -465,3 +475,30 @@ jobs:
             build-src-1.24.30/PlazCode/defender-engine.json
             build-src-1.24.30/PlazCode/defender-executable-sha256.txt
           if-no-files-found: warn
+  # 1.24.30 (owner): a plain Release check report for every build (what ran, where, pass/fail), shown on the run
+  # page and kept as an artifact. It only reads the other jobs' results.
+  release-check:
+    needs: [browsers, native]
+    if: ${{ always() && !cancelled() && !inputs.bootstrap_integrity_key }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Release check report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set +e
+          python3 development/1.24.30/release-check.py "${{ github.run_id }}" "${{ github.repository }}" > release-check.md
+          result=$?
+          cat release-check.md >> "$GITHUB_STEP_SUMMARY"
+          exit $result
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: plazcode-1.24.30-release-check
+          path: release-check.md

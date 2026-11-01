@@ -1068,5 +1068,21 @@
   "Profile picture saved.": "Profil fotoğrafı kaydedildi.",
   "Profile picture removed.": "Profil fotoğrafı kaldırıldı.",
   "Saving profile picture…": "Profil fotoğrafı kaydediliyor…",
-  "Could not save profile picture.": "Profil fotoğrafı kaydedilemedi."
+  "Could not save profile picture.": "Profil fotoğrafı kaydedilemedi.",
+  "Logs": "Günlükler",
+  "Every startup, AI turn and problem is saved for 14 days, so you can look back at what happened.": "Her başlatma, yapay zekâ turu ve sorun 14 gün saklanır; böylece ne olduğuna geri dönüp bakabilirsin.",
+  "Open logs folder": "Günlük klasörünü aç",
+  "Copy day for AI": "Günü yapay zekâ için kopyala",
+  "All": "Tümü",
+  "Problems": "Sorunlar",
+  "Startups": "Başlatmalar",
+  "Turns": "Turlar",
+  "Studio": "Studio",
+  "App": "Uygulama",
+  "Search this day": "Bu günde ara",
+  "No events match this filter.": "Bu filtreyle eşleşen olay yok.",
+  "What led up to this": "Buna ne yol açtı",
+  "Copy for AI": "Yapay zekâ için kopyala",
+  "Show more": "Daha fazla göster",
+  "Today": "Bugün"
 }

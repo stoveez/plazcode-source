@@ -1068,5 +1068,21 @@
   "Profile picture saved.": "تم حفظ صورة الملف الشخصي.",
   "Profile picture removed.": "تمت إزالة صورة الملف الشخصي.",
   "Saving profile picture…": "جارٍ حفظ صورة الملف الشخصي…",
-  "Could not save profile picture.": "تعذر حفظ صورة الملف الشخصي."
+  "Could not save profile picture.": "تعذر حفظ صورة الملف الشخصي.",
+  "Logs": "السجلات",
+  "Every startup, AI turn and problem is saved for 14 days, so you can look back at what happened.": "يُحفظ كل تشغيل ودور للذكاء الاصطناعي ومشكلة لمدة 14 يومًا لتتمكن من مراجعة ما حدث.",
+  "Open logs folder": "فتح مجلد السجلات",
+  "Copy day for AI": "نسخ اليوم للذكاء الاصطناعي",
+  "All": "الكل",
+  "Problems": "المشكلات",
+  "Startups": "مرات التشغيل",
+  "Turns": "الأدوار",
+  "Studio": "Studio",
+  "App": "التطبيق",
+  "Search this day": "البحث في هذا اليوم",
+  "No events match this filter.": "لا توجد أحداث تطابق هذا الفلتر.",
+  "What led up to this": "ما الذي أدى إلى هذا",
+  "Copy for AI": "نسخ للذكاء الاصطناعي",
+  "Show more": "عرض المزيد",
+  "Today": "اليوم"
 }

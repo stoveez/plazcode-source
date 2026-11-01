@@ -1068,5 +1068,21 @@
   "Profile picture saved.": "प्रोफ़ाइल चित्र सहेजा गया।",
   "Profile picture removed.": "प्रोफ़ाइल चित्र हटाया गया।",
   "Saving profile picture…": "प्रोफ़ाइल चित्र सहेजा जा रहा है…",
-  "Could not save profile picture.": "प्रोफ़ाइल चित्र सहेजा नहीं जा सका।"
+  "Could not save profile picture.": "प्रोफ़ाइल चित्र सहेजा नहीं जा सका।",
+  "Logs": "लॉग",
+  "Every startup, AI turn and problem is saved for 14 days, so you can look back at what happened.": "हर स्टार्टअप, AI का हर टर्न और हर समस्या 14 दिनों तक सहेजी जाती है, ताकि आप देख सकें कि क्या हुआ।",
+  "Open logs folder": "लॉग फ़ोल्डर खोलें",
+  "Copy day for AI": "दिन को AI के लिए कॉपी करें",
+  "All": "सभी",
+  "Problems": "समस्याएँ",
+  "Startups": "स्टार्टअप",
+  "Turns": "टर्न",
+  "Studio": "Studio",
+  "App": "ऐप",
+  "Search this day": "इस दिन में खोजें",
+  "No events match this filter.": "इस फ़िल्टर से कोई इवेंट मेल नहीं खाता।",
+  "What led up to this": "यह किस वजह से हुआ",
+  "Copy for AI": "AI के लिए कॉपी करें",
+  "Show more": "और दिखाएँ",
+  "Today": "आज"
 }

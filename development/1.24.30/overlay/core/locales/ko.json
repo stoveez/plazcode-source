@@ -1068,5 +1068,21 @@
   "Profile picture saved.": "프로필 사진을 저장했습니다.",
   "Profile picture removed.": "프로필 사진을 삭제했습니다.",
   "Saving profile picture…": "프로필 사진 저장 중…",
-  "Could not save profile picture.": "프로필 사진을 저장하지 못했습니다."
+  "Could not save profile picture.": "프로필 사진을 저장하지 못했습니다.",
+  "Logs": "로그",
+  "Every startup, AI turn and problem is saved for 14 days, so you can look back at what happened.": "모든 시작, AI 턴, 문제가 14일 동안 저장되어 무슨 일이 있었는지 다시 볼 수 있습니다.",
+  "Open logs folder": "로그 폴더 열기",
+  "Copy day for AI": "이 날을 AI용으로 복사",
+  "All": "전체",
+  "Problems": "문제",
+  "Startups": "시작",
+  "Turns": "턴",
+  "Studio": "Studio",
+  "App": "앱",
+  "Search this day": "이 날 검색",
+  "No events match this filter.": "이 필터와 일치하는 이벤트가 없습니다.",
+  "What led up to this": "이렇게 된 과정",
+  "Copy for AI": "AI용으로 복사",
+  "Show more": "더 보기",
+  "Today": "오늘"
 }

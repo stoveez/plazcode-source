@@ -2336,6 +2336,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         sendResponse({ ok, tools, error: r.ok ? undefined : r.error });
         break;
       }
+      case "logs": {
+        // 1.24.30: read-only access to the on-disk logs for the plazcode_logs command.
+        try{const q=msg.request||{},params=new URLSearchParams({filter:String(q.filter||"all"),q:String(q.q||""),limit:String(q.limit||60)});if(q.day)params.set("day",String(q.day));
+          const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/logs/day?"+params.toString(),{signal:AbortSignal.timeout(15000)});
+          if(!response.ok)throw new Error(response.status===404?"This PlazCode app is older than the extension and has no logs yet. Update the PlazCode app.":"HTTP "+response.status);
+          const value=await response.json();sendResponse({ok:true,events:value.events||[],total:value.total||0,day:value.day||""});
+        }catch(error){sendResponse({ok:false,error:String(error&&error.message||error)});}
+        break;
+      }
       case "textPack": {
         // 1.24.30: release builds keep the long instructions inside the PlazCode app (core/text-pack.js).
         // bridgeFetch pairs first, so only the official extension of this installation receives them.

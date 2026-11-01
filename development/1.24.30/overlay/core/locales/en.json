@@ -1068,5 +1068,21 @@
   "Profile picture saved.": null,
   "Profile picture removed.": null,
   "Saving profile picture…": null,
-  "Could not save profile picture.": null
+  "Could not save profile picture.": null,
+  "Logs": null,
+  "Every startup, AI turn and problem is saved for 14 days, so you can look back at what happened.": null,
+  "Open logs folder": null,
+  "Copy day for AI": null,
+  "All": null,
+  "Problems": null,
+  "Startups": null,
+  "Turns": null,
+  "Studio": null,
+  "App": null,
+  "Search this day": null,
+  "No events match this filter.": null,
+  "What led up to this": null,
+  "Copy for AI": null,
+  "Show more": null,
+  "Today": null
 }

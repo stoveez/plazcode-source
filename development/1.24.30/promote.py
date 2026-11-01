@@ -43,6 +43,7 @@ SOURCE_INPUTS=(
     'development/1.24.30/test-starter-pack.py',
     'development/1.24.30/test-roengineer-pack.py',
     'development/1.24.30/test-text-pack.mjs',
+    'development/1.24.30/release-check.py',
     'development/1.24.30/ro-engineer-v1.zip',
     '.github/workflows/validate-1.24.30.yml',
     'PlazCode-source-1.24.20.zip',
@@ -64,6 +65,11 @@ def verify_validation(run,jobs,sha,run_id,repository=None):
     if bootstrap:
         assert len(bootstrap)==1 and bootstrap[0]['status']=='completed' and bootstrap[0]['conclusion']=='skipped', 'Key-setup runs are not release validation'
         rows=[j for j in rows if j['name']!='bootstrap-integrity']
+    # 1.24.30: the Release check report job (it only reads the other jobs' results) must have passed too.
+    report=[j for j in rows if j['name']=='release-check']
+    if report:
+        assert len(report)==1 and report[0]['status']=='completed' and report[0]['conclusion']=='success', 'The release check report must pass'
+        rows=[j for j in rows if j['name']!='release-check']
     assert len(rows)==4 and {j['name'] for j in rows}==REQUIRED_JOBS, 'Require browser and all three native jobs'
     assert all(j['status']=='completed' and j['conclusion']=='success' for j in rows), 'No failed, cancelled, skipped or incomplete platform job is promotable'
 

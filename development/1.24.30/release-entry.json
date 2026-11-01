@@ -3,7 +3,8 @@
  "title": "Official copies only, Mac start fix and Roblox coding standards",
  "summary": "PlazCode now only works with its own official extension, opens reliably from a fresh Mac download, cleans old leftover files out of your PlazCode folder, and gives the AI modern Roblox coding standards by default.",
  "added": [
-  "Ro-Engineer Roblox standards (by excaldev, MIT licence) are built in: modern typed Luau, safe client/server code, clean-up, performance, system design, game loops and economy. One short set of core standards is used on every Roblox task; the topic guides are used when they fit."
+  "Ro-Engineer Roblox standards (by excaldev, MIT licence) are built in: modern typed Luau, safe client/server code, clean-up, performance, system design, game loops and economy. One short set of core standards is used on every Roblox task; the topic guides are used when they fit.",
+  "A Logs page in the PlazCode app: every startup, AI turn, command and problem (including the AI site's own console errors) is saved for 14 days. Filter by problems, startups, turns, Studio or updates, see what led up to an error, and copy it for an AI. The AI can also read these logs itself with plazcode_logs to find out what went wrong."
  ],
  "improved": [
   "The PlazCode app only connects to the extension loaded from its own PlazCode folder. Copies that were edited or loaded from somewhere else are refused with a message saying what to do.",
@@ -24,7 +25,8 @@
    {
     "title": "✨ What's new",
     "items": [
-     "Built-in Roblox coding standards from Ro-Engineer by excaldev (MIT): typed Luau, safe remotes, clean-up, performance, system design, game loops and economy. Core standards apply to every Roblox task."
+     "Built-in Roblox coding standards from Ro-Engineer by excaldev (MIT): typed Luau, safe remotes, clean-up, performance, system design, game loops and economy. Core standards apply to every Roblox task.",
+     "New Logs page: startups, AI turns, commands and errors (including the AI site's console) are saved for 14 days. See what led up to a problem and copy it for an AI, or let the AI read them with plazcode_logs."
     ]
    },
    {
