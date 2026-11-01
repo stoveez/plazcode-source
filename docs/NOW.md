@@ -1,6 +1,6 @@
 # NOW
 
-**HANDOFF (Claude out of usage, 2026-11-01 evening): read `docs/vault/handoff-1.24.30-2026-11-01-evening.md` first.** Last push a853e60; run 41359449874 failed only the sidebar test (fixed in a853e60), so start a fresh build; open: Luau check timeouts, Arena execute_luau page freeze. (The 15-call MiMo test was dropped by the owner.)
+**HANDOFF (Claude out of usage, 2026-11-01 evening): read `docs/vault/handoff-1.24.30-2026-11-01-evening.md` first.** Last push a853e60; run 41359449874 failed only the sidebar test (fixed in a853e60), so start a fresh build; open: Luau check timeouts, Arena tool-call hang (execute_luau AND script_read, any tool). (The 15-call MiMo test was dropped by the owner.)
 
 Updated: 2026-11-01 (Claude, after Codex handoff). Branch `claude/plazcode-dev`; no helper agents.
 
