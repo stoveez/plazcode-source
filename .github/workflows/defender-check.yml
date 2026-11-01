@@ -3,6 +3,9 @@
 # tell whether a package is flagged and which file. Read-only: changes nothing in any repository.
 name: Defender check of a published PlazCode download
 on:
+  push:
+    branches: [claude/plazcode-dev]
+    paths: [.github/workflows/defender-check.yml]
   workflow_dispatch:
     inputs:
       tag:
@@ -22,8 +25,8 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag }}
-          ASSET: ${{ inputs.asset }}
+          TAG: ${{ inputs.tag || 'v1.24.29' }}
+          ASSET: ${{ inputs.asset || 'PlazCode-1.24.29.zip' }}
         run: |
           if ($env:TAG -notmatch '^v\d+\.\d+\.\d+$' -or $env:ASSET -notmatch '^[A-Za-z0-9._-]+\.zip$') { throw 'Unexpected tag or asset name.' }
           gh release download $env:TAG --repo stoveez/PlazCode --pattern $env:ASSET --dir pkg
