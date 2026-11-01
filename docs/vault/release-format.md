@@ -39,3 +39,5 @@ The text shown on the release page and posted to Discord. Write it for people wh
 ```
 
 Where it goes in the repo: the `github` block of `development/1.24.25/release-entry.json` (`summary`, `sections`). `publish_release.py` turns it into the page text and adds the How to update section itself; keep the final text matching this template and under 2,000 characters. See [releasing](releasing.md).
+
+**1.24.30 owner rule (2026-11-01): no source ZIP distribution.** Packaging/promotion create no source archive and CI excludes source ZIP uploads. Hash-only `source-proof.json` reports bind prepared source to Windows/Mac validation; promotion reconstructs from the exact checkout and checks both. Keep `PLAZCODE_PUBLISH_SOURCE=0`. Preserve old releases and licence notices; retained GPL corresponding-source obligations remain unresolved before a public release.

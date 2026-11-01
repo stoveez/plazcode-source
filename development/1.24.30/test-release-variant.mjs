@@ -14,6 +14,11 @@ for(let layout=0;layout<3;layout++){
   const seed=Buffer.alloc(32,layout),config=packConfig('1.24.30',seed);
   assert.equal(config.layout,layout);
   const packed=sealTextPack(payload,'1.24.30',seed);
+  assert.deepEqual(packed,sealTextPack({'skills:0':['a','b'],'config:0':'Hello ✓'},'1.24.30',seed),'identical content seals identically across native packages');
+  const changedContent=sealTextPack({...payload,'config:0':'Different content'},'1.24.30',seed);
+  const nonce=raw=>raw.subarray(layout===0?8+config.padding:layout===1?8:24,layout===0?20+config.padding:layout===1?20:36);
+  assert.notDeepEqual(nonce(packed),nonce(changedContent),'different plaintext must not reuse the GCM nonce');
+  assert.notDeepEqual(config.key,config.nonceKey,'separate key domains');
   assert.deepEqual(openTextPack(packed,'1.24.30',seed),payload);
   assert.throws(()=>openTextPack(packed,'1.24.30',Buffer.alloc(32,layout+1)));
   assert.throws(()=>openTextPack(packed,'1.24.31',seed));

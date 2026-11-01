@@ -163,3 +163,6 @@ Owner requested implementing anti-copy-plan.md. Inspected existing protection, p
 
 ## Anti-copy validation status (2026-11-01)
 Native configured-variant 268 + 5 tests and optimized signed-app end-to-end pass. Node protection/variant and 1,066 byte-identical prompt/help/skill outputs pass. Promotion fixture updated to include descriptors and reject cross-platform mismatches. Licence/branding and takedown documents complete. Full JS passed; final Mac path compatibility and broader Luau lifecycle fixes need fresh native/hosted validation and test ZIP delivery. Public release not authorized.
+
+## 2026-11-01 source-archive and promotion audit
+Owner explicitly does not want source ZIP distribution. Run 41335729270 cancelled before source upload. Packaging/promotion now generate no source ZIP; hash-only prepared-source proofs retain source/platform validation and CI excludes source ZIPs defensively. Sealed text uses a content-derived nonce under a separate key domain so identical packs match across platforms; changed contents use different nonces. Focused proof/sealing/promotion tests pass; full replacement CI/delivery pending. Existing GPL rights/obligations and old releases unchanged.

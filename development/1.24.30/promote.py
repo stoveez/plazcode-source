@@ -1,6 +1,6 @@
 """Promote only successful exact-source artifacts; never overwrite release archives."""
 from pathlib import Path
-import argparse,json,os,hashlib,shutil,re,zipfile,plistlib,struct,subprocess,tempfile
+import argparse,json,os,hashlib,shutil,re,zipfile,plistlib,struct,subprocess,tempfile,sys
 ROOT=Path(__file__).resolve().parents[2]
 VERSION='1.24.30'
 # Keep the small validated archive helpers local; publication must not depend
@@ -30,6 +30,7 @@ def firefox_text(files):
 SOURCE_INPUTS=(
     'development/1.24.30/overlay',
     'development/1.24.30/prepare.py',
+    'development/1.24.30/source_proof.py',
     'development/1.24.30/package.py',
     'development/1.24.30/protection.mjs',
     'development/1.24.30/release-variant.mjs',
@@ -263,11 +264,12 @@ def main():
     firefox=firefox_text(unpack_package(find('PlazCode-Firefox-1.24.30-development.zip','Windows')))
     other=firefox_text(unpack_package(find('PlazCode-Firefox-1.24.30-development.zip','macOS')))
     assert {n:v[0] for n,v in firefox.items()}=={n:v[0] for n,v in other.items()}
-    source=unpack_package(find('PlazCode-source-1.24.30-development.zip','macOS'));other=unpack_package(find('PlazCode-source-1.24.30-development.zip','Windows'))
-    for files in [source,other]:
-        for name in list(files):
-            if name.startswith('PlazCode/visual-checks/') or Path(name).name in {'windows-signature.txt','defender-result.txt','defender-package-sha256.txt','defender-engine.json','defender-executable-sha256.txt'}:del files[name]
-    assert {n:v[0] for n,v in source.items()}=={n:v[0] for n,v in other.items()}
+    # Reconstruct source from the exact validated checkout, without rebuilding native code
+    # or distributing an archive. Both native runners' hash proofs must match it.
+    from source_proof import source_files, verify, NAME
+    reports=[load(find(NAME,platform)) for platform in ['Windows','macOS']]
+    subprocess.run([sys.executable,str(ROOT/'development/1.24.30/prepare.py')],check=True)
+    source=verify(source_files(ROOT/'build-src-1.24.30/PlazCode'),reports)
     # PLAZCODE_QUICK=1 (small fixes only, owner-approved) skips the separate Mac desktop test to save Actions minutes.
     quick=os.environ.get('PLAZCODE_QUICK')=='1'
     if not quick:
@@ -343,14 +345,13 @@ Checksums and platform evidence are recorded in release-validation-{VERSION}.
         for name,value in files.items():
             if name.endswith('.command'):assert value[1]>>16&0o111,name
     for name in source:assert not name.endswith('.exe') and '/target/' not in name and '/node_modules/' not in name,name
-    packages=[(f'PlazCode-{VERSION}.zip','windows',windows),(f'PlazCode-macOS-{VERSION}.zip','macos',mac),(f'PlazCode-source-{VERSION}.zip','source',source),(f'PlazCode-Firefox-{VERSION}.zip','firefox',firefox)]
+    packages=[(f'PlazCode-{VERSION}.zip','windows',windows),(f'PlazCode-macOS-{VERSION}.zip','macos',mac),(f'PlazCode-Firefox-{VERSION}.zip','firefox',firefox)]
     metadata=[]
     for name,platform,files in packages:
         pack(ROOT/name,files);raw=(ROOT/name).read_bytes()
         if platform in {'windows','macos'}:assert len(raw)<=64*1024*1024, 'Release exceeds the installed updater limit'
         metadata.append({'file':name,'platform':platform,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()})
     write_json(ROOT/'release-metadata.json',metadata);byplatform={m['platform']:m for m in metadata}
-    import sys
     sys.path.insert(0,str(ROOT));from release_feed import compact_feed
     for path,platform in [('latest.json','windows'),('latest-macos.json','macos')]:
         feed=load(ROOT/path);feed.update(version=VERSION,desktop_version=VERSION,url='https://raw.githubusercontent.com/stoveez/PlazCode/main/'+byplatform[platform]['file'],sha256=byplatform[platform]['sha256'])

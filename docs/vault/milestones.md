@@ -54,3 +54,6 @@ Profile-picture/startup follow-ups now pass local verification: 234 native + 4 l
 
 ## 2026-11-01: anti-copy implementation, final CI pending
 Release-specific authenticated text layouts/scrambling, independent native/program/pack canaries, signed provenance descriptors, native/packager/multi-platform promotion checks and private-function mangling implemented. Configured-variant native 268+5, signed optimized integration, Node protection and 1,066-output parity pass. Licence/branding review/takedown template filed; no legal notices sent or licensing changed. Full suite/hosted delivery remains in NOW.
+
+## 2026-11-01 source-archive and promotion audit
+Owner explicitly does not want source ZIP distribution. Run 41335729270 cancelled before source upload. Packaging/promotion now generate no source ZIP; hash-only prepared-source proofs retain source/platform validation and CI excludes source ZIPs defensively. Sealed text uses a content-derived nonce under a separate key domain so identical packs match across platforms; changed contents use different nonces. Focused proof/sealing/promotion tests pass; full replacement CI/delivery pending. Existing GPL rights/obligations and old releases unchanged.

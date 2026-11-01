@@ -1,6 +1,6 @@
 import {variantSeed,deriveVariant,variantInfo,packConfig} from './release-variant.mjs';
 // Release signing uses Node's built-in Ed25519 implementation. Private keys never enter packages.
-import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify, hkdfSync, randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
+import { createHash, createHmac, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify, hkdfSync, randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -162,9 +162,15 @@ export function moveText(source, prefix, acorn) {
   return {code,pack,moved:found.filter(node=>!found.some(other=>inside(other,node))).length};
 }
 export function sealTextPack(pack,version,seed=variantSeed()){
-  const c=packConfig(version,seed),nonce=randomBytes(12),pad=Buffer.alloc(c.padding);c.mark.copy(pad);
+  const c=packConfig(version,seed),pad=Buffer.alloc(c.padding);c.mark.copy(pad);
+  const json=JSON.stringify(pack,(_key,value)=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value);
+  const compressed=gzipSync(Buffer.from(json),{level:9});
+  // Identical release content must seal identically on every platform. A separate
+  // keyed hash of the exact plaintext gives changed content a different 96-bit
+  // nonce; the encryption key is never used as the nonce derivation key.
+  const nonce=createHmac('sha256',c.nonceKey).update(compressed).digest().subarray(0,12);
   const cipher=createCipheriv('aes-256-gcm',c.key,nonce);cipher.setAAD(Buffer.concat([c.magic,pad]));
-  const body=Buffer.concat([cipher.update(gzipSync(Buffer.from(JSON.stringify(pack)),{level:9})),cipher.final()]),tag=cipher.getAuthTag();
+  const body=Buffer.concat([cipher.update(compressed),cipher.final()]),tag=cipher.getAuthTag();
   return Buffer.concat(c.layout===0?[c.magic,pad,nonce,body,tag]:c.layout===1?[c.magic,nonce,pad,tag,body]:[c.magic,tag,nonce,body,pad]);
 }
 export function openTextPack(raw,version,seed=variantSeed()){

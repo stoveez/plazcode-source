@@ -26,4 +26,6 @@ for name in REMOVED:
 for folder in ['core','providers']:shutil.copytree(source/folder,source/'PlazCode-Extension'/folder,dirs_exist_ok=True)
 for name in ['manifest.json','background.js','protection.js','popup.js','popup.html','overlay.css','blender_ops.py','blender_once.py','blender_once.ps1','SOURCE.txt']:shutil.copy2(source/name,source/'PlazCode-Extension'/name)
 assert json.loads((source/'manifest.json').read_text())['version']=='1.24.30'
+from source_proof import write, NAME
+write(source, root/'artifacts'/NAME)
 print(source)

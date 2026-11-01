@@ -162,11 +162,10 @@ with zipfile.ZipFile(output/lean_name) as archive:
  print('Size by folder (compressed MB):',', '.join(f'{k} {v/1e6:.2f}' for k,v in sorted(folders.items(),key=lambda x:-x[1])[:20]))
  for i in sorted(infos,key=lambda x:-x.compress_size)[:15]:print(f'  {i.compress_size/1e6:7.2f} MB  {i.filename}')
 assert (output/lean_name).stat().st_size<=64*1024*1024, 'Protected test package exceeds the installed updater limit'
-# Firefox and source are the exact reviewed development source, never old native files.
-# The standalone Firefox ZIP above contains the exact protected package bytes.
-with zipfile.ZipFile(output/'PlazCode-source-1.24.30-development.zip','w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
- for path in sorted(source.rglob('*')):
-  if path.is_file() and not any(part in ['node_modules','target','__pycache__'] for part in path.parts) and path.name!='PlazCode.exe':archive.write(path,'PlazCode/'+path.relative_to(source).as_posix())
+# The hash-only prepared-source proof is uploaded; never create a source archive.
+from source_proof import NAME
+assert (output/NAME).is_file(), 'Run prepare.py before packaging'
+assert not list(output.glob('*source*.zip')), 'Source ZIPs must not enter artifacts'
 if osname=='Linux':
  subprocess.run(['node',str(source/'release-tools/test-linux-desktop.cjs')],cwd=source,env={**os.environ,'PLAZCODE_NATIVE_INSTALL_ROOT':str(package.resolve())},check=True)
 shutil.rmtree(install)

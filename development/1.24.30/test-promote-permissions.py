@@ -201,6 +201,9 @@ for expected in ['promote.py --check-validation','PLAZCODE_MAC_TEST_ARCHIVE','ne
  assert expected in workflow,expected
 # Closed source: never push the source archive to the public repo; publish before recording on private main.
 assert 'PLAZCODE_PUBLISH_SOURCE: 1' not in workflow
+assert 'git add docs/NOW.md docs/vault/open-work.md PlazCode-source-' not in workflow
+assert "(f'PlazCode-source-{VERSION}.zip','source',source)" not in (here/'promote.py').read_text()
+assert "with zipfile.ZipFile(output/'PlazCode-source-" not in (here/'package.py').read_text()
 assert workflow.index('python3 publish_public.py')<workflow.index('git push origin HEAD:main')
 assert 'prepare-ultra.py' not in workflow
 entry=json.loads((here/'release-entry.json').read_text())

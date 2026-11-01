@@ -16,3 +16,6 @@ development/*/preferences-test/target/
 
 # Cargo output left by compiling inside an overlay (it broke the 1.24.28 promotion)
 development/*/overlay/agent/target/
+
+# Generated native/test packages and hash-only build proofs
+/artifacts/

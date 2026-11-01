@@ -15,5 +15,5 @@ export function variantInfo(version,seed=variantSeed()){
   return {schema:1,seed_sha256:createHash('sha256').update(seed).digest('hex'),mark:variantDigest('PlazCode release mark v1',version,seed).subarray(0,8).toString('hex'),layout:seed[0]%3};
 }
 export function packConfig(version,seed=variantSeed()){
-  return {key:variantDigest('PlazCode text pack v2',version,seed),magic:variantDigest('PlazCode pack header v2',version,seed).subarray(0,8),mark:Buffer.from(variantInfo(version,seed).mark,'hex'),padding:8+seed[1]%24,layout:seed[0]%3};
+  return {key:variantDigest('PlazCode text pack v2',version,seed),nonceKey:variantDigest('PlazCode text pack nonce v2',version,seed),magic:variantDigest('PlazCode pack header v2',version,seed).subarray(0,8),mark:Buffer.from(variantInfo(version,seed).mark,'hex'),padding:8+seed[1]%24,layout:seed[0]%3};
 }

@@ -544,6 +544,7 @@ jobs:
           name: plazcode-1.24.30-${{ runner.os }}-validation
           path: |
             artifacts/*
+            !artifacts/*source*.zip
             build-src-1.24.30/PlazCode/windows-signature.txt
             build-src-1.24.30/PlazCode/defender-result.txt
             build-src-1.24.30/PlazCode/defender-package-sha256.txt
