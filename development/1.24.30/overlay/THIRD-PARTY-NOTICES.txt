@@ -16,4 +16,8 @@ Ro-Engineer — MIT, Copyright (c) 2026 excaldev
 https://github.com/excaldev/ro-engineer
 License: PlazCode-Extension/starter-skills/ro-engineer/LICENSE (files shipped unchanged; PlazCode adds PLAZCODE-ADAPTER.md)
 
+luau-lsp 1.70.1 (Luau checker and Roblox type list) — MIT, Copyright (c) 2022 JohnnyMorganz
+https://github.com/JohnnyMorganz/luau-lsp
+License: runtime/luau/LICENSE (official release files, unchanged; checked against pinned SHA-256)
+
 Existing third-party package licenses remain in their respective source/runtime folders.

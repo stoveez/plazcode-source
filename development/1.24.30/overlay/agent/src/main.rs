@@ -104,6 +104,7 @@ mod vault;
 mod debug_report;
 mod tidy;
 mod text_pack;
+mod luau_check; // 1.24.30: Luau validation with the pinned official luau-lsp (docs/vault/luau-validation-plan.md)
 mod release_variant;
 mod events;
 mod hidden; // 1.24.30: command names and launch lines stored scrambled (antivirus false positive)
