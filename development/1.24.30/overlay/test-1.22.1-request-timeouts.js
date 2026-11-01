@@ -52,6 +52,8 @@ class WS{constructor(){this.readyState=0;}send(){}close(){}addEventListener(){}}
 const box={chrome,fetch:fetchV,WebSocket:WS,AbortSignal:VAbortSignal,AbortController:VAbortController,setTimeout:setTimeoutV,setInterval:setIntervalV,clearTimeout:clearV,clearInterval:clearV,
   console:{log(){},warn(){},error(){},info(){},debug(){}},Headers,URL,URLSearchParams,TextEncoder,TextDecoder,Blob,Event,EventTarget,crypto:require('crypto').webcrypto,
   structuredClone,queueMicrotask,atob,btoa,performance:{now:()=>now},navigator:{userAgent:'Chrome/140'},Date:class extends Date{constructor(...a){super(...(a.length?a:[now+1.7e12]));}static now(){return now+1.7e12;}}};
+// 1.24.30: a real package always has the extension's file checker (protection.js); background.js refuses commands without it.
+box.PlazCodeIntegrity={check:async()=>{}};
 box.self=box;box.globalThis=box;vm.createContext(box);
 const flush=async()=>{for(let i=0;i<20;i++)await new Promise(r=>setImmediate(r));};
 async function advance(ms,step=250){const end=now+ms;while(now<end){now=Math.min(end,now+step);

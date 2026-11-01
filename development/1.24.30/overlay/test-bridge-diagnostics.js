@@ -137,7 +137,9 @@ const dir = __dirname;
     assert(/const INTEGRITY_EXEMPT = new Set\(\["immediate-stop", "status", "live-status", "rs-run-beat", "job-wait"\]\)/.test(bg), "Stop and status stay available");
     assert(/if \(!\(msg && INTEGRITY_EXEMPT\.has\(msg\.type\)\)\) \{\n\s+try \{ await protectionCheck\(\); \} catch/.test(bg), "every other message waits for the check");
     assert(/async function send\(obj, timeout = REQUEST_TIMEOUT_DEFAULT\) \{\n[^\n]*\n\s+try \{ await protectionCheck\(\); \}/.test(bg), "an open socket also checks before sending");
-    const pm = fs.readFileSync(dir + "/../protection.mjs", "utf8");
+    // Overlay folder (development/<v>/overlay) or prepared build (build-src-<v>/PlazCode) both reach protection.mjs.
+    const pmPath = [dir + "/../protection.mjs", dir + "/../../development/1.24.30/protection.mjs"].find((p) => fs.existsSync(p));
+    const pm = fs.readFileSync(pmPath, "utf8");
     assert(/did not receive the release key and channel/.test(pm), "packaging refuses a verifier without the release key");
     console.log("PASS 1.24.30: a missing or failing verifier stops commands (Stop and status still work); packaging proves the release key is inside");
   }

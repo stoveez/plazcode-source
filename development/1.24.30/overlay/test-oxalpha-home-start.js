@@ -167,6 +167,15 @@ const PENDING = 'plazcode.oxalpha.pendingStart';
     const ev2 = new w.Event('submit', {bubbles: true, cancelable: true});
     post.dispatchEvent(ev2);
     assert.equal(ev2.defaultPrevented, false, 'POST form is left alone');
+    // 1.24.30 (Arena): a GET form whose own script sends the message (and cancels the native submit) must reach
+    // that script; the guard never runs first and never stops it.
+    const sent = [], toastsBefore = toasts.length;
+    get.addEventListener('submit', (e) => { e.preventDefault(); sent.push(1); });
+    const ev3 = new w.Event('submit', {bubbles: true, cancelable: true});
+    get.dispatchEvent(ev3);
+    assert.equal(sent.length, 1, 'the page script handling the send still runs (Arena)');
+    assert.equal(ev3.defaultPrevented, true, 'cancelled by the page itself');
+    assert.equal(toasts.length, toastsBefore, 'no "blocked" notice when the page handled the send itself');
     // Navigation API.
     assert.equal(handlers.length, 1, 'navigate listener installed');
     let prevented = 0;

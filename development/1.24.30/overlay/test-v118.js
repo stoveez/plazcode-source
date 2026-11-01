@@ -223,6 +223,8 @@ function makeWorker(fetchImpl, bridgeImpl) {
     setTimeout, clearTimeout, setInterval: () => 1, clearInterval: () => {},
     URL, AbortController, AbortSignal, TextDecoder, TextEncoder, atob, btoa, navigator: { userAgent: "node" },
   };
+  // 1.24.30: a real package always has the extension's file checker (protection.js); background.js refuses commands without it.
+  sandbox.PlazCodeIntegrity = { check: async () => {} };
   sandbox.globalThis = sandbox;
   sandbox.self = sandbox;
   const ctx = vm.createContext(sandbox);

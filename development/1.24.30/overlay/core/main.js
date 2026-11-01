@@ -1013,9 +1013,14 @@
     urlGuard.until = Date.now() + 20000;
     if (urlGuard.installed) return;
     urlGuard.installed = true;
+    // 1.24.30 (owner: Arena "wouldn't take the message"): the check runs LAST (window, bubble phase) and only
+    // when the page itself did not handle the submit. Arena's composer is a plain GET form with name="message"
+    // that its own script sends (and cancels the native submit); the old early, capture-phase check cancelled
+    // every long Arena send before Arena saw it. A page whose script handled the submit never changes address.
     try {
-      document.addEventListener("submit", (e) => {
+      window.addEventListener("submit", (e) => {
         if (Date.now() > urlGuard.until) return;
+        if (e.defaultPrevented) return;
         const f = e.target;
         if (!f || f.tagName !== "FORM") return;
         const method = String((e.submitter && e.submitter.getAttribute && e.submitter.getAttribute("formmethod")) || f.getAttribute("method") || "get").toLowerCase();
@@ -1028,9 +1033,9 @@
         } catch (e0) {}
         const url = String(f.action || location.href).split("?")[0] + "?" + qs;
         if (!urlCarriesPrompt(url)) return;
-        e.preventDefault(); e.stopImmediatePropagation();
+        e.preventDefault();
         noteLongUrlBlocked(url.length, "form");
-      }, true);
+      }, false);
     } catch (e) {}
     try {
       const nav = window.navigation;
@@ -1295,7 +1300,12 @@
         // Never strand an internal PlazCode prompt/result in the user's composer.
         // Providers that can safely clear their editor expose clearEditor().
         try { if (P.clearEditor) P.clearEditor(); } catch {}
-        ui.banner("warn", "Message didn't send",
+        // 1.24.30: when the site opened its own box instead of sending (Arena: accept Terms / sign in), say
+        // exactly that; "send something short" cannot help there.
+        let blocker = "";
+        try { blocker = P.sendBlocker ? P.sendBlocker() : ""; } catch (e0) {}
+        if (blocker) ui.banner("warn", "Message didn't send", String(blocker).replace(/<[^>]*>/g, ""));
+        else ui.banner("warn", "Message didn't send",
           `${P.displayName} wouldn't take the message after ${tries} tries. ` +
           `Just send something short yourself — like "continue" — and it'll pick back up.`);
         // Abort the caller's turn NOW (v1.12.1). Returning `base` here made the

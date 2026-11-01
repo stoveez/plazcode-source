@@ -48,6 +48,8 @@ function inspect(f){const p=f.p,r=p.readAssistant();return {editor:!!p.getEditor
    const before=inspect(old);
    // 1.24.21 (intentional): v1.22.1 Freebuff reported "generating" for text that was already on the page when it first looked, which made an idle or brand-new chat look busy. See test-freebuff-provider.
    if(name==='freebuff')before.generating=false;
+   // 1.24.30 (intentional, owner: Arena Battle mode): arena.ai/ with no conversation id is Arena's fresh Battle page, so it has no chat key yet (it was the literal "/").
+   if(name==='arena'&&before.chat==='/')before.chat='';
    assert(before.editor,name+' baseline editor');assert(before.reply.includes(command),name+' baseline reply fixture must be meaningful');
    assert.deepEqual(inspect(current),before,name+' healthy message detection unchanged');checks++;
    for(const f of [old,current]){
