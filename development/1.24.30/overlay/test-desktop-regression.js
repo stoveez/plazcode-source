@@ -7,7 +7,7 @@ const baseline = {
   "core/config.js": "354a2a8ed3cc9d99e230db488e804fa4e2d11a78",
   "core/headless-builder.js": "0d8924dae62e2894a68cdd17617bbb5e36cca33e",
   "core/luau-knowledge.js": "54441b9d7a36e28eac9e64d10b56607c41a34f2e",
-  "core/main.js": "ae8dc8a3b58250d3514f7c0354732aec0fe6bf8a",
+  "core/main.js": "3a8db3e5205e41510827a1d732fa723660c854a8",
   "core/motion-interchange.js": "038afa13a5b59c030a809abf7d617a36f2fae82d",
   "core/motion-preview.js": "c364991ffe8e0f9eaad557e6746fff21daea2e86",
   "core/motion-tools.js": "6e1c5ff01153d61038b48b9a0c7181be85b3c9a5",
@@ -16,7 +16,7 @@ const baseline = {
   "core/studio_gui.js": "726793b63c24b3fd128be60e6f3fb98e60a19243",
   "core/studio_plus.js": "c149c47cc7d178e3aa87f39539cc3c1420bff065",
   "core/studio_skills.js": "388ec93aac79026bcecbda276c322d05aa43f1e1",
-  "providers/arena.js": "e2d8a70ac9a18fd409ad936e25cdef10851028a0",
+  "providers/arena.js": "65ae89a119dc8c7f7769ede38f8fe44de89e5662",
   "providers/chatgpt-cm.js": "a51050ed2946e13be68fd1571a146921d2170e35",
   "providers/chatgpt.js": "7c0e2916a73371637e1c857a93d34ad389adb2b9",
   "providers/claude.js": "3bd0e9b6026e56d46d7ee4ec137aed15d75e0500",
@@ -35,7 +35,7 @@ const baseline = {
   "providers/qwen.js": "c8b0e08bdc561184a32f3295416665bcdfba87be",
   "providers/useai.js": "d20de72ca4d9718318c5706284146318716773f0",
   "providers/vani.js": "9888fcee8a577d47117b7de8dd42f9c455d062ce",
-  "providers/mimo.js": "995fc92c8c299eabc02e73c4a3e643aaefdb3b4a"
+  "providers/mimo.js": "ab4330c9b88d10489aabaa928a16db195ff45f46"
 };
 const requiredProviders = [
   "providers/clickup.js",

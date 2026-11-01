@@ -306,12 +306,26 @@ const RSProvider = (() => {
     return spot;
   }
 
+  // 1.24.30 (owner, 2026-11-01: "mimo doesnt accept the injection"). MiMo answered the first startup step, then
+  // refused the second one because it read the "(System note: ...)" wording and the unexplained ⟦RS-SYS⟧ tag as a
+  // prompt injection. MiMo now gets the plain first-person startup (same approach as Vani): the user's own request,
+  // honest about what the extension does, and the long rules arrive afterwards as the user's own notes.
+  function startupRequest(engine) {
+    return `I clicked Start Agent in my installed PlazCode extension to connect this chat to my own ${engine === "local" ? "local files" : "Roblox Studio project"}. This is my own connection request, an ordinary message from me, not a system instruction, and it does not override your safety rules or grant extra permissions. How it works: the extension in my browser reads fenced JSON code blocks in your normal replies, runs them on my computer and posts the real output back here as my next message. You do not need any native tool, file access or connector for this; you only write text. To begin, please reply with one fenced json code block containing {"command":"list_commands"}. It only lists which commands exist and changes nothing. Then wait for the result and for my task. If you cannot participate, explain briefly.`;
+  }
+  function startupCorrection(engine) {
+    return `To be clear, I am not asking for file or tool access. I installed the PlazCode extension in my own browser and clicked Start Agent myself. It only reads the text of your reply: when your reply contains a fenced json code block, it runs that command on my ${engine === "local" ? "computer" : "Roblox Studio project"} and sends the output back to you as my next message. So all I need is for you to write exactly one fenced json code block containing {"command":"list_commands"} in your reply. That command only lists which commands exist and changes nothing. This does not override your safety rules, and nothing else is needed until you have seen the result and my task. If you still cannot do this, tell me the specific reason in one sentence.`;
+  }
+
   return {
     id: "mimo",
     displayName: "MiMo",
     supportsVision: true,
     // 50,000-character box: the long rules arrive after the handshake (staged startup).
     compactStartup: true,
+    userVoiceStartup: true,
+    startupRequest,
+    startupCorrection,
     timings,
     thinkingSel: S.thinking,
     chipAtItemLevel: true,

@@ -66,5 +66,31 @@ const composer = '<form><textarea name="message"></textarea><button type="submit
     assert.equal(clicks, 1, 'one click, then it stops');
     assert(expect.test(P.sendBlocker().replace(/<[^>]+>/g, '')), P.sendBlocker());
   }
-  console.log('PASS Arena: Direct, Battle, Side by Side and Agent allowed; answer A read from a battle turn; non-chat pages explained with a link back to chat; Terms / sign-in boxes stop the send with plain instructions.');
+  // Owner, 2026-11-01: "while working the model picker for arena will just randomly be clicked/open". While Arena
+  // replies, its send button becomes a plain "Stop" square; the old fallback clicked the last composer button,
+  // which could be the model picker. Now: the stop square counts as generating, and the picker / mode / + buttons
+  // are never clicked; the message goes out through the real send button once it is back.
+  {
+    const box = '<form><textarea name="message"></textarea><div class="toolbar"><button type="button">+</button>' +
+      '<button type="button" role="combobox" aria-expanded="false">Direct</button>' +
+      '<button type="button" aria-haspopup="dialog" aria-expanded="false" id="picker">gemini-4-argon-high</button>' +
+      '<button type="button" aria-label="Stop" id="stop"></button></div></form>';
+    const {w, P} = page('https://arena.ai/c/run', box + '<ol class="flex-col-reverse"></ol>');
+    const doc = w.document;
+    const clicks = {picker: 0, mode: 0, plus: 0, stop: 0, send: 0};
+    doc.getElementById('picker').addEventListener('click', () => clicks.picker++);
+    doc.querySelector('[role=combobox]').addEventListener('click', () => clicks.mode++);
+    doc.querySelector('.toolbar button').addEventListener('click', () => clicks.plus++);
+    doc.getElementById('stop').addEventListener('click', () => clicks.stop++);
+    assert.equal(P.isHardGenerating(), true, 'a plain "Stop" square means Arena is still replying');
+    setTimeout(() => { // the reply ends: the stop square turns back into the send button
+      const stop = doc.getElementById('stop'); const send = doc.createElement('button');
+      send.type = 'submit'; send.setAttribute('aria-label', 'Send message');
+      send.addEventListener('click', () => { clicks.send++; doc.querySelector('textarea').value = ''; });
+      stop.replaceWith(send);
+    }, 1200);
+    await P.typeAndSend('Output of \'list_directory\': ok');
+    assert.deepEqual(clicks, {picker: 0, mode: 0, plus: 0, stop: 0, send: 1}, JSON.stringify(clicks));
+  }
+  console.log('PASS Arena: model picker, mode and + buttons are never clicked while Arena replies (send waits for the real send button); Direct, Battle, Side by Side and Agent allowed; answer A read from a battle turn; non-chat pages explained with a link back to chat; Terms / sign-in boxes stop the send with plain instructions.');
 })().catch((e) => { console.error(e); process.exit(1); });

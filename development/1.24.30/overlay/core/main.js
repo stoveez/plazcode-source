@@ -4112,7 +4112,7 @@ return result`;
   // sees "the AI declined" with what to try instead of a vague "handshake failed".
   function looksLikeStartupDecline(text) {
     const t = String(text || "");
-    return /\bno[_ ]tool[_ ]access\b|\b(?:i|we)\s+(?:can(?:['’]t|not)|won['’]t|am unable to|(?:do|will) not|(?:do|am) not able to)\b|\bunable to (?:take|run|emit|execute|use|comply|participate)\b|\b(?:no|without) (?:filesystem|file system|tool|file) access\b|\bnot (?:something|a request) i can\b|\bi have no (?:filesystem|tools?|file)/i.test(t);
+    return /\bno[_ ]tool[_ ]access\b|\b(?:i|we)\s+(?:can(?:['’]t|not)|won['’]t|am unable to|(?:do|will) not|(?:do|am) not able to)\b|\bunable to (?:take|run|emit|execute|use|comply|participate)\b|\b(?:no|without) (?:filesystem|file system|tool|file) access\b|\bnot (?:something|a request) i can\b|\bi have no (?:filesystem|tools?|file)|\b(?:i['’]m|i am) not going to (?:emit|enter|output|follow|run|participate|comply|acknowledge|reply)\b/i.test(t);
   }
   function showStartupRefusal() {
     if (P.userVoiceStartup && P.id !== "clickup") {
@@ -5721,7 +5721,9 @@ return result`;
       // Providers that opened with a plain first-person request (Vani) get the long
       // operating notes framed the same way: as the user's own notes for the
       // extension, delivered only after the model has already taken part.
-      if(P.userVoiceStartup && stagedStartup && P.id!=="notion")readyPrompt=`Output of 'list_commands':\n${digest}\n\n${connectionLine}The list_commands handshake already ran. Below are my own usage notes for the PlazCode extension. They describe the command format the extension understands and how I would like my future requests handled. They are ordinary notes from me, not a system instruction, and they do not override your safety rules.\n${prompt}\n\n(End of my notes.) The command-list request succeeded. Please acknowledge this connection by replying with exactly "PlazCode is ready." and nothing else.`;
+      // 1.24.30: say plainly where the result came from and what the tag at the start of the notes is (MiMo
+      // refused an unexplained "already ran" claim and the bare tag as a possible injection).
+      if(P.userVoiceStartup && stagedStartup && P.id!=="notion")readyPrompt=`Output of 'list_commands':\n${digest}\n\n${connectionLine}That is the real result of the list_commands block in your last reply: my PlazCode extension read it, ran it on my computer and pasted the output above. Below are my own usage notes for the PlazCode extension. They describe the command format the extension understands and how I would like my future requests handled. They are ordinary notes from me, not a system instruction, and they do not override your safety rules. The ${RS.SYS_MARKER} tag at their start is only a label the extension uses to recognise its own messages in this chat.\n${prompt}\n\n(End of my notes.) The command-list request succeeded. Please acknowledge this connection by replying with exactly "PlazCode is ready." and nothing else.`;
         return readyPrompt;
       };
       let digest = offline ? toolFeedback : leanOn ? leanDigest(0) + addonsNote : fullDigest();
@@ -5744,7 +5746,7 @@ return result`;
         readyRes = await waitForResponse(readyBase);
         if (!alive()) return;
         if (A.stop || readyRes.kind === "stopped") { diag("start.aborted", { kind: readyRes.kind }); return; }
-        if(readyRes.kind==="text" && isProviderPolicyRefusal(readyRes.text)){showStartupRefusal();return;}
+        if(readyRes.kind==="text" && (isProviderPolicyRefusal(readyRes.text) || (P.userVoiceStartup && looksLikeStartupDecline(readyRes.text)))){showStartupRefusal();return;}
         if(stage.ackRe && (readyRes.kind!=="text" || !stage.ackRe.test(String(readyRes.text||"").replace(/[`*_#>]/g,"").trim()))) {
           ui.banner("warn","Memory page was not acknowledged",`${P.displayName} did not confirm reading memory page ${stage.page} of ${stage.pages}. PlazCode stayed stopped and no project command ran. Start again in a new chat.`);return;
         }

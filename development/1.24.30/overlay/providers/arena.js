@@ -117,7 +117,7 @@ const RSProvider = (() => {
     slide: '[aria-roledescription="slide"]',
     codeWrap: "div.not-prose",     // fenced-code wrapper inside .prose
     sendAria: /send message|envoyer|^send$|send prompt|send query/i,
-    stopAria: /stop generation|arr[êe]ter/i,
+    stopAria: /stop generat|stop respon|^\s*stop\s*$|arr[êe]ter/i,
     errorSurfaces:
       '[role="alert"],[class*="toast"],[class*="error"],[class*="alert"],[data-sonner-toast]',
   };
@@ -459,16 +459,26 @@ const RSProvider = (() => {
   // ── Action button (send / stop) ───────────────────────────────────────────
   const ariaOf = (b) => ((safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.getAttribute("title"), null) || safeRead(() => b.textContent, "") || "") + "").trim();
   const allButtons = () => [...safeQueryAll(document, "button")].filter((b) => !safeClosest(b, "#rs-root"));
+  // 1.24.30 (owner, 2026-11-01: "while working the model picker for arena will just randomly be clicked/open").
+  // When Arena's real send button was not on screen (it turns into the stop square while the AI replies), the
+  // fallback took "the last button in the message box", which could be the model picker (or Direct / + / stop).
+  // The fallback now never returns a menu, picker or dropdown trigger, or a stop button, and never an earlier button.
+  const isNotSend = (b) => safeRead(() => b.getAttribute("role"), "") === "combobox" ||
+    !!safeRead(() => b.getAttribute("aria-haspopup"), null) && safeRead(() => b.getAttribute("aria-haspopup"), "") !== "false" ||
+    safeRead(() => b.hasAttribute("aria-expanded"), false) || S.stopAria.test(ariaOf(b));
   const sendButton = () => {
     const hit = allButtons().find((b) => S.sendAria.test(ariaOf(b)) && visibleBtn(b));
     if (hit) return hit;
     const frame = composerFrame();
     if (frame) {
+      // Only a submit button, or the very LAST button (where send sits) when it is not a picker or stop button;
+      // never an earlier one such as "+" or the mode/model picker.
       const btns = [...safeQueryAll(frame, "button")].filter(visibleBtn);
-      const typed = btns.find((b) => safeRead(() => b.type, "") === "submit") || btns[btns.length - 1];
+      const last = btns[btns.length - 1];
+      const typed = btns.find((b) => safeRead(() => b.type, "") === "submit" && !isNotSend(b)) || (last && !isNotSend(last) ? last : null);
       if (typed) return typed;
     }
-    return allButtons().find((b) => safeRead(() => b.type, "") === "submit" && visibleBtn(b)) || null;
+    return allButtons().find((b) => safeRead(() => b.type, "") === "submit" && visibleBtn(b) && !isNotSend(b)) || null;
   };
   const stopButton = () =>
     allButtons().find((b) => S.stopAria.test(ariaOf(b)) && visibleBtn(b)) || null;
