@@ -2,6 +2,11 @@
 
 Branch `claude/plazcode-dev` only. No publish/merge without the owner's clear "yes". Commits: stoveez name only, no email, no Co-Authored-By/Claude-Session/"Generated with" lines. Read `docs/NOW.md`, then this note.
 
+## Codex resume
+- Resumed on 4f0b060, branch unchanged. Current task order is JS investigation + fresh CI, then Luau, Arena hang/raw text, and Arena argument/latency fixes.
+- Additional owner screenshot confirms raw Lua command text remains visible in Arena while work is slow. Investigation not yet complete.
+- Full JS runner excludes v115, so it will be run explicitly alongside the requested suite. test-bridges.js still needs a live bridge and is excluded.
+
 ## Where things are
 - Last pushed commit: **a853e60** (WIP label; everything below is in it). Latest build run **41359449874** (commit 6dd5cc9): Windows/Mac/Linux native jobs GREEN, but `browsers` job FAILED (and so release-check). Cause: `release-tools/test-sidebar-explorer.cjs` expects the Ultra active page button to keep the same glow (box-shadow) as normal. My first Ultra-outline CSS forced a box-shadow. **Already fixed in a853e60** (removed that rule; Chromium part of the test passes locally). So the next run should pass; confirm.
 - Pending: a full local JS suite was running (`for t in test-*.js` in `build-src-1.24.30/PlazCode`, `NODE_PATH=$PWD/release-tools/node_modules`). Only `test-bridges.js` printed FAIL and that one just needs a live bridge (`PLAZCODE_TEST_KEY`), ignore. Re-run the suite once to be sure, then start the build.
