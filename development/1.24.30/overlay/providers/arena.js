@@ -584,6 +584,13 @@ const RSProvider = (() => {
     const it = lastAssistant();
     return !!it && !itemText(it).replace(/\s+/g, "").length;
   }
+  // A FINISHED empty turn: no text, Arena's Like button already under it (it only appears once a turn is done) and
+  // nothing generating. Arena stores such a turn as "The generation failed" (seen live, about 1s after the send).
+  function turnEndedEmpty(item) {
+    if (isAgentRoute() || !item || item !== lastAssistant() || isHardGenerating()) return false;
+    if (itemText(item).replace(/\s+/g, "").length) return false;
+    return [...safeQueryAll(item, "button")].some((b) => /^(?:like|upvote)\b/i.test(ariaOf(b)));
+  }
   // Called by the core when a turn ended with no reply. True = regenerate was clicked (wait for the new reply).
   async function regenerateEmpty() {
     if (isAgentRoute()) return false;
@@ -1155,7 +1162,10 @@ const RSProvider = (() => {
     setInputLock, typeAndSend, stopGeneration,
     isGenerating, isBusyNow, isHardGenerating,
     enforceComposer, ensureComposerReady, modeWarning, captchaPresent, overlayBlocking, sendBlocker,
-    turnHalted, findContinueBtn, clickContinueBtn, regenerateEmpty,
+    turnHalted, findContinueBtn, clickContinueBtn, regenerateEmpty, turnEndedEmpty,
+    // After a failed empty turn, later messages in the same chat kept failing until PlazCode's startup was sent
+    // again (live, 2026-11-01), so the core reconnects the chat once instead of only re-sending a note.
+    reconnectOnEmpty: true,
     scanError, isTooLongMsg, isBusyMsg,
     // actions
     attachImages, clearAttachments, conversationKey,

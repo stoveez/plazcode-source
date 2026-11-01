@@ -127,9 +127,23 @@ const composer = '<form><textarea name="message"></textarea><button type="submit
     let regen2 = 0; full.w.document.getElementById('regen2').addEventListener('click', () => regen2++);
     assert.equal(await full.P.regenerateEmpty(), false, 'a reply with text is never regenerated');
     assert.equal(regen2, 0);
+    // A finished empty turn (Like bar under an empty body, nothing generating) is recognised at once; a turn with
+    // text, or an older turn, is not.
+    const emptyItem = empty.P.lastAssistant();
+    assert.equal(empty.P.turnEndedEmpty(emptyItem), true, 'finished empty turn recognised');
+    assert.equal(full.P.turnEndedEmpty(full.P.lastAssistant()), false, 'a turn with text is not empty');
+    const twoTurns = page('https://arena.ai/c/two', composer + '<ol class="flex-col-reverse"><div class="h-0"></div>' + turn('ok', 'r1') + '<div class="mx-auto justify-end"><div class="prose">x</div></div>' + turn('', 'r0') + '<div class="mx-auto justify-end"><div class="prose">y</div></div></ol>');
+    assert.equal(twoTurns.P.turnEndedEmpty(twoTurns.P.allItems().filter(twoTurns.P.isAssistantItem)[0]), false, 'only the latest turn counts');
+    const streaming = page('https://arena.ai/c/stream', '<form><textarea name="message"></textarea><button type="button" aria-label="Stop generation">Stop</button></form><ol class="flex-col-reverse"><div class="h-0"></div>' + turn('', 'r3') + '<div class="mx-auto justify-end"><div class="prose">y</div></div></ol>');
+    assert.equal(streaming.P.turnEndedEmpty(streaming.P.lastAssistant()), false, 'still generating is not finished');
+    assert.equal(empty.P.reconnectOnEmpty, true);
     const main = fs.readFileSync('core/main.js', 'utf8');
-    assert(/emptyRegens < 2[^\n]*P\.regenerateEmpty/.test(main) && /A\.sendToken = null;\s*\n\s*base = Math\.max\(0, P\.assistantCount\(\) - 1\);/.test(main),
-      'the loop regenerates an empty reply (twice at most) before sending a retry message');
+    assert(/emptyRegens < 1[^\n]*P\.regenerateEmpty/.test(main) && /A\.sendToken = null;\s*\n\s*base = Math\.max\(0, P\.assistantCount\(\) - 1\);/.test(main),
+      'the loop regenerates an empty reply once before anything else');
+    const iRegen = main.indexOf('P.regenerateEmpty'), iRecon = main.indexOf('P.reconnectOnEmpty && refuseRetries < 1'), iDead = main.indexOf('loop.deadRetry", { kind: "empty"');
+    assert(iRegen > 0 && iRecon > iRegen && iDead > iRecon, 'order: regenerate, then reconnect once (like Restart), then the old retry note');
+    assert(/P\.turnEndedEmpty && newReply && !gen && !sawContent/.test(main) && /ENDED_EMPTY_MS = 4000/.test(main), 'a finished empty turn ends the wait after 4s, not 45-60s');
+    assert(/ui\.toast\(saved\.reason \|\|/.test(main), 'the reconnect says why it reconnects');
   }
-  console.log('PASS Arena: an empty reply is regenerated with Arena\'s own button (never Copy, never a reply with text); paragraphs read as separate lines; model picker, mode and + buttons are never clicked while Arena replies (send waits for the real send button); Direct, Battle, Side by Side and Agent allowed; answer A read from a battle turn; non-chat pages explained with a link back to chat; Terms / sign-in boxes stop the send with plain instructions.');
+  console.log('PASS Arena: a finished empty reply is spotted in seconds, regenerated once with Arena\'s own button (never Copy, never a reply with text), then the chat is reconnected once like Restart; paragraphs read as separate lines; model picker, mode and + buttons are never clicked while Arena replies (send waits for the real send button); Direct, Battle, Side by Side and Agent allowed; answer A read from a battle turn; non-chat pages explained with a link back to chat; Terms / sign-in boxes stop the send with plain instructions.');
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -1397,6 +1397,7 @@
       });
     };
     let preStartSilent = 0; // nothing produced AND not generating
+    let endedEmptySince = 0; const ENDED_EMPTY_MS = 4000; // provider says the turn finished empty (Arena)
     let curItem = null, sawContent = false, warmSince = 0; // per-turn "warming up"
     // Keep exact assistant text only for one identified turn. A node swap is
     // not itself a new response; conversely a reused node is not proof of the
@@ -1608,6 +1609,14 @@
       curItem = d.item; curToken = curTok; curChat = chat;
       if ((d.reply && d.reply.length) || (d.thinking && d.thinking.length)) sawContent = true;
       if (d.reply && d.reply.length) lastGoodReply = d.reply;
+
+      // 1.24.30: a provider that can tell its reply turn FINISHED with nothing in it (Arena marks such a turn
+      // "The generation failed" about a second after the send and shows its Like / Copy bar under an empty body)
+      // ends here after a short steady check, instead of waiting out the 45-60s warm-up for text that never comes.
+      if (P.turnEndedEmpty && newReply && !gen && !sawContent && d.item && P.turnEndedEmpty(d.item)) {
+        if (!endedEmptySince) endedEmptySince = Date.now();
+        if (Date.now() - endedEmptySince >= ENDED_EMPTY_MS) { diag("empty.why", { branch: "endedEmpty", started }); return { kind: "empty", item: d.item }; }
+      } else endedEmptySince = 0;
 
       if (!started) {
         // CRITICAL: a bare count increase is NOT enough - the empty turn
@@ -4632,8 +4641,8 @@ return result`;
           diag("empty.end");
           // 1.24.30 (owner: "sometimes arena will just randomly stop while working"): Arena can finish a turn with
           // an EMPTY reply. A new message on top of it came back empty too and the run stopped. A provider that can
-          // redo its own last empty reply (Arena's regenerate button) does that first, at most twice per loop.
-          if (emptyRegens < 2 && !A.stop && A.started && typeof P.regenerateEmpty === "function") {
+          // redo its own last empty reply (Arena's regenerate button) does that once first.
+          if (emptyRegens < 1 && !A.stop && A.started && typeof P.regenerateEmpty === "function") {
             let redo = false;
             try { redo = await P.regenerateEmpty(); } catch { redo = false; }
             if (redo && !A.stop) {
@@ -4645,6 +4654,15 @@ return result`;
               base = Math.max(0, P.assistantCount() - 1);
               continue;
             }
+          }
+          // Live (Arena, 2026-11-01): after a failed empty turn, every further message in that chat ("continue",
+          // PlazCode's retry note) failed the same way for ten minutes, while the owner's Restart (the startup
+          // message sent again) worked at once. So reconnect this chat once, the way Restart does, and continue.
+          if (P.reconnectOnEmpty && refuseRetries < 1 && !A.stop && !A.userStopped && A.started) {
+            recoverSession = { chat:P.conversationKey(), engine:activeEngine(), generation:A.sessionGen, task:A.taskRequest || "",
+              reason:P.displayName + " sent an empty reply again. Reconnecting this chat once…" };
+            diag("loop.emptyReconnect", { regens: emptyRegens });
+            break;
           }
           if (deadRetries < 1 && !A.stop && A.started) {
             deadRetries++;
@@ -5045,7 +5063,7 @@ return result`;
       return;
     }
     try {
-      ui.toast("The AI lost command access. Reconnecting this chat once…");
+      ui.toast(saved.reason || "The AI lost command access. Reconnecting this chat once…");
       const ready = await startSession({restart:true});
       if (!ready || !ready.ready || A.userStopped || A.stop || saved.chat !== P.conversationKey() || saved.engine !== activeEngine()) return;
       if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) { ui.banner("warn", "PlazCode app needed", PlazCodeText.error()); return; }
