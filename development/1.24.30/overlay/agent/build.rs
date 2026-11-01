@@ -95,6 +95,7 @@ fn main() {
     println!("cargo:rerun-if-changed=../release-public-key.hex");
     println!("cargo:rerun-if-env-changed=PLAZCODE_RELEASE_PUBLIC_KEY");
     println!("cargo:rerun-if-env-changed=PLAZCODE_PROTECTION_CHANNEL");
+    println!("cargo:rerun-if-env-changed=PLAZCODE_RELEASE_VARIANT");
     windows_icon(&root);
     println!("cargo:rerun-if-changed=assets/plazcode.ico");
     println!("cargo:rerun-if-changed=assets/plazcode.png");

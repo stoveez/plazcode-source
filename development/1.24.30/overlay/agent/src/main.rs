@@ -104,6 +104,7 @@ mod vault;
 mod debug_report;
 mod tidy;
 mod text_pack;
+mod release_variant;
 mod events;
 mod hidden; // 1.24.30: command names and launch lines stored scrambled (antivirus false positive)
 
@@ -1095,7 +1096,7 @@ async fn start() -> anyhow::Result<()> {
     let args = Arc::new(Args::parse());
     if args.protection_info {
         let key=integrity::public_key()?.unwrap_or_default().iter().map(|b|format!("{b:02x}")).collect::<String>();
-        println!("{}",serde_json::json!({"public_key":key,"channel":integrity::channel(),"version":env!("CARGO_PKG_VERSION")}));
+        println!("{}",serde_json::json!({"public_key":key,"channel":integrity::channel(),"version":env!("CARGO_PKG_VERSION"),"release_variant":release_variant::info()}));
         return Ok(());
     }
     if let Some(root)=&args.verify_package {

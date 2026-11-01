@@ -1,3 +1,4 @@
+import {variantSeed,deriveVariant,variantInfo,packConfig} from './release-variant.mjs';
 // Release signing uses Node's built-in Ed25519 implementation. Private keys never enter packages.
 import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify, hkdfSync, randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
@@ -122,8 +123,7 @@ export async function verifyTree(root, hex, manifest=FILE_MANIFEST) {
 export const TEXT_PACK_FILES={'core/config.js':'config','core/lean-startup.js':'lean','core/studio_skills.js':'skills'};
 export const TEXT_PACK_FILE='core/text-pack.bin';
 const TEXT_PACK_MIN=200;
-const TEXT_PACK_SALT='071787836aa53f54c4e672124a99ea635483f6085f8b45c6822af1c11deb81a0';
-export function textPackKey(version){return createHash('sha256').update('PlazCode text pack v1\n'+TEXT_PACK_SALT+'\n'+version).digest();}
+export function textPackKey(version,seed=variantSeed()){return packConfig(version,seed).key;}
 export function moveText(source, prefix, acorn) {
   const ast=acorn.parse(source,{ecmaVersion:'latest',sourceType:'script'});
   const found=[];
@@ -161,16 +161,24 @@ export function moveText(source, prefix, acorn) {
   acorn.parse(code,{ecmaVersion:'latest',sourceType:'script'});
   return {code,pack,moved:found.filter(node=>!found.some(other=>inside(other,node))).length};
 }
-export function sealTextPack(pack,version){
-  const nonce=randomBytes(12),cipher=createCipheriv('aes-256-gcm',textPackKey(version),nonce);
-  const body=Buffer.concat([cipher.update(gzipSync(Buffer.from(JSON.stringify(pack)),{level:9})),cipher.final()]);
-  return Buffer.concat([Buffer.from('PCTP1'),nonce,body,cipher.getAuthTag()]);
+export function sealTextPack(pack,version,seed=variantSeed()){
+  const c=packConfig(version,seed),nonce=randomBytes(12),pad=Buffer.alloc(c.padding);c.mark.copy(pad);
+  const cipher=createCipheriv('aes-256-gcm',c.key,nonce);cipher.setAAD(Buffer.concat([c.magic,pad]));
+  const body=Buffer.concat([cipher.update(gzipSync(Buffer.from(JSON.stringify(pack)),{level:9})),cipher.final()]),tag=cipher.getAuthTag();
+  return Buffer.concat(c.layout===0?[c.magic,pad,nonce,body,tag]:c.layout===1?[c.magic,nonce,pad,tag,body]:[c.magic,tag,nonce,body,pad]);
 }
-export function openTextPack(raw,version){
-  if(raw.subarray(0,5).toString()!=='PCTP1')throw new Error('Not a PlazCode text pack.');
-  const nonce=raw.subarray(5,17),tag=raw.subarray(raw.length-16),decipher=createDecipheriv('aes-256-gcm',textPackKey(version),nonce);
-  decipher.setAuthTag(tag);
-  return JSON.parse(gunzipSync(Buffer.concat([decipher.update(raw.subarray(17,raw.length-16)),decipher.final()])).toString());
+export function openTextPack(raw,version,seed=variantSeed()){
+  const c=packConfig(version,seed),n=c.padding;
+  if(raw.length<8+n+12+16+1||raw.length>8*1024*1024||!raw.subarray(0,8).equals(c.magic))throw Error('Not this release text pack');
+  let nonce,pad,tag,body;
+  if(c.layout===0){pad=raw.subarray(8,8+n);nonce=raw.subarray(8+n,20+n);body=raw.subarray(20+n,-16);tag=raw.subarray(-16);}
+  else if(c.layout===1){nonce=raw.subarray(8,20);pad=raw.subarray(20,20+n);tag=raw.subarray(20+n,36+n);body=raw.subarray(36+n);}
+  else{tag=raw.subarray(8,24);nonce=raw.subarray(24,36);body=raw.subarray(36,-n);pad=raw.subarray(-n);}
+  if(!pad.subarray(0,8).equals(c.mark))throw Error('Wrong release mark');
+  const decipher=createDecipheriv('aes-256-gcm',c.key,nonce);decipher.setAAD(Buffer.concat([c.magic,pad]));decipher.setAuthTag(tag);
+  const json=JSON.parse(gunzipSync(Buffer.concat([decipher.update(body),decipher.final()]),{maxOutputLength:32*1024*1024}).toString());
+  if(!json||Array.isArray(json)||typeof json!=='object'||!Object.keys(json).length)throw Error('Empty text pack');
+  return json;
 }
 export async function obfuscate(root, maps, sourceRoot, publicKey, channel, key) {
   // No eval, string-array runtime, property renaming or control-flow flattening: preserve extension CSP and performance.
@@ -207,6 +215,8 @@ export async function obfuscate(root, maps, sourceRoot, publicKey, channel, key)
       if(sharedPack!==null&&sharedPack!==text)throw new Error('Packaged folders moved different text');sharedPack=text;
       await fs.writeFile(path.join(base,TEXT_PACK_FILE),sealTextPack(pack,version));
     }
+    await fs.mkdir(path.join(base,'core'),{recursive:true});
+    await fs.writeFile(path.join(base,'core/release-variant.json'),JSON.stringify(variantInfo(version))+'\n');
     await signExtension(base,key,channel);
   }
   return report;
@@ -217,7 +227,7 @@ export async function protect(root, maps, sourceRoot, key, channel, platform) {
   const publicKey=publicHex(key);
   {
     const report=await obfuscate(root,maps,sourceRoot,publicKey,channel,key);
-    await fs.writeFile(path.join(root,'PlazCode-Extension/production-build.json'),JSON.stringify({schema:1,channel,public_key:publicKey,files:report})+'\n');
+    await fs.writeFile(path.join(root,'PlazCode-Extension/production-build.json'),JSON.stringify({schema:1,channel,public_key:publicKey,release_variant:variantInfo(JSON.parse(await fs.readFile(path.join(root,'manifest.json'),'utf8')).version),files:report})+'\n');
     await writeBootstrap(root);
     await signInstallation(root,key,platform,channel);
   }
@@ -270,6 +280,15 @@ async function main([command,...args]) {
   }
   if(command==='verify') {await verifyTree(args[0],args[1],args[2]);return;}
   const key=await signingKey();
+  if(command==='configure-variant') {
+    const version=JSON.parse(await fs.readFile(path.join(here,'overlay/manifest.json'),'utf8')).version;
+    const seed=deriveVariant(key,version,process.env.PLAZCODE_PROTECTION_CHANNEL||'release');
+    if(!args[0])throw Error('Supply the runner environment file');
+    // Ephemeral runner environment only; neither seed nor private key is a public build output.
+    console.log('::add-mask::'+seed);
+    await fs.appendFile(args[0],'PLAZCODE_RELEASE_VARIANT='+seed+'\n');
+    console.log('Release variant configured; public descriptor: '+JSON.stringify(variantInfo(version,variantSeed(seed))));return;
+  }
   if(command==='export-public') {
     const file=path.join(here,'overlay/release-public-key.hex'),hex=publicHex(key),existing=(await fs.readFile(file,'utf8')).trim();
     if(existing && existing!==hex) throw new Error('Configured public key differs; automatic key rotation is forbidden.');

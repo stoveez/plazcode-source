@@ -7,9 +7,10 @@
 //! - `fnv("name")` in a `const` compares names by fingerprint, so names that are only compared are not stored at all.
 
 /// 64-bit FNV-1a of a name. `const` so that `const { fnv("process_kill") }` leaves no text in the program.
-pub const fn fnv(text: &str) -> u64 {
+pub const fn fnv(text: &str) -> u64 {fnv_with_seed(text,crate::release_variant::seed64(&crate::release_variant::SEED))}
+const fn fnv_with_seed(text:&str,seed:u64)->u64 {
     let bytes = text.as_bytes();
-    let mut hash: u64 = 0xcbf29ce484222325;
+    let mut hash: u64 = 0xcbf29ce484222325 ^ seed;
     let mut i = 0;
     while i < bytes.len() {
         hash ^= bytes[i] as u64;
@@ -19,8 +20,9 @@ pub const fn fnv(text: &str) -> u64 {
     hash
 }
 
-const fn key(i: usize, len: usize) -> u8 {
-    let x = (i as u64).wrapping_mul(0x9e3779b97f4a7c15) ^ (len as u64).wrapping_mul(0xc2b2ae3d27d4eb4f) ^ 0x5bd1e995;
+const fn key(i: usize, len: usize) -> u8 {key_with_seed(i,len,crate::release_variant::seed64(&crate::release_variant::SEED))}
+const fn key_with_seed(i:usize,len:usize,seed:u64)->u8 {
+    let x = (i as u64).wrapping_mul(0x9e3779b97f4a7c15) ^ (len as u64).wrapping_mul(0xc2b2ae3d27d4eb4f) ^ 0x5bd1e995 ^ seed.rotate_left((i%64) as u32);
     (x ^ (x >> 29) ^ (x >> 47)) as u8
 }
 
@@ -56,6 +58,13 @@ pub fn one_of(name: &str, fingerprints: &[u64]) -> bool { fingerprints.contains(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn different_variants_scramble_differently_but_decode_identically(){
+        let text=b"variant comparison";
+        let encode=|seed|text.iter().enumerate().map(|(i,b)|b^key_with_seed(i,text.len(),seed)).collect::<Vec<_>>();
+        let a=encode(17);let b=encode(29);assert_ne!(a,b);
+        for (seed,bytes) in [(17,a),(29,b)] {assert_eq!(bytes.iter().enumerate().map(|(i,b)|b^key_with_seed(i,text.len(),seed)).collect::<Vec<_>>(),text);}
+        assert_ne!(fnv_with_seed("sample",17),fnv_with_seed("sample",29));
+    }
     #[test]
     fn hidden_text_round_trips_and_fingerprints_are_stable() {
         assert_eq!(hidden!("taskkill"), "taskkill");

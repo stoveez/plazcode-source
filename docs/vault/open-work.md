@@ -154,3 +154,5 @@ Replay corrected for fresh locked context; actual account changes retain isolati
 
 ## Anti-copy implementation authorized (2026-10-31)
 Owner requested implementing anti-copy-plan.md. Inspected existing protection, packaging, CI and promotion. Planned compatibility: signed core variant record, unchanged manifest schema and updaters; derived per-version variant from existing release key. No code implemented yet. Luau analysis request is additional; stage/policy/version answers pending.
+
+- Anti-copy WIP: variant-compatible Node/Rust text-pack format and seeded hidden text written; three-layout/foreign-variant/tamper Node tests pass. Native tests running; packaging/canaries/CI and all three requested Luau stages remain. Not shippable.

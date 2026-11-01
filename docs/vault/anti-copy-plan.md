@@ -4,7 +4,7 @@ updated: 2026-10-31
 ---
 # Anti-copy plan: owner chose "per-release variation" + "takedowns" (2026-10-31)
 
-**Status: IMPLEMENTATION AUTHORIZED (owner, 2026-10-31); inspection complete, code not yet changed.** Everything below is the agreed scope. Commit `c87bea2` (a separate small WIP) is not part of it. Work on branch `claude/plazcode-dev` in `development/1.24.30/overlay` (never edit `build-src-1.24.30`; run `python3 development/1.24.30/prepare.py` to regenerate it). Follow the owner's rules in CLAUDE.md (plan mode first: inspect, plan, then change; no Co-Authored-By lines; no publishing without a clear yes; repo visibility is the owner's to change).
+**Status: IMPLEMENTATION AUTHORIZED (owner, 2026-10-31); initial variant/text-pack and scrambling code written; Node tests pass, native checks running, not yet integrated or shippable.** Everything below is the agreed scope. Commit `c87bea2` (a separate small WIP) is not part of it. Work on branch `claude/plazcode-dev` in `development/1.24.30/overlay` (never edit `build-src-1.24.30`; run `python3 development/1.24.30/prepare.py` to regenerate it). Follow the owner's rules in CLAUDE.md (plan mode first: inspect, plan, then change; no Co-Authored-By lines; no publishing without a clear yes; repo visibility is the owner's to change).
 
 ## Why (what protection can and cannot do)
 - Protection = an edited extension stops working with the app, and an extension loaded from any other folder is never paired (`security.rs`, `integrity.rs`, `text_pack.rs`). It does NOT stop editing, and does NOT stop someone who patches `PlazCode.exe` (unsigned, nothing outside the program checks it).
