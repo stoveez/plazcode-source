@@ -121,6 +121,9 @@ with tempfile.TemporaryDirectory(prefix='plazcode-private-maps-') as maps:
  subprocess.run(['node',str(Path(__file__).with_name('protection.mjs')),'protect',str(package),maps,str(source),platform_name,str(output/f'PlazCode-1.24.30-{osname}-private-maps.encrypted.json')],check=True)
  subprocess.run(['node',str(Path(__file__).with_name('protection.mjs')),'verify',str(package),info['public_key']],check=True)
  subprocess.run([str(native.resolve()),'--verify-package',str(package.resolve()),'--verify-version','1.24.30'],check=True)
+sealed=[hashlib.sha256((package/prefix/'core/text-pack.bin').read_bytes()).hexdigest() for prefix in ['', 'PlazCode-Extension','PlazCode-Extension-Firefox']]
+assert len(set(sealed))==1, 'Browser mirrors must contain identical sealed text'
+(output/f'PlazCode-1.24.30-{osname}-sealed-text.json').write_text(json.dumps({'version':'1.24.30','text_pack_sha256':sealed[0]},indent=2)+'\n',encoding='utf-8')
 # Keep existing checksum listings truthful after transformation.
 if sums.exists():
  listed=[line.split(None,1)[1].strip().lstrip('*') for line in sums.read_text().splitlines() if line.strip()]

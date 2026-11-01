@@ -1,7 +1,7 @@
 # NOW
 Updated: 2026-11-01. Branch `claude/plazcode-dev`; no helper agents.
 
-**Current: full replacement validation 41338413340 is running on program source `3c73298`.** Browser job passed. Native Windows/Mac/Linux regressions/build/package gates remain. Full local JavaScript suite after licensing changes passed with 0 failures. Latest stable is 1.24.29; no stable 1.24.30 publication authorized. Next: verify all jobs, artifact digests, exact INNER ZIPs/signatures/source provenance/variant parity/layout, actual Linux startup; deliver through Drive immediately and remind owner to restore source Private.
+**Current: final cross-platform packaging correction passes focused checks; next full validation run pending.** Existing run 41338413340 is still building 3c73298, with browsers passed. A confirmed gzip OS-header difference (Windows/Mac/Linux) could make deterministic sealing differ by platform; now normalized to 255 before nonce derivation/encryption. CI also requires all three sealed-content hashes to match. Gate tests reject missing/divergent/malformed proofs; all-layout and 1,066-output checks plus optimized native integration pass. Full local JS after licensing changes passed with 0 failures. Stable is 1.24.29; no stable publication authorized. Next: dispatch full corrected-source validation, verify exact inner packages and deliver via Drive.
 
 **Actual feature preview delivered now:** [Luau settings](https://drive.google.com/file/d/1rbUnl6a1_yvHWqoslgic0UFr4wBG_-z1/view?usp=drivesdk), running Linux debug app/frontend with a temporary profile using the actual local account Worker. No page errors; Advisory default shown. Drive PNG name/MIME/236,394-byte size read back. Not a Studio-analysis demonstration. No new anti-copy screen exists.
 

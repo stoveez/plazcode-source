@@ -176,3 +176,5 @@ Owner explicitly does not want source ZIP distribution. Run 41335729270 cancelle
 - Browser CI caught the Ultra adapter template retaining the old first-party SPDX header after output changed; template fixed and pinned as an input. No UltraLab third-party content changed. Replacement validation required.
 
 - Final local JS suite after the first-party licensing changes: 0 failures. Replacement full CI 41338413340 / source 3c73298 is running; archive and Drive-delivery gates remain.
+
+**2026-11-01 final sealing audit:** zlib writes an OS-specific gzip header byte (10 Windows, 19 Mac, 3 Linux). Normalize it to 255 before content-based nonce derivation, so matching source produces identical sealed packages across systems. CI now compares public sealed-content SHA256 reports for all three platforms, in addition to matching variant descriptors. Divergent/missing/malformed proofs are tested and refuse readiness. Node layout/text-parity and optimized signed native integration pass; final corrected-source full build next.

@@ -165,6 +165,9 @@ export function sealTextPack(pack,version,seed=variantSeed()){
   const c=packConfig(version,seed),pad=Buffer.alloc(c.padding);c.mark.copy(pad);
   const json=JSON.stringify(pack,(_key,value)=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value);
   const compressed=gzipSync(Buffer.from(json),{level:9});
+  // zlib otherwise writes a host-specific OS byte (Windows 10, macOS 19,
+  // Linux 3). This field is informational and outside the payload checksum.
+  compressed[9]=255;
   // Identical release content must seal identically on every platform. A separate
   // keyed hash of the exact plaintext gives changed content a different 96-bit
   // nonce; the encryption key is never used as the nonce derivation key.

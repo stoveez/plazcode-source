@@ -2,7 +2,7 @@
 system, and whether each passed. Written to the run's summary page and kept as a build artifact; the assistant
 sends it with every test build. Reads this run's jobs and steps through the GitHub API (read-only).
 Usage: python3 release-check.py <run id> <owner/repo>   (needs GH_TOKEN or an authenticated gh)"""
-import json,subprocess,sys,datetime,os
+import json,subprocess,sys,datetime,os,re
 from pathlib import Path
 run_id,repo=sys.argv[1],sys.argv[2]
 def api(path):return json.loads(subprocess.run(['gh','api','--paginate',path],check=True,capture_output=True,text=True).stdout or '{}')
@@ -43,5 +43,16 @@ if variant_dir:
     lines+=['## Per-release variation: '+('PASS' if variant_ok else 'FAIL'),
             'All three native packages must contain the same descriptor (hash and mark only).']
     if variant_ok:lines+=['Mark: `'+descriptors[0]['mark']+'`; seed SHA256: `'+descriptors[0]['seed_sha256']+'`.']
+    sealed=[]
+    for path in sorted(Path(variant_dir).rglob('*-sealed-text.json')):
+        value=json.loads(path.read_text(encoding='utf-8'))
+        assert set(value)=={'version','text_pack_sha256'} and value['version']=='1.24.30' and re.fullmatch('[a-f0-9]{64}',value['text_pack_sha256']), 'Invalid public sealed-text proof'
+        sealed.append(value)
+    sealed_ok=len(sealed)==3 and all(row==sealed[0] for row in sealed)
+    ok=ok and sealed_ok
+    if not sealed_ok:lines[3]=lines[3].replace('everything passed','NOT ready')
+    lines+=['## Sealed text across platforms: '+('PASS' if sealed_ok else 'FAIL'),
+            'Windows, Mac and Linux must package identical sealed content.']
+    if sealed_ok:lines+=['SHA256: `'+sealed[0]['text_pack_sha256']+'`.']
 print('\n'.join(lines))
 sys.exit(0 if ok else 1)

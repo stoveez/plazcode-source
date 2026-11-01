@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {generateKeyPairSync} from 'node:crypto';
+import {generateKeyPairSync,createDecipheriv} from 'node:crypto';
 import {variantSeed,variantInfo,deriveVariant,packConfig} from './release-variant.mjs';
 import {sealTextPack,openTextPack} from './protection.mjs';
 
@@ -19,6 +19,12 @@ for(let layout=0;layout<3;layout++){
   const nonce=raw=>raw.subarray(layout===0?8+config.padding:layout===1?8:24,layout===0?20+config.padding:layout===1?20:36);
   assert.notDeepEqual(nonce(packed),nonce(changedContent),'different plaintext must not reuse the GCM nonce');
   assert.notDeepEqual(config.key,config.nonceKey,'separate key domains');
+  const tag=layout===0?packed.subarray(-16):layout===1?packed.subarray(20+config.padding,36+config.padding):packed.subarray(8,24);
+  const ciphertext=layout===0?packed.subarray(20+config.padding,-16):layout===1?packed.subarray(36+config.padding):packed.subarray(36,-config.padding);
+  const pad=layout===0?packed.subarray(8,8+config.padding):layout===1?packed.subarray(20,20+config.padding):packed.subarray(-config.padding);
+  const decoder=createDecipheriv('aes-256-gcm',config.key,nonce(packed));decoder.setAAD(Buffer.concat([config.magic,pad]));decoder.setAuthTag(tag);
+  const compressed=Buffer.concat([decoder.update(ciphertext),decoder.final()]);
+  assert.equal(compressed[9],255,'gzip header must be independent of the build OS');
   assert.deepEqual(openTextPack(packed,'1.24.30',seed),payload);
   assert.throws(()=>openTextPack(packed,'1.24.30',Buffer.alloc(32,layout+1)));
   assert.throws(()=>openTextPack(packed,'1.24.31',seed));

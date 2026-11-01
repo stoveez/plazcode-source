@@ -82,6 +82,8 @@ jobs:
       - run: python3 development/1.24.30/test-prepare-overlay.py
       - name: Ultra generated files match the generator
         run: python3 development/1.24.30/test-ultralab-generated.py
+      - name: Cross-platform release proof gate regressions
+        run: python3 development/1.24.30/test-release-check.py
       - run: python3 development/1.24.30/prepare.py
       - run: python3 development/1.24.30/test-licenses.py
       - run: npm ci --prefix release-tools --ignore-scripts
@@ -529,7 +531,9 @@ jobs:
         if: github.event_name != 'pull_request'
         with:
           name: plazcode-1.24.30-${{ runner.os }}-release-variant
-          path: artifacts/*-release-variant.json
+          path: |
+            artifacts/*-release-variant.json
+            artifacts/*-sealed-text.json
           if-no-files-found: error
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -538,6 +542,7 @@ jobs:
             artifacts/*-test-lean.zip
             artifacts/*-test-lean.tar.gz
             artifacts/*-release-variant.json
+            artifacts/*-sealed-text.json
           compression-level: 0
           if-no-files-found: warn
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
