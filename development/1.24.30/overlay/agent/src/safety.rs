@@ -45,7 +45,7 @@ const LOCAL_READ: &[u64] = &[
 fn studio_read(bare: &str) -> bool {
     const PREFIXES: &[&str] = &["get_", "list_", "search_", "inspect_", "read_", "find_", "describe_", "query_"];
     const EXACT: &[&str] = &[
-        "analyze_luau", "script_read", "script_grep", "script_search", "script_analysis", "screen_capture",
+        "analyze_luau", "luau_lookup", "script_read", "script_grep", "script_search", "script_analysis", "screen_capture",
         "browser_snapshot", "browser_take_screenshot", "browser_console_messages",
         "browser_network_requests", "browser_tabs", "browser_wait_for", "look",
     ];

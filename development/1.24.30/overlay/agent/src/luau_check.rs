@@ -122,13 +122,16 @@ pub async fn tools() -> anyhow::Result<(PathBuf, PathBuf)> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Diagnostic { pub line: u32, pub col: u32, pub code: String, pub message: String }
+/// `file` is set only for a problem in ANOTHER script (one that uses the edited ModuleScript).
+pub struct Diagnostic { pub line: u32, pub col: u32, pub code: String, pub message: String, pub file: Option<String> }
 impl Diagnostic {
     /// syntax and type problems are errors; every lint is a warning. Only syntax errors may ever block.
     pub fn severity(&self) -> &'static str { match self.code.as_str() { "SyntaxError" => "syntax", "TypeError" => "error", _ => "warning" } }
     fn json(&self) -> Value {
         let message: String = self.message.chars().take(MAX_MESSAGE).collect();
-        json!({"line": self.line, "col": self.col, "severity": self.severity(), "code": self.code, "message": message})
+        let mut out = json!({"line": self.line, "col": self.col, "severity": self.severity(), "code": self.code, "message": message});
+        if let Some(file) = &self.file { out["file"] = json!(file); }
+        out
     }
 }
 
@@ -145,7 +148,7 @@ pub fn parse(output: &str, file: &str) -> Vec<Diagnostic> {
         let tail = if tail.starts_with("(W") { tail.split_once(") ").map(|(_, t)| t).unwrap_or(tail) } else { tail };
         let Some((code, message)) = tail.split_once(": ") else { continue };
         if code.is_empty() || !code.chars().all(|c| c.is_ascii_alphanumeric()) { continue; }
-        out.push(Diagnostic { line: ln, col, code: code.to_owned(), message: message.trim().to_owned() });
+        out.push(Diagnostic { line: ln, col, code: code.to_owned(), message: message.trim().to_owned(), file: None });
     }
     out
 }
@@ -153,11 +156,11 @@ pub fn parse(output: &str, file: &str) -> Vec<Diagnostic> {
 /// Diagnostics in `after` that were not already in `before`. Matching is by code+message as a multiset, so code
 /// that only moved to other lines is not reported again and existing project errors are never blamed on the edit.
 pub fn new_only(before: &[Diagnostic], after: &[Diagnostic]) -> Vec<Diagnostic> {
-    let mut seen: std::collections::HashMap<(&str, &str), usize> = std::collections::HashMap::new();
-    for d in before { *seen.entry((d.code.as_str(), d.message.as_str())).or_default() += 1; }
+    let mut seen: std::collections::HashMap<(Option<&str>, &str, &str), usize> = std::collections::HashMap::new();
+    for d in before { *seen.entry((d.file.as_deref(), d.code.as_str(), d.message.as_str())).or_default() += 1; }
     let mut out = Vec::new();
     for d in after {
-        let key = (d.code.as_str(), d.message.as_str());
+        let key = (d.file.as_deref(), d.code.as_str(), d.message.as_str());
         match seen.get_mut(&key) { Some(n) if *n > 0 => *n -= 1, _ => out.push(d.clone()) }
     }
     out
@@ -296,23 +299,24 @@ pub fn notice(verdict: &Verdict) -> String {
 pub const TOOL: &str = "analyze_luau";
 pub fn tool_spec() -> Value {
     json!({"name": TOOL,
-        "description": "Check Luau code for mistakes WITHOUT running it (official luau-lsp with Roblox types): syntax errors, type errors and lint warnings, with line numbers. Give `path` (a script in Studio, e.g. \"ServerScriptService.Shop\") or `source` (code text). Respects --!strict / --!nonstrict / --!nocheck. Script edits made with multi_edit are also checked automatically and only NEW problems are reported in their result.",
+        "description": "Check Luau code for mistakes WITHOUT running it (official luau-lsp with Roblox types and this place's real instance tree): syntax errors, type errors and lint warnings, with line numbers. `path` checks a script in Studio in the context of the place (requires, game.X paths); `path` + `source` checks PROPOSED new text for that script without applying it; `source` alone checks loose code. Respects --!strict / --!nonstrict / --!nocheck. Edits made with multi_edit are also checked automatically and only NEW problems (including ones they cause in scripts that require an edited ModuleScript) are reported in their result.",
         "inputSchema": {"type": "object", "properties": {
             "path": {"type": "string", "description": "script path in Studio, e.g. ServerScriptService.Shop"},
-            "source": {"type": "string", "description": "Luau code to check instead of a Studio script"}}}})
+            "source": {"type": "string", "description": "Luau code to check; with path: the proposed new text of that script"}}}})
 }
-/// Full (not only new) diagnostics for one source, as the compact report.
+/// Full (not only new) diagnostics as the compact report: `errors` / `warnings` instead of the new-only counts.
+pub fn full_report(label: &str, all: &[Diagnostic]) -> Value {
+    let status = if all.iter().any(|d| d.severity() != "warning") { "failed" } else if all.is_empty() { "passed" } else { "warnings" };
+    let mut out = report(label, status, all, None);
+    if let Some(obj) = out.as_object_mut() { for (old, new) in [("newErrors", "errors"), ("newWarnings", "warnings")] { let value = obj.remove(old).unwrap_or_default(); obj.insert(new.into(), value); } }
+    out
+}
+/// Full diagnostics for one source with the one-shot analyser (no place context).
 pub async fn analyze_one(label: &str, source: &str, timeout: Duration) -> Value {
     let name = file_name(label, "check");
     match analyze_sources(&[(name.as_str(), source)], timeout).await {
         Err(reason) => report(label, "validation-unavailable", &[], Some(&reason)),
-        Ok(mut lists) => {
-            let all = lists.pop().unwrap_or_default();
-            let status = if all.iter().any(|d| d.severity() != "warning") { "failed" } else if all.is_empty() { "passed" } else { "warnings" };
-            let mut out = report(label, status, &all, None);
-            if let Some(obj) = out.as_object_mut() { for (old, new) in [("newErrors", "errors"), ("newWarnings", "warnings")] { let value = obj.remove(old).unwrap_or_default(); obj.insert(new.into(), value); } }
-            out
-        }
+        Ok(mut lists) => full_report(label, &lists.pop().unwrap_or_default()),
     }
 }
 
@@ -320,7 +324,7 @@ pub async fn analyze_one(label: &str, source: &str, timeout: Duration) -> Value 
 mod tests {
     use super::*;
     const SAMPLE: &str = "A_after.luau:7:1-0: (W0) SyntaxError: Expected identifier when parsing expression, got <eof>\nA_after.luau:3:1-22: (W0) TypeError: Expected this to be 'number', but got 'string'\nA_after.luau:3:7-7: (W0) LocalUnused: Variable 'x' is never used; prefix with '_' to silence\nother.luau:1:1-1: (W0) TypeError: not ours\n[INFO] Loading definitions file\n";
-    fn d(line: u32, code: &str, msg: &str) -> Diagnostic { Diagnostic { line, col: 1, code: code.into(), message: msg.into() } }
+    fn d(line: u32, code: &str, msg: &str) -> Diagnostic { Diagnostic { line, col: 1, code: code.into(), message: msg.into(), file: None } }
 
     #[test] fn parses_plain_output_for_one_file_only() {
         let list = parse(SAMPLE, "A_after.luau");

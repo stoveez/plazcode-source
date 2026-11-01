@@ -320,6 +320,18 @@ jobs:
           NODE_PATH: release-tools/node_modules
       - name: Signed integrity and obfuscation regressions
         run: node development/1.24.30/test-protection.mjs
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        if: runner.os == 'Linux'
+        with:
+          repository: luau-lang/luau
+          ref: 74f768309c380d40601b28c4c4cdda27da415cef
+          path: validation-luau
+      - name: Build the official Luau VM for the place-outline snippet test (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cmake -S validation-luau -B validation-luau/build -DLUAU_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build validation-luau/build --target Luau.Repl.CLI -j 4
+          echo "PLAZCODE_LUAU=$GITHUB_WORKSPACE/validation-luau/build/luau" >> "$GITHUB_ENV"
       - name: Fetch the pinned official luau-lsp for real Luau check tests
         shell: bash
         run: |

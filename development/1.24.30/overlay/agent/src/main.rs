@@ -104,6 +104,7 @@ mod vault;
 mod debug_report;
 mod tidy;
 mod text_pack;
+mod luau_service; // 1.24.30: persistent Roblox-aware luau-lsp service (stage 2)
 mod luau_check; // 1.24.30: Luau validation with the pinned official luau-lsp (docs/vault/luau-validation-plan.md)
 mod release_variant;
 mod events;
@@ -1698,6 +1699,10 @@ async fn checkpoint_tool(state: &AppState, engine: &str, id: &str, name: &str, a
 }
 async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &str, mut args: serde_json::Value) -> anyhow::Result<McpOutput> {
     if engine=="roblox" && name==luau_check::TOOL { return analyze_luau_tool(state,args).await; }
+    if engine=="roblox" && name==luau_service::LOOKUP_TOOL {
+        let result=tokio::time::timeout(std::time::Duration::from_secs(90),luau_service::lookup(state,&args)).await.map_err(|_|anyhow::anyhow!("luau_lookup ran out of time while reading the place"))??;
+        return Ok(McpOutput{text:result.to_string(),images:Vec::new()});
+    }
     if engine=="local" && name.contains("__") {
         // Add-on tool in AgentScript mode: runs in its own app, so it has no file checkpoint.
         if !id.is_empty() { let mut journal=checkpoints::STORE.lock().await; journal.step(id,name); if safety::is_change("local",name) { journal.warn(id,"This task used an add-on tool that changes another app. PlazCode can't undo that part."); } let _=journal.save(); }
@@ -1774,11 +1779,21 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
 /// `analyze_luau`: reads the script with the fixed read-only snapshot snippet (never the script's own code) or
 /// takes pasted source, and returns the compact diagnostics. Static analysis only.
 async fn analyze_luau_tool(state:&AppState,args:serde_json::Value)->anyhow::Result<McpOutput>{
-    let (label,source)=if let Some(source)=args["source"].as_str().filter(|s|!s.trim().is_empty()){("pasted code".to_string(),source.to_string())}
+    // With a Studio path, the persistent service checks it in the place's context (requires, instance paths);
+    // `source` together with `path` checks proposed text for that script without applying it.
+    let studio=args.get("studio_id").cloned().filter(|v|!v.is_null());
+    let proposed=args["source"].as_str().filter(|s|!s.trim().is_empty());
+    if let Some(path)=args["path"].as_str().map(str::trim).filter(|p|!p.is_empty()){
+        if let Ok(Ok((label,all)))=tokio::time::timeout(std::time::Duration::from_secs(60),luau_service::analyze(state,&studio,path,proposed)).await{
+            let mut report=luau_check::full_report(&label,&all);report["context"]=serde_json::json!("place");
+            return Ok(McpOutput{text:report.to_string(),images:Vec::new()});
+        }
+    }
+    let (label,source)=if let Some(source)=proposed{(args["path"].as_str().unwrap_or("pasted code").to_string(),source.to_string())}
     else{
         let path=args["path"].as_str().map(str::trim).filter(|p|!p.is_empty()).ok_or_else(||anyhow::anyhow!("analyze_luau needs `path` (a script in Studio) or `source` (code text)."))?;
         let mut params=serde_json::json!({"code":checkpoints::script_snapshot(path),"datamodel_type":"Edit"});
-        if let Some(studio)=args.get("studio_id").filter(|v|!v.is_null()){params["studio_id"]=studio.clone();}
+        if let Some(studio)=&studio{params["studio_id"]=studio.clone();}
         let out=roblox_tool(state,"execute_luau",params).await?;
         let snapshot=checkpoints::parse_snapshot(&out.text).ok_or_else(||anyhow::anyhow!("Could not read that script: {}",out.text.chars().take(300).collect::<String>()))?;
         (snapshot["path"].as_str().unwrap_or(path).to_string(),snapshot["source"].as_str().unwrap_or("").to_string())
@@ -1797,7 +1812,14 @@ async fn luau_after_edit(state:&AppState,id:&str,before:&serde_json::Value,after
     if old==new {return Ok(String::new());}
     let (old,new,path,task)=(old.to_owned(),new.to_owned(),path.to_owned(),id.to_owned());
     let (wait,limit)=if mode==Mode::Blocking{(luau_check::BLOCKING_WAIT,luau_check::BLOCKING_WAIT)}else{(luau_check::ADVISORY_WAIT,luau_check::BACKGROUND_LIMIT)};
-    let mut job={let (path,old,new)=(path.clone(),old.clone(),new.clone());tokio::spawn(async move{luau_check::check_edit(&path,&old,&new,mode,limit).await})};
+    // The place-aware service first (fast once running, also checks scripts that require an edited module);
+    // the one-shot analyser if the service cannot start or read the place.
+    let mut job={let (path,old,new,state,studio)=(path.clone(),old.clone(),new.clone(),state.clone(),Some(studio.clone()));tokio::spawn(async move{
+        let started=std::time::Instant::now();
+        match tokio::time::timeout(limit,luau_service::check_edit(&state,&studio,&path,&old,&new)).await{
+            Ok(Ok(pair))=>luau_check::decide(&path,mode,Ok(pair)),
+            _=>luau_check::check_edit(&path,&old,&new,mode,limit.saturating_sub(started.elapsed()).max(std::time::Duration::from_secs(3))).await,
+        }})};
     let verdict=match tokio::time::timeout(wait,&mut job).await{
         Ok(Ok(verdict))=>verdict,
         Ok(Err(_))=>luau_check::decide(&path,mode,Err("the Luau checker stopped unexpectedly".into())),
@@ -2401,6 +2423,7 @@ async fn roblox_tools(state: &AppState) -> anyhow::Result<Vec<serde_json::Value>
     state.ui.set_roblox_tools(&primary, true);
     // 1.24.30: PlazCode's own read-only Luau checker (answered by this app, never sent to Studio's MCP).
     if !primary.iter().any(|t| t["name"]==luau_check::TOOL) { primary.push(luau_check::tool_spec()); }
+    if !primary.iter().any(|t| t["name"]==luau_service::LOOKUP_TOOL) { primary.push(luau_service::lookup_spec()); }
     let addon_tools = addon_snapshot(state).await;
     primary.extend(addon_tools);
     Ok(primary)
