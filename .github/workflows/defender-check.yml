@@ -31,7 +31,8 @@ jobs:
           if ($env:TAG -notmatch '^v\d+\.\d+\.\d+$' -or $env:ASSET -notmatch '^[A-Za-z0-9._-]+\.zip$') { throw 'Unexpected tag or asset name.' }
           gh release download $env:TAG --repo stoveez/PlazCode --pattern $env:ASSET --dir pkg
           Set-MpPreference -MAPSReporting Advanced -SubmitSamplesConsent 2 -CloudBlockLevel High -CloudExtendedTimeout 50
-          Update-MpSignature
+          foreach ($try in 1..4) { try { Update-MpSignature -ErrorAction Stop; break } catch { "signature update attempt $try failed: $($_.Exception.Message)"; Start-Sleep -Seconds 15 } }
+          Get-MpComputerStatus | Select-Object AntivirusSignatureVersion,AntivirusSignatureLastUpdated,AMEngineVersion | Format-List
           $scanner=Get-ChildItem 'C:/ProgramData/Microsoft/Windows Defender/Platform/*/MpCmdRun.exe' | Sort-Object FullName | Select-Object -Last 1
           $zip=Resolve-Path "pkg/$env:ASSET"
           Expand-Archive $zip -DestinationPath unpacked
