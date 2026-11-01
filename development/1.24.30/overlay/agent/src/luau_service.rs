@@ -147,7 +147,30 @@ pub fn uri(path: &Path) -> String {
     out
 }
 
-// ── Mirror of the place: instance tree + script files ────────────────────────────────────────────────────
+/// The server may spell a file address differently from us (Windows: `file:///c%3A/...` against `file:///C:/...`).
+/// Compares decoded addresses without regard to case and returns the part after the workspace folder.
+fn decode(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Some(v) = std::str::from_utf8(&bytes[i + 1..i + 3]).ok().and_then(|h| u8::from_str_radix(h, 16).ok()) { out.push(v); i += 3; continue; }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).replace('\\', "/")
+}
+pub fn relative_file(root_uri: &str, target: &str) -> Option<String> {
+    let (root, target) = (decode(root_uri), decode(target));
+    let root = root.trim_end_matches('/');
+    if target.len() <= root.len() || !target.is_char_boundary(root.len()) || !target[..root.len()].eq_ignore_ascii_case(root) { return None; }
+    let rest = target[root.len()..].trim_start_matches('/');
+    (!rest.is_empty() && target.as_bytes()[root.len()] == b'/').then(|| rest.to_owned())
+}
+
+// ── Mirror of the place// ── Mirror of the place: instance tree + script files ────────────────────────────────────────────────────
 #[derive(Clone, Debug)]
 pub struct Node { pub depth: usize, pub class: String, pub name: String, pub script: bool, pub path: String, pub file: Option<String> }
 #[derive(Default)]
@@ -294,9 +317,8 @@ impl Service {
     }
     /// Turns a location from the server into a Studio script path (or "Roblox API" for the built-in type list).
     fn place_of(&self, uri_text: &str) -> String {
-        let root = uri(&self.root);
-        match uri_text.strip_prefix(&root).map(|r| r.trim_start_matches('/')) {
-            Some(file) => self.mirror.path_of_file(file).map(str::to_owned).unwrap_or_else(|| file.to_owned()),
+        match relative_file(&uri(&self.root), uri_text) {
+            Some(file) => self.mirror.path_of_file(&file).map(str::to_owned).unwrap_or(file),
             None => "Roblox API".into(),
         }
     }
@@ -598,6 +620,10 @@ mod tests {
         assert_eq!(lua_long_string("{\"a\":\"]]\"}"), "[=[{\"a\":\"]]\"}]=]");
         assert_eq!(lua_long_string("x]=]y"), "[==[x]=]y]==]");
         assert_eq!(uri(Path::new("/tmp/a b/c.luau")), "file:///tmp/a%20b/c.luau");
+        assert_eq!(relative_file("file:///C:/Users/x/cache/ws", "file:///c%3A/Users/x/cache/ws/src/Shop-1.luau").as_deref(), Some("src/Shop-1.luau"), "Windows spelling");
+        assert_eq!(relative_file("file:///tmp/ws", "file:///tmp/ws/src/A.luau").as_deref(), Some("src/A.luau"));
+        assert_eq!(relative_file("file:///tmp/ws", "file:///tmp/ws2/src/A.luau"), None, "a neighbouring folder is not ours");
+        assert_eq!(relative_file("file:///tmp/ws", "file:///opt/defs.d.luau"), None);
         let d = lsp_diagnostic(&json!({"message": "TypeError: bad", "severity": 1, "range": {"start": {"line": 2, "character": 4}}}), Some("X")).unwrap();
         assert_eq!((d.line, d.col, d.code.as_str(), d.message.as_str(), d.file.as_deref()), (3, 5, "TypeError", "bad", Some("X")));
     }
