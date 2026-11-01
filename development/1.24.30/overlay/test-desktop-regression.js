@@ -16,7 +16,7 @@ const baseline = {
   "core/studio_gui.js": "726793b63c24b3fd128be60e6f3fb98e60a19243",
   "core/studio_plus.js": "c149c47cc7d178e3aa87f39539cc3c1420bff065",
   "core/studio_skills.js": "388ec93aac79026bcecbda276c322d05aa43f1e1",
-  "providers/arena.js": "3976e850fc56012c95e40716030d441bdd4aef49",
+  "providers/arena.js": "060f9f05f1ff792fd1fc88c9c5c3342fc0cb14df",
   "providers/chatgpt-cm.js": "a51050ed2946e13be68fd1571a146921d2170e35",
   "providers/chatgpt.js": "7c0e2916a73371637e1c857a93d34ad389adb2b9",
   "providers/claude.js": "3bd0e9b6026e56d46d7ee4ec137aed15d75e0500",

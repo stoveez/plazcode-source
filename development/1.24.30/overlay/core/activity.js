@@ -63,6 +63,10 @@ const PlazCodeActivity = (() => {
     let parts=listed.length>=2?listed:text.replace(/\s+/g,' ').split(/(?<=[.!?;])\s+|\s+(?:and then|then|after that|also|finally)\s+/i).map(cleanLabel).filter(label=>label.split(' ').length>=2);
     // Each listed line may hold several sentences; each becomes its own short step.
     parts=parts.flatMap(label=>label.split(/(?<=[.!?])\s+/).map(cleanLabel).filter(Boolean));
+    // 1.24.30 (owner, 2026-11-01): "use 15 tool calls 1 per turn as a test. Just read tools" showed "Just read tools"
+    // as a second task. A short "just/only ..." sentence or a "don't/never/without ..." sentence is a rule for how to
+    // do the work, not a step of its own.
+    if(parts.length>=2)parts=parts.filter(label=>!/^(?:(?:just|only)(?:\s+\S+){1,2}[.!]?$|(?:don['’]?t|do not|never|without|avoid|no need)\b)/i.test(label.trim()));
     let name='';
     parts=parts.filter(label=>{const m=NAME_SENTENCE.exec(label);if(m){name=m[1].trim();return false;}return true;});
     parts=parts.map(condenseStep).filter(label=>label.split(' ').length>=2);

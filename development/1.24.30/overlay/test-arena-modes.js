@@ -101,5 +101,12 @@ const composer = '<form><textarea name="message"></textarea><button type="submit
     await P.typeAndSend('hello');
     assert.deepEqual(clicks, {plus: 0, picker: 0, go: 1}, JSON.stringify(clicks));
   }
-  console.log('PASS Arena: model picker, mode and + buttons are never clicked while Arena replies (send waits for the real send button); Direct, Battle, Side by Side and Agent allowed; answer A read from a battle turn; non-chat pages explained with a link back to chat; Terms / sign-in boxes stop the send with plain instructions.');
+  // Owner, 2026-11-01: the task title read "15 read-only tool callsCall 1 of 15" because paragraphs were joined.
+  {
+    const {P} = page('https://arena.ai/c/para', composer + '<ol class="flex-col-reverse"><div class="mx-auto"><div class="prose"><p><strong>Goal:</strong> 15 read-only tool calls</p><p>Call 1 of 15: checking the workspace</p><ul><li>one</li><li>two</li></ul>line a<br>line b</div></div><div class="mx-auto justify-end"><div class="prose">hi</div></div><div class="h-0"></div></ol>');
+    const reply = P.readAssistant().reply;
+    assert(/15 read-only tool calls\nCall 1 of 15/.test(reply), JSON.stringify(reply));
+    assert(/one\ntwo/.test(reply) && /line a\nline b/.test(reply), JSON.stringify(reply));
+  }
+  console.log('PASS Arena: paragraphs read as separate lines; model picker, mode and + buttons are never clicked while Arena replies (send waits for the real send button); Direct, Battle, Side by Side and Agent allowed; answer A read from a battle turn; non-chat pages explained with a link back to chat; Terms / sign-in boxes stop the send with plain instructions.');
 })().catch((e) => { console.error(e); process.exit(1); });

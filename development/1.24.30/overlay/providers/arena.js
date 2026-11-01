@@ -323,11 +323,20 @@ const RSProvider = (() => {
     if (!root) return "";
     const skip = ".rs-chip" + (excludeSel ? ", " + excludeSel : "");
     let t = "";
+    // 1.24.30 (owner, 2026-11-01): paragraphs were joined with no break ("Goal: 15 read-only tool callsCall 1 of 15"
+    // as the task title). Block elements and <br> now end their line, as the page shows them.
+    const BLOCK = /^(?:P|DIV|LI|UL|OL|H[1-6]|PRE|BLOCKQUOTE|TR|TABLE|SECTION|ARTICLE|HEADER|FOOTER)$/;
+    const breakLine = () => { if (t && !t.endsWith("\n")) t += "\n"; };
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
       if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
+      const tag = safeRead(() => n.tagName, "");
+      if (tag === "BR") { t += "\n"; return; }
+      const block = BLOCK.test(tag);
+      if (block) breakLine();
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
+      if (block) breakLine();
     };
     walk(root);
     return t;
