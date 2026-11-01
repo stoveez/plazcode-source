@@ -8,6 +8,8 @@ updated: 2026-11-01
 
 # Open work
 
+**Handoff 2026-11-01:** final source 936a302, full CI 41342349857 running. Coding/targeted checks complete, final archive verification + Drive test ZIP delivery unfinished. See [exact handoff](handoff-1.24.30-2026-11-01.md). Source remains Public during build; owner restores Private after delivery.
+
 **Latest 2026-11-01:** first-party 1.24.30 proprietary terms implemented by owner confirmation; no source ZIP distribution; current notices and dependency licences retained. Full local JS 0 failures, replacement CI 41338413340 / 3c73298 running, browsers passed. Actual Luau Settings Drive preview delivered; verified test ZIPs pending. Older dated entries below are historical.
 
 **Current 1.24.30 audit (2026-11-01):** full JS passed; anti-copy configured native and signed integration passed before final fixes. Interrupted Luau checks/profile isolation fixes pass native 268 + 5 with real LSP. Zero-variant/boolean-layout promotion refusal passes negative tests. Optimized/hosted validation and packages pending. Release notes cover Luau/MiMo/Arena. See [gap review](1.24.30-gap-review.md) for confirmed fixes and remaining scope/device/licence gaps. Older dated entries below are historical; stable is 1.24.29.
