@@ -14,7 +14,7 @@ updated: 2026-10-31
 - CI already compiles Studio Skills with the official `luau-compile` built from a pinned luau commit (`test-luau-library-compiles.js`); reuse that pin for `luau-analyze`.
 
 ## Policy (owner-approved, keep unless the owner changes it)
-- **Syntax errors BLOCK** applying a script change.
+- **DECIDED by the owner (2026-10-31, latest): validation is ADVISORY by default; blocking syntax errors is a setting (off at first), turned on by default only after the backward-compatibility tests prove it safe.** (This replaces the earlier "syntax errors always block" approval.) When blocking is on: syntax errors block, type/lint stay advisory.
 - **Type errors and lint warnings are ADVISORY**: reported to the AI, never block.
 - Owner's newer design text says "validation fails: keep original, report errors"; read it as applying to blocking (syntax) errors. Advisory results are returned with the successful apply. **If the owner wants new type errors to block too, ask first** (AskUserQuestion) before changing this.
 - Respect each script's `--!strict`, `--!nonstrict`, `--!nocheck`; never force strict. A `--!nocheck` script gets syntax check only.
