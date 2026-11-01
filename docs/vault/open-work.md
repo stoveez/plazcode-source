@@ -1,12 +1,14 @@
 ---
 title: Open work and known bugs
-updated: 2026-10-30
+updated: 2026-11-01
 ---
 **Newest, 2026-10-30:** tool-call consistency fixes (DeepSeek DSML calls, extras' result names, `env_info`/`list_dir`, unknown-command suggestions, desktop size units) and the shorter gap between tool calls (all sites except DeepSeek; not measured live). Bridge drops: the trigger is unconfirmed; diagnostics are in, and the tester's next Terminal lines are needed ([bridge-stability](bridge-stability.md)). See [tool-call-consistency](tool-call-consistency.md). Not in any test zip; live DeepSeek not tested.
 
 **Latest, 2026-10-30:** replacement full 1.24.27 test ZIPs delivered through Google Drive. CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952), source `38fd7d2`, passed Windows, universal Mac, Linux and browsers. Includes profile pictures, bold Up to date, plus/approval icons, splash fade, parallel protected-file checks and ahead-of-stable update fix. Production signatures, all 235 reviewed JS sources and release layouts verified; actual downloaded Linux startup passed. Source remains Public at delivery; owner reminded to restore Private. Account API stays Public independently. Stable remains 1.24.26. [Verification](test-build-1.24.27-followups-verification.json).
 
 # Open work
+
+**Current 1.24.30 audit (2026-11-01):** full JS passed; anti-copy configured native and signed integration passed before final fixes. Interrupted Luau checks/profile isolation fixes and zero-variant promotion refusal are written, next validation/build pending. Release notes cover Luau/MiMo/Arena. See [gap review](1.24.30-gap-review.md) for confirmed fixes and remaining scope/device/licence gaps. Older dated entries below are historical; stable is 1.24.29.
 
 - 2026-10-31: a tester's Microsoft Defender blocked the published PlazCode-1.24.29.zip as "Trojan ... executes commands from an attacker" (cloud machine-learning verdict; our offline CI Defender scan of the same package found nothing). Found: the package carried `starter-skills/syphodev/install.ps1` (-ExecutionPolicy Bypass, never used by PlazCode), the updater script compiles C# at runtime (Updater-Progress.cs via Add-Type), and PlazCode.exe holds its full command list (process_kill, key_type, mouse_click, screen_record, download_file, launch_app) as plain text, which reads like a remote-access tool. 1.24.30: installers removed from downloads; CI Defender now scans with cloud checks (no sample upload) on the dev zip, the test zip and every file, and fails with the detection name. Owner chose no Microsoft false-positive report. Next: act on what the cloud scan names. Also in 1.24.30 (owner said yes): the app's command names, descriptions and taskkill/PowerShell lines are stored scrambled (`agent/src/hidden.rs`); names only compared are stored as fingerprints. The CI cloud scan of 1.24.29 and of the 1.24.30 builds found nothing, so the fix cannot be proven before testers download it.
 
@@ -160,4 +162,4 @@ Owner requested implementing anti-copy-plan.md. Inspected existing protection, p
 - 2026-11-01: anti-copy resumed; independent checks, CI/native/packager descriptor checks, cross-platform promotion guard and private-function mangling implemented. Node checks pass; full native/signed/hosted validation and licence/takedown documents pending. Current Luau/MiMo/Arena changes retained.
 
 ## Anti-copy validation status (2026-11-01)
-Native configured-variant 268 + 5 tests and optimized signed-app end-to-end pass. Node protection/variant and 1,066 byte-identical prompt/help/skill outputs pass. Promotion fixture updated to include descriptors and reject cross-platform mismatches. Licence/branding and takedown documents complete. Full JS running, final Mac path compatibility adjustment and hosted validation/test ZIP delivery remain. Public release not authorized.
+Native configured-variant 268 + 5 tests and optimized signed-app end-to-end pass. Node protection/variant and 1,066 byte-identical prompt/help/skill outputs pass. Promotion fixture updated to include descriptors and reject cross-platform mismatches. Licence/branding and takedown documents complete. Full JS passed; final Mac path compatibility and broader Luau lifecycle fixes need fresh native/hosted validation and test ZIP delivery. Public release not authorized.

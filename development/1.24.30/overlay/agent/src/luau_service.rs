@@ -28,6 +28,11 @@ const MAX_SYNC_CALLS: usize = 400;
 
 // ── Language server connection (JSON-RPC over stdio with Content-Length frames) ──────────────────────────
 type Pending = Arc<std::sync::Mutex<HashMap<i64, tokio::sync::oneshot::Sender<Value>>>>;
+// Outer command deadlines and Stop may drop request() before its own timeout.
+struct PendingRequest { pending: Pending, id: i64 }
+impl Drop for PendingRequest {
+    fn drop(&mut self) { self.pending.lock().unwrap_or_else(|e| e.into_inner()).remove(&self.id); }
+}
 pub struct Lsp {
     _child: tokio::process::Child,
     stdin: Arc<tokio::sync::Mutex<tokio::process::ChildStdin>>,
@@ -125,6 +130,7 @@ impl Lsp {
         let id = self.next.fetch_add(1, Ordering::Relaxed);
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.pending.lock().unwrap_or_else(|e| e.into_inner()).insert(id, tx);
+        let _request = PendingRequest { pending: self.pending.clone(), id };
         if let Err(error) = write_frame(&self.stdin, &json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params})).await {
             self.pending.lock().unwrap_or_else(|e| e.into_inner()).remove(&id);
             return Err(error);
@@ -266,6 +272,8 @@ pub struct Service { lsp: Lsp, key: String, root: PathBuf, pub mirror: Mirror, o
 static SERVICE: once_cell::sync::Lazy<tokio::sync::Mutex<Option<Service>>> = once_cell::sync::Lazy::new(|| tokio::sync::Mutex::new(None));
 static REAPER: std::sync::Once = std::sync::Once::new();
 
+pub async fn clear_profile() { *SERVICE.lock().await = None; }
+
 impl Service {
     pub async fn start(program: &Path, definitions: &Path, root: PathBuf, key: String) -> Result<Self> {
         let _ = std::fs::remove_dir_all(&root);
@@ -338,7 +346,8 @@ fn lua_long_string(text: &str) -> String {
 }
 fn studio_key(state: &crate::AppState, studio: &Option<Value>) -> (String, Option<Value>) {
     let studio = studio.clone().filter(|v| !v.is_null()).or_else(|| state.roblox_mcp.try_lock().ok().and_then(|m| m.studio_id.clone()));
-    (studio.as_ref().map(|v| v.to_string()).unwrap_or_else(|| "default".into()), studio)
+    let profile = state.accounts.active().map(|p| p.epoch).unwrap_or_default();
+    (format!("{profile}:{}", studio.as_ref().map(|v| v.to_string()).unwrap_or_else(|| "default".into())), studio)
 }
 async fn tree_call(state: &crate::AppState, studio: &Option<Value>, args: Value) -> Result<Value> {
     let code = TREE_SNIPPET.replace("__ARGS__", &lua_long_string(&args.to_string()));
@@ -443,6 +452,9 @@ pub async fn check_edit(state: &crate::AppState, studio: &Option<Value>, path: &
     compare(service, path, before, after).await
 }
 pub async fn compare(service: &mut Service, path: &str, before: &str, after: &str) -> Result<(Vec<Diagnostic>, Vec<Diagnostic>)> {
+    // Force a fresh Studio sync next time, including if a timeout drops this future
+    // while the server sees the temporary baseline instead of the real script.
+    service.synced = None;
     let node = service.mirror.node(path).cloned().ok_or_else(|| anyhow!("script not in the place outline yet"))?;
     let dependents = if node.class == "ModuleScript" { service.mirror.dependents(&node, 12) } else { Vec::new() };
     let mut docs = Vec::new();
@@ -463,7 +475,7 @@ pub async fn analyze(state: &crate::AppState, studio: &Option<Value>, path: &str
     let mut slot = acquire(state, studio, false).await?;
     let service = slot.as_mut().expect("service");
     let (doc, node, current) = service.open_current(path).await?;
-    if let Some(text) = proposed { service.set_text(&node.path, text).await?; }
+    if let Some(text) = proposed { service.synced = None; service.set_text(&node.path, text).await?; }
     let result = service.diagnostics(&doc, None).await;
     if proposed.is_some() { service.set_text(&node.path, &current).await?; }
     Ok((node.path, result?))
@@ -726,12 +738,23 @@ for i = 1, 30 do Inst.new("Part", "Part" .. i, WS) end"#;
         // Adding a required parameter to the module breaks the script that calls it.
         let changed = shop.replace("item: string)", "item: string, count: number)");
         let (old, new) = compare(&mut service, "ReplicatedStorage.Modules.Shop", shop, &changed).await.unwrap();
+        assert!(service.synced.is_none(), "temporary analysis must force a fresh Studio sync after completion or interruption");
         let added = crate::luau_check::new_only(&old, &new);
         assert!(added.iter().any(|d| d.file.as_deref() == Some("ServerScriptService.Main") && d.code == "TypeError"), "{added:?}");
         let verdict = crate::luau_check::decide("ReplicatedStorage.Modules.Shop", crate::luau_check::Mode::Blocking, Ok((old, new)));
         assert!(!verdict.block && verdict.status == "failed", "type errors elsewhere stay advisory: {}", verdict.report);
         let broken = compare(&mut service, "ServerScriptService.Main", main, "local = \n").await.unwrap();
         assert!(crate::luau_check::decide("ServerScriptService.Main", crate::luau_check::Mode::Blocking, Ok(broken)).block);
+        // Stop/deadline cancellation before a request can write must release its pending slot.
+        let pipe = service.lsp.stdin.lock().await;
+        {
+            let request = service.lsp.request("textDocument/hover", json!({}), Duration::from_secs(12));
+            tokio::pin!(request);
+            tokio::select! { biased; _ = &mut request => panic!("request wrote through a locked pipe"), _ = tokio::time::sleep(Duration::from_millis(10)) => {} }
+            assert_eq!(service.lsp.pending.lock().unwrap().len(), 1);
+        }
+        assert!(service.lsp.pending.lock().unwrap().is_empty(), "cancelled requests must not leak pending slots");
+        drop(pipe);
         drop(service);
         let _ = std::fs::remove_dir_all(root);
     }

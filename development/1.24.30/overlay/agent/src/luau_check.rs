@@ -258,6 +258,10 @@ pub fn mode(enabled: bool, mode: &str) -> Option<Mode> { enabled.then_some(if mo
 type Notices = std::collections::HashMap<String, Vec<String>>;
 static PENDING: once_cell::sync::Lazy<std::sync::Mutex<Notices>> = once_cell::sync::Lazy::new(Default::default);
 static STREAK: once_cell::sync::Lazy<std::sync::Mutex<std::collections::HashMap<(String, String), u32>>> = once_cell::sync::Lazy::new(Default::default);
+pub fn clear_profile() {
+    PENDING.lock().unwrap_or_else(|e| e.into_inner()).clear();
+    STREAK.lock().unwrap_or_else(|e| e.into_inner()).clear();
+}
 /// A check that finished after its edit returned waits here for the task's next tool result.
 pub fn queue(task: &str, text: String) {
     let mut map = PENDING.lock().unwrap_or_else(|e| e.into_inner());

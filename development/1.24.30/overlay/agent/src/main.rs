@@ -1814,13 +1814,19 @@ async fn luau_after_edit(state:&AppState,id:&str,before:&serde_json::Value,after
     if old==new {return Ok(String::new());}
     let (old,new,path,task)=(old.to_owned(),new.to_owned(),path.to_owned(),id.to_owned());
     let (wait,limit)=if mode==Mode::Blocking{(luau_check::BLOCKING_WAIT,luau_check::BLOCKING_WAIT)}else{(luau_check::ADVISORY_WAIT,luau_check::BACKGROUND_LIMIT)};
+    let mut cancellation=state.cancellation.register(id);
+    if *cancellation.borrow() {return Ok(String::new());}
     // The place-aware service first (fast once running, also checks scripts that require an edited module);
     // the one-shot analyser if the service cannot start or read the place.
-    let mut job={let (path,old,new,state,studio)=(path.clone(),old.clone(),new.clone(),state.clone(),Some(studio.clone()));tokio::spawn(async move{
+    let mut job={let (path,old,new,state,studio,mut cancel)=(path.clone(),old.clone(),new.clone(),state.clone(),Some(studio.clone()),cancellation.clone());tokio::spawn(async move{
+        tokio::select! { biased;
+        _=cancel.changed()=>luau_check::decide(&path,mode,Err("the task stopped".into())),
+        verdict=async {
         let started=std::time::Instant::now();
         match tokio::time::timeout(limit,luau_service::check_edit(&state,&studio,&path,&old,&new)).await{
             Ok(Ok(pair))=>luau_check::decide(&path,mode,Ok(pair)),
             _=>luau_check::check_edit(&path,&old,&new,mode,limit.saturating_sub(started.elapsed()).max(std::time::Duration::from_secs(3))).await,
+        }}=>verdict,
         }})};
     let verdict=match tokio::time::timeout(wait,&mut job).await{
         Ok(Ok(verdict))=>verdict,
@@ -1828,6 +1834,8 @@ async fn luau_after_edit(state:&AppState,id:&str,before:&serde_json::Value,after
         Err(_) if mode==Mode::Advisory=>{
             // Never slow the edit down: the result is added to this task's next tool result.
             tokio::spawn(async move{let verdict=match job.await{Ok(v)=>v,Err(_)=>luau_check::decide(&path,mode,Err("the Luau checker stopped unexpectedly".into()))};
+                let _lease=accounts::ACCESS.read().await;
+                if *cancellation.borrow_and_update() {return;}
                 let streak=luau_check::track(&task,&path,verdict.status);
                 luau_check::queue(&task,format!("\n\n[Luau check result for your earlier edit of {path}:]{}",luau_check::notice_for(&verdict,streak)));});
             return Ok("\n\n[Luau check: still running; the result will be added to your next tool result.]".into());
@@ -1906,6 +1914,7 @@ fn profile_result(result:anyhow::Result<serde_json::Value>)->axum::response::Res
     }}
 }
 async fn reset_profile_runtime(state:&AppState){
+    luau_service::clear_profile().await;luau_check::clear_profile();
     state.profile_results.clear();
     state.roblox_queue.lock().await.clear();
     state.roblox_clients.write().await.clear();state.local_clients.write().await.clear();

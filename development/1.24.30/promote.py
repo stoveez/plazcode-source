@@ -119,6 +119,7 @@ def verify_protected(files,platform):
     variant=report.get('release_variant',{})
     assert variant.get('schema')==1 and re.fullmatch('[a-f0-9]{16}',variant.get('mark','')) and re.fullmatch('[a-f0-9]{64}',variant.get('seed_sha256','')) and variant.get('layout') in [0,1,2], 'Missing release variant proof'
     assert set(variant)=={'schema','mark','seed_sha256','layout'}, 'Never publish raw variant seeds'
+    assert type(variant['layout']) is int and variant['seed_sha256']!=hashlib.sha256(bytes(32)).hexdigest(), 'Development variant must never publish'
     for prefix in ['', 'PlazCode-Extension/','PlazCode-Extension-Firefox/']:
         assert json.loads(files['PlazCode/'+prefix+'core/release-variant.json'][0])==variant, 'Release variant mirrors differ'
 

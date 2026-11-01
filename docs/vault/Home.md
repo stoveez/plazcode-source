@@ -41,3 +41,5 @@ This folder is the long-term memory for every AI that works on PlazCode (Claude,
 ## Deeper documents (outside the vault)
 [`../HANDOFF.md`](../HANDOFF.md), [`../MAINTAINER-GUIDE.md`](../MAINTAINER-GUIDE.md), [`../TASK-BOARD.md`](../TASK-BOARD.md), `development/1.24.27/NEXT-UPDATE-PLAN.md`, `development/1.24.25/VAULT-MEMORY-DESIGN.md`.
 - [UI generation upgrade plan (1.24.31)](ui-upgrade-plan.md)
+
+- [1.24.30 gap review](1.24.30-gap-review.md): current audit findings, remaining live checks and scope limits.
