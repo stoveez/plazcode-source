@@ -47,6 +47,8 @@ const PlazCodeActivity = (() => {
     s=s.replace(/^(?:see|check|figure out|try to see|find out)\s+if\s+(?:you\s+can|it(?:'s| is) possible to|we can)\s+/i,'');
     s=s.replace(lead,'').replace(/^(?:try\s+to|try)\s+/i,'');
     s=s.replace(/\s*(?:,\s*)?\b(?:etc|etcetera|and so on|and stuff|and things like that)\b\.?$/i,'');
+    // Trailing filler is not part of the objective ("... as a test", "... for me please").
+    for(let i=0;i<3;i++)s=s.replace(/[\s,]+(?:as a (?:quick )?test|for (?:a )?test(?:ing)?|for me|real quick|quickly|please|pls|for now|thanks|thank you)[.!]?$/i,'');
     const symptom=/^(?:it|this|that|the\s+[\w ]{1,30}?)\s+(?:works?|is working|looks?|seems?)\b.*?\bbut\s+(?:the\s+)?([\w ]{1,30}?)\s+(?:is|are)\s+(invisible|missing|broken|wrong|stuck|offset|misaligned|not [\w ]{1,20})$/i.exec(s);
     if(symptom)s=`Fix ${symptom[2].toLowerCase().startsWith('not ')?'':symptom[2].toLowerCase()+' '}${symptom[1]}${symptom[2].toLowerCase().startsWith('not ')?' ('+symptom[2].toLowerCase()+')':''}`.replace(/\s+/g,' ').trim();
     const gerund=/^([a-z]+ing)\b\s*(.*)$/i.exec(s);
@@ -57,6 +59,8 @@ const PlazCodeActivity = (() => {
     return s?s[0].toUpperCase()+s.slice(1):'';
   }
   const NAME_SENTENCE=/^(?:it|this|that|he|she|they)(?:'s| is| was|\s+are)?\s+(?:called|named|known as)\s+["'“]?([A-Za-z0-9][\w' -]{0,40}?)["'”]?$/i;
+  // The user wrote their own numbered or bulleted list of steps.
+  const userListed=request=>[...String(request||'').replace(/```[\s\S]*?(?:```|$)/g,' ').matchAll(/^\s*(?:\d+[.)]|[-*•])\s+(.+)$/gm)].length>=2;
   function requestSteps(request) {
     const text=String(request||'').replace(/```[\s\S]*?(?:```|$)/g,' ').trim();
     const listed=[...text.matchAll(/^\s*(?:\d+[.)]|[-*•])\s+(.+)$/gm)].map(m=>cleanLabel(m[1])).filter(label=>label.split(' ').length>=2);
@@ -104,7 +108,7 @@ const PlazCodeActivity = (() => {
         if(requestKind(value.label.replace(/\d{1,2}:\d{2}\s*[AP]M$/i,''))!=='work')continue;
         const items=value.plan?.items;
         if(items&&(!Array.isArray(items)||!items.length||items.length>20||items.some(item=>typeof item.label!=='string'||!item.label.trim()||item.label.length>180||!['pending','in_progress','completed'].includes(item.status))))continue;
-        tasks.set(chat,{label:value.label.slice(0,300),key:value.key,objective:typeof value.objective==='string'?value.objective.slice(0,180):'',plan:items?{items,total:items.length,done:items.filter(item=>item.status==='completed').length,...(value.plan.auto==='request'||value.plan.auto==='reply'?{auto:value.plan.auto}:{})}:null});
+        tasks.set(chat,{label:value.label.slice(0,300),key:value.key,objective:typeof value.objective==='string'?value.objective.slice(0,180):'',plan:items?{items,total:items.length,done:items.filter(item=>item.status==='completed').length,...(value.plan.auto==='request'||value.plan.auto==='reply'?{auto:value.plan.auto}:{}),...(value.plan.listed===true?{listed:true}:{})}:null});
       }}
     } catch {}
     function persistTasks(){try{const saved=[...tasks].map(([chat,value])=>[chat,{...value,key:String(value.key).slice(0,2000)}]);let raw=JSON.stringify(saved);while(raw.length>512000&&saved.length>1){saved.shift();raw=JSON.stringify(saved);}if(raw.length<=512000)storage?.setItem(taskStorageKey,raw);}catch{}}
@@ -144,7 +148,7 @@ const PlazCodeActivity = (() => {
         // the run ends, and the AI's own plan (checklist call or a written plan) replaces it as before.
         if(!seeded.length&&!replacesTask(label)){const only=condenseStep(label)||cleanLabel(label);if(only&&only.split(' ').length>=3&&!commandLabel(only))seeded=[only];}
         saved={label:String(label || 'Current task').slice(0,300),key,objective:'',
-          plan:seeded.length>=1?{auto:'request',total:seeded.length,done:0,items:seeded.map((item,index)=>({label:item,status:index===0?'in_progress':'pending'}))}:null};
+          plan:seeded.length>=1?{auto:'request',...(userListed(label)?{listed:true}:{}),total:seeded.length,done:0,items:seeded.map((item,index)=>({label:item,status:index===0?'in_progress':'pending'}))}:null};
         tasks.set(current.chat,saved);
         if(tasks.size>60)tasks.delete(tasks.keys().next().value);
       }
@@ -162,7 +166,7 @@ const PlazCodeActivity = (() => {
       persistTasks();return group.plan;
     }
     function setAutoPlan(group, items, auto) {
-      group.plan={auto,total:items.length,done:items.filter(item=>item.status==='completed').length,items};
+      group.plan={auto,...(auto==='request'&&group.plan?.listed?{listed:true}:{}),total:items.length,done:items.filter(item=>item.status==='completed').length,items};
       const saved=tasks.get(group.chat);
       if(saved&&saved.key===group.taskKey){saved.plan=JSON.parse(JSON.stringify(group.plan));if(!saved.objective&&auto==='reply')saved.objective=items.map(item=>item.label).join(' · ').slice(0,180);group.taskLabel=saved.objective||group.taskLabel;}
       persistTasks();
@@ -172,9 +176,14 @@ const PlazCodeActivity = (() => {
       const saved=tasks.get(group.chat);
       if(!saved||saved.key!==group.taskKey||saved.objective)return;
       const match=/^[\s>#*-]*(?:\*\*)?(?:goal|objective)(?:\*\*)?\s*[:：]\s*(?:\*\*)?\s*([^\n]{4,})$/im.exec(plain);
-      const goal=match&&cleanLabel(match[1]);
+      let goal=match&&cleanLabel(match[1]);
       if(!goal||commandLabel(goal))return;
-      saved.objective=goal;group.taskLabel=goal;persistTasks();
+      goal=goal[0].toUpperCase()+goal.slice(1);
+      saved.objective=goal;group.taskLabel=goal;
+      // 1.24.30 (owner, 2026-11-01: the checklist "just repeats my prompt word for word"; owner chose: the AI's goal
+      // is the title and, when the AI gives no step list, the one step). A list the user numbered stays as written.
+      if(!group.plan||(group.plan.auto==='request'&&!group.plan.listed))setAutoPlan(group,[{label:goal.slice(0,180),status:group.completed?'completed':'in_progress'}],'request');
+      persistTasks();
     }
     // Advance automatic plans from "Step N" progress notes and ✓/done marks.
     function advanceAutoPlan(group, plain) {
