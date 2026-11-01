@@ -172,3 +172,5 @@ Owner explicitly does not want source ZIP distribution. Run 41335729270 cancelle
 - Platform dependency-notice collection passes for Linux/Windows/both Mac architectures; replacement full CI is next. First-party terms are proprietary by owner confirmation, older GPL rights and third-party notices retained.
 
 - Browser CI caught the Ultra adapter template retaining the old first-party SPDX header after output changed; template fixed and pinned as an input. No UltraLab third-party content changed. Replacement validation required.
+
+- Final local JS suite after the first-party licensing changes: 0 failures. Replacement full CI 41338413340 / source 3c73298 is running; archive and Drive-delivery gates remain.
