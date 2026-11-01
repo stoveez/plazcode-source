@@ -28,12 +28,8 @@ def collect(reports, destination):
             # A few crate archives omit their upstream licence files. These
             # exact-version originals were retrieved from their recorded commits.
             shared = None
-            overrides = {
-                'profiling@1.0.18': 'profiling', 'profiling-procmacros@1.0.18': 'profiling',
-                'rbx_binary@3.0.0': 'rbx-dom', 'rbx_dom_weak@4.2.0': 'rbx-dom',
-                'rbx_reflection@7.0.0': 'rbx-dom', 'rbx_reflection_database@3.0.0+roblox-728': 'rbx-dom',
-                'rbx_xml@3.0.0': 'rbx-dom', 'rbx_types@3.1.0': 'rbx-types', 'xml-rs@1.0.0': 'xml-rs',
-            }
+            base = Path(__file__).with_name('dependency-notices')
+            overrides = json.loads((base / 'OVERRIDES.json').read_text())
             name = package['name'] + '@' + package['version']
             if not paths and name in overrides:
                 base = Path(__file__).with_name('dependency-notices')
@@ -58,15 +54,22 @@ def collect(reports, destination):
                 texts[digest] = raw
                 refs.append(relative + ' -> ' + digest)
             name = package['name'] + '@' + package['version']
-            row = {'licence': licence, 'notices': refs, 'source': 'https://crates.io/crates/' + package['name'] + '/' + package['version']}
+            row = {'licence': licence, 'authors': package.get('authors', []), 'notices': refs, 'source': 'https://crates.io/crates/' + package['name'] + '/' + package['version']}
             if shared:
                 row['shared_notices_from'] = shared
             if name in components:
                 assert components[name] == row, 'Platform dependency notices differ: ' + name
             components[name] = row
+    # Some original notices link to the standard MIT terms rather than printing
+    # them. Include those terms verbatim as well, with component notices above.
+    mit = Path(__file__).with_name('dependency-notices').joinpath('rbx-dom/LICENSE.txt').read_bytes()
+    permission = mit[mit.index(b'Permission is hereby granted'):]
+    terms = hashlib.sha256(permission).hexdigest()
+    texts[terms] = permission
     lines = ['Third-party Rust dependency notices', '',
              'These components retain their own licences. They do not change the licence of first-party PlazCode.',
              'MPL-2.0 component source is unmodified and available from its exact version link below.', '',
+             'Standard MIT permission terms: NOTICE SHA256 ' + terms, '',
              json.dumps(components, ensure_ascii=False, sort_keys=True, indent=2), '']
     out = '\n'.join(lines).encode('utf-8')
     for digest, raw in sorted(texts.items()):
@@ -78,7 +81,7 @@ def collect(reports, destination):
 def build(manifest, destination):
     host = next(line.split(': ', 1)[1] for line in subprocess.check_output(['rustc', '-vV'], text=True).splitlines() if line.startswith('host: '))
     targets = ['x86_64-apple-darwin', 'aarch64-apple-darwin'] if 'apple-darwin' in host else [host]
-    reports = [json.loads(subprocess.check_output(['cargo', 'metadata', '--offline', '--locked', '--format-version', '1', '--filter-platform', target, '--manifest-path', str(manifest)], text=True)) for target in targets]
+    reports = [json.loads(subprocess.check_output(['cargo', 'metadata', '--locked', '--format-version', '1', '--filter-platform', target, '--manifest-path', str(manifest)], text=True)) for target in targets]
     print('Retained notices for', collect(reports, destination), 'Rust dependencies; no first-party source archive.')
 
 if __name__ == '__main__':

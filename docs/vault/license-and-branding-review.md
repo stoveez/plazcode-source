@@ -20,3 +20,5 @@ Owner reconfirmed no source ZIPs on 2026-11-01. CI packaging and promotion no lo
 
 ## Takedowns and practical limits
 Use the template only for material/rights the owner can establish. Earlier GPL-permitted copying is not by itself infringement. A release mark identifies a likely originating build, not ownership or infringement. No registration is claimed, no takedown was sent, and local unsigned-app protection cannot make patching impossible. This review records implementation/owner decisions, not a legal opinion.
+
+**Target dependency audit:** locked metadata collection passed for Linux (236), Windows (274), universal Mac (265). No GPL/AGPL/LGPL expressions were found in these dependency graphs; MPL component terms/source links retained. Output licence files are under 0.8 MB each before ZIP compression. This is a dependency-metadata/notices check, not a legal certification of all upstream provenance.
