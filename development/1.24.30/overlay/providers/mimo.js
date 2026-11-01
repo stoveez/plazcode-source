@@ -47,7 +47,11 @@ const RSProvider = (() => {
   const RE = {
     contextLimit: /context.{0,20}(limit|exceeded|too long)|conversation.{0,20}too long|(token|context).{0,10}limit|maximum context/i,
     tooLong: /conversation .{0,20}(too long|getting too long)/i,
-    busy: /rate limit|too many requests|try again later|server is busy|system is busy|usage limit|quota|daily limit|sign in to continue/i,
+    // 1.24.30 (live UltraSpeed test, 2026-11-01): MiMo answered "服务器繁忙，请稍后再试" (server busy, try again later)
+    // and showed "This conversation has reached the limit. Start a new conversation." under it. Neither was
+    // recognised, so the run ended as if that were the AI's answer and the checklist showed 100% done.
+    busy: /rate limit|too many requests|try again later|server is busy|system is busy|usage limit|quota|daily limit|sign in to continue|服务器繁忙|请稍后再试|稍后再试/i,
+    chatLimit: /^(?:this |the )?(?:conversation|chat) (?:has )?(?:reached|hit|exceeded) (?:the |its )?limit\b/i,
   };
   const timings = { GEN_IDLE_MS: 1600, REASON_IDLE_MS: 15000, WARMUP_MS: 45000, REASON_NOREPLY_MS: 120000, STABLE_MS: 9000, RESPONSE_TIMEOUT_MS: 300000 };
 
@@ -252,6 +256,14 @@ const RSProvider = (() => {
         if (!visible(el) || safeClosest(el, S.turn)) continue;
         const t = (safeRead(() => el.innerText, "") || "").trim();
         if (t.length > 8 && t.length < 600 && RE.contextLimit.test(t)) return t.slice(0, 240);
+      }
+    } catch {}
+    // MiMo's own notice sits in the page itself (not in a toast): a short plain text line under the last reply.
+    try {
+      for (const el of safeQueryAll(document, "div,p,span")) {
+        if (safeRead(() => el.childElementCount, 1) > 0 || safeClosest(el, "#rs-root, .rs-chip") || !visible(el)) continue;
+        const t = (safeRead(() => el.textContent, "") || "").trim();
+        if (t.length > 12 && t.length < 160 && RE.chatLimit.test(t)) return t.slice(0, 160);
       }
     } catch {}
     if (!getEditor()) return "The input box disappeared (session ended?).";

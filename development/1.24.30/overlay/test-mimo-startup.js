@@ -66,6 +66,21 @@ function scenario(replies) {
   return { box, sent, banners, commandsRun: () => commandsRun, queueLeft: () => queue.length };
 }
 
+// Live UltraSpeed, 2026-11-01: MiMo answered "服务器繁忙，请稍后再试" and showed "This conversation has reached the limit.
+// Start a new conversation." as plain page text. Both must be recognised (the run used to end as a normal answer).
+{
+  const d = new JSDOM('<!doctype html><body><div class="turn"><div class="msg">服务器繁忙，请稍后再试</div></div><div class="note">This conversation has reached the limit. Start a new conversation.</div><textarea></textarea></body>', {url: "https://aistudio.xiaomimimo.com/#/ultra/x", runScripts: "outside-only"});
+  const w = d.window;
+  w.HTMLElement.prototype.getBoundingClientRect = function () { return {x:0,y:0,left:0,top:0,right:400,bottom:30,width:400,height:30}; };
+  Object.defineProperty(w.HTMLElement.prototype, "offsetParent", {get() { return this.parentNode; }});
+  vm.runInContext(mimoSource + ";this.P=RSProvider;", d.getInternalVMContext());
+  assert(w.P.isBusyMsg("服务器繁忙，请稍后再试"), "Chinese server-busy notice counts as busy");
+  const lim = w.P.scanError();
+  assert(lim && /reached the limit/.test(lim), "the plain-text chat limit notice is found: " + lim);
+  w.document.querySelector(".note").remove();
+  w.document.body.insertAdjacentHTML("afterbegin", '<div class="user">please start a new conversation about trees, this conversation has reached the limit of my patience</div>');
+  assert(!/reached the limit/.test(String(w.P.scanError() || "")), "a user's own sentence is not mistaken for the notice");
+}
 (async () => {
   const mimo = makeMimo();
   assert.equal(mimo.userVoiceStartup, true, "MiMo uses the plain first-person startup");
