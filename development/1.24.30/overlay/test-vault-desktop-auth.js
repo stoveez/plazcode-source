@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.24.21: the desktop window must send the vault its signed-in connection; a plain-text refusal must read as a clear message.
 const assert = require("assert");
 const fs = require("fs");

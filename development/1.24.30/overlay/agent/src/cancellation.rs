@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 use std::{collections::HashMap, sync::Mutex};
 use tokio::sync::watch;
 #[derive(Default)]

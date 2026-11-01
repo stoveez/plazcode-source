@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // providers/deepseek.js - the DeepSeek (chat.deepseek.com) provider.
 // EVERYTHING that knows DeepSeek's DOM, quirks, and UI strings lives here; the
 // core (core/main.js) only ever talks to the RSProvider interface this file

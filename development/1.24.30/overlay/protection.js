@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // Package-time public constants only. The private signing key is never distributed.
 globalThis.PlazCodeIntegrity = (() => {
   const key = "UNCONFIGURED_RELEASE_PUBLIC_KEY", channel = "UNCONFIGURED_RELEASE_CHANNEL";

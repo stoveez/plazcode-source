@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.24.21 vault window: the Markdown reader is safe, links/pictures/edit/archive/search work, keys stay inside the window.
 const assert = require("assert");
 const { JSDOM } = require("jsdom");

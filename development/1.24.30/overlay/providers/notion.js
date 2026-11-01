@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // providers/notion.js - the Notion AI provider (EXPERIMENTAL).
 // Same RSProvider interface the core (core/main.js) drives. Notion's class
 // names are hashed/obfuscated, so every lookup here is tag-agnostic with

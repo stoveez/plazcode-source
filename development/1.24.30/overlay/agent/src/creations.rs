@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 //! Persistent creator drafts live outside the installation; updates cannot replace them.
 use std::{path::PathBuf,sync::Mutex,collections::{BTreeMap,HashSet}};
 use serde::{Deserialize,Serialize};

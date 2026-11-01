@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // providers/arena.js - the Arena (arena.ai) provider.
 // Exports the same RSProvider interface as providers/deepseek.js; the core
 // (core/main.js) is provider-agnostic. To DISABLE Arena support, remove this

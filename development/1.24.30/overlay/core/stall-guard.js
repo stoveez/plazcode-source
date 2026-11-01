@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // Stops the agent from going in circles: the same read repeated with nothing
 // changed in between, or the same failing call retried unchanged. The model is
 // told what to do instead; after several stalls in a row it is told to stop.

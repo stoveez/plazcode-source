@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.24.21: chat notes are wired into the live chat: saved on task changes, every 10 s tick, tab hidden and task finish;
 // the "continue" popup reads the newest chat note. Source-level checks (the behaviour itself is in test-chat-note.js).
 const fs = require("fs"), assert = require("assert");

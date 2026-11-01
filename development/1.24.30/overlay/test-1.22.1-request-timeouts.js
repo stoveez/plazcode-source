@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // Ollama (127.0.0.1:11434) and the Roblox CSRF/authenticated requests had no
 // timeout before 1.22.1: a server that accepted the connection but never
 // answered left the Ollama page or a dev-product tool waiting forever. Runs the

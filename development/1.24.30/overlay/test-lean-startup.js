@@ -273,7 +273,7 @@ assert.equal(required.helpFor({ topic: 'play-mode' }), Lean.helpFor({ topic: 'pl
 same(required.coverage({ engine: 'roblox' }).missing, []);
 const source = read('core/lean-startup.js');
 assert(!/\b(?:fetch\(|XMLHttpRequest|WebSocket|chrome\.|document\.|localStorage|sessionStorage|indexedDB|eval\(|new Function)/.test(source.replace(/\/\/.*$/gm, '')), 'no page, storage or network access');
-assert(source.startsWith('// SPDX-License-Identifier: GPL-3.0-or-later'));
+assert(source.startsWith('// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary'));
 
 // ── 8. If a content-script list loads it, it must come after config.js ──
 for (const entry of JSON.parse(read('manifest.json')).content_scripts || []) {

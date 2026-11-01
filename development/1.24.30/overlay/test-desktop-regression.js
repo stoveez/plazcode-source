@@ -4,38 +4,38 @@ const crypto = require("crypto");
 const baseline = {
   "core/agent_skills.js": "a264c3e24440ef2c1a64557d941eb2cd43bc4101",
   "core/animlib.js": "420ea8eb69637b27ca9856b974d44181e57d3420",
-  "core/config.js": "f55bf457a687822d3f5242e03e1e53d504fe989c",
-  "core/headless-builder.js": "b343a897a17fc05d79ab469aeea55c8abaa8c4e5",
-  "core/luau-knowledge.js": "234c1ca2155d3ef5f38927d85893b70fd6bde6e6",
-  "core/main.js": "3a363cc10c5f90e5bdfb43589dced77708bab061",
+  "core/config.js": "354a2a8ed3cc9d99e230db488e804fa4e2d11a78",
+  "core/headless-builder.js": "0d8924dae62e2894a68cdd17617bbb5e36cca33e",
+  "core/luau-knowledge.js": "54441b9d7a36e28eac9e64d10b56607c41a34f2e",
+  "core/main.js": "ae8dc8a3b58250d3514f7c0354732aec0fe6bf8a",
   "core/motion-interchange.js": "038afa13a5b59c030a809abf7d617a36f2fae82d",
-  "core/motion-preview.js": "ae0ab0526fbc762dfbf7cae9c248239e217e7a2f",
-  "core/motion-tools.js": "8ac81b4a4a9f634fef9285aeee06db4a15af578e",
-  "core/parser.js": "3a5d0febfb696e645054edbcc128dac2d9043bc7",
+  "core/motion-preview.js": "c364991ffe8e0f9eaad557e6746fff21daea2e86",
+  "core/motion-tools.js": "6e1c5ff01153d61038b48b9a0c7181be85b3c9a5",
+  "core/parser.js": "a361ca44e43a3f0e94804871174b1a2e4fe01aac",
   "core/studio_daily.js": "56632a6bd1a81ddeded243ff9d740e4b75a4fa34",
   "core/studio_gui.js": "726793b63c24b3fd128be60e6f3fb98e60a19243",
   "core/studio_plus.js": "c149c47cc7d178e3aa87f39539cc3c1420bff065",
-  "core/studio_skills.js": "9f81790eb1500b6cf3f8255b6240376ecf141b6a",
-  "providers/arena.js": "d562d2d0622084f383b605eb6bc379bd0dd49fb4",
-  "providers/chatgpt-cm.js": "c83bc0702be0d75590155cff61c36ee0340a17c1",
-  "providers/chatgpt.js": "f31552867287cee531d149a1f3da8f50a2aa6650",
-  "providers/claude.js": "98a373a68c9822c031fd63ea48380668809f6eb5",
-  "providers/copilot.js": "2f0bd280402a94578a249baa7731b235a3d8a712",
-  "providers/crax-net.js": "a3c1bfb62a62594a2d6eef3615f66d4aa53b9157",
-  "providers/crax.js": "501518b20c4b609d8230181eab1ddb6c77e5e852",
-  "providers/deepseek.js": "18c2bb3d24e36409e05a1ee04704df1f2b91398a",
-  "providers/freebuff.js": "db8e92eea72d88b3e6b5ad577904395e24a6d6c2",
-  "providers/gemini.js": "c7882ad7133928cdeacb6d3026ce0fd203c61460",
-  "providers/glm.js": "5791b81c089f12ac0022654569d7920bbf0412c5",
-  "providers/kimi.js": "e38ebb381e0ca54ed57866b63e1a864e14f61f26",
-  "providers/meta.js": "84f3c1fb4f144685bd404b86bad9588e52fc8985",
-  "providers/notion.js": "f226b210b98ac63110c0c3ad2dcd4ed5387a6952",
-  "providers/oxalpha.js": "366f877a93bc8c9d298a70711d8f9de319de5b64",
-  "providers/qwen-net.js": "6073141989f67e4ad2dd57444af6f55e48ff0b71",
-  "providers/qwen.js": "9c7ae960fb3942e8ce6f1712126af7645eb896b4",
-  "providers/useai.js": "2d4da606476ef70e355bc8d3213b30f085f1fa4b",
-  "providers/vani.js": "08a77d54e855296cfbca5d1bb9b95b15f7a3220b",
-  "providers/mimo.js": "eb646868f18740dd64a7d429dad6aff742e162fb"
+  "core/studio_skills.js": "388ec93aac79026bcecbda276c322d05aa43f1e1",
+  "providers/arena.js": "e2d8a70ac9a18fd409ad936e25cdef10851028a0",
+  "providers/chatgpt-cm.js": "a51050ed2946e13be68fd1571a146921d2170e35",
+  "providers/chatgpt.js": "7c0e2916a73371637e1c857a93d34ad389adb2b9",
+  "providers/claude.js": "3bd0e9b6026e56d46d7ee4ec137aed15d75e0500",
+  "providers/copilot.js": "86821cb43967d23ab22193c6d93c0514078eae81",
+  "providers/crax-net.js": "85c158d0b45508c8f03265f75e8975d348318567",
+  "providers/crax.js": "f8e6031e0faffec825b03c102ef2ad77ca115845",
+  "providers/deepseek.js": "456c5119c86236d55d49576e408c075be6aed67a",
+  "providers/freebuff.js": "2d829f1a6491f490dc1ea3cd67f794fa014d67de",
+  "providers/gemini.js": "523ce72f877768952a6aca1cf25d1989622629a2",
+  "providers/glm.js": "5e5cc28eb30123dd9f134d52fcb414ee566b4628",
+  "providers/kimi.js": "df6c05a5e7c1b4ac0d6e9e87ec0decf2ce8d66ea",
+  "providers/meta.js": "247ee1c593a3732851332a4a492396e82c355752",
+  "providers/notion.js": "16410017c6705b26736f4a55da42d234b51597ff",
+  "providers/oxalpha.js": "63194744fe42169115e4bc9ca0495cc0458c1d05",
+  "providers/qwen-net.js": "ef67a5f6731b8935d754d59aeee4910499f012bb",
+  "providers/qwen.js": "c8b0e08bdc561184a32f3295416665bcdfba87be",
+  "providers/useai.js": "d20de72ca4d9718318c5706284146318716773f0",
+  "providers/vani.js": "9888fcee8a577d47117b7de8dd42f9c455d062ce",
+  "providers/mimo.js": "995fc92c8c299eabc02e73c4a3e643aaefdb3b4a"
 };
 const requiredProviders = [
   "providers/clickup.js",
@@ -113,7 +113,7 @@ for (const forbidden of [
 }
 for (const removed of ['Model Builder','UI Creator','modelWorkspace','uiWorkspace','PlazCodeCreatorUI','Mountbuilder','__PLAZCODE_CREATOR','__PLAZCODE_HEADLESS']) if (desktopHtml.includes(removed)) throw Error('Removed desktop creator leaked: '+removed);
 // Approved localization guards/hooks; behavioral Toolkit/Notifications fixtures remain.
-const toolkit=fs.readFileSync('core/toolkit-ui.js','utf8');if(crypto.createHash('sha256').update(toolkit.replace(/\r\n/g,'\n')).digest('hex')!=='75e54f096a1682f5fc545c6b69e3e52bfbb60fc7aabd4a966c3e04e7744f1320')throw Error('Toolkit localization baseline changed');
+const toolkit=fs.readFileSync('core/toolkit-ui.js','utf8');if(crypto.createHash('sha256').update(toolkit.replace(/\r\n/g,'\n')).digest('hex')!=='eff3130ff15ec030266723caae6e051d76b2b2401e5c7b88b42bcb44286af907')throw Error('Toolkit localization baseline changed');
 const desktopScript = desktopHtml.match(/<script>([\s\S]*?)<\/script>/)?.[1]?.replace("__PLAZCODE_I18N_CATALOG__", "").replace("__PLAZCODE_I18N__", "").replace("__PLAZCODE_SKILLS_UI__", fs.readFileSync("core/skills-ui.js", "utf8")).replace("__PLAZCODE_EXPLORER_UI__", fs.readFileSync("core/explorer-ui.js", "utf8")).replace("__PLAZCODE_TOOLKIT_UI__", fs.readFileSync("core/toolkit-ui.js", "utf8")).replace("__PLAZCODE_TEMPLATE_UI__", fs.readFileSync("core/templates.js", "utf8")).replace("__PLAZCODE_TASK_UI__", fs.readFileSync("core/task-center.js", "utf8")).replace("__PLAZCODE_ACTION_LOG_UI__", fs.readFileSync("core/action-log.js", "utf8")).replace("__PLAZCODE_SAFETY_UI__", fs.readFileSync("core/safety.js", "utf8")).replace("__PLAZCODE_MEDIA_UI__", fs.readFileSync("core/media.js", "utf8")).replace("__PLAZCODE_MEMORY_UI__", fs.readFileSync("core/memory.js", "utf8")).replace("__PLAZCODE_VERSION_UI__", fs.readFileSync("core/version.js", "utf8")).replace(/__PLAZCODE_VERSION__/g, "1.19.33");
 if (!desktopScript) throw new Error("Desktop WebView script block missing");
 new Function(desktopScript);

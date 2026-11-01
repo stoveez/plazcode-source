@@ -83,6 +83,7 @@ jobs:
       - name: Ultra generated files match the generator
         run: python3 development/1.24.30/test-ultralab-generated.py
       - run: python3 development/1.24.30/prepare.py
+      - run: python3 development/1.24.30/test-licenses.py
       - run: npm ci --prefix release-tools --ignore-scripts
         working-directory: build-src-1.24.30/PlazCode
       - name: Test production mesh transfer transactions
@@ -255,6 +256,7 @@ jobs:
           python-version: '3.12'
       - run: python development/1.24.30/test-prepare-overlay.py
       - run: python development/1.24.30/prepare.py
+      - run: python development/1.24.30/test-licenses.py
       - name: Configure public release trust or isolated validation keys
         shell: bash
         run: |

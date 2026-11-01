@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 //! Reusable, reviewed methods. Stores observable steps, never hidden reasoning.
 use axum::{extract::State,Json,response::{Response,IntoResponse}};
 use serde::{Deserialize,Serialize};

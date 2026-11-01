@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // Debug capture (AI page world, document_start). Passive only: it listens for
 // the site's own uncaught errors, failed resource loads and failed API
 // responses, and relays them to core/debug-capture.js as JSON strings. 1.24.30: it also copies the site's own

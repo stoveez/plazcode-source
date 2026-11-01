@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.24.21 independent critic chat: the tool logic, the fallbacks, the round limit and the wiring.
 const assert = require("assert");
 const fs = require("fs");

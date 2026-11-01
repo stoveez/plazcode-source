@@ -1,18 +1,22 @@
 # Licence and branding review
-Updated: 2026-11-01. Review of the actual prepared 1.24.30 package and release tooling. No licence text changed.
+Updated: 2026-11-01. Current terms apply prospectively to first-party PlazCode 1.24.30.
 
-## Findings
-- The package's root `LICENSE` remains GNU GPL version 3. `BRANDING-NOTICE.txt` expressly preserves GPL copying/modification rights, requires retained notices, distinguishes unofficial distributions and does not claim a registered trademark.
-- `SOURCE.txt` currently says source for this version is not published. `publish-1.24.30.yml` already sets `PLAZCODE_PUBLISH_SOURCE: 0`; this predated this implementation. Owner confirmed no source ZIP distribution on 2026-11-01. Packaging/promotion no longer generate source ZIPs; hash-only prepared-source proofs retain exact-source validation. CI upload exclusions also block source ZIPs. This does not alter licensing, retract old source ZIPs or change updater URLs.
-- Turning off a public source ZIP does not change the software's licence or remove corresponding-source obligations for distributed GPL-covered work. Obfuscation and a release mark do not establish copyright ownership. Before an external release without source, review ownership and GPL compliance; obtain legal advice before changing licence terms. The existing package notice/source-publication mismatch remains unresolved by this technical work.
-- Earlier GPL releases remain available under their existing licences. A permitted modification or redistribution is not, by itself, grounds for a takedown. A release mark identifies a likely originating build, not infringement or endorsement.
+## Owner decision and scope
+The owner explicitly rejected GPL terms for future releases and confirmed ownership of all first-party PlazCode code. On that basis, first-party 1.24.30 code now uses LICENSE / LicenseRef-PlazCode-Proprietary. Normal personal/commercial project use remains free; no new account, acceptance dialog or setup is introduced by the licence. User projects, generated code, settings, skills and notes are outside these restrictions.
 
-## Third-party material
-- Engram and Ro-Engineer are MIT: retain their copyright/licence notices. Ro-Engineer files remain unchanged and the PlazCode adapter is separate.
-- UltraLab/SyphoDev is used under its supplied free licence/permission: no sale or paid bundling; retain the SyphoDev source link. Fredoka fonts retain their SIL OFL notices.
-- luau-lsp and official Luau are MIT; retain their notices, including the runtime luau-lsp licence despite first-use downloading.
-- Brickwire-derived work requires its MIT notice/credit. Do not copy Multi-Script/TotalScript GPL code or rulebooks into a purportedly proprietary rewrite.
-- The supplied notices flag uncertain provenance/licensing for Check-UI components and hat reference artwork. Confirm those rights before making stronger distribution claims; this review does not grant permission.
+Root/prepared/browser notices, current first-party SPDX headers, generated locale header, Rust licence-file metadata and package-copy logic are consistent. Root notices are copied from current source instead of the old native baseline. Previous releases and historical test snapshots retain their original GPL terms; their rights cannot be revoked by this change.
 
-## Operational rule
-Use takedown requests only for specifically identified material and rights the owner can establish. Treat misleading official branding separately from copying permitted by a software licence. Preserve original notices, prior releases and source availability obligations. The owner sends any notice; no automated reports or contact with third parties are authorized here. This note is not legal advice.
+## No source ZIP distribution
+Owner reconfirmed no source ZIPs on 2026-11-01. CI packaging and promotion no longer generate source archives, uploads defensively exclude them, and the release record does not commit one. Prepared-source hashes/lengths bind both native runners to exact source; promotion reconstructs from the validated checkout and matches both reports. No old release assets removed. Source remains temporarily Public under the owner's separate build-window rule; this change concerns generated/distributed source ZIPs, not removal of old rights or copies.
+
+## Third-party rights retained
+- Engram and Ro-Engineer: MIT, original notices retained. Ro-Engineer files are unchanged.
+- UltraLab/SyphoDev: supplied licence/permission requires no sale/paid bundling and the source/YouTube credit. Fredoka fonts keep SIL OFL notices.
+- luau-lsp and official Luau: MIT. Runtime luau-lsp licence retained despite first-use download.
+- Rust dependency terms/notices collected into runtime/THIRD-PARTY-RUST-LICENSES.txt, with exact versions and unmodified MPL-2.0 component source links. This does not make first-party PlazCode GPL/MPL. New GPL/AGPL/LGPL dependency expressions require review rather than relabelling.
+- Several crate archives omit their licence files: pinned originals from their recorded upstream commits are in dependency-notices/ with SHA-256 provenance, copied without editing. Third-party code is not relicensed.
+- Brickwire-derived work retains MIT credit. No Multi-Script/TotalScript GPL code/rulebooks may be copied into current first-party code.
+- Check-UI and hat artwork provenance in the supplied UltraLab pack remains uncertain; confirm rights before stronger distribution claims. The owner's first-party ownership statement does not resolve third-party artwork rights.
+
+## Takedowns and practical limits
+Use the template only for material/rights the owner can establish. Earlier GPL-permitted copying is not by itself infringement. A release mark identifies a likely originating build, not ownership or infringement. No registration is claimed, no takedown was sent, and local unsigned-app protection cannot make patching impossible. This review records implementation/owner decisions, not a legal opinion.

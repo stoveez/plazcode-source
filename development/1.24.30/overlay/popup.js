@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 const DISCORD_URL = "https://discord.gg/FmKY5bXZn";
 const THEMES = [];
 const POPUP_PALETTES={default:['#e9ba53','#ffe0a1','#18140d','233 186 83'],amethyst:['#a571ff','#d7b8ff','#0c0918','165 113 255'],cyan:['#27c1e7','#a5eaff','#041017','39 193 231'],rose:['#f17097','#ffbdd1','#160912','241 112 151'],emerald:['#29c894','#a6f3d1','#05130f','41 200 148'],graphite:['#9caac0','#e0e7f2','#0a0d13','156 170 192'],crimson:['#ef5569','#ffb0bb','#16080c','239 85 105'],ocean:['#4692f6','#a5ceff','#091323','70 146 246'],copper:['#db9066','#f4c4a3','#17110f','219 144 102'],aurora:['#66d3b8','#b4f6e7','#0c151b','102 211 184'],orchid:['#cd89eb','#edc6ff','#150e1c','205 137 235']};

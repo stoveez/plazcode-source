@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // providers/freebuff.js — Freebuff (freebuff.ai / freebuff.com) provider.
 // Same RSProvider interface as providers/deepseek.js. Chat lives at /chat
 // (login-gated). /web and /cloud also host a composer ("Ask Freebuff…").

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.24.21: the vault is the AI's brain. At startup the AI gets a compact map of EVERY note and how they link; it can ask for the
 // full map, run a memory audit against the Roblox place, and mark notes checked. An older app without the graph keeps the short list.
 const assert = require("assert");

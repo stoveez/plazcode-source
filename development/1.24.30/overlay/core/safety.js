@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.24.21 safety limits shared by the PlazCode bar and the desktop app.
 // Mirrors agent/src/safety.rs: the app enforces the same rules as a backstop.
 const PlazCodeSafety = (() => {

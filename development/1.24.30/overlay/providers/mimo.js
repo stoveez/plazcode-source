@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // providers/mimo.js — Xiaomi MiMo Studio (aistudio.xiaomimimo.com) provider. 1.24.30 (owner request).
 // MiMo Chat (#/c, conversations #/chat/<id>) and UltraSpeed (#/ultra, conversations #/ultra/<id>) share one page
 // layout, validated live 2026-11-01 while signed in:

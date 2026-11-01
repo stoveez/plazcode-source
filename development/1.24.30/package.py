@@ -15,9 +15,11 @@ with zipfile.ZipFile(baseline) as archive:
   path=install/relative
   if path.is_file():path.chmod((member.external_attr>>16)&0o777 or 0o644)
 package=install/'PlazCode'
+from collect_licenses import build as collect_licenses, OUTPUT as LICENSE_OUTPUT
+collect_licenses(source/'agent/Cargo.toml', package/'runtime'/LICENSE_OUTPUT)
 for folder in ['core','providers','PlazCode-Extension']:
  shutil.copytree(source/folder,package/folder,dirs_exist_ok=True)
-for name in ['manifest.json','background.js','protection.js','popup.js','popup.html','overlay.css','ollama-page.js','launch_studio_mcp.py','launch_blender_mcp.py','SOURCE.txt','Update-PlazCode.bat','Update-PlazCode.ps1','Updater-Progress.cs','blender_ops.py','blender_once.py','blender_once.ps1']:
+for name in ['manifest.json','background.js','protection.js','popup.js','popup.html','overlay.css','ollama-page.js','launch_studio_mcp.py','launch_blender_mcp.py','SOURCE.txt','LICENSE','BRANDING-NOTICE.txt','THIRD-PARTY-NOTICES.txt','Update-PlazCode.bat','Update-PlazCode.ps1','Updater-Progress.cs','blender_ops.py','blender_once.py','blender_once.ps1']:
  shutil.copy2(source/name,package/name)
 # 1.24.30 Luau checks (docs/vault/luau-validation-plan.md). Owner (2026-11-01, download size): the luau-lsp program
 # and its Roblox type list are NOT shipped; the app fetches the official luau-lsp 1.70.1 release once, on the first

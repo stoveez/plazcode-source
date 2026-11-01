@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.24.21: the vault graph view. The layout must be finite, repeatable, keep linked notes near each other and separate groups on
 // screen, and the viewer must have a graph button, a graph pane that gives way to a note when you click a dot, and a clear message
 // on an older app.

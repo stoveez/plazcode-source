@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 //! Read-only access to the separately licensed, bundled starter reference packs.
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};

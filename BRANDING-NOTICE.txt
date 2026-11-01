@@ -1,15 +1,16 @@
 PlazCode — official project and distribution
 
 Official repository and release channel:
-https://github.com/stoveez/PlazCodeneww
+https://github.com/stoveez/PlazCode
 
-A modified copy or third-party distribution is not an official PlazCode release
-and must not be presented as endorsed or published by this project.
-Existing copyright, license and third-party attribution notices must remain intact.
-The software's GPL license and third-party licenses remain in effect; this notice
-neither revokes their copying/modification rights nor grants trademark permission.
-No claim is made that the name/logo is a registered trademark.
+First-party PlazCode 1.24.30 and later is proprietary; see LICENSE.
+Modified copies and third-party products must not be presented as official,
+endorsed or published by this project. No registered trademark is claimed.
 
-This is an origin/branding notice, not copy protection. Client-side code can be
-modified. Update SHA256 verification detects packages differing from the expected
-feed hash; it does not prove who authored a derivative or prevent redistribution.
+Third-party components retain their own licences, copyright and attribution
+notices. Earlier GPL releases and historical snapshots retain their original
+rights; this notice does not change them. Nothing here restricts your own
+project files, generated code, settings, skills, notes or other user data.
+
+Local protection makes tampering harder; it cannot make an unsigned local
+program unmodifiable or establish who owns a derivative work.

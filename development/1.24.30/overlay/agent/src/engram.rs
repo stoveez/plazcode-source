@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 //! Lazy, project-isolated Engram MCP. Chat transcripts remain in chat_history.
 use crate::mcp_addons::{AddonRuntime,ServerSpec};
 use serde_json::{json,Value};

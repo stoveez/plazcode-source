@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.24.21: the vault has a live note (00 Start Here/Now.md: where the work stands). It is sent at startup and the AI is told to rewrite it
 // at the end of every job. Pictures the user attaches with PlazCode's media button can be stored with the vault's add_image.
 const assert = require("assert");

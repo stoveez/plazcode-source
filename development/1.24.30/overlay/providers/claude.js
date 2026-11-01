@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // providers/claude.js — claude.ai / claude.com
 // Same RSProvider interface as chatgpt.js. To disable, remove this file from
 // manifest.json, background.js PROVIDER_URLS, popup.js SUPPORTED_HOSTS, main.js AI_SITES.

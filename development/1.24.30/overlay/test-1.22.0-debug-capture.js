@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.22.0 debug capture: records PlazCode's own errors/warnings/info and the AI
 // site's own errors for Settings -> Copy debug report, without changing what
 // the console prints, without touching the page's console/fetch, with capped

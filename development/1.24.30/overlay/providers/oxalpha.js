@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // providers/oxalpha.js — Ox Alpha (oxalpha.com / oxalpha.org) provider.
 // Chat lives at oxalpha.com/chat and oxalpha.org/chat. No login. Reasoning-first model; capture thinking nodes. Adaptive composer.
 // eslint-disable-next-line no-unused-vars

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // core/studio_skills.js - RobloxScript Studio Skills & Virtual Tool Suite (33 tools).
 //
 // HOW IT WORKS: Roblox Studio's MCP server (StudioMCP) exposes core primitives

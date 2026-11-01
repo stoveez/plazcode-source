@@ -3,7 +3,7 @@ name = "plazcode-agent"
 version = "1.24.30"
 edition = "2021"
 description = "PlazCode native agent — Roblox Studio MCP + AgentScript workspace bridge"
-license = "GPL-3.0-or-later"
+license-file = "../LICENSE"
 authors = ["PlazCode"]
 
 [[bin]]

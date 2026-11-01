@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // core/config.js - provider-agnostic constants: app identity, system prompt,
 // feedback strings, tool categorisation. NOTHING in this file may reference a
 // specific AI site (DOM, selectors, site names) - that lives in providers/*.

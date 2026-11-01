@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // workspace.rs - PlazCode LOCAL engine (AgentScript).
 //
 // Native Rust port of OpenRender's workspace_mcp.py: full control over ONE

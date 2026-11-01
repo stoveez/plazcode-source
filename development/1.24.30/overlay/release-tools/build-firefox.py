@@ -37,7 +37,7 @@ def build(extension, destination, archive):
         shutil.copy2(extension / name, destination / name)
     for name in ['core', 'providers', 'ui']:
         shutil.copytree(extension / name, destination / name)
-    for name in ['LICENSE', 'SOURCE.txt', 'BRANDING-NOTICE.txt']:
+    for name in ['LICENSE', 'SOURCE.txt', 'BRANDING-NOTICE.txt', 'THIRD-PARTY-NOTICES.txt']:
         shutil.copy2(extension.parent / name, destination / name)
     (destination / 'manifest.json').write_bytes((json.dumps(manifest, indent=2) + '\n').encode('utf-8'))
     (destination / 'FIREFOX-INSTALL.txt').write_bytes((

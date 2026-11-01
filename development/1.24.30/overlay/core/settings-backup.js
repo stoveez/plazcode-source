@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // Settings backup: one block of text that carries the user's PlazCode choices
 // to another browser or back after a reset. It never carries passwords, keys,
 // tokens, launch commands, chat or session state, or anything private.

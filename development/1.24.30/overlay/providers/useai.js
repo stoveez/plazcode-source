@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // providers/useai.js — Use AI (use.ai) provider.
 // Chat lives at use.ai / use.ai/chat. Adaptive composer (textarea or contenteditable). Selectors fail open so a reskin still finds the box.
 // eslint-disable-next-line no-unused-vars

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.24.21 vault memory: the extension side (start prompt, tool, fallback, learning switch, pictures, wiring).
 const assert = require("assert");
 const fs = require("fs");

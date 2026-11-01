@@ -1,0 +1,27 @@
+[
+  {
+    "file": "profiling/LICENSE-MIT",
+    "url": "https://raw.githubusercontent.com/aclysma/profiling/8271551172eb6fa4cba47369aedd93790c623df9/LICENSE-MIT",
+    "sha256": "c8167fdeeed46d3f244d3f85c5bf998ce889343691c32be2c61a8bc4b5c08333"
+  },
+  {
+    "file": "profiling/LICENSE-APACHE",
+    "url": "https://raw.githubusercontent.com/aclysma/profiling/8271551172eb6fa4cba47369aedd93790c623df9/LICENSE-APACHE",
+    "sha256": "10d30a673cd5e9349bdc02aeb48f14b3386d27d0da32df8f0a555d4aa16aa551"
+  },
+  {
+    "file": "rbx-dom/LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/rojo-rbx/rbx-dom/f96e7383aea61730993aabb2c8e7192dd3e19b21/LICENSE.txt",
+    "sha256": "3b32356977956ce0c85da44070d87500cf026ed12123c410cff6a705a1d6b7d5"
+  },
+  {
+    "file": "rbx-types/LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/rojo-rbx/rbx-dom/7ef7d448ba6d30c4cb217b228d5c22c6f5ac07f3/LICENSE.txt",
+    "sha256": "3b32356977956ce0c85da44070d87500cf026ed12123c410cff6a705a1d6b7d5"
+  },
+  {
+    "file": "xml-rs/LICENSE",
+    "url": "https://raw.githubusercontent.com/netvl/xml-rs/677b0faa810e1daf5b0825f6c1896d74e3d77468/LICENSE",
+    "sha256": "0dc18d924dc0a5f41172a393012843a5eaaef338e795b3645da9cc3b6068220b"
+  }
+]

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // core/lean-startup.js - the SHORT startup message and the on-demand help behind it ("lean startup").
 //
 // Today every chat starts with up to ~42,500 characters (Roblox, full) or ~14,000 (compact) that the AI mostly never

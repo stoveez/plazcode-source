@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // Debug capture (isolated content-script world).
 // Records PlazCode's own console errors, warnings and info, uncaught extension
 // errors, the agent's recent diag events, and AI-site problems relayed by

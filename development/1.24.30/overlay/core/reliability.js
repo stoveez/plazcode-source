@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 const PlazCodeReliability = (() => {
   function createBudget({calls=0,minutes=0,now=Date.now}={}) {
     const started=now();let used=0,pausedAt=null,pausedMs=0;

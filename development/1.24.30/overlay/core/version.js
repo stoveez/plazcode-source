@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 const PlazCodeVersion = (() => {
   let extensionPage = '';
   function browserPage(nav = {}) {

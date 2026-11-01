@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.24.21 feature guide: ONE list of every PlazCode feature (where to click, what
 // it does, the steps). The AI reads it through the plazcode_features command and
 // the short index in the startup text; the website guides read the same JSON

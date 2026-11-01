@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.24.21 "What happened" log: a plain list of what the AI did, with Undo for
 // file and script changes. Shared by the PlazCode bar and the desktop app.
 const PlazCodeActionLog = (() => {

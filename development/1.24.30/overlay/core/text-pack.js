@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // core/text-pack.js - PlazCode's instruction text kept inside the desktop app (1.24.30).
 //
 // Owner, 2026-10-31: make PlazCode harder to copy without breaking startup or updates. When a release is

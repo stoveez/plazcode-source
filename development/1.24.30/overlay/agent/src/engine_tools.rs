@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 //! 1.24.21 engine file tools: Godot, Unity, Roblox place and Blender file helpers.
 //!
 //! These read (and, for three of them, write) the project files directly, so

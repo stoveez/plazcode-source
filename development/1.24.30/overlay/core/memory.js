@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 const PlazCodeMemory = (() => {
   function titleOf(entry) {
     const title = String(entry && entry.title || '').trim(); if (title) return title;

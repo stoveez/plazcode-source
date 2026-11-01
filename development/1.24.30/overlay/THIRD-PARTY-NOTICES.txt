@@ -21,3 +21,8 @@ https://github.com/JohnnyMorganz/luau-lsp
 License: runtime/luau/LICENSE (the official release is downloaded once, on the first Luau check, unchanged and checked against its pinned SHA-256)
 
 Existing third-party package licenses remain in their respective source/runtime folders.
+
+Rust dependencies in the desktop app retain their original licences.
+Full versioned list and licence/copyright texts: runtime/THIRD-PARTY-RUST-LICENSES.txt
+Unmodified MPL-2.0 component source (option-ext 0.2.0): https://crates.io/crates/option-ext/0.2.0
+These component terms do not license first-party PlazCode under GPL or MPL.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 //! On-demand Studio actions and saved-file backups; no background scans.
 use axum::{extract::State,Json,response::{Response,IntoResponse}};
 use serde_json::{Value,json};

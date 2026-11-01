@@ -31,6 +31,9 @@ SOURCE_INPUTS=(
     'development/1.24.30/overlay',
     'development/1.24.30/prepare.py',
     'development/1.24.30/source_proof.py',
+    'development/1.24.30/collect_licenses.py',
+    'development/1.24.30/dependency-notices',
+    'development/1.24.30/test-licenses.py',
     'development/1.24.30/package.py',
     'development/1.24.30/protection.mjs',
     'development/1.24.30/release-variant.mjs',
@@ -298,9 +301,9 @@ def main():
     validation=f'''PlazCode {VERSION} — exact-source platform/browser gates{' (quick mode: separate Mac desktop lifetime test skipped)' if quick else ' and packaged macOS desktop lifetime checks'} passed before promotion.
 Validated source: {base}
 Validation run: private build {run['id']}
-Changes: DeepSeek provider-level send serialization and completion-based 8–9.8 second pacing, including Creator/library calls. Existing permanent approvals, signed program/update checks and native integrity enforcement are retained. User skills, notes, settings and offline use remain available. No publisher signing or required account.
+Changes: Luau diagnostics/code intelligence, MiMo and Arena support/fixes, official-extension pairing, release-specific protection, Mac startup and bridge reliability. First-party code is proprietary from 1.24.30 by owner decision; third-party notices and old-release rights are retained. No source ZIP is distributed. Existing approvals and user-data boundaries remain; no publisher signing or new setup from protection.
 All other features, safeguards and native launch/update behavior are retained. Final native executable and macOS app bytes are reused from validated development artifacts, not rebuilt during publication. Only release notices, checksums and package metadata change.
-Unit tests cover every check path; a browser fixture with the full production core and a mocked PlazCode app covers reconnect, closed app, dropped Studio connection, click-only chat connection and translation. Hosted browser fixtures use a mocked bridge.
+Automated tests exercise normal and negative checks; a browser fixture with the full production core and a mocked PlazCode app covers reconnect, closed app, dropped Studio connection, click-only chat connection and translation. Hosted browser fixtures use a mocked bridge.
 Windows binaries are unsigned. macOS uses ad-hoc signing and is not notarized.
 Microsoft Defender runner availability/result for the exact native artifact before release-notice assembly:
 {defender}

@@ -9,7 +9,7 @@ updated: 2026-10-31
 ## Why (what protection can and cannot do)
 - Protection = an edited extension stops working with the app, and an extension loaded from any other folder is never paired (`security.rs`, `integrity.rs`, `text_pack.rs`). It does NOT stop editing, and does NOT stop someone who patches `PlazCode.exe` (unsigned, nothing outside the program checks it).
 - Owner decision: **do not** use a server (owner said ignore hosting/cost; a server cannot hide text that is typed into the chat box or code that runs in Studio anyway), **do not** pack/virtualize the exe (it raises antivirus false positives, the very problem fixed in 1.24.30), **do not** buy code signing (costs money). Chosen: make each release different so a patch written for one version breaks on the next, and prepare takedowns.
-- Past releases up to 1.24.29 are public GPL with source zips; they cannot be recalled. This plan only affects new versions.
+- Earlier GPL releases retain their originally granted rights; they cannot be recalled. This plan only affects new versions.
 
 ## Owner's answers (AskUserQuestion, 2026-10-31)
 1. Version: **1.24.30** (not 1.24.31). One more CI build before the test zips go out.
@@ -78,3 +78,5 @@ Hard rules: Windows and Mac startup unchanged, updater untouched (`Update-PlazCo
 
 - 2026-11-01 source decision: no source ZIPs generated in CI packaging or promotion, no source ZIP uploads/release-record commits. `source_proof.py` records hashes/lengths at preparation; promotion reconstructs from the exact validated checkout and matches both native reports. Legacy baseline input ZIPs/old releases are retained. Corresponding-source obligations remain a separate unresolved release issue.
 - Cross-platform sealing: nonce = HMAC-SHA256(separate derived nonce key, exact compressed canonical JSON), truncated to 96 bits. Same plaintext/release uses the same nonce/ciphertext; changed plaintext uses a different nonce. Encryption and nonce derivation have separate key domains. This preserves byte parity expected by promotion, without changing the native decoder.
+
+**Latest licensing decision (2026-11-01, supersedes earlier GPL-gap status):** owner confirmed ownership of all first-party code and rejected future GPL terms. First-party 1.24.30 is now proprietary (LICENSE / LicenseRef-PlazCode-Proprietary); current headers/Rust metadata/root/browser notices updated, normal user content/use retained. Old GPL releases and third-party licences remain. Root package notices now come from current source; dependency notices ship in runtime. No source ZIP distribution; no Luraph. See license-and-branding-review.md. Full replacement validation/test ZIPs pending.

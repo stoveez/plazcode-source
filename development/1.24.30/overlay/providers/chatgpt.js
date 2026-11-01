@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // providers/chatgpt.js - the OpenAI ChatGPT (chatgpt.com) provider.
 // Exports the same RSProvider interface as providers/deepseek.js and
 // providers/gemini.js; the core (core/main.js) is provider-agnostic. To DISABLE

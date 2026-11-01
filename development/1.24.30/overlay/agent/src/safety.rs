@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 //! 1.24.21 safety limits: read-only mode and confirm-before-delete.
 //!
 //! The extension asks the user first and explains refusals in plain words; this

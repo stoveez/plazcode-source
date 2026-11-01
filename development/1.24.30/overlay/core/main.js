@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // core/main.js - the provider-agnostic agentic loop, UI and session state.
 // Drives any AI chat site through the RSProvider interface (providers/*.js):
 // waits for the model's reply, parses PlazCode commands (RSParse), asks the

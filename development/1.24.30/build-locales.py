@@ -17,5 +17,5 @@ for code in codes[1:]:
 packed={code:[result[code][k] for k in keys] for code in codes[1:]}
 def js(value):return json.dumps(value,ensure_ascii=False,separators=(',',':')).replace('<','\\u003c')
 body="globalThis.PlazCodeLocaleData=(()=>{const keys="+js(list(keys))+",values="+js(packed)+";const data={en:Object.fromEntries(keys.map(k=>[k,k]))};for(const [code,rows]of Object.entries(values))data[code]=Object.fromEntries(keys.map((k,i)=>[k,rows[i]]));return data;})();\n"
-out=root/'i18n-catalog.js';out.write_text('// SPDX-License-Identifier: GPL-3.0-or-later\n// Generated offline from core/locales; no user content or network translation.\n'+body)
+out=root/'i18n-catalog.js';out.write_text('// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary\n// Generated offline from core/locales; no user content or network translation.\n'+body)
 print(len(keys),'UI keys;',len(result),'languages;',out.stat().st_size,'bytes')

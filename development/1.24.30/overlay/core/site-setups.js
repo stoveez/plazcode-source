@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.24.21 saved setups per site: one click (or automatic on open) puts back the
 // engine, effort, access, safety, instructions, memory project, pinned skills
 // and tool add-ons a person uses on that site (ClickUp, Notion, Claude, …).

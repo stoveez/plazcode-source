@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // providers/vani.js — Vani AI (c.vani.ai) provider.
 // Chat lives at c.vani.ai/c (no sign-up needed for the free shared allowance). Adaptive composer (textarea or contenteditable). Selectors fail open so a reskin still finds the box.
 // eslint-disable-next-line no-unused-vars

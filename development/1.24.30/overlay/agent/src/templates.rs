@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 use std::{collections::HashSet, path::PathBuf, sync::Mutex};
 use serde::{Serialize,Deserialize};
 use serde_json::{json,Value};

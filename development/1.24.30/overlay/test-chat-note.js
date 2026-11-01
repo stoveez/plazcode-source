@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // 1.24.21: every chat is saved into the vault as a note under "11 Chats", written by PlazCode itself (not the AI).
 const assert = require("assert");
 const R = require("./core/reliability.js");

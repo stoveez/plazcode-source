@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 //! 1.24.21 vault memory: an Obsidian-compatible folder of Markdown notes that the AI reads and keeps up to date.
 //! The vault is plain files, so it works without Obsidian; if the user has Obsidian they can open the same folder.
 //! Every path is checked to stay inside the vault, the AI can only archive notes (only the user can delete one, from the viewer),

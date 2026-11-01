@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 const PlazCodeToolGuard = (() => {
   const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
   function validate(value, schema, path = 'arguments', depth = 0) {

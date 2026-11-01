@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 const PlazCodeActivity = (() => {
   function replacesTask(text) {
     text=String(text||'').replace(/[‘’]/g,"'");

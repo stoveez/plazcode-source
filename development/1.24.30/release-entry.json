@@ -24,6 +24,7 @@
     "Interrupted Luau checks refresh their temporary analysis state; switching profiles clears the Luau service and pending results."
   ],
   "notes": [
+    "First-party PlazCode 1.24.30 is proprietary. Third-party licences and earlier GPL releases keep their existing terms. Source ZIPs are not distributed.",
     "If PlazCode says the extension is not the official one: remove it from your browser's extensions page and load the PlazCode-Extension folder from the PlazCode folder you use (Firefox is not affected).",
     "Update the PlazCode app and the extension together (the app's updater does this). An extension newer than the app now says \"PlazCode app needed\" instead of starting.",
     "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
@@ -46,7 +47,8 @@
           "Mac fresh-download startup, misleading bridge-disconnected notices and some antivirus triggers.",
           "Arena sends, sign-in and Terms prompts; clearer account-service errors.",
           "Interrupted Luau checks and profile switches clear temporary analysis state.",
-          "Official-extension pairing and release-specific protection make edited copies harder to reuse. Old internal files are cleaned up."
+          "Official-extension pairing and release-specific protection make edited copies harder to reuse. Old internal files are cleaned up.",
+          "First-party PlazCode is proprietary from 1.24.30; third-party licences and older releases keep their terms."
         ]
       },
       {

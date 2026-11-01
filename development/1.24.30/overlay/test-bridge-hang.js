@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // A bridge on 127.0.0.1:3000 that accepts connections but never answers must
 // not exhaust the browser's 6 HTTP/1.1 connections per host. Before 1.21.1 the
 // background pollers had no timeout, pending requests piled up and the agent
