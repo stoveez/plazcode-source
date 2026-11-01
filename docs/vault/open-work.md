@@ -188,3 +188,5 @@ Owner explicitly does not want source ZIP distribution. Run 41335729270 cancelle
 **Final first-party header sweep:** expanded from selected extensions/exact first-line prefix to all file headers, including BOMs, CSS comments and later header lines. Corrected residual animation/CSS/build-tool/test headers and the old maintainer-source README. Third-party and historical snapshots remain unchanged. Licence/protection/desktop/source-preparation checks pass; final exact-source platform build still required.
 
 - Codex resumed 4f0b060: investigate three JS failures before fresh CI, then Luau timeout and Arena tool recognition/flat arguments/latency. Owner supplied another raw-Lua screenshot. See evening handoff and NOW for current state; previous build-delivery entries are historical.
+
+- Follow-up step 1: full local JS suite 0 failures (both Notion tests pass unchanged); v115 has 7 identical legacy failures on 936a302/current and remains intentionally excluded. No runtime regression reproduced. Fresh CI and Luau/Arena fixes next.

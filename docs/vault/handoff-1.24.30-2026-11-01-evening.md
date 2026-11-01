@@ -2,6 +2,12 @@
 
 Branch `claude/plazcode-dev` only. No publish/merge without the owner's clear "yes". Commits: stoveez name only, no email, no Co-Authored-By/Claude-Session/"Generated with" lines. Read `docs/NOW.md`, then this note.
 
+## Codex step 1 result
+- Full standard local JS suite: **0 failures**, including test-notion-protocol-file.js and test-notion-startup-small-paste.js. Their source/provider files are unchanged from the earlier green 936a302 version; no regression reproduced in this environment.
+- test-v115.js explicitly run on latest and reconstructed 936a302: the same 7 stale assertions fail (old Copilot URL, screenshot marker/version, condo rule wording, compression wording, studio-plus version and exact 1.18.7). Already excluded by the normal runner; do not restore old product behavior for it.
+- Old active 1.24.27/28/29 and duplicate 1.24.30 push runs cancelled. Next fresh dispatched full CI, then Luau.
+- Additional screenshot: Arena command chip says stopped without the owner pressing Stop; trace and distinguish automatic cancellation/timeout/site failure from user Stop.
+
 ## Codex resume
 - Resumed on 4f0b060, branch unchanged. Current task order is JS investigation + fresh CI, then Luau, Arena hang/raw text, and Arena argument/latency fixes.
 - Additional owner screenshot confirms raw Lua command text remains visible in Arena while work is slow. Investigation not yet complete.

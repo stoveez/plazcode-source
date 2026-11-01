@@ -1,9 +1,11 @@
 # NOW
 Updated: 2026-11-01. Branch `claude/plazcode-dev`; no helper agents.
 
-**Current: Codex resumed from Claude's 4f0b060 handoff.** Owner's order: (1) rerun the local JS suite once, investigate Notion protocol/small-paste and v115 failures against their prior state, fix real regressions, dispatch fresh full CI and cancel duplicate/old-version push runs; (2) fix Luau timeout handling with a Rust regression; (3) fix Arena stalled tool calls/raw Lua text; (4) normalize foreign/flat tool arguments and reduce Arena gaps between calls. Owner provided another raw-Lua screenshot and confirmed slow replies/tool-call gaps. No stable publication/merge authorized.
+**Current: step 1 JS investigation passed; next fresh CI, then Luau.** Owner's order: (1) rerun the local JS suite once, investigate Notion protocol/small-paste and v115 failures against their prior state, fix real regressions, dispatch fresh full CI and cancel duplicate/old-version push runs; (2) fix Luau timeout handling with a Rust regression; (3) fix Arena stalled tool calls/raw Lua text; (4) normalize foreign/flat tool arguments and reduce Arena gaps between calls. Owner provided another raw-Lua screenshot and confirmed slow replies/tool-call gaps. No stable publication/merge authorized.
 
-**Next:** prepare current source, run the JS suite plus explicitly skipped legacy v115, inspect those failures before changing runtime code. Update this note and evening handoff with every change/push. Current source Public for CI; no visibility change by the assistant. Deliver verified inner Windows/Mac test ZIPs, remind owner to restore Private with delivery. Account API stays Public independently.
+**JS result:** full standard suite on current source passed with 0 failures, including both Notion tests. Notion source/tests are unchanged from 936a302. Explicit v115 run fails the same 7 stale checks on current and 936a302 (including hard-coded 1.18.7); it is already deliberately excluded. No runtime regression reproduced and no obsolete behavior restored.
+
+**Next:** dispatch full CI on current dev, cancel duplicate/old-version push runs, then implement the Luau timeout fix. Update this note and evening handoff with every change/push. Current source Public for CI; no visibility change by the assistant. Deliver verified inner Windows/Mac test ZIPs, remind owner to restore Private with delivery. Account API stays Public independently.
 
 **Claude's detailed scope/status:** [evening handoff](vault/handoff-1.24.30-2026-11-01-evening.md). Sidebar glow failure already fixed; MiMo 15-call live test dropped by owner. Preserve Claude's MiMo/Arena/checklist/workspace fixes. Earlier verified 936a302 and be1ecde test builds omit later changes; do not deliver those as current.
 

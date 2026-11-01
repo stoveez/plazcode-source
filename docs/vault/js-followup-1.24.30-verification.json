@@ -1,0 +1,26 @@
+{
+  "program_source": "4f0b060",
+  "standard_js_suite": {
+    "exit_code": 0,
+    "failures": [],
+    "notion_protocol_file": "passed",
+    "notion_startup_small_paste": "passed"
+  },
+  "v115": {
+    "current_exit_code": 1,
+    "baseline": "936a302",
+    "baseline_exit_code": 1,
+    "same_failures": [
+      "copilot popup shortcut",
+      "copilot in overlay AI_SITES",
+      "plazcode_screenshot send-to-self",
+      "condo lock is condo-topic only",
+      "context compression",
+      "studio plus 40 commands file",
+      "v18 version"
+    ],
+    "classification": "existing obsolete smoke checks; excluded before these changes"
+  },
+  "live_bridge_test": "not run; requires live bridge",
+  "runtime_changes_for_step_1": false
+}
