@@ -292,6 +292,30 @@ pub fn notice(verdict: &Verdict) -> String {
     format!("\n\n[{lead}]\n{}", verdict.report)
 }
 
+/// `analyze_luau`: a read-only command PlazCode adds to the Studio command list. Not part of the Roblox MCP.
+pub const TOOL: &str = "analyze_luau";
+pub fn tool_spec() -> Value {
+    json!({"name": TOOL,
+        "description": "Check Luau code for mistakes WITHOUT running it (official luau-lsp with Roblox types): syntax errors, type errors and lint warnings, with line numbers. Give `path` (a script in Studio, e.g. \"ServerScriptService.Shop\") or `source` (code text). Respects --!strict / --!nonstrict / --!nocheck. Script edits made with multi_edit are also checked automatically and only NEW problems are reported in their result.",
+        "inputSchema": {"type": "object", "properties": {
+            "path": {"type": "string", "description": "script path in Studio, e.g. ServerScriptService.Shop"},
+            "source": {"type": "string", "description": "Luau code to check instead of a Studio script"}}}})
+}
+/// Full (not only new) diagnostics for one source, as the compact report.
+pub async fn analyze_one(label: &str, source: &str, timeout: Duration) -> Value {
+    let name = file_name(label, "check");
+    match analyze_sources(&[(name.as_str(), source)], timeout).await {
+        Err(reason) => report(label, "validation-unavailable", &[], Some(&reason)),
+        Ok(mut lists) => {
+            let all = lists.pop().unwrap_or_default();
+            let status = if all.iter().any(|d| d.severity() != "warning") { "failed" } else if all.is_empty() { "passed" } else { "warnings" };
+            let mut out = report(label, status, &all, None);
+            if let Some(obj) = out.as_object_mut() { for (old, new) in [("newErrors", "errors"), ("newWarnings", "warnings")] { let value = obj.remove(old).unwrap_or_default(); obj.insert(new.into(), value); } }
+            out
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -362,6 +386,10 @@ mod tests {
         assert!(text.contains("Expected this to be 'number'") && text.contains("Kik"), "{text}");
         let broken = check_edit("S", before, "local = \n", Mode::Blocking, Duration::from_secs(60)).await;
         assert_eq!((broken.status, broken.block), ("blocked", true), "{}", broken.report);
+        let full = analyze_one("pasted code", after, Duration::from_secs(60)).await;
+        assert_eq!((full["status"].as_str(), full["errors"].as_u64()), (Some("failed"), Some(2)), "{full}");
+        let nocheck = analyze_one("pasted code", "--!nocheck\nlocal n: number = \"one\"\nprint(n)\n", Duration::from_secs(60)).await;
+        assert_eq!(nocheck["errors"].as_u64(), Some(0), "--!nocheck skips type errors: {nocheck}");
         let same = check_edit("S", after, after, Mode::Blocking, Duration::from_secs(60)).await;
         assert_eq!(same.status, "passed", "{}", same.report);
     }

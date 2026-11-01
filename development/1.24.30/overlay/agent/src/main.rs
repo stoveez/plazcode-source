@@ -1697,6 +1697,7 @@ async fn checkpoint_tool(state: &AppState, engine: &str, id: &str, name: &str, a
     anyhow::bail!("Immediate Stop interrupted the tool. Its result may be partial; inspect before retrying.")
 }
 async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &str, mut args: serde_json::Value) -> anyhow::Result<McpOutput> {
+    if engine=="roblox" && name==luau_check::TOOL { return analyze_luau_tool(state,args).await; }
     if engine=="local" && name.contains("__") {
         // Add-on tool in AgentScript mode: runs in its own app, so it has no file checkpoint.
         if !id.is_empty() { let mut journal=checkpoints::STORE.lock().await; journal.step(id,name); if safety::is_change("local",name) { journal.warn(id,"This task used an add-on tool that changes another app. PlazCode can't undo that part."); } let _=journal.save(); }
@@ -1768,6 +1769,22 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
         match luau_after_edit(state,id,&before,&after,studio).await { Ok(note)=>out.text.push_str(&note), Err(blocked)=>return Err(anyhow::Error::msg(format!("{}{}",out.text,blocked))) }
     }
     outcome
+}
+
+/// `analyze_luau`: reads the script with the fixed read-only snapshot snippet (never the script's own code) or
+/// takes pasted source, and returns the compact diagnostics. Static analysis only.
+async fn analyze_luau_tool(state:&AppState,args:serde_json::Value)->anyhow::Result<McpOutput>{
+    let (label,source)=if let Some(source)=args["source"].as_str().filter(|s|!s.trim().is_empty()){("pasted code".to_string(),source.to_string())}
+    else{
+        let path=args["path"].as_str().map(str::trim).filter(|p|!p.is_empty()).ok_or_else(||anyhow::anyhow!("analyze_luau needs `path` (a script in Studio) or `source` (code text)."))?;
+        let mut params=serde_json::json!({"code":checkpoints::script_snapshot(path),"datamodel_type":"Edit"});
+        if let Some(studio)=args.get("studio_id").filter(|v|!v.is_null()){params["studio_id"]=studio.clone();}
+        let out=roblox_tool(state,"execute_luau",params).await?;
+        let snapshot=checkpoints::parse_snapshot(&out.text).ok_or_else(||anyhow::anyhow!("Could not read that script: {}",out.text.chars().take(300).collect::<String>()))?;
+        (snapshot["path"].as_str().unwrap_or(path).to_string(),snapshot["source"].as_str().unwrap_or("").to_string())
+    };
+    let report=luau_check::analyze_one(&label,&source,std::time::Duration::from_secs(30)).await;
+    Ok(McpOutput{text:report.to_string(),images:Vec::new()})
 }
 
 /// Checks one Studio script edit with the pinned luau-lsp. Static analysis only: the script is never run.
@@ -2382,6 +2399,8 @@ async fn roblox_tools(state: &AppState) -> anyhow::Result<Vec<serde_json::Value>
     };
 
     state.ui.set_roblox_tools(&primary, true);
+    // 1.24.30: PlazCode's own read-only Luau checker (answered by this app, never sent to Studio's MCP).
+    if !primary.iter().any(|t| t["name"]==luau_check::TOOL) { primary.push(luau_check::tool_spec()); }
     let addon_tools = addon_snapshot(state).await;
     primary.extend(addon_tools);
     Ok(primary)
