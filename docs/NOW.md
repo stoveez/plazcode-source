@@ -1,6 +1,14 @@
 # NOW
-Updated: 2026-11-01. Branch `claude/plazcode-dev`; no helper agents.
+Updated: 2026-11-01 (Claude, after Codex handoff). Branch `claude/plazcode-dev`; no helper agents.
 
+**Current: 1.24.30 test build PASSED, waiting for the owner to download it.** Full validation [41342349857](https://github.com/stoveez/plazcode-source/actions/runs/41342349857) on final program source **936a302**: browsers, Windows, universal Mac, Linux and release-check all green (128 checks, 0 failed). Production mark `31ff5250ca8f5bbe` (layout 2) identical on all three platforms; sealed text identical. Inner ZIPs: Windows 51,039,595 B, Mac 52,759,016 B, Linux 50,098,256 B (all under 64 MiB). Details: [verification JSON](vault/test-build-1.24.30-verification.json), [release marks](vault/release-marks.md).
+
+**Not done by Claude (blocked in this cloud workspace):** GitHub artifact storage is refused by the network allowlist and no Google Drive connector is attached, so the zips were not downloaded, run through `verify-delivery.mjs`, compared with 1.24.29's file list, launch-tested as the production Linux package, or uploaded to Drive. Owner downloads `plazcode-1.24.30-Windows-test-lean` / `-macOS-test-lean` (and Linux if wanted) from the run page and extracts once to get the inner zip. A session with artifact access (owner's PC, or one with Drive) should still run handoff steps 3-5. Source repo is still PUBLIC: owner restores Private.
+
+**Next:** owner tests; then device checks below; no stable publication authorized (stable is 1.24.29).
+
+---
+Earlier today (Codex handoff, kept for detail):
 **Current: handing back to Claude at owner's request (low Codex usage); final CI/delivery remain.** Full validation **41342349857** is running on final program source **936a302**; no failures at last check, all four jobs still running. Read [exact handoff](vault/handoff-1.24.30-2026-11-01.md) for finished code, checks, artifact names, verification and Drive/private steps. No stable publication authorized; stable is 1.24.29. Source is PUBLIC for this build window; account API stays Public independently. Coding is pushed; do not repeat the audit or deliver local validation-key packages. Next: finish current CI, verify exact production inner ZIPs, deliver via Drive and remind owner to restore source Private.
 
 **Actual feature preview delivered now:** [Luau settings](https://drive.google.com/file/d/1rbUnl6a1_yvHWqoslgic0UFr4wBG_-z1/view?usp=drivesdk), running Linux debug app/frontend with a temporary profile using the actual local account Worker. No page errors; Advisory default shown. Drive PNG name/MIME/236,394-byte size read back. Not a Studio-analysis demonstration. No new anti-copy screen exists.

@@ -25,6 +25,9 @@ The owner is handing this back to Claude because Codex usage is low. Coding is p
 - Actual running native/frontend Luau Settings screenshot delivered immediately via Drive and metadata verified: https://drive.google.com/file/d/1rbUnl6a1_yvHWqoslgic0UFr4wBG_-z1/view?usp=drivesdk . PNG 236,394 bytes. Temporary local profile/actual account Worker; zero page errors. This is UI proof, not a real Studio analysis demonstration.
 - Release notes cover final features/licence; required format and 1,667 UTF-16-unit body pass (<2,000). Do not lose this format.
 
+## Status update (Claude, 2026-11-01)
+Step 1 done: run 41342349857 succeeded (all jobs + release-check). Mark recorded (step 4 part). Steps 2-3, 5-6 and the 1.24.29 file-list comparison could NOT be done from Claude's cloud workspace (artifact storage blocked, no Drive connector); verified instead from CI logs: sizes, matching descriptors/sealed proofs, Mac universal check, Linux static binary, Windows install/Defender. See [verification](test-build-1.24.30-verification.json). Step 7 reminder given. Step 8 done.
+
 ## Remaining steps — finish these
 1. Monitor run 41342349857; require browsers, all three native jobs AND release-check success. If a real failure appears, fix it and run appropriate checks. Earlier runs are superseded/cancelled; do not deliver their ZIPs.
 2. Download thin artifacts `plazcode-1.24.30-{Windows,macOS,Linux}-test-lean` from THIS run. Verify GitHub artifact digest; unwrap once. Exact inner files: PlazCode-1.24.30-test-lean.zip, PlazCode-macOS-1.24.30-test-lean.zip, PlazCode-Linux-1.24.30-test-lean.zip (Linux tar.gz also available). No source ZIP, DEVELOPMENT note, plaintext maps or secret files.

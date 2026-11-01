@@ -1,0 +1,28 @@
+{
+  "version": "1.24.30",
+  "type": "test build",
+  "date": "2026-11-01",
+  "source_commit": "936a302e101a39f91eca0749a35c7d6e2e8458f4",
+  "branch": "claude/plazcode-dev",
+  "validation_run": 41342349857,
+  "validation_url": "https://github.com/stoveez/plazcode-source/actions/runs/41342349857",
+  "result": "success",
+  "release_check": "everything passed: 128 checks, 0 failed, 4 jobs (browsers, Windows, Mac, Linux); per-release variation PASS; sealed text across platforms PASS",
+  "production_descriptor": {"schema": 1, "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91", "mark": "31ff5250ca8f5bbe", "layout": 2, "same_on": ["Windows", "macOS", "Linux"]},
+  "packages": [
+    {"platform": "windows", "artifact": "plazcode-1.24.30-Windows-test-lean", "artifact_id": 13097868738, "wrapper_sha256": "60397711da51f7ec92166ebd724cd33e95817da85f567dd0850c9479045e37b2", "inner": "PlazCode-1.24.30-test-lean.zip", "inner_bytes": 51039595,
+     "ci_checks": ["installation on PowerShell 5.1 with exact installed bytes", "updater/launcher/AV-signal regressions", "Defender offline scan: no threats", "text pack verified, 1,066 outputs identical"]},
+    {"platform": "macos", "artifact": "plazcode-1.24.30-macOS-test-lean", "artifact_id": 13098690345, "wrapper_sha256": "c10e664d07b709fbd93c727e1dbe58e29837378fce6ef56f8039e5d3e395dfd7", "inner": "PlazCode-macOS-1.24.30-test-lean.zip", "inner_bytes": 52759016,
+     "ci_checks": ["universal app verified for x86_64 and arm64 (lipo -verify_arch)", "Mac startup recovery test", "text pack verified"]},
+    {"platform": "linux", "artifact": "plazcode-1.24.30-Linux-test-lean", "artifact_id": 13098885692, "wrapper_sha256": "218978dd0c1d409805fe907838dc6dff0f8748d05269b9f1470c6d183587c427", "inner": "PlazCode-Linux-1.24.30-test-lean.zip (+ tar.gz)", "inner_bytes": 50098256,
+     "ci_checks": ["production binary statically linked (no INTERP)", "text pack verified"]}
+  ],
+  "wrapper_contents": "inner lean ZIP (Linux also tar.gz), <platform>-release-variant.json and <platform>-sealed-text.json; no source or development ZIP",
+  "size_limit": "all inner ZIPs under 64 MiB (67,108,864 bytes)",
+  "not_verified_from_this_session": [
+    "Artifact files could not be downloaded here: the cloud workspace's network allowlist refuses GitHub's artifact storage host, and no Google Drive connector is attached, so verify-delivery.mjs, the 1.24.29 file-list comparison, ZIP CRC/path checks, Linux ZIP/tar parity and the Linux desktop test on the PRODUCTION package were not run by Claude.",
+    "CI's real Linux desktop launch test ran on the validation-key build before the production repack, not on the delivered production Linux package.",
+    "Drive delivery not done; owner downloads the artifacts from the run page."
+  ],
+  "still_needs_device": ["Studio Luau edit/restore/sourcemap", "full MiMo and Arena tasks", "Edge/Brave/Mac folder IDs", "quarantined Mac download start", "bridge/startup reports"]
+}

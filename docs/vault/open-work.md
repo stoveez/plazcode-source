@@ -8,7 +8,9 @@ updated: 2026-11-01
 
 # Open work
 
-**Handoff 2026-11-01:** final source 936a302, full CI 41342349857 running. Coding/targeted checks complete, final archive verification + Drive test ZIP delivery unfinished. See [exact handoff](handoff-1.24.30-2026-11-01.md). Source remains Public during build; owner restores Private after delivery.
+**Newest 2026-11-01 (Claude):** CI 41342349857 on 936a302 PASSED on every platform and release-check (mark `31ff5250ca8f5bbe` matching on all three). Package download/verify-delivery/Drive upload not possible from the cloud workspace; owner downloads from the run page. See [verification](test-build-1.24.30-verification.json).
+
+**Handoff 2026-11-01:** final source 936a302, full CI 41342349857 (then running). Coding/targeted checks complete, final archive verification + Drive test ZIP delivery unfinished. See [exact handoff](handoff-1.24.30-2026-11-01.md). Source remains Public during build; owner restores Private after delivery.
 
 **Latest 2026-11-01:** first-party 1.24.30 proprietary terms implemented by owner confirmation; no source ZIP distribution; current notices and dependency licences retained. Full local JS 0 failures, replacement CI 41338413340 / 3c73298 running, browsers passed. Actual Luau Settings Drive preview delivered; verified test ZIPs pending. Older dated entries below are historical.
 
