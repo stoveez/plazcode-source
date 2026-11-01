@@ -339,7 +339,7 @@ const RSProvider = (() => {
       if (block) breakLine();
     };
     walk(root);
-    return t;
+    return t.replace(/^\n+|\n+$/g, "");
   }
 
   // Assistant signature text = ONLY the .prose body (excludes the "Response
@@ -559,6 +559,41 @@ const RSProvider = (() => {
       thinking: "",
       item,
     };
+  }
+
+  // 1.24.30 (owner, 2026-11-01: "sometimes arena will just randomly stop while working"). Arena sometimes ends a
+  // turn with an EMPTY reply (the model-name header, then nothing: verified live, .prose present with no text).
+  // Sending another message on top left that empty turn in the chat history and the next reply came back empty
+  // too, so the run stopped. Arena's own regenerate button on that last empty turn redoes it in place instead.
+  // The button has no label (a tooltip only); it is the circular-arrow icon beside Like / Dislike / Copy.
+  const REGEN_LABEL = /\b(?:regenerat\w*|retry|try again|redo|rerun)\b/i;
+  function regenerateButton(item) {
+    if (!item) return null;
+    const btns = [...safeQueryAll(item, "button")].filter((b) => !safeClosest(b, ".rs-chip") && !safeRead(() => b.disabled, false));
+    const labelled = btns.find((b) => REGEN_LABEL.test(ariaOf(b)));
+    if (labelled) return labelled;
+    const pathsOf = (b) => [...safeQueryAll(b, "path")].map((p) => safeRead(() => p.getAttribute("d"), "") || "");
+    // Arena's refresh icon: an arc ending at the upper right plus a small corner arrow ("M17 8H21.4…").
+    const icon = btns.find((b) => pathsOf(b).some((d) => /^M21\.88\d* 13\.5\b/.test(d) || /^M17 8H21\.4\b/.test(d)));
+    if (icon) return icon;
+    // Fallback: the one unlabelled action button that is not Copy (Copy carries a check mark "M5 13L9 17L19 7").
+    const unlabelled = btns.filter((b) => !ariaOf(b) && !pathsOf(b).some((d) => /^M5 13L9 17L19 7/.test(d)));
+    return unlabelled.length === 1 ? unlabelled[0] : null;
+  }
+  function lastReplyEmpty() {
+    const it = lastAssistant();
+    return !!it && !itemText(it).replace(/\s+/g, "").length;
+  }
+  // Called by the core when a turn ended with no reply. True = regenerate was clicked (wait for the new reply).
+  async function regenerateEmpty() {
+    if (isAgentRoute()) return false;
+    const it = lastAssistant();
+    if (!it || !lastReplyEmpty() || isHardGenerating()) return false;
+    const b = regenerateButton(it);
+    diag("arena.regen", { found: !!b, aria: b ? ariaOf(b).slice(0, 30) : "" });
+    if (!b) return false;
+    try { b.click(); } catch { return false; }
+    return true;
   }
 
   async function waitFor(pred, timeout) {
@@ -1120,7 +1155,7 @@ const RSProvider = (() => {
     setInputLock, typeAndSend, stopGeneration,
     isGenerating, isBusyNow, isHardGenerating,
     enforceComposer, ensureComposerReady, modeWarning, captchaPresent, overlayBlocking, sendBlocker,
-    turnHalted, findContinueBtn, clickContinueBtn,
+    turnHalted, findContinueBtn, clickContinueBtn, regenerateEmpty,
     scanError, isTooLongMsg, isBusyMsg,
     // actions
     attachImages, clearAttachments, conversationKey,

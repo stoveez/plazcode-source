@@ -108,5 +108,28 @@ const composer = '<form><textarea name="message"></textarea><button type="submit
     assert(/15 read-only tool calls\nCall 1 of 15/.test(reply), JSON.stringify(reply));
     assert(/one\ntwo/.test(reply) && /line a\nline b/.test(reply), JSON.stringify(reply));
   }
-  console.log('PASS Arena: paragraphs read as separate lines; model picker, mode and + buttons are never clicked while Arena replies (send waits for the real send button); Direct, Battle, Side by Side and Agent allowed; answer A read from a battle turn; non-chat pages explained with a link back to chat; Terms / sign-in boxes stop the send with plain instructions.');
+  // Owner, 2026-11-01: "sometimes arena will just randomly stop while working". Live: the last Arena turn was the
+  // model name and an EMPTY .prose; its action bar is Like, Dislike, an unlabelled refresh icon, and Copy.
+  {
+    const actions = (id) => '<div class="bar"><button type="button" aria-label="Like this response"><svg><path d="M16.4724 20H4.1"/></svg></button>' +
+      '<button type="button" aria-label="Dislike this response"><svg><path d="M16.4724 3.5H4.1"/></svg></button>' +
+      `<button type="button" data-slot="tooltip-trigger" id="${id}"><svg><path d="M21.8883 13.5C21.1645 18.3113 17.013 22 12 22"/><path d="M17 8H21.4C21.7314 8 22 7.73137 22 7.4V3"/></svg></button>` +
+      '<button type="button" data-slot="tooltip-trigger" id="copy"><svg><path d="M5 13L9 17L19 7"/></svg><svg><path d="M19.4 20H9.6"/></svg></button></div>';
+    const turn = (txt, id) => `<div class="mx-auto max-w-800px w-full"><div>claude-sonnet-5-5-high</div><div class="flex flex-col gap-3"><div class="prose">${txt}</div></div>${actions(id)}</div>`;
+    const empty = page('https://arena.ai/c/empty', composer + '<ol class="flex-col-reverse"><div class="h-0"></div>' + turn('', 'regen') + '<div class="mx-auto justify-end"><div class="prose">result</div></div></ol>');
+    let regen = 0, copy = 0;
+    empty.w.document.getElementById('regen').addEventListener('click', () => regen++);
+    empty.w.document.getElementById('copy').addEventListener('click', () => copy++);
+    assert.equal(typeof empty.P.regenerateEmpty, 'function');
+    assert.equal(await empty.P.regenerateEmpty(), true, 'an empty last reply is regenerated');
+    assert.deepEqual({regen, copy}, {regen: 1, copy: 0}, 'the refresh icon is clicked, never Copy');
+    const full = page('https://arena.ai/c/full', composer + '<ol class="flex-col-reverse"><div class="h-0"></div>' + turn('{"command":"list_commands"}', 'regen2') + '<div class="mx-auto justify-end"><div class="prose">hi</div></div></ol>');
+    let regen2 = 0; full.w.document.getElementById('regen2').addEventListener('click', () => regen2++);
+    assert.equal(await full.P.regenerateEmpty(), false, 'a reply with text is never regenerated');
+    assert.equal(regen2, 0);
+    const main = fs.readFileSync('core/main.js', 'utf8');
+    assert(/emptyRegens < 2[^\n]*P\.regenerateEmpty/.test(main) && /A\.sendToken = null;\s*\n\s*base = Math\.max\(0, P\.assistantCount\(\) - 1\);/.test(main),
+      'the loop regenerates an empty reply (twice at most) before sending a retry message');
+  }
+  console.log('PASS Arena: an empty reply is regenerated with Arena\'s own button (never Copy, never a reply with text); paragraphs read as separate lines; model picker, mode and + buttons are never clicked while Arena replies (send waits for the real send button); Direct, Battle, Side by Side and Agent allowed; answer A read from a battle turn; non-chat pages explained with a link back to chat; Terms / sign-in boxes stop the send with plain instructions.');
 })().catch((e) => { console.error(e); process.exit(1); });

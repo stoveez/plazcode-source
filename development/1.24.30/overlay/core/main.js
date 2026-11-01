@@ -4507,7 +4507,7 @@ return result`;
     // malformed command still never runs.
     const MAX_INVALID_TOOL_ATTEMPTS = 6, SPLIT_HINT_AFTER = 2;
     const SPLIT_HINT = "\n\nThat command was cut off again. Do not resend it whole. Split the change into several much smaller commands (one function or a few dozen lines each) and send only the first part now.";
-    let deadRetries = 0;
+    let deadRetries = 0, emptyRegens = 0;
     let busyWaits = 0;
     // 1.24.10: Plan Mode / deep thinking levels ask for a written plan first.
     // Some sites end the turn after the plan, which used to finish the run with
@@ -4630,6 +4630,22 @@ return result`;
         // first (same rationale as the timeout retry above).
         if (res.kind === "empty") {
           diag("empty.end");
+          // 1.24.30 (owner: "sometimes arena will just randomly stop while working"): Arena can finish a turn with
+          // an EMPTY reply. A new message on top of it came back empty too and the run stopped. A provider that can
+          // redo its own last empty reply (Arena's regenerate button) does that first, at most twice per loop.
+          if (emptyRegens < 2 && !A.stop && A.started && typeof P.regenerateEmpty === "function") {
+            let redo = false;
+            try { redo = await P.regenerateEmpty(); } catch { redo = false; }
+            if (redo && !A.stop) {
+              emptyRegens++;
+              diag("loop.emptyRegenerate", { n: emptyRegens });
+              ui.toast(P.displayName + " sent an empty reply. Regenerating it…");
+              // The same turn is redone in place: no send token, and the count base sits one below it.
+              A.sendToken = null;
+              base = Math.max(0, P.assistantCount() - 1);
+              continue;
+            }
+          }
           if (deadRetries < 1 && !A.stop && A.started) {
             deadRetries++;
             diag("loop.deadRetry", { kind: "empty", n: deadRetries });
@@ -4666,7 +4682,7 @@ return result`;
           break;
         }
         truncCount = 0;
-        deadRetries = 0; // healthy turn (text/tool/parse outcome) — refill the retry budget
+        deadRetries = 0; emptyRegens = 0; // healthy turn (text/tool/parse outcome) — refill the retry budgets
 
         if(["tools","tool"].includes(res.kind)){const enhanced=await enhanceCreationBeforeTools(res);if(enhanced){base=enhanced.base;continue;}}
         if((A.templateContext || A.creatorContext || A.engramContext || A.skillContext) && ["tools","tool"].includes(res.kind)){
