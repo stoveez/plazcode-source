@@ -240,6 +240,46 @@ pub async fn check_edit(path: &str, before: &str, after: &str, mode: Mode, timeo
     decide(path, mode, analysed)
 }
 
+/// How long an edit waits for the check. Advisory: briefly, then the result arrives with the AI's next tool result,
+/// so a slow analyser never slows an edit. Blocking: the user asked for stricter checks, so it waits longer; running
+/// out of time is "unavailable" and the edit is kept.
+pub const ADVISORY_WAIT: Duration = Duration::from_millis(1500);
+pub const BLOCKING_WAIT: Duration = Duration::from_secs(12);
+pub const BACKGROUND_LIMIT: Duration = Duration::from_secs(45);
+/// After this many edits in a row that leave new errors in the same script, the AI is told to stop and ask the user.
+pub const MAX_REPAIRS: u32 = 3;
+
+pub fn mode(enabled: bool, mode: &str) -> Option<Mode> { enabled.then_some(if mode == "blocking" { Mode::Blocking } else { Mode::Advisory }) }
+
+type Notices = std::collections::HashMap<String, Vec<String>>;
+static PENDING: once_cell::sync::Lazy<std::sync::Mutex<Notices>> = once_cell::sync::Lazy::new(Default::default);
+static STREAK: once_cell::sync::Lazy<std::sync::Mutex<std::collections::HashMap<(String, String), u32>>> = once_cell::sync::Lazy::new(Default::default);
+/// A check that finished after its edit returned waits here for the task's next tool result.
+pub fn queue(task: &str, text: String) {
+    let mut map = PENDING.lock().unwrap_or_else(|e| e.into_inner());
+    if map.len() > 256 && !map.contains_key(task) { map.clear(); }
+    let list = map.entry(task.to_owned()).or_default();
+    if list.len() < 8 { list.push(text); }
+}
+pub fn take(task: &str) -> String { PENDING.lock().unwrap_or_else(|e| e.into_inner()).remove(task).map(|l| l.concat()).unwrap_or_default() }
+/// Counts consecutive edits of one script that still leave new errors; a clean edit resets it.
+pub fn track(task: &str, path: &str, status: &str) -> u32 {
+    let mut map = STREAK.lock().unwrap_or_else(|e| e.into_inner());
+    if map.len() > 1024 { map.clear(); }
+    let key = (task.to_owned(), path.to_owned());
+    match status {
+        "failed" | "blocked" => { let n = map.entry(key).or_default(); *n += 1; *n }
+        "unavailable" => map.get(&key).copied().unwrap_or(0),
+        _ => { map.remove(&key); 0 }
+    }
+}
+/// Full text for one checked edit, including the repair limit when it is reached.
+pub fn notice_for(verdict: &Verdict, streak: u32) -> String {
+    let mut text = notice(verdict);
+    if streak >= MAX_REPAIRS { text.push_str(&format!("\n[Luau check: {streak} attempts in a row still leave new errors in this script. Stop retrying; tell the user what is wrong and ask how to continue.]")); }
+    text
+}
+
 /// Text appended to a tool result. It never replaces the tool's own text, so existing parsers keep working.
 pub fn notice(verdict: &Verdict) -> String {
     let lead = match verdict.status {
@@ -288,6 +328,15 @@ mod tests {
         let v = decide("Game.ServerScriptService.Shop", Mode::Advisory, types());
         assert_eq!(v.report, json!({"file":"Game.ServerScriptService.Shop","status":"failed","newErrors":1,"newWarnings":0,"diagnostics":[{"line":1,"col":1,"severity":"error","code":"TypeError","message":"t"}]}));
         assert!(notice(&v).starts_with("\n\n[Luau check: edit applied"));
+    }
+    #[test] fn pending_results_and_repair_limit() {
+        queue("t1", "A".into()); queue("t1", "B".into());
+        assert_eq!(take("t1"), "AB"); assert_eq!(take("t1"), "");
+        assert_eq!((track("t2", "S", "failed"), track("t2", "S", "unavailable"), track("t2", "S", "blocked"), track("t2", "S", "failed")), (1, 1, 2, 3));
+        let v = decide("S", Mode::Advisory, Ok((vec![], vec![d(1, "TypeError", "t")])));
+        assert!(notice_for(&v, 3).contains("Stop retrying") && !notice_for(&v, 2).contains("Stop retrying"));
+        assert_eq!(track("t2", "S", "passed"), 0); assert_eq!(track("t2", "S", "failed"), 1);
+        assert_eq!(mode(false, "blocking"), None); assert_eq!(mode(true, "x"), Some(Mode::Advisory)); assert_eq!(mode(true, "blocking"), Some(Mode::Blocking));
     }
     #[test] fn report_is_capped_and_errors_come_first() {
         let new: Vec<Diagnostic> = (0..30).map(|i| d(i, if i == 29 { "SyntaxError" } else { "LocalUnused" }, &"m".repeat(500))).collect();

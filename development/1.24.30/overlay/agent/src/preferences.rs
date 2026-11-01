@@ -80,6 +80,12 @@ pub struct DesktopPreferences {
     /// of these folders. Empty = no extra limit.
     #[serde(rename = "rsAllowedFolders")]
     pub allowed_folders: Vec<String>,
+    /// 1.24.30 Luau validation of Studio script edits (default on). Read for every edit, so changes apply at once.
+    #[serde(rename = "rsLuauCheck")]
+    pub luau_check: bool,
+    /// "advisory" (default: edits always apply, new problems are reported) or "blocking" (a NEW syntax error puts the script back).
+    #[serde(rename = "rsLuauMode")]
+    pub luau_mode: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -111,6 +117,7 @@ impl Default for DesktopPreferences {
             appearance: None,
             sidebar_collapsed: false, explorer_auto_sync: true, skill_auto_learn: true, shared_learning: true, auto_update: true,
             read_only: false, confirm_delete: true, allowed_folders: Vec::new(),
+            luau_check: true, luau_mode: "advisory".to_string(),
         }
     }
 }
@@ -143,6 +150,7 @@ impl DesktopPreferences {
         self.tool_budget=self.tool_budget.min(1000);self.task_minutes=self.task_minutes.min(240);
         self.command_cooldown=if self.command_cooldown.is_finite(){(self.command_cooldown.clamp(0.0,120.0)*10.0).round()/10.0}else{0.0};
         if !matches!(self.stop_mode.as_str(),"safe"|"immediate") {self.stop_mode="immediate".into();}
+        if !matches!(self.luau_mode.as_str(),"advisory"|"blocking") {self.luau_mode="advisory".into();}
         let mut folders:Vec<String>=Vec::new();
         for folder in self.allowed_folders.iter().map(|f|f.trim().trim_end_matches(['/','\\']).to_string()).filter(|f|!f.is_empty()&&f.chars().count()<=500) {
             if !folders.iter().any(|known|known.eq_ignore_ascii_case(&folder)) && folders.len()<20 {folders.push(folder);}

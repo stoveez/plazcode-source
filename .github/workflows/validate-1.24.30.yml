@@ -320,6 +320,29 @@ jobs:
           NODE_PATH: release-tools/node_modules
       - name: Signed integrity and obfuscation regressions
         run: node development/1.24.30/test-protection.mjs
+      - name: Fetch the pinned official luau-lsp for real Luau check tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ runner.os }}" in
+            Linux) asset=luau-lsp-linux-x86_64.zip; sum=1a2ea1ae4f98f8946cefd970a4b54853e11ab4775e6932faa7f60cf920346567; prog=luau-lsp ;;
+            Windows) asset=luau-lsp-win64.zip; sum=64225b9738102a30de6ee09fb28e5a3827edc402ecf2a6364af570312468159f; prog=luau-lsp.exe ;;
+            macOS) asset=luau-lsp-macos.zip; sum=7d3936e8dec6dc77547abd061d2e950da392562a5f94858b880f23dba50d84cd; prog=luau-lsp ;;
+          esac
+          dir="$RUNNER_TEMP/luau-lsp"; mkdir -p "$dir"
+          curl --fail --location --retry 3 -o "$dir/$asset" "https://github.com/JohnnyMorganz/luau-lsp/releases/download/1.70.1/$asset"
+          curl --fail --location --retry 3 -o "$dir/defs.d.luau" "https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/1.70.1/scripts/globalTypes.d.luau"
+          python - "$dir/$asset" "$sum" "$dir/defs.d.luau" 2857efa8245485f8c25c19c018ee1ef9b46afab4efd2ea70fc3257cd3faf7080 <<'PY'
+          import hashlib, sys
+          for path, want in ((sys.argv[1], sys.argv[2]), (sys.argv[3], sys.argv[4])):
+              got = hashlib.sha256(open(path, 'rb').read()).hexdigest()
+              assert got == want, f'{path}: {got} != pinned {want}'
+          PY
+          (cd "$dir" && unzip -o -q "$asset")
+          test -f "$dir/$prog"
+          chmod +x "$dir/$prog"
+          echo "PLAZCODE_LUAU_LSP=$dir/$prog" >> "$GITHUB_ENV"
+          echo "PLAZCODE_LUAU_DEFINITIONS=$dir/defs.d.luau" >> "$GITHUB_ENV"
       - name: Native regression suite
         if: ${{ always() && !cancelled() }}
         run: cargo +stable test --locked --manifest-path agent/Cargo.toml

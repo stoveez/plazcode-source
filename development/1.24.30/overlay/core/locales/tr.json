@@ -1084,5 +1084,12 @@
   "What led up to this": "Buna ne yol açtı",
   "Copy for AI": "Yapay zekâ için kopyala",
   "Show more": "Daha fazla göster",
-  "Today": "Bugün"
+  "Today": "Bugün",
+  "Luau checks": "Luau denetimleri",
+  "After the AI edits a Roblox script, PlazCode checks the new code for mistakes without running it. Only problems the edit added are reported.": "Yapay zekâ bir Roblox betiğini düzenledikten sonra PlazCode yeni kodu çalıştırmadan hatalara karşı denetler. Yalnızca düzenlemenin eklediği sorunlar bildirilir.",
+  "Check script edits": "Betik düzenlemelerini denetle",
+  "When a check finds a problem": "Bir sorun bulunduğunda",
+  "Tell the AI (recommended)": "Yapay zekâya bildir (önerilen)",
+  "Undo edits with new syntax errors": "Yeni söz dizimi hatası içeren düzenlemeleri geri al",
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "Tür sorunları ve uyarılar her zaman yalnızca bildirilir. Değişiklikler bir sonraki düzenlemede geçerli olur."
 }

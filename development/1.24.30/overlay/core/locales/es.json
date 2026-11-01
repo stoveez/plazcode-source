@@ -1084,5 +1084,12 @@
   "What led up to this": "Qué llevó a esto",
   "Copy for AI": "Copiar para la IA",
   "Show more": "Mostrar más",
-  "Today": "Hoy"
+  "Today": "Hoy",
+  "Luau checks": "Comprobaciones de Luau",
+  "After the AI edits a Roblox script, PlazCode checks the new code for mistakes without running it. Only problems the edit added are reported.": "Cuando la IA edita un script de Roblox, PlazCode revisa el código nuevo en busca de errores sin ejecutarlo. Solo se informan los problemas que añadió la edición.",
+  "Check script edits": "Comprobar ediciones de scripts",
+  "When a check finds a problem": "Cuando se encuentra un problema",
+  "Tell the AI (recommended)": "Avisar a la IA (recomendado)",
+  "Undo edits with new syntax errors": "Deshacer ediciones con nuevos errores de sintaxis",
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "Los problemas de tipos y las advertencias solo se informan. Los cambios se aplican a la siguiente edición."
 }

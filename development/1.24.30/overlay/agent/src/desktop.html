@@ -1013,6 +1013,11 @@ html[data-desktop-glow=off] .pc-signin :is(.pc-profile-card,.pc-profile-avatar,.
             <p class="settinghelp">With Full access, files outside the workspace must be in one of these folders. Leave empty to allow the whole PC. Commands can still reach other folders, so use Read-only or Ask mode to control them.</p>
             <div class="instructions-actions"><button class="softbtn" id="saveAllowedFolders">Save folders</button><span class="instructions-status" id="allowedFoldersStatus" role="status"></span></div>
           </div>
+          <div class="settingcard" id="luauSettings"><h3>Luau checks</h3><p>After the AI edits a Roblox script, PlazCode checks the new code for mistakes without running it. Only problems the edit added are reported.</p>
+            <div class="settingrow"><label>Check script edits</label><div class="toggle" data-pref="rsLuauCheck" role="switch" aria-label="Check script edits"></div></div>
+            <div class="settingrow exrow"><label for="luauMode">When a check finds a problem</label><select id="luauMode" data-pref="rsLuauMode"><option value="advisory">Tell the AI (recommended)</option><option value="blocking">Undo edits with new syntax errors</option></select></div>
+            <p class="settinghelp">Type problems and warnings are always only reported. Changes apply to the next edit.</p>
+          </div>
           <div class="settingcard"><h3>Reasoning</h3><p>Matches the extension work and thinking controls.</p>
             <div class="settingrow exrow"><label>Work mode</label><select data-pref="rsWorkMode"><option value="fast">Fast</option><option value="balanced">Balanced</option><option value="thorough">Thorough</option></select></div>
             <div class="settingrow exrow"><label for="desktopApprovalMode">Command approvals</label><select id="desktopApprovalMode" data-pref="rsApprovalMode"><option value="ask">Ask for approval</option><option value="auto">Approve for me</option><option value="bypass">Bypass approval</option></select></div><p class="settinghelp">Ask before every edit, only before deletions, or automatically approve task commands.</p>

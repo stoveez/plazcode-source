@@ -1683,7 +1683,10 @@ async fn checkpoint_tool(state: &AppState, engine: &str, id: &str, name: &str, a
         _=cancellation.changed()=>None,
         result=checkpoint_tool_inner(state,engine,id,name,args)=>Some(result),
     };
-    if let Some(result)=result{return result;}
+    if let Some(result)=result{
+        // A Luau check that finished after its edit returned is added to the next result of the same task.
+        return result.map(|mut out|{out.text.push_str(&luau_check::take(id));out});
+    }
     // Dropping the local command future kills only its owned shell tree.
     // Recycle the specific helper whose response stream was interrupted.
     if engine=="roblox" {
@@ -1725,7 +1728,7 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
         let result=roblox_tool(state,name,args).await;let _=journal.save();return result;
     }
     let source_path=if matches!(name,"multi_edit"|"script_set_source"){args["file_path"].as_str().or_else(||args["path"].as_str()).map(str::to_owned)}else{None};
-    let mut script_before=None;
+    let mut script_before=None;let mut luau_edit=None;
     if let Some(path)=&source_path{
         let mut params=serde_json::json!({"code":checkpoints::script_snapshot(path),"datamodel_type":"Edit"});if let Some(studio)=args.get("studio_id"){params["studio_id"]=studio.clone();}
         if let Ok(out)=roblox_tool(state,"execute_luau",params).await{if let Some(before)=checkpoints::parse_snapshot(&out.text){
@@ -1745,7 +1748,7 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
     let outcome=roblox_tool(state,name,args).await;
     if let Some((before,studio))=script_before {
         let captured=roblox_tool(state,"execute_luau",mark_args(checkpoints::script_snapshot(before["path"].as_str().unwrap_or("")))).await;
-        if let Ok(out)=captured{if let Some(after)=checkpoints::parse_snapshot(&out.text){if let Err(error)=journal.record_script(id,&before,&after,studio){journal.warn(id,&format!("Selective script snapshot unavailable: {error}"));}}}
+        if let Ok(out)=captured{if let Some(after)=checkpoints::parse_snapshot(&out.text){if let Err(error)=journal.record_script(id,&before,&after,studio.clone()){journal.warn(id,&format!("Selective script snapshot unavailable: {error}"));}luau_edit=Some((before,after,studio));}}
     }
     let marked=roblox_tool(state,"execute_luau",mark_args(checkpoints::studio_mark(&label))).await;
     match marked {
@@ -1757,7 +1760,53 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
         Err(_)=>journal.warn(id,"Studio checkpoint completion was not confirmed. Automatic revert is disabled."),
     }
     if outcome.is_err(){journal.warn(id,"A Studio mutation failed with an uncertain outcome. Check Studio before attempting a restore.");}
-    journal.save()?;outcome
+    journal.save()?;drop(journal);
+    // 1.24.30 Luau validation (docs/vault/luau-validation-plan.md): adds a short note to the edit's own result;
+    // the tool name, arguments and result text stay as they were.
+    let mut outcome=outcome;
+    if let (Ok(out),Some((before,after,studio)))=(outcome.as_mut(),luau_edit){
+        match luau_after_edit(state,id,&before,&after,studio).await { Ok(note)=>out.text.push_str(&note), Err(blocked)=>return Err(anyhow::Error::msg(format!("{}{}",out.text,blocked))) }
+    }
+    outcome
+}
+
+/// Checks one Studio script edit with the pinned luau-lsp. Static analysis only: the script is never run.
+/// Ok(note) = the edit stays (Advisory, passed, warnings, unavailable). Err(note) = Blocking mode put the script back.
+async fn luau_after_edit(state:&AppState,id:&str,before:&serde_json::Value,after:&serde_json::Value,studio:serde_json::Value)->Result<String,String>{
+    use luau_check::Mode;
+    let prefs=state.preferences.snapshot();
+    let Some(mode)=luau_check::mode(prefs.luau_check,&prefs.luau_mode) else {return Ok(String::new())};
+    let (Some(old),Some(new),Some(path))=(before["source"].as_str(),after["source"].as_str(),after["path"].as_str()) else {return Ok(String::new())};
+    if old==new {return Ok(String::new());}
+    let (old,new,path,task)=(old.to_owned(),new.to_owned(),path.to_owned(),id.to_owned());
+    let (wait,limit)=if mode==Mode::Blocking{(luau_check::BLOCKING_WAIT,luau_check::BLOCKING_WAIT)}else{(luau_check::ADVISORY_WAIT,luau_check::BACKGROUND_LIMIT)};
+    let mut job={let (path,old,new)=(path.clone(),old.clone(),new.clone());tokio::spawn(async move{luau_check::check_edit(&path,&old,&new,mode,limit).await})};
+    let verdict=match tokio::time::timeout(wait,&mut job).await{
+        Ok(Ok(verdict))=>verdict,
+        Ok(Err(_))=>luau_check::decide(&path,mode,Err("the Luau checker stopped unexpectedly".into())),
+        Err(_) if mode==Mode::Advisory=>{
+            // Never slow the edit down: the result is added to this task's next tool result.
+            tokio::spawn(async move{let verdict=match job.await{Ok(v)=>v,Err(_)=>luau_check::decide(&path,mode,Err("the Luau checker stopped unexpectedly".into()))};
+                let streak=luau_check::track(&task,&path,verdict.status);
+                luau_check::queue(&task,format!("\n\n[Luau check result for your earlier edit of {path}:]{}",luau_check::notice_for(&verdict,streak)));});
+            return Ok("\n\n[Luau check: still running; the result will be added to your next tool result.]".into());
+        }
+        Err(_)=>{job.abort();luau_check::decide(&path,mode,Err("the Luau checker ran out of time".into()))}
+    };
+    let streak=luau_check::track(id,&path,verdict.status);
+    if !verdict.block {return Ok(luau_check::notice_for(&verdict,streak));}
+    // Blocking mode and a NEW syntax error: put the script back. The restore refuses if the script changed since
+    // the edit (revision check inside script_restore), so another task's later edit is never overwritten.
+    let change=checkpoints::ScriptChange{path:path.clone(),class:after["class"].as_str().unwrap_or("").into(),before:old,after:new,studio_id:studio.clone(),session:checkpoints::SNAPSHOT_SESSION.clone()};
+    let restored=roblox_tool(state,"execute_luau",serde_json::json!({"code":checkpoints::script_restore(&change),"datamodel_type":"Edit","studio_id":studio})).await;
+    if !matches!(&restored,Ok(out) if out.text.contains("PLAZCODE_SCRIPT_RESTORED")) {
+        let mut report=verdict.report.clone();report["status"]=serde_json::json!("failed");report["reason"]=serde_json::json!("could not put the script back; it still contains the new syntax error");
+        return Ok(format!("\n\n[Luau check (Blocking mode): the edit introduced a new syntax error and PlazCode could not put the script back. Fix it in your next edit.]\n{report}"));
+    }
+    let mut journal=checkpoints::STORE.lock().await;
+    if let Err(error)=journal.record_script(id,after,before,change.studio_id.clone()){journal.warn(id,&format!("Selective script snapshot unavailable: {error}"));}
+    journal.warn(id,"Luau Blocking mode put a script back after a new syntax error. Whole-task Studio undo is disabled because its history changed.");let _=journal.save();
+    Err(luau_check::notice_for(&verdict,streak))
 }
 
 #[cfg(target_os="linux")]

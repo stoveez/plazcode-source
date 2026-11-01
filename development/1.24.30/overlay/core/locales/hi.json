@@ -1084,5 +1084,12 @@
   "What led up to this": "यह किस वजह से हुआ",
   "Copy for AI": "AI के लिए कॉपी करें",
   "Show more": "और दिखाएँ",
-  "Today": "आज"
+  "Today": "आज",
+  "Luau checks": "Luau जाँच",
+  "After the AI edits a Roblox script, PlazCode checks the new code for mistakes without running it. Only problems the edit added are reported.": "AI के Roblox स्क्रिप्ट बदलने के बाद, PlazCode नए कोड को चलाए बिना उसमें गलतियाँ जाँचता है। सिर्फ़ वही समस्याएँ बताई जाती हैं जो इस बदलाव से आईं।",
+  "Check script edits": "स्क्रिप्ट बदलाव जाँचें",
+  "When a check finds a problem": "जाँच में समस्या मिलने पर",
+  "Tell the AI (recommended)": "AI को बताएँ (सुझाया गया)",
+  "Undo edits with new syntax errors": "नई सिंटैक्स गलती वाले बदलाव वापस लें",
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "टाइप समस्याएँ और चेतावनियाँ हमेशा सिर्फ़ बताई जाती हैं। बदलाव अगले संपादन से लागू होते हैं।"
 }

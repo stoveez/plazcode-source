@@ -1084,5 +1084,12 @@
   "What led up to this": null,
   "Copy for AI": null,
   "Show more": null,
-  "Today": null
+  "Today": null,
+  "Luau checks": "Luau checks",
+  "After the AI edits a Roblox script, PlazCode checks the new code for mistakes without running it. Only problems the edit added are reported.": "After the AI edits a Roblox script, PlazCode checks the new code for mistakes without running it. Only problems the edit added are reported.",
+  "Check script edits": "Check script edits",
+  "When a check finds a problem": "When a check finds a problem",
+  "Tell the AI (recommended)": "Tell the AI (recommended)",
+  "Undo edits with new syntax errors": "Undo edits with new syntax errors",
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "Type problems and warnings are always only reported. Changes apply to the next edit."
 }

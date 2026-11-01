@@ -1084,5 +1084,12 @@
   "What led up to this": "导致此问题的过程",
   "Copy for AI": "复制给 AI",
   "Show more": "显示更多",
-  "Today": "今天"
+  "Today": "今天",
+  "Luau checks": "Luau 检查",
+  "After the AI edits a Roblox script, PlazCode checks the new code for mistakes without running it. Only problems the edit added are reported.": "AI 编辑 Roblox 脚本后，PlazCode 会在不运行代码的情况下检查新代码中的错误。只报告此次编辑新增的问题。",
+  "Check script edits": "检查脚本编辑",
+  "When a check finds a problem": "检查发现问题时",
+  "Tell the AI (recommended)": "告诉 AI（推荐）",
+  "Undo edits with new syntax errors": "撤销带有新语法错误的编辑",
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "类型问题和警告始终只做报告。更改从下一次编辑起生效。"
 }

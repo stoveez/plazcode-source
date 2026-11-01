@@ -1084,5 +1084,12 @@
   "What led up to this": "Что к этому привело",
   "Copy for AI": "Скопировать для ИИ",
   "Show more": "Показать ещё",
-  "Today": "Сегодня"
+  "Today": "Сегодня",
+  "Luau checks": "Проверки Luau",
+  "After the AI edits a Roblox script, PlazCode checks the new code for mistakes without running it. Only problems the edit added are reported.": "После того как ИИ изменит скрипт Roblox, PlazCode проверяет новый код на ошибки, не запуская его. Сообщается только о проблемах, которые добавила правка.",
+  "Check script edits": "Проверять правки скриптов",
+  "When a check finds a problem": "Если проверка нашла проблему",
+  "Tell the AI (recommended)": "Сообщить ИИ (рекомендуется)",
+  "Undo edits with new syntax errors": "Отменять правки с новыми синтаксическими ошибками",
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "О проблемах с типами и предупреждениях только сообщается. Изменения действуют со следующей правки."
 }
