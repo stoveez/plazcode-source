@@ -259,8 +259,11 @@ const RSProvider = (() => {
       }
     } catch {}
     // MiMo's own notice sits in the page itself (not in a toast): a short plain text line under the last reply.
+    // It can stay on screen while MiMo still answers (live test: 15 tool calls kept running under it), so it only
+    // counts when MiMo's latest reply is itself the "server busy" notice (then re-sending can never work).
     try {
-      for (const el of safeQueryAll(document, "div,p,span")) {
+      const last = lastAssistant();
+      if (last && RE.busy.test(itemText(last).trim().slice(0, 200))) for (const el of safeQueryAll(document, "div,p,span")) {
         if (safeRead(() => el.childElementCount, 1) > 0 || safeClosest(el, "#rs-root, .rs-chip") || !visible(el)) continue;
         const t = (safeRead(() => el.textContent, "") || "").trim();
         if (t.length > 12 && t.length < 160 && RE.chatLimit.test(t)) return t.slice(0, 160);

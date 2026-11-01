@@ -29,6 +29,19 @@ const MAX_RUN_TIMEOUT: u64 = 600;
 const GREP_MAX_RESULTS: usize = 100;
 const TREE_DEFAULT_DEPTH: usize = 3;
 const TREE_MAX_DEPTH: usize = 8;
+// 1.24.30 (owner test: a 15-call read-only run sat on `grep_files "python"` for over 60 seconds): searching file
+// contents now stops after a time budget with a note, skips browser/tool cache folders and files that are plainly
+// not text, and rejects a file with one quick check before looking at its lines.
+const GREP_TIME_BUDGET_SECS: u64 = 20;
+const GREP_EXTRA_SKIP_DIRS: &[&str] = &[
+    "target", ".cache", "site-packages", "Cache", "Code Cache", "GPUCache", "ShaderCache", "GrShaderCache",
+    "Service Worker", "IndexedDB", "Local Storage", "Session Storage", "chrome_debug_profile", ".gradle", "Pods",
+];
+const GREP_SKIP_EXTS: &[&str] = &[
+    "png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "icns", "psd", "mp3", "mp4", "wav", "ogg", "flac", "mov", "avi", "mkv",
+    "zip", "7z", "rar", "gz", "tar", "xz", "bz2", "exe", "dll", "so", "dylib", "bin", "obj", "o", "a", "lib", "pdb",
+    "db", "sqlite", "sqlite3", "ldb", "pak", "dat", "woff", "woff2", "ttf", "otf", "pyc", "class", "jar", "rbxm", "rbxl", "rbxlx",
+];
 const IGNORED_DIRS: &[&str] = &[
     ".git", "node_modules", "__pycache__", ".venv", "venv",
     ".idea", ".vscode", "dist", "build", ".next", "coverage",
@@ -819,16 +832,22 @@ pub async fn tool_grep_files(ws: &Workspace, args: &serde_json::Value) -> Result
     // `path` = the folder to search in (the workspace root by default; any folder in Full access).
     let base = ws.resolve_path(opt_path(args).as_str(), true)?;
     if !base.is_dir() { return Err(format!("'{}' is a file, not a folder", ws.display(&base))); }
-    collect_files(&base, include, &mut candidates).await;
+    let started = std::time::Instant::now();
+    let budget = std::time::Duration::from_secs(GREP_TIME_BUDGET_SECS);
+    collect_files(&base, include, &mut candidates, started + budget).await;
 
     let mut hits: Vec<String> = Vec::new();
     let mut scanned = 0usize;
+    let mut timed_out = false;
     'outer: for path in candidates {
         if hits.len() >= GREP_MAX_RESULTS { break; }
+        if started.elapsed() >= budget { timed_out = true; break; }
         if tokio::fs::metadata(&path).await.map(|m| m.len()).unwrap_or(u64::MAX) > MAX_READ_BYTES { continue; }
         let (text, binary) = match read_text(&path).await { Ok(t) => t, Err(_) => continue };
         if binary { continue; }
         scanned += 1;
+        // One quick check for plain-text searches: a file without the text anywhere has no matching line.
+        if rx.is_none() && !text.to_lowercase().contains(&needle) { continue; }
         for (lineno, line) in text.split('\n').enumerate() {
             let ok = match &rx {
                 Some(rx) => rx.is_match(line),
@@ -841,26 +860,33 @@ pub async fn tool_grep_files(ws: &Workspace, args: &serde_json::Value) -> Result
             }
         }
     }
+    let time_note = if timed_out || started.elapsed() >= budget {
+        format!("\n  (stopped after {GREP_TIME_BUDGET_SECS}s: the folder is large. Search a smaller folder with path, or narrow with include like \"src/**/*.js\".)")
+    } else { String::new() };
     if hits.is_empty() {
         let kind = if is_regex { "regex" } else { "text" };
-        return Ok(format!("No matches for {kind} \"{query}\" (scanned {scanned} files matching \"{include}\")."));
+        return Ok(format!("No matches for {kind} \"{query}\" (scanned {scanned} files matching \"{include}\").{time_note}"));
     }
     let tail = if hits.len() < GREP_MAX_RESULTS { String::new() } else { format!("\n  ... stopped at {GREP_MAX_RESULTS} matches") };
-    Ok(format!("Matches for \"{query}\" ({}, scanned {scanned} files):\n{}{tail}", hits.len(), hits.join("\n")))
+    Ok(format!("Matches for \"{query}\" ({}, scanned {scanned} files):\n{}{tail}{time_note}", hits.len(), hits.join("\n")))
 }
 
-async fn collect_files(dir: &Path, include: &str, out: &mut Vec<PathBuf>) {
+async fn collect_files(dir: &Path, include: &str, out: &mut Vec<PathBuf>, deadline: std::time::Instant) {
     let matcher = glob::Pattern::new(include).ok();
     let mut stack = vec![dir.to_path_buf()];
     while let Some(d) = stack.pop() {
+        if std::time::Instant::now() >= deadline { return; }
         let Ok(mut rd) = tokio::fs::read_dir(&d).await else { continue };
         while let Ok(Some(e)) = rd.next_entry().await {
             let path = e.path();
             let name = e.file_name().to_string_lossy().to_string();
             let is_dir = e.file_type().await.map(|t| t.is_dir()).unwrap_or(false);
             if is_dir {
-                if !IGNORED_DIRS.contains(&name.as_str()) { stack.push(path); }
+                if !IGNORED_DIRS.contains(&name.as_str()) && !GREP_EXTRA_SKIP_DIRS.contains(&name.as_str()) { stack.push(path); }
                 continue;
+            }
+            if let Some(ext) = path.extension().and_then(|x| x.to_str()) {
+                if GREP_SKIP_EXTS.contains(&ext.to_ascii_lowercase().as_str()) { continue; }
             }
             if let Some(m) = &matcher {
                 // Default glob semantics: '*' crosses separators, like OpenRender's.
@@ -2104,6 +2130,20 @@ mod tests {
         assert!(del.contains("refusing to delete"));
         let mv = tool_move_path(&ws, &serde_json::json!({"source": ".", "destination": "x"})).await.unwrap_err();
         assert!(mv.contains("refusing to move"));
+        let _ = std::fs::remove_dir_all(&ws.canon_root);
+    }
+
+    #[tokio::test]
+    async fn grep_skips_cache_folders_and_non_text_files() {
+        let ws = temp_ws("grepskip");
+        tool_write_file(&ws, &serde_json::json!({"path": "src/a.txt", "content": "needle here\nother\n"})).await.unwrap();
+        tool_write_file(&ws, &serde_json::json!({"path": "src/none.txt", "content": "nothing to see\n"})).await.unwrap();
+        tool_write_file(&ws, &serde_json::json!({"path": "target/b.txt", "content": "needle in build output\n"})).await.unwrap();
+        tool_write_file(&ws, &serde_json::json!({"path": "src/pic.png", "content": "needle in a picture\n"})).await.unwrap();
+        let g = tool_grep_files(&ws, &serde_json::json!({"query": "NEEDLE"})).await.unwrap();
+        assert!(g.contains("src/a.txt:1"), "{g}");
+        assert!(!g.contains("target/") && !g.contains("pic.png"), "{g}");
+        assert!(!g.contains("stopped after"), "{g}");
         let _ = std::fs::remove_dir_all(&ws.canon_root);
     }
 

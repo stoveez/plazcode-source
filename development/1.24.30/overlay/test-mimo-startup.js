@@ -67,19 +67,22 @@ function scenario(replies) {
 }
 
 // Live UltraSpeed, 2026-11-01: MiMo answered "服务器繁忙，请稍后再试" and showed "This conversation has reached the limit.
-// Start a new conversation." as plain page text. Both must be recognised (the run used to end as a normal answer).
+// Start a new conversation." as plain page text. The busy reply must be recognised (the run used to end as a normal
+// answer). The limit line alone is NOT a stop: 15 tool calls kept running under it, so it only counts with a busy reply.
 {
-  const d = new JSDOM('<!doctype html><body><div class="turn"><div class="msg">服务器繁忙，请稍后再试</div></div><div class="note">This conversation has reached the limit. Start a new conversation.</div><textarea></textarea></body>', {url: "https://aistudio.xiaomimimo.com/#/ultra/x", runScripts: "outside-only"});
-  const w = d.window;
-  w.HTMLElement.prototype.getBoundingClientRect = function () { return {x:0,y:0,left:0,top:0,right:400,bottom:30,width:400,height:30}; };
-  Object.defineProperty(w.HTMLElement.prototype, "offsetParent", {get() { return this.parentNode; }});
-  vm.runInContext(mimoSource + ";this.P=RSProvider;", d.getInternalVMContext());
-  assert(w.P.isBusyMsg("服务器繁忙，请稍后再试"), "Chinese server-busy notice counts as busy");
-  const lim = w.P.scanError();
-  assert(lim && /reached the limit/.test(lim), "the plain-text chat limit notice is found: " + lim);
-  w.document.querySelector(".note").remove();
-  w.document.body.insertAdjacentHTML("afterbegin", '<div class="user">please start a new conversation about trees, this conversation has reached the limit of my patience</div>');
-  assert(!/reached the limit/.test(String(w.P.scanError() || "")), "a user's own sentence is not mistaken for the notice");
+  const turn = (txt) => '<div class="relative flex w-full mx-auto"><div class="markdown-blocks">' + txt + '</div></div>';
+  const mk = (replyText) => {
+    const d = new JSDOM('<!doctype html><body>' + turn(replyText) + '<div class="note">This conversation has reached the limit. Start a new conversation.</div><textarea></textarea></body>', {url: "https://aistudio.xiaomimimo.com/#/ultra/x", runScripts: "outside-only"});
+    const w = d.window;
+    w.HTMLElement.prototype.getBoundingClientRect = function () { return {x:0,y:0,left:0,top:0,right:400,bottom:30,width:400,height:30}; };
+    Object.defineProperty(w.HTMLElement.prototype, "offsetParent", {get() { return this.parentNode; }});
+    vm.runInContext(mimoSource + ";this.P=RSProvider;", d.getInternalVMContext());
+    return w.P;
+  };
+  assert(mk("x").isBusyMsg("服务器繁忙，请稍后再试"), "Chinese server-busy notice counts as busy");
+  const lim = mk("服务器繁忙，请稍后再试").scanError();
+  assert(lim && /reached the limit/.test(lim), "busy reply + limit line = real limit: " + lim);
+  assert(!/reached the limit/.test(String(mk("Call 3 of 15: reading the folder.").scanError() || "")), "the limit line alone does not stop a working run");
 }
 (async () => {
   const mimo = makeMimo();

@@ -35,7 +35,7 @@ const baseline = {
   "providers/qwen.js": "c8b0e08bdc561184a32f3295416665bcdfba87be",
   "providers/useai.js": "d20de72ca4d9718318c5706284146318716773f0",
   "providers/vani.js": "9888fcee8a577d47117b7de8dd42f9c455d062ce",
-  "providers/mimo.js": "11c8c7279e0c0f3712e25f388b49c3c0c6d21f37"
+  "providers/mimo.js": "c9c2a8bcc0a99f4b9f8cd2f0fa672f54919a1977"
 };
 const requiredProviders = [
   "providers/clickup.js",
