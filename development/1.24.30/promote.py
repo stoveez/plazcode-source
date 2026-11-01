@@ -33,6 +33,8 @@ SOURCE_INPUTS=(
     'development/1.24.30/source_proof.py',
     'development/1.24.30/collect_licenses.py',
     'development/1.24.30/dependency-notices',
+    'development/1.24.30/ultralab',
+    'development/1.24.30/test-ultralab-generated.py',
     'development/1.24.30/test-licenses.py',
     'development/1.24.30/package.py',
     'development/1.24.30/protection.mjs',

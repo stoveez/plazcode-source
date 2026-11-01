@@ -74,7 +74,7 @@ with tempfile.TemporaryDirectory(prefix='plazcode-source-gate-') as directory:
  root=Path(directory)
  for name in promotion.SOURCE_INPUTS:
   path=root/name
-  if name.endswith(('overlay','preferences-test','dependency-notices')):path=path/'fixture.txt'
+  if name.endswith(('overlay','preferences-test','dependency-notices','ultralab')):path=path/'fixture.txt'
   path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'validated source\n')
  subprocess.run(['git','init','-q',str(root)],check=True)
  subprocess.run(['git','-C',str(root),'add','.'],check=True)

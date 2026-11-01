@@ -1,3 +1,8 @@
 development/1.23.0/overlay/** text eol=lf
 # 1.24.30: the third-party Ro-Engineer pack is checked out and shipped byte for byte on every platform.
 development/1.24.30/overlay/PlazCode-Extension/starter-skills/ro-engineer/** -text
+
+# Licence originals/pins must remain byte-identical on every build host.
+development/1.24.30/dependency-notices/** -text
+/LICENSE text eol=lf
+development/1.24.30/overlay/LICENSE text eol=lf

@@ -170,3 +170,5 @@ Owner explicitly does not want source ZIP distribution. Run 41335729270 cancelle
 **Latest licensing decision (2026-11-01, supersedes earlier GPL-gap status):** owner confirmed ownership of all first-party code and rejected future GPL terms. First-party 1.24.30 is now proprietary (LICENSE / LicenseRef-PlazCode-Proprietary); current headers/Rust metadata/root/browser notices updated, normal user content/use retained. Old GPL releases and third-party licences remain. Root package notices now come from current source; dependency notices ship in runtime. No source ZIP distribution; no Luraph. See license-and-branding-review.md. Full replacement validation/test ZIPs pending.
 
 - Platform dependency-notice collection passes for Linux/Windows/both Mac architectures; replacement full CI is next. First-party terms are proprietary by owner confirmation, older GPL rights and third-party notices retained.
+
+- Browser CI caught the Ultra adapter template retaining the old first-party SPDX header after output changed; template fixed and pinned as an input. No UltraLab third-party content changed. Replacement validation required.
