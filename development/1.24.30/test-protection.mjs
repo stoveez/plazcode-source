@@ -21,6 +21,7 @@ try {
     await fs.mkdir(path.join(root,base,'core'),{recursive:true});
     await fs.writeFile(path.join(root,base,'manifest.json'),JSON.stringify({version:'1.24.30',manifest_version:3}));
     await fs.writeFile(path.join(root,base,'background.js'),'function addNumbers(first, second) { return first + second; } globalThis.answer = addNumbers(3, 4);\n');
+    await fs.writeFile(path.join(root,base,'core/contract.js'),`globalThis.demoApi=(()=>{function descriptivePrivateFunction(value){return value*3;} class PublicFailure extends Error{}; return {calculate:descriptivePrivateFunction,errorType:()=>new PublicFailure().constructor.name};})();`);
     await fs.writeFile(path.join(root,base,'core/main.js'),'globalThis.mainLoaded = true;\n');
     await fs.writeFile(path.join(root,base,'core/space # %.txt'),'packaged asset with URL-sensitive characters');
   }
@@ -36,6 +37,11 @@ try {
     const code=await fs.readFile(path.join(folder,'background.js'),'utf8');
     assert(!code.includes('first, second'),'local variables are obfuscated');assert(!code.includes('sourceMappingURL'));
     const ctx={};vm.runInNewContext(code,ctx);assert.equal(ctx.answer,7,'transformed program behavior retained');
+    assert.equal(typeof ctx.addNumbers,'function','top-level cross-file binding retained');
+    const privateCode=await fs.readFile(path.join(folder,'core/contract.js'),'utf8');
+    assert(!privateCode.includes('descriptivePrivateFunction'),'private function names shortened');
+    vm.runInNewContext(privateCode,ctx);assert.equal(ctx.demoApi.calculate(4),12);assert.equal(ctx.demoApi.errorType(),'PublicFailure');
+    assert(!/\beval\s*\(|new Function\s*\(/.test(privateCode),'no string execution added');
   }
   const report=JSON.parse(await fs.readFile(path.join(root,'PlazCode-Extension/production-build.json')));
   assert(report.files['core/main.js'].source_sha256);assert.equal(report.channel,'validation');

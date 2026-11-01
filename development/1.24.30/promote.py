@@ -32,6 +32,8 @@ SOURCE_INPUTS=(
     'development/1.24.30/prepare.py',
     'development/1.24.30/package.py',
     'development/1.24.30/protection.mjs',
+    'development/1.24.30/release-variant.mjs',
+    'development/1.24.30/test-release-variant.mjs',
     'development/1.24.30/test-protection.mjs',
     'development/1.24.30/test-protection-browser.mjs',
     'development/1.24.30/test-release-verifier.mjs',
@@ -114,6 +116,12 @@ def verify_protected(files,platform):
     assert payload['channel']=='release' and payload['version']==VERSION and payload['platform']==platform, 'Validation-key or mismatched package cannot be published'
     report=json.loads(files['PlazCode/PlazCode-Extension/production-build.json'][0])
     assert report['channel']=='release' and report['public_key']==pinned
+    variant=report.get('release_variant',{})
+    assert variant.get('schema')==1 and re.fullmatch('[a-f0-9]{16}',variant.get('mark','')) and re.fullmatch('[a-f0-9]{64}',variant.get('seed_sha256','')) and variant.get('layout') in [0,1,2], 'Missing release variant proof'
+    assert set(variant)=={'schema','mark','seed_sha256','layout'}, 'Never publish raw variant seeds'
+    for prefix in ['', 'PlazCode-Extension/','PlazCode-Extension-Firefox/']:
+        assert json.loads(files['PlazCode/'+prefix+'core/release-variant.json'][0])==variant, 'Release variant mirrors differ'
+
     return report
 
 def expected_source_hashes(relative,raw,public_key):
@@ -127,6 +135,7 @@ def expected_source_hashes(relative,raw,public_key):
 
 def verify_shared_code(source,native_packages,firefox):
     reports=[json.loads(files['PlazCode/PlazCode-Extension/production-build.json'][0]) for files in native_packages]
+    assert reports and all(report['release_variant']==reports[0]['release_variant'] for report in reports), 'Platforms must share one release variant'
     for name,(raw,_) in source.items():
         relative=name.removeprefix('PlazCode/')
         shared=relative.startswith(('core/','providers/')) or relative in {'background.js','protection.js','popup.js','popup.html','overlay.css','ollama-page.js'}

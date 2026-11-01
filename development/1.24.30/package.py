@@ -108,6 +108,13 @@ native=package/('PlazCode.exe' if osname=='Windows' else 'PlazCode' if osname=='
 info=json.loads(subprocess.check_output([str(native.resolve()),'--protection-info'],text=True))
 channel=os.environ.get('PLAZCODE_PROTECTION_CHANNEL','release')
 assert info['channel']==channel and info['version']=='1.24.30' and len(info['public_key'])==64, 'Native protection is not configured'
+# The native executable and packer must agree; never ship the development fallback.
+variant=json.loads(subprocess.check_output(['node','--input-type=module','-e',
+ "import {variantInfo} from './development/1.24.30/release-variant.mjs'; console.log(JSON.stringify(variantInfo('1.24.30')));"],cwd=root,text=True))
+assert os.environ.get('PLAZCODE_RELEASE_VARIANT') and os.environ['PLAZCODE_RELEASE_VARIANT']!='0'*64, 'Release variant must be configured before compiling'
+assert info.get('release_variant')==variant, 'Native/packager release variant mismatch; rebuild native executable'
+(output/f'PlazCode-1.24.30-{osname}-release-variant.json').write_text(json.dumps(variant,indent=2)+'\n',encoding='utf-8')
+print('Per-release variation: ok; mark '+variant['mark']+'; seed SHA256 '+variant['seed_sha256'])
 with tempfile.TemporaryDirectory(prefix='plazcode-private-maps-') as maps:
  subprocess.run(['node',str(Path(__file__).with_name('protection.mjs')),'protect',str(package),maps,str(source),platform_name,str(output/f'PlazCode-1.24.30-{osname}-private-maps.encrypted.json')],check=True)
  subprocess.run(['node',str(Path(__file__).with_name('protection.mjs')),'verify',str(package),info['public_key']],check=True)

@@ -107,6 +107,7 @@ mod text_pack;
 mod luau_service; // 1.24.30: persistent Roblox-aware luau-lsp service (stage 2)
 mod luau_check; // 1.24.30: Luau validation with the pinned official luau-lsp (docs/vault/luau-validation-plan.md)
 mod release_variant;
+mod release_checks;
 mod events;
 mod hidden; // 1.24.30: command names and launch lines stored scrambled (antivirus false positive)
 
@@ -1113,6 +1114,7 @@ async fn start() -> anyhow::Result<()> {
     platform::remember_installation_root();
     let protection_started=std::time::Instant::now();
     integrity::verify_installation(&platform::installation_root())?;
+    release_checks::startup(&platform::installation_root())?;
     let protection_elapsed=protection_started.elapsed();
     // 1.24.30: pair only with the extension folder of this verified installation (protected builds only).
     security::set_official_extension_ids(matches!(integrity::public_key(),Ok(Some(_))).then(||security::official_extension_ids_for(&platform::installation_root())));
@@ -1446,8 +1448,8 @@ fn is_work_request(method: &axum::http::Method, path: &str) -> bool {
 }
 async fn track_tool_activity(request: axum::extract::Request, next: axum::middleware::Next) -> axum::response::Response {
     if is_work_request(request.method(),request.uri().path()) && request.uri().path()!="/api/stop" {
-        let mut check = integrity::check_work().await;
-        if check.is_err() { tokio::time::sleep(Duration::from_millis(300)).await; check = integrity::check_work().await; }
+        let mut check = match release_checks::before_work(request.uri().path()).await {Ok(())=>integrity::check_work().await,Err(error)=>Err(error)};
+        if check.is_err() { tokio::time::sleep(Duration::from_millis(300)).await; check = match release_checks::before_work(request.uri().path()).await {Ok(())=>integrity::check_work().await,Err(error)=>Err(error)}; }
         if let Err(error) = check {
             tracing::warn!("program check failed, {} refused: {error:#}", request.uri().path());
             return (axum::http::StatusCode::CONFLICT,Json(serde_json::json!({"error":integrity::RECOVERY}))).into_response();
@@ -2521,7 +2523,7 @@ async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
         if let axum::extract::ws::Message::Text(txt) = msg {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(&txt) {
                 if val.get("code").is_some() {
-                    if integrity::check_work().await.is_err() {break;}
+                    if release_checks::before_work("browser-work").await.is_err() || integrity::check_work().await.is_err() {break;}
                     let engine = val.get("engine").and_then(|v| v.as_str()).unwrap_or("roblox").to_string();
                     let payload = Payload{ id: val.get("id").and_then(|v| v.as_str()).unwrap_or("p-1").to_string(), target: engine.clone(), code: val.get("code").and_then(|v| v.as_str()).unwrap_or("").to_string(), language: "luau".into(), meta: val.clone()};
                     state.roblox_queue.lock().await.push_back(payload);
@@ -2670,8 +2672,8 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                 // the recovery message (Stop and recovery keep working) and the reason is logged. A single
                 // unreadable file (antivirus or cloud sync holding it) is retried once before refusing.
                 if !matches!(typ,"ping"|"status"|"get_status"|"list_tools"|"stop"|"cancel"|"studio_status"|"mcp_status"|"list_servers"|"client_note") {
-                    let mut check = integrity::check_work().await;
-                    if check.is_err() { tokio::time::sleep(Duration::from_millis(300)).await; check = integrity::check_work().await; }
+                    let mut check = match release_checks::before_work(typ).await {Ok(())=>integrity::check_work().await,Err(error)=>Err(error)};
+                    if check.is_err() { tokio::time::sleep(Duration::from_millis(300)).await; check = match release_checks::before_work(typ).await {Ok(())=>integrity::check_work().await,Err(error)=>Err(error)}; }
                     if let Err(error) = check {
                         tracing::warn!("program check failed, request refused: {error:#}");
                         let id = val.get("id").and_then(|v| v.as_u64()).unwrap_or(0);

@@ -2,10 +2,9 @@
 //! Release packaging seals the long prompt texts and the Studio Skills Luau library into
 //! `PlazCode-Extension/core/text-pack.bin` (development/<version>/protection.mjs `sealTextPack`). Only this app
 //! opens it, and it serves the text only through the paired bridge, which refuses unofficial extensions
-//! (security.rs). Format: "PCTP1" | 12-byte nonce | AES-256-GCM(gzip(JSON)) | 16-byte tag; the key is derived
-//! from a fixed salt and this app's version, so a file from another version cannot be opened.
+//! (security.rs). Key, magic, authenticated padding and field layout vary by release.
+//! The compiler and packaging process receive the same variant; the seed never enters public metadata.
 use anyhow::{ensure, Context, Result};
-use sha2::Digest;
 use std::io::Read;
 use std::path::Path;
 
@@ -50,7 +49,7 @@ pub fn load(root: &Path) -> Result<Option<Vec<u8>>> {
 pub async fn serve() -> axum::response::Response {
     use axum::response::IntoResponse;
     let root = crate::platform::installation_root();
-    match tokio::task::spawn_blocking(move || load(&root)).await {
+    match tokio::task::spawn_blocking(move || {crate::release_checks::startup(&root)?;load(&root)}).await {
         Ok(Ok(Some(json))) => ([("content-type", "application/json"), ("cache-control", "no-store")], json).into_response(),
         Ok(Ok(None)) => (axum::http::StatusCode::NOT_FOUND, "This PlazCode build has no text pack.").into_response(),
         _ => (axum::http::StatusCode::CONFLICT, crate::integrity::RECOVERY).into_response(),

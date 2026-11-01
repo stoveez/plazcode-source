@@ -181,7 +181,8 @@ export function openTextPack(raw,version,seed=variantSeed()){
   return json;
 }
 export async function obfuscate(root, maps, sourceRoot, publicKey, channel, key) {
-  // No eval, string-array runtime, property renaming or control-flow flattening: preserve extension CSP and performance.
+  // Rename private locals/functions, preserve global bindings, class/error names and property contracts.
+  // No eval, string-array runtime, property mangling or control-flow flattening: preserve CSP and performance.
   const require=createRequire(path.join(sourceRoot,'release-tools/package.json'));
   const {minify}=require('terser');
   const acorn=require('acorn');
@@ -202,7 +203,7 @@ export async function obfuscate(root, maps, sourceRoot, publicKey, channel, key)
       let code=original;
       if(TEXT_PACK_FILES[name]){const moved=moveText(original,TEXT_PACK_FILES[name],acorn);code=moved.code;Object.assign(pack,moved.pack);}
       if(name==='core/text-pack.js'){if(!original.includes('const REQUIRED = false;'))throw new Error('text-pack.js switch not found');code=original.replace('const REQUIRED = false;','const REQUIRED = true;');}
-      const result=await minify({[label]:code},{mangle:{toplevel:false},compress:{defaults:false,dead_code:true,conditionals:true,booleans:true},keep_fnames:true,format:{comments:/SPDX-License-Identifier|@license|@preserve/i},sourceMap:{filename:label,url:false,includeSources:true}});
+      const result=await minify({[label]:code},{mangle:{toplevel:false},compress:{defaults:false,dead_code:true,conditionals:true,booleans:true},keep_fnames:false,keep_classnames:true,format:{comments:/SPDX-License-Identifier|@license|@preserve/i},sourceMap:{filename:label,url:false,includeSources:true}});
       if(!result.code || !result.map) throw new Error('Obfuscation failed: '+label);
       await fs.writeFile(path.join(base,name),result.code+'\n');
       const mapPath=path.join(maps,label+'.map');await fs.mkdir(path.dirname(mapPath),{recursive:true});await fs.writeFile(mapPath,result.map,{mode:0o600});
@@ -286,7 +287,7 @@ async function main([command,...args]) {
     if(!args[0])throw Error('Supply the runner environment file');
     // Ephemeral runner environment only; neither seed nor private key is a public build output.
     console.log('::add-mask::'+seed);
-    await fs.appendFile(args[0],'PLAZCODE_RELEASE_VARIANT='+seed+'\n');
+    await fs.appendFile(args[0],'PLAZCODE_RELEASE_VARIANT='+seed+'\n',{mode:0o600});
     console.log('Release variant configured; public descriptor: '+JSON.stringify(variantInfo(version,variantSeed(seed))));return;
   }
   if(command==='export-public') {
