@@ -151,6 +151,23 @@ bad=dict(firefox);bad['core/locales/tr.json']=(b'stale locale',mode)
 rejected(promotion.verify_shared_code,shared,[native],bad)
 print('PASS native/Chromium/embedded Firefox/standalone Firefox startup, performance and locale code matches source bytes.')
 
+# Metadata gate after the separately tested signature verifier: reject development
+# descriptors even if every mirrored descriptor agrees.
+pinned=(promotion.ROOT/'development/1.24.30/overlay/release-public-key.hex').read_text().strip()
+variant={'schema':1,'mark':'a'*16,'seed_sha256':'b'*64,'layout':1}
+def protected_fixture(value):
+ report={'channel':'release','public_key':pinned,'release_variant':value}
+ files={'PlazCode/PlazCode-Extension/production-build.json':(json.dumps(report).encode(),mode),
+        'PlazCode/PlazCode-Extension/plazcode-installation-integrity.json':(json.dumps({'payload':json.dumps({'channel':'release','version':promotion.VERSION,'platform':'linux'})}).encode(),mode)}
+ for prefix in ['', 'PlazCode-Extension/','PlazCode-Extension-Firefox/']:
+  files['PlazCode/'+prefix+'core/release-variant.json']=(json.dumps(value).encode(),mode)
+ return files
+with mock.patch.object(promotion.subprocess,'run'):
+ promotion.verify_protected(protected_fixture(variant),'linux')
+ for changed in [dict(variant,seed_sha256=hashlib.sha256(bytes(32)).hexdigest()),dict(variant,layout=True)]:
+  rejected(promotion.verify_protected,protected_fixture(changed),'linux')
+print('PASS promotion rejects matching development descriptors and boolean layout values after signature verification.')
+
 here=Path(__file__).parent
 mac_source=(here/'test-macos-desktop.py').read_text()
 old_mac=(here.parent/'1.24.20/test-macos-desktop.py').read_text()

@@ -1,6 +1,6 @@
 ---
 title: Build and tests
-updated: 2026-10-28
+updated: 2026-11-01
 ---
 # Build and tests
 
@@ -9,7 +9,7 @@ updated: 2026-10-28
 - Feature guide: `test-feature-guide.js` reads the real menu and bar in `core/main.js` and fails for any control with no entry in `core/feature-guide.js`. After editing the guide, regenerate nothing: the JSON in that file is the source. Startup text changes need `node test-startup-sections.js --update-golden` and new pins for `core/config.js` and `core/main.js`.
 - One JS test: from `build-src-1.24.30/PlazCode`, `NODE_PATH=release-tools/node_modules node test-<name>.js`.
 - Full JS suite (10 to 15 minutes): from the build folder, `NODE_PATH=release-tools/node_modules PLAZCODE_TEST_BROWSER=chromium python3 release-tools/test-javascript.py`.
-- Rust: `cargo test --manifest-path build-src-1.24.30/PlazCode/agent/Cargo.toml` (244 + 5 Linux tests passing on 1.24.30, plus 2 ignored; run the full suite).
+- Rust: `cargo test --manifest-path build-src-1.24.30/PlazCode/agent/Cargo.toml` (268 + 5 Linux tests passing on 1.24.30, plus 2 ignored; run the full suite).
 - Desktop tests: `node release-tools/test-*.cjs` (Chromium works in the sandbox; Firefox halves run only in CI).
 
 ## Hash pins
@@ -32,3 +32,5 @@ The connected GitHub artifact tool can download artifacts through its returned S
 - `:has()` selectors are slow on big re-rendering pages; use a JS-set class.
 - Do not `pkill -f` patterns that can match your own shell.
 - Windows exe antivirus check (since 1.24.23): `python test-exe-av-signals.py PlazCode.exe` runs in the Windows CI job right after the release build; it fails if the exe contains -EncodedCommand, ExecutionPolicy Bypass or rundll32 url.dll,FileProtocolHandler, or lacks the manifest/company details. Windows-only Rust code cannot be compiled in the cloud session (the Windows std download is blocked), so CI is the first compile of it.
+
+- Luau integration tests require PLAZCODE_LUAU_LSP and PLAZCODE_LUAU_DEFINITIONS pointing at the pinned official 1.70.1 tools. Without them real-LSP tests return early; do not describe that as live LSP verification. CI fetches/validates them for all native jobs. Linux also sets PLAZCODE_LUAU for the fixed place snippet VM test.
