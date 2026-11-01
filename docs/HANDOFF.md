@@ -102,6 +102,14 @@ A real update is the same build that passed the full check, promoted by the priv
 Read `publish-1.24.25.yml` and `development/1.24.25/promote.py` before the first real publish; they are the source of truth and this list is a summary. Test builds are not publishing and need only steps 1, the build and the zips, then the Private reminder.
 
 ## What is in the latest test zips and what is NOT yet (kept up to date by every AI)
+**1.24.30 test build (2026-11-01, CI run 41326912592 on commit 7c174b0; NOT published; needs the new app, not just an extension reload):**
+- Arena: long messages were cancelled by PlazCode's own long-address guard (the "wouldn't take the message after 2 tries" / "put your message in its web address" errors). Fixed. Arena's Terms and sign-in boxes now give plain instructions. Direct, Battle, Side by Side and Agent are allowed (Battle/Agent reply shapes not yet seen live). Non-chat Arena pages (Code / Build Apps, Search, Image, Video) explained with an "Open Arena chat" link.
+- Accounts: a non-JSON answer from the web host is retried once and the error shows the HTTP status; the Logs page records it.
+- Luau: all three stages (automatic check after script edits with the "Luau checks" setting, `analyze_luau`, `luau_lookup` with the place-aware luau-lsp service). luau-lsp 1.70.1 ships in the zips.
+- WIP c87bea2 included on the owner's choice: the extension refuses commands when its file checker is missing (Stop and status still work).
+- Earlier 1.24.30 items: official-extension pairing, Mac fresh-download start fix, folder tidy, Ro-Engineer starter skills, bridge-stability fixes, events log / Logs page, release-variant sealed text pack (anti-copy plan only partly wired).
+NOT yet: real-Studio test of the Luau service, live Arena Battle/Agent test (needs a signed-in Arena), the rest of the anti-copy plan.
+
 Latest builds people have: PUBLISHED 1.24.24 (2026-10-26, no more false input-limit error, lower usage; extension reload is enough; validated run 40340881855, publish run 40344067698), 1.24.23 (antivirus fix) and the earlier releases 1.24.21 (2026-10-25) and 1.24.22 (2026-10-25, short startup for free plans; validated run 40261223434, commit `a2ebc5a`). Everything in the old test-zip list (vault live note, Claude hang recovery, dropdown fixes, sidebar scroll and the rest) shipped in those releases. No separate test zip was made for 1.24.22 (owner: small update).
 NOT yet in any build: 1.24.24 (input-limit error + usage fix, extension-only: reloading the extension is enough). See docs/NOW.md.
 PUBLISHED as 1.24.23 on 2026-10-26 (antivirus false-positive fix; needs the new desktop app, which the auto-updater installs):
