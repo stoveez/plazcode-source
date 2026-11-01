@@ -58,3 +58,13 @@ Validation must never make PlazCode's existing tools worse. Risks and the preven
 | Several AI agents edit at once | Per-script locks and revision checks (refuse to apply if the script changed since it was staged) |
 Do NOT make every `edit_file`, `execute_luau` or Studio command wait on the analyzer. Backward compatibility is a strict requirement and gets its own tests before automatic validation is on by default.
 Owner's suggested rollout: (1) `analyze_luau` as an optional new tool; (2) background validation after edits that never blocks a successful call; (3) transactional editing and automatic repair as opt-in once proven. This sits alongside the earlier approval that syntax errors block: see the open decision recorded in NOW.md.
+
+## Settings and result rules (owner, 2026-10-31, third message; confirms advisory default)
+Setting "Luau Validation Mode": an Enabled switch plus a choice of **Advisory** (default, recommended) or **Blocking**.
+- Advisory: edits apply normally, validation runs in the background, NEW errors are reported to the AI, tool calls still succeed. Example result: "Edit applied with warning" plus the diagnostic so the AI can fix it afterwards.
+- Blocking (opt-in, stricter): applies only to NEWLY introduced errors, never to errors that already existed in the project.
+- Warnings (lint) never block by default, in either mode.
+- Analyzer crash, timeout or missing binary returns a distinct **validation-unavailable** result: never silently "passed", never "failed". The edit then follows the mode (advisory applies it; blocking does not treat unavailable as an error).
+- The mode changes live, with no PlazCode restart (read the setting per edit, do not cache it at startup).
+- Existing tool names, arguments and response contracts stay compatible; any new response fields are optional additions. AI agents call PlazCode tools exactly as before.
+The settings UI preview the owner showed was only a design preview, not an implemented change; build the real switch in the existing settings page (find it first in plan mode).
