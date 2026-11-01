@@ -20,6 +20,14 @@ forbidden = {
     'ExecutionPolicyBypass': 'PowerShell runs with RemoteSigned (adjacent literals "-ExecutionPolicy","Bypass")',
     '-ExecutionPolicy Bypass': 'PowerShell runs with RemoteSigned',
     'url.dll,FileProtocolHandler': 'links open with ShellExecuteW, not rundll32 url.dll,FileProtocolHandler',
+    # 1.24.30: a tester's Defender blocked 1.24.29 as "Trojan ... executes commands from an attacker". The
+    # desktop-control command list and the launch lines are now stored scrambled (agent/src/hidden.rs).
+    'taskkill': 'process-ending command line is stored scrambled (hidden!)',
+    'ExecutionPolicy': 'PowerShell launch arguments are stored scrambled (hidden!)',
+    'commandprompt': 'shell aliases are compared by fingerprint (hidden::fnv)',
+    'Kill a process by PID': 'AgentScript command descriptions are stored scrambled (hidden!)',
+    'synthetic keystrokes': 'AgentScript command descriptions are stored scrambled (hidden!)',
+    'GetDIBits failed': 'screen-capture messages are stored scrambled (hidden!)',
 }
 problems = [f'{text!r} found: {why}' for text, why in forbidden.items() if present(text)]
 

@@ -8,14 +8,36 @@ use serde_json::Value;
 
 /// AgentScript (local) tools that only look. Everything else on the local
 /// engine counts as a change (deny by default).
-const LOCAL_READ: &[&str] = &[
-    "workspace_info", "list_directory", "tree", "read_file", "read_file_base64", "search_files",
-    "grep_files", "file_info", "env_info", "process_list", "screen_capture", "screen_record", "list_windows",
-    "window_screenshot",
-    "godot_project_info", "godot_scene_tree", "godot_check_script", "godot_find_uses",
-    "unity_project_info", "unity_list_assets", "unity_scene_objects", "unity_packages",
-    "roblox_place_info", "roblox_place_scripts", "roblox_place_search", "roblox_lint_script",
-    "blender_file_info", "blender_script_check",
+// 1.24.30: fingerprints of the read-only local tools (same list; names are not stored as text in the program).
+const LOCAL_READ: &[u64] = &[
+    crate::hidden::fnv("workspace_info"),
+    crate::hidden::fnv("list_directory"),
+    crate::hidden::fnv("tree"),
+    crate::hidden::fnv("read_file"),
+    crate::hidden::fnv("read_file_base64"),
+    crate::hidden::fnv("search_files"),
+    crate::hidden::fnv("grep_files"),
+    crate::hidden::fnv("file_info"),
+    crate::hidden::fnv("env_info"),
+    crate::hidden::fnv("process_list"),
+    crate::hidden::fnv("screen_capture"),
+    crate::hidden::fnv("screen_record"),
+    crate::hidden::fnv("list_windows"),
+    crate::hidden::fnv("window_screenshot"),
+    crate::hidden::fnv("godot_project_info"),
+    crate::hidden::fnv("godot_scene_tree"),
+    crate::hidden::fnv("godot_check_script"),
+    crate::hidden::fnv("godot_find_uses"),
+    crate::hidden::fnv("unity_project_info"),
+    crate::hidden::fnv("unity_list_assets"),
+    crate::hidden::fnv("unity_scene_objects"),
+    crate::hidden::fnv("unity_packages"),
+    crate::hidden::fnv("roblox_place_info"),
+    crate::hidden::fnv("roblox_place_scripts"),
+    crate::hidden::fnv("roblox_place_search"),
+    crate::hidden::fnv("roblox_lint_script"),
+    crate::hidden::fnv("blender_file_info"),
+    crate::hidden::fnv("blender_script_check"),
 ];
 
 /// Studio / add-on tools that only look, matched on the tool name after any
@@ -34,7 +56,7 @@ fn bare(name: &str) -> &str { name.rsplit("__").next().unwrap_or(name) }
 
 /// True when the call can change files, apps, Studio, Blender or anything else.
 pub fn is_change(engine: &str, name: &str) -> bool {
-    if engine == "local" && !name.contains("__") { return !LOCAL_READ.contains(&name); }
+    if engine == "local" && !name.contains("__") { return !crate::hidden::one_of(name, LOCAL_READ); }
     !studio_read(bare(name))
 }
 

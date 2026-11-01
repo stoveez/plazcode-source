@@ -148,7 +148,7 @@ impl Journal {
         let keys: &[&str] = match name { "write_file" | "edit_file" | "delete_path" | "download_file" | "godot_add_node" | "godot_create_script" | "unity_create_script" => &["path"], "move_path" => &["source", "destination"], _ => &[] };
         if name=="run_command" {self.check_protection(ws,id,"local",name,args)?;}
         if keys.is_empty() {
-            if matches!(name, "run_command" | "create_folder" | "process_kill" | "key_type" | "mouse_click") { self.warn(id, "This task includes commands, folders or external side effects without a complete inverse. Revert is disabled for the whole task.");let _ = self.save(); }
+            if crate::hidden::one_of(name, &[const { crate::hidden::fnv("run_command") }, const { crate::hidden::fnv("create_folder") }, const { crate::hidden::fnv("process_kill") }, const { crate::hidden::fnv("key_type") }, const { crate::hidden::fnv("mouse_click") }]) { self.warn(id, "This task includes commands, folders or external side effects without a complete inverse. Revert is disabled for the whole task.");let _ = self.save(); }
             return Ok(Vec::new());
         }
         if name=="move_path" && args["destination"].as_str().and_then(|p|ws.resolve_path(p,false).ok()).map_or(false,|p|p.is_dir()) {

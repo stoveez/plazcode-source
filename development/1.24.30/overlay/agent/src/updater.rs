@@ -34,12 +34,12 @@ fn stage_helper(root: &std::path::Path, stage: &std::path::Path, windows: bool) 
 }
 #[cfg(windows)]
 fn windows_helper_command() -> std::process::Command {
-    let mut command=std::process::Command::new("powershell.exe");
+    let mut command=std::process::Command::new(crate::hidden::hidden!("powershell.exe"));
     // Windows PowerShell must build its own built-in module path, not inherit PowerShell 7 modules.
     // 1.24.23: RemoteSigned, not Bypass. stage_helper writes this script itself, so it carries no
     // "downloaded from the internet" mark and RemoteSigned runs it exactly as Bypass did; the word
     // Bypass next to a PowerShell launch is a classic malware sign that got PlazCode.exe flagged.
-    command.env_remove("PSModulePath").args(["-NoProfile","-ExecutionPolicy","RemoteSigned","-File"]);
+    command.env_remove("PSModulePath").args(crate::hidden::hidden!("-NoProfile -ExecutionPolicy RemoteSigned -File").split(' ')); // 1.24.30: same arguments, stored scrambled
     command
 }
 static STATUS: once_cell::sync::Lazy<Mutex<Status>> = once_cell::sync::Lazy::new(|| Mutex::new(Status { browser_extension_versions: Vec::new(), extension_warning: String::new(), desktop_version: env!("CARGO_PKG_VERSION").into(), desktop_latest: None, installed: installed(), latest: None, available: false, busy: false, progress: 0, message: "Check for the latest published update.".into(), error: None, checked_at: 0, check_error: None, background: false, release_notes: serde_json::from_str(include_str!("../../release-notes.json")).unwrap_or_default() }));

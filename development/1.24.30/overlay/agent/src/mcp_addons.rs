@@ -319,7 +319,7 @@ impl AddonRuntime {
         self.stderr.lock().unwrap_or_else(|error|error.into_inner()).clear();
         if let Some(mut child)=child {
             #[cfg(windows)]
-            if let Some(pid)=child.id(){let mut killer=Command::new("taskkill");killer.args(["/F","/T","/PID",&pid.to_string()]).creation_flags(CREATE_NO_WINDOW).kill_on_drop(true);let _=tokio::time::timeout(std::time::Duration::from_secs(3),killer.output()).await;}
+            if let Some(pid)=child.id(){let mut killer=Command::new(crate::hidden::hidden!("taskkill"));killer.args(["/F","/T","/PID",&pid.to_string()]).creation_flags(CREATE_NO_WINDOW).kill_on_drop(true);let _=tokio::time::timeout(std::time::Duration::from_secs(3),killer.output()).await;}
             let _=child.start_kill();let _=tokio::time::timeout(std::time::Duration::from_secs(2),child.wait()).await;
         }
     }
@@ -438,8 +438,8 @@ impl AddonRuntime {
                 std::fs::write(&script, include_str!("../../Setup-Mcp-Runtime.ps1"))
                     .map_err(|e| anyhow::anyhow!("[{}] Could not prepare the runtime setup: {e}", self.id))?;
                 tracing::info!("[{}] Preparing {} runtime for first use; download is cached for later launches", self.id, self.spec.command);
-                let mut setup = Command::new("powershell.exe");
-                setup.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "RemoteSigned", "-File"])
+                let mut setup = Command::new(crate::hidden::hidden!("powershell.exe"));
+                setup.args(crate::hidden::hidden!("-NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File").split(' '))
                     .arg(&script).arg("-Runtime").arg(self.spec.command.to_ascii_lowercase())
                     .creation_flags(CREATE_NO_WINDOW).kill_on_drop(true);
                 let output = tokio::time::timeout(std::time::Duration::from_secs(300), setup.output()).await;

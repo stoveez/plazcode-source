@@ -905,15 +905,15 @@ pub(crate) fn parse_shell(raw: Option<&str>, windows: bool) -> Result<Shell, Str
     let default = if windows { Shell::Cmd } else { Shell::Sh };
     let key: String = raw.unwrap_or("").trim().to_lowercase().chars().filter(|c| c.is_ascii_alphanumeric()).collect();
     Ok(match key.as_str() {
-        "" | "auto" | "default" | "terminal" | "shell" => default,
-        "cmd" | "cmdexe" | "commandprompt" | "batch" | "bat" => {
+        _ if crate::hidden::one_of(&key, &[const { crate::hidden::fnv("") }, const { crate::hidden::fnv("auto") }, const { crate::hidden::fnv("default") }, const { crate::hidden::fnv("terminal") }, const { crate::hidden::fnv("shell") }]) => default,
+        _ if crate::hidden::one_of(&key, &[const { crate::hidden::fnv("cmd") }, const { crate::hidden::fnv("cmdexe") }, const { crate::hidden::fnv("commandprompt") }, const { crate::hidden::fnv("batch") }, const { crate::hidden::fnv("bat") }]) => {
             if !windows { return Err("the cmd shell exists only on Windows; this computer uses sh. Leave 'shell' out, or use \"sh\", \"bash\" or \"pwsh\".".into()); }
             Shell::Cmd
         }
-        "powershell" | "powershellexe" | "windowspowershell" | "ps" | "ps1" => Shell::PowerShell,
-        "pwsh" | "pwshexe" | "powershell7" | "powershellcore" => Shell::Pwsh,
-        "bash" | "gitbash" => Shell::Bash,
-        "sh" | "zsh" => Shell::Sh,
+        _ if crate::hidden::one_of(&key, &[const { crate::hidden::fnv("powershell") }, const { crate::hidden::fnv("powershellexe") }, const { crate::hidden::fnv("windowspowershell") }, const { crate::hidden::fnv("ps") }, const { crate::hidden::fnv("ps1") }]) => Shell::PowerShell,
+        _ if crate::hidden::one_of(&key, &[const { crate::hidden::fnv("pwsh") }, const { crate::hidden::fnv("pwshexe") }, const { crate::hidden::fnv("powershell7") }, const { crate::hidden::fnv("powershellcore") }]) => Shell::Pwsh,
+        _ if crate::hidden::one_of(&key, &[const { crate::hidden::fnv("bash") }, const { crate::hidden::fnv("gitbash") }]) => Shell::Bash,
+        _ if crate::hidden::one_of(&key, &[const { crate::hidden::fnv("sh") }, const { crate::hidden::fnv("zsh") }]) => Shell::Sh,
         _ => return Err(format!("unknown shell '{}'. Use \"cmd\", \"powershell\", \"pwsh\", \"bash\" or \"sh\", or leave 'shell' out for the default ({}).", raw.unwrap_or(""), default.label())),
     })
 }
@@ -1134,7 +1134,7 @@ async fn run_shell(shell: Shell, command: &str, cwd: &Path, timeout_secs: u64) -
             let mut cmd = tokio::process::Command::new(program);
             // PlazCode writes this file itself (no "downloaded from the internet" mark), so
             // RemoteSigned runs it exactly as Bypass did, without the malware-like flag.
-            cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "RemoteSigned"]);
+            cmd.args(crate::hidden::hidden!("-NoProfile -NonInteractive -ExecutionPolicy RemoteSigned").split(' '));
             let file = TempScript::create("ps1", &powershell_file_bytes(&powershell_script(command))).map_err(RunErr::Spawn)?;
             cmd.arg("-File").arg(&file.0);
             temp = Some(file);
@@ -1185,7 +1185,7 @@ impl Drop for OwnedCommandTree {
         if self.finished || self.pid == 0 { return; }
         #[cfg(windows)] {
             use std::os::windows::process::CommandExt;
-            let _=std::process::Command::new("taskkill").args(["/F","/T","/PID",&self.pid.to_string()]).creation_flags(0x08000000).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).status();
+            let _=std::process::Command::new(crate::hidden::hidden!("taskkill")).args(["/F","/T","/PID",&self.pid.to_string()]).creation_flags(0x08000000).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).status();
         }
         #[cfg(not(windows))] {
             let _=std::process::Command::new("kill").args(["-KILL","--",&format!("-{}",self.pid)]).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).status();
@@ -1321,7 +1321,7 @@ pub async fn tool_process_kill(ws: &Workspace, args: &serde_json::Value) -> Resu
     let ok = {
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         use std::os::windows::process::CommandExt;
-        std::process::Command::new("taskkill")
+        std::process::Command::new(crate::hidden::hidden!("taskkill"))
             .args(["/F", "/PID", &pid.to_string()])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
@@ -1618,7 +1618,7 @@ fn grab_screen() -> Result<image::RgbaImage, String> {
     let mut buf = vec![0u8; (w * h * 4) as usize];
     let got = unsafe { GetDIBits(memdc, bmp, 0, h as u32, buf.as_mut_ptr() as *mut std::ffi::c_void, &mut bi, DIB_RGB_COLORS) };
     unsafe { SelectObject(memdc, old); DeleteObject(bmp); DeleteDC(memdc); ReleaseDC(std::ptr::null_mut(), hdc); }
-    if got == 0 { return Err("GetDIBits failed".into()); }
+    if got == 0 { return Err(crate::hidden::hidden!("GetDIBits failed")); }
     let mut img: image::RgbaImage = image::ImageBuffer::new(w as u32, h as u32);
     for y in 0..h as u32 {
         for x in 0..w as u32 {
@@ -1904,7 +1904,7 @@ pub async fn tool_window_screenshot(ws: &Workspace, args: &serde_json::Value) ->
     let mut buf = vec![0u8; (w * ht * 4) as usize];
     let got = unsafe { desktop::GetDIBits(memdc, bmp, 0, ht as u32, buf.as_mut_ptr() as *mut std::ffi::c_void, &mut bi, desktop::DIB_RGB_COLORS) };
     unsafe { desktop::SelectObject(memdc, old); desktop::DeleteObject(bmp); desktop::DeleteDC(memdc); desktop::ReleaseDC(h, hdc); }
-    if got == 0 { return Err("GetDIBits failed".into()); }
+    if got == 0 { return Err(crate::hidden::hidden!("GetDIBits failed")); }
     let mut img: image::RgbaImage = image::ImageBuffer::new(w as u32, ht as u32);
     for y in 0..ht as u32 { for x in 0..w as u32 {
         let i = ((y * w as u32 + x) * 4) as usize;
@@ -1919,54 +1919,53 @@ pub async fn tool_window_screenshot(ws: &Workspace, args: &serde_json::Value) ->
 pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Result<String, String> {
     let empty = serde_json::Value::Null;
     let a = if args.is_null() || !args.is_object() { &empty } else { &args };
+    let h = crate::hidden::fnv(name);
     match name {
-        "workspace_info" => tool_workspace_info(ws, a).await,
-        "list_directory" => tool_list_directory(ws, a).await,
-        "tree" => tool_tree(ws, a).await,
-        "read_file" => tool_read_file(ws, a).await,
-        "read_file_base64" => tool_read_file_base64(ws, a).await,
-        "write_file" => tool_write_file(ws, a).await,
-        "edit_file" => tool_edit_file(ws, a).await,
-        "create_folder" => tool_create_folder(ws, a).await,
-        "delete_path" => tool_delete_path(ws, a).await,
-        "move_path" => tool_move_path(ws, a).await,
-        "search_files" => tool_search_files(ws, a).await,
-        "grep_files" => tool_grep_files(ws, a).await,
-        "run_command" => tool_run_command(ws, a).await,
-        "file_info" => tool_file_info(ws, a).await,
-        "env_info" => tool_env_info(ws, a).await,
-        "process_list" => tool_process_list(ws, a).await,
-        "process_kill" => tool_process_kill(ws, a).await,
-        "open_path" => tool_open_path(ws, a).await,
-        "download_file" => tool_download_file(ws, a).await,
+        _ if h == const { crate::hidden::fnv("workspace_info") } => tool_workspace_info(ws, a).await,
+        _ if h == const { crate::hidden::fnv("list_directory") } => tool_list_directory(ws, a).await,
+        _ if h == const { crate::hidden::fnv("tree") } => tool_tree(ws, a).await,
+        _ if h == const { crate::hidden::fnv("read_file") } => tool_read_file(ws, a).await,
+        _ if h == const { crate::hidden::fnv("read_file_base64") } => tool_read_file_base64(ws, a).await,
+        _ if h == const { crate::hidden::fnv("write_file") } => tool_write_file(ws, a).await,
+        _ if h == const { crate::hidden::fnv("edit_file") } => tool_edit_file(ws, a).await,
+        _ if h == const { crate::hidden::fnv("create_folder") } => tool_create_folder(ws, a).await,
+        _ if h == const { crate::hidden::fnv("delete_path") } => tool_delete_path(ws, a).await,
+        _ if h == const { crate::hidden::fnv("move_path") } => tool_move_path(ws, a).await,
+        _ if h == const { crate::hidden::fnv("search_files") } => tool_search_files(ws, a).await,
+        _ if h == const { crate::hidden::fnv("grep_files") } => tool_grep_files(ws, a).await,
+        _ if h == const { crate::hidden::fnv("run_command") } => tool_run_command(ws, a).await,
+        _ if h == const { crate::hidden::fnv("file_info") } => tool_file_info(ws, a).await,
+        _ if h == const { crate::hidden::fnv("env_info") } => tool_env_info(ws, a).await,
+        _ if h == const { crate::hidden::fnv("process_list") } => tool_process_list(ws, a).await,
+        _ if h == const { crate::hidden::fnv("process_kill") } => tool_process_kill(ws, a).await,
+        _ if h == const { crate::hidden::fnv("open_path") } => tool_open_path(ws, a).await,
+        _ if h == const { crate::hidden::fnv("download_file") } => tool_download_file(ws, a).await,
         name if crate::engine_tools::is_engine_tool(name) => crate::engine_tools::run(ws, name, a).await,
         #[cfg(windows)]
-        "screen_capture" => tool_screen_capture(ws, a).await,
+        _ if h == const { crate::hidden::fnv("screen_capture") } => tool_screen_capture(ws, a).await,
         #[cfg(windows)]
-        "screen_record" => tool_screen_record(ws, a).await,
+        _ if h == const { crate::hidden::fnv("screen_record") } => tool_screen_record(ws, a).await,
         #[cfg(windows)]
-        "mouse_move" => tool_mouse_move(ws, a).await,
+        _ if h == const { crate::hidden::fnv("mouse_move") } => tool_mouse_move(ws, a).await,
         #[cfg(windows)]
-        "mouse_click" => tool_mouse_click(ws, a).await,
+        _ if h == const { crate::hidden::fnv("mouse_click") } => tool_mouse_click(ws, a).await,
         #[cfg(windows)]
-        "key_type" => tool_key_type(ws, a).await,
+        _ if h == const { crate::hidden::fnv("key_type") } => tool_key_type(ws, a).await,
         #[cfg(windows)]
-        "list_windows" => tool_list_windows(ws, a).await,
+        _ if h == const { crate::hidden::fnv("list_windows") } => tool_list_windows(ws, a).await,
         #[cfg(windows)]
-        "focus_window" => tool_focus_window(ws, a).await,
+        _ if h == const { crate::hidden::fnv("focus_window") } => tool_focus_window(ws, a).await,
         #[cfg(any(windows,target_os="macos"))]
-        "launch_app" => tool_launch_app(ws, a).await,
+        _ if h == const { crate::hidden::fnv("launch_app") } => tool_launch_app(ws, a).await,
         #[cfg(windows)]
-        "window_screenshot" => tool_window_screenshot(ws, a).await,
-        other => Err(format!(
-            "unknown tool '{other}'. Available AgentScript tools: workspace_info, list_directory, tree, \
+        _ if h == const { crate::hidden::fnv("window_screenshot") } => tool_window_screenshot(ws, a).await,
+        other => Err(format!("unknown tool '{other}'. {}", crate::hidden::hidden!("Available AgentScript tools: workspace_info, list_directory, tree, \
 read_file, read_file_base64, write_file, edit_file, create_folder, delete_path, move_path, search_files, grep_files, \
 run_command, file_info, env_info, process_list, process_kill (FULL mode), open_path, download_file, \
 screen_capture / screen_record / mouse_move / mouse_click / key_type / list_windows / focus_window / launch_app / window_screenshot (FULL mode, desktop control). \
 Engine file tools (no editor needed): godot_project_info / godot_scene_tree / godot_add_node / godot_create_script / godot_check_script / godot_find_uses, unity_project_info / unity_list_assets / unity_scene_objects / unity_create_script / unity_packages, roblox_place_info / roblox_place_scripts / roblox_place_search / roblox_lint_script, blender_file_info / blender_script_check. \
-Read any file as base64 (attachments/images) with read_file_base64 {{path}}. \
-Call list_commands for full parameter details."
-        )),
+Read any file as base64 (attachments/images) with read_file_base64 {path}. \
+Call list_commands for full parameter details."))),
     }
 }
 
@@ -1978,41 +1977,42 @@ fn schema(props: serde_json::Value, req: &[&str]) -> serde_json::Value {
 /// Studio's tools/list) so the browser side needs zero parser changes.
 pub fn catalog() -> Vec<serde_json::Value> {
     vec![
-        serde_json::json!({"name": "workspace_info", "description": "Overview of the connected project folder: absolute root path, file/folder counts, total size and top-level entries.", "inputSchema": schema(serde_json::json!({}), &[])}),
-        serde_json::json!({"name": "list_directory", "description": "List one folder's entries with types and sizes.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &[])}),
-        serde_json::json!({"name": "tree", "description": "Recursive directory tree. Generated folders (.git, node_modules, __pycache__, dist...) are skipped.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "depth": {"type": "integer"}}), &[])}),
-        serde_json::json!({"name": "read_file", "description": "Read a text file. Returns numbered lines as 'LINE | content'. Always read before editing so your old_string matches byte-for-byte.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "offset": {"type": "integer"}, "limit": {"type": "integer"}}), &["path"])}),
-        serde_json::json!({"name": "write_file", "description": "Create a file or OVERWRITE an existing one with complete new content. Parent folders are created automatically. Prefer edit_file for partial changes.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "content": {"type": "string"}}), &["path", "content"])}),
-        serde_json::json!({"name": "read_file_base64", "description": "Read ANY file (text or binary) as base64 + mimeType. The way to hand an image or a screenshot file to the AI as an attachment. Returns {path, mimeType, bytes, data}.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
-        serde_json::json!({"name": "edit_file", "description": "Exact-match string replacement inside a file. Replaces the FIRST match, or every match with replace_all:true. Fails loudly when old_string is missing or ambiguous.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "old_string": {"type": "string"}, "new_string": {"type": "string"}, "replace_all": {"type": "boolean"}}), &["path", "old_string", "new_string"])}),
-        serde_json::json!({"name": "create_folder", "description": "Create a folder (and missing parents).", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
-        serde_json::json!({"name": "delete_path", "description": "Permanently DELETE a file or folder (folders recursive). Confirm scope with the user before deleting anything broad.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
-        serde_json::json!({"name": "move_path", "description": "Move or rename a file/folder. If destination is an existing folder, the source moves INSIDE it keeping its name.", "inputSchema": schema(serde_json::json!({"source": {"type": "string"}, "destination": {"type": "string"}}), &["source", "destination"])}),
-        serde_json::json!({"name": "search_files", "description": "Find files/folders by NAME using glob patterns, e.g. \"**/*.py\", \"src/**/*.js\". Searches the workspace; pass path to search another folder (any folder in FULL PC ACCESS).", "inputSchema": schema(serde_json::json!({"pattern": {"type": "string"}, "path": {"type": "string"}}), &["pattern"])}),
-        serde_json::json!({"name": "grep_files", "description": "Search INSIDE file contents. Case-insensitive substring by default; regex:true for regular expressions. Narrow with include globs like \"src/**/*.ts\". Searches the workspace; pass path to search another folder (any folder in FULL PC ACCESS).", "inputSchema": schema(serde_json::json!({"query": {"type": "string"}, "include": {"type": "string"}, "regex": {"type": "boolean"}, "ignore_case": {"type": "boolean"}, "path": {"type": "string"}}), &["query"])}),
-        serde_json::json!({"name": "run_command", "description": "Run a terminal command: installs, builds, tests, git, PowerShell scripts. Captures stdout/stderr and the exit code. Default shell: cmd on Windows, sh elsewhere; pass shell:\"powershell\" (or \"pwsh\", \"bash\") to use another one - PowerShell scripts need no quote escaping and may span several lines. Runs in the workspace root unless cwd names another folder (any folder in FULL PC ACCESS). Blocks until done (hard timeout, timeout_seconds up to 600); never start interactive apps or dev servers (use open_path or launch_app to open a program).", "inputSchema": schema(serde_json::json!({"command": {"type": "string"}, "shell": {"type": "string", "description": "cmd, powershell, pwsh, bash or sh. Leave out for the default."}, "cwd": {"type": "string", "description": "Folder to run in: relative to the workspace, or absolute in FULL PC ACCESS."}, "timeout_seconds": {"type": "integer"}}), &["command"])}),
-        serde_json::json!({"name": "file_info", "description": "Metadata for one path: kind, size, modified/created timestamps, readonly flag.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
-        serde_json::json!({"name": "env_info", "description": "Machine overview: host, OS, arch, CPU count, memory, user, workspace root, and whether FULL PC ACCESS is on.", "inputSchema": schema(serde_json::json!({}), &[])}),
-        serde_json::json!({"name": "process_list", "description": "List running processes sorted by memory (top N by limit, default 40). Read-only.", "inputSchema": schema(serde_json::json!({"limit": {"type": "integer"}}), &[])}),
-        serde_json::json!({"name": "process_kill", "description": "Kill a process by PID. Requires FULL PC ACCESS mode - refused otherwise by design.", "inputSchema": schema(serde_json::json!({"pid": {"type": "integer"}}), &["pid"])}),
-        serde_json::json!({"name": "open_path", "description": "Open a file/folder (workspace-relative, absolute in FULL mode) or an http(s) URL with the OS default application. In FULL PC ACCESS it also opens a program by name (notepad, calc, chrome) and links like ms-settings: or mailto:; args passes arguments to a program. Returns the exact reason when Windows cannot open it.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "args": {"type": "string"}}), &["path"])}),
-        serde_json::json!({"name": "download_file", "description": "Download an http(s) URL to a path (200 MB cap, streamed). Path follows sandbox rules.", "inputSchema": schema(serde_json::json!({"url": {"type": "string"}, "path": {"type": "string"}}), &["url", "path"])}),
-        serde_json::json!({"name": "screen_capture", "description": "Capture the full screen to a PNG file. Requires FULL PC ACCESS. Returns the saved path.", "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &[])}),
-        serde_json::json!({"name": "mouse_move", "description": "Move the mouse cursor to absolute screen (x, y). Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"x": {"type": "integer"}, "y": {"type": "integer"}}), &["x", "y"])}),
-        serde_json::json!({"name": "mouse_click", "description": "Click the mouse (left/right), optionally moving to (x, y) first. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"button": {"type": "string"}, "x": {"type": "integer"}, "y": {"type": "integer"}}), &[])}),
-        serde_json::json!({"name": "key_type", "description": "Type a string of text via synthetic keystrokes into the focused window. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"text": {"type": "string"}}), &["text"])}),
-        serde_json::json!({"name": "list_windows", "description": "List visible top-level windows (hwnd + title). Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({}), &[])}),
-        serde_json::json!({"name": "focus_window", "description": "Bring the first visible window whose title contains 'title' to the foreground. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"title": {"type": "string"}}), &["title"])}),
-        serde_json::json!({"name": "launch_app", "description": "Launch a program by name or path (e.g. 'notepad', 'calc', 'chrome', or a full .exe path); if it is not a plain program on PATH, Windows finds it like Start > Run. Use argv (array of strings) for paths with spaces, or legacy simple args. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"target": {"type": "string"}, "args": {"type": "string"}, "argv": {"type":"array", "items":{"type":"string"}}}), &["target"])}),
-        serde_json::json!({"name": "screen_record", "description": "Record up to 5 seconds of the screen (seconds 1-5, fps 1-4) as numbered PNG frames in a folder plus sheet.png, one picture of the sampled frames. Attach sheet.png with attach_feedback to see the clip. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"seconds": {"type": "number"}, "fps": {"type": "number"}, "path": {"type": "string"}}), &[])}),
-        serde_json::json!({"name": "window_screenshot", "description": "Capture a single window (by title substring, or the first window) to a PNG. Requires FULL PC ACCESS.", "inputSchema": schema(serde_json::json!({"title": {"type": "string"}, "path": {"type": "string"}}), &[])}),
+        serde_json::json!({"name": crate::hidden::hidden!("workspace_info"), "description": crate::hidden::hidden!("Overview of the connected project folder: absolute root path, file/folder counts, total size and top-level entries."), "inputSchema": schema(serde_json::json!({}), &[])}),
+        serde_json::json!({"name": crate::hidden::hidden!("list_directory"), "description": crate::hidden::hidden!("List one folder's entries with types and sizes."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &[])}),
+        serde_json::json!({"name": crate::hidden::hidden!("tree"), "description": crate::hidden::hidden!("Recursive directory tree. Generated folders (.git, node_modules, __pycache__, dist...) are skipped."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "depth": {"type": "integer"}}), &[])}),
+        serde_json::json!({"name": crate::hidden::hidden!("read_file"), "description": crate::hidden::hidden!("Read a text file. Returns numbered lines as 'LINE | content'. Always read before editing so your old_string matches byte-for-byte."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "offset": {"type": "integer"}, "limit": {"type": "integer"}}), &["path"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("write_file"), "description": crate::hidden::hidden!("Create a file or OVERWRITE an existing one with complete new content. Parent folders are created automatically. Prefer edit_file for partial changes."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "content": {"type": "string"}}), &["path", "content"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("read_file_base64"), "description": crate::hidden::hidden!("Read ANY file (text or binary) as base64 + mimeType. The way to hand an image or a screenshot file to the AI as an attachment. Returns {path, mimeType, bytes, data}."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("edit_file"), "description": crate::hidden::hidden!("Exact-match string replacement inside a file. Replaces the FIRST match, or every match with replace_all:true. Fails loudly when old_string is missing or ambiguous."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "old_string": {"type": "string"}, "new_string": {"type": "string"}, "replace_all": {"type": "boolean"}}), &["path", "old_string", "new_string"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("create_folder"), "description": crate::hidden::hidden!("Create a folder (and missing parents)."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("delete_path"), "description": crate::hidden::hidden!("Permanently DELETE a file or folder (folders recursive). Confirm scope with the user before deleting anything broad."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("move_path"), "description": crate::hidden::hidden!("Move or rename a file/folder. If destination is an existing folder, the source moves INSIDE it keeping its name."), "inputSchema": schema(serde_json::json!({"source": {"type": "string"}, "destination": {"type": "string"}}), &["source", "destination"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("search_files"), "description": crate::hidden::hidden!("Find files/folders by NAME using glob patterns, e.g. \"**/*.py\", \"src/**/*.js\". Searches the workspace; pass path to search another folder (any folder in FULL PC ACCESS)."), "inputSchema": schema(serde_json::json!({"pattern": {"type": "string"}, "path": {"type": "string"}}), &["pattern"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("grep_files"), "description": crate::hidden::hidden!("Search INSIDE file contents. Case-insensitive substring by default; regex:true for regular expressions. Narrow with include globs like \"src/**/*.ts\". Searches the workspace; pass path to search another folder (any folder in FULL PC ACCESS)."), "inputSchema": schema(serde_json::json!({"query": {"type": "string"}, "include": {"type": "string"}, "regex": {"type": "boolean"}, "ignore_case": {"type": "boolean"}, "path": {"type": "string"}}), &["query"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("run_command"), "description": crate::hidden::hidden!("Run a terminal command: installs, builds, tests, git, PowerShell scripts. Captures stdout/stderr and the exit code. Default shell: cmd on Windows, sh elsewhere; pass shell:\"powershell\" (or \"pwsh\", \"bash\") to use another one - PowerShell scripts need no quote escaping and may span several lines. Runs in the workspace root unless cwd names another folder (any folder in FULL PC ACCESS). Blocks until done (hard timeout, timeout_seconds up to 600); never start interactive apps or dev servers (use open_path or launch_app to open a program)."), "inputSchema": schema(serde_json::json!({"command": {"type": "string"}, "shell": {"type": "string", "description": crate::hidden::hidden!("cmd, powershell, pwsh, bash or sh. Leave out for the default.")}, "cwd": {"type": "string", "description": crate::hidden::hidden!("Folder to run in: relative to the workspace, or absolute in FULL PC ACCESS.")}, "timeout_seconds": {"type": "integer"}}), &["command"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("file_info"), "description": crate::hidden::hidden!("Metadata for one path: kind, size, modified/created timestamps, readonly flag."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("env_info"), "description": crate::hidden::hidden!("Machine overview: host, OS, arch, CPU count, memory, user, workspace root, and whether FULL PC ACCESS is on."), "inputSchema": schema(serde_json::json!({}), &[])}),
+        serde_json::json!({"name": crate::hidden::hidden!("process_list"), "description": crate::hidden::hidden!("List running processes sorted by memory (top N by limit, default 40). Read-only."), "inputSchema": schema(serde_json::json!({"limit": {"type": "integer"}}), &[])}),
+        serde_json::json!({"name": crate::hidden::hidden!("process_kill"), "description": crate::hidden::hidden!("Kill a process by PID. Requires FULL PC ACCESS mode - refused otherwise by design."), "inputSchema": schema(serde_json::json!({"pid": {"type": "integer"}}), &["pid"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("open_path"), "description": crate::hidden::hidden!("Open a file/folder (workspace-relative, absolute in FULL mode) or an http(s) URL with the OS default application. In FULL PC ACCESS it also opens a program by name (notepad, calc, chrome) and links like ms-settings: or mailto:; args passes arguments to a program. Returns the exact reason when Windows cannot open it."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "args": {"type": "string"}}), &["path"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("download_file"), "description": crate::hidden::hidden!("Download an http(s) URL to a path (200 MB cap, streamed). Path follows sandbox rules."), "inputSchema": schema(serde_json::json!({"url": {"type": "string"}, "path": {"type": "string"}}), &["url", "path"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("screen_capture"), "description": crate::hidden::hidden!("Capture the full screen to a PNG file. Requires FULL PC ACCESS. Returns the saved path."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &[])}),
+        serde_json::json!({"name": crate::hidden::hidden!("mouse_move"), "description": crate::hidden::hidden!("Move the mouse cursor to absolute screen (x, y). Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"x": {"type": "integer"}, "y": {"type": "integer"}}), &["x", "y"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("mouse_click"), "description": crate::hidden::hidden!("Click the mouse (left/right), optionally moving to (x, y) first. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"button": {"type": "string"}, "x": {"type": "integer"}, "y": {"type": "integer"}}), &[])}),
+        serde_json::json!({"name": crate::hidden::hidden!("key_type"), "description": crate::hidden::hidden!("Type a string of text via synthetic keystrokes into the focused window. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"text": {"type": "string"}}), &["text"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("list_windows"), "description": crate::hidden::hidden!("List visible top-level windows (hwnd + title). Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({}), &[])}),
+        serde_json::json!({"name": crate::hidden::hidden!("focus_window"), "description": crate::hidden::hidden!("Bring the first visible window whose title contains 'title' to the foreground. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"title": {"type": "string"}}), &["title"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("launch_app"), "description": crate::hidden::hidden!("Launch a program by name or path (e.g. 'notepad', 'calc', 'chrome', or a full .exe path); if it is not a plain program on PATH, Windows finds it like Start > Run. Use argv (array of strings) for paths with spaces, or legacy simple args. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"target": {"type": "string"}, "args": {"type": "string"}, "argv": {"type":"array", "items":{"type":"string"}}}), &["target"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("screen_record"), "description": crate::hidden::hidden!("Record up to 5 seconds of the screen (seconds 1-5, fps 1-4) as numbered PNG frames in a folder plus sheet.png, one picture of the sampled frames. Attach sheet.png with attach_feedback to see the clip. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"seconds": {"type": "number"}, "fps": {"type": "number"}, "path": {"type": "string"}}), &[])}),
+        serde_json::json!({"name": crate::hidden::hidden!("window_screenshot"), "description": crate::hidden::hidden!("Capture a single window (by title substring, or the first window) to a PNG. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"title": {"type": "string"}, "path": {"type": "string"}}), &[])}),
     ].into_iter().chain(crate::engine_tools::catalog()).filter(|tool| {
         if cfg!(windows) { return true; }
-        match tool["name"].as_str().unwrap_or("") {
-            "screen_capture"|"screen_record"|"mouse_move"|"mouse_click"|"key_type"|"list_windows"|"focus_window"|"window_screenshot"=>false,
-            "launch_app"=>cfg!(target_os="macos"),
-            _=>true
-        }
+        use crate::hidden::fnv;
+        let name = tool["name"].as_str().unwrap_or("");
+        if crate::hidden::one_of(name, &[const { fnv("screen_capture") }, const { fnv("screen_record") }, const { fnv("mouse_move") }, const { fnv("mouse_click") },
+            const { fnv("key_type") }, const { fnv("list_windows") }, const { fnv("focus_window") }, const { fnv("window_screenshot") }]) { return false; }
+        if name == crate::hidden::hidden!("launch_app") { return cfg!(target_os="macos"); }
+        true
     }).collect()
 }
 

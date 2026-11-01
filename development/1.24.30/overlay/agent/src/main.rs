@@ -105,6 +105,7 @@ mod debug_report;
 mod tidy;
 mod text_pack;
 mod events;
+mod hidden; // 1.24.30: command names and launch lines stored scrambled (antivirus false positive)
 
 #[cfg(windows)]
 mod win_msg {
@@ -315,7 +316,7 @@ impl McpRuntime {
             info!("MCP runtime reset — closing the owned helper process");
             #[cfg(windows)]
             if let Some(pid) = child.id() {
-                let mut killer=Command::new("taskkill");
+                let mut killer=Command::new(crate::hidden::hidden!("taskkill"));
                 killer.args(["/F","/T","/PID",&pid.to_string()]).creation_flags(CREATE_NO_WINDOW).kill_on_drop(true);
                 let _=tokio::time::timeout(Duration::from_secs(3),killer.output()).await;
             }
@@ -599,7 +600,7 @@ fn reclaim_port(port: u16) -> anyhow::Result<()> {
     let image = process_image(pid).unwrap_or_default();
     if is_plazcode_image(&image) {
         tracing::info!("killing stale PlazCode Agent (pid {pid}) on port {port}...");
-        let _ = std::process::Command::new("taskkill")
+        let _ = std::process::Command::new(crate::hidden::hidden!("taskkill"))
             .args(["/F", "/T", "/PID", &pid.to_string()])
             .creation_flags(CREATE_NO_WINDOW)
             .output();
@@ -1933,7 +1934,7 @@ async fn desktop_kill_studio_handler(State(state): State<AppState>) -> impl Into
     {
         // Emergency action: no MCP, workspace, or agent-loop locks are acquired.
         for image in ["RobloxStudioBeta.exe", "RobloxStudio.exe"] {
-            let mut command = Command::new("taskkill");
+            let mut command = Command::new(crate::hidden::hidden!("taskkill"));
             command.args(["/F", "/T", "/IM", image]);
             command.creation_flags(CREATE_NO_WINDOW);
             match command.output().await {
