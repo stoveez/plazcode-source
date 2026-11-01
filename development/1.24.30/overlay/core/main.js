@@ -3438,7 +3438,15 @@ return result`;
         return `${t.name}: ${(t.description || "").split("\n")[0]}${paramLines ?  "\n" + paramLines : ""}${noteStr}`;
       });
       const virtualCount = animLines.length + skillLines.length + agentLines.length + webLines.length;
-      return `Output of '${name}':\n${requested} commands (${scoped.length}${virtualCount ?  ` + ${virtualCount} PlazCode virtual tools` : ""}):\n\n${lines.join("\n\n")}${animLines.length ?  "\n\n" + animLines.join("\n\n") : ""}${skillLines.length ?  "\n\n" + skillLines.join("\n\n") : ""}${agentLines.length ?  "\n\n" + agentLines.join("\n\n") : ""}\n\n${webLines.join("\n")}${requested === curEng && typeof connectedAddonsNote === "function" && connectedAddonsNote(curEng) ? "\n\n" + connectedAddonsNote(curEng) : ""}`;
+      // A long reply is read in pages; the PlazCode helper tools sit at the very end and an AI that only saw page one
+      // said they did not exist (plazcode_checklist). Name them first, on page one.
+      const helperNames = new Set();
+      for (const line of webLines) {
+        const heading = line.match(/^([a-z][a-z0-9_]+):/); if (heading) helperNames.add(heading[1]);
+        for (const match of line.matchAll(/\b([a-z][a-z0-9_]+)\s*\{/g)) helperNames.add(match[1]);
+      }
+      const helperTop = helperNames.size ? `PlazCode helper commands (full details are at the end of this list): ${[...helperNames].join(", ")}\n\n` : "";
+      return `Output of '${name}':\n${requested} commands (${scoped.length}${virtualCount ?  ` + ${virtualCount} PlazCode virtual tools` : ""}):\n\n${helperTop}${lines.join("\n\n")}${animLines.length ?  "\n\n" + animLines.join("\n\n") : ""}${skillLines.length ?  "\n\n" + skillLines.join("\n\n") : ""}${agentLines.length ?  "\n\n" + agentLines.join("\n\n") : ""}\n\n${webLines.join("\n")}${requested === curEng && typeof connectedAddonsNote === "function" && connectedAddonsNote(curEng) ? "\n\n" + connectedAddonsNote(curEng) : ""}`;
     }
     // ── Image attachment plumbing (plazcode_screenshot / attach_feedback) ───────────
   // One place that turns a tool's base64 images into (a) a remembered recent
