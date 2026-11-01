@@ -8,7 +8,13 @@
 // even when the bridge is offline. The agentic loop must never hang waiting.
 
 if (typeof importScripts === "function") importScripts("protection.js");
-const protectionCheck = () => typeof PlazCodeIntegrity !== "undefined" ? PlazCodeIntegrity.check() : Promise.resolve();
+// 1.24.30 (protection review): a missing or broken verifier now stops work instead of passing; the packaged
+// protection.js always carries the release key (an unconfigured key only exists in unpackaged development source).
+const protectionCheck = async () => {
+  if (typeof PlazCodeIntegrity === "undefined" || !PlazCodeIntegrity || typeof PlazCodeIntegrity.check !== "function")
+    throw new Error("PlazCode integrity verifier is unavailable. Reinstall the complete official release.");
+  await PlazCodeIntegrity.check();
+};
 const PAIRING_KEY = "plazcode-pairing-key";
 let fullSyncedOnce = false;
 let pairingKey = "";
@@ -848,6 +854,8 @@ function waitForConnection(timeout = 20000) {
 
 // ── request/response over the socket ────────────────────────────────────
 async function send(obj, timeout = REQUEST_TIMEOUT_DEFAULT) {
+  // Also on an already-open socket: a files check that failed after the connection was made must stop commands.
+  try { await protectionCheck(); } catch (error) { return { ok: false, kind: "integrity", error: String(error && error.message || error) }; }
   // The MV3 service worker can be suspended; the first message after a wake-up
   // arrives before the socket has re-opened. Wait for it instead of failing -
   // otherwise Kimi wrongly hears "bridge offline".
@@ -2224,6 +2232,7 @@ try { if (chrome.windows && chrome.windows.onRemoved) chrome.windows.onRemoved.a
 // background worker when one message takes longer than 5 minutes to answer, which also drops the link to the app.
 // A command, a local model reply or a critic review can run up to 10 minutes. Those answer within 4 minutes with
 // "still running" and the AI tab asks again ("job-wait"), so no single message ever reaches the limit.
+const INTEGRITY_EXEMPT = new Set(["immediate-stop", "status", "live-status", "rs-run-beat", "job-wait"]);
 const LONG_MESSAGE_TYPES = new Set(["call_tool", "ollama_chat", "rs-critic"]);
 const LONG_REPLY_MS = 240000;
 const longReplies = new Map();
@@ -2254,6 +2263,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
     answerWithin(final, job, rawSendResponse);
   }
   (async () => {
+    // 1.24.30: nothing runs while the extension's files fail their check. Stop and the plain status reads stay
+    // available so a run can always be ended and the bar can say what is wrong.
+    if (!(msg && INTEGRITY_EXEMPT.has(msg.type))) {
+      try { await protectionCheck(); } catch (error) { sendResponse({ ok: false, kind: "integrity", error: String(error && error.message || error) }); return; }
+    }
     const tabId = _sender.tab?.id ?? msg.tab_id;
     const mode = await tabEngine(tabId);
     const dispatch = (value, timeout) => normalizeEngine(msg.engine ?? mode) === "local" ? sendLocalEngine(value, timeout) : send(value, timeout);

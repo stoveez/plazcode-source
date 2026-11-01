@@ -122,5 +122,23 @@ const dir = __dirname;
     const main = fs.readFileSync(dir + "/core/main.js", "utf8");
     assert(/resp\.kind === "still-running" && resp\.job && !settled\) ask\(\{type:"job-wait", job:resp\.job\}\)/.test(main), "the AI tab keeps asking");
     console.log("PASS 1.24.30: commands longer than 4 minutes keep the worker within the browser's 5-minute limit");
+
+    // ── 6. protection review: a missing verifier or a failed files check stops work, but never Stop/status ──
+    const pstart = bg.indexOf("const protectionCheck = async"), pend = bg.indexOf("};", pstart) + 2;
+    const run = async (verifier) => {
+      const pbox = { PlazCodeIntegrity: verifier, Error, Promise };
+      vm.createContext(pbox); vm.runInContext(bg.slice(pstart, pend) + ";this.check=protectionCheck;", pbox);
+      return pbox.check().then(() => "ok", (e) => e.message);
+    };
+    assert.match(await run(undefined), /verifier is unavailable/, "no verifier: stops");
+    assert.match(await run({}), /verifier is unavailable/, "malformed verifier: stops");
+    assert.equal(await run({ check: async () => {} }), "ok");
+    assert.match(await run({ check: async () => { throw new Error("files changed"); } }), /files changed/, "a failed check stops");
+    assert(/const INTEGRITY_EXEMPT = new Set\(\["immediate-stop", "status", "live-status", "rs-run-beat", "job-wait"\]\)/.test(bg), "Stop and status stay available");
+    assert(/if \(!\(msg && INTEGRITY_EXEMPT\.has\(msg\.type\)\)\) \{\n\s+try \{ await protectionCheck\(\); \} catch/.test(bg), "every other message waits for the check");
+    assert(/async function send\(obj, timeout = REQUEST_TIMEOUT_DEFAULT\) \{\n[^\n]*\n\s+try \{ await protectionCheck\(\); \}/.test(bg), "an open socket also checks before sending");
+    const pm = fs.readFileSync(dir + "/../protection.mjs", "utf8");
+    assert(/did not receive the release key and channel/.test(pm), "packaging refuses a verifier without the release key");
+    console.log("PASS 1.24.30: a missing or failing verifier stops commands (Stop and status still work); packaging proves the release key is inside");
   }
 })().catch((e) => { console.error(e); process.exit(1); });

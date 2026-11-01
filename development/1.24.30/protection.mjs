@@ -183,7 +183,9 @@ export async function obfuscate(root, maps, sourceRoot, publicKey, channel, key)
     const base=path.join(root,folder);
     try {await fs.access(path.join(base,'manifest.json'));} catch {continue;}
     const template=await fs.readFile(path.join(here,'overlay/protection.js'),'utf8');
-    await fs.writeFile(path.join(base,'protection.js'),template.replace('UNCONFIGURED_RELEASE_PUBLIC_KEY',publicKey).replace('UNCONFIGURED_RELEASE_CHANNEL',channel));
+    const packagedVerifier=template.replace('UNCONFIGURED_RELEASE_PUBLIC_KEY',publicKey).replace('UNCONFIGURED_RELEASE_CHANNEL',channel);
+    if(!packagedVerifier.includes('key = "'+publicKey+'"')||!packagedVerifier.includes('channel = "'+channel+'"'))throw new Error('protection.js did not receive the release key and channel');
+    await fs.writeFile(path.join(base,'protection.js'),packagedVerifier);
     const version=JSON.parse(await fs.readFile(path.join(base,'manifest.json'),'utf8')).version;
     const pack={};
     for(const name of (await walk(base)).filter(n=>extensionFile(n) && n.endsWith('.js') && !n.startsWith('core/ultralab/'))) {
