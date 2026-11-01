@@ -108,7 +108,7 @@ Read `publish-1.24.25.yml` and `development/1.24.25/promote.py` before the first
 - Luau: all three stages (automatic check after script edits with the "Luau checks" setting, `analyze_luau`, `luau_lookup` with the place-aware luau-lsp service). luau-lsp 1.70.1 ships in the zips.
 - WIP c87bea2 included on the owner's choice: the extension refuses commands when its file checker is missing (Stop and status still work).
 - Earlier 1.24.30 items: official-extension pairing, Mac fresh-download start fix, folder tidy, Ro-Engineer starter skills, bridge-stability fixes, events log / Logs page, release-variant sealed text pack (anti-copy plan only partly wired).
-NOT yet: real-Studio test of the Luau service, live Arena Battle/Agent test (needs a signed-in Arena), the rest of the anti-copy plan.
+NOT yet in a test build: MiMo support (commit 6e7171c and later). NOT yet tested: real-Studio test of the Luau service, live Arena Battle/Agent test (needs a signed-in Arena), the rest of the anti-copy plan.
 
 Latest builds people have: PUBLISHED 1.24.24 (2026-10-26, no more false input-limit error, lower usage; extension reload is enough; validated run 40340881855, publish run 40344067698), 1.24.23 (antivirus fix) and the earlier releases 1.24.21 (2026-10-25) and 1.24.22 (2026-10-25, short startup for free plans; validated run 40261223434, commit `a2ebc5a`). Everything in the old test-zip list (vault live note, Claude hang recovery, dropdown fixes, sidebar scroll and the rest) shipped in those releases. No separate test zip was made for 1.24.22 (owner: small update).
 NOT yet in any build: 1.24.24 (input-limit error + usage fix, extension-only: reloading the extension is enough). See docs/NOW.md.

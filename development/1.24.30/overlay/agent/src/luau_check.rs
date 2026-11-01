@@ -1,9 +1,10 @@
 //! 1.24.30 Luau validation (owner plan: docs/vault/luau-validation-plan.md).
 //! Static analysis only: PlazCode never runs the AI's code to check it, and the Luau engine never goes into the
 //! browser extension. The analyser is the official luau-lsp release (MIT, JohnnyMorganz), pinned by version and
-//! SHA-256, kept in `runtime/luau/` next to the other runtime helpers. It is shipped in the release zips; when it
-//! is missing (small test zips, older Mac updaters) it is fetched once from the pinned release and checked against
-//! the pinned hash, exactly like the Engram memory helper. Anything that does not match is thrown away.
+//! SHA-256, kept in `runtime/luau/` next to the other runtime helpers. To keep downloads small (owner, 2026-11-01) it
+//! is not shipped: it is fetched once from the pinned official release on the first Luau check and checked against
+//! the pinned hash, exactly like the Engram memory helper. Anything that does not match is thrown away. Without a
+//! connection the checks report "validation unavailable" and nothing else changes.
 //!
 //! Results never change how a tool is called or whether it succeeds in Advisory mode. When the analyser is missing,
 //! crashes or runs out of time the result is `unavailable`, never "passed" and never "failed".

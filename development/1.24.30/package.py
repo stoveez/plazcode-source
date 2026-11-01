@@ -19,31 +19,17 @@ for folder in ['core','providers','PlazCode-Extension']:
  shutil.copytree(source/folder,package/folder,dirs_exist_ok=True)
 for name in ['manifest.json','background.js','protection.js','popup.js','popup.html','overlay.css','ollama-page.js','launch_studio_mcp.py','launch_blender_mcp.py','SOURCE.txt','Update-PlazCode.bat','Update-PlazCode.ps1','Updater-Progress.cs','blender_ops.py','blender_once.py','blender_once.ps1']:
  shutil.copy2(source/name,package/name)
-# 1.24.30 Luau checks (docs/vault/luau-validation-plan.md): the official luau-lsp 1.70.1 release (MIT, JohnnyMorganz)
-# and its Roblox type list, both pinned by SHA-256 and shipped unchanged. The app also fetches the same pinned files
-# if they are ever missing (agent/src/luau_check.rs). On a Mac they sit inside the app bundle, because older Mac
-# updaters replace only the app (same rule as the Engram memory helper).
-import urllib.request,io
-def pinned(url,sha,limit=64*1024*1024):
+# 1.24.30 Luau checks (docs/vault/luau-validation-plan.md). Owner (2026-11-01, download size): the luau-lsp program
+# and its Roblox type list are NOT shipped; the app fetches the official luau-lsp 1.70.1 release once, on the first
+# Luau check, and keeps it only if it matches its pinned SHA-256 (agent/src/luau_check.rs), like the Engram helper.
+# Only the licence ships, so the credit is in every download.
+import urllib.request
+def pinned(url,sha,limit=1024*1024):
  with urllib.request.urlopen(url,timeout=120) as response:data=response.read(limit+1)
  assert len(data)<=limit and hashlib.sha256(data).hexdigest()==sha,url+' does not match its pinned SHA-256'
  return data
-LUAU_BASE='https://github.com/JohnnyMorganz/luau-lsp/releases/download/1.70.1/'
-asset,asset_sha,luau_program={'Windows':('luau-lsp-win64.zip','64225b9738102a30de6ee09fb28e5a3827edc402ecf2a6364af570312468159f','luau-lsp.exe'),
- 'Darwin':('luau-lsp-macos.zip','7d3936e8dec6dc77547abd061d2e950da392562a5f94858b880f23dba50d84cd','luau-lsp'),
- 'Linux':('luau-lsp-linux-x86_64.zip','1a2ea1ae4f98f8946cefd970a4b54853e11ab4775e6932faa7f60cf920346567','luau-lsp')}[osname]
-with zipfile.ZipFile(io.BytesIO(pinned(LUAU_BASE+asset,asset_sha))) as archive:luau_bytes=archive.read(luau_program)
-luau_defs=pinned('https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/1.70.1/scripts/globalTypes.d.luau','2857efa8245485f8c25c19c018ee1ef9b46afab4efd2ea70fc3257cd3faf7080')
-luau_license=pinned('https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/1.70.1/LICENSE.md','5bf374ce7ab54c8d75f14e21f04932cae10708189afaec95321aed1a47701935')
-luau_dir=package/('PlazCode.app/Contents/Resources/luau' if osname=='Darwin' else 'runtime/luau')
-luau_dir.mkdir(parents=True,exist_ok=True)
-(luau_dir/luau_program).write_bytes(luau_bytes);(luau_dir/luau_program).chmod(0o755)
-(luau_dir/'roblox-globalTypes-1.70.1.d.luau').write_bytes(luau_defs)
-(package/'runtime/luau').mkdir(parents=True,exist_ok=True);(package/'runtime/luau/LICENSE').write_bytes(luau_license)
-if osname=='Darwin':
- subprocess.run(['lipo',str(luau_dir/luau_program),'-verify_arch','x86_64','arm64'],check=True)
- subprocess.run(['codesign','--force','--sign','-',str(luau_dir/luau_program)],check=True)
-assert subprocess.run([str((luau_dir/luau_program).resolve()),'--version'],capture_output=True,text=True,check=True).stdout.strip()=='1.70.1','packaged luau-lsp does not start'
+(package/'runtime/luau').mkdir(parents=True,exist_ok=True)
+(package/'runtime/luau/LICENSE').write_bytes(pinned('https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/1.70.1/LICENSE.md','5bf374ce7ab54c8d75f14e21f04932cae10708189afaec95321aed1a47701935'))
 if osname=='Windows':
  shutil.copy2(source/'agent/target/release/PlazCode.exe',package/'PlazCode.exe')
 elif osname=='Linux':
@@ -159,6 +145,15 @@ if osname=='Linux':
  with tarfile.open(output/'PlazCode-Linux-1.24.30-test-lean.tar.gz','w:gz',compresslevel=9) as archive:archive.add(lean,arcname='PlazCode')
 shutil.rmtree(lean_root)
 print(lean_name,(output/lean_name).stat().st_size)
+# 1.24.30 (owner: "is there a way to reduce the MB size"): show where the download's size goes, so growth between
+# builds is visible in the CI log (compressed bytes per top folder and the 15 largest files).
+with zipfile.ZipFile(output/lean_name) as archive:
+ infos=[i for i in archive.infolist() if not i.is_dir()]
+ folders={}
+ for i in infos:
+  parts=i.filename.split('/');key='/'.join(parts[1:3]) if len(parts)>3 else '/'.join(parts[1:2]);folders[key]=folders.get(key,0)+i.compress_size
+ print('Size by folder (compressed MB):',', '.join(f'{k} {v/1e6:.2f}' for k,v in sorted(folders.items(),key=lambda x:-x[1])[:20]))
+ for i in sorted(infos,key=lambda x:-x.compress_size)[:15]:print(f'  {i.compress_size/1e6:7.2f} MB  {i.filename}')
 assert (output/lean_name).stat().st_size<=64*1024*1024, 'Protected test package exceeds the installed updater limit'
 # Firefox and source are the exact reviewed development source, never old native files.
 # The standalone Firefox ZIP above contains the exact protected package bytes.

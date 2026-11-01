@@ -18,6 +18,6 @@ License: PlazCode-Extension/starter-skills/ro-engineer/LICENSE (files shipped un
 
 luau-lsp 1.70.1 (Luau checker and Roblox type list) — MIT, Copyright (c) 2022 JohnnyMorganz
 https://github.com/JohnnyMorganz/luau-lsp
-License: runtime/luau/LICENSE (official release files, unchanged; checked against pinned SHA-256)
+License: runtime/luau/LICENSE (the official release is downloaded once, on the first Luau check, unchanged and checked against its pinned SHA-256)
 
 Existing third-party package licenses remain in their respective source/runtime folders.
