@@ -19,6 +19,7 @@ This folder is the long-term memory for every AI that works on PlazCode (Claude,
 - Linux and Mac startup: [linux-and-mac-startup](linux-and-mac-startup.md)
 - DeepSeek send pacing: [deepseek-send-pacing](deepseek-send-pacing.md)
 - Code protection: [code-protection](code-protection.md)
+- Luau validation plan (analyze_luau, luau-lsp, automatic validate/repair, planned): [luau-validation-plan](luau-validation-plan.md)
 - Anti-copy plan (per-release variation + takedowns, planned, not started): [anti-copy-plan](anti-copy-plan.md)
 - How we work: [how-we-work](how-we-work.md)
 - What PlazCode is: [project-overview](project-overview.md)
