@@ -2258,13 +2258,24 @@ fn close_competing_studio_helpers() -> Vec<String> {
     for pid in competing_studio_helpers(&procs, std::process::id(), true) {
         let Some(process) = sys.process(sysinfo::Pid::from_u32(pid)) else { continue; };
         let owner = process.parent().and_then(|ppid| sys.process(ppid)).map(|p| p.name().to_string_lossy().into_owned()).unwrap_or_else(|| "unknown app".into());
-        if process.kill() {
+        if kill_process(process) {
             info!("closed competing Studio MCP helper pid {pid} (started by {owner})");
             closed.push(format!("{} (pid {pid}, from {owner})", process.name().to_string_lossy()));
         }
     }
     closed
 }
+// 1.24.30: the same "taskkill /PID <pid> /F" (no window) that sysinfo's Process::kill runs on Windows, with the
+// command name stored scrambled; sysinfo kept it as plain text in PlazCode.exe (antivirus signal, see hidden.rs).
+#[cfg(windows)]
+fn kill_process(process: &sysinfo::Process) -> bool {
+    use std::os::windows::process::CommandExt;
+    std::process::Command::new(crate::hidden::hidden!("taskkill")).args(["/PID", &process.pid().as_u32().to_string(), "/F"])
+        .creation_flags(0x08000000).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null())
+        .status().is_ok_and(|status| status.success())
+}
+#[cfg(not(windows))]
+fn kill_process(process: &sysinfo::Process) -> bool { process.kill() }
 /// A probe failure that proves the helper process is gone (not merely slow).
 /// Timeouts are ordinary misses: Studio can be busy for a few seconds.
 fn probe_failure_is_fatal(error: &anyhow::Error) -> bool {

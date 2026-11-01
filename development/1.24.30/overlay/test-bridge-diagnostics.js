@@ -94,7 +94,7 @@ const dir = __dirname;
   assert(/let _socket = state\.ui\.extension_socket\(\);/.test(rs) && /Some\(Some\(Ok\(msg\)\)\) => \{ state\.ui\.mark_socket_frame\(\); msg \}/.test(rs), "an open browser socket and its pings count as connected");
   assert(/fresh\(self\.extension_seen_ms\.load\(Ordering::Relaxed\), 15_000\)/.test(gui) && /fresh\(self\.socket_seen_ms\.load\(Ordering::Relaxed\), 45_000\)/.test(gui), "15 s for requests, 45 s for a socket");
   assert(/"bridge\.quiet"/.test(rs) && /"bridge\.socket_closed"/.test(rs), "bridge changes reach the Logs page");
-  assert(/WORK_CHECK_REUSE: std::time::Duration = std::time::Duration::from_secs\(10\)/.test(integ) && /\*passed = result\.is_ok\(\)\.then\(std::time::Instant::now\);/.test(integ), "work checks share one pass and never reuse a failure");
+  assert(/WORK_CHECK_REUSE: std::time::Duration = std::time::Duration::from_secs\(10\)/.test(integ) && /\*passed = None;/.test(integ) && /stamps_unchanged\(&stamps\)/.test(integ), "work checks share one pass, re-check changed files and never reuse a failure");
   assert(/Date\.now\(\)-Bridgelostat>=10000/.test(html), "the desktop warns only after 10 more seconds away");
   assert(/Promise\.race\(\[chrome\.tabs\.sendMessage\(tab\.id, \{ type: "rs-desktop-agent-state" \}\)/.test(bg), "a frozen AI tab cannot stop the desktop report");
   console.log("PASS 1.24.30: open connection counts, shared program checks, 10 s grace before the desktop warns, no stuck desktop report");

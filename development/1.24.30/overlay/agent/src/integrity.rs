@@ -296,17 +296,39 @@ fn verify_installation_with(root: &Path,key: &[u8],version: &str,platform: &str,
 // 1.24.30 (owner, 2026-10-31: "Desktop bridge disconnected" kept appearing while PlazCode worked). Every tool call
 // re-read and hashed the whole installation (about 3,000 files, 120 MB), and calls that arrived together each ran
 // their own full pass, so a busy turn kept the disk, the antivirus and the browser's own file check waiting.
-// Calls now share the pass that is running, and a pass that succeeded covers calls in the next 10 seconds. Every
-// file is still read and hashed in full; a failure is never reused, so the next call checks again.
+// Calls now share the pass that is running. For 10 seconds after a pass, a call only looks at every signed file's
+// size and change time as recorded just BEFORE that pass hashed it (no reading); any difference runs a full pass,
+// so a file changed after a check is still refused. A failure is never reused.
 const WORK_CHECK_REUSE: std::time::Duration = std::time::Duration::from_secs(10);
-static WORK_CHECK: tokio::sync::Mutex<Option<std::time::Instant>> = tokio::sync::Mutex::const_new(None);
+type FileStamps = Vec<(std::path::PathBuf, u64, Option<std::time::SystemTime>)>;
+static WORK_CHECK: tokio::sync::Mutex<Option<(std::time::Instant, std::sync::Arc<FileStamps>)>> = tokio::sync::Mutex::const_new(None);
+fn file_stamps(root: &Path, names: &std::collections::BTreeSet<String>) -> FileStamps {
+    names.iter().map(|name| {
+        let path = root.join(name);
+        let meta = std::fs::symlink_metadata(&path).ok();
+        (path, meta.as_ref().map_or(u64::MAX, |m| m.len()), meta.and_then(|m| m.modified().ok()))
+    }).collect()
+}
+fn stamps_unchanged(stamps: &FileStamps) -> bool {
+    stamps.iter().all(|(path, len, modified)| std::fs::symlink_metadata(path)
+        .is_ok_and(|m| m.len() == *len && m.modified().ok() == *modified && modified.is_some()))
+}
 pub async fn check_work() -> Result<()> {
     if public_key()?.is_none() {return Ok(());}
     let mut passed = WORK_CHECK.lock().await;
-    if passed.is_some_and(|at| at.elapsed() < WORK_CHECK_REUSE) {return Ok(());}
-    let result = tokio::task::spawn_blocking(|| verify_package(&crate::platform::installation_root(),env!("CARGO_PKG_VERSION"))).await?;
-    *passed = result.is_ok().then(std::time::Instant::now);
-    result
+    if let Some(stamps) = passed.as_ref().filter(|(at, _)| at.elapsed() < WORK_CHECK_REUSE).map(|(_, stamps)| stamps.clone()) {
+        if tokio::task::spawn_blocking(move || stamps_unchanged(&stamps)).await.unwrap_or(false) {return Ok(());}
+    }
+    *passed = None;
+    let result = tokio::task::spawn_blocking(|| -> Result<Option<FileStamps>> {
+        let root = crate::platform::installation_root();
+        // Recorded before hashing: a change during or after the pass differs from these and forces a new pass.
+        let stamps = signed_names(&root).ok().flatten().map(|names| file_stamps(&root, &names));
+        verify_package(&root, env!("CARGO_PKG_VERSION"))?;
+        Ok(stamps)
+    }).await?;
+    if let Some(stamps) = result? { *passed = Some((std::time::Instant::now(), std::sync::Arc::new(stamps))); }
+    Ok(())
 }
 pub fn verify_update(feed: &serde_json::Value, version: &str, hash: &str, platform: &str) -> Result<()> {
     let Some(key)=public_key()? else {return Ok(());};
@@ -338,6 +360,23 @@ fn verify_update_with(key: &[u8],feed: &serde_json::Value,version: &str,hash: &s
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn a_changed_file_is_noticed_between_full_checks() {
+        let root=std::env::temp_dir().join(format!("plazcode-stamps-{}",std::process::id()));
+        let _=std::fs::remove_dir_all(&root);std::fs::create_dir_all(root.join("core")).unwrap();
+        std::fs::write(root.join("core/main.js"),"original").unwrap();
+        let names:std::collections::BTreeSet<String>=["core/main.js".to_string(),"missing.js".to_string()].into_iter().collect();
+        assert!(!stamps_unchanged(&file_stamps(&root,&names)),"a missing signed file never passes");
+        let names:std::collections::BTreeSet<String>=["core/main.js".to_string()].into_iter().collect();
+        let stamps=file_stamps(&root,&names);
+        assert!(stamps_unchanged(&stamps));
+        std::fs::write(root.join("core/main.js"),"modified after startup").unwrap();
+        assert!(!stamps_unchanged(&stamps),"a different size is noticed");
+        let stamps=file_stamps(&root,&names);
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        std::fs::write(root.join("core/main.js"),"MODIFIED AFTER STARTUP").unwrap();
+        assert!(!stamps_unchanged(&stamps),"same size, new change time is noticed");
+        std::fs::remove_dir_all(root).unwrap();
+    }
     use ring::signature::{Ed25519KeyPair,KeyPair};
     fn signed(key:&Ed25519KeyPair,value:serde_json::Value)->Vec<u8>{
         let payload=serde_json::to_string(&value).unwrap();let mut message=DOMAIN.to_vec();message.extend_from_slice(payload.as_bytes());
