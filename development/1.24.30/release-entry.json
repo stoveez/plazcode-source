@@ -12,7 +12,9 @@
   "Your PlazCode folder is tidier: about 90 old test files and old internal notes left behind by earlier versions are removed automatically, and new downloads no longer include internal notes. The app, the extensions, the updaters and your settings stay where they are."
  ],
  "fixed": [
-  "On Mac, opening PlazCode straight from a freshly downloaded zip could stop with \"PlazCode program files changed or are incomplete ... No such file or directory\"."
+  "On Mac, opening PlazCode straight from a freshly downloaded zip could stop with \"PlazCode program files changed or are incomplete ... No such file or directory\".",
+  "The PlazCode app no longer keeps saying \"Desktop bridge disconnected\" while PlazCode is working. The extension no longer makes every request wait while it re-checks its own files, the app counts the open connection as connected, and the app's own file check is shared between commands instead of repeated for each one. Real drops are now listed with their reason on the Logs page.",
+  "Some antivirus programs could flag the PlazCode download as harmful because the app stored its list of computer-control commands as plain text. That text is now stored in a scrambled form; nothing about how PlazCode works changed."
  ],
  "notes": [
   "If PlazCode says the extension is not the official one: remove it from your browser's extensions page and load the PlazCode-Extension folder from the PlazCode folder you use (Firefox is not affected).",
@@ -32,9 +34,11 @@
    {
     "title": "🛠️ What's fixed",
     "items": [
-     "Mac: opening PlazCode from a fresh download could fail with \"program files changed or are incomplete\". It now starts normally.",
+     "No more random \"Desktop bridge disconnected\" messages; real drops show their reason in Logs.",
+     "Less chance of antivirus programs wrongly flagging PlazCode.",
+     "Mac: opening PlazCode from a fresh download could fail with \"program files changed or are incomplete\".",
      "The app only connects to the official extension from its own PlazCode folder. Edited or copied extensions are refused with clear steps.",
-     "PlazCode's instructions and Studio tool code now live inside the app and only go to the official extension. Nothing changes in how it works.",
+     "PlazCode's instructions and Studio tool code now live inside the app and only go to the official extension.",
      "Old test files and internal notes from earlier versions are cleaned out of your PlazCode folder. Nothing you use moves."
     ]
    },

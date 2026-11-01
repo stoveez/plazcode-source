@@ -1133,6 +1133,7 @@ let procStatusReading = false;
 const browserIdentity = crypto.randomUUID();
 let desktopAgentReporting = false;
 let desktopAgentError = null;
+let lastTabState = null;
 async function reportDesktopAgentState() {
   if (desktopAgentReporting || !rustMode) return;
   desktopAgentReporting = true;
@@ -1142,7 +1143,14 @@ async function reportDesktopAgentState() {
     let control = { canStart: false, canStop: false, pageMounted:false, barVisible:false, status: "Select a supported AI chat in your browser." };
     if (tab && Number.isInteger(tab.id)) {
       try {
-        const reply = await chrome.tabs.sendMessage(tab.id, { type: "rs-desktop-agent-state" });
+        // 1.24.30: a frozen or busy AI tab never answers; without a limit this report (every 750 ms) stopped for good.
+        // A tab that is only slow keeps its last answer for 15 s instead of flashing "Refresh the AI chat".
+        let reply = await Promise.race([chrome.tabs.sendMessage(tab.id, { type: "rs-desktop-agent-state" }),
+          new Promise((resolve) => setTimeout(() => resolve(lastTabState), 2500))]);
+        if (reply === lastTabState) {
+          if (!lastTabState || lastTabState.tabId !== tab.id || Date.now() - lastTabState.at > 15000) throw new Error("The AI tab did not answer.");
+          reply = lastTabState.reply;
+        } else if (reply) lastTabState = { tabId: tab.id, reply, at: Date.now() };
         if (reply) {
           control = { ...reply, tab_id: tab.id };
           if(reply.barVisible===false && !reply.canStop){control.canStart=false;control.status="PlazCode page bar is hidden. Refresh the AI tab after reloading the extension.";}
@@ -2212,7 +2220,39 @@ async function runCritic(msg) {
 }
 try { if (chrome.windows && chrome.windows.onRemoved) chrome.windows.onRemoved.addListener((windowId) => { if (criticWin && criticWin.windowId === windowId) criticWin = null; }); } catch {}
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+// 1.24.30 (owner, 2026-10-31: PlazCode "disconnects and reconnects for no reason"): Chrome stops an extension's
+// background worker when one message takes longer than 5 minutes to answer, which also drops the link to the app.
+// A command, a local model reply or a critic review can run up to 10 minutes. Those answer within 4 minutes with
+// "still running" and the AI tab asks again ("job-wait"), so no single message ever reaches the limit.
+const LONG_MESSAGE_TYPES = new Set(["call_tool", "ollama_chat", "rs-critic"]);
+const LONG_REPLY_MS = 240000;
+const longReplies = new Map();
+let longReplyId = 0;
+function answerWithin(final, job, sendResponse) {
+  let timer;
+  const still = new Promise((resolve) => { timer = setTimeout(() => resolve(longReplies), LONG_REPLY_MS); });
+  Promise.race([final, still]).then((value) => {
+    clearTimeout(timer);
+    try { sendResponse(value === longReplies ? { ok: false, kind: "still-running", job } : value); } catch {}
+  });
+}
+chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
+  if (msg && msg.type === "job-wait") {
+    const final = longReplies.get(msg.job);
+    if (final) answerWithin(final, msg.job, rawSendResponse);
+    else rawSendResponse({ ok: false, kind: "disconnected", error: "The browser restarted PlazCode's background worker while this was running. It may have finished; check the current state before retrying." });
+    return true;
+  }
+  let sendResponse = rawSendResponse;
+  if (msg && LONG_MESSAGE_TYPES.has(msg.type)) {
+    let settle;
+    const final = new Promise((resolve) => { settle = resolve; });
+    const job = ++longReplyId;
+    longReplies.set(job, final);
+    final.then(() => setTimeout(() => longReplies.delete(job), 60000));
+    sendResponse = (value) => settle(value);
+    answerWithin(final, job, rawSendResponse);
+  }
   (async () => {
     const tabId = _sender.tab?.id ?? msg.tab_id;
     const mode = await tabEngine(tabId);

@@ -78,6 +78,16 @@ fn supported_ai_url(action: &str) -> Option<&'static str> {
     }
 }
 
+fn now_ms() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64
+}
+
+/// An open browser WebSocket; see `UiShared::extension_socket`.
+pub struct ExtensionSocket(Arc<UiShared>);
+impl Drop for ExtensionSocket {
+    fn drop(&mut self) { self.0.extension_sockets.fetch_sub(1, Ordering::Relaxed); }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ToolDisplay {
     pub name: String,
@@ -95,6 +105,9 @@ pub struct UiShared {
     pub fatal: Mutex<Option<String>>,
     pub logs: Mutex<VecDeque<String>>,
     pub extension_seen_ms: std::sync::atomic::AtomicU64,
+    /// 1.24.30: open browser WebSockets and the last frame any of them sent (see `extension_recent`).
+    pub extension_sockets: std::sync::atomic::AtomicUsize,
+    pub socket_seen_ms: std::sync::atomic::AtomicU64,
     pub show_requested: AtomicBool,
     pub quit_requested: AtomicBool,
     pub tools: Mutex<Vec<ToolDisplay>>,
@@ -117,6 +130,8 @@ impl UiShared {
             fatal: Mutex::new(None),
             logs: Mutex::new(VecDeque::with_capacity(LOG_CAP)),
             extension_seen_ms: std::sync::atomic::AtomicU64::new(0),
+            extension_sockets: std::sync::atomic::AtomicUsize::new(0),
+            socket_seen_ms: std::sync::atomic::AtomicU64::new(0),
             show_requested: AtomicBool::new(false),
             quit_requested: AtomicBool::new(false),
             tools: Mutex::new(Vec::new()),
@@ -170,23 +185,33 @@ impl UiShared {
     }
 
     pub fn mark_extension_seen(&self) {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis() as u64;
-        self.extension_seen_ms.store(now, Ordering::Relaxed);
+        self.extension_seen_ms.store(now_ms(), Ordering::Relaxed);
     }
 
+    /// A frame (ping every 10 s, tool calls, status) arrived on a browser WebSocket.
+    pub fn mark_socket_frame(&self) {
+        self.socket_seen_ms.store(now_ms(), Ordering::Relaxed);
+    }
+
+    /// Counts an open browser WebSocket until the returned guard is dropped.
+    pub fn extension_socket(self: &Arc<Self>) -> ExtensionSocket {
+        self.extension_sockets.fetch_add(1, Ordering::Relaxed);
+        self.mark_socket_frame();
+        ExtensionSocket(self.clone())
+    }
+
+    /// "Desktop bridge connected". 1.24.30 (owner, 2026-10-31: "Desktop bridge disconnected" kept appearing while
+    /// PlazCode worked): this used to need an HTTP request from the browser within 15 s. Every such request waits
+    /// behind the extension's own file check, so a busy PC paused them past 15 s while the real connection was fine.
+    /// An open browser WebSocket that sent anything in the last 45 s (it pings every 10 s) now counts as connected too.
     pub fn extension_recent(&self) -> bool {
-        let seen = self.extension_seen_ms.load(Ordering::Relaxed);
-        if seen == 0 {
-            return false;
-        }
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis() as u64;
-        now.saturating_sub(seen) < 15_000
+        self.extension_recent_at(now_ms())
+    }
+
+    fn extension_recent_at(&self, now: u64) -> bool {
+        let fresh = |seen: u64, window: u64| seen != 0 && now.saturating_sub(seen) < window;
+        fresh(self.extension_seen_ms.load(Ordering::Relaxed), 15_000)
+            || (self.extension_sockets.load(Ordering::Relaxed) > 0 && fresh(self.socket_seen_ms.load(Ordering::Relaxed), 45_000))
     }
 
     pub fn request_show(&self) {
@@ -606,5 +631,24 @@ pub fn external_url(message: &str) -> Option<String> {
         "open:blender-guide" => Some("https://github.com/ahujasid/blender-mcp#installation".into()),
         _ => toolkit_store_url(message).or_else(||guide_link_url(message))
             .or_else(||donation_url(message).or_else(||supported_ai_url(message)).map(str::to_owned)),
+    }
+}
+
+#[cfg(test)]
+mod bridge_state_tests {
+    use super::*;
+    #[test]
+    fn an_open_browser_socket_keeps_the_bridge_connected_between_requests() {
+        let ui = Arc::new(UiShared::new(Arc::new(AtomicBool::new(false))));
+        assert!(!ui.extension_recent(), "nothing seen yet");
+        ui.extension_seen_ms.store(1_000_000, Ordering::Relaxed);
+        assert!(ui.extension_recent_at(1_014_000) && !ui.extension_recent_at(1_016_000), "requests alone: 15 s window");
+        let socket = ui.extension_socket();
+        ui.socket_seen_ms.store(1_000_000, Ordering::Relaxed);
+        assert!(ui.extension_recent_at(1_040_000), "an open socket with a recent ping counts");
+        assert!(!ui.extension_recent_at(1_046_000), "a silent socket (no frame for 45 s) does not");
+        drop(socket);
+        assert!(!ui.extension_recent_at(1_020_000), "a closed socket does not count");
+        assert_eq!(ui.extension_sockets.load(Ordering::Relaxed), 0);
     }
 }

@@ -3,7 +3,7 @@
 globalThis.PlazCodeIntegrity = (() => {
   const key = "UNCONFIGURED_RELEASE_PUBLIC_KEY", channel = "UNCONFIGURED_RELEASE_CHANNEL";
   const recovery = "PlazCode files changed or are incomplete. Download the complete official version from https://github.com/stoveez/PlazCode/releases . Your skills, notes and settings are kept.";
-  let pending = null, checkedAt = 0, failedAt = 0;
+  let pending = null, checkedAt = 0, failedAt = 0, verified = false, revalidating = null;
   const unhex = text => Uint8Array.from(text.match(/../g) || [], byte => parseInt(byte, 16));
   const hex = bytes => Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2,"0")).join("");
   const safe = name => typeof name === "string" && name.length > 0 && name.length <= 512 && !/[\\:\x00-\x1f]/.test(name) && name.split("/").every(p => p && p !== "." && p !== ".." && !/[. ]$/.test(p));
@@ -52,18 +52,38 @@ globalThis.PlazCodeIntegrity = (() => {
   // 1.24.27: a failed check used to stay failed until the browser restarted the worker, because the rejected
   // promise was returned forever (checkedAt stayed 0). One unreadable file then blocked pairing and every
   // reconnect. A failure now holds for 10 s and is then checked again; really changed files still fail.
-  function check() {
-    if (pending && failedAt && Date.now()-failedAt>=10000) {pending=null;failedAt=0;}
-    if (pending && Date.now()-checkedAt<30000) return pending;
-    if (!pending || checkedAt) {
-      checkedAt=0;
-      pending=verify().catch(error=>{
-        if(error && error.name==="PlazCodeVerificationUnavailable") {pending=null;throw error;}
-        failedAt=Date.now();
-        throw new Error(recovery);
-      });
-    }
+  // 1.24.30 (owner, 2026-10-31: the app kept showing "Desktop bridge disconnected" for no reason): every 30 s the
+  // whole extension (about 900 files) was read and hashed again while EVERY request to the app waited for it. On a
+  // busy PC (antivirus, cloud sync, Studio, the app's own checks) that wait passed the app's 15 s "browser seen"
+  // window. After a passed check, requests now go straight through; the files are checked again in the background
+  // every 5 minutes. If that background check fails, the next request runs a full blocking check (a one-off busy
+  // file passes then; really changed files fail exactly as before). The app also checks every file before work.
+  const RECHECK_MS = 5 * 60 * 1000, FAILURE_HOLD_MS = 10000;
+  function blocking() {
+    checkedAt = 0;
+    pending = verify().then(() => { verified = true; checkedAt = Date.now(); }, error => {
+      verified = false;
+      if (error && error.name === "PlazCodeVerificationUnavailable") { pending = null; throw error; }
+      failedAt = Date.now();
+      throw new Error(recovery);
+    });
     return pending;
+  }
+  function check() {
+    if (pending && failedAt) {
+      if (Date.now() - failedAt < FAILURE_HOLD_MS) return pending;
+      pending = null; failedAt = 0;
+    }
+    if (verified) {
+      if (!revalidating && Date.now() - checkedAt >= RECHECK_MS) {
+        revalidating = verify().then(() => { checkedAt = Date.now(); }, error => {
+          // Still verified when the app is only temporarily unreachable (older Chrome); otherwise re-check in full.
+          if (!error || error.name !== "PlazCodeVerificationUnavailable") { verified = false; pending = null; }
+        }).finally(() => { revalidating = null; });
+      }
+      return Promise.resolve();
+    }
+    return pending || blocking();
   }
   return {check};
 })();

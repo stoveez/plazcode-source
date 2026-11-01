@@ -293,9 +293,20 @@ fn verify_installation_with(root: &Path,key: &[u8],version: &str,platform: &str,
     if present.is_none() {let _=std::fs::OpenOptions::new().write(true).create_new(true).open(marker);}
     Ok(())
 }
+// 1.24.30 (owner, 2026-10-31: "Desktop bridge disconnected" kept appearing while PlazCode worked). Every tool call
+// re-read and hashed the whole installation (about 3,000 files, 120 MB), and calls that arrived together each ran
+// their own full pass, so a busy turn kept the disk, the antivirus and the browser's own file check waiting.
+// Calls now share the pass that is running, and a pass that succeeded covers calls in the next 10 seconds. Every
+// file is still read and hashed in full; a failure is never reused, so the next call checks again.
+const WORK_CHECK_REUSE: std::time::Duration = std::time::Duration::from_secs(10);
+static WORK_CHECK: tokio::sync::Mutex<Option<std::time::Instant>> = tokio::sync::Mutex::const_new(None);
 pub async fn check_work() -> Result<()> {
     if public_key()?.is_none() {return Ok(());}
-    tokio::task::spawn_blocking(|| verify_package(&crate::platform::installation_root(),env!("CARGO_PKG_VERSION"))).await?
+    let mut passed = WORK_CHECK.lock().await;
+    if passed.is_some_and(|at| at.elapsed() < WORK_CHECK_REUSE) {return Ok(());}
+    let result = tokio::task::spawn_blocking(|| verify_package(&crate::platform::installation_root(),env!("CARGO_PKG_VERSION"))).await?;
+    *passed = result.is_ok().then(std::time::Instant::now);
+    result
 }
 pub fn verify_update(feed: &serde_json::Value, version: &str, hash: &str, platform: &str) -> Result<()> {
     let Some(key)=public_key()? else {return Ok(());};

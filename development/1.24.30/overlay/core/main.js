@@ -1980,12 +1980,18 @@
         "No reply from the extension worker before the request deadline." +
         (tool ? " The command may already have run. Inspect current state before retrying; it was not replayed." : "")}), bgRequestTimeoutMs(msg));
       const fail = m => finish({ok:false,kind:isContextInvalidated(m)?"stale-extension":"disconnected",error:m});
-      try {
-        chrome.runtime.sendMessage({...msg, engine: activeEngine()}, resp => {
-          if (chrome.runtime.lastError) fail(chrome.runtime.lastError.message);
-          else finish(resp || {ok:false,kind:"disconnected",error:"no response from background"});
-        });
-      } catch (e) { fail(String(e && e.message || e)); }
+      // 1.24.30: a long command answers "still-running" every 4 minutes (the browser stops a worker whose message
+      // takes 5); keep asking until the real answer or this request's own deadline.
+      const ask = request => {
+        try {
+          chrome.runtime.sendMessage(request, resp => {
+            if (chrome.runtime.lastError) fail(chrome.runtime.lastError.message);
+            else if (resp && resp.kind === "still-running" && resp.job && !settled) ask({type:"job-wait", job:resp.job});
+            else finish(resp || {ok:false,kind:"disconnected",error:"no response from background"});
+          });
+        } catch (e) { fail(String(e && e.message || e)); }
+      };
+      ask({...msg, engine: activeEngine()});
     });
   }
 

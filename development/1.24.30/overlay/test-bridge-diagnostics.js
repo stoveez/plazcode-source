@@ -34,11 +34,25 @@ const dir = __dirname;
     },
   };
   box.globalThis = box;
+  box.setTimeout = setTimeout;
   vm.createContext(box);
   vm.runInContext(src, box);
   const I = box.PlazCodeIntegrity;
-  await I.check();                                   // intact files pass
-  failReads = 1; now += 31_000;                      // cache expired; one file read fails once
+  const settle = () => new Promise((resolve) => setImmediate(resolve));
+  await I.check();                                   // intact files pass (the first check waits for the files)
+  // 1.24.30: a passed check never makes requests wait again; files are re-checked in the background every 5 minutes.
+  let reads0 = reads; now += 31_000;
+  await I.check(); await settle();
+  assert.equal(reads, reads0, "no re-hashing every 30 s");
+  now += 5 * 60_000;
+  failReads = 1;                                     // the background re-check meets one busy file
+  await I.check();                                   // resolves at once; the re-check runs behind it
+  for (let i = 0; i < 5; i++) await settle();
+  assert(reads > reads0, "files are re-checked in the background after 5 minutes");
+  await I.check();                                   // a one-off busy file: the full blocking re-check passes
+  // Really changed files fail like before, and a failure is held 10 s, then checked again.
+  now += 5 * 60_000; failReads = 2;
+  await I.check(); for (let i = 0; i < 5; i++) await settle();
   await assert.rejects(I.check(), /official version/, "a failed read is reported");
   const before = reads;
   now += 5_000;
@@ -46,7 +60,7 @@ const dir = __dirname;
   assert.equal(reads, before, "no new reads within the 10 s hold");
   now += 6_000;
   await I.check();                                   // was stuck forever before 1.24.27
-  console.log("PASS extension self-check: a one-off failed read clears after 10 s instead of blocking every reconnect");
+  console.log("PASS extension self-check: requests never wait for a re-check; a one-off busy file clears; a real failure holds 10 s");
 
   // ── 2. background.js: close reason and worker-restart note ───────────────────────────────────────
   const bg = fs.readFileSync(dir + "/background.js", "utf8");
@@ -74,4 +88,39 @@ const dir = __dirname;
   assert(/"kind":"integrity","error":integrity::RECOVERY/.test(rs) && /continue;\n\s*\}\n\s*\}/.test(rs), "a failed check refuses the request and keeps the connection");
   assert(!/integrity::check_work\(\)\.await\.is_err\(\) \{break;\}\n\s*let id = val/.test(rs), "no silent break on the legacy socket");
   console.log("PASS app: every disconnect has a reason in the Terminal; status polls do not re-hash; a failed check refuses instead of disconnecting");
+  // ── 4. 1.24.30: no false "Desktop bridge disconnected" ────────────────────────────────────────────
+  const gui = fs.readFileSync(dir + "/agent/src/gui.rs", "utf8"), integ = fs.readFileSync(dir + "/agent/src/integrity.rs", "utf8");
+  const html = fs.readFileSync(dir + "/agent/src/desktop.html", "utf8");
+  assert(/let _socket = state\.ui\.extension_socket\(\);/.test(rs) && /Some\(Some\(Ok\(msg\)\)\) => \{ state\.ui\.mark_socket_frame\(\); msg \}/.test(rs), "an open browser socket and its pings count as connected");
+  assert(/fresh\(self\.extension_seen_ms\.load\(Ordering::Relaxed\), 15_000\)/.test(gui) && /fresh\(self\.socket_seen_ms\.load\(Ordering::Relaxed\), 45_000\)/.test(gui), "15 s for requests, 45 s for a socket");
+  assert(/"bridge\.quiet"/.test(rs) && /"bridge\.socket_closed"/.test(rs), "bridge changes reach the Logs page");
+  assert(/WORK_CHECK_REUSE: std::time::Duration = std::time::Duration::from_secs\(10\)/.test(integ) && /\*passed = result\.is_ok\(\)\.then\(std::time::Instant::now\);/.test(integ), "work checks share one pass and never reuse a failure");
+  assert(/Date\.now\(\)-Bridgelostat>=10000/.test(html), "the desktop warns only after 10 more seconds away");
+  assert(/Promise\.race\(\[chrome\.tabs\.sendMessage\(tab\.id, \{ type: "rs-desktop-agent-state" \}\)/.test(bg), "a frozen AI tab cannot stop the desktop report");
+  console.log("PASS 1.24.30: open connection counts, shared program checks, 10 s grace before the desktop warns, no stuck desktop report");
+
+  // ── 5. 1.24.30: no message to the worker may take 5 minutes (the browser would stop the worker) ──────
+  {
+    const start = bg.indexOf("const LONG_MESSAGE_TYPES"), head = bg.indexOf("  (async () => {", start);
+    assert(start > 0 && head > start, "long-message relay present");
+    // Run the real relay with a 50 ms limit and a handler that answers after 180 ms.
+    const relay = bg.slice(start, head).replace("const LONG_REPLY_MS = 240000;", "const LONG_REPLY_MS = 50;");
+    const lbox = { setTimeout, clearTimeout, Promise, Map, Set, listener: null, chrome: { runtime: { onMessage: { addListener: (f) => { lbox.listener = f; } } } } };
+    vm.createContext(lbox);
+    vm.runInContext(relay + "\n    setTimeout(() => sendResponse({ ok: true, text: 'done ' + msg.name }), msg.delay);\n    return true;\n  });", lbox);
+    const ask = (m) => new Promise((resolve) => lbox.listener(m, {}, resolve));
+    const first = await ask({ type: "call_tool", name: "run_command", delay: 180 });
+    assert.equal(first.kind, "still-running", "a long command answers before the limit");
+    let answer = first, waits = 0;
+    while (answer.kind === "still-running") { waits++; answer = await ask({ type: "job-wait", job: answer.job }); }
+    assert.deepEqual({ ...answer }, { ok: true, text: "done run_command" }, "the real answer arrives through job-wait");
+    assert(waits >= 2, "asked again while it ran");
+    const quick = await ask({ type: "call_tool", name: "read_file", delay: 5 });
+    assert.equal(quick.text, "done read_file", "quick commands answer directly");
+    const lost = await ask({ type: "job-wait", job: 999 });
+    assert.equal(lost.kind, "disconnected", "a job lost with a restarted worker says so");
+    const main = fs.readFileSync(dir + "/core/main.js", "utf8");
+    assert(/resp\.kind === "still-running" && resp\.job && !settled\) ask\(\{type:"job-wait", job:resp\.job\}\)/.test(main), "the AI tab keeps asking");
+    console.log("PASS 1.24.30: commands longer than 4 minutes keep the worker within the browser's 5-minute limit");
+  }
 })().catch((e) => { console.error(e); process.exit(1); });

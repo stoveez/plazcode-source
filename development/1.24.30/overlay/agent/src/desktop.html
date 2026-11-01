@@ -1116,7 +1116,7 @@ __PLAZCODE_VERSION_UI__
 
   var Notificationui=PlazCodeNotifications.mount(Byid("notificationCenter"),{getItem:Key=>{try{return ProfileStorage.getItem(Key);}catch{return null;}},setItem:(Key,Value)=>{try{ProfileStorage.setItem(Key,Value);}catch{}}});
   function Notice(Title,Message,Kind,Id){Notificationui.add(Title,Message,Kind,Id);}
-  var Laststudiostate=null,Lastbridgestate=null;
+  var Laststudiostate=null,Lastbridgestate=null,Bridgelostat=0;
   var Taskcenter = PlazCodeTaskCenter.mount(Byid("taskCenter"), function (Request) { return Api("/api/checkpoints", {method:"POST",body:JSON.stringify(Object.assign({},Request,{chat:State && State.browser_agent && State.browser_agent.chat || ""}))}); }, function (Prompt, Task) { return Api("/api/desktop/agent", {method:"POST",body:JSON.stringify({action:"task-send",prompt:Task?JSON.stringify({format:"plazcode-task-request",prompt:Prompt,task_id:Task.id,engine:Task.engine,chat:Task.chat}):Prompt,request_id:crypto.randomUUID()})}); });
   var Templateui=PlazCodeTemplates.mount(Byid("templateLibrary"),function(Request){if(Request.action==='upload-chunk'){if(!/^[a-f0-9]{32}$/.test(Request.id)||!Number.isSafeInteger(Request.offset))return Promise.reject(Error('Invalid template upload chunk.'));return Api('/api/templates/upload/'+Request.id+'?offset='+Request.offset,{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:Request.content});}if(['upload-begin','upload-finish','upload-status','upload-cancel'].indexOf(Request.action)>=0)return Api('/api/templates/upload',{method:'POST',body:JSON.stringify(Request)});if(Request.action==="import"){var Bytes=Request.content;return Api("/api/templates/import?name="+encodeURIComponent(Request.name)+"&description="+encodeURIComponent(Request.description || ""),{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:Bytes});}return Api("/api/templates",{method:"POST",body:JSON.stringify(Request)});},{rawUpload:true});
   function Setfeaturepreferences(Patch){return Api("/api/desktop/preferences",{method:"POST",body:JSON.stringify(Patch)}).then(function(Value){if(State)State.preferences=Object.assign({},State.preferences||{},Patch);return Value;});}
@@ -1599,8 +1599,9 @@ __PLAZCODE_VERSION_UI__
     var Editor=State.roblox_connected===true;
     if(Editor!==Laststudiostate && (Editor||Laststudiostate===true))Notice(Editor?'Roblox Studio connected':'Roblox Studio disconnected',Editor?'Studio tools are ready for the open place.':'Studio tools are unavailable until the editor connection returns.',Editor?'success':'warning');
     Laststudiostate=Editor;
-    if(Lastbridgestate===true&&!Bridge)Notice('Desktop bridge disconnected','Check the bridge status and reconnect.','warning');
-    Lastbridgestate=Bridge;
+    // 1.24.30: warn only when the browser has stayed away for 10 more seconds (it reconnects by itself after a short pause).
+    if(Bridge){Lastbridgestate=true;Bridgelostat=0;}
+    else if(Lastbridgestate===true){if(!Bridgelostat)Bridgelostat=Date.now();else if(Date.now()-Bridgelostat>=10000){Notice('Desktop bridge disconnected','Check the bridge status and reconnect.','warning');Lastbridgestate=false;Bridgelostat=0;}}
 
     var Activities = Control.activity || [], Lastactivity = Activities[Activities.length - 1];
     Byid("homeActivity").hidden = !Lastactivity;

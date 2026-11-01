@@ -1168,6 +1168,24 @@ async fn start() -> anyhow::Result<()> {
     );
     state.accounts=accounts;
     let sync_state=state.clone();tokio::spawn(async move{loop{tokio::time::sleep(Duration::from_secs(60)).await;let _lease=accounts::ACCESS.read().await;if sync_state.accounts.active().is_some(){let _=account_sync::run(&sync_state).await;}}});
+    // 1.24.30: the Logs page shows when the desktop's "bridge connected" changed and why (last browser request,
+    // open browser connections, last frame on them), so a "Desktop bridge disconnected" report can be traced.
+    let watch_ui = state.ui.clone();
+    tokio::spawn(async move {
+        let mut last = false;
+        loop {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            let now = watch_ui.extension_recent();
+            if now != last {
+                let ago = |ms: u64| if ms == 0 { serde_json::Value::Null } else { serde_json::json!((std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64).saturating_sub(ms)) };
+                let data = serde_json::json!({"ms_since_request": ago(watch_ui.extension_seen_ms.load(Ordering::Relaxed)),
+                    "open_connections": watch_ui.extension_sockets.load(Ordering::Relaxed), "ms_since_connection_frame": ago(watch_ui.socket_seen_ms.load(Ordering::Relaxed))});
+                if now { events::record("app", "info", "bridge.connected", "The browser extension is connected", data); }
+                else { events::record("app", "warn", "bridge.quiet", "The browser extension stopped answering (Desktop bridge disconnected)", data); }
+                last = now;
+            }
+        }
+    });
     let (restart_tx, mut restart_rx) = tokio::sync::mpsc::unbounded_channel::<()>();
     let rr_state = state.clone();
     tokio::spawn(async move {
@@ -2445,7 +2463,9 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
         state.roblox_clients.write().await.insert(client_key.clone(), engine.clone());
     }
     state.ui.mark_extension_seen();
+    let _socket = state.ui.extension_socket();
     info!("legacy WS [{engine}] client connected");
+    crate::events::record("app", "info", "bridge.socket_open", &format!("Browser connected [{engine}]"), serde_json::Value::Null);
     let (mut write, mut read) = ws_stream.split();
     // Outbound channel so ping/status keep flowing while a tool runs on another task.
     let (out_tx, mut out_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
@@ -2528,7 +2548,7 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
             None => { end_reason = "the PlazCode profile changed".into(); break; }
             Some(None) => break,
             Some(Some(Err(error))) => { end_reason = format!("connection error: {error}"); break; }
-            Some(Some(Ok(msg))) => msg,
+            Some(Some(Ok(msg))) => { state.ui.mark_socket_frame(); msg },
         };
         if let tokio_tungstenite::tungstenite::Message::Close(frame) = &msg {
             end_reason = match frame {
@@ -2732,6 +2752,7 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
     }
     // Disconnecting a browser tab does not disconnect Studio's MCP server.
     info!("legacy WS [{engine}] client disconnected: {end_reason}");
+    crate::events::record("app", "warn", "bridge.socket_closed", &format!("Browser connection [{engine}] ended: {end_reason}"), serde_json::Value::Null);
 }
 
 #[cfg(test)]

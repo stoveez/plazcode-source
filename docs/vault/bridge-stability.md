@@ -1,6 +1,6 @@
 ---
 title: Bridge drops (extension ↔ app link)
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 # Bridge drops: what is known (1.24.27)
 
@@ -19,3 +19,14 @@ updated: 2026-10-30
 - `protection.js`: one failed self-check used to stay failed until the worker restarted, which blocked pairing and every reconnect. It now holds for 10 s and is then re-checked.
 
 **Next.** Ask the tester for the Terminal lines after the next drop, plus their browser and version, and whether the AI tab was in the background. Test: `test-bridge-diagnostics.js`. Needs the new app and extension.
+
+## 1.24.30: "Desktop bridge disconnected" over and over (tester screenshot, 2026-10-31)
+Five desktop notices in nine minutes while Studio stayed connected. Causes found, all fixed in 1.24.30:
+- **The notice watched only HTTP requests.** `bridge_connected` was true only if the browser made a request in the last 15 s; WebSocket pings did not count. Now an open browser WebSocket that sent anything in the last 45 s counts too (`gui.rs extension_recent`), and the desktop waits 10 more seconds before warning.
+- **Every request waited for the extension's own file check.** `protection.js` re-read and hashed the whole extension (about 900 files) every 30 s, and all requests to the app waited (measured 1.0-1.4 s on a fast Linux box; far longer with antivirus, OneDrive or a busy disk). Now, after a pass, requests never wait; files are re-checked in the background every 5 minutes; a failed background check forces one full blocking check (a busy file passes, real edits fail as before).
+- **The app hashed the whole installation (3,019 files, 119 MB) for every command**, with parallel commands each doing their own pass. Now commands share the running pass and a passed check covers the next 10 s (`integrity.rs check_work`). Failures are never reused.
+- **Messages over 5 minutes stop the worker** (Chrome rule). `run_command` (up to 10 min), local-model replies and critic reviews now answer "still-running" every 4 minutes and the AI tab asks again (`job-wait`).
+- The desktop report (every 750 ms) could stop for good if the AI tab never answered; it now gives up after 2.5 s.
+- Logs page: `bridge.socket_open`, `bridge.socket_closed` (with reason), `bridge.quiet` / `bridge.connected` (with seconds since the last request and frame).
+
+**Still open.** Chrome also stops a worker when one `fetch()` response takes over 30 s: `/api/media/convert` (65 s limit), Toolkit asset insert (120 s) and saving personal memory (30 s) could, when slow. Rare, user-started; not changed. Test: `test-bridge-diagnostics.js` sections 1, 4, 5.
