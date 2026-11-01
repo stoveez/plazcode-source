@@ -158,3 +158,6 @@ Owner requested implementing anti-copy-plan.md. Inspected existing protection, p
 - Anti-copy WIP: variant-compatible Node/Rust text-pack format and seeded hidden text written; three-layout/foreign-variant/tamper Node tests pass. Native tests running; packaging/canaries/CI and all three requested Luau stages remain. Not shippable.
 
 - 2026-11-01: anti-copy resumed; independent checks, CI/native/packager descriptor checks, cross-platform promotion guard and private-function mangling implemented. Node checks pass; full native/signed/hosted validation and licence/takedown documents pending. Current Luau/MiMo/Arena changes retained.
+
+## Anti-copy validation status (2026-11-01)
+Native configured-variant 268 + 5 tests and optimized signed-app end-to-end pass. Node protection/variant and 1,066 byte-identical prompt/help/skill outputs pass. Promotion fixture updated to include descriptors and reject cross-platform mismatches. Licence/branding and takedown documents complete. Full JS running, final Mac path compatibility adjustment and hosted validation/test ZIP delivery remain. Public release not authorized.

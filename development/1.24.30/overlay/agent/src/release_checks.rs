@@ -13,13 +13,15 @@ static TEXT:Mutex<Option<Passed>>=Mutex::new(None);
 static PROGRAM:Mutex<Option<Passed>>=Mutex::new(None);
 
 fn metadata(path:&Path)->Result<std::fs::Metadata>{
-    for parent in path.ancestors(){ensure!(!std::fs::symlink_metadata(parent)?.file_type().is_symlink(),"Unsafe release canary path");}
-    let meta=std::fs::symlink_metadata(path)?;ensure!(meta.is_file(),"Release canary is not a file");Ok(meta)
+    let meta=std::fs::symlink_metadata(path)?;ensure!(meta.is_file()&&!meta.file_type().is_symlink(),"Release canary is not a regular file");Ok(meta)
 }
-fn stamps(paths:&[PathBuf])->Result<Vec<Stamp>> {paths.iter().map(|p|{let m=metadata(p)?;Ok((p.clone(),m.len(),m.modified()?))}).collect()}
+fn installed_path(root:&Path,name:&str)->Result<PathBuf>{
+    let mut path=root.to_owned();for part in Path::new(name).components(){path.push(part);ensure!(!std::fs::symlink_metadata(&path)?.file_type().is_symlink(),"Symlink in release canary path");}Ok(path)
+}
+fn stamps(root:&Path,paths:&[PathBuf])->Result<Vec<Stamp>> {paths.iter().map(|p|{if let Ok(relative)=p.strip_prefix(root){installed_path(root,&relative.to_string_lossy())?;}let m=metadata(p)?;Ok((p.clone(),m.len(),m.modified()?))}).collect()}
 fn cached(slot:&Mutex<Option<Passed>>,root:&Path,paths:&[PathBuf],verify:impl FnOnce()->Result<()>)->Result<()> {
     let mut slot=slot.lock().map_err(|_|anyhow::anyhow!("Release check unavailable"))?;
-    let before=match stamps(paths){Ok(value)=>value,Err(error)=>{*slot=None;return Err(error);}};
+    let before=match stamps(root,paths){Ok(value)=>value,Err(error)=>{*slot=None;return Err(error);}};
     if slot.as_ref().is_some_and(|p|p.root==root&&p.at.elapsed()<REUSE&&p.stamps==before){return Ok(());}
     *slot=None;verify()?;*slot=Some(Passed{root:root.to_owned(),at:Instant::now(),stamps:before});Ok(())
 }
@@ -30,7 +32,7 @@ fn trusted_key()->Result<Vec<u8>> {
     let key=unhex(text)?;ensure!(key.len()==32,"Release trust is missing");Ok(key)
 }
 fn signed(root:&Path,key:&[u8])->Result<serde_json::Value>{
-    let raw=bounded(&root.join(MANIFEST),4*1024*1024)?;
+    let raw=bounded(&installed_path(root,MANIFEST)?,4*1024*1024)?;
     let envelope:serde_json::Value=serde_json::from_slice(&raw)?;
     let payload=envelope["payload"].as_str().context("Missing release payload")?;
     let signature=unhex(envelope["signature"].as_str().context("Missing release signature")?)?;
@@ -47,7 +49,7 @@ fn fingerprint(path:&Path,row:&serde_json::Value)->Result<()> {
     ensure!(total==size&&row["sha256"].as_str()==Some(format!("{:x}",hasher.finalize()).as_str()),"Release canary fingerprint changed");Ok(())
 }
 fn record(root:&Path)->Result<()> {
-    let value:serde_json::Value=serde_json::from_slice(&bounded(&root.join(RECORD),4096)?)?;
+    let value:serde_json::Value=serde_json::from_slice(&bounded(&installed_path(root,RECORD)?,4096)?)?;
     ensure!(value==crate::release_variant::info(),"Release variant belongs to another build");Ok(())
 }
 fn native(root:&Path,exe:&Path,key:&[u8])->Result<()> {
@@ -56,7 +58,7 @@ fn native(root:&Path,exe:&Path,key:&[u8])->Result<()> {
     fingerprint(exe,&manifest["files"][name])
 }
 fn program_name()->&'static str {match crate::release_variant::SEED[2]%3{0=>"core/main.js",1=>"background.js",_=>"PlazCode-Extension/core/text-pack.js"}}
-fn program(root:&Path,key:&[u8])->Result<()> {record(root)?;let manifest=signed(root,key)?;fingerprint(&root.join(program_name()),&manifest["files"][program_name()])}
+fn program(root:&Path,key:&[u8])->Result<()> {record(root)?;let manifest=signed(root,key)?;fingerprint(&installed_path(root,program_name())?,&manifest["files"][program_name()])}
 pub fn startup(root:&Path)->Result<()> {if cfg!(debug_assertions){return Ok(());}record(root).context(crate::integrity::RECOVERY)}
 pub fn text(root:&Path)->Result<()> {
     if cfg!(debug_assertions){return Ok(());}

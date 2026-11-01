@@ -4,6 +4,10 @@ updated: 2026-10-31
 ---
 # Decisions (newest first)
 
+- **2026-11-01: anti-copy build compatibility:** derive version/channel-specific variants using the existing signing key; no new secret. Store only descriptor hash/mark in signed program files/reports, keep old manifest schema for installed updaters. No updater/feed changes.
+- **2026-11-01: stronger safe obfuscation (owner):** shorten private function names; preserve global exports, class/error and object-property names, CSP and performance. No eval/string execution/heavy obfuscator.
+
+
 - **2026-10-31: 1.24.30 contents (owner: "do what's recommended for everything").** App pairs only with its own verified extension folder (copies loaded elsewhere refused, including the owner's extension-only test folders; legacy root copy allowed; Firefox unchanged). Mac fresh downloads start from the folder macOS reports. Downloads drop internal notes (MAINTENANCE.md, old changelogs UPDATE.txt/UPDATER.txt, VALIDATION.txt, .gitignore) and public zips no longer carry the internal VALIDATION.txt; the app removes old developer leftovers (test-*, old notes, .github workflows) from the top of verified installs. Ro-Engineer (excaldev, MIT) ships unchanged as 8 starter cards, the core standards card always on for Roblox tasks. Test build first.
 - **2026-10-31: move logic into the app, no hosting (owner).** Following an outside review: keep signed manifests, remove internal docs from downloads, move valuable text/logic into the native app, all in 1.24.30 (owner: "everything should be in 1.24.30"): Studio Skills Luau library and prompts move; the parser stays in the extension (owner chose, speed). Nothing may break startup or the updater. Ignore anything needing a server or money.
 - **2026-10-31: console capture and plazcode_logs (owner).** Also copy the AI site's own console warnings/errors (no debugger permission, no warning bar, Firefox too); the AI can read the logs itself with the read-only `plazcode_logs` command. Full DevTools via `chrome.debugger` was declined (yellow bar, Chromium only, very wide power).

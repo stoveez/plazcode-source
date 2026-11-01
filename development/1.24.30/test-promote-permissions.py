@@ -141,8 +141,10 @@ for name,value in shared.items():
  if relative.startswith(('core/','providers/')):
   firefox[relative]=value
   for prefix in ['PlazCode/PlazCode-Extension/','PlazCode/PlazCode-Extension-Firefox/']:native[prefix+relative]=value
-native['PlazCode/PlazCode-Extension/production-build.json']=(json.dumps({'channel':'release','public_key':'a'*64,'files':{}}).encode(),mode)
+native['PlazCode/PlazCode-Extension/production-build.json']=(json.dumps({'channel':'release','public_key':'a'*64,'release_variant':{'schema':1,'mark':'a'*16,'seed_sha256':'b'*64,'layout':1},'files':{}}).encode(),mode)
 promotion.verify_shared_code(shared,[native,dict(native)],firefox)
+variant_bad=copy.deepcopy(native);variant_row=json.loads(variant_bad['PlazCode/PlazCode-Extension/production-build.json'][0]);variant_row['release_variant']['mark']='c'*16;variant_bad['PlazCode/PlazCode-Extension/production-build.json']=(json.dumps(variant_row).encode(),mode)
+rejected(promotion.verify_shared_code,shared,[native,variant_bad],firefox)
 bad=dict(native);bad['PlazCode/PlazCode-Extension-Firefox/providers/clickup.js']=(b'stale composer',mode)
 rejected(promotion.verify_shared_code,shared,[bad],firefox)
 bad=dict(firefox);bad['core/locales/tr.json']=(b'stale locale',mode)
@@ -207,7 +209,7 @@ fixture_source={'PlazCode/protection.js':(loader,0)}
 fixture_native=[]
 for newline in [b'\r\n',b'\n']:
  expected=loader.replace(b'UNCONFIGURED_RELEASE_PUBLIC_KEY',public.encode(),1).replace(b'UNCONFIGURED_RELEASE_CHANNEL',b'release',1).replace(b'\n',newline)
- report={'public_key':public,'files':{}}
+ report={'public_key':public,'release_variant':{'schema':1,'mark':'a'*16,'seed_sha256':'b'*64,'layout':1},'files':{}}
  files={}
  for prefix in ['', 'PlazCode-Extension/', 'PlazCode-Extension-Firefox/']:
   relative=prefix+'protection.js';files['PlazCode/'+relative]=(b'verified transformed output',0)

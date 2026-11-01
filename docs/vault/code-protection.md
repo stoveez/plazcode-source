@@ -54,3 +54,8 @@ Limits, said plainly: someone who controls the PC can still patch the app itself
 - Proof: `development/1.24.30/test-text-pack.mjs` compares 1,000+ prompt, help and skill outputs from the moved code with the original source (byte-identical), checks safe loading before the app answers, and in CI also runs on the real packaged zip (minified + sealed). `test-release-verifier.mjs` proves the signed Linux app opens the sealed file and refuses unofficial extensions.
 - Not moved (owner chose): `core/parser.js` stays (generic, runs on every reply update). Also not moved: command descriptions the AI must see, and Ultra text that already ships openly in the UltraLab pack.
 - Trade-off (rule 9): text fixes in those three files now ship with the app, not by an extension reload alone.
+
+## 1.24.30 anti-copy completion (2026-11-01, final CI pending)
+Version/channel-specific build seed from the existing signing key controls the pack key/magic/layout/padding, hidden-text scrambling/fingerprints and independent-check arrangement. Native and Node implementations agree; incompatible variants are rejected. Signed core descriptors avoid changing the legacy manifest schema. Private function names are shortened while global/property/error contracts remain. No remote anti-copy server, app signing, account marks or new user steps. More checks raise patching cost; they cannot stop a device owner patching an unsigned binary. See anti-copy-plan.md and release-marks.md.
+
+Licence/branding review and owner-only takedown template are filed. Retained GPL licence versus no-public-source configuration requires review before external distribution; obfuscation does not change licence rights. No licensing text or earlier source release changed.

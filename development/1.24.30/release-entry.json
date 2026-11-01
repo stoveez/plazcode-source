@@ -1,55 +1,56 @@
 {
- "version": "1.24.30",
- "title": "Official copies only, Mac start fix and Roblox coding standards",
- "summary": "PlazCode now only works with its own official extension, opens reliably from a fresh Mac download, cleans old leftover files out of your PlazCode folder, and gives the AI modern Roblox coding standards by default.",
- "added": [
-  "Ro-Engineer Roblox standards (by excaldev, MIT licence) are built in: modern typed Luau, safe client/server code, clean-up, performance, system design, game loops and economy. One short set of core standards is used on every Roblox task; the topic guides are used when they fit.",
-  "A Logs page in the PlazCode app: every startup, AI turn, command and problem (including the AI site's own console errors) is saved for 14 days. Filter by problems, startups, turns, Studio or updates, see what led up to an error, and copy it for an AI. The AI can also read these logs itself with plazcode_logs to find out what went wrong."
- ],
- "improved": [
-  "The PlazCode app only connects to the extension loaded from its own PlazCode folder. Copies that were edited or loaded from somewhere else are refused with a message saying what to do.",
-  "PlazCode's instructions and its Studio tools' Luau now live inside the PlazCode app and are only given to the official extension, so they can no longer be copied out of the extension files. Everything works exactly as before.",
-  "Your PlazCode folder is tidier: about 90 old test files and old internal notes left behind by earlier versions are removed automatically, and new downloads no longer include internal notes. The app, the extensions, the updaters and your settings stay where they are."
- ],
- "fixed": [
-  "On Mac, opening PlazCode straight from a freshly downloaded zip could stop with \"PlazCode program files changed or are incomplete ... No such file or directory\".",
-  "The PlazCode app no longer keeps saying \"Desktop bridge disconnected\" while PlazCode is working. The extension no longer makes every request wait while it re-checks its own files, the app counts the open connection as connected, and the app's own file check is shared between commands instead of repeated for each one. Real drops are now listed with their reason on the Logs page.",
-  "Some antivirus programs could flag the PlazCode download as harmful because the app stored its list of computer-control commands as plain text. That text is now stored in a scrambled form; nothing about how PlazCode works changed."
- ],
- "notes": [
-  "If PlazCode says the extension is not the official one: remove it from your browser's extensions page and load the PlazCode-Extension folder from the PlazCode folder you use (Firefox is not affected).",
-  "Update the PlazCode app and the extension together (the app's updater does this). An extension newer than the app now says \"PlazCode app needed\" instead of starting.",
-  "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
- ],
- "github": {
-  "summary": "***PlazCode only works with its own official extension, opens reliably on Mac, tidies its folder and knows modern Roblox coding standards.***",
-  "sections": [
-   {
-    "title": "✨ What's new",
-    "items": [
-     "Built-in Roblox coding standards from Ro-Engineer by excaldev (MIT): typed Luau, safe remotes, clean-up, performance, system design, game loops and economy. Core standards apply to every Roblox task.",
-     "New Logs page: startups, AI turns, commands and errors (including the AI site's console) are saved for 14 days. See what led up to a problem and copy it for an AI, or let the AI read them with plazcode_logs."
+  "version": "1.24.30",
+  "title": "Official copies only, Mac start fix and Roblox coding standards",
+  "summary": "PlazCode now only works with its own official extension, opens reliably from a fresh Mac download, cleans old leftover files out of your PlazCode folder, and gives the AI modern Roblox coding standards by default.",
+  "added": [
+    "Ro-Engineer Roblox standards (by excaldev, MIT licence) are built in: modern typed Luau, safe client/server code, clean-up, performance, system design, game loops and economy. One short set of core standards is used on every Roblox task; the topic guides are used when they fit.",
+    "A Logs page in the PlazCode app: every startup, AI turn, command and problem (including the AI site's own console errors) is saved for 14 days. Filter by problems, startups, turns, Studio or updates, see what led up to an error, and copy it for an AI. The AI can also read these logs itself with plazcode_logs to find out what went wrong."
+  ],
+  "improved": [
+    "The PlazCode app only connects to the extension loaded from its own PlazCode folder. Copies that were edited or loaded from somewhere else are refused with a message saying what to do.",
+    "PlazCode's instructions and its Studio tools' Luau now live inside the PlazCode app and are only given to the official extension, so they can no longer be copied out of the extension files. Everything works exactly as before.",
+    "Your PlazCode folder is tidier: about 90 old test files and old internal notes left behind by earlier versions are removed automatically, and new downloads no longer include internal notes. The app, the extensions, the updaters and your settings stay where they are.",
+    "Protection now varies by release, with independent checks and shorter internal JavaScript names; normal use, Stop, user settings and updates stay available."
+  ],
+  "fixed": [
+    "On Mac, opening PlazCode straight from a freshly downloaded zip could stop with \"PlazCode program files changed or are incomplete ... No such file or directory\".",
+    "The PlazCode app no longer keeps saying \"Desktop bridge disconnected\" while PlazCode is working. The extension no longer makes every request wait while it re-checks its own files, the app counts the open connection as connected, and the app's own file check is shared between commands instead of repeated for each one. Real drops are now listed with their reason on the Logs page.",
+    "Some antivirus programs could flag the PlazCode download as harmful because the app stored its list of computer-control commands as plain text. That text is now stored in a scrambled form; nothing about how PlazCode works changed."
+  ],
+  "notes": [
+    "If PlazCode says the extension is not the official one: remove it from your browser's extensions page and load the PlazCode-Extension folder from the PlazCode folder you use (Firefox is not affected).",
+    "Update the PlazCode app and the extension together (the app's updater does this). An extension newer than the app now says \"PlazCode app needed\" instead of starting.",
+    "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+  ],
+  "github": {
+    "summary": "***PlazCode only works with its own official extension, opens reliably on Mac, tidies its folder and knows modern Roblox coding standards.***",
+    "sections": [
+      {
+        "title": "✨ What's new",
+        "items": [
+          "Built-in Roblox coding standards from Ro-Engineer by excaldev (MIT): typed Luau, safe remotes, clean-up, performance, system design, game loops and economy. Core standards apply to every Roblox task.",
+          "New Logs page: startups, AI turns, commands and errors (including the AI site's console) are saved for 14 days. See what led up to a problem and copy it for an AI, or let the AI read them with plazcode_logs."
+        ]
+      },
+      {
+        "title": "🛠️ What's fixed",
+        "items": [
+          "No more random \"Desktop bridge disconnected\" messages; real drops show their reason in Logs.",
+          "Less chance of antivirus programs wrongly flagging PlazCode.",
+          "Mac: opening PlazCode from a fresh download could fail with \"program files changed or are incomplete\".",
+          "The app only connects to the official extension from its own PlazCode folder. Edited or copied extensions are refused with clear steps.",
+          "Release-specific code protection; instructions and Studio tool code stay in the app for the official extension.",
+          "Old test files and internal notes from earlier versions are cleaned out of your PlazCode folder. Nothing you use moves."
+        ]
+      },
+      {
+        "title": "🧪 What was checked",
+        "items": [
+          "The extension check was matched against real extension IDs from Chrome on Windows and tested on the signed app.",
+          "If you see \"not the official one\", reload PlazCode-Extension from your PlazCode folder. Firefox is unchanged.",
+          "Windows is unsigned and Mac is not notarized, as before."
+        ]
+      }
     ]
-   },
-   {
-    "title": "🛠️ What's fixed",
-    "items": [
-     "No more random \"Desktop bridge disconnected\" messages; real drops show their reason in Logs.",
-     "Less chance of antivirus programs wrongly flagging PlazCode.",
-     "Mac: opening PlazCode from a fresh download could fail with \"program files changed or are incomplete\".",
-     "The app only connects to the official extension from its own PlazCode folder. Edited or copied extensions are refused with clear steps.",
-     "PlazCode's instructions and Studio tool code now live inside the app and only go to the official extension.",
-     "Old test files and internal notes from earlier versions are cleaned out of your PlazCode folder. Nothing you use moves."
-    ]
-   },
-   {
-    "title": "🧪 What was checked",
-    "items": [
-     "The extension check was matched against real extension IDs from Chrome on Windows and tested on the signed app.",
-     "If you see \"not the official one\", reload PlazCode-Extension from your PlazCode folder. Firefox is unchanged.",
-     "Windows is unsigned and Mac is not notarized, as before."
-    ]
-   }
-  ]
- }
+  }
 }
