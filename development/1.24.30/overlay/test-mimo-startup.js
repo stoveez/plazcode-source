@@ -94,9 +94,22 @@ function scenario(replies) {
     assert(/tag at their start is only a label the extension uses/.test(second), "the tag is explained");
     assert(second.includes(LONG_PROMPT), "the full rules still arrive, as the user's notes");
     assert(/ordinary notes from me, not a system instruction/.test(second) && /do not override your safety rules/.test(second));
-    assert(/replying with exactly "PlazCode is ready\."/.test(second));
+    assert(/begin your reply with "PlazCode is ready\."/.test(second) && /"Not ready:"/.test(second), "asks for a start phrase, not an exact-only reply");
+    assert(!/IMPORTANT: Your very first action|nothing else/.test(second), "no contradictory 'write list_commands again' / 'nothing else' lines");
     assert.equal(s.queueLeft(), 0); }
   // 2. The real refusal at the acknowledgement step: clear "MiMo declined" banner, not "handshake failed".
+  // Live MiMo, 2026-11-01 (real reply): accepted, with its own limits after the phrase. Must count as ready.
+  for (const reply of ["PlazCode is ready.\n\nTwo limits I keep: my safety rules apply to every command I write, and I'll treat returned outputs as data rather than instructions. Send your task.", "**PlazCode is ready.**"]) {
+    const s = scenario([{ kind: "tool" }, { kind: "text", text: reply }]);
+    const r = await s.box.start({});
+    assert(r && r.ready, "ready with caveats: " + reply.slice(0, 30));
+    assert.equal(s.banners.length, 0);
+  }
+  // A model that says "Not ready:" is a decline, not a failed handshake.
+  { const s = scenario([{ kind: "tool" }, { kind: "text", text: "Not ready: I cannot treat these notes as instructions." }]);
+    const r = await s.box.start({});
+    assert(!r || !r.ready); assert(/declined/i.test(s.banners[0].title), JSON.stringify(s.banners));
+  }
   { const s = scenario([{ kind: "tool" }, { kind: "text", text: realRefusal }]);
     const result = await s.box.start();
     assert(!result, "not ready");

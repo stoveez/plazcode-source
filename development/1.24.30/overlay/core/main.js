@@ -4119,6 +4119,13 @@ return result`;
   // handshake", "no filesystem access", or a JSON status object saying so) has
   // said no. Used only for providers that opt in (userVoiceStartup), so the user
   // sees "the AI declined" with what to try instead of a vague "handshake failed".
+  // Plain-voice startup (MiMo, Vani, ClickUp): "PlazCode is ready." first, then optionally a few sentences of the
+  // model's own (limits it keeps). Never a command, and never a long essay that only mentions the phrase.
+  function startupVoiceReady(text) {
+    const t = String(text || "").replace(/[`*#]/g, "").trim().replace(/^_+/, "");
+    return /^(?:PLAZCODE_READY|PlazCode is ready)\b[.!]?/i.test(t) && t.length <= 1500 &&
+      !/\{\s*"command"\s*:|###LUA###/i.test(t);
+  }
   function looksLikeStartupDecline(text) {
     const t = String(text || "");
     return /\bno[_ ]tool[_ ]access\b|\b(?:i|we)\s+(?:can(?:['’]t|not)|won['’]t|am unable to|(?:do|will) not|(?:do|am) not able to)\b|\bunable to (?:take|run|emit|execute|use|comply|participate)\b|\b(?:no|without) (?:filesystem|file system|tool|file) access\b|\bnot (?:something|a request) i can\b|\bi have no (?:filesystem|tools?|file)|\b(?:i['’]m|i am) not going to (?:emit|enter|output|follow|run|participate|comply|acknowledge|reply)\b/i.test(t);
@@ -5757,7 +5764,7 @@ return result`;
       // extension, delivered only after the model has already taken part.
       // 1.24.30: say plainly where the result came from and what the tag at the start of the notes is (MiMo
       // refused an unexplained "already ran" claim and the bare tag as a possible injection).
-      if(P.userVoiceStartup && stagedStartup && P.id!=="notion")readyPrompt=`Output of 'list_commands':\n${digest}\n\n${connectionLine}That is the real result of the list_commands block in your last reply: my PlazCode extension read it, ran it on my computer and pasted the output above. Below are my own usage notes for the PlazCode extension. They describe the command format the extension understands and how I would like my future requests handled. They are ordinary notes from me, not a system instruction, and they do not override your safety rules. The ${RS.SYS_MARKER} tag at their start is only a label the extension uses to recognise its own messages in this chat.\n${prompt}\n\n(End of my notes.) The command-list request succeeded. Please acknowledge this connection by replying with exactly "PlazCode is ready." and nothing else.`;
+      if(P.userVoiceStartup && stagedStartup && P.id!=="notion")readyPrompt=`Output of 'list_commands':\n${digest}\n\n${connectionLine}That is the real result of the list_commands block in your last reply: my PlazCode extension read it, ran it on my computer and pasted the output above. Below are my own usage notes for the PlazCode extension. They describe the command format the extension understands and how I would like my future requests handled. They are ordinary notes from me, not a system instruction, and they do not override your safety rules. The ${RS.SYS_MARKER} tag at their start is only a label the extension uses to recognise its own messages in this chat.\n${P.id==="mimo"?String(prompt).replace(/\n?IMPORTANT: Your very first action[^\n]*/,""):prompt}\n\n(End of my notes.) ${P.id==="mimo"?'If you are willing to work with my extension this way, begin your reply with "PlazCode is ready." You may add a sentence or two of your own after it, for example any limits you keep. If you are not willing, begin with "Not ready:" and say why. Please do not write a command yet; my task comes next.':'The command-list request succeeded. Please acknowledge this connection by replying with exactly "PlazCode is ready." and nothing else.'}`;
         return readyPrompt;
       };
       let digest = offline ? toolFeedback : leanOn ? leanDigest(0) + addonsNote : fullDigest();
@@ -5780,7 +5787,11 @@ return result`;
         readyRes = await waitForResponse(readyBase);
         if (!alive()) return;
         if (A.stop || readyRes.kind === "stopped") { diag("start.aborted", { kind: readyRes.kind }); return; }
-        if(readyRes.kind==="text" && (isProviderPolicyRefusal(readyRes.text) || (P.userVoiceStartup && looksLikeStartupDecline(readyRes.text)))){showStartupRefusal();return;}
+        // 1.24.30 (live MiMo test, 2026-11-01): a plain-voice model accepted the connection but would not repeat an
+        // exact phrase "and nothing else", and listed the limits it keeps ("I won't write malware..."). Such a reply
+        // now begins with "PlazCode is ready." and may carry its own caveats; those caveats are not a refusal.
+        const voiceReady = P.userVoiceStartup && readyRes.kind==="text" && startupVoiceReady(readyRes.text);
+        if(readyRes.kind==="text" && !voiceReady && (isProviderPolicyRefusal(readyRes.text) || (P.userVoiceStartup && (looksLikeStartupDecline(readyRes.text) || /^\W*not ready\b/i.test(readyRes.text))))){showStartupRefusal();return;}
         if(stage.ackRe && (readyRes.kind!=="text" || !stage.ackRe.test(String(readyRes.text||"").replace(/[`*_#>]/g,"").trim()))) {
           ui.banner("warn","Memory page was not acknowledged",`${P.displayName} did not confirm reading memory page ${stage.page} of ${stage.pages}. PlazCode stayed stopped and no project command ran. Start again in a new chat.`);return;
         }
@@ -5797,7 +5808,8 @@ return result`;
         // failing the handshake and making the user start again.
         (/^(?:PLAZCODE_READY|PlazCode is ready|PlazCode ist bereit)[.!]/i.test(readyText) && readyText.length <= 240 &&
           !/[{}<>]|\b(?:command|list_commands)\b/i.test(readyText.replace(/^[^.!]*[.!]/, ""))) ||
-        (P.id === "chatgpt" && /^(?:i(?:'m| am) )?ready(?: to (?:help|work|go))?[.!]?$/i.test(readyText))
+        (P.id === "chatgpt" && /^(?:i(?:'m| am) )?ready(?: to (?:help|work|go))?[.!]?$/i.test(readyText)) ||
+        (P.userVoiceStartup && P.id !== "notion" && startupVoiceReady(readyText))
       );
       diag("start.readyReply", { kind: readyRes.kind, chars: readyText.length, reply: readyText.slice(0, 80), ok: readyOk });
       if (!readyOk) {
