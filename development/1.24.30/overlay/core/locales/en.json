@@ -1091,5 +1091,7 @@
   "When a check finds a problem": "When a check finds a problem",
   "Tell the AI (recommended)": "Tell the AI (recommended)",
   "Undo edits with new syntax errors": "Undo edits with new syntax errors",
-  "Type problems and warnings are always only reported. Changes apply to the next edit.": "Type problems and warnings are always only reported. Changes apply to the next edit."
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "Type problems and warnings are always only reported. Changes apply to the next edit.",
+  "Open MiMo in the browser": null,
+  "MiMo": null
 }

@@ -1091,5 +1091,7 @@
   "When a check finds a problem": "Если проверка нашла проблему",
   "Tell the AI (recommended)": "Сообщить ИИ (рекомендуется)",
   "Undo edits with new syntax errors": "Отменять правки с новыми синтаксическими ошибками",
-  "Type problems and warnings are always only reported. Changes apply to the next edit.": "О проблемах с типами и предупреждениях только сообщается. Изменения действуют со следующей правки."
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "О проблемах с типами и предупреждениях только сообщается. Изменения действуют со следующей правки.",
+  "Open MiMo in the browser": "Открыть MiMo в браузере",
+  "MiMo": "MiMo"
 }

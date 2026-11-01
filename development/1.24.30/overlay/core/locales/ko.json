@@ -1091,5 +1091,7 @@
   "When a check finds a problem": "문제가 발견되면",
   "Tell the AI (recommended)": "AI에게 알리기(권장)",
   "Undo edits with new syntax errors": "새 구문 오류가 있는 수정 되돌리기",
-  "Type problems and warnings are always only reported. Changes apply to the next edit.": "타입 문제와 경고는 항상 알리기만 합니다. 변경 사항은 다음 수정부터 적용됩니다."
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "타입 문제와 경고는 항상 알리기만 합니다. 변경 사항은 다음 수정부터 적용됩니다.",
+  "Open MiMo in the browser": "브라우저에서 MiMo 열기",
+  "MiMo": "MiMo"
 }

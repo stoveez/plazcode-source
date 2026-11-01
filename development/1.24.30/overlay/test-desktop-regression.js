@@ -7,7 +7,7 @@ const baseline = {
   "core/config.js": "f55bf457a687822d3f5242e03e1e53d504fe989c",
   "core/headless-builder.js": "b343a897a17fc05d79ab469aeea55c8abaa8c4e5",
   "core/luau-knowledge.js": "234c1ca2155d3ef5f38927d85893b70fd6bde6e6",
-  "core/main.js": "5715c9c81f983c06fe4a8be02cf5c31a9d2d5b9e",
+  "core/main.js": "3a363cc10c5f90e5bdfb43589dced77708bab061",
   "core/motion-interchange.js": "038afa13a5b59c030a809abf7d617a36f2fae82d",
   "core/motion-preview.js": "ae0ab0526fbc762dfbf7cae9c248239e217e7a2f",
   "core/motion-tools.js": "8ac81b4a4a9f634fef9285aeee06db4a15af578e",
@@ -34,7 +34,8 @@ const baseline = {
   "providers/qwen-net.js": "6073141989f67e4ad2dd57444af6f55e48ff0b71",
   "providers/qwen.js": "9c7ae960fb3942e8ce6f1712126af7645eb896b4",
   "providers/useai.js": "2d4da606476ef70e355bc8d3213b30f085f1fa4b",
-  "providers/vani.js": "08a77d54e855296cfbca5d1bb9b95b15f7a3220b"
+  "providers/vani.js": "08a77d54e855296cfbca5d1bb9b95b15f7a3220b",
+  "providers/mimo.js": "eb646868f18740dd64a7d429dad6aff742e162fb"
 };
 const requiredProviders = [
   "providers/clickup.js",
@@ -50,6 +51,7 @@ const requiredProviders = [
   "providers/crax.js",
   "providers/useai.js",
   "providers/vani.js",
+  "providers/mimo.js",
   "providers/oxalpha.js",
   "providers/notion.js"
 ];

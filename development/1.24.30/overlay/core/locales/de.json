@@ -1091,5 +1091,7 @@
   "When a check finds a problem": "Wenn ein Problem gefunden wird",
   "Tell the AI (recommended)": "KI informieren (empfohlen)",
   "Undo edits with new syntax errors": "Änderungen mit neuen Syntaxfehlern rückgängig machen",
-  "Type problems and warnings are always only reported. Changes apply to the next edit.": "Typprobleme und Warnungen werden immer nur gemeldet. Änderungen gelten ab der nächsten Bearbeitung."
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "Typprobleme und Warnungen werden immer nur gemeldet. Änderungen gelten ab der nächsten Bearbeitung.",
+  "Open MiMo in the browser": "MiMo im Browser öffnen",
+  "MiMo": "MiMo"
 }

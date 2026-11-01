@@ -1091,5 +1091,7 @@
   "When a check finds a problem": "عند العثور على مشكلة",
   "Tell the AI (recommended)": "إبلاغ الذكاء الاصطناعي (موصى به)",
   "Undo edits with new syntax errors": "التراجع عن التعديلات التي تضيف أخطاء صياغة",
-  "Type problems and warnings are always only reported. Changes apply to the next edit.": "مشكلات الأنواع والتحذيرات يُبلَّغ عنها فقط. تُطبَّق التغييرات على التعديل التالي."
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "مشكلات الأنواع والتحذيرات يُبلَّغ عنها فقط. تُطبَّق التغييرات على التعديل التالي.",
+  "Open MiMo in the browser": "فتح MiMo في المتصفح",
+  "MiMo": "MiMo"
 }

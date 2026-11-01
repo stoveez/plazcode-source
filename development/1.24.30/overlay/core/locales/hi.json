@@ -1091,5 +1091,7 @@
   "When a check finds a problem": "जाँच में समस्या मिलने पर",
   "Tell the AI (recommended)": "AI को बताएँ (सुझाया गया)",
   "Undo edits with new syntax errors": "नई सिंटैक्स गलती वाले बदलाव वापस लें",
-  "Type problems and warnings are always only reported. Changes apply to the next edit.": "टाइप समस्याएँ और चेतावनियाँ हमेशा सिर्फ़ बताई जाती हैं। बदलाव अगले संपादन से लागू होते हैं।"
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "टाइप समस्याएँ और चेतावनियाँ हमेशा सिर्फ़ बताई जाती हैं। बदलाव अगले संपादन से लागू होते हैं।",
+  "Open MiMo in the browser": "MiMo को ब्राउज़र में खोलें",
+  "MiMo": "MiMo"
 }

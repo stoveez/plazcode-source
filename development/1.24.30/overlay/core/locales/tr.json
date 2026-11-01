@@ -1091,5 +1091,7 @@
   "When a check finds a problem": "Bir sorun bulunduğunda",
   "Tell the AI (recommended)": "Yapay zekâya bildir (önerilen)",
   "Undo edits with new syntax errors": "Yeni söz dizimi hatası içeren düzenlemeleri geri al",
-  "Type problems and warnings are always only reported. Changes apply to the next edit.": "Tür sorunları ve uyarılar her zaman yalnızca bildirilir. Değişiklikler bir sonraki düzenlemede geçerli olur."
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "Tür sorunları ve uyarılar her zaman yalnızca bildirilir. Değişiklikler bir sonraki düzenlemede geçerli olur.",
+  "Open MiMo in the browser": "MiMo'ı tarayıcıda aç",
+  "MiMo": "MiMo"
 }

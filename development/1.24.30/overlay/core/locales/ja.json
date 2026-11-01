@@ -1091,5 +1091,7 @@
   "When a check finds a problem": "問題が見つかったとき",
   "Tell the AI (recommended)": "AI に伝える（推奨）",
   "Undo edits with new syntax errors": "新しい構文エラーのある編集を元に戻す",
-  "Type problems and warnings are always only reported. Changes apply to the next edit.": "型の問題と警告は常に報告のみです。変更は次の編集から適用されます。"
+  "Type problems and warnings are always only reported. Changes apply to the next edit.": "型の問題と警告は常に報告のみです。変更は次の編集から適用されます。",
+  "Open MiMo in the browser": "ブラウザーで MiMo を開く",
+  "MiMo": "MiMo"
 }

@@ -770,6 +770,7 @@
     { name: "Crax GPT", url: "https://gpt.crax.lol/" },
     { name: "Use AI", url: "https://use.ai/chat" },
     { name: "Vani AI", url: "https://c.vani.ai/c" },
+    { name: "MiMo", url: "https://aistudio.xiaomimimo.com/#/c" },
     { name: "Ox Alpha", url: "https://oxalpha.com/chat" },
     { name: "Ollama", url: "ollama://local" },
   ];
