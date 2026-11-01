@@ -75,6 +75,11 @@ if osname!='Linux':(package/'README.md').write_text(
 # recomputed for every file it lists so no checksum describes an old file.
 subprocess.run(['python',str(source/'release-tools/build-firefox.py'),str(source/'PlazCode-Extension'),str(package/'PlazCode-Extension-Firefox'),str(output/'PlazCode-Firefox-in-package.zip')],check=True)
 (output/'PlazCode-Firefox-in-package.zip').unlink()
+# 1.24.30 (owner: a tester's Defender blocked the 1.24.29 zip as "Trojan"): the SyphoDev pack's own installers are
+# for Claude Code, PlazCode never runs them, and install.ps1 uses -ExecutionPolicy Bypass, the signal behind the
+# 1.24.23 "Virus detected" block. They are left out of downloads (both browser folders); the skills stay complete.
+for folder in ['PlazCode-Extension','PlazCode-Extension-Firefox']:
+ for name in ['install.ps1','install.sh']:(package/folder/'starter-skills/syphodev'/name).unlink(missing_ok=True)
 sums=package/'SHA256SUMS.txt'
 if sums.exists():
  listed=[line.split(None,1)[1].strip().lstrip('*') for line in sums.read_text().splitlines() if line.strip()]

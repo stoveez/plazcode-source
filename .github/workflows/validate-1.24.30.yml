@@ -422,15 +422,34 @@ jobs:
           if (-not $status.AntivirusEnabled) { 'Defender not enabled on this runner; no clean verdict claimed.' | Out-File defender-result.txt; exit 0 }
           $scanner=Get-ChildItem 'C:/ProgramData/Microsoft/Windows Defender/Platform/*/MpCmdRun.exe' | Sort-Object FullName | Select-Object -Last 1
           if (-not $scanner) { throw 'Defender enabled but scanner unavailable.' }
+          # 1.24.30: testers' PCs ask Microsoft's cloud for a verdict; an offline runner never sees those (1.24.29 passed
+          # here and was then blocked as "Trojan" on a tester's PC). Turn cloud checks on for this throwaway runner;
+          # samples are never uploaded (SubmitSamplesConsent 2 = never send).
+          $cloud='on'
+          try { Set-MpPreference -MAPSReporting Advanced -SubmitSamplesConsent 2 -CloudBlockLevel High -CloudExtendedTimeout 50 -ErrorAction Stop } catch { $cloud='unavailable: '+$_.Exception.Message }
           $zip=Resolve-Path '../../artifacts/PlazCode-1.24.30-development.zip'
+          $lean=Resolve-Path '../../artifacts/PlazCode-1.24.30-test-lean.zip'
           Get-FileHash $zip -Algorithm SHA256 | Format-List | Out-File defender-package-sha256.txt
           Update-MpSignature -ErrorAction Stop
           $status=Get-MpComputerStatus -ErrorAction Stop
           Get-FileHash PlazCode.exe -Algorithm SHA256 | Format-List | Out-File defender-executable-sha256.txt
           $status | Select-Object AMProductVersion,AMEngineVersion,AntivirusSignatureVersion,AntivirusSignatureLastUpdated | ConvertTo-Json | Out-File defender-engine.json
-          Expand-Archive $zip -DestinationPath defender-scan
-          & $scanner.FullName -Scan -ScanType 3 -File "$PWD/defender-scan" -DisableRemediation 2>&1 | Tee-Object defender-result.txt
-          if ($LASTEXITCODE -ne 0) { throw "Defender scan failed or reported a detection ($LASTEXITCODE)." }
+          "Cloud protection: $cloud" | Out-File defender-result.txt
+          Expand-Archive $lean -DestinationPath defender-scan
+          $found=@()
+          foreach ($target in @("$zip","$lean","$PWD/defender-scan")) {
+            $out = & $scanner.FullName -Scan -ScanType 3 -File $target -DisableRemediation 2>&1 | Out-String
+            $code = $LASTEXITCODE
+            "== $target (exit $code)`n$out" | Out-File -Append defender-result.txt
+            if ($code -ne 0) { $found += ($out -split "`n" | Where-Object { $_ -match 'Threat\s*:|Resources|file\s*:|containerfile' }) ; $found += "exit $code on $target" }
+          }
+          Get-Content defender-result.txt
+          if ($found.Count) {
+            $names = (Get-MpThreatDetection -ErrorAction SilentlyContinue | ForEach-Object { (Get-MpThreat -ThreatID $_.ThreatID -ErrorAction SilentlyContinue).ThreatName + ' -> ' + ($_.Resources -join '; ') }) -join ' | '
+            $message = (($found + $names) -join ' ').Replace("`r",' ').Replace("`n",' ')
+            Write-Output "::error title=Microsoft Defender flagged the package::$message"
+            throw "Defender reported a detection: $message"
+          }
       - name: Build both macOS architectures
         if: runner.os == 'macOS'
         working-directory: build-src-1.24.30/PlazCode

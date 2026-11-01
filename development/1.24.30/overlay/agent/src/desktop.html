@@ -1297,7 +1297,7 @@ __PLAZCODE_VERSION_UI__
         Status(Shown + " / " + Total);
       }).catch(function (E) { Status(String(E && E.message || E)); });
     }
-    function Bind() {
+    function Bindlogs() {
       if (Bound) return; Bound = true;
       Toarray(document.querySelectorAll("#page-logs [data-lg-filter]")).forEach(function (Chip) {
         Chip.onclick = function () { Filter = Chip.getAttribute("data-lg-filter"); Toarray(document.querySelectorAll("#page-logs [data-lg-filter]")).forEach(function (C) { C.setAttribute("aria-pressed", String(C === Chip)); }); Loadevents(true); };
@@ -1307,7 +1307,7 @@ __PLAZCODE_VERSION_UI__
       Byid("logsCopyDay").onclick = function () { var B = Byid("logsCopyDay"); Api("/api/logs/export?" + Query_({day: Day})).then(function (R) { return Copy(R.text || ""); }).then(function (Ok) { B.textContent = Ok ? "Copied" : "Copy day for AI"; window.setTimeout(function () { B.textContent = "Copy day for AI"; }, 1800); }).catch(function (E) { Status(String(E && E.message || E)); }); };
     }
     function Refresh() {
-      Bind();
+      Bindlogs();
       return Api("/api/logs/days").then(function (R) { Renderdays(R.days || []); return Loadevents(true); }).catch(function (E) { Status(String(E && E.message || E)); });
     }
     return {refresh: Refresh};
