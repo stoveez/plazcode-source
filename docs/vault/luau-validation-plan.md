@@ -45,3 +45,16 @@ Technology: luau-lsp (main engine, Roblox API intelligence, dependency-aware dia
 3. Tests: Rust unit tests, JS tests for the command and loop (max attempts, Stop mid-loop, original preserved on failure), real `luau-analyze`/luau-lsp in CI on Linux/Windows/Mac, a negative test that generated code is never executed. Update `docs/vault/build-and-tests.md`.
 4. Docs for the AI: add the new commands to the startup prompts (these now live in the sealed text pack: `core/config.js`, `lean-startup.js`; re-run `test-text-pack.mjs`) and to `plazcode_help`.
 5. Release notes in plain words in `development/1.24.30/release-entry.json` (GitHub body stays under 2,000 characters).
+
+## Safety rules added by the owner (2026-10-31, second message)
+Validation must never make PlazCode's existing tools worse. Risks and the prevention for each:
+| Risk | Prevention |
+|---|---|
+| Slower tool calls | Analysis runs asynchronously with a hard timeout; a timeout or analyzer crash never fails the edit |
+| AI tool-call loops | At most 2-3 automatic repair attempts |
+| Existing tools stop working | Existing tool names and JSON schemas stay unchanged (new fields only if optional); the dispatcher is not rewired |
+| Excess tokens | Compact diagnostics only, never raw analyzer output |
+| Edit commands fail unexpectedly | Validation is advisory first; blocking is a switch |
+| Several AI agents edit at once | Per-script locks and revision checks (refuse to apply if the script changed since it was staged) |
+Do NOT make every `edit_file`, `execute_luau` or Studio command wait on the analyzer. Backward compatibility is a strict requirement and gets its own tests before automatic validation is on by default.
+Owner's suggested rollout: (1) `analyze_luau` as an optional new tool; (2) background validation after edits that never blocks a successful call; (3) transactional editing and automatic repair as opt-in once proven. This sits alongside the earlier approval that syntax errors block: see the open decision recorded in NOW.md.
