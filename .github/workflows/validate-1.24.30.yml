@@ -247,7 +247,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    # GitHub's arm64 pool failed to acquire a runner (41492949796).
+    # Intel builds still compile and package BOTH Mac architectures below.
+    runs-on: ${{ matrix.os == 'macos-latest' && 'macos-15-intel' || matrix.os }}
     timeout-minutes: 45
     env:
       PYTHONUTF8: '1'

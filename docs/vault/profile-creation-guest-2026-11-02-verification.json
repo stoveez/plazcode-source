@@ -1,5 +1,5 @@
 {
-  "state": "awaiting_final_hosted_packages",
+  "state": "awaiting_intel_runner_replacement_ci",
   "program_source": "52b9d197122ccd7b68a9a3ee6268824c91114e10",
   "local_rust": {
     "library_passed": 5,
@@ -56,7 +56,7 @@
   "stable_published": false,
   "artifacts": [],
   "superseded_run_id": 41488995618,
-  "run_id": 41492949796,
+  "run_id": null,
   "published_release": {
     "version": "1.24.30",
     "published_at": "2026-11-02T15:27:00Z",
@@ -69,5 +69,13 @@
     "macos_executable_sha256": "e00966e7648f092fbaa32e9da93e0effc8b688ac5fb073f15fce29b813a1b7c8",
     "macos_executable_matches_prior_69a4f8c_test": true
   },
-  "affected_logs": "Owner cannot obtain logs from the other PCs; original host trigger remains unconfirmed. Do not keep asking or claim it was reproduced."
+  "affected_logs": "Owner cannot obtain logs from the other PCs; original host trigger remains unconfirmed. Do not keep asking or claim it was reproduced.",
+  "capacity_failed_run_id": 41492949796,
+  "mac_runner_issue": {
+    "job_id": 125441718492,
+    "steps": 0,
+    "cause": "GitHub arm64 runner capacity; job not acquired",
+    "fallback": "macos-15-intel",
+    "universal_build_preserved": true
+  }
 }
