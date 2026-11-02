@@ -22,7 +22,7 @@ const Memory = require("./core/memory.js");
   assert(!/## Now/.test(n.content), "not called Now");
   assert(/^- \[x\] Build rounds \(started \d\d:\d\d, done \d\d:\d\d\)$/m.test(n.content) && /^- \[\/\] Add shop \(started \d\d:\d\d\)$/m.test(n.content) && /^- \[ \] Test it$/m.test(n.content), "done, in progress and pending tasks");
   assert(/Latest request: Now add a shop/.test(n.content) && /Latest reply: Done\. Added RoundService/.test(n.content), "summary has latest request and reply; command JSON skipped");
-  assert(/Commands run: execute_luau ×2/.test(n.content), "tool counts");
+  assert(!/Commands run:|Output of|execute_luau/.test(n.content), "tool logs and counts never become memory key points");
   assert(!/abcdefgh12345678|api_key/i.test(n.content + n.title), "secrets are redacted");
   assert(!/startup text/.test(n.content), "startup turns are not requests");
   assert.deepStrictEqual(n.frontmatter.tags, ["chat", "previous-chat"]);

@@ -47,6 +47,11 @@ impl State {
                 self.active=Some(lease.clone());
                 Ok(json!({"ok":true,"allowed":true,"id":token,"valid_until":lease.until}))
             }
+            "validate" => {
+                let token=id(req,"id")?;
+                let allowed=self.blocked<=now && self.active.as_ref().is_some_and(|l|l.owner==owner && l.id==token && l.until>now);
+                Ok(json!({"ok":true,"allowed":allowed}))
+            }
             "finish" => {
                 let token=id(req,"id")?;
                 if self.active.as_ref().is_some_and(|l| l.owner==owner && l.id==token) {

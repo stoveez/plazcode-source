@@ -23,11 +23,13 @@ const PlazCodeReliability = (() => {
       /^PlazCode startup check: reply with exactly one fenced json code block/.test(t) ||
       /^Please use one fenced json code block containing \{"command":"list_commands"\} for my PlazCode connection request/.test(t);
   }
-  function userRequest(row) {
-    const text=String(row?.text||'').trim();
-    return row?.role==='user' && !!text && !/⟦RS-SYS⟧|^Output of ['"]|^PLAZCODE CONTINUATION REFERENCE|\(System note:/.test(text) &&
-      !/^PlazCode protocol message\nThe complete PlazCode message is in the attached file /.test(text) && !startupMessage(text);
+  function protocolMessage(text) {
+    const t=String(text||'').trim();
+    return !t || startupMessage(t) || /⟦RS-SYS⟧|^PLAZCODE MEMORY, PAGE|^PLAZCODE CONTINUATION REFERENCE|\[SYSTEM_STATE:|\(System note:/.test(t) ||
+      /^(?:[a-z][a-z0-9_]*\s*[·|]\s*)?(?:result\s*)?(?:Output of ['"]|ERROR calling ['"])/i.test(t) ||
+      /^PlazCode protocol message\s+The complete PlazCode message is in the attached file /.test(t);
   }
+  function userRequest(row) {return row?.role==='user' && row.injected!==true && !protocolMessage(row.text);}
   function canContinue(transfer) {
     if(typeof transfer?.handoff?.has_user_request==='boolean')return transfer.handoff.has_user_request;
     // Legacy bounded exports wrap excerpts inside one synthetic USER message.
@@ -74,15 +76,13 @@ const PlazCodeReliability = (() => {
   }
   function chatNote({provider='Chat',chatId='',project='',rows=[],plan=null,times={},startedAt=Date.now(),now=Date.now(),status='open'}={}){
     const requests=rows.filter(r=>userRequest(r)).map(r=>redact(r.text)).filter(x=>!/^Active task request:|^Unsent Co-work request:/.test(x));
-    const replies=rows.filter(r=>r&&r.role==='assistant').map(r=>clip(redact(r.text),400)).filter(x=>x&&!/^\{\s*"command"|^\{\s*"tool"/.test(x)&&!/^###LUA###/.test(x));
-    const tools={};for(const r of rows){const m=r&&r.role==='user'&&/^Output of '([^']+)'/.exec(String(r.text||''));if(m)tools[m[1]]=(tools[m[1]]||0)+1;}
-    const toolText=Object.entries(tools).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([n,c])=>n+' ×'+c).join(', ');
+    const replies=rows.filter(r=>r && r.role==='assistant' && !protocolMessage(r.text) && !/"(?:command|tool)"\s*:\s*"|###\s*(?:lua|mcp_tool)|^PlazCode is ready[.!]/i.test(String(r.text||''))).map(r=>clip(redact(r.text),400)).filter(Boolean);
     const title=clip(requests[0]||'Chat',60)||'Chat';
     const summary=['First request: '+clip(requests[0]||'(none yet)',300)];
     if(requests.length>1)summary.push('Latest request: '+clip(requests[requests.length-1],300));
     if(replies.length)summary.push('Latest reply: '+replies[replies.length-1]);
     const points=requests.slice(-8).map(r=>'- Asked: '+clip(r,160));
-    if(toolText)points.push('- Commands run: '+toolText);
+    // Tool counts/logs are transport history, not user key points or learned facts.
     const content=redact(['# '+title,'','> [!info] [[Home]] · Previous chat','> Read this when: the user continues this chat. PlazCode saved it and keeps it up to date; put your own notes in a separate note.','','## Summary',summary.join('\n'),'','## Key points',points.length?points.join('\n'):'- (Nothing yet.)','',tasksSection(plan&&plan.items,times)].join('\n')).slice(0,6000);
     return {title,content,frontmatter:{tags:['chat','previous-chat'],origin:'previous-chat',chat_id:clip(chatId,200),provider:clip(provider,40),project:clip(project,80),status,started:new Date(startedAt).toISOString(),last_active:new Date(now).toISOString()}};
   }
@@ -94,6 +94,6 @@ const PlazCodeReliability = (() => {
     const keys=Object.keys(times);if(keys.length>60)for(const k of keys.slice(0,keys.length-60))delete times[k];
     return times;
   }
-  return {createBudget,visual,fingerprint,userRequest,startupMessage,canContinue,handoff,continuationScene,redact,chatNotePath,isChatNotePath,tasksSection,chatNote,trackTimes,CHAT_DIR};
+  return {createBudget,visual,fingerprint,protocolMessage,userRequest,startupMessage,canContinue,handoff,continuationScene,redact,chatNotePath,isChatNotePath,tasksSection,chatNote,trackTimes,CHAT_DIR};
 })();
 if(typeof module!=='undefined'&&module.exports)module.exports=PlazCodeReliability;

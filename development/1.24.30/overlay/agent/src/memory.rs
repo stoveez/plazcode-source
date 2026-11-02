@@ -35,6 +35,7 @@ impl Store {
                 anyhow::ensure!(action != "remember" || next.automatic, "Automatic memory is off.");
                 let text = req["text"].as_str().unwrap_or("").trim();
                 anyhow::ensure!(!text.is_empty(), "Memory cannot be empty.");
+                if action=="remember" {if let Some(reason)=crate::learning::rejection(&req,text,2000){anyhow::bail!(reason);}}
                 let given_title = req["title"].as_str().unwrap_or("").trim().to_string();
                 anyhow::ensure!(given_title.chars().count() <= 120, "Memory title is limited to 120 characters.");
                 if action == "edit" {
@@ -85,6 +86,9 @@ pub static STORE:once_cell::sync::Lazy<ProfileMemory>=once_cell::sync::Lazy::new
 pub async fn get() -> axum::Json<Memory> { axum::Json(STORE.snapshot()) }
 pub async fn post(axum::Json(req): axum::Json<Value>) -> axum::response::Response {
     use axum::response::IntoResponse;
+    if req["action"].as_str()==Some("remember") && STORE.snapshot().automatic {
+        if let Some(reason)=crate::learning::rejection(&req,req["text"].as_str().unwrap_or(""),2000){return axum::Json(json!({"ok":true,"skipped":true,"reason":reason,"memory":STORE.snapshot()})).into_response();}
+    }
     match STORE.update(req) {
         Ok(memory) => axum::Json(json!({"ok":true,"memory":memory})).into_response(),
         Err(error) => (axum::http::StatusCode::BAD_REQUEST, axum::Json(json!({"ok":false,"error":error.to_string()}))).into_response(),

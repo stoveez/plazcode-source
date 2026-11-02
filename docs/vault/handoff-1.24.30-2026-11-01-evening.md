@@ -1,3 +1,6 @@
+
+**WIP, newest 2026-11-02:** automatic-learning draft now filters decorated startup/tool logs from chat summaries, omits tool counters, requires supporting quotes for current-client automatic memory/vault writes, scopes verified read evidence to the current project/chat/session, and reports skipped notes honestly. Manual notes remain editable; no existing data deleted. Added last-moment native lease validation after another client can revoke it. Syntax checks pass; new tests/full checks still pending. New Windows/Mac test builds required after completion.
+
 # 1.24.30 handoff for Codex — 2026-11-01 evening (Claude out of usage)
 
 Branch `claude/plazcode-dev` only. No publish/merge without the owner's clear "yes". Commits: stoveez name only, no email, no Co-Authored-By/Claude-Session/"Generated with" lines. Read `docs/NOW.md`, then this note.

@@ -1,6 +1,8 @@
 # NOW
 Updated: 2026-11-02. Branch `claude/plazcode-dev`; no helper agents.
 
+**WIP, newest 2026-11-02:** automatic-learning draft now filters decorated startup/tool logs from chat summaries, omits tool counters, requires supporting quotes for current-client automatic memory/vault writes, scopes verified read evidence to the current project/chat/session, and reports skipped notes honestly. Manual notes remain editable; no existing data deleted. Added last-moment native lease validation after another client can revoke it. Syntax checks pass; new tests/full checks still pending. New Windows/Mac test builds required after completion.
+
 **Newest: WIP — owner authorized all DeepSeek pacing-gap fixes plus Learn as you work pollution.** Audit reproduced image-send click bursts (21 clicks in 25 seconds), sends after Stop/chat change, independent tab/reload state, unpaced Continue and eight automatic retries on eight rate notices. Manual sends are uncounted; library failure fallback can bypass the guard. Normal 8–9.8-second routine pacing tests pass. No live account traffic was sent. [Plan and findings](vault/deepseek-safety-followup-2026-11-02.md), [reproduction evidence](vault/deepseek-pacing-audit-2026-11-02.json).
 
 **Memory screenshot traced:** reliability.chatNote itself creates the Summary/First request/Key points shape. main.saveChatNote saves it under 11 Chats even when AI learning is off; filtering misclassifies decorated startup/tool output. Need clean history extraction/classification, isolate continuation from long-term learning, and tighten AI automatic memory/vault writes. Preserve user-authored notes/data and existing continuation behavior.

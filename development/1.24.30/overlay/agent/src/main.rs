@@ -77,6 +77,7 @@ mod security;
 mod integrity;
 mod preferences;
 mod provider_pacing;
+mod learning;
 mod profile_paths;
 mod accounts;
 mod profile_picture;

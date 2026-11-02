@@ -22,3 +22,5 @@ Evidence: deepseek-pacing-audit-2026-11-02.json; isolated harness /workspace/pla
 
 ## Current implementation status
 Native common coordinator chosen and written (provider_pacing.rs), plus existing-authenticated native route and DeepSeek-only background relay. Three native coordinator Rust tests passed. First provider/core integration draft is written; new behavioral/integration tests and review next. Memory filtering remains. Timing is shared across Chrome/Firefox/tabs/profiles on the same computer and persisted in install root; no chat text stored. Provider actual-commit/cancellation/rate integration and learning/chat-note fixes remain. New full test builds explicitly requested after completion.
+
+Automatic-learning draft is wired through both classic memory and vault, with skip responses and current-chat/project evidence scope. Last-moment lease validation added. Not yet fully tested; focused tests and full build remain.

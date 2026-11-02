@@ -842,6 +842,10 @@ const RSProvider = (() => {
       }
       assertSendOwner(job);
       if(Date.now()>=lease.valid_until)throw sendError("The send permission expired while the page was busy. Nothing was sent.");
+      // A manual send or a limit in another tab/browser can revoke a grant while this page is awaiting it.
+      const permission=await pacing({action:"validate",id:job.id});
+      if(!permission.allowed)throw sendError("Another DeepSeek message or limit cancelled this send permission. Nothing was sent.");
+      assertSendOwner(job);
       // Re-read after every await: a former send button may now be Stop, or belong to another draft.
       const live=job.continue?findContinueBtn():getSendBtn();
       if(!live || (!job.continue && (isStopBtn(live) || safeRead(()=>live.getAttribute("aria-disabled"),null)==="true")))throw sendError("DeepSeek's send control changed. Nothing was sent.");

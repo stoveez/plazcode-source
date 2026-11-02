@@ -113,7 +113,7 @@ fn slug(text: &str) -> String {
     let out = out.trim_matches('-').to_string();
     if out.is_empty() { "note".into() } else { out }
 }
-fn refuse_secrets(label: &str, text: &str) -> anyhow::Result<()> {
+pub(crate) fn refuse_secrets(label: &str, text: &str) -> anyhow::Result<()> {
     for pattern in SECRETS.iter() {
         anyhow::ensure!(
             !pattern.is_match(text),
@@ -489,7 +489,7 @@ updated: {DATE}
 # Now
 
 > [!info] [[Home]] · Now
-> Read this when: starting any chat. This is the live note: where the work stands right now. Rewrite it (mode replace) at the end of every job. Keep it under 1,500 characters.
+> Read this when: starting any chat. This is an optional reference note. Chat continuation is saved separately by PlazCode. Save only supported lasting knowledge; do not rewrite this after each job.
 
 - Project:
 - Last job:
@@ -959,6 +959,7 @@ fn do_write(root: &Path, req: &Value, settings: &Settings) -> anyhow::Result<Val
     let content = text_field(req, "content").replace("\r\n", "\n");
     anyhow::ensure!(!content.trim().is_empty(), "Give the note text in content.");
     refuse_secrets("note text", &content)?;
+    if req["ai"].as_bool()==Some(true) {if let Some(reason)=crate::learning::rejection(req,&content,4000){return Ok(json!({"ok":true,"skipped":true,"reason":reason}));}}
     let exists = full.is_file();
     let mut note = if exists { parse(&fs::read_to_string(&full)?) } else { Parsed::default() };
     match mode {

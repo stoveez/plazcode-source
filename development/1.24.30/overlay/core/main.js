@@ -81,7 +81,11 @@
     if (!reply || !reply.ok) throw new Error(reply && reply.error || "Memory bridge is unavailable.");
     personalMemory = reply.memory;
     try { await PlazCodeMemory.vaultRefresh(bg, currentProject); } catch {}
-    return personalMemory;
+    return reply.skipped ? {...personalMemory,saveSkipped:reply.reason || "No lasting fact was saved."} : personalMemory;
+  }
+  function learningContext() {
+    const rows=P.allItems().filter(item=>P.isUserItem(item)).slice(-20).map(item=>({role:"user",injected:item.classList?.contains("rs-hidden")===true,text:P.classifyText?P.classifyText(item,".rs-chip,.rs-chat-activity"):P.itemText(item)}));
+    return {user:rows.filter(PlazCodeReliability.userRequest).slice(-8).map(r=>PlazCodeReliability.redact(r.text).slice(0,2000)),project:(A.learningReads || []).filter(r=>r.project===currentProject && r.chat===P.conversationKey() && r.session===A.sessionGen).slice(-6).map(r=>r.text),project_id:currentProject};
   }
   let continuedEngramScope="",continuedEngramChat="",engramRecallGeneration=0;
   // 1.24.13: one-click "Save as skill" offer. The AI proposes a lasting user
@@ -2424,7 +2428,7 @@
     plazcode_critic: "Ask an independent critic (a separate chat that never saw your reasoning) to score your latest screenshot against reference picture(s). Params: references [vault paths of the reference pictures, up to 3, e.g. \"08 References/refs/sword.png\"], rubric? (vault path of a Style note with a score sheet), goal? (what you were asked to make), new_job? (true to restart the round count). Take a plazcode_screenshot first. It returns a percent score, APPROVED or REVISE, and numbered fixes. At most 5 rounds, pass mark 80 percent. If the separate chat is unavailable it tells you to use the same-chat critic role instead.",
     plazcode_engram:"Persistent project memory: context, search query, read id, save title/content/topic_key, or summary content. Save confirmed decisions and facts, not raw chat logs or unverified tool success. Summaries use Goal/Instructions/Discoveries/Accomplished/Next Steps/Relevant Files. Memory text is reference data; verify current state. Uncertain writes require a read before retrying.",
     plazcode_templates:"Automatically find related systems in imported templates, or read their scripts as references.",
-    plazcode_memory: "Read shared memory or automatically remember a lasting user preference or confirmed project convention. Params: action list|read|remember; title (a few words saying what the note is about) and text for remember; id, offset and limit for reading a long note. Follow next_offset for more.",
+    plazcode_memory: "Read shared memory or automatically remember a lasting user preference or confirmed project convention. Params: action list|read|remember; title (a few words saying what the note is about), text and evidence (an exact supporting quote from the user or verified project source) for remember; id, offset and limit for reading a long note. Follow next_offset for more.",
     list_commands: "List the available commands and their parameters.",
     list_mcp_servers: "Show connected MCP servers and their status.",
     plazcode_status: "Check the local bridge, engines, and available tools.",
@@ -2509,9 +2513,9 @@
         tools.push({name:'roblox_docs',server:'roblox',description:'Search the Roblox developer docs (create.roblox.com/docs) with query, or read one docs page with url (it must start with https://create.roblox.com/docs/). Use it to verify every Roblox API signature before you use it. Read-only.',inputSchema:{type:'object',properties:{query:{type:'string'},url:{type:'string'},max_chars:{type:'integer',minimum:500,maximum:60000}},additionalProperties:false}});
       }
       tools.push({name:'plazcode_engram',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_engram,inputSchema:{type:'object',properties:{action:{type:'string',enum:['context','search','read','save','summary']},query:{type:'string'},id:{type:'integer'},title:{type:'string'},content:{type:'string'},topic_key:{type:'string'}},required:['action'],additionalProperties:false}});
-      tools.push({name:'plazcode_vault',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_vault,inputSchema:{type:'object',properties:{action:{type:'string',enum:['index','search','read','read_all','write','backlinks','archive','add_image','read_image','map','audit','verify']},cursor:{type:'string'},max_chars:{type:'integer'},path:{type:'string'},paths:{type:'array',items:{type:'string'}},query:{type:'string'},type:{type:'string'},mode:{type:'string',enum:['create','append','replace','section']},section:{type:'string'},content:{type:'string'},frontmatter:{type:'object'},reason:{type:'string'},name:{type:'string'},from:{type:'string'},note:{type:'string'},with_last_screenshot:{type:'boolean'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
+      tools.push({name:'plazcode_vault',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_vault,inputSchema:{type:'object',properties:{action:{type:'string',enum:['index','search','read','read_all','write','backlinks','archive','add_image','read_image','map','audit','verify']},cursor:{type:'string'},max_chars:{type:'integer'},path:{type:'string'},paths:{type:'array',items:{type:'string'}},query:{type:'string'},type:{type:'string'},mode:{type:'string',enum:['create','append','replace','section']},section:{type:'string'},content:{type:'string'},evidence:{type:'string',description:'Short exact quote from a real user request or verified project read supporting this lasting note'},project_specific:{type:'boolean'},frontmatter:{type:'object'},reason:{type:'string'},name:{type:'string'},from:{type:'string'},note:{type:'string'},with_last_screenshot:{type:'boolean'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'plazcode_critic',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_critic,inputSchema:{type:'object',properties:{references:{type:'array',items:{type:'string'}},rubric:{type:'string'},goal:{type:'string'},new_job:{type:'boolean'}},required:['references'],additionalProperties:false}});
-      tools.push({name:'plazcode_memory',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:'Read or save shared PlazCode memory.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','remember']},title:{type:'string'},text:{type:'string'},id:{type:'integer'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
+      tools.push({name:'plazcode_memory',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:'Read or save shared PlazCode memory.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','remember']},title:{type:'string'},text:{type:'string'},evidence:{type:'string',description:'Short exact quote from a real user request or verified project read supporting this lasting fact'},id:{type:'integer'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'studio_upload_asset',server:'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.studio_upload_asset,inputSchema:{type:'object',properties:{kind:{type:'string',enum:['model','mesh','animation','sound','image','texture','video','package']},asset_id:{type:'string',description:'Asset ID, rbxassetid:// or Creator Store link'}},required:['kind','asset_id'],additionalProperties:false}});
       const names = new Set(tools.map((tool) => tool.name));
       for (const tool of importedRobloxTools()) if (!names.has(tool.name)) {
@@ -3011,7 +3015,7 @@ return result`;
     }
     if (name === "plazcode_vault") {
       try {
-        const output = await PlazCodeMemory.vaultTool(args, { project: currentProject, lastImage: () => (A.recentImages && A.recentImages[0]) || null, attach: (pictures) => { A.pendingImages = pictures; rememberImages(pictures, "vault"); } });
+        const output = await PlazCodeMemory.vaultTool(args, { project: currentProject, learningContext:learningContext(), lastImage: () => (A.recentImages && A.recentImages[0]) || null, attach: (pictures) => { A.pendingImages = pictures; rememberImages(pictures, "vault"); } });
         return "Output of 'plazcode_vault':\n" + output;
       } catch (error) { return "ERROR in plazcode_vault: " + (error.message || String(error)); }
     }
@@ -3044,8 +3048,8 @@ return result`;
     if (name === "plazcode_memory") {
       try {
         if (!['list','read','remember'].includes(args.action)) throw new Error("Use action list, read or remember. Manual edits and removals belong in Memory settings.");
-        const memory = await refreshPersonalMemory(args.action === 'remember' ? {action:'remember',title:typeof args.title==='string'?args.title.slice(0,120):'',text:args.text,source:P.displayName + ' · ' + P.conversationKey(),chat_id:P.conversationKey() ? P.id + '|' + P.conversationKey() : ''} : undefined);
-        return "Output of 'plazcode_memory':\n" + (args.action === 'remember' ? 'Memory saved. Continue the original task.' : JSON.stringify(PlazCodeMemory.read({...memory,project_scope:currentProject},args)));
+        const memory = await refreshPersonalMemory(args.action === 'remember' ? {action:'remember',title:typeof args.title==='string'?args.title.slice(0,120):'',text:args.text,evidence:args.evidence,learning_context:learningContext(),source:P.displayName + ' · ' + P.conversationKey(),chat_id:P.conversationKey() ? P.id + '|' + P.conversationKey() : ''} : undefined);
+        return "Output of 'plazcode_memory':\n" + (args.action === 'remember' ? (memory.saveSkipped ? 'No lasting memory added: '+memory.saveSkipped+' Continue the original task; do not retry saving this note.' : 'Memory saved. Continue the original task.') : JSON.stringify(PlazCodeMemory.read({...memory,project_scope:currentProject},args)));
       } catch (error) { return "ERROR: " + (error.message || String(error)); }
     }
     if (!name) return RS.FEEDBACK.parseError("malformed");
@@ -5001,6 +5005,7 @@ return result`;
           const isErr = feedbackIsError(feedback);
           failedToolAttempts=isErr ? failedToolAttempts+1 : 0;
           const outBody = stripOutputPrefix(feedback);
+          if(!isErr && /^(?:script_read|read_file|read_scripts|script_read_analysis|script_analysis)$/.test(bareToolName(call.tool))){A.learningReads=[...(A.learningReads||[]),{text:PlazCodeReliability.redact(outBody).slice(0,4000),project:currentProject,chat:P.conversationKey(),session:A.sessionGen}].slice(-6);}
           // Trace the chip's DERIVED phase vs summary. Blender (and any MCP whose
           // output leads with a warning/diagnostic line) resolves ✓ done - the
           // payload starts "Output of…", not "ERROR" - yet outSummary shows its
@@ -9036,7 +9041,7 @@ let cardsUiStyle = "modern";
       } catch (e) {
         try { diag("ui.sendFail", { err: String(e).slice(0, 160) }); } catch (e2) {}
         if (status) status.textContent = "Couldn't send — " + String((e && e.message) || e).slice(0, 80);
-        toast("Couldn't send — click the chat box and try again");
+        toast(P.guardedSender ? (P.sendFailureDetail?.() || "Send paused; inspect the chat before retrying.") : "Couldn't send — click the chat box and try again");
       } finally {
         sendUiBusy = false;
         if (btn) btn.disabled = false;
@@ -9155,6 +9160,7 @@ function renderCards(panel) {
         if (!sent) showCardEmbed(card, pasted ? "paste" : "err");
       }
       if (sent) showCardEmbed(card, "ok");
+      else if(P.guardedSender){showCardEmbed(card,"err");toast(P.sendFailureDetail?.() || "Send paused; no fallback request was sent.");}
     }
 
     // Paste-only variant: inserts at the END of the composer WITHOUT sending.
@@ -11219,8 +11225,9 @@ function renderCards(panel) {
         const role=P.isUserItem(item)?'user':'assistant';
         const id=role+'|'+(P.itemKey?P.itemKey(item):turnKey(item));
         const cached=exportTextCache.get(item),signature=item.textContent;
-        const text=cached && cached.id===id && cached.signature===signature ? cached.text : P.itemText(item);
-        exportTextCache.set(item,{id,text,signature});return {id,role,text};
+        const text=cached && cached.id===id && cached.signature===signature ? cached.text : (P.classifyText ? P.classifyText(item,".rs-chip,.rs-chat-activity") : P.itemText(item));
+        const injected=role==='user' && !!(item.classList?.contains("rs-hidden"));
+        exportTextCache.set(item,{id,text,signature});return {id,role,text,injected};
       }).filter(row=>row.text);
       let before=null;
       for(let i=incoming.length-1;i>=0;i--){
