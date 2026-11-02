@@ -1,13 +1,15 @@
 # NOW
 Updated: 2026-11-02. Branch `claude/plazcode-dev`; no helper agents.
 
-**Current: step 1 passed; baseline CI 41364800959 running. Luau timeout fix written, tests next.** Owner's order: (1) rerun the local JS suite once, investigate Notion protocol/small-paste and v115 failures against their prior state, fix real regressions, dispatch fresh full CI and cancel duplicate/old-version push runs; (2) fix Luau timeout handling with a Rust regression; (3) fix Arena stalled tool calls/raw Lua text; (4) normalize foreign/flat tool arguments and reduce Arena gaps between calls. Owner provided another raw-Lua screenshot and confirmed slow replies/tool-call gaps. No stable publication/merge authorized.
+**Newest: Luau timeout fix passed targeted and full native tests. Arena fixes are next.** Setup now survives a cancelled waiter, at most two CLI checks start together, and place-wide checking leaves real time for the one-file fallback. Advisory still releases the AI after 1.5 seconds; Blocking still has a 12-second limit. Background checks have 90 seconds. Added cancellation/setup and fallback-budget regressions. Targeted Luau: 9 passed; full native: 5 library + 271 agent passed, 2 ignored (not claimed as live Studio tests).
 
-**JS result:** full standard suite on current source passed with 0 failures, including both Notion tests. Notion source/tests are unchanged from 936a302. Explicit v115 run fails the same 7 stale checks on current and 936a302 (including hard-coded 1.18.7); it is already deliberately excluded. No runtime regression reproduced and no obsolete behavior restored.
+**Step 1 passed:** full standard JS suite has 0 failures, including both Notion tests. Those files are unchanged from 936a302. Legacy v115 has the same 7 obsolete failures on current and baseline source (including hard-coded 1.18.7); already excluded, no runtime regression reproduced. Evidence: `docs/vault/js-followup-1.24.30-verification.json`.
 
-**Next:** dispatch full CI on current dev, cancel duplicate/old-version push runs, then implement the Luau timeout fix. Update this note and evening handoff with every change/push. Current source Public for CI; no visibility change by the assistant. Deliver verified inner Windows/Mac test ZIPs, remind owner to restore Private with delivery. Account API stays Public independently.
+**CI:** fresh dispatched baseline run [41364800959](https://github.com/stoveez/plazcode-source/actions/runs/41364800959), source 2db1e5a, is running; duplicate old-version/push builds cancelled. It does not contain the Luau fix or forthcoming Arena changes. Dispatch a fresh final full build after fixes.
 
-**Claude's detailed scope/status:** [evening handoff](vault/handoff-1.24.30-2026-11-01-evening.md). Sidebar glow failure already fixed; MiMo 15-call live test dropped by owner. Preserve Claude's MiMo/Arena/checklist/workspace fixes. Earlier verified 936a302 and be1ecde test builds omit later changes; do not deliver those as current.
+**Next:** fix Arena stalls/raw Lua/unexpected stopped chips, then flat/foreign tool arguments and delays. Inspection found programmatic recovery Stop clicks enter Arena's user-stop hook; long bare command paragraphs also escape masking. Verify with real provider/core fixtures; connected-browser tools are unavailable this session, so do not claim a live Arena measurement. Preserve Claude's empty-turn recovery, safe send, MiMo/checklist/workspace/sidebar fixes; 15-call MiMo test remains dropped.
+
+No stable publication or release/main merge authorized. Source currently Public for CI; never change visibility. Deliver verified inner Windows/Mac test ZIPs through Drive and remind owner to restore Private at delivery. Account API stays Public separately. Update NOW and [evening handoff](vault/handoff-1.24.30-2026-11-01-evening.md) in every pushed change.
 
 ---
 Previous session detail (historical):

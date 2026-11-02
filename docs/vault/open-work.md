@@ -190,3 +190,5 @@ Owner explicitly does not want source ZIP distribution. Run 41335729270 cancelle
 - Codex resumed 4f0b060: investigate three JS failures before fresh CI, then Luau timeout and Arena tool recognition/flat arguments/latency. Owner supplied another raw-Lua screenshot. See evening handoff and NOW for current state; previous build-delivery entries are historical.
 
 - Follow-up step 1: full local JS suite 0 failures (both Notion tests pass unchanged); v115 has 7 identical legacy failures on 936a302/current and remains intentionally excluded. No runtime regression reproduced. Fresh CI and Luau/Arena fixes next.
+
+- 2026-11-02 follow-up: Luau timeout/setup/fallback fix passed 9 targeted and full native tests (5 + 271 passed, 2 ignored). Arena stall, raw code, accidental recovery-as-user-stop and tool argument/latency fixes in progress; final CI/test ZIPs still pending.

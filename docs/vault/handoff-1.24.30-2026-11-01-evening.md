@@ -43,3 +43,8 @@ F. Optional: "Call N of 15" progress notes advancing the checklist (offered, not
 
 ## Codex Luau WIP (2026-11-02)
 Baseline CI 41364800959 runs on 2db1e5a; no duplicate active runs. Implemented reserved fallback time, 90s background limit (1.5s advisory/12s blocking return unchanged), cancellation-safe shared checker installation, two fallback slots and temp-source cleanup. Rust regression tests written; compile/test next. Arena raw text/hangs/automatic stops and argument/latency fixes still pending.
+
+### 2026-11-02 — Luau timeout step verified
+- Targeted `luau_check::tests`: 9 passed with real pinned LSP/Roblox definitions. Full native suite: 5 library + 271 agent passed, 2 ignored. No live Studio claim.
+- Installer task survives cancellation of its caller, CLI process starts limited to two, place-wide primary reserves up to 30 seconds for fallback, background deadline 90 seconds. Advisory 1.5 seconds / Blocking 12 seconds and cancellation/profile boundaries unchanged.
+- Arena inspection next: its click hook currently interprets programmatic recovery Stop as user Stop (sets A.stop and userStopped); long bare Lua/JSON paragraphs over 600 chars are not hidden. Need behavioral fixtures and performance fix. No connected-browser tool available in this session; report live verification limitation honestly.
