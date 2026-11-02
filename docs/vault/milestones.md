@@ -1,3 +1,11 @@
+---
+title: Milestones (finished work)
+
+updated: 2026-11-02
+---
+## 2026-11-02 — cross-site Continue project source fix, focused tests PASS
+Startup-only visits no longer veto saved work; outgoing chat saves after focus loss and on pagehide, including while an archive write is pending. Same-chat offers blocked, selected-source note context only and new-project choices survive desktop recovery. Full regression pending; no new ZIP/release. [Details](continuation-cross-site-2026-11-02.md).
+
 ## 2026-11-02 — DeepSeek false startup warning FIXED and verified in source
 Final full local JavaScript suite: **0 failures** (/workspace/plazcode-deepseek-startup/javascript-final.log). Full provider Chromium/Firefox tests pass, including new URL before user row, paced Continue, trusted navigation/download distinction and Stop. Actual core reporter keeps expected owner cancellation quiet while draft/uncertain/pacing errors still warn. Existing shared request limits/leases and single-click/no-replay safeguards retained. 974 preserved function bodies, 588 guarded reads and updated pins pass. Initial full run's sole stale beacon assertion fixed, final full rerun green.
 
@@ -31,11 +39,6 @@ Full CI [41449512168](https://github.com/stoveez/plazcode-source/actions/runs/41
 
 **New owner request:** find root cause of profile creation failures; add a themed guest fallback saying exactly “Can't create a profile right now? Use PlazCode as a guest.” Owner chose persistent local guest settings/skills/memory, separate from online profiles, no cloud sync. Inspect server logs and native request handling first; implement isolated guest sessions through normal profile safety and show actual running-app screenshot through Drive immediately when ready. No code changes for this follow-up yet. Account API confirmed active/Public; source repo still Public after ZIP delivery, owner reminded to restore Private. Never change visibility yourself. PC vault folder not connected.
 
----
-title: Milestones (finished work)
-
-updated: 2026-10-30
----
 
 2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is now PRIVATE, verified after owner restored visibility. Earlier integration visibility attempts were denied HTTP 403. Latest stable remains 1.24.26.
 

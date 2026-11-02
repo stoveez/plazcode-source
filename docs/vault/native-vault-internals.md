@@ -1,6 +1,6 @@
 ---
 title: Native vault internals (for the AIs building PlazCode)
-updated: 2026-10-24
+updated: 2026-11-02
 ---
 # Native vault internals
 
@@ -31,3 +31,6 @@ Rust: `cargo test vault` (18 tests, includes `live_note_is_seeded_sent_and_cappe
 ## Gotchas
 - `memory.js` strings are single-quoted: an apostrophe inside breaks the whole file (it happened once).
 - `vaultRefresh` caches by project name; tests that refresh twice need different project names.
+
+## Cross-site continuation follow-up (2026-11-02)
+The source fix now offers the latest captured real work across AI sites, even after startup-only visits; leaving a tab/page captures before navigation. Continue uses only the selected source note in the active vault, falling back to that source excerpt, and an explicit new-project choice is not restored from an old archive. Startup/opt-out/profile safety retained. Full regression pending; not in current guest/signup ZIPs. [Details](continuation-cross-site-2026-11-02.md).

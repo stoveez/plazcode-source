@@ -5365,13 +5365,14 @@ return result`;
   const normalizeReliability = value => ({rsRunLimitsEnabled:value.rsRunLimitsEnabled===true,rsToolBudget:Math.max(0,Math.min(1000,Number.isFinite(Number(value.rsToolBudget))?Math.floor(Number(value.rsToolBudget)):0)),rsTaskMinutes:Math.max(0,Math.min(240,Number.isFinite(Number(value.rsTaskMinutes))?Math.floor(Number(value.rsTaskMinutes)):0)),rsVisualCheck:value.rsVisualCheck!==false,rsContinuationOffer:value.rsContinuationOffer!==false,rsCommandCooldown:normalizeCooldown(value.rsCommandCooldown),rsFullStartup:value.rsFullStartup===true});
   // 1.24.22: the short startup is used unless the user switched on "Full startup" (off by default).
   function leanStartupOn() { return reliabilitySettings.rsFullStartup !== true && typeof PlazCodeLeanStartup !== "undefined"; }
-  chrome.storage.local.get(["rsRunLimitsEnabled","rsToolBudget","rsTaskMinutes","rsVisualCheck","rsFullStartup","rsContinuationOffer","rsCommandCooldown","rsLatestHandoff"],value=>{reliabilitySettings=normalizeReliability(value||{});savedHandoff=value&&value.rsLatestHandoff||null;});
+  let handoffRevision=0;
+  const reliabilityReady=new Promise(resolve=>{const revision=handoffRevision;chrome.storage.local.get(["rsRunLimitsEnabled","rsToolBudget","rsTaskMinutes","rsVisualCheck","rsFullStartup","rsContinuationOffer","rsCommandCooldown","rsLatestHandoff"],value=>{reliabilitySettings=normalizeReliability(value||{});if(revision===handoffRevision)savedHandoff=value&&value.rsLatestHandoff||null;resolve(Object.prototype.hasOwnProperty.call(value||{},'rsLatestHandoff'));});});
   chrome.storage.onChanged.addListener((changes,area)=>{
     if(area!=='local')return;
     const fields={};for(const key of ['rsRunLimitsEnabled','rsToolBudget','rsTaskMinutes','rsVisualCheck','rsFullStartup','rsContinuationOffer','rsCommandCooldown'])if(changes[key])fields[key]=changes[key].newValue;
     if(Object.keys(fields).length)reliabilitySettings=normalizeReliability({...reliabilitySettings,...fields});
   });
-  chrome.storage.onChanged.addListener(changes=>{const merged={...reliabilitySettings};for(const key of Object.keys(merged))if(changes[key])merged[key]=changes[key].newValue;reliabilitySettings=normalizeReliability(merged);if(changes.rsLatestHandoff)savedHandoff=changes.rsLatestHandoff.newValue||null;});
+  chrome.storage.onChanged.addListener(changes=>{const merged={...reliabilitySettings};for(const key of Object.keys(merged))if(changes[key])merged[key]=changes[key].newValue;reliabilitySettings=normalizeReliability(merged);if(changes.rsLatestHandoff){handoffRevision++;savedHandoff=changes.rsLatestHandoff.newValue||null;}});
   function downloadHandoff(value){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:"application/json"}));const link=document.createElement("a");link.href=url;link.download="PlazCode-continuation.json";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   async function automaticVisualCheck(call,feedback){
     if(A.stop||!reliabilitySettings.rsVisualCheck||activeEngine()!=="roblox"||!P.supportsVision||feedbackIsError(feedback)||A.pendingImages?.length||!(call.tool==="creation_insert" || PlazCodeReliability.visual(call) || (call.tool==="plazcode_batch" && call.arguments.calls.some(c=>PlazCodeReliability.visual({tool:c.command,arguments:c.params})))))return feedback;
@@ -11309,22 +11310,29 @@ function renderCards(panel) {
     rsInterval(()=>{if(!exportDirty || document.hidden || Date.now()-exportCapturedAt<2500)return;try{captureExportHistory(false);}catch{}},2500);
     let archiveBusy=false,archiveSignature='',offerBusy=false,offerReady=false,offerNode=null,offerFreshSince=0,offerDecision=false,offerKey='',continuationChoices={};
     chrome.storage.local.get('rsContinuationChoices',value=>{continuationChoices=value&&value.rsContinuationChoices||{};offerReady=true;});
-    bg({type:'chat-history'}).then(result=>{if(!savedHandoff&&result?.handoff){savedHandoff=result.handoff;chrome.storage.local.set({rsLatestHandoff:savedHandoff});}});
+    // Restore from the desktop only on a genuinely empty extension store. A
+    // deliberate new-project choice is persisted as null, not resurrected here.
+    reliabilityReady.then(async stored=>{if(stored)return;const revision=handoffRevision;const result=await bg({type:'chat-history'});if(revision===handoffRevision&&!savedHandoff&&result?.handoff){savedHandoff=result.handoff;chrome.storage.local.set({rsLatestHandoff:savedHandoff});}}).catch(()=>{});
     function hasRealRequest(){return exportRows.some(row=>PlazCodeReliability.userRequest(row)&&!RSParse.isInjectedFeedback(row.text));}
-    async function logChat(){
-      if(archiveBusy||!P.conversationKey())return;captureExportHistory(false);if(!hasRealRequest())return;
-      const signature=P.conversationKey()+'|'+exportRevision+'|'+exportRows.length+'|'+exportBytes+'|'+String(exportRows.at(-1)?.text||'').slice(-120);if(signature===archiveSignature)return;
+    async function logChat(leaving=false){
+      if(!P.conversationKey())return;captureExportHistory(false);if(!hasRealRequest())return;
+      const signature=P.conversationKey()+'|'+exportRevision+'|'+exportRows.length+'|'+exportBytes+'|'+String(exportRows.at(-1)?.text||'').slice(-120);
+      // Publish locally before awaiting the archive, including the final capture
+      // after focus was lost. A pending bridge write must not lose newer work.
+      const transfer=PlazCodeReliability.handoff({provider:P.displayName,chat:P.id+'|'+P.conversationKey(),history:exportRows,pending:cowork.snapshot().pending,reason:'Latest captured chat',engine:activeEngine(),checkpoint:A.checkpointId||'',request:A.taskRequest||''});
+      transfer.engram_scope=engramScope();transfer.project=currentProject;
+      if((leaving||document.hasFocus()||!savedHandoff||savedHandoff.chat_id===transfer.chat_id) && (signature!==archiveSignature||savedHandoff?.chat_id!==transfer.chat_id)){savedHandoff=transfer;chrome.storage.local.set({rsLatestHandoff:transfer});}
+      if(archiveBusy||signature===archiveSignature)return;
       archiveBusy=true;
       try{
-        const transfer=PlazCodeReliability.handoff({provider:P.displayName,chat:P.id+'|'+P.conversationKey(),history:exportRows,pending:cowork.snapshot().pending,reason:'Latest captured chat',engine:activeEngine(),checkpoint:A.checkpointId||'',request:A.taskRequest||''});
-        transfer.engram_scope=engramScope();transfer.project=currentProject;
-        if(document.hasFocus()||(!savedHandoff||savedHandoff.chat_id===transfer.chat_id)){savedHandoff=transfer;chrome.storage.local.set({rsLatestHandoff:transfer});try{noteChatUsed(transfer.chat_id);}catch{}}
         const result=await bg({type:'chat-history',request:{chat_id:transfer.chat_id,provider:P.displayName,history:exportRows.slice(-2000),handoff:transfer,omitted:exportOverflow?1:0}});
         if(result?.ok)archiveSignature=signature;
       }catch{}finally{archiveBusy=false;}
     }
     rsInterval(()=>{if(!document.hidden||A.running){logChat();saveChatNote('tick');}},10000);
-    document.addEventListener('visibilitychange',()=>{if(document.hidden){try{captureExportHistory();}catch{}logChat();saveChatNote('hidden');}});
+    function saveLeavingChat(){try{captureExportHistory();}catch{}logChat(true);saveChatNote('hidden');}
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)saveLeavingChat();});
+    window.addEventListener('pagehide',saveLeavingChat);
     // 1.24.21: every chat is also saved into the vault as a note under "11 Chats" (summary, key points and a "Current tasks:" section).
     // PlazCode writes it itself; it is on by default and works even when the AI may not write notes.
     let activeVaultId='default';const noteKey=id=>activeVaultId==='default'?id:activeVaultId+'|'+id;
@@ -11332,6 +11340,7 @@ function renderCards(panel) {
     try{chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.rsActiveVault&&changes.rsActiveVault.newValue&&typeof changes.rsActiveVault.newValue.id==='string')activeVaultId=changes.rsActiveVault.newValue.id;});}catch{}
     let chatNoteStates={},latestChatNote=null,chatNoteBusy=false,chatNoteLastAt=0,chatNoteTimer=0,chatNoteForce=false;const chatNoteTasks={};
     chrome.storage.local.get(['rsChatNotes','rsLatestChatNote'],value=>{if(value&&value.rsChatNotes&&typeof value.rsChatNotes==='object')chatNoteStates=value.rsChatNotes;if(value&&value.rsLatestChatNote)latestChatNote=value.rsLatestChatNote;});
+    chrome.storage.onChanged.addListener((changes,area)=>{if(area!=='local')return;if(changes.rsChatNotes)chatNoteStates=changes.rsChatNotes.newValue||{};if(changes.rsLatestChatNote)latestChatNote=changes.rsLatestChatNote.newValue||null;});
     // Each vault has its own note for a chat and its own "latest chat" pointer (the pointer is ignored after a switch).
     const latestHere=()=>latestChatNote&&(latestChatNote.vault||'default')===activeVaultId?latestChatNote:null;
     async function saveChatNote(reason){
@@ -11364,12 +11373,17 @@ function renderCards(panel) {
       // Settings toggle (default on). Off: never show the prompt; close one that
       // is open unless the user already chose "Yes" and it is loading.
       if(reliabilitySettings.rsContinuationOffer===false){offerFreshSince=0;if(!offerBusy)closeOffer();return;}
-      if(document.hidden||!offerReady||offerBusy||offerDecision||A.running||A.starting||A.enhancing||!savedHandoff||!PlazCodeReliability.canContinue(savedHandoff)||String(P.editorText()||'').trim())return;
-      // The chat used last before this one only had the startup (no real request was ever saved for it): nothing to continue.
-      {const prevChat=previousUsedChat(P.id+'|'+P.conversationKey());if(prevChat&&prevChat!==savedHandoff.chat_id)return;}
+      if(offerBusy)return;
+      // Continue the latest captured REAL work across providers. Opening or
+      // starting an empty chat must not veto it, and never offer this chat itself.
+      const destination=P.id+'|'+P.conversationKey();
+      const candidate=savedHandoff&&typeof savedHandoff.chat_id==='string'&&savedHandoff.chat_id!==destination&&PlazCodeReliability.canContinue(savedHandoff);
+      const key=candidate ? P.id+'|'+location.href+'|'+savedHandoff.chat_id : '';
+      if(offerKey!==key){closeOffer();offerFreshSince=0;offerDecision=false;offerKey=key;}
+      if(document.hidden||!offerReady||offerDecision||A.running||A.starting||A.enhancing||!candidate||String(P.editorText()||'').trim()){offerFreshSince=0;closeOffer();return;}
       if(!offerFreshSince){offerFreshSince=Date.now();return;}if(Date.now()-offerFreshSince<2000)return;
-      const key=P.id+'|'+location.href+'|'+savedHandoff.chat_id;if(continuationChoices[key]||offerNode)return;
-      const transfer=JSON.parse(JSON.stringify(savedHandoff));offerKey=key;
+      if(continuationChoices[key]||offerNode)return;
+      const transfer=JSON.parse(JSON.stringify(savedHandoff));
       offerNode=document.createElement('section');offerNode.className='rs-continuation-offer';offerNode.setAttribute('role','dialog');offerNode.setAttribute('aria-label','Continue previous chat');
       const kicker=document.createElement('div');kicker.className='rs-co-kicker';const dot=document.createElement('span');dot.className='rs-co-dot';kicker.append(dot,document.createTextNode('Previous chat found'));
       const title=document.createElement('h3');title.textContent='Want to continue where you left off in your previous chat?';
@@ -11377,7 +11391,7 @@ function renderCards(panel) {
       const detail=document.createElement('p');detail.className='rs-co-detail';detail.textContent='PlazCode has the AI read the summary note it saved from that chat (key points and current tasks), then check the current state before continuing. Without a saved note it uses a short excerpt of the chat.';
       const yes=document.createElement('button'),no=document.createElement('button'),never=document.createElement('button'),status=document.createElement('p');yes.type=no.type=never.type='button';yes.className='rs-co-yes';no.className='rs-co-no';never.className='rs-co-never';status.className='rs-co-status';status.setAttribute('role','status');
       yes.textContent='Yes, continue.';no.textContent='No, I wanna start a new project.';never.textContent="Start new project, and don't show this again.";never.title='You can turn this question back on in the PlazCode menu: Automation, Offer to continue the previous chat.';
-      no.onclick=()=>{rememberChoice(key);currentProject='';continuedEngramScope='';continuedEngramChat='';engramRecallGeneration++;A.engramContext='';A.taskRequest='';savedHandoff=null;chrome.storage.local.remove('rsLatestHandoff');closeOffer();};
+      no.onclick=()=>{rememberChoice(key);currentProject='';continuedEngramScope='';continuedEngramChat='';engramRecallGeneration++;A.engramContext='';A.taskRequest='';savedHandoff=null;chrome.storage.local.set({rsLatestHandoff:null});closeOffer();};
       // Same as "start a new project", and the question is turned off (the same switch as in the PlazCode menu and the desktop Settings).
       never.onclick=()=>{no.onclick();reliabilitySettings={...reliabilitySettings,rsContinuationOffer:false};try{chrome.storage.local.set({rsContinuationOffer:false});}catch{}try{toast("Won't ask again. Turn it back on in the PlazCode menu under Automation.");}catch{}};
       const actions=document.createElement('div');actions.className='rs-co-actions';actions.append(no,yes);
@@ -11392,8 +11406,10 @@ function renderCards(panel) {
           if(A.running||A.injecting||A.enhancing||A.pendingToolSettles||String(P.editorText()||'').trim())throw Error('Wait for an idle chat with an empty composer.');
           status.textContent='Loading context and continuing…';
           let context=PlazCodeMemory.parseTransfer(JSON.stringify(transfer)).context;if(context.length>40000)throw Error('Continuation is too large. Use a shorter summary.');
-          // The newest chat note PlazCode saved (never this chat's own). If there is one, the AI reads that summary instead of the raw excerpt.
-          try{const own=chatNoteStates[noteKey(P.id+'|'+P.conversationKey())];const note=await Promise.race([PlazCodeMemory.chatNoteLatest(latestHere()&&latestHere().path,own&&own.path),sleep(3500).then(()=>null)]);
+          // Only the selected source's note may replace its excerpt. A globally
+          // newer note from another tab/project is not this continuation's context.
+          try{const own=chatNoteStates[noteKey(P.id+'|'+P.conversationKey())];const previous=chatNoteStates[noteKey(transfer.chat_id)]||(latestHere()?.chat_id===transfer.chat_id?latestHere():null);
+            const note=previous?.path&&previous.path!==own?.path ? await Promise.race([PlazCodeMemory.chatNoteLatest(previous.path,own&&own.path),sleep(3500).then(()=>null)]) : null;
             if(note&&note.text&&note.text.trim())context='PREVIOUS CHAT NOTE (vault path: '+note.path+'). PlazCode saved this summary from your previous chat; read the note with plazcode_vault for more.\n'+note.text.slice(0,6000);}catch{}
           if(P.conversationKey() && typeof transfer.project==='string' && transfer.project.trim() && [...transfer.project].length<=80){
             const assigned=await bg({type:'checkpoints',request:{action:'project',chat:P.id+'|'+P.conversationKey(),project:transfer.project}});
@@ -12080,21 +12096,6 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
     if (startedSessions.has(path)) return true;
     try { return (typeof P.conversationAliases === "function" ? P.conversationAliases() : []).some(alias => alias && startedSessions.has(alias)); } catch { return false; }
   }
-  // 1.24.21: the chats used most recently (started, or real work done in them), newest last. The "continue your
-  // previous chat?" question only offers the chat used last; if that chat only ever had the startup, there is
-  // nothing to continue and the question is not asked.
-  let lastUsedChats = [];
-  try { chrome.storage.local.get("rsLastUsedChats", (r) => { if (r && Array.isArray(r.rsLastUsedChats)) lastUsedChats = r.rsLastUsedChats.filter((x) => x && typeof x.id === "string"); }); } catch {}
-  try { chrome.storage.onChanged.addListener((c) => { if (c && c.rsLastUsedChats && Array.isArray(c.rsLastUsedChats.newValue)) lastUsedChats = c.rsLastUsedChats.newValue.filter((x) => x && typeof x.id === "string"); }); } catch {}
-  function noteChatUsed(id) {
-    if (!id || (lastUsedChats.length && lastUsedChats[lastUsedChats.length - 1].id === id)) return;
-    lastUsedChats = lastUsedChats.filter((x) => x.id !== id).concat({ id, at: Date.now() }).slice(-20);
-    try { chrome.storage.local.set({ rsLastUsedChats: lastUsedChats }); } catch {}
-  }
-  function previousUsedChat(current) {
-    for (let i = lastUsedChats.length - 1; i >= 0; i--) if (lastUsedChats[i].id !== current) return lastUsedChats[i].id;
-    return "";
-  }
   function rememberSession(path) {
     // A falsy key = a TRANSIENT conversation URL (e.g. Gemini's /app before an
     // id is assigned). Remembering it would mark every future fresh chat as
@@ -12103,7 +12104,6 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
     if (!path) return;
     if (startedSessions.has(path)) return;
     startedSessions.add(path);
-    try { noteChatUsed(P.id + "|" + path); } catch {}
     try { for (const alias of (typeof P.conversationAliases === "function" ? P.conversationAliases() : [])) if (alias) startedSessions.add(alias); } catch {}
     try { chrome.storage.local.set({ rsStartedSessions: [...startedSessions].slice(-300) }); } catch {}
   }

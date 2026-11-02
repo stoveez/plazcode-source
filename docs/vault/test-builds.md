@@ -3,6 +3,11 @@ title: Test builds and the public-then-private plan
 
 updated: 2026-11-02
 ---
+## 2026-11-02 — cross-site Continue project fix; full regression pending
+Reproduced three failures with real content scripts: an intervening startup-only chat vetoed the saved real work, leaving a tab before the 10-second save retained an older provider because focus was already lost, and a fresh-looking chat could offer its own handoff. All three now pass after the extension-only fix. Same-tab pagehide also captures before navigation; local publication is not blocked by a pending archive write. Startup-only visits no longer block actual saved work. Selected-source notes only, active-vault scoping, live note-state updates and new-project tombstone prevent unrelated or discarded context returning.
+
+Targeted cross-site (both directions), pagehide, pending-save, self-exclusion, startup/opt-out/real-request/no-history, desktop restore/new-project and selected-note tests all PASS. Full local JS suite pending; no live AI accounts tested. [Details](continuation-cross-site-2026-11-02.md). Current delivered guest ZIPs (52b9d19 / CI 41492949796) contain NEITHER this fix NOR the prior DeepSeek startup-warning fix. No new build or stable publication. Reload updated signed extension + refresh AI tabs when packaged; native app code unchanged.
+
 ## 2026-11-02 — DeepSeek false startup warning FIXED and verified in source
 Final full local JavaScript suite: **0 failures** (/workspace/plazcode-deepseek-startup/javascript-final.log). Full provider Chromium/Firefox tests pass, including new URL before user row, paced Continue, trusted navigation/download distinction and Stop. Actual core reporter keeps expected owner cancellation quiet while draft/uncertain/pacing errors still warn. Existing shared request limits/leases and single-click/no-replay safeguards retained. 974 preserved function bodies, 588 guarded reads and updated pins pass. Initial full run's sole stale beacon assertion fixed, final full rerun green.
 

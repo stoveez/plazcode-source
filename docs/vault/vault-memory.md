@@ -1,6 +1,6 @@
 ---
 title: Native vault (PlazCode's own Memory feature)
-updated: 2026-10-24
+updated: 2026-11-02
 ---
 # Native vault: the app's Memory feature
 
@@ -19,7 +19,7 @@ Numbered folders: `00 Start Here` (Home, Glossary, Index, Log, **Now**), `01 Abo
 ## Chats are saved as notes (new, 2026-10-24)
 PlazCode itself (not the AI, no extra usage, works even when "Let the AI write notes" is off) saves every chat as a note in `11 Chats`, named like `2026-10-24 2200 ChatGPT Build-rounds`. It has a Summary, Key points and a section titled **Current tasks:** (done, in progress and pending tasks with times; several at once). It updates when a task starts, changes or finishes, every 10 seconds if the tasks changed, and when the tab is hidden. Notes carry the tag `previous-chat`. They are kept forever and are left out of the AI's startup list and map, but the AI can still search them.
 
-**The continue popup** now appears only after the AI says "PlazCode is ready." and before your first real request. Yes makes the AI read the newest chat note (never the current chat's own); if none exists it falls back to the old short excerpt. No starts fresh. Needs the new desktop app plus an extension reload.
+**The continue popup** now appears only after the AI says "PlazCode is ready." and before your first real request. Yes makes the AI read the selected previous chat's note (never an unrelated or current chat's note); if none exists it falls back to the old short excerpt. No starts fresh. Needs the new desktop app plus an extension reload.
 
 ## Several vaults and folder import (new, 2026-10-24, extension only)
 **Vaults list:** Memory, Vault, More options, "Your vaults" (shown only in the browser panel; the desktop window gets it with the next app). The list is kept in browser storage (`rsVaults`); the desktop app still holds ONE active vault (`configure {path}`), so every tab and chat uses it. Open switches (and records `rsActiveVault`), Rename changes only the shown name, Remove takes it off the list and never touches files. A vault cannot sit inside another. After a switch every tab drops its cache and the next vault tool result tells the AI to read Home again. Chat notes and the "latest chat" pointer are kept per vault. Code: `vaultRegistry` and `mountVault` in `core/memory.js`; test `test-vault-switcher.js`.
@@ -31,3 +31,6 @@ Memory settings in the desktop app: **Open vault** (Obsidian-style window: file 
 
 ## Honest status
 Not tried in the real app on Windows or Mac. The score-and-redo critic loop (`plazcode_critic`, a separate chat) is not tried on real AI sites and costs extra usage per redo; keep it off unless wanted. Live note and attached-picture storage need the desktop app replaced and the extension reloaded.
+
+## Cross-site continuation follow-up (2026-11-02)
+The source fix now offers the latest captured real work across AI sites, even after startup-only visits; leaving a tab/page captures before navigation. Continue uses only the selected source note in the active vault, falling back to that source excerpt, and an explicit new-project choice is not restored from an old archive. Startup/opt-out/profile safety retained. Full regression pending; not in current guest/signup ZIPs. [Details](continuation-cross-site-2026-11-02.md).

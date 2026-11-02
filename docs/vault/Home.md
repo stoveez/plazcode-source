@@ -12,6 +12,7 @@ This folder is the long-term memory for every AI that works on PlazCode (Claude,
 **Newest handoff (read first after NOW):** [handoff-1.24.30-2026-11-01-evening.md](handoff-1.24.30-2026-11-01-evening.md)
 
 ## Map
+- Continue project across AI websites (source fixed; full regression pending): [cross-site continuation](continuation-cross-site-2026-11-02.md)
 - DeepSeek startup false warning (source fixed; not in current ZIPs): [startup warning](deepseek-startup-warning-2026-11-02.md)
 - Bridge drops (extension ↔ app link): [bridge-stability](bridge-stability.md)
 - Tool-call consistency and speed (DeepSeek DSML, helper results, sizes, gap between calls): [tool-call-consistency](tool-call-consistency.md)

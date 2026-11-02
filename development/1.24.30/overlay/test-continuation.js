@@ -9,5 +9,5 @@ assert.equal(reliability.canContinue(real),true);
 const old=JSON.parse(JSON.stringify(real));delete old.handoff.has_user_request;assert.equal(reliability.canContinue(old),true);
 const oldStartup=reliability.handoff({history:startup});delete oldStartup.handoff.has_user_request;assert.equal(reliability.canContinue(oldStartup),false);
 assert.equal(reliability.canContinue(reliability.handoff({history:startup,pending:[{text:'Add a shop.'}]})),true);
-assert(s.includes('!PlazCodeReliability.canContinue(savedHandoff)'));
+assert(s.includes('PlazCodeReliability.canContinue(savedHandoff)'));
 console.log('Continuation excludes startup-only chats, including legacy records, and retains actual requests.');
