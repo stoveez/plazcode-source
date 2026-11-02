@@ -1111,7 +1111,7 @@ const RSProvider = (() => {
       (e) => {
         if(e.isTrusted && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && (e.button==null || e.button===0)){
           const link=safeClosest(e.target,"a[href]");
-          const destination=link && safeRead(()=>!link.download && (!link.target || link.target==="_self") ? new URL(link.href,location.href) : null,null);
+          const destination=link && safeRead(()=>!link.hasAttribute("download") && (!link.target || link.target==="_self") ? new URL(link.href,location.href) : null,null);
           if(destination && destination.origin===location.origin && destination.pathname!==location.pathname)cancelPendingSends();
         }
         // Not on a chat page (e.g. login / OAuth page) - never intercept anything.

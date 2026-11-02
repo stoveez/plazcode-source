@@ -3,6 +3,9 @@ title: Test builds and the public-then-private plan
 
 updated: 2026-11-02
 ---
+## DeepSeek startup-warning final verification — 2026-11-02
+Chromium/Firefox full provider tests pass on final navigation/download handling. Focused queue/pacing/DOM/preservation/pins pass. Full JS first sweep found ONLY test-v112 expecting the old beacon; updated it to the deliberately bumped startup-chat-id beacon. Final safe prepare/focused checks/full JS rerun next. No native edits, new builds or stable publication. Details: [startup warning](deepseek-startup-warning-2026-11-02.md). Prior guest test links do not contain this fix.
+
 ## 2026-11-02 — guest/signup full test builds VERIFIED and DELIVERED
 Full CI [41492949796](https://github.com/stoveez/plazcode-source/actions/runs/41492949796), product source **52b9d19**, attempt 2: Windows, universal Mac, Linux, browsers and final cross-platform release gate ALL SUCCESS. Bootstrap intentionally skipped. Targeted Mac retry acquired ARM host after infrastructure capacity failure; app code unchanged. Intel host fallback is saved for future CI but not used by this successful run.
 

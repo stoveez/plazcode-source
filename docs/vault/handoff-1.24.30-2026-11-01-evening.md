@@ -1,3 +1,6 @@
+## DeepSeek startup-warning final verification — 2026-11-02
+Chromium/Firefox full provider tests pass on final navigation/download handling. Focused queue/pacing/DOM/preservation/pins pass. Full JS first sweep found ONLY test-v112 expecting the old beacon; updated it to the deliberately bumped startup-chat-id beacon. Final safe prepare/focused checks/full JS rerun next. No native edits, new builds or stable publication. Details: [startup warning](deepseek-startup-warning-2026-11-02.md). Prior guest test links do not contain this fix.
+
 ## 2026-11-02 — DeepSeek false startup warning WIP
 Owner sees “Send paused / The send was cancelled because Stop was pressed or the chat/session changed” immediately after startup, while normal work continues. Reproduced with actual provider guard: first send changes the fresh chat URL before the user-message row arrives; waitSend treated that legitimate first identity as navigation and raised DEEPSEEK_CANCELLED after the one real click.
 

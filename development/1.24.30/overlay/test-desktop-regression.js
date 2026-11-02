@@ -23,7 +23,7 @@ const baseline = {
   "providers/copilot.js": "86821cb43967d23ab22193c6d93c0514078eae81",
   "providers/crax-net.js": "85c158d0b45508c8f03265f75e8975d348318567",
   "providers/crax.js": "f8e6031e0faffec825b03c102ef2ad77ca115845",
-  "providers/deepseek.js": "da25d314b246b21d78f562d39eb35075b12c76c5",
+  "providers/deepseek.js": "7520f8a91629d36bc0a93e88de7a2ba5e0a32dbf",
   "providers/freebuff.js": "2d829f1a6491f490dc1ea3cd67f794fa014d67de",
   "providers/gemini.js": "523ce72f877768952a6aca1cf25d1989622629a2",
   "providers/glm.js": "5e5cc28eb30123dd9f134d52fcb414ee566b4628",
