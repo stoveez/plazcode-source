@@ -67,8 +67,9 @@ async function run(replies, opts = {}) {
     feedbackIsError: (f) => /^ERROR/.test(f), outSummary: (f) => String(f).slice(0, 20), stripOutputPrefix: (f) => f, taskBudgetStub: true,
     runTool: opts.abort ? (async () => { throw new box.SendAbortedError("clarification stopped"); }) : (async (call) => { ran.push(call.tool); return "Output of '" + call.tool + "':\nok"; }),
   };
+  const aliases=main.slice(main.indexOf("  const TOOL_ALIASES ="),main.indexOf("  function arenaToolReference("));
   vm.createContext(box);
-  vm.runInContext(main.slice(helperStart, helperEnd) + main.slice(loopStart, loopEnd) + "this.loop=agentLoop;", box);
+  vm.runInContext(aliases+main.slice(helperStart, helperEnd) + main.slice(loopStart, loopEnd) + "this.loop=agentLoop;", box);
   await Promise.race([box.loop(0), new Promise((_, rej) => setTimeout(() => rej(Error("agentLoop did not finish")), 1500))]);
   return { sent, warnings, toasts, finishes, paints, cards, ran, A: box.A };
 }

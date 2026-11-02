@@ -327,7 +327,7 @@ const RSProvider = (() => {
       const target = r.target.nodeType === 1 ? r.target : r.target.parentElement;
       if (!target || safeClosest(target, ".rs-chip")) continue;
       const nodes = [...(r.addedNodes || []), ...(r.removedNodes || [])];
-      if (r.type === "childList" && nodes.length && nodes.every(n => n.nodeType === 1 && n.matches(".rs-chip"))) continue;
+      if (r.type === "childList" && nodes.length && nodes.every(n => n.nodeType === 1 && safeRead(() => n.matches(".rs-chip"), false))) continue;
       const md = safeClosest(target, S.box);
       if (md) textCache.delete(md);
     }
@@ -1149,7 +1149,7 @@ const RSProvider = (() => {
     const blocks = [];
     let pending = "";
     for (const node of md.childNodes) {
-      if (node.nodeType === 1 && node.matches(".rs-chip")) continue;
+      if (node.nodeType === 1 && safeRead(() => node.matches(".rs-chip"), false)) continue;
       const text = node.textContent || "";
       if (!pending && !CMD_SHAPE.test(text)) continue;
       // An unfenced ###LUA### block can span hundreds of paragraphs. Hide from its opener through its
@@ -1174,10 +1174,10 @@ const RSProvider = (() => {
   function findToolBlockSpot(item /*, chip */) {
     let spot = null;
     for (const el of commandBlocks(item)) {
-      if (!el.classList.contains("rs-tool-hide")) el.classList.add("rs-tool-hide");
+      if (!safeRead(() => el.classList.contains("rs-tool-hide"), false)) el.classList.add("rs-tool-hide");
       spot = spot || {parent: el.parentElement, ref: el};
     }
-    if (spot && !item.classList.contains("rs-cmd-mask")) item.classList.add("rs-cmd-mask");
+    if (spot && !safeRead(() => item.classList.contains("rs-cmd-mask"), false)) item.classList.add("rs-cmd-mask");
     return spot;
   }
 

@@ -25,6 +25,7 @@ const special=parser.normalizeCall(JSON.parse('{"command":"script_read","__proto
 assert.equal(special.arguments.target_file,undefined);
 assert(Object.hasOwn(special.arguments,'__proto__'));
 assert(G.check(G.repair(special,tools),tools).length,'hidden inherited paths cannot satisfy a required argument');
+assert.equal(parser.normalizeCall({command:'execute_luau',server:'blender',code:'return 1'}).arguments.server,undefined,'flat server never changes mutation routing');
 assert.equal(parser.normalizeCall({command:'x',params:[]}),null);
 assert.equal(parser.normalizeCall({command:'list_commands',server:'other',params:{server:'roblox'}}),null);
 assert.equal(parser.normalizeCall({command:'list_commands',server:' roblox ',params:{server:'roblox'}}).arguments.server,'roblox');

@@ -221,6 +221,8 @@ const RSParse = (() => {
     }
     for (const [key, value] of Object.entries(o)) {
       if (key === nameKey || wrappers.includes(key)) continue;
+      // A flat server is catalogue selection only. Never turn transport metadata into mutation routing.
+      if (key === "server" && name !== "list_commands" && name !== "list_tools") continue;
       if (key === "server" && (name === "list_commands" || name === "list_tools") &&
           typeof args[key] === "string" && typeof value === "string" && args[key].trim() === value.trim()) continue;
       if (Object.hasOwn(args, key) && !same(args[key], value)) {

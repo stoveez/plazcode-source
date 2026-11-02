@@ -3,7 +3,7 @@
 Branch `claude/plazcode-dev` only. No publish/merge without the owner's clear "yes". Commits: stoveez name only, no email, no Co-Authored-By/Claude-Session/"Generated with" lines. Read `docs/NOW.md`, then this note.
 
 ## Current checkpoint (2026-11-02)
-Program source **6421eab**; current full validation **41367055432** running. All requested code and targeted tests done; full CI and verified Windows/macOS inner ZIP delivery still pending. Local post-change JS sweep runs on 15803a5; do not regenerate build-src until it ends. Then prepare latest before source/package verification. Earlier runs 41364800959 and 41366559677 cancelled/superseded. See NOW for concise status; code/test details below supersede the original next-step list. No live Arena/Studio verification claimed. Drive and GitHub artifact connectors are available in this session.
+Full post-change JS sweep on 15803a5 finished with six failures, all investigated and fixed. Original flat-server mutation restriction restored; new Arena reads guarded; extracted-handler fixtures load real alias/provider dependencies. All six and new Arena tests now pass. Full rerun/refreshed CI next; 41367055432 cancelled. Latest program checkpoint is the commit containing this note; see NOW. Do not deliver superseded runs. Drive/GitHub artifact connectors available; no live Arena/Studio verification claimed.
 
 ## Codex step 1 result
 - Full standard local JS suite: **0 failures**, including test-notion-protocol-file.js and test-notion-startup-small-paste.js. Their source/provider files are unchanged from the earlier green 936a302 version; no regression reproduced in this environment.
@@ -69,3 +69,9 @@ Baseline CI 41364800959 runs on 2db1e5a; no duplicate active runs. Implemented r
 - Flat JSON special keys use own data properties; no prototype/inherited path can satisfy a command. Added regression. Targeted new reliability/call-shape/fast-settle tests passed against overlay directly while full JS still runs on 15803a5.
 - Separate real headless Chromium and Firefox fixtures passed: trusted click cancels the task; programmatic recovery does not; long Lua masking correct; immediate character-data invalidation fresh. 3,240 cached old-message reads about 3 ms in each local fixture. No live Arena/model performance claim.
 - Superseded run 41366559677 cancelled for these final edges; new full dispatch must build this checkpoint. No other runtime changes planned while full verification finishes.
+
+### 2026-11-02 — six post-change suite failures fixed
+- test-1.24.17-fixes exposed a real safety regression: copying flat server into mutations. Restored catalogue-only selector behavior; nested legitimate tool arguments remain untouched. Added new call-shape assertion too.
+- test-provider-dom-guards exposed unguarded matches/contains in new Arena code; now uses safeRead like the rest of the provider. Existing resilience/preservation expectations retained.
+- test-1.24.21-stall-recovery, test-response-dispatch and test-task-checklist extract production handler code; they now load the actual TOOL_ALIASES/remapToolName code their handler calls. test-quick-command-catalogue now supplies P.id for its existing non-Arena fixture. Assertions unchanged, no production typeof-missing-fixture workarounds.
+- All six pass, plus both Arena tests, provider preservation and desktop pins. Full JS rerun and replacement full CI required. Previous post-change sweep also passed both Notion tests.
