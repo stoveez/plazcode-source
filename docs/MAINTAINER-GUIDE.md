@@ -1,6 +1,6 @@
 # PlazCode maintainer guide
 
-**Current, 2026-10-29:** working on 1.24.27 (DeepSeek shared send pacing from the owner archive). Latest published remains 1.24.26. Start with `docs/NOW.md`; older entries below are historical.
+**Current, 2026-11-02:** 1.24.30 published. Validation 41449512168 on `69a4f8c`; publish run 41469911201. Start with `docs/NOW.md`. Older entries below are historical.
 
 For any AI (Codex, Claude Code or another) or person who works on PlazCode. Read this whole file before changing anything. The short rules are in `AGENTS.md` / `CLAUDE.md`; this file explains everything behind them.
 

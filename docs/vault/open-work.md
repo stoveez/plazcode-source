@@ -10,6 +10,9 @@ updated: 2026-11-01
 
 # Open work
 
+- 2026-11-02: 1.24.30 published. Validation 41449512168 on `69a4f8c`; publish run 41469911201. Permanent approvals and code protection are complete. Live feed/download verification and Private visibility restoration remain. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
+
+
 - 2026-11-02: 1.24.30 assembled; public publication pending. Validation 41449512168 on `69a4f8c`; publish run 41469911201. Permanent approvals and code protection are complete. Public publication remains. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
 
 
