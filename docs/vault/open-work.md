@@ -198,3 +198,5 @@ Owner explicitly does not want source ZIP distribution. Run 41335729270 cancelle
 - 2026-11-02 C2: schema-aware flat/path argument repair, explicit conflict rejection, compact Arena structural catalogue/full targeted reference and phase timing diagnostics passed targeted tests. Full JS/final CI and verified Windows/Mac delivery pending.
 
 - 2026-11-02 final Arena edges: old command text cannot trigger recovery for a new thinking reply, and flat JSON special keys stay plain data. Targeted regressions plus real Chromium/Firefox Stop/masking/cache fixtures pass. Superseded CI 41366559677 cancelled; refreshed full CI/delivery next.
+
+- Current checkpoint 2026-11-02: program source 6421eab, full CI 41367055432 running; all requested code/targeted tests passed. Local full sweep still on 15803a5; prepare latest after it ends before package verification. Verified inner Windows/Mac Drive delivery remains; no stable publishing authorized.

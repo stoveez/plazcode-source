@@ -2,6 +2,9 @@
 
 Branch `claude/plazcode-dev` only. No publish/merge without the owner's clear "yes". Commits: stoveez name only, no email, no Co-Authored-By/Claude-Session/"Generated with" lines. Read `docs/NOW.md`, then this note.
 
+## Current checkpoint (2026-11-02)
+Program source **6421eab**; current full validation **41367055432** running. All requested code and targeted tests done; full CI and verified Windows/macOS inner ZIP delivery still pending. Local post-change JS sweep runs on 15803a5; do not regenerate build-src until it ends. Then prepare latest before source/package verification. Earlier runs 41364800959 and 41366559677 cancelled/superseded. See NOW for concise status; code/test details below supersede the original next-step list. No live Arena/Studio verification claimed. Drive and GitHub artifact connectors are available in this session.
+
 ## Codex step 1 result
 - Full standard local JS suite: **0 failures**, including test-notion-protocol-file.js and test-notion-startup-small-paste.js. Their source/provider files are unchanged from the earlier green 936a302 version; no regression reproduced in this environment.
 - test-v115.js explicitly run on latest and reconstructed 936a302: the same 7 stale assertions fail (old Copilot URL, screenshot marker/version, condo rule wording, compression wording, studio-plus version and exact 1.18.7). Already excluded by the normal runner; do not restore old product behavior for it.
