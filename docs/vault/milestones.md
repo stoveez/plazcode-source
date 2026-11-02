@@ -1,3 +1,8 @@
+## 2026-11-02 — replacement builds delivered; profile follow-up started
+Full CI [41449512168](https://github.com/stoveez/plazcode-source/actions/runs/41449512168) on **69a4f8c** (program fix e068a0a) passed every required job. Exact inner Windows/Mac ZIPs verified for production integrity signatures, reviewed sources, SHA/CRC/native formats and official layout; Drive names/MIME/sizes read back. [Windows](https://drive.google.com/file/d/1HHaShdR5yxIfJRFwQYPg6TuTGFUkTfTc/view?usp=drivesdk), [Mac](https://drive.google.com/file/d/1CwVf62R3_c08xJA6Ta785AoRSpxo65BV/view?usp=drivesdk). Details/hashes: [verification](deepseek-workflow-1.24.30-2026-11-02-verification.json). Both app and extension replacement required. No stable publication. Original user devices/live AI/Studio not tested.
+
+**New owner request:** find root cause of profile creation failures; add a themed guest fallback saying exactly “Can't create a profile right now? Use PlazCode as a guest.” Owner chose persistent local guest settings/skills/memory, separate from online profiles, no cloud sync. Inspect server logs and native request handling first; implement isolated guest sessions through normal profile safety and show actual running-app screenshot through Drive immediately when ready. No code changes for this follow-up yet. Account API confirmed active/Public; source repo still Public after ZIP delivery, owner reminded to restore Private. Never change visibility yourself. PC vault folder not connected.
+
 ---
 title: Milestones (finished work)
 

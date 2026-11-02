@@ -1,5 +1,5 @@
 {
-  "state": "awaiting_final_hosted_packages",
+  "state": "delivered_verified",
   "program_fix": "e068a0a",
   "ci_source": "69a4f8c",
   "run_id": 41449512168,
@@ -23,5 +23,35 @@
     "isolated_test_page": true,
     "metadata_readback": true
   },
-  "artifacts": []
+  "artifacts": [
+    {
+      "platform": "Windows",
+      "name": "PlazCode-1.24.30-test-lean.zip",
+      "bytes": 51126250,
+      "sha256": "ab8686cc2ea689474e1e207af217f30ca07c3fa841a3a26e49a7e56f453d2c6f",
+      "drive_url": "https://drive.google.com/file/d/1HHaShdR5yxIfJRFwQYPg6TuTGFUkTfTc/view?usp=drivesdk",
+      "metadata_readback": true
+    },
+    {
+      "platform": "macOS",
+      "name": "PlazCode-macOS-1.24.30-test-lean.zip",
+      "bytes": 52874282,
+      "sha256": "8a72bb5380cb39e7c264f90084389e0abc8830adce98cf08186d7d4eab7a5b61",
+      "drive_url": "https://drive.google.com/file/d/1CwVf62R3_c08xJA6Ta785AoRSpxo65BV/view?usp=drivesdk",
+      "metadata_readback": true
+    }
+  ],
+  "hosted_required_jobs": "success",
+  "stable_published": false,
+  "source_visibility_at_delivery": "public",
+  "checks": [
+    "wrapper digest",
+    "ZIP CRC and paths",
+    "production integrity signatures",
+    "241 reviewed JavaScript sources",
+    "native formats including both Mac architectures",
+    "SHA256SUMS",
+    "official layout against 1.24.29",
+    "third-party notices"
+  ]
 }
