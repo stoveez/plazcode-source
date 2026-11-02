@@ -45,3 +45,6 @@ The owner may hand an AI only this folder. Read `NOW.md` first, then [Home](Home
 - Upload the screenshot/video to the connected Google Drive, read back its metadata, and give the normal Drive file link so the owner can open/download it. This is the exact delivery method the owner approved. Workspace-only file links do not work in this client.
 - Deliver test builds through Google Drive too: upload the exact verified INNER Windows/Mac/Linux ZIPs (app, memory helper and extensions; official layout), verify metadata/sizes, then give normal Drive file links and tell the owner to click Download. Do not substitute GitHub's artifact wrapper ZIP or silently change sharing permissions.
 - Keep the source public-build/private-after-delivery rule. Keep the separately approved account API Public. No stable publishing is implied by a test-build request.
+
+## Show release notes before every release (owner, 2026-11-02)
+Before any real release, send the owner the exact release-note text intended for it, in the required format, before publishing. If the text changes, show the revised text first. Keep it under 2,000 UTF-16 characters and use the actual publisher formatter when drafting. A request for a draft or a test build does not authorize publishing. This standing rule applies to every future release.

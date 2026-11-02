@@ -1,19 +1,22 @@
 {
   "version": "1.24.30",
-  "title": "Luau checks, more AI sites and stronger protection",
-  "summary": "PlazCode can check Roblox scripts for mistakes, understands the open place, supports MiMo and more Arena modes, and improves connection reliability and protection.",
+  "title": "Smarter scripts, smoother workflows and safer connections",
+  "summary": "Roblox-aware Luau checks, more AI sites, command batches, background terminal jobs, cleaner memory and stronger protection.",
   "added": [
     "Luau checks in Settings: Advisory is on by default; optional Blocking mode puts a script back when an edit adds a syntax error. Type errors and warnings are shown to the AI for correction. Checks never run the generated code.",
     "Roblox-aware code help: analyze_luau and luau_lookup use the open place to find mistakes, definitions, references, types, completions and function parameters. The checker downloads once on first use; no extra setup.",
     "MiMo Chat and UltraSpeed support, plus Arena Direct, Battle, Side by Side and Agent modes.",
     "Ro-Engineer Roblox standards (by excaldev, MIT licence) are built in: modern typed Luau, safe client/server code, clean-up, performance, system design, game loops and economy. One short set of core standards is used on every Roblox task; the topic guides are used when they fit.",
-    "A Logs page in the PlazCode app: every startup, AI turn, command and problem (including the AI site's own console errors) is saved for 14 days. Filter by problems, startups, turns, Studio or updates, see what led up to an error, and copy it for an AI. The AI can also read these logs itself with plazcode_logs to find out what went wrong."
+    "A Logs page in the PlazCode app: every startup, AI turn, command and problem (including the AI site's own console errors) is saved for 14 days. Filter by problems, startups, turns, Studio or updates, see what led up to an error, and copy it for an AI. The AI can also read these logs itself with plazcode_logs to find out what went wrong.",
+    "Run up to eight prepared commands in one reply. Each keeps its own approval and Stop checks; a failure stops the remaining commands.",
+    "Long builds, tests and servers can run as managed background jobs, with live output, progress checks and Stop."
   ],
   "improved": [
     "The PlazCode app only connects to the extension loaded from its own PlazCode folder. Copies that were edited or loaded from somewhere else are refused with a message saying what to do.",
     "PlazCode's instructions and its Studio tools' Luau now live inside the PlazCode app and are only given to the official extension, to make casual copying harder without adding user setup.",
     "Your PlazCode folder is tidier: about 90 old test files and old internal notes left behind by earlier versions are removed automatically, and new downloads no longer include internal notes. The app, the extensions, the updaters and your settings stay where they are.",
-    "Protection now varies by release, with independent checks and shorter internal JavaScript names; normal use, Stop, user settings and updates stay available."
+    "Protection now varies by release, with independent checks and shorter internal JavaScript names; normal use, Stop, user settings and updates stay available.",
+    "Optional console checks no longer hold up tool results; completed commands settle faster on supported AI sites while DeepSeek keeps deliberate request pacing."
   ],
   "fixed": [
     "On Mac, opening PlazCode straight from a freshly downloaded zip could stop with \"PlazCode program files changed or are incomplete ... No such file or directory\".",
@@ -21,7 +24,11 @@
     "Some antivirus programs could flag the PlazCode download as harmful because the app stored its list of computer-control commands as plain text. That text is now stored in a scrambled form; nothing about how PlazCode works changed.",
     "Arena sends no longer trigger PlazCode's long-address guard. Sign-in and first-use Terms prompts now explain what to do instead of retrying.",
     "Account requests retry once after a non-JSON host response and report its HTTP status in Logs.",
-    "Interrupted Luau checks refresh their temporary analysis state; switching profiles clears the Luau service and pending results."
+    "Interrupted Luau checks refresh their temporary analysis state; switching profiles clears the Luau service and pending results.",
+    "DeepSeek shares persisted send cooldowns across tabs and browsers on this computer, pauses on repeated limits, cancels stale queued sends after Stop/chat changes, and avoids repeated image clicks or fallback sends. Provider restrictions can still apply.",
+    "Learn as you work skips startup handshakes, chat summaries, raw tool logs and unsupported automatic notes. Manual notes and existing data remain.",
+    "Arena tool hangs, false stops, raw command text and argument-shape failures; Luau setup cancellation/timeouts and project fallback budgets.",
+    "Continuation prompts after startup, repeated workflow stops, MiMo reconnection, and task/sidebar/workspace display problems."
   ],
   "notes": [
     "First-party PlazCode 1.24.30 is proprietary. Third-party licences and earlier GPL releases keep their existing terms. Source ZIPs are not distributed.",
@@ -30,31 +37,30 @@
     "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
   ],
   "github": {
-    "summary": "***Roblox script checks, MiMo support, more Arena modes and stronger protection.***",
+    "summary": "***Smarter Roblox help, fewer workflow interruptions and cleaner memory.***",
     "sections": [
       {
         "title": "✨ What's new",
         "items": [
-          "Luau checks find new script mistakes and help the AI repair them. Advisory is on by default; optional Blocking mode undoes new syntax errors. The checker downloads once on first use.",
-          "Roblox-aware definitions, references, types and code suggestions from your open place.",
-          "MiMo Chat and UltraSpeed; Arena Direct, Battle, Side by Side and Agent.",
-          "Built-in Ro-Engineer Roblox standards (excaldev, MIT), plus a Logs page for troubleshooting."
+          "Roblox-aware Luau checks and code help; optional rollback for new syntax errors.",
+          "Run up to eight commands in one reply; keep long builds and servers running in the background.",
+          "MiMo Chat/UltraSpeed, more Arena modes, Ro-Engineer guides (excaldev, MIT) and an app Logs page."
         ]
       },
       {
         "title": "🛠️ What's fixed",
         "items": [
-          "Mac fresh-download startup, misleading bridge-disconnected notices and some antivirus triggers.",
-          "Arena sends, sign-in and Terms prompts; clearer account-service errors.",
-          "Interrupted Luau checks and profile switches clear temporary analysis state.",
-          "Official-extension pairing and release-specific protection make edited copies harder to reuse. Old internal files are cleaned up.",
-          "First-party PlazCode is proprietary from 1.24.30; third-party licences and older releases keep their terms."
+          "Arena tool hangs, unwanted stops, raw code, rejected arguments and slow follow-ups.",
+          "DeepSeek duplicate-send risks, shared cooldowns and queued sends after Stop or changing chats.",
+          "Cleaner automatic memory, more reliable Luau checks, connections and continuation prompts.",
+          "Mac fresh-download startup, stronger official-extension checks and a tidier app folder.",
+          "PlazCode’s own code is proprietary from 1.24.30; third-party and older-release licences stay unchanged. No source ZIPs are distributed."
         ]
       },
       {
         "title": "🧪 What was checked",
         "items": [
-          "Automated app, extension and protection checks. Real Studio sessions and the new AI modes still need user testing.",
+          "Automated app, Luau, browser and protection checks. AI-site tests use practice pages; live AI/Studio sessions still need testing.",
           "Windows is unsigned and Mac is not notarized, as before."
         ]
       }

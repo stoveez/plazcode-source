@@ -38,6 +38,9 @@ Only if the owner says two AIs run at once (normally they do not): the owner may
 ## Public-then-private plan for test builds and publishing (owner's plan, 2026-10-23)
 Builds on this private repo are blocked by GitHub billing, so the repo is made PUBLIC only while a build or publish runs, then PRIVATE again. Every time you are ready for a test build or an update: (1) send the owner the settings link https://github.com/stoveez/plazcode-source/settings and walk them through the whole plan again in plain words (resend it each time); (2) after they make it public, start the build on `claude/plazcode-dev`; (3) send them the two lean zips as soon as the run ends; (4) tell them to set the repo back to Private right away. Publishing still needs their clear "yes" for that exact update. Full steps, risks and rules: `docs/HANDOFF.md` section "Public-then-private plan". Never change repo visibility yourself.
 
+## Show release notes first (owner, 2026-11-02)
+Before every real release, send the owner the exact release notes you intend to publish, in the required format. Show any revisions before publishing too. Draft notes and test builds are not publication approval. See `docs/vault/release-format.md`.
+
 ## Tell the owner after every push (owner, 2026-10-23)
 Every time you push a WIP or finished change that another AI could pick up, tell the owner in the same reply, in plain words: the branch name, the short commit ID, and one line on what is in it (and whether it is unfinished). Say it even for small pushes, so the owner always knows what another AI can see and work from.
 
