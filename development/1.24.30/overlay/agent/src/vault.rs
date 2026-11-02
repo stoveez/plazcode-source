@@ -1585,6 +1585,16 @@ mod tests {
         let _ = fs::remove_dir_all(root.parent().unwrap());
     }
     #[test]
+    fn automatic_noise_and_unsupported_facts_are_skipped_but_manual_notes_are_kept() {
+        let (root,s)=fresh("learning-quality");let path="07 Lessons And Decisions/Test.md";
+        let result=run(&root,&s,json!({"action":"write","ai":true,"path":path,"content":"First request: PlazCode startup check: list_commands"})).unwrap();
+        assert_eq!(result["skipped"],true);assert!(!root.join(path).exists());
+        let result=run(&root,&s,json!({"action":"write","ai":true,"path":path,"content":"User prefers red.","evidence":"Use red","learning_context":{"user":["Use tabs"]}})).unwrap();
+        assert_eq!(result["skipped"],true);assert!(!root.join(path).exists());
+        run(&root,&s,json!({"action":"write","path":path,"content":"First request: manual research log"})).unwrap();
+        assert!(root.join(path).exists());let _=fs::remove_dir_all(root.parent().unwrap());
+    }
+    #[test]
     fn learning_switch_blocks_the_ai_but_not_reading_or_the_user() {
         let (root, mut s) = fresh("learning");
         write(&root, &s, "07 Lessons And Decisions/Keep", "keep me");

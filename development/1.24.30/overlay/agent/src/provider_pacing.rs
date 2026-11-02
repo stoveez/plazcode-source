@@ -130,6 +130,17 @@ pub async fn post(axum::Json(req):axum::Json<Value>) -> axum::response::Response
   s.apply(&req("claim","a","two"),9100,0).unwrap();
   assert_eq!(s.apply(&req("claim","b","three"),39100,0).unwrap()["wait_ms"],8000);
  }
+ #[test] fn grants_are_owned_and_manual_or_rate_activity_revokes_them(){
+  let mut s=State::default();s.apply(&req("claim","chrome","one"),1000,0).unwrap();
+  assert_eq!(s.apply(&req("validate","firefox","one"),1001,0).unwrap()["allowed"],false);
+  assert_eq!(s.apply(&req("validate","chrome","one"),1001,0).unwrap()["allowed"],true);
+  s.apply(&req("observe","firefox","manual"),1002,0).unwrap();
+  assert_eq!(s.apply(&req("validate","chrome","one"),1003,0).unwrap()["allowed"],false);
+  s.apply(&req("claim","chrome","two"),9002,0).unwrap();
+  s.apply(&json!({"provider":"deepseek","action":"limit","owner":"firefox","notice":"limit","restricted":true}),9003,0).unwrap();
+  assert_eq!(s.apply(&req("validate","chrome","two"),9004,0).unwrap()["allowed"],false);
+  assert!(s.apply(&req("claim","chrome","three"),9004,0).unwrap()["wait_ms"].as_u64().unwrap()>=900000-1);
+ }
  #[test] fn repeated_limits_pause_every_client_and_respect_reported_wait(){
   let mut s=State::default();for i in 1..=3 {let v=s.apply(&json!({"provider":"deepseek","action":"limit","owner":"a","notice":format!("n{i}"),"rate":true,"wait_ms":120000}),i*1000,0).unwrap();assert!(v["wait_ms"].as_u64().unwrap()>=120000);assert_eq!(v["retry"],i<3);}
   assert_eq!(s.apply(&req("claim","b","one"),4000,0).unwrap()["paused"],true);

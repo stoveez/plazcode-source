@@ -106,6 +106,17 @@ mod tests {
         store.update(json!({"action":"remove","id":1})).unwrap();store.update(json!({"action":"import","entries":[{"text":text}]})).unwrap();assert_eq!(Store::load(path).snapshot().entries[0].text.len(),500000);let _=std::fs::remove_dir_all(dir);
     }
     #[test]
+    fn automatic_noise_is_rejected_without_changing_manual_data() {
+        let dir=std::env::temp_dir().join(format!("learning-memory-{}",std::process::id()));let path=dir.join("memory.json");
+        let store=Store::load(path.clone());let text="First request: PlazCode startup check: list_commands";
+        store.update(json!({"action":"add","text":text})).unwrap();
+        assert!(store.update(json!({"action":"remember","text":text})).is_err());
+        assert!(store.update(json!({"action":"remember","text":"User prefers red.","evidence":"Use red","learning_context":{"user":["Use tabs"],"project":[]}})).is_err());
+        assert_eq!(store.snapshot().entries.len(),1);assert_eq!(Store::load(path).snapshot().entries[0].text,text);
+        store.update(json!({"action":"remember","text":"User prefers tabs.","evidence":"Use tabs","learning_context":{"user":["Use tabs"],"project":[]}})).unwrap();
+        assert_eq!(store.snapshot().entries.len(),2);let _=std::fs::remove_dir_all(dir);
+    }
+    #[test]
     fn durable_manual_and_automatic_memory() {
         let dir = std::env::temp_dir().join(format!("plazcode-memory-{}", std::process::id()));
         let path = dir.join("memory.json"); let _ = std::fs::remove_dir_all(&dir);

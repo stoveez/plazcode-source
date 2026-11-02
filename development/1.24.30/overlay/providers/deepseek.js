@@ -853,7 +853,12 @@ const RSProvider = (() => {
       if(!job.continue && editorText()!==job.typedText)throw sendError("Your draft changed before sending. Nothing was sent.","DEEPSEEK_CANCELLED");
       assertSendOwner(job);if(Date.now()>=lease.valid_until)throw sendError("The send permission expired. Nothing was sent.");
       live.click(); // exactly ONE commit; never poll by clicking again
-      const accepted=await waitSend(()=>isHardGenerating() || userCount()>users || assistantCount()>assistants || (job.continue && streamLen()>before),12000,job);
+      const accepted=await waitSend(()=>{
+        const landed=isHardGenerating() || userCount()>users || assistantCount()>assistants || (job.continue && streamLen()>before);
+        // A fresh conversation acquires its URL after this one click; only adopt it after delivery evidence.
+        if(landed && !job.owner.chat)job.owner.chat=conversationKey();
+        return landed;
+      },12000,job);
       if(!accepted){cancelPendingSends();throw sendError("DeepSeek did not confirm this message. PlazCode paused to avoid sending it twice; inspect the chat before retrying.","DEEPSEEK_UNCERTAIN");}
       _lastDelivered=job.id;await pacing({action:"finish",id:job.id,sent:true});lease=null;
       return true;
@@ -861,7 +866,7 @@ const RSProvider = (() => {
   }
   async function waitSend(predicate,timeout,job) {
     const started=Date.now();
-    while(Date.now()-started<timeout){assertSendOwner(job);if(safePredicate(predicate))return true;await sleepForSend(120,job);}
+    while(Date.now()-started<timeout){const ready=safePredicate(predicate);assertSendOwner(job);if(ready)return true;await sleepForSend(120,job);}
     return false;
   }
   async function typeAndSendRaw(text, images, opts, job) {
