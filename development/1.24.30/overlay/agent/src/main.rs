@@ -1822,11 +1822,11 @@ async fn luau_after_edit(state:&AppState,id:&str,before:&serde_json::Value,after
         tokio::select! { biased;
         _=cancel.changed()=>luau_check::decide(&path,mode,Err("the task stopped".into())),
         verdict=async {
-        let started=std::time::Instant::now();
-        match tokio::time::timeout(limit,luau_service::check_edit(&state,&studio,&path,&old,&new)).await{
-            Ok(Ok(pair))=>luau_check::decide(&path,mode,Ok(pair)),
-            _=>luau_check::check_edit(&path,&old,&new,mode,limit.saturating_sub(started.elapsed()).max(std::time::Duration::from_secs(3))).await,
-        }}=>verdict,
+        let analysed=luau_check::with_fallback(
+            async {luau_service::check_edit(&state,&studio,&path,&old,&new).await.map_err(|e|e.to_string())},
+            |budget|luau_check::compare_sources(&path,&old,&new,budget),limit).await;
+        luau_check::decide(&path,mode,analysed)
+        }=>verdict,
         }})};
     let verdict=match tokio::time::timeout(wait,&mut job).await{
         Ok(Ok(verdict))=>verdict,

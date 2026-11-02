@@ -1,7 +1,7 @@
 # NOW
-Updated: 2026-11-01. Branch `claude/plazcode-dev`; no helper agents.
+Updated: 2026-11-02. Branch `claude/plazcode-dev`; no helper agents.
 
-**Current: step 1 JS investigation passed; next fresh CI, then Luau.** Owner's order: (1) rerun the local JS suite once, investigate Notion protocol/small-paste and v115 failures against their prior state, fix real regressions, dispatch fresh full CI and cancel duplicate/old-version push runs; (2) fix Luau timeout handling with a Rust regression; (3) fix Arena stalled tool calls/raw Lua text; (4) normalize foreign/flat tool arguments and reduce Arena gaps between calls. Owner provided another raw-Lua screenshot and confirmed slow replies/tool-call gaps. No stable publication/merge authorized.
+**Current: step 1 passed; baseline CI 41364800959 running. Luau timeout fix written, tests next.** Owner's order: (1) rerun the local JS suite once, investigate Notion protocol/small-paste and v115 failures against their prior state, fix real regressions, dispatch fresh full CI and cancel duplicate/old-version push runs; (2) fix Luau timeout handling with a Rust regression; (3) fix Arena stalled tool calls/raw Lua text; (4) normalize foreign/flat tool arguments and reduce Arena gaps between calls. Owner provided another raw-Lua screenshot and confirmed slow replies/tool-call gaps. No stable publication/merge authorized.
 
 **JS result:** full standard suite on current source passed with 0 failures, including both Notion tests. Notion source/tests are unchanged from 936a302. Explicit v115 run fails the same 7 stale checks on current and 936a302 (including hard-coded 1.18.7); it is already deliberately excluded. No runtime regression reproduced and no obsolete behavior restored.
 
@@ -43,3 +43,5 @@ Earlier today (Codex handoff, kept for detail):
 **Remaining live checks:** actual Studio editing/restore/sourcemap flow, full MiMo/Arena tasks, Edge/Brave/Mac folder IDs, original bridge/startup reports, quarantined Mac download. Artwork provenance in the supplied third-party pack remains uncertain. See vault/1.24.30-gap-review.md and license-and-branding-review.md. Local checks do not make an unsigned executable unpatchable.
 
 **Delivery/visibility:** immediately deliver actual feature previews and verified INNER Windows/Mac/Linux ZIPs via Google Drive with metadata readback. Source was verified Public for this build window; remind to switch Private with ZIP delivery and later until confirmed. Do not change visibility yourself. Account API stays Public. PC PlazCode-Vault is not connected; repository vault files are updated.
+
+**Luau WIP:** reserve fallback time instead of leaving only 3 seconds after a slow place check; async advisory budget 90s, normal 1.5s return and 12s Blocking wait unchanged. Keep the one shared checker download alive after a caller times out/Stops, bound fallback concurrency, and clean temporary sources on cancellation. Rust tests cover cancelled setup waiters, reserved fallback time and bounded failure. Not yet validated. Next Rust checks, then Arena.

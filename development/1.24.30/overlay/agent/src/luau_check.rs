@@ -50,7 +50,21 @@ fn override_paths() -> Option<(PathBuf, PathBuf)> {
 
 fn sha256_hex(bytes: &[u8]) -> String { use sha2::{Digest, Sha256}; Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect() }
 
-static DOWNLOAD: once_cell::sync::Lazy<tokio::sync::Mutex<()>> = once_cell::sync::Lazy::new(|| tokio::sync::Mutex::new(()));
+type ToolPaths = (PathBuf, PathBuf);
+type InstallJob = tokio::task::JoinHandle<Result<ToolPaths, String>>;
+static DOWNLOAD: once_cell::sync::Lazy<tokio::sync::Mutex<Option<InstallJob>>> = once_cell::sync::Lazy::new(Default::default);
+static ANALYSIS_SLOTS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(2);
+
+/// Installation contains no project data. Keep its single shared job alive if
+/// an edit times out or Stop drops its waiter, rather than restarting downloads.
+async fn shared_install<F, Fut>(slot: &tokio::sync::Mutex<Option<InstallJob>>, install: F) -> Result<ToolPaths, String>
+where F: FnOnce() -> Fut, Fut: std::future::Future<Output=Result<ToolPaths, String>> + Send + 'static {
+    let mut job = slot.lock().await;
+    let handle = job.get_or_insert_with(|| tokio::spawn(install()));
+    let result = handle.await.map_err(|_| "Luau checker setup stopped unexpectedly".to_string());
+    *job = None;
+    result?
+}
 
 async fn fetch(url: &str, limit: u64) -> anyhow::Result<Vec<u8>> {
     let client = reqwest::Client::builder().user_agent("PlazCode-luau").timeout(Duration::from_secs(120)).build()?;
@@ -96,7 +110,9 @@ fn extract_program(archive: &[u8], file_name: &str, program: &str) -> anyhow::Re
 pub async fn tools() -> anyhow::Result<(PathBuf, PathBuf)> {
     if let Some(paths) = override_paths() { return Ok(paths); }
     if let (Some(p), Some(d)) = (installed(program_name()), installed(DEFINITIONS_FILE)) { return Ok((p, d)); }
-    let _guard = DOWNLOAD.lock().await;
+    shared_install(&DOWNLOAD, || async { install_tools().await.map_err(|e| e.to_string()) }).await.map_err(anyhow::Error::msg)
+}
+async fn install_tools() -> anyhow::Result<ToolPaths> {
     let program = match installed(program_name()) {
         Some(path) => path,
         None => {
@@ -177,9 +193,15 @@ fn file_name(path: &str, tag: &str) -> String {
 /// Returns one diagnostic list per source, or an `unavailable` reason.
 pub async fn analyze_sources(sources: &[(&str, &str)], timeout: Duration) -> Result<Vec<Vec<Diagnostic>>, String> {
     for (_, source) in sources { if source.len() > MAX_SOURCE { return Err("script too large to check".into()); } }
+    // Avoid a burst of simultaneous fallback processes loading the large type
+    // list. The caller's overall deadline still bounds queue/setup/analysis.
+    let _slot = ANALYSIS_SLOTS.acquire().await.map_err(|_| "Luau checker queue closed".to_string())?;
     let (program, definitions) = tools().await.map_err(|e| e.to_string())?;
     let dir = std::env::temp_dir().join(format!("plazcode-luau-check-{}-{}", std::process::id(), next_id()));
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    struct Cleanup(PathBuf);
+    impl Drop for Cleanup { fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.0); } }
+    let _cleanup = Cleanup(dir.clone());
     let names: Vec<String> = sources.iter().map(|(n, _)| n.to_string()).collect();
     let result = async {
         for (name, source) in sources { tokio::fs::write(dir.join(name), source).await.map_err(|e| e.to_string())?; }
@@ -238,10 +260,26 @@ pub fn decide(path: &str, mode: Mode, analysed: Result<(Vec<Diagnostic>, Vec<Dia
 
 /// Checks a script edit: analyses old and new source in one run and keeps only problems the edit introduced.
 pub async fn check_edit(path: &str, before: &str, after: &str, mode: Mode, timeout: Duration) -> Verdict {
+    decide(path, mode, compare_sources(path, before, after, timeout).await)
+}
+pub async fn compare_sources(path: &str, before: &str, after: &str, timeout: Duration) -> Result<(Vec<Diagnostic>, Vec<Diagnostic>), String> {
     let (a, b) = (file_name(path, "before"), file_name(path, "after"));
-    let analysed = analyze_sources(&[(a.as_str(), before), (b.as_str(), after)], timeout).await
-        .and_then(|mut lists| { if lists.len() == 2 { let after = lists.pop().unwrap(); Ok((lists.pop().unwrap(), after)) } else { Err("unexpected checker output".into()) } });
-    decide(path, mode, analysed)
+    analyze_sources(&[(a.as_str(), before), (b.as_str(), after)], timeout).await
+        .and_then(|mut lists| { if lists.len() == 2 { let after = lists.pop().unwrap(); Ok((lists.pop().unwrap(), after)) } else { Err("unexpected checker output".into()) } })
+}
+
+/// Reserve real time for the fallback; a slow place sync must not reduce a
+/// cold checker to three seconds. Both phases include queue/setup and remain
+/// bounded, while Advisory returns to the AI after ADVISORY_WAIT as before.
+pub async fn with_fallback<T, P, F, Fut>(primary: P, fallback: F, limit: Duration) -> Result<T, String>
+where P: std::future::Future<Output=Result<T, String>>, F: FnOnce(Duration) -> Fut,
+      Fut: std::future::Future<Output=Result<T, String>> {
+    let start = std::time::Instant::now();
+    let reserve = (limit / 2).min(Duration::from_secs(30));
+    if let Ok(Ok(result)) = tokio::time::timeout(limit.saturating_sub(reserve), primary).await { return Ok(result); }
+    let remaining = limit.saturating_sub(start.elapsed());
+    if remaining.is_zero() { return Err("the Luau checker ran out of time".into()); }
+    tokio::time::timeout(remaining, fallback(remaining)).await.map_err(|_| "the Luau checker ran out of time".to_string())?
 }
 
 /// How long an edit waits for the check. Advisory: briefly, then the result arrives with the AI's next tool result,
@@ -249,7 +287,7 @@ pub async fn check_edit(path: &str, before: &str, after: &str, mode: Mode, timeo
 /// out of time is "unavailable" and the edit is kept.
 pub const ADVISORY_WAIT: Duration = Duration::from_millis(1500);
 pub const BLOCKING_WAIT: Duration = Duration::from_secs(12);
-pub const BACKGROUND_LIMIT: Duration = Duration::from_secs(45);
+pub const BACKGROUND_LIMIT: Duration = Duration::from_secs(90);
 /// After this many edits in a row that leave new errors in the same script, the AI is told to stop and ask the user.
 pub const MAX_REPAIRS: u32 = 3;
 
@@ -328,6 +366,39 @@ pub async fn analyze_one(label: &str, source: &str, timeout: Duration) -> Value 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test] async fn cancelled_waiter_does_not_restart_checker_setup() {
+        let slot = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+        let (started, ready) = tokio::sync::oneshot::channel();
+        let (finish, finishing) = tokio::sync::oneshot::channel();
+        let first_slot = slot.clone();
+        let first = tokio::spawn(async move {
+            shared_install(&first_slot, || async move {
+                let _ = started.send(());
+                let _ = finishing.await;
+                Ok((PathBuf::from("checker"), PathBuf::from("definitions")))
+            }).await
+        });
+        ready.await.unwrap();
+        first.abort();
+        assert!(first.await.unwrap_err().is_cancelled());
+        finish.send(()).unwrap();
+        let paths = shared_install(&slot, || async { panic!("the original setup must be reused") }).await.unwrap();
+        assert_eq!(paths.0, PathBuf::from("checker"));
+        assert!(slot.lock().await.is_none());
+        assert!(shared_install(&slot, || async { Err("offline".into()) }).await.is_err());
+        assert!(slot.lock().await.is_none(), "failed setup must permit a later retry");
+    }
+    #[tokio::test] async fn place_timeout_leaves_a_real_fallback_budget() {
+        let result = with_fallback(std::future::pending::<Result<u32, String>>(), |budget| async move {
+            assert!(budget > Duration::from_millis(50), "not the old three-second scraps of a consumed budget");
+            tokio::time::sleep(Duration::from_millis(20)).await;
+            Ok(7)
+        }, Duration::from_secs(1)).await;
+        assert_eq!(result.unwrap(), 7);
+        assert_eq!(with_fallback(async { Ok(9) }, |_| async { panic!("a warm successful service needs no fallback") }, Duration::from_secs(1)).await.unwrap(), 9);
+        let unavailable = with_fallback(async { Err::<u32, _>("service busy".into()) }, |_| std::future::pending(), Duration::from_millis(20)).await;
+        assert!(unavailable.is_err(), "a hung fallback must still have a deadline");
+    }
     const SAMPLE: &str = "A_after.luau:7:1-0: (W0) SyntaxError: Expected identifier when parsing expression, got <eof>\nA_after.luau:3:1-22: (W0) TypeError: Expected this to be 'number', but got 'string'\nA_after.luau:3:7-7: (W0) LocalUnused: Variable 'x' is never used; prefix with '_' to silence\nother.luau:1:1-1: (W0) TypeError: not ours\n[INFO] Loading definitions file\n";
     fn d(line: u32, code: &str, msg: &str) -> Diagnostic { Diagnostic { line, col: 1, code: code.into(), message: msg.into(), file: None } }
 
