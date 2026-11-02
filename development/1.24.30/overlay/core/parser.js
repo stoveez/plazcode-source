@@ -199,19 +199,40 @@ const RSParse = (() => {
   // schema ("tool"/"arguments"/"name"/"args"). Returns null if not a valid call.
   function normalizeCall(o) {
     if (!o || typeof o !== "object") return null;
-    const name = o.command != null ? o.command : (o.tool != null ? o.tool : o.name);
-    let args = o.params != null ? o.params : (o.arguments != null ? o.arguments : o.args);
-    if (typeof name !== "string" || !name) return null;
-    if (args == null) args = {};
-    if (typeof args !== "object" || Array.isArray(args)) return null;
-    // Catalog selection is sometimes emitted beside command instead of params.
-    // Repair only this read-only selector; never infer a mutation's server.
-    if ((name === "list_commands" || name === "list_tools") && o.server != null) {
-      if (typeof o.server !== "string" || !o.server.trim()) return null;
-      if (args.server != null && (typeof args.server !== "string" || args.server.trim() !== o.server.trim())) return null;
-      args = { ...args, server: o.server.trim() };
+    const nameKey = o.command != null ? "command" : o.tool != null ? "tool" : "name";
+    const name = o[nameKey];
+    if (typeof name !== "string" || !name.trim()) return null;
+    const wrappers = ["params", "arguments", "args"];
+    const present = wrappers.filter(key => o[key] != null);
+    const decode = value => {
+      if (typeof value === "string") { try { value = parseLoose(value); } catch { return null; } }
+      return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+    };
+    let args = present.length ? decode(o[present[0]]) : {};
+    if (!args) return null;
+    args = { ...args };
+    let argumentError = "";
+    // Preserve explicitly supplied fields; never discard a flat path/code or silently choose between conflicting
+    // wrappers. Schema-aware repair below still decides whether those fields actually belong to this tool.
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    for (const key of present.slice(1)) {
+      const extra = decode(o[key]);
+      if (!extra || !same(extra, args)) argumentError = "Conflicting parameter wrappers. Send one params object.";
     }
-    return { tool: name, arguments: args };
+    for (const [key, value] of Object.entries(o)) {
+      if (key === nameKey || wrappers.includes(key)) continue;
+      if (key === "server" && (name === "list_commands" || name === "list_tools") &&
+          typeof args[key] === "string" && typeof value === "string" && args[key].trim() === value.trim()) continue;
+      if (Object.hasOwn(args, key) && !same(args[key], value)) {
+        argumentError = `Conflicting values for ${key}. Send it once inside params.`;
+      } else args[key] = value;
+    }
+    // Keep the catalogue server selector strict (including the existing conflict rejection).
+    if ((name === "list_commands" || name === "list_tools") && o.server != null) {
+      if (typeof o.server !== "string" || !o.server.trim() || argumentError) return null;
+      args.server = o.server.trim();
+    }
+    return { tool: name, arguments: args, ...(argumentError ? {argumentError} : {}) };
   }
 
   // String-aware matching-brace finder: index of the "}" that closes the "{" at

@@ -194,3 +194,5 @@ Owner explicitly does not want source ZIP distribution. Run 41335729270 cancelle
 - 2026-11-02 follow-up: Luau timeout/setup/fallback fix passed 9 targeted and full native tests (5 + 271 passed, 2 ignored). Arena stall, raw code, accidental recovery-as-user-stop and tool argument/latency fixes in progress; final CI/test ZIPs still pending.
 
 - 2026-11-02 Arena follow-up: recovery clicks now preserve the task; long/open command masking, history read caching and one-time owned-chip repair passed real provider/core fixtures. Live Arena profiling remains unverified. Flat argument/schema repair and final full build next.
+
+- 2026-11-02 C2: schema-aware flat/path argument repair, explicit conflict rejection, compact Arena structural catalogue/full targeted reference and phase timing diagnostics passed targeted tests. Full JS/final CI and verified Windows/Mac delivery pending.

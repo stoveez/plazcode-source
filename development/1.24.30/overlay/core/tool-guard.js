@@ -57,6 +57,7 @@ const PlazCodeToolGuard = (() => {
   }
   function check(call, tools) {
     if (!call || typeof call.tool !== 'string' || !call.tool.trim()) return ['A tool name is required.'];
+    if (call.argumentError) return [call.argumentError];
     const args = call.arguments == null ? {} : call.arguments;
     if (!object(args)) return ['arguments must be a JSON object, not a string or array.'];
     const name = call.tool.split('/').pop();
@@ -169,6 +170,24 @@ const PlazCodeToolGuard = (() => {
     if (!object(inner)) { inner = { ...args }; delete inner[key]; for (const k of ['arguments', 'args', 'input', 'params', 'parameters']) delete inner[k]; }
     call.tool = target; call.arguments = inner; call.reroutedFrom = 'skill';
   }
+  // A foreign file-path spelling is safe only when this tool advertises exactly one such field. Never choose
+  // between a source and destination, invent a path, or overwrite a conflicting explicit value.
+  function repairPath(call, schema, notes) {
+    const group = ['target_file', 'file_path', 'path'];
+    const props = object(schema?.properties) ? schema.properties : {};
+    const advertised = group.filter(key => Object.hasOwn(props, key));
+    if (advertised.length !== 1) return;
+    const target = advertised[0], args = call.arguments;
+    const aliases = group.filter(key => key !== target && Object.hasOwn(args, key));
+    if (!aliases.length || ![props[target].type].flat().includes('string')) return;
+    const keys = [target, ...aliases].filter(key => Object.hasOwn(args, key));
+    if (keys.some(key => typeof args[key] !== 'string') || keys.some(key => args[key] !== args[keys[0]])) {
+      call.argumentError = `arguments.${target}: conflicting file paths; send one value using "${target}".`;
+      return;
+    }
+    args[target] = args[keys[0]];
+    for (const key of aliases) { delete args[key]; notes.push(`arguments.${key}: the argument is called "${target}"`); }
+  }
   function repair(call, tools) {
     if (!call || typeof call !== 'object') return call;
     if (typeof call.tool === 'string') call.tool = call.tool.trim();
@@ -181,8 +200,9 @@ const PlazCodeToolGuard = (() => {
     rerouteSkill(call, tools);
     const name = typeof call.tool === 'string' ? call.tool.split('/').pop() : '';
     const tool = (tools || []).find(t => t.name === call.tool || t.name === name);
-    const schema = tool?.inputSchema || tool?.input_schema || tool?.parameters, notes = [];
+    const schema = tool?.inputSchema || tool?.input_schema || tool?.parameters, notes = Array.isArray(call.repairs) ? call.repairs.slice(0,12) : [];
     unwrapEnvelope(call, schema, text => notes.push(text));
+    repairPath(call, schema, notes);
     call.arguments = coerce(call.arguments, schema, 0, notes);
     if (notes.length) call.repairs = notes.slice(0, 12);
     const args = call.arguments;

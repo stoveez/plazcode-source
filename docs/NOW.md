@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-11-02. Branch `claude/plazcode-dev`; no helper agents.
 
-**Newest: Arena masking, history-read and accidental Stop fixes passed their targeted checks.** Recovery Stop clicks no longer cancel the task, real Stop still does, long/raw/open command blocks are masked without dispatching incomplete code, and old settled replies reuse their text until changed. Real owned-chip code repairs a render wipe once without a rebuild cycle. Arena modes, fast settling, provider preservation and desktop pins passed. Live Arena performance remains unverified (no connected browser tool).
+**Newest: Arena flat arguments/schema aliases and shorter command references passed targeted tests; full JS/final CI next.** Flat fields are preserved, conflicting wrappers/paths rejected, and path aliases repaired only against a tool with one unambiguous advertised path field. Known tool aliases resolve before validation. Arena catalogue retains schema constraints/nested shapes, helpers on page one and other connected servers; full per-command reference (including virtual commands) is available without resending the entire catalogue. Timing diagnostics separate first text, settling and tool duration.
+
+**Arena C verified:** Recovery Stop clicks no longer cancel the task, real Stop still does, long/raw/open command blocks are masked without dispatching incomplete code, and old settled replies reuse their text until changed. Real owned-chip code repairs a render wipe once without a rebuild cycle. Arena modes, fast settling, provider preservation and desktop pins passed. Live Arena performance remains unverified (no connected browser tool).
 
 **Luau verified:** Setup now survives a cancelled waiter, at most two CLI checks start together, and place-wide checking leaves real time for the one-file fallback. Advisory still releases the AI after 1.5 seconds; Blocking still has a 12-second limit. Background checks have 90 seconds. Added cancellation/setup and fallback-budget regressions. Targeted Luau: 9 passed; full native: 5 library + 271 agent passed, 2 ignored (not claimed as live Studio tests).
 
@@ -9,7 +11,7 @@ Updated: 2026-11-02. Branch `claude/plazcode-dev`; no helper agents.
 
 **CI:** fresh dispatched baseline run [41364800959](https://github.com/stoveez/plazcode-source/actions/runs/41364800959), source 2db1e5a, is running; duplicate old-version/push builds cancelled. It does not contain the Luau fix or forthcoming Arena changes. Dispatch a fresh final full build after fixes.
 
-**Next:** accept unambiguous flat/foreign tool arguments against the actual tool schema and shorten Arena catalogue overhead, then run a fresh full CI build containing all fixes. Preserve Claude's empty-turn recovery, safe send, MiMo/checklist/workspace/sidebar fixes; 15-call MiMo test remains dropped.
+**Next:** run the full JS suite after these runtime changes and dispatch final full CI on this checkpoint. This is a WIP verification checkpoint; do not deliver older artifacts as containing these fixes. Preserve Claude's empty-turn recovery, safe send, MiMo/checklist/workspace/sidebar fixes; 15-call MiMo test remains dropped.
 
 No stable publication or release/main merge authorized. Source currently Public for CI; never change visibility. Deliver verified inner Windows/Mac test ZIPs through Drive and remind owner to restore Private at delivery. Account API stays Public separately. Update NOW and [evening handoff](vault/handoff-1.24.30-2026-11-01-evening.md) in every pushed change.
 

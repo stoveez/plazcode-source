@@ -206,6 +206,25 @@
     const key = raw.replace(/-/g, "_").toLowerCase();
     return TOOL_ALIASES[key] || TOOL_ALIASES[raw] || n;
   }
+  function arenaToolReference(tool) {
+    const schema = tool.inputSchema || tool.input_schema || tool.parameters || {};
+    const structural = value => {
+      if (Array.isArray(value)) return value.map(structural);
+      if (!value || typeof value !== "object") return value;
+      // Only schema annotations are omitted. Never strip a PROPERTY actually named description/title/examples.
+      const out = {};
+      for (const [key, entry] of Object.entries(value)) {
+        if (["description", "title", "examples", "$comment"].includes(key)) continue;
+        if (["properties", "$defs", "definitions", "patternProperties", "dependentSchemas", "dependencies"].includes(key) && entry && typeof entry === "object") {
+          out[key] = Object.fromEntries(Object.entries(entry).map(([name, child]) => [name, structural(child)]));
+        } else if (["items", "prefixItems", "contains", "additionalProperties", "additionalItems", "unevaluatedProperties", "unevaluatedItems", "propertyNames", "if", "then", "else", "not", "allOf", "anyOf", "oneOf", "contentSchema"].includes(key)) out[key] = structural(entry);
+        else out[key] = entry; // const/enum/default are literal data, never schemas to rewrite
+      }
+      return out;
+    };
+    const note = RS.TOOL_NOTES[bareToolName(tool.name)];
+    return `${tool.name}: ${String(tool.description || "").split("\n")[0]}\nschema: ${JSON.stringify(structural(schema))}${note ? "\n⚠ " + note : ""}`;
+  }
   // Migration only: retire saved lockouts from older builds on every provider.
   try { const clear=chrome.storage.local.remove("rsCondoLock"); if(clear?.catch)clear.catch(()=>{}); } catch {}
   try { const old=document.getElementById("rs-condo-lock"); if(old){clearTimeout(old._t);old.remove();} } catch {}
@@ -1373,7 +1392,7 @@
     const TIMEOUT = T.RESPONSE_TIMEOUT_MS;
     let lastActiveAt = Date.now();
     const STABLE_MS = T.STABLE_MS; // generating-flag stuck ON but text frozen → done
-    let started = false, doneSince = 0, lastLimitScan = 0;
+    let started = false, doneSince = 0, lastLimitScan = 0, firstFreshTextAt = 0;
     let lastText = null, lastChangeAt = Date.now(), genFalseSince = 0;
     let hardProgressText = null, hardProgressAt = Date.now(), hardNoticeShown = false;
     // ── DIAG: finalisation-latency instrumentation (multi_edit "slow" probe) ──
@@ -1566,6 +1585,10 @@
       const newReply = (curTok !== undefined && curTok !== null)
         ? (curTok !== sendOwner.sendToken)
         : P.assistantCount() > base;
+      if (newReply && !firstFreshTextAt && (d.reply || d.thinking)) {
+        firstFreshTextAt = Date.now();
+        diag("response.firstText", {provider:P.id,waitMs:firstFreshTextAt-t0,chars:String(d.reply||"").length});
+      }
 
       // ChatGPT's streaming renderer can swap the reply subtree after the DOM
       // sweeper has already parsed a valid command. In that race the sweep paints
@@ -2880,6 +2903,7 @@ return result`;
   }
   async function runToolImpl(call) {
     if (A.stop) return "ERROR: the command was not run — stopped by the user.";
+    call.tool = remapToolName(call.tool);
     PlazCodeToolGuard.repair(call, A.toolList);
     let name = call.tool;
     const args = call.arguments == null ? {} : call.arguments;
@@ -3393,7 +3417,29 @@ return result`;
       webLines.push(PlazCodeClarification.DESCRIPTION);
       // 1.24.22 short startup: the startup command list is names plus one line each; the AI asks list_commands {command} for one command's full parameters.
       const oneCommand=String((args&&(args.command||args.name||args.tool))||'').trim();
-      if(oneCommand){const hit=scoped.filter(t=>t.name===oneCommand||bareToolName(t.name)===bareToolName(oneCommand));if(hit.length)scoped.splice(0,scoped.length,...hit);}
+      if(oneCommand){
+        const hit=scoped.filter(t=>t.name===oneCommand||bareToolName(t.name)===bareToolName(oneCommand));
+        if(hit.length) return `Output of '${name}':\n` + hit.map(t=>`${t.name}: ${t.description || ""}\n${JSON.stringify(t.inputSchema || t.input_schema || t.parameters || {})}${RS.TOOL_NOTES[bareToolName(t.name)] ? "\n" + RS.TOOL_NOTES[bareToolName(t.name)] : ""}`).join("\n\n");
+        const escaped=oneCommand.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+        const match=new RegExp("\\b"+escaped+"(?:\\s*\\{|:)");
+        const references=[...animLines,...skillLines,...agentLines,...webLines].filter(line=>match.test(line));
+        if(references.length)return `Output of '${name}':\n`+references.join("\n");
+        return `ERROR: no command named "${oneCommand}" on server "${requested}". Use list_commands for its available names.`;
+      }
+      if(P.id === "arena" && args.full !== true){
+        const helpers=[...animLines,...skillLines,...agentLines,...webLines];
+        const helperNames=new Set();
+        for(const line of helpers){
+          const heading=line.match(/^([a-z][a-z0-9_]+):/);if(heading)helperNames.add(heading[1]);
+          for(const match of line.matchAll(/\b([a-z][a-z0-9_]+)\s*\{/g))helperNames.add(match[1]);
+        }
+        const helperTop=helperNames.size ? "PlazCode helper commands: "+[...helperNames].join(", ")+"\n" : "";
+        const reference=`Output of '${name}':\n${helperTop}${requested} commands. Schemas below retain required fields, enums, nested shapes and constraints; optional schema annotations are omitted. For a command's full meaning/units/examples call list_commands {"command":"name"}; {"full":true} gives the full catalogue. Use {"command":"name","params":{...}}.\n\n`+
+          scoped.map(arenaToolReference).join("\n\n")+"\n\n"+helpers.join("\n")+
+          (requested===curEng && typeof connectedAddonsNote === "function" && connectedAddonsNote(curEng) ? "\n"+connectedAddonsNote(curEng) : "");
+        diag("catalogue.compact",{commands:scoped.length,chars:reference.length,provider:P.id});
+        return reference;
+      }
       if(!oneCommand&&((A.requestKind==='quick'&&A.quickCatalogue&&!A.catalogueDetail&&!A.starting)||(A.starting&&(typeof leanStartupOn === "function" && leanStartupOn())))){
         const names=new Set();
         for(const line of [...animLines,...skillLines,...agentLines,...webLines]){
@@ -4841,10 +4887,13 @@ return result`;
         if (res.kind === "tool") {
           A.hangTries = {}; // a command arrived, so the next stall in this run gets its own single recovery
           const calls = res.calls;
-          const preflight = calls.flatMap(call => PlazCodeToolGuard.check(PlazCodeToolGuard.repair(call, A.toolList), A.toolList));
+          const preflight = calls.flatMap(call => {
+            call.tool = remapToolName(call.tool);
+            return PlazCodeToolGuard.check(PlazCodeToolGuard.repair(call, A.toolList), A.toolList);
+          });
           if (preflight.length) {
             if (++invalidToolAttempts >= 3) { ui.banner("warn", "Repeated invalid tool calls", preflight.join(" · ")); break; }
-            base = await submitAndGetBase("ERROR: no command was executed. Correct the tool arguments:\n" + preflight.join("\n") + "\nSend ONE complete, smaller command. Do not repeat the same invalid call."); continue;
+            base = await submitAndGetBase("ERROR: no command was executed. Correct the tool arguments:\n" + preflight.join("\n") + '\nUse {"command":"name","params":{"exact_schema_key":"value"}}; arguments.key names a field inside params, not another wrapper. Get the exact fields with list_commands {"command":"name"}. Send ONE complete command.'); continue;
           }
           if (calls.length > 1) {
             if (++invalidToolAttempts >= 3) { ui.banner("warn", "Repeated multi-command replies", "Nothing ran. Send one complete command per turn."); break; }
@@ -4926,7 +4975,7 @@ return result`;
           try { feedback = compressToolFeedback(feedback, call.tool); } catch {}
           A.toolRunning = false;
           if (!/^(?:list_commands|list_tools)$/.test(call.tool)) activity.step(call.tool, feedbackIsError(feedback) ? "Failed: " + outSummary(feedback) : outSummary(feedback));
-          diag("tool.done", { name: call.tool, ok: !feedback.startsWith("ERROR"), out: feedback.slice(0, 50) });
+          diag("tool.done", { name: call.tool, ms: Date.now()-A.toolStart, ok: !feedback.startsWith("ERROR"), out: feedback.slice(0, 50) });
           if (A.stop) {
             // User halted mid-tool: settle the spinning chip so it doesn't look
             // stuck loading forever, and MARK the turn so the sweep classifier
