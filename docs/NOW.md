@@ -1,4 +1,6 @@
 # NOW
+
+**Newest WIP:** final review added stopping existing background jobs when Read-only turns on, scoped job listing through command_status without an ID, durable early Stop/permission cleanup, job-count tests and a real delayed-write-after-Stop assertion. Unix process groups now use the native kill syscall. These last native-only changes need a fresh Rust pass and supersede CI 41444026857 on a7ecb21; cancel it and build the newer revision. Current JS source is unchanged; final JS rerun is still running.
 Updated: 2026-11-02. Branch `claude/plazcode-dev`; no helper agents.
 
 **Newest: DeepSeek safeguards, selective learning, ordered batches and background jobs implemented; final checks and NEW full test builds next.** Owner explicitly included batching/background jobs before delivery and asked to address slow non-DeepSeek workflows. No stable publication, feed changes, release/main merge or visibility changes authorized.

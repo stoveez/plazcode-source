@@ -1189,7 +1189,13 @@ async fn start_command_job(ws:&Workspace,args:&serde_json::Value,shell:Shell,com
  Ok((job_result(&job,&serde_json::Value::Null),false)) // Started is not a verified successful test/build.
 }
 pub async fn tool_command_job(ws:&Workspace,args:&serde_json::Value,stop:bool)->Result<String,String>{
- let id=arg_str(args,"job_id")?;let scope=JobScope::current(ws);
+ let scope=JobScope::current(ws);
+ if !stop && args["job_id"].as_str().unwrap_or("").trim().is_empty(){
+  let jobs=COMMAND_JOBS.lock().map_err(|_|"Background jobs are unavailable")?;
+  let rows=jobs.iter().filter(|j|j.scope==scope).map(|j|{let state=j.state.lock().unwrap_or_else(|e|e.into_inner());serde_json::json!({"job_id":j.id,"state":state.0,"exit_code":state.1,"command":preview(&j.command,400),"elapsed_seconds":j.started.elapsed().as_secs()})}).collect::<Vec<_>>();
+  return Ok(serde_json::json!({"jobs":rows,"note":"Only this profile/workspace's jobs are listed. Use command_status with a job_id for live output, or command_stop to stop it."}).to_string());
+ }
+ let id=arg_str(args,"job_id")?;
  let job={let jobs=COMMAND_JOBS.lock().map_err(|_|"Background jobs are unavailable")?;jobs.iter().find(|j|j.id==id && j.scope==scope).cloned().ok_or("This job is unavailable in this profile/workspace, or PlazCode restarted. Do not assume it is still running.")?};
  if stop && running_job(&job){job.cancel.store(true,Ordering::Release);for _ in 0..40 {if !running_job(&job){break;}tokio::time::sleep(std::time::Duration::from_millis(25)).await;}}
  Ok(job_result(&job,args))
@@ -1294,7 +1300,7 @@ impl Drop for OwnedCommandTree {
             let _=std::process::Command::new(crate::hidden::hidden!("taskkill")).args(["/F","/T","/PID",&self.pid.to_string()]).creation_flags(0x08000000).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).status();
         }
         #[cfg(not(windows))] {
-            let _=std::process::Command::new("kill").args(["-KILL","--",&format!("-{}",self.pid)]).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).status();
+            if let Ok(group)=i32::try_from(self.pid){unsafe{libc::kill(-group,libc::SIGKILL);}}
         }
     }
 }
@@ -2100,7 +2106,7 @@ pub fn catalog() -> Vec<serde_json::Value> {
         serde_json::json!({"name": crate::hidden::hidden!("search_files"), "description": crate::hidden::hidden!("Find files/folders by NAME using glob patterns, e.g. \"**/*.py\", \"src/**/*.js\". Searches the workspace; pass path to search another folder (any folder in FULL PC ACCESS)."), "inputSchema": schema(serde_json::json!({"pattern": {"type": "string"}, "path": {"type": "string"}}), &["pattern"])}),
         serde_json::json!({"name": crate::hidden::hidden!("grep_files"), "description": crate::hidden::hidden!("Search INSIDE file contents. Case-insensitive substring by default; regex:true for regular expressions. Narrow with include globs like \"src/**/*.ts\". Searches the workspace; pass path to search another folder (any folder in FULL PC ACCESS)."), "inputSchema": schema(serde_json::json!({"query": {"type": "string"}, "include": {"type": "string"}, "regex": {"type": "boolean"}, "ignore_case": {"type": "boolean"}, "path": {"type": "string"}}), &["query"])}),
         serde_json::json!({"name": crate::hidden::hidden!("run_command"), "description": crate::hidden::hidden!("Run a terminal command: installs, builds, tests, git, PowerShell scripts. Captures stdout/stderr and the exit code. Default shell: cmd on Windows, sh elsewhere; pass shell:\"powershell\" (or \"pwsh\", \"bash\") to use another one - PowerShell scripts need no quote escaping and may span several lines. Runs in the workspace root unless cwd names another folder (any folder in FULL PC ACCESS). Foreground: timeout_seconds up to 600 (default 60). For a long build, test suite or dev server, set background:true: returns a job_id immediately. Read live output with command_status {job_id,stdout_offset?,stderr_offset?}, stop with command_stop {job_id}. Background jobs last up to 86400 seconds (default), and stop when the app closes or the profile/permissions change. Never assume a started build passed. No interactive input."), "inputSchema": schema(serde_json::json!({"command": {"type": "string"}, "background":{"type":"boolean"}, "shell": {"type": "string", "description": crate::hidden::hidden!("cmd, powershell, pwsh, bash or sh. Leave out for the default.")}, "cwd": {"type": "string", "description": crate::hidden::hidden!("Folder to run in: relative to the workspace, or absolute in FULL PC ACCESS.")}, "timeout_seconds": {"type": "integer"}}), &["command"])}),
-        serde_json::json!({"name":crate::hidden::hidden!("command_status"),"description":crate::hidden::hidden!("Read state and live stdout/stderr for an owned background run_command job. Follow stdout_offset/stderr_offset pages; poll only when useful, not in a tight loop. A started job is not a passing test."),"inputSchema":schema(serde_json::json!({"job_id":{"type":"string"},"stdout_offset":{"type":"integer","minimum":0},"stderr_offset":{"type":"integer","minimum":0}}),&["job_id"])}),
+        serde_json::json!({"name":crate::hidden::hidden!("command_status"),"description":crate::hidden::hidden!("List this profile/workspace background jobs without job_id, or read state and live stdout/stderr with job_id. Follow stdout_offset/stderr_offset pages; poll only when useful, not in a tight loop. A started job is not a passing test."),"inputSchema":schema(serde_json::json!({"job_id":{"type":"string"},"stdout_offset":{"type":"integer","minimum":0},"stderr_offset":{"type":"integer","minimum":0}}),&[])}),
         serde_json::json!({"name":crate::hidden::hidden!("command_stop"),"description":crate::hidden::hidden!("Stop one background run_command job and its owned process tree. Partial file changes may remain. Only this profile/workspace's jobs can be stopped."),"inputSchema":schema(serde_json::json!({"job_id":{"type":"string"}}),&["job_id"])}),
         serde_json::json!({"name": crate::hidden::hidden!("file_info"), "description": crate::hidden::hidden!("Metadata for one path: kind, size, modified/created timestamps, readonly flag."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
         serde_json::json!({"name": crate::hidden::hidden!("env_info"), "description": crate::hidden::hidden!("Machine overview: host, OS, arch, CPU count, memory, user, workspace root, and whether FULL PC ACCESS is on."), "inputSchema": schema(serde_json::json!({}), &[])}),
@@ -2263,15 +2269,18 @@ mod tests {
     async fn managed_background_jobs_stream_stop_timeout_and_isolate_workspaces() {
         let dir=std::env::temp_dir().join(format!("plazcode-managed-jobs-{}",std::process::id()));std::fs::create_dir_all(dir.join("other")).unwrap();
         let ws=Workspace::new(Some(dir.to_str().unwrap())).unwrap();let other=Workspace::new(Some(dir.join("other").to_str().unwrap())).unwrap();
-        let command="python -u -c \"import time,sys; print('early',flush=True); print('warning',file=sys.stderr,flush=True); time.sleep(30); print('late')\"";
+        let command="python -u -c \"import time,sys; print('early',flush=True); print('warning',file=sys.stderr,flush=True); time.sleep(3); __import__('pathlib').Path('late-job-write.txt').write_text('bad'); print('late')\"";
         let started=Instant::now();let (out,verified)=tool_run_command_observed(&ws,&serde_json::json!({"command":command,"background":true})).await.unwrap();
         assert!(!verified,"a started job is not a verified passing test");assert!(started.elapsed().as_secs_f64()<1.5,"must not wait for the long command");
         let record:serde_json::Value=serde_json::from_str(&out).unwrap();let args=serde_json::json!({"job_id":record["job_id"]});
         assert!(tool_command_job(&other,&args,false).await.is_err(),"other workspaces cannot see/stop this job");
+        let own:serde_json::Value=serde_json::from_str(&tool_command_job(&ws,&serde_json::json!({}),false).await.unwrap()).unwrap();assert!(own["jobs"].as_array().unwrap().iter().any(|j|j["job_id"]==record["job_id"]));
+        let isolated:serde_json::Value=serde_json::from_str(&tool_command_job(&other,&serde_json::json!({}),false).await.unwrap()).unwrap();assert_eq!(isolated["jobs"].as_array().unwrap().len(),0);
         let mut seen=String::new();for _ in 0..120 {seen=tool_command_job(&ws,&args,false).await.unwrap();if seen.contains("early") && seen.contains("warning"){break;}tokio::time::sleep(std::time::Duration::from_millis(50)).await;}
         assert!(seen.contains("early") && seen.contains("warning"),"live output must be readable before the command ends: {seen}");
         let stopped=tool_command_job(&ws,&args,true).await.unwrap();assert_eq!(serde_json::from_str::<serde_json::Value>(&stopped).unwrap()["state"],"stopped");
         assert!(!stopped.contains("late\\n"),"stopped command did not reach its later output");
+        tokio::time::sleep(std::time::Duration::from_millis(3200)).await;assert!(!dir.join("late-job-write.txt").exists(),"Stop kills the actual process; it cannot continue writing after the job says stopped");
         let out=tool_run_command(&ws,&serde_json::json!({"command":"python -c \"import time;time.sleep(30)\"","background":true,"timeout_seconds":1})).await.unwrap();
         let record:serde_json::Value=serde_json::from_str(&out).unwrap();let args=serde_json::json!({"job_id":record["job_id"]});
         let mut state=serde_json::Value::Null;for _ in 0..100 {state=serde_json::from_str(&tool_command_job(&ws,&args,false).await.unwrap()).unwrap();if state["state"]=="timed_out"{break;}tokio::time::sleep(std::time::Duration::from_millis(50)).await;}
@@ -2280,6 +2289,13 @@ mod tests {
         let mut state=serde_json::Value::Null;for _ in 0..100 {state=serde_json::from_str(&tool_command_job(&ws,&args,false).await.unwrap()).unwrap();if state["state"]=="completed"{break;}tokio::time::sleep(std::time::Duration::from_millis(50)).await;}
         assert_eq!(state["state"],"completed");assert_eq!(state["exit_code"],0);assert_eq!(state["stdout"]["next_offset"],8000);
         let next:serde_json::Value=serde_json::from_str(&tool_command_job(&ws,&serde_json::json!({"job_id":record["job_id"],"stdout_offset":8000}),false).await.unwrap()).unwrap();assert!(next["stdout"]["text"].as_str().unwrap().contains("DONE"));
+        let mut active=Vec::new();
+        for _ in 0..4 {let text=tool_run_command(&ws,&serde_json::json!({"command":"python -c \"import time;time.sleep(30)\"","background":true})).await.unwrap();let row:serde_json::Value=serde_json::from_str(&text).unwrap();active.push(serde_json::json!({"job_id":row["job_id"]}));}
+        assert!(tool_run_command(&ws,&serde_json::json!({"command":"echo excess","background":true})).await.is_err(),"running-job limit prevents resource bursts");
+        ws.set_full_access(true);ws.set_full_access(false);
+        for args in &active {let mut row=serde_json::Value::Null;for _ in 0..40 {row=serde_json::from_str(&tool_command_job(&ws,args,false).await.unwrap()).unwrap();if row["state"]=="stopped"{break;}tokio::time::sleep(std::time::Duration::from_millis(50)).await;}assert_eq!(row["state"],"stopped","permission revocation stops already running jobs");}
+        let text=tool_run_command(&ws,&serde_json::json!({"command":"python -c \"import time;time.sleep(30)\"","background":true})).await.unwrap();let row:serde_json::Value=serde_json::from_str(&text).unwrap();let args=serde_json::json!({"job_id":row["job_id"]});
+        stop_profile_jobs();let mut row=serde_json::Value::Null;for _ in 0..40 {row=serde_json::from_str(&tool_command_job(&ws,&args,false).await.unwrap()).unwrap();if row["state"]=="stopped"{break;}tokio::time::sleep(std::time::Duration::from_millis(50)).await;}assert_eq!(row["state"],"stopped","profile/read-only cleanup cannot lose an early Stop signal");
         let _=std::fs::remove_dir_all(dir);
     }
 

@@ -1547,6 +1547,7 @@ fn preferences_response(state: &AppState, patch: &serde_json::Value, outcome: an
             ).into_response(),
         },
     };
+    if prefs.read_only {workspace::stop_profile_jobs();}
     let full = full_access_after(patch, &prefs.perm_mode, state.workspace.full_access());
     if full != state.workspace.full_access() { state.workspace.set_full_access(full); }
     state.workspace.set_allowed_folders(&prefs.allowed_folders);
