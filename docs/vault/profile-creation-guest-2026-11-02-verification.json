@@ -1,6 +1,6 @@
 {
-  "state": "ready_for_replacement_full_ci",
-  "program_source": "014b79d plus final remembered-profile fallback refinement",
+  "state": "awaiting_final_hosted_packages",
+  "program_source": "52b9d197122ccd7b68a9a3ee6268824c91114e10",
   "local_rust": {
     "library_passed": 5,
     "agent_passed": 288,
@@ -56,7 +56,7 @@
   "stable_published": false,
   "artifacts": [],
   "superseded_run_id": 41488995618,
-  "run_id": null,
+  "run_id": 41492949796,
   "published_release": {
     "version": "1.24.30",
     "published_at": "2026-11-02T15:27:00Z",
@@ -64,6 +64,10 @@
     "source": "69434caac430db3050e2f606ccb85ac92e7782d7",
     "windows_zip_sha256": "e76879ba98b1ff37575be73b024e2b9bfaa66c336572b3baa99476d24ec40d08",
     "windows_executable_sha256": "919a2651f58ecbc00d3e56c9322a588a1c2ff5339aa6020697e545a2870de477",
-    "executable_matches_prior_69a4f8c_test": true
-  }
+    "executable_matches_prior_69a4f8c_test": true,
+    "macos_zip_sha256": "820a21df6626667acca1f4da06557bd094e085c783f3a84ca05b9f18229c4466",
+    "macos_executable_sha256": "e00966e7648f092fbaa32e9da93e0effc8b688ac5fb073f15fce29b813a1b7c8",
+    "macos_executable_matches_prior_69a4f8c_test": true
+  },
+  "affected_logs": "Owner cannot obtain logs from the other PCs; original host trigger remains unconfirmed. Do not keep asking or claim it was reproduced."
 }

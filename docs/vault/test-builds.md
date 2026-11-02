@@ -3,6 +3,9 @@ title: Test builds and the public-then-private plan
 
 updated: 2026-11-02
 ---
+## 2026-11-02 — final source 52b9d19; replacement full CI 41492949796 running
+Final source **52b9d19**, full run [41492949796](https://github.com/stoveez/plazcode-source/actions/runs/41492949796). Full local Rust 5 library + 288 agent passed, 2 ignored; full JS 0 and final focused UI/storage/pin checks passed. Published 1.24.30 Windows AND Mac executables match prior 69a4f8c tests; exact official archive layouts are the new verification baselines (no file additions/removals expected). Public fresh signup/login/session succeeded; synthetic sessions revoked. Owner cannot get affected-PC Logs, so the original host trigger remains unconfirmed; no further log questions pending. Guest/persistent data and reproduced client failure paths fixed. Superseded 41488995618 cancelled/force-cancelled after Mac cancellation lingered; do not deliver its artifacts. All new platform jobs run on 52b9d19. Next: full green, exact inner ZIP signature/source/SHA/native/layout verification, Drive name/MIME/size readback and Private reminder. No stable publishing; existing stable is 1.24.30. Future stable release requires a NEW version.
+
 ## 2026-11-02 — published version corrected; final remembered-login preservation
 Owner confirmed affected users run the RELEASED 1.24.30, during signup/login. Verified GitHub v1.24.30 published 15:27 UTC by existing workflow 41469911201 on release/1.24.30-publish / 69434ca; downloaded official Windows ZIP (51,145,646 bytes, SHA256 e76879ba98b1ff37575be73b024e2b9bfaa66c336572b3baa99476d24ec40d08). Its executable SHA256 919a2651f58ecbc00d3e56c9322a588a1c2ff5339aa6020697e545a2870de477 matches earlier 69a4f8c test executable exactly. Published accounts overlay has the same unsafe reuse-of-proof retry. Earlier assumption of an older app based only on screenshot wording was too strong and corrected with owner.
 
