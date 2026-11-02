@@ -76,6 +76,7 @@ mod engine_tools;
 mod security;
 mod integrity;
 mod preferences;
+mod provider_pacing;
 mod profile_paths;
 mod accounts;
 mod profile_picture;
@@ -1399,6 +1400,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/templates/import", post(templates::import).layer(axum::extract::DefaultBodyLimit::max(templates::MAX_FILE)))
         .route("/api/stop", post(immediate_stop_handler))
         .route("/api/media/convert", post(media::post).layer(axum::extract::DefaultBodyLimit::max(64 * 1024 * 1024)))
+        .route("/api/provider-pacing",post(provider_pacing::post).layer(axum::extract::DefaultBodyLimit::max(4096)))
         .route("/api/memory", get(memory::get).post(memory::post).layer(axum::extract::DefaultBodyLimit::max(4*1024*1024)))
         .route("/api/engram",post(engram::post).layer(axum::extract::DefaultBodyLimit::max(64000)))
         .route("/api/vault",post(vault::post).layer(axum::extract::DefaultBodyLimit::max(18*1024*1024)))
@@ -1443,7 +1445,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
 // heartbeat, which also covers long model replies with no tool calls.
 fn is_work_request(method: &axum::http::Method, path: &str) -> bool {
     method == axum::http::Method::POST && !matches!(path,
-        "/api/desktop/profiles" | "/api/desktop/profile-picture" | "/api/desktop/update" | "/api/desktop/browser-agent" | "/api/show" | "/api/shutdown" | "/api/desktop/preferences" | "/api/preferences" |
+        "/api/desktop/profiles" | "/api/desktop/profile-picture" | "/api/desktop/update" | "/api/desktop/browser-agent" | "/api/show" | "/api/shutdown" | "/api/desktop/preferences" | "/api/preferences" | "/api/provider-pacing" |
         "/api/desktop/restart" | "/api/desktop/clear-logs" | "/api/connect" | "/api/disconnect" | "/api/pair" | "/api/local-full" | "/api/mcp/toggle" | "/api/debug/browser-log")
 }
 async fn track_tool_activity(request: axum::extract::Request, next: axum::middleware::Next) -> axum::response::Response {

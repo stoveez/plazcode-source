@@ -21,4 +21,4 @@ Evidence: deepseek-pacing-audit-2026-11-02.json; isolated harness /workspace/pla
 5. Add focused regressions, run appropriate JS/Rust/browser checks, update pins and notes in each pushed change. Build/verify replacement complete Windows/Mac test ZIPs after code is healthy; preserve earlier Arena/Luau/MiMo fixes. No stable publication without explicit yes.
 
 ## Current implementation status
-Inspection/plan only; no runtime files edited yet. Next: inspect native bridge/storage boundaries, choose common coordinator, implement DeepSeek safety first, then clean automatic learning and chat-note filtering.
+Native common coordinator chosen and written (provider_pacing.rs), plus existing-authenticated native route and DeepSeek-only background relay. Compile/tests next. Timing is shared across Chrome/Firefox/tabs/profiles on the same computer and persisted in install root; no chat text stored. Provider actual-commit/cancellation/rate integration and learning/chat-note fixes remain. New full test builds explicitly requested after completion.

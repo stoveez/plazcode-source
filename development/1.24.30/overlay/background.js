@@ -2272,6 +2272,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
     const mode = await tabEngine(tabId);
     const dispatch = (value, timeout) => normalizeEngine(msg.engine ?? mode) === "local" ? sendLocalEngine(value, timeout) : send(value, timeout);
     switch (msg.type) {
+      case "provider-pacing": {
+        try {
+          const origin=new URL(_sender.tab?.url || _sender.url || "");
+          if(origin.protocol!=="https:" || !["chat.deepseek.com","deepseek.com"].includes(origin.hostname) || !Number.isInteger(_sender.tab?.id))throw new Error("Request pacing is only available to the DeepSeek chat.");
+          const request={...msg.request,provider:"deepseek",owner:pairingIdentity()+":"+_sender.tab.id+":"+String(_sender.documentId || msg.page || "").slice(0,100)};
+          const response=await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/provider-pacing`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(request),signal:AbortSignal.timeout(5000)});
+          const value=await response.json();sendResponse(response.ok ? value : {ok:false,error:value.error || "The shared request timer could not be reached. Update the complete PlazCode app and extension together."});
+        }catch(error){sendResponse({ok:false,error:"DeepSeek send paused: "+String(error.message || error)});}
+        break;
+      }
       case "release-check":
         try {
           if(Date.now()-lastReleaseCheck>30000){lastReleaseCheck=Date.now();await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/desktop/update`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"check",background:true}),signal:AbortSignal.timeout(5000)});}
