@@ -1,3 +1,12 @@
+---
+title: Open work and known bugs
+updated: 2026-11-02
+---
+## 2026-11-02 — published version corrected; final remembered-login preservation
+Owner confirmed affected users run the RELEASED 1.24.30, during signup/login. Verified GitHub v1.24.30 published 15:27 UTC by existing workflow 41469911201 on release/1.24.30-publish / 69434ca; downloaded official Windows ZIP (51,145,646 bytes, SHA256 e76879ba98b1ff37575be73b024e2b9bfaa66c336572b3baa99476d24ec40d08). Its executable SHA256 919a2651f58ecbc00d3e56c9322a588a1c2ff5339aa6020697e545a2870de477 matches earlier 69a4f8c test executable exactly. Published accounts overlay has the same unsafe reuse-of-proof retry. Earlier assumption of an older app based only on screenshot wording was too strong and corrected with owner.
+
+Live Public API fresh synthetic signup 201, fresh login/session 200, both test sessions revoked 200; no real user data touched. Historical host trigger remains unproven; asked for account.service Log lines from affected 1.24.30. New remembered-login review preserves valid cached local access for busy/rate/transport failures, without clearing token; new real-HTTP test added. This last Rust-only refinement needs final native rerun and supersedes CI 41488995618, which must be cancelled/replaced. All earlier local tests/actual guest preview passed; no more feature scope added. Current test ZIP version stays 1.24.30 for direct replacement; any FUTURE stable publication must use a NEW version, never overwrite released 1.24.30. No assistant publish/main/release/feed/visibility changes.
+
 ## 2026-11-02 — local guest/signup verification complete; final CI running
 Program source **014b79d**, full CI [41488995618](https://github.com/stoveez/plazcode-source/actions/runs/41488995618). No duplicate push runs. All final local native tests pass (5 library + 287 agent, 2 ignored); full JS 0 failures, plus final CSS/UI/storage/extension checks. Exact screenshot wording maps to 1.24.29's non-JSON parser failure; old app did not log the host status. Current public API health/challenges/logins work. Historical reason for the host's unreadable reply remains unproven; affected version/time asked. Fresh-proof/recovery/rate-limit handling fixed without bypassing authentication. Guest works offline and persists separate data, preserving first-online original data. Actual app screenshot already delivered via Drive immediately. Require hosted CI green, then verify and deliver NEW inner Windows/Mac ZIPs through Drive; earlier 69a4f8c ZIPs lack guest. No stable publishing/API deployment/visibility changes. [Verification](profile-creation-guest-2026-11-02-verification.json).
 
@@ -17,10 +26,6 @@ Full CI [41449512168](https://github.com/stoveez/plazcode-source/actions/runs/41
 
 **New owner request:** find root cause of profile creation failures; add a themed guest fallback saying exactly “Can't create a profile right now? Use PlazCode as a guest.” Owner chose persistent local guest settings/skills/memory, separate from online profiles, no cloud sync. Inspect server logs and native request handling first; implement isolated guest sessions through normal profile safety and show actual running-app screenshot through Drive immediately when ready. No code changes for this follow-up yet. Account API confirmed active/Public; source repo still Public after ZIP delivery, owner reminded to restore Private. Never change visibility yourself. PC vault folder not connected.
 
----
-title: Open work and known bugs
-updated: 2026-11-01
----
 **Current 2026-11-02:** DeepSeek safeguards, selective learning, ordered batches and managed background jobs implemented. Local Rust 287 passed, 2 ignored; focused browser/provider/learning checks passed. Full local JS passed. CI 41445770394 exposed real result-page whitespace loss; fixed and Chromium/Firefox verified, new full CI 41449512168 on 69a4f8c running/pending; NEW verified Windows/Mac Drive delivery still pending. No stable publish. Exact release-note preview must be shown before every future release. [Follow-up plan](deepseek-safety-followup-2026-11-02.md). Older completed build 642207c/41367670135 is delivered; its ZIPs do not contain this follow-up. Historical entries below remain for reference.
 
 **Newest, 2026-10-30:** tool-call consistency fixes (DeepSeek DSML calls, extras' result names, `env_info`/`list_dir`, unknown-command suggestions, desktop size units) and the shorter gap between tool calls (all sites except DeepSeek; not measured live). Bridge drops: the trigger is unconfirmed; diagnostics are in, and the tester's next Terminal lines are needed ([bridge-stability](bridge-stability.md)). See [tool-call-consistency](tool-call-consistency.md). Not in any test zip; live DeepSeek not tested.

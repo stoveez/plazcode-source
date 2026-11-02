@@ -1,9 +1,9 @@
-Current delivery: [2026-11-02 replacement builds verified and delivered](deepseek-workflow-1.24.30-2026-11-02-verification.json). New [profile creation/guest follow-up](profile-creation-guest-2026-11-02.md): implemented; final tests/build next.
-
 ---
 title: Home
-updated: 2026-10-28
+updated: 2026-11-02
 ---
+Current delivery: [2026-11-02 replacement builds verified and delivered](deepseek-workflow-1.24.30-2026-11-02-verification.json). New [profile creation/guest follow-up](profile-creation-guest-2026-11-02.md): implemented; final tests/build next.
+
 # PlazCode vault: start here
 
 This folder is the long-term memory for every AI that works on PlazCode (Claude, Codex or any other). **Terms:** this folder is the *PlazCode vault* (notes for AIs that build PlazCode). The *native vault* is the app's own Memory feature, see the map. It is plain Markdown, so GitHub shows it and Obsidian can open it (open the folder `docs/vault` as a vault).

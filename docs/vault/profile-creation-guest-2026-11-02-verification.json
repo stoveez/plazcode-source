@@ -1,11 +1,11 @@
 {
-  "state": "awaiting_hosted_packages",
-  "program_source": "014b79d9d88ee1aaf707af11b0e18b195ed6e64c",
-  "run_id": 41488995618,
+  "state": "ready_for_replacement_full_ci",
+  "program_source": "014b79d plus final remembered-profile fallback refinement",
   "local_rust": {
     "library_passed": 5,
-    "agent_passed": 287,
-    "ignored": 2
+    "agent_passed": 288,
+    "ignored": 2,
+    "final_remembered_login_test": true
   },
   "local_js": {
     "failures": 0,
@@ -43,12 +43,27 @@
       401,
       401
     ],
-    "accounts_created": 0,
+    "accounts_created": 1,
     "user_data_read": false,
-    "deployment_changed": false
+    "deployment_changed": false,
+    "synthetic_test_only": true,
+    "public_signup_status": 201,
+    "public_login_status": 200,
+    "test_sessions_revoked": 2
   },
-  "root_cause_scope": "Exact screenshot message maps to 1.24.29 non-JSON response parser failure. Historical reason for non-JSON host response not established; current live API healthy. Fresh-proof and ambiguous-signup recovery bugs fixed. Await affected version/time if owner can supply.",
+  "root_cause_scope": "Affected users confirmed released 1.24.30. Official executable/source checked: unsafe consumed-proof replay and generic busy handling are in the released client and fixed here. Earlier inference of older installed version retracted. Current Public signup/login succeeds; historical host trigger needs affected account.service Logs, requested.",
   "live_user_device_ai_studio_testing": false,
   "stable_published": false,
-  "artifacts": []
+  "artifacts": [],
+  "superseded_run_id": 41488995618,
+  "run_id": null,
+  "published_release": {
+    "version": "1.24.30",
+    "published_at": "2026-11-02T15:27:00Z",
+    "workflow_run": 41469911201,
+    "source": "69434caac430db3050e2f606ccb85ac92e7782d7",
+    "windows_zip_sha256": "e76879ba98b1ff37575be73b024e2b9bfaa66c336572b3baa99476d24ec40d08",
+    "windows_executable_sha256": "919a2651f58ecbc00d3e56c9322a588a1c2ff5339aa6020697e545a2870de477",
+    "executable_matches_prior_69a4f8c_test": true
+  }
 }
