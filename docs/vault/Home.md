@@ -2,7 +2,7 @@
 title: Home
 updated: 2026-11-02
 ---
-Current delivery: [2026-11-02 replacement builds verified and delivered](deepseek-workflow-1.24.30-2026-11-02-verification.json). New [profile creation/guest follow-up](profile-creation-guest-2026-11-02.md): implemented; final tests/build next.
+Current delivery: [guest/signup replacement builds VERIFIED and DELIVERED](profile-creation-guest-2026-11-02-verification.json). [Feature and actual previews](profile-creation-guest-2026-11-02.md).
 
 # PlazCode vault: start here
 

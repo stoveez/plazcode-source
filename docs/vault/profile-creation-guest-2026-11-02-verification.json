@@ -1,5 +1,5 @@
 {
-  "state": "awaiting_macos_and_final_gate",
+  "state": "delivered_verified",
   "program_source": "52b9d197122ccd7b68a9a3ee6268824c91114e10",
   "local_rust": {
     "library_passed": 5,
@@ -74,7 +74,52 @@
       "bytes": 51130687,
       "sha256": "3595ca05f3cfd57f8804c0eace079699710fe3caf5e19d5b3bd5c0c0ca0e3031",
       "files": 3084,
-      "native_guest_feature_verified": true
+      "drive_id": "1r6WeDH-l-HpF1PZl9IdBwieFmJz6dmCp",
+      "drive_url": "https://drive.google.com/file/d/1r6WeDH-l-HpF1PZl9IdBwieFmJz6dmCp/view?usp=drivesdk",
+      "drive_metadata_readback": true,
+      "mime": "application/zip",
+      "native_guest_feature_verified": true,
+      "layout_added": 0,
+      "layout_removed": 0,
+      "wrapper_digest_verified": true,
+      "github_artifact_id": 13165794608,
+      "wrapper_bytes": 51131492,
+      "wrapper_sha256": "441ce689201a88ca03110f602a609c04ec8b8090c17ee7ef189d555a1050509a"
+    },
+    {
+      "platform": "macos",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3074,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "file": "PlazCode-macOS-1.24.30-test-lean.zip",
+      "bytes": 52881981,
+      "sha256": "bd1960c526e7c59aca99ed311c44c567cece3b3a636e1ab0663a5c216087817b",
+      "files": 3088,
+      "drive_id": "173LbQ3vWPSxnNnYznUXi8GyNqauvPiep",
+      "drive_url": "https://drive.google.com/file/d/173LbQ3vWPSxnNnYznUXi8GyNqauvPiep/view?usp=drivesdk",
+      "drive_metadata_readback": true,
+      "mime": "application/zip",
+      "native_guest_feature_verified": true,
+      "layout_added": 0,
+      "layout_removed": 0,
+      "wrapper_digest_verified": true,
+      "native_guest_architectures": [
+        "x86_64",
+        "aarch64"
+      ],
+      "github_artifact_id": 13169466133,
+      "wrapper_bytes": 52882784,
+      "wrapper_sha256": "240119a15ae2cd833ce95d12d0bf29db1a802031aa70ef97351b9464710a9bb7"
     }
   ],
   "superseded_run_id": 41488995618,
@@ -105,5 +150,11 @@
   "workspace_restored": true,
   "hosted_windows": "success",
   "hosted_linux": "success",
-  "hosted_browsers": "success"
+  "hosted_browsers": "success",
+  "hosted_required_jobs": "success",
+  "hosted_macos": "success",
+  "hosted_release_check": "success",
+  "stable_published_by_this_task": false,
+  "source_visibility_at_delivery": "public",
+  "owner_private_reminder_sent": true
 }
