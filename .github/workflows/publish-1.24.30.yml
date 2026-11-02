@@ -18,7 +18,7 @@ env:
   VALIDATION_RUN: '41449512168'
   # Owner-approved quick mode for small fixes: '1' skips the Mac desktop lifetime test.
   PLAZCODE_QUICK: '0'
-  PUBLIC_REPO: stoveez/plazcode-publish-test
+  PUBLIC_REPO: stoveez/PlazCode
 concurrency:
   group: plazcode-final-1.24.30
   cancel-in-progress: true
