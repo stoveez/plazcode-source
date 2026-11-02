@@ -1,0 +1,56 @@
+{
+  "source_commit": "427c939",
+  "method": "Actual provider queue/raw sender/wait/Continue functions extracted with Acorn; fake clock and inert UI buttons. No network or live account.",
+  "image_send": {
+    "paced_wrapper_calls": 1,
+    "send_button_clicks": 21,
+    "first_click_ms": 0,
+    "last_click_ms": 24000,
+    "click_spacing_ms": 1200,
+    "network_acceptance": "not tested; UI clicks do not prove backend requests"
+  },
+  "stop_during_pacing": {
+    "sent_after_stop": true,
+    "second_click_ms": 8000
+  },
+  "chat_change_during_pacing": {
+    "second_click_ms": 8000,
+    "actual_chat": "other"
+  },
+  "busy_recovery": {
+    "consecutive_rate_notices": 8,
+    "automatic_resends": 8,
+    "wait_notices": [
+      "DeepSeek is rate limiting. Waiting 5s, then resuming (wait 1).",
+      "DeepSeek is rate limiting. Waiting 10s, then resuming (wait 2).",
+      "DeepSeek is rate limiting. Waiting 20s, then resuming (wait 3).",
+      "DeepSeek is rate limiting. Waiting 40s, then resuming (wait 4).",
+      "DeepSeek is rate limiting. Waiting 80s, then resuming (wait 5).",
+      "DeepSeek is rate limiting. Waiting 120s, then resuming (wait 6).",
+      "DeepSeek is rate limiting. Waiting 120s, then resuming (wait 7).",
+      "DeepSeek is rate limiting. Waiting 120s, then resuming (wait 8)."
+    ]
+  },
+  "separate_tabs": {
+    "first_send_ms": [
+      0,
+      0
+    ],
+    "coordination": "none in provider pacing state"
+  },
+  "continue_action": {
+    "click_ms": [
+      0,
+      100
+    ],
+    "shared_pacing": "not used",
+    "quota_policy": "not verified"
+  },
+  "existing_pacing_suite": "passed; routine serialization, completion anchor and 8\u20139.8 second interval still work",
+  "additional_source_findings": [
+    "Native manual sends do not update pacing anchors.",
+    "Library fallback in core/main.js runLibraryCard pastes and clicks a generic Send button after provider failure, bypassing the shared guard.",
+    "No provider-wide persisted budget across content-script contexts."
+  ],
+  "status": "reproduced before fixes; owner now authorized all DeepSeek gaps and automatic-learning pollution fixes"
+}

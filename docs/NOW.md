@@ -1,6 +1,13 @@
 # NOW
 Updated: 2026-11-02. Branch `claude/plazcode-dev`; no helper agents.
 
+**Newest: WIP — owner authorized all DeepSeek pacing-gap fixes plus Learn as you work pollution.** Audit reproduced image-send click bursts (21 clicks in 25 seconds), sends after Stop/chat change, independent tab/reload state, unpaced Continue and eight automatic retries on eight rate notices. Manual sends are uncounted; library failure fallback can bypass the guard. Normal 8–9.8-second routine pacing tests pass. No live account traffic was sent. [Plan and findings](vault/deepseek-safety-followup-2026-11-02.md), [reproduction evidence](vault/deepseek-pacing-audit-2026-11-02.json).
+
+**Memory screenshot traced:** reliability.chatNote itself creates the Summary/First request/Key points shape. main.saveChatNote saves it under 11 Chats even when AI learning is off; filtering misclassifies decorated startup/tool output. Need clean history extraction/classification, isolate continuation from long-term learning, and tighten AI automatic memory/vault writes. Preserve user-authored notes/data and existing continuation behavior.
+
+**Next:** implement shared persisted send/Continue gate, cancellation/context ownership and bounded rate-limit handling; remove image/library bypasses and count observed manual activity. Then fix learning/chat-note pollution, focused regressions and full replacement test build verification. Read the follow-up plan before editing. No helpers, stable publish or visibility changes. Runtime files are unchanged at this WIP checkpoint.
+
+**Previous completed build (does not include the new fixes):**
 **Done: 1.24.30 follow-up fixes and full test builds verified.** Program source **642207c**. Full CI [41367670135](https://github.com/stoveez/plazcode-source/actions/runs/41367670135) GREEN: Windows, universal Mac, Linux, browsers and final cross-platform release check. Local corrected full JS suite: 0 failures. Exact INNER Windows/Mac test ZIPs verified and uploaded to Drive; names/MIME/sizes read back. [Permanent verification and hashes](vault/followup-1.24.30-2026-11-02-verification.json).
 
 - [Windows — 51,068,997 bytes](https://drive.google.com/file/d/134caQVizrG2YXVocYMkc7EDyl-bCLbBb/view?usp=drivesdk)

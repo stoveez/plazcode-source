@@ -2,6 +2,9 @@
 
 Branch `claude/plazcode-dev` only. No publish/merge without the owner's clear "yes". Commits: stoveez name only, no email, no Co-Authored-By/Claude-Session/"Generated with" lines. Read `docs/NOW.md`, then this note.
 
+## New active task — 2026-11-02
+Owner authorized fixing all DeepSeek pacing gaps plus Learn as you work saving random startup/tool logs (screenshot traced to reliability.chatNote). Read NOW and deepseek-safety-followup-2026-11-02.md. Previous delivered build remains valid for prior Arena/Luau work but contains these newly audited gaps. No runtime edits yet; implementation and replacement test builds next. No stable publish/visibility changes.
+
 ## Current checkpoint (2026-11-02)
 **Completed (2026-11-02):** program source **642207c**, full CI **41367670135 ALL GREEN** (Windows/Mac/Linux, browsers and release-check). Corrected full local JS 0 failures. Exact production-key inner Windows/Mac ZIPs verified (CRC/signatures/all 241 reviewed JS sources/licences/official layout/Mac universal architecture), uploaded to Drive; names/MIME/sizes read back. Windows 51,068,997 B; Mac 52,793,720 B. Links/hashes in NOW and followup-1.24.30-2026-11-02-verification.json. Needs complete new app folder and extension reload/tab refresh. Source still Public: owner reminder accompanies delivery; never change visibility. No stable publish/feed/main/release merge. Live Arena/Studio remains unverified; owner tests the build next. Prior next-step requests below are historical and completed as recorded in the later updates.
 
