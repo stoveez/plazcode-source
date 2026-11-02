@@ -1,0 +1,54 @@
+{
+  "state": "awaiting_hosted_packages",
+  "program_source": "014b79d9d88ee1aaf707af11b0e18b195ed6e64c",
+  "run_id": 41488995618,
+  "local_rust": {
+    "library_passed": 5,
+    "agent_passed": 287,
+    "ignored": 2
+  },
+  "local_js": {
+    "failures": 0,
+    "final_css_and_native_classification_checked_separately": true
+  },
+  "native_worker_integration": "passed registration, tokens, pictures, sync, guest restart/isolation/offline and first-owner migration",
+  "final_ui_storage_extension_regressions": "passed",
+  "account_worker_tests": "passed",
+  "actual_native_preview": {
+    "guest_entry": true,
+    "account_service_deliberately_unavailable": true,
+    "guest_cloud_requests": 0,
+    "page_errors": []
+  },
+  "previews": [
+    {
+      "url": "https://drive.google.com/file/d/1SsFG3USw4BJMdpLtmX2zppbbhmDBERJV/view?usp=drivesdk",
+      "name": "PlazCode-create-profile-guest.png",
+      "mime": "image/png",
+      "bytes": 849416,
+      "metadata_readback": true
+    },
+    {
+      "url": "https://drive.google.com/file/d/1bjOC1QnynXYstie8St8o0E_bv7QOatHO/view?usp=drivesdk",
+      "name": "PlazCode-guest-fallback.png",
+      "mime": "image/png",
+      "bytes": 845723,
+      "metadata_readback": true
+    }
+  ],
+  "production_api": {
+    "access": "public",
+    "health_and_challenge": "success",
+    "nonexistent_username_login_statuses": [
+      401,
+      401
+    ],
+    "accounts_created": 0,
+    "user_data_read": false,
+    "deployment_changed": false
+  },
+  "root_cause_scope": "Exact screenshot message maps to 1.24.29 non-JSON response parser failure. Historical reason for non-JSON host response not established; current live API healthy. Fresh-proof and ambiguous-signup recovery bugs fixed. Await affected version/time if owner can supply.",
+  "live_user_device_ai_studio_testing": false,
+  "stable_published": false,
+  "artifacts": []
+}

@@ -1,7 +1,9 @@
 # Profile creation recovery and persistent guest — 2026-11-02
 
 ## What was found
-The desktop collapsed all HTTP 429/service-busy responses into a generic “service unavailable” error. Password checks consume a one-use proof before they may hit the account server's single-hash busy guard. Replaying that same registration after an unreadable host response could reuse an already consumed proof, or hide a registration that had actually committed. These are concrete client recovery bugs, not evidence of one specific tester's historical network failure.
+The exact screenshot error maps to 1.24.29 accounts.rs: an HTTP answer could not be parsed as JSON. That version did not log the host status/content type, so the historical reason for the unreadable reply is not recoverable from the image alone.
+
+The desktop also collapsed all HTTP 429/service-busy responses into a generic “service unavailable” error. Password checks consume a one-use proof before they may hit the account server's single-hash busy guard. Replaying that same registration after an unreadable host response could reuse an already consumed proof, or hide a registration that had actually committed. These are concrete client recovery bugs, not evidence of one specific tester's historical network failure.
 
 Current production account API is active/Public. Unauthenticated health and challenge requests succeeded. Two parallel logins using randomly generated nonexistent usernames returned the expected 401; no accounts created and no existing user data read. Available error logs show no matching current server crash. Historical screenshot outage is not conclusively identified. Asked owner for affected version/time to match logs; continue independently.
 
@@ -13,10 +15,10 @@ Current production account API is active/Public. Unauthenticated health and chal
 - Guest card in picker and creation/sign-in form, matching themed glass/glow and exact owner text: “Can't create a profile right now? Use PlazCode as a guest.” Guest account page says local-only and hides cloud sync. Normal login and accounts remain available.
 
 ## Verified locally
-- Native: all 5 library + 286 agent tests passed, 2 ignored. New HTTP protocol tests prove fresh-proof busy retry, lost-registration recovery with one register then one login, and wrong-password refusal after username conflict. Guest unit proves durable memory, no legacy ownership or cloud access.
+- Native: all 5 library + 287 agent tests passed, 2 ignored. New HTTP protocol tests prove fresh-proof busy retry, lost-registration recovery with one register then one login, and wrong-password refusal after username conflict. Guest unit proves durable memory, no legacy ownership or cloud access.
 - Actual native executable + real account Worker/SQL: account creation, remembered and offline login, picture/private-skill cross-device sync, old-epoch rejection. New guest cases prove first-online legacy copy remains intact, settings/private skills stay separate, restart persists guest data with a fresh epoch, and offline entry works after the service stops.
 - Actual native desktop UI with a deliberately unavailable local test server: create screen/failure fallback, guest opens successfully, no guest account-service requests, no page errors. UI interactions also cover failed creation, no password needed for guest, narrow screens and existing splash animation. Small final hidden-control CSS refinement has its own focused UI check.
-- Full account Worker tests passed. Full JS regression and fresh full platform CI/package checks pending. No live user device/AI/Studio claim.
+- Full account Worker tests passed. Full JS passed with 0 failures; final CSS/request refinements separately passed native and focused UI/storage/extension checks. Full hosted CI 41488995618 on 014b79d and package checks pending. No live user device/AI/Studio claim.
 
 ## Actual running-app previews delivered immediately
 Drive metadata name/MIME/size read back before delivery; sharing unchanged.
@@ -28,4 +30,8 @@ Replace the app as well as reloading the extension. Existing delivered 69a4f8c/4
 
 ## 2026-11-02 — final recovery review before fresh test build
 Temporary single-hash busy replies renew proofs; exhausted quotas and host HTTP 429 now stop immediately instead of retrying. Non-JSON host access refusals retain their real HTTP status, and a host refusal cannot silently erase a valid remembered token. Added a fifth native regression for JSON/HTML rate-limit stop behavior. Final UI check including hidden guest/removal confirmation passed against overlay. Full native pass above predates this small last recovery refinement; rerun after active full JS completes and prepare is safe. Actual native guest/restart/isolation and earlier recovery cases passed. Source is Public for the owner-authorized new Windows/Mac test build; skip-ci push then explicit dispatch, never stable publish.
+
+
+## 2026-11-02 — local guest/signup verification complete; final CI running
+Program source **014b79d**, full CI [41488995618](https://github.com/stoveez/plazcode-source/actions/runs/41488995618). No duplicate push runs. All final local native tests pass (5 library + 287 agent, 2 ignored); full JS 0 failures, plus final CSS/UI/storage/extension checks. Exact screenshot wording maps to 1.24.29's non-JSON parser failure; old app did not log the host status. Current public API health/challenges/logins work. Historical reason for the host's unreadable reply remains unproven; affected version/time asked. Fresh-proof/recovery/rate-limit handling fixed without bypassing authentication. Guest works offline and persists separate data, preserving first-online original data. Actual app screenshot already delivered via Drive immediately. Require hosted CI green, then verify and deliver NEW inner Windows/Mac ZIPs through Drive; earlier 69a4f8c ZIPs lack guest. No stable publishing/API deployment/visibility changes. [Verification](profile-creation-guest-2026-11-02-verification.json).
 
