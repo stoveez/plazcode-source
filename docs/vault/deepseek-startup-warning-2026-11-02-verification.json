@@ -1,0 +1,32 @@
+{
+  "state": "source_fix_verified_not_packaged",
+  "source_checkpoint": "fe02bb7",
+  "local_js": {
+    "failures": 0,
+    "log": "/workspace/plazcode-deepseek-startup/javascript-final.log"
+  },
+  "browser_engines": [
+    "chromium",
+    "firefox"
+  ],
+  "browser_tests": "actual full provider on offline fixture; early URL before message DOM; one click, paced Continue, Stop, trusted navigation, download distinction",
+  "unit_tests": [
+    "matching new user-row proof",
+    "unrelated row does not confirm",
+    "Stop/session/second route cancel after commit",
+    "only expected owner cancellation is quiet",
+    "draft/uncertain/pacing errors stay visible",
+    "existing lease and cooldown safeguards"
+  ],
+  "preservation_functions": 974,
+  "guarded_reads": 588,
+  "live_deepseek_account_tested": false,
+  "native_code_changed": false,
+  "new_build_created": false,
+  "stable_published": false,
+  "previous_test_zips_contain_fix": false,
+  "runtime_sha256": {
+    "core/main.js": "b901753e6d1ced322db632d86af1c91cac5309abfc03d1fa7d4dc3662274c2ad",
+    "providers/deepseek.js": "011b9a99e4ff7c3d7dac603fb3ff6271a85874c3f701bddd42e778532519a78d"
+  }
+}

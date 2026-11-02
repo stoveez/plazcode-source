@@ -1,3 +1,8 @@
+## 2026-11-02 — DeepSeek false startup warning FIXED and verified in source
+Final full local JavaScript suite: **0 failures** (/workspace/plazcode-deepseek-startup/javascript-final.log). Full provider Chromium/Firefox tests pass, including new URL before user row, paced Continue, trusted navigation/download distinction and Stop. Actual core reporter keeps expected owner cancellation quiet while draft/uncertain/pacing errors still warn. Existing shared request limits/leases and single-click/no-replay safeguards retained. 974 preserved function bodies, 588 guarded reads and updated pins pass. Initial full run's sole stale beacon assertion fixed, final full rerun green.
+
+Fix is extension-only, NOT yet packaged into a new build; prior guest test links from 52b9d19 / 41492949796 lack it. No native edits or stable publication. Reload updated signed extension + refresh DeepSeek when packaged; current popup can be closed in this reproduced startup case. No live DeepSeek account used. Future stable needs new version after 1.24.30 and exact notes shown first. [Details](deepseek-startup-warning-2026-11-02.md), [verification](deepseek-startup-warning-2026-11-02-verification.json). Source visibility check/reminder before ending; never change it yourself.
+
 ## 2026-11-02 — DeepSeek false startup warning WIP
 Owner sees “Send paused / The send was cancelled because Stop was pressed or the chat/session changed” immediately after startup, while normal work continues. Reproduced with actual provider guard: first send changes the fresh chat URL before the user-message row arrives; waitSend treated that legitimate first identity as navigation and raised DEEPSEEK_CANCELLED after the one real click.
 

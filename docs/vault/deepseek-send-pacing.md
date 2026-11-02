@@ -6,7 +6,7 @@ updated: 2026-11-02
 
 **Current 1.24.30:** install-wide persisted native leases/cooldowns cover Chrome/Firefox/tabs/profiles on this computer, including Continue, manual activity and direct UI/library calls. Stop/chat changes cancel queues, one actual click requires delivery evidence, limits pause safely and missing bridge fails closed. No coordination across computers or suspension guarantee. Details: [safety follow-up](deepseek-safety-followup-2026-11-02.md).
 
-**New unbuilt fix:** [false startup Send paused warning](deepseek-startup-warning-2026-11-02.md). Fresh chat address may arrive before message DOM; provisionally wait for proof of our own new message. Typed owner cancellations are diagnostics, real send failures stay visible. Native pacing retained. Existing delivered guest ZIPs lack this new fix.
+**New verified source-only fix:** [false startup Send paused warning](deepseek-startup-warning-2026-11-02.md). Fresh chat address may arrive before message DOM; provisionally wait for proof of our own new message. Typed owner cancellations are diagnostics, real send failures stay visible. Native pacing retained. Existing delivered guest ZIPs lack this new fix. Final full local JS has 0 failures; Chromium/Firefox and safeguard checks pass.
 
 ## Historical 1.24.27 page-local guard
 
