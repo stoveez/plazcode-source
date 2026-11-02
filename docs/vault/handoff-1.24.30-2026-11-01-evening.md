@@ -92,3 +92,7 @@ Baseline CI 41364800959 runs on 2db1e5a; no duplicate active runs. Implemented r
 ### DeepSeek/learning WIP — shared native coordinator written
 - New agent/src/provider_pacing.rs: durable install-wide DeepSeek leases/cooldowns, counted manual activity, bounded repeated rate notices, reported waits, owned finish and stale-lease expiry; timing/opaque IDs only. Native route /api/provider-pacing has existing pairing/profile middleware; background relay validates actual DeepSeek sender origin. No new dependencies. Rust tests written, compile/test next.
 - Provider still uses old routine guard; frontend actual-commit integration/cancellation/library fallback and learning fixes remain. Owner explicitly asked a new full test build once done. Do not deliver old ZIPs as containing this WIP.
+
+### DeepSeek WIP — first frontend integration written
+- Shared native coordinator: 3 Rust tests passed. Provider/main draft uses shared leases around one actual click, requires confirmed upload/delivery, cancels queues on Stop/chat/session change, counts trusted manual sends, paces Continue, bounds busy retries and removes guarded-sender library fallback. Current draft needs new provider/integration tests and review; memory filtering not implemented yet.
+- New raw sender changes are intentional for this fix; update provider preservation exceptions only with behavioral coverage. Update protected main/deepseek pins when code settles. App replacement required for shared coordinator.

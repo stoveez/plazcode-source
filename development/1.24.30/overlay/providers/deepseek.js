@@ -688,9 +688,8 @@ const RSProvider = (() => {
   }
 
   function clickContinueBtn() {
-    const b = findContinueBtn();
-    if (!b) return false;
-    try { b.click(); return true; } catch { return false; }
+    if(!findContinueBtn())return false;
+    return queueSend(async job=>{job.continue=true;const button=findContinueBtn();if(!button)return false;return commitSend(job,button);});
   }
 
   function readAssistant() {
@@ -791,71 +790,99 @@ const RSProvider = (() => {
     return text.slice(0, headLen) + marker + text.slice(text.length - tailLen);
   }
 
-  // Shared send pacing merged from the owner-provided extension archive.
+  // The local queue preserves routine ordering; the desktop lease protects actual commits across browsers/tabs.
   const MIN_SEND_GAP_MS = 8000;
   const SEND_JITTER_MS = 1800;
-  let _lastSendDoneAt = null;
-  let _sendChain = Promise.resolve();
-  async function paceBeforeSend() {
-    const gap = MIN_SEND_GAP_MS + Math.random() * SEND_JITTER_MS;
-    let remaining = _lastSendDoneAt !== null ? _lastSendDoneAt + gap - Date.now() : 0;
-    if (remaining > 0) { try { diag("send.pace", { ms: Math.round(remaining) }); } catch {} }
-    while (remaining > 0) {
-      await sleep(Math.min(250, remaining));
-      remaining = _lastSendDoneAt + gap - Date.now();
-    }
+  let _lastSendDoneAt = null, _sendChain = Promise.resolve(), _sendEpoch = 0, _sendSeq = 0;
+  let _contextReader = () => ({}), _pacingRequest = null, _lastDelivered = "", _lastFailure = "";
+  const _pageId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "page-"+Date.now()+"-"+Math.random().toString(36).slice(2);
+  function sendError(message, code = "DEEPSEEK_PAUSED") { const error=new Error(message);error.code=code;return error; }
+  function sendOwner() { return {epoch:_sendEpoch,chat:typeof conversationKey === "function" ? conversationKey() : "",..._contextReader()}; }
+  function assertSendOwner(job) {
+    const current=sendOwner();
+    if(current.epoch!==job.owner.epoch || current.chat!==job.owner.chat || current.session!==job.owner.session || current.stop!==job.owner.stop)
+      throw sendError("The send was cancelled because Stop was pressed or the chat/session changed.","DEEPSEEK_CANCELLED");
   }
-  function typeAndSend(text, images, opts) {
-    const run = async () => {
-      await paceBeforeSend();
-      try { return await typeAndSendRaw(text, images, opts); }
-      finally { _lastSendDoneAt = Date.now(); }
-    };
-    const p = _sendChain.then(run, run);
-    _sendChain = p.catch(() => {});
-    return p;
+  function cancelPendingSends() { _sendEpoch++; }
+  async function pacing(request) {
+    if(!_pacingRequest)throw sendError("Update the complete PlazCode app and extension together. The shared DeepSeek request timer is unavailable.");
+    const result=await _pacingRequest({...request,client:_pageId});
+    if(!result || !result.ok)throw sendError(result && result.error || "The shared DeepSeek request timer did not answer. No send was authorized.");
+    return result;
   }
-
-  async function typeAndSendRaw(text, images) {
-    const editor = getEditor();
-    if (!editor) throw new Error("DeepSeek input box not found");
-    editor.focus();
-    text = truncateForSend(text);
-    setTextareaValue(editor, text);
-    // Attach images LAST, right before the send click - see gemini.js's
-    // typeAndSend for why (attaching before retyping the text can sever the
-    // site's binding between the pending upload and the message being sent).
-    const hasImages = !!(images && images.length);
-    if (hasImages) {
-      try { await attachImages(images); } catch {}
-      // DeepSeek REFUSES the send until the attachment finishes uploading, and its
-      // upload spinner (.ds-loading) is NOT a reliable "done" signal - it lingers on
-      // the thumbnail and isBusyNow() counts it as "busy", which is what wedged the
-      // send. So don't gate on the spinner: POLL - click the send ARROW (guarded on
-      // !isStopBtn so we never hit the stop square) and confirm the composer
-      // cleared; retry until the upload completes and DeepSeek accepts the send, or
-      // we time out. Self-correcting, with no dependency on the exact upload-done
-      // DOM node (the file-input path in attachImages does the real upload).
-      const t0 = Date.now();
-      while (Date.now() - t0 < 25000) {
-        const btn = getSendBtn();
-        if (btn && !isStopBtn(btn) && safeRead(() => btn.getAttribute("aria-disabled"), null) !== "true") {
-          try { btn.click(); } catch {}
-        }
-        // Editor cleared = the message left; stop square up = generation started.
-        if (await waitFor(() => editorText().trim() === "" || isHardGenerating(), 1200)) return;
+  async function sleepForSend(ms,job) { let left=ms;while(left>0){assertSendOwner(job);const step=Math.min(250,left);await sleep(step);left-=step;}assertSendOwner(job); }
+  async function paceBeforeSend(job) {
+    const gap=MIN_SEND_GAP_MS+Math.random()*SEND_JITTER_MS;
+    let remaining=_lastSendDoneAt!==null?_lastSendDoneAt+gap-Date.now():0;
+    if(remaining>0)try{diag("send.pace",{ms:Math.round(remaining)});}catch{}
+    while(remaining>0){await sleepForSend(Math.min(250,remaining),job);remaining=_lastSendDoneAt+gap-Date.now();}
+    assertSendOwner(job);
+  }
+  function queueSend(operation) {
+    const job={id:_pageId+":"+(++_sendSeq),owner:sendOwner(),draft:typeof editorText === "function"?editorText():""};
+    const run=async()=>{try{await paceBeforeSend(job);return await operation(job);}catch(error){
+      _lastFailure=String(error.message||error);
+      // Restore only the draft this operation replaced, never text in a different chat or edited by the user.
+      try{if(job.editor && job.owner.chat===conversationKey() && getEditor()===job.editor && editorText()===job.typedText)setTextareaValue(job.editor,job.previousDraft||"");}catch{}
+      throw error;
+    }finally{_lastSendDoneAt=Date.now();}};
+    const promise=_sendChain.then(run,run);_sendChain=promise.catch(()=>{});return promise;
+  }
+  function typeAndSend(text, images, opts) { return queueSend(job=>typeAndSendRaw(text,images,opts,job)); }
+  async function commitSend(job, button) {
+    let lease=null;
+    try {
+      while(!lease){
+        assertSendOwner(job);
+        const notice=visibleLimit();if(notice){await noteRateLimit(notice.text,notice);throw sendError("DeepSeek still shows a limit or account notice. Resolve it and wait before starting again.");}
+        const result=await pacing({action:"claim",id:job.id,gap_ms:Math.max(MIN_SEND_GAP_MS,Number(_contextReader().cooldown)||0)});
+        if(result.allowed)lease=result;
+        else if(result.paused)throw sendError(result.error||"DeepSeek requested a cooldown.");
+        else await sleepForSend(Math.max(100,Number(result.wait_ms)||250),job);
       }
-      return;
-    }
-    // Text-only: wait for React to re-enable the send button, then click.
-    await waitFor(() => {
-      const btn = getSendBtn();
-      return btn && safeRead(() => btn.getAttribute("aria-disabled"), null) !== "true" && !isStopBtn(btn);
-    }, 800);
-    if (!clickSendButton() && !isBusyNow()) {
-      pressEnter(editor);
-    }
+      assertSendOwner(job);
+      if(Date.now()>=lease.valid_until)throw sendError("The send permission expired while the page was busy. Nothing was sent.");
+      // Re-read after every await: a former send button may now be Stop, or belong to another draft.
+      const live=job.continue?findContinueBtn():getSendBtn();
+      if(!live || (!job.continue && (isStopBtn(live) || safeRead(()=>live.getAttribute("aria-disabled"),null)==="true")))throw sendError("DeepSeek's send control changed. Nothing was sent.");
+      const users=userCount(),assistants=assistantCount(),before=job.continue?streamLen():0;
+      if(!job.continue && editorText()!==job.typedText)throw sendError("Your draft changed before sending. Nothing was sent.","DEEPSEEK_CANCELLED");
+      assertSendOwner(job);if(Date.now()>=lease.valid_until)throw sendError("The send permission expired. Nothing was sent.");
+      live.click(); // exactly ONE commit; never poll by clicking again
+      const accepted=await waitSend(()=>isHardGenerating() || userCount()>users || assistantCount()>assistants || (job.continue && streamLen()>before),12000,job);
+      if(!accepted){cancelPendingSends();throw sendError("DeepSeek did not confirm this message. PlazCode paused to avoid sending it twice; inspect the chat before retrying.","DEEPSEEK_UNCERTAIN");}
+      _lastDelivered=job.id;await pacing({action:"finish",id:job.id,sent:true});lease=null;
+      return true;
+    } finally { if(lease)try{await pacing({action:"finish",id:job.id,sent:false});}catch{} }
   }
+  async function waitSend(predicate,timeout,job) {
+    const started=Date.now();
+    while(Date.now()-started<timeout){assertSendOwner(job);if(safePredicate(predicate))return true;await sleepForSend(120,job);}
+    return false;
+  }
+  async function typeAndSendRaw(text, images, opts, job) {
+    assertSendOwner(job);
+    const editor=getEditor();if(!editor)throw sendError("DeepSeek input box not found.");
+    const current=editorText();if(current.trim() && current!==job.draft)throw sendError("Your draft changed while the message was waiting. PlazCode kept your text.","DEEPSEEK_CANCELLED");
+    job.editor=editor;job.previousDraft=current;
+    editor.focus();text=truncateForSend(text);job.typedText=text;setTextareaValue(editor,text);
+    if(editorText()!==text)throw sendError("DeepSeek did not accept the draft. Nothing was sent.");
+    if(images && images.length){
+      const attached=await attachImages(images);assertSendOwner(job);
+      if(!attached)throw sendError("The image upload was not confirmed. No message was sent.");
+      const uploaded=await waitSend(()=>{const thumbs=attachThumbs();return thumbs.length>=images.length && thumbs.every(im=>!/^blob:/.test(safeRead(()=>im.getAttribute("src"),"")||""));},25000,job);
+      if(!uploaded)throw sendError("DeepSeek has not confirmed the image upload. PlazCode paused instead of repeatedly pressing Send.");
+    }
+    const ready=await waitSend(()=>{const b=getSendBtn();return b && !isStopBtn(b) && safeRead(()=>b.getAttribute("aria-disabled"),null)!=="true";},15000,job);
+    if(!ready)throw sendError("DeepSeek is not ready to send. PlazCode paused without another attempt.");
+    assertSendOwner(job);if(editorText()!==text)throw sendError("The draft changed before sending. Nothing was sent.","DEEPSEEK_CANCELLED");
+    return commitSend(job,getSendBtn());
+  }
+  function observeManualSend() {
+    cancelPendingSends();
+    void pacing({action:"observe"}).catch(error=>{try{diag("send.paceUnavailable",{error:String(error.message||error)});}catch{}});
+  }
+  async function noteHealthyReply() { if(_lastDelivered)try{await pacing({action:"healthy",id:_lastDelivered});}catch{} }
 
   // Click DeepSeek's stop only if it is actually in the stop state (<rect>), so
   // we never accidentally re-trigger a send.
@@ -881,16 +908,26 @@ const RSProvider = (() => {
   // Short SYSTEM-message shapes the site renders as an assistant reply.
   // 1.21.0: rate-limit / busy toasts. Each toast element is reported once so a
   // lingering toast does not re-trigger after the automatic resend.
-  const _busySeen = new WeakSet();
-  function scanBusy() {
-    try {
-      for (const el of safeQueryAll(document, S.errorSurfaces)) {
-        if (_busySeen.has(el)) continue;
-        const t = (safeRead(() => el.innerText, "") || "").trim();
-        if (t.length > 4 && t.length < 400 && RE.busy.test(t)) { _busySeen.add(el); return t.slice(0, 200); }
-      }
-    } catch {}
+  const _busySeen = new WeakMap();let _noticeSeq=0,_lastNotice=null;
+  const RESTRICTED=/account.{0,40}(?:suspend|restrict|ban|disable)|unusual activity|captcha|verify you are human|账号.{0,12}(?:封禁|限制)|访问过于频繁/i;
+  function visibleLimit() {
+    for(const el of safeQueryAll(document,S.errorSurfaces)){
+      if(safeRead(()=>el.offsetParent,null)===null || safeClosest(el,S.chatItem))continue;
+      const text=(safeRead(()=>el.innerText,"")||"").trim();
+      if(text.length<5 || text.length>600 || !(RE.busy.test(text)||RESTRICTED.test(text)))continue;
+      const previous=_busySeen.get(el);
+      const notice=previous && previous.text===text?previous:{text,id:_pageId+":notice:"+(++_noticeSeq),restricted:RESTRICTED.test(text),reported:false};
+      _busySeen.set(el,notice);_lastNotice=notice;return notice;
+    }
     return null;
+  }
+  function scanBusy() {const notice=visibleLimit();if(!notice || notice.reported)return null;notice.reported=true;return notice.text;}
+  async function noteRateLimit(text,existing) {
+    const visible=existing || visibleLimit();
+    const notice=visible && visible.text===text ? visible : {text,id:_pageId+":notice:"+(++_noticeSeq),restricted:RESTRICTED.test(text)};
+    const match=String(text||"").match(/(?:try again|wait|retry|稍后|等待)[^0-9]{0,30}(\d+(?:\.\d+)?)\s*(seconds?|secs?|minutes?|mins?|hours?|秒|分钟|小时)/i);
+    const duration=match?Number(match[1])*(/hour|小时/i.test(match[2])?3600000:/min|分钟/i.test(match[2])?60000:1000):0;
+    return pacing({action:"limit",notice:notice.id,rate:/too frequent|too many|rate.?limit|messages too|频繁/i.test(text),restricted:notice.restricted,wait_ms:duration});
   }
   const isTooLongMsg = (text) => RE.tooLong.test(text);
   const isBusyMsg = (text) => RE.busy.test(text);
@@ -914,6 +951,8 @@ const RSProvider = (() => {
   // the idempotency + paste-vs-fileinput dedup depend on; with the stale selector
   // both were inert and one capture re-attached ~20x (seen live), wedging the
   // uploads and the send.
+  const _uploadNames = new Set();
+  let _attachedImages = null;
   const attachThumbs = () => {
     try {
       return [...safeQueryAll(document, "img")].filter(
@@ -921,7 +960,7 @@ const RSProvider = (() => {
           // blob: = pending local preview; the alt (our "robloxscript_..." filename)
           // survives once the upload replaces the blob src with a CDN url, so the
           // idempotency/presence checks keep matching after upload completes.
-          (/^blob:/.test(safeRead(() => im.getAttribute("src"), null) || "") || /^robloxscript_/.test(safeRead(() => im.getAttribute("alt"), null) || "")));
+          (/^blob:/.test(safeRead(() => im.getAttribute("src"), null) || "") || /^(?:robloxscript_|plazcode_)/.test(safeRead(() => im.getAttribute("alt"), null) || "") || _uploadNames.has(safeRead(() => im.getAttribute("alt"), "") || "")));
     } catch { return []; }
   };
 
@@ -943,10 +982,10 @@ const RSProvider = (() => {
     // thumbnails (the "doublot" - two identical previews - that then wedged the
     // send). If anything is already staged, treat the attach as done.
     const existing = attachThumbs().length;
-    if (existing > 0 && !images.some(img => img.name)) return true;
+    if (existing > 0 && images === _attachedImages) return true;
     const want = existing + images.length;
     const dt = new DataTransfer();
-    images.forEach((img, i) => { try { dt.items.add(fileFromImage(img, i)); } catch {} });
+    images.forEach((img, i) => { try { const file=fileFromImage(img,i);_uploadNames.add(file.name);dt.items.add(file); } catch {} });
     if (!dt.items.length) return false;
     editor.focus();
     // Use the hidden <input type=file> as the PRIMARY path: it triggers DeepSeek's
@@ -965,7 +1004,9 @@ const RSProvider = (() => {
       editor.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
     }
     // A thumbnail appearing is our success signal.
-    return await waitFor(() => attachThumbs().length >= want, 15000);
+    const staged=await waitFor(() => attachThumbs().length >= want, 15000);
+    if(staged)_attachedImages=images;
+    return staged;
   }
 
   // Stable identity of the current conversation (used to persist "started").
@@ -1001,6 +1042,7 @@ const RSProvider = (() => {
         if (text === "") return;
 
         if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+        if(e.isTrusted)observeManualSend();
         if (handlers.isBlocked()) return;
 
         // No session yet → the user must click "Start session" first. ONLY on a
@@ -1026,18 +1068,19 @@ const RSProvider = (() => {
         // The native "Continue" button = a clear intent to RESUME after a stop.
         const cont = t && safeRead(() => t.closest, null) && safeClosest(t, ".ds-button");
         if (cont && RE.continueBtn.test((safeRead(() => cont.innerText, "") || "").trim())) {
-          handlers.onNativeContinue();
+          if(e.isTrusted){observeManualSend();handlers.onNativeContinue();}
           return;
         }
         const btn = t && safeRead(() => t.closest, null) && safeClosest(t, S.sendBtn);
         if (!btn) return;
         // DeepSeek's stop button shares the send button's spot (square = stop).
         if (isStopBtn(btn)) {
-          handlers.onNativeStop();
+          if(e.isTrusted)handlers.onNativeStop();
           return;
         }
         if (safeRead(() => btn.getAttribute("aria-disabled"), null) === "true") return;
         if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+        if(e.isTrusted)observeManualSend();
         if (handlers.isBlocked()) return;
         if (!handlers.isStarted()) {
           if (!chatIsEmpty()) return;
@@ -1120,7 +1163,7 @@ const RSProvider = (() => {
     minSecondsBetweenSends: 5,
     startNotice: {
       title: "About DeepSeek accounts",
-      text: "DeepSeek has suspended some accounts that use automated tools. On DeepSeek, PlazCode waits at least 5 seconds between the messages it sends and keeps its startup short, but it cannot promise DeepSeek will not act. If you rely on your DeepSeek account, consider another AI site.",
+      text: "DeepSeek has suspended some accounts that use automated tools. On DeepSeek, PlazCode spaces automatic requests across tabs and browsers, respects cooldowns and keeps its startup short, but it cannot promise DeepSeek will not act. If you rely on your DeepSeek account, consider another AI site.",
     },
     // DYNAMIC. Since the 2026-09 unification there is ONE model and no picker, so
     // images are allowed on every DeepSeek chat and this is true (see
@@ -1135,12 +1178,14 @@ const RSProvider = (() => {
     // this exclusion those quotes read as "raw block still visible" forever
     // (seen live: 60Hz chip rebuild spam + done→run→done chip flapping).
     thinkingSel: S.thinking,
-    init({ diag: d } = {}) {
+    init({ diag: d, sendContext, pacingRequest } = {}) {
       if (d) diag = d;
+      if(typeof sendContext==="function")_contextReader=sendContext;
+      if(typeof pacingRequest==="function")_pacingRequest=pacingRequest;
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsDsVer).
       // BUMP DS_VER on meaningful deepseek.js changes worth verifying live.
-      try { document.documentElement.setAttribute("data-rs-ds-ver", "2026-09_unified-model"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-ds-ver", "2026-11-02_shared-request-gate"); } catch {}
     },
     // turns
     allItems, isUserItem, isAssistantItem, itemText, classifyText,
@@ -1149,7 +1194,10 @@ const RSProvider = (() => {
     // composer / state
     getEditor, editorText, chatIsEmpty, isFreshChat, composerFrame, barAnchor,
     followupPlaceholderTargets() {const ed=getEditor();return ed ? [ed,...safeQueryAll(ed, '[data-placeholder], [placeholder], [aria-placeholder]')] : [];},
-    setInputLock, writeDraft, typeAndSend, stopGeneration,
+    setInputLock, writeDraft, typeAndSend, stopGeneration, cancelPendingSends, noteRateLimit, noteHealthyReply,
+    authoritativeSendResult: true,
+    guardedSender: true,
+    sendFailureDetail: () => _lastFailure,
     isGenerating, isBusyNow, isHardGenerating, genDebug,
     enforceComposer, ensureComposerReady,
     turnHalted, findContinueBtn, clickContinueBtn,

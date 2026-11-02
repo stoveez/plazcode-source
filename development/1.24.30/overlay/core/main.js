@@ -926,7 +926,7 @@
 
   // Provider init must happen after A is defined — diag() reads A.running and
   // copilot's init calls diag() immediately, which would TDZ if init ran before A.
-  try { P.init({ diag, isStopped: () => A.stop, isSessionActive: () => A.started || A.running, requestStart: () => startSession() }); } catch {}
+  try { P.init({ diag, sendContext: () => ({session:A.sessionGen,stop:A.stopAt || 0,cooldown:normalizeCooldown(reliabilitySettings.rsCommandCooldown)*1000}), pacingRequest: request => bg({type:"provider-pacing",request,page:request.client}), isStopped: () => A.stop, isSessionActive: () => A.started || A.running, requestStart: () => startSession() }); } catch {}
 
   async function waitFor(pred, timeout) {
     const t0 = Date.now();
@@ -1203,7 +1203,9 @@
         await jitterBeforeSend();
         diag("submit.typeAndSend", { hasImages: !!(images && images.length) });
         try { armUrlGuard(text); } catch (eGuard) {} // the safety net must never stop a send
-        const sendResult = await P.typeAndSend(typeof window !== "undefined" && typeof window.__rsLimitOutgoing === "function" ? window.__rsLimitOutgoing(text) : text, images, { userPrompt: userPrompt === true });
+        let sendResult;
+        try {sendResult = await P.typeAndSend(typeof window !== "undefined" && typeof window.__rsLimitOutgoing === "function" ? window.__rsLimitOutgoing(text) : text, images, { userPrompt: userPrompt === true });}
+        catch(error){if(P.guardedSender){ui.banner("warn","Send paused",String(error.message||error));throw new SendAbortedError(String(error.message||error));}throw error;}
         if (P.authoritativeSendResult) {
           if (sendResult === true) messageSent = true;
           else if (sendResult === false && !A.stop && !(images && images.length) && typeof P.sendFailureAmbiguous === "function" &&
@@ -4646,7 +4648,12 @@ return result`;
           }
           if (busyDetail) {
             busyWaits++;
-            const ms = Math.min(120000, 5000 * Math.pow(2, Math.min(busyWaits - 1, 5)));
+            let policy=null;
+            if(P.noteRateLimit){
+              try{policy=await P.noteRateLimit(busyDetail);}catch(error){ui.banner("warn","DeepSeek send paused",String(error.message||error));break;}
+              if(policy.retry!==true || busyWaits>=3){ui.banner("warn","DeepSeek asked PlazCode to pause","Automatic retries stopped. Wait for DeepSeek's cooldown and resolve its notice before starting again.");break;}
+            }
+            const ms = policy ? Math.max(8000,Number(policy.wait_ms)||60000) : Math.min(120000, 5000 * Math.pow(2, Math.min(busyWaits - 1, 5)));
             diag("loop.busyWait", { n: busyWaits, ms, detail: busyDetail.slice(0, 120) });
             ui.toast(`${P.displayName} is rate limiting. Waiting ${Math.round(ms / 1000)}s, then resuming (wait ${busyWaits}).`);
             const until = Date.now() + ms;
@@ -4657,6 +4664,7 @@ return result`;
             continue;
           }
           busyWaits = 0;
+          if(P.noteHealthyReply && (res.kind==="tool" || res.kind==="text"))await P.noteHealthyReply();
         }
 
 
@@ -4750,7 +4758,7 @@ return result`;
           // the native Continue button; fall back to a continuation message.
           if (truncCount < MAX_TRUNC) {
             truncCount++;
-            if (P.clickContinueBtn() && await waitFor(() => P.isGenerating(), 2500)) {
+            if (await P.clickContinueBtn() && await waitFor(() => P.isGenerating(), 2500)) {
               diag("truncated.continued");
               continue; // same turn resumes (base unchanged)
             }
@@ -5311,6 +5319,7 @@ return result`;
   chrome.storage.local.get("rsStopMode", value => { stopMode=value && value.rsStopMode === "safe" ? "safe" : "immediate"; });
   chrome.storage.onChanged.addListener(changes => { if(changes.rsStopMode)stopMode=changes.rsStopMode.newValue === "safe" ? "safe" : "immediate"; });
   function stopLoop({ native = false } = {}) {
+    try { P.cancelPendingSends?.(); } catch {}
     clarification.cancel();
     if (A.stopping) return; // already winding down - ignore double-clicks
     A.coworkSendNow = false; // a manual Stop cancels any pending Ctrl+Enter send-now
@@ -9137,7 +9146,7 @@ function renderCards(panel) {
           sent = true;
         }
       } catch (e) { try { diag("cards.sendFail", { err: String(e).slice(0, 120) }); } catch {} }
-      if (!sent) {
+      if (!sent && !P.guardedSender) {
         const pasted = pasteLibraryCard(card, { silent: true });
         try {
           const btn = document.querySelector('[aria-label*="Send" i], [data-testid*="send" i], button[type="submit"]');
