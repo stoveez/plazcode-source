@@ -28,7 +28,8 @@
     "DeepSeek shares persisted send cooldowns across tabs and browsers on this computer, pauses on repeated limits, cancels stale queued sends after Stop/chat changes, and avoids repeated image clicks or fallback sends. Provider restrictions can still apply.",
     "Learn as you work skips startup handshakes, chat summaries, raw tool logs and unsupported automatic notes. Manual notes and existing data remain.",
     "Arena tool hangs, false stops, raw command text and argument-shape failures; Luau setup cancellation/timeouts and project fallback budgets.",
-    "Continuation prompts after startup, repeated workflow stops, MiMo reconnection, and task/sidebar/workspace display problems."
+    "Continuation prompts after startup, repeated workflow stops, MiMo reconnection, and task/sidebar/workspace display problems.",
+    "Long tool results keep spaces and newlines at page joins instead of silently losing characters."
   ],
   "notes": [
     "First-party PlazCode 1.24.30 is proprietary. Third-party licences and earlier GPL releases keep their existing terms. Source ZIPs are not distributed.",
@@ -52,6 +53,7 @@
         "items": [
           "Arena tool hangs, unwanted stops, raw code, rejected arguments and slow follow-ups.",
           "DeepSeek duplicate-send risks, shared cooldowns and queued sends after Stop or changing chats.",
+          "Long tool results keep spaces and newlines at page joins instead of silently losing characters.",
           "Cleaner automatic memory, more reliable Luau checks, connections and continuation prompts.",
           "Mac fresh-download startup, stronger official-extension checks and a tidier app folder.",
           "PlazCode’s own code is proprietary from 1.24.30; third-party and older-release licences stay unchanged. No source ZIPs are distributed."

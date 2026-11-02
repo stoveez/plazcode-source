@@ -9,6 +9,7 @@
 ***🛠️ What's fixed***
 - Arena tool hangs, unwanted stops, raw code, rejected arguments and slow follow-ups.
 - DeepSeek duplicate-send risks, shared cooldowns and queued sends after Stop or changing chats.
+- Long tool results keep spaces and newlines at page joins instead of silently losing characters.
 - Cleaner automatic memory, more reliable Luau checks, connections and continuation prompts.
 - Mac fresh-download startup, stronger official-extension checks and a tidier app folder.
 - PlazCode’s own code is proprietary from 1.24.30; third-party and older-release licences stay unchanged. No source ZIPs are distributed.

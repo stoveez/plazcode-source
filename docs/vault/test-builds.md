@@ -104,3 +104,5 @@ Owner explicitly does not want source ZIP distribution. Run 41335729270 cancelle
 
 ## 2026-11-02 replacement build pending
 Owner requested a NEW full Windows/Mac build containing shared DeepSeek protection, learning-noise guards, ordered batches, managed background terminal jobs and reduced optional-diagnostic waits. Previous 642207c ZIPs do not contain them. Final suite/CI/verification/Drive delivery required; stable remains 1.24.29. Read docs/NOW.md.
+
+**2026-11-02 build status:** Windows native job 125278351729 in superseded CI 41445770394 passed all app/native/install/protection checks; Mac is packaging both architectures. Browser failure was the real page-boundary trim bug, now fixed at e068a0a and locally Chromium/Firefox verified. Start the NEW full run after these native caches finish; do not deliver the older packages. Final full local JS on 23e4967 passed 0 failures; framing-specific tests on e068a0a passed, native unchanged. Release-note draft now includes the exact added line: “Long tool results keep spaces and newlines at page joins instead of silently losing characters.” (Show revised final notes before any real release.)
