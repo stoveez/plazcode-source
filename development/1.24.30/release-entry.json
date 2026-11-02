@@ -9,7 +9,8 @@
     "Ro-Engineer Roblox standards (by excaldev, MIT licence) are built in: modern typed Luau, safe client/server code, clean-up, performance, system design, game loops and economy. One short set of core standards is used on every Roblox task; the topic guides are used when they fit.",
     "A Logs page in the PlazCode app: every startup, AI turn, command and problem (including the AI site's own console errors) is saved for 14 days. Filter by problems, startups, turns, Studio or updates, see what led up to an error, and copy it for an AI. The AI can also read these logs itself with plazcode_logs to find out what went wrong.",
     "Run up to eight prepared commands in one reply. Each keeps its own approval and Stop checks; a failure stops the remaining commands.",
-    "Long builds, tests and servers can run as managed background jobs, with live output, progress checks and Stop."
+    "Long builds, tests and servers can run as managed background jobs, with live output, progress checks and Stop.",
+    "Use PlazCode as a guest when account creation is unavailable. Guest settings, skills and memory stay on this computer between launches, separate from online profiles, without cloud sync."
   ],
   "improved": [
     "The PlazCode app only connects to the extension loaded from its own PlazCode folder. Copies that were edited or loaded from somewhere else are refused with a message saying what to do.",
@@ -23,7 +24,7 @@
     "The PlazCode app no longer keeps saying \"Desktop bridge disconnected\" while PlazCode is working. The extension no longer makes every request wait while it re-checks its own files, the app counts the open connection as connected, and the app's own file check is shared between commands instead of repeated for each one. Real drops are now listed with their reason on the Logs page.",
     "Some antivirus programs could flag the PlazCode download as harmful because the app stored its list of computer-control commands as plain text. That text is now stored in a scrambled form; nothing about how PlazCode works changed.",
     "Arena sends no longer trigger PlazCode's long-address guard. Sign-in and first-use Terms prompts now explain what to do instead of retrying.",
-    "Account requests retry once after a non-JSON host response and report its HTTP status in Logs.",
+    "Busy account requests use fresh sign-in checks; a lost registration reply can recover through password-verified login without creating the account again.",
     "Interrupted Luau checks refresh their temporary analysis state; switching profiles clears the Luau service and pending results.",
     "DeepSeek shares persisted send cooldowns across tabs and browsers on this computer, pauses on repeated limits, cancels stale queued sends after Stop/chat changes, and avoids repeated image clicks or fallback sends. Provider restrictions can still apply.",
     "Learn as you work skips startup handshakes, chat summaries, raw tool logs and unsupported automatic notes. Manual notes and existing data remain.",
@@ -45,12 +46,14 @@
         "items": [
           "Roblox-aware Luau checks and code help; optional rollback for new syntax errors.",
           "Run up to eight commands in one reply; keep long builds and servers running in the background.",
-          "MiMo Chat/UltraSpeed, more Arena modes, Ro-Engineer guides (excaldev, MIT) and an app Logs page."
+          "MiMo Chat/UltraSpeed, more Arena modes, Ro-Engineer guides (excaldev, MIT) and an app Logs page.",
+          "A guest workspace with locally saved settings, skills and memory; no account or cloud sync."
         ]
       },
       {
         "title": "🛠️ What's fixed",
         "items": [
+          "Profile creation recovers from busy requests and lost replies using fresh sign-in checks.",
           "Arena tool hangs, unwanted stops, raw code, rejected arguments and slow follow-ups.",
           "DeepSeek duplicate-send risks, shared cooldowns and queued sends after Stop or changing chats.",
           "Long tool results keep spaces and newlines at page joins instead of silently losing characters.",

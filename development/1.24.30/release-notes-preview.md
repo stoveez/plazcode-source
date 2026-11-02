@@ -5,8 +5,10 @@
 - Roblox-aware Luau checks and code help; optional rollback for new syntax errors.
 - Run up to eight commands in one reply; keep long builds and servers running in the background.
 - MiMo Chat/UltraSpeed, more Arena modes, Ro-Engineer guides (excaldev, MIT) and an app Logs page.
+- A guest workspace with locally saved settings, skills and memory; no account or cloud sync.
 
 ***🛠️ What's fixed***
+- Profile creation recovers from busy requests and lost replies using fresh sign-in checks.
 - Arena tool hangs, unwanted stops, raw code, rejected arguments and slow follow-ups.
 - DeepSeek duplicate-send risks, shared cooldowns and queued sends after Stop or changing chats.
 - Long tool results keep spaces and newlines at page joins instead of silently losing characters.

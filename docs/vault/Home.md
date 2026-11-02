@@ -1,4 +1,4 @@
-Current delivery: [2026-11-02 replacement builds verified and delivered](deepseek-workflow-1.24.30-2026-11-02-verification.json). New profile-creation root-cause/guest follow-up: [NOW](../NOW.md).
+Current delivery: [2026-11-02 replacement builds verified and delivered](deepseek-workflow-1.24.30-2026-11-02-verification.json). New [profile creation/guest follow-up](profile-creation-guest-2026-11-02.md): implemented; final tests/build next.
 
 ---
 title: Home
