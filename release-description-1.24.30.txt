@@ -1,0 +1,28 @@
+✨ **PlazCode 1.24.30**
+***Smarter Roblox help, fewer interruptions, and MiMo joins the supported AIs.***
+
+***✨ What's new***
+- MiMo (Chat and UltraSpeed) is now supported, making 16 browser AIs plus Ollama. More Arena modes too.
+- Run up to eight commands in one reply; long builds and servers can keep running in the background.
+- Roblox-aware Luau checks and code help, with optional rollback if a change adds a syntax error.
+- Ro-Engineer starter guides (excaldev, MIT) and a new Logs page in the app.
+
+***🛠️ What's fixed***
+- Arena: tool calls that spun forever, random stops, raw code showing in the chat, rejected arguments and slow follow-ups.
+- DeepSeek: duplicate sends and sends left waiting after Stop or switching chats.
+- The AI no longer says tools like the task checklist are missing from the command list.
+- Searching a big project no longer freezes for a minute.
+- Long results no longer lose spaces or line breaks.
+- Cleaner automatic memory, more reliable Luau checks, and a tidier Ultra look (no purple outline on the selected page).
+- Mac first-launch startup, stronger official-extension checks, and a tidier app folder.
+- From 1.24.30, PlazCode's own code is proprietary. Third-party and older-release licences are unchanged. No source ZIPs are shared.
+
+***🧪 What was checked***
+- Automated app, Luau, browser and protection checks. AI sites were tested on practice pages; live AI and Studio sessions still need testing.
+- The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it.
+
+***📥 How to update***
+- Open PlazCode, or choose Updates → Update now.
+- Manual downloads: PlazCode-1.24.30.zip for Windows, PlazCode-macOS-1.24.30.zip for Mac, or PlazCode-Firefox-1.24.30.zip for Firefox.
+- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
+- Your settings, memory and connections are kept.

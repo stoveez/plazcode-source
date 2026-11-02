@@ -1,9 +1,83 @@
 {
-  "version": "1.24.26",
-  "desktop_version": "1.24.26",
-  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.26.zip",
-  "sha256": "75587d4ec1ae259068758fd49ccc86558f5139045f1e1fa7b6808da2fc819ff9",
+  "version": "1.24.30",
+  "desktop_version": "1.24.30",
+  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.30.zip",
+  "sha256": "e76879ba98b1ff37575be73b024e2b9bfaa66c336572b3baa99476d24ec40d08",
   "release_notes": [
+    {
+      "version": "1.24.30",
+      "title": "Smarter scripts, smoother workflows and safer connections",
+      "summary": "Roblox-aware Luau checks, more AI sites, command batches, background terminal jobs, cleaner memory and stronger protection.",
+      "added": [
+        "Luau checks in Settings: Advisory is on by default; optional Blocking mode puts a script back when an edit adds a syntax error. Type errors and warnings are shown to the AI for correction. Checks never run the generated code.",
+        "Roblox-aware code help: analyze_luau and luau_lookup use the open place to find mistakes, definitions, references, types, completions and function parameters. The checker downloads once on first use; no extra setup.",
+        "MiMo Chat and UltraSpeed support, plus Arena Direct, Battle, Side by Side and Agent modes.",
+        "Ro-Engineer Roblox standards (by excaldev, MIT licence) are built in: modern typed Luau, safe client/server code, clean-up, performance, system design, game loops and economy. One short set of core standards is used on every Roblox task; the topic guides are used when they fit.",
+        "A Logs page in the PlazCode app: every startup, AI turn, command and problem (including the AI site's own console errors) is saved for 14 days. Filter by problems, startups, turns, Studio or updates, see what led up to an error, and copy it for an AI. The AI can also read these logs itself with plazcode_logs to find out what went wrong.",
+        "Run up to eight prepared commands in one reply. Each keeps its own approval and Stop checks; a failure stops the remaining commands.",
+        "Long builds, tests and servers can run as managed background jobs, with live output, progress checks and Stop."
+      ],
+      "improved": [
+        "The PlazCode app only connects to the extension loaded from its own PlazCode folder. Copies that were edited or loaded from somewhere else are refused with a message saying what to do.",
+        "PlazCode's instructions and its Studio tools' Luau now live inside the PlazCode app and are only given to the official extension, to make casual copying harder without adding user setup.",
+        "Your PlazCode folder is tidier: about 90 old test files and old internal notes left behind by earlier versions are removed automatically, and new downloads no longer include internal notes. The app, the extensions, the updaters and your settings stay where they are.",
+        "Protection now varies by release, with independent checks and shorter internal JavaScript names; normal use, Stop, user settings and updates stay available.",
+        "Optional console checks no longer hold up tool results; completed commands settle faster on supported AI sites while DeepSeek keeps deliberate request pacing."
+      ],
+      "fixed": [
+        "On Mac, opening PlazCode straight from a freshly downloaded zip could stop with \"PlazCode program files changed or are incomplete ... No such file or directory\".",
+        "The PlazCode app no longer keeps saying \"Desktop bridge disconnected\" while PlazCode is working. The extension no longer makes every request wait while it re-checks its own files, the app counts the open connection as connected, and the app's own file check is shared between commands instead of repeated for each one. Real drops are now listed with their reason on the Logs page.",
+        "Some antivirus programs could flag the PlazCode download as harmful because the app stored its list of computer-control commands as plain text. That text is now stored in a scrambled form; nothing about how PlazCode works changed.",
+        "Arena sends no longer trigger PlazCode's long-address guard. Sign-in and first-use Terms prompts now explain what to do instead of retrying.",
+        "Account requests retry once after a non-JSON host response and report its HTTP status in Logs.",
+        "Interrupted Luau checks refresh their temporary analysis state; switching profiles clears the Luau service and pending results.",
+        "DeepSeek shares persisted send cooldowns across tabs and browsers on this computer, pauses on repeated limits, cancels stale queued sends after Stop/chat changes, and avoids repeated image clicks or fallback sends. Provider restrictions can still apply.",
+        "Learn as you work skips startup handshakes, chat summaries, raw tool logs and unsupported automatic notes. Manual notes and existing data remain.",
+        "Arena tool hangs, false stops, raw command text and argument-shape failures; Luau setup cancellation/timeouts and project fallback budgets.",
+        "Continuation prompts after startup, repeated workflow stops, MiMo reconnection, and task/sidebar/workspace display problems.",
+        "Long tool results keep spaces and newlines at page joins instead of silently losing characters."
+      ],
+      "notes": [
+        "First-party PlazCode 1.24.30 is proprietary. Third-party licences and earlier GPL releases keep their existing terms. Source ZIPs are not distributed.",
+        "If PlazCode says the extension is not the official one: remove it from your browser's extensions page and load the PlazCode-Extension folder from the PlazCode folder you use (Firefox is not affected).",
+        "Update the PlazCode app and the extension together (the app's updater does this). An extension newer than the app now says \"PlazCode app needed\" instead of starting.",
+        "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***Smarter Roblox help, fewer interruptions, and MiMo joins the supported AIs.***",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "MiMo (Chat and UltraSpeed) is now supported, making 16 browser AIs plus Ollama. More Arena modes too.",
+              "Run up to eight commands in one reply; long builds and servers can keep running in the background.",
+              "Roblox-aware Luau checks and code help, with optional rollback if a change adds a syntax error.",
+              "Ro-Engineer starter guides (excaldev, MIT) and a new Logs page in the app."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Arena: tool calls that spun forever, random stops, raw code showing in the chat, rejected arguments and slow follow-ups.",
+              "DeepSeek: duplicate sends and sends left waiting after Stop or switching chats.",
+              "The AI no longer says tools like the task checklist are missing from the command list.",
+              "Searching a big project no longer freezes for a minute.",
+              "Long results no longer lose spaces or line breaks.",
+              "Cleaner automatic memory, more reliable Luau checks, and a tidier Ultra look (no purple outline on the selected page).",
+              "Mac first-launch startup, stronger official-extension checks, and a tidier app folder.",
+              "From 1.24.30, PlazCode's own code is proprietary. Third-party and older-release licences are unchanged. No source ZIPs are shared."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Automated app, Luau, browser and protection checks. AI sites were tested on practice pages; live AI and Studio sessions still need testing.",
+              "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+            ]
+          }
+        ]
+      }
+    },
     {
       "version": "1.24.26",
       "title": "Remembered approvals and protected program files",
@@ -186,66 +260,16 @@
           }
         ]
       }
-    },
-    {
-      "version": "1.24.19",
-      "title": "Polish and shared reply recovery",
-      "summary": "Adds Polish throughout the PlazCode interface and improves shared reply recovery across verified assistant remounts, with ownership checks before tool dispatch.",
-      "added": [
-        "Polski — Polish in desktop, extension bar and popup language settings, with all 877 interface strings translated.",
-        "Fifteen searchable offline language choices; English remains the default and user-authored content is not translated."
-      ],
-      "improved": [
-        "Carry the exact parsed assistant text into dispatch bookkeeping when a verified reply is temporarily blank or remounted.",
-        "Explain unreadable replies accurately and direct stopped-loop recovery to Start or Restart in the PlazCode bar."
-      ],
-      "fixed": [
-        "Keep same-turn reply evidence only with unchanged fresh identity and conversation/send/session ownership; discard evidence when a node is reused for another turn.",
-        "Recheck reply ownership after visibility waits before dispatch. Pause without dispatching that reply if ownership cannot be verified."
-      ],
-      "notes": [
-        "Publication requires exact-source browser and Linux/Windows/macOS validation plus actual packaged Mac desktop lifetime, visibility and updater-relaunch checks.",
-        "Recovery evidence uses local unit/offline browser fixtures, including the real Claude reader and asynchronous loop handoffs. The affected live Claude account, real Studio projects and Microsoft Edge binary were not tested. Provider identity fallbacks remain a limitation; this is not a comprehensive no-replay guarantee.",
-        "Windows binaries are unsigned. The Mac app is ad-hoc signed, not notarized. Validated native bytes are reused without rebuilding during promotion."
-      ],
-      "github": {
-        "summary": "Polish joins the offline interface languages, and the shared reply loop handles verified remounts more reliably without borrowing another turn’s command.",
-        "sections": [
-          {
-            "title": "🌐 Polish interface",
-            "items": [
-              "Polski — Polish across desktop, bar and popup: 877 translated interface strings, searchable by name or code.",
-              "Fifteen offline language choices. English stays default; AI replies, prompts, code and tool arguments are unchanged."
-            ]
-          },
-          {
-            "title": "🛠️ Shared reply recovery",
-            "items": [
-              "Retain exact assistant evidence across verified same-turn remounts; clear it on changed turn/chat/send/session identity.",
-              "Check ownership again after visibility waits and before tool dispatch; pause if it cannot be verified.",
-              "Clearer stopped-loop instructions point to Start or Restart in the PlazCode bar. Existing ClickUp, Studio, Blender, Ultra and skill features remain."
-            ]
-          },
-          {
-            "title": "🧪 Validation and limits",
-            "items": [
-              "Exact-source platform/browser checks and actual packaged Mac lifetime/update-relaunch gates are required. Validated native bytes are reused.",
-              "Offline/unit fixtures include the real Claude reader and async loop handoffs, not the affected live account. Real Studio projects and the Edge binary were not tested; unreliable provider identities remain a limitation.",
-              "Windows unsigned; Mac ad-hoc signed, not notarized. GitHub provenance does not replace platform signing."
-            ]
-          }
-        ]
-      }
     }
   ],
   "platforms": {
     "macos": {
-      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.26.zip",
-      "sha256": "7490816b3873b01bb842f21cc9b43e56d1ed17984dd5e1924eebf218f344fac1"
+      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.30.zip",
+      "sha256": "820a21df6626667acca1f4da06557bd094e085c783f3a84ca05b9f18229c4466"
     }
   },
   "security": {
-    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.26\",\"platform\":\"windows\",\"sha256\":\"75587d4ec1ae259068758fd49ccc86558f5139045f1e1fa7b6808da2fc819ff9\"}",
-    "signature": "7c0a72821db12cfe0bd7da8ebb41f142353df5d301bf5dde7db64e225268d56255b44dc21cdfdd60fee0dd649a86f45983098be028be3b55831cc02c1dec350c"
+    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.30\",\"platform\":\"windows\",\"sha256\":\"e76879ba98b1ff37575be73b024e2b9bfaa66c336572b3baa99476d24ec40d08\"}",
+    "signature": "c2bf80c348e9b53ec6b70a5af93e9064f34f87f976823df8a84173d8c42e60584d66eb0e6342ef166f93b90c656d0216185813946a4efda918ca2aa1027cce05"
   }
 }
