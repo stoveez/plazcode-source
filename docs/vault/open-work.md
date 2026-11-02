@@ -10,6 +10,9 @@ updated: 2026-11-01
 
 # Open work
 
+- 2026-11-02: 1.24.30 assembled; public publication pending. Validation 41449512168 on `69a4f8c`; publish run 41469911201. Permanent approvals and code protection are complete. Public publication remains. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
+
+
 **Newest 2026-11-01 (Claude):** CI 41342349857 on 936a302 PASSED on every platform and release-check (mark `31ff5250ca8f5bbe` matching on all three). Package download/verify-delivery/Drive upload not possible from the cloud workspace; owner downloads from the run page. See [verification](test-build-1.24.30-verification.json).
 
 **Handoff 2026-11-01:** final source 936a302, full CI 41342349857 (then running). Coding/targeted checks complete, final archive verification + Drive test ZIP delivery unfinished. See [exact handoff](handoff-1.24.30-2026-11-01.md). Source remains Public during build; owner restores Private after delivery.
@@ -38,7 +41,6 @@ The dated progress entries below record earlier stages and are superseded by thi
 
 - 2026-10-29: DeepSeek shared send queue implemented and locally verified; unreleased. Covers direct UI sends, completion-based eight-second pause plus jitter for fast replies, diagnostics and failure recovery. See [DeepSeek pacing](deepseek-send-pacing.md). Next signed version/build and live DeepSeek verification remain. Source is now PUBLIC for the authorized build window.
 
-- 2026-10-28: 1.24.26 published. Validation 40772509288 on `a74ae17`; publish run 40781780030. Permanent approvals and code protection are complete. Live signed feeds/download verification passed. Private visibility restoration was later confirmed complete on 2026-10-29. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
 
 
 
