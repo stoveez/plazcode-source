@@ -1,0 +1,27 @@
+{
+  "state": "awaiting_final_hosted_packages",
+  "program_fix": "e068a0a",
+  "ci_source": "69a4f8c",
+  "run_id": 41449512168,
+  "local_js": {
+    "failures": 0,
+    "final_framing_source": true
+  },
+  "local_rust": {
+    "library_passed": 5,
+    "agent_passed": 282,
+    "ignored": 2
+  },
+  "hosted_browsers": "success",
+  "live_ai_studio_testing": false,
+  "preview": {
+    "url": "https://drive.google.com/file/d/1TkI9J_df33I7rGJKnYwRLIUfSqPa1gEv/view?usp=drivesdk",
+    "name": "PlazCode-1.24.30-batch-approval.png",
+    "mime": "image/png",
+    "bytes": 117119,
+    "actual_extension_ui": true,
+    "isolated_test_page": true,
+    "metadata_readback": true
+  },
+  "artifacts": []
+}
