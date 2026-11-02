@@ -3,7 +3,7 @@
 Branch `claude/plazcode-dev` only. No publish/merge without the owner's clear "yes". Commits: stoveez name only, no email, no Co-Authored-By/Claude-Session/"Generated with" lines. Read `docs/NOW.md`, then this note.
 
 ## Current checkpoint (2026-11-02)
-Full post-change JS sweep on 15803a5 finished with six failures, all investigated and fixed. Original flat-server mutation restriction restored; new Arena reads guarded; extracted-handler fixtures load real alias/provider dependencies. All six and new Arena tests now pass. Full rerun/refreshed CI next; 41367055432 cancelled. Latest program checkpoint is the commit containing this note; see NOW. Do not deliver superseded runs. Drive/GitHub artifact connectors available; no live Arena/Studio verification claimed.
+Program source **642207c**. Corrected full local JS suite PASSED with **0 failures**; full CI **41367670135** has GREEN browsers, Windows/macOS/Linux checks/packaging still running, release-check pending. Intermediate six failures all fixed (details below); both Notion tests pass. build-src regenerated after the full sweep for matching source/package verification. Next: finish CI, verify exact production-key inner Windows/Mac ZIPs, upload to Drive with metadata readback and remind source Private at delivery. Permanent record: followup-1.24.30-2026-11-02-verification.json. Superseded CI runs cancelled; no live Arena/Studio claim.
 
 ## Codex step 1 result
 - Full standard local JS suite: **0 failures**, including test-notion-protocol-file.js and test-notion-startup-small-paste.js. Their source/provider files are unchanged from the earlier green 936a302 version; no regression reproduced in this environment.
@@ -75,3 +75,7 @@ Baseline CI 41364800959 runs on 2db1e5a; no duplicate active runs. Implemented r
 - test-provider-dom-guards exposed unguarded matches/contains in new Arena code; now uses safeRead like the rest of the provider. Existing resilience/preservation expectations retained.
 - test-1.24.21-stall-recovery, test-response-dispatch and test-task-checklist extract production handler code; they now load the actual TOOL_ALIASES/remapToolName code their handler calls. test-quick-command-catalogue now supplies P.id for its existing non-Arena fixture. Assertions unchanged, no production typeof-missing-fixture workarounds.
 - All six pass, plus both Arena tests, provider preservation and desktop pins. Full JS rerun and replacement full CI required. Previous post-change sweep also passed both Notion tests.
+
+### 2026-11-02 — full corrected JS verification passed
+- Full standard suite on corrected program source 642207c: 0 failures, including the original Notion checks, all six intermediate failures and new Arena regressions. Source regenerated cleanly only after the suite ended.
+- Full CI 41367670135 browsers GREEN; native Windows/Mac/Linux jobs still running. No replacement ZIPs delivered yet. Evidence is in followup-1.24.30-2026-11-02-verification.json.

@@ -1,0 +1,91 @@
+{
+  "date": "2026-11-02",
+  "branch": "claude/plazcode-dev",
+  "program_source": "642207c5cb4dbe8c1164a481be2a09220cfbc148",
+  "ci": {
+    "run": 41367670135,
+    "url": "https://github.com/stoveez/plazcode-source/actions/runs/41367670135",
+    "browsers": "success",
+    "native": "in progress",
+    "release_check": "pending"
+  },
+  "javascript": {
+    "standard_suite": "passed, 0 failures",
+    "initial_source": "4f0b060",
+    "corrected_source": "642207c",
+    "notion_protocol_file": "passed",
+    "notion_startup_small_paste": "passed",
+    "legacy_v115": "same 7 obsolete failures on current and 936a302; excluded by standard runner",
+    "live_bridge_test": "excluded, needs live bridge",
+    "intermediate_sweep": "6 failures found and fixed; all six and full corrected suite passed"
+  },
+  "native_local": {
+    "luau_targeted": {
+      "passed": 9,
+      "failed": 0
+    },
+    "full": {
+      "library_passed": 5,
+      "agent_passed": 271,
+      "ignored": 2,
+      "failed": 0
+    },
+    "checker": "real pinned luau-lsp and Roblox definitions",
+    "live_studio": false
+  },
+  "arena": {
+    "fixes": [
+      "trusted user Stop distinguished from programmatic recovery",
+      "recovery requires fresh response owned by current send",
+      "long/open unfenced command masking without partial execution",
+      "cached unchanged markdown with synchronous invalidation",
+      "one-time owned chip repair rather than repeated rebuild",
+      "flat arguments, unambiguous schema path repair and conflicting-value rejection",
+      "catalogue-only flat server selector retained",
+      "structural catalogue plus full targeted schema/reference",
+      "first-text, settle and tool timing diagnostics"
+    ],
+    "tests": [
+      "test-arena-reliability.js",
+      "test-arena-call-shapes.js",
+      "test-arena-modes.js",
+      "test-fast-tool-settle.js",
+      "test-tool-guard-repair.js",
+      "test-provider-dom-guards.js",
+      "test-provider-preservation.js",
+      "test-response-dispatch.js",
+      "test-1.24.17-fixes.js",
+      "test-1.24.21-stall-recovery.js",
+      "test-task-checklist.js",
+      "test-quick-command-catalogue.js",
+      "test-desktop-regression.js"
+    ],
+    "offline_browsers": [
+      {
+        "browser": "Chromium",
+        "trusted_and_recovery_stop": "passed",
+        "masking_and_synchronous_invalidation": "passed",
+        "cached_reads": 3240,
+        "elapsed_ms": 2
+      },
+      {
+        "browser": "Firefox",
+        "trusted_and_recovery_stop": "passed",
+        "masking_and_synchronous_invalidation": "passed",
+        "cached_reads": 3240,
+        "elapsed_ms": 3
+      }
+    ],
+    "live_arena": "unverified; no connected browser tool available; fixture timing is not model/site latency"
+  },
+  "delivery": "pending verified CI inner Windows/macOS ZIPs through Google Drive",
+  "stable_publish": false,
+  "source_sha256": {
+    "core/main.js": "5475a643b8a851edbe538197784fb19b0231d54ab007fa1c5d2622f51f3509d9",
+    "core/parser.js": "baac8cf525f298dfa4c57302f3e375f9a7d1fc3a091232064146716ada4d177e",
+    "core/tool-guard.js": "bf9c00a1211401f4039b2353cb807ea8347bd78b18b3a0cb69ea617c2c84ae76",
+    "providers/arena.js": "1099a420dd699ab7b511713644b608c174074e481f7c98be9ca0898b419d4710",
+    "agent/src/main.rs": "458ba05f78134a0744121f1dc16df4cec520f7b3fa61cd0b9b8c6dbf1deac069",
+    "agent/src/luau_check.rs": "c3f681466b8bbf63aaa7f546402cba616196f016a02ceddad2535ce36fce8ccb"
+  }
+}
