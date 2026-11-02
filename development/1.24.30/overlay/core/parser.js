@@ -225,7 +225,7 @@ const RSParse = (() => {
           typeof args[key] === "string" && typeof value === "string" && args[key].trim() === value.trim()) continue;
       if (Object.hasOwn(args, key) && !same(args[key], value)) {
         argumentError = `Conflicting values for ${key}. Send it once inside params.`;
-      } else args[key] = value;
+      } else Object.defineProperty(args, key, {value, enumerable:true, configurable:true, writable:true});
     }
     // Keep the catalogue server selector strict (including the existing conflict rejection).
     if ((name === "list_commands" || name === "list_tools") && o.server != null) {

@@ -1516,25 +1516,6 @@
       let d = P.readAssistant();
       const progress = ((d.reply || "") + "\n" + (d.thinking || "")).replace(/\s+/g, " ").trim();
       if (progress !== hardProgressText) { hardProgressText = progress; hardProgressAt = Date.now(); }
-      // Item 9 hang recovery, case 1: the site's Stop button is up, the reply already has text, and nothing has
-      // grown for the quiet period. Press Stop once and ask the AI to continue. A reply with no text yet (a
-      // thinking phase), a draft being typed or an open Confirm prompt are all left alone by the decision.
-      if (hardGenerating && !A.stop && typeof PlazCodeStallGuard !== "undefined" && PlazCodeStallGuard.hangDecision) {
-        const approvalBox = document.getElementById("rs-approve");
-        const hang = PlazCodeStallGuard.hangDecision({
-          now: Date.now(), stopVisible: true, replyText: d.reply || "", lastGrowthAt: hardProgressAt,
-          userTyping: !!(P.editorText && String(P.editorText() || "").trim()), confirmOpen: !!(approvalBox && !approvalBox.hidden),
-          tries: A.hangTries || {},
-        });
-        if (hang.action === "stop_and_continue") {
-          A.hangTries = { ...(A.hangTries || {}), stopContinue: ((A.hangTries || {}).stopContinue | 0) + 1 };
-          diag("hang.stopContinue", { quietMs: Date.now() - hardProgressAt, chars: String(d.reply || "").length });
-          try { ui.toast(hang.line); } catch {}
-          try { P.stopGeneration(); } catch {}
-          await sleep(1500);
-          return { kind: "hang_continue", text: hang.text, item: d.item };
-        }
-      }
       // 1.24.21 stall fix: while the site's REAL Stop button is up the AI is still working. ChatGPT Thinking and
       // Claude extended thinking can show no new text for many minutes, and giving up at the normal 5 minute
       // limit paused the run ("stops mid-task, nothing happens until I poke it"). A provider may allow a longer
@@ -1587,7 +1568,30 @@
         : P.assistantCount() > base;
       if (newReply && !firstFreshTextAt && (d.reply || d.thinking)) {
         firstFreshTextAt = Date.now();
+        hardProgressAt = firstFreshTextAt; // a new reply can legitimately repeat the old command text
         diag("response.firstText", {provider:P.id,waitMs:firstFreshTextAt-t0,chars:String(d.reply||"").length});
+      }
+
+      // Recovery belongs only to THIS send's fresh response. A slow model can leave the old command
+      // visible while its new reply is still thinking; never stop that generation using the old text.
+      // Item 9 hang recovery, case 1: the site's Stop button is up, the reply already has text, and nothing has
+      // grown for the quiet period. Press Stop once and ask the AI to continue. A reply with no text yet (a
+      // thinking phase), a draft being typed or an open Confirm prompt are all left alone by the decision.
+      if (newReply && hardGenerating && !A.stop && typeof PlazCodeStallGuard !== "undefined" && PlazCodeStallGuard.hangDecision) {
+        const approvalBox = document.getElementById("rs-approve");
+        const hang = PlazCodeStallGuard.hangDecision({
+          now: Date.now(), stopVisible: true, replyText: d.reply || "", lastGrowthAt: hardProgressAt,
+          userTyping: !!(P.editorText && String(P.editorText() || "").trim()), confirmOpen: !!(approvalBox && !approvalBox.hidden),
+          tries: A.hangTries || {},
+        });
+        if (hang.action === "stop_and_continue") {
+          A.hangTries = { ...(A.hangTries || {}), stopContinue: ((A.hangTries || {}).stopContinue | 0) + 1 };
+          diag("hang.stopContinue", { quietMs: Date.now() - hardProgressAt, chars: String(d.reply || "").length });
+          try { ui.toast(hang.line); } catch {}
+          try { P.stopGeneration(); } catch {}
+          await sleep(1500);
+          return { kind: "hang_continue", text: hang.text, item: d.item };
+        }
       }
 
       // ChatGPT's streaming renderer can swap the reply subtree after the DOM

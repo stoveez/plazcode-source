@@ -97,6 +97,14 @@ function page(text, history = '') {
   const result=await box.watch(0);
   assert.equal(result.kind,'hang_continue');assert.equal(A.stop,false,'recovery keeps the task running');
   assert(events.includes('hang.stopContinue') && now<guard.HANG_DEFAULTS.quietMs+4000,'a frozen generation is recovered within the bounded quiet period');
+  // Old command text can remain while a new reply thinks. Recovery must not mistake that history for fresh output.
+  A.sendToken=stopped.P.lastAssistantId();now=1000;events.length=0;
+  const oldClicks=clicks;
+  const quiet=await box.watch(stopped.P.assistantCount());
+  assert.equal(quiet.kind,'busy_timeout');
+  assert(!events.includes('hang.stopContinue'),'old output never authorizes automatic Stop');
+  assert.equal(clicks,oldClicks);
   stopped.w.close();
+  console.log('PASS Arena fresh-response recovery: an old command left visible while the next reply thinks is never stopped.');
   console.log('PASS Arena: long/raw/open blocks masked without execution, no old-chip rebuild loop, fresh cached text, recovery Stop preserves task and real user Stop cancels it.');
 })().catch(e=>{console.error(e);process.exit(1);});

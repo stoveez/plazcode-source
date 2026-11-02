@@ -196,3 +196,5 @@ Owner explicitly does not want source ZIP distribution. Run 41335729270 cancelle
 - 2026-11-02 Arena follow-up: recovery clicks now preserve the task; long/open command masking, history read caching and one-time owned-chip repair passed real provider/core fixtures. Live Arena profiling remains unverified. Flat argument/schema repair and final full build next.
 
 - 2026-11-02 C2: schema-aware flat/path argument repair, explicit conflict rejection, compact Arena structural catalogue/full targeted reference and phase timing diagnostics passed targeted tests. Full JS/final CI and verified Windows/Mac delivery pending.
+
+- 2026-11-02 final Arena edges: old command text cannot trigger recovery for a new thinking reply, and flat JSON special keys stay plain data. Targeted regressions plus real Chromium/Firefox Stop/masking/cache fixtures pass. Superseded CI 41366559677 cancelled; refreshed full CI/delivery next.

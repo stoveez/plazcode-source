@@ -20,6 +20,11 @@ for(const envelope of [{command:'write_file',path:'first',params:{path:'second',
 const move=[{name:'move',inputSchema:{type:'object',additionalProperties:false,properties:{path:{type:'string'},target_file:{type:'string'}},required:['path','target_file']}}];
 let call={tool:'move',arguments:{file_path:'x'}};G.repair(call,move);assert(G.check(call,move).length);assert.equal(call.arguments.file_path,'x');
 call=parser.normalizeCall({command:'script_read',target_file:file,params:{target_file:file}});assert.deepEqual(G.check(G.repair(call,tools),tools),[]);
+// A flat JSON key named __proto__ remains data; it must never supply hidden/inherited command parameters.
+const special=parser.normalizeCall(JSON.parse('{"command":"script_read","__proto__":{"target_file":"hidden"}}'));
+assert.equal(special.arguments.target_file,undefined);
+assert(Object.hasOwn(special.arguments,'__proto__'));
+assert(G.check(G.repair(special,tools),tools).length,'hidden inherited paths cannot satisfy a required argument');
 assert.equal(parser.normalizeCall({command:'x',params:[]}),null);
 assert.equal(parser.normalizeCall({command:'list_commands',server:'other',params:{server:'roblox'}}),null);
 assert.equal(parser.normalizeCall({command:'list_commands',server:' roblox ',params:{server:'roblox'}}).arguments.server,'roblox');

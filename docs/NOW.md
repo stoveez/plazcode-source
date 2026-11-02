@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-11-02. Branch `claude/plazcode-dev`; no helper agents.
 
-**Newest: Arena flat arguments/schema aliases and shorter command references passed targeted tests; full JS/final CI next.** Flat fields are preserved, conflicting wrappers/paths rejected, and path aliases repaired only against a tool with one unambiguous advertised path field. Known tool aliases resolve before validation. Arena catalogue retains schema constraints/nested shapes, helpers on page one and other connected servers; full per-command reference (including virtual commands) is available without resending the entire catalogue. Timing diagnostics separate first text, settling and tool duration.
+**Newest: final Arena edge checks passed; refreshed full CI next.** Recovery now requires a fresh response owned by this send; a previous command left visible while the next reply thinks never authorizes Stop. Flat JSON special keys remain plain data rather than inherited arguments. New regressions, call-shape and fast-settle checks pass directly against overlay source. Offline Chromium/Firefox also verified real trusted Stop vs automatic recovery and long block masking; 3,240 cached reads took about 3 ms in each local fixture (not a live Arena/model speed measurement).
+
+**C2 verified:** Flat fields are preserved, conflicting wrappers/paths rejected, and path aliases repaired only against a tool with one unambiguous advertised path field. Known tool aliases resolve before validation. Arena catalogue retains schema constraints/nested shapes, helpers on page one and other connected servers; full per-command reference (including virtual commands) is available without resending the entire catalogue. Timing diagnostics separate first text, settling and tool duration.
 
 **Arena C verified:** Recovery Stop clicks no longer cancel the task, real Stop still does, long/raw/open command blocks are masked without dispatching incomplete code, and old settled replies reuse their text until changed. Real owned-chip code repairs a render wipe once without a rebuild cycle. Arena modes, fast settling, provider preservation and desktop pins passed. Live Arena performance remains unverified (no connected browser tool).
 
@@ -11,7 +13,7 @@ Updated: 2026-11-02. Branch `claude/plazcode-dev`; no helper agents.
 
 **CI:** fresh dispatched baseline run [41364800959](https://github.com/stoveez/plazcode-source/actions/runs/41364800959), source 2db1e5a, is running; duplicate old-version/push builds cancelled. It does not contain the Luau fix or forthcoming Arena changes. Dispatch a fresh final full build after fixes.
 
-**Next:** run the full JS suite after these runtime changes and dispatch final full CI on this checkpoint. This is a WIP verification checkpoint; do not deliver older artifacts as containing these fixes. Preserve Claude's empty-turn recovery, safe send, MiMo/checklist/workspace/sidebar fixes; 15-call MiMo test remains dropped.
+**Next:** finish the local JS sweep on 15803a5 (still running), dispatch a refreshed full CI on this checkpoint and verify/deliver matching inner ZIPs. 41366559677 was cancelled to include the final recovery/flat-data edges; 41364800959 was superseded. Do not deliver either older run as current. Preserve Claude's empty-turn recovery, safe send, MiMo/checklist/workspace/sidebar fixes; 15-call MiMo test remains dropped.
 
 No stable publication or release/main merge authorized. Source currently Public for CI; never change visibility. Deliver verified inner Windows/Mac test ZIPs through Drive and remind owner to restore Private at delivery. Account API stays Public separately. Update NOW and [evening handoff](vault/handoff-1.24.30-2026-11-01-evening.md) in every pushed change.
 
