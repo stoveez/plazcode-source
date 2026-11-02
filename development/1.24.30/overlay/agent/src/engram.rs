@@ -94,9 +94,17 @@ async fn runtime(scope:&str)->anyhow::Result<Arc<Mutex<Runtime>>>{
     let runtime=Arc::new(Mutex::new(Runtime{process,sessions:HashSet::new()}));registry.entries.insert(registry_key,Entry{runtime:runtime.clone(),touched:tick});Ok(runtime)
 }
 fn string(value:&Value,name:&str,max:usize)->anyhow::Result<String>{let text=value[name].as_str().unwrap_or("");anyhow::ensure!(!text.trim().is_empty()&&text.len()<=max,"Invalid or oversized {name}");Ok(text.into())}
+fn learning_rejection(value:&Value,scope:&str)->Option<String>{
+ match value["action"].as_str().unwrap_or("") {
+  "summary"=>Some("Chat continuation is recorded separately. Do not save chat summaries as learned knowledge; continue the task.".into()),
+  "save"=>{let mut scoped=value.clone();scoped["project"]=json!(scope.strip_prefix("project:").unwrap_or(""));crate::learning::rejection(&scoped,value["content"].as_str().unwrap_or(""),4000)},
+  _=>None,
+ }
+}
 async fn execute(value:Value)->anyhow::Result<Value>{
     let scope=string(&value,"scope",2000)?;let chat=string(&value,"chat",2000)?;let action=string(&value,"action",30)?;
     if matches!(action.as_str(),"save"|"summary"|"checkpoint") {anyhow::ensure!(crate::memory::STORE.snapshot().automatic,"Automatic memory is off.");}
+    if let Some(reason)=learning_rejection(&value,&scope){return Ok(json!({"ok":true,"skipped":true,"text":format!("No lasting note added: {reason} Do not retry saving this note.")}));}
     let session=format!("plazcode-{}",key(&chat));
     let (tool,args)=match action.as_str(){
         "context"=>("mem_context",json!({"project":scope,"scope":"project","max_bytes":12000})),
@@ -137,3 +145,12 @@ pub async fn post(axum::Json(value):axum::Json<Value>)->axum::response::Response
  let bytes=std::fs::read(dir.join("a.tar.gz")).unwrap();assert_eq!(extract_program(&bytes,"a.tar.gz","engram").unwrap(),b"PROGRAM");assert!(extract_program(&bytes,"a.tar.gz","missing").is_err());let _=std::fs::remove_dir_all(&dir);}}
 
 pub async fn clear_profile_cache(){let entries={let mut registry=REGISTRY.lock().await;registry.entries.drain().map(|(_,entry)|entry).collect::<Vec<_>>()};for entry in entries{entry.runtime.lock().await.process.reset().await;}}
+
+#[cfg(test)]mod quality_tests {use super::*;#[test]fn ai_learning_is_scoped_supported_and_separate_from_continuation(){
+ assert!(learning_rejection(&json!({"action":"summary","content":"random chat log"}),"project:A").is_some());
+ assert!(learning_rejection(&json!({"action":"save","content":"First request: PlazCode startup check"}),"project:A").is_some());
+ let v=json!({"action":"save","content":"A uses Config modules.","evidence":"local Config","learning_context":{"user":[],"project":["local Config = require(script.Config)"],"project_id":"A"}});
+ assert!(learning_rejection(&v,"project:A").is_none());assert!(learning_rejection(&v,"project:B").is_some());
+ assert!(learning_rejection(&json!({"action":"manual-save","content":"First request: my research log"}),"project:A").is_none());
+ assert!(learning_rejection(&json!({"action":"checkpoint"}),"project:A").is_none());
+}}

@@ -1147,13 +1147,13 @@ struct CommandJob {
  id:String, scope:JobScope, command:String, started:Instant,
  state:std::sync::Mutex<(String,Option<i32>,String)>,
  stdout:Arc<std::sync::Mutex<Vec<u8>>>,stderr:Arc<std::sync::Mutex<Vec<u8>>>,
- cancel:tokio::sync::watch::Sender<bool>,
+ cancel:AtomicBool,
 }
 static COMMAND_JOBS:once_cell::sync::Lazy<std::sync::Mutex<Vec<Arc<CommandJob>>>>=once_cell::sync::Lazy::new(||std::sync::Mutex::new(Vec::new()));
 fn running_job(job:&CommandJob)->bool{job.state.lock().map(|s|matches!(s.0.as_str(),"starting"|"running")).unwrap_or(true)}
-pub fn stop_profile_jobs(){let profile=crate::profile_paths::data_root();if let Ok(jobs)=COMMAND_JOBS.lock(){for job in jobs.iter().filter(|j|j.scope.profile==profile&&running_job(j)){let _=job.cancel.send(true);}}}
-fn stop_workspace_jobs(ws:&Workspace){let scope=JobScope::current(ws);if let Ok(jobs)=COMMAND_JOBS.lock(){for job in jobs.iter().filter(|j|j.scope==scope&&running_job(j)){let _=job.cancel.send(true);}}}
-pub fn stop_checkpoint_jobs(id:&str){if id.is_empty(){return;}if let Ok(jobs)=COMMAND_JOBS.lock(){for job in jobs.iter().filter(|j|j.id.starts_with(&format!("{id}:"))){let _=job.cancel.send(true);}}}
+pub fn stop_profile_jobs(){let profile=crate::profile_paths::data_root();if let Ok(jobs)=COMMAND_JOBS.lock(){for job in jobs.iter().filter(|j|j.scope.profile==profile&&running_job(j)){job.cancel.store(true,Ordering::Release);}}}
+fn stop_workspace_jobs(ws:&Workspace){let scope=JobScope::current(ws);if let Ok(jobs)=COMMAND_JOBS.lock(){for job in jobs.iter().filter(|j|j.scope==scope&&running_job(j)){job.cancel.store(true,Ordering::Release);}}}
+pub fn stop_checkpoint_jobs(id:&str){if id.is_empty(){return;}if let Ok(jobs)=COMMAND_JOBS.lock(){for job in jobs.iter().filter(|j|j.id.starts_with(&format!("{id}:"))){job.cancel.store(true,Ordering::Release);}}}
 fn job_result(job:&CommandJob,args:&serde_json::Value)->String {
  let state=job.state.lock().unwrap_or_else(|e|e.into_inner());
  let page=|sink:&Arc<std::sync::Mutex<Vec<u8>>>,key:&str|{
@@ -1171,14 +1171,13 @@ async fn start_command_job(ws:&Workspace,args:&serde_json::Value,shell:Shell,com
  let token=random.iter().map(|b|format!("{b:02x}")).collect::<String>();
  let checkpoint=args["_plazcode_checkpoint"].as_str().filter(|s|s.len()<=100).unwrap_or("");
  let id=if checkpoint.is_empty(){token}else{format!("{checkpoint}:{token}")};
- let (cancel,_)=tokio::sync::watch::channel(false);
+ let cancel=AtomicBool::new(false);
  let job=Arc::new(CommandJob{id,scope,command:command.clone(),started:Instant::now(),state:std::sync::Mutex::new(("starting".into(),None,String::new())),stdout:Arc::new(std::sync::Mutex::new(Vec::new())),stderr:Arc::new(std::sync::Mutex::new(Vec::new())),cancel});
  jobs.push(job.clone());drop(jobs);
  let timeout=j_u64(args,"timeout_seconds",86400).clamp(1,86400);let worker=job.clone();
  tokio::spawn(async move {
-  let mut cancelled=worker.cancel.subscribe();
   let outcome=tokio::select! {biased;
-   _=async{if !*cancelled.borrow(){let _=cancelled.changed().await;}}=> ("stopped".into(),None,"Stopped by the user, profile change or permission change. Partial effects may remain.".into()),
+   _=async{while !worker.cancel.load(Ordering::Acquire){tokio::time::sleep(std::time::Duration::from_millis(50)).await;}}=> ("stopped".into(),None,"Stopped by the user, profile change or permission change. Partial effects may remain.".into()),
    result=run_shell_observed(shell,&command,&cwd,timeout,Some(worker.clone()))=>match result {
     Ok(out)=>(if out.status.success(){"completed"}else{"failed"}.into(),out.status.code(),String::new()),
     Err(RunErr::Spawn(e))=>("failed".into(),None,spawn_failure_message(shell,&e)),
@@ -1192,7 +1191,7 @@ async fn start_command_job(ws:&Workspace,args:&serde_json::Value,shell:Shell,com
 pub async fn tool_command_job(ws:&Workspace,args:&serde_json::Value,stop:bool)->Result<String,String>{
  let id=arg_str(args,"job_id")?;let scope=JobScope::current(ws);
  let job={let jobs=COMMAND_JOBS.lock().map_err(|_|"Background jobs are unavailable")?;jobs.iter().find(|j|j.id==id && j.scope==scope).cloned().ok_or("This job is unavailable in this profile/workspace, or PlazCode restarted. Do not assume it is still running.")?};
- if stop && running_job(&job){let _=job.cancel.send(true);for _ in 0..40 {if !running_job(&job){break;}tokio::time::sleep(std::time::Duration::from_millis(25)).await;}}
+ if stop && running_job(&job){job.cancel.store(true,Ordering::Release);for _ in 0..40 {if !running_job(&job){break;}tokio::time::sleep(std::time::Duration::from_millis(25)).await;}}
  Ok(job_result(&job,args))
 }
 async fn run_shell(shell:Shell,command:&str,cwd:&Path,timeout_secs:u64)->Result<Captured,RunErr>{run_shell_observed(shell,command,cwd,timeout_secs,None).await}

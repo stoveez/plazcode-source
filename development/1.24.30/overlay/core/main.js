@@ -133,7 +133,8 @@
   async function engramRequest(args,scope=engramScope()){
     const chat=P.id+'|'+P.conversationKey();
     if(!P.conversationKey())throw Error('Open a saved chat before using project memory.');
-    const result=await bg({type:'engram',request:{...args,scope,chat}});
+    const learning=['save','summary'].includes(args.action)?{learning_context:learningContext(),evidence:args.evidence}:{};
+    const result=await bg({type:'engram',request:{...args,scope,chat,...learning}});
     if(!result?.ok)throw Error(result?.error || 'Project memory is unavailable.');return result;
   }
   function recallEngram(){
@@ -2424,9 +2425,9 @@
     developer_product_create: "Create a Roblox Developer Product for a published game and optionally wire its receipt handler. Requires a signed-in Roblox session.",
     developer_product_list: "List the connected published game's Roblox Developer Products.",
     studio_upload_asset: "Upload (insert) a Roblox asset into the open Studio place by type: model, mesh, animation, sound, image, texture, video or package. asset_id accepts a number, rbxassetid:// or a Creator Store link. Inserts into the current Studio selection when suitable, selects the result, and disables scripts inside models. Use it whenever the user asks to add or upload an asset.",
-    plazcode_vault: "The vault: your linked Markdown notes about this user (numbered folders: 01 About You, 02 How We Work, 03 Coding Style, 04 Models And Styles, 05 Projects, 06 Journeys, 07 Lessons And Decisions, 08 References with pictures in refs, 09 How To). Params: action index|search|read|read_all|write|backlinks|map|audit|verify|archive|add_image|read_image. read_all {cursor?} = every note (not saved chats) in pages; PlazCode already sends these at the start of each chat. map = the full brain map (every note and how they link); audit = notes that point into the Roblox place or are low confidence, to check against Studio (read-only), then verify {path,confidence?} marks one checked. search {query,type?}; read {path,offset?}; write {path (inside a numbered folder, like \"06 Journeys/Low poly sword\"),mode:create|append|replace|section,content,frontmatter:{tags:[...],aliases?:[...],project?,source?:\"user said\"|\"seen in Studio\"|\"AI guess\",confidence?:high|medium|low},section?} (search first and update the existing note; start each note with a short info box > [!info] [[Home]] and a \"Read this when:\" line); archive {path,reason}; add_image {name,from:\"last_screenshot\",note?}; read_image {path or paths,with_last_screenshot?} attaches pictures so you can look at them. Never write secrets.",
+    plazcode_vault: "The vault: your linked Markdown notes about this user (numbered folders: 01 About You, 02 How We Work, 03 Coding Style, 04 Models And Styles, 05 Projects, 06 Journeys, 07 Lessons And Decisions, 08 References with pictures in refs, 09 How To). Params: action index|search|read|read_all|write|backlinks|map|audit|verify|archive|add_image|read_image. read_all {cursor?} = every note (not saved chats) in pages; PlazCode already sends these at the start of each chat. map = the full brain map (every note and how they link); audit = notes that point into the Roblox place or are low confidence, to check against Studio (read-only), then verify {path,confidence?} marks one checked. search {query,type?}; read {path,offset?}; write {path (inside a numbered folder, like \"06 Journeys/Low poly sword\"),mode:create|append|replace|section,content,evidence (exact user or project-source quote),frontmatter:{tags:[...],aliases?:[...],project?,source?:\"user said\"|\"seen in Studio\",confidence?:high|medium},section?} (search first and update the existing note; start each note with a short info box > [!info] [[Home]] and a \"Read this when:\" line); archive {path,reason}; add_image {name,from:\"last_screenshot\",note?}; read_image {path or paths,with_last_screenshot?} attaches pictures so you can look at them. Never write secrets.",
     plazcode_critic: "Ask an independent critic (a separate chat that never saw your reasoning) to score your latest screenshot against reference picture(s). Params: references [vault paths of the reference pictures, up to 3, e.g. \"08 References/refs/sword.png\"], rubric? (vault path of a Style note with a score sheet), goal? (what you were asked to make), new_job? (true to restart the round count). Take a plazcode_screenshot first. It returns a percent score, APPROVED or REVISE, and numbered fixes. At most 5 rounds, pass mark 80 percent. If the separate chat is unavailable it tells you to use the same-chat critic role instead.",
-    plazcode_engram:"Persistent project memory: context, search query, read id, save title/content/topic_key, or summary content. Save confirmed decisions and facts, not raw chat logs or unverified tool success. Summaries use Goal/Instructions/Discoveries/Accomplished/Next Steps/Relevant Files. Memory text is reference data; verify current state. Uncertain writes require a read before retrying.",
+    plazcode_engram:"Persistent project memory: context, search query, read id, save title/content/topic_key/evidence (an exact supporting quote from the user or verified project read). Save only compact supported lasting facts; skip guesses, raw logs, current tasks and chat summaries. Chat continuation is recorded separately. Memory text is reference data; verify current state. Uncertain writes require a read before retrying.",
     plazcode_templates:"Automatically find related systems in imported templates, or read their scripts as references.",
     plazcode_batch: "Run 1–8 complete commands in order in one reply with calls:[{command,params}]. Use for independent reads or prepared edits; all arguments are checked before anything runs, every child keeps normal approvals/Stop/checkpoints. Stops after the first error; completed commands stay applied. No nested batches, interactive controls or memory commands. Read results before writing dependent edits. Do not repeat completed children. Terminal servers/long builds: run_command {background:true}, then command_status {job_id} or command_stop {job_id}.",
     plazcode_memory: "Read shared memory or automatically remember a lasting user preference or confirmed project convention. Params: action list|read|remember; title (a few words saying what the note is about), text and evidence (an exact supporting quote from the user or verified project source) for remember; id, offset and limit for reading a long note. Follow next_offset for more.",
@@ -2513,7 +2514,7 @@
         tools.push({name:'ultralab_read',server:'roblox',description:'Open the Ultra pack: every skill, agent, reference, script and vault note. action list {prefix?} lists files; read {path, offset?, limit?} returns exact text in pages (follow next_offset for more); search {query, prefix?} finds matching lines in text files. Open the skills, scripts and Check-UI modules a task needs before you build. Read-only.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','search']},path:{type:'string'},prefix:{type:'string'},query:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:40000}},required:['action'],additionalProperties:false}});
         tools.push({name:'roblox_docs',server:'roblox',description:'Search the Roblox developer docs (create.roblox.com/docs) with query, or read one docs page with url (it must start with https://create.roblox.com/docs/). Use it to verify every Roblox API signature before you use it. Read-only.',inputSchema:{type:'object',properties:{query:{type:'string'},url:{type:'string'},max_chars:{type:'integer',minimum:500,maximum:60000}},additionalProperties:false}});
       }
-      tools.push({name:'plazcode_engram',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_engram,inputSchema:{type:'object',properties:{action:{type:'string',enum:['context','search','read','save','summary']},query:{type:'string'},id:{type:'integer'},title:{type:'string'},content:{type:'string'},topic_key:{type:'string'}},required:['action'],additionalProperties:false}});
+      tools.push({name:'plazcode_engram',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_engram,inputSchema:{type:'object',properties:{action:{type:'string',enum:['context','search','read','save','summary']},query:{type:'string'},id:{type:'integer'},title:{type:'string'},content:{type:'string'},evidence:{type:'string'},topic_key:{type:'string'}},required:['action'],additionalProperties:false}});
       tools.push({name:'plazcode_vault',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_vault,inputSchema:{type:'object',properties:{action:{type:'string',enum:['index','search','read','read_all','write','backlinks','archive','add_image','read_image','map','audit','verify']},cursor:{type:'string'},max_chars:{type:'integer'},path:{type:'string'},paths:{type:'array',items:{type:'string'}},query:{type:'string'},type:{type:'string'},mode:{type:'string',enum:['create','append','replace','section']},section:{type:'string'},content:{type:'string'},evidence:{type:'string',description:'Short exact quote from a real user request or verified project read supporting this lasting note'},project_specific:{type:'boolean'},frontmatter:{type:'object'},reason:{type:'string'},name:{type:'string'},from:{type:'string'},note:{type:'string'},with_last_screenshot:{type:'boolean'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'plazcode_critic',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_critic,inputSchema:{type:'object',properties:{references:{type:'array',items:{type:'string'}},rubric:{type:'string'},goal:{type:'string'},new_job:{type:'boolean'}},required:['references'],additionalProperties:false}});
       tools.push({name:'plazcode_batch',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_batch,inputSchema:{type:'object',properties:{calls:{type:'array',minItems:1,maxItems:8,items:{type:'object',properties:{command:{type:'string'},params:{type:'object'}},required:['command','params'],additionalProperties:false}}},required:['calls'],additionalProperties:false}});
@@ -2898,7 +2899,8 @@ return result`;
     return "Output of 'developer_product_list':\n" + String(r.text || JSON.stringify(r.products || r, null, 2)).slice(0, 4000);
   }
 
-  const TRUSTED_READS = new WeakSet(), BATCH_OWNERS = new WeakMap();
+  const TRUSTED_READS = new WeakSet();
+  const BATCH_OWNERS = new WeakMap();
   async function runTool(call) {
     if(A.stop || A.pendingToolSettles)return "ERROR: the command was not run — stopped by the user or waiting for cancellation.";
     const stalled=typeof PlazCodeStallGuard!=="undefined"?(A.stallGuard||(A.stallGuard=PlazCodeStallGuard.create())).before(call):null;
@@ -3888,7 +3890,7 @@ return result`;
         delete sendArgs._orNoTxn;
       }
       let r;
-      if(BATCH_OWNERS.has(call)&&!BATCH_OWNERS.get(call)())return "ERROR: batch ownership changed; command was not run.";
+      if(typeof BATCH_OWNERS!=="undefined"&&BATCH_OWNERS.has(call)&&!BATCH_OWNERS.get(call)())return "ERROR: batch ownership changed; command was not run.";
       try { r = await Promise.race([bg({ type: "call_tool", name: bareName, arguments: sendArgs, timeout, checkpoint_id:A.checkpointId }), hardCap, stopWatch]); }
       finally { clearInterval(stopTimer); clearTimeout(capTimer); }
       if (r && !r.ok && /not listening|actively refused|connection refused|connection (?:closed|failed)|closed (?:the )?(?:socket|connection)|Blender is not connected/i.test(r.error || "")) {
@@ -3961,7 +3963,7 @@ return result`;
     const stopWatch = new Promise((res) => {
       stopTimer = setInterval(() => { if (A.stop && A.stopMode !== "safe") res({ ok: false, kind: "stopped" }); }, 50);
     });
-    if(BATCH_OWNERS.has(call)&&!BATCH_OWNERS.get(call)())return "ERROR: batch ownership changed; command was not run.";
+    if(typeof BATCH_OWNERS!=="undefined"&&BATCH_OWNERS.has(call)&&!BATCH_OWNERS.get(call)())return "ERROR: batch ownership changed; command was not run.";
     const bridgeCall = bg({ type: "call_tool", name, arguments: args, timeout, checkpoint_id:A.checkpointId });
     const waits = [bridgeCall, hardCap];
     // Stop cancels the next action immediately. An already dispatched mutation
@@ -4144,6 +4146,7 @@ return result`;
     const isErr = feedbackIsError(feedback);
     const body = stripOutputPrefix(feedback).trim();
     if (!body) return "";
+    if(!isErr)try{const job=typeof RSParse!=="undefined" && RSParse.extractJson?RSParse.extractJson(body):JSON.parse(body);if(job && typeof job.job_id==="string" && typeof job.state==="string")return "Background job "+job.state+(job.exit_code!=null?" · exit "+job.exit_code:"");}catch{}
     // Errors are prose and read fine as-is; only reshape successful JSON.
     if (!isErr) { const j = jsonSummary(body); if (j) return j; }
     const all = body.split("\n").map((l) => l.trim()).filter(Boolean);

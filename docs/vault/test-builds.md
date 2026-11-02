@@ -101,3 +101,6 @@ Owner explicitly does not want source ZIP distribution. Run 41335729270 cancelle
 **Current 1.24.30 preview:** actual running Luau Settings delivered via Drive: https://drive.google.com/file/d/1rbUnl6a1_yvHWqoslgic0UFr4wBG_-z1/view?usp=drivesdk . Full platform CI 41338413340 / source 3c73298 is running; browser job passed. Final test ZIPs not delivered yet.
 
 **Current full build:** 41340463730 / 18fc3e2 includes normalized gzip and mandatory cross-platform sealed-content hashes. Local validation-key Linux packaging/desktop proof passes; those local files are not deliverables. Wait for exact verified production-key CI inner ZIPs.
+
+## 2026-11-02 replacement build pending
+Owner requested a NEW full Windows/Mac build containing shared DeepSeek protection, learning-noise guards, ordered batches, managed background terminal jobs and reduced optional-diagnostic waits. Previous 642207c ZIPs do not contain them. Final suite/CI/verification/Drive delivery required; stable remains 1.24.29. Read docs/NOW.md.

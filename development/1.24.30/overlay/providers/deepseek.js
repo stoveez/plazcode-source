@@ -872,7 +872,7 @@ const RSProvider = (() => {
   async function typeAndSendRaw(text, images, opts, job) {
     assertSendOwner(job);
     const editor=getEditor();if(!editor)throw sendError("DeepSeek input box not found.");
-    const current=editorText();if(current.trim() && current!==job.draft)throw sendError("Your draft changed while the message was waiting. PlazCode kept your text.","DEEPSEEK_CANCELLED");
+    const current=editorText();if(current.trim())throw sendError("Your draft changed or still contains text. PlazCode kept your draft; clear it before sending an automatic request.","DEEPSEEK_CANCELLED");
     job.editor=editor;job.previousDraft=current;
     editor.focus();text=truncateForSend(text);job.typedText=text;setTextareaValue(editor,text);
     if(editorText()!==text)throw sendError("DeepSeek did not accept the draft. Nothing was sent.");
@@ -889,8 +889,19 @@ const RSProvider = (() => {
   }
   function observeManualSend() {
     cancelPendingSends();
-    void pacing({action:"observe"}).catch(error=>{try{diag("send.paceUnavailable",{error:String(error.message||error)});}catch{}});
+    const epoch=_sendEpoch,chat=conversationKey(),users=userCount();
+    void (async()=>{
+      await pacing({action:"observe"}); // reserve immediately; never hold back the person's click
+      const until=Date.now()+12000;
+      while(epoch===_sendEpoch && chat===conversationKey() && Date.now()<until){
+        if(isHardGenerating() || userCount()>users){await pacing({action:"observe"});return;}
+        await sleep(120);
+      }
+      // An uncertain native send still gets a conservative final anchor, never an automatic replay.
+      if(epoch===_sendEpoch && chat===conversationKey())await pacing({action:"observe"});
+    })().catch(error=>{try{diag("send.paceUnavailable",{error:String(error.message||error)});}catch{}});
   }
+
   async function noteHealthyReply() { if(_lastDelivered)try{await pacing({action:"healthy",id:_lastDelivered});}catch{} }
 
   // Click DeepSeek's stop only if it is actually in the stop state (<rect>), so

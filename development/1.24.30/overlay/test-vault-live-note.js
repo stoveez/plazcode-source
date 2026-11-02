@@ -19,7 +19,7 @@ const Memory = require("./core/memory.js");
   const text = Memory.vaultContext(false);
   assert(/LIVE NOTE \(00 Start Here\/Now\.md/.test(text), "startup names the live note");
   assert(/Last job: fixed the double jump/.test(text) && text.indexOf("Start note text") < text.indexOf("LIVE NOTE"), "live note text follows the start note");
-  assert(/rewrite it with plazcode_vault write mode replace/.test(text), "the AI is told how to update it");
+  assert(/reference only; chat continuation is saved separately/.test(text) && !/at the end of every job/.test(text), "live context remains readable without forced automatic task-summary writes");
 
   // 2. The compact startup keeps it, but shorter; a long live note is cut.
   await Memory.vaultRefresh(bridge("x".repeat(5000)), "p2");
@@ -30,9 +30,9 @@ const Memory = require("./core/memory.js");
   await Memory.vaultRefresh(bridge(undefined), "p3");
   assert(!/LIVE NOTE/.test(Memory.vaultContext(false)), "no live note section when the app has none");
 
-  // 4. The learning instructions tell the AI to keep the live note current, and how to store an attached picture.
-  assert(/rewrite 00 Start Here\/Now\.md/.test(Memory.vaultContext(false)), "learning text mentions the live note");
-  assert(/media button, call plazcode_vault add_image/.test(Memory.vaultContext(false)) && !/media button, call plazcode_vault add_image/.test(Memory.vaultContext(true)), "learning text explains saving an attached picture (full prompt only, so small sites stay small)");
+  // 4. Learning is selective; no automatic task-summary rewrites or saving every attached image.
+  assert(/Do not rewrite the live note after every job/.test(Memory.vaultContext(false)), "a finished task alone does not create learned knowledge");
+  assert(/Save a reference picture only when/.test(Memory.vaultContext(false)) && !/Save a reference picture only when/.test(Memory.vaultContext(true)), "pictures are saved when useful or requested, and extra guidance stays out of compact prompts");
   await Memory.vaultRefresh(bridge("x"), "p4");
   assert(/LEARNING IS OFF|LEARN AUTOMATICALLY/.test(Memory.vaultContext(false)));
 

@@ -28,7 +28,7 @@ check("cut-off commands do not stop the run after 3 failures", () => {
   assert.ok(/invalidToolAttempts >= MAX_INVALID_TOOL_ATTEMPTS\) \{ ui\.banner\("warn", "Repeated incomplete commands"/.test(main));
 });
 check("repeated cut-off commands get a split-the-edit hint", () => {
-  assert.ok(/invalidToolAttempts >= SPLIT_HINT_AFTER && typeof parseFeedback === "string" \? parseFeedback \+ SPLIT_HINT/.test(main));
+  assert.ok(/\(invalidToolAttempts >= SPLIT_HINT_AFTER \|\| res.reason==="unclosed"\) && typeof parseFeedback === "string" \? parseFeedback \+ SPLIT_HINT/.test(main));
   assert.ok(/Split the change into several much smaller commands/.test(main));
 });
 check("attachment/large sends are never auto-retried", () => {

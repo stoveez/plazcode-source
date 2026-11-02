@@ -30,6 +30,10 @@ async function watch({ id = "claude", reply = "Let me read it.\n" + CMD, endAt =
 }
 
 (async () => {
+  for(const id of ['chatgpt','claude','gemini','arena','glm','kimi','qwen','copilot']){
+    const result=await watch({id});assert.equal(result.result.kind,'tool');assert(result.afterEnd<1600,id+': lingering soft activity must not hold a completed command for many seconds');
+  }
+  console.log('PASS shared watcher: eight non-DeepSeek providers settle fresh complete commands without the long fallback');
   // 1. The reported case: Claude's streaming marker lingers after the reply ended. Before: 12 s (STABLE_MS).
   let w = await watch();
   assert.equal(w.result.kind, "tool");

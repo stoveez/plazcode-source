@@ -31,12 +31,13 @@ function setup(name,baseline){
  const setText=text=>{if(input.tagName==='TEXTAREA')input.value=text;else input.textContent=text;};
  w.document.execCommand=(action,_,value)=>{if(action==='insertText'){setText(value);input.dispatchEvent(new w.Event('input',{bubbles:true}));return true;}return action==='selectAll';};
  input.addEventListener('input',()=>inputs++);
- const send=()=>{setText('');};
+ const send=()=>{setText('');if(name==='deepseek'&&!baseline){const row=w.document.createElement('div');row.className='ds-message';row.dataset.role='user';row.textContent='sent';w.document.querySelector('main').prepend(row);}};
  w.document.querySelector('form').addEventListener('submit',e=>e.preventDefault());
  w.document.querySelector('button').addEventListener('click',()=>{clicks++;send();});
  input.addEventListener('keydown',e=>{if(e.key==='Enter'){enters++;send();}});
  const source=fs.readFileSync((baseline?'test-support/provider-baseline/'+(baselineOf[name]||name):'providers/'+name)+'.js','utf8');
  vm.runInContext(source+';this.p=RSProvider;',d.getInternalVMContext());
+ if(name==='deepseek'&&!baseline)w.p.init({pacingRequest:async()=>({ok:true,allowed:true,valid_until:now+30000}),sendContext:()=>({session:1,stop:0})});
  return {d,w,p:w.p,input,setText,advance:ms=>{now+=ms;},counts:()=>({clicks,enters,inputs})};
 }
 function inspect(f){const p=f.p,r=p.readAssistant();return {editor:!!p.getEditor(),reply:r.reply,present:r.present,users:p.userCount(),assistants:p.assistantCount(),generating:p.isGenerating(),chat:p.conversationKey(),itemText:p.lastAssistant()?p.itemText(p.lastAssistant()):''};}
@@ -54,6 +55,8 @@ function inspect(f){const p=f.p,r=p.readAssistant();return {editor:!!p.getEditor
    assert.deepEqual(inspect(current),before,name+' healthy message detection unchanged');checks++;
    for(const f of [old,current]){
     f.advance(60000);f.setText('user draft');assert.equal(f.p.editorText(),'user draft',name+' native draft read');f.p.setInputLock(true);f.p.setInputLock(false);assert.equal(f.p.editorText(),'user draft',name+' locking preserves draft');
+    // Guarded DeepSeek preserves any existing user draft instead of overwriting it.
+    if(name==='deepseek' && f===current){await assert.rejects(f.p.typeAndSend('blocked'),/kept your draft/);assert.equal(f.p.editorText(),'user draft');f.setText('');}
     // Native send counts must be identical, and no duplicate submission is allowed.
     await f.p.typeAndSend('PlazCode regression prompt');assert.equal(f.p.editorText().trim(),'',name+' draft consumed');assert.equal(f.counts().clicks+f.counts().enters,1,name+' one submission');
    }
@@ -61,6 +64,7 @@ function inspect(f){const p=f.p,r=p.readAssistant();return {editor:!!p.getEditor
    // Claude's hidden line break and every typed line was refused; covered by test-claude-empty-box-typing), so one
    // input event fewer. Clicks and Enters, the submission count, must still be identical.
    if(name==='claude'){const a=current.counts(),b=old.counts();assert.deepEqual({clicks:a.clicks,enters:a.enters},{clicks:b.clicks,enters:b.enters},name+' native submissions unchanged');assert.equal(a.inputs,b.inputs-1,name+' only the separate clearing input is gone');checks+=3;}
+   else if(name==='deepseek'){assert.equal(current.counts().clicks,old.counts().clicks,'DeepSeek still commits exactly once');assert.equal(current.counts().enters,0,'no Enter fallback');checks+=3;}
    else{assert.deepEqual(current.counts(),old.counts(),name+' native event behavior unchanged');checks+=3;}
    // Virtualized editor replacement after a successful send.
    for(const f of [old,current]){f.input.replaceWith(f.input.cloneNode(true));assert.equal(f.p.getEditor(),f.w.document.querySelector('textarea,[contenteditable]'),name+' detects replacement');}

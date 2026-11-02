@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
-const assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm'),{parse}=require('./release-tools/node_modules/acorn');
-const P=require('./core/parser.js'),guard=require('./core/tool-guard.js'),main=fs.readFileSync('core/main.js','utf8');
+const assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm'),{parse}=require('acorn');
+const P=new Function(fs.readFileSync('core/parser.js','utf8')+';return RSParse;')(),guard=require('./core/tool-guard.js'),main=fs.readFileSync('core/main.js','utf8');
 const json=c=>JSON.stringify(c);
 const c1={command:'read_file',params:{path:'a'}},c2={command:'edit_file',params:{path:'a',old_string:'x',new_string:'y'}};
 assert.equal(P.parseToolCalls(json(c1)+'\n'+json(c2)).length,2,'collect complete sibling envelopes');

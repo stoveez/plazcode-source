@@ -370,7 +370,7 @@
       "PlazCode is a browser extension running in this page. It reads your replies, runs any command you write against the user's live Roblox Studio through a local bridge, and sends the real result back as the next message (success or ERROR). " +
         `This site's own tools cannot reach Studio: commands are plain text in your normal reply, the only channel that works. Internal reasoning is fine. Do not use ${site}'s own features unless the user asks.`,
       "",
-      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. ONE command block per reply; use plazcode_batch {calls:[{command,params}]} for up to eight prepared reads/edits in one round-trip. Normal approvals and Stop apply per child; stop on errors and never repeat completed children. Wait for its results. Never end a turn only announcing a command: write it, or give the final answer.",
+      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. ONE command block per reply; Batch prepared commands with plazcode_batch {calls:[{command,params}]} (max 8); stop on errors. Wait for results. Never end a turn only announcing a command: write it, or give the final answer.",
       BT + "json",
       '{"command": "name", "params": {"key": "value"}}',
       BT,
@@ -399,7 +399,7 @@
       "",
       "COMMANDS (parameters come from list_commands): execute_luau, multi_edit, script_read, inspect_instance, start_stop_play | ui_build, ui_set_*, ui_list_tree | lighting_*, fx_*, audio_*, terrain_*, camera_set_style, diagnostics_*, datastore_setup, remote_setup, teams_setup, npc_spawn_pathfinding, proximity_setup, tween_create, marketplace_setup, script_analysis | animation_*, motion_*, vfx_build | web_search, web_fetch, plazcode_screenshot, attach_feedback | plazcode_status, plazcode_debug, plazcode_agent, plazcode_checklist, plazcode_clarify, plazcode_skills | list_mcp_servers.",
       "",
-      "HELP ON DEMAND: the rules above cover normal work. Only for detailed rules you lack (big UI, animation), call plazcode_help {topic} once (or {command:\"name\"}). Topics: luau, studio-gui (UI/HUD), animation, motion (VFX), studio-skills, play-mode, rules, memory, checklist, scope, mcp, creators, web, screenshots, blender, debug-agents, modes. An unknown topic returns the list.",
+      "HELP ON DEMAND: plazcode_help {topic} or {command:\"name\"}. Topics: luau, studio-gui (UI/HUD), animation, motion (VFX), studio-skills, play-mode, rules, memory, checklist, scope, mcp, creators, web, screenshots, blender, debug-agents, modes. An unknown topic returns the list.",
       "",
       'IMPORTANT: Your very first action is to write `list_commands` with no params and never guess a command or parameter that is not in its result. Do NOT call `list_mcp_servers` at startup. After the list_commands result, reply with exactly "PlazCode is ready." and nothing else, then wait for the first request (do not read or create project memory yet). If that first list_commands comes back Studio-offline, run `list_mcp_servers` once, tell the user in one short sentence that Roblox is offline, list what else is connected, then ask what they want to do and wait.',
     ].join("\n");

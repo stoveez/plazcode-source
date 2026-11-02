@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 // Actual provider functions, inert controls and deterministic time. No live traffic.
-const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict'),{parse}=require('./release-tools/node_modules/acorn');
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict'),{parse}=require('acorn');
 const source=fs.readFileSync('providers/deepseek.js','utf8'),functions={};
 function walk(n){if(!n||typeof n!=='object')return;if(n.type==='FunctionDeclaration')functions[n.id.name]=source.slice(n.start,n.end);for(const v of Object.values(n))if(Array.isArray(v))v.forEach(walk);else if(v&&typeof v==='object')walk(v);}
 walk(parse(source,{ecmaVersion:'latest'}));

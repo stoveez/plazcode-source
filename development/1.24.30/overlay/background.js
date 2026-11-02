@@ -2274,7 +2274,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
     switch (msg.type) {
       case "provider-pacing": {
         try {
-          const origin=new URL(_sender.tab?.url || _sender.url || "");
+          const origin=new URL(_sender.url || _sender.tab?.url || "");
           if(origin.protocol!=="https:" || !["chat.deepseek.com","deepseek.com"].includes(origin.hostname) || !Number.isInteger(_sender.tab?.id))throw new Error("Request pacing is only available to the DeepSeek chat.");
           const request={...msg.request,provider:"deepseek",owner:pairingIdentity()+":"+_sender.tab.id+":"+String(_sender.documentId || msg.page || "").slice(0,100)};
           const response=await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/provider-pacing`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(request),signal:AbortSignal.timeout(5000)});
