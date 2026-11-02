@@ -1943,14 +1943,14 @@ async fn profile_action_handler(State(state):State<AppState>,headers:axum::http:
     let result=async{
         let _transition=state.profile_switch.lock().await;
         match action.action.as_str(){
-            "login"|"register"=>{
+            "login"|"register"|"guest"=>{
                 anyhow::ensure!(state.accounts.active().is_none(),"Sign out before switching profiles.");
-                let candidate=state.accounts.authenticate(action.id.as_deref(),action.username.as_deref().unwrap_or(""),action.password.as_deref().unwrap_or(""),action.action=="register").await?;
+                let candidate=if action.action=="guest"{None}else{Some(state.accounts.authenticate(action.id.as_deref(),action.username.as_deref().unwrap_or(""),action.password.as_deref().unwrap_or(""),action.action=="register").await?)};
                 state.accounts.begin_profile_mode();state.cancellation.cancel_all();
                 let _guard=accounts::ACCESS.write().await;
                 reset_profile_runtime(&state).await;
                 let entered=async{
-                    let active=state.accounts.commit(candidate).await?;
+                    let active=if let Some(candidate)=candidate{state.accounts.commit(candidate).await?}else{state.accounts.enter_guest().await?};
                     profile_paths::select(Some(profile_paths::profile_root(&active.id)?));
                     state.preferences.select_path(profile_paths::settings_path())?;
                     let _=account_sync::run(&state).await;

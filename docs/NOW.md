@@ -1,4 +1,9 @@
 # NOW
+## Profile creation and guest follow-up — WIP, 2026-11-02
+Native client now preserves service-busy errors, renews single-use proof before retry, and authenticates with the same password to recover a registration whose response was lost. A duplicate username never grants access without the password. Current public API health/challenges and two nonexistent-account logins succeeded; historical screenshot outage not proven by available logs. The server's deliberately single-hash guard does return 429 under local overlapping work; the client previously collapsed that into generic unavailable. Do not call this proof of the original user's specific outage. No production account data accessed, no accounts created.
+
+Persistent guest identity/UI drafted: dedicated UUID/root, fresh session epoch, no first-owner/legacy migration, no cloud sync, normal profile switching/permissions. Exact themed guest-card text is in creation and picker screens. Native/unit/browser/persistence tests and actual running-app Drive screenshot still required. No account API deployment or stable publication. Full earlier test ZIPs remain delivered; new follow-up not included there.
+
 Updated: 2026-11-02. Work only on `claude/plazcode-dev`; no helpers.
 
 **Newest: full CI GREEN and verified Windows/Mac replacement ZIPs delivered through Drive. Profile creation/guest follow-up now starting.** CI [41449512168](https://github.com/stoveez/plazcode-source/actions/runs/41449512168), source **69a4f8c** (program fix e068a0a). Superseded 41445770394 cancelled after Windows/Mac native/install/package jobs passed; its browser failure exposed the now-fixed result-page trim bug. Do not deliver its old ZIPs. Stable remains 1.24.29; no publication/feed/release/main/visibility changes authorized.
