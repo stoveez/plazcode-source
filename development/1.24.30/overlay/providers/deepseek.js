@@ -800,8 +800,22 @@ const RSProvider = (() => {
   function sendOwner() { return {epoch:_sendEpoch,chat:typeof conversationKey === "function" ? conversationKey() : "",..._contextReader()}; }
   function assertSendOwner(job) {
     const current=sendOwner();
-    if(current.epoch!==job.owner.epoch || current.chat!==job.owner.chat || current.session!==job.owner.session || current.stop!==job.owner.stop)
-      throw sendError("The send was cancelled because Stop was pressed or the chat/session changed.","DEEPSEEK_CANCELLED");
+    const ownerChanged=()=>{const error=sendError("The send was cancelled because Stop was pressed or the chat/session changed.","DEEPSEEK_CANCELLED");error.expectedCancellation=true;throw error;};
+    if(current.epoch!==job.owner.epoch || current.session!==job.owner.session || current.stop!==job.owner.stop)ownerChanged();
+    // One committed message can acquire its first chat address before React
+    // renders its row. Wait for our own message; never authorize another click.
+    if(job.awaitingChatAssignment && !job.owner.chat){
+      if(job.assignedChat && current.chat!==job.assignedChat)ownerChanged();
+      if(current.chat){job.assignedChat=current.chat;return;}
+    }
+    if(current.chat!==job.owner.chat)ownerChanged();
+  }
+  function confirmsFreshChatSend(job) {
+    const users=allItems().filter(isUserItem),last=users[users.length-1];
+    if(!last || job.beforeUserItems.has(last))return false;
+    const normalize=value=>String(value||"").replace(/\s+/g," ").trim();
+    const expected=normalize(job.typedText);
+    return !!expected && normalize(itemText(last)).includes(expected);
   }
   function cancelPendingSends() { _sendEpoch++; }
   async function pacing(request) {
@@ -852,13 +866,24 @@ const RSProvider = (() => {
       const users=userCount(),assistants=assistantCount(),before=job.continue?streamLen():0;
       if(!job.continue && editorText()!==job.typedText)throw sendError("Your draft changed before sending. Nothing was sent.","DEEPSEEK_CANCELLED");
       assertSendOwner(job);if(Date.now()>=lease.valid_until)throw sendError("The send permission expired. Nothing was sent.");
-      live.click(); // exactly ONE commit; never poll by clicking again
-      const accepted=await waitSend(()=>{
-        const landed=isHardGenerating() || userCount()>users || assistantCount()>assistants || (job.continue && streamLen()>before);
-        // A fresh conversation acquires its URL after this one click; only adopt it after delivery evidence.
-        if(landed && !job.owner.chat)job.owner.chat=conversationKey();
-        return landed;
-      },12000,job);
+      job.awaitingChatAssignment=!job.continue&&!job.owner.chat;
+      if(job.awaitingChatAssignment)job.beforeUserItems=new Set(allItems().filter(isUserItem));
+      let accepted;
+      try {
+        live.click(); // exactly ONE commit; never poll by clicking again
+        accepted=await waitSend(()=>{
+          const landed=isHardGenerating() || userCount()>users || assistantCount()>assistants || (job.continue && streamLen()>before);
+          const chat=conversationKey();
+          if(landed && !job.owner.chat && chat){
+            // Counts/Stop alone can belong to a different conversation. Require
+            // the new user row to contain the text this operation actually sent.
+            if(!job.awaitingChatAssignment || !confirmsFreshChatSend(job))return false;
+            if(job.assignedChat && chat!==job.assignedChat)return false;
+            job.owner.chat=chat;
+          }
+          return landed;
+        },12000,job);
+      } finally {job.awaitingChatAssignment=false;}
       if(!accepted){cancelPendingSends();throw sendError("DeepSeek did not confirm this message. PlazCode paused to avoid sending it twice; inspect the chat before retrying.","DEEPSEEK_UNCERTAIN");}
       _lastDelivered=job.id;await pacing({action:"finish",id:job.id,sent:true});lease=null;
       return true;
@@ -1052,6 +1077,8 @@ const RSProvider = (() => {
     finally { if(relock)setInputLock(true); }
   }
   function installSendHooks(handlers) {
+    // A first route assigned by DeepSeek is different from a person's navigation.
+    try{window.addEventListener("popstate",event=>{if(event.isTrusted)cancelPendingSends();});}catch{}
     document.addEventListener(
       "keydown",
       (e) => {
@@ -1082,6 +1109,11 @@ const RSProvider = (() => {
     document.addEventListener(
       "click",
       (e) => {
+        if(e.isTrusted && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && (e.button==null || e.button===0)){
+          const link=safeClosest(e.target,"a[href]");
+          const destination=link && safeRead(()=>!link.download && (!link.target || link.target==="_self") ? new URL(link.href,location.href) : null,null);
+          if(destination && destination.origin===location.origin && destination.pathname!==location.pathname)cancelPendingSends();
+        }
         // Not on a chat page (e.g. login / OAuth page) - never intercept anything.
         if (!getEditor()) return;
         const t = e.target;
@@ -1205,7 +1237,7 @@ const RSProvider = (() => {
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsDsVer).
       // BUMP DS_VER on meaningful deepseek.js changes worth verifying live.
-      try { document.documentElement.setAttribute("data-rs-ds-ver", "2026-11-02_shared-request-gate"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-ds-ver", "2026-11-02_startup-chat-id"); } catch {}
     },
     // turns
     allItems, isUserItem, isAssistantItem, itemText, classifyText,

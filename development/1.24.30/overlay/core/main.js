@@ -1076,6 +1076,14 @@
     } catch (e) {}
   }
 
+  function reportGuardedSendFailure(error) {
+    if(error && error.code==="DEEPSEEK_CANCELLED" && error.expectedCancellation===true){
+      diag("send.cancelled",{provider:P.id,reason:String(error.message||error)});
+      return;
+    }
+    ui.banner("warn","Send paused",String(error.message||error));
+  }
+
   async function submitAndGetBase(text, images, userPrompt = false) {
     if (A.stop && !userPrompt) throw new SendAbortedError("Stopped before feedback delivery.");
     if (!userPrompt && A.running && !A.starting && !A.enhancing && !A.stop && !A.stopping) {
@@ -1210,7 +1218,7 @@
         try { armUrlGuard(text); } catch (eGuard) {} // the safety net must never stop a send
         let sendResult;
         try {sendResult = await P.typeAndSend(typeof window !== "undefined" && typeof window.__rsLimitOutgoing === "function" ? window.__rsLimitOutgoing(text) : text, images, { userPrompt: userPrompt === true });}
-        catch(error){if(P.guardedSender){ui.banner("warn","Send paused",String(error.message||error));throw new SendAbortedError(String(error.message||error));}throw error;}
+        catch(error){if(P.guardedSender){reportGuardedSendFailure(error);throw new SendAbortedError(String(error.message||error));}throw error;}
         if (P.authoritativeSendResult) {
           if (sendResult === true) messageSent = true;
           else if (sendResult === false && !A.stop && !(images && images.length) && typeof P.sendFailureAmbiguous === "function" &&

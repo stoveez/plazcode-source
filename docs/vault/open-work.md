@@ -2,6 +2,13 @@
 title: Open work and known bugs
 updated: 2026-11-02
 ---
+## 2026-11-02 — DeepSeek false startup warning WIP
+Owner sees “Send paused / The send was cancelled because Stop was pressed or the chat/session changed” immediately after startup, while normal work continues. Reproduced with actual provider guard: first send changes the fresh chat URL before the user-message row arrives; waitSend treated that legitimate first identity as navigation and raised DEEPSEEK_CANCELLED after the one real click.
+
+Overlay fix drafted: only after a single committed fresh-chat send, allow its first provisional route while waiting; require a NEW user row matching the actual sent text before adopting it. No second click/retry or pacing relaxation. Session/Stop/epoch changes and a second route still cancel; trusted in-tab navigation/back cancels explicitly. Expected owner cancellation gets a typed flag, remains a SendAbortedError/diagnostic and no longer shows the misleading error modal. Draft/uncertain/pacing errors still warn. Guard version beacon bumped. Added deterministic route-before-row, unrelated-row, post-commit Stop/session/second-route and actual core reporter tests; source-level checks pass. Chromium/Firefox earlier-route tests pass; newest trusted-navigation browser assertion and full JS pass pending. Protected main/deepseek pins updated.
+
+No native changes, stable publication or new test build requested/launched for this report. Existing delivered guest ZIPs (52b9d19/41492949796) do NOT include this new extension fix. Reload updated signed extension + refresh DeepSeek when packaged; no native code update needed. Need focused browser/preservation/pacing checks then full local JS, update notes/push. Source remains subject to owner Private reminder after prior delivery; never change visibility yourself.
+
 ## 2026-11-02 — guest/signup full test builds VERIFIED and DELIVERED
 Full CI [41492949796](https://github.com/stoveez/plazcode-source/actions/runs/41492949796), product source **52b9d19**, attempt 2: Windows, universal Mac, Linux, browsers and final cross-platform release gate ALL SUCCESS. Bootstrap intentionally skipped. Targeted Mac retry acquired ARM host after infrastructure capacity failure; app code unchanged. Intel host fallback is saved for future CI but not used by this successful run.
 

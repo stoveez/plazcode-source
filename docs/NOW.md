@@ -1,6 +1,8 @@
 # NOW
 Updated: 2026-11-02. Work only on **claude/plazcode-dev**; no helpers.
 
+**NEW WIP:** DeepSeek false startup cancellation reproduced/fix drafted. First committed startup gains its chat URL before React renders the sent row. Guard now provisionally waits, adopts only matching new user text, retains cancellation/pacing/no-replay, and quiets only typed expected owner cancellation. Draft/uncertain/pacing errors still warn. Newest navigation/browser and full JS checks pending; no native edits/new builds/publication. Existing guest ZIPs lack this new fix. See evening handoff.
+
 **DONE: guest/signup replacement test builds verified and delivered through Drive.** Full CI [41492949796](https://github.com/stoveez/plazcode-source/actions/runs/41492949796), product source **52b9d19**, attempt 2: ALL five required jobs passed (Windows, universal Mac, Linux, browsers, release-check; bootstrap intentionally skipped). Mac originally failed to acquire ARM runner; targeted retry succeeded. Saved future Intel CI fallback remains at 13b7003, not used by this run. Runtime overlay unchanged after 52b9d19.
 
 **Feature:** themed exact-text guest card in profile creation/sign-in and picker; persistent local guest settings/skills/memory, separate from online profiles, no sync or legacy-data ownership. Fresh session epochs/normal permissions/cancellation retained. Signup uses fresh proofs on bounded temporary busy retries, respects hard limits, and recovers ambiguous signup through password-verified login. Valid remembered profiles keep offline local access; wrong passwords cannot enter other accounts. [Details](vault/profile-creation-guest-2026-11-02.md).
