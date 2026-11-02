@@ -318,6 +318,34 @@ const RSProvider = (() => {
     return false;
   }
 
+  // Cache markdown reads, not tool results. Long chats used to walk every token of every old reply on each
+  // mutation and every liveness tick. Invalidate only the prose that actually changed. takeRecords() makes
+  // synchronous reads after a DOM edit fresh too; our own chips never invalidate the site's text.
+  const textCache = new WeakMap();
+  function invalidateText(records) {
+    for (const r of records) {
+      const target = r.target.nodeType === 1 ? r.target : r.target.parentElement;
+      if (!target || safeClosest(target, ".rs-chip")) continue;
+      const nodes = [...(r.addedNodes || []), ...(r.removedNodes || [])];
+      if (r.type === "childList" && nodes.length && nodes.every(n => n.nodeType === 1 && n.matches(".rs-chip"))) continue;
+      const md = safeClosest(target, S.box);
+      if (md) textCache.delete(md);
+    }
+  }
+  let textObserver = null;
+  function markdownText(md, excludeSel) {
+    if (!textObserver) {
+      textObserver = new MutationObserver(invalidateText);
+      textObserver.observe(document.documentElement, {childList: true, subtree: true, characterData: true});
+    }
+    invalidateText(textObserver.takeRecords());
+    let entry = textCache.get(md);
+    if (!entry) { entry = new Map(); textCache.set(md, entry); }
+    const key = excludeSel || "";
+    if (!entry.has(key)) entry.set(key, textWithout(md, excludeSel));
+    return entry.get(key);
+  }
+
   // Walk the tree skipping the core's chip (and any extra excluded subtree).
   function textWithout(root, excludeSel) {
     if (!root) return "";
@@ -347,7 +375,7 @@ const RSProvider = (() => {
   function itemText(item) {
     if (!item) return "";
     const md = proseOf(item);
-    if (md) return textWithout(md);
+    if (md) return markdownText(md, ".rs-chip");
     return isAgentRoute() ? textWithout(item) : "";
   }
   function classifyText(item, excludeSel) {
@@ -355,7 +383,7 @@ const RSProvider = (() => {
     const md = proseOf(item);
     if (md) {
       if (excludeSel && safeClosest(md, excludeSel)) return "";
-      return textWithout(md, excludeSel);
+      return markdownText(md, excludeSel || ".rs-chip");
     }
     return isAgentRoute() ? textWithout(item, excludeSel) : "";
   }
@@ -390,6 +418,14 @@ const RSProvider = (() => {
   };
 
   const lastAssistant = () => {
+    if (!isAgentRoute()) {
+      // The list is newest-first. Do not query every older turn just to read the live reply.
+      const ol = listEl();
+      for (const it of safeRead(() => ol && ol.children, []) || []) {
+        if (!isUserItem(it) && proseOf(it)) return it;
+      }
+      return null;
+    }
     const it = assistantItems();
     return it.length ? it[it.length - 1] : null;
   };
@@ -491,8 +527,12 @@ const RSProvider = (() => {
     }
     return allButtons().find((b) => safeRead(() => b.getAttribute("type"), "") === "submit" && visibleBtn(b) && !isNotSend(b)) || null;
   };
-  const stopButton = () =>
-    allButtons().find((b) => S.stopAria.test(ariaOf(b)) && visibleBtn(b)) || null;
+  const stopButton = () => {
+    // Only the current composer controls generation; old replies can contain buttons labelled Stop too.
+    const frame = composerFrame();
+    const buttons = frame ? safeQueryAll(frame, "button") : (isAgentRoute() ? allButtons() : []);
+    return buttons.find((b) => S.stopAria.test(ariaOf(b)) && visibleBtn(b)) || null;
+  };
 
   // ── Generation detection ──────────────────────────────────────────────────
   // The stop button is present for the entire generation (validated). Growth
@@ -501,7 +541,7 @@ const RSProvider = (() => {
   function streamText(item) {
     if (!item) return "";
     const md = proseOf(item);
-    return md ? textWithout(md, ".rs-chip") : "";
+    return md ? markdownText(md, ".rs-chip") : "";
   }
   const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
 
@@ -555,7 +595,7 @@ const RSProvider = (() => {
     const md = proseOf(item);
     return {
       present: true,
-      reply: md ? textWithout(md, ".rs-chip").trim() : "",
+      reply: md ? markdownText(md, ".rs-chip").trim() : "",
       thinking: "",
       item,
     };
@@ -1070,7 +1110,12 @@ const RSProvider = (() => {
         if (!getEditor()) return;
         const btn = e.target && safeRead(() => e.target.closest, null) && safeClosest(e.target, "button");
         if (!btn) return;
-        if (S.stopAria.test(ariaOf(btn))) { handlers.onNativeStop(); return; }
+        // Recovery uses .click() on the native Stop control. That must end Arena's generation, not cancel
+        // PlazCode's task as though the owner pressed Stop. Only a real click on the current control is intent.
+        if (S.stopAria.test(ariaOf(btn))) {
+          if (e.isTrusted && btn === stopButton()) handlers.onNativeStop();
+          return;
+        }
         if (!S.sendAria.test(ariaOf(btn))) return;
         if (safeRead(() => btn.disabled, true) || safeRead(() => btn.getAttribute("aria-disabled"), null) === "true") return;
         if (handlers.isBlocked()) return;
@@ -1094,30 +1139,46 @@ const RSProvider = (() => {
   // (its identity survives - the chip is anchored at item level) with
   // .rs-cmd-mask; the overlay.css rule keeps recreated code wrappers hidden.
   const CMD_SHAPE = /"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i;
-  function findToolBlockSpot(item /*, chip */) {
+  const maskCache = new WeakMap();
+  function commandBlocks(item) {
     const md = proseOf(item);
-    if (!md) return null;
-    let hidAny = null;
-    // 1. Fenced code wrappers carrying a command.
-    safeQueryAll(md, S.codeWrap).forEach((cw) => {
-      if (safeClosest(cw, ".rs-chip")) return;
-      if (CMD_SHAPE.test(safeRead(() => cw.textContent, "") || "")) {
-        cw.classList.add("rs-tool-hide");
-        item.classList.add("rs-cmd-mask");
-        hidAny = hidAny || { parent: safeRead(() => cw.parentElement, null), ref: cw };
-      }
-    });
-    // 2. Bare top-level blocks with an inline command (no code wrapper inside).
-    [...safeRead(() => md.children, [])].forEach((el) => {
-      if (safeRead(() => el.classList.contains("rs-chip"), false) || safeQuery(el, S.codeWrap)) return;
-      const t = safeRead(() => el.textContent, "") || "";
-      if (t.length < 600 && CMD_SHAPE.test(t)) {
-        el.classList.add("rs-tool-hide");
-        item.classList.add("rs-cmd-mask");
-        hidAny = hidAny || { parent: safeRead(() => el.parentElement, null), ref: el };
-      }
-    });
-    return hidAny;
+    if (!md) return [];
+    markdownText(md, ".rs-chip"); // drain mutations before looking up this prose's revision
+    const revision = textCache.get(md), saved = maskCache.get(md);
+    if (saved && saved.revision === revision) return saved.blocks;
+    const blocks = [];
+    let pending = "";
+    for (const node of md.childNodes) {
+      if (node.nodeType === 1 && node.matches(".rs-chip")) continue;
+      const text = node.textContent || "";
+      if (!pending && !CMD_SHAPE.test(text)) continue;
+      // An unfenced ###LUA### block can span hundreds of paragraphs. Hide from its opener through its
+      // closer, including an open streaming tail, without using a length cutoff or hiding later narration.
+      blocks.push(node.nodeType === 1 ? node : md);
+      pending += text + "\n";
+      const open = typeof RSParse !== "undefined" ? RSParse.hasOpenToolBlock(pending)
+        : (/###\s*lua/i.test(pending) && !/###\s*end[_\- ]?lua\s*###/i.test(pending)) ||
+          (/###mcp_tool###/i.test(pending) && !/###end[_-]mcp_tool###/i.test(pending));
+      if (!open) pending = "";
+    }
+    if (saved) for (const el of saved.blocks) {
+      if (!blocks.includes(el)) el.classList.remove("rs-tool-hide");
+    }
+    if (!blocks.length) item.classList.remove("rs-cmd-mask");
+    maskCache.set(md, {revision, blocks});
+    return blocks;
+  }
+  function toolBlockVisible(item) {
+    return commandBlocks(item).some(el => !safeClosest(el, ".rs-tool-hide"));
+  }
+  function findToolBlockSpot(item /*, chip */) {
+    let spot = null;
+    for (const el of commandBlocks(item)) {
+      if (!el.classList.contains("rs-tool-hide")) el.classList.add("rs-tool-hide");
+      spot = spot || {parent: el.parentElement, ref: el};
+    }
+    if (spot && !item.classList.contains("rs-cmd-mask")) item.classList.add("rs-cmd-mask");
+    return spot;
   }
 
   return {
@@ -1132,6 +1193,7 @@ const RSProvider = (() => {
     // will simply ignore the image; there's no per-model signal to gate on.
     supportsVision: true,
     timings,
+    observeCharacterData: true,
     // React reconciles a turn's content subtree on every update, wiping a chip
     // placed inside it. Anchor chips at the turn-element level instead
     // (redirected into the reply column by chipAnchor).
@@ -1169,6 +1231,6 @@ const RSProvider = (() => {
     scanError, isTooLongMsg, isBusyMsg,
     // actions
     attachImages, clearAttachments, conversationKey,
-    installSendHooks, findToolBlockSpot,
+    installSendHooks, findToolBlockSpot, toolBlockVisible,
   };
 })();

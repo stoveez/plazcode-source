@@ -6047,7 +6047,7 @@ return result`;
         // JSON/###LUA### in their think area, which the camouflage never hides
         // (by design) - counting those as "raw block visible" made this
         // rebuild fire on EVERY sweep forever (60Hz spam, seen live).
-        rawVisible = [...item.querySelectorAll("pre, p, [class*='code'], .cm-line")].some(
+        rawVisible = P.toolBlockVisible ? P.toolBlockVisible(item) : [...item.querySelectorAll("pre, p, [class*='code'], .cm-line")].some(
           (e) => !e.closest(".rs-tool-hide") && !e.closest(".rs-chip") &&
                  !(P.thinkingSel && e.closest(P.thinkingSel)) &&
                  // Some sites (Arena) wrap a code block in a bare outer <pre>
@@ -6412,7 +6412,7 @@ return result`;
         // forced repaint recomputes `live` each sweep - the chip then FLAPS
         // done→run→done with the generation flicker (seen live as a settled
         // green chip blinking back to a blue spinner).
-        const rawVisible = [...item.querySelectorAll("pre, p, [class*='code'], .cm-line")].some(
+        const rawVisible = P.toolBlockVisible ? P.toolBlockVisible(item) : [...item.querySelectorAll("pre, p, [class*='code'], .cm-line")].some(
           (e) => !e.classList.contains("rs-tool-hide") && !e.closest(".rs-tool-hide") &&
                  !e.closest(".rs-chip") && !(P.thinkingSel && e.closest(P.thinkingSel)) &&
                  // see ensureOwnedChip's matching guard: a bare outer <pre>
