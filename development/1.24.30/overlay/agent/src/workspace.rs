@@ -94,6 +94,7 @@ impl Workspace {
     pub fn full_flag(&self) -> Arc<AtomicBool> { Arc::clone(&self.full_access) }
 
     pub fn set_full_access(&self, on: bool) {
+        if !on && self.full_access(){stop_workspace_jobs(self);}
         self.full_access.store(on, Ordering::Relaxed);
         tracing::info!("FULL PC ACCESS {}", if on { "ENABLED" } else { "disabled" });
     }
@@ -108,7 +109,7 @@ impl Workspace {
             let p = PathBuf::from(&raw);
             std::fs::canonicalize(&p).unwrap_or(p)
         }).collect();
-        if let Ok(mut guard) = self.allowed.write() { *guard = list; }
+        if let Ok(mut guard) = self.allowed.write() { if *guard!=list {stop_workspace_jobs(self);} *guard = list; }
     }
 
     pub fn allowed_folders(&self) -> Vec<String> {
@@ -1064,6 +1065,7 @@ pub async fn tool_run_command_observed(ws: &Workspace, args: &serde_json::Value)
         }
         None => ws.canon_root.clone(),
     };
+    if args["background"].as_bool()==Some(true){return start_command_job(ws,args,shell,command,cwd).await;}
     let timeout_secs = j_u64(args, "timeout_seconds", DEFAULT_RUN_TIMEOUT).clamp(1, MAX_RUN_TIMEOUT);
     let where_ = { let shown = ws.display(&cwd); if shown == "." { "the workspace root".to_string() } else { shown } };
 
@@ -1137,8 +1139,66 @@ fn windows_powershell_path() -> String {
         .unwrap_or_else(|| "powershell.exe".to_string())
 }
 
+// Managed background terminal jobs. In-memory only: restarting/signing out stops owned jobs.
+#[derive(Clone, PartialEq, Eq)]
+struct JobScope { profile:PathBuf, workspace:PathBuf }
+impl JobScope {fn current(ws:&Workspace)->Self{Self{profile:crate::profile_paths::data_root(),workspace:ws.canon_root.clone()}}}
+struct CommandJob {
+ id:String, scope:JobScope, command:String, started:Instant,
+ state:std::sync::Mutex<(String,Option<i32>,String)>,
+ stdout:Arc<std::sync::Mutex<Vec<u8>>>,stderr:Arc<std::sync::Mutex<Vec<u8>>>,
+ cancel:tokio::sync::watch::Sender<bool>,
+}
+static COMMAND_JOBS:once_cell::sync::Lazy<std::sync::Mutex<Vec<Arc<CommandJob>>>>=once_cell::sync::Lazy::new(||std::sync::Mutex::new(Vec::new()));
+fn running_job(job:&CommandJob)->bool{job.state.lock().map(|s|matches!(s.0.as_str(),"starting"|"running")).unwrap_or(true)}
+pub fn stop_profile_jobs(){let profile=crate::profile_paths::data_root();if let Ok(jobs)=COMMAND_JOBS.lock(){for job in jobs.iter().filter(|j|j.scope.profile==profile&&running_job(j)){let _=job.cancel.send(true);}}}
+fn stop_workspace_jobs(ws:&Workspace){let scope=JobScope::current(ws);if let Ok(jobs)=COMMAND_JOBS.lock(){for job in jobs.iter().filter(|j|j.scope==scope&&running_job(j)){let _=job.cancel.send(true);}}}
+pub fn stop_checkpoint_jobs(id:&str){if id.is_empty(){return;}if let Ok(jobs)=COMMAND_JOBS.lock(){for job in jobs.iter().filter(|j|j.id.starts_with(&format!("{id}:"))){let _=job.cancel.send(true);}}}
+fn job_result(job:&CommandJob,args:&serde_json::Value)->String {
+ let state=job.state.lock().unwrap_or_else(|e|e.into_inner());
+ let page=|sink:&Arc<std::sync::Mutex<Vec<u8>>>,key:&str|{
+  let bytes=take_buffer(sink);let text=decode_console_bytes(&bytes);let total=text.chars().count();let offset=j_u64(args,key,0).min(total as u64) as usize;
+  let data=text.chars().skip(offset).take(8000).collect::<String>();let next=offset+data.chars().count();
+  serde_json::json!({"text":data,"offset":offset,"next_offset":if next<total{Some(next)}else{None},"total_chars":total,"capture_limited":bytes.len()>=MAX_CAPTURE})
+ };
+ serde_json::json!({"job_id":job.id,"state":state.0,"exit_code":state.1,"detail":state.2,"command":preview(&job.command,400),"elapsed_seconds":job.started.elapsed().as_secs(),"stdout":page(&job.stdout,"stdout_offset"),"stderr":page(&job.stderr,"stderr_offset"),"note":"Background jobs belong to this profile and workspace, stop when PlazCode closes or the profile changes, and are not file undo checkpoints. Read again for new output; do not start the command twice."}).to_string()
+}
+async fn start_command_job(ws:&Workspace,args:&serde_json::Value,shell:Shell,command:String,cwd:PathBuf)->Result<(String,bool),String>{
+ let scope=JobScope::current(ws);let mut jobs=COMMAND_JOBS.lock().map_err(|_|"Background jobs are unavailable")?;
+ if jobs.iter().filter(|j|running_job(j)).count()>=4{return Err("Four background jobs are already running. Stop or finish one before starting another.".into());}
+ while jobs.len()>=32 {let Some(i)=jobs.iter().position(|j|!running_job(j)) else{return Err("Background job history is full".into());};jobs.remove(i);}
+ let mut random=[0u8;16];getrandom::getrandom(&mut random).map_err(|_|"Cannot create a private job identifier")?;
+ let token=random.iter().map(|b|format!("{b:02x}")).collect::<String>();
+ let checkpoint=args["_plazcode_checkpoint"].as_str().filter(|s|s.len()<=100).unwrap_or("");
+ let id=if checkpoint.is_empty(){token}else{format!("{checkpoint}:{token}")};
+ let (cancel,_)=tokio::sync::watch::channel(false);
+ let job=Arc::new(CommandJob{id,scope,command:command.clone(),started:Instant::now(),state:std::sync::Mutex::new(("starting".into(),None,String::new())),stdout:Arc::new(std::sync::Mutex::new(Vec::new())),stderr:Arc::new(std::sync::Mutex::new(Vec::new())),cancel});
+ jobs.push(job.clone());drop(jobs);
+ let timeout=j_u64(args,"timeout_seconds",86400).clamp(1,86400);let worker=job.clone();
+ tokio::spawn(async move {
+  let mut cancelled=worker.cancel.subscribe();
+  let outcome=tokio::select! {biased;
+   _=async{if !*cancelled.borrow(){let _=cancelled.changed().await;}}=> ("stopped".into(),None,"Stopped by the user, profile change or permission change. Partial effects may remain.".into()),
+   result=run_shell_observed(shell,&command,&cwd,timeout,Some(worker.clone()))=>match result {
+    Ok(out)=>(if out.status.success(){"completed"}else{"failed"}.into(),out.status.code(),String::new()),
+    Err(RunErr::Spawn(e))=>("failed".into(),None,spawn_failure_message(shell,&e)),
+    Err(RunErr::Timeout{..})=>("timed_out".into(),None,format!("Stopped after its {timeout}s time limit. Partial effects may remain.")),
+   }
+  };
+  if let Ok(mut state)=worker.state.lock(){*state=outcome;}
+ });
+ Ok((job_result(&job,&serde_json::Value::Null),false)) // Started is not a verified successful test/build.
+}
+pub async fn tool_command_job(ws:&Workspace,args:&serde_json::Value,stop:bool)->Result<String,String>{
+ let id=arg_str(args,"job_id")?;let scope=JobScope::current(ws);
+ let job={let jobs=COMMAND_JOBS.lock().map_err(|_|"Background jobs are unavailable")?;jobs.iter().find(|j|j.id==id && j.scope==scope).cloned().ok_or("This job is unavailable in this profile/workspace, or PlazCode restarted. Do not assume it is still running.")?};
+ if stop && running_job(&job){let _=job.cancel.send(true);for _ in 0..40 {if !running_job(&job){break;}tokio::time::sleep(std::time::Duration::from_millis(25)).await;}}
+ Ok(job_result(&job,args))
+}
+async fn run_shell(shell:Shell,command:&str,cwd:&Path,timeout_secs:u64)->Result<Captured,RunErr>{run_shell_observed(shell,command,cwd,timeout_secs,None).await}
+
 #[cfg(windows)]
-async fn run_shell(shell: Shell, command: &str, cwd: &Path, timeout_secs: u64) -> Result<Captured, RunErr> {
+async fn run_shell_observed(shell: Shell, command: &str, cwd: &Path, timeout_secs: u64, job:Option<Arc<CommandJob>>) -> Result<Captured, RunErr> {
     use std::process::Stdio;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     let mut temp: Option<TempScript> = None;
@@ -1178,13 +1238,13 @@ async fn run_shell(shell: Shell, command: &str, cwd: &Path, timeout_secs: u64) -
         .stderr(Stdio::piped())
         .kill_on_drop(false)
         .creation_flags(CREATE_NO_WINDOW);
-    let result = finish(cmd, timeout_secs).await;
+    let result = finish(cmd, timeout_secs, job).await;
     drop(temp);
     result
 }
 
 #[cfg(not(windows))]
-async fn run_shell(shell: Shell, command: &str, cwd: &Path, timeout_secs: u64) -> Result<Captured, RunErr> {
+async fn run_shell_observed(shell: Shell, command: &str, cwd: &Path, timeout_secs: u64, job:Option<Arc<CommandJob>>) -> Result<Captured, RunErr> {
     use std::process::Stdio;
     let mut cmd = match shell {
         Shell::Bash => { let mut cmd = tokio::process::Command::new("bash"); cmd.arg("-c").arg(command); cmd }
@@ -1202,8 +1262,29 @@ async fn run_shell(shell: Shell, command: &str, cwd: &Path, timeout_secs: u64) -
         .stderr(Stdio::piped())
         .kill_on_drop(false);
     cmd.process_group(0);
-    finish(cmd, timeout_secs).await
+    finish(cmd, timeout_secs, job).await
 }
+
+// A Windows Job Object owns descendants too, including a server whose shell exits early.
+#[cfg(windows)] struct WindowsCommandJob(usize);
+#[cfg(windows)] impl WindowsCommandJob {
+ fn assign(child:&tokio::process::Child)->std::io::Result<Self>{
+  use std::ffi::c_void;
+  #[repr(C)] #[derive(Default)] struct Basic {process_time:i64,job_time:i64,flags:u32,min_working:usize,max_working:usize,active:u32,affinity:usize,priority:u32,scheduling:u32}
+  #[repr(C)] #[derive(Default)] struct Limits {basic:Basic,io:[u64;6],process_memory:usize,job_memory:usize,peak_process:usize,peak_job:usize}
+  #[link(name="kernel32")] unsafe extern "system" {
+   fn CreateJobObjectW(attributes:*const c_void,name:*const u16)->*mut c_void;
+   fn SetInformationJobObject(job:*mut c_void,class:i32,info:*const c_void,size:u32)->i32;
+   fn AssignProcessToJobObject(job:*mut c_void,process:*mut c_void)->i32;
+  }
+  let handle=unsafe{CreateJobObjectW(std::ptr::null(),std::ptr::null())};if handle.is_null(){return Err(std::io::Error::last_os_error());}
+  let guard=Self(handle as usize);let mut limits=Limits::default();limits.basic.flags=0x2000; // KILL_ON_JOB_CLOSE, no breakaway.
+  let process=child.raw_handle().ok_or_else(||std::io::Error::other("Command handle unavailable"))?;
+  if unsafe{SetInformationJobObject(handle,9,&limits as *const _ as *const c_void,std::mem::size_of::<Limits>() as u32)}==0 || unsafe{AssignProcessToJobObject(handle,process as *mut c_void)}==0{return Err(std::io::Error::last_os_error());}
+  Ok(guard)
+ }
+}
+#[cfg(windows)] impl Drop for WindowsCommandJob {fn drop(&mut self){#[link(name="kernel32")]unsafe extern "system"{fn CloseHandle(handle:*mut std::ffi::c_void)->i32;}unsafe{CloseHandle(self.0 as *mut std::ffi::c_void);}}}
 
 struct OwnedCommandTree { pid: u32, finished: bool }
 impl Drop for OwnedCommandTree {
@@ -1243,17 +1324,19 @@ async fn drain<R: tokio::io::AsyncRead + Unpin>(mut reader: R, sink: Arc<std::sy
 }
 fn take_buffer(sink: &Arc<std::sync::Mutex<Vec<u8>>>) -> Vec<u8> { sink.lock().map(|buffer| buffer.clone()).unwrap_or_default() }
 
-async fn finish(mut cmd: tokio::process::Command, timeout_secs: u64) -> Result<Captured, RunErr> {
+async fn finish(mut cmd: tokio::process::Command, timeout_secs: u64, job:Option<Arc<CommandJob>>) -> Result<Captured, RunErr> {
     let mut child = cmd.spawn().map_err(RunErr::Spawn)?;
     let mut owned = OwnedCommandTree { pid: child.id().unwrap_or(0), finished: false };
-    let out_sink = Arc::new(std::sync::Mutex::new(Vec::new()));
-    let err_sink = Arc::new(std::sync::Mutex::new(Vec::new()));
+    #[cfg(windows)] let _windows_job=if job.is_some(){Some(WindowsCommandJob::assign(&child).map_err(RunErr::Spawn)?)}else{None};
+    let out_sink = job.as_ref().map(|j|j.stdout.clone()).unwrap_or_else(||Arc::new(std::sync::Mutex::new(Vec::new())));
+    let err_sink = job.as_ref().map(|j|j.stderr.clone()).unwrap_or_else(||Arc::new(std::sync::Mutex::new(Vec::new())));
+    if let Some(job)=&job{if let Ok(mut state)=job.state.lock(){state.0="running".into();}}
     let out_task = child.stdout.take().map(|pipe| tokio::spawn(drain(pipe, Arc::clone(&out_sink))));
     let err_task = child.stderr.take().map(|pipe| tokio::spawn(drain(pipe, Arc::clone(&err_sink))));
     let waited = tokio::time::timeout(std::time::Duration::from_secs(timeout_secs), child.wait()).await;
     match waited {
         Ok(Ok(status)) => {
-            owned.finished = true;
+            owned.finished = job.is_none();
             let grace = std::time::Duration::from_millis(PIPE_GRACE_MS);
             let readers: Vec<_> = [out_task, err_task].into_iter().flatten().collect();
             let aborts: Vec<_> = readers.iter().map(|task| task.abort_handle()).collect();
@@ -1960,6 +2043,8 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
         _ if h == const { crate::hidden::fnv("search_files") } => tool_search_files(ws, a).await,
         _ if h == const { crate::hidden::fnv("grep_files") } => tool_grep_files(ws, a).await,
         _ if h == const { crate::hidden::fnv("run_command") } => tool_run_command(ws, a).await,
+        _ if h == const { crate::hidden::fnv("command_status") } => tool_command_job(ws,a,false).await,
+        _ if h == const { crate::hidden::fnv("command_stop") } => tool_command_job(ws,a,true).await,
         _ if h == const { crate::hidden::fnv("file_info") } => tool_file_info(ws, a).await,
         _ if h == const { crate::hidden::fnv("env_info") } => tool_env_info(ws, a).await,
         _ if h == const { crate::hidden::fnv("process_list") } => tool_process_list(ws, a).await,
@@ -2015,7 +2100,9 @@ pub fn catalog() -> Vec<serde_json::Value> {
         serde_json::json!({"name": crate::hidden::hidden!("move_path"), "description": crate::hidden::hidden!("Move or rename a file/folder. If destination is an existing folder, the source moves INSIDE it keeping its name."), "inputSchema": schema(serde_json::json!({"source": {"type": "string"}, "destination": {"type": "string"}}), &["source", "destination"])}),
         serde_json::json!({"name": crate::hidden::hidden!("search_files"), "description": crate::hidden::hidden!("Find files/folders by NAME using glob patterns, e.g. \"**/*.py\", \"src/**/*.js\". Searches the workspace; pass path to search another folder (any folder in FULL PC ACCESS)."), "inputSchema": schema(serde_json::json!({"pattern": {"type": "string"}, "path": {"type": "string"}}), &["pattern"])}),
         serde_json::json!({"name": crate::hidden::hidden!("grep_files"), "description": crate::hidden::hidden!("Search INSIDE file contents. Case-insensitive substring by default; regex:true for regular expressions. Narrow with include globs like \"src/**/*.ts\". Searches the workspace; pass path to search another folder (any folder in FULL PC ACCESS)."), "inputSchema": schema(serde_json::json!({"query": {"type": "string"}, "include": {"type": "string"}, "regex": {"type": "boolean"}, "ignore_case": {"type": "boolean"}, "path": {"type": "string"}}), &["query"])}),
-        serde_json::json!({"name": crate::hidden::hidden!("run_command"), "description": crate::hidden::hidden!("Run a terminal command: installs, builds, tests, git, PowerShell scripts. Captures stdout/stderr and the exit code. Default shell: cmd on Windows, sh elsewhere; pass shell:\"powershell\" (or \"pwsh\", \"bash\") to use another one - PowerShell scripts need no quote escaping and may span several lines. Runs in the workspace root unless cwd names another folder (any folder in FULL PC ACCESS). Blocks until done (hard timeout, timeout_seconds up to 600); never start interactive apps or dev servers (use open_path or launch_app to open a program)."), "inputSchema": schema(serde_json::json!({"command": {"type": "string"}, "shell": {"type": "string", "description": crate::hidden::hidden!("cmd, powershell, pwsh, bash or sh. Leave out for the default.")}, "cwd": {"type": "string", "description": crate::hidden::hidden!("Folder to run in: relative to the workspace, or absolute in FULL PC ACCESS.")}, "timeout_seconds": {"type": "integer"}}), &["command"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("run_command"), "description": crate::hidden::hidden!("Run a terminal command: installs, builds, tests, git, PowerShell scripts. Captures stdout/stderr and the exit code. Default shell: cmd on Windows, sh elsewhere; pass shell:\"powershell\" (or \"pwsh\", \"bash\") to use another one - PowerShell scripts need no quote escaping and may span several lines. Runs in the workspace root unless cwd names another folder (any folder in FULL PC ACCESS). Foreground: timeout_seconds up to 600 (default 60). For a long build, test suite or dev server, set background:true: returns a job_id immediately. Read live output with command_status {job_id,stdout_offset?,stderr_offset?}, stop with command_stop {job_id}. Background jobs last up to 86400 seconds (default), and stop when the app closes or the profile/permissions change. Never assume a started build passed. No interactive input."), "inputSchema": schema(serde_json::json!({"command": {"type": "string"}, "background":{"type":"boolean"}, "shell": {"type": "string", "description": crate::hidden::hidden!("cmd, powershell, pwsh, bash or sh. Leave out for the default.")}, "cwd": {"type": "string", "description": crate::hidden::hidden!("Folder to run in: relative to the workspace, or absolute in FULL PC ACCESS.")}, "timeout_seconds": {"type": "integer"}}), &["command"])}),
+        serde_json::json!({"name":crate::hidden::hidden!("command_status"),"description":crate::hidden::hidden!("Read state and live stdout/stderr for an owned background run_command job. Follow stdout_offset/stderr_offset pages; poll only when useful, not in a tight loop. A started job is not a passing test."),"inputSchema":schema(serde_json::json!({"job_id":{"type":"string"},"stdout_offset":{"type":"integer","minimum":0},"stderr_offset":{"type":"integer","minimum":0}}),&["job_id"])}),
+        serde_json::json!({"name":crate::hidden::hidden!("command_stop"),"description":crate::hidden::hidden!("Stop one background run_command job and its owned process tree. Partial file changes may remain. Only this profile/workspace's jobs can be stopped."),"inputSchema":schema(serde_json::json!({"job_id":{"type":"string"}}),&["job_id"])}),
         serde_json::json!({"name": crate::hidden::hidden!("file_info"), "description": crate::hidden::hidden!("Metadata for one path: kind, size, modified/created timestamps, readonly flag."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
         serde_json::json!({"name": crate::hidden::hidden!("env_info"), "description": crate::hidden::hidden!("Machine overview: host, OS, arch, CPU count, memory, user, workspace root, and whether FULL PC ACCESS is on."), "inputSchema": schema(serde_json::json!({}), &[])}),
         serde_json::json!({"name": crate::hidden::hidden!("process_list"), "description": crate::hidden::hidden!("List running processes sorted by memory (top N by limit, default 40). Read-only."), "inputSchema": schema(serde_json::json!({"limit": {"type": "integer"}}), &[])}),
@@ -2173,6 +2260,30 @@ mod tests {
         for _ in 0..100 {if !std::process::Command::new("kill").args(["-0",pid.trim()]).stderr(std::process::Stdio::null()).status().unwrap().success(){std::fs::remove_dir_all(root).unwrap();return;}tokio::time::sleep(std::time::Duration::from_millis(10)).await;}
         panic!("Cancelled command remained running");
     }
+    #[tokio::test]
+    async fn managed_background_jobs_stream_stop_timeout_and_isolate_workspaces() {
+        let dir=std::env::temp_dir().join(format!("plazcode-managed-jobs-{}",std::process::id()));std::fs::create_dir_all(dir.join("other")).unwrap();
+        let ws=Workspace::new(Some(dir.to_str().unwrap())).unwrap();let other=Workspace::new(Some(dir.join("other").to_str().unwrap())).unwrap();
+        let command="python -u -c \"import time,sys; print('early',flush=True); print('warning',file=sys.stderr,flush=True); time.sleep(30); print('late')\"";
+        let started=Instant::now();let (out,verified)=tool_run_command_observed(&ws,&serde_json::json!({"command":command,"background":true})).await.unwrap();
+        assert!(!verified,"a started job is not a verified passing test");assert!(started.elapsed().as_secs_f64()<1.5,"must not wait for the long command");
+        let record:serde_json::Value=serde_json::from_str(&out).unwrap();let args=serde_json::json!({"job_id":record["job_id"]});
+        assert!(tool_command_job(&other,&args,false).await.is_err(),"other workspaces cannot see/stop this job");
+        let mut seen=String::new();for _ in 0..120 {seen=tool_command_job(&ws,&args,false).await.unwrap();if seen.contains("early") && seen.contains("warning"){break;}tokio::time::sleep(std::time::Duration::from_millis(50)).await;}
+        assert!(seen.contains("early") && seen.contains("warning"),"live output must be readable before the command ends: {seen}");
+        let stopped=tool_command_job(&ws,&args,true).await.unwrap();assert_eq!(serde_json::from_str::<serde_json::Value>(&stopped).unwrap()["state"],"stopped");
+        assert!(!stopped.contains("late\\n"),"stopped command did not reach its later output");
+        let out=tool_run_command(&ws,&serde_json::json!({"command":"python -c \"import time;time.sleep(30)\"","background":true,"timeout_seconds":1})).await.unwrap();
+        let record:serde_json::Value=serde_json::from_str(&out).unwrap();let args=serde_json::json!({"job_id":record["job_id"]});
+        let mut state=serde_json::Value::Null;for _ in 0..100 {state=serde_json::from_str(&tool_command_job(&ws,&args,false).await.unwrap()).unwrap();if state["state"]=="timed_out"{break;}tokio::time::sleep(std::time::Duration::from_millis(50)).await;}
+        assert_eq!(state["state"],"timed_out");
+        let out=tool_run_command(&ws,&serde_json::json!({"command":"python -u -c \"print('x'*10000); print('DONE')\"","background":true})).await.unwrap();let record:serde_json::Value=serde_json::from_str(&out).unwrap();let args=serde_json::json!({"job_id":record["job_id"]});
+        let mut state=serde_json::Value::Null;for _ in 0..100 {state=serde_json::from_str(&tool_command_job(&ws,&args,false).await.unwrap()).unwrap();if state["state"]=="completed"{break;}tokio::time::sleep(std::time::Duration::from_millis(50)).await;}
+        assert_eq!(state["state"],"completed");assert_eq!(state["exit_code"],0);assert_eq!(state["stdout"]["next_offset"],8000);
+        let next:serde_json::Value=serde_json::from_str(&tool_command_job(&ws,&serde_json::json!({"job_id":record["job_id"],"stdout_offset":8000}),false).await.unwrap()).unwrap();assert!(next["stdout"]["text"].as_str().unwrap().contains("DONE"));
+        let _=std::fs::remove_dir_all(dir);
+    }
+
     #[tokio::test]
     async fn run_command_captures_and_times_out() {
         let ws = temp_ws("run");

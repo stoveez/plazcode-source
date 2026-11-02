@@ -208,3 +208,6 @@ Owner explicitly does not want source ZIP distribution. Run 41335729270 cancelle
 - 2026-11-02 verification: corrected full JS suite 0 failures on program source 642207c; both original Notion tests and six intermediate failures pass. CI 41367670135 browsers green, native/package/release-proof gates pending. Drive delivery next.
 
 - **Completed 2026-11-02:** program source 642207c, full CI 41367670135 all required jobs green; corrected full local JS 0 failures. Luau timeout + Arena Stop/raw text/history/argument/latency fixes verified. Exact inner Windows/Mac ZIPs verified and delivered through Drive with metadata readback; evidence/links/hashes in followup-1.24.30-2026-11-02-verification.json and NOW. Owner live Arena/Studio test next. Source still Public at delivery; owner reminder to restore Private. No stable publication or assistant visibility change.
+
+## 2026-11-02 workflow follow-up (WIP)
+DeepSeek shared pacing and selective learning guards: native suite and focused JS passed, full checks pending. Owner added batching/background terminal jobs and slow non-DeepSeek workflows before replacement test builds. Implementation drafted; not delivered or published. Track docs/NOW.md and deepseek-safety-followup-2026-11-02.md.

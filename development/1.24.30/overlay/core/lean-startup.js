@@ -370,7 +370,7 @@
       "PlazCode is a browser extension running in this page. It reads your replies, runs any command you write against the user's live Roblox Studio through a local bridge, and sends the real result back as the next message (success or ERROR). " +
         `This site's own tools cannot reach Studio: commands are plain text in your normal reply, the only channel that works. Internal reasoning is fine. Do not use ${site}'s own features unless the user asks.`,
       "",
-      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. ONE command block per reply; wait for its result. Never end a turn only announcing a command: write it, or give the final answer.",
+      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. ONE command block per reply; use plazcode_batch {calls:[{command,params}]} for up to eight prepared reads/edits in one round-trip. Normal approvals and Stop apply per child; stop on errors and never repeat completed children. Wait for its results. Never end a turn only announcing a command: write it, or give the final answer.",
       BT + "json",
       '{"command": "name", "params": {"key": "value"}}',
       BT,
@@ -411,7 +411,7 @@
       "PlazCode is a browser extension running in this page, in AGENTSCRIPT mode. It reads your replies, runs any command you write against the connected local engine (the user's project folder, called the workspace: files, search, terminal, system tools) and sends the real result back as the next message (success or ERROR). " +
         `Do not use ${site}'s own features unless the user asks.`,
       "",
-      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. ONE command per reply; wait for its result.",
+      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. ONE command envelope per reply; group up to eight prepared commands with plazcode_batch {calls:[{command,params}]}. Read results before dependent edits. For local long builds/servers use run_command background:true, then command_status or command_stop. Task checkpoints already provide undo for supported file edits.",
       BT + "json",
       '{"command": "name", "params": {"key": "value"}}',
       BT,

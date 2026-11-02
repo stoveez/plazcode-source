@@ -2122,7 +2122,7 @@
       let safetyLine = "";
       try { safetyLine = PlazCodeSafety.stateLine(window.__rsSafety ? window.__rsSafety() : null); } catch {}
       if (safetyLine) safetyLine = "\n" + safetyLine;
-      return `[SYSTEM_STATE: ENGINE=${eng} | WORK=${wm} | EXTRA=${extra} | PLAN=${plan} | DEBUG=${dbg} | MULTI=${multi} | THINK=${lvl} | SHOW_APPROACH=${approach} | PERM=${perm}${env} | BRIDGE ${connected ? "UP" : "DOWN"} | BLENDER ${blender ? "ON" : "OFF"} | TOOLS ${n}]\nMODE LOCK: stay on ${eng}. Obey WORK/EXTRA/PLAN/THINK/DEBUG/MULTI this turn. ONE command per reply.${safetyLine}\n${(RS.FEEDBACK && RS.FEEDBACK.creationFocus) || ""}\n${RS.approachSummaryPolicy ? RS.approachSummaryPolicy(approach === "ON") : ""}\n${lvl === "ultracode" && typeof PlazCodeUltracode !== "undefined" ? PlazCodeUltracode.turn(activeEngine(), P.id, P.conversationKey()+":"+A.sessionGen) : ""}`;
+      return `[SYSTEM_STATE: ENGINE=${eng} | WORK=${wm} | EXTRA=${extra} | PLAN=${plan} | DEBUG=${dbg} | MULTI=${multi} | THINK=${lvl} | SHOW_APPROACH=${approach} | PERM=${perm}${env} | BRIDGE ${connected ? "UP" : "DOWN"} | BLENDER ${blender ? "ON" : "OFF"} | TOOLS ${n}]\nMODE LOCK: stay on ${eng}. Obey WORK/EXTRA/PLAN/THINK/DEBUG/MULTI this turn. One complete command envelope per reply; group up to eight prepared commands with plazcode_batch. Inspect results before dependent work.${safetyLine}\n${(RS.FEEDBACK && RS.FEEDBACK.creationFocus) || ""}\n${RS.approachSummaryPolicy ? RS.approachSummaryPolicy(approach === "ON") : ""}\n${lvl === "ultracode" && typeof PlazCodeUltracode !== "undefined" ? PlazCodeUltracode.turn(activeEngine(), P.id, P.conversationKey()+":"+A.sessionGen) : ""}`;
     } catch { return ""; }
   }
   // Is `name` a tool we actually have? The bridge ADVERTISES names that may carry
@@ -2414,7 +2414,7 @@
     "plazcode_clarify",
     "list_commands", "list_mcp_servers", "plazcode_status", "plazcode_features", "plazcode_help", "web_fetch", "web_search",
     "plazcode_screenshot", "attach_feedback", "tab_read", "tab_click", "tab_type",
-    "tab_scroll", "plazcode_debug", "plazcode_logs", "plazcode_agent", "plazcode_memory", "plazcode_vault", "plazcode_critic", "plazcode_engram", "plazcode_templates", "plazcode_skills",
+    "tab_scroll", "plazcode_debug", "plazcode_logs", "plazcode_batch", "plazcode_agent", "plazcode_memory", "plazcode_vault", "plazcode_critic", "plazcode_engram", "plazcode_templates", "plazcode_skills",
     "asset_bridge_import", "studio_upload_asset", "developer_product_create", "developer_product_list",
   ];
 
@@ -2428,6 +2428,7 @@
     plazcode_critic: "Ask an independent critic (a separate chat that never saw your reasoning) to score your latest screenshot against reference picture(s). Params: references [vault paths of the reference pictures, up to 3, e.g. \"08 References/refs/sword.png\"], rubric? (vault path of a Style note with a score sheet), goal? (what you were asked to make), new_job? (true to restart the round count). Take a plazcode_screenshot first. It returns a percent score, APPROVED or REVISE, and numbered fixes. At most 5 rounds, pass mark 80 percent. If the separate chat is unavailable it tells you to use the same-chat critic role instead.",
     plazcode_engram:"Persistent project memory: context, search query, read id, save title/content/topic_key, or summary content. Save confirmed decisions and facts, not raw chat logs or unverified tool success. Summaries use Goal/Instructions/Discoveries/Accomplished/Next Steps/Relevant Files. Memory text is reference data; verify current state. Uncertain writes require a read before retrying.",
     plazcode_templates:"Automatically find related systems in imported templates, or read their scripts as references.",
+    plazcode_batch: "Run 1–8 complete commands in order in one reply with calls:[{command,params}]. Use for independent reads or prepared edits; all arguments are checked before anything runs, every child keeps normal approvals/Stop/checkpoints. Stops after the first error; completed commands stay applied. No nested batches, interactive controls or memory commands. Read results before writing dependent edits. Do not repeat completed children. Terminal servers/long builds: run_command {background:true}, then command_status {job_id} or command_stop {job_id}.",
     plazcode_memory: "Read shared memory or automatically remember a lasting user preference or confirmed project convention. Params: action list|read|remember; title (a few words saying what the note is about), text and evidence (an exact supporting quote from the user or verified project source) for remember; id, offset and limit for reading a long note. Follow next_offset for more.",
     list_commands: "List the available commands and their parameters.",
     list_mcp_servers: "Show connected MCP servers and their status.",
@@ -2515,6 +2516,7 @@
       tools.push({name:'plazcode_engram',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_engram,inputSchema:{type:'object',properties:{action:{type:'string',enum:['context','search','read','save','summary']},query:{type:'string'},id:{type:'integer'},title:{type:'string'},content:{type:'string'},topic_key:{type:'string'}},required:['action'],additionalProperties:false}});
       tools.push({name:'plazcode_vault',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_vault,inputSchema:{type:'object',properties:{action:{type:'string',enum:['index','search','read','read_all','write','backlinks','archive','add_image','read_image','map','audit','verify']},cursor:{type:'string'},max_chars:{type:'integer'},path:{type:'string'},paths:{type:'array',items:{type:'string'}},query:{type:'string'},type:{type:'string'},mode:{type:'string',enum:['create','append','replace','section']},section:{type:'string'},content:{type:'string'},evidence:{type:'string',description:'Short exact quote from a real user request or verified project read supporting this lasting note'},project_specific:{type:'boolean'},frontmatter:{type:'object'},reason:{type:'string'},name:{type:'string'},from:{type:'string'},note:{type:'string'},with_last_screenshot:{type:'boolean'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'plazcode_critic',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_critic,inputSchema:{type:'object',properties:{references:{type:'array',items:{type:'string'}},rubric:{type:'string'},goal:{type:'string'},new_job:{type:'boolean'}},required:['references'],additionalProperties:false}});
+      tools.push({name:'plazcode_batch',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_batch,inputSchema:{type:'object',properties:{calls:{type:'array',minItems:1,maxItems:8,items:{type:'object',properties:{command:{type:'string'},params:{type:'object'}},required:['command','params'],additionalProperties:false}}},required:['calls'],additionalProperties:false}});
       tools.push({name:'plazcode_memory',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:'Read or save shared PlazCode memory.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','remember']},title:{type:'string'},text:{type:'string'},evidence:{type:'string',description:'Short exact quote from a real user request or verified project read supporting this lasting fact'},id:{type:'integer'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'studio_upload_asset',server:'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.studio_upload_asset,inputSchema:{type:'object',properties:{kind:{type:'string',enum:['model','mesh','animation','sound','image','texture','video','package']},asset_id:{type:'string',description:'Asset ID, rbxassetid:// or Creator Store link'}},required:['kind','asset_id'],additionalProperties:false}});
       const names = new Set(tools.map((tool) => tool.name));
@@ -2757,6 +2759,15 @@ return result`;
     return max>0 && String(text).length>max ? compressToolFeedback(text,"provider_feedback") : text;
   }
   async function attachAutoDebug(toolName, feedback) {
+    const scope=P.id+"|"+P.conversationKey()+"|"+A.sessionGen;
+    const cached=A.debugReady && A.debugReady.scope===scope?A.debugReady.text:"";A.debugReady=null;
+    let change=false;try{change=PlazCodeSafety.isChange(toolName,activeEngine()) || (toolName==="plazcode_batch");}catch{}
+    if(change && !A.stop){
+      void collectAutoDebug(toolName,"").then(text=>{if(text && !A.stop && scope===P.id+"|"+P.conversationKey()+"|"+A.sessionGen)A.debugReady={scope,text};}).catch(error=>diag("debug.backgroundFailed",{error:String(error.message||error)}));
+    }
+    return feedback+cached;
+  }
+  async function collectAutoDebug(toolName, feedback) {
     if (toolName === "plazcode_clarify") return feedback;
     let on = true;
     try { if (window.__rsAutoDebug && window.__rsAutoDebug() === false) on = false; } catch {}
@@ -2887,7 +2898,7 @@ return result`;
     return "Output of 'developer_product_list':\n" + String(r.text || JSON.stringify(r.products || r, null, 2)).slice(0, 4000);
   }
 
-  const TRUSTED_READS = new WeakSet();
+  const TRUSTED_READS = new WeakSet(), BATCH_OWNERS = new WeakMap();
   async function runTool(call) {
     if(A.stop || A.pendingToolSettles)return "ERROR: the command was not run — stopped by the user or waiting for cancellation.";
     const stalled=typeof PlazCodeStallGuard!=="undefined"?(A.stallGuard||(A.stallGuard=PlazCodeStallGuard.create())).before(call):null;
@@ -2911,12 +2922,51 @@ return result`;
       return typeof out==="string"&&call&&Array.isArray(call.repairs)&&call.repairs.length&&!/^ERROR/.test(out)?out+"\n[PlazCode adjusted your arguments: "+call.repairs.join("; ")+". Send them this way next time.]":out;
     }finally{clearInterval(timer);clearTimeout(quietNote);}
   }
+  // One model round-trip, ordinary safety/approval and checkpoint dispatch for every child.
+  async function runCommandBatch(args) {
+    const rows=args && args.calls;
+    if(!Array.isArray(rows)||!rows.length||rows.length>8)return "ERROR: a batch needs 1–8 complete commands in calls. Nothing ran.";
+    const calls=rows.map(row=>({tool:String(row.tool||row.command||""),arguments:row.arguments??row.params??{}}));
+    const denied=/^(?:plazcode_batch|plazcode_clarify|plazcode_agent|plazcode_critic|plazcode_memory|plazcode_vault|plazcode_skills|plazcode_templates|plazcode_engram|list_commands|list_tools)$/;
+    const errors=calls.flatMap((call,i)=>{
+      call.tool=remapToolName(call.tool);PlazCodeToolGuard.repair(call,A.toolList);
+      if(denied.test(call.tool))return ["calls["+i+"]: interactive/control/memory commands must run separately."];
+      if(!A.toolList.some(t=>t.name===call.tool))return ["calls["+i+"]: unknown command "+call.tool];
+      return PlazCodeToolGuard.check(call,A.toolList).map(e=>"calls["+i+"]: "+e);
+    });
+    if(errors.length)return "ERROR: no batch command ran. "+errors.join("; ");
+    const owner={chat:P.conversationKey(),session:A.sessionGen,engine:activeEngine()},results=[];
+    const live=()=>!A.stop && owner.chat===P.conversationKey() && owner.session===A.sessionGen && owner.engine===activeEngine();
+    const images=[];
+    for(let i=0;i<calls.length;i++){
+      if(!live()){results.push({index:i+1,not_run:true,error:"Stopped or chat/session changed; remaining commands did not run."});break;}
+      // The batch envelope already consumed one slot. Account for each extra child.
+      if(i>0 && A.taskBudget){const reason=A.taskBudget.check();if(reason){results.push({index:i+1,not_run:true,error:reason});break;}A.taskBudget.consume();}
+      const call=calls[i];BATCH_OWNERS.set(call,live);const started=Date.now();
+      try{activity.step(call.tool,argSummary(call));ui.trackCard(call.tool,"run","executing…",RS.toolCategory(call.tool));}catch{}
+      diag("batch.childStart",{index:i+1,name:call.tool});
+      let output=String(await runTool(call));
+      // Optional diagnostics/visual checks run once after the batch, keeping ordered edits together.
+      const failed=feedbackIsError(output);
+      try{ui.trackCard(call.tool,failed?"err":"ok",outSummary(output),RS.toolCategory(call.tool));}catch{}
+      if(A.pendingImages?.length){images.push(...A.pendingImages);A.pendingImages=null;}
+      const retained=compressToolFeedback(output,call.tool);
+      results.push({index:i+1,command:call.tool,ok:!failed,result:retained});
+      diag("batch.childDone",{index:i+1,name:call.tool,ms:Date.now()-started,ok:!failed});
+      if(!failed && /^(?:script_read|read_file|read_scripts|script_read_analysis|script_analysis)$/.test(bareToolName(call.tool)))A.learningReads=[...(A.learningReads||[]),{text:PlazCodeReliability.redact(stripOutputPrefix(output)).slice(0,4000),project:currentProject,chat:owner.chat,session:owner.session}].slice(-6);
+      if(failed || !live())break; // no automatic continuation after an error or denied approval
+    }
+    if(images.length)A.pendingImages=images;
+    const complete=results.length===calls.length && results.every(r=>r.ok);
+    return (complete?"Output of 'plazcode_batch':\n":"ERROR in plazcode_batch (completed commands are NOT rolled back; do not repeat them):\n")+JSON.stringify({complete,requested:calls.length,results,not_run:Math.max(0,calls.length-results.filter(r=>!r.not_run).length)});
+  }
   async function runToolImpl(call) {
     if (A.stop) return "ERROR: the command was not run — stopped by the user.";
     call.tool = remapToolName(call.tool);
     PlazCodeToolGuard.repair(call, A.toolList);
     let name = call.tool;
     const args = call.arguments == null ? {} : call.arguments;
+    if (name === "plazcode_batch") return runCommandBatch(args);
     if (name === "plazcode_clarify") {
       try { PlazCodeClarification.validate(args); } catch (error) { return "ERROR: " + error.message; }
       if (A.stop) throw new SendAbortedError("Clarification was stopped.");
@@ -3838,6 +3888,7 @@ return result`;
         delete sendArgs._orNoTxn;
       }
       let r;
+      if(BATCH_OWNERS.has(call)&&!BATCH_OWNERS.get(call)())return "ERROR: batch ownership changed; command was not run.";
       try { r = await Promise.race([bg({ type: "call_tool", name: bareName, arguments: sendArgs, timeout, checkpoint_id:A.checkpointId }), hardCap, stopWatch]); }
       finally { clearInterval(stopTimer); clearTimeout(capTimer); }
       if (r && !r.ok && /not listening|actively refused|connection refused|connection (?:closed|failed)|closed (?:the )?(?:socket|connection)|Blender is not connected/i.test(r.error || "")) {
@@ -3910,6 +3961,7 @@ return result`;
     const stopWatch = new Promise((res) => {
       stopTimer = setInterval(() => { if (A.stop && A.stopMode !== "safe") res({ ok: false, kind: "stopped" }); }, 50);
     });
+    if(BATCH_OWNERS.has(call)&&!BATCH_OWNERS.get(call)())return "ERROR: batch ownership changed; command was not run.";
     const bridgeCall = bg({ type: "call_tool", name, arguments: args, timeout, checkpoint_id:A.checkpointId });
     const waits = [bridgeCall, hardCap];
     // Stop cancels the next action immediately. An already dispatched mutation
@@ -4562,7 +4614,7 @@ return result`;
     if (A.running || A.starting || A.stopping || A.enhancing || A.pendingToolSettles || (A.budgetResume && A.budgetResume.chat===P.conversationKey())) return;
     A.running = true;
     A.budgetResume=null;A.visualChecks=0;
-    const taskBudget=PlazCodeReliability.createBudget({calls:reliabilitySettings.rsRunLimitsEnabled?reliabilitySettings.rsToolBudget:0,minutes:reliabilitySettings.rsRunLimitsEnabled?reliabilitySettings.rsTaskMinutes:0});
+    const taskBudget=A.taskBudget=PlazCodeReliability.createBudget({calls:reliabilitySettings.rsRunLimitsEnabled?reliabilitySettings.rsToolBudget:0,minutes:reliabilitySettings.rsRunLimitsEnabled?reliabilitySettings.rsTaskMinutes:0});
     if (!activity.active()) {
       const items=P.allItems();let assistants=0;
       activitySeenItems=new WeakSet(items.filter((item,index)=>P.isUserItem(item)?index<items.length-1:++assistants<=base));
@@ -4813,8 +4865,10 @@ return result`;
           // Pass the detected command name so the feedback only offers the
           // ###LUA### block when it actually applies (execute_luau) - never for a
           // truncated/broken execute_blender_code or other JSON-only command.
-          const parseFeedback = RS.FEEDBACK.parseError(res.reason, failName);
-          base = await submitAndGetBase(invalidToolAttempts >= SPLIT_HINT_AFTER && typeof parseFeedback === "string" ? parseFeedback + SPLIT_HINT : parseFeedback);
+          const diagnosis=RSParse.commandDiagnosis?RSParse.commandDiagnosis(res.raw||""):"";
+          diag("command.invalid",{reason:res.reason,characters:(res.raw||"").length,diagnosis});
+          const parseFeedback = RS.FEEDBACK.parseError(res.reason, failName)+(diagnosis?"\nDiagnosis: "+diagnosis:"");
+          base = await submitAndGetBase((invalidToolAttempts >= SPLIT_HINT_AFTER || res.reason==="unclosed") && typeof parseFeedback === "string" ? parseFeedback + SPLIT_HINT : parseFeedback);
           continue;
         }
         if (res.kind === "text") {
@@ -4911,11 +4965,11 @@ return result`;
             if (++invalidToolAttempts >= 3) { ui.banner("warn", "Repeated invalid tool calls", preflight.join(" · ")); break; }
             base = await submitAndGetBase("ERROR: no command was executed. Correct the tool arguments:\n" + preflight.join("\n") + '\nUse {"command":"name","params":{"exact_schema_key":"value"}}; arguments.key names a field inside params, not another wrapper. Get the exact fields with list_commands {"command":"name"}. Send ONE complete command.'); continue;
           }
-          if (calls.length > 1) {
-            if (++invalidToolAttempts >= 3) { ui.banner("warn", "Repeated multi-command replies", "Nothing ran. Send one complete command per turn."); break; }
-            base = await submitAndGetBase(RS.FEEDBACK.multiTool(calls.map((c) => c.tool || "?")));
-            continue;
+          if (calls.length > 8) {
+            if (++invalidToolAttempts >= 3) { ui.banner("warn", "Batch too large", "Nothing ran. Use at most eight commands per batch."); break; }
+            base = await submitAndGetBase("ERROR: nothing ran. A reply may contain at most eight commands; split this batch.");continue;
           }
+          if(calls.length>1){const group=calls.splice(0);calls.push({tool:"plazcode_batch",arguments:{calls:group.map(c=>({command:c.tool,params:c.arguments}))}});}
           invalidToolAttempts = 0;
           claimNudges = 0; // a real command arrived: the next unsent-command claim gets its own nudge
           const call = calls[0];
@@ -5103,6 +5157,7 @@ return result`;
         } catch {}
       }
       try{diag('turn.end',{completed:!!completed,stopped:!!A.stop,ms:A.turnStartedAt?Date.now()-A.turnStartedAt:null});}catch{} // 1.24.30
+      if(A.taskBudget===taskBudget)A.taskBudget=null;
       void finishTaskCheckpoint(completed);
       if (!completed && !recoverSession && cowork.snapshot().pending.length) cowork.pause("The agent stopped before finishing. Check the chat, then resume the queue.");
       try { playSfx(A.stop ? "stop" : (A._sfxErr ? "error" : "done")); A._sfxErr = false; } catch {}
@@ -5308,7 +5363,7 @@ return result`;
   chrome.storage.onChanged.addListener(changes=>{const merged={...reliabilitySettings};for(const key of Object.keys(merged))if(changes[key])merged[key]=changes[key].newValue;reliabilitySettings=normalizeReliability(merged);if(changes.rsLatestHandoff)savedHandoff=changes.rsLatestHandoff.newValue||null;});
   function downloadHandoff(value){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:"application/json"}));const link=document.createElement("a");link.href=url;link.download="PlazCode-continuation.json";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   async function automaticVisualCheck(call,feedback){
-    if(A.stop||!reliabilitySettings.rsVisualCheck||activeEngine()!=="roblox"||!P.supportsVision||feedbackIsError(feedback)||A.pendingImages?.length||!(call.tool==="creation_insert" || PlazCodeReliability.visual(call)))return feedback;
+    if(A.stop||!reliabilitySettings.rsVisualCheck||activeEngine()!=="roblox"||!P.supportsVision||feedbackIsError(feedback)||A.pendingImages?.length||!(call.tool==="creation_insert" || PlazCodeReliability.visual(call) || (call.tool==="plazcode_batch" && call.arguments.calls.some(c=>PlazCodeReliability.visual({tool:c.command,arguments:c.params})))))return feedback;
     // 1.21.0: no cap on visual checks; a short gap only avoids duplicate captures.
     if(Date.now()-(A.lastVisualCheck||0)<3000)return feedback;
     A.lastVisualCheck=Date.now();A.visualChecks=(A.visualChecks||0)+1;

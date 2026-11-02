@@ -1608,6 +1608,7 @@ async fn checkpoint_handler(State(state): State<AppState>, Json(req): Json<serde
 
 async fn immediate_stop_handler(State(state):State<AppState>,Json(req):Json<serde_json::Value>)->impl IntoResponse {
     let id=req["checkpoint_id"].as_str().unwrap_or("");
+    workspace::stop_checkpoint_jobs(id);
     let cancelled=!id.is_empty() && state.cancellation.cancel(id);
     Json(serde_json::json!({"ok":true,"cancelled":cancelled,"message":"Immediate Stop requested. External tools may retain partial effects."}))
 }
@@ -1652,7 +1653,7 @@ async fn guarded_tool(state: &AppState, engine: &str, id: &str, name: &str, args
     let args = logged;
     let mut journal = checkpoints::STORE.lock().await;
     let result = match &outcome {
-        Ok(_) => { if journal.take_outcome(id) == Some(false) {"failed"} else {"ok"} }
+        Ok(_) => { let outcome=journal.take_outcome(id);if name=="run_command" && args["background"].as_bool()==Some(true){"started"}else if outcome == Some(false) {"failed"} else {"ok"} }
         Err(_) => "failed",
     };
     journal.event(id, engine, name, &args, result, &outcome.as_ref().err().map(|e| e.to_string()).unwrap_or_default());
@@ -1718,6 +1719,7 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
     let mut journal=checkpoints::STORE.lock().await;
     anyhow::ensure!(journal.task(id)?.status=="working" && journal.task(id)?.engine==engine,"This command was not run: its task has already ended, or it belongs to the other mode (Roblox / AgentScript). Send a new message in the chat to start a fresh task.");
     if engine=="local" {
+        if name=="run_command" {args["_plazcode_checkpoint"]=serde_json::json!(id);}
         let paths=journal.prepare_files(&state.workspace,id,name,&args)?;
         let (result,success)=if name=="run_command" {
             match workspace::tool_run_command_observed(&state.workspace,&args).await {Ok((text,success))=>(Ok(McpOutput{text,images:Vec::new()}),success),Err(error)=>(Err(anyhow::Error::msg(error)),false)}
@@ -1725,7 +1727,7 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
         journal.set_outcome(id,success);
         // 1.24.21 AgentScript fix: the tool has already run here. A journal that cannot be updated or
         // written (locked file, full disk) must never replace the tool's result with an error.
-        if let Ok(task)=journal.task_mut(id){if task.learning.len()<101{task.learning.push(shared_learning::observation(name,&args,success));}}
+        if let Ok(task)=journal.task_mut(id){if task.learning.len()<101 && !(name=="run_command" && args["background"].as_bool()==Some(true)){task.learning.push(shared_learning::observation(name,&args,success));}}
         let _=journal.save();
         if let Err(error)=journal.commit_files(&state.workspace,id,&paths) { journal.warn(id,&format!("Checkpoint verification failed: {error}"));journal.task_mut(id)?.learning.push(shared_learning::observation("checkpoint_verification_failed",&serde_json::Value::Null,false));let _=journal.save(); }
         return result;
@@ -1917,6 +1919,7 @@ fn profile_result(result:anyhow::Result<serde_json::Value>)->axum::response::Res
     }}
 }
 async fn reset_profile_runtime(state:&AppState){
+    workspace::stop_profile_jobs();
     luau_service::clear_profile().await;luau_check::clear_profile();
     state.profile_results.clear();
     state.roblox_queue.lock().await.clear();

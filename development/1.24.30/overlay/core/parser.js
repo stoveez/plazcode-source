@@ -323,24 +323,26 @@ const RSParse = (() => {
     return out;
   }
 
-  function extractToolAnywhere(text) {
-    for (const key of ['"command"', '"tool"']) {
-      let pos = 0;
-      while (true) {
-        const s = text.indexOf(key, pos);
-        if (s === -1) break;
-        for (const start of keyOpeners(text, s)) {
-          const end = matchBrace(text, start); // string-aware brace matching
-          if (end === -1 || end < s) continue; // unbalanced, or closes before the key
-          try {
-            const call = normalizeCall(parseLoose(text.slice(start, end + 1)));
-            if (call) return call;
-          } catch {}
-        }
-        pos = s + 1;
+  function extractToolsAnywhere(text) {
+    const out=[];const keys=/"(?:command|tool)"\s*:/g;let key;
+    while((key=keys.exec(text)) && out.length<9){
+      const starts=keyOpeners(text,key.index);let accepted=false;
+      for(const start of starts){
+        const end=matchBrace(text,start);
+        // Never run nested children from an incomplete enclosing envelope.
+        if(end<0)return [];
+        if(end<key.index)continue;
+        try{const call=normalizeCall(parseLoose(text.slice(start,end+1)));if(call){out.push(call);keys.lastIndex=end+1;accepted=true;break;}}catch{}
       }
+      if(!accepted && starts.some(start=>/"(?:command|tool)"\s*:/.test(text.slice(start,key.index+20))))return [];
     }
-    return null;
+    return out;
+  }
+  function extractToolAnywhere(text) {return extractToolsAnywhere(text)[0]||null;}
+  function commandDiagnosis(text) {
+    text=String(text||'');const key=/"(?:command|tool)"\s*:/.exec(text);
+    if(key){const starts=keyOpeners(text,key.index);for(const start of starts){const end=matchBrace(text,start);if(end<0)return "Received "+text.length+" characters. The JSON envelope has an unfinished string or missing closing braces. Nothing ran; the model/site output may be cut off. Split the next attempt into smaller complete edits; do not resend the same large payload unchanged.";try{parseLoose(text.slice(start,end+1));}catch(error){return "Received "+text.length+" characters. JSON parsing reported: "+String(error.message||error).slice(0,200)+". Check quoting/escapes at that position; do not assume a length limit.";}}}
+    return "Received "+text.length+" characters. The command markers or argument envelope are incomplete. Nothing ran. Check both markers and use smaller complete commands when output is cut off.";
   }
 
   function parseToolCalls(r) {
@@ -387,8 +389,7 @@ const RSParse = (() => {
     // source (literal \n, \") instead of the decoded code. extractToolAnywhere
     // JSON-decodes it; cleanLuaCall (applied at the end) then strips the markers.
     if (out.length === 0) {
-      const f = extractToolAnywhere(r);
-      if (f) out.push(f);
+      out.push(...extractToolsAnywhere(r));
     }
     // Bare ###LUA### … ###END_LUA### block with no JSON envelope at all.
     if (out.length === 0) {
@@ -513,7 +514,7 @@ const RSParse = (() => {
     START_M, END_M, LUA_START_RE, LUA_END_RE, CMD_KEY_RE, DSML_SIG_RE,
     hasDsml, hasOpenDsml, parseDsml,
     findLuaStart, findLuaEnd, matchBrace, extractJson, normalizeCall,
-    hasToolSignature, hasOpenToolBlock, parseToolCalls, salvageCutOff, toolNameFromText,
+    hasToolSignature, hasOpenToolBlock, parseToolCalls, commandDiagnosis, salvageCutOff, toolNameFromText,
     isInjectedFeedback, hasCommandShape,
   };
 })();

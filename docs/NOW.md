@@ -1,5 +1,7 @@
 # NOW
 
+**2026-11-02, newest WIP:** ordered batches (1–8 children, ordinary child approvals/Stop/checkpoints, all-child preflight, first-error halt and budget accounting) and managed background terminal jobs are drafted. Jobs have scoped IDs, live paged output/status/stop, limits, app/profile/permission cleanup and no false passing-test claim; Windows uses a kill-on-close Job Object. Added source-level command diagnosis and smaller-first retry advice. Optional console diagnostics now collect in the background and ride the next result instead of holding every tool result. New tests written; focused/full JS, native compilation and browser checks still required. No new build dispatched yet.
+
 **2026-11-02, newest:** DeepSeek/learning focused JS checks pass; full native tests pass (5 library + 280 agent, 2 ignored). Added owned/revoked lease and memory/vault nonmutation tests; fresh chat URL assignment handled after confirmed delivery. Full JS/browser checks and replacement builds remain. Owner expanded this build to include command batching and background terminal jobs, and requested investigation/fixes for slow non-DeepSeek workflows. Confirmed core rejects multiple calls; run_command lacks a managed background option. Checkpoints/undo already exist, foreground timeout supports 600 s. Implement batching through ordinary child approval/safety/Stop paths and scoped managed jobs; preserve deliberate DeepSeek pacing.
 Updated: 2026-11-02. Branch `claude/plazcode-dev`; no helper agents.
 

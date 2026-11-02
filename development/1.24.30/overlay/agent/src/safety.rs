@@ -20,6 +20,7 @@ const LOCAL_READ: &[u64] = &[
     crate::hidden::fnv("file_info"),
     crate::hidden::fnv("env_info"),
     crate::hidden::fnv("process_list"),
+    crate::hidden::fnv("command_status"),
     crate::hidden::fnv("screen_capture"),
     crate::hidden::fnv("screen_record"),
     crate::hidden::fnv("list_windows"),
