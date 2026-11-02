@@ -3,7 +3,7 @@
 Branch `claude/plazcode-dev` only. No publish/merge without the owner's clear "yes". Commits: stoveez name only, no email, no Co-Authored-By/Claude-Session/"Generated with" lines. Read `docs/NOW.md`, then this note.
 
 ## Current checkpoint (2026-11-02)
-Program source **642207c**. Corrected full local JS suite PASSED with **0 failures**; full CI **41367670135** has GREEN browsers, Windows/macOS/Linux checks/packaging still running, release-check pending. Intermediate six failures all fixed (details below); both Notion tests pass. build-src regenerated after the full sweep for matching source/package verification. Next: finish CI, verify exact production-key inner Windows/Mac ZIPs, upload to Drive with metadata readback and remind source Private at delivery. Permanent record: followup-1.24.30-2026-11-02-verification.json. Superseded CI runs cancelled; no live Arena/Studio claim.
+**Completed (2026-11-02):** program source **642207c**, full CI **41367670135 ALL GREEN** (Windows/Mac/Linux, browsers and release-check). Corrected full local JS 0 failures. Exact production-key inner Windows/Mac ZIPs verified (CRC/signatures/all 241 reviewed JS sources/licences/official layout/Mac universal architecture), uploaded to Drive; names/MIME/sizes read back. Windows 51,068,997 B; Mac 52,793,720 B. Links/hashes in NOW and followup-1.24.30-2026-11-02-verification.json. Needs complete new app folder and extension reload/tab refresh. Source still Public: owner reminder accompanies delivery; never change visibility. No stable publish/feed/main/release merge. Live Arena/Studio remains unverified; owner tests the build next. Prior next-step requests below are historical and completed as recorded in the later updates.
 
 ## Codex step 1 result
 - Full standard local JS suite: **0 failures**, including test-notion-protocol-file.js and test-notion-startup-small-paste.js. Their source/provider files are unchanged from the earlier green 936a302 version; no regression reproduced in this environment.
@@ -79,3 +79,9 @@ Baseline CI 41364800959 runs on 2db1e5a; no duplicate active runs. Implemented r
 ### 2026-11-02 — full corrected JS verification passed
 - Full standard suite on corrected program source 642207c: 0 failures, including the original Notion checks, all six intermediate failures and new Arena regressions. Source regenerated cleanly only after the suite ended.
 - Full CI 41367670135 browsers GREEN; native Windows/Mac/Linux jobs still running. No replacement ZIPs delivered yet. Evidence is in followup-1.24.30-2026-11-02-verification.json.
+
+### 2026-11-02 — full build and Drive delivery complete
+- Full validation 41367670135 on 642207c passed all five required jobs (bootstrap intentionally skipped). Linux second JS sweep, native/UI/authentication, package and cross-platform sealed-text/source/variant proofs green.
+- Verified exact inner Windows/Mac archives: ZIP integrity, matching wrapper digest, production signatures, 241 reviewed JS sources per package, native file formats/Mac two architectures, SHA256SUMS, legal notices and official layout against 1.24.29. Expected new 1.24.30 files/build-only removals reviewed; no source ZIPs/development extras.
+- Drive uploads and metadata name/MIME/size readback verified. Windows: https://drive.google.com/file/d/134caQVizrG2YXVocYMkc7EDyl-bCLbBb/view?usp=drivesdk ; Mac: https://drive.google.com/file/d/1zalHngaLBpIneBi5CtjYy5_E1BcQFQ99/view?usp=drivesdk . All hashes/IDs in followup-1.24.30-2026-11-02-verification.json.
+- Source Public at delivery; owner reminded to restore Private. Account API stays Public separately. No assistant visibility changes, no stable publishing. Repo vault files updated; no claim of separate PC folder sync or live Arena/Studio validation.

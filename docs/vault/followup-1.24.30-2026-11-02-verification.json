@@ -6,8 +6,14 @@
     "run": 41367670135,
     "url": "https://github.com/stoveez/plazcode-source/actions/runs/41367670135",
     "browsers": "success",
-    "native": "in progress",
-    "release_check": "pending"
+    "native": {
+      "Windows": "success",
+      "macOS": "success",
+      "Linux": "success"
+    },
+    "release_check": "success",
+    "overall": "success",
+    "bootstrap_integrity": "intentionally skipped"
   },
   "javascript": {
     "standard_suite": "passed, 0 failures",
@@ -78,7 +84,228 @@
     ],
     "live_arena": "unverified; no connected browser tool available; fixture timing is not model/site latency"
   },
-  "delivery": "pending verified CI inner Windows/macOS ZIPs through Google Drive",
+  "delivery": {
+    "method": "Google Drive, exact verified inner CI ZIPs; no sharing changes",
+    "files": [
+      {
+        "platform": "windows",
+        "version": "1.24.30",
+        "channel": "release",
+        "signedFiles": 3070,
+        "reviewedSources": 241,
+        "release_variant": {
+          "schema": 1,
+          "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+          "mark": "31ff5250ca8f5bbe",
+          "layout": 2
+        },
+        "signatures": "verified",
+        "sourceProvenance": "verified",
+        "licences": "proprietary first-party and original dependency notices verified",
+        "file": "PlazCode-1.24.30-test-lean.zip",
+        "bytes": 51068997,
+        "sha256": "dda7369e1fbdd0f16b16184ce99f4d1454669b751cfeb77af8c75e37acc3747c",
+        "files": 3084,
+        "github_artifact": {
+          "id": 13109190211,
+          "run_id": 41367670135,
+          "wrapper_bytes": 51069802,
+          "wrapper_sha256": "d178ba87e47aa12a4a47583d330146cb1a3771c4923ec876f74c3c7deef22c94",
+          "head_sha": "642207c5cb4dbe8c1164a481be2a09220cfbc148"
+        },
+        "drive": {
+          "id": "134caQVizrG2YXVocYMkc7EDyl-bCLbBb",
+          "url": "https://drive.google.com/file/d/134caQVizrG2YXVocYMkc7EDyl-bCLbBb/view?usp=drivesdk",
+          "name": "PlazCode-1.24.30-test-lean.zip",
+          "mime_type": "application/zip",
+          "bytes": 51068997,
+          "metadata_name_mime_size_readback": "verified",
+          "sharing": "unchanged"
+        },
+        "layout_comparison": {
+          "baseline": "published 1.24.29 official archive",
+          "delta": {
+            "added": [
+              "PlazCode/PlazCode-Extension-Firefox/THIRD-PARTY-NOTICES.txt",
+              "PlazCode/PlazCode-Extension-Firefox/core/release-variant.json",
+              "PlazCode/PlazCode-Extension-Firefox/core/text-pack.bin",
+              "PlazCode/PlazCode-Extension-Firefox/core/text-pack.js",
+              "PlazCode/PlazCode-Extension-Firefox/providers/mimo.js",
+              "PlazCode/PlazCode-Extension/BRANDING-NOTICE.txt",
+              "PlazCode/PlazCode-Extension/LICENSE",
+              "PlazCode/PlazCode-Extension/THIRD-PARTY-NOTICES.txt",
+              "PlazCode/PlazCode-Extension/core/release-variant.json",
+              "PlazCode/PlazCode-Extension/core/text-pack.bin",
+              "PlazCode/PlazCode-Extension/core/text-pack.js",
+              "PlazCode/PlazCode-Extension/providers/mimo.js",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/LICENSE",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/PLAZCODE-ADAPTER.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/SKILL.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/cleanup-lifecycle.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/client-server-boundaries.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/composition.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/ecs.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/game-loops.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/live-ops-events.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/luau-modern.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/luau-types.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/market-references.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/networking-remotes.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/object-pooling.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/oop-patterns.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/pattern-selection.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/performance.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/player-incentives.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/progression-economy.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/retention-psychology.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/sharp-edges.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/state-management.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/system-design.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/testing.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/templates/design-doc-template.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/templates/game-loop-template.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/templates/module-template.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/templates/plan-template.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/code-review.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/design-game-loop.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/design-system.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/economy-audit.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/implement.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/performance-audit.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/plan.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/retention-audit.md",
+              "PlazCode/core/release-variant.json",
+              "PlazCode/core/text-pack.bin",
+              "PlazCode/core/text-pack.js",
+              "PlazCode/providers/mimo.js",
+              "PlazCode/runtime/THIRD-PARTY-RUST-LICENSES.txt",
+              "PlazCode/runtime/luau/LICENSE"
+            ],
+            "removed": [
+              "PlazCode/.gitignore",
+              "PlazCode/MAINTENANCE.md",
+              "PlazCode/PlazCode-Extension/starter-skills/syphodev/install.ps1",
+              "PlazCode/PlazCode-Extension/starter-skills/syphodev/install.sh",
+              "PlazCode/UPDATE.txt",
+              "PlazCode/UPDATER.txt",
+              "PlazCode/VALIDATION.txt",
+              "PlazCode/agent/embed-plazcode-icon.ps1"
+            ]
+          },
+          "review": "Expected 1.24.30 additions: sealed text/variant, MiMo, Ro-Engineer skills, licence notices; build notes and install/build scripts removed. Official package layout, no source ZIPs/maps/keys/development extras."
+        }
+      },
+      {
+        "platform": "macos",
+        "version": "1.24.30",
+        "channel": "release",
+        "signedFiles": 3074,
+        "reviewedSources": 241,
+        "release_variant": {
+          "schema": 1,
+          "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+          "mark": "31ff5250ca8f5bbe",
+          "layout": 2
+        },
+        "signatures": "verified",
+        "sourceProvenance": "verified",
+        "licences": "proprietary first-party and original dependency notices verified",
+        "file": "PlazCode-macOS-1.24.30-test-lean.zip",
+        "bytes": 52793720,
+        "sha256": "21bb61ab8c73c4ddfa3446312d4b7ddeb38fa00a8ec3648d06f764a8660dc3d8",
+        "files": 3088,
+        "github_artifact": {
+          "id": 13109026256,
+          "run_id": 41367670135,
+          "wrapper_bytes": 52794523,
+          "wrapper_sha256": "a36dab74c772f81ba66b0cd07acde0360b19b29fb4624f590c8fab3044062a76",
+          "head_sha": "642207c5cb4dbe8c1164a481be2a09220cfbc148"
+        },
+        "drive": {
+          "id": "1zalHngaLBpIneBi5CtjYy5_E1BcQFQ99",
+          "url": "https://drive.google.com/file/d/1zalHngaLBpIneBi5CtjYy5_E1BcQFQ99/view?usp=drivesdk",
+          "name": "PlazCode-macOS-1.24.30-test-lean.zip",
+          "mime_type": "application/zip",
+          "bytes": 52793720,
+          "metadata_name_mime_size_readback": "verified",
+          "sharing": "unchanged"
+        },
+        "layout_comparison": {
+          "baseline": "published 1.24.29 official archive",
+          "delta": {
+            "added": [
+              "PlazCode/PlazCode-Extension-Firefox/THIRD-PARTY-NOTICES.txt",
+              "PlazCode/PlazCode-Extension-Firefox/core/release-variant.json",
+              "PlazCode/PlazCode-Extension-Firefox/core/text-pack.bin",
+              "PlazCode/PlazCode-Extension-Firefox/core/text-pack.js",
+              "PlazCode/PlazCode-Extension-Firefox/providers/mimo.js",
+              "PlazCode/PlazCode-Extension/BRANDING-NOTICE.txt",
+              "PlazCode/PlazCode-Extension/LICENSE",
+              "PlazCode/PlazCode-Extension/THIRD-PARTY-NOTICES.txt",
+              "PlazCode/PlazCode-Extension/core/release-variant.json",
+              "PlazCode/PlazCode-Extension/core/text-pack.bin",
+              "PlazCode/PlazCode-Extension/core/text-pack.js",
+              "PlazCode/PlazCode-Extension/providers/mimo.js",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/LICENSE",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/PLAZCODE-ADAPTER.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/SKILL.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/cleanup-lifecycle.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/client-server-boundaries.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/composition.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/ecs.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/game-loops.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/live-ops-events.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/luau-modern.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/luau-types.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/market-references.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/networking-remotes.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/object-pooling.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/oop-patterns.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/pattern-selection.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/performance.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/player-incentives.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/progression-economy.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/retention-psychology.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/sharp-edges.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/state-management.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/system-design.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/references/testing.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/templates/design-doc-template.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/templates/game-loop-template.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/templates/module-template.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/templates/plan-template.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/code-review.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/design-game-loop.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/design-system.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/economy-audit.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/implement.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/performance-audit.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/plan.md",
+              "PlazCode/PlazCode-Extension/starter-skills/ro-engineer/workflows/retention-audit.md",
+              "PlazCode/core/release-variant.json",
+              "PlazCode/core/text-pack.bin",
+              "PlazCode/core/text-pack.js",
+              "PlazCode/providers/mimo.js",
+              "PlazCode/runtime/THIRD-PARTY-RUST-LICENSES.txt",
+              "PlazCode/runtime/luau/LICENSE"
+            ],
+            "removed": [
+              "PlazCode/.gitignore",
+              "PlazCode/MAINTENANCE.md",
+              "PlazCode/PlazCode-Extension/starter-skills/syphodev/install.ps1",
+              "PlazCode/PlazCode-Extension/starter-skills/syphodev/install.sh",
+              "PlazCode/UPDATE.txt",
+              "PlazCode/UPDATER.txt",
+              "PlazCode/VALIDATION.txt"
+            ]
+          },
+          "review": "Expected 1.24.30 additions: sealed text/variant, MiMo, Ro-Engineer skills, licence notices; build notes and install/build scripts removed. Official package layout, no source ZIPs/maps/keys/development extras."
+        }
+      }
+    ],
+    "installation": "Quit old app, replace the complete PlazCode folder, reload the extension and refresh the AI tab. New app required.",
+    "stable_publish": false
+  },
   "stable_publish": false,
   "source_sha256": {
     "core/main.js": "5475a643b8a851edbe538197784fb19b0231d54ab007fa1c5d2622f51f3509d9",
@@ -87,5 +314,11 @@
     "providers/arena.js": "1099a420dd699ab7b511713644b608c174074e481f7c98be9ca0898b419d4710",
     "agent/src/main.rs": "458ba05f78134a0744121f1dc16df4cec520f7b3fa61cd0b9b8c6dbf1deac069",
     "agent/src/luau_check.rs": "c3f681466b8bbf63aaa7f546402cba616196f016a02ceddad2535ce36fce8ccb"
+  },
+  "visibility": {
+    "source": "Public at delivery; owner reminded to restore Private",
+    "settings": "https://github.com/stoveez/plazcode-source/settings",
+    "assistant_changed_visibility": false,
+    "account_API": "Public by separate prior authorization"
   }
 }

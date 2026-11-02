@@ -1,10 +1,15 @@
 ---
 title: Test builds and the public-then-private plan
 
-updated: 2026-10-30
+updated: 2026-11-02
 ---
 
-**Current 2026-11-02:** replacement full 1.24.30 build [41367670135](https://github.com/stoveez/plazcode-source/actions/runs/41367670135), program source 642207c. Corrected full local JS: 0 failures; CI browsers GREEN; native Windows/macOS/Linux and release proof pending. Earlier runs cancelled/superseded. No current replacement ZIPs delivered yet. Exact inner Windows/macOS verification/Drive delivery pending. Source Public for CI; owner restores Private after delivery. No stable publication authorized; stable 1.24.29. NOW supersedes historical entries below.
+**Latest delivered, 2026-11-02:** 1.24.30 source **642207c**, CI [41367670135](https://github.com/stoveez/plazcode-source/actions/runs/41367670135) ALL GREEN (Windows/universal Mac/Linux/browsers/release-check). Luau timeout and Arena Stop/raw-command/history/flat-argument/reference fixes included with Claude's previous changes. Local full corrected JS: 0 failures. Exact INNER production-key ZIPs verified; Drive metadata names/MIME/sizes read back. Official layout deltas reviewed, all 241 JS sources match, integrity signatures/CRC/SHA256SUMS/licences valid. No source ZIPs. [Verification record](followup-1.24.30-2026-11-02-verification.json).
+
+- [Windows — 51,068,997 bytes](https://drive.google.com/file/d/134caQVizrG2YXVocYMkc7EDyl-bCLbBb/view?usp=drivesdk)
+- [Mac (Intel + Apple Silicon) — 52,793,720 bytes](https://drive.google.com/file/d/1zalHngaLBpIneBi5CtjYy5_E1BcQFQ99/view?usp=drivesdk)
+
+Quit old app, replace complete folder, reload extension and refresh AI tab. New app required. Live Arena/Studio owner confirmation remains. Source Public at delivery; owner reminded to restore Private in repository settings. Account API stays Public separately. No stable publish/feed changes; stable 1.24.29. Historical entries below are superseded by this delivery.
 
 2026-10-30: online profiles/sign-in, per-profile data and settings/private-skills sync are included in the full verified 1.24.27 test builds. Owner approved the actual rectangular-profile/background design. CI 40989215099 / source 9c175eb passed Windows, universal Mac, Linux and browsers. Production signatures, reviewed source and official archive layouts verified; inner ZIPs delivered. Account API remains Public by explicit approval. Source repo is now PRIVATE, verified after owner restored visibility. Earlier integration visibility attempts were denied HTTP 403. Latest stable remains 1.24.26.
 
