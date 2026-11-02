@@ -3,6 +3,11 @@ title: Test builds and the public-then-private plan
 
 updated: 2026-11-02
 ---
+## 2026-11-02 — workspace restored; targeted Mac retry finishing original full run
+Execution workspace disconnected after 13b7003 was pushed; provider reported running but tools had no usable connection. Owner reconnected it and files are intact. Through connected GitHub, retried Mac job 125441718492 after the full run ended. Attempt 2 of **41492949796** acquired an ARM Mac runner and passed app/profile/UI/authentication checks, now building both architectures. Windows, Linux and browsers passed. Runtime source is **52b9d19**, byte-for-byte unchanged in overlay at current HEAD; 13b7003 only changes future CI host selection/docs. Finish this same full run and use its verified packages if final gate passes; no new Intel full run is needed. Intel host fallback remains saved for future builds, unexercised by this retry.
+
+Windows exact inner ZIP now verified: production signatures, 241 reviewed JS sources, SHA/CRC, Guest UI AND native sync guard present in executable, no layout differences against actual published 1.24.30 (3,084 files). Inner SHA256 3595ca05f3cfd57f8804c0eace079699710fe3caf5e19d5b3bd5c0c0ca0e3031, 51,130,687 bytes; not delivered pending Mac/final gate. Wrapper ID 13165794608, digest 441ce689201a88ca03110f602a609c04ec8b8090c17ee7ef189d555a1050509a / 51,131,492 bytes verified. Removed only the first failed release-check report artifact (13165859701) to prevent v4 upload name collision on successful retry; old job logs/summary remain. Next: full green, fetch/verify Mac including Guest presence in BOTH slices, upload both inner ZIPs via Drive, read metadata, deliver and remind Private. No stable release.
+
 ## 2026-11-02 — GitHub Mac runner capacity failure; Intel fallback
 CI 41492949796 Mac job 125441718492 never acquired a runner (zero steps, runner_name empty). GitHub annotation: “The job was not acquired by Runner of type hosted even after multiple attempts”; three arm64 capacity notices. This is infrastructure, not a failing app check. Specific-job retry refused while run remains active (HTTP 403). Windows is installing/scanning its package, Linux near app packaging; let those finish/save caches.
 

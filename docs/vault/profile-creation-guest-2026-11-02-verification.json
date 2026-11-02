@@ -1,5 +1,5 @@
 {
-  "state": "awaiting_intel_runner_replacement_ci",
+  "state": "awaiting_macos_and_final_gate",
   "program_source": "52b9d197122ccd7b68a9a3ee6268824c91114e10",
   "local_rust": {
     "library_passed": 5,
@@ -54,9 +54,31 @@
   "root_cause_scope": "Affected users confirmed released 1.24.30. Official executable/source checked: unsafe consumed-proof replay and generic busy handling are in the released client and fixed here. Earlier inference of older installed version retracted. Current Public signup/login succeeds; historical host trigger needs affected account.service Logs, requested.",
   "live_user_device_ai_studio_testing": false,
   "stable_published": false,
-  "artifacts": [],
+  "artifacts": [
+    {
+      "platform": "windows",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3070,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "file": "PlazCode-1.24.30-test-lean.zip",
+      "bytes": 51130687,
+      "sha256": "3595ca05f3cfd57f8804c0eace079699710fe3caf5e19d5b3bd5c0c0ca0e3031",
+      "files": 3084,
+      "native_guest_feature_verified": true
+    }
+  ],
   "superseded_run_id": 41488995618,
-  "run_id": null,
+  "run_id": 41492949796,
   "published_release": {
     "version": "1.24.30",
     "published_at": "2026-11-02T15:27:00Z",
@@ -76,6 +98,12 @@
     "steps": 0,
     "cause": "GitHub arm64 runner capacity; job not acquired",
     "fallback": "macos-15-intel",
-    "universal_build_preserved": true
-  }
+    "universal_build_preserved": true,
+    "retry": "Targeted API retry acquired ARM runner; app checks pass, packaging pending. Intel fallback saved for future."
+  },
+  "run_attempt": 2,
+  "workspace_restored": true,
+  "hosted_windows": "success",
+  "hosted_linux": "success",
+  "hosted_browsers": "success"
 }
