@@ -2738,7 +2738,7 @@ return result`;
     let end=Math.min(record.text.length,offset+Math.min(requested,Math.max(1,resultPageSize()-350)));
     if(end<record.text.length&&end>offset&&/[\uD800-\uDBFF]/.test(record.text[end-1]))end--;
     const next=end<record.text.length?end:null;
-    return "Output of 'plazcode_result_read':\n"+JSON.stringify({id:args.id,offset,next_offset:next,total_characters:record.text.length})+'\n---RESULT CONTENT---\n'+record.text.slice(offset,end);
+    return "Output of 'plazcode_result_read':\n"+JSON.stringify({id:args.id,offset,next_offset:next,total_characters:record.text.length})+'\n---RESULT CONTENT---\n'+record.text.slice(offset,end)+'\n---END RESULT PAGE---';
   }
   function compressToolFeedback(text, name) {
     const s = String(text || "");
@@ -2750,7 +2750,7 @@ return result`;
     let retained=0;for(const entry of retainedToolResults.values())retained+=entry.text.length;
     while(retainedToolResults.size>32||retained>64000000&&retainedToolResults.size>1){const first=retainedToolResults.keys().next().value;retained-=retainedToolResults.get(first).text.length;retainedToolResults.delete(first);}
     let end=limit;if(/[\uD800-\uDBFF]/.test(s[end-1]))end--;
-    return '[PlazCode retained the COMPLETE result. This is the first page, not truncated source. Read the rest with plazcode_result_read {id:"'+id+'",offset:'+end+'}. Follow next_offset until null. Do not rerun the original command.]\n'+s.slice(0,end);
+    return '[PlazCode retained the COMPLETE result. This is the first page, not truncated source. Read the rest with plazcode_result_read {id:"'+id+'",offset:'+end+'}. Follow next_offset until null. Do not rerun the original command.]\n'+s.slice(0,end)+'\n---END RESULT PAGE---';
 
   }
   function prepareToolFeedback(text) {

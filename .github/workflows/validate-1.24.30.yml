@@ -115,6 +115,9 @@ jobs:
       - name: DeepSeek shared sender and cancellation in Chromium and Firefox
         run: node release-tools/test-deepseek-guard-browser.cjs
         working-directory: build-src-1.24.30/PlazCode
+      - name: Ordered batch child approvals and fail-before-write in real Chromium
+        run: node release-tools/test-command-batch-browser.cjs
+        working-directory: build-src-1.24.30/PlazCode
       - name: Persistent approval modes and composer-relative bar placement
         run: node release-tools/test-approval-modes-browser.cjs
         working-directory: build-src-1.24.30/PlazCode
