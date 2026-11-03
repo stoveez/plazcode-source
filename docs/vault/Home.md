@@ -2,6 +2,9 @@
 title: Home
 updated: 2026-11-02
 ---
+
+Active: [Blender UV/PATH discovery and timeout fix](blender-uv-path-2026-11-03.md).
+
 Follow-up test ZIPs verified/uploaded; full CI 41579556782 ALL GREEN: [Windows/Mac delivery and checks](test-build-1.24.30-followup-2026-11-02.md).
 
 Previous delivery: [guest/signup replacement builds VERIFIED and DELIVERED](profile-creation-guest-2026-11-02-verification.json). [Feature and actual previews](profile-creation-guest-2026-11-02.md).

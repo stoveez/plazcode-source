@@ -2,6 +2,9 @@
 title: Open work and known bugs
 updated: 2026-11-02
 ---
+## 2026-11-03 — Blender UV/PATH and timeout follow-up ACTIVE
+Owner reports initialize timeout plus raw aborted signal; clarified UV was not on PATH. Analysis found stale Windows runtime search, 20s cold initialization, AgentScript 6s refresh cancellation and desktop7s vs native8s+queue45s. [Diagnosis and plan](blender-uv-path-2026-11-03.md). Implement and reproduce with actual process/socket/browser tests; no fix claimed yet. Existing delivered follow-up ZIPs lack this new work. No stable publication/visibility changes.
+
 ## 2026-11-02 — full follow-up Windows/Mac test ZIPs VERIFIED and uploaded for delivery
 Full CI [41579556782](https://github.com/stoveez/plazcode-source/actions/runs/41579556782) ALL GREEN: Windows, universal Mac, Linux, browsers, final release-check. Run head **c3d60e0**; product **5870a11**. Later commits are notes only. Bootstrap intentionally skipped. Browser measurement fix preserves <=128 classifications for EVERY warm sweep, includes a fifth asynchronous pass, and rejects full-history negative control.
 
