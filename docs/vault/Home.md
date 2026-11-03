@@ -2,7 +2,7 @@
 title: Home
 updated: 2026-11-02
 ---
-Build in progress: [fresh full follow-up Windows/Mac test ZIPs requested](test-build-1.24.30-followup-2026-11-02.md).
+Build in progress: [replacement full follow-up Windows/Mac test ZIPs](test-build-1.24.30-followup-2026-11-02.md).
 
 Previous delivery: [guest/signup replacement builds VERIFIED and DELIVERED](profile-creation-guest-2026-11-02-verification.json). [Feature and actual previews](profile-creation-guest-2026-11-02.md).
 

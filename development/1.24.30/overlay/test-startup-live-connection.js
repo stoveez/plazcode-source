@@ -1,7 +1,10 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
-const {parse}=require('./release-tools/node_modules/acorn');
+const {parse}=require('acorn');
 const source=fs.readFileSync('core/main.js','utf8');
 function functions(names){const found={};function walk(n){if(!n?.type)return;if(n.type==='FunctionDeclaration'&&names.includes(n.id.name))found[n.id.name]=source.slice(n.start,n.end);for(const v of Object.values(n))if(Array.isArray(v))v.forEach(walk);else if(v?.type)walk(v);}walk(parse(source,{ecmaVersion:'latest'}));return names.map(n=>{assert(found[n],n);return found[n];}).join('\n');}
+// Extraction must preserve the production lexical boundary: a helper inside runToolImpl is invisible to startup.
+const scopeOwners=new Map();function scopes(n,owner=null){if(!n?.type)return;if(n.type==='FunctionDeclaration')scopeOwners.set(n.id.name,owner);const next=/Function/.test(n.type)?n:owner;for(const v of Object.values(n))if(Array.isArray(v))v.forEach(c=>scopes(c,next));else if(v?.type)scopes(v,next);}scopes(parse(source,{ecmaVersion:'latest'}));
+for(const name of ['readProjectMemoryText','startupMemoryStages','startupFeedbackStages','startupConnectionError','requireStartupConnection'])assert.equal(scopeOwners.get(name)?.start,scopeOwners.get('startSession')?.start,name+' must be visible to the real startup flow');
 const healthy={ok:true,bridge_reachable:true,connected:true,roblox_connected:true,local_connected:true};
 async function startup(statuses){
  let now=1000,checks=0,executed=0,sends=0;const banners=[],queue=statuses.slice();

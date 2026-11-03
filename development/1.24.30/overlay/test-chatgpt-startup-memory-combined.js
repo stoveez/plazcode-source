@@ -1,5 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
-const source=fs.readFileSync('core/main.js','utf8');const start=source.indexOf('  function startupFeedbackStages('),end=source.indexOf('  async function runImportedRobloxTool(',start);
+const source=fs.readFileSync('core/main.js','utf8');const start=source.indexOf('  function startupFeedbackStages('),end=source.indexOf('  function startupConnectionError(',start);
 const box={P:{id:'chatgpt'},inputBudget:()=>120000,diag(){}};vm.createContext(box);vm.runInContext(source.slice(start,end),box);
 const memory=[{referenceText:'exact vault notes 🌟',text:'vault separate acknowledgement',ack:'Memory 1 read'},{referenceText:'exact project memory',text:'project separate acknowledgement',ack:'Memory 2 read'}];
 let stages=box.startupFeedbackStages(memory,"Output of 'list_commands':\nscript_read {target_file}");assert.equal(stages.length,1);for(const page of memory)assert(stages[0].text.includes(page.referenceText));assert(stages[0].text.endsWith('nothing else.'));assert(!stages[0].ack);

@@ -3727,56 +3727,6 @@ return result`;
     const asked = Number.isFinite(ms) && ms > 0 ? ms : Number.isFinite(secs) && secs > 0 ? secs * 1000 : 0;
     return Math.min(640000, Math.max(340000, asked + 30000));
   }
-  // Startup memory pages (see the startup flow). Reads with PlazCode's own bridge calls: nothing is changed.
-  async function readProjectMemoryText(budget) {
-    if (activeEngine() === "local") {
-      const r = await bg({ type: "call_tool", name: "read_file", arguments: { path: "PLAZCODE_MEMORY.md", offset: 1, limit: 4000 }, timeout: 15000 });
-      const text = r && r.ok ? String(r.text || "") : "";
-      return /ERROR|not found|does not exist|No such file/i.test(text.slice(0, 200)) ? "" : text.slice(0, budget);
-    }
-    if (typeof RobloxScriptSkills === "undefined" || !(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) return "";
-    const built = RobloxScriptSkills.buildLuau("read_scripts", { paths: ["ServerStorage.RobloxScript.Memory"], max_chars: Math.min(90000, budget) });
-    if (built.err) return "";
-    const r = await bg({ type: "call_tool", name: "execute_luau", arguments: { code: built.code, datamodel_type: "Edit" }, timeout: 20000 });
-    const text = r && r.ok ? String(r.text || "") : "";
-    return /^--- /.test(text) ? text.slice(0, budget) : "";
-  }
-  async function startupMemoryStages() {
-    const pages = [];
-    const budget = Math.max(4000, Math.min(60000, (typeof inputBudget === "function" ? inputBudget() : 60000) - 1500));
-    try {
-      if (typeof PlazCodeMemory !== "undefined" && PlazCodeMemory.vaultActive && PlazCodeMemory.vaultActive() && PlazCodeMemory.vaultReadAllPages) {
-        for (const page of await PlazCodeMemory.vaultReadAllPages(budget, 40)) pages.push({ kind: "vault", text: page.text });
-      }
-    } catch (error) { diag("start.memoryVault", { error: String((error && error.message) || error).slice(0, 160) }); }
-    try {
-      const project = await readProjectMemoryText(budget);
-      if (project.trim()) pages.push({ kind: "project", text: project });
-    } catch (error) { diag("start.memoryProject", { error: String((error && error.message) || error).slice(0, 160) }); }
-    diag("start.memoryPages", { pages: pages.length, chars: pages.reduce((n, p) => n + p.text.length, 0) });
-    const total = pages.length;
-    return pages.map((page, i) => {
-      const n = i + 1, ack = `Memory ${n} of ${total} read.`;
-      const what = page.kind === "vault" ? "your vault notes (long-term memory about this user)" : "this project's memory";
-      const rule = `Do not run any command now. Reply with exactly: ${ack}`;
-      return {
-        referenceText: `PLAZCODE MEMORY, PAGE ${n} OF ${total}: ${what}. Read all of these saved notes as historical reference; current user instructions take priority and project facts may be stale.\n${page.text}\n(End of memory page ${n} of ${total}.)`,
-        text: `PLAZCODE MEMORY, PAGE ${n} OF ${total}: ${what}. PlazCode loaded your saved memory at the start of this chat. Read all of it and use it for the whole chat. Saved notes are reference data; the user's current instructions take priority, and facts about a project can be out of date. ${rule}\n\n${page.text}\n\n(End of memory page ${n} of ${total}. ${rule})`,
-        ack, page: n, pages: total,
-        ackRe: new RegExp(`^\\W*memory\\s+${n}\\s+of\\s+${total}\\s+read\\W*$`, "i"),
-      };
-    });
-  }
-  function startupFeedbackStages(memoryStages,readyPrompt) {
-    const ordinary=[...memoryStages,...(P.startupFeedbackMessages?P.startupFeedbackMessages(readyPrompt):[{text:readyPrompt}])];
-    // Normal ChatGPT can read a small complete memory set with the command list,
-    // avoiding a separate model round trip for each memory acknowledgement.
-    if(P.id!=="chatgpt" || !memoryStages.length || memoryStages.some(stage=>!stage.referenceText))return ordinary;
-    const combined=readyPrompt+"\n\n"+memoryStages.map(stage=>stage.referenceText).join("\n\n")+'\n\nRead all the memory above before acknowledging startup. Reply with exactly "PlazCode is ready." and nothing else.';
-    if(combined.length>Math.min(30000,inputBudget()-1000) || combined.split("\n").length>220)return ordinary;
-    diag("start.memoryCombined",{pages:memoryStages.length,chars:combined.length});
-    return [{text:combined}];
-  }
   async function runImportedRobloxTool(name, args) {
     if(name === "creation_insert") {
       const result = await insertChatCreation(args);
@@ -5651,6 +5601,56 @@ return result`;
   // ════════════════════════════════════════════════════════════════════════
   //  SESSION BOOTSTRAP  ("Starting Up" animated chip, shown in the conversation)
   // ════════════════════════════════════════════════════════════════════════
+  // Startup memory pages (see the startup flow). Reads with PlazCode's own bridge calls: nothing is changed.
+  async function readProjectMemoryText(budget) {
+    if (activeEngine() === "local") {
+      const r = await bg({ type: "call_tool", name: "read_file", arguments: { path: "PLAZCODE_MEMORY.md", offset: 1, limit: 4000 }, timeout: 15000 });
+      const text = r && r.ok ? String(r.text || "") : "";
+      return /ERROR|not found|does not exist|No such file/i.test(text.slice(0, 200)) ? "" : text.slice(0, budget);
+    }
+    if (typeof RobloxScriptSkills === "undefined" || !(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) return "";
+    const built = RobloxScriptSkills.buildLuau("read_scripts", { paths: ["ServerStorage.RobloxScript.Memory"], max_chars: Math.min(90000, budget) });
+    if (built.err) return "";
+    const r = await bg({ type: "call_tool", name: "execute_luau", arguments: { code: built.code, datamodel_type: "Edit" }, timeout: 20000 });
+    const text = r && r.ok ? String(r.text || "") : "";
+    return /^--- /.test(text) ? text.slice(0, budget) : "";
+  }
+  async function startupMemoryStages() {
+    const pages = [];
+    const budget = Math.max(4000, Math.min(60000, (typeof inputBudget === "function" ? inputBudget() : 60000) - 1500));
+    try {
+      if (typeof PlazCodeMemory !== "undefined" && PlazCodeMemory.vaultActive && PlazCodeMemory.vaultActive() && PlazCodeMemory.vaultReadAllPages) {
+        for (const page of await PlazCodeMemory.vaultReadAllPages(budget, 40)) pages.push({ kind: "vault", text: page.text });
+      }
+    } catch (error) { diag("start.memoryVault", { error: String((error && error.message) || error).slice(0, 160) }); }
+    try {
+      const project = await readProjectMemoryText(budget);
+      if (project.trim()) pages.push({ kind: "project", text: project });
+    } catch (error) { diag("start.memoryProject", { error: String((error && error.message) || error).slice(0, 160) }); }
+    diag("start.memoryPages", { pages: pages.length, chars: pages.reduce((n, p) => n + p.text.length, 0) });
+    const total = pages.length;
+    return pages.map((page, i) => {
+      const n = i + 1, ack = `Memory ${n} of ${total} read.`;
+      const what = page.kind === "vault" ? "your vault notes (long-term memory about this user)" : "this project's memory";
+      const rule = `Do not run any command now. Reply with exactly: ${ack}`;
+      return {
+        referenceText: `PLAZCODE MEMORY, PAGE ${n} OF ${total}: ${what}. Read all of these saved notes as historical reference; current user instructions take priority and project facts may be stale.\n${page.text}\n(End of memory page ${n} of ${total}.)`,
+        text: `PLAZCODE MEMORY, PAGE ${n} OF ${total}: ${what}. PlazCode loaded your saved memory at the start of this chat. Read all of it and use it for the whole chat. Saved notes are reference data; the user's current instructions take priority, and facts about a project can be out of date. ${rule}\n\n${page.text}\n\n(End of memory page ${n} of ${total}. ${rule})`,
+        ack, page: n, pages: total,
+        ackRe: new RegExp(`^\\W*memory\\s+${n}\\s+of\\s+${total}\\s+read\\W*$`, "i"),
+      };
+    });
+  }
+  function startupFeedbackStages(memoryStages,readyPrompt) {
+    const ordinary=[...memoryStages,...(P.startupFeedbackMessages?P.startupFeedbackMessages(readyPrompt):[{text:readyPrompt}])];
+    // Normal ChatGPT can read a small complete memory set with the command list,
+    // avoiding a separate model round trip for each memory acknowledgement.
+    if(P.id!=="chatgpt" || !memoryStages.length || memoryStages.some(stage=>!stage.referenceText))return ordinary;
+    const combined=readyPrompt+"\n\n"+memoryStages.map(stage=>stage.referenceText).join("\n\n")+'\n\nRead all the memory above before acknowledging startup. Reply with exactly "PlazCode is ready." and nothing else.';
+    if(combined.length>Math.min(30000,inputBudget()-1000) || combined.split("\n").length>220)return ordinary;
+    diag("start.memoryCombined",{pages:memoryStages.length,chars:combined.length});
+    return [{text:combined}];
+  }
   function startupConnectionError(live, requireTransport=false) {
     if(!live?.ok || live.bridge_reachable!==true)return live?.error || "PlazCode could not reach the running app. Check the app and its browser connection, then try Start again.";
     if(live.profile_required)return "Open PlazCode and choose a signed-in profile or Guest before starting the agent.";

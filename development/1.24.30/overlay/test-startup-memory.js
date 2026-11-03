@@ -6,7 +6,7 @@
 const fs = require("fs"), vm = require("vm"), assert = require("node:assert/strict");
 const main = fs.readFileSync(__dirname + "/core/main.js", "utf8");
 const skills = new Function(fs.readFileSync(__dirname + "/core/studio_skills.js", "utf8") + ";return RobloxScriptSkills;")();
-const from = main.indexOf("  async function readProjectMemoryText(budget) {"), to = main.indexOf("  async function runImportedRobloxTool(name, args) {");
+const from = main.indexOf("  async function readProjectMemoryText(budget) {"), to = main.indexOf("  function startupConnectionError(", from);
 assert(from > 0 && to > from, "startup memory functions found");
 
 function sandbox({ engine = "roblox", vaultPages = ["=== 01 About You/Profile.md ===\nLikes low poly.\n\n[read_all: last page.]"], studio = "--- ServerStorage.RobloxScript.Memory (ModuleScript, 9 lines) ---\nreturn [==[\n# Project memory\n]==]\n[read_scripts: all 1 scripts shown; this was the last page.]", active = true } = {}) {

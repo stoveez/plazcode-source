@@ -4,6 +4,8 @@ updated: 2026-11-02
 ---
 # Live startup readiness and ChatGPT results
 
+**Superseded checkpoint:** source e1236e0 had an actual startup-helper scope fault missed by extracted-function tests. Build 41574442126 was cancelled before delivery. All startup memory/stage helpers are now in the shared startup scope, guarded by an AST owner check and whole-core native browser regressions. Fresh full CI is required; see [build record](test-build-1.24.30-followup-2026-11-02.md).
+
 ## Reports and evidence
 The app-needed popup says only "unknown message" even when PlazCode is open; connection later recovers. In current source this exact error came from the extension worker's default unrecognized-request branch, and the sealed-text loader displayed it under the inaccurate app-needed title. The matching request exists in current worker source, so an older/mixed loaded worker is plausible; the affected PC's exact loaded-copy cause is not established. It is not proof of a Roblox MCP outage.
 

@@ -7,6 +7,7 @@ const {pageFor} = require('./test-clickup-browser.cjs');
 
 async function run(page, assignAfterMs) {
   return page.evaluate(async (assignAfterMs) => {
+    const banners=[],banner=fixture.ui.banner;fixture.ui.banner=(...args)=>{banners.push(args);return banner.apply(fixture.ui,args);};
     window.__key = ''; provider.conversationKey = () => window.__key;
     // The AI answers slowly, and the site assigns the chat its address while the
     // reply is still on its way (Vani: about a second after the send).
@@ -20,7 +21,7 @@ async function run(page, assignAfterMs) {
     const result = await fixture.startSession();
     await new Promise((r) => setTimeout(r, 800)); // let the page's sweep redraw the chips
     const chips = [...document.querySelectorAll('.rs-chip')].map((c) => c.className);
-    return {started: fixture.A.started, starting: fixture.A.starting, ready: !!(result && result.ready), key: window.__key, chips};
+    return {started: fixture.A.started, starting: fixture.A.starting, ready: !!(result && result.ready), key: window.__key, chips, banners};
   }, assignAfterMs);
 }
 
