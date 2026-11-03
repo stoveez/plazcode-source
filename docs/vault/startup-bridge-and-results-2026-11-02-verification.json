@@ -1,0 +1,88 @@
+{
+  "updated": "2026-11-02",
+  "timezone": "America/Chicago",
+  "branch": "claude/plazcode-dev",
+  "product_source_commit": "e7615099c3eedd6bbfd06bf4cd764eebf1e7a445",
+  "source_sha256": {
+    "core/main.js": "946a1b2f72fa4d89f898e1e37f6a09e466bab41f3d2aa802df63ed4e9de934bd",
+    "background.js": "74a71563ebfd44b2f15d52b963f9b6158892b9b537c2c6e7da24e7641f6c8421",
+    "core/text-pack.js": "b1e6a1d6af6708ccbbfbc3b925cf6a14455501902c3a91e1e5b32cd428b384ee",
+    "providers/chatgpt.js": "4b544eeff4f23059a5d222af183eedf9f654332793df1ab1de13df98f6db692c"
+  },
+  "before_fix": {
+    "baseline": "04f03f6",
+    "forced_catalogue_refresh_kept_stale_tool_after_disconnection": true,
+    "instruction_loader_exposed_raw_unknown_message_without_specific_title": true,
+    "compact_completed_assistant_row_not_recognized": true
+  },
+  "focused": {
+    "status": "passed",
+    "tests": [
+      "test-startup-live-connection.js",
+      "test-bridge-live-startup.js",
+      "test-text-pack-recovery.js",
+      "test-chatgpt-startup-memory-combined.js",
+      "test-chatgpt-compact-completion.js",
+      "test-retained-result-protocol.js",
+      "test-desktop-regression.js",
+      "test-provider-preservation.js",
+      "test-provider-dom-guards.js",
+      "test-bridge-diagnostics.js",
+      "test-v1249-recovery.js",
+      "test-mimo-startup.js",
+      "test-vani-startup.js",
+      "test-session-continuity.js",
+      "test-notion-start-explains.js",
+      "test-notion-startup-recovery.js",
+      "test-fast-tool-settle.js",
+      "test-input-budget-usage.js"
+    ],
+    "preserved_provider_function_bodies": 973,
+    "guarded_dom_reads": 588
+  },
+  "sealed_text": {
+    "status": "passed",
+    "script": "development/1.24.30/test-text-pack.mjs",
+    "identical_prompt_help_skill_outputs": 1066,
+    "moved_texts": 44,
+    "sealed_bytes": 56819
+  },
+  "full_javascript": {
+    "status": "running",
+    "local_log": "/workspace/plazcode-startup-connection/javascript-full.log",
+    "summary_log": "/workspace/plazcode-startup-connection/javascript-summary.log",
+    "normal_runner_tests": 249,
+    "exclusions": [
+      "test-v115.js",
+      "test-bridges.js",
+      "test-design-visual.js"
+    ],
+    "first_sweep_known_failure": {
+      "test": "test-1.24.21-stall-recovery.js",
+      "cause": "isolated VM did not load the new real retainedResultCorrection dependency",
+      "product_source_unchanged": true,
+      "targeted_updated_fixture": "passed",
+      "checks_passed": 9,
+      "log": "/workspace/plazcode-startup-connection/stall-fixture-rerun.log"
+    }
+  },
+  "guest_preview_reshown": {
+    "file_name": "PlazCode-create-profile-guest.png",
+    "mime_type": "image/png",
+    "bytes": 849416,
+    "google_drive": "https://drive.google.com/file/d/1SsFG3USw4BJMdpLtmX2zppbbhmDBERJV/view?usp=drivesdk",
+    "metadata_readback": true,
+    "actual_native_screenshot": true,
+    "displayed_inline": true
+  },
+  "native_changes": false,
+  "test_build_created": false,
+  "stable_publication": false,
+  "existing_guest_test_builds_include_these_fixes": false,
+  "limitations": [
+    "Original affected PC loaded-extension mismatch cause remains unconfirmed",
+    "No live affected ChatGPT account or live startup time measurement",
+    "No new signed package for these fixes yet",
+    "PC vault folder not connected"
+  ]
+}

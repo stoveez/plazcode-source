@@ -69,6 +69,9 @@ async function run(replies, opts = {}) {
   };
   const aliases=main.slice(main.indexOf("  const TOOL_ALIASES ="),main.indexOf("  function arenaToolReference("));
   vm.createContext(box);
+  const retainedHelpers=main.slice(main.indexOf("  function retainedResultCorrection("),main.indexOf("  function prepareToolFeedback("));
+  vm.runInContext("const retainedToolResults=new Map();"+retainedHelpers,box);
+  if(opts.retained)vm.runInContext('retainedToolResults.set("fixture",{chat:"chat-a",engine:"local"});',box);
   vm.runInContext(aliases+main.slice(helperStart, helperEnd) + main.slice(loopStart, loopEnd) + "this.loop=agentLoop;", box);
   await Promise.race([box.loop(0), new Promise((_, rej) => setTimeout(() => rej(Error("agentLoop did not finish")), 1500))]);
   return { sent, warnings, toasts, finishes, paints, cards, ran, A: box.A };
@@ -88,6 +91,11 @@ async function run(replies, opts = {}) {
   r = await run([{ kind: "text", text: NOT_CLAIMS[0] }]);
   assert.equal(r.sent.length, 0); assert(r.finishes.includes(true));
   ok("agentLoop: unsent-command claim gets one nudge then a banner; ordinary answers are untouched");
+  r=await run([{kind:"text",text:"plazcode_result_read"},{kind:"text",text:"Finished."}],{retained:true});
+  assert.equal(r.sent.length,1);assert(r.sent[0].includes("no new command was received or executed"));assert.equal(r.ran.length,0);assert(r.finishes.includes(true));
+  r=await run([{kind:"text",text:"plazcode_result_read"},{kind:"text",text:"plazcode_result_read"}],{retained:true});
+  assert.equal(r.sent.length,1);assert(r.warnings.includes("No result-read command received"));assert(!r.finishes.includes(true));assert.equal(r.ran.length,0);
+  ok("agentLoop: exact bare result-reader name gets one scoped correction; a repeat pauses without running or replaying tools");
 
   // 2. A real command whose arguments contain a busy-looking word runs; it is not "rate limiting".
   const risky = '{"command":"grep_files","params":{"pattern":"rate limit capacity"}}';

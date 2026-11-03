@@ -194,3 +194,6 @@ Baseline CI 41364800959 runs on 2db1e5a; no duplicate active runs. Implemented r
 ### DeepSeek WIP — first frontend integration written
 - Shared native coordinator: 3 Rust tests passed. Provider/main draft uses shared leases around one actual click, requires confirmed upload/delivery, cancels queues on Stop/chat/session change, counts trusted manual sends, paces Continue, bounds busy retries and removes guarded-sender library fallback. Current draft needs new provider/integration tests and review; memory filtering not implemented yet.
 - New raw sender changes are intentional for this fix; update provider preservation exceptions only with behavioral coverage. Update protected main/deepseek pins when code settles. App replacement required for shared coordinator.
+
+## Full-suite fixture follow-up
+Full JS is running. Its one failure so far was test-1.24.21-stall-recovery missing the new retainedResultCorrection dependency in its isolated agentLoop VM. Updated it to load the ACTUAL helper and added real-loop once-only bare-reader correction/no-replay/repeat-pause checks: all 9 stall-recovery checks PASS when run from overlay against the same prepared product source. Product code unchanged from e761509. Let the rest of the suite finish; no prepare while active.

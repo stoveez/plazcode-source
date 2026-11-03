@@ -27,3 +27,6 @@ Focused actual startup boundary/cached-list, loader timeout/retry/incompatible/i
 Actual background-handler regression PASS; full JS still pending. No original live affected device/account or live ChatGPT timing measurement. No native changes, test build or stable publication. Reload updated signed extension + refresh AI tabs when packaged; existing delivered guest/signup packages from 52b9d19/41492949796 lack all newer source fixes. Source visibility owner-managed; repeat Private reminder after previous delivery. PC vault folder not connected.
 
 Guest screenshot re-shown directly in chat and through its verified Drive link after owner said they had not seen it. Selecting guest opens immediately without online login; its data remains persistent/local/isolated, no cloud sync.
+
+## Full-suite fixture follow-up
+Full JS is running. Its one failure so far was test-1.24.21-stall-recovery missing the new retainedResultCorrection dependency in its isolated agentLoop VM. Updated it to load the ACTUAL helper and added real-loop once-only bare-reader correction/no-replay/repeat-pause checks: all 9 stall-recovery checks PASS when run from overlay against the same prepared product source. Product code unchanged from e761509. Let the rest of the suite finish; no prepare while active.
