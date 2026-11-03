@@ -1,6 +1,6 @@
 # AGENTS.md - instructions for any AI working in this repo (Codex, Claude, or others)
 
-**Current work: final Blender/Ox Alpha packaging gap fixed: package.py now ships the reviewed loose installer as well as the embedded one. Product06aa8e3 unchanged. Fresh full CI next;41696570889 superseded. Local final JS51824 active, native300 and Windows installer fixtures PASS. Real signed app with entirely missing UV still pending. No new ZIP/stable publish.**
+**Current work: final combined full CI41697238170 onfd24ded RUNNING: Blender missing-UV installer/discovery/startup/scene fixes + Ox Alpha Copy fix + current loose installer packaging. Local final JS51824 active; native300 and Windows installer fixtures PASS. Require real signed app with entirely missing UV plus all final CI/package/Drive checks. No new ZIP delivered or stable publish.**
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.

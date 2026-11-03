@@ -1,58 +1,32 @@
 ---
-title: Blender first-use UV discovery and connection timeouts
+title: Blender runtime discovery, first-use installer and scene deadlines
 updated: 2026-11-03
 ---
-## 2026-11-03 — final packaging gap fixed before delivery
-The native app embeds the corrected UV installer, but package.py still inherited the old loose Setup-Mcp-Runtime.ps1 from the published baseline. It now copies the reviewed script and asserts byte equality for Windows/Mac. Prepared source equality and packager syntax/copy checks PASS; file list unchanged. Final ZIP verifier also requires the exact new script and embedded Windows marker. No further native/extension source changes after06aa8e3. Current41696570889 superseded for packaging; fresh full combined CI next. The local final JS51824 continues unchanged.
+# Report and confirmed causes
+Owner saw initialize timeout and signal is aborted without reason; clarified UV may be entirely absent. Original affected PC/OS was not available. Multiple independently reproduced paths matched these symptoms:
+- Windows discovery missed current registry PATH after installation, pip Scripts/custom UV folders and uv.exe-only installs. Runtime bundle roots incorrectly used the selected profile folder.
+- initialize had20s including cold package setup; AgentScript local_tools dropped the initialization future at6s.
+- Desktop scene request aborted at7s although native scene could wait45s in queue plus8s for Blender. Addon error responses could be shown as successful checks.
+- Actual Windows PowerShell5.1 installer fixtures41690772050 failed because inherited module paths hid Get-FileHash. This can break automatic setup when UV is absent.
+- Packager inherited the old loose installer from baseline even after native embedded copy was fixed. Corrected before delivery.
 
-Shared bar check now tests actual behaviour (PASS), not removed btn.type text. Native300PASS/2ignored, Windows PS5.1 installer fixture41693932272 PASS, actual Blender7,420ms scene preview delivered. Still require real signed Windows app with entirely missing UV, all fullCI jobs green, exact inner Win/universal Mac/source/signatures/layout/Drive readback. No new test ZIP delivered or stable release. Source Public; PC vault folder not connected.
+# Implemented
+Runtime source06aa8e3: actual installation root, current Windows registry PATH (respect explicit server PATH), normal standalone/pip folders,UV_INSTALL_DIR and uv.exe tool run fallback. Embedded installer uses built-in .NET SHA256 with the identical pinned checksum, staging/cache/mutex/cleanup guarantees. package.py now explicitly copies and byte-checks the reviewed loose installer on Windows/Mac (fd24ded); file layout unchanged.
 
-## 2026-11-03 — both source fixes verified locally; combined full build next
-Windows installer-only CI41693932272 SUCCESS under PowerShell5.1: first download/cache reuse, wrong-hash rejection/no publication/staging cleanup and successful retry. Original41690772050 reproduced missing Get-FileHash; .NET SHA256 fixed it without weakening pinned checks. Real signed app with entirely missing UV still must run on NEW package because installer is embedded.
+Cold Blender initialize120s, ordinary catalogue/scene budgets stay short. AgentScript uses detached background snapshot. Interrupted partial stdio resets before next explicit request; late complete replies remain ID-scoped. No automatic edit replay. Scene-only queue2s/native8s/desktop15s; edits retain prior queue budget. Busy probes do not interrupt edits; useful typed timeout replaces AbortError; addon errors fail the scene check.
 
-Ox Alpha default-submit Copy regression now PASS across ordinary form, raw reply, whole-chat form and nested non-form composer. Actual Send/Enter/Stop preserved, native reply actions never arm a task; code/drafts preserved.70 differential checks,970 preserved functions,325 DOM checks,pins/home-start PASS. Full local native300pass/2ignored. Final full JS and NEW combined Windows/Mac CI next. Prior green41682724896 and its undelivered WinDrive14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB are superseded for final delivery. [Combined record](blender-oxalpha-2026-11-03-verification.json).
+# Evidence
+- Local native300PASS/2ignored, including21s initialization/warm reuse, launcher discovery, cancellation,2MB backpressure/recovery,12 subprocess restart cycles,24 fragmented Unicode TCP/reconnect cycles,busy lock and addon errors.
+- Desktop virtual-clock regression reproduces old7s abort and accepts10s queued reply; real timeout/timer cleanup/repeated recovery pass.
+- Actual new native app plus Blender4.3.2 GUI and official protocol13 addon: real scene check7,420ms PASS beyond old7s cutoff. No scene edits. Preview processes cleaned up.
+- Actual screenshot343,278bytes: https://drive.google.com/file/d/1MRgfoEwvNQ4VW-uqSp_-gmJiDLk_XOzB/view?usp=drivesdk . Video1,426,335bytes: https://drive.google.com/file/d/17VJucRqRV1SLdA-x30FixUN8_01ogbvo/view?usp=drivesdk . Both metadata read back and already delivered immediately.
+- Actual Windows PS5.1 installer fixture41693932272 PASS: initial download/extraction,cache reuse without network,bad checksum rejects publication,staging cleaned,retry succeeds. Real signed app with entirely absent UV still pending final Windows package.
+- Original full local JS250PASS/1 stale shared source-text assertion; replacement actual behaviour PASS. Corrected full JS51824 running; no prepare during it/Cargo.
 
-## Additional confirmed first-use defect
-Clean Windows supplemental41690772050 failed in the existing installer fixtures: Get-FileHash was unavailable under PowerShell5.1's inherited module environment. This can prevent automatic UV setup on a machine with no UV installed. New overlay uses .NET FileStream + SHA256.ComputeHash with the same exact pinned checksum. Existing checksum-failure cleanup/cache/retry checks still required. Script is embedded in the native app; c85/41682724896 signed packages lack this latest fix and are superseded for delivery. New combined build also includes Ox Alpha Copy fix.
+# Final build and remaining gate
+Full CI41697238170 onfd24ded RUNNING: https://github.com/stoveez/plazcode-source/actions/runs/41697238170 . Includes Ox Alpha Copy fix. When Windows artifact exists, dispatch test-blender-first-use.yml on current branch with build_run41697238170 and installer_only=false. Requires actual signed app to install/execute pinned UV from empty cache/no UV on PATH and initialize real MCP tools; no scene/addon required or modified. This does not replace separate real Blender scene proof.
 
+Require all full CI jobs plus first-use test green; exact inner Windows/universal Mac ZIPs,production signatures,241 reviewed sources,installer equality/new embedded Windows marker,new scene message in both Mac slices,CRC/SHA and zero published-layout delta. Upload/read back Drive then deliver both immediately with Private reminder. [Combined record](blender-oxalpha-2026-11-03-verification.json); staging /workspace/plazcode-combined-build-41697238170.
 
-## Missing UV clarified by owner — clean Windows verification pending
-Owner now says UV may not have been installed at all. Existing native Windows fallback embeds the pinned, checksum-verified runtime installer; the app should prepare UV automatically. Added supplemental validation to run existing first-download/cache/checksum/recovery tests under Windows PowerShell5.1, then launch the exact signed Windows ZIP with fresh profile/cache and sanitized child PATH/custom server PATH. It must download and execute UV and initialize actual Blender MCP tools. No addon/scene edits; no product code changes, no need to rebuild the signed app. Supplemental workflow pending dispatch.
-
-## 2026-11-03 — Windows Blender ZIP verified/uploaded; Mac/final gate pending
-CI41682724896: Windows and browsers SUCCESS. Exact INNER Windows ZIP51,143,289 bytes, SHA25691328a6a213261223b4e6fcebded95b716dbd2a985f0c427dcd4c1910f52a751; signatures/all241 sources/new native Blender timeout marker/CRC/checksums/zero official layout delta PASS. Hosted Windows native293pass/2ignored; Defender found no threats in all three scans. DriveID14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB, name/MIME/byte readback verified. NOT delivered yet; do not upload duplicate. Actual link is in verificationJSON.
-
-Mac now builds Intel+Apple silicon, Linux builds its app after both JS passes/native checks. Require all five jobs and Mac package verification/Drive readback before immediate two-ZIP delivery + Private reminder. Current source remainsc85d1f9; no product changes. Staging `/workspace/plazcode-blender-build-41682724896`. [Verification](blender-uv-path-2026-11-03-verification.json).
-
-## 2026-11-03 — final full local JavaScript suite PASS
-Final local runner completed **250 passed, 0 failures**, exit0 on final source/test fixture. Native300PASS/2ignored and actual native+official Blender GUI7,420ms success remain valid; no product edits sincec85d1f9. Full hosted run41682724896 on152beec still running; require all five jobs green and exact package/Drive verification before new ZIP delivery. [Verification](blender-uv-path-2026-11-03-verification.json).
-
-## 2026-11-03 — full Blender follow-up build 41682724896 RUNNING
-[Current full run](https://github.com/stoveez/plazcode-source/actions/runs/41682724896), head152beec, unchanged productc85d1f9. First run41680761816 cancelled after old exact queue assertion; assertion correction passed. Local final fullJS rerun pending; native300PASS/2ignored; real native+official Blender GUI7,420ms success and immediate Drive previews verified.
-
-Require all Windows/Mac/Linux/browser/release-check jobs green; then exact inner production-signed Windows+universal Mac packages, current reviewed-source/signature/CRC/checksum/zero official layout checks and new native timeout marker in Windows and BOTH Mac slices. Staging `/workspace/plazcode-blender-build-41682724896`. Upload Drive/readback and deliver immediately with Private reminder. Source public for this build; do not change visibility or publish stable. Existing delivered41579556782 ZIPs lack Blender follow-up. [Verification](blender-uv-path-2026-11-03-verification.json).
-
-# Blender startup and scene checks
-Owner screenshot: `[blender] MCP request timed out: initialize` plus `signal is aborted without reason`. Owner clarified UV was not on PATH (initially described as missing). This is a new follow-up after delivered full CI 41579556782; those ZIPs lack this fix.
-
-## Findings before implementation
-- Windows AddonRuntime scans inherited PATH and a few default UV folders, but does not read the current Windows PATH as its Git detection already does. A UV install after PlazCode starts, or a custom/pip Scripts directory not in the inherited PATH, can be missed. It only accepts uvx.exe, even if uv.exe can run `tool run`. Runtime bundle roots incorrectly come from the active profile config folder instead of the actual installation.
-- Missing UV has an existing pinned, checksum-verified first-use installer on Windows. Blender then receives only 20 seconds for initialize, including UV package download/import and upstream addon handshake. Do not confuse an actual missing executable with a subprocess that has already started and is slow.
-- AgentScript local_tools wraps the manager refresh in a 6-second timeout that drops the initialization future. Roblox uses a detached background snapshot instead. Interrupted writes can leave request_pending set and must not reuse the stdio stream.
-- Desktop Api aborts /api/blender after 7 seconds; native get_scene_info may take 8 seconds AFTER waiting up to 45 seconds for another command. This produces the exact raw AbortError in the screenshot. Background scene checks allow 13 seconds, so align a short read-only scene queue and the desktop deadline with actual server work.
-
-## Plan
-Resolve UV from current Windows PATH and normal standalone/pip locations (respect explicit custom PATH), support uv.exe tool run, use actual installation root, retain verified automatic setup. Separate cold initialization allowance from warm requests. Use the background snapshot for AgentScript, reset only interrupted stdio, never replay edits. Bound scene-check queuing independently, allow the native reply before the desktop deadline, translate genuine timeouts accurately, and reject addon error responses as failed checks. Reproduce the old failures, then test discovery/missing runtime, slow startup, cancellation, fragmented/late/error responses, busy queues and repeated reconnects. No source ZIPs, stable publication or visibility changes.
-
-## State
-Source fix implemented. Full local Rust suite PASS: 300 tests, 2 ignored. Focused JS PASS, and old desktop code reproduced premature AbortError in the new test. Full JS, actual native-app UI and hosted Windows/Mac checks next. Work only claude/plazcode-dev, no helper agents. Repo still Public after previous delivery; owner reminded to restore Private. PC vault folder not connected.
-
-## Implemented and checked locally
-Windows runtime roots use the actual install folder, current registry PATH (unless a custom PATH was configured), normal standalone/pip Scripts directories and UV_INSTALL_DIR. uv.exe can run `tool run` when uvx.exe is absent; pinned/checksum-verified first-use setup is retained. Cold initialize gets 120 seconds while ordinary Blender catalogue/scene deadlines stay short. AgentScript uses detached addon_snapshot instead of dropping setup at 6 seconds. Cancelled/partial stdio requests force clean recovery before another call; fully written late replies remain scoped by request ID, and edits are never retried automatically.
-
-Scene probes queue at most 2 seconds behind work, then keep their existing 8-second scene budget. Desktop allows 15 seconds and gives a typed, useful timeout; background allows 12 seconds. Running edits retain their existing queue and execution budgets. An addon error response no longer passes the scene check. Full local native tests exercise 21-second startup, missing/out-of-PATH launchers, partial writes, cancellation, 12 subprocess restarts, 24 TCP disconnect/fragmented Unicode cycles, busy probe and addon errors. Actual affected Windows PC remains untested. [Verification](blender-uv-path-2026-11-03-verification.json).
-
-## 2026-11-03 — real native app + official Blender GUI check PASS; fixture correction
-Actual updated native PlazCode debug app, normal Blender **4.3.2 GUI** and official protocol13 addon extracted from verified pinned mcp-for-blender2.1.9 wheel. Deliberately delayed Blender's main thread7.4s; actual desktop scene request succeeded in **7,420ms**, beyond the old7s abort, with real scene data, no replay and no browser exceptions. No mocked desktop HTML or mocked API replies. [Screenshot](https://drive.google.com/file/d/1MRgfoEwvNQ4VW-uqSp_-gmJiDLk_XOzB/view?usp=drivesdk), [video](https://drive.google.com/file/d/17VJucRqRV1SLdA-x30FixUN8_01ogbvo/view?usp=drivesdk) delivered immediately; Drive metadata/343,278B PNG and1,426,335B WebM verified. Isolated test workspace; no owner data or existing Blender scene changed. Not the original affected Windows PC.
-
-Full local JS sweep:249 pass, one obsolete exact-code assertion in test-1.24.12-fixes.js expected45s queue for all commands. Updated it to retain45s for edits and verify2s for scene probes; focused rerun PASS. No product changes from **c85d1f9**. CI41680761816 cancelled/superseded; replacement full CI plus final local JS rerun next. Native300PASS/2ignored unchanged. [Details](blender-uv-path-2026-11-03.md).
+# Superseded and limits
+41682724896/c85 was all green but lacks latest installer/Ox Alpha; its undelivered Windows Drive14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB is not final.41695245836 hit the stale shared test;41696570889 lacks final loose-installer packaging. No new ZIP delivered. Original affected PC remains untested; do not promise every possible Blender/network failure is eliminated. Full app folder replacement required, then extension reload/tab refresh. Source Public only for build, no visibility changes/source ZIPs/stable publishing. Repo vault current; PC folder not connected.
