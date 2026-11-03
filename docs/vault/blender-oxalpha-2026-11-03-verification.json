@@ -1,7 +1,7 @@
 {
   "date": "2026-11-03",
   "branch": "claude/plazcode-dev",
-  "status": "fresh_ci_needed_for_mac_layout_correction",
+  "status": "final_corrected_layout_full_ci_running",
   "blender": {
     "earlier_runtime_fixes": "c85d1f96da6901fa97226177f778d60bcd0865d7",
     "new_confirmed_first_use_failure": {
@@ -82,9 +82,9 @@
     "Setup-Mcp-Runtime.ps1": "bce5e2d0e833c203972894b94fb262b0520d62f84fbe5ddc0d00fd11fdee2911",
     "providers/oxalpha.js": "7a1a3ac91bb12c09e4b464e399bedb542f8193f07ef0093ce8737bf76976460a"
   },
-  "run_id": 41697238170,
-  "run_url": "https://github.com/stoveez/plazcode-source/actions/runs/41697238170",
-  "head_sha": "fd24ded7eb8cd43e87cf06e50470817312f7f3d3",
+  "run_id": 41703669996,
+  "run_url": "https://github.com/stoveez/plazcode-source/actions/runs/41703669996",
+  "head_sha": "d3a88c23aaf8da331153cd98cb3dfec7c42896ba",
   "product_source_commit": "06aa8e329c44eb5db28a52dbba50da90814af487",
   "fixture_correction": "actual bar Send/Stop/draft behaviour for Vani, Freebuff, Ox Alpha and UseAI PASS",
   "test_source_commit": "8f276c08b850c3ea3b2d82af0690c4d6bb475aa4",
@@ -104,7 +104,7 @@
     }
   ],
   "packaging_fix": "Copy current Setup-Mcp-Runtime.ps1 and assert byte equality for Windows/Mac; existing file layout unchanged",
-  "packaging_source_commit": "fd24ded7eb8cd43e87cf06e50470817312f7f3d3",
+  "packaging_source_commit": "d3a88c23aaf8da331153cd98cb3dfec7c42896ba",
   "all_jobs_41697238170": "success",
   "mac_layout_rejection": {
     "added": [

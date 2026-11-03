@@ -1,6 +1,6 @@
 # AGENTS.md - instructions for any AI working in this repo (Codex, Claude, or others)
 
-**Current work: all41697238170 CI + actual signed missing-UV Windows41701224201 PASS (UV0.12.21,9 tools). Mac exact-layout check found one extra Windows installer file; packager corrected to Windows-only with explicit Mac absence guard. Fresh fullCI/artifacts next;251JS/300native PASS, product06aa8e3 unchanged. No ZIP delivered/stable publish.**
+**Current work: final corrected-layout fullCI41703669996 ond3a88c2 RUNNING. Previous41697238170 allCI PASS; actual signed missing-UV Windows41701224201 PASS (UV0.12.21,9 tools). Final Mac layout caught extra Windows-only script; corrected Windows-only copy + explicit Mac absence guard.251JS/300native PASS, product06aa8e3 unchanged. No new ZIP delivered/stable publish.**
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.

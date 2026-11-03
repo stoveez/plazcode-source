@@ -2,10 +2,10 @@
 title: Ox Alpha Copy incorrectly starts a new agent loop
 updated: 2026-11-03
 ---
-## 2026-11-03 — all behaviour gates PASS; Mac layout correction requires fresh package
+## 2026-11-03 — final corrected-layout fullCI41703669996 RUNNING
 FullCI41697238170 ALL GREEN onfd24ded, all four platform/browser jobs plus release-check. Supplemental real signed Windows app41701224201 ALL GREEN: from empty cache/no UV on PATH it installed and executed pinned UV0.12.21 and initialized9 real Blender MCP tools; no scene edited. Exact Windows ZIP verified (source241/signatures/CRC/SHA/layout); Drive upload/readback verified but NOT delivered.
 
-Final Mac layout comparison caught one extra Windows-only Setup-Mcp-Runtime.ps1 introduced by the packager change. Corrected copy/assert to Windows only; explicit Mac absence assertion prevents recurrence. Both official platform layouts checked. No native/extension source changes after06aa8e3; local251JS/300native remain PASS. Need fresh fullCI/artifacts from corrected packager, then final verification/Drive delivery.41697238170 and Windows Drive1ELBbenNuK6iLwAS-6byOAOeyhNwKMT11 superseded for final delivery; do not link as final. No new ZIP delivered/publish/visibility change. PC vault not connected.
+Final Mac layout comparison caught one extra Windows-only Setup-Mcp-Runtime.ps1 introduced by the packager change. Corrected copy/assert to Windows only; explicit Mac absence assertion prevents recurrence. Both official platform layouts checked. No native/extension source changes after06aa8e3; local251JS/300native remain PASS. Final corrected-layout fullCI41703669996 ond3a88c2 RUNNING: https://github.com/stoveez/plazcode-source/actions/runs/41703669996 . New staging /workspace/plazcode-combined-build-41703669996; require new native/package/source/zero-layout checks and Drive delivery.41697238170 and Windows Drive1ELBbenNuK6iLwAS-6byOAOeyhNwKMT11 superseded for final delivery; do not link as final. No new ZIP delivered/publish/visibility change. PC vault not connected.
 
 # Cause
 The owner recording shows a finished chat. Copying its output opens Agent is working without a new send. Actual provider regression reproduced it: a reply/code Copy button with no type has browser type=submit. The global click hook accepted every submit button and called onUserMessage. Core then scheduled an agent loop waiting for a reply Copy never requested. Send selection also searched globally; Copy/Copied labels polluted assistant output and streaming detection.
