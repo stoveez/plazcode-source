@@ -1,7 +1,7 @@
 {
   "date": "2026-11-03",
   "branch": "claude/plazcode-dev",
-  "status": "all_local_and_real_app_checks_passed_hosted_build_running",
+  "status": "superseded_blender_only_run",
   "original_report": "MCP initialize timeout and desktop AbortError; owner confirmed UV was not on PATH",
   "old_desktop_reproduced": {
     "source_commit": "b8070ab",
@@ -99,7 +99,7 @@
     }
   },
   "superseded_run_id": 41680761816,
-  "replacement_run": "in_progress",
+  "replacement_run": "superseded; current combined run41697238170",
   "source_sha256": {
     "agent/src/main.rs": "8aadf52054f1e90f342da9750098f7f748cfe00eeea7d9ac991e4b18992da6d1",
     "agent/src/mcp_addons.rs": "3efec9cf76653421ea87d79d1a40e36dfd959b2c2fb55dfb26ebc04f92ed5b18",
@@ -160,5 +160,7 @@
     "macos": "building both architectures",
     "linux": "building native executable",
     "release-check": "pending"
-  }
+  },
+  "superseded_for_final_delivery": true,
+  "canonical_record": "blender-oxalpha-2026-11-03-verification.json"
 }

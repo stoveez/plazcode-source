@@ -51,8 +51,11 @@
     "wall_seconds": 23.88
   },
   "local_full_javascript": {
-    "original": "250 passed, 1 stale source assertion; actual-behaviour replacement PASS",
-    "corrected_full": "running terminal51824"
+    "passed": 251,
+    "failures": 0,
+    "exit_code": 0,
+    "log_sha256": "e6485470f18a4a3bbbf07ce22fd6e982813ff5a340c54d7e05c037c90604ffb4",
+    "superseded_stale_assertion": "Replaced text match with actual provider bar Send/Stop/draft behaviour"
   },
   "prior_blender_only_run": {
     "id": 41682724896,

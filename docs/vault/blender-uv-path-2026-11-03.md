@@ -21,7 +21,7 @@ Cold Blender initialize120s, ordinary catalogue/scene budgets stay short. AgentS
 - Actual new native app plus Blender4.3.2 GUI and official protocol13 addon: real scene check7,420ms PASS beyond old7s cutoff. No scene edits. Preview processes cleaned up.
 - Actual screenshot343,278bytes: https://drive.google.com/file/d/1MRgfoEwvNQ4VW-uqSp_-gmJiDLk_XOzB/view?usp=drivesdk . Video1,426,335bytes: https://drive.google.com/file/d/17VJucRqRV1SLdA-x30FixUN8_01ogbvo/view?usp=drivesdk . Both metadata read back and already delivered immediately.
 - Actual Windows PS5.1 installer fixture41693932272 PASS: initial download/extraction,cache reuse without network,bad checksum rejects publication,staging cleaned,retry succeeds. Real signed app with entirely absent UV still pending final Windows package.
-- Original full local JS250PASS/1 stale shared source-text assertion; replacement actual behaviour PASS. Corrected full JS51824 running; no prepare during it/Cargo.
+- Original full local JS250PASS/1 stale shared source-text assertion; replacement actual behaviour PASS. Corrected full JS251PASS/0failures, exit0.
 
 # Final build and remaining gate
 Full CI41697238170 onfd24ded RUNNING: https://github.com/stoveez/plazcode-source/actions/runs/41697238170 . Includes Ox Alpha Copy fix. When Windows artifact exists, dispatch test-blender-first-use.yml on current branch with build_run41697238170 and installer_only=false. Requires actual signed app to install/execute pinned UV from empty cache/no UV on PATH and initialize real MCP tools; no scene/addon required or modified. This does not replace separate real Blender scene proof.
