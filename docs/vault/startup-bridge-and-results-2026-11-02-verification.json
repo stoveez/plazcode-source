@@ -105,6 +105,6 @@
     "PC vault folder not connected"
   ],
   "base_product_source_commit": "e7615099c3eedd6bbfd06bf4cd764eebf1e7a445",
-  "product_source_commit": null,
+  "product_source_commit": "e1236e0a89e5a125f42add35b16da100c7908f70",
   "final_targeted_batch_exit_code": 0
 }
