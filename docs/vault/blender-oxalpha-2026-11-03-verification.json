@@ -1,7 +1,7 @@
 {
   "date": "2026-11-03",
   "branch": "claude/plazcode-dev",
-  "status": "full_combined_ci_running",
+  "status": "fresh_full_ci_needed_after_packager_loose_installer_fix",
   "blender": {
     "earlier_runtime_fixes": "c85d1f96da6901fa97226177f778d60bcd0865d7",
     "new_confirmed_first_use_failure": {
@@ -50,7 +50,10 @@
     "ignored": 2,
     "wall_seconds": 23.88
   },
-  "local_full_javascript": "pending",
+  "local_full_javascript": {
+    "original": "250 passed, 1 stale source assertion; actual-behaviour replacement PASS",
+    "corrected_full": "running terminal51824"
+  },
   "prior_blender_only_run": {
     "id": 41682724896,
     "conclusion": "success",
@@ -70,10 +73,17 @@
   "run_url": "https://github.com/stoveez/plazcode-source/actions/runs/41696570889",
   "head_sha": "8f276c08b850c3ea3b2d82af0690c4d6bb475aa4",
   "product_source_commit": "06aa8e329c44eb5db28a52dbba50da90814af487",
-  "superseded_run": {
-    "id": 41695245836,
-    "reason": "test-vani-provider.js required removed btn.type source expression; behaviour test now PASS; product unchanged"
-  },
   "fixture_correction": "actual bar Send/Stop/draft behaviour for Vani, Freebuff, Ox Alpha and UseAI PASS",
-  "test_source_commit": "8f276c08b850c3ea3b2d82af0690c4d6bb475aa4"
+  "test_source_commit": "8f276c08b850c3ea3b2d82af0690c4d6bb475aa4",
+  "superseded_runs": [
+    {
+      "id": 41695245836,
+      "reason": "test-vani-provider.js required removed btn.type source expression; behaviour test now PASS; product unchanged"
+    },
+    {
+      "id": 41696570889,
+      "reason": "Native installer fixed; loose installer still inherited baseline until final packager copy fix"
+    }
+  ],
+  "packaging_fix": "Copy current Setup-Mcp-Runtime.ps1 and assert byte equality for Windows/Mac; existing file layout unchanged"
 }
