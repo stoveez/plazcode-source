@@ -1,7 +1,7 @@
 {
   "date": "2026-11-03",
   "branch": "claude/plazcode-dev",
-  "status": "focused_checks_passed_full_combined_ci_next",
+  "status": "full_combined_ci_running",
   "blender": {
     "earlier_runtime_fixes": "c85d1f96da6901fa97226177f778d60bcd0865d7",
     "new_confirmed_first_use_failure": {
@@ -65,5 +65,9 @@
     "agent/src/desktop.html": "9056e0c7dccff5f9d63571196926f56a17c40e9b702a667e29261e4ba1d86de2",
     "Setup-Mcp-Runtime.ps1": "bce5e2d0e833c203972894b94fb262b0520d62f84fbe5ddc0d00fd11fdee2911",
     "providers/oxalpha.js": "7a1a3ac91bb12c09e4b464e399bedb542f8193f07ef0093ce8737bf76976460a"
-  }
+  },
+  "run_id": 41695245836,
+  "run_url": "https://github.com/stoveez/plazcode-source/actions/runs/41695245836",
+  "head_sha": "06aa8e329c44eb5db28a52dbba50da90814af487",
+  "product_source_commit": "06aa8e329c44eb5db28a52dbba50da90814af487"
 }
