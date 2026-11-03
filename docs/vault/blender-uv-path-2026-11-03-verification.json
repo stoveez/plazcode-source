@@ -1,7 +1,7 @@
 {
   "date": "2026-11-03",
   "branch": "claude/plazcode-dev",
-  "status": "full_ci_running",
+  "status": "all_local_and_real_app_checks_passed_hosted_build_running",
   "original_report": "MCP initialize timeout and desktop AbortError; owner confirmed UV was not on PATH",
   "old_desktop_reproduced": {
     "source_commit": "b8070ab",
@@ -91,7 +91,12 @@
       "test-1.24.12-fixes.js: old exact lock syntax"
     ],
     "corrected_fixture_rerun": "passed",
-    "final_full_rerun": "pending"
+    "final_full_rerun": {
+      "status": "passed",
+      "tests": 250,
+      "failures": 0,
+      "exit_code": 0
+    }
   },
   "superseded_run_id": 41680761816,
   "replacement_run": "in_progress",

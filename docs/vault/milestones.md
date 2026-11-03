@@ -3,6 +3,9 @@ title: Milestones (finished work)
 
 updated: 2026-11-02
 ---
+## 2026-11-03 — final full local JavaScript suite PASS
+Final local runner completed **250 passed, 0 failures**, exit0 on final source/test fixture. Native300PASS/2ignored and actual native+official Blender GUI7,420ms success remain valid; no product edits sincec85d1f9. Full hosted run41682724896 on152beec still running; require all five jobs green and exact package/Drive verification before new ZIP delivery. [Verification](blender-uv-path-2026-11-03-verification.json).
+
 ## 2026-11-03 — real native app + official Blender GUI check PASS; fixture correction
 Actual updated native PlazCode debug app, normal Blender **4.3.2 GUI** and official protocol13 addon extracted from verified pinned mcp-for-blender2.1.9 wheel. Deliberately delayed Blender's main thread7.4s; actual desktop scene request succeeded in **7,420ms**, beyond the old7s abort, with real scene data, no replay and no browser exceptions. No mocked desktop HTML or mocked API replies. [Screenshot](https://drive.google.com/file/d/1MRgfoEwvNQ4VW-uqSp_-gmJiDLk_XOzB/view?usp=drivesdk), [video](https://drive.google.com/file/d/17VJucRqRV1SLdA-x30FixUN8_01ogbvo/view?usp=drivesdk) delivered immediately; Drive metadata/343,278B PNG and1,426,335B WebM verified. Isolated test workspace; no owner data or existing Blender scene changed. Not the original affected Windows PC.
 

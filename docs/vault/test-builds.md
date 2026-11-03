@@ -3,6 +3,9 @@ title: Test builds and the public-then-private plan
 
 updated: 2026-11-02
 ---
+## 2026-11-03 — final full local JavaScript suite PASS
+Final local runner completed **250 passed, 0 failures**, exit0 on final source/test fixture. Native300PASS/2ignored and actual native+official Blender GUI7,420ms success remain valid; no product edits sincec85d1f9. Full hosted run41682724896 on152beec still running; require all five jobs green and exact package/Drive verification before new ZIP delivery. [Verification](blender-uv-path-2026-11-03-verification.json).
+
 ## 2026-11-03 — full Blender follow-up build 41682724896 RUNNING
 [Current full run](https://github.com/stoveez/plazcode-source/actions/runs/41682724896), head152beec, unchanged productc85d1f9. First run41680761816 cancelled after old exact queue assertion; assertion correction passed. Local final fullJS rerun pending; native300PASS/2ignored; real native+official Blender GUI7,420ms success and immediate Drive previews verified.
 
