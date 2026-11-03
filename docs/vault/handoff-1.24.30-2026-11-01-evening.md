@@ -1,3 +1,8 @@
+## 2026-11-03 — Blender UV/PATH and deadline source fix; local checks PASS
+Implemented discovery from current Windows PATH/standalone/pip directories, uv.exe fallback, correct install root, retained verified first-use setup. Cold initialization allowed to complete in background; AgentScript no longer cancels it at 6s. Interrupted/partial stdio stream recovered without command replay. Scene probes queue2s + run8s; desktop15s with useful typed error, no false success for addon errors.
+
+Old desktop reproduces premature AbortError; new test passes. Full local Rust **300 passed, 2 ignored**, including real delayed child/12 restarts/24 TCP cycles and busy probes. Focused Blender/connector/desktop JS pass. Full JS, actual native-app preview and hosted Windows/Mac tests still pending; earlier delivered ZIPs lack this new fix. [Details](blender-uv-path-2026-11-03.md). No stable publication or visibility changes; source still Public after previous delivery.
+
 ## 2026-11-03 — Blender UV/PATH and timeout follow-up ACTIVE
 Owner reports initialize timeout plus raw aborted signal; clarified UV was not on PATH. Analysis found stale Windows runtime search, 20s cold initialization, AgentScript 6s refresh cancellation and desktop7s vs native8s+queue45s. [Diagnosis and plan](blender-uv-path-2026-11-03.md). Implement and reproduce with actual process/socket/browser tests; no fix claimed yet. Existing delivered follow-up ZIPs lack this new work. No stable publication/visibility changes.
 

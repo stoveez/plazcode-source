@@ -2412,8 +2412,9 @@ impl Drop for InFlight<'_> {
 /// slow add-on start never delays the file tools.
 async fn local_tools(state: &AppState) -> Vec<serde_json::Value> {
     let mut tools = workspace::catalog();
-    let addons = async { state.addons.lock().await.list_tools().await };
-    if let Ok((extra, _)) = tokio::time::timeout(Duration::from_secs(6), addons).await { tools.extend(extra); }
+    // Like Roblox, leave cold runtime setup running after this caller stops
+    // waiting. Dropping list_tools here used to interrupt initialize at 6 s.
+    tools.extend(addon_snapshot(state).await);
     tools
 }
 async fn roblox_tools(state: &AppState) -> anyhow::Result<Vec<serde_json::Value>> {

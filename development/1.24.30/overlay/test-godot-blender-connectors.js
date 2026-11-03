@@ -9,6 +9,11 @@ assert(rust.includes('pub fn find_godot()') && rust.includes('GODOT_PATH'), 'God
 assert(rust.includes('"--from", "mcp-for-blender==2.1.9", "mcp-for-blender"'), 'Blender server pinned');
 assert(!/args: &\["blender-mcp"\]/.test(rust), 'no unpinned Blender server left in the catalog');
 assert(rust.includes('fn upgrade_blender_spec(') && rust.includes('upgrade_blender_spec(&mut cfg);'), 'old Blender installs are upgraded when the config is read');
+assert(rust.includes('roots.extend(current_windows_path_dirs());') && rust.includes('windows_uv_in(&root)'), 'Windows UV discovery checks current PATH and both launchers');
+assert(rust.includes('let app = crate::platform::installation_root();'), 'bundled runtimes are found outside profile data');
+const agent = fs.readFileSync('agent/src/main.rs', 'utf8');
+const localTools = agent.slice(agent.indexOf('async fn local_tools('), agent.indexOf('async fn roblox_tools('));
+assert(localTools.includes('addon_snapshot(state).await') && !localTools.includes('timeout('), 'AgentScript shares background addon setup instead of cancelling it at six seconds');
 assert(rust.includes('"DISABLE_TELEMETRY"'), 'Blender telemetry is turned off');
 
 const main = fs.readFileSync('core/main.js', 'utf8');

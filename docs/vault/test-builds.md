@@ -3,6 +3,11 @@ title: Test builds and the public-then-private plan
 
 updated: 2026-11-02
 ---
+## 2026-11-03 — Blender UV/PATH and deadline source fix; local checks PASS
+Implemented discovery from current Windows PATH/standalone/pip directories, uv.exe fallback, correct install root, retained verified first-use setup. Cold initialization allowed to complete in background; AgentScript no longer cancels it at 6s. Interrupted/partial stdio stream recovered without command replay. Scene probes queue2s + run8s; desktop15s with useful typed error, no false success for addon errors.
+
+Old desktop reproduces premature AbortError; new test passes. Full local Rust **300 passed, 2 ignored**, including real delayed child/12 restarts/24 TCP cycles and busy probes. Focused Blender/connector/desktop JS pass. Full JS, actual native-app preview and hosted Windows/Mac tests still pending; earlier delivered ZIPs lack this new fix. [Details](blender-uv-path-2026-11-03.md). No stable publication or visibility changes; source still Public after previous delivery.
+
 ## 2026-11-02 — full follow-up Windows/Mac test ZIPs VERIFIED and uploaded for delivery
 Full CI [41579556782](https://github.com/stoveez/plazcode-source/actions/runs/41579556782) ALL GREEN: Windows, universal Mac, Linux, browsers, final release-check. Run head **c3d60e0**; product **5870a11**. Later commits are notes only. Bootstrap intentionally skipped. Browser measurement fix preserves <=128 classifications for EVERY warm sweep, includes a fifth asynchronous pass, and rejects full-history negative control.
 

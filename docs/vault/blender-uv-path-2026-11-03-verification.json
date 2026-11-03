@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-03",
+  "branch": "claude/plazcode-dev",
+  "status": "local_native_and_focused_js_passed_full_js_and_windows_ci_pending",
+  "original_report": "MCP initialize timeout and desktop AbortError; owner confirmed UV was not on PATH",
+  "old_desktop_reproduced": {
+    "source_commit": "b8070ab",
+    "result": "fails new deadline test with premature AbortError"
+  },
+  "native": {
+    "full_suite_passed": 300,
+    "ignored": 2,
+    "wall_seconds": 23.9,
+    "coverage": [
+      "actual slow 21-second Blender initialization",
+      "missing UV vs installed outside inherited PATH; uv.exe fallback",
+      "interrupted/partial stdio write recovery without replay",
+      "12 actual child process exits and reconnects",
+      "24 real TCP disconnect/fragmented Unicode cycles",
+      "busy scene probe bounded without cancelling the edit",
+      "addon error is not a successful scene check"
+    ]
+  },
+  "focused_js": [
+    "test-blender-desktop-timeout.js",
+    "test-blender-connection.js",
+    "test-blender-command-results.js",
+    "test-godot-blender-connectors.js",
+    "test-desktop-regression.js"
+  ],
+  "live_affected_windows_pc_tested": false,
+  "new_zip_delivered": false
+}

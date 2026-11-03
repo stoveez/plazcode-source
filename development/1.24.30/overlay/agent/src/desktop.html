@@ -1216,7 +1216,10 @@ __PLAZCODE_VERSION_UI__
     Requestoptions.headers = Headersobj;
 
     var Controller = new AbortController();
-    var Timeout = window.setTimeout(function () { Controller.abort(); }, Path === "/api/desktop/profiles" ? 120000 : Path.indexOf("/api/media/convert")===0 ? 65000 : Path.indexOf("/api/templates/import")===0 ? 60000 : Path === "/api/checkpoints" ? 30000 : Path === "/api/toolkit" || Path === "/api/explorer" || Path === "/api/skills" ? 130000 : Path === "/api/desktop/update" && Options.method === "POST" ? 45000 : Path === "/api/desktop/agent" && Options.body && Options.body.includes('"media-stage"') ? 65000 : 7000);
+    var Timedout = false;
+    // A Blender scene check may queue for 2 s and wait 8 s for its response.
+    // Let that native result arrive instead of aborting the check at 7 s.
+    var Timeout = window.setTimeout(function () { Timedout = true; Controller.abort(); }, Path === "/api/desktop/profiles" ? 120000 : Path === "/api/blender" ? 15000 : Path.indexOf("/api/media/convert")===0 ? 65000 : Path.indexOf("/api/templates/import")===0 ? 60000 : Path === "/api/checkpoints" ? 30000 : Path === "/api/toolkit" || Path === "/api/explorer" || Path === "/api/skills" ? 130000 : Path === "/api/desktop/update" && Options.method === "POST" ? 45000 : Path === "/api/desktop/agent" && Options.body && Options.body.includes('"media-stage"') ? 65000 : 7000);
     Requestoptions.signal = Controller.signal;
     return fetch(Apiurl + Path, Requestoptions).then(function (Response) {
       return Response.json().catch(function (Error) {
@@ -1228,6 +1231,13 @@ __PLAZCODE_VERSION_UI__
         }
         return Body;
       });
+    }).catch(function (Failure) {
+      if (Timedout && Path === "/api/blender") {
+        var Reason = new Error("Blender's scene check did not return in time. This does not prove Blender disconnected. Wait for Blender to finish its current work, then try the scene check again.");
+        Reason.code = "REQUEST_TIMEOUT";
+        throw Reason;
+      }
+      throw Failure;
     }).finally(function () { window.clearTimeout(Timeout); });
   }
 

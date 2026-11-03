@@ -346,7 +346,8 @@ impl AddonRuntime {
         #[cfg(windows)]
         {
             let low = self.spec.command.to_ascii_lowercase();
-            let app = config_path().parent().unwrap_or_else(|| std::path::Path::new(".")).to_path_buf();
+            // Runtime files belong to the installation, not the active profile.
+            let app = crate::platform::installation_root();
             if low == "npx" || low == "uvx" {
                 let cache = std::env::var_os("LOCALAPPDATA").map(PathBuf::from)
                     .map(|base| base.join("PlazCode").join("runtimes"));
@@ -369,13 +370,36 @@ impl AddonRuntime {
                 if let Some(path) = self.inherited_path() {
                     roots.extend(std::env::split_paths(&path));
                 }
+                if !self.spec.env.contains_key("PATH") {
+                    // PlazCode may have started before UV was installed. Read
+                    // the current registry PATH without changing the app's PATH.
+                    roots.extend(current_windows_path_dirs());
+                }
+                if low == "uvx" {
+                    if let Some(path) = self.spec.env.get("UV_INSTALL_DIR").map(std::ffi::OsString::from).or_else(|| std::env::var_os("UV_INSTALL_DIR")) {
+                        roots.push(PathBuf::from(path));
+                    }
+                    for key in ["LOCALAPPDATA", "APPDATA"] {
+                        if let Some(base) = std::env::var_os(key) {
+                            let base = PathBuf::from(base);
+                            let python = if key == "LOCALAPPDATA" { base.join("Programs/Python") } else { base.join("Python") };
+                            if let Ok(entries) = std::fs::read_dir(python) {
+                                roots.extend(entries.flatten().filter(|entry| entry.file_name().to_string_lossy().starts_with("Python")).map(|entry| entry.path().join("Scripts")));
+                            }
+                        }
+                    }
+                }
                 let git = self.git_override().and_then(|found| found.ok());
                 for root in roots {
-                    let binary = root.join(if low == "npx" { "node.exe" } else { "uvx.exe" });
+                    let (binary, uv_tool_run) = if low == "uvx" {
+                        let Some(found) = windows_uv_in(&root) else { continue; };
+                        found
+                    } else { (root.join("node.exe"), false) };
                     let cli = root.join("node_modules").join("npm").join("bin").join("npx-cli.js");
                     if !binary.is_file() || (low == "npx" && !cli.is_file()) { continue; }
                     let mut cmd = Command::new(binary);
                     if low == "npx" { cmd.arg(cli); }
+                    if uv_tool_run { cmd.args(["tool", "run"]); }
                     cmd.args(&self.spec.args);
                     apply_uv_defaults(&mut cmd, &low, &self.spec.env);
                     cmd.envs(&self.spec.env);
@@ -414,6 +438,9 @@ impl AddonRuntime {
     }
 
     async fn ensure(&mut self) -> anyhow::Result<()> {
+        // A cancelled caller can leave a partial JSON write or an unfinished
+        // exchange. Never reuse that stream for a different command.
+        if self.request_pending { self.reset().await; }
         if self.initialized && self.child_alive() && self.stdin.is_some() && self.stdout.is_some() {
             return Ok(());
         }
@@ -490,7 +517,9 @@ impl AddonRuntime {
     }
 
     async fn request(&mut self, method: &str, params: serde_json::Value) -> anyhow::Result<serde_json::Value> {
-        let seconds = if self.id == "blender" && method != "tools/call" { 20 } else if self.id == "blender" && params["name"] == "get_scene_info" { 20 }
+        // initialize includes UV's first-use package setup and imports. It is
+        // background work; the short warm Blender deadline must not kill it.
+        let seconds = if method == "initialize" { 120 } else if self.id == "blender" && method != "tools/call" { 20 } else if self.id == "blender" && params["name"] == "get_scene_info" { 20 }
             else if method == "tools/call" { call_timeout_secs(&self.spec.args, &params["arguments"]) } else { 120 };
         self.request_with_timeout(method,params,std::time::Duration::from_secs(seconds)).await
     }
@@ -499,9 +528,11 @@ impl AddonRuntime {
         let line=serde_json::json!({"jsonrpc":"2.0","id":request_id,"method":method,"params":params}).to_string()+"\n";
         let deadline=tokio::time::Instant::now()+budget;
         self.request_pending=true;
+        let mut request_written=false;
         let exchange=async {
             let stdin=self.stdin.as_mut().ok_or_else(||anyhow::anyhow!("MCP stdin unavailable"))?;
             stdin.write_all(line.as_bytes()).await?;stdin.flush().await?;
+            request_written=true;
             let stdout=self.stdout.as_mut().ok_or_else(||anyhow::anyhow!("MCP stdout unavailable"))?;
             loop {
                 anyhow::ensure!(tokio::time::Instant::now() < deadline, "[{}] MCP request timed out: {method}", self.id);
@@ -513,7 +544,9 @@ impl AddonRuntime {
             }
         };
         let outcome=tokio::time::timeout_at(deadline,exchange).await.map_err(|_|anyhow::anyhow!("[{}] MCP request timed out: {method}",self.id));
-        self.request_pending=false;
+        // A read timeout can safely skip a later reply by id. A partial write
+        // cannot: its next JSON line would be glued to the previous command.
+        self.request_pending=!request_written;
         outcome?
     }
 
@@ -690,6 +723,16 @@ mod tests {
             let Ok(message) = serde_json::from_str::<serde_json::Value>(&line) else { continue; };
             let method = message["method"].as_str().unwrap_or("");
             if method == "notifications/initialized" { initialized = true; continue; }
+            if method == "initialize" {
+                if let Ok(delay) = std::env::var("PLAZCODE_TEST_INIT_DELAY_MS") {
+                    std::thread::sleep(std::time::Duration::from_millis(delay.parse().unwrap()));
+                }
+            }
+            if method == "tools/call" {
+                if let Some(delay) = message["params"]["arguments"]["fixture_delay_ms"].as_u64() {
+                    std::thread::sleep(std::time::Duration::from_millis(delay));
+                }
+            }
             let result = match method {
                 "initialize" if std::env::var("PLAZCODE_TEST_REJECT").is_ok() => {
                     println!("{}", serde_json::json!({"jsonrpc":"2.0","id":message["id"],"error":{"code":-32603,"message":"fixture initialization rejected"}}));
@@ -759,6 +802,8 @@ mod tests {
         let started=std::time::Instant::now();
         let result=runtime.request_with_timeout("tools/call",serde_json::json!({"code":"x".repeat(2*1024*1024)}),std::time::Duration::from_millis(250)).await;
         assert!(result.unwrap_err().to_string().contains("MCP request timed out"));assert!(started.elapsed()<std::time::Duration::from_secs(3));
+        assert!(runtime.request_pending, "partial writes must force stream recovery");
+        assert_eq!(runtime.list_tools().await.unwrap()[0]["name"], "echo", "the next explicit request replaces the incomplete stream");
         runtime.reset().await;assert!(!runtime.child_alive());
     }
 
@@ -783,6 +828,50 @@ mod tests {
         assert!(runtime.list_tools().await.unwrap_err().to_string().contains("fixture initialization rejected"));
         assert!(!runtime.initialized);
         assert!(runtime.list_tools().await.unwrap_err().to_string().contains("fixture initialization rejected"));
+        runtime.reset().await;
+    }
+
+    #[tokio::test]
+    async fn cold_blender_startup_can_finish_after_the_old_twenty_second_cutoff() {
+        let mut runtime = fixture(false);
+        runtime.id = "blender".into();
+        runtime.spec.env.insert("PLAZCODE_TEST_INIT_DELAY_MS".into(), "21000".into());
+        let result = tokio::time::timeout(std::time::Duration::from_secs(28), runtime.list_tools()).await;
+        assert_eq!(result.unwrap().unwrap()[0]["name"], "echo");
+        let pid = runtime.child.as_ref().unwrap().id();
+        let (text, _) = runtime.call_tool("echo", serde_json::json!({"text":"ready"})).await.unwrap();
+        assert_eq!(text, "ready");
+        assert_eq!(runtime.child.as_ref().unwrap().id(), pid, "warm calls reuse the completed setup");
+        runtime.reset().await;
+    }
+
+    #[tokio::test]
+    async fn cancelled_exchange_is_replaced_without_replaying_the_call() {
+        let mut runtime = fixture(false);
+        runtime.list_tools().await.unwrap();
+        let old_pid = runtime.child.as_ref().unwrap().id();
+        let interrupted = tokio::time::timeout(std::time::Duration::from_millis(30),
+            runtime.call_tool("echo", serde_json::json!({"text":"old", "fixture_delay_ms":2000}))).await;
+        assert!(interrupted.is_err() && runtime.request_pending);
+        let (text, _) = runtime.call_tool("echo", serde_json::json!({"text":"new"})).await.unwrap();
+        assert_eq!(text, "new", "a late reply must never become the next call's result");
+        assert_ne!(runtime.child.as_ref().unwrap().id(), old_pid);
+        assert_eq!(runtime.next_id, 3, "the replacement only initializes and runs the new call");
+        runtime.reset().await;
+    }
+
+    #[tokio::test]
+    async fn repeated_connector_exits_recover_with_current_results() {
+        let mut runtime = fixture(false);
+        for index in 0..12 {
+            runtime.list_tools().await.unwrap();
+            let expected = format!("scene-{index}");
+            let (text, _) = runtime.call_tool("echo", serde_json::json!({"text":expected})).await.unwrap();
+            assert_eq!(text, expected);
+            let child = runtime.child.as_mut().unwrap();
+            child.start_kill().unwrap();
+            tokio::time::timeout(std::time::Duration::from_secs(3), child.wait()).await.unwrap().unwrap();
+        }
         runtime.reset().await;
     }
 }
@@ -817,6 +906,30 @@ fn wants_git(id: &str, args: &[String]) -> bool {
         let arg = arg.to_ascii_lowercase();
         arg == "mcp-server-git" || arg.starts_with("mcp-server-git=") || arg.starts_with("mcp-server-git@")
     })
+}
+
+/// UV's standalone installer and Python packages may provide either launcher.
+#[cfg(any(windows, test))]
+fn windows_uv_in(root: &std::path::Path) -> Option<(PathBuf, bool)> {
+    let uvx = root.join("uvx.exe");
+    if uvx.is_file() { return Some((uvx, false)); }
+    let uv = root.join("uv.exe");
+    uv.is_file().then_some((uv, true))
+}
+
+#[cfg(windows)]
+fn current_windows_path_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    for key in [r"HKCU\Environment", r"HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment"] {
+        let mut cmd = std::process::Command::new("reg.exe");
+        cmd.args(["query", key, "/v", "Path"]).creation_flags(CREATE_NO_WINDOW);
+        if let Ok(out) = cmd.output() {
+            if let Some(value) = parse_reg_path(&String::from_utf8_lossy(&out.stdout)) {
+                dirs.extend(std::env::split_paths(&expand_env_vars(&value, |name| std::env::var(name).ok())));
+            }
+        }
+    }
+    dirs
 }
 
 /// Standard Git install locations that may be missing from a stale PATH.
@@ -857,15 +970,7 @@ fn standard_git_dirs() -> Vec<PathBuf> {
         }
         // The PATH PlazCode inherited can predate a Git install (started at sign-in
         // or relaunched by the updater). Read the current user and machine PATH.
-        for key in [r"HKCU\Environment", r"HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment"] {
-            let mut cmd = std::process::Command::new("reg.exe");
-            cmd.args(["query", key, "/v", "Path"]).creation_flags(CREATE_NO_WINDOW);
-            if let Ok(out) = cmd.output() {
-                if let Some(value) = parse_reg_path(&String::from_utf8_lossy(&out.stdout)) {
-                    dirs.extend(std::env::split_paths(&expand_env_vars(&value, |name| std::env::var(name).ok())));
-                }
-            }
-        }
+        dirs.extend(current_windows_path_dirs());
     }
     #[cfg(not(windows))]
     {
@@ -949,6 +1054,24 @@ fn find_git(path: Option<&std::ffi::OsStr>) -> Option<PathBuf> {
 #[cfg(test)]
 mod git_runtime_tests {
     use super::*;
+
+    #[test]
+    fn uv_is_discovered_without_inherited_path_and_with_only_the_uv_launcher() {
+        let dir = std::env::temp_dir().join(format!("plazcode-uv-discovery-{}", std::process::id()));
+        let stale = dir.join("old path");
+        let installed = dir.join("new Python Scripts");
+        std::fs::create_dir_all(&stale).unwrap();
+        std::fs::create_dir_all(&installed).unwrap();
+        assert!(windows_uv_in(&stale).is_none());
+        assert!(windows_uv_in(&installed).is_none(), "actually missing UV needs setup");
+        std::fs::write(installed.join("uv.exe"), b"fixture").unwrap();
+        let registry = format!("    Path    REG_EXPAND_SZ    %TEST_UV_ROOT%\n");
+        let current = expand_env_vars(&parse_reg_path(&registry).unwrap(), |key| (key == "TEST_UV_ROOT").then(|| installed.to_string_lossy().into_owned()));
+        assert_eq!(windows_uv_in(std::path::Path::new(&current)), Some((installed.join("uv.exe"), true)), "uv tool run works without an uvx shim or inherited PATH entry");
+        std::fs::write(installed.join("uvx.exe"), b"fixture").unwrap();
+        assert_eq!(windows_uv_in(&installed), Some((installed.join("uvx.exe"), false)), "the normal uvx launcher is preferred");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 
     #[test]
     fn git_server_is_detected_by_id_or_package() {
