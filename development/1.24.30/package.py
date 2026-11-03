@@ -19,8 +19,9 @@ from collect_licenses import build as collect_licenses, OUTPUT as LICENSE_OUTPUT
 collect_licenses(source/'agent/Cargo.toml', package/'runtime'/LICENSE_OUTPUT)
 for folder in ['core','providers','PlazCode-Extension']:
  shutil.copytree(source/folder,package/folder,dirs_exist_ok=True)
-for name in ['manifest.json','background.js','protection.js','popup.js','popup.html','overlay.css','ollama-page.js','launch_studio_mcp.py','launch_blender_mcp.py','SOURCE.txt','LICENSE','BRANDING-NOTICE.txt','THIRD-PARTY-NOTICES.txt','Update-PlazCode.bat','Update-PlazCode.ps1','Updater-Progress.cs','blender_ops.py','blender_once.py','blender_once.ps1','Setup-Mcp-Runtime.ps1']:
+for name in ['manifest.json','background.js','protection.js','popup.js','popup.html','overlay.css','ollama-page.js','launch_studio_mcp.py','launch_blender_mcp.py','SOURCE.txt','LICENSE','BRANDING-NOTICE.txt','THIRD-PARTY-NOTICES.txt','Update-PlazCode.bat','Update-PlazCode.ps1','Updater-Progress.cs','blender_ops.py','blender_once.py','blender_once.ps1']:
  shutil.copy2(source/name,package/name)
+if osname=='Windows':shutil.copy2(source/'Setup-Mcp-Runtime.ps1',package/'Setup-Mcp-Runtime.ps1')
 # 1.24.30 Luau checks (docs/vault/luau-validation-plan.md). Owner (2026-11-01, download size): the luau-lsp program
 # and its Roblox type list are NOT shipped; the app fetches the official luau-lsp 1.70.1 release once, on the first
 # Luau check, and keeps it only if it matches its pinned SHA-256 (agent/src/luau_check.rs), like the Engram helper.
@@ -100,8 +101,10 @@ if sums.exists():
 # The package must ship the fixed launcher, extension and Firefox copies.
 for name in ['background.js','launch_blender_mcp.py','ollama-page.js','SOURCE.txt']:
  assert (package/name).read_bytes()==(source/name).read_bytes(),name+' in the package is not the reviewed source'
-if osname!='Linux':
+if osname=='Windows':
  assert (package/'Setup-Mcp-Runtime.ps1').read_bytes()==(source/'Setup-Mcp-Runtime.ps1').read_bytes(), 'Runtime installer in the package is not the reviewed source'
+if osname=='Darwin':
+ assert not (package/'Setup-Mcp-Runtime.ps1').exists(), 'Windows-only runtime installer must not change the Mac package layout'
 assert (package/'PlazCode-Extension/background.js').read_bytes()==(source/'background.js').read_bytes()
 assert (package/'PlazCode-Extension-Firefox/background.js').read_bytes()==(source/'background.js').read_bytes()
 for line in (sums.read_text().splitlines() if sums.exists() else []):

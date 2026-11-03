@@ -1,7 +1,7 @@
 {
   "date": "2026-11-03",
   "branch": "claude/plazcode-dev",
-  "status": "full_combined_ci_running",
+  "status": "fresh_ci_needed_for_mac_layout_correction",
   "blender": {
     "earlier_runtime_fixes": "c85d1f96da6901fa97226177f778d60bcd0865d7",
     "new_confirmed_first_use_failure": {
@@ -22,7 +22,17 @@
         "retry succeeds"
       ]
     },
-    "real_signed_app_without_uv": "pending new signed Windows package",
+    "real_signed_app_without_uv": {
+      "run_id": 41701224201,
+      "head_sha": "ce585fde531981e02944690674d57f1fc14dc09f",
+      "conclusion": "success",
+      "job_id": 126144713014,
+      "uv_version": "0.12.21",
+      "initialized_blender_tools": 9,
+      "empty_runtime_cache": true,
+      "uv_absent_from_path": true,
+      "scene_edited": false
+    },
     "prior_real_native_blender_scene_check_ms": 7420
   },
   "oxalpha": {
@@ -86,8 +96,52 @@
     {
       "id": 41696570889,
       "reason": "Native installer fixed; loose installer still inherited baseline until final packager copy fix"
+    },
+    {
+      "id": 41697238170,
+      "conclusion": "success",
+      "reason": "Mac exact-layout rejected added Windows-only installer; code/tests green"
     }
   ],
   "packaging_fix": "Copy current Setup-Mcp-Runtime.ps1 and assert byte equality for Windows/Mac; existing file layout unchanged",
-  "packaging_source_commit": "fd24ded7eb8cd43e87cf06e50470817312f7f3d3"
+  "packaging_source_commit": "fd24ded7eb8cd43e87cf06e50470817312f7f3d3",
+  "all_jobs_41697238170": "success",
+  "mac_layout_rejection": {
+    "added": [
+      "PlazCode/Setup-Mcp-Runtime.ps1"
+    ],
+    "removed": [],
+    "fix": "copy reviewed installer only on Windows; explicit Mac absence guard"
+  },
+  "no_new_zip_delivered": true,
+  "prior_windows_verified_not_delivered": {
+    "platform": "windows",
+    "version": "1.24.30",
+    "channel": "release",
+    "signedFiles": 3070,
+    "reviewedSources": 241,
+    "release_variant": {
+      "schema": 1,
+      "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+      "mark": "31ff5250ca8f5bbe",
+      "layout": 2
+    },
+    "signatures": "verified",
+    "sourceProvenance": "verified",
+    "licences": "proprietary first-party and original dependency notices verified",
+    "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+    "file": "PlazCode-1.24.30-test-lean.zip",
+    "bytes": 51145860,
+    "sha256": "30451aa00911573a8e403ea854d3244e38435bb31cadd8fa323b2a0939be72b4",
+    "files": 3084,
+    "drive": {
+      "id": "1ELBbenNuK6iLwAS-6byOAOeyhNwKMT11",
+      "name": "PlazCode-1.24.30-test-lean.zip",
+      "mime_type": "application/zip",
+      "bytes": 51145860,
+      "readback_verified": true,
+      "delivered": false,
+      "superseded_for_delivery": true
+    }
+  }
 }

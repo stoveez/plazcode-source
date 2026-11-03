@@ -2,10 +2,10 @@
 title: Open work and known bugs
 updated: 2026-11-03
 ---
-## 2026-11-03 — final combined full CI41697238170 RUNNING
-The native app embeds the corrected UV installer, but package.py still inherited the old loose Setup-Mcp-Runtime.ps1 from the published baseline. It now copies the reviewed script and asserts byte equality for Windows/Mac. Prepared source equality and packager syntax/copy checks PASS; file list unchanged. Final ZIP verifier also requires the exact new script and embedded Windows marker. No further native/extension source changes after06aa8e3. Current41696570889 superseded for packaging; final full CI41697238170 onfd24ded RUNNING: https://github.com/stoveez/plazcode-source/actions/runs/41697238170 . Final local full JS251PASS/0failures, exit0.
+## 2026-11-03 — all behaviour gates PASS; Mac layout correction requires fresh package
+FullCI41697238170 ALL GREEN onfd24ded, all four platform/browser jobs plus release-check. Supplemental real signed Windows app41701224201 ALL GREEN: from empty cache/no UV on PATH it installed and executed pinned UV0.12.21 and initialized9 real Blender MCP tools; no scene edited. Exact Windows ZIP verified (source241/signatures/CRC/SHA/layout); Drive upload/readback verified but NOT delivered.
 
-Shared bar check now tests actual behaviour (PASS), not removed btn.type text. Native300PASS/2ignored, Windows PS5.1 installer fixture41693932272 PASS, actual Blender7,420ms scene preview delivered. Still require real signed Windows app with entirely missing UV, all fullCI jobs green, exact inner Win/universal Mac/source/signatures/layout/Drive readback. No new test ZIP delivered or stable release. Source Public; PC vault folder not connected.
+Final Mac layout comparison caught one extra Windows-only Setup-Mcp-Runtime.ps1 introduced by the packager change. Corrected copy/assert to Windows only; explicit Mac absence assertion prevents recurrence. Both official platform layouts checked. No native/extension source changes after06aa8e3; local251JS/300native remain PASS. Need fresh fullCI/artifacts from corrected packager, then final verification/Drive delivery.41697238170 and Windows Drive1ELBbenNuK6iLwAS-6byOAOeyhNwKMT11 superseded for final delivery; do not link as final. No new ZIP delivered/publish/visibility change. PC vault not connected.
 
 ## 2026-11-03 — both source fixes verified locally; combined full build next
 Windows installer-only CI41693932272 SUCCESS under PowerShell5.1: first download/cache reuse, wrong-hash rejection/no publication/staging cleanup and successful retry. Original41690772050 reproduced missing Get-FileHash; .NET SHA256 fixed it without weakening pinned checks. Real signed app with entirely missing UV still must run on NEW package because installer is embedded.
