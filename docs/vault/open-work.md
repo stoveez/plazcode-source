@@ -2,6 +2,11 @@
 title: Open work and known bugs
 updated: 2026-11-02
 ---
+## 2026-11-02 — Windows follow-up package verified and uploaded; Mac/gate pending
+Current full CI **41579556782**: Windows and browsers SUCCESS. Windows inner ZIP **51,141,450 bytes**, SHA256 **8ff2ed45fb482ae40e95244f1ed7835a508e76449a4a8056d850dd7625162a2f**. Production signatures/all 241 reviewed JS sources/native guest checks/SHA256SUMS/CRC/zero official layout delta PASS; Defender scan found no threats. Uploaded Drive ID **1_g8XQe3PZqNuVDITQrB9GcCjlty0Isdp**, name/MIME/exact bytes read back. NOT delivered yet; do not upload a duplicate. Record has actual link and hashes.
+
+Mac is building Intel+Apple silicon; Linux passed BOTH full JS passes and is packaging. Wait ALL jobs and final gate green, verify Mac inner ZIP identically (both CPU slices), upload/readback, immediately deliver both links + Private reminder. No stable publication/visibility changes. Local staging: `/workspace/plazcode-followup-build-41579556782`. Product still 5870a11; run head c3d60e0 (test/notes only).
+
 ## 2026-11-02 — fresh full CI 41579556782 started
 [Current full run](https://github.com/stoveez/plazcode-source/actions/runs/41579556782), head **c3d60e0**, runtime **5870a11** (only test/notes differ). Supersedes 41577920780; cancellation followed by force-cancel to release waiting capacity. Corrected performance measurement passes with five deliberate bounded sweeps; full-history negative control fails as required. All Windows/Mac/Linux/browser/release-check jobs still required; exact inner package verification and Drive delivery pending. No stable publication or visibility changes.
 

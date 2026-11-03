@@ -62,5 +62,52 @@
   "superseded_runs": [
     41574442126,
     41577920780
-  ]
+  ],
+  "platforms": {
+    "windows": {
+      "platform": "windows",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3070,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+      "file": "PlazCode-1.24.30-test-lean.zip",
+      "bytes": 51141450,
+      "sha256": "8ff2ed45fb482ae40e95244f1ed7835a508e76449a4a8056d850dd7625162a2f",
+      "files": 3084,
+      "artifact_id": 13206207469,
+      "wrapper_bytes": 51142255,
+      "wrapper_sha256": "a4c547b4ba619395f43059c866b7b5d0af2db9da5bfb8657c0b2eb3870336c95",
+      "layout_delta": {
+        "added": [],
+        "removed": []
+      },
+      "drive": {
+        "id": "1_g8XQe3PZqNuVDITQrB9GcCjlty0Isdp",
+        "title": "PlazCode-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "size": "51141450",
+        "url": "https://drive.google.com/file/d/1_g8XQe3PZqNuVDITQrB9GcCjlty0Isdp/view?usp=drivesdk"
+      },
+      "drive_readback_verified": true,
+      "delivered": false,
+      "defender": "scan completed; no threats found in this CI package"
+    }
+  },
+  "ci_progress": {
+    "windows": "success",
+    "browsers": "success",
+    "macos": "building both architectures",
+    "linux": "packaging",
+    "release_check": "pending"
+  }
 }
