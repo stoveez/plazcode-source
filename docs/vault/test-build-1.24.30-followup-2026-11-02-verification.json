@@ -4,7 +4,7 @@
   "head_sha": "c3d60e0ba33642257f6c07eaf13a0c25eb86bb2c",
   "product_source_commit": "5870a1124dcece34f1ab1129dc0a2afae5bec23d",
   "branch": "claude/plazcode-dev",
-  "status": "in_progress",
+  "status": "completed",
   "source_sha256": {
     "core/main.js": "b078b0ff41752acc2e462dd7c92abd8a938ac6259662e2094ea3550d7b549964",
     "providers/chatgpt.js": "4b544eeff4f23059a5d222af183eedf9f654332793df1ab1de13df98f6db692c",
@@ -99,15 +99,89 @@
         "url": "https://drive.google.com/file/d/1_g8XQe3PZqNuVDITQrB9GcCjlty0Isdp/view?usp=drivesdk"
       },
       "drive_readback_verified": true,
-      "delivered": false,
       "defender": "scan completed; no threats found in this CI package"
+    },
+    "macos": {
+      "platform": "macos",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3074,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+      "file": "PlazCode-macOS-1.24.30-test-lean.zip",
+      "bytes": 52926212,
+      "sha256": "42c7916784c2fbd2c4062e44a20ebf6ffb238f3b533487776b9b2c0c7da9a2cc",
+      "files": 3088,
+      "artifact_id": 13206583342,
+      "wrapper_bytes": 52927015,
+      "wrapper_sha256": "981744601cf3e3fa791f103de8cb41d56aef1a351cb1bb8be10015b980f20949",
+      "layout_delta": {
+        "added": [],
+        "removed": []
+      },
+      "drive": {
+        "id": "1tjswZxhqmpfczdjL1nSbVQFVHdak9k06",
+        "title": "PlazCode-macOS-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "size": "52926212",
+        "url": "https://drive.google.com/file/d/1tjswZxhqmpfczdjL1nSbVQFVHdak9k06/view?usp=drivesdk"
+      },
+      "drive_readback_verified": true,
+      "universal_slices": "x86_64 and aarch64; Guest UI and native isolation guard found in BOTH slices"
     }
   },
   "ci_progress": {
-    "windows": "success",
+    "native (ubuntu-latest)": "success",
+    "native (windows-latest)": "success",
     "browsers": "success",
-    "macos": "building both architectures",
-    "linux": "packaging",
-    "release_check": "pending"
-  }
+    "native (macos-latest)": "success",
+    "bootstrap-integrity": "skipped",
+    "release-check": "success"
+  },
+  "conclusion": "success",
+  "delivery_status": "verified_uploaded_for_delivery_with_this_checkpoint",
+  "ci_jobs": [
+    {
+      "id": 125731198265,
+      "name": "native (ubuntu-latest)",
+      "conclusion": "success"
+    },
+    {
+      "id": 125731198534,
+      "name": "native (windows-latest)",
+      "conclusion": "success"
+    },
+    {
+      "id": 125731198565,
+      "name": "browsers",
+      "conclusion": "success"
+    },
+    {
+      "id": 125731198707,
+      "name": "native (macos-latest)",
+      "conclusion": "success"
+    },
+    {
+      "id": 125731199627,
+      "name": "bootstrap-integrity",
+      "conclusion": "skipped"
+    },
+    {
+      "id": 125741157451,
+      "name": "release-check",
+      "conclusion": "success"
+    }
+  ],
+  "repo_visibility_at_delivery": "public",
+  "pc_vault_folder_connected": false,
+  "stable_published": false
 }
