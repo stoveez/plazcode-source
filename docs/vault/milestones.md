@@ -3,8 +3,8 @@ title: Milestones (finished work)
 
 updated: 2026-11-02
 ---
-## 2026-11-02 — cross-site Continue project source fix, focused tests PASS
-Startup-only visits no longer veto saved work; outgoing chat saves after focus loss and on pagehide, including while an archive write is pending. Same-chat offers blocked, selected-source note context only and new-project choices survive desktop recovery. Full regression pending; no new ZIP/release. [Details](continuation-cross-site-2026-11-02.md).
+## 2026-11-02 — cross-site Continue project FIXED and fully regression-tested in source
+Startup-only visits no longer veto saved work; outgoing chat saves after focus loss and on pagehide, including while an archive write is pending. Same-chat offers blocked, selected-source note context only and new-project choices survive desktop recovery. Full local JS suite PASS, **0 failures**; no new ZIP/release. [Details](continuation-cross-site-2026-11-02.md).
 
 ## 2026-11-02 — DeepSeek false startup warning FIXED and verified in source
 Final full local JavaScript suite: **0 failures** (/workspace/plazcode-deepseek-startup/javascript-final.log). Full provider Chromium/Firefox tests pass, including new URL before user row, paced Continue, trusted navigation/download distinction and Stop. Actual core reporter keeps expected owner cancellation quiet while draft/uncertain/pacing errors still warn. Existing shared request limits/leases and single-click/no-replay safeguards retained. 974 preserved function bodies, 588 guarded reads and updated pins pass. Initial full run's sole stale beacon assertion fixed, final full rerun green.

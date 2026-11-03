@@ -1,0 +1,60 @@
+{
+  "updated": "2026-11-02",
+  "branch": "claude/plazcode-dev",
+  "product_source_commit": "fc9c5ff51b52fda47379108f66bc56cb90d05c31",
+  "source_files": {
+    "development/1.24.30/overlay/core/main.js": "59be5717fc1bcced7e07b7a436a080c42dc68eb9bb96982cdb953fff2e42014e"
+  },
+  "pre_fix": {
+    "source_commit": "6434032",
+    "actual_content_script_regressions_failed": [
+      "intervening startup-only chat veto",
+      "lost-focus outgoing capture",
+      "same-chat handoff offered"
+    ],
+    "failure_count": 3,
+    "local_output": "/workspace/plazcode-continuation-followup/before.txt"
+  },
+  "focused": {
+    "status": "passed",
+    "tests": [
+      "test-continuation-cross-site.js",
+      "test-continuation-context.js",
+      "test-continuation-offer-toggle.js",
+      "test-continuation.js",
+      "test-continuation-gate.js",
+      "test-continuation-startup-messages.js",
+      "test-chat-note-wiring.js",
+      "test-desktop-regression.js"
+    ],
+    "execution": "Actual manifest content scripts for ChatGPT and Claude in JSDOM, shared extension storage; actual Continue handler in a VM. No live AI account."
+  },
+  "full_javascript": {
+    "status": "passed",
+    "local_log": "/workspace/plazcode-continuation-followup/javascript.log",
+    "command": "NODE_PATH=release-tools/node_modules PLAZCODE_TEST_BROWSER=chromium rtk test python3 release-tools/test-javascript.py",
+    "cwd": "build-src-1.24.30/PlazCode",
+    "intentional_runner_exclusions": [
+      "test-v115.js",
+      "test-bridges.js",
+      "test-design-visual.js"
+    ],
+    "failures": 0,
+    "normal_suite_test_count": 243,
+    "log_sha256": "e6485470f18a4a3bbbf07ce22fd6e982813ff5a340c54d7e05c037c90604ffb4"
+  },
+  "native_changes": false,
+  "new_test_build": false,
+  "stable_published": false,
+  "current_delivered_packages": {
+    "source_commit": "52b9d19",
+    "workflow_run": "41492949796",
+    "contain_this_fix": false,
+    "contain_later_deepseek_startup_fix": false
+  },
+  "limitations": [
+    "No live original AI site or affected device tested",
+    "No actual live-site preview through current connection",
+    "PC vault folder not connected"
+  ]
+}
