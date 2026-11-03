@@ -1,0 +1,33 @@
+name: Blender first-use runtime validation
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: Full validation run containing the signed Windows lean ZIP
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  clean-windows:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Prepare the reviewed source and existing installer checks
+        run: python development/1.24.30/prepare.py
+      - name: First download, cached reuse, failed checksum and recovery in Windows PowerShell 5.1
+        working-directory: build-src-1.24.30/PlazCode
+        run: python test-runtime-installer.py --powershell "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+      - name: Download the exact signed Windows test package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN: ${{ inputs.build_run }}
+        run: |
+          if ($env:BUILD_RUN -notmatch '^\d+$') { throw 'A numeric build run is required.' }
+          gh run download $env:BUILD_RUN --repo $env:GITHUB_REPOSITORY --name plazcode-1.24.30-Windows-test-lean --dir first-use-package
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Real packaged app with no UV installation and no UV on PATH
+        shell: pwsh
+        run: ./development/1.24.30/test-blender-first-use.ps1 -Package "$PWD/first-use-package/PlazCode-1.24.30-test-lean.zip"

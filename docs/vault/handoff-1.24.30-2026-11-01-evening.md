@@ -1,3 +1,6 @@
+## 2026-11-03 — owner clarified UV absent; supplemental real Windows test next
+Product unchanged c85d1f9; full CI41682724896 Mac is packaging, other jobs green. Before delivery require supplemental test-blender-first-use.yml: actual signed Windows app, empty runtime cache, UV absent from searched locations/PATH, automatic pinned installer + actual MCP handshake. Existing installer checksum/cache/recovery tests included. Added workflow/test only; no source ZIP/publish/visibility changes. Dispatch with build_run41682724896 after this commit, record result.
+
 ## 2026-11-03 — Windows Blender ZIP verified/uploaded; Mac/final gate pending
 CI41682724896: Windows and browsers SUCCESS. Exact INNER Windows ZIP51,143,289 bytes, SHA25691328a6a213261223b4e6fcebded95b716dbd2a985f0c427dcd4c1910f52a751; signatures/all241 sources/new native Blender timeout marker/CRC/checksums/zero official layout delta PASS. Hosted Windows native293pass/2ignored; Defender found no threats in all three scans. DriveID14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB, name/MIME/byte readback verified. NOT delivered yet; do not upload duplicate. Actual link is in verificationJSON.
 

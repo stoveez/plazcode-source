@@ -2,6 +2,10 @@
 title: Blender first-use UV discovery and connection timeouts
 updated: 2026-11-03
 ---
+
+## Missing UV clarified by owner — clean Windows verification pending
+Owner now says UV may not have been installed at all. Existing native Windows fallback embeds the pinned, checksum-verified runtime installer; the app should prepare UV automatically. Added supplemental validation to run existing first-download/cache/checksum/recovery tests under Windows PowerShell5.1, then launch the exact signed Windows ZIP with fresh profile/cache and sanitized child PATH/custom server PATH. It must download and execute UV and initialize actual Blender MCP tools. No addon/scene edits; no product code changes, no need to rebuild the signed app. Supplemental workflow pending dispatch.
+
 ## 2026-11-03 — Windows Blender ZIP verified/uploaded; Mac/final gate pending
 CI41682724896: Windows and browsers SUCCESS. Exact INNER Windows ZIP51,143,289 bytes, SHA25691328a6a213261223b4e6fcebded95b716dbd2a985f0c427dcd4c1910f52a751; signatures/all241 sources/new native Blender timeout marker/CRC/checksums/zero official layout delta PASS. Hosted Windows native293pass/2ignored; Defender found no threats in all three scans. DriveID14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB, name/MIME/byte readback verified. NOT delivered yet; do not upload duplicate. Actual link is in verificationJSON.
 
