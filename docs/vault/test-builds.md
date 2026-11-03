@@ -3,6 +3,9 @@ title: Test builds and the public-then-private plan
 
 updated: 2026-11-02
 ---
+## 2026-11-02 — owner requested fresh Windows/Mac test ZIPs
+Workspace recovered with clean branch HEAD 3292a09. Product source **e1236e0**, unchanged in overlay. Owner explicitly requested new test ZIPs containing ALL later DeepSeek startup-warning, cross-site continuation, live-readiness/instruction-loader/ChatGPT result and startup fixes, plus existing guest/signup work. Full validation next on claude/plazcode-dev; production integrity-signed complete inner Windows + universal Mac lean ZIPs, exact published layout, Drive metadata readback required. No stable publication or visibility change. Source already Public; owner was given the Public-during-build / Private-after-delivery steps again. [Build record](test-build-1.24.30-followup-2026-11-02.md).
+
 ## 2026-11-02 — startup/bridge and ChatGPT fixes VERIFIED in source
 249 local checks covered, **0 unresolved failures**: full sweep passed 246; three isolated VM tests missing the new helper were corrected and passed separately. Final fresh prepare + all three fixtures/protocol/learning/live-health/pins batch PASS (exit 0). Final product refinement only marks the correction as internal System note, excluded from user requests/learning; no second full sweep claimed. Sealed text: 1,066 identical outputs; 973 provider bodies, 588 guarded reads preserved. [Details](startup-bridge-and-results-2026-11-02.md), [verification](startup-bridge-and-results-2026-11-02-verification.json).
 
