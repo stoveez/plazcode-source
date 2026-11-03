@@ -3,6 +3,11 @@ title: Test builds and the public-then-private plan
 
 updated: 2026-11-02
 ---
+## 2026-11-02 — replacement full CI 41577920780 RUNNING
+[Current run](https://github.com/stoveez/plazcode-source/actions/runs/41577920780), final runtime/head **5870a11**. All local whole-core Chromium/Firefox startup/refusal/Stop/multipart and exact retained-result paging checks PASS, including new-chat address assignment, disconnected-bridge cleanup and once-only operation dispatch. AST guard proves all startup helpers share startSession's scope. First run 41574442126 is cancelled/superseded; no artifacts from it may be delivered. Prior e1236e0 source verification marked superseded after whole-browser scope failure.
+
+Wait for ALL required jobs green, then exact inner production-signed Windows/Mac ZIP source/signature/CRC/SHA/native/official-layout verification and Drive name/MIME/size readback. No stable release/visibility/native-source changes. [Build verification](test-build-1.24.30-followup-2026-11-02-verification.json).
+
 ## 2026-11-02 — replacement build required: real-browser startup scope fix
 Run **41574442126** on 7390d06 was cancelled/superseded (Mac cancellation needed force-cancel). Local full-core Chromium reproduced "startupFeedbackStages is not defined": the new helper and the older startup-memory readers were inside runToolImpl, invisible to startSession. Isolated extraction tests had hidden that real scoping fault. Relocated all three helpers into the shared startup scope; added AST owner-scope regression and retained failure banners in new-chat test diagnostics. Updated shared ClickUp simulated live-status/fresh catalogue fields and empty read-only startup-memory probes; Notion clipboard fixture now loads actual startup/health helpers and checks bridge-offline cleanup.
 
