@@ -3,6 +3,11 @@ title: Test builds and the public-then-private plan
 
 updated: 2026-11-02
 ---
+## 2026-11-03 — Windows Blender ZIP verified/uploaded; Mac/final gate pending
+CI41682724896: Windows and browsers SUCCESS. Exact INNER Windows ZIP51,143,289 bytes, SHA25691328a6a213261223b4e6fcebded95b716dbd2a985f0c427dcd4c1910f52a751; signatures/all241 sources/new native Blender timeout marker/CRC/checksums/zero official layout delta PASS. Hosted Windows native293pass/2ignored; Defender found no threats in all three scans. DriveID14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB, name/MIME/byte readback verified. NOT delivered yet; do not upload duplicate. Actual link is in verificationJSON.
+
+Mac now builds Intel+Apple silicon, Linux builds its app after both JS passes/native checks. Require all five jobs and Mac package verification/Drive readback before immediate two-ZIP delivery + Private reminder. Current source remainsc85d1f9; no product changes. Staging `/workspace/plazcode-blender-build-41682724896`. [Verification](blender-uv-path-2026-11-03-verification.json).
+
 ## 2026-11-03 — final full local JavaScript suite PASS
 Final local runner completed **250 passed, 0 failures**, exit0 on final source/test fixture. Native300PASS/2ignored and actual native+official Blender GUI7,420ms success remain valid; no product edits sincec85d1f9. Full hosted run41682724896 on152beec still running; require all five jobs green and exact package/Drive verification before new ZIP delivery. [Verification](blender-uv-path-2026-11-03-verification.json).
 

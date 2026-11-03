@@ -108,5 +108,57 @@
   },
   "run_id": 41682724896,
   "run_url": "https://github.com/stoveez/plazcode-source/actions/runs/41682724896",
-  "head_sha": "152beecf6861879883e3e033e53af77764368b93"
+  "head_sha": "152beecf6861879883e3e033e53af77764368b93",
+  "platforms": {
+    "windows": {
+      "platform": "windows",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3070,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+      "file": "PlazCode-1.24.30-test-lean.zip",
+      "bytes": 51143289,
+      "sha256": "91328a6a213261223b4e6fcebded95b716dbd2a985f0c427dcd4c1910f52a751",
+      "files": 3084,
+      "native_blender_timeout_marker_verified": true,
+      "wrapper_bytes": 51144094,
+      "wrapper_sha256": "90fbc3acb2d7299530e2eeced3cc2876f0830385194c45e77e582c1ab66e2d98",
+      "artifact_id": 13254873927,
+      "layout_delta": {
+        "added": [],
+        "removed": []
+      },
+      "drive": {
+        "id": "14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB",
+        "title": "PlazCode-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "size": "51143289",
+        "url": "https://drive.google.com/file/d/14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB/view?usp=drivesdk"
+      },
+      "drive_readback_verified": true,
+      "delivered": false,
+      "hosted_native_tests": {
+        "passed": 293,
+        "ignored": 2
+      },
+      "defender": "All three scanned directories/packages reported no threats"
+    }
+  },
+  "ci_progress": {
+    "windows": "success",
+    "browsers": "success",
+    "macos": "building both architectures",
+    "linux": "building native executable",
+    "release-check": "pending"
+  }
 }
