@@ -1,7 +1,7 @@
 {
   "date": "2026-11-03",
   "branch": "claude/plazcode-dev",
-  "status": "local_native_and_focused_js_passed_full_js_and_windows_ci_pending",
+  "status": "full_ci_running",
   "original_report": "MCP initialize timeout and desktop AbortError; owner confirmed UV was not on PATH",
   "old_desktop_reproduced": {
     "source_commit": "b8070ab",
@@ -94,11 +94,14 @@
     "final_full_rerun": "pending"
   },
   "superseded_run_id": 41680761816,
-  "replacement_run": "pending dispatch",
+  "replacement_run": "in_progress",
   "source_sha256": {
     "agent/src/main.rs": "8aadf52054f1e90f342da9750098f7f748cfe00eeea7d9ac991e4b18992da6d1",
     "agent/src/mcp_addons.rs": "3efec9cf76653421ea87d79d1a40e36dfd959b2c2fb55dfb26ebc04f92ed5b18",
     "agent/src/blender.rs": "8ab2f4ef94c06901f0bde78eceec328d37bac8ed26e33c6768b6c2d9de908dfb",
     "agent/src/desktop.html": "9056e0c7dccff5f9d63571196926f56a17c40e9b702a667e29261e4ba1d86de2"
-  }
+  },
+  "run_id": 41682724896,
+  "run_url": "https://github.com/stoveez/plazcode-source/actions/runs/41682724896",
+  "head_sha": "152beecf6861879883e3e033e53af77764368b93"
 }

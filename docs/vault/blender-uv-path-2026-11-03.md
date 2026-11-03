@@ -2,6 +2,11 @@
 title: Blender first-use UV discovery and connection timeouts
 updated: 2026-11-03
 ---
+## 2026-11-03 — full Blender follow-up build 41682724896 RUNNING
+[Current full run](https://github.com/stoveez/plazcode-source/actions/runs/41682724896), head152beec, unchanged productc85d1f9. First run41680761816 cancelled after old exact queue assertion; assertion correction passed. Local final fullJS rerun pending; native300PASS/2ignored; real native+official Blender GUI7,420ms success and immediate Drive previews verified.
+
+Require all Windows/Mac/Linux/browser/release-check jobs green; then exact inner production-signed Windows+universal Mac packages, current reviewed-source/signature/CRC/checksum/zero official layout checks and new native timeout marker in Windows and BOTH Mac slices. Staging `/workspace/plazcode-blender-build-41682724896`. Upload Drive/readback and deliver immediately with Private reminder. Source public for this build; do not change visibility or publish stable. Existing delivered41579556782 ZIPs lack Blender follow-up. [Verification](blender-uv-path-2026-11-03-verification.json).
+
 # Blender startup and scene checks
 Owner screenshot: `[blender] MCP request timed out: initialize` plus `signal is aborted without reason`. Owner clarified UV was not on PATH (initially described as missing). This is a new follow-up after delivered full CI 41579556782; those ZIPs lack this fix.
 
@@ -26,4 +31,3 @@ Scene probes queue at most 2 seconds behind work, then keep their existing 8-sec
 Actual updated native PlazCode debug app, normal Blender **4.3.2 GUI** and official protocol13 addon extracted from verified pinned mcp-for-blender2.1.9 wheel. Deliberately delayed Blender's main thread7.4s; actual desktop scene request succeeded in **7,420ms**, beyond the old7s abort, with real scene data, no replay and no browser exceptions. No mocked desktop HTML or mocked API replies. [Screenshot](https://drive.google.com/file/d/1MRgfoEwvNQ4VW-uqSp_-gmJiDLk_XOzB/view?usp=drivesdk), [video](https://drive.google.com/file/d/17VJucRqRV1SLdA-x30FixUN8_01ogbvo/view?usp=drivesdk) delivered immediately; Drive metadata/343,278B PNG and1,426,335B WebM verified. Isolated test workspace; no owner data or existing Blender scene changed. Not the original affected Windows PC.
 
 Full local JS sweep:249 pass, one obsolete exact-code assertion in test-1.24.12-fixes.js expected45s queue for all commands. Updated it to retain45s for edits and verify2s for scene probes; focused rerun PASS. No product changes from **c85d1f9**. CI41680761816 cancelled/superseded; replacement full CI plus final local JS rerun next. Native300PASS/2ignored unchanged. [Details](blender-uv-path-2026-11-03.md).
-
