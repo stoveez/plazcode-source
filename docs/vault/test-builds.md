@@ -3,6 +3,11 @@ title: Test builds and the public-then-private plan
 
 updated: 2026-11-02
 ---
+## 2026-11-03 — both source fixes verified locally; combined full build next
+Windows installer-only CI41693932272 SUCCESS under PowerShell5.1: first download/cache reuse, wrong-hash rejection/no publication/staging cleanup and successful retry. Original41690772050 reproduced missing Get-FileHash; .NET SHA256 fixed it without weakening pinned checks. Real signed app with entirely missing UV still must run on NEW package because installer is embedded.
+
+Ox Alpha default-submit Copy regression now PASS across ordinary form, raw reply, whole-chat form and nested non-form composer. Actual Send/Enter/Stop preserved, native reply actions never arm a task; code/drafts preserved.70 differential checks,970 preserved functions,325 DOM checks,pins/home-start PASS. Full local native300pass/2ignored. Final full JS and NEW combined Windows/Mac CI next. Prior green41682724896 and its undelivered WinDrive14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB are superseded for final delivery. [Combined record](blender-oxalpha-2026-11-03-verification.json).
+
 ## 2026-11-03 — Windows Blender ZIP verified/uploaded; Mac/final gate pending
 CI41682724896: Windows and browsers SUCCESS. Exact INNER Windows ZIP51,143,289 bytes, SHA25691328a6a213261223b4e6fcebded95b716dbd2a985f0c427dcd4c1910f52a751; signatures/all241 sources/new native Blender timeout marker/CRC/checksums/zero official layout delta PASS. Hosted Windows native293pass/2ignored; Defender found no threats in all three scans. DriveID14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB, name/MIME/byte readback verified. NOT delivered yet; do not upload duplicate. Actual link is in verificationJSON.
 

@@ -1,0 +1,69 @@
+{
+  "date": "2026-11-03",
+  "branch": "claude/plazcode-dev",
+  "status": "focused_checks_passed_full_combined_ci_next",
+  "blender": {
+    "earlier_runtime_fixes": "c85d1f96da6901fa97226177f778d60bcd0865d7",
+    "new_confirmed_first_use_failure": {
+      "run_id": 41690772050,
+      "error": "Windows PowerShell 5.1 Get-FileHash unavailable in inherited module environment"
+    },
+    "new_fix": "Use built-in .NET SHA256.ComputeHash with identical pinned checksum and staging/cache guarantees",
+    "installer_fixture_validation": {
+      "run_id": 41693932272,
+      "head_sha": "9914fd83f5bbe0ca3e79c83a31dc36ef7e7b0997",
+      "status": "success",
+      "coverage": [
+        "actual Windows PowerShell5.1",
+        "first extraction",
+        "cache reuse without redownload",
+        "bad checksum publishes nothing",
+        "staging cleaned",
+        "retry succeeds"
+      ]
+    },
+    "real_signed_app_without_uv": "pending new signed Windows package",
+    "prior_real_native_blender_scene_check_ms": 7420
+  },
+  "oxalpha": {
+    "root_cause": "Global click hook accepted any default-type submit button, including reply/code Copy outside composer, and scheduled a phantom agent loop",
+    "old_provider_regression": "failed on codeCopy invoking onUserMessage with empty or existing draft",
+    "fix": "Composer/associated-form controls only; transcript actions excluded, Copy feedback omitted from assistant output",
+    "targeted_layouts": [
+      "normal form/prose",
+      "normal form/raw reply",
+      "whole-chat form",
+      "nested non-form composer"
+    ],
+    "focused_checks": {
+      "copy_draft_send_enter_stop": "passed",
+      "healthy_differential_checks": 70,
+      "preserved_other_function_bodies": 970,
+      "dom_resilience_checks": 325,
+      "desktop_hash_pins": "passed",
+      "home_start": "passed"
+    },
+    "original_live_chat_verified": false
+  },
+  "local_rust": {
+    "passed": 300,
+    "ignored": 2,
+    "wall_seconds": 23.88
+  },
+  "local_full_javascript": "pending",
+  "prior_blender_only_run": {
+    "id": 41682724896,
+    "conclusion": "success",
+    "superseded_for_final_delivery": true,
+    "reason": "lacks new embedded installer fix and Ox Alpha fix"
+  },
+  "new_zip_delivered": false,
+  "source_sha256": {
+    "agent/src/main.rs": "8aadf52054f1e90f342da9750098f7f748cfe00eeea7d9ac991e4b18992da6d1",
+    "agent/src/mcp_addons.rs": "3efec9cf76653421ea87d79d1a40e36dfd959b2c2fb55dfb26ebc04f92ed5b18",
+    "agent/src/blender.rs": "8ab2f4ef94c06901f0bde78eceec328d37bac8ed26e33c6768b6c2d9de908dfb",
+    "agent/src/desktop.html": "9056e0c7dccff5f9d63571196926f56a17c40e9b702a667e29261e4ba1d86de2",
+    "Setup-Mcp-Runtime.ps1": "bce5e2d0e833c203972894b94fb262b0520d62f84fbe5ddc0d00fd11fdee2911",
+    "providers/oxalpha.js": "7a1a3ac91bb12c09e4b464e399bedb542f8193f07ef0093ce8737bf76976460a"
+  }
+}

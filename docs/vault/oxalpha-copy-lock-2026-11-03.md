@@ -2,6 +2,11 @@
 title: Ox Alpha Copy incorrectly starts a new agent loop
 updated: 2026-11-03
 ---
+## 2026-11-03 — both source fixes verified locally; combined full build next
+Windows installer-only CI41693932272 SUCCESS under PowerShell5.1: first download/cache reuse, wrong-hash rejection/no publication/staging cleanup and successful retry. Original41690772050 reproduced missing Get-FileHash; .NET SHA256 fixed it without weakening pinned checks. Real signed app with entirely missing UV still must run on NEW package because installer is embedded.
+
+Ox Alpha default-submit Copy regression now PASS across ordinary form, raw reply, whole-chat form and nested non-form composer. Actual Send/Enter/Stop preserved, native reply actions never arm a task; code/drafts preserved.70 differential checks,970 preserved functions,325 DOM checks,pins/home-start PASS. Full local native300pass/2ignored. Final full JS and NEW combined Windows/Mac CI next. Prior green41682724896 and its undelivered WinDrive14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB are superseded for final delivery. [Combined record](blender-oxalpha-2026-11-03-verification.json).
+
 # Cause
 The owner recording shows a finished chat, then copying a reply raises Agent is working and waiting for Ox Alpha to finish without any new send. Reproduced with actual provider in jsdom: a native reply/code Copy button with no type attribute has browser type=submit. installSendHooks accepted ANY submit button globally, even outside the composer, and called onUserMessage. Core scheduled a new agent loop300ms later, waiting for a reply that Copy never requested. Existing sendButton also searched globally. Copy/Copied/Download labels contaminated assistant text/generation detection.
 

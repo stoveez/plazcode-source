@@ -363,9 +363,21 @@ const RSProvider = (() => {
   const ariaOf = (b) => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.title, "") || "").trim();
   const allButtons = () => [...safeQueryAll(document, "button")].filter((b) => !safeClosest(b, "#rs-root"));
   function composerButtons() {
-    const editor = getEditor(), frame = composerFrame();
+    const editor = getEditor();
+    let frame = composerFrame();
     if (!editor || !frame) return [];
     const form = safeRead(() => editor.form, null);
+    // A textarea can have an inner wrapper while Send is its sibling. For a
+    // non-form composer, include that local shell without reaching the chat
+    // transcript, navigation or the whole page.
+    if (!form) for (let i = 0; i < 4; i++) {
+      const cls = String(safeRead(() => frame.className, ""));
+      if (/composer|input-bar|chat-input/i.test(cls) || safeRead(() => frame.tagName, "") === "FOOTER") break;
+      const parent = safeRead(() => frame.parentElement, null);
+      if (!parent || /^(?:MAIN|BODY|HTML)$/.test(safeRead(() => parent.tagName, "")) ||
+          safeQuery(parent, '[data-message-role], [data-role="assistant"], [data-role="user"], article, .message, .msg')) break;
+      frame = parent;
+    }
     const candidates = new Set(safeQueryAll(frame, "button"));
     if (form) for (const button of safeQueryAll(document, "button[form]")) {
       if (safeRead(() => button.form === form, false)) candidates.add(button);

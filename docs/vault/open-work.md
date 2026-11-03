@@ -2,6 +2,10 @@
 title: Open work and known bugs
 updated: 2026-11-02
 ---
+## 2026-11-03 — both source fixes verified locally; combined full build next
+Windows installer-only CI41693932272 SUCCESS under PowerShell5.1: first download/cache reuse, wrong-hash rejection/no publication/staging cleanup and successful retry. Original41690772050 reproduced missing Get-FileHash; .NET SHA256 fixed it without weakening pinned checks. Real signed app with entirely missing UV still must run on NEW package because installer is embedded.
+
+Ox Alpha default-submit Copy regression now PASS across ordinary form, raw reply, whole-chat form and nested non-form composer. Actual Send/Enter/Stop preserved, native reply actions never arm a task; code/drafts preserved.70 differential checks,970 preserved functions,325 DOM checks,pins/home-start PASS. Full local native300pass/2ignored. Final full JS and NEW combined Windows/Mac CI next. Prior green41682724896 and its undelivered WinDrive14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB are superseded for final delivery. [Combined record](blender-oxalpha-2026-11-03-verification.json).
 
 ## 2026-11-03 — active combined fixes
 Ox Alpha Copy falsely starts an agent loop via global default-submit hook; targeted fix/tests pass. Completely missing UV exposes a real PowerShell5.1 installer dependency failure; .NET checksum fix drafted, Windows verification pending. Earlier green Blender-only build41682724896 is superseded for final delivery. New combined full build required. See NOW and the Ox Alpha/Blender notes.
