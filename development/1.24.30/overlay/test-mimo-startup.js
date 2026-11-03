@@ -54,7 +54,10 @@ function scenario(replies) {
     SendAbortedError: class extends Error {}, RUN_CMD: "Start-PlazCode-Agent.cmd",
     runTool: async () => { commandsRun++; return "Output of 'list_commands':\nread_file"; },
   };
-  vm.createContext(box);
+  // This fixture isolates provider startup/outcomes; live health has its own actual-startup regression.
+box.requireStartupConnection=async()=>{};
+box.startupFeedbackStages=(memory,ready)=>[...memory,...(box.P.startupFeedbackMessages?box.P.startupFeedbackMessages(ready):[{text:ready}])];
+vm.createContext(box);
   vm.runInContext(parserSource + ";this.RSParse=RSParse;", box);
   vm.runInContext("this.RS={SYS_MARKER:'\\u27e6RS-SYS\\u27e6',RESEND_MARKER:'\\u27e6RS-RE\\u27e6'};", box);
   box.P.allItems = () => items;

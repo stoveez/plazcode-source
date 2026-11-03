@@ -50,7 +50,7 @@ function sandbox({ engine = "roblox", vaultPages = ["=== 01 About You/Profile.md
 
   // 3. Wiring: the pages go before the ready stages, and the ready check itself is unchanged.
   assert(/const memoryStages = offline \|\| typeof startupMemoryStages !== "function" \? \[\] : await startupMemoryStages\(\);/.test(main));
-  assert(/const stages = \[\.\.\.memoryStages, \.\.\.\(P\.startupFeedbackMessages \? P\.startupFeedbackMessages\(readyPrompt\) : \[\{text:readyPrompt\}\]\)\];/.test(main));
+  assert(main.includes('const stages = startupFeedbackStages(memoryStages,readyPrompt);'), 'all memory is preserved in combined or individually acknowledged stages');
   assert(/if\(!stage\.ackRe && stage\.ack && \(readyRes\.kind!=="text" \|\| String\(readyRes\.text\|\|""\)\.trim\(\)!==stage\.ack\)\)/.test(main), "existing acknowledgements keep their exact check");
   assert(/\/\^\(\?:PLAZCODE_READY\|PlazCode is ready\)\[\.!\]\?\$\/i\.test\(readyText\)/.test(main), "the ready reply check is unchanged");
   console.log("PASS memory pages are sent before the ready step; the ready check is unchanged");

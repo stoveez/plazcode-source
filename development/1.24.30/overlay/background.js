@@ -2363,7 +2363,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
           const response = await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/status`, {method:"GET",signal:AbortSignal.timeout(4000)});
           if(!response.ok)throw Error("Bridge status request failed.");
           const live=await response.json();
-          sendResponse({ok:true,...statusObj(mode),local_connected:live.local_ready===true,local_root:live.local_root,local_full:live.local_full===true,roblox_connected:live.roblox_connected===true,bridge_reachable:true});
+          sendResponse({ok:true,...statusObj(normalizeEngine(msg.engine ?? mode)),connected:normalizeEngine(msg.engine ?? mode)==="local"?live.local_ready===true:connected,local_connected:live.local_ready===true,local_root:live.local_root,local_full:live.local_full===true,roblox_connected:live.roblox_connected===true,blender_connected:live.blender_connected===true,profile_required:live.profile_required===true,bridge_reachable:true});
         }catch(error){sendResponse({ok:false,error:String(error.message || error)});}
         break;
       }
@@ -2397,7 +2397,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         if (mode === "local" && r.ok && Array.isArray(r.tools)) { localToolsCache = r.tools; broadcastStatus(); }
         const tools = mergeBlenderTools(mode === "local" ? (r.tools || localToolsCache) : toolsCache);
         const ok = r.ok || tools.length > 0;
-        sendResponse({ ok, tools, error: r.ok ? undefined : r.error });
+        sendResponse({ ok, tools, fresh:r.ok===true, cached:r.ok!==true && tools.length>0, error: r.ok ? undefined : r.error });
         break;
       }
       case "logs": {
@@ -2930,7 +2930,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         sendResponse({ ok: true });
         break;
       default:
-        sendResponse({ ok: false, error: "unknown message" });
+        sendResponse({ ok: false, kind:"unknown-message", error:"This PlazCode extension worker does not support the request. Reload the extension, then refresh the AI tab." });
     }
   })().catch((error) => {
     // Contract: every message gets an answer, even after an unexpected throw.

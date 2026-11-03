@@ -52,7 +52,7 @@ const flags={};
 const windowStub={__rsThinkingLevel:()=>flags.level||'default',__rsShowApproach:()=>!!flags.approach,__rsBlender:()=>!!flags.all,__rsExtraThinking:()=>!!flags.all,__rsPlanMode:()=>!!flags.all,__rsForge:()=>!!flags.all,__rsMultiAgent:()=>!!flags.all,__rsAutoDebug:()=>true,__rsWorkMode:()=>(flags.all?'thorough':'')};
 const FILES=['core/luau-knowledge.js','core/chat-creators.js','core/ultracode.js','core/feature-guide.js','core/clarification.js','core/text-pack.js','core/config.js','core/lean-startup.js','core/studio_skills.js'];
 function load(useMoved,textPack){
-  const context=vm.createContext({window:windowStub,console,chrome:{runtime:{sendMessage:(message,reply)=>reply(textPack?{ok:true,pack:textPack}:{ok:false,error:'app not answering yet'}),lastError:null}}});
+  const context=vm.createContext({window:windowStub,console,setTimeout,clearTimeout,chrome:{runtime:{sendMessage:(message,reply)=>reply(textPack?{ok:true,pack:textPack}:{ok:false,error:'app not answering yet'}),lastError:null}}});
   for(const name of FILES){
     let code=useMoved&&transformed[name]?transformed[name]:read(name);
     if(useMoved&&name==='core/text-pack.js')code=code.replace('const REQUIRED = false;','const REQUIRED = true;');
@@ -64,6 +64,7 @@ function load(useMoved,textPack){
 // 2. Loading before the app answers must not throw (nothing is read at load time).
 const early=load(true,null);
 assert.equal(vm.runInContext('PlazCodeText.loaded()',early),false);
+await vm.runInContext('PlazCodeText.ready()',early);
 assert.throws(()=>vm.runInContext("RS.buildSystemPrompt({siteName:'Claude',engine:'roblox'})",early),/app not answering yet \(missing config:/,'without the app a clear message, never invented text');
 
 const original=load(false,null),packaged=load(true,pack);

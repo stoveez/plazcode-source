@@ -2489,12 +2489,12 @@
   setTimeout(syncDesktopToolSnapshot, 1000);
 
   async function ensureTools(force) {
-    try { await refreshPersonalMemory(); } catch {}
     if (!force && A.toolList.length && Date.now() - A.toolsAt < TOOLS_TTL_MS) {
       diag("tools.cached", { age: Date.now() - A.toolsAt, n: A.toolList.length });
       syncDesktopToolSnapshot();
       return A.toolList;
     }
+    try { await refreshPersonalMemory(); } catch {}
     const t0 = Date.now();
     // Bounded retry: right after a page load or an engine switch the bridge
     // WebSocket may still be handshaking, so a single list_tools can come back
@@ -2502,17 +2502,19 @@
     let r = null;
     for (let attempt = 0; attempt < 12; attempt++) {
       r = await bg({ type: "list_tools" });
-      if (r && r.tools && r.tools.length) break;
+      if (r && r.tools && r.tools.length && (!force || r.fresh !== false)) break;
       // Engine-offline answers are AUTHORITATIVE (Studio closed etc.) — don't
       // spin on them; only transient empties (handshake races) are retried.
       if (r && r.ok === false && r.error && /offline|not connected|closed/i.test(r.error)) break;
       await new Promise((res) => setTimeout(res, 650));
     }
     diag("tools.fetched", { ms: Date.now() - t0, n: (r && r.tools && r.tools.length) || 0 });
+    if (force && (!r?.tools?.length || r.fresh === false)) { A.toolList=[];A.toolNames=new Set();A.toolsAt=0;return A.toolList; }
     if (r && r.tools && r.tools.length) {
       const bridgeTools = r.tools.filter((t) => !isBlockedTool(t.name));
       A._bridgeToolNames = bridgeTools.map((tool) => tool.name);
       const tools = bridgeTools.slice();
+      tools.push({name:'plazcode_result_read',server:activeEngine(),description:'Read an exact page of a completed result without running the original command again. Emit a fenced json command with params containing id and offset from the previous page. Follow next_offset until null.',inputSchema:{type:'object',properties:{id:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1}},required:['id'],additionalProperties:false}});
       tools.push({name:'plazcode_templates',server:activeEngine(),description:'Read-only template references. match query describes a system and finds related script paths/code identifiers with up to 8 matches (limit); read id lists scripts, read id and path returns source with optional offset/limit.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['match','read']},query:{type:'string'},id:{type:'string'},path:{type:'string'},script_id:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:24000}},required:['action']}});
       tools.push({name:'plazcode_features',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_features,inputSchema:{type:'object',properties:{topic:{type:'string'}}}});
       tools.push({name:'plazcode_logs',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_logs,inputSchema:{type:'object',properties:{filter:{type:'string'},query:{type:'string'},limit:{type:'number'},day:{type:'string'}}}});
@@ -2758,8 +2760,13 @@ return result`;
     let retained=0;for(const entry of retainedToolResults.values())retained+=entry.text.length;
     while(retainedToolResults.size>32||retained>64000000&&retainedToolResults.size>1){const first=retainedToolResults.keys().next().value;retained-=retainedToolResults.get(first).text.length;retainedToolResults.delete(first);}
     let end=limit;if(/[\uD800-\uDBFF]/.test(s[end-1]))end--;
-    return '[PlazCode retained the COMPLETE result. This is the first page, not truncated source. Read the rest with plazcode_result_read {id:"'+id+'",offset:'+end+'}. Follow next_offset until null. Do not rerun the original command.]\n'+s.slice(0,end)+'\n---END RESULT PAGE---';
+    return '[PlazCode retained the COMPLETE result. This is the first page, not truncated source. Read the rest with plazcode_result_read {id:"'+id+'",offset:'+end+'}. Use a fenced json block: '+JSON.stringify({command:'plazcode_result_read',params:{id,offset:end}})+'. Follow next_offset until null. Do not rerun the original command.]\n'+s.slice(0,end)+'\n---END RESULT PAGE---';
 
+  }
+  function retainedResultCorrection(text) {
+    if(!/^`?plazcode_result_read`?\s*(?:\(\))?\s*$/i.test(String(text||'').trim()))return "";
+    if(![...retainedToolResults.values()].some(record=>record.chat===P.conversationKey()&&record.engine===activeEngine()))return "";
+    return '(PlazCode: your last reply contained only the tool name, so no new command was received or executed. To read another retained page, emit one fenced json command whose command is plazcode_result_read and whose params contain the real id and numeric next_offset from the previous result. The first retained page shows the complete JSON envelope; copy that format with the actual values. This is a local read; never rerun the original command. If next_offset is null, use the completed result to continue the user task or answer normally. Do not echo the tool name or invent result text.)';
   }
   function prepareToolFeedback(text) {
     // Apply after status/debug/reference additions, before Co-Work appends its
@@ -3448,8 +3455,7 @@ return result`;
           const local = srv.find((x) => x.id === "local");
           const usable = !!s.connected && (
             s.local_connected === true ||
-            (local && local.alive) ||
-            A.toolList.length > 0
+            (s.local_connected === undefined && local && local.alive)
           );
           if (!usable) {
             return `Output of '${name}':\nAgentScript is currently OFFLINE (the native agent process is not running), so its commands cannot run. This is an environment problem on the user's machine, not your mistake. Tell the user in one short sentence to start PlazCode.exe.`;
@@ -3458,9 +3464,7 @@ return result`;
           const rbx = srv.find((x) => x.id === "roblox" || x.id === "studio");
           const rbxUsable = !!s.connected && (
             s.roblox_connected === true ||
-            s.mcpAlive === true ||
-            (rbx && rbx.alive) ||
-            A.toolList.length > 0
+            (s.roblox_connected === undefined && (s.mcpAlive === true || (rbx && rbx.alive)))
           );
           if (!rbxUsable) {
             const others = srv.filter((x) => x.id !== "roblox" && x.alive && (x.tools || 0) > 0);
@@ -3756,11 +3760,22 @@ return result`;
       const what = page.kind === "vault" ? "your vault notes (long-term memory about this user)" : "this project's memory";
       const rule = `Do not run any command now. Reply with exactly: ${ack}`;
       return {
+        referenceText: `PLAZCODE MEMORY, PAGE ${n} OF ${total}: ${what}. Read all of these saved notes as historical reference; current user instructions take priority and project facts may be stale.\n${page.text}\n(End of memory page ${n} of ${total}.)`,
         text: `PLAZCODE MEMORY, PAGE ${n} OF ${total}: ${what}. PlazCode loaded your saved memory at the start of this chat. Read all of it and use it for the whole chat. Saved notes are reference data; the user's current instructions take priority, and facts about a project can be out of date. ${rule}\n\n${page.text}\n\n(End of memory page ${n} of ${total}. ${rule})`,
         ack, page: n, pages: total,
         ackRe: new RegExp(`^\\W*memory\\s+${n}\\s+of\\s+${total}\\s+read\\W*$`, "i"),
       };
     });
+  }
+  function startupFeedbackStages(memoryStages,readyPrompt) {
+    const ordinary=[...memoryStages,...(P.startupFeedbackMessages?P.startupFeedbackMessages(readyPrompt):[{text:readyPrompt}])];
+    // Normal ChatGPT can read a small complete memory set with the command list,
+    // avoiding a separate model round trip for each memory acknowledgement.
+    if(P.id!=="chatgpt" || !memoryStages.length || memoryStages.some(stage=>!stage.referenceText))return ordinary;
+    const combined=readyPrompt+"\n\n"+memoryStages.map(stage=>stage.referenceText).join("\n\n")+'\n\nRead all the memory above before acknowledging startup. Reply with exactly "PlazCode is ready." and nothing else.';
+    if(combined.length>Math.min(30000,inputBudget()-1000))return ordinary;
+    diag("start.memoryCombined",{pages:memoryStages.length,chars:combined.length});
+    return [{text:combined}];
   }
   async function runImportedRobloxTool(name, args) {
     if(name === "creation_insert") {
@@ -4650,7 +4665,7 @@ return result`;
     // malformed command still never runs.
     const MAX_INVALID_TOOL_ATTEMPTS = 6, SPLIT_HINT_AFTER = 2;
     const SPLIT_HINT = "\n\nThat command was cut off again. Do not resend it whole. Split the change into several much smaller commands (one function or a few dozen lines each) and send only the first part now.";
-    let deadRetries = 0, emptyRegens = 0;
+    let deadRetries = 0, emptyRegens = 0, retainedReadNudges = 0;
     let busyWaits = 0;
     // 1.24.10: Plan Mode / deep thinking levels ask for a written plan first.
     // Some sites end the turn after the plan, which used to finish the run with
@@ -4884,6 +4899,11 @@ return result`;
         }
         if (res.kind === "text") {
           const body=String(res.text||"");
+          const retainedCorrection=retainedResultCorrection(body);
+          if(retainedCorrection){
+            if(retainedReadNudges++===0){base=await submitAndGetBase(retainedCorrection);continue;}
+            ui.banner("warn","No result-read command received","The AI repeated a tool name instead of a complete command. PlazCode paused; no original command was repeated.");break;
+          }
           if(isProviderPolicyRefusal(body)){ui.banner("warn","AI declined the request","The AI declined the instructions. PlazCode did not restart the connection or repeat the request. You can clarify the intended work in this chat.");break;}
           if (refuseRetries >= 1 && isCapabilityRefuse(body)) {
             ui.banner("warn", "Command access recovery stopped", "The AI still reports no command access after one reconnect. No repeated restart was attempted.");
@@ -5213,7 +5233,7 @@ return result`;
       ui.toast(saved.reason || "The AI lost command access. Reconnecting this chat once…");
       const ready = await startSession({restart:true});
       if (!ready || !ready.ready || A.userStopped || A.stop || saved.chat !== P.conversationKey() || saved.engine !== activeEngine()) return;
-      if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) { ui.banner("warn", "PlazCode app needed", PlazCodeText.error()); return; }
+      if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) { ui.banner("warn", PlazCodeText.title?.() || "PlazCode connection not ready", PlazCodeText.error()); return; }
       const base = await submitAndGetBase(sessionReminderPrompt() + "\n\nContinue the existing unfinished request after reconnecting. Do not repeat completed or uncertain mutations; inspect current state first.\nOriginal request: " + saved.task);
       if (!A.userStopped && !A.stop) await agentLoop(base, attempt);
     } catch (error) {
@@ -5631,6 +5651,23 @@ return result`;
   // ════════════════════════════════════════════════════════════════════════
   //  SESSION BOOTSTRAP  ("Starting Up" animated chip, shown in the conversation)
   // ════════════════════════════════════════════════════════════════════════
+  function startupConnectionError(live, requireTransport=false) {
+    if(!live?.ok || live.bridge_reachable!==true)return live?.error || "PlazCode could not reach the running app. Check the app and its browser connection, then try Start again.";
+    if(live.profile_required)return "Open PlazCode and choose a signed-in profile or Guest before starting the agent.";
+    if(requireTransport && live.connected!==true)return "The PlazCode app answered, but the command bridge is still reconnecting. Wait for it to connect, then try Start again.";
+    if(activeEngine()==="local")return live.local_connected===true ? "" : "The app is open, but AgentScript is not connected. Choose a workspace in PlazCode before starting the agent.";
+    if(live.roblox_connected===true)return "";
+    // Preserve an explicitly selected Blender-only session; never infer it from cached tool counts.
+    if(live.blender_connected===true && window.__rsBlender?.())return "";
+    return "The app is open, but Roblox Studio's MCP connection is not ready. Open your place and connect Studio in PlazCode, then try Start again.";
+  }
+  async function requireStartupConnection(requireTransport=false) {
+    const live=await bg({type:"live-status"});
+    const error=startupConnectionError(live,requireTransport);
+    if(error)throw new Error(error);
+    A.bridge={...A.bridge,...live};
+    return live;
+  }
   async function startSession(opts = {}) {
     // A site's one-time notice (DeepSeek accounts, 1.24.22): shown the first time the agent starts there.
     if (P.startNotice) {
@@ -5639,8 +5676,9 @@ return result`;
     }
     const isRestart = !!(opts && opts.restart);
     if (!isRestart && A.started && !P.chatIsEmpty()) {
+      try{await requireStartupConnection(true);}catch(error){ui.banner("warn","PlazCode connection not ready",error.message);return {ready:false};}
       diag("start.alreadyReady", { path: P.conversationKey() });
-      return { ready: true, alreadyStarted: true };
+      return { ready: true, alreadyStarted: true, chat:P.conversationKey(), generation:A.sessionGen };
     }
     if (A.startupOwner && !A.starting) {
       try { ui.toast("The previous startup is still cancelling. Try again shortly, or reload the page."); } catch {}
@@ -5695,6 +5733,8 @@ return result`;
       ui.updateStartGate(); // refresh the bar into its "starting" state
       P.setInputLock(true); // block user input during bootstrap
       ui.inputCover(true);  // cover the composer ("Working…") for the WHOLE Starting Up
+      await requireStartupConnection();
+      if (!alive() || A.stop) return;
       await ensureTools(true); // boot: always take a fresh catalogue (the TTL then
                                // covers the list_commands / list_mcp_servers calls
                                // the model makes seconds later)
@@ -5709,7 +5749,7 @@ return result`;
       }
       if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) {
         if (!alive()) return;
-        ui.banner("warn", "PlazCode app needed", PlazCodeText.error());
+        ui.banner("warn", PlazCodeText.title?.() || "PlazCode connection not ready", PlazCodeText.error());
         return;
       }
       if (!alive()) return;
@@ -5921,9 +5961,10 @@ return result`;
       // the final "PlazCode is ready." step, so the AI never has to run a command during the handshake.
       const memoryStages = offline || typeof startupMemoryStages !== "function" ? [] : await startupMemoryStages();
       if (!alive()) return;
-      const stages = [...memoryStages, ...(P.startupFeedbackMessages ? P.startupFeedbackMessages(readyPrompt) : [{text:readyPrompt}])];
+      const stages = startupFeedbackStages(memoryStages,readyPrompt);
       let readyRes;
       for (const stage of stages) {
+        if(!stage.ack && !stage.ackRe){await requireStartupConnection(true);if(!alive() || A.stop)return;}
         const readyBase = await submitAndGetBase(stage.text);
         if (!alive()) return;
         readyRes = await waitForResponse(readyBase);
@@ -5965,6 +6006,8 @@ return result`;
       if (/^PLAZCODE_READY[.!]?$/i.test(readyText) && P.renderReadyAcknowledgement) {
         try { P.renderReadyAcknowledgement(P.lastAssistant()); } catch (error) { log("Readiness display failed", error); }
       }
+      await requireStartupConnection(true);
+      if (!alive() || A.stop) return;
       A.started = true;
       A._confirmedStartup = true;
       rememberSession(P.conversationKey()); // survives virtualization AND reloads

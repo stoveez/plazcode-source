@@ -720,8 +720,8 @@ const RSProvider = (() => {
     try {
       if (!item || stopButton() || safeQuery(document, S.workItem)) return false;
       if (safeRead(() => item.getAttribute, null) && safeRead(() => item.getAttribute("data-message-author-role"), null) === S.userRole) return false;
-      const turn = safeRead(() => item.closest, null) && safeClosest(item, S.turn);
-      if (!turn || safeRead(() => turn.contains(getEditor()), false)) return false;
+      const turn = (safeRead(() => item.closest, null) && safeClosest(item, S.turn)) || item;
+      if (safeRead(() => turn.contains(getEditor()), false)) return false;
       return !!safeQuery(turn, TURN_DONE_SEL);
     } catch { return false; }
   }

@@ -24,3 +24,6 @@ Owner explicitly selected full preview motion even when Windows Animation effect
 Actual compiled frontend recording delivered immediately: https://drive.google.com/file/d/1pcaZwlVlG7L5-SAcPchk8vY3_lEMuL-E/view?usp=drivesdk . Empty session storage and reduced-motion environment; one navigation/no JS errors. It starts after bridge startup and is not a Windows before-window measurement. Fresh Linux startup, actual native-ready UI/animation and protected-source regressions passed. Full platform test rebuild pending. Previously delivered 38fd7d2 ZIPs do not contain this fix.
 
 Full replacement CI 41092415126 started on 5746f98. Final actual video refreshed at the same Drive link; 660134 bytes metadata verified, navigation-to-picker 3493ms (bridge already running), one navigation/no JS errors. Repo copy previews/desktop-startup-full-animation.mp4. No measured native Windows opening time.
+
+## 2026-11-02 — current source follow-up (WIP)
+Live readiness now checks actual app/profile/engine/transport rather than cached tool counts; instruction-worker errors have accurate recovery and bounded waits. ChatGPT retained-result schemas/command examples and compact startup memory improve protocol consistency and remove extra exchanges. Focused checks pass; full regression pending, not packaged. [Details](startup-bridge-and-results-2026-11-02.md).

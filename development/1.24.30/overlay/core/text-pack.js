@@ -10,21 +10,43 @@
 globalThis.PlazCodeText = (() => {
   const REQUIRED = false; // packaging sets this to true when it moves text into the app
   const MESSAGE = "PlazCode could not load its instructions from the PlazCode app. Open the PlazCode app (update the app and the extension together), then refresh this AI tab.";
-  let pack = null, pending = null, failure = "";
+  const REQUEST_TIMEOUT_MS = 20000, RETRY_DELAY_MS = 500;
+  let pack = null, pending = null, failure = "", failureKind = "";
+  function title() { return failureKind === "unsupported" || failureKind === "stale-extension" ? "Reload the PlazCode extension" : "PlazCode connection not ready"; }
+  function requestPack() {
+    return new Promise(resolve => {
+      let settled=false;
+      const finish=result=>{if(settled)return;settled=true;clearTimeout(timer);resolve(result);};
+      const timer=setTimeout(()=>finish({ok:false,kind:"disconnected",error:"The PlazCode extension did not answer its instruction request in time."}),REQUEST_TIMEOUT_MS);
+      try {
+        chrome.runtime.sendMessage({type:"textPack"},reply=>{
+          const runtimeError=chrome.runtime.lastError?.message;
+          if(runtimeError){finish({ok:false,kind:/context invalidated|receiving end does not exist/i.test(runtimeError)?"stale-extension":"disconnected",error:runtimeError});return;}
+          if(reply?.ok && reply.pack && typeof reply.pack==="object" && !Array.isArray(reply.pack)){finish({ok:true,pack:reply.pack});return;}
+          if(reply?.kind==="unknown-message" || /^unknown message$/i.test(String(reply?.error||""))){
+            finish({ok:false,kind:"unsupported",error:"The running PlazCode extension worker does not recognize its instruction request. Reload PlazCode in your browser's Extensions page, then refresh this AI tab. If it continues, load the extension from the same complete PlazCode download as the app."});return;
+          }
+          finish({ok:false,kind:reply?.kind||"disconnected",error:String(reply?.error||MESSAGE)});
+        });
+      } catch(error) { finish({ok:false,kind:"stale-extension",error:String(error?.message||error)}); }
+    });
+  }
+  async function load() {
+    for(let attempt=0;attempt<2;attempt++){
+      const reply=await requestPack();
+      if(reply.ok){pack=reply.pack;failure="";failureKind="";return true;}
+      failure=reply.error||MESSAGE;failureKind=reply.kind||"disconnected";
+      if(["unsupported","stale-extension","integrity"].includes(failureKind)||attempt===1)return false;
+      await new Promise(resolve=>setTimeout(resolve,RETRY_DELAY_MS));
+    }
+    return false;
+  }
   function ready() {
     if (!REQUIRED || pack) return Promise.resolve(true);
     if (pending) return pending;
-    pending = new Promise((resolve) => {
-      const done = (ok, error) => { if (!ok) { failure = error || MESSAGE; pending = null; } resolve(ok); };
-      try {
-        chrome.runtime.sendMessage({ type: "textPack" }, (reply) => {
-          void (chrome.runtime && chrome.runtime.lastError);
-          if (reply && reply.ok && reply.pack && typeof reply.pack === "object") { pack = reply.pack; done(true); }
-          else done(false, reply && reply.error ? String(reply.error) : "");
-        });
-      } catch (error) { done(false, ""); }
-    });
-    return pending;
+    const operation=load();pending=operation;
+    operation.finally(()=>{if(pending===operation)pending=null;});
+    return operation;
   }
   function missing(key) {
     return new Error((failure || MESSAGE) + " (missing " + key + ")");
@@ -44,5 +66,5 @@ globalThis.PlazCodeText = (() => {
     return out;
   }
   if (REQUIRED) ready();
-  return Object.freeze({ required: REQUIRED, ready, t, f, loaded: () => !REQUIRED || !!pack, error: () => failure || MESSAGE });
+  return Object.freeze({ required: REQUIRED, ready, t, f, title, loaded: () => !REQUIRED || !!pack, error: () => failure || MESSAGE });
 })();

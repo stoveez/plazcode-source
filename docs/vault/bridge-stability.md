@@ -30,3 +30,6 @@ Five desktop notices in nine minutes while Studio stayed connected. Causes found
 - Logs page: `bridge.socket_open`, `bridge.socket_closed` (with reason), `bridge.quiet` / `bridge.connected` (with seconds since the last request and frame).
 
 **Still open.** Chrome also stops a worker when one `fetch()` response takes over 30 s: `/api/media/convert` (65 s limit), Toolkit asset insert (120 s) and saving personal memory (30 s) could, when slow. Rare, user-started; not changed. Test: `test-bridge-diagnostics.js` sections 1, 4, 5.
+
+## 2026-11-02 — current source follow-up (WIP)
+Live readiness now checks actual app/profile/engine/transport rather than cached tool counts; instruction-worker errors have accurate recovery and bounded waits. ChatGPT retained-result schemas/command examples and compact startup memory improve protocol consistency and remove extra exchanges. Focused checks pass; full regression pending, not packaged. [Details](startup-bridge-and-results-2026-11-02.md).
