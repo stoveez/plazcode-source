@@ -2,6 +2,11 @@
 title: Full follow-up test ZIPs after guest delivery
 updated: 2026-11-02
 ---
+## 2026-11-02 — browser performance measurement corrected; replacement full build next
+CI 41577920780 failed only the browser warm-sweep budget so far; reproduced locally: the measurement collected five bounded 120-turn sweeps (600 classifications) but compared them with a four-sweep allowance (512). Scheduled observer work remained active during the heartbeat window. Test now records EVERY actual sweep and requires each to classify at most 128 turns; deliberately schedules a fifth pass to exercise this interleaving. No product source changed from 5870a11.
+
+Final local corrected check PASS at 64/512 turns (five 64/five 120 passes), all semantic/cache/Stop/no-replay checks retained. Negative control with full-history warm sweeps correctly FAILS: five 512-turn passes. Do not deliver 41577920780 artifacts; supersede it with a fresh full CI on this test correction. Require Windows/Mac/Linux/browser/release gate green, then verify exact inner signed packages and Drive readback before delivery. No stable publication/visibility changes. Product scope fix and earlier fixes preserved; prior e1236e0 verification stays superseded.
+
 ## 2026-11-02 — replacement full CI 41577920780 RUNNING
 [Current run](https://github.com/stoveez/plazcode-source/actions/runs/41577920780), final runtime/head **5870a11**. All local whole-core Chromium/Firefox startup/refusal/Stop/multipart and exact retained-result paging checks PASS, including new-chat address assignment, disconnected-bridge cleanup and once-only operation dispatch. AST guard proves all startup helpers share startSession's scope. First run 41574442126 is cancelled/superseded; no artifacts from it may be delivered. Prior e1236e0 source verification marked superseded after whole-browser scope failure.
 

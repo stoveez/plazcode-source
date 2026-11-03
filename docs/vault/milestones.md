@@ -3,6 +3,11 @@ title: Milestones (finished work)
 
 updated: 2026-11-02
 ---
+## 2026-11-02 — browser performance measurement corrected; replacement full build next
+CI 41577920780 failed only the browser warm-sweep budget so far; reproduced locally: the measurement collected five bounded 120-turn sweeps (600 classifications) but compared them with a four-sweep allowance (512). Scheduled observer work remained active during the heartbeat window. Test now records EVERY actual sweep and requires each to classify at most 128 turns; deliberately schedules a fifth pass to exercise this interleaving. No product source changed from 5870a11.
+
+Final local corrected check PASS at 64/512 turns (five 64/five 120 passes), all semantic/cache/Stop/no-replay checks retained. Negative control with full-history warm sweeps correctly FAILS: five 512-turn passes. Do not deliver 41577920780 artifacts; supersede it with a fresh full CI on this test correction. Require Windows/Mac/Linux/browser/release gate green, then verify exact inner signed packages and Drive readback before delivery. No stable publication/visibility changes. Product scope fix and earlier fixes preserved; prior e1236e0 verification stays superseded.
+
 ## 2026-11-02 — startup/bridge and ChatGPT fixes VERIFIED in source
 249 local checks covered, **0 unresolved failures**: full sweep passed 246; three isolated VM tests missing the new helper were corrected and passed separately. Final fresh prepare + all three fixtures/protocol/learning/live-health/pins batch PASS (exit 0). Final product refinement only marks the correction as internal System note, excluded from user requests/learning; no second full sweep claimed. Sealed text: 1,066 identical outputs; 973 provider bodies, 588 guarded reads preserved. [Details](startup-bridge-and-results-2026-11-02.md), [verification](startup-bridge-and-results-2026-11-02-verification.json).
 

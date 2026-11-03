@@ -4,7 +4,7 @@
   "head_sha": "5870a1124dcece34f1ab1129dc0a2afae5bec23d",
   "product_source_commit": "5870a1124dcece34f1ab1129dc0a2afae5bec23d",
   "branch": "claude/plazcode-dev",
-  "status": "in_progress",
+  "status": "superseded_browser_measurement_failure",
   "superseded_run": 41574442126,
   "source_sha256": {
     "core/main.js": "b078b0ff41752acc2e462dd7c92abd8a938ac6259662e2094ea3550d7b549964",
@@ -20,5 +20,45 @@
     "clickup_chromium_firefox_refusal_stop_multipart": "passed",
     "clickup_chromium_firefox_result_paging": "passed",
     "paging_terminal_exit": 0
+  },
+  "replacement_run_pending": true,
+  "performance_test_correction": {
+    "product_changed": false,
+    "original_failure": "600 classifications from five bounded sweeps compared with four-sweep allowance of 512",
+    "corrected": "Every observed warm sweep must classify at most 128 turns; fifth asynchronous pass deliberately included",
+    "positive_control": {
+      "status": "passed",
+      "sizes": [
+        64,
+        512
+      ],
+      "per_sweep": [
+        [
+          64,
+          64,
+          64,
+          64,
+          64
+        ],
+        [
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      ]
+    },
+    "negative_control": {
+      "status": "correctly_failed",
+      "size": 512,
+      "per_sweep": [
+        512,
+        512,
+        512,
+        512,
+        512
+      ]
+    }
   }
 }

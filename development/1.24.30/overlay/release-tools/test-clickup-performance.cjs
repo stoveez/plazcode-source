@@ -53,9 +53,9 @@ function check(ok, message, details) {
 // timings include this fixed overhead; compare structural counts, not wall time.
 function installCounters({ minimal }) {
   window.__perf = {
-    enabled: false, counts: {}, longTasks: [], heartbeat: [],
+    enabled: false, counts: {}, longTasks: [], heartbeat: [], decorationSweeps: [],
     hit(name, n = 1) { if (this.enabled) this.counts[name] = (this.counts[name] || 0) + n; },
-    reset() { this.counts = {}; this.longTasks = []; this.heartbeat = []; this.enabled = true; },
+    reset() { this.counts = {}; this.longTasks = []; this.heartbeat = []; this.decorationSweeps = []; this.enabled = true; },
   };
   const p = window.__perf;
   let lastBeat = performance.now();
@@ -118,6 +118,10 @@ function instrumentMain(source) {
   source = source.replace('const TOKEN_CHARS = 4;',
     'window.fixture={A,startSession,runTool,agentLoop,ui};' +
     'window.__perfCore={A,decorate,scheduleSweep,preHideWholeItems,waitForResponse,rememberExecuted,isRememberedExecuted};' +
+    (minimal ? '' : '{const sweep=decorate.sweep;decorate.sweep=function(...args){' +
+      'const p=window.__perf,before=p.counts.classifyCalls||0,measuring=p.enabled;' +
+      'try{return sweep.apply(this,args);}finally{' +
+      'if(measuring&&p.enabled)p.decorationSweeps.push((p.counts.classifyCalls||0)-before);}};}') +
     'const TOKEN_CHARS = 4;');
   if (!minimal) source = source.replace(/(classify\(item, next\)\s*\{)/,
     '$1 window.__perf.hit("classifyCalls");');
@@ -173,7 +177,7 @@ async function phase(page, cdp, name, fn, arg) {
   const metrics = await page.evaluate(() => {
     const p = window.__perf; p.enabled = false;
     const values = p.heartbeat.slice().sort((a, b) => a - b);
-    return { counts: p.counts, heartbeatSamples: values.length,
+    return { counts: p.counts, decorationSweeps: p.decorationSweeps.slice(), heartbeatSamples: values.length,
       heartbeatMaxMs: values.at(-1) || 0, heartbeatP95Ms: values[Math.floor(values.length * .95)] || 0,
       longTasks: p.longTasks, longTaskTotalMs: p.longTasks.reduce((n, x) => n + x.duration, 0) };
   });
@@ -250,7 +254,10 @@ async function runSize(browser, size) {
     }, report.pollCycles));
     run.phases.push(await phase(page, cdp, 'steady-decoration-sweeps', () => {
       for (let i = 0; i < 4; i++) __perfCore.decorate.sweep();
-      return { sweeps: 4 };
+      // Deliberately include a later pass so the measurement also exercises
+      // the observer/timer interleaving that previously caused false failures.
+      setTimeout(() => __perfCore.decorate.sweep(), 0);
+      return { sweeps: 4, backgroundSweepScheduled: true };
     }));
     run.phases.push(await phase(page, cdp, 'unrelated-page-mutations', async () => {
       const unrelated = document.querySelector('#perf-unrelated');
@@ -276,7 +283,13 @@ async function runSize(browser, size) {
     const poll = run.phases[0], sweep = run.phases[1], unrelated = run.phases[2], prehide = run.phases[3];
     check((poll.counts.itemSelectorCalls || 0) <= 3, `${size}: cached polls enumerate DOM at most three times`, poll.counts);
     check(chars(poll) <= 256 * 1024, `${size}: cached polls do not re-read historical payloads (256 Ki chars)`, poll.counts);
-    check((sweep.counts.classifyCalls || 0) <= 4 * 128, `${size}: warm sweeps classify a bounded <=128-turn window`, sweep.counts);
+    // Observer-driven sweeps remain active during the heartbeat collection
+    // window. Count each actual sweep instead of assuming only the four calls
+    // above ran: an extra bounded background sweep must not look like a
+    // full-history regression. Keep the <=128 budget for EVERY observed pass.
+    check(sweep.decorationSweeps.length >= 5 && sweep.decorationSweeps.every(n => n <= 128),
+      `${size}: every warm sweep classifies a bounded <=128-turn window`,
+      { counts: sweep.counts, decorationSweeps: sweep.decorationSweeps });
     check(chars(sweep) <= 512 * 1024, `${size}: warm sweeps reuse unchanged text (512 Ki chars)`, sweep.counts);
     check(chars(unrelated) <= 1024 * 1024, `${size}: unrelated mutations do not re-walk full history (1 Mi chars)`, unrelated.counts);
     check(chars(prehide) <= 1024 * 1024, `${size}: one new result does not re-read full history (1 Mi chars)`, prehide.counts);
@@ -287,7 +300,7 @@ async function runSize(browser, size) {
     for (const [name, ok] of Object.entries(run.correctness)) check(ok === true, `${size}: ${name}`, ok);
     check(errors.length === 0, `${size}: no page exceptions`, errors);
     console.log(JSON.stringify({ size, cold: run.cold, phases: run.phases.map(p => ({ name: p.name, ...p.counts,
-      cpuMs: p.cpuMs.TaskDuration, heartbeatMaxMs: p.heartbeatMaxMs, longTasks: p.longTasks.length })), correctness: run.correctness }));
+      decorationSweeps: p.decorationSweeps, cpuMs: p.cpuMs.TaskDuration, heartbeatMaxMs: p.heartbeatMaxMs, longTasks: p.longTasks.length })), correctness: run.correctness }));
   } catch (error) {
     check(false, `${size}: test exception`, String(error.stack || error));
     console.error(`${size}: ${error.stack || error}`);

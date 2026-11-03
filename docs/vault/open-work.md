@@ -2,6 +2,11 @@
 title: Open work and known bugs
 updated: 2026-11-02
 ---
+## 2026-11-02 — browser performance measurement corrected; replacement full build next
+CI 41577920780 failed only the browser warm-sweep budget so far; reproduced locally: the measurement collected five bounded 120-turn sweeps (600 classifications) but compared them with a four-sweep allowance (512). Scheduled observer work remained active during the heartbeat window. Test now records EVERY actual sweep and requires each to classify at most 128 turns; deliberately schedules a fifth pass to exercise this interleaving. No product source changed from 5870a11.
+
+Final local corrected check PASS at 64/512 turns (five 64/five 120 passes), all semantic/cache/Stop/no-replay checks retained. Negative control with full-history warm sweeps correctly FAILS: five 512-turn passes. Do not deliver 41577920780 artifacts; supersede it with a fresh full CI on this test correction. Require Windows/Mac/Linux/browser/release gate green, then verify exact inner signed packages and Drive readback before delivery. No stable publication/visibility changes. Product scope fix and earlier fixes preserved; prior e1236e0 verification stays superseded.
+
 ## 2026-11-02 — replacement build required: real-browser startup scope fix
 Run **41574442126** on 7390d06 was cancelled/superseded (Mac cancellation needed force-cancel). Local full-core Chromium reproduced "startupFeedbackStages is not defined": the new helper and the older startup-memory readers were inside runToolImpl, invisible to startSession. Isolated extraction tests had hidden that real scoping fault. Relocated all three helpers into the shared startup scope; added AST owner-scope regression and retained failure banners in new-chat test diagnostics. Updated shared ClickUp simulated live-status/fresh catalogue fields and empty read-only startup-memory probes; Notion clipboard fixture now loads actual startup/health helpers and checks bridge-offline cleanup.
 
