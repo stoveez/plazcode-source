@@ -3,10 +3,10 @@ title: Home
 updated: 2026-11-03
 ---
 
-Active: [Ox Alpha Copy composer lock](oxalpha-copy-lock-2026-11-03.md) and [Blender automatic UV setup](blender-uv-path-2026-11-03.md).
+Latest verified test ZIPs DELIVERED (fullCI41703669996 ALL GREEN; clean missing-UV Windows41707625110 PASS): [Blender + Ox Alpha proof/downloads](blender-oxalpha-2026-11-03-verification.json). [Blender fixes](blender-uv-path-2026-11-03.md) · [Ox Alpha Copy fix](oxalpha-copy-lock-2026-11-03.md).
 
 
-Active (native300PASS + real Blender GUI check/Drive previews PASS): [Blender UV/PATH discovery and timeout fix](blender-uv-path-2026-11-03.md).
+Actual Blender preview delivered; original affected PC/live Ox Alpha need owner retest. Source still Public at delivery; restore Private reminder remains.
 
 Follow-up test ZIPs verified/uploaded; full CI 41579556782 ALL GREEN: [Windows/Mac delivery and checks](test-build-1.24.30-followup-2026-11-02.md).
 

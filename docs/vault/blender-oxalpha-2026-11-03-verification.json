@@ -1,7 +1,7 @@
 {
   "date": "2026-11-03",
   "branch": "claude/plazcode-dev",
-  "status": "final_corrected_layout_full_ci_running",
+  "status": "verified_and_links_delivered",
   "blender": {
     "earlier_runtime_fixes": "c85d1f96da6901fa97226177f778d60bcd0865d7",
     "new_confirmed_first_use_failure": {
@@ -23,6 +23,18 @@
       ]
     },
     "real_signed_app_without_uv": {
+      "id": 41707625110,
+      "head_sha": "b396bda912df8a4c4fbf0f2cd6d596f20b689a93",
+      "job_id": 126167023691,
+      "status": "completed",
+      "build_run": 41703669996,
+      "conclusion": "success",
+      "uv_version": "0.12.21",
+      "initialized_blender_tools": 9,
+      "scene_edited": false
+    },
+    "prior_real_native_blender_scene_check_ms": 7420,
+    "prior_signed_app_without_uv": {
       "run_id": 41701224201,
       "head_sha": "ce585fde531981e02944690674d57f1fc14dc09f",
       "conclusion": "success",
@@ -32,8 +44,7 @@
       "empty_runtime_cache": true,
       "uv_absent_from_path": true,
       "scene_edited": false
-    },
-    "prior_real_native_blender_scene_check_ms": 7420
+    }
   },
   "oxalpha": {
     "root_cause": "Global click hook accepted any default-type submit button, including reply/code Copy outside composer, and scheduled a phantom agent loop",
@@ -73,7 +84,7 @@
     "superseded_for_final_delivery": true,
     "reason": "lacks new embedded installer fix and Ox Alpha fix"
   },
-  "new_zip_delivered": false,
+  "new_zip_delivered": true,
   "source_sha256": {
     "agent/src/main.rs": "8aadf52054f1e90f342da9750098f7f748cfe00eeea7d9ac991e4b18992da6d1",
     "agent/src/mcp_addons.rs": "3efec9cf76653421ea87d79d1a40e36dfd959b2c2fb55dfb26ebc04f92ed5b18",
@@ -113,7 +124,7 @@
     "removed": [],
     "fix": "copy reviewed installer only on Windows; explicit Mac absence guard"
   },
-  "no_new_zip_delivered": true,
+  "no_new_zip_delivered": false,
   "prior_windows_verified_not_delivered": {
     "platform": "windows",
     "version": "1.24.30",
@@ -191,7 +202,56 @@
         "bytes": 51145862,
         "url": "https://drive.google.com/file/d/1p8cBF5WuXmt9FERO-_pLTxzhsWOluXQa/view?usp=drivesdk",
         "readback_verified": true,
-        "delivered": false
+        "delivered": true
+      }
+    },
+    "macos": {
+      "platform": "macos",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3074,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+      "file": "PlazCode-macOS-1.24.30-test-lean.zip",
+      "bytes": 52928955,
+      "sha256": "3a21c9ba41356b72a3e1584eabe5aa4b9c0b7880217cd6b6592a4d2bc836de6c",
+      "files": 3088,
+      "artifact": {
+        "id": 13267797497,
+        "name": "plazcode-1.24.30-macOS-test-lean",
+        "size_in_bytes": 52929758,
+        "url": "https://api.github.com/repos/stoveez/plazcode-source/actions/artifacts/13267797497",
+        "archive_download_url": "https://api.github.com/repos/stoveez/plazcode-source/actions/artifacts/13267797497/zip",
+        "expired": false,
+        "created_at": "2026-11-03T20:08:23Z",
+        "expires_at": "2027-02-01T19:29:07Z",
+        "updated_at": "2026-11-03T20:08:23Z",
+        "digest": "sha256:9b6bf3091b0b0cf78a369bf137d16d40166df837255ca1a40abc5652b736a729",
+        "workflow_run": {
+          "id": 41703669996,
+          "repository_id": 1423458595,
+          "head_repository_id": 1423458595,
+          "head_branch": "claude/plazcode-dev",
+          "head_sha": "d3a88c23aaf8da331153cd98cb3dfec7c42896ba"
+        }
+      },
+      "drive": {
+        "id": "1kRhEDBia5MW5arhcq0z6PRHOGKqMWFUn",
+        "name": "PlazCode-macOS-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "bytes": 52928955,
+        "url": "https://drive.google.com/file/d/1kRhEDBia5MW5arhcq0z6PRHOGKqMWFUn/view?usp=drivesdk",
+        "readback_verified": true,
+        "delivered": true
       }
     }
   },
@@ -199,14 +259,40 @@
     "id": 41707625110,
     "head_sha": "b396bda912df8a4c4fbf0f2cd6d596f20b689a93",
     "job_id": 126167023691,
-    "status": "in_progress",
-    "build_run": 41703669996
+    "status": "completed",
+    "build_run": 41703669996,
+    "conclusion": "success",
+    "uv_version": "0.12.21",
+    "initialized_blender_tools": 9,
+    "scene_edited": false
   },
   "current_jobs": {
     "windows": "success",
+    "macos": "success",
+    "linux": "success",
     "browsers": "success",
-    "macos": "in_progress",
-    "linux": "in_progress",
-    "release-check": "pending"
+    "release-check": "success"
+  },
+  "stable_published": false,
+  "repo_visibility_at_delivery": "public_owner_reminded_to_restore_private",
+  "pc_vault_synced": false,
+  "first_use_proof": [
+    "2026-11-03T19:55:25.4520679Z PASS: both runtime branches extract and reuse cache without another request\r",
+    "2026-11-03T19:55:25.4521262Z PASS: checksum failure publishes nothing, cleans staging, and retry succeeds\r",
+    "2026-11-03T19:56:03.6420560Z uv 0.12.21 (7af826859 2026-09-29 x86_64-pc-windows-msvc)\r",
+    "2026-11-03T19:56:03.6486978Z PASS: signed Windows app automatically installed UV from an empty cache without UV on PATH and initialized 9 Blender MCP tools. No Blender scene was edited.\r"
+  ],
+  "full_ci_checks": {
+    "passed": 130,
+    "failed": 0,
+    "jobs": 4
+  },
+  "official_build_report": {
+    "id": "1ws69fAIKVFMxndY89XK_vih-C1j3k6iS",
+    "name": "PlazCode-test-build-checks.md",
+    "mime_type": "text/markdown",
+    "bytes": 10694,
+    "url": "https://drive.google.com/file/d/1ws69fAIKVFMxndY89XK_vih-C1j3k6iS/view?usp=drivesdk",
+    "readback_verified": true
   }
 }
