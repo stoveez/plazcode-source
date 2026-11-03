@@ -1,11 +1,11 @@
 ---
 title: Open work and known bugs
-updated: 2026-11-02
+updated: 2026-11-03
 ---
-## 2026-11-03 — combined final full CI41695245836 RUNNING
-[Run](https://github.com/stoveez/plazcode-source/actions/runs/41695245836), source/head **06aa8e3**: includes Blender UV discovery/cold startup/scene deadline fixes, NEW embedded .NET checksum installer fix, and Ox Alpha composer-only Copy controls. Installer-only Windows41693932272 PASS; old installer failed under PS5.1 in41690772050. Final local JS runner active, log `/workspace/plazcode-blender-audit-2026-11-03/javascript-combined.log`, terminal50683. Full native300PASS/2ignored, Ox Alpha focused/differential70/preservation970/DOM325/pins/home-start PASS.
+## 2026-11-03 — combined build restarting after stale test assertion
+CI41695245836 stopped at test-vani-provider.js: a shared source-text assertion required btn.type even after Ox Alpha deliberately removed global submit-button detection. Replaced it with actual Send/Stop/draft behaviour checks for all four providers; focused test PASS. No product changes after06aa8e3. Final local full JS is still checking the pre-fixture snapshot; its expected stale assertion must be followed by the corrected full suite.
 
-Once Windows package ready: run `test-blender-first-use.yml` on current branch with build_run41695245836 and installer_only=false. Must prove production app automatically downloads/executes UV and initializes real MCP tools from empty cache/no UV on PATH. Require that PLUS all fullCI jobs green. Then exact inner Win/Mac verification/new embedded .NET marker/241 sources/both Mac slices/zero official layout and Drive readback before immediate delivery + Private reminder. Staging `/workspace/plazcode-combined-build-41695245836`. Previous41682724896 packages including undelivered WinDrive14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB are superseded. No source ZIP/publish/visibility changes; PC vault folder not connected.
+Next: fresh full combined CI on this fixture correction, then signed Windows app with entirely missing UV using test-blender-first-use.yml (installer_only=false), exact inner Win+universal Mac signature/source/native/zero-layout checks and Drive readback. Native300PASS/2ignored; installer fixture41693932272 PASS; actual Blender scene7,420ms preview delivered; original affected PCs/live Ox Alpha remain untested. No new test ZIP delivered. Previous41682724896 and41695245836 are superseded. Source Public; no stable publish or visibility changes. PC vault not connected.
 
 ## 2026-11-03 — both source fixes verified locally; combined full build next
 Windows installer-only CI41693932272 SUCCESS under PowerShell5.1: first download/cache reuse, wrong-hash rejection/no publication/staging cleanup and successful retry. Original41690772050 reproduced missing Get-FileHash; .NET SHA256 fixed it without weakening pinned checks. Real signed app with entirely missing UV still must run on NEW package because installer is embedded.

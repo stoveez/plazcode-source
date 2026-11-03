@@ -19,12 +19,13 @@ assert(fs.readFileSync('background.js', 'utf8').includes('"https://c.vani.ai/*"'
 assert(fs.readFileSync('popup.js', 'utf8').includes('"c.vani.ai"'), 'popup knows Vani');
 assert(fs.readFileSync('core/main.js', 'utf8').includes('{ name: "Vani AI", url: "https://c.vani.ai/c" }'), 'Vani in the site list');
 
-function load(url, body) {
+function load(url, body, provider = 'vani') {
   const d = new JSDOM('<main>' + body + '</main>', {url, runScripts: 'outside-only', pretendToBeVisual: true});
   const w = d.window;
+  w.document.addEventListener('submit', event => event.preventDefault());
   w.HTMLElement.prototype.getBoundingClientRect = function () { return {x: 100, y: 400, left: 100, top: 400, right: 700, bottom: 450, width: 600, height: 50}; };
   Object.defineProperty(w.HTMLElement.prototype, 'innerText', {get() { return this.textContent; }});
-  vm.runInContext(fs.readFileSync('providers/vani.js', 'utf8') + ';this.p=RSProvider;', d.getInternalVMContext());
+  vm.runInContext(fs.readFileSync('providers/' + provider + '.js', 'utf8') + ';this.p=RSProvider;', d.getInternalVMContext());
   return {w, p: w.p};
 }
 
@@ -64,14 +65,24 @@ console.log('PASS Vani AI: registered on c.vani.ai only, reads Vani turns, anony
 
 // Clicking PlazCode's own bar buttons (Fix connection, Enhance...) must never count as the site's Send button.
 {
-  const fs2 = fs;
   for (const name of ['vani', 'freebuff', 'oxalpha', 'useai']) {
-    const src = fs2.readFileSync(require('path').join(__dirname, 'providers', name + '.js'), 'utf8');
-    const click = src.indexOf('document.addEventListener("click"');
-    assert(click > 0, name + ' has a click hook');
-    const guard = src.indexOf('if (safeClosest(t, "#rs-root")) return;', click);
-    const send = src.indexOf('btn.type', click);
-    assert(guard > click && guard < send, name + ': PlazCode bar clicks are ignored before Send detection');
+    const {w, p} = load('https://example.test/chat/test',
+      '<form><textarea>A draft to keep</textarea><button id="nativeSend" type="submit" aria-label="Send message">Send</button></form>' +
+      '<div id="rs-root"><button id="barSend" type="submit" aria-label="Send message"><span>Enhance</span></button>' +
+      '<button id="barStop" aria-label="Stop generation"><span>Stop</span></button></div>', name);
+    let sends = 0, stops = 0;
+    p.installSendHooks({isStarted: () => true, isBlocked: () => false,
+      onUserMessage: () => sends++, onNativeStop: () => stops++,
+      onBlockedAttempt() { assert.fail(name + ': bar click must not start a blocked task'); }});
+    for (const id of ['barSend', 'barStop']) {
+      w.document.querySelector('#' + id + ' span').dispatchEvent(new w.MouseEvent('click', {bubbles: true, cancelable: true}));
+    }
+    assert.equal(sends, 0, name + ': bar clicks never start a task');
+    assert.equal(stops, 0, name + ': bar clicks never stop a task');
+    assert.equal(p.editorText(), 'A draft to keep', name + ': bar clicks preserve the draft');
+    w.document.querySelector('#nativeSend').dispatchEvent(new w.MouseEvent('click', {bubbles: true, cancelable: true}));
+    assert.equal(sends, 1, name + ': the real Send still starts a task');
+    w.close();
   }
   console.log('PASS PlazCode bar buttons are never mistaken for the site Send button');
 }

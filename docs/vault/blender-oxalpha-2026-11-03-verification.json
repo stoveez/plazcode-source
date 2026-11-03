@@ -1,7 +1,7 @@
 {
   "date": "2026-11-03",
   "branch": "claude/plazcode-dev",
-  "status": "full_combined_ci_running",
+  "status": "restart_full_ci_after_stale_shared_test_assertion",
   "blender": {
     "earlier_runtime_fixes": "c85d1f96da6901fa97226177f778d60bcd0865d7",
     "new_confirmed_first_use_failure": {
@@ -69,5 +69,10 @@
   "run_id": 41695245836,
   "run_url": "https://github.com/stoveez/plazcode-source/actions/runs/41695245836",
   "head_sha": "06aa8e329c44eb5db28a52dbba50da90814af487",
-  "product_source_commit": "06aa8e329c44eb5db28a52dbba50da90814af487"
+  "product_source_commit": "06aa8e329c44eb5db28a52dbba50da90814af487",
+  "superseded_run": {
+    "id": 41695245836,
+    "reason": "test-vani-provider.js required removed btn.type source expression; behaviour test now PASS; product unchanged"
+  },
+  "fixture_correction": "actual bar Send/Stop/draft behaviour for Vani, Freebuff, Ox Alpha and UseAI PASS"
 }

@@ -1,6 +1,6 @@
 ---
 title: Home
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 
 Active: [Ox Alpha Copy composer lock](oxalpha-copy-lock-2026-11-03.md) and [Blender automatic UV setup](blender-uv-path-2026-11-03.md).
