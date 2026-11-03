@@ -25,5 +25,5 @@ Actual compiled frontend recording delivered immediately: https://drive.google.c
 
 Full replacement CI 41092415126 started on 5746f98. Final actual video refreshed at the same Drive link; 660134 bytes metadata verified, navigation-to-picker 3493ms (bridge already running), one navigation/no JS errors. Repo copy previews/desktop-startup-full-animation.mp4. No measured native Windows opening time.
 
-## 2026-11-02 — current source follow-up (WIP)
-Live readiness now checks actual app/profile/engine/transport rather than cached tool counts; instruction-worker errors have accurate recovery and bounded waits. ChatGPT retained-result schemas/command examples and compact startup memory improve protocol consistency and remove extra exchanges. Focused checks pass; full regression pending, not packaged. [Details](startup-bridge-and-results-2026-11-02.md).
+## 2026-11-02 — current source follow-up (verified)
+Live readiness now checks actual app/profile/engine/transport rather than cached tool counts; instruction-worker errors have accurate recovery and bounded waits. ChatGPT retained-result schemas/command examples and compact startup memory improve protocol consistency and remove extra exchanges. 246 full-sweep passes plus three corrected isolated fixture reruns and final protocol/learning/health/pins all pass. Not packaged; affected-PC trigger and live timing unconfirmed. [Details](startup-bridge-and-results-2026-11-02.md).

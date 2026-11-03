@@ -2766,7 +2766,7 @@ return result`;
   function retainedResultCorrection(text) {
     if(!/^`?plazcode_result_read`?\s*(?:\(\))?\s*$/i.test(String(text||'').trim()))return "";
     if(![...retainedToolResults.values()].some(record=>record.chat===P.conversationKey()&&record.engine===activeEngine()))return "";
-    return '(PlazCode: your last reply contained only the tool name, so no new command was received or executed. To read another retained page, emit one fenced json command whose command is plazcode_result_read and whose params contain the real id and numeric next_offset from the previous result. The first retained page shows the complete JSON envelope; copy that format with the actual values. This is a local read; never rerun the original command. If next_offset is null, use the completed result to continue the user task or answer normally. Do not echo the tool name or invent result text.)';
+    return '(System note: your last reply contained only the tool name, so no new command was received or executed. To read another retained page, emit one fenced json command whose command is plazcode_result_read and whose params contain the real id and numeric next_offset from the previous result. The first retained page shows the complete JSON envelope; copy that format with the actual values. This is a local read; never rerun the original command. If next_offset is null, use the completed result to continue the user task or answer normally. Do not echo the tool name or invent result text.)';
   }
   function prepareToolFeedback(text) {
     // Apply after status/debug/reference additions, before Co-Work appends its

@@ -2,9 +2,8 @@
   "updated": "2026-11-02",
   "timezone": "America/Chicago",
   "branch": "claude/plazcode-dev",
-  "product_source_commit": "e7615099c3eedd6bbfd06bf4cd764eebf1e7a445",
   "source_sha256": {
-    "core/main.js": "946a1b2f72fa4d89f898e1e37f6a09e466bab41f3d2aa802df63ed4e9de934bd",
+    "core/main.js": "2c5f51a5ceb2b05051be30b24d7d3ec4bfcc378475297d5321d76ce6eeb1a346",
     "background.js": "74a71563ebfd44b2f15d52b963f9b6158892b9b537c2c6e7da24e7641f6c8421",
     "core/text-pack.js": "b1e6a1d6af6708ccbbfbc3b925cf6a14455501902c3a91e1e5b32cd428b384ee",
     "providers/chatgpt.js": "4b544eeff4f23059a5d222af183eedf9f654332793df1ab1de13df98f6db692c"
@@ -35,7 +34,11 @@
       "test-notion-start-explains.js",
       "test-notion-startup-recovery.js",
       "test-fast-tool-settle.js",
-      "test-input-budget-usage.js"
+      "test-input-budget-usage.js",
+      "test-1.24.21-stall-recovery.js",
+      "test-hang-recovery-wiring.js",
+      "test-reply-recovery.js",
+      "test-learning-quality.js"
     ],
     "preserved_provider_function_bodies": 973,
     "guarded_dom_reads": 588
@@ -48,7 +51,7 @@
     "sealed_bytes": 56819
   },
   "full_javascript": {
-    "status": "running",
+    "status": "completed_with_fixture_updates_verified",
     "local_log": "/workspace/plazcode-startup-connection/javascript-full.log",
     "summary_log": "/workspace/plazcode-startup-connection/javascript-summary.log",
     "normal_runner_tests": 249,
@@ -64,7 +67,23 @@
       "targeted_updated_fixture": "passed",
       "checks_passed": 9,
       "log": "/workspace/plazcode-startup-connection/stall-fixture-rerun.log"
-    }
+    },
+    "full_sweep_source_commit": "e7615099c3eedd6bbfd06bf4cd764eebf1e7a445",
+    "full_sweep_passed": 246,
+    "full_sweep_failed": [
+      "test-1.24.21-stall-recovery.js",
+      "test-hang-recovery-wiring.js",
+      "test-reply-recovery.js"
+    ],
+    "final_unresolved_failures": 0,
+    "final_verified_checks": 249,
+    "raw_log_sha256": "42358d34d28269ec1fccd651bf0412fa888b76c9305652155429e5dfa42472ae",
+    "corrected_fixtures_passed": [
+      "test-1.24.21-stall-recovery.js",
+      "test-hang-recovery-wiring.js",
+      "test-reply-recovery.js"
+    ],
+    "post_sweep_refinement": "Only the corrective-message prefix changed to recognized System note. Fresh prepare, all three corrected fixtures, retained-reader protocol/request exclusion, selective learning, live readiness and pins passed together on final source; exit 0. No second full sweep claimed."
   },
   "guest_preview_reshown": {
     "file_name": "PlazCode-create-profile-guest.png",
@@ -84,5 +103,8 @@
     "No live affected ChatGPT account or live startup time measurement",
     "No new signed package for these fixes yet",
     "PC vault folder not connected"
-  ]
+  ],
+  "base_product_source_commit": "e7615099c3eedd6bbfd06bf4cd764eebf1e7a445",
+  "product_source_commit": null,
+  "final_targeted_batch_exit_code": 0
 }

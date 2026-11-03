@@ -3,6 +3,11 @@ title: Milestones (finished work)
 
 updated: 2026-11-02
 ---
+## 2026-11-02 — startup/bridge and ChatGPT fixes VERIFIED in source
+249 local checks covered, **0 unresolved failures**: full sweep passed 246; three isolated VM tests missing the new helper were corrected and passed separately. Final fresh prepare + all three fixtures/protocol/learning/live-health/pins batch PASS (exit 0). Final product refinement only marks the correction as internal System note, excluded from user requests/learning; no second full sweep claimed. Sealed text: 1,066 identical outputs; 973 provider bodies, 588 guarded reads preserved. [Details](startup-bridge-and-results-2026-11-02.md), [verification](startup-bridge-and-results-2026-11-02-verification.json).
+
+Live app/profile/engine/transport gate Ready; cached tools cannot fake health; instruction-loader errors have accurate recovery and bounded waits; reader schema/real JSON/bounded correction; duplicate memory refresh removed and small complete ChatGPT memory shares the list-result acknowledgement (30k/220-line/input bounds). Large memory, other providers and real Stop preserved. Native code unchanged, no new ZIP or stable publication, original affected PC trigger/live timing unconfirmed. Existing guest ZIPs lack all newer source fixes; reload updated signed extension + refresh tabs when packaged. Guest preview re-shown inline + Drive, PNG/849,416-byte metadata rechecked; guest still opens without login and persists separate local data. Repo vault updated, PC folder not connected. Source visibility/Private reminder before ending.
+
 ## 2026-11-02 — cross-site Continue project FIXED and fully regression-tested in source
 Startup-only visits no longer veto saved work; outgoing chat saves after focus loss and on pagehide, including while an archive write is pending. Same-chat offers blocked, selected-source note context only and new-project choices survive desktop recovery. Full local JS suite PASS, **0 failures**; no new ZIP/release. [Details](continuation-cross-site-2026-11-02.md).
 

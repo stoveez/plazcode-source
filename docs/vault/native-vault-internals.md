@@ -34,3 +34,6 @@ Rust: `cargo test vault` (18 tests, includes `live_note_is_seeded_sent_and_cappe
 
 ## Cross-site continuation follow-up (2026-11-02)
 The source fix now offers the latest captured real work across AI sites, even after startup-only visits; leaving a tab/page captures before navigation. Continue uses only the selected source note in the active vault, falling back to that source excerpt, and an explicit new-project choice is not restored from an old archive. Startup/opt-out/profile safety retained. Full local JS suite PASS, **0 failures**; not in current guest/signup ZIPs. [Details](continuation-cross-site-2026-11-02.md).
+
+## ChatGPT startup memory (2026-11-02)
+All memory is retained. A complete small set shares the final command-list/Ready exchange under 30,000 characters, 220 lines and the input budget, avoiding separate model acknowledgements. Larger sets and other sites retain acknowledged pages. Reader corrections are internal feedback, excluded from user-request/learning context. Verified source only, not in current guest ZIPs. [Details](startup-bridge-and-results-2026-11-02.md).

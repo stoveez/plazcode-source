@@ -41,6 +41,8 @@ async function run(replies, opts = {}) {
     runTool: opts.abort ? (async () => { throw new box.SendAbortedError("clarification stopped"); }) : (async (call) => { ran.push(call.tool); return "Output of '" + call.tool + "':\nok"; }),
   };
   vm.createContext(box);
+  const retainedHelpers=main.slice(main.indexOf("  function retainedResultCorrection("),main.indexOf("  function prepareToolFeedback("));
+  vm.runInContext("const retainedToolResults=new Map();"+retainedHelpers,box);
   vm.runInContext(main.slice(helperStart, helperEnd) + main.slice(loopStart, loopEnd) + "this.loop=agentLoop;", box);
   await Promise.race([box.loop(0), new Promise((_, rej) => setTimeout(() => rej(Error("agentLoop did not finish")), 1500))]);
   return { sent, warnings, toasts, finishes, paints, cards, ran, A: box.A };

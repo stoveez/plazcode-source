@@ -1,6 +1,6 @@
 ---
 title: Tool-call consistency and speed (DeepSeek DSML, helper results, sizes, gap between calls)
-updated: 2026-10-30
+updated: 2026-11-02
 ---
 # Tool-call consistency (1.24.27)
 
@@ -17,5 +17,5 @@ Cause, from the code: every site treats the AI as busy while its Stop button sho
 
 Fix (every site except DeepSeek, which keeps its account-safe pacing on purpose): once the reply holds a complete, closed command, the real Stop button is gone and the text has been quiet for 0.8 s, the command runs. Freebuff waits 3 s (`FAST_TOOL_SETTLE_MS`); Notion keeps its own check (0). Claude sends once Stop is gone and the text has been quiet for 1 s. The console read is capped at 3 s. Plain answers and unfinished commands keep the old timing. Test: `test-fast-tool-settle.js`, which runs the real watcher; the old code took 12.8 s and the new code 1.1 s. Diagnostic event: `response.fastToolSettle`. Not measured on a live site; the AI's own thinking time is not affected.
 
-## 2026-11-02 — current source follow-up (WIP)
-Live readiness now checks actual app/profile/engine/transport rather than cached tool counts; instruction-worker errors have accurate recovery and bounded waits. ChatGPT retained-result schemas/command examples and compact startup memory improve protocol consistency and remove extra exchanges. Focused checks pass; full regression pending, not packaged. [Details](startup-bridge-and-results-2026-11-02.md).
+## 2026-11-02 — current source follow-up (verified)
+Live readiness now checks actual app/profile/engine/transport rather than cached tool counts; instruction-worker errors have accurate recovery and bounded waits. ChatGPT retained-result schemas/command examples and compact startup memory improve protocol consistency and remove extra exchanges. 246 full-sweep passes plus three corrected isolated fixture reruns and final protocol/learning/health/pins all pass. Not packaged; affected-PC trigger and live timing unconfirmed. [Details](startup-bridge-and-results-2026-11-02.md).
