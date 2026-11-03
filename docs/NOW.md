@@ -1,7 +1,9 @@
 # NOW
 Updated: 2026-11-03 (owner timezone). Branch **claude/plazcode-dev** only; no helpers.
 
-**ACTIVE:** owner clarified UV may be entirely absent too. Added a supplemental Windows check: empty runtime cache, no UV in app/user/PATH, production signed app must automatically install pinned UV and initialize actual MCP tools; existing installer checksum/cache/recovery tests also run. Supplemental workflow dispatch pending. No product changes from c85d1f9.
+**ACTIVE:** new owner issue: Ox Alpha Copy of a finished AI reply raises the Agent is working composer cover. Uploaded video downloaded to /workspace/attachments/fa6166be-8fbd-44df-89a1-94e79bdf5454/20261103-1650-55.6825188.mp4. Inspecting provider generation detection/core response activity before coding. Preserve Blender follow-up; main CI41682724896 is now ALL GREEN, but entirely-missing-UV first-use check still pending. Combined next test ZIPs should include Ox Alpha after fix.
+
+**Blender:** owner clarified UV may be entirely absent too. Added a supplemental Windows check: empty runtime cache, no UV in app/user/PATH, production signed app must automatically install pinned UV and initialize actual MCP tools; existing installer checksum/cache/recovery tests also run. Supplemental workflow dispatch pending. No product changes from c85d1f9.
 
 **Full build:** Blender follow-up full CI **41682724896** RUNNING: https://github.com/stoveez/plazcode-source/actions/runs/41682724896 . Head152beec; productc85d1f9 unchanged (only test/notes differ). Supersedes cancelled41680761816 after an obsolete exact queue assertion; correction PASS. Final full local JS rerun PASS:250 tests,0 failures, exit0 (log `/workspace/plazcode-blender-audit-2026-11-03/javascript-final.log`). Windows ZIP verified/uploaded (51,143,289B), DriveID14RQRFm3GNLKz4layMHBt6QqPqJj-ACOB with verified name/MIME/size; NOT delivered yet, do not duplicate upload. Mac/final gate pending. [Diagnosis/preview](vault/blender-uv-path-2026-11-03.md), [verification](vault/blender-uv-path-2026-11-03-verification.json).
 

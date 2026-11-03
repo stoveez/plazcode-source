@@ -1,5 +1,10 @@
 name: Blender first-use runtime validation
 on:
+  push:
+    branches: [claude/plazcode-dev]
+    paths:
+      - .github/workflows/test-blender-first-use.yml
+      - development/1.24.30/test-blender-first-use.ps1
   workflow_dispatch:
     inputs:
       build_run:
@@ -25,7 +30,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_RUN: ${{ inputs.build_run }}
         run: |
+          if (-not $env:BUILD_RUN) {
+            $env:BUILD_RUN = gh run list --repo $env:GITHUB_REPOSITORY --workflow validate-1.24.30.yml --branch $env:GITHUB_REF_NAME --status success --limit 1 --json databaseId --jq '.[0].databaseId'
+          }
           if ($env:BUILD_RUN -notmatch '^\d+$') { throw 'A numeric build run is required.' }
+          $Source = gh run view $env:BUILD_RUN --repo $env:GITHUB_REPOSITORY --json headSha --jq .headSha
+          if ($Source -notmatch '^[a-f0-9]{40}$') { throw 'Build source could not be verified.' }
+          git fetch --no-tags --depth=1 origin $Source
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git diff --exit-code $Source -- development/1.24.30/overlay/agent/src
+          if ($LASTEXITCODE -ne 0) { throw 'Run a full build on the current native source before testing first use.' }
           gh run download $env:BUILD_RUN --repo $env:GITHUB_REPOSITORY --name plazcode-1.24.30-Windows-test-lean --dir first-use-package
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Real packaged app with no UV installation and no UV on PATH

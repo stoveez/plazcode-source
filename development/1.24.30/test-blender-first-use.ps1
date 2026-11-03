@@ -38,8 +38,10 @@ $Info.EnvironmentVariables['UV_INSTALL_DIR'] = $EmptyUvRoot
 $App = New-Object System.Diagnostics.Process
 $App.StartInfo = $Info
 $LastServers = $null
+$Started = $false
 try {
     if (-not $App.Start()) { throw 'The packaged application did not start.' }
+    $Started = $true
     $Output = $App.StandardOutput.ReadToEndAsync()
     $Errors = $App.StandardError.ReadToEndAsync()
     $Deadline = [DateTime]::UtcNow.AddMinutes(8)
@@ -71,7 +73,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'The automatically installed UV executable could not run.' }
     Write-Host ('PASS: signed Windows app automatically installed UV from an empty cache without UV on PATH and initialized ' + $Blender.tools + ' Blender MCP tools. No Blender scene was edited.')
 } finally {
-    if ($App.Id -and -not $App.HasExited) {
+    if ($Started -and -not $App.HasExited) {
         & "$env:SystemRoot\System32\taskkill.exe" /PID $App.Id /T /F | Out-Null
     }
     $App.Dispose()

@@ -1,3 +1,6 @@
+## 2026-11-03 — scope extends to Ox Alpha Copy composer lock
+Owner uploaded24.96s recording: copying AI output unexpectedly raises Agent is working cover. Inspecting generation and reply action scoping before code edits. Preserve Blender fixes. Blender main CI41682724896 ALL GREEN; missing-UV Windows supplement still needs trigger (new workflow API404 on dev-only definition; enabling narrowly scoped on-push trigger). Next test ZIP delivery should include Ox Alpha once fixed; do not represent earlier Blender-only packages as containing it.
+
 ## 2026-11-03 — owner clarified UV absent; supplemental real Windows test next
 Product unchanged c85d1f9; full CI41682724896 Mac is packaging, other jobs green. Before delivery require supplemental test-blender-first-use.yml: actual signed Windows app, empty runtime cache, UV absent from searched locations/PATH, automatic pinned installer + actual MCP handshake. Existing installer checksum/cache/recovery tests included. Added workflow/test only; no source ZIP/publish/visibility changes. Dispatch with build_run41682724896 after this commit, record result.
 
