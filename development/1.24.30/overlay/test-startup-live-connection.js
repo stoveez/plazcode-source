@@ -26,5 +26,6 @@ async function startup(statuses){
  t=await startup([healthy,{...healthy,roblox_connected:false}]);assert(!t.result?.ready);assert.equal(t.sends,1,'Do not request a ready acknowledgement after losing Studio');
  const box={A:{toolList:[{name:'old_cached_tool'}]},refreshPersonalMemory:async()=>{},bg:async()=>({ok:true,fresh:false,tools:[{name:'old_cached_tool'}],error:'bridge not connected'}),diag(){},Date,setTimeout};
  vm.createContext(box);vm.runInContext(functions(['ensureTools']),box);await box.ensureTools(true);assert.equal(box.A.toolList.length,0,'Forced startup cannot use a failed refresh disguised by cached tools');
+ let refreshes=0;box.A.toolList=[{name:'fresh_cached_tool'}];box.A.toolsAt=Date.now();box.TOOLS_TTL_MS=120000;box.syncDesktopToolSnapshot=()=>{};box.refreshPersonalMemory=async()=>{refreshes++;};await box.ensureTools(false);assert.equal(refreshes,0,'A current catalogue does not fetch all memory again');
  console.log('PASS actual startup: live app/profile/engine checks before sends, before acknowledgement and before Ready; lost transport and cached catalogues never confirm readiness.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

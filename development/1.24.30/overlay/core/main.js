@@ -3773,7 +3773,7 @@ return result`;
     // avoiding a separate model round trip for each memory acknowledgement.
     if(P.id!=="chatgpt" || !memoryStages.length || memoryStages.some(stage=>!stage.referenceText))return ordinary;
     const combined=readyPrompt+"\n\n"+memoryStages.map(stage=>stage.referenceText).join("\n\n")+'\n\nRead all the memory above before acknowledging startup. Reply with exactly "PlazCode is ready." and nothing else.';
-    if(combined.length>Math.min(30000,inputBudget()-1000))return ordinary;
+    if(combined.length>Math.min(30000,inputBudget()-1000) || combined.split("\n").length>220)return ordinary;
     diag("start.memoryCombined",{pages:memoryStages.length,chars:combined.length});
     return [{text:combined}];
   }
