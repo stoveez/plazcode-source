@@ -41,7 +41,7 @@ assert(/data-memory-import/.test(memory)&&/accept="\.md,\.markdown,\.json,\.txt/
 // Blender: wait for a running command, reconnect if seen before, timeouts are not disconnects.
 assert(/blenderWasConnected/.test(bg)&&/Date\.now\(\) \+ 45000/.test(bg));
 const blender=fs.readFileSync('agent/src/blender.rs','utf8');
-assert(/tokio::time::timeout\(Duration::from_secs\(45\),COMMAND_LOCK\.lock\(\)\)/.test(blender)&&!/COMMAND_LOCK\.try_lock/.test(blender));
+assert(blender.includes('let wait = if kind == "get_scene_info" { 2 } else { 45 };')&&blender.includes('command_slot(&COMMAND_LOCK, kind).await?')&&!/COMMAND_LOCK\.try_lock/.test(blender), 'scene probes have a short queue while edits still wait for the active command');
 // Ultra (1.24.21): the GUI methods are skills in the Ultra pack, opened with ultralab_read.
 for(const id of ['check-ui-rules','expert-gui','gui-syntax','gui-verify','check-ui-standard','toolbox','check-cycle','report-what-you-verified'])assert(fs.existsSync('core/ultralab/skills/'+id+'/SKILL.md'),'Ultra GUI skill '+id);
 assert(/Check-UI|GUI/.test(ultra)&&/check-ui-rules/.test(ultra),'Ultra text names the GUI skills');

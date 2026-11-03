@@ -29,5 +29,76 @@
     "test-desktop-regression.js"
   ],
   "live_affected_windows_pc_tested": false,
-  "new_zip_delivered": false
+  "new_zip_delivered": false,
+  "real_native_and_blender_gui": {
+    "actual_native_app": true,
+    "debug_build": true,
+    "actual_blender_gui": true,
+    "blender_version": "4.3.2",
+    "official_addon_from_pinned_wheel": "mcp-for-blender==2.1.9",
+    "official_addon_protocol": 13,
+    "scene_check_elapsed_ms": 7420,
+    "response_ok": true,
+    "scene_status": "success",
+    "old_deadline_ms": 7000,
+    "addon_delay_seconds": 7.4,
+    "automatic_replay": false,
+    "page_errors": [],
+    "screenshot": "PlazCode-Blender-connection-fixed.png"
+  },
+  "previews": [
+    {
+      "id": "1MRgfoEwvNQ4VW-uqSp_-gmJiDLk_XOzB",
+      "title": "PlazCode-Blender-connection-fixed.png",
+      "mime_type": "image/png",
+      "size": "343278",
+      "url": "https://drive.google.com/file/d/1MRgfoEwvNQ4VW-uqSp_-gmJiDLk_XOzB/view?usp=drivesdk",
+      "display_url": "https://drive.google.com/file/d/1MRgfoEwvNQ4VW-uqSp_-gmJiDLk_XOzB/view?usp=drivesdk",
+      "file_or_folder": "file",
+      "created_time": null,
+      "modified_time": null,
+      "parent_ids": null,
+      "drive_id": null,
+      "current_user_can_share": null,
+      "has_augmented_permissions": null,
+      "shared": null,
+      "permissions": null,
+      "source_visibility_status": "access_not_verified"
+    },
+    {
+      "id": "17VJucRqRV1SLdA-x30FixUN8_01ogbvo",
+      "title": "PlazCode-Blender-connection-fixed.webm",
+      "mime_type": "video/webm",
+      "size": "1426335",
+      "url": "https://drive.google.com/file/d/17VJucRqRV1SLdA-x30FixUN8_01ogbvo/view?usp=drivesdk",
+      "display_url": "https://drive.google.com/file/d/17VJucRqRV1SLdA-x30FixUN8_01ogbvo/view?usp=drivesdk",
+      "file_or_folder": "file",
+      "created_time": null,
+      "modified_time": null,
+      "parent_ids": null,
+      "drive_id": null,
+      "current_user_can_share": null,
+      "has_augmented_permissions": null,
+      "shared": null,
+      "permissions": null,
+      "source_visibility_status": "access_not_verified"
+    }
+  ],
+  "product_source_commit": "c85d1f96da6901fa97226177f778d60bcd0865d7",
+  "local_javascript": {
+    "full_sweep_passes": 249,
+    "full_sweep_failures": [
+      "test-1.24.12-fixes.js: old exact lock syntax"
+    ],
+    "corrected_fixture_rerun": "passed",
+    "final_full_rerun": "pending"
+  },
+  "superseded_run_id": 41680761816,
+  "replacement_run": "pending dispatch",
+  "source_sha256": {
+    "agent/src/main.rs": "8aadf52054f1e90f342da9750098f7f748cfe00eeea7d9ac991e4b18992da6d1",
+    "agent/src/mcp_addons.rs": "3efec9cf76653421ea87d79d1a40e36dfd959b2c2fb55dfb26ebc04f92ed5b18",
+    "agent/src/blender.rs": "8ab2f4ef94c06901f0bde78eceec328d37bac8ed26e33c6768b6c2d9de908dfb",
+    "agent/src/desktop.html": "9056e0c7dccff5f9d63571196926f56a17c40e9b702a667e29261e4ba1d86de2"
+  }
 }

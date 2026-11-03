@@ -3,6 +3,11 @@ title: Milestones (finished work)
 
 updated: 2026-11-02
 ---
+## 2026-11-03 — real native app + official Blender GUI check PASS; fixture correction
+Actual updated native PlazCode debug app, normal Blender **4.3.2 GUI** and official protocol13 addon extracted from verified pinned mcp-for-blender2.1.9 wheel. Deliberately delayed Blender's main thread7.4s; actual desktop scene request succeeded in **7,420ms**, beyond the old7s abort, with real scene data, no replay and no browser exceptions. No mocked desktop HTML or mocked API replies. [Screenshot](https://drive.google.com/file/d/1MRgfoEwvNQ4VW-uqSp_-gmJiDLk_XOzB/view?usp=drivesdk), [video](https://drive.google.com/file/d/17VJucRqRV1SLdA-x30FixUN8_01ogbvo/view?usp=drivesdk) delivered immediately; Drive metadata/343,278B PNG and1,426,335B WebM verified. Isolated test workspace; no owner data or existing Blender scene changed. Not the original affected Windows PC.
+
+Full local JS sweep:249 pass, one obsolete exact-code assertion in test-1.24.12-fixes.js expected45s queue for all commands. Updated it to retain45s for edits and verify2s for scene probes; focused rerun PASS. No product changes from **c85d1f9**. CI41680761816 cancelled/superseded; replacement full CI plus final local JS rerun next. Native300PASS/2ignored unchanged. [Details](blender-uv-path-2026-11-03.md).
+
 ## 2026-11-03 — Blender UV/PATH and deadline source fix; local checks PASS
 Implemented discovery from current Windows PATH/standalone/pip directories, uv.exe fallback, correct install root, retained verified first-use setup. Cold initialization allowed to complete in background; AgentScript no longer cancels it at 6s. Interrupted/partial stdio stream recovered without command replay. Scene probes queue2s + run8s; desktop15s with useful typed error, no false success for addon errors.
 
