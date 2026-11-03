@@ -11,6 +11,10 @@ on:
         description: Full validation run containing the signed Windows lean ZIP
         required: true
         type: string
+      installer_only:
+        description: Check installer download/cache/checksum recovery before a matching native package is ready
+        type: boolean
+        default: false
 permissions:
   contents: read
   actions: read
@@ -26,6 +30,7 @@ jobs:
         working-directory: build-src-1.24.30/PlazCode
         run: python test-runtime-installer.py --powershell "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
       - name: Download the exact signed Windows test package
+        if: github.event_name == 'workflow_dispatch' && !inputs.installer_only
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_RUN: ${{ inputs.build_run }}
@@ -38,10 +43,11 @@ jobs:
           if ($Source -notmatch '^[a-f0-9]{40}$') { throw 'Build source could not be verified.' }
           git fetch --no-tags --depth=1 origin $Source
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          git diff --exit-code $Source -- development/1.24.30/overlay/agent/src
+          git diff --exit-code $Source -- development/1.24.30/overlay/agent/src development/1.24.30/overlay/Setup-Mcp-Runtime.ps1
           if ($LASTEXITCODE -ne 0) { throw 'Run a full build on the current native source before testing first use.' }
           gh run download $env:BUILD_RUN --repo $env:GITHUB_REPOSITORY --name plazcode-1.24.30-Windows-test-lean --dir first-use-package
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Real packaged app with no UV installation and no UV on PATH
+        if: github.event_name == 'workflow_dispatch' && !inputs.installer_only
         shell: pwsh
         run: ./development/1.24.30/test-blender-first-use.ps1 -Package "$PWD/first-use-package/PlazCode-1.24.30-test-lean.zip"

@@ -172,7 +172,10 @@ const RSProvider = (() => {
 
   function textWithout(root, excludeSel) {
     if (!root) return "";
-    const skip = excludeSel ? `.rs-chip, ${excludeSel}` : ".rs-chip";
+    // Native Copy/Copied/Download controls are chrome, not reply text. Their
+    // feedback must not look like the model resumed streaming.
+    const chrome = '.rs-chip, button, [role="button"], [role="tooltip"], svg';
+    const skip = excludeSel ? `${chrome}, ${excludeSel}` : chrome;
     let t = "";
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
@@ -359,12 +362,30 @@ const RSProvider = (() => {
 
   const ariaOf = (b) => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.title, "") || "").trim();
   const allButtons = () => [...safeQueryAll(document, "button")].filter((b) => !safeClosest(b, "#rs-root"));
+  function composerButtons() {
+    const editor = getEditor(), frame = composerFrame();
+    if (!editor || !frame) return [];
+    const form = safeRead(() => editor.form, null);
+    const candidates = new Set(safeQueryAll(frame, "button"));
+    if (form) for (const button of safeQueryAll(document, "button[form]")) {
+      if (safeRead(() => button.form === form, false)) candidates.add(button);
+    }
+    return [...candidates].filter(button => {
+      if (safeClosest(button, "#rs-root, .rs-chip")) return false;
+      // Some layouts wrap the whole chat in a form. Reply actions still never
+      // become composer controls, even when their default type is submit.
+      const message = safeClosest(button, '[data-message-role], [data-role="assistant"], [data-role="user"], .msg, .message, [class*="ChatMessage"], [class*="chat-message"], article, pre, code');
+      if (message && !safeRead(() => message.contains(editor), false)) return false;
+      const label = ariaOf(button) || String(safeRead(() => button.textContent, "")).trim();
+      return !/^(?:copy|copied|download|like|dislike|attach|upload|remove|delete)\b/i.test(label);
+    });
+  }
   const sendButton = () =>
-    allButtons().find((b) => S.sendAria.test(ariaOf(b)) && visible(b) && b.type !== "reset") ||
-    allButtons().find((b) => safeRead(() => b.type, "") === "submit" && visible(b)) ||
+    composerButtons().find((b) => S.sendAria.test(ariaOf(b)) && visible(b) && b.type !== "reset") ||
+    composerButtons().find((b) => safeRead(() => b.type, "") === "submit" && !S.stopAria.test(ariaOf(b)) && visible(b)) ||
     null;
   const stopButton = () =>
-    allButtons().find((b) => S.stopAria.test(ariaOf(b)) && visible(b)) || null;
+    composerButtons().find((b) => S.stopAria.test(ariaOf(b)) && visible(b)) || null;
 
   function streamText(item) {
     if (!item) return "";
@@ -595,12 +616,10 @@ const RSProvider = (() => {
       const t = e.target;
       // PlazCode's own bar buttons (Fix connection, Enhance, ...) are never the site's Send button.
       if (safeClosest(t, "#rs-root")) return;
-      const stop = safeRead(() => t.closest, null) && safeClosest(t, "button");
-      if (stop && S.stopAria.test(ariaOf(stop))) { handlers.onNativeStop(); return; }
       const btn = safeRead(() => t.closest, null) && safeClosest(t, "button");
       if (!btn) return;
-      const isSend = S.sendAria.test(ariaOf(btn)) || safeRead(() => btn.type, "") === "submit";
-      if (!isSend) return;
+      if (btn === stopButton()) { handlers.onNativeStop(); return; }
+      if (btn !== sendButton()) return;
       if (safeRead(() => btn.disabled, true)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {

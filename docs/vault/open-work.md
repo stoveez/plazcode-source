@@ -2,6 +2,10 @@
 title: Open work and known bugs
 updated: 2026-11-02
 ---
+
+## 2026-11-03 — active combined fixes
+Ox Alpha Copy falsely starts an agent loop via global default-submit hook; targeted fix/tests pass. Completely missing UV exposes a real PowerShell5.1 installer dependency failure; .NET checksum fix drafted, Windows verification pending. Earlier green Blender-only build41682724896 is superseded for final delivery. New combined full build required. See NOW and the Ox Alpha/Blender notes.
+
 ## 2026-11-03 — final full local JavaScript suite PASS
 Final local runner completed **250 passed, 0 failures**, exit0 on final source/test fixture. Native300PASS/2ignored and actual native+official Blender GUI7,420ms success remain valid; no product edits sincec85d1f9. Full hosted run41682724896 on152beec still running; require all five jobs green and exact package/Drive verification before new ZIP delivery. [Verification](blender-uv-path-2026-11-03-verification.json).
 

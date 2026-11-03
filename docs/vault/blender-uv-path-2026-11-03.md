@@ -3,6 +3,10 @@ title: Blender first-use UV discovery and connection timeouts
 updated: 2026-11-03
 ---
 
+## Additional confirmed first-use defect
+Clean Windows supplemental41690772050 failed in the existing installer fixtures: Get-FileHash was unavailable under PowerShell5.1's inherited module environment. This can prevent automatic UV setup on a machine with no UV installed. New overlay uses .NET FileStream + SHA256.ComputeHash with the same exact pinned checksum. Existing checksum-failure cleanup/cache/retry checks still required. Script is embedded in the native app; c85/41682724896 signed packages lack this latest fix and are superseded for delivery. New combined build also includes Ox Alpha Copy fix.
+
+
 ## Missing UV clarified by owner — clean Windows verification pending
 Owner now says UV may not have been installed at all. Existing native Windows fallback embeds the pinned, checksum-verified runtime installer; the app should prepare UV automatically. Added supplemental validation to run existing first-download/cache/checksum/recovery tests under Windows PowerShell5.1, then launch the exact signed Windows ZIP with fresh profile/cache and sanitized child PATH/custom server PATH. It must download and execute UV and initialize actual Blender MCP tools. No addon/scene edits; no product code changes, no need to rebuild the signed app. Supplemental workflow pending dispatch.
 
