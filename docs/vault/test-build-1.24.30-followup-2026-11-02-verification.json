@@ -1,11 +1,10 @@
 {
-  "run_id": 41577920780,
-  "url": "https://github.com/stoveez/plazcode-source/actions/runs/41577920780",
-  "head_sha": "5870a1124dcece34f1ab1129dc0a2afae5bec23d",
+  "run_id": 41579556782,
+  "url": "https://github.com/stoveez/plazcode-source/actions/runs/41579556782",
+  "head_sha": "c3d60e0ba33642257f6c07eaf13a0c25eb86bb2c",
   "product_source_commit": "5870a1124dcece34f1ab1129dc0a2afae5bec23d",
   "branch": "claude/plazcode-dev",
-  "status": "superseded_browser_measurement_failure",
-  "superseded_run": 41574442126,
+  "status": "in_progress",
   "source_sha256": {
     "core/main.js": "b078b0ff41752acc2e462dd7c92abd8a938ac6259662e2094ea3550d7b549964",
     "providers/chatgpt.js": "4b544eeff4f23059a5d222af183eedf9f654332793df1ab1de13df98f6db692c",
@@ -21,7 +20,6 @@
     "clickup_chromium_firefox_result_paging": "passed",
     "paging_terminal_exit": 0
   },
-  "replacement_run_pending": true,
   "performance_test_correction": {
     "product_changed": false,
     "original_failure": "600 classifications from five bounded sweeps compared with four-sweep allowance of 512",
@@ -60,5 +58,9 @@
         512
       ]
     }
-  }
+  },
+  "superseded_runs": [
+    41574442126,
+    41577920780
+  ]
 }

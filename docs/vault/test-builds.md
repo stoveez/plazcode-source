@@ -3,6 +3,9 @@ title: Test builds and the public-then-private plan
 
 updated: 2026-11-02
 ---
+## 2026-11-02 — fresh full CI 41579556782 started
+[Current full run](https://github.com/stoveez/plazcode-source/actions/runs/41579556782), head **c3d60e0**, runtime **5870a11** (only test/notes differ). Supersedes 41577920780; cancellation followed by force-cancel to release waiting capacity. Corrected performance measurement passes with five deliberate bounded sweeps; full-history negative control fails as required. All Windows/Mac/Linux/browser/release-check jobs still required; exact inner package verification and Drive delivery pending. No stable publication or visibility changes.
+
 ## 2026-11-02 — browser performance measurement corrected; replacement full build next
 CI 41577920780 failed only the browser warm-sweep budget so far; reproduced locally: the measurement collected five bounded 120-turn sweeps (600 classifications) but compared them with a four-sweep allowance (512). Scheduled observer work remained active during the heartbeat window. Test now records EVERY actual sweep and requires each to classify at most 128 turns; deliberately schedules a fifth pass to exercise this interleaving. No product source changed from 5870a11.
 
