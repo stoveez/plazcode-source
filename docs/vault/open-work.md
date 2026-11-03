@@ -2,10 +2,10 @@
 title: Open work and known bugs
 updated: 2026-11-03
 ---
-## 2026-11-03 — combined build restarting after stale test assertion
+## 2026-11-03 — combined full CI41696570889 RUNNING after test correction
 CI41695245836 stopped at test-vani-provider.js: a shared source-text assertion required btn.type even after Ox Alpha deliberately removed global submit-button detection. Replaced it with actual Send/Stop/draft behaviour checks for all four providers; focused test PASS. No product changes after06aa8e3. Final local full JS is still checking the pre-fixture snapshot; its expected stale assertion must be followed by the corrected full suite.
 
-Next: fresh full combined CI on this fixture correction, then signed Windows app with entirely missing UV using test-blender-first-use.yml (installer_only=false), exact inner Win+universal Mac signature/source/native/zero-layout checks and Drive readback. Native300PASS/2ignored; installer fixture41693932272 PASS; actual Blender scene7,420ms preview delivered; original affected PCs/live Ox Alpha remain untested. No new test ZIP delivered. Previous41682724896 and41695245836 are superseded. Source Public; no stable publish or visibility changes. PC vault not connected.
+Current full run41696570889 (head8f276c0, product06aa8e3 unchanged) replaces41695245836. Next: signed Windows app with entirely missing UV using test-blender-first-use.yml (installer_only=false), exact inner Win+universal Mac signature/source/native/zero-layout checks and Drive readback. Native300PASS/2ignored; installer fixture41693932272 PASS; actual Blender scene7,420ms preview delivered; original affected PCs/live Ox Alpha remain untested. No new test ZIP delivered. Previous41682724896 and41695245836 are superseded. Source Public; no stable publish or visibility changes. PC vault not connected.
 
 ## 2026-11-03 — both source fixes verified locally; combined full build next
 Windows installer-only CI41693932272 SUCCESS under PowerShell5.1: first download/cache reuse, wrong-hash rejection/no publication/staging cleanup and successful retry. Original41690772050 reproduced missing Get-FileHash; .NET SHA256 fixed it without weakening pinned checks. Real signed app with entirely missing UV still must run on NEW package because installer is embedded.
