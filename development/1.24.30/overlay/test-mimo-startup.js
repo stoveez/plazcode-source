@@ -55,6 +55,7 @@ function scenario(replies) {
     runTool: async () => { commandsRun++; return "Output of 'list_commands':\nread_file"; },
   };
   // This fixture isolates provider startup/outcomes; live health has its own actual-startup regression.
+box.asStateTag=()=> '[SYSTEM_STATE: native state is covered by the capability/live-connection suites]';
 box.requireStartupConnection=async()=>{};
 box.startupFeedbackStages=(memory,ready)=>[...memory,...(box.P.startupFeedbackMessages?box.P.startupFeedbackMessages(ready):[{text:ready}])];
 vm.createContext(box);

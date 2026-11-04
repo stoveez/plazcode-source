@@ -1,5 +1,5 @@
 "use strict";
-// 1.24.29 (owner, 2026-10-31): the AI reads ALL its memory by default at the start of every chat: every vault note
+// Full startup retains complete memory pages (default startup now fetches notes on demand): every vault note
 // (not saved chats or the archive), then the project memory. PlazCode sends them itself as acknowledged startup pages
 // before "PlazCode is ready.", so the AI never runs a command during the handshake. Runs the real functions from
 // core/main.js with a fake vault and a fake Studio. Run: node test-startup-memory.js
@@ -12,7 +12,7 @@ assert(from > 0 && to > from, "startup memory functions found");
 function sandbox({ engine = "roblox", vaultPages = ["=== 01 About You/Profile.md ===\nLikes low poly.\n\n[read_all: last page.]"], studio = "--- ServerStorage.RobloxScript.Memory (ModuleScript, 9 lines) ---\nreturn [==[\n# Project memory\n]==]\n[read_scripts: all 1 scripts shown; this was the last page.]", active = true } = {}) {
   const sent = [], events = [];
   const box = {
-    RobloxScriptSkills: skills, activeEngine: () => engine, inputBudget: () => 60000, diag: (n, d) => events.push({ n, d }),
+    leanStartupOn: () => false, RobloxScriptSkills: skills, activeEngine: () => engine, inputBudget: () => 60000, diag: (n, d) => events.push({ n, d }),
     PlazCodeMemory: { vaultActive: () => active, vaultReadAllPages: async (chars) => { sent.push({ vaultChars: chars }); return vaultPages.map((text) => ({ text })); } },
     bg: async (msg) => { sent.push(msg); if (msg.name === "read_file") return { ok: true, text: "# Local memory\n- uses Vite" }; return studio == null ? { ok: false, error: "Studio offline" } : { ok: true, text: studio }; },
     Math, String, RegExp, Number,
@@ -50,7 +50,7 @@ function sandbox({ engine = "roblox", vaultPages = ["=== 01 About You/Profile.md
 
   // 3. Wiring: the pages go before the ready stages, and the ready check itself is unchanged.
   assert(/const memoryStages = offline \|\| typeof startupMemoryStages !== "function" \? \[\] : await startupMemoryStages\(\);/.test(main));
-  assert(main.includes('const stages = startupFeedbackStages(memoryStages,readyPrompt);'), 'all memory is preserved in combined or individually acknowledged stages');
+  assert(main.includes('const stages = verifiedCatalog ? [] : startupFeedbackStages(memoryStages,readyPrompt);'), 'Full startup preserves combined or individually acknowledged memory; verified default startup has no bulk pages');
   assert(/if\(!stage\.ackRe && stage\.ack && \(readyRes\.kind!=="text" \|\| String\(readyRes\.text\|\|""\)\.trim\(\)!==stage\.ack\)\)/.test(main), "existing acknowledgements keep their exact check");
   assert(/\/\^\(\?:PLAZCODE_READY\|PlazCode is ready\)\[\.!\]\?\$\/i\.test\(readyText\)/.test(main), "the ready reply check is unchanged");
   console.log("PASS memory pages are sent before the ready step; the ready check is unchanged");

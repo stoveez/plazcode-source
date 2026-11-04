@@ -1,0 +1,71 @@
+{
+  "updated": "2026-11-04",
+  "branch": "claude/plazcode-dev",
+  "product_source": "48029bef8d95afad29e1192b56f6df6a549a5c69",
+  "scope": "All confirmed shared-protocol gaps plus ChatGPT responsive delivery and saved-result recovery",
+  "native": {
+    "passed": 307,
+    "ignored_existing": 2,
+    "after_no_undo_id_gate_fix": true,
+    "log": "/workspace/protocol-final-rust.log"
+  },
+  "full_javascript": {
+    "sweep_source": "cff604a",
+    "passed": 247,
+    "failed_fixture_names": [
+      "test-input-budget-usage.js",
+      "test-mimo-startup.js",
+      "test-notion-start-explains.js",
+      "test-notion-startup-recovery.js",
+      "test-read-scripts.js",
+      "test-startup-command-status.js",
+      "test-startup-memory.js",
+      "test-v112.js",
+      "test-vani-startup.js"
+    ],
+    "all_nine_corrected_reruns": "passed",
+    "final_unresolved": 0,
+    "verified_files": 256,
+    "existing_exclusions": [
+      "test-v115.js",
+      "test-bridges.js",
+      "test-design-visual.js"
+    ],
+    "raw_log_sha256": "4a6a73d787083adb0ca97c68109ba67e0c1afb4d9a6e92cef70e3a7867775477",
+    "post_sweep_runtime_refinement": "Only ChatGPT native chunk character bound2048/Unicode preservation. Candidate whole-provider/core21browser checks and affected sender/ownership/preservation/pins checked; hosted full exact-source suite still required."
+  },
+  "browser": {
+    "chatgpt_offline_full_core_editor_checks": 21,
+    "native_prosemirror_lines": [
+      180,
+      450
+    ],
+    "long_json_previous_sender": "fails maxChars<=2048",
+    "long_json_candidate": "passed exact content,2048char bound,Unicode pairs,heartbeat,no paste",
+    "healthy_tool_calls": 15,
+    "dropped_call_five": {
+      "tools": 15,
+      "messages": 16,
+      "duplicate_dispatch": false
+    },
+    "clickup_custom_startup": "passed Chromium",
+    "clickup_exact_paging": "corrected simulated AI to follow versioned envelopes; passed exact reconstruction,masking,one native execution",
+    "deepseek_native_line_endings": [
+      "LF passed",
+      "CRLF passed",
+      "CR passed"
+    ]
+  },
+  "hosted": {
+    "status": "pending"
+  },
+  "drive_delivery": {
+    "status": "pending"
+  },
+  "limitations": [
+    "No connected live user-browser control tool; offline fixtures are not live-site screenshots",
+    "Affected PC and live AI/Studio field retest remains",
+    "Owner PC vault not connected"
+  ],
+  "stable_publication": false
+}

@@ -8,6 +8,7 @@
 const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict');
 const main = fs.readFileSync('core/main.js', 'utf8');
 const slice = (from, to, includeTo) => { const a = main.indexOf(from), b = main.indexOf(to, a); assert(a > 0 && b > a, 'found ' + from.slice(0, 40)); return main.slice(a, includeTo ? b + to.length : b); };
+const formatter = slice("  function formatToolFeedback(", "  function prepareToolFeedback(");
 const helpers = slice('  function inputBudget() {', '  function resultPageSize() {');
 const assembly = slice("          // 1.24.24: everything PlazCode adds to a result fits the user's input limit (see fitExtra).", '          toSend += quickNote;', true);
 
@@ -15,12 +16,16 @@ function run({ limit = 12000, enabled = true, feedback, memory = '', lastMemory 
   const ctx = vm.createContext({ String, Math, Infinity, RegExp });
   ctx.characterLimits = { rsInputLimitEnabled: enabled, rsInputCharLimit: limit };
   ctx.compressed = 0;
-  vm.runInContext(helpers + `
+  vm.runInContext(helpers + formatter + `
+    function resultPageSize() { return Infinity; } // Paging is tested separately; isolate the extras budget here.
+    function stripOutputPrefix(text) { return String(text).replace(/^Output of '[^']+':\\n/, ''); }
+    var stateTag = '', isErr = false;
     var lastMemoryContext = ${JSON.stringify(lastMemory)};
     function personalMemoryContext() { return ${JSON.stringify(memory)}; }
     function compressToolFeedback(text) { compressed++; const page = inputBudget() - 600; return '[PlazCode retained the COMPLETE result. first page]\\n' + String(text).slice(0, page); }
     var A = { pendingReference: ${JSON.stringify(reference)}, requestKind: ${JSON.stringify(kind)} };
     var feedback = ${JSON.stringify(feedback)}, failedToolAttempts = ${failed}, calls = ${JSON.stringify(calls)};
+    var call = calls[0], completeFeedback = feedback;
     var out = (function () { ${assembly}\n return toSend + failNote; })();`, ctx);
   return { sent: ctx.out, pending: ctx.A.pendingReference, last: ctx.lastMemoryContext, compressed: ctx.compressed };
 }
@@ -30,7 +35,7 @@ const R = (n, c = 'r') => c.repeat(n);
 // and a 20,000-character one-time reference (skills + templates). Before: about 32,000 characters -> error.
 let r = run({ feedback: R(9000, 'f'), memory: 'VAULT' + R(3000, 'v'), reference: R(20000, 'x') });
 assert(r.sent.length <= 12000, 'fits the 12,000 limit: ' + r.sent.length);
-assert(r.sent.startsWith(R(9000, 'f')), 'the command result itself is never cut');
+assert.equal(JSON.parse(r.sent.split('\n')[1]).result.content,R(9000,'f'),'the complete command result is preserved in its versioned envelope');
 assert(/shortened this reference to fit your input limit/.test(r.sent), 'the reference is shortened, and says so');
 assert.equal(r.last, '', 'the vault summary that did not fit waits for a later message');
 // Little room left: the reference waits for the next result instead.

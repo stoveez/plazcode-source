@@ -12,6 +12,7 @@ const box={Map,Set,Date,A:{startGen:0,sessionGen:1,toolList:[{name:'read_file',s
  RSParse:{parseToolCalls:()=>[],hasCommandShape:text=>text.includes('"command"')},SendAbortedError:class extends Error{},RUN_CMD:'Start-PlazCode-Agent.cmd',
  runTool:async()=>{dispatches++;current={id:'startup-command',text:command,dataset:{}};items=[current];return "Output of 'list_commands':\nread_file";}};
 // This fixture isolates provider startup/outcomes; live health has its own actual-startup regression.
+box.asStateTag=()=> '[SYSTEM_STATE: native state is covered by the capability/live-connection suites]';
 box.requireStartupConnection=async()=>{};
 box.startupFeedbackStages=(memory,ready)=>[...memory,...(box.P.startupFeedbackMessages?box.P.startupFeedbackMessages(ready):[{text:ready}])];
 vm.createContext(box);

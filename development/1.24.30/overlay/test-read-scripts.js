@@ -71,7 +71,8 @@ console.log("PASS read_scripts: registered, read-only, accepts the shapes AIs se
 // ── 3. Its inner execute_luau is PlazCode's own trusted read; the AI cannot use that path. ───────────────────────
 const main = fs.readFileSync(dir + "/core/main.js", "utf8");
 assert(/const TRUSTED_READS = new WeakSet\(\);/.test(main), "a private object set, never reachable from the AI's text");
-assert(/const trustedRead = bareName === "execute_luau" && TRUSTED_READS\.has\(call\);/.test(main));
+assert(main.includes('const trustedRead = (bareName === "execute_luau" && TRUSTED_READS.has(call)) || filePreview;'));
+assert(main.includes("const filePreview = typeof PlazCodeSafety.filePreview === 'function' && PlazCodeSafety.filePreview(name,safetyEngine,args);"), 'only exact native non-mutating previews also qualify; behavioral classification is covered by test-file-preview-safety.js');
 assert(/if \(!trustedRead && safetySettings\.readOnly && PlazCodeSafety\.isChange\(bareName, safetyEngine\)\)/.test(main), "Read-only refusal skips only trusted reads");
 assert(/if\(trustedRead\)\{\s*\/\/ PlazCode's own read: nothing to approve\.\s*\}else if\(typeof approvalMode!=="undefined"&&approvalMode\)\{/.test(main), "approvals skip only trusted reads");
 assert(/const readOnlySkill = !PlazCodeSafety\.isChange\(name, "studio"\);/.test(main) && /if \(readOnlySkill\) TRUSTED_READS\.add\(inner\);/.test(main), "only read-only skills are marked");

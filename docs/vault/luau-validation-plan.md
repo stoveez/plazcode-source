@@ -4,7 +4,8 @@ updated: 2026-10-31
 ---
 # Luau validation: automatic validate -> repair -> revalidate (owner, 2026-10-31)
 
-**Status (2026-11-01): all three stages built and tested locally (Rust 266 pass incl. real luau-lsp and the real place-outline snippet in the official Luau VM); not yet run in CI or with real Studio. See NOW.md.** Owner confirmed all three stages ship in 1.24.30. Inspect the real edit path in plan mode before coding (which commands change scripts today, e.g. Studio skills, `multi_edit`/`execute_luau` script writes, `read_scripts` readers; find them with grep in `overlay/core/main.js`, `overlay/core/studio_skills.js`, `agent/src/workspace.rs`, `checkpoints.rs`). Do not invent command names.
+**Status (2026-11-04): all three stages are implemented and included in published1.24.30 and subsequent full hosted checks.** Earlier real-LSP/official-Luau tests and prior full CI41759762628 passed; live affected Studio sessions still need owner field testing. Current follow-up48029be preserves static-only analysis, advisory defaults and local bridge architecture. Full native307tests passed with the current Safety gate; fresh cross-platform package checks are pending. Owner requested all shared-protocol improvements before the next full test build; see docs/NOW.md. Stage/policy/design details below remain the specification, not unfinished CI work.
+
 
 ## Hard constraints (owner)
 - Use the local bridge (the desktop app); the extension only exposes commands and shows results.

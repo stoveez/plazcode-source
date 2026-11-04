@@ -29,7 +29,8 @@ async function startupCase(replies,expectedReady,expectedSends,expectedDispatche
  waitForResponse:async()=>replies.shift(),RSParse:{parseToolCalls:text=>text.includes('"list_commands"')?[{tool:'list_commands',arguments:{}}]:[]},
  decorate:{sweep(){},toolBox(){}},ui:{setStarting:on=>{if(throwUI&&!on)throw Error('remounted UI');},inputCover(){},updateStartGate(){},trackCard(){},setStarted(){},toast(){},banner(){}},
  startupTurnIdentity:()=>({}),rememberExecuted(){},runTool:async()=>{dispatches++;return 'read_file';},rememberStartupOutcome(){},rememberSession(){},SendAbortedError:class extends Error{},RUN_CMD:'run',log(){}};
- b.requireStartupConnection=async()=>{};b.startupFeedbackStages=(memory,ready)=>[...memory,...(b.P.startupFeedbackMessages?b.P.startupFeedbackMessages(ready):[{text:ready}])];vm.createContext(b);const start=main.indexOf('  async function startSession('),end=main.indexOf('  const SVG =',start);
+ b.asStateTag=()=> '[SYSTEM_STATE: native state is covered by the capability/live-connection suites]';
+b.requireStartupConnection=async()=>{};b.startupFeedbackStages=(memory,ready)=>[...memory,...(b.P.startupFeedbackMessages?b.P.startupFeedbackMessages(ready):[{text:ready}])];vm.createContext(b);const start=main.indexOf('  async function startSession('),end=main.indexOf('  const SVG =',start);
  vm.runInContext(main.slice(main.indexOf('  function isProviderPolicyRefusal('),main.indexOf('  function isCapabilityRefuse('))+main.slice(start,end)+'this.start=startSession;',b);
  await b.start();assert.equal(!!b.A.started,expectedReady);assert.equal(sends,expectedSends);assert.equal(dispatches,expectedDispatches);assert.equal(unlocked,1);assert(!b.A.startupOwner);assert(!b.A.starting);
 }
