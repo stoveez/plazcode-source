@@ -1,11 +1,18 @@
 use std::path::{Path,PathBuf};
 pub fn installation_root_at(executable:&Path)->PathBuf {
-    for ancestor in executable.ancestors().skip(1) {
-        if ancestor.extension().is_some_and(|extension|extension=="app") {
-            return ancestor.parent().unwrap_or_else(||Path::new(".")).to_owned();
+    // Only the actual macOS bundle layout relocates the installation root.
+    // An ordinary Windows folder (or ancestor) named something.app is not a
+    // bundle: treating it as one makes intact signed files appear missing.
+    let parent=executable.parent().unwrap_or_else(||Path::new("."));
+    if executable.file_name().is_some_and(|name|name=="PlazCode") &&
+        parent.file_name().is_some_and(|name|name=="MacOS") {
+        if let Some(contents)=parent.parent().filter(|path|path.file_name().is_some_and(|name|name=="Contents")) {
+            if let Some(bundle)=contents.parent().filter(|path|path.extension().is_some_and(|extension|extension=="app")) {
+                return bundle.parent().unwrap_or_else(||Path::new(".")).to_owned();
+            }
         }
     }
-    executable.parent().unwrap_or_else(||Path::new(".")).to_owned()
+    parent.to_owned()
 }
 pub fn is_installation_root(root:&Path)->bool {root.join("manifest.json").is_file()||root.join("PlazCode-Extension/manifest.json").is_file()}
 /// macOS Gatekeeper "App Translocation" runs a quarantined app from a random
@@ -111,6 +118,8 @@ pub fn configuration_root()->PathBuf {PathBuf::from(std::env::var_os("HOME").unw
             let executable=Path::new(root).join("PlazCode.exe");
             assert_eq!(installation_root_at(&executable),Path::new(root),"an ordinary directory name cannot move the program's signed root");
         }
+        let root=Path::new("/Downloads/innocent.app/Contents/MacOS");
+        assert_eq!(installation_root_at(&root.join("PlazCode.exe")),root,"Windows executables never become Mac bundles");
     }
 }
 

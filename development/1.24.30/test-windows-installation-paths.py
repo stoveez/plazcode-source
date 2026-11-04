@@ -21,6 +21,7 @@ import zipfile
 parser = argparse.ArgumentParser()
 parser.add_argument('--package', required=True, type=Path)
 parser.add_argument('--expect-old-root-bug', action='store_true')
+parser.add_argument('--preview-dir', type=Path)
 args = parser.parse_args()
 assert os.name == 'nt', 'This test needs real Windows filesystem/process behaviour.'
 if args.expect_old_root_bug:
@@ -35,6 +36,7 @@ def extended(path):
 
 def signed_check(root):
     process = subprocess.Popen([extended(root / 'PlazCode.exe'), '--verify-package', extended(root)],
+                               executable=extended(root / 'PlazCode.exe'),
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     messages = []
     deadline = time.monotonic() + 60
@@ -46,7 +48,7 @@ def signed_check(root):
     out, err = process.communicate(timeout=10)
     return process.returncode == 0, '\n'.join(messages) + out + err
 
-def close_own_error_dialogs(pid):
+def close_own_error_dialogs(pid, preview=None):
     # The published release may still show a modal on --headless/check failure.
     # Read/close only error windows owned by THIS child, never other apps.
     user32 = ctypes.WinDLL('user32', use_last_error=True)
@@ -77,20 +79,29 @@ def close_own_error_dialogs(pid):
             return True
         user32.EnumChildWindows(hwnd, callback_type(child), 0)
         messages.append('\n'.join(parts))
+        if preview is not None:
+            from PIL import ImageGrab
+            preview.mkdir(parents=True, exist_ok=True)
+            time.sleep(0.4)  # Let the real native message box finish painting.
+            ImageGrab.grab(window=int(hwnd)).save(preview / 'PlazCode-missing-files-startup-message.png')
+            (preview / 'capture.json').write_text(json.dumps({'actual_native_window': True, 'pid': pid, 'title': text(hwnd), 'message': '\n'.join(parts)}, indent=2))
         user32.PostMessageW(hwnd, 0x0010, 0, 0)  # WM_CLOSE, this process only.
         return True
     user32.EnumWindows(callback_type(window), 0)
     return messages
 
-def start(root, home):
+def start(root, home, preview=None):
     env = os.environ.copy()
     env['LOCALAPPDATA'] = str(home / 'local-data')
     env['APPDATA'] = str(home / 'roaming-data')
     env['USERPROFILE'] = str(home / 'user')
     # Standalone headless bridge, no profile/login or cloud service involved.
     lines = deque(maxlen=80)
-    process = subprocess.Popen([extended(root / 'PlazCode.exe'), '--headless', '--workspace',
-                                str(home / 'workspace')], cwd=home, env=env,
+    command = [extended(root / 'PlazCode.exe')]
+    if preview is None: command.append('--headless')
+    command.extend(['--workspace', str(home / 'workspace')])
+    process = subprocess.Popen(command, cwd=home, env=env,
+                               executable=extended(root / 'PlazCode.exe'),
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     readers = []
     def pump(stream):
@@ -103,7 +114,7 @@ def start(root, home):
     keyfile = home / 'local-data/PlazCode/bridge-key'
     try:
         while time.monotonic() < deadline and process.poll() is None:
-            messages = close_own_error_dialogs(process.pid)
+            messages = close_own_error_dialogs(process.pid, preview)
             if messages:
                 lines.extend(messages)
                 break
@@ -167,10 +178,13 @@ with tempfile.TemporaryDirectory(prefix='plazcode-verified-paths-', ignore_clean
     shutil.copy2(original / 'PlazCode.exe', lone / 'PlazCode.exe')
     if (original / 'WebView2Loader.dll').exists(): shutil.copy2(original / 'WebView2Loader.dll', lone / 'WebView2Loader.dll')
     home = base / 'state-alone'; home.mkdir()
-    ready, error = start(lone, home)
+    ready, error = start(lone, home, args.preview_dir)
     assert not ready, 'An EXE without its signed installation must never start.'
     if not args.expect_old_root_bug:
         assert 'Extract' in error and 'PlazCode-Extension' in error, 'Incomplete extraction needs the missing path and actionable recovery, not a false edit accusation: ' + error[-2000:]
+    else:
+        assert 'os error 3' in error, 'The public EXE-only launch should reproduce the reported missing-path dialog.'
+        print('REPRODUCED: opening the EXE without its extracted companion folders shows the same generic integrity dialog and os error 3.', flush=True)
     print('PASS EXE-only/incomplete extraction still refuses startup.', flush=True)
 
     for name, damage in [('changed', 'change'), ('missing', 'delete'), ('bad-signature', 'signature')]:
@@ -187,5 +201,7 @@ with tempfile.TemporaryDirectory(prefix='plazcode-verified-paths-', ignore_clean
         ok, _ = signed_check(root); assert not ok, name + ': signed-file verification must still refuse damage'
         home = base / ('state-' + name); home.mkdir()
         ready, error = start(root, home); assert not ready, name + ': actual app must refuse damage'
+        if not args.expect_old_root_bug and damage != 'delete':
+            assert 'Extract All' not in error, 'Real edits/invalid signatures must keep their integrity-failure verdict.'
         print('PASS protection still blocks:', name, flush=True)
     print(json.dumps({'cases': report, 'protection_refusals': ['EXE-only', 'same-size edit', 'missing signed file', 'invalid signature']}), flush=True)

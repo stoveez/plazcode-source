@@ -1080,7 +1080,7 @@ fn main() {
         win_alert("PlazCode Agent crashed", &msg);
     }));
     if let Err(e) = start() {
-        let msg = format!("{e:#}");
+        let msg = integrity::startup_error(&e,&platform::installation_root());
         #[cfg(any(windows,target_os="macos"))]
         // Headless and verification commands must fail on stderr, never wait for a modal dialog.
         let verification_mode=std::env::args().any(|arg|matches!(arg.as_str(),"--headless"|"--verify-package"|"--verify-package-zip"|"--protection-info"));

@@ -48,5 +48,16 @@ jobs:
           if ($Packages.Count -ne 1) { throw 'Exactly one complete Windows package is required.' }
           $Arguments = @('development/1.24.30/test-windows-installation-paths.py', '--package', $Packages[0].FullName)
           if ($env:REPRODUCE_OLD -eq 'true') { $Arguments += '--expect-old-root-bug' }
+          else {
+            python -m pip install --disable-pip-version-check Pillow==11.2.1
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $Arguments += @('--preview-dir', 'installation-preview')
+          }
           python @Arguments
           exit $LASTEXITCODE
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always() && github.event_name == 'workflow_dispatch' && !inputs.expect_old_root_bug
+        with:
+          name: plazcode-windows-startup-integrity-preview
+          path: installation-preview/
+          if-no-files-found: error

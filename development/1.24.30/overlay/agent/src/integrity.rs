@@ -6,6 +6,18 @@ use std::{collections::BTreeMap, io::Read, path::Path};
 
 const DOMAIN: &[u8] = b"PlazCode release v1\n";
 pub const RECOVERY: &str = "PlazCode program files changed or are incomplete. Download the complete official version from https://github.com/stoveez/PlazCode/releases . Your skills, notes and settings are not part of this check.";
+/// Startup wording only; every signature, required-file and hash check still fails closed.
+/// Missing extraction/launch paths are not evidence that someone edited the code.
+pub fn startup_error(error:&anyhow::Error, root:&Path)->String {
+    let integrity_error=error.chain().any(|cause|cause.to_string()==RECOVERY);
+    let missing=error.chain().filter_map(|cause|cause.downcast_ref::<std::io::Error>())
+        .any(|cause|cause.kind()==std::io::ErrorKind::NotFound);
+    if integrity_error && missing {
+        let details=error.chain().map(|cause|cause.to_string()).filter(|cause|cause!=RECOVERY).collect::<Vec<_>>().join(": ");
+        return format!("PlazCode cannot find all of its required program files. Extract the complete official ZIP using Extract All, then open the app inside the extracted PlazCode folder. Keep the app and PlazCode-Extension folder together. Your skills, notes and settings are not part of this check.\n\nFolder opened: {}\nMissing or unavailable: {details}",root.display());
+    }
+    format!("{error:#}")
+}
 const MAX_MANIFEST: u64 = 4 * 1024 * 1024;
 const MAX_FILE: u64 = 256 * 1024 * 1024;
 
@@ -80,9 +92,11 @@ fn hash_file_once(root: &Path, name: &str, record: &FileRecord) -> Result<()> {
     let mut path=root.to_owned();
     for part in name.split('/') {
         path.push(part);
-        ensure!(!std::fs::symlink_metadata(&path)?.file_type().is_symlink(),"Symlink in program path");
+        let metadata=std::fs::symlink_metadata(&path)
+            .with_context(||format!("Cannot inspect required program path: {}",path.strip_prefix(root).unwrap_or(&path).display()))?;
+        ensure!(!metadata.file_type().is_symlink(),"Symlink in program path");
     }
-    let mut file=std::fs::File::open(&path)?;
+    let mut file=std::fs::File::open(&path).with_context(||format!("Cannot open signed program file: {name}"))?;
     ensure!(file.metadata()?.is_file() && file.metadata()?.len()==record.bytes,"Program file size changed: {name}");
     let mut digest=Sha256::new(); let mut buffer=[0u8;65536]; let mut total=0u64;
     loop { let size=file.read(&mut buffer)?; if size==0 { break; } total+=size as u64;ensure!(total<=record.bytes,"Program file grew during verification");digest.update(&buffer[..size]); }
@@ -91,9 +105,9 @@ fn hash_file_once(root: &Path, name: &str, record: &FileRecord) -> Result<()> {
 }
 fn manifest(root: &Path, key: &[u8], version: &str, platform: &str, channel: &str) -> Result<Files> {
     let path=root.join("PlazCode-Extension/plazcode-installation-integrity.json");
-    let meta=std::fs::symlink_metadata(&path)?;
+    let meta=std::fs::symlink_metadata(&path).context("Required signed file list: PlazCode-Extension/plazcode-installation-integrity.json")?;
     ensure!(!meta.file_type().is_symlink() && meta.len()<=MAX_MANIFEST,"Unsafe file manifest");
-    manifest_from(&std::fs::read(path)?,key,version,platform,channel)
+    manifest_from(&std::fs::read(path).context("Cannot read signed file list: PlazCode-Extension/plazcode-installation-integrity.json")?,key,version,platform,channel)
 }
 fn manifest_from(raw: &[u8], key: &[u8], version: &str, platform: &str, channel: &str) -> Result<Files> {
     let value: Files=serde_json::from_str(&signed_payload(key,raw)?)?;
@@ -360,6 +374,25 @@ fn verify_update_with(key: &[u8],feed: &serde_json::Value,version: &str,hash: &s
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn missing_startup_paths_have_actionable_details_without_waiving_failure() {
+        let root=std::env::temp_dir().join(format!("plazcode-missing-startup-{}",std::process::id()));
+        let _=std::fs::remove_dir_all(&root);
+        let error=manifest(&root,&[7;32],"1.24.30","windows","release").err().unwrap().context(RECOVERY);
+        let message=startup_error(&error,&root);
+        assert!(message.contains("Extract All") && message.contains("PlazCode-Extension/plazcode-installation-integrity.json"));
+        assert!(message.contains(&root.display().to_string()));
+        assert!(!message.contains("program files changed"));
+        // Presentation never changes the failed result or permits bridge startup.
+        assert!(manifest(&root,&[7;32],"1.24.30","windows","release").is_err());
+        for cause in ["Invalid release signature", "Program file changed: background.js", "Symlink in program path"] {
+            let error=anyhow::anyhow!("{cause}").context(RECOVERY);
+            let message=startup_error(&error,&root);
+            assert!(message.contains(RECOVERY) && message.contains(cause));
+            assert!(!message.contains("Extract All"));
+        }
+        let unrelated=anyhow::Error::from(std::io::Error::new(std::io::ErrorKind::NotFound,"workspace missing"));
+        assert_eq!(startup_error(&unrelated,&root),format!("{unrelated:#}"));
+    }
     #[test] fn a_changed_file_is_noticed_between_full_checks() {
         let root=std::env::temp_dir().join(format!("plazcode-stamps-{}",std::process::id()));
         let _=std::fs::remove_dir_all(&root);std::fs::create_dir_all(root.join("core")).unwrap();

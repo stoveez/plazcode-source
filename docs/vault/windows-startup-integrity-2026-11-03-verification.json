@@ -1,0 +1,36 @@
+{
+  "owner_date": "2026-11-03",
+  "branch": "claude/plazcode-dev",
+  "status": "source_fix_local_native_and_crypto_pass_hosted_pending",
+  "owner_report": {
+    "version": "public1.24.30",
+    "repeated_downloads": 5,
+    "error": "missing Windows path/os error3",
+    "exact_install_location_known": false
+  },
+  "baseline": {
+    "run_id": 41758853584,
+    "job_id": 126341426070,
+    "ordinary": "pass",
+    "spaces_unicode": "pass",
+    "app_ancestor": "signed check PASS/startup os3 reproduced",
+    "app_install": "signed check PASS/startup os3 reproduced",
+    "long_path": "test launcher CreateProcess206; explicit executable correction pending rerun",
+    "negative_cases": "pending corrected baseline"
+  },
+  "local_native": {
+    "passed": 302,
+    "ignored": 2
+  },
+  "local_crypto": "pass",
+  "local_javascript": "running terminal16586",
+  "protection_policy_changed": false,
+  "source_sha256": {
+    "platform.rs": "de4c884760f9c560b48f4d5c7d370ff1e903957406240cc2e65b865575faf343",
+    "integrity.rs": "98744ca3e681ed429368b8f8f025b8a2bea117cbe595bdb4ed5d2cff3f1f1c29",
+    "main.rs": "ba060e0e80e9d9b202881c4581275defcea3ffac0dd4c59ab087d91bd0327d11"
+  },
+  "original_affected_pc_verified": false,
+  "new_zip_delivered": false,
+  "stable_published": false
+}

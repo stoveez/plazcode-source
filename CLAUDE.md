@@ -1,6 +1,6 @@
 # PlazCode private repo: instructions for any AI working here
 
-**Current WIP: public1.24.30 Windows startup os error3 on untouched downloads. Confirmed .app-folder root misclassification via expected-failing unit; product fix pending actual Windows baseline. New narrowly scoped test-windows-installation workflow/test. Preserve all protection, no stable publish. Prior delivered41703669996 lacks fix.** See `docs/NOW.md`.
+**Current: public1.24.30 Windows false integrity error. Real public-ZIP .app-folder startup os3 reproduced despite valid hashes; source root/layout fix + actionable missing-path message implemented. Local302native + crypto PASS; fullJS16586 running. Corrected baseline then fresh fullCI/current signed Windows tests/actual preview/Drive ZIPs pending. Preserve every protection gate; original PC location unknown.** See `docs/NOW.md`.
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.
