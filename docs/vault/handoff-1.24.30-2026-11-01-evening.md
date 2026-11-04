@@ -1,3 +1,10 @@
+## Current verified Windows result (2026-11-03)
+FullCI41759762628 onb23b52c: Windows+browsers PASS, Mac/Linux still running. Exact Windows inner ZIP51,146,776B SHA537617a144ae8689d3f7fd4ecfbb9b99889ae190cb147b6197b38b6c5724fcab; signatures/source241/new native message/CRC/SHA/zero published layout PASS. Drive1cS66mDHRtzdHFrWQGudECKwUYJwoJUin name/MIME/bytes readback PASS, ZIP not delivered until remaining gates.
+
+NEW actual signed Windows41762409720 job126352902582 SUCCESS: ordinary/spaces/Unicode/.app ancestor/.app install/long signed files now START; same-size edit/missing signed file/invalid signature still blocked. EXE-only still blocked with accurate required path + Extract All. Extreme CWD OS206 stays separate from integrity. Actual native error window captured (not HTML/mockup), PNG11,361B SHA7c292d282405594a08ebbb5196af2689876cebfea2a50bc11004fb3406ab6e45; Drive https://drive.google.com/file/d/1VYlve2EGdRZvNavKJdPclGxk-hOdNiga/view readback verified and preview delivered immediately. Original friend's extraction/folder unknown; do not claim exact PC cause proven.
+
+Canonical proof windows-startup-integrity-2026-11-03-verification.json; staging /workspace/plazcode-integrity-build-41759762628. Remaining: all fullCI jobs/report green, exact universal Mac source/native both slices/zero layout and Drive readback, then immediately deliver Win+Mac links + Private reminder. Current root protection policies unchanged; no stable publish. PC vault not connected.
+
 ## Active: public 1.24.30 Windows startup investigation (2026-11-03)
 
 Complete PUBLICv1.24.30 baseline41760213753 SUCCESS: normal/spaces/Unicode/signed files>260 start, .app/os3 reproduced twice despite valid hashes, EXE-only reproduces same os3, same-size edit/missing signed file/bad signature all refused. Extreme CWD separately fails OS206 after valid hashes, not reported as edits. Full local JS251PASS/0failures +302native/2ignored +Node crypto PASS. FullCI41759762628 onb23b52c active; actual new signed Windows path/negative cases and screenshot still pending.

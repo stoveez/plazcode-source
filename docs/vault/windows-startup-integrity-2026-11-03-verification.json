@@ -1,7 +1,7 @@
 {
   "owner_date": "2026-11-03",
   "branch": "claude/plazcode-dev",
-  "status": "all_local_checks_and_public_baseline_pass_new_build_running",
+  "status": "signed_windows_fix_and_negative_cases_pass_preview_delivered_mac_linux_pending",
   "owner_report": {
     "version": "public1.24.30",
     "repeated_downloads": 5,
@@ -70,5 +70,103 @@
       "2026-11-04T02:22:37.8572651Z PASS protection still blocks: missing\r",
       "2026-11-04T02:22:41.4101801Z PASS protection still blocks: bad-signature\r"
     ]
+  },
+  "fixed_windows": {
+    "run_id": 41762409720,
+    "job_id": 126352902582,
+    "conclusion": "success",
+    "build_run": 41759762628,
+    "proof": [
+      "2026-11-04T02:42:29.0937135Z PASS intact installation: ordinary (all signed file hashes verified)\r",
+      "2026-11-04T02:42:34.6323339Z PASS intact installation: spaces-unicode (all signed file hashes verified)\r",
+      "2026-11-04T02:42:39.8465995Z PASS intact installation: app-suffix-parent (all signed file hashes verified)\r",
+      "2026-11-04T02:42:45.0614530Z PASS intact installation: app-suffix-install (all signed file hashes verified)\r",
+      "2026-11-04T02:42:50.6220665Z PASS intact installation: long-signed-files (all signed file hashes verified)\r",
+      "2026-11-04T02:42:55.9235444Z PASS documented Windows working-folder limit: all signed hashes pass; startup separately refuses overlong CWD with os error 206.\r",
+      "2026-11-04T02:42:56.5963642Z PASS EXE-only/incomplete extraction still refuses startup.\r",
+      "2026-11-04T02:43:01.9348733Z PASS protection still blocks: changed\r",
+      "2026-11-04T02:43:07.7301903Z PASS protection still blocks: missing\r",
+      "2026-11-04T02:43:11.8079990Z PASS protection still blocks: bad-signature\r"
+    ]
+  },
+  "preview": {
+    "id": "1VYlve2EGdRZvNavKJdPclGxk-hOdNiga",
+    "name": "PlazCode-missing-files-startup-message.png",
+    "mime_type": "image/png",
+    "bytes": 11361,
+    "url": "https://drive.google.com/file/d/1VYlve2EGdRZvNavKJdPclGxk-hOdNiga/view?usp=drivesdk",
+    "readback_verified": true,
+    "delivered": true,
+    "actual_native_window": true,
+    "artifact": {
+      "id": 13291775797,
+      "name": "plazcode-windows-startup-integrity-preview",
+      "size_in_bytes": 11696,
+      "url": "https://api.github.com/repos/stoveez/plazcode-source/actions/artifacts/13291775797",
+      "archive_download_url": "https://api.github.com/repos/stoveez/plazcode-source/actions/artifacts/13291775797/zip",
+      "expired": false,
+      "created_at": "2026-11-04T02:43:23Z",
+      "expires_at": "2027-02-02T02:41:45Z",
+      "updated_at": "2026-11-04T02:43:23Z",
+      "digest": "sha256:043313cf99ed51e61982a4d55e947be9248ff63fc5b4a9964fadacf83da9dbea",
+      "workflow_run": {
+        "id": 41762409720,
+        "repository_id": 1423458595,
+        "head_repository_id": 1423458595,
+        "head_branch": "claude/plazcode-dev",
+        "head_sha": "9fd2a0460eaa3af9e3b5922cf1dd51f6aca28fb2"
+      }
+    }
+  },
+  "platforms": {
+    "windows": {
+      "platform": "windows",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3070,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+      "file": "PlazCode-1.24.30-test-lean.zip",
+      "bytes": 51146776,
+      "sha256": "537617a144ae8689d3f7fd4ecfbb9b99889ae190cb147b6197b38b6c5724fcab",
+      "files": 3084,
+      "drive": {
+        "id": "1cS66mDHRtzdHFrWQGudECKwUYJwoJUin",
+        "name": "PlazCode-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "bytes": 51146776,
+        "url": "https://drive.google.com/file/d/1cS66mDHRtzdHFrWQGudECKwUYJwoJUin/view?usp=drivesdk",
+        "readback_verified": true,
+        "delivered": false
+      },
+      "artifact": {
+        "id": 13290493061,
+        "name": "plazcode-1.24.30-Windows-test-lean",
+        "size_in_bytes": 51147581,
+        "url": "https://api.github.com/repos/stoveez/plazcode-source/actions/artifacts/13290493061",
+        "archive_download_url": "https://api.github.com/repos/stoveez/plazcode-source/actions/artifacts/13290493061/zip",
+        "expired": false,
+        "created_at": "2026-11-04T02:40:42Z",
+        "expires_at": "2027-02-02T02:17:28Z",
+        "updated_at": "2026-11-04T02:40:42Z",
+        "digest": "sha256:42b98b8d7bea54e0d470bf24499652800727099aeaf2795e3a8e33b3fa185ed5",
+        "workflow_run": {
+          "id": 41759762628,
+          "repository_id": 1423458595,
+          "head_repository_id": 1423458595,
+          "head_branch": "claude/plazcode-dev",
+          "head_sha": "b23b52cdfcaab6fb51fcfd1843cac89ba0eb941b"
+        }
+      }
+    }
   }
 }
