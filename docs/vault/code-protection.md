@@ -2,6 +2,8 @@
 title: Code protection without extra user steps
 updated: 2026-10-31
 ---
+Current Windows startup investigation: [untouched installation path failures](windows-startup-integrity-2026-11-03.md). Preserve all signature/hash refusal; missing path is not proof of content modification.
+
 # Code protection
 
 Owner authorized the original 1.24.26 protection plan plus signed manifests, verified updates and bridge hardening on 2026-10-28. No app signing, mandatory account, new setup/approval steps or online dependency. Preserve normal installs, offline use, automatic pairing, updates, browser reloads and editable user skills, notes and settings.

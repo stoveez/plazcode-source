@@ -2,6 +2,8 @@
 title: Home
 updated: 2026-11-03
 ---
+Active: [public1.24.30 Windows startup false failure](windows-startup-integrity-2026-11-03.md). Root-detection unit repro fails old code; actual Windows published-ZIP baseline next. Latest delivered ZIPs below lack this new fix.
+
 
 Latest verified test ZIPs DELIVERED (fullCI41703669996 ALL GREEN; clean missing-UV Windows41707625110 PASS): [Blender + Ox Alpha proof/downloads](blender-oxalpha-2026-11-03-verification.json). [Blender fixes](blender-uv-path-2026-11-03.md) · [Ox Alpha Copy fix](oxalpha-copy-lock-2026-11-03.md).
 

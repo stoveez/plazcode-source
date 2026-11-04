@@ -104,6 +104,16 @@ pub fn remember_installation_root() {
 pub fn configuration_root()->PathBuf {PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join("Library/Application Support/PlazCode")}
 #[cfg(test)]mod tests{use super::*;#[test]fn bundle_root_is_outside_signed_app(){assert_eq!(installation_root_at(Path::new("/Applications/PlazCode/PlazCode.app/Contents/MacOS/PlazCode")),Path::new("/Applications/PlazCode"));assert_eq!(installation_root_at(Path::new("/opt/PlazCode/PlazCode")),Path::new("/opt/PlazCode"));}}
 
+#[cfg(test)] mod ordinary_installation_tests {
+    use super::*;
+    #[test] fn ordinary_app_named_folders_do_not_retarget_the_signed_installation() {
+        for root in ["/Downloads/PlazCode.app", "/Downloads/innocent.app/PlazCode", "/Downloads/innocent.app/another.app/PlazCode"] {
+            let executable=Path::new(root).join("PlazCode.exe");
+            assert_eq!(installation_root_at(&executable),Path::new(root),"an ordinary directory name cannot move the program's signed root");
+        }
+    }
+}
+
 #[cfg(target_os="macos")]
 pub fn prepare_application_path() {
     // Finder does not inherit a user's interactive shell PATH.

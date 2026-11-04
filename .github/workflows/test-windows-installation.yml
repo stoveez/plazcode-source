@@ -1,0 +1,52 @@
+name: Windows installation path and protection checks
+on:
+  push:
+    branches: [claude/plazcode-dev]
+    paths:
+      - .github/workflows/test-windows-installation.yml
+      - development/1.24.30/test-windows-installation-paths.py
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: Full validation run, or public-1.24.30 for the affected published ZIP
+        type: string
+        required: true
+        default: 'public-1.24.30'
+      expect_old_root_bug:
+        description: Reproduce the old .app folder false failure using the known official ZIP
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  actions: read
+jobs:
+  actual-signed-app:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Download the exact complete signed Windows package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN: ${{ inputs.build_run || 'public-1.24.30' }}
+        run: |
+          if ($env:BUILD_RUN -eq 'public-1.24.30') {
+            gh release download v1.24.30 --repo stoveez/PlazCode --pattern PlazCode-1.24.30.zip --dir installation-package
+          } else {
+            if ($env:BUILD_RUN -notmatch '^\d+$') { throw 'A numeric build run or public-1.24.30 is required.' }
+            gh run download $env:BUILD_RUN --repo $env:GITHUB_REPOSITORY --name plazcode-1.24.30-Windows-test-lean --dir installation-package
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Real app, intact path variants and unchanged protection refusals
+        env:
+          REPRODUCE_OLD: ${{ github.event_name == 'push' || inputs.expect_old_root_bug }}
+        run: |
+          $Packages = @(Get-ChildItem installation-package -Filter '*.zip')
+          if ($Packages.Count -ne 1) { throw 'Exactly one complete Windows package is required.' }
+          $Arguments = @('development/1.24.30/test-windows-installation-paths.py', '--package', $Packages[0].FullName)
+          if ($env:REPRODUCE_OLD -eq 'true') { $Arguments += '--expect-old-root-bug' }
+          python @Arguments
+          exit $LASTEXITCODE
