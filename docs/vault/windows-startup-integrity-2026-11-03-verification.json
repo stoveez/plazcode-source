@@ -1,7 +1,7 @@
 {
   "owner_date": "2026-11-03",
   "branch": "claude/plazcode-dev",
-  "status": "source_fix_local_native_and_crypto_pass_hosted_pending",
+  "status": "all_local_checks_and_public_baseline_pass_new_build_running",
   "owner_report": {
     "version": "public1.24.30",
     "repeated_downloads": 5,
@@ -23,7 +23,12 @@
     "ignored": 2
   },
   "local_crypto": "pass",
-  "local_javascript": "running terminal16586",
+  "local_javascript": {
+    "passed": 251,
+    "failures": 0,
+    "exit_code": 0,
+    "log_sha256": "e6485470f18a4a3bbbf07ce22fd6e982813ff5a340c54d7e05c037c90604ffb4"
+  },
   "protection_policy_changed": false,
   "source_sha256": {
     "platform.rs": "de4c884760f9c560b48f4d5c7d370ff1e903957406240cc2e65b865575faf343",
@@ -45,5 +50,25 @@
     "app_folder_bug_reproduced_twice": true,
     "long_root": "full signed check PASS; actual app later fails Windows CWD limit/os206, outside integrity gate"
   },
-  "test_harness_policy": "Supported EXE/CWD shorter than260 with signed files over260 must start; extreme CWD limit separately must fail with206 and no edited-files accusation"
+  "test_harness_policy": "Supported EXE/CWD shorter than260 with signed files over260 must start; extreme CWD limit separately must fail with206 and no edited-files accusation",
+  "complete_public_baseline": {
+    "run_id": 41760213753,
+    "job_id": 126345873184,
+    "conclusion": "success",
+    "official_tag": "v1.24.30",
+    "archive_sha256": "e76879ba98b1ff37575be73b024e2b9bfaa66c336572b3baa99476d24ec40d08",
+    "proof": [
+      "2026-11-04T02:22:07.0979703Z PASS intact installation: ordinary (all signed file hashes verified)\r",
+      "2026-11-04T02:22:11.9841432Z PASS intact installation: spaces-unicode (all signed file hashes verified)\r",
+      "2026-11-04T02:22:15.8700563Z REPRODUCED: complete signed package passes --verify-package, but ordinary .app-named Windows folder makes startup fail with os error 3.\r",
+      "2026-11-04T02:22:20.2914341Z REPRODUCED: complete signed package passes --verify-package, but ordinary .app-named Windows folder makes startup fail with os error 3.\r",
+      "2026-11-04T02:22:24.5152491Z PASS intact installation: long-signed-files (all signed file hashes verified)\r",
+      "2026-11-04T02:22:29.2103842Z PASS documented Windows working-folder limit: all signed hashes pass; startup separately refuses overlong CWD with os error 206.\r",
+      "2026-11-04T02:22:29.4536388Z REPRODUCED: opening the EXE without its extracted companion folders shows the same generic integrity dialog and os error 3.\r",
+      "2026-11-04T02:22:29.4536790Z PASS EXE-only/incomplete extraction still refuses startup.\r",
+      "2026-11-04T02:22:33.6247177Z PASS protection still blocks: changed\r",
+      "2026-11-04T02:22:37.8572651Z PASS protection still blocks: missing\r",
+      "2026-11-04T02:22:41.4101801Z PASS protection still blocks: bad-signature\r"
+    ]
+  }
 }
