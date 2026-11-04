@@ -1,3 +1,7 @@
+
+
+2026-11-04: owner requests ALL confirmed protocol gaps in next test build. Real ProseMirror line-preservation and DeepSeek Windows CRLF draft mismatch fixed/targeted tests PASS; CI41772418802 deliberately cancelled before delivery. Remaining audit/implementation: [shared protocol work](vault/tool-protocol-audit-2026-11-04.md). No new ZIPs yet; full rerun/build pending.
+
 ## 2026-11-03 — ChatGPT responsive delivery under verification
 Latest: saved-result recovery also fixes the confirmed call-five success → misleading nothing-executed retry → duplicate-read refusal; full-core dropped-handoff test PASS (15tools/16messages), guard unchanged. Runtime insertion/send fix f030f47; recovery follow-up in this commit.
 Owner's fifteen-tool test stayed stuck; whole page freezes on startup/tools. Fixed multiline native editing bursts and composer-triggered transcript scans. A disabled-send/full-core fixture reproduced false confirmed delivery with zero sends before fix; ChatGPT now requires a new matching sent user message, clicks once and preserves newer drafts. Ten offline Chromium checks (including full fifteen-tool loop), healthy differential70/preservation967/protected34 PASS. Full suite/fresh CI/Drive test ZIPs still pending; no live ChatGPT preview available. [Current detail](vault/chatgpt-responsive-delivery-2026-11-03.md). Extension reload + tab refresh enough; full apps still accompany delivery. No stable publish.

@@ -3,15 +3,20 @@
 const fs = require('node:fs'), assert = require('node:assert/strict');
 const {chromium} = require('playwright');
 const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
-async function pageFor(browser, core = false) {
+const modelPackages=['prosemirror-state','prosemirror-view','prosemirror-model','prosemirror-schema-basic','prosemirror-transform','orderedmap'];
+async function pageFor(browser, core = false, model = false) {
   const page = await browser.newPage();
   page.setDefaultTimeout(60000);
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.route('**/*', r => r.fulfill({contentType:'text/html',body:`<!doctype html><style>
+  await page.route('**/*', r => {
+    const module=new URL(r.request().url()).pathname.match(/^\/fixture-modules\/([^/]+)\/dist\/index.js$/);
+    if(module&&modelPackages.includes(module[1]))return r.fulfill({contentType:'text/javascript',body:fs.readFileSync('release-tools/node_modules/'+module[1]+'/dist/index.js','utf8')});
+    return r.fulfill({contentType:'text/html',body:`<!doctype html><style>
     body{font:14px sans-serif}#timeline{padding-bottom:200px}form{position:fixed;bottom:20px;left:100px;width:650px}
     #prompt-textarea{white-space:pre-wrap;min-height:40px;max-height:160px;overflow:auto}button{height:30px}
     </style><main id="timeline"></main><form><div class="prosemirror-parent"><div id="prompt-textarea" contenteditable="true"></div></div>
-    <button type="button" data-testid="send-button">Send</button></form>`}));
+    <button type="button" data-testid="send-button">Send</button></form>`});
+  });
   await page.goto('https://chatgpt.com/c/offline-delivery-test');
   await page.evaluate(() => {
     window.sent = []; window.nativeCalls = []; window.autoReply = false; window.sequence = [];
@@ -39,6 +44,18 @@ async function pageFor(browser, core = false) {
     const get=(_k,cb)=>{const value={rsApprovalMode:'bypass'};if(cb)queueMicrotask(()=>cb(value));return Promise.resolve(value);};
     window.chrome={runtime:{id:'offline',getManifest:()=>({version:'1.24.30'}),getURL:p=>'https://chatgpt.com/fixture/'+p,onMessage:{addListener(){}},sendMessage:(msg,cb)=>{const v=answer(msg);if(cb)queueMicrotask(()=>cb(v));return Promise.resolve(v);}},storage:{local:{get,set:()=>Promise.resolve(),remove:()=>Promise.resolve()},onChanged:{addListener(){}}}};
   });
+  if(model){
+    await page.evaluate(packages=>{const map=document.createElement('script');map.type='importmap';map.textContent=JSON.stringify({imports:Object.fromEntries(packages.map(n=>[n,'/fixture-modules/'+n+'/dist/index.js']))});document.head.append(map);},modelPackages);
+    await page.addScriptTag({type:'module',content:`
+      import {EditorState} from 'prosemirror-state';import {EditorView} from 'prosemirror-view';import {schema} from 'prosemirror-schema-basic';
+      const host=document.createElement('div');document.querySelector('#prompt-textarea').replaceWith(host);
+      const button=document.querySelector('button[data-testid="send-button"]');button.disabled=true;
+      window.modelView=new EditorView(host,{state:EditorState.create({schema}),attributes:{id:'prompt-textarea'},dispatchTransaction(tr){modelView.updateState(modelView.state.apply(tr));button.disabled=!modelView.state.doc.textContent.trim();}});
+      button.onclick=()=>{const text=modelView.state.doc.textBetween(0,modelView.state.doc.content.size,'\\n','\\n');sent.push(text);modelView.dispatch(modelView.state.tr.delete(0,modelView.state.doc.content.size));addItem('user',text,'model-user-'+sent.length);};
+      window.modelReady=true;
+    `});
+    await page.waitForFunction(()=>window.modelReady);
+  }
   if(core){
     await page.addStyleTag({path:'overlay.css'});
     for(const file of manifest.content_scripts.find(x=>x.js.includes('providers/chatgpt.js')).js){
@@ -53,7 +70,7 @@ async function pageFor(browser, core = false) {
 }
 async function checks(browser){
   let failed=0;
-  async function check(name,core,fn){const {page,errors}=await pageFor(browser,core);try{await fn(page);assert.deepEqual(errors,[]);console.log('PASS '+name);}catch(e){failed++;console.error('FAIL '+name+': '+e.stack);}finally{await page.close();}}
+  async function check(name,core,fn,model=false){const {page,errors}=await pageFor(browser,core,model);try{await fn(page);assert.deepEqual(errors,[]);console.log('PASS '+name);}catch(e){failed++;console.error('FAIL '+name+': '+e.stack);}finally{await page.close();}}
   await check('multiline draft reads exactly through native blocks and breaks',false,async page=>{
     const got=await page.evaluate(async()=>{
       const ed=provider.getEditor();ed.innerHTML='<p>first</p><p>second<br>third</p>';
@@ -73,8 +90,15 @@ async function checks(browser){
       const timer=setInterval(()=>beats++,0),text=Array.from({length:180},(_,i)=>'line '+i).join('\n');
       const ok=await provider.typeAndSend(text);clearInterval(timer);return{ok,maxLines,beats,pastes,count:sent.length,text:sent[0]};
     });
-    assert(got.maxLines<=1,'one synchronous edit received '+got.maxLines+' lines');assert(got.beats>15,'page must get regular turns while typing');assert.equal(got.pastes,0);assert.equal(got.count,1);assert.equal(got.ok,true);assert.equal(got.text,Array.from({length:180},(_,i)=>'line '+i).join('\n'));
+    assert(got.maxLines<=5,'one bounded native edit received '+got.maxLines+' lines');assert(got.beats>15,'page must get regular turns while typing');assert.equal(got.pastes,0);assert.equal(got.count,1);assert.equal(got.ok,true);assert.equal(got.text,Array.from({length:180},(_,i)=>'line '+i).join('\n'));
   });
+  for(const lines of [180,450])await check('real ProseMirror model preserves '+lines+' lines, blanks, indentation and Unicode',false,async page=>{
+    const got=await page.evaluate(async lines=>{
+      const text=Array.from({length:lines},(_,i)=>i%11===0?'':'  const line_'+i+' = "native 🧪";').join('\n');
+      let beats=0;const timer=setInterval(()=>beats++,0);const ok=await provider.typeAndSend(text);clearInterval(timer);
+      return{ok,count:sent.length,exact:sent[0]===text,draft:provider.editorText(),beats};
+    },lines);assert.equal(got.ok,true);assert.equal(got.count,1);assert(got.exact);assert.equal(got.draft,'');assert(got.beats>5);
+  },true);
   await check('disabled Send cannot become a phantom receipt during an assistant redraw',true,async page=>{
     const got=await page.evaluate(async()=>{
       fixture.A.stop=false;fixture.A.started=true;

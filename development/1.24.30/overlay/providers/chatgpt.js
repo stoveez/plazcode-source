@@ -511,7 +511,7 @@ const RSProvider = (() => {
       if (node.nodeType === 3) return node.nodeValue || "";
       if (node.nodeType !== 1) return "";
       if (node.tagName === 'BR') {
-        if (node.classList.contains('ProseMirror-trailingBreak') ||
+        if (safeRead(() => node.classList.contains('ProseMirror-trailingBreak'), false) ||
             (!node.nextSibling && (!node.previousSibling || node.previousSibling.nodeName === 'BR'))) return '';
         return '\n';
       }
@@ -835,8 +835,7 @@ const RSProvider = (() => {
   const SEND_HARD_CAP = 139300;  // measured; for reference and headroom checks
   const SEND_MAX_CHARS = 120000; // characters are essentially free (see above)
   const SEND_MAX_LINES = 600;    // the line count is what costs, and we type it
-  const INSERT_CHUNK_LINES = 8;
-  const INSERT_SLICE_MS = 8;
+  const INSERT_CHUNK_LINES = 4;
 
   function truncateForSend(text) {
     if(typeof window.__rsLimitOutgoing==="function")return window.__rsLimitOutgoing(text);
@@ -921,19 +920,19 @@ const RSProvider = (() => {
     selectAll(ed);
 
     const t0 = Date.now();
-    let sliceStart = performance.now(), sliceLines = 0, written = "";
-    for (let i = 0; i < lines.length; i++) {
+    let written = "";
+    for (let i = 0; i < lines.length; i += INSERT_CHUNK_LINES) {
       checkOwner();
-      if (i === 0 || lines[i]) document.execCommand("insertText", false, lines[i]);
-      // insertLineBreak, never a synthetic Enter: Enter is what SENDS on ChatGPT.
-      if (i < lines.length - 1) document.execCommand("insertLineBreak");
-      written += lines[i] + (i < lines.length - 1 ? "\n" : "");
+      const end = Math.min(lines.length, i + INSERT_CHUNK_LINES);
+      const chunk = lines.slice(i, end).join('\n') + (end < lines.length ? '\n' : '');
+      // Small native multiline inserts preserve ProseMirror paragraphs. Its DOM
+      // parser can turn insertLineBreak's bare newlines into spaces. Never send
+      // a synthetic Enter or a text paste; both have different site behavior.
+      document.execCommand('insertText', false, chunk);
+      written += chunk;
       wrote(written);
-      if (++sliceLines >= INSERT_CHUNK_LINES || performance.now() - sliceStart >= INSERT_SLICE_MS) {
-        await sleep(0);
-        checkOwner();
-        sliceStart = performance.now(); sliceLines = 0;
-      }
+      await sleep(0);
+      checkOwner();
     }
     if (lines.length > INSERT_CHUNK_LINES) diag("send.insertDone", { lines: lines.length, ms: Date.now() - t0 });
   }
@@ -1426,11 +1425,11 @@ const RSProvider = (() => {
     guardedSender: true, authoritativeSendResult: true, strictSendReceipt: true,
     cancelPendingSends() { ++sendGeneration; },
     ignoreMutationRecords(records) {
-      if (!document.documentElement.classList.contains('rs-chatgpt-injecting') || !records.length) return false;
+      if (!safeRead(() => document.documentElement.classList.contains('rs-chatgpt-injecting'), false) || !records.length) return false;
       const ed = getEditor();
       // Skip only our native editor transactions. Transcript changes, submit
       // controls, editor replacement and mixed batches still run the sweep.
-      return !!ed && records.every(record => record.target === ed || ed.contains(record.target));
+      return !!ed && records.every(record => record.target === ed || safeRead(() => ed.contains(record.target), false));
     },
     isGenerating, isBusyNow, isHardGenerating, turnComplete,
     enforceComposer, ensureComposerReady,

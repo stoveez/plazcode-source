@@ -1,0 +1,26 @@
+---
+title: Shared tool protocol audit and improvements
+updated: 2026-11-04
+---
+
+Owner explicitly answered **“yeah fix everything”** to including all confirmed gaps from DeepSeek's list in the next test build. Preserve the active ChatGPT freeze/recovery work; no stable publication. Work on claude/plazcode-dev only, no helpers. This is the remaining scope, not a claim these items are finished.
+
+## Confirmed and finished sender fixes
+
+- ChatGPT phantom receipt and incorrect dropped-reply recovery: source8661923. Saved completed outcomes are re-delivered once; no original tool replay. Full-core fifteen-call healthy and call-five-dropped tests pass.
+- Real ProseMirror check found bare insertLineBreak can become spaces. Corrected writer uses four-line native text chunks and yields every chunk. Pinned dev-only ProseMirror tests cover180/450lines, blanks, indentation and Unicode. Text never uses paste attachments. Offline library check, not a live ChatGPT profile.
+- DeepSeek screenshot error reproduced with real native textarea CRLF/bare-CR normalization: exact draft comparison failed before any send and left the visible result stranded. Normalize line endings before storing typedText; all shared timing/lease/manual-Stop/owner checks unchanged. Native Chromium LF/CRLF/CR tests and existing safeguards pass. Original person's actual logs are unavailable; do not claim every occurrence has this cause.
+- First full JS pass found four fixtures that extracted sender functions without their new dependencies. Updated them, kept failure and exact-once assertions; targeted checks pass. Full rerun required after remaining protocol edits. CI41772418802 was CANCELLED deliberately after the real-editor issue was found; do not deliver its artifacts.
+
+## Remaining audit / implementation order
+
+1. **Batch shape and useful stable errors:** canonical batch currently accepts onlycommand/tool andparams/arguments; schema rejects alternatives even though single-call normalizeCall already acceptsname/args/flat fields and detects conflicts. Reuse RSParse.normalizeCall for children, retain all-child preflight, max8, approvals, Stop, budgets and fail-fast behavior. Distinguish E_SHAPE, E_ARGUMENT and E_COMMAND with exact calls[i] and fix inline. Never execute an invalid/partial child.
+2. **Capabilities:** SYSTEM_STATE already shows workspace and FULL PC/SANDBOX using agent flag first, but no explicit feature list. Add current granted capabilities and access-denied codes/hints without granting more access or trusting stale UI over native state.
+3. **Formatting tolerance:** parser already accepts complete sibling calls, different fences, loose JSON and surrounding prose. Audit provider rendering/masking; add real behavioral cases and align overly strict prompt wording. Keep complete-command and historical-message safety.
+4. **Paths:** real gap in agent/src/workspace.rs resolve_path: even an absolute path inside canon_root is rejected in sandbox. Permit only in-root absolute paths through the existing canonical ancestor/symlink/allowed-folder checks, preserve outside-root rejection. Echo actual resolved path in file outcomes. Add Rust tests for existing/new files, prefix siblings, traversal, symlink/junction escapes and Full-access behavior.
+5. **Dry run:** workspace tool_write_file/tool_edit_file currently have no preview:true. Add a read-only preview returning exact diff/paths/no-change or match errors without writes, mkdir, undo/checkpoint mutation or bypassing path access. Expose schemas and meaningful Rust tests; retain normal write approval/checkpoint behavior.
+6. **Consistent results:** design an additive, consistent AI-facing result envelope without breaking internal native/Studio/MCP consumers, error detection, exact retained pages, image uploads, chip text or older extension compatibility. Preserve original content and structured data; test representative text/JSON/error/image/batch outputs. Do not casually wrap internal strings consumed by other tools.
+7. **Startup cost:** preserve proof the bridge and model protocol really work; previous false-Ready bugs must not return. Audit unnecessary second command/list round trips and offer a verified compact/silent presentation where safe; never declare Ready just because context was injected. Owner's suggestion is performance, not authorization to remove readiness guarantees.
+8. **Memory noise:** audit defaults/full-startup toggle and task relevance. Prefer a concise memory availability/relevance summary with on-demand full pages for unrelated tasks, while retaining applicable owner preferences, project continuity and explicit read-vault requests. Keep learn-as-you-work filtering; never save raw protocol/transcripts.
+
+Before building again: update NOW/all matching notes, finish focused tests, run full JS and native tests as required, push under stoveez with empty email/[skip ci], tell owner branch+SHA. Dispatch fresh validate-1.24.30.yml only on the final runtime source. Verify exact signed Windows/universal-Mac inner ZIPs, zero official file-list delta, all241 reviewed JS copies and both Mac slices; upload via Drive and read back names/MIME/bytes. Immediately deliver with Private reminder/settings link. No source ZIPs, stable publish or visibility change. Repo vault only; owner's PC vault not connected.

@@ -118,6 +118,9 @@ jobs:
       - name: ChatGPT responsive typing, confirmed delivery and fifteen-tool loop
         run: node release-tools/test-chatgpt-delivery-browser.cjs
         working-directory: build-src-1.24.30/PlazCode
+      - name: DeepSeek Windows result line endings through guarded sender
+        run: node release-tools/test-deepseek-line-endings-browser.cjs
+        working-directory: build-src-1.24.30/PlazCode
       - name: Ordered batch child approvals and fail-before-write in real Chromium
         run: node release-tools/test-command-batch-browser.cjs
         working-directory: build-src-1.24.30/PlazCode

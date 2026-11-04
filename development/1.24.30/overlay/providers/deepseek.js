@@ -899,7 +899,10 @@ const RSProvider = (() => {
     const editor=getEditor();if(!editor)throw sendError("DeepSeek input box not found.");
     const current=editorText();if(current.trim())throw sendError("Your draft changed or still contains text. PlazCode kept your draft; clear it before sending an automatic request.","DEEPSEEK_CANCELLED");
     job.editor=editor;job.previousDraft=current;
-    editor.focus();text=truncateForSend(text);job.typedText=text;setTextareaValue(editor,text);
+    // Browser textareas normalize CRLF and bare CR to LF. Compare/authorize the
+    // native representation, so Windows results do not fail the exact-draft
+    // check and remain stranded even though their visible content is correct.
+    editor.focus();text=String(truncateForSend(text)||'').replace(/\r\n?/g,'\n');job.typedText=text;setTextareaValue(editor,text);
     if(editorText()!==text)throw sendError("DeepSeek did not accept the draft. Nothing was sent.");
     if(images && images.length){
       const attached=await attachImages(images);assertSendOwner(job);
@@ -1237,7 +1240,7 @@ const RSProvider = (() => {
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsDsVer).
       // BUMP DS_VER on meaningful deepseek.js changes worth verifying live.
-      try { document.documentElement.setAttribute("data-rs-ds-ver", "2026-11-02_startup-chat-id"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-ds-ver", "2026-11-04_line-ending-delivery"); } catch {}
     },
     // turns
     allItems, isUserItem, isAssistantItem, itemText, classifyText,

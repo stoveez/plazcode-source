@@ -1,6 +1,6 @@
 ---
 title: ChatGPT page freezes and stranded tool results
-updated: 2026-11-03
+updated: 2026-11-04
 ---
 
 Owner reports the WHOLE ChatGPT page freezes at startup and on tool calls. A fifteen-call sequence stayed stuck around call five, with the composer expanded under the working cover. This is separate from Windows startup integrity; retain the signed-app fix.
@@ -20,10 +20,12 @@ The generic dead-turn message now preserves execution uncertainty. Within the cu
 
 ## Change
 
-Type at most eight lines or eight milliseconds per slice, then yield; never paste text as an attachment. Check Stop/session/editor ownership between slices. Filter only composer-local injection mutations; mixed/transcript/remount changes still run normal masking and sweeps. Wait for enabled Send, click once, require a new matching user message with a new identity. Old assistant growth, empty composers, Stop and old identical user messages are not receipts. Clear only this injection's unchanged draft in the same editor/chat; preserve newer user drafts. ChatGPT alone opts into the strict core receipt contract. Keep native upload confirmation and the normal startup handshake.
+Type at most four lines per native chunk, then yield; never paste text as an attachment. Check Stop/session/editor ownership between slices. Filter only composer-local injection mutations; mixed/transcript/remount changes still run normal masking and sweeps. Wait for enabled Send, click once, require a new matching user message with a new identity. Old assistant growth, empty composers, Stop and old identical user messages are not receipts. Clear only this injection's unchanged draft in the same editor/chat; preserve newer user drafts. ChatGPT alone opts into the strict core receipt contract. Keep native upload confirmation and the normal startup handshake.
 
 ## Verification / next
 
-Ten new real-Chromium OFFLINE browser checks passed, including the complete production parser/core/native-bridge mock loop with fifteen distinct read_file calls, exact-once delivery and an empty final composer. Four old failure paths were reproduced before the changes (typing burst, disabled-send false success, ambiguous click, missing Stop cancellation). Simulated slow native edits test scheduling, not live ChatGPT timing. No access to the owner's live ChatGPT browser; do not label fixtures as a live preview.
+Twelve new real-Chromium OFFLINE browser checks passed, including the complete production parser/core/native-bridge mock loop with fifteen distinct read_file calls, exact-once delivery and an empty final composer. Four old failure paths were reproduced before the changes (typing burst, disabled-send false success, ambiguous click, missing Stop cancellation). Simulated slow native edits test scheduling, not live ChatGPT timing. No access to the owner's live ChatGPT browser; do not label fixtures as a live preview.
 
 Healthy differential70/provider-preservation967/protected34, recovery wiring5/stall9, reply recovery and13startup golden cases PASS. Full JavaScript checks and fresh Windows/universal-Mac signed test build are next. No stable release authorized. Extension reload plus AI-tab refresh applies this change; full app packages still accompany the test delivery. Update this note with the final run, source SHA and verified Drive links.
+
+2026-11-04 follow-up: real ProseMirror tests found insertLineBreak can flatten lines; native four-line chunks preserve180/450lines exactly and keep the event loop responsive. Pinned dev-only editor model test dependencies added. First full JS pass found4 stale extracted fixtures, corrected with original failure/one-click checks intact; targeted checks pass. CI41772418802 cancelled intentionally; all confirmed protocol gaps now included by owner: [next work](tool-protocol-audit-2026-11-04.md).

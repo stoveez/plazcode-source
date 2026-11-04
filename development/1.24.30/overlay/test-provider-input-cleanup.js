@@ -7,9 +7,10 @@ function functionSource(name,fn){const text=fs.readFileSync('providers/'+name+'.
   let editable=false,opacity='1',caret='auto',injectingClass=false,clicks=0;
   const fault=()=>{throw Error('fixture fault');};
   const style={get opacity(){return opacity;},set opacity(v){opacity=v;},get caretColor(){return caret;},set caretColor(v){if(name==='chatgpt'&&phase==='unlock'&&v==='transparent')fault();caret=v;}};
-  const editor={style,tagName:'DIV',setAttribute(k,v){if(k==='contenteditable'){editable=v==='true';if(phase==='unlock'&&editable)fault();if(phase==='cleanup'&&!editable)fault();}if(k==='readonly'){editable=false;if(phase==='cleanup')fault();}},removeAttribute(){editable=true;if(phase==='unlock')fault();},getAttribute:()=> '1',dispatchEvent:fault};
+  const editor={style,tagName:'DIV',isConnected:true,setAttribute(k,v){if(k==='contenteditable'){editable=v==='true';if(phase==='unlock'&&editable)fault();if(phase==='cleanup'&&!editable)fault();}if(k==='readonly'){editable=false;if(phase==='cleanup')fault();}},removeAttribute(){editable=true;if(phase==='unlock')fault();},getAttribute:()=> '1',dispatchEvent:fault};
   const context={getEditor:()=>editor,truncateForSend:x=>x,safeRead:(fn,fallback)=>{try{return fn();}catch{return fallback;}},document:{documentElement:{classList:{add:()=>injectingClass=true,remove:()=>injectingClass=false}}},setEditorText:fault,typeEditorText:fault,editorText:()=>'',rememberSentResponse:()=>{},_nativeSetter:{call:fault},hasPendingAttachment:()=>false,isGenerating:()=>false,waitFor:async()=>true,sendButton:()=>({click(){clicks++;}}),diag:()=>{},Event:function(){}};
-  vm.createContext(context);vm.runInContext('let _locked=true,_injecting=false;'+functionSource(name,'typeAndSend')+';this.send=typeAndSend;this.injecting=()=>_injecting;',context);
+  Object.assign(context,{sendContext:()=>({session:1,stop:0}),isStopped:()=>false,conversationKey:()=>'/chat/test',allItems:()=>[],isUserItem:()=>false});
+  vm.createContext(context);vm.runInContext('let _locked=true,_injecting=false,sendGeneration=0;'+functionSource(name,'typeAndSend')+';this.send=typeAndSend;this.injecting=()=>_injecting;',context);
   await assert.rejects(context.send('text'),/fixture fault/);
   assert.equal(editable,false,name+' '+phase+' restores editor lock');assert.equal(context.injecting(),false,name+' releases input ownership');assert.equal(injectingClass,false,name+' clears injection class');assert.equal(opacity,'1',name+' restores visibility');assert.equal(clicks,0,name+' does not submit after a write failure');checks++;
  }

@@ -6,7 +6,7 @@ assert(start>=0);
 const end=source.indexOf('          markActivity(',start);
 const code=source.slice(start,end);
 async function check(feedback,images,failures=0,kind){
- const sent=[];const box={P:{},feedback,failedToolAttempts:failures,calls:[{tool:'read_file',params:{}}],characterLimits:{rsInputLimitEnabled:true,rsInputCharLimit:120000},lastMemoryContext:'',personalMemoryContext:()=>'Saved memory context',compressToolFeedback:t=>t,A:{pendingImages:images,requestKind:kind},base:9,diag(){},ui:{banner(){}},submitAndGetBase:async(text,attachments)=>{sent.push({text,attachments});return 10;}};
+ const sent=[];const box={P:{conversationKey:()=>'/c/test'},activeEngine:()=> 'local',completedFeedback:null,feedback,failedToolAttempts:failures,calls:[{tool:'read_file',params:{}}],characterLimits:{rsInputLimitEnabled:true,rsInputCharLimit:120000},lastMemoryContext:'',personalMemoryContext:()=>'Saved memory context',compressToolFeedback:t=>t,A:{sessionGen:1,pendingImages:images,requestKind:kind},base:9,diag(){},ui:{banner(){}},submitAndGetBase:async(text,attachments)=>{sent.push({text,attachments});return 10;}};
  vm.createContext(box);
  // Load the real provider-feedback helper used by the production send block.
  vm.runInContext(source.slice(source.indexOf('  function prepareToolFeedback('),source.indexOf('  async function attachAutoDebug(')),box);
