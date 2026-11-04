@@ -151,27 +151,40 @@ with tempfile.TemporaryDirectory(prefix='plazcode-verified-paths-', ignore_clean
     original = source / 'PlazCode'
     ok, error = signed_check(original)
     assert ok, 'The downloaded package must pass its real pinned signature/full-file check: ' + error
+    # Keep the EXE/current directory inside Windows' launch limit while making
+    # signed descendants exceed MAX_PATH. Also test the OS launch limit as a
+    # separate, explicitly refused case; do not confuse it with file tampering.
+    long_files = base / 'long signed file paths'
+    while len(str(long_files)) < 180:
+        long_files /= 'supported-folder-' + 'x' * 25
+    long_files /= 'PlazCode'
+    assert len(str(long_files / 'PlazCode.exe')) < 260
+    assert max(len(str(long_files / p.relative_to(original))) for p in original.rglob('*') if p.is_file()) > 260
     cases = [
-        ('ordinary', base / 'ordinary/PlazCode', False),
-        ('spaces-unicode', base / "Downloads/PlazCode user's copy é 日本語/PlazCode", False),
-        ('app-suffix-parent', base / 'innocent.app/Downloads/PlazCode', True),
-        ('app-suffix-install', base / 'download/PlazCode.app', True),
-        ('long-path', base / ('long folder ' + 'a' * 55) / ('b' * 65) / ('c' * 65) / ('d' * 65) / 'PlazCode', False),
+        ('ordinary', base / 'ordinary/PlazCode', 'start'),
+        ('spaces-unicode', base / "Downloads/PlazCode user's copy é 日本語/PlazCode", 'start'),
+        ('app-suffix-parent', base / 'innocent.app/Downloads/PlazCode', 'root-bug'),
+        ('app-suffix-install', base / 'download/PlazCode.app', 'root-bug'),
+        ('long-signed-files', long_files, 'start'),
+        ('windows-working-folder-limit', base / ('long folder ' + 'a' * 55) / ('b' * 65) / ('c' * 65) / ('d' * 65) / 'PlazCode', 'os-limit'),
     ]
     report = []
-    for name, root, root_bug in cases:
+    for name, root, expected in cases:
         shutil.copytree(extended(original), extended(root))
         intact, error = signed_check(root)
         assert intact, name + ': untouched files must pass the full signed check: ' + error
         home = base / ('state-' + name); home.mkdir()
         ready, error = start(root, home)
-        if root_bug and args.expect_old_root_bug:
+        if expected == 'os-limit':
+            assert not ready and 'os error 206' in error and 'program files changed' not in error, 'The Windows working-directory limit is a distinct OS failure, not an integrity bypass: ' + error[-2000:]
+            print('PASS documented Windows working-folder limit: all signed hashes pass; startup separately refuses overlong CWD with os error 206.', flush=True)
+        elif expected == 'root-bug' and args.expect_old_root_bug:
             assert not ready and 'os error 3' in error, name + ': reproduce the original wrong-folder/missing-path failure: ' + error[-2000:]
             print('REPRODUCED: complete signed package passes --verify-package, but ordinary .app-named Windows folder makes startup fail with os error 3.', flush=True)
         else:
             assert ready, name + ': intact signed installation must start: ' + error[-2000:]
             print('PASS intact installation:', name, '(all signed file hashes verified)', flush=True)
-        report.append({'case': name, 'signed_package_check': True, 'bridge_started': ready})
+        report.append({'case': name, 'expected': expected, 'signed_package_check': True, 'bridge_started': ready})
 
     # An EXE copied/opened alone is genuinely incomplete, never authorized.
     lone = base / 'zip-open-only/PlazCode'; lone.mkdir(parents=True)

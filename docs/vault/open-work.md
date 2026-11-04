@@ -3,6 +3,8 @@ title: Open work and known bugs
 updated: 2026-11-03
 ---
 ## Active: public 1.24.30 Windows startup investigation (2026-11-03)
+
+FullCI41759762628 onb23b52c RUNNING, staging /workspace/plazcode-integrity-build-41759762628. Second baseline41759717631 again reproduced two .app/os3 failures; explicit executable fixed process creation, then actual app independently rejected overlong CWD with os206 AFTER hashes passed. Harness now requires supported root/signed files>260 to start and separately records extreme OS CWD refusal; this does not waive any integrity test. Corrected baseline rerun next.
 Owner confirmed PUBLICv1.24.30 ZIP, retried5 downloads with same failure; exact extraction/location still unknown (question pending). Real Windows baseline41758853584 reproduced screenshot os error3 in TWO ordinary .app folder layouts even though full signed-file verification passed; normal/spaces/Unicode launched. Baseline then stopped in the test launcher (CreateProcess206 for long command path), not the product; explicit executable parameter fixes that harness issue. Rerun baseline next, including EXE-only and unchanged protection-negative cases.
 
 Implemented: only real PlazCode.app/Contents/MacOS/PlazCode layout relocates root; Windows .exe never becomes a Mac bundle. Missing-path startup wording names folder/relative required path and says Extract All; original integrity errors remain for hash/signature/symlink failures. Every original cryptographic/file/path/size check still mandatory; no network trust or relaxed fallback. Root regression failed before fix, now full local native302PASS/2ignored, Node crypto/packaged-protection PASS. Full local JS running terminal16586, log /workspace/plazcode-integrity-javascript-final.log; do not prepare during it/Cargo.

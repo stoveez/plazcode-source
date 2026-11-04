@@ -32,5 +32,18 @@
   },
   "original_affected_pc_verified": false,
   "new_zip_delivered": false,
-  "stable_published": false
+  "stable_published": false,
+  "full_ci": {
+    "id": 41759762628,
+    "head_sha": "b23b52cdfcaab6fb51fcfd1843cac89ba0eb941b",
+    "status": "in_progress"
+  },
+  "staging": "/workspace/plazcode-integrity-build-41759762628",
+  "second_baseline": {
+    "id": 41759717631,
+    "job_id": 126344263031,
+    "app_folder_bug_reproduced_twice": true,
+    "long_root": "full signed check PASS; actual app later fails Windows CWD limit/os206, outside integrity gate"
+  },
+  "test_harness_policy": "Supported EXE/CWD shorter than260 with signed files over260 must start; extreme CWD limit separately must fail with206 and no edited-files accusation"
 }
