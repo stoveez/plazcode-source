@@ -155,7 +155,22 @@ const RSParse = (() => {
     return out;
   }
 
+  // A returned result is data, even when the assistant echoes its JSON, Luau
+  // markers or batch child commands. Skip only complete, explicitly versioned
+  // result envelopes; a real command beside one must still be read normally.
+  function withoutResultEnvelopes(text) {
+    const raw=String(text||'');if(!raw.includes('plazcode-result/1'))return raw;
+    let output='',from=0,start=raw.indexOf('{');
+    while(start>=0){const end=matchBrace(raw,start);let value;
+      if(end>=0)try{value=JSON.parse(raw.slice(start,end+1));}catch{}
+      const result=value?.format==='plazcode-result/1'||(!value?.command&&!value?.tool&&value?.result?.format==='plazcode-result/1');
+      if(result){output+=raw.slice(from,start)+' ';from=end+1;start=raw.indexOf('{',from);}
+      else start=raw.indexOf('{',value&&(typeof value.command==='string'||typeof value.tool==='string')?end+1:start+1);
+    }
+    return output+raw.slice(from);
+  }
   function hasToolSignature(r) {
+    r=withoutResultEnvelopes(r);
     return (
       r.includes(START_M) ||
       r.includes("MCP_TOOL") ||
@@ -169,6 +184,7 @@ const RSParse = (() => {
   // (a ###LUA### / ###MCP_TOOL### opener with no matching end marker). Used by the
   // response watcher to avoid finalizing a command that is still being streamed.
   function hasOpenToolBlock(r) {
+    r=withoutResultEnvelopes(r);
     if (!r) return false;
     if (hasOpenDsml(r)) return true;
     const { pos: ls, len } = findLuaStart(r);
@@ -346,6 +362,7 @@ const RSParse = (() => {
   }
 
   function parseToolCalls(r) {
+    r=withoutResultEnvelopes(r);
     // Lowercase for case-insensitive end-marker search. Models write
     // ###end_mcp_tool### (underscore) or ###end-mcp_tool### (dash).
     const rLow = r.toLowerCase();
@@ -504,6 +521,7 @@ const RSParse = (() => {
 
   // The assistant emitted a RobloxScript command (JSON or a ###LUA### block).
   function hasCommandShape(txt) {
+    txt=withoutResultEnvelopes(txt);
     return txt.includes(START_M) ||
            LUA_START_RE.test(txt) ||
            CMD_KEY_RE.test(txt) || // command/tool with PlazCode without params (e.g. list_commands)

@@ -25,6 +25,12 @@ const PlazCodeMemory = (() => {
   // The vault is read through the desktop app. When the app is older than the extension, or the vault is off,
   // every function here returns an empty result and the classic saved memory keeps working unchanged.
   let vaultBridge = null, vaultState = null, vaultReady = false, vaultFailedAt = 0, vaultProject = '', vaultFetchedAt = 0;
+  function availability(memory,project='') {
+    const saved=(memory?.entries||[]).filter(entry=>!entry.project||entry.project===project).length;
+    const vault=vaultState?Math.max(0,Number(vaultState.total)||vaultState.notes?.length||0):0;
+    const learning=vaultState?vaultState.learning!==false:memory?.automatic===true;
+    return '\nMEMORY: '+saved+' saved notes; '+vault+' vault notes available; project='+JSON.stringify(project||'none')+'. Full notes are on demand: before project changes, use plazcode_memory list/read or plazcode_vault search/read for relevant preferences and project facts. Skip unrelated notes; saved facts may be stale. '+(learning?'Learning is on: save only new verified lasting facts with evidence, never protocol messages, tool dumps, temporary tasks or guesses.':'Learning is off: do not save new facts automatically.')+'\n';
+  }
   const VAULT_ACTIONS = ['index','search','read','read_all','write','backlinks','archive','add_image','read_image','map','audit','verify'];
   // ---- Several vaults (1.24.21): the list of vaults lives in browser storage; the desktop app holds the one ACTIVE vault ----
   const vaultRegistry = (() => {
@@ -1441,6 +1447,6 @@ const PlazCodeMemory = (() => {
     for(const entry of scoped.slice(offset)){const item={id:entry.id,title:titleOf(entry),project:entry.project || "",source:entry.source || "",text:entry.text.slice(0,500),total_chars:entry.text.length,preview_limited:entry.text.length>500};const chars=JSON.stringify(item).length;if(entries.length && size+chars>7000)break;entries.push(item);size+=chars;}
     return {automatic:memory.automatic,entries,total_entries:scoped.length,offset,next_offset:offset+entries.length<scoped.length?offset+entries.length:null};
   }
-  return { prompt, mount, parseTransfer, exportPackage, read, titleOf, brainMap, graphSim, vaultRefresh, vaultRegistry, vaultContext, vaultTool, vaultReadAllPage, vaultReadAllPages, vaultActive, vaultLearning, vaultCall, chatNoteSave, chatNoteLatest, withoutChatNotes, criticTool, criticParse, criticPrompt, openVault: openVaultViewer, renderMarkdown };
+  return { prompt, availability, mount, parseTransfer, exportPackage, read, titleOf, brainMap, graphSim, vaultRefresh, vaultRegistry, vaultContext, vaultTool, vaultReadAllPage, vaultReadAllPages, vaultActive, vaultLearning, vaultCall, chatNoteSave, chatNoteLatest, withoutChatNotes, criticTool, criticParse, criticPrompt, openVault: openVaultViewer, renderMarkdown };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = PlazCodeMemory;

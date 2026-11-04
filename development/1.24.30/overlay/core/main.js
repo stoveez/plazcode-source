@@ -2768,10 +2768,15 @@ return result`;
     if(!Number.isSafeInteger(offset)||offset<0||offset>record.text.length)return 'ERROR: offset must be a character position within this result.';
     const requested=args.limit===undefined?resultPageSize():Number(args.limit);
     if(requested!==Infinity&&(!Number.isSafeInteger(requested)||requested<1))return 'ERROR: limit must be a positive character count.';
-    let end=Math.min(record.text.length,offset+Math.min(requested,Math.max(1,resultPageSize()-350)));
-    if(end<record.text.length&&end>offset&&/[\uD800-\uDBFF]/.test(record.text[end-1]))end--;
-    const next=end<record.text.length?end:null;
-    return "Output of 'plazcode_result_read':\n"+JSON.stringify({id:args.id,offset,next_offset:next,total_characters:record.text.length})+'\n---RESULT CONTENT---\n'+record.text.slice(offset,end)+'\n---END RESULT PAGE---';
+    const budget=resultPageSize();
+    const packet=end=>"Output of 'plazcode_result_read':\n"+JSON.stringify({result:{version:1,format:'plazcode-result/1',tool:'plazcode_result_read',ok:true,kind:'retained_page',content:{id:args.id,offset,next_offset:end<record.text.length?end:null,total_characters:record.text.length,text:record.text.slice(offset,end)}}});
+    let low=offset,high=Math.min(record.text.length,offset+Math.min(requested,budget));
+    // Count the serialized envelope, including escaped source characters, so a
+    // page never creates another retained page merely because JSON expanded it.
+    while(low<high){const mid=Math.ceil((low+high)/2);if(packet(mid).length<=budget)low=mid;else high=mid-1;}
+    let end=low;if(end<record.text.length&&end>offset&&/[\uD800-\uDBFF]/.test(record.text[end-1]))end--;
+    if(end===offset&&offset<record.text.length)return 'ERROR: E_RESULT_LIMIT: the result-page envelope does not fit the current limit. Increase the input/output limit; the original command already ran and must not be repeated.';
+    return packet(end);
   }
   function compressToolFeedback(text, name) {
     const s = String(text || "");
@@ -2790,6 +2795,33 @@ return result`;
     if(!/^`?plazcode_result_read`?\s*(?:\(\))?\s*$/i.test(String(text||'').trim()))return "";
     if(![...retainedToolResults.values()].some(record=>record.chat===P.conversationKey()&&record.engine===activeEngine()))return "";
     return '(System note: your last reply contained only the tool name, so no new command was received or executed. To read another retained page, emit one fenced json command whose command is plazcode_result_read and whose params contain the real id and numeric next_offset from the previous result. The first retained page shows the complete JSON envelope; copy that format with the actual values. This is a local read; never rerun the original command. If next_offset is null, use the completed result to continue the user task or answer normally. Do not echo the tool name or invent result text.)';
+  }
+  function formatToolFeedback(text,call,images,failed=feedbackIsError(String(text))) {
+    const tool=String(call?.tool||call?.command||'command'),raw=String(text||'');
+    let body=stripOutputPrefix(raw),data;
+    try{data=JSON.parse(body);}catch{}
+    // The local reader already budgets a complete envelope and exact page.
+    if(tool==='plazcode_result_read'&&data?.result?.kind==='retained_page')return raw;
+    const resolved=data&&typeof data==='object'?data.resolved_paths:undefined;
+    let kind=images?.length?'image':data?.preview===true&&data.kind==='diff'?'diff':tool==='plazcode_batch'?'batch':data&&typeof data==='object'?'json':'text';
+    const result={version:1,format:'plazcode-result/1',tool,ok:!failed,kind,content:data&&typeof data==='object'?data:body};
+    if(resolved)result.resolved_paths=resolved;
+    const pathTag=body.match(/\n\[RESOLVED_PATHS: ([^\n]+)\]$/);
+    if(pathTag)try{result.resolved_paths=JSON.parse(pathTag[1]);}catch{}
+    if(images?.length)result.attachments=images.length;
+    if(failed)result.error={code:(raw.match(/\bE_[A-Z_]+\b/)||['E_TOOL'])[0]};
+    const prefix=failed?'ERROR in '+tool+':\n':"Output of '"+tool+"':\n";
+    const full=prefix+JSON.stringify({result}),budget=resultPageSize();
+    if(full.length<=budget)return full;
+    const id=crypto.randomUUID();retainedToolResults.set(id,{text:body,chat:P.conversationKey(),engine:activeEngine()});
+    let retained=0;for(const entry of retainedToolResults.values())retained+=entry.text.length;
+    while(retainedToolResults.size>32||retained>64000000&&retainedToolResults.size>1){const first=retainedToolResults.keys().next().value;retained-=retainedToolResults.get(first).text.length;retainedToolResults.delete(first);}
+    const page=end=>prefix+JSON.stringify({result:{version:1,format:'plazcode-result/1',tool,ok:!failed,kind:'retained_result',original_kind:kind,...(failed?{error:result.error}:{}),content:{total_characters:body.length,text:body.slice(0,end)},next_call:end<body.length?{command:'plazcode_result_read',params:{id,offset:end}}:null}});
+    let low=0,high=Math.min(body.length,budget);
+    while(low<high){const mid=Math.ceil((low+high)/2);if(page(mid).length<=budget)low=mid;else high=mid-1;}
+    if(low<body.length&&low>0&&/[\uD800-\uDBFF]/.test(body[low-1]))low--;
+    if(page(low).length>budget)throw new Error('E_RESULT_LIMIT: the tool already returned, but its result metadata does not fit the current limit. Raise the input/output limit; do not rerun the tool.');
+    return page(low);
   }
   function prepareToolFeedback(text) {
     // Apply after status/debug/reference additions, before Co-Work appends its
@@ -5057,9 +5089,10 @@ return result`;
           finally { if (call.tool === 'plazcode_clarify') taskBudget.resume(); }
           // Persistent environment header (see asStateTag) — appended, never
           // prefixed, so feedbackIsError()'s startsWith("ERROR") stays intact.
-          { const _tag = asStateTag(); if (_tag && !feedback.includes("[SYSTEM_STATE:")) feedback += "\n" + _tag; }
+          const stateTag = asStateTag();
           if (!A.stop) try { feedback = await attachAutoDebug(call.tool, feedback); } catch {}
           if (!A.stop) try { feedback = await automaticVisualCheck(call, feedback); } catch { feedback+="\nAutomatic visual capture was unavailable; verify in Studio."; }
+          const completeFeedback=feedback,toolFailed=feedbackIsError(feedback);
           try { feedback = compressToolFeedback(feedback, call.tool); } catch {}
           A.toolRunning = false;
           if (!/^(?:list_commands|list_tools)$/.test(call.tool)) activity.step(call.tool, feedbackIsError(feedback) ? "Failed: " + outSummary(feedback) : outSummary(feedback));
@@ -5074,7 +5107,7 @@ return result`;
             try { ui.trackCard(call.tool, "err", "stopped", category); } catch {} // 1.24.21: the Activity card must not stay on "executing"
             break;
           }
-          const isErr = feedbackIsError(feedback);
+          const isErr = toolFailed || feedbackIsError(feedback);
           failedToolAttempts=isErr ? failedToolAttempts+1 : 0;
           const outBody = stripOutputPrefix(feedback);
           if(!isErr && /^(?:script_read|read_file|read_scripts|script_read_analysis|script_analysis)$/.test(bareToolName(call.tool))){A.learningReads=[...(A.learningReads||[]),{text:PlazCodeReliability.redact(outBody).slice(0,4000),project:currentProject,chat:P.conversationKey(),session:A.sessionGen}].slice(-6);}
@@ -5122,8 +5155,8 @@ return result`;
           // 1.24.24: everything PlazCode adds to a result fits the user's input limit (see fitExtra).
           const quickNote = A.requestKind==='quick'||A.requestKind==='conversation' ? '\nThis is a quick user request. Answer directly and briefly; do not start a task, checklist, project investigation or unrelated work.' : '';
           const failNote = failedToolAttempts>=3 ? "\n\n(System note: " + failedToolAttempts + " commands in a row failed. Do not repeat the same command. Re-read the error, inspect the current state, then try a different approach.)" : "";
-          const reserve = quickNote.length + failNote.length + 80;
-          let toSend = String(feedback);
+          const reserve = quickNote.length + failNote.length + stateTag.length + 80;
+          let toSend = formatToolFeedback(completeFeedback,call,A.pendingImages,isErr);
           if (toSend.length + reserve > inputBudget()) toSend = compressToolFeedback(toSend, "combined_feedback");
           // Changed saved memory rides along only if it fits; the AI's own vault/memory write is not echoed back.
           const ownMemoryWrite = calls.some(call => /^(?:plazcode_vault|plazcode_memory)$/.test(String(call.tool || call.command || "")) && /^(?:write|save|archive|add_image|append|replace|section)$/.test(String((call.params || call.arguments || {}).action || (call.params || call.arguments || {}).mode || "write")));
@@ -5143,7 +5176,7 @@ return result`;
           A.pendingImages = null;
           diag("images.consumed", { count: images ?  images.length : 0 });
           // 1.21.0: repeated failures no longer pause the run; the model is told to change approach.
-          const toSendFinal = toSend + failNote;
+          const toSendFinal = toSend + failNote + (stateTag ? '\n'+stateTag : '');
           if(failedToolAttempts===3) diag("loop.failStreak",{n:failedToolAttempts});
           A.loopBeatAt = Date.now();
           const preparedFeedback = prepareToolFeedback(toSendFinal);
@@ -5463,6 +5496,7 @@ return result`;
   // definition, used both by the bootstrap and by the periodic re-injection, so
   // the two can never drift apart.
     function personalMemoryContext() {
+      if (typeof leanStartupOn === 'function' && leanStartupOn()) return PlazCodeMemory.availability(personalMemory,currentProject);
       const smallContext = !!P.sysMaxChars || (typeof leanStartupOn === "function" && leanStartupOn());
       { const vaultPrompt = PlazCodeMemory.vaultContext((typeof leanStartupOn === "function" && leanStartupOn()) ? 'lean' : !!P.sysMaxChars); if (vaultPrompt) return vaultPrompt; }
       const scoped=personalMemory ? {...personalMemory,project_scope:currentProject,entries:personalMemory.entries.filter(entry=>!entry.project || entry.project===currentProject)} : null;
@@ -5655,6 +5689,9 @@ return result`;
     return /^--- /.test(text) ? text.slice(0, budget) : "";
   }
   async function startupMemoryStages() {
+    // Default startup announces availability; retrieve relevant notes on demand.
+    // Full startup retains the owner's explicit load-every-note option.
+    if (typeof leanStartupOn === 'function' && leanStartupOn()) return [];
     const pages = [];
     const budget = Math.max(4000, Math.min(60000, (typeof inputBudget === "function" ? inputBudget() : 60000) - 1500));
     try {

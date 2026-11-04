@@ -19,7 +19,7 @@ function reconstruct(text){
  const first=ctx.prepare(text).trim();assert(first.length<18000,'final feedback must fit ClickUp transport');
  assert(ctx.parser.isInjectedFeedback(first),'owned retained pages keep normal result masking');
  const id=first.match(/id:"([^"]+)"/)[1];let offset=Number(first.match(/offset:(\d+)/)[1]),restored=first.slice(first.indexOf('\n')+1,first.indexOf('\n')+1+offset),count=0;
- while(offset!==null){const page=ctx.read({id,offset,limit:1000000}).trim(),split=page.indexOf('\n---RESULT CONTENT---\n');assert(page.length<18000);const meta=JSON.parse(page.slice(page.indexOf('\n')+1,split));restored+=page.slice(split+22,split+22+(meta.next_offset??meta.total_characters)-meta.offset);offset=meta.next_offset;assert(++count<100);}
+ while(offset!==null){const page=ctx.read({id,offset,limit:1000000}).trim();assert(page.length<18000);const meta=JSON.parse(page.slice(page.indexOf('\n')+1)).result.content;restored+=meta.text;offset=meta.next_offset;assert(++count<100);}
  assert.equal(restored,text,'complete schema/result/debug text must remain exact');return id;
 }
 const original="Output of 'list_commands':\nblender commands\n"+('path \\file 🧪\nparameters {code,exact_name}\n').repeat(2200)+'END OF REFERENCE';
