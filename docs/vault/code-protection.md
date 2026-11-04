@@ -2,7 +2,7 @@
 title: Code protection without extra user steps
 updated: 2026-10-31
 ---
-Current Windows startup investigation: [untouched installation path failures](windows-startup-integrity-2026-11-03.md). Preserve all signature/hash refusal; missing path is not proof of content modification.
+Verified Windows startup fix (fullCI41759762628 and actual signed app41762409720 PASS, protection intact): [untouched installation path failures](windows-startup-integrity-2026-11-03.md). Preserve all signature/hash refusal; missing path is not proof of content modification.
 
 # Code protection
 

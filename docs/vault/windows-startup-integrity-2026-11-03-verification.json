@@ -1,7 +1,7 @@
 {
   "owner_date": "2026-11-03",
   "branch": "claude/plazcode-dev",
-  "status": "signed_windows_fix_and_negative_cases_pass_preview_delivered_mac_linux_pending",
+  "status": "verified_test_zip_links_delivered",
   "owner_report": {
     "version": "public1.24.30",
     "repeated_downloads": 5,
@@ -36,12 +36,14 @@
     "main.rs": "ba060e0e80e9d9b202881c4581275defcea3ffac0dd4c59ab087d91bd0327d11"
   },
   "original_affected_pc_verified": false,
-  "new_zip_delivered": false,
+  "new_zip_delivered": true,
   "stable_published": false,
   "full_ci": {
     "id": 41759762628,
     "head_sha": "b23b52cdfcaab6fb51fcfd1843cac89ba0eb941b",
-    "status": "in_progress"
+    "conclusion": "success",
+    "checks_passed": 130,
+    "checks_failed": 0
   },
   "staging": "/workspace/plazcode-integrity-build-41759762628",
   "second_baseline": {
@@ -146,7 +148,7 @@
         "bytes": 51146776,
         "url": "https://drive.google.com/file/d/1cS66mDHRtzdHFrWQGudECKwUYJwoJUin/view?usp=drivesdk",
         "readback_verified": true,
-        "delivered": false
+        "delivered": true
       },
       "artifact": {
         "id": 13290493061,
@@ -167,6 +169,66 @@
           "head_sha": "b23b52cdfcaab6fb51fcfd1843cac89ba0eb941b"
         }
       }
+    },
+    "macos": {
+      "platform": "macos",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3074,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+      "file": "PlazCode-macOS-1.24.30-test-lean.zip",
+      "bytes": 52934184,
+      "sha256": "63efc95a1f1ac8a90c39862e91b19150d5f8c9d01054a826ce2803eb5c270fbe",
+      "files": 3088,
+      "drive": {
+        "id": "1alqogw_Wp3Jsojmlbug_vACWRyVuUubh",
+        "name": "PlazCode-macOS-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "bytes": 52934184,
+        "url": "https://drive.google.com/file/d/1alqogw_Wp3Jsojmlbug_vACWRyVuUubh/view?usp=drivesdk",
+        "readback_verified": true,
+        "delivered": true
+      },
+      "artifact": {
+        "id": 13291048542,
+        "name": "plazcode-1.24.30-macOS-test-lean",
+        "size_in_bytes": 52934987,
+        "url": "https://api.github.com/repos/stoveez/plazcode-source/actions/artifacts/13291048542",
+        "archive_download_url": "https://api.github.com/repos/stoveez/plazcode-source/actions/artifacts/13291048542/zip",
+        "expired": false,
+        "created_at": "2026-11-04T02:57:27Z",
+        "expires_at": "2027-02-02T02:17:28Z",
+        "updated_at": "2026-11-04T02:57:27Z",
+        "digest": "sha256:845f06d4ead9e0dec09b3ebd28bb92fe7889dc9ba6d47c87612415bb35b052f7",
+        "workflow_run": {
+          "id": 41759762628,
+          "repository_id": 1423458595,
+          "head_repository_id": 1423458595,
+          "head_branch": "claude/plazcode-dev",
+          "head_sha": "b23b52cdfcaab6fb51fcfd1843cac89ba0eb941b"
+        }
+      }
     }
+  },
+  "repo_visibility_at_delivery": "public_owner_reminded_private",
+  "pc_vault_synced": false,
+  "official_report": {
+    "id": "11ebqD9OQAyoFpwZ3qNEqWKkylOF1L0F9",
+    "name": "PlazCode-startup-fix-checks.md",
+    "mime_type": "text/markdown",
+    "bytes": 10694,
+    "url": "https://drive.google.com/file/d/11ebqD9OQAyoFpwZ3qNEqWKkylOF1L0F9/view?usp=drivesdk",
+    "readback_verified": true,
+    "delivered": true
   }
 }

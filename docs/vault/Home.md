@@ -2,10 +2,10 @@
 title: Home
 updated: 2026-11-03
 ---
-Active: [public1.24.30 Windows startup false failure](windows-startup-integrity-2026-11-03.md). Public baseline reproduced the bug; fixed signed Windows41762409720 PASS, real preview delivered, remaining Mac/Linux build pending. Latest delivered ZIPs below lack this new fix.
+Latest Windows/Mac test ZIPs DELIVERED, fullCI41759762628 ALL GREEN and signed startup/tamper suite41762409720 PASS: [startup fix and downloads](windows-startup-integrity-2026-11-03.md) · [verification](windows-startup-integrity-2026-11-03-verification.json). Protection intact; owner field retest next.
 
 
-Latest verified test ZIPs DELIVERED (fullCI41703669996 ALL GREEN; clean missing-UV Windows41707625110 PASS): [Blender + Ox Alpha proof/downloads](blender-oxalpha-2026-11-03-verification.json). [Blender fixes](blender-uv-path-2026-11-03.md) · [Ox Alpha Copy fix](oxalpha-copy-lock-2026-11-03.md).
+Previous verified test ZIPs DELIVERED (fullCI41703669996 ALL GREEN; clean missing-UV Windows41707625110 PASS): [Blender + Ox Alpha proof/downloads](blender-oxalpha-2026-11-03-verification.json). [Blender fixes](blender-uv-path-2026-11-03.md) · [Ox Alpha Copy fix](oxalpha-copy-lock-2026-11-03.md).
 
 
 Actual Blender preview delivered; original affected PC/live Ox Alpha need owner retest. Source still Public at delivery; restore Private reminder remains.
