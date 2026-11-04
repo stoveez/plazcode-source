@@ -2,6 +2,11 @@
 title: Home
 updated: 2026-11-03
 ---
+
+## 2026-11-03 — ChatGPT responsive delivery under verification
+Owner's fifteen-tool test stayed stuck; whole page freezes on startup/tools. Fixed multiline native editing bursts and composer-triggered transcript scans. A disabled-send/full-core fixture reproduced false confirmed delivery with zero sends before fix; ChatGPT now requires a new matching sent user message, clicks once and preserves newer drafts. Nine offline Chromium checks (including full fifteen-tool loop), healthy differential70/preservation967/protected34 PASS. Full suite/fresh CI/Drive test ZIPs still pending; no live ChatGPT preview available. [Current detail](chatgpt-responsive-delivery-2026-11-03.md). Extension reload + tab refresh enough; full apps still accompany delivery. No stable publish.
+
+
 Latest Windows/Mac test ZIPs DELIVERED, fullCI41759762628 ALL GREEN and signed startup/tamper suite41762409720 PASS: [startup fix and downloads](windows-startup-integrity-2026-11-03.md) · [verification](windows-startup-integrity-2026-11-03-verification.json). Protection intact; owner field retest next.
 
 

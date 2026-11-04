@@ -3,6 +3,11 @@ title: Milestones (finished work)
 
 updated: 2026-11-03
 ---
+
+## 2026-11-03 — ChatGPT responsive delivery under verification
+Owner's fifteen-tool test stayed stuck; whole page freezes on startup/tools. Fixed multiline native editing bursts and composer-triggered transcript scans. A disabled-send/full-core fixture reproduced false confirmed delivery with zero sends before fix; ChatGPT now requires a new matching sent user message, clicks once and preserves newer drafts. Nine offline Chromium checks (including full fifteen-tool loop), healthy differential70/preservation967/protected34 PASS. Full suite/fresh CI/Drive test ZIPs still pending; no live ChatGPT preview available. [Current detail](chatgpt-responsive-delivery-2026-11-03.md). Extension reload + tab refresh enough; full apps still accompany delivery. No stable publish.
+
+
 ## 2026-11-03 — Windows startup false failure fixed; verified test ZIP links delivered
 Public1.24.30 baseline41760213753 reproduced exact os3 despite valid signed hashes in ordinary .app folders; EXE-only/incomplete extraction produces same ambiguous dialog. Owner reports5 downloads; original friend's folder/extraction remains unknown, so do not claim exact cause on their PC is confirmed. Fixed root detection to actual Mac bundle layout; Windows .exe keeps its own folder. Missing-file startup errors now name opened folder/relative missing path and Extract All advice; real edits/signature/symlink failures retain original integrity refusal. No cryptographic/file/path/version/channel/size rule relaxed.
 

@@ -31,7 +31,7 @@ function setup(name,baseline){
  const setText=text=>{if(input.tagName==='TEXTAREA')input.value=text;else input.textContent=text;};
  w.document.execCommand=(action,_,value)=>{if(action==='insertText'){setText(value);input.dispatchEvent(new w.Event('input',{bubbles:true}));return true;}return action==='selectAll';};
  input.addEventListener('input',()=>inputs++);
- const send=()=>{setText('');if(name==='deepseek'&&!baseline){const row=w.document.createElement('div');row.className='ds-message';row.dataset.role='user';row.textContent='sent';w.document.querySelector('main').prepend(row);}};
+ const send=()=>{const body=input.value??input.textContent;setText('');if(name==='chatgpt'){const row=w.document.createElement('div');row.dataset.messageAuthorRole='user';row.dataset.messageId='sent-'+clicks;row.textContent=body;w.document.querySelector('main').append(row);}if(name==='deepseek'&&!baseline){const row=w.document.createElement('div');row.className='ds-message';row.dataset.role='user';row.textContent='sent';w.document.querySelector('main').prepend(row);}};
  w.document.querySelector('form').addEventListener('submit',e=>e.preventDefault());
  w.document.querySelector('button').addEventListener('click',()=>{clicks++;send();});
  input.addEventListener('keydown',e=>{if(e.key==='Enter'){enters++;send();}});

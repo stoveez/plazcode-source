@@ -903,6 +903,7 @@ html.rs-site-chatgpt.rs-chatgpt-injecting [contenteditable] * {
 }
 html.rs-site-chatgpt.rs-chatgpt-injecting [contenteditable] {
   max-height: 72px !important;
+  min-height: 0 !important;
   overflow: hidden !important;
 }
 /* The ProseMirror parent can keep growing even when the editable itself is

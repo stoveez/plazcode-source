@@ -1077,7 +1077,7 @@
   }
 
   function reportGuardedSendFailure(error) {
-    if(error && error.code==="DEEPSEEK_CANCELLED" && error.expectedCancellation===true){
+    if(error && ["DEEPSEEK_CANCELLED","CHATGPT_CANCELLED"].includes(error.code) && error.expectedCancellation===true){
       diag("send.cancelled",{provider:P.id,reason:String(error.message||error)});
       return;
     }
@@ -1190,7 +1190,10 @@
       // "Landed" = a new turn appeared in the DOM. In long chats, list
       // virtualisation can keep counts flat even when our message landed - the
       // textarea-cleared signal below is the primary fast gate.
-      const landed = () => P.userCount() > preUser || P.assistantCount() > base;
+      // A previous reply can remount while a result is still in the composer.
+      // Strict senders prove their own new user-message receipt; a count change
+      // or a missing tail must never turn an unsubmitted draft into success.
+      const landed = () => P.strictSendReceipt ? messageSent : P.userCount() > preUser || P.assistantCount() > base;
       // v1.10 rule was "never type/send while the tab is HIDDEN" - background
       // tabs throttle rendering, which made the landed-check unreliable and
       // duplicated sends. v1.12 background mode keeps sending in hidden tabs
@@ -1219,6 +1222,7 @@
         let sendResult;
         try {sendResult = await P.typeAndSend(typeof window !== "undefined" && typeof window.__rsLimitOutgoing === "function" ? window.__rsLimitOutgoing(text) : text, images, { userPrompt: userPrompt === true });}
         catch(error){if(P.guardedSender){reportGuardedSendFailure(error);throw new SendAbortedError(String(error.message||error));}throw error;}
+        if (P.strictSendReceipt && sendResult !== true) throw new SendAbortedError("ChatGPT did not confirm this delivery. No automatic resend was attempted.");
         if (P.authoritativeSendResult) {
           if (sendResult === true) messageSent = true;
           else if (sendResult === false && !A.stop && !(images && images.length) && typeof P.sendFailureAmbiguous === "function" &&

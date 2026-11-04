@@ -92,6 +92,7 @@ const RSProvider = (() => {
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   let diag = () => {}; // injected by core via init()
+  let sendContext = () => ({}), isStopped = () => false, sendGeneration = 0;
 
   const S = {
     msg: "[data-message-author-role], [data-conversation-role], [data-role], [data-message-author]",
@@ -504,7 +505,25 @@ const RSProvider = (() => {
     const e = getEditor();
     if (!e) return "";
     if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => e.value, "") || "";
-    return safeRead(() => e.textContent, "") || "";
+    // ProseMirror stores lines in paragraphs/BRs: textContent joins them and
+    // innerText adds paragraph spacing (and forces layout). Read logical lines.
+    const read = node => {
+      if (node.nodeType === 3) return node.nodeValue || "";
+      if (node.nodeType !== 1) return "";
+      if (node.tagName === 'BR') {
+        if (node.classList.contains('ProseMirror-trailingBreak') ||
+            (!node.nextSibling && (!node.previousSibling || node.previousSibling.nodeName === 'BR'))) return '';
+        return '\n';
+      }
+      let text = '', previousBlock = false;
+      Array.from(node.childNodes).forEach((child, index) => {
+        const block = /^(P|DIV|LI|PRE)$/.test(child.nodeName);
+        if (index && (block || previousBlock)) text += '\n';
+        text += read(child); previousBlock = block;
+      });
+      return text;
+    };
+    return safeRead(() => read(e), "");
   };
 
   const lastAssistant = () => {
@@ -816,9 +835,8 @@ const RSProvider = (() => {
   const SEND_HARD_CAP = 139300;  // measured; for reference and headroom checks
   const SEND_MAX_CHARS = 120000; // characters are essentially free (see above)
   const SEND_MAX_LINES = 600;    // the line count is what costs, and we type it
-  const INSERT_CHUNK_LINES = 25; // measured sweet spot: 3.0s total, 0.4s worst freeze
-  const BULK_INSERT_MAX_LINES = 220; // small/medium internal sends are faster as one native edit
-  const BULK_INSERT_MAX_CHARS = 40000;
+  const INSERT_CHUNK_LINES = 8;
+  const INSERT_SLICE_MS = 8;
 
   function truncateForSend(text) {
     if(typeof window.__rsLimitOutgoing==="function")return window.__rsLimitOutgoing(text);
@@ -886,8 +904,9 @@ const RSProvider = (() => {
 
   // Fallback: type it. Yielding does not make this faster - it keeps the page
   // alive while it happens, so the user can still click (and Stop still works).
-  async function typeEditorText(ed, text) {
+  async function typeEditorText(ed, text, checkOwner = () => {}, wrote = () => {}) {
     const raw = String(text);
+    checkOwner();
     if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") {
       ed.focus();
       const setter = Object.getOwnPropertyDescriptor(
@@ -895,50 +914,68 @@ const RSProvider = (() => {
         "value").set;
       setter.call(ed, raw);
       ed.dispatchEvent(new Event("input", { bubbles: true }));
+      wrote(raw);
       return;
     }
     const lines = raw.split("\n");
     selectAll(ed);
 
-    // For the bootstrap and other moderate internal messages, one native
-    // insertText is dramatically faster than rebuilding ProseMirror one line at
-    // a time. Large results keep the yielded line-by-line path below so they do
-    // not freeze the tab for tens of seconds.
-    if (lines.length <= BULK_INSERT_MAX_LINES && raw.length <= BULK_INSERT_MAX_CHARS) {
-      const t0 = Date.now();
-      const ok = document.execCommand("insertText", false, raw);
-      await sleep(0);
-      const got = editorText().trim();
-      const tail = raw.trim().slice(-30);
-      if (ok && got && (!tail || got.includes(tail))) {
-        diag("send.bulkInsert", { lines: lines.length, chars: raw.length, ms: Date.now() - t0 });
-        return;
-      }
-      // If ChatGPT rejected the bulk edit, replace whatever partial text landed
-      // and fall back to the proven line-by-line path.
-      selectAll(ed);
-    }
-
     const t0 = Date.now();
+    let sliceStart = performance.now(), sliceLines = 0, written = "";
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i]) document.execCommand("insertText", false, lines[i]);
+      checkOwner();
+      if (i === 0 || lines[i]) document.execCommand("insertText", false, lines[i]);
       // insertLineBreak, never a synthetic Enter: Enter is what SENDS on ChatGPT.
       if (i < lines.length - 1) document.execCommand("insertLineBreak");
-      if (i && i % INSERT_CHUNK_LINES === 0) await sleep(0);
+      written += lines[i] + (i < lines.length - 1 ? "\n" : "");
+      wrote(written);
+      if (++sliceLines >= INSERT_CHUNK_LINES || performance.now() - sliceStart >= INSERT_SLICE_MS) {
+        await sleep(0);
+        checkOwner();
+        sliceStart = performance.now(); sliceLines = 0;
+      }
     }
     if (lines.length > INSERT_CHUNK_LINES) diag("send.insertDone", { lines: lines.length, ms: Date.now() - t0 });
   }
 
   // Typing is the ONLY path for injected sends: it is slower, but it produces a
   // real inline message instead of a file attachment (see pasteEditorText).
-  async function setEditorText(ed, text) {
-    await typeEditorText(ed, text);
+  async function setEditorText(ed, text, checkOwner, wrote) {
+    await typeEditorText(ed, text, checkOwner, wrote);
   }
 
   async function typeAndSend(text, images) {
     const ed = getEditor();
     if (!ed) throw new Error("ChatGPT input box not found");
     text = truncateForSend(text);
+    const context = sendContext(), generation = sendGeneration, chat = conversationKey();
+    let ownedDraft = null, committed = false;
+    const sameSession = () => {
+      const current = sendContext();
+      return context.session === current.session && context.stop === current.stop;
+    };
+    const checkOwner = (typing = true) => {
+      if (generation !== sendGeneration || isStopped() || !sameSession() ||
+          ((typing || chat) && chat !== conversationKey()) || (typing && (getEditor() !== ed || !ed.isConnected))) {
+        const error = new Error('ChatGPT delivery cancelled because Stop was pressed or the chat changed.');
+        error.code = 'CHATGPT_CANCELLED'; error.expectedCancellation = true; throw error;
+      }
+    };
+    const normalize = value => String(value || '').replace(/\s+/g, ' ').trim();
+    const usersBefore = new Set(allItems().filter(isUserItem).map(item => itemKey(item) || item));
+    const want = normalize(text);
+    const receipt = () => allItems().some(item => isUserItem(item) &&
+      !usersBefore.has(itemKey(item) || item) && normalize(itemText(item)) === want);
+    const waitDelivery = async (predicate, timeout, typing = true) => {
+      const budget = waitBudget(timeout, 120), until = Date.now() + budget.ms;
+      for (let poll = 0; poll <= budget.polls; poll++) {
+        checkOwner(typing);
+        if (predicate()) return true;
+        if (Date.now() >= until) break;
+        await sleep(120);
+      }
+      return false;
+    };
     const relock = _locked;
     const oldOpacity = safeRead(() => ed.style.opacity, "");
     const oldCaret = safeRead(() => ed.style.caretColor, "");
@@ -953,52 +990,46 @@ const RSProvider = (() => {
         if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") ed.readOnly = false;
         else ed.setAttribute("contenteditable", "true");
       }
-      await setEditorText(ed, text);
+      await setEditorText(ed, text, checkOwner, value => { ownedDraft = value; });
+      checkOwner();
+      const logical = value => String(value).replace(/\r\n?/g, '\n').trim();
+      if (logical(editorText()) !== logical(text)) throw new Error('ChatGPT did not accept the complete tool result into its input box. Nothing was sent.');
       // Attach images LAST, right before the send click - see gemini.js/deepseek.js
       // typeAndSend for why (attaching first and then retyping the text can sever
       // the site's binding between the pending upload and the message sent).
       if (images && images.length) {
         if (!await attachImages(images)) throw new Error('ChatGPT did not confirm the screenshot upload. Check its file/image quota or upload error; the message was not submitted.');
-        const ready = await waitFor(() => !!sendButton() && !safeRead(() => sendButton().disabled, true), 25000);
-        const button = ready && sendButton();
-        if (!button || safeRead(() => button.disabled, true)) throw new Error('ChatGPT is not ready to send the uploaded screenshot. The message was not submitted.');
-        // Commit exactly once. A delayed receipt never authorizes another click.
-        button.click();
-        await waitFor(() => editorText().trim() === "" || !!stopButton(), 15000);
-        return;
       }
-      // Wait for the control to be in its SEND role (proof ProseMirror registered
-      // the text, and that no generation is in flight).
-      await waitFor(() => !!sendButton(), 1500);
-      // Still not a send button? Either a generation really is running (in which
-      // case unwedge refuses and we fall through), or the control is stuck in its
-      // stop role with nothing generating - the case that stranded the result.
-      if (!sendButton()) await waitFor(() => !!sendButton() && !stopButton(), 4000);
-      const btn = sendButton();
-      // Disabled send = a quota wall, not a wedge. Clicking it does nothing and
-      // Enter is refused too, so return now and let scanError surface the reason
-      // instead of burning the caller's retries in silence.
-      if (btn && safeRead(() => btn.disabled, true)) { diag("send.disabled", {}); return; }
-      if (btn) {
-        btn.click();
-        await waitFor(() => editorText().trim() === "" || !!stopButton(), 1200);
-        return;
-      }
-      // Stop can outlast the recovery wait during Work reasoning. Enter is
-      // not a safe send fallback while that control still owns the composer.
-      if (stopButton()) { diag("send.busy", {}); return; }
-      // Fallback: Enter sends in ChatGPT's composer.
-      const o = { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true };
-      ed.dispatchEvent(new KeyboardEvent("keydown", o));
-      ed.dispatchEvent(new KeyboardEvent("keyup", o));
-      await waitFor(() => editorText().trim() === "" || !!stopButton(), 1200);
+      // React may enable Send after the input transaction finishes. Wait for an
+      // enabled SEND control, never submit through a lingering Stop or Enter.
+      const ready = await waitDelivery(() => {
+        const button = sendButton();
+        return button && !safeRead(() => button.disabled, true);
+      }, images && images.length ? 25000 : 6000);
+      checkOwner();
+      const button = ready && sendButton();
+      if (!button || safeRead(() => button.disabled, true)) throw new Error('ChatGPT is not ready to send. Check its message limit or connection, then resume; nothing was sent.');
+      committed = true;
+      button.click(); // Exactly one commit. No retry after an uncertain click.
+      const accepted = await waitDelivery(receipt, 15000, false);
+      checkOwner(false);
+      if (!accepted) throw new Error('ChatGPT did not confirm the submitted tool result. PlazCode will not resend it automatically. Check the chat, then resume.');
+      return true;
+    } catch (error) {
+      // Remove only this injection's unchanged draft in the same chat/editor.
+      // Never erase a newer draft after a navigation, remount or user edit.
+      if (getEditor() === ed && chat === conversationKey() &&
+          sendContext().session === context.session && ownedDraft !== null &&
+          (editorText() === ownedDraft || (ownedDraft.endsWith('\n') && editorText() === ownedDraft + '\n'))) clearEditor();
+      diag('send.unconfirmed', {committed, code:error.code || 'CHATGPT_SEND_FAILED'});
+      throw error;
     } finally {
       try { document.documentElement.classList.remove("rs-chatgpt-injecting"); } catch {}
-      const e2 = getEditor();
-      if (e2) {
+      const e2 = ed;
+      if (e2.isConnected) {
         safeRead(() => { e2.style.opacity = oldOpacity; }, null);
         safeRead(() => { e2.style.caretColor = oldCaret; }, null);
-        if (relock) {
+        if (relock && _locked) {
           if (safeRead(() => e2.tagName, "") === "TEXTAREA" || safeRead(() => e2.tagName, "") === "INPUT") safeRead(() => { e2.readOnly = true; }, null);
           else safeRead(() => e2.setAttribute("contenteditable", "false"), null);
         }
@@ -1370,11 +1401,13 @@ const RSProvider = (() => {
     // Settings dialog (seen live). ChatGPT already says so itself, in the thread,
     // when a quota runs out - that is a better place for the message than a badge
     // that outranks the site's modals.
-    init({ diag: d } = {}) {
+    init({ diag: d, sendContext: context, isStopped: stopped } = {}) {
       if (d) diag = d;
+      if (context) sendContext = context;
+      if (stopped) isStopped = stopped;
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsGptVer).
-      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-09-26_shared-turn-command-readiness"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-03_confirmed-responsive-delivery"); } catch {}
     },
     // turns
     allItems, isUserItem, isAssistantItem, itemText, classifyText, setActivityFolded,
@@ -1390,6 +1423,15 @@ const RSProvider = (() => {
     setFollowupMode,
     followupPlaceholderTargets() {const ed=getEditor();return ed ? [ed,...safeQueryAll(ed, '[data-placeholder], [placeholder], [aria-placeholder]')] : [];},
     setInputLock, writeDraft, typeAndSend, clearEditor, stopGeneration,
+    guardedSender: true, authoritativeSendResult: true, strictSendReceipt: true,
+    cancelPendingSends() { ++sendGeneration; },
+    ignoreMutationRecords(records) {
+      if (!document.documentElement.classList.contains('rs-chatgpt-injecting') || !records.length) return false;
+      const ed = getEditor();
+      // Skip only our native editor transactions. Transcript changes, submit
+      // controls, editor replacement and mixed batches still run the sweep.
+      return !!ed && records.every(record => record.target === ed || ed.contains(record.target));
+    },
     isGenerating, isBusyNow, isHardGenerating, turnComplete,
     enforceComposer, ensureComposerReady,
     turnHalted, findContinueBtn, clickContinueBtn,
