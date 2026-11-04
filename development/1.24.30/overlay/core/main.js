@@ -4620,6 +4620,16 @@ return result`;
     const MAX_INVALID_TOOL_ATTEMPTS = 6, SPLIT_HINT_AFTER = 2;
     const SPLIT_HINT = "\n\nThat command was cut off again. Do not resend it whole. Split the change into several much smaller commands (one function or a few dozen lines each) and send only the first part now.";
     let deadRetries = 0, emptyRegens = 0, retainedReadNudges = 0;
+    let completedFeedback = null;
+    const recoverDroppedReply = () => {
+      const saved = completedFeedback;
+      if (!saved || saved.chat !== P.conversationKey() || saved.engine !== activeEngine() || saved.session !== A.sessionGen) return RS.FEEDBACK.deadTurn;
+      // Delivery/reading a reply failed AFTER the tool returned. Recover the
+      // recorded outcome, never ask the model to execute that tool again.
+      const note = '(System note: PlazCode could not read your next reply. The previous tool request already returned the recorded outcome below. This is its saved result, not another execution. Do not repeat the completed command. If the outcome reports an uncertain change, inspect current state before making another change. Use this result to continue the unfinished task or answer if done.)\n\n';
+      const text = saved.text.replace(/\(The image is attached to THIS message - you can see it directly\. Analyse it and continue\.\)/g, '(Use the image attached to the preceding tool result; no new image is attached to this recovery message.)');
+      return compressToolFeedback(note + text, 'reply_recovery');
+    };
     let busyWaits = 0;
     // 1.24.10: Plan Mode / deep thinking levels ask for a written plan first.
     // Some sites end the turn after the plan, which used to finish the run with
@@ -4733,7 +4743,7 @@ return result`;
             deadRetries++;
             diag("loop.deadRetry", { kind: "timeout", n: deadRetries });
             ui.toast(P.displayName + " went quiet — retrying once…");
-            base = await submitAndGetBase(RS.FEEDBACK.deadTurn);
+            base = await submitAndGetBase(recoverDroppedReply());
             continue;
           }
           ui.banner("warn", `${P.displayName} went quiet`,
@@ -4777,7 +4787,7 @@ return result`;
             deadRetries++;
             diag("loop.deadRetry", { kind: "empty", n: deadRetries });
             ui.toast("Could not read " + P.displayName + "’s reply — retrying once…");
-            base = await submitAndGetBase(RS.FEEDBACK.deadTurn);
+            base = await submitAndGetBase(recoverDroppedReply());
             continue;
           }
           ui.banner("warn", `Could not read ${P.displayName}’s reply`,
@@ -5113,7 +5123,9 @@ return result`;
           const toSendFinal = toSend + failNote;
           if(failedToolAttempts===3) diag("loop.failStreak",{n:failedToolAttempts});
           A.loopBeatAt = Date.now();
-          base = await submitAndGetBase(prepareToolFeedback(toSendFinal), images);
+          const preparedFeedback = prepareToolFeedback(toSendFinal);
+          completedFeedback = {text:preparedFeedback,chat:P.conversationKey(),engine:activeEngine(),session:A.sessionGen};
+          base = await submitAndGetBase(preparedFeedback, images);
           A.loopBeatAt = Date.now();
           markActivity(P.allItems().filter(P.isUserItem).at(-1));
         }

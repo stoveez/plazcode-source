@@ -26,12 +26,12 @@ async function pageFor(browser, core = false) {
       sent.push(text); ed.innerHTML=''; addItem('user',text,'user-'+sent.length);
       if(autoReply) addItem('assistant',sequence.shift()||'Sequence complete.','ai-'+sent.length);
     };
-    const tools=[{name:'read_file',server:'local',description:'Offline read-only test',inputSchema:{type:'object',properties:{path:{type:'string'}},required:['path']}}];
+    const tools=[['read_file','path'],['search_files','pattern']].map(([name,key])=>({name,server:'local',description:'Offline read-only test',inputSchema:{type:'object',properties:{[key]:{type:'string'}},required:[key]}}));
     const answer=msg=>{
       if(msg.type==='live-status')return {ok:true,bridge_reachable:true,connected:true,roblox_connected:true,local_connected:true,profile_required:false};
       if(msg.type==='call_tool'){
         if(msg.arguments?.path==='PLAZCODE_MEMORY.md'||msg.arguments?.code?.includes('read_scripts'))return {ok:true,text:'Not found: no startup memory in offline fixture'};
-        nativeCalls.push(msg);return {ok:true,text:'READ ONLY RESULT\nline one\nline two\n'+msg.arguments.path};
+        nativeCalls.push(msg);return {ok:true,text:'READ ONLY RESULT\nline one\nline two\n'+(msg.arguments.path||msg.arguments.pattern)};
       }
       if(msg.type==='rs-memory')return {ok:true,memory:{entries:[]}};
       return {ok:true,fresh:true,connected:true,mcpAlive:true,roblox_connected:true,local_connected:true,tools,skills:[],templates:[],servers:[]};
@@ -141,6 +141,26 @@ async function checks(browser){
       await fixture.agentLoop(base);
       return{paths:nativeCalls.filter(x=>x.name==='read_file').map(x=>x.arguments.path),sent:sent.length,draft:provider.editorText(),running:fixture.A.running};
     });assert.deepEqual(got.paths,Array.from({length:15},(_,i)=>'offline-'+i+'.txt'));assert.equal(got.sent,15);assert.equal(got.draft,'');assert.equal(got.running,false);
+  });
+  await check('lost reply after successful call five recovers its result without executing it twice',true,async page=>{
+    const got=await page.evaluate(async()=>{
+      fixture.A.stop=false;fixture.A.started=true;fixture.A.approveAll=true;provider.timings.PRESTART_MS=1200;
+      const calls=Array.from({length:15},(_,i)=>i===4?{command:'search_files',params:{pattern:'*.md'}}:{command:'read_file',params:{path:'offline-'+i+'.txt'}});
+      const encode=call=>'```json\n'+JSON.stringify(call)+'\n```';sequence=calls.map(encode);autoReply=false;
+      document.querySelector('button[data-testid="send-button"]').onclick=()=>{
+        const ed=provider.getEditor(),text=ed.innerText;sent.push(text);ed.innerHTML='';addItem('user',text,'user-'+sent.length);
+        if(sent.length===5){addItem('assistant','','ai-empty-five');return;}
+        if(sent.length===6&&text.includes('Nothing was executed'))sequence.unshift(encode(calls[4]));
+        addItem('assistant',sequence.shift()||'Sequence complete.','ai-'+sent.length);
+      };
+      const base=provider.assistantCount();addItem('user','Do fifteen isolated reads with one dropped handoff','task');addItem('assistant',sequence.shift(),'ai-first');
+      await fixture.agentLoop(base);
+      return{calls:nativeCalls.filter(x=>['search_files','read_file'].includes(x.name)).map(x=>[x.name,x.arguments]),sent:sent.length,recovery:sent[5],draft:provider.editorText(),running:fixture.A.running};
+    });
+    assert.equal(got.calls.length,15,JSON.stringify(got));assert.equal(got.calls.filter(x=>x[0]==='search_files').length,1);
+    assert.equal(got.sent,16,'only one saved-result handoff; no duplicate-read round trip');
+    assert(got.recovery.includes('READ ONLY RESULT')&&got.recovery.includes('*.md'),'recovery must carry the completed search result');
+    assert(!got.recovery.includes('Nothing was executed'));assert.equal(got.draft,'');assert.equal(got.running,false);
   });
   if(failed)throw Error(failed+' ChatGPT delivery regressions failed');
 }
