@@ -1,3 +1,7 @@
+
+
+2026-11-04 follow-up: shared batch normalization/stable shape errors, native-granted capability state and formatting-tolerance checks implemented; focused tests PASS. Native in-workspace absolute paths/read-only previews and remaining result/startup/memory audit still pending.
+
 # NOW
 Updated: 2026-11-04 owner timezone. Branch **claude/plazcode-dev** only; no helpers.
 

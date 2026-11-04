@@ -3,6 +3,10 @@ title: Open work and known bugs
 updated: 2026-11-03
 ---
 
+2026-11-04 follow-up: shared batch normalization/stable shape errors, native-granted capability state and formatting-tolerance checks implemented; focused tests PASS. Native in-workspace absolute paths/read-only previews and remaining result/startup/memory audit still pending.
+
+
+
 2026-11-04: owner requests ALL confirmed protocol gaps in next test build. Real ProseMirror line-preservation and DeepSeek Windows CRLF draft mismatch fixed/targeted tests PASS; CI41772418802 deliberately cancelled before delivery. Remaining audit/implementation: [shared protocol work](tool-protocol-audit-2026-11-04.md). No new ZIPs yet; full rerun/build pending.
 
 

@@ -2121,12 +2121,31 @@
       try { perm = (window.__rsPermMode && window.__rsPermMode()) || "sandbox"; } catch {}
       try { if (window.__rsShowApproach?.()) approach = "ON"; } catch {}
       const blender = !!bridge.blender;
+      const capabilities = [];
+      const readOnly = safetySettings.readOnly === true;
+      if (local && bridge.local_connected === true) {
+        capabilities.push('workspace_read');
+        if (!readOnly) capabilities.push('workspace_write', 'terminal');
+        if (bridge.local_full === true) {
+          capabilities.push('full_pc_access', 'window_listing', 'screen_capture');
+          if (!readOnly) capabilities.push('desktop_input', 'process_control');
+        }
+      } else if (!local && bridge.roblox_connected === true) {
+        capabilities.push('studio_read');
+        if (!readOnly) capabilities.push('studio_write');
+      }
+      if (blender && bridge.connected === true) {
+        capabilities.push('blender_read');
+        if (!readOnly) capabilities.push('blender_write');
+      }
       let env = "";
       if (local) {
         const root = typeof bridge.local_root === "string" ? bridge.local_root : "";
-        // The agent's own flag is the truth; before its first status arrives, trust the menu choice.
-        const full = bridge.local_full === true || (typeof bridge.local_full !== "boolean" && perm === "full");
-        env = ` | WORKSPACE ${root || "active"} | ${full ? "FULL PC" : "SANDBOX"}`;
+        // Native permission is authoritative. A menu choice is a request, never
+        // evidence that desktop controls have actually been granted.
+        const known = typeof bridge.local_full === 'boolean';
+        const full = bridge.local_full === true;
+        env = ` | WORKSPACE ${root || "active"} | ${!known ? 'ACCESS VERIFYING: call plazcode_status before using Full PC tools' : full ? "FULL PC" : "SANDBOX"}`;
         if (full) env += " | ACCESS ALREADY ON: never ask the user to turn on Full access or change Permissions, just run the tool";
         else if (perm === "full") env += " | MENU=Full, agent still applying it: retry the tool once before saying anything about access";
       } else {
@@ -2135,7 +2154,7 @@
       let safetyLine = "";
       try { safetyLine = PlazCodeSafety.stateLine(window.__rsSafety ? window.__rsSafety() : null); } catch {}
       if (safetyLine) safetyLine = "\n" + safetyLine;
-      return `[SYSTEM_STATE: ENGINE=${eng} | WORK=${wm} | EXTRA=${extra} | PLAN=${plan} | DEBUG=${dbg} | MULTI=${multi} | THINK=${lvl} | SHOW_APPROACH=${approach} | PERM=${perm}${env} | BRIDGE ${connected ? "UP" : "DOWN"} | BLENDER ${blender ? "ON" : "OFF"} | TOOLS ${n}]\nMODE LOCK: stay on ${eng}. Obey WORK/EXTRA/PLAN/THINK/DEBUG/MULTI this turn. One complete command envelope per reply; group up to eight prepared commands with plazcode_batch. Inspect results before dependent work.${safetyLine}\n${(RS.FEEDBACK && RS.FEEDBACK.creationFocus) || ""}\n${RS.approachSummaryPolicy ? RS.approachSummaryPolicy(approach === "ON") : ""}\n${lvl === "ultracode" && typeof PlazCodeUltracode !== "undefined" ? PlazCodeUltracode.turn(activeEngine(), P.id, P.conversationKey()+":"+A.sessionGen) : ""}`;
+      return `[SYSTEM_STATE: ENGINE=${eng} | WORK=${wm} | EXTRA=${extra} | PLAN=${plan} | DEBUG=${dbg} | MULTI=${multi} | THINK=${lvl} | SHOW_APPROACH=${approach} | PERM=${perm}${env} | BRIDGE ${connected ? "UP" : "DOWN"} | BLENDER ${blender ? "ON" : "OFF"} | TOOLS ${n} | CAPABILITIES=${JSON.stringify(capabilities)}]\nMODE LOCK: stay on ${eng}. Obey WORK/EXTRA/PLAN/THINK/DEBUG/MULTI this turn. One complete command envelope per reply; group up to eight prepared commands with plazcode_batch. Inspect results before dependent work. list_windows and desktop controls require full_pc_access; use only granted capabilities.${safetyLine}\n${(RS.FEEDBACK && RS.FEEDBACK.creationFocus) || ""}\n${RS.approachSummaryPolicy ? RS.approachSummaryPolicy(approach === "ON") : ""}\n${lvl === "ultracode" && typeof PlazCodeUltracode !== "undefined" ? PlazCodeUltracode.turn(activeEngine(), P.id, P.conversationKey()+":"+A.sessionGen) : ""}`;
     } catch { return ""; }
   }
   // Is `name` a tool we actually have? The bridge ADVERTISES names that may carry
@@ -2531,7 +2550,7 @@
       tools.push({name:'plazcode_engram',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_engram,inputSchema:{type:'object',properties:{action:{type:'string',enum:['context','search','read','save','summary']},query:{type:'string'},id:{type:'integer'},title:{type:'string'},content:{type:'string'},evidence:{type:'string'},topic_key:{type:'string'}},required:['action'],additionalProperties:false}});
       tools.push({name:'plazcode_vault',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_vault,inputSchema:{type:'object',properties:{action:{type:'string',enum:['index','search','read','read_all','write','backlinks','archive','add_image','read_image','map','audit','verify']},cursor:{type:'string'},max_chars:{type:'integer'},path:{type:'string'},paths:{type:'array',items:{type:'string'}},query:{type:'string'},type:{type:'string'},mode:{type:'string',enum:['create','append','replace','section']},section:{type:'string'},content:{type:'string'},evidence:{type:'string',description:'Short exact quote from a real user request or verified project read supporting this lasting note'},project_specific:{type:'boolean'},frontmatter:{type:'object'},reason:{type:'string'},name:{type:'string'},from:{type:'string'},note:{type:'string'},with_last_screenshot:{type:'boolean'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'plazcode_critic',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_critic,inputSchema:{type:'object',properties:{references:{type:'array',items:{type:'string'}},rubric:{type:'string'},goal:{type:'string'},new_job:{type:'boolean'}},required:['references'],additionalProperties:false}});
-      tools.push({name:'plazcode_batch',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_batch,inputSchema:{type:'object',properties:{calls:{type:'array',minItems:1,maxItems:8,items:{type:'object',properties:{command:{type:'string'},params:{type:'object'}},required:['command','params'],additionalProperties:false}}},required:['calls'],additionalProperties:false}});
+      tools.push({name:'plazcode_batch',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_batch,inputSchema:{type:'object',properties:{calls:{type:'array',minItems:1,maxItems:8,items:{type:'object',description:'A normal complete call: {command,params}. Single-call tool/name and arguments/args aliases and flat fields are normalized identically; every entry is then validated against its actual command schema.',properties:{command:{type:'string'},tool:{type:'string'},name:{type:'string'},params:{type:['object','string']},arguments:{type:['object','string']},args:{type:['object','string']}},additionalProperties:true}}},required:['calls'],additionalProperties:false}});
       tools.push({name:'plazcode_memory',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:'Read or save shared PlazCode memory.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','remember']},title:{type:'string'},text:{type:'string'},evidence:{type:'string',description:'Short exact quote from a real user request or verified project read supporting this lasting fact'},id:{type:'integer'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'studio_upload_asset',server:'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.studio_upload_asset,inputSchema:{type:'object',properties:{kind:{type:'string',enum:['model','mesh','animation','sound','image','texture','video','package']},asset_id:{type:'string',description:'Asset ID, rbxassetid:// or Creator Store link'}},required:['kind','asset_id'],additionalProperties:false}});
       const names = new Set(tools.map((tool) => tool.name));
@@ -2946,14 +2965,16 @@ return result`;
   // One model round-trip, ordinary safety/approval and checkpoint dispatch for every child.
   async function runCommandBatch(args) {
     const rows=args && args.calls;
-    if(!Array.isArray(rows)||!rows.length||rows.length>8)return "ERROR: a batch needs 1–8 complete commands in calls. Nothing ran.";
-    const calls=rows.map(row=>({tool:String(row.tool||row.command||""),arguments:row.arguments??row.params??{}}));
+    if(!Array.isArray(rows)||!rows.length||rows.length>8)return 'ERROR: E_BATCH_SIZE: calls must contain 1–8 complete commands shaped as {"command":"name","params":{...}}. No batch command ran.';
+    const calls=rows.map(row=>RSParse.normalizeCall(row));
     const denied=/^(?:plazcode_batch|plazcode_clarify|plazcode_agent|plazcode_critic|plazcode_memory|plazcode_vault|plazcode_skills|plazcode_templates|plazcode_engram|list_commands|list_tools)$/;
     const errors=calls.flatMap((call,i)=>{
+      if(!call)return ['E_SHAPE calls['+i+']: missing command name or invalid parameters. Use {"command":"name","params":{"field":"value"}}; each entry is a normal complete call.'];
+      if(call.argumentError)return ['E_SHAPE calls['+i+']: '+call.argumentError];
       call.tool=remapToolName(call.tool);PlazCodeToolGuard.repair(call,A.toolList);
-      if(denied.test(call.tool))return ["calls["+i+"]: interactive/control/memory commands must run separately."];
-      if(!A.toolList.some(t=>t.name===call.tool))return ["calls["+i+"]: unknown command "+call.tool];
-      return PlazCodeToolGuard.check(call,A.toolList).map(e=>"calls["+i+"]: "+e);
+      if(denied.test(call.tool))return ['E_BATCH_CONTROL calls['+i+']: interactive/control/memory commands must run separately.'];
+      if(!A.toolList.some(t=>t.name===call.tool))return ['E_COMMAND calls['+i+']: unknown command '+call.tool+'. Get an exact name with list_commands, then use that name in command.'];
+      return PlazCodeToolGuard.check(call,A.toolList).map(e=>'E_ARGUMENT calls['+i+']: '+e+' Put argument fields in this entry\'s params object.');
     });
     if(errors.length)return "ERROR: no batch command ran. "+errors.join("; ");
     const owner={chat:P.conversationKey(),session:A.sessionGen,engine:activeEngine()},results=[];
@@ -4954,7 +4975,8 @@ return result`;
           const calls = res.calls;
           const preflight = calls.flatMap(call => {
             call.tool = remapToolName(call.tool);
-            return PlazCodeToolGuard.check(PlazCodeToolGuard.repair(call, A.toolList), A.toolList);
+            return PlazCodeToolGuard.check(PlazCodeToolGuard.repair(call, A.toolList), A.toolList).map(error =>
+              (call.argumentError ? 'E_SHAPE: ' : 'E_ARGUMENT: ') + error);
           });
           if (preflight.length) {
             if (++invalidToolAttempts >= 3) { ui.banner("warn", "Repeated invalid tool calls", preflight.join(" · ")); break; }

@@ -105,7 +105,7 @@ const RS = (() => {
       names.join(", ") +
       ". Start over and write only the first command you need.",
     unknownTool: (name, closest) =>
-      `ERROR: unknown command "${name}". It does not exist and did not run. ` +
+      `ERROR: E_COMMAND: unknown command "${name}". It does not exist and did not run. ` +
       (closest && closest.length ? "Closest real commands: " + closest.join(", ") + ". " : "") +
       "Use an exact name; call list_commands to see every command on this engine.",
     studioOffline:
@@ -483,7 +483,7 @@ ${BT}
 DIRECTIONS & FIXES: rotations are LOCAL per joint axis. If a limb moves mirrored/backwards, do NOT restart - flip the sign of that bone's rot values with animation_update_keyframe and re-check. If the bone list does not match the pinned rig (R6 names vs R15 names), run animation_rebuild. Import existing animations with animation_import.
 
 RULES:
-- ONE command per reply, inside a fenced code block. Wait for each result.
+- Use one complete command envelope in a fenced code block; short prose before or after is allowed. For up to eight prepared commands, use plazcode_batch with calls:[{command,params},...]. Wait for results before dependent work.
 - Your FIRST action: {"command":"list_commands"} - then use ONLY exact names/params from that result. If it is not listed, it DOES NOT EXIST.
 - animation_* commands are NOT to be wrapped in execute_luau - they are already commands. Use bare execute_luau ONLY for support work (spawning a rig, positioning the camera, inspecting state), never during Play.
 - Never end a turn by only announcing a command - write it or give your final answer.
@@ -547,7 +547,7 @@ ${BT}
 ━━━ AUTO-ACTION PROTOCOL (MANDATORY) ━━━
 - When the objective is clear, ACT IMMEDIATELY: write the tool call NOW - never announce intent ("let me check...", "shall I...?") without writing the command in the same reply. Announcing without a command runs nothing and strands the user.
 - DEFAULT PIPELINE for any code/build task: read the relevant files (read_file) -> apply changes (edit_file) -> VERIFY by running (run_command: tests/build/compiler) -> read the output -> fix -> rerun. Loop silently until green or genuinely blocked. Do not hand the user instructions to do what you can do yourself.
-- ONE command per reply inside a fenced code block; wait for each result before the next.
+- Use one complete command envelope in a fenced code block; short prose before or after is allowed. For up to eight prepared commands, use plazcode_batch with calls:[{command,params},...]. Wait for results before dependent work.
 
 ━━━ SILENT ERROR RECOVERY (MANDATORY) ━━━
 - run_command returns stdout, stderr AND exit code directly to you as the result. You NEVER need the user to copy-paste terminal output - asking for it is a failure mode. On failure: read stderr/stdout yourself, identify the cause, patch with edit_file, rerun. Only surface to the user when you are truly blocked (missing credentials, hardware, or an environment problem like the agent being offline).

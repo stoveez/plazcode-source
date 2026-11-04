@@ -122,6 +122,6 @@ const fake = async ({ tool, arguments: a }) => {
   assert(/RS\.FEEDBACK\.unknownTool\(name, closestCommandNames\(name\)\)/.test(main), "the unknown-command error uses the closest names");
   const cfg = fs.readFileSync(__dirname + "/core/config.js", "utf8");
   const fb = new Function(cfg.slice(cfg.indexOf("    unknownTool: (name, closest) =>"), cfg.indexOf("    studioOffline:")).replace(/^\s*unknownTool:/, "return ").replace(/,\s*$/, ""))();
-  assert.equal(fb("list_dir", ["list_directory", "list_recent"]), 'ERROR: unknown command "list_dir". It does not exist and did not run. Closest real commands: list_directory, list_recent. Use an exact name; call list_commands to see every command on this engine.');
+  assert.equal(fb("list_dir", ["list_directory", "list_recent"]), 'ERROR: E_COMMAND: unknown command "list_dir". It does not exist and did not run. Closest real commands: list_directory, list_recent. Use an exact name; call list_commands to see every command on this engine.');
   console.log("DSML tool calls run on DeepSeek and are hidden behind the card; extras answer under their own name; sizes use the right unit.");
 })().catch((e) => { console.error(e); process.exit(1); });
