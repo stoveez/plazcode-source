@@ -11,7 +11,7 @@ async function startup(statuses){
  const box={window:{},A:{started:false,startGen:0,sessionGen:1,toolList:[{name:'script_read',server:'roblox',inputSchema:{properties:{target_file:{}},required:['target_file']}}]},
  P:{id:'chatgpt',displayName:'ChatGPT',chatIsEmpty:()=>true,conversationKey:()=>'/c/test',lastAssistantId:()=>null,lastAssistant:()=>({}),setInputLock(){},ensureComposerReady:async()=>({ready:true}),isBusyNow:()=>false},
  bg:async()=>{checks++;return queue.length>1?queue.shift():queue[0];},activeEngine:()=> 'roblox',Date:{now:()=>now},sleep:async ms=>{now+=ms;},
- ensureTools:async()=>{},systemPrompt:()=> 'Startup instructions.',diag(){},RUN_CMD:'PlazCode',SendAbortedError:class extends Error{},
+ ensureTools:async()=>{},systemPrompt:()=> 'Startup instructions.',asStateTag:()=> '[SYSTEM_STATE: ENGINE=ROBLOXSCRIPT]',diag(){},RUN_CMD:'PlazCode',SendAbortedError:class extends Error{},
  ui:{setStarting(){},updateStartGate(){},inputCover(){},setStarted(){},toast(){},trackCard(){},banner:(...x)=>banners.push(x)},
  decorate:{sweep(){},toolBox(){}},rememberSession(){},rememberExecuted(){},startupTurnIdentity(){},rememberStartupOutcome(){},
  submitAndGetBase:async()=>++sends,waitForResponse:async()=>sends===1?{kind:'tool',calls:[{tool:'list_commands',arguments:{}}],item:{}}:{kind:'text',text:'PlazCode is ready.'},

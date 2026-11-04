@@ -1,5 +1,7 @@
 
 
+2026-11-04: all confirmed shared-protocol changes are implemented locally, including default one-exchange startup with live native catalog + parsed probe + exact delivered-context proof. Plain Ready, lost transport and changed catalog/workspace/access force refusal or fresh acknowledgement; Full/custom-provider startup retains staged behavior. Own card labels are excluded from delivery receipts. Partial streamed result envelopes remain inert. Native Safety now checks permissions even without an undo ID (E_READ_ONLY/E_CONFIRMATION_REQUIRED). All seven startup and the complete browser tool-loop checks PASS, plus live-connection, Safety, envelope and 13 startup goldens PASS; full JS/native regression and fresh CI/Drive delivery remain. App replacement + extension reload needed. No new ZIPs delivered; cancelled41772418802 must not be used. Actual browser capture unavailable; offline fixtures are not a live preview. Canonical scope: tool-protocol-audit-2026-11-04.md. Older dated entries below describe their state at the time.
+
 2026-11-04: uniform versioned AI result envelopes/exact bounded pages and default on-demand memory implemented, focused tests PASS; full-core ChatGPT12checks PASS. Native307pass unchanged. Only startup wasted acknowledgement exchange remains before final broad checks/fresh CI/Drive ZIP delivery. No live browser control tool exposed; actual preview unavailable.
 
 

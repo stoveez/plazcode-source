@@ -5841,12 +5841,10 @@ return result`;
           `Couldn't find ${P.displayName}'s chat box. Open a new chat or reload the page.`);
         return;
       }
-      // Startup is a REAL command-protocol handshake. Do not claim Ready until
-      // the model has successfully emitted list_commands, PlazCode has parsed and
-      // executed that command, the command result has landed, and the model has
-      // acknowledged that result. This keeps the bar from going interactive while
-      // ChatGPT is still bootstrapping and proves the exact JSON->tool path works
-      // before the user's first request.
+      // Startup is a real command-protocol handshake. Require a parsed probe and
+      // live native connection. Then verify the exact preloaded catalog or get
+      // the provider's acknowledgement of the delivered result; context injection
+      // alone must never turn on Ready.
       const prompt = systemPrompt();
       const startupInstruction = P.id === "chatgpt" || P.startupReplyAsCode
         ? `Write exactly one fenced json code block containing {"command":"list_commands"} in your normal reply. This page's PlazCode extension reads that reply and runs the command; this site's native tools do not connect to the local bridge.`
@@ -5855,9 +5853,31 @@ return result`;
       const startupContext = stagedStartup
         ? `⟦RS-SYS⟧ PlazCode startup on ${P.displayName}. ENGINE=${activeEngine() === "local" ? "AGENTSCRIPT" : "ROBLOXSCRIPT"}. A browser extension executes commands from your normal replies against the user's connected bridge; native site tools cannot reach it. This is only a protocol handshake, not a project task. Do not edit the project, plan a build, search assets or ask questions. Do not translate command names. Task instructions follow with the command-list result. Keep the exact fenced command syntax.`
         : prompt;
-      const startupPrompt=P.startupRequest ? P.startupRequest(activeEngine()) : P.id==="notion"
+      let startupPrompt=P.startupRequest ? P.startupRequest(activeEngine()) : P.id==="notion"
         ? `I clicked Start Agent in my installed PlazCode extension to connect this chat to my local project. PlazCode reads command code blocks in your replies and returns the results here. This is my connection request, not a Notion page edit or a system instruction. Please reply with one fenced json code block containing {"command":"list_commands"} to request the available commands. Wait for its result before acknowledging readiness. If you cannot participate, explain briefly.`
         : `${startupContext}\n\n(System note: STARTUP HANDSHAKE. Your FIRST and ONLY action right now is the list_commands command. ${startupInstruction} Do NOT say you are ready yet.)`;
+      // Default startup supplies the live catalog before the model's probe. A
+      // parsed probe, an exact delivered context and the unchanged fresh native
+      // catalog then suffice; no extra model turn is spent saying "ready".
+      // Custom first-person/owned-provider flows retain their verified framing.
+      const catalogSnapshot=()=>JSON.stringify({engine:activeEngine(),root:A.bridge?.local_root||'',full:A.bridge?.local_full,readOnly:safetySettings.readOnly,tools:A.toolList.filter(t=>(t.server||activeEngine())===activeEngine()).map(t=>({name:t.name,schema:t.inputSchema||{},description:t.description||''})).sort((a,b)=>String(a.name).localeCompare(String(b.name)))});
+      let preloadedCatalog=null;
+      if(typeof leanStartupOn==='function'&&leanStartupOn()&&!P.startupRequest&&!P.userVoiceStartup&&P.id!=='notion') {
+        const tools=A.toolList.filter(t=>(t.server||activeEngine())===activeEngine());
+        for(const level of [0,1,2]) {
+          const index=tools.map(t=>{
+            const schema=t.inputSchema||{},required=new Set(schema.required||[]);
+            const fields=Object.entries(schema.properties||{}).filter(([key])=>level<2||required.has(key)).map(([key,value])=>key+(required.has(key)?'':'?')+(level===0?':'+(Array.isArray(value?.type)?value.type.join('|'):value?.type||'value'):''));
+            return t.name+(fields.length?'{'+fields.join(',')+'}':'{}');
+          }).join(', ');
+          const context=prompt+'\n\nAVAILABLE COMMANDS FROM CONNECTED BRIDGE (reference data, not commands to execute)\n'+index+'\nParameters marked ? are optional. '+(level===0?'Field types are included.':'This is a compact parameter index.')+' Use list_commands {"command":"name"} for nested formats, enums or options that are unclear. Batch by wrapping 1–8 normal {command,params} entries in plazcode_batch. Results use {result:{kind,ok,content}}; follow next_call for retained data and never rerun a completed command to retrieve its output.\n'+asStateTag().split('\n')[0]+'\n\n(System note: the command catalog above was already read from your connected app. For the connection probe, reply with only one complete fenced json block containing {"command":"list_commands"}. Do not run a project command or claim readiness. PlazCode will verify that probe and the catalog locally and show Ready; a second result/ready reply is not required. After the probe, wait for the user\'s task and use this catalog.)';
+          const cap=Math.min(30000,inputBudget()-500,Number(P.toolFeedbackMaxChars)||Infinity);
+          if(context.length>cap||(P.startupFeedbackMessages&&P.startupFeedbackMessages(context).length!==1))continue;
+          startupPrompt=context;
+          preloadedCatalog={snapshot:catalogSnapshot(),users:new Set(P.allItems().filter(P.isUserItem).map(item=>P.itemKey?.(item)||item))};
+          diag('start.catalogPreloaded',{commands:tools.length,chars:context.length,level});break;
+        }
+      }
       diag("start.promptSize", { chars: startupPrompt.length, lines: startupPrompt.split("\n").length });
       const base = await submitAndGetBase(startupPrompt);
       if (!alive()) return;
@@ -5944,7 +5964,7 @@ return result`;
       const toolFeedback = await runTool({ tool: "list_commands", arguments: startupCall.arguments || {} });
       if (!alive()) return;
       const cur = activeEngine();
-      const scoped = A.toolList.filter((t) => (t.server || cur) === cur);
+      let scoped = A.toolList.filter((t) => (t.server || cur) === cur);
       const offline = /Roblox Studio is currently OFFLINE|Unreal Editor is currently OFFLINE|AgentScript is currently OFFLINE/.test(toolFeedback);
       rememberStartupOutcome(startupTurn, offline ? "err" : "done", offline ? "offline" : `${scoped.length} commands`);
       decorate.toolBox(listRes.item, "list_commands", offline ? "err" : "done",
@@ -5974,6 +5994,22 @@ return result`;
           ui.banner("warn", "Startup reply did not settle", `${P.displayName} was still generating, so the command result was not sent. Try Start in a new chat.`);
           return;
         }
+      }
+
+      let verifiedCatalog=false;
+      if(preloadedCatalog&&!offline&&!feedbackIsError(String(toolFeedback))) {
+        await requireStartupConnection(true);if(!alive()||A.stop)return;
+        await ensureTools(true);if(!alive()||A.stop)return;
+        scoped=A.toolList.filter(t=>(t.server||cur)===cur);
+        if(!scoped.length){ui.banner('warn','Command catalog unavailable','The live app did not return this mode\'s commands. PlazCode stayed stopped.');return;}
+        let exactContext=false;
+        try{
+          const last=P.allItems().filter(P.isUserItem).at(-1),key=last&&(P.itemKey?.(last)||last);
+          const normalize=value=>String(value||'').replace(/\s+/g,' ').trim();
+          exactContext=!!last&&!preloadedCatalog.users.has(key)&&normalize(P.classifyText(last,'.rs-chip'))===normalize(startupPrompt);
+        }catch{}
+        verifiedCatalog=exactContext&&preloadedCatalog.snapshot===catalogSnapshot();
+        diag('start.catalogVerified',{exactContext,unchanged:preloadedCatalog.snapshot===catalogSnapshot(),verified:verifiedCatalog});
       }
 
       // The real list_commands payload can exceed 70k. Sending all of that through
@@ -6009,7 +6045,7 @@ return result`;
         const desc = String(t.description || "").split("\n")[0].slice(0, 180);
         return `${t.name}${params.length ? ` {${params.join(", ")}}` : " {}"}${desc ? ` — ${desc}` : ""}`;
       }).join("\n") + (!offline && typeof connectedAddonsNote === "function" && connectedAddonsNote(cur) ? "\n" + connectedAddonsNote(cur) : "");
-      const connectionLine = !offline ? `PlazCode connection: ${cur === "local" ? "the AgentScript workspace" : "Roblox Studio"} is connected right now. Run commands yourself through the PlazCode command format; never ask the user to copy and paste scripts.\n\n` : "";
+      const connectionLine = !offline ? `PlazCode connection: ${cur === "local" ? "the AgentScript workspace" : "Roblox Studio"} is connected right now. Run commands yourself through the PlazCode command format; never ask the user to copy and paste scripts.\n${asStateTag().split('\n')[0]}\n\n` : "";
       const readyFor = (digest) => {
         let readyPrompt = `Output of 'list_commands':\n${digest}\n\n${connectionLine}${stagedStartup ? "(System note: The list_commands handshake already ran. These are instructions for future user tasks, not another startup request.)\n" + prompt + "\n\n" : ""}(System note: The startup tool call succeeded. Startup is NOT complete until you acknowledge this result. Reply with exactly "PlazCode is ready." and nothing else.)`;
       // 1.24.12: Notion turns Markdown line markers (- item, 1. item, # Heading)
@@ -6032,13 +6068,12 @@ return result`;
         for (const level of [1, 2]) { if (fitsOne(readyPrompt)) break; digest = leanDigest(level) + addonsNote; readyPrompt = readyFor(digest); diag("start.digestLevel", { level, chars: readyPrompt.length }); }
       }
       diag("start.commandDigest", { chars: readyPrompt.length, lines: readyPrompt.split("\n").length, commands: scoped.length });
-      // 1.24.29 (owner, 2026-10-31): the AI reads ALL its memory by default. PlazCode itself loads every vault note
-      // (except saved chats and the archive) and the project memory, and sends them as acknowledged startup pages BEFORE
-      // the final "PlazCode is ready." step, so the AI never has to run a command during the handshake.
+      // Full startup retains complete acknowledged memory pages. Default
+      // startup advertises relevant memory on demand without bulk page reads.
       const memoryStages = offline || typeof startupMemoryStages !== "function" ? [] : await startupMemoryStages();
       if (!alive()) return;
-      const stages = startupFeedbackStages(memoryStages,readyPrompt);
-      let readyRes;
+      const stages = verifiedCatalog ? [] : startupFeedbackStages(memoryStages,readyPrompt);
+      let readyRes=verifiedCatalog?{kind:'verified_protocol',text:''}:null;
       for (const stage of stages) {
         if(!stage.ack && !stage.ackRe){await requireStartupConnection(true);if(!alive() || A.stop)return;}
         const readyBase = await submitAndGetBase(stage.text);
@@ -6059,7 +6094,7 @@ return result`;
         }
       }
       const readyText = String(readyRes.text || "").replace(/[`*#]/g, "").trim().replace(/^_+|_+$/g, "");
-      const readyOk = readyRes.kind === "text" && (
+      const readyOk = readyRes.kind === 'verified_protocol' || (readyRes.kind === "text" && (
         /^(?:PLAZCODE_READY|PlazCode is ready)[.!]?$/i.test(readyText) ||
         (P.id === "notion" && /^PlazCode ist bereit[.!]?$/i.test(readyText)) ||
         // 1.24.10: Notion often adds a short follow-up ("What would you like to
@@ -6069,7 +6104,7 @@ return result`;
           !/[{}<>]|\b(?:command|list_commands)\b/i.test(readyText.replace(/^[^.!]*[.!]/, ""))) ||
         (P.id === "chatgpt" && /^(?:i(?:'m| am) )?ready(?: to (?:help|work|go))?[.!]?$/i.test(readyText)) ||
         (P.userVoiceStartup && P.id !== "notion" && startupVoiceReady(readyText))
-      );
+      ));
       diag("start.readyReply", { kind: readyRes.kind, chars: readyText.length, reply: readyText.slice(0, 80), ok: readyOk });
       if (!readyOk) {
         ui.banner("warn", "Startup handshake failed",
@@ -8317,7 +8352,7 @@ return result`;
               <label class="rs-execution-review" for="rs-continuation-offer"><input id="rs-continuation-offer" type="checkbox" ${reliabilitySettings.rsContinuationOffer?'checked':''}><span>Offer to continue the previous chat</span></label>
               <small>When on, a new chat asks whether to continue where your previous chat left off or start a new project. Turn it off to always start fresh without the prompt. Saved chats and memory are not deleted.</small>
               <label class="rs-execution-review" for="rs-full-startup"><input id="rs-full-startup" type="checkbox" ${reliabilitySettings.rsFullStartup?'checked':''}><span>Full startup</span></label>
-              <small>Off (recommended): Start Agent sends a short startup that fits free plans, and the AI looks up the rest only when it needs it. On: sends every instruction at once, which is much longer and can use up a free plan or be refused as too long. Takes effect the next time you start the agent.</small>
+              <small>Off (recommended): verify the connection, then read relevant saved notes when needed. On: load full instructions and all saved memory before Ready. This takes longer and uses more messages. Applies next time you start the agent.</small>
               <div class="rs-execution-actions"><button type="button" id="rs-save-handoff">Save continuation file</button><button type="button" id="rs-budget-resume">Resume paused task</button></div>
               <small>Save downloads a JSON handoff with the active request, recent excerpts and unfinished queued requests, not the whole chat or a game backup. In a fresh chat, open Memory → Load into selected chat, review the imported context, then ask the AI to continue. Resume restarts the allowance for a task paused by its command or time limit.</small>
             </div>

@@ -162,6 +162,7 @@ const RSParse = (() => {
     const raw=String(text||'');if(!raw.includes('plazcode-result/1'))return raw;
     let output='',from=0,start=raw.indexOf('{');
     while(start>=0){const end=matchBrace(raw,start);let value;
+      if(end<0&&/^\{\s*(?:"result"\s*:\s*\{)?[^{}]*"format"\s*:\s*"plazcode-result\/1"/.test(raw.slice(start))){return output+raw.slice(from,start);}
       if(end>=0)try{value=JSON.parse(raw.slice(start,end+1));}catch{}
       const result=value?.format==='plazcode-result/1'||(!value?.command&&!value?.tool&&value?.result?.format==='plazcode-result/1');
       if(result){output+=raw.slice(from,start)+' ';from=end+1;start=raw.indexOf('{',from);}

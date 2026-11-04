@@ -93,13 +93,13 @@ pub fn is_delete(engine: &str, name: &str, args: &Value) -> bool {
 pub fn gate(read_only: bool, confirm_delete: bool, engine: &str, name: &str, args: &Value, confirmed: bool) -> Result<(), String> {
     if read_only && is_change(engine, name) && !file_preview(engine,name,args) {
         return Err(format!(
-            "Read-only mode is on, so PlazCode did not run '{}'. The AI can look but not change anything. Turn off Read-only mode in Safety to allow changes.",
+            "E_READ_ONLY: Read-only mode is on, so PlazCode did not run '{}'. The AI can look but not change anything. Turn off Read-only mode in Safety to allow changes.",
             bare(name)
         ));
     }
     if confirm_delete && !confirmed && is_delete(engine, name, args) {
         return Err(format!(
-            "'{}' deletes files, and Safety asks you to confirm deletes. PlazCode did not run it because no confirmation was given.",
+            "E_CONFIRMATION_REQUIRED: '{}' deletes files, and Safety asks you to confirm deletes. PlazCode did not run it because no confirmation was given.",
             bare(name)
         ));
     }

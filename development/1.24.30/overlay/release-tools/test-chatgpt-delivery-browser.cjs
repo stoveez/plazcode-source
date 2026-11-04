@@ -32,8 +32,9 @@ async function pageFor(browser, core = false, model = false) {
       if(autoReply) addItem('assistant',sequence.shift()||'Sequence complete.','ai-'+sent.length);
     };
     const tools=[['read_file','path'],['search_files','pattern']].map(([name,key])=>({name,server:'local',description:'Offline read-only test',inputSchema:{type:'object',properties:{[key]:{type:'string'}},required:[key]}}));
+    window.fixtureTools=tools;window.fixtureLive={};
     const answer=msg=>{
-      if(msg.type==='live-status')return {ok:true,bridge_reachable:true,connected:true,roblox_connected:true,local_connected:true,profile_required:false};
+      if(msg.type==='live-status')return {ok:true,bridge_reachable:true,connected:true,roblox_connected:true,local_connected:true,local_full:false,local_root:'/offline/workspace',profile_required:false,...window.fixtureLive};
       if(msg.type==='call_tool'){
         if(msg.arguments?.path==='PLAZCODE_MEMORY.md'||msg.arguments?.code?.includes('read_scripts'))return {ok:true,text:'Not found: no startup memory in offline fixture'};
         nativeCalls.push(msg);return {ok:true,text:'READ ONLY RESULT\nline one\nline two\n'+(msg.arguments.path||msg.arguments.pattern)};
@@ -61,7 +62,7 @@ async function pageFor(browser, core = false, model = false) {
     for(const file of manifest.content_scripts.find(x=>x.js.includes('providers/chatgpt.js')).js){
       let code=fs.readFileSync(file,'utf8');
       if(file==='providers/chatgpt.js')code+=';window.provider=RSProvider;Object.assign(RSProvider.timings,{GEN_IDLE_MS:30,WARMUP_MS:100});Object.defineProperty(RSProvider.timings,"STABLE_MS",{value:100});';
-      if(file==='core/main.js')code=code.replace('const TOKEN_CHARS = 4;','window.fixture={A,submitCore,agentLoop,stopLoop};const TOKEN_CHARS = 4;');
+      if(file==='core/main.js')code=code.replace('const TOKEN_CHARS = 4;','window.fixture={A,submitCore,agentLoop,stopLoop,startSession};const TOKEN_CHARS = 4;');
       await page.addScriptTag({content:code});
     }
     await page.waitForSelector('#rs-bar'); await page.waitForTimeout(450);
@@ -70,7 +71,49 @@ async function pageFor(browser, core = false, model = false) {
 }
 async function checks(browser){
   let failed=0;
-  async function check(name,core,fn,model=false){const {page,errors}=await pageFor(browser,core,model);try{await fn(page);assert.deepEqual(errors,[]);console.log('PASS '+name);}catch(e){failed++;console.error('FAIL '+name+': '+e.stack);}finally{await page.close();}}
+  async function check(name,core,fn,model=false){if(process.env.PLAZCODE_CHATGPT_TEST_ONLY&&!name.includes(process.env.PLAZCODE_CHATGPT_TEST_ONLY))return;const {page,errors}=await pageFor(browser,core,model);try{await fn(page);assert.deepEqual(errors,[]);console.log('PASS '+name);}catch(e){failed++;console.error('FAIL '+name+': '+e.stack);}finally{await page.close();}}
+  await check('startup uses one verified exchange with the live command catalog supplied first',true,async page=>{
+    await page.locator('#rs-bar .rs-mode-btn[data-mode="local"]').click();
+    const state=await page.evaluate(async()=>{
+      autoReply=true;sequence=['```json\n{"command":"list_commands"}\n```','PlazCode is ready.'];
+      await fixture.startSession();return{started:fixture.A.started,sent:sent.length,first:sent[0],calls:nativeCalls.length,draft:provider.editorText(),banner:document.body.innerText.slice(-1000)};
+    });assert.equal(state.started,true,JSON.stringify(state));assert.equal(state.sent,1,'a matching already-delivered live catalog needs no second AI acknowledgement turn');assert(state.first.includes('AVAILABLE COMMANDS FROM CONNECTED BRIDGE'));assert(state.first.includes('read_file'));assert.equal(state.draft,'');
+  });
+  await check('startup never accepts a ready claim without the parsed connection probe',true,async page=>{
+    const state=await page.evaluate(async()=>{autoReply=true;sequence=['PlazCode is ready.','PlazCode is ready.'];await fixture.startSession();return{started:fixture.A.started,calls:nativeCalls.length,sends:sent.length};});
+    assert.equal(state.started,false);assert.equal(state.calls,0);assert.equal(state.sends,2,'only the existing single correction is allowed');
+  });
+  await check('startup re-checks native transport after a valid first probe',true,async page=>{
+    const state=await page.evaluate(async()=>{
+      autoReply=true;sequence=['```json\n{"command":"list_commands"}\n```','PlazCode is ready.'];
+      const button=document.querySelector('button[data-testid="send-button"]'),native=button.onclick;
+      button.onclick=()=>{native();fixtureLive={connected:false,local_connected:false,roblox_connected:false};};
+      await fixture.startSession();return{started:fixture.A.started,calls:nativeCalls.length,sends:sent.length};
+    });assert.equal(state.started,false);assert.equal(state.calls,0);assert.equal(state.sends,1);
+  });
+  await check('startup changed catalog falls back to a fresh result acknowledgement',true,async page=>{
+    await page.locator('#rs-bar .rs-mode-btn[data-mode="local"]').click();
+    const state=await page.evaluate(async()=>{
+      autoReply=true;sequence=['```json\n{"command":"list_commands"}\n```','PlazCode is ready.'];
+      const button=document.querySelector('button[data-testid="send-button"]'),native=button.onclick;
+      button.onclick=()=>{native();if(sent.length===1)fixtureTools.push({name:'new_native_tool',server:'local',description:'A changed fixture catalog',inputSchema:{type:'object',properties:{},required:[]}});};
+      await fixture.startSession();return{started:fixture.A.started,sends:sent.length,latest:sent.at(-1)};
+    });assert.equal(state.started,true);assert.equal(state.sends,2);assert(state.latest.includes('new_native_tool'));
+  });
+  for(const change of ['permission','workspace'])await check('startup changed '+change+' supplies fresh native state before Ready',true,async page=>{
+    await page.locator('#rs-bar .rs-mode-btn[data-mode="local"]').click();
+    const state=await page.evaluate(async change=>{
+      autoReply=true;sequence=['```json\n{"command":"list_commands"}\n```','PlazCode is ready.'];
+      const button=document.querySelector('button[data-testid="send-button"]'),native=button.onclick;
+      button.onclick=()=>{native();if(sent.length===1)fixtureLive=change==='permission'?{local_full:true}:{local_root:'/offline/new-workspace'};};
+      await fixture.startSession();return{started:fixture.A.started,sends:sent.length,latest:sent.at(-1)};
+    },change);assert.equal(state.started,true);assert.equal(state.sends,2);assert(state.latest.includes(change==='permission'?'full_pc_access':'/offline/new-workspace'));
+  });
+  await check('startup Full mode retains the acknowledged two-stage protocol',true,async page=>{
+    await page.locator('#rs-full-startup').evaluate(n=>{n.checked=true;n.dispatchEvent(new Event('change',{bubbles:true}));});
+    const state=await page.evaluate(async()=>{autoReply=true;sequence=['```json\n{"command":"list_commands"}\n```','PlazCode is ready.'];await fixture.startSession();return{started:fixture.A.started,sends:sent.length};});
+    assert.equal(state.started,true);assert.equal(state.sends,2);
+  });
   await check('multiline draft reads exactly through native blocks and breaks',false,async page=>{
     const got=await page.evaluate(async()=>{
       const ed=provider.getEditor();ed.innerHTML='<p>first</p><p>second<br>third</p>';
@@ -118,6 +161,13 @@ async function checks(browser){
       let error='';try{await provider.typeAndSend('Output of read_file:\nnot accepted');}catch(e){error=e.message;}
       return{error,count:sent.length,draft:provider.editorText()};
     });assert(got.error);assert.equal(got.count,1);assert.equal(got.draft,'');
+  });
+  await check('confirmed receipt ignores PlazCode command-card labels in the same user turn',true,async page=>{
+    const got=await page.evaluate(async()=>{
+      const button=document.querySelector('button[data-testid="send-button"]'),native=button.onclick;
+      button.onclick=()=>{native();const user=provider.allItems().filter(provider.isUserItem).at(-1),chip=document.createElement('div');chip.className='rs-chip';chip.textContent='read_file · result';user.prepend(chip);};
+      const ok=await provider.typeAndSend("Output of 'read_file':\nreal exact result");return{ok,sends:sent.length};
+    });assert.equal(got.ok,true);assert.equal(got.sends,1);
   });
   await check('late receipt survives virtualization without waiting for an assistant',false,async page=>{
     const got=await page.evaluate(async()=>{

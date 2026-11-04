@@ -1634,14 +1634,17 @@ fn tool_budget(name: &str, requested: Option<u64>, args: &serde_json::Value) -> 
 /// 1.24.21: every AI tool call (non-empty checkpoint id) passes the safety
 /// limits, then runs, then lands in the task's "What happened" log.
 async fn guarded_tool(state: &AppState, engine: &str, id: &str, name: &str, args: serde_json::Value, budget: Duration, confirmed: bool) -> anyhow::Result<McpOutput> {
-    if id.is_empty() { return checkpoint_tool_bounded(state,engine,id,name,args,budget).await; }
     let prefs = state.preferences.snapshot();
     if let Err(reason) = safety::gate(prefs.read_only, prefs.confirm_delete, engine, name, &args, confirmed) {
-        let mut journal = checkpoints::STORE.lock().await;
-        journal.event(id, engine, name, &args, "blocked", &reason);
-        let _ = journal.save();
+        if !id.is_empty() {
+            let mut journal = checkpoints::STORE.lock().await;
+            journal.event(id, engine, name, &args, "blocked", &reason);
+            let _ = journal.save();
+        }
         anyhow::bail!(reason);
     }
+    // Missing undo bookkeeping must never bypass the actual permission gate.
+    if id.is_empty() { return checkpoint_tool_bounded(state,engine,id,name,args,budget).await; }
     // Log paths the way the journal stores them (relative to the workspace),
     // so the log can offer Undo on the matching change.
     let preview=safety::file_preview(engine,name,&args);

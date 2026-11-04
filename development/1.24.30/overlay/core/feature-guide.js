@@ -1101,10 +1101,10 @@ const PlazCodeFeatureGuide = (() => {
   "title": "Full startup",
   "group": "Menu",
   "where": "PlazCode menu (gear button on the bar) > Automation > Full startup",
-  "does": "Off (recommended): Start Agent sends a short startup that fits free plans, and the AI looks up the rest only when it needs it. On: sends every instruction at once, which is much longer.",
+  "does": "Off (recommended): verify the connection using the live command catalog, then read relevant saved notes on demand. On: load full instructions and all saved memory before Ready, using more messages.",
   "steps": [
    "Open the PlazCode menu, then Automation.",
-   "Leave Full startup off unless the AI keeps missing PlazCode rules on a big paid model.",
+   "Leave Full startup off for quick setup and relevant notes on demand; turn it on when you want every saved note read before work.",
    "Start the agent again in a new chat for the change to apply."
   ],
   "tips": [

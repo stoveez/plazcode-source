@@ -964,7 +964,7 @@ const RSProvider = (() => {
     const usersBefore = new Set(allItems().filter(isUserItem).map(item => itemKey(item) || item));
     const want = normalize(text);
     const receipt = () => allItems().some(item => isUserItem(item) &&
-      !usersBefore.has(itemKey(item) || item) && normalize(itemText(item)) === want);
+      !usersBefore.has(itemKey(item) || item) && normalize(classifyText(item,'.rs-chip')) === want);
     const waitDelivery = async (predicate, timeout, typing = true) => {
       const budget = waitBudget(timeout, 120), until = Date.now() + budget.ms;
       for (let poll = 0; poll <= budget.polls; poll++) {

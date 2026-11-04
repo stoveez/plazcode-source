@@ -63,7 +63,7 @@ const PlazCodeSafety = (() => {
     return "Run a command that deletes files: " + String(args && args.command || "").slice(0, 200);
   }
   function readOnlyRefusal(name) {
-    return "ERROR: Read-only mode is on, so '" + bare(name) + "' was not run. You can look at files, Studio and other tools, but not change anything. Tell the user what you would change, or ask them to turn off Read-only mode in Safety. Do not retry this command.";
+    return "ERROR: E_READ_ONLY: Read-only mode is on, so '" + bare(name) + "' was not run. You can look at files, Studio and other tools, but not change anything. Tell the user what you would change, or ask them to turn off Read-only mode in Safety. Do not retry this command.";
   }
   function declinedDelete(name) {
     return "ERROR in " + bare(name) + ": the user did not allow this delete. Do not retry it or delete the same files another way unless they ask.";
