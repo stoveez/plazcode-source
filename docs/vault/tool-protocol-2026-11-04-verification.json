@@ -54,10 +54,15 @@
       "LF passed",
       "CRLF passed",
       "CR passed"
-    ]
+    ],
+    "notion_bootstrap": "All5Chromium scenarios PASS after dependency/cleanup fixture correction"
   },
   "hosted": {
-    "status": "pending"
+    "status": "cancel_requested",
+    "run_id": 41887427358,
+    "head_sha": "6551ce973441a929e66af37055d0f609bece2dac",
+    "url": "https://github.com/stoveez/plazcode-source/actions/runs/41887427358",
+    "reason": "Isolated Notion startup browser fixture lacked asStateTag and did not finally-close browser after assertion failure; corrected fixture5Chromium cases PASS, product runtime unchanged; replacement full CI required"
   },
   "drive_delivery": {
     "status": "pending"

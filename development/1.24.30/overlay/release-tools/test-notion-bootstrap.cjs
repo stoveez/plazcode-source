@@ -4,7 +4,8 @@ const submit=main.slice(main.indexOf('  async function submitCore('),main.indexO
 const html='<main><section id="composer" style="min-height:900px"><div><div role="textbox" contenteditable="true" data-placeholder="Frage Notion AI"></div></div><div role="button" data-testid="agent-chat-send-button" aria-label="Nachricht senden">Senden</div></section></main>';
 (async()=>{for(const [name,engine] of [['chromium',chromium],['firefox',firefox]]){
  if(process.env.PLAZCODE_TEST_BROWSER&&process.env.PLAZCODE_TEST_BROWSER!==name)continue;
- const browser=await engine.launch({headless:true});
+ const browser=await engine.launch({headless:true,...(name==='chromium'&&process.env.PLAZCODE_CHROMIUM?{executablePath:process.env.PLAZCODE_CHROMIUM}:{}),args:name==='chromium'?['--no-sandbox']:[]});
+ try{
  for(const scenario of ['success','block-success','wrong-command','throwing-composer','bridge-offline']){
   const page=await browser.newPage();page.on('pageerror',error=>console.error(name,scenario,error.message));await page.route('https://app.notion.com/**',route=>route.fulfill({contentType:'text/html',body:html}));await page.goto('https://app.notion.com/ai');
   for(const file of ['core/parser.js','core/ultracode.js','core/config.js','providers/notion.js'])await page.addScriptTag({path:file});
@@ -20,6 +21,7 @@ const html='<main><section id="composer" style="min-height:900px"><div><div role
    P.init({isStopped:()=>!!A.stop,diag:(name,data)=>{window.diagnostics=window.diagnostics||[];diagnostics.push({name,data});}});
    if(scenario==='throwing-composer')P.ensureComposerReady=async()=>{throw new DOMException('Composer changed during startup');};
    window.condoLocked=()=>false;window.diagnostics=[];window.diag=(name,data)=>diagnostics.push({name,data});window.activeEngine=()=> 'local';window.ensureTools=async()=>{};window.bg=async()=>({ok:scenario!=='bridge-offline',bridge_reachable:scenario!=='bridge-offline',connected:true,local_connected:true,profile_required:false});
+   window.asStateTag=()=> '[SYSTEM_STATE: fixture native state; capability/live-connection tests cover the actual helper]';
    window.systemPrompt=()=> '⟦RS-SYS⟧ Full future task rules. Preserve literal paths C:\\Game\\main.lua.\n'+('Keep the current architecture.\n').repeat(100);
    window.performSubmitCore=async text=>{const ok=await P.typeAndSend(text);if(!ok)throw new Error(P.sendFailureDetail()||'Send failed');return P.assistantCount();};
    window.waitForResponse=async()=>{const response=P.readAssistant(),calls=RSParse.parseToolCalls(response.reply);return calls.length?{kind:'tool',calls,item:response.item}:{kind:'text',text:response.reply,item:response.item};};
@@ -34,5 +36,5 @@ const html='<main><section id="composer" style="min-height:900px"><div><div role
   else{assert(!result.started);assert.equal(result.dispatches,0);assert(result.banners.length);assert.equal(result.sent.length,scenario==='wrong-command'?1:0);}
   await page.close();console.log(`${name} ${scenario}: actual Notion composer/receipt/parser/bootstrap, small first handshake, task-policy transfer and unlocked failure cleanup passed.`);
  }
- await browser.close();
+ }finally{await browser.close();}
 }})().catch(e=>{console.error(e);process.exitCode=1;});
