@@ -836,6 +836,7 @@ const RSProvider = (() => {
   const SEND_MAX_CHARS = 120000; // characters are essentially free (see above)
   const SEND_MAX_LINES = 600;    // the line count is what costs, and we type it
   const INSERT_CHUNK_LINES = 4;
+  const INSERT_CHUNK_CHARS = 2048;
 
   function truncateForSend(text) {
     if(typeof window.__rsLimitOutgoing==="function")return window.__rsLimitOutgoing(text);
@@ -921,10 +922,19 @@ const RSProvider = (() => {
 
     const t0 = Date.now();
     let written = "";
-    for (let i = 0; i < lines.length; i += INSERT_CHUNK_LINES) {
+    for (let offset = 0; offset < raw.length || (offset === 0 && !raw.length);) {
       checkOwner();
-      const end = Math.min(lines.length, i + INSERT_CHUNK_LINES);
-      const chunk = lines.slice(i, end).join('\n') + (end < lines.length ? '\n' : '');
+      let end = Math.min(raw.length, offset + INSERT_CHUNK_CHARS), newline = offset;
+      for (let count = 0; count < INSERT_CHUNK_LINES; count++) {
+        newline = raw.indexOf('\n', newline);
+        if (newline < 0 || newline >= end) break;
+        if (count === INSERT_CHUNK_LINES - 1) end = newline + 1;
+        else newline++;
+      }
+      // Result envelopes can be one long JSON line. Bound characters as well as
+      // paragraphs, and keep Unicode surrogate pairs inside the same edit.
+      if (end < raw.length && /[\uD800-\uDBFF]/.test(raw[end - 1]) && /[\uDC00-\uDFFF]/.test(raw[end])) end--;
+      const chunk = raw.slice(offset, end);
       // Small native multiline inserts preserve ProseMirror paragraphs. Its DOM
       // parser can turn insertLineBreak's bare newlines into spaces. Never send
       // a synthetic Enter or a text paste; both have different site behavior.
@@ -933,8 +943,10 @@ const RSProvider = (() => {
       wrote(written);
       await sleep(0);
       checkOwner();
+      if (!raw.length) break;
+      offset = end;
     }
-    if (lines.length > INSERT_CHUNK_LINES) diag("send.insertDone", { lines: lines.length, ms: Date.now() - t0 });
+    if (lines.length > INSERT_CHUNK_LINES || raw.length > INSERT_CHUNK_CHARS) diag("send.insertDone", { lines: lines.length, chars: raw.length, ms: Date.now() - t0 });
   }
 
   // Typing is the ONLY path for injected sends: it is slower, but it produces a

@@ -135,6 +135,16 @@ async function checks(browser){
     });
     assert(got.maxLines<=5,'one bounded native edit received '+got.maxLines+' lines');assert(got.beats>15,'page must get regular turns while typing');assert.equal(got.pastes,0);assert.equal(got.count,1);assert.equal(got.ok,true);assert.equal(got.text,Array.from({length:180},(_,i)=>'line '+i).join('\n'));
   });
+  await check('real ProseMirror bounds long JSON lines and preserves Unicode at chunk boundaries',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      const text='x'.repeat(2047)+'🧪'+JSON.stringify({result:{content:'  long source 🧪 \\n'.repeat(5000)}});
+      const exec=document.execCommand.bind(document);let maxChars=0,brokenPair=false,beats=0,pastes=0;
+      document.addEventListener('paste',()=>pastes++);
+      document.execCommand=(cmd,ui,value)=>{if(cmd==='insertText'){const s=String(value);maxChars=Math.max(maxChars,s.length);brokenPair ||= /^[\uDC00-\uDFFF]/.test(s)||/[\uD800-\uDBFF]$/.test(s);}return exec(cmd,ui,value);};
+      const timer=setInterval(()=>beats++,0);const ok=await provider.typeAndSend(text);clearInterval(timer);
+      return{ok,maxChars,brokenPair,beats,pastes,count:sent.length,exact:sent[0]===text,draft:provider.editorText()};
+    });assert.equal(got.ok,true);assert.equal(got.count,1);assert(got.exact);assert.equal(got.draft,'');assert(got.maxChars<=2048);assert(got.beats>10);assert.equal(got.brokenPair,false);assert.equal(got.pastes,0);
+  },true);
   for(const lines of [180,450])await check('real ProseMirror model preserves '+lines+' lines, blanks, indentation and Unicode',false,async page=>{
     const got=await page.evaluate(async lines=>{
       const text=Array.from({length:lines},(_,i)=>i%11===0?'':'  const line_'+i+' = "native 🧪";').join('\n');
