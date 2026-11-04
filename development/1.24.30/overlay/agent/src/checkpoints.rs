@@ -139,6 +139,7 @@ impl Journal {
     }
     pub fn prepare_files(&mut self, ws: &Workspace, id: &str, name: &str, args: &Value) -> anyhow::Result<Vec<String>> {
         anyhow::ensure!(self.task(id)?.status == "working" && self.task(id)?.engine == "local", "Checkpoint task is not active for AgentScript.");
+        if crate::safety::file_preview("local",name,args){return Ok(Vec::new());}
         let root=ws.root_display();
         let task=self.task_mut(id)?;
         anyhow::ensure!(task.workspace.is_empty() || task.workspace==root,"Task belongs to a different workspace.");
@@ -282,6 +283,16 @@ mod tests {
         let paths=journal.prepare_files(&ws,&id,"edit_file",&json!({"path":"code.txt"})).unwrap();std::fs::write(&path,b"after\r\n").unwrap();journal.commit_files(&ws,&id,&paths).unwrap();journal.finish(&id,true).unwrap();
         let mut journal=Journal::load(dir.join("history.json"));std::fs::write(&path,b"manual").unwrap();assert!(journal.revert_files(&ws,&id).is_err());assert_eq!(std::fs::read(&path).unwrap(),b"manual");
         std::fs::write(&path,b"after\r\n").unwrap();journal.revert_files(&ws,&id).unwrap();assert_eq!(std::fs::read(&path).unwrap(),b"before\r\n");let _=std::fs::remove_dir_all(dir);
+    }
+    #[test]
+    fn preview_does_not_add_undo_steps_snapshots_or_journal_writes() {
+        let dir=std::env::temp_dir().join(format!("plazcode-checkpoint-preview-{}",std::process::id()));let _=std::fs::remove_dir_all(&dir);
+        let ws=Workspace::new(dir.to_str()).unwrap();std::fs::write(dir.join("a.txt"),b"original").unwrap();
+        let file=dir.join("history.json");let mut journal=Journal::load(file.clone());let id=journal.begin(&json!({"engine":"local"})).unwrap();
+        let before=serde_json::to_value(journal.task(&id).unwrap()).unwrap();let disk=std::fs::read(&file).unwrap();
+        for name in ["write_file","edit_file"] {assert!(journal.prepare_files(&ws,&id,name,&json!({"path":"a.txt","preview":true})).unwrap().is_empty());}
+        assert_eq!(serde_json::to_value(journal.task(&id).unwrap()).unwrap(),before);assert_eq!(std::fs::read(file).unwrap(),disk);
+        assert_eq!(std::fs::read(dir.join("a.txt")).unwrap(),b"original");std::fs::remove_dir_all(dir).unwrap();
     }
     #[tokio::test]
     async fn engine_file_tools_are_journaled_undoable_and_sandboxed() {

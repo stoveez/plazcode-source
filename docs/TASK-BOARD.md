@@ -1,5 +1,9 @@
 
 
+2026-11-04: native absolute in-workspace paths, resolved-path echoes, read-only edit/write previews and E_ACCESS/E_MATCH/native E_COMMAND implemented. Full native307 PASS/2existing ignored; preview safety JS PASS. App replacement + extension reload needed. Full JS/hosted builds and remaining result/startup/memory changes pending.
+
+
+
 2026-11-04 follow-up: shared batch normalization/stable shape errors, native-granted capability state and formatting-tolerance checks implemented; focused tests PASS. Native in-workspace absolute paths/read-only previews and remaining result/startup/memory audit still pending.
 
 

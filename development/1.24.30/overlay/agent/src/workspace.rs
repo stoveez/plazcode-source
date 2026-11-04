@@ -7,8 +7,8 @@
 // over the same legacy WS protocol as the roblox engine (port 17615).
 //
 // Safety model (mirrors OpenRender, no Python involved):
-//   * every path resolves against the workspace root; absolute paths and any
-//     ".." climb that escapes the root are refused BEFORE touching the disk;
+//   * relative paths resolve against the workspace root; absolute paths must
+//     resolve inside that same root unless Full PC access is granted;
 //   * the deepest EXISTING ancestor is canonicalized so symlink/junction
 //     escapes are caught too (not-yet-existing targets resolve via parent);
 //   * the root itself can never be deleted or moved;
@@ -173,10 +173,9 @@ impl Workspace {
         }
         let raw = raw.replace('\\', "/");
         if raw.is_empty() { return Ok(self.canon_root.clone()); }
-        if raw.starts_with('/') || Path::new(&raw).is_absolute() || is_windows_absolute(&raw) {
-            return Err(format!(
-                "'{raw}' is an absolute path, but Full PC access is OFF, so PlazCode only allows paths inside the workspace ({}). Use a path relative to the workspace, or ask the user to switch Permissions to Full (PlazCode menu, or the desktop app's Execution page).",
-                self.root_display()));
+        let absolute=Path::new(&raw).is_absolute();
+        if is_windows_absolute(&raw) && !absolute {
+            return Err(format!("E_PATH: '{raw}' is not a path on this operating system. Use workspace_info to get the workspace root ({}).",self.root_display()));
         }
         // FULL ACCESS: `../other` climbs out of the workspace on purpose.
         if full && escapes_root(&raw) {
@@ -190,19 +189,24 @@ impl Workspace {
             return Ok(p);
         }
         // Lexical walk: reject escapes without touching the filesystem.
-        if escapes_root(&raw) {
+        if !absolute && escapes_root(&raw) {
             return Err(format!("path '{raw}' is outside the workspace. Full PC access is OFF, so PlazCode cannot leave the workspace folder; ask the user to switch Permissions to Full if the task needs it."));
         }
-        for comp in Path::new(&raw).components() {
+        for comp in Path::new(&raw).components().filter(|_| !absolute) {
             if !matches!(comp, Component::Normal(_) | Component::CurDir | Component::ParentDir) {
                 return Err(format!("path '{raw}' is outside the workspace"));
             }
         }
-        let joined = self.canon_root.join(&raw);
+        let joined = if absolute {PathBuf::from(&raw)} else {self.canon_root.join(&raw)};
         // Symlink/junction defense on the existing part of the path.
         let mut probe = joined.clone();
         let mut tail: Vec<PathBuf> = Vec::new();
         while !probe.exists() && probe != self.canon_root {
+            if let Ok(meta)=std::fs::symlink_metadata(&probe) {
+                #[cfg(windows)] let link={use std::os::windows::fs::MetadataExt;meta.file_attributes()&0x400!=0};
+                #[cfg(not(windows))] let link=meta.file_type().is_symlink();
+                if link {return Err(format!("E_PATH: '{}' contains a dangling link or junction; use a real path inside the workspace.",rel.trim()));}
+            }
             match (probe.file_name().map(|n| n.to_os_string()), probe.parent().map(Path::to_path_buf)) {
                 (Some(name), Some(parent)) => {
                     tail.push(PathBuf::from(name));
@@ -215,8 +219,10 @@ impl Workspace {
             let canon = std::fs::canonicalize(&probe)
                 .map_err(|e| format!("cannot resolve '{}': {e}", rel.trim()))?;
             if !canon.starts_with(&self.canon_root) {
-                return Err(format!("path '{}' is outside the workspace", rel.trim()));
+                return Err(format!("E_PATH: path '{}' is outside the workspace ({}). Full PC access is OFF; use an in-workspace path, or ask the user to switch Permissions to Full if the task needs another folder.", rel.trim(),self.root_display()));
             }
+        } else if absolute {
+            return Err(format!("E_PATH: cannot resolve an existing parent of '{}'. Use a path without unresolved parent components inside the workspace.",rel.trim()));
         }
         let mut final_path = probe;
         for seg in tail.iter().rev() { final_path.push(seg); }
@@ -662,6 +668,34 @@ pub async fn tool_read_file_base64(ws: &Workspace, args: &serde_json::Value) -> 
     Ok(payload.to_string())
 }
 
+fn preview_diff(before:&str,after:&str,path:&str)->String {
+    if before==after {return String::new();}
+    let old=normalize_lf(before);let new=normalize_lf(after);
+    if old==new{return String::new();}
+    let a:Vec<&str>=old.split_inclusive('\n').collect();let b:Vec<&str>=new.split_inclusive('\n').collect();
+    let prefix=a.iter().zip(&b).take_while(|(x,y)|x==y).count();
+    let suffix=a[prefix..].iter().rev().zip(b[prefix..].iter().rev()).take_while(|(x,y)|x==y).count();
+    let start=prefix.saturating_sub(3);let a_end=(a.len()-suffix+3).min(a.len());let b_end=(b.len()-suffix+3).min(b.len());
+    let label=path.replace('\n',"\\n").replace('\r',"\\r");
+    let mut out=format!("--- a/{label}\n+++ b/{label}\n@@ -{},{} +{},{} @@\n",if a_end==start {start}else{start+1},a_end-start,if b_end==start {start}else{start+1},b_end-start);
+    fn emit(out:&mut String,prefix:char,line:&str){out.push(prefix);out.push_str(line);if !line.ends_with('\n'){out.push_str("\n\\ No newline at end of file\n");}}
+    for line in &a[start..prefix]{emit(&mut out,' ',line);}
+    for line in &a[prefix..a.len()-suffix]{emit(&mut out,'-',line);}
+    for line in &b[prefix..b.len()-suffix]{emit(&mut out,'+',line);}
+    for line in &a[a.len()-suffix..a_end]{emit(&mut out,' ',line);}
+    out
+}
+
+fn file_preview_result(ws:&Workspace,path:&Path,before:Option<&str>,after:&str,occurrences:Option<usize>)->String {
+    use sha2::{Digest,Sha256};
+    let old=before.unwrap_or("");
+    serde_json::json!({"preview":true,"kind":"diff","action":if before.is_some(){"update"}else{"create"},
+        "path":ws.display(path),"resolved_path":deverbatim_string(path),"changed":before.is_none()||old!=after,"occurrences":occurrences,
+        "before_sha256":before.map(|text|format!("{:x}",Sha256::digest(text.as_bytes()))),"after_sha256":format!("{:x}",Sha256::digest(after.as_bytes())),
+        "bytes_before":old.len(),"bytes_after":after.len(),"line_endings_before":detect_eol(old),"line_endings_after":detect_eol(after),"line_endings_changed":detect_eol(old)!=detect_eol(after),
+        "diff":preview_diff(old,after,&ws.display(path)),"note":"Preview only. No file or folder was changed. Re-read before applying if the file has changed since this preview."}).to_string()
+}
+
 pub async fn tool_write_file(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
     let rel = arg_str(args, "path")?;
     let content = args.get("content").ok_or("'content' is required (use \"\" for an empty file)")?
@@ -669,6 +703,14 @@ pub async fn tool_write_file(ws: &Workspace, args: &serde_json::Value) -> Result
     let p = ws.resolve_path(rel.as_str(), false)?;
     if p.exists() && p.is_dir() {
         return Err(format!("'{}' is a folder - cannot overwrite it with a file", ws.display(&p)));
+    }
+    if j_bool(args,"preview",false) {
+        let before=if p.exists(){
+            let size=tokio::fs::metadata(&p).await.map_err(|e|e.to_string())?.len();
+            if size>MAX_READ_BYTES{return Err("E_PREVIEW_LIMIT: this file is too large for an exact preview. Inspect or split the change first; nothing was written.".into());}
+            let (text,binary)=read_text(&p).await?;if binary{return Err("E_PREVIEW_BINARY: exact text previews require a UTF-8 text file; nothing was written.".into());}Some(text)
+        }else{None};
+        return Ok(file_preview_result(ws,&p,before.as_deref(),content,None));
     }
     if let Some(parent) = p.parent() {
         tokio::fs::create_dir_all(parent).await.map_err(|e| format!("cannot create parents: {e}"))?;
@@ -691,13 +733,15 @@ pub async fn tool_edit_file(ws: &Workspace, args: &serde_json::Value) -> Result<
     let rel = arg_str(args, "path")?;
     let old = args.get("old_string").and_then(|v| v.as_str()).ok_or("'old_string' and 'new_string' are required")?;
     let new = args.get("new_string").and_then(|v| v.as_str()).ok_or("'old_string' and 'new_string' are required")?;
-    if old == new { return Err("old_string and new_string are identical - nothing to change".into()); }
+    let preview=j_bool(args,"preview",false);
+    if old == new && !preview { return Err("old_string and new_string are identical - nothing to change".into()); }
     let replace_all = j_bool(args, "replace_all", false);
     let p = ws.resolve_path(rel.as_str(), true)?;
     require_file(ws, &p)?;
     let size = tokio::fs::metadata(&p).await.map_err(|e| e.to_string())?.len();
     if size > MAX_READ_BYTES { return Err(format!("'{}' is too large to edit ({})", ws.display(&p), human_size(size as f64))); }
-    let (text, _bin) = read_text(&p).await?;
+    let (text, binary) = read_text(&p).await?;
+    if preview && binary{return Err("E_PREVIEW_BINARY: exact text previews require a UTF-8 text file; nothing was written.".into());}
     // Match in LF-normalized space but preserve the file's own EOL on write.
     let eol = detect_eol(&text);
     let normalized = normalize_lf(&text);
@@ -714,13 +758,13 @@ pub async fn tool_edit_file(ws: &Workspace, args: &serde_json::Value) -> Result<
                 .unwrap_or(window.chars().count().min(old_norm.chars().count()));
             format!(" A similar passage exists around character {near}: your old_string first differs at position {diff_at}. Re-read the file with read_file and copy the EXACT text.")
         } else { String::new() };
-        return Err(format!("old_string not found in {} (searched verbatim).{hint}", ws.display(&p)));
+        return Err(format!("E_MATCH: old_string not found in {} (searched verbatim).{hint} Re-read the file and put the exact matching text in old_string.", ws.display(&p)));
     }
     if count > 1 && !replace_all {
         let snippet = normalized.lines().find(|l| !l.trim().is_empty()).unwrap_or("");
         let snippet: String = snippet.trim().chars().take(60).collect();
         return Err(format!(
-            "old_string matches {count} places in {}. Add surrounding context so it is UNIQUE, or pass replace_all:true to change every occurrence.{}",
+            "E_MATCH: old_string matches {count} places in {}. Add surrounding context so it is UNIQUE, or pass replace_all:true to change every occurrence.{}",
             ws.display(&p),
             if snippet.is_empty() { String::new() } else { format!(" First line: {snippet}") }
         ));
@@ -729,6 +773,7 @@ pub async fn tool_edit_file(ws: &Workspace, args: &serde_json::Value) -> Result<
     let replaced = if replace_all { normalized.replace(&old_norm, &new_norm) }
         else { normalized.replacen(&old_norm, &new_norm, 1) };
     let new_text = if eol != "\n" { replaced.replace('\n', eol) } else { replaced };
+    if preview {return Ok(file_preview_result(ws,&p,Some(&text),&new_text,Some(occurrences)));}
     tokio::fs::write(&p, new_text.as_bytes()).await.map_err(|e| format!("write failed: {e}"))?;
     let where_ = if replace_all { format!("{occurrences} occurrences") } else { "first occurrence".to_string() };
     Ok(format!("Edited {}: replaced {where_} of old_string ({} chars -> {} chars).", ws.display(&p), old.chars().count(), new.chars().count()))
@@ -1421,10 +1466,13 @@ pub async fn tool_process_list(ws: &Workspace, args: &serde_json::Value) -> Resu
     Ok(out)
 }
 
+fn require_full_access(ws:&Workspace,name:&str)->Result<(),String> {
+    if ws.full_access(){return Ok(());}
+    Err(format!("E_ACCESS: {name} requires FULL PC ACCESS (capability: full_pc_access). It is OFF, so nothing ran. Ask the user to switch Permissions to Full in the PlazCode menu or the desktop app Execution page, or continue with workspace-only tools. Re-check plazcode_status before retrying."))
+}
+
 pub async fn tool_process_kill(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
-    if !ws.full_access() {
-        return Err("process_kill requires FULL PC ACCESS mode (the user must enable it from the PlazCode bar toggle). This is intentional: killing processes affects the whole machine.".into());
-    }
+    require_full_access(ws,"process_kill")?;
     let pid = args.get("pid").and_then(|p| p.as_u64()).filter(|p| *p > 0)
         .or_else(|| args.get("pid").and_then(|p| p.as_str()).and_then(|s| s.trim().parse::<u64>().ok()))
         .ok_or("'pid' is required (a number)")?;
@@ -1745,7 +1793,7 @@ fn grab_screen() -> Result<image::RgbaImage, String> {
 }
 
 pub async fn tool_screen_capture(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
-    if !ws.full_access() { return Err("screen_capture requires FULL PC ACCESS (enable it from the PlazCode bar)".into()); }
+    require_full_access(ws,"screen_capture")?;
     let path_rel = arg_str(args, "path").unwrap_or_else(|_| "screenshot.png".to_string());
     let dest = ws.resolve_path(path_rel.as_str(), false)?;
     #[cfg(windows)]
@@ -1785,7 +1833,7 @@ pub fn contact_sheet(frames: &[image::RgbaImage]) -> Option<image::RgbaImage> {
 
 /// Record up to 5 seconds of the screen as numbered PNG frames plus one picture of sampled frames.
 pub async fn tool_screen_record(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
-    if !ws.full_access() { return Err("screen_record requires FULL PC ACCESS (enable it from the PlazCode bar)".into()); }
+    require_full_access(ws,"screen_record")?;
     let seconds = args.get("seconds").and_then(|v| v.as_f64()).unwrap_or(3.0).clamp(1.0, 5.0);
     let fps = args.get("fps").and_then(|v| v.as_f64()).unwrap_or(2.0).clamp(1.0, 4.0);
     let folder_rel = arg_str(args, "path").unwrap_or_else(|_| "recording".to_string());
@@ -1827,7 +1875,7 @@ fn send_mouse(flags: u32, dx: i32, dy: i32, data: u32) -> Result<(), String> {
 
 #[cfg(windows)]
 pub async fn tool_mouse_move(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
-    if !ws.full_access() { return Err("mouse_move requires FULL PC ACCESS".into()); }
+    require_full_access(ws,"mouse_move")?;
     let x = j_i32(args, "x")?; let y = j_i32(args, "y")?;
     let ok = unsafe { desktop::SetCursorPos(x, y) };
     if ok == 0 { Err("SetCursorPos failed".into()) } else { Ok(format!("Moved mouse to ({x}, {y}).")) }
@@ -1835,7 +1883,7 @@ pub async fn tool_mouse_move(ws: &Workspace, args: &serde_json::Value) -> Result
 
 #[cfg(windows)]
 pub async fn tool_mouse_click(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
-    if !ws.full_access() { return Err("mouse_click requires FULL PC ACCESS".into()); }
+    require_full_access(ws,"mouse_click")?;
     let button = args.get("button").and_then(|b| b.as_str()).unwrap_or("left").to_lowercase();
     if let (Ok(x), Ok(y)) = (j_i32(args, "x"), j_i32(args, "y")) {
         unsafe { desktop::SetCursorPos(x, y); }
@@ -1849,7 +1897,7 @@ pub async fn tool_mouse_click(ws: &Workspace, args: &serde_json::Value) -> Resul
 
 #[cfg(windows)]
 pub async fn tool_key_type(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
-    if !ws.full_access() { return Err("key_type requires FULL PC ACCESS".into()); }
+    require_full_access(ws,"key_type")?;
     use desktop::*;
     let text = arg_str(args, "text")?;
     for ch in text.chars() {
@@ -1914,7 +1962,7 @@ fn collect_windows() -> Vec<(usize, String)> {
 
 #[cfg(windows)]
 pub async fn tool_list_windows(ws: &Workspace, _args: &serde_json::Value) -> Result<String, String> {
-    if !ws.full_access() { return Err("list_windows requires FULL PC ACCESS".into()); }
+    require_full_access(ws,"list_windows")?;
     let wins = collect_windows();
     if wins.is_empty() { return Ok("No visible top-level windows found.".into()); }
     let mut lines = vec![format!("Open windows ({}):", wins.len())];
@@ -1926,7 +1974,7 @@ pub async fn tool_list_windows(ws: &Workspace, _args: &serde_json::Value) -> Res
 
 #[cfg(windows)]
 pub async fn tool_focus_window(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
-    if !ws.full_access() { return Err("focus_window requires FULL PC ACCESS".into()); }
+    require_full_access(ws,"focus_window")?;
     use winctl::*;
     let want = arg_str(args, "title")?.to_lowercase();
     let wins = collect_windows();
@@ -1939,7 +1987,7 @@ pub async fn tool_focus_window(ws: &Workspace, args: &serde_json::Value) -> Resu
 
 #[cfg(any(windows,target_os="macos"))]
 pub async fn tool_launch_app(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
-    if !ws.full_access() { return Err("launch_app requires FULL PC ACCESS. It is OFF now: ask the user to switch Permissions to Full (PlazCode menu, or the desktop app's Execution page). open_path can still open a workspace file or a web link.".into()); }
+    require_full_access(ws,"launch_app")?;
     let target = arg_str(args, "target").or_else(|_| arg_str(args, "path")).or_else(|_| arg_str(args, "app")).or_else(|_| arg_str(args, "name"))?;
     let target = clean_path_arg(&target);
     #[cfg(windows)]
@@ -1989,7 +2037,7 @@ pub async fn tool_launch_app(ws: &Workspace, args: &serde_json::Value) -> Result
 
 #[cfg(windows)]
 pub async fn tool_window_screenshot(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
-    if !ws.full_access() { return Err("window_screenshot requires FULL PC ACCESS".into()); }
+    require_full_access(ws,"window_screenshot")?;
     use winctl::*;
     let titlewant = args.get("title").and_then(|v| v.as_str()).map(|s| s.to_lowercase());
     let wins = collect_windows();
@@ -2034,7 +2082,18 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
     let empty = serde_json::Value::Null;
     let a = if args.is_null() || !args.is_object() { &empty } else { &args };
     let h = crate::hidden::fnv(name);
-    match name {
+    let file_tool=matches!(name,"list_directory"|"tree"|"read_file"|"read_file_base64"|"write_file"|"edit_file"|"create_folder"|"delete_path"|"move_path"|"search_files"|"grep_files"|"file_info"|"download_file"|"run_command");
+    let mut paths=serde_json::Map::new();
+    if file_tool {
+        for key in ["path","source","destination","cwd"] {
+            if let Some(raw)=a[key].as_str(){if let Ok(path)=ws.resolve_path(raw,false){paths.insert(key.into(),serde_json::json!(deverbatim_string(&path)));}}
+        }
+        if paths.is_empty() && matches!(name,"list_directory"|"tree"|"search_files"|"grep_files"|"run_command") {
+            let key=if name=="run_command"{"cwd"}else{"path"};
+            paths.insert(key.into(),serde_json::json!(ws.root_display()));
+        }
+    }
+    let result=match name {
         _ if h == const { crate::hidden::fnv("workspace_info") } => tool_workspace_info(ws, a).await,
         _ if h == const { crate::hidden::fnv("list_directory") } => tool_list_directory(ws, a).await,
         _ if h == const { crate::hidden::fnv("tree") } => tool_tree(ws, a).await,
@@ -2075,14 +2134,23 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
         _ if h == const { crate::hidden::fnv("launch_app") } => tool_launch_app(ws, a).await,
         #[cfg(windows)]
         _ if h == const { crate::hidden::fnv("window_screenshot") } => tool_window_screenshot(ws, a).await,
-        other => Err(format!("unknown tool '{other}'. {}", crate::hidden::hidden!("Available AgentScript tools: workspace_info, list_directory, tree, \
+        _ => Err(format!("E_COMMAND: unknown tool '{name}'. {}", crate::hidden::hidden!("Available AgentScript tools: workspace_info, list_directory, tree, \
 read_file, read_file_base64, write_file, edit_file, create_folder, delete_path, move_path, search_files, grep_files, \
 run_command, file_info, env_info, process_list, process_kill (FULL mode), open_path, download_file, \
 screen_capture / screen_record / mouse_move / mouse_click / key_type / list_windows / focus_window / launch_app / window_screenshot (FULL mode, desktop control). \
 Engine file tools (no editor needed): godot_project_info / godot_scene_tree / godot_add_node / godot_create_script / godot_check_script / godot_find_uses, unity_project_info / unity_list_assets / unity_scene_objects / unity_create_script / unity_packages, roblox_place_info / roblox_place_scripts / roblox_place_search / roblox_lint_script, blender_file_info / blender_script_check. \
 Read any file as base64 (attachments/images) with read_file_base64 {path}. \
 Call list_commands for full parameter details."))),
-    }
+    };
+    // Keep each existing text/JSON result compatible, and expose the paths the
+    // native resolver actually used. Never guess them in a browser adapter.
+    result.map(|text|{
+        if paths.is_empty(){return text;}
+        if let Ok(serde_json::Value::Object(mut object))=serde_json::from_str::<serde_json::Value>(&text) {
+            object.insert("resolved_paths".into(),serde_json::Value::Object(paths));
+            serde_json::Value::Object(object).to_string()
+        }else{format!("{text}\n[RESOLVED_PATHS: {}]",serde_json::Value::Object(paths))}
+    })
 }
 
 fn schema(props: serde_json::Value, req: &[&str]) -> serde_json::Value {
@@ -2097,9 +2165,9 @@ pub fn catalog() -> Vec<serde_json::Value> {
         serde_json::json!({"name": crate::hidden::hidden!("list_directory"), "description": crate::hidden::hidden!("List one folder's entries with types and sizes."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &[])}),
         serde_json::json!({"name": crate::hidden::hidden!("tree"), "description": crate::hidden::hidden!("Recursive directory tree. Generated folders (.git, node_modules, __pycache__, dist...) are skipped."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "depth": {"type": "integer"}}), &[])}),
         serde_json::json!({"name": crate::hidden::hidden!("read_file"), "description": crate::hidden::hidden!("Read a text file. Returns numbered lines as 'LINE | content'. Always read before editing so your old_string matches byte-for-byte."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "offset": {"type": "integer"}, "limit": {"type": "integer"}}), &["path"])}),
-        serde_json::json!({"name": crate::hidden::hidden!("write_file"), "description": crate::hidden::hidden!("Create a file or OVERWRITE an existing one with complete new content. Parent folders are created automatically. Prefer edit_file for partial changes."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "content": {"type": "string"}}), &["path", "content"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("write_file"), "description": crate::hidden::hidden!("Create a file or OVERWRITE an existing one with complete new content. Parent folders are created automatically. Prefer edit_file for partial changes. Set preview:true to inspect an exact diff and hashes without changing any file or creating folders."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "content": {"type": "string"}, "preview":{"type":"boolean","description":"true returns an exact read-only diff; writes no file or folder"}}), &["path", "content"])}),
         serde_json::json!({"name": crate::hidden::hidden!("read_file_base64"), "description": crate::hidden::hidden!("Read ANY file (text or binary) as base64 + mimeType. The way to hand an image or a screenshot file to the AI as an attachment. Returns {path, mimeType, bytes, data}."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
-        serde_json::json!({"name": crate::hidden::hidden!("edit_file"), "description": crate::hidden::hidden!("Exact-match string replacement inside a file. Replaces the FIRST match, or every match with replace_all:true. Fails loudly when old_string is missing or ambiguous."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "old_string": {"type": "string"}, "new_string": {"type": "string"}, "replace_all": {"type": "boolean"}}), &["path", "old_string", "new_string"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("edit_file"), "description": crate::hidden::hidden!("Exact-match string replacement inside a file. Replaces the FIRST match, or every match with replace_all:true. Fails loudly when old_string is missing or ambiguous. Set preview:true for an exact read-only diff; no file or undo checkpoint is changed."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "old_string": {"type": "string"}, "new_string": {"type": "string"}, "replace_all": {"type": "boolean"}, "preview":{"type":"boolean","description":"true checks the match and returns an exact read-only diff without writing"}}), &["path", "old_string", "new_string"])}),
         serde_json::json!({"name": crate::hidden::hidden!("create_folder"), "description": crate::hidden::hidden!("Create a folder (and missing parents)."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
         serde_json::json!({"name": crate::hidden::hidden!("delete_path"), "description": crate::hidden::hidden!("Permanently DELETE a file or folder (folders recursive). Confirm scope with the user before deleting anything broad."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
         serde_json::json!({"name": crate::hidden::hidden!("move_path"), "description": crate::hidden::hidden!("Move or rename a file/folder. If destination is an existing folder, the source moves INSIDE it keeping its name."), "inputSchema": schema(serde_json::json!({"source": {"type": "string"}, "destination": {"type": "string"}}), &["source", "destination"])}),
@@ -2185,6 +2253,62 @@ mod tests {
         let inside = ws.resolve_path("sub/../ok.txt", false).unwrap();
         assert!(inside.starts_with(&ws.canon_root));
         let _ = std::fs::remove_dir_all(&ws.canon_root);
+    }
+
+    #[test]
+    fn sandbox_accepts_in_root_absolute_paths_without_allowing_outside_targets() {
+        let ws=temp_ws("absolute-in-root");
+        let existing=ws.canon_root.join("existing.txt");std::fs::write(&existing,"same file").unwrap();
+        assert_eq!(ws.resolve_path(&existing.to_string_lossy(),true).unwrap(),existing);
+        let missing=ws.canon_root.join("new/sub/file.txt");
+        assert_eq!(ws.resolve_path(&missing.to_string_lossy(),false).unwrap(),missing);
+        let sibling=ws.canon_root.with_file_name(format!("{}-sibling",ws.canon_root.file_name().unwrap().to_string_lossy()));
+        std::fs::create_dir_all(&sibling).unwrap();std::fs::write(sibling.join("outside.txt"),"outside").unwrap();
+        for path in [sibling.join("outside.txt"),sibling.join("missing/file.txt"),ws.canon_root.join("../outside.txt")] {
+            assert!(ws.resolve_path(&path.to_string_lossy(),false).is_err(),"{}",path.display());
+        }
+        #[cfg(unix)] {
+            std::os::unix::fs::symlink(&sibling,ws.canon_root.join("escape-link")).unwrap();
+            for suffix in ["outside.txt","new/file.txt"] {assert!(ws.resolve_path(&ws.canon_root.join("escape-link").join(suffix).to_string_lossy(),false).is_err());}
+            std::os::unix::fs::symlink(ws.canon_root.join("missing-target"),ws.canon_root.join("dangling-link")).unwrap();
+            assert!(ws.resolve_path(&ws.canon_root.join("dangling-link/file.txt").to_string_lossy(),false).is_err());
+        }
+        std::fs::remove_dir_all(sibling).unwrap();std::fs::remove_dir_all(ws.canon_root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn file_previews_show_exact_changes_without_writing_or_creating_parents() {
+        let ws=temp_ws("file-previews");let file=ws.canon_root.join("existing.txt");
+        std::fs::write(&file,"one\r\ntwo\r\nthree\r\n").unwrap();
+        let args=serde_json::json!({"path":file,"old_string":"two","new_string":"TWO 🧪","preview":true});
+        let result:serde_json::Value=serde_json::from_str(&tool_edit_file(&ws,&args).await.unwrap()).unwrap();
+        assert_eq!(result["preview"],true);assert_eq!(result["changed"],true);assert!(result["diff"].as_str().unwrap().contains("-two\n+TWO 🧪\n"));
+        assert_eq!(std::fs::read(&file).unwrap(),b"one\r\ntwo\r\nthree\r\n");
+        let create=serde_json::json!({"path":"uncreated/parents/new.txt","content":"new\ncontent\n","preview":true});
+        let result:serde_json::Value=serde_json::from_str(&tool_write_file(&ws,&create).await.unwrap()).unwrap();
+        assert_eq!(result["action"],"create");assert_eq!(result["changed"],true);assert!(!ws.canon_root.join("uncreated").exists());
+        let unchanged=serde_json::json!({"path":"existing.txt","content":"one\r\ntwo\r\nthree\r\n","preview":true});
+        let same:serde_json::Value=serde_json::from_str(&tool_write_file(&ws,&unchanged).await.unwrap()).unwrap();assert_eq!(same["changed"],false);
+        let bad=serde_json::json!({"path":"existing.txt","old_string":"absent","new_string":"new","preview":true});
+        assert!(tool_edit_file(&ws,&bad).await.unwrap_err().contains("E_MATCH"));
+        let outside=ws.canon_root.with_file_name(format!("{}-outside-preview.txt",ws.canon_root.file_name().unwrap().to_string_lossy()));
+        assert!(tool_write_file(&ws,&serde_json::json!({"path":outside,"content":"no","preview":true})).await.is_err());assert!(!outside.exists());
+        let mut apply=args.clone();apply["preview"]=serde_json::json!(false);tool_edit_file(&ws,&apply).await.unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(),"one\r\nTWO 🧪\r\nthree\r\n");
+        std::fs::remove_dir_all(ws.canon_root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn dispatched_file_results_echo_resolved_paths_without_breaking_json() {
+        let ws=temp_ws("resolved-result");std::fs::write(ws.canon_root.join("a.txt"),"exact\nbytes").unwrap();
+        let text=dispatch(&ws,"read_file",serde_json::json!({"path":"a.txt"})).await.unwrap();
+        assert!(text.contains("exact")&&text.contains("[RESOLVED_PATHS:"));assert!(text.contains("a.txt"));
+        let data:serde_json::Value=serde_json::from_str(&dispatch(&ws,"read_file_base64",serde_json::json!({"path":"a.txt"})).await.unwrap()).unwrap();
+        assert!(data["data"].is_string());assert_eq!(data["resolved_paths"]["path"],deverbatim_string(&ws.canon_root.join("a.txt")));
+        let preview:serde_json::Value=serde_json::from_str(&dispatch(&ws,"write_file",serde_json::json!({"path":"new/a.txt","content":"new","preview":true})).await.unwrap()).unwrap();
+        assert_eq!(preview["preview"],true);assert_eq!(preview["resolved_paths"]["path"],deverbatim_string(&ws.canon_root.join("new/a.txt")));assert!(!ws.canon_root.join("new").exists());
+        let unknown=dispatch(&ws,"not_real",serde_json::json!({})).await.unwrap_err();assert!(unknown.contains("E_COMMAND")&&unknown.contains("not_real"));
+        std::fs::remove_dir_all(ws.canon_root).unwrap();
     }
 
     #[tokio::test]

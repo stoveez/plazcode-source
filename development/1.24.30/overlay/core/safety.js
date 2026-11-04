@@ -19,6 +19,7 @@ const PlazCodeSafety = (() => {
   const DELETE_WORDS = new Set(["rm", "rmdir", "del", "erase", "rd", "remove-item", "ri", "unlink", "shred", "rimraf"]);
 
   const bare = (name) => String(name || "").split("__").pop();
+  const filePreview = (name, engine, args) => engine === 'local' && /^(?:write_file|edit_file)$/.test(String(name)) && args?.preview === true;
   function fromStorage(values) {
     const v = values || {};
     const folders = Array.isArray(v.rsAllowedFolders) ? v.rsAllowedFolders : DEFAULTS.allowedFolders;
@@ -103,6 +104,6 @@ const PlazCodeSafety = (() => {
     if (s.allowedFolders && s.allowedFolders.length) parts.push("with Full access, files outside the workspace are limited to: " + s.allowedFolders.join("; "));
     return parts.length ? "SAFETY: " + parts.join(". ") + "." : "";
   }
-  return { DEFAULTS, KEYS, fromStorage, normalizeFolders, commandDeletes, isChange, isDelete, describeDelete, readOnlyRefusal, declinedDelete, stateLine, accessHint };
+  return { DEFAULTS, KEYS, fromStorage, normalizeFolders, commandDeletes, isChange, isDelete, describeDelete, readOnlyRefusal, declinedDelete, stateLine, accessHint, filePreview };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = PlazCodeSafety;

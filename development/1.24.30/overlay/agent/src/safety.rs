@@ -61,6 +61,11 @@ pub fn is_change(engine: &str, name: &str) -> bool {
     !studio_read(bare(name))
 }
 
+/// Only these native file tools implement a guaranteed read-only preview.
+pub fn file_preview(engine:&str,name:&str,args:&Value)->bool {
+    engine=="local" && matches!(name,"write_file"|"edit_file") && args["preview"].as_bool()==Some(true)
+}
+
 /// Shell words that delete. Matched as whole words, case-insensitive.
 const DELETE_WORDS: &[&str] = &["rm", "rmdir", "del", "erase", "rd", "remove-item", "ri", "unlink", "shred", "rimraf"];
 
@@ -86,7 +91,7 @@ pub fn is_delete(engine: &str, name: &str, args: &Value) -> bool {
 /// Refuse the call when a safety limit applies. `confirmed` is set by the
 /// extension only after the user pressed Allow in PlazCode's own prompt.
 pub fn gate(read_only: bool, confirm_delete: bool, engine: &str, name: &str, args: &Value, confirmed: bool) -> Result<(), String> {
-    if read_only && is_change(engine, name) {
+    if read_only && is_change(engine, name) && !file_preview(engine,name,args) {
         return Err(format!(
             "Read-only mode is on, so PlazCode did not run '{}'. The AI can look but not change anything. Turn off Read-only mode in Safety to allow changes.",
             bare(name)
@@ -105,6 +110,20 @@ pub fn gate(read_only: bool, confirm_delete: bool, engine: &str, name: &str, arg
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn only_native_file_previews_are_read_only() {
+        for name in ["write_file","edit_file"] {
+            assert!(gate(true,true,"local",name,&json!({"preview":true}),false).is_ok());
+            for args in [json!({}),json!({"preview":false}),json!({"preview":"true"})] {
+                assert!(gate(true,true,"local",name,&args,false).is_err());
+            }
+        }
+        for (engine,name) in [("local","run_command"),("local","plugin__write_file"),("roblox","write_file"),("roblox","execute_luau")] {
+            assert!(!file_preview(engine,name,&json!({"preview":true})));
+            assert!(gate(true,true,engine,name,&json!({"preview":true}),false).is_err());
+        }
+    }
 
     #[test]
     fn read_only_blocks_changes_and_allows_looking() {

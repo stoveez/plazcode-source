@@ -1644,6 +1644,7 @@ async fn guarded_tool(state: &AppState, engine: &str, id: &str, name: &str, args
     }
     // Log paths the way the journal stores them (relative to the workspace),
     // so the log can offer Undo on the matching change.
+    let preview=safety::file_preview(engine,name,&args);
     let mut logged = args.clone();
     if engine == "local" {
         for key in ["path","source","destination"] {
@@ -1660,7 +1661,7 @@ async fn guarded_tool(state: &AppState, engine: &str, id: &str, name: &str, args
     journal.event(id, engine, name, &args, result, &outcome.as_ref().err().map(|e| e.to_string()).unwrap_or_default());
     // Reads are logged in memory and written with the next change, so a long
     // run of Studio inspections does not rewrite the journal on every call.
-    if result != "ok" || safety::is_change(engine, name) { let _ = journal.save(); }
+    if result != "ok" || (safety::is_change(engine, name) && !preview) { let _ = journal.save(); }
     outcome
 }
 async fn checkpoint_tool_bounded(state: &AppState, engine: &str, id: &str, name: &str, args: serde_json::Value, budget: Duration) -> anyhow::Result<McpOutput> {
@@ -1719,6 +1720,10 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
     if id.is_empty() { return match engine { "local"=>workspace::dispatch(&state.workspace,name,args).await.map(|text|McpOutput{text,images:Vec::new()}).map_err(anyhow::Error::msg), "roblox"=>roblox_tool(state,name,args).await,_=>Err(anyhow::anyhow!("unknown engine")) }; }
     let mut journal=checkpoints::STORE.lock().await;
     anyhow::ensure!(journal.task(id)?.status=="working" && journal.task(id)?.engine==engine,"This command was not run: its task has already ended, or it belongs to the other mode (Roblox / AgentScript). Send a new message in the chat to start a fresh task.");
+    if safety::file_preview(engine,name,&args) {
+        drop(journal);
+        return workspace::dispatch(&state.workspace,name,args).await.map(|text|McpOutput{text,images:Vec::new()}).map_err(anyhow::Error::msg);
+    }
     if engine=="local" {
         if name=="run_command" {args["_plazcode_checkpoint"]=serde_json::json!(id);}
         let paths=journal.prepare_files(&state.workspace,id,name,&args)?;

@@ -3179,7 +3179,8 @@ return result`;
     // 1.24.29: PlazCode's own read-only Studio commands (read_scripts, script_analysis...) run their Luau through an inner
     // execute_luau. That inner call is marked in TRUSTED_READS (an object set the AI cannot reach: it only sends text), so it
     // is not refused in Read-only mode nor held for approval; the outer command already passed this gate as a read.
-    const trustedRead = bareName === "execute_luau" && TRUSTED_READS.has(call);
+    const filePreview = typeof PlazCodeSafety.filePreview === 'function' && PlazCodeSafety.filePreview(name,safetyEngine,args);
+    const trustedRead = (bareName === "execute_luau" && TRUSTED_READS.has(call)) || filePreview;
     if (!trustedRead && safetySettings.readOnly && PlazCodeSafety.isChange(bareName, safetyEngine)) {
       return PlazCodeSafety.readOnlyRefusal(bareName);
     }
