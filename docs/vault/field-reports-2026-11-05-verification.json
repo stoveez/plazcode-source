@@ -1,0 +1,58 @@
+{
+  "date": "2026-11-05",
+  "status": "focused-pass-full-suites-and-fresh-build-pending",
+  "base_runtime": "0a75701",
+  "latest_pushed_wip": "2fedad6",
+  "supplied_evidence": {
+    "chatgpt_false_receipt_ms": 15000,
+    "list_commands_execution_ms": 39,
+    "env_info_execution_ms": 9666,
+    "dsml_original_turn_present": false
+  },
+  "roots": [
+    "native wrapper labels contaminate receipt/task user body",
+    "failed bootstrap marker rearms watchdog",
+    "quadratic history dedup and repeated transcript scans in one decoration pass",
+    "unbounded stored goal fields and streaming/legacy rows",
+    "orphan DSML treated as normal text; complete-call closing debris prevents settlement",
+    "env_info refreshes unrelated processes"
+  ],
+  "focused_checks": {
+    "chatgpt_browser": 26,
+    "performance_filtered": 5,
+    "history500_attribute_reads": {
+      "before": 250000,
+      "after": 500
+    },
+    "decoration100_transcript_scans": {
+      "before": 1264,
+      "after": 1,
+      "after_attribute_reads": 6857
+    },
+    "native_env_info": {
+      "status": "pass",
+      "executor_only": true,
+      "baseline_full_process_ms": 17.493,
+      "baseline_processes": 63,
+      "actual_memory_only_ms": 0.22
+    },
+    "preservation_functions": 962,
+    "dom_guard_checks": 593,
+    "protected_pins": 34,
+    "dsml_structural_recovery": "pass",
+    "task_streaming_and_legacy": "pass"
+  },
+  "limitations": [
+    "DSML original upstream generation not established",
+    "offline Chromium fixtures are not live-site or affected-PC proof",
+    "owner PC vault not connected"
+  ],
+  "remaining": [
+    "full JavaScript suite",
+    "full Rust suite",
+    "new full CI",
+    "exact Windows/universal-Mac package verification and Drive delivery"
+  ],
+  "stable_published": false,
+  "fresh_delivery": null
+}

@@ -62,7 +62,7 @@ async function pageFor(browser, core = false, model = false) {
     for(const file of manifest.content_scripts.find(x=>x.js.includes('providers/chatgpt.js')).js){
       let code=fs.readFileSync(file,'utf8');
       if(file==='providers/chatgpt.js')code+=';window.provider=RSProvider;Object.assign(RSProvider.timings,{GEN_IDLE_MS:30,WARMUP_MS:100});Object.defineProperty(RSProvider.timings,"STABLE_MS",{value:100});';
-      if(file==='core/main.js')code=code.replace('const TOKEN_CHARS = 4;','window.fixture={A,submitCore,agentLoop,stopLoop,startSession};const TOKEN_CHARS = 4;');
+      if(file==='core/main.js')code=code.replace('const TOKEN_CHARS = 4;','window.fixture={A,submitCore,agentLoop,stopLoop,startSession,decorate};const TOKEN_CHARS = 4;');
       await page.addScriptTag({content:code});
     }
     await page.waitForSelector('#rs-bar'); await page.waitForTimeout(450);
@@ -70,8 +70,8 @@ async function pageFor(browser, core = false, model = false) {
   return {page,errors};
 }
 async function checks(browser){
-  let failed=0;
-  async function check(name,core,fn,model=false){if(process.env.PLAZCODE_CHATGPT_TEST_ONLY&&!name.includes(process.env.PLAZCODE_CHATGPT_TEST_ONLY))return;const {page,errors}=await pageFor(browser,core,model);try{await fn(page);assert.deepEqual(errors,[]);console.log('PASS '+name);}catch(e){failed++;console.error('FAIL '+name+': '+e.stack);}finally{await page.close();}}
+  let failed=0,executed=0;
+  async function check(name,core,fn,model=false){if(process.env.PLAZCODE_CHATGPT_TEST_ONLY&&!name.includes(process.env.PLAZCODE_CHATGPT_TEST_ONLY))return;executed++;const {page,errors}=await pageFor(browser,core,model);try{await fn(page);assert.deepEqual(errors,[]);console.log('PASS '+name);}catch(e){failed++;console.error('FAIL '+name+': '+e.stack);}finally{await page.close();}}
   await check('startup uses one verified exchange with the live command catalog supplied first',true,async page=>{
     await page.locator('#rs-bar .rs-mode-btn[data-mode="local"]').click();
     const state=await page.evaluate(async()=>{
@@ -132,6 +132,15 @@ async function checks(browser){
       const result=await fixture.startSession();return{ready:!!result?.ready,started:fixture.A.started,sends:sent.length,draft:provider.editorText()};
     });assert.equal(state.ready,true,JSON.stringify(state));assert.equal(state.started,true);assert.equal(state.sends,1);assert.equal(state.draft,'');
   });
+  await check('field semantic text beats outer content chrome and preserves literal UI words',false,async page=>{
+    const result=await page.evaluate(()=>{
+      const text='You said: keep Copy and 16:22 in this actual message.\n  Preserve this line too.';
+      const item=addItem('user',text,'semantic-user'),body=item.querySelector('.markdown');body.className='whitespace-pre-wrap';body.setAttribute('data-user-message-bubble','');
+      const outer=document.createElement('div');outer.setAttribute('data-message-content','');item.append(outer);outer.append(body);
+      const heading=document.createElement('h5');heading.className='sr-only';heading.textContent='You said:';outer.prepend(heading);const action=document.createElement('button');action.textContent='Copy';outer.append(action);
+      return{expected:text,plain:provider.itemText(item).trim(),classified:provider.classifyText(item,'.rs-chip').trim()};
+    });assert.equal(result.plain,result.expected);assert.equal(result.classified,result.expected);
+  });
   await check('field failed bootstrap cannot regain Ready or execute its probe through auto-resume',true,async page=>{
     const state=await page.evaluate(async()=>{
       provider.typeAndSend=async text=>{addItem('user',text,'failed-bootstrap-user');addItem('assistant','```json\n{"command":"list_commands"}\n```','failed-bootstrap-probe');throw Error('fixture: native commit has no provable receipt');};
@@ -144,7 +153,22 @@ async function checks(browser){
       const native=Element.prototype.getAttribute;let reads=0;Element.prototype.getAttribute=function(...args){reads++;return native.apply(this,args);};
       let items;try{items=provider.allItems();}finally{Element.prototype.getAttribute=native;}
       return{count:items.length,reads,first:provider.itemKey(items[0]),last:provider.itemKey(items.at(-1))};
-    });assert.equal(data.count,500);assert.equal(data.first,'history-0');assert.equal(data.last,'history-499');assert(data.reads<500*150,'500 turns caused '+data.reads+' attribute reads');
+    });assert.equal(data.count,500);assert.equal(data.first,'history-0');assert.equal(data.last,'history-499');assert(data.reads<500*150,'500 turns caused '+data.reads+' attribute reads');console.log('FIELD history500 attribute reads: '+data.reads);
+  });
+  await check('field full decoration pass shares one synchronous transcript snapshot',true,async page=>{
+    await page.locator('#rs-bar .rs-mode-btn[data-mode="local"]').click();
+    const data=await page.evaluate(()=>{
+      fixture.A.started=true;
+      for(let i=0;i<100;i++){
+        addItem('assistant','```json\n'+JSON.stringify({command:'read_file',params:{path:'old-'+i+'.txt'}})+'\n```','old-command-'+i);
+        addItem('user',"Output of 'read_file':\nold result "+i,'old-result-'+i);
+      }
+      const native=document.querySelectorAll.bind(document),attribute=Element.prototype.getAttribute;let scans=0,reads=0;Element.prototype.getAttribute=function(...args){reads++;return attribute.apply(this,args);};
+      document.querySelectorAll=selector=>{if(String(selector).includes('[data-message-author-role]')&&String(selector).includes('[data-user-message-bubble]')&&String(selector).includes('.markdown'))scans++;return native(selector);};
+      try{fixture.decorate._didFullSweep=false;fixture.decorate.sweep();}finally{document.querySelectorAll=native;Element.prototype.getAttribute=attribute;}
+      const before=provider.allItems().length;addItem('assistant','Fresh native response','new-after-sweep');
+      return{scans,reads,before,after:provider.allItems().length,cards:document.querySelectorAll('.rs-chip').length};
+    });assert(data.scans<=4,'one pass scanned the entire transcript '+data.scans+' times');assert(data.reads<200*400,'one pass made '+data.reads+' attribute reads');assert.equal(data.before,200);assert.equal(data.after,201,'snapshot must expire before a later native message');assert(data.cards>=100);console.log('FIELD full sweep transcript scans: '+data.scans+', attribute reads: '+data.reads);
   });
   await check('bounded native typing yields during slow editing, never pastes or attaches',false,async page=>{
     const got=await page.evaluate(async()=>{
@@ -267,7 +291,9 @@ async function checks(browser){
     assert(got.recovery.includes('READ ONLY RESULT')&&got.recovery.includes('*.md'),'recovery must carry the completed search result');
     assert(!got.recovery.includes('Nothing was executed'));assert.equal(got.draft,'');assert.equal(got.running,false);
   });
+  if(!executed)throw Error('No ChatGPT delivery check matched the requested filter');
   if(failed)throw Error(failed+' ChatGPT delivery regressions failed');
+  console.log(executed+' ChatGPT delivery checks passed.');
 }
 module.exports={pageFor};
 if(require.main===module)(async()=>{const browser=await chromium.launch({headless:true,...(process.env.PLAZCODE_CHROMIUM?{executablePath:process.env.PLAZCODE_CHROMIUM}:{}),args:['--no-sandbox']});try{await checks(browser);}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

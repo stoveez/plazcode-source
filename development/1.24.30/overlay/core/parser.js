@@ -100,6 +100,52 @@ const RSParse = (() => {
     return DSML_SIG_RE.test(String(r || ""));
   }
 
+  // Native closing tokens alone contain neither a tool nor arguments. Inspect
+  // the WHOLE reply, so quoted examples, JSON values and code are never mistaken
+  // for a decoder runaway. A partial final closer may still be streaming.
+  function closingDsmlTail(r) {
+    const text=String(r||'').trim();
+    if(!/^[<{`]/.test(text)||!/DSML/i.test(text))return null;
+    const token=new RegExp(DSML_TAG(true,'>'),'gi');
+    let from=0,start=0,count=0,match;
+    while((match=token.exec(text))){
+      if(text.slice(from,match.index).trim()){start=match.index;count=0;}
+      count++;from=token.lastIndex;
+    }
+    const tail=text.slice(from).replace(/[\s|\uFF5C\u2502\u2223\u01C0]/g,'').toLowerCase();
+    return count&&(!tail||'</dsml>'.startsWith(tail))?{count,prefix:text.slice(0,start).trimEnd()}:null;
+  }
+  function orphanDsmlClosers(r) {
+    const tail=closingDsmlTail(r);
+    return tail&&!tail.prefix?tail.count:0;
+  }
+  function dsmlClosingRun(r) {
+    const tail=closingDsmlTail(r);if(!tail)return null;
+    if(!tail.prefix)return {closers:tail.count,orphan:true};
+    const prefix=tail.prefix;
+    const fences=prefix.match(/^ {0,3}(?:`{3,}|~{3,})[^\n]*$/gm)||[];
+    if(fences.length%2)return null;
+    const fenced=/^```[^\n]*\n([\s\S]*)\n```$/.exec(prefix);
+    const body=(fenced?fenced[1]:prefix).trim();
+    // A complete JSON envelope can also be followed by native closing debris.
+    // Require the ENTIRE envelope, including strings/arguments, to be closed;
+    // a tag run inside an unfinished value is data, never a recovery trigger.
+    if(body.startsWith('{')&&matchBrace(body,0)===body.length-1){
+      try{if(normalizeCall(parseLoose(body))){const calls=parseToolCalls(body);if(calls.length)return {closers:tail.count,orphan:false,calls};}}catch{}
+      return null;
+    }
+    // A trailing run is protocol debris only AFTER a fully closed native call.
+    // A parameter still being streamed may legitimately contain literal tags.
+    const end=new RegExp(DSML_TAG(true,'(?:[a-z_]*calls|invoke)\\s*>')+'\\s*$','i');
+    if(!hasDsml(body)||!end.test(body))return null;
+    const opens=body.match(new RegExp(DSML_TAG(false,'parameter\\b'),'gi'))||[];
+    const closes=body.match(new RegExp(DSML_TAG(true,'parameter\\s*>'),'gi'))||[];
+    if(opens.length!==closes.length)return null;
+    const calls=parseDsml(body);
+    if(calls.length&&hasOpenDsml(body))return {closers:tail.count,orphan:true,reason:'unclosed_wrapper'};
+    return calls.length?{closers:tail.count,orphan:false,calls}:null;
+  }
+
   // A DSML call still being written: the last wrapper or invoke that opened has
   // not closed yet.
   function hasOpenDsml(r) {
@@ -531,7 +577,7 @@ const RSParse = (() => {
 
   return {
     START_M, END_M, LUA_START_RE, LUA_END_RE, CMD_KEY_RE, DSML_SIG_RE,
-    hasDsml, hasOpenDsml, parseDsml,
+    hasDsml, hasOpenDsml, parseDsml, orphanDsmlClosers, dsmlClosingRun,
     findLuaStart, findLuaEnd, matchBrace, extractJson, normalizeCall,
     hasToolSignature, hasOpenToolBlock, parseToolCalls, commandDiagnosis, salvageCutOff, toolNameFromText,
     isInjectedFeedback, hasCommandShape,

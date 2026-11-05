@@ -13,8 +13,9 @@
 //    core's turn expectations. We treat each data-message-author-role div as one
 //    "turn item". Long chats DO get virtualized, so every "is this a new reply"
 //    test goes through the id (itemKey / lastAssistantId), never through counts.
-//  - The reply markdown lives in <div class="markdown">. ChatGPT does NOT prefix
-//    text with a screen-reader label (unlike Gemini), but textContent is still
+//  - Assistant content lives in its markdown surface. Native USER wrappers can
+//    include screen-reader headings and action labels; userText reads only the
+//    actual message body. For assistant code, textContent is still
 //    NOT usable: code blocks are CodeMirror (.cm-line per line, zero "\n" text
 //    nodes), so textContent returns the whole script on one line. Always read a
 //    reply through textWithout() - see the note there; this was the single
@@ -342,7 +343,7 @@ const RSProvider = (() => {
   // timestamps). Read the user's content surface, never that surrounding UI.
   // Keep the same reader for delivery receipts, task requests and startup proof.
   function userText(item, excludeSel) {
-    const ui = [excludeSel, 'button,[role="button"],h5.sr-only,h6.sr-only,time,[data-testid="timestamp"]'].filter(Boolean).join(',');
+    const ui = [excludeSel, 'button,[role="button"],h1.sr-only,h2.sr-only,h3.sr-only,h4.sr-only,h5.sr-only,h6.sr-only,time,[data-testid="timestamp"]'].filter(Boolean).join(',');
     for (const selector of ['[data-message-content]', '.whitespace-pre-wrap', '[data-user-message-bubble]', '.markdown,.prose']) {
       const nodes = safeRead(() => item.matches(selector), false) ? [item] : safeQueryAll(item, selector);
       const surfaces = nodes.filter(node => !safeClosest(node, 'button,[role="button"]') &&
@@ -352,7 +353,7 @@ const RSProvider = (() => {
         for (let parent = safeRead(() => node.parentElement, null); parent && parent !== item; parent = safeRead(() => parent.parentElement, null)) if (seen.has(parent)) return false;
         return true;
       });
-      if (top.length) return top.map(node => textWithout(node, excludeSel)).join('\n');
+      if (top.length) return top.map(node => textWithout(node, ui)).join('\n');
     }
     return textWithout(item, ui);
   }
@@ -439,7 +440,18 @@ const RSProvider = (() => {
       strip.dataset.rsActivityControlsFolded = folded ? '1' : '0';
     }
   }
+  let transcriptSnapshot=null,assistantSnapshot=null,userSnapshot=null;
+  function withTranscriptSnapshot(read) {
+    if(transcriptSnapshot)return read();
+    transcriptSnapshot=allItems();
+    try{
+      assistantSnapshot=transcriptSnapshot.filter(isAssistantItem);
+      userSnapshot=transcriptSnapshot.filter(isUserItem);
+      return read();
+    }finally{transcriptSnapshot=null;assistantSnapshot=null;userSnapshot=null;}
+  }
   const allItems = () => {
+    if(transcriptSnapshot)return transcriptSnapshot;
     // ChatGPT keeps the previous conversation's turns in the page, hidden (zero size), after the user opens a
     // new chat from the sidebar. Counting them made a blank chat look like the old started one ("PlazCode
     // running" never cleared until a refresh). Skip turns that are not rendered. A page with no layout at all
@@ -474,9 +486,9 @@ const RSProvider = (() => {
     }
     return items.filter(item => !redundant.has(item));
   };
-  const assistantItems = () => allItems().filter(isAssistantItem);
+  const assistantItems = () => assistantSnapshot || allItems().filter(isAssistantItem);
   const assistantCount = () => assistantItems().length;
-  const userCount = () => allItems().filter(isUserItem).length;
+  const userCount = () => userSnapshot ? userSnapshot.length : allItems().filter(isUserItem).length;
   const getEditor = () => {
     const nodes = [...safeQueryAll(document, S.editor)].filter((e) => !safeClosest(e, "#rs-root"));
     // Work's composer can be a textarea or a textbox outside a <form>, with
@@ -1438,10 +1450,10 @@ const RSProvider = (() => {
       if (stopped) isStopped = stopped;
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsGptVer).
-      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-03_confirmed-responsive-delivery"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-05_native-message-bodies"); } catch {}
     },
     // turns
-    allItems, isUserItem, isAssistantItem, itemText, classifyText, setActivityFolded,
+    allItems, withTranscriptSnapshot, isUserItem, isAssistantItem, itemText, classifyText, setActivityFolded,
     assistantCount, userCount, lastAssistant, lastAssistantId, itemKey, readAssistant,
     streamLen, snapshot,
     // composer / state

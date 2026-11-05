@@ -1427,7 +1427,10 @@ pub async fn tool_file_info(ws: &Workspace, args: &serde_json::Value) -> Result<
 }
 
 pub async fn tool_env_info(ws: &Workspace, _args: &serde_json::Value) -> Result<String, String> {
-    let mut sys = sysinfo::System::new_all();
+    // This command returns basic host/memory information, never process data.
+    // new_all walks every process (especially expensive on Windows) and blocks
+    // the bridge worker for work that contributes nothing to this result.
+    let mut sys = sysinfo::System::new();
     sys.refresh_memory();
     let host = sysinfo::System::host_name().unwrap_or_else(|| "unknown".to_string());
     let os = sysinfo::System::long_os_version().unwrap_or_else(|| std::env::consts::OS.to_string());
@@ -2245,6 +2248,23 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         Workspace::new(Some(dir.to_str().unwrap())).unwrap()
+    }
+
+    #[tokio::test]
+    async fn env_info_preserves_snapshot_and_access_flags_without_process_data() {
+        let ws=temp_ws("env-info-snapshot");
+        // Compare the removed refresh scope with the actual command on this OS.
+        // Report timing instead of imposing a flaky shared-runner time limit.
+        let baseline=std::time::Instant::now();let all=sysinfo::System::new_all();
+        let process_count=all.processes().len();let full_ms=baseline.elapsed().as_secs_f64()*1000.0;drop(all);
+        let begin=std::time::Instant::now();let info=tool_env_info(&ws,&serde_json::json!({})).await.unwrap();
+        let command_ms=begin.elapsed().as_secs_f64()*1000.0;
+        for field in ["Host:","OS:","Arch:","CPUs:","Memory:","User:","Workspace root:","Terminal:"] {assert!(info.lines().any(|line|line.starts_with(field)),"{field}");}
+        assert!(info.contains("FULL PC ACCESS: off (workspace sandbox)"));
+        ws.set_full_access(true);let full=tool_env_info(&ws,&serde_json::json!({})).await.unwrap();assert!(full.contains("FULL PC ACCESS: ON"));
+        assert_eq!(std::fs::read_dir(&ws.canon_root).unwrap().count(),0,"environment inspection must not write workspace files");
+        eprintln!("env_info refresh scope: full-process baseline {full_ms:.3}ms ({process_count} processes); actual memory-only command {command_ms:.3}ms");
+        std::fs::remove_dir_all(ws.canon_root).unwrap();
     }
 
     #[test]

@@ -34,6 +34,7 @@ const PlazCodeActivity = (() => {
   // plazcode_checklist, so derive numbered steps from the user's request and
   // from plans the AI writes, and advance them as the AI reports progress.
   const cleanLabel=text=>String(text||'').replace(/\*\*|__|`/g,'').replace(/^\s*(?:step\s+\d+\s*[:.)-]\s*)/i,'').replace(/\s+/g,' ').replace(/[\s.;:,]+$/,'').trim().slice(0,180);
+  const conciseGoal=text=>cleanLabel(text).split(/[.!?](?:\s+|(?=I['’](?:ll|m|ve)\b))/,1)[0].split(/\s+/).slice(0,8).join(' ').replace(/[\s,;:.!?]+$/,'');
   // 1.24.13: the checklist used to echo the user's sentences word for word
   // ("So I want you to see if you can fix the model? Check how ... etc"). Reduce each
   // sentence to a short imperative of what the AI has to do.
@@ -98,7 +99,7 @@ const PlazCodeActivity = (() => {
   }
   function create(changed = () => {}, storage = null) {
     let current, sequence = 0;
-    const groups = [], tasks = new Map();
+    const groups = [], tasks = new Map(), goalSources = new WeakMap();
     const taskStorageKey='plazcode.mainTasks.v1';
     try {
       if(typeof storage==='function')storage=storage();
@@ -108,6 +109,9 @@ const PlazCodeActivity = (() => {
         if(requestKind(value.label.replace(/\d{1,2}:\d{2}\s*[AP]M$/i,''))!=='work')continue;
         const items=value.plan?.items;
         if(items&&(!Array.isArray(items)||!items.length||items.length>20||items.some(item=>typeof item.label!=='string'||!item.label.trim()||item.label.length>180||!['pending','in_progress','completed'].includes(item.status))))continue;
+        // Repair only the legacy automatic single-goal row. Explicit checklists
+        // and user-numbered steps retain their exact labels and status.
+        if(value.objective&&value.plan?.auto==='request'&&!value.plan.listed&&items?.length===1&&items[0].label===value.objective){const goal=conciseGoal(value.objective);if(goal){value.objective=goal;items[0]={...items[0],label:goal};}}
         tasks.set(chat,{label:value.label.slice(0,300),key:value.key,objective:typeof value.objective==='string'?value.objective.slice(0,180):'',plan:items?{items,total:items.length,done:items.filter(item=>item.status==='completed').length,...(value.plan.auto==='request'||value.plan.auto==='reply'?{auto:value.plan.auto}:{}),...(value.plan.listed===true?{listed:true}:{})}:null});
       }}
     } catch {}
@@ -172,18 +176,22 @@ const PlazCodeActivity = (() => {
       persistTasks();
     }
     // The AI's own stated goal ("Goal: …" / "Objective: …") names the task.
-    function captureGoal(group, plain) {
+    function captureGoal(group, plain, key) {
       const saved=tasks.get(group.chat);
-      if(!saved||saved.key!==group.taskKey||saved.objective)return;
+      if(!saved||saved.key!==group.taskKey||(saved.objective&&goalSources.get(group)!==key))return;
       const match=/^[\s>#*-]*(?:\*\*)?(?:goal|objective)(?:\*\*)?\s*[:：]\s*(?:\*\*)?\s*([^\n]{4,})$/im.exec(plain);
       let goal=match&&cleanLabel(match[1]);
       if(!goal||commandLabel(goal))return;
       // Goal is a concise field, not the rest of an assistant paragraph. Some
       // renderers join "total.I'll..." without a newline; enforce its contract
       // before storing the objective/plan, while retaining the full message.
-      goal=goal.split(/[.!?](?:\s+|(?=I['’](?:ll|m|ve)\b))/,1)[0].split(/\s+/).slice(0,8).join(' ').replace(/[\s,;:.!?]+$/,'');
+      goal=conciseGoal(goal);
       if(!goal)return;
       goal=goal[0].toUpperCase()+goal.slice(1);
+      if(saved.objective===goal)return;
+      // A streaming Goal may first be only "Read". Let this SAME message finish
+      // its field, without allowing a later reply to replace the main objective.
+      goalSources.set(group,key);
       saved.objective=goal;group.taskLabel=goal;
       // 1.24.30 (owner, 2026-11-01: the checklist "just repeats my prompt word for word"; owner chose: the AI's goal
       // is the title and, when the AI gives no step list, the one step). A list the user numbered stays as written.
@@ -222,7 +230,7 @@ const PlazCodeActivity = (() => {
       // Plans often arrive in the same reply as the first command ("command").
       if (role === 'assistant' || role === 'command') {
         const plain = text.replace(/```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)/g, '');
-        captureGoal(group, plain);
+        captureGoal(group, plain, key);
         const steps = [...plain.matchAll(/^\s*[-*+]\s+\[([ xX])\]\s+([^\n]+)$/gm)].slice(0, 64);
         if (/^\s*(?:#{1,6}\s*)?(?:\*\*)?(?:task\s+)?(?:plan|checklist)(?:\*\*)?\s*:?\s*$/im.test(plain) && steps.length >= 2) {
           try { if(steps.some(step=>commandLabel(step[2])))throw Error('Command names are not goals');const items=steps.map(step=>({label:step[2].slice(0,180),status:step[1].toLowerCase()==='x'?'completed':'pending'}));if(group.plan&&group.plan.auto)setAutoPlan(group,items,'reply');else keepPlan(group,items); } catch {}

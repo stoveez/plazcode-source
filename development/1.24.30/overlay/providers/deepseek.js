@@ -1163,8 +1163,9 @@ const RSProvider = (() => {
     const dsmlWrapStart = new RegExp("<\\s*" + BAR + "dsml" + BAR + "[a-z_]*calls", "i");
     const dsmlWrapEnd = new RegExp("<\\s*\\/" + BAR + "dsml" + BAR + "[a-z_]*calls\\s*>", "i");
     const dsmlStart = (t) => !!(P.DSML_SIG_RE && P.DSML_SIG_RE.test(t));
-    const hasStart = (t) => P.LUA_START_RE.test(t) || t.includes("###mcp_tool###") || dsmlStart(t);
-    const hasEnd = (t) => P.LUA_END_RE.test(t) || t.includes("###end_mcp_tool###") || t.includes("###end-mcp_tool###") || dsmlEnd.test(t);
+    const orphan = t => typeof P.orphanDsmlClosers==='function'&&P.orphanDsmlClosers(t)>0;
+    const hasStart = (t) => P.LUA_START_RE.test(t) || t.includes("###mcp_tool###") || dsmlStart(t) || orphan(t);
+    const hasEnd = (t) => P.LUA_END_RE.test(t) || t.includes("###end_mcp_tool###") || t.includes("###end-mcp_tool###") || dsmlEnd.test(t) || orphan(t);
     const isJson = (t) => /\{\s*"(?:command|tool)"\s*:/.test(t);
     // The reply markdown containers (never the reasoning/think area).
     const containers = [...safeQueryAll(item, S.markdown)].filter((m) => !safeClosest(m, S.thinking));
@@ -1240,7 +1241,7 @@ const RSProvider = (() => {
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsDsVer).
       // BUMP DS_VER on meaningful deepseek.js changes worth verifying live.
-      try { document.documentElement.setAttribute("data-rs-ds-ver", "2026-11-04_line-ending-delivery"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-ds-ver", "2026-11-05_orphan-protocol"); } catch {}
     },
     // turns
     allItems, isUserItem, isAssistantItem, itemText, classifyText,

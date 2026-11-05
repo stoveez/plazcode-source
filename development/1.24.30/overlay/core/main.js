@@ -1441,6 +1441,7 @@
     // not itself a new response; conversely a reused node is not proof of the
     // same response. Missing identities never authorize cross-node recovery.
     let lastGoodReply = "", curToken, curChat;
+    let protocolStopAt=0,protocolStopRequested=false;
     let reasonSince = 0; // reasoning written but no answer yet (loading phase)
     let noTurnSince = 0; // finalize attempted before this send's reply turn exists
     let lateRescue = false; // v1.12: one bounded late-reply look before declaring empty
@@ -1589,6 +1590,26 @@
         firstFreshTextAt = Date.now();
         hardProgressAt = firstFreshTextAt; // a new reply can legitimately repeat the old command text
         diag("response.firstText", {provider:P.id,waitMs:firstFreshTextAt-t0,chars:String(d.reply||"").length});
+      }
+
+      // DeepSeek can emit only orphan DSML closers forever. Text growth is not
+      // useful progress in that state. Stop the fresh owned runaway once, wait
+      // for the native Stop signal to clear, then diagnose it; never send over
+      // an active generation or execute an incomplete invocation.
+      const closing=P.id==='deepseek'&&newReply&&typeof RSParse.dsmlClosingRun==='function'?RSParse.dsmlClosingRun(d.reply):null;
+      if(closing){
+        const quiet=Date.now()-hardProgressAt;
+        const settled=!hardGenerating&&(!gen||quiet>=800);
+        if(settled){
+          if(closing.orphan)return {kind:'parse_error',reason:'dsml_orphan',raw:d.reply,item:d.item};
+          finalizeDiag('tool');return toolResponse(closing.calls,d.item,d.reply,curTok,chat);
+        }
+        if((closing.closers>=16||quiet>=5000)&&!protocolStopAt){protocolStopAt=Date.now();diag('response.protocolRunaway',{format:'dsml',closers:closing.closers,orphan:closing.orphan});}
+        if(protocolStopAt&&hardGenerating&&!protocolStopRequested){protocolStopRequested=true;P.stopGeneration();}
+        if(protocolStopAt){
+          if(Date.now()-protocolStopAt>=5000)return {kind:'protocol_error',reason:'dsml_stop_unconfirmed',item:d.item};
+          await sleep(250);continue;
+        }
       }
 
       // Recovery belongs only to THIS send's fresh response. A slow model can leave the old command
@@ -4662,7 +4683,7 @@ return result`;
     A.loopNavSince = 0;
     let truncCount = 0;
     const MAX_TRUNC = 6;
-    let invalidToolAttempts = 0, failedToolAttempts = 0;
+    let invalidToolAttempts = 0, failedToolAttempts = 0, dsmlRepairs=0;
     // Dead-turn auto-retry budget (v1.12): ONE rescue for a dropped/quiet turn
     // per loop. Reset on every healthy turn (tool result or final text) so an
     // hour-long session can survive multiple one-off site hiccups, while a
@@ -4891,7 +4912,11 @@ return result`;
             diag("loop.referenceAfterTool",{held:calls.map(call=>call.tool||call.command).filter(Boolean).join(", ").slice(0,80)});
           }
         }
+        if(res.kind==='protocol_error'){
+          ui.banner('warn','AI tool format stopped responding','E_PROTOCOL: DeepSeek repeated closing tags and did not confirm Stop. PlazCode paused without sending another message or running a command. Stop the native reply before resuming.');break;
+        }
         if (res.kind === "parse_error") {
+          if(res.reason==='dsml_orphan'&&dsmlRepairs++>=1){ui.banner('warn','AI repeated an unusable tool format','E_PROTOCOL: the AI returned malformed DSML again after one correction. PlazCode paused; no command ran from those replies. Earlier completed commands were not repeated.');break;}
           if (++invalidToolAttempts >= MAX_INVALID_TOOL_ATTEMPTS) { ui.banner("warn", "Repeated incomplete commands", "No malformed command ran. The agent paused after " + MAX_INVALID_TOOL_ATTEMPTS + " cut-off commands in a row; ask for a smaller edit and continue when ready."); break; }
           // The command turn ended in a parse error - it NEVER ran. Paint its chip
           // as an error (owned, so the sweep won't repaint it the green ✓ "done" it
@@ -4901,6 +4926,7 @@ return result`;
           const failName = RSParse.toolNameFromText(res.raw || "") || "command";
           if (res.item) {
             const detail = res.reason === "unclosed" ? "cut off"
+              : res.reason === "dsml_orphan" ? "orphan DSML closing tags"
               : res.reason === "luaOpener" ? "missing ###LUA###"
               : res.reason === "envelope" ? "bad format"
               : "bad JSON";
@@ -4911,7 +4937,9 @@ return result`;
           // truncated/broken execute_blender_code or other JSON-only command.
           const diagnosis=RSParse.commandDiagnosis?RSParse.commandDiagnosis(res.raw||""):"";
           diag("command.invalid",{reason:res.reason,characters:(res.raw||"").length,diagnosis});
-          const parseFeedback = RS.FEEDBACK.parseError(res.reason, failName)+(diagnosis?"\nDiagnosis: "+diagnosis:"");
+          const parseFeedback = res.reason==='dsml_orphan'
+            ? '(System note: E_PROTOCOL: your last reply repeated DSML closing tags without a complete outer request. No command ran from that reply. Continue the current task using one complete fenced json command with a real "command" name and a "params" object, following the available command schema. Do not repeat native closing tags. Keep using earlier results; never rerun an earlier completed or uncertain command just to recover its output.)'
+            : RS.FEEDBACK.parseError(res.reason, failName)+(diagnosis?"\nDiagnosis: "+diagnosis:"");
           base = await submitAndGetBase((invalidToolAttempts >= SPLIT_HINT_AFTER || res.reason==="unclosed") && typeof parseFeedback === "string" ? parseFeedback + SPLIT_HINT : parseFeedback);
           continue;
         }
@@ -6405,6 +6433,14 @@ return result`;
         this.toolBox(item, "list_commands", startupResult.phase, startupResult.detail, true, "", "read");
         return;
       }
+      if(P.id==='deepseek'&&(A.started||A.starting)&&P.isAssistantItem(item)&&typeof RSParse.dsmlClosingRun==='function'&&RSParse.dsmlClosingRun(txt)?.orphan){
+        const live=(A.starting||A.running)&&!A.stop&&!A.userStopped,phase=live?'run':'err';
+        if(item.dataset.rsProtocolPhase!==phase||!item.querySelector('.rs-chip')){
+          this.chip(item,{label:'Tool format',detail:live?'Checking DSML framing':'Invalid DSML request',body:'E_PROTOCOL: the request has invalid closing tags or an unclosed outer wrapper. PlazCode checks its format before running anything.',category:'tool',phase,cls:live?'tool':'err',whole:true});
+          item.dataset.rsProtocolPhase=phase;
+        }
+        return;
+      }
 
       // NOTE on the "needs re-apply" guards below: some sites (Gemini/Angular)
       // re-render a turn's CHILDREN on every update - our chip and the
@@ -6796,6 +6832,7 @@ return result`;
     },
 
     sweep() {
+      const read=()=>{
       if (P.immutableTranscript && P.syncImmutableChips) P.syncImmutableChips();
       // Pass each turn's FOLLOWING turn too: a command chip needs it to know
       // whether its injected result was an ERROR (error-aware settle above).
@@ -6818,6 +6855,10 @@ return result`;
           this.toolBox(item, (tx && tx.textContent) || "tool", "err", "stopped", false);
         }
       }
+      };
+      // Provider getters used by classify() must share this synchronous view,
+      // rather than scanning the full conversation again for every old chip.
+      return P.withTranscriptSnapshot?P.withTranscriptSnapshot(read):read();
     },
   };
 

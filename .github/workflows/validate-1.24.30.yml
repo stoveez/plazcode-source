@@ -386,6 +386,9 @@ jobs:
         if: ${{ always() && !cancelled() }}
         run: cargo +stable test --locked --manifest-path agent/Cargo.toml
         working-directory: build-src-1.24.30/PlazCode
+      - name: Environment snapshot refresh scope and native timing
+        run: cargo +stable test --locked --manifest-path agent/Cargo.toml env_info_preserves_snapshot_and_access_flags_without_process_data -- --nocapture
+        working-directory: build-src-1.24.30/PlazCode
       - name: Build debug binary and test authenticated routes
         run: |
           cargo +stable build --locked --manifest-path agent/Cargo.toml
