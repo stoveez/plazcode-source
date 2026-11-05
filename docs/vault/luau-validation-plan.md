@@ -1,6 +1,6 @@
 ---
 title: Luau validation plan (all three stages in 1.24.30)
-updated: 2026-10-31
+updated: 2026-11-05
 ---
 # Luau validation: automatic validate -> repair -> revalidate (owner, 2026-10-31)
 
@@ -100,3 +100,5 @@ Interrupted compare/proposed-text operations invalidate sync so a later request 
 **Scope limits:** the implementation checks after an existing edit and can conditionally restore it; this is not a true pre-apply staging transaction. The dependency filter scans direct require/name mentions (up to 12), not a complete transitive graph; aliases/dynamic requires can be missed. The three-attempt limit instructs the AI rather than enforcing a hidden repair loop. These preserve existing tools and the advisory-first policy; do not claim the larger original architecture is fully delivered. `luau-lsp analyze` is the fallback engine, not a separately shipped luau-analyze executable. Actual Studio integration still needs user testing.
 
 **Actual Drive preview delivered (2026-11-01):** [Luau Settings](https://drive.google.com/file/d/1rbUnl6a1_yvHWqoslgic0UFr4wBG_-z1/view?usp=drivesdk). Actual running Linux debug native/frontend and temporary local account; zero page errors; Advisory default. Drive PNG metadata/name/MIME/236,394-byte size verified. This previews the real control, not real Studio analysis.
+
+2026-11-05 final follow-up: fullCI42039239468/runtime0a75701 ALL GREEN,132checks/0fail; exact protected full Windows/universal-Mac test ZIPs delivered via Drive/readback. Original policy, licences/rights and protections remain. Field retest next; source Public at delivery, owner reminded Private. No stable publication authorized. See docs/NOW.md.

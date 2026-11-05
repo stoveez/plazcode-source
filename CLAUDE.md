@@ -1,6 +1,6 @@
 # PlazCode private repo: instructions for any AI working here
 
-**Current:42039239468/runtime0a75701 Windows/Linux/browser jobs GREEN, Mac dual-architecture build pending. Windows path fix passed actual native test; exact Windows inner ZIP/signatures/source241/layout verified and Drive-uploaded/readback, NOT delivered yet. Wait Mac + official report, then deliver both. Source Public; no stable publish authorized.** See `docs/NOW.md`.
+**Current: all confirmed shared-protocol/ChatGPT fixes DONE; fullCI42039239468/runtime0a75701 ALL GREEN,132checks/0fail. Exact verified Windows/universal-Mac inner test ZIPs + official report delivered via Drive/readback. Source Public at delivery: repeat Private reminder until owner restores it. Field retest next; no stable publish authorized.** See `docs/NOW.md`.
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.

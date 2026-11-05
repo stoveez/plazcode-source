@@ -1,6 +1,6 @@
 ---
 title: Anti-copy plan (per-release variation + takedowns), 1.24.30
-updated: 2026-10-31
+updated: 2026-11-05
 ---
 # Anti-copy plan: owner chose "per-release variation" + "takedowns" (2026-10-31)
 
@@ -83,3 +83,5 @@ Hard rules: Windows and Mac startup unchanged, updater untouched (`Update-PlazCo
 **Latest licensing decision (2026-11-01, supersedes earlier GPL-gap status):** owner confirmed ownership of all first-party code and rejected future GPL terms. First-party 1.24.30 is now proprietary (LICENSE / LicenseRef-PlazCode-Proprietary); current headers/Rust metadata/root/browser notices updated, normal user content/use retained. Old GPL releases and third-party licences remain. Root package notices now come from current source; dependency notices ship in runtime. No source ZIP distribution; no Luraph. See license-and-branding-review.md. Full replacement validation/test ZIPs pending.
 
 **2026-11-01 final sealing audit:** zlib writes an OS-specific gzip header byte (10 Windows, 19 Mac, 3 Linux). Normalize it to 255 before content-based nonce derivation, so matching source produces identical sealed packages across systems. CI now compares public sealed-content SHA256 reports for all three platforms, in addition to matching variant descriptors. Divergent/missing/malformed proofs are tested and refuse readiness. Node layout/text-parity and optimized signed native integration pass; final corrected-source full build next.
+
+2026-11-05 final follow-up: fullCI42039239468/runtime0a75701 ALL GREEN,132checks/0fail; exact protected full Windows/universal-Mac test ZIPs delivered via Drive/readback. Original policy, licences/rights and protections remain. Field retest next; source Public at delivery, owner reminded Private. No stable publication authorized. See docs/NOW.md.

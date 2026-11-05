@@ -33,7 +33,15 @@
       "test-design-visual.js"
     ],
     "raw_log_sha256": "4a6a73d787083adb0ca97c68109ba67e0c1afb4d9a6e92cef70e3a7867775477",
-    "post_sweep_runtime_refinement": "Only ChatGPT native chunk character bound2048/Unicode preservation. Candidate whole-provider/core21browser checks and affected sender/ownership/preservation/pins checked; hosted full exact-source suite still required."
+    "post_sweep_runtime_refinement": "Only ChatGPT native chunk character bound2048/Unicode preservation. Candidate whole-provider/core21browser checks and affected sender/ownership/preservation/pins checked; hosted full exact-source suite still required.",
+    "hosted_final_exact_source": {
+      "head": "0a75701485334a93c0f435cb8367e80a8c933d84",
+      "files": 256,
+      "windows": "pass",
+      "macos": "pass",
+      "linux": "pass",
+      "linux_repeat": "pass"
+    }
   },
   "browser": {
     "chatgpt_offline_full_core_editor_checks": 21,
@@ -59,26 +67,31 @@
     "notion_bootstrap": "All5Chromium scenarios PASS after dependency/cleanup fixture correction"
   },
   "hosted": {
-    "status": "running",
+    "status": "success",
     "run_id": 42039239468,
     "head_sha": "0a75701485334a93c0f435cb8367e80a8c933d84",
     "url": "https://github.com/stoveez/plazcode-source/actions/runs/42039239468",
     "successful_jobs": [
       "native (windows-latest)",
-      "native (ubuntu-latest)",
-      "browsers"
-    ],
-    "pending_jobs": [
       "native (macos-latest)",
+      "native (ubuntu-latest)",
+      "browsers",
       "release-check"
-    ]
+    ],
+    "pending_jobs": [],
+    "checks_passed": 132,
+    "failures": 0
   },
   "drive_delivery": {
-    "status": "windows_uploaded_metadata_verified_not_delivered_waiting_mac_report"
+    "status": "delivered_both_zips_and_report",
+    "delivered_at": "2026-11-05T15:58:13.998034+00:00",
+    "metadata_readback": true,
+    "source_visibility_at_delivery": "public",
+    "private_reminder_delivered": true
   },
   "limitations": [
+    "Affected PCs and live AI/Studio field retest remains",
     "No connected live user-browser control tool; offline fixtures are not live-site screenshots",
-    "Affected PC and live AI/Studio field retest remains",
     "Owner PC vault not connected"
   ],
   "stable_publication": false,
@@ -96,7 +109,7 @@
     "lexical_checks": "unchanged slash-normalized traversal + canonical ancestor boundary",
     "native_parsing": "Windows native backslashes preserve verbatim prefix; Unix semantics unchanged",
     "stronger_test": "read actual bytes and verify canonical file identity for native/ordinary/verbatim/forward-slash spellings",
-    "fresh_full_CI": "required",
+    "fresh_full_CI": "42039239468 all green",
     "windows_evidence": [
       "2026-11-05T13:51:32.8261846Z test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s\r",
       "2026-11-05T13:51:33.6462171Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\r",
@@ -161,6 +174,74 @@
         "source_visibility_status": "access_not_verified"
       },
       "drive_metadata_readback": true
+    },
+    "macos": {
+      "platform": "macos",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3074,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+      "file": "PlazCode-macOS-1.24.30-test-lean.zip",
+      "bytes": 52967847,
+      "sha256": "8e5c06b411be444edaaf467f2a280406e68dd80d88d43351831075fcf3c6fad2",
+      "files": 3088,
+      "drive": {
+        "id": "1LSN5RBZaB6h87TSpPCJUxjIJR_Pc2I3W",
+        "title": "PlazCode-macOS-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "size": "52967847",
+        "url": "https://drive.google.com/file/d/1LSN5RBZaB6h87TSpPCJUxjIJR_Pc2I3W/view?usp=drivesdk",
+        "display_url": "https://drive.google.com/file/d/1LSN5RBZaB6h87TSpPCJUxjIJR_Pc2I3W/view?usp=drivesdk",
+        "file_or_folder": "file",
+        "created_time": null,
+        "modified_time": null,
+        "parent_ids": null,
+        "drive_id": null,
+        "current_user_can_share": null,
+        "has_augmented_permissions": null,
+        "shared": null,
+        "permissions": null,
+        "source_visibility_status": "access_not_verified"
+      },
+      "drive_metadata_readback": true
     }
+  },
+  "official_report": {
+    "file": "release-check.md",
+    "bytes": 10838,
+    "sha256": "88d9ccf0cf1947adc827cc6d92c50533f23c06ad2ac48f78a54a7ac854454d31",
+    "head_sha": "0a75701485334a93c0f435cb8367e80a8c933d84",
+    "checks_passed": 132,
+    "failures": 0,
+    "all_checks": "PASS",
+    "drive": {
+      "id": "1hED_K02XqlzuGfyaBEp7H6NE6QvnW4p6",
+      "title": "PlazCode-test-build-42039239468-report.md",
+      "mime_type": "text/markdown",
+      "size": "10838",
+      "url": "https://drive.google.com/file/d/1hED_K02XqlzuGfyaBEp7H6NE6QvnW4p6/view?usp=drivesdk",
+      "display_url": "https://drive.google.com/file/d/1hED_K02XqlzuGfyaBEp7H6NE6QvnW4p6/view?usp=drivesdk",
+      "file_or_folder": "file",
+      "created_time": null,
+      "modified_time": null,
+      "parent_ids": null,
+      "drive_id": null,
+      "current_user_can_share": null,
+      "has_augmented_permissions": null,
+      "shared": null,
+      "permissions": null,
+      "source_visibility_status": "access_not_verified"
+    },
+    "drive_metadata_readback": true
   }
 }
