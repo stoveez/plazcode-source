@@ -92,14 +92,54 @@
       "windows_native": "pass",
       "macos_native": "pass",
       "windows_macos_integration": "pass",
-      "linux_native": "pending",
-      "packages": "pending"
+      "linux_native": "pass",
+      "packages": {
+        "windows": "verified-not-uploaded",
+        "macos": "building"
+      },
+      "windows_job": "success"
     },
     "chatgpt": {
       "checks": 26,
       "history500_attribute_reads": 500,
       "decoration_transcript_scans": 1,
       "decoration_attribute_reads": 5317
+    },
+    "windows_native": {
+      "passed": 301,
+      "ignored": 2
+    },
+    "windows_env_info": {
+      "full_process_ms": 347.359,
+      "processes": 136,
+      "memory_only_ms": 0.258
+    },
+    "windows_defender": {
+      "scans": 3,
+      "result": "no threats"
+    }
+  },
+  "packages": {
+    "windows": {
+      "platform": "windows",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3070,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+      "file": "PlazCode-1.24.30-test-lean.zip",
+      "bytes": 51181275,
+      "sha256": "5a987ccea1012a80413fd573d5f23116f3520cdca439f0a2fe8c1fff85a37450",
+      "files": 3084
     }
   }
 }

@@ -45,3 +45,5 @@ Full hosted [42078807676](https://github.com/stoveez/plazcode-source/actions/run
 Final local full-JS runner completed exit0 (258files,0failures;3existing skips), native308PASS/2existing ignored. No runtime edits. Hosted full42078807676 still in progress; no artifact delivery yet.
 
 Hosted progress: browsers ALL PASS (26ChatGPT,500reads,one full transcript scan/5317attributes). All3platform fullJS258 and Linux repeat PASS. Windows/Mac native/env_info/integration PASS; Windows packaged PS5.1 install and Mac release builds running; Linux native gates still pending. No fresh artifact delivered.
+
+Windows job SUCCESS, exact inner ZIP VERIFIED:51,181,275B SHA2565a987ccea1012a80413fd573d5f23116f3520cdca439f0a2fe8c1fff85a37450, source241/signatures/new current beacons/licences/CRC/checksums/zero published layout delta. NativeWindows301PASS/2ignored; actual hosted env_info347.359ms136processes→0.258ms, Defender3scans found no threats. Linux native/env_info passed, visible desktop/auth still running. Mac universal compile still running, no failures. No Drive upload/delivery yet, full gates/report required.
