@@ -84,6 +84,22 @@
   "ci": {
     "run_id": 42078807676,
     "status": "running",
-    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42078807676"
+    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42078807676",
+    "progress": {
+      "browsers": "pass",
+      "javascript_all_platforms": "258-pass",
+      "javascript_linux_repeat": "pass",
+      "windows_native": "pass",
+      "macos_native": "pass",
+      "windows_macos_integration": "pass",
+      "linux_native": "pending",
+      "packages": "pending"
+    },
+    "chatgpt": {
+      "checks": 26,
+      "history500_attribute_reads": 500,
+      "decoration_transcript_scans": 1,
+      "decoration_attribute_reads": 5317
+    }
   }
 }

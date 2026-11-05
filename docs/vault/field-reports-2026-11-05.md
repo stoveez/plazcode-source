@@ -43,3 +43,5 @@ Baseline logs: /workspace/field-chatgpt-before.log (rtk recall356d7eb938d57328),
 Full hosted [42078807676](https://github.com/stoveez/plazcode-source/actions/runs/42078807676) started on runtime **f2fc04d**, with full localJS now complete:258files PASS/0failures. Required Public→build→verify→Drive→Private plan resent before dispatch; repo already Public. No package verified/uploaded/delivered yet. Staging /workspace/plazcode-field-build-42078807676 has updated helpers; no old ZIP reuse. Native full308PASS/2ignored and both-engine DeepSeek guards/line endings PASS. No runtime edit since dispatch.
 
 Final local full-JS runner completed exit0 (258files,0failures;3existing skips), native308PASS/2existing ignored. No runtime edits. Hosted full42078807676 still in progress; no artifact delivery yet.
+
+Hosted progress: browsers ALL PASS (26ChatGPT,500reads,one full transcript scan/5317attributes). All3platform fullJS258 and Linux repeat PASS. Windows/Mac native/env_info/integration PASS; Windows packaged PS5.1 install and Mac release builds running; Linux native gates still pending. No fresh artifact delivered.
