@@ -1,6 +1,6 @@
 {
   "date": "2026-11-05",
-  "status": "focused-pass-full-suites-and-fresh-build-pending",
+  "status": "full-local-js-and-hosted-build-running",
   "base_runtime": "0a75701",
   "latest_pushed_wip": "2fedad6",
   "supplied_evidence": {
@@ -40,7 +40,23 @@
     "dom_guard_checks": 593,
     "protected_pins": 34,
     "dsml_structural_recovery": "pass",
-    "task_streaming_and_legacy": "pass"
+    "task_streaming_and_legacy": "pass",
+    "full_native": {
+      "passed": 308,
+      "ignored": 2
+    },
+    "deepseek_browser": {
+      "engines": [
+        "chromium",
+        "firefox"
+      ],
+      "guard": "pass",
+      "line_endings": [
+        "LF",
+        "CRLF",
+        "CR"
+      ]
+    }
   },
   "limitations": [
     "DSML original upstream generation not established",
@@ -54,5 +70,11 @@
     "exact Windows/universal-Mac package verification and Drive delivery"
   ],
   "stable_published": false,
-  "fresh_delivery": null
+  "fresh_delivery": null,
+  "runtime_sha": "f2fc04dce24e18c57867edd14b3efb7e6d310007",
+  "ci": {
+    "run_id": 42078807676,
+    "status": "running",
+    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42078807676"
+  }
 }
