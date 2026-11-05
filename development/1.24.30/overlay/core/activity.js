@@ -178,6 +178,11 @@ const PlazCodeActivity = (() => {
       const match=/^[\s>#*-]*(?:\*\*)?(?:goal|objective)(?:\*\*)?\s*[:：]\s*(?:\*\*)?\s*([^\n]{4,})$/im.exec(plain);
       let goal=match&&cleanLabel(match[1]);
       if(!goal||commandLabel(goal))return;
+      // Goal is a concise field, not the rest of an assistant paragraph. Some
+      // renderers join "total.I'll..." without a newline; enforce its contract
+      // before storing the objective/plan, while retaining the full message.
+      goal=goal.split(/[.!?](?:\s+|(?=I['’](?:ll|m|ve)\b))/,1)[0].split(/\s+/).slice(0,8).join(' ').replace(/[\s,;:.!?]+$/,'');
+      if(!goal)return;
       goal=goal[0].toUpperCase()+goal.slice(1);
       saved.objective=goal;group.taskLabel=goal;
       // 1.24.30 (owner, 2026-11-01: the checklist "just repeats my prompt word for word"; owner chose: the AI's goal

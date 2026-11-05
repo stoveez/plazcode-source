@@ -125,6 +125,27 @@ async function checks(browser){
     });
     assert.equal(got.ok,true,JSON.stringify(got));assert.equal(got.text,'first line\n  indented 🧪\n\nlast line');
   });
+  await check('field native user headings and actions cannot invalidate a startup receipt',true,async page=>{
+    const state=await page.evaluate(async()=>{
+      const native=addItem;addItem=(role,text,id)=>{const item=native(role,text,id);if(role==='user'){const body=item.querySelector('.markdown');body.className='whitespace-pre-wrap';body.setAttribute('data-user-message-bubble','');const heading=document.createElement('h5');heading.className='sr-only';heading.textContent='You said:';item.prepend(heading);const copy=document.createElement('button');copy.textContent='Copy';item.append(copy);}return item;};
+      autoReply=true;sequence=['```json\n{"command":"list_commands"}\n```','PlazCode is ready.'];
+      const result=await fixture.startSession();return{ready:!!result?.ready,started:fixture.A.started,sends:sent.length,draft:provider.editorText()};
+    });assert.equal(state.ready,true,JSON.stringify(state));assert.equal(state.started,true);assert.equal(state.sends,1);assert.equal(state.draft,'');
+  });
+  await check('field failed bootstrap cannot regain Ready or execute its probe through auto-resume',true,async page=>{
+    const state=await page.evaluate(async()=>{
+      provider.typeAndSend=async text=>{addItem('user',text,'failed-bootstrap-user');addItem('assistant','```json\n{"command":"list_commands"}\n```','failed-bootstrap-probe');throw Error('fixture: native commit has no provable receipt');};
+      await fixture.startSession();await new Promise(r=>setTimeout(r,2300));return{started:fixture.A.started,running:fixture.A.running,confirmed:fixture.A._confirmedStartup,calls:nativeCalls.length,groups:document.querySelectorAll('#rs-task-checklist:not([hidden])').length};
+    });assert.equal(state.started,false,JSON.stringify(state));assert.equal(state.running,false);assert.equal(state.confirmed,false);assert.equal(state.calls,0);assert.equal(state.groups,0);
+  });
+  await check('field history enumeration performs linear DOM reads and preserves turn identity',false,async page=>{
+    const data=await page.evaluate(()=>{
+      const count=500;for(let i=0;i<count;i++)addItem(i%2?'assistant':'user','history '+i,'history-'+i);
+      const native=Element.prototype.getAttribute;let reads=0;Element.prototype.getAttribute=function(...args){reads++;return native.apply(this,args);};
+      let items;try{items=provider.allItems();}finally{Element.prototype.getAttribute=native;}
+      return{count:items.length,reads,first:provider.itemKey(items[0]),last:provider.itemKey(items.at(-1))};
+    });assert.equal(data.count,500);assert.equal(data.first,'history-0');assert.equal(data.last,'history-499');assert(data.reads<500*150,'500 turns caused '+data.reads+' attribute reads');
+  });
   await check('bounded native typing yields during slow editing, never pastes or attaches',false,async page=>{
     const got=await page.evaluate(async()=>{
       const exec=document.execCommand.bind(document);let maxLines=0,beats=0,pastes=0;

@@ -3,6 +3,8 @@ title: Home
 updated: 2026-11-05
 ---
 
+2026-11-05 NEW field reports active: ChatGPT15s false receipt + failed-startup watchdog resurrection, quadratic history scans and entire Goal paragraph task title reproduced before edits. Four focused regressions now PASS after semantic user-body reading, confirmed ChatGPT startup, linear ancestor dedup and concise stored objective. Broad regressions, DSML orphan/runaway handling and env_info process-scan removal remain. See field-reports-2026-11-05.md. Prior42039239468 ZIPs remain historical and do NOT include these new corrections.
+
 ## 2026-11-05 — all protocol fixes verified; new full test ZIPs delivered
 Full CI **42039239468**, runtime **0a75701**, ALL GREEN: Windows, universal Mac, Linux, browsers and official report **132PASS/0fail**. Windows absolute-path prefix fix passes actual-file regression; native Windows300PASS/2existing ignored; full JS256checks pass on every platform + Linux repeat. All21ChatGPT editor/startup/tool-loop checks, DeepSeek native line endings, Notion and ClickUp cross-browser checks PASS. All confirmed shared-protocol scope implemented; no stable publication.
 

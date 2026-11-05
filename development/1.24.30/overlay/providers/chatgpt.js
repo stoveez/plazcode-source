@@ -338,14 +338,35 @@ const RSProvider = (() => {
     return reply || whole;
   }
 
+  // A message wrapper also contains native headings/actions ("You said", Copy,
+  // timestamps). Read the user's content surface, never that surrounding UI.
+  // Keep the same reader for delivery receipts, task requests and startup proof.
+  function userText(item, excludeSel) {
+    const ui = [excludeSel, 'button,[role="button"],h5.sr-only,h6.sr-only,time,[data-testid="timestamp"]'].filter(Boolean).join(',');
+    for (const selector of ['[data-message-content]', '.whitespace-pre-wrap', '[data-user-message-bubble]', '.markdown,.prose']) {
+      const nodes = safeRead(() => item.matches(selector), false) ? [item] : safeQueryAll(item, selector);
+      const surfaces = nodes.filter(node => !safeClosest(node, 'button,[role="button"]') &&
+        !safeRead(() => safeClosest(node, S.msg)?.getAttribute('data-message-author-role') === 'assistant', false));
+      const seen = new Set(surfaces);
+      const top = surfaces.filter(node => {
+        for (let parent = safeRead(() => node.parentElement, null); parent && parent !== item; parent = safeRead(() => parent.parentElement, null)) if (seen.has(parent)) return false;
+        return true;
+      });
+      if (top.length) return top.map(node => textWithout(node, excludeSel)).join('\n');
+    }
+    return textWithout(item, ui);
+  }
+
   function itemText(item) {
     if (!item) return "";
     if (isAssistantItem(item)) return assistantText(item);
+    if (isUserItem(item)) return userText(item);
     return textWithout(item);
   }
 
   function classifyText(item, excludeSel) {
     if (isAssistantItem(item)) return assistantText(item, excludeSel);
+    if (isUserItem(item)) return userText(item, excludeSel);
     return textWithout(item, excludeSel);
   }
 
@@ -442,17 +463,16 @@ const RSProvider = (() => {
     // lastAssistant()/waitForResponse read the other. Keep the innermost same-role
     // node, which is the one closest to the actual message content, and discard
     // only its redundant same-role ancestors. Different-role nesting is preserved.
-    const contains = (parent, child) => {
-      if (!parent || !child || parent === child) return false;
-      try { if (safeRead(() => parent.contains, null)) return safeRead(() => parent.contains(child), false); } catch {}
-      for (let n = safeRead(() => child.parentElement, null); n; n = safeRead(() => n.parentElement, null)) if (n === parent) return true;
-      return false;
-    };
-    return items.filter((item) => {
-      const r = role(item);
-      if (!r) return true;
-      return !items.some((other) => other !== item && role(other) === r && contains(item, other));
-    });
+    // Mark redundant same-role ancestors once. Comparing every pair of turns
+    // made each transcript read quadratic (250,000 attribute reads at500turns).
+    const roles = new Map(items.map(item => [item, role(item)])), redundant = new Set();
+    for (const item of items) {
+      const r = roles.get(item); if (!r) continue;
+      for (let parent = safeRead(() => item.parentElement, null); parent; parent = safeRead(() => parent.parentElement, null)) {
+        if (roles.get(parent) === r) redundant.add(parent);
+      }
+    }
+    return items.filter(item => !redundant.has(item));
   };
   const assistantItems = () => allItems().filter(isAssistantItem);
   const assistantCount = () => assistantItems().length;
@@ -1435,6 +1455,7 @@ const RSProvider = (() => {
     followupPlaceholderTargets() {const ed=getEditor();return ed ? [ed,...safeQueryAll(ed, '[data-placeholder], [placeholder], [aria-placeholder]')] : [];},
     setInputLock, writeDraft, typeAndSend, clearEditor, stopGeneration,
     guardedSender: true, authoritativeSendResult: true, strictSendReceipt: true,
+    requireConfirmedStartup: true,
     cancelPendingSends() { ++sendGeneration; },
     ignoreMutationRecords(records) {
       if (!safeRead(() => document.documentElement.classList.contains('rs-chatgpt-injecting'), false) || !records.length) return false;

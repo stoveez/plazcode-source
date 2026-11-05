@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),Activity=require('./core/activity.js');
+const activity=Activity.create();activity.sync(true,'field-chat',1);activity.task('Read tools one per turn, fifteen total as a test','request');
+const reply="Goal: Read tools one per turn, 15 total.I'll read the help topics one command per turn as requested, starting with the list";
+activity.record(activity.active().id,'reply-one','assistant',reply);
+const group=activity.active();
+assert.equal(group.taskLabel,'Read tools one per turn, 15 total');
+assert.equal(group.plan.items[0].label,group.taskLabel);
+assert(group.taskLabel.split(/\s+/).length<=8,'a goal field must not become a paragraph');
+assert.equal(activity.read(group.id).messages[0].text,reply,'the complete reply remains available as conversation data');
+console.log('PASS field task title stores only the concise goal, preserves the full response separately and keeps a single task row.');
