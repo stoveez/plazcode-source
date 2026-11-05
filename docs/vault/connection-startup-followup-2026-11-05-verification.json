@@ -24,7 +24,11 @@
     "native_append_tests": 3,
     "append_extra_and_legacy_batch_guard": "pass",
     "healthy_differential": 70,
-    "dom_resilience": 325
+    "dom_resilience": 325,
+    "full_native": {
+      "passed": 311,
+      "ignored": 2
+    }
   },
   "owner_dom": {
     "loaded_build": "2026-11-05_native-message-bodies",
@@ -61,6 +65,14 @@
       226,
       315
     ],
-    "new_beacon": "2026-11-05_request-lifecycle"
-  }
+    "new_beacon": "2026-11-05_request-lifecycle",
+    "short_followup": {
+      "before_edits": 1,
+      "required_edits": 2,
+      "after_quick_and_conversation": "pass",
+      "scope": "remaining already-requested work after actual edits only"
+    }
+  },
+  "cancelled_preliminary_ci": 42118892352,
+  "full_javascript": "preliminary stopped for final short-followup regression; final run pending"
 }

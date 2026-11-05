@@ -6,9 +6,9 @@ assert.equal(typeof guard.unfinishedProgress,'function','explicit unfinished wor
 for(const text of [progress,'Step 1 is complete. Next I will create the remaining requested files.'])assert.equal(guard.unfinishedProgress(text),true,text);
 for(const text of ['All requested work is complete. Next you can deploy it.','The first part is done. Would you like me to continue?','The first part is done. Next, paste your API key to continue.','The first part is done. Next you need to configure the account.','The first part is done. Next, if you want, I can add optional tests.','Example: "The first part is done. Next is another part."','```text\n'+progress+'\n```','The first part is done. I need your approval before the next part.'])assert.equal(guard.unfinishedProgress(text),false,text);
 const core=fs.readFileSync(process.argv[2] || 'core/main.js','utf8'),start=core.indexOf('  async function agentLoop('),end=core.indexOf('  // Mark the current assistant turn',start);
-async function run({repeat=false,question=false,readOnly=false,stop=false}={}){
+async function run({repeat=false,question=false,readOnly=false,stop=false,kind}={}){
  const sent=[],ran=[],finished=[],errors=[],banners=[];let n=0;
- const A={started:true,sessionGen:1,toolList:[],taskRequest:'Create the requested two files',imageTools:new Set(),pendingReference:''};
+ const A={requestKind:kind,started:true,sessionGen:1,toolList:[],taskRequest:'Create the requested two files',imageTools:new Set(),pendingReference:''};
  const tool=()=>({kind:'tool',text:'command',item:{dataset:{}},calls:[{tool:readOnly?'workspace_info':'write_file',arguments:{path:n?'second.txt':'first.txt',content:'safe'}}]});
  const box={Map,Set,Date,Promise,A,document:{hidden:false},RS:{toolCategory:name=>name==='write_file'?'edit':'read',FEEDBACK:{}},PlazCodeStallGuard:guard,PlazCodeToolGuard:{check:()=>[],repair:x=>x},
  P:{id:'deepseek',displayName:'DeepSeek',conversationKey:()=> 'chat-a',allItems:()=>[],isUserItem:()=>false,assistantCount:()=>n,lastAssistant:()=>null,isHardGenerating:()=>false,editorText:()=>'',setInputLock(){}},
@@ -24,6 +24,7 @@ async function run({repeat=false,question=false,readOnly=false,stop=false}={}){
 }
 (async()=>{
  let r=await run();assert.equal(r.ran.length,2);assert.equal(r.sent.length,3,'one continuation between two actual tool results');assert(r.sent[1].includes('Do not repeat'));assert(r.finished.includes(true));
+ for(const kind of ['quick','conversation']){r=await run({kind});assert.equal(r.ran.length,2,'short follow-up retains requested project work');assert(r.finished.includes(true));}
  r=await run({repeat:true});assert.equal(r.ran.length,1);assert.equal(r.sent.length,2);assert(!r.finished.includes(true),'repeated progress is incomplete');assert(r.banners.includes('The AI stopped before finishing'));
  for(const opts of [{question:true},{readOnly:true},{stop:true}]){r=await run(opts);assert.equal(r.sent.length,opts.stop?1:1,'no unsolicited continuation');assert.equal(r.ran.length,1);}
  console.log('PASS explicit remaining work, actual tools/progress/tools/final flow, repeated-progress bound, questions, read-only work and Stop.');

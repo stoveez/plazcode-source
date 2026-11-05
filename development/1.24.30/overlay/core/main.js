@@ -4998,7 +4998,6 @@ return result`;
             continue;
           }
           if (!A.stop && !A.userStopped && !A.waitingForClarification && completedWork>0 &&
-              A.requestKind!=='quick' && A.requestKind!=='conversation' &&
               typeof PlazCodeStallGuard!=='undefined' && PlazCodeStallGuard.unfinishedProgress?.(body)) {
             // One consecutive reminder; only actual new tool work replenishes it.
             if(progressNudges++===0){
@@ -5198,7 +5197,7 @@ return result`;
           };
 
           // 1.24.24: everything PlazCode adds to a result fits the user's input limit (see fitExtra).
-          const quickNote = A.requestKind==='quick'||A.requestKind==='conversation' ? '\nThis is a quick user request. Answer directly and briefly; do not start a task, checklist, project investigation or unrelated work.' : '';
+          const quickNote = A.requestKind==='quick'||A.requestKind==='conversation' ? (completedWork>0 ? '\nFinish only any remaining work already requested by the user, then answer directly and briefly. Do not start unrelated tasks.' : '\nThis is a quick user request. Answer directly and briefly; do not start a task, checklist, project investigation or unrelated work.') : '';
           const failNote = failedToolAttempts>=3 ? "\n\n(System note: " + failedToolAttempts + " commands in a row failed. Do not repeat the same command. Re-read the error, inspect the current state, then try a different approach.)" : "";
           const reserve = quickNote.length + failNote.length + stateTag.length + 80;
           let toSend = formatToolFeedback(completeFeedback,call,A.pendingImages,isErr);
