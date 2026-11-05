@@ -1,6 +1,6 @@
 ---
 title: ChatGPT page freezes and stranded tool results
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 
 Owner reports the WHOLE ChatGPT page freezes at startup and on tool calls. A fifteen-call sequence stayed stuck around call five, with the composer expanded under the working cover. This is separate from Windows startup integrity; retain the signed-app fix.
@@ -34,3 +34,5 @@ Healthy differential70/provider-preservation967/protected34, recovery wiring5/st
 2026-11-04 final sender check: native edits are bounded by BOTH four lines and2048characters, preserving surrogate pairs; otherwise a serialized result could still arrive in one unbounded JSON line. New real-ProseMirror long-line case FAILS the previous sender at the character-bound assertion and PASSes the corrected sender. All21 complete browser checks PASS on the candidate (all startup/Safety-context cases,180/450line preservation, exact-once15calls and dropped-result recovery); native307 PASS/2existing ignored after the no-undo-ID Safety fix. Final broad JS is running; no generated-source preparation until it completes. Fresh CI/Drive ZIPs still pending.
 
 2026-11-04 final local checks: all shared-protocol/ChatGPT changes implemented (runtime48029be). Full JS sweep247PASS +9stale fixture failures; all9corrected targeted reruns PASS,256verified/0unresolved. Only subsequent runtime change is the separately tested ChatGPT2048char/Unicode chunk bound. Native307PASS/2existing ignored after Safety no-ID fix. All21 offline ChatGPT editor/core checks and ClickUp startup/exact large-page reconstruction/masking/one-dispatch PASS. Final source/pins/differential/ownership checks PASS. Fresh full CI and exact Drive ZIP/report delivery NEXT; no new ZIPs yet. Requires app replacement+extension reload. Canonical evidence: tool-protocol-2026-11-04-verification.json and tool-protocol-audit-2026-11-04.md. Old dated entries below are historical.
+
+2026-11-05 Windows follow-up: full run41888973469 passed ALL browser/Mac/Linux jobs and complete JS suites (including Linux repeat); Windows failed only the new in-workspace absolute-path test. Its special Windows prefix was converted from backslashes to forward slashes before native path parsing. Separate lexical '/' traversal checks from native backslash Path parsing; no permission/canonical boundary rule relaxed. Expanded regression reads actual file contents and checks canonical identity through native/forward-slash/ordinary/verbatim spellings. Local native307PASS/2existing ignored on the correction. Fresh full cross-platform build required; do not deliver failed41888973469 artifacts. New Windows code only; earlier JS/browser results remain valid.

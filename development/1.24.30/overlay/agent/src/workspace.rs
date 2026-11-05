@@ -143,8 +143,8 @@ impl Workspace {
         })
     }
 
-    /// Sandbox core. `rel` must be relative; ".." may not climb above the
-    /// root; the deepest existing ancestor is canonicalized against the
+    /// Sandbox core. Paths must stay inside the workspace; ".." may not climb
+    /// above the root. The deepest existing ancestor is canonicalized against the
     /// canonical root to defeat symlink/junction escapes.
     /// In FULL PC ACCESS mode absolute paths anywhere are allowed, `~` and
     /// `%VAR%` are expanded, and a relative path may climb out of the workspace
@@ -173,13 +173,18 @@ impl Workspace {
         }
         let raw = raw.replace('\\', "/");
         if raw.is_empty() { return Ok(self.canon_root.clone()); }
-        let absolute=Path::new(&raw).is_absolute();
+        // Lexical traversal checks use '/', but Windows verbatim prefixes must
+        // retain native backslashes when parsed or passed to the filesystem.
+        #[cfg(windows)] let native_raw=raw.replace('/', "\\");
+        #[cfg(not(windows))] let native_raw=raw.clone();
+        let native_path=Path::new(&native_raw);
+        let absolute=native_path.is_absolute();
         if is_windows_absolute(&raw) && !absolute {
             return Err(format!("E_PATH: '{raw}' is not a path on this operating system. Use workspace_info to get the workspace root ({}).",self.root_display()));
         }
         // FULL ACCESS: `../other` climbs out of the workspace on purpose.
         if full && escapes_root(&raw) {
-            let p = normalize_lexically(&self.canon_root.join(&raw));
+            let p = normalize_lexically(&self.canon_root.join(native_path));
             if !self.inside_allowed(&p) {
                 return Err(format!("'{raw}' is outside the folders PlazCode may use. Add its folder under Safety → Allowed folders, or work inside the workspace."));
             }
@@ -192,12 +197,12 @@ impl Workspace {
         if !absolute && escapes_root(&raw) {
             return Err(format!("path '{raw}' is outside the workspace. Full PC access is OFF, so PlazCode cannot leave the workspace folder; ask the user to switch Permissions to Full if the task needs it."));
         }
-        for comp in Path::new(&raw).components().filter(|_| !absolute) {
+        for comp in native_path.components().filter(|_| !absolute) {
             if !matches!(comp, Component::Normal(_) | Component::CurDir | Component::ParentDir) {
                 return Err(format!("path '{raw}' is outside the workspace"));
             }
         }
-        let joined = if absolute {PathBuf::from(&raw)} else {self.canon_root.join(&raw)};
+        let joined = if absolute {native_path.to_path_buf()} else {self.canon_root.join(native_path)};
         // Symlink/junction defense on the existing part of the path.
         let mut probe = joined.clone();
         let mut tail: Vec<PathBuf> = Vec::new();
@@ -2260,6 +2265,11 @@ mod tests {
         let ws=temp_ws("absolute-in-root");
         let existing=ws.canon_root.join("existing.txt");std::fs::write(&existing,"same file").unwrap();
         assert_eq!(ws.resolve_path(&existing.to_string_lossy(),true).unwrap(),existing);
+        for spelling in [existing.to_string_lossy().into_owned(),existing.to_string_lossy().replace('\\',"/"),deverbatim_string(&existing),deverbatim_string(&existing).replace('\\',"/")] {
+            let resolved=ws.resolve_path(&spelling,true).unwrap();
+            assert_eq!(std::fs::read_to_string(&resolved).unwrap(),"same file","{}",resolved.display());
+            assert_eq!(std::fs::canonicalize(&resolved).unwrap(),existing,"{spelling}");
+        }
         let missing=ws.canon_root.join("new/sub/file.txt");
         assert_eq!(ws.resolve_path(&missing.to_string_lossy(),false).unwrap(),missing);
         let sibling=ws.canon_root.with_file_name(format!("{}-sibling",ws.canon_root.file_name().unwrap().to_string_lossy()));

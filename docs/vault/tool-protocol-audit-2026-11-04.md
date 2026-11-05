@@ -1,6 +1,6 @@
 ---
 title: Shared tool protocol audit and improvements
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 
 Owner explicitly answered **“yeah fix everything”**: include all confirmed DeepSeek-list gaps plus the active ChatGPT freeze/stuck-handoff work in a fresh full Windows/Mac test build. Work only on claude/plazcode-dev, no helpers. No stable publish authorized. **Implementation complete locally; local broad checks verified with corrected fixtures; fresh hosted CI and exact Drive delivery pending.** Source48029be. Prior cancelled41772418802 must never be delivered.
@@ -29,3 +29,5 @@ Owner explicitly answered **“yeah fix everything”**: include all confirmed D
 - Repo Public at last check; never change visibility yourself. No stable release/main/release/feed/source ZIP action authorized. Browser skill checked, no associated js/control tool exposed: actual live-site screenshot/profile unavailable; never substitute an offline fixture. Repo vault updated; owner's PC vault folder not connected.
 
 2026-11-04 hosted fixture follow-up: cancelled41887427358 after isolated Notion browser test lacked asStateTag and kept its browser alive following failure. Test now supplies the scoped state dependency and always closes its browser; all5Chromium startup scenarios PASS (success/block-success/wrong-command/composer throw/bridge offline). Product runtime48029be UNCHANGED. Replacement full CI next; never deliver artifacts from the cancelled run. Local256JS checks/native307/ChatGPT21/ClickUp exact paging proof remains.
+
+2026-11-05 Windows follow-up: full run41888973469 passed ALL browser/Mac/Linux jobs and complete JS suites (including Linux repeat); Windows failed only the new in-workspace absolute-path test. Its special Windows prefix was converted from backslashes to forward slashes before native path parsing. Separate lexical '/' traversal checks from native backslash Path parsing; no permission/canonical boundary rule relaxed. Expanded regression reads actual file contents and checks canonical identity through native/forward-slash/ordinary/verbatim spellings. Local native307PASS/2existing ignored on the correction. Fresh full cross-platform build required; do not deliver failed41888973469 artifacts. New Windows code only; earlier JS/browser results remain valid.
