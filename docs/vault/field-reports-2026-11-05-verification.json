@@ -1,6 +1,6 @@
 {
   "date": "2026-11-05",
-  "status": "full-local-js-and-hosted-build-running",
+  "status": "local-full-gates-pass-hosted-build-running",
   "base_runtime": "0a75701",
   "latest_pushed_wip": "2fedad6",
   "supplied_evidence": {
@@ -56,7 +56,18 @@
         "CRLF",
         "CR"
       ]
-    }
+    },
+    "full_javascript": {
+      "files_passed": 258,
+      "failures": 0,
+      "existing_skips": [
+        "test-v115.js",
+        "test-bridges.js",
+        "test-design-visual.js"
+      ],
+      "exit_code": 0
+    },
+    "healthy_differential_final": "70-pass-in-full-run"
   },
   "limitations": [
     "DSML original upstream generation not established",
@@ -64,8 +75,6 @@
     "owner PC vault not connected"
   ],
   "remaining": [
-    "full JavaScript suite",
-    "full Rust suite",
     "new full CI",
     "exact Windows/universal-Mac package verification and Drive delivery"
   ],
