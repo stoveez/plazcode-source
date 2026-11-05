@@ -1620,7 +1620,7 @@
       if (newReply && hardGenerating && !A.stop && typeof PlazCodeStallGuard !== "undefined" && PlazCodeStallGuard.hangDecision) {
         const approvalBox = document.getElementById("rs-approve");
         const hang = PlazCodeStallGuard.hangDecision({
-          now: Date.now(), stopVisible: true, replyText: d.reply || "", lastGrowthAt: hardProgressAt,
+          now: Date.now(), stopVisible: !(P.responsePending && P.responsePending()), replyText: d.reply || "", lastGrowthAt: hardProgressAt,
           userTyping: !!(P.editorText && String(P.editorText() || "").trim()), confirmOpen: !!(approvalBox && !approvalBox.hidden),
           tries: A.hangTries || {},
         });
@@ -4709,7 +4709,7 @@ return result`;
     // 1.24.10: Plan Mode / deep thinking levels ask for a written plan first.
     // Some sites end the turn after the plan, which used to finish the run with
     // nothing built. Continue such a plan-only reply once per loop.
-    let planContinues = 0, toolsThisLoop = 0;
+    let planContinues = 0, toolsThisLoop = 0, completedWork = 0, progressNudges = 0;
     // 1.24.21: a reply that says a command was sent (or will be) but holds no command block. One calm nudge, then
     // a clear banner; the counter resets whenever a real command arrives so it can never loop.
     let claimNudges = 0;
@@ -4997,6 +4997,18 @@ return result`;
             base = await submitAndGetBase(PLAN_CONTINUE_FEEDBACK);
             continue;
           }
+          if (!A.stop && !A.userStopped && !A.waitingForClarification && completedWork>0 &&
+              A.requestKind!=='quick' && A.requestKind!=='conversation' &&
+              typeof PlazCodeStallGuard!=='undefined' && PlazCodeStallGuard.unfinishedProgress?.(body)) {
+            // One consecutive reminder; only actual new tool work replenishes it.
+            if(progressNudges++===0){
+              diag('loop.unfinishedProgress',{chars:body.length});
+              base=await submitAndGetBase('(System note: Your last reply describes a completed part and another part still to do. Continue only the remaining work already requested by the user. Do not repeat completed commands or expand the scope. Send the next complete command, or ask the user if input or approval is needed. If all requested work is complete, state that clearly.)');
+              continue;
+            }
+            ui.banner('warn','The AI stopped before finishing','The AI repeated a progress update without another command. Review the remaining work in the chat before continuing.');
+            break;
+          }
           // 1.24.21 stall fix: "I've sent the command ... when its output returns I'll update" with no command
           // block used to count as a finished answer and the run just sat there. Nudge once, then say so plainly.
           if (!A.stop && typeof PlazCodeStallGuard !== "undefined" && PlazCodeStallGuard.claimsUnsentCommand && PlazCodeStallGuard.claimsUnsentCommand(body)) {
@@ -5023,7 +5035,7 @@ return result`;
           void finishTaskCheckpoint(true);
           activity.sync(false, P.conversationKey(), undefined, {collapse:true});
           const next = await cowork.take();
-          if (next && !A.stop) { completed = false; await beginTaskCheckpoint(); base = next.base; continue; }
+          if (next && !A.stop) { completed = false; completedWork=0;progressNudges=0; await beginTaskCheckpoint(); base = next.base; continue; }
           if (cowork.snapshot().pending.length && !cowork.snapshot().paused && !cowork.snapshot().sending) {
             // The idle pump waits out a late native busy signal or an existing draft.
             setTimeout(pumpCowork, 450);
@@ -5136,6 +5148,11 @@ return result`;
             break;
           }
           const isErr = toolFailed || feedbackIsError(feedback);
+          if(!isErr){
+            progressNudges=0;
+            const workCalls=call.tool==='plazcode_batch' ? call.arguments?.calls || [] : [call];
+            if(workCalls.some(c=>['edit','generate'].includes(RS.toolCategory(c.tool || c.command))))completedWork++;
+          }
           failedToolAttempts=isErr ? failedToolAttempts+1 : 0;
           const outBody = stripOutputPrefix(feedback);
           if(!isErr && /^(?:script_read|read_file|read_scripts|script_read_analysis|script_analysis)$/.test(bareToolName(call.tool))){A.learningReads=[...(A.learningReads||[]),{text:PlazCodeReliability.redact(outBody).slice(0,4000),project:currentProject,chat:P.conversationKey(),session:A.sessionGen}].slice(-6);}

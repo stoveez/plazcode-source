@@ -604,8 +604,29 @@ const RSProvider = (() => {
       safeRead(() => child.nodeType, 0) === 3 && /^(?:(?:generation|response)\s+)?(?:stopped|arrêté|arrété|已停止|停止生成|已暂停)[.!]?$/i.test((safeRead(() => child.textContent, "") || "").trim())));
   }
 
+  // Only metadata from our extension worker, scoped to this document and chat.
+  // DOM growth remains the fallback when browser request observation is unavailable.
+  let requestRevision=-1, openRequests=[], requestsInstalled=false, freshRequestAssignment=null;
+  function receiveRequests(message) {
+    if (!message || !Number.isSafeInteger(message.revision) || message.revision<=requestRevision || !Array.isArray(message.active)) return;
+    requestRevision=message.revision;
+    openRequests=message.active.filter(r=>typeof r.id==='string' && typeof r.path==='string' && Number.isFinite(r.startedAt));
+  }
+  function installRequestObserver() {
+    if(requestsInstalled || typeof chrome==='undefined' || !chrome.runtime?.onMessage || !chrome.runtime?.sendMessage)return;
+    requestsInstalled=true;
+    chrome.runtime.onMessage.addListener(message=>{if(message?.type==='rs-deepseek-requests')receiveRequests(message);});
+    Promise.resolve(chrome.runtime.sendMessage({type:'deepseek-requests'})).then(result=>{if(result?.ok)receiveRequests(result);}).catch(()=>{});
+  }
+  function responsePending() {
+    const path=safeRead(()=>location.pathname,'');
+    return openRequests.some(r=>r.path===path || (freshRequestAssignment && path===freshRequestAssignment.path &&
+      r.path==='/' && r.startedAt>=freshRequestAssignment.since));
+  }
+
   // Growth-tolerant "is a generation in progress?" - the response watcher's signal.
   function isGenerating() {
+    if (responsePending()) return true;
     if (safeQuery(document, S.generating)) return true; // spin-up spinner
     const btn = getSendBtn();
     if (isStopBtn(btn)) return true;                       // answer phase: stop square
@@ -618,6 +639,7 @@ const RSProvider = (() => {
   // button doubles as stop, so sending mid-generation aborts the turn). Does NOT
   // linger after the answer ends.
   function isBusyNow() {
+    if (responsePending()) return true;
     if (safeQuery(document, S.generating)) return true;
     const btn = getSendBtn();
     if (isStopBtn(btn)) return true;
@@ -629,7 +651,7 @@ const RSProvider = (() => {
   // HARD signal only (the visible stop-square): never true just because a
   // conversation (re)loads or the user scrolls. Used for the Stop button.
   function isHardGenerating() {
-    return isStopBtn(getSendBtn());
+    return responsePending() || isStopBtn(getSendBtn());
   }
 
   // ── Diagnostic breakdown of isGenerating() ────────────────────────────────
@@ -652,6 +674,7 @@ const RSProvider = (() => {
       const path = btn && safeQuery(btn, "path");
       const rp = btn && safeQuery(btn, "rect");
       return {
+        requestPending: responsePending(),
         spinner: !!safeQuery(document, S.generating),
         stopBtn: isStopBtn(btn),
         btnGlyph: rp ? "rect" : (path ? (safeRead(() => path.getAttribute("d"), null) || "").slice(0, 6) : "none"),
@@ -862,6 +885,7 @@ const RSProvider = (() => {
       assertSendOwner(job);
       // Re-read after every await: a former send button may now be Stop, or belong to another draft.
       const live=job.continue?findContinueBtn():getSendBtn();
+      if(responsePending())throw sendError("DeepSeek is still responding. Nothing was sent.");
       if(!live || (!job.continue && (isStopBtn(live) || safeRead(()=>live.getAttribute("aria-disabled"),null)==="true")))throw sendError("DeepSeek's send control changed. Nothing was sent.");
       const users=userCount(),assistants=assistantCount(),before=job.continue?streamLen():0;
       if(!job.continue && editorText()!==job.typedText)throw sendError("Your draft changed before sending. Nothing was sent.","DEEPSEEK_CANCELLED");
@@ -869,17 +893,19 @@ const RSProvider = (() => {
       job.awaitingChatAssignment=!job.continue&&!job.owner.chat;
       if(job.awaitingChatAssignment)job.beforeUserItems=new Set(allItems().filter(isUserItem));
       let accepted;
+      job.commitAt=Date.now();
       try {
         live.click(); // exactly ONE commit; never poll by clicking again
         accepted=await waitSend(()=>{
-          const landed=isHardGenerating() || userCount()>users || assistantCount()>assistants || (job.continue && streamLen()>before);
+          const landed=isStopBtn(getSendBtn()) || userCount()>users || assistantCount()>assistants || (job.continue && streamLen()>before);
           const chat=conversationKey();
-          if(landed && !job.owner.chat && chat){
+          if(landed && !job.owner.chat){
             // Counts/Stop alone can belong to a different conversation. Require
             // the new user row to contain the text this operation actually sent.
-            if(!job.awaitingChatAssignment || !confirmsFreshChatSend(job))return false;
+            if(!chat || !job.awaitingChatAssignment || !confirmsFreshChatSend(job))return false;
             if(job.assignedChat && chat!==job.assignedChat)return false;
             job.owner.chat=chat;
+            freshRequestAssignment={path:chat,since:job.commitAt};
           }
           return landed;
         },12000,job);
@@ -894,11 +920,36 @@ const RSProvider = (() => {
     while(Date.now()-started<timeout){const ready=safePredicate(predicate);assertSendOwner(job);if(ready)return true;await sleepForSend(120,job);}
     return false;
   }
+  function holdInputGeometry(editor, holdFrame) {
+    const nodes=[editor], frame=holdFrame ? barAnchor() : null;
+    if(frame && frame!==editor && frame!==document.body && frame!==document.documentElement && safeRead(()=>frame.contains(editor),false))nodes.push(frame);
+    const owned=[];
+    for(const node of nodes){
+      const height=parseFloat(safeStyle(node).height) || safeRect(node).height;
+      if(!node?.style || !(height>0))continue;
+      const size=height+'px';
+      for(const name of ['min-height','max-height']){
+        owned.push({node,name,value:node.style.getPropertyValue(name),priority:node.style.getPropertyPriority(name),size});
+        node.style.setProperty(name,size,'important');
+      }
+    }
+    return ()=>{
+      for(const {node,name,value,priority,size} of owned){
+        if(node.style.getPropertyValue(name)!==size || node.style.getPropertyPriority(name)!=='important')continue;
+        if(value)node.style.setProperty(name,value,priority);else node.style.removeProperty(name);
+      }
+      // Ask the native autosizer to measure the final/current draft after release.
+      if(safeRead(()=>editor.isConnected,false))editor.dispatchEvent(new Event('input',{bubbles:true}));
+    };
+  }
   async function typeAndSendRaw(text, images, opts, job) {
     assertSendOwner(job);
+    if(responsePending())throw sendError("DeepSeek is still responding. Nothing was sent.");
     const editor=getEditor();if(!editor)throw sendError("DeepSeek input box not found.");
     const current=editorText();if(current.trim())throw sendError("Your draft changed or still contains text. PlazCode kept your draft; clear it before sending an automatic request.","DEEPSEEK_CANCELLED");
     job.editor=editor;job.previousDraft=current;
+    const releaseGeometry=holdInputGeometry(editor,!(images && images.length));
+    try {
     // Browser textareas normalize CRLF and bare CR to LF. Compare/authorize the
     // native representation, so Windows results do not fail the exact-draft
     // check and remain stranded even though their visible content is correct.
@@ -913,7 +964,8 @@ const RSProvider = (() => {
     const ready=await waitSend(()=>{const b=getSendBtn();return b && !isStopBtn(b) && safeRead(()=>b.getAttribute("aria-disabled"),null)!=="true";},15000,job);
     if(!ready)throw sendError("DeepSeek is not ready to send. PlazCode paused without another attempt.");
     assertSendOwner(job);if(editorText()!==text)throw sendError("The draft changed before sending. Nothing was sent.","DEEPSEEK_CANCELLED");
-    return commitSend(job,getSendBtn());
+    return await commitSend(job,getSendBtn());
+    } finally { releaseGeometry(); }
   }
   function observeManualSend() {
     cancelPendingSends();
@@ -1235,13 +1287,14 @@ const RSProvider = (() => {
     // (seen live: 60Hz chip rebuild spam + done→run→done chip flapping).
     thinkingSel: S.thinking,
     init({ diag: d, sendContext, pacingRequest } = {}) {
+      installRequestObserver();
       if (d) diag = d;
       if(typeof sendContext==="function")_contextReader=sendContext;
       if(typeof pacingRequest==="function")_pacingRequest=pacingRequest;
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsDsVer).
       // BUMP DS_VER on meaningful deepseek.js changes worth verifying live.
-      try { document.documentElement.setAttribute("data-rs-ds-ver", "2026-11-05_orphan-protocol"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-ds-ver", "2026-11-05_request-lifecycle"); } catch {}
     },
     // turns
     allItems, isUserItem, isAssistantItem, itemText, classifyText,
@@ -1254,7 +1307,7 @@ const RSProvider = (() => {
     authoritativeSendResult: true,
     guardedSender: true,
     sendFailureDetail: () => _lastFailure,
-    isGenerating, isBusyNow, isHardGenerating, genDebug,
+    isGenerating, isBusyNow, isHardGenerating, responsePending, genDebug,
     enforceComposer, ensureComposerReady,
     turnHalted, findContinueBtn, clickContinueBtn,
     scanError, scanBusy, isTooLongMsg, isBusyMsg,

@@ -1,6 +1,6 @@
 # AGENTS.md - instructions for any AI working in this repo (Codex, Claude, or others)
 
-**Current: bridge/startup/BDS follow-up WIP. Bridge6 and all27ChatGPT browser checks PASS, owner exact H4/hidden-bubble receipt failure reproduced/fixed. Namespace rejected with direct correction. Native append implemented:3native + JS prefix/legacy/batch tests PASS. DeepSeek progress completion/request lifecycle/composer geometry fixes + full suites/fresh ZIPs pending. Prior42078807676 lacks follow-up. Source Public; no stable publish.** See `docs/NOW.md`.
+**Current: follow-up WIP. Bridge6/ChatGPT27/native append3+JS/DeepSeek lifecycle and bounded-progress tests PASS. Composer root reproduced and clamp implemented; expanded Chromium/Firefox checks PASS; full suites/hosted installed request proof/fresh ZIPs pending. Prior42078807676 lacks follow-up. Source Public; no stable publish.** See `docs/NOW.md`.
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.

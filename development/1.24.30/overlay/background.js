@@ -7,6 +7,62 @@
 // Contract with content.js: every sendMessage ALWAYS gets a response object,
 // even when the bridge is offline. The agentic loop must never hang waiting.
 
+// Passive browser lifecycle only: no request bodies, headers, responses or queries.
+// webRequest completes AFTER the response body, even when native Stop is absent.
+const deepSeekRequests = (() => {
+  const api = chrome.webRequest, store = chrome.storage.session, key = 'rs-deepseek-open-requests';
+  if (!api?.onBeforeRequest || !api?.onCompleted || !api?.onErrorOccurred) return null;
+  let state = {revision:0, active:[]};
+  let chain = Promise.resolve(store?.get(key)).then(saved => {
+    const old = saved?.[key];
+    if (old && Number.isSafeInteger(old.revision) && Array.isArray(old.active)) state = old;
+  }).catch(() => {});
+  const enqueue = fn => { chain = chain.then(fn).catch(() => {}); return chain; };
+  const sameDocument = (r, tabId, documentId) => r.tabId === tabId && (!documentId || !r.documentId || r.documentId === documentId);
+  const view = (tabId, documentId) => ({ok:true, revision:state.revision,
+    active:state.active.filter(r => sameDocument(r,tabId,documentId)).map(({id,path,startedAt}) => ({id,path,startedAt}))});
+  async function saveAndNotify(record) {
+    state.revision++;
+    try { await store?.set({[key]:state}); } catch {}
+    try {
+      const options = record.documentId ? {documentId:record.documentId} : {frameId:0};
+      await chrome.tabs.sendMessage(record.tabId,{type:'rs-deepseek-requests',...view(record.tabId,record.documentId)},options);
+    } catch {} // A closed/replaced document has no recipient; never forward to another tab.
+  }
+  const filter = {urls:['https://chat.deepseek.com/api/v0/chat/*'],types:['xmlhttprequest']};
+  api.onBeforeRequest.addListener(details => {
+    let url, source;
+    try { url=new URL(details.url);source=new URL(details.initiator || details.originUrl || details.documentUrl); } catch { return; }
+    if (details.frameId !== 0 || details.tabId < 0 || source.origin !== 'https://chat.deepseek.com' ||
+        !/^\/api\/v0\/chat\/(?:completion|continue|regenerate)\/?$/.test(url.pathname)) return;
+    const startedAt=Date.now();
+    void enqueue(async () => {
+      let path;
+      try { const page=new URL(details.documentUrl || (await chrome.tabs.get(details.tabId)).url);if(page.origin!==source.origin)return;path=page.pathname; } catch { return; }
+      const record={id:String(details.requestId),tabId:details.tabId,documentId:details.documentId || '',path,startedAt};
+      state.active=state.active.filter(r => r.id!==record.id);
+      state.active.push(record);
+      await saveAndNotify(record);
+    });
+  },filter);
+  const terminal = details => { void enqueue(async () => {
+    const record=state.active.find(r=>r.id===String(details.requestId));if(!record)return;
+    state.active=state.active.filter(r=>r.id!==record.id);await saveAndNotify(record);
+  }); };
+  api.onCompleted.addListener(terminal,filter);
+  api.onErrorOccurred.addListener(terminal,filter);
+  chrome.tabs.onRemoved.addListener(tabId => { void enqueue(async()=>{
+    if(!state.active.some(r=>r.tabId===tabId))return;
+    state.active=state.active.filter(r=>r.tabId!==tabId);state.revision++;
+    try { await store?.set({[key]:state}); } catch {}
+  }); });
+  return {snapshot:sender=>enqueue(()=>{
+    let url;try{url=new URL(sender.url || sender.tab?.url);}catch{return {ok:false};}
+    if(url.origin!=='https://chat.deepseek.com' || sender.frameId && sender.frameId!==0 || !Number.isInteger(sender.tab?.id))return {ok:false};
+    return view(sender.tab.id,sender.documentId);
+  })};
+})();
+
 if (typeof importScripts === "function") importScripts("protection.js");
 // 1.24.30 (protection review): a missing or broken verifier now stops work instead of passing; the packaged
 // protection.js always carries the release key (an unconfigured key only exists in unpackaged development source).
@@ -2314,6 +2370,11 @@ function answerWithin(final, job, sendResponse) {
   });
 }
 chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
+  if (msg && msg.type === "deepseek-requests") {
+    if (!deepSeekRequests) { rawSendResponse({ok:false}); return; }
+    deepSeekRequests.snapshot(_sender).then(rawSendResponse,()=>rawSendResponse({ok:false}));
+    return true;
+  }
   if (msg && msg.type === "job-wait") {
     const final = longReplies.get(msg.job);
     if (final) answerWithin(final, msg.job, rawSendResponse);

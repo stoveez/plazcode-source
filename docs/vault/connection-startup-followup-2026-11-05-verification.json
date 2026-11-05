@@ -1,6 +1,6 @@
 {
   "date": "2026-11-05",
-  "status": "bridge-chatgpt-append-focused-pass-deepseek-lifecycle-and-full-checks-pending",
+  "status": "all-local-focused-pass-full-suites-and-hosted-installed-proof-pending",
   "initial_wip": "ae438c1",
   "before": {
     "bridge_failed_cases": 5,
@@ -19,7 +19,7 @@
     "chatgpt_browser_cases": 27,
     "strict_receipts": "preserved",
     "hung_bridge_peak_http_pending": 2,
-    "provider_preservation": 962,
+    "provider_preservation": 958,
     "pins": 34,
     "native_append_tests": 3,
     "append_extra_and_legacy_batch_guard": "pass",
@@ -50,9 +50,9 @@
     "ms_to_loop_end": 39,
     "native_stop_absent_while_writing_confirmed": true,
     "bds_enabled": true,
-    "request_lifecycle_fix": "pending",
-    "progress_completion_fix": "pending",
-    "composer_geometry_fix": "pending",
+    "request_lifecycle_fix": "implemented; worker/provider/current-chat/restart/pause VM PASS; installed HTTPS probe blocked locally by administrator, CI required",
+    "progress_completion_fix": "PASS actual loop fails before one edit vs required two; after two edits/one nudge/final and negative/limit cases",
+    "composer_geometry_fix": "PASS Chromium+Firefox actual provider:80\u2192420px before; clamp/restoration after/send/cancel/user draft/style/remount/bridge failure; image frame not frozen",
     "raw_last_successful_write_complete": true,
     "unclosed_char_lengths": [
       167,
@@ -60,6 +60,7 @@
       430,
       226,
       315
-    ]
+    ],
+    "new_beacon": "2026-11-05_request-lifecycle"
   }
 }

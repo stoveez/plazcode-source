@@ -64,6 +64,18 @@ const PlazCodeStallGuard = (() => {
     return t.length <= 1200 && CLAIM_INTENT.test(t.slice(-240));
   }
 
+  // Explicit partial completion is not a final answer. Keep this conservative:
+  // quoted examples, optional follow-ups and steps requiring the person stay idle.
+  function unfinishedProgress(text) {
+    const t=String(text || '').replace(/[’]/g,"'").trim();
+    if(!t || t.length>4000 || asksUser(t) || /```|^\s*>|\bexample\s*:|\b(?:optional|if you (?:want|like)|approval|permission|credentials?|api key|token|password)\b/i.test(t))return false;
+    if(/\byou(?:'ll|\s+(?:can|need|must|should|have to))\b|\b(?:await|waiting for|need)\s+(?:your|user)\b/i.test(t))return false;
+    const part=/\b(?:part|step|phase|chunk|batch|section|scaffold|setup|foundation)(?:\s+\d+)?\s+(?:is\s+|has been\s+)?(?:done|complete|completed|ready)\b/i.exec(t);
+    if(!part)return false;
+    const tail=t.slice(part.index+part[0].length);
+    return /\bnext(?: up)?(?:\s+is)?\b[^.!?]{0,160}\b(?:part|step|phase|creat(?:e|es|ing)|writ(?:e|es|ing)|implement|add|build|finish|test|verify)\b/i.test(tail);
+  }
+
   // ── Hang recovery (item 9) ───────────────────────────────────────────────────────────────────────────────
   // One pure decision function for every provider: given what the page and the app look like right now, it says
   // which single recovery (if any) to run. It never touches the page itself, so every row is unit-testable.
@@ -147,6 +159,6 @@ const PlazCodeStallGuard = (() => {
   function stop(reason, stalls, limit) {
     return `ERROR: command was not executed. ${reason}` + (stalls >= limit ? ` You have repeated yourself ${stalls} times in a row. Stop calling tools now and tell the user, in one or two sentences, what is blocking you.` : '');
   }
-  return { create, isRead, claimsUnsentCommand, asksUser, hangDecision, hangConfig, endsInsideToolBlock, studioModeHint, backoffMs, HANG_DEFAULTS };
+  return { create, isRead, claimsUnsentCommand, asksUser, unfinishedProgress, hangDecision, hangConfig, endsInsideToolBlock, studioModeHint, backoffMs, HANG_DEFAULTS };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = PlazCodeStallGuard;

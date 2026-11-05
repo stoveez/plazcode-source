@@ -79,7 +79,7 @@ ok("deepseek start does not require Expert radios",
 ok("deepseek start respects a legacy user-chosen Vision tab", dsSrc.includes("if (!isVisionSelected())") && dsSrc.includes("const isVisionSelected ="));
 ok("deepseek start does not wait for a deleted picker", dsSrc.includes("const legacyPicker"));
 ok("deepseek user detect survives hashed-class churn", dsSrc.includes("data-message-author-role") && dsSrc.includes("leftGap"));
-ok("deepseek stamps current startup-race UI beacon", /2026-11-05_orphan-protocol/.test(dsSrc));
+ok("deepseek stamps current startup-race UI beacon", /2026-11-05_request-lifecycle/.test(dsSrc));
 
 // ── v1.12.1 hotfix: the "site crashes after starting agent" freeze ──────────
 // (v1.12.2 removed the worker entirely - the degrade assertions became moot.)
