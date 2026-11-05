@@ -1,7 +1,7 @@
 {
   "updated": "2026-11-05",
   "branch": "claude/plazcode-dev",
-  "product_source": "48029bef8d95afad29e1192b56f6df6a549a5c69",
+  "product_source": "0a75701485334a93c0f435cb8367e80a8c933d84",
   "scope": "All confirmed shared-protocol gaps plus ChatGPT responsive delivery and saved-result recovery",
   "native": {
     "passed": 307,
@@ -59,19 +59,22 @@
     "notion_bootstrap": "All5Chromium scenarios PASS after dependency/cleanup fixture correction"
   },
   "hosted": {
-    "status": "failed_windows_path_regression",
-    "run_id": 41888973469,
-    "head_sha": "f923019a09022b60d72880cd9210ccb56c724aa5",
-    "url": "https://github.com/stoveez/plazcode-source/actions/runs/41888973469",
+    "status": "running",
+    "run_id": 42039239468,
+    "head_sha": "0a75701485334a93c0f435cb8367e80a8c933d84",
+    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42039239468",
     "successful_jobs": [
-      "browsers",
-      "native (macos-latest)",
-      "native (ubuntu-latest)"
+      "native (windows-latest)",
+      "native (ubuntu-latest)",
+      "browsers"
     ],
-    "failure": "Windows native test sandbox_accepts_in_root_absolute_paths_without_allowing_outside_targets: //?/C:/ compared with native verbatim path; lexically normalized slash form was returned as native path"
+    "pending_jobs": [
+      "native (macos-latest)",
+      "release-check"
+    ]
   },
   "drive_delivery": {
-    "status": "pending"
+    "status": "windows_uploaded_metadata_verified_not_delivered_waiting_mac_report"
   },
   "limitations": [
     "No connected live user-browser control tool; offline fixtures are not live-site screenshots",
@@ -89,10 +92,75 @@
     }
   ],
   "native_path_followup": {
-    "status": "implemented_local_full307_pass",
+    "status": "passed_hosted_windows_native_suite",
     "lexical_checks": "unchanged slash-normalized traversal + canonical ancestor boundary",
     "native_parsing": "Windows native backslashes preserve verbatim prefix; Unix semantics unchanged",
     "stronger_test": "read actual bytes and verify canonical file identity for native/ordinary/verbatim/forward-slash spellings",
-    "fresh_full_CI": "required"
+    "fresh_full_CI": "required",
+    "windows_evidence": [
+      "2026-11-05T13:51:32.8261846Z test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s\r",
+      "2026-11-05T13:51:33.6462171Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\r",
+      "2026-11-05T14:03:04.8257885Z Regression summary: 0 failures []\r",
+      "2026-11-05T14:04:18.4183564Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+      "2026-11-05T14:04:32.4642117Z test workspace::tests::sandbox_accepts_in_root_absolute_paths_without_allowing_outside_targets ... ok\r",
+      "2026-11-05T14:04:41.8855300Z test result: ok. 295 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 23.45s\r",
+      "2026-11-05T14:04:41.9707072Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r"
+    ]
+  },
+  "previous_hosted_runs": [
+    {
+      "status": "failed_windows_path_regression",
+      "run_id": 41888973469,
+      "head_sha": "f923019a09022b60d72880cd9210ccb56c724aa5",
+      "url": "https://github.com/stoveez/plazcode-source/actions/runs/41888973469",
+      "successful_jobs": [
+        "browsers",
+        "native (macos-latest)",
+        "native (ubuntu-latest)"
+      ],
+      "failure": "Windows native test sandbox_accepts_in_root_absolute_paths_without_allowing_outside_targets: //?/C:/ compared with native verbatim path; lexically normalized slash form was returned as native path"
+    }
+  ],
+  "packages": {
+    "windows": {
+      "platform": "windows",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3070,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+      "file": "PlazCode-1.24.30-test-lean.zip",
+      "bytes": 51174848,
+      "sha256": "2b9286ecec6fc9d323a3c111a8e1f778ffb7200d6325ae80d7a867e491b17586",
+      "files": 3084,
+      "drive": {
+        "id": "1p-n8OqAemVh149fFNv5-tEs24DI9znVU",
+        "title": "PlazCode-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "size": "51174848",
+        "url": "https://drive.google.com/file/d/1p-n8OqAemVh149fFNv5-tEs24DI9znVU/view?usp=drivesdk",
+        "display_url": "https://drive.google.com/file/d/1p-n8OqAemVh149fFNv5-tEs24DI9znVU/view?usp=drivesdk",
+        "file_or_folder": "file",
+        "created_time": null,
+        "modified_time": null,
+        "parent_ids": null,
+        "drive_id": null,
+        "current_user_can_share": null,
+        "has_augmented_permissions": null,
+        "shared": null,
+        "permissions": null,
+        "source_visibility_status": "access_not_verified"
+      },
+      "drive_metadata_readback": true
+    }
   }
 }
