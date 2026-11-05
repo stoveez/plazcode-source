@@ -132,6 +132,21 @@ async function checks(browser){
       const result=await fixture.startSession();return{ready:!!result?.ready,started:fixture.A.started,sends:sent.length,draft:provider.editorText()};
     });assert.equal(state.ready,true,JSON.stringify(state));assert.equal(state.started,true);assert.equal(state.sends,1);assert.equal(state.draft,'');
   });
+  await check('native sibling role heading and masked user bubble retain the send receipt',true,async page=>{
+    const result=await page.evaluate(async()=>{
+      const native=addItem;addItem=(role,text,id)=>{
+        if(role!=='user')return native(role,text,id);
+        const turn=document.createElement('article');turn.dataset.testid='conversation-turn-'+id;
+        const heading=document.createElement('h4');heading.className='sr-only m-0 select-none';heading.dataset.messageAuthorRole='user';heading.textContent='You said:';
+        const shell=document.createElement('div'),bubble=document.createElement('div');bubble.setAttribute('data-user-message-bubble','');bubble.className='bg-user-message text-user-message';
+        const body=document.createElement('div');body.className='text-size-chat whitespace-pre-wrap';body.textContent=text;bubble.append(body);shell.append(bubble);turn.append(heading,shell);document.querySelector('#timeline').append(turn);
+        fixture.decorate.sweep();return shell;
+      };
+      autoReply=true;sequence=['```json\n{"command":"list_commands"}\n```','PlazCode is ready.'];
+      const state=await fixture.startSession();const items=provider.allItems().filter(provider.isUserItem);
+      return{ready:!!state?.ready,sends:sent.length,users:items.length,body:items.map(x=>provider.classifyText(x,'.rs-chip')).join('\n'),masked:!!document.querySelector('.rs-hidden [data-user-message-bubble]')};
+    });assert.equal(result.ready,true,JSON.stringify({...result,body:result.body.slice(0,30)}));assert.equal(result.sends,1);assert.equal(result.users,1,'the screen-reader heading is not an extra user message');assert(result.body.includes('⟦RS-SYS⟧'));assert(result.masked,'run actual whole-turn decoration before confirming the receipt');
+  });
   await check('field semantic text beats outer content chrome and preserves literal UI words',false,async page=>{
     const result=await page.evaluate(()=>{
       const text='You said: keep Copy and 16:22 in this actual message.\n  Preserve this line too.';

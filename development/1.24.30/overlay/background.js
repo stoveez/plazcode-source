@@ -54,12 +54,15 @@ async function ensurePairing(force = false) {
   try { return await pairingInFlight; } finally { pairingInFlight = null; }
 }
 let accountEpoch = '', accountIdentity = null, accountCheck = null;
-async function ensureAccountContext(){
+async function ensureAccountContext(liveStatus){
   if(accountCheck)return accountCheck;
   accountCheck=(async()=>{
-    const response=await fetch('http://127.0.0.1:3000/api/status',{headers:{Authorization:'Bearer '+pairingKey},signal:AbortSignal.timeout(5000),redirect:'error'});
-    if(!response.ok)throw new Error('Cannot check the PlazCode profile.');
-    const status=await response.json();
+    let status=liveStatus;
+    if(!status){
+      const response=await fetch('http://127.0.0.1:3000/api/status',{headers:{Authorization:'Bearer '+pairingKey},signal:AbortSignal.timeout(5000),redirect:'error'});
+      if(!response.ok)throw new Error('Cannot check the PlazCode profile.');
+      status=await response.json();
+    }
     if(!('profile_required' in status)||status.accounts_enabled===false)return; // Older desktops and account-free headless tools.
     if(status.profile_required||!status.profile){accountEpoch='';throw new Error('Open PlazCode, choose a profile and log in.');}
     const next=status.profile;
@@ -422,18 +425,8 @@ async function tabEngine(tabId) {
   return tabEngines.get(tabId);
 }
 chrome.tabs.onRemoved?.addListener(tabId=>{tabEngines.delete(tabId);try{chrome.storage.session.remove("rs-tab-engine-"+tabId);}catch{}});
-// Probe Rust agent on 3000 at startup — if reachable, use HTTP pipe (CORS bypass) as primary
-(async () => {
-  try {
-    const r = await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/status`, { method: "GET", signal: AbortSignal.timeout(5000) });
-    if (r.ok) {
-      rustMode = true;
-      log("Rust agent detected on 3000 — HTTP pipe enabled (CORS bypass via background)");
-      await initialDesktopPreferencesSync();
-      readReleaseStatus();
-    }
-  } catch {}
-})();
+// The single native health reader below handles first discovery and recovery.
+// Optional settings synchronization must never gate transport readiness.
 function engineUrl() { return `ws://127.0.0.1:${engine === "local" ? PORT_LOCAL : PORT_ROBLOX}`; }
 function engineHttpUrl() { return RUST_ROBLOX_HTTP; }
 function engineLabel() { return engine === "local" ? "AgentScript" : "Roblox"; }
@@ -497,6 +490,9 @@ let robloxProc = false;
 // Editor-backed status. A local bridge socket is not an editor connection.
 let robloxEditorConnected = false;
 let localReady = false; // agent's workspace is up (from /api/status local_ready)
+let bridgeReachable = false;
+let profileRequired = false;
+let lastNativeHealthAt = 0;
 let localFull = false; // AgentScript FULL PC ACCESS (agent is source of truth)
 let localRoot = ""; // workspace path, injected into the AI's state line
 let blenderSuppressed = false;
@@ -656,7 +652,15 @@ function connectionNote() {
 }
 
 // ── WebSocket lifecycle ─────────────────────────────────────────────────
+let connectInFlight = null;
+let socketConnectTimer = null;
+const SOCKET_CONNECT_TIMEOUT_MS = 8000;
 async function connect() {
+  // Claim the attempt BEFORE pairing/profile awaits. Several tabs can wake the
+  // worker together; they must not all create a socket after shared auth ends.
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+  if (connectInFlight) return connectInFlight;
+  connectInFlight = (async () => {
   try { await ensurePairing(true); } catch (error) {
     bridgeError = String(error.message || "Agent unavailable for automatic pairing");
     log(bridgeError);
@@ -668,13 +672,16 @@ async function connect() {
     return;
   }
   clearTimeout(reconnectTimer);
+  reconnectTimer = null;
   const url = engineUrl();
   let sock;
   try {
     await ensureAccountContext();
     sock = new WebSocket(url, pairingProtocols());
   } catch (e) {
+    bridgeError = String(e.message || e);
     log("WebSocket ctor failed", e);
+    broadcastStatus();
     scheduleReconnect();
     return;
   }
@@ -682,6 +689,8 @@ async function connect() {
 
   sock.onopen = () => {
     if (sock !== ws) return;
+    clearTimeout(socketConnectTimer);
+    socketConnectTimer = null;
     connected = true;
     bridgeError = "";
     reconnectDelay = RECONNECT_MIN;
@@ -717,6 +726,9 @@ async function connect() {
 
   sock.onclose = (event) => {
     if (sock !== ws) return;
+    clearTimeout(socketConnectTimer);
+    socketConnectTimer = null;
+    ws = null;
     try {
       const code = event && event.code, reason = event && event.reason ? ", " + String(event.reason).slice(0, 80) : "";
       lastCloseNote = "the previous connection closed (code " + code + reason + (event && event.wasClean ? ", clean" : ", not clean") + ")";
@@ -742,11 +754,24 @@ async function connect() {
     // onclose will follow; nothing to do here but avoid an unhandled error.
     try { sock.close(); } catch {}
   };
+  // Browsers may leave an opening socket CONNECTING for minutes. Bound this
+  // handshake only; established sockets and running commands keep their limits.
+  socketConnectTimer = setTimeout(() => {
+    if (sock !== ws || sock.readyState === WebSocket.OPEN) return;
+    ws = null;
+    connected = false;
+    bridgeError = "PlazCode did not finish opening its local socket. Retrying the connection.";
+    try { sock.close(); } catch {}
+    broadcastStatus();
+    scheduleReconnect();
+  }, SOCKET_CONNECT_TIMEOUT_MS);
+  })().finally(() => { connectInFlight = null; });
+  return connectInFlight;
 }
 
 function scheduleReconnect() {
   clearTimeout(reconnectTimer);
-  reconnectTimer = setTimeout(connect, reconnectDelayFor(reconnectAttempts));
+  reconnectTimer = setTimeout(() => { reconnectTimer = null; connect(); }, reconnectDelayFor(reconnectAttempts));
   reconnectAttempts++;
   reconnectDelay = Math.min(reconnectDelay * 1.7, RECONNECT_MAX);
 }
@@ -1049,10 +1074,13 @@ function localTools() {
   return engine === "local" ? toolsCache : [];
 }
 function statusObj(mode = engine) {
+  const ready = !profileRequired && (mode === "local" ? localReady : connected);
   return {
-    type: "rs-status", connected: mode === "local" ? localReady : connected, mcpAlive: mode === "local" ? localReady : mcpAlive, studio: studioConnected, studioApp, studioProc,
+    type: "rs-status", connected: ready, mcpAlive: mode === "local" ? ready : mcpAlive, studio: studioConnected, studioApp, studioProc,
+    bridge_reachable: bridgeReachable || connected, profile_required: profileRequired,
+    bridge_connecting: !ready && !profileRequired && (bridgeReachable || (!bridgeError && !!(connectInFlight || procStatusReading))),
     robloxProc, roblox_connected: robloxEditorConnected, studio_checking: studioChecking,
-    local_connected: localReady, local_full: localFull,
+    local_connected: localReady && !profileRequired, local_full: localFull,
     local_root: localRoot,
     version_warning: extensionVersionWarning(desktopVersion, loadedExtensionVersion()),
     tools: mergeBlenderTools(mode === "local" ? localTools() : toolsCache).length,
@@ -1087,12 +1115,28 @@ function extensionVersionWarning(desktop, extension) {
 async function refreshProcStatus() {
   if (procStatusReading) return;
   procStatusReading = true;
+  lastNativeHealthAt = Date.now();
   try {
     // Bounded by the bridgeFetch default timeout.
     const r = await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/status`, { method: "GET" });
-    if (!r.ok) return;
+    if (!r.ok) throw new Error("PlazCode status request failed (HTTP " + r.status + ").");
     const j = await r.json();
-    if (!rustMode) { rustMode = true; await initialDesktopPreferencesSync(); readReleaseStatus(); }
+    const wasUsable = bridgeReachable && !profileRequired;
+    bridgeReachable = true;
+    profileRequired = j.profile_required === true;
+    if (profileRequired) {
+      localReady = false;
+      robloxEditorConnected = false;
+      accountEpoch = "";
+      bridgeError = "Choose a profile or Use PlazCode as a guest in the desktop app.";
+      broadcastStatus();
+      return;
+    }
+    // Account storage isolation is required BEFORE publishing ready. Reuse this
+    // authenticated snapshot instead of fetching the same status a second time.
+    await ensureAccountContext(j);
+    if (!rustMode) { rustMode = true; readReleaseStatus(); }
+    bridgeError = "";
     // The desktop's editor probe is authoritative; a browser socket or a
     // process-name scan alone cannot establish Studio readiness.
     if(typeof j.blender_connected==="boolean" && !blenderSuppressed && j.blender_connected!==blenderAddon)setBlender(j.blender_connected,j.blender_connected ? "" : "Blender’s last scene check failed. Use Connect Blender for the exact error.");
@@ -1104,14 +1148,21 @@ async function refreshProcStatus() {
     const nf = j.local_full === true;
     const nrRoot = typeof j.local_root === "string" ? j.local_root : localRoot;
     const nextDesktopVersion = typeof j.version === "string" ? j.version : "";
-    const changed = nextDesktopVersion !== desktopVersion || editorChanged || nr !== robloxProc || nl !== localReady || nf !== localFull || nrRoot !== localRoot;
+    const changed = !wasUsable || nextDesktopVersion !== desktopVersion || editorChanged || nr !== robloxProc || nl !== localReady || nf !== localFull || nrRoot !== localRoot;
     desktopVersion = nextDesktopVersion;
     robloxProc = nr;
     localReady = nl;
     localFull = nf;
     localRoot = nrRoot;
     if (changed) broadcastStatus();
-    await pullDesktopPreferences();
+    // Settings are optional background work, not a health-check dependency.
+    syncDesktopPreferencesAfterHealth();
+    if (!wasUsable) {
+      reconnectAttempts = 0;
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+      connect();
+    }
     // Full access re-sync (one-shot, only ever turns Full ON). The old code
     // copied a stale "rs-local-full" value from browser storage back to the
     // agent after every extension restart, which could flip the agent's Full
@@ -1133,10 +1184,27 @@ async function refreshProcStatus() {
         });
       } catch {}
     }
-  } catch {} finally { procStatusReading = false; }
+  } catch (error) {
+    const changed = bridgeReachable || localReady || profileRequired;
+    bridgeReachable = false;
+    profileRequired = false;
+    localReady = false;
+    bridgeError = String(error.message || error);
+    if (changed) broadcastStatus();
+  } finally { procStatusReading = false; }
 }
 // Single-flight: the 5 s interval must never stack status reads on a slow bridge.
 let procStatusReading = false;
+let desktopPreferencesReading = null;
+let desktopPreferencesStarted = false;
+function syncDesktopPreferencesAfterHealth() {
+  if (desktopPreferencesReading) return desktopPreferencesReading;
+  desktopPreferencesReading = (async () => {
+    const ok = desktopPreferencesStarted ? await pullDesktopPreferences() : await initialDesktopPreferencesSync();
+    if (ok) desktopPreferencesStarted = true;
+  })().finally(() => { desktopPreferencesReading = null; });
+  return desktopPreferencesReading;
+}
 
 const browserIdentity = crypto.randomUUID();
 let desktopAgentReporting = false;
@@ -2368,7 +2436,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         break;
       }
       case "status":
-        if (!connected) connect(); // self-heal after a worker wake-up
+        // A status request wakes native discovery too. The primary Roblox
+        // socket may be unavailable while AgentScript is perfectly usable.
+        if (Date.now() - lastNativeHealthAt >= 1000) refreshProcStatus();
+        if (!connected && !reconnectTimer) connect();
         sendResponse(statusObj(mode));
         break;
       case "desktop_tools_snapshot": {
@@ -2567,6 +2638,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
       case "reconnect":
         reconnectDelay = RECONNECT_MIN;
         reconnectAttempts = 0;
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+        refreshProcStatus();
         connect();
         sendResponse({ ok: true });
         break;

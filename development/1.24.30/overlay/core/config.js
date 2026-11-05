@@ -104,10 +104,15 @@ const RS = (() => {
       "ERROR: multiple commands in one reply. Write ONE command, wait for its result, then the next. You tried: " +
       names.join(", ") +
       ". Start over and write only the first command you need.",
-    unknownTool: (name, closest) =>
-      `ERROR: E_COMMAND: unknown command "${name}". It does not exist and did not run. ` +
+    unknownTool: (name, closest) => {
+      const scoped = /^([^:]+):([A-Za-z_][A-Za-z0-9_]*)$/.exec(String(name || ""));
+      if (scoped && Array.isArray(closest) && closest.includes(scoped[2])) {
+        return `ERROR: E_NAMESPACE: "${name}" is not an advertised PlazCode command. The "${scoped[1]}:" namespace was not advertised here. Use command:"${scoped[2]}" with the original params in PlazCode's JSON format; do not copy a namespace from another tool system or browser extension. No command ran from this request; PlazCode did not rewrite or route it automatically.`;
+      }
+      return `ERROR: E_COMMAND: unknown command "${name}". It does not exist and did not run. ` +
       (closest && closest.length ? "Closest real commands: " + closest.join(", ") + ". " : "") +
-      "Use an exact name; call list_commands to see every command on this engine.",
+      "Use an exact name; call list_commands to see every command on this engine.";
+    },
     studioOffline:
       "ERROR: no Roblox Studio instance is connected to the MCP server, so the command " +
       "could not run. Roblox Studio is closed, has no place open, or its MCP server option " +

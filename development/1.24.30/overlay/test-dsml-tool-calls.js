@@ -123,5 +123,9 @@ const fake = async ({ tool, arguments: a }) => {
   const cfg = fs.readFileSync(__dirname + "/core/config.js", "utf8");
   const fb = new Function(cfg.slice(cfg.indexOf("    unknownTool: (name, closest) =>"), cfg.indexOf("    studioOffline:")).replace(/^\s*unknownTool:/, "return ").replace(/,\s*$/, ""))();
   assert.equal(fb("list_dir", ["list_directory", "list_recent"]), 'ERROR: E_COMMAND: unknown command "list_dir". It does not exist and did not run. Closest real commands: list_directory, list_recent. Use an exact name; call list_commands to see every command on this engine.');
+  const foreign=RSParse.parseToolCalls('```json\n{"command":"BDS:plazcode_help","params":{"topic":"agentscript"}}\n```');
+  assert.equal(foreign[0].tool,'BDS:plazcode_help','a foreign namespace is never silently rewritten into an executable local command');
+  const hint=fb(foreign[0].tool,['plazcode_help']);assert(hint.includes('E_NAMESPACE')&&hint.includes('command:"plazcode_help"')&&hint.includes('No command ran'));
+  assert(fb('BDS:invented_tool',['plazcode_help']).includes('E_COMMAND'),'invented suffixes do not gain an alias');
   console.log("DSML tool calls run on DeepSeek and are hidden behind the card; extras answer under their own name; sizes use the right unit.");
 })().catch((e) => { console.error(e); process.exit(1); });

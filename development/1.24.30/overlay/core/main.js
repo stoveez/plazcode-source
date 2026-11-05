@@ -9897,6 +9897,19 @@ function renderCards(panel) {
         const _engineStarting = currentEngine === "local" ? "AgentScript" : "Roblox";
         msg = `Starting ${_engineStarting} agent…`;
         label = "Starting…"; kind = "starting"; disabled = true;
+      } else if (A.bridge?.profile_required) {
+        toneClass = "warn"; warn = true;
+        msg = "Choose a profile or <b>Use PlazCode as a guest</b> in the desktop app.";
+        kind = ""; disabled = true;
+      } else if (!A.started && A.bridge?.bridge_connecting && !A.bridge.connected) {
+        toneClass = "starting";
+        indicator = `<span class="rs-spin"></span>`;
+        msg = "Connecting to PlazCode…";
+        kind = ""; disabled = true;
+      } else if (!A.started && A.bridge && !A.bridge.connected && A.bridge.bridge_error) {
+        toneClass = "warn"; warn = true;
+        msg = "Can't connect to PlazCode. Click <b>Fix connection</b> for details.";
+        kind = ""; disabled = true;
       } else if (A.bridge && A.bridge.connected && A.bridge.studio_checking === true && currentEngine !== "local" && !A.bridge.roblox_connected) {
         toneClass = "starting";
         indicator = `<span class="rs-spin"></span>`;
@@ -10270,7 +10283,7 @@ function renderCards(panel) {
         : (isUnreal ?  "Unreal Editor not connected - open it and enable Remote Execution" : "Roblox Studio not connected - open it and enable its MCP server");
       else if (studioOff) txt = isUnreal ?  "Editor not connected, enable Remote Execution" : "Studio not connected, enable the MCP server in Roblox Studio";
       else txt = `Connected · ${totalTools} tools ready`;
-      dot.title = txt;
+      dot.title = !s.connected && s.bridge_error ? s.bridge_error : txt;
       bridgeOk = ok;
       studioDown = studioOff;
       placeDown = noPlace;
@@ -12234,7 +12247,7 @@ rsInterval(() => {
     }
     if (msg && msg.type === "rs-status") {
       checkVersionNotice(msg);
-      ui.setStatus({ connected: msg.connected, mcpAlive: msg.mcpAlive, studio: msg.studio, studioApp: msg.studioApp, studioProc: msg.studioProc, robloxProc: msg.robloxProc, roblox_connected: msg.roblox_connected, studio_checking: msg.studio_checking, engine: msg.engine, tools: msg.tools, servers: msg.servers, local_connected: msg.local_connected, local_full: msg.local_full, local_root: msg.local_root, blender: msg.blender, blender_shim: msg.blender_shim, blender_error: msg.blender_error, bridge_error: msg.bridge_error });
+      ui.setStatus({ connected: msg.connected, bridge_reachable: msg.bridge_reachable, bridge_connecting: msg.bridge_connecting, profile_required: msg.profile_required, mcpAlive: msg.mcpAlive, studio: msg.studio, studioApp: msg.studioApp, studioProc: msg.studioProc, robloxProc: msg.robloxProc, roblox_connected: msg.roblox_connected, studio_checking: msg.studio_checking, engine: msg.engine, tools: msg.tools, servers: msg.servers, local_connected: msg.local_connected, local_full: msg.local_full, local_root: msg.local_root, blender: msg.blender, blender_shim: msg.blender_shim, blender_error: msg.blender_error, bridge_error: msg.bridge_error });
     }
     if (msg && msg.type === "rs-fix-connection") {
       try { ui.openFixConnection(); sendResponse({ ok: true }); } catch (e) { sendResponse({ ok: false }); }

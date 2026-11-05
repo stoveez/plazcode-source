@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-05",
+  "status": "focused-fixes-pass-append-and-full-validation-pending",
+  "initial_wip": "ae438c1",
+  "before": {
+    "bridge_failed_cases": 5,
+    "overlapping_status_requests": 10,
+    "primary_sockets": 11,
+    "chatgpt_native_sibling": {
+      "ready": false,
+      "sends": 1,
+      "users": 1,
+      "body_chars": 0,
+      "masked": true
+    }
+  },
+  "focused_after": {
+    "bridge_cases": 6,
+    "chatgpt_browser_cases": 27,
+    "strict_receipts": "preserved",
+    "hung_bridge_peak_http_pending": 2,
+    "provider_preservation": 962,
+    "pins": 34
+  },
+  "owner_dom": {
+    "loaded_build": "2026-11-05_native-message-bodies",
+    "role_node": "H4.sr-only",
+    "user_bubble_visible": false,
+    "body_present": true
+  },
+  "new_beacon": "2026-11-05_sibling-user-bubbles",
+  "bds": {
+    "confirmed_enabled": true,
+    "foreign_name_rejected": true,
+    "auto_rewrite": false,
+    "new_feedback_code": "E_NAMESPACE"
+  },
+  "append_root": "client capped4000line read then full overwrite",
+  "multiline_upstream_root": "not established; raw failed envelope not supplied",
+  "fresh_delivery": null,
+  "stable_published": false
+}

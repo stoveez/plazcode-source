@@ -459,12 +459,19 @@ const RSProvider = (() => {
     const hasLayout = safeRead(() => document.documentElement.getClientRects().length > 0, false);
     const signals = [...safeQueryAll(document, `${S.msg}, [data-user-message-bubble], ${S.reply}, ${S.workItem}`)]
       .filter((e) => !safeClosest(e, "#rs-root"))
-      .filter((e) => !hasLayout || safeRead(() => e.getClientRects().length > 0, true));
+      // Current native ChatGPT puts data-message-author-role on a sibling
+      // screen-reader heading. That label is metadata, never a message turn.
+      .filter((e) => !safeRead(() => e.matches('h1.sr-only,h2.sr-only,h3.sr-only,h4.sr-only,h5.sr-only,h6.sr-only'), false));
     const items = [];
     const seen = new Set();
     for (const signal of signals) {
       const root = itemRoot(signal);
       if (!root || seen.has(root) || safeClosest(root, "#rs-root")) continue;
+      // A whole-turn chip hides the native bubble, while its stable message
+      // container stays visible. Filtering the bubble first lost our OWN sent
+      // startup/results from receipts as soon as decoration ran. Resolve the
+      // container first; truly hidden old conversations still have no layout.
+      if (hasLayout && !safeRead(() => root.getClientRects().length > 0, true)) continue;
       seen.add(root);
       items.push(root);
     }
@@ -1450,7 +1457,7 @@ const RSProvider = (() => {
       if (stopped) isStopped = stopped;
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsGptVer).
-      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-05_native-message-bodies"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-05_sibling-user-bubbles"); } catch {}
     },
     // turns
     allItems, withTranscriptSnapshot, isUserItem, isAssistantItem, itemText, classifyText, setActivityFolded,
