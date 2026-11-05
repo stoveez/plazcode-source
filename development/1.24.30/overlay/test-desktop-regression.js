@@ -2,7 +2,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 
 const baseline = {
-  "core/agent_skills.js": "a264c3e24440ef2c1a64557d941eb2cd43bc4101",
+  "core/agent_skills.js": "62f13ebb16c1e0c5eefbabd3a1561279d2ec0735",
   "core/animlib.js": "7d032068c63c493caa5ec938fac756df3f662369",
   "core/config.js": "562d2593e9b20978bcef9d63e68f8f274eb719b6",
   "core/headless-builder.js": "0d8924dae62e2894a68cdd17617bbb5e36cca33e",

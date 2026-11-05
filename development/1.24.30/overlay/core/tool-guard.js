@@ -66,6 +66,13 @@ const PlazCodeToolGuard = (() => {
     if (name === 'execute_luau' && !normalized.datamodel_type) normalized.datamodel_type = 'Edit';
     if (['user_keyboard_input', 'user_mouse_input'].includes(name) && !normalized.datamodel_type) normalized.datamodel_type = 'Client';
     const errors = validate(normalized, tool?.inputSchema || tool?.input_schema || tool?.parameters);
+    if (name === 'append_file' || (name === 'write_file' && (args.append === true || args.ensure_newline === true))) {
+      const native = (tools || []).find(entry => entry.name === 'write_file');
+      const props = (native?.inputSchema || native?.input_schema || native?.parameters)?.properties;
+      if (props?.append?.type !== 'boolean' || props?.ensure_newline?.type !== 'boolean') {
+        errors.push('E_NATIVE_VERSION: this running app does not advertise safe native append. Quit old PlazCode processes and open the matching complete updated app before appending. No append was dispatched; no read-and-overwrite fallback is allowed.');
+      }
+    }
     if (name === 'execute_luau') {
       if (typeof args.code !== 'string' || !args.code.trim()) errors.push('arguments.code: non-empty Luau code is required');
       if (args.datamodel_type && !['Edit', 'Client', 'Server'].includes(args.datamodel_type)) errors.push('arguments.datamodel_type: use Edit, Client or Server');

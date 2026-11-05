@@ -57,6 +57,9 @@ pub struct Workspace {
     full_access: Arc<AtomicBool>,
     /// 1.24.21 folder allowlist for Full PC access (empty = whole PC).
     allowed: Arc<std::sync::RwLock<Vec<PathBuf>>>,
+    /// Serialize append records and their optional newline inspection. Appends
+    /// use OS append mode, never a clipped read followed by a full rewrite.
+    append_lock: tokio::sync::Mutex<()>,
 }
 
 impl Workspace {
@@ -81,7 +84,7 @@ impl Workspace {
         let canon_root = std::fs::canonicalize(&root)
             .map_err(|e| anyhow::anyhow!("cannot canonicalize {}: {e}", root.display()))?;
         tracing::info!("workspace root: {}", canon_root.display());
-        Ok(Self { canon_root, full_access: Arc::new(AtomicBool::new(false)), allowed: Arc::new(std::sync::RwLock::new(Vec::new())) })
+        Ok(Self { canon_root, full_access: Arc::new(AtomicBool::new(false)), allowed: Arc::new(std::sync::RwLock::new(Vec::new())), append_lock: tokio::sync::Mutex::new(()) })
     }
 
     pub fn root_display(&self) -> String { deverbatim_string(&self.canon_root) }
@@ -705,6 +708,14 @@ pub async fn tool_write_file(ws: &Workspace, args: &serde_json::Value) -> Result
     let rel = arg_str(args, "path")?;
     let content = args.get("content").ok_or("'content' is required (use \"\" for an empty file)")?
         .as_str().ok_or("'content' must be a string")?;
+    let flag = |key| match args.get(key) {
+        None => Ok(false), Some(serde_json::Value::Bool(value)) => Ok(*value),
+        _ => Err(format!("'{key}' must be true or false; no file was changed")),
+    };
+    let append = flag("append")?;
+    let ensure_newline = flag("ensure_newline")?;
+    if ensure_newline && !append { return Err("'ensure_newline' requires append:true; no file was changed".into()); }
+    let _append_guard = if append { Some(ws.append_lock.lock().await) } else { None };
     let p = ws.resolve_path(rel.as_str(), false)?;
     if p.exists() && p.is_dir() {
         return Err(format!("'{}' is a folder - cannot overwrite it with a file", ws.display(&p)));
@@ -715,7 +726,12 @@ pub async fn tool_write_file(ws: &Workspace, args: &serde_json::Value) -> Result
             if size>MAX_READ_BYTES{return Err("E_PREVIEW_LIMIT: this file is too large for an exact preview. Inspect or split the change first; nothing was written.".into());}
             let (text,binary)=read_text(&p).await?;if binary{return Err("E_PREVIEW_BINARY: exact text previews require a UTF-8 text file; nothing was written.".into());}Some(text)
         }else{None};
-        return Ok(file_preview_result(ws,&p,before.as_deref(),content,None));
+        let after = if append {
+            let old = before.as_deref().unwrap_or("");
+            let separator = if ensure_newline && !content.is_empty() && !old.is_empty() && !old.ends_with('\n') { "\n" } else { "" };
+            format!("{old}{separator}{content}")
+        } else { content.to_string() };
+        return Ok(file_preview_result(ws,&p,before.as_deref(),&after,None));
     }
     if let Some(parent) = p.parent() {
         tokio::fs::create_dir_all(parent).await.map_err(|e| format!("cannot create parents: {e}"))?;
@@ -727,6 +743,24 @@ pub async fn tool_write_file(ws: &Workspace, args: &serde_json::Value) -> Result
                 return Err("cannot create entries outside the workspace".into());
             }
         }
+    }
+    if append {
+        use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+        let mut file = tokio::fs::OpenOptions::new().create(true).append(true).read(ensure_newline)
+            .open(&p).await.map_err(|e| format!("cannot open for append: {e}"))?;
+        let size = file.metadata().await.map_err(|e|e.to_string())?.len();
+        let mut payload = Vec::with_capacity(content.len()+1);
+        if ensure_newline && !content.is_empty() && size>0 {
+            file.seek(std::io::SeekFrom::End(-1)).await.map_err(|e|e.to_string())?;
+            let mut last=[0u8;1];file.read_exact(&mut last).await.map_err(|e|e.to_string())?;
+            if last[0]!=b'\n' { payload.push(b'\n'); }
+        }
+        payload.extend_from_slice(content.as_bytes());
+        file.write_all(&payload).await.map_err(|e|format!("append failed: {e}; inspect the file before retrying because a partial append may have landed"))?;
+        file.flush().await.map_err(|e|format!("append flush failed: {e}; inspect the file before retrying"))?;
+        let total=file.metadata().await.map_err(|e|e.to_string())?.len();
+        let chars=content.chars().count()+usize::from(payload.len()>content.len());
+        return Ok(format!("Appended {} ({chars} chars, {} bytes added; {total} bytes total).",ws.display(&p),payload.len()));
     }
     let existed = p.exists();
     tokio::fs::write(&p, content.as_bytes()).await.map_err(|e| format!("write failed: {e}"))?;
@@ -2173,7 +2207,7 @@ pub fn catalog() -> Vec<serde_json::Value> {
         serde_json::json!({"name": crate::hidden::hidden!("list_directory"), "description": crate::hidden::hidden!("List one folder's entries with types and sizes."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &[])}),
         serde_json::json!({"name": crate::hidden::hidden!("tree"), "description": crate::hidden::hidden!("Recursive directory tree. Generated folders (.git, node_modules, __pycache__, dist...) are skipped."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "depth": {"type": "integer"}}), &[])}),
         serde_json::json!({"name": crate::hidden::hidden!("read_file"), "description": crate::hidden::hidden!("Read a text file. Returns numbered lines as 'LINE | content'. Always read before editing so your old_string matches byte-for-byte."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "offset": {"type": "integer"}, "limit": {"type": "integer"}}), &["path"])}),
-        serde_json::json!({"name": crate::hidden::hidden!("write_file"), "description": crate::hidden::hidden!("Create a file or OVERWRITE an existing one with complete new content. Parent folders are created automatically. Prefer edit_file for partial changes. Set preview:true to inspect an exact diff and hashes without changing any file or creating folders."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "content": {"type": "string"}, "preview":{"type":"boolean","description":"true returns an exact read-only diff; writes no file or folder"}}), &["path", "content"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("write_file"), "description": crate::hidden::hidden!("Create or overwrite a file. With append:true, append content without replacing existing bytes; ensure_newline:true inserts a separator only if needed. Parent folders are created automatically. Prefer edit_file for partial changes. Set preview:true to inspect an exact diff and hashes without changing any file or creating folders."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "content": {"type": "string"}, "append":{"type":"boolean","description":"append content without replacing existing bytes"}, "ensure_newline":{"type":"boolean","description":"append mode only: add a newline separator if the existing file needs one"}, "preview":{"type":"boolean","description":"true returns an exact read-only diff; writes no file or folder"}}), &["path", "content"])}),
         serde_json::json!({"name": crate::hidden::hidden!("read_file_base64"), "description": crate::hidden::hidden!("Read ANY file (text or binary) as base64 + mimeType. The way to hand an image or a screenshot file to the AI as an attachment. Returns {path, mimeType, bytes, data}."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
         serde_json::json!({"name": crate::hidden::hidden!("edit_file"), "description": crate::hidden::hidden!("Exact-match string replacement inside a file. Replaces the FIRST match, or every match with replace_all:true. Fails loudly when old_string is missing or ambiguous. Set preview:true for an exact read-only diff; no file or undo checkpoint is changed."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "old_string": {"type": "string"}, "new_string": {"type": "string"}, "replace_all": {"type": "boolean"}, "preview":{"type":"boolean","description":"true checks the match and returns an exact read-only diff without writing"}}), &["path", "old_string", "new_string"])}),
         serde_json::json!({"name": crate::hidden::hidden!("create_folder"), "description": crate::hidden::hidden!("Create a folder (and missing parents)."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &["path"])}),
@@ -2248,6 +2282,46 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         Workspace::new(Some(dir.to_str().unwrap())).unwrap()
+    }
+
+    #[tokio::test]
+    async fn native_append_preserves_large_prefix_and_validates_flags() {
+        let ws=temp_ws("append-large");let path=ws.canon_root.join("large.txt");
+        let before=format!("{}TAIL", "original\r\n".repeat(240_000));
+        std::fs::write(&path,before.as_bytes()).unwrap();
+        let out=tool_write_file(&ws,&serde_json::json!({"path":"large.txt","content":"next🙂\n","append":true,"ensure_newline":true})).await.unwrap();
+        assert!(out.starts_with("Appended "),"append must identify its real operation");
+        assert!(std::fs::read(&path).unwrap()==format!("{before}\nnext🙂\n").as_bytes(),"a prefix beyond the read limit is never reconstructed or truncated");
+        let saved=std::fs::read(&path).unwrap();
+        assert!(tool_write_file(&ws,&serde_json::json!({"path":"large.txt","content":"bad","append":"true"})).await.is_err());
+        assert_eq!(std::fs::read(&path).unwrap(),saved,"invalid append flags must not silently overwrite");
+        assert!(tool_write_file(&ws,&serde_json::json!({"path":"../outside.txt","content":"bad","append":true})).await.is_err());
+        std::fs::remove_dir_all(ws.canon_root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn native_append_preview_and_empty_content_are_exact() {
+        let ws=temp_ws("append-preview");let path=ws.canon_root.join("note.txt");
+        std::fs::write(&path,b"original\r\nlast").unwrap();
+        let args=serde_json::json!({"path":"note.txt","content":"new\n","append":true,"ensure_newline":true,"preview":true});
+        let preview:serde_json::Value=serde_json::from_str(&tool_write_file(&ws,&args).await.unwrap()).unwrap();
+        assert_eq!(preview["bytes_before"],14);assert_eq!(preview["bytes_after"],19);
+        assert_eq!(std::fs::read(&path).unwrap(),b"original\r\nlast");
+        tool_write_file(&ws,&serde_json::json!({"path":"note.txt","content":"","append":true,"ensure_newline":true})).await.unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(),b"original\r\nlast","empty append is a no-op");
+        let created=tool_write_file(&ws,&serde_json::json!({"path":"nested/new.txt","content":"first","append":true})).await.unwrap();
+        assert!(created.starts_with("Appended "));assert_eq!(std::fs::read(ws.canon_root.join("nested/new.txt")).unwrap(),b"first");
+        std::fs::remove_dir_all(ws.canon_root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn native_append_concurrent_records_do_not_replace_each_other() {
+        let ws=Arc::new(temp_ws("append-concurrent"));let path=ws.canon_root.join("records.txt");std::fs::write(&path,b"original").unwrap();
+        let mut tasks=Vec::new();for i in 0..16 {let ws=Arc::clone(&ws);tasks.push(tokio::spawn(async move {tool_write_file(&ws,&serde_json::json!({"path":"records.txt","content":format!("record-{i}\n"),"append":true,"ensure_newline":true})).await.unwrap()}));}
+        for task in tasks {assert!(task.await.unwrap().starts_with("Appended "));}
+        let text=std::fs::read_to_string(&path).unwrap();assert!(text.starts_with("original\n"));assert_eq!(text.lines().count(),17);
+        for i in 0..16 {assert_eq!(text.lines().filter(|s|*s==format!("record-{i}")).count(),1);}
+        std::fs::remove_dir_all(&ws.canon_root).unwrap();
     }
 
     #[tokio::test]

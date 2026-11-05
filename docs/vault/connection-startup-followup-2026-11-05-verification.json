@@ -1,6 +1,6 @@
 {
   "date": "2026-11-05",
-  "status": "focused-fixes-pass-append-and-full-validation-pending",
+  "status": "bridge-chatgpt-append-focused-pass-deepseek-lifecycle-and-full-checks-pending",
   "initial_wip": "ae438c1",
   "before": {
     "bridge_failed_cases": 5,
@@ -20,7 +20,11 @@
     "strict_receipts": "preserved",
     "hung_bridge_peak_http_pending": 2,
     "provider_preservation": 962,
-    "pins": 34
+    "pins": 34,
+    "native_append_tests": 3,
+    "append_extra_and_legacy_batch_guard": "pass",
+    "healthy_differential": 70,
+    "dom_resilience": 325
   },
   "owner_dom": {
     "loaded_build": "2026-11-05_native-message-bodies",
@@ -38,5 +42,24 @@
   "append_root": "client capped4000line read then full overwrite",
   "multiline_upstream_root": "not established; raw failed envelope not supplied",
   "fresh_delivery": null,
-  "stable_published": false
+  "stable_published": false,
+  "append_root_fixed": true,
+  "new_deepseek": {
+    "progress_write_ms": 369,
+    "plain_progress_chars": 129,
+    "ms_to_loop_end": 39,
+    "native_stop_absent_while_writing_confirmed": true,
+    "bds_enabled": true,
+    "request_lifecycle_fix": "pending",
+    "progress_completion_fix": "pending",
+    "composer_geometry_fix": "pending",
+    "raw_last_successful_write_complete": true,
+    "unclosed_char_lengths": [
+      167,
+      268,
+      430,
+      226,
+      315
+    ]
+  }
 }

@@ -115,15 +115,10 @@ const AgentScriptSkills = (() => {
     if (name === "append_file") {
       const m = missing(args, "path") || missing(args, "content");
       if (m) return m;
-      const info = await call("file_info", { path: args.path });
-      let cur = "";
-      if (!isErr(info) && !/folder/i.test(String(info))) {
-        const raw = await call("read_file", { path: args.path, offset: 1, limit: 4000 });
-        if (isErr(raw)) return raw;
-        cur = stripRead(raw);
-      }
-      const next = cur ? (cur + (cur.endsWith("\n") ? "" : "\n") + args.content) : String(args.content);
-      return await call("write_file", { path: args.path, content: next });
+      // Native append preserves the unread tail, original line endings and
+      // concurrent append records. The shared guard requires advertised native
+      // append support; an older app must fail before any write, never fall back.
+      return await call("write_file", { path: args.path, content: String(args.content), append: true, ensure_newline: true });
     }
     if (name === "copy_file") {
       const m = missing(args, "source") || missing(args, "destination");
