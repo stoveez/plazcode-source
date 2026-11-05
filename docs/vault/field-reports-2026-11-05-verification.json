@@ -1,8 +1,7 @@
 {
   "date": "2026-11-05",
-  "status": "local-full-gates-pass-hosted-build-running",
+  "status": "verified-delivered",
   "base_runtime": "0a75701",
-  "latest_pushed_wip": "2fedad6",
   "supplied_evidence": {
     "chatgpt_false_receipt_ms": 15000,
     "list_commands_execution_ms": 39,
@@ -75,30 +74,23 @@
     "owner PC vault not connected"
   ],
   "remaining": [
-    "new full CI",
-    "exact Windows/universal-Mac package verification and Drive delivery"
+    "owner field retest actual affected PCs/providers",
+    "owner restore source repo Private"
   ],
   "stable_published": false,
-  "fresh_delivery": null,
+  "fresh_delivery": {
+    "delivered": true,
+    "drive_metadata_readback": true,
+    "install": "Quit app, extract full ZIP, replace included program files preserving saved data, reload extension and refresh AI tabs. Full app replacement required.",
+    "private_reminder_sent_with_links": true,
+    "repo_visibility_at_delivery": "public",
+    "pc_vault_connected": false
+  },
   "runtime_sha": "f2fc04dce24e18c57867edd14b3efb7e6d310007",
   "ci": {
     "run_id": 42078807676,
-    "status": "running",
+    "status": "completed",
     "url": "https://github.com/stoveez/plazcode-source/actions/runs/42078807676",
-    "progress": {
-      "browsers": "pass",
-      "javascript_all_platforms": "258-pass",
-      "javascript_linux_repeat": "pass",
-      "windows_native": "pass",
-      "macos_native": "pass",
-      "windows_macos_integration": "pass",
-      "linux_native": "pass",
-      "packages": {
-        "windows": "verified-not-uploaded",
-        "macos": "building"
-      },
-      "windows_job": "success"
-    },
     "chatgpt": {
       "checks": 26,
       "history500_attribute_reads": 500,
@@ -117,6 +109,40 @@
     "windows_defender": {
       "scans": 3,
       "result": "no threats"
+    },
+    "conclusion": "success",
+    "checks_passed": 135,
+    "failures": 0,
+    "native": {
+      "windows": {
+        "passed": 301,
+        "ignored": 2
+      },
+      "macos": {
+        "passed": 306,
+        "ignored": 2
+      },
+      "linux": {
+        "passed": 308,
+        "ignored": 2
+      }
+    },
+    "native_env_info": {
+      "windows": {
+        "full_process_ms": 347.359,
+        "processes": 136,
+        "memory_only_ms": 0.258
+      },
+      "macos": {
+        "full_process_ms": 128.738,
+        "processes": 444,
+        "memory_only_ms": 0.197
+      },
+      "linux": {
+        "full_process_ms": 12.507,
+        "processes": 263,
+        "memory_only_ms": 0.241
+      }
     }
   },
   "packages": {
@@ -139,7 +165,101 @@
       "file": "PlazCode-1.24.30-test-lean.zip",
       "bytes": 51181275,
       "sha256": "5a987ccea1012a80413fd573d5f23116f3520cdca439f0a2fe8c1fff85a37450",
-      "files": 3084
+      "files": 3084,
+      "drive": {
+        "id": "1Ks1VK3sEAHP0031D5h1LPqnR2SM-AT6X",
+        "title": "PlazCode-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "size": "51181275",
+        "url": "https://drive.google.com/file/d/1Ks1VK3sEAHP0031D5h1LPqnR2SM-AT6X/view?usp=drivesdk",
+        "display_url": "https://drive.google.com/file/d/1Ks1VK3sEAHP0031D5h1LPqnR2SM-AT6X/view?usp=drivesdk",
+        "file_or_folder": "file",
+        "created_time": null,
+        "modified_time": null,
+        "parent_ids": null,
+        "drive_id": null,
+        "current_user_can_share": null,
+        "has_augmented_permissions": null,
+        "shared": null,
+        "permissions": null,
+        "source_visibility_status": "access_not_verified"
+      },
+      "drive_metadata_readback": true
+    },
+    "macos": {
+      "platform": "macos",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3074,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+      "file": "PlazCode-macOS-1.24.30-test-lean.zip",
+      "bytes": 52974640,
+      "sha256": "67398530984d7ca1189d0513dddce66743c70dc7a695165182c1dc9d09cc5a1d",
+      "files": 3088,
+      "drive": {
+        "id": "1CuI8zL_f16WYMDR5NqRgRYWBoPEzxUgt",
+        "title": "PlazCode-macOS-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "size": "52974640",
+        "url": "https://drive.google.com/file/d/1CuI8zL_f16WYMDR5NqRgRYWBoPEzxUgt/view?usp=drivesdk",
+        "display_url": "https://drive.google.com/file/d/1CuI8zL_f16WYMDR5NqRgRYWBoPEzxUgt/view?usp=drivesdk",
+        "file_or_folder": "file",
+        "created_time": null,
+        "modified_time": null,
+        "parent_ids": null,
+        "drive_id": null,
+        "current_user_can_share": null,
+        "has_augmented_permissions": null,
+        "shared": null,
+        "permissions": null,
+        "source_visibility_status": "access_not_verified"
+      },
+      "drive_metadata_readback": true
     }
-  }
+  },
+  "official_report": {
+    "file": "release-check.md",
+    "bytes": 11021,
+    "sha256": "d4e67a61da469cc7f35810d34497cd74a432bf58e79249e5b9cab4909d1fd297",
+    "head_sha": "f2fc04dce24e18c57867edd14b3efb7e6d310007",
+    "checks_passed": 135,
+    "failures": 0,
+    "all_checks": "PASS",
+    "variant": {
+      "schema": 1,
+      "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+      "mark": "31ff5250ca8f5bbe",
+      "layout": 2
+    },
+    "drive": {
+      "id": "1L6gMVSPlmh8NdwhETTfoZu1r5mPxGp2o",
+      "title": "PlazCode-test-build-42078807676-report.md",
+      "mime_type": "text/markdown",
+      "size": "11021",
+      "url": "https://drive.google.com/file/d/1L6gMVSPlmh8NdwhETTfoZu1r5mPxGp2o/view?usp=drivesdk",
+      "display_url": "https://drive.google.com/file/d/1L6gMVSPlmh8NdwhETTfoZu1r5mPxGp2o/view?usp=drivesdk",
+      "file_or_folder": "file",
+      "created_time": null,
+      "modified_time": null,
+      "parent_ids": null,
+      "drive_id": null,
+      "current_user_can_share": null,
+      "has_augmented_permissions": null,
+      "shared": null,
+      "permissions": null,
+      "source_visibility_status": "access_not_verified"
+    },
+    "drive_metadata_readback": true
+  },
+  "initial_reproduction_wip": "2fedad6"
 }
