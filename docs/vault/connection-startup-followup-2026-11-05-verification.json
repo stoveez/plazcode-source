@@ -1,6 +1,6 @@
 {
   "date": "2026-11-05",
-  "status": "all-local-focused-pass-full-suites-and-hosted-installed-proof-pending",
+  "status": "focused-and-hosted-stream-proof-pass-four-legacy-fixtures-corrected-final-full-rerun-pending",
   "initial_wip": "ae438c1",
   "before": {
     "bridge_failed_cases": 5,
@@ -74,5 +74,27 @@
     }
   },
   "cancelled_preliminary_ci": 42118892352,
-  "full_javascript": "preliminary stopped for final short-followup regression; final run pending"
+  "full_javascript": {
+    "files": 262,
+    "first_final_passed": 258,
+    "first_final_fixture_failures": [
+      "test-1.24.13-status.js",
+      "test-mode-switch.js",
+      "test-studio-status.js",
+      "test-tool-result-send.js"
+    ],
+    "corrected_focused": "all4 PASS",
+    "product_changed_by_fixture_fix": false,
+    "final_full_rerun": "pending"
+  },
+  "hosted_request_probe": {
+    "run": 42119301305,
+    "head": "04eb997c8a936c017557998cbd791bca7321f4cf",
+    "job": 127567256319,
+    "step": "DeepSeek shared sender and cancellation in Chromium and Firefox",
+    "conclusion": "success",
+    "completed_at": "2026-11-05T22:14:24Z",
+    "real_installed_https": true,
+    "local_admin_policy_bypassed": false
+  }
 }

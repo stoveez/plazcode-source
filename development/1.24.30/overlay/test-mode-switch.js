@@ -1,5 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
-const bg=fs.readFileSync('background.js','utf8');const engineCode=bg.slice(bg.indexOf('const tabEngines ='),bg.indexOf('// Probe Rust agent'));
+const bg=fs.readFileSync('background.js','utf8');const engineStart=bg.indexOf('const tabEngines ='),engineEnd=bg.indexOf('function engineUrl()',engineStart);assert(engineStart>=0 && engineEnd>engineStart);const engineCode=bg.slice(engineStart,engineEnd);
 const handler=bg.slice(bg.indexOf('      case "rs-set-engine":'),bg.indexOf('      case "rs-set-full":'));
 (async()=>{
  const session={},messages=[];let response;

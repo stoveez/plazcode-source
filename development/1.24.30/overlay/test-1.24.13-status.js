@@ -7,7 +7,7 @@ const code=[cut('function blenderServers(','function log('),cut('function handle
 const J=v=>JSON.stringify(v);
 function box(engine){
   const b={chrome:{runtime:{getManifest:()=>({version:"1.24.25"})}},engine,connected:true,mcpAlive:false,studioConnected:null,studioApp:null,studioProc:true,robloxProc:true,robloxEditorConnected:false,studioChecking:false,
-    localReady:true,localFull:false,localRoot:'C:/w',toolsCache:[],localToolsCache:[],serversCache:[],blenderAddon:true,blenderError:'',bridgeError:'',
+    profileRequired:false,bridgeReachable:true,connectInFlight:null,procStatusReading:false,localReady:true,localFull:false,localRoot:'C:/w',toolsCache:[],localToolsCache:[],serversCache:[],blenderAddon:true,blenderError:'',bridgeError:'',
     BLENDER_TOOLS:Array.from({length:89},(_,i)=>({name:'blender_t'+i,server:'blender'})),resolvePending(){},broadcastStatus(){},applyDesktopPreferences:async()=>{},dispatchDesktopAgentAction:async()=>{}};
   vm.createContext(b);vm.runInContext(code+';this.statusObj=statusObj;this.handle=handleBridgeMessage;this.setLocal=t=>{localToolsCache=t};this.get=()=>({mcpAlive,robloxEditorConnected,toolsCache});',b);
   return b;
@@ -35,4 +35,5 @@ function box(engine){
   b.handle({type:'tools',id:3,ok:false,mcp_alive:true,studio:true,error:'slow'});
   assert.equal(b.get().toolsCache.length,2);assert.equal(b.statusObj('roblox').roblox_connected,true);
 }
+{const b=box('local');b.profileRequired=true;const st=b.statusObj('local');assert.equal(st.connected,false);assert.equal(st.local_connected,false);assert.equal(st.bridge_reachable,true);assert.equal(st.profile_required,true);}
 console.log('PASS 1.24.13 status: AgentScript lists Blender with real counts; probes keep a verified Studio link and its catalogue');
