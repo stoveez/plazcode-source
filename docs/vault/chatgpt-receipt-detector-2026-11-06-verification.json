@@ -24,7 +24,7 @@
     "dom_resilience": 325,
     "protected_files": 34,
     "image_transport": "PASS",
-    "full_javascript": "running",
+    "full_javascript": "PASS:262 executed files/0 failures/3 existing skips",
     "native_form_render_cases": 3,
     "input_cleanup_scenarios": 19,
     "producer": "two render frames plus next task, recheck full draft, one click only; no-render/Stop zero clicks"
@@ -35,7 +35,12 @@
     "send_unconfirmed": "pending",
     "live_browser_access": false
   },
-  "new_ci": null,
+  "new_ci": {
+    "run_id": 42235579551,
+    "head_sha": "40c1d544b0beb9fbcf9a3ea83feb25d8c3ee5602",
+    "status": "in_progress",
+    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42235579551"
+  },
   "new_delivery": null,
   "stable_publish": false,
   "pc_vault_connected": false,
