@@ -25,5 +25,11 @@
     "PC vault not connected"
   ],
   "new_beacon": "2026-11-05_complete-user-receipts",
-  "cancelled_run": 42155989129
+  "cancelled_run": 42155989129,
+  "ci": {
+    "run_id": 42157003472,
+    "head_sha": "3d1135fd25fc9e05ec2c49e2c0b60b64f4936e36",
+    "status": "in_progress",
+    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42157003472"
+  }
 }
