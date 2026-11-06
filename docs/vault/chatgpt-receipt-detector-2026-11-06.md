@@ -4,7 +4,7 @@ updated: 2026-11-06
 ---
 # Native ChatGPT receipt detector follow-up
 
-Status: **Markdown source candidate implemented / focused9PASS / full checks next / field diagnosis open**. The owner retested delivered CI42157003472/runtime3d1135f and still sees Send paused after a valid list_commands response. Actual loaded beacon/latest content-free send.unconfirmed metrics requested, pending. No connected live browser/document sessions. No fixture is a live preview.
+Status: **guarded source candidate; final local65browser/full262JS PASS; full CI active; field diagnosis open**. The owner retested delivered CI42157003472/runtime3d1135f and still sees Send paused after a valid list_commands response. Actual loaded beacon/latest content-free send.unconfirmed metrics requested, pending. No connected live browser/document sessions. No fixture is a live preview.
 
 ## Direct native source finding
 
@@ -43,3 +43,7 @@ First local full262JS completed with2failures: test-chatgpt-cm-refresh.js expose
 Replacement full CI42243794939 ACTIVE on headf71ed3b559cf3ab161bd9287989681d509cbb7ad/runtime95977fe. Public/build/verify/Drive/Private plan resent. Local full65/full262 running; no fresh delivery.
 
 Final full local Chromium on guarded runtime95977fe:65PASS, exit0. This includes all9native Markdown/source cases and the complete earlier56test set. Full262JS and replacement CI42243794939 still running; no package delivered yet.
+
+## Final guarded local verification
+
+Runtime95977fe: full Chromium65PASS; full262JavaScript files PASS/0fail/3unchanged exclusions (test-v115.js,test-bridges.js,test-design-visual.js). This complete rerun includes both earlier failed root-marker/DOM-guard checks, now passing unchanged. Healthy70/preservation956/DOM325/pins34/input cleanup19/617guarded DOM reads/13finally/CodeMirror refresh/image transportPASS. Current hosted run42243794939/headf71ed3b running; both earlier candidate runs cancelled. No new app ZIP delivery yet. Owner-requested complete application/extension source archive delivered separately; see source-snapshot-2026-11-06.md. Owner field confirmation still pending.

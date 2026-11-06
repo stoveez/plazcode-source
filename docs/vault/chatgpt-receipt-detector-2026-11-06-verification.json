@@ -1,6 +1,6 @@
 {
   "updated": "2026-11-06",
-  "status": "guarded runtime full Chromium65PASS; final full JS/CI running",
+  "status": "guarded runtime final local65browser/full262JS PASS; full CI active",
   "baseline_runtime": "3d1135fd25fc9e05ec2c49e2c0b60b64f4936e36",
   "before": {
     "own_ancestor_mask": "one send; full1599-character normalized native body; zero transcript users; receipt failed",
@@ -57,7 +57,7 @@
     "producer": "two render frames plus next task, recheck full draft, one click only; no-render/Stop zero clicks"
   },
   "after": {
-    "status": "full Chromium65PASS/targeted guards PASS; full JS/CI running",
+    "status": "final local full65/full262JS/provider gates PASS",
     "new_markdown_cases": 9,
     "markdown_focused_pass": 9,
     "healthy": 70,
@@ -70,7 +70,17 @@
     "guarded_dom_reads": 617,
     "input_finally_regions": 13,
     "chatgpt_browser_checks": 65,
-    "runtime_commit": "95977fe"
+    "runtime_commit": "95977fe",
+    "full_javascript": {
+      "executed_files": 262,
+      "failures": 0,
+      "exit_code": 0,
+      "existing_skips": [
+        "test-v115.js",
+        "test-bridges.js",
+        "test-design-visual.js"
+      ]
+    }
   },
   "native_public_source": {
     "asset": "879981.e2e5aa2c5c.js",
@@ -109,5 +119,19 @@
     "runtime_commit": "95977fe",
     "status": "in_progress",
     "url": "https://github.com/stoveez/plazcode-source/actions/runs/42243794939"
+  },
+  "source_delivery": {
+    "filename": "PlazCode-source-1.24.30-95977fe.zip",
+    "bytes": 16466870,
+    "sha256": "ebb2be78d1d293558693fc1937680eafb36b2e269cc089ce4b156380db0d075a",
+    "runtime_commit": "95977fe",
+    "snapshot_commit": "b16776c53d0930d12ce5b36579c482382117748c",
+    "zip_files": 2587,
+    "crc_and_source_equality": "PASS",
+    "url": "https://drive.google.com/file/d/1Gk0K5xTjuowkFAjCePAEUC_XvmZitNPX/view?usp=drivesdk",
+    "drive_id": "1Gk0K5xTjuowkFAjCePAEUC_XvmZitNPX",
+    "mime_type": "application/zip",
+    "drive_metadata_readback": "PASS",
+    "kind": "source archive, separately requested; full test app packages pending"
   }
 }
