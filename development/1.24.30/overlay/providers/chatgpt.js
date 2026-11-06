@@ -1104,6 +1104,39 @@ const RSProvider = (() => {
     await typeEditorText(ed, text, checkOwner, wrote);
   }
 
+  async function settleComposerRender(checkOwner, clock) {
+    // The editable DOM/model can finish before React publishes the form's
+    // submit value. A previously enabled button can still submit that prefix.
+    if (!safeRead(() => document.documentElement.getClientRects().length > 0 && typeof requestAnimationFrame === 'function', false)) return 0;
+    const started = clock();
+    return new Promise((resolve, reject) => {
+      let finished = false, frame = null, frames = 0;
+      const finish = error => {
+        if (finished) return;
+        finished = true; clearTimeout(deadline);
+        if (frame !== null) safeRead(() => cancelAnimationFrame(frame), null);
+        const ms = Math.max(0, Math.round(clock() - started));
+        if (error) { try { error.renderWaitMs = ms; } catch {} reject(error); } else resolve(ms);
+      };
+      const advance = () => {
+        if (finished) return;
+        try {
+          checkOwner();
+          if (++frames === 2) finish();
+          else frame = requestAnimationFrame(advance);
+        } catch (error) { finish(error); }
+      };
+      const deadline = setTimeout(() => {
+        try {
+          checkOwner();
+          const error = new Error('ChatGPT input did not finish updating. Nothing was submitted. Keep its tab visible, then resume.');
+          error.code = 'CHATGPT_COMPOSER_RENDER_TIMEOUT'; finish(error);
+        } catch (error) { finish(error); }
+      }, 1000);
+      try { frame = requestAnimationFrame(advance); } catch (error) { finish(error); }
+    });
+  }
+
   async function typeAndSend(text, images) {
     lastConfirmedDelivery = null;
     const ed = getEditor();
@@ -1133,7 +1166,7 @@ const RSProvider = (() => {
     };
     const want = normalize(text);
     const clock = () => safeRead(() => performance.now(), Date.now());
-    let receiptStartedAt = null;
+    let receiptStartedAt = null, renderWaitMs = 0;
     let expandedMessage = false;
     const receipt = () => receiptUsers().some(item => {
       if (!freshReceipt(item)) return false;
@@ -1196,6 +1229,10 @@ const RSProvider = (() => {
       if (images && images.length) {
         if (!await attachImages(images)) throw new Error('ChatGPT did not confirm the screenshot upload. Check its file/image quota or upload error; the message was not submitted.');
       }
+      renderWaitMs = await settleComposerRender(checkOwner, clock);
+      await sleep(0); // finish the rendering task before invoking the native submit handler
+      checkOwner();
+      if (logical(editorText()) !== logical(text)) throw new Error('ChatGPT input changed before submission. Nothing was sent.');
       // React may enable Send after the input transaction finishes. Wait for an
       // enabled SEND control, never submit through a lingering Stop or Enter.
       const ready = await waitDelivery(() => {
@@ -1220,6 +1257,7 @@ const RSProvider = (() => {
           sendContext().session === context.session && ownedDraft !== null &&
           (editorText() === ownedDraft || (ownedDraft.endsWith('\n') && editorText() === ownedDraft + '\n'))) clearEditor();
       const proof = {committed, expandedMessage, code:error.code || 'CHATGPT_SEND_FAILED',
+        renderWaitMs:error.renderWaitMs || renderWaitMs,
         receiptWaitMs:receiptStartedAt === null ? 0 : Math.max(0, Math.round(clock() - receiptStartedAt))};
       // Lengths/booleans only: distinguish an unrecognized native message from
       // a partial/different body without logging prompts, results or identities.
@@ -1629,7 +1667,7 @@ const RSProvider = (() => {
       if (stopped) isStopped = stopped;
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsGptVer).
-      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-06_native-receipt-candidates"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-06_native-submit-receipts"); } catch {}
     },
     // turns
     allItems, withTranscriptSnapshot, isUserItem, isAssistantItem, itemText, classifyText, setActivityFolded, confirmedDeliveryMatches,

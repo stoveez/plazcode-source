@@ -170,7 +170,7 @@ async function checks(browser){
       const shell=document.createElement('div');shell.style.display='contents';shell.className='rs-hidden';shell.dataset.messageAuthorRole='user';
       const bubble=document.createElement('div');bubble.setAttribute('data-user-message-bubble','');const body=document.createElement('div');body.className='whitespace-pre-wrap';body.textContent='exact old payload';bubble.append(body);shell.append(bubble);hidden.append(shell);document.querySelector('#timeline').append(hidden);
       document.querySelector('button').onclick=()=>{sent.push('unconfirmed');provider.getEditor().innerText='';addItem('assistant','Old assistant example','old-assistant');};
-      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=150;
+      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,ms===120?1:ms,...args);let time=Date.now();Date.now=()=>time+=150;
       let failed=false;try{await provider.typeAndSend('exact old payload');}catch{failed=true;}
       return{failed,sends:sent.length,users:provider.userCount()};
     });assert.equal(got.failed,true);assert.equal(got.sends,1);assert.equal(got.users,0);
@@ -188,7 +188,7 @@ async function checks(browser){
     const got=await page.evaluate(async()=>{
       const diagnostics=[];provider.init({diag:(name,fields)=>diagnostics.push({name,fields})});
       document.querySelector('button').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';const b=document.createElement('div');b.setAttribute('data-user-message-bubble','');b.innerHTML='<div class="whitespace-pre-wrap">private-body</div>';document.querySelector('#timeline').append(b);addItem('assistant','{"command":"list_commands"}','receipt-example');};
-      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=150;
+      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,ms===120?1:ms,...args);let time=Date.now();Date.now=()=>time+=150;
       let failed=false;try{await provider.typeAndSend('private-body must be complete');}catch{failed=true;}
       return{failed,sends:sent.length,diagnostics};
     });assert.equal(got.failed,true);assert.equal(got.sends,1);const proof=got.diagnostics.find(x=>x.name==='send.unconfirmed')?.fields;assert(proof,'the native failure must expose content-free receipt evidence');assert.equal(proof.detectedUsers,1);assert.equal(proof.users[0].fresh,true);assert.equal(proof.users[0].matches,false);assert.equal(proof.users[0].chars,12);assert.equal(proof.users[0].mismatchAt,12);assert.equal(proof.receiptEvidence,'new_message_text_mismatch');assert.equal(typeof proof.receiptWaitMs,'number');assert.equal(proof.expectedNormalizedChars,'private-body must be complete'.length);assert(!JSON.stringify(got.diagnostics).includes('private-body'),'diagnostics must never log message content');
@@ -208,7 +208,7 @@ async function checks(browser){
     const got=await page.evaluate(async()=>{
       let expands=0;const text='a'.repeat(512)+' full result';
       document.querySelector('button').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';const b=document.createElement('div');b.setAttribute('data-user-message-bubble','');b.innerHTML='<div class="whitespace-pre-wrap">'+text.slice(0,300)+'…</div><button>Show more</button>';b.querySelector('button').onclick=()=>{expands++;};document.querySelector('#timeline').append(b);addItem('assistant','{"command":"list_commands"}','preview-probe');};
-      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=150;
+      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,ms===120?1:ms,...args);let time=Date.now();Date.now=()=>time+=150;
       let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}
       return{failed,sends:sent.length,expands};
     });assert.equal(got.failed,true);assert.equal(got.sends,1);assert.equal(got.expands,1,'never repeatedly expand or treat the click as confirmation');
@@ -220,7 +220,7 @@ async function checks(browser){
       document.querySelector('button[data-testid="send-button"]').onclick=()=>{
         sent.push('one commit');provider.getEditor().innerText='';const shell=document.createElement('div'),b=document.createElement('div');b.setAttribute('data-user-message-bubble','');b.innerHTML='<div class="whitespace-pre-wrap">'+text.slice(0,300)+'…</div><div class="rs-chip"><button>Show more</button></div>';b.querySelector('button').onclick=()=>{expands++;};shell.append(b);const sibling=addItem('assistant','{"command":"list_commands"}','other-probe');shell.append(sibling);const unrelated=document.createElement('button');unrelated.textContent='Read more';unrelated.onclick=()=>{expands++;};shell.append(unrelated);document.querySelector('#timeline').append(shell);
       };
-      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=150;
+      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,ms===120?1:ms,...args);let time=Date.now();Date.now=()=>time+=150;
       let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}
       return{failed,sends:sent.length,expands};
     });assert.equal(got.failed,true);assert.equal(got.sends,1);assert.equal(got.expands,0);
@@ -246,7 +246,7 @@ async function checks(browser){
     const got=await page.evaluate(async()=>{
       const text='Old complete native result',owner=document.createElement('div'),bubble=document.createElement('div'),chip=document.createElement('div');owner.className='rs-hidden';chip.className='rs-chip';chip.textContent='Earlier result';bubble.setAttribute('data-user-message-bubble','');bubble.innerHTML='<div class="whitespace-pre-wrap"></div>';bubble.firstChild.textContent=text;owner.append(chip,bubble);document.querySelector('#timeline').append(owner);
       document.querySelector('button[data-testid="send-button"]').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';addItem('assistant','{"command":"list_commands"}','old-proof');};
-      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=200;
+      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,ms===120?1:ms,...args);let time=Date.now();Date.now=()=>time+=200;
       let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}return{failed,sends:sent.length};
     });assert.equal(got.failed,true);assert.equal(got.sends,1);
   });
@@ -254,7 +254,7 @@ async function checks(browser){
     const got=await page.evaluate(async()=>{
       const text='Page-boundary receipt probe. '.repeat(40);let expands=0;
       document.querySelector('button[data-testid="send-button"]').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';const bubble=document.createElement('div'),button=document.createElement('button');bubble.setAttribute('data-user-message-bubble','');bubble.innerHTML='<div class="whitespace-pre-wrap"></div>';bubble.firstChild.textContent=text.slice(0,400)+'…';button.textContent='Read more';button.onclick=()=>{expands++;};document.querySelector('#timeline').append(bubble,button);};
-      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=200;
+      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,ms===120?1:ms,...args);let time=Date.now();Date.now=()=>time+=200;
       let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}return{failed,sends:sent.length,expands};
     });assert.equal(got.failed,true);assert.equal(got.sends,1);assert.equal(got.expands,0);
   });
@@ -267,7 +267,7 @@ async function checks(browser){
       history.pushState({},'', '/c/other-chat');const afterNavigation=provider.confirmedDeliveryMatches('A confirmed complete message');history.pushState({},'', '/c/offline-delivery-test');
       context={session:2,stop:0};const afterSession=provider.confirmedDeliveryMatches('A confirmed complete message');context={session:1,stop:0};
       document.querySelector('button[data-testid="send-button"]').disabled=true;
-      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=200;
+      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,ms===120?1:ms,...args);let time=Date.now();Date.now=()=>time+=200;
       let failed=false;try{await provider.typeAndSend('An unsubmitted next message');}catch{failed=true;}
       return{exact,different,afterStop,afterNavigation,afterSession,failed,afterFailure:provider.confirmedDeliveryMatches('A confirmed complete message'),sends:sent.length};
     });assert.equal(got.exact,true);for(const key of ['different','afterStop','afterNavigation','afterSession','afterFailure'])assert.equal(got[key],false,key);assert.equal(got.failed,true);assert.equal(got.sends,1);
@@ -276,7 +276,7 @@ async function checks(browser){
     const got=await page.evaluate(async shape=>{
       const text='A complete but inadmissible receipt';
       document.querySelector('button[data-testid="send-button"]').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';const outer=document.createElement('div'),owner=document.createElement('div'),bubble=document.createElement('div'),chip=document.createElement('div');owner.className='rs-hidden';chip.className='rs-chip';chip.textContent='Owned card';bubble.setAttribute('data-user-message-bubble','');bubble.innerHTML='<div class="whitespace-pre-wrap"></div>';bubble.firstChild.textContent=text;owner.append(chip,bubble);outer.append(owner);if(shape==='native-hidden')outer.style.display='none';else if(shape==='content-hidden'){owner.className='';bubble.style.contentVisibility='hidden';}else outer.className='rs-chip';document.querySelector('#timeline').append(outer);};
-      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=200;
+      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,ms===120?1:ms,...args);let time=Date.now();Date.now=()=>time+=200;
       let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}return{failed,sends:sent.length};
     },shape);assert.equal(got.failed,true);assert.equal(got.sends,1);
   });
@@ -288,7 +288,7 @@ async function checks(browser){
     const got=await page.evaluate(async()=>{
       let expands=0;const text='Separate-message boundary. '.repeat(40);
       document.querySelector('button[data-testid="send-button"]').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';const outer=document.createElement('div');for(const value of [text.slice(0,400)+'…','Another user message']){const bubble=document.createElement('div');bubble.setAttribute('data-user-message-bubble','');bubble.innerHTML='<div class="whitespace-pre-wrap"></div>';bubble.firstChild.textContent=value;outer.append(bubble);}const button=document.createElement('button');button.textContent='Read more';button.onclick=()=>{expands++;};outer.append(button);document.querySelector('#timeline').append(outer);};
-      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=200;
+      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,ms===120?1:ms,...args);let time=Date.now();Date.now=()=>time+=200;
       let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}return{failed,sends:sent.length,expands};
     });assert.equal(got.failed,true);assert.equal(got.sends,1);assert.equal(got.expands,0);
   });
@@ -296,7 +296,7 @@ async function checks(browser){
     const got=await page.evaluate(async()=>{
       const text='A previously submitted complete message',old=addItem('user',text,'old');old.removeAttribute('data-message-id');
       document.querySelector('button[data-testid="send-button"]').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';old.dataset.messageId='metadata-arrived-late';addItem('assistant','{"command":"list_commands"}','unrelated-redraw');};
-      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=200;
+      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,ms===120?1:ms,...args);let time=Date.now();Date.now=()=>time+=200;
       let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}return{failed,sends:sent.length};
     });assert.equal(got.failed,true);assert.equal(got.sends,1);
   });
@@ -320,6 +320,24 @@ async function checks(browser){
       document.querySelector('button[data-testid="send-button"]').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';root.dataset.chatgptSearchMessageIds='new-work-message';body.textContent=text;};
       const accepted=await provider.typeAndSend(text);return{accepted,sends:sent.length,users:provider.userCount(),confirmed:provider.confirmedDeliveryMatches(text)};
     });assert.equal(got.accepted,true);assert.equal(got.sends,1);assert.equal(got.users,1);assert.equal(got.confirmed,true);
+  });
+  await check('native submit render publishes the complete ProseMirror value before one click',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      const text=Array.from({length:180},(_,i)=>'Native submitted line '+i+' with some text.').join('\n'),button=document.querySelector('button[data-testid="send-button"]');let published='';
+      modelView.setProps({dispatchTransaction(tr){modelView.updateState(modelView.state.apply(tr));const value=modelView.state.doc.textBetween(0,modelView.state.doc.content.size,'\n','\n');requestAnimationFrame(()=>requestAnimationFrame(()=>{published=value;button.disabled=!published.trim();}));}});
+      button.onclick=()=>{const value=published;sent.push(value);modelView.dispatch(modelView.state.tr.delete(0,modelView.state.doc.content.size));addItem('user',value,'render-confirmed-user');};
+      const accepted=await provider.typeAndSend(text);return{accepted,sends:sent.length,expected:text,submitted:sent[0]};
+    });assert.equal(got.accepted,true);assert.equal(got.sends,1);assert.equal(got.submitted,got.expected,'a complete editor DOM must never submit an older form-state prefix');
+  },true);
+  await check('native submit render cancellation sends nothing and preserves a newer draft',false,async page=>{
+    await page.evaluate(()=>{window.renderFrames=[];window.requestAnimationFrame=fn=>{renderFrames.push(fn);return renderFrames.length;};window.renderPending=provider.typeAndSend('Owned result awaiting a render').then(()=>({accepted:true}),error=>({accepted:false,code:error.code}));});
+    await page.waitForFunction(()=>renderFrames.length>0,null,{polling:10});
+    const got=await page.evaluate(async()=>{provider.cancelPendingSends();const draft=await provider.writeDraft('A newer user draft','Owned result awaiting a render');for(const frame of renderFrames.splice(0))frame(performance.now());const result=await renderPending;return{...result,sends:sent.length,draft:provider.editorText(),wrote:draft.ok};});
+    assert.equal(got.accepted,false);assert.equal(got.code,'CHATGPT_CANCELLED');assert.equal(got.sends,0);assert.equal(got.wrote,true);assert.equal(got.draft,'A newer user draft');
+  });
+  await check('native submit render deadline refuses a click before input updates finish',false,async page=>{
+    const got=await page.evaluate(async()=>{window.requestAnimationFrame=()=>1;const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,ms>=500?5:ms,...args);let code='';try{await provider.typeAndSend('A result without a rendered form');}catch(error){code=error.code;}return{code,sends:sent.length,draft:provider.editorText()};});
+    assert.equal(got.code,'CHATGPT_COMPOSER_RENDER_TIMEOUT');assert.equal(got.sends,0);assert.equal(got.draft,'');
   });
   await check('field semantic text beats outer content chrome and preserves literal UI words',false,async page=>{
     const result=await page.evaluate(()=>{
@@ -390,7 +408,7 @@ async function checks(browser){
     const got=await page.evaluate(async()=>{
       fixture.A.stop=false;fixture.A.started=true;
       document.querySelector('button[data-testid="send-button"]').disabled=true;
-      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,Math.min(ms,5),...args);
+      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,ms===120?5:ms,...args);
       let t=Date.now();Date.now=()=>t+=150;
       real(()=>addItem('assistant','Old reply remounted','old-remount'),15);
       let error='';try{await fixture.submitCore('Output of \'read_file\':\nfirst\nlast\n\nnext action');}catch(e){error=e.message;}
@@ -401,7 +419,7 @@ async function checks(browser){
   await check('ambiguous native click is never replayed and leaves no owned result draft',false,async page=>{
     const got=await page.evaluate(async()=>{
       document.querySelector('button').onclick=()=>sent.push('clicked but not accepted');
-      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,Math.min(ms,1),...args);let t=Date.now();Date.now=()=>t+=150;
+      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,ms===120?1:ms,...args);let t=Date.now();Date.now=()=>t+=150;
       let error='';try{await provider.typeAndSend('Output of read_file:\nnot accepted');}catch(e){error=e.message;}
       return{error,count:sent.length,draft:provider.editorText()};
     });assert(got.error);assert.equal(got.count,1);assert.equal(got.draft,'');
@@ -427,7 +445,7 @@ async function checks(browser){
     const got=await page.evaluate(async()=>{
       const text='Output of read_file:\nold result';addItem('user',text,'existing-user');
       document.querySelector('button').onclick=()=>{sent.push('failed click');provider.getEditor().innerText='My new draft';};
-      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,Math.min(ms,1),...args);let t=Date.now();Date.now=()=>t+=150;
+      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,ms===120?1:ms,...args);let t=Date.now();Date.now=()=>t+=150;
       let error='';try{await provider.typeAndSend(text);}catch(e){error=e.message;}
       return{error,count:sent.length,draft:provider.editorText()};
     });assert(got.error);assert.equal(got.count,1);assert.equal(got.draft,'My new draft');

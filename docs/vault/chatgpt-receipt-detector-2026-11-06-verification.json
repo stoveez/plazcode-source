@@ -1,24 +1,35 @@
 {
   "updated": "2026-11-06",
-  "status": "source implemented; local Chromium53PASS; provider gates PASS; full262JS running; field evidence pending",
+  "status": "submission+receipt candidate implemented; native browser56PASS; final full262JS running; owner evidence pending",
   "baseline_runtime": "3d1135fd25fc9e05ec2c49e2c0b60b64f4936e36",
   "before": {
     "own_ancestor_mask": "one send; full1599-character normalized native body; zero transcript users; receipt failed",
     "generic_testid": "one send; full matching new body classified old; full-core restart baseline also fails",
     "preview_two_ancestors": "one send; fresh401-character preview; no expansion; receipt failed",
-    "page_boundary": "old detector clicked page-wide Read more; now forbidden"
+    "page_boundary": "old detector clicked page-wide Read more; now forbidden",
+    "deferred_native_form": {
+      "editor_chars": 7449,
+      "submitted_chars": 6946,
+      "submitted_exactly": false,
+      "sends": 1,
+      "receipt_rejected": true,
+      "old_3d1135f_full_browser_case": "FAIL"
+    }
   },
   "after": {
-    "chatgpt_browser_checks": 53,
-    "new_followup_cases": 16,
+    "chatgpt_browser_checks": 56,
+    "new_followup_cases": 19,
     "healthy": 70,
     "preserved_original_functions": 956,
     "dom_resilience": 325,
     "protected_files": 34,
     "image_transport": "PASS",
-    "full_javascript": "running"
+    "full_javascript": "running",
+    "native_form_render_cases": 3,
+    "input_cleanup_scenarios": 19,
+    "producer": "two render frames plus next task, recheck full draft, one click only; no-render/Stop zero clicks"
   },
-  "new_beacon": "2026-11-06_native-receipt-candidates",
+  "new_beacon": "2026-11-06_native-submit-receipts",
   "field": {
     "loaded_beacon": "pending",
     "send_unconfirmed": "pending",
@@ -27,5 +38,6 @@
   "new_ci": null,
   "new_delivery": null,
   "stable_publish": false,
-  "pc_vault_connected": false
+  "pc_vault_connected": false,
+  "full_js_previous_failure": "isolated cleanup VM lacked new receipt helper globals; fixture updated, assertions unchanged, targeted PASS"
 }
