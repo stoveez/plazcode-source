@@ -190,5 +190,10 @@
     "readback": "exact filenames, MIME types and bytes PASS",
     "stable_publish": false,
     "pc_vault_connected": false
+  },
+  "owner_field_retest": {
+    "status": "failed again: Send paused",
+    "exact_loaded_build": "pending diagnostic",
+    "followup": "chatgpt-receipt-detector-2026-11-06.md"
   }
 }

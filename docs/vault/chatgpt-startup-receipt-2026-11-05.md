@@ -4,6 +4,8 @@ updated: 2026-11-06
 ---
 # ChatGPT startup receipt follow-up
 
+**Owner retest failed again; new investigation active:** [native receipt detector](chatgpt-receipt-detector-2026-11-06.md). Prior CI/delivery proof below remains historical and does not prove live success.
+
 **Verified / new complete test ZIPs delivered.** Full [CI42157003472](https://github.com/stoveez/plazcode-source/actions/runs/42157003472) on runtime3d1135f ALL GREEN, official135PASS/0fail. [Windows](https://drive.google.com/file/d/1mzwq9ARA2QdiQZOnxJufblKcngVuq99k/view?usp=drivesdk) · [universal Mac](https://drive.google.com/file/d/1ihXHme6VWhL6t8Iw3D8lXD1pngDjNYKa/view?usp=drivesdk) · [official report](https://drive.google.com/file/d/1bxJiA8aqZUoYfle9-7-r3Vt_f8oGSUAh/view?usp=drivesdk). Exact names/MIME/byte counts read back from Drive. [Full proof](chatgpt-startup-receipt-2026-11-05-verification.json). No stable publication.
 
 The owner still saw Starting Up then Send paused on the previous sibling-user-bubbles build. Current beacon was confirmed. Native H4 role metadata and a masked user bubble had no article/conversation-turn/message-id ancestor. Catalog took97ms, insertion2465ms, then receipt failure15s. Raw body10226 versus11998 sent is not proof of truncation because whitespace normalization can change lengths; ancestor/display metadata remains unprovided. Native cache errors were separate evidence, not an established receipt cause. Raw logs/code stay outside Git.
