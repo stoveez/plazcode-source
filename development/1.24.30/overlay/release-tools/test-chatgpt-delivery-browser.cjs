@@ -18,6 +18,7 @@ async function pageFor(browser, core = false, model = false) {
     <button type="button" data-testid="send-button">Send</button></form>`});
   });
   await page.goto('https://chatgpt.com/c/offline-delivery-test');
+  await page.addScriptTag({path:'providers/chatgpt-cm.js'});
   await page.evaluate(() => {
     window.sent = []; window.nativeCalls = []; window.autoReply = false; window.sequence = [];
     window.addItem = (role,text,id) => {
@@ -72,6 +73,88 @@ async function pageFor(browser, core = false, model = false) {
 async function checks(browser){
   let failed=0,executed=0;
   async function check(name,core,fn,model=false){if(process.env.PLAZCODE_CHATGPT_TEST_ONLY&&!name.includes(process.env.PLAZCODE_CHATGPT_TEST_ONLY))return;executed++;const {page,errors}=await pageFor(browser,core,model);try{await fn(page);assert.deepEqual(errors,[]);console.log('PASS '+name);}catch(e){failed++;console.error('FAIL '+name+': '+e.stack);}finally{await page.close();}}
+  async function nativeReact(page){
+    const modules={
+      react:'react/cjs/react.production.js',
+      'react-dom':'react-dom/cjs/react-dom.production.js',
+      'react-dom/client':'react-dom/cjs/react-dom-client.production.js',
+      scheduler:'scheduler/cjs/scheduler.production.js'
+    };
+    await page.addScriptTag({content:`(()=>{const sources=${JSON.stringify(Object.fromEntries(Object.entries(modules).map(([name,path])=>[name,fs.readFileSync('release-tools/node_modules/'+path,'utf8')])))};const cache={};function require(name){if(cache[name])return cache[name].exports;const module=cache[name]={exports:{}};new Function('module','exports','require','process',sources[name])(module,module.exports,require,{env:{NODE_ENV:'production'}});return module.exports;}window.React=require('react');window.ReactDOM=require('react-dom');window.ReactClient=require('react-dom/client');})();`});
+    await page.evaluate(()=>{
+      // Independent equivalent markup, based on public DOM behavior. No native
+      // client code is copied: real React owns the committed props and alternates.
+      const h=React.createElement;
+      window.nativeRoot=ReactClient.createRoot(document.querySelector('#timeline'));
+      function Text({text}){return h('div',{className:'text-size-chat whitespace-pre-wrap'},h('p',null,h('strong',null,'Formatted native message'),h('code',null,'example')));}
+      window.renderNative=(text,{mask=false,source=true,extra=false}={})=>ReactDOM.flushSync(()=>nativeRoot.render(h('section',{className:mask?'rs-hidden':''},h('h4',{'data-message-author-role':'user'},'You said:'),h('div',{'data-user-message-bubble':true},source?h(Text,{text}):h('div',{className:'whitespace-pre-wrap'},'Formatted native messageexample'),extra?h(Text,{text:'unrelated second part'}):null))));
+      window.sourceFixtureText='⟦RS-SYS⟧\n# Native receipt\n**Formatted native message**\n`example`\n'+('A complete source **with** `formatting` and [a link](https://example.com).\n'.repeat(110));
+    });
+  }
+  await check('native Markdown source confirms the complete message after one send',false,async page=>{
+    await nativeReact(page);
+    const got=await page.evaluate(async()=>{
+      document.querySelector('button[data-testid="send-button"]').onclick=()=>{const text=provider.editorText();sent.push(text);provider.clearEditor();renderNative(text);};
+      await provider.typeAndSend(sourceFixtureText);
+      const bubble=document.querySelector('[data-user-message-bubble]');
+      return {sends:sent.length,body:provider.itemText(bubble),expected:sourceFixtureText,rendered:bubble.textContent};
+    });assert.equal(got.sends,1);assert.equal(got.body,got.expected);assert.notEqual(got.rendered,got.expected);
+  });
+  await check('native Markdown source follows committed React alternates and own masks',false,async page=>{
+    await nativeReact(page);
+    const got=await page.evaluate(()=>{
+      const values=[];
+      for(let i=0;i<8;i++){
+        const text=sourceFixtureText+'\nrevision '+i+' '+(i%2?'**bold**':'__bold__');
+        renderNative(text,{mask:true});
+        const bubble=document.querySelector('[data-user-message-bubble]');
+        values.push({expected:text,actual:provider.itemText(bubble)});
+      }return values;
+    });for(const value of got)assert.equal(value.actual,value.expected);
+  });
+  await check('native Markdown source never reuses stale props or another text part',false,async page=>{
+    await nativeReact(page);
+    const got=await page.evaluate(()=>{
+      renderNative(sourceFixtureText);const bubble=document.querySelector('[data-user-message-bubble]');provider.itemText(bubble);
+      renderNative(sourceFixtureText,{source:false});const unavailable=provider.itemText(bubble);
+      renderNative(sourceFixtureText,{extra:true});const ambiguous=provider.itemText(bubble);
+      return{unavailable,ambiguous,expected:sourceFixtureText};
+    });assert.notEqual(got.unavailable,got.expected);assert.notEqual(got.ambiguous,got.expected);
+  });
+  await check('native Markdown source crosses the real isolated extension world',false,async page=>{
+    await nativeReact(page);const expected=await page.evaluate(()=>{renderNative(sourceFixtureText);return sourceFixtureText;});
+    const session=await page.context().newCDPSession(page);
+    const {frameTree}=await session.send('Page.getFrameTree');
+    const {executionContextId}=await session.send('Page.createIsolatedWorld',{frameId:frameTree.frame.id,worldName:'offline-extension-receipt'});
+    const {result,exceptionDetails}=await session.send('Runtime.evaluate',{contextId:executionContextId,returnByValue:true,expression:fs.readFileSync('providers/chatgpt.js','utf8')+`;JSON.stringify({body:RSProvider.itemText(document.querySelector('[data-user-message-bubble]')),fibers:Object.keys(document.querySelector('.whitespace-pre-wrap')).filter(k=>k.startsWith('__reactFiber$')).length})`});
+    assert.equal(exceptionDetails,undefined);const got=JSON.parse(result.value);assert.equal(got.fibers,0);assert.equal(got.body,expected);await session.detach();
+  });
+  await check('native Markdown source startup accepts one exact committed catalog',true,async page=>{
+    await page.locator('#rs-bar .rs-mode-btn[data-mode="local"]').click();await nativeReact(page);
+    const got=await page.evaluate(async()=>{
+      document.querySelector('button[data-testid="send-button"]').onclick=()=>{const text=provider.editorText();sent.push(text);provider.clearEditor();renderNative(text);addItem('assistant','```json\n{"command":"list_commands"}\n```','react-probe');};
+      await fixture.startSession();return{started:fixture.A.started,sends:sent.length};
+    });assert.equal(got.started,true);assert.equal(got.sends,1);
+  });
+  await check('native Markdown source partial committed message remains unconfirmed',false,async page=>{
+    await nativeReact(page);
+    const got=await page.evaluate(async()=>{
+      const timer=window.setTimeout;window.setTimeout=(fn,ms,...args)=>timer(fn,ms===120?0:ms,...args);
+      document.querySelector('button[data-testid="send-button"]').onclick=()=>{const text=provider.editorText();sent.push(text);provider.clearEditor();renderNative(text.slice(0,-200));};
+      let error='';try{await provider.typeAndSend(sourceFixtureText);}catch(e){error=e.message;}return{sends:sent.length,error};
+    });assert.equal(got.sends,1);assert.match(got.error,/did not confirm/);
+  });
+  await check('native Markdown source ignores composer assistant and detached sources',false,async page=>{
+    await nativeReact(page);
+    const got=await page.evaluate(()=>{
+      renderNative(sourceFixtureText);const bubble=document.querySelector('[data-user-message-bubble]');
+      const read=()=>{const event=new CustomEvent('rs-user-source-sync',{bubbles:true,cancelable:true});return !bubble.dispatchEvent(event);};
+      const original=read();document.querySelector('form').append(bubble);const composer=read();
+      document.querySelector('#prompt-textarea').append(bubble);const editable=read();
+      const assistant=addItem('assistant','','assistant');assistant.append(bubble);const reply=read();
+      bubble.remove();const detached=read();return{original,composer,editable,reply,detached};
+    });assert.equal(got.original,true);assert.equal(got.editable,false);assert.equal(got.reply,false);assert.equal(got.detached,false);assert.equal(got.composer,false);
+  });
   await check('startup uses one verified exchange with the live command catalog supplied first',true,async page=>{
     await page.locator('#rs-bar .rs-mode-btn[data-mode="local"]').click();
     const state=await page.evaluate(async()=>{

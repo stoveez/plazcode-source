@@ -72,6 +72,60 @@
   const ATTR = "data-rs-cm";
   const LEN = "data-rs-cm-len";
 
+  // Native user turns now render Markdown. Visible text loses formatting and
+  // cannot prove delivery of the original instructions/results. Read only the
+  // committed text component inside the requested user bubble, never pending
+  // composer state or a conversation-wide React store. Like the CodeMirror
+  // tap, the synchronous DOM event crosses the isolated/MAIN world boundary.
+  const USER = '[data-user-message-bubble]';
+  const USER_SOURCE = 'data-rs-user-source';
+  const USER_STATE = 'data-rs-user-source-state';
+  const USER_EXCLUDE = '#rs-root,.rs-chip,form,button,[role="button"],[contenteditable="true"],[data-message-author-role="assistant"],[data-conversation-role="assistant"]';
+  function committedUserText(surface, bubble) {
+    const keys = Object.keys(surface);
+    const fiber = surface[keys.find(key => key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$'))];
+    const props = surface[keys.find(key => key.startsWith('__reactProps$'))];
+    if (!fiber || !props) return null;
+    const texts = [];
+    for (const start of [fiber, fiber.alternate]) {
+      if (!start || start.memoizedProps !== props) continue;
+      let node = start, boundary = false, source = null, ambiguous = false;
+      for (let depth = 0; node && depth < 128; depth++, node = node.return) {
+        if (node.stateNode === bubble) boundary = true;
+        if (!boundary && node !== start && typeof node.memoizedProps?.text === 'string') {
+          const next = node.memoizedProps.text;
+          if (source !== null && source !== next) ambiguous = true;
+          source = next;
+        }
+        // Verify this chain belongs to React's current committed root. The DOM
+        // expando can retain the other alternate after an update. Conflicting
+        // source values, detached roots and incomplete paths all fail closed.
+        if (!node.return && boundary && node.stateNode?.current === node && !ambiguous && source !== null) texts.push(source);
+      }
+    }
+    return texts.length && texts.every(text => text === texts[0]) ? texts[0] : null;
+  }
+  function syncUserSource(event) {
+    const bubble = event.target;
+    if (!bubble?.matches?.(USER) || !bubble.isConnected || safeClosest(bubble, USER_EXCLUDE)) return;
+    let source = null, state = 'unavailable';
+    try {
+      const surfaces = safeQueryAll(bubble, '.whitespace-pre-wrap')
+        .filter(node => safeClosest(node, USER) === bubble && !safeClosest(node, USER_EXCLUDE));
+      const top = surfaces.filter(node => !surfaces.some(parent => parent !== node && parent.contains(node)));
+      if (top.length === 1) source = committedUserText(top[0], bubble);
+      else if (top.length > 1) state = 'ambiguous';
+    } catch { state = 'unavailable'; }
+    if (source !== null) {
+      if (bubble.getAttribute(USER_SOURCE) !== source) bubble.setAttribute(USER_SOURCE, source);
+      state = 'committed';
+    } else bubble.removeAttribute(USER_SOURCE);
+    if (bubble.getAttribute(USER_STATE) !== state) bubble.setAttribute(USER_STATE, state);
+    if (source !== null) event.preventDefault();
+  }
+  document.addEventListener('rs-user-source-sync', syncUserSource, true);
+  document.documentElement.setAttribute('data-rs-gpt-source-ver', '2026-11-06_committed-user-markdown');
+
   // Republishing a 10k-char attribute on every sample would churn the DOM (the
   // core samples the stream ~8x/s). Only write when the document actually grew
   // or changed length, tracked per node so a re-render starts clean.

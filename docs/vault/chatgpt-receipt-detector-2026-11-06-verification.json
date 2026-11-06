@@ -1,6 +1,6 @@
 {
   "updated": "2026-11-06",
-  "status": "candidate implemented; native browser56PASS/provider gates PASS/final full262JS PASS; full CI active and owner metrics pending",
+  "status": "Markdown follow-up WIP; fresh checks pending",
   "baseline_runtime": "3d1135fd25fc9e05ec2c49e2c0b60b64f4936e36",
   "before": {
     "own_ancestor_mask": "one send; full1599-character normalized native body; zero transcript users; receipt failed",
@@ -14,9 +14,33 @@
       "sends": 1,
       "receipt_rejected": true,
       "old_3d1135f_full_browser_case": "FAIL"
+    },
+    "markdown_source": {
+      "react": "19.3.1",
+      "old_runtime": "40c1d54",
+      "complete_send_rejected": true,
+      "red_cases": 2,
+      "raw_log_outside_git": "/workspace/chatgpt-markdown-before.log"
     }
   },
-  "after": {
+  "new_beacon": "2026-11-06_committed-user-markdown",
+  "field": {
+    "loaded_beacon": "pending",
+    "send_unconfirmed": "pending",
+    "live_browser_access": false
+  },
+  "new_ci": {
+    "run_id": 42235579551,
+    "head_sha": "40c1d544b0beb9fbcf9a3ea83feb25d8c3ee5602",
+    "status": "cancelled",
+    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42235579551",
+    "do_not_deliver": true
+  },
+  "new_delivery": null,
+  "stable_publish": false,
+  "pc_vault_connected": false,
+  "full_js_previous_failure": "isolated cleanup VM lacked new receipt helper globals; fixture updated, assertions unchanged, targeted PASS",
+  "historical_before_markdown": {
     "chatgpt_browser_checks": 56,
     "new_followup_cases": 19,
     "healthy": 70,
@@ -38,20 +62,17 @@
     "input_cleanup_scenarios": 19,
     "producer": "two render frames plus next task, recheck full draft, one click only; no-render/Stop zero clicks"
   },
-  "new_beacon": "2026-11-06_native-submit-receipts",
-  "field": {
-    "loaded_beacon": "pending",
-    "send_unconfirmed": "pending",
-    "live_browser_access": false
+  "after": {
+    "status": "focused PASS; full checks pending",
+    "new_markdown_cases": 7,
+    "markdown_focused_pass": 7,
+    "protected_files": 34,
+    "preserved_original_functions": 956
   },
-  "new_ci": {
-    "run_id": 42235579551,
-    "head_sha": "40c1d544b0beb9fbcf9a3ea83feb25d8c3ee5602",
-    "status": "in_progress",
-    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42235579551"
-  },
-  "new_delivery": null,
-  "stable_publish": false,
-  "pc_vault_connected": false,
-  "full_js_previous_failure": "isolated cleanup VM lacked new receipt helper globals; fixture updated, assertions unchanged, targeted PASS"
+  "native_public_source": {
+    "asset": "879981.e2e5aa2c5c.js",
+    "sha256": "416d2d64c42d41682e3c868cb636799dc89e5deaee62bb3538e0b022767e2412",
+    "finding": "native user text prop rendered as Markdown inside .whitespace-pre-wrap",
+    "native_code_copied": false
+  }
 }

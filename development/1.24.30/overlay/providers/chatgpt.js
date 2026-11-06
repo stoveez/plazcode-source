@@ -343,6 +343,16 @@ const RSProvider = (() => {
   // timestamps). Read the user's content surface, never that surrounding UI.
   // Keep the same reader for delivery receipts, task requests and startup proof.
   function userText(item, excludeSel) {
+    const bubbles = safeRead(() => item.matches('[data-user-message-bubble]'), false) ? [item] : safeQueryAll(item, '[data-user-message-bubble]');
+    const native = bubbles.filter(node => !safeClosest(node, [excludeSel, '#rs-root,.rs-chip,button,[role="button"]'].filter(Boolean).join(',')));
+    if (native.length === 1) {
+      const bubble = native[0];
+      // Only a synchronous acknowledgement from the MAIN-world reader makes
+      // its source attribute current. Never reuse a stale attribute if the tap
+      // is missing or cannot identify this committed user message.
+      const acknowledged = safeRead(() => !bubble.dispatchEvent(new CustomEvent('rs-user-source-sync', {bubbles:true, cancelable:true})), false);
+      if (acknowledged && safeRead(() => bubble.hasAttribute('data-rs-user-source'), false)) return safeRead(() => bubble.getAttribute('data-rs-user-source'), '');
+    }
     const ui = [excludeSel, 'button,[role="button"],h1.sr-only,h2.sr-only,h3.sr-only,h4.sr-only,h5.sr-only,h6.sr-only,time,[data-testid="timestamp"]'].filter(Boolean).join(',');
     for (const selector of ['[data-message-content]', '.whitespace-pre-wrap', '[data-user-message-bubble]', '.markdown,.prose']) {
       const nodes = safeRead(() => item.matches(selector), false) ? [item] : safeQueryAll(item, selector);
@@ -1272,6 +1282,7 @@ const RSProvider = (() => {
             const body = normalize(userText(item, '.rs-chip'));
             let mismatchAt = 0; while (mismatchAt < Math.min(body.length, want.length) && body[mismatchAt] === want[mismatchAt]) mismatchAt++;
             return {fresh:freshReceipt(item), knownNode:usersBefore.has(item), chars:body.length, matches:body === want, mismatchAt,
+              source:safeRead(() => item.getAttribute('data-rs-user-source-state'), null),
               boxed:safeRead(() => item.getClientRects().length > 0, false), display:safeStyle(item).display};
           });
           proof.receiptEvidence = !users.length ? 'no_native_user_message' : !freshUsers.length ? 'no_new_message_identity' :
@@ -1667,7 +1678,7 @@ const RSProvider = (() => {
       if (stopped) isStopped = stopped;
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsGptVer).
-      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-06_native-submit-receipts"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-06_committed-user-markdown"); } catch {}
     },
     // turns
     allItems, withTranscriptSnapshot, isUserItem, isAssistantItem, itemText, classifyText, setActivityFolded, confirmedDeliveryMatches,
