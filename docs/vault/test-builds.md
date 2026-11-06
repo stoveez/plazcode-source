@@ -1,7 +1,7 @@
 ---
 title: Test builds and the public-then-private plan
 
-updated: 2026-11-05
+updated: 2026-11-06
 ---
 
 2026-11-05 FOLLOW-UP COMPLETE: full CI42146181204/adf89f6 ALL GREEN, official135PASS/0fail; new exact full Windows/universal Mac inner ZIPs delivered through Drive with name/MIME/byte readback. Bridge discovery, strict ChatGPT receipts, namespace correction, safe native append, DeepSeek stream/progress/composer roots fixed. All262JS on all3hosts (Linux twice), nativeWin304/Mac309/Linux311PASS+2ignored, ChatGPT27/installed HTTPS lifecycle/Chromium+Firefox/preservation958/DOM325/healthy70/pins34 PASS. Full app replacement required; extension reload + AI-tab refresh. Prior42078807676 lacks follow-up. No stable publication. Source Private reminder remains until confirmed; owner PC vault not connected. See connection-startup-followup-2026-11-05.md and verification JSON.
@@ -179,7 +179,7 @@ CI run [41157294450](https://github.com/stoveez/plazcode-source/actions/runs/411
 
 # Test builds
 
-2026-11-05 COMPLETE CHATGPT USER RECEIPTS IMPLEMENTED / full verification active: wrapper-free bubbles keep their own boundary; boxless/own pre-hidden roots remain detectable and hidden old chats stay excluded. A shortened exact-prefix new message may expand its own native Read/Show more control ONCE; only its complete matching body confirms delivery. Real Chromium full-core37PASS, healthy70/preservation957/DOM325/protected34PASS on final source; final local full262JS PASS/0fail/3existing skips. Full CI42157003472/runtime3d1135f is ACTIVE; Windows+universal Mac verification and Drive delivery pending. Owner ancestor metadata/live retest pending; no claim raw lengths alone prove truncation. CI42155989129 was cancelled to include preview coverage; never deliver it. Previous delivered CI42146181204 lacks this fix. No stable publish; PC vault not connected.
+2026-11-06 CHATGPT STARTUP FOLLOW-UP VERIFIED / new full test ZIPs DELIVERED: full CI42157003472/runtime3d1135f ALL GREEN; official135PASS/0fail. Native user bubbles keep their boundary; boxless/own pre-hidden messages remain detectable, and native long-message previews expand once before exact full-content confirmation. Strict receipts/one click/no replay/Stop ownership preserved. Local and all3host full262JS PASS (Linux twice), ChatGPT37/Chrome+Firefox PASS; nativeWin304/Mac309/Linux311PASS+2ignored, provider70/preservation957/DOM325/pins34PASS. Exact Windows/universal Mac inner ZIPs verified: production signatures/241sources/all3module copies/both Mac slices/zero published layout delta/CRC/SHA and Drive names/MIME/bytes. Extension reload+ChatGPT refresh takes this fix. Owner affected-PC/live retest pending; no stable publish, PC vault not connected. [Windows](https://drive.google.com/file/d/1mzwq9ARA2QdiQZOnxJufblKcngVuq99k/view?usp=drivesdk) · [Mac](https://drive.google.com/file/d/1ihXHme6VWhL6t8Iw3D8lXD1pngDjNYKa/view?usp=drivesdk) · [Report](https://drive.google.com/file/d/1bxJiA8aqZUoYfle9-7-r3Vt_f8oGSUAh/view?usp=drivesdk). Source Private reminder until confirmed; see chatgpt-startup-receipt-2026-11-05.md and verification JSON. Earlier42146181204 ZIPs lack this fix;42155989129 was cancelled and must never be delivered.
 
 [Current receipt investigation](chatgpt-startup-receipt-2026-11-05.md).
 

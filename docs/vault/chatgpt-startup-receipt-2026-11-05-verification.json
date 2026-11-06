@@ -1,5 +1,5 @@
 {
-  "status": "final local full262JS PASS/0fail; Chromium37PASS; final provider gates PASS; full CI active",
+  "status": "verified; full CI green; new complete Windows/universal Mac ZIPs delivered through Drive with exact readback",
   "before": {
     "boxless_exact_startup": "FAIL: one send, zero detected users, 15s receipt timeout",
     "boxless_whitespace_startup": "FAIL: one send, zero detected users, 15s receipt timeout",
@@ -26,6 +26,19 @@
         "test-bridges.js",
         "test-design-visual.js"
       ]
+    },
+    "hosted_javascript": {
+      "all_three_platforms": 262,
+      "linux_runs": 2,
+      "failures": 0
+    },
+    "hosted_chatgpt_checks": 37,
+    "native": {
+      "Windows": 304,
+      "macOS": 309,
+      "Linux": 311,
+      "existing_ignored_each": 2,
+      "isolated_preferences_each": 14
     }
   },
   "limits": [
@@ -39,7 +52,143 @@
   "ci": {
     "run_id": 42157003472,
     "head_sha": "3d1135fd25fc9e05ec2c49e2c0b60b64f4936e36",
-    "status": "in_progress",
-    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42157003472"
+    "status": "completed",
+    "conclusion": "success",
+    "official_checks_passed": 135,
+    "official_failures": 0,
+    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42157003472",
+    "jobs": [
+      {
+        "name": "native (ubuntu-latest)",
+        "databaseId": 127693440794,
+        "conclusion": "success"
+      },
+      {
+        "name": "native (macos-latest)",
+        "databaseId": 127693441085,
+        "conclusion": "success"
+      },
+      {
+        "name": "browsers",
+        "databaseId": 127693441160,
+        "conclusion": "success"
+      },
+      {
+        "name": "native (windows-latest)",
+        "databaseId": 127693441238,
+        "conclusion": "success"
+      },
+      {
+        "name": "bootstrap-integrity",
+        "databaseId": 127693442393,
+        "conclusion": "skipped"
+      },
+      {
+        "name": "release-check",
+        "databaseId": 127707926696,
+        "conclusion": "success"
+      }
+    ]
+  },
+  "updated": "2026-11-06",
+  "packages": {
+    "windows": {
+      "verification": {
+        "platform": "windows",
+        "version": "1.24.30",
+        "channel": "release",
+        "signedFiles": 3070,
+        "reviewedSources": 241,
+        "release_variant": {
+          "schema": 1,
+          "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+          "mark": "31ff5250ca8f5bbe",
+          "layout": 2
+        },
+        "signatures": "verified",
+        "sourceProvenance": "verified",
+        "licences": "proprietary first-party and original dependency notices verified",
+        "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+        "file": "PlazCode-1.24.30-test-lean.zip",
+        "bytes": 51209603,
+        "sha256": "53fc994a4a7c9d01b34b02c7a945d48e7deca82556603ff0808f3d27a6bc765b",
+        "files": 3084
+      },
+      "drive": {
+        "id": "1mzwq9ARA2QdiQZOnxJufblKcngVuq99k",
+        "title": "PlazCode-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "size": "51209603",
+        "url": "https://drive.google.com/file/d/1mzwq9ARA2QdiQZOnxJufblKcngVuq99k/view?usp=drivesdk"
+      }
+    },
+    "macos": {
+      "verification": {
+        "platform": "macos",
+        "version": "1.24.30",
+        "channel": "release",
+        "signedFiles": 3074,
+        "reviewedSources": 241,
+        "release_variant": {
+          "schema": 1,
+          "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+          "mark": "31ff5250ca8f5bbe",
+          "layout": 2
+        },
+        "signatures": "verified",
+        "sourceProvenance": "verified",
+        "licences": "proprietary first-party and original dependency notices verified",
+        "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+        "file": "PlazCode-macOS-1.24.30-test-lean.zip",
+        "bytes": 53003562,
+        "sha256": "46bae195dfb822e797f5a448d2d7bf6ad9f1ad050cf693ef3637443a69e189d6",
+        "files": 3088
+      },
+      "drive": {
+        "id": "1ihXHme6VWhL6t8Iw3D8lXD1pngDjNYKa",
+        "title": "PlazCode-macOS-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "size": "53003562",
+        "url": "https://drive.google.com/file/d/1ihXHme6VWhL6t8Iw3D8lXD1pngDjNYKa/view?usp=drivesdk"
+      }
+    },
+    "report": {
+      "verification": {
+        "file": "release-check.md",
+        "bytes": 11021,
+        "sha256": "701d61e58c0b6c97ce145779ee0f782c99627522884c837a27a302b287422288",
+        "head_sha": "3d1135fd25fc9e05ec2c49e2c0b60b64f4936e36",
+        "checks_passed": 135,
+        "failures": 0,
+        "all_checks": "PASS",
+        "variant": {
+          "schema": 1,
+          "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+          "mark": "31ff5250ca8f5bbe",
+          "layout": 2
+        }
+      },
+      "drive": {
+        "id": "1bxJiA8aqZUoYfle9-7-r3Vt_f8oGSUAh",
+        "title": "PlazCode-ChatGPT-test-build-42157003472-checks.md",
+        "mime_type": "text/markdown",
+        "size": "11021",
+        "url": "https://drive.google.com/file/d/1bxJiA8aqZUoYfle9-7-r3Vt_f8oGSUAh/view?usp=drivesdk"
+      }
+    }
+  },
+  "delivery": {
+    "layout": "exact published file list; Windows3084 and Mac3088 files, zero additions/removals",
+    "source_provenance": "241 reviewed sources, all three packaged module copies",
+    "mac_architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "app_included": true,
+    "helper_included": true,
+    "chrome_and_firefox_included": true,
+    "readback": "exact filenames, MIME types and bytes PASS",
+    "stable_publish": false,
+    "pc_vault_connected": false
   }
 }
