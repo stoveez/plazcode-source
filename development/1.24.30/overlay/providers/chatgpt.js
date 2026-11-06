@@ -1178,7 +1178,8 @@ const RSProvider = (() => {
     const clock = () => safeRead(() => performance.now(), Date.now());
     let receiptStartedAt = null, renderWaitMs = 0;
     let expandedMessage = false;
-    const receipt = () => receiptUsers().some(item => {
+    // Include hidden or virtualized user bubbles when confirming the exact submitted result.
+    const receipt = () => receiptUsers(true).some(item => {
       if (!freshReceipt(item)) return false;
       const body = normalize(userText(item, '.rs-chip'));
       if (body === want) return true;
