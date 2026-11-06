@@ -32,10 +32,12 @@ Current focused9PASS, healthy70/preservation956/DOM325/pins34/input-cleanup19/im
 
 Native long previews have a truncated nearest text prop and a full committed parent text prop. A third red test reproduced this shape. Accept only outward prefix extensions inside the same user boundary; conflicting sources reject. Superseded local full runs stopped intentionally before source regeneration; final source full gates must rerun.
 
-Superseded full CI42241715359: cancellation requested; do not deliver. Originally started on exact source325561d3577f4ecaa7767fcb16ea53eb90295df5. New stage contains scripts only, no old artifacts. Source Public; approved branch build/deliver/Private plan resent before dispatch.
+Superseded full CI42241715359: CANCELLED; do not deliver. Originally started on exact source325561d3577f4ecaa7767fcb16ea53eb90295df5. New stage contains scripts only, no old artifacts. Source Public; approved branch build/deliver/Private plan resent before dispatch.
 
 Final full local Chromium suite:65PASS (56 retained +9 new Markdown cases), including exact15-tool/no-reexecution recovery, startup, Stop and real cross-world receipts. Local full262JS later found the two guard issues below; that hosted build is superseded.
 
 ## Full-suite guard follow-up
 
-First local full262JS completed with2failures: test-chatgpt-cm-refresh.js exposed unconditional documentElement marker write in its minimal DOM, and test-provider-dom-guards.js found new matches/attribute reads without guarded access. Fix product marker only when root exists; wrap new reads in existing safeRead. No test assertions weakened or exclusions added. Targeted original CodeMirror same-length refresh,617guarded DOM reads/13finally,34pins/956preservation and all9new Markdown browser cases PASS. Prior65browser success is before this guarded-read edit. Rerun final full65/full262 and full CI on the new frozen source. CI42241715359 cancellation requested; do not deliver; no uploads from it. Owner field proof still pending.
+First local full262JS completed with2failures: test-chatgpt-cm-refresh.js exposed unconditional documentElement marker write in its minimal DOM, and test-provider-dom-guards.js found new matches/attribute reads without guarded access. Fix product marker only when root exists; wrap new reads in existing safeRead. No test assertions weakened or exclusions added. Targeted original CodeMirror same-length refresh,617guarded DOM reads/13finally,34pins/956preservation and all9new Markdown browser cases PASS. Prior65browser success is before this guarded-read edit. Rerun final full65/full262 and full CI on the new frozen source. CI42241715359 CANCELLED; do not deliver; no uploads from it. Owner field proof still pending.
+
+Replacement full CI42243794939 ACTIVE on headf71ed3b559cf3ab161bd9287989681d509cbb7ad/runtime95977fe. Public/build/verify/Drive/Private plan resent. Local full65/full262 running; no fresh delivery.
