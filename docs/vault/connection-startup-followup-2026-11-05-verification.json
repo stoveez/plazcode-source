@@ -1,6 +1,6 @@
 {
   "date": "2026-11-05",
-  "status": "all-local-and-hosted-tests-pass-mac-compilation-budget-fixed-fresh-complete-build-pending",
+  "status": "complete-delivered-full-ci-green",
   "initial_wip": "ae438c1",
   "before": {
     "bridge_failed_cases": 5,
@@ -45,7 +45,86 @@
   },
   "append_root": "client capped4000line read then full overwrite",
   "multiline_upstream_root": "not established; raw failed envelope not supplied",
-  "fresh_delivery": null,
+  "fresh_delivery": {
+    "windows": {
+      "platform": "windows",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3070,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+      "file": "PlazCode-1.24.30-test-lean.zip",
+      "bytes": 51207079,
+      "sha256": "49bff84fa59d2c8779869bf0a87b624fab5d42a52949d126eba69a5d5c265680",
+      "files": 3084,
+      "drive": {
+        "id": "1FUntLurqTNkvNwJfAU8KDSAUDfgyYW8r",
+        "name": "PlazCode-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "bytes": 51207079,
+        "url": "https://drive.google.com/file/d/1FUntLurqTNkvNwJfAU8KDSAUDfgyYW8r/view?usp=drivesdk"
+      }
+    },
+    "macos": {
+      "platform": "macos",
+      "version": "1.24.30",
+      "channel": "release",
+      "signedFiles": 3074,
+      "reviewedSources": 241,
+      "release_variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "signatures": "verified",
+      "sourceProvenance": "verified",
+      "licences": "proprietary first-party and original dependency notices verified",
+      "new_extension_fixes": "current reviewed source hashes and all three packaged module copies verified",
+      "file": "PlazCode-macOS-1.24.30-test-lean.zip",
+      "bytes": 53000683,
+      "sha256": "1958426e3a0511622e25849be3224a2eb062a3b1962cd5a0d023e1c632ec92e6",
+      "files": 3088,
+      "drive": {
+        "id": "1AZJrNl0QzoOVGD0hWviMsmaV50M_eIA_",
+        "name": "PlazCode-macOS-1.24.30-test-lean.zip",
+        "mime_type": "application/zip",
+        "bytes": 53000683,
+        "url": "https://drive.google.com/file/d/1AZJrNl0QzoOVGD0hWviMsmaV50M_eIA_/view?usp=drivesdk"
+      }
+    },
+    "report": {
+      "file": "release-check.md",
+      "bytes": 11021,
+      "sha256": "ca3154b35810f92a79264cb4909cc306e3d2f41769b880f001220a834360c7f0",
+      "head_sha": "adf89f64c1bd022a90e2a2a4d992366e8274041a",
+      "checks_passed": 135,
+      "failures": 0,
+      "all_checks": "PASS",
+      "variant": {
+        "schema": 1,
+        "seed_sha256": "63e104f9cc48901c1a988cb7491b9ff3cb0d9b1527ae20ae8829201c19bfae91",
+        "mark": "31ff5250ca8f5bbe",
+        "layout": 2
+      },
+      "drive": {
+        "id": "1CSjFPCOgEi80e-QQB2ASqtpNbbsbPdqz",
+        "name": "release-check.md",
+        "mime_type": "text/markdown",
+        "bytes": 11021,
+        "url": "https://drive.google.com/file/d/1CSjFPCOgEi80e-QQB2ASqtpNbbsbPdqz/view?usp=drivesdk"
+      }
+    }
+  },
   "stable_published": false,
   "append_root_fixed": true,
   "new_deepseek": {
@@ -131,13 +210,67 @@
     "other_platform_minutes": 45,
     "tests_or_architectures_removed": false,
     "release_report": "correctly blocked missing Mac artifact",
-    "next_full_build": "pending"
+    "next_full_build": "pending",
+    "final_run": 42146181204,
+    "final_result": "success"
   },
   "active_ci": {
     "run": 42146181204,
     "head_sha": "adf89f64c1bd022a90e2a2a4d992366e8274041a",
-    "status": "in_progress",
+    "status": "success",
     "stage": "/workspace/plazcode-followup-build-42146181204",
-    "watch": "/workspace/followup-ci-watch-42146181204.log"
-  }
+    "watch": "/workspace/followup-ci-watch-42146181204.log",
+    "official_checks_passed": 135,
+    "failures": 0
+  },
+  "current_hosted_proof": {
+    "run": 42146181204,
+    "jobs": [
+      {
+        "name": "windows",
+        "isError": false,
+        "proof": [
+          "2026-11-06T01:49:32.5783312Z test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s",
+          "2026-11-06T02:01:04.5677696Z Regression summary: 0 failures []",
+          "2026-11-06T02:02:14.2121746Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "2026-11-06T02:02:37.7029693Z test result: ok. 299 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 23.47s"
+        ]
+      },
+      {
+        "name": "linux",
+        "isError": false,
+        "proof": [
+          "2026-11-06T01:48:21.4052235Z test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+          "2026-11-06T01:57:45.8049896Z Regression summary: 0 failures []",
+          "2026-11-06T02:06:56.7633578Z Regression summary: 0 failures []",
+          "2026-11-06T02:07:53.8379501Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "2026-11-06T02:08:16.4915507Z test result: ok. 306 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 22.65s"
+        ]
+      },
+      {
+        "name": "browsers",
+        "isError": false,
+        "proof": [
+          "2026-11-06T01:58:55.0879930Z PASS installed Chromium extension: real chunked HTTPS remains pending after headers/6.5s pause, terminal EOF and abort release it, native Send arrow unchanged.",
+          "2026-11-06T02:00:03.8626722Z 27 ChatGPT delivery checks passed."
+        ]
+      },
+      {
+        "name": "macos",
+        "isError": false,
+        "proof": [
+          "2026-11-06T01:50:44.5931170Z test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s",
+          "2026-11-06T02:04:56.2905760Z Regression summary: 0 failures []",
+          "2026-11-06T02:12:04.2376030Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+          "2026-11-06T02:12:34.7285490Z test result: ok. 304 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 30.46s"
+        ]
+      }
+    ]
+  },
+  "source_visibility": {
+    "last_checked": "public",
+    "new_zip_private_reminder_sent": true,
+    "changed_by_agent": false
+  },
+  "owner_pc_vault": "not connected"
 }
