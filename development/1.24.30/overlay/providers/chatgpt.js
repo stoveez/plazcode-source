@@ -411,6 +411,10 @@ const RSProvider = (() => {
       while (cur && safeRead(() => cur.parentElement, null) && safeRead(() => cur.parentElement, null) !== outer) cur = safeRead(() => cur.parentElement, null);
       if (cur && cur !== outer) return cur;
     }
+    // With no native turn/role wrapper, the bubble itself is the only known
+    // message boundary. Its parent can be a boxless layout shell or hold several
+    // messages; guessing that parent also lets masking hide sibling replies.
+    if (safeRead(() => signal.matches('[data-user-message-bubble]'), false)) return signal;
     return safeRead(() => signal.parentElement, null) || signal;
   }
 
@@ -450,6 +454,22 @@ const RSProvider = (() => {
       return read();
     }finally{transcriptSnapshot=null;assistantSnapshot=null;userSnapshot=null;}
   }
+  function itemRendered(root, signal) {
+    if (safeRead(() => root.getClientRects().length > 0, true)) return true;
+    // display:contents contributes no box even when its native message is
+    // rendered. Resolving a stable container must not discard that message.
+    // Own pre-hide can run before the chip is inserted, hiding every child;
+    // keep that contents-only container available for the decoration pass.
+    if (safeStyle(root).display !== 'contents') return false;
+    for (let node = root; node; node = safeRead(() => node.parentElement, null)) {
+      const style = safeStyle(node);
+      if (style.display === 'none' || /^(hidden|collapse)$/.test(style.visibility) || style.contentVisibility === 'hidden') return false;
+    }
+    if (safeRead(() => signal.getClientRects().length > 0, false)) return true;
+    if (safeRead(() => root.classList.contains('rs-hidden'), false)) return true;
+    return safeQueryAll(root, '[data-user-message-bubble],.whitespace-pre-wrap,.markdown,.prose,.markdown-new-styling,[data-message-content],.rs-chip')
+      .some(node => safeRead(() => node.getClientRects().length > 0, false));
+  }
   const allItems = () => {
     if(transcriptSnapshot)return transcriptSnapshot;
     // ChatGPT keeps the previous conversation's turns in the page, hidden (zero size), after the user opens a
@@ -471,7 +491,7 @@ const RSProvider = (() => {
       // container stays visible. Filtering the bubble first lost our OWN sent
       // startup/results from receipts as soon as decoration ran. Resolve the
       // container first; truly hidden old conversations still have no layout.
-      if (hasLayout && !safeRead(() => root.getClientRects().length > 0, true)) continue;
+      if (hasLayout && !itemRendered(root, signal)) continue;
       seen.add(root);
       items.push(root);
     }
@@ -1071,7 +1091,25 @@ const RSProvider = (() => {
       if (getEditor() === ed && chat === conversationKey() &&
           sendContext().session === context.session && ownedDraft !== null &&
           (editorText() === ownedDraft || (ownedDraft.endsWith('\n') && editorText() === ownedDraft + '\n'))) clearEditor();
-      diag('send.unconfirmed', {committed, code:error.code || 'CHATGPT_SEND_FAILED'});
+      const proof = {committed, code:error.code || 'CHATGPT_SEND_FAILED'};
+      // Lengths/booleans only: distinguish an unrecognized native message from
+      // a partial/different body without logging prompts, results or identities.
+      if (committed && sameSession() && chat === conversationKey()) {
+        try {
+          const users = allItems().filter(isUserItem);
+          proof.expectedChars = text.length; proof.expectedNormalizedChars = want.length;
+          proof.detectedUsers = users.length;
+          proof.users = users.slice(-3).map(item => {
+            const body = normalize(classifyText(item, '.rs-chip'));
+            return {fresh:!usersBefore.has(itemKey(item) || item), chars:body.length, matches:body === want,
+              boxed:safeRead(() => item.getClientRects().length > 0, false), display:safeStyle(item).display};
+          });
+          proof.bubbles = safeQueryAll(document, '[data-user-message-bubble]').slice(-3).map(item => ({
+            chars:normalize(userText(item, '.rs-chip')).length, boxed:safeRead(() => item.getClientRects().length > 0, false)
+          }));
+        } catch {}
+      }
+      diag('send.unconfirmed', proof);
       throw error;
     } finally {
       try { document.documentElement.classList.remove("rs-chatgpt-injecting"); } catch {}
@@ -1457,7 +1495,7 @@ const RSProvider = (() => {
       if (stopped) isStopped = stopped;
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsGptVer).
-      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-05_sibling-user-bubbles"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-05_boxless-user-receipts"); } catch {}
     },
     // turns
     allItems, withTranscriptSnapshot, isUserItem, isAssistantItem, itemText, classifyText, setActivityFolded,

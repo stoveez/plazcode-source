@@ -147,32 +147,51 @@ async function checks(browser){
       return{ready:!!state?.ready,sends:sent.length,users:items.length,body:items.map(x=>provider.classifyText(x,'.rs-chip')).join('\n'),masked:!!document.querySelector('.rs-hidden [data-user-message-bubble]')};
     });assert.equal(result.ready,true,JSON.stringify({...result,body:result.body.slice(0,30)}));assert.equal(result.sends,1);assert.equal(result.users,1,'the screen-reader heading is not an extra user message');assert(result.body.includes('⟦RS-SYS⟧'));assert(result.masked,'run actual whole-turn decoration before confirming the receipt');
   });
-  for(const normalizeDisplay of [false,true])await check('boxless native user shell confirms exact startup'+(normalizeDisplay?' after native whitespace normalization':''),true,async page=>{
-    const got=await page.evaluate(async normalizeDisplay=>{
+  for(const shape of ['bare','role','normalized-premasked'])await check('boxless native user shell confirms exact startup: '+shape,true,async page=>{
+    const got=await page.evaluate(async shape=>{
       const native=addItem;addItem=(role,text,id)=>{
         if(role!=='user')return native(role,text,id);
         const turn=document.createElement('div'),heading=document.createElement('h4'),shell=document.createElement('div'),bubble=document.createElement('div'),body=document.createElement('div');
         heading.className='sr-only';heading.dataset.messageAuthorRole='user';heading.textContent='You said:';
-        shell.style.display='contents';bubble.setAttribute('data-user-message-bubble','');body.className='text-size-chat whitespace-pre-wrap';body.textContent=normalizeDisplay?text.replace(/\s+/g,' ').trim():text;
+        shell.style.display='contents';if(shape==='role')shell.dataset.messageAuthorRole='user';bubble.setAttribute('data-user-message-bubble','');body.className='text-size-chat whitespace-pre-wrap';body.textContent=shape==='normalized-premasked'?text.replace(/\s+/g,' ').trim():text;
+        if(shape==='normalized-premasked'){shell.dataset.messageAuthorRole='user';shell.className='rs-hidden';}
         bubble.append(body);shell.append(bubble);turn.append(heading,shell);document.querySelector('#timeline').append(turn);
         fixture.decorate.sweep();return shell;
       };
       autoReply=true;sequence=['```json\n{"command":"list_commands"}\n```'];const result=await fixture.startSession();
       const users=provider.allItems().filter(provider.isUserItem),normalize=t=>String(t||'').replace(/\s+/g,' ').trim();
       return{ready:!!result?.ready,started:fixture.A.started,sends:sent.length,users:users.length,exact:users.some(n=>normalize(provider.classifyText(n,'.rs-chip'))===normalize(sent[0])),chip:!!document.querySelector('.rs-hidden > .rs-chip'),articles:document.querySelectorAll('article,[data-testid^="conversation-turn-"]').length};
-    },normalizeDisplay);
+    },shape);
     assert.equal(got.ready,true,JSON.stringify(got));assert.equal(got.started,true);assert.equal(got.sends,1);assert.equal(got.users,1);assert.equal(got.exact,true);assert.equal(got.chip,true);assert.equal(got.articles,0,'fixture must use the wrapper-free native shape');
   });
   await check('boxless hidden old conversation cannot supply a send receipt',false,async page=>{
     const got=await page.evaluate(async()=>{
       const hidden=document.createElement('div');hidden.style.display='none';
-      const shell=document.createElement('div');shell.style.display='contents';shell.className='rs-hidden';
+      const shell=document.createElement('div');shell.style.display='contents';shell.className='rs-hidden';shell.dataset.messageAuthorRole='user';
       const bubble=document.createElement('div');bubble.setAttribute('data-user-message-bubble','');const body=document.createElement('div');body.className='whitespace-pre-wrap';body.textContent='exact old payload';bubble.append(body);shell.append(bubble);hidden.append(shell);document.querySelector('#timeline').append(hidden);
       document.querySelector('button').onclick=()=>{sent.push('unconfirmed');provider.getEditor().innerText='';addItem('assistant','Old assistant example','old-assistant');};
       const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=150;
       let failed=false;try{await provider.typeAndSend('exact old payload');}catch{failed=true;}
       return{failed,sends:sent.length,users:provider.userCount()};
     });assert.equal(got.failed,true);assert.equal(got.sends,1);assert.equal(got.users,0);
+  });
+  await check('boxless wrapper-free user boundary preserves a sibling assistant reply',false,async page=>{
+    const got=await page.evaluate(()=>{
+      const shell=document.createElement('div');shell.style.display='contents';
+      const bubble=document.createElement('div');bubble.setAttribute('data-user-message-bubble','');bubble.innerHTML='<div class="whitespace-pre-wrap">Exact user body</div>';
+      const assistant=document.createElement('div');assistant.dataset.messageAuthorRole='assistant';assistant.innerHTML='<div class="markdown">Separate assistant reply</div>';
+      shell.append(bubble,assistant);document.querySelector('#timeline').append(shell);
+      const users=provider.allItems().filter(provider.isUserItem);return{users:users.length,ownBubble:users[0]===bubble,userText:provider.itemText(users[0]).trim(),assistantText:provider.itemText(provider.lastAssistant()).trim()};
+    });assert.equal(got.users,1);assert.equal(got.ownBubble,true);assert.equal(got.userText,'Exact user body');assert.equal(got.assistantText,'Separate assistant reply');
+  });
+  await check('boxless receipt rejects a fresh shortened user body and reports only metrics',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      const diagnostics=[];provider.init({diag:(name,fields)=>diagnostics.push({name,fields})});
+      document.querySelector('button').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';const b=document.createElement('div');b.setAttribute('data-user-message-bubble','');b.innerHTML='<div class="whitespace-pre-wrap">private-body</div>';document.querySelector('#timeline').append(b);addItem('assistant','{"command":"list_commands"}','receipt-example');};
+      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=150;
+      let failed=false;try{await provider.typeAndSend('private-body must be complete');}catch{failed=true;}
+      return{failed,sends:sent.length,diagnostics};
+    });assert.equal(got.failed,true);assert.equal(got.sends,1);const proof=got.diagnostics.find(x=>x.name==='send.unconfirmed')?.fields;assert(proof,'the native failure must expose content-free receipt evidence');assert.equal(proof.detectedUsers,1);assert.equal(proof.users[0].fresh,true);assert.equal(proof.users[0].matches,false);assert.equal(proof.users[0].chars,12);assert.equal(proof.expectedNormalizedChars,'private-body must be complete'.length);assert(!JSON.stringify(got.diagnostics).includes('private-body'),'diagnostics must never log message content');
   });
   await check('field semantic text beats outer content chrome and preserves literal UI words',false,async page=>{
     const result=await page.evaluate(()=>{

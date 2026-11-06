@@ -1,0 +1,25 @@
+{
+  "status": "implemented, local focused/full browser PASS; full JavaScript and hosted build pending",
+  "before": {
+    "boxless_exact_startup": "FAIL: one send, zero detected users, 15s receipt timeout",
+    "boxless_whitespace_startup": "FAIL: one send, zero detected users, 15s receipt timeout",
+    "hidden_old_chat_rejection": "PASS"
+  },
+  "after": {
+    "chatgpt_browser_checks": 33,
+    "healthy_differential": 70,
+    "preserved_original_function_bodies": 957,
+    "dom_resilience": 325,
+    "protected_files": 34,
+    "new_cases": 6,
+    "automatic_replay": "none",
+    "receipt": "new native user identity plus exact full normalized body"
+  },
+  "limits": [
+    "Owner ancestor styles pending",
+    "No affected-PC/live ChatGPT access",
+    "Raw character lengths do not prove truncation",
+    "PC vault not connected"
+  ],
+  "new_beacon": "2026-11-05_boxless-user-receipts"
+}
