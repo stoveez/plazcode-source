@@ -110,7 +110,7 @@
   }
   function syncUserSource(event) {
     const bubble = event.target;
-    if (!bubble?.matches?.(USER) || !bubble.isConnected || safeClosest(bubble, USER_EXCLUDE)) return;
+    if (!safeRead(() => bubble?.matches?.(USER), false) || !bubble.isConnected || safeClosest(bubble, USER_EXCLUDE)) return;
     let source = null, state = 'unavailable';
     try {
       const surfaces = safeQueryAll(bubble, '.whitespace-pre-wrap')
@@ -120,14 +120,14 @@
       else if (top.length > 1) state = 'ambiguous';
     } catch { state = 'unavailable'; }
     if (source !== null) {
-      if (bubble.getAttribute(USER_SOURCE) !== source) bubble.setAttribute(USER_SOURCE, source);
+      if (safeRead(() => bubble.getAttribute(USER_SOURCE), null) !== source) bubble.setAttribute(USER_SOURCE, source);
       state = 'committed';
     } else bubble.removeAttribute(USER_SOURCE);
-    if (bubble.getAttribute(USER_STATE) !== state) bubble.setAttribute(USER_STATE, state);
+    if (safeRead(() => bubble.getAttribute(USER_STATE), null) !== state) bubble.setAttribute(USER_STATE, state);
     if (source !== null) event.preventDefault();
   }
   document.addEventListener('rs-user-source-sync', syncUserSource, true);
-  document.documentElement.setAttribute('data-rs-gpt-source-ver', '2026-11-06_committed-user-markdown');
+  if (document.documentElement) document.documentElement.setAttribute('data-rs-gpt-source-ver', '2026-11-06_committed-user-markdown');
 
   // Republishing a 10k-char attribute on every sample would churn the DOM (the
   // core samples the stream ~8x/s). Only write when the document actually grew

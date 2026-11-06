@@ -1,6 +1,6 @@
 # AGENTS.md - instructions for any AI working in this repo (Codex, Claude, or others)
 
-**Current: ChatGPT committed Markdown source receipt candidate implemented. Focused9PASS/provider gates PASS; full browser65PASS; final full262JS running. Full CI42241715359/runtime325561d active; CI42235579551 cancelled/do not deliver. Owner field retest pending; PC vault disconnected. See docs/NOW.md.** See `docs/NOW.md`.
+**Current: ChatGPT committed Markdown receipt guard follow-up. First full262JS2failures fixed; targeted CodeMirror/617guards/pins34/preservation956/Markdown9PASS. Final full65/full262 rerun next; CI42241715359 cancellation requested/do not deliver. Owner field retest pending; PC vault disconnected. See docs/NOW.md.** See `docs/NOW.md`.
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.
