@@ -33,3 +33,5 @@ Current focused9PASS, healthy70/preservation956/DOM325/pins34/input-cleanup19/im
 Native long previews have a truncated nearest text prop and a full committed parent text prop. A third red test reproduced this shape. Accept only outward prefix extensions inside the same user boundary; conflicting sources reject. Superseded local full runs stopped intentionally before source regeneration; final source full gates must rerun.
 
 Fresh full CI42241715359 ACTIVE on exact source325561d3577f4ecaa7767fcb16ea53eb90295df5. New stage contains scripts only, no old artifacts. Source Public; approved branch build/deliver/Private plan resent before dispatch.
+
+Final full local Chromium suite:65PASS (56 retained +9 new Markdown cases), including exact15-tool/no-reexecution recovery, startup, Stop and real cross-world receipts. Local full262JS and full hosted build still running.

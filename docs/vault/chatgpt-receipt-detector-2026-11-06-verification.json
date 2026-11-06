@@ -1,6 +1,6 @@
 {
   "updated": "2026-11-06",
-  "status": "Markdown source candidate implemented; focused9/provider gates PASS, final full checks next",
+  "status": "Markdown source candidate full Chromium65PASS; full JS/CI running",
   "baseline_runtime": "3d1135fd25fc9e05ec2c49e2c0b60b64f4936e36",
   "before": {
     "own_ancestor_mask": "one send; full1599-character normalized native body; zero transcript users; receipt failed",
@@ -57,7 +57,7 @@
     "producer": "two render frames plus next task, recheck full draft, one click only; no-render/Stop zero clicks"
   },
   "after": {
-    "status": "focused9/provider gates PASS; final full checks next",
+    "status": "full Chromium65PASS/provider gates PASS; full JS/CI running",
     "new_markdown_cases": 9,
     "markdown_focused_pass": 9,
     "healthy": 70,
@@ -65,7 +65,8 @@
     "dom_resilience": 325,
     "protected_files": 34,
     "input_cleanup_scenarios": 19,
-    "image_transport": "PASS"
+    "image_transport": "PASS",
+    "chatgpt_browser_checks": 65
   },
   "native_public_source": {
     "asset": "879981.e2e5aa2c5c.js",
