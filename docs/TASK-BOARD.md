@@ -17,6 +17,10 @@ Owner's fifteen-tool test stayed stuck; whole page freezes on startup/tools. Fix
 
 # PlazCode task board
 
+2026-11-05 CHATGPT STARTUP FOLLOW-UP ACTIVE / WIP: owner still gets Send paused on current sibling-user-bubbles build. Native role headings/bubble have no article/conversation-turn/message-id wrapper. New real-browser display:contents startup regressions reproduce one click, zero detected users and 15s receipt timeout (2 expected failures); hidden old-chat rejection passes. Product unchanged so far. Next: preserve boxless current message enumeration and exact new-user receipt; add content-free failure metrics; rerun browser/full checks, then new full Windows/Mac test ZIPs. Owner ancestry diagnostic pending; raw body-length difference alone does not prove lost text. Previous CI42146181204 delivery below is historical and does not cover this new case. No stable publish; PC vault not connected.
+
+[Current receipt investigation](vault/chatgpt-startup-receipt-2026-11-05.md).
+
 **Historical, 2026-10-30:** replacement full 1.24.27 test ZIPs delivered through Google Drive. CI [41085855952](https://github.com/stoveez/plazcode-source/actions/runs/41085855952), source `38fd7d2`, passed Windows, universal Mac, Linux and browsers. Includes profile pictures, bold Up to date, plus/approval icons, splash fade, parallel protected-file checks and ahead-of-stable update fix. Production signatures, all 235 reviewed JS sources and release layouts verified; actual downloaded Linux startup passed. Source remains Public at delivery; owner reminded to restore Private. Account API stays Public independently. Stable remains 1.24.26. [Verification](/docs/vault/test-build-1.24.27-followups-verification.json).
 
 Older dated entries below are historical; docs/NOW.md is the live handoff.

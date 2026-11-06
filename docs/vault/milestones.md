@@ -124,6 +124,10 @@ Full CI [41449512168](https://github.com/stoveez/plazcode-source/actions/runs/41
 
 # Finished work
 
+2026-11-05 CHATGPT STARTUP FOLLOW-UP ACTIVE / WIP: owner still gets Send paused on current sibling-user-bubbles build. Native role headings/bubble have no article/conversation-turn/message-id wrapper. New real-browser display:contents startup regressions reproduce one click, zero detected users and 15s receipt timeout (2 expected failures); hidden old-chat rejection passes. Product unchanged so far. Next: preserve boxless current message enumeration and exact new-user receipt; add content-free failure metrics; rerun browser/full checks, then new full Windows/Mac test ZIPs. Owner ancestry diagnostic pending; raw body-length difference alone does not prove lost text. Previous CI42146181204 delivery below is historical and does not cover this new case. No stable publish; PC vault not connected.
+
+[Current receipt investigation](chatgpt-startup-receipt-2026-11-05.md).
+
 ## 2026-10-29: 1.24.27 initialized with owner-provided DeepSeek guard (unreleased)
 The owner archive guard is merged into 1.24.27: provider-level serialization, optional-argument forwarding, 250 ms sleep slices and a sampled 8–9.8 second completion-based cooldown cover core and direct UI sends. Previous 1.24.26 provider files were restored to their released baseline. Focused timing/concurrency/failure tests, raw-send AST preservation, protected hash pins and root/Chromium/Firefox copy checks passed. Live DeepSeek and release validation remain.
 

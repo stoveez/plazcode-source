@@ -180,6 +180,10 @@ Full CI [41449512168](https://github.com/stoveez/plazcode-source/actions/runs/41
 
 # Open work
 
+2026-11-05 CHATGPT STARTUP FOLLOW-UP ACTIVE / WIP: owner still gets Send paused on current sibling-user-bubbles build. Native role headings/bubble have no article/conversation-turn/message-id wrapper. New real-browser display:contents startup regressions reproduce one click, zero detected users and 15s receipt timeout (2 expected failures); hidden old-chat rejection passes. Product unchanged so far. Next: preserve boxless current message enumeration and exact new-user receipt; add content-free failure metrics; rerun browser/full checks, then new full Windows/Mac test ZIPs. Owner ancestry diagnostic pending; raw body-length difference alone does not prove lost text. Previous CI42146181204 delivery below is historical and does not cover this new case. No stable publish; PC vault not connected.
+
+[Current receipt investigation](chatgpt-startup-receipt-2026-11-05.md).
+
 **Newest 2026-11-01 (Claude):** CI 41342349857 on 936a302 PASSED on every platform and release-check (mark `31ff5250ca8f5bbe` matching on all three). Package download/verify-delivery/Drive upload not possible from the cloud workspace; owner downloads from the run page. See [verification](test-build-1.24.30-verification.json).
 
 **Handoff 2026-11-01:** final source 936a302, full CI 41342349857 (then running). Coding/targeted checks complete, final archive verification + Drive test ZIP delivery unfinished. See [exact handoff](handoff-1.24.30-2026-11-01.md). Source remains Public during build; owner restores Private after delivery.

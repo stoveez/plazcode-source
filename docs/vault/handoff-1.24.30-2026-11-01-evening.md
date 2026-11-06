@@ -217,6 +217,10 @@ DeepSeek/learning/batching/background-job implementations are in the overlay. Re
 
 # 1.24.30 handoff for Codex — 2026-11-01 evening (Claude out of usage)
 
+2026-11-05 CHATGPT STARTUP FOLLOW-UP ACTIVE / WIP: owner still gets Send paused on current sibling-user-bubbles build. Native role headings/bubble have no article/conversation-turn/message-id wrapper. New real-browser display:contents startup regressions reproduce one click, zero detected users and 15s receipt timeout (2 expected failures); hidden old-chat rejection passes. Product unchanged so far. Next: preserve boxless current message enumeration and exact new-user receipt; add content-free failure metrics; rerun browser/full checks, then new full Windows/Mac test ZIPs. Owner ancestry diagnostic pending; raw body-length difference alone does not prove lost text. Previous CI42146181204 delivery below is historical and does not cover this new case. No stable publish; PC vault not connected.
+
+[Current receipt investigation](chatgpt-startup-receipt-2026-11-05.md).
+
 Branch `claude/plazcode-dev` only. No publish/merge without the owner's clear "yes". Commits: stoveez name only, no email, no Co-Authored-By/Claude-Session/"Generated with" lines. Read `docs/NOW.md`, then this note.
 
 ## New active task — 2026-11-02

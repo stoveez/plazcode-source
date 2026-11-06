@@ -33,6 +33,10 @@ Previous delivery: [guest/signup replacement builds VERIFIED and DELIVERED](prof
 
 # PlazCode vault: start here
 
+2026-11-05 CHATGPT STARTUP FOLLOW-UP ACTIVE / WIP: owner still gets Send paused on current sibling-user-bubbles build. Native role headings/bubble have no article/conversation-turn/message-id wrapper. New real-browser display:contents startup regressions reproduce one click, zero detected users and 15s receipt timeout (2 expected failures); hidden old-chat rejection passes. Product unchanged so far. Next: preserve boxless current message enumeration and exact new-user receipt; add content-free failure metrics; rerun browser/full checks, then new full Windows/Mac test ZIPs. Owner ancestry diagnostic pending; raw body-length difference alone does not prove lost text. Previous CI42146181204 delivery below is historical and does not cover this new case. No stable publish; PC vault not connected.
+
+[Current receipt investigation](chatgpt-startup-receipt-2026-11-05.md).
+
 This folder is the long-term memory for every AI that works on PlazCode (Claude, Codex or any other). **Terms:** this folder is the *PlazCode vault* (notes for AIs that build PlazCode). The *native vault* is the app's own Memory feature, see the map. It is plain Markdown, so GitHub shows it and Obsidian can open it (open the folder `docs/vault` as a vault).
 
 **Read order for a new AI:** [`../NOW.md`](../NOW.md) (the live handoff, 20 lines), then only the notes below that your task needs. Do not read the whole vault.
