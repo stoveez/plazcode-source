@@ -1,0 +1,31 @@
+{
+  "updated": "2026-11-06",
+  "status": "source implemented; local Chromium53PASS; provider gates PASS; full262JS running; field evidence pending",
+  "baseline_runtime": "3d1135fd25fc9e05ec2c49e2c0b60b64f4936e36",
+  "before": {
+    "own_ancestor_mask": "one send; full1599-character normalized native body; zero transcript users; receipt failed",
+    "generic_testid": "one send; full matching new body classified old; full-core restart baseline also fails",
+    "preview_two_ancestors": "one send; fresh401-character preview; no expansion; receipt failed",
+    "page_boundary": "old detector clicked page-wide Read more; now forbidden"
+  },
+  "after": {
+    "chatgpt_browser_checks": 53,
+    "new_followup_cases": 16,
+    "healthy": 70,
+    "preserved_original_functions": 956,
+    "dom_resilience": 325,
+    "protected_files": 34,
+    "image_transport": "PASS",
+    "full_javascript": "running"
+  },
+  "new_beacon": "2026-11-06_native-receipt-candidates",
+  "field": {
+    "loaded_beacon": "pending",
+    "send_unconfirmed": "pending",
+    "live_browser_access": false
+  },
+  "new_ci": null,
+  "new_delivery": null,
+  "stable_publish": false,
+  "pc_vault_connected": false
+}

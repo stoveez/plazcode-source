@@ -18,7 +18,10 @@ function walk(n){if(!n||typeof n!=='object')return;if(n.type==='FunctionDeclarat
   const rows=[];const button={disabled:behavior==='disabled',click(){clicks++;if(behavior!=='delayed-receipt'){rows.push({id:'sent-'+clicks,text:ed.textContent});ed.textContent='';}}};
   let now=100000;w.Date.now=()=>now;w.setTimeout=(fn,ms)=>{now+=ms;queueMicrotask(fn);return 1;};
   Object.assign(w,{sendContext:()=>({session:1,stop:0}),isStopped:()=>false,conversationKey:()=>'/c/test',allItems:()=>rows,isUserItem:()=>true,itemKey:r=>r.id,itemText:r=>r.text,classifyText:r=>r.text,clearEditor:()=>{ed.textContent='';},diag(){},getEditor:()=>ed,truncateForSend:x=>x,safeRead:(f,fallback)=>{try{return f();}catch{return fallback;}},setEditorText:async(e,text,check,wrote)=>{check();e.textContent=text;wrote(text);},attachImages:async()=>behavior!=='upload-failed',waitFor:async pred=>!!pred(),sendButton:()=>button,editorText:()=>ed.textContent,stopButton:()=>null});
-  vm.runInContext('let _locked=false,sendGeneration=0;'+functions.waitBudget+';'+functions.typeAndSend+';globalThis.send=typeAndSend;',dom.getInternalVMContext());
+  // This isolated unit exercises image transport; the complete provider's
+  // native receipt collectors are covered by the full-core browser suite.
+  Object.assign(w,{normalizeReceiptText:x=>String(x||'').replace(/\s+/g,' ').trim(),receiptUsers:()=>rows,receiptKey:r=>r.id,userText:r=>r.text});
+  vm.runInContext('let _locked=false,sendGeneration=0,lastConfirmedDelivery=null;'+functions.waitBudget+';'+functions.typeAndSend+';globalThis.send=typeAndSend;',dom.getInternalVMContext());
   if(['upload-failed','disabled','delayed-receipt'].includes(behavior))await assert.rejects(w.send('Screenshot feedback',[{data:'image'}]));else assert.equal(await w.send('Screenshot feedback',[{data:'image'}]),true);
   assert.equal(clicks,['ready','delayed-receipt'].includes(behavior)?1:0);assert.equal(ed.style.opacity,'');assert(!w.document.documentElement.classList.contains('rs-chatgpt-injecting'));w.close();
  }

@@ -371,6 +371,89 @@ const RSProvider = (() => {
     return textWithout(item, excludeSel);
   }
 
+  const NATIVE_USER_BUBBLE = '[data-user-message-bubble]';
+  const NATIVE_USER_ROLE = '[data-message-author-role="user"],[data-conversation-role="user"],[data-role="user"],[data-message-author="user"],[data-turn="user"]';
+  const RECEIPT_PAGE_BOUNDARY = 'main,body,html,form,nav,aside,[role="dialog"],#rs-root';
+  const normalizeReceiptText = value => String(value || '').replace(/\s+/g, ' ').trim();
+
+  function singleUserScope(scope, bubble, scopes) {
+    if (scopes && scopes.has(scope)) return scopes.get(scope) === bubble;
+    const bubbles = safeQueryAll(scope, NATIVE_USER_BUBBLE).filter(node => !safeClosest(node, '.rs-chip,#rs-root'));
+    if (scope === bubble) return true;
+    if (bubbles.length !== 1 || bubbles[0] !== bubble) { if (scopes) scopes.set(scope, null); return false; }
+    const outsideUser = node => !safeRead(() => bubble.contains(node), false) && !safeClosest(node, '.rs-chip');
+    const exclusive = !safeQueryAll(scope, S.msg).some(node => outsideUser(node) && isAssistantItem(node)) &&
+      !safeQueryAll(scope, S.reply).some(outsideUser);
+    if (scopes) scopes.set(scope, exclusive ? bubble : null);
+    return exclusive;
+  }
+
+  function ownedUserRoot(bubble, scopes) {
+    for (let node = safeRead(() => bubble.parentElement, null), depth = 0; node && depth < 4; node = safeRead(() => node.parentElement, null), depth++) {
+      if (safeRead(() => node.matches(RECEIPT_PAGE_BOUNDARY + ',' + S.turn), true) || !singleUserScope(node, bubble, scopes)) break;
+      if (safeRead(() => node.classList.contains('rs-hidden'), false) &&
+          safeRead(() => Array.from(node.children).some(child => child.classList.contains('rs-chip')), false)) return node;
+    }
+    return null;
+  }
+
+  function receiptRendered(item) {
+    if (safeRead(() => item.getClientRects().length > 0, false)) {
+      const style = safeStyle(item);
+      return !/^(hidden|collapse)$/.test(style.visibility) && style.contentVisibility !== 'hidden' && !safeRead(() => item.hidden, true);
+    }
+    let ownMask = false;
+    for (let node = item; node; node = safeRead(() => node.parentElement, null)) {
+      const style = safeStyle(node);
+      if (/^(hidden|collapse)$/.test(style.visibility) || style.contentVisibility === 'hidden') return false;
+      if (style.display !== 'none') continue;
+      const parent = safeRead(() => node.parentElement, null);
+      // Read through our own direct-child mask only. Native hidden attributes,
+      // inline hiding and a hidden conversation ancestor still reject the item.
+      if (!parent || !safeRead(() => parent.classList.contains('rs-hidden'), false) ||
+          safeRead(() => node.hidden || node.matches('.hidden') || node.style.display === 'none', true)) return false;
+      ownMask = true;
+    }
+    return ownMask || safeQueryAll(item, '.whitespace-pre-wrap,[data-message-content],.rs-chip')
+      .some(node => safeRead(() => node.getClientRects().length > 0, false));
+  }
+
+  function receiptUsers(includeHidden = false) {
+    const seen = new Set(), result = [], hasLayout = safeRead(() => document.documentElement.getClientRects().length > 0, false);
+    const add = item => {
+      const work = item && safeClosest(item, S.workItem);
+      if (work) { if (!isUserItem(work)) return; item = work; }
+      if (!item || seen.has(item) || safeClosest(item, '.rs-chip,#rs-root') || safeRead(() => /^H[1-6]$/.test(item.tagName), true)) return;
+      seen.add(item);
+      if (includeHidden || !hasLayout || receiptRendered(item)) result.push(item);
+    };
+    // Native user surfaces remain readable when visual transcript roots change
+    // or our card masks them. Snapshot hidden history too, before the click.
+    for (const bubble of safeQueryAll(document, NATIVE_USER_BUBBLE)) add(bubble);
+    for (const item of safeQueryAll(document, NATIVE_USER_ROLE)) {
+      if (safeClosest(item, NATIVE_USER_BUBBLE) || safeQuery(item, NATIVE_USER_BUBBLE + ',' + NATIVE_USER_ROLE)) continue;
+      add(item);
+    }
+    for (const item of allItems().filter(isUserItem)) {
+      if (safeRead(() => item.matches(S.workItem), false) || !safeQuery(item, NATIVE_USER_BUBBLE + ',' + NATIVE_USER_ROLE)) add(item);
+    }
+    return result;
+  }
+
+  function receiptKey(item) {
+    const owner = safeClosest(item, NATIVE_USER_ROLE);
+    return (owner && itemKey(owner)) || itemKey(item) || null;
+  }
+
+  let lastConfirmedDelivery = null;
+  function confirmedDeliveryMatches(text) {
+    if (!lastConfirmedDelivery) return false;
+    const context = sendContext();
+    return !isStopped() && lastConfirmedDelivery.generation === sendGeneration &&
+      lastConfirmedDelivery.chat === conversationKey() && lastConfirmedDelivery.session === context.session &&
+      lastConfirmedDelivery.stop === context.stop && lastConfirmedDelivery.text === normalizeReceiptText(text);
+  }
+
   // ── DOM primitives ────────────────────────────────────────────────────────
   // Do NOT use ChatGPT's outer conversation-turn wrapper as the item we hide or
   // decorate. Current ChatGPT virtualizes/recycles that wrapper; collapsing it
@@ -380,10 +463,13 @@ const RSProvider = (() => {
   // nearest INNER stable message container. This preserves the site's outer
   // layout/virtualization node while still giving PlazCode a real DOM element to
   // mask and decorate.
-  function itemRoot(signal) {
+  function itemRoot(signal, ownershipScopes) {
     if (!signal || !safeRead(() => signal.closest, null)) return signal;
     const work = safeClosest(signal, S.workItem);
     if (work && !safeClosest(work, "#rs-root")) return work;
+    const bubble = safeRead(() => signal.matches(NATIVE_USER_BUBBLE), false) ? signal : safeClosest(signal, NATIVE_USER_BUBBLE);
+    const owned = bubble && ownedUserRoot(bubble, ownershipScopes);
+    if (owned) return owned;
     const roleNode = safeClosest(signal, S.msg);
     if (roleNode && !safeClosest(roleNode, "#rs-root")) return roleNode;
     const keyed = safeClosest(signal, "[data-turn-key]");
@@ -483,9 +569,9 @@ const RSProvider = (() => {
       // screen-reader heading. That label is metadata, never a message turn.
       .filter((e) => !safeRead(() => e.matches('h1.sr-only,h2.sr-only,h3.sr-only,h4.sr-only,h5.sr-only,h6.sr-only'), false));
     const items = [];
-    const seen = new Set();
+    const seen = new Set(), ownershipScopes = new Map();
     for (const signal of signals) {
-      const root = itemRoot(signal);
+      const root = itemRoot(signal, ownershipScopes);
       if (!root || seen.has(root) || safeClosest(root, "#rs-root")) continue;
       // A whole-turn chip hides the native bubble, while its stable message
       // container stays visible. Filtering the bubble first lost our OWN sent
@@ -608,12 +694,16 @@ const RSProvider = (() => {
     const nested = safeRead(() => item.querySelector, null) && safeQuery(item, "[data-message-id], [data-turn-key]");
     const keyed = safeRead(() => item.closest, null) && safeClosest(item, "[data-turn-key]");
     const outer = safeRead(() => item.closest, null) && safeClosest(item, S.turn);
+    const nativeTestKey = node => {
+      const value = safeRead(() => node.getAttribute('data-testid'), null);
+      return value && /^conversation-turn-.+/.test(value) ? value : null;
+    };
     const direct = safeRead(() => item.getAttribute("data-message-id"), null) ||
       safeRead(() => item.getAttribute("data-turn-id"), null) ||
-      safeRead(() => item.getAttribute("data-testid"), null) ||
+      nativeTestKey(item) ||
       safeRead(() => item.id, "") ||
       (nested && safeRead(() => nested.getAttribute("data-message-id"), null)) ||
-      (outer && (safeRead(() => outer.getAttribute("data-turn-id"), null) || safeRead(() => outer.getAttribute("data-testid"), null)));
+      (outer && (safeRead(() => outer.getAttribute("data-turn-id"), null) || nativeTestKey(outer)));
     if (direct) return direct;
     // The 2026-09 renderer groups user + assistant content under one stable
     // data-turn-key. Prefix the role so the assistant identity cannot collide
@@ -1015,6 +1105,7 @@ const RSProvider = (() => {
   }
 
   async function typeAndSend(text, images) {
+    lastConfirmedDelivery = null;
     const ed = getEditor();
     if (!ed) throw new Error("ChatGPT input box not found");
     text = truncateForSend(text);
@@ -1031,24 +1122,35 @@ const RSProvider = (() => {
         error.code = 'CHATGPT_CANCELLED'; error.expectedCancellation = true; throw error;
       }
     };
-    const normalize = value => String(value || '').replace(/\s+/g, ' ').trim();
-    const usersBefore = new Set(allItems().filter(isUserItem).map(item => itemKey(item) || item));
+    const normalize = normalizeReceiptText;
+    const usersBefore = new Map(receiptUsers(true).map(item => [item, receiptKey(item)]));
+    const keysBefore = new Set([...usersBefore.values()].filter(Boolean));
+    const freshReceipt = item => {
+      const key = receiptKey(item), previous = usersBefore.get(item);
+      // An old node acquiring metadata is still old. A recycled node with a
+      // different genuine message key can represent the newly submitted turn.
+      return usersBefore.has(item) ? !!key && !!previous && key !== previous && !keysBefore.has(key) : !key || !keysBefore.has(key);
+    };
     const want = normalize(text);
+    const clock = () => safeRead(() => performance.now(), Date.now());
+    let receiptStartedAt = null;
     let expandedMessage = false;
-    const receipt = () => allItems().some(item => {
-      if (!isUserItem(item) || usersBefore.has(itemKey(item) || item)) return false;
-      const body = normalize(classifyText(item, '.rs-chip'));
+    const receipt = () => receiptUsers().some(item => {
+      if (!freshReceipt(item)) return false;
+      const body = normalize(userText(item, '.rs-chip'));
       if (body === want) return true;
       // Native long-message previews can contain only a prefix. Expand only a
       // new message with our exact prefix and its own native Read/Show more
       // control; the NEXT poll still requires the complete matching body.
       const prefix = body.replace(/\s*(?:\u2026|\.{3})\s*$/, '');
       if (expandedMessage || prefix.length < 256 || prefix.length >= want.length || !want.startsWith(prefix)) return false;
-      const scopes = [item], parent = safeRead(() => item.parentElement, null);
-      if (safeRead(() => item.matches('[data-user-message-bubble]'), false) && parent &&
-          safeQueryAll(parent, '[data-user-message-bubble]').length === 1 &&
-          !safeQueryAll(parent, S.msg).some(isAssistantItem) &&
-          !safeQueryAll(parent, S.reply).some(node => !safeRead(() => item.contains(node), false))) scopes.push(parent);
+      const scopes = [item];
+      if (safeRead(() => item.matches(NATIVE_USER_BUBBLE), false)) {
+        for (let parent = safeRead(() => item.parentElement, null), depth = 0; parent && depth < 4; parent = safeRead(() => parent.parentElement, null), depth++) {
+          if (safeRead(() => parent.matches(RECEIPT_PAGE_BOUNDARY), true) || !singleUserScope(parent, item)) break;
+          scopes.push(parent);
+        }
+      }
       for (const scope of scopes) for (const button of safeQueryAll(scope, 'button,[role="button"]')) {
         if (safeClosest(button, '.rs-chip') || safeRead(() => button.disabled, false) || safeRead(() => button.getAttribute('aria-disabled') === 'true', false)) continue;
         const labels = [safeRead(() => button.getAttribute('aria-label'), ''), safeRead(() => button.getAttribute('title'), ''), safeRead(() => button.textContent, '')];
@@ -1105,9 +1207,11 @@ const RSProvider = (() => {
       if (!button || safeRead(() => button.disabled, true)) throw new Error('ChatGPT is not ready to send. Check its message limit or connection, then resume; nothing was sent.');
       committed = true;
       button.click(); // Exactly one commit. No retry after an uncertain click.
+      receiptStartedAt = clock();
       const accepted = await waitDelivery(receipt, 15000, false);
       checkOwner(false);
       if (!accepted) throw new Error('ChatGPT did not confirm the submitted tool result. PlazCode will not resend it automatically. Check the chat, then resume.');
+      lastConfirmedDelivery = {text:want, generation, chat:conversationKey(), session:context.session, stop:context.stop};
       return true;
     } catch (error) {
       // Remove only this injection's unchanged draft in the same chat/editor.
@@ -1115,19 +1219,25 @@ const RSProvider = (() => {
       if (getEditor() === ed && chat === conversationKey() &&
           sendContext().session === context.session && ownedDraft !== null &&
           (editorText() === ownedDraft || (ownedDraft.endsWith('\n') && editorText() === ownedDraft + '\n'))) clearEditor();
-      const proof = {committed, expandedMessage, code:error.code || 'CHATGPT_SEND_FAILED'};
+      const proof = {committed, expandedMessage, code:error.code || 'CHATGPT_SEND_FAILED',
+        receiptWaitMs:receiptStartedAt === null ? 0 : Math.max(0, Math.round(clock() - receiptStartedAt))};
       // Lengths/booleans only: distinguish an unrecognized native message from
       // a partial/different body without logging prompts, results or identities.
       if (committed && sameSession() && chat === conversationKey()) {
         try {
-          const users = allItems().filter(isUserItem);
+          const users = receiptUsers();
           proof.expectedChars = text.length; proof.expectedNormalizedChars = want.length;
           proof.detectedUsers = users.length;
-          proof.users = users.slice(-3).map(item => {
-            const body = normalize(classifyText(item, '.rs-chip'));
-            return {fresh:!usersBefore.has(itemKey(item) || item), chars:body.length, matches:body === want,
+          proof.transcriptUsers = allItems().filter(isUserItem).length;
+          const freshUsers = users.filter(freshReceipt);
+          proof.users = (freshUsers.length ? freshUsers : users).slice(-3).map(item => {
+            const body = normalize(userText(item, '.rs-chip'));
+            let mismatchAt = 0; while (mismatchAt < Math.min(body.length, want.length) && body[mismatchAt] === want[mismatchAt]) mismatchAt++;
+            return {fresh:freshReceipt(item), knownNode:usersBefore.has(item), chars:body.length, matches:body === want, mismatchAt,
               boxed:safeRead(() => item.getClientRects().length > 0, false), display:safeStyle(item).display};
           });
+          proof.receiptEvidence = !users.length ? 'no_native_user_message' : !freshUsers.length ? 'no_new_message_identity' :
+            proof.users.some(item => item.matches) ? 'matching_message_after_wait' : 'new_message_text_mismatch';
           proof.bubbles = safeQueryAll(document, '[data-user-message-bubble]').slice(-3).map(item => ({
             chars:normalize(userText(item, '.rs-chip')).length, boxed:safeRead(() => item.getClientRects().length > 0, false)
           }));
@@ -1519,10 +1629,10 @@ const RSProvider = (() => {
       if (stopped) isStopped = stopped;
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsGptVer).
-      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-05_complete-user-receipts"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-06_native-receipt-candidates"); } catch {}
     },
     // turns
-    allItems, withTranscriptSnapshot, isUserItem, isAssistantItem, itemText, classifyText, setActivityFolded,
+    allItems, withTranscriptSnapshot, isUserItem, isAssistantItem, itemText, classifyText, setActivityFolded, confirmedDeliveryMatches,
     assistantCount, userCount, lastAssistant, lastAssistantId, itemKey, readAssistant,
     streamLen, snapshot,
     // composer / state

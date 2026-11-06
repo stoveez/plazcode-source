@@ -191,7 +191,7 @@ async function checks(browser){
       const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=150;
       let failed=false;try{await provider.typeAndSend('private-body must be complete');}catch{failed=true;}
       return{failed,sends:sent.length,diagnostics};
-    });assert.equal(got.failed,true);assert.equal(got.sends,1);const proof=got.diagnostics.find(x=>x.name==='send.unconfirmed')?.fields;assert(proof,'the native failure must expose content-free receipt evidence');assert.equal(proof.detectedUsers,1);assert.equal(proof.users[0].fresh,true);assert.equal(proof.users[0].matches,false);assert.equal(proof.users[0].chars,12);assert.equal(proof.expectedNormalizedChars,'private-body must be complete'.length);assert(!JSON.stringify(got.diagnostics).includes('private-body'),'diagnostics must never log message content');
+    });assert.equal(got.failed,true);assert.equal(got.sends,1);const proof=got.diagnostics.find(x=>x.name==='send.unconfirmed')?.fields;assert(proof,'the native failure must expose content-free receipt evidence');assert.equal(proof.detectedUsers,1);assert.equal(proof.users[0].fresh,true);assert.equal(proof.users[0].matches,false);assert.equal(proof.users[0].chars,12);assert.equal(proof.users[0].mismatchAt,12);assert.equal(proof.receiptEvidence,'new_message_text_mismatch');assert.equal(typeof proof.receiptWaitMs,'number');assert.equal(proof.expectedNormalizedChars,'private-body must be complete'.length);assert(!JSON.stringify(got.diagnostics).includes('private-body'),'diagnostics must never log message content');
   });
   for(const position of ['inside','beside'])await check('native long-message preview expands '+position+' its current bubble before confirming startup',true,async page=>{
     const got=await page.evaluate(async position=>{
@@ -224,6 +224,102 @@ async function checks(browser){
       let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}
       return{failed,sends:sent.length,expands};
     });assert.equal(got.failed,true);assert.equal(got.sends,1);assert.equal(got.expands,0);
+  });
+  for(const shape of ['own-ancestor-mask','reused-testid','preview-two-ancestors','bubble-contents'])await check('native receipt follow-up confirms complete startup: '+shape,true,async page=>{
+    const got=await page.evaluate(async shape=>{
+      let expands=0;const native=addItem;
+      if(shape==='reused-testid'){const old=native('user','An unrelated previous message','old-user');old.removeAttribute('data-message-id');old.dataset.testid='user-message';}
+      addItem=(role,text,id)=>{
+        if(role!=='user')return native(role,text,id);
+        const bubble=document.createElement('div'),body=document.createElement('div');bubble.setAttribute('data-user-message-bubble','');body.className='whitespace-pre-wrap';body.textContent=shape==='preview-two-ancestors'?text.slice(0,400)+'…':text;bubble.append(body);
+        if(shape==='reused-testid'){bubble.dataset.testid='user-message';document.querySelector('#timeline').append(bubble);}
+        if(shape==='own-ancestor-mask'){const owner=document.createElement('div'),chip=document.createElement('div');owner.className='rs-hidden';owner.dataset.receiptOwner='1';chip.className='rs-chip';chip.textContent='Starting Up';owner.append(chip,bubble);document.querySelector('#timeline').append(owner);}
+        if(shape==='preview-two-ancestors'){const outer=document.createElement('div'),inner=document.createElement('div'),button=document.createElement('button');inner.append(bubble);button.textContent='Read more';button.onclick=()=>{expands++;body.textContent=text;button.remove();};outer.append(inner,button);document.querySelector('#timeline').append(outer);}
+        if(shape==='bubble-contents'){bubble.style.display='contents';document.querySelector('#timeline').append(bubble);}
+        return bubble;
+      };
+      autoReply=true;sequence=['```json\n{"command":"list_commands"}\n```','PlazCode is ready.'];const result=await fixture.startSession({restart:shape==='reused-testid'});
+      return{ready:!!result?.ready,started:fixture.A.started,sends:sent.length,expands,users:provider.userCount(),ownerChips:document.querySelector('[data-receipt-owner]')?.querySelectorAll('.rs-chip').length};
+    },shape);assert.equal(got.ready,true,JSON.stringify(got));assert.equal(got.started,true);assert.equal(got.sends,1,'a confirmed complete first message must retain the verified single-exchange startup');assert.equal(got.expands,shape==='preview-two-ancestors'?1:0);if(shape==='own-ancestor-mask')assert.equal(got.ownerChips,1,'reuse the owned mask/card boundary instead of nesting another hidden card');
+  });
+  await check('native receipt follow-up cannot adopt an old own-masked message as a new receipt',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      const text='Old complete native result',owner=document.createElement('div'),bubble=document.createElement('div'),chip=document.createElement('div');owner.className='rs-hidden';chip.className='rs-chip';chip.textContent='Earlier result';bubble.setAttribute('data-user-message-bubble','');bubble.innerHTML='<div class="whitespace-pre-wrap"></div>';bubble.firstChild.textContent=text;owner.append(chip,bubble);document.querySelector('#timeline').append(owner);
+      document.querySelector('button[data-testid="send-button"]').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';addItem('assistant','{"command":"list_commands"}','old-proof');};
+      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=200;
+      let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}return{failed,sends:sent.length};
+    });assert.equal(got.failed,true);assert.equal(got.sends,1);
+  });
+  await check('native receipt follow-up never expands page-wide controls',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      const text='Page-boundary receipt probe. '.repeat(40);let expands=0;
+      document.querySelector('button[data-testid="send-button"]').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';const bubble=document.createElement('div'),button=document.createElement('button');bubble.setAttribute('data-user-message-bubble','');bubble.innerHTML='<div class="whitespace-pre-wrap"></div>';bubble.firstChild.textContent=text.slice(0,400)+'…';button.textContent='Read more';button.onclick=()=>{expands++;};document.querySelector('#timeline').append(bubble,button);};
+      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=200;
+      let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}return{failed,sends:sent.length,expands};
+    });assert.equal(got.failed,true);assert.equal(got.sends,1);assert.equal(got.expands,0);
+  });
+  await check('native receipt follow-up proof is exact and invalidates on failed attempt, Stop and navigation',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      let context={session:1,stop:0},stopped=false;provider.init({sendContext:()=>context,isStopped:()=>stopped});
+      await provider.typeAndSend('A confirmed complete message');
+      const exact=provider.confirmedDeliveryMatches('A confirmed complete message'),different=provider.confirmedDeliveryMatches('Different text');
+      stopped=true;const afterStop=provider.confirmedDeliveryMatches('A confirmed complete message');stopped=false;
+      history.pushState({},'', '/c/other-chat');const afterNavigation=provider.confirmedDeliveryMatches('A confirmed complete message');history.pushState({},'', '/c/offline-delivery-test');
+      context={session:2,stop:0};const afterSession=provider.confirmedDeliveryMatches('A confirmed complete message');context={session:1,stop:0};
+      document.querySelector('button[data-testid="send-button"]').disabled=true;
+      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=200;
+      let failed=false;try{await provider.typeAndSend('An unsubmitted next message');}catch{failed=true;}
+      return{exact,different,afterStop,afterNavigation,afterSession,failed,afterFailure:provider.confirmedDeliveryMatches('A confirmed complete message'),sends:sent.length};
+    });assert.equal(got.exact,true);for(const key of ['different','afterStop','afterNavigation','afterSession','afterFailure'])assert.equal(got[key],false,key);assert.equal(got.failed,true);assert.equal(got.sends,1);
+  });
+  for(const shape of ['native-hidden','content-hidden','own-card'])await check('native receipt follow-up rejects fresh exact text in '+shape,true,async page=>{
+    const got=await page.evaluate(async shape=>{
+      const text='A complete but inadmissible receipt';
+      document.querySelector('button[data-testid="send-button"]').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';const outer=document.createElement('div'),owner=document.createElement('div'),bubble=document.createElement('div'),chip=document.createElement('div');owner.className='rs-hidden';chip.className='rs-chip';chip.textContent='Owned card';bubble.setAttribute('data-user-message-bubble','');bubble.innerHTML='<div class="whitespace-pre-wrap"></div>';bubble.firstChild.textContent=text;owner.append(chip,bubble);outer.append(owner);if(shape==='native-hidden')outer.style.display='none';else if(shape==='content-hidden'){owner.className='';bubble.style.contentVisibility='hidden';}else outer.className='rs-chip';document.querySelector('#timeline').append(outer);};
+      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=200;
+      let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}return{failed,sends:sent.length};
+    },shape);assert.equal(got.failed,true);assert.equal(got.sends,1);
+  });
+  await check('native receipt follow-up proof expires on cancelled generation and preserves a newer draft',false,async page=>{
+    const got=await page.evaluate(async()=>{await provider.typeAndSend('The accepted message');const before=provider.confirmedDeliveryMatches('The accepted message');const draft=await provider.writeDraft('A newer user draft','');provider.cancelPendingSends();return{before,ok:draft.ok,after:provider.confirmedDeliveryMatches('The accepted message'),draft:provider.editorText(),sends:sent.length};});
+    assert.equal(got.before,true);assert.equal(got.ok,true);assert.equal(got.after,false);assert.equal(got.draft,'A newer user draft');assert.equal(got.sends,1);
+  });
+  await check('native receipt follow-up preview cannot cross another user message',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      let expands=0;const text='Separate-message boundary. '.repeat(40);
+      document.querySelector('button[data-testid="send-button"]').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';const outer=document.createElement('div');for(const value of [text.slice(0,400)+'…','Another user message']){const bubble=document.createElement('div');bubble.setAttribute('data-user-message-bubble','');bubble.innerHTML='<div class="whitespace-pre-wrap"></div>';bubble.firstChild.textContent=value;outer.append(bubble);}const button=document.createElement('button');button.textContent='Read more';button.onclick=()=>{expands++;};outer.append(button);document.querySelector('#timeline').append(outer);};
+      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=200;
+      let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}return{failed,sends:sent.length,expands};
+    });assert.equal(got.failed,true);assert.equal(got.sends,1);assert.equal(got.expands,0);
+  });
+  await check('native receipt follow-up old message acquiring metadata cannot confirm a failed send',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      const text='A previously submitted complete message',old=addItem('user',text,'old');old.removeAttribute('data-message-id');
+      document.querySelector('button[data-testid="send-button"]').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';old.dataset.messageId='metadata-arrived-late';addItem('assistant','{"command":"list_commands"}','unrelated-redraw');};
+      const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=200;
+      let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}return{failed,sends:sent.length};
+    });assert.equal(got.failed,true);assert.equal(got.sends,1);
+  });
+  await check('native receipt follow-up accepts a recycled node with a genuinely new message key',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      const text='A new message in a recycled native node',old=addItem('user','Previous unrelated message','old-native-message');
+      document.querySelector('button[data-testid="send-button"]').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';old.dataset.messageId='new-native-message';old.querySelector('.markdown').textContent=text;};
+      const accepted=await provider.typeAndSend(text);return{accepted,sends:sent.length,users:provider.userCount(),confirmed:provider.confirmedDeliveryMatches(text)};
+    });assert.equal(got.accepted,true);assert.equal(got.sends,1);assert.equal(got.users,1);assert.equal(got.confirmed,true);
+  });
+  await check('native receipt follow-up shares ownership scans across 500 wrapper-free bubbles',false,async page=>{
+    const got=await page.evaluate(()=>{
+      const shared=document.createElement('div');for(let i=0;i<500;i++){const row=document.createElement('div'),heading=document.createElement('h4'),shell=document.createElement('div'),bubble=document.createElement('div');heading.className='sr-only';heading.dataset.messageAuthorRole='user';heading.textContent='You said:';bubble.setAttribute('data-user-message-bubble','');bubble.innerHTML='<div class="whitespace-pre-wrap">History message '+i+'</div>';shell.append(bubble);row.append(heading,shell);shared.append(row);}document.querySelector('#timeline').append(shared);
+      let sharedScans=0;const query=Element.prototype.querySelectorAll;Element.prototype.querySelectorAll=function(selector){if(this===shared&&selector==='[data-user-message-bubble]')sharedScans++;return query.call(this,selector);};
+      try{const users=provider.allItems().filter(provider.isUserItem);return{users:users.length,sharedScans,first:provider.itemText(users[0]).trim(),last:provider.itemText(users.at(-1)).trim()};}finally{Element.prototype.querySelectorAll=query;}
+    });assert.equal(got.users,500);assert.equal(got.sharedScans,1,'one synchronous transcript read must scan a shared history scope only once');assert.equal(got.first,'History message 0');assert.equal(got.last,'History message 499');
+  });
+  await check('native receipt follow-up preserves recycled Work unit message identity',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      const root=document.createElement('div'),author=document.createElement('div'),body=document.createElement('div');root.dataset.chatgptSearchUnitKey='unit:user';root.dataset.chatgptSearchMessageIds='old-work-message';author.dataset.conversationRole='user';body.className='whitespace-pre-wrap';body.textContent='Earlier Work message';author.append(body);root.append(author);document.querySelector('#timeline').append(root);const text='New Work message with a genuine new identity';
+      document.querySelector('button[data-testid="send-button"]').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';root.dataset.chatgptSearchMessageIds='new-work-message';body.textContent=text;};
+      const accepted=await provider.typeAndSend(text);return{accepted,sends:sent.length,users:provider.userCount(),confirmed:provider.confirmedDeliveryMatches(text)};
+    });assert.equal(got.accepted,true);assert.equal(got.sends,1);assert.equal(got.users,1);assert.equal(got.confirmed,true);
   });
   await check('field semantic text beats outer content chrome and preserves literal UI words',false,async page=>{
     const result=await page.evaluate(()=>{

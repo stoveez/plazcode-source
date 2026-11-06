@@ -6048,9 +6048,12 @@ return result`;
         if(!scoped.length){ui.banner('warn','Command catalog unavailable','The live app did not return this mode\'s commands. PlazCode stayed stopped.');return;}
         let exactContext=false;
         try{
-          const last=P.allItems().filter(P.isUserItem).at(-1),key=last&&(P.itemKey?.(last)||last);
-          const normalize=value=>String(value||'').replace(/\s+/g,' ').trim();
-          exactContext=!!last&&!preloadedCatalog.users.has(key)&&normalize(P.classifyText(last,'.rs-chip'))===normalize(startupPrompt);
+          if(P.confirmedDeliveryMatches)exactContext=P.confirmedDeliveryMatches(startupPrompt);
+          else {
+            const last=P.allItems().filter(P.isUserItem).at(-1),key=last&&(P.itemKey?.(last)||last);
+            const normalize=value=>String(value||'').replace(/\s+/g,' ').trim();
+            exactContext=!!last&&!preloadedCatalog.users.has(key)&&normalize(P.classifyText(last,'.rs-chip'))===normalize(startupPrompt);
+          }
         }catch{}
         verifiedCatalog=exactContext&&preloadedCatalog.snapshot===catalogSnapshot();
         diag('start.catalogVerified',{exactContext,unchanged:preloadedCatalog.snapshot===catalogSnapshot(),verified:verifiedCatalog});
