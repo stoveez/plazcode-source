@@ -1,6 +1,6 @@
 # PlazCode private repo: instructions for any AI working here
 
-**Current: ChatGPT Markdown receipt follow-up WIP. Public native client renders user Markdown; real React reproduced false rejection. Scoped committed-source reader/new browser regressions added, focused7PASS/pins34/preservation956PASS; full checks pending. CI42235579551 cancelled/do not deliver. Owner field retest pending; PC vault disconnected. See docs/NOW.md.** See `docs/NOW.md`.
+**Current: ChatGPT committed Markdown source receipt candidate implemented. Focused9PASS/provider gates PASS; final full browser/full262JS next. CI42235579551 cancelled/do not deliver. Owner field retest pending; PC vault disconnected. See docs/NOW.md.** See `docs/NOW.md`.
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.

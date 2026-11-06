@@ -1,6 +1,6 @@
 {
   "updated": "2026-11-06",
-  "status": "Markdown follow-up WIP; fresh checks pending",
+  "status": "Markdown source candidate implemented; focused9/provider gates PASS, final full checks next",
   "baseline_runtime": "3d1135fd25fc9e05ec2c49e2c0b60b64f4936e36",
   "before": {
     "own_ancestor_mask": "one send; full1599-character normalized native body; zero transcript users; receipt failed",
@@ -21,7 +21,8 @@
       "complete_send_rejected": true,
       "red_cases": 2,
       "raw_log_outside_git": "/workspace/chatgpt-markdown-before.log"
-    }
+    },
+    "markdown_collapsed_source": "nearest text prefix and full parent source reproduced third red"
   },
   "new_beacon": "2026-11-06_committed-user-markdown",
   "field": {
@@ -63,11 +64,15 @@
     "producer": "two render frames plus next task, recheck full draft, one click only; no-render/Stop zero clicks"
   },
   "after": {
-    "status": "focused PASS; full checks pending",
-    "new_markdown_cases": 7,
-    "markdown_focused_pass": 7,
+    "status": "focused9/provider gates PASS; final full checks next",
+    "new_markdown_cases": 9,
+    "markdown_focused_pass": 9,
+    "healthy": 70,
+    "preserved_original_functions": 956,
+    "dom_resilience": 325,
     "protected_files": 34,
-    "preserved_original_functions": 956
+    "input_cleanup_scenarios": 19,
+    "image_transport": "PASS"
   },
   "native_public_source": {
     "asset": "879981.e2e5aa2c5c.js",

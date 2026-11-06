@@ -94,7 +94,10 @@
         if (node.stateNode === bubble) boundary = true;
         if (!boundary && node !== start && typeof node.memoizedProps?.text === 'string') {
           const next = node.memoizedProps.text;
-          if (source !== null && source !== next) ambiguous = true;
+          // Native collapsed text is a prefix of its parent's full committed
+          // source. Only a strict outward prefix extension can supply that full
+          // source; unrelated or shortened ancestor strings remain ambiguous.
+          if (source !== null && !next.startsWith(source)) ambiguous = true;
           source = next;
         }
         // Verify this chain belongs to React's current committed root. The DOM

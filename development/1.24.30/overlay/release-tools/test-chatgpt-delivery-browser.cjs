@@ -121,6 +121,26 @@ async function checks(browser){
       return{unavailable,ambiguous,expected:sourceFixtureText};
     });assert.notEqual(got.unavailable,got.expected);assert.notEqual(got.ambiguous,got.expected);
   });
+  await check('native Markdown source reads full committed text above a collapsed prefix',false,async page=>{
+    await nativeReact(page);
+    const got=await page.evaluate(()=>{
+      const h=React.createElement,text=sourceFixtureText.repeat(3);
+      function Text({text}){return h('div',{className:'whitespace-pre-wrap'},h('strong',null,'Rendered prefix'));}
+      function Collapse({text}){return h('div',null,h(Text,{text:text.slice(0,10240)}),h('button',null,'Show more'));}
+      ReactDOM.flushSync(()=>nativeRoot.render(h('div',{'data-user-message-bubble':true},h(Collapse,{text}))));
+      return{expected:text,actual:provider.itemText(document.querySelector('[data-user-message-bubble]'))};
+    });assert.equal(got.actual,got.expected);
+  });
+  await check('native Markdown source rejects conflicting ancestor source values',false,async page=>{
+    await nativeReact(page);
+    const got=await page.evaluate(()=>{
+      const h=React.createElement,text=sourceFixtureText;
+      function Text({text}){return h('div',{className:'whitespace-pre-wrap'},h('strong',null,'Rendered prefix'));}
+      function Conflicting({text}){return h(Text,{text:'different original source'});}
+      ReactDOM.flushSync(()=>nativeRoot.render(h('div',{'data-user-message-bubble':true},h(Conflicting,{text}))));
+      return{expected:text,actual:provider.itemText(document.querySelector('[data-user-message-bubble]'))};
+    });assert.notEqual(got.actual,got.expected);
+  });
   await check('native Markdown source crosses the real isolated extension world',false,async page=>{
     await nativeReact(page);const expected=await page.evaluate(()=>{renderNative(sourceFixtureText);return sourceFixtureText;});
     const session=await page.context().newCDPSession(page);
