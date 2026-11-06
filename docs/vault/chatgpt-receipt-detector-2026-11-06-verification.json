@@ -1,6 +1,6 @@
 {
   "updated": "2026-11-06",
-  "status": "Markdown source candidate full Chromium65PASS; full JS/CI running",
+  "status": "guard follow-up targeted PASS; final full reruns next",
   "baseline_runtime": "3d1135fd25fc9e05ec2c49e2c0b60b64f4936e36",
   "before": {
     "own_ancestor_mask": "one send; full1599-character normalized native body; zero transcript users; receipt failed",
@@ -57,7 +57,7 @@
     "producer": "two render frames plus next task, recheck full draft, one click only; no-render/Stop zero clicks"
   },
   "after": {
-    "status": "full Chromium65PASS/provider gates PASS; full JS/CI running",
+    "status": "targeted9/CodeMirror/617guards/34pins/956preservationPASS; final full rerun pending",
     "new_markdown_cases": 9,
     "markdown_focused_pass": 9,
     "healthy": 70,
@@ -66,7 +66,9 @@
     "protected_files": 34,
     "input_cleanup_scenarios": 19,
     "image_transport": "PASS",
-    "chatgpt_browser_checks": 65
+    "previous_browser_checks_before_guard_edit": 65,
+    "guarded_dom_reads": 617,
+    "input_finally_regions": 13
   },
   "native_public_source": {
     "asset": "879981.e2e5aa2c5c.js",
@@ -84,7 +86,17 @@
   "new_ci": {
     "run_id": 42241715359,
     "head_sha": "325561d3577f4ecaa7767fcb16ea53eb90295df5",
-    "status": "in_progress",
-    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42241715359"
+    "status": "cancellation_requested",
+    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42241715359",
+    "do_not_deliver": true
+  },
+  "first_full_js_markdown": {
+    "executed_files": 262,
+    "failures": [
+      "test-chatgpt-cm-refresh.js",
+      "test-provider-dom-guards.js"
+    ],
+    "log_outside_git": "/workspace/chatgpt-markdown-full-js-first.log",
+    "resolution": "optional document root marker; new DOM reads guarded; original tests unchanged/targeted PASS"
   }
 }
