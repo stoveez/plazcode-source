@@ -1,6 +1,6 @@
 {
   "updated": "2026-11-06",
-  "status": "submission+receipt candidate implemented; native browser56PASS; final full262JS running; owner evidence pending",
+  "status": "candidate implemented; native browser56PASS/provider gates PASS/final full262JS PASS; full CI active and owner metrics pending",
   "baseline_runtime": "3d1135fd25fc9e05ec2c49e2c0b60b64f4936e36",
   "before": {
     "own_ancestor_mask": "one send; full1599-character normalized native body; zero transcript users; receipt failed",
@@ -24,7 +24,16 @@
     "dom_resilience": 325,
     "protected_files": 34,
     "image_transport": "PASS",
-    "full_javascript": "PASS:262 executed files/0 failures/3 existing skips",
+    "full_javascript": {
+      "executed_files": 262,
+      "failures": 0,
+      "exit_code": 0,
+      "existing_skips": [
+        "test-v115.js",
+        "test-bridges.js",
+        "test-design-visual.js"
+      ]
+    },
     "native_form_render_cases": 3,
     "input_cleanup_scenarios": 19,
     "producer": "two render frames plus next task, recheck full draft, one click only; no-render/Stop zero clicks"

@@ -37,3 +37,5 @@ Current full Chromium56PASS, including complete native submitted text (not merel
 Source beacon2026-11-06_native-submit-receipts. Native producer evidence now justifies a new fully verified candidate addressing both send-side and detector failures; run full CI and deliver complete Windows/Mac packages with a clear field-unconfirmed limit. Actual owner beacon/latest failure proof remains pending. Do not describe a successful native test as proof of this specific page's cause.
 
 Full CI42235579551 ACTIVE on runtime40c1d544b0beb9fbcf9a3ea83feb25d8c3ee5602. final local full262JS PASS/0fail/3existing skips. Verification stage:/workspace/plazcode-native-submit-build-42235579551; only helper scripts copied, no old artifacts. Public/build/deliver/Private plan resent. No fresh delivery yet.
+
+Final local JavaScript harness finished:262executed files,0failures,3unchanged exclusions, exit0. Full CI42235579551 is still running; no new delivered package yet.
