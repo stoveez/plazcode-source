@@ -1,6 +1,6 @@
 {
   "updated": "2026-11-06",
-  "status": "guard follow-up targeted PASS; final full reruns next",
+  "status": "guarded runtime full Chromium65PASS; final full JS/CI running",
   "baseline_runtime": "3d1135fd25fc9e05ec2c49e2c0b60b64f4936e36",
   "before": {
     "own_ancestor_mask": "one send; full1599-character normalized native body; zero transcript users; receipt failed",
@@ -57,7 +57,7 @@
     "producer": "two render frames plus next task, recheck full draft, one click only; no-render/Stop zero clicks"
   },
   "after": {
-    "status": "targeted9/CodeMirror/617guards/34pins/956preservationPASS; final full rerun pending",
+    "status": "full Chromium65PASS/targeted guards PASS; full JS/CI running",
     "new_markdown_cases": 9,
     "markdown_focused_pass": 9,
     "healthy": 70,
@@ -68,7 +68,9 @@
     "image_transport": "PASS",
     "previous_browser_checks_before_guard_edit": 65,
     "guarded_dom_reads": 617,
-    "input_finally_regions": 13
+    "input_finally_regions": 13,
+    "chatgpt_browser_checks": 65,
+    "runtime_commit": "95977fe"
   },
   "native_public_source": {
     "asset": "879981.e2e5aa2c5c.js",
