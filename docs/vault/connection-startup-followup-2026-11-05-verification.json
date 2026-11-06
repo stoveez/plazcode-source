@@ -1,6 +1,6 @@
 {
   "date": "2026-11-05",
-  "status": "focused-and-hosted-stream-proof-pass-four-legacy-fixtures-corrected-final-full-rerun-pending",
+  "status": "all-local-and-hosted-tests-pass-mac-compilation-budget-fixed-fresh-complete-build-pending",
   "initial_wip": "ae438c1",
   "before": {
     "bridge_failed_cases": 5,
@@ -85,7 +85,16 @@
     ],
     "corrected_focused": "all4 PASS",
     "product_changed_by_fixture_fix": false,
-    "final_full_rerun": "pending"
+    "final_full_rerun": {
+      "passed": 262,
+      "failed": 0,
+      "existing_skips": 3
+    },
+    "hosted_42121159398": {
+      "windows": "262PASS",
+      "macos": "262PASS",
+      "linux": "262PASS twice"
+    }
   },
   "hosted_request_probe": {
     "run": 42119301305,
@@ -96,5 +105,32 @@
     "completed_at": "2026-11-05T22:14:24Z",
     "real_installed_https": true,
     "local_admin_policy_bypassed": false
+  },
+  "hosted_full_native": {
+    "windows": {
+      "passed": 304,
+      "ignored": 2
+    },
+    "macos": {
+      "passed": 309,
+      "ignored": 2
+    },
+    "linux": {
+      "passed": 311,
+      "ignored": 2
+    }
+  },
+  "mac_build_budget": {
+    "run": 42121159398,
+    "job": 127574236625,
+    "started_at": "2026-11-05T22:25:29Z",
+    "cancelled_at": "2026-11-05T23:10:43Z",
+    "phase": "Build both macOS architectures",
+    "root": "45 minute total CI job limit during cold compilation",
+    "new_mac_minutes": 90,
+    "other_platform_minutes": 45,
+    "tests_or_architectures_removed": false,
+    "release_report": "correctly blocked missing Mac artifact",
+    "next_full_build": "pending"
   }
 }
