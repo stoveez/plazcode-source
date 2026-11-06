@@ -132,5 +132,12 @@
     "tests_or_architectures_removed": false,
     "release_report": "correctly blocked missing Mac artifact",
     "next_full_build": "pending"
+  },
+  "active_ci": {
+    "run": 42146181204,
+    "head_sha": "adf89f64c1bd022a90e2a2a4d992366e8274041a",
+    "status": "in_progress",
+    "stage": "/workspace/plazcode-followup-build-42146181204",
+    "watch": "/workspace/followup-ci-watch-42146181204.log"
   }
 }
