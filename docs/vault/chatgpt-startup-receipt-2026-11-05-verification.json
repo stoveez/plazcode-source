@@ -1,19 +1,22 @@
 {
-  "status": "implemented, local focused/full browser PASS; full JavaScript and hosted build pending",
+  "status": "complete-message receipt fix implemented; full Chromium37PASS plus final preview scope2PASS; final provider gates PASS; final full262JS running and full CI pending",
   "before": {
     "boxless_exact_startup": "FAIL: one send, zero detected users, 15s receipt timeout",
     "boxless_whitespace_startup": "FAIL: one send, zero detected users, 15s receipt timeout",
-    "hidden_old_chat_rejection": "PASS"
+    "hidden_old_chat_rejection": "PASS",
+    "native_preview_startup": "FAIL: one send, zero expansions, incomplete body and not Ready"
   },
   "after": {
-    "chatgpt_browser_checks": 33,
+    "chatgpt_browser_checks": 37,
     "healthy_differential": 70,
     "preserved_original_function_bodies": 957,
     "dom_resilience": 325,
     "protected_files": 34,
-    "new_cases": 6,
+    "new_cases": 10,
     "automatic_replay": "none",
-    "receipt": "new native user identity plus exact full normalized body"
+    "receipt": "new native user identity plus exact full normalized body",
+    "native_preview": "one scoped expansion of a fresh exact-prefix message; only complete matching body confirms",
+    "final_preview_scope_checks": 2
   },
   "limits": [
     "Owner ancestor styles pending",
@@ -21,5 +24,6 @@
     "Raw character lengths do not prove truncation",
     "PC vault not connected"
   ],
-  "new_beacon": "2026-11-05_boxless-user-receipts"
+  "new_beacon": "2026-11-05_complete-user-receipts",
+  "cancelled_run": 42155989129
 }

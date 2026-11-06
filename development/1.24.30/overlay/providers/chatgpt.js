@@ -1034,8 +1034,32 @@ const RSProvider = (() => {
     const normalize = value => String(value || '').replace(/\s+/g, ' ').trim();
     const usersBefore = new Set(allItems().filter(isUserItem).map(item => itemKey(item) || item));
     const want = normalize(text);
-    const receipt = () => allItems().some(item => isUserItem(item) &&
-      !usersBefore.has(itemKey(item) || item) && normalize(classifyText(item,'.rs-chip')) === want);
+    let expandedMessage = false;
+    const receipt = () => allItems().some(item => {
+      if (!isUserItem(item) || usersBefore.has(itemKey(item) || item)) return false;
+      const body = normalize(classifyText(item, '.rs-chip'));
+      if (body === want) return true;
+      // Native long-message previews can contain only a prefix. Expand only a
+      // new message with our exact prefix and its own native Read/Show more
+      // control; the NEXT poll still requires the complete matching body.
+      const prefix = body.replace(/\s*(?:\u2026|\.{3})\s*$/, '');
+      if (expandedMessage || prefix.length < 256 || prefix.length >= want.length || !want.startsWith(prefix)) return false;
+      const scopes = [item], parent = safeRead(() => item.parentElement, null);
+      if (safeRead(() => item.matches('[data-user-message-bubble]'), false) && parent &&
+          safeQueryAll(parent, '[data-user-message-bubble]').length === 1 &&
+          !safeQueryAll(parent, S.msg).some(isAssistantItem) &&
+          !safeQueryAll(parent, S.reply).some(node => !safeRead(() => item.contains(node), false))) scopes.push(parent);
+      for (const scope of scopes) for (const button of safeQueryAll(scope, 'button,[role="button"]')) {
+        if (safeClosest(button, '.rs-chip') || safeRead(() => button.disabled, false) || safeRead(() => button.getAttribute('aria-disabled') === 'true', false)) continue;
+        const labels = [safeRead(() => button.getAttribute('aria-label'), ''), safeRead(() => button.getAttribute('title'), ''), safeRead(() => button.textContent, '')];
+        if (!labels.some(label => /^(?:read more|show more|expand message)$/i.test(normalize(label)))) continue;
+        expandedMessage = true;
+        diag('send.expandUserMessage', {chars:prefix.length, expectedChars:want.length});
+        button.click();
+        return false;
+      }
+      return false;
+    });
     const waitDelivery = async (predicate, timeout, typing = true) => {
       const budget = waitBudget(timeout, 120), until = Date.now() + budget.ms;
       for (let poll = 0; poll <= budget.polls; poll++) {
@@ -1091,7 +1115,7 @@ const RSProvider = (() => {
       if (getEditor() === ed && chat === conversationKey() &&
           sendContext().session === context.session && ownedDraft !== null &&
           (editorText() === ownedDraft || (ownedDraft.endsWith('\n') && editorText() === ownedDraft + '\n'))) clearEditor();
-      const proof = {committed, code:error.code || 'CHATGPT_SEND_FAILED'};
+      const proof = {committed, expandedMessage, code:error.code || 'CHATGPT_SEND_FAILED'};
       // Lengths/booleans only: distinguish an unrecognized native message from
       // a partial/different body without logging prompts, results or identities.
       if (committed && sameSession() && chat === conversationKey()) {
@@ -1495,7 +1519,7 @@ const RSProvider = (() => {
       if (stopped) isStopped = stopped;
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsGptVer).
-      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-05_boxless-user-receipts"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-11-05_complete-user-receipts"); } catch {}
     },
     // turns
     allItems, withTranscriptSnapshot, isUserItem, isAssistantItem, itemText, classifyText, setActivityFolded,

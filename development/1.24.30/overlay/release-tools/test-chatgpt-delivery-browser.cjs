@@ -193,6 +193,38 @@ async function checks(browser){
       return{failed,sends:sent.length,diagnostics};
     });assert.equal(got.failed,true);assert.equal(got.sends,1);const proof=got.diagnostics.find(x=>x.name==='send.unconfirmed')?.fields;assert(proof,'the native failure must expose content-free receipt evidence');assert.equal(proof.detectedUsers,1);assert.equal(proof.users[0].fresh,true);assert.equal(proof.users[0].matches,false);assert.equal(proof.users[0].chars,12);assert.equal(proof.expectedNormalizedChars,'private-body must be complete'.length);assert(!JSON.stringify(got.diagnostics).includes('private-body'),'diagnostics must never log message content');
   });
+  for(const position of ['inside','beside'])await check('native long-message preview expands '+position+' its current bubble before confirming startup',true,async page=>{
+    const got=await page.evaluate(async position=>{
+      let expands=0;const native=addItem;addItem=(role,text,id)=>{
+        if(role!=='user')return native(role,text,id);
+        const shell=document.createElement('div'),bubble=document.createElement('div'),body=document.createElement('div'),button=document.createElement('button');
+        bubble.setAttribute('data-user-message-bubble','');body.className='whitespace-pre-wrap';body.textContent=text.slice(0,512)+'…';bubble.append(body);shell.append(bubble);button.textContent='Read more';button.onclick=()=>{expands++;body.textContent=text;button.remove();};(position==='inside'?bubble:shell).append(button);document.querySelector('#timeline').append(shell);fixture.decorate.sweep();return bubble;
+      };
+      autoReply=true;sequence=['```json\n{"command":"list_commands"}\n```'];const result=await fixture.startSession();
+      return{ready:!!result?.ready,started:fixture.A.started,sends:sent.length,expands,full:provider.allItems().filter(provider.isUserItem).some(n=>provider.classifyText(n,'.rs-chip').replace(/\s+/g,' ').trim()===sent[0].replace(/\s+/g,' ').trim())};
+    },position);assert.equal(got.ready,true,JSON.stringify(got));assert.equal(got.started,true);assert.equal(got.sends,1);assert.equal(got.expands,1);assert.equal(got.full,true);
+  });
+  await check('native preview expander cannot replace the full-content receipt',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      let expands=0;const text='a'.repeat(512)+' full result';
+      document.querySelector('button').onclick=()=>{sent.push('one commit');provider.getEditor().innerText='';const b=document.createElement('div');b.setAttribute('data-user-message-bubble','');b.innerHTML='<div class="whitespace-pre-wrap">'+text.slice(0,300)+'…</div><button>Show more</button>';b.querySelector('button').onclick=()=>{expands++;};document.querySelector('#timeline').append(b);addItem('assistant','{"command":"list_commands"}','preview-probe');};
+      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=150;
+      let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}
+      return{failed,sends:sent.length,expands};
+    });assert.equal(got.failed,true);assert.equal(got.sends,1);assert.equal(got.expands,1,'never repeatedly expand or treat the click as confirmation');
+  });
+  await check('native preview reader ignores old messages and unrelated or own-card controls',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      let expands=0;const text='p'.repeat(512)+' complete result';
+      const old=document.createElement('div');old.setAttribute('data-user-message-bubble','');old.innerHTML='<div class="whitespace-pre-wrap">'+text.slice(0,300)+'…</div><button>Read more</button>';old.querySelector('button').onclick=()=>{expands++;};document.querySelector('#timeline').append(old);
+      document.querySelector('button[data-testid="send-button"]').onclick=()=>{
+        sent.push('one commit');provider.getEditor().innerText='';const shell=document.createElement('div'),b=document.createElement('div');b.setAttribute('data-user-message-bubble','');b.innerHTML='<div class="whitespace-pre-wrap">'+text.slice(0,300)+'…</div><div class="rs-chip"><button>Show more</button></div>';b.querySelector('button').onclick=()=>{expands++;};shell.append(b);const sibling=addItem('assistant','{"command":"list_commands"}','other-probe');shell.append(sibling);const unrelated=document.createElement('button');unrelated.textContent='Read more';unrelated.onclick=()=>{expands++;};shell.append(unrelated);document.querySelector('#timeline').append(shell);
+      };
+      const real=setTimeout;window.setTimeout=(fn,ms,...args)=>real(fn,Math.min(ms,1),...args);let time=Date.now();Date.now=()=>time+=150;
+      let failed=false;try{await provider.typeAndSend(text);}catch{failed=true;}
+      return{failed,sends:sent.length,expands};
+    });assert.equal(got.failed,true);assert.equal(got.sends,1);assert.equal(got.expands,0);
+  });
   await check('field semantic text beats outer content chrome and preserves literal UI words',false,async page=>{
     const result=await page.evaluate(()=>{
       const text='You said: keep Copy and 16:22 in this actual message.\n  Preserve this line too.';

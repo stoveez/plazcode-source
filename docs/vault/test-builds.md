@@ -179,7 +179,7 @@ CI run [41157294450](https://github.com/stoveez/plazcode-source/actions/runs/411
 
 # Test builds
 
-2026-11-05 CHATGPT STARTUP FOLLOW-UP IMPLEMENTED / verification active: wrapper-free user bubbles now keep their own message boundary; rendered display:contents shells and own pre-hide masks remain detectable while hidden old chats stay excluded. Full Chromium delivery suite33PASS (including both15-tool/recovery flows), healthy70/preservation957/DOM325/protected34PASS. Strict full normalized new-user receipt, one click/no replay/Stop ownership retained; content-free failure metrics added. Full262JS and fresh Windows/universal Mac CI/Drive packages pending. Owner ancestor diagnostic/live field retest remain pending; no claim that raw body length alone proves truncation. Previous CI42146181204 delivery below is historical and lacks this fix. No stable publish; PC vault not connected.
+2026-11-05 COMPLETE CHATGPT USER RECEIPTS IMPLEMENTED / full verification active: wrapper-free bubbles keep their own boundary; boxless/own pre-hidden roots remain detectable and hidden old chats stay excluded. A shortened exact-prefix new message may expand its own native Read/Show more control ONCE; only its complete matching body confirms delivery. Real Chromium full-core37PASS, healthy70/preservation957/DOM325/protected34PASS on final source; full262JS rerunning/hosted Windows+universal Mac build and Drive delivery pending. Owner ancestor metadata/live retest pending; no claim raw lengths alone prove truncation. CI42155989129 was cancelled to include preview coverage; never deliver it. Previous delivered CI42146181204 lacks this fix. No stable publish; PC vault not connected.
 
 [Current receipt investigation](chatgpt-startup-receipt-2026-11-05.md).
 
