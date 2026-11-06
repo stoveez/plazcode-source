@@ -1,5 +1,5 @@
 {
-  "status": "complete-message receipt fix implemented; full Chromium37PASS plus final preview scope2PASS; final provider gates PASS; final full262JS running and full CI pending",
+  "status": "final local full262JS PASS/0fail; Chromium37PASS; final provider gates PASS; full CI active",
   "before": {
     "boxless_exact_startup": "FAIL: one send, zero detected users, 15s receipt timeout",
     "boxless_whitespace_startup": "FAIL: one send, zero detected users, 15s receipt timeout",
@@ -16,7 +16,17 @@
     "automatic_replay": "none",
     "receipt": "new native user identity plus exact full normalized body",
     "native_preview": "one scoped expansion of a fresh exact-prefix message; only complete matching body confirms",
-    "final_preview_scope_checks": 2
+    "final_preview_scope_checks": 2,
+    "javascript": {
+      "executed_files": 262,
+      "failures": 0,
+      "exit_code": 0,
+      "existing_skips": [
+        "test-v115.js",
+        "test-bridges.js",
+        "test-design-visual.js"
+      ]
+    }
   },
   "limits": [
     "Owner ancestor styles pending",
