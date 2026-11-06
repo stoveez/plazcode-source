@@ -30,13 +30,6 @@
     "send_unconfirmed": "pending",
     "live_browser_access": false
   },
-  "new_ci": {
-    "run_id": 42235579551,
-    "head_sha": "40c1d544b0beb9fbcf9a3ea83feb25d8c3ee5602",
-    "status": "cancelled",
-    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42235579551",
-    "do_not_deliver": true
-  },
   "new_delivery": null,
   "stable_publish": false,
   "pc_vault_connected": false,
@@ -79,5 +72,18 @@
     "sha256": "416d2d64c42d41682e3c868cb636799dc89e5deaee62bb3538e0b022767e2412",
     "finding": "native user text prop rendered as Markdown inside .whitespace-pre-wrap",
     "native_code_copied": false
+  },
+  "cancelled_ci": {
+    "run_id": 42235579551,
+    "head_sha": "40c1d544b0beb9fbcf9a3ea83feb25d8c3ee5602",
+    "status": "cancelled",
+    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42235579551",
+    "do_not_deliver": true
+  },
+  "new_ci": {
+    "run_id": 42241715359,
+    "head_sha": "325561d3577f4ecaa7767fcb16ea53eb90295df5",
+    "status": "in_progress",
+    "url": "https://github.com/stoveez/plazcode-source/actions/runs/42241715359"
   }
 }
