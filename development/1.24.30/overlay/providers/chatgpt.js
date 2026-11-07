@@ -1142,7 +1142,11 @@ const RSProvider = (() => {
           const error = new Error('ChatGPT input did not finish updating. Nothing was submitted. Keep its tab visible, then resume.');
           error.code = 'CHATGPT_COMPOSER_RENDER_TIMEOUT'; finish(error);
         } catch (error) { finish(error); }
-      }, 1000);
+      // 1 s was too tight: inserting a ~12k-character startup message makes ChatGPT's
+      // composer block the page for 3+ s, so two animation frames took longer and
+      // startup paused with "input did not finish updating". A hidden tab never
+      // paints, so it still times out here. Nothing has been submitted at this point.
+      }, 8000);
       try { frame = requestAnimationFrame(advance); } catch (error) { finish(error); }
     });
   }
@@ -1271,7 +1275,9 @@ const RSProvider = (() => {
         receiptWaitMs:receiptStartedAt === null ? 0 : Math.max(0, Math.round(clock() - receiptStartedAt))};
       // Lengths/booleans only: distinguish an unrecognized native message from
       // a partial/different body without logging prompts, results or identities.
-      if (committed && sameSession() && chat === conversationKey()) {
+      // A new chat moves from "/" to "/c/<id>" during the send, so an empty starting
+      // key must not hide the evidence below (it did, which hid why receipts failed).
+      if (committed && sameSession() && (!chat || chat === conversationKey())) {
         try {
           const users = receiptUsers();
           proof.expectedChars = text.length; proof.expectedNormalizedChars = want.length;

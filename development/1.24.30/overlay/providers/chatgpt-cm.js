@@ -90,7 +90,11 @@
     for (const start of [fiber, fiber.alternate]) {
       if (!start || start.memoizedProps !== props) continue;
       let node = start, boundary = false, source = null, ambiguous = false;
-      for (let depth = 0; node && depth < 128; depth++, node = node.return) {
+      // The walk must reach React's root to prove this chain is the committed one.
+      // Live ChatGPT (2026-11-07) sits ~340 levels deep, so a 128 cap never got
+      // there and every message read as "unavailable". Still bounded, and an
+      // unfinished walk still fails closed.
+      for (let depth = 0; node && depth < 4096; depth++, node = node.return) {
         if (node.stateNode === bubble) boundary = true;
         if (!boundary && node !== start && typeof node.memoizedProps?.text === 'string') {
           const next = node.memoizedProps.text;

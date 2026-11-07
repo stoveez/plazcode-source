@@ -100,6 +100,22 @@ async function checks(browser){
       return {sends:sent.length,body:provider.itemText(bubble),expected:sourceFixtureText,rendered:bubble.textContent};
     });assert.equal(got.sends,1);assert.equal(got.body,got.expected);assert.notEqual(got.rendered,got.expected);
   });
+  await check('native Markdown source is still read when the page tree is hundreds of levels deep',false,async page=>{
+    // Live ChatGPT (2026-11-07) nests the message about 340 levels below React's
+    // root. A 128-level walk never reached the root, reported "unavailable", and
+    // every startup/tool-result send then failed its 15 s receipt wait.
+    await nativeReact(page);
+    const got=await page.evaluate(async()=>{
+      const h=React.createElement;
+      function Plain({text}){return h('div',{className:'whitespace-pre-wrap'},h('p',null,'Formatted native message'));}
+      let tree=h('section',null,h('div',{'data-user-message-bubble':true},h(Plain,{text:sourceFixtureText})));
+      for(let i=0;i<400;i++)tree=h('div',null,tree);
+      ReactDOM.flushSync(()=>nativeRoot.render(tree));
+      const bubble=document.querySelector('[data-user-message-bubble]');
+      const acknowledged=!bubble.dispatchEvent(new CustomEvent('rs-user-source-sync',{bubbles:true,cancelable:true}));
+      return {acknowledged,state:bubble.getAttribute('data-rs-user-source-state'),body:provider.itemText(bubble),expected:sourceFixtureText};
+    });assert.equal(got.acknowledged,true,'source reader gave up in a deep tree: '+got.state);assert.equal(got.state,'committed');assert.equal(got.body,got.expected);
+  });
   await check('native Markdown source follows committed React alternates and own masks',false,async page=>{
     await nativeReact(page);
     const got=await page.evaluate(()=>{
