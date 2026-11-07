@@ -116,7 +116,7 @@ async function checks(browser){
       return {acknowledged,state:bubble.getAttribute('data-rs-user-source-state'),body:provider.itemText(bubble),expected:sourceFixtureText};
     });assert.equal(got.acknowledged,true,'source reader gave up in a deep tree: '+got.state);assert.equal(got.state,'committed');assert.equal(got.body,got.expected);
   });
-  await check('a leftover internal startup draft is removed from the composer but a user draft stays',false,async page=>{
+  await check('a leftover internal startup draft is removed from the composer but a user draft stays',true,async page=>{
     const got=await page.evaluate(async()=>{
       const ed=document.querySelector('#prompt-textarea'),wait=ms=>new Promise(r=>setTimeout(r,ms));
       ed.focus();document.execCommand('insertText',false,'My own unfinished question that must stay');

@@ -1359,7 +1359,7 @@ const RSProvider = (() => {
       return cleared;
     } catch { return false; }
   }
-  setInterval(sweepStaleInternalDraft, 1500);
+  // Driven by the core's periodic sweep (enforceComposer), not a timer of its own.
 
   function stopGeneration() {
     const b = stopButton();
@@ -1367,7 +1367,7 @@ const RSProvider = (() => {
   }
 
   // No site modes to enforce on ChatGPT (model picker is left to the user).
-  function enforceComposer() { return { ready: true }; }
+  function enforceComposer() { sweepStaleInternalDraft(); return { ready: true }; }
   async function ensureComposerReady(reason) {
     diag("mode_ready", { reason, provider: "chatgpt" });
     const ed = getEditor();
