@@ -1222,7 +1222,6 @@ const RSProvider = (() => {
     const relock = _locked;
     const oldOpacity = safeRead(() => ed.style.opacity, "");
     const oldCaret = safeRead(() => ed.style.caretColor, "");
-    activeSends++;
     try {
       try { document.documentElement.classList.add("rs-chatgpt-injecting"); } catch {}
       // Internal PlazCode messages are implementation detail. Keep the composer
@@ -1302,7 +1301,6 @@ const RSProvider = (() => {
       diag('send.unconfirmed', proof);
       throw error;
     } finally {
-      activeSends = Math.max(0, activeSends - 1);
       try { document.documentElement.classList.remove("rs-chatgpt-injecting"); } catch {}
       const e2 = ed;
       if (e2.isConnected) {
@@ -1342,12 +1340,11 @@ const RSProvider = (() => {
   // send is running, a composer that STILL holds the same internal startup text
   // after two checks in a row is stale and is removed. Normal user text never
   // starts with the internal marker.
-  var activeSends = 0;
   const STALE_MARKER = "⟦RS-SYS⟧";
   let staleText = null, staleTicks = 0;
   function sweepStaleInternalDraft() {
     try {
-      if (activeSends > 0) { staleText = null; staleTicks = 0; return false; }
+      if (safeRead(() => document.documentElement.classList.contains('rs-chatgpt-injecting'), false)) { staleText = null; staleTicks = 0; return false; }
       const ed = getEditor();
       const value = ed ? String(editorText() || "") : "";
       if (!ed || value.length < 40 || !value.trimStart().startsWith(STALE_MARKER)) { staleText = null; staleTicks = 0; return false; }
@@ -1359,7 +1356,7 @@ const RSProvider = (() => {
       return cleared;
     } catch { return false; }
   }
-  // Driven by the core's periodic sweep (enforceComposer), not a timer of its own.
+  // Driven by the core's periodic sweep (P.sweepStaleInternalDraft), not a timer of its own.
 
   function stopGeneration() {
     const b = stopButton();
@@ -1367,7 +1364,7 @@ const RSProvider = (() => {
   }
 
   // No site modes to enforce on ChatGPT (model picker is left to the user).
-  function enforceComposer() { sweepStaleInternalDraft(); return { ready: true }; }
+  function enforceComposer() { return { ready: true }; }
   async function ensureComposerReady(reason) {
     diag("mode_ready", { reason, provider: "chatgpt" });
     const ed = getEditor();
@@ -1738,7 +1735,7 @@ const RSProvider = (() => {
       return !!ed && records.every(record => record.target === ed || safeRead(() => ed.contains(record.target), false));
     },
     isGenerating, isBusyNow, isHardGenerating, turnComplete,
-    enforceComposer, ensureComposerReady,
+    enforceComposer, ensureComposerReady, sweepStaleInternalDraft,
     turnHalted, findContinueBtn, clickContinueBtn,
     scanError, isTooLongMsg, isBusyMsg,
     // actions
