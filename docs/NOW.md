@@ -1,6 +1,8 @@
 # NOW
 Updated:2026-11-06. Branch **claude/plazcode-dev**, no subagents.
 
+**UNFINISHED CHECKPOINT (2026-11-06 evening):** CI42243794939 failed ONLY on Mac: test-1.22.0-debug-capture.js, 20,000-warning timing check measured 3325ms vs fixed 3000ms limit (slow runner; capture code unchanged). Fix is test-only: limit now 4x same-machine stack-capture reference +250ms (hard cap 30s). Verified: passes normally and under CPU load, FAILS when capture is deliberately made ~7x slower. Runtime95977fe untouched. Full local262JS rerun IN PROGRESS, 65 browser checks NOT yet rerun, no new CI/build/ZIPs yet. Windows-test-lean from the failed run exists but is unverified, do not treat as delivered.
+
 **CHATGPT MARKDOWN RECEIPT CANDIDATE / final local checks PASS, full hosted build ACTIVE.** [Detail](vault/chatgpt-receipt-detector-2026-11-06.md) · [proof](vault/chatgpt-receipt-detector-2026-11-06-verification.json). Previous delivered build failed owner retest. Actual loaded beacon/latest numeric send.unconfirmed requested, pending. No connected live browser/document session; field retest open.
 
 **Final runtime95977fe:** native user messages render Markdown, so DOM loses syntax. MAIN-world reader obtains original committed source strictly inside one bubble, verifies current host/root, accepts only outward prefix extensions, rejects ambiguous/stale/multiple/composer/assistant data. Fresh synchronous isolated-world acknowledgement required. Full normalized source/new identity/one click/no resend/Stop and producer two-frame/full draft safeguards retained. Both beacons2026-11-06_committed-user-markdown. Reload matching extension+refresh ChatGPT applies fix; prior native append still needs earlier app update.

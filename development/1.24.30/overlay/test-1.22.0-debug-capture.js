@@ -105,10 +105,20 @@ function isolated(){
     for(const c of iso){assert.equal(c.js[0],'core/debug-capture.js',path);for(const x of c.matches)assert(main.matches.includes(x),x);}
   }
   for(const f of ['core/debug-capture.js','core/debug-capture-main.js','background.js'])assert.equal(fs.readFileSync(f,'utf8'),fs.readFileSync('PlazCode-Extension/'+f,'utf8'),f+' copies match');
-  // 7. Overhead stays small: 20k wrapped console.warn calls.
+  // 7. Overhead stays small: 20k wrapped console.warn calls. Each call has to
+  // capture a stack, so the limit is measured against the same machine doing
+  // that unavoidable work (a fixed 3 s limit failed on a slow macOS runner at
+  // 3.3 s while the capture itself was unchanged). Healthy runs sit near 1.1-1.5x.
   {
-    const t=isolated();const start=process.hrtime.bigint();for(let i=0;i<20000;i++)t.w.console.warn('w',i);
-    const ms=Number(process.hrtime.bigint()-start)/1e6;assert(ms<3000,'console overhead '+ms+' ms');t.dom.window.close();
+    const t=isolated();
+    const reference=vm.runInContext('(function(n){const s=performance.now();let k=0;for(let i=0;i<n;i++)k+=String(new Error().stack).split("\\n").length+String("w "+i).replace(/[a-f0-9]{40,}/gi,"").length;return k&&performance.now()-s;})',t.dom.getInternalVMContext());
+    const before=reference(20000);
+    const start=process.hrtime.bigint();for(let i=0;i<20000;i++)t.w.console.warn('w',i);
+    const ms=Number(process.hrtime.bigint()-start)/1e6;
+    const base=(before+reference(20000))/2,limit=4*base+250;
+    assert(ms<limit,'console overhead '+ms.toFixed(0)+' ms, limit '+limit.toFixed(0)+' ms (4x the '+base.toFixed(0)+' ms same-machine stack reference + 250 ms)');
+    assert(ms<30000,'console overhead '+ms+' ms is far too slow on any machine');
+    t.dom.window.close();
   }
   // 8. Desktop: the Debug report card is the last block of Settings and uses /api/debug/report.
   {
