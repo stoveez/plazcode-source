@@ -116,6 +116,19 @@ async function checks(browser){
       return {acknowledged,state:bubble.getAttribute('data-rs-user-source-state'),body:provider.itemText(bubble),expected:sourceFixtureText};
     });assert.equal(got.acknowledged,true,'source reader gave up in a deep tree: '+got.state);assert.equal(got.state,'committed');assert.equal(got.body,got.expected);
   });
+  await check('a leftover internal startup draft is removed from the composer but a user draft stays',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      const ed=document.querySelector('#prompt-textarea'),wait=ms=>new Promise(r=>setTimeout(r,ms));
+      ed.focus();document.execCommand('insertText',false,'My own unfinished question that must stay');
+      await wait(4500);const userKept=provider.editorText();
+      provider.clearEditor();ed.focus();
+      document.execCommand('insertText',false,'⟦RS-SYS⟧ PlazCode is a browser extension running in this page, in AGENTSCRIPT mode. leftover from an interrupted start');
+      const before=provider.editorText().length;await wait(4500);
+      return{userKept,before,after:provider.editorText().trim(),sends:sent.length};
+    });
+    assert.equal(got.userKept,'My own unfinished question that must stay');
+    assert(got.before>40);assert.equal(got.after,'');assert.equal(got.sends,0);
+  });
   await check('native Markdown source follows committed React alternates and own masks',false,async page=>{
     await nativeReact(page);
     const got=await page.evaluate(()=>{

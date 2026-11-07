@@ -1222,6 +1222,7 @@ const RSProvider = (() => {
     const relock = _locked;
     const oldOpacity = safeRead(() => ed.style.opacity, "");
     const oldCaret = safeRead(() => ed.style.caretColor, "");
+    activeSends++;
     try {
       try { document.documentElement.classList.add("rs-chatgpt-injecting"); } catch {}
       // Internal PlazCode messages are implementation detail. Keep the composer
@@ -1301,6 +1302,7 @@ const RSProvider = (() => {
       diag('send.unconfirmed', proof);
       throw error;
     } finally {
+      activeSends = Math.max(0, activeSends - 1);
       try { document.documentElement.classList.remove("rs-chatgpt-injecting"); } catch {}
       const e2 = ed;
       if (e2.isConnected) {
@@ -1333,6 +1335,31 @@ const RSProvider = (() => {
       return false;
     }
   }
+
+  // ChatGPT saves the composer as a draft. If a page reload, navigation or crash
+  // interrupts an internal injection, the half-typed PlazCode startup text comes
+  // back by itself in the user's box (seen live 2026-11-07). While no PlazCode
+  // send is running, a composer that STILL holds the same internal startup text
+  // after two checks in a row is stale and is removed. Normal user text never
+  // starts with the internal marker.
+  var activeSends = 0;
+  const STALE_MARKER = "⟦RS-SYS⟧";
+  let staleText = null, staleTicks = 0;
+  function sweepStaleInternalDraft() {
+    try {
+      if (activeSends > 0) { staleText = null; staleTicks = 0; return false; }
+      const ed = getEditor();
+      const value = ed ? String(editorText() || "") : "";
+      if (!ed || value.length < 40 || !value.trimStart().startsWith(STALE_MARKER)) { staleText = null; staleTicks = 0; return false; }
+      if (value !== staleText) { staleText = value; staleTicks = 1; return false; }
+      if (++staleTicks < 2) return false;
+      staleText = null; staleTicks = 0;
+      const cleared = clearEditor();
+      diag('composer.staleInternalDraftCleared', {chars:value.length, cleared});
+      return cleared;
+    } catch { return false; }
+  }
+  setInterval(sweepStaleInternalDraft, 1500);
 
   function stopGeneration() {
     const b = stopButton();
