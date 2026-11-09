@@ -1,12 +1,14 @@
 # NOW
 Updated: 2026-11-09. No helper agents.
 
-**Latest: 1.24.31 published. Validation 42552807509 on `a3fad69`; publish run 42622320066.** DeepSeek sends share one queue and a completion-based 8–9.8 second cooldown, including Creator/library calls. Existing program protection and permanent approvals are retained. No app signing, login requirement or extra setup; offline use and editable user skills/notes/settings are preserved.
+**Latest: 1.24.32 published.** Validation run 42712015243 on `a3f15325`; publish run 42718408426; release record branch `release-record-1.24.32-final`. Live feeds show 1.24.32 and the Windows download hash matched the feed.
 
-**Validation:** all four production gates passed on the exact source, plus the packaged Mac desktop lifetime/relaunch gate. Browser fixtures and real protected Chromium/Firefox cryptography passed; original affected Studio/account setups were not tested live. No separate test build was delivered. Full app update plus extension reload and AI-tab refresh is required for the complete security update.
+**What is in 1.24.32:** Notion bar re-seats when a page or side panel opens; hidden bar tab can be dragged (returns when unhidden); only the real command block runs (examples in text fences, inline code or prose are ignored); the chatbox is released about half a second after the reply's finished buttons appear; Notion command cards attach to the code block; Notion custom agent chats (?at=) recognised; false "Offline" / "Check unavailable" fixed at the cause (stale cached update feed no longer an error in the app; the extension needs 8 failed status reads in a row before saying the bridge is unavailable).
 
-**Release:** https://github.com/stoveez/PlazCode/releases/tag/v1.24.31
+**Owner field retest pending:** the Notion bar lag and the "Offline" cause were not reproduced live, only hardened. If either still shows, collect logs. The Status-card part of the Offline fix is inside the app, so the app must be replaced.
 
-**Visibility:** temporary public build window; restore Private after publication. Owner authorized automatic restore; integration administration previously returned 403. Check the actual visibility before stopping.
+**Release:** https://github.com/stoveez/PlazCode/releases/tag/v1.24.32
 
-**Handoff:** work directly on `claude/plazcode-dev`; after publication merge private main ancestry back into dev without changing validated program source. Other account/Workshop/Brickwire plans remain deferred. GitHub vault updated; the separate PC PlazCode-Vault folder is not linked. See [open work](vault/open-work.md) and [code protection](vault/code-protection.md).
+**Visibility:** repo is still Public after the build window; owner must set it back to Private (https://github.com/stoveez/plazcode-source/settings). Check the actual visibility before stopping.
+
+**Handoff:** work on `claude/plazcode-dev`; main ancestry was merged back after publish. Stale branches kept: `release-record-1.24.31`, `fix/bar-status-json-lock`. Other account/Workshop/Brickwire plans remain deferred. See [open work](vault/open-work.md).
