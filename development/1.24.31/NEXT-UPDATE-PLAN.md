@@ -1,0 +1,8 @@
+# PlazCode 1.24.31 follow-up test build — delivered
+Updated2026-11-05. Stable1.24.31 is already published; no new stable publication authorized. Work only on claude/plazcode-dev.
+
+All confirmed shared-protocol changes and ChatGPT freeze/handoff causes are implemented. FullCI42039239468/runtime0a75701 passed Windows/universal Mac/Linux/browsers and official132checks/0fail report. Exact full Windows/Mac inner ZIPs verified and delivered via Drive with Private reminder; source still Public at delivery. See docs/NOW.md and docs/vault/tool-protocol-2026-11-04-verification.json for exact links/hashes/evidence.
+
+Includes safe normal batch shapes/errors/capabilities, tolerant complete command parsing, native in-workspace absolute paths with Windows prefix fix, resolved-path echoes, exact read-only file previews, consistent exact/paged results, verified default single-exchange startup, on-demand notes, bounded ChatGPT native edits/strict receipts/saved-result recovery, DeepSeek Windows newline fix. Prior guest/profile/background jobs/Blender/Ox Alpha/Windows installation fixes retained. Permissions, Stop, updater feeds, integrity and published file layout preserved. No source ZIPs.
+
+Next: owner field retest on affected PCs/live AI/Studio. Replace matching app/extension files preserving saved data; reload extension and refresh tabs. Owner restores Private; never change visibility yourself. Future stable needs separately approved version/release notes and publication authorization. Repo vault updated; PC vault not connected. Actual live-site screenshot unavailable; fixtures never presented as live proof.

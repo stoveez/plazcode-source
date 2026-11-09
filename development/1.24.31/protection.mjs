@@ -1,0 +1,327 @@
+import {variantSeed,deriveVariant,variantInfo,packConfig} from './release-variant.mjs';
+// Release signing uses Node's built-in Ed25519 implementation. Private keys never enter packages.
+import { createHash, createHmac, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify, hkdfSync, randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
+import {gzipSync,gunzipSync} from 'node:zlib';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
+
+export const DOMAIN = 'PlazCode release v1\n';
+// Old updaters replace this entire directory. Keeping bootstrap metadata here makes migration automatic.
+export const FILE_MANIFEST = 'PlazCode-Extension/plazcode-installation-integrity.json';
+export const BOOTSTRAP = 'PlazCode-Extension/plazcode-bootstrap.json';
+export const EXT_MANIFEST = 'plazcode-extension-integrity.json';
+const here = path.dirname(fileURLToPath(import.meta.url));
+function outside(root, target) {
+  const relative=path.relative(path.resolve(root),path.resolve(target));
+  return relative==='..' || relative.startsWith('..'+path.sep) || path.isAbsolute(relative);
+}
+export const digest = data => createHash('sha256').update(data).digest('hex');
+export function publicHex(key) { return createPublicKey(key).export({format:'der',type:'spki'}).subarray(-32).toString('hex'); }
+export function parseSigningKey(input) {
+  const text=String(input).trim(),prefix='ed25519-seed:';
+  if(text.startsWith(prefix)) {
+    const seed=text.slice(prefix.length);
+    if(!/^[a-f0-9]{64}$/i.test(seed)) throw new Error('Invalid private Ed25519 seed.');
+    return createPrivateKey({key:Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),Buffer.from(seed,'hex')]),format:'der',type:'pkcs8'});
+  }
+  const key=createPrivateKey(text);
+  if(key.asymmetricKeyType!=='ed25519') throw new Error('An Ed25519 release key is required.');
+  return key;
+}
+function verificationKey(hex) {
+  if (!/^[a-f0-9]{64}$/.test(hex)) throw new Error('A pinned Ed25519 public key is required.');
+  return createPublicKey({key:Buffer.from('302a300506032b6570032100'+hex,'hex'),type:'spki',format:'der'});
+}
+export function envelope(payload, key) {
+  const text=JSON.stringify(payload);
+  return {payload:text,signature:sign(null,Buffer.from(DOMAIN+text),key).toString('hex')};
+}
+export function openEnvelope(raw, hex) {
+  if (Buffer.byteLength(raw)>4*1024*1024) throw new Error('Signed manifest is too large.');
+  const signed=JSON.parse(raw);
+  if (typeof signed.payload!=='string' || !/^[a-f0-9]{128}$/.test(signed.signature) ||
+      !verify(null,Buffer.from(DOMAIN+signed.payload),verificationKey(hex),Buffer.from(signed.signature,'hex'))) throw new Error('Invalid release signature.');
+  const value=JSON.parse(signed.payload);
+  if(value.schema!==1) throw new Error('Unsupported signature schema.');
+  return value;
+}
+export function safePath(relative) {
+  return typeof relative==='string' && relative.length>0 && relative.length<=512 &&
+    !/[\\:\x00-\x1f]/.test(relative) && relative.split('/').every(p=>p && p!=='.' && p!=='..' && !/[. ]$/.test(p));
+}
+async function walk(root, prefix='') {
+  let files=[];
+  for(const entry of await fs.readdir(path.join(root,prefix),{withFileTypes:true})) {
+    const relative=prefix ? prefix+'/'+entry.name : entry.name;
+    if(!safePath(relative) || entry.isSymbolicLink()) throw new Error('Unsafe package path: '+relative);
+    if(entry.isDirectory()) files.push(...await walk(root,relative));
+    else if(entry.isFile()) files.push(relative);
+    else throw new Error('Unsupported package entry: '+relative);
+  }
+  return files.sort();
+}
+const extensionRoots=new Set(['core','providers','icons','images','fonts','assets','_locales']);
+const extensionNames=new Set(['manifest.json','background.js','protection.js','popup.js','popup.html','overlay.css','icon.png','ollama-page.js','ollama.html','firefox-transfer-check.js']);
+export const extensionFile=name=>extensionRoots.has(name.split('/')[0]) || extensionNames.has(name);
+const userNames=new Set(['config.json','config.local.json','plazcode-settings.json','bridge-pairing.json','memory.json','chat-history.json','checkpoints.json','catalog.json','creations.json','update-source.json']);
+export function programFile(name) {
+  const first=name.split('/')[0];
+  if(['PlazCode-Extension','PlazCode-Extension-Firefox'].includes(first) && ['SOURCE.txt','FIREFOX-INSTALL.txt'].includes(name.split('/').at(-1))) return false;
+  if(userNames.has(name) || ['logs','skills','vault','vaults','memory','cache','caches','node_modules','target','.git'].includes(first)) return false;
+  if([FILE_MANIFEST,'SHA256SUMS.txt','DEVELOPMENT.txt'].includes(name)) return false;
+  // Program assets and fixed helpers, not arbitrary files a user keeps beside the app.
+  return ['production-build.json','PlazCode'].includes(name) || extensionFile(name) || ['PlazCode-Extension','PlazCode-Extension-Firefox','PlazCode.app','runtime','macos','ui','agent'].includes(first) ||
+    /\.(exe|dll|cmd|bat|ps1|command|py|cjs|cs)$/.test(name) && !name.includes('/') || name===EXT_MANIFEST;
+}
+async function writeEnvelope(file, value, key) { await fs.writeFile(file,JSON.stringify(envelope(value,key))+'\n'); }
+async function fileRecords(root, names, withModes=true) {
+  const records={};
+  for(const name of names) {const raw=await fs.readFile(path.join(root,name));records[name]={sha256:digest(raw),bytes:raw.length};if(withModes)records[name].mode=(await fs.stat(path.join(root,name))).mode&0o777;}
+  return records;
+}
+export async function signExtension(root, key, channel) {
+  const names=(await walk(root)).filter(extensionFile);
+  const version=JSON.parse(await fs.readFile(path.join(root,'manifest.json'),'utf8')).version;
+  await writeEnvelope(path.join(root,EXT_MANIFEST),{schema:1,kind:'files',version,platform:'extension',channel,files:await fileRecords(root,names,false)},key);
+}
+export async function signInstallation(root, key, platform, channel) {
+  const names=(await walk(root)).filter(programFile);
+  const version=JSON.parse(await fs.readFile(path.join(root,'manifest.json'),'utf8')).version;
+  await writeEnvelope(path.join(root,FILE_MANIFEST),{schema:1,kind:'files',version,platform,channel,files:await fileRecords(root,names)},key);
+}
+async function writeBootstrap(root) {
+  const files={},blobs={};
+  for(const name of (await walk(root)).filter(programFile)) {
+    if(name.startsWith('PlazCode-Extension/') || name.startsWith('PlazCode.app/') || name==='PlazCode.exe' || name==='PlazCode') continue;
+    const raw=await fs.readFile(path.join(root,name)),hash=digest(raw);
+    files[name]=hash;
+    if(!blobs[hash]) blobs[hash]=raw.toString('base64');
+  }
+  await fs.writeFile(path.join(root,BOOTSTRAP),JSON.stringify({files,blobs}));
+}
+export async function verifyTree(root, hex, manifest=FILE_MANIFEST) {
+  const record=openEnvelope(await fs.readFile(path.join(root,manifest),'utf8'),hex);
+  if(record.kind!=='files' || !record.files || !Object.keys(record.files).length) throw new Error('Invalid file manifest.');
+  for(const [name,expected] of Object.entries(record.files)) {
+    if(!safePath(name)) throw new Error('Unsafe manifest path.');
+    let current=root;
+    for(const part of name.split('/')) {current=path.join(current,part);if((await fs.lstat(current)).isSymbolicLink()) throw new Error('Symlink in signed path.');}
+    const raw=await fs.readFile(current);
+    if(raw.length!==expected.bytes || digest(raw)!==expected.sha256) throw new Error('Program file changed: '+name);
+  }
+  return record;
+}
+// 1.24.30 (owner: move PlazCode's valuable text into the native app, without breaking startup or updates).
+// At packaging time only, long string/template literals that run inside functions are cut out of these
+// files and replaced by PlazCodeText.t(id) / PlazCodeText.f(id,[values]); the text goes into a sealed
+// core/text-pack.bin that only the PlazCode app opens (agent/src/text_pack.rs) and serves to the paired,
+// official extension. Development source and tests keep the text inline. Load-time text is never moved,
+// so nothing runs before the app has answered.
+export const TEXT_PACK_FILES={'core/config.js':'config','core/lean-startup.js':'lean','core/studio_skills.js':'skills'};
+export const TEXT_PACK_FILE='core/text-pack.bin';
+const TEXT_PACK_MIN=200;
+export function textPackKey(version,seed=variantSeed()){return packConfig(version,seed).key;}
+export function moveText(source, prefix, acorn) {
+  const ast=acorn.parse(source,{ecmaVersion:'latest',sourceType:'script'});
+  const found=[];
+  (function visit(node,deferred,parent,key){
+    if(!node||typeof node.type!=='string')return;
+    let later=deferred;
+    if(/Function/.test(node.type)){
+      const immediate=parent&&parent.type==='CallExpression'&&(parent.callee===node||(!deferred&&parent.arguments.includes(node)));
+      if(!immediate)later=true;
+    }
+    const keyPosition=parent&&((parent.type==='Property'||parent.type==='MethodDefinition'||parent.type==='PropertyDefinition')&&key==='key'&&!parent.computed);
+    const tagged=parent&&parent.type==='TaggedTemplateExpression';
+    const directive=parent&&parent.type==='ExpressionStatement'&&parent.directive;
+    if(later&&!keyPosition&&!tagged&&!directive&&node.end-node.start>=TEXT_PACK_MIN&&((node.type==='Literal'&&typeof node.value==='string')||node.type==='TemplateLiteral'))found.push(node);
+    for(const name of Object.keys(node)){const value=node[name];if(Array.isArray(value))value.forEach(child=>visit(child,later,node,name));else if(value&&typeof value.type==='string')visit(value,later,node,name);}
+  })(ast,false,null,null);
+  found.sort((a,b)=>a.start-b.start);
+  const pack={};let counter=0;
+  const inside=(outer,inner)=>inner.start>=outer.start&&inner.end<=outer.end&&inner!==outer;
+  function rewrite(start,end,candidates){
+    let out='',at=start;
+    for(const node of candidates){
+      if(node.start<at||node.end>end)continue; // nested in an earlier one: rendered by it
+      out+=source.slice(at,node.start)+render(node,candidates.filter(other=>inside(node,other)));at=node.end;
+    }
+    return out+source.slice(at,end);
+  }
+  function render(node,nested){
+    const id=prefix+':'+(counter++);
+    if(node.type==='Literal'){pack[id]=node.value;return ' PlazCodeText.t('+JSON.stringify(id)+')';}
+    pack[id]=node.quasis.map(q=>{if(typeof q.value.cooked!=='string')throw new Error('Template without cooked text: '+id);return q.value.cooked;});
+    return ' PlazCodeText.f('+JSON.stringify(id)+',['+node.expressions.map(e=>'('+rewrite(e.start,e.end,nested)+')').join(',')+'])';
+  }
+  const code=rewrite(0,source.length,found);
+  acorn.parse(code,{ecmaVersion:'latest',sourceType:'script'});
+  return {code,pack,moved:found.filter(node=>!found.some(other=>inside(other,node))).length};
+}
+export function sealTextPack(pack,version,seed=variantSeed()){
+  const c=packConfig(version,seed),pad=Buffer.alloc(c.padding);c.mark.copy(pad);
+  const json=JSON.stringify(pack,(_key,value)=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value);
+  const compressed=gzipSync(Buffer.from(json),{level:9});
+  // zlib otherwise writes a host-specific OS byte (Windows 10, macOS 19,
+  // Linux 3). This field is informational and outside the payload checksum.
+  compressed[9]=255;
+  // Identical release content must seal identically on every platform. A separate
+  // keyed hash of the exact plaintext gives changed content a different 96-bit
+  // nonce; the encryption key is never used as the nonce derivation key.
+  const nonce=createHmac('sha256',c.nonceKey).update(compressed).digest().subarray(0,12);
+  const cipher=createCipheriv('aes-256-gcm',c.key,nonce);cipher.setAAD(Buffer.concat([c.magic,pad]));
+  const body=Buffer.concat([cipher.update(compressed),cipher.final()]),tag=cipher.getAuthTag();
+  return Buffer.concat(c.layout===0?[c.magic,pad,nonce,body,tag]:c.layout===1?[c.magic,nonce,pad,tag,body]:[c.magic,tag,nonce,body,pad]);
+}
+export function openTextPack(raw,version,seed=variantSeed()){
+  const c=packConfig(version,seed),n=c.padding;
+  if(raw.length<8+n+12+16+1||raw.length>8*1024*1024||!raw.subarray(0,8).equals(c.magic))throw Error('Not this release text pack');
+  let nonce,pad,tag,body;
+  if(c.layout===0){pad=raw.subarray(8,8+n);nonce=raw.subarray(8+n,20+n);body=raw.subarray(20+n,-16);tag=raw.subarray(-16);}
+  else if(c.layout===1){nonce=raw.subarray(8,20);pad=raw.subarray(20,20+n);tag=raw.subarray(20+n,36+n);body=raw.subarray(36+n);}
+  else{tag=raw.subarray(8,24);nonce=raw.subarray(24,36);body=raw.subarray(36,-n);pad=raw.subarray(-n);}
+  if(!pad.subarray(0,8).equals(c.mark))throw Error('Wrong release mark');
+  const decipher=createDecipheriv('aes-256-gcm',c.key,nonce);decipher.setAAD(Buffer.concat([c.magic,pad]));decipher.setAuthTag(tag);
+  const json=JSON.parse(gunzipSync(Buffer.concat([decipher.update(body),decipher.final()]),{maxOutputLength:32*1024*1024}).toString());
+  if(!json||Array.isArray(json)||typeof json!=='object'||!Object.keys(json).length)throw Error('Empty text pack');
+  return json;
+}
+export async function obfuscate(root, maps, sourceRoot, publicKey, channel, key) {
+  // Rename private locals/functions, preserve global bindings, class/error names and property contracts.
+  // No eval, string-array runtime, property mangling or control-flow flattening: preserve CSP and performance.
+  const require=createRequire(path.join(sourceRoot,'release-tools/package.json'));
+  const {minify}=require('terser');
+  const acorn=require('acorn');
+  const report={};let sharedPack=null;
+  await fs.mkdir(maps,{recursive:true,mode:0o700});
+  for(const folder of ['', 'PlazCode-Extension', 'PlazCode-Extension-Firefox']) {
+    const base=path.join(root,folder);
+    try {await fs.access(path.join(base,'manifest.json'));} catch {continue;}
+    const template=await fs.readFile(path.join(here,'overlay/protection.js'),'utf8');
+    const packagedVerifier=template.replace('UNCONFIGURED_RELEASE_PUBLIC_KEY',publicKey).replace('UNCONFIGURED_RELEASE_CHANNEL',channel);
+    if(!packagedVerifier.includes('key = "'+publicKey+'"')||!packagedVerifier.includes('channel = "'+channel+'"'))throw new Error('protection.js did not receive the release key and channel');
+    await fs.writeFile(path.join(base,'protection.js'),packagedVerifier);
+    const version=JSON.parse(await fs.readFile(path.join(base,'manifest.json'),'utf8')).version;
+    const pack={};
+    for(const name of (await walk(base)).filter(n=>extensionFile(n) && n.endsWith('.js') && !n.startsWith('core/ultralab/'))) {
+      const original=await fs.readFile(path.join(base,name),'utf8');
+      const label=(folder ? folder+'/' : '')+name;
+      let code=original;
+      if(TEXT_PACK_FILES[name]){const moved=moveText(original,TEXT_PACK_FILES[name],acorn);code=moved.code;Object.assign(pack,moved.pack);}
+      if(name==='core/text-pack.js'){if(!original.includes('const REQUIRED = false;'))throw new Error('text-pack.js switch not found');code=original.replace('const REQUIRED = false;','const REQUIRED = true;');}
+      const result=await minify({[label]:code},{mangle:{toplevel:false},compress:{defaults:false,dead_code:true,conditionals:true,booleans:true},keep_fnames:false,keep_classnames:true,format:{comments:/SPDX-License-Identifier|@license|@preserve/i},sourceMap:{filename:label,url:false,includeSources:true}});
+      if(!result.code || !result.map) throw new Error('Obfuscation failed: '+label);
+      await fs.writeFile(path.join(base,name),result.code+'\n');
+      const mapPath=path.join(maps,label+'.map');await fs.mkdir(path.dirname(mapPath),{recursive:true});await fs.writeFile(mapPath,result.map,{mode:0o600});
+      report[label]={source_sha256:digest(original),sha256:digest(result.code+'\n')};
+    }
+    // Every packaged folder must move exactly the same text, and only alongside the loader that fetches it.
+    if(Object.keys(pack).length){
+      if(!(await walk(base)).includes('core/text-pack.js'))throw new Error('Text moved without core/text-pack.js: '+(folder||'root'));
+      const text=JSON.stringify(pack,Object.keys(pack).sort());
+      if(sharedPack!==null&&sharedPack!==text)throw new Error('Packaged folders moved different text');sharedPack=text;
+      await fs.writeFile(path.join(base,TEXT_PACK_FILE),sealTextPack(pack,version));
+    }
+    await fs.mkdir(path.join(base,'core'),{recursive:true});
+    await fs.writeFile(path.join(base,'core/release-variant.json'),JSON.stringify(variantInfo(version))+'\n');
+    await signExtension(base,key,channel);
+  }
+  return report;
+}
+// The CLI provides the private key only in memory; obfuscate does not export it or add it to reports.
+export async function protect(root, maps, sourceRoot, key, channel, platform) {
+  if(!outside(root,maps)) throw new Error('Private decoder maps must be outside the package.');
+  const publicKey=publicHex(key);
+  {
+    const report=await obfuscate(root,maps,sourceRoot,publicKey,channel,key);
+    await fs.writeFile(path.join(root,'PlazCode-Extension/production-build.json'),JSON.stringify({schema:1,channel,public_key:publicKey,release_variant:variantInfo(JSON.parse(await fs.readFile(path.join(root,'manifest.json'),'utf8')).version),files:report})+'\n');
+    await writeBootstrap(root);
+    await signInstallation(root,key,platform,channel);
+  }
+}
+function mapKey(key) {return hkdfSync('sha256',key.export({format:'der',type:'pkcs8'}),Buffer.alloc(0),Buffer.from('PlazCode private decoder maps v1'),32);}
+export async function encryptMaps(directory, output, key) {
+  const files={};for(const name of await walk(directory)) files[name]=await fs.readFile(path.join(directory,name),'utf8');
+  const nonce=randomBytes(12),cipher=createCipheriv('aes-256-gcm',mapKey(key),nonce);
+  const raw=gzipSync(Buffer.from(JSON.stringify(files)));
+  const ciphertext=Buffer.concat([cipher.update(raw),cipher.final()]);
+  await fs.writeFile(output,JSON.stringify({schema:1,public_key:publicHex(key),nonce:nonce.toString('hex'),tag:cipher.getAuthTag().toString('hex'),ciphertext:ciphertext.toString('base64')})+'\n');
+}
+export async function decryptMaps(input,directory,key) {
+  const value=JSON.parse(await fs.readFile(input,'utf8'));
+  if(value.schema!==1 || value.public_key!==publicHex(key)) throw new Error('Wrong decoder key.');
+  const decipher=createDecipheriv('aes-256-gcm',mapKey(key),Buffer.from(value.nonce,'hex'));decipher.setAuthTag(Buffer.from(value.tag,'hex'));
+  const clear=Buffer.concat([decipher.update(Buffer.from(value.ciphertext,'base64')),decipher.final()]);
+  const files=JSON.parse(gunzipSync(clear,{maxOutputLength:128*1024*1024}));
+  for(const [name,text] of Object.entries(files)) {if(!safePath(name)) throw new Error('Unsafe decoder path.');const file=path.join(directory,name);await fs.mkdir(path.dirname(file),{recursive:true,mode:0o700});await fs.writeFile(file,text,{mode:0o600});}
+}
+async function signingKey() {
+  const file=process.env.PLAZCODE_SIGNING_KEY_FILE;
+  if(file && !outside(path.resolve(here,'../..'),file)) throw new Error('Private signing keys must be outside the source repository.');
+  const pem=process.env.PLAZCODE_RELEASE_SIGNING_KEY || (file ? await fs.readFile(file,'utf8') : '');
+  if(!pem) throw new Error('Missing release signing key. Protected packages cannot be built unsigned.');
+  return parseSigningKey(pem);
+}
+async function main([command,...args]) {
+  if(command==='provision') {
+    // Owner runs this on a trusted machine. Keep the backup outside every source/package directory.
+    const backup=args[0];
+    if(!backup || !path.isAbsolute(backup) || !outside(path.resolve(here,'../..'),backup)) throw new Error('Supply an absolute private-key backup path outside this repository.');
+    const pinned=(await fs.readFile(path.join(here,'overlay/release-public-key.hex'),'utf8')).trim();
+    if(pinned) throw new Error('A production key already exists. Use an explicit key-rotation plan rather than replacing it.');
+    const {privateKey,publicKey}=generateKeyPairSync('ed25519');
+    const pem=privateKey.export({format:'pem',type:'pkcs8'});
+    await fs.writeFile(backup,pem,{mode:0o600,flag:'wx'});
+    execFileSync('gh',['secret','set','PLAZCODE_RELEASE_SIGNING_KEY','--repo','stoveez/plazcode-source'],{input:pem,stdio:['pipe','inherit','inherit']});
+    const hex=publicKey.export({format:'der',type:'spki'}).subarray(-32).toString('hex');
+    await fs.writeFile(path.join(here,'overlay/release-public-key.hex'),hex+'\n');
+    console.log('Release key stored in GitHub Actions; private backup saved at the supplied path. Keep that backup private. Commit only overlay/release-public-key.hex.');return;
+  }
+  if(command==='validation-key') {
+    const [directory]=args;
+    if(!directory || !outside(path.resolve(here,'../..'),directory)) throw new Error('Validation keys must stay outside the source repository.');
+    await fs.mkdir(directory,{recursive:true,mode:0o700});
+    const {privateKey}=generateKeyPairSync('ed25519');
+    await fs.writeFile(path.join(directory,'key.pem'),privateKey.export({format:'pem',type:'pkcs8'}),{mode:0o600});
+    await fs.writeFile(path.join(directory,'public.hex'),publicHex(privateKey)+'\n');return;
+  }
+  if(command==='verify') {await verifyTree(args[0],args[1],args[2]);return;}
+  const key=await signingKey();
+  if(command==='configure-variant') {
+    const version=JSON.parse(await fs.readFile(path.join(here,'overlay/manifest.json'),'utf8')).version;
+    const seed=deriveVariant(key,version,process.env.PLAZCODE_PROTECTION_CHANNEL||'release');
+    if(!args[0])throw Error('Supply the runner environment file');
+    // Ephemeral runner environment only; neither seed nor private key is a public build output.
+    console.log('::add-mask::'+seed);
+    await fs.appendFile(args[0],'PLAZCODE_RELEASE_VARIANT='+seed+'\n',{mode:0o600});
+    console.log('Release variant configured; public descriptor: '+JSON.stringify(variantInfo(version,variantSeed(seed))));return;
+  }
+  if(command==='export-public') {
+    const file=path.join(here,'overlay/release-public-key.hex'),hex=publicHex(key),existing=(await fs.readFile(file,'utf8')).trim();
+    if(existing && existing!==hex) throw new Error('Configured public key differs; automatic key rotation is forbidden.');
+    await fs.writeFile(file,hex+'\n');console.log('Production public key derived; no private key was written or printed.');return;
+  }
+  if(command==='decrypt-maps') {await decryptMaps(args[0],args[1],key);return;}
+  if(command==='protect') {
+    const [root,maps,sourceRoot,platform,encryptedMaps]=args;
+    const channel=process.env.PLAZCODE_PROTECTION_CHANNEL || 'release';
+    if(!['release','validation'].includes(channel)) throw new Error('Invalid protection channel.');
+    const pinned=(await fs.readFile(path.join(here,'overlay/release-public-key.hex'),'utf8')).trim();
+    if(channel==='release' && publicHex(key)!==pinned) throw new Error('Signing key does not match the pinned production key.');
+    await protect(root,maps,sourceRoot,key,channel,platform);
+    if(encryptedMaps) await encryptMaps(maps,encryptedMaps,key);
+    return;
+  }
+  if(command==='sign-update') {
+    const [feedPath,platform]=args;const feed=JSON.parse(await fs.readFile(feedPath,'utf8'));
+    const pinned=(await fs.readFile(path.join(here,'overlay/release-public-key.hex'),'utf8')).trim();
+    if(publicHex(key)!==pinned) throw new Error('Wrong production signing key.');
+    feed.security=envelope({schema:1,kind:'update',channel:'release',version:feed.version,platform,sha256:feed.sha256},key);
+    await fs.writeFile(feedPath,JSON.stringify(feed,null,2)+'\n');return;
+  }
+  throw new Error('Unknown protection command.');
+}
+if(process.argv[1] && import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href) main(process.argv.slice(2)).catch(error=>{console.error(error.message);process.exitCode=1;});

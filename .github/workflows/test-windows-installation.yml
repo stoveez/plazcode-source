@@ -4,7 +4,7 @@ on:
     branches: [claude/plazcode-dev]
     paths:
       - .github/workflows/test-windows-installation.yml
-      - development/1.24.30/test-windows-installation-paths.py
+      - development/1.24.31/test-windows-installation-paths.py
   workflow_dispatch:
     inputs:
       build_run:
@@ -37,7 +37,7 @@ jobs:
             gh release download v1.24.30 --repo stoveez/PlazCode --pattern PlazCode-1.24.30.zip --dir installation-package
           } else {
             if ($env:BUILD_RUN -notmatch '^\d+$') { throw 'A numeric build run or public-1.24.30 is required.' }
-            gh run download $env:BUILD_RUN --repo $env:GITHUB_REPOSITORY --name plazcode-1.24.30-Windows-test-lean --dir installation-package
+            gh run download $env:BUILD_RUN --repo $env:GITHUB_REPOSITORY --name plazcode-1.24.31-Windows-test-lean --dir installation-package
           }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Real app, intact path variants and unchanged protection refusals
@@ -46,7 +46,7 @@ jobs:
         run: |
           $Packages = @(Get-ChildItem installation-package -Filter '*.zip')
           if ($Packages.Count -ne 1) { throw 'Exactly one complete Windows package is required.' }
-          $Arguments = @('development/1.24.30/test-windows-installation-paths.py', '--package', $Packages[0].FullName)
+          $Arguments = @('development/1.24.31/test-windows-installation-paths.py', '--package', $Packages[0].FullName)
           if ($env:REPRODUCE_OLD -eq 'true') { $Arguments += '--expect-old-root-bug' }
           else {
             python -m pip install --disable-pip-version-check Pillow==11.2.1

@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+const assert=require('node:assert/strict'),R=require('./core/reliability.js');globalThis.PlazCodeReliability=R;const M=require('./core/memory.js');
+(async()=>{
+ const noise=["PlazCode startup check: reply with exactly one fenced json code block containing {\"command\":\"list_commands\"}","grep_files · resultOutput of 'grep_files': Matches for notion (53, scanned 71 files)","resultERROR calling 'list_windows': FULL PC ACCESS","[SYSTEM_STATE: ENGINE=LOCAL]","PLAZCODE MEMORY, PAGE 1 OF 2: config"];
+ for(const text of noise)assert(!R.userRequest({role:'user',text}),text);
+ const rows=[...noise.map(text=>({role:'user',text})),{role:'assistant',text:'I will check first. {"command":"process_list"}'},{role:'user',text:'Please use tabs for indentation.'},{role:'assistant',text:'Done. The shop is ready.'}];
+ const n=R.chatNote({rows});assert(n.content.includes('Please use tabs'));assert(n.content.includes('Done. The shop'));assert(!/startup check|grep_files|process_list|list_windows|SYSTEM_STATE|MEMORY, PAGE/.test(n.content));assert(!R.userRequest({role:'user',text:'private injected transport',injected:true}));assert(R.canContinue({handoff:{has_user_request:true}}));
+ let saved;await M.vaultRefresh(async({request})=>{if(request.action==='write'){saved=request;return {ok:true,skipped:true,reason:'Unsupported fact'};}return {ok:true,start:'',notes:[],total:0,learning:true};},'Game A');
+ const context={user:['Use tabs for indentation'],project:[],project_id:'Game A'};const out=await M.vaultTool({action:'write',path:'03 Coding Style/Indentation',content:'User prefers tabs.',evidence:'Use tabs',project_specific:true},{project:'Game A',learningContext:context});
+ assert.equal(saved.ai,true);assert.deepEqual(saved.learning_context,context);assert.equal(saved.evidence,'Use tabs');assert.equal(saved.frontmatter.project,'Game A');assert(out.includes('No lasting note added'));assert(!out.includes('Vault note created'));assert(M.vaultContext(false).includes('saving nothing is normal'));assert(!M.vaultContext(false).includes('at the end of every job'));assert(M.prompt({automatic:true,entries:[]}).includes('evidence'));
+ console.log('PASS selective learning: screenshot-shaped noise excluded, real request and continuation retained, supported context forwarded, skips reported honestly.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

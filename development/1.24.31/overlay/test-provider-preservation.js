@@ -1,0 +1,44 @@
+const fs=require('fs'),crypto=require('crypto'),{parse}=require(process.cwd()+'/release-tools/node_modules/acorn');
+function canonical(node){
+ if(!node||typeof node!=='object')return node;if(Array.isArray(node))return node.map(canonical);
+ if(node.type==='ChainExpression')return canonical(node.expression);
+ if(node.type==='CallExpression'&&node.callee.name==='safeRead')return canonical(node.arguments[0].body);
+ if(node.type==='CallExpression'&&['safeQuery','safeQueryAll','safeClosest','safeRect'].includes(node.callee.name)){
+ const method={safeQuery:'querySelector',safeQueryAll:'querySelectorAll',safeClosest:'closest',safeRect:'getBoundingClientRect'}[node.callee.name];
+ return canonical({type:'CallExpression',callee:{type:'MemberExpression',object:node.arguments[0],property:{type:'Identifier',name:method},computed:false},arguments:node.arguments.slice(1)});
+ }
+ if(node.type==='CallExpression'&&(node.callee.name==='safeStyle'||node.callee.name==='getComputedStyle'||node.callee.type==='MemberExpression'&&node.callee.object.name==='window'&&node.callee.property.name==='getComputedStyle'))return {type:'CallExpression',callee:{type:'Identifier',name:'getComputedStyle'},arguments:canonical(node.arguments)};
+ const result={};for(const [k,v]of Object.entries(node))if(!['start','end','raw','optional'].includes(k))result[k]=canonical(v);return result;
+}
+function functions(source){const ast=parse(source,{ecmaVersion:'latest'}),out={};function walk(n,parent){if(!n?.type)return;
+ if(n.type==='FunctionDeclaration'||n.type==='VariableDeclarator'&&['ArrowFunctionExpression','FunctionExpression'].includes(n.init?.type)){
+  const name=n.id?.name;if(name&&!['safeRead','safeQuery','safeQueryAll','safeClosest','safeRect','safeStyle','safePredicate','waitBudget'].includes(name))out[name]=JSON.stringify(canonical(n));
+ }
+ for(const v of Object.values(n))if(Array.isArray(v))v.forEach(x=>walk(x,n));else if(v?.type)walk(v,n);}
+ walk(ast);return out;}
+// ChatGPT generic test IDs are non-unique; native receipt follow-up covers distinct messages and exact startup.
+// ChatGPT wrapper-free bubble boundaries/boxless roots: full-core startup, pre-hide, sibling reply and hidden-history browser regressions.
+// ChatGPT completion without the optional outer article is covered by test-chatgpt-compact-completion.
+// Targeted ChatGPT completion/send recovery changes are exercised by test-stream-completion.
+// Notion's verified startup fast path is covered by full-provider native/fallback fixtures.
+// Notion block-transcript/result/readiness changes are covered by test-notion-block-transcript and native Chromium/Firefox block-card fixtures.
+// Notion pasteRichText is covered by native Chromium/Firefox startup integration: Firefox creates a separate empty clipboard transfer.
+// 1.24.12: Notion draftLooksWritten tolerates Notion's own reformatting of PlazCode startup drafts; covered by test-1.24.10-fixes and test-1.24.11-fixes.
+// 1.24.21: clicks on PlazCode's own bar are never the site's Send button (Fix connection started a phantom send); covered by test-vani-provider.
+// 1.24.21: Claude itemKey (stable per-turn position instead of text prefix that included PlazCode's own chip) and clickContinueBtn (returns whether it clicked); covered by test-1.24.21-stall-recovery.
+// 1.24.21: Notion lastAssistant/sampleStream/startupReplySettled: a command part followed by a spoken part is the turn that counts; covered by test-notion-split-reply and test-notion-start-explains.
+// 1.24.21: Freebuff new-chat / false-"generating" / verified-send fixes; covered by test-freebuff-provider.
+// 1.24.21: Claude findToolBlockSpot ignores icon-font glyphs and button text when deciding a code frame holds only the command; covered by test-claude-empty-turn.
+// 1.24.21: Notion's CSS-drawn command cards use the navy and gold card look (immutableRuleText, insertImmutableRules, updateImmutableRule: styles only); covered by test-cards-everywhere.
+// DeepSeek lifecycle gates: test-deepseek-request-lifecycle; held input geometry: real Chromium/Firefox guarded sender.
+// DeepSeek request-gate rewrite is covered by test-deepseek-safeguards and native provider_pacing tests.
+// 1.24.28: ChatGPT getEditor falls back to the Codex composer only when nothing else matched; covered by test-codex-composer.
+// 1.24.27: DeepSeek findToolBlockSpot (hasStart/hasEnd) also hides DeepSeek's own DSML tool-call markup behind the card; covered by test-dsml-tool-calls.
+// Ox Alpha composer-only controls and reply chrome exclusion are covered by test-oxalpha-copy-controls.
+// Arena cache/masking/recovery changes: behavioral coverage in test-arena-reliability.js.
+const exceptions={arena:new Set(['itemText','classifyText','lastAssistant','stopButton','streamText','readAssistant','installSendHooks','findToolBlockSpot','textWithout','walk','sendButton','domTurns','isFreshChat','conversationKey','typeAndSend','activeUnsupportedMode','isSupportedMode','modeWarning','sendBlocker','init']),freebuff:new Set(['installSendHooks','getEditor','allItems','chatIsEmpty','setInputLock','sampleStream','busyChrome','genActive','typeAndSend','sendReady','scanError','conversationKey']),oxalpha:new Set(['installSendHooks','textWithout','sendButton','stopButton']),useai:new Set(['installSendHooks']),chatgpt:new Set(['itemKey','itemRoot','assistantItems','userCount','contains','itemText','classifyText','typeEditorText','setEditorText','editorText','init','turnComplete','allItems','genActive','unwedgeStop','unwedgeStopPersistently','writeDraft','typeAndSend','attachImages','getEditor']),notion:new Set(['immutableRuleText','insertImmutableRules','updateImmutableRule','draftLooksWritten','edText','normalizedDraft','armPendingAutoStart','prepareSessionStart','navigateToFreshAi','openCleanAi','tick','preprocessMutations','sendButton','isCleanAiLanding','isAiThread','isAiLanding','waitFor','chatList','visible','candidateVisible','controlAvailable','typeAndSend','applyLockAttrs','setInputLock','ensureComposerReady','softGenerationSettled','composerFrame','sendReady','sendControlLike','exactSendControl','pasteRichText','hasEndAlignedAncestor','blockAssistantRoots','immutableKey','immutableSelector','renderImmutableChip','syncImmutableChips','collectItems','isUserItem','isAssistantItem','clearImmutableChip','writeRichTextVerified','pasteRichTextChunked','conversationKey','waitLateConfirm','sendLanded','lastAssistant','sampleStream','startupReplySettled']),deepseek:new Set(['isGenerating','isBusyNow','isHardGenerating','genDebug','attachThumbs','clickContinueBtn','installSendHooks','scanBusy','attachImages','waitFor','composerFrame','setTextareaValue','writeDraft','typeAndSend','findToolBlockSpot','hasStart','hasEnd']),copilot:new Set(['waitFor','composerFrame']),claude:new Set(['typeAndSend','stopButton','typeEditorText','waitFor','typeAndSend','writeDraft','sendButton','allItems','replyRoot','itemText','classifyText','itemKey','clickContinueBtn','findToolBlockSpot']),gemini:new Set(['typeAndSend']),kimi:new Set(['typeAndSend']),qwen:new Set(['typeAndSend'])};
+let total=0;for(const name of fs.readdirSync('test-support/provider-baseline').filter(n=>n.endsWith('.js')&&!n.endsWith('-net.js')&&!['media.js','chatgpt-cm.js'].includes(n))){
+ const key=name.slice(0,-3),before=functions(fs.readFileSync('test-support/provider-baseline/'+name,'utf8')),after=functions(fs.readFileSync('providers/'+name,'utf8'));
+ for(const [fn,ast]of Object.entries(before)){if(fn==='RSProvider'||fn==='waitFor'||fn==='truncateForSend'||name==='qwen-net.js'&&fn==='consume'||exceptions[key]?.has(fn))continue;if(ast!==after[fn])(()=>{throw Error('Unexpected healthy control-flow change: '+name+' > '+fn);})();else total++;}
+}
+console.log('PASS '+total+' original function bodies preserve healthy control flow after unwrapping guarded reads.');
