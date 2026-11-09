@@ -135,7 +135,7 @@ jobs:
           git config user.email ''
           python3 development/1.24.31/record-release.py prepared
           git add docs/NOW.md docs/vault/open-work.md latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.24.31.txt release-validation-1.24.31
-          git commit -m 'Release PlazCode 1.24.31: Official copies only and Mac start fix'
+          git commit -m 'Release PlazCode 1.24.31: ChatGPT, DeepSeek, startup and sign-in fixes'
           git push origin HEAD:refs/heads/release-record-1.24.31
       - name: Publish downloads and update feeds to the public repo (no source)
         env:
