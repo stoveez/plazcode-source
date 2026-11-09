@@ -27,7 +27,7 @@ for(let layout=0;layout<3;layout++){
   assert.equal(compressed[9],255,'gzip header must be independent of the build OS');
   assert.deepEqual(openTextPack(packed,'1.24.32',seed),payload);
   assert.throws(()=>openTextPack(packed,'1.24.32',Buffer.alloc(32,layout+1)));
-  assert.throws(()=>openTextPack(packed,'1.24.32',seed));
+  assert.throws(()=>openTextPack(packed,'1.24.33',seed));
   for(const index of [0,8,Math.floor(packed.length/2),packed.length-1]){
     const changed=Buffer.from(packed);changed[index]^=1;
     assert.throws(()=>openTextPack(changed,'1.24.32',seed));
