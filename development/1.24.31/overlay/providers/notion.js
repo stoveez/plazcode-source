@@ -93,7 +93,8 @@ const RSProvider = (() => {
   const AI_LANDING_RE = /^\/ai\/?$/;
   const AI_CHAT_PATH_RE = /^\/chat(?:\/|$)/;
   const AI_CHAT_ID_PATH_RE = /^\/chat\/[^/]+/;
-  const THREAD_PARAM_RE = /^(?:t|thread|threadid|thread_id|chat|chatid|chat_id)$/i;
+  // Custom-agent chats keep their thread id in ?at=<id> (e.g. /chat?wfv=chat&at=<id>).
+  const THREAD_PARAM_RE = /^(?:t|at|thread|threadid|thread_id|chat|chatid|chat_id)$/i;
   const LAUNCH_PAYLOAD_PARAM_RE = /^(?:q|aq|prompt|message|usermessage|defaultusermessage|aiaction|ai_action|targetconfig|target_config|autosubmit|auto_submit|autosend|submit)$/i;
   function routeParams() {
     try { return new URLSearchParams(location.search || ""); } catch { return new URLSearchParams(""); }
