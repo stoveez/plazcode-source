@@ -278,3 +278,6 @@ Final CI 41449512168 on 69a4f8c (program fix e068a0a) is running/pending. Explic
 
 
 **Final-source local JavaScript suite: 0 failures.** Full regression pass with the page-framing fix is complete (/workspace/plazcode-deepseek-audit/javascript-framing-final.log). CI 41449512168 browser job is GREEN, including new DeepSeek and batch approvals and formerly failing ClickUp paging. Native platform jobs remain in progress; no ZIP delivery yet. No program changes after e068a0a; CI source 69a4f8c.
+
+## 1.24.30 (2026-11-09)
+Owner requested direct release. Full production validation and packaged Mac desktop lifetime gate passed; validated bytes were published without rebuilding. No separate test zips were delivered.
