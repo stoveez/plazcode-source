@@ -21,7 +21,7 @@ function walk(n){if(!n||typeof n!=='object')return;if(n.type==='FunctionDeclarat
   // This isolated unit exercises image transport; the complete provider's
   // native receipt collectors are covered by the full-core browser suite.
   Object.assign(w,{normalizeReceiptText:x=>String(x||'').replace(/\s+/g,' ').trim(),receiptUsers:()=>rows,receiptKey:r=>r.id,userText:r=>r.text,sleep:ms=>new Promise(resolve=>w.setTimeout(resolve,ms))});
-  vm.runInContext('let _locked=false,sendGeneration=0,lastConfirmedDelivery=null;'+functions.waitBudget+';'+functions.settleComposerRender+';'+functions.typeAndSend+';globalThis.send=typeAndSend;',dom.getInternalVMContext());
+  vm.runInContext('let _locked=false,sendGeneration=0,lastConfirmedDelivery=null;const stableChatKey=()=>conversationKey();'+functions.waitBudget+';'+functions.settleComposerRender+';'+functions.typeAndSend+';globalThis.send=typeAndSend;',dom.getInternalVMContext());
   if(['upload-failed','disabled','delayed-receipt'].includes(behavior))await assert.rejects(w.send('Screenshot feedback',[{data:'image'}]));else assert.equal(await w.send('Screenshot feedback',[{data:'image'}]),true);
   assert.equal(clicks,['ready','delayed-receipt'].includes(behavior)?1:0);assert.equal(ed.style.opacity,'');assert(!w.document.documentElement.classList.contains('rs-chatgpt-injecting'));w.close();
  }
