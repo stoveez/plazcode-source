@@ -709,6 +709,11 @@ const RSProvider = (() => {
     .replace(/"/g, (q) => "\\" + q);
   const cssAttr = (v) => cssQuoted(v);
   const cssText = (v) => cssQuoted(v).replace(/[\r\n]+/g, " ");
+  // Notion streams a reply's prose before its code block. Falling back to the
+  // first block attached the card to that prose (hiding it) while the command
+  // stayed raw JSON. Only a code block, or a block whose text is the command,
+  // may carry a card; with neither yet, return null and let the next sweep attach it.
+  const isNotionCodeBlock = (b) => /(?:^|\s)notion-code-block(?:\s|$)/.test(String(safeRead(() => b.className, "") || ""));
   function immutableCommandBlock(item) {
     if (!item) return null;
     const blocks = [...safeQueryAll(item, "[data-block-id]")];
@@ -716,7 +721,7 @@ const RSProvider = (() => {
       const t = _txt(b);
       return /["']command["']\s*:\s*["']/i.test(t) ||
         /###\s*(?:LUA|LUAU)\s*###/i.test(t) || /<tool_call>/i.test(t);
-    }) || blocks[0] || null;
+    }) || blocks.find(isNotionCodeBlock) || null;
   }
   function immutableKey(item) {
     if (!item) return "";
@@ -730,7 +735,10 @@ const RSProvider = (() => {
     // Timer/detail updates hit this path several times per second while a giant
     // JSON edit is running. Its known block and ID are stable; do not enumerate
     // every child block and normalize the full script just to rediscover them.
-    if (cachedBlock && safeRead(() => cachedBlock.isConnected, false) && safeRead(() => item.contains(cachedBlock), false)) {
+    // A cached non-code block is only kept while the item has no code block yet;
+    // once the command's code block arrives, rescan so the card migrates to it.
+    if (cachedBlock && safeRead(() => cachedBlock.isConnected, false) && safeRead(() => item.contains(cachedBlock), false) &&
+      (isNotionCodeBlock(cachedBlock) || !safeQuery(item, ".notion-code-block[data-block-id]"))) {
       const current = safeRead(() => cachedBlock.getAttribute("data-block-id"), null) || "";
       if (current) {
         if (current !== cached) _immutableItemKey.set(item, current);
