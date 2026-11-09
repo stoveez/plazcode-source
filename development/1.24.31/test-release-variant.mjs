@@ -6,7 +6,7 @@ import {sealTextPack,openTextPack} from './protection.mjs';
 const {privateKey}=generateKeyPairSync('ed25519');
 const first=deriveVariant(privateKey,'1.24.31','release');
 assert.equal(first,deriveVariant(privateKey,'1.24.31','release'));
-assert.notEqual(first,deriveVariant(privateKey,'1.24.31','release'));
+assert.notEqual(first,deriveVariant(privateKey,'1.24.32','release'));
 assert.notEqual(first,deriveVariant(privateKey,'1.24.31','validation'));
 assert.throws(()=>variantSeed('invalid'));
 const payload={'config:0':'Hello ✓','skills:0':['a','b']};
@@ -27,7 +27,7 @@ for(let layout=0;layout<3;layout++){
   assert.equal(compressed[9],255,'gzip header must be independent of the build OS');
   assert.deepEqual(openTextPack(packed,'1.24.31',seed),payload);
   assert.throws(()=>openTextPack(packed,'1.24.31',Buffer.alloc(32,layout+1)));
-  assert.throws(()=>openTextPack(packed,'1.24.31',seed));
+  assert.throws(()=>openTextPack(packed,'1.24.32',seed));
   for(const index of [0,8,Math.floor(packed.length/2),packed.length-1]){
     const changed=Buffer.from(packed);changed[index]^=1;
     assert.throws(()=>openTextPack(changed,'1.24.31',seed));
@@ -36,7 +36,7 @@ for(let layout=0;layout<3;layout++){
   const descriptor=variantInfo('1.24.31',seed);
   assert.equal(descriptor.mark.length,16);
   assert.equal(descriptor.seed_sha256.length,64);
-  assert.notEqual(descriptor.mark,variantInfo('1.24.31',seed).mark);
+  assert.notEqual(descriptor.mark,variantInfo('1.24.32',seed).mark);
   assert.deepEqual(Object.keys(descriptor).sort(),['layout','mark','schema','seed_sha256']);
 }
 assert.throws(()=>openTextPack(sealTextPack({},'1.24.31'),'1.24.31'));
