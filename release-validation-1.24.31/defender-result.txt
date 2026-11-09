@@ -1,0 +1,16 @@
+Cloud protection: on
+== D:\a\plazcode-source\plazcode-source\artifacts\PlazCode-1.24.31-development.zip (exit 0)
+Scan starting...
+Scan finished.
+Scanning D:\a\plazcode-source\plazcode-source\artifacts\PlazCode-1.24.31-development.zip found no threats.
+
+== D:\a\plazcode-source\plazcode-source\artifacts\PlazCode-1.24.31-test-lean.zip (exit 0)
+Scan starting...
+Scan finished.
+Scanning D:\a\plazcode-source\plazcode-source\artifacts\PlazCode-1.24.31-test-lean.zip found no threats.
+
+== D:\a\plazcode-source\plazcode-source\build-src-1.24.31\PlazCode/defender-scan (exit 0)
+Scan starting...
+Scan finished.
+Scanning D:\a\plazcode-source\plazcode-source\build-src-1.24.31\PlazCode/defender-scan found no threats.
+
