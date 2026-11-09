@@ -301,7 +301,13 @@ async fn run(install: bool, background: bool) -> anyhow::Result<()> {
     crate::integrity::verify_update(&feed,&latest,&hash,crate::integrity::platform())?;
 
     let mut download=download.strip_prefix("https://raw.githubusercontent.com/stoveez/PlazCodeneww/").map(|tail| format!("https://raw.githubusercontent.com/stoveez/PlazCode/{tail}")).unwrap_or(download);
-    if let Some(previous) = state().latest.as_ref() { anyhow::ensure!(version(&latest)? >= version(previous)?, "Release source returned an older cached version; retaining the latest known release."); }
+    // GitHub's raw CDN can briefly serve an older cached feed right after a publish. That is not a
+    // failed check: keep the newer release already known, mark the check as done and report no error.
+    let previous_latest = state().latest.clone();
+    if let Some(previous) = previous_latest { if version(&latest)? < version(&previous)? {
+        let mut s=state();s.checked_at=std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64;s.check_error=None;
+        return Ok(());
+    } }
     let notes = feed.get("release_notes").and_then(|value| serde_json::from_value::<Vec<ReleaseNotes>>(value.clone()).ok());
     let desktop_latest=feed.get("desktop_version").and_then(Value::as_str).unwrap_or(&latest).to_owned();
     let available=update_available(&latest,&installed(),&desktop_latest,env!("CARGO_PKG_VERSION"))?;

@@ -1839,7 +1839,7 @@ __PLAZCODE_VERSION_UI__
     var Version = Value.desktop_version || Value.installed || '__PLAZCODE_VERSION__';
     var A = Byid('ovVersion'); if (A) A.textContent = 'v' + String(Version).replace(/^v/, '');
     var S = Byid('ovStatus'), Dot = Byid('ovStatusDot');
-    var State_ = Value.check_error ? ['Running', 'ok'] : Value.available ? ['Update available', 'info'] : Value.latest ? ['Up to date', 'ok'] : ['Not checked', 'idle'];
+    var State_ = Value.check_error ? ["Can't check for updates", 'idle'] : Value.available ? ['Update available', 'info'] : Value.latest ? ['Up to date', 'ok'] : ['Not checked', 'idle'];
     if (S) S.textContent = State_[0]; if (Dot) Dot.setAttribute('data-state', State_[1]);
     var Notes = Array.isArray(Value.release_notes) ? Value.release_notes : [];
     var First = Notes[0];

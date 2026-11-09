@@ -2267,7 +2267,7 @@ setInterval(() => {
   memoryPollInFlight = true;
   readPersonalMemory().catch(() => {}).finally(() => { memoryPollInFlight = false; });
 }, 3000);
-let releaseStatusReading = false;
+let releaseStatusReading = false, releaseStatusFailures = 0;
 async function readReleaseStatus() {
   if (releaseStatusReading) return;
   releaseStatusReading = true;
@@ -2275,9 +2275,13 @@ async function readReleaseStatus() {
     const response = await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/desktop/update`, { signal: AbortSignal.timeout(5000) });
     if (!response.ok) throw new Error("Update check unavailable.");
     const value = await response.json();
+    releaseStatusFailures = 0;
     const status={latest:value.latest,checked_at:value.checked_at,check_error:value.check_error || null},signature=JSON.stringify(status);
     if(signature!==lastReleaseSignature){await chrome.storage.local.set({rsReleaseStatus:status});lastReleaseSignature=signature;}
   } catch (error) {
+    // One slow or dropped read (the app is busy, a brief network blip) is not an outage: only report the
+    // bridge as unavailable after 8 failed reads in a row, so the bar never contradicts a live connection.
+    if (++releaseStatusFailures < 8) return;
     const previous=await chrome.storage.local.get("rsReleaseStatus").catch(()=>({}));const status={...(previous.rsReleaseStatus||{}),check_error:"Bridge unavailable."},signature=JSON.stringify(status);if(signature!==lastReleaseSignature){await chrome.storage.local.set({rsReleaseStatus:status}).catch(()=>{});lastReleaseSignature=signature;}
   } finally { releaseStatusReading = false; }
 }

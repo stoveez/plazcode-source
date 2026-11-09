@@ -6,7 +6,7 @@ assert.equal(version.describe('1.18.9',status,now).label,'Outdated');
 assert.equal(version.describe('1.18.81',status,now).label,'Up to date');
 assert.equal(version.describe('1.18.82',status,now).label,'Up to date');
 assert.equal(version.describe('1.18.81.0',status,now).label,'Up to date');
-assert.equal(version.describe('1.18.81',{...status,check_error:'Offline'},now).label,'');
+assert.equal(version.describe('1.18.81',{...status,check_error:'Offline'},now).label,"Can't check for updates");
 assert.equal(version.describe('1.18.81',{...status,checked_at:now-16*60000},now).label,'Not checked');
 assert.equal(version.describe('bad',status,now).label,'Not checked');
 assert.equal(version.describe('1.18.81',null,now).label,'Not checked');
