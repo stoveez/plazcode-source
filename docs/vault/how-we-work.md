@@ -46,5 +46,10 @@ The owner may hand an AI only this folder. Read `NOW.md` first, then [Home](Home
 - Deliver test builds through Google Drive too: upload the exact verified INNER Windows/Mac/Linux ZIPs (app, memory helper and extensions; official layout), verify metadata/sizes, then give normal Drive file links and tell the owner to click Download. Do not substitute GitHub's artifact wrapper ZIP or silently change sharing permissions.
 - Keep the source public-build/private-after-delivery rule. Keep the separately approved account API Public. No stable publishing is implied by a test-build request.
 
+## Tell the owner the moment the Windows test ZIP is built (owner, 2026-11-08)
+- ALWAYS tell the owner as soon as the Windows test ZIP exists (the `plazcode-<version>-Windows-test-lean` artifact shows on the run), even while the Mac/Linux jobs and the rest of the run are still going. Give the run link and say the Mac ZIP and the final result are still pending. Do not wait for the whole run to finish. Check artifacts while a run is in progress: `gh api repos/stoveez/plazcode-source/actions/runs/<id>/artifacts`.
+- A finished run still gets its own final message (all jobs, Mac ZIP, repo-back-to-Private reminder).
+- 2026-11-08 delivery method: owner said no Drive upload for these builds, just send the run link (see CLAUDE.md owner delivery rule history).
+
 ## Show release notes before every release (owner, 2026-11-02)
 Before any real release, send the owner the exact release-note text intended for it, in the required format, before publishing. If the text changes, show the revised text first. Keep it under 2,000 UTF-16 characters and use the actual publisher formatter when drafting. A request for a draft or a test build does not authorize publishing. This standing rule applies to every future release.
