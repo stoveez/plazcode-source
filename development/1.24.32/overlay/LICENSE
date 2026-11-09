@@ -1,0 +1,36 @@
+PLAZCODE PROPRIETARY SOFTWARE LICENSE
+Copyright (c) 2026 stoveez. All rights reserved.
+
+Scope
+This licence applies to first-party PlazCode code in version 1.24.30 and later,
+unless a file expressly states another licence. Earlier releases and historical
+source snapshots keep the licences under which they were originally provided.
+Third-party components retain their own licences and notices.
+
+Permission to use
+You may download official PlazCode builds and use them without charge for your
+own personal or commercial projects. You may install official copies on your
+computers and keep backup copies for that use. You may change your own project
+files, generated code, settings, skills, notes and other user data. This licence
+does not claim ownership of your content or impose its restrictions on it.
+
+Reserved rights
+No permission is granted to publish or distribute PlazCode's first-party source
+or modified program files, redistribute or sell the software, sublicense it,
+rebrand it, or use its first-party code in another product without the owner's
+written permission. No permission is granted to reverse engineer, decompile or
+disassemble the first-party software except where applicable law provides a
+right that cannot be waived. Rights under third-party licences and applicable
+law take precedence over conflicting restrictions in this licence.
+
+Notices and branding
+Keep copyright, licence and third-party attribution notices intact. Use of
+PlazCode does not grant permission to present a modified or third-party product
+as an official PlazCode release or to use its branding for that purpose.
+
+Warranty
+The software is provided AS IS, without warranties, to the extent permitted by
+law. To that same extent the owner is not liable for loss or damage arising
+from use of the software.
+
+Official project: https://github.com/stoveez/PlazCode

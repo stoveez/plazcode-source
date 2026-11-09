@@ -1,0 +1,50 @@
+{
+  "version": "1.24.32",
+  "title": "Notion bar, chatbox and status fixes",
+  "summary": "Fixes for the Notion bar, the blocked chatbox, command running and wrong Offline messages.",
+  "added": [
+    "The hidden PlazCode tab can be dragged around the screen; it returns to its place when you show the bar again."
+  ],
+  "improved": [],
+  "fixed": [
+    "Notion: the PlazCode bar no longer gets stuck out of place when another page or side panel opens.",
+    "Notion: command cards attach to the code block, never to the reply's text.",
+    "Notion: custom agent chats are recognised.",
+    "The chatbox is no longer blocked for seconds after the AI finishes replying.",
+    "Only the real command block runs; examples in text, plaintext or inline code are ignored.",
+    "The app and bar no longer wrongly show Offline or Check unavailable while connected."
+  ],
+  "notes": [
+    "Update the PlazCode app and the extension together (the app's updater does this).",
+    "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+  ],
+  "github": {
+    "summary": "***Fixes for the Notion bar, the blocked chatbox, command running and wrong Offline messages.***",
+    "sections": [
+      {
+        "title": "✨ What's new",
+        "items": [
+          "The hidden PlazCode tab can be dragged around the screen; it returns to its place when you show the bar again."
+        ]
+      },
+      {
+        "title": "🛠️ What's fixed",
+        "items": [
+          "Notion: the PlazCode bar no longer gets stuck out of place when another page or side panel opens.",
+          "Notion: command cards attach to the code block, never to the reply's text.",
+          "Notion: custom agent chats are recognised.",
+          "The chatbox is no longer blocked for seconds after the AI finishes replying.",
+          "Only the real command block runs; examples in text, plaintext or inline code are ignored.",
+          "The app and bar no longer wrongly show Offline or Check unavailable while connected."
+        ]
+      },
+      {
+        "title": "🧪 What was checked",
+        "items": [
+          "Automated tests on Windows, Mac and Linux, and on practice pages. Not tried live on every AI site or in Studio; please report anything odd.",
+          "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+        ]
+      }
+    ]
+  }
+}
