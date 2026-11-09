@@ -6,7 +6,7 @@ import {sealTextPack,openTextPack} from './protection.mjs';
 const {privateKey}=generateKeyPairSync('ed25519');
 const first=deriveVariant(privateKey,'1.24.32','release');
 assert.equal(first,deriveVariant(privateKey,'1.24.32','release'));
-assert.notEqual(first,deriveVariant(privateKey,'1.24.32','release'));
+assert.notEqual(first,deriveVariant(privateKey,'1.24.33','release'));
 assert.notEqual(first,deriveVariant(privateKey,'1.24.32','validation'));
 assert.throws(()=>variantSeed('invalid'));
 const payload={'config:0':'Hello ✓','skills:0':['a','b']};
