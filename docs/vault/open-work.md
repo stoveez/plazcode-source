@@ -180,6 +180,9 @@ Full CI [41449512168](https://github.com/stoveez/plazcode-source/actions/runs/41
 
 # Open work
 
+- 2026-11-09: 1.24.32 published. Validation 42712015243 on `a3f1532`; publish run 42718408426. Permanent approvals and code protection are complete. Live feed/download verification and Private visibility restoration remain. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
+
+
 - 2026-11-09: 1.24.32 assembled; public publication pending. Validation 42712015243 on `a3f1532`; publish run 42718408426. Permanent approvals and code protection are complete. Public publication remains. Other deferred features and original live Studio/account checks remain open. No separate test-build delivery.
 
 

@@ -124,6 +124,9 @@ Full CI [41449512168](https://github.com/stoveez/plazcode-source/actions/runs/41
 
 # Finished work
 
+## 2026-11-09: 1.24.32 published
+DeepSeek shared send serialization and completion-based pacing for all programmatic calls. Validation 42712015243 (`a3f1532`), publication 42718408426, packaged Mac lifetime/relaunch passed. No app signing or new end-user setup. User data stays editable; original affected live Studio/account setups were not tested.
+
 ## 2026-11-09: 1.24.31 published
 DeepSeek shared send serialization and completion-based pacing for all programmatic calls. Validation 42552807509 (`a3fad69`), publication 42622320066, packaged Mac lifetime/relaunch passed. No app signing or new end-user setup. User data stays editable; original affected live Studio/account setups were not tested.
 
