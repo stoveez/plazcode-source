@@ -36,7 +36,7 @@ for(let layout=0;layout<3;layout++){
   const descriptor=variantInfo('1.24.32',seed);
   assert.equal(descriptor.mark.length,16);
   assert.equal(descriptor.seed_sha256.length,64);
-  assert.notEqual(descriptor.mark,variantInfo('1.24.32',seed).mark);
+  assert.notEqual(descriptor.mark,variantInfo('1.24.33',seed).mark);
   assert.deepEqual(Object.keys(descriptor).sort(),['layout','mark','schema','seed_sha256']);
 }
 assert.throws(()=>openTextPack(sealTextPack({},'1.24.32'),'1.24.32'));
