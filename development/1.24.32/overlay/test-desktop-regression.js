@@ -16,7 +16,7 @@ const baseline = {
   "core/studio_gui.js": "726793b63c24b3fd128be60e6f3fb98e60a19243",
   "core/studio_plus.js": "c149c47cc7d178e3aa87f39539cc3c1420bff065",
   "core/studio_skills.js": "388ec93aac79026bcecbda276c322d05aa43f1e1",
-  "providers/arena.js": "f62e03fbb79ae3a28d9ed64899a61f2e2f447158",
+  "providers/arena.js": "4928ed3a4d0d1224e2b180f9542f358d8be2116e",
   "providers/chatgpt-cm.js": "fbf21257e2c2c85006e3ac4d76e1caf490345c29",
   "providers/chatgpt.js": "926859c06e2cfcd207d3c93a68e2adfb6c719520",
   "providers/claude.js": "3bd0e9b6026e56d46d7ee4ec137aed15d75e0500",
@@ -35,7 +35,7 @@ const baseline = {
   "providers/qwen.js": "c8b0e08bdc561184a32f3295416665bcdfba87be",
   "providers/useai.js": "d20de72ca4d9718318c5706284146318716773f0",
   "providers/vani.js": "9888fcee8a577d47117b7de8dd42f9c455d062ce",
-  "providers/mimo.js": "5dc5d617bdb27d71ff56bbf41c2a287c67e003f6"
+  "providers/mimo.js": "d98276bfe2c7611a5727a4968f673e89ad8a2b29"
 };
 const requiredProviders = [
   "providers/clickup.js",
