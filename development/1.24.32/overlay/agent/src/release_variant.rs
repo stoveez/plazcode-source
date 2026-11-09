@@ -22,7 +22,7 @@ pub fn info()->serde_json::Value {info_for(env!("CARGO_PKG_VERSION"),&SEED)}
     use super::*;
     #[test] fn marks_are_stable_and_release_specific(){
         assert_eq!(info_for("1.24.32",&[1;32]),info_for("1.24.32",&[1;32]));
-        assert_ne!(info_for("1.24.32",&[1;32])["mark"],info_for("1.24.32",&[1;32])["mark"]);
+        assert_ne!(info_for("1.24.32",&[1;32])["mark"],info_for("1.24.33",&[1;32])["mark"]);
         assert_ne!(info_for("1.24.32",&[1;32])["mark"],info_for("1.24.32",&[2;32])["mark"]);
     }
 }
