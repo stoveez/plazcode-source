@@ -11262,23 +11262,51 @@ function renderCards(panel) {
         const el = document.createElement("canvas"); el.className = "rs-shot-img";
         el.setAttribute("aria-label", "PlazCode screenshot loading");
         void (async () => {
-          let bitmap, expired = false;
-          try {
-            const decoding = createImageBitmap(imageToBlob(img));
-            void decoding.then(value => { if (expired) value.close(); }, () => {});
-            bitmap = await boundedImageOperation(decoding);
-            if (disposed) return;
-            el.width = bitmap.width; el.height = bitmap.height;
+          // createImageBitmap alone can sit forever inside the extension's page world on some
+          // setups (seen live 2026-11-08: popup stayed a blank 300x150 canvas, no error). Try it
+          // for 3 s, then decode through an <img> instead, and record which path worked.
+          const started = Date.now();
+          const paint = (source, width, height) => {
+            el.width = width; el.height = height;
             const ctx = el.getContext("2d");
             if (!ctx) throw Error("Screenshot display is unavailable.");
-            ctx.drawImage(bitmap, 0, 0);
+            ctx.drawImage(source, 0, 0);
+          };
+          const failures = [];
+          let shown = "";
+          try {
+            let late = false, bitmap = null;
+            try {
+              const decoding = createImageBitmap(imageToBlob(img));
+              void decoding.then(value => { if (late) { try { value.close(); } catch {} } }, () => {});
+              bitmap = await boundedImageOperation(decoding, 3000);
+              if (disposed) { try { bitmap.close(); } catch {} return; }
+              paint(bitmap, bitmap.width, bitmap.height);
+              shown = "bitmap";
+            } catch (error) { late = true; failures.push("bitmap: " + String(error && error.message || error)); }
+            finally { if (bitmap) { try { bitmap.close(); } catch {} } }
+            if (!shown && !disposed) {
+              let url = "";
+              try {
+                url = URL.createObjectURL(imageToBlob(img));
+                const picture = new Image();
+                await boundedImageOperation(new Promise((resolve, reject) => { picture.onload = resolve; picture.onerror = () => reject(Error("the browser could not decode the picture")); picture.src = url; }), 4000);
+                if (disposed) return;
+                paint(picture, picture.naturalWidth, picture.naturalHeight);
+                shown = "image";
+              } catch (error) { failures.push("image: " + String(error && error.message || error)); }
+              finally { if (url) { try { URL.revokeObjectURL(url); } catch {} } }
+            }
+            if (disposed) return;
+            try { diag("screenshot.shown", { how: shown || "none", ms: Date.now() - started, chars: String(img && img.data || "").length, mime: String(img && img.mimeType || ""), failures: failures.map(text => text.slice(0, 80)) }); } catch {}
+            if (!shown) throw Error(failures.join(" | ") || "unknown problem");
             el.setAttribute("aria-label", "Enlarge screenshot");
           } catch (error) {
             if (disposed) return;
             const message = document.createElement("div");
             message.textContent = "Screenshot could not be displayed. Try a new capture. " + String(error.message || error);
             el.replaceWith(message);
-          } finally { expired = true; if (bitmap) bitmap.close(); }
+          }
         })();
         el.tabIndex = 0; el.setAttribute("role", "button"); el.setAttribute("aria-label", "Enlarge screenshot");
         el.addEventListener("click", enlarge);
