@@ -1,0 +1,29 @@
+✨ **PlazCode 1.24.31**
+***Fixes for ChatGPT, DeepSeek, startup and sign-in problems found since 1.24.30.***
+
+***✨ What's new***
+- Guest mode: if a profile can't be created, "Use PlazCode as a guest" keeps your settings, skills and memory on this computer.
+- Safer file work: the AI can use paths inside your project and preview files read-only.
+- Memory is loaded only when it's relevant.
+
+***🛠️ What's fixed***
+- ChatGPT: startup no longer hangs on "Starting Up" or "Send paused", including in Work mode.
+- ChatGPT: typing freezes, false "sent" confirmations and lost tool results are fixed.
+- Leftover startup text no longer stays in the message box.
+- Screenshot pop-up no longer shows a black box.
+- DeepSeek: false startup warnings, stuck sends and broken line breaks.
+- Sign-up and log-in recover from busy or offline servers; saved logins stay.
+- Windows: false "program files changed" startup error. Windows paths work in the project.
+- Blender: first-time setup on Windows and slow scenes.
+- Ox Alpha: Copy no longer counts as a message sent.
+- The AI keeps working on your project after short follow-ups.
+
+***🧪 What was checked***
+- Automated tests on Windows, Mac and Linux, and on practice pages. ChatGPT Work mode was tried live; other AI sites and Studio were not.
+- The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it.
+
+***📥 How to update***
+- Open PlazCode, or choose Updates → Update now.
+- Manual downloads: PlazCode-1.24.31.zip for Windows, PlazCode-macOS-1.24.31.zip for Mac, or PlazCode-Firefox-1.24.31.zip for Firefox.
+- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
+- Your settings, memory and connections are kept.
