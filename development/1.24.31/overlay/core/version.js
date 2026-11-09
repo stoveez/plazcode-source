@@ -39,7 +39,7 @@ const PlazCodeVersion = (() => {
       const difference = local.findIndex((part, index) => part !== latest[index]);
       if (difference >= 0 && local[difference] < latest[difference]) return {label:outdatedLabel(),color:'#ff696c'};
     }
-    if (status && status.check_error) return {label:"Can't check for updates",color:'#8598b1'};
+    if (status && status.check_error) return {label:'',color:'#8598b1'};
     const checked = Number(status && status.checked_at);
     if (!local || !latest || !checked || now - checked > 15 * 60 * 1000 || checked > now + 60000) return {label:'Not checked',color:'#8598b1'};
     const difference = local.findIndex((part, index) => part !== latest[index]);
@@ -49,7 +49,7 @@ const PlazCodeVersion = (() => {
   function render(element, current, status, prefix = 'v', extra = '') {
     if (!element) return;
     const result = describe(current, status);
-    element.textContent = String(prefix).replace(/v$/, '') + 'v' + display(current) + (result.label.startsWith('Outdated') ? ' - ' + result.label : ' (' + result.label + ')') + extra;
+    element.textContent = String(prefix).replace(/v$/, '') + 'v' + display(current) + (!result.label ? '' : result.label.startsWith('Outdated') ? ' - ' + result.label : ' (' + result.label + ')') + extra;
     if (element.style.setProperty) element.style.setProperty('color', result.color, 'important');
     else element.style.color = result.color;
     element.title = status && status.latest ? 'Latest published release: v' + display(status.latest) : 'Latest published release has not been checked.';
