@@ -460,7 +460,7 @@ const RSProvider = (() => {
     if (!lastConfirmedDelivery) return false;
     const context = sendContext();
     return !isStopped() && lastConfirmedDelivery.generation === sendGeneration &&
-      lastConfirmedDelivery.chat === conversationKey() && lastConfirmedDelivery.session === context.session &&
+      (!lastConfirmedDelivery.chat || lastConfirmedDelivery.chat === stableChatKey()) && lastConfirmedDelivery.session === context.session &&
       lastConfirmedDelivery.stop === context.stop && lastConfirmedDelivery.text === normalizeReceiptText(text);
   }
 
@@ -1266,7 +1266,7 @@ const RSProvider = (() => {
       const accepted = await waitDelivery(receipt, 15000, false);
       checkOwner(false);
       if (!accepted) throw new Error('ChatGPT did not confirm the submitted tool result. PlazCode will not resend it automatically. Check the chat, then resume.');
-      lastConfirmedDelivery = {text:want, generation, chat:conversationKey(), session:context.session, stop:context.stop};
+      lastConfirmedDelivery = {text:want, generation, chat:stableChatKey(), session:context.session, stop:context.stop};
       return true;
     } catch (error) {
       // Remove only this injection's unchanged draft in the same chat/editor.
@@ -1528,6 +1528,16 @@ const RSProvider = (() => {
     return m ? (m[0].startsWith("/") ? m[0] : "/" + m[0]) : "";
   };
 
+  // ChatGPT Work first parks a new chat at /c/local-chatgpt:<id> and moves it to the
+  // real /c/<id> about a second later (seen live 2026-11-08). That temporary address
+  // is the same "id not assigned yet" state as "/", never a chat of its own; handing
+  // it to the core as a chat made the core think the user switched chats and abort
+  // the startup. This is the key the core and the delivery proof use.
+  const stableChatKey = () => {
+    const key = conversationKey();
+    return /^\/c\/local-chatgpt(?::|%3a)/i.test(key) ? "" : key;
+  };
+
   // ── ChatGPT-only system-prompt rules ──────────────────────────────────────
   // Appended to the shared system prompt via core/config.js's `providerNotes`
   // hook, so no other provider sees a word of this.
@@ -1765,7 +1775,7 @@ const RSProvider = (() => {
     turnHalted, findContinueBtn, clickContinueBtn,
     scanError, isTooLongMsg, isBusyMsg,
     // actions
-    attachImages, clearAttachments, openNewChat, conversationKey,
+    attachImages, clearAttachments, openNewChat, conversationKey: stableChatKey,
     installSendHooks, findToolBlockSpot,
     promptExtra: PROMPT_EXTRA,
     thinkingSel: S.thinking,

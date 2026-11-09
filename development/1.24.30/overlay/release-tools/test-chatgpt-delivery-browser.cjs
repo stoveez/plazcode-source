@@ -147,6 +147,13 @@ async function checks(browser){
     assert.equal(got.before,0);assert.equal(got.opened,1);assert.equal(got.again,0);assert.equal(got.after,1);assert.equal(got.users,1);
     assert(String(typeof got.text==='string'?got.text:JSON.stringify(got.text)).includes('list_commands'),JSON.stringify(got));
   });
+  await check('ChatGPT Work temporary local chat address counts as an unassigned chat, the real address as the chat',false,async page=>{
+    const got=await page.evaluate(()=>{const keys={};
+      history.pushState({},'','/');keys.home=provider.conversationKey();
+      history.pushState({},'','/c/local-chatgpt%3A5f2c1d9e-1111-2222-3333-444455556666');keys.local=provider.conversationKey();
+      history.pushState({},'','/c/6af11ec7-878c-83ea-a366-8fa7f32709b2');keys.real=provider.conversationKey();return keys;});
+    assert.equal(got.home,'');assert.equal(got.local,'');assert.equal(got.real,'/c/6af11ec7-878c-83ea-a366-8fa7f32709b2');
+  });
   await check('native Markdown source follows committed React alternates and own masks',false,async page=>{
     await nativeReact(page);
     const got=await page.evaluate(()=>{
