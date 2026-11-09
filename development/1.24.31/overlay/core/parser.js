@@ -222,7 +222,7 @@ const RSParse = (() => {
       r.includes(START_M) ||
       r.includes("MCP_TOOL") ||
       LUA_START_RE.test(r) ||
-      CMD_KEY_RE.test(r) ||
+      CMD_KEY_RE.test(commandZone(r)) ||
       hasDsml(r)
     );
   }
@@ -408,6 +408,56 @@ const RSParse = (() => {
     return "Received "+text.length+" characters. The command markers or argument envelope are incomplete. Nothing ran. Check both markers and use smaller complete commands when output is cut off.";
   }
 
+  // Only an ACTIONABLE command envelope may run from loose JSON. Replies often
+  // quote command-shaped JSON as an example, inside a prompt written for someone
+  // else, or in inline code; running those executes placeholder commands and
+  // sends back error protocol messages. The eligible zone is:
+  //  - the LAST fenced block (json, untagged or another code label) whose body
+  //    is only the command object(s); fences tagged text/plaintext/markdown/
+  //    etc. and inline `code` never count; or
+  //  - for text with no fence marks (provider text extraction drops them), a
+  //    command that starts its own line, is not under a text/plaintext label,
+  //    and is followed by at most a short closing sentence.
+  const IGNORED_FENCE = new Set(["text", "plaintext", "plain", "txt", "markdown", "md", "prompt", "quote", "example", "output", "log"]);
+  const TEXT_LABEL_RE = /^(?:text|plaintext|plain text|txt|markdown|md|prompt|quote|example)$/i;
+  function commandZone(text) {
+    const raw = withoutResultEnvelopes(text);
+    if (!CMD_KEY_RE.test(raw)) return "";
+    const fences = [];
+    let outside = "", at = 0, m;
+    const fenceRe = /```([^\n`]*)\n([\s\S]*?)(?:```|$)/g;
+    const inline = (t) => t.replace(/(?<!`)`[^`\n]+`(?!`)/g, " ");
+    while ((m = fenceRe.exec(raw))) {
+      outside += inline(raw.slice(at, m.index)) + "\n";
+      at = m.index + m[0].length;
+      if (!IGNORED_FENCE.has(m[1].trim().toLowerCase())) fences.push(m[2]);
+      if (m[0].length === 0) fenceRe.lastIndex++;
+    }
+    outside += inline(raw.slice(at));
+    const withKey = fences.filter(body => CMD_KEY_RE.test(body));
+    if (withKey.length) {
+      const body = withKey[withKey.length - 1].trim().replace(/^(?:json|JSON)\s*/, "");
+      return /^[\[{]/.test(body) ? body : "";
+    }
+    if (fences.length || raw.includes("```")) {
+      // A fence exists but none holds the command: the key lives in an ignored
+      // (text/plaintext/other) fence or in prose beside it. Only bare text
+      // outside fences can still be a command, handled below.
+    }
+    const key = /"(?:command|tool)"\s*:\s*"/.exec(outside);
+    if (!key) return "";
+    const openers = keyOpeners(outside, key.index);
+    if (!openers.length) return "";
+    const start = openers[openers.length - 1];
+    const lineStart = outside.lastIndexOf("\n", start - 1) + 1;
+    if (!/^(?:json)?\s*$/i.test(outside.slice(lineStart, start))) return "";
+    const before = outside.slice(0, lineStart).split("\n").map(l => l.trim()).filter(Boolean).slice(-3);
+    if (before.some(l => TEXT_LABEL_RE.test(l))) return "";
+    const lastClose = outside.lastIndexOf("}");
+    if (lastClose >= 0 && outside.slice(lastClose + 1).trim().length > 60) return "";
+    return outside.slice(start);
+  }
+
   function parseToolCalls(r) {
     r=withoutResultEnvelopes(r);
     // Lowercase for case-insensitive end-marker search. Models write
@@ -453,7 +503,7 @@ const RSParse = (() => {
     // source (literal \n, \") instead of the decoded code. extractToolAnywhere
     // JSON-decodes it; cleanLuaCall (applied at the end) then strips the markers.
     if (out.length === 0) {
-      out.push(...extractToolsAnywhere(r));
+      out.push(...extractToolsAnywhere(commandZone(r)));
     }
     // Bare ###LUA### … ###END_LUA### block with no JSON envelope at all.
     if (out.length === 0) {
@@ -571,7 +621,7 @@ const RSParse = (() => {
     txt=withoutResultEnvelopes(txt);
     return txt.includes(START_M) ||
            LUA_START_RE.test(txt) ||
-           CMD_KEY_RE.test(txt) || // command/tool with PlazCode without params (e.g. list_commands)
+           CMD_KEY_RE.test(commandZone(txt)) || // command/tool with PlazCode without params (e.g. list_commands)
            hasDsml(txt);           // DeepSeek's own DSML tool-call markup
   }
 
@@ -579,7 +629,7 @@ const RSParse = (() => {
     START_M, END_M, LUA_START_RE, LUA_END_RE, CMD_KEY_RE, DSML_SIG_RE,
     hasDsml, hasOpenDsml, parseDsml, orphanDsmlClosers, dsmlClosingRun,
     findLuaStart, findLuaEnd, matchBrace, extractJson, normalizeCall,
-    hasToolSignature, hasOpenToolBlock, parseToolCalls, commandDiagnosis, salvageCutOff, toolNameFromText,
+    hasToolSignature, commandZone, hasOpenToolBlock, parseToolCalls, commandDiagnosis, salvageCutOff, toolNameFromText,
     isInjectedFeedback, hasCommandShape,
   };
 })();

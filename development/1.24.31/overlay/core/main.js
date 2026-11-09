@@ -6889,7 +6889,7 @@ return result`;
     // Hide bar: a purely visual preference for this tab. While collapsed the bar
     // keeps its mount, position math, state and every handler; it is only made
     // invisible and click-through so it never covers chat text.
-    let barCollapsed = false, showTab = null, hideBtn = null, taskChecklist = null;
+    let barCollapsed = false, showTab = null, hideBtn = null, taskChecklist = null, showTabPos = null;
     const BAR_COLLAPSED_KEY = "plazcode.barCollapsed";
     let cover, coverRaf, barRaf;
     let coworkComposer;
@@ -7044,7 +7044,38 @@ return result`;
       showTab.innerHTML = '<span class="rs-show-dot" aria-hidden="true"></span><span class="rs-show-label">PlazCode</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
       root.appendChild(showTab);
       if (hideBtn) hideBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); setBarCollapsed(true); });
-      showTab.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); setBarCollapsed(false); });
+      // The hidden-bar tab can be dragged anywhere on screen (press, hold, move).
+      // It returns to its normal spot as soon as the bar is shown again.
+      let tabDrag = null, tabSuppressClick = false;
+      showTab.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0 && e.pointerType === "mouse") return;
+        const r = showTab.getBoundingClientRect();
+        tabDrag = { id: e.pointerId, x: e.clientX, y: e.clientY, left: r.left, top: r.top, moved: false };
+        try { showTab.setPointerCapture(e.pointerId); } catch {}
+      });
+      showTab.addEventListener("pointermove", (e) => {
+        if (!tabDrag || e.pointerId !== tabDrag.id) return;
+        const dx = e.clientX - tabDrag.x, dy = e.clientY - tabDrag.y;
+        if (!tabDrag.moved && Math.hypot(dx, dy) < 5) return;
+        tabDrag.moved = true;
+        showTab.dataset.dragging = "1";
+        showTabPos = { left: tabDrag.left + dx, top: tabDrag.top + dy };
+        placeShowTab();
+      });
+      const endTabDrag = (e) => {
+        if (!tabDrag || (e && e.pointerId !== tabDrag.id)) return;
+        if (tabDrag.moved) { tabSuppressClick = true; setTimeout(() => { tabSuppressClick = false; }, 60); }
+        try { showTab.releasePointerCapture(tabDrag.id); } catch {}
+        delete showTab.dataset.dragging;
+        tabDrag = null;
+      };
+      showTab.addEventListener("pointerup", endTabDrag);
+      showTab.addEventListener("pointercancel", endTabDrag);
+      showTab.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (tabSuppressClick) { tabSuppressClick = false; return; } // end of a drag, not a click
+        setBarCollapsed(false);
+      });
       let storedCollapsed = false;
       try { storedCollapsed = sessionStorage.getItem(BAR_COLLAPSED_KEY) === "1"; } catch {}
       if (storedCollapsed) setBarCollapsed(true, { silent: true });
@@ -10642,6 +10673,7 @@ function renderCards(panel) {
       next = !!next;
       const changed = next !== barCollapsed;
       barCollapsed = next;
+      if (!next) showTabPos = null; // a dragged hidden tab goes back to its normal place
       const html = document.documentElement;
       if (next) html.setAttribute("data-rs-bar-collapsed", "1"); else html.removeAttribute("data-rs-bar-collapsed");
       try { if (next) sessionStorage.setItem(BAR_COLLAPSED_KEY, "1"); else sessionStorage.removeItem(BAR_COLLAPSED_KEY); } catch {}
@@ -10678,12 +10710,45 @@ function renderCards(panel) {
       const outside = !!P.barOutside && !bar.classList.contains("rs-bar-inline");
       const wanted = dock.top - th - 8;
       const top = Math.max(4, Math.min(window.innerHeight - th - 4, wanted));
-      const l = Math.round(left) + "px", t = Math.round(top) + "px";
+      let finalLeft = left, finalTop = top;
+      if (showTabPos) {
+        // Dragged somewhere else: keep it there, always fully on screen.
+        finalLeft = Math.max(4, Math.min(window.innerWidth - tw - 4, showTabPos.left));
+        finalTop = Math.max(4, Math.min(window.innerHeight - th - 4, showTabPos.top));
+        showTabPos = { left: finalLeft, top: finalTop };
+      }
+      const l = Math.round(finalLeft) + "px", t = Math.round(finalTop) + "px";
       if (showTab.style.left !== l) showTab.style.left = l;
       if (showTab.style.top !== t) showTab.style.top = t;
       if (dot) { const c = dot.className || ""; if (showTab.dataset.dot !== c) showTab.dataset.dot = c; }
     }
 
+    // Re-seat the bar the moment the chat box changes size or place (a page opening
+    // or closing beside the chat, a window resize) instead of waiting for the next
+    // slow poll, and drop the provider's short-lived layout caches so a stale frame
+    // can never hold the bar in the wrong spot.
+    let layoutRO = null, layoutRaf = 0, layoutWatched = null, layoutResizeBound = false;
+    function relayoutBarNow() {
+      if (layoutRaf) return;
+      layoutRaf = requestAnimationFrame(() => {
+        layoutRaf = 0;
+        try { if (P.layoutChanged) P.layoutChanged(); } catch {}
+        try { placeBar(); } catch {}
+      });
+    }
+    function watchBarLayout(anchorEl) {
+      try {
+        if (!layoutResizeBound) { layoutResizeBound = true; window.addEventListener("resize", relayoutBarNow, { passive: true }); }
+        if (typeof ResizeObserver !== "function") return;
+        if (!layoutRO) layoutRO = new ResizeObserver(relayoutBarNow);
+        if (layoutWatched === anchorEl) return;
+        layoutRO.disconnect();
+        layoutWatched = anchorEl;
+        if (anchorEl && anchorEl.isConnected) layoutRO.observe(anchorEl);
+        const main = document.querySelector('main, [role="main"]');
+        if (main) layoutRO.observe(main);
+      } catch {}
+    }
     let barTimer = null;
     function placeBar() {
       if (barTimer) clearTimeout(barTimer);
@@ -10788,6 +10853,7 @@ function renderCards(panel) {
       if (inlineWidenEl) { try { inlineWidenEl.style.maxWidth = ""; inlineWidenEl.style.width = ""; } catch {} inlineWidenEl = null; }
       const anchorEl = (P.barAnchor && P.barAnchor()) || null;
       if (anchorEl && anchorEl.isConnected) {
+        watchBarLayout(anchorEl);
         bar.classList.remove("rs-bar-inline", "rs-bar-inside", "rs-bar-float");
         bar.classList.add("rs-bar-anchored");
         bar.style.position="fixed";bar.style.transform="none";bar.style.margin="0";

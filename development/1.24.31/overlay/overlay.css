@@ -5736,6 +5736,8 @@ html[data-rs-bar-collapsed] #rs-bar.rs-bar-inline {
   animation: rsShowTabIn .22s ease-out;
 }
 #rs-show-tab[hidden] { display: none !important; }
+#rs-show-tab { touch-action: none; user-select: none; cursor: grab; }
+#rs-show-tab[data-dragging="1"] { cursor: grabbing; animation: none; }
 #rs-show-tab:hover { border-color: rgb(var(--pc-rgb, 232 166 72) / .8); filter: brightness(1.12); }
 #rs-show-tab:focus-visible { outline: 2px solid var(--pc-light, #ffbc67); outline-offset: 2px; }
 #rs-show-tab svg { display: block; flex: none; }

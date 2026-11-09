@@ -159,6 +159,15 @@ const RSProvider = (() => {
   const COMPOSER_PLACEHOLDER_RE = /how can i help|wie kann ich (?:dir|ihnen) helfen|was m[öo]chtest du|frag(?:e)? (?:die )?ki|ki etwas fragen|comment puis-je|comment (?:puis|peux).*aider|c[óo]mo puedo ayudar|como posso ajudar/i;
   const isTextControl = (el) => !!el && /^(INPUT|TEXTAREA)$/.test(safeRead(() => el.tagName, "") || "");
 
+  // The page layout changed (a page opened or closed beside the chat, window
+  // resize): forget the short-lived position caches so the bar re-seats on the
+  // very next placement instead of waiting for them to expire.
+  function layoutChanged() {
+    _navCardAt = 0; _navCardRect = null;
+    _candAt = 0; _candCache = [];
+    _frameCache = null; _frameEditor = null;
+    if (!_editorCache) _editorAt = 0;
+  }
   function resetEditorCacheForRoute() {
     const key = routeKey();
     if (key === _editorRoute) return;
@@ -1601,16 +1610,22 @@ const RSProvider = (() => {
   // residual tail safely. A final-only Regenerate/feedback action is even stronger
   // and also safely settles plain prose. This removes ~4-8 seconds from tool turns
   // without shortening a live command or touching Studio's actual tool timeout.
+  // Notion has shown its own "finished" controls (copy / like) on this reply and
+  // no Stop button or live work row is left: the turn is over, so the core can
+  // release the chat box after a short re-read instead of its long default.
+  function turnComplete(item) {
+    return !!item && !stopButton() && !activeWorkflowProgress(item) && hasFinalTurnAction(item);
+  }
   function softGenerationSettled(item, reply, idleMs) {
     if (!item || stopButton() || activeWorkflowProgress(item)) return false;
     const readyAcknowledgement = /^(?:PLAZCODE_READY|PlazCode is ready|PlazCode ist bereit)[.!]?$/i.test(String(reply || "").replace(/[`*#]/g, "").trim());
-    const finalAction = idleMs >= 500 && hasFinalTurnAction(item);
+    const finalAction = idleMs >= 450 && hasFinalTurnAction(item);
     // A closed, append-only command cannot grow internally after its top-level
     // close token. Plain prose can legitimately continue after a long network
     // pause, so it only gets the accelerated path when Notion exposes a response-
     // final action; otherwise preserve the original nine-second growth window.
     if (!readyAcknowledgement && !finalAction && !FAST_TOOL_SIGNATURE_RE.test(String(reply || ""))) return false;
-    const threshold = readyAcknowledgement ? 700 : finalAction ? 700 : 4500;
+    const threshold = readyAcknowledgement ? 700 : finalAction ? 450 : 4500;
     if (idleMs < threshold) return false;
     _streamAt = 0;
     _stopSince = 0;
@@ -3544,7 +3559,7 @@ const RSProvider = (() => {
     chatIsEmpty, isFreshChat, composerFrame, barAnchor, coverTarget,
     followupPlaceholderTargets() {const ed=getEditor();return ed ? [ed,...safeQueryAll(ed, '[data-placeholder], [placeholder], [aria-placeholder]')] : [];},
     setInputLock, writeDraft, typeAndSend, recoverInternalError, stopGeneration,
-    isGenerating, isBusyNow, isHardGenerating, activeWorkflowProgress, suppressThinkingWatchdog, softGenerationSettled,
+    isGenerating, isBusyNow, isHardGenerating, activeWorkflowProgress, suppressThinkingWatchdog, softGenerationSettled, turnComplete, layoutChanged,
     enforceComposer, ensureComposerReady, prepareSessionStart, modeWarning, captchaPresent,
     overlayBlocking, turnHalted, findContinueBtn, clickContinueBtn,
     scanError, isTooLongMsg, isBusyMsg,
