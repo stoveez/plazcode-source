@@ -129,6 +129,24 @@ async function checks(browser){
     assert.equal(got.userKept,'My own unfinished question that must stay');
     assert(got.before>40);assert.equal(got.after,'');assert.equal(got.sends,0);
   });
+  await check('ChatGPT Work answer hidden in a closed "Worked for" row is opened and read as the assistant reply',false,async page=>{
+    const got=await page.evaluate(async()=>{
+      document.querySelector('#timeline').innerHTML='';
+      const turn=document.createElement('div');turn.setAttribute('data-turn-key','t1');
+      turn.innerHTML='<div data-chatgpt-search-unit-key="fallback-turn-0:0:user" data-chatgpt-search-message-ids="m1"><div data-user-message-bubble="true"><div class="whitespace-pre-wrap">Start please</div></div></div><div class="foldhost"><button type="button" aria-expanded="false">Worked for 2s</button></div>';
+      document.querySelector('#timeline').append(turn);
+      const button=turn.querySelector('button');
+      button.onclick=()=>{button.setAttribute('aria-expanded','true');const reply=document.createElement('div');reply.setAttribute('data-markdown-text-style','assistant-message');reply.innerHTML='<div data-code-block="true"><div data-code-block-source="true"><code><span>{"command":"list_commands"}</span></code></div></div>';turn.querySelector('.foldhost').append(reply);};
+      const before=provider.assistantCount();
+      const opened=provider.expandCollapsedWork();
+      await new Promise(r=>setTimeout(r,50));
+      const again=provider.expandCollapsedWork();
+      const last=provider.lastAssistant();
+      return{before,opened,again,after:provider.assistantCount(),users:provider.userCount(),text:last?provider.readAssistant(last):null};
+    });
+    assert.equal(got.before,0);assert.equal(got.opened,1);assert.equal(got.again,0);assert.equal(got.after,1);assert.equal(got.users,1);
+    assert(String(typeof got.text==='string'?got.text:JSON.stringify(got.text)).includes('list_commands'),JSON.stringify(got));
+  });
   await check('native Markdown source follows committed React alternates and own masks',false,async page=>{
     await nativeReact(page);
     const got=await page.evaluate(()=>{

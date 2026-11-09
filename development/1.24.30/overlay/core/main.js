@@ -12471,6 +12471,7 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
       lastSweepAt = Date.now();
       syncSessionState();
       P.enforceComposer();  // keep the composer in the provider's required modes
+      if (P.expandCollapsedWork && (A.running || A.starting || A.injecting)) P.expandCollapsedWork(); // ChatGPT Work hides the answer inside a closed "Worked for" row
       if (P.sweepStaleInternalDraft) P.sweepStaleInternalDraft(); // drop leftover internal startup text a site restored as a draft
       ui.updateStartGate(); // block the input until a session is started
       if (!A.enhancing) decorate.sweep();

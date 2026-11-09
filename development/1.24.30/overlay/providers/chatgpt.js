@@ -100,7 +100,7 @@ const RSProvider = (() => {
     turn: "[data-testid^='conversation-turn-'], article[data-turn], section[data-turn]",
     userRole: "user",
     assistantRole: "assistant",
-    reply: ".markdown, .prose, .markdown-new-styling, [data-message-content]",
+    reply: ".markdown, .prose, .markdown-new-styling, [data-message-content], [data-markdown-text-style='assistant-message']",
     workItem: "[data-chatgpt-search-unit-key][data-chatgpt-search-message-ids]",
     workReply: '[data-markdown-text-style="assistant-message"]',
     thinking: '[data-markdown-text-style="thinking"], [data-testid="thinking-status"], [data-testid*="reasoning" i]', 
@@ -477,6 +477,10 @@ const RSProvider = (() => {
     if (!signal || !safeRead(() => signal.closest, null)) return signal;
     const work = safeClosest(signal, S.workItem);
     if (work && !safeClosest(work, "#rs-root")) return work;
+    // ChatGPT Work (seen live 2026-11-08): the answer is a bare assistant-message
+    // surface with no role attribute and no search-unit wrapper, sitting under the
+    // SAME data-turn-key as the user's message. It is its own item.
+    if (safeRead(() => signal.matches(S.workReply), false)) return signal;
     const bubble = safeRead(() => signal.matches(NATIVE_USER_BUBBLE), false) ? signal : safeClosest(signal, NATIVE_USER_BUBBLE);
     const owned = bubble && ownedUserRoot(bubble, ownershipScopes);
     if (owned) return owned;
@@ -491,7 +495,7 @@ const RSProvider = (() => {
       let mixed = false;
       try {
         const hasUser = !!safeQuery(keyed, "[data-user-message-bubble], [data-message-author-role='user'], [data-conversation-role='user'], [data-role='user'], [data-message-author='user']");
-        const hasAssistant = !!safeQuery(keyed, ".markdown, .prose, .markdown-new-styling, [data-message-content], [data-message-author-role='assistant'], [data-conversation-role='assistant'], [data-role='assistant'], [data-message-author='assistant']");
+        const hasAssistant = !!safeQuery(keyed, ".markdown, .prose, .markdown-new-styling, [data-message-content], [data-markdown-text-style='assistant-message'], [data-message-author-role='assistant'], [data-conversation-role='assistant'], [data-role='assistant'], [data-message-author='assistant']");
         mixed = hasUser && hasAssistant;
       } catch {}
       if (mixed && signal !== keyed) {
@@ -1334,6 +1338,28 @@ const RSProvider = (() => {
     }
   }
 
+  // ChatGPT Work folds its answer inside a "Worked for 12s" row and does not even
+  // put the answer in the page while the row is closed (seen live 2026-11-08: the
+  // startup reply was a lone command card inside the fold, so PlazCode saw "no
+  // answer" and stopped). Open such a row, at most 3 times per button, only while
+  // a PlazCode session is running (the core calls this from its sweep).
+  const foldTries = new WeakMap();
+  function expandCollapsedWork() {
+    let opened = 0;
+    try {
+      for (const button of safeQueryAll(document, 'button[aria-expanded="false"]')) {
+        if (safeClosest(button, '#rs-root,.rs-chip,[data-user-message-bubble]')) continue;
+        if (!/^\s*worked for\b/i.test(safeRead(() => button.textContent, '') || '')) continue;
+        const tries = foldTries.get(button) || 0;
+        if (tries >= 3) continue;
+        foldTries.set(button, tries + 1);
+        diag('work.expandFold', {try:tries + 1});
+        button.click(); opened++;
+      }
+    } catch {}
+    return opened;
+  }
+
   // ChatGPT saves the composer as a draft. If a page reload, navigation or crash
   // interrupts an internal injection, the half-typed PlazCode startup text comes
   // back by itself in the user's box (seen live 2026-11-07). While no PlazCode
@@ -1735,7 +1761,7 @@ const RSProvider = (() => {
       return !!ed && records.every(record => record.target === ed || safeRead(() => ed.contains(record.target), false));
     },
     isGenerating, isBusyNow, isHardGenerating, turnComplete,
-    enforceComposer, ensureComposerReady, sweepStaleInternalDraft,
+    enforceComposer, ensureComposerReady, sweepStaleInternalDraft, expandCollapsedWork,
     turnHalted, findContinueBtn, clickContinueBtn,
     scanError, isTooLongMsg, isBusyMsg,
     // actions
