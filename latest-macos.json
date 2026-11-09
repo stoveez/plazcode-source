@@ -1,9 +1,59 @@
 {
-  "version": "1.24.31",
-  "desktop_version": "1.24.31",
-  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.31.zip",
-  "sha256": "77b99c260a04956bc3a002d2be5e1b351ed83cca2e4bd530872587962e7b687b",
+  "version": "1.24.32",
+  "desktop_version": "1.24.32",
+  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.32.zip",
+  "sha256": "1299c432ff918fd73a5e7d7f7a5334d87bf1f1fd2e7f3a5bc0cf3014821e11d8",
   "release_notes": [
+    {
+      "version": "1.24.32",
+      "title": "Notion bar, chatbox and status fixes",
+      "summary": "Fixes for the Notion bar, the blocked chatbox, command running and wrong Offline messages.",
+      "added": [
+        "The hidden PlazCode tab can be dragged around the screen; it returns to its place when you show the bar again."
+      ],
+      "improved": [],
+      "fixed": [
+        "Notion: the PlazCode bar no longer gets stuck out of place when another page or side panel opens.",
+        "Notion: command cards attach to the code block, never to the reply's text.",
+        "Notion: custom agent chats are recognised.",
+        "The chatbox is no longer blocked for seconds after the AI finishes replying.",
+        "Only the real command block runs; examples in text, plaintext or inline code are ignored.",
+        "The app and bar no longer wrongly show Offline or Check unavailable while connected."
+      ],
+      "notes": [
+        "Update the PlazCode app and the extension together (the app's updater does this).",
+        "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***Fixes for the Notion bar, the blocked chatbox, command running and wrong Offline messages.***",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "The hidden PlazCode tab can be dragged around the screen; it returns to its place when you show the bar again."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Notion: the PlazCode bar no longer gets stuck out of place when another page or side panel opens.",
+              "Notion: command cards attach to the code block, never to the reply's text.",
+              "Notion: custom agent chats are recognised.",
+              "The chatbox is no longer blocked for seconds after the AI finishes replying.",
+              "Only the real command block runs; examples in text, plaintext or inline code are ignored.",
+              "The app and bar no longer wrongly show Offline or Check unavailable while connected."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Automated tests on Windows, Mac and Linux, and on practice pages. Not tried live on every AI site or in Studio; please report anything odd.",
+              "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+            ]
+          }
+        ]
+      }
+    },
     {
       "version": "1.24.31",
       "title": "Startup, sign-in and ChatGPT fixes",
@@ -214,48 +264,10 @@
           }
         ]
       }
-    },
-    {
-      "version": "1.24.20",
-      "title": "ClickUp Ask Brain connects again",
-      "summary": "Fixes Start Agent on ClickUp's Ask Brain, which used to stop right after the AI's first reply and never finish connecting. Nothing else changes.",
-      "added": [],
-      "improved": [],
-      "fixed": [
-        "Start Agent now finishes connecting in a new ClickUp Ask Brain chat. Before, PlazCode stopped about a second after Brain's first reply, the bar said \"Not connected to this chat yet\", and the rest of the setup was never sent.",
-        "Why it happened: ClickUp changes the page address as soon as a new chat gets its first message, and PlazCode took that for a different chat. It now treats it as the same chat.",
-        "Everything else is unchanged: other AI sites, ClickUp agent chats, and your settings, memory and connections."
-      ],
-      "notes": [
-        "Tried on a real ClickUp Ask Brain chat in AgentScript mode: all five setup steps went through and PlazCode reported it was ready. Before the fix, the same test stopped after the first reply.",
-        "ClickUp agent chats and Firefox were not changed and were not tried on a live account. Automated tests on Windows, Mac and Linux must pass before this is published.",
-        "The Windows app is unsigned and the Mac app is not notarized, as in earlier versions. Your computer may ask you to confirm opening it."
-      ],
-      "github": {
-        "summary": "Fixes Start Agent on ClickUp's Ask Brain, which stopped right after the AI's first reply and never finished connecting.",
-        "sections": [
-          {
-            "title": "🛠️ What's fixed",
-            "items": [
-              "Start Agent now finishes connecting in a new ClickUp Ask Brain chat. Before, it stopped a second after Brain's first reply and said \"Not connected to this chat yet\".",
-              "ClickUp changes the page address when a new chat gets its first message, and PlazCode mistook that for a different chat. It now knows it is the same chat.",
-              "Nothing else changes: other AI sites, ClickUp agent chats, and your settings, memory and connections stay as they were."
-            ]
-          },
-          {
-            "title": "🧪 What was checked",
-            "items": [
-              "Tried on a real ClickUp Ask Brain chat: all five setup steps went through and PlazCode said it was ready. The same test failed before the fix.",
-              "ClickUp agent chats and Firefox were not changed and not tried on a live account.",
-              "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
-            ]
-          }
-        ]
-      }
     }
   ],
   "security": {
-    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.31\",\"platform\":\"macos\",\"sha256\":\"77b99c260a04956bc3a002d2be5e1b351ed83cca2e4bd530872587962e7b687b\"}",
-    "signature": "f11253300e505fbce7818bccaffe1ceb32c2e42278b11a92de81e5a22e665651b98b8a32be079318183aa6274719692429ed239be6807f34235c4f4af2e4af07"
+    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.32\",\"platform\":\"macos\",\"sha256\":\"1299c432ff918fd73a5e7d7f7a5334d87bf1f1fd2e7f3a5bc0cf3014821e11d8\"}",
+    "signature": "54bc875a536b04958b6af22a3990273b3f8187e0dc18e7a300783f34ee5899a0e9d37a35914ef5331a78343a06f9fb2a785ed6c126d40f4cf0086197e959aa03"
   }
 }

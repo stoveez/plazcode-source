@@ -1,0 +1,35 @@
+[
+  {
+    "validated_sha": "a3f153250ceea8f31949981cfc9dd6d8d85709cb",
+    "validation_run_id": "42712015243",
+    "native_package_sha256": "08d1b5e7c4d07c3be1f0da7122537f5efd134b89fb6f3f257cab1728d5c23e1a",
+    "native_binary_sha256": "35064d6c43d4cc30d7d569d310e3326f6315dca693ab47e07424ccf7135b8fdf",
+    "mode": "foreground",
+    "version": "1.24.32",
+    "alive_seconds": 210,
+    "desktop_ready": true,
+    "window_visible": true
+  },
+  {
+    "validated_sha": "a3f153250ceea8f31949981cfc9dd6d8d85709cb",
+    "validation_run_id": "42712015243",
+    "native_package_sha256": "08d1b5e7c4d07c3be1f0da7122537f5efd134b89fb6f3f257cab1728d5c23e1a",
+    "native_binary_sha256": "35064d6c43d4cc30d7d569d310e3326f6315dca693ab47e07424ccf7135b8fdf",
+    "mode": "background",
+    "version": "1.24.32",
+    "alive_seconds": 15,
+    "desktop_ready": true,
+    "window_visible": false
+  },
+  {
+    "validated_sha": "a3f153250ceea8f31949981cfc9dd6d8d85709cb",
+    "validation_run_id": "42712015243",
+    "native_package_sha256": "08d1b5e7c4d07c3be1f0da7122537f5efd134b89fb6f3f257cab1728d5c23e1a",
+    "native_binary_sha256": "35064d6c43d4cc30d7d569d310e3326f6315dca693ab47e07424ccf7135b8fdf",
+    "mode": "restore",
+    "version": "1.24.32",
+    "alive_seconds": 15,
+    "desktop_ready": true,
+    "window_visible": true
+  }
+]

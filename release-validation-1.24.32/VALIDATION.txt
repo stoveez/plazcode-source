@@ -1,0 +1,24 @@
+PlazCode 1.24.32 — exact-source platform/browser gates and packaged macOS desktop lifetime checks passed before promotion.
+Validated source: a3f153250ceea8f31949981cfc9dd6d8d85709cb
+Validation run: private build 42712015243
+Changes: ChatGPT startup and Work-mode fixes, DeepSeek and Ox Alpha fixes, guest mode and safer sign-in recovery, Windows/Mac startup checks, Blender first-use setup, screenshot pop-up. First-party code is proprietary from 1.24.30 by owner decision; third-party notices and old-release licences are unchanged.
+All other features, safeguards and native launch/update behavior are retained. Final native executable and macOS app bytes are reused from validated development artifacts, not rebuilt during publication. Only release notices, checksums and package metadata change.
+Automated tests exercise normal and negative checks; a browser fixture with the full production core and a mocked PlazCode app covers reconnect, closed app, dropped Studio connection, click-only chat connection and translation. Hosted browser fixtures use a mocked bridge.
+Windows binaries are unsigned. macOS uses ad-hoc signing and is not notarized.
+Microsoft Defender runner availability/result for the exact native artifact before release-notice assembly:
+Cloud protection: on
+== D:\a\plazcode-source\plazcode-source\artifacts\PlazCode-1.24.32-development.zip (exit 0)
+Scan starting...
+Scan finished.
+Scanning D:\a\plazcode-source\plazcode-source\artifacts\PlazCode-1.24.32-development.zip found no threats.
+
+== D:\a\plazcode-source\plazcode-source\artifacts\PlazCode-1.24.32-test-lean.zip (exit 0)
+Scan starting...
+Scan finished.
+Scanning D:\a\plazcode-source\plazcode-source\artifacts\PlazCode-1.24.32-test-lean.zip found no threats.
+
+== D:\a\plazcode-source\plazcode-source\build-src-1.24.32\PlazCode/defender-scan (exit 0)
+Scan starting...
+Scan finished.
+Scanning D:\a\plazcode-source\plazcode-source\build-src-1.24.32\PlazCode/defender-scan found no threats.
+Checksums and platform evidence are recorded in release-validation-1.24.32.
