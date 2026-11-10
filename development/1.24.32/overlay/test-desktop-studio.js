@@ -8,7 +8,7 @@ const fs = require("fs"), assert = require("node:assert/strict");
 const html = fs.readFileSync(__dirname + "/agent/src/desktop.html", "utf8");
 for (const need of ["function Pzstudio()", "function Pzsync(Area)", "function Pzripples()", "function Pzfeel()", "function Pzmaker()", "function Pzapplypalette(Root)",
   "try { Pzstudio(); } catch (Error) {}", "try { Pzmaker(); } catch (Error) {}", "try { Pzsync(Area); } catch (Error) {}", "try { Pzapplypalette(Root); } catch (Error) {}",
-  "motion:'full',anim:true,ripple:true", "function Pzturn(Name)", "try { Pzturn(Name); } catch (Error) {}", "@keyframes pz-leave", "@keyframes pz-settle", "data-pz-motion", "@media(prefers-reduced-motion:reduce){html[data-pz-studio]", "html[data-pz-studio][data-pz-motion=off] *"])
+  "motion:'full',anim:true,ripple:true", "function Pzturn(Name)", "try { Pzturn(Name); } catch (Error) {}", "@keyframes pz-leave", "@keyframes pz-settle", "data-pz-motion", "@media(prefers-reduced-motion:reduce){html[data-pz-studio]", "html[data-pz-motion=off] *", "function Pzmotionrules()", "function Pzskills()", "motionSet:false"])
   assert(html.includes(need), "desktop.html has " + need);
 // The redesign only adds a frame: every page, route and original control is still in the markup.
 for (const id of ["dragbar", "content", "sideStatus", "sideDot", "sidebarCollapse", "nxSideSearch", "nxThemes", "nxCustomPanel", "nxCustomColor", "nxCustomHex", "nxCustomApply", "nxCustomRemove", "nxGradients", "killStudio"])
@@ -96,10 +96,37 @@ console.log("PASS desktop Studio look: frame functions, hooks, reduced/off motio
     await tab.evaluate(() => document.documentElement.setAttribute("data-pz-motion", "reduced"));
     assert.equal(await tab.evaluate(() => { document.querySelector('.pz-area[data-area="workspace"]').click(); return document.querySelectorAll(".pz-leaving,.pz-entering").length; }), 0, "Reduced motion switches at once");
     await tab.evaluate(() => { document.documentElement.setAttribute("data-pz-motion", "full"); const b = document.querySelector('.navbtn[data-page="skills"]'); if (b) b.click(); }); await tab.waitForTimeout(600);
-    const roomy = await tab.evaluate(() => { const g = document.querySelector("#skillsWorkspace .grid2"); return { columns: getComputedStyle(g).gridTemplateColumns.split(" ").length, gap: parseFloat(getComputedStyle(g).columnGap),
-      tabs: getComputedStyle(document.querySelector('#skillsWorkspace [role="tablist"]')).display, input: parseFloat(getComputedStyle(document.querySelector('#skillsWorkspace [data-sk="search"]')).fontSize) }; });
-    assert.equal(roomy.columns, 2); assert(roomy.gap >= 24, "room between the skill list and the editor"); assert.equal(roomy.tabs, "inline-flex"); assert(roomy.input >= 14, "readable field text");
+    const roomy = await tab.evaluate(() => { const g = document.querySelector("#skillsWorkspace .grid2"), e = document.querySelector("#skillsWorkspace .pz-sk-editor"); return { columns: getComputedStyle(g).gridTemplateColumns.split(" ").length,
+      tabs: getComputedStyle(document.querySelector('#skillsWorkspace [role="tablist"]')).display, input: parseFloat(getComputedStyle(document.querySelector('#skillsWorkspace [data-sk="search"]')).fontSize),
+      editor: !!e, hidden: e && getComputedStyle(e).visibility, numbers: document.querySelectorAll(".pz-area i").length, fields: ["title", "steps", "scope", "save", "delete", "export", "open-import"].every((n) => e && e.querySelector('[data-sk="' + n + '"]')) }; });
+    assert.equal(roomy.columns, 1, "the skill list takes the full width"); assert.equal(roomy.tabs, "inline-flex"); assert(roomy.input >= 14, "readable field text");
+    assert.equal(roomy.editor, true); assert.equal(roomy.hidden, "hidden", "the editor window starts closed"); assert.equal(roomy.fields, true, "every editor control is still there"); assert.equal(roomy.numbers, 0, "no numbers beside the sidebar sections");
+    // The skill editor opens as a window from "Add skill", closes with Escape, the X and the backdrop.
+    await tab.click('#skillsWorkspace [data-sk="new"]'); await tab.waitForTimeout(700);
+    const opened = await tab.evaluate(() => { const e = document.querySelector("#skillsWorkspace .pz-sk-editor"), r = e.getBoundingClientRect(); return { open: document.getElementById("skillsWorkspace").classList.contains("pz-sk-open"), visible: getComputedStyle(e).visibility,
+      centred: Math.abs((r.left + r.right) / 2 - innerWidth / 2) < 3 && r.top >= 0 && r.bottom <= innerHeight, wide: r.width, focus: document.activeElement && document.activeElement.getAttribute("data-sk") }; });
+    assert.equal(opened.open, true); assert.equal(opened.visible, "visible"); assert.equal(opened.centred, true, "the editor window sits in the middle of the app"); assert(opened.wide >= 700); assert.equal(opened.focus, "steps", "typing starts in the instructions");
+    await tab.keyboard.press("Escape"); await tab.waitForTimeout(500);
+    assert.equal(await tab.evaluate(() => document.getElementById("skillsWorkspace").classList.contains("pz-sk-open")), false, "Escape closes the editor");
+    await tab.click('#skillsWorkspace [data-sk="new"]'); await tab.waitForTimeout(500); await tab.click("#skillsWorkspace .pz-sk-close"); await tab.waitForTimeout(400);
+    assert.equal(await tab.evaluate(() => document.getElementById("skillsWorkspace").classList.contains("pz-sk-open")), false, "the X closes the editor");
+    await tab.click('#skillsWorkspace [data-sk="new"]'); await tab.waitForTimeout(500); await tab.mouse.click(8, 400); await tab.waitForTimeout(400);
+    assert.equal(await tab.evaluate(() => document.getElementById("skillsWorkspace").classList.contains("pz-sk-open")), false, "a click outside closes the editor");
+    // The app's own motion setting wins over the system's: a system that asks for less motion starts at Off, and Full turns it all back on.
+    const calm = await browser.newContext({ viewport: { width: 1360, height: 860 }, reducedMotion: "reduce" }); const quiet = await calm.newPage();
+    await quiet.route("http://127.0.0.1:3000/**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' }));
+    await quiet.route("http://plazcode.test/", (r) => r.fulfill({ status: 200, contentType: "text/html", body: page }));
+    await quiet.addInitScript(() => { window.__PLAZCODE_BOOT__ = { apiUrl: "http://127.0.0.1:3000" }; });
+    await quiet.goto("http://plazcode.test/"); await quiet.waitForTimeout(1500); await quiet.evaluate(() => document.getElementById("nxSplash")?.remove());
+    assert.equal(await quiet.evaluate(() => document.documentElement.getAttribute("data-pz-motion")), "off", "the system setting is the starting point");
+    assert.equal(await quiet.evaluate(() => { document.querySelector('.pz-area[data-area="workspace"]').click(); return document.querySelectorAll(".pz-leaving").length; }), 0);
+    await quiet.click('.pz-area[data-area="settings"]'); await quiet.evaluate(() => { const b = document.querySelector('.navbtn[data-page="appearance"]'); if (b) b.click(); }); await quiet.waitForTimeout(300);
+    await quiet.click('[data-look-motion="full"]'); await quiet.waitForTimeout(150);
+    const loud = await quiet.evaluate(() => { document.querySelector('.pz-area[data-area="home"]').click(); return { motion: document.documentElement.getAttribute("data-pz-motion"), leaving: document.querySelectorAll(".pz-leaving").length,
+      anim: getComputedStyle(document.querySelector(".page.active")).animationName, saved: JSON.parse(localStorage.getItem("plazcodeDesktopLook") || "{}").motionSet }; });
+    assert.equal(loud.motion, "full"); assert.equal(loud.leaving, 1, "Full brings the page turn back on a reduced-motion system"); assert.notEqual(loud.anim, "none"); 
+    await calm.close();
     assert.deepEqual(errors.filter((e) => !/fetch|Failed to load|NetworkError/i.test(e)), [], "no script errors");
-    console.log("PASS desktop Studio look in Chromium: sections and tabs, serif title, Feel settings, ripples, custom palette save and remove, page turns, roomy Skills page");
+    console.log("PASS desktop Studio look in Chromium: sections and tabs, serif title, Feel settings, ripples, custom palette save and remove, page turns, Skills list and editor window, motion setting over the system setting");
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exitCode = 1; });

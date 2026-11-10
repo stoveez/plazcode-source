@@ -941,7 +941,7 @@ html[data-pz-studio] .pz-tabs::after{content:"";position:absolute;left:40px;righ
 /* Content: roomier pages, serif section headings with numbers, cards that lift and glow. */
 html[data-pz-studio] .content{padding:30px 40px 56px!important}
 html[data-pz-studio] .page{counter-reset:pzsec;max-width:1240px}
-html[data-pz-studio] .page.active{animation:pz-page .55s var(--pz-ease) both}
+html[data-pz-studio] .page.active{animation:pz-page .55s var(--pz-ease) backwards}
 @keyframes pz-page{from{opacity:0;transform:translateY(10px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
 html[data-pz-studio] .page>.nx-pagehead h1,html[data-pz-studio] .page>.page-head h1,html[data-pz-studio] .page>.page-head>div>h1,html[data-pz-studio] .page>.nx-pagehead>div>h1{display:none}
 html[data-pz-studio] .page>.page-head .page-title{display:none!important}
@@ -1013,11 +1013,16 @@ html[data-pz-studio] .page .dx-top .dx-tabs{display:none!important}
 .pz-ripple{position:absolute;border-radius:50%;transform:translate(-50%,-50%) scale(0);background:radial-gradient(circle,rgb(var(--theme-rgb,233 186 83)/.45),rgb(var(--theme-rgb,233 186 83)/.12) 55%,transparent 70%);animation:pz-ripple .62s var(--pz-ease,ease-out) forwards}
 @keyframes pz-ripple{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
 
+/* The intro wears the same lettering as the app: serif wordmark with an italic "Code", serif status title. */
+.nx-splash-word{font:600 44px/1.1 var(--pz-serif,"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif)!important;letter-spacing:-.6px!important}
+.nx-splash-word .c{font-style:italic}
+.nx-splash-title{font:500 20px/1.25 var(--pz-serif,"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif)!important;letter-spacing:-.2px}
+
 /* Page turns: the page you leave fades up and away, then the next one settles in piece by piece. */
 html[data-pz-studio] .content{position:relative}
 html[data-pz-studio] .page.pz-leaving{display:block!important;position:absolute;margin:0!important;pointer-events:none;z-index:1;animation:pz-leave .2s cubic-bezier(.4,0,1,1) both}
 @keyframes pz-leave{to{opacity:0;transform:translateY(-10px) scale(.994);filter:blur(4px)}}
-html[data-pz-studio] .page.active.pz-entering{animation:pz-page .5s var(--pz-ease) .14s both}
+html[data-pz-studio] .page.active.pz-entering{animation:pz-page .5s var(--pz-ease) .14s backwards}
 html[data-pz-studio] .page.pz-entering>*,html[data-pz-studio] .page.pz-entering>#skillsWorkspace>*,html[data-pz-studio] .page.pz-entering :is(.grid2,.cardgrid,.nx-grid,.nx-rows)>*{animation:pz-settle .52s var(--pz-ease) backwards;animation-delay:calc(.16s + var(--pz-i,0)*.055s)}
 html[data-pz-studio] .page.pz-entering :is(.grid2,.cardgrid,.nx-grid,.nx-rows)>*{animation-delay:calc(.24s + var(--pz-i,0)*.045s)}
 html[data-pz-studio] .page.pz-entering *:nth-child(2){--pz-i:1}html[data-pz-studio] .page.pz-entering *:nth-child(3){--pz-i:2}html[data-pz-studio] .page.pz-entering *:nth-child(4){--pz-i:3}html[data-pz-studio] .page.pz-entering *:nth-child(5){--pz-i:4}html[data-pz-studio] .page.pz-entering *:nth-child(6){--pz-i:5}html[data-pz-studio] .page.pz-entering *:nth-child(7){--pz-i:6}html[data-pz-studio] .page.pz-entering *:nth-child(n+8){--pz-i:7}
@@ -1035,9 +1040,30 @@ html[data-pz-studio] #skillsWorkspace [role=tablist]{display:inline-flex;gap:4px
 html[data-pz-studio] #skillsWorkspace [role=tab]{padding:11px 20px!important;font-size:13.5px!important;font-weight:600;border:1px solid transparent!important;border-radius:11px!important;background:none!important;box-shadow:none!important;transform:none!important;color:var(--ink-soft,#9299aa)}
 html[data-pz-studio] #skillsWorkspace [role=tab]:hover{color:var(--text,#eef1f6)}
 html[data-pz-studio] #skillsWorkspace [role=tab][aria-selected=true]{background:rgb(var(--pz-rgb)/.16)!important;border-color:rgb(var(--pz-rgb)/.42)!important;color:var(--text,#eef1f6)}
-html[data-pz-studio] #skillsWorkspace .grid2{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:26px;align-items:start}
+html[data-pz-studio] #skillsWorkspace .grid2{display:grid;grid-template-columns:minmax(0,1fr);gap:26px;align-items:start}
 html[data-pz-studio] #skillsWorkspace .grid2>.settingcard{margin:0!important;padding:32px 34px!important}
-html[data-pz-studio] #skillsWorkspace .grid2>.settingcard:last-child{position:sticky;top:0;max-height:calc(100vh - 190px);overflow-y:auto;scrollbar-width:thin}
+html[data-pz-studio] #skillsWorkspace .grid2>.settingcard:first-child::after{content:none}
+/* The skill editor: a window over the page. */
+html[data-pz-studio] .pz-sk-shade{position:fixed;inset:0;z-index:90;background:rgb(5 6 9/.66);-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);opacity:0;pointer-events:none;transition:opacity .3s var(--pz-ease)}
+html[data-pz-studio] #skillsWorkspace.pz-sk-open .pz-sk-shade{opacity:1;pointer-events:auto}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor{position:fixed!important;z-index:91;left:50%;top:50%;width:min(1120px,calc(100vw - 88px));max-height:calc(100vh - 88px);margin:0!important;padding:30px 36px 28px!important;overflow-y:auto;scrollbar-width:thin;display:grid!important;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);grid-template-rows:auto auto auto auto auto auto auto 1fr auto auto auto;column-gap:32px;align-content:start;background:color-mix(in srgb,var(--canvas,#0c0e13) 94%,rgb(var(--pz-rgb)))!important;box-shadow:0 40px 120px -30px #000,0 0 0 1px rgb(var(--pz-rgb)/.22),0 0 80px -30px rgb(var(--pz-rgb)/.45)!important;animation:none!important;opacity:0;visibility:hidden;pointer-events:none;transform:translate(-50%,-47%) scale(.965)!important;transition:opacity .28s var(--pz-ease),transform .42s var(--pz-ease),visibility 0s .3s!important}
+html[data-pz-studio] #skillsWorkspace.pz-sk-open .pz-sk-editor{opacity:1;visibility:visible;pointer-events:auto;transform:translate(-50%,-50%) scale(1)!important;transition:opacity .28s var(--pz-ease),transform .42s var(--pz-ease),visibility 0s!important}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>*{grid-column:2;min-width:0}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>.pz-sk-eyebrow{grid-column:1;grid-row:1;margin:0 0 8px}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>h3{grid-column:1;grid-row:2;margin:0 0 22px!important;padding-bottom:22px;font-size:30px!important;overflow-wrap:anywhere}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>h3::before{display:none}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>.pz-sk-close{grid-column:2;grid-row:1/3;justify-self:end;align-self:start;width:40px;height:40px;border-radius:12px;border:1px solid var(--pz-line);background:rgb(255 255 255/.04);color:var(--text,#eef1f6);font-size:22px;line-height:1;cursor:pointer;transition:background .2s,border-color .2s,transform .2s var(--pz-ease)}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>.pz-sk-close:hover{background:rgb(var(--pz-rgb)/.14);border-color:rgb(var(--pz-rgb)/.5);transform:rotate(90deg)}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>.pz-sk-f-title{grid-column:1;grid-row:3;margin-top:0}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>.pz-sk-f-steps{grid-column:1;grid-row:4/9;display:flex;flex-direction:column}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>.pz-sk-f-steps>textarea{flex:1 1 auto;min-height:340px;font-family:var(--pz-mono);font-size:13.5px!important;line-height:1.7}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>.pz-sk-f-scope{grid-row:3;margin-top:0}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>.pz-sk-foot{grid-column:1/-1;grid-row:9;margin-top:26px;padding-top:22px;border-top:1px solid var(--pz-line)}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>.pz-sk-foot>.dangerbtn{margin-left:auto}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>.pz-sk-foot+p{grid-column:1/-1;grid-row:10;margin:14px 0 0!important;padding:0;border:0;font-size:12.5px}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>.pz-sk-note{grid-column:1/-1;grid-row:11;margin-top:10px;font-size:13.5px;color:var(--orange2,#ffc052);min-height:20px}
+html[data-pz-studio] #skillsWorkspace .pz-sk-editor>.pz-sk-note:empty{display:none}
+@media(max-width:900px){html[data-pz-studio] #skillsWorkspace .pz-sk-editor{display:block!important;width:calc(100vw - 32px);max-height:calc(100vh - 32px);padding:22px!important}html[data-pz-studio] #skillsWorkspace .pz-sk-editor>.pz-sk-close{float:right}html[data-pz-studio] #skillsWorkspace .pz-sk-editor>label{margin-top:18px!important}}
 html[data-pz-studio] #skillsWorkspace .settingcard>h3{margin-bottom:18px!important}
 html[data-pz-studio] #skillsWorkspace label{display:block;margin:20px 0 0;font-size:12.5px;font-weight:600;letter-spacing:.02em;line-height:1.5;color:var(--ink-soft,#9299aa)}
 html[data-pz-studio] #skillsWorkspace h3+label{margin-top:0}
@@ -1062,13 +1088,12 @@ html[data-pz-studio] #skillsWorkspace details:not(.settingcard){margin-top:16px;
 html[data-pz-studio] #skillsWorkspace details:not(.settingcard)>summary{padding:14px 0;cursor:pointer;font-size:13.5px;font-weight:600}
 html[data-pz-studio] #skillsWorkspace details:not(.settingcard)[open]{padding-bottom:18px}
 html[data-pz-studio] #skillsWorkspace p{line-height:1.65}
-@media(max-width:1120px){html[data-pz-studio] #skillsWorkspace .grid2{grid-template-columns:1fr}html[data-pz-studio] #skillsWorkspace .grid2>.settingcard:last-child{position:static;max-height:none;overflow:visible}}
 
 /* Motion levels. Off (or the system's reduced-motion setting) stops every effect above. */
 html[data-pz-studio][data-pz-motion=reduced] .page.active{animation-duration:.2s}
 html[data-pz-studio][data-pz-motion=reduced] .page.pz-entering *{animation:none!important}
 html[data-pz-studio][data-pz-motion=reduced] :is(.pz-title.pz-swap){animation:none}
-html[data-pz-studio][data-pz-motion=off] *,html[data-pz-studio][data-pz-motion=off] *::before,html[data-pz-studio][data-pz-motion=off] *::after{animation:none!important;transition:none!important}
+html[data-pz-motion=off] *,html[data-pz-motion=off] *::before,html[data-pz-motion=off] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 @media(prefers-reduced-motion:reduce){html[data-pz-studio] .page.pz-entering *,html[data-pz-studio] .page.pz-leaving{animation:none!important}html[data-pz-studio] .app::after,html[data-pz-studio] .page.active,html[data-pz-studio] .pz-title.pz-swap,html[data-pz-studio] .pz-preview,.pz-ripple{animation:none!important}html[data-pz-studio] :is(.pz-area,.pz-tabs .navbtn::after,.nx-theme,.page .nx-card,.page .stat){transition:none!important}}
 @media(max-width:980px){html[data-pz-studio]{--pz-side:236px}html[data-pz-studio] .titlebar{padding-left:28px!important}html[data-pz-studio] .pz-title{font-size:30px}html[data-pz-studio] .content{padding:24px 26px 44px!important}html[data-pz-studio] .pz-tabs{padding:0 20px 0 28px}html[data-pz-studio] .pz-search{flex-basis:150px}html[data-pz-studio] .pz-maker{grid-template-columns:1fr}}
 </style>
@@ -2034,7 +2059,7 @@ __PLAZCODE_VERSION_UI__
   var NXCATLABEL = {general:'General',language:'Language',memory:'Memory',safety:'Safety',debug:'Debug'};
   var NXTHEMENAMES = {default:'Default',amethyst:'Amethyst',cyan:'Polar Cyan',rose:'Rose',emerald:'Emerald',graphite:'Graphite',crimson:'Crimson',ocean:'Oceanic',copper:'Copper Atelier',aurora:'Aurora',orchid:'Orchid Noir'};
   var NXFONTS = {sans:'Inter,Segoe UI,Arial,sans-serif',rounded:'ui-rounded,"SF Pro Rounded","Nunito","Quicksand","Segoe UI",sans-serif',mono:'ui-monospace,"Cascadia Code",Consolas,Menlo,monospace',serif:'Georgia,"Times New Roman",serif'};
-  var NXLOOKDEFAULT = {radius:14,bw:1,bc:'theme',rainbow:false,grid:false,font:'sans',bg:false,bgkind:'',bgstrength:45,blur:0,panel:62,motion:'full',anim:true,ripple:true};
+  var NXLOOKDEFAULT = {radius:14,bw:1,bc:'theme',rainbow:false,grid:false,font:'sans',bg:false,bgkind:'',bgstrength:45,blur:0,panel:62,motion:'full',anim:true,ripple:true,motionSet:false};
   var Nxlook = Object.assign({},NXLOOKDEFAULT);
 
   function Nxarea(Name, Cat) {
@@ -2096,7 +2121,11 @@ __PLAZCODE_VERSION_UI__
     Root.toggleAttribute('data-look-grid', !!L.grid);
     Root.toggleAttribute('data-look-bg', !!Nxwallurl);
     Root.setAttribute('data-look-bc', L.bc === 'neutral' ? 'neutral' : 'theme');
-    Root.setAttribute('data-pz-motion', L.motion === 'reduced' || L.motion === 'off' ? L.motion : 'full');
+    // Interface motion is the app's own choice. Until the person picks one, the system's reduced-motion setting
+    // starts it at Off; once they pick, their choice wins either way.
+    var Motion = L.motion === 'reduced' || L.motion === 'off' ? L.motion : 'full';
+    if (!L.motionSet && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) Motion = 'off';
+    Root.setAttribute('data-pz-motion', Motion); try { Pzmotionrules(); } catch (Error) {}
     Root.toggleAttribute('data-pz-anim', L.anim !== false);
     Root.toggleAttribute('data-pz-ripple', L.ripple !== false);
     Array.prototype.slice.call(document.querySelectorAll('[data-look-motion]')).forEach(function (Node) { Node.setAttribute('aria-pressed', String(Node.getAttribute('data-look-motion') === (Root.getAttribute('data-pz-motion')))); });
@@ -2189,7 +2218,7 @@ __PLAZCODE_VERSION_UI__
   }
   function Nxwallpause() {
     var Clip = document.querySelector('#nxWall video'); if (!Clip) return;
-    var Calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var Calm = document.documentElement.getAttribute('data-pz-motion') === 'off';
     if (document.hidden || Calm) Clip.pause(); else { var P = Clip.play(); if (P && P.catch) P.catch(function () {}); }
   }
   function Nxloadwall() {
@@ -2426,7 +2455,7 @@ __PLAZCODE_VERSION_UI__
       var Button = Pzel('button', 'pz-area'); Button.type = 'button'; Button.setAttribute('data-area', Key); Button.title = Pzt(Meta[0]);
       var Icon = Original.querySelector('svg'); if (Icon) Button.appendChild(Icon.cloneNode(true));
       var Text = Pzel('span'); Text.append(Pzel('b', '', Meta[0]), Pzel('small', '', Meta[1]));
-      Button.append(Text, Pzel('i', '', ('0' + (Index + 1)).slice(-2)));
+      Button.append(Text);
       Button.onclick = function () { Original.click(); };
       Areas.appendChild(Button);
     });
@@ -2441,7 +2470,7 @@ __PLAZCODE_VERSION_UI__
     Pzpill();
     var Status = Byid('sideStatus'), Dot = Byid('sideDot');
     if (window.MutationObserver) { if (Status) new MutationObserver(Pzpill).observe(Status, {childList:true, characterData:true, subtree:true}); if (Dot) new MutationObserver(Pzpill).observe(Dot, {attributes:true, attributeFilter:['class']}); }
-    Pzfeel(); Pzripples();
+    Pzfeel(); Pzripples(); try { Pzskills(); } catch (Error) {}
     Pzsync(Nxcurrentarea);
   }
   function Pzpill() {
@@ -2451,6 +2480,39 @@ __PLAZCODE_VERSION_UI__
     Pill.textContent = On ? Pzt('Bridge online') : (Status.textContent || '').trim() || Pzt('Bridge waiting');
     Pill.setAttribute('data-on', On ? '1' : '0');
   }
+  // The style sheet's own "system prefers reduced motion" blocks are switched off once, because data-pz-motion
+  // (set above from the person's choice, or from the system setting when they have not chosen) now decides.
+  var Pzmotionruled = false;
+  function Pzmotionrules() {
+    if (Pzmotionruled) return; Pzmotionruled = true;
+    function Walk(Rules) { for (var I = 0; I < Rules.length; I++) { var Rule = Rules[I];
+      if (Rule.media && /prefers-reduced-motion/.test(Rule.media.mediaText)) { Rule.media.mediaText = 'not all'; continue; }
+      if (Rule.cssRules) Walk(Rule.cssRules); } }
+    Toarray(document.styleSheets).forEach(function (Sheet) { try { Walk(Sheet.cssRules); } catch (Error) {} });
+  }
+  // Skills page: a skill opens in its own window over the page (the same form and buttons, moved into a dialog).
+  function Pzskills() {
+    var Host = Byid('skillsWorkspace'); if (!Host || Host.pzEditor) return;
+    var Grid = Host.querySelector('.grid2'), Card = Grid && Grid.querySelector('.settingcard:last-child'); if (!Card) return;
+    var Find = function (Name) { return Host.querySelector('[data-sk="' + Name + '"]'); };
+    Host.pzEditor = true; Card.classList.add('pz-sk-editor'); Card.setAttribute('role', 'dialog'); Card.setAttribute('aria-modal', 'true'); Card.tabIndex = -1;
+    var Shade = Pzel('div', 'pz-sk-shade'); Grid.appendChild(Shade);
+    var Eyebrow = Pzel('div', 'pz-eyebrow pz-sk-eyebrow', 'Skills'), Close = Pzel('button', 'pz-sk-close'); Close.type = 'button'; Close.setAttribute('aria-label', Pzt('Close')); Close.title = Pzt('Close'); Close.textContent = '\u00d7';
+    var Note = Pzel('div', 'pz-sk-note'); Note.setAttribute('aria-hidden', 'true');
+    Card.prepend(Eyebrow, Close); Card.appendChild(Note);
+    [['title', 'pz-sk-f-title'], ['steps', 'pz-sk-f-steps'], ['scope', 'pz-sk-f-scope']].forEach(function (Pair) { var Field = Find(Pair[0]), Label = Field && Field.closest('label'); if (Label) Label.classList.add(Pair[1]); });
+    var Actions = Find('save') && Find('save').parentNode; if (Actions) Actions.classList.add('pz-sk-foot');
+    var Opened = false, Back = null;
+    function Open() { if (Opened) return; Opened = true; Back = document.activeElement; Note.textContent = ''; Host.classList.add('pz-sk-open'); Card.scrollTop = 0; window.setTimeout(function () { var Steps = Find('steps'); if (Opened && Steps) Steps.focus(); }, 60); }
+    function Shut() { if (!Opened) return; Opened = false; Host.classList.remove('pz-sk-open'); var List = Find('list'), Row = List && List.querySelector('[aria-pressed="true"]') || Find('new'); if (Row && Row.focus) Row.focus(); }
+    Host.addEventListener('click', function (Event) { var Target = Event.target; if (Target && Target.closest && Target.closest('[data-sk-card]>.softbtn,[data-sk="new"]')) Open(); });
+    Close.onclick = Shut; Shade.onclick = Shut;
+    document.addEventListener('keydown', function (Event) { if (Event.key === 'Escape' && Opened) { Event.preventDefault(); Shut(); } });
+    var Status = Find('status'), Remove = Find('delete'), Removing = false;
+    if (Status && window.MutationObserver) new MutationObserver(function () { if (Opened) Note.textContent = Status.textContent; }).observe(Status, {childList: true, characterData: true, subtree: true});
+    if (Remove) { Remove.addEventListener('click', function () { Removing = true; window.setTimeout(function () { Removing = false; }, 8000); });
+      if (window.MutationObserver) new MutationObserver(function () { if (Removing && Remove.hidden) { Removing = false; Shut(); } }).observe(Remove, {attributes: true, attributeFilter: ['hidden']}); }
+  }
   // Page turns (Appearance > Feel > Interface motion: Full). The page being left stays painted for a moment and
   // fades away while the next one settles in; Reduced, Off and the system's reduced-motion setting skip it.
   function Pzgone(Node) { window.clearTimeout(Node.pzLeaveTimer); Node.classList.remove('pz-leaving'); Node.style.top = Node.style.left = Node.style.width = ''; }
@@ -2458,7 +2520,7 @@ __PLAZCODE_VERSION_UI__
     var Root = document.documentElement, Next = Byid('page-' + Name), Old = document.querySelector('.page.active'), Content = Byid('content');
     Toarray(document.querySelectorAll('.page.pz-leaving')).forEach(Pzgone);
     if (!Next || !Old || Old === Next || !Content || !Root.hasAttribute('data-pz-studio')) return;
-    if (Root.getAttribute('data-pz-motion') !== 'full' || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    if (Root.getAttribute('data-pz-motion') !== 'full') return;
     var Box = Old.getBoundingClientRect(), Frame = Content.getBoundingClientRect();
     if (Box.width > 0) {
       Old.style.top = (Box.top - Frame.top - Content.clientTop) + 'px'; Old.style.left = (Box.left - Frame.left - Content.clientLeft) + 'px'; Old.style.width = Box.width + 'px';
@@ -2482,7 +2544,6 @@ __PLAZCODE_VERSION_UI__
     document.addEventListener('pointerdown', function (Event) {
       var Root = document.documentElement;
       if (Event.button !== 0 || !Root.hasAttribute('data-pz-ripple') || Root.getAttribute('data-pz-motion') === 'off') return;
-      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       var Target = Event.target && Event.target.closest ? Event.target.closest('button,.nx-card,[role=button],.pz-area') : null;
       if (!Target || Target.disabled || Target.closest('.winbtn,input,select,textarea')) return;
       var Rect = Target.getBoundingClientRect(); if (Rect.width < 24 || Rect.height < 16) return;
@@ -2502,7 +2563,7 @@ __PLAZCODE_VERSION_UI__
     function Icon(Path) { var Box = Pzel('span', 'nx-ico'), Svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), Line = document.createElementNS('http://www.w3.org/2000/svg', 'path'); Svg.setAttribute('viewBox', '0 0 24 24'); Svg.setAttribute('aria-hidden', 'true'); Line.setAttribute('d', Path); Svg.appendChild(Line); Box.appendChild(Svg); return Box; }
     function Row(Title, Help, Control, Path) { var Line = Pzel('div', 'nx-row'), Text = Pzel('div'); Text.append(Pzel('b', '', Title), Pzel('small', '', Help)); var Box = Pzel('div', 'nx-ctl'); Box.appendChild(Control); Line.append(Icon(Path), Text, Box); return Line; }
     var Motion = Pzel('div', 'nx-seg');
-    [['full', 'Full'], ['reduced', 'Reduced'], ['off', 'Off']].forEach(function (Item) { var Button = Pzel('button', '', Item[1]); Button.type = 'button'; Button.setAttribute('data-look-motion', Item[0]); Button.setAttribute('aria-pressed', 'false'); Button.onclick = function () { Nxlook.motion = Item[0]; Nxapplylook(); Nxsavelook(); }; Motion.appendChild(Button); });
+    [['full', 'Full'], ['reduced', 'Reduced'], ['off', 'Off']].forEach(function (Item) { var Button = Pzel('button', '', Item[1]); Button.type = 'button'; Button.setAttribute('data-look-motion', Item[0]); Button.setAttribute('aria-pressed', 'false'); Button.onclick = function () { Nxlook.motion = Item[0]; Nxlook.motionSet = true; Nxapplylook(); Nxsavelook(); }; Motion.appendChild(Button); });
     function Switch(Key, Label) { var Button = Pzel('button', 'nx-sw'); Button.type = 'button'; Button.setAttribute('role', 'switch'); Button.setAttribute('aria-checked', 'true'); Button.setAttribute('aria-label', Pzt(Label)); Button.setAttribute('data-look', Key); return Button; }
     Rows.append(Row('Interface motion', 'Page transitions, hover lift and glow. Off stops every animation.', Motion, 'M4 12h3l3-7 4 14 3-7h3'),
       Row('Animated theme', 'The theme colour drifts slowly behind the pages.', Switch('anim', 'Animated theme'), 'M3 15c3-4 6-4 9 0s6 4 9 0M3 9c3-4 6-4 9 0s6 4 9 0'),
