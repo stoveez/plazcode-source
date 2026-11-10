@@ -42,7 +42,7 @@ for (const engine of ['roblox', 'local']) {
   assert(core.startsWith(RS.SYS_MARKER + '\n'), engine + ': the marker leads');
   assert.equal(core.indexOf(RS.SYS_MARKER), core.lastIndexOf(RS.SYS_MARKER), engine + ': one marker only');
   assert(!NO_URL.test(core), engine + ': no URLs in the core: ' + (core.match(NO_URL) || [])[0]);
-  for (const needle of ['plazcode_help', '```json', '{"command": "name", "params"', 'list_commands', 'PlazCode is ready.', 'FORMATTING RULE (MANDATORY)', 'ONE command', 'plazcode_checklist', 'Goal:']) {
+  for (const needle of ['plazcode_help', '```json', '{"command": "name", "params"', 'list_commands', 'PlazCode is ready.', 'FORMATTING RULE (MANDATORY)', 'SEVERAL COMMANDS PER REPLY', 'plazcode_checklist', 'Goal:']) {
     assert(core.includes(needle), `${engine} core contains ${needle}`);
   }
   // The handshake is ONE line starting with IMPORTANT: Your very first action (core/main.js strips it from session reminders by that pattern).

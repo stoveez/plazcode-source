@@ -482,6 +482,44 @@ const PlazCodeFeatureGuide = (() => {
   "index": true
  },
  {
+  "id": "helpers",
+  "title": "Helpers (sub-agents)",
+  "group": "Bar",
+  "where": "PlazCode bar > Agents button (appears when the AI has started helpers)",
+  "does": "On a big job the AI can hand parts to helpers: separate chats on the same AI site that work at the same time, two at once. Each sends a summary back, and two helpers can never change the same script or file at once.",
+  "steps": [
+   "Ask for a big job with clear parts, or tell the AI to use helpers.",
+   "Click Agents on the bar to see each helper, what it is doing and for how long.",
+   "Click Open to look at a helper's chat window, or Stop to end that helper.",
+   "Click Clear finished to remove helpers that are done."
+  ],
+  "tips": [
+   "Each helper opens its own small chat window. Leave those windows open while they work.",
+   "Stopping the main agent stops its helpers too."
+  ],
+  "related": [
+   "cowork"
+  ],
+  "keywords": [
+   "helpers",
+   "agents",
+   "sub agents",
+   "subagents",
+   "parallel",
+   "at the same time",
+   "multiple agents"
+  ],
+  "anchors": [
+   "bar:rs-agents",
+   "bar:rs-agents-clear",
+   "bar:rs-agents-close"
+  ],
+  "surfaces": [
+   "extension"
+  ],
+  "index": true
+ },
+ {
   "id": "language",
   "title": "Change the language",
   "group": "Menu",

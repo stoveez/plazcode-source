@@ -2356,6 +2356,227 @@ async function runCritic(msg) {
 }
 try { if (chrome.windows && chrome.windows.onRemoved) chrome.windows.onRemoved.addListener((windowId) => { if (criticWin && criticWin.windowId === windowId) criticWin = null; }); } catch {}
 
+// ── Helper agents (after 1.24.32) ───────────────────────────────────────────
+// The main chat's AI can hand parts of a job to helpers: separate chats on the same AI site, each with its own
+// PlazCode session, working at the same time. This worker owns the roster: who asked, which window each helper
+// runs in, the queue (two at once per main chat), the edit locks that stop two agents changing the same script
+// or file at the same time, and the summaries waiting to go back to the main chat. createHelperRoster is pure
+// (no browser calls) so its rules are tested directly.
+function createHelperRoster({ limit = 2, maxOpen = 8, now = () => Date.now() } = {}) {
+  let seq = 0;
+  const rows = new Map();   // id -> helper row
+  const locks = new Map();  // parentTab + "|" + key -> { owner, title, at }
+  const ACTIVE = new Set(["queued", "starting", "working"]);
+  const text = (value, max) => String(value == null ? "" : value).replace(/\s+/g, " ").trim().slice(0, max);
+  const view = (r) => ({ id: r.id, title: r.title, area: r.area, status: r.status, step: r.step || "", note: r.note || "",
+    steps: r.steps || 0, queuedAt: r.queuedAt, startedAt: r.startedAt || 0, endedAt: r.endedAt || 0, summary: r.summary || "", delivered: !!r.delivered });
+  const mine = (parentTab) => [...rows.values()].filter((r) => r.parentTab === parentTab);
+  const activeFor = (parentTab) => mine(parentTab).filter((r) => ACTIVE.has(r.status));
+  const byTab = (tabId) => [...rows.values()].find((r) => r.tabId === tabId && ACTIVE.has(r.status)) || null;
+  function dropLocks(test) { for (const [key, lock] of locks) if (test(key, lock)) locks.delete(key); }
+  function add(parent, specs, opts = {}) {
+    if (!parent || !Number.isInteger(parent.tabId)) return { ok: false, error: "Helpers can only be started from an AI chat tab." };
+    if (byTab(parent.tabId)) return { ok: false, error: "A helper cannot start helpers of its own." };
+    if (!Array.isArray(specs) || !specs.length || specs.length > 4) return { ok: false, error: "helpers must be a list of 1 to 4 entries shaped as {title, task, area}." };
+    const clean = [];
+    for (let i = 0; i < specs.length; i++) {
+      const spec = specs[i] || {};
+      const title = text(spec.title || spec.name, 60), task = String(spec.task || spec.prompt || spec.goal || "").trim().slice(0, 12000), area = text(spec.area || spec.scope, 600);
+      if (!title) return { ok: false, error: "helpers[" + i + "] needs a short title." };
+      if (task.length < 40) return { ok: false, error: "helpers[" + i + "] needs a complete task: the helper has not seen this chat, so describe the goal, the exact paths and what done means (at least a few sentences)." };
+      clean.push({ title, task, area });
+    }
+    if (activeFor(parent.tabId).length + clean.length > maxOpen) return { ok: false, error: "Too many helpers at once. At most " + maxOpen + " can be working or waiting; wait for some to finish." };
+    const made = clean.map((spec) => {
+      const row = { id: ++seq, parentTab: parent.tabId, parentChat: String(parent.chat || ""), url: String(opts.url || ""), engine: String(opts.engine || "roblox"),
+        title: spec.title, task: spec.task, area: spec.area, status: "queued", queuedAt: now(), tabId: null, windowId: null };
+      rows.set(row.id, row);
+      return view(row);
+    });
+    return { ok: true, helpers: made };
+  }
+  // Queued helpers that may start now (two at a time per main chat); marks them "starting".
+  function next(parentTab) {
+    const out = [];
+    let busy = mine(parentTab).filter((r) => r.status === "starting" || r.status === "working").length;
+    for (const row of mine(parentTab)) {
+      if (busy >= limit) break;
+      if (row.status !== "queued") continue;
+      row.status = "starting"; row.startedAt = now(); busy++; out.push(row);
+    }
+    return out;
+  }
+  function placed(id, where) { const row = rows.get(id); if (row) { row.tabId = where.tabId; row.windowId = where.windowId; } return row || null; }
+  function progress(tabId, info = {}) {
+    const row = byTab(tabId);
+    if (!row) return null;
+    if (row.status === "starting" && info.working) row.status = "working";
+    if (info.sent) row.sent = true;
+    if (info.step) { row.step = text(info.step, 80); row.steps = (row.steps || 0) + 1; }
+    if (info.note !== undefined) row.note = text(info.note, 80);
+    return row;
+  }
+  function finish(id, result = {}) {
+    const row = rows.get(id);
+    if (!row || !ACTIVE.has(row.status)) return null;
+    row.status = ["done", "failed", "stopped"].includes(result.status) ? result.status : "failed";
+    row.summary = String(result.summary || "").trim().slice(0, 6000);
+    row.endedAt = now(); row.step = ""; row.note = "";
+    dropLocks((key, lock) => lock.owner === "h" + row.id);
+    if (!activeFor(row.parentTab).length) dropLocks((key) => key.startsWith(row.parentTab + "|"));
+    return row;
+  }
+  // Helpers to stop: one by id, or every working/waiting helper of this main chat.
+  const stoppable = (parentTab, id) => activeFor(parentTab).filter((r) => id == null || r.id === Number(id));
+  function clear(parentTab) {
+    const gone = mine(parentTab).filter((r) => !ACTIVE.has(r.status));
+    for (const row of gone) rows.delete(row.id);
+    return gone;
+  }
+  const list = (parentTab) => mine(parentTab).map(view);
+  function take(parentTab) {
+    const ready = mine(parentTab).filter((r) => !ACTIVE.has(r.status) && !r.delivered);
+    for (const row of ready) row.delivered = true;
+    return ready.map(view);
+  }
+  // An agent is about to change these scripts/files. Refused when another agent of the same job is on one.
+  function lock(tabId, keys) {
+    const helper = byTab(tabId);
+    const parentTab = helper ? helper.parentTab : tabId;
+    if (!helper && !activeFor(parentTab).length) return { ok: true };
+    const owner = helper ? "h" + helper.id : "main", title = helper ? helper.title : "the main agent";
+    const wanted = [...new Set((Array.isArray(keys) ? keys : []).map((k) => String(k || "").trim().toLowerCase().replace(/\\/g, "/")).filter(Boolean))].slice(0, 24);
+    for (const key of wanted) {
+      const held = locks.get(parentTab + "|" + key);
+      if (!held || held.owner === owner) continue;
+      const holder = held.owner === "main" ? (now() - held.at < 600000) : (rows.get(Number(held.owner.slice(1))) || {}).status;
+      if (held.owner === "main" ? holder : ACTIVE.has(holder)) return { ok: false, key, holder: held.title };
+    }
+    for (const key of wanted) locks.set(parentTab + "|" + key, { owner, title, at: now() });
+    return { ok: true };
+  }
+  // A tab closed: a helper's own window ends that helper; a main chat's tab ends all of its helpers.
+  function tabGone(tabId) {
+    const helper = byTab(tabId);
+    if (helper) return { ended: [finish(helper.id, { status: "stopped", summary: "The helper's window was closed before it finished." })].filter(Boolean), orphans: [] };
+    const orphans = mine(tabId);
+    for (const row of orphans) rows.delete(row.id);
+    dropLocks((key) => key.startsWith(tabId + "|"));
+    return { ended: [], orphans };
+  }
+  const dump = () => ({ seq, rows: [...rows.values()], locks: [...locks.entries()] });
+  function load(saved) {
+    if (!saved || !Array.isArray(saved.rows)) return;
+    seq = Math.max(seq, Number(saved.seq) || 0);
+    for (const row of saved.rows) if (row && Number.isInteger(row.id)) rows.set(row.id, row);
+    for (const [key, value] of saved.locks || []) locks.set(key, value);
+  }
+  return { add, next, placed, progress, finish, stoppable, clear, list, take, lock, tabGone, byTab, get: (id) => rows.get(Number(id)) || null, activeFor, dump, load };
+}
+const helperRoster = createHelperRoster({ limit: 2 });
+let helperLoading = null;
+function helperLoad() {
+  if (!helperLoading) helperLoading = (async () => { try { const saved = await chrome.storage.session.get("rsHelperRoster"); helperRoster.load(saved && saved.rsHelperRoster); } catch {} })();
+  return helperLoading;
+}
+function helperSave() { try { const p = chrome.storage.session.set({ rsHelperRoster: helperRoster.dump() }); if (p && p.catch) p.catch(() => {}); } catch {} }
+const helperNotifyAt = new Map();
+function helperNotify(parentTab, urgent = true) {
+  helperSave();
+  const last = helperNotifyAt.get(parentTab) || 0;
+  if (!urgent && Date.now() - last < 1000) return;
+  helperNotifyAt.set(parentTab, Date.now());
+  try { const p = chrome.tabs.sendMessage(parentTab, { type: "rs-helper-update", helpers: helperRoster.list(parentTab) }); if (p && p.catch) p.catch(() => {}); } catch {}
+}
+async function helperCloseWindow(row) {
+  if (row && row.windowId != null) { try { await chrome.windows.remove(row.windowId); } catch {} }
+}
+async function helperPing(tabId) {
+  for (let i = 0; i < 60; i++) {
+    try { const reply = await chrome.tabs.sendMessage(tabId, { type: "rs-helper-ping" }); if (reply && reply.ok && reply.ready) return reply; } catch {}
+    await criticSleep(750);
+  }
+  return null;
+}
+function helperEnd(id, result, close) {
+  const row = helperRoster.finish(id, result);
+  if (!row) return;
+  // A finished helper's window closes by itself; a failed one stays open so the user can look at what happened.
+  if (close || row.status === "done" || row.status === "stopped") setTimeout(() => { helperCloseWindow(row); }, row.status === "done" ? 3000 : 0);
+  helperNotify(row.parentTab);
+  helperPump(row.parentTab);
+}
+function helperPump(parentTab) {
+  const starting = helperRoster.next(parentTab);
+  if (starting.length) helperNotify(parentTab);
+  for (const row of starting) helperStart(row);
+}
+async function helperStart(row) {
+  const live = () => { const current = helperRoster.get(row.id); return !!current && current.status === "starting"; };
+  try {
+    let url = row.url;
+    try { const parsed = new URL(url); if (parsed.protocol !== "https:") throw new Error("bad address"); } catch { throw new Error("this AI site has no new-chat address for helpers"); }
+    const index = helperRoster.activeFor(row.parentTab).filter((r) => r.windowId != null).length;
+    const shape = { url, type: "popup", width: 980, height: 820, left: 60 + index * 48, top: 60 + index * 48 };
+    let created = null;
+    // Open behind the user's window where the browser allows it (Firefox does not accept "focused").
+    try { created = await chrome.windows.create({ ...shape, focused: false }); } catch { created = await chrome.windows.create(shape); }
+    const tab = created && created.tabs && created.tabs[0];
+    if (!created || !tab) throw new Error("the helper window could not be opened");
+    helperRoster.placed(row.id, { tabId: tab.id, windowId: created.id });
+    // The helper works with the same engine (RobloxScript or AgentScript) as the chat that asked for it.
+    tabEngines.set(tab.id, normalizeEngine(row.engine));
+    try { await chrome.storage.session.set({ ["rs-tab-engine-" + tab.id]: normalizeEngine(row.engine) }); } catch {}
+    helperSave();
+    if (!live()) { helperCloseWindow(row); return; }
+    if (!(await criticTabReady(tab.id))) throw new Error("the helper chat did not load");
+    const ready = await helperPing(tab.id);
+    if (!live()) { helperCloseWindow(row); return; }
+    if (!ready) throw new Error("PlazCode is not running in the helper window (is the site signed in?)");
+    await criticSleep(1500); // let the new chat finish drawing its message box
+    const answer = await chrome.tabs.sendMessage(tab.id, { type: "rs-helper-run", helper: { id: row.id, title: row.title, task: row.task, area: row.area, engine: row.engine } });
+    if (!answer || !answer.ok) throw new Error(String((answer && answer.error) || "the helper chat did not accept the task").slice(0, 200));
+    // From here the helper's own tab reports its progress and its result ("helpers" messages).
+  } catch (error) {
+    helperEnd(row.id, { status: "failed", summary: "Could not start: " + String(error && error.message || error).slice(0, 200) }, true);
+  }
+}
+async function helperRequest(tabId, request) {
+  await helperLoad();
+  const action = String(request && request.action || "");
+  if (!Number.isInteger(tabId)) return { ok: false, error: "Helpers need an AI chat tab." };
+  if (action === "start") {
+    const added = helperRoster.add({ tabId, chat: request.chat }, request.helpers, { url: request.url, engine: request.engine });
+    if (!added.ok) return added;
+    helperPump(tabId); helperNotify(tabId);
+    return { ok: true, helpers: helperRoster.list(tabId).filter((h) => added.helpers.some((a) => a.id === h.id)) };
+  }
+  if (action === "list") { const self = helperRoster.byTab(tabId); return { ok: true, helpers: helperRoster.list(tabId), helper: self ? { id: self.id, title: self.title, task: self.task, area: self.area, engine: self.engine, sent: !!self.sent } : null }; }
+  if (action === "take") { const results = helperRoster.take(tabId); helperSave(); return { ok: true, results, pending: helperRoster.activeFor(tabId).length }; }
+  if (action === "stop") {
+    const targets = helperRoster.stoppable(tabId, request.id);
+    for (const row of targets) {
+      if (row.tabId != null) { try { const p = chrome.tabs.sendMessage(row.tabId, { type: "rs-helper-stop" }); if (p && p.catch) p.catch(() => {}); } catch {} }
+      helperEnd(row.id, { status: "stopped", summary: String(request.reason || "Stopped before finishing.").slice(0, 200) });
+    }
+    return { ok: true, stopped: targets.length };
+  }
+  if (action === "clear") { for (const row of helperRoster.clear(tabId)) helperCloseWindow(row); helperNotify(tabId); return { ok: true }; }
+  if (action === "open") { const row = helperRoster.get(request.id); if (!row || row.parentTab !== tabId || row.windowId == null) return { ok: false, error: "That helper has no open window." }; try { await chrome.windows.update(row.windowId, { focused: true }); return { ok: true }; } catch { return { ok: false, error: "That helper's window is closed." }; } }
+  if (action === "progress") { const row = helperRoster.progress(tabId, request); if (row) helperNotify(row.parentTab, !!(request.working || request.note !== undefined)); return { ok: !!row }; }
+  if (action === "report") { const row = helperRoster.byTab(tabId); if (!row) return { ok: false }; helperEnd(row.id, { status: request.status, summary: request.summary }); return { ok: true }; }
+  if (action === "lock") return helperRoster.lock(tabId, request.keys);
+  return { ok: false, error: "Unknown helpers action." };
+}
+try {
+  chrome.tabs.onRemoved?.addListener((tabId) => { helperLoad().then(() => {
+    const { ended, orphans } = helperRoster.tabGone(tabId);
+    for (const row of ended) { helperNotify(row.parentTab); helperPump(row.parentTab); }
+    for (const row of orphans) helperCloseWindow(row);
+    if (ended.length || orphans.length) helperSave();
+  }); });
+} catch {}
+
 // 1.24.30 (owner, 2026-10-31: PlazCode "disconnects and reconnects for no reason"): Chrome stops an extension's
 // background worker when one message takes longer than 5 minutes to answer, which also drops the link to the app.
 // A command, a local model reply or a critic review can run up to 10 minutes. Those answer within 4 minutes with
@@ -2577,6 +2798,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),28000);
         try { const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/engram",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{}),signal:controller.signal});sendResponse(await response.json()); }
         catch(error){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timer);}break;
+      }
+      case "helpers": {
+        try { sendResponse(await helperRequest(tabId, msg.request || {})); }
+        catch (error) { sendResponse({ ok: false, error: String(error && error.message || error).slice(0, 200) }); }
+        break;
       }
       case "rs-critic": {
         try { sendResponse(await runCritic(msg)); }

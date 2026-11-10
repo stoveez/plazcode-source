@@ -68,7 +68,7 @@ const COMMON_TAIL = [
 const ROBLOX_FULL = [
   ['marker', '⟦RS-SYS⟧'], ['context', 'CONTEXT:'], ['format-fence-rule', '⚠️ FORMATTING RULE'], ['format-json', '━━━ STANDARD COMMAND FORMAT'],
   ['format-luau', '━━━ SPECIAL FORMAT FOR execute_luau'], ['luau-doctrine', '━━━ UNIVERSAL ROBLOX/LUAU ENGINEERING DOCTRINE'],
-  ['motion-vfx', 'PlazCode MOTION/VFX RULES:'], ['rules-general', '- ONE command block per reply'], ['rule-execute-luau', '- execute_luau: wrap code in BOTH markers'],
+  ['motion-vfx', 'PlazCode MOTION/VFX RULES:'], ['rules-general', '- SEVERAL COMMANDS PER REPLY'], ['rule-execute-luau', '- execute_luau: wrap code in BOTH markers'],
   ['rule-play-mode', '- PLAY-MODE RULE'], ['rules-build-delete-errors', '- BUILD UI/OBJECTS FIRST'], ['project-memory', ' ━━━ PROJECT MEMORY'],
   ['act-directly', '━━━ YOU CAN ACT DIRECTLY IN THE USER'], ['studio-skills', 'STUDIO SKILLS & VIRTUAL TOOLS'], ['skills-web', '- WEB: `web_search`'],
   ['skills-screenshots', '- SCREENSHOT: `plazcode_screenshot`'], ['skills-plugins-analysis', '- STUDIO PLUGINS:'], ['skills-gui-mutation', '- GUI MUTATION'],
@@ -171,19 +171,19 @@ if (process.argv.includes('--table') || UPDATE) console.log(table());
 // ── Golden pins (lean OFF must reproduce these exactly) ──
 const GOLDEN = {
   /*GOLDEN-START*/
-  'roblox-full': { chars: 43959, sha256: 'd42481b2a9036db4cbbc9eabd92322330469a7ad0beb8835442c25537e466f28' },
-  'roblox-compact-14000': { chars: 12951, sha256: '8e22cd8224b9e1dde517096a5cf11f47449d09a0a14de089a546bc509b25fac3' },
-  'roblox-full-all-modes': { chars: 52000, sha256: '3d3cb2caac707ee90f6b4fa63b122a76d681fc3d71677505ce3a483494601adc' },
-  'roblox-compact-all-modes': { chars: 20992, sha256: 'd8eee67cce27e344dd2f1d265b772eb7a893f2925df509232ff60ae1b8d729ad' },
-  'roblox-full-ultra': { chars: 69073, sha256: '9631f7f12a2fb91a68f3e221ce017a20cd1822b8267f085e49686e0bae7da7e5' },
-  'roblox-compact-ultra': { chars: 15112, sha256: '531905447b89903dda262d54c7592c4f3afdf1d483389b8bf7cc528474faf670' },
-  'roblox-full-custom-site': { chars: 44114, sha256: '981d0fa2c460963f33d3f84c94457dc5e20d232602cb72f6a69e8be7e6734eec' },
-  'local-full': { chars: 10268, sha256: 'f0beab43caf5b4f70edd137d980cefae63362ca7038e5666a18a2e24321ba7c7' },
-  'local-compact-14000': { chars: 10268, sha256: 'f0beab43caf5b4f70edd137d980cefae63362ca7038e5666a18a2e24321ba7c7' },
-  'local-full-access': { chars: 11236, sha256: 'd2ee9b60cc6845a07f2a0179146f79abfc90da0885177a690e98d51765b8f4f0' },
-  'local-custom-site': { chars: 10390, sha256: '8537b5d46cb57c3160f5205bada24944c4f30c609d5c520a242fa393ebdc2fa2' },
-  'notion-roblox': { chars: 7063, sha256: '723381745599a7e3c349fc703a407b41971c88bf1ac0fb0bbd0cfeabe32f3af9' },
-  'notion-local': { chars: 5560, sha256: '1bbcc64400bba5dceec0e6c7dbd291af7902093dae612d659f95c9966cda3376' },
+  'roblox-full': { chars: 44104, sha256: 'd95a9fb5e65371d83629fdc1d1415440b44086cc3c37a47115012666ca5a1af7' },
+  'roblox-compact-14000': { chars: 13586, sha256: 'a165abe7332ab9f74860857c9aca862e126906bdb6655751fa27a47307df6f59' },
+  'roblox-full-all-modes': { chars: 52145, sha256: '45b4f7cd04e396394d0741a062a4f053dc58b38f7acbe80a4ca94c11bb6c9c6f' },
+  'roblox-compact-all-modes': { chars: 21627, sha256: 'af6e11ab786a6a09be0f26707a0271c9176e89f59b9e3e6776a20f0cf9de9d9f' },
+  'roblox-full-ultra': { chars: 69218, sha256: 'cb4688c2c6b9c50a17623b4f3f6cc20f9b39a1ae326de1df28bba68d11a87d3f' },
+  'roblox-compact-ultra': { chars: 15747, sha256: '1c4ad42eee219c9062ad39b0ab9de81bd935d88852fed5cb6643b0e6136d37ee' },
+  'roblox-full-custom-site': { chars: 44259, sha256: 'cd65410221e3247e59e186818cfd2e5ff9d38b8d0043837d0571182cf4037897' },
+  'local-full': { chars: 10463, sha256: '8374846b52456db7f5fd27c1b4bc6e7c5141553a1e69728f1613134a97436863' },
+  'local-compact-14000': { chars: 10463, sha256: '8374846b52456db7f5fd27c1b4bc6e7c5141553a1e69728f1613134a97436863' },
+  'local-full-access': { chars: 11431, sha256: 'baf05a5fde46f1e970bff8b6dfe4fc3aba3d9239721ed66da3274fe2ce31c27c' },
+  'local-custom-site': { chars: 10585, sha256: 'c2575fe514296a5293a37fdaa910234d6dbfe49290ff3bd073ff310adee131cb' },
+  'notion-roblox': { chars: 7340, sha256: '4cadb4ee68d19f89a905b3e75bf9c29cf1cee0dbbedc2d8130b5baf442dfaaa5' },
+  'notion-local': { chars: 5837, sha256: 'ab4db10064b8526e5f897833d55348ff85f71dc1d5fb9387f6238c91509827c2' },
   /*GOLDEN-END*/
 };
 if (UPDATE) {

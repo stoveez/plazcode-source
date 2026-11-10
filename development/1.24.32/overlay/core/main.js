@@ -181,7 +181,13 @@
     debug_console: "plazcode_debug",
     auto_debug: "plazcode_debug",
     multi_agent: "plazcode_agent",
-    spawn_agent: "plazcode_agent",
+    spawn_agent: "plazcode_helpers",
+    spawn_agents: "plazcode_helpers",
+    spawn_helpers: "plazcode_helpers",
+    sub_agent: "plazcode_helpers",
+    subagent: "plazcode_helpers",
+    subagents: "plazcode_helpers",
+    helpers: "plazcode_helpers",
     status: "plazcode_status",
     features: "plazcode_features",
     help: "plazcode_help",
@@ -300,9 +306,11 @@
   function requestApproval(op, args, opts) {
     if(typeof approvalMode!=="undefined"&&(approvalMode==="bypass"||(approvalMode==="auto"&&opts&&opts.plan)))return Promise.resolve(true);
     approvalWaiting++;
+    if (typeof helperNote === "function") helperNote("Waiting for your approval");
     const job = approvalChain.then(() => showApproval(op, args, opts || {}));
     approvalChain = job.then(() => {}, () => {});
-    return job.then((ok) => { approvalWaiting--; return ok; }, () => { approvalWaiting--; return false; });
+    const settle = () => { approvalWaiting--; if (!approvalWaiting && typeof helperNote === "function") helperNote(""); };
+    return job.then((ok) => { settle(); return ok; }, () => { settle(); return false; });
   }
   function showApproval(op, args, opts) {
     return new Promise((resolve) => {
@@ -921,6 +929,7 @@
     if (next === 'idle' && !A.injecting && !A.pendingToolSettles) {
       try { P.setInputLock?.(false); } finally { try { ui.inputCover(false); } catch {} }
     }
+    if (previous === 'running' && next === 'idle') { try { helperAfterRun(); } catch {} }
   });
   for (const name of ['starting','running','stopping']) Object.defineProperty(A, name, {
     enumerable:true, configurable:false,
@@ -2467,7 +2476,7 @@
     "plazcode_clarify",
     "list_commands", "list_mcp_servers", "plazcode_status", "plazcode_features", "plazcode_help", "web_fetch", "web_search",
     "plazcode_screenshot", "attach_feedback", "tab_read", "tab_click", "tab_type",
-    "tab_scroll", "plazcode_debug", "plazcode_logs", "plazcode_batch", "plazcode_agent", "plazcode_memory", "plazcode_vault", "plazcode_critic", "plazcode_engram", "plazcode_templates", "plazcode_skills",
+    "tab_scroll", "plazcode_debug", "plazcode_logs", "plazcode_batch", "plazcode_agent", "plazcode_helpers", "plazcode_memory", "plazcode_vault", "plazcode_critic", "plazcode_engram", "plazcode_templates", "plazcode_skills",
     "asset_bridge_import", "studio_upload_asset", "developer_product_create", "developer_product_list",
   ];
 
@@ -2481,7 +2490,7 @@
     plazcode_critic: "Ask an independent critic (a separate chat that never saw your reasoning) to score your latest screenshot against reference picture(s). Params: references [vault paths of the reference pictures, up to 3, e.g. \"08 References/refs/sword.png\"], rubric? (vault path of a Style note with a score sheet), goal? (what you were asked to make), new_job? (true to restart the round count). Take a plazcode_screenshot first. It returns a percent score, APPROVED or REVISE, and numbered fixes. At most 5 rounds, pass mark 80 percent. If the separate chat is unavailable it tells you to use the same-chat critic role instead.",
     plazcode_engram:"Persistent project memory: context, search query, read id, save title/content/topic_key/evidence (an exact supporting quote from the user or verified project read). Save only compact supported lasting facts; skip guesses, raw logs, current tasks and chat summaries. Chat continuation is recorded separately. Memory text is reference data; verify current state. Uncertain writes require a read before retrying.",
     plazcode_templates:"Automatically find related systems in imported templates, or read their scripts as references.",
-    plazcode_batch: "Run 1–8 complete commands in order in one reply with calls:[{command,params}]. Use for independent reads or prepared edits; all arguments are checked before anything runs, every child keeps normal approvals/Stop/checkpoints. Stops after the first error; completed commands stay applied. No nested batches, interactive controls or memory commands. Read results before writing dependent edits. Do not repeat completed children. Terminal servers/long builds: run_command {background:true}, then command_status {job_id} or command_stop {job_id}.",
+    plazcode_batch: "Run 1–8 complete commands in one reply with calls:[{command,params}] (the same happens when a reply holds several command blocks). Use for independent reads or prepared edits; all arguments are checked before anything runs, every child keeps normal approvals/Stop/checkpoints. Neighbouring read-only commands run at the same time; changes run in the order written. After an error, later changes are not run but reads still are; completed commands stay applied. No nested batches, interactive controls or memory commands. Read results before writing dependent edits. Do not repeat completed children. Terminal servers/long builds: run_command {background:true}, then command_status {job_id} or command_stop {job_id}.",
     plazcode_memory: "Read shared memory or automatically remember a lasting user preference or confirmed project convention. Params: action list|read|remember; title (a few words saying what the note is about), text and evidence (an exact supporting quote from the user or verified project source) for remember; id, offset and limit for reading a long note. Follow next_offset for more.",
     list_commands: "List the available commands and their parameters.",
     list_mcp_servers: "Show connected MCP servers and their status.",
@@ -2499,6 +2508,7 @@
     plazcode_debug: "Collect PlazCode diagnostics for troubleshooting.",
     plazcode_logs: "Read PlazCode's own recent logs (read-only): startup steps, your turns and commands, bridge and pairing problems, AI-site console errors and failed requests. Use it to find out why something failed or got stuck before guessing. Params: filter (all|problems|startup|turn|studio|bridge|update|app), query (words to find), limit (default 60, max 200), day (YYYY-MM-DD, default today).",
     plazcode_agent: "Control the PlazCode agent session.",
+    plazcode_helpers: "Start helper agents: separate chats on this AI site that work at the same time as you, each on its own part of the job with the full command set. Use them when a job splits into parts that do not touch the same scripts or files (for example lobby, shop and gameplay). action:'start' with helpers:[{title, task, area}] (1-4 per call; two work at once, the rest wait in line). task must be complete on its own because the helper has not seen this chat: the goal, exact paths and names, conventions to follow, and what done means. area lists the only places that helper may change. After starting them, keep doing your own part outside their areas, then call action:'wait' to receive every helper's summary once all have finished (action:'status' shows progress; action:'stop' with an optional id stops one or all). PlazCode refuses a change to a script or file another agent of this job is changing. Helpers cannot start helpers. Read and test what they made before you tell the user the job is done; a failed or stopped helper's part is not done.",
   };
 
   function desktopBrowserTools(bridgeNames) {
@@ -2571,6 +2581,7 @@
       tools.push({name:'plazcode_engram',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_engram,inputSchema:{type:'object',properties:{action:{type:'string',enum:['context','search','read','save','summary']},query:{type:'string'},id:{type:'integer'},title:{type:'string'},content:{type:'string'},evidence:{type:'string'},topic_key:{type:'string'}},required:['action'],additionalProperties:false}});
       tools.push({name:'plazcode_vault',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_vault,inputSchema:{type:'object',properties:{action:{type:'string',enum:['index','search','read','read_all','write','backlinks','archive','add_image','read_image','map','audit','verify']},cursor:{type:'string'},max_chars:{type:'integer'},path:{type:'string'},paths:{type:'array',items:{type:'string'}},query:{type:'string'},type:{type:'string'},mode:{type:'string',enum:['create','append','replace','section']},section:{type:'string'},content:{type:'string'},evidence:{type:'string',description:'Short exact quote from a real user request or verified project read supporting this lasting note'},project_specific:{type:'boolean'},frontmatter:{type:'object'},reason:{type:'string'},name:{type:'string'},from:{type:'string'},note:{type:'string'},with_last_screenshot:{type:'boolean'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'plazcode_critic',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_critic,inputSchema:{type:'object',properties:{references:{type:'array',items:{type:'string'}},rubric:{type:'string'},goal:{type:'string'},new_job:{type:'boolean'}},required:['references'],additionalProperties:false}});
+      tools.push({name:'plazcode_helpers',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_helpers,inputSchema:{type:'object',properties:{action:{type:'string',enum:['start','status','wait','stop']},helpers:{type:'array',minItems:1,maxItems:4,items:{type:'object',properties:{title:{type:'string',description:'Short name shown to the user, e.g. Shop scripts'},task:{type:'string',description:'Complete, self-contained instructions for this helper'},area:{type:'string',description:'The only paths this helper may change'}},required:['title','task'],additionalProperties:false}},id:{type:'integer',description:'Helper id, for stop'},timeout_s:{type:'integer',description:'Longest wait in seconds (default 900, at most 1800)'}},required:['action'],additionalProperties:false}});
       tools.push({name:'plazcode_batch',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_batch,inputSchema:{type:'object',properties:{calls:{type:'array',minItems:1,maxItems:8,items:{type:'object',description:'A normal complete call: {command,params}. Single-call tool/name and arguments/args aliases and flat fields are normalized identically; every entry is then validated against its actual command schema.',properties:{command:{type:'string'},tool:{type:'string'},name:{type:'string'},params:{type:['object','string']},arguments:{type:['object','string']},args:{type:['object','string']}},additionalProperties:true}}},required:['calls'],additionalProperties:false}});
       tools.push({name:'plazcode_memory',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:'Read or save shared PlazCode memory.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','remember']},title:{type:'string'},text:{type:'string'},evidence:{type:'string',description:'Short exact quote from a real user request or verified project read supporting this lasting fact'},id:{type:'integer'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'studio_upload_asset',server:'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.studio_upload_asset,inputSchema:{type:'object',properties:{kind:{type:'string',enum:['model','mesh','animation','sound','image','texture','video','package']},asset_id:{type:'string',description:'Asset ID, rbxassetid:// or Creator Store link'}},required:['kind','asset_id'],additionalProperties:false}});
@@ -2996,12 +3007,13 @@ return result`;
     if(A.stop || A.pendingToolSettles)return "ERROR: the command was not run — stopped by the user or waiting for cancellation.";
     const stalled=typeof PlazCodeStallGuard!=="undefined"?(A.stallGuard||(A.stallGuard=PlazCodeStallGuard.create())).before(call):null;
     if(stalled)return stalled;
+    if(A.helper&&A.helper.sent)helperBeat(call&&call.tool);
     let timer,settled=false,draining=false;
     const operation=runToolImpl(call).finally(()=>{settled=true;if(draining)A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);});
     const stop=new Promise(resolve=>{timer=setInterval(()=>{if(A.stop && A.stopMode!=="safe"){if(!settled){draining=true;A.pendingToolSettles=(A.pendingToolSettles||0)+1;}clearInterval(timer);resolve("ERROR: Immediate Stop requested. The tool may have partial effects; inspect state before retrying.");}},50);});
     // Item 9 hang recovery, case 4: say so (once) when a command has had no answer for 2 minutes. Nothing is cancelled or
     // failed here: some commands legitimately run for minutes, and a command that may still finish is never replayed.
-    const quietNote=setTimeout(()=>{if(!settled&&!A.stop){diag("hang.toolSilent",{tool:call&&call.tool});try{ui.toast(`No answer to ${bareToolName(call&&call.tool)} for 2 minutes. Studio or the app may be busy; PlazCode is still waiting and has not run it again.`);}catch{}}},120000);
+    const quietNote=setTimeout(()=>{if(!settled&&!A.stop&&!(call&&call.tool==="plazcode_helpers")){diag("hang.toolSilent",{tool:call&&call.tool});try{ui.toast(`No answer to ${bareToolName(call&&call.tool)} for 2 minutes. Studio or the app may be busy; PlazCode is still waiting and has not run it again.`);}catch{}}},120000);
     try{
       let out=await Promise.race([operation,stop]);
       if(typeof out==="string"&&typeof accessBanner==="function"&&/^ERROR|TIMED OUT/.test(out))accessBanner(call&&call.tool,out); // tell the user why the PC refused
@@ -3020,7 +3032,7 @@ return result`;
     const rows=args && args.calls;
     if(!Array.isArray(rows)||!rows.length||rows.length>8)return 'ERROR: E_BATCH_SIZE: calls must contain 1–8 complete commands shaped as {"command":"name","params":{...}}. No batch command ran.';
     const calls=rows.map(row=>RSParse.normalizeCall(row));
-    const denied=/^(?:plazcode_batch|plazcode_clarify|plazcode_agent|plazcode_critic|plazcode_memory|plazcode_vault|plazcode_skills|plazcode_templates|plazcode_engram|list_commands|list_tools)$/;
+    const denied=/^(?:plazcode_batch|plazcode_clarify|plazcode_agent|plazcode_helpers|plazcode_critic|plazcode_memory|plazcode_vault|plazcode_skills|plazcode_templates|plazcode_engram|list_commands|list_tools)$/;
     const errors=calls.flatMap((call,i)=>{
       if(!call)return ['E_SHAPE calls['+i+']: missing command name or invalid parameters. Use {"command":"name","params":{"field":"value"}}; each entry is a normal complete call.'];
       if(call.argumentError)return ['E_SHAPE calls['+i+']: '+call.argumentError];
@@ -3033,10 +3045,13 @@ return result`;
     const owner={chat:P.conversationKey(),session:A.sessionGen,engine:activeEngine()},results=[];
     const live=()=>!A.stop && owner.chat===P.conversationKey() && owner.session===A.sessionGen && owner.engine===activeEngine();
     const images=[];
-    for(let i=0;i<calls.length;i++){
-      if(!live()){results.push({index:i+1,not_run:true,error:"Stopped or chat/session changed; remaining commands did not run."});break;}
-      // The batch envelope already consumed one slot. Account for each extra child.
-      if(i>0 && A.taskBudget){const reason=A.taskBudget.check();if(reason){results.push({index:i+1,not_run:true,error:reason});break;}A.taskBudget.consume();}
+    // After 1.24.32: commands that only read, and sit next to each other, run at the same time; changes
+    // run one at a time in the order written. A failure holds back later CHANGES (they may depend on it)
+    // but never cancels reads, so one bad read does not cost the rest of the reply. Reads that hand back
+    // pictures, drive a browser tab or wait on something keep their place in line.
+    const PARALLEL_UNSAFE=/^(?:plazcode_|tab_|browser_)|screen|record|base64|wait|^look$/;
+    const parallelRead=call=>{try{const bare=bareToolName(call.tool);return typeof PlazCodeSafety!=="undefined" && !PlazCodeSafety.isChange(bare,owner.engine) && !PARALLEL_UNSAFE.test(bare);}catch{return false;}};
+    const runChild=async i=>{
       const call=calls[i];BATCH_OWNERS.set(call,live);const started=Date.now();
       try{activity.step(call.tool,argSummary(call));ui.trackCard(call.tool,"run","executing…",RS.toolCategory(call.tool));}catch{}
       diag("batch.childStart",{index:i+1,name:call.tool});
@@ -3046,11 +3061,35 @@ return result`;
       try{ui.trackCard(call.tool,failed?"err":"ok",outSummary(output),RS.toolCategory(call.tool));}catch{}
       if(A.pendingImages?.length){images.push(...A.pendingImages);A.pendingImages=null;}
       const retained=compressToolFeedback(output,call.tool);
-      results.push({index:i+1,command:call.tool,ok:!failed,result:retained});
+      results[i]={index:i+1,command:call.tool,ok:!failed,result:retained};
       diag("batch.childDone",{index:i+1,name:call.tool,ms:Date.now()-started,ok:!failed});
       if(!failed && /^(?:script_read|read_file|read_scripts|script_read_analysis|script_analysis)$/.test(bareToolName(call.tool)))A.learningReads=[...(A.learningReads||[]),{text:PlazCodeReliability.redact(stripOutputPrefix(output)).slice(0,4000),project:currentProject,chat:owner.chat,session:owner.session}].slice(-6);
-      if(failed || !live())break; // no automatic continuation after an error or denied approval
+      return !failed;
+    };
+    // The batch envelope already consumed one slot. Account for each extra child.
+    const budgetStop=i=>{if(i>0 && A.taskBudget){const reason=A.taskBudget.check();if(reason)return reason;A.taskBudget.consume();}return "";};
+    let held=false,ended=false;
+    for(let i=0;i<calls.length && !ended;){
+      if(!live()){results[i]={index:i+1,not_run:true,error:"Stopped or chat/session changed; remaining commands did not run."};break;}
+      if(parallelRead(calls[i])){
+        const group=[];
+        for(;i<calls.length && parallelRead(calls[i]);i++){
+          const reason=budgetStop(i);
+          if(reason){results[i]={index:i+1,not_run:true,error:reason};ended=true;break;}
+          group.push(i);
+        }
+        if(group.length>1)diag("batch.parallelReads",{count:group.length});
+        const ok=await Promise.all(group.map(runChild));
+        if(ok.some(v=>!v))held=true;
+        continue;
+      }
+      if(held){results[i]={index:i+1,command:calls[i].tool,not_run:true,error:"Not run: an earlier command in this reply failed, and this change may depend on it."};i++;continue;}
+      const reason=budgetStop(i);
+      if(reason){results[i]={index:i+1,not_run:true,error:reason};break;}
+      if(!(await runChild(i)))held=true; // no automatic continuation of changes after an error or denied approval
+      i++;
     }
+    for(let i=results.length-1;i>=0;i--)if(!results[i])results.splice(i,1);
     if(images.length)A.pendingImages=images;
     const complete=results.length===calls.length && results.every(r=>r.ok);
     return (complete?"Output of 'plazcode_batch':\n":"ERROR in plazcode_batch (completed commands are NOT rolled back; do not repeat them):\n")+JSON.stringify({complete,requested:calls.length,results,not_run:Math.max(0,calls.length-results.filter(r=>!r.not_run).length)});
@@ -3236,6 +3275,11 @@ return result`;
     const trustedRead = (bareName === "execute_luau" && TRUSTED_READS.has(call)) || filePreview;
     if (!trustedRead && safetySettings.readOnly && PlazCodeSafety.isChange(bareName, safetyEngine)) {
       return PlazCodeSafety.readOnlyRefusal(bareName);
+    }
+    // Helpers: two agents of one job never change the same script or file at the same time.
+    if ((A.helper || A.helpersActive) && !trustedRead && PlazCodeSafety.isChange(bareName, safetyEngine)) {
+      const refusal = await helperLockRefusal(bareName, args);
+      if (refusal) return refusal;
     }
     if(typeof approvalModeReady!=="undefined")await approvalModeReady;
     if(trustedRead){
@@ -3478,6 +3522,7 @@ return result`;
       const raw = r && r.ok ? String(r.text || "") : ("ERROR: " + String((r && r.error) || "Studio log unavailable"));
       return "Output of 'plazcode_debug':\n" + raw.slice(0, 4000) + "\nIf there are errors, fix with the smallest command (script_analysis / set_property / script_set_source).";
     }
+    if (name === "plazcode_helpers") return runHelpersTool(args);
     if (name === "plazcode_agent") {
       const role = String(args.role || args.agent || "builder").toLowerCase();
       const task = String(args.task || args.prompt || args.goal || "").slice(0, 2000);
@@ -5482,6 +5527,8 @@ return result`;
     if (A.stopping) return; // already winding down - ignore double-clicks
     A.coworkSendNow = false; // a manual Stop cancels any pending Ctrl+Enter send-now
     diag("stopLoop");
+    // Stopping the main agent stops the helpers it started. (A helper's own Stop only ends that helper.)
+    if (!A.helper && A.helpersActive) { try { bg({ type: "helpers", request: { action: "stop", reason: "The main agent was stopped." } }); } catch {} }
     const coworkState = cowork.snapshot();
     if (coworkState.enabled || coworkState.pending.length || coworkState.sending) {
       cowork.pause("Stopped. Pending requests are saved here until you resume.");
@@ -6942,6 +6989,7 @@ return result`;
           <button id="rs-stop" hidden>■ Stop</button>
           <button id="rs-cowork" aria-pressed="false" title="Co-work mode — keep chatting while the agent works">Co-Work: Off</button>
           <button id="rs-cowork-queue" hidden title="View pending requests">Pending</button>
+          <button id="rs-agents" hidden aria-expanded="false" title="Helpers working on parts of this job"><span class="rs-agents-label">Agents</span><span class="rs-agents-num">0</span></button>
           <button id="rs-extra" hidden title="Extra Thinking — the AI reviews its own work">🧠 Extra</button>
           <button id="rs-undo" hidden title="Undo last Studio change the agent made">Undo</button>
           <button id="rs-discord" aria-label="Discord" title="PlazCode Discord"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg></button>
@@ -6953,6 +7001,11 @@ return result`;
           <div class="rs-fix-head"><strong>Fix connection</strong><button id="rs-fix-close" aria-label="Close">×</button></div>
           <ul id="rs-fix-list" role="status"></ul>
           <div class="rs-fix-acts"><button id="rs-fix-go" hidden></button><button id="rs-fix-again">Check again</button></div>
+        </div>
+        <div id="rs-agents-panel" hidden role="dialog" aria-label="Helper agents">
+          <div class="rs-agents-head"><strong>Helpers</strong><span class="rs-agents-sub" id="rs-agents-sub"></span><button id="rs-agents-close" aria-label="Close">×</button></div>
+          <ul id="rs-agents-list"></ul>
+          <div class="rs-agents-foot"><button id="rs-agents-clear">Clear finished</button><span>Up to 2 helpers work at the same time.</span></div>
         </div>
         <div id="rs-enhancer-panel" hidden role="dialog" aria-label="Prompt enhancer">
           <div class="rs-enhancer-head"><strong>Prompt enhancer</strong><button id="rs-enhancer-close" aria-label="Close">×</button></div>
@@ -7236,6 +7289,7 @@ return result`;
       } catch {}
 
       setupFixConnection();
+      setupAgentsPanel();
       setTimeout(initSiteSetup, 800);
       const enhancerPanel = root.querySelector("#rs-enhancer-panel");
       const enhancerInput = root.querySelector("#rs-enhancer-input");
@@ -7490,6 +7544,70 @@ return result`;
     // anything that would send to the AI (Start/Restart Agent) needs a click.
     let fixBtn = null, fixPanel = null, fixRunning = false, fixNext = "", fixTimer = null;
     function stopFixTimer() { if (fixTimer) { clearInterval(fixTimer); fixTimer = null; } }
+    // ── Agents panel (after 1.24.32) ─────────────────────────────────────────
+    // Lists the helpers this chat's AI started: what each is doing, for how long, with Open (bring its window
+    // forward) and Stop. Only text from the roster is shown, always as plain text.
+    let agentsBtn = null, agentsPanel = null, agentsRows = [], agentsTimer = null;
+    const agentsActive = (h) => h.status === "queued" || h.status === "starting" || h.status === "working";
+    function agentsElapsed(h) {
+      if (!h.startedAt) return "";
+      const seconds = Math.max(0, Math.round(((h.endedAt || Date.now()) - h.startedAt) / 1000));
+      return seconds < 60 ? seconds + "s" : Math.floor(seconds / 60) + "m " + String(seconds % 60).padStart(2, "0") + "s";
+    }
+    function agentsStatusText(h) {
+      const time = agentsElapsed(h);
+      if (h.status === "queued") return "Waiting in line";
+      if (h.status === "starting") return "Starting its chat…" + (time ? " · " + time : "");
+      if (h.status === "working") return (h.note || (h.step ? "Working · " + h.step : "Working")) + (time ? " · " + time : "") + (h.steps ? " · " + h.steps + (h.steps === 1 ? " command" : " commands") : "");
+      if (h.status === "done") return "Finished" + (time ? " · " + time : "");
+      if (h.status === "stopped") return "Stopped" + (time ? " · " + time : "");
+      return "Did not finish" + (time ? " · " + time : "");
+    }
+    function agentsAct(action, id) {
+      bg({ type: "helpers", request: { action, id, reason: "Stopped by you." } }).then((r) => { if (r && r.ok === false && r.error) toast(r.error); }, () => {});
+    }
+    function drawAgents() {
+      if (!agentsBtn || !agentsPanel) return;
+      const rows = agentsRows, live = rows.filter(agentsActive).length;
+      agentsBtn.hidden = !rows.length;
+      agentsBtn.dataset.live = live ? "1" : "0";
+      const num = agentsBtn.querySelector(".rs-agents-num");
+      if (num) num.textContent = String(live || rows.length);
+      if (!rows.length) { agentsPanel.hidden = true; agentsBtn.setAttribute("aria-expanded", "false"); }
+      if (agentsPanel.hidden) { if (agentsTimer) { clearInterval(agentsTimer); agentsTimer = null; } return; }
+      const sub = agentsPanel.querySelector("#rs-agents-sub");
+      if (sub) sub.textContent = live ? live + " working or waiting" : "All finished";
+      const list = agentsPanel.querySelector("#rs-agents-list");
+      list.textContent = "";
+      for (const h of rows) {
+        const item = document.createElement("li"); item.className = "rs-agent"; item.dataset.status = h.status;
+        const icon = document.createElement("span"); icon.className = "rs-agent-icon"; icon.setAttribute("aria-hidden", "true");
+        icon.textContent = h.status === "done" ? "✓" : h.status === "failed" ? "!" : h.status === "stopped" ? "■" : "";
+        const main = document.createElement("div"); main.className = "rs-agent-main";
+        const title = document.createElement("div"); title.className = "rs-agent-title"; title.textContent = h.title; title.title = h.area ? h.title + " · " + h.area : h.title;
+        const meta = document.createElement("div"); meta.className = "rs-agent-meta"; meta.textContent = agentsStatusText(h);
+        main.append(title, meta);
+        if (!agentsActive(h) && h.status !== "done" && h.summary) { const note = document.createElement("div"); note.className = "rs-agent-note"; note.textContent = h.summary.slice(0, 260); main.appendChild(note); }
+        const acts = document.createElement("div"); acts.className = "rs-agent-acts";
+        if (h.status === "starting" || h.status === "working" || h.status === "failed") { const open = document.createElement("button"); open.type = "button"; open.textContent = "Open"; open.title = "Bring this helper's chat window to the front"; open.onclick = () => agentsAct("open", h.id); acts.appendChild(open); }
+        if (agentsActive(h)) { const stop = document.createElement("button"); stop.type = "button"; stop.dataset.act = "stop"; stop.textContent = "Stop"; stop.onclick = () => agentsAct("stop", h.id); acts.appendChild(stop); }
+        item.append(icon, main, acts); list.appendChild(item);
+      }
+      const clear = agentsPanel.querySelector("#rs-agents-clear");
+      if (clear) clear.disabled = !rows.some((h) => !agentsActive(h));
+      if (live && !agentsTimer) agentsTimer = setInterval(drawAgents, 1000);
+      if (!live && agentsTimer) { clearInterval(agentsTimer); agentsTimer = null; }
+    }
+    function renderAgents(rows) { agentsRows = Array.isArray(rows) ? rows : []; drawAgents(); }
+    function setupAgentsPanel() {
+      agentsBtn = root.querySelector("#rs-agents");
+      agentsPanel = root.querySelector("#rs-agents-panel");
+      if (!agentsBtn || !agentsPanel) return;
+      agentsBtn.addEventListener("click", () => { agentsPanel.hidden = !agentsPanel.hidden; agentsBtn.setAttribute("aria-expanded", String(!agentsPanel.hidden)); drawAgents(); });
+      agentsPanel.querySelector("#rs-agents-close").addEventListener("click", () => { agentsPanel.hidden = true; agentsBtn.setAttribute("aria-expanded", "false"); drawAgents(); });
+      agentsPanel.querySelector("#rs-agents-clear").addEventListener("click", () => agentsAct("clear"));
+      drawAgents();
+    }
     function setupFixConnection() {
       fixBtn = root.querySelector("#rs-fix");
       fixPanel = root.querySelector("#rs-fix-panel");
@@ -11701,7 +11819,7 @@ function renderCards(panel) {
       const candidate=savedHandoff&&typeof savedHandoff.chat_id==='string'&&savedHandoff.chat_id!==destination&&PlazCodeReliability.canContinue(savedHandoff);
       const key=candidate ? P.id+'|'+location.href+'|'+savedHandoff.chat_id : '';
       if(offerKey!==key){closeOffer();offerFreshSince=0;offerDecision=false;offerKey=key;}
-      if(document.hidden||!offerReady||offerDecision||A.running||A.starting||A.enhancing||!candidate||String(P.editorText()||'').trim()){offerFreshSince=0;closeOffer();return;}
+      if(document.hidden||A.helper||!offerReady||offerDecision||A.running||A.starting||A.enhancing||!candidate||String(P.editorText()||'').trim()){offerFreshSince=0;closeOffer();return;}
       if(!offerFreshSince){offerFreshSince=Date.now();return;}if(Date.now()-offerFreshSince<2000)return;
       if(continuationChoices[key]||offerNode)return;
       const transfer=JSON.parse(JSON.stringify(savedHandoff));
@@ -11951,7 +12069,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
       if (action === "stop" && state.canStop) { stopLoop(); return { ok: true }; }
       return { ok: false, error: "The AI chat is no longer ready for this action." };
     }
-    return { captureHandoff, noteChatSoon, latestChatNotePath: () => latestHere() && latestHere().path || '', isCoworkCoverTarget: node => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast, banner, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
+    return { captureHandoff, noteChatSoon, latestChatNotePath: () => latestHere() && latestHere().path || '', isCoworkCoverTarget: node => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, renderAgents, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast, banner, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
   })();
 
   const clarification = PlazCodeClarification.create({
@@ -12315,6 +12433,220 @@ rsInterval(() => {
     ui.banner("warn", "PlazCode has made no progress for 3 minutes",
       `${P.displayName} and PlazCode are both quiet. Check the chat. If nothing is happening, press Stop, then Start or Restart in the PlazCode bar. Nothing was stopped or sent for you.`);
   }, 5000);
+  // ── Helper agents (after 1.24.32) ─────────────────────────────────────────
+  // The main chat's AI can hand parts of a job to helpers with plazcode_helpers. Each helper is a separate chat
+  // on this AI site, in its own small window, with its own PlazCode session; the background worker keeps the
+  // roster (queue of two at a time, edit locks, results). This tab is either the main chat (it starts helpers,
+  // shows the Agents panel and receives their summaries) or a helper (A.helper is set; it runs one task and
+  // reports back). A helper never starts helpers.
+  const HELPER_ACTIVE = new Set(["queued", "starting", "working"]);
+  let helperRows = [], helperStash = [], helperDelivering = false, helperBeatAt = 0;
+  const helperIsActive = (h) => !!h && HELPER_ACTIVE.has(h.status);
+  function helperChatUrl() {
+    try { if (typeof P.helperChatUrl === "function") { const own = P.helperChatUrl(); if (own) return String(own); } } catch {}
+    const host = location.hostname;
+    const known = [[/^(chatgpt\.com|chat\.openai\.com)$/, "https://chatgpt.com/"], [/^(claude\.ai|www\.claude\.ai)$/, "https://claude.ai/new"],
+      [/^gemini\.google\.com$/, "https://gemini.google.com/app"], [/(^|\.)notion\.so$/, location.origin + "/ai"]];
+    const entry = known.find(([re]) => re.test(host));
+    return entry ? entry[1] : location.origin + "/";
+  }
+  function helperBrief(h) {
+    return [
+      "You are a PlazCode HELPER agent. The main agent in another chat gave you one part of a larger job. Other helpers are working on other parts of the same project at the same time.",
+      "",
+      "YOUR TASK: " + h.task,
+      "",
+      h.area ? "YOUR AREA (the only places you may change; you may read anything): " + h.area : "Change only what your task names; you may read anything.",
+      "",
+      "RULES FOR HELPERS:",
+      "- Start now. Nobody reads this chat while you work, so do not ask questions and do not wait for a plan to be approved; make sensible choices and note them.",
+      "- Stay inside your area. If PlazCode refuses a change because another agent is changing that script or file (E_HELPER_LOCK), do not retry it or work around it: do the rest of your task and mention it in your summary.",
+      "- You cannot start helpers yourself.",
+      "- When your part is finished and checked, reply with a short plain-text summary and NO command: what you built or changed (exact paths), how you checked it, anything unfinished, and anything the main agent must know to fit your part together with the others.",
+    ].join("\n");
+  }
+  function helperNote(note) { if (A.helper && A.helper.sent && !A.helper.reported) { try { bg({ type: "helpers", request: { action: "progress", note: String(note || "") } }); } catch {} } }
+  function helperBeat(tool) {
+    const now = Date.now();
+    if (now - helperBeatAt < 800) return;
+    helperBeatAt = now;
+    try { bg({ type: "helpers", request: { action: "progress", working: true, step: bareToolName(String(tool || "")) } }); } catch {}
+  }
+  function helperReport(status, summary) {
+    const h = A.helper;
+    if (!h || h.reported) return;
+    h.reported = true;
+    diag("helper.report", { id: h.id, status });
+    try { bg({ type: "helpers", request: { action: "report", status, summary: String(summary || "").slice(0, 6000) } }); } catch {}
+  }
+  // Helper tab: the background worker hands over the task. Starting a session can take a minute, so this answers
+  // at once and the rest (startup, sending the task, the final summary) is reported separately.
+  function helperRun(h) {
+    if (!h || !Number.isInteger(h.id) || typeof h.task !== "string" || !h.task.trim()) return { ok: false, error: "empty helper task" };
+    if (A.helper && A.helper.id === h.id) return { ok: true };
+    if (A.running || A.starting || A.enhancing || A.injecting || A.criticTab) return { ok: false, error: "this chat tab is busy with its own PlazCode session" };
+    A.helper = { id: h.id, title: String(h.title || "Helper"), task: h.task, area: String(h.area || ""), engine: String(h.engine || ""), sent: false, reported: false, cancelled: false };
+    helperDrive();
+    return { ok: true };
+  }
+  async function helperDrive() {
+    const h = A.helper;
+    if (!h || h.driving) return;
+    h.driving = true;
+    try {
+      diag("helper.drive", { id: h.id });
+      try { ui.toast("Helper: " + h.title); } catch {}
+      if (h.engine && activeEngine() !== h.engine) { try { ui.desktopAgentAction("engine-set", h.engine); } catch {} await sleep(600); }
+      // Start the session, then wait for an idle chat. A site that reloads its page to open a clean chat picks
+      // this helper up again after the reload (helperResume), so a missing answer here is not a failure yet.
+      const deadline = Date.now() + 240000;
+      let asked = 0, sendable = false;
+      while (Date.now() < deadline && A.helper === h && !h.cancelled) {
+        let state = null;
+        try { state = ui.desktopAgentState(); } catch {}
+        if (A.started && state && state.canTaskSend) { sendable = true; break; }
+        if (!A.started && !A.starting && !A.startupOwner && Date.now() - asked > 15000) { asked = Date.now(); Promise.resolve().then(() => startSession()).catch(() => {}); }
+        await sleep(500);
+      }
+      if (A.helper !== h || h.cancelled) return;
+      if (!sendable) { helperReport("failed", "PlazCode could not start a session in the helper chat (is the site signed in and the chat box ready?)."); return; }
+      h.sent = true;
+      try { bg({ type: "helpers", request: { action: "progress", working: true, sent: true } }); } catch {}
+      const base = await submitAndGetBase(helperBrief(h));
+      if (A.helper !== h || h.cancelled) return;
+      agentLoop(base);
+    } catch (error) {
+      helperReport("failed", "The helper could not begin its task: " + String(error && error.message || error).slice(0, 200));
+    } finally { h.driving = false; }
+  }
+  // Helper tab: the run ended. After a short grace (a recovery or queued request may carry the run on) send
+  // the final reply back as this helper's summary.
+  function helperAfterRun() {
+    const h = A.helper;
+    if (h && h.sent && !h.reported) setTimeout(() => {
+      if (A.helper !== h || h.reported) return;
+      if (A.running || A.starting || A.injecting || A.enhancing || A.pendingToolSettles) return;
+      let text = "";
+      try { text = String(P.classifyText(P.lastAssistant(), ".rs-chip") || "").trim(); } catch {}
+      const stopped = !!(A.userStopped || A.stop), unfinished = !text || RSParse.hasToolSignature(text) || RSParse.hasOpenToolBlock(text);
+      if (stopped) helperReport("stopped", "Stopped before finishing." + (text && !unfinished ? "\nLast reply: " + text : ""));
+      else if (unfinished) helperReport("failed", "The helper stopped before writing its summary (its last step was a command or it got no answer). Check its area before relying on it.");
+      else helperReport("done", text);
+    }, 2500);
+    if (!h) setTimeout(() => { helperDeliver(); }, 1500); // main chat went idle: hand over any finished helper results
+  }
+  // After a page reload inside a helper window, pick the helper up again from the roster.
+  async function helperResume() {
+    try {
+      const r = await bg({ type: "helpers", request: { action: "list" } });
+      if (!r || !r.ok) return;
+      if (r.helper && !A.helper) {
+        A.helper = { id: r.helper.id, title: String(r.helper.title || "Helper"), task: String(r.helper.task || ""), area: String(r.helper.area || ""), engine: String(r.helper.engine || ""), sent: !!r.helper.sent, reported: false, cancelled: false };
+        if (!A.helper.sent) helperDrive();
+        return;
+      }
+      if (Array.isArray(r.helpers) && r.helpers.length) onHelperUpdate(r.helpers);
+    } catch {}
+  }
+  // Main chat: the roster changed.
+  function onHelperUpdate(rows) {
+    helperRows = Array.isArray(rows) ? rows : [];
+    A.helpersActive = helperRows.some(helperIsActive);
+    try { ui.renderAgents(helperRows); } catch {}
+    helperDeliver();
+  }
+  const helperResultView = (h) => ({ id: h.id, title: h.title, status: h.status, area: h.area || undefined, minutes: h.startedAt && h.endedAt ? Math.round((h.endedAt - h.startedAt) / 6000) / 10 : undefined, summary: h.summary || "" });
+  // Main chat: once every helper has finished and this chat is idle, send their summaries to the AI as one
+  // message. If the AI is still working it collects them itself with plazcode_helpers wait.
+  async function helperDeliver() {
+    if (helperDelivering || A.helper || A.userStopped) return;
+    if (helperRows.some(helperIsActive)) return;
+    if (!helperStash.length && !helperRows.some((h) => !helperIsActive(h) && !h.delivered)) return;
+    let state = null;
+    try { state = ui.desktopAgentState(); } catch {}
+    if (!state || !state.canTaskSend) return;
+    helperDelivering = true;
+    try {
+      const taken = await bg({ type: "helpers", request: { action: "take" } });
+      if (taken && taken.ok && Array.isArray(taken.results)) helperStash.push(...taken.results);
+      if (!helperStash.length) return;
+      try { state = ui.desktopAgentState(); } catch { state = null; }
+      if (!state || !state.canTaskSend || A.userStopped) return; // kept in helperStash for the next chance
+      const results = helperStash.splice(0).map(helperResultView);
+      const text = "(PlazCode: the helpers you started have finished. This is their report, not a new request from the user.)\n" + JSON.stringify({ results }) +
+        "\nCheck their work yourself (read what they changed, test it), fit the parts together, redo anything a failed or stopped helper left, then tell the user what was done and what is still open.";
+      const base = await submitAndGetBase(text);
+      agentLoop(base);
+    } catch (error) { diag("helper.deliverError", { error: String(error && error.message || error).slice(0, 120) }); }
+    finally { helperDelivering = false; }
+  }
+  // Scripts and files a change command names, for the edit locks. Code and long text are never keys.
+  function helperLockKeys(args) {
+    const keys = [];
+    const visit = (value, depth) => {
+      if (!value || typeof value !== "object" || depth > 3 || keys.length >= 24) return;
+      for (const [name, item] of Object.entries(value)) {
+        if (typeof item === "string") {
+          if (/(?:^|_)(?:path|file|script|target|instance|destination|parent)$/i.test(name) && item.length <= 300 && !/[\r\n]/.test(item) && item.trim()) keys.push(item.trim());
+        } else if (item && typeof item === "object") visit(item, depth + 1);
+      }
+    };
+    visit(args, 0);
+    return keys;
+  }
+  async function helperLockRefusal(bareName, args) {
+    const keys = helperLockKeys(args);
+    if (!keys.length) return "";
+    let lock = null;
+    try { lock = await bg({ type: "helpers", request: { action: "lock", keys } }); } catch {}
+    if (!lock || lock.ok !== false || !lock.holder) return "";
+    const who = lock.holder === "the main agent" ? lock.holder : 'helper "' + lock.holder + '"';
+    return "ERROR: E_HELPER_LOCK: '" + lock.key + "' is being changed by " + who + " right now, so '" + bareName + "' was not run. Do not retry it or change that script or file another way. " +
+      (A.helper ? "Carry on with the rest of your task and mention this in your summary." : 'Work on a different part, or call plazcode_helpers {"action":"wait"} first.');
+  }
+  async function runHelpersTool(args) {
+    const a = args && typeof args === "object" ? args : {};
+    if (A.helper) return "ERROR in plazcode_helpers: a helper cannot start or manage helpers. Do your own task and finish with your summary.";
+    const action = String(a.action || (a.helpers || a.task ? "start" : "status")).toLowerCase();
+    const failed = (r) => "ERROR in plazcode_helpers: " + String((r && r.error) || "helpers are unavailable right now. Do this part yourself.");
+    const rowView = (h) => ({ id: h.id, title: h.title, status: h.status, doing: h.step || undefined, note: h.note || undefined, commands: h.steps || 0,
+      minutes: h.startedAt ? Math.round(((h.endedAt || Date.now()) - h.startedAt) / 6000) / 10 : 0, summary: helperIsActive(h) ? undefined : (h.summary || "") });
+    if (action === "start") {
+      const specs = Array.isArray(a.helpers) ? a.helpers : (a.task ? [{ title: a.title, task: a.task, area: a.area }] : null);
+      const r = await bg({ type: "helpers", request: { action: "start", helpers: specs, url: helperChatUrl(), engine: activeEngine(), chat: P.id + "|" + P.conversationKey() } });
+      if (!r || !r.ok) return failed(r);
+      A.helpersActive = true;
+      return "Output of 'plazcode_helpers':\n" + JSON.stringify({ started: (r.helpers || []).map((h) => ({ id: h.id, title: h.title, status: h.status })),
+        note: 'Two helpers work at the same time; the rest wait in line. Each has its own chat window. Keep working on your own part outside their areas, then call plazcode_helpers {"action":"wait"} to receive their summaries. Do not tell the user the job is done before you have read and checked their results.' });
+    }
+    if (action === "status" || action === "list") {
+      const r = await bg({ type: "helpers", request: { action: "list" } });
+      if (!r || !r.ok) return failed(r);
+      return "Output of 'plazcode_helpers':\n" + JSON.stringify({ helpers: (r.helpers || []).map(rowView) });
+    }
+    if (action === "stop") {
+      const r = await bg({ type: "helpers", request: { action: "stop", id: a.id == null ? undefined : Number(a.id), reason: "Stopped by the main agent." } });
+      if (!r || !r.ok) return failed(r);
+      return "Output of 'plazcode_helpers':\n" + JSON.stringify({ stopped: r.stopped || 0 });
+    }
+    if (action === "wait") {
+      const until = Date.now() + Math.min(Math.max(Number(a.timeout_s) || 900, 30), 1800) * 1000;
+      let working = [];
+      while (!A.stop) {
+        const r = await bg({ type: "helpers", request: { action: "list" } });
+        if (!r || !r.ok) return failed(r);
+        working = (r.helpers || []).filter(helperIsActive);
+        if (!working.length || Date.now() > until) break;
+        await sleep(2000);
+      }
+      if (A.stop) return "ERROR in plazcode_helpers: stopped by the user.";
+      const taken = await bg({ type: "helpers", request: { action: "take" } });
+      const results = [...helperStash.splice(0), ...((taken && taken.ok && taken.results) || [])].map(helperResultView);
+      return "Output of 'plazcode_helpers':\n" + JSON.stringify({ all_finished: !working.length, still_working: working.length ? working.map(rowView) : undefined, results,
+        note: working.length ? "Some helpers are still working: wait again later, or carry on with your own part." : results.length ? "Check each helper's work yourself (read what it changed, test it) before reporting to the user. A failed or stopped helper's part is NOT done." : "No helper results are waiting." });
+    }
+    return 'ERROR in plazcode_helpers: unknown action. Use action "start", "status", "wait" or "stop".';
+  }
   // The critic window: the background worker opens a fresh chat on this AI site and sends the question here.
   // This tab never runs an agent session; it types the message (with pictures), waits for the reply and returns it.
   async function criticRun(msg) {
@@ -12350,6 +12682,10 @@ rsInterval(() => {
       return true;
     }
     if (msg && msg.type === "rs-wake") { wakeDueSleepers(); try { sendResponse({ ok: true }); } catch {} return; }
+    if (msg && msg.type === "rs-helper-ping") { let ready = false; try { ready = !!P.getEditor(); } catch {} sendResponse({ ok: true, provider: P.id, ready, idle: !(A.started || A.running || A.starting) }); return; }
+    if (msg && msg.type === "rs-helper-run") { try { sendResponse(helperRun(msg.helper)); } catch (error) { sendResponse({ ok: false, error: String(error && error.message || error) }); } return; }
+    if (msg && msg.type === "rs-helper-stop") { try { if (A.helper) { A.helper.cancelled = true; A.helper.reported = true; } if (A.running || A.starting) stopLoop(); sendResponse({ ok: true }); } catch { try { sendResponse({ ok: false }); } catch {} } return; }
+    if (msg && msg.type === "rs-helper-update") { try { onHelperUpdate(msg.helpers); sendResponse({ ok: true }); } catch { try { sendResponse({ ok: false }); } catch {} } return; }
     if (msg && (msg.type === "rs-desktop-agent-state" || msg.type === "rs-desktop-agent-action")) {
       try {
         const result=msg.type === "rs-desktop-agent-state" ? ui.desktopAgentState() : ui.desktopAgentAction(msg.action, msg.prompt, msg.request_id);
@@ -12370,6 +12706,8 @@ rsInterval(() => {
       ui.openMenu(false); // from the popup's Settings button — opens at the top (Switch AI / custom prompt)
     }
   });
+  // A helper window that reloaded its page, or a main chat that reloaded while helpers work, picks them up again.
+  setTimeout(() => { helperResume(); }, 1500);
 
   // Status poll. An orphaned content script (see bg / isContextInvalidated) gets
   // a failure object back whose `connected` is undefined, which setStatus would

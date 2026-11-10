@@ -115,8 +115,8 @@
     {
       name: "rules", engines: [R], aliases: ["safety", "core", "core-rules", "rule"],
       title: "the command, safety and finishing rules in full",
-      must: ["NEVER HALLUCINATE a Studio", "PERFECT CREATION", "UNDERSTAND THE REQUEST", "NEVER DELETE", "NEVER CLAIM THE BRIDGE", "ONE command block per reply", "YOU CAN ACT DIRECTLY IN THE USER'S PROJECT"],
-      build: s => join(cut(s.full(), "- ONE command block per reply", "- execute_luau: wrap code in BOTH markers"), cut(s.full(), "- BUILD UI/OBJECTS FIRST", "━━━ PROJECT MEMORY"), cut(s.full(), "━━━ YOU CAN ACT DIRECTLY", "STUDIO SKILLS & VIRTUAL TOOLS")),
+      must: ["NEVER HALLUCINATE a Studio", "PERFECT CREATION", "UNDERSTAND THE REQUEST", "NEVER DELETE", "NEVER CLAIM THE BRIDGE", "SEVERAL COMMANDS PER REPLY", "YOU CAN ACT DIRECTLY IN THE USER'S PROJECT"],
+      build: s => join(cut(s.full(), "- SEVERAL COMMANDS PER REPLY", "- execute_luau: wrap code in BOTH markers"), cut(s.full(), "- BUILD UI/OBJECTS FIRST", "━━━ PROJECT MEMORY"), cut(s.full(), "━━━ YOU CAN ACT DIRECTLY", "STUDIO SKILLS & VIRTUAL TOOLS")),
     },
     {
       name: "play-mode", engines: [R], aliases: ["play", "playtest", "execute-luau", "luau-markers"],
@@ -146,7 +146,7 @@
       name: "motion", engines: [R], aliases: ["vfx", "motion-vfx", "effects", "fx-rules"],
       title: "wiring animation IDs, finding and copying existing VFX",
       must: ["MOTION/VFX RULES", "motion_scan", "motion_bundle_copy", "motion_integrate"],
-      build: s => cut(s.full(), "PlazCode MOTION/VFX RULES:", "- ONE command block per reply"),
+      build: s => cut(s.full(), "PlazCode MOTION/VFX RULES:", "- SEVERAL COMMANDS PER REPLY"),
     },
     {
       name: "studio-skills", engines: [R], aliases: ["skills", "studio", "virtual-tools", "production-tools"],
@@ -370,7 +370,7 @@
       "PlazCode is a browser extension running in this page. It reads your replies, runs any command you write against the user's live Roblox Studio through a local bridge, and sends the real result back as the next message (success or ERROR). " +
         `This site's own tools cannot reach Studio: commands are plain text in your normal reply, the only channel that works. Internal reasoning is fine. Do not use ${site}'s own features unless the user asks.`,
       "",
-      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. ONE command block per reply; Batch prepared commands with plazcode_batch {calls:[{command,params}]} (max 8); stop on errors. Wait for results. Send the command or final answer; do not only announce it.",
+      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. SEND SEVERAL COMMANDS PER REPLY: up to 8 independent ones, one fenced block each; reads run together, changes in order. Wait only for needed results. Send the command or final answer; do not only announce it.",
       BT + "json",
       '{"command": "name", "params": {"key": "value"}}',
       BT,
@@ -411,7 +411,7 @@
       "PlazCode is a browser extension running in this page, in AGENTSCRIPT mode. It reads your replies, runs any command you write against the connected local engine (the user's project folder, called the workspace: files, search, terminal, system tools) and sends the real result back as the next message (success or ERROR). " +
         `Do not use ${site}'s own features unless the user asks.`,
       "",
-      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. ONE command envelope per reply; group up to eight prepared commands with plazcode_batch {calls:[{command,params}]}. Read results before dependent edits. For local long builds/servers use run_command background:true, then command_status or command_stop. Task checkpoints already provide undo for supported file edits.",
+      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. SEVERAL COMMANDS PER REPLY by default: up to 8 independent command envelopes, each in its own fenced block; reads run together, changes in order. Read results before dependent edits. For local long builds/servers use run_command background:true, then command_status or command_stop. Task checkpoints already provide undo for supported file edits.",
       BT + "json",
       '{"command": "name", "params": {"key": "value"}}',
       BT,
@@ -449,7 +449,7 @@
   const ANCHORS = Object.freeze({
     roblox: Object.freeze([
       "list_commands", "list_mcp_servers", "PlazCode is ready.", "FORMATTING RULE (MANDATORY)", "###LUA###", "###END_LUA###", "###LUA:Server###", "###LUA:Client###",
-      "ONE command block per reply", "NEVER HALLUCINATE a Studio", "PLAY-MODE RULE", "NEVER DELETE", "PERFECT CREATION", "UNDERSTAND THE REQUEST", "NEVER CLAIM THE BRIDGE",
+      "SEVERAL COMMANDS PER REPLY", "NEVER HALLUCINATE a Studio", "PLAY-MODE RULE", "NEVER DELETE", "PERFECT CREATION", "UNDERSTAND THE REQUEST", "NEVER CLAIM THE BRIDGE",
       "WaitForChild", "SYSTEM_STATE", "PROJECT MEMORY", "PLAZCODE LOADS IT FOR YOU", "KEEP IT UPDATED", "IF SOMETHING CONTRADICTS THE MEMORY", "NEVER PERSIST A GUESS AS A FACT",
       "UNIVERSAL ROBLOX/LUAU ENGINEERING DOCTRINE", "SCOPE CONTAINMENT + EVIDENCE", "LIFECYCLE + RESOURCE OWNERSHIP", "NATIVE-FIRST ARCHITECTURE", "NATIVE-FIRST HOUSE STYLE",
       "CONFIGURATION SINGLE SOURCE", "SCRIPT ORGANIZATION + DECLARATION LOCALITY", "PRESENTATION DIVIDE", "VERSION + MEMORY HONESTY", "luau_guidance",
