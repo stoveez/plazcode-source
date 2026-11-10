@@ -8,7 +8,7 @@ const fs = require("fs"), assert = require("node:assert/strict");
 const html = fs.readFileSync(__dirname + "/agent/src/desktop.html", "utf8");
 for (const need of ["function Pzstudio()", "function Pzsync(Area)", "function Pzripples()", "function Pzfeel()", "function Pzmaker()", "function Pzapplypalette(Root)",
   "try { Pzstudio(); } catch (Error) {}", "try { Pzmaker(); } catch (Error) {}", "try { Pzsync(Area); } catch (Error) {}", "try { Pzapplypalette(Root); } catch (Error) {}",
-  "motion:'full',anim:true,ripple:true", "data-pz-motion", "@media(prefers-reduced-motion:reduce){html[data-pz-studio]", "html[data-pz-studio][data-pz-motion=off] *"])
+  "motion:'full',anim:true,ripple:true", "function Pzturn(Name)", "try { Pzturn(Name); } catch (Error) {}", "@keyframes pz-leave", "@keyframes pz-settle", "data-pz-motion", "@media(prefers-reduced-motion:reduce){html[data-pz-studio]", "html[data-pz-studio][data-pz-motion=off] *"])
   assert(html.includes(need), "desktop.html has " + need);
 // The redesign only adds a frame: every page, route and original control is still in the markup.
 for (const id of ["dragbar", "content", "sideStatus", "sideDot", "sidebarCollapse", "nxSideSearch", "nxThemes", "nxCustomPanel", "nxCustomColor", "nxCustomHex", "nxCustomApply", "nxCustomRemove", "nxGradients", "killStudio"])
@@ -81,7 +81,25 @@ console.log("PASS desktop Studio look: frame functions, hooks, reduced/off motio
     await tab.click("#nxCustomRemove");
     const removed = await tab.evaluate(() => ({ bg: document.documentElement.dataset.pzBg || "", text: document.documentElement.style.getPropertyValue("--text") }));
     assert.deepEqual(removed, { bg: "", text: "" }, "removing the custom palette restores the theme");
+    // Page turns: with motion Full the page being left fades away while the next one settles in, then both marks clear.
+    // Reduced and Off switch at once. The Skills page lays its list and editor out side by side with roomy rows.
+    await tab.click('.pz-area[data-area="settings"]'); await tab.waitForTimeout(400);
+    await tab.evaluate(() => { const b = document.querySelector('.navbtn[data-page="appearance"]'); if (b) b.click(); }); await tab.waitForTimeout(400);
+    await tab.click('[data-look-motion="full"]'); await tab.waitForTimeout(100);
+    const turn = await tab.evaluate(() => { const from = document.querySelector(".page.active").id; document.querySelector('.pz-area[data-area="home"]').click();
+      return { from, to: document.querySelector(".page.active").id, leaving: [...document.querySelectorAll(".page.pz-leaving")].map((n) => n.id), entering: [...document.querySelectorAll(".page.pz-entering")].map((n) => n.id),
+        shown: getComputedStyle(document.querySelector(".page.pz-leaving")).display, placed: getComputedStyle(document.querySelector(".page.pz-leaving")).position }; });
+    assert.notEqual(turn.from, turn.to, "the page changed straight away"); assert.deepEqual(turn.leaving, [turn.from], "the old page stays painted while it fades");
+    assert.deepEqual(turn.entering, [turn.to]); assert.equal(turn.shown, "block"); assert.equal(turn.placed, "absolute");
+    await tab.waitForTimeout(1500);
+    assert.deepEqual(await tab.evaluate(() => [document.querySelectorAll(".pz-leaving").length, document.querySelectorAll(".pz-entering").length]), [0, 0], "the page-turn marks clear");
+    await tab.evaluate(() => document.documentElement.setAttribute("data-pz-motion", "reduced"));
+    assert.equal(await tab.evaluate(() => { document.querySelector('.pz-area[data-area="workspace"]').click(); return document.querySelectorAll(".pz-leaving,.pz-entering").length; }), 0, "Reduced motion switches at once");
+    await tab.evaluate(() => { document.documentElement.setAttribute("data-pz-motion", "full"); const b = document.querySelector('.navbtn[data-page="skills"]'); if (b) b.click(); }); await tab.waitForTimeout(600);
+    const roomy = await tab.evaluate(() => { const g = document.querySelector("#skillsWorkspace .grid2"); return { columns: getComputedStyle(g).gridTemplateColumns.split(" ").length, gap: parseFloat(getComputedStyle(g).columnGap),
+      tabs: getComputedStyle(document.querySelector('#skillsWorkspace [role="tablist"]')).display, input: parseFloat(getComputedStyle(document.querySelector('#skillsWorkspace [data-sk="search"]')).fontSize) }; });
+    assert.equal(roomy.columns, 2); assert(roomy.gap >= 24, "room between the skill list and the editor"); assert.equal(roomy.tabs, "inline-flex"); assert(roomy.input >= 14, "readable field text");
     assert.deepEqual(errors.filter((e) => !/fetch|Failed to load|NetworkError/i.test(e)), [], "no script errors");
-    console.log("PASS desktop Studio look in Chromium: sections and tabs, serif title, Feel settings, ripples, custom palette save and remove");
+    console.log("PASS desktop Studio look in Chromium: sections and tabs, serif title, Feel settings, ripples, custom palette save and remove, page turns, roomy Skills page");
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exitCode = 1; });

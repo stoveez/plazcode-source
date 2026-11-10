@@ -1013,11 +1013,63 @@ html[data-pz-studio] .page .dx-top .dx-tabs{display:none!important}
 .pz-ripple{position:absolute;border-radius:50%;transform:translate(-50%,-50%) scale(0);background:radial-gradient(circle,rgb(var(--theme-rgb,233 186 83)/.45),rgb(var(--theme-rgb,233 186 83)/.12) 55%,transparent 70%);animation:pz-ripple .62s var(--pz-ease,ease-out) forwards}
 @keyframes pz-ripple{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
 
+/* Page turns: the page you leave fades up and away, then the next one settles in piece by piece. */
+html[data-pz-studio] .content{position:relative}
+html[data-pz-studio] .page.pz-leaving{display:block!important;position:absolute;margin:0!important;pointer-events:none;z-index:1;animation:pz-leave .2s cubic-bezier(.4,0,1,1) both}
+@keyframes pz-leave{to{opacity:0;transform:translateY(-10px) scale(.994);filter:blur(4px)}}
+html[data-pz-studio] .page.active.pz-entering{animation:pz-page .5s var(--pz-ease) .14s both}
+html[data-pz-studio] .page.pz-entering>*,html[data-pz-studio] .page.pz-entering>#skillsWorkspace>*,html[data-pz-studio] .page.pz-entering :is(.grid2,.cardgrid,.nx-grid,.nx-rows)>*{animation:pz-settle .52s var(--pz-ease) backwards;animation-delay:calc(.16s + var(--pz-i,0)*.055s)}
+html[data-pz-studio] .page.pz-entering :is(.grid2,.cardgrid,.nx-grid,.nx-rows)>*{animation-delay:calc(.24s + var(--pz-i,0)*.045s)}
+html[data-pz-studio] .page.pz-entering *:nth-child(2){--pz-i:1}html[data-pz-studio] .page.pz-entering *:nth-child(3){--pz-i:2}html[data-pz-studio] .page.pz-entering *:nth-child(4){--pz-i:3}html[data-pz-studio] .page.pz-entering *:nth-child(5){--pz-i:4}html[data-pz-studio] .page.pz-entering *:nth-child(6){--pz-i:5}html[data-pz-studio] .page.pz-entering *:nth-child(7){--pz-i:6}html[data-pz-studio] .page.pz-entering *:nth-child(n+8){--pz-i:7}
+@keyframes pz-settle{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+/* Skills page: room to breathe. A wide list of roomy rows on the left, the editor beside it. */
+html[data-pz-studio] #skillsWorkspace{font-size:14px}
+html[data-pz-studio] #skillsWorkspace [data-sk=status]{font-size:14.5px;color:var(--text,#eef1f6)}
+html[data-pz-studio] #skillsWorkspace>.settingcard:first-of-type{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 28px;padding:20px 30px!important;margin-bottom:20px!important}
+html[data-pz-studio] #skillsWorkspace>.settingcard:first-of-type>h3{display:none}
+html[data-pz-studio] #skillsWorkspace>.settingcard:first-of-type>p{flex:1 1 380px;margin:0!important;padding:0;border:0;font-size:14.5px}
+html[data-pz-studio] #skillsWorkspace>.settingcard:first-of-type>[data-sk=status]{flex:none;padding:8px 14px;border:1px solid var(--pz-line);border-radius:999px;font:600 11px/1.2 var(--pz-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft,#9299aa)}
+html[data-pz-studio] #skillsWorkspace>.settingcard:first-of-type>[data-sk=status]:empty{display:none}
+html[data-pz-studio] #skillsWorkspace [role=tablist]{display:inline-flex;gap:4px;padding:5px;margin:0 0 22px;border:1px solid var(--pz-line);border-radius:15px;background:rgb(0 0 0/.18)}
+html[data-pz-studio] #skillsWorkspace [role=tab]{padding:11px 20px!important;font-size:13.5px!important;font-weight:600;border:1px solid transparent!important;border-radius:11px!important;background:none!important;box-shadow:none!important;transform:none!important;color:var(--ink-soft,#9299aa)}
+html[data-pz-studio] #skillsWorkspace [role=tab]:hover{color:var(--text,#eef1f6)}
+html[data-pz-studio] #skillsWorkspace [role=tab][aria-selected=true]{background:rgb(var(--pz-rgb)/.16)!important;border-color:rgb(var(--pz-rgb)/.42)!important;color:var(--text,#eef1f6)}
+html[data-pz-studio] #skillsWorkspace .grid2{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:26px;align-items:start}
+html[data-pz-studio] #skillsWorkspace .grid2>.settingcard{margin:0!important;padding:32px 34px!important}
+html[data-pz-studio] #skillsWorkspace .grid2>.settingcard:last-child{position:sticky;top:0;max-height:calc(100vh - 190px);overflow-y:auto;scrollbar-width:thin}
+html[data-pz-studio] #skillsWorkspace .settingcard>h3{margin-bottom:18px!important}
+html[data-pz-studio] #skillsWorkspace label{display:block;margin:20px 0 0;font-size:12.5px;font-weight:600;letter-spacing:.02em;line-height:1.5;color:var(--ink-soft,#9299aa)}
+html[data-pz-studio] #skillsWorkspace h3+label{margin-top:0}
+html[data-pz-studio] #skillsWorkspace :is(input:not([type=checkbox]):not([type=file]),textarea,select){width:100%;margin-top:9px;padding:13px 15px!important;font-size:14.5px!important;line-height:1.55;font-weight:400;letter-spacing:0;border-radius:12px!important;color:var(--text,#eef1f6)}
+html[data-pz-studio] #skillsWorkspace textarea{min-height:120px;resize:vertical}
+html[data-pz-studio] #skillsWorkspace textarea[data-sk=steps]{min-height:250px}
+html[data-pz-studio] #skillsWorkspace :is(.softbtn,.accentbtn,.dangerbtn):not([role=tab]){padding:11px 18px;font-size:13.5px;border-radius:11px}
+html[data-pz-studio] #skillsWorkspace .sk-listbar{gap:10px;margin-top:16px}
+html[data-pz-studio] #skillsWorkspace .instructions-actions:not([role=tablist]){display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+html[data-pz-studio] #skillsWorkspace [data-sk=list]{margin-top:22px!important;border-top:1px solid var(--pz-line)}
+html[data-pz-studio] #skillsWorkspace [data-sk-card]{margin:0;border-bottom:1px solid var(--pz-line)}
+html[data-pz-studio] #skillsWorkspace [data-sk-card]>.softbtn{padding:20px 108px 20px 18px!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;transform:none!important;transition:background .25s var(--pz-ease),box-shadow .25s var(--pz-ease)!important}
+html[data-pz-studio] #skillsWorkspace [data-sk-card]>.softbtn:hover{background:rgb(var(--pz-rgb)/.055)!important}
+html[data-pz-studio] #skillsWorkspace [data-sk-card]>.softbtn[aria-pressed=true]{background:rgb(var(--pz-rgb)/.1)!important;box-shadow:inset 3px 0 0 rgb(var(--pz-rgb))!important}
+html[data-pz-studio] #skillsWorkspace [data-sk-card]>.softbtn>strong{display:block;font-size:16px;font-weight:650;letter-spacing:-.01em;line-height:1.3;color:var(--text,#eef1f6)}
+html[data-pz-studio] #skillsWorkspace [data-sk-card]>.softbtn>span{margin-top:7px!important;font-size:13.5px;font-weight:400;line-height:1.6;opacity:.82!important}
+html[data-pz-studio] #skillsWorkspace [data-sk-card]>.softbtn>span:last-child{margin-top:12px!important;font:600 10.5px/1 var(--pz-mono);letter-spacing:.1em;text-transform:uppercase;opacity:.6!important}
+html[data-pz-studio] #skillsWorkspace .sk-actions{top:18px;right:14px;gap:8px}
+html[data-pz-studio] #skillsWorkspace .sk-icon{width:36px;height:36px;border-radius:10px}
+html[data-pz-studio] #skillsWorkspace [data-sk=list]>p{margin:0;padding:34px 18px;text-align:center;color:var(--ink-soft,#9299aa);font-size:14px}
+html[data-pz-studio] #skillsWorkspace details:not(.settingcard){margin-top:16px;padding:2px 18px;border:1px solid var(--pz-line);border-radius:14px;background:rgb(0 0 0/.12)}
+html[data-pz-studio] #skillsWorkspace details:not(.settingcard)>summary{padding:14px 0;cursor:pointer;font-size:13.5px;font-weight:600}
+html[data-pz-studio] #skillsWorkspace details:not(.settingcard)[open]{padding-bottom:18px}
+html[data-pz-studio] #skillsWorkspace p{line-height:1.65}
+@media(max-width:1120px){html[data-pz-studio] #skillsWorkspace .grid2{grid-template-columns:1fr}html[data-pz-studio] #skillsWorkspace .grid2>.settingcard:last-child{position:static;max-height:none;overflow:visible}}
+
 /* Motion levels. Off (or the system's reduced-motion setting) stops every effect above. */
 html[data-pz-studio][data-pz-motion=reduced] .page.active{animation-duration:.2s}
+html[data-pz-studio][data-pz-motion=reduced] .page.pz-entering *{animation:none!important}
 html[data-pz-studio][data-pz-motion=reduced] :is(.pz-title.pz-swap){animation:none}
 html[data-pz-studio][data-pz-motion=off] *,html[data-pz-studio][data-pz-motion=off] *::before,html[data-pz-studio][data-pz-motion=off] *::after{animation:none!important;transition:none!important}
-@media(prefers-reduced-motion:reduce){html[data-pz-studio] .app::after,html[data-pz-studio] .page.active,html[data-pz-studio] .pz-title.pz-swap,html[data-pz-studio] .pz-preview,.pz-ripple{animation:none!important}html[data-pz-studio] :is(.pz-area,.pz-tabs .navbtn::after,.nx-theme,.page .nx-card,.page .stat){transition:none!important}}
+@media(prefers-reduced-motion:reduce){html[data-pz-studio] .page.pz-entering *,html[data-pz-studio] .page.pz-leaving{animation:none!important}html[data-pz-studio] .app::after,html[data-pz-studio] .page.active,html[data-pz-studio] .pz-title.pz-swap,html[data-pz-studio] .pz-preview,.pz-ripple{animation:none!important}html[data-pz-studio] :is(.pz-area,.pz-tabs .navbtn::after,.nx-theme,.page .nx-card,.page .stat){transition:none!important}}
 @media(max-width:980px){html[data-pz-studio]{--pz-side:236px}html[data-pz-studio] .titlebar{padding-left:28px!important}html[data-pz-studio] .pz-title{font-size:30px}html[data-pz-studio] .content{padding:24px 26px 44px!important}html[data-pz-studio] .pz-tabs{padding:0 20px 0 28px}html[data-pz-studio] .pz-search{flex-basis:150px}html[data-pz-studio] .pz-maker{grid-template-columns:1fr}}
 </style>
 </head>
@@ -1512,6 +1564,7 @@ __PLAZCODE_VERSION_UI__
   })();
   function Go(Name, Cat) {
     if(!Byid("page-"+Name))Name="home";
+    try { Pzturn(Name); } catch (Error) {}
     Toarray(document.querySelectorAll(".page")).forEach(function (Node) {
       Node.classList.toggle("active", Node.id === "page-" + Name);
     });
@@ -2397,6 +2450,22 @@ __PLAZCODE_VERSION_UI__
     var On = !!(Dot && Dot.classList.contains('on'));
     Pill.textContent = On ? Pzt('Bridge online') : (Status.textContent || '').trim() || Pzt('Bridge waiting');
     Pill.setAttribute('data-on', On ? '1' : '0');
+  }
+  // Page turns (Appearance > Feel > Interface motion: Full). The page being left stays painted for a moment and
+  // fades away while the next one settles in; Reduced, Off and the system's reduced-motion setting skip it.
+  function Pzgone(Node) { window.clearTimeout(Node.pzLeaveTimer); Node.classList.remove('pz-leaving'); Node.style.top = Node.style.left = Node.style.width = ''; }
+  function Pzturn(Name) {
+    var Root = document.documentElement, Next = Byid('page-' + Name), Old = document.querySelector('.page.active'), Content = Byid('content');
+    Toarray(document.querySelectorAll('.page.pz-leaving')).forEach(Pzgone);
+    if (!Next || !Old || Old === Next || !Content || !Root.hasAttribute('data-pz-studio')) return;
+    if (Root.getAttribute('data-pz-motion') !== 'full' || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    var Box = Old.getBoundingClientRect(), Frame = Content.getBoundingClientRect();
+    if (Box.width > 0) {
+      Old.style.top = (Box.top - Frame.top - Content.clientTop) + 'px'; Old.style.left = (Box.left - Frame.left - Content.clientLeft) + 'px'; Old.style.width = Box.width + 'px';
+      Old.classList.add('pz-leaving'); Old.pzLeaveTimer = window.setTimeout(function () { Pzgone(Old); }, 210);
+    }
+    Toarray(document.querySelectorAll('.page.pz-entering')).forEach(function (Node) { window.clearTimeout(Node.pzEnterTimer); Node.classList.remove('pz-entering'); });
+    Next.classList.add('pz-entering'); Next.pzEnterTimer = window.setTimeout(function () { Next.classList.remove('pz-entering'); }, 1300);
   }
   function Pzsync(Area) {
     if (!document.documentElement.hasAttribute('data-pz-studio')) return;
