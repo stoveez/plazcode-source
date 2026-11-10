@@ -4,7 +4,11 @@
 // told what to do instead; after several stalls in a row it is told to stop.
 const PlazCodeStallGuard = (() => {
   const LIVE = /(?:console|output|log|state|status|wait|capture|screenshot|poll|progress|job|play|checklist|clarify|memory|skill|engram|template)/i;
-  const READ = /^(?:get|list|read|search|find|inspect|grep|describe|query|fetch|check|view|show|lookup)(?:_|$)|(?:_read|_get|_list|_search|_inspect|_grep)$/i;
+  // After 1.24.32 (owner, 2026-11-10: "workspace_info ... just looped infinitely"): inspection tools named
+  // *_info, tree, file_exists, count_lines and friends were not reads here, so an identical repeat was never
+  // stopped, and each repeat cleared the memory of earlier reads. They only change when something is edited,
+  // and an edit already clears this memory.
+  const READ = /^(?:get|list|read|search|find|inspect|grep|describe|query|fetch|check|view|show|lookup)(?:_|$)|(?:_read|_get|_list|_search|_inspect|_grep|_info|_exists|_tree)$|^(?:tree|count_lines|grep_count|find_todos|list_by_ext|dir_size|which_cmd)$/i;
   const isRead = name => READ.test(name) && !LIVE.test(name);
   // Reference text that never changes during a run (the Ultra pack, the Roblox docs): a repeat is never
   // useful, and a slow chat like Notion takes longer than the normal window between turns.

@@ -31,4 +31,18 @@ assert.equal(g.before(null), null);
   t = 200000; assert.match(slow.before(skill), /already made this exact read/, 'repeat 200 s later is still stopped');
   t = 700000; assert.equal(slow.before(skill), null, 'after 10 minutes it may be read again');
   const other = { tool: 'get_something', arguments: {} }; slow.after(other, true); t = 700000 + 200000; assert.equal(slow.before(other), null, 'ordinary reads keep the 90 s window'); }
+// After 1.24.32 (owner: "workspace_info ... looped infinitely"): inspection tools are reads too, so an identical
+// repeat is stopped, and a repeat no longer wipes the memory of other reads.
+{
+  let clock = 0; const h = SG.create({ now: () => clock });
+  for (const n of ['workspace_info', 'file_info', 'env_info', 'tree', 'file_exists', 'count_lines']) assert.equal(SG.isRead(n), true, n + ' is a read');
+  for (const n of ['write_file', 'edit_file', 'delete_path', 'run_command']) assert.equal(SG.isRead(n), false, n + ' is not a read');
+  const info = { tool: 'workspace_info', arguments: {} }, list = { tool: 'list_directory', arguments: { path: '.' } };
+  assert.equal(h.before(info), null); h.after(info, true); clock += 1000;
+  assert.equal(h.before(list), null); h.after(list, true); clock += 1000;
+  assert.match(h.before(info) || '', /already made this exact read/, 'a repeated workspace_info is stopped');
+  assert.match(h.before(list) || '', /already made this exact read/, 'and it did not wipe the earlier list_directory');
+  h.after({ tool: 'edit_file', arguments: { path: 'a' } }, true);
+  assert.equal(h.before(info), null, 'after an edit the folder may have changed, so it may run again');
+}
 console.log('Stall guard blocks unchanged repeats, spares live-state reads, and escalates after three.');
