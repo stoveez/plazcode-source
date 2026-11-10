@@ -843,6 +843,182 @@ html[data-desktop-glow=off] .pc-signin :is(.pc-profile-card,.pc-profile-avatar,.
 .pc-profile-guest{position:relative;display:flex;align-items:center;gap:14px;width:100%;margin-top:24px;padding:16px 17px;text-align:left;font-family:inherit;border:1px solid rgb(var(--theme-rgb)/.24);border-radius:14px;color:#e8e5de;background:linear-gradient(120deg,rgb(var(--theme-rgb)/.075),#ffffff03 48%,#ffffff01);box-shadow:inset 0 1px 0 #ffffff0d,0 0 22px rgb(var(--theme-rgb)/.035);cursor:pointer;transition:border-color .22s,box-shadow .22s,transform .22s}
 .pc-profile-guest:hover{border-color:rgb(var(--theme-rgb)/.55);box-shadow:inset 0 1px 0 #ffffff14,0 0 26px rgb(var(--theme-rgb)/.11);transform:translateY(-1px)}
 .pc-profile-guest[hidden]{display:none!important}.pc-picture-actions [hidden]{display:none!important}.pc-profile-guest:focus-visible{outline:2px solid var(--orange2);outline-offset:4px}.pc-profile-guest:disabled{opacity:.5;cursor:wait;transform:none}.pc-guest-icon{display:grid;place-items:center;flex:none;width:36px;height:40px;border:1px solid rgb(var(--theme-rgb)/.25);border-radius:10px;background:linear-gradient(145deg,rgb(var(--theme-rgb)/.1),#ffffff02);color:var(--orange2);box-shadow:inset 0 1px 0 #ffffff0b,0 0 15px rgb(var(--theme-rgb)/.06)}.pc-guest-icon svg{width:21px;height:21px}.pc-guest-copy{display:grid;gap:6px;min-width:0}.pc-guest-copy strong{font-size:11px;line-height:1.65;font-weight:600}.pc-guest-copy small{font-size:10px;line-height:1.5;color:#92929b}.pc-guest-arrow{flex:none;width:14px;height:14px;margin-left:auto;color:var(--orange2);opacity:.75}
+
+/* ===== PlazCode Studio look (after 1.24.32, owner 2026-11-10) =====
+   An editorial layout in PlazCode's own identity: serif page titles, numbered sections, small mono labels and a
+   roomy sidebar of six sections with a title and a subtitle each; the pages of a section are tabs under the
+   title. Click ripples, hover glow, page transitions and an animated theme background, all tuned under
+   Appearance > Feel and quiet under reduced motion. Colours come from the palette (--orange, --orange2,
+   --theme-rgb, --canvas, --surface, --raised, --stroke, --ink-soft, --text). */
+html[data-pz-studio]{--pz-serif:"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;--pz-mono:"Cascadia Mono","JetBrains Mono","SF Mono",ui-monospace,Consolas,Menlo,monospace;--pz-rgb:var(--theme-rgb,233 186 83);--pz-ease:cubic-bezier(.22,1,.36,1);--pz-side:288px;--pz-card:color-mix(in srgb,var(--surface,#12151c) 86%,transparent);--pz-line:color-mix(in srgb,var(--stroke,#2b303b) 80%,rgb(var(--pz-rgb)) 20%)}
+html[data-pz-studio] .app{grid-template-columns:var(--pz-side) minmax(0,1fr)!important;position:relative;isolation:isolate}
+/* Theme atmosphere: three soft light pools in the palette colour, drifting slowly when animation is on. */
+html[data-pz-studio] .app::after{content:"";position:absolute;inset:-12%;z-index:-1;pointer-events:none;background:radial-gradient(38% 34% at 18% 22%,rgb(var(--pz-rgb)/.16),transparent 70%),radial-gradient(34% 30% at 82% 12%,rgb(var(--pz-rgb)/.10),transparent 72%),radial-gradient(40% 36% at 64% 84%,rgb(var(--pz-rgb)/.09),transparent 70%);opacity:.95}
+html[data-pz-studio][data-pz-anim]:not([data-pz-motion=off]) .app::after{animation:pz-atmos 26s ease-in-out infinite alternate}
+html[data-pz-studio][data-pz-anim][data-pz-motion=reduced] .app::after{animation-duration:60s}
+html[data-pz-studio][data-desktop-gradients=off] .app::after,html[data-pz-studio][data-pz-bg=solid] .app::after,html[data-pz-studio][data-look-bg] .app::after{display:none}
+html[data-pz-studio][data-pz-bg=gradient] .app::after{animation:none!important}
+html[data-pz-studio][data-pz-bg=animated]:not([data-pz-motion=off]) .app::after{animation:pz-atmos 26s ease-in-out infinite alternate}
+@keyframes pz-atmos{0%{transform:translate3d(0,0,0) scale(1) rotate(0deg)}50%{transform:translate3d(3%,-2%,0) scale(1.06) rotate(4deg)}100%{transform:translate3d(-3%,2%,0) scale(1.03) rotate(-3deg)}}
+
+/* Sidebar */
+html[data-pz-studio] .sidebar{padding:22px 18px 16px!important;gap:0;background:linear-gradient(180deg,color-mix(in srgb,var(--canvas,#0b0d12) 92%,rgb(var(--pz-rgb))) ,color-mix(in srgb,var(--canvas,#0b0d12) 97%,transparent))!important;border-right:1px solid var(--pz-line)!important}
+html[data-pz-studio] .sidebar>.nx-sidehead,html[data-pz-studio] .sidebar>.nx-sidesearch{display:none!important}
+html[data-pz-studio] .pz-brand{display:flex;align-items:center;gap:12px;padding:2px 6px 4px}
+html[data-pz-studio] .pz-brand-logo{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;background:radial-gradient(circle at 30% 25%,rgb(var(--pz-rgb)/.35),transparent 70%),color-mix(in srgb,var(--raised,#191d26) 80%,transparent);border:1px solid rgb(var(--pz-rgb)/.45);box-shadow:0 0 22px rgb(var(--pz-rgb)/.22)}
+html[data-pz-studio] .pz-brand-logo svg{width:22px;height:22px}
+html[data-pz-studio] .pz-brand-word{font:600 25px/1 var(--pz-serif);letter-spacing:-.4px;color:var(--text,#f5f8ff);white-space:nowrap}
+html[data-pz-studio] .pz-brand-word em{font-style:italic;color:var(--orange2,#ffc052)}
+html[data-pz-studio] .pz-brand #sidebarCollapse{margin-left:auto}
+html[data-pz-studio] .pz-eyebrow{display:flex;align-items:center;gap:10px;font:600 10.5px/1 var(--pz-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft,#9299aa)}
+html[data-pz-studio] .pz-eyebrow::before{content:"";width:18px;height:1px;background:currentColor;opacity:.7}
+html[data-pz-studio] .sidebar .pz-eyebrow{margin:22px 8px 10px}
+html[data-pz-studio] .pz-areas{display:flex;flex-direction:column;gap:4px;flex:1 1 auto;min-height:0;overflow:auto;margin:0 -4px;padding:0 4px}
+html[data-pz-studio] .pz-area{position:relative;display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;padding:10px 14px;border:1px solid transparent;border-radius:14px;background:transparent;color:var(--text,#eef2f8);text-align:left;cursor:pointer;transition:background .25s var(--pz-ease),border-color .25s var(--pz-ease),transform .25s var(--pz-ease),box-shadow .25s var(--pz-ease)}
+html[data-pz-studio] .pz-area svg{width:20px;height:20px;justify-self:center;opacity:.78;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:opacity .2s,transform .3s var(--pz-ease),color .2s}
+html[data-pz-studio] .pz-area b{display:block;font:600 15px/1.2 var(--pz-serif);letter-spacing:.1px}
+html[data-pz-studio] .pz-area small{display:block;margin-top:3px;font-size:11.5px;color:var(--ink-soft,#9299aa);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html[data-pz-studio] .pz-area i{font:500 10px/1 var(--pz-mono);font-style:normal;color:var(--ink-soft,#9299aa);opacity:.55;letter-spacing:.08em}
+html[data-pz-studio] .pz-area:hover{background:rgb(var(--pz-rgb)/.07);border-color:rgb(var(--pz-rgb)/.18)}
+html[data-pz-studio] .pz-area:hover svg{opacity:1;transform:translateX(1px) scale(1.06)}
+html[data-pz-studio] .pz-area.active{background:linear-gradient(120deg,rgb(var(--pz-rgb)/.20),rgb(var(--pz-rgb)/.06) 70%);border-color:rgb(var(--pz-rgb)/.48);box-shadow:inset 0 1px 0 #ffffff14,0 8px 26px -10px rgb(var(--pz-rgb)/.55)}
+html[data-pz-studio] .pz-area.active svg{opacity:1;color:var(--orange2,#ffc052)}
+html[data-pz-studio] .pz-area.active i{color:var(--orange2,#ffc052);opacity:.9}
+html[data-pz-studio] .pz-area.active::before{content:"";position:absolute;left:-1px;top:22%;bottom:22%;width:3px;border-radius:3px;background:linear-gradient(var(--orange2,#ffc052),var(--orange,#ff9226));box-shadow:0 0 12px rgb(var(--pz-rgb)/.8)}
+html[data-pz-studio] .sidebar .nx-spacer{display:none}
+html[data-pz-studio] .sidebar .nx-sep{margin:12px 6px;opacity:.6}
+html[data-pz-studio] .sidebar .nx-links{display:grid!important;grid-template-columns:1fr 1fr;gap:8px!important}
+html[data-pz-studio] .sidebar .nx-link{min-width:0;padding:9px 10px!important;border-radius:12px!important;border:1px solid var(--pz-line)!important;background:var(--pz-card)!important;justify-content:center}
+html[data-pz-studio] .sidebar .nx-link:hover{border-color:rgb(var(--pz-rgb)/.4)!important;box-shadow:0 0 18px -6px rgb(var(--pz-rgb)/.5)}
+html[data-pz-studio] .sidebar .nx-link small,html[data-pz-studio] .sidebar .nx-link .nx-arrow{display:none!important}
+html[data-pz-studio] .sidebar #killStudio{margin:10px 0 10px!important;font:600 10.5px/1 var(--pz-mono);letter-spacing:.12em;text-transform:uppercase;padding:11px!important;border-radius:12px}
+html[data-pz-studio] .sidebar .side-status{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 12px!important;border-radius:12px!important;background:var(--pz-card)!important;border-color:var(--pz-line)!important}
+html[data-pz-studio] .sidebar .side-status .side-sub{display:none}
+html[data-pz-studio] .sidebar .side-status .status-row{margin:0!important;font:600 10px/1.3 var(--pz-mono);letter-spacing:.06em;text-transform:uppercase}
+html[data-pz-studio] .sidebar .nx-account{margin-top:10px;border-radius:14px!important}
+html[data-pz-studio] .sidebar .nx-ver{margin-top:8px;font:500 10px/1.5 var(--pz-mono);letter-spacing:.04em;opacity:.8}
+html[data-pz-studio][data-sidebar-collapsed]{--pz-side:84px}
+html[data-pz-studio][data-sidebar-collapsed] :is(.pz-brand-word,.sidebar .pz-eyebrow,.pz-area span,.pz-area i,.sidebar .nx-links,.sidebar .side-status,.sidebar .nx-ver,.sidebar #killStudio,.sidebar .nx-sep){display:none!important}
+html[data-pz-studio][data-sidebar-collapsed] .pz-brand{flex-direction:column;gap:14px}
+html[data-pz-studio][data-sidebar-collapsed] .pz-brand #sidebarCollapse{margin:0}
+html[data-pz-studio][data-sidebar-collapsed] .pz-area{grid-template-columns:1fr;padding:12px 0;justify-items:center}
+html[data-pz-studio][data-sidebar-collapsed] .pz-areas{margin-top:22px}
+
+/* Title bar: section label and the page title in serif, with a live status pill. */
+html[data-pz-studio] .titlebar{height:92px!important;flex:0 0 92px!important;padding:0 18px 0 40px!important;background:transparent!important;border-bottom:0!important;align-items:center}
+html[data-pz-studio] .titlebar .tb-brand,html[data-pz-studio] .titlebar .nx-areabar,html[data-pz-studio] .titlebar .desktop-version-stack{display:none!important}
+html[data-pz-studio] .pz-head{display:flex;flex-direction:column;gap:9px;min-width:0}
+html[data-pz-studio] .pz-head .pz-eyebrow{color:var(--orange2,#ffc052)}
+html[data-pz-studio] .pz-title{margin:0;font:500 38px/1.02 var(--pz-serif);letter-spacing:-.6px;color:var(--text,#f5f8ff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html[data-pz-studio] .pz-title.pz-swap{animation:pz-title .5s var(--pz-ease)}
+@keyframes pz-title{from{opacity:0;transform:translateY(6px);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
+html[data-pz-studio] .pz-pill{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;margin-right:10px;border:1px solid var(--pz-line);border-radius:9px;background:var(--pz-card);font:600 10.5px/1 var(--pz-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft,#9299aa);white-space:nowrap}
+html[data-pz-studio] .pz-pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+html[data-pz-studio] .pz-pill[data-on="1"]{color:#6fe3ae;border-color:#6fe3ae55;box-shadow:0 0 18px #31e0a41f}
+html[data-pz-studio] .pz-pill[data-on="1"]::before{box-shadow:0 0 8px currentColor}
+html[data-pz-studio] .pz-pill[data-on="0"]{color:#ff8f93;border-color:#ff696c66}
+html[data-pz-studio] .pz-head-rule{position:absolute;left:40px;right:28px;bottom:0;height:1px;background:linear-gradient(90deg,rgb(var(--pz-rgb)/.45),var(--pz-line) 30%,transparent)}
+html[data-pz-studio] .titlebar{position:relative}
+
+/* Section tabs: the pages of the current section. */
+html[data-pz-studio] .pz-tabs{display:flex;align-items:center;gap:14px;padding:0 28px 0 40px;flex:0 0 auto;min-height:48px;position:relative}
+html[data-pz-studio] .pz-tabs[data-single="1"] .nav{visibility:hidden}
+html[data-pz-studio] .pz-tabs .nav{display:flex!important;flex-direction:row!important;flex:1 1 auto;gap:4px!important;overflow-x:auto;overflow-y:hidden!important;padding:6px 0!important;margin:0!important;scrollbar-width:none;background:none!important;border:0!important}
+html[data-pz-studio] .pz-tabs .nav::-webkit-scrollbar{display:none}
+html[data-pz-studio] .pz-tabs .navbtn{position:relative;flex:none;width:auto!important;min-height:0!important;height:34px!important;padding:0 14px!important;gap:8px!important;border:1px solid transparent!important;border-radius:10px!important;background:transparent!important;box-shadow:none!important;font:600 11px/1 var(--pz-mono)!important;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft,#9299aa)!important;transform:none!important}
+html[data-pz-studio] .pz-tabs .navbtn.nx-off{display:none!important}
+html[data-pz-studio] .pz-tabs .navbtn svg{width:14px!important;height:14px!important;opacity:.75}
+html[data-pz-studio] .pz-tabs .navbtn::before{display:none!important}
+html[data-pz-studio] .pz-tabs .navbtn::after{content:"";position:absolute;left:14px;right:14px;bottom:-1px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--orange,#ff9226),var(--orange2,#ffc052));transform:scaleX(0);transition:transform .35s var(--pz-ease);box-shadow:0 0 10px rgb(var(--pz-rgb)/.7)}
+html[data-pz-studio] .pz-tabs .navbtn:hover{color:var(--text,#fff)!important;background:rgb(var(--pz-rgb)/.07)!important}
+html[data-pz-studio] .pz-tabs .navbtn.active{color:var(--text,#fff)!important;background:rgb(var(--pz-rgb)/.10)!important;border-color:rgb(var(--pz-rgb)/.28)!important}
+html[data-pz-studio] .pz-tabs .navbtn.active::after{transform:scaleX(1)}
+html[data-pz-studio] .pz-tabs .navbtn .navlabel{display:inline!important}
+html[data-pz-studio] .pz-search{flex:0 0 200px;height:32px;padding:0 12px 0 32px;border:1px solid var(--pz-line);border-radius:10px;background:var(--pz-card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239299aa' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") 10px 50%/14px no-repeat;color:var(--text,#fff);font:500 12px/1 inherit;outline:0;transition:border-color .2s,box-shadow .2s}
+html[data-pz-studio] .pz-search:focus{border-color:rgb(var(--pz-rgb)/.6);box-shadow:0 0 0 3px rgb(var(--pz-rgb)/.14)}
+html[data-pz-studio] .pz-tabs::after{content:"";position:absolute;left:40px;right:28px;bottom:0;height:1px;background:var(--pz-line);opacity:.6}
+
+/* Content: roomier pages, serif section headings with numbers, cards that lift and glow. */
+html[data-pz-studio] .content{padding:30px 40px 56px!important}
+html[data-pz-studio] .page{counter-reset:pzsec;max-width:1240px}
+html[data-pz-studio] .page.active{animation:pz-page .55s var(--pz-ease) both}
+@keyframes pz-page{from{opacity:0;transform:translateY(10px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+html[data-pz-studio] .page>.nx-pagehead h1,html[data-pz-studio] .page>.page-head h1,html[data-pz-studio] .page>.page-head>div>h1,html[data-pz-studio] .page>.nx-pagehead>div>h1{display:none}
+html[data-pz-studio] .page>.page-head .page-title{display:none!important}
+html[data-pz-studio] .page>.page-head .page-sub{margin:0!important;font-size:14.5px;line-height:1.6;color:var(--ink-soft,#9299aa);max-width:70ch}
+html[data-pz-studio] .page>.nx-pagehead,html[data-pz-studio] .page>.page-head{border:0!important;padding:0!important;margin:0 0 26px!important;align-items:center}
+html[data-pz-studio] .page>.nx-pagehead p,html[data-pz-studio] .page>.page-head p{margin:0!important;font-size:14.5px;line-height:1.6;color:var(--ink-soft,#9299aa);max-width:70ch}
+html[data-pz-studio] .page :is(.nx-block,.settingcard){position:relative;padding:28px 30px!important;margin:0 0 22px!important;border:1px solid var(--pz-line)!important;border-radius:20px!important;background:linear-gradient(160deg,rgb(var(--pz-rgb)/.06),transparent 42%),var(--pz-card)!important;box-shadow:inset 0 1px 0 #ffffff0d,0 22px 50px -32px #000c!important;transition:border-color .3s var(--pz-ease),box-shadow .3s var(--pz-ease)}
+html[data-pz-studio] .page :is(.nx-block,.settingcard):hover{border-color:rgb(var(--pz-rgb)/.34)!important;box-shadow:inset 0 1px 0 #ffffff12,0 22px 50px -30px #000d,0 0 34px -12px rgb(var(--pz-rgb)/.35)!important}
+html[data-pz-studio] .page :is(.nx-block>h2,.settingcard>h3,.settingcard>h2){display:flex;align-items:baseline;gap:12px;margin:0 0 8px!important;font:500 26px/1.15 var(--pz-serif)!important;letter-spacing:-.3px;color:var(--text,#f5f8ff)!important}
+html[data-pz-studio] .page :is(.nx-block>h2,.settingcard>h3,.settingcard>h2)::before{counter-increment:pzsec;content:counter(pzsec,decimal-leading-zero);font:600 11px/1 var(--pz-mono);letter-spacing:.08em;color:var(--orange2,#ffc052);transform:translateY(-3px)}
+html[data-pz-studio] .page :is(.nx-block>p,.settingcard>p){color:var(--ink-soft,#9299aa);font-size:13.5px;line-height:1.6;margin:0 0 18px!important;padding-bottom:18px;border-bottom:1px solid var(--pz-line)}
+html[data-pz-studio] .page .nx-legacy .settingcard{display:none!important}
+html[data-pz-studio] .page :is(.nx-card,.stat,.toolcard,.mcpcard,.nx-row){border-radius:16px!important;transition:transform .3s var(--pz-ease),border-color .3s var(--pz-ease),box-shadow .3s var(--pz-ease),background .3s!important}
+html[data-pz-studio] .page :is(.nx-card,.stat,.toolcard,.mcpcard):hover{transform:translateY(-3px)!important;border-color:rgb(var(--pz-rgb)/.45)!important;box-shadow:0 18px 40px -22px #000e,0 0 28px -8px rgb(var(--pz-rgb)/.4)!important}
+html[data-pz-studio] .page .nx-row:hover{border-color:rgb(var(--pz-rgb)/.3)!important;background:rgb(var(--pz-rgb)/.045)!important}
+html[data-pz-studio] .page .nx-rows{gap:10px}
+html[data-pz-studio] .page .nx-row{padding:16px 18px!important}
+html[data-pz-studio] .page :is(.nx-card,.stat) :is(.stat-head,small:first-child){font-family:var(--pz-mono);letter-spacing:.1em;text-transform:uppercase;font-size:10.5px}
+html[data-pz-studio] .page :is(h2,h3):not(.pz-skip){font-family:var(--pz-serif);font-weight:500}
+html[data-pz-studio] .page :is(.nx-btn,.softbtn,.accentbtn,.nx-seg button){transition:transform .2s var(--pz-ease),box-shadow .25s var(--pz-ease),border-color .2s,background .2s,color .2s!important}
+html[data-pz-studio] .page :is(.nx-btn,.softbtn,.accentbtn):hover:not(:disabled){transform:translateY(-1px)!important;box-shadow:0 0 0 1px rgb(var(--pz-rgb)/.35),0 8px 22px -8px rgb(var(--pz-rgb)/.55)!important}
+html[data-pz-studio] .page :is(.nx-btn,.softbtn,.accentbtn):active:not(:disabled){transform:translateY(0) scale(.98)!important}
+
+/* Theme tiles with a name and a short description, like a swatch book. */
+html[data-pz-studio] .nx-themes{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))!important;gap:12px!important}
+html[data-pz-studio] .nx-theme{display:grid!important;grid-template-columns:64px minmax(0,1fr) 20px;grid-template-rows:auto auto;align-items:center;column-gap:14px;row-gap:3px;padding:12px 14px!important;min-height:0!important;border-radius:16px!important;text-align:left;transition:transform .25s var(--pz-ease),border-color .25s,box-shadow .25s,background .25s!important}
+html[data-pz-studio] .nx-theme .nx-theme-prev{grid-row:1/3;width:64px!important;height:44px!important;border-radius:10px!important;overflow:hidden;box-shadow:inset 0 0 0 1px #ffffff1a}
+html[data-pz-studio] .nx-theme .nx-theme-name{grid-column:2;font:600 15px/1.2 var(--pz-serif)!important;align-self:end}
+html[data-pz-studio] .nx-theme .nx-theme-desc{grid-column:2;font-size:11.5px;line-height:1.35;color:var(--ink-soft,#9299aa);align-self:start}
+html[data-pz-studio] .nx-theme .nx-theme-tick{grid-column:3;grid-row:1/3;position:static!important;width:20px;height:20px;border-radius:6px;border:1px solid var(--pz-line);display:grid;place-items:center;font-size:12px;color:transparent!important;background:transparent}
+html[data-pz-studio] .nx-theme[aria-pressed=true] .nx-theme-tick{background:linear-gradient(135deg,var(--orange2,#ffc052),var(--orange,#ff9226));color:#0b0d12!important;border-color:transparent;box-shadow:0 0 12px rgb(var(--pz-rgb)/.6)}
+html[data-pz-studio] .nx-theme:hover{transform:translateY(-2px)!important}
+html[data-pz-studio] .nx-theme[aria-pressed=true]{border-color:rgb(var(--pz-rgb)/.7)!important;box-shadow:0 0 0 1px rgb(var(--pz-rgb)/.35),0 0 26px -6px rgb(var(--pz-rgb)/.6)!important}
+
+/* Make your own palette */
+html[data-pz-studio] .pz-maker{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:22px;margin-top:18px;padding-top:20px;border-top:1px dashed var(--pz-line)}
+html[data-pz-studio] .pz-maker[hidden]{display:none}
+html[data-pz-studio] .pz-preview{position:relative;overflow:hidden;min-height:250px;padding:22px;border-radius:18px;border:1px solid var(--pz-pv-line,#ffffff22);background:var(--pz-pv-canvas,#0b0d12);color:var(--pz-pv-text,#f5f8ff);box-shadow:0 24px 50px -28px #000}
+html[data-pz-studio] .pz-preview[data-bg=gradient],html[data-pz-studio] .pz-preview[data-bg=animated]{background:radial-gradient(60% 60% at 15% 15%,color-mix(in srgb,var(--pz-pv-accent) 32%,transparent),transparent 70%),radial-gradient(50% 50% at 90% 95%,color-mix(in srgb,var(--pz-pv-accent) 22%,transparent),transparent 70%),var(--pz-pv-canvas,#0b0d12);background-size:140% 140%}
+html[data-pz-studio]:not([data-pz-motion=off]) .pz-preview[data-bg=animated]{animation:pz-preview-drift 9s ease-in-out infinite alternate}
+@keyframes pz-preview-drift{from{background-position:0% 0%}to{background-position:100% 100%}}
+html[data-pz-studio] .pz-preview .pz-eyebrow{color:var(--pz-pv-accent)}
+html[data-pz-studio] .pz-preview h4{margin:14px 0 6px;font:500 30px/1.05 var(--pz-serif)}
+html[data-pz-studio] .pz-preview p{margin:0 0 16px;font-size:12.5px;line-height:1.5;opacity:.75}
+html[data-pz-studio] .pz-preview .pz-pv-card{padding:12px 14px;border-radius:12px;background:var(--pz-pv-surface,#161a22);border:1px solid color-mix(in srgb,var(--pz-pv-accent) 30%,transparent);font-size:12.5px}
+html[data-pz-studio] .pz-preview .pz-pv-card small{display:block;font:600 9.5px/1 var(--pz-mono);letter-spacing:.14em;text-transform:uppercase;opacity:.6;margin-bottom:6px}
+html[data-pz-studio] .pz-preview .pz-pv-foot{display:flex;align-items:center;justify-content:space-between;margin-top:16px;font-size:11px;opacity:.85}
+html[data-pz-studio] .pz-preview .pz-pv-btn{padding:7px 12px;border-radius:9px;background:var(--pz-pv-accent);color:var(--pz-pv-canvas,#0b0d12);font-weight:700;font-size:11.5px;box-shadow:0 0 18px color-mix(in srgb,var(--pz-pv-accent) 55%,transparent)}
+html[data-pz-studio] .pz-maker-form{display:flex;flex-direction:column;gap:16px;min-width:0}
+html[data-pz-studio] .pz-swatches{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+html[data-pz-studio] .pz-swatch{display:flex;flex-direction:column;gap:7px}
+html[data-pz-studio] .pz-swatch span{font:600 10px/1 var(--pz-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft,#9299aa)}
+html[data-pz-studio] .pz-swatch input[type=color]{width:100%;height:42px;padding:3px;border:1px solid var(--pz-line);border-radius:10px;background:var(--pz-card);cursor:pointer}
+html[data-pz-studio] .pz-swatch input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+html[data-pz-studio] .pz-swatch input[type=color]::-webkit-color-swatch{border:0;border-radius:7px}
+html[data-pz-studio] .pz-maker-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+html[data-pz-studio] .pz-maker-row>span{font:600 10px/1 var(--pz-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft,#9299aa);min-width:96px}
+html[data-pz-studio] .pz-contrast{font:500 11px/1.4 var(--pz-mono);color:var(--ink-soft,#9299aa)}
+html[data-pz-studio] .pz-contrast[data-ok="0"]{color:#ff9a9e}
+html[data-pz-studio] .pz-maker-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+html[data-pz-studio] #nxCustomPanel{display:block;margin-top:0}
+
+/* Help pages: the section tabs above already switch between guides and fixes. */
+html[data-pz-studio] .page .dx-top{background:transparent!important;border:0!important;margin:0 0 8px!important;padding:0!important;min-height:0!important;justify-content:flex-end}
+html[data-pz-studio] .page .dx-top .dx-tabs{display:none!important}
+
+/* Click ripple */
+.pz-ripple-host{position:absolute;inset:0;border-radius:inherit;overflow:hidden;pointer-events:none;z-index:0}
+.pz-ripple{position:absolute;border-radius:50%;transform:translate(-50%,-50%) scale(0);background:radial-gradient(circle,rgb(var(--theme-rgb,233 186 83)/.45),rgb(var(--theme-rgb,233 186 83)/.12) 55%,transparent 70%);animation:pz-ripple .62s var(--pz-ease,ease-out) forwards}
+@keyframes pz-ripple{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
+
+/* Motion levels. Off (or the system's reduced-motion setting) stops every effect above. */
+html[data-pz-studio][data-pz-motion=reduced] .page.active{animation-duration:.2s}
+html[data-pz-studio][data-pz-motion=reduced] :is(.pz-title.pz-swap){animation:none}
+html[data-pz-studio][data-pz-motion=off] *,html[data-pz-studio][data-pz-motion=off] *::before,html[data-pz-studio][data-pz-motion=off] *::after{animation:none!important;transition:none!important}
+@media(prefers-reduced-motion:reduce){html[data-pz-studio] .app::after,html[data-pz-studio] .page.active,html[data-pz-studio] .pz-title.pz-swap,html[data-pz-studio] .pz-preview,.pz-ripple{animation:none!important}html[data-pz-studio] :is(.pz-area,.pz-tabs .navbtn::after,.nx-theme,.page .nx-card,.page .stat){transition:none!important}}
+@media(max-width:980px){html[data-pz-studio]{--pz-side:236px}html[data-pz-studio] .titlebar{padding-left:28px!important}html[data-pz-studio] .pz-title{font-size:30px}html[data-pz-studio] .content{padding:24px 26px 44px!important}html[data-pz-studio] .pz-tabs{padding:0 20px 0 28px}html[data-pz-studio] .pz-search{flex-basis:150px}html[data-pz-studio] .pz-maker{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -1805,7 +1981,7 @@ __PLAZCODE_VERSION_UI__
   var NXCATLABEL = {general:'General',language:'Language',memory:'Memory',safety:'Safety',debug:'Debug'};
   var NXTHEMENAMES = {default:'Default',amethyst:'Amethyst',cyan:'Polar Cyan',rose:'Rose',emerald:'Emerald',graphite:'Graphite',crimson:'Crimson',ocean:'Oceanic',copper:'Copper Atelier',aurora:'Aurora',orchid:'Orchid Noir'};
   var NXFONTS = {sans:'Inter,Segoe UI,Arial,sans-serif',rounded:'ui-rounded,"SF Pro Rounded","Nunito","Quicksand","Segoe UI",sans-serif',mono:'ui-monospace,"Cascadia Code",Consolas,Menlo,monospace',serif:'Georgia,"Times New Roman",serif'};
-  var NXLOOKDEFAULT = {radius:14,bw:1,bc:'theme',rainbow:false,grid:false,font:'sans',bg:false,bgkind:'',bgstrength:45,blur:0,panel:62};
+  var NXLOOKDEFAULT = {radius:14,bw:1,bc:'theme',rainbow:false,grid:false,font:'sans',bg:false,bgkind:'',bgstrength:45,blur:0,panel:62,motion:'full',anim:true,ripple:true};
   var Nxlook = Object.assign({},NXLOOKDEFAULT);
 
   function Nxarea(Name, Cat) {
@@ -1824,6 +2000,7 @@ __PLAZCODE_VERSION_UI__
       var On = Button.getAttribute('data-area') === Area; Button.classList.toggle('active', On); Button.setAttribute('aria-current', On ? 'page' : 'false');
     });
     Nxsettingscat(Name === 'settings' ? (Cat || 'general') : '');
+    try { Pzsync(Area); } catch (Error) {}
   }
   var Nxcurrentarea = 'home';
   function Nxsettingscat(Cat) {
@@ -1866,6 +2043,10 @@ __PLAZCODE_VERSION_UI__
     Root.toggleAttribute('data-look-grid', !!L.grid);
     Root.toggleAttribute('data-look-bg', !!Nxwallurl);
     Root.setAttribute('data-look-bc', L.bc === 'neutral' ? 'neutral' : 'theme');
+    Root.setAttribute('data-pz-motion', L.motion === 'reduced' || L.motion === 'off' ? L.motion : 'full');
+    Root.toggleAttribute('data-pz-anim', L.anim !== false);
+    Root.toggleAttribute('data-pz-ripple', L.ripple !== false);
+    Array.prototype.slice.call(document.querySelectorAll('[data-look-motion]')).forEach(function (Node) { Node.setAttribute('aria-pressed', String(Node.getAttribute('data-look-motion') === (Root.getAttribute('data-pz-motion')))); });
     var Map = {radius: L.radius + ' px', bw: L.bw + ' px', bgstrength: L.bgstrength + '%', blur: L.blur + ' px', panel: L.panel + '%'};
     Array.prototype.slice.call(document.querySelectorAll('[data-look]')).forEach(function (Node) {
       var Key = Node.getAttribute('data-look');
@@ -1975,17 +2156,18 @@ __PLAZCODE_VERSION_UI__
   function Nxapplycustom() {
     var Root = document.documentElement, Hex = Nxcustomactive(), Theme = Hex ? Nxcustomtheme(Hex) : null;
     var Props = ['--canvas', '--surface', '--raised', '--stroke', '--ink-soft'];
-    if (!Theme) { Root.removeAttribute('data-nx-custom'); return; }
+    if (!Theme) { Root.removeAttribute('data-nx-custom'); Root.removeAttribute('data-pz-bg'); Root.style.removeProperty('--text'); return; }
     Root.setAttribute('data-nx-custom', '1');
     Root.style.setProperty('--orange', Theme.accent); Root.style.setProperty('--orange2', Theme.light); Root.style.setProperty('--bg', Theme.bg); Root.style.setProperty('--theme-rgb', Theme.rgb);
     [Theme.canvas, Theme.surface, Theme.raised, Theme.stroke, Theme.ink].forEach(function (V, I) { Root.style.setProperty(Props[I], V); });
+    try { Pzapplypalette(Root); } catch (Error) {}
     Array.prototype.slice.call(document.querySelectorAll('[data-desktop-palette]')).forEach(function (Button) { Button.setAttribute('aria-pressed', 'false'); });
     var Tile = Byid('nxCustomTile'); if (Tile) Tile.setAttribute('aria-pressed', 'true');
   }
   function Nxclearcustom() {
     try { ProfileStorage.removeItem('plazcodeCustomTheme'); } catch (Error) {}
-    var Root = document.documentElement; Root.removeAttribute('data-nx-custom');
-    ['--canvas', '--surface', '--raised', '--stroke', '--ink-soft'].forEach(function (Name) { Root.style.removeProperty(Name); });
+    var Root = document.documentElement; Root.removeAttribute('data-nx-custom'); Root.removeAttribute('data-pz-bg');
+    ['--canvas', '--surface', '--raised', '--stroke', '--ink-soft', '--text'].forEach(function (Name) { Root.style.removeProperty(Name); });
     var Tile = Byid('nxCustomTile'); if (Tile) Tile.setAttribute('aria-pressed', 'false');
   }
   function Nxrenderthemes() {
@@ -1997,13 +2179,15 @@ __PLAZCODE_VERSION_UI__
       [T.bg, Nxtohex(Nxmix(Nxparse(T.bg) || [0, 0, 0], Nxparse(T.accent) || [255, 255, 255], .18)), T.accent, T.light].forEach(function (Color) { var Stripe = document.createElement('i'); Stripe.style.background = Color; Prev.appendChild(Stripe); });
       var Name = document.createElement('span'); Name.className = 'nx-theme-name'; Name.textContent = NXTHEMENAMES[Key] || Key;
       var Tick = document.createElement('span'); Tick.className = 'nx-theme-tick'; Tick.setAttribute('aria-hidden', 'true'); Tick.textContent = '✓';
-      Button.append(Prev, Name, Tick); Host.appendChild(Button);
+      var Desc = document.createElement('span'); Desc.className = 'nx-theme-desc'; Desc.textContent = NXTHEMEDESC[Key] ? Pzt(NXTHEMEDESC[Key]) : '';
+      Button.append(Prev, Name, Desc, Tick); Host.appendChild(Button);
     });
     var Add = document.createElement('button'); Add.type = 'button'; Add.id = 'nxCustomTile'; Add.className = 'nx-theme nx-theme-add'; Add.setAttribute('aria-pressed', 'false');
     var Plus = document.createElement('span'); Plus.className = 'nx-theme-prev nx-theme-plus'; Plus.textContent = '+';
-    var AddName = document.createElement('span'); AddName.className = 'nx-theme-name'; AddName.textContent = 'Add Custom Theme';
+    var AddName = document.createElement('span'); AddName.className = 'nx-theme-name'; AddName.textContent = Pzt('Make your own');
+    var AddDesc = document.createElement('span'); AddDesc.className = 'nx-theme-desc'; AddDesc.textContent = Pzt('Pick your colours and background.');
     var AddTick = document.createElement('span'); AddTick.className = 'nx-theme-tick'; AddTick.setAttribute('aria-hidden', 'true'); AddTick.textContent = '✓';
-    Add.append(Plus, AddName, AddTick); Host.appendChild(Add);
+    Add.append(Plus, AddName, AddDesc, AddTick); Host.appendChild(Add);
     Host.addEventListener('click', function (Event) {
       var Hit = Event.target && Event.target.closest ? Event.target.closest('[data-desktop-palette]') : null;
       if (Hit) Nxclearcustom();
@@ -2147,7 +2331,8 @@ __PLAZCODE_VERSION_UI__
     Array.prototype.slice.call(document.querySelectorAll('[data-nx-glow]')).forEach(function (Node) { Node.onclick = function () { Byid('desktopGlow').value = Node.getAttribute('data-nx-glow'); Saveappearance(); }; });
     var Grad = Byid('nxGradients'); if (Grad) Grad.onclick = function () { Byid('desktopGradients').value = Grad.getAttribute('aria-checked') === 'true' ? 'off' : 'on'; Saveappearance(); };
     var Restore = Byid('nxThemeReset'); if (Restore) Restore.onclick = function () { Nxclearcustom(); Byid('resetAppearance').click(); };
-    Nxloadlook(); Nxrenderthemes(); Nxbindlook(); Nxapplylook(); Nxloadwall(); document.addEventListener('visibilitychange', Nxwallpause);
+    try { Pzstudio(); } catch (Error) {}
+    Nxloadlook(); Nxrenderthemes(); try { Pzmaker(); } catch (Error) {} Nxbindlook(); Nxapplylook(); Nxloadwall(); document.addEventListener('visibilitychange', Nxwallpause);
     var Collapse = Byid('sidebarCollapse');
     Array.prototype.slice.call(document.querySelectorAll('.nx-area')).forEach(function (Button) {
       Button.onclick = function () { var Target = NXAREAHOME[Button.getAttribute('data-area')] || ['home', '']; Go(Target[0], Target[1]); };
@@ -2160,6 +2345,157 @@ __PLAZCODE_VERSION_UI__
         Button.classList.toggle('nx-off', Q ? Label.indexOf(Q) < 0 : Button.getAttribute('data-area') !== Nxcurrentarea);
       });
     };
+  }
+
+  /* ===== PlazCode Studio look (after 1.24.32, owner 2026-11-10) =====
+     Rebuilds the frame around the existing pages without touching them: six sections in a roomy sidebar
+     (title + subtitle), the section's pages as tabs under a serif page title, a live bridge pill, click
+     ripples, the Feel settings and the "make your own" palette. Every original control keeps its element,
+     id and handler; the section buttons forward to the original section buttons. */
+  var PZAREAS = {home:['Home','At a glance'],workspace:['Workspace','Skills, files & templates'],connections:['Connections','Tools & MCP servers'],docs:['Help','Guides & fixes'],settings:['Settings','Make it yours'],support:['Support','Logs & terminal']};
+  var NXTHEMEDESC = {default:'Warm gold on deep charcoal.',amethyst:'Violet light on midnight.',cyan:'Icy cyan on deep navy.',rose:'Soft pink on dark plum.',emerald:'Fresh green on deep forest.',graphite:'Calm, cool monochrome.',crimson:'Ruby red on charcoal.',ocean:'Sea blue on the deep Atlantic.',copper:'Copper and clay, a warm studio.',aurora:'The mint glow of northern lights.',orchid:'Orchid pink on noir.'};
+  function Pzt(Text) { try { return I18n ? I18n.t(Text) : Text; } catch (Error) { return Text; } }
+  function Pzel(Tag, Cls, Text) { var Node = document.createElement(Tag); if (Cls) Node.className = Cls; if (Text != null) Node.textContent = Pzt(Text); return Node; }
+  function Pzstudio() {
+    var Root = document.documentElement;
+    if (Root.hasAttribute('data-pz-studio')) return;
+    var Side = document.querySelector('.sidebar'), Nav = Side && Side.querySelector('.nav'), Shell = document.querySelector('.shell'), Bar = Byid('dragbar'), Content = Byid('content');
+    if (!Side || !Nav || !Shell || !Bar || !Content) return;
+    Root.setAttribute('data-pz-studio', '');
+    var Brand = Pzel('div', 'pz-brand'), Logo = Pzel('span', 'pz-brand-logo'), Source = Bar.querySelector('.tb-logo svg');
+    if (Source) Logo.appendChild(Source.cloneNode(true));
+    var Word = Pzel('span', 'pz-brand-word'); Word.appendChild(document.createTextNode('Plaz')); var Em = document.createElement('em'); Em.textContent = 'Code'; Word.appendChild(Em);
+    Brand.append(Logo, Word);
+    var Collapse = Byid('sidebarCollapse'); if (Collapse) Brand.appendChild(Collapse);
+    var Areas = Pzel('nav', 'pz-areas'); Areas.setAttribute('aria-label', Pzt('Sections'));
+    Array.prototype.slice.call(Bar.querySelectorAll('.nx-area')).forEach(function (Original, Index) {
+      var Key = Original.getAttribute('data-area'), Meta = PZAREAS[Key] || [(Original.textContent || '').trim(), ''];
+      var Button = Pzel('button', 'pz-area'); Button.type = 'button'; Button.setAttribute('data-area', Key); Button.title = Pzt(Meta[0]);
+      var Icon = Original.querySelector('svg'); if (Icon) Button.appendChild(Icon.cloneNode(true));
+      var Text = Pzel('span'); Text.append(Pzel('b', '', Meta[0]), Pzel('small', '', Meta[1]));
+      Button.append(Text, Pzel('i', '', ('0' + (Index + 1)).slice(-2)));
+      Button.onclick = function () { Original.click(); };
+      Areas.appendChild(Button);
+    });
+    Side.insertBefore(Areas, Side.firstChild); Side.insertBefore(Pzel('div', 'pz-eyebrow', 'Your workspace'), Areas); Side.insertBefore(Brand, Side.firstChild);
+    var Tabs = Pzel('div', 'pz-tabs'); Tabs.appendChild(Nav); Nav.setAttribute('aria-label', Pzt('Pages in this section'));
+    var Search = Byid('nxSideSearch'); if (Search) { Search.classList.add('pz-search'); Tabs.appendChild(Search); }
+    Shell.insertBefore(Tabs, Content);
+    var Head = Pzel('div', 'pz-head'), Eyebrow = Pzel('div', 'pz-eyebrow'), Title = Pzel('h1', 'pz-title'); Eyebrow.id = 'pzEyebrow'; Title.id = 'pzTitle';
+    Head.append(Eyebrow, Title); Bar.insertBefore(Head, Bar.querySelector('.title-spacer'));
+    var Pill = Pzel('span', 'pz-pill'); Pill.id = 'pzBridgePill'; Pill.setAttribute('role', 'status'); Bar.insertBefore(Pill, Byid('notificationCenter'));
+    Bar.appendChild(Pzel('span', 'pz-head-rule'));
+    Pzpill();
+    var Status = Byid('sideStatus'), Dot = Byid('sideDot');
+    if (window.MutationObserver) { if (Status) new MutationObserver(Pzpill).observe(Status, {childList:true, characterData:true, subtree:true}); if (Dot) new MutationObserver(Pzpill).observe(Dot, {attributes:true, attributeFilter:['class']}); }
+    Pzfeel(); Pzripples();
+    Pzsync(Nxcurrentarea);
+  }
+  function Pzpill() {
+    var Pill = Byid('pzBridgePill'), Status = Byid('sideStatus'), Dot = Byid('sideDot');
+    if (!Pill || !Status) return;
+    var On = !!(Dot && Dot.classList.contains('on'));
+    Pill.textContent = On ? Pzt('Bridge online') : (Status.textContent || '').trim() || Pzt('Bridge waiting');
+    Pill.setAttribute('data-on', On ? '1' : '0');
+  }
+  function Pzsync(Area) {
+    if (!document.documentElement.hasAttribute('data-pz-studio')) return;
+    var Meta = PZAREAS[Area] || PZAREAS.home;
+    Array.prototype.slice.call(document.querySelectorAll('.pz-area')).forEach(function (Button) { var On = Button.getAttribute('data-area') === Area; Button.classList.toggle('active', On); Button.setAttribute('aria-current', On ? 'page' : 'false'); });
+    var Active = document.querySelector('.navbtn.active'), Label = Active ? ((Active.querySelector('.navlabel') || Active).textContent || '').trim() : Pzt(Meta[0]);
+    var Eyebrow = Byid('pzEyebrow'); if (Eyebrow) Eyebrow.textContent = Pzt(Meta[0]);
+    var Title = Byid('pzTitle');
+    if (Title && Title.textContent !== Label) { Title.textContent = Label; Title.classList.remove('pz-swap'); void Title.offsetWidth; Title.classList.add('pz-swap'); }
+    var Tabs = document.querySelector('.pz-tabs'); if (Tabs) Tabs.setAttribute('data-single', document.querySelectorAll('.pz-tabs .navbtn:not(.nx-off)').length < 2 ? '1' : '0');
+  }
+  // A soft ripple where a button or card is pressed (Appearance > Feel > Click ripples).
+  function Pzripples() {
+    document.addEventListener('pointerdown', function (Event) {
+      var Root = document.documentElement;
+      if (Event.button !== 0 || !Root.hasAttribute('data-pz-ripple') || Root.getAttribute('data-pz-motion') === 'off') return;
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      var Target = Event.target && Event.target.closest ? Event.target.closest('button,.nx-card,[role=button],.pz-area') : null;
+      if (!Target || Target.disabled || Target.closest('.winbtn,input,select,textarea')) return;
+      var Rect = Target.getBoundingClientRect(); if (Rect.width < 24 || Rect.height < 16) return;
+      if (getComputedStyle(Target).position === 'static') Target.style.position = 'relative';
+      var Host = Pzel('span', 'pz-ripple-host'), Wave = Pzel('span', 'pz-ripple'), Size = Math.max(Rect.width, Rect.height) * 2.4;
+      Host.setAttribute('aria-hidden', 'true');
+      Wave.style.width = Wave.style.height = Size + 'px'; Wave.style.left = (Event.clientX - Rect.left) + 'px'; Wave.style.top = (Event.clientY - Rect.top) + 'px';
+      Host.appendChild(Wave); Target.appendChild(Host); setTimeout(function () { Host.remove(); }, 700);
+    }, true);
+  }
+  // Appearance > Feel: how much the app moves.
+  function Pzfeel() {
+    var Page = Byid('page-appearance'); if (!Page || Byid('pzFeel')) return;
+    var Block = Pzel('div', 'nx-block'); Block.id = 'pzFeel';
+    Block.append(Pzel('h2', '', 'Feel'), Pzel('p', '', 'Motion, the animated theme and click effects. Saved on this computer.'));
+    var Rows = Pzel('div', 'nx-rows');
+    function Icon(Path) { var Box = Pzel('span', 'nx-ico'), Svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), Line = document.createElementNS('http://www.w3.org/2000/svg', 'path'); Svg.setAttribute('viewBox', '0 0 24 24'); Svg.setAttribute('aria-hidden', 'true'); Line.setAttribute('d', Path); Svg.appendChild(Line); Box.appendChild(Svg); return Box; }
+    function Row(Title, Help, Control, Path) { var Line = Pzel('div', 'nx-row'), Text = Pzel('div'); Text.append(Pzel('b', '', Title), Pzel('small', '', Help)); var Box = Pzel('div', 'nx-ctl'); Box.appendChild(Control); Line.append(Icon(Path), Text, Box); return Line; }
+    var Motion = Pzel('div', 'nx-seg');
+    [['full', 'Full'], ['reduced', 'Reduced'], ['off', 'Off']].forEach(function (Item) { var Button = Pzel('button', '', Item[1]); Button.type = 'button'; Button.setAttribute('data-look-motion', Item[0]); Button.setAttribute('aria-pressed', 'false'); Button.onclick = function () { Nxlook.motion = Item[0]; Nxapplylook(); Nxsavelook(); }; Motion.appendChild(Button); });
+    function Switch(Key, Label) { var Button = Pzel('button', 'nx-sw'); Button.type = 'button'; Button.setAttribute('role', 'switch'); Button.setAttribute('aria-checked', 'true'); Button.setAttribute('aria-label', Pzt(Label)); Button.setAttribute('data-look', Key); return Button; }
+    Rows.append(Row('Interface motion', 'Page transitions, hover lift and glow. Off stops every animation.', Motion, 'M4 12h3l3-7 4 14 3-7h3'),
+      Row('Animated theme', 'The theme colour drifts slowly behind the pages.', Switch('anim', 'Animated theme'), 'M3 15c3-4 6-4 9 0s6 4 9 0M3 9c3-4 6-4 9 0s6 4 9 0'),
+      Row('Click ripples', 'A soft ripple where you click a button or card.', Switch('ripple', 'Click ripples'), 'M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M12 12m-6 0a6 6 0 1 0 12 0a6 6 0 1 0-12 0M12 12m-9.5 0a9.5 9.5 0 1 0 19 0'));
+    Block.appendChild(Rows);
+    var Glow = Byid('nxGradients'); var After = Glow && Glow.closest('.nx-block');
+    if (After && After.parentNode === Page) Page.insertBefore(Block, After.nextSibling); else Page.appendChild(Block);
+  }
+  // Appearance > Colour theme > Make your own: accent, background, surface and text, plus the background style.
+  function Pzpalette() { try { var Value = JSON.parse(ProfileStorage.getItem('plazcodeCustomPalette') || 'null'); return Value && typeof Value === 'object' ? Value : null; } catch (Error) { return null; } }
+  function Pzluma(Hex) { var C = Nxparse(Hex); if (!C) return 0; var L = C.map(function (V) { V /= 255; return V <= .03928 ? V / 12.92 : Math.pow((V + .055) / 1.055, 2.4); }); return .2126 * L[0] + .7152 * L[1] + .0722 * L[2]; }
+  function Pzcontrast(A, B) { var X = Pzluma(A), Y = Pzluma(B); return (Math.max(X, Y) + .05) / (Math.min(X, Y) + .05); }
+  function Pzcss(Name, Fallback) { var Value = getComputedStyle(document.documentElement).getPropertyValue(Name).trim(); if (/^#[0-9a-f]{3}$/i.test(Value)) Value = '#' + Value.slice(1).split('').map(function (C) { return C + C; }).join(''); return Nxparse(Value) ? Value : Fallback; }
+  function Pzmaker() {
+    var Panel = Byid('nxCustomPanel'), Color = Byid('nxCustomColor'), Hex = Byid('nxCustomHex'), Apply = Byid('nxCustomApply'), Remove = Byid('nxCustomRemove');
+    if (!Panel || !Color || Byid('pzMaker')) return;
+    var Saved = Pzpalette() || {};
+    var Maker = Pzel('div', 'pz-maker'); Maker.id = 'pzMaker';
+    var Preview = Pzel('div', 'pz-preview'); Preview.id = 'pzPreview';
+    var Card = Pzel('div', 'pz-pv-card'); Card.append(Pzel('small', '', 'Project memory'), Pzel('span', '', 'Room for your next idea'));
+    var Foot = Pzel('div', 'pz-pv-foot'); Foot.append(Pzel('span', '', 'Made on this computer'), Pzel('span', 'pz-pv-btn', 'Let’s create'));
+    Preview.append(Pzel('div', 'pz-eyebrow', 'Your own palette'), Pzel('h4', '', 'My studio'), Pzel('p', '', 'A little colour, a different perspective. A workspace that feels like you.'), Card, Foot);
+    var Form = Pzel('div', 'pz-maker-form'), Swatches = Pzel('div', 'pz-swatches');
+    function Swatch(Label, Input) { var Box = Pzel('label', 'pz-swatch'); Box.append(Pzel('span', '', Label), Input); return Box; }
+    function Picker(Id, Value) { var Input = document.createElement('input'); Input.type = 'color'; Input.id = Id; Input.value = Value; return Input; }
+    var Canvas = Picker('pzCanvas', Saved.canvas || Pzcss('--canvas', '#0b0d12')), Surface = Picker('pzSurface', Saved.surface || Pzcss('--surface', '#161a22')), Ink = Picker('pzText', Saved.text || Pzcss('--text', '#f5f8ff'));
+    Swatches.append(Swatch('Accent', Color), Swatch('Background', Canvas), Swatch('Surface', Surface), Swatch('Text', Ink));
+    var Code = Pzel('div', 'pz-maker-row'); Code.append(Pzel('span', '', 'Accent code')); if (Hex) Code.appendChild(Hex);
+    var Mode = Pzel('div', 'pz-maker-row'), Seg = Pzel('div', 'nx-seg'); Mode.append(Pzel('span', '', 'Background'), Seg);
+    var Bgmode = /^(solid|gradient|animated)$/.test(Saved.bg || '') ? Saved.bg : 'animated';
+    [['solid', 'Solid'], ['gradient', 'Gradient'], ['animated', 'Animated']].forEach(function (Item) { var Button = Pzel('button', '', Item[1]); Button.type = 'button'; Button.setAttribute('data-pz-bgmode', Item[0]); Button.onclick = function () { Bgmode = Item[0]; Draw(true); }; Seg.appendChild(Button); });
+    var Contrast = Pzel('div', 'pz-contrast'); Contrast.setAttribute('role', 'status');
+    var Actions = Pzel('div', 'pz-maker-actions'); if (Apply) { Apply.textContent = Pzt('Save and use'); Actions.appendChild(Apply); } if (Remove) Actions.appendChild(Remove);
+    Form.append(Swatches, Code, Mode, Contrast, Actions);
+    Maker.append(Preview, Form);
+    Panel.replaceChildren(Maker);
+    function Values() { return {canvas: Canvas.value, surface: Surface.value, text: Ink.value, bg: Bgmode}; }
+    function Draw(Live) {
+      var Accent = Nxparse(Color.value) ? Color.value : '#e9ba53';
+      Preview.style.setProperty('--pz-pv-accent', Accent); Preview.style.setProperty('--pz-pv-canvas', Canvas.value); Preview.style.setProperty('--pz-pv-surface', Surface.value); Preview.style.setProperty('--pz-pv-text', Ink.value);
+      Preview.style.setProperty('--pz-pv-line', Accent + '44'); Preview.setAttribute('data-bg', Bgmode);
+      Array.prototype.slice.call(Seg.querySelectorAll('[data-pz-bgmode]')).forEach(function (Button) { Button.setAttribute('aria-pressed', String(Button.getAttribute('data-pz-bgmode') === Bgmode)); });
+      var Ratio = Pzcontrast(Ink.value, Canvas.value);
+      Contrast.textContent = Pzt('Text contrast') + ' ' + Ratio.toFixed(1) + ':1 · ' + Pzt(Ratio >= 4.5 ? 'easy to read' : 'hard to read');
+      Contrast.setAttribute('data-ok', Ratio >= 4.5 ? '1' : '0');
+      // Like the accent picker, changing a colour previews it on the whole app at once.
+      if (Live && Nxcustomactive()) { try { ProfileStorage.setItem('plazcodeCustomPalette', JSON.stringify(Values())); } catch (Error) {} Nxapplycustom(); }
+    }
+    [Canvas, Surface, Ink].forEach(function (Input) { Input.addEventListener('input', function () { Draw(true); }); });
+    Color.addEventListener('input', function () { Draw(false); });
+    if (Hex) Hex.addEventListener('input', function () { Draw(false); });
+    if (Apply) Apply.addEventListener('click', function () { try { ProfileStorage.setItem('plazcodeCustomPalette', JSON.stringify(Values())); } catch (Error) {} Nxapplycustom(); }, true);
+    if (Remove) Remove.addEventListener('click', function () { try { ProfileStorage.removeItem('plazcodeCustomPalette'); } catch (Error) {} }, true);
+    Draw(false);
+  }
+  function Pzapplypalette(Root) {
+    var Extra = Pzpalette();
+    if (!Extra) { Root.removeAttribute('data-pz-bg'); Root.style.removeProperty('--text'); return; }
+    if (Nxparse(Extra.canvas)) { Root.style.setProperty('--canvas', Extra.canvas); Root.style.setProperty('--bg', Extra.canvas); }
+    if (Nxparse(Extra.surface)) { Root.style.setProperty('--surface', Extra.surface); Root.style.setProperty('--raised', Nxtohex(Nxmix(Nxparse(Extra.surface), [255, 255, 255], .05))); }
+    if (Nxparse(Extra.text)) Root.style.setProperty('--text', Extra.text);
+    Root.setAttribute('data-pz-bg', /^(solid|gradient|animated)$/.test(Extra.bg || '') ? Extra.bg : 'animated');
   }
 
   /* Documentation screen text in every supported language (guides themselves are translated separately) */
