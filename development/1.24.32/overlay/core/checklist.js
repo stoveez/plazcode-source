@@ -19,7 +19,7 @@ const PlazCodeChecklist = (() => {
     try { if(!storage)storage=window.sessionStorage;collapsed=storage.getItem(key)==='1';const saved=JSON.parse(storage.getItem(positionKey));if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y))position={x:saved.x,y:saved.y}; } catch {}
     const panel=document.createElement('section');panel.id='rs-task-checklist';panel.hidden=true;panel.setAttribute('aria-label','Task checklist');
     panel.innerHTML='<header><span class="rs-checklist-ring" role="progressbar" aria-label="Task plan progress" aria-valuemin="0" aria-valuemax="100"><svg viewBox="0 0 32 32" aria-hidden="true"><circle class="rs-checklist-track" cx="16" cy="16" r="12"/><circle class="rs-checklist-fill" cx="16" cy="16" r="12" pathLength="100" stroke-dasharray="100" transform="rotate(-90 16 16)"/></svg><span class="rs-checklist-percent"></span></span><span class="rs-checklist-heading"><strong>Task checklist</strong><small></small></span><button type="button" class="rs-checklist-hide" aria-label="Hide task checklist" title="Hide checklist — the AI keeps working">−</button></header><ol></ol>';
-    const tab=document.createElement('button');tab.id='rs-checklist-show';tab.type='button';tab.hidden=true;tab.textContent='☑ Tasks';tab.setAttribute('aria-label','Show task checklist');
+    const tab=document.createElement('button');tab.id='rs-checklist-show';tab.type='button';tab.hidden=true;tab.innerHTML='<span class="rs-checklist-tab-icon" aria-hidden="true">✓</span><span class="rs-checklist-tab-label">Tasks</span><span class="rs-checklist-tab-count"></span>';tab.setAttribute('aria-label','Show task checklist');
     root.append(panel,tab);
     function setCollapsed(value) {
       collapsed=value;try{if(value)storage.setItem(key,'1');else storage.removeItem(key);}catch{}
@@ -53,6 +53,8 @@ const PlazCodeChecklist = (() => {
         const goal=group.taskLabel&&group.taskLabel!=='Planning project work'?group.taskLabel:'Task checklist';
         panel.querySelector('small').textContent=completed?'Completed':(group.plan?`${doneCount} of ${items.length} done`+(group.ended?' · paused':''):'Waiting for task steps');
         panel.querySelector('strong').textContent=goal;
+        // The collapsed Tasks pill shows how far the plan is ("2/5"), or nothing while there is no plan yet.
+        tab.querySelector('.rs-checklist-tab-count').textContent=group.plan?`${doneCount}/${items.length}`:'';tab.dataset.done=String(!!completed);
         panel.querySelector('strong').title=group.taskLabel;
         const list=panel.querySelector('ol');list.replaceChildren();
         for(const [index,item] of items.entries()){const row=document.createElement('li'),icon=document.createElement('span'),label=document.createElement('span');const done=completed||item.status==='completed';row.dataset.status=done?'completed':item.status;icon.className='rs-checklist-mark';icon.textContent=done?'✓':item.status==='in_progress'?'◉':'○';icon.setAttribute('aria-hidden','true');label.className="rs-checklist-label";label.textContent=(group.plan?`${index+1}. `:"")+item.label;row.setAttribute('aria-label',item.label+' — '+(done?'completed':item.status.replace('_',' ')));row.append(icon,label);list.append(row);}
@@ -64,7 +66,7 @@ const PlazCodeChecklist = (() => {
       const detached=!!getDetached(),available=!!group?.taskLabel&&(detached||!!rect?.width&&rect.top>64)&&!blocked();
       panel.hidden=!available||collapsed;tab.hidden=!available||!collapsed;
       if(!available)return;
-      const element=collapsed?tab:panel,width=collapsed?94:Math.min(300,window.innerWidth-16);
+      const element=collapsed?tab:panel,width=collapsed?(tab.querySelector('.rs-checklist-tab-count')?.textContent?124:92):Math.min(300,window.innerWidth-16);
       panel.dataset.detached=String(detached);
       if(detached){
         if(!position){const previous=element.getBoundingClientRect();position={x:previous.width?previous.left:Math.max(8,window.innerWidth-316),y:previous.height?previous.top:Math.max(8,window.innerHeight-380)};}
