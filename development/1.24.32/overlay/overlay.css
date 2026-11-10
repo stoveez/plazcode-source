@@ -6077,10 +6077,10 @@ html[data-rs-palette][data-rs-theme][data-rs-gradients=off] #rs-root #rs-bar #rs
    animated status rings, and a matching Tasks pill with the step count. Colours follow --pc-* (amber default). */
 html #rs-task-checklist,html #rs-checklist-show{font-family:system-ui,"Segoe UI",sans-serif}
 html #rs-task-checklist{padding:14px 14px 10px;border-radius:16px;border:1px solid rgb(var(--pc-rgb,255 146 38) / .5);color:#eef4ff;
-  background:radial-gradient(ellipse at top right,rgb(var(--pc-rgb,255 146 38) / .16),transparent 68%),linear-gradient(165deg,#162132,var(--pc-bg,#091522) 62%);
+  background:radial-gradient(ellipse at top right,rgb(var(--pc-rgb,255 146 38) / .16),transparent 68%),linear-gradient(165deg,#ffffff0d,transparent 62%) var(--pc-bg,#091522);
   box-shadow:0 16px 40px #0007,0 0 28px rgb(var(--pc-rgb,255 146 38) / var(--pc-glow-strength,.22)),inset 0 1px 0 #ffffff12}
 html #rs-task-checklist::after{background:linear-gradient(rgb(var(--pc-rgb,255 146 38) / .6),transparent)}
-html #rs-task-checklist header{gap:12px;margin:0 0 10px;padding-bottom:11px;border-bottom:1px solid #ffffff12}
+html #rs-task-checklist header{gap:12px;margin:0 0 12px;padding-bottom:11px;border-bottom:1px solid #ffffff12}
 html #rs-task-checklist .rs-checklist-ring{width:42px;height:42px;border-radius:50%;background:radial-gradient(circle,rgb(var(--pc-rgb,255 146 38) / .14),transparent 70%)}
 html #rs-task-checklist .rs-checklist-ring svg{stroke-width:3;filter:drop-shadow(0 0 4px rgb(var(--pc-rgb,255 146 38) / .55))}
 html #rs-task-checklist .rs-checklist-track{stroke:#ffffff17}
@@ -6096,8 +6096,8 @@ html #rs-task-checklist ol{position:relative;padding:2px 2px 4px}
 html #rs-task-checklist li{position:relative;align-items:flex-start;gap:11px;padding:7px 8px;margin:1px 0;border-radius:10px;border:1px solid transparent;color:#d9e2f0;transition:background .25s,border-color .25s}
 html #rs-task-checklist li:not(:last-child)::before{content:"";position:absolute;left:16.5px;top:27px;bottom:-9px;width:1px;background:linear-gradient(rgb(var(--pc-rgb,255 146 38) / .35),#ffffff10)}
 html #rs-task-checklist li[data-status=in_progress]{background:linear-gradient(120deg,rgb(var(--pc-rgb,255 146 38) / .14),rgb(var(--pc-rgb,255 146 38) / .03));border-color:rgb(var(--pc-rgb,255 146 38) / .35);color:#fff}
-html #rs-task-checklist li[data-status=completed]{color:#9fb0c8}
-html #rs-task-checklist li[data-status=completed] .rs-checklist-label{text-decoration:line-through;text-decoration-color:#ffffff30}
+html #rs-task-checklist li[data-status=completed]{color:#72d69b}
+html #rs-task-checklist li[data-status=completed] .rs-checklist-label{text-decoration:line-through;text-decoration-color:#72d69b55}
 html #rs-task-checklist .rs-checklist-label{font-size:12.5px;line-height:1.5}
 html #rs-task-checklist .rs-checklist-mark{position:relative;width:18px;height:18px;margin-top:1px;border-radius:50%;font-size:0;opacity:1;box-sizing:border-box;border:1.5px dashed rgb(var(--pc-rgb,255 146 38) / .5);background:#0b1422}
 html #rs-task-checklist li[data-status=in_progress] .rs-checklist-mark{border:0;background:conic-gradient(from 0deg,var(--pc-light,#ffc052),var(--pc-accent,#ff9226),transparent 78%);-webkit-mask:radial-gradient(circle,transparent 5.5px,#000 6px);mask:radial-gradient(circle,transparent 5.5px,#000 6px);animation:rs-checklist-spin .9s linear infinite}
@@ -6106,7 +6106,7 @@ html #rs-task-checklist[data-done=true]{border-color:#3ddc8a80;box-shadow:0 16px
 html #rs-task-checklist[data-done=true] .rs-checklist-fill{stroke:#5fe3a1}
 html #rs-task-checklist[data-done=true] :is(.rs-checklist-percent,small){color:#7debb0}
 html #rs-checklist-show{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 6px;border-radius:999px;border:1px solid rgb(var(--pc-rgb,255 146 38) / .6);color:#f5f8ff;font:700 12.5px/1 system-ui,"Segoe UI",sans-serif;
-  background:radial-gradient(ellipse at top left,rgb(var(--pc-rgb,255 146 38) / .22),transparent 70%),linear-gradient(165deg,#172334,var(--pc-bg,#091522));
+  background:radial-gradient(ellipse at top left,rgb(var(--pc-rgb,255 146 38) / .22),transparent 70%),linear-gradient(165deg,#ffffff0d,transparent) var(--pc-bg,#091522);
   box-shadow:0 10px 26px #0006,0 0 18px rgb(var(--pc-rgb,255 146 38) / .3),inset 0 1px 0 #ffffff14;transition:transform .2s,box-shadow .25s,border-color .25s}
 html #rs-checklist-show:hover{transform:translateY(-1px);border-color:var(--pc-light,#ffac43);box-shadow:0 12px 28px #0007,0 0 24px rgb(var(--pc-rgb,255 146 38) / .45),inset 0 1px 0 #ffffff18}
 html #rs-checklist-show .rs-checklist-tab-icon{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,var(--pc-light,#ffc052),var(--pc-accent,#ff9226));color:#08111d;font-size:11px;font-weight:900;box-shadow:0 0 10px rgb(var(--pc-rgb,255 146 38) / .55)}
@@ -6114,6 +6114,6 @@ html #rs-checklist-show .rs-checklist-tab-count:not(:empty){padding:3px 7px;bord
 html #rs-checklist-show[data-done=true] .rs-checklist-tab-icon{background:linear-gradient(135deg,#6ee7a8,#22c55e);box-shadow:0 0 10px #22c55e66;color:#06210f}
 html[data-rs-thinking=ultracode] #rs-task-checklist li[data-status=in_progress] .rs-checklist-mark{background:conic-gradient(from 0deg,#e2c5ff,#9762df,transparent 78%)}
 html[data-rs-gradients=off] :is(#rs-task-checklist,#rs-checklist-show){background:var(--pc-bg,#091522)}
-html[data-rs-glow=off] :is(#rs-task-checklist,#rs-checklist-show){box-shadow:0 10px 26px #0006}
+html[data-rs-glow=off] :is(#rs-task-checklist,#rs-checklist-show){box-shadow:none}
 @keyframes rs-checklist-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){html #rs-task-checklist li[data-status=in_progress] .rs-checklist-mark{animation:none}html #rs-task-checklist li,html #rs-checklist-show,html #rs-task-checklist .rs-checklist-hide{transition:none}}
