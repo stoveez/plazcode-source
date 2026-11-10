@@ -3567,6 +3567,10 @@ const RSProvider = (() => {
     chatIsEmpty, isFreshChat, composerFrame, barAnchor, coverTarget,
     followupPlaceholderTargets() {const ed=getEditor();return ed ? [ed,...safeQueryAll(ed, '[data-placeholder], [placeholder], [aria-placeholder]')] : [];},
     setInputLock, writeDraft, typeAndSend, recoverInternalError, stopGeneration,
+    // Notion's transcript is raw textContent: no line break separates a prose block
+    // from the code block after it, so the parser must not require a command to
+    // start its own line here (1.24.32 dropped every command that followed a sentence).
+    flatTranscript: true,
     isGenerating, isBusyNow, isHardGenerating, activeWorkflowProgress, suppressThinkingWatchdog, softGenerationSettled, turnComplete, layoutChanged,
     enforceComposer, ensureComposerReady, prepareSessionStart, modeWarning, captchaPresent,
     overlayBlocking, turnHalted, findContinueBtn, clickContinueBtn,

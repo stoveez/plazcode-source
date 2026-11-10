@@ -411,15 +411,56 @@ const RSParse = (() => {
   // Only an ACTIONABLE command envelope may run from loose JSON. Replies often
   // quote command-shaped JSON as an example, inside a prompt written for someone
   // else, or in inline code; running those executes placeholder commands and
-  // sends back error protocol messages. The eligible zone is:
-  //  - the LAST fenced block (json, untagged or another code label) whose body
-  //    is only the command object(s); fences tagged text/plaintext/markdown/
-  //    etc. and inline `code` never count; or
-  //  - for text with no fence marks (provider text extraction drops them), a
-  //    command that starts its own line, is not under a text/plaintext label,
-  //    and is followed by at most a short closing sentence.
+  // sends back error protocol messages. The eligible zone is the reply's
+  // TRAILING RUN of command blocks:
+  //  - fenced text: the last fenced block (json, untagged or another code label)
+  //    whose body is only the command object(s), plus any command fences directly
+  //    before it (several commands in one reply run as one batch); fences tagged
+  //    text/plaintext/markdown/etc. and inline `code` never count; or
+  //  - text with no fence marks (provider text extraction drops them): the last
+  //    command object plus the command objects directly before it. It must start
+  //    its own line, must not sit under a text/plaintext label, and may be
+  //    followed by at most a short closing sentence.
+  // 1.24.33: a provider whose transcript is flat textContent (Notion: no line
+  // break between the prose block and the code block, and the code block's
+  // language label is glued to the JSON) cannot satisfy the own-line and label
+  // rules. In 1.24.32 every Notion reply with a sentence before its command was
+  // therefore dropped and the turn ended with the card stuck on "processing".
+  // Such a provider declares flatTranscript and only the trailing-run and
+  // closing-sentence rules apply to it.
   const IGNORED_FENCE = new Set(["text", "plaintext", "plain", "txt", "markdown", "md", "prompt", "quote", "example", "output", "log"]);
   const TEXT_LABEL_RE = /^(?:text|plaintext|plain text|txt|markdown|md|prompt|quote|example)$/i;
+  const ZONE_GAP = 240;   // most prose allowed between two commands of one batch
+  // A closing sentence after the command is normal ("I will wait for the result
+  // before continuing."); only a reply that carries on at length is prose.
+  const ZONE_TAIL = 200;  // most prose allowed after the last command
+  let _flatOverride = null;
+  function setFlatTranscript(value) { _flatOverride = value == null ? null : !!value; }
+  function flatTranscript() {
+    if (_flatOverride !== null) return _flatOverride;
+    try { return typeof RSProvider !== "undefined" && !!RSProvider && RSProvider.flatTranscript === true; } catch { return false; }
+  }
+  // Top-level command objects of `text`, in order. An object that has not closed
+  // yet (still streaming) is reported with end -1 and ends the list.
+  function commandSpans(text) {
+    const spans = [], keys = /"(?:command|tool)"\s*:\s*"/g;
+    let key;
+    while ((key = keys.exec(text)) && spans.length < 16) {
+      let found = null;
+      for (const start of keyOpeners(text, key.index)) {
+        const end = matchBrace(text, start);
+        if (end < 0) { found = { start, end: -1 }; continue; }
+        if (end < key.index) continue;
+        found = { start, end };
+        break;
+      }
+      if (!found) continue;
+      spans.push(found);
+      if (found.end < 0) break;
+      keys.lastIndex = found.end + 1;
+    }
+    return spans;
+  }
   function commandZone(text) {
     const raw = withoutResultEnvelopes(text);
     if (!CMD_KEY_RE.test(raw)) return "";
@@ -430,32 +471,40 @@ const RSParse = (() => {
     while ((m = fenceRe.exec(raw))) {
       outside += inline(raw.slice(at, m.index)) + "\n";
       at = m.index + m[0].length;
-      if (!IGNORED_FENCE.has(m[1].trim().toLowerCase())) fences.push(m[2]);
+      if (!IGNORED_FENCE.has(m[1].trim().toLowerCase())) fences.push({ body: m[2], start: m.index, end: at });
       if (m[0].length === 0) fenceRe.lastIndex++;
     }
     outside += inline(raw.slice(at));
-    const withKey = fences.filter(body => CMD_KEY_RE.test(body));
+    const withKey = fences.filter(f => CMD_KEY_RE.test(f.body))
+      .map(f => ({ ...f, body: f.body.trim().replace(/^(?:json|JSON)\s*/, "") }));
     if (withKey.length) {
-      const body = withKey[withKey.length - 1].trim().replace(/^(?:json|JSON)\s*/, "");
-      return /^[\[{]/.test(body) ? body : "";
+      let first = withKey.length - 1;
+      if (!/^[\[{]/.test(withKey[first].body)) return "";
+      while (first > 0 && /^[\[{]/.test(withKey[first - 1].body) &&
+        raw.slice(withKey[first - 1].end, withKey[first].start).trim().length <= ZONE_GAP) first--;
+      return withKey.slice(first).map(f => f.body).join("\n");
     }
-    if (fences.length || raw.includes("```")) {
-      // A fence exists but none holds the command: the key lives in an ignored
-      // (text/plaintext/other) fence or in prose beside it. Only bare text
-      // outside fences can still be a command, handled below.
-    }
-    const key = /"(?:command|tool)"\s*:\s*"/.exec(outside);
-    if (!key) return "";
-    const openers = keyOpeners(outside, key.index);
-    if (!openers.length) return "";
-    const start = openers[openers.length - 1];
-    const lineStart = outside.lastIndexOf("\n", start - 1) + 1;
-    if (!/^(?:json)?\s*$/i.test(outside.slice(lineStart, start))) return "";
-    const before = outside.slice(0, lineStart).split("\n").map(l => l.trim()).filter(Boolean).slice(-3);
-    if (before.some(l => TEXT_LABEL_RE.test(l))) return "";
-    const lastClose = outside.lastIndexOf("}");
-    if (lastClose >= 0 && outside.slice(lastClose + 1).trim().length > 60) return "";
-    return outside.slice(start);
+    // No fence holds the command: the key lives in an ignored (text/plaintext/
+    // other) fence or in bare text. Only bare text outside fences can still be
+    // a command.
+    const spans = commandSpans(outside);
+    if (!spans.length) return "";
+    const flat = flatTranscript();
+    const last = spans[spans.length - 1];
+    if (last.end >= 0 && outside.slice(last.end + 1).trim().length > ZONE_TAIL) return "";
+    let first = spans.length - 1;
+    while (first > 0 && outside.slice(spans[first - 1].end + 1, spans[first].start).trim().length <= ZONE_GAP) first--;
+    if (flat) return outside.slice(spans[first].start);
+    const eligible = (start) => {
+      const lineStart = outside.lastIndexOf("\n", start - 1) + 1;
+      if (!/^(?:json)?\s*$/i.test(outside.slice(lineStart, start))) return false;
+      const before = outside.slice(0, lineStart).split("\n").map(l => l.trim()).filter(Boolean).slice(-3);
+      return !before.some(l => TEXT_LABEL_RE.test(l));
+    };
+    // An example quoted just before the real command must not veto it: drop
+    // leading members of the run until one is a proper command block.
+    while (first < spans.length && !eligible(spans[first].start)) first++;
+    return first < spans.length ? outside.slice(spans[first].start) : "";
   }
 
   function parseToolCalls(r) {
@@ -629,7 +678,7 @@ const RSParse = (() => {
     START_M, END_M, LUA_START_RE, LUA_END_RE, CMD_KEY_RE, DSML_SIG_RE,
     hasDsml, hasOpenDsml, parseDsml, orphanDsmlClosers, dsmlClosingRun,
     findLuaStart, findLuaEnd, matchBrace, extractJson, normalizeCall,
-    hasToolSignature, commandZone, hasOpenToolBlock, parseToolCalls, commandDiagnosis, salvageCutOff, toolNameFromText,
+    hasToolSignature, commandZone, setFlatTranscript, hasOpenToolBlock, parseToolCalls, commandDiagnosis, salvageCutOff, toolNameFromText,
     isInjectedFeedback, hasCommandShape,
   };
 })();
