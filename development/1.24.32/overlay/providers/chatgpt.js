@@ -998,8 +998,12 @@ const RSProvider = (() => {
   const SEND_HARD_CAP = 139300;  // measured; for reference and headroom checks
   const SEND_MAX_CHARS = 120000; // characters are essentially free (see above)
   const SEND_MAX_LINES = 600;    // the line count is what costs, and we type it
-  const INSERT_CHUNK_LINES = 4;
-  const INSERT_CHUNK_CHARS = 2048;
+  // After 1.24.32 (owner logs, 2026-11-10): ChatGPT's own work per typed piece now dominates. The 48-line,
+  // 12 000-character startup message took 3-7.4 s in 12-14 pieces of ~500 ms each ("freezes for a couple of
+  // seconds after pressing Start"). 16 lines / 8 192 characters per piece types it in 3; still well inside
+  // the measured-good range above (yield every 25 lines or fewer), and real ProseMirror keeps every line.
+  const INSERT_CHUNK_LINES = 16;
+  const INSERT_CHUNK_CHARS = 8192;
 
   function truncateForSend(text) {
     if(typeof window.__rsLimitOutgoing==="function")return window.__rsLimitOutgoing(text);
@@ -1240,7 +1244,18 @@ const RSProvider = (() => {
       await setEditorText(ed, text, checkOwner, value => { ownedDraft = value; });
       checkOwner();
       const logical = value => String(value).replace(/\r\n?/g, '\n').trim();
-      if (logical(editorText()) !== logical(text)) throw new Error('ChatGPT did not accept the complete tool result into its input box. Nothing was sent.');
+      if (logical(editorText()) !== logical(text)) {
+        // ChatGPT can reset its message box while a long message is typed (owner logs, Work mode: only the last
+        // 1 397 of 11 998 characters were left, then "Send paused"). Nothing has been submitted, so clear the
+        // box and type the whole message once more before giving up.
+        diag('send.retypeAfterReset', {chars: String(editorText() || '').length, expectedChars: text.length});
+        clearEditor();
+        await sleep(250);
+        checkOwner();
+        await setEditorText(ed, text, checkOwner, value => { ownedDraft = value; });
+        checkOwner();
+        if (logical(editorText()) !== logical(text)) throw new Error('ChatGPT did not accept the complete tool result into its input box. Nothing was sent.');
+      }
       // Attach images LAST, right before the send click - see gemini.js/deepseek.js
       // typeAndSend for why (attaching first and then retyping the text can sever
       // the site's binding between the pending upload and the message sent).

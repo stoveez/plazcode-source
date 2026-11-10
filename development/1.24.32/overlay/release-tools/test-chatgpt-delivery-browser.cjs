@@ -542,17 +542,17 @@ async function checks(browser){
       const timer=setInterval(()=>beats++,0),text=Array.from({length:180},(_,i)=>'line '+i).join('\n');
       const ok=await provider.typeAndSend(text);clearInterval(timer);return{ok,maxLines,beats,pastes,count:sent.length,text:sent[0]};
     });
-    assert(got.maxLines<=5,'one bounded native edit received '+got.maxLines+' lines');assert(got.beats>15,'page must get regular turns while typing');assert.equal(got.pastes,0);assert.equal(got.count,1);assert.equal(got.ok,true);assert.equal(got.text,Array.from({length:180},(_,i)=>'line '+i).join('\n'));
+    assert(got.maxLines<=17,'one bounded native edit received '+got.maxLines+' lines');assert(got.beats>8,'page must get regular turns while typing');assert.equal(got.pastes,0);assert.equal(got.count,1);assert.equal(got.ok,true);assert.equal(got.text,Array.from({length:180},(_,i)=>'line '+i).join('\n'));
   });
   await check('real ProseMirror bounds long JSON lines and preserves Unicode at chunk boundaries',false,async page=>{
     const got=await page.evaluate(async()=>{
-      const text='x'.repeat(2047)+'🧪'+JSON.stringify({result:{content:'  long source 🧪 \\n'.repeat(5000)}});
+      const text='x'.repeat(8191)+'🧪'+JSON.stringify({result:{content:'  long source 🧪 \\n'.repeat(5000)}});
       const exec=document.execCommand.bind(document);let maxChars=0,brokenPair=false,beats=0,pastes=0;
       document.addEventListener('paste',()=>pastes++);
       document.execCommand=(cmd,ui,value)=>{if(cmd==='insertText'){const s=String(value);maxChars=Math.max(maxChars,s.length);brokenPair ||= /^[\uDC00-\uDFFF]/.test(s)||/[\uD800-\uDBFF]$/.test(s);}return exec(cmd,ui,value);};
       const timer=setInterval(()=>beats++,0);const ok=await provider.typeAndSend(text);clearInterval(timer);
       return{ok,maxChars,brokenPair,beats,pastes,count:sent.length,exact:sent[0]===text,draft:provider.editorText()};
-    });assert.equal(got.ok,true);assert.equal(got.count,1);assert(got.exact);assert.equal(got.draft,'');assert(got.maxChars<=2048);assert(got.beats>10);assert.equal(got.brokenPair,false);assert.equal(got.pastes,0);
+    });assert.equal(got.ok,true);assert.equal(got.count,1);assert(got.exact);assert.equal(got.draft,'');assert(got.maxChars<=8192);assert(got.beats>5);assert.equal(got.brokenPair,false);assert.equal(got.pastes,0);
   },true);
   for(const lines of [180,450])await check('real ProseMirror model preserves '+lines+' lines, blanks, indentation and Unicode',false,async page=>{
     const got=await page.evaluate(async lines=>{
@@ -617,14 +617,25 @@ async function checks(browser){
       return{own,mixed,replacement,normal};
     });assert.deepEqual(got,{own:true,mixed:false,replacement:false,normal:false});
   });
+  await check('a message box reset while typing is retyped once and sent exactly once',false,async page=>{
+    // Owner logs after 1.24.32: in Work mode ChatGPT reset its box mid-typing, only the end was left, and the
+    // startup stopped with "Send paused". Nothing had been submitted, so one clean retype is safe.
+    const got=await page.evaluate(async()=>{
+      const exec=document.execCommand.bind(document);let edits=0,reset=false;
+      document.execCommand=(...args)=>{const r=exec(...args);if(args[0]==='insertText'&&++edits===2&&!reset){reset=true;document.querySelector('#prompt-textarea').textContent='';}return r;};
+      const text=Array.from({length:48},(_,i)=>'line '+i+' '+'y'.repeat(200)).join('\n');
+      const ok=await provider.typeAndSend(text);
+      return{ok,count:sent.length,exact:sent[0]===text,reset};
+    });assert.equal(got.reset,true);assert.equal(got.ok,true);assert.equal(got.count,1,'sent exactly once');assert.equal(got.exact,true,'the complete message was sent');
+  });
   await check('Stop interrupts native typing before any send',false,async page=>{
     const got=await page.evaluate(async()=>{
       let stopped=false;provider.init({isStopped:()=>stopped,sendContext:()=>({session:1,stop:stopped?1:0})});
       const exec=document.execCommand.bind(document);let edits=0;
-      document.execCommand=(...args)=>{const r=exec(...args);if(++edits===8)stopped=true;return r;};
-      let code='';try{await provider.typeAndSend(Array.from({length:100},(_,i)=>'line '+i).join('\n'));}catch(e){code=e.code;}
+      document.execCommand=(...args)=>{const r=exec(...args);if(++edits===4)stopped=true;return r;};
+      let code='';try{await provider.typeAndSend(Array.from({length:300},(_,i)=>'line '+i).join('\n'));}catch(e){code=e.code;}
       return{code,count:sent.length,edits};
-    });assert.equal(got.count,0);assert.equal(got.code,'CHATGPT_CANCELLED');assert(got.edits<15);
+    });assert.equal(got.count,0);assert.equal(got.code,'CHATGPT_CANCELLED');assert(got.edits<8);
   });
   await check('full core completes 15 distinct read-only tool turns exactly once',true,async page=>{
     const got=await page.evaluate(async()=>{

@@ -5877,6 +5877,10 @@ return result`;
     A._startupProgressToken = null;
     A.startingKey = null;          // unknown until the conversation gets an id
     const alive = () => A.startGen === myGen; // false once superseded/aborted
+    // Where a slow Start spends its time (owner, 2026-11-10: ChatGPT "freezes for a couple seconds after
+    // pressing the button"). One line per step in the [rs-diag] log; numbers only.
+    const phaseAt0 = Date.now(); let phaseAt = phaseAt0;
+    const phase = (name) => { const now = Date.now(); diag("start.phase", { provider: P.id, phase: name, ms: now - phaseAt, total: now - phaseAt0 }); phaseAt = now; };
     A.toolCallsSinceReminder = 0; // fresh reminder cadence for the new session
     try {
       if (P.prepareSessionStart && !isRestart) {
@@ -5900,11 +5904,14 @@ return result`;
       ui.updateStartGate(); // refresh the bar into its "starting" state
       P.setInputLock(true); // block user input during bootstrap
       ui.inputCover(true);  // cover the composer ("Working…") for the WHOLE Starting Up
+      phase("pressed");
       await requireStartupConnection();
+      phase("connection");
       if (!alive() || A.stop) return;
       await ensureTools(true); // boot: always take a fresh catalogue (the TTL then
                                // covers the list_commands / list_mcp_servers calls
                                // the model makes seconds later)
+      phase("tools");
       if (!alive()) return;
       if (!A.toolList.length) {
         const eng = activeEngine();
@@ -5920,7 +5927,9 @@ return result`;
         return;
       }
       if (!alive()) return;
+      phase("text");
       const modeState = await P.ensureComposerReady("startup");
+      phase("composer");
       if (!alive()) return;
       // The provider is moving this tab to a proper chat page (for example Ox Alpha's
       // home page, whose box would turn the prompt into a web address). It finishes the
@@ -5937,6 +5946,7 @@ return result`;
       // the provider's acknowledgement of the delivered result; context injection
       // alone must never turn on Ready.
       const prompt = systemPrompt();
+      phase("prompt");
       const startupInstruction = P.id === "chatgpt" || P.startupReplyAsCode
         ? `Write exactly one fenced json code block containing {"command":"list_commands"} in your normal reply. This page's PlazCode extension reads that reply and runs the command; this site's native tools do not connect to the local bridge.`
         : `Emit exactly {"command":"list_commands"} and nothing else.`;
@@ -5970,12 +5980,15 @@ return result`;
         }
       }
       diag("start.promptSize", { chars: startupPrompt.length, lines: startupPrompt.split("\n").length });
+      phase("compose");
       const base = await submitAndGetBase(startupPrompt);
+      phase("sent");
       if (!alive()) return;
       // (syncSessionState pins A.startingKey to the conversation id once the chat
       // has content, and aborts this bootstrap if the user opens a new empty chat.)
       decorate.sweep();
       let listRes = await waitForResponse(base);
+      phase("reply");
       if (!alive()) return;
       if (A.stop || listRes.kind === "stopped") { diag("start.aborted", { kind: listRes.kind }); return; }
 
