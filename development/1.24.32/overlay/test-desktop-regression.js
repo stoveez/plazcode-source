@@ -11,7 +11,7 @@ const baseline = {
   "core/motion-interchange.js": "038afa13a5b59c030a809abf7d617a36f2fae82d",
   "core/motion-preview.js": "c364991ffe8e0f9eaad557e6746fff21daea2e86",
   "core/motion-tools.js": "6e1c5ff01153d61038b48b9a0c7181be85b3c9a5",
-  "core/parser.js": "62488217949830da6075314455dd2b16dc844eda",
+  "core/parser.js": "ec77f0308733d7533aed38cd21ee6b4eddf5150e",
   "core/studio_daily.js": "56632a6bd1a81ddeded243ff9d740e4b75a4fa34",
   "core/studio_gui.js": "726793b63c24b3fd128be60e6f3fb98e60a19243",
   "core/studio_plus.js": "c149c47cc7d178e3aa87f39539cc3c1420bff065",

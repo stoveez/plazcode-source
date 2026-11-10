@@ -430,6 +430,24 @@ const RSParse = (() => {
   // closing-sentence rules apply to it.
   const IGNORED_FENCE = new Set(["text", "plaintext", "plain", "txt", "markdown", "md", "prompt", "quote", "example", "output", "log"]);
   const TEXT_LABEL_RE = /^(?:text|plaintext|plain text|txt|markdown|md|prompt|quote|example)$/i;
+  // What may sit on the same line before a command and still mean "a code block starts here". Many sites
+  // (DeepSeek, Qwen, Kimi, ...) read the reply as textContent, which glues the code block's header bar onto
+  // the code: "jsonCopyDownload{...}", and glues a paragraph straight onto it: "Sure.jsonCopy{...}". 1.24.31
+  // and 1.24.32 required the command to start its own line and so dropped every such startup probe
+  // ("Startup handshake failed"). Allowed: nothing; a language label; header buttons; and/or the end of a
+  // sentence glued on WITHOUT a space. A prose example ("then send {...}") has a word and a space before the
+  // brace and stays ignored; a text/plaintext label is two words and stays ignored too.
+  const BLOCK_PREFIX_RE = /^(?:.*[.!?:)\]"'\u201d\u2019]|)(?:([A-Za-z][\w+#.-]{0,14}?)(?=Copy|Copied|Download|Run|Edit|Wrap|Collapse|Expand|Preview|Apply|$))?(?:Copy(?: code)?|Copied!?|Download|Run|Edit|Wrap|Collapse|Expand|Preview|Apply)*$/;
+  const blockPrefix = (prefix) => {
+    if (!prefix.trim()) return true;
+    const bare = prefix.replace(/\s+$/, "");
+    // A space before the brace is only allowed after a sentence end, a header button or a code language
+    // ("Done. {", "jsonCopy {", "json {"); "Use {" or "send {" is prose.
+    if (bare !== prefix && !/(?:[.!?:)\]"'\u201d\u2019]|Copy|Copied!?|Download|Run|Edit|Wrap|Collapse|Expand|Preview|Apply|^(?:json|jsonc|json5|lua|luau|js|javascript|ts|typescript|python|py))$/i.test(bare)) return false;
+    const m = BLOCK_PREFIX_RE.exec(bare);
+    // A code block labelled text/plaintext/markdown/... is quoted material, never a command.
+    return !!m && !(m[1] && IGNORED_FENCE.has(m[1].toLowerCase()));
+  };
   const ZONE_GAP = 240;   // most prose allowed between two commands of one batch
   // A closing sentence after the command is normal ("I will wait for the result
   // before continuing."); only a reply that carries on at length is prose.
@@ -497,7 +515,7 @@ const RSParse = (() => {
     if (flat) return outside.slice(spans[first].start);
     const eligible = (start) => {
       const lineStart = outside.lastIndexOf("\n", start - 1) + 1;
-      if (!/^(?:json)?\s*$/i.test(outside.slice(lineStart, start))) return false;
+      if (!blockPrefix(outside.slice(lineStart, start))) return false;
       const before = outside.slice(0, lineStart).split("\n").map(l => l.trim()).filter(Boolean).slice(-3);
       return !before.some(l => TEXT_LABEL_RE.test(l));
     };
