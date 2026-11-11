@@ -165,8 +165,9 @@ const pick=(select,value)=>select.evaluate((node,value)=>{node.value=value;node.
     assert.equal(await page.locator('#toolsGrid .toolname').first().innerText(),'Settings');
     assert.equal(await page.locator('#toolsGrid .tooldesc').first().innerText(),'Language');
     await page.evaluate(()=>PlazCodeDesktop.go('mcp'));
-    await page.locator('#mcpGrid .mcpcommand').last().waitFor();
-    assert.equal(await page.locator('#mcpGrid .mcpcommand').last().innerText(),'C:\\Game\\main.exe --language en');
+    await page.locator('#mcpGrid .mcpcommand').last().waitFor({state:'attached'});
+    assert.equal(await page.locator('#mcpGrid .mcpcommand').last().textContent(),'C:\\Game\\main.exe --language en');
+    assert.equal(await page.locator('#mcpGrid .cn-row strong').last().textContent(),'Settings','a custom server name is not localized');
     await page.evaluate(()=>PlazCodeDesktop.go('settings','language'));
     await pick(select,'ar');await page.waitForFunction(()=>document.documentElement.lang==='ar');
     await page.locator('[data-settings-section="languageSettings"] > summary').click();

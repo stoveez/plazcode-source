@@ -28,13 +28,13 @@ const globals=`var State={tools:[],logs:[]},Toolfilter='All',Toolquery='';functi
  await page.evaluate(()=>{State.logs=[];Renderlogs();});assert.equal(await page.locator('#terminal .empty').count(),1);
  await page.evaluate(()=>{Byid('page-terminal').classList.remove('active');State.logs=['deferred'];Renderlogs();});assert.equal(await page.locator('#terminal .empty').count(),1);
  await page.evaluate(()=>{Byid('page-terminal').classList.add('active');Renderlogs();});assert.equal(await page.locator('#terminal .logline').innerText(),'deferred');
- await page.addScriptTag({content:`var PendingMcp={},calls=0;function Api(){calls++;return Promise.resolve({servers:[{id:'sample',name:'Sample',enabled:false,args:[],command:'sample',description:'Sample server'}]});}function Showerror(){}function Refresh(){return Promise.resolve();}`+between(current,'  var Blendercheck','  var Recentlogsignature=')});
+ await page.addScriptTag({content:`var PendingMcp={},calls=0,probes=0;function Api(Path){if(Path==='/api/connections'){probes++;return Promise.reject(new Error('HTTP 404'));}calls++;return Promise.resolve({servers:[{id:'sample',name:'Sample',enabled:false,args:[],command:'sample',description:'Sample server'}]});}function Showerror(){}function Refresh(){return Promise.resolve();}`+between(current,'  var Blendercheck','  var Recentlogsignature=')});
  await page.evaluate(()=>{Byid('page-mcp').classList.remove('active');return Loadcatalog();});assert.equal(await page.evaluate(()=>calls),0);
  await page.evaluate(()=>{Byid('page-mcp').classList.add('active');return Promise.all([Loadcatalog(),Loadcatalog()]);});assert.equal(await page.evaluate(()=>calls),1,'concurrent catalogue calls share one request');
  await page.evaluate(()=>Loadcatalog());assert.equal(await page.evaluate(()=>calls),1,'cached catalogue avoids repeated requests');
  await page.evaluate(()=>{State.servers=[{id:'sample',alive:true,tools:7}];return Loadcatalog();});assert(await page.locator('#mcpGrid').innerText().then(t=>t.includes('7 tools available')));
  await page.evaluate(()=>{Catalogat=0;return Loadcatalog();});assert.equal(await page.evaluate(()=>calls),2);
- await page.evaluate(()=>Loadcatalog(true));assert.equal(await page.evaluate(()=>calls),3,'opening page explicitly refreshes catalogue');
+ await page.evaluate(()=>Loadcatalog(true));assert.equal(await page.evaluate(()=>calls),3,'opening page explicitly refreshes catalogue');assert.equal(await page.evaluate(()=>probes),1,'a build without the connection report is asked once');
  await page.evaluate(()=>document.documentElement.dataset.desktopTheme='cyan');await page.emulateMedia({reducedMotion:'reduce'});
  const colors={low:'rgb(255, 241, 168)',mid:'rgb(255, 197, 107)',high:'rgb(255, 146, 85)',max:'rgb(255, 98, 103)',ultracode:'rgb(197, 161, 249)'};
  for(const level of ['default','low','mid','high','max','ultracode']){

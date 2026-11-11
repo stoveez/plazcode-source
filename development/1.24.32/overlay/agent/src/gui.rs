@@ -79,6 +79,20 @@ fn supported_ai_url(action: &str) -> Option<&'static str> {
     }
 }
 
+/// Official download pages the Apps & servers window can open. Fixed addresses only: the page sends a short name, never a link.
+fn app_download_url(action: &str) -> Option<&'static str> {
+    match action {
+        "open:get-blender" => Some("https://www.blender.org/download/"),
+        "open:get-godot" => Some("https://godotengine.org/download/"),
+        "open:get-unity" => Some("https://unity.com/download"),
+        "open:get-figma" => Some("https://www.figma.com/downloads/"),
+        "open:get-blockbench" => Some("https://www.blockbench.net/downloads"),
+        "open:blockbench-web" => Some("https://web.blockbench.net/"),
+        "open:get-git" => Some("https://git-scm.com/downloads"),
+        _ => None,
+    }
+}
+
 fn now_ms() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64
 }
@@ -371,7 +385,7 @@ pub fn run_gui(
                 "open:blender-guide" => Some(UiEvent::OpenExternal("https://github.com/ahujasid/blender-mcp#installation".to_owned())),
                 _ if body.starts_with("toolkit-store:") => toolkit_store_url(body).map(UiEvent::OpenExternal),
                 _ if body.starts_with("open-url:") => guide_link_url(body).map(UiEvent::OpenExternal),
-                _ => donation_url(body).or_else(|| supported_ai_url(body)).map(|url|UiEvent::OpenExternal(url.to_owned())).or_else(|| body.strip_prefix("js-error:").map(|message| UiEvent::JsError(message.to_string()))),
+                _ => donation_url(body).or_else(|| supported_ai_url(body)).or_else(|| app_download_url(body)).map(|url|UiEvent::OpenExternal(url.to_owned())).or_else(|| body.strip_prefix("js-error:").map(|message| UiEvent::JsError(message.to_string()))),
             };
             if let Some(event) = event {
                 let _ = ipc_proxy.send_event(event);
@@ -524,6 +538,7 @@ mod tests {
     }
     #[test] fn donation_links_are_fixed_and_match_desktop_anchors() {
         let html=include_str!("desktop.html");
+        assert_eq!(app_download_url("open:get-blender"),Some("https://www.blender.org/download/"));assert_eq!(app_download_url("open:https://evil.example"),None);assert_eq!(app_download_url("open:get-nothing"),None);
         assert_eq!(donation_url("open:donation-small"),Some("https://www.roblox.com/game-pass/2025206972/plazcode-small-donation"));
         assert!(html.contains("href=\"https://www.roblox.com/game-pass/2025206972/plazcode-small-donation\" data-ipc=\"open:donation-small\""));
         assert_eq!(donation_url("open:donation-medium"),Some("https://www.roblox.com/game-pass/2026664687/plazcode-medium-donation"));

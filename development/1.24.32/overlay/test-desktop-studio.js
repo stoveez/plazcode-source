@@ -56,7 +56,7 @@ console.log("PASS desktop Studio look: frame functions, hooks, reduced/off motio
     assert.equal(conn.page, "page-tools", "a section opens its first page"); assert.equal(conn.title, "Tools"); assert.equal(conn.eyebrow, "Connections");
     assert.deepEqual(conn.tabs, ["tools", "mcp"], "only that section's pages show as tabs"); assert.equal(conn.active, "connections");
     await tab.click('.pz-tabs .navbtn[data-page="mcp"]'); await tab.waitForTimeout(250);
-    assert.equal(await tab.evaluate(() => document.getElementById("pzTitle").textContent), "MCP Servers", "a tab updates the title");
+    assert.equal(await tab.evaluate(() => document.getElementById("pzTitle").textContent), "Apps & servers", "a tab updates the title");
     // Feel: motion levels, animated theme and ripples are saved looks.
     await tab.click('.pz-area[data-area="settings"]'); await tab.click('.pz-tabs .navbtn[data-page="appearance"]'); await tab.waitForTimeout(250);
     await tab.click('[data-look-motion="off"]');

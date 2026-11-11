@@ -1252,6 +1252,99 @@ html[data-pz-studio][data-pz-motion=reduced] :is(.pz-title.pz-swap){animation:no
 html[data-pz-motion=off] *,html[data-pz-motion=off] *::before,html[data-pz-motion=off] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 @media(prefers-reduced-motion:reduce){html[data-pz-studio] .page.pz-entering *,html[data-pz-studio] .page.pz-leaving{animation:none!important}html[data-pz-studio] .app::after,html[data-pz-studio] .page.active,html[data-pz-studio] .pz-title.pz-swap,html[data-pz-studio] .pz-preview,.pz-ripple{animation:none!important}html[data-pz-studio] :is(.pz-area,.pz-tabs .navbtn::after,.nx-theme,.page .nx-card,.page .stat){transition:none!important}}
 @media(max-width:980px){html[data-pz-studio]{--pz-side:236px}html[data-pz-studio] .titlebar{padding-left:28px!important}html[data-pz-studio] .pz-title{font-size:30px}html[data-pz-studio] .content{padding:24px 26px 44px!important}html[data-pz-studio] .pz-tabs{padding:0 20px 0 28px}html[data-pz-studio] .pz-search{flex-basis:150px}html[data-pz-studio] .pz-maker{grid-template-columns:1fr}}
+
+/* Apps & servers (connections rework): roomy tiles, a setup window with a live checklist, a quiet More tools list. */
+#page-mcp .cn-apps{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:22px;align-items:stretch;margin-top:6px}
+.cn-tile{position:relative;display:flex;flex-direction:column;gap:18px;min-height:228px;padding:28px 28px 24px;border-radius:20px;border:1px solid var(--pz-line,rgb(255 255 255/.1));background:linear-gradient(150deg,color-mix(in srgb,var(--surface,#161a23) 92%,rgb(var(--pz-rgb,233 186 83))),var(--surface,#161a23));box-shadow:0 18px 40px -26px #000c,inset 0 1px 0 rgb(255 255 255/.05);transition:transform .3s var(--pz-ease,cubic-bezier(.22,1,.36,1)),border-color .3s,box-shadow .3s}
+.cn-tile:hover,.cn-tile:focus-within{transform:translateY(-3px);border-color:rgb(var(--pz-rgb,233 186 83)/.45);box-shadow:0 22px 46px -24px #000e,0 0 30px -14px rgb(var(--pz-rgb,233 186 83)/.5)}
+.cn-tile[data-state=ready]{border-color:rgb(60 214 150/.34)}
+.cn-tile[data-state=needs_attention]{border-color:rgb(255 170 70/.5)}
+.cn-ico{width:54px;height:54px;border-radius:17px;display:grid;place-items:center;color:#14110a;background:linear-gradient(135deg,rgb(var(--pz-rgb,233 186 83)),color-mix(in srgb,rgb(var(--pz-rgb,233 186 83)) 55%,#fff));box-shadow:0 10px 24px -10px rgb(var(--pz-rgb,233 186 83)/.65)}
+.cn-ico svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.cn-body{flex:1 1 auto}
+.cn-body h3{margin:0 0 8px;font-family:var(--pz-serif,Georgia,serif);font-size:23px;font-weight:600;letter-spacing:.005em;color:var(--text,#eef1f6)}
+.cn-body p{margin:0;font-size:14.5px;line-height:1.6;color:var(--ink-soft,#9aa6b8)}
+.cn-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.cn-pill{display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:999px;font-size:12.5px;font-weight:650;letter-spacing:.01em;border:1px solid var(--pz-line,rgb(255 255 255/.12));color:var(--ink-soft,#9aa6b8);background:rgb(255 255 255/.03)}
+.cn-pill::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.75}
+.cn-pill[data-state=ready]{color:#5fe3ae;border-color:rgb(60 214 150/.4);background:rgb(60 214 150/.09)}
+.cn-pill[data-state=setting_up]{color:rgb(var(--pz-rgb,233 186 83));border-color:rgb(var(--pz-rgb,233 186 83)/.4);background:rgb(var(--pz-rgb,233 186 83)/.09)}
+.cn-pill[data-state=needs_attention]{color:#ffb35c;border-color:rgb(255 170 70/.5);background:rgb(255 170 70/.1)}
+/* Waiting states reuse the app's one approved loading pulse (no new repeating animation). */
+html:not([data-pz-motion=off]):not([data-pz-motion=reduced]) .cn-pill[data-state=setting_up]::before{animation:nxPulse 3.2s ease-in-out infinite}
+.cn-main{min-height:44px;padding:0 24px;font-size:14.5px}
+.cn-main[disabled]{opacity:.55;cursor:default}
+.cn-note{font-size:13px;color:var(--ink-soft,#9aa6b8)}
+#page-mcp .cn-more{margin-top:34px;border:1px solid var(--pz-line,rgb(255 255 255/.1));border-radius:18px;background:rgb(255 255 255/.02)}
+.cn-more>summary{list-style:none;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;cursor:pointer;padding:20px 26px;font-size:16px;font-weight:650;color:var(--text,#eef1f6)}
+.cn-more>summary::-webkit-details-marker{display:none}
+.cn-more>summary::before{content:"";width:9px;height:9px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .25s;align-self:center;opacity:.7}
+.cn-more[open]>summary::before{transform:rotate(45deg)}
+.cn-more>summary small{font-size:13.5px;font-weight:400;color:var(--ink-soft,#9aa6b8)}
+.cn-more>summary:focus-visible{outline:2px solid rgb(var(--pz-rgb,233 186 83)/.8);outline-offset:-2px;border-radius:18px}
+.cn-list{display:flex;flex-direction:column;border-top:1px solid var(--pz-line,rgb(255 255 255/.08))}
+.cn-row{display:flex;align-items:center;gap:22px;padding:20px 26px;border-bottom:1px solid var(--pz-line,rgb(255 255 255/.06))}
+.cn-row:last-child{border-bottom:0}
+.cn-row-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:5px}
+.cn-row-main strong{font-size:15.5px;color:var(--text,#eef1f6)}
+.cn-row-main span{font-size:13.5px;line-height:1.55;color:var(--ink-soft,#9aa6b8)}
+.cn-row-main .cn-bad{color:#ff8a80}
+.cn-row-main .cn-good{color:#5fe3ae}
+.cn-code{display:block;margin:6px 0 0;padding:10px 12px;border-radius:10px;background:rgb(0 0 0/.3);font-family:var(--pz-mono,monospace);font-size:12px;overflow-wrap:anywhere;user-select:text}
+.cn-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.cn-tech{margin-top:6px;font-size:12.5px;color:var(--ink-soft,#9aa6b8)}
+.cn-tech summary{cursor:pointer;width:max-content;list-style:none;text-decoration:underline;text-underline-offset:3px}
+.cn-tech summary::-webkit-details-marker{display:none}
+.cn-tech code,.cn-tech pre{display:block;margin:8px 0 0;padding:10px 12px;border-radius:10px;background:rgb(0 0 0/.3);font-family:var(--pz-mono,monospace);font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text}
+.cn-switch{flex:0 0 auto;position:relative;width:52px;height:30px;border-radius:999px;border:1px solid var(--pz-line,rgb(255 255 255/.18));background:rgb(255 255 255/.06);cursor:pointer;transition:background .25s,border-color .25s}
+.cn-switch i{position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#d7dde8;transition:transform .28s var(--pz-ease,ease),background .25s}
+.cn-switch[aria-checked=true]{background:rgb(var(--pz-rgb,233 186 83)/.35);border-color:rgb(var(--pz-rgb,233 186 83)/.65)}
+.cn-switch[aria-checked=true] i{transform:translateX(22px);background:rgb(var(--pz-rgb,233 186 83))}
+.cn-switch:focus-visible,.cn-x:focus-visible,.cn-main:focus-visible{outline:2px solid rgb(var(--pz-rgb,233 186 83)/.9);outline-offset:3px}
+.cn-switch[disabled]{opacity:.5;cursor:default}
+/* The setup window. */
+.cn-shade{position:fixed;inset:0;z-index:92;background:rgb(5 6 9/.66);-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);opacity:0;visibility:hidden;transition:opacity .3s var(--pz-ease,ease),visibility 0s .3s}
+.cn-shade.cn-on{opacity:1;visibility:visible;transition-delay:0s}
+.cn-win{position:fixed;z-index:93;left:50%;top:50%;width:min(680px,calc(100vw - 56px));max-height:calc(100vh - 56px);overflow-y:auto;scrollbar-width:thin;padding:34px 38px 30px;border-radius:24px;background:color-mix(in srgb,var(--canvas,#0c0e13) 94%,rgb(var(--pz-rgb,233 186 83)));color:var(--text,#eef1f6);box-shadow:0 40px 120px -30px #000,0 0 0 1px rgb(var(--pz-rgb,233 186 83)/.22),0 0 80px -30px rgb(var(--pz-rgb,233 186 83)/.45);opacity:0;visibility:hidden;transform:translate(-50%,-47%) scale(.97);transition:opacity .28s var(--pz-ease,ease),transform .42s var(--pz-ease,ease),visibility 0s .42s}
+.cn-win.cn-on{opacity:1;visibility:visible;transform:translate(-50%,-50%) scale(1);transition-delay:0s}
+html[data-pz-motion=off] :is(.cn-win,.cn-shade,.cn-tile,.cn-switch,.cn-switch i){transition:none!important}
+.cn-head{display:flex;gap:18px;align-items:flex-start;justify-content:space-between;margin-bottom:22px}
+.cn-eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:rgb(var(--pz-rgb,233 186 83));margin-bottom:8px}
+.cn-win h2{margin:0 0 10px;font-family:var(--pz-serif,Georgia,serif);font-size:32px;font-weight:600;line-height:1.15}
+.cn-lead{margin:0;font-size:15.5px;line-height:1.65;color:var(--ink-soft,#a7b2c4)}
+.cn-x{flex:0 0 auto;width:42px;height:42px;border-radius:12px;border:1px solid var(--pz-line,rgb(255 255 255/.14));background:rgb(255 255 255/.04);color:inherit;font-size:22px;line-height:1;cursor:pointer;transition:background .2s,border-color .2s}
+.cn-x:hover{background:rgb(var(--pz-rgb,233 186 83)/.14);border-color:rgb(var(--pz-rgb,233 186 83)/.5)}
+.cn-seg{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 22px;padding:5px;border-radius:14px;background:rgb(255 255 255/.04);border:1px solid var(--pz-line,rgb(255 255 255/.08))}
+.cn-seg button{flex:1 1 200px;min-height:42px;padding:0 16px;border:0;border-radius:10px;background:transparent;color:var(--ink-soft,#a7b2c4);font:inherit;font-size:14px;cursor:pointer}
+.cn-seg button[aria-pressed=true]{background:rgb(var(--pz-rgb,233 186 83)/.2);color:var(--text,#eef1f6);box-shadow:inset 0 0 0 1px rgb(var(--pz-rgb,233 186 83)/.45)}
+.cn-steps{list-style:none;margin:0 0 24px;padding:0;display:flex;flex-direction:column;gap:12px}
+.cn-step{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:16px;align-items:start;padding:16px 18px;border-radius:16px;border:1px solid var(--pz-line,rgb(255 255 255/.08));background:rgb(255 255 255/.025)}
+.cn-step[data-state=needs_you]{border-color:rgb(255 170 70/.5);background:rgb(255 170 70/.07)}
+.cn-step[data-state=done]{border-color:rgb(60 214 150/.3)}
+.cn-mark{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:700;border:2px solid var(--pz-line,rgb(255 255 255/.2));color:var(--ink-soft,#a7b2c4)}
+.cn-step[data-state=done] .cn-mark{border-color:#3cd696;background:#3cd696;color:#07251a}
+.cn-step[data-state=needs_you] .cn-mark{border-color:#ffaa46;color:#ffaa46}
+.cn-step[data-state=working]{border-color:rgb(var(--pz-rgb,233 186 83)/.4)}
+.cn-step[data-state=working] .cn-mark{border-color:rgb(var(--pz-rgb,233 186 83));color:rgb(var(--pz-rgb,233 186 83));background:rgb(var(--pz-rgb,233 186 83)/.14)}
+html:not([data-pz-motion=off]):not([data-pz-motion=reduced]) .cn-step[data-state=working] .cn-mark{animation:nxPulse 3.2s ease-in-out infinite}
+.cn-st{display:flex;flex-direction:column;gap:6px;min-width:0}
+.cn-st strong{font-size:15.5px;line-height:1.4}
+.cn-st span{font-size:14px;line-height:1.6;color:var(--ink-soft,#a7b2c4);overflow-wrap:anywhere}
+.cn-st .cn-bad{color:#ff8a80}
+.cn-act{align-self:center}
+.cn-consent{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:0 0 22px;padding:18px 20px;border-radius:16px;background:rgb(var(--pz-rgb,233 186 83)/.1);border:1px solid rgb(var(--pz-rgb,233 186 83)/.35)}
+.cn-consent p{margin:0;flex:1 1 280px;font-size:15px;line-height:1.6}
+.cn-done{margin:0 0 22px;padding:20px 22px;border-radius:16px;background:rgb(60 214 150/.09);border:1px solid rgb(60 214 150/.35)}
+.cn-done h3{margin:0 0 6px;font-size:18px;color:#5fe3ae}
+.cn-done p{margin:0 0 14px;font-size:14.5px;line-height:1.6;color:var(--ink-soft,#a7b2c4)}
+.cn-prompts{display:flex;flex-direction:column;gap:10px}
+.cn-prompt{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;text-align:left;padding:14px 16px;border-radius:13px;border:1px solid var(--pz-line,rgb(255 255 255/.12));background:rgb(0 0 0/.22);color:inherit;font:inherit;font-size:14px;line-height:1.5;cursor:pointer}
+.cn-prompt:hover,.cn-prompt:focus-visible{border-color:rgb(var(--pz-rgb,233 186 83)/.6);outline:0}
+.cn-prompt b{flex:0 0 auto;font-size:12.5px;color:rgb(var(--pz-rgb,233 186 83))}
+.cn-wfoot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px;padding-top:20px;border-top:1px solid var(--pz-line,rgb(255 255 255/.1))}
+.cn-wfoot .cn-gap{flex:1 1 auto}
+html[data-desktop-gradients=off] :is(.cn-tile){background:var(--surface,#161a23)}
+html[data-desktop-gradients=off] .cn-ico{background:rgb(var(--pz-rgb,233 186 83))}
 </style>
 </head>
 <body>
@@ -1269,7 +1362,7 @@ html[data-pz-motion=off] *,html[data-pz-motion=off] *::before,html[data-pz-motio
   </div>
 </section>
 <div class="app"><div class="nx-wall" id="nxWall" aria-hidden="true"></div><div class="nx-wall-dim" aria-hidden="true"></div>
-  <aside class="sidebar"><div class="nx-sidehead"><h2 id="sideTitle">Home</h2><button class="softbtn" id="sidebarCollapse" aria-label="Collapse page names" aria-expanded="true" title="Show or hide page names"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button></div><div class="nx-sidesearch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/></svg><input id="nxSideSearch" type="search" placeholder="Search pages" aria-label="Search pages" autocomplete="off"></div><nav class="nav" aria-label="Pages"><button class="navbtn active" data-page="home" data-area="home"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="m2.5 10.6 9.5-8.1 9.5 8.1-1.8 2.1L12 6l-7.7 6.7z"/><path d="M5.5 12v9h4v-6h5v6h4v-9M16.5 6V3.5h2V8"/></svg><span class="navlabel">Overview</span></button><button class="navbtn" data-page="account" data-area="home"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><span class="navlabel">Account</span></button><button class="navbtn" data-page="updates" data-area="home"><svg class="navicon" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg><span class="navlabel">Update Log</span></button><button class="navbtn" data-page="explorer" data-area="workspace" title="Explorer"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v5H4zM14 15h6v5h-6zM4 15h6v5H4zM7 9v6M7 12h10v3"/></svg><span class="navlabel">Explorer</span></button><button class="navbtn" data-page="skills" data-area="workspace" title="Skills"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h7l2 3h7v15H4zM8 10h8M8 14h8M8 18h5"/></svg><span class="navlabel">Skills</span></button><button class="navbtn" data-page="templates" data-area="workspace"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19V6a2 2 0 0 1 2-2h2M7 14V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7M10 5h6M10 8h4M19 7a3 3 0 0 1 3 3v1"/><path d="m3 19 3.2-7a3 3 0 0 1 2.7-1.8h12a1.5 1.5 0 0 1 1.4 2l-2.7 7a3 3 0 0 1-2.8 1.8H5a2 2 0 0 1-2-2z"/></svg><span class="navlabel">Templates</span></button><button class="navbtn" data-page="toolkit" data-area="workspace"><svg class="navicon" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="3"/><path d="M8 7V4h8v3M3 12h18M10 12v3h4v-3"/></svg><span class="navlabel">Toolkit</span></button><button class="navbtn" data-page="tools" data-area="connections"><svg class="navicon" viewBox="32.2 -15.8 592.5 590.5" aria-hidden="true"><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M512,1 L527,1 L537,6 L603,72 L609,86 L607,100 L603,107 L404,305 L438,339 L468,333 L494,334 L512,338 L539,350 L552,359 L568,375 L584,402 L589,417 L592,434 L591,464 L583,491 L578,495 L569,494 L503,427 L494,425 L489,427 L460,456 L458,459 L458,468 L488,499 L490,499 L518,528 L526,534 L528,538 L526,547 L519,551 L498,557 L465,558 L437,551 L421,543 L408,534 L391,517 L381,502 L372,482 L366,454 L366,431 L372,406 L312,347 L183,476 L169,502 L162,510 L122,536 L88,559 L80,559 L51,531 L51,519 L99,447 L107,440 L134,425 L262,296 L203,237 L179,243 L151,243 L139,241 L122,236 L103,227 L78,207 L78,205 L69,196 L59,179 L50,149 L50,117 L54,98 L59,85 L66,81 L73,83 L138,149 L142,151 L151,151 L183,120 L184,109 L115,42 L113,37 L114,32 L121,26 L141,20 L155,18 L180,19 L210,28 L235,44 L249,58 L261,76 L271,101 L275,122 L275,147 L269,170 L305,205 L306,202 L502,6 Z M518,19 L515,20 L319,216 L318,222 L320,225 L320,231 L316,236 L288,247 L288,256 L353,321 L359,322 L363,320 L372,295 L376,290 L393,290 L589,94 L590,87 L588,83 L527,22 L522,19 Z M154,37 L142,39 L141,41 L189,88 L191,88 L200,99 L203,108 L203,120 L198,131 L164,165 L153,170 L140,170 L127,164 L73,109 L71,109 L69,116 L68,143 L71,158 L79,177 L88,190 L101,203 L116,213 L135,221 L158,225 L170,224 L185,223 L200,218 L213,221 L276,283 L282,275 L270,262 L268,252 L269,244 L277,231 L289,227 L295,224 L295,222 L254,182 L252,178 L251,164 L255,154 L257,139 L256,119 L249,94 L237,73 L219,55 L200,44 L180,38 Z M510,49 L520,51 L523,57 L522,63 L361,223 L354,223 L350,220 L348,216 L350,208 Z M549,86 L558,89 L560,93 L559,101 L401,259 L396,260 L394,261 L387,257 L387,246 L546,87 Z M295,290 L145,440 L115,457 L71,523 L71,525 L84,538 L91,534 L152,494 L168,465 L319,315 L319,312 L297,290 Z M386,313 L378,332 L368,339 L351,340 L345,338 L334,327 L332,327 L326,334 L386,393 L390,400 L391,408 L385,430 L385,455 L393,484 L407,507 L429,526 L454,537 L473,540 L501,537 L445,483 L442,476 L439,470 L439,458 L444,446 L478,412 L485,408 L495,406 L504,407 L514,412 L569,468 L571,468 L573,459 L573,432 L569,415 L564,403 L552,385 L541,374 L528,365 L504,355 L488,352 L466,352 L444,358 L431,357 L426,354 Z"/></svg><span class="navlabel">Tools</span></button><button class="navbtn" data-page="mcp" data-area="connections"><svg class="navicon" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/><circle cx="6" cy="5" r="1"/><circle cx="18" cy="12" r="1"/><circle cx="9" cy="19" r="1"/></svg><span class="navlabel">MCP Servers</span></button><button class="navbtn" data-page="docs" data-area="docs"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M9 7h6"/></svg><span class="navlabel">Overview</span></button><button class="navbtn" data-page="guides" data-area="docs"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg><span class="navlabel">Guides</span></button><button class="navbtn" data-page="troubleshooting" data-area="docs"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/></svg><span class="navlabel">Troubleshooting</span></button><button class="navbtn" data-page="settings" data-area="settings"><svg class="navicon" viewBox="20 20 220 220" aria-hidden="true" style="stroke-width:11"><path d="M168 98L183 105L197 94L213 110L201 123L209 142H227V167H209L201 185L214 198L196 216L182 204L165 211V229H141V211L123 204L109 217L92 199L105 185L99 169"/><circle cx="154" cy="155" r="32"/><path d="M143 35C116 28 92 51 103 80L62 146C42 143 25 161 31 179C37 199 62 207 78 194C89 185 94 173 87 160L129 100C157 104 180 79 164 49L145 76L122 61Z"/><circle cx="60" cy="173" r="12"/></svg><span class="navlabel">General</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="language"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><span class="navlabel">Language</span></button><button class="navbtn" data-page="appearance" data-area="settings"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.6 0 2.2-1.1 1.6-2.4-.6-1.4.3-2.6 1.8-2.6H18a3 3 0 0 0 3-3c0-5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7.5" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><span class="navlabel">Appearance</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="memory"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a2 2 0 0 0-3-1zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/></svg><span class="navlabel">Memory</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="safety"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span class="navlabel">Safety</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="debug"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/></svg><span class="navlabel">Debug</span></button><button class="navbtn" data-page="terminal" data-area="support"><svg class="navicon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg><span class="navlabel">Terminal</span></button><button class="navbtn" data-page="logs" data-area="support"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 12h6M10 16h6"/></svg><span class="navlabel">Logs</span></button><button class="navbtn" data-page="donations" data-area="support"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/></svg><span class="navlabel">Donations</span></button></nav><div class="nx-spacer"></div><div class="nx-sep"></div><div class="nx-links"><button type="button" class="nx-link" data-ipc="open:discord"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M7 7c3-1.2 7-1.2 10 0l2 9c-1.5 1.4-3 2-4.5 2.4l-1-1.6M17 7l-2-.6M7 7l2-.6M5 16c1.5 1.4 3 2 4.5 2.4l1-1.6"/><circle cx="9.3" cy="12" r="1"/><circle cx="14.7" cy="12" r="1"/></svg><div><b>Discord</b><small>Join the community</small></div><span class="nx-arrow">↗</span></button><button type="button" class="nx-link" data-ipc="open:github"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M9 19c-4 1.3-4-2-6-2.5m12 4.5v-3.2a2.8 2.8 0 0 0-.8-2.2c2.700-.3 5.500-1.300 5.500-6a4.600 4.600 0 0 0-1.300-3.200 4.300 4.300 0 0 0-.1-3.200s-1-.3-3.300 1.300a11.400 11.400 0 0 0-6 0C6.700 3 5.700 3.300 5.700 3.300a4.300 4.300 0 0 0-.1 3.200A4.600 4.600 0 0 0 4.300 9.700c0 4.600 2.800 5.600 5.500 6a2.800 2.800 0 0 0-.8 2.200V21"/></svg><div><b>GitHub</b><small>Downloads &amp; updates</small></div><span class="nx-arrow">↗</span></button></div><div class="nx-sep"></div><button id="killStudio" class="dangerbtn" style="margin-top:auto;margin-bottom:10px;padding:10px" title="Force-close Roblox Studio, including frozen processes">Kill Roblox Studio</button><div class="side-status" style="margin-top:0"><div class="status-row"><span id="sideDot" class="dot"></span><span id="sideStatus">Bridge waiting</span></div><div class="side-sub">127.0.0.1:3000</div><div class="status-row" style="margin-top:10px" title="Studio process and MCP connection status"><span id="sideStudioDot" class="dot"></span><span id="sideStudioStatus">Studio waiting</span></div></div><button type="button" class="nx-account" data-page="account" data-area="home"><span class="nx-avatar">G</span><div><b data-i18n-user-content dir="auto">Guest</b><small>Not signed in</small></div></button><div class="nx-ver"><span id="sidebarVersion">v__PLAZCODE_VERSION__ (Not checked)</span><div class="desktop-effort" id="sidebarEffort">Effort: <span data-effort-value>Default</span></div></div></aside>
+  <aside class="sidebar"><div class="nx-sidehead"><h2 id="sideTitle">Home</h2><button class="softbtn" id="sidebarCollapse" aria-label="Collapse page names" aria-expanded="true" title="Show or hide page names"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button></div><div class="nx-sidesearch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/></svg><input id="nxSideSearch" type="search" placeholder="Search pages" aria-label="Search pages" autocomplete="off"></div><nav class="nav" aria-label="Pages"><button class="navbtn active" data-page="home" data-area="home"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="m2.5 10.6 9.5-8.1 9.5 8.1-1.8 2.1L12 6l-7.7 6.7z"/><path d="M5.5 12v9h4v-6h5v6h4v-9M16.5 6V3.5h2V8"/></svg><span class="navlabel">Overview</span></button><button class="navbtn" data-page="account" data-area="home"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><span class="navlabel">Account</span></button><button class="navbtn" data-page="updates" data-area="home"><svg class="navicon" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg><span class="navlabel">Update Log</span></button><button class="navbtn" data-page="explorer" data-area="workspace" title="Explorer"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v5H4zM14 15h6v5h-6zM4 15h6v5H4zM7 9v6M7 12h10v3"/></svg><span class="navlabel">Explorer</span></button><button class="navbtn" data-page="skills" data-area="workspace" title="Skills"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h7l2 3h7v15H4zM8 10h8M8 14h8M8 18h5"/></svg><span class="navlabel">Skills</span></button><button class="navbtn" data-page="templates" data-area="workspace"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19V6a2 2 0 0 1 2-2h2M7 14V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7M10 5h6M10 8h4M19 7a3 3 0 0 1 3 3v1"/><path d="m3 19 3.2-7a3 3 0 0 1 2.7-1.8h12a1.5 1.5 0 0 1 1.4 2l-2.7 7a3 3 0 0 1-2.8 1.8H5a2 2 0 0 1-2-2z"/></svg><span class="navlabel">Templates</span></button><button class="navbtn" data-page="toolkit" data-area="workspace"><svg class="navicon" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="3"/><path d="M8 7V4h8v3M3 12h18M10 12v3h4v-3"/></svg><span class="navlabel">Toolkit</span></button><button class="navbtn" data-page="tools" data-area="connections"><svg class="navicon" viewBox="32.2 -15.8 592.5 590.5" aria-hidden="true"><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M512,1 L527,1 L537,6 L603,72 L609,86 L607,100 L603,107 L404,305 L438,339 L468,333 L494,334 L512,338 L539,350 L552,359 L568,375 L584,402 L589,417 L592,434 L591,464 L583,491 L578,495 L569,494 L503,427 L494,425 L489,427 L460,456 L458,459 L458,468 L488,499 L490,499 L518,528 L526,534 L528,538 L526,547 L519,551 L498,557 L465,558 L437,551 L421,543 L408,534 L391,517 L381,502 L372,482 L366,454 L366,431 L372,406 L312,347 L183,476 L169,502 L162,510 L122,536 L88,559 L80,559 L51,531 L51,519 L99,447 L107,440 L134,425 L262,296 L203,237 L179,243 L151,243 L139,241 L122,236 L103,227 L78,207 L78,205 L69,196 L59,179 L50,149 L50,117 L54,98 L59,85 L66,81 L73,83 L138,149 L142,151 L151,151 L183,120 L184,109 L115,42 L113,37 L114,32 L121,26 L141,20 L155,18 L180,19 L210,28 L235,44 L249,58 L261,76 L271,101 L275,122 L275,147 L269,170 L305,205 L306,202 L502,6 Z M518,19 L515,20 L319,216 L318,222 L320,225 L320,231 L316,236 L288,247 L288,256 L353,321 L359,322 L363,320 L372,295 L376,290 L393,290 L589,94 L590,87 L588,83 L527,22 L522,19 Z M154,37 L142,39 L141,41 L189,88 L191,88 L200,99 L203,108 L203,120 L198,131 L164,165 L153,170 L140,170 L127,164 L73,109 L71,109 L69,116 L68,143 L71,158 L79,177 L88,190 L101,203 L116,213 L135,221 L158,225 L170,224 L185,223 L200,218 L213,221 L276,283 L282,275 L270,262 L268,252 L269,244 L277,231 L289,227 L295,224 L295,222 L254,182 L252,178 L251,164 L255,154 L257,139 L256,119 L249,94 L237,73 L219,55 L200,44 L180,38 Z M510,49 L520,51 L523,57 L522,63 L361,223 L354,223 L350,220 L348,216 L350,208 Z M549,86 L558,89 L560,93 L559,101 L401,259 L396,260 L394,261 L387,257 L387,246 L546,87 Z M295,290 L145,440 L115,457 L71,523 L71,525 L84,538 L91,534 L152,494 L168,465 L319,315 L319,312 L297,290 Z M386,313 L378,332 L368,339 L351,340 L345,338 L334,327 L332,327 L326,334 L386,393 L390,400 L391,408 L385,430 L385,455 L393,484 L407,507 L429,526 L454,537 L473,540 L501,537 L445,483 L442,476 L439,470 L439,458 L444,446 L478,412 L485,408 L495,406 L504,407 L514,412 L569,468 L571,468 L573,459 L573,432 L569,415 L564,403 L552,385 L541,374 L528,365 L504,355 L488,352 L466,352 L444,358 L431,357 L426,354 Z"/></svg><span class="navlabel">Tools</span></button><button class="navbtn" data-page="mcp" data-area="connections"><svg class="navicon" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/><circle cx="6" cy="5" r="1"/><circle cx="18" cy="12" r="1"/><circle cx="9" cy="19" r="1"/></svg><span class="navlabel">Apps &amp; servers</span></button><button class="navbtn" data-page="docs" data-area="docs"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M9 7h6"/></svg><span class="navlabel">Overview</span></button><button class="navbtn" data-page="guides" data-area="docs"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg><span class="navlabel">Guides</span></button><button class="navbtn" data-page="troubleshooting" data-area="docs"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/></svg><span class="navlabel">Troubleshooting</span></button><button class="navbtn" data-page="settings" data-area="settings"><svg class="navicon" viewBox="20 20 220 220" aria-hidden="true" style="stroke-width:11"><path d="M168 98L183 105L197 94L213 110L201 123L209 142H227V167H209L201 185L214 198L196 216L182 204L165 211V229H141V211L123 204L109 217L92 199L105 185L99 169"/><circle cx="154" cy="155" r="32"/><path d="M143 35C116 28 92 51 103 80L62 146C42 143 25 161 31 179C37 199 62 207 78 194C89 185 94 173 87 160L129 100C157 104 180 79 164 49L145 76L122 61Z"/><circle cx="60" cy="173" r="12"/></svg><span class="navlabel">General</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="language"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><span class="navlabel">Language</span></button><button class="navbtn" data-page="appearance" data-area="settings"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.6 0 2.2-1.1 1.6-2.4-.6-1.4.3-2.6 1.8-2.6H18a3 3 0 0 0 3-3c0-5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7.5" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><span class="navlabel">Appearance</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="memory"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a2 2 0 0 0-3-1zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/></svg><span class="navlabel">Memory</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="safety"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span class="navlabel">Safety</span></button><button class="navbtn" data-page="settings" data-area="settings" data-cat="debug"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/></svg><span class="navlabel">Debug</span></button><button class="navbtn" data-page="terminal" data-area="support"><svg class="navicon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg><span class="navlabel">Terminal</span></button><button class="navbtn" data-page="logs" data-area="support"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 12h6M10 16h6"/></svg><span class="navlabel">Logs</span></button><button class="navbtn" data-page="donations" data-area="support"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/></svg><span class="navlabel">Donations</span></button></nav><div class="nx-spacer"></div><div class="nx-sep"></div><div class="nx-links"><button type="button" class="nx-link" data-ipc="open:discord"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M7 7c3-1.2 7-1.2 10 0l2 9c-1.5 1.4-3 2-4.5 2.4l-1-1.6M17 7l-2-.6M7 7l2-.6M5 16c1.5 1.4 3 2 4.5 2.4l1-1.6"/><circle cx="9.3" cy="12" r="1"/><circle cx="14.7" cy="12" r="1"/></svg><div><b>Discord</b><small>Join the community</small></div><span class="nx-arrow">↗</span></button><button type="button" class="nx-link" data-ipc="open:github"><svg class="navicon" viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M9 19c-4 1.3-4-2-6-2.5m12 4.5v-3.2a2.8 2.8 0 0 0-.8-2.2c2.700-.3 5.500-1.300 5.500-6a4.600 4.600 0 0 0-1.300-3.200 4.300 4.300 0 0 0-.1-3.200s-1-.3-3.300 1.300a11.400 11.400 0 0 0-6 0C6.700 3 5.700 3.300 5.700 3.300a4.300 4.300 0 0 0-.1 3.200A4.600 4.600 0 0 0 4.300 9.700c0 4.600 2.800 5.600 5.500 6a2.800 2.800 0 0 0-.8 2.200V21"/></svg><div><b>GitHub</b><small>Downloads &amp; updates</small></div><span class="nx-arrow">↗</span></button></div><div class="nx-sep"></div><button id="killStudio" class="dangerbtn" style="margin-top:auto;margin-bottom:10px;padding:10px" title="Force-close Roblox Studio, including frozen processes">Kill Roblox Studio</button><div class="side-status" style="margin-top:0"><div class="status-row"><span id="sideDot" class="dot"></span><span id="sideStatus">Bridge waiting</span></div><div class="side-sub">127.0.0.1:3000</div><div class="status-row" style="margin-top:10px" title="Studio process and MCP connection status"><span id="sideStudioDot" class="dot"></span><span id="sideStudioStatus">Studio waiting</span></div></div><button type="button" class="nx-account" data-page="account" data-area="home"><span class="nx-avatar">G</span><div><b data-i18n-user-content dir="auto">Guest</b><small>Not signed in</small></div></button><div class="nx-ver"><span id="sidebarVersion">v__PLAZCODE_VERSION__ (Not checked)</span><div class="desktop-effort" id="sidebarEffort">Effort: <span data-effort-value>Default</span></div></div></aside>
   <main class="shell">
     <div class="titlebar" id="dragbar">
       <div class="tb-brand"><span class="tb-logo"><svg viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="var(--orange2,#ffe0a1)" stroke-width="9" stroke-linecap="round"><path d="M27 18v42M27 18h31M27 42h29"/><path d="M56 18c20 0 26 9 26 21S75 60 56 60"/><path d="M31 70 18 91M48 70 35 91"/></g></svg></span><span>Plaz<em>Code</em></span></div><nav class="nx-areabar" id="areaBar" aria-label="Sections"><button type="button" class="nx-area active" data-area="home" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-7.5 9 7.5M5.5 9.5V20h13V9.5M10 20v-6h4v6"/></svg><span>Home</span></button><button type="button" class="nx-area" data-area="workspace" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Workspace</span></button><button type="button" class="nx-area" data-area="connections" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></svg><span>Connections</span></button><button type="button" class="nx-area" data-area="docs" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M9 7h6"/></svg><span>Documentation</span></button><button type="button" class="nx-area" data-area="settings" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg><span>Settings</span></button><button type="button" class="nx-area" data-area="support" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="m5.6 5.6 3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9"/></svg><span>Support</span></button></nav><div class="title-spacer"></div><div id="notificationCenter" dir="auto"></div><div class="desktop-version-stack"><div class="title-version" id="titleVersion">PlazCode v__PLAZCODE_VERSION__ (Not checked)</div><div class="desktop-effort" id="titleEffort">Effort: <span data-effort-value>Default</span></div></div>
@@ -1327,7 +1420,7 @@ html[data-pz-motion=off] *,html[data-pz-motion=off] *::before,html[data-pz-motio
           <div class="panel"><div class="panel-head"><div class="panel-title">Quick access</div><div class="panel-note">YOUR WORKSPACE</div></div>
             <div class="actions">
               <div class="action" data-go="tools"><div class="action-ico"><svg class="navicon" viewBox="32.2 -15.8 592.5 590.5" aria-hidden="true"><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M512,1 L527,1 L537,6 L603,72 L609,86 L607,100 L603,107 L404,305 L438,339 L468,333 L494,334 L512,338 L539,350 L552,359 L568,375 L584,402 L589,417 L592,434 L591,464 L583,491 L578,495 L569,494 L503,427 L494,425 L489,427 L460,456 L458,459 L458,468 L488,499 L490,499 L518,528 L526,534 L528,538 L526,547 L519,551 L498,557 L465,558 L437,551 L421,543 L408,534 L391,517 L381,502 L372,482 L366,454 L366,431 L372,406 L312,347 L183,476 L169,502 L162,510 L122,536 L88,559 L80,559 L51,531 L51,519 L99,447 L107,440 L134,425 L262,296 L203,237 L179,243 L151,243 L139,241 L122,236 L103,227 L78,207 L78,205 L69,196 L59,179 L50,149 L50,117 L54,98 L59,85 L66,81 L73,83 L138,149 L142,151 L151,151 L183,120 L184,109 L115,42 L113,37 L114,32 L121,26 L141,20 L155,18 L180,19 L210,28 L235,44 L249,58 L261,76 L271,101 L275,122 L275,147 L269,170 L305,205 L306,202 L502,6 Z M518,19 L515,20 L319,216 L318,222 L320,225 L320,231 L316,236 L288,247 L288,256 L353,321 L359,322 L363,320 L372,295 L376,290 L393,290 L589,94 L590,87 L588,83 L527,22 L522,19 Z M154,37 L142,39 L141,41 L189,88 L191,88 L200,99 L203,108 L203,120 L198,131 L164,165 L153,170 L140,170 L127,164 L73,109 L71,109 L69,116 L68,143 L71,158 L79,177 L88,190 L101,203 L116,213 L135,221 L158,225 L170,224 L185,223 L200,218 L213,221 L276,283 L282,275 L270,262 L268,252 L269,244 L277,231 L289,227 L295,224 L295,222 L254,182 L252,178 L251,164 L255,154 L257,139 L256,119 L249,94 L237,73 L219,55 L200,44 L180,38 Z M510,49 L520,51 L523,57 L522,63 L361,223 L354,223 L350,220 L348,216 L350,208 Z M549,86 L558,89 L560,93 L559,101 L401,259 L396,260 L394,261 L387,257 L387,246 L546,87 Z M295,290 L145,440 L115,457 L71,523 L71,525 L84,538 L91,534 L152,494 L168,465 L319,315 L319,312 L297,290 Z M386,313 L378,332 L368,339 L351,340 L345,338 L334,327 L332,327 L326,334 L386,393 L390,400 L391,408 L385,430 L385,455 L393,484 L407,507 L429,526 L454,537 L473,540 L501,537 L445,483 L442,476 L439,470 L439,458 L444,446 L478,412 L485,408 L495,406 L504,407 L514,412 L569,468 L571,468 L573,459 L573,432 L569,415 L564,403 L552,385 L541,374 L528,365 L504,355 L488,352 L466,352 L444,358 L431,357 L426,354 Z"/></svg></div><div><strong>Browse Tools</strong><small>See every live PlazCode tool</small></div><div class="chev">›</div></div>
-              <div class="action" data-go="mcp"><div class="action-ico"><svg class="navicon" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/><circle cx="6" cy="5" r="1"/><circle cx="18" cy="12" r="1"/><circle cx="9" cy="19" r="1"/></svg></div><div><strong>MCP Servers</strong><small>Manage optional integrations</small></div><div class="chev">›</div></div>
+              <div class="action" data-go="mcp"><div class="action-ico"><svg class="navicon" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/><circle cx="6" cy="5" r="1"/><circle cx="18" cy="12" r="1"/><circle cx="9" cy="19" r="1"/></svg></div><div><strong>Apps &amp; servers</strong><small>Connect the apps you create with</small></div><div class="chev">›</div></div>
               <div class="action" data-go="terminal"><div class="action-ico"><svg class="navicon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg></div><div><strong>Open Terminal</strong><small>Inspect bridge and MCP logs</small></div><div class="chev">›</div></div>
               <div class="action" data-go="settings"><div class="action-ico"><svg class="navicon" viewBox="20 20 220 220" aria-hidden="true" style="stroke-width:11"><path d="M168 98L183 105L197 94L213 110L201 123L209 142H227V167H209L201 185L214 198L196 216L182 204L165 211V229H141V211L123 204L109 217L92 199L105 185L99 169"/><circle cx="154" cy="155" r="32"/><path d="M143 35C116 28 92 51 103 80L62 146C42 143 25 161 31 179C37 199 62 207 78 194C89 185 94 173 87 160L129 100C157 104 180 79 164 49L145 76L122 61Z"/><circle cx="60" cy="173" r="12"/></svg></div><div><strong>Settings</strong><small>Adjust synced preferences</small></div><div class="chev">›</div></div>
             </div>
@@ -1341,8 +1434,9 @@ html[data-pz-motion=off] *,html[data-pz-motion=off] *::before,html[data-pz-motio
         <div id="toolsGrid" class="cardgrid"></div>
       </section>
       <section class="page" id="page-mcp">
-        <div class="page-head"><div><div class="page-title">MCP Servers</div><div class="page-sub">Optional integrations plus the protected Roblox Studio primary server.</div></div></div>
-        <div id="mcpGrid" class="cardgrid"></div>
+        <div class="page-head"><div><div class="page-title">Apps &amp; servers</div><div class="page-sub">Connect PlazCode to the apps you create with.</div></div></div>
+        <div id="cnApps" class="cn-apps" aria-live="polite"></div>
+        <details id="cnMore" class="cn-more"><summary><span>More tools</span><small>Browser, Git, Fetch and other helpers. Optional.</small></summary><div id="mcpGrid" class="cn-list"></div></details>
       </section>
       <section class="page" id="page-donations">
         <div class="page-head"><div><h1 class="page-title">Donations</h1><p class="page-sub">Support PlazCode. Donation links open in your browser.</p></div></div>
@@ -1828,82 +1922,216 @@ __PLAZCODE_VERSION_UI__
   var Blendercheck = null;
   var Blenderchecking = false;
   var Catalogcached=null,Catalogat=0,Catalogloading=null,Catalogsignature='';
+  /* Apps & servers. Big tiles for the apps people create with, a setup window with a checklist that ticks itself off, and a quiet
+     "More tools" list. The page reads /api/connections when the app has it and otherwise works from the older server list, so it is
+     useful with every build. Reply shape: {apps:[{id,name,state,line,steps:[{id,title,state,hint,action}],modes,mode,consent,prompts,
+     technical,download}]}. State: not_set_up, setting_up, ready, needs_attention. Step state: waiting, working, done, needs_you. */
+  var Cnapps=[
+    {id:'studio',name:'Roblox Studio',line:'Build and script your game with the AI.',icon:'<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M10 8.5l6 3.5-6 3.5z"/>',built:true},
+    {id:'blender',name:'Blender',line:'Make and edit 3D models and scenes.',icon:'<circle cx="12" cy="12" r="3"/><ellipse cx="12" cy="12" rx="9" ry="4.5" transform="rotate(-30 12 12)"/>'},
+    {id:'blockbench',name:'Blockbench',line:'Make blocky models and textures, in the web or desktop app.',icon:'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12L4 7.5M12 12v9"/>'},
+    {id:'figma',name:'Figma',line:'Read and edit your designs, frames and text.',icon:'<path d="M4 8V5h3M17 5h3v3M20 16v3h-3M7 19H4v-3"/><rect x="9" y="9" width="6" height="6" rx="1"/>'},
+    {id:'godot',name:'Godot',line:'Build scenes, add nodes and run your game.',icon:'<circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="8" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M8 7l8 .8M7 8l4 8M17 10l-4 6"/>'},
+    {id:'unity',name:'Unity',line:'Control scenes, objects and scripts in the editor.',icon:'<path d="M12 3l7.5 4.3v8.4L12 20l-7.5-4.3V7.3z"/><path d="M12 12V3M12 12l7.5 3.7M12 12l-7.5 3.7"/>'}
+  ];
+  var Cnprompts={
+    blender:['Make a low-poly tree with a trunk and three leaf cones.','Add a camera and a light, then show me a preview.'],
+    blockbench:['Make a small blocky house with a door and two windows.','Give the model a simple walking animation.'],
+    figma:['Describe the layout of the frame I have selected.','Add a card with a title, a short line of text and a button.'],
+    godot:['Make a scene with a player that moves with the arrow keys.','Run my project and tell me if anything is wrong.'],
+    unity:['Add a cube to the scene and give it a bouncing script.','Look at my scene and list what is in it.']
+  };
+  var Cnlabel={not_set_up:'Not set up',setting_up:'Setting up',ready:'Ready',needs_attention:'Needs attention',soon:'Coming soon',waiting:'Waiting'};
+  var Cnbutton={not_set_up:'Connect',setting_up:'Continue',ready:'Open',needs_attention:'Fix'};
+  var Cnmoreline={playwright:'Lets the AI open web pages, click and take screenshots in its own window.',context7:'Looks up documentation for programming libraries.',fetch:'Lets the AI read web pages.',git:'Lets the AI look at and work with your Git projects. Needs Git installed.',memory:'Simple notes the AI can keep between chats.',thinking:'Helps the AI plan hard problems step by step.',figma:'Figma Dev Mode: reads designs only and needs a paid Dev or Full seat.'};
+  var Cnbackend=null,Cnbackendat=0,Cnreply=null,Cnat=0,Cnloading=null,Cnmodel=null,Cnopenid=null,Cnpoll=null,Cnlastid='',Cnwired=false,Cnwinsig='',Cnconsented={};
+  function Cnsvg(Path){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+Path+'</svg>';}
+  function Cnstep(Id,Title,State,Hint,Extra){var Step={id:Id,title:Title,state:State};if(Hint)Step.hint=Hint;if(Extra)for(var Key in Extra)Step[Key]=Extra[Key];return Step;}
+  function Cnlegacy(Id,Catalog,Live){
+    var Meta=Cnapps.filter(function(App){return App.id===Id;})[0];
+    var Server=(Catalog.servers||[]).filter(function(Item){return Item.id===Id;})[0];
+    if(!Meta||!Server)return {id:Id,name:Meta?Meta.name:Id,state:'soon',line:Meta?Meta.line:''};
+    var Current=Live[Id]||null,Enabled=!!Server.enabled,Alive=!!(Current&&Current.alive),Failure=Current&&Current.error||'';
+    var Fresh=Blendercheck&&Date.now()-Blendercheck.time<15000;
+    var Verified=Id==='blender'?!!(Fresh&&Blendercheck.ok):!!(Alive&&Current.tools>0);
+    /* Older builds start a helper the first time an AI chat asks for its tools, not when it is switched on. Say so. */
+    var Later='It starts the first time you use PlazCode in an AI chat. Open a chat, then press Test again.';
+    var Steps=[Cnstep('enable','Turn on the connection',Enabled?'done':'waiting')];
+    if(Id==='blender'){
+      Steps.push(Cnstep('helper','Start the helper inside Blender',Verified?'done':Enabled?'needs_you':'waiting','Open Blender, press N over the 3D view, open the tab named Blender MCP and click Start MCP Server. Keep Blender open. If that tab is missing, add the helper to Blender first.',{link:{label:'Open the guide',key:'blender-guide'}}));
+      Steps.push(Cnstep('test','Check that Blender answers',Blenderchecking?'working':Verified?'done':'waiting',Fresh&&!Blendercheck.ok?Blendercheck.error:'',{action:{label:'Check now',run:'test'},bad:!!(Fresh&&!Blendercheck.ok)}));
+    }else if(Id==='unity'){
+      Steps.push(Cnstep('package','Add the Unity package',Verified?'done':Enabled?'needs_you':'waiting','In Unity open Window, then Package Manager, press +, choose Add package from git URL and paste this address.',{copy:'https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity'}));
+      Steps.push(Cnstep('test','Check that PlazCode can reach Unity',Verified?'done':'waiting',Failure||(Enabled?Later:''),{bad:!!Failure}));
+    }else if(Id==='figma'){
+      Steps.push(Cnstep('devmode','Turn on Dev Mode in Figma',Verified?'done':Enabled?'needs_you':'waiting','Open the Figma desktop app, choose Preferences and turn on the Dev Mode server, then keep your file open. This older connection can only read designs and needs a paid Dev or Full seat.'));
+      Steps.push(Cnstep('test','Check that PlazCode can reach Figma',Verified?'done':'waiting',Failure||(Enabled?Later:''),{bad:!!Failure}));
+    }else{
+      Steps.push(Cnstep('test','Check that the helper starts',Verified?'done':Failure?'needs_you':'waiting',Failure||(Enabled?Later:''),{bad:!!Failure}));
+    }
+    var State=!Enabled?'not_set_up':Verified?'ready':Failure?'needs_attention':'setting_up';
+    return {id:Id,name:Meta.name,state:State,line:Meta.line,steps:Steps,prompts:Cnprompts[Id],technical:[Server.command].concat(Server.args||[]).join(' '),legacy:true};
+  }
+  /* The app's own connection report. Shared and cached like the server list: opening the page asks once, a build without the
+     report is asked again only once a minute, and two callers at the same moment share one request. */
+  function Cnfetch(Force){
+    if(Cnbackend===false&&Date.now()-Cnbackendat<60000)return Promise.resolve(null);
+    if(Cnbackend&&!Force&&Date.now()-Cnat<5000)return Promise.resolve(Cnreply);
+    if(Cnloading)return Cnloading;
+    Cnloading=Api('/api/connections').catch(function(){return null;}).then(function(Reply){
+      Cnloading=null;Cnat=Date.now();
+      if(Reply&&Reply.apps&&Reply.apps.length){Cnbackend=true;Cnreply=Reply;}else{Cnbackend=false;Cnbackendat=Date.now();Cnreply=null;}
+      return Cnreply;
+    });
+    return Cnloading;
+  }
+  function Cnbuild(Catalog,Live,Reply){
+    var Map={};
+    if(Reply&&Reply.apps)Reply.apps.forEach(function(App){Map[App.id]=App;});
+    return Cnapps.filter(function(Meta){return !Meta.built;}).map(function(Meta){
+      var App=Map[Meta.id]||Cnlegacy(Meta.id,Catalog,Live);
+      App.name=App.name||Meta.name;App.line=App.line||Meta.line;App.prompts=App.prompts||Cnprompts[Meta.id];
+      return App;
+    });
+  }
+  function Cntile(App){
+    var Soon=App.state==='soon',Label=Cnlabel[App.state]||'Waiting',Verb=Cnbutton[App.state];
+    var Meta=Cnapps.filter(function(Item){return Item.id===App.id;})[0]||{icon:''};
+    var Button=Soon?'<button class="accentbtn cn-main" type="button" disabled>Coming soon</button>':'<button class="accentbtn cn-main" type="button" data-cn-open="'+Escape(App.id)+'" aria-label="'+Escape(Verb+' '+App.name)+'">'+Verb+'</button>';
+    return '<article class="cn-tile" data-state="'+Escape(App.state)+'" data-app="'+Escape(App.id)+'"><div class="cn-ico">'+Cnsvg(Meta.icon)+'</div><div class="cn-body"><h3 data-i18n-user-content>'+Escape(App.name)+'</h3><p>'+Escape(App.line)+'</p></div><div class="cn-foot"><span class="cn-pill" data-state="'+Escape(App.state)+'">'+Label+'</span>'+Button+'</div></article>';
+  }
+  function Cnstudio(){
+    var Live=!!(State&&State.mcp_alive),Meta=Cnapps[0];
+    return '<article class="cn-tile" data-state="'+(Live?'ready':'setting_up')+'" data-app="studio"><div class="cn-ico">'+Cnsvg(Meta.icon)+'</div><div class="cn-body"><h3 data-i18n-user-content>Roblox Studio</h3><p>'+Meta.line+'</p></div><div class="cn-foot"><span class="cn-pill" data-state="'+(Live?'ready':'setting_up')+'">'+(Live?'Ready':'Waiting')+'</span><span class="cn-note">'+(Live?'Built in':'Open Roblox Studio to use PlazCode.')+'</span></div></article>';
+  }
+  function Cnmore(Catalog,Live){
+    var Skip={blender:1,godot:1,unity:1,blockbench:1};if(!Cnbackend)Skip.figma=1;
+    var Rows=(Catalog.servers||[]).filter(function(Server){return !Skip[Server.id];}).map(function(Server){
+      var Current=Live[Server.id]||null,Enabled=!!Server.enabled,Alive=!!(Current&&Current.alive),Pending=PendingMcp[Server.id];
+      var Name=Server.id==='figma'?'Figma Dev Mode (paid seat)':Server.name;
+      var Known=Cnmoreline[Server.id];
+      var Note=(Known?'<span>'+Escape(Known)+'</span>':'<span data-i18n-user-content dir="auto">'+Escape(Server.description||'')+'</span>')+(Current&&Current.error?'<span class="cn-bad" data-i18n-user-content dir="auto">'+Escape(Current.error)+'</span>':Alive?'<span class="cn-good" data-i18n-user-content>'+Escape(Current.tools)+' tools available</span>':'');
+      var Command=[Server.command].concat(Server.args||[]).join(' ');
+      return '<div class="cn-row"><div class="cn-row-main"><strong'+(Server.id==='figma'?'':' data-i18n-user-content dir="auto"')+'>'+Escape(Name)+'</strong>'+Note+'<details class="cn-tech"><summary>Technical details</summary><code class="mcpcommand" dir="ltr">'+Escape(Command)+'</code></details></div><button type="button" class="cn-switch" role="switch" aria-checked="'+(Enabled?'true':'false')+'" aria-label="'+Escape(Name+(Enabled?' is on':' is off'))+'" data-cn-toggle="'+Escape(Server.id)+'"'+(Pending?' disabled':'')+'><i></i></button></div>';
+    });
+    return Rows.join('');
+  }
+  function Cnwindow(App){
+    var Ready=App.state==='ready',Fresh=App.state==='not_set_up'&&!Cnconsented[App.id]&&!(App.steps||[]).some(function(Step){return Step.state==='done'||Step.state==='working'||Step.state==='needs_you';});
+    var Html='<div class="cn-head"><div><div class="cn-eyebrow">'+(Ready?'Connected':'Connect')+'</div><h2 id="cnTitle">'+(Ready?'':'<span>Connect</span> ')+'<span data-i18n-user-content>'+Escape(App.name)+'</span></h2><p class="cn-lead">'+Escape(Ready?'PlazCode checked that it answers a real request.':(App.lead||'PlazCode does the setup for you. Each step ticks itself off when it is done.'))+'</p></div><button type="button" class="cn-x" data-cn-act="close" aria-label="Close">&times;</button></div>';
+    if(App.modes&&App.modes.length)Html+='<div class="cn-seg" role="group" aria-label="How PlazCode connects">'+App.modes.map(function(Mode){return '<button type="button" data-cn-mode="'+Escape(Mode.id)+'" aria-pressed="'+(Mode.id===App.mode?'true':'false')+'">'+Escape(Mode.label)+'</button>';}).join('')+'</div>';
+    if(Ready){
+      Html+='<div class="cn-done"><h3>Ready to use</h3><p>Try asking the AI one of these. Press a line to copy it.</p><div class="cn-prompts">'+(App.prompts||[]).map(function(Text){return '<button type="button" class="cn-prompt" data-cn-copy="'+Escape(Text)+'"><span>'+Escape(Text)+'</span><b>Copy</b></button>';}).join('')+'</div></div>';
+    }
+    Html+='<ol class="cn-steps">'+(App.steps||[]).map(function(Step,Index){
+      var Mark=Step.state==='done'?'&#10003;':Step.state==='needs_you'?'!':String(Index+1);
+      var Extra=Step.hint?(Step.bad?'<span class="cn-bad" data-i18n-user-content>':'<span>')+Escape(Step.hint)+'</span>':'';
+      if(Step.copy)Extra+='<code class="cn-code" dir="ltr">'+Escape(Step.copy)+'</code>';
+      var Act='';
+      if(Step.action&&Step.state!=='done')Act='<button type="button" class="softbtn cn-act" data-cn-act="'+Escape(Step.action.run)+'" data-cn-step="'+Escape(Step.id)+'">'+Escape(Step.action.label)+'</button>';
+      else if(Step.copy)Act='<button type="button" class="softbtn cn-act" data-cn-copy="'+Escape(Step.copy)+'">Copy</button>';
+      else if(Step.link)Act='<button type="button" class="softbtn cn-act" data-cn-ipc="'+Escape(Step.link.key)+'">'+Escape(Step.link.label)+'</button>';
+      return '<li class="cn-step" data-state="'+Escape(Step.state)+'" data-step="'+Escape(Step.id)+'"><span class="cn-mark" aria-hidden="true">'+Mark+'</span><div class="cn-st"><strong>'+Escape(Step.title)+'</strong>'+Extra+'<span class="cn-sr">'+({done:'Done',working:'Working',needs_you:'Needs you',waiting:'Waiting'}[Step.state]||'')+'</span></div>'+Act+'</li>';
+    }).join('')+'</ol>';
+    if(Fresh)Html+='<div class="cn-consent"><p>'+Escape(App.consent||'PlazCode will turn on this connection. Nothing else on your computer is changed.')+'</p><button type="button" class="accentbtn cn-main" data-cn-act="allow">Allow</button></div>';
+    if(App.technical)Html+='<details class="cn-tech"><summary>Technical details</summary><pre dir="ltr">'+Escape(App.technical)+'</pre></details>';
+    Html+='<div class="cn-wfoot">'+(App.state!=='not_set_up'?'<button type="button" class="softbtn" data-cn-act="test">Test again</button>':'')+'<span class="cn-gap"></span>'+(App.state!=='not_set_up'?'<button type="button" class="softbtn" data-cn-act="disconnect">Disconnect</button>':'')+'<button type="button" class="accentbtn" data-cn-act="close">Close</button></div>';
+    return Html;
+  }
+  function Cnshell(){
+    var Win=Byid('cnWin');if(Win)return Win;
+    var Shade=document.createElement('div');Shade.className='cn-shade';Shade.id='cnShade';Shade.addEventListener('click',Cnclose);document.body.appendChild(Shade);
+    Win=document.createElement('div');Win.className='cn-win';Win.id='cnWin';Win.setAttribute('role','dialog');Win.setAttribute('aria-modal','true');Win.setAttribute('aria-labelledby','cnTitle');Win.setAttribute('aria-hidden','true');document.body.appendChild(Win);
+    Win.addEventListener('click',function(Event){Cnclick(Event);});
+    document.addEventListener('keydown',function(Event){
+      if(!Cnopenid)return;
+      if(Event.key==='Escape'){Event.preventDefault();Cnclose();return;}
+      if(Event.key!=='Tab')return;
+      var Items=Toarray(Win.querySelectorAll('button:not([disabled]),summary,[href]')).filter(function(Node){return Node.offsetParent!==null||Node===document.activeElement;});
+      if(!Items.length)return;
+      var First=Items[0],Last=Items[Items.length-1];
+      if(!Win.contains(document.activeElement)){Event.preventDefault();First.focus();}
+      else if(Event.shiftKey&&document.activeElement===First){Event.preventDefault();Last.focus();}
+      else if(!Event.shiftKey&&document.activeElement===Last){Event.preventDefault();First.focus();}
+    });
+    return Win;
+  }
+  function Cnfind(Id){return (Cnmodel||[]).filter(function(App){return App.id===Id;})[0]||null;}
+  function Cnpaint(){
+    var Win=Byid('cnWin'),App=Cnopenid&&Cnfind(Cnopenid);
+    if(!Win||!App)return;
+    var Html=Cnwindow(App);if(Html===Cnwinsig)return;Cnwinsig=Html;
+    var Keep=document.activeElement&&Win.contains(document.activeElement)?(document.activeElement.getAttribute('data-cn-act')||document.activeElement.getAttribute('data-cn-copy')||''):'',Top=Win.scrollTop;
+    Win.innerHTML=Html;Win.scrollTop=Top;
+    if(Keep){var Again=Toarray(Win.querySelectorAll('[data-cn-act],[data-cn-copy]')).filter(function(Node){return (Node.getAttribute('data-cn-act')||Node.getAttribute('data-cn-copy'))===Keep;})[0];if(Again)Again.focus();}
+  }
+  function Cnopen(Id,Trigger){
+    var Win=Cnshell();Cnlastid=Id;Cnopenid=Id;Cnwinsig='';Cnpaint();
+    var Shade=Byid('cnShade');Shade.classList.add('cn-on');Win.classList.add('cn-on');Win.setAttribute('aria-hidden','false');
+    var First=Win.querySelector('.cn-consent button,[data-cn-act=close],button');if(First)First.focus();
+    if(!Cnpoll)Cnpoll=window.setInterval(function(){if(Cnopenid)Loadcatalog(true);},2000);
+  }
+  function Cnclose(){
+    var Win=Byid('cnWin'),Shade=Byid('cnShade');if(!Win)return;
+    Win.classList.remove('cn-on');Shade.classList.remove('cn-on');Win.setAttribute('aria-hidden','true');Cnopenid=null;
+    if(Cnpoll){window.clearInterval(Cnpoll);Cnpoll=null;}
+    var Back=Cnlastid&&document.querySelector('[data-cn-open="'+Cnlastid+'"]');if(Back)Back.focus();
+  }
+  function Cncopy(Text,Button){
+    var Done=function(){if(!Button)return;var Mark=Button.tagName==='B'?Button:Button.querySelector('b');var Target=Mark||Button;var Old=Target.textContent;Target.textContent='Copied';window.setTimeout(function(){if(Target.isConnected)Target.textContent=Old;},1600);};
+    try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(Text).then(Done,function(){Cnfallbackcopy(Text);Done();});return;}}catch(Error){}
+    Cnfallbackcopy(Text);Done();
+  }
+  function Cnfallbackcopy(Text){var Box=document.createElement('textarea');Box.value=Text;Box.setAttribute('readonly','');Box.style.cssText='position:fixed;left:-9999px;top:0';document.body.appendChild(Box);Box.select();try{document.execCommand('copy');}catch(Error){}Box.remove();}
+  function Cnrun(Id,Body){
+    return Api('/api/connections/setup',{method:'POST',body:JSON.stringify(Object.assign({id:Id},Body||{}))}).then(function(){Catalogcached=null;Cnat=0;return Loadcatalog(true);}).catch(function(Failure){Showerror(Failure);return Loadcatalog(true);});
+  }
+  function Cntoggle(Id,On){
+    PendingMcp[Id]=On?'Enabling…':'Disabling…';Catalogsignature='';
+    return Api('/api/mcp/toggle',{method:'POST',body:JSON.stringify({id:Id,enabled:On})}).then(function(){delete PendingMcp[Id];Catalogcached=null;Catalogsignature='';return Refresh();}).catch(function(Failure){delete PendingMcp[Id];Catalogcached=null;Catalogsignature='';Showerror(Failure);return Loadcatalog(true);});
+  }
+  function Cncheck(){
+    if(Blenderchecking)return Promise.resolve();
+    Blenderchecking=true;Catalogsignature='';Cnwinsig='';Cnpaint();
+    return Api('/api/blender',{method:'POST',body:JSON.stringify({type:'get_scene_info',params:{}})}).then(function(Value){Blendercheck={ok:Value.ok,error:Value.error||'Blender did not answer.',time:Date.now()};}).catch(function(Failure){Blendercheck={ok:false,error:Failure.message||String(Failure),time:Date.now()};}).then(function(){Blenderchecking=false;Catalogsignature='';return Loadcatalog(true);});
+  }
+  function Cnclick(Event){
+    var Node=Event.target.closest?Event.target.closest('[data-cn-open],[data-cn-act],[data-cn-copy],[data-cn-ipc],[data-cn-mode],[data-cn-toggle]'):null;if(!Node)return;
+    if(Node.hasAttribute('data-cn-open')){Cnopen(Node.getAttribute('data-cn-open'),Node);return;}
+    if(Node.hasAttribute('data-cn-copy')){Cncopy(Node.getAttribute('data-cn-copy'),Node);return;}
+    if(Node.hasAttribute('data-cn-ipc')){if(window.ipc)window.ipc.postMessage('open:'+Node.getAttribute('data-cn-ipc'));return;}
+    if(Node.hasAttribute('data-cn-toggle')){var Id=Node.getAttribute('data-cn-toggle');if(!PendingMcp[Id])Cntoggle(Id,Node.getAttribute('aria-checked')!=='true');return;}
+    if(Node.hasAttribute('data-cn-mode')){Cnrun(Cnopenid,{mode:Node.getAttribute('data-cn-mode')});return;}
+    var Act=Node.getAttribute('data-cn-act'),App=Cnfind(Cnopenid);
+    if(Act==='close')Cnclose();
+    else if(Act==='allow'&&App){Cnconsented[App.id]=true;Cnwinsig='';if(Cnbackend)Cnrun(App.id,{consent:true,mode:App.mode});else Cntoggle(App.id,true);Cnpaint();}
+    else if(Act==='disconnect'&&App){Cnconsented[App.id]=false;if(Cnbackend)Cnrun(App.id,{disconnect:true});else Cntoggle(App.id,false);}
+    else if(Act==='test'&&App){if(Cnbackend)Cnrun(App.id,{step:'test'});else if(App.id==='blender')Cncheck();else Refresh();}
+    else if(App&&Node.getAttribute('data-cn-step')){if(Cnbackend)Cnrun(App.id,{step:Node.getAttribute('data-cn-step')});else if(Act==='test'||Node.getAttribute('data-cn-step')==='test')Cncheck();}
+  }
   function Loadcatalog(Force) {
     if(!Force&&!Byid('page-mcp').classList.contains('active'))return Promise.resolve();
     var Fetching=Catalogcached&&!Force&&Date.now()-Catalogat<5000?Promise.resolve(Catalogcached):Catalogloading;
     if(!Fetching){Catalogloading=Api('/api/mcp/catalog').then(function(Value){Catalogcached=Value;Catalogat=Date.now();return Value;}).finally(function(){Catalogloading=null;});Fetching=Catalogloading;}
     return Fetching.then(function (Catalog) {
       var Live = {};
-      var Servers = State && State.servers ? State.servers : [];
-      Servers.forEach(function (Server) {
-        Live[Server.id] = Server;
-      });
-
-      var Html = '<div class="mcpcard" style="border-color:rgba(49,224,164,.45)"><div class="mcptop"><div class="mcpname" data-i18n-user-content dir="auto">Roblox Studio MCP</div><span class="mcpstate ' + (State && State.mcp_alive ? "on" : "") + '">' + (State && State.mcp_alive ? "Active" : "Waiting") + '</span></div><div class="mcpdesc" data-i18n-user-content dir="auto">Primary PlazCode server. Protected and always available when Roblox Studio MCP is connected.</div><div class="mcpcommand" data-i18n-user-content dir="ltr">built-in primary server</div></div>';
-
-      var Catalogservers = Catalog && Catalog.servers ? Catalog.servers : [];
-      Html += Catalogservers.map(function (Server) {
-        var Current = Live[Server.id] || null;
-        var Enabled = !!Server.enabled;
-        var Alive = !!(Current && Current.alive);
-        var Args = Server.args || [];
-        var Isblender = Server.id === "blender";
-        var Checkfresh = Blendercheck && Date.now() - Blendercheck.time < 15000;
-        var Blenderready = !!(Isblender && Checkfresh && Blendercheck.ok);
-        var Extra = "";
-
-        if (Current && Current.error) {
-          Extra = '<div class="mcpdesc" data-i18n-user-content dir="auto" style="color:var(--red)">' + Escape(Current.error) + '</div>';
-        } else if (Alive) {
-          Extra = '<div class="mcpdesc" data-i18n-user-content dir="auto" style="color:var(--green)">' + Escape(Current.tools) + ' tools available</div>';
+      (State && State.servers ? State.servers : []).forEach(function (Server) {Live[Server.id] = Server;});
+      return Cnfetch(Force).then(function(Reply){
+        var Apps=Cnbuild(Catalog||{},Live,Reply);
+        Cnmodel=Apps;
+        var Html=Cnstudio()+Apps.map(Cntile).join(''),More=Cnmore(Catalog||{},Live);
+        var Signature=Html+'|'+More+'|'+JSON.stringify(PendingMcp);
+        if(Signature!==Catalogsignature){
+          Catalogsignature=Signature;
+          Byid('cnApps').innerHTML=Html;Byid('mcpGrid').innerHTML=More;
         }
-
-        if (Isblender) {
-          Extra += '<div class="mcpdesc" data-i18n-user-content dir="auto" role="status">' + Escape(Blenderchecking ? "Checking Blender’s scene…" : Checkfresh ? (Blendercheck.ok ? "Scene check passed. Blender answered a real command." : Blendercheck.error) : "Blender has not been verified. The MCP process and Blender’s addon are separate connections.") + '</div>';
-        }
-        return '<div class="mcpcard"><div class="mcptop"><div class="mcpname" data-i18n-user-content dir="auto">' + Escape(Server.name) + '</div><span class="mcpstate ' + (Alive ? "on" : "") + '">' + (Isblender ? (Blenderready ? "Blender responding" : Alive ? "MCP process ready" : Enabled ? "Configured" : "Available") : (Alive ? "Active" : Enabled ? "Configured" : "Available")) + '</span></div><div class="mcpdesc" data-i18n-user-content dir="auto">' + Escape(Server.description) + '</div><div class="mcpcommand" data-i18n-user-content dir="ltr">' + Escape(Server.command + " " + Args.join(" ")) + '</div>' + Extra + '<div class="mcpactions"><button class="' + (Enabled ? "dangerbtn" : "accentbtn") + '" data-mcp="' + Escape(Server.id) + '" data-enabled="' + (!Enabled) + '">' + (Enabled ? "Disable" : "Enable") + '</button>' + (Isblender ? '<button class="softbtn" id="testBlenderConnection"' + (Blenderchecking ? ' disabled' : '') + '>Test Blender connection</button><button class="softbtn" id="openBlenderSetupGuide">Blender addon setup guide</button>' : '') + '</div></div>';
-      }).join("");
-
-      var Signature=Html+JSON.stringify(PendingMcp);if(Signature===Catalogsignature)return;Catalogsignature=Signature;
-      Byid("mcpGrid").innerHTML = Html;
-      var Blenderguide=Byid("openBlenderSetupGuide");if(Blenderguide)Blenderguide.onclick=function(){if(window.ipc)window.ipc.postMessage("open:blender-guide");};
-      var Blenderbutton=Byid("testBlenderConnection");
-      if(Blenderbutton) Blenderbutton.onclick=function(){
-        if(Blenderchecking)return;Blenderchecking=true;Blenderbutton.disabled=true;Blenderbutton.textContent="Checking scene…";
-        Api("/api/blender",{method:"POST",body:JSON.stringify({type:"get_scene_info",params:{}})}).then(function(value){Blendercheck={ok:value.ok,error:value.error || "Blender did not answer.",time:Date.now()};}).catch(function(error){Blendercheck={ok:false,error:error.message || String(error),time:Date.now()};}).then(function(){Blenderchecking=false;Loadcatalog();});
-      };
-
-      Toarray(document.querySelectorAll("[data-mcp]")).forEach(function (Button) {
-        var Id = Button.getAttribute("data-mcp");
-        if (PendingMcp[Id]) {
-          Button.disabled = true;
-          Button.textContent = PendingMcp[Id];
-        }
-        Button.onclick = function () {
-          if (PendingMcp[Id]) return;
-          var Enabled = Button.getAttribute("data-enabled") === "true";
-          PendingMcp[Id] = Enabled ? "Enabling…" : "Disabling…";
-          Button.disabled = true;
-          Button.textContent = PendingMcp[Id];
-          Api("/api/mcp/toggle", {
-            method: "POST",
-            body: JSON.stringify({
-              id: Button.getAttribute("data-mcp"),
-              enabled: Button.getAttribute("data-enabled") === "true"
-            })
-          }).then(function () {
-            delete PendingMcp[Id];Catalogcached=null;Catalogsignature='';
-            return Refresh();
-          }).catch(function (Error) {
-            delete PendingMcp[Id];Catalogcached=null;Catalogsignature='';
-            Showerror(Error);
-            return Loadcatalog(true);
-          });
-        };
+        Cnshell();
+        if(!Cnwired){Cnwired=true;Byid('page-mcp').addEventListener('click',Cnclick);}
+        Cnpaint();
       });
     }).catch(function (Error) {
       Catalogcached=null;Catalogsignature='';
-      Byid("mcpGrid").innerHTML = '<div class="empty">' + Escape(Error.message || Error) + '</div>';
+      Byid("cnApps").innerHTML = '<div class="empty">' + Escape(Error.message || Error) + '</div>';
     });
   }
 
@@ -2590,7 +2818,7 @@ __PLAZCODE_VERSION_UI__
      (title + subtitle), the section's pages as tabs under a serif page title, a live bridge pill, click
      ripples, the Feel settings and the "make your own" palette. Every original control keeps its element,
      id and handler; the section buttons forward to the original section buttons. */
-  var PZAREAS = {home:['Home','At a glance'],workspace:['Workspace','Skills, files & templates'],connections:['Connections','Tools & MCP servers'],docs:['Help','Guides & fixes'],settings:['Settings','Make it yours'],support:['Support','Logs & terminal']};
+  var PZAREAS = {home:['Home','At a glance'],workspace:['Workspace','Skills, files & templates'],connections:['Connections','Tools & apps'],docs:['Help','Guides & fixes'],settings:['Settings','Make it yours'],support:['Support','Logs & terminal']};
   var NXTHEMEDESC = {default:'Warm gold on deep charcoal.',amethyst:'Violet light on midnight.',cyan:'Icy cyan on deep navy.',rose:'Soft pink on dark plum.',emerald:'Fresh green on deep forest.',graphite:'Calm, cool monochrome.',crimson:'Ruby red on charcoal.',ocean:'Sea blue on the deep Atlantic.',copper:'Copper and clay, a warm studio.',aurora:'The mint glow of northern lights.',orchid:'Orchid pink on noir.'};
   function Pzt(Text) { try { return I18n ? I18n.t(Text) : Text; } catch (Error) { return Text; } }
   function Pzel(Tag, Cls, Text) { var Node = document.createElement(Tag); if (Cls) Node.className = Cls; if (Text != null) Node.textContent = Pzt(Text); return Node; }
