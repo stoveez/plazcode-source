@@ -177,7 +177,7 @@ Limits: the Mac zip can only be built on a Mac or by GitHub's Mac runners (publi
 2. Plain, non-coder language in summaries and release notes.
 3. Extension fixes (`core/`, `providers/`, `overlay.css`, `background.js`, `popup.*`) must work just by reloading the extension; say in one line whether the desktop app must be replaced too.
 4. New features need full validation, including the Mac desktop test.
-5. High effort (careful tracing) for: the login/license server, the Luau helper library, hard bug hunts, planning big features.
+5. The owner picks the model and effort level (2026-11-11: no required effort level). Still trace carefully on the login/license server, the Luau helper library, hard bug hunts and big-feature planning.
 6. Respect licences (no Multi-Script code; UltraLab only with SyphoDev's permission; Brickwire is MIT with credit).
 
 ## 6. What was done on 2026-10-23 (branch `claude/plazcode-dev`)

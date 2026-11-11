@@ -16,7 +16,7 @@ The full, binding list is `CLAUDE.md` / `AGENTS.md`. This is the short form; if 
 - Extension fixes must work by reloading the extension; say in one line whether the app must be replaced too.
 - No secrets in files or chat.
 - Respect licences: no Multi-Script code; UltraLab only with SyphoDev's permission (credit youtube.com/@SyphoDev); Brickwire is MIT (keep licence, credit "Brickwire contributors").
-- High effort (careful tracing) for: the login/license server, the Luau helper library and build self-checks, hard bug hunts, planning big features.
+- The owner picks the model and effort level (2026-11-11: no required effort level; do not ask to raise it). Still trace carefully on the login/license server, the Luau helper library and build self-checks, hard bug hunts and big-feature planning.
 - Ask deep, root-level questions before building any new feature, especially a vague one (2026-10-24). Details: [how-we-work](how-we-work.md).
 - Release descriptions follow [release-format](release-format.md): non-coder words, Discord bold marks, under 2,000 characters, no role mention (2026-10-25).
 - Previews must show what it REALLY looks like (owner, 2026-10-25): the actual desktop app (running, with the owner's settings and theme) or the extension on the real AI site. Never a stand-alone render of a page file: it shows placeholders, the wrong colours, every side link and wrong spacing. If you cannot run the real thing, say so plainly and ask the owner for a screenshot from his app instead of making your own.

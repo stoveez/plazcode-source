@@ -41,12 +41,7 @@ Every time you push a WIP or finished change that another AI could pick up, tell
 The owner does not want to forget this step of the public-then-private plan. Remind them at exactly two moments: (1) right after they have received the test zips from you (say it in the same message that delivers the zips), and (2) right after a publish has finished. Do not remind them before those moments (for example while a build is still running). After one of those moments, repeat the reminder in later replies until the repo is private. Give the settings link each time: https://github.com/stoveez/plazcode-source/settings (Danger Zone, Change visibility, Private). Check `gh api repos/stoveez/plazcode-source --jq '{private,visibility}'` before you stop working and tell the owner plainly if it is still public. If you are about to end a session while it is public, say so in your last message. Never change visibility yourself.
 
 ## Effort (the owner's rule)
-Use HIGH effort (think longer and trace carefully) for these four kinds of work. Do the work yourself: never hand it to a helper agent or subagent (owner, 2026-10-25). If your effort seems low, tell the owner instead:
-1. The login and license server (security matters, a gap is costly).
-2. The Luau helper library and the build self-checks (they must be correct against a real Luau compiler).
-3. Hunting hard bugs such as the Notion send problem or the "Response changed" banner (careful tracing through large files).
-4. Planning big features before building them.
-Normal effort is fine for small fixes, packaging, release notes and questions.
+The owner chooses the model and effort level for each session (2026-11-11: no required effort level; do not ask the owner to raise it). Do the work yourself: never hand it to a helper agent or subagent (owner, 2026-10-25). Trace carefully on the login and license server, the Luau helper library and build self-checks, hard bugs and big-feature planning, whatever the effort setting.
 
 ## Where the detail lives (moved out of this file on 2026-10-24 to save tokens)
 - When the version number changes (1.24.26, ...): `docs/vault/new-version-checklist.md` (every note naming 1.24.25 must be updated)

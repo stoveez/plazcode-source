@@ -57,7 +57,7 @@ The owner does not want to forget this step of the public-then-private plan. Rem
 - Remaining deferred plans (accounts, Skill Workshop, Brickwire; code protection shipped in 1.24.26): `development/1.24.26/`. Latest published: 1.24.30 (see `docs/NOW.md`)
 
 ## Effort
-Use maximum care (high reasoning effort) for the license and login server, the Luau helper library and build self-checks, hard bug hunts (for example the Notion send problem) and the planning of big features. Do this work yourself; never hand it to a helper agent or subagent (owner, 2026-10-25).
+The owner chooses the model and effort level for each session (2026-11-11: no required effort level; do not ask the owner to raise it). Trace carefully on the license and login server, the Luau helper library and build self-checks, hard bug hunts and big-feature planning. Do the work yourself; never hand it to a helper agent or subagent (owner, 2026-10-25).
 
 ## One branch and constant pushes (important)
 Work on `claude/plazcode-dev` and push there early and often, including unfinished work labelled `WIP: ...`, so the next AI can restart exactly where you stopped if your limits run out. Rewrite `docs/NOW.md` in the same commit as every push (newest change first) and always tell the owner the branch name and commit id. Do not leave `claude/plazcode-dev` broken: say plainly in the commit message and in `docs/NOW.md` when something is unfinished. Full details: `docs/HANDOFF.md`.
