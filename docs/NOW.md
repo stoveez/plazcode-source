@@ -27,3 +27,6 @@ Updated: 2026-11-09. No helper agents.
 **Visibility:** repo is still Public after the build window; owner must set it back to Private (https://github.com/stoveez/plazcode-source/settings). Check the actual visibility before stopping.
 
 **Handoff:** work on `claude/plazcode-dev`; main ancestry was merged back after publish. Stale branches kept: `release-record-1.24.31`, `fix/bar-status-json-lock`. Other account/Workshop/Brickwire plans remain deferred. See [open work](vault/open-work.md).
+
+
+**Connections rework (pick-up): read the ">>> PICK UP HERE" block at the top of `development/1.24.32/CONNECTIONS-REWORK-PROGRESS.md` first. Step 2a is WIP and untested after the last edits.**

@@ -1218,5 +1218,16 @@
   "PlazCode checked that it answers a real request.": null,
   "PlazCode does the setup for you. Each step ticks itself off when it is done.": null,
   "PlazCode will turn on this connection. Nothing else on your computer is changed.": null,
-  "Figma Dev Mode (paid seat)": null
+  "Figma Dev Mode (paid seat)": null,
+  "Find Godot": null,
+  "Godot is not on this computer yet. Get it and unzip it to your Downloads or Desktop folder. PlazCode keeps looking and carries on by itself.": null,
+  "Pick your project": null,
+  "Or paste the folder of your project here": null,
+  "Open your project in Godot once so it shows up here, or paste the folder of your project below.": null,
+  "Choose the game you want the AI to work on.": null,
+  "Start the helper": null,
+  "PlazCode finds Godot and your projects, then starts its helper. Each step ticks itself off when it is done.": null,
+  "PlazCode will look for Godot and your Godot projects on this computer and start its Godot helper. Nothing in your projects changes until you ask the AI.": null,
+  "Change": null,
+  "Start": null
 }

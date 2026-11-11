@@ -1331,6 +1331,16 @@ html:not([data-pz-motion=off]):not([data-pz-motion=reduced]) .cn-step[data-state
 .cn-st strong{font-size:15.5px;line-height:1.4}
 .cn-st span{font-size:14px;line-height:1.6;color:var(--ink-soft,#a7b2c4);overflow-wrap:anywhere}
 .cn-st .cn-bad{color:#ff8a80}
+.cn-st .cn-detail{font-family:var(--pz-mono,monospace);font-size:12.5px;color:var(--ink-soft,#a7b2c4);user-select:text}
+.cn-choices{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.cn-choice{display:flex;flex-direction:column;gap:3px;width:100%;text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--pz-line,rgb(255 255 255/.12));background:rgb(0 0 0/.2);color:inherit;font:inherit;cursor:pointer;transition:border-color .2s,background .2s}
+.cn-choice b{font-size:14.5px;font-weight:650}
+.cn-choice small{font-family:var(--pz-mono,monospace);font-size:11.5px;color:var(--ink-soft,#a7b2c4);overflow-wrap:anywhere}
+.cn-choice:hover,.cn-choice:focus-visible,.cn-choice[aria-pressed=true]{border-color:rgb(var(--pz-rgb,233 186 83)/.65);background:rgb(var(--pz-rgb,233 186 83)/.1);outline:0}
+.cn-paste{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.cn-input{flex:1 1 220px;min-width:0;min-height:42px;padding:0 14px;border-radius:11px;border:1px solid var(--pz-line,rgb(255 255 255/.16));background:rgb(0 0 0/.28);color:inherit;font:inherit;font-size:13.5px}
+.cn-input:focus-visible{outline:2px solid rgb(var(--pz-rgb,233 186 83)/.8);outline-offset:1px}
+.cn-alert{margin:0 0 16px;padding:13px 16px;border-radius:13px;border:1px solid rgb(255 110 100/.45);background:rgb(255 110 100/.1);color:#ffb0a8;font-size:14px;line-height:1.55}
 .cn-act{align-self:center}
 .cn-consent{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:0 0 22px;padding:18px 20px;border-radius:16px;background:rgb(var(--pz-rgb,233 186 83)/.1);border:1px solid rgb(var(--pz-rgb,233 186 83)/.35)}
 .cn-consent p{margin:0;flex:1 1 280px;font-size:15px;line-height:1.6}
@@ -1944,7 +1954,7 @@ __PLAZCODE_VERSION_UI__
   var Cnlabel={not_set_up:'Not set up',setting_up:'Setting up',ready:'Ready',needs_attention:'Needs attention',soon:'Coming soon',waiting:'Waiting'};
   var Cnbutton={not_set_up:'Connect',setting_up:'Continue',ready:'Open',needs_attention:'Fix'};
   var Cnmoreline={playwright:'Lets the AI open web pages, click and take screenshots in its own window.',context7:'Looks up documentation for programming libraries.',fetch:'Lets the AI read web pages.',git:'Lets the AI look at and work with your Git projects. Needs Git installed.',memory:'Simple notes the AI can keep between chats.',thinking:'Helps the AI plan hard problems step by step.',figma:'Figma Dev Mode: reads designs only and needs a paid Dev or Full seat.'};
-  var Cnbackend=null,Cnbackendat=0,Cnreply=null,Cnat=0,Cnloading=null,Cnmodel=null,Cnopenid=null,Cnpoll=null,Cnlastid='',Cnwired=false,Cnwinsig='',Cnconsented={};
+  var Cnbackend=null,Cnbackendat=0,Cnreply=null,Cnat=0,Cnloading=null,Cnmodel=null,Cnopenid=null,Cnpoll=null,Cnlastid='',Cnwired=false,Cnwinsig='',Cnconsented={},Cnchanging={},Cnnotice='';
   function Cnsvg(Path){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+Path+'</svg>';}
   function Cnstep(Id,Title,State,Hint,Extra){var Step={id:Id,title:Title,state:State};if(Hint)Step.hint=Hint;if(Extra)for(var Key in Extra)Step[Key]=Extra[Key];return Step;}
   function Cnlegacy(Id,Catalog,Live){
@@ -2005,7 +2015,7 @@ __PLAZCODE_VERSION_UI__
     return '<article class="cn-tile" data-state="'+(Live?'ready':'setting_up')+'" data-app="studio"><div class="cn-ico">'+Cnsvg(Meta.icon)+'</div><div class="cn-body"><h3 data-i18n-user-content>Roblox Studio</h3><p>'+Meta.line+'</p></div><div class="cn-foot"><span class="cn-pill" data-state="'+(Live?'ready':'setting_up')+'">'+(Live?'Ready':'Waiting')+'</span><span class="cn-note">'+(Live?'Built in':'Open Roblox Studio to use PlazCode.')+'</span></div></article>';
   }
   function Cnmore(Catalog,Live){
-    var Skip={blender:1,godot:1,unity:1,blockbench:1};if(!Cnbackend)Skip.figma=1;
+    var Skip={blender:1,godot:1,unity:1,blockbench:1};if(!(Cnreply&&Cnreply.apps.some(function(App){return App.id==='figma';})))Skip.figma=1;
     var Rows=(Catalog.servers||[]).filter(function(Server){return !Skip[Server.id];}).map(function(Server){
       var Current=Live[Server.id]||null,Enabled=!!Server.enabled,Alive=!!(Current&&Current.alive),Pending=PendingMcp[Server.id];
       var Name=Server.id==='figma'?'Figma Dev Mode (paid seat)':Server.name;
@@ -2017,18 +2027,26 @@ __PLAZCODE_VERSION_UI__
     return Rows.join('');
   }
   function Cnwindow(App){
-    var Ready=App.state==='ready',Fresh=App.state==='not_set_up'&&!Cnconsented[App.id]&&!(App.steps||[]).some(function(Step){return Step.state==='done'||Step.state==='working'||Step.state==='needs_you';});
+    var Ready=App.state==='ready',Fresh=App.state==='not_set_up'&&!Cnconsented[App.id];
     var Html='<div class="cn-head"><div><div class="cn-eyebrow">'+(Ready?'Connected':'Connect')+'</div><h2 id="cnTitle">'+(Ready?'':'<span>Connect</span> ')+'<span data-i18n-user-content>'+Escape(App.name)+'</span></h2><p class="cn-lead">'+Escape(Ready?'PlazCode checked that it answers a real request.':(App.lead||'PlazCode does the setup for you. Each step ticks itself off when it is done.'))+'</p></div><button type="button" class="cn-x" data-cn-act="close" aria-label="Close">&times;</button></div>';
     if(App.modes&&App.modes.length)Html+='<div class="cn-seg" role="group" aria-label="How PlazCode connects">'+App.modes.map(function(Mode){return '<button type="button" data-cn-mode="'+Escape(Mode.id)+'" aria-pressed="'+(Mode.id===App.mode?'true':'false')+'">'+Escape(Mode.label)+'</button>';}).join('')+'</div>';
     if(Ready){
       Html+='<div class="cn-done"><h3>Ready to use</h3><p>Try asking the AI one of these. Press a line to copy it.</p><div class="cn-prompts">'+(App.prompts||[]).map(function(Text){return '<button type="button" class="cn-prompt" data-cn-copy="'+Escape(Text)+'"><span>'+Escape(Text)+'</span><b>Copy</b></button>';}).join('')+'</div></div>';
     }
+    if(Cnnotice)Html+='<p class="cn-alert" role="alert" data-i18n-user-content dir="auto">'+Escape(Cnnotice)+'</p>';
     Html+='<ol class="cn-steps">'+(App.steps||[]).map(function(Step,Index){
       var Mark=Step.state==='done'?'&#10003;':Step.state==='needs_you'?'!':String(Index+1);
       var Extra=Step.hint?(Step.bad?'<span class="cn-bad" data-i18n-user-content>':'<span>')+Escape(Step.hint)+'</span>':'';
+      if(Step.detail)Extra+='<span class="cn-detail" data-i18n-user-content dir="auto">'+Escape(Step.detail)+'</span>';
       if(Step.copy)Extra+='<code class="cn-code" dir="ltr">'+Escape(Step.copy)+'</code>';
+      var Picking=(Step.choices||Step.input)&&(Step.state!=='done'||Cnchanging[App.id+'/'+Step.id]);
+      if(Picking){
+        if(Step.choices&&Step.choices.length)Extra+='<div class="cn-choices" role="group">'+Step.choices.map(function(Choice){return '<button type="button" class="cn-choice" data-cn-pick="'+Escape(Choice.value)+'" data-cn-step="'+Escape(Step.id)+'"'+(Choice.value===Step.detail?' aria-pressed="true"':'')+'><b data-i18n-user-content dir="auto">'+Escape(Choice.label)+'</b><small data-i18n-user-content dir="auto">'+Escape(Choice.value)+'</small></button>';}).join('')+'</div>';
+        if(Step.input)Extra+='<div class="cn-paste"><input type="text" class="cn-input" data-cn-input="'+Escape(Step.id)+'" placeholder="'+Escape(Step.input)+'" aria-label="'+Escape(Step.input)+'" spellcheck="false" autocomplete="off"><button type="button" class="softbtn" data-cn-use="'+Escape(Step.id)+'">Use this folder</button></div>';
+      }
       var Act='';
-      if(Step.action&&Step.state!=='done')Act='<button type="button" class="softbtn cn-act" data-cn-act="'+Escape(Step.action.run)+'" data-cn-step="'+Escape(Step.id)+'">'+Escape(Step.action.label)+'</button>';
+      if((Step.choices||Step.input)&&Step.state==='done'&&!Picking)Act='<button type="button" class="softbtn cn-act" data-cn-change="'+Escape(Step.id)+'">Change</button>';
+      else if(Step.action&&Step.state!=='done')Act='<button type="button" class="softbtn cn-act" data-cn-act="'+Escape(Step.action.run)+'" data-cn-step="'+Escape(Step.id)+'">'+Escape(Step.action.label)+'</button>';
       else if(Step.copy)Act='<button type="button" class="softbtn cn-act" data-cn-copy="'+Escape(Step.copy)+'">Copy</button>';
       else if(Step.link)Act='<button type="button" class="softbtn cn-act" data-cn-ipc="'+Escape(Step.link.key)+'">'+Escape(Step.link.label)+'</button>';
       return '<li class="cn-step" data-state="'+Escape(Step.state)+'" data-step="'+Escape(Step.id)+'"><span class="cn-mark" aria-hidden="true">'+Mark+'</span><div class="cn-st"><strong>'+Escape(Step.title)+'</strong>'+Extra+'<span class="cn-sr">'+({done:'Done',working:'Working',needs_you:'Needs you',waiting:'Waiting'}[Step.state]||'')+'</span></div>'+Act+'</li>';
@@ -2046,8 +2064,9 @@ __PLAZCODE_VERSION_UI__
     document.addEventListener('keydown',function(Event){
       if(!Cnopenid)return;
       if(Event.key==='Escape'){Event.preventDefault();Cnclose();return;}
+      if(Event.key==='Enter'&&Event.target&&Event.target.hasAttribute&&Event.target.hasAttribute('data-cn-input')){Event.preventDefault();var Go=Win.querySelector('[data-cn-use="'+Event.target.getAttribute('data-cn-input')+'"]');if(Go)Go.click();return;}
       if(Event.key!=='Tab')return;
-      var Items=Toarray(Win.querySelectorAll('button:not([disabled]),summary,[href]')).filter(function(Node){return Node.offsetParent!==null||Node===document.activeElement;});
+      var Items=Toarray(Win.querySelectorAll('button:not([disabled]),input,summary,[href]')).filter(function(Node){return Node.offsetParent!==null||Node===document.activeElement;});
       if(!Items.length)return;
       var First=Items[0],Last=Items[Items.length-1];
       if(!Win.contains(document.activeElement)){Event.preventDefault();First.focus();}
@@ -2062,7 +2081,9 @@ __PLAZCODE_VERSION_UI__
     if(!Win||!App)return;
     var Html=Cnwindow(App);if(Html===Cnwinsig)return;Cnwinsig=Html;
     var Keep=document.activeElement&&Win.contains(document.activeElement)?(document.activeElement.getAttribute('data-cn-act')||document.activeElement.getAttribute('data-cn-copy')||''):'',Top=Win.scrollTop;
+    var Box=Win.querySelector('[data-cn-input]'),Typed=Box?{step:Box.getAttribute('data-cn-input'),value:Box.value,focus:document.activeElement===Box,start:Box.selectionStart,end:Box.selectionEnd}:null;
     Win.innerHTML=Html;Win.scrollTop=Top;
+    if(Typed){var Next=Win.querySelector('[data-cn-input="'+Typed.step+'"]');if(Next){Next.value=Typed.value;if(Typed.focus){Next.focus();try{Next.setSelectionRange(Typed.start,Typed.end);}catch(Error){}}}}
     if(Keep){var Again=Toarray(Win.querySelectorAll('[data-cn-act],[data-cn-copy]')).filter(function(Node){return (Node.getAttribute('data-cn-act')||Node.getAttribute('data-cn-copy'))===Keep;})[0];if(Again)Again.focus();}
   }
   function Cnopen(Id,Trigger){
@@ -2073,7 +2094,7 @@ __PLAZCODE_VERSION_UI__
   }
   function Cnclose(){
     var Win=Byid('cnWin'),Shade=Byid('cnShade');if(!Win)return;
-    Win.classList.remove('cn-on');Shade.classList.remove('cn-on');Win.setAttribute('aria-hidden','true');Cnopenid=null;
+    Win.classList.remove('cn-on');Shade.classList.remove('cn-on');Win.setAttribute('aria-hidden','true');Cnopenid=null;Cnnotice='';Cnchanging={};
     if(Cnpoll){window.clearInterval(Cnpoll);Cnpoll=null;}
     var Back=Cnlastid&&document.querySelector('[data-cn-open="'+Cnlastid+'"]');if(Back)Back.focus();
   }
@@ -2084,7 +2105,8 @@ __PLAZCODE_VERSION_UI__
   }
   function Cnfallbackcopy(Text){var Box=document.createElement('textarea');Box.value=Text;Box.setAttribute('readonly','');Box.style.cssText='position:fixed;left:-9999px;top:0';document.body.appendChild(Box);Box.select();try{document.execCommand('copy');}catch(Error){}Box.remove();}
   function Cnrun(Id,Body){
-    return Api('/api/connections/setup',{method:'POST',body:JSON.stringify(Object.assign({id:Id},Body||{}))}).then(function(){Catalogcached=null;Cnat=0;return Loadcatalog(true);}).catch(function(Failure){Showerror(Failure);return Loadcatalog(true);});
+    /* A refused step (for example a folder that is not a project) is said inside the window, next to what the person just did. */
+    return Api('/api/connections/setup',{method:'POST',body:JSON.stringify(Object.assign({id:Id},Body||{}))}).then(function(){Cnnotice='';Cnchanging={};Catalogcached=null;Cnat=0;Cnwinsig='';return Loadcatalog(true);}).catch(function(Failure){Cnnotice=Failure&&Failure.message||String(Failure);Cnat=0;Cnwinsig='';return Loadcatalog(true);});
   }
   function Cntoggle(Id,On){
     PendingMcp[Id]=On?'Enabling…':'Disabling…';Catalogsignature='';
@@ -2096,7 +2118,10 @@ __PLAZCODE_VERSION_UI__
     return Api('/api/blender',{method:'POST',body:JSON.stringify({type:'get_scene_info',params:{}})}).then(function(Value){Blendercheck={ok:Value.ok,error:Value.error||'Blender did not answer.',time:Date.now()};}).catch(function(Failure){Blendercheck={ok:false,error:Failure.message||String(Failure),time:Date.now()};}).then(function(){Blenderchecking=false;Catalogsignature='';return Loadcatalog(true);});
   }
   function Cnclick(Event){
-    var Node=Event.target.closest?Event.target.closest('[data-cn-open],[data-cn-act],[data-cn-copy],[data-cn-ipc],[data-cn-mode],[data-cn-toggle]'):null;if(!Node)return;
+    var Node=Event.target.closest?Event.target.closest('[data-cn-open],[data-cn-act],[data-cn-copy],[data-cn-ipc],[data-cn-mode],[data-cn-toggle],[data-cn-pick],[data-cn-use],[data-cn-change]'):null;if(!Node)return;
+    if(Node.hasAttribute('data-cn-pick')){Cnrun(Cnopenid,{step:Node.getAttribute('data-cn-step'),value:Node.getAttribute('data-cn-pick')});return;}
+    if(Node.hasAttribute('data-cn-use')){var Field=Byid('cnWin').querySelector('[data-cn-input="'+Node.getAttribute('data-cn-use')+'"]');if(Field&&Field.value.trim())Cnrun(Cnopenid,{step:Node.getAttribute('data-cn-use'),value:Field.value.trim()});else if(Field)Field.focus();return;}
+    if(Node.hasAttribute('data-cn-change')){Cnchanging[Cnopenid+'/'+Node.getAttribute('data-cn-change')]=true;Cnwinsig='';Cnpaint();var Firstpick=Byid('cnWin').querySelector('.cn-choice,[data-cn-input]');if(Firstpick)Firstpick.focus();return;}
     if(Node.hasAttribute('data-cn-open')){Cnopen(Node.getAttribute('data-cn-open'),Node);return;}
     if(Node.hasAttribute('data-cn-copy')){Cncopy(Node.getAttribute('data-cn-copy'),Node);return;}
     if(Node.hasAttribute('data-cn-ipc')){if(window.ipc)window.ipc.postMessage('open:'+Node.getAttribute('data-cn-ipc'));return;}

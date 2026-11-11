@@ -11,8 +11,9 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
  else{fs.copyFileSync('agent/target/debug/PlazCode',path.join(install,'PlazCode'));fs.chmodSync(path.join(install,'PlazCode'),0o755);fs.cpSync('PlazCode-Extension',path.join(install,'PlazCode-Extension'),{recursive:true});}
  fs.writeFileSync(path.join(install,'plazcode-settings.json'),JSON.stringify({rsAutoUpdate:false,rsApprovalMode:'auto'}));
  fs.writeFileSync(path.join(bin,'xdg-open'),'#!/usr/bin/env python3\nimport os,sys\nwith open(os.environ["PLAZCODE_TEST_LAUNCHES"],"a") as f:f.write(sys.argv[1]+"\\n")\n',{mode:0o700});
+ fs.writeFileSync(path.join(temp,'Godot_v4-stand-in'),'stand-in for the Godot editor program');
  const log=fs.openSync(path.join(temp,'agent.log'),'w');
- const agent=spawn(path.join(install,'PlazCode'),[],{cwd:install,env:{...process.env,PATH:bin+path.delimiter+process.env.PATH,LOCALAPPDATA:config,XDG_CONFIG_HOME:config,PLAZCODE_WORKSPACE_ROOT:path.join(temp,'workspace'),PLAZCODE_TEST_LAUNCHES:launches},stdio:['ignore',log,log]});
+ const agent=spawn(path.join(install,'PlazCode'),[],{cwd:install,env:{...process.env,PATH:bin+path.delimiter+process.env.PATH,LOCALAPPDATA:config,XDG_CONFIG_HOME:config,PLAZCODE_WORKSPACE_ROOT:path.join(temp,'workspace'),PLAZCODE_TEST_LAUNCHES:launches,GODOT_PATH:path.join(temp,'Godot_v4-stand-in')},stdio:['ignore',log,log]});
  let browser;
  try{
   await waitFor(()=>fs.existsSync(launches),'native Linux opens a browser');
@@ -39,6 +40,7 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
     assert.equal(await page.locator('.app').evaluate(node=>getComputedStyle(node).visibility),'hidden','desktop must not flash behind the sign-in crossfade');
     assert.equal(await page.locator('#profileCreate').isVisible(),true);
     const denied=await fetch('http://127.0.0.1:3000/api/preferences',{headers:{Authorization:'Bearer '+key}});assert.equal(denied.status,423,'locked desktop cannot expose profile preferences');
+    assert.equal((await fetch('http://127.0.0.1:3000/api/connections',{headers:{Authorization:'Bearer '+key}})).status,423,'locked desktop cannot expose saved app connections');assert.equal((await call('/api/connections/setup',{id:'godot',consent:true})).status,423,'locked desktop cannot change app connections');
     assert.equal(await page.locator('.app').evaluate(node=>node.inert),true);
   }else{
   await page.evaluate(()=>PlazCodeDesktop.go('settings','general'));
@@ -53,13 +55,38 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   await page.evaluate(()=>PlazCodeDesktop.go('settings','general'));
   assert.equal(await page.locator('#desktopApprovalMode').inputValue(),'auto');
   }
+  // Apps & servers, real page against the real app: Godot from "Not set up" through Allow, a refused folder, a picked project and Disconnect.
+  // GODOT_PATH points at a stand-in file, so the editor counts as found; the helper itself may or may not start on this machine.
+  assert.equal((await fetch('http://127.0.0.1:3000/api/connections',{})).status,401,'the connection report needs the pairing key');
+  if(profileGate){await page.locator('#profileGuest').click();await page.locator('#profileSignIn').waitFor({state:'hidden',timeout:30000});}
+  await page.waitForFunction(()=>typeof PlazCodeDesktop==='object'&&!document.querySelector('.app').inert,null,{timeout:30000});
+  await page.evaluate(()=>PlazCodeDesktop.go('mcp'));
+  const pill=()=>page.locator('#cnApps [data-app="godot"] .cn-pill').innerText(),stepState=id=>page.locator('#cnWin [data-step="'+id+'"]').getAttribute('data-state');
+  await page.locator('#cnApps [data-cn-open="godot"]').waitFor();assert.equal(await pill(),'Not set up','the real page draws the real report');
+  await page.locator('#cnApps [data-cn-open="godot"]').click();
+  assert.match(await page.locator('#cnWin .cn-consent p').innerText(),/Nothing in your projects changes/);
+  assert.deepEqual([await stepState('find'),await stepState('project'),await stepState('start')],['waiting','waiting','waiting'],'nothing is claimed before Allow');
+  await page.locator('#cnWin [data-cn-act="allow"]').click();
+  await waitFor(async()=>await stepState('find')==='done'&&await stepState('project')==='needs_you','Allow finds the editor and asks for a project');
+  assert.equal(await page.locator('#cnWin [data-step="find"] .cn-detail').innerText(),path.join(temp,'Godot_v4-stand-in'));
+  await page.locator('#cnWin [data-cn-input="project"]').fill(temp);await page.locator('#cnWin [data-cn-use="project"]').click();
+  await page.locator('#cnWin .cn-alert').waitFor();assert.match(await page.locator('#cnWin .cn-alert').innerText(),/project\.godot/,'a folder that is not a project is refused with the reason');
+  const game=path.join(temp,'game');fs.mkdirSync(game);fs.writeFileSync(path.join(game,'project.godot'),'config_version=5\n');
+  await page.locator('#cnWin [data-cn-input="project"]').fill(game);await page.locator('#cnWin [data-cn-input="project"]').press('Enter');
+  await waitFor(async()=>await stepState('project')==='done','the pasted project is accepted');
+  assert.equal(await page.locator('#cnWin [data-step="project"] .cn-detail').innerText(),game);assert.equal(await page.locator('#cnWin .cn-alert').count(),0);
+  const started=await stepState('start');assert(['working','done','needs_you'].includes(started),'the helper is switched on once editor and project are known: '+started);
+  console.log('Godot helper on this machine after pick: '+started+' / '+await pill());
+  await page.locator('#cnWin [data-cn-act="disconnect"]').click();await waitFor(async()=>await pill()==='Not set up','Disconnect returns to Not set up');
+  await page.locator('#cnWin [data-cn-act="close"]').first().click();
   assert.equal((await call('/api/show',{})).status,200);await waitFor(()=>launch().length===2,'relaunch shows real Linux desktop');
   assert.notEqual(launch()[1],url,'every launch uses a fresh ticket');
   if(process.env.PLAZCODE_UI_PREVIEW_DIR&&!profileGate){fs.mkdirSync(process.env.PLAZCODE_UI_PREVIEW_DIR,{recursive:true});await page.evaluate(()=>{document.querySelector('#desktopApprovalMode').closest('details').open=true;});await page.locator('#desktopApprovalMode').locator('xpath=..').locator('.pc-effort-trigger').click();await page.screenshot({path:path.join(process.env.PLAZCODE_UI_PREVIEW_DIR,'plazcode-linux-native-settings.png')});}
   assert.deepEqual(errors,[]);
   assert.equal((await call('/api/desktop/browser-action',{message:'open-url:javascript:alert(1)'})).status,400,'unsafe external URI rejected');
+  {const before=launch().length;assert.equal((await call('/api/desktop/browser-action',{message:'open:get-godot'})).status,200);await waitFor(()=>launch().length===before+1,'official download page opens');assert.equal(launch()[before],'https://godotengine.org/download/');assert.equal((await call('/api/desktop/browser-action',{message:'open:get-anything'})).status,400,'only listed download pages open');}
   assert.equal((await call('/api/desktop/browser-action',{message:'quit'})).status,200);
   await waitFor(()=>agent.exitCode!==null,'Quit exits actual Linux bridge');assert.equal(agent.exitCode,0);
-  console.log('PASS real Linux desktop launch, authenticated single-use browser bootstrap, wrong-origin/replay rejection, profile gate (or legacy settings save/reload), reopen and Quit.');
+  console.log('PASS real Linux desktop launch, authenticated single-use browser bootstrap, wrong-origin/replay rejection, profile gate incl. locked app connections (or legacy settings save/reload), Apps & servers page against the real app (Godot: Allow, refused folder, picked project, Disconnect), official download page, reopen and Quit.');
  }finally{if(browser)await browser.close();if(agent.exitCode===null){agent.kill('SIGTERM');await new Promise(resolve=>agent.once('exit',resolve));}fs.closeSync(log);fs.rmSync(temp,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});

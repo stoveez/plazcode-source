@@ -119,6 +119,8 @@ pub fn godot_app(saved: &SavedApp, found: Option<&Path>, recent: &[PathBuf], ena
     let failure = server.and_then(|s| s.error.clone()).filter(|e| !e.trim().is_empty());
     let running = server.is_some_and(|s| s.alive && s.tools > 0);
 
+    // Before Allow nothing is looked up and nothing is claimed, even if the editor happens to be installed.
+    let found = found.filter(|_| saved.consent);
     let find = match found {
         Some(path) => with(step("find", "Find Godot", "done"), "detail", json!(path.display().to_string())),
         None => {
@@ -185,8 +187,8 @@ pub fn godot_project() -> Option<String> { load().apps.get("godot").and_then(|ap
 pub fn report(servers: &[ServerSummary]) -> Value {
     let saved = load();
     let godot = saved.apps.get("godot").cloned().unwrap_or_default();
-    let found = mcp_addons::find_godot();
-    // Reading Godot's project list is only useful, and only permitted, after the person allowed it.
+    // Looking for the editor and reading Godot's project list happen only after the person pressed Allow.
+    let found = if godot.consent { mcp_addons::find_godot() } else { None };
     let recent = if godot.consent { godot_recent_projects() } else { Vec::new() };
     json!({"ok": true, "apps": [
         godot_app(&godot, found.as_deref(), &recent, mcp_addons::is_enabled("godot"), servers.iter().find(|s| s.id == "godot")),
@@ -291,6 +293,10 @@ mod tests {
         assert_eq!(app["state"], "not_set_up");
         assert_eq!(states(&app), ["find:waiting", "project:waiting", "start:waiting"], "nothing is claimed before Allow");
         assert!(app["consent"].as_str().unwrap().contains("Nothing in your projects changes"));
+        let installed = godot_app(&saved, Some(&editor), &[game.clone()], true, Some(&summary(true, 9, None)));
+        assert_eq!(states(&installed), ["find:waiting", "project:waiting", "start:waiting"], "an installed editor and a running helper are still not shown before Allow");
+        assert_eq!(installed["state"], "not_set_up");
+        assert!(installed["steps"][0].get("detail").is_none() && installed["steps"][1].get("choices").is_none(), "no paths or project names before Allow");
 
         saved.consent = true;
         let app = godot_app(&saved, None, &[], false, None);

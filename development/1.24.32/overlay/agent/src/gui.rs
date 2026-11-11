@@ -646,7 +646,7 @@ pub fn external_url(message: &str) -> Option<String> {
         "open:discord" => Some("https://discord.gg/ggXhZKnXPH".into()),
         "open:blender-guide" => Some("https://github.com/ahujasid/blender-mcp#installation".into()),
         _ => toolkit_store_url(message).or_else(||guide_link_url(message))
-            .or_else(||donation_url(message).or_else(||supported_ai_url(message)).map(str::to_owned)),
+            .or_else(||donation_url(message).or_else(||supported_ai_url(message)).or_else(||app_download_url(message)).map(str::to_owned)),
     }
 }
 

@@ -55,7 +55,7 @@ const CATALOG = [
       await tab.route("http://127.0.0.1:3000/api/mcp/catalog", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, servers: CATALOG.map((s) => ({ ...s, enabled: bridge.enabled.has(s.id) })) }) }));
       await tab.route("http://127.0.0.1:3000/api/mcp/toggle", async (r) => { const b = JSON.parse(r.request().postData() || "{}"); bridge.toggles.push(b); if (b.enabled) bridge.enabled.add(b.id); else bridge.enabled.delete(b.id); await r.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' }); });
       await tab.route("http://127.0.0.1:3000/api/connections", (r) => { bridge.probes++; return bridge.mode === "legacy" ? r.fulfill({ status: 404, contentType: "application/json", body: '{"error":"not found"}' }) : r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, apps: bridge.backend }) }); });
-      await tab.route("http://127.0.0.1:3000/api/connections/setup", async (r) => { bridge.setups.push(JSON.parse(r.request().postData() || "{}")); await r.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' }); });
+      await tab.route("http://127.0.0.1:3000/api/connections/setup", async (r) => { const b = JSON.parse(r.request().postData() || "{}"); bridge.setups.push(b); const refused = bridge.onSetup ? bridge.onSetup(b) : null; await r.fulfill(refused ? { status: 400, contentType: "application/json", body: JSON.stringify({ ok: false, error: refused }) } : { status: 200, contentType: "application/json", body: '{"ok":true}' }); });
       await tab.route("http://127.0.0.1:3000/api/blender", async (r) => { bridge.blenderCalls++; await r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(bridge.blenderOk ? { ok: true, blender: true, data: { status: "success" } } : { ok: false, blender: false, error: "Blender did not answer." }) }); });
       await tab.route("http://plazcode.test/", (r) => r.fulfill({ status: 200, contentType: "text/html", body: assembled }));
       await tab.addInitScript(() => { window.__PLAZCODE_BOOT__ = { apiUrl: "http://127.0.0.1:3000" }; window.__ipc = []; window.ipc = { postMessage: (m) => window.__ipc.push(m) }; });
@@ -153,7 +153,7 @@ const CATALOG = [
         steps: [{ id: "find", title: "Find Blender", state: "needs_you", hint: "Blender is not installed yet.", bad: true, link: { label: "Get Blender", key: "get-blender" } }, { id: "start", title: "Start it in the background", state: "waiting" }, { id: "test", title: "Test", state: "waiting" }] },
       { id: "blockbench", state: "setting_up", steps: [{ id: "open", title: "Open Blockbench", state: "working" }] },
       { id: "figma", state: "ready", steps: [{ id: "plugin", title: "Run the PlazCode plugin", state: "done" }] },
-      { id: "godot", state: "not_set_up", steps: [{ id: "find", title: "Find Godot", state: "waiting" }], consent: "PlazCode will look for Godot on this computer." },
+      { id: "godot", state: "not_set_up", steps: [{ id: "find", title: "Find Godot", state: "done" }], consent: "PlazCode will look for Godot on this computer." }, // even a "done" step never hides the Allow question
     ];
     ({ tab, errors } = await open({ width: 1360, height: 860 }));
     list = await tiles(tab);
@@ -174,10 +174,38 @@ const CATALOG = [
     await tab.click('#cnWin [data-cn-act="allow"]'); await tab.waitForTimeout(400);
     assert.deepEqual(bridge.setups.pop(), { id: "godot", consent: true }, "Allow sends the consent to the app");
     assert.deepEqual(errors, [], "no page errors: " + errors.join(" | "));
-    await tab.setViewportSize({ width: 1360, height: 860 }); await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
+    // Godot the way the app reports it (connections.rs): find, pick a project from Godot's own list or paste a folder, start.
+    const godot = (o) => ({ id: "godot", state: o.state, consent: "PlazCode will look for Godot on this computer.", steps: [
+      { id: "find", title: "Find Godot", state: "done", detail: "C:\\Tools\\Godot_v4.4-stable_win64.exe" },
+      Object.assign({ id: "project", title: "Pick your project", state: o.project ? "done" : "needs_you", choices: [{ label: "platformer", value: "C:/Games/platformer" }, { label: "My Game", value: "C:/Games/My Game" }], input: "Or paste the folder of your project here" }, o.project ? { detail: o.project } : { hint: "Choose the game you want the AI to work on." }),
+      { id: "start", title: "Start the helper", state: o.project ? "working" : "waiting" }] });
+    const others = bridge.backend.filter((a) => a.id !== "godot");
+    let chosen = null; bridge.backend = [...others, godot({ state: "setting_up" })];
+    bridge.onSetup = (b) => { if (b.step !== "project") return null; if (/platformer|My Game|pasted/.test(b.value)) { chosen = b.value; bridge.backend = [...others, godot({ state: "setting_up", project: chosen })]; return null; } return "That folder is not a Godot project. Choose the folder that has the file project.godot in it."; };
+    await tab.waitForTimeout(2600);
+    const pick = await tab.evaluate(() => ({ detail: document.querySelector('#cnWin [data-step="find"] .cn-detail').textContent, choices: [...document.querySelectorAll('#cnWin [data-step="project"] .cn-choice b')].map((b) => b.textContent), box: document.querySelector('#cnWin [data-cn-input="project"]').getAttribute("placeholder"), change: !!document.querySelector("#cnWin [data-cn-change]") }));
+    assert.deepEqual(pick, { detail: "C:\\Tools\\Godot_v4.4-stable_win64.exe", choices: ["platformer", "My Game"], box: "Or paste the folder of your project here", change: false }, "found program, recent projects and a paste box");
+    // A wrong folder is explained inside the window, and what was typed survives the page's own refreshes.
+    await tab.fill('#cnWin [data-cn-input="project"]', "C:/Downloads"); await tab.press('#cnWin [data-cn-input="project"]', "Enter"); await tab.waitForTimeout(500);
+    assert.deepEqual(bridge.setups.pop(), { id: "godot", step: "project", value: "C:/Downloads" }, "Enter in the paste box sends the folder");
+    assert.match(await tab.evaluate(() => document.querySelector("#cnWin .cn-alert")?.textContent || ""), /not a Godot project/, "a refused folder is explained in the window");
+    await tab.fill('#cnWin [data-cn-input="project"]', "C:/Games/half-typed"); await tab.waitForTimeout(2600);
+    assert.equal(await tab.inputValue('#cnWin [data-cn-input="project"]'), "C:/Games/half-typed", "typing is not wiped by a refresh");
+    await tab.click('#cnWin .cn-choice >> nth=1'); await tab.waitForTimeout(600);
+    assert.deepEqual(bridge.setups.pop(), { id: "godot", step: "project", value: "C:/Games/My Game" }, "one click picks a recent project");
+    const picked = await tab.evaluate(() => ({ alert: !!document.querySelector("#cnWin .cn-alert"), state: document.querySelector('#cnWin [data-step="project"]').dataset.state, detail: document.querySelector('#cnWin [data-step="project"] .cn-detail').textContent, list: document.querySelectorAll("#cnWin .cn-choice").length, change: !!document.querySelector('#cnWin [data-cn-change="project"]'), start: document.querySelector('#cnWin [data-step="start"]').dataset.state }));
+    assert.deepEqual(picked, { alert: false, state: "done", detail: "C:/Games/My Game", list: 0, change: true, start: "working" }, "the choice is shown, the list folds away, the next step starts");
+    await tab.click('#cnWin [data-cn-change="project"]'); await tab.waitForTimeout(200);
+    assert.deepEqual(await tab.evaluate(() => ({ list: document.querySelectorAll("#cnWin .cn-choice").length, marked: document.querySelector('#cnWin .cn-choice[aria-pressed="true"] b')?.textContent, focus: document.activeElement?.className })), { list: 2, marked: "My Game", focus: "cn-choice" }, "Change reopens the list with the current project marked");
+    await tab.fill('#cnWin [data-cn-input="project"]', "  D:/pasted project  "); await tab.click('#cnWin [data-cn-use="project"]'); await tab.waitForTimeout(600);
+    assert.deepEqual(bridge.setups.pop(), { id: "godot", step: "project", value: "D:/pasted project" }, "a pasted folder is trimmed and sent");
+    assert.equal(await tab.evaluate(() => document.querySelector('#cnWin [data-step="project"] .cn-detail').textContent), "D:/pasted project");
+    bridge.onSetup = null; await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
+    assert.deepEqual(errors, [], "no page errors: " + errors.join(" | "));
+    await tab.setViewportSize({ width: 1360, height: 860 }); await tab.waitForTimeout(200);
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-page.png" : "/tmp/connections-page.png" });
     await tab.click('#cnApps [data-cn-open="blender"]'); await tab.waitForTimeout(600);
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-window.png" : "/tmp/connections-window.png" });
-    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, helper start/fail shown live, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent)");
+    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, helper start/fail shown live, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent), Godot project picking (recent list, paste box, refused folder explained, typing kept, Change)");
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exit(1); });
