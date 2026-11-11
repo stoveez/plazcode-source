@@ -96,6 +96,7 @@ mod blender;
 mod platform;
 mod checkpoints;
 mod mcp_addons;
+mod connections;
 mod studio_session;
 mod studio_launcher;
 mod media;
@@ -1418,6 +1419,8 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/tools/browser", post(browser_tools_handler))
         .route("/api/mcp/catalog", get(mcp_catalog_handler))
         .route("/api/mcp/toggle", post(mcp_toggle_handler))
+        .route("/api/connections", get(connections_handler))
+        .route("/api/connections/setup", post(connections_setup_handler))
         .route("/ws", get(ws_handler))
         .layer(axum::middleware::from_fn(track_tool_activity))
         .merge(linux_authenticated_routes())
@@ -1449,7 +1452,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
 fn is_work_request(method: &axum::http::Method, path: &str) -> bool {
     method == axum::http::Method::POST && !matches!(path,
         "/api/desktop/profiles" | "/api/desktop/profile-picture" | "/api/desktop/update" | "/api/desktop/browser-agent" | "/api/show" | "/api/shutdown" | "/api/desktop/preferences" | "/api/preferences" | "/api/provider-pacing" |
-        "/api/desktop/restart" | "/api/desktop/clear-logs" | "/api/connect" | "/api/disconnect" | "/api/pair" | "/api/local-full" | "/api/mcp/toggle" | "/api/debug/browser-log")
+        "/api/desktop/restart" | "/api/desktop/clear-logs" | "/api/connect" | "/api/disconnect" | "/api/pair" | "/api/local-full" | "/api/mcp/toggle" | "/api/connections/setup" | "/api/debug/browser-log")
 }
 async fn track_tool_activity(request: axum::extract::Request, next: axum::middleware::Next) -> axum::response::Response {
     if is_work_request(request.method(),request.uri().path()) && request.uri().path()!="/api/stop" {
@@ -2272,6 +2275,41 @@ async fn mcp_catalog_handler() -> impl IntoResponse {
         })
     }).collect();
     Json(serde_json::json!({"ok": true, "servers": entries}))
+}
+
+/// Apps & servers page: what each creative app needs next. Looks at the disk, so it runs off the async threads.
+async fn connections_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let servers = state.ui.servers.lock().map(|value| value.clone()).unwrap_or_default();
+    match tokio::task::spawn_blocking(move || connections::report(&servers)).await {
+        Ok(report) => Json(report).into_response(),
+        Err(error) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(),
+    }
+}
+
+/// Apps & servers page: Allow, pick a project, retry a step or disconnect. Starting a helper never blocks the reply.
+async fn connections_setup_handler(State(state): State<AppState>, Json(request): Json<connections::SetupRequest>) -> impl IntoResponse {
+    let outcome = tokio::task::spawn_blocking(move || -> anyhow::Result<connections::After> {
+        let path = connections::store_path();
+        let mut saved = connections::load_from(&path);
+        let (switch, after) = connections::apply(&mut saved, &request, mcp_addons::find_godot().is_some())?;
+        connections::save_to(&path, &saved)?;
+        if let Some((id, on)) = switch { if mcp_addons::is_enabled(id) != on { mcp_addons::set_catalog_enabled(id, on)?; } }
+        Ok(after)
+    }).await.unwrap_or_else(|error| Err(anyhow::anyhow!(error.to_string())));
+    match outcome {
+        Ok(after) => {
+            if after == connections::After::RefreshHelpers {
+                let refresh_state = state.clone();
+                let expected=state.accounts.active().map(|p|p.epoch);
+                tokio::spawn(async move {
+                    let _lease=accounts::ACCESS.read().await;if refresh_state.accounts.required()&&(expected.is_none()||expected!=refresh_state.accounts.active().map(|p|p.epoch)){return;}
+                    let _ = refresh_addons(&refresh_state).await;
+                });
+            }
+            Json(serde_json::json!({"ok": true})).into_response()
+        }
+        Err(error) => (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(),
+    }
 }
 
 #[derive(serde::Deserialize)]

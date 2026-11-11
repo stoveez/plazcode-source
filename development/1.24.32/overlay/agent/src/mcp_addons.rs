@@ -700,6 +700,8 @@ impl AddonManager {
             let value=crate::blender::command("get_scene_info",serde_json::json!({}),std::time::Duration::from_secs(8)).await?;
             return Ok((value["result"].to_string(),Vec::new()));
         }
+        // Godot: a beginner never types a folder. A missing projectPath becomes the project picked on the Apps & servers page.
+        let args = if id == "godot" { crate::connections::with_godot_project(real, args, crate::connections::godot_project().as_deref()) } else { args };
         let result = runtime.call_tool(real, args).await;
         if result.as_ref().err().is_some_and(|error| addon_should_reset(&error.to_string(), runtime.call_timeouts)) {
             runtime.reset().await;
