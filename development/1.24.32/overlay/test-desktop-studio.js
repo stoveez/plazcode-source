@@ -112,6 +112,17 @@ console.log("PASS desktop Studio look: frame functions, hooks, reduced/off motio
     assert.equal(await tab.evaluate(() => document.getElementById("skillsWorkspace").classList.contains("pz-sk-open")), false, "the X closes the editor");
     await tab.click('#skillsWorkspace [data-sk="new"]'); await tab.waitForTimeout(500); await tab.mouse.click(8, 400); await tab.waitForTimeout(400);
     assert.equal(await tab.evaluate(() => document.getElementById("skillsWorkspace").classList.contains("pz-sk-open")), false, "a click outside closes the editor");
+    // 2026-11-11 polish: one gliding sidebar highlight, no numbers before card headings, matching window buttons, gap above the supported-AI card.
+    await tab.click('.pz-area[data-area="home"]'); await tab.waitForTimeout(900);
+    const polish = await tab.evaluate(() => { const g = document.querySelector(".pz-areas .pz-glide"), a = document.querySelector(".pz-area.active"), ai = document.getElementById("homeSupportedAis");
+      const h = [...document.querySelectorAll(".settingcard>h3,.nx-block>h2")].map((n) => getComputedStyle(n, "::before").content);
+      return { glide: !!g, on: g && g.classList.contains("pz-on"), same: g && Math.abs(g.getBoundingClientRect().top - a.getBoundingClientRect().top) < 2 && Math.abs(g.getBoundingClientRect().height - a.getBoundingClientRect().height) < 2,
+        numbers: h.filter((c) => /\d/.test(c)).length, close: getComputedStyle(document.querySelector(".titlebar .winbtn.close")).borderTopWidth, min: getComputedStyle(document.querySelector('.winbtn[data-ipc="minimize"]')).borderTopWidth,
+        gap: parseFloat(getComputedStyle(ai).marginTop), plain: getComputedStyle(document.querySelector('.pz-area:not(.active) b')).backgroundImage }; });
+    assert.equal(polish.glide, true); assert.equal(polish.on, true); assert.equal(polish.same, true, "the highlight sits on the selected section"); assert.equal(polish.numbers, 0, "no numbers before card headings");
+    assert.equal(polish.close, polish.min, "the close button is framed like the other two"); assert(polish.gap >= 20, "room above the supported-AI card"); assert(/gradient/.test(polish.plain), "unselected section names carry the gradient");
+    await tab.click('.pz-area[data-area="settings"]'); await tab.waitForTimeout(900);
+    assert.equal(await tab.evaluate(() => { const g = document.querySelector(".pz-glide"), a = document.querySelector(".pz-area.active"); return a.getAttribute("data-area") === "settings" && Math.abs(g.getBoundingClientRect().top - a.getBoundingClientRect().top) < 2; }), true, "the highlight glides to the new section");
     // The app's own motion setting wins over the system's: a system that asks for less motion starts at Off, and Full turns it all back on.
     const calm = await browser.newContext({ viewport: { width: 1360, height: 860 }, reducedMotion: "reduce" }); const quiet = await calm.newPage();
     await quiet.route("http://127.0.0.1:3000/**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' }));
@@ -127,6 +138,6 @@ console.log("PASS desktop Studio look: frame functions, hooks, reduced/off motio
     assert.equal(loud.motion, "full"); assert.equal(loud.leaving, 1, "Full brings the page turn back on a reduced-motion system"); assert.notEqual(loud.anim, "none"); 
     await calm.close();
     assert.deepEqual(errors.filter((e) => !/fetch|Failed to load|NetworkError/i.test(e)), [], "no script errors");
-    console.log("PASS desktop Studio look in Chromium: sections and tabs, serif title, Feel settings, ripples, custom palette save and remove, page turns, Skills list and editor window, motion setting over the system setting");
+    console.log("PASS desktop Studio look in Chromium: sections and tabs, serif title, Feel settings, ripples, custom palette save and remove, page turns, Skills list and editor window, motion setting over the system setting, gliding highlight, no heading numbers");
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exitCode = 1; });
