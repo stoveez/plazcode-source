@@ -1243,11 +1243,18 @@
   "Or paste where the Blender program is": null,
   "Picture of the Blender scene": null,
   "PlazCode runs Blender quietly in the background. You do not need to open Blender or change anything in it.": null,
-  "PlazCode will connect to the helper in your open Blender window. Nothing in your scene changes until you ask the AI.": null,
   "PlazCode will look for Blender on this computer and start it in the background when the AI needs it. Your own Blender files are not touched.": null,
-  "PlazCode works in the Blender window you have open. Each step ticks itself off when it is done.": null,
   "Show a picture": null,
   "Start Blender in the background": null,
   "Starting Blender. The first time can take up to a minute.": null,
-  "Use this": null
+  "Use this": null,
+  "Add the PlazCode helper to Blender": null,
+  "PlazCode is adding its helper. Blender opens and closes once without a window.": null,
+  "PlazCode adds a small helper to Blender so it can work in your open window.": null,
+  "Add helper": null,
+  "Open Blender": null,
+  "Open Blender the way you always do, or press Open Blender. The helper starts by itself.": null,
+  "Open Blender the way you always do. The helper starts by itself.": null,
+  "PlazCode adds a small helper to Blender and works in the Blender window you have open. Each step ticks itself off when it is done.": null,
+  "PlazCode will look for Blender on this computer and add its own small helper to it. Nothing in your scene changes until you ask the AI.": null
 }

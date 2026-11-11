@@ -397,6 +397,10 @@ jobs:
         if: runner.os == 'Linux'
         run: cargo +stable test --locked --manifest-path agent/Cargo.toml real_blender_runs_actions_refuses_free_python_and_makes_a_picture -- --ignored --nocapture
         working-directory: build-src-1.24.32/PlazCode
+      - name: Real Blender with PlazCode's own open-window helper (added and removed by Blender itself, pairing word, safe mode)
+        if: runner.os == 'Linux'
+        run: cargo +stable test --locked --manifest-path agent/Cargo.toml blender_addon::tests::real_blender -- --ignored --nocapture
+        working-directory: build-src-1.24.32/PlazCode
       - name: Environment snapshot refresh scope and native timing
         run: cargo +stable test --locked --manifest-path agent/Cargo.toml env_info_preserves_snapshot_and_access_flags_without_process_data -- --nocapture
         working-directory: build-src-1.24.32/PlazCode

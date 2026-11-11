@@ -16,9 +16,14 @@ async fn command_slot<'a>(lock: &'a tokio::sync::Mutex<()>, kind: &str) -> anyho
 }
 
 pub async fn command_at(host: &str, port: u16, kind: &str, params: Value, limit: Duration) -> anyhow::Result<Value> {
+    send_at(host, port, kind, json!({"type":kind,"params":params}), limit).await
+}
+
+/// Send one whole request (PlazCode's own helper also needs the pairing word and the safe-mode mark in it).
+async fn send_at(host: &str, port: u16, kind: &str, body: Value, limit: Duration) -> anyhow::Result<Value> {
     tokio::time::timeout(limit, async {
-        let mut socket = TcpStream::connect((host, port)).await?;
-        socket.write_all(&serde_json::to_vec(&json!({"type":kind,"params":params}))?).await?;
+        let mut socket = TcpStream::connect((host, port)).await.map_err(|error| anyhow::Error::new(NotListening(error.to_string())))?;
+        socket.write_all(&serde_json::to_vec(&body)?).await?;
         let mut data = Vec::new();
         let mut buffer = [0u8;8192];
         loop {
@@ -38,8 +43,48 @@ pub async fn command_at(host: &str, port: u16, kind: &str, params: Value, limit:
     }).await.map_err(|_| anyhow::anyhow!("Blender did not answer {kind} within {} seconds. Run Blender normally with its visible GUI (not headless / -b), keep it responsive, close blocking dialogs, then stop and start the MCP server in Blender (N → Blender MCP → Start MCP Server). If a fresh scene check still fails, update the official Blender MCP addon: older addons can accept sockets without scheduling commands reliably on Blender's main thread. A running MCP process or tool list alone does not confirm Blender is connected. A timed-out edit may still execute later; inspect the scene before retrying. PlazCode did not replay the command.", limit.as_secs()))?
 }
 
+/// Nothing listens on that port (Blender is closed, or its helper is not running).
+#[derive(Debug)]
+struct NotListening(String);
+impl std::fmt::Display for NotListening { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "Blender is not answering ({})", self.0) } }
+impl std::error::Error for NotListening {}
+
+static COMMAND_LOCK: once_cell::sync::Lazy<tokio::sync::Mutex<()>> = once_cell::sync::Lazy::new(||tokio::sync::Mutex::new(()));
+
+fn remember_connection(result: &anyhow::Result<Value>) {
+    // A slow reply means Blender is busy, not disconnected: keep the last known
+    // state so the extension does not drop a live Blender connection.
+    let busy=matches!(result,Err(error) if error.to_string().contains("did not answer"));
+    if !busy {if let Ok(mut state)=LAST_CONNECTION.lock(){*state=Some((std::time::Instant::now(),result.is_ok()));}}
+}
+
+/// PlazCode's own open-window helper listens here (the older helper keeps 9876, so both can be in Blender at once).
+pub fn helper_port() -> u16 { std::env::var("PLAZCODE_BLENDER_HELPER_PORT").ok().and_then(|v| v.parse().ok()).unwrap_or(9877) }
+
+/// One request to PlazCode's own helper in the open Blender window, with its pairing word.
+pub async fn helper_command(body: Value, pairing: &str, limit: Duration) -> anyhow::Result<Value> { helper_command_at(helper_port(), body, pairing, limit).await }
+
+async fn helper_command_at(port: u16, body: Value, pairing: &str, limit: Duration) -> anyhow::Result<Value> {
+    let kind = body["type"].as_str().unwrap_or("get_scene_info").to_string();
+    let _guard = command_slot(&COMMAND_LOCK, &kind).await?;
+    let mut body = body;
+    body["token"] = json!(pairing);
+    let result = send_at("127.0.0.1", port, &kind, body, limit).await.map(|reply| helper_shape(&reply));
+    if !matches!(&result, Err(error) if error.downcast_ref::<NotListening>().is_some()) { remember_connection(&result); }
+    result
+}
+
+/// The helper's reply in the words the extension shows (the same as for the background Blender).
+pub fn helper_shape(reply: &Value) -> Value {
+    match reply["code"].as_str() {
+        Some("safe_mode") => json!({"status": "error", "message": SAFE_MODE_MESSAGE}),
+        Some("unknown_op") => json!({"status": "error", "message": "This Blender command is not available in the helper inside Blender. Open PlazCode, go to Apps & servers, open Blender and press Add helper again."}),
+        Some("wrong_pair") => json!({"status": "error", "message": reply["message"].as_str().unwrap_or("This Blender helper belongs to a different PlazCode install.")}),
+        _ => reply.clone(),
+    }
+}
+
 pub async fn command(kind: &str, params: Value, limit: Duration) -> anyhow::Result<Value> {
-    static COMMAND_LOCK: once_cell::sync::Lazy<tokio::sync::Mutex<()>> = once_cell::sync::Lazy::new(||tokio::sync::Mutex::new(()));
     // Several chats/browsers can share one Blender. Wait briefly for the active
     // command instead of failing immediately; commands are never repeated.
     let _guard = command_slot(&COMMAND_LOCK, kind).await?;
@@ -48,10 +93,7 @@ pub async fn command(kind: &str, params: Value, limit: Duration) -> anyhow::Resu
     let host = spec.and_then(|s|s.env.get("BLENDER_HOST")).cloned().or_else(||std::env::var("BLENDER_HOST").ok()).unwrap_or_else(|| "127.0.0.1".into());
     let port = spec.and_then(|s|s.env.get("BLENDER_PORT")).cloned().or_else(||std::env::var("BLENDER_PORT").ok()).and_then(|v|v.parse().ok()).unwrap_or(9876);
     let result=command_at(&host,port,kind,params,limit).await;
-    // A slow reply means Blender is busy, not disconnected: keep the last known
-    // state so the extension does not drop a live Blender connection.
-    let busy=matches!(&result,Err(error) if error.to_string().contains("did not answer"));
-    if !busy {if let Ok(mut state)=LAST_CONNECTION.lock(){*state=Some((std::time::Instant::now(),result.is_ok()));}}
+    remember_connection(&result);
     result
 }
 
@@ -138,6 +180,7 @@ pub fn prepare(kind: &str, params: &Value, background: bool, free_python: bool) 
     })
 }
 
+const HELPER_CLOSED: &str = "Blender is not open, or it was opened before PlazCode added its helper. Open Blender (close and reopen it if it was already open); the PlazCode helper starts by itself. Then send the command again.";
 const NOT_SET_UP: &str = "Blender is not set up in PlazCode yet. Open PlazCode, go to Apps & servers and connect Blender.";
 
 /// Run one Blender request the way the person chose (background Blender or their open window).
@@ -149,8 +192,21 @@ pub async fn run(choice: &crate::connections::BlenderChoice, request: &Value) ->
         Ok(prepared) => prepared,
         Err(error) => return json!({"ok":false,"blender":true,"safe_mode":is_free_code(kind),"error":error.to_string()}),
     };
+    // PlazCode's own helper in the open window takes the same requests as the background Blender.
+    if let (false, Some(pairing)) = (choice.background, choice.pairing.as_deref()) {
+        if let Ok(Prepared::Background(body)) = prepare(kind, &params, true, choice.free_python) {
+            match helper_command(body, pairing, Duration::from_secs(seconds)).await {
+                Err(error) if error.downcast_ref::<NotListening>().is_some() => {} // not running: maybe the older helper is
+                result => return command_response(result),
+            }
+        }
+    }
     match prepared {
-        Prepared::Window(kind, params) => command_response(command(&kind, params, Duration::from_secs(seconds)).await),
+        Prepared::Window(kind, params) => match command(&kind, params, Duration::from_secs(seconds)).await {
+            // Neither helper answers: with PlazCode's own helper added, the likely reason is that Blender is closed.
+            Err(error) if choice.pairing.is_some() && error.downcast_ref::<NotListening>().is_some() => json!({"ok":false,"blender":false,"error":HELPER_CLOSED}),
+            result => command_response(result),
+        },
         Prepared::Background(body) => {
             let Some(program) = choice.program.as_ref() else { return json!({"ok":false,"blender":false,"error":NOT_SET_UP}); };
             match crate::blender_headless::command(program, body, Duration::from_secs(seconds)).await {
@@ -163,7 +219,7 @@ pub async fn run(choice: &crate::connections::BlenderChoice, request: &Value) ->
 }
 
 pub async fn post(Json(request): Json<Value>) -> Json<Value> {
-    let choice = tokio::task::spawn_blocking(crate::connections::blender_choice).await.unwrap_or_else(|_| crate::connections::BlenderChoice { consent: false, background: false, free_python: false, program: None });
+    let choice = tokio::task::spawn_blocking(crate::connections::blender_choice).await.unwrap_or_else(|_| crate::connections::BlenderChoice { consent: false, background: false, free_python: false, program: None, pairing: None });
     Json(run(&choice, &request).await)
 }
 
@@ -172,12 +228,8 @@ pub async fn post(Json(request): Json<Value>) -> Json<Value> {
 pub async fn check() -> bool {
     let choice = tokio::task::spawn_blocking(crate::connections::blender_choice).await.ok();
     let Some(choice) = choice else { return false; };
-    let ok = if choice.background {
-        match choice.program.as_ref() {
-            Some(program) => crate::blender_headless::command(program, json!({"type":"get_scene_info","params":{}}), Duration::from_secs(10)).await.is_ok_and(|value| value["status"] == "success"),
-            None => false,
-        }
-    } else { command("get_scene_info", json!({}), Duration::from_secs(8)).await.is_ok_and(|value| value["status"] == "success") };
+    // The same way a real command goes: background Blender, PlazCode's own helper, or the older helper.
+    let ok = run(&choice, &json!({"type":"get_scene_info","params":{}})).await["ok"] == true;
     let _ = tokio::task::spawn_blocking(move || crate::connections::mark_blender_verified(ok)).await;
     ok
 }
@@ -226,6 +278,17 @@ pub async fn open_in_blender() -> anyhow::Result<std::path::PathBuf> {
     // The opened Blender belongs to the person from here on; PlazCode neither waits for it nor stops it.
     std::mem::forget(child);
     Ok(file)
+}
+
+/// "Open Blender" in the open-window way: start the normal Blender. It belongs to the person; PlazCode does not stop it.
+pub async fn launch_blender() -> anyhow::Result<()> {
+    let choice = tokio::task::spawn_blocking(crate::connections::blender_choice).await?;
+    let program = choice.program.ok_or_else(|| anyhow::anyhow!("PlazCode has not found Blender yet."))?;
+    let mut normal = tokio::process::Command::new(&program);
+    normal.stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
+    let child = normal.spawn().map_err(|error| anyhow::anyhow!("Blender could not be opened ({error})."))?;
+    std::mem::forget(child);
+    Ok(())
 }
 
 fn command_response(result: anyhow::Result<Value>) -> Value {
@@ -336,5 +399,32 @@ fn command_response(result: anyhow::Result<Value>) -> Value {
         assert_eq!(result["ok"],false);assert_eq!(result["error"],"Scene is unavailable");
         assert_eq!(result["blender"],true,"the addon replied, but the scene check failed");
         assert_eq!(command_response(Ok(json!({"status":"success","result":{"objects":[]}})))["ok"],true);
+    }
+
+    #[tokio::test] async fn plazcodes_own_helper_gets_the_pairing_word_and_its_answers_read_like_the_background_ones() {
+        let listener=tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();let port=listener.local_addr().unwrap().port();
+        let task=tokio::spawn(async move {
+            let mut seen=Vec::new();
+            for reply in [r#"{"status":"success","result":{"objects":[]}}"#, r#"{"status":"error","code":"safe_mode","message":"Safe mode is on: free Python is blocked."}"#] {
+                let (mut stream,_)=listener.accept().await.unwrap();let mut bytes=vec![0;4096];let size=stream.read(&mut bytes).await.unwrap();
+                seen.push(serde_json::from_slice::<Value>(&bytes[..size]).unwrap());stream.write_all(reply.as_bytes()).await.unwrap();
+            }
+            seen
+        });
+        let token="b".repeat(64);
+        let scene=helper_command_at(port,json!({"type":"get_scene_info","params":{}}),&token,Duration::from_secs(2)).await.unwrap();
+        assert_eq!(command_response(Ok(scene))["ok"],true);
+        let code=match prepare("execute_code",&json!({"code":"print(1)"}),true,true).unwrap(){Prepared::Background(body)=>body,other=>panic!("{other:?}")};
+        let refused=helper_command_at(port,code,&token,Duration::from_secs(2)).await.unwrap();
+        assert_eq!(refused["message"],SAFE_MODE_MESSAGE,"the helper's safe-mode answer reads the same as the background one");
+        let seen=task.await.unwrap();
+        assert_eq!((seen[0]["type"].clone(),seen[0]["token"].clone()),(json!("get_scene_info"),json!(token)),"every request carries the pairing word");
+        assert_eq!((seen[1]["allow_code"].clone(),seen[1]["token"].clone()),(json!(true),json!(token)),"free Python carries the app's own mark only when it was switched on");
+        // Nothing listening is told apart from a reply, so the older helper can be tried next.
+        drop(seen);
+        let closed=helper_command_at(port,json!({"type":"get_scene_info","params":{}}),&token,Duration::from_secs(2)).await.unwrap_err();
+        assert!(closed.downcast_ref::<NotListening>().is_some(),"{closed}");
+        assert!(helper_shape(&json!({"status":"error","code":"wrong_pair","message":"other install"}))["message"]=="other install");
+        assert!(helper_shape(&json!({"status":"error","code":"unknown_op"}))["message"].as_str().unwrap().contains("Add helper"));
     }
 }

@@ -1243,11 +1243,18 @@
   "Or paste where the Blender program is": "Or paste where the Blender program is",
   "Picture of the Blender scene": "Picture of the Blender scene",
   "PlazCode runs Blender quietly in the background. You do not need to open Blender or change anything in it.": "PlazCode runs Blender quietly in the background. You do not need to open Blender or change anything in it.",
-  "PlazCode will connect to the helper in your open Blender window. Nothing in your scene changes until you ask the AI.": "PlazCode will connect to the helper in your open Blender window. Nothing in your scene changes until you ask the AI.",
   "PlazCode will look for Blender on this computer and start it in the background when the AI needs it. Your own Blender files are not touched.": "PlazCode will look for Blender on this computer and start it in the background when the AI needs it. Your own Blender files are not touched.",
-  "PlazCode works in the Blender window you have open. Each step ticks itself off when it is done.": "PlazCode works in the Blender window you have open. Each step ticks itself off when it is done.",
   "Show a picture": "Show a picture",
   "Start Blender in the background": "Start Blender in the background",
   "Starting Blender. The first time can take up to a minute.": "Starting Blender. The first time can take up to a minute.",
-  "Use this": "Use this"
+  "Use this": "Use this",
+  "Add the PlazCode helper to Blender": "Add the PlazCode helper to Blender",
+  "PlazCode is adding its helper. Blender opens and closes once without a window.": "PlazCode is adding its helper. Blender opens and closes once without a window.",
+  "PlazCode adds a small helper to Blender so it can work in your open window.": "PlazCode adds a small helper to Blender so it can work in your open window.",
+  "Add helper": "Add helper",
+  "Open Blender": "Open Blender",
+  "Open Blender the way you always do, or press Open Blender. The helper starts by itself.": "Open Blender the way you always do, or press Open Blender. The helper starts by itself.",
+  "Open Blender the way you always do. The helper starts by itself.": "Open Blender the way you always do. The helper starts by itself.",
+  "PlazCode adds a small helper to Blender and works in the Blender window you have open. Each step ticks itself off when it is done.": "PlazCode adds a small helper to Blender and works in the Blender window you have open. Each step ticks itself off when it is done.",
+  "PlazCode will look for Blender on this computer and add its own small helper to it. Nothing in your scene changes until you ask the AI.": "PlazCode will look for Blender on this computer and add its own small helper to it. Nothing in your scene changes until you ask the AI."
 }

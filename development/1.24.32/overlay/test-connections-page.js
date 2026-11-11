@@ -237,10 +237,41 @@ const CATALOG = [
     assert.equal(await tab.evaluate(() => document.querySelector("#cnWin .cn-preview")), null, "only a PNG data address is shown");
     bridge.onSetup = null; bridge.setupExtra = null; await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
     assert.deepEqual(errors, [], "no page errors: " + errors.join(" | "));
+    // Blender in the open window, the way connections.rs reports it: PlazCode adds its own helper, then Open Blender.
+    const blenderWindow = (helper, answers) => ({ id: "blender", name: "Blender", state: answers ? "ready" : "setting_up", mode: "window", modes: [{ id: "background", label: "Background (no window)" }, { id: "window", label: "My open Blender window" }],
+      lead: "PlazCode adds a small helper to Blender and works in the Blender window you have open. Each step ticks itself off when it is done.",
+      steps: [{ id: "find", title: "Find Blender", state: "done", detail: "C:\\Program Files\\Blender Foundation\\Blender 4.2\\blender.exe", input: "Or paste where the Blender program is", use: "Use this" },
+        helper === "added" ? { id: "helper", title: "Add the PlazCode helper to Blender", state: "done" } : helper === "working" ? { id: "helper", title: "Add the PlazCode helper to Blender", state: "working", hint: "PlazCode is adding its helper. Blender opens and closes once without a window." } : { id: "helper", title: "Add the PlazCode helper to Blender", state: "needs_you", hint: "PlazCode adds a small helper to Blender so it can work in your open window.", action: { label: "Add helper", run: "helper" } },
+        answers ? { id: "launch", title: "Open Blender", state: "done" } : helper === "added" ? { id: "launch", title: "Open Blender", state: "needs_you", hint: "Open Blender the way you always do, or press Open Blender. The helper starts by itself.", action: { label: "Open Blender", run: "launch" } } : { id: "launch", title: "Open Blender", state: "waiting" },
+        { id: "test", title: "Check that Blender answers", state: answers ? "done" : "needs_you", ...(answers ? {} : { action: { label: "Check now", run: "test" } }) }],
+      switches: [{ id: "free_python", label: "Allow free Python", on: false, note: "Off (safe mode): the AI can only use PlazCode's built-in Blender actions." }] });
+    let helperState = "missing", answering = false;
+    const setWindow = () => { bridge.backend = [...othersB, blenderWindow(helperState, answering)]; };
+    setWindow();
+    bridge.onSetup = (b) => { if (b.id !== "blender") return null; if (b.step === "helper") { helperState = "working"; setWindow(); } if (b.step === "launch") { answering = true; setWindow(); } return null; };
+    await tab.click('#cnApps [data-cn-open="blender"]'); await tab.waitForTimeout(2600);
+    const steps = () => tab.evaluate(() => [...document.querySelectorAll("#cnWin [data-step]")].map((n) => n.getAttribute("data-step") + ":" + n.getAttribute("data-state")));
+    assert.deepEqual(await steps(), ["find:done", "helper:needs_you", "launch:waiting", "test:needs_you"], "open window: find, add the helper, open Blender, check");
+    assert.equal(await tab.evaluate(() => document.querySelector("#cnWin .cn-actions")), null, "no picture or Open in Blender buttons for the open window");
+    await tab.click('#cnWin [data-step="helper"] .cn-act'); await tab.waitForTimeout(600);
+    assert.deepEqual(bridge.setups.pop(), { id: "blender", step: "helper" }, "Add helper asks the app to add it");
+    await tab.waitForTimeout(2200);
+    assert.deepEqual(await steps(), ["find:done", "helper:working", "launch:waiting", "test:needs_you"], "adding the helper shows as working");
+    helperState = "added"; setWindow(); await tab.waitForTimeout(2600);
+    assert.equal(await tab.evaluate(() => document.querySelector('#cnWin [data-step="launch"] .cn-act')?.textContent), "Open Blender");
+    await tab.click('#cnWin [data-step="launch"] .cn-act'); await tab.waitForTimeout(600);
+    assert.deepEqual(bridge.setups.pop(), { id: "blender", step: "launch" }, "Open Blender asks the app to open it");
+    await tab.waitForTimeout(2200);
+    assert.deepEqual(await steps(), ["find:done", "helper:done", "launch:done", "test:done"], "Blender answers: every step ticked off");
+    assert.equal(await tab.evaluate(() => document.querySelector('#cnApps [data-app="blender"]').dataset.state), "ready");
+    for (const key of ["Add the PlazCode helper to Blender", "Add helper", "Open Blender", "PlazCode is adding its helper. Blender opens and closes once without a window.", "Open Blender the way you always do, or press Open Blender. The helper starts by itself.", "PlazCode adds a small helper to Blender and works in the Blender window you have open. Each step ticks itself off when it is done."]) assert(key in JSON.parse(fs.readFileSync(__dirname + "/core/locales/en.json", "utf8")), "translatable: " + key);
+    bridge.onSetup = null; await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
+    assert.deepEqual(errors, [], "no page errors: " + errors.join(" | "));
+    setBlender();
     await tab.setViewportSize({ width: 1360, height: 860 }); await tab.waitForTimeout(200);
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-page.png" : "/tmp/connections-page.png" });
     await tab.click('#cnApps [data-cn-open="blender"]'); await tab.waitForTimeout(600);
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-window.png" : "/tmp/connections-window.png" });
-    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, helper start/fail shown live, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent), Blender background card (safe-mode switch, picture, Open in Blender, notice, only PNG pictures), Godot project picking (recent list, paste box, refused folder explained, typing kept, Change)");
+    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, helper start/fail shown live, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent), Blender open-window card (add helper, Open Blender), Blender background card (safe-mode switch, picture, Open in Blender, notice, only PNG pictures), Godot project picking (recent list, paste box, refused folder explained, typing kept, Change)");
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exit(1); });

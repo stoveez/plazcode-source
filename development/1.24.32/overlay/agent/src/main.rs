@@ -2311,6 +2311,30 @@ async fn connections_setup_handler(State(state): State<AppState>, Json(request):
             match after {
                 connections::After::BlenderCheck => { tokio::spawn(async { blender::check().await; }); }
                 connections::After::BlenderStop => { blender::clear_preview(); tokio::spawn(blender_headless::stop()); }
+                connections::After::BlenderInstall => {
+                    // Adding the helper runs Blender once without a window (up to two minutes): behind the reply; the
+                    // setup window shows "working", then done or the reason. The same pairing word is kept when the
+                    // helper is added again, so a Blender window that is already open keeps working.
+                    blender::clear_preview();
+                    tokio::spawn(async {
+                        blender_headless::stop().await;
+                        let (programs, saved) = tokio::task::spawn_blocking(|| (connections::blender_programs(), connections::load())).await.unwrap_or_default();
+                        let token = saved.apps.get("blender").and_then(|app| app.pairing.clone()).filter(|word| word.len() == 64).unwrap_or_else(blender_addon::new_token);
+                        if blender_addon::install(&programs, &token, blender::helper_port()).await.is_ok() {
+                            let _ = tokio::task::spawn_blocking(move || connections::mark_blender_helper(Some(token))).await;
+                            blender::check().await;
+                        }
+                    });
+                }
+                connections::After::BlenderRemove => {
+                    blender::clear_preview();
+                    tokio::spawn(async {
+                        blender_headless::stop().await;
+                        let programs = tokio::task::spawn_blocking(connections::blender_programs).await.unwrap_or_default();
+                        blender_addon::remove(&programs).await;
+                    });
+                }
+                connections::After::BlenderLaunch => { if let Err(error) = blender::launch_blender().await { return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(); } }
                 connections::After::BlenderPreview => { if let Err(error) = blender::make_preview().await { return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(); } }
                 connections::After::BlenderOpen => { match blender::open_in_blender().await { Ok(file) => return Json(serde_json::json!({"ok": true, "notice": format!("Saved and opened in Blender: {}", file.display())})).into_response(), Err(error) => return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response() } }
                 _ => {}
