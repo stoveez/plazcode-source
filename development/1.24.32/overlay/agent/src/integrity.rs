@@ -314,6 +314,23 @@ fn verify_installation_with(root: &Path,key: &[u8],version: &str,platform: &str,
 // size and change time as recorded just BEFORE that pass hashed it (no reading); any difference runs a full pass,
 // so a file changed after a check is still refused. A failure is never reused.
 const WORK_CHECK_REUSE: std::time::Duration = std::time::Duration::from_secs(10);
+// After 1.24.32 (owner, 2026-11-11: "commands shouldn't need to stall because of extension to PlazCode delays"). An AI
+// usually takes longer than 10 seconds to write its next command, so in practice almost every command still waited
+// for a full read-and-hash pass of the whole installation (a second or more on a PC with antivirus or cloud sync).
+// Between 10 seconds and 15 minutes after a pass, a command now goes ahead after the same size-and-change-time
+// comparison, and ONE full pass runs behind it. If that pass fails, the record is cleared, so the next command runs
+// a full pass itself and is refused. Past 15 minutes, or with no record, the command waits for a full pass as before.
+const WORK_CHECK_BACKGROUND: std::time::Duration = std::time::Duration::from_secs(15 * 60);
+static WORK_RECHECK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum WorkCheck { Fresh, Background, Full }
+fn work_check_plan(age: Option<std::time::Duration>) -> WorkCheck {
+    match age {
+        Some(age) if age < WORK_CHECK_REUSE => WorkCheck::Fresh,
+        Some(age) if age < WORK_CHECK_BACKGROUND => WorkCheck::Background,
+        _ => WorkCheck::Full,
+    }
+}
 type FileStamps = Vec<(std::path::PathBuf, u64, Option<std::time::SystemTime>)>;
 static WORK_CHECK: tokio::sync::Mutex<Option<(std::time::Instant, std::sync::Arc<FileStamps>)>> = tokio::sync::Mutex::const_new(None);
 fn file_stamps(root: &Path, names: &std::collections::BTreeSet<String>) -> FileStamps {
@@ -327,20 +344,37 @@ fn stamps_unchanged(stamps: &FileStamps) -> bool {
     stamps.iter().all(|(path, len, modified)| std::fs::symlink_metadata(path)
         .is_ok_and(|m| m.len() == *len && m.modified().ok() == *modified && modified.is_some()))
 }
-pub async fn check_work() -> Result<()> {
-    if public_key()?.is_none() {return Ok(());}
-    let mut passed = WORK_CHECK.lock().await;
-    if let Some(stamps) = passed.as_ref().filter(|(at, _)| at.elapsed() < WORK_CHECK_REUSE).map(|(_, stamps)| stamps.clone()) {
-        if tokio::task::spawn_blocking(move || stamps_unchanged(&stamps)).await.unwrap_or(false) {return Ok(());}
-    }
-    *passed = None;
-    let result = tokio::task::spawn_blocking(|| -> Result<Option<FileStamps>> {
+async fn full_work_pass() -> Result<Option<FileStamps>> {
+    tokio::task::spawn_blocking(|| -> Result<Option<FileStamps>> {
         let root = crate::platform::installation_root();
         // Recorded before hashing: a change during or after the pass differs from these and forces a new pass.
         let stamps = signed_names(&root).ok().flatten().map(|names| file_stamps(&root, &names));
         verify_package(&root, env!("CARGO_PKG_VERSION"))?;
         Ok(stamps)
-    }).await?;
+    }).await?
+}
+pub async fn check_work() -> Result<()> {
+    if public_key()?.is_none() {return Ok(());}
+    let mut passed = WORK_CHECK.lock().await;
+    let plan = work_check_plan(passed.as_ref().map(|(at, _)| at.elapsed()));
+    if let (true, Some(stamps)) = (plan != WorkCheck::Full, passed.as_ref().map(|(_, stamps)| stamps.clone())) {
+        if tokio::task::spawn_blocking(move || stamps_unchanged(&stamps)).await.unwrap_or(false) {
+            if plan == WorkCheck::Background && !WORK_RECHECK.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                tokio::spawn(async {
+                    let result = full_work_pass().await;
+                    let mut passed = WORK_CHECK.lock().await;
+                    *passed = match result {
+                        Ok(Some(stamps)) => Some((std::time::Instant::now(), std::sync::Arc::new(stamps))),
+                        other => { if let Err(error) = other { tracing::warn!("background program check failed; the next command runs a full check: {error:#}"); } None }
+                    };
+                    WORK_RECHECK.store(false, std::sync::atomic::Ordering::SeqCst);
+                });
+            }
+            return Ok(());
+        }
+    }
+    *passed = None;
+    let result = full_work_pass().await;
     if let Some(stamps) = result? { *passed = Some((std::time::Instant::now(), std::sync::Arc::new(stamps))); }
     Ok(())
 }
@@ -392,6 +426,14 @@ mod tests {
         }
         let unrelated=anyhow::Error::from(std::io::Error::new(std::io::ErrorKind::NotFound,"workspace missing"));
         assert_eq!(startup_error(&unrelated,&root),format!("{unrelated:#}"));
+    }
+    #[test] fn a_command_waits_for_a_full_check_only_without_a_recent_pass() {
+        use std::time::Duration;
+        assert_eq!(work_check_plan(None),WorkCheck::Full,"no pass yet: the command waits for one");
+        assert_eq!(work_check_plan(Some(Duration::from_secs(3))),WorkCheck::Fresh);
+        assert_eq!(work_check_plan(Some(Duration::from_secs(10))),WorkCheck::Background,"an ordinary AI turn no longer waits for a full pass");
+        assert_eq!(work_check_plan(Some(Duration::from_secs(14*60))),WorkCheck::Background);
+        assert_eq!(work_check_plan(Some(Duration::from_secs(15*60))),WorkCheck::Full,"a long-idle app checks everything before work");
     }
     #[test] fn a_changed_file_is_noticed_between_full_checks() {
         let root=std::env::temp_dir().join(format!("plazcode-stamps-{}",std::process::id()));

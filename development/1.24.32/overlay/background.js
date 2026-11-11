@@ -929,7 +929,7 @@ function waitForConnection(timeout = 20000) {
         clearInterval(iv);
         resolve(false);
       }
-    }, 100);
+    }, 25);
   });
 }
 

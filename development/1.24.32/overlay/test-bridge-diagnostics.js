@@ -60,6 +60,41 @@ const dir = __dirname;
   assert.equal(reads, before, "no new reads within the 10 s hold");
   now += 6_000;
   await I.check();                                   // was stuck forever before 1.24.27
+  // After 1.24.32: a worker the browser restarted does not make its first message wait for the full files check
+  // when the files passed earlier in this browser session; the check runs behind it and a failure still stops work.
+  const restarted = (saved, opts = {}) => {
+    const kept = { ...saved }; let held = [], count = 0;
+    const b = { ...box, Date: { now: () => now }, chrome: { ...box.chrome, storage: { session: {
+      get: async (k) => (k in kept ? { [k]: kept[k] } : {}), set: async (v) => { Object.assign(kept, v); }, remove: async (k) => { delete kept[k]; } } } },
+      fetch: async (url) => {
+        count++;
+        if (opts.hold) await new Promise((resolve) => held.push(resolve));
+        if (opts.changed && String(url).endsWith("background.js")) { const other = new TextEncoder().encode("abd"); return { ok: true, arrayBuffer: async () => other.buffer.slice(0) }; }
+        const bytes = String(url).endsWith("plazcode-extension-integrity.json") ? new TextEncoder().encode(JSON.stringify(signed)) : body;
+        return { ok: true, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
+      } };
+    b.globalThis = b; vm.createContext(b); vm.runInContext(src, b);
+    return { I: b.PlazCodeIntegrity, kept, reads: () => count, release: () => { const list = held; held = []; list.forEach((go) => go()); } };
+  };
+  const drain = async (worker) => { for (let i = 0; i < 12; i++) { worker.release(); await settle(); } };
+  {
+    const first = restarted({});                                             // nothing noted: the first check waits and then notes the pass
+    await first.I.check();
+    assert(first.reads() > 0 && first.kept.plazcodeFilesPassedAt === now, "a pass is noted for this browser session");
+    const woke = restarted({ plazcodeFilesPassedAt: now - 60_000 }, { hold: true });
+    await woke.I.check();                                                    // resolves although no file read has finished
+    assert(woke.reads() > 0, "the full check starts at once behind the message");
+    await drain(woke); await woke.I.check();
+    const tampered = restarted({ plazcodeFilesPassedAt: now - 60_000 }, { changed: true });
+    await tampered.I.check();                                                // the first message goes through...
+    for (let i = 0; i < 12; i++) await settle();
+    await assert.rejects(tampered.I.check(), /official version/, "...and changed files stop work as soon as the check behind it ends");
+    assert(!("plazcodeFilesPassedAt" in tampered.kept), "a failed check forgets the noted pass");
+    const old = restarted({ plazcodeFilesPassedAt: now - 13 * 60 * 60_000 }, { changed: true });
+    await assert.rejects(old.I.check(), /official version/, "an old note is not trusted: the first check waits");
+    const future = restarted({ plazcodeFilesPassedAt: now + 60_000 }, { changed: true });
+    await assert.rejects(future.I.check(), /official version/, "a note from the future is not trusted");
+  }
   console.log("PASS extension self-check: requests never wait for a re-check; a one-off busy file clears; a real failure holds 10 s");
 
   // ── 2. background.js: close reason and worker-restart note ───────────────────────────────────────

@@ -1434,7 +1434,9 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
     info!("Legacy WS on ws://127.0.0.1:17613 (roblox) and 17615 (AgentScript FS: {})", ws_root_display);
     info!("Boot completed in {}ms", start.elapsed().as_millis());
     let _ = ready.send(());
-    axum::serve(listener, app).await?;
+    // The first command after the app starts should not wait for the full program check: run it now, behind the scenes.
+    tokio::spawn(async { let _ = integrity::check_work().await; });
+    axum::serve(listener, app).tcp_nodelay(true).await?;
     Ok(())
 }
 
@@ -2562,6 +2564,9 @@ async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
 async fn run_legacy_ws(state: AppState, listener: tokio::net::TcpListener, engine: &str) -> anyhow::Result<()> {
     loop {
         let (stream, _) = listener.accept().await?;
+        // Small frames (a result, a status push) must leave at once. Without this the second of two frames sent
+        // close together waits for the browser's delayed acknowledgement (40 ms, up to 200 ms on Windows).
+        let _ = stream.set_nodelay(true);
         let state = state.clone();
         let eng = engine.to_string();
         tokio::spawn(async move {

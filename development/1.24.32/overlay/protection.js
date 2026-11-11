@@ -48,6 +48,27 @@ globalThis.PlazCodeIntegrity = (() => {
       }
     }));
     checkedAt=Date.now();
+    remember(true);
+  }
+  // After 1.24.32 (owner, 2026-11-11: commands must not stall on the link to the app). The browser stops this
+  // background worker when it likes and starts it again for the next message; every restart used to make that
+  // message (often a command) wait for the full read-and-hash of all files. A pass is now noted in the browser's
+  // session memory (pages cannot read it; it is emptied when the extension is reloaded or updated and when the
+  // browser closes). A restarted worker that finds a recent pass lets the message through and checks all files
+  // again at once, behind it; if that check fails, work stops exactly as before.
+  const PASSED_KEY = "plazcodeFilesPassedAt", PASSED_MAX_MS = 12 * 60 * 60 * 1000;
+  const session = () => { try { return chrome.storage && chrome.storage.session || null; } catch { return null; } };
+  function remember(passed) {
+    const area = session(); if (!area) return;
+    try { const done = passed ? area.set({[PASSED_KEY]: Date.now()}) : area.remove(PASSED_KEY); if (done && done.catch) done.catch(() => {}); } catch {}
+  }
+  let resumeTried = false, resuming = null;
+  function resume() {
+    if (!resuming) resuming = (async () => {
+      const area = session(); if (!area) return false;
+      try { const saved = await area.get(PASSED_KEY), at = Number(saved && saved[PASSED_KEY]) || 0; return at > 0 && Date.now() >= at && Date.now() - at < PASSED_MAX_MS; } catch { return false; }
+    })();
+    return resuming;
   }
   // 1.24.27: a failed check used to stay failed until the browser restarted the worker, because the rejected
   // promise was returned forever (checkedAt stayed 0). One unreadable file then blocked pairing and every
@@ -64,7 +85,7 @@ globalThis.PlazCodeIntegrity = (() => {
     pending = verify().then(() => { verified = true; checkedAt = Date.now(); }, error => {
       verified = false;
       if (error && error.name === "PlazCodeVerificationUnavailable") { pending = null; throw error; }
-      failedAt = Date.now();
+      failedAt = Date.now(); remember(false);
       throw new Error(recovery);
     });
     return pending;
@@ -78,12 +99,20 @@ globalThis.PlazCodeIntegrity = (() => {
       if (!revalidating && Date.now() - checkedAt >= RECHECK_MS) {
         revalidating = verify().then(() => { checkedAt = Date.now(); }, error => {
           // Still verified when the app is only temporarily unreachable (older Chrome); otherwise re-check in full.
-          if (!error || error.name !== "PlazCodeVerificationUnavailable") { verified = false; pending = null; }
+          if (!error || error.name !== "PlazCodeVerificationUnavailable") { verified = false; pending = null; remember(false); }
         }).finally(() => { revalidating = null; });
       }
       return Promise.resolve();
     }
-    return pending || blocking();
+    if (pending) return pending;
+    if (resumeTried) return blocking();
+    return resume().then(passed => {
+      if (verified) return;
+      if (pending) return pending;
+      if (resumeTried || !passed) { resumeTried = true; return blocking(); }
+      resumeTried = true; verified = true; checkedAt = Date.now() - RECHECK_MS;
+      return check();
+    });
   }
   return {check};
 })();
