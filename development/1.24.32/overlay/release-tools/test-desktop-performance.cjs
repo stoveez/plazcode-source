@@ -32,7 +32,7 @@ const globals=`var State={tools:[],logs:[]},Toolfilter='All',Toolquery='';functi
  await page.evaluate(()=>{Byid('page-mcp').classList.remove('active');return Loadcatalog();});assert.equal(await page.evaluate(()=>calls),0);
  await page.evaluate(()=>{Byid('page-mcp').classList.add('active');return Promise.all([Loadcatalog(),Loadcatalog()]);});assert.equal(await page.evaluate(()=>calls),1,'concurrent catalogue calls share one request');
  await page.evaluate(()=>Loadcatalog());assert.equal(await page.evaluate(()=>calls),1,'cached catalogue avoids repeated requests');
- await page.evaluate(()=>{State.servers=[{id:'sample',alive:true,tools:7}];return Loadcatalog();});assert(await page.locator('#mcpGrid').innerText().then(t=>t.includes('7 tools available')));
+ await page.evaluate(()=>{State.servers=[{id:'sample',alive:true,tools:7}];return Loadcatalog();});assert(await page.locator('#mcpGrid').textContent().then(t=>t.includes('7 tools available')),'More tools is collapsed, so read its text rather than what is painted');
  await page.evaluate(()=>{Catalogat=0;return Loadcatalog();});assert.equal(await page.evaluate(()=>calls),2);
  await page.evaluate(()=>Loadcatalog(true));assert.equal(await page.evaluate(()=>calls),3,'opening page explicitly refreshes catalogue');assert.equal(await page.evaluate(()=>probes),1,'a build without the connection report is asked once');
  await page.evaluate(()=>document.documentElement.dataset.desktopTheme='cyan');await page.emulateMedia({reducedMotion:'reduce'});
