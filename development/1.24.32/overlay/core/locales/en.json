@@ -1192,7 +1192,7 @@
   "Simple notes the AI can keep between chats.": null,
   "Helps the AI plan hard problems step by step.": null,
   "Figma Dev Mode: reads designs only and needs a paid Dev or Full seat.": null,
-  "It starts the first time you use PlazCode in an AI chat. Open a chat, then press Test again.": null,
+  "Starting the helper. The first time can take a minute while PlazCode downloads what it needs.": null,
   "Turn on the connection": null,
   "Start the helper inside Blender": null,
   "Open Blender, press N over the 3D view, open the tab named Blender MCP and click Start MCP Server. Keep Blender open. If that tab is missing, add the helper to Blender first.": null,

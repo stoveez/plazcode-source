@@ -1954,20 +1954,20 @@ __PLAZCODE_VERSION_UI__
     var Current=Live[Id]||null,Enabled=!!Server.enabled,Alive=!!(Current&&Current.alive),Failure=Current&&Current.error||'';
     var Fresh=Blendercheck&&Date.now()-Blendercheck.time<15000;
     var Verified=Id==='blender'?!!(Fresh&&Blendercheck.ok):!!(Alive&&Current.tools>0);
-    /* Older builds start a helper the first time an AI chat asks for its tools, not when it is switched on. Say so. */
-    var Later='It starts the first time you use PlazCode in an AI chat. Open a chat, then press Test again.';
+    /* Switching a connection on starts its helper in the background; the first start may download its runtime. */
+    var Later='Starting the helper. The first time can take a minute while PlazCode downloads what it needs.';
     var Steps=[Cnstep('enable','Turn on the connection',Enabled?'done':'waiting')];
     if(Id==='blender'){
       Steps.push(Cnstep('helper','Start the helper inside Blender',Verified?'done':Enabled?'needs_you':'waiting','Open Blender, press N over the 3D view, open the tab named Blender MCP and click Start MCP Server. Keep Blender open. If that tab is missing, add the helper to Blender first.',{link:{label:'Open the guide',key:'blender-guide'}}));
       Steps.push(Cnstep('test','Check that Blender answers',Blenderchecking?'working':Verified?'done':'waiting',Fresh&&!Blendercheck.ok?Blendercheck.error:'',{action:{label:'Check now',run:'test'},bad:!!(Fresh&&!Blendercheck.ok)}));
     }else if(Id==='unity'){
       Steps.push(Cnstep('package','Add the Unity package',Verified?'done':Enabled?'needs_you':'waiting','In Unity open Window, then Package Manager, press +, choose Add package from git URL and paste this address.',{copy:'https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity'}));
-      Steps.push(Cnstep('test','Check that PlazCode can reach Unity',Verified?'done':'waiting',Failure||(Enabled?Later:''),{bad:!!Failure}));
+      Steps.push(Cnstep('test','Check that PlazCode can reach Unity',Verified?'done':Failure?'needs_you':Enabled?'working':'waiting',Failure||(Enabled?Later:''),{bad:!!Failure}));
     }else if(Id==='figma'){
       Steps.push(Cnstep('devmode','Turn on Dev Mode in Figma',Verified?'done':Enabled?'needs_you':'waiting','Open the Figma desktop app, choose Preferences and turn on the Dev Mode server, then keep your file open. This older connection can only read designs and needs a paid Dev or Full seat.'));
-      Steps.push(Cnstep('test','Check that PlazCode can reach Figma',Verified?'done':'waiting',Failure||(Enabled?Later:''),{bad:!!Failure}));
+      Steps.push(Cnstep('test','Check that PlazCode can reach Figma',Verified?'done':Failure?'needs_you':Enabled?'working':'waiting',Failure||(Enabled?Later:''),{bad:!!Failure}));
     }else{
-      Steps.push(Cnstep('test','Check that the helper starts',Verified?'done':Failure?'needs_you':'waiting',Failure||(Enabled?Later:''),{bad:!!Failure}));
+      Steps.push(Cnstep('test','Check that the helper starts',Verified?'done':Failure?'needs_you':Enabled?'working':'waiting',Failure||(Enabled?Later:''),{bad:!!Failure}));
     }
     var State=!Enabled?'not_set_up':Verified?'ready':Failure?'needs_attention':'setting_up';
     return {id:Id,name:Meta.name,state:State,line:Meta.line,steps:Steps,prompts:Cnprompts[Id],technical:[Server.command].concat(Server.args||[]).join(' '),legacy:true};
@@ -2069,7 +2069,7 @@ __PLAZCODE_VERSION_UI__
     var Win=Cnshell();Cnlastid=Id;Cnopenid=Id;Cnwinsig='';Cnpaint();
     var Shade=Byid('cnShade');Shade.classList.add('cn-on');Win.classList.add('cn-on');Win.setAttribute('aria-hidden','false');
     var First=Win.querySelector('.cn-consent button,[data-cn-act=close],button');if(First)First.focus();
-    if(!Cnpoll)Cnpoll=window.setInterval(function(){if(Cnopenid)Loadcatalog(true);},2000);
+    if(!Cnpoll)Cnpoll=window.setInterval(function(){if(Cnopenid){Cnat=0;Refresh();}},2000);
   }
   function Cnclose(){
     var Win=Byid('cnWin'),Shade=Byid('cnShade');if(!Win)return;

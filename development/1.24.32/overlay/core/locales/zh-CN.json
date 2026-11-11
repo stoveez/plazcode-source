@@ -1192,7 +1192,7 @@
   "Simple notes the AI can keep between chats.": "Simple notes the AI can keep between chats.",
   "Helps the AI plan hard problems step by step.": "Helps the AI plan hard problems step by step.",
   "Figma Dev Mode: reads designs only and needs a paid Dev or Full seat.": "Figma Dev Mode: reads designs only and needs a paid Dev or Full seat.",
-  "It starts the first time you use PlazCode in an AI chat. Open a chat, then press Test again.": "It starts the first time you use PlazCode in an AI chat. Open a chat, then press Test again.",
+  "Starting the helper. The first time can take a minute while PlazCode downloads what it needs.": "Starting the helper. The first time can take a minute while PlazCode downloads what it needs.",
   "Turn on the connection": "Turn on the connection",
   "Start the helper inside Blender": "Start the helper inside Blender",
   "Open Blender, press N over the 3D view, open the tab named Blender MCP and click Start MCP Server. Keep Blender open. If that tab is missing, add the helper to Blender first.": "Open Blender, press N over the 3D view, open the tab named Blender MCP and click Start MCP Server. Keep Blender open. If that tab is missing, add the helper to Blender first.",

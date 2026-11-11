@@ -119,13 +119,16 @@ const CATALOG = [
     await tab.click('#cnWin [data-cn-act="disconnect"]'); await tab.waitForTimeout(700);
     assert.deepEqual(bridge.toggles.pop(), { id: "blender", enabled: false }, "Disconnect turns it off again");
     await tab.click('#cnWin [data-cn-act="close"]'); await tab.waitForTimeout(400);
-    // Older builds start a helper only when an AI chat asks for it: the checklist says so instead of spinning forever.
+    // Switching a connection on starts its helper in the background: the checklist says it is starting and ticks itself off.
     await tab.click('#cnApps [data-cn-open="godot"]'); await tab.click('#cnWin [data-cn-act="allow"]'); await tab.waitForTimeout(800);
     const lazy = await tab.evaluate(() => ({ state: document.querySelector('#cnWin [data-step="test"]').dataset.state, hint: document.querySelector('#cnWin [data-step="test"] .cn-st > span').textContent }));
-    assert.equal(lazy.state, "waiting"); assert.match(lazy.hint, /first time you use PlazCode in an AI chat/);
+    assert.equal(lazy.state, "working"); assert.match(lazy.hint, /first time can take a minute/);
     bridge.servers = [{ id: "godot", name: "Godot", alive: true, tools: 9 }, { id: "fetch", name: "Fetch", alive: true, tools: 7 }];
-    await tab.click('#cnWin [data-cn-act="test"]'); await tab.waitForTimeout(900);
-    assert.equal(await tab.evaluate(() => document.querySelector('#cnApps [data-app="godot"] .cn-pill').textContent), "Ready", "Test again picks up a helper that has started");
+    await tab.waitForTimeout(2600);
+    assert.equal(await tab.evaluate(() => document.querySelector('#cnApps [data-app="godot"] .cn-pill').textContent), "Ready", "the open window notices by itself when the helper has started");
+    bridge.servers = [{ id: "godot", name: "Godot", alive: false, tools: 0, error: "Godot was not found." }]; await tab.waitForTimeout(2600);
+    assert.deepEqual(await tab.evaluate(() => ({ state: document.querySelector('#cnWin [data-step="test"]').dataset.state, bad: document.querySelector('#cnWin [data-step="test"] .cn-bad')?.textContent, pill: document.querySelector('#cnApps [data-app="godot"] .cn-pill').textContent })), { state: "needs_you", bad: "Godot was not found.", pill: "Needs attention" }, "a helper that fails shows its reason and asks for attention");
+    bridge.servers = [{ id: "godot", name: "Godot", alive: true, tools: 9 }, { id: "fetch", name: "Fetch", alive: true, tools: 7 }]; await tab.waitForTimeout(2600);
     assert.match(await tab.evaluate(() => document.querySelector('#mcpGrid [data-cn-toggle="fetch"]').closest(".cn-row").textContent), /7 tools available/, "a running tool shows how many tools it offers");
     await tab.keyboard.press("Escape"); await tab.waitForTimeout(400); bridge.servers = [];
     assert.equal(bridge.probes, 1, "a build without the connection report is asked once, not on every refresh");
@@ -175,6 +178,6 @@ const CATALOG = [
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-page.png" : "/tmp/connections-page.png" });
     await tab.click('#cnApps [data-cn-open="blender"]'); await tab.waitForTimeout(600);
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-window.png" : "/tmp/connections-window.png" });
-    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, honest wait for helpers, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent)");
+    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, helper start/fail shown live, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent)");
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exit(1); });
