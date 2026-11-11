@@ -641,7 +641,9 @@ mod tests {
         assert_eq!(mac[0], PathBuf::from("/Applications/Blender.app/Contents/MacOS/Blender"));
         assert!(mac.contains(&PathBuf::from("/Users/me/Applications/Blender.app/Contents/MacOS/Blender")));
         let linux = blender_candidates("linux", &env(&[("PLAZCODE_BLENDER", "/opt/b/blender"), ("PATH", "/usr/bin:/opt/bin")]), &|_| Vec::new());
-        assert_eq!(&linux[..3], [PathBuf::from("/opt/b/blender"), PathBuf::from("/usr/bin/blender"), PathBuf::from("/opt/bin/blender")], "a named program wins, then PATH");
+        assert_eq!(linux[0], PathBuf::from("/opt/b/blender"), "a named program wins");
+        // A PATH list is split the way the computer running this does it (":" here, ";" on Windows).
+        if cfg!(unix) { assert_eq!(&linux[1..3], [PathBuf::from("/usr/bin/blender"), PathBuf::from("/opt/bin/blender")], "then PATH"); }
         assert_eq!(linux.iter().filter(|p| **p == PathBuf::from("/usr/bin/blender")).count(), 1, "no duplicates");
 
         let root = scratch("blender-program");

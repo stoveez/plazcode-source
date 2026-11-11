@@ -1779,8 +1779,12 @@ async function probeBlenderTcp() {
   return { ok: false, error: err };
 }
 
+// Background Blender may have to start first (first use, or after its idle stop). The app waits up to 60 s for
+// that before the request's own time begins, so the extension must outlast it. The app always answers within
+// its own limit, so this does not slow the open-window way.
 async function blenderRequest(payload, timeout=120000) {
-  const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/blender",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...payload,timeout_seconds:Math.ceil(timeout/1000)}),signal:AbortSignal.timeout(timeout+4000)});
+  const BLENDER_START_ALLOWANCE_MS = 65000;
+  const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/blender",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...payload,timeout_seconds:Math.ceil(timeout/1000)}),signal:AbortSignal.timeout(timeout+4000+BLENDER_START_ALLOWANCE_MS)});
   if(!response.ok) throw Error("Blender bridge request failed (HTTP "+response.status+"). Update the desktop app and extension together.");
   return response.json();
 }

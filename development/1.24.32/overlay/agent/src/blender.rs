@@ -174,7 +174,7 @@ pub async fn check() -> bool {
     let Some(choice) = choice else { return false; };
     let ok = if choice.background {
         match choice.program.as_ref() {
-            Some(program) => crate::blender_headless::command(program, json!({"type":"get_scene_info","params":{}}), crate::blender_headless::START_LIMIT + Duration::from_secs(10)).await.is_ok_and(|value| value["status"] == "success"),
+            Some(program) => crate::blender_headless::command(program, json!({"type":"get_scene_info","params":{}}), Duration::from_secs(10)).await.is_ok_and(|value| value["status"] == "success"),
             None => false,
         }
     } else { command("get_scene_info", json!({}), Duration::from_secs(8)).await.is_ok_and(|value| value["status"] == "success") };
@@ -193,7 +193,7 @@ pub async fn make_preview() -> anyhow::Result<()> {
     let choice = tokio::task::spawn_blocking(crate::connections::blender_choice).await?;
     let program = choice.program.filter(|_| choice.background).ok_or_else(|| anyhow::anyhow!("{NOT_SET_UP}"))?;
     // Make sure Blender runs first, so its session folder exists; the picture is written there and read back.
-    crate::blender_headless::command(&program, json!({"type":"get_scene_info","params":{}}), crate::blender_headless::START_LIMIT + Duration::from_secs(10)).await?;
+    crate::blender_headless::command(&program, json!({"type":"get_scene_info","params":{}}), Duration::from_secs(10)).await?;
     let folder = crate::blender_headless::session_folder_now().await.ok_or_else(|| anyhow::anyhow!("Blender is not running."))?;
     let file = folder.join("preview.png");
     let reply = crate::blender_headless::command(&program, json!({"type":"plazcode_shot","params":{"filepath":file.display().to_string(),"max_size":640}}), Duration::from_secs(120)).await?;
@@ -218,7 +218,7 @@ pub async fn open_in_blender() -> anyhow::Result<std::path::PathBuf> {
     let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(std::path::PathBuf::from).ok_or_else(|| anyhow::anyhow!("PlazCode could not find your user folder."))?;
     let file = scene_file_in(&home, &chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string());
     if let Some(parent) = file.parent() { tokio::fs::create_dir_all(parent).await?; }
-    let reply = crate::blender_headless::command(&program, json!({"type":"plazcode_save","params":{"filepath":file.display().to_string()}}), crate::blender_headless::START_LIMIT + Duration::from_secs(60)).await?;
+    let reply = crate::blender_headless::command(&program, json!({"type":"plazcode_save","params":{"filepath":file.display().to_string()}}), Duration::from_secs(60)).await?;
     anyhow::ensure!(reply["status"] == "success" && file.is_file(), "{}", reply["message"].as_str().unwrap_or("Blender could not save the scene."));
     let mut normal = tokio::process::Command::new(&program);
     normal.arg(&file).stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());

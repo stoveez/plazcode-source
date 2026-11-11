@@ -45,6 +45,7 @@ ok("main intercepts asset_bridge_import", main.includes("runAssetBridgeImport") 
 ok("main auto-imports export to Studio", main.includes("blender_send_to_studio") && main.includes("Studio:"));
 ok("disconnect blender button", main.includes("rs-mcp-blender-off") && main.includes("blender_disconnect") && bg.includes('case "blender_disconnect"'));
 ok("connect verifies actual scene with native transport", bg.includes('blenderRequest({type:"get_scene_info"') && bg.includes("8000"));
+ok("a first command outlasts background Blender's start", (() => { const allowance = Number((bg.match(/const BLENDER_START_ALLOWANCE_MS = (\d+);/) || [])[1]); return allowance >= 61000 && allowance <= 90000 && bg.includes("AbortSignal.timeout(timeout+4000+BLENDER_START_ALLOWANCE_MS)") && !bg.includes("AbortSignal.timeout(timeout+4000)"); })());
 ok("dump falls back to all meshes", ops.includes("if not objs:") && ops.includes('"meshes": meshes'));
 ok("blenderCall returns meshes", bg.includes("meshes: meshes || undefined") && bg.includes('_orMesh: "plazcode_mesh.json"'));
 ok("blender flag survives SW restart", bg.includes("rs-blender-on") && bg.includes("probeBlenderTcp"));

@@ -215,17 +215,20 @@ pub async fn stop() {
 }
 
 /// Run one request in the background Blender, starting it first when needed. Returns the addon-shaped reply.
-/// `limit` covers waiting for a start, waiting for a turn and the request itself.
+/// `limit` covers waiting for a turn and the request itself. When Blender has to start first (first use, or after
+/// the idle stop), the caller also waits for the start (up to `START_LIMIT`) and the request then gets its full
+/// `limit`, so a first command is answered instead of being told to try again.
 pub async fn command(program: &Path, body: Value, limit: Duration) -> anyhow::Result<Value> {
-    let deadline = Instant::now() + limit;
+    let mut deadline = Instant::now() + limit;
     let mut kicked = false;
+    let mut waited_for_start = false;
     loop {
         let remaining = deadline.saturating_duration_since(Instant::now());
         let waiting_message = || anyhow::anyhow!("{}", if STARTING.load(Ordering::SeqCst) { "Blender is starting in the background. Try again in a few seconds." } else { "Blender is busy with another PlazCode command. Wait for it to finish, then try again. Nothing was queued or repeated." });
         let mut slot = tokio::time::timeout(remaining, SESSION.lock()).await.map_err(|_| waiting_message())?;
         if let Some(session) = slot.as_mut() {
             if session.alive() {
-                let remaining = deadline.saturating_duration_since(Instant::now()).max(Duration::from_secs(1));
+                let remaining = if waited_for_start { limit } else { deadline.saturating_duration_since(Instant::now()) }.max(Duration::from_secs(1));
                 return match session.request(body, remaining).await {
                     Ok(reply) => Ok(addon_shape(&reply)),
                     Err(error) => { if let Some(mut dead) = slot.take() { let _ = dead.child.start_kill(); let _ = std::fs::remove_dir_all(&dead.folder); } set_status(Status::Failed(error.to_string())); Err(error) }
@@ -240,6 +243,8 @@ pub async fn command(program: &Path, body: Value, limit: Duration) -> anyhow::Re
             kick_start(program.to_path_buf());
             kicked = true;
         }
+        // A start is under way (ours or another caller's): wait for it once, on top of the request's own time.
+        if !waited_for_start { waited_for_start = true; deadline = Instant::now() + START_LIMIT + limit; }
         if Instant::now() >= deadline { return Err(waiting_message()); }
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
@@ -264,6 +269,7 @@ assert args[:3] == ["--background", "--factory-startup", "--python"] and args[4:
 assert os.path.isfile(args[3]) and os.path.isfile(os.path.join(args[6], "blender_ops.py")) and os.getcwd() == os.path.realpath(args[6])
 def say(obj): sys.stdout.write("PZ1 " + json.dumps(obj) + "\n"); sys.stdout.flush()
 if mode == "silent": time.sleep(30)
+if "slowstart" in os.path.basename(sys.argv[0]): time.sleep(2.5)
 if mode == "dies": sys.stderr.write("cannot open display\n"); sys.exit(1)
 print("Blender 9.9 (fake)"); print("PZ1 not json"); print("PZ1 [1,2]"); sys.stdout.flush()
 say({"event": "ready", "blender": "9.9.0", "protocol": 7 if mode == "newer" else 1, "ops": ["add_cube"], "safe": True})
@@ -447,6 +453,16 @@ for line in sys.stdin:
         let gone = command(Path::new("/no/such/blender"), json!({"type": "get_scene_info"}), Duration::from_secs(10)).await.unwrap_err().to_string();
         assert!(gone.contains("could not be started"), "{gone}");
         stop().await;
+
+        // A first command while Blender is still starting waits for the start, then gets its own full time,
+        // instead of being told to try again (this Blender needs 2.5 s to start; the request allows 1 s).
+        let slow = fake("slowstart");
+        let began = Instant::now();
+        let first = command(&slow, json!({"type": "get_scene_info"}), Duration::from_secs(1)).await.unwrap();
+        assert_eq!(first["status"], "success");
+        assert!(began.elapsed() >= Duration::from_secs(2), "the caller really waited for the start");
+        stop().await;
+        let _ = std::fs::remove_file(slow);
         let _ = std::fs::remove_file(program);
     }
 }

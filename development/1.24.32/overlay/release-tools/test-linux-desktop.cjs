@@ -88,8 +88,11 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
    await page.locator('#cnWin [data-cn-act="allow"]').click();
    await slow(async()=>await blenderPill()==='Ready','real Blender starts in the background and answers',150);
    assert.equal(await page.locator('#cnWin [data-cn-switch="free_python"]').getAttribute('aria-checked'),'false','safe mode is on');
-   const refused=await (await call('/api/blender',{type:'execute_code',params:{code:'print(1)'}})).json();assert.equal(refused.ok,false);assert.match(refused.error,/Safe mode is on/,'free Python is refused by the real app');
-   const cube=await (await call('/api/blender',{type:'plazcode_op',params:{cmd:'add_cube',args:{name:'PZ Live Cube'}}})).json();assert.equal(cube.ok,true,JSON.stringify(cube));assert.match(JSON.stringify(cube.data),/PZ Live Cube/);
+   // Work requests carry the active profile's mark, exactly as the extension sends it.
+   const epoch=((await (await fetch('http://127.0.0.1:3000/api/status',{headers:{Authorization:'Bearer '+key}})).json()).profile||{}).epoch;
+   const work=data=>fetch('http://127.0.0.1:3000/api/blender',{method:'POST',headers:{'Content-Type':'application/json',Origin:'http://127.0.0.1:3000',Authorization:'Bearer '+key,...(epoch?{'X-PlazCode-Profile':epoch}:{})},body:JSON.stringify(data)});
+   const refused=await (await work({type:'execute_code',params:{code:'print(1)'}})).json();assert.equal(refused.ok,false);assert.match(refused.error,/Safe mode is on/,'free Python is refused by the real app');
+   const cube=await (await work({type:'plazcode_op',params:{cmd:'add_cube',args:{name:'PZ Live Cube'}}})).json();assert.equal(cube.ok,true,JSON.stringify(cube));assert.match(JSON.stringify(cube.data),/PZ Live Cube/);
    await page.locator('#cnWin .cn-actions [data-cn-step="preview"]').click();
    await slow(async()=>await page.locator('#cnWin .cn-preview img').count()===1,'the picture appears in the window',200);
    console.log('Real background Blender: '+await page.locator('#cnWin [data-step="start"] .cn-detail').innerText()+', picture shown, safe mode refused free Python');
