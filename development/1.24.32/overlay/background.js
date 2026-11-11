@@ -1880,17 +1880,6 @@ const BLENDER_CMD = {
   blender_subsurf: "subdivision", blender_origin_to_geometry: "origin_to_geometry",
 };
 
-async function blenderOpsCode(cmd, args) {
-  let py = await extText("blender_ops.py");
-  const status = "plazcode_status.json";
-  const mesh = "plazcode_mesh.json";
-  py = py.split("__PLAZCODE_CMD__").join(String(cmd || ""));
-  py = py.split("__PLAZCODE_ARGS__").join(JSON.stringify(args || {}));
-  py = py.split("__PLAZCODE_OUT__").join(JSON.stringify(status || "plazcode_status.json"));
-  py = py.split("__PLAZCODE_MESH__").join(JSON.stringify(mesh || "plazcode_mesh.json"));
-  return { py, status, mesh };
-}
-
 function wrapBlenderUserCode(code) {
   const src = String(code || "");
   if (!src.trim()) return src;
@@ -1912,75 +1901,10 @@ function wrapBlenderUserCode(code) {
   ].join("\n");
 }
 
-// 1.24.14: fresh Blender viewport capture.
-// The blender-mcp addon's get_viewport_screenshot copies the 3D View's LAST
-// DRAWN framebuffer. Blender stops redrawing while its window is in the
-// background (the user is in the browser), so every capture returned the same
-// stale pixels under a new file name. Render the viewport off-screen from the
-// live scene instead (independent of window redraws), force a redraw before
-// the screen-copy fallback, and report a content hash so stale shots are
-// visible.
-function blenderShotCode(filepath, maxSize) {
-  const fp = JSON.stringify(String(filepath));
-  const mx = Math.max(64, Math.min(4096, Number(maxSize) || 1000));
-  return [
-    "import bpy, json, os, hashlib, time",
-    "FP = " + fp,
-    "MAX = " + mx,
-    "res = {'filepath': FP}",
-    "win = area = reg = None",
-    "for w in bpy.context.window_manager.windows:",
-    "    for a in w.screen.areas:",
-    "        if a.type == 'VIEW_3D' and area is None:",
-    "            for r in a.regions:",
-    "                if r.type == 'WINDOW': win, area, reg = w, a, r",
-    "if area is None: raise RuntimeError('No 3D Viewport is open in Blender, so there is nothing to capture.')",
-    "space = area.spaces.active; rv3d = space.region_3d",
-    "if os.path.exists(FP): os.remove(FP)",
-    "W, H = reg.width, reg.height",
-    "s = min(1.0, MAX / float(max(W, H)))",
-    "W2, H2 = max(64, int(W * s)), max(64, int(H * s))",
-    "try:",
-    "    import gpu",
-    "    off = gpu.types.GPUOffScreen(W2, H2)",
-    "    try:",
-    "        try: off.draw_view3d(bpy.context.scene, bpy.context.view_layer, space, reg, rv3d.view_matrix, rv3d.window_matrix, do_color_management=True)",
-    "        except TypeError: off.draw_view3d(bpy.context.scene, bpy.context.view_layer, space, reg, rv3d.view_matrix, rv3d.window_matrix)",
-    "        with off.bind():",
-    "            buf = gpu.state.active_framebuffer_get().read_color(0, 0, W2, H2, 4, 0, 'UBYTE')",
-    "    finally:",
-    "        off.free()",
-    "    buf.dimensions = W2 * H2 * 4",
-    "    try:",
-    "        import numpy as np",
-    "        px = (np.array(buf, dtype=np.float32) / 255.0)",
-    "        px[3::4] = 1.0",
-    "        flat = px",
-    "    except Exception:",
-    "        flat = [v / 255.0 for v in buf]",
-    "        for i in range(3, len(flat), 4): flat[i] = 1.0",
-    "    img = bpy.data.images.new('_plazcode_shot', W2, H2, alpha=True)",
-    "    try:",
-    "        img.pixels.foreach_set(flat)",
-    "        img.filepath_raw = FP; img.file_format = 'PNG'; img.save()",
-    "    finally:",
-    "        bpy.data.images.remove(img)",
-    "    res['method'] = 'offscreen'",
-    "except Exception as e:",
-    "    res['offscreen_error'] = str(e)[:200]",
-    "    with bpy.context.temp_override(window=win, area=area, region=reg):",
-    "        try: bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)",
-    "        except Exception: pass",
-    "        bpy.ops.screen.screenshot_area(filepath=FP)",
-    "    res['method'] = 'screenshot_area'",
-    "if not os.path.isfile(FP): raise RuntimeError('Blender did not write the capture file ' + FP)",
-    "raw = open(FP, 'rb').read()",
-    "res['bytes'] = len(raw); res['sha1'] = hashlib.sha1(raw).hexdigest()[:12]; res['size'] = [W2, H2]",
-    "res['taken'] = time.strftime('%H:%M:%S')",
-    "print('PLAZCODE_SHOT_JSON:' + json.dumps(res))",
-  ].join("\n");
-}
-
+// Blender pictures and PlazCode's built-in Blender actions are requests to the desktop app ("plazcode_shot",
+// "plazcode_op"), not Python text made here. The app runs them in the background Blender, or turns them into
+// code for the open-window helper itself (agent/src/blender.rs, agent/blender_shot.py, blender_ops.py). That is
+// what lets safe mode tell a built-in action from free Python.
 async function blenderPayload(name, args) {
   const bare = String(name || "").split("__").pop().split("/").pop().split(".").pop();
   const a = args || {};
@@ -1994,13 +1918,10 @@ async function blenderPayload(name, args) {
     if (root) shot = root.replace(/[\\/]+$/, "") + "/" + relativeShot;
     // _orShot: the exact path we asked Blender to write, so blenderCall can read
     // the pixels back (see the screenshot branch there) without guessing.
-    return { type: "execute_code", params: { code: blenderShotCode(shot, a.max_size) }, _orShot: shot, _orReadShot: relativeShot, _orIsShot: true };
+    return { type: "plazcode_shot", params: { filepath: shot, max_size: Math.max(64, Math.min(4096, Number(a.max_size) || 1000)) }, _orShot: shot, _orReadShot: relativeShot, _orIsShot: true };
   }
   const mapped = BLENDER_CMD[bare];
-  if (mapped) {
-    const packed = await blenderOpsCode(mapped, a);
-    return { type: "execute_code", params: { code: packed.py }, _orStatus: packed.status, _orMesh: packed.mesh };
-  }
+  if (mapped) return { type: "plazcode_op", params: { cmd: mapped, args: a }, _orStatus: "plazcode_status.json", _orMesh: "plazcode_mesh.json" };
   const params = Object.assign({}, a);
   delete params.user_prompt;
   return { type: bare, params };
@@ -2030,12 +1951,14 @@ async function blenderCall(name, args, timeout) {
     if (blenderCallRunning) return { ok: false, error: "Blender is still processing another PlazCode command (from this or another chat). Wait for it to finish, then send this command again. Nothing was queued or repeated." };
   }
   if (!blenderAddon) {
-    return { ok: false, error: "Blender is not connected. Click Connect Blender (Blender: N → MCP for Blender → Start MCP Server)." };
+    return { ok: false, error: "Blender is not connected. Open PlazCode, go to Apps & servers and connect Blender. (If you use your own open Blender window: N → MCP for Blender → Start MCP Server, then Connect Blender.)" };
   }
   const run = async () => {
     const payload = await blenderPayload(name, args);
     const statusPath = payload._orStatus || "";
     const reply = await blenderRequest({type:payload.type,params:payload.params},payload.type === "get_scene_info" ? 8000 : Math.min(180000,timeout || 120000));
+    // An app from before 1.24.33 passes the new request kinds to the Blender helper, which does not know them.
+    if(!reply.ok && /^plazcode_/.test(payload.type) && /unknown command/i.test(reply.error || "")) return {ok:false,error:"This Blender action needs the newer PlazCode desktop app. Update the app (it comes with this extension update), then try again. Nothing was run."};
     if(!reply.ok) {if(/not listening|actively refused|connection refused|connection (?:closed|failed)|closed (?:the )?(?:socket|connection)|Blender is not connected/i.test(reply.error || ""))setBlender(false,reply.error);return {ok:false,error:reply.error || "Blender command failed."};}
     const data = reply.data;
     if (data && data.status === "error") {

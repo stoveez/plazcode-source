@@ -55,7 +55,7 @@ const CATALOG = [
       await tab.route("http://127.0.0.1:3000/api/mcp/catalog", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, servers: CATALOG.map((s) => ({ ...s, enabled: bridge.enabled.has(s.id) })) }) }));
       await tab.route("http://127.0.0.1:3000/api/mcp/toggle", async (r) => { const b = JSON.parse(r.request().postData() || "{}"); bridge.toggles.push(b); if (b.enabled) bridge.enabled.add(b.id); else bridge.enabled.delete(b.id); await r.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' }); });
       await tab.route("http://127.0.0.1:3000/api/connections", (r) => { bridge.probes++; return bridge.mode === "legacy" ? r.fulfill({ status: 404, contentType: "application/json", body: '{"error":"not found"}' }) : r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, apps: bridge.backend }) }); });
-      await tab.route("http://127.0.0.1:3000/api/connections/setup", async (r) => { const b = JSON.parse(r.request().postData() || "{}"); bridge.setups.push(b); const refused = bridge.onSetup ? bridge.onSetup(b) : null; await r.fulfill(refused ? { status: 400, contentType: "application/json", body: JSON.stringify({ ok: false, error: refused }) } : { status: 200, contentType: "application/json", body: '{"ok":true}' }); });
+      await tab.route("http://127.0.0.1:3000/api/connections/setup", async (r) => { const b = JSON.parse(r.request().postData() || "{}"); bridge.setups.push(b); const refused = bridge.onSetup ? bridge.onSetup(b) : null; await r.fulfill(refused ? { status: 400, contentType: "application/json", body: JSON.stringify({ ok: false, error: refused }) } : { status: 200, contentType: "application/json", body: JSON.stringify(Object.assign({ ok: true }, bridge.setupExtra ? bridge.setupExtra(b) : {})) }); });
       await tab.route("http://127.0.0.1:3000/api/blender", async (r) => { bridge.blenderCalls++; await r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(bridge.blenderOk ? { ok: true, blender: true, data: { status: "success" } } : { ok: false, blender: false, error: "Blender did not answer." }) }); });
       await tab.route("http://plazcode.test/", (r) => r.fulfill({ status: 200, contentType: "text/html", body: assembled }));
       await tab.addInitScript(() => { window.__PLAZCODE_BOOT__ = { apiUrl: "http://127.0.0.1:3000" }; window.__ipc = []; window.ipc = { postMessage: (m) => window.__ipc.push(m) }; });
@@ -204,10 +204,43 @@ const CATALOG = [
     assert.equal(await tab.evaluate(() => document.querySelector('#cnWin [data-step="project"] .cn-detail').textContent), "D:/pasted project");
     bridge.onSetup = null; await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
     assert.deepEqual(errors, [], "no page errors: " + errors.join(" | "));
+    // Blender in the background, the way connections.rs reports it when it is ready: safe-mode switch, picture, actions.
+    const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const blenderReady = (o) => ({ id: "blender", name: "Blender", state: "ready", mode: "background", modes: [{ id: "background", label: "Background (no window)" }, { id: "window", label: "My open Blender window" }],
+      lead: "PlazCode runs Blender quietly in the background. You do not need to open Blender or change anything in it.",
+      steps: [{ id: "find", title: "Find Blender", state: "done", detail: "C:\\Program Files\\Blender Foundation\\Blender 4.2\\blender.exe", input: "Or paste where the Blender program is", use: "Use this" }, { id: "start", title: "Start Blender in the background", state: "done", detail: "Blender 4.2.3" }],
+      switches: [{ id: "free_python", label: "Allow free Python", on: o.free, note: o.free ? "On: the AI may run its own Python code in Blender." : "Off (safe mode): the AI can only use PlazCode's built-in Blender actions." }],
+      actions: [{ label: "Show a picture", run: "preview" }, { label: "Open in Blender", run: "open" }], preview: o.preview });
+    let freePython = false, picture = null;
+    const othersB = bridge.backend.filter((a) => a.id !== "blender");
+    const setBlender = () => { bridge.backend = [...othersB, blenderReady({ free: freePython, preview: picture })]; };
+    setBlender();
+    bridge.onSetup = (b) => { if (b.id !== "blender") return null; if (b.step === "switch:free_python") { freePython = b.value === "on"; setBlender(); } if (b.step === "preview") { picture = png; setBlender(); } return null; };
+    bridge.setupExtra = (b) => b.step === "open" ? { notice: "Saved and opened in Blender: C:\\Users\\me\\Documents\\PlazCode Blender\\plazcode-scene-1.blend" } : {};
+    await tab.click('#cnApps [data-cn-open="blender"]'); await tab.waitForTimeout(2600); // the open window refreshes itself every 2 s
+    const before = await tab.evaluate(() => ({ sw: document.querySelector('#cnWin [data-cn-switch="free_python"]').getAttribute("aria-checked"), role: document.querySelector('#cnWin [data-cn-switch="free_python"]').getAttribute("role"), note: document.querySelector("#cnWin .cn-opt span").textContent, actions: [...document.querySelectorAll('#cnWin .cn-actions [data-cn-step]')].map((b) => b.textContent), picture: !!document.querySelector("#cnWin .cn-preview img"), find: document.querySelector('#cnWin [data-step="find"]').dataset.state }));
+    assert.deepEqual(before, { sw: "false", role: "switch", note: "Off (safe mode): the AI can only use PlazCode's built-in Blender actions.", actions: ["Show a picture", "Open in Blender"], picture: false, find: "done" }, "ready Blender: safe mode shown as an off switch with a plain sentence, two actions, no picture yet");
+    for (const key of ["Allow free Python", "Off (safe mode): the AI can only use PlazCode's built-in Blender actions.", "Show a picture", "Open in Blender", "Picture of the Blender scene", "Use this", "Find Blender", "Start Blender in the background"]) assert(key in JSON.parse(fs.readFileSync(__dirname + "/core/locales/en.json", "utf8")), "translatable: " + key);
+    await tab.click('#cnWin [data-cn-switch="free_python"]'); await tab.waitForTimeout(600);
+    assert.deepEqual(bridge.setups.pop(), { id: "blender", step: "switch:free_python", value: "on" }, "the switch asks the app, the app decides");
+    assert.equal(await tab.evaluate(() => document.querySelector('#cnWin [data-cn-switch="free_python"]').getAttribute("aria-checked")), "true");
+    await tab.click('#cnWin .cn-actions [data-cn-step="preview"]'); await tab.waitForTimeout(600);
+    assert.deepEqual(bridge.setups.pop(), { id: "blender", step: "preview" });
+    assert.deepEqual(await tab.evaluate(() => { const img = document.querySelector("#cnWin .cn-preview img"); return img && { alt: img.alt, src: img.getAttribute("src").slice(0, 22) }; }), { alt: "Picture of the Blender scene", src: "data:image/png;base64," }, "the picture shows in the window");
+    await tab.click('#cnWin .cn-actions [data-cn-step="open"]'); await tab.waitForTimeout(600);
+    assert.deepEqual(bridge.setups.pop(), { id: "blender", step: "open" });
+    assert.match(await tab.evaluate(() => document.querySelector("#cnWin .cn-info")?.textContent || ""), /Saved and opened in Blender: .*plazcode-scene-1\.blend/, "where the scene was saved is said in the window");
+    await tab.click('#cnWin [data-step="find"] [data-cn-change="find"]'); await tab.waitForTimeout(200);
+    assert.equal(await tab.evaluate(() => document.querySelector('#cnWin [data-cn-use="find"]').textContent), "Use this", "the paste box button says what fits the step");
+    // Anything that is not a PNG made by the app is never put into the page as a picture.
+    picture = "javascript:alert(1)"; setBlender(); await tab.waitForTimeout(2600);
+    assert.equal(await tab.evaluate(() => document.querySelector("#cnWin .cn-preview")), null, "only a PNG data address is shown");
+    bridge.onSetup = null; bridge.setupExtra = null; await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
+    assert.deepEqual(errors, [], "no page errors: " + errors.join(" | "));
     await tab.setViewportSize({ width: 1360, height: 860 }); await tab.waitForTimeout(200);
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-page.png" : "/tmp/connections-page.png" });
     await tab.click('#cnApps [data-cn-open="blender"]'); await tab.waitForTimeout(600);
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-window.png" : "/tmp/connections-window.png" });
-    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, helper start/fail shown live, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent), Godot project picking (recent list, paste box, refused folder explained, typing kept, Change)");
+    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, helper start/fail shown live, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent), Blender background card (safe-mode switch, picture, Open in Blender, notice, only PNG pictures), Godot project picking (recent list, paste box, refused folder explained, typing kept, Change)");
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exit(1); });

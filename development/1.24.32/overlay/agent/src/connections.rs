@@ -345,7 +345,7 @@ pub fn blender_app(saved: &SavedApp, facts: &BlenderFacts) -> Value {
         "mode": if window { "window" } else { "background" },
         "modes": BLENDER_MODES.iter().map(|(id, label)| json!({"id": id, "label": label})).collect::<Vec<_>>(),
         "steps": steps,
-        "prompts": ["Make a low-poly tree and show me a picture.", "Make a simple chair, then send it to Roblox Studio."],
+        "prompts": ["Make a low-poly tree with a trunk and three leaf cones.", "Add a camera and a light, then show me a preview."],
     });
     if saved.consent {
         app["switches"] = json!([{"id": "free_python", "label": "Allow free Python", "on": saved.free_python,

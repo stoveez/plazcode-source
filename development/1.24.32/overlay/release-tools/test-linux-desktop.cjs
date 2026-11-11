@@ -79,6 +79,23 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   console.log('Godot on this machine after pick: helper program '+program+', helper '+started+' / '+await pill());
   await page.locator('#cnWin [data-cn-act="disconnect"]').click();await waitFor(async()=>await pill()==='Not set up','Disconnect returns to Not set up');
   await page.locator('#cnWin [data-cn-act="close"]').first().click();
+  // Blender in the background, end to end, when a real Blender is on this machine (CI installs one and names it in PLAZCODE_BLENDER).
+  if(process.env.PLAZCODE_BLENDER){
+   const blenderPill=()=>page.locator('#cnApps [data-app="blender"] .cn-pill').innerText(),bStep=id=>page.locator('#cnWin [data-step="'+id+'"]').getAttribute('data-state');
+   const slow=async(fn,label,seconds)=>{for(let i=0;i<seconds*10;i++){if(await fn())return;await sleep(100);}throw Error('Timed out: '+label);};
+   await page.locator('#cnApps [data-cn-open="blender"]').click();
+   assert.equal(await page.locator('#cnWin [data-cn-mode="background"]').getAttribute('aria-pressed'),'true','background is the default way');
+   await page.locator('#cnWin [data-cn-act="allow"]').click();
+   await slow(async()=>await blenderPill()==='Ready','real Blender starts in the background and answers',150);
+   assert.equal(await page.locator('#cnWin [data-cn-switch="free_python"]').getAttribute('aria-checked'),'false','safe mode is on');
+   const refused=await (await call('/api/blender',{type:'execute_code',params:{code:'print(1)'}})).json();assert.equal(refused.ok,false);assert.match(refused.error,/Safe mode is on/,'free Python is refused by the real app');
+   const cube=await (await call('/api/blender',{type:'plazcode_op',params:{cmd:'add_cube',args:{name:'PZ Live Cube'}}})).json();assert.equal(cube.ok,true,JSON.stringify(cube));assert.match(JSON.stringify(cube.data),/PZ Live Cube/);
+   await page.locator('#cnWin .cn-actions [data-cn-step="preview"]').click();
+   await slow(async()=>await page.locator('#cnWin .cn-preview img').count()===1,'the picture appears in the window',200);
+   console.log('Real background Blender: '+await page.locator('#cnWin [data-step="start"] .cn-detail').innerText()+', picture shown, safe mode refused free Python');
+   await page.locator('#cnWin [data-cn-act="disconnect"]').click();await waitFor(async()=>await blenderPill()==='Not set up','Blender Disconnect');
+   await page.locator('#cnWin [data-cn-act="close"]').first().click();
+  }else console.log('No real Blender here (PLAZCODE_BLENDER not set): background Blender end-to-end part skipped.');
   assert.equal((await call('/api/show',{})).status,200);await waitFor(()=>launch().length===2,'relaunch shows real Linux desktop');
   assert.notEqual(launch()[1],url,'every launch uses a fresh ticket');
   if(process.env.PLAZCODE_UI_PREVIEW_DIR&&!profileGate){fs.mkdirSync(process.env.PLAZCODE_UI_PREVIEW_DIR,{recursive:true});await page.evaluate(()=>{document.querySelector('#desktopApprovalMode').closest('details').open=true;});await page.locator('#desktopApprovalMode').locator('xpath=..').locator('.pc-effort-trigger').click();await page.screenshot({path:path.join(process.env.PLAZCODE_UI_PREVIEW_DIR,'plazcode-linux-native-settings.png')});}
@@ -87,6 +104,6 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   {const before=launch().length;assert.equal((await call('/api/desktop/browser-action',{message:'open:get-godot'})).status,200);await waitFor(()=>launch().length===before+1,'official download page opens');assert.equal(launch()[before],'https://godotengine.org/download/');assert.equal((await call('/api/desktop/browser-action',{message:'open:get-anything'})).status,400,'only listed download pages open');}
   assert.equal((await call('/api/desktop/browser-action',{message:'quit'})).status,200);
   await waitFor(()=>agent.exitCode!==null,'Quit exits actual Linux bridge');assert.equal(agent.exitCode,0);
-  console.log('PASS real Linux desktop launch, authenticated single-use browser bootstrap, wrong-origin/replay rejection, profile gate incl. locked app connections (or legacy settings save/reload), Apps & servers page against the real app (Godot: Allow, refused folder, picked project, Disconnect), official download page, reopen and Quit.');
+  console.log('PASS real Linux desktop launch, authenticated single-use browser bootstrap, wrong-origin/replay rejection, profile gate incl. locked app connections (or legacy settings save/reload), Apps & servers page against the real app (Godot: Allow, refused folder, picked project, Disconnect; Blender in the background when a real Blender is named), official download page, reopen and Quit.');
  }finally{if(browser)await browser.close();if(agent.exitCode===null){agent.kill('SIGTERM');await new Promise(resolve=>agent.once('exit',resolve));}fs.closeSync(log);fs.rmSync(temp,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});

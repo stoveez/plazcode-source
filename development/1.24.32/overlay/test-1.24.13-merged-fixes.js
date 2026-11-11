@@ -12,7 +12,8 @@ assert.match(bg,/mcpDownStreak >= MCP_HEAL_STREAK && !mcpHealInFlight &&\s*now -
 assert.match(bg,/send\(\{ type: "mcp_status" \}, 10000\)\.then\(\(st\) => \{\s*if \(!st \|\| !st\.ok \|\| st\.alive !== false/,'restart only after the bridge confirms the helper is dead');
 assert.match(bg,/lastSocketOpenAt = Date\.now\(\);/);assert(!/mcpDownStreak >= 1 &&/.test(bg),'old one-miss heal is gone');
 // Fresh Blender screenshots.
-assert.match(bg,/function blenderShotCode\(filepath, maxSize\)/);assert.match(bg,/type: "execute_code", params: \{ code: blenderShotCode\(shot, a\.max_size\) \}/);
+// 1.24.33: the picture code moved into the desktop app (agent/blender_shot.py); the extension asks for a picture by request kind.
+assert.match(bg,/type: "plazcode_shot", params: \{ filepath: shot, max_size: /);assert(!/function blenderShotCode/.test(bg));assert.match(fs.readFileSync('agent/blender_shot.py','utf8'),/GPUOffScreen[\s\S]*screenshot_area[\s\S]*PLAZCODE_SHOT_JSON:/);
 const py=fs.readFileSync('launch_blender_mcp.py','utf8');
 assert.match(py,/plazcode_blender_shot_\{os\.getpid\(\)\}_\{time\.time_ns\(\)\}\.png/,'unique capture file');assert.match(py,/blender_command\("execute_code", \{"code": _SHOT_CODE\.format/);assert.match(py,/GPUOffScreen/);assert.match(py,/screenshot_area/);
 // Dashboard: Connected only when the editor link is up.

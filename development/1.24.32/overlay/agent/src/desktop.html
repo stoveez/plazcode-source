@@ -1340,6 +1340,15 @@ html:not([data-pz-motion=off]):not([data-pz-motion=reduced]) .cn-step[data-state
 .cn-paste{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .cn-input{flex:1 1 220px;min-width:0;min-height:42px;padding:0 14px;border-radius:11px;border:1px solid var(--pz-line,rgb(255 255 255/.16));background:rgb(0 0 0/.28);color:inherit;font:inherit;font-size:13.5px}
 .cn-input:focus-visible{outline:2px solid rgb(var(--pz-rgb,233 186 83)/.8);outline-offset:1px}
+.cn-info{margin:0 0 16px;padding:13px 16px;border-radius:13px;border:1px solid rgb(var(--pz-rgb,233 186 83)/.4);background:rgb(var(--pz-rgb,233 186 83)/.1);color:var(--text,#eef1f6);font-size:14px;line-height:1.55;overflow-wrap:anywhere}
+.cn-preview{margin:0 0 16px;border-radius:16px;overflow:hidden;border:1px solid var(--pz-line,rgb(255 255 255/.1));background:#000}
+.cn-preview img{display:block;width:100%;height:auto}
+.cn-actions{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 20px}
+.cn-switches{margin:18px 0 6px;display:grid;gap:10px}
+.cn-opt{display:flex;align-items:center;gap:16px;padding:14px 16px;border-radius:14px;background:rgb(255 255 255/.04);border:1px solid var(--pz-line,rgb(255 255 255/.08))}
+.cn-opt>div{flex:1;min-width:0;display:grid;gap:4px}
+.cn-opt strong{font-size:15px}
+.cn-opt span{font-size:13.5px;color:var(--ink-soft,#a7b2c4);line-height:1.5}
 .cn-alert{margin:0 0 16px;padding:13px 16px;border-radius:13px;border:1px solid rgb(255 110 100/.45);background:rgb(255 110 100/.1);color:#ffb0a8;font-size:14px;line-height:1.55}
 .cn-act{align-self:center}
 .cn-consent{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:0 0 22px;padding:18px 20px;border-radius:16px;background:rgb(var(--pz-rgb,233 186 83)/.1);border:1px solid rgb(var(--pz-rgb,233 186 83)/.35)}
@@ -1954,7 +1963,7 @@ __PLAZCODE_VERSION_UI__
   var Cnlabel={not_set_up:'Not set up',setting_up:'Setting up',ready:'Ready',needs_attention:'Needs attention',soon:'Coming soon',waiting:'Waiting'};
   var Cnbutton={not_set_up:'Connect',setting_up:'Continue',ready:'Open',needs_attention:'Fix'};
   var Cnmoreline={playwright:'Lets the AI open web pages, click and take screenshots in its own window.',context7:'Looks up documentation for programming libraries.',fetch:'Lets the AI read web pages.',git:'Lets the AI look at and work with your Git projects. Needs Git installed.',memory:'Simple notes the AI can keep between chats.',thinking:'Helps the AI plan hard problems step by step.',figma:'Figma Dev Mode: reads designs only and needs a paid Dev or Full seat.'};
-  var Cnbackend=null,Cnbackendat=0,Cnreply=null,Cnat=0,Cnloading=null,Cnmodel=null,Cnopenid=null,Cnpoll=null,Cnlastid='',Cnwired=false,Cnwinsig='',Cnconsented={},Cnchanging={},Cnnotice='';
+  var Cnbackend=null,Cnbackendat=0,Cnreply=null,Cnat=0,Cnloading=null,Cnmodel=null,Cnopenid=null,Cnpoll=null,Cnlastid='',Cnwired=false,Cnwinsig='',Cnconsented={},Cnchanging={},Cnnotice='',Cninfo='';
   function Cnsvg(Path){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+Path+'</svg>';}
   function Cnstep(Id,Title,State,Hint,Extra){var Step={id:Id,title:Title,state:State};if(Hint)Step.hint=Hint;if(Extra)for(var Key in Extra)Step[Key]=Extra[Key];return Step;}
   function Cnlegacy(Id,Catalog,Live){
@@ -2034,6 +2043,10 @@ __PLAZCODE_VERSION_UI__
       Html+='<div class="cn-done"><h3>Ready to use</h3><p>Try asking the AI one of these. Press a line to copy it.</p><div class="cn-prompts">'+(App.prompts||[]).map(function(Text){return '<button type="button" class="cn-prompt" data-cn-copy="'+Escape(Text)+'"><span>'+Escape(Text)+'</span><b>Copy</b></button>';}).join('')+'</div></div>';
     }
     if(Cnnotice)Html+='<p class="cn-alert" role="alert" data-i18n-user-content dir="auto">'+Escape(Cnnotice)+'</p>';
+    if(Cninfo)Html+='<p class="cn-info" role="status" data-i18n-user-content dir="auto">'+Escape(Cninfo)+'</p>';
+    /* Blender in the background: the last picture of the scene, then what can be done with the scene. Only a PNG made by the app is shown. */
+    if(typeof App.preview==='string'&&/^data:image\/png;base64,[A-Za-z0-9+\/=]+$/.test(App.preview))Html+='<figure class="cn-preview"><img src="'+App.preview+'" alt="Picture of the Blender scene"></figure>';
+    if(App.actions&&App.actions.length)Html+='<div class="cn-actions">'+App.actions.map(function(Action){return '<button type="button" class="softbtn" data-cn-act="step" data-cn-step="'+Escape(Action.run)+'">'+Escape(Action.label)+'</button>';}).join('')+'</div>';
     Html+='<ol class="cn-steps">'+(App.steps||[]).map(function(Step,Index){
       var Mark=Step.state==='done'?'&#10003;':Step.state==='needs_you'?'!':String(Index+1);
       var Extra=Step.hint?(Step.bad?'<span class="cn-bad" data-i18n-user-content>':'<span>')+Escape(Step.hint)+'</span>':'';
@@ -2042,7 +2055,7 @@ __PLAZCODE_VERSION_UI__
       var Picking=(Step.choices||Step.input)&&(Step.state!=='done'||Cnchanging[App.id+'/'+Step.id]);
       if(Picking){
         if(Step.choices&&Step.choices.length)Extra+='<div class="cn-choices" role="group">'+Step.choices.map(function(Choice){return '<button type="button" class="cn-choice" data-cn-pick="'+Escape(Choice.value)+'" data-cn-step="'+Escape(Step.id)+'"'+(Choice.value===Step.detail?' aria-pressed="true"':'')+'><b data-i18n-user-content dir="auto">'+Escape(Choice.label)+'</b><small data-i18n-user-content dir="auto">'+Escape(Choice.value)+'</small></button>';}).join('')+'</div>';
-        if(Step.input)Extra+='<div class="cn-paste"><input type="text" class="cn-input" data-cn-input="'+Escape(Step.id)+'" placeholder="'+Escape(Step.input)+'" aria-label="'+Escape(Step.input)+'" spellcheck="false" autocomplete="off"><button type="button" class="softbtn" data-cn-use="'+Escape(Step.id)+'">Use this folder</button></div>';
+        if(Step.input)Extra+='<div class="cn-paste"><input type="text" class="cn-input" data-cn-input="'+Escape(Step.id)+'" placeholder="'+Escape(Step.input)+'" aria-label="'+Escape(Step.input)+'" spellcheck="false" autocomplete="off"><button type="button" class="softbtn" data-cn-use="'+Escape(Step.id)+'">'+Escape(Step.use||'Use this folder')+'</button></div>';
       }
       var Act='';
       if((Step.choices||Step.input)&&Step.state==='done'&&!Picking)Act='<button type="button" class="softbtn cn-act" data-cn-change="'+Escape(Step.id)+'">Change</button>';
@@ -2051,6 +2064,8 @@ __PLAZCODE_VERSION_UI__
       else if(Step.link)Act='<button type="button" class="softbtn cn-act" data-cn-ipc="'+Escape(Step.link.key)+'">'+Escape(Step.link.label)+'</button>';
       return '<li class="cn-step" data-state="'+Escape(Step.state)+'" data-step="'+Escape(Step.id)+'"><span class="cn-mark" aria-hidden="true">'+Mark+'</span><div class="cn-st"><strong>'+Escape(Step.title)+'</strong>'+Extra+'<span class="cn-sr">'+({done:'Done',working:'Working',needs_you:'Needs you',waiting:'Waiting'}[Step.state]||'')+'</span></div>'+Act+'</li>';
     }).join('')+'</ol>';
+    /* Labelled switches (Blender: "Allow free Python"); the sentence under each says what the current setting means. */
+    if(App.switches&&App.switches.length)Html+='<div class="cn-switches">'+App.switches.map(function(Item){return '<div class="cn-opt"><div><strong>'+Escape(Item.label)+'</strong><span>'+Escape(Item.note||'')+'</span></div><button type="button" class="cn-switch" role="switch" aria-checked="'+(Item.on?'true':'false')+'" aria-label="'+Escape(Item.label)+'" data-cn-switch="'+Escape(Item.id)+'"><i></i></button></div>';}).join('')+'</div>';
     if(Fresh)Html+='<div class="cn-consent"><p>'+Escape(App.consent||'PlazCode will turn on this connection. Nothing else on your computer is changed.')+'</p><button type="button" class="accentbtn cn-main" data-cn-act="allow">Allow</button></div>';
     if(App.technical)Html+='<details class="cn-tech"><summary>Technical details</summary><pre dir="ltr">'+Escape(App.technical)+'</pre></details>';
     Html+='<div class="cn-wfoot">'+(App.state!=='not_set_up'?'<button type="button" class="softbtn" data-cn-act="test">Test again</button>':'')+'<span class="cn-gap"></span>'+(App.state!=='not_set_up'?'<button type="button" class="softbtn" data-cn-act="disconnect">Disconnect</button>':'')+'<button type="button" class="accentbtn" data-cn-act="close">Close</button></div>';
@@ -2094,7 +2109,7 @@ __PLAZCODE_VERSION_UI__
   }
   function Cnclose(){
     var Win=Byid('cnWin'),Shade=Byid('cnShade');if(!Win)return;
-    Win.classList.remove('cn-on');Shade.classList.remove('cn-on');Win.setAttribute('aria-hidden','true');Cnopenid=null;Cnnotice='';Cnchanging={};
+    Win.classList.remove('cn-on');Shade.classList.remove('cn-on');Win.setAttribute('aria-hidden','true');Cnopenid=null;Cnnotice='';Cninfo='';Cnchanging={};
     if(Cnpoll){window.clearInterval(Cnpoll);Cnpoll=null;}
     var Back=Cnlastid&&document.querySelector('[data-cn-open="'+Cnlastid+'"]');if(Back)Back.focus();
   }
@@ -2106,7 +2121,7 @@ __PLAZCODE_VERSION_UI__
   function Cnfallbackcopy(Text){var Box=document.createElement('textarea');Box.value=Text;Box.setAttribute('readonly','');Box.style.cssText='position:fixed;left:-9999px;top:0';document.body.appendChild(Box);Box.select();try{document.execCommand('copy');}catch(Error){}Box.remove();}
   function Cnrun(Id,Body){
     /* A refused step (for example a folder that is not a project) is said inside the window, next to what the person just did. */
-    return Api('/api/connections/setup',{method:'POST',body:JSON.stringify(Object.assign({id:Id},Body||{}))}).then(function(){Cnnotice='';Cnchanging={};Catalogcached=null;Cnat=0;Cnwinsig='';return Loadcatalog(true);}).catch(function(Failure){Cnnotice=Failure&&Failure.message||String(Failure);Cnat=0;Cnwinsig='';return Loadcatalog(true);});
+    return Api('/api/connections/setup',{method:'POST',body:JSON.stringify(Object.assign({id:Id},Body||{}))}).then(function(Reply){Cninfo=Reply&&typeof Reply.notice==='string'?Reply.notice:'';Cnnotice='';Cnchanging={};Catalogcached=null;Cnat=0;Cnwinsig='';return Loadcatalog(true);}).catch(function(Failure){Cnnotice=Failure&&Failure.message||String(Failure);Cnat=0;Cnwinsig='';return Loadcatalog(true);});
   }
   function Cntoggle(Id,On){
     PendingMcp[Id]=On?'Enabling…':'Disabling…';Catalogsignature='';
@@ -2118,7 +2133,8 @@ __PLAZCODE_VERSION_UI__
     return Api('/api/blender',{method:'POST',body:JSON.stringify({type:'get_scene_info',params:{}})}).then(function(Value){Blendercheck={ok:Value.ok,error:Value.error||'Blender did not answer.',time:Date.now()};}).catch(function(Failure){Blendercheck={ok:false,error:Failure.message||String(Failure),time:Date.now()};}).then(function(){Blenderchecking=false;Catalogsignature='';return Loadcatalog(true);});
   }
   function Cnclick(Event){
-    var Node=Event.target.closest?Event.target.closest('[data-cn-open],[data-cn-act],[data-cn-copy],[data-cn-ipc],[data-cn-mode],[data-cn-toggle],[data-cn-pick],[data-cn-use],[data-cn-change]'):null;if(!Node)return;
+    var Node=Event.target.closest?Event.target.closest('[data-cn-open],[data-cn-act],[data-cn-copy],[data-cn-ipc],[data-cn-mode],[data-cn-toggle],[data-cn-pick],[data-cn-use],[data-cn-change],[data-cn-switch]'):null;if(!Node)return;
+    if(Node.hasAttribute('data-cn-switch')){Cnrun(Cnopenid,{step:'switch:'+Node.getAttribute('data-cn-switch'),value:Node.getAttribute('aria-checked')==='true'?'off':'on'});return;}
     if(Node.hasAttribute('data-cn-pick')){Cnrun(Cnopenid,{step:Node.getAttribute('data-cn-step'),value:Node.getAttribute('data-cn-pick')});return;}
     if(Node.hasAttribute('data-cn-use')){var Field=Byid('cnWin').querySelector('[data-cn-input="'+Node.getAttribute('data-cn-use')+'"]');if(Field&&Field.value.trim())Cnrun(Cnopenid,{step:Node.getAttribute('data-cn-use'),value:Field.value.trim()});else if(Field)Field.focus();return;}
     if(Node.hasAttribute('data-cn-change')){Cnchanging[Cnopenid+'/'+Node.getAttribute('data-cn-change')]=true;Cnwinsig='';Cnpaint();var Firstpick=Byid('cnWin').querySelector('.cn-choice,[data-cn-input]');if(Firstpick)Firstpick.focus();return;}
