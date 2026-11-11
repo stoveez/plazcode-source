@@ -93,6 +93,7 @@ mod creation_export;
 mod updater;
 mod toolkit;
 mod blender;
+mod blender_addon;
 mod blender_headless;
 mod platform;
 mod checkpoints;

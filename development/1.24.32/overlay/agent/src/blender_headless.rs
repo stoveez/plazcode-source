@@ -21,6 +21,8 @@ use tokio::process::{Child, ChildStdin, Command};
 pub const PROTOCOL: u64 = 1;
 pub const START_LIMIT: Duration = Duration::from_secs(60);
 const IDLE_LIMIT: Duration = Duration::from_secs(600);
+/// Everything that runs inside Blender, shared with the open-window helper (one code path).
+pub const EXECUTOR: &str = include_str!("../blender_executor.py");
 const CONTROLLER: &str = include_str!("../blender_controller.py");
 const OPS: &str = include_str!("../../blender_ops.py");
 
@@ -65,7 +67,7 @@ impl Session {
         let _ = std::fs::remove_dir_all(&folder);
         std::fs::create_dir_all(&folder)?;
         let controller = folder.join("blender_controller.py");
-        std::fs::write(&controller, CONTROLLER)?;
+        std::fs::write(&controller, format!("{EXECUTOR}\n\n{CONTROLLER}"))?;
         std::fs::write(folder.join("blender_ops.py"), OPS)?;
         let mut command = Command::new(program);
         command.args(["--background", "--factory-startup", "--python"]).arg(&controller).arg("--").arg("--session").arg(&folder)
