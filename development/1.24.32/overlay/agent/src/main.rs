@@ -97,6 +97,7 @@ mod platform;
 mod checkpoints;
 mod mcp_addons;
 mod connections;
+mod runtime;
 mod studio_session;
 mod studio_launcher;
 mod media;

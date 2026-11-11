@@ -1229,5 +1229,7 @@
   "PlazCode finds Godot and your projects, then starts its helper. Each step ticks itself off when it is done.": null,
   "PlazCode will look for Godot and your Godot projects on this computer and start its Godot helper. Nothing in your projects changes until you ask the AI.": null,
   "Change": null,
-  "Start": null
+  "Start": null,
+  "Get the helper program ready": null,
+  "PlazCode is downloading a small helper program. This happens once and can take a minute.": null
 }

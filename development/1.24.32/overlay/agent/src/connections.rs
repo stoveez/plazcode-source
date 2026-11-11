@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use crate::mcp_addons::{self, ServerSummary};
+use crate::runtime::View;
 
 /// What the person chose, kept next to the connector settings so it follows the active profile.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -114,7 +115,22 @@ fn folder_label(path: &Path) -> String {
 }
 
 /// The Godot entry for the page. `found`: the editor program. `server`: the live helper, if it has been started.
-pub fn godot_app(saved: &SavedApp, found: Option<&Path>, recent: &[PathBuf], enabled: bool, server: Option<&ServerSummary>) -> Value {
+/// The "small helper program" row (Node or uv) shared by every app whose helper needs one. `wanted`: the earlier
+/// steps are done, so the program is needed now. `enabled`: the helper is switched on, so PlazCode is fetching it.
+pub fn helper_program_step(view: &View, wanted: bool, enabled: bool, running: bool) -> Value {
+    const TITLE: &str = "Get the helper program ready";
+    if !wanted { return step("runtime", TITLE, "waiting"); }
+    if running { return step("runtime", TITLE, "done"); }
+    match view {
+        View::Ready => step("runtime", TITLE, "done"),
+        View::Failed(error) => with(with(with(step("runtime", TITLE, "needs_you"), "hint", json!(error)), "bad", json!(true)), "action", json!({"label": "Try again", "run": "test"})),
+        View::Working => with(step("runtime", TITLE, "working"), "hint", json!("PlazCode is downloading a small helper program. This happens once and can take a minute.")),
+        View::Later if enabled => with(step("runtime", TITLE, "working"), "hint", json!("PlazCode is downloading a small helper program. This happens once and can take a minute.")),
+        View::Later => step("runtime", TITLE, "waiting"),
+    }
+}
+
+pub fn godot_app(saved: &SavedApp, found: Option<&Path>, recent: &[PathBuf], enabled: bool, server: Option<&ServerSummary>, program: &View) -> Value {
     let project = saved.project.as_deref().and_then(godot_project_folder);
     let failure = server.and_then(|s| s.error.clone()).filter(|e| !e.trim().is_empty());
     let running = server.is_some_and(|s| s.alive && s.tools > 0);
@@ -141,7 +157,12 @@ pub fn godot_app(saved: &SavedApp, found: Option<&Path>, recent: &[PathBuf], ena
     };
 
     let ready_to_start = saved.consent && found.is_some() && project.is_some();
-    let start = if !ready_to_start { step("start", "Start the helper", "waiting") }
+    // A helper that got far enough to report its own problem had its program; only a failed download belongs on the program row.
+    let program_proven = running || (failure.is_some() && !matches!(program, View::Failed(_)));
+    let runtime = helper_program_step(program, ready_to_start, enabled, program_proven);
+    let program_ready = runtime["state"] == "done";
+    let program_failed = runtime["state"] == "needs_you";
+    let start = if !ready_to_start || (!program_ready && enabled) { step("start", "Start the helper", "waiting") }
         else if running { step("start", "Start the helper", "done") }
         else if let Some(error) = &failure { with(with(with(step("start", "Start the helper", "needs_you"), "hint", json!(error)), "bad", json!(true)), "action", json!({"label": "Try again", "run": "test"})) }
         else if enabled { with(step("start", "Start the helper", "working"), "hint", json!("Starting the helper. The first time can take a minute while PlazCode downloads what it needs.")) }
@@ -149,7 +170,7 @@ pub fn godot_app(saved: &SavedApp, found: Option<&Path>, recent: &[PathBuf], ena
 
     let state = if !saved.consent { "not_set_up" }
         else if ready_to_start && running { "ready" }
-        else if failure.is_some() && ready_to_start { "needs_attention" }
+        else if (failure.is_some() || program_failed) && ready_to_start { "needs_attention" }
         else { "setting_up" };
 
     json!({
@@ -157,7 +178,7 @@ pub fn godot_app(saved: &SavedApp, found: Option<&Path>, recent: &[PathBuf], ena
         "line": "Build scenes, add nodes and run your game.",
         "lead": "PlazCode finds Godot and your projects, then starts its helper. Each step ticks itself off when it is done.",
         "consent": "PlazCode will look for Godot and your Godot projects on this computer and start its Godot helper. Nothing in your projects changes until you ask the AI.",
-        "steps": [find, pick, start],
+        "steps": [find, pick, runtime, start],
         "prompts": ["Make a scene with a player that moves with the arrow keys.", "Run my project and tell me if anything is wrong."],
         "technical": mcp_addons::catalog().into_iter().find(|e| e.id == "godot").map(|e| format!("{} {}", e.command, e.args.join(" "))).unwrap_or_default(),
     })
@@ -191,7 +212,9 @@ pub fn report(servers: &[ServerSummary]) -> Value {
     let found = if godot.consent { mcp_addons::find_godot() } else { None };
     let recent = if godot.consent { godot_recent_projects() } else { Vec::new() };
     json!({"ok": true, "apps": [
-        godot_app(&godot, found.as_deref(), &recent, mcp_addons::is_enabled("godot"), servers.iter().find(|s| s.id == "godot")),
+        godot_app(&godot, found.as_deref(), &recent, mcp_addons::is_enabled("godot"), servers.iter().find(|s| s.id == "godot"),
+            // Looking for Node on this computer is part of the setup, so it also waits for Allow.
+            &(if godot.consent { crate::runtime::view("npx") } else { View::Later })),
     ]})
 }
 
@@ -288,47 +311,77 @@ mod tests {
         let game = project(&root, "game");
         let editor = root.join("Godot.exe");
         let mut saved = SavedApp::default();
+        let ok = View::Ready;
 
-        let app = godot_app(&saved, None, &[], false, None);
+        let app = godot_app(&saved, None, &[], false, None, &ok);
         assert_eq!(app["state"], "not_set_up");
-        assert_eq!(states(&app), ["find:waiting", "project:waiting", "start:waiting"], "nothing is claimed before Allow");
+        assert_eq!(states(&app), ["find:waiting", "project:waiting", "runtime:waiting", "start:waiting"], "nothing is claimed before Allow");
         assert!(app["consent"].as_str().unwrap().contains("Nothing in your projects changes"));
-        let installed = godot_app(&saved, Some(&editor), &[game.clone()], true, Some(&summary(true, 9, None)));
-        assert_eq!(states(&installed), ["find:waiting", "project:waiting", "start:waiting"], "an installed editor and a running helper are still not shown before Allow");
+        let installed = godot_app(&saved, Some(&editor), &[game.clone()], true, Some(&summary(true, 9, None)), &ok);
+        assert_eq!(states(&installed), ["find:waiting", "project:waiting", "runtime:waiting", "start:waiting"], "an installed editor and a running helper are still not shown before Allow");
         assert_eq!(installed["state"], "not_set_up");
         assert!(installed["steps"][0].get("detail").is_none() && installed["steps"][1].get("choices").is_none(), "no paths or project names before Allow");
 
         saved.consent = true;
-        let app = godot_app(&saved, None, &[], false, None);
+        let app = godot_app(&saved, None, &[], false, None, &ok);
         assert_eq!(app["state"], "setting_up");
-        assert_eq!(states(&app), ["find:needs_you", "project:waiting", "start:waiting"]);
+        assert_eq!(states(&app), ["find:needs_you", "project:waiting", "runtime:waiting", "start:waiting"]);
         assert_eq!(app["steps"][0]["link"]["key"], "get-godot", "not installed: offer the official download");
 
-        let app = godot_app(&saved, Some(&editor), &[game.clone()], false, None);
-        assert_eq!(states(&app), ["find:done", "project:needs_you", "start:waiting"]);
+        let app = godot_app(&saved, Some(&editor), &[game.clone()], false, None, &ok);
+        assert_eq!(states(&app), ["find:done", "project:needs_you", "runtime:waiting", "start:waiting"]);
         assert_eq!(app["steps"][1]["choices"][0]["label"], "game");
         assert_eq!(app["steps"][1]["choices"][0]["value"], game.display().to_string());
-        let empty = godot_app(&saved, Some(&editor), &[], false, None);
+        let empty = godot_app(&saved, Some(&editor), &[], false, None, &ok);
         assert!(empty["steps"][1]["hint"].as_str().unwrap().contains("paste the folder"), "no recent projects: say what to do");
 
         saved.project = Some(game.display().to_string());
-        let app = godot_app(&saved, Some(&editor), &[game.clone()], true, None);
-        assert_eq!(states(&app), ["find:done", "project:done", "start:working"]);
+        let app = godot_app(&saved, Some(&editor), &[game.clone()], true, None, &ok);
+        assert_eq!(states(&app), ["find:done", "project:done", "runtime:done", "start:working"]);
         assert_eq!(app["state"], "setting_up");
 
-        let app = godot_app(&saved, Some(&editor), &[game.clone()], true, Some(&summary(false, 0, Some("npx runtime unavailable"))));
-        assert_eq!(states(&app), ["find:done", "project:done", "start:needs_you"]);
+        let app = godot_app(&saved, Some(&editor), &[game.clone()], true, Some(&summary(false, 0, Some("godot helper stopped"))), &ok);
+        assert_eq!(states(&app), ["find:done", "project:done", "runtime:done", "start:needs_you"]);
         assert_eq!(app["state"], "needs_attention");
-        assert_eq!(app["steps"][2]["bad"], true);
-        assert_eq!(app["steps"][2]["hint"], "npx runtime unavailable");
+        assert_eq!(app["steps"][3]["bad"], true);
+        assert_eq!(app["steps"][3]["hint"], "godot helper stopped");
 
-        let app = godot_app(&saved, Some(&editor), &[game.clone()], true, Some(&summary(true, 9, None)));
-        assert_eq!(states(&app), ["find:done", "project:done", "start:done"]);
+        let app = godot_app(&saved, Some(&editor), &[game.clone()], true, Some(&summary(true, 9, None)), &ok);
+        assert_eq!(states(&app), ["find:done", "project:done", "runtime:done", "start:done"]);
         assert_eq!(app["state"], "ready", "ready only when the helper really answered with tools");
-        assert_eq!(godot_app(&saved, Some(&editor), &[], true, Some(&summary(true, 0, None)))["state"], "setting_up", "a helper with no tools is not ready");
+        assert_eq!(godot_app(&saved, Some(&editor), &[], true, Some(&summary(true, 0, None)), &ok)["state"], "setting_up", "a helper with no tools is not ready");
 
         saved.project = Some(root.join("deleted").display().to_string());
-        assert_eq!(states(&godot_app(&saved, Some(&editor), &[], true, Some(&summary(true, 9, None)))), ["find:done", "project:needs_you", "start:waiting"], "a project that was deleted is asked for again");
+        assert_eq!(states(&godot_app(&saved, Some(&editor), &[], true, Some(&summary(true, 9, None)), &ok)), ["find:done", "project:needs_you", "runtime:waiting", "start:waiting"], "a project that was deleted is asked for again");
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test] fn the_helper_program_download_is_its_own_visible_step() {
+        let root = scratch("program");
+        let game = project(&root, "game");
+        let editor = root.join("Godot");
+        let saved = SavedApp { consent: true, project: Some(game.display().to_string()), mode: None };
+        let app = |enabled: bool, server: Option<ServerSummary>, view: View| godot_app(&saved, Some(&editor), &[], enabled, server.as_ref(), &view);
+
+        let fetching = app(true, None, View::Working);
+        assert_eq!(states(&fetching), ["find:done", "project:done", "runtime:working", "start:waiting"]);
+        assert!(fetching["steps"][2]["hint"].as_str().unwrap().contains("small helper program"));
+        assert_eq!(fetching["state"], "setting_up");
+        assert_eq!(states(&app(true, None, View::Later)), ["find:done", "project:done", "runtime:working", "start:waiting"], "switched on and not there yet: it is being fetched");
+        assert_eq!(states(&app(false, None, View::Later)), ["find:done", "project:done", "runtime:waiting", "start:needs_you"], "switched off: nothing is fetched, Start is offered");
+
+        let failed = app(true, Some(summary(false, 0, Some("[godot] PlazCode could not download its helper program."))), View::Failed("PlazCode could not download its helper program. Check your internet connection and try again.".into()));
+        assert_eq!(states(&failed), ["find:done", "project:done", "runtime:needs_you", "start:waiting"], "the failure is shown once, on the step that failed");
+        assert_eq!(failed["steps"][2]["bad"], true);
+        assert_eq!(failed["steps"][2]["action"]["run"], "test");
+        assert!(failed["steps"][2]["hint"].as_str().unwrap().contains("internet"));
+        assert_eq!(failed["state"], "needs_attention");
+
+        assert_eq!(states(&app(true, Some(summary(true, 9, None)), View::Later)), ["find:done", "project:done", "runtime:done", "start:done"], "a running helper proves the program is there");
+        assert_eq!(helper_program_step(&View::Failed("x".into()), false, true, false)["state"], "waiting", "not needed yet: nothing is shown");
+        let other = app(true, Some(summary(false, 0, Some("Godot was not found."))), View::Later);
+        assert_eq!(states(&other), ["find:done", "project:done", "runtime:done", "start:needs_you"], "a helper that failed for its own reason shows that reason, not an endless download");
+        assert_eq!(other["steps"][3]["hint"], "Godot was not found.");
         let _ = std::fs::remove_dir_all(root);
     }
 

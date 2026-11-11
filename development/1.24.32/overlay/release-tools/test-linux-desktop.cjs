@@ -65,7 +65,7 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   await page.locator('#cnApps [data-cn-open="godot"]').waitFor();assert.equal(await pill(),'Not set up','the real page draws the real report');
   await page.locator('#cnApps [data-cn-open="godot"]').click();
   assert.match(await page.locator('#cnWin .cn-consent p').innerText(),/Nothing in your projects changes/);
-  assert.deepEqual([await stepState('find'),await stepState('project'),await stepState('start')],['waiting','waiting','waiting'],'nothing is claimed before Allow');
+  assert.deepEqual([await stepState('find'),await stepState('project'),await stepState('runtime'),await stepState('start')],['waiting','waiting','waiting','waiting'],'nothing is claimed before Allow');
   await page.locator('#cnWin [data-cn-act="allow"]').click();
   await waitFor(async()=>await stepState('find')==='done'&&await stepState('project')==='needs_you','Allow finds the editor and asks for a project');
   assert.equal(await page.locator('#cnWin [data-step="find"] .cn-detail').innerText(),path.join(temp,'Godot_v4-stand-in'));
@@ -75,8 +75,8 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   await page.locator('#cnWin [data-cn-input="project"]').fill(game);await page.locator('#cnWin [data-cn-input="project"]').press('Enter');
   await waitFor(async()=>await stepState('project')==='done','the pasted project is accepted');
   assert.equal(await page.locator('#cnWin [data-step="project"] .cn-detail').innerText(),game);assert.equal(await page.locator('#cnWin .cn-alert').count(),0);
-  const started=await stepState('start');assert(['working','done','needs_you'].includes(started),'the helper is switched on once editor and project are known: '+started);
-  console.log('Godot helper on this machine after pick: '+started+' / '+await pill());
+  const program=await stepState('runtime'),started=await stepState('start');assert(['working','done','needs_you'].includes(program),'the helper program is looked for once editor and project are known: '+program);assert(['waiting','working','done','needs_you'].includes(started),'start step state: '+started);assert(program==='done'||started==='waiting','the helper never starts before its program is ready: '+program+' / '+started);
+  console.log('Godot on this machine after pick: helper program '+program+', helper '+started+' / '+await pill());
   await page.locator('#cnWin [data-cn-act="disconnect"]').click();await waitFor(async()=>await pill()==='Not set up','Disconnect returns to Not set up');
   await page.locator('#cnWin [data-cn-act="close"]').first().click();
   assert.equal((await call('/api/show',{})).status,200);await waitFor(()=>launch().length===2,'relaunch shows real Linux desktop');

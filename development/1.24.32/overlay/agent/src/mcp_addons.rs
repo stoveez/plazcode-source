@@ -425,6 +425,26 @@ impl AddonRuntime {
                 return Ok(cmd);
             }
         }
+        // Mac and Linux: `npx` / `uvx` come from PlazCode's own pinned copy, the person's PATH or the usual install
+        // folders (an app started from Finder has no shell PATH). None found: `ensure` downloads the pinned copy.
+        #[cfg(not(windows))]
+        if matches!(self.spec.command.as_str(), "npx" | "uvx") {
+            let path = self.inherited_path();
+            let found = crate::runtime::locate(&self.spec.command, path.as_deref())
+                .ok_or_else(|| anyhow::anyhow!("[{}] {} runtime unavailable; first-use setup requires internet access.", self.id, self.spec.command))?;
+            let mut cmd = Command::new(&found.program);
+            cmd.args(&found.first_args).args(&self.spec.args);
+            apply_uv_defaults(&mut cmd, &self.spec.command, &self.spec.env);
+            cmd.envs(&self.spec.env);
+            let mut paths = vec![found.path_dir];
+            if let Some(Ok(git)) = self.git_override() {
+                if let Some(dir) = git.parent() { paths.push(dir.to_path_buf()); }
+                cmd.env("GIT_PYTHON_GIT_EXECUTABLE", git);
+            }
+            paths.extend(path.map(|path| std::env::split_paths(&path).collect::<Vec<_>>()).unwrap_or_else(|| ["/usr/bin", "/bin", "/usr/sbin", "/sbin"].map(PathBuf::from).to_vec()));
+            cmd.env("PATH", std::env::join_paths(paths)?);
+            return Ok(cmd);
+        }
         let mut cmd = Command::new(&self.spec.command);
         cmd.args(&self.spec.args);
         apply_uv_defaults(&mut cmd, &self.spec.command.to_ascii_lowercase(), &self.spec.env);
@@ -465,17 +485,32 @@ impl AddonRuntime {
                 std::fs::write(&script, include_str!("../../Setup-Mcp-Runtime.ps1"))
                     .map_err(|e| anyhow::anyhow!("[{}] Could not prepare the runtime setup: {e}", self.id))?;
                 tracing::info!("[{}] Preparing {} runtime for first use; download is cached for later launches", self.id, self.spec.command);
+                let helper = self.spec.command.to_ascii_lowercase();
+                crate::runtime::note(&helper, crate::runtime::View::Working);
                 let mut setup = Command::new(crate::hidden::hidden!("powershell.exe"));
                 setup.args(crate::hidden::hidden!("-NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File").split(' '))
                     .arg(&script).arg("-Runtime").arg(self.spec.command.to_ascii_lowercase())
                     .creation_flags(CREATE_NO_WINDOW).kill_on_drop(true);
                 let output = tokio::time::timeout(std::time::Duration::from_secs(300), setup.output()).await;
                 let _ = std::fs::remove_file(&script);
-                let output = output
-                    .map_err(|_| anyhow::anyhow!("[{}] Runtime setup timed out; check internet access and retry", self.id))??;
-                anyhow::ensure!(output.status.success(), "[{}] Runtime setup failed: {}", self.id,
-                    String::from_utf8_lossy(&output.stderr).chars().take(4000).collect::<String>());
+                let checked = (|| -> anyhow::Result<()> {
+                    let output = output
+                        .map_err(|_| anyhow::anyhow!("[{}] Runtime setup timed out; check internet access and retry", self.id))??;
+                    anyhow::ensure!(output.status.success(), "[{}] Runtime setup failed: {}", self.id,
+                        String::from_utf8_lossy(&output.stderr).chars().take(4000).collect::<String>());
+                    Ok(())
+                })();
+                crate::runtime::note(&helper, match &checked { Ok(()) => crate::runtime::View::Ready, Err(error) => crate::runtime::View::Failed(error.to_string()) });
+                checked?;
                 tracing::info!("[{}] Runtime setup completed", self.id);
+                self.command()
+            }
+            other => other,
+        };
+        #[cfg(not(windows))]
+        let command = match command {
+            Err(_) if matches!(self.spec.command.as_str(), "npx" | "uvx") => {
+                crate::runtime::ensure(&self.spec.command).await.map_err(|error| anyhow::anyhow!("[{}] {error}", self.id))?;
                 self.command()
             }
             other => other,
@@ -483,6 +518,7 @@ impl AddonRuntime {
         let mut cmd = command?;
         cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).kill_on_drop(true);
         let mut child = cmd.spawn().map_err(|e| anyhow::anyhow!("[{}] could not start '{}': {e}", self.id, self.spec.command))?;
+        { let helper = self.spec.command.to_ascii_lowercase(); if helper == "npx" || helper == "uvx" { crate::runtime::note(&helper, crate::runtime::View::Ready); } }
         if let Some(stderr) = child.stderr.take() {
             let tail = self.stderr.clone();
             self.stderr_task = Some(tokio::spawn(async move {

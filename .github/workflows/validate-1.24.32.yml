@@ -387,6 +387,12 @@ jobs:
         if: ${{ always() && !cancelled() }}
         run: cargo +stable test --locked --manifest-path agent/Cargo.toml
         working-directory: build-src-1.24.32/PlazCode
+      - name: Pinned helper programs (Node and uv) download, pass their checksum and start
+        if: runner.os != 'Windows'
+        env:
+          PLAZCODE_TEST_RUNTIME_DOWNLOAD: "1"
+        run: cargo +stable test --locked --manifest-path agent/Cargo.toml real_pinned_builds_download_verify_and_start -- --ignored --nocapture
+        working-directory: build-src-1.24.32/PlazCode
       - name: Environment snapshot refresh scope and native timing
         run: cargo +stable test --locked --manifest-path agent/Cargo.toml env_info_preserves_snapshot_and_access_flags_without_process_data -- --nocapture
         working-directory: build-src-1.24.32/PlazCode
