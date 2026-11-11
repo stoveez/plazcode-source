@@ -93,6 +93,7 @@ mod creation_export;
 mod updater;
 mod toolkit;
 mod blender;
+mod blender_headless;
 mod platform;
 mod checkpoints;
 mod mcp_addons;
@@ -2281,7 +2282,8 @@ async fn mcp_catalog_handler() -> impl IntoResponse {
 /// Apps & servers page: what each creative app needs next. Looks at the disk, so it runs off the async threads.
 async fn connections_handler(State(state): State<AppState>) -> impl IntoResponse {
     let servers = state.ui.servers.lock().map(|value| value.clone()).unwrap_or_default();
-    match tokio::task::spawn_blocking(move || connections::report(&servers)).await {
+    let preview = blender::preview();
+    match tokio::task::spawn_blocking(move || connections::report(&servers, preview)).await {
         Ok(report) => Json(report).into_response(),
         Err(error) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(),
     }
@@ -2292,14 +2294,27 @@ async fn connections_setup_handler(State(state): State<AppState>, Json(request):
     let outcome = tokio::task::spawn_blocking(move || -> anyhow::Result<connections::After> {
         let path = connections::store_path();
         let mut saved = connections::load_from(&path);
-        let (switch, after) = connections::apply(&mut saved, &request, mcp_addons::find_godot().is_some())?;
+        let facts = connections::Facts {
+            godot_found: request.id == "godot" && mcp_addons::find_godot().is_some(),
+            blender_found: request.id == "blender" && connections::find_blender().is_some(),
+            blender_old_connection: mcp_addons::is_enabled("blender"),
+        };
+        let (switch, after) = connections::apply(&mut saved, &request, &facts)?;
         connections::save_to(&path, &saved)?;
         if let Some((id, on)) = switch { if mcp_addons::is_enabled(id) != on { mcp_addons::set_catalog_enabled(id, on)?; } }
         Ok(after)
     }).await.unwrap_or_else(|error| Err(anyhow::anyhow!(error.to_string())));
     match outcome {
         Ok(after) => {
-            if after == connections::After::RefreshHelpers {
+            // Blender follow-ups run behind the reply; the open setup window shows their progress every two seconds.
+            match after {
+                connections::After::BlenderCheck => { tokio::spawn(async { blender::check().await; }); }
+                connections::After::BlenderStop => { blender::clear_preview(); tokio::spawn(blender_headless::stop()); }
+                connections::After::BlenderPreview => { if let Err(error) = blender::make_preview().await { return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(); } }
+                connections::After::BlenderOpen => { match blender::open_in_blender().await { Ok(file) => return Json(serde_json::json!({"ok": true, "notice": format!("Saved and opened in Blender: {}", file.display())})).into_response(), Err(error) => return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response() } }
+                _ => {}
+            }
+            if after != connections::After::Nothing {
                 let refresh_state = state.clone();
                 let expected=state.accounts.active().map(|p|p.epoch);
                 tokio::spawn(async move {

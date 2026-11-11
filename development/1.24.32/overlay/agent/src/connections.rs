@@ -31,6 +31,15 @@ pub struct SavedApp {
     /// Blender: "background" or "window".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
+    /// Blender: the Blender program the person pointed at (when PlazCode did not find it by itself).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub program: Option<String>,
+    /// Blender: the person switched "Allow free Python" on. Off (safe mode) is the default.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub free_python: bool,
+    /// Blender: a real request was answered at least once with these choices.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub verified: bool,
 }
 
 pub fn store_path() -> PathBuf { mcp_addons::config_path().with_file_name("connections.json") }
@@ -201,17 +210,174 @@ pub fn with_godot_project(tool: &str, mut args: Value, project: Option<&str>) ->
 /// The saved Godot project, for the tool-call path. Read fresh so a new choice applies to the next command.
 pub fn godot_project() -> Option<String> { load().apps.get("godot").and_then(|app| app.project.clone()) }
 
+// ---- Blender -----------------------------------------------------------------------------------------------------
+
+/// Where Blender usually is. `env` reads an environment variable; `list` lists a folder (so tests use fake trees).
+pub fn blender_candidates(os: &str, env: &dyn Fn(&str) -> Option<PathBuf>, list: &dyn Fn(&Path) -> Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut found = Vec::new();
+    for key in ["PLAZCODE_BLENDER", "BLENDER_PATH"] { if let Some(path) = env(key) { found.push(path); } }
+    let newest_first = |folder: PathBuf, file: &str| -> Vec<PathBuf> {
+        let mut versions: Vec<PathBuf> = list(&folder).into_iter().filter(|dir| dir.file_name().is_some_and(|name| name.to_string_lossy().to_ascii_lowercase().starts_with("blender"))).collect();
+        versions.sort_by(|a, b| version_key(b).cmp(&version_key(a)));
+        versions.into_iter().map(|dir| dir.join(file)).collect()
+    };
+    match os {
+        "windows" => {
+            for key in ["ProgramW6432", "ProgramFiles"] { if let Some(base) = env(key) { found.extend(newest_first(base.join("Blender Foundation"), "blender.exe")); } }
+            for key in ["ProgramFiles(x86)", "ProgramFiles"] { if let Some(base) = env(key) { found.push(base.join("Steam").join("steamapps").join("common").join("Blender").join("blender.exe")); } }
+            if let Some(local) = env("LOCALAPPDATA") { found.push(local.join("Microsoft").join("WindowsApps").join("blender.exe")); }
+        }
+        "macos" => {
+            found.push(PathBuf::from("/Applications/Blender.app/Contents/MacOS/Blender"));
+            if let Some(home) = env("HOME") {
+                found.push(home.join("Applications/Blender.app/Contents/MacOS/Blender"));
+                found.push(home.join("Library/Application Support/Steam/steamapps/common/Blender/Blender.app/Contents/MacOS/Blender"));
+            }
+        }
+        _ => {
+            if let Some(path) = env("PATH") { found.extend(std::env::split_paths(&path).map(|dir| dir.join("blender"))); }
+            found.extend(["/usr/bin/blender", "/usr/local/bin/blender", "/snap/bin/blender"].map(PathBuf::from));
+            if let Some(home) = env("HOME") { found.push(home.join(".steam/steam/steamapps/common/Blender/blender")); }
+        }
+    }
+    let mut unique = Vec::new();
+    for path in found { if !unique.contains(&path) { unique.push(path); } }
+    unique
+}
+
+/// "Blender 4.2" sorts after "Blender 4.10" as text; compare the numbers instead.
+fn version_key(path: &Path) -> Vec<u32> {
+    path.file_name().map(|name| name.to_string_lossy().split(|c: char| !c.is_ascii_digit()).filter(|part| !part.is_empty()).filter_map(|part| part.parse().ok()).collect()).unwrap_or_default()
+}
+
+pub fn find_blender() -> Option<PathBuf> {
+    blender_candidates(std::env::consts::OS, &|key| std::env::var_os(key).filter(|v| !v.is_empty()).map(PathBuf::from),
+        &|folder| std::fs::read_dir(folder).map(|entries| entries.flatten().map(|entry| entry.path()).collect()).unwrap_or_default())
+        .into_iter().find(|path| path.is_file())
+}
+
+/// A Blender program the person pasted. A Mac app bundle ("Blender.app") means the program inside it.
+pub fn blender_program(raw: &str) -> Option<PathBuf> {
+    let raw = raw.trim().trim_matches('"');
+    if raw.is_empty() || raw.len() > 1024 || raw.chars().any(|c| c.is_control()) { return None; }
+    let mut path = PathBuf::from(raw);
+    if path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("app")) { path = path.join("Contents/MacOS/Blender"); }
+    if path.is_dir() { path = path.join(if cfg!(windows) { "blender.exe" } else { "blender" }); }
+    let named_blender = path.file_stem().is_some_and(|stem| stem.to_string_lossy().to_ascii_lowercase().starts_with("blender"));
+    (path.is_absolute() && named_blender && path.is_file()).then_some(path)
+}
+
+/// How PlazCode reaches Blender right now, for the command path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BlenderChoice { pub consent: bool, pub background: bool, pub free_python: bool, pub program: Option<PathBuf> }
+
+/// The saved Blender entry. People who switched the old Blender connection on before this page existed keep
+/// their open-window setup.
+pub fn blender_saved(saved: &Saved, old_connection_on: bool) -> SavedApp {
+    match saved.apps.get("blender") {
+        Some(app) => app.clone(),
+        None if old_connection_on => SavedApp { consent: true, mode: Some("window".into()), ..SavedApp::default() },
+        None => SavedApp::default(),
+    }
+}
+
+pub fn blender_choice_from(app: &SavedApp, found: Option<PathBuf>) -> BlenderChoice {
+    let background = app.consent && app.mode.as_deref() != Some("window");
+    BlenderChoice { consent: app.consent, background, free_python: app.free_python, program: app.program.as_deref().and_then(blender_program).or(found) }
+}
+
+/// Read fresh so a new choice applies to the next command. Blender is only looked for after Allow, in background mode.
+pub fn blender_choice() -> BlenderChoice {
+    let app = blender_saved(&load(), mcp_addons::is_enabled("blender"));
+    let look = app.consent && app.mode.as_deref() != Some("window") && app.program.as_deref().and_then(blender_program).is_none();
+    blender_choice_from(&app, if look { find_blender() } else { None })
+}
+
+/// What the page needs to know about Blender besides the saved choices.
+pub struct BlenderFacts { pub found: Option<PathBuf>, pub background: crate::blender_headless::Status, pub window_answers: Option<bool>, pub preview: Option<String> }
+
+const BLENDER_MODES: [(&str, &str); 2] = [("background", "Background (no window)"), ("window", "My open Blender window")];
+
+/// The Blender entry for the page: one card, two ways to connect.
+pub fn blender_app(saved: &SavedApp, facts: &BlenderFacts) -> Value {
+    use crate::blender_headless::Status;
+    let window = saved.mode.as_deref() == Some("window");
+    let program = saved.program.as_deref().and_then(blender_program).or_else(|| facts.found.clone()).filter(|_| saved.consent);
+    let mut steps = Vec::new();
+    let state;
+    if window {
+        let answers = saved.consent && facts.window_answers.unwrap_or(saved.verified);
+        let helper = if !saved.consent { step("helper", "Start the helper inside Blender", "waiting") }
+            else if answers { step("helper", "Start the helper inside Blender", "done") }
+            else { with(with(step("helper", "Start the helper inside Blender", "needs_you"), "hint", json!("Open Blender, press N over the 3D view, open the tab named Blender MCP and click Start MCP Server. Keep Blender open. If that tab is missing, add the helper to Blender first.")), "link", json!({"label": "Open the guide", "key": "blender-guide"})) };
+        let test = if !saved.consent { step("test", "Check that Blender answers", "waiting") }
+            else if answers { step("test", "Check that Blender answers", "done") }
+            else { with(step("test", "Check that Blender answers", "needs_you"), "action", json!({"label": "Check now", "run": "test"})) };
+        steps.extend([helper, test]);
+        state = if !saved.consent { "not_set_up" } else if answers { "ready" } else { "setting_up" };
+    } else {
+        const PASTE: &str = "Or paste where the Blender program is";
+        let find = match &program {
+            Some(path) => with(with(with(step("find", "Find Blender", "done"), "detail", json!(path.display().to_string())), "input", json!(PASTE)), "use", json!("Use this")),
+            None if saved.consent => with(with(with(with(step("find", "Find Blender", "needs_you"), "hint", json!("Blender is not on this computer yet. Get it and install it. PlazCode keeps looking and carries on by itself.")), "link", json!({"label": "Get Blender", "key": "get-blender"})), "input", json!(PASTE)), "use", json!("Use this")),
+            None => step("find", "Find Blender", "waiting"),
+        };
+        const START: &str = "Start Blender in the background";
+        let start = if program.is_none() { step("start", START, "waiting") } else {
+            match &facts.background {
+                Status::Running(version) => with(step("start", START, "done"), "detail", json!(format!("Blender {version}"))),
+                Status::Starting => with(step("start", START, "working"), "hint", json!("Starting Blender. The first time can take up to a minute.")),
+                Status::Failed(error) => with(with(with(step("start", START, "needs_you"), "hint", json!(error)), "bad", json!(true)), "action", json!({"label": "Try again", "run": "test"})),
+                Status::Stopped if saved.verified => with(step("start", START, "done"), "hint", json!("Blender starts by itself when the AI needs it.")),
+                Status::Stopped => with(step("start", START, "needs_you"), "action", json!({"label": "Start", "run": "test"})),
+            }
+        };
+        let failed = matches!(facts.background, Status::Failed(_));
+        let ready = program.is_some() && (matches!(facts.background, Status::Running(_)) || (facts.background == Status::Stopped && saved.verified));
+        state = if !saved.consent { "not_set_up" } else if program.is_some() && failed { "needs_attention" } else if ready { "ready" } else { "setting_up" };
+        steps.extend([find, start]);
+    }
+    let mut app = json!({
+        "id": "blender", "name": "Blender", "state": state,
+        "line": "Model, shape and colour 3D objects.",
+        "lead": if window { "PlazCode works in the Blender window you have open. Each step ticks itself off when it is done." } else { "PlazCode runs Blender quietly in the background. You do not need to open Blender or change anything in it." },
+        "consent": if window { "PlazCode will connect to the helper in your open Blender window. Nothing in your scene changes until you ask the AI." } else { "PlazCode will look for Blender on this computer and start it in the background when the AI needs it. Your own Blender files are not touched." },
+        "mode": if window { "window" } else { "background" },
+        "modes": BLENDER_MODES.iter().map(|(id, label)| json!({"id": id, "label": label})).collect::<Vec<_>>(),
+        "steps": steps,
+        "prompts": ["Make a low-poly tree and show me a picture.", "Make a simple chair, then send it to Roblox Studio."],
+    });
+    if saved.consent {
+        app["switches"] = json!([{"id": "free_python", "label": "Allow free Python", "on": saved.free_python,
+            "note": if saved.free_python { "On: the AI may run its own Python code in Blender." } else { "Off (safe mode): the AI can only use PlazCode's built-in Blender actions." }}]);
+        if !window && state == "ready" {
+            app["actions"] = json!([{"label": "Show a picture", "run": "preview"}, {"label": "Open in Blender", "run": "open"}]);
+            if let Some(preview) = &facts.preview { app["preview"] = json!(preview); }
+        }
+    }
+    app
+}
+
 // ---- Report and setup --------------------------------------------------------------------------------------------
 
 /// Everything the page needs, for the apps this build sets up itself. Apps not listed here are drawn by the page
 /// from the older server list, so adding an app is one entry here and nothing in the page.
-pub fn report(servers: &[ServerSummary]) -> Value {
+pub fn report(servers: &[ServerSummary], preview: Option<String>) -> Value {
     let saved = load();
+    let blender = blender_saved(&saved, mcp_addons::is_enabled("blender"));
+    let background = blender.consent && blender.mode.as_deref() != Some("window");
+    let facts = BlenderFacts {
+        found: if background && blender.program.as_deref().and_then(blender_program).is_none() { find_blender() } else { None },
+        background: crate::blender_headless::status(),
+        window_answers: if blender.consent && !background { crate::blender::socket_connected() } else { None },
+        preview,
+    };
     let godot = saved.apps.get("godot").cloned().unwrap_or_default();
     // Looking for the editor and reading Godot's project list happen only after the person pressed Allow.
     let found = if godot.consent { mcp_addons::find_godot() } else { None };
     let recent = if godot.consent { godot_recent_projects() } else { Vec::new() };
     json!({"ok": true, "apps": [
+        blender_app(&blender, &facts),
         godot_app(&godot, found.as_deref(), &recent, mcp_addons::is_enabled("godot"), servers.iter().find(|s| s.id == "godot"),
             // Looking for Node on this computer is part of the setup, so it also waits for Allow.
             &(if godot.consent { crate::runtime::view("npx") } else { View::Later })),
@@ -230,12 +396,23 @@ pub struct SetupRequest {
 
 /// What the caller must do after a setup request was recorded.
 #[derive(Debug, PartialEq, Eq)]
-pub enum After { Nothing, RefreshHelpers }
+pub enum After { Nothing, RefreshHelpers, BlenderCheck, BlenderStop, BlenderPreview, BlenderOpen }
+
+/// What `apply` needs to know about the computer.
+#[derive(Default)]
+pub struct Facts { pub godot_found: bool, pub blender_found: bool, pub blender_old_connection: bool }
 
 /// Apply one setup request to the saved choices. Returns the helper switch to set (id, on) and what to do next.
-/// Pure apart from checking that a chosen project folder exists.
-pub fn apply(saved: &mut Saved, request: &SetupRequest, godot_found: bool) -> anyhow::Result<(Option<(&'static str, bool)>, After)> {
-    anyhow::ensure!(request.id == "godot", "PlazCode cannot set up '{}' in this version yet.", request.id.chars().take(40).collect::<String>());
+/// Pure apart from checking that a chosen folder or program exists.
+pub fn apply(saved: &mut Saved, request: &SetupRequest, facts: &Facts) -> anyhow::Result<(Option<(&'static str, bool)>, After)> {
+    match request.id.as_str() {
+        "godot" => apply_godot(saved, request, facts.godot_found),
+        "blender" => apply_blender(saved, request, facts),
+        other => anyhow::bail!("PlazCode cannot set up '{}' in this version yet.", other.chars().take(40).collect::<String>()),
+    }
+}
+
+fn apply_godot(saved: &mut Saved, request: &SetupRequest, godot_found: bool) -> anyhow::Result<(Option<(&'static str, bool)>, After)> {
     let app = saved.apps.entry("godot".to_string()).or_default();
     if request.disconnect == Some(true) {
         app.consent = false;
@@ -251,6 +428,59 @@ pub fn apply(saved: &mut Saved, request: &SetupRequest, godot_found: bool) -> an
     // The helper starts once Godot and a project are both known; until then nothing is switched on.
     let ready = godot_found && app.project.as_deref().and_then(godot_project_folder).is_some();
     Ok(if ready { (Some(("godot", true)), After::RefreshHelpers) } else { (None, After::Nothing) })
+}
+
+fn apply_blender(saved: &mut Saved, request: &SetupRequest, facts: &Facts) -> anyhow::Result<(Option<(&'static str, bool)>, After)> {
+    let start = blender_saved(saved, facts.blender_old_connection);
+    let app = saved.apps.entry("blender".to_string()).or_insert(start);
+    if request.disconnect == Some(true) {
+        app.consent = false;
+        app.verified = false;
+        return Ok((Some(("blender", false)), After::BlenderStop));
+    }
+    let step = request.step.as_deref().unwrap_or("");
+    // Looking at how PlazCode would connect is free; everything else needs Allow.
+    if let Some(mode) = request.mode.as_deref() {
+        anyhow::ensure!(BLENDER_MODES.iter().any(|(id, _)| *id == mode), "PlazCode does not know that way to connect Blender.");
+        let changed = app.mode.as_deref().unwrap_or("background") != mode;
+        app.mode = Some(mode.to_string());
+        if changed { app.verified = false; }
+        if request.consent != Some(true) && !app.consent { return Ok((None, After::Nothing)); }
+        if changed && request.consent != Some(true) && step.is_empty() {
+            // The open-window way still uses the older Blender helper connection; the background way needs none.
+            return Ok((Some(("blender", mode == "window")), if mode == "window" { After::BlenderStop } else { After::BlenderCheck }));
+        }
+    }
+    if request.consent == Some(true) { app.consent = true; }
+    anyhow::ensure!(app.consent, "Press Allow first.");
+    let window = app.mode.as_deref() == Some("window");
+    match step {
+        "find" => {
+            let program = blender_program(request.value.as_deref().unwrap_or("")).ok_or_else(|| anyhow::anyhow!("That is not the Blender program. Choose the file named blender (on Windows blender.exe, on a Mac the Blender app)."))?;
+            app.program = Some(program.display().to_string());
+            app.verified = false;
+        }
+        "switch:free_python" => {
+            app.free_python = match request.value.as_deref() { Some("on") => true, Some("off") => false, _ => anyhow::bail!("Choose on or off.") };
+            return Ok((None, After::Nothing));
+        }
+        "preview" | "open" => {
+            anyhow::ensure!(!window, "This works when Blender runs in the background.");
+            return Ok((None, if step == "preview" { After::BlenderPreview } else { After::BlenderOpen }));
+        }
+        "" | "test" | "start" => {}
+        other => anyhow::bail!("PlazCode does not know the step '{}'.", other.chars().take(40).collect::<String>()),
+    }
+    if window { return Ok((Some(("blender", true)), After::BlenderCheck)); }
+    let known = app.program.as_deref().and_then(blender_program).is_some() || facts.blender_found;
+    Ok((Some(("blender", false)), if known { After::BlenderCheck } else { After::Nothing }))
+}
+
+/// Remember that Blender answered (or stopped answering) a real request with the current choices.
+pub fn mark_blender_verified(ok: bool) {
+    let path = store_path();
+    let mut saved = load_from(&path);
+    if let Some(app) = saved.apps.get_mut("blender") { if app.verified != ok { app.verified = ok; let _ = save_to(&path, &saved); } }
 }
 
 #[cfg(test)]
@@ -360,7 +590,7 @@ mod tests {
         let root = scratch("program");
         let game = project(&root, "game");
         let editor = root.join("Godot");
-        let saved = SavedApp { consent: true, project: Some(game.display().to_string()), mode: None };
+        let saved = SavedApp { consent: true, project: Some(game.display().to_string()), ..SavedApp::default() };
         let app = |enabled: bool, server: Option<ServerSummary>, view: View| godot_app(&saved, Some(&editor), &[], enabled, server.as_ref(), &view);
 
         let fetching = app(true, None, View::Working);
@@ -400,28 +630,154 @@ mod tests {
         let _ = std::fs::remove_dir_all(root);
     }
 
+    #[test] fn blender_is_looked_for_in_the_usual_places_newest_first() {
+        let env = |pairs: &'static [(&'static str, &'static str)]| move |key: &str| pairs.iter().find(|(k, _)| *k == key).map(|(_, v)| PathBuf::from(v));
+        let versions = |folder: &Path| if folder.ends_with("Blender Foundation") { ["Blender 4.2", "Blender 4.10", "Blender 5.2", "Other tool"].iter().map(|name| folder.join(name)).collect() } else { Vec::new() };
+        let windows = blender_candidates("windows", &env(&[("ProgramFiles", "C:/Program Files"), ("ProgramFiles(x86)", "C:/Program Files (x86)"), ("LOCALAPPDATA", "C:/Users/me/AppData/Local")]), &versions);
+        let names: Vec<String> = windows.iter().map(|p| p.display().to_string().replace('\\', "/")).collect();
+        assert_eq!(names, ["C:/Program Files/Blender Foundation/Blender 5.2/blender.exe", "C:/Program Files/Blender Foundation/Blender 4.10/blender.exe", "C:/Program Files/Blender Foundation/Blender 4.2/blender.exe",
+            "C:/Program Files (x86)/Steam/steamapps/common/Blender/blender.exe", "C:/Program Files/Steam/steamapps/common/Blender/blender.exe", "C:/Users/me/AppData/Local/Microsoft/WindowsApps/blender.exe"]);
+        let mac = blender_candidates("macos", &env(&[("HOME", "/Users/me")]), &|_| Vec::new());
+        assert_eq!(mac[0], PathBuf::from("/Applications/Blender.app/Contents/MacOS/Blender"));
+        assert!(mac.contains(&PathBuf::from("/Users/me/Applications/Blender.app/Contents/MacOS/Blender")));
+        let linux = blender_candidates("linux", &env(&[("PLAZCODE_BLENDER", "/opt/b/blender"), ("PATH", "/usr/bin:/opt/bin")]), &|_| Vec::new());
+        assert_eq!(&linux[..3], [PathBuf::from("/opt/b/blender"), PathBuf::from("/usr/bin/blender"), PathBuf::from("/opt/bin/blender")], "a named program wins, then PATH");
+        assert_eq!(linux.iter().filter(|p| **p == PathBuf::from("/usr/bin/blender")).count(), 1, "no duplicates");
+
+        let root = scratch("blender-program");
+        let program = root.join(if cfg!(windows) { "blender.exe" } else { "blender" });
+        std::fs::write(&program, "program").unwrap();
+        std::fs::write(root.join("notes.txt"), "x").unwrap();
+        assert_eq!(blender_program(&format!(" \"{}\" ", program.display())), Some(program.clone()));
+        assert_eq!(blender_program(&root.display().to_string()), Some(program.clone()), "the folder that holds Blender is fine too");
+        let bundle = root.join("Blender.app"); std::fs::create_dir_all(bundle.join("Contents/MacOS")).unwrap(); std::fs::write(bundle.join("Contents/MacOS/Blender"), "x").unwrap();
+        assert_eq!(blender_program(&bundle.display().to_string()), Some(bundle.join("Contents/MacOS/Blender")), "a Mac app means the program inside it");
+        for bad in ["", "blender", &root.join("notes.txt").display().to_string(), &root.join("missing/blender").display().to_string()] { assert_eq!(blender_program(bad), None, "{bad}"); }
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test] fn the_blender_card_has_two_ways_and_starts_in_the_background() {
+        use crate::blender_headless::Status;
+        let root = scratch("blender-card");
+        let program = root.join("blender"); std::fs::write(&program, "x").unwrap();
+        let facts = |found: bool, background: Status| BlenderFacts { found: found.then(|| program.clone()), background, window_answers: None, preview: None };
+        let mut saved = SavedApp::default();
+
+        let app = blender_app(&saved, &facts(true, Status::Running("4.5.3".into())));
+        assert_eq!((app["state"].clone(), app["mode"].clone()), (json!("not_set_up"), json!("background")), "background is the default way");
+        assert_eq!(states(&app), ["find:waiting", "start:waiting"], "nothing is claimed before Allow");
+        assert_eq!(app["modes"], json!([{"id": "background", "label": "Background (no window)"}, {"id": "window", "label": "My open Blender window"}]));
+        assert!(app.get("switches").is_none() && app.get("actions").is_none() && app["steps"][0].get("detail").is_none());
+        assert!(app["consent"].as_str().unwrap().contains("in the background"));
+
+        saved.consent = true;
+        let app = blender_app(&saved, &facts(false, Status::Stopped));
+        assert_eq!(states(&app), ["find:needs_you", "start:waiting"]);
+        assert_eq!((app["steps"][0]["link"]["key"].clone(), app["steps"][0]["use"].clone()), (json!("get-blender"), json!("Use this")), "not installed: official download, or point at it");
+        assert_eq!(app["switches"][0]["on"], false, "safe mode is on until the person changes it");
+
+        let app = blender_app(&saved, &facts(true, Status::Stopped));
+        assert_eq!(states(&app), ["find:done", "start:needs_you"]);
+        assert_eq!(app["steps"][0]["detail"], program.display().to_string());
+        assert_eq!(states(&blender_app(&saved, &facts(true, Status::Starting))), ["find:done", "start:working"]);
+        let failed = blender_app(&saved, &facts(true, Status::Failed("Blender did not start within 60 seconds.".into())));
+        assert_eq!((failed["state"].clone(), failed["steps"][1]["bad"].clone(), failed["steps"][1]["action"]["run"].clone()), (json!("needs_attention"), json!(true), json!("test")));
+
+        let running = blender_app(&saved, &facts(true, Status::Running("4.5.3".into())));
+        assert_eq!((running["state"].clone(), running["steps"][1]["detail"].clone()), (json!("ready"), json!("Blender 4.5.3")));
+        assert_eq!(running["actions"], json!([{"label": "Show a picture", "run": "preview"}, {"label": "Open in Blender", "run": "open"}]));
+        saved.verified = true;
+        let resting = blender_app(&saved, &facts(true, Status::Stopped));
+        assert_eq!(resting["state"], "ready", "checked before: ready even while Blender is not running");
+        assert!(resting["steps"][1]["hint"].as_str().unwrap().contains("starts by itself"));
+        let mut with_picture = facts(true, Status::Running("4.5.3".into())); with_picture.preview = Some("data:image/png;base64,AAAA".into());
+        assert_eq!(blender_app(&saved, &with_picture)["preview"], "data:image/png;base64,AAAA");
+
+        saved.free_python = true;
+        assert!(blender_app(&saved, &facts(true, Status::Stopped))["switches"][0]["note"].as_str().unwrap().starts_with("On:"));
+
+        saved.mode = Some("window".into());
+        let window = blender_app(&saved, &BlenderFacts { found: None, background: Status::Stopped, window_answers: Some(false), preview: None });
+        assert_eq!((window["mode"].clone(), window["state"].clone()), (json!("window"), json!("setting_up")));
+        assert_eq!(states(&window), ["helper:needs_you", "test:needs_you"]);
+        assert!(window.get("actions").is_none(), "pictures and Open in Blender belong to the background way");
+        let answering = blender_app(&saved, &BlenderFacts { found: None, background: Status::Stopped, window_answers: Some(true), preview: None });
+        assert_eq!((answering["state"].clone(), states(&answering)), (json!("ready"), vec!["helper:done".to_string(), "test:done".to_string()]));
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test] fn blender_setup_requests_keep_safe_mode_and_the_old_window_setup() {
+        let root = scratch("blender-apply");
+        let program = root.join("blender"); std::fs::write(&program, "x").unwrap();
+        let request = |text: &str| serde_json::from_str::<SetupRequest>(text).unwrap();
+        let found = Facts { blender_found: true, ..Facts::default() };
+        let mut saved = Saved::default();
+
+        assert!(apply(&mut saved, &request(r#"{"id":"blender","step":"test"}"#), &found).unwrap_err().to_string().contains("Allow"));
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"blender","mode":"window"}"#), &found).unwrap(), (None, After::Nothing), "choosing a way before Allow starts nothing");
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"blender","mode":"background"}"#), &found).unwrap(), (None, After::Nothing));
+        assert!(apply(&mut saved, &request(r#"{"id":"blender","mode":"cloud"}"#), &found).is_err());
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"blender","consent":true,"mode":"background"}"#), &found).unwrap(), (Some(("blender", false)), After::BlenderCheck), "Allow: the older helper connection stays off and Blender is checked");
+        assert_eq!(blender_choice_from(&saved.apps["blender"], Some(program.clone())), BlenderChoice { consent: true, background: true, free_python: false, program: Some(program.clone()) });
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"blender","consent":true}"#), &Facts::default()).unwrap(), (Some(("blender", false)), After::Nothing), "Blender not installed: nothing to start yet");
+
+        let pasted = serde_json::to_string(&json!({"id": "blender", "step": "find", "value": program.display().to_string()})).unwrap();
+        assert_eq!(apply(&mut saved, &request(&pasted), &Facts::default()).unwrap(), (Some(("blender", false)), After::BlenderCheck));
+        assert_eq!(saved.apps["blender"].program.as_deref(), Some(program.display().to_string().as_str()));
+        let wrong = serde_json::to_string(&json!({"id": "blender", "step": "find", "value": root.display().to_string() + "/nothing"})).unwrap();
+        assert!(apply(&mut saved, &request(&wrong), &found).unwrap_err().to_string().contains("not the Blender program"));
+
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"blender","step":"switch:free_python","value":"on"}"#), &found).unwrap(), (None, After::Nothing));
+        assert!(saved.apps["blender"].free_python);
+        assert!(apply(&mut saved, &request(r#"{"id":"blender","step":"switch:free_python","value":"maybe"}"#), &found).is_err());
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"blender","step":"switch:free_python","value":"off"}"#), &found).unwrap(), (None, After::Nothing));
+        assert!(!saved.apps["blender"].free_python);
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"blender","step":"preview"}"#), &found).unwrap(), (None, After::BlenderPreview));
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"blender","step":"open"}"#), &found).unwrap(), (None, After::BlenderOpen));
+        assert!(apply(&mut saved, &request(r#"{"id":"blender","step":"format-disk"}"#), &found).is_err());
+
+        saved.apps.get_mut("blender").unwrap().verified = true;
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"blender","mode":"window"}"#), &found).unwrap(), (Some(("blender", true)), After::BlenderStop), "switching to the open window stops the background Blender");
+        assert!(!saved.apps["blender"].verified, "the other way has to be checked again");
+        assert!(apply(&mut saved, &request(r#"{"id":"blender","step":"open"}"#), &found).is_err());
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"blender","step":"test"}"#), &found).unwrap(), (Some(("blender", true)), After::BlenderCheck));
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"blender","mode":"background"}"#), &found).unwrap(), (Some(("blender", false)), After::BlenderCheck));
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"blender","disconnect":true}"#), &found).unwrap(), (Some(("blender", false)), After::BlenderStop));
+        assert!(!saved.apps["blender"].consent && saved.apps["blender"].program.is_some(), "Disconnect keeps where Blender is for next time");
+
+        // Someone who had the old Blender connection on keeps working in their open window, with safe mode on.
+        let old = blender_saved(&Saved::default(), true);
+        assert_eq!((old.consent, old.mode.as_deref(), old.free_python), (true, Some("window"), false));
+        assert_eq!(blender_choice_from(&old, None), BlenderChoice { consent: true, background: false, free_python: false, program: None });
+        assert_eq!(blender_saved(&Saved::default(), false), SavedApp::default());
+        let mut upgraded = Saved::default();
+        assert_eq!(apply(&mut upgraded, &request(r#"{"id":"blender","step":"switch:free_python","value":"on"}"#), &Facts { blender_old_connection: true, ..Facts::default() }).unwrap(), (None, After::Nothing));
+        assert_eq!((upgraded.apps["blender"].mode.as_deref(), upgraded.apps["blender"].free_python), (Some("window"), true), "their first change keeps the window way");
+        let _ = std::fs::remove_dir_all(root);
+    }
+
     #[test] fn setup_requests_change_only_what_they_say() {
         let root = scratch("apply");
         let game = project(&root, "game");
         let request = |text: &str| serde_json::from_str::<SetupRequest>(text).unwrap();
         let mut saved = Saved::default();
 
-        assert!(apply(&mut saved, &request(r#"{"id":"godot","step":"test"}"#), true).unwrap_err().to_string().contains("Allow"), "nothing runs before Allow");
-        assert!(apply(&mut saved, &request(r#"{"id":"unity","consent":true}"#), true).is_err(), "unknown apps are refused");
+        assert!(apply(&mut saved, &request(r#"{"id":"godot","step":"test"}"#), &Facts { godot_found: true, ..Facts::default() }).unwrap_err().to_string().contains("Allow"), "nothing runs before Allow");
+        assert!(apply(&mut saved, &request(r#"{"id":"unity","consent":true}"#), &Facts { godot_found: true, ..Facts::default() }).is_err(), "unknown apps are refused");
         assert!(!saved.apps.contains_key("unity"));
 
-        assert_eq!(apply(&mut saved, &request(r#"{"id":"godot","consent":true}"#), true).unwrap(), (None, After::Nothing), "no project yet: the helper stays off");
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"godot","consent":true}"#), &Facts { godot_found: true, ..Facts::default() }).unwrap(), (None, After::Nothing), "no project yet: the helper stays off");
         assert!(saved.apps["godot"].consent);
         let bad = serde_json::to_string(&json!({"id": "godot", "step": "project", "value": root.display().to_string()})).unwrap();
-        assert!(apply(&mut saved, &request(&bad), true).unwrap_err().to_string().contains("project.godot"));
+        assert!(apply(&mut saved, &request(&bad), &Facts { godot_found: true, ..Facts::default() }).unwrap_err().to_string().contains("project.godot"));
         assert_eq!(saved.apps["godot"].project, None);
 
         let good = serde_json::to_string(&json!({"id": "godot", "step": "project", "value": game.display().to_string()})).unwrap();
-        assert_eq!(apply(&mut saved, &request(&good), false).unwrap(), (None, After::Nothing), "Godot not installed: remember the project, start nothing");
+        assert_eq!(apply(&mut saved, &request(&good), &Facts { godot_found: false, ..Facts::default() }).unwrap(), (None, After::Nothing), "Godot not installed: remember the project, start nothing");
         assert_eq!(saved.apps["godot"].project.as_deref(), Some(game.display().to_string().as_str()));
-        assert_eq!(apply(&mut saved, &request(r#"{"id":"godot","step":"test"}"#), true).unwrap(), (Some(("godot", true)), After::RefreshHelpers));
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"godot","step":"test"}"#), &Facts { godot_found: true, ..Facts::default() }).unwrap(), (Some(("godot", true)), After::RefreshHelpers));
 
-        assert_eq!(apply(&mut saved, &request(r#"{"id":"godot","disconnect":true}"#), true).unwrap(), (Some(("godot", false)), After::RefreshHelpers));
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"godot","disconnect":true}"#), &Facts { godot_found: true, ..Facts::default() }).unwrap(), (Some(("godot", false)), After::RefreshHelpers));
         assert!(!saved.apps["godot"].consent);
         assert!(saved.apps["godot"].project.is_some(), "Disconnect keeps the project for next time");
 

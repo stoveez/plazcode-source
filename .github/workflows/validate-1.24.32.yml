@@ -393,6 +393,10 @@ jobs:
           PLAZCODE_TEST_RUNTIME_DOWNLOAD: "1"
         run: cargo +stable test --locked --manifest-path agent/Cargo.toml real_pinned_builds_download_verify_and_start -- --ignored --nocapture
         working-directory: build-src-1.24.32/PlazCode
+      - name: Real Blender in the background (actions, safe mode, picture without a window)
+        if: runner.os == 'Linux'
+        run: cargo +stable test --locked --manifest-path agent/Cargo.toml real_blender_runs_actions_refuses_free_python_and_makes_a_picture -- --ignored --nocapture
+        working-directory: build-src-1.24.32/PlazCode
       - name: Environment snapshot refresh scope and native timing
         run: cargo +stable test --locked --manifest-path agent/Cargo.toml env_info_preserves_snapshot_and_access_flags_without_process_data -- --nocapture
         working-directory: build-src-1.24.32/PlazCode
