@@ -2182,7 +2182,7 @@
       let safetyLine = "";
       try { safetyLine = PlazCodeSafety.stateLine(window.__rsSafety ? window.__rsSafety() : null); } catch {}
       if (safetyLine) safetyLine = "\n" + safetyLine;
-      return `[SYSTEM_STATE: ENGINE=${eng} | WORK=${wm} | EXTRA=${extra} | PLAN=${plan} | DEBUG=${dbg} | MULTI=${multi} | THINK=${lvl} | SHOW_APPROACH=${approach} | PERM=${perm}${env} | BRIDGE ${connected ? "UP" : "DOWN"} | BLENDER ${blender ? "ON" : "OFF"} | TOOLS ${n} | CAPABILITIES=${JSON.stringify(capabilities)}]\nMODE LOCK: stay on ${eng}. Obey WORK/EXTRA/PLAN/THINK/DEBUG/MULTI this turn. One complete command envelope per reply; group up to eight prepared commands with plazcode_batch. Inspect results before dependent work. list_windows and desktop controls require full_pc_access; use only granted capabilities.${safetyLine}\n${(RS.FEEDBACK && RS.FEEDBACK.creationFocus) || ""}\n${RS.approachSummaryPolicy ? RS.approachSummaryPolicy(approach === "ON") : ""}\n${lvl === "ultracode" && typeof PlazCodeUltracode !== "undefined" ? PlazCodeUltracode.turn(activeEngine(), P.id, P.conversationKey()+":"+A.sessionGen) : ""}`;
+      return `[SYSTEM_STATE: ENGINE=${eng} | WORK=${wm} | EXTRA=${extra} | PLAN=${plan} | DEBUG=${dbg} | MULTI=${multi} | THINK=${lvl} | SHOW_APPROACH=${approach} | PERM=${perm}${env} | BRIDGE ${connected ? "UP" : "DOWN"} | BLENDER ${blender ? "ON" : "OFF"} | TOOLS ${n} | CAPABILITIES=${JSON.stringify(capabilities)}]\nMODE LOCK: stay on ${eng}.${blender ? " Blender commands (blender_*) belong to this mode too: use them freely." : ""} Obey WORK/EXTRA/PLAN/THINK/DEBUG/MULTI this turn. One complete command envelope per reply; group up to eight prepared commands with plazcode_batch. Inspect results before dependent work. list_windows and desktop controls require full_pc_access; use only granted capabilities.${safetyLine}\n${(RS.FEEDBACK && RS.FEEDBACK.creationFocus) || ""}\n${RS.approachSummaryPolicy ? RS.approachSummaryPolicy(approach === "ON") : ""}\n${lvl === "ultracode" && typeof PlazCodeUltracode !== "undefined" ? PlazCodeUltracode.turn(activeEngine(), P.id, P.conversationKey()+":"+A.sessionGen) : ""}`;
     } catch { return ""; }
   }
   // Is `name` a tool we actually have? The bridge ADVERTISES names that may carry
@@ -2707,7 +2707,7 @@ return result`;
       return await runTool({ tool: "execute_luau", arguments: { code, datamodel_type: "Edit" } });
     }
     if (!(A.bridge && A.bridge.blender)) {
-      return "ERROR in asset_bridge_import: Connect Blender first. The addon must still be running so PlazCode can read the mesh.";
+      return "ERROR in asset_bridge_import: Blender is not connected, so PlazCode cannot read the model. Tell the user to open PlazCode, go to Apps & servers and connect Blender.";
     }
     const dump = Array.isArray(a.meshes)&&a.meshes.length ? {ok:true,text:JSON.stringify({meshes:a.meshes})} : await bg({ type: "call_tool", name: "blender_mesh_dump", arguments: { filepath: asset, asset, objects: a.objects }, timeout: 120000 });
     if (!dump || !dump.ok) {
@@ -3590,6 +3590,11 @@ return result`;
           );
           if (!rbxUsable) {
             const others = srv.filter((x) => x.id !== "roblox" && x.alive && (x.tools || 0) > 0);
+            // 1.24.33 (owner, 2026-11-12: "people can't model in Blender while on RobloxScript"): with Studio closed this
+            // answer used to end the AI's turn even though Blender was connected. Blender work needs no Studio.
+            if (others.some((x) => x.id === "blender")) {
+              return `Output of '${name}':\nRoblox Studio is closed right now, but Blender IS connected and works in RobloxScript: model, edit and preview in Blender now. Get Blender's commands with list_commands {"server":"blender"} (or plazcode_help {"topic":"blender"}). Only commands that change Studio need Studio open - that includes blender_send_to_studio, the last step that puts the model into the place. Mention that Studio is closed only when the task reaches that step.`;
+            }
             const otherStr = others.length
               ? `Other connected MCP server(s): ${others.map((x) => x.id).join(", ")}. Call list_mcp_servers, then list_commands with a "server" param to use them for anything that does not need Roblox.`
               : `No other MCP server is connected right now.`;
@@ -3597,10 +3602,16 @@ return result`;
           }
         }
       }
-      const known = new Set(A.toolList.map((t) => t.server).filter(Boolean));
       // Tools from a bridge that doesn't tag "server" yet have no .server field;
       // treat them as the current engine's server rather than hard-coding roblox.
-      const scoped = A.toolList.filter((t) => (t.server || curEng) === requested);
+      let scoped = A.toolList.filter((t) => (t.server || curEng) === requested);
+      // 1.24.33: Blender (or another server) connected after this chat cached its command list. The bridge already
+      // reports it live, so fetch the list once more instead of saying it is not connected.
+      if (!scoped.length && requested !== curEng && ((A.bridge && A.bridge.servers) || []).some((x) => x && x.id === requested && x.alive)) {
+        try { await ensureTools(true); } catch {}
+        scoped = A.toolList.filter((t) => (t.server || curEng) === requested);
+      }
+      const known = new Set(A.toolList.map((t) => t.server).filter(Boolean));
       if (!A.toolList.length) return `Output of '${name}':\nNo commands available - the bridge or ${curEng==="local" ? "the AgentScript agent" : "Roblox Studio"} may be offline.`;
       if (!scoped.length) {
         return `Output of '${name}':\nERROR: no server named "${requested}" is connected. Connected servers: ${[...known].join(", ") || curEng}. Call list_mcp_servers to check.`;
@@ -3642,7 +3653,7 @@ return result`;
           const heading=line.match(/^([a-z][a-z0-9_]+):/);if(heading)names.add(heading[1]);
           for(const match of line.matchAll(/\b([a-z][a-z0-9_]+)\s*\{/g))names.add(match[1]);
         }
-        return `Output of '${name}':\n${requested} commands:\n${RS.compactTools(scoped.map(tool=>({...tool,description:String(tool.description||'').split('\n')[0].slice(0,180)})))}\nPlazCode helpers: ${[...names].join(', ')}\nAnswer the user's command-list question briefly. No checklist or project work is needed. Full parameter schemas remain available by requesting the full command reference.`;
+        return `Output of '${name}':\n${requested} commands:\n${RS.compactTools(scoped.map(tool=>({...tool,description:String(tool.description||'').split('\n')[0].slice(0,180)})))}\nPlazCode helpers: ${[...names].join(', ')}\nAnswer the user's command-list question briefly. No checklist or project work is needed. Full parameter schemas remain available by requesting the full command reference.`+(requested===curEng && typeof connectedAddonsNote === "function" && connectedAddonsNote(curEng) ? "\n"+connectedAddonsNote(curEng) : "");
       }
       const lines = scoped.map((t) => {
         const props = (t.inputSchema && t.inputSchema.properties) || {};
@@ -3963,7 +3974,7 @@ return result`;
         }
       }
       if (!(A.bridge && A.bridge.blender)) {
-        return "ERROR calling '" + name + "': Blender is not connected. Menu → Connect Blender (N-panel → Start MCP Server).";
+        return "ERROR calling '" + name + "': Blender is not connected. Tell the user to open PlazCode, go to Apps & servers and connect Blender (it takes one click and works in RobloxScript and AgentScript).";
       }
       if (bareName === "blender_send_to_studio") {
         return await runAssetBridgeImport(args);

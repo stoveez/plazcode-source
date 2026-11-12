@@ -221,6 +221,10 @@ jobs:
         timeout-minutes: 5
         run: node release-tools/test-ultra-extension-browser.cjs
         working-directory: build-src-1.24.33/PlazCode
+      - name: Blender in RobloxScript (what the AI is told; real AI-tab code)
+        timeout-minutes: 5
+        run: node release-tools/test-blender-robloxscript-browser.cjs
+        working-directory: build-src-1.24.33/PlazCode
       - name: Blockbench in the browser through the real extension (stand-in page)
         timeout-minutes: 5
         run: node release-tools/test-blockbench-extension-browser.cjs
@@ -402,6 +406,11 @@ jobs:
         if: runner.os == 'Linux'
         run: cargo +stable test --locked --manifest-path agent/Cargo.toml real_blender_runs_actions_refuses_free_python_and_makes_a_picture -- --ignored --nocapture
         working-directory: build-src-1.24.33/PlazCode
+      - name: Real Blender, send to Studio (whole model, right way round, colours)
+        if: runner.os == 'Linux'
+        run: |
+          "$PLAZCODE_BLENDER" --background --python development/1.24.33/test-blender-send-to-studio.py > send.log 2>&1 || (cat send.log; exit 1)
+          cat send.log; grep -q "^PASS send to Studio" send.log
       - name: Real Blender with PlazCode's own open-window helper (added and removed by Blender itself, pairing word, safe mode)
         if: runner.os == 'Linux'
         run: cargo +stable test --locked --manifest-path agent/Cargo.toml blender_addon::tests::real_blender -- --ignored --nocapture

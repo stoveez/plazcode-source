@@ -173,7 +173,7 @@
       build: s => para(s.full(), "CHAT MODEL/UI CREATION:"),
     },
     {
-      name: "blender", engines: [R], aliases: ["bpy", "blender-mcp"],
+      name: "blender", engines: BOTH, aliases: ["bpy", "blender-mcp"],
       title: "Blender tools and the Blender-to-Studio pipeline",
       must: ["BLENDER MCP IS CONNECTED", "blender_send_to_studio", "blender_material_create"],
       build: s => para(s.blender(), "━━━ BLENDER MCP IS CONNECTED"),
@@ -509,7 +509,7 @@
     ["studio-skills", [R], /\b(?:lighting|atmosphere|skybox|day ?night|terrain|camera|audio|sounds?|music|sfx|leaderboards?|npcs?|pathfind\w*|proximity ?prompts?|tweens?|game ?passes?|marketplace|diagnos\w*|teams?|plugins?|asset bridge)\b/i],
     ["developer-products", [R], /\b(?:developer ?products?|dev ?products?|robux|purchases?|monetiz\w*)\b/i],
     ["creators", [R], /\b(?:(?:create|make|build|design|generate)\b[^.\n]{0,40}\b(?:ui|gui|hud|menu|model|mesh|prop|building|vehicle)|creation_preview|headless_build|blueprint)\b/i],
-    ["blender", [R], /blender|\bbpy\b|\.blend\b/i],
+    ["blender", BOTH, /blender|\bbpy\b|\.blend\b/i],
     ["screenshots", [R], /\b(?:screenshots?|screen ?capture|images?|pictures?|photos?|reference images?|attach\w*|paste\w*|looks? like)\b/i],
     ["web", [R], /\b(?:web ?search|search the (?:web|internet)|look ?up|google|documentation|docs|fetch)\b|https?:\/\//i],
     ["debug-agents", [R], /\b(?:debug\w*|agents?|planner|reviewer|output panel|stack ?trace|exceptions?)\b/i],
