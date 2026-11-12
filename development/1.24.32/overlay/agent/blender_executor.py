@@ -112,6 +112,18 @@ def frame_camera(scene):
     return made
 
 
+def picture_engines():
+    """Workbench needs a graphics context. On Linux without libEGL, Blender does not raise an error there: the whole
+    process stops. So Workbench is only tried where it can work; Cycles on the processor needs no graphics."""
+    if sys.platform.startswith("linux") and bpy.app.background:
+        import ctypes
+        try:
+            ctypes.CDLL("libEGL.so.1")
+        except OSError:
+            return ("CYCLES",)
+    return ("BLENDER_WORKBENCH", "CYCLES")
+
+
 def render_shot(filepath, max_size):
     """A picture of the scene when there is no viewport (Blender in the background): a small render,
     Workbench first (fast, needs a graphics context), then Cycles on the processor (works everywhere)."""
@@ -130,7 +142,7 @@ def render_shot(filepath, max_size):
         render.resolution_x, render.resolution_y, render.resolution_percentage = width, height, 100
         render.image_settings.file_format = "PNG"
         render.filepath = filepath
-        for engine in ("BLENDER_WORKBENCH", "CYCLES"):
+        for engine in picture_engines():
             try:
                 if os.path.exists(filepath):
                     os.remove(filepath)

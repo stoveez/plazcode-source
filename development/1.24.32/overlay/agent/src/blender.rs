@@ -22,7 +22,10 @@ pub async fn command_at(host: &str, port: u16, kind: &str, params: Value, limit:
 /// Send one whole request (PlazCode's own helper also needs the pairing word and the safe-mode mark in it).
 async fn send_at(host: &str, port: u16, kind: &str, body: Value, limit: Duration) -> anyhow::Result<Value> {
     tokio::time::timeout(limit, async {
-        let mut socket = TcpStream::connect((host, port)).await.map_err(|error| anyhow::Error::new(NotListening(error.to_string())))?;
+        // Nothing listening is told apart quickly: on Windows a refused connection can take about two seconds.
+        let mut socket = tokio::time::timeout(Duration::from_millis(1500).min(limit), TcpStream::connect((host, port))).await
+            .map_err(|_| anyhow::Error::new(NotListening("no answer".into())))?
+            .map_err(|error| anyhow::Error::new(NotListening(error.to_string())))?;
         socket.write_all(&serde_json::to_vec(&body)?).await?;
         let mut data = Vec::new();
         let mut buffer = [0u8;8192];

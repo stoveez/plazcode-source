@@ -379,6 +379,19 @@ pub async fn openupm_has_version() -> bool {
     reply.json::<Value>().await.ok().and_then(|v| v.get("versions").and_then(|versions| versions.get(VERSION)).cloned()).is_some()
 }
 
+/// Git that really works. On a Mac, /usr/bin/git is only a stand-in until Apple's command line tools are installed
+/// (running it opens an install window), so it counts only when `xcode-select -p` finds those tools.
+pub fn usable_git() -> Option<PathBuf> {
+    let git = crate::mcp_addons::git_program()?;
+    if cfg!(target_os = "macos") && git == Path::new("/usr/bin/git") && !apple_tools_installed(Path::new("/usr/bin/xcode-select")) { return None; }
+    Some(git)
+}
+
+fn apple_tools_installed(xcode_select: &Path) -> bool {
+    std::process::Command::new(xcode_select).arg("-p").stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null())
+        .status().is_ok_and(|status| status.success())
+}
+
 /// Pick the way to add the package: OpenUPM when it has the version, else the git URL when Git is found.
 pub fn choose_method(openupm: bool, git: bool) -> Option<Method> { if openupm { Some(Method::OpenUpm) } else if git { Some(Method::Git) } else { None } }
 
@@ -386,7 +399,7 @@ pub fn choose_method(openupm: bool, git: bool) -> Option<Method> { if openupm { 
 pub async fn add_package() {
     set_status(Status::Working);
     let openupm = openupm_has_version().await;
-    let git = tokio::task::spawn_blocking(crate::mcp_addons::git_program).await.ok().flatten().is_some();
+    let git = tokio::task::spawn_blocking(usable_git).await.ok().flatten().is_some();
     let Some(method) = choose_method(openupm, git) else { set_status(Status::NeedsGit); return; };
     let result = tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
         let path = crate::connections::store_path();
@@ -430,7 +443,7 @@ pub fn open_project(project: &Path, editors: &[(String, PathBuf)]) -> anyhow::Re
     command.arg("-projectPath").arg(project).arg("-executeMethod").arg(START_STDIO)
         .stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
     // Unity needs Git on its PATH for git-URL packages; a Git found outside the PATH is added for this Unity only.
-    if let Some(git) = crate::mcp_addons::git_program().and_then(|g| g.parent().map(Path::to_path_buf)) {
+    if let Some(git) = usable_git().and_then(|g| g.parent().map(Path::to_path_buf)) {
         let mut paths: Vec<PathBuf> = std::env::var_os("PATH").map(|p| std::env::split_paths(&p).collect()).unwrap_or_default();
         if !paths.contains(&git) { paths.push(git); if let Ok(joined) = std::env::join_paths(paths) { command.env("PATH", joined); } }
     }
@@ -656,6 +669,18 @@ mod tests {
         assert_eq!(choose_method(true, true), Some(Method::OpenUpm), "OpenUPM first");
         assert_eq!(choose_method(false, true), Some(Method::Git));
         assert_eq!(choose_method(false, false), None, "Unity needs Git");
+    }
+
+    #[cfg(unix)]
+    #[test] fn apple_tools_count_only_when_xcode_select_finds_them() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = std::env::temp_dir().join(format!("plazcode-unity-xcode-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root); std::fs::create_dir_all(&root).unwrap();
+        let tool = |name: &str, code: i32| { let p = root.join(name); std::fs::write(&p, format!("#!/bin/sh\n[ \"$1\" = \"-p\" ] || exit 9\nexit {code}\n")).unwrap(); std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap(); p };
+        assert!(apple_tools_installed(&tool("installed", 0)));
+        assert!(!apple_tools_installed(&tool("missing", 2)), "the stand-in git does not count");
+        assert!(!apple_tools_installed(&root.join("no-such-program")));
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test] fn broken_json_is_refused_and_line_endings_are_kept() {
