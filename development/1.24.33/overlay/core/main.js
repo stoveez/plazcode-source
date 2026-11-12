@@ -2576,6 +2576,18 @@
         tools.push({name:'ultralab_read',server:'roblox',description:'Open the Ultra pack: every skill, agent, reference, script and vault note. action list {prefix?} lists files; read {path, offset?, limit?} returns exact text in pages (follow next_offset for more); search {query, prefix?} finds matching lines in text files. Open the skills, scripts and Check-UI modules a task needs before you build. Read-only.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','search']},path:{type:'string'},prefix:{type:'string'},query:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:40000}},required:['action'],additionalProperties:false}});
         tools.push({name:'roblox_docs',server:'roblox',description:'Search the Roblox developer docs (create.roblox.com/docs) with query, or read one docs page with url (it must start with https://create.roblox.com/docs/). Use it to verify every Roblox API signature before you use it. Read-only.',inputSchema:{type:'object',properties:{query:{type:'string'},url:{type:'string'},max_chars:{type:'integer',minimum:500,maximum:60000}},additionalProperties:false}});
       }
+      if (A.bridge && A.bridge.control_v2) {
+        // 1.24.34 control rework: real control of web tabs (x/y are CSS pixels of the visible page, as in tab_screenshot).
+        const tabArgs = {tabId:{type:'integer'},url_contains:{type:'string'}};
+        const xy = {x:{type:'number'},y:{type:'number'}};
+        tools.push({name:'tab_screenshot',server:activeEngine(),description:'Picture of a browser tab (the tab named by tabId or url_contains, else the current non-chat tab). Use it before tab_click_at.',inputSchema:{type:'object',properties:tabArgs}});
+        tools.push({name:'tab_click_at',server:activeEngine(),description:'Click at x,y of the tab picture (button left|right, double). Works on any site, including canvas apps.',inputSchema:{type:'object',properties:{...tabArgs,...xy,button:{type:'string',enum:['left','right']},double:{type:'boolean'}},required:['x','y']}});
+        tools.push({name:'tab_type_text',server:activeEngine(),description:'Type text into the field that is selected in the tab (click it first with tab_click_at).',inputSchema:{type:'object',properties:{...tabArgs,text:{type:'string'}},required:['text']}});
+        tools.push({name:'tab_key',server:activeEngine(),description:'Press one key in the tab, optionally with Ctrl/Shift/Alt/Meta: Enter, Tab, Escape, Backspace, ArrowDown, Ctrl+A, Shift+Tab.',inputSchema:{type:'object',properties:{...tabArgs,key:{type:'string'}},required:['key']}});
+        tools.push({name:'tab_scroll_at',server:activeEngine(),description:'Scroll at x,y of the tab picture by dy (and dx) pixels; negative scrolls up.',inputSchema:{type:'object',properties:{...tabArgs,...xy,dy:{type:'number'},dx:{type:'number'}},required:['x','y']}});
+        tools.push({name:'tab_navigate',server:activeEngine(),description:'Go to a web address in the tab.',inputSchema:{type:'object',properties:{...tabArgs,url:{type:'string'}},required:['url']}});
+        tools.push({name:'tab_open',server:activeEngine(),description:'Open a web address in a new background tab; answers its tabId for the next commands.',inputSchema:{type:'object',properties:{url:{type:'string'}},required:['url']}});
+      }
       tools.push({name:'plazcode_engram',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_engram,inputSchema:{type:'object',properties:{action:{type:'string',enum:['context','search','read','save','summary']},query:{type:'string'},id:{type:'integer'},title:{type:'string'},content:{type:'string'},evidence:{type:'string'},topic_key:{type:'string'}},required:['action'],additionalProperties:false}});
       tools.push({name:'plazcode_vault',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_vault,inputSchema:{type:'object',properties:{action:{type:'string',enum:['index','search','read','read_all','write','backlinks','archive','add_image','read_image','map','audit','verify']},cursor:{type:'string'},max_chars:{type:'integer'},path:{type:'string'},paths:{type:'array',items:{type:'string'}},query:{type:'string'},type:{type:'string'},mode:{type:'string',enum:['create','append','replace','section']},section:{type:'string'},content:{type:'string'},evidence:{type:'string',description:'Short exact quote from a real user request or verified project read supporting this lasting note'},project_specific:{type:'boolean'},frontmatter:{type:'object'},reason:{type:'string'},name:{type:'string'},from:{type:'string'},note:{type:'string'},with_last_screenshot:{type:'boolean'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'plazcode_critic',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_critic,inputSchema:{type:'object',properties:{references:{type:'array',items:{type:'string'}},rubric:{type:'string'},goal:{type:'string'},new_job:{type:'boolean'}},required:['references'],additionalProperties:false}});
@@ -3433,6 +3445,29 @@ return result`;
         if (!r || !r.ok) return "ERROR: tab_scroll failed — " + String((r && r.error) || "no response");
         return "tab_scroll: scrolled to y=" + ((r.result && r.result.y) || "?");
       } catch (e) { return "ERROR: tab_scroll — " + String((e && e.message) || e); }
+    }
+    // 1.24.34 control rework (only when the worker has it switched on): real control of web tabs.
+    if (/^tab_(?:screenshot|click_at|type_text|key|scroll_at|navigate|open)$/.test(name)) {
+      if (!(A.bridge && A.bridge.control_v2)) return "ERROR: unknown command '" + name + "' in this PlazCode version.";
+      // `confirmed` is set only here, after the person approved; never taken from the AI's own arguments.
+      const send = (confirmed) => bg({ type: name, accent: controlAccent(), tabId: args.tabId, url_contains: args.url_contains, x: args.x, y: args.y, dx: args.dx, dy: args.dy,
+        button: args.button, double: args.double === true, text: args.text, key: args.key, url: args.url, confirmed });
+      try {
+        let r = await send(false);
+        if (r && r.confirm) {
+          // The fixed always-ask list: asked whatever the approval mode is.
+          const ok = await showApproval(name, args, { kicker: "PlazCode always asks for this", title: String(r.confirm).slice(0, 200) });
+          if (!ok) return name + ": the person did not allow it, so nothing was done. Do not try it another way; ask them what they want.";
+          r = await send(true);
+        }
+        if (!r || !r.ok) return "ERROR: " + name + " failed — " + String((r && r.error) || "no response");
+        if (r.images && r.images.length) {
+          if (!P.supportsVision) return `ERROR: '${name}' returned an image, but this assistant cannot see images. Use tab_read instead.`;
+          rememberImages(r.images, name); ui.showImages(r.images, name); A.pendingImages = r.images;
+          return `Output of '${name}':\n${r.text || "Picture taken."}\n(The image is attached to THIS message - you can see it directly. Analyse it and continue.)`;
+        }
+        return `Output of '${name}':\n${r.text || "Done."}`;
+      } catch (e) { return "ERROR: " + name + " — " + String((e && e.message) || e); }
     }
     // ── attach_feedback: copy / paste / RE-SEND a screenshot or file ────────
     // Three jobs in one command, because they are the same image pipeline:

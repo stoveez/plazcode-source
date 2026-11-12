@@ -10,6 +10,7 @@
     "scripting",
     "webRequest"
   ],
+  "optional_permissions": ["debugger"],
   "host_permissions": [
     "https://chat.deepseek.com/*",
     "https://deepseek.com/*",

@@ -3,7 +3,7 @@ const root=__dirname,tmp=fs.mkdtempSync(path.join(os.tmpdir(),'plazcode-firefox-
 try {
   cp.execFileSync(process.env.PYTHON || (process.platform==='win32'?'python':'python3'),[path.join(root,'release-tools/build-firefox.py'),path.join(root,'PlazCode-Extension'),path.join(tmp,'extension'),path.join(tmp,'firefox.zip')]);
   const chrome=JSON.parse(fs.readFileSync(path.join(root,'manifest.json'))),firefox=JSON.parse(fs.readFileSync(path.join(tmp,'extension/manifest.json')));
-  assert.deepStrictEqual(firefox.background,{scripts:['protection.js','background.js']});assert(!firefox.minimum_chrome_version);assert.equal(firefox.browser_specific_settings.gecko.id,'plazcode@plazcode.local');assert.equal(firefox.browser_specific_settings.gecko.strict_min_version,'140.0');
+  assert.deepStrictEqual(firefox.background,{scripts:['protection.js','background.js']});assert(!firefox.minimum_chrome_version);assert(!(firefox.optional_permissions||[]).includes('debugger'),'Firefox has no debugging connection for extensions');assert.equal(firefox.browser_specific_settings.gecko.id,'plazcode@plazcode.local');assert.equal(firefox.browser_specific_settings.gecko.strict_min_version,'140.0');
   // Firefox adds only its transfer shim/helper; every Chromium script and order is preserved.
   const shim='core/firefox-events.js',helper='core/firefox-events-main.js';
   const restored=firefox.content_scripts.filter(s=>!(s.js.length===1&&s.js[0]===helper)).map(s=>({...s,js:s.js.filter(f=>f!==shim)}));

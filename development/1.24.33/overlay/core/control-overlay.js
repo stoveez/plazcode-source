@@ -63,7 +63,7 @@
     return true;
   }
   const onInput = (event) => {
-    if (event.type === "keydown" && event.key === "Escape" && event.isTrusted && state.active) { api.hide(); state.stopped = true; tell("stop"); return; }
+    if (event.type === "keydown" && event.key === "Escape" && event.isTrusted && state.active && Date.now() >= state.expectUntil) { api.hide(); state.stopped = true; tell("stop"); return; }
     if (personal(event)) { setPaused(true); tell("paused"); }
   };
   for (const type of ["pointermove", "pointerdown", "wheel", "keydown"]) addEventListener(type, onInput, { capture: true, passive: true });
@@ -94,6 +94,8 @@
       return new Promise((resolve) => setTimeout(() => resolve({ x: px, y: py }), wait));
     },
     press() { cursor.classList.add("press"); cursor.style.transform = `translate(${state.x}px,${state.y}px) scale(.82)`; setTimeout(() => { cursor.style.transform = `translate(${state.x}px,${state.y}px)`; cursor.classList.remove("press"); }, 140); idle(); },
+    // Hidden for the moment a picture of the tab is taken, so the AI sees the page, not PlazCode's glow.
+    veil(on) { host.style.visibility = on ? "hidden" : "visible"; return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); },
     expect(ms) { state.expectUntil = Date.now() + Math.max(0, Math.min(5000, Number(ms) || 0)); },
     hide() { state.active = false; clearTimeout(state.idle); setPaused(false); clearTimeout(state.idle); frame.classList.remove("on"); cursor.classList.remove("seen"); },
     state() { return { active: state.active, paused: state.paused, stopped: state.stopped, x: state.x, y: state.y, accent: host.style.getPropertyValue("--a"), shown: host.isConnected && frame.classList.contains("on") }; },

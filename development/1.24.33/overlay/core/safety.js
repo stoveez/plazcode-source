@@ -15,7 +15,7 @@ const PlazCodeSafety = (() => {
   // PlazCode's Figma helper actions that only look (agent/figma_code.js marks the same ones change:false).
   const FIGMA_READ = new Set(["figma_status", "figma_pages", "figma_page_set", "figma_outline", "figma_node", "figma_find", "figma_selection", "figma_select", "figma_styles", "figma_export"]);
   const READ_PREFIXES = ["get_", "list_", "search_", "inspect_", "read_", "find_", "describe_", "query_"];
-  const READ_EXACT = new Set(["analyze_luau", "luau_lookup", "script_read", "script_grep", "script_search", "script_analysis", "screen_capture",
+  const READ_EXACT = new Set(["tab_screenshot", "analyze_luau", "luau_lookup", "script_read", "script_grep", "script_search", "script_analysis", "screen_capture",
     "browser_snapshot", "browser_take_screenshot", "browser_console_messages", "browser_network_requests", "browser_tabs", "browser_wait_for", "look"]);
   // PlazCode's own helpers that never touch the PC, Studio or Blender.
   const PLAZCODE_OWN = /^plazcode_|^list_commands$|^web_fetch$|^web_search$/;

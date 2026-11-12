@@ -1338,6 +1338,7 @@ function statusObj(mode = engine) {
     // the popup, list_mcp_servers and the startup note all tell the AI it is connected.
     servers: mode === "local" ? blenderServers([{id:"local",name:"Local Filesystem",alive:localReady,tools:localReady ? localTools().length : 0}]) : blenderServers(serversCache), engine: mode,
     blender: blenderAddon, blender_error: blenderError || undefined, bridge_error: bridgeError || undefined,
+    control_v2: CONTROL_V2 || undefined,
   };
 }
 
@@ -3425,6 +3426,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
       }
+      case "control_permission":
+        if (!CONTROL_V2) { sendResponse({ ok: false, error: "Not available in this version." }); break; }
+        try { sendResponse(await controlAskPermission()); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
+        break;
+      case "tab_screenshot": case "tab_click_at": case "tab_type_text": case "tab_key": case "tab_scroll_at": case "tab_navigate": case "tab_open":
+        if (!CONTROL_V2) { sendResponse({ ok: false, error: "This PlazCode version does not have " + msg.type + " yet." }); break; }
+        try { sendResponse(await controlV2Tool(msg, _sender)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
+        break;
       case "control_event":
         controlEvent(msg, _sender);
         sendResponse({ ok: true });
@@ -3535,6 +3544,211 @@ async function controlledTabAction(kind, msg, sender) {
     } catch (error) { return { typed: false, error: String(error.message || error), note: "The write was not repeated; inspect the field before retrying." }; }
   }, [String(msg.text || ""), !!msg.submit]) };
 }
+// ── Step 2: real control of web tabs ────────────────────────────────────────
+// Chrome/Edge/Brave: real mouse and keyboard through the browser's debugging connection, once the person allowed the
+// optional "debugger" permission (Chrome then shows its own "started debugging this browser" bar while PlazCode works).
+// Without it (or on Firefox): in-page events, which some sites and every canvas app ignore; said in each answer.
+const controlDebug = new Map(); // tabId -> idle timer
+async function canDebug() {
+  try { return !!(chrome.debugger && chrome.permissions && await chrome.permissions.contains({ permissions: ["debugger"] })); } catch { return false; }
+}
+function debugBump(tabId) {
+  clearTimeout(controlDebug.get(tabId));
+  controlDebug.set(tabId, setTimeout(() => debugDetach(tabId), 20000));
+}
+async function debugAttach(tabId) {
+  if (!controlDebug.has(tabId)) await chrome.debugger.attach({ tabId }, "1.3");
+  debugBump(tabId);
+}
+async function debugDetach(tabId) {
+  if (!controlDebug.has(tabId)) return;
+  clearTimeout(controlDebug.get(tabId)); controlDebug.delete(tabId);
+  try { await chrome.debugger.detach({ tabId }); } catch {}
+}
+const cdp = (tabId, method, params) => chrome.debugger.sendCommand({ tabId }, method, params || {});
+if (chrome.debugger && chrome.debugger.onDetach) {
+  chrome.debugger.onDetach.addListener((source, reason) => {
+    const tabId = source && source.tabId;
+    if (!Number.isInteger(tabId)) return;
+    clearTimeout(controlDebug.get(tabId)); controlDebug.delete(tabId);
+    // The person pressed Cancel on the browser's "started debugging" bar: that is Stop.
+    if (reason === "canceled_by_user") controlEvent({ event: "stop" }, { tab: { id: tabId }, id: chrome.runtime.id });
+  });
+}
+// The fixed always-ask list (whatever the approval mode): typing into a password or card field, and pressing a
+// button that pays, buys, sends, deletes or transfers. Runs in the page.
+function controlSensitive(kind, x, y) {
+  const label = (el) => String(el.innerText || el.value || el.getAttribute("aria-label") || el.getAttribute("title") || "").trim().replace(/\s+/g, " ").slice(0, 60);
+  const field = (el) => {
+    if (!el || !el.matches) return "";
+    const type = String(el.getAttribute("type") || "").toLowerCase(), auto = String(el.getAttribute("autocomplete") || "").toLowerCase(), name = String((el.name || "") + " " + (el.id || "")).toLowerCase();
+    if (type === "password" || /current-password|new-password/.test(auto)) return "type into a password field";
+    if (/^cc-|\scc-/.test(auto) || /card.?(number|num|no)|cvc|cvv|security.?code/.test(name)) return "type into a payment card field";
+    return "";
+  };
+  if (kind === "type") return field(document.activeElement);
+  const hit = document.elementFromPoint(x, y);
+  if (!hit) return "";
+  const own = field(hit);
+  if (own) return own.replace("type into", "click into");
+  const button = hit.closest("button, a, [role=button], input[type=submit], input[type=button]");
+  if (button && /\b(pay|buy|purchase|place (?:your )?order|checkout|check out|send|delete|remove|transfer|confirm payment)\b/i.test(label(button))) return 'press "' + label(button) + '"';
+  return "";
+}
+const KEYS = { Enter: [13, "\r"], Tab: [9, ""], Escape: [27, ""], Backspace: [8, ""], Delete: [46, ""], ArrowUp: [38, ""], ArrowDown: [40, ""], ArrowLeft: [37, ""], ArrowRight: [39, ""],
+  Home: [36, ""], End: [35, ""], PageUp: [33, ""], PageDown: [34, ""], Space: [32, " "] };
+function parseKey(raw) {
+  const parts = String(raw || "").split("+").map((p) => p.trim()).filter(Boolean);
+  if (!parts.length || parts.length > 4) return null;
+  let modifiers = 0, key = parts.pop();
+  for (const m of parts) { const l = m.toLowerCase(); if (l === "alt") modifiers |= 1; else if (l === "ctrl" || l === "control") modifiers |= 2; else if (l === "meta" || l === "cmd" || l === "command") modifiers |= 4; else if (l === "shift") modifiers |= 8; else return null; }
+  const named = Object.keys(KEYS).find((k) => k.toLowerCase() === key.toLowerCase());
+  if (named) return { key: named === "Space" ? " " : named, code: named === "Space" ? "Space" : named, vk: KEYS[named][0], text: modifiers & 7 ? "" : KEYS[named][1], modifiers };
+  if (key.length !== 1) return null;
+  const upper = key.toUpperCase();
+  return { key, code: /[A-Z]/.test(upper) ? "Key" + upper : /[0-9]/.test(key) ? "Digit" + key : "", vk: upper.charCodeAt(0), text: modifiers & 7 ? "" : key, modifiers };
+}
+// The extension's own rules do not let the worker fetch data: addresses, so pictures are decoded here.
+function base64Blob(data, type) {
+  const bin = atob(String(data || "")), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type });
+}
+// A picture of the target tab in CSS pixels (so its x/y are the ones tab_click_at takes), at most 1400 wide.
+async function controlPicture(tab, debug) {
+  const run = async (func, args) => (await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: args || [], func }))[0].result;
+  const view = await run(() => ({ w: innerWidth, h: innerHeight, dpr: devicePixelRatio || 1 }));
+  await run((on) => globalThis.__plazcodeControl && globalThis.__plazcodeControl.veil(on), [true]);
+  let blob;
+  try {
+    if (debug) {
+      await debugAttach(tab.id);
+      const shot = await cdp(tab.id, "Page.captureScreenshot", { format: "png", fromSurface: true });
+      blob = base64Blob(shot.data, "image/png");
+    } else if (typeof chrome.tabs.captureTab === "function") {
+      blob = base64Blob(String(await chrome.tabs.captureTab(tab.id, { format: "png" })).replace(/^data:[^,]*,/, ""), "image/png"); // Firefox: any tab
+    } else {
+      // Chrome lets an extension take pictures of tabs only through the debugging connection (or right after the
+      // person clicks the PlazCode icon), so without the one-time permission there is no picture.
+      throw new Error("To see the tab, PlazCode needs the person's one-time permission to control tabs (a small PlazCode window asks for it). Until then use tab_read to read the page.");
+    }
+  } finally { await run((on) => globalThis.__plazcodeControl && globalThis.__plazcodeControl.veil(on), [false]); }
+  const bitmap = await createImageBitmap(blob);
+  const scale = Math.min(1, 1400 / view.w), w = Math.round(view.w * scale), h = Math.round(view.h * scale);
+  const canvas = new OffscreenCanvas(w, h);
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, w, h);
+  const out = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.8 });
+  const bytes = new Uint8Array(await out.arrayBuffer());
+  let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return { data: btoa(bin), w, h, scale, view };
+}
+const CONTROL_V2_TOOLS = new Set(["tab_screenshot", "tab_click_at", "tab_type_text", "tab_key", "tab_scroll_at", "tab_navigate", "tab_open"]);
+let controlAsked = false;
+async function controlV2Tool(msg, sender) {
+  const name = msg.type, debug = await canDebug();
+  // The first time real control would help, PlazCode asks the person once per browser session (never on Firefox).
+  if (!debug && !controlAsked && name !== "tab_open" && name !== "tab_navigate" && !/Firefox\//.test(navigator.userAgent)) { controlAsked = true; controlAskPermission().catch(() => {}); }
+  const how = debug ? "" : " (in-page input: some sites and canvas apps ignore it; real mouse and keyboard need the person's one-time permission)";
+  if (name === "tab_open") {
+    const url = String(msg.url || "");
+    if (!/^https?:\/\//i.test(url) || CONTROL_STORES.test(url)) return { ok: false, error: "tab_open takes a web address starting with http:// or https://." };
+    const tab = await chrome.tabs.create({ url, active: false });
+    return { ok: true, text: "Opened " + url + " in a new tab (tabId " + tab.id + "). Pass tabId " + tab.id + " to the next tab_* command to work there." };
+  }
+  const tab = await resolveTab(msg);
+  if (!tab) return { ok: false, error: "no target tab (open a page, or pass url_contains or tabId)" };
+  const entered = await controlEnter(tab, msg, sender);
+  if (entered.error) return { ok: false, error: entered.error };
+  const run = async (func, args) => (await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: args || [], func }))[0].result;
+  const point = () => { const x = Number(msg.x), y = Number(msg.y); return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 ? [x, y] : null; };
+  const askFirst = async (kind, at) => {
+    if (msg.confirmed === true) return "";
+    return await run(controlSensitive, [kind, at ? at[0] : 0, at ? at[1] : 0]) || "";
+  };
+  if (name === "tab_navigate") {
+    const url = String(msg.url || "");
+    if (!/^https?:\/\//i.test(url) || CONTROL_STORES.test(url) || isProviderUrl(url)) return { ok: false, error: "tab_navigate takes a web address starting with http:// or https:// (not an AI chat or the extension store)." };
+    await chrome.tabs.update(tab.id, { url });
+    const until = Date.now() + 20000;
+    while (Date.now() < until) { await new Promise((r) => setTimeout(r, 250)); const now = await chrome.tabs.get(tab.id).catch(() => null); if (!now) break; if (now.status === "complete" && now.url && now.url !== tab.url) break; }
+    return { ok: true, text: "Went to " + url + "." };
+  }
+  if (name === "tab_screenshot") {
+    let pic;
+    try { pic = await controlPicture(tab, debug); } catch (error) { return { ok: false, error: String(error && error.message || error) }; }
+    return { ok: true, text: "Picture of the tab \"" + String(tab.title || "").slice(0, 80) + "\" (" + pic.w + "x" + pic.h + "). For tab_click_at and tab_scroll_at use x/y in this picture's pixels" + (pic.scale < 1 ? " divided by " + pic.scale.toFixed(3) : "") + ".", images: [{ mimeType: "image/jpeg", data: pic.data }], scale: pic.scale };
+  }
+  if (name === "tab_click_at" || name === "tab_scroll_at") {
+    const at = point();
+    if (!at) return { ok: false, error: name + " needs x and y (CSS pixels of the visible page, as in tab_screenshot)." };
+    if (name === "tab_click_at") { const ask = await askFirst("click", at); if (ask) return { ok: false, confirm: "PlazCode wants to " + ask + " in \"" + String(tab.title || tab.url).slice(0, 60) + "\"." }; }
+    const target = await run((x, y) => { const el = document.elementFromPoint(x, y); return el ? (el.tagName.toLowerCase() + (el.innerText ? ' "' + el.innerText.trim().replace(/\s+/g, " ").slice(0, 40) + '"' : "")) : "nothing"; }, at);
+    await run((x, y) => globalThis.__plazcodeControl.moveTo(x, y), at);
+    const row = controlTabs.get(tab.id);
+    if (row && (row.paused || row.stoppedAt)) return { ok: false, error: "The person took over the tab just before the action, so nothing was done." };
+    if (name === "tab_scroll_at") {
+      const dy = Math.max(-5000, Math.min(5000, Number(msg.dy) || 600)), dx = Math.max(-5000, Math.min(5000, Number(msg.dx) || 0));
+      if (debug) { await debugAttach(tab.id); await run((ms) => globalThis.__plazcodeControl.expect(ms), [1500]); await cdp(tab.id, "Input.dispatchMouseEvent", { type: "mouseWheel", x: at[0], y: at[1], deltaX: dx, deltaY: dy }); }
+      else await run((x, y, dx, dy) => { let el = document.elementFromPoint(x, y); while (el && el !== document.documentElement && !(el.scrollHeight > el.clientHeight + 2 && /auto|scroll/.test(getComputedStyle(el).overflowY))) el = el.parentElement; (el && el !== document.documentElement ? el : window).scrollBy(dx, dy); }, [at[0], at[1], dx, dy]);
+      return { ok: true, text: "Scrolled " + dy + " at (" + Math.round(at[0]) + ", " + Math.round(at[1]) + ") over " + target + how + "." };
+    }
+    const button = msg.button === "right" ? "right" : "left", clicks = msg.double ? 2 : 1;
+    await run(() => globalThis.__plazcodeControl.press());
+    if (debug) {
+      await debugAttach(tab.id);
+      await run((ms) => globalThis.__plazcodeControl.expect(ms), [1500]);
+      const base = { x: at[0], y: at[1], button, buttons: button === "right" ? 2 : 1 };
+      await cdp(tab.id, "Input.dispatchMouseEvent", { type: "mouseMoved", x: at[0], y: at[1] });
+      for (let i = 1; i <= clicks; i++) { await cdp(tab.id, "Input.dispatchMouseEvent", { ...base, type: "mousePressed", clickCount: i }); await cdp(tab.id, "Input.dispatchMouseEvent", { ...base, type: "mouseReleased", clickCount: i }); }
+    } else {
+      await run((x, y, button, clicks) => {
+        const el = document.elementFromPoint(x, y); if (!el) return;
+        const opts = { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, button: button === "right" ? 2 : 0, view: window };
+        for (let i = 1; i <= clicks; i++) {
+          el.dispatchEvent(new PointerEvent("pointerdown", opts)); el.dispatchEvent(new MouseEvent("mousedown", { ...opts, detail: i }));
+          if (el.focus) el.focus();
+          el.dispatchEvent(new PointerEvent("pointerup", opts)); el.dispatchEvent(new MouseEvent("mouseup", { ...opts, detail: i }));
+          el.dispatchEvent(new MouseEvent(button === "right" ? "contextmenu" : "click", { ...opts, detail: i }));
+        }
+        if (clicks === 2) el.dispatchEvent(new MouseEvent("dblclick", { ...opts, detail: 2 }));
+      }, [at[0], at[1], button, clicks]);
+    }
+    return { ok: true, text: (clicks === 2 ? "Double-clicked" : button === "right" ? "Right-clicked" : "Clicked") + " at (" + Math.round(at[0]) + ", " + Math.round(at[1]) + ") on " + target + how + "." };
+  }
+  if (name === "tab_type_text") {
+    const text = String(msg.text == null ? "" : msg.text);
+    if (!text || text.length > 20000) return { ok: false, error: "tab_type_text needs text (at most 20,000 characters). Click the field first with tab_click_at." };
+    const ask = await askFirst("type");
+    if (ask) return { ok: false, confirm: "PlazCode wants to " + ask + " in \"" + String(tab.title || tab.url).slice(0, 60) + "\"." };
+    const into = await run(() => { const el = document.activeElement; return el && el !== document.body ? el.tagName.toLowerCase() : ""; });
+    if (!into) return { ok: false, error: "No field is selected in that tab. Click the field first with tab_click_at, then type." };
+    await run(() => globalThis.__plazcodeControl.press());
+    if (debug) { await debugAttach(tab.id); await run((ms) => globalThis.__plazcodeControl.expect(ms), [Math.min(5000, 800 + text.length * 5)]); await cdp(tab.id, "Input.insertText", { text }); }
+    else await run((text) => { const el = document.activeElement; if ("value" in el && typeof el.setRangeText === "function") { try { el.setRangeText(text, el.selectionStart ?? el.value.length, el.selectionEnd ?? el.value.length, "end"); } catch { el.value += text; } el.dispatchEvent(new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" })); el.dispatchEvent(new Event("change", { bubbles: true })); } else document.execCommand("insertText", false, text); }, [text]);
+    return { ok: true, text: "Typed " + text.length + " characters into <" + into + ">" + how + "." };
+  }
+  if (name === "tab_key") {
+    const key = parseKey(msg.key);
+    if (!key) return { ok: false, error: 'tab_key takes one key, optionally with Ctrl/Shift/Alt/Meta: for example "Enter", "Tab", "Escape", "ArrowDown", "Ctrl+A", "Shift+Tab".' };
+    if (key.key === "Enter") { const ask = await askFirst("type"); if (ask) return { ok: false, confirm: "PlazCode wants to press Enter " + ask.replace(/^type into /, "in ") + " in \"" + String(tab.title || tab.url).slice(0, 60) + "\"." }; }
+    if (debug) {
+      await debugAttach(tab.id); await run((ms) => globalThis.__plazcodeControl.expect(ms), [1500]);
+      const base = { key: key.key, code: key.code, windowsVirtualKeyCode: key.vk, nativeVirtualKeyCode: key.vk, modifiers: key.modifiers };
+      await cdp(tab.id, "Input.dispatchKeyEvent", { ...base, type: key.text ? "keyDown" : "rawKeyDown", text: key.text || undefined });
+      await cdp(tab.id, "Input.dispatchKeyEvent", { ...base, type: "keyUp" });
+    } else await run((k) => { const el = document.activeElement || document.body; const o = { key: k.key, code: k.code, keyCode: k.vk, bubbles: true, cancelable: true, ctrlKey: !!(k.modifiers & 2), shiftKey: !!(k.modifiers & 8), altKey: !!(k.modifiers & 1), metaKey: !!(k.modifiers & 4) }; el.dispatchEvent(new KeyboardEvent("keydown", o)); el.dispatchEvent(new KeyboardEvent("keyup", o)); if (k.key === "Enter" && el.form && el.form.requestSubmit) el.form.requestSubmit(); }, [key]);
+    return { ok: true, text: "Pressed " + String(msg.key) + how + "." };
+  }
+  return { ok: false, error: "Unknown tab command." };
+}
+// The person allows real mouse and keyboard once, in a small PlazCode window (the browser asks them there).
+async function controlAskPermission() {
+  if (await canDebug()) return { ok: true, granted: true };
+  if (!chrome.permissions || !chrome.debugger && !/Chrome|Edg/.test(navigator.userAgent)) return { ok: true, granted: false, unsupported: true };
+  await chrome.windows.create({ url: chrome.runtime.getURL("core/control-permission.html"), type: "popup", width: 480, height: 420 });
+  return { ok: true, granted: false, asked: true };
+}
+
 // What the person did in a controlled tab (sent by core/control-overlay.js from that tab only).
 function controlEvent(msg, sender) {
   const tabId = sender && sender.tab && sender.tab.id;
@@ -3545,11 +3759,12 @@ function controlEvent(msg, sender) {
   else if (msg.event === "resume") row.paused = false;
   else if (msg.event === "stop") {
     row.paused = false; row.stoppedAt = Date.now();
+    debugDetach(tabId);
     // Stop in the tab is Stop for the AI: the chat that was working there ends its run.
     if (Number.isInteger(row.by)) chrome.tabs.sendMessage(row.by, { type: "rs-control-stop" }).catch(() => {});
   }
 }
-chrome.tabs.onRemoved.addListener((tabId) => controlTabs.delete(tabId));
+chrome.tabs.onRemoved.addListener((tabId) => { controlTabs.delete(tabId); clearTimeout(controlDebug.get(tabId)); controlDebug.delete(tabId); });
 
 // Pick the tab a tab_* tool should act on: explicit tabId > a tab whose URL
 // contains url_contains > the active tab in any window that is NOT a chat
