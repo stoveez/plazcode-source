@@ -482,6 +482,39 @@ const PlazCodeFeatureGuide = (() => {
   "index": true
  },
  {
+  "id": "ask-plazcode",
+  "title": "Ask PlazCode",
+  "group": "Bar",
+  "where": "PlazCode bar > Ask PlazCode (and the PlazCode toolbar icon)",
+  "does": "Opens a chat beside the page you are looking at. PlazCode sees a picture of that tab with each question, and can control it if you switch that on.",
+  "steps": [
+   "Click Ask PlazCode on the bar, or the PlazCode icon in the browser toolbar and then Ask PlazCode.",
+   "Type a question about the page and press Enter.",
+   "To let PlazCode click and type in the tab, switch on Let PlazCode control this tab."
+  ],
+  "tips": [
+   "The shared tab follows the tab you are looking at. Untick Share to stop sharing.",
+   "Move your mouse or press Stop to take over at any time."
+  ],
+  "related": [
+   "helpers"
+  ],
+  "keywords": [
+   "ask plazcode",
+   "side chat",
+   "share screen",
+   "share tab",
+   "control tab"
+  ],
+  "anchors": [
+   "bar:rs-ask-plazcode"
+  ],
+  "surfaces": [
+   "extension"
+  ],
+  "index": false
+ },
+ {
   "id": "helpers",
   "title": "Helpers (sub-agents)",
   "group": "Bar",

@@ -36,6 +36,7 @@
   .on .cursor.seen{opacity:1}
   .cursor.press{transition:transform .1s ease}
   .still .glow,.still .label,.still .cursor{transition:none}
+  .sharing .glow{opacity:0}
 </style>
 <div class="frame" part="frame">
   <div class="glow"></div>
@@ -43,7 +44,7 @@
     <button class="resume" type="button">Resume</button><button class="stop" type="button">Stop</button></div>
   <svg class="cursor" viewBox="0 0 26 26" aria-hidden="true"><path d="M3 2l19 9.5-8.2 2.3L10 22z" fill="var(--a)" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>
 </div>`;
-  const frame = root.querySelector(".frame"), text = root.querySelector(".text"), cursor = root.querySelector(".cursor");
+  const frame = root.querySelector(".frame"), text = root.querySelector(".text"), cursor = root.querySelector(".cursor"), stopButton = root.querySelector(".stop");
   const state = { active: false, paused: false, stopped: false, x: -100, y: -100, idle: 0, expectUntil: 0 };
   const tell = (event) => { try { chrome.runtime.sendMessage({ type: "control_event", event }); } catch {} };
   const mount = () => { if (!host.isConnected) (doc.documentElement || doc.body).appendChild(host); };
@@ -67,7 +68,11 @@
     if (personal(event)) { setPaused(true); tell("paused"); }
   };
   for (const type of ["pointermove", "pointerdown", "wheel", "keydown"]) addEventListener(type, onInput, { capture: true, passive: true });
-  root.querySelector(".stop").addEventListener("click", (event) => { if (!event.isTrusted) return; api.hide(); state.stopped = true; tell("stop"); });
+  root.querySelector(".stop").addEventListener("click", (event) => {
+    if (!event.isTrusted) return;
+    if (state.sharing && !state.active) { api.share(false); tell("stop_share"); return; }
+    api.hide(); state.stopped = true; tell("stop");
+  });
   root.querySelector(".resume").addEventListener("click", (event) => { if (!event.isTrusted) return; setPaused(false); tell("resume"); });
   const api = {
     show(options) {
@@ -77,6 +82,7 @@
       mount();
       frame.classList.toggle("still", reduced());
       state.active = true; state.stopped = false;
+      frame.classList.remove("sharing"); text.textContent = state.paused ? "Paused, you're in control" : "PlazCode is working here"; stopButton.textContent = "Stop";
       // A frame later, so the glow fades in instead of appearing at once.
       requestAnimationFrame(() => frame.classList.add("on"));
       idle();
@@ -97,8 +103,14 @@
     // Hidden for the moment a picture of the tab is taken, so the AI sees the page, not PlazCode's glow.
     veil(on) { host.style.visibility = on ? "hidden" : "visible"; return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); },
     expect(ms) { state.expectUntil = Date.now() + Math.max(0, Math.min(5000, Number(ms) || 0)); },
-    hide() { state.active = false; clearTimeout(state.idle); setPaused(false); clearTimeout(state.idle); frame.classList.remove("on"); cursor.classList.remove("seen"); },
-    state() { return { active: state.active, paused: state.paused, stopped: state.stopped, x: state.x, y: state.y, accent: host.style.getPropertyValue("--a"), shown: host.isConnected && frame.classList.contains("on") }; },
+    hide() { if (state.sharing) { state.active = false; clearTimeout(state.idle); setPaused(false); api.share(true); cursor.classList.remove("seen"); return; } state.active = false; clearTimeout(state.idle); setPaused(false); clearTimeout(state.idle); frame.classList.remove("on"); cursor.classList.remove("seen"); },
+    // "Shared with PlazCode": the quiet mark while this tab is shared in Ask PlazCode (no glow, no cursor).
+    share(on) {
+      if (on) { mount(); if (!state.active) { frame.classList.add("on", "sharing"); text.textContent = "Shared with PlazCode"; stopButton.textContent = "Stop sharing"; } state.sharing = true; }
+      else { state.sharing = false; frame.classList.remove("sharing"); stopButton.textContent = "Stop"; if (!state.active) frame.classList.remove("on"); else text.textContent = "PlazCode is working here"; }
+      return api.state();
+    },
+    state() { return { sharing: !!state.sharing, label: text.textContent, active: state.active, paused: state.paused, stopped: state.stopped, x: state.x, y: state.y, accent: host.style.getPropertyValue("--a"), shown: host.isConnected && frame.classList.contains("on") }; },
     target: null,
   };
   Object.defineProperty(globalThis, "__plazcodeControl", { value: api, configurable: false, writable: false });

@@ -1338,7 +1338,7 @@ function statusObj(mode = engine) {
     // the popup, list_mcp_servers and the startup note all tell the AI it is connected.
     servers: mode === "local" ? blenderServers([{id:"local",name:"Local Filesystem",alive:localReady,tools:localReady ? localTools().length : 0}]) : blenderServers(serversCache), engine: mode,
     blender: blenderAddon, blender_error: blenderError || undefined, bridge_error: bridgeError || undefined,
-    control_v2: CONTROL_V2 || undefined,
+    control_v2: (typeof CONTROL_V2 !== "undefined" && CONTROL_V2) || undefined,
   };
 }
 
@@ -3438,6 +3438,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         if (!CONTROL_V2 || !Number.isInteger(msg.tabId)) { sendResponse({ ok: false, error: "Nothing to watch." }); break; }
         try { sendResponse(await controlWatch(msg.tabId, _sender)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
+      case "ask_open":
+        if (!CONTROL_V2) { sendResponse({ ok: false, error: "Not available in this version." }); break; }
+        try { sendResponse(await askOpen(Number.isInteger(msg.windowId) ? msg.windowId : _sender && _sender.tab ? _sender.tab.windowId : undefined)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
+        break;
+      case "ask_reply": case "ask_step": case "ask_approve":
+        if (!CONTROL_V2) { sendResponse({ ok: false }); break; }
+        try { sendResponse(await askFromChat(msg, _sender)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
+        break;
       case "control_event":
         controlEvent(msg, _sender);
         sendResponse({ ok: true });
@@ -3770,7 +3778,7 @@ async function controlSendFrame(tabId, data) {
   const frame = { type: "rs-control-frame", tabId, data, title: String(tab.title || "").slice(0, 120), url: String(tab.url || "").slice(0, 300), paused: !!row.paused, accent: row.accent || "", at: now };
   for (const port of controlViewers) { if (port.watch === tabId) { try { port.postMessage(frame); } catch {} } }
   // No card while the person is looking at that tab already.
-  if (Number.isInteger(live.by) && !(await controlLooking(tabId))) chrome.tabs.sendMessage(live.by, frame).catch(() => {});
+  if (Number.isInteger(live.by) && live.by !== ask.tabId && !(await controlLooking(tabId))) chrome.tabs.sendMessage(live.by, frame).catch(() => {});
 }
 async function controlLiveStart(tabId, by) {
   let live = controlLive.get(tabId);
@@ -3812,9 +3820,9 @@ if (chrome.debugger && chrome.debugger.onEvent) {
   });
 }
 // The live picture ends 20 s after the last action (when the glow has gone), at Stop and when the tab closes.
-setInterval(() => { for (const [tabId, live] of controlLive) if (Date.now() - live.lastAt > 20000) controlLiveStop(tabId); }, 2000);
-chrome.runtime.onConnect.addListener((port) => {
-  if (port.name !== "plazcode-control-view" || !port.sender || port.sender.id !== chrome.runtime.id || !/\/core\/control-view\.html/.test(String(port.sender.url || ""))) return;
+if (typeof setInterval === "function") setInterval(() => { for (const [tabId, live] of controlLive) if (Date.now() - live.lastAt > 20000) controlLiveStop(tabId); }, 2000);
+if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== "plazcode-control-view" || !port.sender || port.sender.id !== chrome.runtime.id || !/\/core\/(?:control-view|ask)\.html/.test(String(port.sender.url || ""))) return;
   controlViewers.add(port);
   port.onMessage.addListener((m) => {
     if (!CONTROL_V2 || !m) return;
@@ -3843,6 +3851,131 @@ async function controlWatch(tabId, sender) {
   return { ok: true, where: "window" };
 }
 
+// ── Step 4: "Ask PlazCode" side chat ───────────────────────────────────────
+// The panel (core/ask.html: Chrome's side panel, or a window docked to the right) is the person's chat. Behind it,
+// one background chat on the AI site they already use with PlazCode (opened like a helper agent window) does the
+// work as an AgentScript session. Every question carries a fresh picture of the shared tab. Control of that tab is
+// off unless the person switches it on in the panel; then steps 1 and 2 apply, with approvals shown in the panel.
+const ask = { tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null };
+const askPorts = new Set();
+const askPost = (m) => { for (const port of askPorts) { try { port.postMessage(m); } catch {} } };
+const askSay = (text, kind) => askPost({ type: "ask-note", kind: kind || "note", text });
+async function askSiteUrl() {
+  const tabs = (await chrome.tabs.query({})).filter((t) => t.url && isProviderUrl(t.url) && t.id !== ask.tabId && !(helperRoster && helperRoster.byTab && helperRoster.byTab(t.id)));
+  tabs.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
+  for (const tab of tabs) {
+    try { const reply = await chrome.tabs.sendMessage(tab.id, { type: "rs-ask-site" }); if (reply && reply.ok && /^https:\/\//.test(reply.url || "")) return { url: reply.url, name: String(reply.name || "") }; } catch {}
+  }
+  return null;
+}
+async function askEnsure() {
+  if (Number.isInteger(ask.tabId)) { try { await chrome.tabs.get(ask.tabId); return { ok: true }; } catch { ask.tabId = null; } }
+  const site = await askSiteUrl();
+  if (!site) return { ok: false, error: "Open your AI chat (ChatGPT, Claude, Gemini or another site PlazCode works with) in this browser once, then ask again. PlazCode uses that site for this chat." };
+  askSay("Opening a PlazCode chat on " + (site.name || new URL(site.url).host) + " in the background…");
+  const shape = { url: site.url, type: "popup", width: 980, height: 820, left: 40, top: 40 };
+  let created = null;
+  try { created = await chrome.windows.create({ ...shape, focused: false }); } catch { created = await chrome.windows.create(shape); }
+  const tab = created && created.tabs && created.tabs[0];
+  if (!tab) return { ok: false, error: "The background chat window could not be opened." };
+  ask.tabId = tab.id; ask.windowId = created.id;
+  tabEngines.set(tab.id, "local");
+  try { await chrome.storage.session.set({ ["rs-tab-engine-" + tab.id]: "local" }); } catch {}
+  if (!(await criticTabReady(tab.id))) return { ok: false, error: "The AI site did not load in the background chat window." };
+  if (!(await helperPing(tab.id))) return { ok: false, error: "PlazCode is not running in the background chat window. Is the AI site signed in there?" };
+  await criticSleep(1500);
+  return { ok: true };
+}
+async function askShareTab(tabId) {
+  if (!Number.isInteger(tabId)) return null;
+  try { const tab = await chrome.tabs.get(tabId); return controlRefusal(tab, null) ? null : tab; } catch { return null; }
+}
+// Show "Shared with PlazCode" in the shared tab, and stream it to the panel, while sharing is on.
+async function askShareMark(tab, on) {
+  try {
+    if (on) {
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["core/control-overlay.js"] });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__plazcodeControl.share(true) });
+      const live = controlLive.get(tab.id);
+      if (live) live.lastAt = Date.now(); else await controlLiveStart(tab.id, null);
+    } else await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__plazcodeControl && globalThis.__plazcodeControl.share(false) });
+  } catch {}
+}
+async function askQuestion(m) {
+  if (ask.busy) return askSay("PlazCode is still answering. Wait for it, or press Stop.", "error");
+  const text = String(m.say || "").trim().slice(0, 8000);
+  if (!text) return;
+  ask.busy = true; askPost({ type: "ask-busy", busy: true });
+  try {
+    const tab = m.share ? await askShareTab(m.shareTabId) : null;
+    if (m.share && !tab) askSay("That tab cannot be shared (browser pages, extension pages and AI chats are never shared). Asking without a picture.");
+    let images = [];
+    if (tab) {
+      try { const pic = await controlPicture(tab, await canDebug()); images = [{ mimeType: "image/jpeg", data: pic.data }]; }
+      catch (error) { askPost({ type: "ask-permission", text: String(error && error.message || error) }); }
+    }
+    const ready = await askEnsure();
+    if (!ready.ok) { askSay(ready.error, "error"); return; }
+    const reply = await chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-run", ask: { text, images, control: !!(m.control && tab), share: tab ? { tabId: tab.id, title: String(tab.title || "").slice(0, 120), url: String(tab.url || "").slice(0, 300) } : null } });
+    if (!reply || !reply.ok) { askSay(String(reply && reply.error || "The background chat did not take the question."), "error"); return; }
+    return; // the answer arrives as "ask_reply" from the background chat
+  } catch (error) { askSay(String(error && error.message || error).slice(0, 300), "error"); }
+  ask.busy = false; askPost({ type: "ask-busy", busy: false });
+}
+// From the background chat (main.js): the answer, a progress line, or an approval question for the person.
+async function askFromChat(msg, sender) {
+  if (!sender || !sender.tab || sender.tab.id !== ask.tabId) return { ok: false, error: "Not the Ask PlazCode chat." };
+  if (msg.type === "ask_reply") { ask.busy = false; askPost({ type: "ask-reply", status: String(msg.status || "done"), text: String(msg.text || "").slice(0, 60000) }); askPost({ type: "ask-busy", busy: false }); return { ok: true }; }
+  if (msg.type === "ask_step") { askPost({ type: "ask-step", text: String(msg.text || "").slice(0, 200) }); return { ok: true }; }
+  if (msg.type === "ask_approve") {
+    if (!askPorts.size) return { ok: true, allowed: false };
+    const id = ++ask.seq;
+    const answer = new Promise((resolve) => { ask.approvals.set(id, resolve); setTimeout(() => { if (ask.approvals.delete(id)) resolve(false); }, 300000); });
+    askPost({ type: "ask-approve", id, title: String(msg.title || "PlazCode wants to do something").slice(0, 240), detail: String(msg.detail || "").slice(0, 600), kicker: String(msg.kicker || "").slice(0, 80) });
+    return { ok: true, allowed: await answer };
+  }
+  return { ok: false };
+}
+if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== "plazcode-ask" || !port.sender || port.sender.id !== chrome.runtime.id || !/\/core\/ask\.html/.test(String(port.sender.url || ""))) return;
+  askPorts.add(port);
+  port.postMessage({ type: "ask-busy", busy: ask.busy, enabled: CONTROL_V2 });
+  port.onMessage.addListener(async (m) => {
+    if (!CONTROL_V2 || !m) return;
+    if (typeof m.say === "string") askQuestion(m);
+    if (Number.isInteger(m.approve)) { const resolve = ask.approvals.get(m.approve); if (resolve) { ask.approvals.delete(m.approve); resolve(m.allowed === true); } }
+    if (m.stop && Number.isInteger(ask.tabId)) { chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-stop" }).catch(() => {}); for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); } }
+    if ("sharing" in m) {
+      const tab = m.sharing ? await askShareTab(m.shareTabId) : null;
+      if (ask.share && (!tab || ask.share !== tab.id)) { const old = await askShareTab(ask.share); if (old) askShareMark(old, false); ask.share = null; }
+      // The panel says "shared" only once the mark is showing in that tab.
+      if (tab) { ask.share = tab.id; await askShareMark(tab, true); }
+      port.postMessage({ type: "ask-share", tabId: tab ? tab.id : null, title: tab ? String(tab.title || "") : "", url: tab ? String(tab.url || "") : "", refused: !!(m.sharing && !tab) });
+    }
+  });
+  port.onDisconnect.addListener(async () => {
+    askPorts.delete(port);
+    if (!askPorts.size) {
+      for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); }
+      if (ask.share) { const old = await askShareTab(ask.share); if (old) askShareMark(old, false); ask.share = null; }
+    }
+  });
+});
+// Open the Ask PlazCode panel: Chrome's side panel where the browser allows it, otherwise a docked window.
+async function askOpen(windowId) {
+  if (chrome.sidePanel && typeof chrome.sidePanel.open === "function" && Number.isInteger(windowId)) {
+    try { await chrome.sidePanel.setOptions({ path: "core/ask.html", enabled: true }); await chrome.sidePanel.open({ windowId }); return { ok: true, where: "side panel" }; } catch {}
+  }
+  let left, top, width = 440, height = 760;
+  try { const win = await chrome.windows.get(windowId); left = Math.max(0, (win.left || 0) + (win.width || 1200) - width); top = win.top; height = Math.max(480, win.height || height); } catch {}
+  await chrome.windows.create({ url: chrome.runtime.getURL("core/ask.html?window=" + (Number.isInteger(windowId) ? windowId : "")), type: "popup", width, height, left, top });
+  return { ok: true, where: "window" };
+}
+if (chrome.commands && chrome.commands.onCommand) {
+  // The shortcut entry ("ask-plazcode", Alt+P) is added to manifest.json when the rework is switched on.
+  chrome.commands.onCommand.addListener((command, tab) => { if (CONTROL_V2 && command === "ask-plazcode") askOpen(tab && tab.windowId).catch(() => {}); });
+}
+
 // The person allows real mouse and keyboard once, in a small PlazCode window (the browser asks them there).
 async function controlAskPermission() {
   if (await canDebug()) return { ok: true, granted: true };
@@ -3855,6 +3988,12 @@ async function controlAskPermission() {
 function controlEvent(msg, sender) {
   const tabId = sender && sender.tab && sender.tab.id;
   if (!Number.isInteger(tabId) || sender.id !== chrome.runtime.id) return;
+  if (msg.event === "stop_share") {
+    // "Stop sharing" in the shared tab itself.
+    if (ask.share === tabId) { ask.share = null; askPost({ type: "ask-share", tabId: null, title: "", url: "", stoppedInTab: true }); }
+    controlLiveStop(tabId);
+    return;
+  }
   const row = controlTabs.get(tabId);
   if (!row) return;
   if (msg.event === "paused") row.paused = true;
@@ -3866,7 +4005,7 @@ function controlEvent(msg, sender) {
     if (Number.isInteger(row.by)) chrome.tabs.sendMessage(row.by, { type: "rs-control-stop" }).catch(() => {});
   }
 }
-chrome.tabs.onRemoved.addListener((tabId) => { controlLiveStop(tabId); controlTabs.delete(tabId); clearTimeout(controlDebug.get(tabId)); controlDebug.delete(tabId); });
+if (chrome.tabs && chrome.tabs.onRemoved) chrome.tabs.onRemoved.addListener((tabId) => { controlLiveStop(tabId); controlTabs.delete(tabId); clearTimeout(controlDebug.get(tabId)); controlDebug.delete(tabId); });
 
 // Pick the tab a tab_* tool should act on: explicit tabId > a tab whose URL
 // contains url_contains > the active tab in any window that is NOT a chat

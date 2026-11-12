@@ -199,6 +199,9 @@ if (runHint) {
 })();
 
 function render(s) {
+  // 1.24.34 control rework: "Ask PlazCode" (shown only while the worker has the rework on). The click here counts as
+  // the person's own action, so Chrome lets PlazCode open its side panel from the popup.
+  try { const ask = document.getElementById("ask-plazcode"); if (ask) ask.hidden = !(s && s.control_v2); } catch {}
   const dot = document.getElementById("dot");
   const state = document.getElementById("state");
   const tools = document.getElementById("tools");
@@ -402,3 +405,12 @@ PlazCodeMountEffortPicker(document.getElementById("reasoning-level"));
 refresh();
 setInterval(refresh, 2000);
 
+
+// 1.24.34 control rework: open the Ask PlazCode side panel for this window.
+document.getElementById("ask-plazcode")?.addEventListener("click", async () => {
+  try {
+    const win = await chrome.windows.getCurrent();
+    if (chrome.sidePanel && chrome.sidePanel.open) { await chrome.sidePanel.setOptions({ path: "core/ask.html", enabled: true }); await chrome.sidePanel.open({ windowId: win.id }); window.close(); return; }
+  } catch {}
+  try { const win = await chrome.windows.getCurrent(); await chrome.runtime.sendMessage({ type: "ask_open", windowId: win.id }); window.close(); } catch {}
+});
