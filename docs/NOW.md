@@ -40,3 +40,5 @@ Updated: 2026-11-12 (seventh chat: logos, then macOS 10.15 Catalina support). No
 
 
 **Connections rework (pick-up): read the ">>> PICK UP HERE" block at the top of `development/1.24.32/CONNECTIONS-REWORK-PROGRESS.md` first; its table and newest log entry say which step is in progress.**
+
+**2026-11-12, CI status for the Linux rework:** run 43283772249 (`8c5f3d6`) found a Windows path test bug and a Linux update-helper close timeout; both fixed in `9caf0a9` (helper now force-closes a PlazCode that stays open after 10 s; CI cause not confirmed). `89d48ae` pins the 1.24.33 Linux CI jobs to `ubuntu-24.04` (ubuntu-latest moved to 26.04, which Playwright does not support). The test build on `89d48ae` (run 43292654275) was cancelled because the owner said no builds yet. **Next test build when the owner asks** (repo must be public for it).
