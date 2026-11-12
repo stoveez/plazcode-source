@@ -2689,7 +2689,8 @@ return result`;
     const a = args || {};
     const asset = String(a.asset || a.filepath || a.path || "").trim();
     const dest = String(a.dest || a.parent || "Workspace");
-    const scale = a.scale===undefined?20:Number(a.scale);
+    // 1.24.33 (owner, 2026-11-12): Blender's own numbers, 1 Blender unit = 1 stud (was 20 studs per unit).
+    const scale = a.scale===undefined?1:Number(a.scale);
     if(!Number.isFinite(scale)||scale<=0||scale>100000)return "ERROR in asset_bridge_import: scale must be a finite positive number up to 100000.";
     const assetLower = asset.toLowerCase();
     let assetId = "";
