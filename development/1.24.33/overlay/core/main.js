@@ -637,9 +637,7 @@
   const RUN_CMD = "PlazCode.exe";
   // (The setup tutorial is now an in-app modal — see openTutorial() — so the
   // old YouTube link is gone and can never go stale.)
-  // Work.ink locked link - free "watch an ad" support option. Set once the
-  // locker is created at https://work.ink; the button is hidden until then.
-  const WORKINK_URL = "https://work.ink/2JXi/robloxscript-free-roblox-ai-coding-tool";
+  // (The "watch an ad to support" menu row was removed in 1.24.33 at the owner's request.)
   // Roblox "tip" Game Passes - the native currency for the audience.
   const ROBUX_PASSES = [
     { id: 2025206972, amount: 50, url: "https://www.roblox.com/game-pass/2025206972/plazcode-small-donation" },
@@ -8440,7 +8438,6 @@ return result`;
           <section class="rs-menu-sec">
             <div class="rs-sec-label"><span>Guide</span></div>
             <button class="rs-tip-opt rs-tip-star" id="rs-menu-tutorial"><span>Read the Tutorial</span><span class="rs-tip-sub">text walkthrough \u2014 always up to date</span></button>
-            ${WORKINK_URL ?  `<button class="rs-tip-opt rs-tip-ad" data-u="${WORKINK_URL}"><span>Watch an ad to support</span><span class="rs-tip-sub">free, takes a minute</span></button>` : ""}
           </section>
          <section class="rs-menu-sec">
            <div class="rs-sec-label"><span>Support</span></div>
