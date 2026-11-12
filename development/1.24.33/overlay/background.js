@@ -3434,6 +3434,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         if (!CONTROL_V2) { sendResponse({ ok: false, error: "This PlazCode version does not have " + msg.type + " yet." }); break; }
         try { sendResponse(await controlV2Tool(msg, _sender)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
+      case "control_watch":
+        if (!CONTROL_V2 || !Number.isInteger(msg.tabId)) { sendResponse({ ok: false, error: "Nothing to watch." }); break; }
+        try { sendResponse(await controlWatch(msg.tabId, _sender)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
+        break;
       case "control_event":
         controlEvent(msg, _sender);
         sendResponse({ ok: true });
@@ -3477,7 +3481,9 @@ async function controlEnter(tab, msg, sender) {
   if (row.stoppedAt && Date.now() - row.stoppedAt < 15000) return { error: "The person pressed Stop in that tab a moment ago, so PlazCode did nothing. Ask them before working there again." };
   row.stoppedAt = 0; row.by = sender && sender.tab ? sender.tab.id : row.by;
   controlTabs.set(tab.id, row);
+  controlLiveStart(tab.id, row.by).catch(() => {});
   const accent = /^#[0-9a-f]{6}$/i.test(String(msg.accent || "").trim()) ? String(msg.accent).trim() : "";
+  if (accent) row.accent = accent;
   await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["core/control-overlay.js"] });
   const [shown] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: [accent], func: (a) => globalThis.__plazcodeControl.show({ accent: a }) });
   if (shown && shown.result && shown.result.paused) row.paused = true;
@@ -3554,7 +3560,7 @@ async function canDebug() {
 }
 function debugBump(tabId) {
   clearTimeout(controlDebug.get(tabId));
-  controlDebug.set(tabId, setTimeout(() => debugDetach(tabId), 20000));
+  controlDebug.set(tabId, setTimeout(() => { controlLiveStop(tabId).finally(() => debugDetach(tabId)); }, 20000));
 }
 async function debugAttach(tabId) {
   if (!controlDebug.has(tabId)) await chrome.debugger.attach({ tabId }, "1.3");
@@ -3741,6 +3747,102 @@ async function controlV2Tool(msg, sender) {
   }
   return { ok: false, error: "Unknown tab command." };
 }
+// ── Step 3: live picture of the controlled tab ─────────────────────────────
+// While PlazCode works in a tab, a few pictures a second go to (a) the AI chat that is working there, which shows a
+// live card unless the person is already looking at that tab, and (b) any open PlazCode live view (side panel or
+// docked window). Chrome/Edge/Brave: the browser's own screen stream over the debugging connection (only after the
+// one-time permission). Firefox: tabs.captureTab twice a second. Chrome without the permission: no picture; the card
+// says why.
+const controlLive = new Map();   // tabId -> { by, lastAt, sentAt, poll }
+const controlViewers = new Set(); // ports from core/control-view.html
+const FRAME_GAP = 220;            // at most about 4 pictures a second
+async function controlLooking(tabId) {
+  try { const tab = await chrome.tabs.get(tabId); if (!tab.active) return false; const win = await chrome.windows.get(tab.windowId); return !!win.focused; } catch { return false; }
+}
+async function controlSendFrame(tabId, data) {
+  const live = controlLive.get(tabId);
+  if (!live) return;
+  const now = Date.now();
+  if (now - live.sentAt < FRAME_GAP) return;
+  live.sentAt = now;
+  let tab = null; try { tab = await chrome.tabs.get(tabId); } catch { return; }
+  const row = controlTabs.get(tabId) || {};
+  const frame = { type: "rs-control-frame", tabId, data, title: String(tab.title || "").slice(0, 120), url: String(tab.url || "").slice(0, 300), paused: !!row.paused, accent: row.accent || "", at: now };
+  for (const port of controlViewers) { if (port.watch === tabId) { try { port.postMessage(frame); } catch {} } }
+  // No card while the person is looking at that tab already.
+  if (Number.isInteger(live.by) && !(await controlLooking(tabId))) chrome.tabs.sendMessage(live.by, frame).catch(() => {});
+}
+async function controlLiveStart(tabId, by) {
+  let live = controlLive.get(tabId);
+  if (live) { live.lastAt = Date.now(); if (Number.isInteger(by)) live.by = by; return; }
+  live = { by, lastAt: Date.now(), sentAt: 0, poll: 0, cast: false };
+  controlLive.set(tabId, live);
+  if (await canDebug()) {
+    try {
+      await debugAttach(tabId);
+      await cdp(tabId, "Page.enable");
+      await cdp(tabId, "Page.startScreencast", { format: "jpeg", quality: 55, maxWidth: 960, maxHeight: 720, everyNthFrame: 1 });
+      live.cast = true;
+    } catch { live.cast = false; }
+  }
+  if (!live.cast && typeof chrome.tabs.captureTab === "function") {
+    live.poll = setInterval(async () => {
+      try { const url = await chrome.tabs.captureTab(tabId, { format: "jpeg", quality: 55 }); controlSendFrame(tabId, String(url).replace(/^data:[^,]*,/, "")); } catch {}
+    }, 500);
+  }
+  if (!live.cast && !live.poll && Number.isInteger(by)) {
+    chrome.tabs.sendMessage(by, { type: "rs-control-frame", tabId, data: "", note: "Live picture needs the one-time permission to control tabs.", title: "", url: "", at: Date.now() }).catch(() => {});
+  }
+}
+async function controlLiveStop(tabId) {
+  const live = controlLive.get(tabId);
+  if (!live) return;
+  controlLive.delete(tabId);
+  clearInterval(live.poll);
+  if (live.cast) { try { await cdp(tabId, "Page.stopScreencast"); } catch {} }
+  const end = { type: "rs-control-end", tabId };
+  for (const port of controlViewers) { if (port.watch === tabId) { try { port.postMessage(end); } catch {} } }
+  if (Number.isInteger(live.by)) chrome.tabs.sendMessage(live.by, end).catch(() => {});
+}
+if (chrome.debugger && chrome.debugger.onEvent) {
+  chrome.debugger.onEvent.addListener((source, method, params) => {
+    if (method !== "Page.screencastFrame" || !source || !Number.isInteger(source.tabId)) return;
+    cdp(source.tabId, "Page.screencastFrameAck", { sessionId: params.sessionId }).catch(() => {});
+    if (controlLive.has(source.tabId)) controlSendFrame(source.tabId, params.data);
+  });
+}
+// The live picture ends 20 s after the last action (when the glow has gone), at Stop and when the tab closes.
+setInterval(() => { for (const [tabId, live] of controlLive) if (Date.now() - live.lastAt > 20000) controlLiveStop(tabId); }, 2000);
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== "plazcode-control-view" || !port.sender || port.sender.id !== chrome.runtime.id || !/\/core\/control-view\.html/.test(String(port.sender.url || ""))) return;
+  controlViewers.add(port);
+  port.onMessage.addListener((m) => {
+    if (!CONTROL_V2 || !m) return;
+    if (Number.isInteger(m.watch)) port.watch = m.watch;
+    if (m.action === "stop" && Number.isInteger(port.watch)) { controlEvent({ event: "stop" }, { tab: { id: port.watch }, id: chrome.runtime.id }); chrome.scripting.executeScript({ target: { tabId: port.watch }, func: () => globalThis.__plazcodeControl && globalThis.__plazcodeControl.hide() }).catch(() => {}); }
+    if (m.action === "pause" && Number.isInteger(port.watch)) { const row = controlTabs.get(port.watch); if (row) row.paused = true; }
+    if (m.action === "resume" && Number.isInteger(port.watch)) { const row = controlTabs.get(port.watch); if (row) row.paused = false; }
+  });
+  port.onDisconnect.addListener(() => controlViewers.delete(port));
+});
+// "Enlarge" on the card: the browser's side panel next to the AI chat, or (older Chrome, Firefox, or when the browser
+// refuses) a small window docked to the right side of the screen.
+async function controlWatch(tabId, sender) {
+  const page = "core/control-view.html?tab=" + tabId;
+  const from = sender && sender.tab;
+  if (chrome.sidePanel && typeof chrome.sidePanel.open === "function" && from && Number.isInteger(from.id)) {
+    try {
+      await chrome.sidePanel.setOptions({ tabId: from.id, path: page, enabled: true });
+      await chrome.sidePanel.open({ tabId: from.id });
+      return { ok: true, where: "side panel" };
+    } catch {}
+  }
+  let left, width = 520, height = 720, top;
+  try { const win = from ? await chrome.windows.get(from.windowId) : null; if (win) { left = Math.max(0, (win.left || 0) + (win.width || 1200) - width); top = win.top; height = Math.max(400, win.height || height); } } catch {}
+  await chrome.windows.create({ url: chrome.runtime.getURL(page), type: "popup", width, height, left, top, focused: false });
+  return { ok: true, where: "window" };
+}
+
 // The person allows real mouse and keyboard once, in a small PlazCode window (the browser asks them there).
 async function controlAskPermission() {
   if (await canDebug()) return { ok: true, granted: true };
@@ -3759,12 +3861,12 @@ function controlEvent(msg, sender) {
   else if (msg.event === "resume") row.paused = false;
   else if (msg.event === "stop") {
     row.paused = false; row.stoppedAt = Date.now();
-    debugDetach(tabId);
+    controlLiveStop(tabId).finally(() => debugDetach(tabId));
     // Stop in the tab is Stop for the AI: the chat that was working there ends its run.
     if (Number.isInteger(row.by)) chrome.tabs.sendMessage(row.by, { type: "rs-control-stop" }).catch(() => {});
   }
 }
-chrome.tabs.onRemoved.addListener((tabId) => { controlTabs.delete(tabId); clearTimeout(controlDebug.get(tabId)); controlDebug.delete(tabId); });
+chrome.tabs.onRemoved.addListener((tabId) => { controlLiveStop(tabId); controlTabs.delete(tabId); clearTimeout(controlDebug.get(tabId)); controlDebug.delete(tabId); });
 
 // Pick the tab a tab_* tool should act on: explicit tabId > a tab whose URL
 // contains url_contains > the active tab in any window that is NOT a chat

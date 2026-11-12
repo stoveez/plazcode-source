@@ -37,6 +37,24 @@ const {load}=new Function('require',prefix+';return {load};')(req);
  assert.deepEqual(sent.map(m=>m.confirmed),[false,true]);
  // A tab picture reaches the AI as a picture.
  assert.match(await call('tab_screenshot',{}),/image is attached/);
+ // Step 3: the live card above the PlazCode bar.
+ const jpeg=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=320;c.height=200;const g=c.getContext('2d');g.fillStyle='#16a34a';g.fillRect(0,0,320,200);return c.toDataURL('image/jpeg').split(',')[1];});
+ await page.evaluate((data)=>fixture.controlCard({type:'rs-control-frame',tabId:7,data,title:'Shop',url:'https://control.test/x',paused:false}),jpeg);
+ await page.waitForSelector('.rs-live-card');
+ assert.match(await page.innerText('.rs-live-card'),/Shop[\s\S]*control\.test · PlazCode is working here/);
+ assert.equal(await page.evaluate(()=>{const c=document.querySelector('.rs-live-card canvas');return [...c.getContext('2d').getImageData(160,100,1,1).data].slice(0,3).join();}).then(v=>v.split(',').map(Number)[1]>120),true,'the picture is drawn');
+ if(process.env.PLAZCODE_CONTROL_SHOT_CARD)await page.screenshot({path:process.env.PLAZCODE_CONTROL_SHOT_CARD});
+ await page.evaluate((data)=>fixture.controlCard({type:'rs-control-frame',tabId:7,data,title:'Shop',url:'https://control.test/x',paused:true}),jpeg);
+ assert.match(await page.innerText('.rs-live-card'),/Paused, you're in control/);
+ assert.equal(await page.locator('.rs-live-card').count(),1,'one card per tab');
+ await page.evaluate(()=>{window.watch=[];const old=chrome.runtime.sendMessage;chrome.runtime.sendMessage=(m,cb)=>{if(m.type==='control_watch'){watch.push(m.tabId);const v={ok:true};if(cb)queueMicrotask(()=>cb(v));return Promise.resolve(v);}return old(m,cb);};});
+ await page.locator('.rs-live-card').press('Enter');
+ await page.locator('.rs-live-card').click();
+ assert.deepEqual(await page.evaluate(()=>watch),[7,7],'Enter or a click opens the large live view of that tab');
+ await page.evaluate(()=>fixture.controlCard({type:'rs-control-frame',tabId:8,data:'',note:'Live picture needs the one-time permission to control tabs.'}));
+ assert.match(await page.innerText('.rs-live-card >> nth=1'),/one-time permission/);
+ await page.evaluate(()=>{fixture.controlCard({type:'rs-control-end',tabId:7});fixture.controlCard({type:'rs-control-end',tabId:8});});
+ assert.equal(await page.locator('.rs-live-card').count(),0,'the card goes when PlazCode is done');
  assert.deepEqual(errors,[]);
- console.log('PASS control rework always-ask (real AI-tab code, Chromium): asks even in Always approve, no = nothing sent, yes = sent once with confirmation, the AI cannot confirm for the person, pictures attached, commands absent while switched off');
+ console.log('PASS control rework always-ask (real AI-tab code, Chromium): asks even in Always approve, no = nothing sent, yes = sent once with confirmation, the AI cannot confirm for the person, pictures attached, commands absent while switched off; live card draws, pauses, opens the large view, explains a missing picture, goes away at the end');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});

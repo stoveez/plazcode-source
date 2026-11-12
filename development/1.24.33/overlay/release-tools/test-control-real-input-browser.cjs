@@ -100,10 +100,41 @@ async function run(mode) {
     assert(!r.ok && /AI chat tab/.test(r.error));
 
     if (real) {
+      // Step 3, live picture. The person looks at the AI chat, PlazCode works in the other tab: pictures go to the chat.
+      await worker.evaluate(() => { self.__frames = []; const send = chrome.tabs.sendMessage.bind(chrome.tabs); chrome.tabs.sendMessage = (id, m) => { if (m && /^rs-control-(frame|end)$/.test(m.type)) { self.__frames.push({ id, type: m.type, n: (m.data || '').length, title: m.title }); return Promise.resolve(); } return send(id, m); }; });
+      await chat.bringToFront();
+      await shop.goto('https://control.test/');
+      r = await tool('tab_scroll_at', { x: 300, y: 300, dy: 200 }); assert(r.ok);
+      await shop.evaluate(() => { document.body.style.background = '#fde68a'; });
+      await worker.evaluate(async () => { for (let i = 0; i < 60 && !self.__frames.some((f) => f.type === 'rs-control-frame' && f.n); i++) await new Promise((r) => setTimeout(r, 100)); });
+      let frames = await worker.evaluate(() => self.__frames.splice(0));
+      assert(frames.some((f) => f.type === 'rs-control-frame' && f.id === ids.chat && f.n > 1000 && f.title === 'Shop'), 'live pictures reach the AI chat: ' + JSON.stringify(frames.slice(0, 3)));
+      // The large live view (opened from the card): side panel, or a docked window where the browser refuses the panel.
+      const opened = await worker.evaluate(async (ids) => { self.__windows = []; const create = chrome.windows.create.bind(chrome.windows); chrome.windows.create = (o) => { self.__windows.push(o.url); return create(o); }; return controlWatch(ids.shop, { tab: { id: ids.chat, windowId: (await chrome.tabs.get(ids.chat)).windowId } }); }, ids);
+      assert(opened.ok, JSON.stringify(opened));
+      const extId = new URL(worker.url()).host;
+      const viewer = await context.newPage();
+      await viewer.goto('chrome-extension://' + extId + '/core/control-view.html?tab=' + ids.shop);
+      await chat.bringToFront();
+      await tool('tab_scroll_at', { x: 300, y: 300, dy: 100 });
+      await shop.evaluate(() => { document.body.style.background = '#bfdbfe'; });
+      await viewer.waitForFunction(() => !document.getElementById('view').hidden, null, { timeout: 8000 });
+      assert.match(await viewer.innerText('#site'), /Shop · control\.test/);
+      if (process.env.PLAZCODE_CONTROL_SHOT_VIEW) { await viewer.setViewportSize({ width: 520, height: 720 }); await viewer.screenshot({ path: process.env.PLAZCODE_CONTROL_SHOT_VIEW }); }
+      // Stop from the live view stops PlazCode in the tab and ends the picture.
+      await viewer.click('#stop');
+      await worker.evaluate(async () => { for (let i = 0; i < 40 && !self.__frames.some((f) => f.type === 'rs-control-end'); i++) await new Promise((r) => setTimeout(r, 50)); });
+      frames = await worker.evaluate(() => self.__frames.splice(0));
+      assert(frames.some((f) => f.type === 'rs-control-end' && f.id === ids.chat), 'the chat\'s card is told the live picture ended');
+      assert(!(await tool('tab_screenshot')).ok, 'Stop from the live view refuses further actions for a moment');
+      assert.equal(await worker.evaluate(async () => { for (let i = 0; i < 40 && controlDebug.size; i++) await new Promise((r) => setTimeout(r, 50)); return controlDebug.size; }), 0, 'the browser\'s debugging bar goes away at Stop (within two seconds)');
+      await worker.evaluate(() => { for (const row of controlTabs.values()) row.stoppedAt = 0; });
+      await shop.bringToFront();
+      assert((await tool('tab_screenshot')).ok);
       // Stop releases the debugging connection at once.
       assert.equal(await worker.evaluate(() => controlDebug.size), 1);
       await worker.evaluate((id) => controlEvent({ event: 'stop' }, { tab: { id }, id: chrome.runtime.id }), ids.shop);
-      assert.equal(await worker.evaluate(() => controlDebug.size), 0, 'the browser\'s debugging bar goes away at Stop');
+      assert.equal(await worker.evaluate(async () => { for (let i = 0; i < 40 && controlDebug.size; i++) await new Promise((r) => setTimeout(r, 50)); return controlDebug.size; }), 0, 'the browser\'s debugging bar goes away at Stop (within two seconds)');
     } else {
       // Without the permission, PlazCode asked once in its own small window, and only once.
       const asks = () => worker.evaluate(() => self.__asked.filter((u) => /core\/control-permission\.html$/.test(u)).length);

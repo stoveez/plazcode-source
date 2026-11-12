@@ -12,7 +12,7 @@ async function load(browser,mode){
  },{mode,version:JSON.parse(read('manifest.json')).version});
  await page.addStyleTag({path:'overlay.css'});
  const scripts=JSON.parse(read('manifest.json')).content_scripts.find(group=>group.js.includes('providers/clickup.js')).js;
- for(const file of scripts){if(['providers/clickup.js','core/parser.js'].includes(file))continue;let code=read(file);if(file==='core/main.js')code=code.replace('const TOKEN_CHARS = 4;','window.fixture={A,runTool,requestApproval,ui,asStateTag};const TOKEN_CHARS = 4;');await page.addScriptTag({content:code});}
+ for(const file of scripts){if(['providers/clickup.js','core/parser.js'].includes(file))continue;let code=read(file);if(file==='core/main.js')code=code.replace('const TOKEN_CHARS = 4;','window.fixture={A,runTool,requestApproval,ui,asStateTag,controlCard};const TOKEN_CHARS = 4;');await page.addScriptTag({content:code});}
  await page.waitForSelector('#rs-approval-mode');return {page,errors};
 }
 async function choose(page,value){await page.locator('#rs-approval-mode').click();await page.locator('.pc-approval-menu [data-mode="'+value+'"]').click();await page.waitForFunction(value=>prefStore.rsApprovalMode===value,value);}

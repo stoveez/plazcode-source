@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>PlazCode live view</title>
+<style>
+ :root{--a:#8b5cf6;color-scheme:dark}
+ body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#0f1117;color:#eef0f6;display:flex;flex-direction:column;min-height:100vh}
+ header{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+ .dot{width:9px;height:9px;border-radius:50%;background:var(--a);box-shadow:0 0 10px var(--a);flex:none}
+ .paused .dot{background:transparent;border:2px solid var(--a);box-shadow:none}
+ .ended .dot{background:#6b7280;box-shadow:none}
+ h1{font:600 15px Georgia,"Sitka Text",Cambria,serif;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ #site{display:block;font:12px system-ui,sans-serif;color:#9aa0ae;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ main{flex:1;display:flex;align-items:center;justify-content:center;padding:12px}
+ canvas{max-width:100%;max-height:calc(100vh - 150px);border-radius:10px;box-shadow:0 0 0 2px var(--a),0 8px 40px rgba(0,0,0,.5);background:#1a1d26}
+ #note{color:#9aa0ae;text-align:center;padding:24px;max-width:340px}
+ footer{display:flex;gap:8px;padding:12px 14px;border-top:1px solid rgba(255,255,255,.08)}
+ button{font:600 14px system-ui,sans-serif;border:0;border-radius:10px;padding:9px 16px;cursor:pointer;color:#fff;background:rgba(255,255,255,.08)}
+ button.stop{background:linear-gradient(135deg,#ef4444,#b91c1c)}
+ button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+ .ended footer button{display:none}
+</style></head>
+<body><header><span class="dot" aria-hidden="true"></span><h1><span id="state">PlazCode is working</span><span id="site"></span></h1></header>
+<main><canvas id="view" width="960" height="600" aria-label="Live picture of the tab PlazCode is working in" hidden></canvas><p id="note" role="status">Waiting for the first picture…</p></main>
+<footer><button id="pause" type="button">Pause</button><button id="stop" class="stop" type="button">Stop</button></footer>
+<script src="control-view.js"></script></body></html>
