@@ -35,7 +35,7 @@ def notes(feed):
     for section in sections:
         if section.get('items'):lines+=['***'+section['title']+'***']+['- '+x for x in section['items']]+['']
     lines+=['***📥 How to update***','- Open PlazCode, or choose Updates → Update now.',
-            '- Manual downloads: PlazCode-'+version+'.zip for Windows, PlazCode-macOS-'+version+'.zip for Mac, or PlazCode-Firefox-'+version+'.zip for Firefox.',
+            '- Manual downloads: PlazCode-'+version+'.zip for Windows, PlazCode-macOS-'+version+'.zip for Mac, PlazCode-Linux-'+version+'.tar.gz for Linux, or PlazCode-Firefox-'+version+'.zip for Firefox.',
             '- Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.',
             '- Your settings, memory and connections are kept.']
     return 'PlazCode '+version+': '+entry['title'],checked_release_body('\n'.join(lines)+'\n')

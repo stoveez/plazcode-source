@@ -161,11 +161,11 @@ pub fn card(saved: &SavedApp, facts: &Facts) -> Value {
     } else {
         let mut choices = Vec::new();
         if let Some(version) = &facts.home_version {
-            choices.push(json!({"value": "use_home", "label": "Use the PlazCode in my home folder", "note": format!("{} (version {version})", facts.places.home_install.display())}));
+            choices.push(json!({"value": "use_home", "ui": true, "label": "Use the PlazCode in my home folder", "note": format!("{} (version {version})", facts.places.home_install.display())}));
         } else {
-            choices.push(json!({"value": "move", "label": "Move it to my home folder (recommended)", "note": facts.places.home_install.display().to_string()}));
+            choices.push(json!({"value": "move", "ui": true, "label": "Move it to my home folder (recommended)", "note": facts.places.home_install.display().to_string()}));
         }
-        choices.push(json!({"value": "keep", "label": "Keep it where it is", "note": facts.root.display().to_string()}));
+        choices.push(json!({"value": "keep", "ui": true, "label": "Keep it where it is", "note": facts.root.display().to_string()}));
         with(with(step("where", WHERE, "needs_you"), "hint", json!(
             "PlazCode is running from the folder it was unpacked in. In your home folder the app menu, updates and your browser can always find it. PlazCode copies itself there and opens again; your settings come along.")),
             "choices", json!(choices))

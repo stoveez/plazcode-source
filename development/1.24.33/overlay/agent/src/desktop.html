@@ -2135,7 +2135,7 @@ __PLAZCODE_VERSION_UI__
       if(Step.copy)Extra+='<code class="cn-code" dir="ltr">'+Escape(Step.copy)+'</code>';
       var Picking=(Step.choices||Step.input)&&(Step.state!=='done'||Cnchanging[App.id+'/'+Step.id]);
       if(Picking){
-        if(Step.choices&&Step.choices.length)Extra+='<div class="cn-choices" role="group">'+Step.choices.map(function(Choice){return '<button type="button" class="cn-choice" data-cn-pick="'+Escape(Choice.value)+'" data-cn-step="'+Escape(Step.id)+'"'+(Choice.value===Step.detail?' aria-pressed="true"':'')+'><b data-i18n-user-content dir="auto">'+Escape(Choice.label)+'</b><small data-i18n-user-content dir="auto">'+Escape(Choice.note!=null?Choice.note:Choice.value)+'</small></button>';}).join('')+'</div>';
+        if(Step.choices&&Step.choices.length)Extra+='<div class="cn-choices" role="group">'+Step.choices.map(function(Choice){return '<button type="button" class="cn-choice" data-cn-pick="'+Escape(Choice.value)+'" data-cn-step="'+Escape(Step.id)+'"'+(Choice.value===Step.detail?' aria-pressed="true"':'')+'><b'+(Choice.ui?'':' data-i18n-user-content dir="auto"')+'>'+Escape(Choice.label)+'</b><small data-i18n-user-content dir="auto">'+Escape(Choice.note!=null?Choice.note:Choice.value)+'</small></button>';}).join('')+'</div>';
         if(Step.input)Extra+='<div class="cn-paste"><input type="text" class="cn-input" data-cn-input="'+Escape(Step.id)+'" placeholder="'+Escape(Step.input)+'" aria-label="'+Escape(Step.input)+'" spellcheck="false" autocomplete="off"><button type="button" class="softbtn" data-cn-use="'+Escape(Step.id)+'">'+Escape(Step.use||'Use this folder')+'</button></div>';
       }
       var Act='';

@@ -1,5 +1,6 @@
 # Linux rework progress
 
+**All 8 steps are done (2026-11-12). What is left is the owner's field test on a real Linux desktop (`docs/vault/open-work.md`, item 12) and publishing with the owner's yes.**
 >>> PICK UP HERE: read `LINUX-REWORK-PLAN.md` (owner's answers and steps), then the table and the newest log entry.
 Edit only `development/1.24.33/overlay` (and `development/1.24.33/*.py`, workflows). Rebuild with `python3
 development/1.24.33/prepare.py` (never while the full JS suite runs).
@@ -8,14 +9,15 @@ development/1.24.33/prepare.py` (never while the full JS suite runs).
 |---|---|---|
 | 1 | Plan and progress files | done |
 | 2 | Own app window (`--app`) | done |
-| 3 | Setup inside the app (Linux) | done (English only until step 8) |
-| 4 | Guided browser extension setup (all systems) | done (English only until step 8) |
+| 3 | Setup inside the app (Linux) | done |
+| 4 | Guided browser extension setup (all systems) | done |
 | 5 | One-line installer | done |
 | 6 | Linux automatic updates + publishing | done (publishing untried until the owner's yes) |
 | 7 | Roblox Studio through Vinegar (experimental) | done (never tried with real Vinegar or Studio) |
-| 8 | Translations, README, notes, test build | not started |
+| 8 | Translations, README, notes, test build | done locally; test build = next CI run |
 
 ## Log (newest first)
+- **2026-11-12, step 8 done.** The 62 new sentences (Get started, browser card, this-computer card, Vinegar card, Home reminder, Linux update message) are in all 15 catalogs (`core/locales/*.json`, `i18n-catalog.js` rebuilt; German uses the formal "Sie" like the rest of its catalog). The page translates a sentence only when it matches exactly, so the browser card's paste tips are fixed sentences per system; notices that contain a folder path stay English. Choices that are interface text carry `ui: true` so the page translates them (Godot project names keep `data-i18n-user-content`). Release notes: GitHub text has a Linux line with the install command, the browser-setup line and "not tried on a real Linux desktop" (1,834 characters; the preview is generated with `publish_release.notes`, which now lists the Linux download in How to update). Linux package README rewritten in step 6.
 - **2026-11-12, step 7 done: Roblox Studio through Vinegar, EXPERIMENTAL.** `agent/src/vinegar.rs` (Linux only). Finds Vinegar's data folder (Flatpak `~/.var/app/org.vinegarhq.Vinegar/data/vinegar` first, else `$XDG_DATA_HOME/vinegar`; paths from Vinegar's documentation), the newest `StudioMCP.exe` that sits next to a `RobloxStudioBeta.exe` in `versions/*` or the Studio prefix's `drive_c/users/*/AppData/Local/Roblox/Versions/*` and `Program Files*/Roblox/Versions/*`, and Vinegar's Wine (config.toml `wineroot`, else its Kombucha build `<data>/kombucha/bin/wine`, else `wine` for a normal install). Start command: Flatpak `flatpak run --command=<wine> --env=WINEPREFIX=<data>/prefixes/studio org.vinegarhq.Vinegar <StudioMCP.exe>`; normal install `env WINEPREFIX=... <wine> <StudioMCP.exe>`. `main.rs` `McpRuntime::launcher` uses it on Linux (it used the Windows search before, which found nothing on Linux). Wine shows Studio as `RobloxStudioBet` (15-character process name), which the existing Studio check already matches. On Linux the Apps & servers Studio tile is a real card from the app: Install Vinegar (Get Vinegar opens https://vinegarhq.org/), Install Roblox Studio in Vinegar, Turn on Studio's MCP server, PlazCode connects to Studio; the lead and the tile line say Experimental; Technical details show the exact start command. Tests: Rust `vinegar` (folders, helper next to Studio only, Wine choice, both commands, card states); live Linux app test (no Vinegar, Get Vinegar link, then a stand-in Vinegar folder: Studio found, MCP step, command shown). **Unknown and not testable here:** whether Roblox's StudioMCP.exe reaches Studio when started this way (a second Flatpak sandbox may not share Studio's Wine server); this needs a Linux tester with Vinegar. Overriding the command is still possible with `PLAZCODE_MCP_COMMAND`. Screenshot `5-studio-vinegar.png`.
 - **2026-11-12, steps 5 and 6 done together** (they share the update helper).
   - **Update helper** `overlay/Update-PlazCode-Linux.sh` (bash, embedded in the program like the Mac `.command`, also shipped in the Linux package): `<archive.tar.gz> <sha256> <version> <pid|0> <foreground|background|restore|none> <folder> [signed]`. Checks the SHA-256, refuses absolute paths, `..` and links, unpacks next to the install folder, checks the new program is a Linux program, runs the installed program's `--verify-package` on it (signed builds), refuses a downgrade, closes the running PlazCode (pid 0: every PlazCode running from that folder; a finished-but-uncollected process counts as closed), swaps only PlazCode's own folders and helper files with a backup and roll-back, then starts the new one fully detached (own session, no inherited output; `setsid`, else `nohup`) and waits for its ready marker (the Linux GUI now writes `--update-ready-file`, as Windows and Mac do). Mode `none` (installer) does not start it.

@@ -1,26 +1,27 @@
 ✨ **PlazCode 1.24.33**
-***A new Apps & servers page that connects your creative apps for you, helper agents and a fresh app look.***
+***Apps & servers that connect your creative apps for you, helper agents, a fresh look and an easy Linux install.***
 
 ***✨ What's new***
-- New Apps & servers page: connect Blender, Godot, Unity, Figma and Blockbench with a simple checklist that ticks itself off.
-- Blender can run quietly in the background with safe mode on, or use your own open Blender window.
-- PlazCode adds its own helpers to Blender, Unity, Figma and Blockbench for you, and takes them out again when you disconnect.
-- Helper agents: the AI can start up to two extra chats to work on parts of a task at the same time.
-- The AI can now send several commands in one reply; reads run together, changes run in order.
-- A fresh desktop app look: grouped pages, smoother page changes, gradients and glow, and a make-your-own theme builder.
-- Mac: now opens on macOS 10.15 Catalina too. Memory search needs macOS 12; on Catalina, use Firefox.
+- Apps & servers page: connect Blender, Godot, Unity, Figma and Blockbench with a checklist that ticks itself off.
+- PlazCode adds and removes its own helpers in those apps. Blender can run in the background with safe mode on.
+- Guided browser extension setup on every system.
+- Linux: one-line install with app menu entry and automatic updates: curl -fsSL https://raw.githubusercontent.com/stoveez/PlazCode/main/install-linux.sh | sh . Roblox Studio through Vinegar is experimental.
+- Helper agents: up to two extra chats work on parts of a task.
+- Several commands per reply: reads together, changes in order.
+- A fresh app look with grouped pages, glow and a theme builder.
+- Mac: runs on macOS 10.15 Catalina. Memory search needs macOS 12; use Firefox on Catalina.
 
 ***🛠️ What's fixed***
-- Notion: commands written right after a sentence run again instead of getting stuck on processing.
-- DeepSeek, Qwen, Kimi and similar sites: the startup check no longer fails.
+- Notion: commands right after a sentence run again.
+- DeepSeek, Qwen, Kimi and similar sites: the startup check works again.
 - Commands no longer wait on the link between the extension and the app.
 
 ***🧪 What was checked***
-- Automated tests on Windows, Mac and Linux, and on practice pages. App connections were tried with stand-ins, not real Unity, Figma or Blockbench, nor live on every AI site or in Studio. Catalina: simulated, not tried on a real Mac. Please report anything odd.
-- The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it.
+- Automated tests on Windows, Mac and Linux; app connections with stand-ins. Not tried on a real Catalina Mac, a real Linux desktop or every AI site. Please report anything odd.
+- Windows is unsigned and Mac is not notarized, as before.
 
 ***📥 How to update***
 - Open PlazCode, or choose Updates → Update now.
-- Manual downloads: PlazCode-1.24.33.zip for Windows, PlazCode-macOS-1.24.33.zip for Mac, or PlazCode-Firefox-1.24.33.zip for Firefox.
+- Manual downloads: PlazCode-1.24.33.zip for Windows, PlazCode-macOS-1.24.33.zip for Mac, PlazCode-Linux-1.24.33.tar.gz for Linux, or PlazCode-Firefox-1.24.33.zip for Firefox.
 - Reload your extension and refresh your AI tabs. Firefox users: reload the temporary add-on after restarting Firefox.
 - Your settings, memory and connections are kept.
