@@ -266,6 +266,49 @@ const CATALOG = [
     assert.equal(await tab.evaluate(() => document.querySelector('#cnApps [data-app="blender"]').dataset.state), "ready");
     for (const key of ["Add the PlazCode helper to Blender", "Add helper", "Open Blender", "PlazCode is adding its helper. Blender opens and closes once without a window.", "Open Blender the way you always do, or press Open Blender. The helper starts by itself.", "PlazCode adds a small helper to Blender and works in the Blender window you have open. Each step ticks itself off when it is done."]) assert(key in JSON.parse(fs.readFileSync(__dirname + "/core/locales/en.json", "utf8")), "translatable: " + key);
     bridge.onSetup = null; await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
+
+    // ---- Blockbench: two ways, the app's report drawn as it is, one button per step ----------------------------
+    const othersBb = bridge.backend.filter((a) => a.id !== "blockbench");
+    const bbModes = [{ id: "web", label: "In my browser" }, { id: "app", label: "The Blockbench app" }];
+    const bb = (mode, state, list, consent) => ({ id: "blockbench", name: "Blockbench", line: "Make blocky models and textures, in the web or desktop app.", state, mode, modes: bbModes, steps: list,
+      lead: mode === "app" ? "PlazCode makes one small helper file. You load it in the Blockbench app once, and from then on it connects by itself." : "PlazCode works in the Blockbench tab of your browser. There is nothing to install.",
+      consent: consent || "PlazCode's browser extension will work inside the Blockbench tab in your browser. Nothing in your models changes until you ask the AI.", prompts: ["Make a small blocky house with a door and two windows."] });
+    const setBb = async (app) => { bridge.backend = [...othersBb, app]; await tab.waitForTimeout(2400); }; // the open window asks the app again every two seconds
+    const st = (id, title, state, extra) => Object.assign({ id, title, state }, extra || {});
+    await tab.click('#cnApps [data-cn-open="godot"]'); await tab.waitForTimeout(300);
+    await setBb(bb("web", "not_set_up", [st("open", "Open Blockbench in your browser", "waiting"), st("test", "Check that Blockbench answers", "waiting")]));
+    await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
+    assert.equal(await tab.evaluate(() => { const tile = document.querySelector('#cnApps [data-app="blockbench"]'); return tile.dataset.state + ":" + !!tile.querySelector("[data-cn-open]:not([disabled])"); }), "not_set_up:true", "Blockbench is no longer Coming soon");
+    await tab.click('#cnApps [data-cn-open="blockbench"]'); await tab.waitForTimeout(500);
+    assert.deepEqual(await tab.evaluate(() => [...document.querySelectorAll("#cnWin [data-cn-mode]")].map((b) => b.textContent + ":" + b.getAttribute("aria-pressed"))), ["In my browser:true", "The Blockbench app:false"], "the browser way is the default");
+    assert(/browser extension will work inside the Blockbench tab/.test(await tab.innerText("#cnWin .cn-consent p")), "the Allow question says what will happen");
+    assert.equal(await tab.locator("#cnWin [data-step] .cn-act").count(), 0, "no step buttons before Allow");
+    await tab.click('#cnWin [data-cn-mode="app"]'); await tab.waitForTimeout(300);
+    assert.deepEqual(bridge.setups.pop(), { id: "blockbench", mode: "app" }, "looking at the other way asks for nothing else");
+    await setBb(bb("app", "not_set_up", [st("file", "Make the PlazCode helper file", "waiting"), st("load", "Load the helper in Blockbench", "waiting"), st("test", "Check that Blockbench answers", "waiting")], "PlazCode will make a small helper file in its own folder for you to load in Blockbench. Nothing in your models changes until you ask the AI."));
+    assert(/small helper file in its own folder/.test(await tab.innerText("#cnWin .cn-consent p")));
+    await tab.click('#cnWin [data-cn-act="allow"]'); await tab.waitForTimeout(400);
+    assert.deepEqual(bridge.setups.pop(), { id: "blockbench", consent: true, mode: "app" });
+    const helperFile = "/home/me/.config/PlazCode/helpers/blockbench/plazcode_blockbench.js";
+    const loadHint = "Open the Blockbench app. In its File menu choose Plugins, press Load Plugin from File and pick the file plazcode_blockbench.js (you can also drag that file into the Blockbench window). You do this once. No Blockbench app yet? Get it from blockbench.net first.";
+    await setBb(bb("app", "setting_up", [st("file", "Make the PlazCode helper file", "done", { detail: helperFile }), st("load", "Load the helper in Blockbench", "needs_you", { hint: loadHint, action: { label: "Show the file", run: "load" } }), st("test", "Check that Blockbench answers", "waiting")]));
+    assert.deepEqual(await steps(), ["file:done", "load:needs_you", "test:waiting"]);
+    assert.equal(await tab.locator("#cnWin [data-step] .cn-act").count(), 1, "one thing to do at a time");
+    assert((await tab.innerText('#cnWin [data-step="load"]')).includes("Load Plugin from File") && (await tab.innerText('#cnWin [data-step="file"]')).includes(helperFile));
+    await tab.click('#cnWin [data-step="load"] .cn-act'); await tab.waitForTimeout(400);
+    assert.deepEqual(bridge.setups.pop(), { id: "blockbench", step: "load" }, "Show the file asks the app to open its helper folder");
+    await setBb(bb("app", "setting_up", [st("file", "Make the PlazCode helper file", "done", { detail: helperFile }), st("load", "Load the helper in Blockbench", "done"), st("test", "Check that Blockbench answers", "needs_you", { action: { label: "Check", run: "test" } })]));
+    await tab.click('#cnWin [data-step="test"] .cn-act'); await tab.waitForTimeout(400);
+    assert.deepEqual(bridge.setups.pop(), { id: "blockbench", step: "test" });
+    await setBb(bb("app", "ready", [st("file", "Make the PlazCode helper file", "done", { detail: helperFile }), st("load", "Load the helper in Blockbench", "done"), st("test", "Check that Blockbench answers", "done")]));
+    assert.equal(await tab.evaluate(() => document.querySelector('#cnApps [data-app="blockbench"]').dataset.state), "ready");
+    assert(!/[0-9a-f]{64}/.test(await tab.innerText("#cnWin")), "no pairing word on the page");
+    // The browser way while Blockbench is not open yet: one button that opens it.
+    await setBb(bb("web", "setting_up", [st("open", "Open Blockbench in your browser", "needs_you", { hint: "Blockbench is not open in your browser yet. Open it in the same browser where you use PlazCode. PlazCode notices by itself.", link: { label: "Open Blockbench", key: "blockbench-web" } }), st("test", "Check that Blockbench answers", "waiting")]));
+    assert.equal(await tab.getAttribute('#cnWin [data-step="open"] .cn-act', "data-cn-ipc"), "blockbench-web");
+    for (const key of ["In my browser", "The Blockbench app", "Open Blockbench in your browser", "Check that Blockbench answers", "Make the PlazCode helper file", "Load the helper in Blockbench", "Show the file", "Open Blockbench", loadHint]) assert(key in JSON.parse(fs.readFileSync(__dirname + "/core/locales/en.json", "utf8")), "translatable: " + key);
+    await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-blockbench.png" : "/tmp/connections-blockbench.png" });
+    await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
     assert.deepEqual(errors, [], "no page errors: " + errors.join(" | "));
     setBlender();
     await tab.setViewportSize({ width: 1360, height: 860 }); await tab.waitForTimeout(200);

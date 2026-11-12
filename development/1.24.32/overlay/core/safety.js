@@ -9,6 +9,9 @@ const PlazCodeSafety = (() => {
     "grep_files", "file_info", "env_info", "process_list", "command_status", "screen_capture", "screen_record", "list_windows", "window_screenshot",
     "godot_project_info", "godot_scene_tree", "godot_check_script", "godot_find_uses", "unity_project_info", "unity_list_assets", "unity_scene_objects", "unity_packages",
     "roblox_place_info", "roblox_place_scripts", "roblox_place_search", "roblox_lint_script", "blender_file_info", "blender_script_check"]);
+  // PlazCode's Blockbench actions that only look (core/blockbench-tools.js marks the same ones change:false).
+  const BLOCKBENCH_READ = new Set(["blockbench_status", "blockbench_formats", "blockbench_outline", "blockbench_select", "blockbench_selection",
+    "blockbench_texture_list", "blockbench_animation_list", "blockbench_screenshot", "blockbench_export"]);
   const READ_PREFIXES = ["get_", "list_", "search_", "inspect_", "read_", "find_", "describe_", "query_"];
   const READ_EXACT = new Set(["analyze_luau", "luau_lookup", "script_read", "script_grep", "script_search", "script_analysis", "screen_capture",
     "browser_snapshot", "browser_take_screenshot", "browser_console_messages", "browser_network_requests", "browser_tabs", "browser_wait_for", "look"]);
@@ -47,6 +50,7 @@ const PlazCodeSafety = (() => {
   function isChange(name, engine) {
     const raw = String(name || "");
     if (PLAZCODE_OWN.test(raw) || PLAZCODE_OWN_BARE.test(bare(raw))) return false;
+    if (/^blockbench_/.test(bare(raw))) return !BLOCKBENCH_READ.has(bare(raw));
     if (engine === "local" && !raw.includes("__")) return !LOCAL_READ.has(raw);
     const b = bare(raw);
     return !(READ_PREFIXES.some((p) => b.startsWith(p)) || READ_EXACT.has(b));

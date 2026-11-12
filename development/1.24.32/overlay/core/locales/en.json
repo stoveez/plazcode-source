@@ -1256,5 +1256,22 @@
   "Open Blender the way you always do, or press Open Blender. The helper starts by itself.": null,
   "Open Blender the way you always do. The helper starts by itself.": null,
   "PlazCode adds a small helper to Blender and works in the Blender window you have open. Each step ticks itself off when it is done.": null,
-  "PlazCode will look for Blender on this computer and add its own small helper to it. Nothing in your scene changes until you ask the AI.": null
+  "PlazCode will look for Blender on this computer and add its own small helper to it. Nothing in your scene changes until you ask the AI.": null,
+  "Blockbench is not open in your browser yet. Open it in the same browser where you use PlazCode. PlazCode notices by itself.": null,
+  "Blockbench is not open, or the helper is not loaded in it. Open the Blockbench app; the helper connects by itself. If it does not, load the file again as you did the first time.": null,
+  "Check": null,
+  "Check that Blockbench answers": null,
+  "Load the helper in Blockbench": null,
+  "Make the PlazCode helper file": null,
+  "Open Blockbench": null,
+  "Open Blockbench in the browser where you use PlazCode, and keep your AI chat page open there too. PlazCode notices by itself.": null,
+  "Open Blockbench in your browser": null,
+  "Open the Blockbench app. In its File menu choose Plugins, press Load Plugin from File and pick the file plazcode_blockbench.js (you can also drag that file into the Blockbench window). You do this once. No Blockbench app yet? Get it from blockbench.net first.": null,
+  "PlazCode makes one small helper file. You load it in the Blockbench app once, and from then on it connects by itself.": null,
+  "PlazCode will make a small helper file in its own folder for you to load in Blockbench. Nothing in your models changes until you ask the AI.": null,
+  "PlazCode works in the Blockbench tab of your browser. There is nothing to install.": null,
+  "PlazCode's browser extension will work inside the Blockbench tab in your browser. Nothing in your models changes until you ask the AI.": null,
+  "Show the file": null,
+  "In my browser": null,
+  "The Blockbench app": null
 }

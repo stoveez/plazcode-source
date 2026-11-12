@@ -64,6 +64,9 @@ pub fn status() -> Value {
 
 /// Make the running app match the saved choices: the pairing word the helper connection accepts, and the helper
 /// file. Called at start and after every setup request for Blockbench.
+/// Read the saved choices again and follow them. Called at start and whenever the signed-in profile changes: each
+/// profile has its own choices, pairing word and helper file, and a locked app accepts no helper at all.
+pub fn resync() { sync(&crate::connections::load().apps.get(APP).cloned().unwrap_or_default()); }
 pub fn sync(saved: &SavedApp) { sync_in(saved, &folder(), helper_socket::hub(), crate::BRIDGE_PORT) }
 pub fn sync_in(saved: &SavedApp, folder: &Path, hub: &helper_socket::Hub, port: u16) {
     let word = saved.pairing.as_deref().filter(|word| saved.consent && word_ok(word));
@@ -108,7 +111,7 @@ pub fn card(saved: &SavedApp, facts: &Facts) -> Value {
                 "Blockbench is not open, or the helper is not loaded in it. Open the Blockbench app; the helper connects by itself. If it does not, load the file again as you did the first time."
             } else {
                 "Open the Blockbench app. In its File menu choose Plugins, press Load Plugin from File and pick the file plazcode_blockbench.js (you can also drag that file into the Blockbench window). You do this once. No Blockbench app yet? Get it from blockbench.net first."
-            })), "action", json!({"label": "Show the file", "run": "show"}))
+            })), "action", json!({"label": "Show the file", "run": "load"}))
         };
         let test = if !connected { step("test", CHECK, "waiting") } else if saved.verified { step("test", CHECK, "done") } else { with(step("test", CHECK, "needs_you"), "action", json!({"label": "Check", "run": "test"})) };
         (if connected && saved.verified { "ready" } else { "setting_up" }, vec![file, load, test])
@@ -161,7 +164,8 @@ pub fn apply(saved: &mut Saved, request: &SetupRequest, new_word: &dyn Fn() -> S
     if app_way && !app.pairing.as_deref().is_some_and(word_ok) { app.pairing = Some(new_word()); app.verified = false; }
     match request.step.as_deref().unwrap_or("") {
         "" | "file" | "open" => Ok(Next::Sync),
-        "show" => { anyhow::ensure!(app_way, "This works with the Blockbench app."); Ok(Next::Show) }
+        // The page sends the step's own name ("load") when its button is pressed.
+        "load" | "show" => { anyhow::ensure!(app_way, "This works with the Blockbench app."); Ok(Next::Show) }
         "test" => Ok(if app_way { Next::Check } else { Next::Sync }),
         other => anyhow::bail!("PlazCode does not know the step '{}'.", other.chars().take(40).collect::<String>()),
     }
@@ -274,7 +278,7 @@ mod tests {
         saved.apps.get_mut(APP).unwrap().verified = true;
         let other = || word('d');
         assert_eq!(apply(&mut saved, &request(r#"{"id":"blockbench","step":"test"}"#), &other).unwrap(), Next::Check);
-        assert_eq!(apply(&mut saved, &request(r#"{"id":"blockbench","step":"show"}"#), &other).unwrap(), Next::Show);
+        assert_eq!(apply(&mut saved, &request(r#"{"id":"blockbench","step":"load"}"#), &other).unwrap(), Next::Show);
         apply(&mut saved, &request(r#"{"id":"blockbench","mode":"web"}"#), &other).unwrap();
         apply(&mut saved, &request(r#"{"id":"blockbench","mode":"app"}"#), &other).unwrap();
         assert_eq!(saved.apps[APP].pairing, Some(word('c')), "the same word, so a loaded helper keeps working");
@@ -320,7 +324,7 @@ mod tests {
         let file = Some(PathBuf::from("/data/helpers/blockbench/plazcode_blockbench.js"));
         let made = card(&app, &Facts { file: file.clone(), file_error: None, helper: None, web: None });
         assert_eq!(states(&made), ["file:done", "load:needs_you", "test:waiting"]);
-        assert_eq!(made["steps"][1]["action"]["run"], "show");
+        assert_eq!(made["steps"][1]["action"]["run"], "load");
         assert!(made["steps"][1]["hint"].as_str().unwrap().contains("Load Plugin from File"));
         let connected = Facts { file: file.clone(), file_error: None, helper: Some(json!({"version": "5.0.1"})), web: None };
         assert_eq!(states(&card(&app, &connected)), ["file:done", "load:done", "test:needs_you"]);

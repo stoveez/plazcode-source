@@ -99,12 +99,79 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
    await page.locator('#cnWin [data-cn-act="disconnect"]').click();await waitFor(async()=>await blenderPill()==='Not set up','Blender Disconnect');
    await page.locator('#cnWin [data-cn-act="close"]').first().click();
   }else console.log('No real Blender here (PLAZCODE_BLENDER not set): background Blender end-to-end part skipped.');
+  // Blockbench, the app way: the real PlazCode app, its real helper connection and its real helper file. The file is run
+  // here against a stand-in for Blockbench (release-tools/fake-blockbench.js), so this proves PlazCode's side end to end
+  // and nothing about a real Blockbench.
+  {
+   const vm=require('vm'),first=await (await fetch('http://127.0.0.1:3000/api/status',{headers:{Authorization:'Bearer '+key}})).json();
+   // Requests carry the signed-in profile's value, as the extension's do.
+   const headers={Authorization:'Bearer '+key,'Content-Type':'application/json',Origin:'http://127.0.0.1:3000',...(first.profile&&first.profile.epoch?{'X-PlazCode-Profile':first.profile.epoch}:{})};
+   const get=async route=>(await fetch('http://127.0.0.1:3000'+route,{headers})).json(),post=async(route,body)=>(await fetch('http://127.0.0.1:3000'+route,{method:'POST',headers,body:JSON.stringify(body)})).json();
+   const card=async()=>{const all=await get('/api/connections');if(!all.apps)throw new Error('connections reply: '+JSON.stringify(all).slice(0,300));return all.apps.find(app=>app.id==='blockbench');};
+   const setup=body=>post('/api/connections/setup',{id:'blockbench',...body}),states=app=>app.steps.map(step=>step.id+':'+step.state).join(' '),tool=body=>post('/api/blockbench',body);
+   const helperFiles=()=>fs.readdirSync(config,{recursive:true}).map(String).filter(name=>name.endsWith('plazcode_blockbench.js')).map(name=>path.join(config,name));
+   const knock=word=>new Promise(resolve=>{const socket=new WebSocket('ws://127.0.0.1:3000/helper');let paired=false;socket.onopen=()=>socket.send(JSON.stringify({hello:1,app:'blockbench',word}));socket.onmessage=event=>{if(String(event.data).includes('"paired":true')){paired=true;socket.close();}};socket.onclose=()=>resolve(paired);socket.onerror=()=>{};});
+   let bb=await card();assert.equal(bb.state+' '+bb.mode+' '+states(bb),'not_set_up web open:waiting test:waiting','Blockbench before Allow: nothing started');
+   assert.deepEqual(helperFiles(),[],'no helper file before Allow');assert.equal(await knock('a'.repeat(64)),false,'the helper address lets nobody in before Allow');
+   assert.equal((await tool({cmd:'status'})).ok,false,'no Blockbench action before Allow');
+   assert.equal((await setup({mode:'app'})).ok,true);assert.deepEqual(helperFiles(),[],'looking at the other way makes no file');
+   assert.equal((await setup({consent:true,mode:'app'})).ok,true);
+   await waitFor(async()=>states(await card())==='file:done load:needs_you test:waiting','helper file made after Allow');
+   bb=await card();const helper=bb.steps[0].detail;assert.deepEqual(helperFiles(),[helper],'one helper file, inside PlazCode\'s own settings folder');assert.equal(fs.statSync(helper).mode&0o777,0o600,'the helper file is readable by its owner only');
+   const text=fs.readFileSync(helper,'utf8'),word=/WORD = "([0-9a-f]{64})"/.exec(text)[1];
+   assert.equal((await get('/api/status')).blockbench.connected,false);assert.match((await tool({cmd:'status'})).error,/not connected/);
+   assert.equal(await knock('b'.repeat(64)),false,'a wrong pairing word is refused by the real app');
+   // "Load the plugin": run PlazCode's helper file the way Blockbench would, with Blockbench's objects replaced by the stand-in.
+   const box=vm.createContext({WebSocket,setTimeout,clearTimeout,setInterval,clearInterval,console});
+   vm.runInContext(fs.readFileSync(path.join(__dirname,'fake-blockbench.js'),'utf8'),box);
+   box.Plugin={register:(id,plugin)=>{assert.equal(id,'plazcode_blockbench');box.__plugin=plugin;plugin.onload();}};
+   vm.runInContext(text,box);
+   try{
+    await waitFor(async()=>states(await card())==='file:done load:done test:needs_you','the helper connected to the real app by itself');
+    assert.deepEqual((await get('/api/status')).blockbench,{consent:true,mode:'app',connected:true});
+    assert.equal((await setup({step:'test'})).ok,true);await waitFor(async()=>(await card()).state==='ready','Blockbench card ready after a real answer');
+    let reply=await tool({cmd:'project_new',args:{format:'free',name:'house'}});assert.equal(reply.ok&&reply.result.project.name,'house');
+    reply=await tool({cmd:'cube_add',args:{name:'door',from:[6,0,0],to:[10,8,1]}});assert.equal(reply.ok&&reply.result.name,'door');
+    reply=await tool({cmd:'outline'});assert.deepEqual(reply.result.parts.map(part=>part.name),['door']);
+    assert.equal(vm.runInContext('Cube.all.length+":"+Project.name',box),'1:house','the change happened in "Blockbench"');
+    reply=await tool({cmd:'cube_add',args:{name:'x',group:'nowhere'}});assert(!reply.ok&&/no part named "nowhere"/.test(reply.error),JSON.stringify(reply));
+    reply=await tool({cmd:'read_file',args:{path:'/etc/passwd'}});assert(!reply.ok&&/no action named/.test(reply.error),'the helper has named actions only');
+    reply=await tool({cmd:'Run Code!'});assert(!reply.ok&&/not a Blockbench action/.test(reply.error),'the app refuses odd action names itself');
+    assert(!JSON.stringify([await card(),await get('/api/status'),await get('/api/connections')]).includes(word),'the pairing word never leaves the app in a report');
+    // The real page draws what the app reports: open Blockbench's window (it asks the app every two seconds).
+    await page.locator('#cnApps [data-cn-open="blockbench"]').click();
+    await waitFor(async()=>(await page.locator('#cnWin [data-step]').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-step')+':'+node.getAttribute('data-state')).join(' ')))==='file:done load:done test:done','the real page shows every Blockbench step ticked');
+    assert.equal(await page.locator('#cnWin [data-cn-mode][aria-pressed="true"]').innerText(),'The Blockbench app');assert(!/[0-9a-f]{64}/.test(await page.locator('#cnWin').innerText()),'no pairing word on the real page');
+    await page.locator('#cnWin [data-cn-act="close"]').first().click();
+    // Disconnect: the file is taken away, the helper is cut off at once, and its old word never works again.
+    assert.equal((await setup({disconnect:true})).ok,true);
+    await waitFor(()=>!fs.existsSync(helper),'helper file removed on Disconnect');
+    await waitFor(async()=>(await get('/api/status')).blockbench.connected===false,'helper cut off on Disconnect');
+    assert.equal((await card()).state,'not_set_up');assert.equal(await knock(word),false,'the old pairing word is dead after Disconnect');
+    assert.equal((await setup({consent:true,mode:'app'})).ok,true);await waitFor(()=>fs.existsSync(helper),'a new helper file after a new Allow');
+    assert.notEqual(/WORD = "([0-9a-f]{64})"/.exec(fs.readFileSync(helper,'utf8'))[1],word,'a new Allow makes a new pairing word');assert.equal(await knock(word),false);
+    console.log('Blockbench app way against the real app: Allow, helper file, pairing, real actions through the helper connection, Disconnect kills the word (stand-in Blockbench)');
+   }finally{box.__plugin&&box.__plugin.onunload();}
+   // Left allowed on purpose: the sign-out check at the end must cut helpers off and sign-in must bring the word back.
+   globalThis.__blockbenchLeft={headers,file:helperFiles()[0],knock};
+  }
   assert.equal((await call('/api/show',{})).status,200);await waitFor(()=>launch().length===2,'relaunch shows real Linux desktop');
   assert.notEqual(launch()[1],url,'every launch uses a fresh ticket');
   if(process.env.PLAZCODE_UI_PREVIEW_DIR&&!profileGate){fs.mkdirSync(process.env.PLAZCODE_UI_PREVIEW_DIR,{recursive:true});await page.evaluate(()=>{document.querySelector('#desktopApprovalMode').closest('details').open=true;});await page.locator('#desktopApprovalMode').locator('xpath=..').locator('.pc-effort-trigger').click();await page.screenshot({path:path.join(process.env.PLAZCODE_UI_PREVIEW_DIR,'plazcode-linux-native-settings.png')});}
   assert.deepEqual(errors,[]);
   assert.equal((await call('/api/desktop/browser-action',{message:'open-url:javascript:alert(1)'})).status,400,'unsafe external URI rejected');
   {const before=launch().length;assert.equal((await call('/api/desktop/browser-action',{message:'open:get-godot'})).status,200);await waitFor(()=>launch().length===before+1,'official download page opens');assert.equal(launch()[before],'https://godotengine.org/download/');assert.equal((await call('/api/desktop/browser-action',{message:'open:get-anything'})).status,400,'only listed download pages open');}
+  if(profileGate&&globalThis.__blockbenchLeft){
+   // Each profile has its own Blockbench choices. Signed out, the app accepts no helper at all; signed in again, the same helper file works.
+   const {headers,file,knock}=globalThis.__blockbenchLeft,word=/WORD = "([0-9a-f]{64})"/.exec(fs.readFileSync(file,'utf8'))[1];
+   const profiles=async body=>fetch('http://127.0.0.1:3000/api/desktop/profiles',{method:'POST',headers,body:JSON.stringify(body)});
+   assert.equal(await knock(word),true,'the helper file\'s word works while its profile is signed in');
+   assert.equal((await profiles({action:'logout'})).status,200,'sign out');
+   assert.equal(await knock(word),false,'a signed-out PlazCode accepts no helper');
+   assert.equal((await profiles({action:'guest'})).status,200,'sign in again');
+   await waitFor(()=>knock(word),'the same helper file works again after signing in');
+   console.log('Blockbench follows the signed-in profile: no helper while signed out, same helper file after signing in again');
+  }
   assert.equal((await call('/api/desktop/browser-action',{message:'quit'})).status,200);
   await waitFor(()=>agent.exitCode!==null,'Quit exits actual Linux bridge');assert.equal(agent.exitCode,0);
   console.log('PASS real Linux desktop launch, authenticated single-use browser bootstrap, wrong-origin/replay rejection, profile gate incl. locked app connections (or legacy settings save/reload), Apps & servers page against the real app (Godot: Allow, refused folder, picked project, Disconnect; Blender in the background when a real Blender is named), official download page, reopen and Quit.');

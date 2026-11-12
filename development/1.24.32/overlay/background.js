@@ -660,8 +660,130 @@ const BLENDER_TOOLS = [
 ];
 for (const t of BLENDER_TOOLS) BLENDER_TOOL_NAMES.add(t.name);
 
+// ── Blockbench (1.24.33) ─────────────────────────────────────────────────────
+// Two ways, chosen in the PlazCode app (Apps & servers): "In my browser" runs PlazCode's toolset
+// (core/blockbench-tools.js) inside the web.blockbench.net tab with the browser's own scripting call;
+// "The Blockbench app" sends the same named action to the app, which passes it to PlazCode's helper inside
+// Blockbench. Nothing here touches a Blockbench tab before the person pressed Allow in the app
+// (blockbench.consent comes from the app's status). There is no free-code action.
+let blockbench = { consent: false, mode: "web", connected: false };
+let blockbenchWebReady = false, blockbenchWatchedAt = 0, blockbenchReport = "", blockbenchReportAt = 0, blockbenchWatching = false;
+const BLOCKBENCH_ORIGIN = "https://web.blockbench.net";
+function bbtool(name, description, props, required) {
+  return { name, server: "blockbench", description, inputSchema: { type: "object", properties: props || {}, required: required || [] } };
+}
+const BB_V3 = { type: "array", items: { type: "number" }, description: "[x,y,z]" }, BB_S = { type: "string" }, BB_LIST = { type: "array", items: { type: "string" }, description: "names or ids" };
+const BLOCKBENCH_TOOLS = [
+  bbtool("blockbench_status", "Blockbench: version and the open model (name, format, how many cubes, groups, meshes, textures, animations)."),
+  bbtool("blockbench_formats", "List the model formats this Blockbench offers (ids for blockbench_project_new)."),
+  bbtool("blockbench_project_new", "Start a new model. format = a format id (free, bedrock, java_block, ...). Replaces the current view with an empty model.", { format: BB_S, name: BB_S }, []),
+  bbtool("blockbench_outline", "The model's parts as a tree: groups, cubes and meshes with id, name, position and rotation."),
+  bbtool("blockbench_cube_add", "Add a cube. from = lower corner; give to (upper corner) or size. group = name of the group to put it in.", { name: BB_S, from: BB_V3, to: BB_V3, size: BB_V3, origin: BB_V3, rotation: BB_V3, group: BB_S, texture: BB_S }, []),
+  bbtool("blockbench_group_add", "Add a group (a bone). parent = name of the group to put it in.", { name: BB_S, origin: BB_V3, rotation: BB_V3, parent: BB_S }, []),
+  bbtool("blockbench_mesh_add", "Add a free-form mesh. vertices = list of [x,y,z]; faces = list of 3 or 4 point numbers (from 0).", { name: BB_S, vertices: { type: "array" }, faces: { type: "array" }, group: BB_S }, ["vertices"]),
+  bbtool("blockbench_update", "Change one part: new_name, from, to, origin, rotation, visible, group (\"root\" = top level), texture.", { target: BB_S, new_name: BB_S, from: BB_V3, to: BB_V3, origin: BB_V3, rotation: BB_V3, visible: { type: "boolean" }, group: BB_S, texture: BB_S }, ["target"]),
+  bbtool("blockbench_remove", "Remove parts (a group goes with everything inside it).", { targets: BB_LIST }, ["targets"]),
+  bbtool("blockbench_duplicate", "Copy parts. offset = [x,y,z] to move the copies.", { targets: BB_LIST, offset: BB_V3 }, ["targets"]),
+  bbtool("blockbench_select", "Select parts in Blockbench (an empty list clears the selection).", { targets: BB_LIST }, []),
+  bbtool("blockbench_selection", "The parts that are selected in Blockbench now."),
+  bbtool("blockbench_texture_list", "List the model's textures."),
+  bbtool("blockbench_texture_add", "Add a texture: a plain colour (width, height, color \"#rrggbb\") or a PNG as data_url.", { name: BB_S, width: { type: "integer" }, height: { type: "integer" }, color: BB_S, data_url: BB_S }, []),
+  bbtool("blockbench_texture_apply", "Put a texture on cubes or meshes.", { texture: BB_S, targets: BB_LIST }, ["texture", "targets"]),
+  bbtool("blockbench_texture_remove", "Remove a texture from the model.", { texture: BB_S }, ["texture"]),
+  bbtool("blockbench_animation_list", "List the model's animations."),
+  bbtool("blockbench_animation_add", "Add an animation. length in seconds; loop = once, hold or loop.", { name: BB_S, length: { type: "number" }, loop: BB_S }, []),
+  bbtool("blockbench_animation_keyframe", "Add a keyframe to a group in an animation. channel = rotation, position or scale; values = [x,y,z]; time in seconds.", { animation: BB_S, target: BB_S, channel: BB_S, time: { type: "number" }, values: BB_V3 }, ["animation", "target", "values"]),
+  bbtool("blockbench_animation_remove", "Remove an animation.", { animation: BB_S }, ["animation"]),
+  bbtool("blockbench_screenshot", "A picture of Blockbench's 3D view."),
+  bbtool("blockbench_export", "The model as text: the .bbmodel project (default) or as: \"format\" for the format's own file.", { as: BB_S }, []),
+  bbtool("blockbench_undo", "Undo the last change in Blockbench."),
+  bbtool("blockbench_redo", "Redo the last undone change in Blockbench."),
+];
+const BLOCKBENCH_TOOL_NAMES = new Set(BLOCKBENCH_TOOLS.map((t) => t.name));
+function isBlockbenchToolName(name) { return BLOCKBENCH_TOOL_NAMES.has(String(name || "").split("__").pop()); }
+function blockbenchLive() { return blockbench.consent === true && (blockbench.mode === "app" ? blockbench.connected === true : blockbenchWebReady); }
+async function blockbenchTab() {
+  const tabs = (await chrome.tabs.query({ url: BLOCKBENCH_ORIGIN + "/*" })).filter((tab) => { try { return new URL(tab.url).origin === BLOCKBENCH_ORIGIN; } catch { return false; } });
+  return tabs.sort((a, b) => (Number(b.active) - Number(a.active)) || ((b.lastAccessed || 0) - (a.lastAccessed || 0)))[0] || null;
+}
+// Runs in the Blockbench page itself.
+function blockbenchPageRun(cmd, args) { const tools = window.__plazcodeBlockbench; return tools && typeof tools.run === "function" ? tools.run(cmd, args) : { missing: true }; }
+async function blockbenchInTab(tabId, cmd, args, timeout) {
+  // The tab is checked again right before every step: it may have gone to another address since it was found
+  // (found by a test: a slow action, then a page change, must never put the toolset into the new page).
+  let expired = false;
+  const gone = { ok: false, message: "The Blockbench tab was closed or went to another page. Open web.blockbench.net again, then try again." };
+  const still = async () => { if (expired) return false; try { return new URL((await chrome.tabs.get(tabId)).url).origin === BLOCKBENCH_ORIGIN; } catch { return false; } };
+  const once = async () => { const [frame] = await chrome.scripting.executeScript({ target: { tabId }, world: "MAIN", func: blockbenchPageRun, args: [cmd, args || {}] }); return frame && frame.result; };
+  const work = (async () => {
+    if (!(await still())) return gone;
+    let reply = await once().catch(() => null);
+    if (!reply || reply.missing) {
+      if (!(await still())) return gone;
+      await chrome.scripting.executeScript({ target: { tabId }, world: "MAIN", files: ["core/blockbench-tools.js"] });
+      if (!(await still())) return gone;
+      reply = await once();
+    }
+    return reply && !reply.missing ? reply : { ok: false, message: "PlazCode could not start its tools in the Blockbench tab. Reload the Blockbench tab, then try again." };
+  })().catch(() => gone);
+  let timer;
+  const late = new Promise((resolve) => { timer = setTimeout(() => { expired = true; resolve({ ok: false, message: "Blockbench did not answer within " + Math.round(timeout / 1000) + " seconds. It may still be working: look at the Blockbench tab before trying again." }); }, timeout); });
+  try { return await Promise.race([work, late]); } finally { clearTimeout(timer); }
+}
+// Tell the app whether the Blockbench tab answered, so its checklist ticks itself. Only after Allow, only in the browser way.
+async function blockbenchWatch(force) {
+  if (!(blockbench.consent && blockbench.mode === "web")) { if (blockbenchWebReady) { blockbenchWebReady = false; broadcastStatus(); } blockbenchReport = ""; return; }
+  if (blockbenchWatching || (!force && Date.now() - blockbenchWatchedAt < 5000)) return;
+  blockbenchWatching = true; blockbenchWatchedAt = Date.now();
+  try {
+    let ready = false, version = "";
+    try { const tab = await blockbenchTab(); if (tab) { const reply = await blockbenchInTab(tab.id, "status", {}, 5000); ready = !!(reply && reply.ok && reply.result && reply.result.blockbench); version = ready ? String(reply.result.blockbench) : ""; } } catch {}
+    if (ready !== blockbenchWebReady) { blockbenchWebReady = ready; broadcastStatus(); }
+    const report = ready + "|" + version;
+    if (report !== blockbenchReport || Date.now() - blockbenchReportAt > 20000) {
+      blockbenchReport = report; blockbenchReportAt = Date.now();
+      try { await bridgeFetch(RUST_ROBLOX_HTTP + "/api/blockbench", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "web_report", ready, version }), signal: AbortSignal.timeout(5000) }); } catch {}
+    }
+  } finally { blockbenchWatching = false; }
+}
+function setBlockbench(next) {
+  const was = blockbenchLive();
+  blockbench = { consent: next.consent === true, mode: next.mode === "app" ? "app" : "web", connected: next.connected === true };
+  blockbenchWatch(false);
+  if (was !== blockbenchLive()) broadcastStatus();
+}
+async function blockbenchCall(name, args, timeout) {
+  const cmd = String(name || "").split("__").pop().replace(/^blockbench_/, "");
+  if (!blockbench.consent) return { ok: false, error: "Blockbench is not connected. Open PlazCode, go to Apps & servers and connect Blockbench." };
+  const limit = Math.min(120000, Math.max(5000, cmd === "screenshot" || cmd === "export" ? 60000 : Math.min(timeout || 30000, 30000)));
+  let reply;
+  try {
+    if (blockbench.mode === "app") {
+      const response = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/blockbench", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cmd, args: args || {}, timeout_seconds: Math.ceil(limit / 1000) }), signal: AbortSignal.timeout(limit + 15000) });
+      if (response.status === 404) return { ok: false, error: "Blockbench needs the newer PlazCode desktop app. Update the app (it comes with this extension update), then try again. Nothing was changed." };
+      const body = await response.json().catch(() => ({}));
+      reply = body.ok ? { ok: true, result: body.result } : { ok: false, message: body.error || "The PlazCode app could not reach Blockbench." };
+    } else {
+      const tab = await blockbenchTab();
+      if (!tab) return { ok: false, error: "Blockbench is not open in this browser. Open web.blockbench.net in a tab, then try again. (To use the Blockbench app instead, change the way in PlazCode under Apps & servers.)" };
+      reply = await blockbenchInTab(tab.id, cmd, args, limit);
+    }
+  } catch (error) { return { ok: false, error: "Blockbench could not be reached (" + String(error && error.message || error).slice(0, 200) + ")." }; }
+  if (!reply || reply.ok !== true) return { ok: false, error: String(reply && reply.message || "Blockbench could not do that.").slice(0, 4000) };
+  const result = reply.result;
+  if (cmd === "screenshot") {
+    const match = /^data:(image\/png);base64,([A-Za-z0-9+/=]+)$/.exec(String(result && result.image || ""));
+    if (!match) return { ok: false, error: "Blockbench did not give a picture of the 3D view." };
+    return { ok: true, text: "Picture of Blockbench's 3D view.", images: [{ mimeType: match[1], data: match[2] }] };
+  }
+  const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
+  const noImages = [];
+  return { ok: true, text: text.length > 400000 ? text.slice(0, 400000) + "\n[cut: the answer was longer than PlazCode passes on at once]" : text, images: noImages };
+}
+
 function blenderServers(list) {
-  const rest = (Array.isArray(list) ? list : []).filter((s) => s && s.id !== "blender");
+  const rest = (Array.isArray(list) ? list : []).filter((s) => s && s.id !== "blender" && s.id !== "blockbench");
+  if (typeof blockbenchLive === "function" && blockbenchLive()) rest.push({ id: "blockbench", name: "Blockbench", alive: true, tools: BLOCKBENCH_TOOLS.length });
   if (blenderAddon) {
     rest.push({
       id: "blender", name: "Blender",
@@ -672,6 +794,7 @@ function blenderServers(list) {
 }
 function mergeBlenderTools(tools) {
   const base = Array.isArray(tools) ? tools.slice() : [];
+  if (typeof blockbenchLive === "function" && blockbenchLive()) { const known = new Set(base.map((t) => t && t.name)); for (const t of BLOCKBENCH_TOOLS) if (!known.has(t.name)) base.push(t); }
   if (!blenderAddon) return base;
   const have = new Set(base.map((t) => t && t.name));
   for (const t of BLENDER_TOOLS) if (!have.has(t.name)) base.push(t);
@@ -1195,6 +1318,7 @@ async function refreshProcStatus() {
     bridgeError = "";
     // The desktop's editor probe is authoritative; a browser socket or a
     // process-name scan alone cannot establish Studio readiness.
+    if(j.blockbench && typeof j.blockbench==="object")setBlockbench(j.blockbench);
     if(typeof j.blender_connected==="boolean" && !blenderSuppressed && j.blender_connected!==blenderAddon)setBlender(j.blender_connected,j.blender_connected ? "" : "Blender’s last scene check failed. Use Connect Blender for the exact error.");
     const editor = typeof j.roblox_connected === "boolean" ? j.roblox_connected : robloxEditorConnected;
     const nr = j.roblox_proc === true || editor;
@@ -2778,6 +2902,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
       }
       case "call_tool": {
         const timeout = (msg.timeout || 120000) + 10000;
+        if (isBlockbenchToolName(msg.name)) {
+          sendResponse(await blockbenchCall(msg.name, msg.arguments, timeout));
+          break;
+        }
         if (blenderAddon && isBlenderToolName(msg.name)) {
           sendResponse(await blenderCall(msg.name, msg.arguments, timeout));
           break;

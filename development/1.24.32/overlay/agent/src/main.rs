@@ -1372,7 +1372,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
     })).allow_methods([Method::GET, Method::POST, Method::OPTIONS]).allow_headers(Any);
     updater::start_checker();
     // Blockbench: the pairing word the helper connection accepts and the helper file follow the saved choices.
-    blockbench::sync(&connections::load().apps.get(blockbench::APP).cloned().unwrap_or_default());
+    blockbench::resync();
     let linux_launch = linux_launch_routes(state.clone());
     let app = Router::new()
         .route("/", get(|| async { Json(serde_json::json!({"ok": true, "service": "plazcode-agent", "version": env!("CARGO_PKG_VERSION")})) }))
@@ -1976,14 +1976,14 @@ async fn profile_action_handler(State(state):State<AppState>,headers:axum::http:
                 reset_profile_runtime(&state).await;
                 let entered=async{
                     let active=if let Some(candidate)=candidate{state.accounts.commit(candidate).await?}else{state.accounts.enter_guest().await?};
-                    profile_paths::select(Some(profile_paths::profile_root(&active.id)?));
+                    profile_paths::select(Some(profile_paths::profile_root(&active.id)?));blockbench::resync();
                     state.preferences.select_path(profile_paths::settings_path())?;
                     let _=account_sync::run(&state).await;
                     let prefs=state.preferences.snapshot();state.workspace.set_full_access(prefs.perm_mode=="full");state.workspace.set_allowed_folders(&prefs.allowed_folders);
                     state.profile_change.send_modify(|value|*value=value.wrapping_add(1));
                     Ok::<_,anyhow::Error>(serde_json::json!({"ok":true,"profile":active,"preferences":prefs}))
                 }.await;
-                if entered.is_err(){state.accounts.lock();profile_paths::select(None);let _=state.preferences.select_path(profile_paths::settings_path());}
+                if entered.is_err(){state.accounts.lock();profile_paths::select(None);let _=state.preferences.select_path(profile_paths::settings_path());blockbench::resync();}
                 entered
             },
             "remove"=>{state.accounts.remove(action.id.as_deref().unwrap_or("")).await?;Ok(serde_json::json!({"ok":true}))},
@@ -1993,7 +1993,7 @@ async fn profile_action_handler(State(state):State<AppState>,headers:axum::http:
                 if action.action=="sync"{let _lease=accounts::ACCESS.read().await;account_sync::run(&state).await?;return Ok(serde_json::json!({"ok":true,"status":account_sync::status(&active.id)}));}
                 if action.action=="ui-migrated"{state.accounts.acknowledge_ui().await?;return Ok(serde_json::json!({"ok":true}));}
                 state.cancellation.cancel_all();let _guard=accounts::ACCESS.write().await;
-                reset_profile_runtime(&state).await;state.accounts.lock();profile_paths::select(None);state.preferences.select_path(profile_paths::settings_path())?;
+                reset_profile_runtime(&state).await;state.accounts.lock();profile_paths::select(None);state.preferences.select_path(profile_paths::settings_path())?;blockbench::resync();
                 state.workspace.set_full_access(false);state.workspace.set_allowed_folders(&[]);
                 state.profile_change.send_modify(|value|*value=value.wrapping_add(1));
                 Ok(serde_json::json!({"ok":true}))

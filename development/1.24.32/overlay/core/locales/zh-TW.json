@@ -1256,5 +1256,22 @@
   "Open Blender the way you always do, or press Open Blender. The helper starts by itself.": "Open Blender the way you always do, or press Open Blender. The helper starts by itself.",
   "Open Blender the way you always do. The helper starts by itself.": "Open Blender the way you always do. The helper starts by itself.",
   "PlazCode adds a small helper to Blender and works in the Blender window you have open. Each step ticks itself off when it is done.": "PlazCode adds a small helper to Blender and works in the Blender window you have open. Each step ticks itself off when it is done.",
-  "PlazCode will look for Blender on this computer and add its own small helper to it. Nothing in your scene changes until you ask the AI.": "PlazCode will look for Blender on this computer and add its own small helper to it. Nothing in your scene changes until you ask the AI."
+  "PlazCode will look for Blender on this computer and add its own small helper to it. Nothing in your scene changes until you ask the AI.": "PlazCode will look for Blender on this computer and add its own small helper to it. Nothing in your scene changes until you ask the AI.",
+  "Blockbench is not open in your browser yet. Open it in the same browser where you use PlazCode. PlazCode notices by itself.": "Blockbench is not open in your browser yet. Open it in the same browser where you use PlazCode. PlazCode notices by itself.",
+  "Blockbench is not open, or the helper is not loaded in it. Open the Blockbench app; the helper connects by itself. If it does not, load the file again as you did the first time.": "Blockbench is not open, or the helper is not loaded in it. Open the Blockbench app; the helper connects by itself. If it does not, load the file again as you did the first time.",
+  "Check": "Check",
+  "Check that Blockbench answers": "Check that Blockbench answers",
+  "Load the helper in Blockbench": "Load the helper in Blockbench",
+  "Make the PlazCode helper file": "Make the PlazCode helper file",
+  "Open Blockbench": "Open Blockbench",
+  "Open Blockbench in the browser where you use PlazCode, and keep your AI chat page open there too. PlazCode notices by itself.": "Open Blockbench in the browser where you use PlazCode, and keep your AI chat page open there too. PlazCode notices by itself.",
+  "Open Blockbench in your browser": "Open Blockbench in your browser",
+  "Open the Blockbench app. In its File menu choose Plugins, press Load Plugin from File and pick the file plazcode_blockbench.js (you can also drag that file into the Blockbench window). You do this once. No Blockbench app yet? Get it from blockbench.net first.": "Open the Blockbench app. In its File menu choose Plugins, press Load Plugin from File and pick the file plazcode_blockbench.js (you can also drag that file into the Blockbench window). You do this once. No Blockbench app yet? Get it from blockbench.net first.",
+  "PlazCode makes one small helper file. You load it in the Blockbench app once, and from then on it connects by itself.": "PlazCode makes one small helper file. You load it in the Blockbench app once, and from then on it connects by itself.",
+  "PlazCode will make a small helper file in its own folder for you to load in Blockbench. Nothing in your models changes until you ask the AI.": "PlazCode will make a small helper file in its own folder for you to load in Blockbench. Nothing in your models changes until you ask the AI.",
+  "PlazCode works in the Blockbench tab of your browser. There is nothing to install.": "PlazCode works in the Blockbench tab of your browser. There is nothing to install.",
+  "PlazCode's browser extension will work inside the Blockbench tab in your browser. Nothing in your models changes until you ask the AI.": "PlazCode's browser extension will work inside the Blockbench tab in your browser. Nothing in your models changes until you ask the AI.",
+  "Show the file": "Show the file",
+  "In my browser": "In my browser",
+  "The Blockbench app": "The Blockbench app"
 }

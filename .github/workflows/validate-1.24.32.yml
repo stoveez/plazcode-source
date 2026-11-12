@@ -220,6 +220,10 @@ jobs:
         timeout-minutes: 5
         run: node release-tools/test-ultra-extension-browser.cjs
         working-directory: build-src-1.24.32/PlazCode
+      - name: Blockbench in the browser through the real extension (stand-in page)
+        timeout-minutes: 5
+        run: node release-tools/test-blockbench-extension-browser.cjs
+        working-directory: build-src-1.24.32/PlazCode
       - run: node release-tools/test-1.24.14-browser.cjs
         working-directory: build-src-1.24.32/PlazCode
       - run: node release-tools/test-notion-block-cards.cjs
