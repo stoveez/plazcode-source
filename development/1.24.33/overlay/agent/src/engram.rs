@@ -53,8 +53,19 @@ fn extract_program(archive:&[u8],file_name:&str,program:&str)->anyhow::Result<Ve
     })();
     let _=std::fs::remove_dir_all(&dir);result
 }
+// 1.24.33 (owner: PlazCode runs on macOS 10.15 Catalina and newer): the official Engram 3.0.0 programs are built
+// with Go 1.25, which runs only on macOS 12 Monterey or newer, so on 10.15 and 11 memory search is switched off
+// with a plain reason instead of starting (or downloading) a program that cannot run. Chat history, vault notes
+// and skills do not use it and keep working.
+fn mac_too_old_for_memory(version:&str)->bool{version.trim().split('.').next().and_then(|major|major.parse::<u32>().ok()).is_some_and(|major|major<12)}
+fn memory_unavailable_reason()->Option<String>{
+    if !cfg!(target_os="macos"){return None;}
+    let version=sysinfo::System::os_version()?;
+    mac_too_old_for_memory(&version).then(||format!("Project memory search needs macOS 12 or newer, and this Mac runs macOS {version}. Chat history, vault notes and skills still work. Do not retry memory tools in this chat."))
+}
 static DOWNLOAD:once_cell::sync::Lazy<Mutex<()>>=once_cell::sync::Lazy::new(||Mutex::new(()));
 async fn executable_or_download()->anyhow::Result<PathBuf>{
+    if let Some(reason)=memory_unavailable_reason(){anyhow::bail!(reason);}
     if let Ok(path)=executable(){return Ok(path);}
     let (archive,sha,program)=pinned_archive().ok_or_else(||anyhow::anyhow!("The bundled Engram runtime is unavailable. Existing memory and chat logging remain available."))?;
     let _guard=DOWNLOAD.lock().await;
@@ -138,6 +149,7 @@ async fn execute(value:Value)->anyhow::Result<Value>{
 pub async fn post(axum::Json(value):axum::Json<Value>)->axum::response::Response{use axum::response::IntoResponse;match execute(value).await{Ok(result)=>axum::Json(result).into_response(),Err(e)=>(axum::http::StatusCode::BAD_REQUEST,axum::Json(json!({"ok":false,"error":e.to_string()}))).into_response()}}
 #[cfg(test)]mod tests{use super::*;#[test]fn scope_keys_are_stable_and_safe(){assert_eq!(key("project:A"),key("project:A"));assert_ne!(key("project:A"),key("chat:A"));assert!(key("../escape").chars().all(|c|c.is_ascii_hexdigit()));}#[test]fn input_limits_are_bytes(){assert!(string(&json!({"scope":""}),"scope",2000).is_err());assert!(string(&json!({"content":"éé"}),"content",3).is_err());}}
 #[cfg(test)]mod download_tests{use super::*;
+#[test]fn memory_is_off_only_on_macs_older_than_12(){for old in ["10.15","10.15.7","10.16","11.7.10","11"]{assert!(mac_too_old_for_memory(old),"{old}");}for new in ["12.0","12.7.6","14.5","26.1",""," ","unknown"]{assert!(!mac_too_old_for_memory(new),"{new}");}if !cfg!(target_os="macos"){assert!(memory_unavailable_reason().is_none());}}
 #[test]fn checksum_must_match(){assert!(verify_sha256(b"abc","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad").is_ok());assert!(verify_sha256(b"abd","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad").is_err());}
 #[test]fn pinned_hashes_match_the_shipped_list(){let sums=include_str!("../../runtime/engram/SHA256SUMS.txt");for (name,sha) in [("engram_3.0.0_windows_amd64.zip","bb410e4a578bee96888f848764dbbf9e7dd78971204c05bb7fb81a4a8db324a3"),("engram_3.0.0_darwin_amd64.tar.gz","68cc3eebbb265d1c45999a429d1e6774150ba71ac008f4dd381b9d73b10c79dd"),("engram_3.0.0_darwin_arm64.tar.gz","54e080ed64a1d1b7b8a5d59e5a6d17100adbd69a6aafbb73d270dbeb37c03266")]{assert!(sums.contains(&format!("{sha}  {name}")),"{name}");}}
 #[cfg(unix)]#[test]fn program_is_found_inside_a_tar_archive(){let dir=std::env::temp_dir().join(format!("plazcode-engram-test-{}",std::process::id()));let _=std::fs::remove_dir_all(&dir);std::fs::create_dir_all(dir.join("pack/sub")).unwrap();std::fs::write(dir.join("pack/sub/engram"),b"PROGRAM").unwrap();std::fs::write(dir.join("pack/README"),b"x").unwrap();

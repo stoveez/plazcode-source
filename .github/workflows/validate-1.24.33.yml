@@ -86,6 +86,7 @@ jobs:
         run: python3 development/1.24.33/test-release-check.py
       - run: python3 development/1.24.33/prepare.py
       - run: python3 development/1.24.33/test-licenses.py
+      - run: python3 development/1.24.33/test-macos-floor.py
       - run: npm ci --prefix release-tools --ignore-scripts
         working-directory: build-src-1.24.33/PlazCode
       - name: Test production mesh transfer transactions
@@ -544,7 +545,8 @@ jobs:
         working-directory: build-src-1.24.33/PlazCode
         run: |
           rustup target add --toolchain stable x86_64-apple-darwin aarch64-apple-darwin
-          cargo +stable build --release --locked --manifest-path agent/Cargo.toml --target x86_64-apple-darwin
+          # 1.24.33 (owner): the Intel half is built for macOS 10.15 Catalina; package.py checks the result.
+          MACOSX_DEPLOYMENT_TARGET=10.15 cargo +stable build --release --locked --manifest-path agent/Cargo.toml --target x86_64-apple-darwin
           cargo +stable build --release --locked --manifest-path agent/Cargo.toml --target aarch64-apple-darwin
           lipo -create agent/target/x86_64-apple-darwin/release/PlazCode agent/target/aarch64-apple-darwin/release/PlazCode -output agent/target/release/PlazCode
       - name: Verify automatic launch and later update handoff

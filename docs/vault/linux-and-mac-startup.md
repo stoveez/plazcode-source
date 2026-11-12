@@ -12,3 +12,10 @@ Verified locally: 216 native tests plus 4 build tests (2 ignored); actual native
 Hosted run 40911856672: signed static Linux package and actual protected frontend test passed. Mac native takeover passed, but expected unrelated-port failure opened a modal even under --headless. Headless startup errors now use stderr/exit only; ordinary GUI failures retain the alert. Full final rerun remains.
 
 Final verified build: 962899c / 40932400772; all hosted jobs passed. Real Mac takeover/unrelated-listener regression, universal Mac packaging and app/update handoff passed. Signed static Linux package and actual frontend passed in CI and locally. Windows/Mac/Linux downloads delivered; original devices remain untested.
+
+## Oldest Mac supported: macOS 10.15 Catalina (since 1.24.33, owner 2026-11-12)
+- `package.py` writes `LSMinimumSystemVersion 10.15` (the 1.23.0 baseline said 11.0, which is what refused Catalina) and checks the built program with `development/1.24.33/macos_floor.py`: Intel half at most 10.15, Apple Silicon half at most 11.0. The CI build sets `MACOSX_DEPLOYMENT_TARGET=10.15` for the Intel half. Test `test-macos-floor.py`.
+- The memory helper (official Engram 3.0.0, Go 1.25) needs macOS 12. `engram.rs` switches memory search off below 12 with a plain reason and skips the download. A newer Engram built with Go 1.27 would need macOS 13: check the floor (`macos_floor.minimum_versions`) whenever the pinned Engram changes.
+- The Mac window is the system Safari engine (Catalina: Safari 15.6 at best). `desktop.html`'s head script `pz-old-safari` covers color-mix() and crypto.randomUUID there; checked by `test-old-safari.js` and the old-Safari pass in `release-tools/test-linux-desktop.cjs`. Before using newer CSS or JS in the app window (for example CSS nesting, `@container`, regex lookbehind, `Promise.withResolvers`), add a fallback or extend that script.
+- Catalina browsers: Chrome, Edge and Brave stopped at 128; Firefox still supports 10.15 and is what the Mac README recommends there.
+- Never verified on a real Catalina Mac (see the field-test list in [open work](open-work.md)).

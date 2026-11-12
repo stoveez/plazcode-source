@@ -56,7 +56,19 @@ elif osname=='Linux':
 else:
  shutil.copy2(source/'Update-PlazCode.command',package/'Update-PlazCode.command')
  app=package/'PlazCode.app';shutil.copy2(source/'agent/target/release/PlazCode',app/'Contents/MacOS/PlazCode');(app/'Contents/MacOS/PlazCode').chmod(0o755)
- plist=app/'Contents/Info.plist';value=plistlib.loads(plist.read_bytes());value['CFBundleShortVersionString']=value['CFBundleVersion']='1.24.33';plist.write_bytes(plistlib.dumps(value))
+ plist=app/'Contents/Info.plist';value=plistlib.loads(plist.read_bytes());value['CFBundleShortVersionString']=value['CFBundleVersion']='1.24.33'
+ # 1.24.33 (owner: support macOS 10.15 Catalina): macOS refuses to open an app whose LSMinimumSystemVersion is
+ # newer than the running system, and the 1.23.0 baseline said 11.0. The Intel half of the app is built for 10.15
+ # (validate-1.24.33.yml) and Apple Silicon Macs never run older than 11, so 10.15 is the true floor.
+ value['LSMinimumSystemVersion']='10.15';plist.write_bytes(plistlib.dumps(value))
+ spare=package/'macos/Info.plist'
+ if spare.is_file():
+  copy=plistlib.loads(spare.read_bytes());copy['LSMinimumSystemVersion']='10.15';spare.write_bytes(plistlib.dumps(copy))
+ import macos_floor
+ floors=macos_floor.minimum_versions(app/'Contents/MacOS/PlazCode')
+ assert floors.get('x86_64') and macos_floor.at_most(floors['x86_64'],(10,15)), f'Intel Mac app must run on macOS 10.15: {floors}'
+ assert floors.get('arm64') and macos_floor.at_most(floors['arm64'],(11,0)), f'Apple Silicon Mac app must run on macOS 11: {floors}'
+ print('macOS floor: ok;',floors)
  subprocess.run(['codesign','--force','--deep','--sign','-',str(app)],check=True)
  subprocess.run(['codesign','--verify','--deep','--strict',str(app)],check=True)
  subprocess.run(['lipo',str(app/'Contents/MacOS/PlazCode'),'-verify_arch','x86_64','arm64'],check=True)
@@ -83,7 +95,11 @@ if osname!='Linux':(package/'README.md').write_text(
  '3. Refresh your AI chat tab.\n\n'
  'PlazCode only connects to the extension loaded from this PlazCode folder. Updates install from inside the app. '
  'Your skills, notes and settings are kept on updates.\n\n'
- 'Official downloads: https://github.com/stoveez/PlazCode/releases\n',encoding='utf-8')
+ 'Official downloads: https://github.com/stoveez/PlazCode/releases\n'
+ +('\n## Mac\n\nPlazCode needs macOS 10.15 Catalina or newer. On macOS 10.15 and 11, project memory search is off because '
+   'its helper needs macOS 12; chat history, notes and skills still work. On Catalina, use Firefox with the '
+   '**PlazCode-Extension-Firefox** folder: Chrome, Edge and Brave no longer update there. Also install the latest '
+   'Safari update from Software Update, because the PlazCode window uses it.\n' if osname=='Darwin' else ''),encoding='utf-8')
 # 1.24.30: the Firefox folder inside the native package is rebuilt from this
 # exact source (the 1.23.0 baseline copy was stale), and SHA256SUMS.txt is
 # recomputed for every file it lists so no checksum describes an old file.

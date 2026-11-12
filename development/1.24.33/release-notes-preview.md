@@ -3,11 +3,12 @@
 
 ***✨ What's new***
 - New Apps & servers page: connect Blender, Godot, Unity, Figma and Blockbench with a simple checklist that ticks itself off.
-- Blender can run quietly in the background, no window needed, with safe mode on by default. Or use your own open Blender window.
+- Blender can run quietly in the background with safe mode on, or use your own open Blender window.
 - PlazCode adds its own helpers to Blender, Unity, Figma and Blockbench for you, and takes them out again when you disconnect.
 - Helper agents: the AI can start up to two extra chats to work on parts of a task at the same time.
 - The AI can now send several commands in one reply; reads run together, changes run in order.
 - A fresh desktop app look: grouped pages, smoother page changes, gradients and glow, and a make-your-own theme builder.
+- Mac: now opens on macOS 10.15 Catalina too. Memory search needs macOS 12; on Catalina, use Firefox.
 
 ***🛠️ What's fixed***
 - Notion: commands written right after a sentence run again instead of getting stuck on processing.
@@ -15,7 +16,7 @@
 - Commands no longer wait on the link between the extension and the app.
 
 ***🧪 What was checked***
-- Automated tests on Windows, Mac and Linux, and on practice pages. The new app connections were tried with stand-ins, not real Unity, Figma or Blockbench yet, and not live on every AI site or in Studio; please report anything odd.
+- Automated tests on Windows, Mac and Linux, and on practice pages. App connections were tried with stand-ins, not real Unity, Figma or Blockbench, nor live on every AI site or in Studio. Catalina: simulated, not tried on a real Mac. Please report anything odd.
 - The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it.
 
 ***📥 How to update***

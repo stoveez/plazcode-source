@@ -274,6 +274,31 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   assert.notEqual(launch()[1],url,'every launch uses a fresh ticket');
   if(process.env.PLAZCODE_UI_PREVIEW_DIR&&!profileGate){fs.mkdirSync(process.env.PLAZCODE_UI_PREVIEW_DIR,{recursive:true});await page.evaluate(()=>{document.querySelector('#desktopApprovalMode').closest('details').open=true;});await page.locator('#desktopApprovalMode').locator('xpath=..').locator('.pc-effort-trigger').click();await page.screenshot({path:path.join(process.env.PLAZCODE_UI_PREVIEW_DIR,'plazcode-linux-native-settings.png')});}
   assert.deepEqual(errors,[]);
+  {
+   // 1.24.33 (owner: PlazCode on macOS 10.15 Catalina): the same running app as Catalina's Safari 15.6 would draw it,
+   // with no color-mix() and no crypto.randomUUID. Each page must keep every background and every text it has normally.
+   const pretendOld=()=>{const real=CSS.supports.bind(CSS);CSS.supports=function(a,b){return String(b===undefined?a:b).includes('color-mix')?false:real(a,b);};Object.defineProperty(Crypto.prototype,'randomUUID',{value:undefined,configurable:true,writable:true});};
+   const survey=()=>{const out={};const alpha=c=>{const m=c.match(/rgba?\(([^)]*)\)/);if(!m)return 1;const p=m[1].split(/[ ,/]+/).filter(Boolean);return p.length>3?parseFloat(p[3]):1;};
+    for(const e of document.querySelectorAll('.app *')){if(!e.getClientRects().length)continue;let key=[],n=e;while(n&&n!==document.body){key.unshift(n.id?'#'+n.id:n.tagName+(n.classList.length?'.'+[...n.classList].sort().join('.'):''));if(n.id)break;n=n.parentElement;}
+     const s=getComputedStyle(e);out[key.join('>')]={bg:alpha(s.backgroundColor),ink:e.textContent.trim()&&!e.children.length?alpha(s.color):1};}return out;};
+   const views=['home','settings','mcp','skills','toolkit','appearance','updates','templates','explorer','guides'];
+   const look=async(p,view)=>{await p.evaluate(v=>PlazCodeDesktop.go(v),view);await p.waitForTimeout(400);return p.evaluate(survey);};
+   const oldContext=await browser.newContext({viewport:{width:1440,height:1000},storageState:await page.context().storageState()}),old=await oldContext.newPage(),oldErrors=[];old.on('pageerror',error=>oldErrors.push(error.message));
+   const boot=await page.evaluate(()=>sessionStorage.getItem('plazcode-linux-desktop'));assert(boot,'the signed-in window keeps its session');
+   await old.addInitScript(pretendOld);await old.addInitScript(value=>sessionStorage.setItem('plazcode-linux-desktop',value),boot);await old.goto('http://127.0.0.1:3000/desktop-ui');await old.locator('#nxSplash').waitFor({state:'hidden',timeout:30000});
+   await old.waitForFunction(()=>typeof PlazCodeDesktop==='object'&&!document.querySelector('.app').inert,null,{timeout:30000});
+   assert.equal(await old.evaluate(()=>typeof window.__plazcodeColorMixFallback),'function','the old-engine path is active');
+   assert.equal(await old.evaluate(()=>[...document.querySelectorAll('style')].some(s=>s.textContent.includes('color-mix('))),false,'no color-mix() left for the old engine');
+   let compared=0;const lost=[];
+   for(const view of views){const normal=await look(page,view),before=await look(old,view);
+    for(const [key,a] of Object.entries(normal)){const b=before[key];if(!b)continue;compared++;if(a.bg>0.5&&b.bg===0)lost.push(view+': background '+key);if(a.ink>0.3&&b.ink<0.3)lost.push(view+': text '+key);}
+    if(process.env.PLAZCODE_SHOTS&&['home','mcp','settings'].includes(view)){fs.mkdirSync(process.env.PLAZCODE_SHOTS,{recursive:true});await old.screenshot({path:path.join(process.env.PLAZCODE_SHOTS,'old-safari-'+view+'.png')});}}
+   assert.deepEqual(lost,[],'without color-mix nothing loses its background or text');
+   assert.deepEqual(oldErrors,[],'no script errors on the old engine: '+oldErrors.join(' | '));
+   assert.equal(await old.locator('#cnApps .cn-logo').count(),6,'the old engine shows the six app tiles too');
+   await oldContext.close();
+   console.log('Old Safari (macOS 10.15): '+views.length+' pages, '+compared+' drawn parts compared, every background and text kept, no script errors');
+  }
   assert.equal((await call('/api/desktop/browser-action',{message:'open-url:javascript:alert(1)'})).status,400,'unsafe external URI rejected');
   {const before=launch().length;assert.equal((await call('/api/desktop/browser-action',{message:'open:get-godot'})).status,200);await waitFor(()=>launch().length===before+1,'official download page opens');assert.equal(launch()[before],'https://godotengine.org/download/');assert.equal((await call('/api/desktop/browser-action',{message:'open:get-anything'})).status,400,'only listed download pages open');}
   if(profileGate&&globalThis.__blockbenchLeft){
