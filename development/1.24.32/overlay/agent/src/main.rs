@@ -99,6 +99,7 @@ mod platform;
 mod checkpoints;
 mod mcp_addons;
 mod connections;
+mod helper_socket;
 mod runtime;
 mod studio_session;
 mod studio_launcher;
@@ -1433,6 +1434,8 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         // Public shell contains no key; the native WebView injects credentials.
         // Register after pairing middleware; every API remains authenticated.
         .route("/desktop-ui", get(desktop_shell_handler))
+        // PlazCode's helpers inside other apps. No bridge key here on purpose: a helper holds only its own pairing word.
+        .route("/helper", get(helper_socket::upgrade))
         .merge(linux_launch)
         .route("/api/integrity/extension",post(integrity::extension_signature).layer(axum::extract::DefaultBodyLimit::max(4*1024*1024)))
         .layer(cors);
