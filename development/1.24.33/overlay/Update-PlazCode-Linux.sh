@@ -56,7 +56,14 @@ fi
 for one in $pids; do was_running=1; kill -TERM "$one" 2>/dev/null || true; done
 for one in $pids; do
  for ((attempt=0;attempt<100;attempt++)); do alive "$one" || break; sleep .1; done
- if alive "$one"; then echo 'PlazCode did not close. Installation unchanged.' >&2; exit 6; fi
+ # Still open after ten seconds: close it for good, but only if it is still this installation's PlazCode.
+ if alive "$one" && [[ "$(readlink "/proc/$one/exe" 2>/dev/null || true)" == "$root/PlazCode" ]]; then
+  kill -KILL "$one" 2>/dev/null || true
+  for ((attempt=0;attempt<50;attempt++)); do alive "$one" || break; sleep .1; done
+ fi
+ if alive "$one"; then
+  echo "PlazCode did not close. Installation unchanged. ($(ps -o pid=,stat=,args= -p "$one" 2>/dev/null | head -c 300))" >&2; exit 6
+ fi
 done
 # Start PlazCode fully detached: its own session (closing a terminal or this script never stops it) and no
 # inherited output, so nothing waits on it.

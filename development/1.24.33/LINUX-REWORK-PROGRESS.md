@@ -35,3 +35,7 @@ development/1.24.33/prepare.py` (never while the full JS suite runs).
 - **2026-11-12, step 2 done.** `linux_desktop.rs`: the launch link opens with the first of Chrome, Chromium, Brave, Edge, Vivaldi found on PATH as `--app=` (an app window with no tabs or address bar), else a Flatpak one of those through `flatpak run`, else `xdg-open`/`gio` as before. `PLAZCODE_LINUX_WINDOW=tab` keeps the old tab. Links the app opens (download pages) still use the default browser. Tests: unit test `opens_an_app_window_when_a_chromium_browser_is_installed`; the live Linux app test puts a stand-in Chrome first on PATH and checks the window was opened through it. Not seen on a real Linux desktop. Needs the new app.
 - **2026-11-12 (seventh chat), step 1.** Owner asked for the rework and answered the questions (see the plan). Nothing
   in the product changed yet.
+
+## CI round 1 fixes (2026-11-12)
+- Windows: browser checklist test expected `/` paths; now builds expected paths with the platform's separator and runs the Linux part only on Unix.
+- Linux: in CI the installer-way update (pid 0) found a PlazCode that had not closed after 10 s. The helper now force-closes it (SIGKILL, only if it is still this installation's PlazCode) after the 10 s wait, and if even that fails the error names the process and its state. The test prints the process list on failure. Local: 377 Rust tests, update helper and installer tests pass. Cause on the CI runner not confirmed.

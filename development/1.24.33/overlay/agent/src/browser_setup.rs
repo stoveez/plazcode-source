@@ -240,13 +240,16 @@ mod tests {
         let mac = installed("macos", &env_of(HashMap::from([("HOME", "/Users/a")])), &|p| mac_files.iter().any(|f| Path::new(f) == p));
         assert_eq!(mac.iter().map(|b| b.key).collect::<Vec<_>>(), ["brave", "firefox"]);
         assert_eq!(page_command(&mac[0]).1, vec!["brave://extensions".to_string()]);
-        assert_eq!(page_command(&mac[1]), (PathBuf::from("/usr/bin/open"), vec!["-a".to_string(), "/Users/a/Applications/Firefox.app".to_string()]), "Firefox on a Mac only comes forward");
+        assert_eq!(page_command(&mac[1]), (PathBuf::from("/usr/bin/open"), vec!["-a".to_string(), PathBuf::from("/Users/a").join("Applications").join("Firefox.app").display().to_string()]), "Firefox on a Mac only comes forward");
 
-        let linux_files = ["/usr/bin/chromium", "/snap/bin/firefox", "/usr/bin/flatpak", "/home/a/.local/share/flatpak/app/com.brave.Browser/current"];
-        let linux = installed("linux", &env_of(HashMap::from([("PATH", "/usr/bin:/snap/bin"), ("HOME", "/home/a")])), &|p| linux_files.iter().any(|f| Path::new(f) == p));
-        assert_eq!(linux.iter().map(|b| b.key).collect::<Vec<_>>(), ["brave", "chromium", "firefox"]);
-        assert_eq!(page_command(&linux[0]), (PathBuf::from("/usr/bin/flatpak"), vec!["run".into(), "com.brave.Browser".into(), "brave://extensions".into()]));
-        assert_eq!(page_command(&linux[2]).1, vec!["about:debugging#/runtime/this-firefox".to_string()]);
+        // PATH is split with ':' only on Mac and Linux.
+        if cfg!(unix) {
+            let linux_files = ["/usr/bin/chromium", "/snap/bin/firefox", "/usr/bin/flatpak", "/home/a/.local/share/flatpak/app/com.brave.Browser/current"];
+            let linux = installed("linux", &env_of(HashMap::from([("PATH", "/usr/bin:/snap/bin"), ("HOME", "/home/a")])), &|p| linux_files.iter().any(|f| Path::new(f) == p));
+            assert_eq!(linux.iter().map(|b| b.key).collect::<Vec<_>>(), ["brave", "chromium", "firefox"]);
+            assert_eq!(page_command(&linux[0]), (PathBuf::from("/usr/bin/flatpak"), vec!["run".into(), "com.brave.Browser".into(), "brave://extensions".into()]));
+            assert_eq!(page_command(&linux[2]).1, vec!["about:debugging#/runtime/this-firefox".to_string()]);
+        }
     }
 
     #[test] fn the_checklist_follows_the_person() {
@@ -268,7 +271,7 @@ mod tests {
         assert_eq!(apply(&mut saved, &serde_json::from_value(json!({"id": "browser", "step": "open"})).unwrap()).unwrap(), Next::Open);
         let opened = card(&saved.apps[APP], &facts(false));
         assert_eq!(states(&opened), ["pick:done", "open:done", "dev:needs_you", "load:needs_you", "chat:working"]);
-        assert_eq!(opened["steps"][3]["copy"], "/home/a/PlazCode/PlazCode-Extension");
+        assert_eq!(opened["steps"][3]["copy"], root.join("PlazCode-Extension").display().to_string());
         assert!(opened["steps"][3]["hint"].as_str().unwrap().contains("Ctrl+L"));
         let connected = card(&saved.apps[APP], &facts(true));
         assert_eq!(connected["state"], "ready");assert!(states(&connected).iter().all(|s| s.ends_with(":done")));

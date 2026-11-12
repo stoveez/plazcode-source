@@ -93,7 +93,7 @@ with tempfile.TemporaryDirectory(prefix='plazcode-linux-update-') as temp:
 
         # The installer's way (pid 0, mode none): it finds and closes the running PlazCode itself and does not restart it.
         again = run(archive, sha, version, 0, 'none', root, *mode)
-        assert again.returncode == 0, (again.stdout, again.stderr)
+        assert again.returncode == 0, (again.stdout, again.stderr, subprocess.run(['ps', '-eo', 'pid,ppid,stat,args'], capture_output=True, text=True).stdout[-3000:])
         for _ in range(100):
             if not running_from(root): break
             time.sleep(0.1)
