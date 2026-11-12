@@ -428,6 +428,7 @@ pub fn report(servers: &[ServerSummary], preview: Option<String>) -> Value {
         godot_app(&godot, found.as_deref(), &recent, mcp_addons::is_enabled("godot"), servers.iter().find(|s| s.id == "godot"),
             // Looking for Node on this computer is part of the setup, so it also waits for Allow.
             &(if godot.consent { crate::runtime::view("npx") } else { View::Later })),
+        crate::blockbench::card(&saved.apps.get(crate::blockbench::APP).cloned().unwrap_or_default(), &crate::blockbench::facts()),
     ]})
 }
 
@@ -445,7 +446,7 @@ pub struct SetupRequest {
 #[derive(Debug, PartialEq, Eq)]
 /// `BlenderInstall` adds PlazCode's own helper to Blender; `BlenderRemove` stops the background Blender and takes the
 /// helper out again; `BlenderLaunch` opens the normal Blender.
-pub enum After { Nothing, RefreshHelpers, BlenderCheck, BlenderStop, BlenderPreview, BlenderOpen, BlenderInstall, BlenderRemove, BlenderLaunch }
+pub enum After { Nothing, RefreshHelpers, BlenderCheck, BlenderStop, BlenderPreview, BlenderOpen, BlenderInstall, BlenderRemove, BlenderLaunch, BlockbenchCheck, BlockbenchShow }
 
 /// What `apply` needs to know about the computer.
 #[derive(Default)]

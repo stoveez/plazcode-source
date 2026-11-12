@@ -100,6 +100,9 @@ mod checkpoints;
 mod mcp_addons;
 mod connections;
 mod helper_socket;
+mod blockbench;
+/// The port the bridge listens on (127.0.0.1 only). PlazCode's helpers in other apps dial it too.
+pub const BRIDGE_PORT: u16 = 3000;
 mod runtime;
 mod studio_session;
 mod studio_launcher;
@@ -1368,6 +1371,8 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         security::allowed_origin(&headers)
     })).allow_methods([Method::GET, Method::POST, Method::OPTIONS]).allow_headers(Any);
     updater::start_checker();
+    // Blockbench: the pairing word the helper connection accepts and the helper file follow the saved choices.
+    blockbench::sync(&connections::load().apps.get(blockbench::APP).cloned().unwrap_or_default());
     let linux_launch = linux_launch_routes(state.clone());
     let app = Router::new()
         .route("/", get(|| async { Json(serde_json::json!({"ok": true, "service": "plazcode-agent", "version": env!("CARGO_PKG_VERSION")})) }))
@@ -1425,6 +1430,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/mcp/toggle", post(mcp_toggle_handler))
         .route("/api/connections", get(connections_handler))
         .route("/api/connections/setup", post(connections_setup_handler))
+        .route("/api/blockbench", post(blockbench::post).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024)))
         .route("/ws", get(ws_handler))
         .layer(axum::middleware::from_fn(track_tool_activity))
         .merge(linux_authenticated_routes())
@@ -2054,6 +2060,7 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
         "workspace_ready": state.ui.workspace_ready.load(Ordering::Relaxed),
         "workspace_root": state.ui.workspace_root.lock().map(|value| value.clone()).unwrap_or_default(),
         "blender_connected": blender::connected(),
+        "blockbench": blockbench::status(),
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "roblox_bridge_connected": state.roblox_clients.read().await.len() > 0,
         "local_bridge_connected": state.local_clients.read().await.len() > 0,
@@ -2217,6 +2224,7 @@ async fn debug_report_handler(State(state): State<AppState>) -> impl IntoRespons
         "mcp_alive": state.ui.mcp_alive.load(Ordering::Relaxed),
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "blender_connected": blender::connected(),
+        "blockbench": blockbench::status(),
         "workspace_ready": state.workspace.ready(),
         "mcp_busy": state.mcp_in_flight.load(Ordering::Relaxed) > 0,
     });
@@ -2303,6 +2311,12 @@ async fn connections_setup_handler(State(state): State<AppState>, Json(request):
             blender_found: request.id == "blender" && connections::find_blender().is_some(),
             blender_old_connection: mcp_addons::is_enabled("blender"),
         };
+        if request.id == blockbench::APP {
+            let next = blockbench::apply(&mut saved, &request, &blender_addon::new_token)?;
+            connections::save_to(&path, &saved)?;
+            blockbench::sync(&saved.apps.get(blockbench::APP).cloned().unwrap_or_default());
+            return Ok(match next { blockbench::Next::Sync => connections::After::Nothing, blockbench::Next::Check => connections::After::BlockbenchCheck, blockbench::Next::Show => connections::After::BlockbenchShow });
+        }
         let (switch, after) = connections::apply(&mut saved, &request, &facts)?;
         connections::save_to(&path, &saved)?;
         if let Some((id, on)) = switch { if mcp_addons::is_enabled(id) != on { mcp_addons::set_catalog_enabled(id, on)?; } }
@@ -2313,6 +2327,8 @@ async fn connections_setup_handler(State(state): State<AppState>, Json(request):
             // Blender follow-ups run behind the reply; the open setup window shows their progress every two seconds.
             match after {
                 connections::After::BlenderCheck => { tokio::spawn(async { blender::check().await; }); }
+                connections::After::BlockbenchCheck => { tokio::spawn(async { blockbench::check().await; }); }
+                connections::After::BlockbenchShow => { if let Err(error) = blockbench::show_folder() { return Json(serde_json::json!({"ok": false, "error": error})).into_response(); } }
                 connections::After::BlenderStop => { blender::clear_preview(); tokio::spawn(blender_headless::stop()); }
                 connections::After::BlenderInstall => {
                     // Adding the helper runs Blender once without a window (up to two minutes): behind the reply; the
@@ -2390,6 +2406,7 @@ async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {
         "profile_picture_revision":state.accounts.active().and_then(|p|profile_picture::revision(&p.id)),
         "account_sync":state.accounts.active().map(|p|account_sync::status(&p.id)),
         "blender_connected": blender::connected(),
+        "blockbench": blockbench::status(),
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "roblox_bridge_connected": state.roblox_clients.read().await.len() > 0,
         "local_bridge_connected": state.local_clients.read().await.len() > 0,
