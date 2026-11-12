@@ -71,6 +71,8 @@ const CATALOG = [
     assert.equal(await tab.evaluate(() => document.getElementById("pzTitle").textContent), "Apps & servers", "the page title is plain");
     let list = await tiles(tab);
     assert.deepEqual(list.map((t) => t.app), ["studio", "blender", "blockbench", "figma", "godot", "unity"], "six tiles in a fixed, friendly order");
+    const logos = await tab.evaluate(() => [...document.querySelectorAll("#cnApps .cn-tile")].map((t) => { const img = t.querySelector(".cn-ico-logo img.cn-logo"); return { app: t.dataset.app, png: !!img && img.getAttribute("src").startsWith("data:image/png;base64,"), loaded: !!img && img.complete && img.naturalWidth === 112, alt: img && img.getAttribute("alt"), size: img && Math.round(img.getBoundingClientRect().width) }; }));
+    assert.deepEqual(logos.map((l) => l.app + ":" + l.png + ":" + l.loaded + ":" + l.alt + ":" + l.size), ["studio", "blender", "blockbench", "figma", "godot", "unity"].map((id) => id + ":true:true::34"), "each tile shows the app's own logo, built into the page (no download), decorative next to the name");
     assert.equal(list[0].pill, "Ready", "Roblox Studio is built in");
     assert.deepEqual(list.slice(1).map((t) => t.state), ["not_set_up", "soon", "not_set_up", "not_set_up", "not_set_up"]);
     assert.equal(list[1].aria, "Connect Blender", "buttons say what they do");

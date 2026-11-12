@@ -22,6 +22,8 @@ Updated: 2026-11-11 (seventh chat, step 8). No helper agents.
 
 **1.24.33 test build (2026-11-11):** CI run 43150029756 on `d3a88b6` ALL GREEN (Windows, Mac, Linux, browsers, release check). Zips `plazcode-1.24.33-Windows-test-lean` and `plazcode-1.24.33-macOS-test-lean` on https://github.com/stoveez/plazcode-source/actions/runs/43150029756 (owner downloads them; this session cannot reach GitHub's artifact storage and has no Drive connector). Needs the new app and an extension reload. Release notes draft shown to the owner: `development/1.24.33/release-notes-preview.md`. Publishing needs the owner's yes.
 
+**2026-11-12:** the Apps & servers tiles show the real app logos (owner supplied them; built into the page). Not in the 2026-11-11 test zips; needs a new test build.
+
 **Owner field retest pending:** the Notion bar lag and the "Offline" cause were not reproduced live, only hardened. If either still shows, collect logs. The Status-card part of the Offline fix is inside the app, so the app must be replaced.
 
 **Release:** https://github.com/stoveez/PlazCode/releases/tag/v1.24.32

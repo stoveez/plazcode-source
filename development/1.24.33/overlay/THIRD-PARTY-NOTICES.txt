@@ -25,6 +25,7 @@ MCP for Unity 10.3.0 (Unity package com.coplaydev.unity-mcp from OpenUPM, and th
 godot-mcp 0.1.1 (@coding-solo/godot-mcp) — MIT, Coding-Solo. https://github.com/Coding-Solo/godot-mcp
 mcp-for-blender 2.1.9 — MIT, its authors (used only for the older Blender connection under More tools). https://pypi.org/project/mcp-for-blender/
 PlazCode's own Blender, Figma and Blockbench helpers are first-party PlazCode code.
+App logos on the Apps & servers page — shown only to name the app being connected; each is a trademark of its owner and PlazCode is not affiliated with or endorsed by them: Roblox Studio (Roblox Corporation), Blender (Blender Foundation), Blockbench (Blockbench / JannisX11), Figma (Figma, Inc.), Godot Engine (logo by Andrea Calabró, CC BY 4.0, https://godotengine.org/press/), Unity (Unity Technologies).
 
 Existing third-party package licenses remain in their respective source/runtime folders.
 
