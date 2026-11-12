@@ -3310,6 +3310,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         break;
       }
       case "tab_read": {
+        if (CONTROL_V2) { try { const tab = await resolveTab(msg); const entered = tab ? await controlEnter(tab, msg, _sender) : { error: "no target tab (open a page, or pass url_contains)" }; if (entered.error) { sendResponse({ ok: false, error: entered.error }); break; } } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); break; } }
         try {
           const tab = await resolveTab(msg);
           if (!tab) { sendResponse({ ok: false, error: "no target tab (open a page, or pass url_contains)" }); break; }
@@ -3344,6 +3345,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         break;
       }
       case "tab_click": {
+        if (CONTROL_V2) { try { sendResponse(await controlledTabAction("click", msg, _sender)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); } break; }
         try {
           const tab = await resolveTab(msg);
           if (!tab) { sendResponse({ ok: false, error: "no target tab" }); break; }
@@ -3376,6 +3378,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         break;
       }
       case "tab_type": {
+        if (CONTROL_V2) { try { sendResponse(await controlledTabAction("type", msg, _sender)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); } break; }
         try {
           const tab = await resolveTab(msg);
           if (!tab) { sendResponse({ ok: false, error: "no target tab" }); break; }
@@ -3409,6 +3412,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         break;
       }
       case "tab_scroll": {
+        if (CONTROL_V2) { try { sendResponse(await controlledTabAction("scroll", msg, _sender)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); } break; }
         try {
           const tab = await resolveTab(msg);
           if (!tab) { sendResponse({ ok: false, error: "no target tab" }); break; }
@@ -3421,6 +3425,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
       }
+      case "control_event":
+        controlEvent(msg, _sender);
+        sendResponse({ ok: true });
+        break;
       case "rs-debug-log":
         debugAcceptTab(msg, _sender);
         sendResponse({ ok: true });
@@ -3434,6 +3442,114 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
   });
   return true; // async sendResponse
 });
+
+// ── AgentScript control rework (1.24.34; owner, 2026-11-12) ─────────────────
+// OFF until the whole rework is finished, so publishing 1.24.33 cannot ship it half-done. Tests switch it on inside
+// their own test browser only. Plan and security review: development/1.24.33/AGENTSCRIPT-REWORK-PLAN.md.
+let CONTROL_V2 = false;
+// tabId -> { paused, stoppedAt, by } : what the person did in the controlled tab, and which AI tab is working there.
+const controlTabs = new Map();
+const CONTROL_STORES = /^https:\/\/(?:chromewebstore\.google\.com|chrome\.google\.com\/webstore|microsoftedge\.microsoft\.com\/addons|addons\.mozilla\.org)(?:\/|$)/i;
+function isProviderUrl(url) {
+  return PROVIDER_URLS.some((p) => new RegExp("^" + p.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")).test(url || ""));
+}
+// Tabs PlazCode never controls, whatever the approval mode.
+function controlRefusal(tab, sender) {
+  const url = String(tab && tab.url || "");
+  if (!/^(?:https?|file):/i.test(url)) return "PlazCode does not control browser pages, extension pages or empty tabs. Open the website first, then try again.";
+  if (CONTROL_STORES.test(url)) return "PlazCode does not control the extension store.";
+  if ((sender && sender.tab && sender.tab.id === tab.id) || isProviderUrl(url)) return "PlazCode does not control an AI chat tab. Name the tab to work in (url_contains), or open the page in its own tab.";
+  return "";
+}
+async function controlEnter(tab, msg, sender) {
+  const refusal = controlRefusal(tab, sender);
+  if (refusal) return { error: refusal };
+  const row = controlTabs.get(tab.id) || { paused: false, stoppedAt: 0, by: null };
+  if (row.stoppedAt && Date.now() - row.stoppedAt < 15000) return { error: "The person pressed Stop in that tab a moment ago, so PlazCode did nothing. Ask them before working there again." };
+  row.stoppedAt = 0; row.by = sender && sender.tab ? sender.tab.id : row.by;
+  controlTabs.set(tab.id, row);
+  const accent = /^#[0-9a-f]{6}$/i.test(String(msg.accent || "").trim()) ? String(msg.accent).trim() : "";
+  await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["core/control-overlay.js"] });
+  const [shown] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: [accent], func: (a) => globalThis.__plazcodeControl.show({ accent: a }) });
+  if (shown && shown.result && shown.result.paused) row.paused = true;
+  if (row.paused) {
+    // The person took over: wait for Resume (or Stop) instead of acting under their hands.
+    const until = Date.now() + 90000;
+    while (row.paused && !row.stoppedAt && Date.now() < until) await new Promise((r) => setTimeout(r, 250));
+    if (row.stoppedAt) return { error: "The person pressed Stop, so PlazCode did nothing." };
+    if (row.paused) return { error: "The person is using that tab (PlazCode paused when they moved the mouse or typed). Nothing was done. Ask them whether to continue; they can press Resume in the tab." };
+  }
+  return { ok: true };
+}
+// One tab action the controlled way: glow and label on, PlazCode's cursor glides to the target, then the action.
+async function controlledTabAction(kind, msg, sender) {
+  const tab = await resolveTab(msg);
+  if (!tab) return { ok: false, error: "no target tab (open a page, or pass url_contains)" };
+  const entered = await controlEnter(tab, msg, sender);
+  if (entered.error) return { ok: false, error: entered.error };
+  const run = async (func, args) => (await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: args || [], func }))[0].result;
+  if (kind === "read") return null; // reading shows the glow; the page is read by the usual code
+  if (kind === "scroll") {
+    return { ok: true, result: await run((amount) => { window.scrollBy({ top: amount, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); return { scrolled: amount, y: Math.round(window.scrollY + amount) }; }, [Number(msg.amount) || 600]) };
+  }
+  // Click or type: find the element first (same rules as before), point at it, then act on that very element.
+  const found = await run((kind, selector, text) => {
+    const control = globalThis.__plazcodeControl;
+    let el = null;
+    try {
+      if (selector) el = document.querySelector(selector);
+      else if (kind === "type") el = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
+      if (!el && text && kind === "click") {
+        const t = text.toLowerCase();
+        el = Array.from(document.querySelectorAll("a, button, input, [role=button], [onclick], summary, select, textarea, label"))
+          .find((c) => ((c.innerText || c.value || c.getAttribute("aria-label") || c.getAttribute("placeholder") || "").toLowerCase().includes(t)));
+      }
+    } catch { return { error: "Invalid selector" }; }
+    if (!el) return { error: kind === "type" ? "no field (pass selector)" : "element not found" };
+    control.target = el;
+    el.scrollIntoView({ block: "center", inline: "nearest" });
+    const r = el.getBoundingClientRect();
+    return { x: r.left + Math.min(r.width / 2, 40), y: r.top + r.height / 2 };
+  }, [kind, String(msg.selector || ""), String(msg.text || "")]);
+  if (!found || found.error) return { ok: true, result: kind === "type" ? { typed: false, error: found && found.error } : { clicked: false, error: found && found.error } };
+  await run((x, y) => globalThis.__plazcodeControl.moveTo(x, y), [found.x, found.y]);
+  const row = controlTabs.get(tab.id);
+  if (row && (row.paused || row.stoppedAt)) return { ok: false, error: row.stoppedAt ? "The person pressed Stop, so PlazCode did nothing." : "The person took over the tab just before the action, so nothing was done. Ask them whether to continue." };
+  if (kind === "click") {
+    return { ok: true, result: await run(() => {
+      const control = globalThis.__plazcodeControl, el = control.target; control.target = null;
+      if (!el || !el.isConnected) return { clicked: false, error: "The element went away before the click; nothing was clicked." };
+      try { control.press(); const receipt = { clicked: true, tag: el.tagName.toLowerCase(), label: (el.innerText || el.value || "").trim().slice(0, 60) }; el.focus && el.focus(); el.click(); return receipt; }
+      catch (error) { return { clicked: false, error: String(error.message || error), note: "The click was not repeated; inspect the page before retrying." }; }
+    }) };
+  }
+  return { ok: true, result: await run((text, submit) => {
+    const control = globalThis.__plazcodeControl, el = control.target; control.target = null;
+    if (!el || !el.isConnected) return { typed: false, error: "The field went away before typing; nothing was typed." };
+    try {
+      control.press(); el.focus();
+      if ("value" in el) { el.value = text; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); }
+      else el.textContent = text;
+      if (submit) { el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, bubbles: true })); if (el.form && el.form.requestSubmit) el.form.requestSubmit(); }
+      return { typed: true, tag: el.tagName.toLowerCase() };
+    } catch (error) { return { typed: false, error: String(error.message || error), note: "The write was not repeated; inspect the field before retrying." }; }
+  }, [String(msg.text || ""), !!msg.submit]) };
+}
+// What the person did in a controlled tab (sent by core/control-overlay.js from that tab only).
+function controlEvent(msg, sender) {
+  const tabId = sender && sender.tab && sender.tab.id;
+  if (!Number.isInteger(tabId) || sender.id !== chrome.runtime.id) return;
+  const row = controlTabs.get(tabId);
+  if (!row) return;
+  if (msg.event === "paused") row.paused = true;
+  else if (msg.event === "resume") row.paused = false;
+  else if (msg.event === "stop") {
+    row.paused = false; row.stoppedAt = Date.now();
+    // Stop in the tab is Stop for the AI: the chat that was working there ends its run.
+    if (Number.isInteger(row.by)) chrome.tabs.sendMessage(row.by, { type: "rs-control-stop" }).catch(() => {});
+  }
+}
+chrome.tabs.onRemoved.addListener((tabId) => controlTabs.delete(tabId));
 
 // Pick the tab a tab_* tool should act on: explicit tabId > a tab whose URL
 // contains url_contains > the active tab in any window that is NOT a chat

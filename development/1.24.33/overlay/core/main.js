@@ -3374,13 +3374,27 @@ return result`;
       return "Output of 'plazcode_screenshot':\n" + caption + "\n(The image is attached to THIS message — you can see it directly. Analyse it and continue.)";
     }
     // ── Browser tab control (tab_read / tab_click / tab_type / tab_scroll) ────
+    // 1.24.34: the PlazCode theme colour, for the glow the worker draws in the controlled tab (used only when the
+    // control rework is switched on).
+    function controlAccent() {
+      try {
+        const css = getComputedStyle(document.querySelector("#rs-root") || document.documentElement);
+        for (const name of ["--pc-accent", "--orange", "--rs-accent"]) {
+          const value = css.getPropertyValue(name).trim();
+          if (/^#[0-9a-f]{6}$/i.test(value)) return value;
+          const rgb = value.match(/^rgba?\((\d+)[ ,]+(\d+)[ ,]+(\d+)/i);
+          if (rgb) return "#" + rgb.slice(1, 4).map((n) => Number(n).toString(16).padStart(2, "0")).join("");
+        }
+      } catch {}
+      return "";
+    }
     // Lets the AI see and operate the user's browser tab: read the page text +
     // a list of clickable elements, then click / type / scroll by index or text.
     // An explicit tabId or url_contains picks the tab; otherwise it targets the
     // active non-chat tab so it never clicks THIS conversation.
     if (name === "tab_read") {
       try {
-        const r = await bg({ type: "tab_read", tabId: args.tabId, url_contains: args.url_contains });
+        const r = await bg({ type: "tab_read", accent: controlAccent(), tabId: args.tabId, url_contains: args.url_contains });
         if (!r || !r.ok) return "ERROR: tab_read failed — " + String((r && r.error) || "no response");
         const p = r.page || {};
         const lines = [];
@@ -3397,7 +3411,7 @@ return result`;
     }
     if (name === "tab_click") {
       try {
-        const r = await bg({ type: "tab_click", tabId: args.tabId, url_contains: args.url_contains, selector: args.selector, text: args.text });
+        const r = await bg({ type: "tab_click", accent: controlAccent(), tabId: args.tabId, url_contains: args.url_contains, selector: args.selector, text: args.text });
         if (!r || !r.ok) return "ERROR: tab_click failed — " + String((r && r.error) || "no response");
         const res = r.result || {};
         if (!res.clicked) return "tab_click: could not find the element (" + (res.error || "no match") + "). Try tab_read to see what is clickable.";
@@ -3406,7 +3420,7 @@ return result`;
     }
     if (name === "tab_type") {
       try {
-        const r = await bg({ type: "tab_type", tabId: args.tabId, url_contains: args.url_contains, selector: args.selector, text: args.text, submit: args.submit });
+        const r = await bg({ type: "tab_type", accent: controlAccent(), tabId: args.tabId, url_contains: args.url_contains, selector: args.selector, text: args.text, submit: args.submit });
         if (!r || !r.ok) return "ERROR: tab_type failed — " + String((r && r.error) || "no response");
         const res = r.result || {};
         if (!res.typed) return "tab_type: " + (res.error || "could not type");
@@ -3415,7 +3429,7 @@ return result`;
     }
     if (name === "tab_scroll") {
       try {
-        const r = await bg({ type: "tab_scroll", tabId: args.tabId, url_contains: args.url_contains, amount: args.amount });
+        const r = await bg({ type: "tab_scroll", accent: controlAccent(), tabId: args.tabId, url_contains: args.url_contains, amount: args.amount });
         if (!r || !r.ok) return "ERROR: tab_scroll failed — " + String((r && r.error) || "no response");
         return "tab_scroll: scrolled to y=" + ((r.result && r.result.y) || "?");
       } catch (e) { return "ERROR: tab_scroll — " + String((e && e.message) || e); }
@@ -12703,6 +12717,8 @@ rsInterval(() => {
       criticRun(msg).then(sendResponse, (error) => sendResponse({ ok: false, error: String(error && error.message || error) }));
       return true;
     }
+    // 1.24.34 control rework: the person pressed Stop (or Escape) in the tab the AI was working in.
+    if (msg && msg.type === "rs-control-stop") { try { if (A.running || A.starting) stopLoop(); sendResponse({ ok: true }); } catch { try { sendResponse({ ok: false }); } catch {} } return; }
     if (msg && msg.type === "rs-wake") { wakeDueSleepers(); try { sendResponse({ ok: true }); } catch {} return; }
     if (msg && msg.type === "rs-helper-ping") { let ready = false; try { ready = !!P.getEditor(); } catch {} sendResponse({ ok: true, provider: P.id, ready, idle: !(A.started || A.running || A.starting) }); return; }
     if (msg && msg.type === "rs-helper-run") { try { sendResponse(helperRun(msg.helper)); } catch (error) { sendResponse({ ok: false, error: String(error && error.message || error) }); } return; }

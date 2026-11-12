@@ -221,6 +221,10 @@ jobs:
         timeout-minutes: 5
         run: node release-tools/test-ultra-extension-browser.cjs
         working-directory: build-src-1.24.33/PlazCode
+      - name: AgentScript control look in web tabs (real extension; rework switched on in the test browser only)
+        timeout-minutes: 5
+        run: node release-tools/test-control-browser.cjs
+        working-directory: build-src-1.24.33/PlazCode
       - name: Blender in RobloxScript (what the AI is told; real AI-tab code)
         timeout-minutes: 5
         run: node release-tools/test-blender-robloxscript-browser.cjs
