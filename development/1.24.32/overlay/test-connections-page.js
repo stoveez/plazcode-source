@@ -237,6 +237,48 @@ const CATALOG = [
     assert.equal(await tab.evaluate(() => document.querySelector("#cnWin .cn-preview")), null, "only a PNG data address is shown");
     bridge.onSetup = null; bridge.setupExtra = null; await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
     assert.deepEqual(errors, [], "no page errors: " + errors.join(" | "));
+    // Unity, the way unity.rs reports it: find, pick a project, add the package (or "Unity needs Git"), open, check.
+    const unityCard = (o) => ({ id: "unity", name: "Unity", state: o.state, line: "Control scenes, objects and scripts in the editor.",
+      lead: "PlazCode finds Unity and your projects, adds the MCP for Unity package to the project you pick, and opens it ready to connect. Each step ticks itself off when it is done.",
+      steps: [{ id: "find", title: "Find Unity", state: "done", detail: "Unity Hub" },
+        Object.assign({ id: "project", title: "Pick your project", state: o.project ? "done" : "needs_you", choices: [{ label: "Space", value: "C:/Games/Space" }], input: "Or paste the folder of your Unity project here" }, o.project ? { detail: o.project } : { hint: "Choose the game you want the AI to work on." }),
+        o.package === "git" ? { id: "package", title: "Add the Unity package", state: "needs_you", bad: true, hint: "Unity needs Git for this. PlazCode could not reach OpenUPM, and Git is not on this computer. Install Git, then press Try again.", link: { label: "Download Git", key: "get-git" }, action: { label: "Try again", run: "package" } }
+          : o.package === "done" ? { id: "package", title: "Add the Unity package", state: "done", detail: "MCP for Unity 10.3.0" } : { id: "package", title: "Add the Unity package", state: o.project ? "working" : "waiting" },
+        { id: "runtime", title: "Get the helper program ready", state: o.package === "done" ? "done" : "waiting" },
+        o.answers ? { id: "open", title: "Open your project in Unity", state: "done" } : o.package === "done" ? { id: "open", title: "Open your project in Unity", state: "needs_you", hint: "Press Open project. PlazCode opens it in Unity ready to connect. The first time, Unity also installs the package, which can take a few minutes.", action: { label: "Open project", run: "open" } } : { id: "open", title: "Open your project in Unity", state: "waiting" },
+        { id: "test", title: "Check that Unity answers", state: o.answers ? "done" : o.package === "done" ? "needs_you" : "waiting" }] });
+    const othersU = bridge.backend.filter((a) => a.id !== "unity");
+    let unity = { state: "setting_up" };
+    const setUnity = () => { bridge.backend = [...othersU, unityCard(unity)]; };
+    setUnity();
+    bridge.onSetup = (b) => { if (b.id !== "unity") return null;
+      if (b.step === "project") { unity = { ...unity, project: b.value, package: "git", state: "needs_attention" }; setUnity(); }
+      if (b.step === "package") { unity = { ...unity, package: "done", state: "setting_up" }; setUnity(); }
+      if (b.step === "open") { unity = { ...unity, answers: true, state: "ready" }; setUnity(); }
+      return null; };
+    await tab.click('#cnApps [data-cn-open="unity"]'); await tab.waitForTimeout(2600);
+    const usteps = () => tab.evaluate(() => [...document.querySelectorAll("#cnWin [data-step]")].map((n) => n.getAttribute("data-step") + ":" + n.getAttribute("data-state")));
+    assert.deepEqual(await usteps(), ["find:done", "project:needs_you", "package:waiting", "runtime:waiting", "open:waiting", "test:waiting"], "Unity: six plain steps");
+    await tab.click('#cnWin [data-step="project"] .cn-choice'); await tab.waitForTimeout(600);
+    assert.deepEqual(bridge.setups.pop(), { id: "unity", step: "project", value: "C:/Games/Space" }, "one click picks a Unity project");
+    await tab.waitForTimeout(2200);
+    assert.equal(await tab.evaluate(() => document.querySelector('#cnWin [data-step="package"]').dataset.state), "needs_you");
+    assert.match(await tab.evaluate(() => document.querySelector('#cnWin [data-step="package"]').textContent), /Unity needs Git for this/, "no OpenUPM and no Git: said plainly");
+    await tab.click('#cnWin [data-step="package"] [data-cn-ipc="get-git"]'); await tab.waitForTimeout(300);
+    assert.equal(await tab.evaluate(() => window.__ipc.filter((m) => m === "open:get-git").length), 1, "Download Git opens the official page");
+    assert.deepEqual(await tab.evaluate(() => [...document.querySelectorAll('#cnWin [data-step="package"] button')].map((b) => b.textContent)), ["Download Git", "Try again"], "both the download and Try again are offered");
+    await tab.click('#cnWin [data-step="package"] [data-cn-act="package"]'); await tab.waitForTimeout(600);
+    assert.deepEqual(bridge.setups.pop(), { id: "unity", step: "package" }, "Try again asks the app to add the package again");
+    await tab.waitForTimeout(2200);
+    assert.equal(await tab.evaluate(() => document.querySelector('#cnWin [data-step="open"] .cn-act')?.textContent), "Open project");
+    await tab.click('#cnWin [data-step="open"] .cn-act'); await tab.waitForTimeout(600);
+    assert.deepEqual(bridge.setups.pop(), { id: "unity", step: "open" }, "Open project asks the app to open Unity");
+    await tab.waitForTimeout(2200);
+    assert.equal(await tab.evaluate(() => document.querySelector('#cnApps [data-app="unity"]').dataset.state), "ready");
+    const enU = JSON.parse(fs.readFileSync(__dirname + "/core/locales/en.json", "utf8"));
+    for (const key of ["Find Unity", "Or paste the folder of your Unity project here", "Unity needs Git for this. PlazCode could not reach OpenUPM, and Git is not on this computer. Install Git, then press Try again.", "Download Git", "Open your project in Unity", "Open project", "Check that Unity answers", "PlazCode finds Unity and your projects, adds the MCP for Unity package to the project you pick, and opens it ready to connect. Each step ticks itself off when it is done."]) assert(key in enU, "translatable: " + key);
+    bridge.onSetup = null; await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
+    assert.deepEqual(errors, [], "no page errors: " + errors.join(" | "));
     // Blender in the open window, the way connections.rs reports it: PlazCode adds its own helper, then Open Blender.
     const blenderWindow = (helper, answers) => ({ id: "blender", name: "Blender", state: answers ? "ready" : "setting_up", mode: "window", modes: [{ id: "background", label: "Background (no window)" }, { id: "window", label: "My open Blender window" }],
       lead: "PlazCode adds a small helper to Blender and works in the Blender window you have open. Each step ticks itself off when it is done.",
@@ -360,6 +402,6 @@ const CATALOG = [
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-page.png" : "/tmp/connections-page.png" });
     await tab.click('#cnApps [data-cn-open="blender"]'); await tab.waitForTimeout(600);
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-window.png" : "/tmp/connections-window.png" });
-    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, helper start/fail shown live, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent), Blender open-window card (add helper, Open Blender), Figma card (one way, import-once and start-each-session wording, Show the folder, no pairing word), Blender background card (safe-mode switch, picture, Open in Blender, notice, only PNG pictures), Godot project picking (recent list, paste box, refused folder explained, typing kept, Change)");
+    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, helper start/fail shown live, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent), Unity card (pick, Unity needs Git with Download Git, add package, Open project), Blender open-window card (add helper, Open Blender), Figma card (one way, import-once and start-each-session wording, Show the folder, no pairing word), Blender background card (safe-mode switch, picture, Open in Blender, notice, only PNG pictures), Godot project picking (recent list, paste box, refused folder explained, typing kept, Change)");
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exit(1); });

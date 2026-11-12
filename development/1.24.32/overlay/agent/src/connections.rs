@@ -10,8 +10,9 @@ use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use crate::mcp_addons::{self, ServerSummary};
-use crate::runtime::View;
+pub use crate::mcp_addons::ServerSummary;
+use crate::mcp_addons;
+pub use crate::runtime::View;
 
 /// What the person chose, kept next to the connector settings so it follows the active profile.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -46,6 +47,9 @@ pub struct SavedApp {
     /// Blender, open window: the pairing word written into that helper. Only this PlazCode knows it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pairing: Option<String>,
+    /// Unity: exactly what PlazCode added to the project's Packages/manifest.json (Disconnect takes out only this).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub package: Option<crate::unity::Added>,
 }
 
 pub fn store_path() -> PathBuf { mcp_addons::config_path().with_file_name("connections.json") }
@@ -65,9 +69,9 @@ pub fn save_to(path: &Path, saved: &Saved) -> anyhow::Result<()> {
 
 pub fn load() -> Saved { load_from(&store_path()) }
 
-fn step(id: &str, title: &str, state: &str) -> Value { json!({"id": id, "title": title, "state": state}) }
+pub fn step(id: &str, title: &str, state: &str) -> Value { json!({"id": id, "title": title, "state": state}) }
 
-fn with(mut value: Value, key: &str, extra: Value) -> Value {
+pub fn with(mut value: Value, key: &str, extra: Value) -> Value {
     if let Some(map) = value.as_object_mut() { map.insert(key.to_string(), extra); }
     value
 }
@@ -423,6 +427,8 @@ pub fn report(servers: &[ServerSummary], preview: Option<String>) -> Value {
     // Looking for the editor and reading Godot's project list happen only after the person pressed Allow.
     let found = if godot.consent { mcp_addons::find_godot() } else { None };
     let recent = if godot.consent { godot_recent_projects() } else { Vec::new() };
+    let unity = saved.apps.get(crate::unity::APP).cloned().unwrap_or_default();
+    let unity_card = crate::unity::card(&unity, &crate::unity::facts(&unity, servers));
     json!({"ok": true, "apps": [
         blender_app(&blender, &facts),
         godot_app(&godot, found.as_deref(), &recent, mcp_addons::is_enabled("godot"), servers.iter().find(|s| s.id == "godot"),
@@ -430,6 +436,7 @@ pub fn report(servers: &[ServerSummary], preview: Option<String>) -> Value {
             &(if godot.consent { crate::runtime::view("npx") } else { View::Later })),
         crate::blockbench::card(&saved.apps.get(crate::blockbench::APP).cloned().unwrap_or_default(), &crate::blockbench::facts()),
         crate::figma::card(&saved.apps.get(crate::figma::APP).cloned().unwrap_or_default(), &crate::figma::facts()),
+        unity_card,
     ]})
 }
 
@@ -447,7 +454,7 @@ pub struct SetupRequest {
 #[derive(Debug, PartialEq, Eq)]
 /// `BlenderInstall` adds PlazCode's own helper to Blender; `BlenderRemove` stops the background Blender and takes the
 /// helper out again; `BlenderLaunch` opens the normal Blender.
-pub enum After { Nothing, RefreshHelpers, BlenderCheck, BlenderStop, BlenderPreview, BlenderOpen, BlenderInstall, BlenderRemove, BlenderLaunch, BlockbenchCheck, BlockbenchShow, FigmaCheck, FigmaShow }
+pub enum After { Nothing, RefreshHelpers, BlenderCheck, BlenderStop, BlenderPreview, BlenderOpen, BlenderInstall, BlenderRemove, BlenderLaunch, BlockbenchCheck, BlockbenchShow, FigmaCheck, FigmaShow, UnityAdd, UnityOpen }
 
 /// What `apply` needs to know about the computer.
 #[derive(Default)]

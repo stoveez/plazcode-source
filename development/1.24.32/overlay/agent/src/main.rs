@@ -95,6 +95,7 @@ mod toolkit;
 mod blender;
 mod blender_addon;
 mod blender_headless;
+mod unity;
 mod platform;
 mod checkpoints;
 mod mcp_addons;
@@ -2327,6 +2328,18 @@ async fn connections_setup_handler(State(state): State<AppState>, Json(request):
             figma::sync(&saved.apps.get(figma::APP).cloned().unwrap_or_default());
             return Ok(match next { figma::Next::Sync => connections::After::Nothing, figma::Next::Check => connections::After::FigmaCheck, figma::Next::Show => connections::After::FigmaShow });
         }
+        if request.id == unity::APP {
+            // Unity: Disconnect takes PlazCode's own package entry out of the project again (a note if it could not).
+            let (next, note) = unity::apply(&mut saved, &request)?;
+            connections::save_to(&path, &saved)?;
+            if let Some(note) = note { tracing::warn!("{note}"); }
+            return Ok(match next {
+                unity::Next::Switch(on) => { if mcp_addons::is_enabled(unity::APP) != on { mcp_addons::set_catalog_enabled(unity::APP, on)?; } connections::After::RefreshHelpers }
+                unity::Next::AddPackage => connections::After::UnityAdd,
+                unity::Next::Open => connections::After::UnityOpen,
+                unity::Next::Nothing => connections::After::Nothing,
+            });
+        }
         let (switch, after) = connections::apply(&mut saved, &request, &facts)?;
         connections::save_to(&path, &saved)?;
         if let Some((id, on)) = switch { if mcp_addons::is_enabled(id) != on { mcp_addons::set_catalog_enabled(id, on)?; } }
@@ -2339,6 +2352,27 @@ async fn connections_setup_handler(State(state): State<AppState>, Json(request):
                 connections::After::BlenderCheck => { tokio::spawn(async { blender::check().await; }); }
                 connections::After::BlockbenchCheck => { tokio::spawn(async { blockbench::check().await; }); }
                 connections::After::FigmaCheck => { tokio::spawn(async { figma::check().await; }); }
+                connections::After::UnityAdd => {
+                    // Adding the package asks OpenUPM first (up to ten seconds): behind the reply. Once it is in the
+                    // project, PlazCode's Unity helper is switched on so its program downloads while Unity opens.
+                    tokio::spawn(async {
+                        unity::add_package().await;
+                        let _ = tokio::task::spawn_blocking(|| {
+                            let saved = connections::load();
+                            let has = saved.apps.get(unity::APP).filter(|a| a.consent).and_then(|a| a.project.as_deref()).and_then(unity::project_folder)
+                                .and_then(|p| std::fs::read_to_string(p.join("Packages").join("manifest.json")).ok()).as_deref().and_then(unity::present).is_some();
+                            if has && !mcp_addons::is_enabled(unity::APP) { let _ = mcp_addons::set_catalog_enabled(unity::APP, true); }
+                        }).await;
+                    });
+                }
+                connections::After::UnityOpen => {
+                    let opened = tokio::task::spawn_blocking(|| -> anyhow::Result<()> {
+                        let saved = connections::load();
+                        let project = saved.apps.get(unity::APP).and_then(|a| a.project.as_deref()).and_then(unity::project_folder).ok_or_else(|| anyhow::anyhow!("Pick your project first."))?;
+                        unity::open_project(&project, &unity::installed_editors(&unity::editor_roots(&unity::hub_dirs())))
+                    }).await.unwrap_or_else(|error| Err(anyhow::anyhow!(error.to_string())));
+                    if let Err(error) = opened { return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(); }
+                }
                 connections::After::FigmaShow => { if let Err(error) = figma::show_folder() { return Json(serde_json::json!({"ok": false, "error": error})).into_response(); } }
                 connections::After::BlockbenchShow => { if let Err(error) = blockbench::show_folder() { return Json(serde_json::json!({"ok": false, "error": error})).into_response(); } }
                 connections::After::BlenderStop => { blender::clear_preview(); tokio::spawn(blender_headless::stop()); }

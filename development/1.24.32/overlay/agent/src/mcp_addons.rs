@@ -66,7 +66,7 @@ pub fn catalog() -> Vec<CatalogEntry> {
         CatalogEntry {
             id: "unity",
             name: "Unity",
-            description: "Control the Unity Editor: scenes, GameObjects, C# scripts, assets, tests and builds. First add the MCP for Unity package in Unity (Package Manager, Add package from git URL: https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity) and keep the Unity project open. Needs uv (installed with the Blender connector).",
+            description: "Control the Unity Editor: scenes, GameObjects, C# scripts, assets, tests and builds. Set it up on the Apps & servers page: PlazCode adds the MCP for Unity package (10.3.0) to your project and opens it ready to connect. Keep the Unity project open.",
             command: "uvx",
             args: &["--from", "mcpforunityserver==10.3.0", "mcp-for-unity", "--transport", "stdio"],
         },
@@ -1083,6 +1083,9 @@ fn find_git_in(path: Option<&std::ffi::OsStr>, extra: &[PathBuf]) -> Option<Path
     dirs.extend(extra.iter().cloned());
     dirs.into_iter().map(|dir| dir.join(GIT_EXE)).find(|candidate| candidate.is_file())
 }
+
+/// Git on this computer: the PATH first, then the usual install folders (Unity's git-URL packages need it).
+pub fn git_program() -> Option<PathBuf> { find_git(std::env::var_os("PATH").as_deref()) }
 
 fn find_git(path: Option<&std::ffi::OsStr>) -> Option<PathBuf> {
     // Only look further (registry, install folders) when the PATH has no Git.

@@ -1350,7 +1350,7 @@ html:not([data-pz-motion=off]):not([data-pz-motion=reduced]) .cn-step[data-state
 .cn-opt strong{font-size:15px}
 .cn-opt span{font-size:13.5px;color:var(--ink-soft,#a7b2c4);line-height:1.5}
 .cn-alert{margin:0 0 16px;padding:13px 16px;border-radius:13px;border:1px solid rgb(255 110 100/.45);background:rgb(255 110 100/.1);color:#ffb0a8;font-size:14px;line-height:1.55}
-.cn-act{align-self:center}
+.cn-act{align-self:center}.cn-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-self:center}
 .cn-consent{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:0 0 22px;padding:18px 20px;border-radius:16px;background:rgb(var(--pz-rgb,233 186 83)/.1);border:1px solid rgb(var(--pz-rgb,233 186 83)/.35)}
 .cn-consent p{margin:0;flex:1 1 280px;font-size:15px;line-height:1.6}
 .cn-done{margin:0 0 22px;padding:20px 22px;border-radius:16px;background:rgb(60 214 150/.09);border:1px solid rgb(60 214 150/.35)}
@@ -2059,7 +2059,11 @@ __PLAZCODE_VERSION_UI__
       }
       var Act='';
       if((Step.choices||Step.input)&&Step.state==='done'&&!Picking)Act='<button type="button" class="softbtn cn-act" data-cn-change="'+Escape(Step.id)+'">Change</button>';
-      else if(Step.action&&Step.state!=='done')Act='<button type="button" class="softbtn cn-act" data-cn-act="'+Escape(Step.action.run)+'" data-cn-step="'+Escape(Step.id)+'">'+Escape(Step.action.label)+'</button>';
+      else if(Step.action&&Step.state!=='done'){
+        /* A step that needs something installed first (Unity: "Download Git") shows that link next to Try again. */
+        Act='<button type="button" class="softbtn cn-act" data-cn-act="'+Escape(Step.action.run)+'" data-cn-step="'+Escape(Step.id)+'">'+Escape(Step.action.label)+'</button>';
+        if(Step.link&&Step.bad)Act='<span class="cn-acts"><button type="button" class="softbtn cn-act" data-cn-ipc="'+Escape(Step.link.key)+'">'+Escape(Step.link.label)+'</button>'+Act+'</span>';
+      }
       else if(Step.copy)Act='<button type="button" class="softbtn cn-act" data-cn-copy="'+Escape(Step.copy)+'">Copy</button>';
       else if(Step.link)Act='<button type="button" class="softbtn cn-act" data-cn-ipc="'+Escape(Step.link.key)+'">'+Escape(Step.link.label)+'</button>';
       return '<li class="cn-step" data-state="'+Escape(Step.state)+'" data-step="'+Escape(Step.id)+'"><span class="cn-mark" aria-hidden="true">'+Mark+'</span><div class="cn-st"><strong>'+Escape(Step.title)+'</strong>'+Extra+'<span class="cn-sr">'+({done:'Done',working:'Working',needs_you:'Needs you',waiting:'Waiting'}[Step.state]||'')+'</span></div>'+Act+'</li>';

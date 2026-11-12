@@ -12,8 +12,17 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
  fs.writeFileSync(path.join(install,'plazcode-settings.json'),JSON.stringify({rsAutoUpdate:false,rsApprovalMode:'auto'}));
  fs.writeFileSync(path.join(bin,'xdg-open'),'#!/usr/bin/env python3\nimport os,sys\nwith open(os.environ["PLAZCODE_TEST_LAUNCHES"],"a") as f:f.write(sys.argv[1]+"\\n")\n',{mode:0o700});
  fs.writeFileSync(path.join(temp,'Godot_v4-stand-in'),'stand-in for the Godot editor program');
+ // Unity stand-ins: a Unity Hub project list, one installed editor (a script that writes down how it was started) and
+ // a project with Unity's usual package list. OpenUPM is a local stand-in; the real one is checked in unity.rs tests.
+ const unityGame=path.join(temp,'Space'),unityManifest='{\n  "dependencies": {\n    "com.unity.ugui": "1.0.0",\n    "com.unity.modules.ai": "1.0.0"\n  }\n}\n';
+ for(const dir of['Assets','ProjectSettings','Packages'])fs.mkdirSync(path.join(unityGame,dir),{recursive:true});
+ fs.writeFileSync(path.join(unityGame,'ProjectSettings','ProjectVersion.txt'),'m_EditorVersion: 2022.3.40f1\n');fs.writeFileSync(path.join(unityGame,'Packages','manifest.json'),unityManifest);
+ fs.mkdirSync(path.join(temp,'UnityHub'));fs.writeFileSync(path.join(temp,'UnityHub','projects-v1.json'),JSON.stringify({schema_version:'v1',data:{[unityGame]:{title:'Space',path:unityGame,version:'2022.3.40f1'}}}));
+ fs.mkdirSync(path.join(temp,'UnityEditors','2022.3.40f1','Editor'),{recursive:true});fs.mkdirSync(path.join(temp,'unity-status'));
+ fs.writeFileSync(path.join(temp,'UnityEditors','2022.3.40f1','Editor','Unity'),'#!/bin/sh\nprintf "%s\\n" "$@" > "'+path.join(temp,'unity-started')+'"\n',{mode:0o755});
+ const openupm=require('http').createServer((req,res)=>{res.writeHead(req.url==='/com.coplaydev.unity-mcp'?200:404,{'Content-Type':'application/json'});res.end(JSON.stringify({name:'com.coplaydev.unity-mcp',versions:{'10.2.0':{},'10.3.0':{}}}));}).listen(39517,'127.0.0.1');
  const log=fs.openSync(path.join(temp,'agent.log'),'w');
- const agent=spawn(path.join(install,'PlazCode'),[],{cwd:install,env:{...process.env,PATH:bin+path.delimiter+process.env.PATH,LOCALAPPDATA:config,XDG_CONFIG_HOME:config,PLAZCODE_WORKSPACE_ROOT:path.join(temp,'workspace'),PLAZCODE_TEST_LAUNCHES:launches,GODOT_PATH:path.join(temp,'Godot_v4-stand-in')},stdio:['ignore',log,log]});
+ const agent=spawn(path.join(install,'PlazCode'),[],{cwd:install,env:{...process.env,PATH:bin+path.delimiter+process.env.PATH,LOCALAPPDATA:config,XDG_CONFIG_HOME:config,PLAZCODE_WORKSPACE_ROOT:path.join(temp,'workspace'),PLAZCODE_TEST_LAUNCHES:launches,GODOT_PATH:path.join(temp,'Godot_v4-stand-in'),PLAZCODE_UNITY_HUB_DIR:path.join(temp,'UnityHub'),PLAZCODE_UNITY_EDITORS:path.join(temp,'UnityEditors'),UNITY_MCP_STATUS_DIR:path.join(temp,'unity-status'),PLAZCODE_OPENUPM_URL:'http://127.0.0.1:39517'},stdio:['ignore',log,log]});
  let browser;
  try{
   await waitFor(()=>fs.existsSync(launches),'native Linux opens a browser');
@@ -79,6 +88,40 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   console.log('Godot on this machine after pick: helper program '+program+', helper '+started+' / '+await pill());
   await page.locator('#cnWin [data-cn-act="disconnect"]').click();await waitFor(async()=>await pill()==='Not set up','Disconnect returns to Not set up');
   await page.locator('#cnWin [data-cn-act="close"]').first().click();
+  {// Unity against the real app: Allow, Hub's project list, the package added to manifest.json with a backup, Open project
+   // starts the matching editor with the stdio start, a stand-in Unity answers, Disconnect takes only PlazCode's entry out.
+   const upill=()=>page.locator('#cnApps [data-app="unity"] .cn-pill').innerText();
+   await page.locator('#cnApps [data-cn-open="unity"]').click();
+   assert.match(await page.locator('#cnWin .cn-consent p').innerText(),/keeping a backup/);
+   assert.equal(fs.readFileSync(path.join(unityGame,'Packages','manifest.json'),'utf8'),unityManifest,'nothing changes before Allow');
+   await page.locator('#cnWin [data-cn-act="allow"]').click();
+   await waitFor(async()=>await stepState('find')==='done'&&await stepState('project')==='needs_you','Allow finds Unity and asks for a project');
+   await page.locator('#cnWin [data-step="project"] .cn-choice').first().click();
+   await waitFor(async()=>await stepState('package')==='done','the package is added to the picked project');
+   const manifest=JSON.parse(fs.readFileSync(path.join(unityGame,'Packages','manifest.json'),'utf8'));
+   assert.equal(manifest.dependencies['com.coplaydev.unity-mcp'],'10.3.0');assert.deepEqual(manifest.scopedRegistries,[{name:'package.openupm.com',url:'https://package.openupm.com',scopes:['com.coplaydev.unity-mcp']}]);
+   assert.deepEqual(Object.keys(manifest.dependencies),['com.unity.ugui','com.unity.modules.ai','com.coplaydev.unity-mcp'],'other packages kept, in order');
+   const backups=fs.readdirSync(path.join(unityGame,'Packages')).filter(name=>name.startsWith('manifest.json.plazcode-backup-'));
+   assert.equal(backups.length,1);assert.equal(fs.readFileSync(path.join(unityGame,'Packages',backups[0]),'utf8'),unityManifest,'the backup is the original file');
+   await waitFor(async()=>await stepState('open')==='needs_you','Open project is offered');
+   await page.locator('#cnWin [data-step="open"] [data-cn-act="open"]').click();
+   await waitFor(()=>fs.existsSync(path.join(temp,'unity-started')),'Open project starts the matching Unity editor');
+   assert.deepEqual(fs.readFileSync(path.join(temp,'unity-started'),'utf8').trim().split('\n'),['-projectPath',unityGame,'-executeMethod','MCPForUnity.Editor.McpCiBoot.StartStdioForCi'],'the project opens with the stdio start for this session');
+   // The package's local listener, the way Unity runs it: a status file for this project and the greeting.
+   const unityListener=require('net').createServer(socket=>socket.end('WELCOME UNITY-MCP 1 FRAMING=1\n')).listen(0,'127.0.0.1');await new Promise(r=>unityListener.once('listening',r));
+   const statusFile=path.join(temp,'unity-status','unity-mcp-status-0123abcd.json');
+   const beat=()=>fs.writeFileSync(statusFile,JSON.stringify({unity_port:unityListener.address().port,reason:'ready',reloading:false,project_path:path.join(unityGame,'Assets'),project_name:'Space'}));
+   beat();const beating=setInterval(beat,500);
+   try{
+    await waitFor(async()=>await stepState('open')==='done','a Unity that answers ticks off Open project');
+    const test=await stepState('test');assert(['working','done','needs_you'].includes(test),'check step: '+test);
+    console.log('Unity against the real app: Allow, Hub list, package added with a backup, Open project with the stdio start, stand-in Unity answers; helper '+test+' / '+await upill());
+   }finally{clearInterval(beating);unityListener.close();}
+   await page.locator('#cnWin [data-cn-act="disconnect"]').click();await waitFor(async()=>await upill()==='Not set up','Disconnect returns Unity to Not set up');
+   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(unityGame,'Packages','manifest.json'),'utf8')),JSON.parse(unityManifest),'Disconnect takes out only what PlazCode added');
+   await page.locator('#cnWin [data-cn-act="close"]').first().click();
+   openupm.close();
+  }
   // Blender in the background, end to end, when a real Blender is on this machine (CI installs one and names it in PLAZCODE_BLENDER).
   if(process.env.PLAZCODE_BLENDER){
    const blenderPill=()=>page.locator('#cnApps [data-app="blender"] .cn-pill').innerText(),bStep=id=>page.locator('#cnWin [data-step="'+id+'"]').getAttribute('data-state');
