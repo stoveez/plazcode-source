@@ -22,7 +22,7 @@ concurrency:
 jobs:
   bootstrap-integrity:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.bootstrap_integrity_key && github.repository == 'stoveez/plazcode-source' && github.ref == 'refs/heads/claude/plazcode-dev' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: write
@@ -58,7 +58,7 @@ jobs:
           git push origin HEAD:claude/plazcode-dev
   browsers:
     if: ${{ !inputs.bootstrap_integrity_key }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       # The unit tests load jsdom from the tools folder that npm ci fills.
       NODE_PATH: ${{ github.workspace }}/build-src-1.24.33/PlazCode/release-tools/node_modules
@@ -260,7 +260,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     # GitHub's arm64 pool failed to acquire a runner (41492949796).
     # Intel builds still compile and package BOTH Mac architectures below.
-    runs-on: ${{ matrix.os == 'macos-latest' && 'macos-15-intel' || matrix.os }}
+    runs-on: ${{ matrix.os == 'macos-latest' && 'macos-15-intel' || matrix.os == 'ubuntu-latest' && 'ubuntu-24.04' || matrix.os }}
     # Cold debug/release builds plus both Mac targets exceed 45 minutes. Keep all gates.
     timeout-minutes: ${{ matrix.os == 'macos-latest' && 90 || 45 }}
     env:
@@ -607,7 +607,7 @@ jobs:
   release-check:
     needs: [browsers, native]
     if: ${{ always() && !cancelled() && !inputs.bootstrap_integrity_key }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       actions: read

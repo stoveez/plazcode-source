@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   wait-native:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -95,7 +95,7 @@ jobs:
       actions: read
     needs: [wait-native, mac-desktop]
     if: ${{ always() && needs.wait-native.result == 'success' && (needs.mac-desktop.result == 'success' || (needs.wait-native.outputs.quick == '1' && needs.mac-desktop.result == 'skipped')) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
