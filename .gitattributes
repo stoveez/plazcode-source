@@ -6,6 +6,9 @@ development/1.24.30/overlay/PlazCode-Extension/starter-skills/ro-engineer/** -te
 development/1.24.30/dependency-notices/** -text
 /LICENSE text eol=lf
 development/1.24.30/overlay/LICENSE text eol=lf
+development/1.24.33/overlay/PlazCode-Extension/starter-skills/ro-engineer/** -text
+development/1.24.33/dependency-notices/** -text
+development/1.24.33/overlay/LICENSE text eol=lf
 development/1.24.32/overlay/PlazCode-Extension/starter-skills/ro-engineer/** -text
 development/1.24.32/dependency-notices/** -text
 development/1.24.32/overlay/LICENSE text eol=lf

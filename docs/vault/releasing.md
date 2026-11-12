@@ -4,7 +4,7 @@ updated: 2026-10-28
 ---
 # Releasing
 
-**Current: 1.24.31 release in progress (workflows validate/publish-1.24.31, folder development/1.24.31).** Earlier: development 1.24.30 (1.24.29 published 2026-10-31):** official-extension pairing, Mac fresh-download start fix, folder tidy, Ro-Engineer starter skills. Owner chose a test build first; publishing needs the owner's clear yes.
+**Current (2026-11-11): 1.24.32 published; 1.24.33 is next (workflows `validate-1.24.33.yml` / `publish-1.24.33.yml`, folder `development/1.24.33`, release notes draft in `development/1.24.33/release-entry.json`). Publishing needs the owner's clear yes.** The steps below were written for 1.24.30: read every `1.24.30` in them as the current version. Earlier: Current: 1.24.31 release in progress (workflows validate/publish-1.24.31, folder development/1.24.31).** Earlier: development 1.24.30 (1.24.29 published 2026-10-31):** official-extension pairing, Mac fresh-download start fix, folder tidy, Ro-Engineer starter skills. Owner chose a test build first; publishing needs the owner's clear yes.
 
 Official releases live in the public repo `stoveez/PlazCode`, branch `main`: only zips and the feeds. They are prepared and published from the private repo, branch `release/1.24.30-publish`, by the workflow `publish-1.24.30.yml`. Nothing is rebuilt at publish time. Private `main` is the old line and is not used for releases.
 

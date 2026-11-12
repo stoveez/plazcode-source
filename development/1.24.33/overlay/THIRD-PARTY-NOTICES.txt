@@ -1,0 +1,34 @@
+Engram 3.0.0 — MIT
+Copyright (c) 2026 Alan Buscaglia
+https://github.com/Gentleman-Programming/engram
+License: runtime/engram/LICENSE
+
+Ultra (UltraLab pack) — by SyphoDev
+Used with the author's permission. Licence: no sale and no paid bundling; credit the SyphoDev YouTube channel.
+https://www.youtube.com/@SyphoDev
+Full licence text: PlazCode-Extension/core/ultralab/LICENSE-SyphoDev.txt
+Other parts of the pack keep their own notes in PlazCode-Extension/core/ultralab/ONLINE-SOURCES.md, ROQER-ADOPTION.md and PLAZCODE-NOTES.md.
+Check-UI components (inside the pack) — MIT; the repository ships without a licence file.
+Hat artwork (references/vector-hats) — the original author's licence is not stated in the pack.
+Fredoka fonts (inside the pack's ui-builder skill) — SIL Open Font License 1.1; the licence text sits next to the fonts (OFL.txt).
+
+Ro-Engineer — MIT, Copyright (c) 2026 excaldev
+https://github.com/excaldev/ro-engineer
+License: PlazCode-Extension/starter-skills/ro-engineer/LICENSE (files shipped unchanged; PlazCode adds PLAZCODE-ADAPTER.md)
+
+luau-lsp 1.70.1 (Luau checker and Roblox type list) — MIT, Copyright (c) 2022 JohnnyMorganz
+https://github.com/JohnnyMorganz/luau-lsp
+License: runtime/luau/LICENSE (the official release is downloaded once, on the first Luau check, unchanged and checked against its pinned SHA-256)
+
+App connections (Apps & servers) — these helpers are not shipped inside PlazCode. When a person connects an app, PlazCode's helper program downloads the pinned version from its own source, unchanged, and each keeps its own licence:
+MCP for Unity 10.3.0 (Unity package com.coplaydev.unity-mcp from OpenUPM, and the mcpforunityserver helper) — MIT, CoplayDev contributors. https://github.com/CoplayDev/unity-mcp
+godot-mcp 0.1.1 (@coding-solo/godot-mcp) — MIT, Coding-Solo. https://github.com/Coding-Solo/godot-mcp
+mcp-for-blender 2.1.9 — MIT, its authors (used only for the older Blender connection under More tools). https://pypi.org/project/mcp-for-blender/
+PlazCode's own Blender, Figma and Blockbench helpers are first-party PlazCode code.
+
+Existing third-party package licenses remain in their respective source/runtime folders.
+
+Rust dependencies in the desktop app retain their original licences.
+Full versioned list and licence/copyright texts: runtime/THIRD-PARTY-RUST-LICENSES.txt
+Unmodified MPL-2.0 component source (option-ext 0.2.0): https://crates.io/crates/option-ext/0.2.0
+These component terms do not license first-party PlazCode under GPL or MPL.

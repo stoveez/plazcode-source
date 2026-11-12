@@ -2,6 +2,9 @@
 title: Project overview
 updated: 2026-10-26
 ---
+
+**Current, 2026-11-11:** 1.24.32 is published (validation 42712015243, publish 42718408426). The next update, **1.24.33**, is built on `claude/plazcode-dev` from `development/1.24.33` (workflows `validate-1.24.33.yml` and `publish-1.24.33.yml`); not published. Start with `docs/NOW.md`. Version numbers further down are historical unless they say 1.24.33.
+
 # What PlazCode is
 
 A closed-source browser extension plus a Rust desktop app. It turns an AI chat website (ChatGPT, Claude, Notion AI, DeepSeek, Vani, Freebuff, OxAlpha and others) into an agent that works in Roblox Studio (engine "Roblox", `RS`) or on the user's computer (engine "AgentScript", `AS`).

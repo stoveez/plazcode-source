@@ -4,12 +4,12 @@ updated: 2026-11-01
 ---
 # Build and tests
 
-- **Edit only the overlay** (`development/1.24.30/overlay`). Never edit `build-src-1.24.30/` (regenerated). A file not in the overlay is first copied there from `build-src-1.24.30/PlazCode/`.
-- Build: `python3 development/1.24.30/prepare.py`. Do not run it while the full suite runs.
+- **Edit only the overlay** (`development/1.24.33/overlay`). Never edit `build-src-1.24.33/` (regenerated). A file not in the overlay is first copied there from `build-src-1.24.33/PlazCode/`.
+- Build: `python3 development/1.24.33/prepare.py`. Do not run it while the full suite runs.
 - Feature guide: `test-feature-guide.js` reads the real menu and bar in `core/main.js` and fails for any control with no entry in `core/feature-guide.js`. After editing the guide, regenerate nothing: the JSON in that file is the source. Startup text changes need `node test-startup-sections.js --update-golden` and new pins for `core/config.js` and `core/main.js`.
-- One JS test: from `build-src-1.24.30/PlazCode`, `NODE_PATH=release-tools/node_modules node test-<name>.js`.
+- One JS test: from `build-src-1.24.33/PlazCode`, `NODE_PATH=release-tools/node_modules node test-<name>.js`.
 - Full JS suite (10 to 15 minutes): from the build folder, `NODE_PATH=release-tools/node_modules PLAZCODE_TEST_BROWSER=chromium python3 release-tools/test-javascript.py`.
-- Rust: `cargo test --manifest-path build-src-1.24.30/PlazCode/agent/Cargo.toml` (268 + 5 Linux tests passing on 1.24.30, plus 2 ignored; run the full suite).
+- Rust: `cargo test --manifest-path build-src-1.24.33/PlazCode/agent/Cargo.toml` (268 + 5 Linux tests passing on 1.24.33, plus 2 ignored; run the full suite).
 - Desktop tests: `node release-tools/test-*.cjs` (Chromium works in the sandbox; Firefox halves run only in CI).
 
 ## Hash pins

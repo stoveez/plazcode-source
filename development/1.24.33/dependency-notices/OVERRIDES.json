@@ -1,0 +1,22 @@
+{
+  "block2@0.6.2": "objc2-b4167b5",
+  "dispatch2@0.3.1": "objc2-8852b42",
+  "objc2-app-kit@0.3.2": "objc2-7b1abfd",
+  "objc2-core-foundation@0.3.2": "objc2-7b1abfd",
+  "objc2-encode@4.1.0": "objc2-8d214f5",
+  "objc2-exception-helper@0.1.1": "objc2-8d214f5",
+  "objc2-web-kit@0.3.2": "objc2-7b1abfd",
+  "objc2@0.6.4": "objc2-8852b42",
+  "profiling-procmacros@1.0.18": "profiling",
+  "profiling@1.0.18": "profiling",
+  "rbx_binary@3.0.0": "rbx-dom",
+  "rbx_dom_weak@4.2.0": "rbx-dom",
+  "rbx_reflection@7.0.0": "rbx-dom",
+  "rbx_reflection_database@3.0.0+roblox-728": "rbx-dom",
+  "rbx_types@3.1.0": "rbx-types",
+  "rbx_xml@3.0.0": "rbx-dom",
+  "webview2-com-macros@0.8.1": "webview2-rs-dffa41a",
+  "webview2-com-sys@0.39.1": "webview2-rs-edc2caf",
+  "webview2-com@0.39.1": "webview2-rs-edc2caf",
+  "xml-rs@1.0.0": "xml-rs"
+}
