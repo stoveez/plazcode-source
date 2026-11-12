@@ -70,8 +70,10 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   if(profileGate){await page.locator('#profileGuest').click();await page.locator('#profileSignIn').waitFor({state:'hidden',timeout:30000});}
   await page.waitForFunction(()=>typeof PlazCodeDesktop==='object'&&!document.querySelector('.app').inert,null,{timeout:30000});
   await page.evaluate(()=>PlazCodeDesktop.go('mcp'));
+  // PLAZCODE_SHOTS=<folder>: real screenshots of the running app's Apps & servers page for the owner.
+  const shot=async name=>{if(process.env.PLAZCODE_SHOTS){fs.mkdirSync(process.env.PLAZCODE_SHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.PLAZCODE_SHOTS,name+'.png')});}};
   const pill=()=>page.locator('#cnApps [data-app="godot"] .cn-pill').innerText(),stepState=id=>page.locator('#cnWin [data-step="'+id+'"]').getAttribute('data-state');
-  await page.locator('#cnApps [data-cn-open="godot"]').waitFor();assert.equal(await pill(),'Not set up','the real page draws the real report');
+  await page.locator('#cnApps [data-cn-open="godot"]').waitFor();assert.equal(await pill(),'Not set up','the real page draws the real report');if(process.env.PLAZCODE_SHOTS){await page.waitForTimeout(1800);await page.locator('#cnApps').scrollIntoViewIfNeeded();await page.waitForTimeout(400);}await shot('1-apps-and-servers');
   await page.locator('#cnApps [data-cn-open="godot"]').click();
   assert.match(await page.locator('#cnWin .cn-consent p').innerText(),/Nothing in your projects changes/);
   assert.deepEqual([await stepState('find'),await stepState('project'),await stepState('runtime'),await stepState('start')],['waiting','waiting','waiting','waiting'],'nothing is claimed before Allow');
@@ -83,7 +85,7 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   const game=path.join(temp,'game');fs.mkdirSync(game);fs.writeFileSync(path.join(game,'project.godot'),'config_version=5\n');
   await page.locator('#cnWin [data-cn-input="project"]').fill(game);await page.locator('#cnWin [data-cn-input="project"]').press('Enter');
   await waitFor(async()=>await stepState('project')==='done','the pasted project is accepted');
-  assert.equal(await page.locator('#cnWin [data-step="project"] .cn-detail').innerText(),game);assert.equal(await page.locator('#cnWin .cn-alert').count(),0);
+  assert.equal(await page.locator('#cnWin [data-step="project"] .cn-detail').innerText(),game);await shot('2-godot-project-picked');assert.equal(await page.locator('#cnWin .cn-alert').count(),0);
   const program=await stepState('runtime'),started=await stepState('start');assert(['working','done','needs_you'].includes(program),'the helper program is looked for once editor and project are known: '+program);assert(['waiting','working','done','needs_you'].includes(started),'start step state: '+started);assert(program==='done'||started==='waiting','the helper never starts before its program is ready: '+program+' / '+started);
   console.log('Godot on this machine after pick: helper program '+program+', helper '+started+' / '+await pill());
   await page.locator('#cnWin [data-cn-act="disconnect"]').click();await waitFor(async()=>await pill()==='Not set up','Disconnect returns to Not set up');
@@ -103,7 +105,7 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
    assert.deepEqual(Object.keys(manifest.dependencies),['com.unity.ugui','com.unity.modules.ai','com.coplaydev.unity-mcp'],'other packages kept, in order');
    const backups=fs.readdirSync(path.join(unityGame,'Packages')).filter(name=>name.startsWith('manifest.json.plazcode-backup-'));
    assert.equal(backups.length,1);assert.equal(fs.readFileSync(path.join(unityGame,'Packages',backups[0]),'utf8'),unityManifest,'the backup is the original file');
-   await waitFor(async()=>await stepState('open')==='needs_you','Open project is offered');
+   await waitFor(async()=>await stepState('open')==='needs_you','Open project is offered');await shot('3-unity-package-added');
    await page.locator('#cnWin [data-step="open"] [data-cn-act="open"]').click();
    await waitFor(()=>fs.existsSync(path.join(temp,'unity-started')),'Open project starts the matching Unity editor');
    assert.deepEqual(fs.readFileSync(path.join(temp,'unity-started'),'utf8').trim().split('\n'),['-projectPath',unityGame,'-executeMethod','MCPForUnity.Editor.McpCiBoot.StartStdioForCi'],'the project opens with the stdio start for this session');
@@ -113,7 +115,7 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
    const beat=()=>fs.writeFileSync(statusFile,JSON.stringify({unity_port:unityListener.address().port,reason:'ready',reloading:false,project_path:path.join(unityGame,'Assets'),project_name:'Space'}));
    beat();const beating=setInterval(beat,500);
    try{
-    await waitFor(async()=>await stepState('open')==='done','a Unity that answers ticks off Open project');
+    await waitFor(async()=>await stepState('open')==='done','a Unity that answers ticks off Open project');await shot('4-unity-answers');
     const test=await stepState('test');assert(['working','done','needs_you'].includes(test),'check step: '+test);
     console.log('Unity against the real app: Allow, Hub list, package added with a backup, Open project with the stdio start, stand-in Unity answers; helper '+test+' / '+await upill());
    }finally{clearInterval(beating);unityListener.close();}
@@ -138,6 +140,7 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
    const cube=await (await work({type:'plazcode_op',params:{cmd:'add_cube',args:{name:'PZ Live Cube'}}})).json();assert.equal(cube.ok,true,JSON.stringify(cube));assert.match(JSON.stringify(cube.data),/PZ Live Cube/);
    await page.locator('#cnWin .cn-actions [data-cn-step="preview"]').click();
    await slow(async()=>await page.locator('#cnWin .cn-preview img').count()===1,'the picture appears in the window',200);
+   await shot('5-blender-background-picture');
    console.log('Real background Blender: '+await page.locator('#cnWin [data-step="start"] .cn-detail').innerText()+', picture shown, safe mode refused free Python');
    await page.locator('#cnWin [data-cn-act="disconnect"]').click();await waitFor(async()=>await blenderPill()==='Not set up','Blender Disconnect');
    await page.locator('#cnWin [data-cn-act="close"]').first().click();
