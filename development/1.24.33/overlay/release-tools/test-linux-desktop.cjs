@@ -6,14 +6,14 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
 (async()=>{
  if(process.platform!=='linux'){console.log('Linux desktop test runs on Linux only.');return;}
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'plazcode-linux-desktop-')),install=path.join(temp,'install'),bin=path.join(temp,'bin'),config=path.join(temp,'config'),launches=path.join(temp,'launches');
- for(const directory of[install,bin,config])fs.mkdirSync(directory);
+ const home=path.join(temp,'home');for(const directory of[install,bin,config,home])fs.mkdirSync(directory);
  if(process.env.PLAZCODE_NATIVE_INSTALL_ROOT)fs.cpSync(process.env.PLAZCODE_NATIVE_INSTALL_ROOT,install,{recursive:true});
  else{fs.copyFileSync('agent/target/debug/PlazCode',path.join(install,'PlazCode'));fs.chmodSync(path.join(install,'PlazCode'),0o755);fs.cpSync('PlazCode-Extension',path.join(install,'PlazCode-Extension'),{recursive:true});}
  fs.writeFileSync(path.join(install,'plazcode-settings.json'),JSON.stringify({rsAutoUpdate:false,rsApprovalMode:'auto'}));
  fs.writeFileSync(path.join(bin,'xdg-open'),'#!/usr/bin/env python3\nimport os,sys\nwith open(os.environ["PLAZCODE_TEST_LAUNCHES"],"a") as f:f.write(sys.argv[1]+"\\n")\n',{mode:0o700});
  // 1.24.33 (Linux rework): PlazCode opens its own app window with the first Chromium-family browser it finds. This
  // stand-in Chrome comes first on PATH and writes down the --app link, so the test controls the launch as before.
- fs.writeFileSync(path.join(bin,'google-chrome'),'#!/usr/bin/env python3\nimport os,sys\nassert len(sys.argv)==2 and sys.argv[1].startswith("--app="),sys.argv\nwith open(os.environ["PLAZCODE_TEST_LAUNCHES"],"a") as f:f.write(sys.argv[1][6:]+"\\n")\nopen(os.environ["PLAZCODE_TEST_LAUNCHES"]+".app-window","a").write("1")\n',{mode:0o700});
+ fs.writeFileSync(path.join(bin,'google-chrome'),'#!/usr/bin/env python3\nimport os,sys\nlog=os.environ["PLAZCODE_TEST_LAUNCHES"];a=sys.argv[1:]\nif len(a)==1 and a[0].startswith("--app="):\n open(log,"a").write(a[0][6:]+"\\n");open(log+".app-window","a").write("1")\nelse:\n open(log+".pages","a").write(" ".join(a)+"\\n")\n',{mode:0o700});
  fs.writeFileSync(path.join(temp,'Godot_v4-stand-in'),'stand-in for the Godot editor program');
  // Unity stand-ins: a Unity Hub project list, one installed editor (a script that writes down how it was started) and
  // a project with Unity's usual package list. OpenUPM is a local stand-in; the real one is checked in unity.rs tests.
@@ -25,7 +25,7 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
  fs.writeFileSync(path.join(temp,'UnityEditors','2022.3.40f1','Editor','Unity'),'#!/bin/sh\nprintf "%s\\n" "$@" > "'+path.join(temp,'unity-started')+'"\n',{mode:0o755});
  const openupm=require('http').createServer((req,res)=>{res.writeHead(req.url==='/com.coplaydev.unity-mcp'?200:404,{'Content-Type':'application/json'});res.end(JSON.stringify({name:'com.coplaydev.unity-mcp',versions:{'10.2.0':{},'10.3.0':{}}}));}).listen(39517,'127.0.0.1');
  const log=fs.openSync(path.join(temp,'agent.log'),'w');
- const agent=spawn(path.join(install,'PlazCode'),[],{cwd:install,env:{...process.env,PATH:bin+path.delimiter+process.env.PATH,LOCALAPPDATA:config,XDG_CONFIG_HOME:config,PLAZCODE_WORKSPACE_ROOT:path.join(temp,'workspace'),PLAZCODE_TEST_LAUNCHES:launches,GODOT_PATH:path.join(temp,'Godot_v4-stand-in'),PLAZCODE_UNITY_HUB_DIR:path.join(temp,'UnityHub'),PLAZCODE_UNITY_EDITORS:path.join(temp,'UnityEditors'),UNITY_MCP_STATUS_DIR:path.join(temp,'unity-status'),PLAZCODE_OPENUPM_URL:'http://127.0.0.1:39517'},stdio:['ignore',log,log]});
+ const agent=spawn(path.join(install,'PlazCode'),[],{cwd:install,env:{...process.env,HOME:home,XDG_CACHE_HOME:process.env.XDG_CACHE_HOME||path.join(os.homedir(),'.cache'),PATH:bin+path.delimiter+process.env.PATH,LOCALAPPDATA:config,XDG_CONFIG_HOME:config,PLAZCODE_WORKSPACE_ROOT:path.join(temp,'workspace'),PLAZCODE_TEST_LAUNCHES:launches,GODOT_PATH:path.join(temp,'Godot_v4-stand-in'),PLAZCODE_UNITY_HUB_DIR:path.join(temp,'UnityHub'),PLAZCODE_UNITY_EDITORS:path.join(temp,'UnityEditors'),UNITY_MCP_STATUS_DIR:path.join(temp,'unity-status'),PLAZCODE_OPENUPM_URL:'http://127.0.0.1:39517'},stdio:['ignore',log,log]});
  let browser;
  try{
   await waitFor(()=>fs.existsSync(launches),'native Linux opens a browser');
@@ -303,6 +303,58 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
    await oldContext.close();
    console.log('Old Safari (macOS 10.15): '+views.length+' pages, '+compared+' drawn parts compared, every background and text kept, no script errors');
   }
+  const menuFile=path.join(home,'.local/share/applications/plazcode.desktop'),loginFile=path.join(config,'autostart/plazcode.desktop');
+  // Requests from here on carry the signed-in profile's value, as the page's own requests do.
+  const signedIn=async()=>{const epoch=((await (await fetch('http://127.0.0.1:3000/api/status',{headers:{Authorization:'Bearer '+key}})).json()).profile||{}).epoch;return {Authorization:'Bearer '+key,'Content-Type':'application/json',Origin:'http://127.0.0.1:3000',...(epoch?{'X-PlazCode-Profile':epoch}:{})};};
+  const setup=async body=>fetch('http://127.0.0.1:3000/api/connections/setup',{method:'POST',headers:await signedIn(),body:JSON.stringify(body)});
+  {
+   // 1.24.33 (Linux rework): the two "Get started" cards against the real app, clicked through the real page.
+   // The real extension connected earlier in this test (Blockbench), so the browser card is already done: it stays
+   // Ready from then on. Its steps are driven through the app's own setup route; the page shows them.
+   const report=async()=>{const all=await(await fetch('http://127.0.0.1:3000/api/connections',{headers:await signedIn()})).json();if(!all.apps)throw new Error('connections reply: '+JSON.stringify(all).slice(0,300));return all.apps;};
+   const card=async id=>(await report()).find(app=>app.id===id);
+   assert.equal((await card('browser')).group,'start');
+   assert.equal((await card('computer')).state,'setting_up');
+   await page.evaluate(()=>PlazCodeDesktop.go('home'));
+   await page.locator('#homeSetup:not([hidden]) [data-home-setup="computer"]').waitFor({timeout:30000});
+   assert.equal(await page.locator('#homeSetup [data-home-setup="browser"]').count(),(await card('browser')).state==='ready'?0:1,'the reminder lists only what is not finished');
+   const win=page.locator('#cnWin');
+   assert.equal((await setup({id:'browser',step:'pick',value:'chrome'})).status,200);
+   assert.equal((await setup({id:'browser',step:'open'})).status,200);
+   await waitFor(()=>fs.existsSync(launches+'.pages')&&fs.readFileSync(launches+'.pages','utf8').includes('chrome://extensions'),'PlazCode opens Chrome on its extensions page');
+   const browser=await card('browser'),steps=Object.fromEntries(browser.steps.map(step=>[step.id,step]));
+   assert.equal(steps.pick.detail,'Google Chrome');assert.equal(steps.pick.choices[0].label,'Google Chrome','the stand-in Chrome is found on this computer');
+   if(browser.state!=='ready'){assert.equal(steps.load.copy,path.join(install,'PlazCode-Extension'));assert.match(steps.load.hint,/Ctrl\+L/);}
+   if(process.env.PLAZCODE_SHOTS){await page.waitForTimeout(900);await shot('2-home-reminder');}
+   await page.locator('#homeSetup [data-home-setup="computer"]').click();
+   await win.locator('[data-step="where"]').waitFor();
+   if(process.env.PLAZCODE_SHOTS){await page.waitForTimeout(900);await shot('3-this-computer-window');}
+   assert.equal(await page.locator('#cnStart .cn-tile').count(),2,'Get started: the browser extension and PlazCode on this computer');
+   await win.locator('[data-cn-act="close"]').first().click();
+   await page.locator('#cnStart [data-cn-open="browser"]').click();
+   await win.locator('[data-step="pick"]').waitFor();
+   assert.equal(await win.locator('[data-cn-act="disconnect"]').count(),0,'the browser card has no Disconnect');
+   assert.equal(await win.locator('[data-cn-act="test"]').count(),0,'nor Test again');
+   if(process.env.PLAZCODE_SHOTS){await page.waitForTimeout(900);await shot('4-browser-window');}
+   await win.locator('[data-cn-act="close"]').first().click();
+   await page.locator('#cnStart [data-cn-open="computer"]').click();
+   await win.locator('[data-step="where"][data-state="needs_you"] [data-cn-pick="move"]').waitFor();
+   await win.locator('[data-step="menu"] [data-cn-act="menu"]').click();
+   await waitFor(()=>fs.existsSync(menuFile),'Add to app menu writes the menu entry');
+   assert(fs.readFileSync(menuFile,'utf8').includes('Exec="'+path.join(install,'PlazCode')+'"'),'the menu entry starts this PlazCode');
+   assert(fs.existsSync(path.join(home,'.local/share/icons/hicolor/128x128/apps/plazcode.png')),'with its icon');
+   await win.locator('[data-cn-pick="keep"]').click();
+   await page.locator('#cnStart [data-app="computer"][data-state="ready"]').waitFor();
+   await win.locator('[data-cn-switch="login"][aria-checked="false"]').click();
+   await waitFor(()=>fs.existsSync(loginFile),'Start when I log in');
+   assert.match(fs.readFileSync(loginFile,'utf8'),/--background/);
+   await win.locator('[data-cn-switch="login"][aria-checked="true"]').waitFor();
+   await win.locator('[data-cn-act="disconnect"]').click();
+   await waitFor(()=>!fs.existsSync(menuFile)&&!fs.existsSync(loginFile),'Remove from app menu takes both entries out');
+   assert(fs.existsSync(path.join(install,'PlazCode')),'and keeps the program');
+   await win.locator('[data-cn-act="close"]').first().click();
+   console.log('Get started against the real app: Home reminder, browser picked and its extensions page opened, folder and paste tip shown, app menu entry with icon, start at login, removed again');
+  }
   assert.equal((await call('/api/desktop/browser-action',{message:'open-url:javascript:alert(1)'})).status,400,'unsafe external URI rejected');
   {const before=launch().length;assert.equal((await call('/api/desktop/browser-action',{message:'open:get-godot'})).status,200);await waitFor(()=>launch().length===before+1,'official download page opens');assert.equal(launch()[before],'https://godotengine.org/download/');assert.equal((await call('/api/desktop/browser-action',{message:'open:get-anything'})).status,400,'only listed download pages open');}
   if(profileGate&&globalThis.__blockbenchLeft){
@@ -316,8 +368,21 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
    await waitFor(()=>knock(word),'the same helper file works again after signing in');
    console.log('Blockbench follows the signed-in profile: no helper while signed out, same helper file after signing in again');
   }
-  assert.equal((await call('/api/desktop/browser-action',{message:'quit'})).status,200);
-  await waitFor(()=>agent.exitCode!==null,'Quit exits actual Linux bridge');assert.equal(agent.exitCode,0);
+  {
+   // 1.24.33 (Linux rework): Move to my home folder. The copy is checked, added to the app menu and started; it waits
+   // for this PlazCode to close and then opens its own window. Quit then closes the copy.
+   const before=launch().length;
+   const moved=await setup({id:'computer',step:'where',value:'move'}),body=await moved.json();
+   assert.equal(moved.status,200,JSON.stringify(body));assert.match(body.notice,/home folder/);
+   await waitFor(()=>agent.exitCode!==null,'the PlazCode that was moved closes');assert.equal(agent.exitCode,0);
+   await waitFor(()=>launch().length===before+1,'the PlazCode in the home folder opens its own window');
+   const homeProgram=path.join(home,'PlazCode','PlazCode');
+   assert(fs.existsSync(homeProgram)&&fs.existsSync(path.join(home,'PlazCode','plazcode-settings.json')),'program and settings are in ~/PlazCode');
+   assert(fs.readFileSync(menuFile,'utf8').includes('Exec="'+homeProgram+'"'),'the app menu starts the home copy');
+   assert.equal((await call('/api/desktop/browser-action',{message:'quit'})).status,200);
+   await waitFor(async()=>{try{await fetch('http://127.0.0.1:3000/desktop-start');return false;}catch{return true;}},'Quit closes the home copy');
+   console.log('Move to the home folder against the real app: copied with settings, checked, app menu updated, reopened from ~/PlazCode, Quit');
+  }
   console.log('PASS real Linux desktop launch, authenticated single-use browser bootstrap, wrong-origin/replay rejection, profile gate incl. locked app connections (or legacy settings save/reload), Apps & servers page against the real app (Godot: Allow, refused folder, picked project, Disconnect; Blender in the background when a real Blender is named), official download page, reopen and Quit.');
- }finally{if(browser)await browser.close();if(agent.exitCode===null){agent.kill('SIGTERM');await new Promise(resolve=>agent.once('exit',resolve));}fs.closeSync(log);fs.rmSync(temp,{recursive:true,force:true});}
+ }finally{try{require('node:child_process').execFileSync('pkill',['-f',path.join(home,'PlazCode','PlazCode')]);}catch{}if(browser)await browser.close();if(agent.exitCode===null){agent.kill('SIGTERM');await new Promise(resolve=>agent.once('exit',resolve));}fs.closeSync(log);fs.rmSync(temp,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -412,7 +412,9 @@ pub fn blender_app(saved: &SavedApp, facts: &BlenderFacts) -> Value {
 
 /// Everything the page needs, for the apps this build sets up itself. Apps not listed here are drawn by the page
 /// from the older server list, so adding an app is one entry here and nothing in the page.
-pub fn report(servers: &[ServerSummary], preview: Option<String>) -> Value {
+/// `extension`: the browser extension talked to this app in the last moments (the browser card ticks itself off).
+pub fn report(servers: &[ServerSummary], preview: Option<String>, extension: bool) -> Value {
+    if extension { crate::browser_setup::remember_connected(); }
     let saved = load();
     let blender = blender_saved(&saved, mcp_addons::is_enabled("blender"));
     let background = blender.consent && blender.mode.as_deref() != Some("window");
@@ -429,7 +431,11 @@ pub fn report(servers: &[ServerSummary], preview: Option<String>) -> Value {
     let recent = if godot.consent { godot_recent_projects() } else { Vec::new() };
     let unity = saved.apps.get(crate::unity::APP).cloned().unwrap_or_default();
     let unity_card = crate::unity::card(&unity, &crate::unity::facts(&unity, servers));
-    json!({"ok": true, "apps": [
+    // 1.24.33 (Linux rework): the "Get started" cards come first; the page shows them above the app tiles.
+    let mut start = vec![crate::browser_setup::card(&saved.apps.get(crate::browser_setup::APP).cloned().unwrap_or_default(), &crate::browser_setup::facts(extension))];
+    #[cfg(target_os = "linux")]
+    start.push(crate::linux_setup::card(&saved.apps.get(crate::linux_setup::APP).cloned().unwrap_or_default(), &crate::linux_setup::facts()));
+    let apps = vec![
         blender_app(&blender, &facts),
         godot_app(&godot, found.as_deref(), &recent, mcp_addons::is_enabled("godot"), servers.iter().find(|s| s.id == "godot"),
             // Looking for Node on this computer is part of the setup, so it also waits for Allow.
@@ -437,7 +443,8 @@ pub fn report(servers: &[ServerSummary], preview: Option<String>) -> Value {
         crate::blockbench::card(&saved.apps.get(crate::blockbench::APP).cloned().unwrap_or_default(), &crate::blockbench::facts()),
         crate::figma::card(&saved.apps.get(crate::figma::APP).cloned().unwrap_or_default(), &crate::figma::facts()),
         unity_card,
-    ]})
+    ];
+    json!({"ok": true, "apps": start.into_iter().chain(apps).collect::<Vec<_>>()})
 }
 
 #[derive(Debug, Deserialize)]
@@ -451,10 +458,10 @@ pub struct SetupRequest {
 }
 
 /// What the caller must do after a setup request was recorded.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// `BlenderInstall` adds PlazCode's own helper to Blender; `BlenderRemove` stops the background Blender and takes the
 /// helper out again; `BlenderLaunch` opens the normal Blender.
-pub enum After { Nothing, RefreshHelpers, BlenderCheck, BlenderStop, BlenderPreview, BlenderOpen, BlenderInstall, BlenderRemove, BlenderLaunch, BlockbenchCheck, BlockbenchShow, FigmaCheck, FigmaShow, UnityAdd, UnityOpen }
+pub enum After { Nothing, RefreshHelpers, BrowserOpen, LinuxMove, LinuxUseHome, LinuxMenu, LinuxLogin(bool), LinuxRemove, BlenderCheck, BlenderStop, BlenderPreview, BlenderOpen, BlenderInstall, BlenderRemove, BlenderLaunch, BlockbenchCheck, BlockbenchShow, FigmaCheck, FigmaShow, UnityAdd, UnityOpen }
 
 /// What `apply` needs to know about the computer.
 #[derive(Default)]

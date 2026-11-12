@@ -19,6 +19,9 @@ const rust = fs.readFileSync(__dirname + "/agent/src/gui.rs", "utf8");
 for (const key of ["open:get-blender", "open:get-godot", "open:get-unity", "open:get-figma", "open:get-blockbench", "open:blockbench-web", "open:get-git"])
   assert(rust.includes('"' + key + '"'), "download page allowed: " + key);
 assert(!/data-cn-ipc="https?:/.test(html), "the page sends short names, never links");
+// 1.24.33 (Linux rework): "Get started" cards above the apps, a Home reminder, and setup windows without Disconnect or Test again.
+for (const need of ['id="cnStartWrap"', 'id="cnStart"', 'id="homeSetup"', "function Cnstartcards(", "function Homesetup(", "function Homesetupcheck(", "App.leave!==false", "App.test!==false", "Choice.note!=null"])
+  assert(html.includes(need), "desktop.html has " + need);
 console.log("PASS Apps & servers page: markup, names, no MCP wording, catalogs, fixed download names");
 
 const CATALOG = [

@@ -70,6 +70,9 @@ fn init_file_logger(ui: Option<Arc<gui::UiShared>>) {
 mod gui;
 #[cfg(target_os="linux")]
 mod linux_desktop;
+#[cfg(target_os="linux")]
+mod linux_setup;
+mod browser_setup;
 mod workspace;
 mod safety;
 mod engine_tools;
@@ -159,6 +162,9 @@ struct Args {
     verify_package_zip: Option<PathBuf>,
     #[arg(long, hide = true)]
     verify_version: Option<String>,
+    /// 1.24.33 (Linux): menu, login-on, login-off, remove-entries or uninstall. Used by the one-line installer.
+    #[arg(long, hide = true)]
+    linux_setup: Option<String>,
     #[arg(long, help = "Run without the status window (for autostart/background use)")]
     headless: bool,
     #[arg(long, help = "Open the desktop in the background after an automatic update")]
@@ -1046,6 +1052,9 @@ fn is_reactor_resource_panic(msg: &str) -> bool {
 }
 
 const CRASH_RESTART_ENV: &str = "PLAZCODE_CRASH_RESTARTS";
+/// 1.24.33 (Linux rework): a PlazCode started by another one (moved to the home folder) waits until that one has
+/// closed, so the two never compete for the bridge port.
+pub const WAIT_FOR_PID_ENV: &str = "PLAZCODE_WAIT_FOR_PID";
 const CRASH_RESTART_LIMIT: u32 = 5;
 
 /// Relaunch this executable with the same arguments. Bounded by an env counter
@@ -1070,6 +1079,10 @@ fn main() {
     // its port and single-instance lock first.
     if std::env::var_os(CRASH_RESTART_ENV).is_some() {
         std::thread::sleep(std::time::Duration::from_millis(2500));
+    }
+    #[cfg(unix)]
+    if let Some(pid) = std::env::var(WAIT_FOR_PID_ENV).ok().and_then(|value| value.parse::<i32>().ok()).filter(|pid| *pid > 1 && *pid != std::process::id() as i32) {
+        for _ in 0..300 { if unsafe { libc::kill(pid, 0) } != 0 { break; } std::thread::sleep(std::time::Duration::from_millis(100)); }
     }
     std::panic::set_hook(Box::new(|info| {
         let msg = format!("{info}");
@@ -1119,6 +1132,12 @@ async fn start() -> anyhow::Result<()> {
     }
     if let Some(zip)=&args.verify_package_zip {
         return integrity::verify_package_zip(zip,args.verify_version.as_deref().unwrap_or(env!("CARGO_PKG_VERSION")));
+    }
+    if let Some(action)=&args.linux_setup {
+        #[cfg(target_os="linux")]
+        { println!("{}",linux_setup::command(action)?);return Ok(()); }
+        #[cfg(not(target_os="linux"))]
+        anyhow::bail!("--linux-setup {action} is only for Linux.");
     }
     #[cfg(target_os="macos")]
     platform::prepare_application_path();
@@ -2300,9 +2319,49 @@ async fn mcp_catalog_handler() -> impl IntoResponse {
 async fn connections_handler(State(state): State<AppState>) -> impl IntoResponse {
     let servers = state.ui.servers.lock().map(|value| value.clone()).unwrap_or_default();
     let preview = blender::preview();
-    match tokio::task::spawn_blocking(move || connections::report(&servers, preview)).await {
+    let extension = state.ui.extension_recent();
+    match tokio::task::spawn_blocking(move || connections::report(&servers, preview, extension)).await {
         Ok(report) => Json(report).into_response(),
         Err(error) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(),
+    }
+}
+
+/// 1.24.33 (Linux rework): carry out a "PlazCode on this computer" step. Returns the notice for the window and whether
+/// this PlazCode should close (a copy in the home folder was started and opens once this one has closed).
+#[cfg(target_os = "linux")]
+fn linux_setup_run(after: connections::After) -> anyhow::Result<(String, bool)> {
+    let places = linux_setup::places_here();
+    let root = platform::installation_root();
+    match after {
+        connections::After::LinuxMove => {
+            let target = linux_setup::copy_home(&places, &root)?;
+            // The copy must pass the same signed-file check the program runs at start, before this one closes.
+            // Development builds carry no release key and skip that check at start too.
+            if matches!(integrity::public_key(), Ok(Some(_))) {
+            let check = std::process::Command::new(target.join("PlazCode")).arg("--verify-package").arg(&target).arg("--verify-version").arg(env!("CARGO_PKG_VERSION"))
+                .stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::piped()).output();
+            if !check.as_ref().is_ok_and(|out| out.status.success()) {
+                let why = check.map(|out| String::from_utf8_lossy(&out.stderr).trim().chars().take(300).collect::<String>()).unwrap_or_else(|error| error.to_string());
+                let _ = std::fs::remove_dir_all(&target);
+                anyhow::bail!("The copy in your home folder did not pass PlazCode's file check, so it was removed and nothing changed. {why}");
+            }
+            }
+            linux_setup::add_to_menu(&places, &target)?;
+            if places.login.exists() { linux_setup::set_login(&places, &target, true)?; }
+            linux_setup::start_after_exit(&target)?;
+            Ok((format!("PlazCode is now in your home folder ({}) and in your app menu. It opens again from there in a moment. You can delete the old folder: {}", target.display(), root.display()), true))
+        }
+        connections::After::LinuxUseHome => {
+            let home = places.home_install.clone();
+            anyhow::ensure!(linux_setup::installed_version(&home).is_some(), "PlazCode is not in your home folder.");
+            linux_setup::add_to_menu(&places, &home)?;
+            linux_setup::start_after_exit(&home)?;
+            Ok(("Opening the PlazCode in your home folder.".to_string(), true))
+        }
+        connections::After::LinuxMenu => { linux_setup::add_to_menu(&places, &root)?; Ok(("PlazCode is in your app menu.".to_string(), false)) }
+        connections::After::LinuxLogin(on) => { linux_setup::set_login(&places, &root, on)?; Ok((String::new(), false)) }
+        connections::After::LinuxRemove => { linux_setup::remove_entries(&places)?; Ok(("PlazCode is out of your app menu and no longer starts when you log in. The program and your data are still here.".to_string(), false)) }
+        _ => Ok((String::new(), false)),
     }
 }
 
@@ -2316,6 +2375,24 @@ async fn connections_setup_handler(State(state): State<AppState>, Json(request):
             blender_found: request.id == "blender" && connections::find_blender().is_some(),
             blender_old_connection: mcp_addons::is_enabled("blender"),
         };
+        if request.id == browser_setup::APP {
+            let next = browser_setup::apply(&mut saved, &request)?;
+            connections::save_to(&path, &saved)?;
+            return Ok(if next == browser_setup::Next::Open { connections::After::BrowserOpen } else { connections::After::Nothing });
+        }
+        #[cfg(target_os = "linux")]
+        if request.id == linux_setup::APP {
+            let next = linux_setup::apply(&mut saved, &request)?;
+            connections::save_to(&path, &saved)?;
+            return Ok(match next {
+                linux_setup::Next::Nothing => connections::After::Nothing,
+                linux_setup::Next::Move => connections::After::LinuxMove,
+                linux_setup::Next::UseHome => connections::After::LinuxUseHome,
+                linux_setup::Next::Menu => connections::After::LinuxMenu,
+                linux_setup::Next::Login(on) => connections::After::LinuxLogin(on),
+                linux_setup::Next::Remove => connections::After::LinuxRemove,
+            });
+        }
         if request.id == blockbench::APP {
             let next = blockbench::apply(&mut saved, &request, &blender_addon::new_token)?;
             connections::save_to(&path, &saved)?;
@@ -2372,6 +2449,23 @@ async fn connections_setup_handler(State(state): State<AppState>, Json(request):
                         unity::open_project(&project, &unity::installed_editors(&unity::editor_roots(&unity::hub_dirs())))
                     }).await.unwrap_or_else(|error| Err(anyhow::anyhow!(error.to_string())));
                     if let Err(error) = opened { return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(); }
+                }
+                connections::After::BrowserOpen => {
+                    let opened = tokio::task::spawn_blocking(|| match browser_setup::picked() { Some(found) => browser_setup::open_page(&found), None => Err(anyhow::anyhow!("That browser was not found on this computer. Open it yourself and paste the address shown.")) })
+                        .await.unwrap_or_else(|error| Err(anyhow::anyhow!(error.to_string())));
+                    if let Err(error) = opened { return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(); }
+                }
+                #[cfg(target_os = "linux")]
+                connections::After::LinuxMove | connections::After::LinuxUseHome | connections::After::LinuxMenu | connections::After::LinuxLogin(_) | connections::After::LinuxRemove => {
+                    let reply = tokio::task::spawn_blocking(move || linux_setup_run(after)).await.unwrap_or_else(|error| Err(anyhow::anyhow!(error.to_string())));
+                    return match reply {
+                        Ok((notice, quit)) => {
+                            // Moving to the home folder: the copy there was started and waits for this one to close.
+                            if quit { let ui = state.ui.clone(); tokio::spawn(async move { tokio::time::sleep(std::time::Duration::from_millis(700)).await; ui.request_quit(); }); }
+                            Json(serde_json::json!({"ok": true, "notice": notice})).into_response()
+                        }
+                        Err(error) => (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(),
+                    };
                 }
                 connections::After::FigmaShow => { if let Err(error) = figma::show_folder() { return Json(serde_json::json!({"ok": false, "error": error})).into_response(); } }
                 connections::After::BlockbenchShow => { if let Err(error) = blockbench::show_folder() { return Json(serde_json::json!({"ok": false, "error": error})).into_response(); } }

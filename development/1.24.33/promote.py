@@ -37,6 +37,8 @@ SOURCE_INPUTS=(
     'development/1.24.33/test-ultralab-generated.py',
     'development/1.24.33/test-licenses.py',
     'development/1.24.33/package.py',
+    'development/1.24.33/macos_floor.py',
+    'development/1.24.33/test-macos-floor.py',
     'development/1.24.33/protection.mjs',
     'development/1.24.33/release-variant.mjs',
     'development/1.24.33/test-release-variant.mjs',
