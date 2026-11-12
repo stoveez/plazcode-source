@@ -431,6 +431,12 @@ jobs:
           node release-tools/test-profile-sign-in-ui.cjs
           node release-tools/test-profile-storage.cjs
           node release-tools/test-linux-desktop.cjs
+      - name: Linux update helper and one-line installer (real program, local stand-in feed)
+        if: runner.os == 'Linux'
+        working-directory: build-src-1.24.33/PlazCode
+        run: |
+          python test-linux-update.py
+          python test-install-linux.py
       - name: Real macOS stale-process startup recovery
         if: runner.os == 'macOS'
         working-directory: build-src-1.24.33/PlazCode

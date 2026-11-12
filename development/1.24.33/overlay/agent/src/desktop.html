@@ -2096,6 +2096,9 @@ __PLAZCODE_VERSION_UI__
     return '<article class="cn-tile" data-state="'+Escape(App.state)+'" data-app="'+Escape(App.id)+'">'+Cnicon(Meta)+'<div class="cn-body"><h3 data-i18n-user-content>'+Escape(App.name)+'</h3><p>'+Escape(App.line)+'</p></div><div class="cn-foot"><span class="cn-pill" data-state="'+Escape(App.state)+'">'+Label+'</span>'+Button+'</div></article>';
   }
   function Cnstudio(){
+    /* 1.24.33 (Linux, experimental): the app sends a real Studio card (Vinegar checklist); it opens like the others. */
+    var Card=Cnreply&&Cnreply.apps?Cnreply.apps.filter(function(App){return App.id==='studio';})[0]:null;
+    if(Card)return Cntile(Card);
     var Live=!!(State&&State.mcp_alive),Meta=Cnapps[0];
     return '<article class="cn-tile" data-state="'+(Live?'ready':'setting_up')+'" data-app="studio">'+Cnicon(Meta)+'<div class="cn-body"><h3 data-i18n-user-content>Roblox Studio</h3><p>'+Meta.line+'</p></div><div class="cn-foot"><span class="cn-pill" data-state="'+(Live?'ready':'setting_up')+'">'+(Live?'Ready':'Waiting')+'</span><span class="cn-note">'+(Live?'Built in':'Open Roblox Studio to use PlazCode.')+'</span></div></article>';
   }
@@ -2241,7 +2244,7 @@ __PLAZCODE_VERSION_UI__
       (State && State.servers ? State.servers : []).forEach(function (Server) {Live[Server.id] = Server;});
       return Cnfetch(Force).then(function(Reply){
         var Apps=Cnbuild(Catalog||{},Live,Reply),Start=Cnstartcards(Reply);
-        Cnmodel=Start.concat(Apps);
+        Cnmodel=Start.concat(Apps,Reply&&Reply.apps?Reply.apps.filter(function(App){return App.id==='studio';}):[]);
         var Html=Cnstudio()+Apps.map(Cntile).join(''),More=Cnmore(Catalog||{},Live),Starthtml=Start.map(Cntile).join('');
         var Signature=Starthtml+'|'+Html+'|'+More+'|'+JSON.stringify(PendingMcp);
         if(Signature!==Catalogsignature){

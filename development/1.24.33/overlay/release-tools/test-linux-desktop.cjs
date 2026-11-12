@@ -311,6 +311,11 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
    // 1.24.33 (Linux rework): the two "Get started" cards against the real app, clicked through the real page.
    // The real extension connected earlier in this test (Blockbench), so the browser card is already done: it stays
    // Ready from then on. Its steps are driven through the app's own setup route; the page shows them.
+   // 1.24.33: Linux checks for updates now. Until the first Linux release is published its feed does not exist,
+   // which is reported as "no update", never as an update error over the page.
+   const updates=await(await fetch('http://127.0.0.1:3000/api/desktop/update',{headers:await signedIn()})).json();
+   assert(!updates.error,'no update error on Linux: '+JSON.stringify(updates).slice(0,300));
+   assert.equal(await page.locator('#updateOverlay').isVisible(),false,'no update window over the page');
    const report=async()=>{const all=await(await fetch('http://127.0.0.1:3000/api/connections',{headers:await signedIn()})).json();if(!all.apps)throw new Error('connections reply: '+JSON.stringify(all).slice(0,300));return all.apps;};
    const card=async id=>(await report()).find(app=>app.id===id);
    assert.equal((await card('browser')).group,'start');
@@ -353,7 +358,21 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
    await waitFor(()=>!fs.existsSync(menuFile)&&!fs.existsSync(loginFile),'Remove from app menu takes both entries out');
    assert(fs.existsSync(path.join(install,'PlazCode')),'and keeps the program');
    await win.locator('[data-cn-act="close"]').first().click();
-   console.log('Get started against the real app: Home reminder, browser picked and its extensions page opened, folder and paste tip shown, app menu entry with icon, start at login, removed again');
+   // Roblox Studio on Linux (experimental): the Studio tile opens a Vinegar checklist. No Vinegar here first, then a
+   // stand-in Vinegar folder with Studio and Roblox's helper in it (nothing is run from it in this test).
+   await page.locator('#cnApps [data-cn-open="studio"]').click();
+   await win.locator('[data-step="vinegar"][data-state="needs_you"]').waitFor();
+   assert.match(await win.locator('.cn-lead').textContent(),/^Experimental/);
+   {const before=launch().length;await win.locator('[data-step="vinegar"] [data-cn-ipc="get-vinegar"]').click();await waitFor(()=>launch().length===before+1,'Get Vinegar opens its page');assert.equal(launch()[before],'https://vinegarhq.org/');}
+   const studioFolder=path.join(home,'.var/app/org.vinegarhq.Vinegar/data/vinegar/versions/version-test');fs.mkdirSync(studioFolder,{recursive:true});
+   for(const name of['StudioMCP.exe','RobloxStudioBeta.exe'])fs.writeFileSync(path.join(studioFolder,name),'MZ stand-in');
+   await win.locator('[data-step="studio"][data-state="done"]').waitFor({timeout:15000});
+   await win.locator('[data-step="mcp"][data-state="needs_you"]').waitFor();
+   assert.match(await win.locator('.cn-tech pre').textContent(),/^flatpak run --command=.*kombucha\/bin\/wine --env=WINEPREFIX=.*prefixes\/studio org\.vinegarhq\.Vinegar .*StudioMCP\.exe$/);
+   if(process.env.PLAZCODE_SHOTS){await page.waitForTimeout(900);await shot('5-studio-vinegar');}
+   await win.locator('[data-cn-act="close"]').first().click();
+   fs.rmSync(path.join(home,'.var'),{recursive:true,force:true});
+   console.log('Get started against the real app: Home reminder, browser picked and its extensions page opened, folder and paste tip shown, app menu entry with icon, start at login, removed again; Roblox Studio through Vinegar (experimental): Get Vinegar, Studio found, MCP step, start command');
   }
   assert.equal((await call('/api/desktop/browser-action',{message:'open-url:javascript:alert(1)'})).status,400,'unsafe external URI rejected');
   {const before=launch().length;assert.equal((await call('/api/desktop/browser-action',{message:'open:get-godot'})).status,200);await waitFor(()=>launch().length===before+1,'official download page opens');assert.equal(launch()[before],'https://godotengine.org/download/');assert.equal((await call('/api/desktop/browser-action',{message:'open:get-anything'})).status,400,'only listed download pages open');}

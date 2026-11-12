@@ -63,6 +63,22 @@ def validate_archive(data,version,platform="windows"):
             if not {0x01000007,0x0100000c}.issubset(architectures):raise ValueError('Mac architecture missing')
 
 
+def validate_linux_archive(data,version):
+    """1.24.33: the Linux download (.tar.gz): only files and folders under PlazCode/, the Linux program runnable,
+    the release version in both manifests, no Windows or Mac programs."""
+    import tarfile
+    with tarfile.open(fileobj=io.BytesIO(data),mode='r:gz') as archive:
+        members=archive.getmembers();names=[m.name for m in members]
+        if len(names)!=len(set(names)):raise ValueError('Linux archive contains duplicate entries')
+        for m in members:
+            if not (m.isfile() or m.isdir()):raise ValueError('Linux archive may contain only files and folders')
+            if m.name.startswith('/') or '..' in m.name.split('/') or not (m.name=='PlazCode' or m.name.startswith('PlazCode/')):raise ValueError('Unsafe Linux archive path')
+        program=archive.getmember('PlazCode/PlazCode')
+        if archive.extractfile(program).read(4)!=b'\x7fELF' or not program.mode&0o111:raise ValueError('Linux program missing or not runnable')
+        for path in ['PlazCode/manifest.json','PlazCode/PlazCode-Extension/manifest.json']:
+            if json.loads(archive.extractfile(path).read())['version']!=version:raise ValueError('Linux archive version does not match feed: '+path)
+        if any(n.endswith(('.exe','.command')) or n.startswith('PlazCode/PlazCode.app/') for n in names):raise ValueError('Linux download must not carry Windows or Mac programs')
+
 def main():
     repo=os.environ['GITHUB_REPOSITORY'];commit=os.environ['GITHUB_SHA']
     if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',repo) or not re.fullmatch(r'[a-f0-9]{40}',commit):raise ValueError('Invalid repository or commit')
@@ -72,6 +88,11 @@ def main():
     mac_raw=fetch(root+'latest-macos.json');mac_feed=validate(json.loads(mac_raw),mac_raw)
     if mac_feed['version']!=version or mac_feed['sha256']!=feed['platforms']['macos']['sha256']:raise ValueError('Platform feed mismatch')
     if not re.fullmatch(r'\d+\.\d+\.\d+',version):raise ValueError('Invalid release version')
+    # 1.24.33: Linux has its own feed; older releases have none.
+    try:linux_raw=fetch(root+'latest-linux.json')
+    except Exception:linux_raw=None
+    linux_feed=validate(json.loads(linux_raw),linux_raw) if linux_raw else None
+    if linux_feed and linux_feed['version']!=version:raise ValueError('Linux feed version mismatch')
     tag='v'+version
     try:existing=json.loads(gh('release','view',tag,'--repo',repo,'--json','isDraft'))
     except subprocess.CalledProcessError:existing=None
@@ -79,18 +100,20 @@ def main():
         print('Version is already published; leaving it unchanged.');return
     title,body=notes(feed)
     assets=[]
-    for name,platform,expected_hash in [('PlazCode-'+version+'.zip','windows',feed['sha256']),('PlazCode-macOS-'+version+'.zip','macos',feed['platforms']['macos']['sha256'])]:
+    downloads=[('PlazCode-'+version+'.zip','windows',feed['sha256']),('PlazCode-macOS-'+version+'.zip','macos',feed['platforms']['macos']['sha256'])]
+    if linux_feed:downloads.append(('PlazCode-Linux-'+version+'.tar.gz','linux',linux_feed['sha256']))
+    for name,platform,expected_hash in downloads:
         data=fetch(root+name)
         content=json.loads(gh('api','repos/'+repo+'/contents/'+name+'?ref='+commit))
         actual=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
         if actual!=content['sha']:raise ValueError('Repository ZIP hash mismatch')
         if hashlib.sha256(data).hexdigest()!=expected_hash:raise ValueError('Update SHA-256 mismatch')
-        validate_archive(data,version,platform);pathlib.Path(name).write_bytes(data);assets.append(name)
+        (validate_linux_archive(data,version) if platform=='linux' else validate_archive(data,version,platform));pathlib.Path(name).write_bytes(data);assets.append(name)
     pathlib.Path('release-notes.md').write_text(body)
     # Extra assets. Defaults keep the established behavior; the private-source pipeline sets
     # PLAZCODE_PUBLISH_SOURCE=0 (no source zip) and PLAZCODE_PROVENANCE=0 (no GitHub attestation,
     # which is unavailable for private repositories on most plans).
-    extra=['PlazCode-Firefox-'+version+'.zip']
+    extra=['PlazCode-Firefox-'+version+'.zip']+(['install-linux.sh'] if linux_feed else [])
     if os.environ.get('PLAZCODE_PUBLISH_SOURCE','1')!='0':extra.insert(0,'PlazCode-source-'+version+'.zip')
     if os.environ.get('PLAZCODE_PROVENANCE','1')!='0':extra.append('PlazCode-'+version+'.sigstore.json')
     for name in extra:

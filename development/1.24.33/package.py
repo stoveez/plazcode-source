@@ -2,7 +2,7 @@
 Does not change release feeds or publish a release.
 """
 from pathlib import Path
-import zipfile,hashlib,platform,plistlib,subprocess,shutil,json,tempfile,os
+import zipfile,hashlib,platform,plistlib,subprocess,shutil,json,tempfile,os,sys
 root=Path(__file__).resolve().parents[2];source=root/'build-src-1.24.33/PlazCode';output=root/'artifacts';output.mkdir(exist_ok=True)
 osname=platform.system();assert osname in ('Windows','Darwin','Linux');platform_name={'Windows':'windows','Darwin':'macos','Linux':'linux'}[osname];baseline=root/('PlazCode-1.23.0.zip' if osname=='Windows' else 'PlazCode-macOS-1.23.0.zip')
 expected='09b0db8e85ef969bd7e1eb60eb26a219bd80ed60e5d221970e1b3af6750e510b' if osname=='Windows' else 'fc004c0416c9be1d84fca9a026f62ca939eec15d294b89ec465f0986641ab21c'
@@ -49,10 +49,19 @@ elif osname=='Linux':
  helper=package/'runtime/engram/engram-linux-amd64';helper.parent.mkdir(parents=True,exist_ok=True);helper.write_bytes(helper_bytes);helper.chmod(0o755)
  (helper.parent/'SHA256SUMS.txt').write_text(hashlib.sha256(helper_bytes).hexdigest()+'  '+helper.name+'\n')
  subprocess.run([str(helper.resolve()),'version'],check=True)
- (package/'README.md').write_text('# PlazCode for Linux\n\nExtract the complete archive, open the PlazCode folder, then open the PlazCode executable. The app interface opens in your default browser; keep the full folder together. This build requires a Linux x86-64 desktop with a default browser; the app is statically linked and does not require WebKit or a particular glibc version. It is a native Linux program; do not use the Windows EXE or Mac app.\n\nChrome: load PlazCode-Extension. Firefox: load PlazCode-Extension-Firefox. Refresh AI tabs after reloading the extension. Memory helper is included. Linux automatic updates are not published yet; use complete native Linux downloads.\n')
+ (package/'README.md').write_text(
+  '# PlazCode for Linux\n\n'
+  'Easiest: paste this line into a Terminal and press Enter. It installs PlazCode in your home folder (no admin password), adds it to your app menu and opens it. Run it again any time to update.\n\n'
+  '    curl -fsSL https://raw.githubusercontent.com/stoveez/PlazCode/main/install-linux.sh | sh\n\n'
+  'From this download instead: open a Terminal in this PlazCode folder and run ./PlazCode . PlazCode then offers to move itself to your home folder and add itself to your app menu, and shows you how to add the browser extension step by step.\n\n'
+  'PlazCode opens in its own window when Chrome, Chromium, Brave, Edge or Vivaldi is installed, otherwise in your default browser. It updates itself. It needs a 64-bit Intel or AMD computer; nothing else needs installing.\n\n'
+  'Browser extension: Chrome, Edge, Brave and other Chromium browsers load the PlazCode-Extension folder; Firefox loads PlazCode-Extension-Firefox. Refresh AI tabs after reloading the extension.\n\n'
+  'Remove PlazCode: curl -fsSL https://raw.githubusercontent.com/stoveez/PlazCode/main/install-linux.sh | sh -s -- --uninstall\n',encoding='utf-8')
 
  for path in package.iterdir():
   if path.is_file() and path.suffix.lower() in ('.exe','.bat','.ps1','.cs','.command'):path.unlink()
+ # 1.24.33 (owner: Linux automatic updates): the Linux update helper ships with the program it updates.
+ shutil.copy2(source/'Update-PlazCode-Linux.sh',package/'Update-PlazCode-Linux.sh');(package/'Update-PlazCode-Linux.sh').chmod(0o755)
 else:
  shutil.copy2(source/'Update-PlazCode.command',package/'Update-PlazCode.command')
  app=package/'PlazCode.app';shutil.copy2(source/'agent/target/release/PlazCode',app/'Contents/MacOS/PlazCode');(app/'Contents/MacOS/PlazCode').chmod(0o755)
@@ -194,4 +203,6 @@ assert (output/NAME).is_file(), 'Run prepare.py before packaging'
 assert not list(output.glob('*source*.zip')), 'Source ZIPs must not enter artifacts'
 if osname=='Linux':
  subprocess.run(['node',str(source/'release-tools/test-linux-desktop.cjs')],cwd=source,env={**os.environ,'PLAZCODE_NATIVE_INSTALL_ROOT':str(package.resolve())},check=True)
+ # 1.24.33: the Linux update helper against the signed package (its signed-file check included).
+ subprocess.run([sys.executable,str(source/'test-linux-update.py')],cwd=source,env={**os.environ,'PLAZCODE_NATIVE_INSTALL_ROOT':str(package.resolve())},check=True)
 shutil.rmtree(install)

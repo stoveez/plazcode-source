@@ -23,6 +23,9 @@ def main():
     with_provenance = os.environ.get('PLAZCODE_PROVENANCE', '1') != '0'
     files = [f'PlazCode-{version}.zip', f'PlazCode-macOS-{version}.zip', f'PlazCode-Firefox-{version}.zip',
              'latest.json', 'latest-macos.json', 'release-notes.json', 'release-metadata.json', f'release-description-{version}.txt']
+    # 1.24.33: Linux download, its own feed and the one-line installer, when the release has them.
+    linux = [f'PlazCode-Linux-{version}.tar.gz', 'latest-linux.json', 'install-linux.sh']
+    if any((source / f).is_file() for f in linux): files += linux
     if with_source: files.append(f'PlazCode-source-{version}.zip')
     if with_provenance: files.append(f'PlazCode-{version}.sigstore.json')
     missing = [f for f in files if not (source / f).is_file()]
@@ -37,7 +40,7 @@ def main():
     # Keep the public root tidy: only the current version's downloads stay in main.
     # Installed copies only follow latest*.json, which this same commit replaces.
     stale = [p.name for p in work.iterdir() if p.is_file() and p.name not in files and
-             re.fullmatch(r'(PlazCode(-macOS|-Firefox|-source)?-\d+\.\d+\.\d+\.zip|PlazCode-\d+\.\d+\.\d+\.sigstore\.json|release-description-\d+\.\d+\.\d+\.txt)', p.name)]
+             re.fullmatch(r'(PlazCode(-macOS|-Firefox|-source)?-\d+\.\d+\.\d+\.zip|PlazCode-Linux-\d+\.\d+\.\d+\.tar\.gz|PlazCode-\d+\.\d+\.\d+\.sigstore\.json|release-description-\d+\.\d+\.\d+\.txt)', p.name)]
     if stale: run('git', 'rm', '-q', '--', *stale, cwd=work)
     for name in files: shutil.copy2(source / name, work / name)
     run('git', 'config', 'user.name', 'stoveez', cwd=work)

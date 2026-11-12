@@ -89,6 +89,7 @@ fn app_download_url(action: &str) -> Option<&'static str> {
         "open:get-blockbench" => Some("https://www.blockbench.net/downloads"),
         "open:blockbench-web" => Some("https://web.blockbench.net/"),
         "open:get-git" => Some("https://git-scm.com/downloads"),
+        "open:get-vinegar" => Some("https://vinegarhq.org/"),
         _ => None,
     }
 }
@@ -516,8 +517,12 @@ pub fn run_gui(
     start_background: bool,
     update_ready_file: Option<std::path::PathBuf>,
 ) -> anyhow::Result<()> {
-    let _ = (pairing_key, update_ready_file);
+    let _ = pairing_key;
     if !start_background { crate::linux_desktop::open(addr)?; }
+    // 1.24.33 (Linux updates): the update helper waits for this marker before it calls the update done.
+    if let Some(path) = update_ready_file.as_deref() {
+        if let Err(error) = crate::platform::write_update_ready(path) { shared.log(&format!("Could not confirm updater desktop readiness: {error}")); }
+    }
     loop {
         if shared.quit_requested.swap(false, Ordering::Relaxed) { return Ok(()); }
         if shared.show_requested.swap(false, Ordering::Relaxed) {

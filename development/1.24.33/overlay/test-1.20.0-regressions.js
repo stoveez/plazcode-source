@@ -62,7 +62,7 @@ check("Notion composer has a relaxed late acceptance for Edge", () => {
 const upd = read("agent/src/updater.rs");
 check("updater falls back on transport errors and 5xx", () => {
   assert.ok(!/\.timeout\(Duration::from_secs\(15\)\)\.send\(\)\.await\?;/.test(upd));
-  assert.ok(/let Some\(response\) = response else \{ return official_asset_fallback\(ver, hash, macos\); \};/.test(upd));
+  assert.ok(/let Some\(response\) = response else \{ return official_asset_fallback\(ver, hash, platform\); \};/.test(upd));
   assert.ok(/Ok\(r\) if r\.status\(\)\.is_server_error\(\) => \{ break; \}/.test(upd));
   assert.ok(/if s\.available \{ s\.error=None; s\.check_error=None; s\.message="Update ready\./.test(upd), "Update ready must clear a stale failure (no contradictory overlay)");
   assert.ok(!/if status >= 500 \|\| official_rate_limited/.test(upd), "a 5xx metadata reply must not skip the record check directly");

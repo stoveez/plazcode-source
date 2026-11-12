@@ -1,6 +1,6 @@
 """Promote only successful exact-source artifacts; never overwrite release archives."""
 from pathlib import Path
-import argparse,json,os,hashlib,shutil,re,zipfile,plistlib,struct,subprocess,tempfile,sys
+import argparse,json,os,hashlib,shutil,re,zipfile,plistlib,struct,subprocess,tempfile,sys,tarfile,gzip,io
 ROOT=Path(__file__).resolve().parents[2]
 VERSION='1.24.33'
 # Keep the small validated archive helpers local; publication must not depend
@@ -181,6 +181,24 @@ def pack(path,files):
             archive.writestr(info,data,compress_type=zipfile.ZIP_DEFLATED,compresslevel=9)
     with zipfile.ZipFile(path) as archive:assert archive.testzip() is None
 
+def pack_tar(path,files):
+    """1.24.33 (Linux): the Linux download is a .tar.gz (tar is on every Linux; unzip is not), with the same files and
+    file modes as the validated package, fixed times and owners so the archive is reproducible."""
+    assert not path.exists(),'Never overwrite published archives: '+str(path)
+    raw=io.BytesIO()
+    with gzip.GzipFile(fileobj=raw,mode='wb',compresslevel=9,mtime=0) as packed:
+        with tarfile.open(fileobj=packed,mode='w',format=tarfile.PAX_FORMAT) as archive:
+            folders=sorted({str(Path(name).parents[i]) for name in files for i in range(len(Path(name).parents)-1)})
+            for folder in folders:
+                info=tarfile.TarInfo(folder);info.type=tarfile.DIRTYPE;info.mode=0o755;info.mtime=1760486400;info.uname=info.gname='';archive.addfile(info)
+            for name,(data,mode) in sorted(files.items()):
+                info=tarfile.TarInfo(name);info.size=len(data);info.mode=(mode>>16)&0o777 or 0o644;info.mtime=1760486400;info.uname=info.gname=''
+                archive.addfile(info,io.BytesIO(data))
+    path.write_bytes(raw.getvalue())
+    with tarfile.open(path) as archive:
+        assert all(m.isfile() or m.isdir() for m in archive.getmembers()),'Only files and folders'
+        assert {m.name for m in archive.getmembers() if m.isfile()}==set(files),'Linux archive file list'
+
 def validate(files, platform):
     for manifest in ['manifest.json', 'PlazCode-Extension/manifest.json', 'PlazCode-Extension-Firefox/manifest.json']:
         assert json.loads(files['PlazCode/'+manifest][0])['version'] == VERSION
@@ -194,6 +212,10 @@ def validate(files, platform):
         assert files['PlazCode/PlazCode.exe'][0][:2] == b'MZ'
     if platform == 'windows':
         assert not any(n.startswith('PlazCode/PlazCode.app/') or n.endswith('.command') for n in files)
+    if platform == 'linux':
+        assert files['PlazCode/PlazCode'][0][:4] == b'\x7fELF' and files['PlazCode/PlazCode'][1] >> 16 & 0o111, 'Linux program missing or not runnable'
+        assert files['PlazCode/Update-PlazCode-Linux.sh'][1] >> 16 & 0o111, 'Linux update helper must be runnable'
+        assert not any(n.startswith('PlazCode/PlazCode.app/') or n.endswith(('.exe','.command','.ps1','.bat')) for n in files), 'Linux download must not carry Windows or Mac programs'
     app = 'PlazCode/PlazCode.app/Contents/'
     if platform == 'macos':
         info = plistlib.loads(files[app+'Info.plist'][0])
@@ -246,7 +268,7 @@ def retain_decoder_maps(evidence):
     # never in a public download/source archive; test real decryption outside the repo.
     pinned=(ROOT/'development/1.24.33/overlay/release-public-key.hex').read_text().strip()
     records=[]
-    for platform,osname in [('Windows','Windows'),('macOS','Darwin')]:
+    for platform,osname in [('Windows','Windows'),('macOS','Darwin'),('Linux','Linux')]:
         path=find(f'PlazCode-{VERSION}-{osname}-private-maps.encrypted.json',platform)
         value=load(path)
         assert set(value)=={'schema','public_key','nonce','tag','ciphertext'} and value['schema']==1 and value['public_key']==pinned, 'Wrong decoder archive trust/format'
@@ -266,16 +288,20 @@ def main():
     check_validation(ROOT/'ci-artifacts')
     base=os.environ['VALIDATED_SHA'];run=load(ROOT/'ci-artifacts/run.json')
     windows=unpack_package(find('PlazCode-1.24.33-development.zip','Windows'));mac=unpack_package(find('PlazCode-macOS-1.24.33-development.zip','macOS'))
-    verify_protected(windows,'windows');verify_protected(mac,'macos')
+    # 1.24.33 (owner): Linux is published too, with its own feed.
+    linux=unpack_package(find('PlazCode-Linux-1.24.33-development.zip','Linux'))
+    verify_protected(windows,'windows');verify_protected(mac,'macos');verify_protected(linux,'linux')
     for name,value in windows.items():
-        if name.startswith(('PlazCode/core/','PlazCode/providers/','PlazCode/PlazCode-Extension/')) and not name.endswith(('plazcode-installation-integrity.json','production-build.json','plazcode-bootstrap.json')):assert mac[name][0]==value[0],name
+        if name.startswith(('PlazCode/core/','PlazCode/providers/','PlazCode/PlazCode-Extension/')) and not name.endswith(('plazcode-installation-integrity.json','production-build.json','plazcode-bootstrap.json')):assert mac[name][0]==value[0]==linux[name][0],name
     firefox=firefox_text(unpack_package(find('PlazCode-Firefox-1.24.33-development.zip','Windows')))
     other=firefox_text(unpack_package(find('PlazCode-Firefox-1.24.33-development.zip','macOS')))
+    assert {n:v[0] for n,v in firefox.items()}=={n:v[0] for n,v in other.items()}
+    other=firefox_text(unpack_package(find('PlazCode-Firefox-1.24.33-development.zip','Linux')))
     assert {n:v[0] for n,v in firefox.items()}=={n:v[0] for n,v in other.items()}
     # Reconstruct source from the exact validated checkout, without rebuilding native code
     # or distributing an archive. Both native runners' hash proofs must match it.
     from source_proof import source_files, verify, NAME
-    reports=[load(find(NAME,platform)) for platform in ['Windows','macOS']]
+    reports=[load(find(NAME,platform)) for platform in ['Windows','macOS','Linux']]
     subprocess.run([sys.executable,str(ROOT/'development/1.24.33/prepare.py')],check=True)
     source=verify(source_files(ROOT/'build-src-1.24.33/PlazCode'),reports)
     # PLAZCODE_QUICK=1 (small fixes only, owner-approved) skips the separate Mac desktop test to save Actions minutes.
@@ -291,7 +317,7 @@ def main():
         desktop_run=load(desktop_runs[0])
         assert str(desktop_run['id'])==os.environ['GITHUB_RUN_ID'] and desktop_run['head_sha']==os.environ['GITHUB_SHA'], 'Desktop evidence belongs to another publication run'
     native_bytes={name:value[0] for name,value in mac.items() if name.startswith('PlazCode/PlazCode.app/')}
-    windows_executable=windows['PlazCode/PlazCode.exe'][0]
+    windows_executable=windows['PlazCode/PlazCode.exe'][0];linux_executable=linux['PlazCode/PlazCode'][0]
     entry=load(Path(__file__).with_name('release-entry.json'));assert entry['version']==VERSION
     notes=[entry]+[n for n in load(ROOT/'release-notes.json') if n['version']!=VERSION]
     write_json(ROOT/'release-notes.json',notes)
@@ -317,7 +343,7 @@ Checksums and platform evidence are recorded in release-validation-{VERSION}.
     notice=f'''PlazCode {VERSION}\nDownloads and updates: https://github.com/stoveez/PlazCode/releases\nThe source code for this version is not published.\n'''.encode()
     common={'PlazCode/release-notes.json':((json.dumps(notes,indent=2,ensure_ascii=False)+'\n').encode(),0o100644<<16),'PlazCode/SOURCE.txt':(notice,0o100644<<16),'PlazCode/PlazCode-Extension/SOURCE.txt':(notice,0o100644<<16)}
     firefox['SOURCE.txt']=(notice,0o100644<<16)
-    for files in [windows,mac]:
+    for files in [windows,mac,linux]:
         for name in list(files):
             if name.startswith('PlazCode/PlazCode-Extension-Firefox/') or name=='PlazCode/DEVELOPMENT.txt':del files[name]
         for name,value in firefox.items():
@@ -336,36 +362,42 @@ Checksums and platform evidence are recorded in release-validation-{VERSION}.
     ultra_prefix='PlazCode/PlazCode-Extension/core/ultralab/'
     ultra=[n for n in source if n.startswith(ultra_prefix)]
     assert len(ultra)>100,len(ultra)
-    for files in [windows,mac]:
+    for files in [windows,mac,linux]:
         for name in ultra:
             assert files[name][0]==source[name][0],name
         refresh_checksums(files)
         assert b'pc-ultra-shine' in files['PlazCode/core/main.js'][0] or b'pc-ultra-label' in files['PlazCode/core/main.js'][0]
         assert b'Deleted Skills' in files['PlazCode/core/skills-ui.js'][0]
     refresh_checksums(source,require_all=False)
-    validate(windows,'windows');validate(mac,'macos')
-    verify_protected(windows,'windows');verify_protected(mac,'macos')
-    for files in [windows,mac]:verify_locales(files)
-    verify_shared_code(source,[windows,mac],firefox)
+    validate(windows,'windows');validate(mac,'macos');validate(linux,'linux')
+    verify_protected(windows,'windows');verify_protected(mac,'macos');verify_protected(linux,'linux')
+    for files in [windows,mac,linux]:verify_locales(files)
+    verify_shared_code(source,[windows,mac,linux],firefox)
     assert windows['PlazCode/PlazCode.exe'][0]==windows_executable, 'Native Windows bytes changed during promotion'
+    assert linux['PlazCode/PlazCode'][0]==linux_executable, 'Native Linux bytes changed during promotion'
     assert all(mac[name][0]==raw for name,raw in native_bytes.items()), 'Signed Mac app bytes changed during promotion'
     for files in [windows,mac]:
         for name,value in files.items():
             if name.endswith('.command'):assert value[1]>>16&0o111,name
     for name in source:assert not name.endswith('.exe') and '/target/' not in name and '/node_modules/' not in name,name
-    packages=[(f'PlazCode-{VERSION}.zip','windows',windows),(f'PlazCode-macOS-{VERSION}.zip','macos',mac),(f'PlazCode-Firefox-{VERSION}.zip','firefox',firefox)]
+    packages=[(f'PlazCode-{VERSION}.zip','windows',windows),(f'PlazCode-macOS-{VERSION}.zip','macos',mac),(f'PlazCode-Linux-{VERSION}.tar.gz','linux',linux),(f'PlazCode-Firefox-{VERSION}.zip','firefox',firefox)]
     metadata=[]
     for name,platform,files in packages:
-        pack(ROOT/name,files);raw=(ROOT/name).read_bytes()
-        if platform in {'windows','macos'}:assert len(raw)<=64*1024*1024, 'Release exceeds the installed updater limit'
+        (pack_tar if name.endswith('.tar.gz') else pack)(ROOT/name,files);raw=(ROOT/name).read_bytes()
+        if platform in {'windows','macos','linux'}:assert len(raw)<=64*1024*1024, 'Release exceeds the installed updater limit'
         metadata.append({'file':name,'platform':platform,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()})
     write_json(ROOT/'release-metadata.json',metadata);byplatform={m['platform']:m for m in metadata}
     sys.path.insert(0,str(ROOT));from release_feed import compact_feed
-    for path,platform in [('latest.json','windows'),('latest-macos.json','macos')]:
-        feed=load(ROOT/path);feed.update(version=VERSION,desktop_version=VERSION,url='https://raw.githubusercontent.com/stoveez/PlazCode/main/'+byplatform[platform]['file'],sha256=byplatform[platform]['sha256'])
+    for path,platform in [('latest.json','windows'),('latest-macos.json','macos'),('latest-linux.json','linux')]:
+        # The Linux feed is new in 1.24.33; the Windows and Mac feeds keep their exact shape (CLAUDE.md rule 1).
+        feed=load(ROOT/path) if (ROOT/path).exists() or platform!='linux' else {};feed.pop('security',None) if platform=='linux' else None;feed.update(version=VERSION,desktop_version=VERSION,url='https://raw.githubusercontent.com/stoveez/PlazCode/main/'+byplatform[platform]['file'],sha256=byplatform[platform]['sha256'])
         if platform=='windows':feed['platforms']['macos'].update(url='https://raw.githubusercontent.com/stoveez/PlazCode/main/'+byplatform['macos']['file'],sha256=byplatform['macos']['sha256'])
         write_json(ROOT/path,compact_feed(feed,notes))
         subprocess.run(['node',str(ROOT/'development/1.24.33/protection.mjs'),'sign-update',str(ROOT/path),platform],check=True)
+    # The one-line Linux installer is published next to the feeds, byte for byte the validated one.
+    installer=ROOT/'development/1.24.33/overlay/install-linux.sh'
+    assert source['PlazCode/install-linux.sh'][0]==installer.read_bytes().replace(b'\r\n',b'\n') or source['PlazCode/install-linux.sh'][0]==installer.read_bytes(), 'Installer differs from the validated source'
+    (ROOT/'install-linux.sh').write_bytes(source['PlazCode/install-linux.sh'][0]);(ROOT/'install-linux.sh').chmod(0o755)
     import publish_release
     _,body=publish_release.notes(load(ROOT/'latest.json'));(ROOT/f'release-description-{VERSION}.txt').write_text(body)
     # 1.24.30: the public repo keeps its own short README; nothing is prepended here.

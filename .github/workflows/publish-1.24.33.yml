@@ -112,7 +112,7 @@ jobs:
           done
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN/jobs?per_page=100" > ci-artifacts/jobs.json
           python3 development/1.24.33/promote.py --check-validation
-          for platform in Windows macOS; do
+          for platform in Windows macOS Linux; do
             gh run download "$VALIDATION_RUN" --repo "$GITHUB_REPOSITORY" --name "plazcode-1.24.33-$platform-validation" --dir "ci-artifacts/plazcode-1.24.33-$platform-validation"
           done
       - name: Download macOS desktop lifetime evidence
@@ -134,7 +134,7 @@ jobs:
           git config user.name 'stoveez'
           git config user.email ''
           python3 development/1.24.33/record-release.py prepared
-          git add docs/NOW.md docs/vault/open-work.md latest.json latest-macos.json release-notes.json release-metadata.json release-description-1.24.33.txt release-validation-1.24.33
+          git add docs/NOW.md docs/vault/open-work.md latest.json latest-macos.json latest-linux.json install-linux.sh release-notes.json release-metadata.json release-description-1.24.33.txt release-validation-1.24.33
           git commit -m 'Release PlazCode 1.24.33: Notion bar, chatbox and status fixes'
           git push origin HEAD:refs/heads/release-record-1.24.33-final
       - name: Publish downloads and update feeds to the public repo (no source)

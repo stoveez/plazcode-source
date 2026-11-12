@@ -7,6 +7,17 @@ use tokio::io::AsyncWriteExt;
 
 const DEFAULT_MAC_FEED: &str = "https://raw.githubusercontent.com/stoveez/PlazCode/main/latest-macos.json";
 const DEFAULT_FEED: &str = "https://raw.githubusercontent.com/stoveez/PlazCode/main/latest.json";
+/// 1.24.33 (owner: Linux automatic updates): Linux has its own feed; the Windows and Mac feeds are unchanged.
+const DEFAULT_LINUX_FEED: &str = "https://raw.githubusercontent.com/stoveez/PlazCode/main/latest-linux.json";
+/// Which download an installation uses. `true`/`false` still mean Mac/Windows, as before Linux had updates.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Platform { Windows, Mac, Linux }
+impl From<bool> for Platform { fn from(macos: bool) -> Self { if macos { Platform::Mac } else { Platform::Windows } } }
+impl Platform {
+    fn here() -> Self { if cfg!(target_os = "macos") { Platform::Mac } else if cfg!(target_os = "linux") { Platform::Linux } else { Platform::Windows } }
+    fn package(self, ver: &str) -> String { match self { Platform::Windows => format!("PlazCode-{ver}.zip"), Platform::Mac => format!("PlazCode-macOS-{ver}.zip"), Platform::Linux => format!("PlazCode-Linux-{ver}.tar.gz") } }
+    fn feed(self) -> &'static str { match self { Platform::Windows => DEFAULT_FEED, Platform::Mac => DEFAULT_MAC_FEED, Platform::Linux => DEFAULT_LINUX_FEED } }
+}
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ReleaseNotes { pub version: String, pub title: String, pub summary: String, #[serde(default)] pub added: Vec<String>, #[serde(default)] pub improved: Vec<String>, #[serde(default)] pub fixed: Vec<String> }
 #[derive(Clone, Serialize)]
@@ -19,8 +30,9 @@ fn installed_at(root: &std::path::Path) -> String {
     }).unwrap_or_else(|| env!("CARGO_PKG_VERSION").into())
 }
 fn installed() -> String { installed_at(&folder()) }
-fn stage_helper(root: &std::path::Path, stage: &std::path::Path, windows: bool) -> anyhow::Result<PathBuf> {
-    let name = if windows { "Update-PlazCode.ps1" } else { "Update-PlazCode.command" };
+fn stage_helper(root: &std::path::Path, stage: &std::path::Path, windows: impl Into<HelperFor>) -> anyhow::Result<PathBuf> {
+    let helper = windows.into();
+    let name = match helper { HelperFor::Windows => "Update-PlazCode.ps1", HelperFor::Mac => "Update-PlazCode.command", HelperFor::Linux => "Update-PlazCode-Linux.sh" };
     let destination = stage.join(name);
     let translocated = std::env::current_exe().map(|exe| crate::platform::is_translocated(&exe)).unwrap_or(false);
     anyhow::ensure!(!translocated || crate::platform::is_installation_root(root),
@@ -28,10 +40,15 @@ fn stage_helper(root: &std::path::Path, stage: &std::path::Path, windows: bool) 
     anyhow::ensure!(crate::platform::is_installation_root(root),
         "The application was moved outside its PlazCode installation folder. Extract the complete platform ZIP and launch PlazCode there.");
     std::fs::create_dir_all(stage)?;
-    let embedded = if windows { include_str!("../../Update-PlazCode.ps1") } else { include_str!("../../Update-PlazCode.command") };
+    let embedded = match helper { HelperFor::Windows => include_str!("../../Update-PlazCode.ps1"), HelperFor::Mac => include_str!("../../Update-PlazCode.command"), HelperFor::Linux => include_str!("../../Update-PlazCode-Linux.sh") };
     std::fs::write(&destination, embedded)?;
     Ok(destination)
 }
+/// The update helper to stage. `true`/`false` still mean Windows/Mac, as before Linux had updates.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum HelperFor { Windows, Mac, Linux }
+impl From<bool> for HelperFor { fn from(windows: bool) -> Self { if windows { HelperFor::Windows } else { HelperFor::Mac } } }
+impl From<Platform> for HelperFor { fn from(platform: Platform) -> Self { match platform { Platform::Windows => HelperFor::Windows, Platform::Mac => HelperFor::Mac, Platform::Linux => HelperFor::Linux } } }
 #[cfg(windows)]
 fn windows_helper_command() -> std::process::Command {
     let mut command=std::process::Command::new(crate::hidden::hidden!("powershell.exe"));
@@ -71,9 +88,9 @@ fn validate(feed: &Value) -> anyhow::Result<(String,String,String)> {
     anyhow::ensure!(hash.len()==64 && hash.bytes().all(|b| b.is_ascii_hexdigit()), "Invalid release checksum.");
     Ok((ver.into(),url.into(),hash.into()))
 }
-fn verify_official_record(record: &Value, ver: &str, download: &str, hash: &str, macos: bool) -> anyhow::Result<()> {
+fn verify_official_record(record: &Value, ver: &str, download: &str, hash: &str, platform: impl Into<Platform>) -> anyhow::Result<()> {
     version(ver)?;
-    let name = format!("PlazCode-{}{ver}.zip", if macos { "macOS-" } else { "" });
+    let name = platform.into().package(ver);
     let release_url = format!("https://github.com/stoveez/PlazCode/releases/download/v{ver}/{name}");
     let parsed = reqwest::Url::parse(download)?;
     let raw_ok = parsed.scheme() == "https" && parsed.host_str() == Some("raw.githubusercontent.com") && parsed.username().is_empty() && parsed.password().is_none() && {
@@ -91,23 +108,24 @@ fn verify_official_record(record: &Value, ver: &str, download: &str, hash: &str,
 fn official_rate_limited(status: u16, remaining: Option<&str>, message: &str) -> bool {
     status == 429 || (status == 403 && (remaining == Some("0") || message.to_ascii_lowercase().contains("rate limit")))
 }
-fn verified_official_download(status: u16, remaining: Option<&str>, record: &Value, ver: &str, download: &str, hash: &str, macos: bool) -> anyhow::Result<String> {
+fn verified_official_download(status: u16, remaining: Option<&str>, record: &Value, ver: &str, download: &str, hash: &str, platform: impl Into<Platform>) -> anyhow::Result<String> {
     version(ver)?;
+    let platform = platform.into();
     if official_rate_limited(status, remaining, record["message"].as_str().unwrap_or("")) {
         // The public metadata API has a shared unauthenticated request quota.
         // Bypass only that quota, using the fixed official release asset rather
         // than the feed's URL. The installer still verifies SHA256 and version.
         anyhow::ensure!(hash.len() == 64 && hash.bytes().all(|b| b.is_ascii_hexdigit()), "Invalid release checksum.");
-        return Ok(format!("https://github.com/stoveez/PlazCode/releases/download/v{ver}/PlazCode-{}{ver}.zip", if macos { "macOS-" } else { "" }));
+        return Ok(format!("https://github.com/stoveez/PlazCode/releases/download/v{ver}/{}", platform.package(ver)));
     }
     anyhow::ensure!((200..300).contains(&status), "Official release metadata returned HTTP {status}.");
-    verify_official_record(record, ver, download, hash, macos)?;
+    verify_official_record(record, ver, download, hash, platform)?;
     Ok(download.to_owned())
 }
-fn official_asset_fallback(ver: &str, hash: &str, macos: bool) -> anyhow::Result<String> {
-    verified_official_download(429, None, &Value::Null, ver, "", hash, macos)
+fn official_asset_fallback(ver: &str, hash: &str, platform: impl Into<Platform>) -> anyhow::Result<String> {
+    verified_official_download(429, None, &Value::Null, ver, "", hash, platform)
 }
-async fn verify_official_release(client: &reqwest::Client, ver: &str, download: &str, hash: &str, macos: bool) -> anyhow::Result<String> {
+async fn verify_official_release(client: &reqwest::Client, ver: &str, download: &str, hash: &str, platform: Platform) -> anyhow::Result<String> {
     let url = format!("https://api.github.com/repos/stoveez/PlazCode/releases/tags/v{ver}");
     // 1.20.0: a transport failure (DNS, TLS, proxy, timeout) on the metadata
     // lookup used to abort the update with "error sending request for url".
@@ -123,13 +141,13 @@ async fn verify_official_release(client: &reqwest::Client, ver: &str, download: 
             Err(_) => {}
         }
     }
-    let Some(response) = response else { return official_asset_fallback(ver, hash, macos); };
+    let Some(response) = response else { return official_asset_fallback(ver, hash, platform); };
     let status = response.status().as_u16();
     let remaining = response.headers().get("x-ratelimit-remaining").and_then(|v| v.to_str().ok()).map(str::to_owned);
     let mut stream = response.bytes_stream(); let mut raw = Vec::new();
     while let Some(chunk) = stream.next().await { let chunk = chunk?; anyhow::ensure!(raw.len() + chunk.len() <= 1024 * 1024, "Official release metadata is too large."); raw.extend_from_slice(&chunk); }
     let record: Value = serde_json::from_slice(&raw).unwrap_or(Value::Null);
-    verified_official_download(status, remaining.as_deref(), &record, ver, download, hash, macos)
+    verified_official_download(status, remaining.as_deref(), &record, ver, download, hash, platform)
 }
 // Keep the connection pool alive across checks instead of repeating DNS/TLS setup.
 static HTTP_CLIENT: once_cell::sync::Lazy<Result<reqwest::Client, reqwest::Error>> = once_cell::sync::Lazy::new(||
@@ -188,12 +206,12 @@ fn official_feed(url: &str) -> &str {
 }
 async fn current_feed(client: &reqwest::Client, url: &str, limit: Duration) -> anyhow::Result<Vec<u8>> {
     let url=official_feed(url);
-    let official=url == DEFAULT_FEED || url == DEFAULT_MAC_FEED;
+    let official=url == DEFAULT_FEED || url == DEFAULT_MAC_FEED || url == DEFAULT_LINUX_FEED;
     // The git-ref revision read and the raw feed each get their own budget, so a
     // slow ref advertisement can no longer starve the fallback and hide a release
     // (1.19.37 was only found after a manual update for this reason).
     if official {
-        let name=if url==DEFAULT_MAC_FEED {"latest-macos.json"}else{"latest.json"};
+        let name=if url==DEFAULT_MAC_FEED {"latest-macos.json"}else if url==DEFAULT_LINUX_FEED {"latest-linux.json"}else{"latest.json"};
         if let Ok(Ok(raw)) = tokio::time::timeout(limit, revision_feed_named(client, reqwest::Url::parse(DEFAULT_REFS)?, "https://raw.githubusercontent.com/stoveez/PlazCode", name, limit)).await { return Ok(raw); }
     }
     let mut last=anyhow::anyhow!("Release check timed out.");
@@ -209,9 +227,10 @@ async fn current_feed(client: &reqwest::Client, url: &str, limit: Duration) -> a
     Err(last)
 }
 const FEED_ATTEMPTS: u32 = 2;
-fn platform_feed(url: &str, macos: bool) -> &str {
+fn not_published_yet(platform: Platform, url: &str, error: &str) -> bool { platform == Platform::Linux && official_feed(url) == DEFAULT_LINUX_FEED && error.contains("404") }
+fn platform_feed(url: &str, platform: impl Into<Platform>) -> &str {
     match official_feed(url) {
-        DEFAULT_FEED | DEFAULT_MAC_FEED => if macos { DEFAULT_MAC_FEED } else { DEFAULT_FEED },
+        DEFAULT_FEED | DEFAULT_MAC_FEED | DEFAULT_LINUX_FEED => platform.into().feed(),
         custom => custom,
     }
 }
@@ -289,12 +308,23 @@ fn cleanup_update_leftovers(temp: &std::path::Path, root: &std::path::Path, now:
 async fn run(install: bool, background: bool) -> anyhow::Result<()> {
     let root=folder();
     let source=std::fs::read(root.join("update-source.json")).ok().and_then(|raw| serde_json::from_slice::<Value>(&raw).ok());
-    let url=source.as_ref().and_then(|value| value["feedUrl"].as_str()).filter(|url| !url.is_empty()).unwrap_or(if cfg!(target_os="macos") {DEFAULT_MAC_FEED}else{DEFAULT_FEED});
-    let url=platform_feed(url, cfg!(target_os="macos"));
+    let here=Platform::here();
+    let url=source.as_ref().and_then(|value| value["feedUrl"].as_str()).filter(|url| !url.is_empty()).unwrap_or(here.feed());
+    let url=platform_feed(url, here);
     anyhow::ensure!(reqwest::Url::parse(url)?.scheme()=="https", "Update feed must use HTTPS.");
     progress(0,"Checking for updates…");
     let client=HTTP_CLIENT.as_ref().map_err(|error| anyhow::anyhow!("Update client could not start: {error}"))?;
-    let raw=current_feed(client, url, feed_timeout(background)).await?;
+    let raw=match current_feed(client, url, feed_timeout(background)).await {
+        Ok(raw)=>raw,
+        // 1.24.33: Linux downloads are published from 1.24.33 on. Until the first one is out the Linux feed does not
+        // exist; that is not a failed check (test builds would otherwise show an update error at every start).
+        Err(error) if not_published_yet(here, url, &error.to_string()) => {
+            let mut s=state();s.checked_at=std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64;
+            s.check_error=None;s.error=None;s.available=false;s.progress=100;s.message="Linux updates start with the first published Linux release.".into();
+            return Ok(());
+        }
+        Err(error)=>return Err(error),
+    };
     anyhow::ensure!(raw.len()<=65536,"Release feed is too large.");
     let feed: Value = serde_json::from_slice(&raw)?;
     let (latest,download,hash)=validate(&feed)?;
@@ -326,19 +356,18 @@ async fn run(install: bool, background: bool) -> anyhow::Result<()> {
             return Ok(());
         }
     }
-    if matches!(official_feed(url), DEFAULT_FEED | DEFAULT_MAC_FEED) {
-        download = verify_official_release(client, &latest, &download, &hash, cfg!(target_os="macos")).await?;
+    if matches!(official_feed(url), DEFAULT_FEED | DEFAULT_MAC_FEED | DEFAULT_LINUX_FEED) {
+        download = verify_official_release(client, &latest, &download, &hash, here).await?;
     }
     { let mut s=state();s.background=false;s.error=None; }
-    #[cfg(not(any(windows, target_os="macos")))] anyhow::bail!("Installing desktop updates requires Windows or macOS.");
-    #[cfg(any(windows, target_os="macos"))] {
+    {
         #[cfg(windows)]
         use std::os::windows::process::CommandExt;
         let stage=std::env::temp_dir().join(format!("PlazCode-download-{}-{}",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis()));
-        std::fs::create_dir_all(&stage)?;let path=stage.join("release.zip");
+        std::fs::create_dir_all(&stage)?;let path=stage.join(if here == Platform::Linux { "release.tar.gz" } else { "release.zip" });
         // Run an immutable helper copy; installing its replacement must not
         // truncate the shell script while it is still executing.
-        let helper_copy=stage_helper(&root,&stage,cfg!(windows))?;
+        let helper_copy=stage_helper(&root,&stage,here)?;
         // The shared client's 180 s total timeout would abort every download on a
         // connection slower than about 200 KB/s. Bound the whole transfer
         // generously and treat 60 s without any received bytes as a stall.
@@ -365,6 +394,8 @@ async fn run(install: bool, background: bool) -> anyhow::Result<()> {
         let log_path = root.join("logs").join("updater.log");
         #[cfg(target_os="macos")]
         let log_path = crate::platform::configuration_root().join("logs").join("updater.log");
+        #[cfg(target_os="linux")]
+        let log_path = crate::profile_paths::legacy_data_root().join("logs").join("updater.log");
         let log_path = if std::fs::create_dir_all(log_path.parent().unwrap()).is_ok() { log_path } else { stage.join("updater.log") };
         let (log_path, log) = match std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
             Ok(log) => (log_path, log),
@@ -378,6 +409,19 @@ async fn run(install: bool, background: bool) -> anyhow::Result<()> {
             // outside the signed app so a failed relaunch remains inspectable.
 
             std::process::Command::new("/bin/bash").arg(helper_copy).arg(path).arg(hash).arg(&latest).arg(std::process::id().to_string()).arg(if restore_window {"restore"} else if quiet_restart {"background"} else {"foreground"}).arg(&root).arg("signed").current_dir(&root).stdout(log.try_clone()?).stderr(log).spawn()?
+        };
+        // 1.24.33: the Linux helper closes this process, replaces PlazCode's own files (keeping yours), checks the
+        // signed file list with the installed program and starts the new one.
+        #[cfg(target_os="linux")]
+        let mut helper_process = {
+            use std::os::unix::process::CommandExt;
+            let mut command = std::process::Command::new("/bin/bash");
+            command.arg(helper_copy).arg(&path).arg(&hash).arg(&latest).arg(std::process::id().to_string())
+                .arg(if restore_window {"restore"} else if quiet_restart {"background"} else {"foreground"}).arg(&root).arg("signed")
+                .current_dir(&root).stdin(std::process::Stdio::null()).stdout(log.try_clone()?).stderr(log);
+            // Its own session: closing this PlazCode (or the terminal it was started from) never stops the update half way.
+            unsafe { command.pre_exec(|| { libc::setsid(); Ok(()) }); }
+            command.spawn()?
         };
         // 1.24.29 (owner, 2026-10-31: "sometimes it gets stuck updating"). The helper closes this process before
         // it changes any installed file, so while we are still waiting nothing has been changed. A helper that
@@ -439,9 +483,7 @@ static CHECK_REQUEST: once_cell::sync::Lazy<tokio::sync::Notify> = once_cell::sy
 /// applies without restarting PlazCode. Manual "Update now" ignores it.
 fn auto_updates_enabled() -> bool {if crate::profile_paths::initialized()&&!crate::profile_paths::has_active_profile(){return false;} crate::preferences::PreferencesStore::load().snapshot().auto_update }
 pub fn request_launch_update() { AUTO_INSTALL.store(true, std::sync::atomic::Ordering::SeqCst);LAUNCH_UPDATE.store(true, std::sync::atomic::Ordering::SeqCst);CHECK_REQUEST.notify_one(); }
-const LINUX_UPDATE_MESSAGE: &str = "Linux automatic updates are not published yet. Use the native Linux download; Windows EXE and Mac packages cannot update Linux.";
 pub fn start_checker() {
-    if cfg!(target_os="linux") { state().message=LINUX_UPDATE_MESSAGE.into(); return; }
     tokio::spawn(async {
         { let root=folder(); let _ = tokio::task::spawn_blocking(move || cleanup_update_leftovers(&std::env::temp_dir(), &root, std::time::SystemTime::now())).await; }
         let mut interval = tokio::time::interval(Duration::from_secs(30));
@@ -481,11 +523,6 @@ pub async fn get() -> Json<Status> {
     Json(snapshot)
 }
 pub async fn post(Json(value): Json<Value>) -> axum::response::Response {
-    if cfg!(target_os="linux") {
-        if !matches!(value["action"].as_str(), Some("launch"|"check"|"install")) {return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"error":"Unknown update action."}))).into_response();}
-        state().message=LINUX_UPDATE_MESSAGE.into();
-        return Json(state().clone()).into_response();
-    }
     if value["action"]=="launch" { request_launch_update();return Json(serde_json::json!({"ok":true,"queued":true})).into_response(); }
     let install=match value["action"].as_str() { Some("check")=>false,Some("install")|Some("launch")=>true,_=>return (axum::http::StatusCode::BAD_REQUEST,Json(serde_json::json!({"error":"Unknown update action."}))).into_response() };
     let silent=value["action"]=="launch" || (!install && value["background"].as_bool().unwrap_or(false));
@@ -575,6 +612,32 @@ pub async fn post(Json(value): Json<Value>) -> axum::response::Response {
             assert_eq!(super::platform_feed(source,false),super::DEFAULT_FEED);
         }
         assert_eq!(super::platform_feed("https://example.com/custom.json",true),"https://example.com/custom.json");
+    }
+    #[test] fn linux_has_its_own_feed_package_and_helper() {
+        use super::Platform;
+        for source in [super::DEFAULT_FEED,super::DEFAULT_MAC_FEED,super::DEFAULT_LINUX_FEED] {
+            assert_eq!(super::platform_feed(source,Platform::Linux),super::DEFAULT_LINUX_FEED);
+            assert_eq!(super::platform_feed(source,true),super::DEFAULT_MAC_FEED,"Mac stays on its feed");
+            assert_eq!(super::platform_feed(source,false),super::DEFAULT_FEED,"Windows stays on its feed");
+        }
+        assert_eq!(super::DEFAULT_FEED,"https://raw.githubusercontent.com/stoveez/PlazCode/main/latest.json","the Windows feed address never changes");
+        assert_eq!(super::DEFAULT_MAC_FEED,"https://raw.githubusercontent.com/stoveez/PlazCode/main/latest-macos.json","the Mac feed address never changes");
+        assert_eq!(Platform::Linux.package("1.24.33"),"PlazCode-Linux-1.24.33.tar.gz");
+        assert!(super::not_published_yet(Platform::Linux,super::DEFAULT_LINUX_FEED,"HTTP status client error (404 Not Found) for url"));
+        assert!(!super::not_published_yet(Platform::Linux,super::DEFAULT_LINUX_FEED,"error sending request"),"offline is still a failed check");
+        assert!(!super::not_published_yet(Platform::Windows,super::DEFAULT_FEED,"404 Not Found"),"Windows and Mac keep reporting a missing feed");
+        assert_eq!(Platform::Windows.package("1.24.33"),"PlazCode-1.24.33.zip");assert_eq!(Platform::Mac.package("1.24.33"),"PlazCode-macOS-1.24.33.zip");
+        let hash="a".repeat(64);let ver="1.24.33";let url=format!("https://github.com/stoveez/PlazCode/releases/download/v{ver}/PlazCode-Linux-{ver}.tar.gz");
+        let record=serde_json::json!({"tag_name":"v1.24.33","draft":false,"prerelease":false,"assets":[{"name":"PlazCode-Linux-1.24.33.tar.gz","state":"uploaded","browser_download_url":url,"digest":format!("sha256:{hash}")}]});
+        assert!(super::verify_official_record(&record,ver,&url,&hash,Platform::Linux).is_ok());
+        assert!(super::verify_official_record(&record,ver,"https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-Linux-1.24.33.tar.gz",&hash,Platform::Linux).is_ok());
+        assert!(super::verify_official_record(&record,ver,&url,&hash,false).is_err(),"a Windows install never takes the Linux package");
+        assert_eq!(super::official_asset_fallback(ver,&hash,Platform::Linux).unwrap(),url);
+        let root=std::env::temp_dir().join(format!("plazcode-linux-helper-{}",std::process::id()));let _=std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("PlazCode-Extension")).unwrap();std::fs::write(root.join("PlazCode-Extension/manifest.json"),"{}").unwrap();
+        let staged=super::stage_helper(&root,&root.join("stage"),Platform::Linux).unwrap();
+        assert!(staged.ends_with("Update-PlazCode-Linux.sh"));assert_eq!(std::fs::read_to_string(staged).unwrap(),include_str!("../../Update-PlazCode-Linux.sh"));
+        let _=std::fs::remove_dir_all(&root);
     }
     #[test] fn official_release_requires_matching_stable_platform_asset() {
         let ver = "1.19.30"; let hash = "a".repeat(64);

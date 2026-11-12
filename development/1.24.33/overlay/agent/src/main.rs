@@ -72,6 +72,8 @@ mod gui;
 mod linux_desktop;
 #[cfg(target_os="linux")]
 mod linux_setup;
+#[cfg(target_os="linux")]
+mod vinegar;
 mod browser_setup;
 mod workspace;
 mod safety;
@@ -308,7 +310,11 @@ impl McpRuntime {
             if let Some(path) = paths.iter().find(|path| path.is_file()) { return Ok((path.to_string_lossy().into_owned(), vec![])); }
             anyhow::bail!("Roblox Studio MCP launcher is missing. Install Roblox Studio and enable Studio as MCP server in Assistant settings.");
         }
-        #[cfg(not(target_os = "macos"))]
+        // 1.24.33 (Linux rework, experimental): Roblox Studio runs through Vinegar on Linux; its own StudioMCP.exe is
+        // started with Vinegar's Wine in Studio's prefix (vinegar.rs).
+        #[cfg(target_os = "linux")]
+        { return vinegar::launcher(); }
+        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
         {
         let local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
         let roots: Vec<PathBuf> = ["LOCALAPPDATA", "PROGRAMFILES", "PROGRAMFILES(X86)"]
@@ -2320,7 +2326,8 @@ async fn connections_handler(State(state): State<AppState>) -> impl IntoResponse
     let servers = state.ui.servers.lock().map(|value| value.clone()).unwrap_or_default();
     let preview = blender::preview();
     let extension = state.ui.extension_recent();
-    match tokio::task::spawn_blocking(move || connections::report(&servers, preview, extension)).await {
+    let studio = (state.ui.studio_running.load(Ordering::Relaxed), state.ui.mcp_alive.load(Ordering::Relaxed));
+    match tokio::task::spawn_blocking(move || connections::report(&servers, preview, extension, studio)).await {
         Ok(report) => Json(report).into_response(),
         Err(error) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(),
     }

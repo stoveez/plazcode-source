@@ -245,3 +245,24 @@ for field,value in [('source_sha256','b'*64),('sha256','c'*64)]:
  rejected(promotion.verify_shared_code,fixture_source,bad,{'protection.js':(b'verified transformed output',0)})
 assert promotion.expected_source_hashes('protection.js',loader,public)!=promotion.expected_source_hashes('protection.js',loader,'d'*64)
 print('PASS authenticated loader source provenance accepts only exact LF/CRLF checkout forms; changed code/key/output rejected.')
+# 1.24.33 (Linux published): the .tar.gz keeps file modes, is the same bytes every time and passes the publish check.
+sys.path.insert(0,str(here.parents[1]))
+from publish_release import validate_linux_archive
+linux_files={'PlazCode/PlazCode':(b'\x7fELFprogram',0o100755<<16),'PlazCode/Update-PlazCode-Linux.sh':(b'#!/bin/bash\n',0o100755<<16),
+    'PlazCode/manifest.json':(json.dumps({'version':promotion.VERSION}).encode(),0o100644<<16),'PlazCode/PlazCode-Extension/manifest.json':(json.dumps({'version':promotion.VERSION}).encode(),0o100644<<16),
+    'PlazCode/PlazCode-Extension-Firefox/manifest.json':(json.dumps({'version':promotion.VERSION}).encode(),0o100644<<16),
+    'PlazCode/runtime/engram/engram-linux-amd64':(b'\x7fELFhelper',0o100755<<16)}
+with tempfile.TemporaryDirectory() as folder:
+    first,second=Path(folder)/'a.tar.gz',Path(folder)/'b.tar.gz'
+    promotion.pack_tar(first,linux_files);promotion.pack_tar(second,linux_files)
+    assert first.read_bytes()==second.read_bytes(),'Linux archive must be reproducible'
+    validate_linux_archive(first.read_bytes(),promotion.VERSION)
+    import tarfile
+    with tarfile.open(first) as archive:
+        assert archive.getmember('PlazCode/runtime/engram/engram-linux-amd64').mode==0o755 and archive.getmember('PlazCode/manifest.json').mode==0o644
+    rejected(promotion.pack_tar,first,linux_files)
+    promotion.validate(linux_files,'linux')
+    try:promotion.validate({**linux_files,'PlazCode/PlazCode.exe':(b'MZ',0)},'linux')
+    except AssertionError:pass
+    else:raise AssertionError('A Linux package with a Windows program was accepted')
+print('PASS Linux release archive: modes kept, reproducible bytes, publish check passes, never overwritten.')

@@ -19,7 +19,7 @@ class FeedTests(unittest.TestCase):
         f={'version':'1','release_notes':[{'version':'1'}]}
         validate(f,b' '*65536)
         with self.assertRaises(ValueError):validate(f,b' '*65537)
-        for filename in ['latest.json','latest-macos.json']:
+        for filename in ['latest.json','latest-macos.json','latest-linux.json']:
             p=pathlib.Path(filename)
             if p.exists():validate(json.loads(p.read_bytes()),p.read_bytes())
 if __name__=='__main__':unittest.main()
