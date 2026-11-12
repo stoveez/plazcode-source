@@ -1,8 +1,12 @@
 ---
 title: Test builds and the public-then-private plan
 
-updated: 2026-11-06
+updated: 2026-11-11
 ---
+
+## 2026-11-11 — 1.24.33 test build ALL GREEN
+**1.24.33 test build (2026-11-11, CI run 43150029756 on source `d3a88b6`, ALL GREEN: Windows, Mac, Linux, browsers, release check; NOT published; needs the new app AND an extension reload):** artifacts `plazcode-1.24.33-Windows-test-lean` (52,447,240 bytes as GitHub's download) and `plazcode-1.24.33-macOS-test-lean` (54,558,975 bytes) on https://github.com/stoveez/plazcode-source/actions/runs/43150029756 . Inside: everything after 1.24.32 — the Apps & servers rework (Blender in the background and in the open window with PlazCode's own helper, Godot, Unity, Figma, Blockbench, all in 15 languages), helper agents, several commands per reply, the desktop Studio look and polish, Notion and DeepSeek command fixes, bridge speed fixes. **Not done for this build:** this session could not download the artifacts (the proxy blocks GitHub's artifact storage) and has no Google Drive connector, so the owner downloads them from the run page (GitHub wraps each in its own zip: open it once to get the inner `PlazCode-1.24.33-test-lean.zip` / `PlazCode-macOS-1.24.33-test-lean.zip`), and the inner file list was not compared with the 1.24.32 release zip by hand (`package.py` builds the lean zip as the full update package minus only DEVELOPMENT.txt). Owner field-test list: `docs/vault/open-work.md`.
+
 
 2026-11-05 FOLLOW-UP COMPLETE: full CI42146181204/adf89f6 ALL GREEN, official135PASS/0fail; new exact full Windows/universal Mac inner ZIPs delivered through Drive with name/MIME/byte readback. Bridge discovery, strict ChatGPT receipts, namespace correction, safe native append, DeepSeek stream/progress/composer roots fixed. All262JS on all3hosts (Linux twice), nativeWin304/Mac309/Linux311PASS+2ignored, ChatGPT27/installed HTTPS lifecycle/Chromium+Firefox/preservation958/DOM325/healthy70/pins34 PASS. Full app replacement required; extension reload + AI-tab refresh. Prior42078807676 lacks follow-up. No stable publication. Source Private reminder remains until confirmed; owner PC vault not connected. See connection-startup-followup-2026-11-05.md and verification JSON.
 
