@@ -101,6 +101,7 @@ mod mcp_addons;
 mod connections;
 mod helper_socket;
 mod blockbench;
+mod figma;
 /// The port the bridge listens on (127.0.0.1 only). PlazCode's helpers in other apps dial it too.
 pub const BRIDGE_PORT: u16 = 3000;
 mod runtime;
@@ -1372,7 +1373,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
     })).allow_methods([Method::GET, Method::POST, Method::OPTIONS]).allow_headers(Any);
     updater::start_checker();
     // Blockbench: the pairing word the helper connection accepts and the helper file follow the saved choices.
-    blockbench::resync();
+    blockbench::resync();figma::resync();
     let linux_launch = linux_launch_routes(state.clone());
     let app = Router::new()
         .route("/", get(|| async { Json(serde_json::json!({"ok": true, "service": "plazcode-agent", "version": env!("CARGO_PKG_VERSION")})) }))
@@ -1431,6 +1432,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/connections", get(connections_handler))
         .route("/api/connections/setup", post(connections_setup_handler))
         .route("/api/blockbench", post(blockbench::post).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024)))
+        .route("/api/figma", post(figma::post).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024)))
         .route("/ws", get(ws_handler))
         .layer(axum::middleware::from_fn(track_tool_activity))
         .merge(linux_authenticated_routes())
@@ -1976,14 +1978,14 @@ async fn profile_action_handler(State(state):State<AppState>,headers:axum::http:
                 reset_profile_runtime(&state).await;
                 let entered=async{
                     let active=if let Some(candidate)=candidate{state.accounts.commit(candidate).await?}else{state.accounts.enter_guest().await?};
-                    profile_paths::select(Some(profile_paths::profile_root(&active.id)?));blockbench::resync();
+                    profile_paths::select(Some(profile_paths::profile_root(&active.id)?));blockbench::resync();figma::resync();
                     state.preferences.select_path(profile_paths::settings_path())?;
                     let _=account_sync::run(&state).await;
                     let prefs=state.preferences.snapshot();state.workspace.set_full_access(prefs.perm_mode=="full");state.workspace.set_allowed_folders(&prefs.allowed_folders);
                     state.profile_change.send_modify(|value|*value=value.wrapping_add(1));
                     Ok::<_,anyhow::Error>(serde_json::json!({"ok":true,"profile":active,"preferences":prefs}))
                 }.await;
-                if entered.is_err(){state.accounts.lock();profile_paths::select(None);let _=state.preferences.select_path(profile_paths::settings_path());blockbench::resync();}
+                if entered.is_err(){state.accounts.lock();profile_paths::select(None);let _=state.preferences.select_path(profile_paths::settings_path());blockbench::resync();figma::resync();}
                 entered
             },
             "remove"=>{state.accounts.remove(action.id.as_deref().unwrap_or("")).await?;Ok(serde_json::json!({"ok":true}))},
@@ -1993,7 +1995,7 @@ async fn profile_action_handler(State(state):State<AppState>,headers:axum::http:
                 if action.action=="sync"{let _lease=accounts::ACCESS.read().await;account_sync::run(&state).await?;return Ok(serde_json::json!({"ok":true,"status":account_sync::status(&active.id)}));}
                 if action.action=="ui-migrated"{state.accounts.acknowledge_ui().await?;return Ok(serde_json::json!({"ok":true}));}
                 state.cancellation.cancel_all();let _guard=accounts::ACCESS.write().await;
-                reset_profile_runtime(&state).await;state.accounts.lock();profile_paths::select(None);state.preferences.select_path(profile_paths::settings_path())?;blockbench::resync();
+                reset_profile_runtime(&state).await;state.accounts.lock();profile_paths::select(None);state.preferences.select_path(profile_paths::settings_path())?;blockbench::resync();figma::resync();
                 state.workspace.set_full_access(false);state.workspace.set_allowed_folders(&[]);
                 state.profile_change.send_modify(|value|*value=value.wrapping_add(1));
                 Ok(serde_json::json!({"ok":true}))
@@ -2061,6 +2063,7 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
         "workspace_root": state.ui.workspace_root.lock().map(|value| value.clone()).unwrap_or_default(),
         "blender_connected": blender::connected(),
         "blockbench": blockbench::status(),
+        "figma": figma::status(),
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "roblox_bridge_connected": state.roblox_clients.read().await.len() > 0,
         "local_bridge_connected": state.local_clients.read().await.len() > 0,
@@ -2225,6 +2228,7 @@ async fn debug_report_handler(State(state): State<AppState>) -> impl IntoRespons
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "blender_connected": blender::connected(),
         "blockbench": blockbench::status(),
+        "figma": figma::status(),
         "workspace_ready": state.workspace.ready(),
         "mcp_busy": state.mcp_in_flight.load(Ordering::Relaxed) > 0,
     });
@@ -2317,6 +2321,12 @@ async fn connections_setup_handler(State(state): State<AppState>, Json(request):
             blockbench::sync(&saved.apps.get(blockbench::APP).cloned().unwrap_or_default());
             return Ok(match next { blockbench::Next::Sync => connections::After::Nothing, blockbench::Next::Check => connections::After::BlockbenchCheck, blockbench::Next::Show => connections::After::BlockbenchShow });
         }
+        if request.id == figma::APP {
+            let next = figma::apply(&mut saved, &request, &blender_addon::new_token)?;
+            connections::save_to(&path, &saved)?;
+            figma::sync(&saved.apps.get(figma::APP).cloned().unwrap_or_default());
+            return Ok(match next { figma::Next::Sync => connections::After::Nothing, figma::Next::Check => connections::After::FigmaCheck, figma::Next::Show => connections::After::FigmaShow });
+        }
         let (switch, after) = connections::apply(&mut saved, &request, &facts)?;
         connections::save_to(&path, &saved)?;
         if let Some((id, on)) = switch { if mcp_addons::is_enabled(id) != on { mcp_addons::set_catalog_enabled(id, on)?; } }
@@ -2328,6 +2338,8 @@ async fn connections_setup_handler(State(state): State<AppState>, Json(request):
             match after {
                 connections::After::BlenderCheck => { tokio::spawn(async { blender::check().await; }); }
                 connections::After::BlockbenchCheck => { tokio::spawn(async { blockbench::check().await; }); }
+                connections::After::FigmaCheck => { tokio::spawn(async { figma::check().await; }); }
+                connections::After::FigmaShow => { if let Err(error) = figma::show_folder() { return Json(serde_json::json!({"ok": false, "error": error})).into_response(); } }
                 connections::After::BlockbenchShow => { if let Err(error) = blockbench::show_folder() { return Json(serde_json::json!({"ok": false, "error": error})).into_response(); } }
                 connections::After::BlenderStop => { blender::clear_preview(); tokio::spawn(blender_headless::stop()); }
                 connections::After::BlenderInstall => {
@@ -2407,6 +2419,7 @@ async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {
         "account_sync":state.accounts.active().map(|p|account_sync::status(&p.id)),
         "blender_connected": blender::connected(),
         "blockbench": blockbench::status(),
+        "figma": figma::status(),
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "roblox_bridge_connected": state.roblox_clients.read().await.len() > 0,
         "local_bridge_connected": state.local_clients.read().await.len() > 0,

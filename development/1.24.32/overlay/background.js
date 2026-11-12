@@ -781,8 +781,78 @@ async function blockbenchCall(name, args, timeout) {
   return { ok: true, text: text.length > 400000 ? text.slice(0, 400000) + "\n[cut: the answer was longer than PlazCode passes on at once]" : text, images: noImages };
 }
 
+// ── Figma (1.24.33) ──────────────────────────────────────────────────────────
+// PlazCode's own helper runs inside the Figma desktop app (the person starts it from Figma's Plugins menu) and is
+// connected to the PlazCode app. These tools send one named action to the app, which passes it to that helper.
+// They are offered to the AI only while the app says the helper is connected (figma.connected in its status),
+// which also means the person pressed Allow. There is no free-code action. The older paid "Figma Dev Mode"
+// connection is a different server and is not touched here.
+let figmaHelper = { consent: false, connected: false };
+function fgtool(name, description, props, required) {
+  return { name, server: "plazcode-figma", description, inputSchema: { type: "object", properties: props || {}, required: required || [] } };
+}
+const FG_S = { type: "string" }, FG_N = { type: "number" }, FG_B = { type: "boolean" }, FG_LIST = { type: "array", items: { type: "string" }, description: "part ids or exact names" };
+const FG_T = { type: "string", description: "a part's id (like 12:34) or its exact name on the current page" }, FG_C = { type: "string", description: "colour like #ff8800 (or #ff880080 with see-through), or none" };
+const FG_PLACE = { name: FG_S, parent: { type: "string", description: "id or name of the frame to put it in (default: the page)" }, x: FG_N, y: FG_N, width: FG_N, height: FG_N };
+const FG_LOOK = { fill: FG_C, stroke: FG_C, stroke_width: FG_N, corner_radius: FG_N, opacity: { type: "number", description: "0 to 1" }, rotation: FG_N, visible: FG_B };
+const FG_LAYOUT = { direction: { type: "string", description: "row, column or none" }, gap: FG_N, padding: { description: "one number, or [top, right, bottom, left]" }, align: { type: "string", description: "start, center, end or between" }, cross_align: { type: "string", description: "start, center or end" }, hug: { type: "boolean", description: "true = the frame shrinks to fit what is inside" } };
+const FIGMA_TOOLS = [
+  fgtool("figma_status", "Figma: the open file, the current page, how many parts it has and how many are selected."),
+  fgtool("figma_pages", "List the pages of the open Figma file."),
+  fgtool("figma_page_set", "Go to another page of the file.", { page: { type: "string", description: "page id or name" } }, ["page"]),
+  fgtool("figma_outline", "The parts of the current page (or of one frame: target) as a tree with id, name, type, position and size. depth = how many levels (default 3).", { target: FG_T, depth: { type: "integer" } }, []),
+  fgtool("figma_node", "Everything about one part: size, colours, text, font, auto layout, what it sits in.", { target: FG_T }, ["target"]),
+  fgtool("figma_find", "Find parts on the current page by part of their name and/or by type (FRAME, TEXT, RECTANGLE, ELLIPSE, GROUP, COMPONENT, INSTANCE).", { name: FG_S, type: FG_S }, []),
+  fgtool("figma_selection", "The parts that are selected in Figma now, in detail."),
+  fgtool("figma_select", "Select parts in Figma and bring them into view (an empty list clears the selection).", { targets: FG_LIST }, []),
+  fgtool("figma_frame_add", "Add a frame (a screen, card or container). Give direction to make it an auto-layout frame.", Object.assign({}, FG_PLACE, FG_LOOK, FG_LAYOUT), []),
+  fgtool("figma_rectangle_add", "Add a rectangle.", Object.assign({}, FG_PLACE, FG_LOOK), []),
+  fgtool("figma_ellipse_add", "Add an ellipse or circle.", Object.assign({}, FG_PLACE, FG_LOOK), []),
+  fgtool("figma_text_add", "Add text. font = family (default Inter), font_style = Regular, Bold, ...", { text: FG_S, name: FG_S, parent: FG_PLACE.parent, x: FG_N, y: FG_N, font: FG_S, font_style: FG_S, font_size: FG_N, fill: FG_C, opacity: FG_LOOK.opacity, rotation: FG_N }, ["text"]),
+  fgtool("figma_update", "Change one part: new_name, x, y, width, height, the look (fill, stroke, corner_radius, opacity, rotation, visible), parent (move it into another frame), and for text: text, font, font_style, font_size.", Object.assign({ target: FG_T, new_name: FG_S, parent: FG_PLACE.parent, x: FG_N, y: FG_N, width: FG_N, height: FG_N, text: FG_S, font: FG_S, font_style: FG_S, font_size: FG_N }, FG_LOOK), ["target"]),
+  fgtool("figma_auto_layout", "Turn auto layout on a frame on, change it, or turn it off (direction none).", Object.assign({ target: FG_T }, FG_LAYOUT), ["target"]),
+  fgtool("figma_remove", "Remove parts (a frame or group goes with everything inside it). Pages are never removed.", { targets: FG_LIST }, ["targets"]),
+  fgtool("figma_duplicate", "Copy parts. offset = [x, y] to move the copies (default 20, 20).", { targets: FG_LIST, offset: { type: "array", items: { type: "number" } } }, ["targets"]),
+  fgtool("figma_group", "Group parts that sit in the same frame or page.", { targets: FG_LIST, name: FG_S }, ["targets"]),
+  fgtool("figma_component_create", "Turn a frame or other part into a component.", { target: FG_T }, ["target"]),
+  fgtool("figma_instance_add", "Place a copy (an instance) of a component.", { component: FG_T, name: FG_S, parent: FG_PLACE.parent, x: FG_N, y: FG_N }, ["component"]),
+  fgtool("figma_styles", "The file's own colour styles and text styles."),
+  fgtool("figma_export", "A picture (PNG) of one part: target, or the first selected part. scale 0.1 to 4 (default 1).", { target: FG_T, scale: FG_N }, []),
+  fgtool("figma_undo", "Undo the last change in Figma."),
+];
+const FIGMA_TOOL_NAMES = new Set(FIGMA_TOOLS.map((t) => t.name));
+function isFigmaToolName(name) { return FIGMA_TOOL_NAMES.has(String(name || "").split("__").pop()); }
+function figmaLive() { return figmaHelper.consent === true && figmaHelper.connected === true; }
+function setFigma(next) {
+  const was = figmaLive();
+  figmaHelper = { consent: next.consent === true, connected: next.connected === true };
+  if (was !== figmaLive()) broadcastStatus();
+}
+async function figmaCall(name, args, timeout) {
+  const cmd = String(name || "").split("__").pop().replace(/^figma_/, "");
+  if (!figmaHelper.consent) return { ok: false, error: "Figma is not connected. Open PlazCode, go to Apps & servers and connect Figma." };
+  const limit = Math.min(120000, Math.max(5000, cmd === "export" ? 60000 : Math.min(timeout || 30000, 30000)));
+  let body;
+  try {
+    const response = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/figma", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cmd, args: args || {}, timeout_seconds: Math.ceil(limit / 1000) }), signal: AbortSignal.timeout(limit + 15000) });
+    if (response.status === 404) return { ok: false, error: "Figma needs the newer PlazCode desktop app. Update the app (it comes with this extension update), then try again. Nothing was changed." };
+    body = await response.json().catch(() => ({}));
+  } catch (error) { return { ok: false, error: "Figma could not be reached (" + String(error && error.message || error).slice(0, 200) + ")." }; }
+  if (!body || body.ok !== true) return { ok: false, error: String(body && body.error || "The PlazCode app could not reach Figma.").slice(0, 4000) };
+  const result = body.result;
+  if (cmd === "export") {
+    const match = /^data:(image\/png);base64,([A-Za-z0-9+/=]+)$/.exec(String(result && result.image || ""));
+    if (!match) return { ok: false, error: "Figma did not give a picture." };
+    return { ok: true, text: "Picture of \"" + String(result.of && result.of.name || "the part").slice(0, 200) + "\" from Figma.", images: [{ mimeType: match[1], data: match[2] }] };
+  }
+  const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
+  const noPictures = [];
+  return { ok: true, text: text.length > 400000 ? text.slice(0, 400000) + "\n[cut: the answer was longer than PlazCode passes on at once]" : text, images: noPictures };
+}
+
 function blenderServers(list) {
-  const rest = (Array.isArray(list) ? list : []).filter((s) => s && s.id !== "blender" && s.id !== "blockbench");
+  const rest = (Array.isArray(list) ? list : []).filter((s) => s && s.id !== "blender" && s.id !== "blockbench" && s.id !== "plazcode-figma");
+  if (typeof figmaLive === "function" && figmaLive()) rest.push({ id: "plazcode-figma", name: "Figma (PlazCode helper)", alive: true, tools: FIGMA_TOOLS.length });
   if (typeof blockbenchLive === "function" && blockbenchLive()) rest.push({ id: "blockbench", name: "Blockbench", alive: true, tools: BLOCKBENCH_TOOLS.length });
   if (blenderAddon) {
     rest.push({
@@ -795,6 +865,7 @@ function blenderServers(list) {
 function mergeBlenderTools(tools) {
   const base = Array.isArray(tools) ? tools.slice() : [];
   if (typeof blockbenchLive === "function" && blockbenchLive()) { const known = new Set(base.map((t) => t && t.name)); for (const t of BLOCKBENCH_TOOLS) if (!known.has(t.name)) base.push(t); }
+  if (typeof figmaLive === "function" && figmaLive()) { const known = new Set(base.map((t) => t && t.name)); for (const t of FIGMA_TOOLS) if (!known.has(t.name)) base.push(t); }
   if (!blenderAddon) return base;
   const have = new Set(base.map((t) => t && t.name));
   for (const t of BLENDER_TOOLS) if (!have.has(t.name)) base.push(t);
@@ -1319,6 +1390,7 @@ async function refreshProcStatus() {
     // The desktop's editor probe is authoritative; a browser socket or a
     // process-name scan alone cannot establish Studio readiness.
     if(j.blockbench && typeof j.blockbench==="object")setBlockbench(j.blockbench);
+    if(j.figma && typeof j.figma==="object")setFigma(j.figma);
     if(typeof j.blender_connected==="boolean" && !blenderSuppressed && j.blender_connected!==blenderAddon)setBlender(j.blender_connected,j.blender_connected ? "" : "Blender’s last scene check failed. Use Connect Blender for the exact error.");
     const editor = typeof j.roblox_connected === "boolean" ? j.roblox_connected : robloxEditorConnected;
     const nr = j.roblox_proc === true || editor;
@@ -2904,6 +2976,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         const timeout = (msg.timeout || 120000) + 10000;
         if (isBlockbenchToolName(msg.name)) {
           sendResponse(await blockbenchCall(msg.name, msg.arguments, timeout));
+          break;
+        }
+        if (isFigmaToolName(msg.name)) {
+          sendResponse(await figmaCall(msg.name, msg.arguments, timeout));
           break;
         }
         if (blenderAddon && isBlenderToolName(msg.name)) {

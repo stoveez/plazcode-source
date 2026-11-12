@@ -1273,5 +1273,14 @@
   "PlazCode's browser extension will work inside the Blockbench tab in your browser. Nothing in your models changes until you ask the AI.": null,
   "Show the file": null,
   "In my browser": null,
-  "The Blockbench app": null
+  "The Blockbench app": null,
+  "Check that Figma answers": null,
+  "Figma is not open, or the PlazCode helper is not running in it. In the Figma desktop app open a design file, then choose Plugins, Development, PlazCode. Do this each time you open Figma, and keep the helper's small window open.": null,
+  "Make the PlazCode helper for Figma": null,
+  "PlazCode makes its own small helper for Figma. You add it to the Figma desktop app once and start it from Figma's Plugins menu. It works on free Figma plans.": null,
+  "PlazCode will make a small helper in its own folder for you to add to Figma. Nothing in your designs changes until you ask the AI.": null,
+  "Read and edit your designs: frames, text, shapes and layout.": null,
+  "Show the folder": null,
+  "Start the helper in Figma": null,
+  "This needs the Figma desktop app (not Figma in a browser). Open a design file there. In the menu choose Plugins, Development, Import plugin from manifest, and pick the file manifest.json in PlazCode's helper folder. You import it once. Then choose Plugins, Development, PlazCode to start it. Start it each time you open Figma, and keep its small window open.": null
 }

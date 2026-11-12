@@ -12,6 +12,8 @@ const PlazCodeSafety = (() => {
   // PlazCode's Blockbench actions that only look (core/blockbench-tools.js marks the same ones change:false).
   const BLOCKBENCH_READ = new Set(["blockbench_status", "blockbench_formats", "blockbench_outline", "blockbench_select", "blockbench_selection",
     "blockbench_texture_list", "blockbench_animation_list", "blockbench_screenshot", "blockbench_export"]);
+  // PlazCode's Figma helper actions that only look (agent/figma_code.js marks the same ones change:false).
+  const FIGMA_READ = new Set(["figma_status", "figma_pages", "figma_page_set", "figma_outline", "figma_node", "figma_find", "figma_selection", "figma_select", "figma_styles", "figma_export"]);
   const READ_PREFIXES = ["get_", "list_", "search_", "inspect_", "read_", "find_", "describe_", "query_"];
   const READ_EXACT = new Set(["analyze_luau", "luau_lookup", "script_read", "script_grep", "script_search", "script_analysis", "screen_capture",
     "browser_snapshot", "browser_take_screenshot", "browser_console_messages", "browser_network_requests", "browser_tabs", "browser_wait_for", "look"]);
@@ -51,6 +53,7 @@ const PlazCodeSafety = (() => {
     const raw = String(name || "");
     if (PLAZCODE_OWN.test(raw) || PLAZCODE_OWN_BARE.test(bare(raw))) return false;
     if (/^blockbench_/.test(bare(raw))) return !BLOCKBENCH_READ.has(bare(raw));
+    if (/^figma_/.test(bare(raw))) return !FIGMA_READ.has(bare(raw));
     if (engine === "local" && !raw.includes("__")) return !LOCAL_READ.has(raw);
     const b = bare(raw);
     return !(READ_PREFIXES.some((p) => b.startsWith(p)) || READ_EXACT.has(b));

@@ -155,6 +155,75 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
    // Left allowed on purpose: the sign-out check at the end must cut helpers off and sign-in must bring the word back.
    globalThis.__blockbenchLeft={headers,file:helperFiles()[0],knock};
   }
+  // Figma: the real PlazCode app, its real helper connection and its real helper files. The files run in a real browser page
+  // the way Figma runs a plugin (code.js beside a sandboxed window frame whose origin is "null"), with Figma's own objects
+  // replaced by a stand-in (release-tools/fake-figma.js). This proves PlazCode's side end to end and nothing about a real Figma.
+  {
+   const first=await (await fetch('http://127.0.0.1:3000/api/status',{headers:{Authorization:'Bearer '+key}})).json();
+   const headers={Authorization:'Bearer '+key,'Content-Type':'application/json',Origin:'http://127.0.0.1:3000',...(first.profile&&first.profile.epoch?{'X-PlazCode-Profile':first.profile.epoch}:{})};
+   const get=async route=>(await fetch('http://127.0.0.1:3000'+route,{headers})).json(),post=async(route,body)=>(await fetch('http://127.0.0.1:3000'+route,{method:'POST',headers,body:JSON.stringify(body)})).json();
+   const card=async()=>(await get('/api/connections')).apps.find(app=>app.id==='figma');
+   const setup=body=>post('/api/connections/setup',{id:'figma',...body}),states=app=>app.steps.map(step=>step.id+':'+step.state).join(' '),tool=body=>post('/api/figma',body);
+   const helperFolders=()=>fs.readdirSync(config,{recursive:true}).map(String).filter(name=>/helpers[\\/]figma$/.test(name)).map(name=>path.join(config,name));
+   const knock=word=>new Promise(resolve=>{const socket=new WebSocket('ws://127.0.0.1:3000/helper');let paired=false;socket.onopen=()=>socket.send(JSON.stringify({hello:1,app:'figma',word}));socket.onmessage=event=>{if(String(event.data).includes('"paired":true')){paired=true;socket.close();}};socket.onclose=()=>resolve(paired);socket.onerror=()=>{};});
+   let fg=await card();assert.equal(fg.state+' '+states(fg),'not_set_up file:waiting start:waiting test:waiting','Figma before Allow: nothing started');
+   assert.deepEqual(helperFolders(),[],'no Figma helper folder before Allow');assert.equal(await knock('a'.repeat(64)),false,'the helper address lets no Figma helper in before Allow');
+   assert.deepEqual((await get('/api/status')).figma,{consent:false,connected:false});assert.match((await tool({cmd:'status'})).error,/not connected yet/,'no Figma action before Allow');
+   assert.equal((await setup({step:'start'})).ok,false,'nothing but Allow works first');assert.deepEqual(helperFolders(),[]);
+   assert.equal((await setup({consent:true})).ok,true);
+   await waitFor(async()=>states(await card())==='file:done start:needs_you test:waiting','Figma helper made after Allow');
+   fg=await card();const manifestFile=fg.steps[0].detail,folder=path.dirname(manifestFile);
+   assert.deepEqual(helperFolders(),[folder],'one helper folder, inside PlazCode\'s own settings folder');assert.deepEqual(fs.readdirSync(folder).sort(),['code.js','manifest.json','ui.html']);
+   assert.equal(fg.steps[1].copy,manifestFile,'the card shows the file to pick in Figma');assert.match(fg.steps[1].hint,/Import plugin from manifest/);
+   assert.equal(fs.statSync(path.join(folder,'ui.html')).mode&0o777,0o600,'the file with the pairing word is readable by its owner only');
+   const manifest=JSON.parse(fs.readFileSync(manifestFile,'utf8'));assert.deepEqual(manifest.networkAccess.devAllowedDomains,['ws://localhost:3000']);assert.deepEqual(manifest.networkAccess.allowedDomains,['none']);
+   const ui=fs.readFileSync(path.join(folder,'ui.html'),'utf8'),code=fs.readFileSync(path.join(folder,'code.js'),'utf8'),word=/WORD = "([0-9a-f]{64})"/.exec(ui)[1];
+   assert(!code.includes(word)&&!JSON.stringify(manifest).includes(word),'the pairing word is in the helper\'s window file only');
+   assert.match((await tool({cmd:'status'})).error,/Figma is not connected/);assert.equal(await knock('b'.repeat(64)),false,'a wrong pairing word is refused by the real app');
+   // "Run the plugin": Figma's objects are the stand-in, everything else is PlazCode's real files in a real browser.
+   // Chrome itself now stops a page that is not on this computer from reaching this computer's own addresses unless it is
+   // given leave ("local network access"). Figma documents that a development plugin may reach localhost when its manifest
+   // lists it (devAllowedDomains); whether the Figma desktop app really lets the helper's window through is NOT verified
+   // here. For this stand-in page that browser check is switched off, in a browser of its own.
+   const figBrowser=await chromium.launch({headless:true,...(process.env.PLAZCODE_CHROMIUM?{executablePath:process.env.PLAZCODE_CHROMIUM}:{}),args:['--no-sandbox','--disable-features=LocalNetworkAccessChecks']});
+   const fig=await figBrowser.newPage(),figErrors=[];fig.on('pageerror',error=>figErrors.push(String(error)));
+   try{
+    await fig.goto('about:blank');await fig.addScriptTag({content:fs.readFileSync(path.join(__dirname,'fake-figma.js'),'utf8')});
+    await fig.evaluate(html=>{window.__html__=html;},ui);await fig.addScriptTag({content:code});
+    await waitFor(async()=>states(await card())==='file:done start:done test:needs_you','the Figma helper connected to the real app by itself');
+    assert.deepEqual((await get('/api/status')).figma,{consent:true,connected:true});
+    assert.equal(await fig.frameLocator('#plazcode-figma-ui').locator('#state').innerText(),'Connected to PlazCode','the helper\'s window says it is connected');
+    assert.equal(await fig.evaluate(()=>document.getElementById('plazcode-figma-ui').getAttribute('sandbox')),'allow-scripts','the window frame has no origin of its own, as in Figma');
+    assert.equal((await setup({step:'test'})).ok,true);await waitFor(async()=>(await card()).state==='ready','Figma card ready after a real answer');
+    let reply=await tool({cmd:'status'});assert.equal(reply.ok&&reply.result.file,'Shop app designs',JSON.stringify(reply));
+    reply=await tool({cmd:'frame_add',args:{name:'Card',width:320,height:200,fill:'#ff8800',direction:'column',gap:12,padding:24}});assert.equal(reply.ok&&reply.result.name,'Card',JSON.stringify(reply));
+    reply=await tool({cmd:'text_add',args:{text:'Summer sale',parent:'Card',font_size:28}});assert.equal(reply.ok&&reply.result.text,'Summer sale',JSON.stringify(reply));
+    reply=await tool({cmd:'outline'});assert.deepEqual(reply.result.children.map(part=>part.name+'>'+part.children.map(inner=>inner.name).join(',')),['Card>Summer sale']);
+    assert.equal(await fig.evaluate(()=>figma.currentPage.children.map(node=>node.name+':'+node.width+':'+node.layoutMode+':'+node.children.length).join()),'Card:320:VERTICAL:1','the change happened in "Figma"');
+    reply=await tool({cmd:'export',args:{target:'Card',scale:2}});assert(reply.ok&&/^data:image\/png;base64,iVBORw0KGgo/.test(reply.result.image),'a picture comes back through the helper connection');
+    reply=await tool({cmd:'frame_add',args:{parent:'nowhere'}});assert(!reply.ok&&/Nothing on this page is named "nowhere"/.test(reply.error),JSON.stringify(reply));
+    reply=await tool({cmd:'read_file',args:{path:'/etc/passwd'}});assert(!reply.ok&&/does not know the action/.test(reply.error),'the helper has named actions only');
+    reply=await tool({cmd:'Run Code!'});assert(!reply.ok&&/not a Figma action/.test(reply.error),'the app refuses odd action names itself');
+    assert(!JSON.stringify([await card(),await get('/api/status'),await get('/api/connections')]).includes(word),'the pairing word never leaves the app in a report');
+    // The real page draws what the app reports.
+    await page.locator('#cnApps [data-cn-open="figma"]').click();
+    await waitFor(async()=>(await page.locator('#cnWin [data-step]').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-step')+':'+node.getAttribute('data-state')).join(' ')))==='file:done start:done test:done','the real page shows every Figma step ticked');
+    assert.equal(await page.locator('#cnWin [data-cn-mode]').count(),0,'Figma has one way, so no way switch is shown');assert(!/[0-9a-f]{64}/.test(await page.locator('#cnWin').innerText()),'no pairing word on the real page');
+    await page.locator('#cnWin [data-cn-act="close"]').first().click();
+    // Disconnect: the files are taken away, the helper is cut off at once, and its old word never works again.
+    assert.equal((await setup({disconnect:true})).ok,true);
+    await waitFor(()=>!fs.existsSync(folder),'Figma helper folder removed on Disconnect');
+    await waitFor(async()=>(await get('/api/status')).figma.connected===false,'Figma helper cut off on Disconnect');
+    await waitFor(async()=>(await fig.frameLocator('#plazcode-figma-ui').locator('#state').innerText())!=='Connected to PlazCode','the helper\'s window stops saying it is connected');
+    assert.equal((await card()).state,'not_set_up');assert.equal(await knock(word),false,'the old Figma pairing word is dead after Disconnect');
+    assert.equal((await setup({consent:true})).ok,true);await waitFor(()=>fs.existsSync(path.join(folder,'ui.html')),'new helper files after a new Allow');
+    assert.notEqual(/WORD = "([0-9a-f]{64})"/.exec(fs.readFileSync(path.join(folder,'ui.html'),'utf8'))[1],word,'a new Allow makes a new pairing word');assert.equal(await knock(word),false);
+    assert.equal((await get('/api/status')).figma.connected,false,'the still-open old helper window cannot get back in with its old word');
+    assert.equal((await setup({disconnect:true})).ok,true);await waitFor(()=>!fs.existsSync(folder),'left clean');
+    assert.deepEqual(figErrors,[],'no errors in the helper page: '+figErrors.join(' | '));
+    console.log('Figma against the real app: Allow, helper files, pairing from a sandboxed window frame, real actions and a picture through the helper connection, Disconnect kills the word (stand-in Figma)');
+   }finally{await figBrowser.close();}
+  }
   assert.equal((await call('/api/show',{})).status,200);await waitFor(()=>launch().length===2,'relaunch shows real Linux desktop');
   assert.notEqual(launch()[1],url,'every launch uses a fresh ticket');
   if(process.env.PLAZCODE_UI_PREVIEW_DIR&&!profileGate){fs.mkdirSync(process.env.PLAZCODE_UI_PREVIEW_DIR,{recursive:true});await page.evaluate(()=>{document.querySelector('#desktopApprovalMode').closest('details').open=true;});await page.locator('#desktopApprovalMode').locator('xpath=..').locator('.pc-effort-trigger').click();await page.screenshot({path:path.join(process.env.PLAZCODE_UI_PREVIEW_DIR,'plazcode-linux-native-settings.png')});}

@@ -310,11 +310,56 @@ const CATALOG = [
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-blockbench.png" : "/tmp/connections-blockbench.png" });
     await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
     assert.deepEqual(errors, [], "no page errors: " + errors.join(" | "));
+
+    // ---- Figma: one way, PlazCode's own helper; the app's report drawn as it is ---------------------------------
+    const othersFg = bridge.backend.filter((a) => a.id !== "figma");
+    const fgFirst = "This needs the Figma desktop app (not Figma in a browser). Open a design file there. In the menu choose Plugins, Development, Import plugin from manifest, and pick the file manifest.json in PlazCode's helper folder. You import it once. Then choose Plugins, Development, PlazCode to start it. Start it each time you open Figma, and keep its small window open.";
+    const fgLater = "Figma is not open, or the PlazCode helper is not running in it. In the Figma desktop app open a design file, then choose Plugins, Development, PlazCode. Do this each time you open Figma, and keep the helper's small window open.";
+    const fgManifest = "C:\\Users\\me\\AppData\\Roaming\\PlazCode\\helpers\\figma\\manifest.json";
+    const fg = (state, list) => ({ id: "figma", name: "Figma", line: "Read and edit your designs: frames, text, shapes and layout.", state, steps: list,
+      lead: "PlazCode makes its own small helper for Figma. You add it to the Figma desktop app once and start it from Figma's Plugins menu. It works on free Figma plans.",
+      consent: "PlazCode will make a small helper in its own folder for you to add to Figma. Nothing in your designs changes until you ask the AI.", prompts: ["Describe the layout of the frame I have selected."] });
+    const setFg = async (app) => { bridge.backend = [...othersFg, app]; await tab.waitForTimeout(2400); };
+    const fgSteps = () => tab.evaluate(() => [...document.querySelectorAll("#cnWin [data-step]")].map((n) => n.dataset.step + ":" + n.dataset.state).join(" "));
+    await tab.click('#cnApps [data-cn-open="godot"]'); await tab.waitForTimeout(300);
+    await setFg(fg("not_set_up", [st("file", "Make the PlazCode helper for Figma", "waiting"), st("start", "Start the helper in Figma", "waiting"), st("test", "Check that Figma answers", "waiting")]));
+    await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
+    assert.equal(await tab.evaluate(() => { const tile = document.querySelector('#cnApps [data-app="figma"]'); return tile.dataset.state + "|" + tile.querySelector("p").textContent + "|" + tile.querySelector("button").textContent; }), "not_set_up|Read and edit your designs: frames, text, shapes and layout.|Connect", "the Figma tile is PlazCode's own helper now");
+    assert(await tab.evaluate(() => [...document.querySelectorAll("#mcpGrid strong")].some((n) => n.textContent === "Figma Dev Mode (paid seat)")), "the older paid Figma connection stays under More tools");
+    await tab.click('#cnApps [data-cn-open="figma"]'); await tab.waitForTimeout(500);
+    assert.equal(await tab.evaluate(() => document.querySelectorAll("#cnWin [data-cn-mode]").length), 0, "one way to connect, so no way switch");
+    assert(/make a small helper in its own folder/.test(await tab.innerText("#cnWin .cn-consent p")), "the Allow question says what PlazCode will do");
+    assert.equal(await fgSteps(), "file:waiting start:waiting test:waiting");
+    await tab.click('#cnWin [data-cn-act="allow"]'); await tab.waitForTimeout(400);
+    assert.deepEqual(bridge.setups.pop(), { id: "figma", consent: true }, "Allow asks the app, nothing more");
+    await setFg(fg("setting_up", [st("file", "Make the PlazCode helper for Figma", "done", { detail: fgManifest }), st("start", "Start the helper in Figma", "needs_you", { hint: fgFirst, action: { label: "Show the folder", run: "start" }, copy: fgManifest }), st("test", "Check that Figma answers", "waiting")]));
+    const fgStart = await tab.evaluate(() => { const row = document.querySelector('#cnWin [data-step="start"]'); return { text: row.innerText, button: row.querySelector(".cn-act").textContent, path: row.querySelector(".cn-code").textContent, buttons: row.querySelectorAll("button").length }; });
+    assert(fgStart.text.includes("Import plugin from manifest") && fgStart.text.includes("Figma desktop app") && fgStart.text.includes("each time you open Figma"), "the one step that needs the person says exactly what to do");
+    assert.deepEqual([fgStart.button, fgStart.path, fgStart.buttons], ["Show the folder", fgManifest, 1], "one button, and the file to pick shown in full");
+    await tab.click('#cnWin [data-step="start"] .cn-act'); await tab.waitForTimeout(400);
+    assert.deepEqual(bridge.setups.pop(), { id: "figma", step: "start" }, "'Show the folder' asks the app to open it; the page names no path");
+    await setFg(fg("setting_up", [st("file", "Make the PlazCode helper for Figma", "done", { detail: fgManifest }), st("start", "Start the helper in Figma", "done"), st("test", "Check that Figma answers", "needs_you", { action: { label: "Check", run: "test" } })]));
+    await tab.click('#cnWin [data-step="test"] .cn-act'); await tab.waitForTimeout(400);
+    assert.deepEqual(bridge.setups.pop(), { id: "figma", step: "test" });
+    await setFg(fg("ready", [st("file", "Make the PlazCode helper for Figma", "done", { detail: fgManifest }), st("start", "Start the helper in Figma", "done"), st("test", "Check that Figma answers", "done")]));
+    assert.equal(await tab.evaluate(() => document.querySelector('#cnApps [data-app="figma"]').dataset.state), "ready");
+    assert.equal(await tab.evaluate(() => document.querySelectorAll("#cnWin .cn-prompt").length), 1, "ready: an example to copy");
+    assert(!/[0-9a-f]{64}/.test(await tab.innerText("#cnWin")), "no pairing word on the page");
+    // A later Figma session: the helper has to be started again, said in one short instruction.
+    await setFg(fg("setting_up", [st("file", "Make the PlazCode helper for Figma", "done", { detail: fgManifest }), st("start", "Start the helper in Figma", "needs_you", { hint: fgLater, action: { label: "Show the folder", run: "start" }, copy: fgManifest }), st("test", "Check that Figma answers", "waiting")]));
+    assert(!(await tab.innerText('#cnWin [data-step="start"]')).includes("Import plugin"), "no import instruction the second time");
+    for (const key of ["Make the PlazCode helper for Figma", "Start the helper in Figma", "Check that Figma answers", "Show the folder", "Read and edit your designs: frames, text, shapes and layout.", fgFirst, fgLater]) assert(key in JSON.parse(fs.readFileSync(__dirname + "/core/locales/en.json", "utf8")), "translatable: " + key);
+    assert.equal(fs.readFileSync(__dirname + "/agent/src/figma.rs", "utf8").includes(fgFirst) && fs.readFileSync(__dirname + "/agent/src/figma.rs", "utf8").includes(fgLater), true, "the sentences tested here are the app's own");
+    await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-figma.png" : "/tmp/connections-figma.png" });
+    await tab.click('#cnWin [data-cn-act="disconnect"]'); await tab.waitForTimeout(400);
+    assert.deepEqual(bridge.setups.pop(), { id: "figma", disconnect: true });
+    await tab.keyboard.press("Escape"); await tab.waitForTimeout(400);
+    assert.deepEqual(errors, [], "no page errors: " + errors.join(" | "));
     setBlender();
     await tab.setViewportSize({ width: 1360, height: 860 }); await tab.waitForTimeout(200);
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-page.png" : "/tmp/connections-page.png" });
     await tab.click('#cnApps [data-cn-open="blender"]'); await tab.waitForTimeout(600);
     await tab.screenshot({ path: process.env.PLAZCODE_CONNECTIONS_SHOT ? process.env.PLAZCODE_CONNECTIONS_SHOT + "-window.png" : "/tmp/connections-window.png" });
-    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, helper start/fail shown live, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent), Blender open-window card (add helper, Open Blender), Blender background card (safe-mode switch, picture, Open in Blender, notice, only PNG pictures), Godot project picking (recent list, paste box, refused folder explained, typing kept, Change)");
+    console.log("PASS Apps & servers in Chromium: one cached status request, translatable text, guide link, helper start/fail shown live, roomy tiles, fixed order, no MCP wording, More tools, accessible setup window (focus, Escape, Tab), live checklist, copy, disconnect, small screens, motion off, new-app reply (modes, Fix/Continue/Open, download names, consent), Blender open-window card (add helper, Open Blender), Figma card (one way, import-once and start-each-session wording, Show the folder, no pairing word), Blender background card (safe-mode switch, picture, Open in Blender, notice, only PNG pictures), Godot project picking (recent list, paste box, refused folder explained, typing kept, Change)");
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exit(1); });
