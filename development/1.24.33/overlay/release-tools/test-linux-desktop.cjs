@@ -11,6 +11,9 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
  else{fs.copyFileSync('agent/target/debug/PlazCode',path.join(install,'PlazCode'));fs.chmodSync(path.join(install,'PlazCode'),0o755);fs.cpSync('PlazCode-Extension',path.join(install,'PlazCode-Extension'),{recursive:true});}
  fs.writeFileSync(path.join(install,'plazcode-settings.json'),JSON.stringify({rsAutoUpdate:false,rsApprovalMode:'auto'}));
  fs.writeFileSync(path.join(bin,'xdg-open'),'#!/usr/bin/env python3\nimport os,sys\nwith open(os.environ["PLAZCODE_TEST_LAUNCHES"],"a") as f:f.write(sys.argv[1]+"\\n")\n',{mode:0o700});
+ // 1.24.33 (Linux rework): PlazCode opens its own app window with the first Chromium-family browser it finds. This
+ // stand-in Chrome comes first on PATH and writes down the --app link, so the test controls the launch as before.
+ fs.writeFileSync(path.join(bin,'google-chrome'),'#!/usr/bin/env python3\nimport os,sys\nassert len(sys.argv)==2 and sys.argv[1].startswith("--app="),sys.argv\nwith open(os.environ["PLAZCODE_TEST_LAUNCHES"],"a") as f:f.write(sys.argv[1][6:]+"\\n")\nopen(os.environ["PLAZCODE_TEST_LAUNCHES"]+".app-window","a").write("1")\n',{mode:0o700});
  fs.writeFileSync(path.join(temp,'Godot_v4-stand-in'),'stand-in for the Godot editor program');
  // Unity stand-ins: a Unity Hub project list, one installed editor (a script that writes down how it was started) and
  // a project with Unity's usual package list. OpenUPM is a local stand-in; the real one is checked in unity.rs tests.
@@ -30,6 +33,7 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   const url=launch()[0],key=fs.readFileSync(path.join(config,'PlazCode/bridge-key'),'utf8');
   assert(!url.includes(key),'permanent key must never enter launch URL');
   assert.match(url,/^http:\/\/127\.0\.0\.1:3000\/desktop-start#[a-f0-9]{64}$/);
+  assert(fs.existsSync(launches+'.app-window'),'PlazCode opens in its own app window when a Chromium browser is installed');
   const call=(route,data,auth=true,origin='http://127.0.0.1:3000')=>fetch('http://127.0.0.1:3000'+route,{method:'POST',headers:{'Content-Type':'application/json',Origin:origin,...(auth?{Authorization:'Bearer '+key}:{})},body:JSON.stringify(data)});
   assert.equal((await call('/api/desktop/browser-action',{message:'quit'},false)).status,401);
   const ticket=url.split('#')[1];
