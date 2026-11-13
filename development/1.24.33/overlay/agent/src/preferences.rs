@@ -93,7 +93,17 @@ pub struct Appearance {
     pub theme: String,
     pub glow: String,
     pub gradients: String,
+    /// The app's Appearance > Feel choices, shared with the PlazCode bar (2026-11-13):
+    /// "full" | "reduced" | "off", the animated theme and the click effects. Older files have none: Full / on / on.
+    #[serde(default = "default_motion")]
+    pub motion: String,
+    #[serde(default = "default_on")]
+    pub anim: bool,
+    #[serde(default = "default_on")]
+    pub ripple: bool,
 }
+fn default_motion() -> String { "full".into() }
+fn default_on() -> bool { true }
 
 impl Default for DesktopPreferences {
     fn default() -> Self {
@@ -161,6 +171,7 @@ impl DesktopPreferences {
             if !matches!(value.theme.as_str(), "default" | "amethyst" | "cyan" | "rose" | "emerald" | "graphite" | "crimson" | "ocean" | "copper" | "aurora" | "orchid") { value.theme = "default".into(); }
             if !matches!(value.glow.as_str(), "off" | "subtle" | "strong") { value.glow = "subtle".into(); }
             if !matches!(value.gradients.as_str(), "off" | "on") { value.gradients = "on".into(); }
+            if !matches!(value.motion.as_str(), "full" | "reduced" | "off") { value.motion = "full".into(); }
         }
         if !matches!(self.engine.as_str(), "roblox" | "local") {
             self.engine = "roblox".to_string();
@@ -372,9 +383,9 @@ mod tests {
     #[test]
     fn ultracode_and_legacy_solar_preferences_are_preserved() {
         let mut prefs=DesktopPreferences::default();prefs.thinking_level="ultracode".into();
-        prefs.appearance=Some(Appearance{theme:"solar".into(),glow:"strong".into(),gradients:"off".into()});
+        prefs.appearance=Some(Appearance{theme:"solar".into(),glow:"strong".into(),gradients:"off".into(),motion:"wild".into(),anim:false,ripple:true});
         prefs.normalize();assert_eq!(prefs.thinking_level,"ultracode");
-        let appearance=prefs.appearance.unwrap();assert_eq!(appearance.theme,"default");assert_eq!(appearance.glow,"strong");assert_eq!(appearance.gradients,"off");
+        let appearance=prefs.appearance.unwrap();assert_eq!(appearance.theme,"default");assert_eq!(appearance.glow,"strong");assert_eq!(appearance.gradients,"off");assert_eq!(appearance.motion,"full");assert!(!appearance.anim&&appearance.ripple);
     }
     #[test]
     fn immediate_stop_default_and_selected_safe_mode_persist() {
@@ -413,6 +424,10 @@ mod tests {
         assert_eq!(value.theme, "default");
         assert_eq!(value.glow, "subtle");
         assert_eq!(value.gradients, "on");
+        assert_eq!((value.motion.as_str(), value.anim, value.ripple), ("full", true, true), "an older app sends no Feel: Full / on / on");
+        reopened.patch(serde_json::json!({"rsAppearance":{"theme":"rose","glow":"subtle","gradients":"on","motion":"reduced","anim":false,"ripple":false}})).unwrap();
+        let value = PreferencesStore::load_from(path.clone()).snapshot().appearance.unwrap();
+        assert_eq!((value.motion.as_str(), value.anim, value.ripple), ("reduced", false, false), "the Feel choices reach the bar");
         std::fs::remove_file(path).ok();
     }
 

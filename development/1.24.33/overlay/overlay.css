@@ -6117,3 +6117,159 @@ html[data-rs-gradients=off] :is(#rs-task-checklist,#rs-checklist-show){backgroun
 html[data-rs-glow=off] :is(#rs-task-checklist,#rs-checklist-show){box-shadow:none}
 @keyframes rs-checklist-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){html #rs-task-checklist li[data-status=in_progress] .rs-checklist-mark{animation:none}html #rs-task-checklist li,html #rs-checklist-show,html #rs-task-checklist .rs-checklist-hide{transition:none}}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   STUDIO LOOK (1.24.33, owner 2026-11-13: "an entire extension/PlazCode bar redesign to match the app").
+   One layer, scoped to html[data-rs-studio] (set by core/main.js), that restyles; ids, the per-site geometry
+   and behaviour are unchanged. Same language as the desktop app's Studio look: serif name, small spaced mono
+   labels, glass cards with a lit rim, the palette's gradient and glow. Colours come from the shared palette
+   (--pc-*); glow and gradients switches are honoured; motion follows the app's Feel (data-rs-motion).
+   Plan: development/1.24.33/BAR-REDESIGN-PLAN.md
+   ══════════════════════════════════════════════════════════════════════════ */
+html[data-rs-studio]{--st-rgb:var(--pc-rgb,233 186 83);--st-a:var(--pc-accent,#e9ba53);--st-l:var(--pc-light,#ffe0a1);--st-bg:var(--pc-bg,#18140d);--st-g:1;
+  --st-serif:"Iowan Old Style","Sitka Heading","Sitka Text",Constantia,Cambria,Georgia,serif;--st-mono:"Cascadia Mono","JetBrains Mono","SF Mono",ui-monospace,Consolas,Menlo,monospace;
+  --st-sans:Inter,"Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;--st-ease:cubic-bezier(.22,1,.36,1);
+  --st-text:#f3f5f9;--st-soft:#b1b7c4;--st-dim:#828a9b;--st-ink:#0b0d12;
+  --st-card:color-mix(in srgb,var(--st-bg) 62%,#07090d);--st-card2:color-mix(in srgb,var(--st-bg) 45%,#0d1016);
+  --st-line:color-mix(in srgb,#2b303b 52%,rgb(var(--st-rgb)) 48%);--st-line-soft:color-mix(in srgb,#2b303b 72%,rgb(var(--st-rgb)) 28%);
+  --st-grad:linear-gradient(135deg,color-mix(in srgb,var(--st-l) 82%,#fff) 0%,var(--st-l) 38%,var(--st-a) 100%);
+  --st-glass:linear-gradient(180deg,rgb(255 255 255/.10),rgb(255 255 255/.025) 46%,rgb(0 0 0/.10))}
+html[data-rs-studio][data-rs-glow=off]{--st-g:0}
+@property --rs-x{syntax:"<percentage>";inherits:false;initial-value:0%}
+@keyframes rs-st-flow{from{--rs-x:0%}to{--rs-x:100%}}
+
+/* The bar: a glass card with a coloured corner light, a lit top rim and a soft glow underneath. */
+html[data-rs-studio] #rs-root #rs-bar{border-radius:0!important;border:1px solid var(--st-line)!important;color:var(--st-text)!important;font-family:var(--st-sans)!important;
+  background:radial-gradient(120% 170% at 0% 0%,rgb(var(--st-rgb)/.20),transparent 55%),radial-gradient(90% 140% at 100% 100%,rgb(var(--st-rgb)/.10),transparent 60%),linear-gradient(180deg,rgb(255 255 255/.05),transparent 42%),color-mix(in srgb,var(--st-card) 94%,transparent)!important;
+  box-shadow:inset 0 1px 0 rgb(255 255 255/.10),0 22px 50px -26px #000,0 12px 34px -22px rgb(var(--st-rgb)/calc(.7*var(--st-g)))!important;
+  -webkit-backdrop-filter:blur(16px) saturate(1.25)!important;backdrop-filter:blur(16px) saturate(1.25)!important;transition:border-color .45s var(--st-ease),box-shadow .45s var(--st-ease)!important}
+html[data-rs-studio][data-rs-gradients=off] #rs-root #rs-bar{background:var(--st-card)!important}
+html[data-rs-studio][data-rs-gradients=off][data-rs-glow=off] #rs-root #rs-bar{box-shadow:none!important}
+html[data-rs-studio] #rs-root #rs-bar::before{content:""!important;position:absolute!important;left:24px!important;right:24px!important;top:-1px!important;height:1px!important;border-radius:0!important;opacity:.8!important;pointer-events:none!important;
+  background:linear-gradient(90deg,transparent,rgb(var(--st-rgb)/.85) 22%,color-mix(in srgb,var(--st-l) 60%,#fff) 50%,rgb(var(--st-rgb)/.85) 78%,transparent)!important;box-shadow:none!important;animation:none!important}
+html[data-rs-studio][data-rs-gradients=off] #rs-root #rs-bar::before{opacity:.35!important}
+html[data-rs-studio][data-rs-thinking=ultracode] #rs-root #rs-bar{border-color:color-mix(in srgb,#9762df 62%,var(--st-line))!important}
+html[data-rs-studio] #rs-root #rs-ornament{display:none!important}
+
+/* Left: status light, the name, version, effort and approval, and the RS / AS switch. */
+html[data-rs-studio] #rs-root .rs-cluster-left{border-right:1px solid var(--st-line-soft)!important;gap:12px!important}
+html[data-rs-studio] #rs-root #rs-brand-stack{display:grid!important;grid-template-columns:auto 1fr!important;align-items:center!important;column-gap:8px!important;row-gap:3px!important;min-width:0!important}
+html[data-rs-studio] #rs-root #rs-brand-stack>*{grid-column:1/-1;justify-self:start;min-width:0}
+html[data-rs-studio] #rs-root #rs-brand{display:block!important;gap:0!important;grid-column:1!important;font:600 18px/1 var(--st-serif)!important;letter-spacing:-.2px!important;text-transform:none!important;color:var(--st-text)!important;text-shadow:none!important;white-space:nowrap}
+html[data-rs-studio] #rs-root #rs-brand em{font-style:italic;color:var(--st-l);padding-right:.06em}
+html[data-rs-studio]:not([data-rs-gradients=off]) #rs-root #rs-brand em{background:var(--st-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 2px 10px rgb(var(--st-rgb)/calc(.35*var(--st-g))))}
+html[data-rs-studio] #rs-root #rs-mode-tag{grid-column:2!important;justify-self:start!important;display:inline-flex!important;align-items:center;height:16px;padding:0 6px;border-radius:0;border:1px solid rgb(var(--st-rgb)/.42);background:rgb(var(--st-rgb)/.10);color:var(--st-l);font:700 8.5px/1 var(--st-mono);letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}
+html[data-rs-studio] #rs-root #rs-mode-tag::before{content:"RobloxScript"}
+html[data-rs-studio] #rs-root #rs-bar:has(#rs-engine[data-engine=local]) #rs-mode-tag::before{content:"AgentScript"}
+html[data-rs-studio] #rs-root #rs-bar-version{font:500 10px/1.2 var(--st-mono)!important;letter-spacing:.02em!important;color:var(--st-dim)!important;text-transform:none!important}
+html[data-rs-studio] #rs-root #rs-bar-version[data-outdated=true]{color:var(--st-l)!important}
+html[data-rs-studio] #rs-root :is(#rs-effort,#rs-approval-mode){display:inline-flex!important;align-items:center!important;gap:5px!important;height:auto!important;padding:1px 0!important;margin:0!important;border:0!important;background:none!important;box-shadow:none!important;
+  font:600 9px/1.35 var(--st-mono)!important;letter-spacing:.12em!important;text-transform:uppercase!important;color:var(--st-dim)!important;cursor:pointer;transition:color .2s}
+html[data-rs-studio] #rs-root :is(#rs-effort,#rs-approval-mode)>span{color:var(--st-l)!important;font-weight:700!important;letter-spacing:.08em!important}
+html[data-rs-studio] #rs-root :is(#rs-effort,#rs-approval-mode):hover{color:var(--st-soft)!important}
+html[data-rs-studio] #rs-root :is(#rs-effort,#rs-approval-mode):focus-visible{outline:2px solid rgb(var(--st-rgb)/.8)!important;outline-offset:2px;border-radius:0}
+html[data-rs-studio] #rs-root #rs-bar #rs-engine{width:96px!important;min-width:96px!important;max-width:96px!important;height:30px!important;padding:3px!important;border-radius:0!important;border:1px solid var(--st-line)!important;
+  background:linear-gradient(180deg,rgb(0 0 0/.32),rgb(0 0 0/.16)),var(--st-card2)!important;box-shadow:inset 0 1px 3px rgb(0 0 0/.45),0 1px 0 rgb(255 255 255/.05)!important}
+html[data-rs-studio] #rs-root #rs-engine #rs-engine-thumb{top:3px!important;left:3px!important;width:calc(50% - 3px)!important;height:calc(100% - 6px)!important;border-radius:0!important;border:1px solid color-mix(in srgb,var(--st-l) 60%,#fff)!important;
+  background:linear-gradient(180deg,rgb(255 255 255/.34),transparent 55%),var(--st-grad)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.55),0 6px 16px -6px rgb(var(--st-rgb)/calc(.9*var(--st-g)))!important;
+  transition:transform .42s var(--st-ease)!important}
+html[data-rs-studio][data-rs-gradients=off] #rs-root #rs-engine #rs-engine-thumb{background:var(--st-a)!important;box-shadow:none!important}
+html[data-rs-studio] #rs-root #rs-bar #rs-engine .rs-mode-btn{position:relative!important;z-index:1!important;flex:1 1 50%!important;height:100%!important;padding:0!important;border:0!important;background:none!important;box-shadow:none!important;
+  font:800 10px/1 var(--st-mono)!important;letter-spacing:.16em!important;color:var(--st-soft)!important;transition:color .3s var(--st-ease)!important}
+html[data-rs-studio] #rs-root #rs-bar #rs-engine .rs-mode-btn.on{color:var(--st-ink)!important;text-shadow:0 1px 0 rgb(255 255 255/.3)!important}
+html[data-rs-studio] #rs-root #rs-engine .rs-mode-btn:not(.on):hover{color:var(--st-text)!important}
+
+/* Middle: what PlazCode is doing. */
+html[data-rs-studio] #rs-root #rs-state{font:500 12.5px/1.45 var(--st-sans)!important;color:var(--st-soft)!important;letter-spacing:0!important}
+html[data-rs-studio] #rs-root #rs-state b{color:var(--st-l)!important;font-weight:700!important;text-shadow:none!important}
+html[data-rs-studio] #rs-root #rs-state.rs-state-warn,html[data-rs-studio] #rs-root .rs-state-warn{color:#ffb4a8!important}
+html[data-rs-studio] #rs-root .rs-state-warn b{color:#ffd3cc!important}
+
+/* Right: one group for the main actions, pills for modes, small round icon buttons. */
+html[data-rs-studio] #rs-root .rs-grp{display:flex;align-items:center;gap:6px;flex:none}
+html[data-rs-studio] #rs-root .rs-grp:not(:has(>button:not([hidden]))){display:none}
+html[data-rs-studio] #rs-root .rs-grp>[hidden]{display:none!important}
+html[data-rs-studio] #rs-root .rs-grp-main{gap:3px;padding:3px;border-radius:0;border:1px solid var(--st-line-soft);background:linear-gradient(180deg,rgb(0 0 0/.26),rgb(0 0 0/.12)),var(--st-card2);box-shadow:inset 0 1px 2px rgb(0 0 0/.4),0 1px 0 rgb(255 255 255/.04)}
+html[data-rs-studio] #rs-root .rs-cluster-right{gap:8px!important;row-gap:6px!important;align-items:center!important;flex-wrap:wrap!important;justify-content:flex-end!important;min-width:0!important;max-width:100%!important}
+html[data-rs-studio] #rs-root .rs-cluster-right button{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;box-sizing:border-box!important;height:30px!important;min-height:0!important;margin:0!important;padding:0 12px!important;
+  border-radius:0!important;border:1px solid color-mix(in srgb,#2b303b 50%,rgb(var(--st-rgb)) 50%)!important;color:var(--st-text)!important;font:600 12px/1 var(--st-sans)!important;letter-spacing:0!important;text-transform:none!important;text-shadow:none!important;white-space:nowrap!important;
+  background:var(--st-glass),linear-gradient(135deg,rgb(var(--st-rgb)/.14),rgb(var(--st-rgb)/.03)),var(--st-card)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.12),inset 0 -1px 0 rgb(0 0 0/.25),0 6px 14px -10px rgb(0 0 0/.8)!important;
+  transition:transform .18s var(--st-ease),border-color .2s,box-shadow .25s var(--st-ease),filter .2s,color .2s!important;cursor:pointer}
+html[data-rs-studio] #rs-root .rs-cluster-right button[hidden]{display:none!important}
+html[data-rs-studio] #rs-root .rs-cluster-right button:hover:not(:disabled){border-color:rgb(var(--st-rgb)/.75)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.18),0 10px 24px -10px rgb(var(--st-rgb)/calc(.75*var(--st-g)))!important}
+html[data-rs-studio]:not([data-rs-motion=off]) #rs-root .rs-cluster-right button:active:not(:disabled){transform:scale(.96)!important}
+html[data-rs-studio] #rs-root .rs-cluster-right button:focus-visible{outline:2px solid rgb(var(--st-rgb)/.85)!important;outline-offset:2px!important}
+html[data-rs-studio] #rs-root .rs-cluster-right button:disabled{opacity:.5!important;cursor:default}
+html[data-rs-studio] #rs-root .rs-cluster-right button .rs-ico{width:14px;height:14px;flex:none;color:var(--st-l)}
+html[data-rs-studio] #rs-root #rs-bar .rs-grp-main>button:not(#rs-action):not(#rs-stop){border-color:transparent!important;background:transparent!important;box-shadow:none!important}
+html[data-rs-studio] #rs-root #rs-bar .rs-grp-main>button:not(#rs-action):not(#rs-stop):hover:not(:disabled){background:rgb(var(--st-rgb)/.12)!important;border-color:rgb(var(--st-rgb)/.35)!important;box-shadow:none!important}
+html[data-rs-studio] #rs-root .rs-cluster-right button.rs-icon-only{padding:0!important;width:30px!important;min-width:30px!important}
+html[data-rs-studio] #rs-root #rs-media:not(.rs-icon-only){padding:0 9px!important}
+/* The main action: the palette's lit gradient, like the app's main buttons; the gradient flows while hovered. */
+html[data-rs-studio] #rs-root .rs-cluster-right #rs-action{padding:0 14px!important;color:var(--st-ink)!important;font-weight:750!important;border:1px solid color-mix(in srgb,var(--st-l) 60%,#fff)!important;text-shadow:0 1px 0 rgb(255 255 255/.28)!important;
+  background:linear-gradient(180deg,rgb(255 255 255/.34),transparent 52%),linear-gradient(90deg,color-mix(in srgb,var(--st-l) 78%,#fff) 0%,var(--st-a) 16.667%,color-mix(in srgb,var(--st-l) 78%,#fff) 33.333%,var(--st-a) 50%,color-mix(in srgb,var(--st-l) 78%,#fff) 66.667%,var(--st-a) 83.333%,color-mix(in srgb,var(--st-l) 78%,#fff) 100%) var(--rs-x) 0/300% 100%!important;
+  box-shadow:inset 0 1px 0 rgb(255 255 255/.6),inset 0 -2px 0 rgb(0 0 0/.16),0 10px 24px -10px rgb(var(--st-rgb)/calc(.85*var(--st-g))),0 2px 6px rgb(0 0 0/.35)!important;transition:--rs-x .8s var(--st-ease),transform .18s var(--st-ease),box-shadow .25s var(--st-ease),filter .2s!important}
+html[data-rs-studio] #rs-root .rs-cluster-right #rs-action .rs-ico{color:var(--st-ink)}
+html[data-rs-studio] #rs-root .rs-cluster-right #rs-action:hover:not(:disabled){filter:brightness(1.06) saturate(1.06);box-shadow:inset 0 1px 0 rgb(255 255 255/.7),inset 0 -2px 0 rgb(0 0 0/.16),0 14px 30px -10px rgb(var(--st-rgb)/calc(1*var(--st-g))),0 0 0 3px rgb(var(--st-rgb)/calc(.16*var(--st-g)))!important}
+html[data-rs-studio][data-rs-motion=full]:not([data-rs-gradients=off]) #rs-root .rs-cluster-right #rs-action:hover:not(:disabled){animation:rs-st-flow 2.2s linear infinite!important}
+html[data-rs-studio][data-rs-gradients=off] #rs-root .rs-cluster-right #rs-action{background:var(--st-a)!important}
+html[data-rs-studio] #rs-root .rs-cluster-right #rs-stop{color:#ffe1e1!important;border-color:rgb(255 105 108/.6)!important;background:linear-gradient(180deg,rgb(255 255 255/.08),transparent 50%),linear-gradient(135deg,rgb(255 105 108/.34),rgb(255 105 108/.10))!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.12),0 8px 20px -12px rgb(255 80 84/calc(.8*var(--st-g)))!important}
+html[data-rs-studio] #rs-root .rs-cluster-right #rs-stop .rs-ico{color:#ff9d9f}
+html[data-rs-studio] #rs-root .rs-cluster-right #rs-fix .rs-ico{color:#ffcf8a}
+/* Mode pills. */
+html[data-rs-studio] #rs-root .rs-grp-pills>button{border-radius:0!important;padding:0 13px!important}
+html[data-rs-studio] #rs-root #rs-cowork::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--st-dim);box-shadow:none;transition:background .3s,box-shadow .3s}
+html[data-rs-studio] #rs-root #rs-cowork[aria-pressed=true]{border-color:rgb(var(--st-rgb)/.75)!important;background:var(--st-glass),linear-gradient(135deg,rgb(var(--st-rgb)/.34),rgb(var(--st-rgb)/.10)),var(--st-card)!important}
+html[data-rs-studio] #rs-root #rs-cowork[aria-pressed=true]::before{background:var(--st-l);box-shadow:0 0 8px rgb(var(--st-rgb)/.9)}
+html[data-rs-studio] #rs-root #rs-agents .rs-agents-num{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:0;background:var(--st-grad);color:var(--st-ink);font:800 10px/1 var(--st-mono)}
+/* Small round icon buttons. */
+html[data-rs-studio] #rs-root .rs-grp-icons{gap:5px}
+html[data-rs-studio] #rs-root .rs-grp-icons>button{width:30px!important;min-width:30px!important;padding:0!important;border-radius:0!important;color:var(--st-soft)!important}
+html[data-rs-studio] #rs-root .rs-grp-icons>button:hover:not(:disabled){color:var(--st-text)!important}
+html[data-rs-studio] #rs-root .rs-grp-icons>button svg{width:15px!important;height:15px!important}
+
+/* Click ripple and spark burst (follow the app's Feel: Click ripples + Motion). */
+.rs-ripple-host{position:absolute;inset:0;border-radius:inherit;overflow:hidden;pointer-events:none;z-index:0}
+.rs-ripple{position:absolute;border-radius:50%;transform:translate(-50%,-50%) scale(0);background:radial-gradient(circle,rgb(var(--st-rgb,233 186 83)/.5),rgb(var(--st-rgb,233 186 83)/.14) 55%,transparent 70%);animation:rs-ripple .62s cubic-bezier(.22,1,.36,1) forwards;pointer-events:none}
+@keyframes rs-ripple{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
+#rs-sparks{position:fixed;inset:0;z-index:2147483646;pointer-events:none;overflow:hidden}
+#rs-sparks>span{position:absolute;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);will-change:transform,opacity}
+#rs-sparks .rs-spark{background:#fff;box-shadow:0 0 6px 1px var(--st-l,#ffe0a1),0 0 14px 2px rgb(var(--st-rgb,233 186 83)/.75)}
+#rs-sparks .rs-spark-ring{border:1.5px solid rgb(var(--st-rgb,233 186 83)/.8);box-shadow:0 0 12px rgb(var(--st-rgb,233 186 83)/.45)}
+#rs-sparks .rs-spark-flash{background:radial-gradient(circle,#fff 0,rgb(var(--st-rgb,233 186 83)/.85) 30%,transparent 70%)}
+html[data-rs-motion=off] :is(.rs-ripple-host,#rs-sparks){display:none!important}
+/* The square vault / cards button beside the bar: same glass and rim as the bar. */
+html[data-rs-studio] #rs-root #rs-cards-btn{border-radius:0!important;border:1px solid var(--st-line)!important;color:var(--st-l)!important;
+  background:radial-gradient(120% 120% at 0% 0%,rgb(var(--st-rgb)/.26),transparent 60%),linear-gradient(180deg,rgb(255 255 255/.07),transparent 45%),color-mix(in srgb,var(--st-card) 94%,transparent)!important;
+  box-shadow:inset 0 1px 0 rgb(255 255 255/.12),0 14px 30px -18px #000,0 8px 22px -14px rgb(var(--st-rgb)/calc(.7*var(--st-g)))!important;transition:transform .2s var(--st-ease),border-color .2s,box-shadow .25s var(--st-ease)!important}
+html[data-rs-studio] #rs-root #rs-cards-btn:hover{border-color:rgb(var(--st-rgb)/.8)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.16),0 14px 30px -14px rgb(var(--st-rgb)/calc(.9*var(--st-g)))!important}
+html[data-rs-studio]:not([data-rs-motion=off]) #rs-root #rs-cards-btn:hover{transform:translateY(-1px)}
+html[data-rs-studio][data-rs-gradients=off] #rs-root #rs-cards-btn{background:var(--st-card)!important}
+html[data-rs-studio] #rs-root #rs-cards-btn svg{width:18px;height:18px}
+/* Owner, 2026-11-13: "needs to be enhanced/better with the gradients and shape. I don't want rounded corners."
+   Square shape everywhere; a gradient rim; lit corner brackets; a deeper diagonal colour sweep. */
+html[data-rs-studio]{--st-rim:linear-gradient(115deg,color-mix(in srgb,var(--st-l) 85%,#fff) 0%,rgb(var(--st-rgb)/.75) 18%,rgb(var(--st-rgb)/.22) 46%,rgb(var(--st-rgb)/.30) 70%,var(--st-a) 100%)}
+html[data-rs-studio] #rs-root #rs-bar{border:1px solid transparent!important;border-image:var(--st-rim) 1!important;
+  background:linear-gradient(115deg,rgb(var(--st-rgb)/.34) 0%,rgb(var(--st-rgb)/.10) 26%,transparent 52%,rgb(var(--st-rgb)/.08) 78%,rgb(var(--st-rgb)/.20) 100%),
+    radial-gradient(60% 120% at 0% 0%,rgb(var(--st-rgb)/.22),transparent 70%),
+    linear-gradient(180deg,rgb(255 255 255/.07),transparent 38%,rgb(0 0 0/.18)),
+    color-mix(in srgb,var(--st-card) 95%,transparent)!important}
+html[data-rs-studio][data-rs-thinking=ultracode] #rs-root #rs-bar{border-image:linear-gradient(115deg,#e6d3ff 0%,#a879e8 22%,rgb(151 98 223/.25) 50%,rgb(var(--st-rgb)/.35) 75%,#c5a1f9 100%) 1!important}
+html[data-rs-studio][data-rs-gradients=off] #rs-root #rs-bar{border-image:none!important;border-color:var(--st-line)!important;background:var(--st-card)!important}
+html[data-rs-studio] #rs-root #rs-bar::before{left:-1px!important;right:-1px!important;top:-1px!important;bottom:-1px!important;height:auto!important;opacity:1!important;
+  background:linear-gradient(var(--st-l),var(--st-l)) 0 0/22px 2px no-repeat,linear-gradient(var(--st-l),var(--st-l)) 0 0/2px 22px no-repeat,
+    linear-gradient(var(--st-a),var(--st-a)) 100% 100%/22px 2px no-repeat,linear-gradient(var(--st-a),var(--st-a)) 100% 100%/2px 22px no-repeat,
+    linear-gradient(90deg,transparent,color-mix(in srgb,var(--st-l) 70%,#fff),transparent) 50% 0/46% 1px no-repeat!important;
+  filter:drop-shadow(0 0 4px rgb(var(--st-rgb)/calc(.8*var(--st-g))))!important}
+html[data-rs-studio][data-rs-gradients=off] #rs-root #rs-bar::before{opacity:.6!important;filter:none!important}
+/* Buttons: square, a diagonal gradient fill and a gradient rim on hover. */
+html[data-rs-studio] #rs-root .rs-cluster-right button{background:linear-gradient(180deg,rgb(255 255 255/.10),transparent 50%),linear-gradient(120deg,rgb(var(--st-rgb)/.26),rgb(var(--st-rgb)/.06) 60%,rgb(var(--st-rgb)/.14)),var(--st-card)!important}
+html[data-rs-studio] #rs-root .rs-cluster-right button:hover:not(:disabled){border-image:var(--st-rim) 1!important}
+html[data-rs-studio] #rs-root .rs-grp-main{border:1px solid transparent;border-image:linear-gradient(115deg,rgb(var(--st-rgb)/.6),rgb(var(--st-rgb)/.12) 50%,rgb(var(--st-rgb)/.45)) 1;background:linear-gradient(120deg,rgb(var(--st-rgb)/.12),transparent 55%),linear-gradient(180deg,rgb(0 0 0/.30),rgb(0 0 0/.14)),var(--st-card2)}
+html[data-rs-studio] #rs-root #rs-bar .rs-grp-main>button:not(#rs-action):not(#rs-stop):hover:not(:disabled){border-image:none!important;background:linear-gradient(120deg,rgb(var(--st-rgb)/.24),rgb(var(--st-rgb)/.06))!important}
+html[data-rs-studio] #rs-root .rs-cluster-right #rs-action:hover:not(:disabled){border-image:none!important}
+html[data-rs-studio] #rs-root #rs-bar #rs-engine{border:1px solid transparent!important;border-image:linear-gradient(115deg,rgb(var(--st-rgb)/.7),rgb(var(--st-rgb)/.15) 55%,rgb(var(--st-rgb)/.5)) 1!important}
+html[data-rs-studio] #rs-root #rs-mode-tag{border:1px solid transparent;border-image:linear-gradient(115deg,var(--st-l),rgb(var(--st-rgb)/.3)) 1;background:linear-gradient(120deg,rgb(var(--st-rgb)/.28),rgb(var(--st-rgb)/.06))}
+html[data-rs-studio] #rs-root #rs-cards-btn{border:1px solid transparent!important;border-image:var(--st-rim) 1!important}
+html[data-rs-studio][data-rs-gradients=off] #rs-root :is(.rs-cluster-right button,.rs-grp-main,#rs-engine,#rs-mode-tag,#rs-cards-btn){border-image:none!important}
+html[data-rs-studio] #rs-root #rs-agents .rs-agents-num{border-radius:0!important}

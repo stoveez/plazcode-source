@@ -2336,7 +2336,7 @@ __PLAZCODE_VERSION_UI__
     Rendereffort(Preferences.rsThinkingLevel || 'default');
     document.documentElement.toggleAttribute("data-sidebar-collapsed",!!Preferences.rsSidebarCollapsed);
     Byid("sidebarCollapse").setAttribute("aria-expanded",String(!Preferences.rsSidebarCollapsed));
-    if (Preferences.rsAppearance && !Appearancepending) Applyappearance(Preferences.rsAppearance);
+    if (Preferences.rsAppearance && !Appearancepending) { Applyappearance(Preferences.rsAppearance); try { Pzfeelsync(Preferences.rsAppearance); } catch (Error) {} }
     else if (!Preferences.rsAppearance && !Appearancemigrated && !Appearancepending) {
       Appearancemigrated=true;
       var Legacy;try { Legacy=JSON.parse(ProfileStorage.getItem('plazcodeDesktopAppearance') || 'null'); }catch(Error){}
@@ -2592,7 +2592,7 @@ __PLAZCODE_VERSION_UI__
     try { ProfileStorage.setItem('plazcodeDesktopAppearance',JSON.stringify(Value));Byid('appearanceStatus').textContent='Theme saved.'; }
     catch (Error) { Byid('appearanceStatus').textContent='Applied for this window; appearance storage is unavailable.'; }
     Appearancepending++;
-    Appearancewrites=Appearancewrites.then(function(){return Api('/api/desktop/preferences',{method:'POST',body:JSON.stringify({rsAppearance:Value})});}).then(function(){
+    Appearancewrites=Appearancewrites.then(function(){return Api('/api/desktop/preferences',{method:'POST',body:JSON.stringify({rsAppearance:Object.assign({},Value,Pzfeelshare())})});}).then(function(){
       Byid('appearanceStatus').textContent='Theme saved for desktop and browser.';
     }).catch(function(Error){Byid('appearanceStatus').textContent='Theme could not sync: '+(Error.message || String(Error));}).finally(function(){Appearancepending--;if(!Appearancepending)Refresh();});
     return Appearancewrites;
@@ -2652,8 +2652,23 @@ __PLAZCODE_VERSION_UI__
   }
 
   /* ----- Look & feel (desktop only, stored in this window) ----- */
-  function Nxloadlook() { try { var Saved = JSON.parse(ProfileStorage.getItem('plazcodeDesktopLook') || '{}'); Nxlook = Object.assign({}, NXLOOKDEFAULT, Saved || {}); } catch (Error) { Nxlook = Object.assign({}, NXLOOKDEFAULT); } }
-  function Nxsavelook() { try { ProfileStorage.setItem('plazcodeDesktopLook', JSON.stringify(Nxlook)); } catch (Error) {} }
+  function Nxloadlook() { Pzlookloaded = true; try { var Saved = JSON.parse(ProfileStorage.getItem('plazcodeDesktopLook') || '{}'); Nxlook = Object.assign({}, NXLOOKDEFAULT, Saved || {}); } catch (Error) { Nxlook = Object.assign({}, NXLOOKDEFAULT); } }
+  var Pzlookloaded = false;
+  function Nxsavelook() { try { ProfileStorage.setItem('plazcodeDesktopLook', JSON.stringify(Nxlook)); } catch (Error) {} try { Pzfeelsync(); } catch (Error) {} }
+  /* Appearance > Feel is shared with the PlazCode bar in the browser (owner, 2026-11-13): motion, the animated
+     theme and click effects ride along with the theme in rsAppearance. Sent only when one of them changes. */
+  function Pzfeelshare() { var L = Nxlook || {}; return {motion: L.motion === 'reduced' || L.motion === 'off' ? L.motion : 'full', anim: L.anim !== false, ripple: L.ripple !== false}; }
+  var Pzfeelsent = '';
+  function Pzfeelsync(Saved) {
+    if (!Pzlookloaded) return;
+    var Feel = JSON.stringify(Pzfeelshare());
+    if (Saved) { var Have = JSON.stringify({motion: Saved.motion || 'full', anim: Saved.anim !== false, ripple: Saved.ripple !== false}); Pzfeelsent = Have; if (Have === Feel) return; }
+    else if (Feel === Pzfeelsent) return;
+    Pzfeelsent = Feel;
+    var Theme = Byid('desktopTheme'), Glow = Byid('desktopGlow'), Grad = Byid('desktopGradients'); if (!Theme || !Glow || !Grad) return;
+    Appearancepending++;
+    Appearancewrites = Appearancewrites.then(function () { return Api('/api/desktop/preferences', {method: 'POST', body: JSON.stringify({rsAppearance: Object.assign({theme: Theme.value || 'default', glow: Glow.value || 'subtle', gradients: Grad.value || 'on'}, Pzfeelshare())})}); }).catch(function () {}).finally(function () { Appearancepending--; });
+  }
   function Nxapplylook() {
     var Root = document.documentElement, L = Nxlook;
     Root.style.setProperty('--nx-r', L.radius + 'px');

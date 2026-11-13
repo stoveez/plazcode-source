@@ -621,6 +621,80 @@
   // Central product name. The bar shows THIS constantly; which ENGINE is live
   // is communicated by the RS/AS/AN pill plus a top-right toast on switch.
   const BRAND_NAME = "PlazCode";
+  // Studio look (2026-11-13): the name is drawn like the app's logo word, "Plaz" upright and "Code" in italics.
+  function paintBrand(el) { if (!el) return; if (BRAND_NAME === "PlazCode") el.innerHTML = "Plaz<em>Code</em>"; else el.textContent = BRAND_NAME; }
+  // Line icons for the bar buttons (Studio look). Button labels keep plain words, which are translated; the old
+  // emoji at the start of a label become one of these icons instead.
+  const BAR_ICONS = {
+    restart: '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
+    play: '<path d="M7 4.5v15l12-7.5z" fill="currentColor" stroke="none"/>',
+    stop: '<rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor" stroke="none"/>',
+    sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+    wrench: '<path d="M14.7 6.3a4 4 0 0 0 5 5L22 13.6l-2.4 2.4-2.3-2.3-7.9 7.9a2.1 2.1 0 0 1-3-3l7.9-7.9L12 8.4 14.4 6z"/>',
+    clip: '<path d="M21.4 11.1l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/>',
+    brain: '<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a3 3 0 0 0-3-1z"/><path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/>',
+    ask: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.5-5A8 8 0 1 1 21 12z"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5"/><path d="M12 16.5h.01"/>',
+    cowork: '<circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M2.5 19a5.5 5.5 0 0 1 11 0"/><path d="M14 14.6a4.5 4.5 0 0 1 7.5 3.4"/>',
+    undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  };
+  function barIcon(name) { return BAR_ICONS[name] ? '<svg class="rs-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + BAR_ICONS[name] + '</svg>' : ""; }
+  const BAR_GLYPHS = [["\u21bb", "restart"], ["\u25b6\ufe0e", "play"], ["\u25b6", "play"], ["\u25a0", "stop"], ["\u2728", "sparkle"], ["\ud83d\udd27", "wrench"], ["\ud83d\udcce", "clip"], ["\ud83e\udde0", "brain"]];
+  // Set a bar button's label: an icon (from a leading emoji or the button's own icon) and the words in a span.
+  function setBarLabel(btn, raw, iconName) {
+    if (!btn) return;
+    raw = String(raw == null ? "" : raw);
+    const key = raw + "|" + (iconName || "");
+    if (btn.dataset.rsLabel === key && btn.querySelector(".rs-lbl,.rs-ico")) return;
+    btn.dataset.rsLabel = key;
+    let text = raw, icon = iconName || "";
+    for (const [glyph, name] of BAR_GLYPHS) if (text.startsWith(glyph)) { icon = icon || name; text = text.slice(glyph.length); break; }
+    text = text.replace(/^[\s\ufe0e\ufe0f]+/, "").trim();
+    btn.innerHTML = barIcon(icon) + (text ? '<span class="rs-lbl"></span>' : "");
+    const label = btn.querySelector(".rs-lbl"); if (label) label.textContent = text;
+    btn.classList.toggle("rs-icon-only", !text);
+  }
+  // Click ripple and spark burst, as in the app (Appearance > Feel there: Motion and Click ripples, shared
+  // through rsAppearance). Off motion: nothing. Reduced: ripples only. Full: ripples and sparks.
+  function rsFeel() { const r = document.documentElement; return { motion: r.getAttribute("data-rs-motion") || "full", ripple: r.hasAttribute("data-rs-ripple") }; }
+  function rsRipple(event, target) {
+    const f = rsFeel(); if (!f.ripple || f.motion === "off" || !target) return;
+    const box = target.getBoundingClientRect(); if (box.width < 20 || box.height < 16) return;
+    if (getComputedStyle(target).position === "static") target.style.position = "relative";
+    const host = document.createElement("span"), wave = document.createElement("span"), size = Math.max(box.width, box.height) * 2.4;
+    host.className = "rs-ripple-host"; host.setAttribute("aria-hidden", "true"); wave.className = "rs-ripple";
+    wave.style.width = wave.style.height = size + "px"; wave.style.left = (event.clientX - box.left) + "px"; wave.style.top = (event.clientY - box.top) + "px";
+    host.appendChild(wave); target.appendChild(host); setTimeout(() => host.remove(), 680);
+  }
+  function rsBurst(x, y) {
+    const f = rsFeel(); if (!f.ripple || f.motion !== "full" || !document.body || !document.body.animate) return;
+    let layer = document.getElementById("rs-sparks");
+    if (!layer) { layer = document.createElement("div"); layer.id = "rs-sparks"; layer.setAttribute("aria-hidden", "true"); document.body.appendChild(layer); }
+    const parts = [], ease = "cubic-bezier(.16,1,.3,1)";
+    const add = (cls, size) => { const n = document.createElement("span"); n.className = cls; n.style.left = x + "px"; n.style.top = y + "px"; n.style.width = n.style.height = size + "px"; layer.appendChild(n); parts.push(n); return n; };
+    add("rs-spark-ring", 10).animate([{ transform: "translate(-50%,-50%) scale(1)", opacity: .85 }, { transform: "translate(-50%,-50%) scale(6)", opacity: 0 }], { duration: 650, easing: ease, fill: "forwards" });
+    add("rs-spark-flash", 28).animate([{ transform: "translate(-50%,-50%) scale(.3)", opacity: 1 }, { transform: "translate(-50%,-50%) scale(1.4)", opacity: 0 }], { duration: 400, easing: "ease-out", fill: "forwards" });
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + Math.random() * .5, far = 26 + Math.random() * 50, dx = Math.cos(a) * far, dy = Math.sin(a) * far + 8 * Math.random();
+      add("rs-spark", 2 + Math.random() * 2.6).animate([{ transform: "translate(-50%,-50%) translate(0,0) scale(1)", opacity: 1 }, { opacity: .9, offset: .35 }, { transform: "translate(-50%,-50%) translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) scale(.2)", opacity: 0 }], { duration: 560 + Math.random() * 380, easing: ease, fill: "forwards" });
+    }
+    setTimeout(() => parts.forEach((n) => n.remove()), 1050);
+  }
+  function rsPoint(event, node) {
+    if (event && event.detail !== 0 && (event.clientX || event.clientY)) return [event.clientX, event.clientY];
+    const b = node.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2];
+  }
+  function rsFeelHooks(host) {
+    if (!host || host.rsFeelHooked) return; host.rsFeelHooked = true;
+    host.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      const t = e.target && e.target.closest ? e.target.closest("button,[role=button]") : null;
+      if (t && !t.disabled && !t.closest("#rs-engine") && !t.closest("input,select,textarea")) rsRipple(e, t);
+    }, true);
+    host.addEventListener("click", (e) => {
+      const t = e.target && e.target.closest ? e.target.closest("#rs-action,#rs-engine .rs-mode-btn:not(.on),[data-rs-spark]") : null;
+      if (t && !t.disabled) { const at = rsPoint(e, t); rsBurst(at[0], at[1]); }
+    }, true);
+  }
   // Shown in the panel instead of a static "Free" label, so a user's screenshot
   // alone tells us which build they're on for debugging. Pulled from
   // manifest.json (single source of truth) rather than duplicated here.
@@ -673,12 +747,20 @@
   function applySharedAppearance(value) {
     if(value?.theme === "solar") value={...value,theme:"default"};
     if (!value || !Object.prototype.hasOwnProperty.call(PLAZCODE_PALETTES,value.theme)) return;
-    sharedAppearance = {theme:value.theme,glow:["off","strong"].includes(value.glow)?value.glow:"subtle",gradients:value.gradients==="off"?"off":"on"};
+    // Feel (motion, animated theme, click effects) comes from the app's Appearance > Feel (2026-11-13); an older
+    // app sends none, which means Full / on / on.
+    sharedAppearance = {theme:value.theme,glow:["off","strong"].includes(value.glow)?value.glow:"subtle",gradients:value.gradients==="off"?"off":"on",
+      motion:["reduced","off"].includes(value.motion)?value.motion:"full",anim:value.anim!==false,ripple:value.ripple!==false};
     const palette = PLAZCODE_PALETTES[sharedAppearance.theme], root=document.documentElement;
     plazcodeTheme=palette.legacy;
+    // The bar's Studio look (owner, 2026-11-13: match the app redesign). One switch for the whole new layer.
+    root.setAttribute("data-rs-studio","");
     root.setAttribute("data-rs-palette",sharedAppearance.theme);
     root.setAttribute("data-rs-glow",sharedAppearance.glow);
     root.setAttribute("data-rs-gradients",sharedAppearance.gradients);
+    root.setAttribute("data-rs-motion",sharedAppearance.motion);
+    root.toggleAttribute("data-rs-anim",sharedAppearance.anim);
+    root.toggleAttribute("data-rs-ripple",sharedAppearance.ripple);
     for(const [key,val] of Object.entries({"--pc-accent":palette.accent,"--pc-light":palette.light,"--pc-bg":palette.bg,"--pc-rgb":palette.rgb,"--pc-glow-strength":sharedAppearance.glow==="off"?"0":sharedAppearance.glow==="strong"?".35":".13"})) root.style.setProperty(key,val);
   }
   let plazcodeTheme = "night";
@@ -731,7 +813,7 @@
       const th = sharedAppearance ? {...PLAZCODE_THEMES[plazcodeTheme],name:PLAZCODE_PALETTES[sharedAppearance.theme].name} : PLAZCODE_THEMES[plazcodeTheme];
       const brand = document.getElementById("rs-brand");
       if (brand) {
-        brand.textContent = BRAND_NAME;
+        paintBrand(brand);
         brand.title = th ? th.name : "";
       }
       const tag = document.querySelector(".rs-menu-tag");
@@ -751,7 +833,7 @@
     if (!PLAZCODE_THEMES[id]) return;
     plazcodeTheme = id;
     const theme={night:"graphite","blood-moon":"crimson",sakura:"rose",starglaze:"amethyst",autumn:"default"}[id];
-    applySharedAppearance({theme,glow:sharedAppearance?.glow || "subtle",gradients:sharedAppearance?.gradients || "on"});
+    applySharedAppearance({...(sharedAppearance||{}),theme,glow:sharedAppearance?.glow || "subtle",gradients:sharedAppearance?.gradients || "on"});
     applyOrSkin();
     try { chrome.storage.local.set({ rsTheme: id, rsAppearance:sharedAppearance }); } catch {}
   }
@@ -7028,7 +7110,7 @@ return result`;
           <div class="rs-cluster rs-cluster-left">
           <span id="rs-dot" class="off" title=""></span>
           <span id="rs-ornament" aria-hidden="true"></span>
-          <div id="rs-brand-stack"><span id="rs-brand">${BRAND_NAME}</span><span id="rs-bar-version" data-plazcode-version>v${EXT_VERSION} (Not checked)</span><span id="rs-effort" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" title="Click to change the effort">Effort: <span>Default</span></span><button id="rs-approval-mode" type="button" aria-haspopup="menu" aria-expanded="false" title="Choose how task commands are approved">Approval: <span>${approvalModeLabel()}</span></button></div>
+          <div id="rs-brand-stack"><span id="rs-brand" class="brand-word">${BRAND_NAME === "PlazCode" ? "Plaz<em>Code</em>" : BRAND_NAME}</span><span id="rs-mode-tag" aria-hidden="true"></span><span id="rs-bar-version" data-plazcode-version>v${EXT_VERSION} (Not checked)</span><span id="rs-effort" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" title="Click to change the effort">Effort: <span>Default</span></span><button id="rs-approval-mode" type="button" aria-haspopup="menu" aria-expanded="false" title="Choose how task commands are approved">Approval: <span>${approvalModeLabel()}</span></button></div>
           <div id="rs-engine" data-engine="roblox">
             <span id="rs-engine-thumb"></span>
             <button data-mode="roblox" class="rs-mode-btn on" title="RobloxScript">RS</button>
@@ -7042,20 +7124,26 @@ return result`;
           <span id="rs-ctx" hidden title=""></span>
           <div class="rs-cluster rs-cluster-right">
           <button id="rs-activity" hidden aria-expanded="false">Working</button>
-          <button id="rs-enhance" title="Rewrite and send a clearer prompt using this AI">✨ Enhance</button>
-          <button id="rs-media" title="Insert media — drop/paste images or videos, then send with your message">📎</button>
+          <div class="rs-grp rs-grp-main">
+          <button id="rs-enhance" title="Rewrite and send a clearer prompt using this AI">${barIcon("sparkle")}<span class="rs-lbl">Enhance</span></button>
+          <button id="rs-media" class="rs-icon-only" title="Insert media — drop/paste images or videos, then send with your message" aria-label="Insert media">${barIcon("clip")}</button>
           <button id="rs-action"></button>
-          <button id="rs-fix" hidden title="Check and fix the connection">🔧 Fix connection</button>
-          <button id="rs-stop" hidden>■ Stop</button>
+          <button id="rs-fix" hidden title="Check and fix the connection">${barIcon("wrench")}<span class="rs-lbl">Fix connection</span></button>
+          <button id="rs-stop" hidden>${barIcon("stop")}<span class="rs-lbl">Stop</span></button>
+          </div>
+          <div class="rs-grp rs-grp-pills">
           <button id="rs-cowork" aria-pressed="false" title="Co-work mode — keep chatting while the agent works">Co-Work: Off</button>
           <button id="rs-cowork-queue" hidden title="View pending requests">Pending</button>
-          <button id="rs-ask-plazcode" hidden title="Ask PlazCode about the page you are looking at, in a chat beside it">Ask PlazCode</button>
+          <button id="rs-ask-plazcode" hidden title="Ask PlazCode about the page you are looking at, in a chat beside it">${barIcon("ask")}<span class="rs-lbl">Ask PlazCode</span></button>
           <button id="rs-agents" hidden aria-expanded="false" title="Helpers working on parts of this job"><span class="rs-agents-label">Agents</span><span class="rs-agents-num">0</span></button>
-          <button id="rs-extra" hidden title="Extra Thinking — the AI reviews its own work">🧠 Extra</button>
-          <button id="rs-undo" hidden title="Undo last Studio change the agent made">Undo</button>
+          <button id="rs-extra" hidden title="Extra Thinking — the AI reviews its own work">${barIcon("brain")}<span class="rs-lbl">Extra</span></button>
+          <button id="rs-undo" hidden title="Undo last Studio change the agent made">${barIcon("undo")}<span class="rs-lbl">Undo</span></button>
+          </div>
+          <div class="rs-grp rs-grp-icons">
           <button id="rs-discord" aria-label="Discord" title="PlazCode Discord"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg></button>
           <button id="rs-settings-btn" aria-label="Settings" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
           <button id="rs-hide" aria-label="Hide PlazCode bar" title="Hide the bar — PlazCode keeps working. Use the tab on the right to show it again."><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+          </div>
           </div>
         </div>
         <div id="rs-fix-panel" hidden role="dialog" aria-label="Fix connection" data-pc-i18n>
@@ -7133,6 +7221,7 @@ return result`;
         </div>
       `;
       document.documentElement.appendChild(root);
+      try { rsFeelHooks(root); } catch {}
       renderVersionIndicators();
       bar = root.querySelector("#rs-bar");
       dot = root.querySelector("#rs-dot");
@@ -7527,7 +7616,7 @@ return result`;
           const brand = root.querySelector("#rs-brand");
           // Brand stays the central product name in every engine; the pill +
           // switch toast communicate which engine is live.
-          if (brand) brand.textContent = BRAND_NAME;
+          if (brand) paintBrand(brand);
           try { if (cardsBtn) cardsBtn.title = isLocal ? "Session summary \u2014 what the AI did" : "Idea cards \u2014 click to open the inventory"; } catch {}
           // Status dot and brand are tinted via CSS using data-rs-engine — no inline bar styles needed
         }
@@ -9906,7 +9995,7 @@ function renderCards(panel) {
           list.appendChild(chip);
         });
         if (countEl) countEl.textContent = A.mediaFiles.length ? A.mediaFiles.length + " media staged" : "No media staged";
-        if (mediaBtn) mediaBtn.textContent = A.mediaFiles.length ? "📎" + A.mediaFiles.length : "📎";
+        if (mediaBtn) setBarLabel(mediaBtn, A.mediaFiles.length ? String(A.mediaFiles.length) : "", "clip");
       }
 
       function releaseMediaUrl(media) {
@@ -10414,7 +10503,7 @@ function renderCards(panel) {
         const statusText = root.querySelector("#rs-status-pill .rs-status-text");
         if (statusText) statusText.textContent = "Switching…";
       }
-      actionBtn.textContent = label;
+      setBarLabel(actionBtn, label);
       actionBtn.dataset.kind = kind;
       actionBtn.disabled = disabled;
       // Tooltip shows the target engine without stretching the button text
@@ -10616,7 +10705,7 @@ function renderCards(panel) {
       // active turn (not a stop-in-progress).
       if (allow && !A.stopping && stopBtn.dataset.state === "stopping") {
         stopBtn.disabled = false;
-        stopBtn.textContent = "■ Stop";
+        setBarLabel(stopBtn, "■ Stop");
         delete stopBtn.dataset.state;
       }
       if (was !== stopBtn.hidden) renderBar(); // reflect the action/stop swap
@@ -10630,7 +10719,7 @@ function renderCards(panel) {
       stopBtn.hidden = false;
       stopBtn.disabled = true;
       stopBtn.dataset.state = "stopping";
-      stopBtn.textContent = " Stopping…";
+      setBarLabel(stopBtn, "Stopping…", "stop");
       renderBar();
     }
 
