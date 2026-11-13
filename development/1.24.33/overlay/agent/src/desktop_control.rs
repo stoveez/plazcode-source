@@ -82,16 +82,38 @@ pub async fn enter(name: &str) -> Result<(), String> {
         let now = Instant::now();
         match with(|s| s.gate(now)) {
             Gate::Refuse(why) => return Err(why.to_string()),
-            Gate::Go => { with(|s| s.mark_active(now)); return Ok(()); }
+            Gate::Go => { with(|s| s.mark_active(now)); watch_person(); return Ok(()); }
             Gate::Wait if now.duration_since(started) >= PAUSE_WAIT => return Err("The person is using the computer (PlazCode paused when they moved the mouse or typed). Nothing was done. Ask them whether to continue; they can press Resume.".into()),
             Gate::Wait => tokio::time::sleep(Duration::from_millis(200)).await,
         }
     }
 }
 
+/// What the on-screen look (glow, label, cursor) shows, while control is active or paused. `None` = hidden.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Look { pub paused: bool, pub accent: String, pub point: Option<(i32, i32)> }
+pub fn look() -> Option<Look> {
+    if !enabled() { return None; }
+    let now = Instant::now();
+    with(|s| (s.active(now) || s.paused).then(|| Look { paused: s.paused, accent: if s.accent.is_empty() { "#8b5cf6".into() } else { s.accent.clone() }, point: s.ai_point }))
+}
+/// The script that updates the look's pages (see gui::control_look).
+pub fn look_script(look: &Look, origin: (i32, i32), scale: f64) -> String {
+    let point = look.point.map(|(x, y)| json!([((x - origin.0) as f64 / scale).round(), ((y - origin.1) as f64 / scale).round()])).unwrap_or(Value::Null);
+    format!("window.__pz&&window.__pz({});", json!({"paused": look.paused, "accent": look.accent, "point": point}))
+}
+
 /// PlazCode is about to send its own input: do not treat it as the person's for a moment.
 pub fn expect(ms: u64) { let until = Instant::now() + Duration::from_millis(ms.min(5000)); with(|s| s.expect_until = Some(until)); }
 pub fn note_ai_point(x: i32, y: i32) { with(|s| s.ai_point = Some((x, y))); }
+/// Before PlazCode moves the real mouse: show its cursor gliding there first (while the rework is on), and announce
+/// the input that follows so it never counts as the person taking over.
+pub async fn point_then_act(x: i32, y: i32) {
+    if !enabled() { return; }
+    note_ai_point(x, y);
+    tokio::time::sleep(Duration::from_millis(450)).await;
+    expect(800);
+}
 pub fn person_input() -> bool { let now = Instant::now(); with(|s| s.person_input(now)) }
 pub fn act(action: &str) -> Result<(), String> { let now = Instant::now(); with(|s| s.act(action, now)) }
 pub fn set_accent(accent: &str) {
@@ -108,6 +130,55 @@ pub async fn post(axum::Json(body): axum::Json<Value>) -> axum::Json<Value> {
     match body["action"].as_str() {
         Some(action) => match act(action) { Ok(()) => axum::Json(json!({"ok": true, "control": status()})), Err(error) => axum::Json(json!({"ok": false, "error": error})) },
         None => axum::Json(json!({"ok": true, "control": status()})),
+    }
+}
+
+/// 5c: notice the person taking over. Windows: low-level mouse and keyboard hooks on their own thread; Windows marks
+/// input PlazCode sent itself as "injected", so only the person's own input pauses PlazCode. Started the first time
+/// PlazCode controls the desktop. (Mac: listen-only event tap, see the Mac part.)
+fn watch_person() {
+    #[cfg(windows)]
+    hooks::start();
+}
+#[cfg(windows)]
+mod hooks {
+    use std::ffi::c_void;
+    #[repr(C)] struct Point { x: i32, y: i32 }
+    #[repr(C)] struct MouseLl { pt: Point, mouse_data: u32, flags: u32, time: u32, extra: usize }
+    #[repr(C)] struct KeyLl { vk: u32, scan: u32, flags: u32, time: u32, extra: usize }
+    #[repr(C)] struct Msg { hwnd: *mut c_void, message: u32, wparam: usize, lparam: isize, time: u32, pt: Point }
+    const WH_KEYBOARD_LL: i32 = 13;
+    const WH_MOUSE_LL: i32 = 14;
+    const LLMHF_INJECTED: u32 = 0x1;
+    const LLKHF_INJECTED: u32 = 0x10;
+    #[link(name = "user32")]
+    extern "system" {
+        fn SetWindowsHookExW(id: i32, hook: unsafe extern "system" fn(i32, usize, isize) -> isize, module: *mut c_void, thread: u32) -> *mut c_void;
+        fn CallNextHookEx(hook: *mut c_void, code: i32, wparam: usize, lparam: isize) -> isize;
+        fn GetMessageW(msg: *mut Msg, hwnd: *mut c_void, min: u32, max: u32) -> i32;
+    }
+    #[link(name = "kernel32")]
+    extern "system" { fn GetModuleHandleW(name: *const u16) -> *mut c_void; }
+    unsafe extern "system" fn mouse(code: i32, wparam: usize, lparam: isize) -> isize {
+        if code >= 0 && lparam != 0 { let info = &*(lparam as *const MouseLl); if info.flags & LLMHF_INJECTED == 0 { super::person_input(); } }
+        CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam)
+    }
+    unsafe extern "system" fn keyboard(code: i32, wparam: usize, lparam: isize) -> isize {
+        if code >= 0 && lparam != 0 { let info = &*(lparam as *const KeyLl); if info.flags & LLKHF_INJECTED == 0 { super::person_input(); } }
+        CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam)
+    }
+    pub fn start() {
+        static STARTED: std::sync::Once = std::sync::Once::new();
+        STARTED.call_once(|| {
+            let _ = std::thread::Builder::new().name("plazcode-control-watch".into()).spawn(|| unsafe {
+                let module = GetModuleHandleW(std::ptr::null());
+                let a = SetWindowsHookExW(WH_MOUSE_LL, mouse, module, 0);
+                let b = SetWindowsHookExW(WH_KEYBOARD_LL, keyboard, module, 0);
+                if a.is_null() || b.is_null() { tracing::warn!("control rework: could not watch for the person's input (mouse {}, keyboard {})", !a.is_null(), !b.is_null()); }
+                let mut msg: Msg = std::mem::zeroed();
+                while GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {}
+            });
+        });
     }
 }
 
@@ -166,6 +237,12 @@ mod tests {
         assert!(s.act("explode", t).is_err());
         s.act("pause", t + Duration::from_secs(3)).unwrap();
         assert!(s.paused);
+    }
+    #[test] fn the_look_script_carries_page_points_and_never_more_than_it_needs() {
+        let look = Look { paused: true, accent: "#16a34a".into(), point: Some((2120, 340)) };
+        // A screen whose top-left is at (1920, 0) and which shows pages at 2x: the point lands at (100, 170) on the page.
+        assert_eq!(look_script(&look, (1920, 0), 2.0), r##"window.__pz&&window.__pz({"accent":"#16a34a","paused":true,"point":[100.0,170.0]});"##);
+        assert!(look_script(&Look { point: None, ..look }, (0, 0), 1.0).contains("\"point\":null"));
     }
     #[test] fn only_desktop_commands_go_through_the_gate_and_it_is_off_in_this_build_unless_switched_on() {
         for name in ["mouse_move", "mouse_click", "key_type", "focus_window", "launch_app", "screen_capture", "window_screenshot", "list_windows"] { assert!(is_desktop_tool(name), "{name}"); }

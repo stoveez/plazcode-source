@@ -2,6 +2,9 @@ use crate::{mcp_addons, preferences};
 #[cfg(windows)]
 #[path = "tray.rs"]
 mod tray;
+#[cfg(any(windows, target_os = "macos"))]
+#[path = "control_look.rs"]
+mod control_look;
 use serde::Serialize;
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -422,7 +425,10 @@ pub fn run_gui(
     #[cfg(target_os = "macos")]
     let mut background_visibility_pending = start_background;
     let mut last_tick = Instant::now();
-    event_loop.run_return(|event, _, control_flow| {
+    // 1.24.34 control rework: the glow, label and cursor while PlazCode controls the desktop (made on first use).
+    let mut look: Option<control_look::ControlLook> = None;
+    let mut look_failed = false;
+    event_loop.run_return(|event, target, control_flow| {
         *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(100));
 
         match event {
@@ -498,6 +504,11 @@ pub fn run_gui(
                     if shared.quit_requested.swap(false, Ordering::Relaxed) {
                         *control_flow = ControlFlow::Exit;
                     }
+                    let wanted = crate::desktop_control::look();
+                    if wanted.is_some() && look.is_none() && !look_failed {
+                        match control_look::ControlLook::new(target) { Ok(made) => look = Some(made), Err(error) => { look_failed = true; shared.log(&format!("Could not show the control glow on screen: {error}")); } }
+                    }
+                    if let Some(look) = look.as_mut() { look.sync(wanted); }
                 }
             }
             _ => {}

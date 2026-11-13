@@ -1919,6 +1919,7 @@ fn send_mouse(flags: u32, dx: i32, dy: i32, data: u32) -> Result<(), String> {
 pub async fn tool_mouse_move(ws: &Workspace, args: &serde_json::Value) -> Result<String, String> {
     require_full_access(ws,"mouse_move")?;
     let x = j_i32(args, "x")?; let y = j_i32(args, "y")?;
+    crate::desktop_control::point_then_act(x, y).await;
     let ok = unsafe { desktop::SetCursorPos(x, y) };
     if ok == 0 { Err("SetCursorPos failed".into()) } else { Ok(format!("Moved mouse to ({x}, {y}).")) }
 }
@@ -1928,8 +1929,9 @@ pub async fn tool_mouse_click(ws: &Workspace, args: &serde_json::Value) -> Resul
     require_full_access(ws,"mouse_click")?;
     let button = args.get("button").and_then(|b| b.as_str()).unwrap_or("left").to_lowercase();
     if let (Ok(x), Ok(y)) = (j_i32(args, "x"), j_i32(args, "y")) {
+        crate::desktop_control::point_then_act(x, y).await;
         unsafe { desktop::SetCursorPos(x, y); }
-    }
+    } else { crate::desktop_control::expect(600); }
     let (down, up) = if button == "right" { (desktop::MOUSEEVENTF_RIGHTDOWN, desktop::MOUSEEVENTF_RIGHTUP) } else { (desktop::MOUSEEVENTF_LEFTDOWN, desktop::MOUSEEVENTF_LEFTUP) };
     send_mouse(down, 0, 0, 0)?;
     tokio::time::sleep(std::time::Duration::from_millis(30)).await;
@@ -1942,6 +1944,7 @@ pub async fn tool_key_type(ws: &Workspace, args: &serde_json::Value) -> Result<S
     require_full_access(ws,"key_type")?;
     use desktop::*;
     let text = arg_str(args, "text")?;
+    crate::desktop_control::expect(800 + 4 * text.chars().count() as u64);
     for ch in text.chars() {
         let mut utf16 = [0u16; 2];
         for unit in ch.encode_utf16(&mut utf16).iter() {
