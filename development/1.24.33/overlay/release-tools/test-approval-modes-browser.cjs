@@ -46,6 +46,6 @@ async function choose(page,value){await page.locator('#rs-approval-mode').click(
  }
  if(process.env.PLAZCODE_UI_PREVIEW_DIR){fs.mkdirSync(process.env.PLAZCODE_UI_PREVIEW_DIR,{recursive:true});await page.setViewportSize({width:1120,height:850});await page.evaluate(()=>{const c=document.querySelector('#position-composer');c.style.left='190px';c.style.width='720px';c.style.bottom='40px';});await page.waitForTimeout(350);await page.locator('#rs-approval-mode').click();await page.screenshot({path:process.env.PLAZCODE_UI_PREVIEW_DIR+'/plazcode-bar-approval-menu.png'});await page.keyboard.press('Escape');await page.locator('#rs-hide').click();await page.waitForTimeout(300);await page.screenshot({path:process.env.PLAZCODE_UI_PREVIEW_DIR+'/plazcode-collapsed-alignment.png'});}
  assert.deepEqual(errors,[]);await page.close();
- const restored=await load(browser,'bypass');assert.match(await restored.page.locator('#rs-approval-mode').innerText(),/Bypass approval/);await restored.page.close();
+ const restored=await load(browser,'bypass');assert.match(await restored.page.locator('#rs-approval-mode').innerText(),/Bypass approval/i); // the Studio look shows it in spaced capitals (CSS)await restored.page.close();
  console.log('PASS real bar approval menus, strict edit/deletion/bypass policy, saved-mode restoration, external sync, failed-save handling and composer-relative expanded/collapsed placement across resize/remount.');
 }finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

@@ -31,13 +31,15 @@ async function mock(page) {
   });
 }
 const openMenu = (page) => page.evaluate(() => fixture.ui.openMenu(false));
+// 1.24.33 bar redesign: the settings menu shows one tab at a time; open the tab that holds a control before using it.
+const reveal = (page, sel) => page.evaluate((sel) => { const el = document.querySelector(sel), sec = el && el.closest('.rs-menu-sec'); const tab = sec && sec.dataset.rsTab && document.querySelector('#rs-menu .rs-menu-tab[data-rs-tab="' + sec.dataset.rsTab + '"]'); if (tab && sec.hidden) tab.click(); }, sel);
 
 (async () => {
   const browser = await chromium.launch();
   try {
     const {page, errors} = await pageFor(browser, false, true);
     await mock(page);
-    await openMenu(page);
+    await openMenu(page); await reveal(page, '#rs-safety-sec');
     await page.waitForSelector('#rs-safety-sec');
     assert.equal(await page.locator('#rs-safety-sec [data-mode=confirmdelete] .rs-tgl').getAttribute('class'), 'rs-tgl on', 'deletes ask by default');
 
@@ -50,16 +52,16 @@ const openMenu = (page) => page.evaluate(() => fixture.ui.openMenu(false));
     assert.equal(await page.evaluate(() => nativeCalls.length), before, 'nothing sent to the app');
     const looked = await page.evaluate(() => fixture.runTool({tool: 'read_file', arguments: {path: 'a.txt'}}));
     assert.doesNotMatch(String(looked), /Read-only mode is on/, 'looking still works');
-    await openMenu(page); await page.locator('#rs-safety-sec [data-mode=readonly]').click();
+    await openMenu(page); await reveal(page, '#rs-safety-sec'); await page.locator('#rs-safety-sec [data-mode=readonly]').click();
 
     // Allowed folders are cleaned up and saved.
-    await openMenu(page);
+    await openMenu(page); await reveal(page, '#rs-allowed-folders');
     await page.fill('#rs-allowed-folders', 'C:\\Projects\\\n\nc:\\projects\nD:\\Games');
     await page.click('#rs-allowed-save');
     assert.deepEqual(await page.evaluate(() => store.rsAllowedFolders), ['C:\\Projects', 'D:\\Games']);
 
     // Setup for this site: save with choices, summary appears, apply turns tools on.
-    await page.locator('#rs-setup-more summary').click();
+    await reveal(page, '#rs-setup-more'); await page.locator('#rs-setup-more summary').click();
     await page.waitForSelector('#rs-setup-tools input');
     await page.fill('#rs-setup-project', 'Shop game');
     await page.locator('#rs-setup-skills input[value=skill-ui]').check();
@@ -77,7 +79,7 @@ const openMenu = (page) => page.evaluate(() => fixture.ui.openMenu(false));
     assert(!(await page.evaluate(() => bridgeCalls.some((m) => m.type === 'mcp-toggle' && m.id === 'playwright'))), 'tools already on are left alone');
 
     // What happened: plain sentences, the blocked reason, Undo on changed files.
-    await openMenu(page);
+    await openMenu(page); await reveal(page, '#rs-action-log-open');
     await page.click('#rs-action-log-open');
     await page.waitForSelector('#rs-alog-panel .pc-alog-row');
     const text = await page.locator('#rs-alog-panel').innerText();

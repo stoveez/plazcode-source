@@ -13,6 +13,8 @@ const {pageFor} = require('./test-clickup-browser.cjs');
       chrome.storage.local.set = (v, cb) => { Object.assign(store, JSON.parse(JSON.stringify(v))); if (cb) queueMicrotask(cb); return Promise.resolve(); };
       fixture.ui.openMenu(false);
     });
+    // 1.24.33 bar redesign: the settings menu shows one tab at a time; open the tab that holds the backup section.
+    await page.evaluate(() => { const sec = document.getElementById('rs-backup-sec'); const tab = sec && document.querySelector('#rs-menu .rs-menu-tab[data-rs-tab="' + sec.dataset.rsTab + '"]'); if (tab && sec.hidden) tab.click(); });
     await page.waitForSelector('#rs-backup-sec');
     await page.click('#rs-backup-copy');
     await page.waitForFunction(() => document.querySelector('#rs-backup-text').value.includes('plazcode-settings'));
