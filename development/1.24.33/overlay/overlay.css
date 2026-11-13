@@ -6397,3 +6397,75 @@ html[data-rs-studio] #rs-root #rs-menu .rs-menu-clear{border-radius:999px!import
 html[data-rs-studio] #rs-root #rs-menu .rs-site-badge{border-radius:999px!important}
 html[data-rs-studio] #rs-root #rs-menu .rs-tgl{border-radius:999px!important}
 html[data-rs-studio] #rs-root #rs-menu .rs-tgl::after{border-radius:50%!important}
+
+/* ── Studio look: pop-ups and cards (step 3). Same square glass as the bar: a gradient rim, lit corner brackets
+   and the palette sweep; serif titles, small spaced mono labels, rounded buttons. ── */
+html[data-rs-studio]{--st-panel:linear-gradient(var(--st-l),var(--st-l)) 0 0/18px 2px no-repeat,linear-gradient(var(--st-l),var(--st-l)) 0 0/2px 18px no-repeat,
+  linear-gradient(var(--st-a),var(--st-a)) 100% 100%/18px 2px no-repeat,linear-gradient(var(--st-a),var(--st-a)) 100% 100%/2px 18px no-repeat,
+  linear-gradient(135deg,rgb(var(--st-rgb)/.24) 0%,rgb(var(--st-rgb)/.06) 32%,transparent 58%,rgb(var(--st-rgb)/.10) 100%),linear-gradient(180deg,rgb(255 255 255/.05),transparent 34%),color-mix(in srgb,var(--st-card) 97%,transparent)}
+html[data-rs-studio] :is(#rs-root #rs-fix-panel,#rs-root #rs-agents-panel,#rs-root #rs-enhancer-panel,#rs-root #rs-cowork-panel,#rs-root #rs-activity-panel,#rs-root #rs-memory-panel,#rs-root #rs-cards-panel,#rs-root #rs-media-panel .rs-media-card,.pc-effort-menu,#rs-approve .rs-approve-card,.rs-continuation-offer,#rs-task-checklist,#rs-checklist-show){
+  border-radius:0!important;border:1px solid transparent!important;border-image:var(--st-rim) 1!important;background:var(--st-panel)!important;color:var(--st-text)!important;font-family:var(--st-sans)!important;
+  box-shadow:inset 0 1px 0 rgb(255 255 255/.08),0 28px 60px -28px #000,0 16px 40px -26px rgb(var(--st-rgb)/calc(.75*var(--st-g)))!important;-webkit-backdrop-filter:blur(18px) saturate(1.2)!important;backdrop-filter:blur(18px) saturate(1.2)!important}
+html[data-rs-studio][data-rs-gradients=off] :is(#rs-root #rs-fix-panel,#rs-root #rs-agents-panel,#rs-root #rs-enhancer-panel,#rs-root #rs-cowork-panel,#rs-root #rs-activity-panel,#rs-root #rs-memory-panel,#rs-root #rs-cards-panel,#rs-root #rs-media-panel .rs-media-card,.pc-effort-menu,#rs-approve .rs-approve-card,.rs-continuation-offer,#rs-task-checklist,#rs-checklist-show){border-image:none!important;border-color:var(--st-line)!important;background:var(--st-card)!important}
+html[data-rs-studio] :is(#rs-root #rs-fix-panel,#rs-root #rs-agents-panel,#rs-root #rs-enhancer-panel,#rs-root #rs-cowork-panel,#rs-root #rs-memory-panel,#rs-root #rs-cards-panel,.rs-continuation-offer)::before{display:none!important}
+html[data-rs-studio] #rs-root #rs-media-panel{background:none!important;border:0!important;box-shadow:none!important}
+/* Titles and small print. */
+html[data-rs-studio] #rs-root :is(.rs-fix-head,.rs-agents-head,.rs-enhancer-head,.rs-media-head,.rs-cards-head) strong,html[data-rs-studio] #rs-root :is(.rs-media-title,.rs-cards-heading),html[data-rs-studio] #rs-approve .rs-approve-title,html[data-rs-studio] .rs-continuation-offer :is(h2,h3,strong:first-child){
+  font:600 17px/1.2 var(--st-serif)!important;letter-spacing:-.1px!important;text-transform:none!important;color:var(--st-text)!important;-webkit-text-fill-color:currentColor}
+html[data-rs-studio] #rs-root :is(#rs-enhancer-panel,#rs-cowork-panel,#rs-fix-panel,#rs-agents-panel,#rs-cards-panel)>p,html[data-rs-studio] #rs-root :is(#rs-enhancer-status,#rs-cowork-status,#rs-agents-sub,.rs-agents-foot span,.rs-media-hint,#rs-media-count){color:var(--st-soft)!important;font-family:var(--st-sans)!important}
+html[data-rs-studio] #rs-approve .rs-approve-kicker,html[data-rs-studio] #rs-root .rs-media-qos-label{font:700 9.5px/1 var(--st-mono)!important;letter-spacing:.16em!important;text-transform:uppercase!important;color:var(--st-l)!important}
+/* Close buttons: small round glass. */
+html[data-rs-studio] #rs-root :is(#rs-fix-close,#rs-agents-close,#rs-enhancer-close,#rs-cowork-close,#rs-memory-close){width:26px!important;height:26px!important;min-width:0!important;padding:0!important;display:inline-grid!important;place-items:center!important;border-radius:999px!important;
+  border:1px solid var(--st-line-soft)!important;background:var(--st-glass),rgb(var(--st-rgb)/.10)!important;color:var(--st-soft)!important;font:500 16px/1 var(--st-sans)!important;box-shadow:none!important;transition:color .2s,border-color .2s!important}
+html[data-rs-studio] #rs-root :is(#rs-fix-close,#rs-agents-close,#rs-enhancer-close,#rs-cowork-close,#rs-memory-close):hover{color:var(--st-text)!important;border-color:rgb(var(--st-rgb)/.7)!important}
+/* Fields: square. */
+html[data-rs-studio] #rs-root :is(#rs-enhancer-input,#rs-cowork-input),html[data-rs-studio] #rs-root .rs-media-drop{border-radius:0!important;border:1px solid var(--st-line-soft)!important;background:rgb(0 0 0/.30)!important;color:var(--st-text)!important;box-shadow:inset 0 1px 3px rgb(0 0 0/.35)!important;font-family:var(--st-sans)!important}
+html[data-rs-studio] #rs-root .rs-media-drop{border-style:dashed!important;color:var(--st-soft)!important}
+html[data-rs-studio] #rs-root :is(#rs-enhancer-input,#rs-cowork-input):focus-visible{outline:0!important;border-color:rgb(var(--st-rgb)/.85)!important;box-shadow:0 0 0 3px rgb(var(--st-rgb)/calc(.16*var(--st-g)))!important}
+/* Buttons: rounded. The main one in each pop-up carries the palette gradient. */
+html[data-rs-studio] :is(#rs-root #rs-fix-panel,#rs-root #rs-agents-panel,#rs-root #rs-enhancer-panel,#rs-root #rs-cowork-panel,#rs-root #rs-media-panel,#rs-root #rs-cards-panel,#rs-approve,.rs-continuation-offer,#rs-task-checklist) button:not(:where(#rs-fix-close,#rs-agents-close,#rs-enhancer-close,#rs-cowork-close,#rs-memory-close)){
+  border-radius:10px!important;border:1px solid color-mix(in srgb,#2b303b 50%,rgb(var(--st-rgb)) 50%)!important;color:var(--st-text)!important;font-family:var(--st-sans)!important;
+  background:linear-gradient(180deg,rgb(255 255 255/.10),transparent 50%),linear-gradient(120deg,rgb(var(--st-rgb)/.22),rgb(var(--st-rgb)/.05) 60%,rgb(var(--st-rgb)/.12)),var(--st-card)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.10)!important;transition:border-color .2s,box-shadow .25s,transform .18s var(--st-ease),filter .2s!important}
+html[data-rs-studio] :is(#rs-root #rs-fix-panel,#rs-root #rs-agents-panel,#rs-root #rs-enhancer-panel,#rs-root #rs-cowork-panel,#rs-root #rs-media-panel,#rs-root #rs-cards-panel,#rs-approve,.rs-continuation-offer,#rs-task-checklist) button:hover:not(:disabled){border-color:rgb(var(--st-rgb)/.75)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.16),0 10px 22px -12px rgb(var(--st-rgb)/calc(.8*var(--st-g)))!important}
+html[data-rs-studio] button:is(#rs-root #rs-enhancer-send,#rs-root #rs-cowork-resume,#rs-root #rs-fix-go,#rs-root #rs-media-send,#rs-approve #rs-approve-allow,#rs-approve #rs-approve-all,.rs-continuation-offer .rs-co-yes,.rs-continuation-offer button:first-of-type){border:1px solid color-mix(in srgb,var(--st-l) 60%,#fff)!important;color:var(--st-ink)!important;font-weight:750!important;
+  background:linear-gradient(180deg,rgb(255 255 255/.34),transparent 52%),var(--st-grad)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.6),0 10px 22px -12px rgb(var(--st-rgb)/calc(.85*var(--st-g)))!important}
+html[data-rs-studio][data-rs-gradients=off] button:is(#rs-root #rs-enhancer-send,#rs-root #rs-cowork-resume,#rs-root #rs-fix-go,#rs-root #rs-media-send,#rs-approve #rs-approve-allow,#rs-approve #rs-approve-all){background:var(--st-a)!important}
+html[data-rs-studio] #rs-approve button#rs-approve-deny{border-color:rgb(255 105 108/.55)!important;background:linear-gradient(180deg,rgb(255 255 255/.06),transparent 50%),linear-gradient(135deg,rgb(255 105 108/.26),rgb(255 105 108/.08))!important;color:#ffe1e1!important}
+html[data-rs-studio] #rs-root #rs-media-panel .rs-media-qos-btns button.on{border-color:color-mix(in srgb,var(--st-l) 60%,#fff)!important;color:var(--st-ink)!important;background:var(--st-grad)!important}
+/* Fix connection checklist. */
+html[data-rs-studio] #rs-root #rs-fix-list li{border-bottom:1px solid var(--st-line-soft)!important;color:var(--st-text)!important}
+/* Effort and approval lists. */
+html[data-rs-studio] .pc-effort-menu{padding:6px!important}
+html[data-rs-studio] .pc-effort-menu :is(button,[role=menuitem],[role=menuitemradio]){border-radius:10px!important;color:var(--st-text)!important;font-family:var(--st-sans)!important;transition:background .2s!important}
+html[data-rs-studio] .pc-effort-menu :is(button,[role=menuitem],[role=menuitemradio]):hover{background:rgb(var(--st-rgb)/.14)!important}
+html[data-rs-studio] .pc-effort-menu :is(button,[role=menuitem],[role=menuitemradio]):is([aria-checked=true],[aria-selected=true],.on){background:linear-gradient(120deg,rgb(var(--st-rgb)/.30),rgb(var(--st-rgb)/.08))!important;box-shadow:inset 0 0 0 1px rgb(var(--st-rgb)/.55)!important}
+html[data-rs-studio] .pc-effort-menu small{color:var(--st-dim)!important}
+/* Run log and tool cards: square cards, the category stripe kept. */
+html[data-rs-studio] #rs-root #rs-cards-panel :is(.rs-cards-empty,.rs-card,.rs-lib-card){border-radius:0!important;border-color:var(--st-line-soft)!important;background:linear-gradient(120deg,rgb(var(--st-rgb)/.08),transparent 60%),rgb(0 0 0/.22)!important}
+html[data-rs-studio] #rs-root #rs-cards-panel .rs-cards-empty-glyph{color:var(--st-l)!important}
+html[data-rs-studio] #rs-root #rs-cards-panel .rs-cards-head{background:radial-gradient(90% 160% at 0% 0%,rgb(var(--st-rgb)/.26),transparent 65%)!important;border-bottom:1px solid var(--st-line-soft)!important;border-radius:0!important}
+html[data-rs-studio] #rs-root #rs-cards-panel .rs-cards-head :is(.rs-cards-tag,.rs-cards-brand,b,span:first-child){border-radius:0!important}
+html[data-rs-studio] .rs-chip.rs-tc,html[data-rs-studio] .rs-chip:not(.rs-tc){border-radius:0!important;background-image:linear-gradient(120deg,rgb(var(--st-rgb)/.16),transparent 55%),linear-gradient(180deg,rgb(255 255 255/.04),transparent 40%)!important;background-color:var(--st-card)!important;border-color:var(--st-line-soft)!important}
+html[data-rs-studio] .rs-chip :is(.rs-chip-head,.rs-chip-dt){font-family:var(--st-mono)!important}
+/* Approval card and the continue question. */
+html[data-rs-studio] #rs-approve .rs-approve-card *{border-radius:0}
+html[data-rs-studio] #rs-approve .rs-approve-card button{border-radius:10px!important}
+html[data-rs-studio] #rs-approve :is(pre,code,#rs-approve-body,#rs-approve-details){border-radius:0!important;background:rgb(0 0 0/.32)!important;border-color:var(--st-line-soft)!important;font-family:var(--st-mono)!important}
+/* Task plan: square card. */
+html[data-rs-studio] :is(#rs-task-checklist,#rs-checklist-show) *:not(button):not([class*=ring]):not([class*=dot]){border-radius:0}
+html[data-rs-studio] #rs-root #rs-cards-panel .rs-cards-top{background:radial-gradient(90% 160% at 0% 0%,rgb(var(--st-rgb)/.26),transparent 65%)!important;border-bottom:1px solid var(--st-line-soft)!important;border-radius:0!important}
+html[data-rs-studio] #rs-root #rs-cards-panel .rs-cards-kicker{border-radius:0!important;background:var(--st-grad)!important;color:var(--st-ink)!important;font:800 9px/1 var(--st-mono)!important;letter-spacing:.16em!important}
+html[data-rs-studio] #rs-root #rs-cards-panel .rs-cards-heading{font:600 17px/1.2 var(--st-serif)!important;text-transform:none!important;letter-spacing:-.1px!important;color:var(--st-text)!important}
+html[data-rs-studio] #rs-root #rs-cards-panel .rs-cards-body{background:transparent!important}
+html[data-rs-studio] #rs-root #rs-cards-panel .rs-cards-empty{border-style:dashed!important}
+html[data-rs-studio] #rs-root #rs-media-panel .rs-media-card{padding:14px!important;display:grid!important;gap:10px!important}
+html[data-rs-studio] #rs-root #rs-media-panel .rs-media-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important}
+html[data-rs-studio] #rs-root #rs-media-panel :is(.rs-media-qos,.rs-media-foot){display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:wrap!important}
+html[data-rs-studio] #rs-root #rs-media-panel .rs-media-qos-label{margin-right:auto!important}
+html[data-rs-studio] #rs-root #rs-media-panel #rs-media-count{margin-right:auto!important;font-size:12px!important}
+html[data-rs-studio] #rs-root #rs-media-panel button{height:28px!important;padding:0 11px!important;font-size:11.5px!important}
+html[data-rs-studio] #rs-approve.rs-approve-docked .rs-approve-card,html[data-rs-studio] #rs-approve .rs-approve-card{border-radius:0!important}
+html[data-rs-studio] #rs-approve .rs-approve-actions button{height:34px!important;min-height:0!important;padding:0 16px!important;font:650 12.5px/1 var(--st-sans)!important}
+html[data-rs-studio] #rs-approve .rs-approve-actions button#rs-approve-all{font-weight:750!important}
+/* The docked approval root draws its own rounded box; the card inside carries the look. */
+html[data-rs-studio] #rs-approve.rs-approve-docked{border-radius:0!important;background:none!important;border:0!important;box-shadow:none!important;padding:0!important}
