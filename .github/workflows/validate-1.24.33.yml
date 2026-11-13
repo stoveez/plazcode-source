@@ -241,6 +241,10 @@ jobs:
         timeout-minutes: 5
         run: node release-tools/test-control-desktop-browser.cjs
         working-directory: build-src-1.24.33/PlazCode
+      - name: AgentScript control pages and glow label in the person's language (German, Arabic right to left)
+        timeout-minutes: 5
+        run: node release-tools/test-control-language-browser.cjs
+        working-directory: build-src-1.24.33/PlazCode
       - name: Blender in RobloxScript (what the AI is told; real AI-tab code)
         timeout-minutes: 5
         run: node release-tools/test-blender-robloxscript-browser.cjs

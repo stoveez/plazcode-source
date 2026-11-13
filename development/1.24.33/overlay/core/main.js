@@ -3393,7 +3393,7 @@ return result`;
     // active non-chat tab so it never clicks THIS conversation.
     if (name === "tab_read") {
       try {
-        const r = await bg({ type: "tab_read", accent: controlAccent(), tabId: args.tabId, url_contains: args.url_contains });
+        const r = await bg({ type: "tab_read", accent: controlAccent(), words: controlWords(), tabId: args.tabId, url_contains: args.url_contains });
         if (!r || !r.ok) return "ERROR: tab_read failed — " + String((r && r.error) || "no response");
         const p = r.page || {};
         const lines = [];
@@ -3410,7 +3410,7 @@ return result`;
     }
     if (name === "tab_click") {
       try {
-        const r = await bg({ type: "tab_click", accent: controlAccent(), tabId: args.tabId, url_contains: args.url_contains, selector: args.selector, text: args.text });
+        const r = await bg({ type: "tab_click", accent: controlAccent(), words: controlWords(), tabId: args.tabId, url_contains: args.url_contains, selector: args.selector, text: args.text });
         if (!r || !r.ok) return "ERROR: tab_click failed — " + String((r && r.error) || "no response");
         const res = r.result || {};
         if (!res.clicked) return "tab_click: could not find the element (" + (res.error || "no match") + "). Try tab_read to see what is clickable.";
@@ -3419,7 +3419,7 @@ return result`;
     }
     if (name === "tab_type") {
       try {
-        const r = await bg({ type: "tab_type", accent: controlAccent(), tabId: args.tabId, url_contains: args.url_contains, selector: args.selector, text: args.text, submit: args.submit });
+        const r = await bg({ type: "tab_type", accent: controlAccent(), words: controlWords(), tabId: args.tabId, url_contains: args.url_contains, selector: args.selector, text: args.text, submit: args.submit });
         if (!r || !r.ok) return "ERROR: tab_type failed — " + String((r && r.error) || "no response");
         const res = r.result || {};
         if (!res.typed) return "tab_type: " + (res.error || "could not type");
@@ -3428,7 +3428,7 @@ return result`;
     }
     if (name === "tab_scroll") {
       try {
-        const r = await bg({ type: "tab_scroll", accent: controlAccent(), tabId: args.tabId, url_contains: args.url_contains, amount: args.amount });
+        const r = await bg({ type: "tab_scroll", accent: controlAccent(), words: controlWords(), tabId: args.tabId, url_contains: args.url_contains, amount: args.amount });
         if (!r || !r.ok) return "ERROR: tab_scroll failed — " + String((r && r.error) || "no response");
         return "tab_scroll: scrolled to y=" + ((r.result && r.result.y) || "?");
       } catch (e) { return "ERROR: tab_scroll — " + String((e && e.message) || e); }
@@ -3437,13 +3437,13 @@ return result`;
     if (/^tab_(?:screenshot|click_at|type_text|key|scroll_at|navigate|open)$/.test(name)) {
       if (!(A.bridge && A.bridge.control_v2)) return "ERROR: unknown command '" + name + "' in this PlazCode version.";
       // `confirmed` is set only here, after the person approved; never taken from the AI's own arguments.
-      const send = (confirmed) => bg({ type: name, accent: controlAccent(), tabId: args.tabId, url_contains: args.url_contains, x: args.x, y: args.y, dx: args.dx, dy: args.dy,
+      const send = (confirmed) => bg({ type: name, accent: controlAccent(), words: controlWords(), tabId: args.tabId, url_contains: args.url_contains, x: args.x, y: args.y, dx: args.dx, dy: args.dy,
         button: args.button, double: args.double === true, text: args.text, key: args.key, url: args.url, confirmed });
       try {
         let r = await send(false);
         if (r && r.confirm) {
           // The fixed always-ask list: asked whatever the approval mode is.
-          const ok = await showApproval(name, args, { kicker: "PlazCode always asks for this", title: String(r.confirm).slice(0, 200) });
+          const ok = await showApproval(name, args, { kicker: ct("PlazCode always asks for this"), title: String(r.confirmKey ? ct(r.confirmKey, r.confirmValues || {}) : r.confirm).slice(0, 200) });
           if (!ok) return name + ": the person did not allow it, so nothing was done. Do not try it another way; ask them what they want.";
           r = await send(true);
         }
@@ -4108,7 +4108,7 @@ return result`;
     });
     if(typeof BATCH_OWNERS!=="undefined"&&BATCH_OWNERS.has(call)&&!BATCH_OWNERS.get(call)())return "ERROR: batch ownership changed; command was not run.";
     // 1.24.34: the theme colour rides along so the desktop control look matches PlazCode (used only while switched on).
-    const bridgeCall = bg({ type: "call_tool", name, arguments: args, timeout, checkpoint_id:A.checkpointId, accent: controlAccent() });
+    const bridgeCall = bg({ type: "call_tool", name, arguments: args, timeout, checkpoint_id:A.checkpointId, accent: controlAccent(), words: controlWords() });
     const waits = [bridgeCall, hardCap];
     // Stop cancels the next action immediately. An already dispatched mutation
     // finishes its current step so we do not expose a half-written project or
@@ -7663,7 +7663,7 @@ return result`;
     function setupAgentsPanel() {
       // 1.24.34 control rework: "Ask PlazCode" opens the side chat (shown only while the worker has the rework on).
       const askBtn = root.querySelector("#rs-ask-plazcode");
-      if (askBtn) askBtn.addEventListener("click", () => { bg({ type: "ask_open" }).then((r) => { if (!r || !r.ok) ui.toast(String((r && r.error) || "Ask PlazCode could not open.")); }, () => {}); });
+      if (askBtn) askBtn.addEventListener("click", () => { bg({ type: "ask_open" }).then((r) => { if (!r || !r.ok) ui.toast(ct(String((r && r.error) || "Ask PlazCode could not open."))); }, () => {}); });
       agentsBtn = root.querySelector("#rs-agents");
       agentsPanel = root.querySelector("#rs-agents-panel");
       if (!agentsBtn || !agentsPanel) return;
@@ -12170,12 +12170,13 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
     clearTimeout(card.timer);
     card.timer = setTimeout(() => controlCard({ type: "rs-control-end", tabId }), 25000);
     let host = ""; try { host = msg.url ? new URL(msg.url).host : ""; } catch {}
-    card.el.querySelector("b").textContent = msg.paused ? "Paused, you're in control" : (msg.title || host || "PlazCode is working");
-    card.el.querySelector("small").textContent = host ? host + " · PlazCode is working here" : "PlazCode is working here";
+    const title = tabId === -1 ? ct("Your screen") : msg.title;
+    card.el.querySelector("b").textContent = msg.paused ? ct("Paused, you're in control") : (title || host || ct("PlazCode is working"));
+    card.el.querySelector("small").textContent = host ? host + " · " + ct("PlazCode is working here") : ct("PlazCode is working here");
     card.el.classList.toggle("paused", !!msg.paused);
-    card.el.setAttribute("aria-label", "Live view of " + (msg.title || host || "the tab PlazCode is working in") + ". Open it beside the chat.");
+    card.el.setAttribute("aria-label", ct("Live view of {name}. Open it beside the chat.", { name: title || host || ct("the tab PlazCode is working in") }));
     const noteEl = card.el.querySelector(".rs-live-note");
-    if (!msg.data) { noteEl.textContent = msg.note || ""; noteEl.hidden = !msg.note; card.canvas.hidden = !!msg.note; return; }
+    if (!msg.data) { noteEl.textContent = msg.note ? ct(msg.note) : ""; noteEl.hidden = !msg.note; card.canvas.hidden = !!msg.note; return; }
     noteEl.hidden = true; card.canvas.hidden = false;
     if (card.drawing) return; // a newer picture comes soon; skip this one
     card.drawing = true;
@@ -12207,7 +12208,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
   function askRun(q) {
     if (!q || typeof q.text !== "string" || !q.text.trim()) return { ok: false, error: "empty question" };
     if (A.helper || A.criticTab) return { ok: false, error: "this chat tab is busy with other PlazCode work" };
-    if (A.running || A.starting || A.enhancing || A.injecting) return { ok: false, error: "PlazCode is still answering the last question" };
+    if (A.running || A.starting || A.enhancing || A.injecting) return { ok: false, error: ct("PlazCode is still answering the last question") };
     A.ask = { q, sent: false, reported: false, stopped: false };
     askDrive(A.ask);
     return { ok: true };
@@ -12221,18 +12222,18 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
         let state = null;
         try { state = ui.desktopAgentState(); } catch {}
         if (A.started && state && state.canTaskSend) { sendable = true; break; }
-        if (!A.started && !A.starting && !A.startupOwner && Date.now() - asked > 15000) { asked = Date.now(); Promise.resolve().then(() => startSession()).catch(() => {}); try { bg({ type: "ask_step", text: "Starting PlazCode in the background chat…" }); } catch {} }
+        if (!A.started && !A.starting && !A.startupOwner && Date.now() - asked > 15000) { asked = Date.now(); Promise.resolve().then(() => startSession()).catch(() => {}); try { bg({ type: "ask_step", text: ct("Starting PlazCode in the background chat…") }); } catch {} }
         await sleep(500);
       }
-      if (A.ask !== job || job.stopped) return askReport(job, "stopped", "Stopped.");
-      if (!sendable) return askReport(job, "failed", "PlazCode could not start in the background chat. Is the AI site signed in there?");
+      if (A.ask !== job || job.stopped) return askReport(job, "stopped", ct("Stopped."));
+      if (!sendable) return askReport(job, "failed", ct("PlazCode could not start in the background chat. Is the AI site signed in there?"));
       job.sent = true;
-      try { bg({ type: "ask_step", text: "Thinking…" }); } catch {}
+      try { bg({ type: "ask_step", text: ct("Thinking…") }); } catch {}
       const images = Array.isArray(job.q.images) && job.q.images.length ? job.q.images : null;
       const base = await submitAndGetBase(askBrief(job.q), images);
       if (A.ask !== job || job.stopped) return;
       agentLoop(base);
-    } catch (error) { askReport(job, "failed", "PlazCode could not send the question: " + String(error && error.message || error).slice(0, 200)); }
+    } catch (error) { askReport(job, "failed", ct("PlazCode could not send the question: {error}", { error: String(error && error.message || error).slice(0, 200) })); }
   }
   function askReport(job, status, text) {
     if (!job || job.reported) return;
@@ -12247,8 +12248,8 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
       if (A.ask !== job || job.reported || A.running || A.starting || A.injecting || A.enhancing || A.pendingToolSettles) return;
       let text = "";
       try { text = String(P.classifyText(P.lastAssistant(), ".rs-chip") || "").trim(); } catch {}
-      if (job.stopped || A.userStopped || A.stop) askReport(job, "stopped", text && !RSParse.hasToolSignature(text) ? text : "Stopped.");
-      else if (!text || RSParse.hasToolSignature(text) || RSParse.hasOpenToolBlock(text)) askReport(job, "failed", "PlazCode stopped before writing an answer.");
+      if (job.stopped || A.userStopped || A.stop) askReport(job, "stopped", text && !RSParse.hasToolSignature(text) ? text : ct("Stopped."));
+      else if (!text || RSParse.hasToolSignature(text) || RSParse.hasOpenToolBlock(text)) askReport(job, "failed", ct("PlazCode stopped before writing an answer."));
       else askReport(job, "done", text);
     }, 2000);
   }
@@ -12257,11 +12258,21 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
     const o = opts || {};
     let detail = "";
     try { detail = String(op || "") + " " + JSON.stringify(args || {}).slice(0, 400); } catch {}
-    return bg({ type: "ask_approve", title: o.title || ("PlazCode wants to run " + String(op || "a command")), kicker: o.kicker || "Needs your approval", detail })
+    return bg({ type: "ask_approve", title: o.title || ct("PlazCode wants to run {command}", { command: String(op || "a command") }), kicker: o.kicker || ct("Needs your approval"), detail })
       .then((r) => !!(r && r.ok && r.allowed), () => false);
   }
   // 1.24.34: the PlazCode theme colour, for the glow the worker draws in the controlled tab (used only when the
   // control rework is switched on).
+  // Step 7: words in the person's PlazCode language. ct() also fills {slots} when no translation is loaded.
+  function ct(text, values) {
+    const t = globalThis.PlazCodeI18n && globalThis.PlazCodeI18n.t;
+    if (t) return t(text, values);
+    return values ? String(text).replace(/\{([A-Za-z0-9_]+)\}/g, (m, k) => Object.prototype.hasOwnProperty.call(values, k) ? String(values[k]) : m) : String(text);
+  }
+  // What the glow label in a controlled tab and the desktop label say (the worker passes them on).
+  function controlWords() {
+    return { working: ct("PlazCode is working here"), paused: ct("Paused, you're in control"), resume: ct("Resume"), stop: ct("Stop"), shared: ct("Shared with PlazCode"), stopSharing: ct("Stop sharing") };
+  }
   function controlAccent() {
     try {
       const css = getComputedStyle(document.querySelector("#rs-root") || document.documentElement);

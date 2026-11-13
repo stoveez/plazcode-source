@@ -46,13 +46,22 @@
 </div>`;
   const frame = root.querySelector(".frame"), text = root.querySelector(".text"), cursor = root.querySelector(".cursor"), stopButton = root.querySelector(".stop");
   const state = { active: false, paused: false, stopped: false, x: -100, y: -100, idle: 0, expectUntil: 0 };
+  // Step 7: the words in the person's PlazCode language (the AI tab or the Ask PlazCode panel translates them;
+  // the page this runs in never sees PlazCode's language files). English until words arrive.
+  const words = { working: "PlazCode is working here", paused: "Paused, you're in control", resume: "Resume", stop: "Stop", shared: "Shared with PlazCode", stopSharing: "Stop sharing" };
+  const resumeButton = root.querySelector(".resume");
+  function setWords(given) {
+    if (!given || typeof given !== "object") return;
+    for (const key of Object.keys(words)) if (typeof given[key] === "string" && given[key].trim() && given[key].length <= 80) words[key] = given[key].trim();
+    resumeButton.textContent = words.resume;
+  }
   const tell = (event) => { try { chrome.runtime.sendMessage({ type: "control_event", event }); } catch {} };
   const mount = () => { if (!host.isConnected) (doc.documentElement || doc.body).appendChild(host); };
   const idle = () => { clearTimeout(state.idle); state.idle = setTimeout(() => { if (!state.paused) api.hide(); }, 8000); };
   function setPaused(paused) {
     state.paused = paused;
     frame.classList.toggle("paused", paused);
-    text.textContent = paused ? "Paused, you're in control" : "PlazCode is working here";
+    text.textContent = paused ? words.paused : (state.sharing && !state.active ? words.shared : words.working);
     if (paused) clearTimeout(state.idle); else idle();
   }
   // Only the person's own input counts. The AI's in-page events are not "trusted"; its real input (debugging
@@ -77,12 +86,13 @@
   const api = {
     show(options) {
       const o = options || {};
+      setWords(o.words);
       if (typeof o.accent === "string" && /^#[0-9a-f]{6}$/i.test(o.accent.trim())) host.style.setProperty("--a", o.accent.trim());
       else if (!host.style.getPropertyValue("--a")) host.style.setProperty("--a", "#8b5cf6");
       mount();
       frame.classList.toggle("still", reduced());
       state.active = true; state.stopped = false;
-      frame.classList.remove("sharing"); text.textContent = state.paused ? "Paused, you're in control" : "PlazCode is working here"; stopButton.textContent = "Stop";
+      frame.classList.remove("sharing"); text.textContent = state.paused ? words.paused : words.working; stopButton.textContent = words.stop;
       // A frame later, so the glow fades in instead of appearing at once.
       requestAnimationFrame(() => frame.classList.add("on"));
       idle();
@@ -105,9 +115,10 @@
     expect(ms) { state.expectUntil = Date.now() + Math.max(0, Math.min(5000, Number(ms) || 0)); },
     hide() { if (state.sharing) { state.active = false; clearTimeout(state.idle); setPaused(false); api.share(true); cursor.classList.remove("seen"); return; } state.active = false; clearTimeout(state.idle); setPaused(false); clearTimeout(state.idle); frame.classList.remove("on"); cursor.classList.remove("seen"); },
     // "Shared with PlazCode": the quiet mark while this tab is shared in Ask PlazCode (no glow, no cursor).
-    share(on) {
-      if (on) { mount(); if (!state.active) { frame.classList.add("on", "sharing"); text.textContent = "Shared with PlazCode"; stopButton.textContent = "Stop sharing"; } state.sharing = true; }
-      else { state.sharing = false; frame.classList.remove("sharing"); stopButton.textContent = "Stop"; if (!state.active) frame.classList.remove("on"); else text.textContent = "PlazCode is working here"; }
+    share(on, given) {
+      setWords(given);
+      if (on) { mount(); if (!state.active) { frame.classList.add("on", "sharing"); text.textContent = words.shared; stopButton.textContent = words.stopSharing; } state.sharing = true; }
+      else { state.sharing = false; frame.classList.remove("sharing"); stopButton.textContent = words.stop; if (!state.active) frame.classList.remove("on"); else text.textContent = words.working; }
       return api.state();
     },
     state() { return { sharing: !!state.sharing, label: text.textContent, active: state.active, paused: state.paused, stopped: state.stopped, x: state.x, y: state.y, accent: host.style.getPropertyValue("--a"), shown: host.isConnected && frame.classList.contains("on") }; },

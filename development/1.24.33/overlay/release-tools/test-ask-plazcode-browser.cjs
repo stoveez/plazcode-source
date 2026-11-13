@@ -20,6 +20,8 @@ async function run(mode) {
   try {
     let [worker] = context.serviceWorkers();
     if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 20000 });
+    // A worker found right at start-up can answer before its extension APIs are there: wait until they are.
+    for (let i = 0; i < 100; i++) { try { if (await worker.evaluate(() => typeof chrome !== 'undefined' && !!chrome.tabs)) break; } catch {} await new Promise((r) => setTimeout(r, 100)); worker = context.serviceWorkers()[0] || worker; }
     await context.route(/^https:\/\/chat\.test\//, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>Test AI</title>' }));
     await context.route(/^https:\/\/control\.test\//, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>Shop</title><body style="background:#bbf7d0"><h1>Test shop</h1><button>Buy now</button></body>' }));
     const chat = await context.newPage(); await chat.goto('https://chat.test/');

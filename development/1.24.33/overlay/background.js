@@ -3472,6 +3472,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
 let CONTROL_V2 = false;
 // tabId -> { paused, stoppedAt, by } : what the person did in the controlled tab, and which AI tab is working there.
 const controlTabs = new Map();
+// Step 7: the overlay's and the desktop label's words in the person's PlazCode language. The AI tab and the
+// Ask PlazCode panel translate them (this worker has no language files) and send them along; English until then.
+let controlWords = null;
+function controlKeepWords(given) {
+  if (!given || typeof given !== "object") return;
+  const kept = {};
+  for (const key of ["working", "paused", "resume", "stop", "shared", "stopSharing"]) if (typeof given[key] === "string" && given[key].trim() && given[key].length <= 80) kept[key] = given[key].trim();
+  if (Object.keys(kept).length) controlWords = kept;
+}
 const CONTROL_STORES = /^https:\/\/(?:chromewebstore\.google\.com|chrome\.google\.com\/webstore|microsoftedge\.microsoft\.com\/addons|addons\.mozilla\.org)(?:\/|$)/i;
 function isProviderUrl(url) {
   return PROVIDER_URLS.some((p) => new RegExp("^" + p.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")).test(url || ""));
@@ -3494,8 +3503,9 @@ async function controlEnter(tab, msg, sender) {
   controlLiveStart(tab.id, row.by).catch(() => {});
   const accent = /^#[0-9a-f]{6}$/i.test(String(msg.accent || "").trim()) ? String(msg.accent).trim() : "";
   if (accent) row.accent = accent;
+  controlKeepWords(msg.words);
   await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["core/control-overlay.js"] });
-  const [shown] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: [accent], func: (a) => globalThis.__plazcodeControl.show({ accent: a }) });
+  const [shown] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: [accent, controlWords], func: (a, w) => globalThis.__plazcodeControl.show({ accent: a, words: w }) });
   if (shown && shown.result && shown.result.paused) row.paused = true;
   if (row.paused) {
     // The person took over: wait for Resume (or Stop) instead of acting under their hands.
@@ -3593,6 +3603,15 @@ if (chrome.debugger && chrome.debugger.onDetach) {
 }
 // The fixed always-ask list (whatever the approval mode): typing into a password or card field, and pressing a
 // button that pays, buys, sends, deletes or transfers. Runs in the page.
+// The always-ask question: English for the AI tab's records, plus a fixed sentence with slots (confirmKey) that the
+// AI tab translates for the person (step 7).
+function controlConfirm(ask, tab, enter) {
+  const page = String(tab.title || tab.url).slice(0, 60);
+  const pressed = /^press "(.*)"$/.exec(ask);
+  const confirmKey = pressed ? 'PlazCode wants to press "{button}" in "{page}".' : "PlazCode wants to " + (enter ? ask.replace(/^type into /, "press Enter in ") : ask) + ' in "{page}".';
+  const confirmValues = pressed ? { button: pressed[1], page } : { page };
+  return { ok: false, confirm: confirmKey.replace(/\{(button|page)\}/g, (m, k) => confirmValues[k]), confirmKey, confirmValues };
+}
 function controlSensitive(kind, x, y) {
   const label = (el) => String(el.innerText || el.value || el.getAttribute("aria-label") || el.getAttribute("title") || "").trim().replace(/\s+/g, " ").slice(0, 60);
   const field = (el) => {
@@ -3697,7 +3716,7 @@ async function controlV2Tool(msg, sender) {
   if (name === "tab_click_at" || name === "tab_scroll_at") {
     const at = point();
     if (!at) return { ok: false, error: name + " needs x and y (CSS pixels of the visible page, as in tab_screenshot)." };
-    if (name === "tab_click_at") { const ask = await askFirst("click", at); if (ask) return { ok: false, confirm: "PlazCode wants to " + ask + " in \"" + String(tab.title || tab.url).slice(0, 60) + "\"." }; }
+    if (name === "tab_click_at") { const ask = await askFirst("click", at); if (ask) return controlConfirm(ask, tab, false); }
     const target = await run((x, y) => { const el = document.elementFromPoint(x, y); return el ? (el.tagName.toLowerCase() + (el.innerText ? ' "' + el.innerText.trim().replace(/\s+/g, " ").slice(0, 40) + '"' : "")) : "nothing"; }, at);
     await run((x, y) => globalThis.__plazcodeControl.moveTo(x, y), at);
     const row = controlTabs.get(tab.id);
@@ -3735,7 +3754,7 @@ async function controlV2Tool(msg, sender) {
     const text = String(msg.text == null ? "" : msg.text);
     if (!text || text.length > 20000) return { ok: false, error: "tab_type_text needs text (at most 20,000 characters). Click the field first with tab_click_at." };
     const ask = await askFirst("type");
-    if (ask) return { ok: false, confirm: "PlazCode wants to " + ask + " in \"" + String(tab.title || tab.url).slice(0, 60) + "\"." };
+    if (ask) return controlConfirm(ask, tab, false);
     const into = await run(() => { const el = document.activeElement; return el && el !== document.body ? el.tagName.toLowerCase() : ""; });
     if (!into) return { ok: false, error: "No field is selected in that tab. Click the field first with tab_click_at, then type." };
     await run(() => globalThis.__plazcodeControl.press());
@@ -3746,7 +3765,7 @@ async function controlV2Tool(msg, sender) {
   if (name === "tab_key") {
     const key = parseKey(msg.key);
     if (!key) return { ok: false, error: 'tab_key takes one key, optionally with Ctrl/Shift/Alt/Meta: for example "Enter", "Tab", "Escape", "ArrowDown", "Ctrl+A", "Shift+Tab".' };
-    if (key.key === "Enter") { const ask = await askFirst("type"); if (ask) return { ok: false, confirm: "PlazCode wants to press Enter " + ask.replace(/^type into /, "in ") + " in \"" + String(tab.title || tab.url).slice(0, 60) + "\"." }; }
+    if (key.key === "Enter") { const ask = await askFirst("type"); if (ask) return controlConfirm(ask, tab, true); }
     if (debug) {
       await debugAttach(tab.id); await run((ms) => globalThis.__plazcodeControl.expect(ms), [1500]);
       const base = { key: key.key, code: key.code, windowsVirtualKeyCode: key.vk, nativeVirtualKeyCode: key.vk, modifiers: key.modifiers };
@@ -3862,7 +3881,8 @@ async function controlWatch(tabId, sender) {
 const ask = { tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null };
 const askPorts = new Set();
 const askPost = (m) => { for (const port of askPorts) { try { port.postMessage(m); } catch {} } };
-const askSay = (text, kind) => askPost({ type: "ask-note", kind: kind || "note", text });
+// The panel translates text that is one of PlazCode's own sentences; key + values carry a sentence with slots.
+const askSay = (text, kind, key, values) => askPost({ type: "ask-note", kind: kind || "note", text, key, values });
 async function askSiteUrl() {
   const tabs = (await chrome.tabs.query({})).filter((t) => t.url && isProviderUrl(t.url) && t.id !== ask.tabId && !(helperRoster && helperRoster.byTab && helperRoster.byTab(t.id)));
   tabs.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
@@ -3875,7 +3895,8 @@ async function askEnsure() {
   if (Number.isInteger(ask.tabId)) { try { await chrome.tabs.get(ask.tabId); return { ok: true }; } catch { ask.tabId = null; } }
   const site = await askSiteUrl();
   if (!site) return { ok: false, error: "Open your AI chat (ChatGPT, Claude, Gemini or another site PlazCode works with) in this browser once, then ask again. PlazCode uses that site for this chat." };
-  askSay("Opening a PlazCode chat on " + (site.name || new URL(site.url).host) + " in the background…");
+  const siteName = site.name || new URL(site.url).host;
+  askSay("Opening a PlazCode chat on " + siteName + " in the background…", "note", "Opening a PlazCode chat on {site} in the background…", { site: siteName });
   const shape = { url: site.url, type: "popup", width: 980, height: 820, left: 40, top: 40 };
   let created = null;
   try { created = await chrome.windows.create({ ...shape, focused: false }); } catch { created = await chrome.windows.create(shape); }
@@ -3898,10 +3919,10 @@ async function askShareMark(tab, on) {
   try {
     if (on) {
       await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["core/control-overlay.js"] });
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__plazcodeControl.share(true) });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: [controlWords], func: (w) => globalThis.__plazcodeControl.share(true, w) });
       const live = controlLive.get(tab.id);
       if (live) live.lastAt = Date.now(); else await controlLiveStart(tab.id, null);
-    } else await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__plazcodeControl && globalThis.__plazcodeControl.share(false) });
+    } else await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: [controlWords], func: (w) => globalThis.__plazcodeControl && globalThis.__plazcodeControl.share(false, w) });
   } catch {}
 }
 async function askQuestion(m) {
@@ -3954,6 +3975,7 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
   port.postMessage({ type: "ask-busy", busy: ask.busy, enabled: CONTROL_V2 });
   port.onMessage.addListener(async (m) => {
     if (!CONTROL_V2 || !m) return;
+    controlKeepWords(m.words);
     if (typeof m.say === "string") askQuestion(m);
     if (Number.isInteger(m.approve)) { const resolve = ask.approvals.get(m.approve); if (resolve) { ask.approvals.delete(m.approve); resolve(m.allowed === true); } }
     if (m.stop && Number.isInteger(ask.tabId)) { chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-stop" }).catch(() => {}); for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); } }
@@ -4029,13 +4051,18 @@ if (chrome.commands && chrome.commands.onCommand) {
 }
 
 // ── Step 5: desktop apps (the app controls the screen; this worker shows the live picture and passes Stop on) ──
-let desktopBy = null, desktopPoll = 0, desktopWasStopped = false, desktopAccentSent = "";
+let desktopBy = null, desktopPoll = 0, desktopWasStopped = false, desktopAccentSent = "", desktopWordsSent = "";
 const DESKTOP_TOOLS = new Set(["mouse_move", "mouse_click", "key_type", "focus_window", "launch_app", "screen_capture", "screen_record", "window_screenshot", "list_windows"]);
 function desktopToolCall(msg, sender) {
   if (!CONTROL_V2 || !DESKTOP_TOOLS.has(String(msg.name || "").split("__").pop())) return;
   if (sender && sender.tab && Number.isInteger(sender.tab.id)) desktopBy = sender.tab.id;
   const accent = /^#[0-9a-f]{6}$/i.test(String(msg.accent || "")) ? msg.accent : "";
-  if (accent && accent !== desktopAccentSent) { desktopAccentSent = accent; bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accent }) }).catch(() => {}); }
+  controlKeepWords(msg.words);
+  const words = controlWords ? JSON.stringify(controlWords) : "";
+  const body = {};
+  if (accent && accent !== desktopAccentSent) { desktopAccentSent = accent; body.accent = accent; }
+  if (words && words !== desktopWordsSent) { desktopWordsSent = words; body.words = controlWords; }
+  if (Object.keys(body).length) bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
 }
 async function desktopFrame() {
   try {

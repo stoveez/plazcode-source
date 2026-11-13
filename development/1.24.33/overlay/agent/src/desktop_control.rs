@@ -34,6 +34,9 @@ pub struct State {
     pub expect_until: Option<Instant>,
     /// Step 6: the whole screen is shared in Ask PlazCode (kept alive by the panel; ends by itself 30 s after its last word).
     pub sharing_until: Option<Instant>,
+    /// Step 7: the label's words in the person's PlazCode language (working, paused, resume, stop), from the
+    /// extension; empty = English.
+    pub words: [String; 4],
 }
 
 /// What `enter` decides at one moment.
@@ -77,7 +80,7 @@ impl State {
     }
 }
 
-static STATE: Mutex<State> = Mutex::new(State { active_until: None, paused: false, stopped_at: None, accent: String::new(), ai_point: None, expect_until: None, sharing_until: None });
+static STATE: Mutex<State> = Mutex::new(State { active_until: None, paused: false, stopped_at: None, accent: String::new(), ai_point: None, expect_until: None, sharing_until: None, words: [String::new(), String::new(), String::new(), String::new()] });
 pub fn with<T>(f: impl FnOnce(&mut State) -> T) -> T { f(&mut STATE.lock().unwrap_or_else(|e| e.into_inner())) }
 
 /// Before a desktop command: refuse, wait for the person, or go (and mark control as active).
@@ -97,16 +100,27 @@ pub async fn enter(name: &str) -> Result<(), String> {
 
 /// What the on-screen look (glow, label, cursor) shows, while control is active or paused. `None` = hidden.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Look { pub paused: bool, pub accent: String, pub point: Option<(i32, i32)> }
+pub struct Look { pub paused: bool, pub accent: String, pub point: Option<(i32, i32)>, pub words: [String; 4] }
+const ENGLISH: [&str; 4] = ["PlazCode is working here", "Paused, you're in control", "Resume", "Stop"];
+/// Keep the label's words from the extension (`{working, paused, resume, stop}`); anything missing or odd stays English.
+pub fn set_words(given: &Value) {
+    let mut words: [String; 4] = Default::default();
+    for (i, key) in ["working", "paused", "resume", "stop"].iter().enumerate() {
+        if let Some(text) = given[*key].as_str() { let text = text.trim(); if !text.is_empty() && text.chars().count() <= 80 && !text.chars().any(char::is_control) { words[i] = text.to_string(); } }
+    }
+    with(|s| s.words = words);
+}
 pub fn look() -> Option<Look> {
     if !enabled() { return None; }
     let now = Instant::now();
-    with(|s| (s.active(now) || s.paused).then(|| Look { paused: s.paused, accent: if s.accent.is_empty() { "#8b5cf6".into() } else { s.accent.clone() }, point: s.ai_point }))
+    with(|s| (s.active(now) || s.paused).then(|| Look { paused: s.paused, accent: if s.accent.is_empty() { "#8b5cf6".into() } else { s.accent.clone() }, point: s.ai_point,
+        words: std::array::from_fn(|i| if s.words[i].is_empty() { ENGLISH[i].to_string() } else { s.words[i].clone() }) }))
 }
 /// The script that updates the look's pages (see gui::control_look).
 pub fn look_script(look: &Look, origin: (i32, i32), scale: f64) -> String {
     let point = look.point.map(|(x, y)| json!([((x - origin.0) as f64 / scale).round(), ((y - origin.1) as f64 / scale).round()])).unwrap_or(Value::Null);
-    format!("window.__pz&&window.__pz({});", json!({"paused": look.paused, "accent": look.accent, "point": point}))
+    let words = json!({"working": look.words[0], "paused": look.words[1], "resume": look.words[2], "stop": look.words[3]});
+    format!("window.__pz&&window.__pz({});", json!({"paused": look.paused, "accent": look.accent, "point": point, "words": words}))
 }
 
 /// PlazCode is about to send its own input: do not treat it as the person's for a moment.
@@ -133,6 +147,7 @@ pub fn status() -> Value { if !enabled() { return Value::Null; } let now = Insta
 pub async fn post(axum::Json(body): axum::Json<Value>) -> axum::Json<Value> {
     if !enabled() { return axum::Json(json!({"ok": false, "error": "Not available in this version."})); }
     if let Some(accent) = body["accent"].as_str() { set_accent(accent); }
+    if body["words"].is_object() { set_words(&body["words"]); }
     match body["action"].as_str() {
         Some(action) => match act(action) { Ok(()) => axum::Json(json!({"ok": true, "control": status()})), Err(error) => axum::Json(json!({"ok": false, "error": error})) },
         None => axum::Json(json!({"ok": true, "control": status()})),
@@ -255,10 +270,17 @@ mod tests {
         s.act("unshare", t).unwrap(); assert!(!s.sharing(t));
     }
     #[test] fn the_look_script_carries_page_points_and_never_more_than_it_needs() {
-        let look = Look { paused: true, accent: "#16a34a".into(), point: Some((2120, 340)) };
+        let look = Look { paused: true, accent: "#16a34a".into(), point: Some((2120, 340)), words: ENGLISH.map(String::from) };
         // A screen whose top-left is at (1920, 0) and which shows pages at 2x: the point lands at (100, 170) on the page.
-        assert_eq!(look_script(&look, (1920, 0), 2.0), r##"window.__pz&&window.__pz({"accent":"#16a34a","paused":true,"point":[100.0,170.0]});"##);
+        assert_eq!(look_script(&look, (1920, 0), 2.0), r##"window.__pz&&window.__pz({"accent":"#16a34a","paused":true,"point":[100.0,170.0],"words":{"paused":"Paused, you're in control","resume":"Resume","stop":"Stop","working":"PlazCode is working here"}});"##);
         assert!(look_script(&Look { point: None, ..look }, (0, 0), 1.0).contains("\"point\":null"));
+    }
+    #[test] fn label_words_come_from_the_extension_and_odd_ones_stay_english() {
+        set_words(&json!({"working": " PlazCode arbeitet hier ", "paused": "x".repeat(81), "resume": "Weiter\nalert(1)", "stop": "Stopp"}));
+        let words = with(|s| s.words.clone());
+        assert_eq!(words, ["PlazCode arbeitet hier".to_string(), String::new(), String::new(), "Stopp".to_string()]);
+        set_words(&json!({}));
+        assert!(with(|s| s.words.iter().all(String::is_empty)));
     }
     #[test] fn only_desktop_commands_go_through_the_gate_and_it_is_off_in_this_build_unless_switched_on() {
         for name in ["mouse_move", "mouse_click", "key_type", "focus_window", "launch_app", "screen_capture", "window_screenshot", "list_windows"] { assert!(is_desktop_tool(name), "{name}"); }

@@ -11,6 +11,8 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
   try {
     let [worker] = context.serviceWorkers();
     if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 20000 });
+    // A worker found right at start-up can answer before its extension APIs are there: wait until they are.
+    for (let i = 0; i < 100; i++) { try { if (await worker.evaluate(() => typeof chrome !== 'undefined' && !!chrome.tabs)) break; } catch {} await new Promise((r) => setTimeout(r, 100)); worker = context.serviceWorkers()[0] || worker; }
     const page = '<!doctype html><title>Shop</title><body style="font:16px sans-serif;margin:40px"><h1>Test shop</h1>' +
       '<input id="name" placeholder="Your name"><button id="buy" onclick="window.clicks=(window.clicks||0)+1">Add to basket</button>' +
       '<div style="height:3000px"></div><button id="far" onclick="window.far=1">Far button</button></body>';

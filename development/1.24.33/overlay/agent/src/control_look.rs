@@ -28,7 +28,7 @@ button{all:unset;cursor:pointer;padding:4px 10px;border-radius:8px;background:rg
 #resume{display:none}.paused #resume{display:inline-block}
 </style></head><body><div class="label"><span class="dot"></span><span id="t">PlazCode is working here</span><button id="resume">Resume</button><button id="stop">Stop</button></div>
 <script>document.getElementById('stop').onclick=function(){window.ipc.postMessage('control:stop')};document.getElementById('resume').onclick=function(){window.ipc.postMessage('control:resume')};
-window.__pz=function(s){var r=document.documentElement;if(/^#[0-9a-f]{6}$/i.test(s.accent||''))r.style.setProperty('--a',s.accent);document.body.classList.toggle('paused',!!s.paused);document.getElementById('t').textContent=s.paused?"Paused, you're in control":'PlazCode is working here';};</script></body></html>"##;
+window.__pz=function(s){var r=document.documentElement;if(/^#[0-9a-f]{6}$/i.test(s.accent||''))r.style.setProperty('--a',s.accent);document.body.classList.toggle('paused',!!s.paused);var w=s.words||{};document.getElementById('t').textContent=s.paused?(w.paused||"Paused, you're in control"):(w.working||'PlazCode is working here');if(w.resume)document.getElementById('resume').textContent=w.resume;if(w.stop)document.getElementById('stop').textContent=w.stop;};</script></body></html>"##;
 
 pub struct ControlLook { glow: Window, glow_view: WebView, label: Window, label_view: WebView, origin: (i32, i32), scale: f64, shown: Option<crate::desktop_control::Look> }
 

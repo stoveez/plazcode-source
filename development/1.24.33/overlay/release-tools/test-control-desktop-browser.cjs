@@ -11,6 +11,8 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
   try {
     let [worker] = context.serviceWorkers();
     if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 20000 });
+    // A worker found right at start-up can answer before its extension APIs are there: wait until they are.
+    for (let i = 0; i < 100; i++) { try { if (await worker.evaluate(() => typeof chrome !== 'undefined' && !!chrome.tabs)) break; } catch {} await new Promise((r) => setTimeout(r, 100)); worker = context.serviceWorkers()[0] || worker; }
     await context.route(/^https:\/\/chat\.test\//, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>chat</title>' }));
     const chat = await context.newPage(); await chat.goto('https://chat.test/');
     const chatId = await worker.evaluate(async () => (await chrome.tabs.query({})).find((t) => /chat\.test/.test(t.url || '')).id);
