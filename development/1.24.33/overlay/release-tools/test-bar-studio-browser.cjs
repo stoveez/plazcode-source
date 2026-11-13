@@ -95,6 +95,18 @@ async function extPage(browser, file, store) {
       assert.deepEqual(errors, []);
       await page.close();
     }
+    // 4b. In another language the section names are translated; every tab still shows its own sections (German).
+    {
+      const { page, errors } = await bar(browser, { rsLanguage: 'de' });
+      await page.click('#rs-settings-btn'); await page.waitForTimeout(600);
+      for (const tab of ['ai', 'safety', 'automation', 'instructions', 'connections', 'general']) {
+        await page.click(`#rs-menu .rs-menu-tab[data-rs-tab="${tab}"]`); await page.waitForTimeout(120);
+        const shown = await page.$$eval('#rs-menu > .rs-menu-sec', (s) => s.filter((x) => !x.hidden).map((x) => x.dataset.rsTab));
+        assert(shown.length > 0 && shown.every((t) => t === tab), 'German ' + tab + ': ' + JSON.stringify(shown));
+      }
+      assert.equal(await page.evaluate(() => document.querySelector('#rs-menu .rs-menu-tab[data-rs-tab="safety"]').textContent.trim()), 'Sicherheit');
+      assert.deepEqual(errors, []); await page.close();
+    }
     // 5. Toolbar popup: Studio look, Ask PlazCode only in AgentScript, quick buttons first, three folding groups.
     for (const engine of ['roblox', 'local']) {
       const { page, errors, ctx } = await extPage(browser, 'popup.html', { rsAppearance: { theme: 'cyan', glow: 'subtle', gradients: 'on', motion: 'reduced' }, rsThinkingLevel: 'high', __engine: engine });

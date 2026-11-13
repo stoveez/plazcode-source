@@ -1,8 +1,11 @@
 {
   "version": "1.24.33",
-  "title": "Apps & servers, helper agents and a fresh app look",
+  "title": "PlazCode works in your tabs and apps, easy app connections and a fresh look",
   "summary": "Apps & servers that connect your creative apps for you, helper agents, a fresh look and an easy Linux install.",
   "added": [
+    "Blender in RobloxScript: models reach Studio at the right size, facing the right way, with colours.",
+    "When the AI works in a tab or desktop app, it glows in your theme colour, shows PlazCode's cursor and a live preview in the chat; moving your mouse takes over.",
+    "Ask PlazCode (Alt+P, or the bar button in AgentScript): a side chat that sees the tab or whole screen you share and can control it when you switch that on.",
     "New Apps & servers page: connect Blender, Godot, Unity, Figma and Blockbench with a checklist that ticks itself off.",
     "PlazCode adds its own helpers to Blender, Unity, Figma and Blockbench and removes them on disconnect. Blender can also run in the background with safe mode on.",
     "Guided browser extension setup on every system: PlazCode opens the extensions page and shows the folder to load.",
@@ -10,32 +13,33 @@
     "Helper agents: the AI can start up to two extra chats to work on parts of a task at once.",
     "Several commands per reply: reads run together, changes run in order.",
     "A fresh app look with grouped pages, smoother page changes, glow and a theme builder.",
-    "Mac: now opens on macOS 10.15 Catalina too. Memory search needs macOS 12; on Catalina, use Firefox."
+    "Mac: now opens on macOS 10.15 Catalina too. Memory search needs macOS 12; on Catalina, use Firefox.",
+    "A redesigned PlazCode bar, settings menu (tabs and search), toolbar popup and Ask PlazCode panel that match the app's look and follow its Feel settings."
   ],
   "improved": [],
   "fixed": [
     "Notion: commands right after a sentence run again instead of sticking on processing.",
     "DeepSeek, Qwen, Kimi and similar sites: the startup check no longer fails.",
-    "Commands no longer wait on the link between the extension and the app."
+    "Commands no longer wait on the link between the extension and the app.",
+    "AI sites' own console errors are no longer listed as PlazCode errors on the browser's extensions page."
   ],
   "notes": [
     "Update the PlazCode app and the extension together (the app's updater does this).",
     "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
   ],
   "github": {
-    "summary": "***Apps & servers that connect your creative apps for you, helper agents, a fresh look and an easy Linux install.***",
+    "summary": "***PlazCode can now work in your tabs and apps while you watch, plus easy app connections and a fresh look.***",
     "sections": [
       {
         "title": "✨ What's new",
         "items": [
-          "Apps & servers page: connect Blender, Godot, Unity, Figma and Blockbench with a checklist that ticks itself off.",
-          "PlazCode adds and removes its own helpers in those apps. Blender can run in the background with safe mode on.",
-          "Guided browser extension setup on every system.",
-          "Linux: one-line install with app menu entry and automatic updates: curl -fsSL https://raw.githubusercontent.com/stoveez/PlazCode/main/install-linux.sh | sh . Roblox Studio through Vinegar is experimental.",
-          "Helper agents: up to two extra chats work on parts of a task.",
-          "Several commands per reply: reads together, changes in order.",
-          "A fresh app look with grouped pages, glow and a theme builder.",
-          "Mac: runs on macOS 10.15 Catalina. Memory search needs macOS 12; use Firefox on Catalina."
+          "Ask PlazCode (Alt+P, or the bar button in AgentScript): a side chat that sees your tab or screen and can control it if you allow it.",
+          "When the AI works in a tab or app, it glows in your theme colour with PlazCode's cursor and a live preview in the chat. Move your mouse to take over.",
+          "Apps & servers: connect Blender, Godot, Unity, Figma and Blockbench with a checklist that ticks itself off. Guided extension setup too.",
+          "Blender works in RobloxScript too. Models reach Studio at the right size, facing the right way, with colours.",
+          "Linux: one-line install with automatic updates: curl -fsSL https://raw.githubusercontent.com/stoveez/PlazCode/main/install-linux.sh | sh (Studio via Vinegar: experimental)",
+          "A redesigned PlazCode bar, settings menu and toolbar popup that match the app.",
+          "Helper agents, several commands per reply, and Mac support from macOS 10.15 (memory search needs 12)."
         ]
       },
       {
@@ -43,13 +47,14 @@
         "items": [
           "Notion: commands right after a sentence run again.",
           "DeepSeek, Qwen, Kimi and similar sites: the startup check works again.",
-          "Commands no longer wait on the link between the extension and the app."
+          "Commands no longer wait on the link to the app.",
+          "AI sites' own errors no longer show as PlazCode errors."
         ]
       },
       {
         "title": "🧪 What was checked",
         "items": [
-          "Automated tests on Windows, Mac and Linux; app connections with stand-ins. Not tried on a real Catalina Mac, a real Linux desktop or every AI site. Please report anything odd.",
+          "Automated tests on Windows, Mac and Linux. Tab and screen control tested on practice pages, not on every real site or a real Mac yet. Please report anything odd.",
           "Windows is unsigned and Mac is not notarized, as before."
         ]
       }

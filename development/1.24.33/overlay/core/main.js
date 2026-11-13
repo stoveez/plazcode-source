@@ -9118,7 +9118,13 @@ return result`;
     function studioMenu() {
       if (!menuEl || !document.documentElement.hasAttribute("data-rs-studio")) return;
       for (const sec of menuEl.querySelectorAll(":scope > .rs-menu-sec")) {
-        if (!sec.dataset.rsTab) { const label = sec.querySelector(".rs-sec-label"); const name = label ? (label.dataset.rsSource || label.textContent.trim()) : ""; if (label) label.dataset.rsSource = name; sec.dataset.rsTab = MENU_TAB_OF[name] || "general"; }
+        if (!sec.dataset.rsTab) {
+          // The label may already be in the person's language (the menu can be built or re-tabbed after translation),
+          // so it is matched against the English names and their translations.
+          const label = sec.querySelector(".rs-sec-label"), text = label ? (label.dataset.rsSource || label.textContent.trim()) : "", L = globalThis.PlazCodeI18n;
+          const name = Object.keys(MENU_TAB_OF).find((k) => k === text || (L && L.t && L.t(k) === text)) || text;
+          if (label) label.dataset.rsSource = name; sec.dataset.rsTab = MENU_TAB_OF[name] || "general";
+        }
       }
       const logo = menuEl.querySelector(".rs-menu-logo"); if (logo && !logo.querySelector("em") && logo.textContent.trim() === "PlazCode") { logo.classList.add("brand-word"); paintBrand(logo); }
       let tools = menuEl.querySelector(":scope > .rs-menu-tools");
