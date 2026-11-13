@@ -284,6 +284,7 @@ Release: see [releasing](releasing.md).
 - 1.24.23 SHIPPED 2026-10-26: antivirus false positive (Chrome blocks the 1.24.22 zip as "Virus detected"; VirusTotal showed 2 of 69 on the 1.24.21 app). Earlier fix plan in `development/1.24.26/NEXT-UPDATE-PLAN.md` (no encoded PowerShell, app manifest, signing decision).
 - The live 1.24.21 release text needs the owner's version pasted in by hand (this session cannot edit GitHub releases).
 - 1.24.22 SHIPPED 2026-10-25. Still worth a live check on Claude free, ClickUp free, ChatGPT free and DeepSeek to confirm the startup fits each plan (only practice-page tested).
+- 2026-11-13 (1.24.33, unverified): VirusTotal showed 2 of 70 on the test build's PlazCode.exe (Skyhigh BehavesLike.Win64.Backdoor.vh, Trapmine Malicious.moderate.ml.score). Cause fixed in source: the Windows take-over watch used system-wide keyboard/mouse hooks (key-logger look); now `GetLastInputInfo` polling, and `test-exe-av-signals.py` forbids `SetWindowsHookEx`. Needs a new test build, then a new VirusTotal scan to see the hits gone; then report any remaining hits as false positives (Skyhigh/Trellix, Trapmine, Microsoft). Code signing is still the lasting fix.
 - Antivirus: after 1.24.23 ships, the owner can report the new download as a false positive to Google (https://safebrowsing.google.com/safebrowsing/report_error/) and Microsoft (https://www.microsoft.com/wdsi/filesubmission). Code signing (Azure Artifact Signing) is the lasting fix: every new unsigned build starts with no reputation.
 
 

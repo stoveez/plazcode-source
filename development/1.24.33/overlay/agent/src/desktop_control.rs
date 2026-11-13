@@ -158,52 +158,52 @@ pub async fn post(axum::Json(body): axum::Json<Value>) -> axum::Json<Value> {
     }
 }
 
-/// 5c: notice the person taking over. Windows: low-level mouse and keyboard hooks on their own thread; Windows marks
-/// input PlazCode sent itself as "injected", so only the person's own input pauses PlazCode. Started the first time
-/// PlazCode controls the desktop. (Mac: listen-only event tap, see the Mac part.)
+/// 5c: notice the person taking over. Windows: ask Windows when the last mouse or keyboard input happened
+/// (`GetLastInputInfo`, the call idle timers use; it never sees which keys or where) a few times a second, on its own thread.
+/// Input PlazCode sent itself falls inside the "expected" window of `expect`, so only the person's own input pauses
+/// PlazCode. An earlier 1.24.33 build used system-wide keyboard and mouse hooks; those looked like a key logger to
+/// antivirus programs (VirusTotal: Skyhigh, Trapmine), so they are gone. Started the first time PlazCode controls the
+/// desktop. (Mac: listen-only mouse event tap, see the Mac part.)
 fn watch_person() {
     #[cfg(windows)]
-    hooks::start();
+    input_watch::start();
     #[cfg(target_os = "macos")]
     crate::mac_control::watch_person();
 }
+/// When an input that Windows reported `age_ms` milliseconds ago happened, as an `Instant` (never before the program started).
+#[cfg(any(windows, test))]
+fn input_instant(now: Instant, age_ms: u32) -> Instant {
+    now.checked_sub(Duration::from_millis(age_ms as u64)).unwrap_or(now)
+}
 #[cfg(windows)]
-mod hooks {
-    use std::ffi::c_void;
-    #[repr(C)] struct Point { x: i32, y: i32 }
-    #[repr(C)] struct MouseLl { pt: Point, mouse_data: u32, flags: u32, time: u32, extra: usize }
-    #[repr(C)] struct KeyLl { vk: u32, scan: u32, flags: u32, time: u32, extra: usize }
-    #[repr(C)] struct Msg { hwnd: *mut c_void, message: u32, wparam: usize, lparam: isize, time: u32, pt: Point }
-    const WH_KEYBOARD_LL: i32 = 13;
-    const WH_MOUSE_LL: i32 = 14;
-    const LLMHF_INJECTED: u32 = 0x1;
-    const LLKHF_INJECTED: u32 = 0x10;
+mod input_watch {
+    use std::time::{Duration, Instant};
+    #[repr(C)] struct LastInput { size: u32, time: u32 }
     #[link(name = "user32")]
-    extern "system" {
-        fn SetWindowsHookExW(id: i32, hook: unsafe extern "system" fn(i32, usize, isize) -> isize, module: *mut c_void, thread: u32) -> *mut c_void;
-        fn CallNextHookEx(hook: *mut c_void, code: i32, wparam: usize, lparam: isize) -> isize;
-        fn GetMessageW(msg: *mut Msg, hwnd: *mut c_void, min: u32, max: u32) -> i32;
-    }
+    extern "system" { fn GetLastInputInfo(info: *mut LastInput) -> i32; }
     #[link(name = "kernel32")]
-    extern "system" { fn GetModuleHandleW(name: *const u16) -> *mut c_void; }
-    unsafe extern "system" fn mouse(code: i32, wparam: usize, lparam: isize) -> isize {
-        if code >= 0 && lparam != 0 { let info = &*(lparam as *const MouseLl); if info.flags & LLMHF_INJECTED == 0 { super::person_input(); } }
-        CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam)
-    }
-    unsafe extern "system" fn keyboard(code: i32, wparam: usize, lparam: isize) -> isize {
-        if code >= 0 && lparam != 0 { let info = &*(lparam as *const KeyLl); if info.flags & LLKHF_INJECTED == 0 { super::person_input(); } }
-        CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam)
+    extern "system" { fn GetTickCount() -> u32; }
+    /// Windows' tick (milliseconds) of the last input, or None if it cannot say.
+    fn last_input() -> Option<u32> {
+        let mut info = LastInput { size: std::mem::size_of::<LastInput>() as u32, time: 0 };
+        (unsafe { GetLastInputInfo(&mut info) } != 0).then_some(info.time)
     }
     pub fn start() {
         static STARTED: std::sync::Once = std::sync::Once::new();
         STARTED.call_once(|| {
-            let _ = std::thread::Builder::new().name("plazcode-control-watch".into()).spawn(|| unsafe {
-                let module = GetModuleHandleW(std::ptr::null());
-                let a = SetWindowsHookExW(WH_MOUSE_LL, mouse, module, 0);
-                let b = SetWindowsHookExW(WH_KEYBOARD_LL, keyboard, module, 0);
-                if a.is_null() || b.is_null() { tracing::warn!("control rework: could not watch for the person's input (mouse {}, keyboard {})", !a.is_null(), !b.is_null()); }
-                let mut msg: Msg = std::mem::zeroed();
-                while GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {}
+            let _ = std::thread::Builder::new().name("plazcode-control-watch".into()).spawn(|| {
+                let mut seen = last_input();
+                if seen.is_none() { tracing::warn!("control rework: could not watch for the person's input"); return; }
+                loop {
+                    std::thread::sleep(Duration::from_millis(100));
+                    let Some(now_tick) = last_input() else { continue };
+                    if Some(now_tick) == seen { continue; }
+                    seen = Some(now_tick);
+                    // Judge the input at the moment it happened (a poll can be a little late), not when it was noticed.
+                    let age = unsafe { GetTickCount() }.wrapping_sub(now_tick);
+                    let when = super::input_instant(Instant::now(), age.min(10_000));
+                    super::with(|s| s.person_input(when));
+                }
             });
         });
     }
@@ -278,6 +278,20 @@ mod tests {
         // A screen whose top-left is at (1920, 0) and which shows pages at 2x: the point lands at (100, 170) on the page.
         assert_eq!(look_script(&look, (1920, 0), 2.0), r##"window.__pz&&window.__pz({"accent":"#16a34a","paused":true,"point":[100.0,170.0],"words":{"paused":"Paused, you're in control","resume":"Resume","stop":"Stop","working":"PlazCode is working here"}});"##);
         assert!(look_script(&Look { point: None, ..look }, (0, 0), 1.0).contains("\"point\":null"));
+    }
+    #[test] fn an_input_windows_reports_is_judged_at_the_time_it_happened() {
+        let now = Instant::now();
+        assert_eq!(input_instant(now, 0), now);
+        assert_eq!(now - input_instant(now, 250), Duration::from_millis(250));
+        // Long ago (more than the program has run) falls back to "now" instead of failing.
+        assert_eq!(input_instant(now, u32::MAX), now.checked_sub(Duration::from_millis(u32::MAX as u64)).unwrap_or(now));
+        // PlazCode's own input (inside the expected window) is not the person, even when noticed late.
+        let mut s = State::default();
+        s.mark_active(now);
+        s.expect_until = Some(now + Duration::from_millis(500));
+        assert!(!s.person_input(input_instant(now + Duration::from_millis(400), 100)), "own input seen 100 ms late");
+        s.expect_until = Some(now - Duration::from_millis(100));
+        assert!(s.person_input(input_instant(now + Duration::from_millis(300), 100)), "the person's input");
     }
     #[test] fn label_words_come_from_the_extension_and_odd_ones_stay_english() {
         set_words(&json!({"working": " PlazCode arbeitet hier ", "paused": "x".repeat(81), "resume": "Weiter\nalert(1)", "stop": "Stopp"}));

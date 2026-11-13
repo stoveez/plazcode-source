@@ -28,6 +28,10 @@ forbidden = {
     'Kill a process by PID': 'AgentScript command descriptions are stored scrambled (hidden!)',
     'synthetic keystrokes': 'AgentScript command descriptions are stored scrambled (hidden!)',
     'GetDIBits failed': 'screen-capture messages are stored scrambled (hidden!)',
+    # 1.24.33 (VirusTotal: Skyhigh "BehavesLike.Win64.Backdoor", Trapmine "Malicious.moderate.ml.score"): the
+    # "person took over" watch used system-wide keyboard/mouse hooks, which look like a key logger. It now asks
+    # Windows when the last input happened (GetLastInputInfo) and never installs a hook.
+    'SetWindowsHookEx': 'no system-wide keyboard or mouse hooks (the take-over watch uses GetLastInputInfo)',
 }
 problems = [f'{text!r} found: {why}' for text, why in forbidden.items() if present(text)]
 
@@ -44,4 +48,4 @@ problems += [f'missing {text!r}: {why}' for text, why in required.items() if not
 if problems:
     print('FAIL ' + str(exe) + '\n  ' + '\n  '.join(problems))
     sys.exit(1)
-print(f'PASS {exe}: no base64 PowerShell, no Bypass, no rundll32 links; manifest and company details embedded.')
+print(f'PASS {exe}: no base64 PowerShell, no Bypass, no rundll32 links, no input hooks; manifest and company details embedded.')
