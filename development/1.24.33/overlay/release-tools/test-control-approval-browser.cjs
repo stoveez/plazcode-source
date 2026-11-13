@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
-// 1.24.34 control rework, step 2, AI-tab side (real PlazCode AI-tab code in Chromium, shared fixture, fake worker):
+// AgentScript control rework (1.24.33), step 2, AI-tab side (real PlazCode AI-tab code in Chromium, shared fixture, fake worker):
 // the fixed always-ask list asks the person even in "Always approve" mode, a "no" sends nothing more, a "yes" sends
 // the same command once more with the person's confirmation, and the AI cannot set that confirmation itself.
 const fs=require('fs'),assert=require('node:assert/strict'),{createRequire}=require('module');

@@ -12,6 +12,12 @@
     "sidePanel"
   ],
   "optional_permissions": ["debugger"],
+  "commands": {
+    "ask-plazcode": {
+      "suggested_key": { "default": "Alt+P" },
+      "description": "Ask PlazCode about this page"
+    }
+  },
   "host_permissions": [
     "https://chat.deepseek.com/*",
     "https://deepseek.com/*",

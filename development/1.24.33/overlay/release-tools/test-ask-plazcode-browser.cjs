@@ -1,5 +1,5 @@
-// 1.24.34 AgentScript control rework, step 4: "Ask PlazCode" side chat, with the real extension in Chromium (rework
-// switched on in the test browser only). The background AI chat is stood in for by the test (the worker's messages
+// AgentScript control rework (1.24.33), step 4: "Ask PlazCode" side chat, with the real extension in Chromium (rework
+// on as shipped). The background AI chat is stood in for by the test (the worker's messages
 // to it are answered here); everything else is real: the panel page, the worker, sharing, pictures, approvals.
 // Runs as shipped (no tab pictures on Chrome without the one-time permission: the panel offers Allow) and with a
 // test-only copy that has the permission (pictures go with the question). Run from the PlazCode source root.

@@ -486,14 +486,15 @@ const PlazCodeFeatureGuide = (() => {
   "title": "Ask PlazCode",
   "group": "Bar",
   "where": "PlazCode bar > Ask PlazCode (and the PlazCode toolbar icon)",
-  "does": "Opens a chat beside the page you are looking at. PlazCode sees a picture of that tab with each question, and can control it if you switch that on.",
+  "does": "Opens a chat beside the page you are looking at. PlazCode sees a picture of that tab (or your whole screen) with each question, and can control it if you switch that on.",
   "steps": [
-   "Click Ask PlazCode on the bar, or the PlazCode icon in the browser toolbar and then Ask PlazCode.",
+   "Click Ask PlazCode on the bar, press Alt+P, or click the PlazCode icon in the browser toolbar and then Ask PlazCode about this page.",
    "Type a question about the page and press Enter.",
    "To let PlazCode click and type in the tab, switch on Let PlazCode control this tab."
   ],
   "tips": [
    "The shared tab follows the tab you are looking at. Untick Share to stop sharing.",
+   "Share my whole screen instead uses the PlazCode app (Windows or Mac); on a Mac allow Screen Recording once.",
    "Move your mouse or press Stop to take over at any time."
   ],
   "related": [
@@ -512,7 +513,43 @@ const PlazCodeFeatureGuide = (() => {
   "surfaces": [
    "extension"
   ],
-  "index": false
+  "index": true
+ },
+ {
+  "id": "live-control",
+  "title": "PlazCode controlling a tab or your computer",
+  "group": "Bar",
+  "where": "The tab or screen PlazCode works in, and the live card above the PlazCode bar",
+  "does": "While the AI clicks and types in a tab or on your computer, that tab or screen glows in your PlazCode colour, PlazCode's own cursor shows where it acts, and a live picture appears in the chat.",
+  "steps": [
+   "Ask the AI to do something in another tab or app; it works there while the glow is on.",
+   "Click the live card above the PlazCode bar to watch it larger beside the page.",
+   "Move your mouse or press a key to take over (PlazCode pauses), then Resume, or press Stop."
+  ],
+  "tips": [
+   "Passwords, payment cards and Buy, Send or Delete buttons always ask you first, whatever the approval mode.",
+   "Real mouse and keyboard in tabs need a one-time Allow in Chrome, Edge or Brave.",
+   "On a Mac, PlazCode asks once for Accessibility and Screen Recording."
+  ],
+  "related": [
+   "ask-plazcode"
+  ],
+  "keywords": [
+   "control tab",
+   "glow",
+   "live preview",
+   "take over",
+   "pause",
+   "computer control",
+   "mouse"
+  ],
+  "anchors": [
+   "surface:live-card"
+  ],
+  "surfaces": [
+   "extension"
+  ],
+  "index": true
  },
  {
   "id": "helpers",

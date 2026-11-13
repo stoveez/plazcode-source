@@ -1,4 +1,4 @@
-//! 1.24.34 AgentScript control rework, step 5b: the look on screen while PlazCode controls the desktop (Windows and
+//! AgentScript control rework (1.24.33), step 5b: the look on screen while PlazCode controls the desktop (Windows and
 //! Mac). Two app windows, both always on top, out of the taskbar, never taking focus: a see-through, click-through
 //! layer over the main screen with the glow in the PlazCode theme colour and PlazCode's cursor; and a small label at
 //! the top of the screen ("PlazCode is working here" / "Paused, you're in control") with Stop and Resume, the only

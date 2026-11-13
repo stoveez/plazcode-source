@@ -377,7 +377,7 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   assert.equal((await call('/api/desktop/browser-action',{message:'open-url:javascript:alert(1)'})).status,400,'unsafe external URI rejected');
   {const before=launch().length;assert.equal((await call('/api/desktop/browser-action',{message:'open:get-godot'})).status,200);await waitFor(()=>launch().length===before+1,'official download page opens');assert.equal(launch()[before],'https://godotengine.org/download/');assert.equal((await call('/api/desktop/browser-action',{message:'open:get-anything'})).status,400,'only listed download pages open');}
   {
-   // 1.24.34 control rework, desktop control state (switched off in release builds; PLAZCODE_CONTROL_V2=1 in a development build switches it on).
+   // AgentScript control rework (1.24.33), desktop control state (on for Windows and Mac; off on Linux unless PLAZCODE_CONTROL_V2=1, which the test uses to check the state and routes).
    const left=globalThis.__blockbenchLeft,headers=left?left.headers:{Authorization:'Bearer '+key,'Content-Type':'application/json',Origin:'http://127.0.0.1:3000'};
    const status=async()=>(await (await fetch('http://127.0.0.1:3000/api/status',{headers})).json()).desktop_control;
    const control=async body=>(await (await fetch('http://127.0.0.1:3000/api/desktop/control',{method:'POST',headers,body:JSON.stringify(body)})).json());

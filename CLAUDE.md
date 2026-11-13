@@ -1,6 +1,6 @@
 # PlazCode private repo: instructions for any AI working here
 
-**Current: 1.24.32 published. Next update 1.24.33 (not published) is built from `development/1.24.33` on `claude/plazcode-dev`: Apps & servers rework (Blender, Godot, Unity, Figma, Blockbench), helpers (sub-agents), several commands per reply, desktop "Studio look", Notion and DeepSeek command fixes. Owner field test pending. See docs/NOW.md.** See `docs/NOW.md`.
+**Current: 1.24.32 published. Next update 1.24.33 (not published) is built from `development/1.24.33` on `claude/plazcode-dev`: Apps & servers rework (Blender, Godot, Unity, Figma, Blockbench), helpers (sub-agents), several commands per reply, desktop "Studio look", Notion and DeepSeek command fixes, Blender in RobloxScript, AgentScript control rework (Ask PlazCode, live control look in tabs and on Windows/Mac). Owner field test pending. See docs/NOW.md.** See `docs/NOW.md`.
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.

@@ -2139,7 +2139,7 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
             paths.insert(key.into(),serde_json::json!(ws.root_display()));
         }
     }
-    // 1.24.34 control rework (off in release builds): desktop commands wait for the person, or are refused after Stop.
+    // AgentScript control rework (1.24.33): desktop commands wait for the person, or are refused after Stop.
     crate::desktop_control::enter(name).await?;
     let result=match name {
         _ if h == const { crate::hidden::fnv("workspace_info") } => tool_workspace_info(ws, a).await,
@@ -2180,7 +2180,7 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
         _ if h == const { crate::hidden::fnv("focus_window") } => tool_focus_window(ws, a).await,
         #[cfg(any(windows,target_os="macos"))]
         _ if h == const { crate::hidden::fnv("launch_app") } => tool_launch_app(ws, a).await,
-        // 1.24.34 control rework: desktop control on a Mac (agent/src/mac_control.rs).
+        // AgentScript control rework (1.24.33): desktop control on a Mac (agent/src/mac_control.rs).
         #[cfg(target_os="macos")]
         _ if h == const { crate::hidden::fnv("screen_capture") } => crate::mac_control::screen_capture(ws, a).await,
         #[cfg(target_os="macos")]
@@ -2254,7 +2254,7 @@ pub fn catalog() -> Vec<serde_json::Value> {
         serde_json::json!({"name": crate::hidden::hidden!("window_screenshot"), "description": crate::hidden::hidden!("Capture a single window (by title substring, or the first window) to a PNG. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"title": {"type": "string"}, "path": {"type": "string"}}), &[])}),
     ].into_iter().chain(crate::engine_tools::catalog()).filter(|tool| {
         if cfg!(windows) { return true; }
-        // 1.24.34 control rework: a Mac offers desktop control only while the rework is switched on.
+        // AgentScript control rework (1.24.33): a Mac offers desktop control while the rework is on (desktop_control::enabled).
         if cfg!(target_os = "macos") && crate::desktop_control::enabled() && name_is_mac_desktop(tool["name"].as_str().unwrap_or("")) { return true; }
         use crate::hidden::fnv;
         let name = tool["name"].as_str().unwrap_or("");

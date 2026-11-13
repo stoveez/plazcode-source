@@ -1,15 +1,14 @@
 ✨ **PlazCode 1.24.33**
-***Apps & servers that connect your creative apps for you, helper agents, a fresh look and an easy Linux install.***
+***PlazCode can now work in your tabs and apps while you watch, plus easy app connections and a fresh look.***
 
 ***✨ What's new***
-- Apps & servers page: connect Blender, Godot, Unity, Figma and Blockbench with a checklist that ticks itself off.
-- PlazCode adds and removes its own helpers in those apps. Blender can run in the background with safe mode on.
-- Guided browser extension setup on every system.
-- Linux: one-line install with app menu entry and automatic updates: curl -fsSL https://raw.githubusercontent.com/stoveez/PlazCode/main/install-linux.sh | sh . Roblox Studio through Vinegar is experimental.
+- Ask PlazCode (Alt+P or the bar button): a side chat that sees your tab or whole screen and can control it if you allow it.
+- When the AI works in a tab or app, it glows in your theme colour, shows PlazCode's cursor and a live preview in the chat. Move your mouse to take over.
+- Apps & servers: connect Blender, Godot, Unity, Figma and Blockbench with a checklist that ticks itself off. Guided extension setup too.
+- Blender works in RobloxScript too. Models reach Studio at the right size, facing the right way, with colours.
+- Linux: one-line install with automatic updates: curl -fsSL https://raw.githubusercontent.com/stoveez/PlazCode/main/install-linux.sh | sh (Studio via Vinegar is experimental)
 - Helper agents: up to two extra chats work on parts of a task.
-- Several commands per reply: reads together, changes in order.
-- A fresh app look with grouped pages, glow and a theme builder.
-- Mac: runs on macOS 10.15 Catalina. Memory search needs macOS 12; use Firefox on Catalina.
+- Several commands per reply, a fresh app look, and Mac support from macOS 10.15 (memory search needs 12; use Firefox there).
 
 ***🛠️ What's fixed***
 - Notion: commands right after a sentence run again.
@@ -17,7 +16,7 @@
 - Commands no longer wait on the link between the extension and the app.
 
 ***🧪 What was checked***
-- Automated tests on Windows, Mac and Linux; app connections with stand-ins. Not tried on a real Catalina Mac, a real Linux desktop or every AI site. Please report anything odd.
+- Automated tests on Windows, Mac and Linux. Tab and screen control tested on practice pages, not yet on every real site or a real Mac. Please report anything odd.
 - Windows is unsigned and Mac is not notarized, as before.
 
 ***📥 How to update***

@@ -1,4 +1,4 @@
-//! 1.24.34 AgentScript control rework, step 5a: one control state for the desktop (owner, 2026-11-12).
+//! AgentScript control rework (1.24.33), step 5a: one control state for the desktop (owner, 2026-11-12).
 //!
 //! Every desktop control command goes through `enter` first: it is refused for 15 s after the person pressed Stop,
 //! it waits (up to 90 s) while the person has taken over ("Paused, you're in control"), and otherwise it marks
@@ -15,7 +15,11 @@ pub const STOP_HOLD: Duration = Duration::from_secs(15);
 pub const PAUSE_WAIT: Duration = Duration::from_secs(90);
 pub const IDLE_END: Duration = Duration::from_secs(8);
 
-pub fn enabled() -> bool { cfg!(debug_assertions) && std::env::var("PLAZCODE_CONTROL_V2").map(|v| v == "1").unwrap_or(false) }
+/// On for Windows and Mac (owner, 2026-11-13: ships in 1.24.33); Linux has no desktop control. Tests force it with
+/// `PLAZCODE_CONTROL_V2=0` (off) or `=1` (on, also on Linux, for the state and routes only).
+pub fn enabled() -> bool {
+    match std::env::var("PLAZCODE_CONTROL_V2").as_deref() { Ok("0") => false, Ok("1") => true, _ => cfg!(any(windows, target_os = "macos")) }
+}
 
 /// Desktop commands that act on, or look at, the person's screen.
 pub fn is_desktop_tool(name: &str) -> bool {
@@ -282,10 +286,10 @@ mod tests {
         set_words(&json!({}));
         assert!(with(|s| s.words.iter().all(String::is_empty)));
     }
-    #[test] fn only_desktop_commands_go_through_the_gate_and_it_is_off_in_this_build_unless_switched_on() {
+    #[test] fn only_desktop_commands_go_through_the_gate_and_it_is_on_for_windows_and_mac() {
         for name in ["mouse_move", "mouse_click", "key_type", "focus_window", "launch_app", "screen_capture", "window_screenshot", "list_windows"] { assert!(is_desktop_tool(name), "{name}"); }
         for name in ["read_file", "write_file", "run_command", "tab_click_at"] { assert!(!is_desktop_tool(name), "{name}"); }
-        if std::env::var("PLAZCODE_CONTROL_V2").is_err() { assert!(!enabled() && status().is_null()); }
+        if std::env::var("PLAZCODE_CONTROL_V2").is_err() { assert_eq!(enabled(), cfg!(any(windows, target_os = "macos"))); assert_eq!(status().is_null(), !enabled()); }
         set_accent("javascript:"); set_accent("#12ab3"); assert_eq!(with(|s| s.accent.clone()), "");
         set_accent("#12ab3f"); assert_eq!(with(|s| s.accent.clone()), "#12ab3f");
     }

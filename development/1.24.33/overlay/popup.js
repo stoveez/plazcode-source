@@ -199,7 +199,7 @@ if (runHint) {
 })();
 
 function render(s) {
-  // 1.24.34 control rework: "Ask PlazCode" (shown only while the worker has the rework on). The click here counts as
+  // AgentScript control rework (1.24.33): "Ask PlazCode" (shown while the worker reports control_v2). The click here counts as
   // the person's own action, so Chrome lets PlazCode open its side panel from the popup.
   try { const ask = document.getElementById("ask-plazcode"); if (ask) ask.hidden = !(s && s.control_v2); } catch {}
   const dot = document.getElementById("dot");
@@ -406,7 +406,7 @@ refresh();
 setInterval(refresh, 2000);
 
 
-// 1.24.34 control rework: open the Ask PlazCode side panel for this window.
+// AgentScript control rework (1.24.33): open the Ask PlazCode side panel for this window.
 document.getElementById("ask-plazcode")?.addEventListener("click", async () => {
   try {
     const win = await chrome.windows.getCurrent();

@@ -3466,10 +3466,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
   return true; // async sendResponse
 });
 
-// ── AgentScript control rework (1.24.34; owner, 2026-11-12) ─────────────────
-// OFF until the whole rework is finished, so publishing 1.24.33 cannot ship it half-done. Tests switch it on inside
-// their own test browser only. Plan and security review: development/1.24.33/AGENTSCRIPT-REWORK-PLAN.md.
-let CONTROL_V2 = false;
+// ── AgentScript control rework (owner, 2026-11-12; ships in 1.24.33, owner 2026-11-13) ─────────────────
+// On. The switch stays as an emergency off switch (false = the four old tab tools only, no Ask PlazCode, no live
+// pictures); tests also check that state. Plan and security review: development/1.24.33/AGENTSCRIPT-REWORK-PLAN.md.
+let CONTROL_V2 = true;
 // tabId -> { paused, stoppedAt, by } : what the person did in the controlled tab, and which AI tab is working there.
 const controlTabs = new Map();
 // Step 7: the overlay's and the desktop label's words in the person's PlazCode language. The AI tab and the
@@ -4046,7 +4046,7 @@ async function askOpen(windowId) {
   return { ok: true, where: "window" };
 }
 if (chrome.commands && chrome.commands.onCommand) {
-  // The shortcut entry ("ask-plazcode", Alt+P) is added to manifest.json when the rework is switched on.
+  // The shortcut ("ask-plazcode", Alt+P by default, changeable on the browser's shortcuts page) is in manifest.json.
   chrome.commands.onCommand.addListener((command, tab) => { if (CONTROL_V2 && command === "ask-plazcode") askOpen(tab && tab.windowId).catch(() => {}); });
 }
 

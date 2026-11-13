@@ -2578,7 +2578,7 @@
         tools.push({name:'roblox_docs',server:'roblox',description:'Search the Roblox developer docs (create.roblox.com/docs) with query, or read one docs page with url (it must start with https://create.roblox.com/docs/). Use it to verify every Roblox API signature before you use it. Read-only.',inputSchema:{type:'object',properties:{query:{type:'string'},url:{type:'string'},max_chars:{type:'integer',minimum:500,maximum:60000}},additionalProperties:false}});
       }
       if (A.bridge && A.bridge.control_v2) {
-        // 1.24.34 control rework: real control of web tabs (x/y are CSS pixels of the visible page, as in tab_screenshot).
+        // AgentScript control rework (1.24.33): real control of web tabs (x/y are CSS pixels of the visible page, as in tab_screenshot).
         const tabArgs = {tabId:{type:'integer'},url_contains:{type:'string'}};
         const xy = {x:{type:'number'},y:{type:'number'}};
         tools.push({name:'tab_screenshot',server:activeEngine(),description:'Picture of a browser tab (the tab named by tabId or url_contains, else the current non-chat tab). Use it before tab_click_at.',inputSchema:{type:'object',properties:tabArgs}});
@@ -3433,7 +3433,7 @@ return result`;
         return "tab_scroll: scrolled to y=" + ((r.result && r.result.y) || "?");
       } catch (e) { return "ERROR: tab_scroll — " + String((e && e.message) || e); }
     }
-    // 1.24.34 control rework (only when the worker has it switched on): real control of web tabs.
+    // AgentScript control rework (1.24.33; offered while the worker reports control_v2): real control of web tabs.
     if (/^tab_(?:screenshot|click_at|type_text|key|scroll_at|navigate|open)$/.test(name)) {
       if (!(A.bridge && A.bridge.control_v2)) return "ERROR: unknown command '" + name + "' in this PlazCode version.";
       // `confirmed` is set only here, after the person approved; never taken from the AI's own arguments.
@@ -4107,7 +4107,7 @@ return result`;
       stopTimer = setInterval(() => { if (A.stop && A.stopMode !== "safe") res({ ok: false, kind: "stopped" }); }, 50);
     });
     if(typeof BATCH_OWNERS!=="undefined"&&BATCH_OWNERS.has(call)&&!BATCH_OWNERS.get(call)())return "ERROR: batch ownership changed; command was not run.";
-    // 1.24.34: the theme colour rides along so the desktop control look matches PlazCode (used only while switched on).
+    // AgentScript control rework (1.24.33): the theme colour and label words ride along so the desktop control look matches PlazCode.
     const bridgeCall = bg({ type: "call_tool", name, arguments: args, timeout, checkpoint_id:A.checkpointId, accent: controlAccent(), words: controlWords() });
     const waits = [bridgeCall, hardCap];
     // Stop cancels the next action immediately. An already dispatched mutation
@@ -7661,7 +7661,7 @@ return result`;
     }
     function renderAgents(rows) { agentsRows = Array.isArray(rows) ? rows : []; drawAgents(); }
     function setupAgentsPanel() {
-      // 1.24.34 control rework: "Ask PlazCode" opens the side chat (shown only while the worker has the rework on).
+      // AgentScript control rework (1.24.33): "Ask PlazCode" opens the side chat (shown while the worker reports control_v2).
       const askBtn = root.querySelector("#rs-ask-plazcode");
       if (askBtn) askBtn.addEventListener("click", () => { bg({ type: "ask_open" }).then((r) => { if (!r || !r.ok) ui.toast(ct(String((r && r.error) || "Ask PlazCode could not open."))); }, () => {}); });
       agentsBtn = root.querySelector("#rs-agents");
@@ -12146,7 +12146,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
   // ── Live token + timer, shown ONLY on a tool call's chip detail. The
   //    elapsed-time ANCHOR is stored on the chip's DOM node (dataset) so the
   //    timer survives re-renders / conversation switches. ────────────────────
-  // 1.24.34 control rework, step 3: the live card. While PlazCode works in another tab (one the person is not looking
+  // AgentScript control rework (1.24.33), step 3: the live card. While PlazCode works in another tab (one the person is not looking
   // at), a small live picture of it sits above the PlazCode bar; clicking it opens the large live view beside the chat.
   const controlCards = new Map(); // tabId -> { el, canvas, timer, drawing }
   function controlCard(msg) {
@@ -12189,7 +12189,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
       }, () => { card.drawing = false; });
     } catch { card.drawing = false; }
   }
-  // 1.24.34 control rework, step 4: this tab is the background chat behind "Ask PlazCode". Each question from the
+  // AgentScript control rework (1.24.33), step 4: this tab is the background chat behind "Ask PlazCode". Each question from the
   // side panel arrives here (with a picture of the shared tab); the answer goes back to the panel when the run ends.
   function askBrief(q) {
     const share = q.share;
@@ -12261,7 +12261,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
     return bg({ type: "ask_approve", title: o.title || ct("PlazCode wants to run {command}", { command: String(op || "a command") }), kicker: o.kicker || ct("Needs your approval"), detail })
       .then((r) => !!(r && r.ok && r.allowed), () => false);
   }
-  // 1.24.34: the PlazCode theme colour, for the glow the worker draws in the controlled tab (used only when the
+  // AgentScript control rework (1.24.33): the PlazCode theme colour, for the glow the worker draws in the controlled tab (used when the
   // control rework is switched on).
   // Step 7: words in the person's PlazCode language. ct() also fills {slots} when no translation is loaded.
   function ct(text, values) {
@@ -12884,12 +12884,12 @@ rsInterval(() => {
       criticRun(msg).then(sendResponse, (error) => sendResponse({ ok: false, error: String(error && error.message || error) }));
       return true;
     }
-    // 1.24.34 Ask PlazCode: this tab may be the background chat behind the side panel.
+    // AgentScript control rework (1.24.33), Ask PlazCode: this tab may be the background chat behind the side panel.
     if (msg && msg.type === "rs-ask-site") { let name = ""; try { name = P.name || P.id || location.host; } catch {} sendResponse({ ok: true, url: helperChatUrl(), name: String(name) }); return; }
     if (msg && msg.type === "rs-ask-run") { try { sendResponse(askRun(msg.ask)); } catch (error) { sendResponse({ ok: false, error: String(error && error.message || error) }); } return; }
     if (msg && msg.type === "rs-ask-stop") { try { if (A.ask) A.ask.stopped = true; if (A.running || A.starting) stopLoop(); sendResponse({ ok: true }); } catch { try { sendResponse({ ok: false }); } catch {} } return; }
     if (msg && (msg.type === "rs-control-frame" || msg.type === "rs-control-end")) { try { controlCard(msg); } catch {} try { sendResponse({ ok: true }); } catch {} return; }
-    // 1.24.34 control rework: the person pressed Stop (or Escape) in the tab the AI was working in.
+    // AgentScript control rework (1.24.33): the person pressed Stop (or Escape) in the tab the AI was working in.
     if (msg && msg.type === "rs-control-stop") { try { if (A.running || A.starting) stopLoop(); sendResponse({ ok: true }); } catch { try { sendResponse({ ok: false }); } catch {} } return; }
     if (msg && msg.type === "rs-wake") { wakeDueSleepers(); try { sendResponse({ ok: true }); } catch {} return; }
     if (msg && msg.type === "rs-helper-ping") { let ready = false; try { ready = !!P.getEditor(); } catch {} sendResponse({ ok: true, provider: P.id, ready, idle: !(A.started || A.running || A.starting) }); return; }

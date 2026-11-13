@@ -1,11 +1,11 @@
-// 1.24.34 AgentScript control rework, step 1 (the control look in web tabs), with the real extension in Chromium.
+// AgentScript control rework (1.24.33), step 1 (the control look in web tabs), with the real extension in Chromium.
 // The rework is switched off in the product (CONTROL_V2 = false); this test switches it on in its own browser only.
 // The controlled page is a local test page served at https://control.test/. Run from the PlazCode source root.
 const { chromium } = require('playwright'), fs = require('fs'), os = require('os'), path = require('path'), assert = require('node:assert/strict');
 (async () => {
   const root = process.cwd(), ext = path.join(root, 'PlazCode-Extension');
   const bg = fs.readFileSync(path.join(root, 'background.js'), 'utf8');
-  assert.match(bg, /^let CONTROL_V2 = false;$/m, 'the control rework stays switched off in the product until it is finished');
+  assert.match(bg, /^let CONTROL_V2 = true;$/m, 'the control rework is switched on in the product (owner, 2026-11-13: ships in 1.24.33)');
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'plazcode-control-'));
   const context = await chromium.launchPersistentContext(profile, { headless: true, channel: 'chromium', viewport: { width: 1200, height: 800 }, args: ['--disable-extensions-except=' + ext, '--load-extension=' + ext, '--no-sandbox'] });
   try {

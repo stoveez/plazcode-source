@@ -1,5 +1,5 @@
-// 1.24.34 AgentScript control rework, step 7: the new pages and the glow label speak the person's PlazCode language.
-// Real extension in Chromium (rework switched on in the test browser only), language set the way the PlazCode menu
+// AgentScript control rework (1.24.33), step 7: the new pages and the glow label speak the person's PlazCode language.
+// Real extension in Chromium (rework on as shipped), language set the way the PlazCode menu
 // sets it (chrome.storage.local rsLanguage). Checks German in the Ask PlazCode panel (static and changing text),
 // the "Shared with PlazCode" mark in the shared tab (words sent by the panel), the large live view and the
 // permission window; Arabic pages run right to left. Run from the PlazCode source root.

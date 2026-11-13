@@ -151,7 +151,7 @@ ok("attach_feedback reads workspace files through the bridge", mainSrc.includes(
 ok("attach_feedback stages into the composer via the provider", mainSrc.includes("P.attachImages([img])"));
 ok("attach_feedback can attach without attaching (copy only)", mainSrc.includes("args.copy !== false"));
 ok("attach_feedback refuses on non-vision sites", /attach_feedback[\s\S]{0,600}supportsVision/.test(mainSrc));
-// 1.24.34 control rework: tab_screenshot is a third place that records its picture.
+// AgentScript control rework (1.24.33): tab_screenshot is a third place that records its picture.
 ok("capture results are recorded for later re-sends", (mainSrc.match(/rememberImages\(r\.images, name\)/g) || []).length === 3);
 ok("the popup offers Copy + Use as feedback", mainSrc.includes('"Copy image"') && mainSrc.includes("Use as feedback"));
 ok("the popup can re-attach by hand", mainSrc.includes("A.pendingImages = images.slice()"));

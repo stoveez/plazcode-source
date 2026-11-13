@@ -1,4 +1,4 @@
-// 1.24.34 AgentScript control rework, step 2 (real control of web tabs), with the real extension in Chromium. The
+// AgentScript control rework (1.24.33), step 2 (real control of web tabs), with the real extension in Chromium. The
 // rework is switched off in the product; this test switches it on in its own browser only. It runs twice:
 //  - "in-page": the extension as shipped (the optional debugger permission not granted): in-page input, and the
 //    one-time permission window opens;

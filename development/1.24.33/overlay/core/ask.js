@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
-// 1.24.34 control rework, step 4: the "Ask PlazCode" side chat (Chrome's side panel, or a window docked to the right).
+// AgentScript control rework (1.24.33), step 4: the "Ask PlazCode" side chat (Chrome's side panel, or a window docked to the right).
 // Questions go to the extension worker, which asks a background chat on the person's AI site and sends the answer
 // back. The shared tab follows the tab the person is looking at; a live picture of it sits at the top.
 (async () => {

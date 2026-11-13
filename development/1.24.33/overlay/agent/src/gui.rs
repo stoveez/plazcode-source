@@ -425,7 +425,7 @@ pub fn run_gui(
     #[cfg(target_os = "macos")]
     let mut background_visibility_pending = start_background;
     let mut last_tick = Instant::now();
-    // 1.24.34 control rework: the glow, label and cursor while PlazCode controls the desktop (made on first use).
+    // AgentScript control rework (1.24.33): the glow, label and cursor while PlazCode controls the desktop (made on first use).
     let mut look: Option<control_look::ControlLook> = None;
     let mut look_failed = false;
     event_loop.run_return(|event, target, control_flow| {

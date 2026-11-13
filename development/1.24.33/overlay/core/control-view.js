@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
-// 1.24.34 control rework: the enlarged live view (side panel or docked window) of the tab PlazCode works in.
+// AgentScript control rework (1.24.33): the enlarged live view (side panel or docked window) of the tab PlazCode works in.
 (async () => {
   // Step 7: PlazCode's language (the same files and setting as the toolbar menu). t() fills {slots} either way.
   const L = globalThis.PlazCodeI18n;

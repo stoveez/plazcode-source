@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
-// 1.24.34 control rework: the person allows the optional "debugger" permission (real mouse and keyboard in tabs).
+// AgentScript control rework (1.24.33): the person allows the optional "debugger" permission (real mouse and keyboard in tabs).
 // The browser only shows its permission question after a click on a PlazCode page, so this small page asks.
 (async () => {
   // Step 7: PlazCode's language (the same files and setting as the toolbar menu). t() fills {slots} either way.

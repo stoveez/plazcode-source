@@ -1,5 +1,5 @@
-// 1.24.34 AgentScript control rework, step 5 (desktop apps), extension side, with the real extension in Chromium
-// (rework switched on in the test browser only). The PlazCode app's answers are stood in for here (Linux has no
+// AgentScript control rework (1.24.33), step 5 (desktop apps), extension side, with the real extension in Chromium
+// (rework on as shipped). The PlazCode app's answers are stood in for here (Linux has no
 // desktop control); the Windows/Mac app side is tested by its own Rust tests and CI. Checks: the AI chat that used
 // the computer last gets the live screen picture and Stop, the theme colour goes to the app once, the large view of
 // the screen works and its buttons go to the app. Run from the PlazCode source root.

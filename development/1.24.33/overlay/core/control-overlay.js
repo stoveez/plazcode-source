@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
-// 1.24.34 AgentScript control look (owner, 2026-11-12). Put into a web tab by the extension's worker while the AI
+// AgentScript control look (1.24.33) (owner, 2026-11-12). Put into a web tab by the extension's worker while the AI
 // works there: a glow around the page edges in the PlazCode theme colour, a "PlazCode is working here" label with
 // Stop, and PlazCode's own cursor that glides to each target before a click or typing. Real input from the person
 // (mouse movement, click, wheel, key) pauses the AI ("Paused, you're in control" + Resume); Escape stops it.

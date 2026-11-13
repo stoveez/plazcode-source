@@ -1,4 +1,4 @@
-//! 1.24.34 AgentScript control rework, step 5d: desktop control on a Mac (owner, 2026-11-12: Windows and Mac).
+//! AgentScript control rework (1.24.33), step 5d: desktop control on a Mac (owner, 2026-11-12: Windows and Mac).
 //!
 //! Mouse and keys through CoreGraphics events (each marked as PlazCode's own, so the "person took over" watch ignores
 //! it); screen pictures through the system's `screencapture` tool, scaled to the screen's points so a picture's
