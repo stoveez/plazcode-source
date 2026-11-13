@@ -6489,3 +6489,9 @@ html[data-rs-studio] #rs-root .rs-live-card .rs-live-big{display:grid;place-item
 html[data-rs-studio] #rs-root .rs-live-card .rs-live-note{color:var(--st-dim)!important;font:500 11px/1.5 var(--st-mono)!important}
 html[data-rs-studio][data-rs-gradients=off] #rs-root .rs-live-card{border-image:none!important;border-color:var(--st-line)!important;background:var(--st-card)!important}
 html[data-rs-studio][data-rs-gradients=off][data-rs-glow=off] #rs-root .rs-live-card{box-shadow:none!important}
+
+/* ClickUp (its own grid, providers/clickup.js) pins the hide button to the bar's top-right corner. With the Studio look the
+   name block is wider, and on a narrow ClickUp panel Firefox's wider letters pushed the RS / AS switch under it (CI run
+   43491298315). In the Studio look it stays in its icon group with Discord and Settings instead. */
+html[data-rs-studio]:not([data-rs-bar-collapsed]) #rs-root #rs-bar.rs-prov-clickup #rs-hide{position:static!important;top:auto!important;right:auto!important}
+html[data-rs-studio] #rs-root #rs-bar.rs-prov-clickup #rs-ctx{margin-right:0!important}
