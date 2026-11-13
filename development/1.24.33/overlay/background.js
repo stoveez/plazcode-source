@@ -3428,10 +3428,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
       }
-      case "control_permission":
-        if (!CONTROL_V2) { sendResponse({ ok: false, error: "Not available in this version." }); break; }
-        try { sendResponse(await controlAskPermission()); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
-        break;
       case "tab_screenshot": case "tab_click_at": case "tab_type_text": case "tab_key": case "tab_scroll_at": case "tab_navigate": case "tab_open":
         if (!CONTROL_V2) { sendResponse({ ok: false, error: "This PlazCode version does not have " + msg.type + " yet." }); break; }
         try { sendResponse(await controlV2Tool(msg, _sender)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
@@ -3571,12 +3567,13 @@ async function controlledTabAction(kind, msg, sender) {
   }, [String(msg.text || ""), !!msg.submit]) };
 }
 // ── Step 2: real control of web tabs ────────────────────────────────────────
-// Chrome/Edge/Brave: real mouse and keyboard through the browser's debugging connection, once the person allowed the
-// optional "debugger" permission (Chrome then shows its own "started debugging this browser" bar while PlazCode works).
-// Without it (or on Firefox): in-page events, which some sites and every canvas app ignore; said in each answer.
+// Chrome/Edge/Brave: real mouse and keyboard through the browser's debugging connection ("debugger" permission in
+// manifest.json; Chrome cannot make it optional. Chrome shows its own "started debugging this browser" bar while
+// PlazCode works in a tab). Firefox has none: in-page events, which some sites and every canvas app ignore; said in
+// each answer.
 const controlDebug = new Map(); // tabId -> idle timer
 async function canDebug() {
-  try { return !!(chrome.debugger && chrome.permissions && await chrome.permissions.contains({ permissions: ["debugger"] })); } catch { return false; }
+  return !!(chrome.debugger && typeof chrome.debugger.attach === "function");
 }
 function debugBump(tabId) {
   clearTimeout(controlDebug.get(tabId));
@@ -3664,8 +3661,8 @@ async function controlPicture(tab, debug) {
       blob = base64Blob(String(await chrome.tabs.captureTab(tab.id, { format: "png" })).replace(/^data:[^,]*,/, ""), "image/png"); // Firefox: any tab
     } else {
       // Chrome lets an extension take pictures of tabs only through the debugging connection (or right after the
-      // person clicks the PlazCode icon), so without the one-time permission there is no picture.
-      throw new Error("To see the tab, PlazCode needs the person's one-time permission to control tabs (a small PlazCode window asks for it). Until then use tab_read to read the page.");
+      // person clicks the PlazCode icon); a browser without it gets no picture.
+      throw new Error("This browser does not let PlazCode take a picture of the tab. Use tab_read to read the page.");
     }
   } finally { await run((on) => globalThis.__plazcodeControl && globalThis.__plazcodeControl.veil(on), [false]); }
   const bitmap = await createImageBitmap(blob);
@@ -3678,12 +3675,9 @@ async function controlPicture(tab, debug) {
   return { data: btoa(bin), w, h, scale, view };
 }
 const CONTROL_V2_TOOLS = new Set(["tab_screenshot", "tab_click_at", "tab_type_text", "tab_key", "tab_scroll_at", "tab_navigate", "tab_open"]);
-let controlAsked = false;
 async function controlV2Tool(msg, sender) {
   const name = msg.type, debug = await canDebug();
-  // The first time real control would help, PlazCode asks the person once per browser session (never on Firefox).
-  if (!debug && !controlAsked && name !== "tab_open" && name !== "tab_navigate" && !/Firefox\//.test(navigator.userAgent)) { controlAsked = true; controlAskPermission().catch(() => {}); }
-  const how = debug ? "" : " (in-page input: some sites and canvas apps ignore it; real mouse and keyboard need the person's one-time permission)";
+  const how = debug ? "" : " (in-page input: some sites and canvas apps ignore it; this browser gives extensions no real mouse and keyboard)";
   if (name === "tab_open") {
     const url = String(msg.url || "");
     if (!/^https?:\/\//i.test(url) || CONTROL_STORES.test(url)) return { ok: false, error: "tab_open takes a web address starting with http:// or https://." };
@@ -3779,9 +3773,9 @@ async function controlV2Tool(msg, sender) {
 // ── Step 3: live picture of the controlled tab ─────────────────────────────
 // While PlazCode works in a tab, a few pictures a second go to (a) the AI chat that is working there, which shows a
 // live card unless the person is already looking at that tab, and (b) any open PlazCode live view (side panel or
-// docked window). Chrome/Edge/Brave: the browser's own screen stream over the debugging connection (only after the
-// one-time permission). Firefox: tabs.captureTab twice a second. Chrome without the permission: no picture; the card
-// says why.
+// docked window). Chrome/Edge/Brave: the browser's own screen stream over the debugging connection. Firefox:
+// tabs.captureTab twice a second. If neither works (for example Chrome refuses the connection): no picture; the card
+// says so.
 const controlLive = new Map();   // tabId -> { by, lastAt, sentAt, poll }
 const controlViewers = new Set(); // ports from core/control-view.html
 const FRAME_GAP = 220;            // at most about 4 pictures a second
@@ -3820,7 +3814,7 @@ async function controlLiveStart(tabId, by) {
     }, 500);
   }
   if (!live.cast && !live.poll && Number.isInteger(by)) {
-    chrome.tabs.sendMessage(by, { type: "rs-control-frame", tabId, data: "", note: "Live picture needs the one-time permission to control tabs.", title: "", url: "", at: Date.now() }).catch(() => {});
+    chrome.tabs.sendMessage(by, { type: "rs-control-frame", tabId, data: "", note: "No live picture of this tab in this browser.", title: "", url: "", at: Date.now() }).catch(() => {});
   }
 }
 async function controlLiveStop(tabId) {
@@ -4095,14 +4089,6 @@ function desktopControlUpdate(dc) {
   // Stop on the screen (the app's label) is Stop for the AI chat that was using the computer.
   if (stopped && !desktopWasStopped && Number.isInteger(desktopBy)) chrome.tabs.sendMessage(desktopBy, { type: "rs-control-stop" }).catch(() => {});
   desktopWasStopped = stopped;
-}
-
-// The person allows real mouse and keyboard once, in a small PlazCode window (the browser asks them there).
-async function controlAskPermission() {
-  if (await canDebug()) return { ok: true, granted: true };
-  if (!chrome.permissions || !chrome.debugger && !/Chrome|Edg/.test(navigator.userAgent)) return { ok: true, granted: false, unsupported: true };
-  await chrome.windows.create({ url: chrome.runtime.getURL("core/control-permission.html"), type: "popup", width: 480, height: 420 });
-  return { ok: true, granted: false, asked: true };
 }
 
 // What the person did in a controlled tab (sent by core/control-overlay.js from that tab only).

@@ -9,9 +9,9 @@
     "activeTab",
     "scripting",
     "webRequest",
-    "sidePanel"
+    "sidePanel",
+    "debugger"
   ],
-  "optional_permissions": ["debugger"],
   "commands": {
     "ask-plazcode": {
       "suggested_key": { "default": "Alt+P" },

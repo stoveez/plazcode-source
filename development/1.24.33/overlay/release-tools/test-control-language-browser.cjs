@@ -1,8 +1,7 @@
 // AgentScript control rework (1.24.33), step 7: the new pages and the glow label speak the person's PlazCode language.
 // Real extension in Chromium (rework on as shipped), language set the way the PlazCode menu
 // sets it (chrome.storage.local rsLanguage). Checks German in the Ask PlazCode panel (static and changing text),
-// the "Shared with PlazCode" mark in the shared tab (words sent by the panel), the large live view and the
-// permission window; Arabic pages run right to left. Run from the PlazCode source root.
+// the "Shared with PlazCode" mark in the shared tab (words sent by the panel), the large live view; Arabic pages run right to left. Run from the PlazCode source root.
 const { chromium } = require('playwright'), fs = require('fs'), os = require('os'), path = require('path'), assert = require('node:assert/strict');
 (async () => {
   const root = process.cwd(), ext = path.join(root, 'PlazCode-Extension');
@@ -43,7 +42,7 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
     assert(notes.includes('Ein PlazCode-Chat auf Test AI wird im Hintergrund geöffnet…'), JSON.stringify(notes));
     await panel.close();
 
-    // Large live view and the permission window in German.
+    // Large live view in German.
     const view = await context.newPage();
     await view.goto(base + 'control-view.html?tab=-1');
     await view.waitForFunction(() => document.getElementById('pause').textContent === 'Pausieren', null, { timeout: 8000 });
@@ -51,11 +50,6 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
     assert.equal(await view.innerText('#note'), 'Warten auf das erste Bild…');
     assert.equal(await view.title(), 'PlazCode-Live-Ansicht');
     await view.close();
-    const perm = await context.newPage();
-    await perm.goto(base + 'control-permission.html');
-    await perm.waitForFunction(() => document.querySelector('h1').textContent === 'PlazCode Ihre Maus und Tastatur in Tabs verwenden lassen', null, { timeout: 8000 });
-    assert.equal(await perm.innerText('#later'), 'Nicht jetzt');
-    await perm.close();
 
     // Arabic: right to left.
     await worker.evaluate(() => chrome.storage.local.set({ rsLanguage: 'ar' }));
@@ -64,6 +58,6 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
     await rtl.waitForFunction(() => document.querySelector('h1').textContent === 'اسأل PlazCode', null, { timeout: 8000 });
     assert.equal(await rtl.evaluate(() => getComputedStyle(document.body).direction), 'rtl');
     await rtl.close();
-    console.log('test-control-language-browser: PASS (Chromium): Ask PlazCode panel, shared-tab mark, worker messages, large view and permission window in German; Arabic right to left');
+    console.log('test-control-language-browser: PASS (Chromium): Ask PlazCode panel, shared-tab mark, worker messages, large view in German; Arabic right to left');
   } finally { await context.close(); fs.rmSync(profile, { recursive: true, force: true }); }
 })().catch((e) => { console.error(e); process.exit(1); });

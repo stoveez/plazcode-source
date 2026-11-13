@@ -11,10 +11,7 @@ def build(extension, destination, archive):
     manifest = json.loads((extension / 'manifest.json').read_text())
     manifest.pop('minimum_chrome_version', None)
     # Firefox has no debugging connection for extensions: its PlazCode controls tabs with in-page input only.
-    manifest['permissions'] = [p for p in manifest.get('permissions', []) if p != 'sidePanel']  # Chrome-only API
-    optional = [p for p in manifest.get('optional_permissions', []) if p != 'debugger']
-    if optional: manifest['optional_permissions'] = optional
-    else: manifest.pop('optional_permissions', None)
+    manifest['permissions'] = [p for p in manifest.get('permissions', []) if p not in ('sidePanel', 'debugger')]  # Chrome-only APIs
     manifest['background'] = {'scripts': ['protection.js', 'background.js']}
     # Firefox hides content-script DataTransfer text/files from pages. Each
     # isolated provider group loads the transfer shim first, paired with a

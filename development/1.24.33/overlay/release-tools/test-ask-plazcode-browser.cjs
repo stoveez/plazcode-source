@@ -1,17 +1,17 @@
 // AgentScript control rework (1.24.33), step 4: "Ask PlazCode" side chat, with the real extension in Chromium (rework
 // on as shipped). The background AI chat is stood in for by the test (the worker's messages
 // to it are answered here); everything else is real: the panel page, the worker, sharing, pictures, approvals.
-// Runs as shipped (no tab pictures on Chrome without the one-time permission: the panel offers Allow) and with a
-// test-only copy that has the permission (pictures go with the question). Run from the PlazCode source root.
+// Runs as shipped ("real": debugger is a normal permission, pictures go with the question) and with a test-only copy
+// without it (no tab pictures, the panel says so plainly). Run from the PlazCode source root.
 const { chromium } = require('playwright'), fs = require('fs'), os = require('os'), path = require('path'), assert = require('node:assert/strict');
 async function run(mode) {
   const root = process.cwd(), shipped = path.join(root, 'PlazCode-Extension');
   let ext = shipped, copy = null;
-  if (mode === 'real') {
+  if (mode === 'no-debugger') {
     copy = fs.mkdtempSync(path.join(os.tmpdir(), 'plazcode-ask-ext-'));
     fs.cpSync(shipped, copy, { recursive: true });
     const manifest = JSON.parse(fs.readFileSync(path.join(copy, 'manifest.json'), 'utf8'));
-    manifest.permissions = [...manifest.permissions, 'debugger'];
+    manifest.permissions = manifest.permissions.filter((p) => p !== 'debugger');
     fs.writeFileSync(path.join(copy, 'manifest.json'), JSON.stringify(manifest));
     ext = copy;
   }
@@ -67,7 +67,8 @@ async function run(mode) {
     else {
       assert.equal(asked.images.length, 0);
       await panel.waitForSelector('#banner:not([hidden])');
-      assert.match(await panel.innerText('#banner'), /one-time permission[\s\S]*Allow/);
+      assert.match(await panel.innerText('#banner'), /does not let PlazCode take a picture/);
+      assert.equal(await panel.locator('#banner button').count(), 0, 'nothing to allow: the panel only explains');
     }
     const askTab = await worker.evaluate(() => ask.tabId);
     assert(Number.isInteger(askTab) && askTab !== ids.shop, 'a separate background chat');
@@ -115,4 +116,4 @@ async function run(mode) {
     console.log('test-ask-plazcode-browser: PASS (' + mode + ')');
   } finally { await context.close(); fs.rmSync(profile, { recursive: true, force: true }); if (copy) fs.rmSync(copy, { recursive: true, force: true }); }
 }
-(async () => { await run('shipped'); await run('real'); console.log('test-ask-plazcode-browser: PASS (Chromium): sharing follows the tab with a "Shared with PlazCode" mark, questions reach one background chat with picture and rules, control off unless switched on, approvals in the panel, only the background chat can answer, Stop, stop sharing from the tab, AI chats never shared, closing the panel ends sharing, Allow offered without the permission'); })().catch((e) => { console.error(e); process.exit(1); });
+(async () => { await run('real'); await run('no-debugger'); console.log('test-ask-plazcode-browser: PASS (Chromium): sharing follows the tab with a "Shared with PlazCode" mark, questions reach one background chat with picture and rules, control off unless switched on, approvals in the panel, only the background chat can answer, Stop, stop sharing from the tab, AI chats never shared, closing the panel ends sharing, Allow offered without the permission'); })().catch((e) => { console.error(e); process.exit(1); });

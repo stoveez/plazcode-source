@@ -86,9 +86,6 @@
   stop.addEventListener("click", () => { port.postMessage({ stop: true }); step.textContent = t("Stopping…"); });
   sharing.addEventListener("change", follow);
   screen.addEventListener("change", follow);
-  $("allowPerm").addEventListener("click", async () => {
-    try { if (await chrome.permissions.request({ permissions: ["debugger"] })) { banner.hidden = true; add("note", t("Allowed. PlazCode can now see and control tabs.")); follow(); } } catch (error) { bannerText.textContent = String(error && error.message || error); }
-  });
   // Sharing follows the tab the person is looking at.
   chrome.tabs.onActivated.addListener((info) => { if (screen.checked) return; if (!fixedWindow || info.windowId === fixedWindow) follow(); });
   chrome.tabs.onUpdated.addListener((tabId, change) => { if (tabId === shared && (change.url || change.title)) follow(); });

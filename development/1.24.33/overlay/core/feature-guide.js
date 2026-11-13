@@ -528,7 +528,7 @@ const PlazCodeFeatureGuide = (() => {
   ],
   "tips": [
    "Passwords, payment cards and Buy, Send or Delete buttons always ask you first, whatever the approval mode.",
-   "Real mouse and keyboard in tabs need a one-time Allow in Chrome, Edge or Brave.",
+   "Chrome, Edge and Brave show their own \"started debugging this browser\" bar while PlazCode works in a tab; that is PlazCode.",
    "On a Mac, PlazCode asks once for Accessibility and Screen Recording."
   ],
   "related": [

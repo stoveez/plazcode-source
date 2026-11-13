@@ -51,13 +51,13 @@ const {load}=new Function('require',prefix+';return {load};')(req);
  await page.locator('.rs-live-card').press('Enter');
  await page.locator('.rs-live-card').click();
  assert.deepEqual(await page.evaluate(()=>watch),[7,7],'Enter or a click opens the large live view of that tab');
- await page.evaluate(()=>fixture.controlCard({type:'rs-control-frame',tabId:8,data:'',note:'Live picture needs the one-time permission to control tabs.'}));
- assert.match(await page.innerText('.rs-live-card >> nth=1'),/one-time permission/);
+ await page.evaluate(()=>fixture.controlCard({type:'rs-control-frame',tabId:8,data:'',note:'No live picture of this tab in this browser.'}));
+ assert.match(await page.innerText('.rs-live-card >> nth=1'),/No live picture of this tab/);
  await page.evaluate(()=>{fixture.controlCard({type:'rs-control-end',tabId:7});fixture.controlCard({type:'rs-control-end',tabId:8});});
  assert.equal(await page.locator('.rs-live-card').count(),0,'the card goes when PlazCode is done');
  // Step 7: the card speaks the person's PlazCode language (German here), the worker's note included.
- await page.evaluate(()=>{PlazCodeI18n.setLanguage('de');fixture.controlCard({type:'rs-control-frame',tabId:9,data:'',note:'Live picture needs the one-time permission to control tabs.',title:'Shop',url:'https://control.test/x'});fixture.controlCard({type:'rs-control-frame',tabId:-1,data:'',note:'x',title:'Your screen',url:''});});
- assert.match(await page.innerText('.rs-live-card >> nth=0'),/Das Live-Bild braucht die einmalige Berechtigung[\s\S]*control\.test · PlazCode arbeitet hier/);
+ await page.evaluate(()=>{PlazCodeI18n.setLanguage('de');fixture.controlCard({type:'rs-control-frame',tabId:9,data:'',note:'No live picture of this tab in this browser.',title:'Shop',url:'https://control.test/x'});fixture.controlCard({type:'rs-control-frame',tabId:-1,data:'',note:'x',title:'Your screen',url:''});});
+ assert.match(await page.innerText('.rs-live-card >> nth=0'),/In diesem Browser gibt es kein Live-Bild dieses Tabs[\s\S]*control\.test · PlazCode arbeitet hier/);
  assert.match(await page.innerText('.rs-live-card >> nth=1'),/Ihr Bildschirm/);
  assert.equal(await page.getAttribute('.rs-live-card >> nth=0','aria-label'),'Live-Ansicht von Shop. Neben dem Chat öffnen.');
  await page.evaluate(()=>{fixture.controlCard({type:'rs-control-end',tabId:9});fixture.controlCard({type:'rs-control-end',tabId:-1});PlazCodeI18n.setLanguage('en');});

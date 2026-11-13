@@ -1,8 +1,8 @@
 // AgentScript control rework (1.24.33), step 2 (real control of web tabs), with the real extension in Chromium. The
-// rework is switched off in the product; this test switches it on in its own browser only. It runs twice:
-//  - "in-page": the extension as shipped (the optional debugger permission not granted): in-page input, and the
-//    one-time permission window opens;
-//  - "real": a test-only copy of the extension with the debugger permission already granted: real mouse/keyboard.
+// rework is on as shipped. It runs twice:
+//  - "real": the extension as shipped (debugger is a normal permission: Chrome cannot make it optional and drops it
+//    silently if listed as optional, which 1.24.33's first test build did): real mouse/keyboard;
+//  - "in-page": a test-only copy without the debugger permission (as on a browser without it): in-page input.
 // The controlled pages are local test pages served at https://control.test/. Run from the PlazCode source root.
 const { chromium } = require('playwright'), fs = require('fs'), os = require('os'), path = require('path'), assert = require('node:assert/strict');
 const PAGE = '<!doctype html><title>Shop</title><body style="font:16px sans-serif;margin:0;padding:30px">' +
@@ -14,11 +14,11 @@ const PAGE = '<!doctype html><title>Shop</title><body style="font:16px sans-seri
 async function run(mode) {
   const root = process.cwd(), shipped = path.join(root, 'PlazCode-Extension');
   let ext = shipped, copy = null;
-  if (mode === 'real') {
-    copy = fs.mkdtempSync(path.join(os.tmpdir(), 'plazcode-ext-real-'));
+  if (mode === 'in-page') {
+    copy = fs.mkdtempSync(path.join(os.tmpdir(), 'plazcode-ext-inpage-'));
     fs.cpSync(shipped, copy, { recursive: true });
     const manifest = JSON.parse(fs.readFileSync(path.join(copy, 'manifest.json'), 'utf8'));
-    manifest.permissions = [...manifest.permissions, 'debugger']; // test-only: the person's one-time Allow, already given
+    manifest.permissions = manifest.permissions.filter((p) => p !== 'debugger'); // test-only: a browser without it
     fs.writeFileSync(path.join(copy, 'manifest.json'), JSON.stringify(manifest));
     ext = copy;
   }
@@ -40,10 +40,12 @@ async function run(mode) {
     const paused = () => worker.evaluate(() => [...controlTabs.values()].some((r) => r.paused));
     const real = mode === 'real';
     assert.equal(await worker.evaluate(() => canDebug()), real);
+    // The shipped extension really holds the permission (Chrome drops an optional "debugger" without an error).
+    if (real) assert.equal(await worker.evaluate(() => chrome.permissions.contains({ permissions: ['debugger'] })), true, 'debugger is granted as shipped');
 
     // A picture of the tab, in the page's own pixels, without PlazCode's glow in it.
     let r = await tool('tab_screenshot');
-    if (!real) assert(!r.ok && /one-time permission/.test(r.error), 'Chrome without the permission: no picture, said plainly: ' + JSON.stringify(r));
+    if (!real) assert(!r.ok && /does not let PlazCode take a picture/.test(r.error), 'a browser without it: no picture, said plainly: ' + JSON.stringify(r));
     if (real) {
     assert(r.ok && r.images.length === 1 && r.images[0].mimeType === 'image/jpeg', JSON.stringify(r).slice(0, 300));
     const dims = await shop.evaluate(async (data) => { const img = new Image(); img.src = 'data:image/jpeg;base64,' + data; await img.decode(); const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const g = c.getContext('2d'); g.drawImage(img, 0, 0); const px = g.getImageData(img.width / 2, 1, 1, 1).data; return { w: img.width, h: img.height, px: [...px] }; }, r.images[0].data);
@@ -138,14 +140,11 @@ async function run(mode) {
       await worker.evaluate((id) => controlEvent({ event: 'stop' }, { tab: { id }, id: chrome.runtime.id }), ids.shop);
       assert.equal(await worker.evaluate(async () => { for (let i = 0; i < 40 && controlDebug.size; i++) await new Promise((r) => setTimeout(r, 50)); return controlDebug.size; }), 0, 'the browser\'s debugging bar goes away at Stop (within two seconds)');
     } else {
-      // Without the permission, PlazCode asked once in its own small window, and only once.
-      const asks = () => worker.evaluate(() => self.__asked.filter((u) => /core\/control-permission\.html$/.test(u)).length);
-      for (let i = 0; i < 40 && !(await asks()); i++) await new Promise((r) => setTimeout(r, 100));
-      assert.equal(await asks(), 1, 'the one-time permission window opened');
+      // No window asks for anything any more (the permission cannot be optional in Chrome).
       await tool('tab_screenshot');
-      assert.equal(await asks(), 1, 'and only once');
+      assert.equal(await worker.evaluate(() => self.__asked.length), 0, 'no permission window opens');
     }
     console.log('test-control-real-input-browser: PASS (' + mode + ')');
   } finally { await context.close(); fs.rmSync(profile, { recursive: true, force: true }); if (copy) fs.rmSync(copy, { recursive: true, force: true }); }
 }
-(async () => { await run('in-page'); await run('real'); console.log('test-control-real-input-browser: PASS (Chromium): tab picture in page pixels without the glow, click/type/keys/scroll/navigate/open, real input trusted and never pausing PlazCode, always-ask for password, card and Buy, never the AI chat, Stop releases the debugging connection, one-time permission window'); })().catch((e) => { console.error(e); process.exit(1); });
+(async () => { await run('real'); await run('in-page'); console.log('test-control-real-input-browser: PASS (Chromium): tab picture in page pixels without the glow, click/type/keys/scroll/navigate/open, real input trusted and never pausing PlazCode, always-ask for password, card and Buy, never the AI chat, Stop releases the debugging connection, one-time permission window'); })().catch((e) => { console.error(e); process.exit(1); });
