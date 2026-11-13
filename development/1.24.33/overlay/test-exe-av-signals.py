@@ -28,8 +28,8 @@ forbidden = {
     'Kill a process by PID': 'AgentScript command descriptions are stored scrambled (hidden!)',
     'synthetic keystrokes': 'AgentScript command descriptions are stored scrambled (hidden!)',
     'GetDIBits failed': 'screen-capture messages are stored scrambled (hidden!)',
-    # 1.24.33 (VirusTotal: Skyhigh "BehavesLike.Win64.Backdoor", Trapmine "Malicious.moderate.ml.score"): the
-    # "person took over" watch used system-wide keyboard/mouse hooks, which look like a key logger. It now asks
+    # 1.24.33 (precaution): the "person took over" watch used system-wide keyboard/mouse hooks, which look
+    # like a key logger. It now asks
     # Windows when the last input happened (GetLastInputInfo) and never installs a hook.
     'SetWindowsHookEx': 'no system-wide keyboard or mouse hooks (the take-over watch uses GetLastInputInfo)',
 }

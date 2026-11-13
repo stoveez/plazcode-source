@@ -161,8 +161,8 @@ pub async fn post(axum::Json(body): axum::Json<Value>) -> axum::Json<Value> {
 /// 5c: notice the person taking over. Windows: ask Windows when the last mouse or keyboard input happened
 /// (`GetLastInputInfo`, the call idle timers use; it never sees which keys or where) a few times a second, on its own thread.
 /// Input PlazCode sent itself falls inside the "expected" window of `expect`, so only the person's own input pauses
-/// PlazCode. An earlier 1.24.33 build used system-wide keyboard and mouse hooks; those looked like a key logger to
-/// antivirus programs (VirusTotal: Skyhigh, Trapmine), so they are gone. Started the first time PlazCode controls the
+/// PlazCode. An earlier 1.24.33 build used system-wide keyboard and mouse hooks; those look like a key logger to
+/// antivirus programs, so they are gone. Started the first time PlazCode controls the
 /// desktop. (Mac: listen-only mouse event tap, see the Mac part.)
 fn watch_person() {
     #[cfg(windows)]
