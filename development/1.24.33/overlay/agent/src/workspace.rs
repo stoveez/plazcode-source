@@ -1508,7 +1508,8 @@ pub async fn tool_process_list(ws: &Workspace, args: &serde_json::Value) -> Resu
     Ok(out)
 }
 
-fn require_full_access(ws:&Workspace,name:&str)->Result<(),String> {
+fn name_is_mac_desktop(name: &str) -> bool { matches!(name, "screen_capture" | "mouse_move" | "mouse_click" | "key_type" | "list_windows" | "focus_window") }
+pub(crate) fn require_full_access(ws:&Workspace,name:&str)->Result<(),String> {
     if ws.full_access(){return Ok(());}
     Err(format!("E_ACCESS: {name} requires FULL PC ACCESS (capability: full_pc_access). It is OFF, so nothing ran. Ask the user to switch Permissions to Full in the PlazCode menu or the desktop app Execution page, or continue with workspace-only tools. Re-check plazcode_status before retrying."))
 }
@@ -2179,6 +2180,19 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
         _ if h == const { crate::hidden::fnv("focus_window") } => tool_focus_window(ws, a).await,
         #[cfg(any(windows,target_os="macos"))]
         _ if h == const { crate::hidden::fnv("launch_app") } => tool_launch_app(ws, a).await,
+        // 1.24.34 control rework: desktop control on a Mac (agent/src/mac_control.rs).
+        #[cfg(target_os="macos")]
+        _ if h == const { crate::hidden::fnv("screen_capture") } => crate::mac_control::screen_capture(ws, a).await,
+        #[cfg(target_os="macos")]
+        _ if h == const { crate::hidden::fnv("mouse_move") } => crate::mac_control::mouse_move(ws, a).await,
+        #[cfg(target_os="macos")]
+        _ if h == const { crate::hidden::fnv("mouse_click") } => crate::mac_control::mouse_click(ws, a).await,
+        #[cfg(target_os="macos")]
+        _ if h == const { crate::hidden::fnv("key_type") } => crate::mac_control::key_type(ws, a).await,
+        #[cfg(target_os="macos")]
+        _ if h == const { crate::hidden::fnv("list_windows") } => crate::mac_control::list_windows(ws, a).await,
+        #[cfg(target_os="macos")]
+        _ if h == const { crate::hidden::fnv("focus_window") } => crate::mac_control::focus_window(ws, a).await,
         #[cfg(windows)]
         _ if h == const { crate::hidden::fnv("window_screenshot") } => tool_window_screenshot(ws, a).await,
         _ => Err(format!("E_COMMAND: unknown tool '{name}'. {}", crate::hidden::hidden!("Available AgentScript tools: workspace_info, list_directory, tree, \
@@ -2240,6 +2254,8 @@ pub fn catalog() -> Vec<serde_json::Value> {
         serde_json::json!({"name": crate::hidden::hidden!("window_screenshot"), "description": crate::hidden::hidden!("Capture a single window (by title substring, or the first window) to a PNG. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"title": {"type": "string"}, "path": {"type": "string"}}), &[])}),
     ].into_iter().chain(crate::engine_tools::catalog()).filter(|tool| {
         if cfg!(windows) { return true; }
+        // 1.24.34 control rework: a Mac offers desktop control only while the rework is switched on.
+        if cfg!(target_os = "macos") && crate::desktop_control::enabled() && name_is_mac_desktop(tool["name"].as_str().unwrap_or("")) { return true; }
         use crate::hidden::fnv;
         let name = tool["name"].as_str().unwrap_or("");
         if crate::hidden::one_of(name, &[const { fnv("screen_capture") }, const { fnv("screen_record") }, const { fnv("mouse_move") }, const { fnv("mouse_click") },

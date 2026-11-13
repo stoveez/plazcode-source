@@ -108,6 +108,8 @@ mod connections;
 mod helper_socket;
 mod blockbench;
 mod desktop_control;
+#[cfg(target_os = "macos")]
+mod mac_control;
 mod figma;
 /// The port the bridge listens on (127.0.0.1 only). PlazCode's helpers in other apps dial it too.
 pub const BRIDGE_PORT: u16 = 3000;

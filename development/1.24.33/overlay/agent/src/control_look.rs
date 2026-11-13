@@ -7,7 +7,7 @@ use tao::event_loop::EventLoopWindowTarget;
 use tao::window::{Window, WindowBuilder};
 use wry::{WebView, WebViewBuilder};
 
-const GLOW: &str = r#"<!doctype html><html><head><meta charset="utf-8"><style>
+const GLOW: &str = r##"<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;height:100%;background:transparent;overflow:hidden}
 :root{--a:#8b5cf6}
 .glow{position:fixed;inset:0;box-shadow:inset 0 0 0 3px var(--a),inset 0 0 28px 6px color-mix(in srgb,var(--a) 70%,transparent),inset 0 0 90px 18px color-mix(in srgb,var(--a) 30%,transparent);transition:box-shadow .3s}
@@ -17,9 +17,9 @@ svg{position:fixed;left:0;top:0;width:30px;height:30px;opacity:0;transition:tran
 @media (prefers-reduced-motion:reduce){svg,.glow{transition:none}}
 </style></head><body><div class="glow"></div><svg viewBox="0 0 26 26" aria-hidden="true"><path d="M3 2l19 9.5-8.2 2.3L10 22z" fill="var(--a)" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>
 <script>window.__pz=function(s){var r=document.documentElement;if(/^#[0-9a-f]{6}$/i.test(s.accent||''))r.style.setProperty('--a',s.accent);document.body.classList.toggle('paused',!!s.paused);
-if(s.point){document.body.classList.add('seen');document.querySelector('svg').style.transform='translate('+s.point[0]+'px,'+s.point[1]+'px)';}};</script></body></html>"#;
+if(s.point){document.body.classList.add('seen');document.querySelector('svg').style.transform='translate('+s.point[0]+'px,'+s.point[1]+'px)';}};</script></body></html>"##;
 
-const LABEL: &str = r#"<!doctype html><html><head><meta charset="utf-8"><style>
+const LABEL: &str = r##"<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;height:100%;background:transparent;overflow:hidden;font:600 13px system-ui,-apple-system,"Segoe UI",sans-serif}
 :root{--a:#8b5cf6}
 .label{position:absolute;left:0;right:0;top:0;bottom:6px;display:flex;align-items:center;justify-content:center;gap:10px;color:#fff;border-radius:0 0 12px 12px;background:linear-gradient(135deg,var(--a),color-mix(in srgb,var(--a) 62%,#000));box-shadow:0 4px 14px color-mix(in srgb,var(--a) 45%,transparent)}
@@ -28,7 +28,7 @@ button{all:unset;cursor:pointer;padding:4px 10px;border-radius:8px;background:rg
 #resume{display:none}.paused #resume{display:inline-block}
 </style></head><body><div class="label"><span class="dot"></span><span id="t">PlazCode is working here</span><button id="resume">Resume</button><button id="stop">Stop</button></div>
 <script>document.getElementById('stop').onclick=function(){window.ipc.postMessage('control:stop')};document.getElementById('resume').onclick=function(){window.ipc.postMessage('control:resume')};
-window.__pz=function(s){var r=document.documentElement;if(/^#[0-9a-f]{6}$/i.test(s.accent||''))r.style.setProperty('--a',s.accent);document.body.classList.toggle('paused',!!s.paused);document.getElementById('t').textContent=s.paused?"Paused, you're in control":'PlazCode is working here';};</script></body></html>"#;
+window.__pz=function(s){var r=document.documentElement;if(/^#[0-9a-f]{6}$/i.test(s.accent||''))r.style.setProperty('--a',s.accent);document.body.classList.toggle('paused',!!s.paused);document.getElementById('t').textContent=s.paused?"Paused, you're in control":'PlazCode is working here';};</script></body></html>"##;
 
 pub struct ControlLook { glow: Window, glow_view: WebView, label: Window, label_view: WebView, origin: (i32, i32), scale: f64, shown: Option<crate::desktop_control::Look> }
 
@@ -42,7 +42,7 @@ fn base() -> WindowBuilder {
 }
 
 impl ControlLook {
-    pub fn new<T>(target: &EventLoopWindowTarget<T>) -> anyhow::Result<Self> {
+    pub fn new<T: 'static>(target: &EventLoopWindowTarget<T>) -> anyhow::Result<Self> {
         let monitor = target.primary_monitor().or_else(|| target.available_monitors().next()).ok_or_else(|| anyhow::anyhow!("no screen found"))?;
         let (position, size, scale) = (monitor.position(), monitor.size(), monitor.scale_factor());
         let glow = base().with_position(position).with_inner_size(size).build(target).map_err(|e| anyhow::anyhow!("control layer window: {e}"))?;

@@ -4,7 +4,7 @@
 // back. The shared tab follows the tab the person is looking at; a live picture of it sits at the top.
 (() => {
   const $ = (id) => document.getElementById(id);
-  const log = $("log"), q = $("q"), go = $("go"), stop = $("stop"), step = $("step"), sharing = $("sharing"), control = $("control");
+  const log = $("log"), q = $("q"), go = $("go"), stop = $("stop"), step = $("step"), sharing = $("sharing"), control = $("control"), screen = $("screen");
   const peek = $("peek"), shareTitle = $("shareTitle"), shareSite = $("shareSite"), banner = $("banner"), bannerText = $("bannerText");
   const fixedWindow = Number(new URLSearchParams(location.search).get("window")) || null;
   let shared = null, busy = false, viewPort = null;
@@ -19,6 +19,8 @@
     } catch { return null; }
   }
   async function follow() {
+    // Step 6: the whole screen (tab id -1) instead of the tab the person is looking at.
+    if (sharing.checked && screen.checked) { port.postMessage({ sharing: true, shareTabId: -1 }); return; }
     const tab = sharing.checked ? await currentTab() : null;
     port.postMessage({ sharing: !!tab, shareTabId: tab ? tab.id : null });
   }
@@ -46,10 +48,12 @@
       shared = Number.isInteger(m.tabId) ? m.tabId : null;
       document.body.classList.toggle("sharing", !!shared);
       if (m.stoppedInTab) sharing.checked = false;
-      shareTitle.textContent = shared ? (m.title || "This tab") : m.refused ? "This tab can't be shared" : "Not sharing";
+      shareTitle.textContent = shared === -1 ? "Your whole screen" : shared ? (m.title || "This tab") : m.refused ? "This tab can't be shared" : "Not sharing";
       let host = ""; try { host = m.url ? new URL(m.url).host : ""; } catch {}
-      shareSite.textContent = shared ? host + " · shared with PlazCode" : m.refused ? "Browser pages, extension pages and AI chats are never shared." : "Turn on sharing so PlazCode can see this tab.";
+      shareSite.textContent = shared === -1 ? "Everything on your screen · shared with PlazCode" : shared ? host + " · shared with PlazCode" : m.refused ? "Browser pages, extension pages and AI chats are never shared." : "Turn on sharing so PlazCode can see this tab.";
+      if (m.screenRefused) { screen.checked = false; add("error", m.screenRefused); }
       control.disabled = !shared; if (!shared) control.checked = false;
+      $("controlText").textContent = shared === -1 ? "Let PlazCode control my computer" : "Let PlazCode control this tab";
       watch(shared);
     } else if (m.type === "ask-approve") {
       const card = document.createElement("div"); card.className = "approve"; card.setAttribute("role", "group");
@@ -68,17 +72,18 @@
     const text = q.value.trim();
     if (!text || busy) return;
     add("me", text); q.value = ""; setBusy(true); step.textContent = "Sending…";
-    port.postMessage({ say: text, share: !!shared, shareTabId: shared, control: control.checked });
+    port.postMessage({ say: text, share: shared !== null, shareTabId: shared, control: control.checked });
   }
   go.addEventListener("click", send);
   q.addEventListener("keydown", (event) => { if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); send(); } });
   stop.addEventListener("click", () => { port.postMessage({ stop: true }); step.textContent = "Stopping…"; });
   sharing.addEventListener("change", follow);
+  screen.addEventListener("change", follow);
   $("allowPerm").addEventListener("click", async () => {
     try { if (await chrome.permissions.request({ permissions: ["debugger"] })) { banner.hidden = true; add("note", "Allowed. PlazCode can now see and control tabs."); follow(); } } catch (error) { bannerText.textContent = String(error && error.message || error); }
   });
   // Sharing follows the tab the person is looking at.
-  chrome.tabs.onActivated.addListener((info) => { if (!fixedWindow || info.windowId === fixedWindow) follow(); });
+  chrome.tabs.onActivated.addListener((info) => { if (screen.checked) return; if (!fixedWindow || info.windowId === fixedWindow) follow(); });
   chrome.tabs.onUpdated.addListener((tabId, change) => { if (tabId === shared && (change.url || change.title)) follow(); });
   follow();
   q.focus();

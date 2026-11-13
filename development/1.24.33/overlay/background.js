@@ -3910,6 +3910,15 @@ async function askQuestion(m) {
   if (!text) return;
   ask.busy = true; askPost({ type: "ask-busy", busy: true });
   try {
+    if (m.share && m.shareTabId === -1) {
+      let images = [];
+      try { images = [{ mimeType: "image/jpeg", data: await desktopPicture() }]; } catch (error) { askSay(String(error && error.message || error), "error"); }
+      const ready = await askEnsure();
+      if (!ready.ok) { askSay(ready.error, "error"); return; }
+      const reply = await chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-run", ask: { text, images, control: !!m.control, share: { tabId: -1, title: "Your whole screen", url: "" } } });
+      if (!reply || !reply.ok) { askSay(String(reply && reply.error || "The background chat did not take the question."), "error"); return; }
+      return;
+    }
     const tab = m.share ? await askShareTab(m.shareTabId) : null;
     if (m.share && !tab) askSay("That tab cannot be shared (browser pages, extension pages and AI chats are never shared). Asking without a picture.");
     let images = [];
@@ -3948,7 +3957,16 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
     if (typeof m.say === "string") askQuestion(m);
     if (Number.isInteger(m.approve)) { const resolve = ask.approvals.get(m.approve); if (resolve) { ask.approvals.delete(m.approve); resolve(m.allowed === true); } }
     if (m.stop && Number.isInteger(ask.tabId)) { chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-stop" }).catch(() => {}); for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); } }
+    if ("sharing" in m && m.sharing && m.shareTabId === -1) {
+      // Step 6: the whole screen. The app takes the pictures (Windows, Mac); kept alive while the panel is open.
+      if (ask.share && ask.share !== -1) { const old = await askShareTab(ask.share); if (old) askShareMark(old, false); }
+      const ok = await askScreenShare(true);
+      ask.share = ok.ok ? -1 : null;
+      port.postMessage({ type: "ask-share", tabId: ok.ok ? -1 : null, title: ok.ok ? "Your whole screen" : "", url: "", screenRefused: ok.ok ? "" : ok.error });
+      return;
+    }
     if ("sharing" in m) {
+      if (ask.share === -1) { await askScreenShare(false); ask.share = null; }
       const tab = m.sharing ? await askShareTab(m.shareTabId) : null;
       if (ask.share && (!tab || ask.share !== tab.id)) { const old = await askShareTab(ask.share); if (old) askShareMark(old, false); ask.share = null; }
       // The panel says "shared" only once the mark is showing in that tab.
@@ -3960,10 +3978,41 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
     askPorts.delete(port);
     if (!askPorts.size) {
       for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); }
-      if (ask.share) { const old = await askShareTab(ask.share); if (old) askShareMark(old, false); ask.share = null; }
+      if (ask.share === -1) await askScreenShare(false);
+      else if (ask.share) { const old = await askShareTab(ask.share); if (old) askShareMark(old, false); }
+      ask.share = null;
     }
   });
 });
+// Step 6: share the whole screen. The app keeps sharing on for 30 s after each word from here.
+let askScreenTimer = 0;
+async function askScreenShare(on) {
+  clearInterval(askScreenTimer); askScreenTimer = 0;
+  const say = async (action) => { const r = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) }); return r.ok ? await r.json().catch(() => ({})) : { ok: false }; };
+  if (!on) { try { await say("unshare"); } catch {} askScreenOn = false; desktopControlUpdate({ active: false }); return { ok: true }; }
+  let reply = null;
+  try { reply = await say("share"); } catch {}
+  if (!reply || !reply.ok) return { ok: false, error: "Sharing the whole screen needs the PlazCode app (Windows or Mac) running. You can still share a tab." };
+  // A first picture proves the app can see the screen (on a Mac this needs the Screen Recording permission).
+  try {
+    const test = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/frame", { signal: AbortSignal.timeout(6000) });
+    if (test.status !== 200) { const why = await test.text().catch(() => ""); await say("unshare").catch(() => {}); return { ok: false, error: why || "PlazCode could not take a picture of the screen on this computer." }; }
+  } catch { return { ok: false, error: "PlazCode could not take a picture of the screen." }; }
+  if (typeof setInterval === "function") askScreenTimer = setInterval(() => { say("share").catch(() => {}); }, 10000);
+  askScreenOn = true;
+  desktopControlUpdate({ sharing: true });
+  return { ok: true };
+}
+let askScreenOn = false;
+async function desktopPicture() {
+  const response = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/frame", { signal: AbortSignal.timeout(6000) });
+  if (response.status !== 200) throw new Error((await response.text().catch(() => "")) || "PlazCode could not take a picture of the screen.");
+  const bitmap = await createImageBitmap(await response.blob());
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height); canvas.getContext("2d").drawImage(bitmap, 0, 0);
+  const bytes = new Uint8Array(await (await canvas.convertToBlob({ type: "image/jpeg", quality: 0.8 })).arrayBuffer());
+  let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
 // Open the Ask PlazCode panel: Chrome's side panel where the browser allows it, otherwise a docked window.
 async function askOpen(windowId) {
   if (chrome.sidePanel && typeof chrome.sidePanel.open === "function" && Number.isInteger(windowId)) {
@@ -4006,7 +4055,8 @@ let desktopPaused = false;
 // Called with the app's desktop_control status (every status read).
 function desktopControlUpdate(dc) {
   if (!CONTROL_V2) return;
-  const active = !!(dc && (dc.active || dc.paused)), stopped = !!(dc && dc.stopped);
+  // The screen picture keeps coming while PlazCode controls the desktop or while the whole screen is shared.
+  const active = !!(dc && (dc.active || dc.paused || dc.sharing)) || (typeof askScreenOn !== "undefined" && askScreenOn), stopped = !!(dc && dc.stopped);
   desktopPaused = !!(dc && dc.paused);
   if (active && !desktopPoll && typeof setInterval === "function") { desktopFrame(); desktopPoll = setInterval(desktopFrame, 500); }
   if (!active && desktopPoll) {

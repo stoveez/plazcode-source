@@ -32,6 +32,8 @@ pub struct State {
     pub ai_point: Option<(i32, i32)>,
     /// PlazCode's own input is expected until then, so it never counts as the person taking over.
     pub expect_until: Option<Instant>,
+    /// Step 6: the whole screen is shared in Ask PlazCode (kept alive by the panel; ends by itself 30 s after its last word).
+    pub sharing_until: Option<Instant>,
 }
 
 /// What `enter` decides at one moment.
@@ -46,6 +48,7 @@ impl State {
     }
     pub fn active(&self, now: Instant) -> bool { self.active_until.is_some_and(|until| now < until) }
     pub fn mark_active(&mut self, now: Instant) { self.stopped_at = None; self.active_until = Some(now + IDLE_END); }
+    pub fn sharing(&self, now: Instant) -> bool { self.sharing_until.is_some_and(|until| now < until) }
     pub fn expecting(&self, now: Instant) -> bool { self.expect_until.is_some_and(|until| now < until) }
     /// Real input from the person while PlazCode is in control: pause (unless it is PlazCode's own input).
     pub fn person_input(&mut self, now: Instant) -> bool {
@@ -58,6 +61,8 @@ impl State {
             "stop" => { self.paused = false; self.stopped_at = Some(now); self.active_until = None; Ok(()) }
             "resume" => { self.paused = false; if self.active(now) || self.active_until.is_some() { self.active_until = Some(now + IDLE_END); } Ok(()) }
             "pause" => { if self.active(now) { self.paused = true; } Ok(()) }
+            "share" => { self.sharing_until = Some(now + Duration::from_secs(30)); Ok(()) }
+            "unshare" => { self.sharing_until = None; Ok(()) }
             other => Err(format!("unknown control action '{}'", other.chars().take(20).collect::<String>())),
         }
     }
@@ -67,11 +72,12 @@ impl State {
             "paused": self.paused,
             "stopped": self.stopped_at.is_some_and(|at| now.duration_since(at) < STOP_HOLD),
             "accent": self.accent,
+            "sharing": self.sharing(now),
         })
     }
 }
 
-static STATE: Mutex<State> = Mutex::new(State { active_until: None, paused: false, stopped_at: None, accent: String::new(), ai_point: None, expect_until: None });
+static STATE: Mutex<State> = Mutex::new(State { active_until: None, paused: false, stopped_at: None, accent: String::new(), ai_point: None, expect_until: None, sharing_until: None });
 pub fn with<T>(f: impl FnOnce(&mut State) -> T) -> T { f(&mut STATE.lock().unwrap_or_else(|e| e.into_inner())) }
 
 /// Before a desktop command: refuse, wait for the person, or go (and mark control as active).
@@ -139,6 +145,8 @@ pub async fn post(axum::Json(body): axum::Json<Value>) -> axum::Json<Value> {
 fn watch_person() {
     #[cfg(windows)]
     hooks::start();
+    #[cfg(target_os = "macos")]
+    crate::mac_control::watch_person();
 }
 #[cfg(windows)]
 mod hooks {
@@ -193,13 +201,15 @@ pub fn frame_png() -> Result<Vec<u8>, String> {
 }
 #[cfg(windows)]
 fn screen() -> Result<image::RgbaImage, String> { crate::workspace::grab_screen() }
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+fn screen() -> Result<image::RgbaImage, String> { crate::mac_control::capture() }
+#[cfg(not(any(windows, target_os = "macos")))]
 fn screen() -> Result<image::RgbaImage, String> { Err("PlazCode cannot take pictures of the screen on this system yet.".into()) }
 
 /// `GET /api/desktop/frame`: only while the rework is on and PlazCode is controlling the desktop.
 pub async fn frame() -> axum::response::Response {
     use axum::response::IntoResponse;
-    let active = enabled() && { let now = Instant::now(); with(|s| s.active(now) || s.paused) };
+    let active = enabled() && { let now = Instant::now(); with(|s| s.active(now) || s.paused || s.sharing(now)) };
     if !active { return (axum::http::StatusCode::NO_CONTENT, "").into_response(); }
     match tokio::task::spawn_blocking(frame_png).await.unwrap_or_else(|e| Err(e.to_string())) {
         Ok(png) => ([(axum::http::header::CONTENT_TYPE, "image/png"), (axum::http::header::CACHE_CONTROL, "no-store")], png).into_response(),
@@ -237,6 +247,12 @@ mod tests {
         assert!(s.act("explode", t).is_err());
         s.act("pause", t + Duration::from_secs(3)).unwrap();
         assert!(s.paused);
+        // Sharing the whole screen: on for 30 s after the panel's last word, off at once on "unshare"; never control.
+        let mut s = State::default();
+        s.act("share", t).unwrap();
+        assert!(s.sharing(t + Duration::from_secs(29)) && !s.sharing(t + Duration::from_secs(31)) && !s.active(t));
+        assert!(!s.person_input(t), "sharing is not control: moving the mouse pauses nothing");
+        s.act("unshare", t).unwrap(); assert!(!s.sharing(t));
     }
     #[test] fn the_look_script_carries_page_points_and_never_more_than_it_needs() {
         let look = Look { paused: true, accent: "#16a34a".into(), point: Some((2120, 340)) };

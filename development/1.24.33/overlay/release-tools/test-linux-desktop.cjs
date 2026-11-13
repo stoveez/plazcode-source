@@ -383,7 +383,9 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
    const control=async body=>(await (await fetch('http://127.0.0.1:3000/api/desktop/control',{method:'POST',headers,body:JSON.stringify(body)})).json());
    assert.equal((await fetch('http://127.0.0.1:3000/api/desktop/frame',{})).status,401,'the desktop picture needs the pairing key');
    if(process.env.PLAZCODE_CONTROL_V2==='1'){
-    assert.deepEqual(await status(),{active:false,paused:false,stopped:false,accent:''});
+    assert.deepEqual(await status(),{active:false,paused:false,stopped:false,accent:'',sharing:false});
+    assert.equal((await control({action:'share'})).control.sharing,true,'whole-screen sharing for Ask PlazCode');
+    assert.equal((await control({action:'unshare'})).control.sharing,false);
     assert.equal((await fetch('http://127.0.0.1:3000/api/desktop/frame',{headers})).status,204,'no picture while PlazCode is not controlling the desktop');
     assert.equal((await control({accent:'#16a34a'})).control.accent,'#16a34a');
     assert.equal((await control({action:'stop'})).control.stopped,true);
