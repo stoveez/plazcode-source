@@ -11,7 +11,8 @@ const pick=(select,value)=>select.evaluate((node,value)=>{node.value=value;node.
  await page.addStyleTag({path:path.join(root,'overlay.css')});
  const scripts=JSON.parse(read('manifest.json')).content_scripts.find(x=>x.js.includes('providers/clickup.js')).js;
  for(const file of scripts)if(!['providers/clickup.js','core/parser.js'].includes(file))await page.addScriptTag({content:read(file)});
- await page.waitForSelector('#rs-bar');await page.locator('#rs-settings-btn').click();
+ await page.waitForSelector('#rs-bar');await page.locator('#rs-settings-btn').click();const generalTab=page.locator('#rs-menu .rs-menu-tab[data-rs-tab=general]');if(await generalTab.count())await generalTab.click(); // Studio look: Language sits in the General tab
+
  const host=page.locator('#rs-menu [data-pc-language-picker]'),select=host.locator('select'),search=host.locator('input');await select.waitFor({state:'attached'});assert.equal(await select.locator('option').count(),15);assert.equal(await select.inputValue(),'en');
  await search.fill('日本');assert.deepEqual(await select.locator('option').evaluateAll(ns=>ns.map(n=>n.value)),['en','ja']);assert.equal(await page.evaluate(()=>localeSaves.filter(x=>x.rsLanguage).length),0);await search.fill('');
  await page.evaluate(()=>provider.writeDraft('Home Settings Save — my own draft'));

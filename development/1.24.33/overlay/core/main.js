@@ -7530,8 +7530,10 @@ return result`;
           // the very first open (reported live on Arena). Deferring one frame lets
           // placeBar's already-queued tick clip the box first, so there's real
           // scroll room by the time we set scrollTop.
+          if (toSupport) studioMenuShow("general");
           requestAnimationFrame(() => {
             if (!menuEl.hidden) menuEl.scrollTop = toSupport ?  menuEl.scrollHeight : 0;
+            try { studioMenuApply(); } catch {}
           });
         }
       };
@@ -9103,7 +9105,74 @@ return result`;
       menuEl.querySelectorAll(".rs-checkpoint-undo").forEach(btn=>{
         btn.addEventListener("click", ()=>{ undoLastCheckpoint(); });
       });
+      try { studioMenu(); } catch {}
     }
+
+    // Settings menu in the Studio look (owner, 2026-11-13: "tabs + search, like the app"). The sections stay as
+    // they are; each gets a tab, a rail of tabs with a gliding highlight sits under the header, and a search box
+    // finds a setting in any tab. The tab and the search survive the menu being rebuilt.
+    const MENU_TABS = [["ai", "AI"], ["safety", "Safety"], ["automation", "Automation"], ["instructions", "Instructions"], ["connections", "Connections"], ["general", "General"]];
+    const MENU_TAB_OF = { "Models": "ai", "Setup for this site": "ai", "Effort": "ai", "Reasoning": "ai", "Access": "safety", "Safety": "safety", "Checkpoints": "safety",
+      "Automation": "automation", "Image Build": "automation", "Instructions": "instructions", "Connections": "connections" };
+    let menuTab = "ai", menuQuery = "";
+    function studioMenu() {
+      if (!menuEl || !document.documentElement.hasAttribute("data-rs-studio")) return;
+      for (const sec of menuEl.querySelectorAll(":scope > .rs-menu-sec")) {
+        if (!sec.dataset.rsTab) { const label = sec.querySelector(".rs-sec-label"); const name = label ? (label.dataset.rsSource || label.textContent.trim()) : ""; if (label) label.dataset.rsSource = name; sec.dataset.rsTab = MENU_TAB_OF[name] || "general"; }
+      }
+      const logo = menuEl.querySelector(".rs-menu-logo"); if (logo && !logo.querySelector("em") && logo.textContent.trim() === "PlazCode") { logo.classList.add("brand-word"); paintBrand(logo); }
+      let tools = menuEl.querySelector(":scope > .rs-menu-tools");
+      if (!tools) {
+        tools = document.createElement("div"); tools.className = "rs-menu-tools"; tools.setAttribute("data-pc-i18n", "");
+        tools.innerHTML = '<label class="rs-menu-find"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" class="rs-menu-search" placeholder="Search settings" aria-label="Search settings" autocomplete="off" spellcheck="false"><button type="button" class="rs-menu-clear" aria-label="Clear search" hidden>×</button></label>'
+          + '<div class="rs-menu-tabs" role="tablist" aria-label="Settings sections"><span class="rs-menu-glide" aria-hidden="true"></span>'
+          + MENU_TABS.map(([id, name]) => '<button type="button" role="tab" class="rs-menu-tab" data-rs-tab="' + id + '" aria-selected="false">' + name + '</button>').join("") + '</div>'
+          + '<p class="rs-menu-none" hidden>No settings match your search.</p>';
+        const head = menuEl.querySelector(":scope > .rs-menu-head");
+        if (head) head.after(tools); else menuEl.prepend(tools);
+        const search = tools.querySelector(".rs-menu-search"), clear = tools.querySelector(".rs-menu-clear");
+        search.value = menuQuery;
+        search.addEventListener("input", () => { menuQuery = search.value; studioMenuApply(); });
+        search.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Escape" && search.value) { e.preventDefault(); search.value = ""; menuQuery = ""; studioMenuApply(); } });
+        clear.addEventListener("click", () => { search.value = ""; menuQuery = ""; studioMenuApply(); search.focus(); });
+        tools.querySelectorAll(".rs-menu-tab").forEach((tab) => tab.addEventListener("click", () => { menuTab = tab.dataset.rsTab; if (menuQuery) { menuQuery = ""; search.value = ""; } studioMenuApply(); menuEl.scrollTop = 0; }));
+        tools.querySelector(".rs-menu-tabs").addEventListener("keydown", (e) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+          const ids = MENU_TABS.map(([id]) => id); let i = ids.indexOf(menuTab);
+          i = e.key === "Home" ? 0 : e.key === "End" ? ids.length - 1 : (i + (e.key === "ArrowRight" ? 1 : -1) + ids.length) % ids.length;
+          menuTab = ids[i]; studioMenuApply(); const next = tools.querySelector('.rs-menu-tab[data-rs-tab="' + ids[i] + '"]'); if (next) next.focus(); e.preventDefault();
+        });
+      }
+      studioMenuApply();
+    }
+    function studioMenuApply() {
+      if (!menuEl) return;
+      const tools = menuEl.querySelector(":scope > .rs-menu-tools"); if (!tools) return;
+      const query = menuQuery.trim().toLowerCase();
+      menuEl.dataset.rsTab = query ? "" : menuTab;
+      menuEl.toggleAttribute("data-rs-searching", !!query);
+      tools.querySelector(".rs-menu-clear").hidden = !query;
+      let shown = 0;
+      for (const sec of menuEl.querySelectorAll(":scope > .rs-menu-sec")) {
+        const rows = sec.querySelectorAll(".rs-tgl-row,.rs-set-row,.rs-work-card,.rs-site-opt,.rs-mcp-item,.rs-tip-opt");
+        if (!query) { sec.hidden = sec.dataset.rsTab !== menuTab; rows.forEach((r) => r.classList.remove("rs-menu-miss")); if (!sec.hidden) shown++; continue; }
+        const label = sec.querySelector(".rs-sec-label"), whole = label && label.textContent.toLowerCase().includes(query);
+        let hit = whole;
+        rows.forEach((r) => { const ok = whole || r.textContent.toLowerCase().includes(query); r.classList.toggle("rs-menu-miss", !ok); if (ok) hit = true; });
+        if (!hit && sec.textContent.toLowerCase().includes(query)) { hit = true; rows.forEach((r) => r.classList.remove("rs-menu-miss")); }
+        sec.hidden = !hit; if (hit) shown++;
+      }
+      tools.querySelector(".rs-menu-none").hidden = shown > 0;
+      tools.querySelectorAll(".rs-menu-tab").forEach((tab) => { const on = !query && tab.dataset.rsTab === menuTab; tab.setAttribute("aria-selected", String(on)); tab.tabIndex = on || (query && tab.dataset.rsTab === menuTab) ? 0 : -1; });
+      const glide = tools.querySelector(".rs-menu-glide"), active = tools.querySelector('.rs-menu-tab[data-rs-tab="' + menuTab + '"]');
+      if (glide && active) {
+        const place = () => { glide.style.width = active.offsetWidth + "px"; glide.style.height = active.offsetHeight + "px"; glide.style.transform = "translate(" + active.offsetLeft + "px," + active.offsetTop + "px)"; glide.classList.toggle("rs-off", !!query); };
+        if (!glide.classList.contains("rs-on")) { place(); glide.classList.add("rs-on"); requestAnimationFrame(() => requestAnimationFrame(() => glide.classList.add("rs-live"))); } else place();
+        if (!active.offsetWidth) requestAnimationFrame(place);
+      }
+    }
+    // Open the menu on a given section's tab (e.g. Support from the heart button).
+    function studioMenuShow(tab) { if (tab) { menuTab = tab; menuQuery = ""; } try { const search = menuEl && menuEl.querySelector(".rs-menu-search"); if (search) search.value = ""; studioMenuApply(); } catch {} }
 
     // ── Cards (lemonade.gg-style mechanic library + activity feed) ──────────
     // Lemonade's model: a card INVENTORY of pre-made game mechanics you drop

@@ -6273,3 +6273,127 @@ html[data-rs-studio] #rs-root #rs-mode-tag{border:1px solid transparent;border-i
 html[data-rs-studio] #rs-root #rs-cards-btn{border:1px solid transparent!important;border-image:var(--st-rim) 1!important}
 html[data-rs-studio][data-rs-gradients=off] #rs-root :is(.rs-cluster-right button,.rs-grp-main,#rs-engine,#rs-mode-tag,#rs-cards-btn){border-image:none!important}
 html[data-rs-studio] #rs-root #rs-agents .rs-agents-num{border-radius:0!important}
+
+/* ── Studio look: the settings menu (step 2). Square card with the bar's rim and brackets; a compact header;
+   a sticky search + tab rail with a gliding highlight; each section a glass card with a spaced mono eyebrow. ── */
+html[data-rs-studio] #rs-root #rs-menu{border-radius:0!important;border:1px solid transparent!important;border-image:var(--st-rim) 1!important;padding:0 0 14px!important;color:var(--st-text)!important;font-family:var(--st-sans)!important;
+  background:linear-gradient(160deg,rgb(var(--st-rgb)/.22) 0%,rgb(var(--st-rgb)/.05) 30%,transparent 55%,rgb(var(--st-rgb)/.10) 100%),linear-gradient(180deg,rgb(255 255 255/.04),transparent 30%),color-mix(in srgb,var(--st-card) 97%,transparent)!important;
+  box-shadow:inset 0 1px 0 rgb(255 255 255/.08),0 30px 70px -30px #000,0 18px 48px -28px rgb(var(--st-rgb)/calc(.7*var(--st-g)))!important;-webkit-backdrop-filter:blur(18px) saturate(1.2)!important;backdrop-filter:blur(18px) saturate(1.2)!important;
+  scrollbar-width:thin;scrollbar-color:rgb(var(--st-rgb)/.5) transparent}
+html[data-rs-studio][data-rs-thinking=ultracode] #rs-root #rs-menu{border-image:linear-gradient(160deg,#e6d3ff 0%,#a879e8 22%,rgb(151 98 223/.25) 55%,rgb(var(--st-rgb)/.35) 80%,#c5a1f9 100%) 1!important}
+html[data-rs-studio][data-rs-gradients=off] #rs-root #rs-menu{border-image:none!important;border-color:var(--st-line)!important;background:var(--st-card)!important}
+html[data-rs-studio][data-rs-gradients=off][data-rs-glow=off] #rs-root #rs-menu{box-shadow:none!important}
+html[data-rs-studio] #rs-root #rs-menu::before,html[data-rs-studio] #rs-root #rs-menu::after{display:none!important}
+/* Header: the name, the version and the mode, no photo. */
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-head{height:auto!important;min-height:0!important;padding:18px 18px 12px!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;
+  background:radial-gradient(90% 140% at 0% 0%,rgb(var(--st-rgb)/.28),transparent 65%)!important;display:flex!important;align-items:flex-end!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-head::before,html[data-rs-studio] #rs-root #rs-menu .rs-menu-head::after,html[data-rs-studio] #rs-root #rs-menu .rs-menu-mark,html[data-rs-studio] #rs-root #rs-menu .rs-menu-glyph{display:none!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-head-txt{display:flex!important;flex-direction:column!important;gap:4px!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-logo{font:600 24px/1 var(--st-serif)!important;letter-spacing:-.3px!important;text-transform:none!important;color:var(--st-text)!important;text-shadow:none!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-logo em{font-style:italic;color:var(--st-l)}
+html[data-rs-studio]:not([data-rs-gradients=off]) #rs-root #rs-menu .rs-menu-logo em{background:var(--st-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-tag{font:500 10px/1.3 var(--st-mono)!important;letter-spacing:.04em!important;color:var(--st-dim)!important;text-transform:none!important}
+/* Search and tabs stay on top while the sections scroll under them. */
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-tools{position:sticky;top:0;z-index:5;display:grid;gap:9px;padding:10px 14px 12px;margin:0 0 4px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--st-card) 96%,#000) 80%,color-mix(in srgb,var(--st-card) 70%,transparent));border-bottom:1px solid var(--st-line-soft);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-find{position:relative;display:flex;align-items:center;height:34px;margin:0;padding:0 8px 0 32px;border:1px solid var(--st-line-soft);background:linear-gradient(120deg,rgb(var(--st-rgb)/.10),transparent 60%),rgb(0 0 0/.28);transition:border-color .2s,box-shadow .25s}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-find:focus-within{border-color:rgb(var(--st-rgb)/.8);box-shadow:0 0 0 3px rgb(var(--st-rgb)/calc(.16*var(--st-g)))}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-find>svg{position:absolute;left:10px;width:14px;height:14px;color:var(--st-dim)}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-search{flex:1;min-width:0;height:100%;padding:0!important;margin:0!important;border:0!important;outline:0!important;background:none!important;box-shadow:none!important;color:var(--st-text)!important;font:500 12.5px/1 var(--st-sans)!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-search::placeholder{color:var(--st-dim)}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-search::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;display:none}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-clear{width:22px!important;height:22px!important;min-width:0!important;padding:0!important;border:0!important;border-radius:0!important;background:rgb(var(--st-rgb)/.16)!important;color:var(--st-text)!important;font:600 14px/1 var(--st-sans)!important;box-shadow:none!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-clear[hidden]{display:none!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-tabs{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;padding:3px;border:1px solid var(--st-line-soft);background:linear-gradient(180deg,rgb(0 0 0/.30),rgb(0 0 0/.14)),var(--st-card2)}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-tab{position:relative;z-index:1;height:28px!important;min-width:0!important;margin:0!important;padding:0 4px!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;
+  font:700 9.5px/1 var(--st-mono)!important;letter-spacing:.1em!important;text-transform:uppercase!important;color:var(--st-soft)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;transition:color .3s var(--st-ease)!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-tab:hover{color:var(--st-text)!important;background:rgb(var(--st-rgb)/.10)!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-tab[aria-selected=true]{color:var(--st-ink)!important;background:none!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-tab:focus-visible{outline:2px solid rgb(var(--st-rgb)/.85)!important;outline-offset:-2px!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-glide{position:absolute;left:0;top:0;z-index:0;pointer-events:none;opacity:0;border:1px solid color-mix(in srgb,var(--st-l) 60%,#fff);
+  background:linear-gradient(180deg,rgb(255 255 255/.32),transparent 55%),var(--st-grad);box-shadow:inset 0 1px 0 rgb(255 255 255/.5),0 6px 16px -6px rgb(var(--st-rgb)/calc(.9*var(--st-g)))}
+html[data-rs-studio][data-rs-gradients=off] #rs-root #rs-menu .rs-menu-glide{background:var(--st-a);box-shadow:none}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-glide.rs-on{opacity:1}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-glide.rs-off{opacity:0}
+html[data-rs-studio]:not([data-rs-motion=off]) #rs-root #rs-menu .rs-menu-glide.rs-live{transition:transform .42s var(--st-ease),width .42s var(--st-ease),height .42s var(--st-ease),opacity .25s}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-none{margin:4px 2px 0;font:500 12px/1.4 var(--st-sans);color:var(--st-soft)}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-none[hidden],html[data-rs-studio] #rs-root #rs-menu>.rs-menu-sec[hidden],html[data-rs-studio] #rs-root #rs-menu .rs-menu-miss{display:none!important}
+/* A section that has just appeared slides in (Full motion). */
+html[data-rs-studio][data-rs-motion=full] #rs-root #rs-menu>.rs-menu-sec:not([hidden]){animation:rs-st-in .38s var(--st-ease) both}
+@keyframes rs-st-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* Sections. */
+html[data-rs-studio] #rs-root #rs-menu>.rs-menu-sec{margin:10px 12px 0!important;padding:14px 14px 14px!important;border-radius:0!important;border:1px solid var(--st-line-soft)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.06),0 16px 30px -24px #000!important;
+  background:radial-gradient(80% 70% at 0% 0%,rgb(var(--st-rgb)/.14),transparent 62%),linear-gradient(180deg,rgb(255 255 255/.03),transparent 35%),rgb(0 0 0/.16)!important}
+html[data-rs-studio][data-rs-gradients=off] #rs-root #rs-menu>.rs-menu-sec{background:rgb(0 0 0/.18)!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-sec-label{display:flex!important;align-items:center!important;gap:8px!important;margin:0 0 10px!important;padding:0!important;border:0!important;background:none!important;font:700 9.5px/1 var(--st-mono)!important;letter-spacing:.18em!important;text-transform:uppercase!important;color:var(--st-l)!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-sec-label::before{content:"";display:block;width:16px;height:1px;background:var(--st-l);opacity:.8;flex:none}
+html[data-rs-studio] #rs-root #rs-menu .rs-sec-label *{color:inherit!important;font:inherit!important;letter-spacing:inherit!important}
+html[data-rs-studio] #rs-root #rs-menu :is(.rs-menu-note,.rs-tgl-sub,small,.rs-site-host,.rs-work-sub,.rs-tip-sub,.rs-mcp-url,.rs-blender-sub){color:var(--st-dim)!important;font-family:var(--st-sans)!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-note{font-size:11.5px!important;line-height:1.5!important}
+html[data-rs-studio] #rs-root #rs-menu :is(label,.rs-tgl-name,.rs-site-name>span:first-child,.rs-work-name,.rs-mcp-name,.rs-blender-name){color:var(--st-text)!important;font-family:var(--st-sans)!important}
+/* Every box inside the menu is square. */
+html[data-rs-studio] #rs-root #rs-menu :is(button,input,textarea,select,.rs-tgl-row,.rs-set-row,.rs-work-card,.rs-site-opt,.rs-tip-opt,.rs-mcp-item,.rs-blender-card,.rs-always-box,.rs-prompt-field,.pc-effort-trigger,.pc-effort-options,.pc-effort-options button,details,.rs-site-badge,.rs-blender-pill,.rs-checkpoint-list){border-radius:0!important}
+/* Rows with a switch. */
+html[data-rs-studio] #rs-root #rs-menu .rs-tgl-row{margin:0 0 6px!important;padding:10px 12px!important;border:1px solid var(--st-line-soft)!important;background:linear-gradient(120deg,rgb(var(--st-rgb)/.08),transparent 60%),rgb(255 255 255/.015)!important;box-shadow:none!important;transition:border-color .2s,background .25s!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-tgl-row:hover{border-color:rgb(var(--st-rgb)/.55)!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-tgl{width:34px!important;height:18px!important;border-radius:0!important;border:1px solid var(--st-line)!important;background:rgb(0 0 0/.35)!important;box-shadow:inset 0 1px 3px rgb(0 0 0/.5)!important;flex:none}
+html[data-rs-studio] #rs-root #rs-menu .rs-tgl::after{width:12px!important;height:12px!important;top:2px!important;left:2px!important;border-radius:0!important;background:var(--st-dim)!important;box-shadow:none!important;transition:transform .3s var(--st-ease),background .3s!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-tgl.on{border-color:color-mix(in srgb,var(--st-l) 60%,#fff)!important;background:linear-gradient(180deg,rgb(255 255 255/.3),transparent 60%),var(--st-grad)!important;box-shadow:0 0 12px -2px rgb(var(--st-rgb)/calc(.8*var(--st-g)))!important}
+html[data-rs-studio][data-rs-gradients=off] #rs-root #rs-menu .rs-tgl.on{background:var(--st-a)!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-tgl.on::after{transform:translateX(16px)!important;background:var(--st-ink)!important}
+/* Option cards (Fast / Balanced / Thorough, Sandbox / Ask / Full) and the level segments. */
+html[data-rs-studio] #rs-root #rs-menu .rs-work-card,html[data-rs-studio] #rs-root #rs-menu .rs-lvl-btn{border:1px solid var(--st-line-soft)!important;background:linear-gradient(120deg,rgb(var(--st-rgb)/.10),transparent 60%),rgb(255 255 255/.02)!important;box-shadow:none!important;color:var(--st-text)!important;transition:border-color .2s,background .25s,transform .18s var(--st-ease)!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-work-card:hover,html[data-rs-studio] #rs-root #rs-menu .rs-lvl-btn:hover{border-color:rgb(var(--st-rgb)/.65)!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-work-card.on,html[data-rs-studio] #rs-root #rs-menu .rs-lvl-btn.on{border-color:color-mix(in srgb,var(--st-l) 60%,#fff)!important;background:linear-gradient(180deg,rgb(255 255 255/.3),transparent 55%),var(--st-grad)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.5),0 8px 20px -10px rgb(var(--st-rgb)/calc(.9*var(--st-g)))!important}
+html[data-rs-studio][data-rs-gradients=off] #rs-root #rs-menu :is(.rs-work-card.on,.rs-lvl-btn.on){background:var(--st-a)!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-lvl-btn{font:700 10px/1 var(--st-mono)!important;letter-spacing:.08em!important}
+/* AI site list. */
+html[data-rs-studio] #rs-root #rs-menu .rs-site-opt{margin:0 0 5px!important;padding:9px 12px!important;border:1px solid var(--st-line-soft)!important;background:linear-gradient(120deg,rgb(var(--st-rgb)/.07),transparent 60%),rgb(255 255 255/.015)!important;box-shadow:none!important;transition:border-color .2s,background .25s!important}
+html[data-rs-studio] #rs-root #rs-menu button.rs-site-opt:hover{border-color:rgb(var(--st-rgb)/.65)!important;background:linear-gradient(120deg,rgb(var(--st-rgb)/.18),transparent 70%),rgb(255 255 255/.02)!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-site-here{border-color:rgb(var(--st-rgb)/.7)!important;background:linear-gradient(120deg,rgb(var(--st-rgb)/.24),rgb(var(--st-rgb)/.05) 70%)!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-site-badge{padding:3px 7px!important;background:var(--st-grad)!important;color:var(--st-ink)!important;font:800 8.5px/1 var(--st-mono)!important;letter-spacing:.14em!important;box-shadow:none!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-site-go{color:var(--st-l)!important}
+/* Fields. */
+html[data-rs-studio] #rs-root #rs-menu :is(input:not([type=checkbox]):not([type=radio]):not(.rs-menu-search),textarea,select,.pc-effort-trigger){border:1px solid var(--st-line-soft)!important;background:rgb(0 0 0/.30)!important;color:var(--st-text)!important;box-shadow:inset 0 1px 3px rgb(0 0 0/.35)!important;font-family:var(--st-sans)!important}
+html[data-rs-studio] #rs-root #rs-menu :is(input:not([type=checkbox]):not([type=radio]):not(.rs-menu-search),textarea,select,.pc-effort-trigger):focus-visible{border-color:rgb(var(--st-rgb)/.85)!important;outline:0!important;box-shadow:0 0 0 3px rgb(var(--st-rgb)/calc(.16*var(--st-g)))!important}
+html[data-rs-studio] #rs-root #rs-menu textarea{font:12px/1.5 var(--st-mono)!important}
+html[data-rs-studio] #rs-root #rs-menu .pc-effort-options{border:1px solid var(--st-line)!important;background:color-mix(in srgb,var(--st-card) 98%,#000)!important}
+html[data-rs-studio] #rs-root #rs-menu input[type=checkbox]{accent-color:var(--st-a)}
+/* Buttons: glass by default, the palette gradient for the main ones. */
+html[data-rs-studio] #rs-root #rs-menu :is(#rs-setup-save,#rs-allowed-save,#rs-set-save,#rs-backup-copy,#rs-backup-restore,#rs-memory-settings,#rs-i2m-btn,#rs-save-handoff,#rs-budget-resume,.rs-action-log-btn,.rs-blender-link,.rs-setup-main,.rs-checkpoint-undo,.rs-tip-opt){border:1px solid var(--st-line-soft)!important;color:var(--st-text)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.08)!important;
+  background:linear-gradient(180deg,rgb(255 255 255/.08),transparent 50%),linear-gradient(120deg,rgb(var(--st-rgb)/.20),rgb(var(--st-rgb)/.05) 60%,rgb(var(--st-rgb)/.12)),var(--st-card)!important;font-family:var(--st-sans)!important;transition:border-color .2s,box-shadow .25s,transform .18s var(--st-ease)!important}
+html[data-rs-studio] #rs-root #rs-menu :is(#rs-setup-save,#rs-allowed-save,#rs-set-save,#rs-backup-copy,#rs-backup-restore,#rs-memory-settings,#rs-i2m-btn,#rs-save-handoff,#rs-budget-resume,.rs-action-log-btn,.rs-blender-link,.rs-setup-main,.rs-checkpoint-undo,.rs-tip-opt):hover{border-color:rgb(var(--st-rgb)/.75)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.14),0 10px 22px -12px rgb(var(--st-rgb)/calc(.8*var(--st-g)))!important}
+html[data-rs-studio] #rs-root #rs-menu :is(#rs-set-save,#rs-allowed-save,#rs-mcp-blender,.rs-setup-main){border:1px solid color-mix(in srgb,var(--st-l) 60%,#fff)!important;color:var(--st-ink)!important;font-weight:750!important;
+  background:linear-gradient(180deg,rgb(255 255 255/.34),transparent 52%),var(--st-grad)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.6),0 10px 22px -12px rgb(var(--st-rgb)/calc(.85*var(--st-g)))!important}
+html[data-rs-studio][data-rs-gradients=off] #rs-root #rs-menu :is(#rs-set-save,#rs-allowed-save,#rs-mcp-blender,.rs-setup-main){background:var(--st-a)!important}
+/* Connections, the always-approved list and the Blender card. */
+html[data-rs-studio] #rs-root #rs-menu :is(.rs-mcp-item,.rs-blender-card,.rs-always-box){border:1px solid var(--st-line-soft)!important;background:linear-gradient(120deg,rgb(var(--st-rgb)/.10),transparent 60%),rgb(255 255 255/.015)!important;box-shadow:none!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-blender-mark{border-radius:0!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-blender-pill{font:700 9px/1 var(--st-mono)!important;letter-spacing:.12em!important}
+/* Footer. */
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-foot{margin:14px 12px 0!important;padding:10px 0 0!important;border-top:1px solid var(--st-line-soft)!important;background:none!important;font:500 10px/1.3 var(--st-mono)!important;letter-spacing:.04em!important;color:var(--st-dim)!important;text-align:center}
+html[data-rs-studio] #rs-root #rs-menu .pc-language-picker{gap:8px!important}
+html[data-rs-studio] #rs-root #rs-menu .pc-language-picker label{font:600 12px/1.4 var(--st-sans)!important;color:var(--st-soft)!important}
+html[data-rs-studio] #rs-root #rs-menu .pc-language-picker :is(input,select,.pc-effort-trigger){min-height:36px!important;height:36px!important;font-size:12.5px!important;padding:0 12px!important}
+html[data-rs-studio] #rs-root #rs-menu .pc-language-picker small,html[data-rs-studio] #rs-root #rs-menu #rs-language-sec p{font-size:11.5px!important;line-height:1.5!important;color:var(--st-dim)!important}
+/* Owner, 2026-11-13: panels stay square, "then buttons/switches can be rounded". Rounded corners cannot carry a
+   gradient border-image, so these use a coloured border instead. */
+html[data-rs-studio] #rs-root .rs-cluster-right button{border-radius:10px!important}
+html[data-rs-studio] #rs-root .rs-cluster-right button:hover:not(:disabled){border-image:none!important}
+html[data-rs-studio] #rs-root .rs-grp-pills>button{border-radius:999px!important}
+html[data-rs-studio] #rs-root .rs-grp-main{border-radius:13px;border-image:none;border-color:color-mix(in srgb,#2b303b 45%,rgb(var(--st-rgb)) 55%)}
+html[data-rs-studio] #rs-root #rs-bar .rs-grp-main>button:not(#rs-action):not(#rs-stop){border-radius:10px!important}
+html[data-rs-studio] #rs-root #rs-agents .rs-agents-num{border-radius:999px!important}
+html[data-rs-studio] #rs-root #rs-bar #rs-engine{border-radius:999px!important;border-image:none!important;border-color:var(--st-line)!important}
+html[data-rs-studio] #rs-root #rs-bar #rs-engine #rs-engine-thumb{border-radius:999px!important}
+html[data-rs-studio] #rs-root #rs-cards-btn{border-radius:14px!important;border-image:none!important;border-color:var(--st-line)!important}
+html[data-rs-studio] #rs-root :is(#rs-effort,#rs-approval-mode){border-radius:6px!important}
+html[data-rs-studio] #rs-root #rs-menu :is(button,.rs-work-card,.rs-lvl-btn,.rs-site-opt,.rs-tip-opt,.pc-effort-trigger,.pc-effort-options button){border-radius:10px!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-site-here{border-radius:10px!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-tabs{border-radius:12px}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-tab{border-radius:9px!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-glide{border-radius:9px}
+html[data-rs-studio] #rs-root #rs-menu .rs-menu-clear{border-radius:999px!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-site-badge{border-radius:999px!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-tgl{border-radius:999px!important}
+html[data-rs-studio] #rs-root #rs-menu .rs-tgl::after{border-radius:50%!important}
