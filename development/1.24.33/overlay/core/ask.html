@@ -35,7 +35,75 @@
  button:focus-visible{outline:2px solid #fff;outline-offset:2px}
  .send{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px}
  #step{font-size:12.5px;color:#9aa0ae}
-</style></head>
+ /* ══ STUDIO LOOK (1.24.33 bar redesign, step 4): set up by studio-page.js (palette, glow, gradients, Feel). ══ */
+ html[data-studio]{--st-a:#e9ba53;--st-l:#ffe0a1;--st-bg:#18140d;--st-rgb:233 186 83;--st-g:1;
+  --st-serif:"Iowan Old Style","Sitka Heading","Sitka Text",Constantia,Cambria,Georgia,serif;--st-mono:"Cascadia Mono","JetBrains Mono","SF Mono",ui-monospace,Consolas,Menlo,monospace;
+  --st-sans:Inter,"Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;--st-ease:cubic-bezier(.22,1,.36,1);
+  --st-text:#f3f5f9;--st-soft:#b1b7c4;--st-dim:#828a9b;--st-ink:#0b0d12;
+  --st-card:color-mix(in srgb,var(--st-bg) 62%,#07090d);--st-card2:color-mix(in srgb,var(--st-bg) 45%,#0d1016);
+  --st-line:color-mix(in srgb,#2b303b 52%,rgb(var(--st-rgb)) 48%);--st-line-soft:color-mix(in srgb,#2b303b 72%,rgb(var(--st-rgb)) 28%);
+  --st-grad:linear-gradient(135deg,color-mix(in srgb,var(--st-l) 82%,#fff) 0%,var(--st-l) 38%,var(--st-a) 100%);
+  --st-glass:linear-gradient(180deg,rgb(255 255 255/.09),rgb(255 255 255/.02) 46%,rgb(0 0 0/.10));
+  --st-rim:linear-gradient(115deg,color-mix(in srgb,var(--st-l) 85%,#fff) 0%,rgb(var(--st-rgb)/.75) 18%,rgb(var(--st-rgb)/.22) 46%,rgb(var(--st-rgb)/.30) 70%,var(--st-a) 100%);
+  --st-brackets:linear-gradient(var(--st-l),var(--st-l)) 0 0/16px 2px no-repeat,linear-gradient(var(--st-l),var(--st-l)) 0 0/2px 16px no-repeat,
+    linear-gradient(var(--st-a),var(--st-a)) 100% 100%/16px 2px no-repeat,linear-gradient(var(--st-a),var(--st-a)) 100% 100%/2px 16px no-repeat;
+  --st-sweep:linear-gradient(115deg,rgb(var(--st-rgb)/.26) 0%,rgb(var(--st-rgb)/.07) 30%,transparent 56%,rgb(var(--st-rgb)/.12) 100%);
+  color-scheme:dark}
+ html[data-studio][data-glow=off]{--st-g:0}
+ html[data-studio] body{font-family:var(--st-sans);color:var(--st-text);background:radial-gradient(120% 50% at 0% 0%,rgb(var(--st-rgb)/.14),transparent 60%),radial-gradient(90% 40% at 100% 100%,rgb(var(--st-rgb)/.09),transparent 60%),color-mix(in srgb,var(--st-bg) 70%,#06070a)}
+ html[data-studio] :is(header,footer){position:relative;border-color:transparent!important}
+ html[data-studio] header{background:var(--st-brackets),var(--st-sweep),color-mix(in srgb,var(--st-card) 96%,transparent);border-bottom:1px solid transparent;border-image:var(--st-rim) 1}
+ html[data-studio] footer{background:linear-gradient(var(--st-a),var(--st-a)) 100% 100%/16px 2px no-repeat,linear-gradient(var(--st-a),var(--st-a)) 100% 100%/2px 16px no-repeat,var(--st-sweep),color-mix(in srgb,var(--st-card) 96%,transparent);border-top:1px solid transparent;border-image:var(--st-rim) 1}
+ html[data-studio] h1{font-family:var(--st-serif)!important;letter-spacing:-.2px}
+ html[data-studio] button{position:relative;overflow:hidden;font-family:var(--st-sans);border-radius:10px;border:1px solid var(--st-line-soft);background:var(--st-glass),var(--st-card2);color:var(--st-text);transition:transform .15s var(--st-ease),border-color .2s,filter .2s,box-shadow .2s}
+ html[data-studio] button:hover:not(:disabled){border-color:rgb(var(--st-rgb)/.75);transform:translateY(-1px)}
+ html[data-studio] button:focus-visible{outline:2px solid rgb(var(--st-rgb)/.85)}
+ html[data-studio] button.main{border-color:color-mix(in srgb,var(--st-l) 60%,#fff);background:linear-gradient(180deg,rgb(255 255 255/.30),transparent 55%),var(--st-grad);color:var(--st-ink);box-shadow:inset 0 1px 0 rgb(255 255 255/.5),0 10px 22px -12px rgb(var(--st-rgb)/calc(.9*var(--st-g)))}
+ html[data-studio] button.main:hover:not(:disabled){filter:brightness(1.07);border-color:color-mix(in srgb,var(--st-l) 60%,#fff)}
+ html[data-studio] button.stop{border-color:#f87171;background:linear-gradient(180deg,rgb(255 255 255/.18),transparent 55%),linear-gradient(135deg,#f87171,#dc2626 60%,#b91c1c);color:#fff;box-shadow:0 10px 22px -12px rgb(239 68 68/calc(.9*var(--st-g)))}
+ html[data-studio][data-gradients=off] :is(header,footer){border-image:none;border-color:var(--st-line)!important;background:var(--st-card)}
+ html[data-studio][data-gradients=off] button.main{background:var(--st-a)}
+ html[data-studio][data-gradients=off][data-glow=off] button{box-shadow:none}
+ html[data-studio][data-motion=off] *,html[data-studio][data-motion=off] *::before,html[data-studio][data-motion=off] *::after{transition:none!important;animation:none!important}
+ .st-rpl{position:absolute;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgb(var(--st-rgb,233 186 83)/.38),transparent 65%);transform:scale(0);animation:st-rpl .6s cubic-bezier(.22,1,.36,1) forwards}
+ @keyframes st-rpl{to{transform:scale(1);opacity:0}}
+ /* Ask PlazCode */
+ html[data-studio] header{padding:16px 16px 14px}
+ html[data-studio] h1{font-size:21px;font-weight:600;margin:0 0 12px;display:flex;align-items:baseline;gap:10px}
+ html[data-studio]:not([data-gradients=off]) h1{background:linear-gradient(100deg,var(--st-text) 0%,var(--st-text) 30%,var(--st-l) 62%,var(--st-a) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+ html[data-studio] h1::after{content:"AgentScript";-webkit-text-fill-color:var(--st-l);font:700 8.5px/1 var(--st-mono);letter-spacing:.16em;text-transform:uppercase;padding:4px 6px;border:1px solid rgb(var(--st-rgb)/.45);background:rgb(var(--st-rgb)/.10);align-self:center}
+ html[data-studio] .share{gap:12px}
+ html[data-studio] .share canvas{border-radius:0;border:1px solid var(--st-line);box-shadow:none;background:var(--st-card2)}
+ html[data-studio] .sharing .share canvas{border-color:transparent;border-image:var(--st-rim) 1;box-shadow:0 8px 22px -10px rgb(var(--st-rgb)/calc(.9*var(--st-g)))}
+ html[data-studio] .share-txt b{font-weight:650}
+ html[data-studio] .share-txt small{font:500 10.5px/1.5 var(--st-mono);color:var(--st-dim)}
+ html[data-studio] label.sw{position:relative;overflow:hidden;justify-content:space-between;flex-direction:row-reverse;gap:12px;margin-top:6px;padding:7px 2px;color:var(--st-soft)}
+ html[data-studio] label.sw:first-of-type{margin-top:12px;border-top:1px solid var(--st-line-soft);padding-top:12px}
+ html[data-studio] label.sw input{appearance:none;-webkit-appearance:none;flex:none;margin:0;width:38px;height:22px;border-radius:999px;cursor:pointer;border:1px solid var(--st-line);
+  background:radial-gradient(circle,var(--st-soft) 0 6.5px,transparent 7px) left 1px center/20px 20px no-repeat,rgb(0 0 0/.35);box-shadow:inset 0 1px 3px rgb(0 0 0/.5);transition:background-position .3s var(--st-ease),border-color .3s}
+ html[data-studio] label.sw input:checked{border-color:color-mix(in srgb,var(--st-l) 60%,#fff);background:radial-gradient(circle,var(--st-ink) 0 6.5px,transparent 7px) right 1px center/20px 20px no-repeat,var(--st-grad);box-shadow:0 0 14px -2px rgb(var(--st-rgb)/calc(.8*var(--st-g)))}
+ html[data-studio][data-gradients=off] label.sw input:checked{background:radial-gradient(circle,var(--st-ink) 0 6.5px,transparent 7px) right 1px center/20px 20px no-repeat,var(--st-a)}
+ html[data-studio] label.sw input:disabled{opacity:.4;cursor:default}
+ html[data-studio] label.sw input:focus-visible{outline:2px solid rgb(var(--st-rgb)/.85);outline-offset:2px}
+ html[data-studio] #banner{border-radius:0;border:1px solid var(--st-line-soft);border-left:2px solid var(--st-a);background:rgb(0 0 0/.22);color:var(--st-soft)}
+ html[data-studio] #log{gap:12px;padding:14px 16px}
+ html[data-studio] .msg{border-radius:0;padding:10px 13px;font-size:13.5px}
+ html[data-studio] .me{color:var(--st-text);border:1px solid transparent;border-image:var(--st-rim) 1;background:linear-gradient(var(--st-a),var(--st-a)) 100% 100%/12px 2px no-repeat,linear-gradient(var(--st-a),var(--st-a)) 100% 100%/2px 12px no-repeat,linear-gradient(135deg,rgb(var(--st-rgb)/.30),rgb(var(--st-rgb)/.10))}
+ html[data-studio] .ai{border:1px solid var(--st-line-soft);border-left:2px solid var(--st-l);background:var(--st-glass),var(--st-card)}
+ html[data-studio][data-gradients=off] .me{border-image:none;border-color:var(--st-line);background:rgb(var(--st-rgb)/.18)}
+ html[data-studio] .note{font-size:12.5px;color:var(--st-dim);max-width:300px}
+ html[data-studio] .error{border-left:2px solid #f87171;padding:6px 10px;background:rgb(248 113 113/.08)}
+ html[data-studio] .approve{border-radius:0;box-shadow:0 14px 34px -22px rgb(var(--st-rgb)/calc(.8*var(--st-g)));border:1px solid transparent;border-image:var(--st-rim) 1;padding:12px 14px;background:var(--st-brackets),var(--st-sweep),var(--st-card)}
+ html[data-studio] .approve small{font:700 9px/1 var(--st-mono);letter-spacing:.16em;color:var(--st-l);margin-bottom:6px}
+ html[data-studio] .approve code{font-family:var(--st-mono);color:var(--st-soft);background:rgb(0 0 0/.25);border:1px solid var(--st-line-soft);padding:6px 8px}
+ html[data-studio][data-gradients=off] .approve{border-image:none;border-color:var(--st-line);background:var(--st-card)}
+ html[data-studio] footer{padding:12px 16px 16px}
+ html[data-studio] textarea{border-radius:0;border:1px solid var(--st-line);background:rgb(0 0 0/.28);color:var(--st-text);font:13.5px/1.5 var(--st-sans);padding:10px 12px;transition:border-color .2s,box-shadow .2s}
+ html[data-studio] textarea:focus{outline:none;border-color:rgb(var(--st-rgb)/.9);box-shadow:0 0 0 3px rgb(var(--st-rgb)/.18)}
+ html[data-studio] textarea::placeholder{color:var(--st-dim)}
+ html[data-studio] #step{font:500 10.5px/1.4 var(--st-mono);color:var(--st-dim)}
+ html[data-studio] .send button{padding:9px 18px}
+</style><script src="studio-page.js"></script></head>
 <body>
 <header>
  <h1>Ask PlazCode</h1>

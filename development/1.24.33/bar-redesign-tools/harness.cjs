@@ -32,7 +32,7 @@ function open(browser, opts = {}) {
       const listeners = [];
       const get = (keys, cb) => { const value = { ...store }; if (cb) queueMicrotask(() => cb(value)); return Promise.resolve(value); };
       window.__store = store; window.__fire = (changes) => { for (const [k, v] of Object.entries(changes)) store[k] = v; const c = {}; for (const [k, v] of Object.entries(changes)) c[k] = { newValue: v }; listeners.forEach(fn => fn(c, 'local')); };
-      window.chrome = { runtime: { id: 'offline', getManifest: () => ({ version: '1.24.33' }), getURL: p => 'https://chatgpt.com/fixture/' + p, onMessage: { addListener() {} }, sendMessage: (msg, cb) => { const v = answer(msg); if (cb) queueMicrotask(() => cb(v)); return Promise.resolve(v); } }, storage: { local: { get, set: (u) => { Object.assign(store, u); return Promise.resolve(); }, remove: () => Promise.resolve() }, onChanged: { addListener(fn) { listeners.push(fn); } } } };
+      window.chrome = { runtime: { id: 'offline', getManifest: () => ({ version: '1.24.33' }), getURL: p => 'https://chatgpt.com/fixture/' + p, onMessage: { addListener(f) { (window.__msgListeners = window.__msgListeners || []).push(f); } }, sendMessage: (msg, cb) => { const v = answer(msg); if (cb) queueMicrotask(() => cb(v)); return Promise.resolve(v); } }, storage: { local: { get, set: (u) => { Object.assign(store, u); return Promise.resolve(); }, remove: () => Promise.resolve() }, onChanged: { addListener(fn) { listeners.push(fn); } } } };
     }, store);
     await page.addStyleTag({ path: path.join(src, 'overlay.css') });
     for (const file of manifest.content_scripts.find(x => x.js.includes('providers/chatgpt.js')).js) {

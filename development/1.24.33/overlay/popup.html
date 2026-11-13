@@ -293,6 +293,154 @@ select option:checked{background:color-mix(in srgb,var(--orange,#ffbc67) 35%,#10
 .pc-effort-options>button:hover{background:color-mix(in srgb,var(--orange,#ffbc67) 14%,transparent)!important}
 .pc-effort-options>button[aria-selected=true]{background:color-mix(in srgb,var(--orange,#ffbc67) 22%,transparent)!important;border-color:var(--orange,#ffbc67)!important}
 @media(prefers-reduced-motion:reduce){select,.pc-effort-trigger,.pc-effort-trigger>span:last-child{transition:none}}
+
+/* ══ STUDIO LOOK (1.24.33 bar redesign, step 4). Same language as the bar and the app: square panels with a gradient rim,
+   lit corner brackets and a diagonal colour sweep; rounded buttons and switches; serif name, spaced mono labels.
+   popup.js sets data-studio, data-motion, data-anim and data-ripple. Plan: development/1.24.33/BAR-REDESIGN-PLAN.md ══ */
+html[data-studio]{--st-rgb:var(--rgb,233 186 83);--st-a:var(--accent);--st-l:var(--accent-light,#ffe0a1);--st-bg:var(--bg);--st-g:1;
+  --st-serif:"Iowan Old Style","Sitka Heading","Sitka Text",Constantia,Cambria,Georgia,serif;--st-mono:"Cascadia Mono","JetBrains Mono","SF Mono",ui-monospace,Consolas,Menlo,monospace;
+  --st-sans:Inter,"Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;--st-ease:cubic-bezier(.22,1,.36,1);
+  --st-text:#f3f5f9;--st-soft:#b1b7c4;--st-dim:#828a9b;--st-ink:#0b0d12;
+  --st-card:color-mix(in srgb,var(--st-bg) 62%,#07090d);--st-card2:color-mix(in srgb,var(--st-bg) 45%,#0d1016);
+  --st-line:color-mix(in srgb,#2b303b 52%,rgb(var(--st-rgb)) 48%);--st-line-soft:color-mix(in srgb,#2b303b 72%,rgb(var(--st-rgb)) 28%);
+  --st-grad:linear-gradient(135deg,color-mix(in srgb,var(--st-l) 82%,#fff) 0%,var(--st-l) 38%,var(--st-a) 100%);
+  --st-glass:linear-gradient(180deg,rgb(255 255 255/.09),rgb(255 255 255/.02) 46%,rgb(0 0 0/.10));
+  --st-rim:linear-gradient(115deg,color-mix(in srgb,var(--st-l) 85%,#fff) 0%,rgb(var(--st-rgb)/.75) 18%,rgb(var(--st-rgb)/.22) 46%,rgb(var(--st-rgb)/.30) 70%,var(--st-a) 100%);
+  --st-panel:linear-gradient(var(--st-l),var(--st-l)) 0 0/16px 2px no-repeat,linear-gradient(var(--st-l),var(--st-l)) 0 0/2px 16px no-repeat,
+    linear-gradient(var(--st-a),var(--st-a)) 100% 100%/16px 2px no-repeat,linear-gradient(var(--st-a),var(--st-a)) 100% 100%/2px 16px no-repeat,
+    linear-gradient(135deg,rgb(var(--st-rgb)/.22) 0%,rgb(var(--st-rgb)/.05) 32%,transparent 58%,rgb(var(--st-rgb)/.10) 100%),linear-gradient(180deg,rgb(255 255 255/.05),transparent 34%),color-mix(in srgb,var(--st-card) 96%,transparent)}
+html[data-studio][data-glow=off]{--st-g:0}
+html[data-studio][data-thinking=ultracode]{--st-rim:linear-gradient(115deg,#e6d3ff 0%,#a879e8 22%,rgb(151 98 223/.25) 50%,rgb(var(--st-rgb)/.35) 75%,#c5a1f9 100%)}
+html[data-studio] body{background:radial-gradient(120% 60% at 0% 0%,rgb(var(--st-rgb)/.16),transparent 60%),radial-gradient(90% 50% at 100% 100%,rgb(var(--st-rgb)/.10),transparent 60%),color-mix(in srgb,var(--st-bg) 70%,#06070a)!important;font-family:var(--st-sans);color:var(--st-text)}
+html[data-studio] body::before,html[data-studio] body::after{display:none}
+html[data-studio] .wrap{padding:14px 14px 18px}
+
+/* Header: serif name with the gradient italic, mono version, site tag. */
+html[data-studio] .hero{height:auto!important;padding:20px 16px 18px;border-bottom:1px solid transparent!important;border-image:var(--st-rim) 1;
+  background:linear-gradient(var(--st-l),var(--st-l)) 0 0/22px 2px no-repeat,linear-gradient(var(--st-l),var(--st-l)) 0 0/2px 22px no-repeat,
+    linear-gradient(115deg,rgb(var(--st-rgb)/.34) 0%,rgb(var(--st-rgb)/.10) 28%,transparent 55%,rgb(var(--st-rgb)/.16) 100%),
+    radial-gradient(70% 140% at 0% 0%,rgb(var(--st-rgb)/.22),transparent 70%),color-mix(in srgb,var(--st-card) 96%,transparent)!important}
+html[data-studio] .hero::after{display:none}
+html[data-studio] .hero .head{position:relative;left:auto;right:auto;bottom:auto}
+html[data-studio] .crest{width:42px;height:42px;border-radius:0;border:1px solid color-mix(in srgb,var(--st-l) 60%,#fff);background:linear-gradient(180deg,rgb(255 255 255/.30),transparent 55%),var(--st-grad)!important;
+  color:var(--st-ink)!important;font:600 24px/1 var(--st-serif);font-style:italic;box-shadow:inset 0 1px 0 rgb(255 255 255/.55),0 8px 22px -8px rgb(var(--st-rgb)/calc(.9*var(--st-g)))}
+html[data-studio] .logo{font:600 24px/1 var(--st-serif)!important;letter-spacing:-.3px!important;text-transform:none!important;color:var(--st-text)!important;text-shadow:none!important}
+html[data-studio] .logo em{font-style:italic;color:var(--st-l);padding-right:.06em}
+html[data-studio]:not([data-gradients=off]) .logo em{background:var(--st-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 2px 10px rgb(var(--st-rgb)/calc(.4*var(--st-g))))}
+html[data-studio] .ver{font:500 10px/1.2 var(--st-mono);letter-spacing:.02em;color:var(--st-dim);margin-top:6px}
+html[data-studio] .tag{border-radius:0!important;border:1px solid rgb(var(--st-rgb)/.5)!important;background:rgb(var(--st-rgb)/.12)!important;color:var(--st-l)!important;box-shadow:none!important;
+  font:700 9px/1 var(--st-mono)!important;letter-spacing:.16em!important;padding:6px 8px!important}
+
+/* The RobloxScript / AgentScript switch: a round pill with a gliding gradient thumb. */
+html[data-studio] .seg{position:relative;padding:4px!important;border-radius:999px!important;border:1px solid var(--st-line)!important;margin-bottom:12px;
+  background:linear-gradient(180deg,rgb(0 0 0/.34),rgb(0 0 0/.16)),var(--st-card2)!important;box-shadow:inset 0 1px 3px rgb(0 0 0/.45),0 1px 0 rgb(255 255 255/.05)!important}
+html[data-studio] .seg-thumb{position:absolute;top:4px;left:4px;width:calc(50% - 4px);height:calc(100% - 8px);border-radius:999px;border:1px solid color-mix(in srgb,var(--st-l) 60%,#fff);
+  background:linear-gradient(180deg,rgb(255 255 255/.32),transparent 55%),var(--st-grad);box-shadow:inset 0 1px 0 rgb(255 255 255/.5),0 6px 18px -6px rgb(var(--st-rgb)/calc(.9*var(--st-g)));
+  transition:transform .42s var(--st-ease);pointer-events:none}
+html:not([data-studio]) .seg-thumb{display:none}
+html[data-studio] .seg:has(#engine-local.on) .seg-thumb{transform:translateX(100%)}
+html[data-studio] .seg:not(:has(.on)) .seg-thumb{opacity:0}
+html[data-studio] .seg button{position:relative;z-index:1;background:none!important;box-shadow:none!important;border-radius:999px!important;padding:9px 2px!important;
+  font:800 10.5px/1 var(--st-mono)!important;letter-spacing:.14em!important;text-transform:uppercase;color:var(--st-soft)!important;transition:color .3s var(--st-ease)!important}
+html[data-studio] .seg button.on{color:var(--st-ink)!important;text-shadow:0 1px 0 rgb(255 255 255/.3)}
+html[data-studio] .seg button:not(.on):hover{color:var(--st-text)!important}
+
+/* Main buttons: rounded with the gradient fill. */
+html[data-studio] .ask-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 0 12px;padding:11px 14px;border-radius:10px;cursor:pointer;
+  border:1px solid color-mix(in srgb,var(--st-l) 60%,#fff);background:linear-gradient(180deg,rgb(255 255 255/.30),transparent 55%),var(--st-grad);color:var(--st-ink);
+  font:700 12.5px/1.2 var(--st-sans);box-shadow:inset 0 1px 0 rgb(255 255 255/.5),0 10px 24px -10px rgb(var(--st-rgb)/calc(.9*var(--st-g)));transition:transform .15s var(--st-ease),filter .2s}
+html[data-studio] .ask-btn[hidden]{display:none}
+html[data-studio] .ask-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+html[data-studio] .ask-btn .ic{width:16px;height:16px;flex:none}
+html:not([data-studio]) .ask-btn{width:100%;margin:8px 0}
+
+/* Panels: square, gradient rim, corner brackets, colour sweep. */
+html[data-studio] .card{border-radius:0!important;border:1px solid transparent!important;border-image:var(--st-rim) 1!important;background:var(--st-panel)!important;padding:14px!important;margin-bottom:12px;
+  box-shadow:inset 0 1px 0 rgb(255 255 255/.06),0 18px 40px -26px #000,0 12px 30px -24px rgb(var(--st-rgb)/calc(.7*var(--st-g)))!important}
+html[data-studio] .card::before,html[data-studio] .card::after{display:none!important}
+html[data-studio][data-thinking=ultracode] .card{border-color:transparent!important}
+html[data-studio] .engrow{margin:0 0 8px}
+html[data-studio] #engine-label{font:600 18px/1.1 var(--st-serif);letter-spacing:-.2px}
+html[data-studio] .row{margin:3px 0;color:var(--st-soft)}
+html[data-studio] #state{font-weight:650}
+html[data-studio] #servers{border-top:1px dashed var(--st-line-soft)}
+html[data-studio] .dot{box-shadow:0 0 0 3px rgb(255 255 255/.05)}
+html[data-studio] .dot.on{background:#4ade80!important;box-shadow:0 0 12px rgb(74 222 128/.7)!important;color:#4ade80}
+html[data-studio] .sec-label{font:700 9.5px/1 var(--st-mono)!important;letter-spacing:.18em!important;color:var(--st-l)!important;margin:4px 0 10px!important}
+html[data-studio] .sec-label::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgb(var(--st-rgb)/.45),transparent)}
+
+/* Option buttons (effort, access): rounded, the chosen one filled with the gradient. */
+html[data-studio] .work-card{border-radius:10px!important;border:1px solid var(--st-line-soft)!important;background:var(--st-glass),var(--st-card2)!important;color:var(--st-soft)!important;position:relative;overflow:hidden}
+html[data-studio] .work-card:hover{border-color:rgb(var(--st-rgb)/.7)!important;color:var(--st-text)!important}
+html[data-studio] .work-card .work-name{font:700 12.5px/1.2 var(--st-sans);color:var(--st-text)}
+html[data-studio] .work-card.on{border-color:color-mix(in srgb,var(--st-l) 60%,#fff)!important;background:linear-gradient(180deg,rgb(255 255 255/.30),transparent 55%),var(--st-grad)!important;color:var(--st-ink)!important;
+  box-shadow:inset 0 1px 0 rgb(255 255 255/.5),0 10px 22px -12px rgb(var(--st-rgb)/calc(.9*var(--st-g)))!important}
+html[data-studio] .work-card.on .work-name{color:var(--st-ink)}
+html[data-studio] .work-card.on .work-sub{color:color-mix(in srgb,var(--st-ink) 70%,var(--st-a))!important}
+html[data-studio] .pc-effort-picker{width:100%;margin-bottom:8px}
+html[data-studio] .pc-effort-trigger{border-radius:10px!important;border:1px solid var(--st-line)!important;background:var(--st-glass),var(--st-card2)!important;color:var(--st-text)!important;font:650 12.5px/1.2 var(--st-sans)!important}
+html[data-studio] .pc-effort-trigger>span:last-child{border-color:var(--st-l)!important}
+html[data-studio][data-thinking=ultracode] .pc-effort-trigger{border-color:#a879e8!important}
+html[data-studio] .pc-effort-options{border-radius:0!important;border:1px solid transparent!important;border-image:var(--st-rim) 1!important;background:var(--st-panel)!important}
+html[data-studio] .pc-effort-options>button{border-radius:8px!important}
+
+/* Groups that open and close. */
+html[data-studio] details.fold{margin-bottom:12px}
+html[data-studio] #settings-card details.fold{margin:12px 0 0;border-top:1px solid var(--st-line-soft)}
+details.fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::after{content:"";width:7px;height:7px;margin-left:auto;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(45deg) translateY(-2px);transition:transform .3s}
+details.fold[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
+html[data-studio] details.fold>summary{padding:2px 2px;font:700 9.5px/1 var(--st-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--st-l)}
+html[data-studio] #settings-card details.fold>summary{padding-top:14px}
+html[data-studio] details.fold>summary:hover{color:var(--st-text)}
+html[data-studio] details.fold>summary:focus-visible{outline:2px solid rgb(var(--st-rgb)/.8);outline-offset:3px}
+html[data-studio] details.fold[open]>summary{margin-bottom:12px}
+html[data-studio] details.card.fold{padding:12px 14px!important}
+html[data-studio] details.fold .row{margin:0 0 8px}
+html[data-studio] .pc-language-picker :is(input,select){border-radius:0!important;border-color:var(--st-line)!important;background:var(--st-card2)!important;font-size:13px!important;min-height:38px!important}
+html[data-studio] .pc-language-picker :is(label,small){font-size:12px!important;color:var(--st-soft)}
+
+/* Switches: round, gradient when on. */
+html[data-studio] .tgl-well{border-radius:0!important;border:1px solid var(--st-line-soft)!important;background:rgb(0 0 0/.18)!important;padding:4px!important}
+html[data-studio] .tgl{border-radius:8px;position:relative;overflow:hidden}
+html[data-studio] .tgl-name{color:var(--st-text)}
+html[data-studio] .tgl-sub{color:var(--st-dim)}
+html[data-studio] .sw{width:38px;height:22px;border-radius:999px;border:1px solid var(--st-line);background:rgb(0 0 0/.35);box-shadow:inset 0 1px 3px rgb(0 0 0/.5)}
+html[data-studio] .sw::after{top:3px;left:3px;width:14px;height:14px;background:var(--st-soft);transition:transform .3s var(--st-ease),background .3s}
+html[data-studio] .tgl.on .sw{border-color:color-mix(in srgb,var(--st-l) 60%,#fff);background:var(--st-grad);box-shadow:0 0 14px -2px rgb(var(--st-rgb)/calc(.8*var(--st-g)))}
+html[data-studio] .tgl.on .sw::after{transform:translateX(16px);background:var(--st-ink)}
+
+/* Quick buttons: rounded glass with a line icon. */
+html[data-studio] .acts{margin:0 0 12px}
+html[data-studio] details .acts{margin:0}
+html[data-studio] button.act{border-radius:10px!important;border:1px solid var(--st-line-soft)!important;background:var(--st-glass),var(--st-card2)!important;color:var(--st-text)!important;
+  padding:10px 11px!important;font:650 12px/1.25 var(--st-sans)!important;text-align:left;position:relative;overflow:hidden}
+html[data-studio] button.act::before{display:none}
+html[data-studio] button.act .ic{width:16px;height:16px;flex:none;color:var(--st-l)}
+html[data-studio] button.act:hover{border-color:rgb(var(--st-rgb)/.75)!important;box-shadow:0 8px 20px -10px rgb(var(--st-rgb)/calc(.8*var(--st-g)))!important;transform:translateY(-1px)}
+html[data-studio] #fix-connection{border-color:rgb(var(--st-rgb)/.6)!important;background:linear-gradient(115deg,rgb(var(--st-rgb)/.22),rgb(var(--st-rgb)/.05) 60%),var(--st-card2)!important}
+html[data-studio] #discord{color:#c4b5fd!important}
+html[data-studio] #discord .ic{color:#a78bfa}
+html[data-studio] #hint-row{border-radius:0;border:1px solid var(--st-line-soft);border-left:2px solid var(--st-a);background:rgb(0 0 0/.18);color:var(--st-soft)}
+html[data-studio] #hint-row code{border-radius:4px;font-family:var(--st-mono)}
+html[data-studio] #engine-note{border-radius:0!important}
+
+/* Ripples and sparks (Feel). */
+.pc-rpl{position:absolute;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgb(var(--st-rgb,233 186 83)/.35),transparent 65%);transform:scale(0);animation:pc-rpl .6s var(--st-ease,ease) forwards}
+@keyframes pc-rpl{to{transform:scale(1);opacity:0}}
+.pc-spark{position:fixed;z-index:9;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;pointer-events:none;background:var(--st-l,#ffe0a1);box-shadow:0 0 6px var(--st-a,#e9ba53);animation:pc-spark .55s ease-out forwards}
+@keyframes pc-spark{to{transform:translate(var(--dx),var(--dy)) scale(.3);opacity:0}}
+
+/* Switches for gradients, glow and motion. */
+html[data-studio][data-gradients=off] :is(.card,.pc-effort-options){border-image:none!important;border-color:var(--st-line)!important;background:var(--st-card)!important}
+html[data-studio][data-gradients=off] .hero{border-image:none;border-bottom-color:var(--st-line)!important;background:var(--st-card)!important}
+html[data-studio][data-gradients=off] :is(.seg-thumb,.ask-btn,.work-card.on,.tgl.on .sw,.crest){background:var(--st-a)!important}
+html[data-studio][data-glow=off][data-gradients=off] :is(.card,.seg-thumb,.ask-btn,.work-card.on,.tgl.on .sw,.crest,#reasoning-level,.pc-effort-trigger,button.act){box-shadow:none!important}
+html[data-studio][data-motion=off] *,html[data-studio][data-motion=off] *::before,html[data-studio][data-motion=off] *::after{transition:none!important;animation:none!important}
+html[data-studio][data-motion=reduced] :is(.seg-thumb,.sw,.sw::after){transition-duration:.15s!important}
+html[data-studio][data-motion=reduced] .dot.on::after{animation:none}
+@media(prefers-reduced-motion:reduce){html[data-studio]:not([data-motion=full]) .seg-thumb{transition:none}}
 </style>
 </head>
 <body>
@@ -300,18 +448,19 @@ select option:checked{background:color-mix(in srgb,var(--orange,#ffbc67) 35%,#10
     <div class="head">
       <span class="crest" aria-hidden="true">P</span>
       <div class="head-txt">
-        <span class="logo" id="or-logo">PlazCode</span>
+        <span class="logo brand-word" id="or-logo" data-i18n-user-content>Plaz<em>Code</em></span>
         <span id="ver" class="ver"></span>
       </div>
       <span class="tag" id="site-tag">DeepSeek</span>
     </div>
   </div>
   <div class="wrap">
-    <div class="seg">
+    <div class="seg" id="engine-seg">
+      <span class="seg-thumb" aria-hidden="true"></span>
       <button id="engine-roblox">⬢ Roblox</button>
       <button id="engine-local">⬢ Agent</button>
     </div>
-    <button id="ask-plazcode" type="button" hidden style="margin-top:8px;width:100%">Ask PlazCode about this page</button>
+    <button id="ask-plazcode" class="ask-btn" type="button" hidden>Ask PlazCode about this page</button>
     <div id="engine-note" role="status" hidden style="margin:8px 2px 0;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,120,120,.5);background:rgba(255,100,100,.12);font-size:12px;line-height:1.45"></div>
 
     <div class="card">
@@ -324,10 +473,17 @@ select option:checked{background:color-mix(in srgb,var(--orange,#ffbc67) 35%,#10
       <div class="row" id="servers"></div>
     </div>
 
+    <div class="acts" id="quick-acts">
+      <button class="act span" data-ic="🔧" id="fix-connection">Fix connection</button>
+      <button class="act" data-ic="↻" id="reconnect">Reconnect bridge</button>
+      <button class="act" data-ic="⟳" id="restart">Restart Roblox server</button>
+      <button class="act" data-ic="⚙" id="settings">Open on-page menu</button>
+      <button class="act" data-ic="◈" id="blender">Blender MCP — open menu</button>
+      <button class="act" data-ic="🦙" id="ollama">Open Ollama chat</button>
+      <button class="act" data-ic="💬" id="discord">Join Discord</button>
+    </div>
+
     <div class="card" id="settings-card">
-      <section class="language-settings" style="margin-bottom:20px">
-        <div class="sec-label">Language</div><div id="popup-language-picker"></div>
-      </section>
       <div class="sec-label">Effort</div>
       <div class="work">
         <button type="button" class="work-card" data-work="fast" id="work-fast">
@@ -367,6 +523,8 @@ select option:checked{background:color-mix(in srgb,var(--orange,#ffbc67) 35%,#10
         <option value="max">Max</option><option value="ultracode">Ultra</option>
       </select>
       <div class="row">Applied on the next turn. Available behavior depends on the AI site.</div>
+      <details class="fold" id="fold-options" data-fold="options">
+      <summary><span class="fold-name">More options</span></summary>
       <div class="tgl-well">
         <div class="tgl" id="tgl-extra" role="switch" aria-checked="false" tabindex="0">
           <span class="tgl-info"><span class="tgl-name">Extra Thinking</span>
@@ -399,27 +557,24 @@ select option:checked{background:color-mix(in srgb,var(--orange,#ffbc67) 35%,#10
           <span class="sw"></span>
         </div>
       </div>
+      </details>
     </div>
 
+    <details class="fold card" id="fold-language" data-fold="language">
+      <summary><span class="fold-name">Language</span></summary>
+      <section class="language-settings"><div id="popup-language-picker"></div></section>
+    </details>
 
-    <div class="row">Agent pairing is automatic. Start the matching PlazCode agent to connect.</div>
-    <div class="card" id="legacy-pairings">
-      <div class="sec-label">Pairings</div>
+
+    <details class="fold card" id="legacy-pairings" data-fold="pairings">
+      <summary><span class="fold-name">Pairings</span></summary>
+      <div class="row">Agent pairing is automatic. Start the matching PlazCode agent to connect.</div>
       <div class="row">Optional PlazCode pairing targets retained for existing Figma and Meshy workflows.</div>
       <div class="acts">
         <button class="act" data-ic="F" id="figma-legacy">Figma pairing</button>
         <button class="act" data-ic="M" id="meshy-legacy">Meshy pairing</button>
       </div>
-    </div>
-    <div class="acts">
-      <button class="act span" data-ic="🦙" id="ollama">Open Ollama chat</button>
-      <button class="act" data-ic="💬" id="discord">Join Discord</button>
-      <button class="act span" data-ic="🔧" id="fix-connection">Fix connection</button>
-      <button class="act" data-ic="↻" id="reconnect">Reconnect bridge</button>
-      <button class="act" data-ic="⟳" id="restart">Restart Roblox server</button>
-      <button class="act span" data-ic="⚙" id="settings">Open on-page menu</button>
-      <button class="act span" data-ic="◈" id="blender">Blender MCP — open menu</button>
-    </div>
+    </details>
 
     <div class="row" id="hint-row">
       Double-click <code id="run-hint">PlazCode.exe</code>, open <b id="hint-engine">Roblox Studio</b>, then open any chat.

@@ -17,7 +17,57 @@
  button.stop{background:linear-gradient(135deg,#ef4444,#b91c1c)}
  button:focus-visible{outline:2px solid #fff;outline-offset:2px}
  .ended footer button{display:none}
-</style></head>
+ /* ══ STUDIO LOOK (1.24.33 bar redesign, step 4): set up by studio-page.js (palette, glow, gradients, Feel). ══ */
+ html[data-studio]{--st-a:#e9ba53;--st-l:#ffe0a1;--st-bg:#18140d;--st-rgb:233 186 83;--st-g:1;
+  --st-serif:"Iowan Old Style","Sitka Heading","Sitka Text",Constantia,Cambria,Georgia,serif;--st-mono:"Cascadia Mono","JetBrains Mono","SF Mono",ui-monospace,Consolas,Menlo,monospace;
+  --st-sans:Inter,"Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;--st-ease:cubic-bezier(.22,1,.36,1);
+  --st-text:#f3f5f9;--st-soft:#b1b7c4;--st-dim:#828a9b;--st-ink:#0b0d12;
+  --st-card:color-mix(in srgb,var(--st-bg) 62%,#07090d);--st-card2:color-mix(in srgb,var(--st-bg) 45%,#0d1016);
+  --st-line:color-mix(in srgb,#2b303b 52%,rgb(var(--st-rgb)) 48%);--st-line-soft:color-mix(in srgb,#2b303b 72%,rgb(var(--st-rgb)) 28%);
+  --st-grad:linear-gradient(135deg,color-mix(in srgb,var(--st-l) 82%,#fff) 0%,var(--st-l) 38%,var(--st-a) 100%);
+  --st-glass:linear-gradient(180deg,rgb(255 255 255/.09),rgb(255 255 255/.02) 46%,rgb(0 0 0/.10));
+  --st-rim:linear-gradient(115deg,color-mix(in srgb,var(--st-l) 85%,#fff) 0%,rgb(var(--st-rgb)/.75) 18%,rgb(var(--st-rgb)/.22) 46%,rgb(var(--st-rgb)/.30) 70%,var(--st-a) 100%);
+  --st-brackets:linear-gradient(var(--st-l),var(--st-l)) 0 0/16px 2px no-repeat,linear-gradient(var(--st-l),var(--st-l)) 0 0/2px 16px no-repeat,
+    linear-gradient(var(--st-a),var(--st-a)) 100% 100%/16px 2px no-repeat,linear-gradient(var(--st-a),var(--st-a)) 100% 100%/2px 16px no-repeat;
+  --st-sweep:linear-gradient(115deg,rgb(var(--st-rgb)/.26) 0%,rgb(var(--st-rgb)/.07) 30%,transparent 56%,rgb(var(--st-rgb)/.12) 100%);
+  color-scheme:dark}
+ html[data-studio][data-glow=off]{--st-g:0}
+ html[data-studio] body{font-family:var(--st-sans);color:var(--st-text);background:radial-gradient(120% 50% at 0% 0%,rgb(var(--st-rgb)/.14),transparent 60%),radial-gradient(90% 40% at 100% 100%,rgb(var(--st-rgb)/.09),transparent 60%),color-mix(in srgb,var(--st-bg) 70%,#06070a)}
+ html[data-studio] :is(header,footer){position:relative;border-color:transparent!important}
+ html[data-studio] header{background:var(--st-brackets),var(--st-sweep),color-mix(in srgb,var(--st-card) 96%,transparent);border-bottom:1px solid transparent;border-image:var(--st-rim) 1}
+ html[data-studio] footer{background:linear-gradient(var(--st-a),var(--st-a)) 100% 100%/16px 2px no-repeat,linear-gradient(var(--st-a),var(--st-a)) 100% 100%/2px 16px no-repeat,var(--st-sweep),color-mix(in srgb,var(--st-card) 96%,transparent);border-top:1px solid transparent;border-image:var(--st-rim) 1}
+ html[data-studio] h1{font-family:var(--st-serif)!important;letter-spacing:-.2px}
+ html[data-studio] button{position:relative;overflow:hidden;font-family:var(--st-sans);border-radius:10px;border:1px solid var(--st-line-soft);background:var(--st-glass),var(--st-card2);color:var(--st-text);transition:transform .15s var(--st-ease),border-color .2s,filter .2s,box-shadow .2s}
+ html[data-studio] button:hover:not(:disabled){border-color:rgb(var(--st-rgb)/.75);transform:translateY(-1px)}
+ html[data-studio] button:focus-visible{outline:2px solid rgb(var(--st-rgb)/.85)}
+ html[data-studio] button.main{border-color:color-mix(in srgb,var(--st-l) 60%,#fff);background:linear-gradient(180deg,rgb(255 255 255/.30),transparent 55%),var(--st-grad);color:var(--st-ink);box-shadow:inset 0 1px 0 rgb(255 255 255/.5),0 10px 22px -12px rgb(var(--st-rgb)/calc(.9*var(--st-g)))}
+ html[data-studio] button.main:hover:not(:disabled){filter:brightness(1.07);border-color:color-mix(in srgb,var(--st-l) 60%,#fff)}
+ html[data-studio] button.stop{border-color:#f87171;background:linear-gradient(180deg,rgb(255 255 255/.18),transparent 55%),linear-gradient(135deg,#f87171,#dc2626 60%,#b91c1c);color:#fff;box-shadow:0 10px 22px -12px rgb(239 68 68/calc(.9*var(--st-g)))}
+ html[data-studio][data-gradients=off] :is(header,footer){border-image:none;border-color:var(--st-line)!important;background:var(--st-card)}
+ html[data-studio][data-gradients=off] button.main{background:var(--st-a)}
+ html[data-studio][data-gradients=off][data-glow=off] button{box-shadow:none}
+ html[data-studio][data-motion=off] *,html[data-studio][data-motion=off] *::before,html[data-studio][data-motion=off] *::after{transition:none!important;animation:none!important}
+ .st-rpl{position:absolute;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgb(var(--st-rgb,233 186 83)/.38),transparent 65%);transform:scale(0);animation:st-rpl .6s cubic-bezier(.22,1,.36,1) forwards}
+ @keyframes st-rpl{to{transform:scale(1);opacity:0}}
+ /* Large live view */
+ html[data-studio] header{padding:14px 16px;gap:12px}
+ html[data-studio] header::after{content:"Live";font:700 8.5px/1 var(--st-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--st-ink);padding:5px 7px;background:var(--st-grad);border:1px solid color-mix(in srgb,var(--st-l) 60%,#fff)}
+ html[data-studio] .paused header::after{content:"Paused";background:none;color:var(--st-l);border-color:rgb(var(--st-rgb)/.5)}
+ html[data-studio] .ended header::after{content:"Ended";background:none;color:var(--st-dim);border-color:var(--st-line-soft)}
+ html[data-studio] h1{font-size:17px;font-weight:600}
+ html[data-studio] #site{font:500 10.5px/1.5 var(--st-mono);color:var(--st-dim);margin-top:2px}
+ html[data-studio] .dot{position:relative;width:10px;height:10px;background:var(--st-l);box-shadow:0 0 10px rgb(var(--st-rgb)/calc(.9*var(--st-g)))}
+ html[data-studio][data-motion=full] body:not(.paused):not(.ended) .dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid var(--st-l);animation:st-live 1.8s ease-out infinite}
+ @keyframes st-live{from{transform:scale(.7);opacity:.8}to{transform:scale(2.1);opacity:0}}
+ html[data-studio] .paused .dot{background:transparent;border:2px solid var(--st-l);box-shadow:none}
+ html[data-studio] main{padding:16px}
+ html[data-studio] canvas{border-radius:0;border:1px solid transparent;border-image:var(--st-rim) 1;box-shadow:0 24px 50px -24px #000,0 14px 40px -22px rgb(var(--st-rgb)/calc(.8*var(--st-g)));background:var(--st-card2)}
+ html[data-studio][data-gradients=off] canvas{border-image:none;border-color:var(--st-line)}
+ html[data-studio] #note{font-size:13px;color:var(--st-dim);border:1px dashed var(--st-line-soft);background:var(--st-brackets),rgb(0 0 0/.18)}
+ html[data-studio] footer{padding:12px 16px 16px;gap:10px}
+ html[data-studio] footer button{flex:1;padding:10px 16px}
+ html[data-studio] .paused #pause{border-color:color-mix(in srgb,var(--st-l) 60%,#fff);background:linear-gradient(180deg,rgb(255 255 255/.30),transparent 55%),var(--st-grad);color:var(--st-ink);box-shadow:inset 0 1px 0 rgb(255 255 255/.5),0 10px 22px -12px rgb(var(--st-rgb)/calc(.9*var(--st-g)))}
+</style><script src="studio-page.js"></script></head>
 <body><header><span class="dot" aria-hidden="true"></span><h1><span id="state">PlazCode is working</span><span id="site"></span></h1></header>
 <main><canvas id="view" width="960" height="600" aria-label="Live picture of the tab PlazCode is working in" hidden></canvas><p id="note" role="status">Waiting for the first picture…</p></main>
 <footer><button id="pause" type="button">Pause</button><button id="stop" class="stop" type="button">Stop</button></footer>

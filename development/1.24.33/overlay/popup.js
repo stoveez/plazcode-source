@@ -8,7 +8,9 @@ function applyPopupAppearance(value){
  popupAppearance=value&&POPUP_PALETTES[value.theme]?value:{theme:'default',glow:'subtle',gradients:'on'};
  const [accent,light,bg,rgb]=POPUP_PALETTES[popupAppearance.theme],root=document.documentElement;
  root.dataset.palette=popupAppearance.theme;root.dataset.glow=popupAppearance.glow||'subtle';root.dataset.gradients=popupAppearance.gradients||'on';
- const vars={'--bg':bg,'--accent':accent,'--accent-light':light,'--text':'#eef4ff','--text-dim':light,'--text-faint':'#96a0b0','--surface':`color-mix(in srgb, ${bg} 89%, ${accent})`,'--surface-2':`color-mix(in srgb, ${bg} 78%, ${accent})`,'--line':`rgb(${rgb} / .24)`,'--glow':popupAppearance.glow==='off'?'transparent':`rgb(${rgb} / ${popupAppearance.glow==='strong'?'.5':'.22'})`};
+ // Studio look (1.24.33 bar redesign): same Feel as the app and the bar (Full / on / on when an older app sends none).
+ root.dataset.studio='';root.dataset.motion=['full','reduced','off'].includes(value?.motion)?value.motion:'full';root.dataset.anim=value?.anim===false||value?.anim==='off'?'off':'on';root.dataset.ripple=value?.ripple===false||value?.ripple==='off'?'off':'on';
+ const vars={'--bg':bg,'--accent':accent,'--accent-light':light,'--text':'#eef4ff','--text-dim':light,'--text-faint':'#96a0b0','--surface':`color-mix(in srgb, ${bg} 89%, ${accent})`,'--surface-2':`color-mix(in srgb, ${bg} 78%, ${accent})`,'--line':`rgb(${rgb} / .24)`,'--rgb':rgb,'--glow':popupAppearance.glow==='off'?'transparent':`rgb(${rgb} / ${popupAppearance.glow==='strong'?'.5':'.22'})`};
  for(const [key,value]of Object.entries(vars))root.style.setProperty(key,value);
 }
 const SUPPORTED_HOSTS = [
@@ -49,6 +51,61 @@ const settings = {
 async function activeTab() { const tabs=await chrome.tabs.query({active:true,currentWindow:true});return tabs[0]; }
 async function getEngine() {try {const tab=await activeTab(); const value=await chrome.runtime.sendMessage({type:"rs-get-engine",tab_id:tab?.id});return value?.engine==="local"?"local":"roblox";}catch{return "roblox";}}
 async function setEngine(v) {try {const tab=await activeTab();const value=await chrome.runtime.sendMessage({type:"rs-set-engine",tab_id:tab?.id,engine:v});if(value?.engine)renderEngine(value.engine);const note=document.getElementById("engine-note");if(note){note.textContent=value?.error==="studio_not_connected"?(value.message||"Roblox Studio isn't connected."):"";note.hidden=!note.textContent;}}catch{}}
+let popupEngine = "roblox", popupControlV2 = false;
+function showAsk() { try { const ask = document.getElementById("ask-plazcode"); if (ask) ask.hidden = !(popupControlV2 && popupEngine === "local"); } catch {} }
+// Line icons for the popup buttons (same drawing style as the bar). The words stay in their own span so they translate.
+const POPUP_ICONS = {
+  "fix-connection": '<path d="M14.7 6.3a4 4 0 0 0 5 5L22 13.6l-2.4 2.4-2.3-2.3-7.9 7.9a2.1 2.1 0 0 1-3-3l7.9-7.9L12 8.4 14.4 6z"/>',
+  reconnect: '<path d="M9 15l6-6"/><path d="M11 6l.5-.5a4.2 4.2 0 0 1 6 6l-.5.5"/><path d="M13 18l-.5.5a4.2 4.2 0 0 1-6-6l.5-.5"/>',
+  restart: '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
+  settings: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  blender: '<circle cx="13" cy="13" r="6"/><circle cx="13" cy="13" r="2"/><path d="M8 9L3 5M7 13H2"/>',
+  ollama: '<path d="M4 6h16v10H9l-5 4z"/><path d="M8 10h8M8 13h5"/>',
+  discord: '<path d="M7 7.5a13 13 0 0 1 10 0"/><path d="M6 17c-1.5-.5-2.5-1.3-3-2 0-4 1-7 3-9 1-.4 2-.7 3-.8l.6 1.3M18 17c1.5-.5 2.5-1.3 3-2 0-4-1-7-3-9-1-.4-2-.7-3-.8l-.6 1.3M8 17.5c2.6 1 5.4 1 8 0"/><circle cx="9.5" cy="12" r="1.2"/><circle cx="14.5" cy="12" r="1.2"/>',
+  "figma-legacy": '<path d="M9 3h3v6H9a3 3 0 0 1 0-6zM12 3h3a3 3 0 0 1 0 6h-3zM9 9h3v6H9a3 3 0 0 1 0-6zM15 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6zM9 15h3v3a3 3 0 1 1-3-3z"/>',
+  "meshy-legacy": '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/>',
+  "ask-plazcode": '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.5-5A8 8 0 1 1 21 12z"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5"/><path d="M12 16.5h.01"/>',
+};
+function popupIcon(name) { return POPUP_ICONS[name] ? '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + POPUP_ICONS[name] + '</svg>' : ""; }
+function setActLabel(btn, text) {
+  if (!btn) return;
+  if (!btn.querySelector(":scope > svg.ic") && POPUP_ICONS[btn.id]) btn.insertAdjacentHTML("afterbegin", popupIcon(btn.id));
+  const old = btn.querySelector(":scope > .lbl"), label = document.createElement("span");
+  label.className = "lbl"; label.textContent = text;
+  // Replacing the span (not its text) lets the translator see the new words.
+  if (old) { if (old.textContent !== text) btn.replaceChild(label, old); } else btn.append(label);
+}
+function decoratePopup() {
+  for (const id of Object.keys(POPUP_ICONS)) {
+    const btn = document.getElementById(id);
+    if (!btn || btn.querySelector(":scope > .lbl")) continue;
+    const text = btn.textContent.trim(); btn.textContent = ""; setActLabel(btn, text);
+  }
+  // Folded groups (owner: quick buttons at the top, long groups open and close). Remember which are open.
+  let open = {}; try { open = JSON.parse(localStorage.getItem("pcPopupFolds") || "{}") || {}; } catch {}
+  for (const fold of document.querySelectorAll("details[data-fold]")) {
+    if (open[fold.dataset.fold]) fold.open = true;
+    fold.addEventListener("toggle", () => { try { open[fold.dataset.fold] = fold.open; localStorage.setItem("pcPopupFolds", JSON.stringify(open)); } catch {} });
+  }
+  // Click ripples and a few sparks, following the app's Feel (motion off: none; reduced: ripple only).
+  document.addEventListener("pointerdown", (event) => {
+    const root = document.documentElement, target = event.target.closest?.("button,.tgl,summary");
+    if (!target || root.dataset.motion === "off" || root.dataset.ripple === "off") return;
+    const box = target.getBoundingClientRect(), ring = document.createElement("span");
+    ring.className = "pc-rpl"; ring.setAttribute("aria-hidden", "true");
+    const size = Math.max(box.width, box.height) * 2;
+    ring.style.cssText = `width:${size}px;height:${size}px;left:${event.clientX - box.left - size / 2}px;top:${event.clientY - box.top - size / 2}px`;
+    target.append(ring); setTimeout(() => ring.remove(), 650);
+    if (root.dataset.motion !== "full" || root.dataset.anim === "off") return;
+    for (let i = 0; i < 6; i++) {
+      const spark = document.createElement("span"), angle = (Math.PI * 2 * i) / 6 + Math.random() * .6, far = 18 + Math.random() * 16;
+      spark.className = "pc-spark"; spark.setAttribute("aria-hidden", "true");
+      spark.style.cssText = `left:${event.clientX}px;top:${event.clientY}px;--dx:${Math.cos(angle) * far}px;--dy:${Math.sin(angle) * far}px`;
+      document.body.append(spark); setTimeout(() => spark.remove(), 600);
+    }
+  }, true);
+}
+try { decoratePopup(); } catch {}
 function renderEngine(v) {
   const isLocal = v === "local";
   const rob = document.getElementById("engine-roblox");
@@ -60,7 +117,8 @@ function renderEngine(v) {
   if (rob) rob.classList.toggle("on", !isLocal);
   if (loc) loc.classList.toggle("on",  isLocal);
   if (label) label.textContent = isLocal ? "AgentScript" : "Roblox";
-  if (restart) restart.textContent = isLocal ? "⟳ Restart AgentScript server" : "⟳ Restart Roblox server";
+  if (restart) setActLabel(restart, isLocal ? "Restart AgentScript server" : "Restart Roblox server");
+  popupEngine = isLocal ? "local" : "roblox"; showAsk();
   if (hintRow) {
     const engEl = document.getElementById("hint-engine");
     if (engEl) engEl.textContent = isLocal ? "your project folder" : "Roblox Studio";
@@ -86,7 +144,7 @@ function renderSettings() {
   const logo = document.getElementById("or-logo");
   if (logo) {
     const names = { night: "Night", "blood-moon": "Blood Moon", sakura: "Sakura", starglaze: "Starglaze", autumn: "Autumn" };
-    logo.textContent = "PlazCode";
+    if (!logo.querySelector("em")) logo.innerHTML = "Plaz<em>Code</em>";
   }
   const reasoning = document.getElementById("reasoning-level");
   if (reasoning) reasoning.value = settings.thinking;
@@ -201,7 +259,8 @@ if (runHint) {
 function render(s) {
   // AgentScript control rework (1.24.33): "Ask PlazCode" (shown while the worker reports control_v2). The click here counts as
   // the person's own action, so Chrome lets PlazCode open its side panel from the popup.
-  try { const ask = document.getElementById("ask-plazcode"); if (ask) ask.hidden = !(s && s.control_v2); } catch {}
+  // Bar redesign (owner, 2026-11-13): like the bar button, only in AgentScript. Alt+P still opens it from any mode.
+  popupControlV2 = !!(s && s.control_v2); showAsk();
   const dot = document.getElementById("dot");
   const state = document.getElementById("state");
   const tools = document.getElementById("tools");
