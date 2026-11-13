@@ -1435,5 +1435,15 @@
   "The background chat did not take the question.": "El chat en segundo plano no aceptó la pregunta.",
   "The background chat window could not be opened.": "No se pudo abrir la ventana del chat en segundo plano.",
   "No live picture of this tab in this browser.": "No hay imagen en directo de esta pestaña en este navegador.",
-  "Not now": "Ahora no"
+  "Not now": "Ahora no",
+  "General": "General",
+  "AI": "IA",
+  "Search settings": "Buscar ajustes",
+  "No settings match your search.": "Ningún ajuste coincide con tu búsqueda.",
+  "Clear search": "Borrar búsqueda",
+  "Settings sections": "Secciones de ajustes",
+  "Restart AgentScript server": "Reiniciar servidor de AgentScript",
+  "Live": "En vivo",
+  "Paused": "En pausa",
+  "Ended": "Terminado"
 }

@@ -1435,5 +1435,15 @@
   "The background chat did not take the question.": null,
   "The background chat window could not be opened.": null,
   "No live picture of this tab in this browser.": null,
-  "Not now": null
+  "Not now": null,
+  "General": null,
+  "AI": null,
+  "Search settings": null,
+  "No settings match your search.": null,
+  "Clear search": null,
+  "Settings sections": null,
+  "Restart AgentScript server": null,
+  "Live": null,
+  "Paused": null,
+  "Ended": null
 }

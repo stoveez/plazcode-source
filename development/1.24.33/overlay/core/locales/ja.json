@@ -1435,5 +1435,15 @@
   "The background chat did not take the question.": "バックグラウンドのチャットが質問を受け付けませんでした。",
   "The background chat window could not be opened.": "バックグラウンドのチャットウィンドウを開けませんでした。",
   "No live picture of this tab in this browser.": "このブラウザーではこのタブのライブ画像を表示できません。",
-  "Not now": "今はしない"
+  "Not now": "今はしない",
+  "General": "一般",
+  "AI": "AI",
+  "Search settings": "設定を検索",
+  "No settings match your search.": "検索に一致する設定はありません。",
+  "Clear search": "検索をクリア",
+  "Settings sections": "設定のセクション",
+  "Restart AgentScript server": "AgentScript サーバーを再起動",
+  "Live": "ライブ",
+  "Paused": "一時停止中",
+  "Ended": "終了"
 }

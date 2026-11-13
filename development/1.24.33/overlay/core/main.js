@@ -12339,6 +12339,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
     card.el.querySelector("b").textContent = msg.paused ? ct("Paused, you're in control") : (title || host || ct("PlazCode is working"));
     card.el.querySelector("small").textContent = host ? host + " · " + ct("PlazCode is working here") : ct("PlazCode is working here");
     card.el.classList.toggle("paused", !!msg.paused);
+    card.el.dataset.tag = ct(msg.paused ? "Paused" : "Live"); // the Live / Paused tag on the picture (bar redesign)
     card.el.setAttribute("aria-label", ct("Live view of {name}. Open it beside the chat.", { name: title || host || ct("the tab PlazCode is working in") }));
     const noteEl = card.el.querySelector(".rs-live-note");
     if (!msg.data) { noteEl.textContent = msg.note ? ct(msg.note) : ""; noteEl.hidden = !msg.note; card.canvas.hidden = !!msg.note; return; }

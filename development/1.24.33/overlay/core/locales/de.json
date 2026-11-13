@@ -1435,5 +1435,15 @@
   "The background chat did not take the question.": "Der Hintergrund-Chat hat die Frage nicht angenommen.",
   "The background chat window could not be opened.": "Das Fenster des Hintergrund-Chats konnte nicht geöffnet werden.",
   "No live picture of this tab in this browser.": "In diesem Browser gibt es kein Live-Bild dieses Tabs.",
-  "Not now": "Nicht jetzt"
+  "Not now": "Nicht jetzt",
+  "General": "Allgemein",
+  "AI": "KI",
+  "Search settings": "Einstellungen durchsuchen",
+  "No settings match your search.": "Keine Einstellung passt zu Ihrer Suche.",
+  "Clear search": "Suche löschen",
+  "Settings sections": "Bereiche der Einstellungen",
+  "Restart AgentScript server": "AgentScript-Server neu starten",
+  "Live": "Live",
+  "Paused": "Pausiert",
+  "Ended": "Beendet"
 }

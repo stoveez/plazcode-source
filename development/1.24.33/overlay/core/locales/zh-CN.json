@@ -1435,5 +1435,15 @@
   "The background chat did not take the question.": "后台聊天没有接收这个问题。",
   "The background chat window could not be opened.": "无法打开后台聊天窗口。",
   "No live picture of this tab in this browser.": "此浏览器无法显示此标签页的实时画面。",
-  "Not now": "以后再说"
+  "Not now": "以后再说",
+  "General": "常规",
+  "AI": "AI",
+  "Search settings": "搜索设置",
+  "No settings match your search.": "没有符合搜索的设置。",
+  "Clear search": "清除搜索",
+  "Settings sections": "设置分区",
+  "Restart AgentScript server": "重启 AgentScript 服务器",
+  "Live": "实时",
+  "Paused": "已暂停",
+  "Ended": "已结束"
 }

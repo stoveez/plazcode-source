@@ -6476,8 +6476,8 @@ html[data-rs-studio] #rs-root .rs-live-card{border-radius:0!important;border:1px
   background:var(--st-panel)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.08),0 28px 60px -28px #000,0 16px 40px -24px rgb(var(--st-rgb)/calc(.8*var(--st-g)))!important;transition:transform .2s var(--st-ease),box-shadow .2s!important}
 html[data-rs-studio] #rs-root .rs-live-card:hover{transform:translateY(-2px)}
 html[data-rs-studio] #rs-root .rs-live-card canvas{margin:8px 8px 0;width:calc(100% - 16px)!important;border:1px solid var(--st-line-soft);background:var(--st-card2)!important}
-html[data-rs-studio] #rs-root .rs-live-card::before{content:"Live";position:absolute;top:16px;left:16px;z-index:1;padding:4px 6px;font:700 8.5px/1 var(--st-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--st-ink);background:var(--st-grad);border:1px solid color-mix(in srgb,var(--st-l) 60%,#fff);pointer-events:none}
-html[data-rs-studio] #rs-root .rs-live-card.paused::before{content:"Paused";color:var(--st-l);background:color-mix(in srgb,var(--st-card) 85%,transparent);border-color:rgb(var(--st-rgb)/.55)}
+html[data-rs-studio] #rs-root .rs-live-card::before{content:attr(data-tag);position:absolute;top:16px;left:16px;z-index:1;padding:4px 6px;font:700 8.5px/1 var(--st-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--st-ink);background:var(--st-grad);border:1px solid color-mix(in srgb,var(--st-l) 60%,#fff);pointer-events:none}
+html[data-rs-studio] #rs-root .rs-live-card.paused::before{color:var(--st-l);background:color-mix(in srgb,var(--st-card) 85%,transparent);border-color:rgb(var(--st-rgb)/.55)}
 html[data-rs-studio] #rs-root .rs-live-card .rs-live-row{padding:9px 12px 11px!important}
 html[data-rs-studio] #rs-root .rs-live-card .rs-live-txt b{font:600 14px/1.25 var(--st-serif)!important;color:var(--st-text)!important}
 html[data-rs-studio] #rs-root .rs-live-card .rs-live-txt small{font:500 10px/1.5 var(--st-mono)!important;color:var(--st-dim)!important}

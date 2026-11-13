@@ -51,9 +51,9 @@
  @keyframes st-rpl{to{transform:scale(1);opacity:0}}
  /* Large live view */
  html[data-studio] header{padding:14px 16px;gap:12px}
- html[data-studio] header::after{content:"Live";font:700 8.5px/1 var(--st-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--st-ink);padding:5px 7px;background:var(--st-grad);border:1px solid color-mix(in srgb,var(--st-l) 60%,#fff)}
- html[data-studio] .paused header::after{content:"Paused";background:none;color:var(--st-l);border-color:rgb(var(--st-rgb)/.5)}
- html[data-studio] .ended header::after{content:"Ended";background:none;color:var(--st-dim);border-color:var(--st-line-soft)}
+ html[data-studio] header::after{content:attr(data-tag);font:700 8.5px/1 var(--st-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--st-ink);padding:5px 7px;background:var(--st-grad);border:1px solid color-mix(in srgb,var(--st-l) 60%,#fff)}
+ html[data-studio] .paused header::after{background:none;color:var(--st-l);border-color:rgb(var(--st-rgb)/.5)}
+ html[data-studio] .ended header::after{background:none;color:var(--st-dim);border-color:var(--st-line-soft)}
  html[data-studio] h1{font-size:17px;font-weight:600}
  html[data-studio] #site{font:500 10.5px/1.5 var(--st-mono);color:var(--st-dim);margin-top:2px}
  html[data-studio] .dot{position:relative;width:10px;height:10px;background:var(--st-l);box-shadow:0 0 10px rgb(var(--st-rgb)/calc(.9*var(--st-g)))}

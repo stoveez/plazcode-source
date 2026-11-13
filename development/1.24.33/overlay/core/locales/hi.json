@@ -1435,5 +1435,15 @@
   "The background chat did not take the question.": "बैकग्राउंड चैट ने प्रश्न नहीं लिया।",
   "The background chat window could not be opened.": "बैकग्राउंड चैट विंडो नहीं खुल सकी।",
   "No live picture of this tab in this browser.": "इस ब्राउज़र में इस टैब की लाइव तस्वीर नहीं है।",
-  "Not now": "अभी नहीं"
+  "Not now": "अभी नहीं",
+  "General": "सामान्य",
+  "AI": "एआई",
+  "Search settings": "सेटिंग्स खोजें",
+  "No settings match your search.": "आपकी खोज से कोई सेटिंग मेल नहीं खाती।",
+  "Clear search": "खोज साफ़ करें",
+  "Settings sections": "सेटिंग्स के भाग",
+  "Restart AgentScript server": "AgentScript सर्वर फिर शुरू करें",
+  "Live": "लाइव",
+  "Paused": "रुका हुआ",
+  "Ended": "समाप्त"
 }

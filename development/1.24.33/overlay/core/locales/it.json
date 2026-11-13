@@ -1435,5 +1435,15 @@
   "The background chat did not take the question.": "La chat in background non ha accettato la domanda.",
   "The background chat window could not be opened.": "Impossibile aprire la finestra della chat in background.",
   "No live picture of this tab in this browser.": "In questo browser non c’è un’immagine dal vivo di questa scheda.",
-  "Not now": "Non ora"
+  "Not now": "Non ora",
+  "General": "Generale",
+  "AI": "IA",
+  "Search settings": "Cerca nelle impostazioni",
+  "No settings match your search.": "Nessuna impostazione corrisponde alla ricerca.",
+  "Clear search": "Cancella ricerca",
+  "Settings sections": "Sezioni delle impostazioni",
+  "Restart AgentScript server": "Riavvia server AgentScript",
+  "Live": "In diretta",
+  "Paused": "In pausa",
+  "Ended": "Terminato"
 }

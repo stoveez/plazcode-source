@@ -1435,5 +1435,15 @@
   "The background chat did not take the question.": "لم تستقبل المحادثة الخلفية السؤال.",
   "The background chat window could not be opened.": "تعذّر فتح نافذة المحادثة الخلفية.",
   "No live picture of this tab in this browser.": "لا توجد صورة مباشرة لعلامة التبويب هذه في هذا المتصفح.",
-  "Not now": "ليس الآن"
+  "Not now": "ليس الآن",
+  "General": "عام",
+  "AI": "الذكاء الاصطناعي",
+  "Search settings": "ابحث في الإعدادات",
+  "No settings match your search.": "لا توجد إعدادات تطابق بحثك.",
+  "Clear search": "امسح البحث",
+  "Settings sections": "أقسام الإعدادات",
+  "Restart AgentScript server": "إعادة تشغيل خادم AgentScript",
+  "Live": "مباشر",
+  "Paused": "متوقف مؤقتًا",
+  "Ended": "انتهى"
 }

@@ -1435,5 +1435,15 @@
   "The background chat did not take the question.": "Фоновый чат не принял вопрос.",
   "The background chat window could not be opened.": "Не удалось открыть окно фонового чата.",
   "No live picture of this tab in this browser.": "В этом браузере нет живого изображения этой вкладки.",
-  "Not now": "Не сейчас"
+  "Not now": "Не сейчас",
+  "General": "Общие",
+  "AI": "ИИ",
+  "Search settings": "Поиск настроек",
+  "No settings match your search.": "Нет настроек, подходящих под запрос.",
+  "Clear search": "Очистить поиск",
+  "Settings sections": "Разделы настроек",
+  "Restart AgentScript server": "Перезапустить сервер AgentScript",
+  "Live": "В эфире",
+  "Paused": "Пауза",
+  "Ended": "Завершено"
 }

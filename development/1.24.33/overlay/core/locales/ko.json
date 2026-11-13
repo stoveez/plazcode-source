@@ -1435,5 +1435,15 @@
   "The background chat did not take the question.": "백그라운드 채팅이 질문을 받지 않았습니다.",
   "The background chat window could not be opened.": "백그라운드 채팅 창을 열 수 없습니다.",
   "No live picture of this tab in this browser.": "이 브라우저에서는 이 탭의 실시간 화면을 볼 수 없습니다.",
-  "Not now": "나중에"
+  "Not now": "나중에",
+  "General": "일반",
+  "AI": "AI",
+  "Search settings": "설정 검색",
+  "No settings match your search.": "검색과 일치하는 설정이 없습니다.",
+  "Clear search": "검색 지우기",
+  "Settings sections": "설정 섹션",
+  "Restart AgentScript server": "AgentScript 서버 다시 시작",
+  "Live": "실시간",
+  "Paused": "일시 중지됨",
+  "Ended": "종료됨"
 }

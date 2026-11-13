@@ -1435,5 +1435,15 @@
   "The background chat did not take the question.": "背景聊天沒有接收這個問題。",
   "The background chat window could not be opened.": "無法開啟背景聊天視窗。",
   "No live picture of this tab in this browser.": "此瀏覽器無法顯示此分頁的即時畫面。",
-  "Not now": "稍後再說"
+  "Not now": "稍後再說",
+  "General": "一般",
+  "AI": "AI",
+  "Search settings": "搜尋設定",
+  "No settings match your search.": "沒有符合搜尋的設定。",
+  "Clear search": "清除搜尋",
+  "Settings sections": "設定區段",
+  "Restart AgentScript server": "重新啟動 AgentScript 伺服器",
+  "Live": "即時",
+  "Paused": "已暫停",
+  "Ended": "已結束"
 }

@@ -1435,5 +1435,15 @@
   "The background chat did not take the question.": "Arka plan sohbeti soruyu almadı.",
   "The background chat window could not be opened.": "Arka plan sohbeti penceresi açılamadı.",
   "No live picture of this tab in this browser.": "Bu tarayıcıda bu sekmenin canlı görüntüsü yok.",
-  "Not now": "Şimdi değil"
+  "Not now": "Şimdi değil",
+  "General": "Genel",
+  "AI": "Yapay zekâ",
+  "Search settings": "Ayarlarda ara",
+  "No settings match your search.": "Aramanızla eşleşen ayar yok.",
+  "Clear search": "Aramayı temizle",
+  "Settings sections": "Ayar bölümleri",
+  "Restart AgentScript server": "AgentScript sunucusunu yeniden başlat",
+  "Live": "Canlı",
+  "Paused": "Duraklatıldı",
+  "Ended": "Bitti"
 }
