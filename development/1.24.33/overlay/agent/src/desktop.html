@@ -851,15 +851,23 @@ html[data-desktop-glow=off] .pc-signin :is(.pc-profile-card,.pc-profile-avatar,.
    Appearance > Feel and quiet under reduced motion. Colours come from the palette (--orange, --orange2,
    --theme-rgb, --canvas, --surface, --raised, --stroke, --ink-soft, --text). */
 html[data-pz-studio]{--pz-serif:"Iowan Old Style","Sitka Heading","Sitka Text",Constantia,Cambria,Georgia,serif;--pz-mono:"Cascadia Mono","JetBrains Mono","SF Mono",ui-monospace,Consolas,Menlo,monospace;--pz-rgb:var(--theme-rgb,233 186 83);--pz-ease:cubic-bezier(.22,1,.36,1);--pz-side:288px;--pz-card:color-mix(in srgb,var(--surface,#12151c) 86%,transparent);--pz-line:color-mix(in srgb,var(--stroke,#2b303b) 80%,rgb(var(--pz-rgb)) 20%)}
-html[data-pz-studio] .app{grid-template-columns:var(--pz-side) minmax(0,1fr)!important;position:relative;isolation:isolate}
-/* Theme atmosphere: three soft light pools in the palette colour, drifting slowly when animation is on. */
-html[data-pz-studio] .app::after{content:"";position:absolute;inset:-12%;z-index:-1;pointer-events:none;background:radial-gradient(38% 34% at 18% 22%,rgb(var(--pz-rgb)/.16),transparent 70%),radial-gradient(34% 30% at 82% 12%,rgb(var(--pz-rgb)/.10),transparent 72%),radial-gradient(40% 36% at 64% 84%,rgb(var(--pz-rgb)/.09),transparent 70%);opacity:.95}
-html[data-pz-studio][data-pz-anim]:not([data-pz-motion=off]) .app::after{animation:pz-atmos 26s ease-in-out infinite alternate}
-html[data-pz-studio][data-pz-anim][data-pz-motion=reduced] .app::after{animation-duration:60s}
-html[data-pz-studio][data-desktop-gradients=off] .app::after,html[data-pz-studio][data-pz-bg=solid] .app::after,html[data-pz-studio][data-look-bg] .app::after{display:none}
+html[data-pz-studio] .app{grid-template-columns:var(--pz-side) minmax(0,1fr)!important;position:relative;isolation:isolate;overflow:hidden;overflow:clip}
+/* overflow:clip keeps the oversized drifting light layers from making the window scrollable (a focus or
+   scrollIntoView could otherwise shift the whole app up and leave a gap at the bottom). */
+/* Theme atmosphere: soft light pools in the palette colours. Animated, two layers drift in opposite
+   directions far enough to see (owner, 2026-11-13: "the background is never animated"); Gradient keeps them
+   still; Solid, a wallpaper or Gradients off hide them. Only transform animates, so it stays on the GPU. */
+html[data-pz-studio] .app::after,html[data-pz-studio] .app::before{content:"";position:absolute;z-index:-1;pointer-events:none}
+html[data-pz-studio] .app::after{inset:-12%;background:radial-gradient(38% 34% at 18% 22%,rgb(var(--pz-rgb)/.30),transparent 70%),radial-gradient(34% 30% at 82% 12%,rgb(var(--pz-rgb)/.20),transparent 72%),radial-gradient(40% 36% at 64% 84%,rgb(var(--pz-rgb)/.18),transparent 70%);opacity:.95}
+html[data-pz-studio] .app::before{inset:-22%;display:none;background:radial-gradient(26% 24% at 70% 38%,color-mix(in srgb,var(--orange2,#ffe0a1) 22%,transparent),transparent 70%),radial-gradient(30% 26% at 28% 72%,rgb(var(--pz-rgb)/.22),transparent 70%),radial-gradient(22% 20% at 52% 52%,rgb(var(--pz-rgb)/.12),transparent 70%)}
+html[data-pz-studio][data-pz-anim]:not([data-pz-bg]):not([data-pz-motion=off]) .app::after,html[data-pz-studio][data-pz-bg=animated]:not([data-pz-motion=off]) .app::after{animation:pz-atmos 15s ease-in-out infinite alternate;will-change:transform}
+html[data-pz-studio][data-pz-anim]:not([data-pz-bg]):not([data-pz-motion=off]) .app::before,html[data-pz-studio][data-pz-bg=animated]:not([data-pz-motion=off]) .app::before{display:block;animation:pz-atmos2 21s ease-in-out infinite alternate;will-change:transform}
+html[data-pz-studio][data-pz-motion=reduced] .app::after{animation-duration:48s!important}
+html[data-pz-studio][data-pz-motion=reduced] .app::before{animation-duration:64s!important}
+html[data-pz-studio][data-desktop-gradients=off] .app::after,html[data-pz-studio][data-desktop-gradients=off] .app::before,html[data-pz-studio][data-pz-bg=solid] .app::after,html[data-pz-studio][data-pz-bg=solid] .app::before,html[data-pz-studio][data-look-bg] .app::after,html[data-pz-studio][data-look-bg] .app::before{display:none!important}
 html[data-pz-studio][data-pz-bg=gradient] .app::after{animation:none!important}
-html[data-pz-studio][data-pz-bg=animated]:not([data-pz-motion=off]) .app::after{animation:pz-atmos 26s ease-in-out infinite alternate}
-@keyframes pz-atmos{0%{transform:translate3d(0,0,0) scale(1) rotate(0deg)}50%{transform:translate3d(3%,-2%,0) scale(1.06) rotate(4deg)}100%{transform:translate3d(-3%,2%,0) scale(1.03) rotate(-3deg)}}
+@keyframes pz-atmos{0%{transform:translate3d(0,0,0) scale(1) rotate(0deg)}35%{transform:translate3d(8%,-6%,0) scale(1.14) rotate(8deg)}70%{transform:translate3d(-7%,4%,0) scale(1.05) rotate(-7deg)}100%{transform:translate3d(5%,7%,0) scale(1.1) rotate(5deg)}}
+@keyframes pz-atmos2{0%{transform:translate3d(0,0,0) scale(1.06) rotate(0deg)}50%{transform:translate3d(-10%,8%,0) scale(1.2) rotate(-11deg)}100%{transform:translate3d(9%,-6%,0) scale(1) rotate(6deg)}}
 
 /* Sidebar */
 html[data-pz-studio] .sidebar{padding:22px 18px 16px!important;gap:0;background:linear-gradient(180deg,color-mix(in srgb,var(--canvas,#0b0d12) 92%,rgb(var(--pz-rgb))) ,color-mix(in srgb,var(--canvas,#0b0d12) 97%,transparent))!important;border-right:1px solid var(--pz-line)!important}
@@ -1047,6 +1055,8 @@ html[data-pz-studio]:not([data-desktop-gradients=off]) .pz-area.active b{backgro
 html[data-pz-studio]:not([data-desktop-gradients=off]) .pz-area svg{box-sizing:content-box;padding:6px;margin:-6px;border-radius:10px;background:linear-gradient(145deg,rgb(var(--pz-rgb)/.22),rgb(var(--pz-rgb)/.04));box-shadow:inset 0 1px 0 rgb(255 255 255/.1)}
 html[data-pz-studio]:not([data-desktop-gradients=off]) .pz-area.active svg{background:var(--pz-grad);color:#0b0d12;box-shadow:inset 0 1px 0 rgb(255 255 255/.5),0 6px 16px -6px rgb(var(--pz-rgb)/calc(.9*var(--pz-g)))}
 html[data-pz-studio]:not([data-desktop-gradients=off]) .sidebar{background:radial-gradient(90% 40% at 0% 0%,rgb(var(--pz-rgb)/.16),transparent 70%),linear-gradient(180deg,color-mix(in srgb,var(--canvas,#0b0d12) 90%,rgb(var(--pz-rgb))),color-mix(in srgb,var(--canvas,#0b0d12) 97%,transparent))!important}
+/* With the animated theme on, the sidebar is a little see-through so the drifting light passes behind it. */
+html[data-pz-studio][data-pz-anim]:not([data-pz-bg]):not([data-pz-motion=off]):not([data-desktop-gradients=off]):not([data-look-bg]) .sidebar,html[data-pz-studio][data-pz-bg=animated]:not([data-pz-motion=off]):not([data-desktop-gradients=off]):not([data-look-bg]) .sidebar{background:radial-gradient(90% 40% at 0% 0%,rgb(var(--pz-rgb)/.16),transparent 70%),linear-gradient(180deg,color-mix(in srgb,var(--canvas,#0b0d12) 80%,transparent),color-mix(in srgb,var(--canvas,#0b0d12) 74%,transparent))!important}
 html[data-pz-studio]:not([data-desktop-gradients=off]) .pz-brand-logo{background:linear-gradient(180deg,rgb(255 255 255/.25),transparent 55%),linear-gradient(145deg,rgb(var(--pz-rgb)/.55),rgb(var(--pz-rgb)/.12));box-shadow:inset 0 1px 0 rgb(255 255 255/.3),0 8px 24px -6px rgb(var(--pz-rgb)/calc(.6*var(--pz-g)))}
 
 /* Numbers, values and small labels pick up the theme colour. */
@@ -1146,9 +1156,31 @@ html[data-pz-studio] .pz-areas{position:relative}
 html[data-pz-studio] .pz-glide{position:absolute;left:4px;right:4px;top:0;height:0;border:1px solid rgb(var(--pz-rgb)/.48);border-radius:14px;background:linear-gradient(180deg,rgb(255 255 255/.09),transparent 50%),linear-gradient(120deg,rgb(var(--pz-rgb)/.40),rgb(var(--pz-rgb)/.09) 78%);box-shadow:inset 0 1px 0 rgb(255 255 255/.2),0 12px 30px -12px rgb(var(--pz-rgb)/calc(.75*var(--pz-g,1)));pointer-events:none;opacity:0;will-change:transform}
 html[data-pz-studio] .pz-glide::before{content:"";position:absolute;left:-1px;top:22%;bottom:22%;width:3px;border-radius:3px;background:linear-gradient(var(--orange2,#ffc052),var(--orange,#ff9226));box-shadow:0 0 12px rgb(var(--pz-rgb)/.8)}
 html[data-pz-studio] .pz-glide.pz-on{opacity:1}
-html[data-pz-studio] .pz-glide.pz-live{transition:transform .5s var(--pz-ease),height .5s var(--pz-ease),opacity .3s}
+html[data-pz-studio] .pz-glide.pz-live{transition:transform .42s var(--pz-ease),height .42s var(--pz-ease),opacity .3s}
 html[data-pz-studio] .pz-areas.pz-glided .pz-area.active{background:none!important;border-color:transparent!important;box-shadow:none!important}
 html[data-pz-studio] .pz-areas.pz-glided .pz-area.active::before{content:none}
+/* Page tabs: one pill glides to the chosen tab (the tab's own highlight is handed to the pill). */
+html[data-pz-studio] .pz-tabs .nav.pz-tabglided{position:relative}
+html[data-pz-studio] .pz-tabglide{position:absolute;left:0;top:0;width:0;height:0;z-index:0;pointer-events:none;opacity:0;border:1px solid rgb(var(--pz-rgb)/.55);border-radius:10px;background:linear-gradient(180deg,rgb(255 255 255/.10),transparent 55%),linear-gradient(135deg,rgb(var(--pz-rgb)/.34),rgb(var(--pz-rgb)/.08));box-shadow:inset 0 1px 0 rgb(255 255 255/.16),0 8px 22px -12px rgb(var(--pz-rgb)/.8)}
+html[data-pz-studio] .pz-tabglide::after{content:"";position:absolute;left:14px;right:14px;bottom:-1px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--orange,#ff9226),var(--orange2,#ffc052));box-shadow:0 0 10px rgb(var(--pz-rgb)/.7)}
+html[data-pz-studio][data-desktop-gradients=off] .pz-tabglide{background:rgb(var(--pz-rgb)/.10);border-color:rgb(var(--pz-rgb)/.28);box-shadow:none}
+html[data-pz-studio] .pz-tabglide.pz-on{opacity:1}
+html[data-pz-studio] .pz-tabglide.pz-live{transition:transform .42s var(--pz-ease),width .42s var(--pz-ease),height .42s var(--pz-ease),opacity .3s}
+html[data-pz-studio] .pz-tabs .nav.pz-tabglided .navbtn{z-index:1}
+html[data-pz-studio] .pz-tabs .nav.pz-tabglided .navbtn.active{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+html[data-pz-studio] .pz-tabs .nav.pz-tabglided .navbtn.active::after{transform:scaleX(0)}
+/* Spark burst (sidebar sections and theme picks). */
+.pz-sparks{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;view-transition-name:pz-sparks}
+.pz-sparks>span{position:absolute;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);will-change:transform,opacity}
+.pz-spark{background:#fff;box-shadow:0 0 6px 1px var(--orange2,#ffe0a1),0 0 14px 2px rgb(var(--theme-rgb,233 186 83)/.75)}
+.pz-spark-ring{border:1.5px solid rgb(var(--theme-rgb,233 186 83)/.8);box-shadow:0 0 12px rgb(var(--theme-rgb,233 186 83)/.45)}
+.pz-spark-flash{background:radial-gradient(circle,#fff 0,rgb(var(--theme-rgb,233 186 83)/.85) 30%,transparent 70%)}
+/* Theme change: the old colours fade into the new ones; the sparks stay live above the fade. */
+html.pz-theme-swap::view-transition-old(root),html.pz-theme-swap::view-transition-new(root){animation-duration:.45s;animation-timing-function:cubic-bezier(.4,0,.2,1)}
+html.pz-theme-swap::view-transition-group(pz-sparks){animation:none;z-index:1}
+html.pz-theme-swap::view-transition-old(pz-sparks){display:none}
+html.pz-theme-swap::view-transition-new(pz-sparks){animation:none}
+html[data-pz-motion=off] .pz-sparks{display:none}
 html[data-pz-studio] .pz-area svg{transition:opacity .2s,transform .3s var(--pz-ease),color .3s,background .35s var(--pz-ease),box-shadow .35s var(--pz-ease)}
 
 /* Window buttons: the three match, evenly spaced. */
@@ -1250,7 +1282,7 @@ html[data-pz-studio][data-pz-motion=reduced] .page.active{animation-duration:.2s
 html[data-pz-studio][data-pz-motion=reduced] .page.pz-entering *{animation:none!important}
 html[data-pz-studio][data-pz-motion=reduced] :is(.pz-title.pz-swap){animation:none}
 html[data-pz-motion=off] *,html[data-pz-motion=off] *::before,html[data-pz-motion=off] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
-@media(prefers-reduced-motion:reduce){html[data-pz-studio] .page.pz-entering *,html[data-pz-studio] .page.pz-leaving{animation:none!important}html[data-pz-studio] .app::after,html[data-pz-studio] .page.active,html[data-pz-studio] .pz-title.pz-swap,html[data-pz-studio] .pz-preview,.pz-ripple{animation:none!important}html[data-pz-studio] :is(.pz-area,.pz-tabs .navbtn::after,.nx-theme,.page .nx-card,.page .stat){transition:none!important}}
+@media(prefers-reduced-motion:reduce){html[data-pz-studio] .page.pz-entering *,html[data-pz-studio] .page.pz-leaving{animation:none!important}html[data-pz-studio] .app::after,html[data-pz-studio] .app::before,html[data-pz-studio] .page.active,html[data-pz-studio] .pz-title.pz-swap,html[data-pz-studio] .pz-preview,.pz-ripple{animation:none!important}html[data-pz-studio] :is(.pz-area,.pz-tabs .navbtn::after,.nx-theme,.page .nx-card,.page .stat){transition:none!important}}
 @media(max-width:980px){html[data-pz-studio]{--pz-side:236px}html[data-pz-studio] .titlebar{padding-left:28px!important}html[data-pz-studio] .pz-title{font-size:30px}html[data-pz-studio] .content{padding:24px 26px 44px!important}html[data-pz-studio] .pz-tabs{padding:0 20px 0 28px}html[data-pz-studio] .pz-search{flex-basis:150px}html[data-pz-studio] .pz-maker{grid-template-columns:1fr}}
 
 /* Apps & servers (connections rework): roomy tiles, a setup window with a live checklist, a quiet More tools list. */
@@ -2634,10 +2666,10 @@ __PLAZCODE_VERSION_UI__
     Root.toggleAttribute('data-look-grid', !!L.grid);
     Root.toggleAttribute('data-look-bg', !!Nxwallurl);
     Root.setAttribute('data-look-bc', L.bc === 'neutral' ? 'neutral' : 'theme');
-    // Interface motion is the app's own choice. Until the person picks one, the system's reduced-motion setting
-    // starts it at Off; once they pick, their choice wins either way.
+    // Interface motion is the app's own choice and starts at Full, even when the computer's "animation effects"
+    // setting is off (owner, 2026-11-13: that setting silently froze the animated theme, the sidebar glide and
+    // the page transitions). Reduced and Off stay one click away under Appearance > Feel.
     var Motion = L.motion === 'reduced' || L.motion === 'off' ? L.motion : 'full';
-    if (!L.motionSet && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) Motion = 'off';
     Root.setAttribute('data-pz-motion', Motion); try { Pzmotionrules(); } catch (Error) {}
     Root.toggleAttribute('data-pz-anim', L.anim !== false);
     Root.toggleAttribute('data-pz-ripple', L.ripple !== false);
@@ -2783,10 +2815,7 @@ __PLAZCODE_VERSION_UI__
     var AddDesc = document.createElement('span'); AddDesc.className = 'nx-theme-desc'; AddDesc.textContent = Pzt('Pick your colours and background.');
     var AddTick = document.createElement('span'); AddTick.className = 'nx-theme-tick'; AddTick.setAttribute('aria-hidden', 'true'); AddTick.textContent = '✓';
     Add.append(Plus, AddName, AddDesc, AddTick); Host.appendChild(Add);
-    Host.addEventListener('click', function (Event) {
-      var Hit = Event.target && Event.target.closest ? Event.target.closest('[data-desktop-palette]') : null;
-      if (Hit) Nxclearcustom();
-    }, true);
+    // Picking a ready-made theme clears a custom colour inside the theme fade (see the [data-desktop-palette] clicks).
     var Panel = Byid('nxCustomPanel'), Color = Byid('nxCustomColor'), Hex = Byid('nxCustomHex');
     Add.onclick = function () { if (Panel) { Panel.classList.toggle('nx-off'); var Current = Nxcustomactive(); if (Color && Current) Color.value = Current; if (Hex) Hex.value = (Color && Color.value) || '#e9ba53'; } };
     if (Color) Color.oninput = function () { if (Hex) Hex.value = Color.value; Nxpreviewcustom(Color.value); };
@@ -2983,7 +3012,7 @@ __PLAZCODE_VERSION_UI__
     Pzpill();
     var Status = Byid('sideStatus'), Dot = Byid('sideDot');
     if (window.MutationObserver) { if (Status) new MutationObserver(Pzpill).observe(Status, {childList:true, characterData:true, subtree:true}); if (Dot) new MutationObserver(Pzpill).observe(Dot, {attributes:true, attributeFilter:['class']}); }
-    Pzfeel(); Pzripples(); try { Pzflow(); } catch (Error) {} try { Pzskills(); } catch (Error) {}
+    Pzfeel(); Pzripples(); try { Pzsparkclicks(); } catch (Error) {} try { Pztabglide(); } catch (Error) {} try { Pzflow(); } catch (Error) {} try { Pzskills(); } catch (Error) {}
     Pzsync(Nxcurrentarea);
   }
   function Pzpill() {
@@ -3086,6 +3115,68 @@ __PLAZCODE_VERSION_UI__
       if (Now - Rest < 0.5) return;
       try { Node.animate({ '--pz-x': [Now + '%', Rest + '%'] }, { duration: 450 + (Now - Rest) * 18, easing: 'cubic-bezier(.22,1,.36,1)' }); } catch (Error) {}
     }, true);
+  }
+  /* A spark burst where a section or theme is picked: a ring, a flash and a handful of glowing specks that
+     fly out and fade (owner, 2026-11-13, from the FeatherScript reference). Full motion and Click ripples only.
+     One shared layer, so a theme change can show it live above the colour fade. */
+  function Pzsparkson() { var Root = document.documentElement; return Root.hasAttribute('data-pz-studio') && Root.hasAttribute('data-pz-ripple') && Root.getAttribute('data-pz-motion') === 'full'; }
+  function Pzsparklayer() {
+    var Layer = Byid('pzSparks');
+    if (!Layer) { Layer = Pzel('div', 'pz-sparks'); Layer.id = 'pzSparks'; Layer.setAttribute('aria-hidden', 'true'); document.body.appendChild(Layer); }
+    return Layer;
+  }
+  function Pzpoint(Event, Node) {
+    if (Event && Event.detail !== 0 && (Event.clientX || Event.clientY)) return [Event.clientX, Event.clientY];
+    var Box = Node.getBoundingClientRect(); return [Box.left + Box.width / 2, Box.top + Box.height / 2];
+  }
+  function Pzburst(X, Y) {
+    if (!Pzsparkson() || !document.body.animate) return;
+    var Layer = Pzsparklayer(), Parts = [], Ease = 'cubic-bezier(.16,1,.3,1)';
+    function Add(Cls, Size) { var Node = Pzel('span', Cls); Node.style.left = X + 'px'; Node.style.top = Y + 'px'; Node.style.width = Node.style.height = Size + 'px'; Layer.appendChild(Node); Parts.push(Node); return Node; }
+    Add('pz-spark-ring', 12).animate([{ transform: 'translate(-50%,-50%) scale(1)', opacity: .85 }, { transform: 'translate(-50%,-50%) scale(7)', opacity: 0 }], { duration: 700, easing: Ease, fill: 'forwards' });
+    Add('pz-spark-flash', 34).animate([{ transform: 'translate(-50%,-50%) scale(.3)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(1.5)', opacity: 0 }], { duration: 420, easing: 'ease-out', fill: 'forwards' });
+    for (var I = 0; I < 14; I++) {
+      var Angle = (I / 14) * Math.PI * 2 + Math.random() * .5, Far = 34 + Math.random() * 62, Size = 2 + Math.random() * 3, Time = 620 + Math.random() * 420;
+      var Dx = Math.cos(Angle) * Far, Dy = Math.sin(Angle) * Far + 10 * Math.random();
+      Add('pz-spark', Size).animate([{ transform: 'translate(-50%,-50%) translate(0,0) scale(1)', opacity: 1 }, { opacity: .9, offset: .35 }, { transform: 'translate(-50%,-50%) translate(' + Dx.toFixed(1) + 'px,' + Dy.toFixed(1) + 'px) scale(.2)', opacity: 0 }], { duration: Time, easing: Ease, fill: 'forwards' });
+    }
+    window.setTimeout(function () { Parts.forEach(function (Node) { Node.remove(); }); }, 1150);
+  }
+  function Pzsparkclicks() {
+    document.addEventListener('click', function (Event) {
+      var Area = Event.target && Event.target.closest ? Event.target.closest('.pz-area') : null;
+      if (Area && !Area.classList.contains('active')) { var At = Pzpoint(Event, Area); Pzburst(At[0], At[1]); }
+    }, true);
+  }
+  /* Picking a theme fades the whole app from the old colours to the new ones while the sparks fly, instead of
+     snapping. Uses the browser's view transition (Windows, and Macs with Safari 18); elsewhere the colours
+     change at once and the sparks still show. */
+  function Pzthemeswap(Event, Node, Apply) {
+    var Root = document.documentElement, At = Pzpoint(Event, Node), Motion = Root.getAttribute('data-pz-motion');
+    if (Motion === 'off' || !Root.hasAttribute('data-pz-studio') || typeof document.startViewTransition !== 'function') { Apply(); Pzburst(At[0], At[1]); return; }
+    if (Pzsparkson()) Pzsparklayer();
+    var Swap;
+    try { Root.classList.add('pz-theme-swap'); Swap = document.startViewTransition(function () { Apply(); Pzburst(At[0], At[1]); }); }
+    catch (Error) { Root.classList.remove('pz-theme-swap'); Apply(); Pzburst(At[0], At[1]); return; }
+    Swap.finished.catch(function () {}).then(function () { Root.classList.remove('pz-theme-swap'); });
+  }
+  /* The top page tabs get the same gliding highlight as the sidebar: one pill that slides to the chosen tab. */
+  function Pztabglide() {
+    var Nav = document.querySelector('.pz-tabs .nav'); if (!Nav || Nav.pzGlide) return;
+    var Pill = Pzel('span', 'pz-tabglide'); Pill.setAttribute('aria-hidden', 'true'); Nav.insertBefore(Pill, Nav.firstChild); Nav.classList.add('pz-tabglided'); Nav.pzGlide = Pill;
+    var Queued = false;
+    function Place() {
+      Queued = false;
+      var Active = Nav.querySelector('.navbtn.active:not(.nx-off)');
+      if (!Active || !Active.offsetWidth) { Pill.classList.remove('pz-on', 'pz-live'); return; }
+      Pill.style.width = Active.offsetWidth + 'px'; Pill.style.height = Active.offsetHeight + 'px';
+      Pill.style.transform = 'translate(' + Active.offsetLeft + 'px,' + Active.offsetTop + 'px)';
+      if (!Pill.classList.contains('pz-on')) { Pill.classList.add('pz-on'); window.requestAnimationFrame(function () { window.requestAnimationFrame(function () { Pill.classList.add('pz-live'); }); }); }
+    }
+    function Soon() { if (!Queued) { Queued = true; window.requestAnimationFrame(Place); } }
+    new MutationObserver(Soon).observe(Nav, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    if (window.ResizeObserver) new ResizeObserver(Soon).observe(Nav);
+    Soon();
   }
   function Pzripples() {
     document.addEventListener('pointerdown', function (Event) {
@@ -3483,7 +3574,7 @@ __PLAZCODE_VERSION_UI__
     var Savedappearance;try { Savedappearance=JSON.parse(ProfileStorage.getItem('plazcodeDesktopAppearance') || '{}'); }catch(Error){}
     Applyappearance(Savedappearance);
     ['desktopTheme','desktopGlow','desktopGradients'].forEach(function (Id) { Byid(Id).onchange=Saveappearance; });
-    document.querySelectorAll('[data-desktop-palette]').forEach(function(Button){Button.onclick=function(){Byid('desktopTheme').value=Button.dataset.desktopPalette;Saveappearance();};});
+    document.querySelectorAll('[data-desktop-palette]').forEach(function(Button){Button.onclick=function(Event){Pzthemeswap(Event,Button,function(){if(Button.closest('#nxThemes'))try{Nxclearcustom();}catch(Error){}Byid('desktopTheme').value=Button.dataset.desktopPalette;Saveappearance();});};});
     Byid('resetAppearance').onclick=function(){Applyappearance({});Saveappearance();};
     Byid('checkUpdates').onclick = function () { Updateaction('check'); };
     Byid('installUpdate').onclick = function () { Updateaction('install'); };

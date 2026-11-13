@@ -123,14 +123,29 @@ console.log("PASS desktop Studio look: frame functions, hooks, reduced/off motio
     assert.equal(polish.close, polish.min, "the close button is framed like the other two"); assert(polish.gap >= 20, "room above the supported-AI card"); assert(/gradient/.test(polish.plain), "unselected section names carry the gradient");
     await tab.click('.pz-area[data-area="settings"]'); await tab.waitForTimeout(900);
     assert.equal(await tab.evaluate(() => { const g = document.querySelector(".pz-glide"), a = document.querySelector(".pz-area.active"); return a.getAttribute("data-area") === "settings" && Math.abs(g.getBoundingClientRect().top - a.getBoundingClientRect().top) < 2; }), true, "the highlight glides to the new section");
-    // The app's own motion setting wins over the system's: a system that asks for less motion starts at Off, and Full turns it all back on.
+    // 2026-11-13 (owner, FeatherScript references): sparks on a section pick, a gliding pill on the page tabs, a fading theme change,
+    // and the oversized drifting light never makes the window scroll.
+    assert(await tab.evaluate(() => document.querySelectorAll("#pzSparks > span").length) > 0, "picking a section throws sparks");
+    const tabs = await tab.$$(".pz-tabs .navbtn:not(.nx-off)"); assert(tabs.length > 1); await tabs[1].click(); await tab.waitForTimeout(700);
+    assert.equal(await tab.evaluate(() => { const p = document.querySelector(".pz-tabglide"), a = document.querySelector(".pz-tabs .navbtn.active"); const P = p.getBoundingClientRect(), A = a.getBoundingClientRect(); return p.classList.contains("pz-on") && Math.abs(P.left - A.left) < 2 && Math.abs(P.width - A.width) < 2; }), true, "the tab pill glides to the chosen tab");
+    await tab.evaluate(() => { const b = document.querySelector('.navbtn[data-page="appearance"]'); if (b) b.click(); }); await tab.waitForTimeout(400);
+    const before = await tab.evaluate(() => document.documentElement.dataset.desktopTheme), pick = before === "rose" ? "emerald" : "rose";
+    await tab.click(`#nxThemes [data-desktop-palette="${pick}"]`);
+    assert.equal(await tab.evaluate(() => document.documentElement.classList.contains("pz-theme-swap")), true, "a theme pick fades the colours over");
+    await tab.waitForTimeout(800); assert.deepEqual(await tab.evaluate(() => [document.documentElement.classList.contains("pz-theme-swap"), document.documentElement.dataset.desktopTheme]), [false, pick], "the fade finishes on the new theme");
+    assert.equal(await tab.evaluate(() => { document.querySelector(".page.active > :last-child").scrollIntoView(); return document.body.scrollTop + document.documentElement.scrollTop; }), 0, "the light layers never scroll the window");
+    // The app's own motion setting wins over the system's (owner, 2026-11-13): a system that asks for less motion still starts at Full,
+    // Off stops the page turn, and Full turns it back on.
     const calm = await browser.newContext({ viewport: { width: 1360, height: 860 }, reducedMotion: "reduce" }); const quiet = await calm.newPage();
     await quiet.route("http://127.0.0.1:3000/**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' }));
     await quiet.route("http://plazcode.test/", (r) => r.fulfill({ status: 200, contentType: "text/html", body: page }));
     await quiet.addInitScript(() => { window.__PLAZCODE_BOOT__ = { apiUrl: "http://127.0.0.1:3000" }; });
     await quiet.goto("http://plazcode.test/"); await quiet.waitForTimeout(1500); await quiet.evaluate(() => document.getElementById("nxSplash")?.remove());
-    assert.equal(await quiet.evaluate(() => document.documentElement.getAttribute("data-pz-motion")), "off", "the system setting is the starting point");
-    assert.equal(await quiet.evaluate(() => { document.querySelector('.pz-area[data-area="workspace"]').click(); return document.querySelectorAll(".pz-leaving").length; }), 0);
+    assert.equal(await quiet.evaluate(() => document.documentElement.getAttribute("data-pz-motion")), "full", "the computer's animation setting does not switch the app's motion off");
+    assert.equal(await quiet.evaluate(() => getComputedStyle(document.querySelector(".app"), "::after").animationName), "pz-atmos", "the animated theme moves on a reduced-motion system");
+    await quiet.click('.pz-area[data-area="settings"]'); await quiet.evaluate(() => { const b = document.querySelector('.navbtn[data-page="appearance"]'); if (b) b.click(); }); await quiet.waitForTimeout(300);
+    await quiet.click('[data-look-motion="off"]'); await quiet.waitForTimeout(150);
+    assert.equal(await quiet.evaluate(() => { document.querySelector('.pz-area[data-area="workspace"]').click(); return [document.documentElement.getAttribute("data-pz-motion"), document.querySelectorAll(".pz-leaving").length, getComputedStyle(document.querySelector(".app"), "::after").animationName].join(); }), "off,0,none", "Off stops the page turn and the drifting theme");
     await quiet.click('.pz-area[data-area="settings"]'); await quiet.evaluate(() => { const b = document.querySelector('.navbtn[data-page="appearance"]'); if (b) b.click(); }); await quiet.waitForTimeout(300);
     await quiet.click('[data-look-motion="full"]'); await quiet.waitForTimeout(150);
     const loud = await quiet.evaluate(() => { document.querySelector('.pz-area[data-area="home"]').click(); return { motion: document.documentElement.getAttribute("data-pz-motion"), leaving: document.querySelectorAll(".pz-leaving").length,

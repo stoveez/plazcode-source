@@ -8,7 +8,7 @@
 - Blender works in RobloxScript too. Models reach Studio at the right size, facing the right way, with colours.
 - Linux: one-line install with automatic updates: curl -fsSL https://raw.githubusercontent.com/stoveez/PlazCode/main/install-linux.sh | sh (Studio via Vinegar is experimental)
 - Helper agents: up to two extra chats work on parts of a task.
-- Several commands per reply, a fresh app look, and Mac support from macOS 10.15 (memory search needs 12; use Firefox there).
+- Several commands per reply, a livelier app look with smooth theme changes, and Mac support from macOS 10.15 (memory search needs 12; use Firefox there).
 
 ***🛠️ What's fixed***
 - Notion: commands right after a sentence run again.
