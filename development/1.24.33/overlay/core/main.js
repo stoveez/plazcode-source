@@ -10171,7 +10171,14 @@ function renderCards(panel) {
       try { writing = P.isHardGenerating ? !!P.isHardGenerating() : !!P.isGenerating(); } catch {}
       return writing ? `${site} is writing` : `waiting for ${site} to finish`;
     }
+    // Ask PlazCode is an AgentScript feature (owner, 2026-11-13): the bar shows it only in AgentScript mode, and
+    // only while the worker reports the control rework (control_v2).
+    function showAskButton() {
+      const askBtn = document.querySelector("#rs-ask-plazcode");
+      if (askBtn) askBtn.hidden = !(A.bridge && A.bridge.control_v2 && currentEngine === "local");
+    }
     function renderBar() {
+      try { showAskButton(); } catch {}
       if (!bar) return;
       renderEffort();
       renderCowork();
@@ -10551,7 +10558,7 @@ function renderCards(panel) {
       if (Date.now() < engineSwitchUntil && (s.engine !== currentEngine || !s.connected)) return;
       if (s.connected && s.engine === currentEngine) engineSwitchUntil = 0;
       A.bridge = s;
-      try { const askBtn = document.querySelector("#rs-ask-plazcode"); if (askBtn) askBtn.hidden = !(s && s.control_v2); } catch {}
+      try { showAskButton(); } catch {}
       if (!s.connected && s.bridge_error && dot) dot.title = s.bridge_error;
       try { window.__rsBlender = () => !!(s && s.blender); } catch {}
       // AgentScript ground truth from the agent process itself. Re-render the

@@ -485,10 +485,10 @@ const PlazCodeFeatureGuide = (() => {
   "id": "ask-plazcode",
   "title": "Ask PlazCode",
   "group": "Bar",
-  "where": "PlazCode bar > Ask PlazCode (and the PlazCode toolbar icon)",
+  "where": "PlazCode bar in AgentScript mode > Ask PlazCode (and the PlazCode toolbar icon)",
   "does": "Opens a chat beside the page you are looking at. PlazCode sees a picture of that tab (or your whole screen) with each question, and can control it if you switch that on.",
   "steps": [
-   "Click Ask PlazCode on the bar, press Alt+P, or click the PlazCode icon in the browser toolbar and then Ask PlazCode about this page.",
+   "Click Ask PlazCode on the bar (AgentScript mode), press Alt+P, or click the PlazCode icon in the browser toolbar and then Ask PlazCode about this page.",
    "Type a question about the page and press Enter.",
    "To let PlazCode click and type in the tab, switch on Let PlazCode control this tab."
   ],
