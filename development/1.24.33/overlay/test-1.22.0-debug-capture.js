@@ -68,7 +68,7 @@ function isolated(){
     const before={console:w.console,error:w.console.error,fetch:w.fetch,xhr:w.XMLHttpRequest,open:w.XMLHttpRequest.prototype.open};
     vm.runInContext(helper,ctx);
     // 1.24.30 (owner): the site's console warnings/errors are copied too; the site's console still prints exactly as before.
-    assert.equal(w.console,before.console);assert.notEqual(w.console.error,before.error);w.console.error('site says',7);assert.deepEqual(printed.pop(),['site says',7]);
+    assert.equal(w.console,before.console);assert.notEqual(w.console.error,before.error);w.console.error('site says',7);assert.equal(printed.length,0,'printed a moment later (1.24.33)');await Promise.resolve();assert.deepEqual(printed.pop(),['site says',7]);
     assert.equal(w.console.error.toString(),before.error.toString());assert.equal(w.fetch,before.fetch);
     assert.equal(w.XMLHttpRequest,before.xhr);assert.equal(w.XMLHttpRequest.prototype.open,before.open);
     const got=[];w.document.addEventListener('plazcode:site-log',e=>got.push(JSON.parse(e.detail)));

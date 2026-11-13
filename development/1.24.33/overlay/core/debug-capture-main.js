@@ -3,6 +3,7 @@
 // the site's own uncaught errors, failed resource loads and failed API
 // responses, and relays them to core/debug-capture.js as JSON strings. 1.24.32: it also copies the site's own
 // console warnings and errors (after printing them unchanged); it does not wrap fetch or any other site function.
+// 1.24.33: the printing is handed back to the browser so Chrome does not list the site's messages as PlazCode errors.
 (() => {
   "use strict";
   const EXT_RE = /(?:chrome|moz)-extension:\/\//;
@@ -61,7 +62,12 @@
       const original = console[method];
       if (typeof original !== "function" || original.__plazcodeCopied) continue;
       const copied = function (...args) {
-        const result = original.apply(this, args);
+        // 1.24.33 (owner screenshot: claude.ai's "[bootstrap] Eager fetch failed" listed under PlazCode's errors on
+        // chrome://extensions): calling the original from this function made Chrome credit the site's own message
+        // to PlazCode (the top script frame was this file). The original now runs a moment later from a bound native
+        // function, so no PlazCode frame is on the stack and Chrome keeps the message with the site. Same text, printed a moment later.
+        const result = undefined;
+        try { queueMicrotask(Function.prototype.apply.bind(original, this, args)); } catch { original.apply(this, args); }
         try {
           const text = args.slice(0, 6).map(describe).join(" ").replace(/%[csdifoO]/g, "").trim().slice(0, 400);
           if (text && !/ResizeObserver loop/i.test(text)) emit({ level: method === "error" ? "error" : "warn", kind: "console", text });

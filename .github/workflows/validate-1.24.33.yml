@@ -237,6 +237,10 @@ jobs:
         timeout-minutes: 8
         run: node release-tools/test-ask-plazcode-browser.cjs
         working-directory: build-src-1.24.33/PlazCode
+      - name: AI site's own console messages are not credited to PlazCode (real extension)
+        timeout-minutes: 5
+        run: node release-tools/test-site-console-credit-browser.cjs
+        working-directory: build-src-1.24.33/PlazCode
       - name: AgentScript desktop control, extension side (real extension, app answers stood in for)
         timeout-minutes: 5
         run: node release-tools/test-control-desktop-browser.cjs

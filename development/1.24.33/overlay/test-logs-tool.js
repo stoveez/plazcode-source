@@ -27,6 +27,20 @@ const fs = require("fs"), vm = require("vm"), assert = require("assert");
   vm.runInContext(fs.readFileSync("core/debug-capture-main.js", "utf8"), context);
   const before = printed.length; site.warn("once"); assert.equal(printed.length, before + 1, "loading twice never doubles printing");
 }
+// 1b. 1.24.33 (owner screenshot): with the browser's own queueMicrotask, the site's message is printed a moment later from a
+// bound native function, so no PlazCode frame is on the stack and Chrome does not list it under PlazCode's errors.
+{
+  const printed = [], emitted = [], tasks = [];
+  const consoleStub = { warn: (...a) => printed.push(["warn", ...a]), error: (...a) => printed.push(["error", ...a]) };
+  const context = vm.createContext({ console: consoleStub, document: { addEventListener() {}, dispatchEvent: (e) => { emitted.push(JSON.parse(e.detail)); return true; } }, window: { addEventListener() {} }, location: { href: "https://claude.ai/new" },
+    CustomEvent: function (type, init) { this.type = type; this.detail = init.detail; }, PerformanceObserver: function () { this.observe = () => {}; }, queueMicrotask: (fn) => tasks.push(fn), Function, Date, JSON, Object, String, Error, Array });
+  vm.runInContext(fs.readFileSync("core/debug-capture-main.js", "utf8"), context);
+  context.console.error("[bootstrap] Eager fetch failed: Failed to fetch", 7);
+  assert.equal(printed.length, 0, "not printed from inside PlazCode's function");
+  assert.equal(tasks.length, 1); assert.notEqual(tasks[0].toString().indexOf("[native code]"), -1, "a bound native function prints it");
+  tasks[0]();
+  assert.deepEqual(printed, [["error", "[bootstrap] Eager fetch failed: Failed to fetch", 7]], "same text and arguments");
+}
 // 2. plazcode_logs is registered, read-only and documented.
 {
   const main = fs.readFileSync("core/main.js", "utf8"), background = fs.readFileSync("background.js", "utf8");
