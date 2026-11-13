@@ -3387,20 +3387,6 @@ return result`;
       return "Output of 'plazcode_screenshot':\n" + caption + "\n(The image is attached to THIS message — you can see it directly. Analyse it and continue.)";
     }
     // ── Browser tab control (tab_read / tab_click / tab_type / tab_scroll) ────
-    // 1.24.34: the PlazCode theme colour, for the glow the worker draws in the controlled tab (used only when the
-    // control rework is switched on).
-    function controlAccent() {
-      try {
-        const css = getComputedStyle(document.querySelector("#rs-root") || document.documentElement);
-        for (const name of ["--pc-accent", "--orange", "--rs-accent"]) {
-          const value = css.getPropertyValue(name).trim();
-          if (/^#[0-9a-f]{6}$/i.test(value)) return value;
-          const rgb = value.match(/^rgba?\((\d+)[ ,]+(\d+)[ ,]+(\d+)/i);
-          if (rgb) return "#" + rgb.slice(1, 4).map((n) => Number(n).toString(16).padStart(2, "0")).join("");
-        }
-      } catch {}
-      return "";
-    }
     // Lets the AI see and operate the user's browser tab: read the page text +
     // a list of clickable elements, then click / type / scroll by index or text.
     // An explicit tabId or url_contains picks the tab; otherwise it targets the
@@ -4121,7 +4107,8 @@ return result`;
       stopTimer = setInterval(() => { if (A.stop && A.stopMode !== "safe") res({ ok: false, kind: "stopped" }); }, 50);
     });
     if(typeof BATCH_OWNERS!=="undefined"&&BATCH_OWNERS.has(call)&&!BATCH_OWNERS.get(call)())return "ERROR: batch ownership changed; command was not run.";
-    const bridgeCall = bg({ type: "call_tool", name, arguments: args, timeout, checkpoint_id:A.checkpointId });
+    // 1.24.34: the theme colour rides along so the desktop control look matches PlazCode (used only while switched on).
+    const bridgeCall = bg({ type: "call_tool", name, arguments: args, timeout, checkpoint_id:A.checkpointId, accent: controlAccent() });
     const waits = [bridgeCall, hardCap];
     // Stop cancels the next action immediately. An already dispatched mutation
     // finishes its current step so we do not expose a half-written project or
@@ -12270,6 +12257,20 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
     try { detail = String(op || "") + " " + JSON.stringify(args || {}).slice(0, 400); } catch {}
     return bg({ type: "ask_approve", title: o.title || ("PlazCode wants to run " + String(op || "a command")), kicker: o.kicker || "Needs your approval", detail })
       .then((r) => !!(r && r.ok && r.allowed), () => false);
+  }
+  // 1.24.34: the PlazCode theme colour, for the glow the worker draws in the controlled tab (used only when the
+  // control rework is switched on).
+  function controlAccent() {
+    try {
+      const css = getComputedStyle(document.querySelector("#rs-root") || document.documentElement);
+      for (const name of ["--pc-accent", "--orange", "--rs-accent"]) {
+        const value = css.getPropertyValue(name).trim();
+        if (/^#[0-9a-f]{6}$/i.test(value)) return value;
+        const rgb = value.match(/^rgba?\((\d+)[ ,]+(\d+)[ ,]+(\d+)/i);
+        if (rgb) return "#" + rgb.slice(1, 4).map((n) => Number(n).toString(16).padStart(2, "0")).join("");
+      }
+    } catch {}
+    return "";
   }
   const TOKEN_CHARS = 4;
 

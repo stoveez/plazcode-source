@@ -1391,6 +1391,7 @@ async function refreshProcStatus() {
     // The desktop's editor probe is authoritative; a browser socket or a
     // process-name scan alone cannot establish Studio readiness.
     if(j.blockbench && typeof j.blockbench==="object")setBlockbench(j.blockbench);
+    if(typeof desktopControlUpdate==="function")desktopControlUpdate(j.desktop_control);
     if(j.figma && typeof j.figma==="object")setFigma(j.figma);
     if(typeof j.blender_connected==="boolean" && !blenderSuppressed && j.blender_connected!==blenderAddon)setBlender(j.blender_connected,j.blender_connected ? "" : "Blender’s last scene check failed. Use Connect Blender for the exact error.");
     const editor = typeof j.roblox_connected === "boolean" ? j.roblox_connected : robloxEditorConnected;
@@ -2975,6 +2976,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
       }
       case "call_tool": {
         const timeout = (msg.timeout || 120000) + 10000;
+        desktopToolCall(msg, _sender);
         if (isBlockbenchToolName(msg.name)) {
           sendResponse(await blockbenchCall(msg.name, msg.arguments, timeout));
           break;
@@ -3827,6 +3829,7 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
   port.onMessage.addListener((m) => {
     if (!CONTROL_V2 || !m) return;
     if (Number.isInteger(m.watch)) port.watch = m.watch;
+    if (port.watch === -1 && m.action) { bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: m.action }) }).catch(() => {}); return; }
     if (m.action === "stop" && Number.isInteger(port.watch)) { controlEvent({ event: "stop" }, { tab: { id: port.watch }, id: chrome.runtime.id }); chrome.scripting.executeScript({ target: { tabId: port.watch }, func: () => globalThis.__plazcodeControl && globalThis.__plazcodeControl.hide() }).catch(() => {}); }
     if (m.action === "pause" && Number.isInteger(port.watch)) { const row = controlTabs.get(port.watch); if (row) row.paused = true; }
     if (m.action === "resume" && Number.isInteger(port.watch)) { const row = controlTabs.get(port.watch); if (row) row.paused = false; }
@@ -3974,6 +3977,47 @@ async function askOpen(windowId) {
 if (chrome.commands && chrome.commands.onCommand) {
   // The shortcut entry ("ask-plazcode", Alt+P) is added to manifest.json when the rework is switched on.
   chrome.commands.onCommand.addListener((command, tab) => { if (CONTROL_V2 && command === "ask-plazcode") askOpen(tab && tab.windowId).catch(() => {}); });
+}
+
+// ── Step 5: desktop apps (the app controls the screen; this worker shows the live picture and passes Stop on) ──
+let desktopBy = null, desktopPoll = 0, desktopWasStopped = false, desktopAccentSent = "";
+const DESKTOP_TOOLS = new Set(["mouse_move", "mouse_click", "key_type", "focus_window", "launch_app", "screen_capture", "screen_record", "window_screenshot", "list_windows"]);
+function desktopToolCall(msg, sender) {
+  if (!CONTROL_V2 || !DESKTOP_TOOLS.has(String(msg.name || "").split("__").pop())) return;
+  if (sender && sender.tab && Number.isInteger(sender.tab.id)) desktopBy = sender.tab.id;
+  const accent = /^#[0-9a-f]{6}$/i.test(String(msg.accent || "")) ? msg.accent : "";
+  if (accent && accent !== desktopAccentSent) { desktopAccentSent = accent; bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accent }) }).catch(() => {}); }
+}
+async function desktopFrame() {
+  try {
+    const response = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/frame", { signal: AbortSignal.timeout(4000) });
+    if (response.status !== 200) return;
+    const bitmap = await createImageBitmap(await response.blob());
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    canvas.getContext("2d").drawImage(bitmap, 0, 0);
+    const bytes = new Uint8Array(await (await canvas.convertToBlob({ type: "image/jpeg", quality: 0.6 })).arrayBuffer());
+    let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    const frame = { type: "rs-control-frame", tabId: -1, data: btoa(bin), title: "Your screen", url: "", paused: !!desktopPaused, accent: desktopAccentSent, at: Date.now() };
+    for (const port of controlViewers) { if (port.watch === -1) { try { port.postMessage(frame); } catch {} } }
+    if (Number.isInteger(desktopBy)) chrome.tabs.sendMessage(desktopBy, frame).catch(() => {});
+  } catch {}
+}
+let desktopPaused = false;
+// Called with the app's desktop_control status (every status read).
+function desktopControlUpdate(dc) {
+  if (!CONTROL_V2) return;
+  const active = !!(dc && (dc.active || dc.paused)), stopped = !!(dc && dc.stopped);
+  desktopPaused = !!(dc && dc.paused);
+  if (active && !desktopPoll && typeof setInterval === "function") { desktopFrame(); desktopPoll = setInterval(desktopFrame, 500); }
+  if (!active && desktopPoll) {
+    clearInterval(desktopPoll); desktopPoll = 0;
+    const end = { type: "rs-control-end", tabId: -1 };
+    for (const port of controlViewers) { if (port.watch === -1) { try { port.postMessage(end); } catch {} } }
+    if (Number.isInteger(desktopBy)) chrome.tabs.sendMessage(desktopBy, end).catch(() => {});
+  }
+  // Stop on the screen (the app's label) is Stop for the AI chat that was using the computer.
+  if (stopped && !desktopWasStopped && Number.isInteger(desktopBy)) chrome.tabs.sendMessage(desktopBy, { type: "rs-control-stop" }).catch(() => {});
+  desktopWasStopped = stopped;
 }
 
 // The person allows real mouse and keyboard once, in a small PlazCode window (the browser asks them there).

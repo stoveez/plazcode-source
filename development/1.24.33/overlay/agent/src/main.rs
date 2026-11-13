@@ -107,6 +107,7 @@ mod mcp_addons;
 mod connections;
 mod helper_socket;
 mod blockbench;
+mod desktop_control;
 mod figma;
 /// The port the bridge listens on (127.0.0.1 only). PlazCode's helpers in other apps dial it too.
 pub const BRIDGE_PORT: u16 = 3000;
@@ -1457,6 +1458,8 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/mcp/toggle", post(mcp_toggle_handler))
         .route("/api/connections", get(connections_handler))
         .route("/api/connections/setup", post(connections_setup_handler))
+        .route("/api/desktop/control", post(desktop_control::post))
+        .route("/api/desktop/frame", get(desktop_control::frame))
         .route("/api/blockbench", post(blockbench::post).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024)))
         .route("/api/figma", post(figma::post).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024)))
         .route("/ws", get(ws_handler))
@@ -2089,6 +2092,7 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
         "workspace_root": state.ui.workspace_root.lock().map(|value| value.clone()).unwrap_or_default(),
         "blender_connected": blender::connected(),
         "blockbench": blockbench::status(),
+        "desktop_control": desktop_control::status(),
         "figma": figma::status(),
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "roblox_bridge_connected": state.roblox_clients.read().await.len() > 0,
@@ -2254,6 +2258,7 @@ async fn debug_report_handler(State(state): State<AppState>) -> impl IntoRespons
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "blender_connected": blender::connected(),
         "blockbench": blockbench::status(),
+        "desktop_control": desktop_control::status(),
         "figma": figma::status(),
         "workspace_ready": state.workspace.ready(),
         "mcp_busy": state.mcp_in_flight.load(Ordering::Relaxed) > 0,
@@ -2554,6 +2559,7 @@ async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {
         "account_sync":state.accounts.active().map(|p|account_sync::status(&p.id)),
         "blender_connected": blender::connected(),
         "blockbench": blockbench::status(),
+        "desktop_control": desktop_control::status(),
         "figma": figma::status(),
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "roblox_bridge_connected": state.roblox_clients.read().await.len() > 0,

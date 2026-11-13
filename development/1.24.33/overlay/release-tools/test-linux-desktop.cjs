@@ -376,6 +376,25 @@ const waitFor=async(fn,label)=>{for(let i=0;i<150;i++){if(await fn())return;awai
   }
   assert.equal((await call('/api/desktop/browser-action',{message:'open-url:javascript:alert(1)'})).status,400,'unsafe external URI rejected');
   {const before=launch().length;assert.equal((await call('/api/desktop/browser-action',{message:'open:get-godot'})).status,200);await waitFor(()=>launch().length===before+1,'official download page opens');assert.equal(launch()[before],'https://godotengine.org/download/');assert.equal((await call('/api/desktop/browser-action',{message:'open:get-anything'})).status,400,'only listed download pages open');}
+  {
+   // 1.24.34 control rework, desktop control state (switched off in release builds; PLAZCODE_CONTROL_V2=1 in a development build switches it on).
+   const left=globalThis.__blockbenchLeft,headers=left?left.headers:{Authorization:'Bearer '+key,'Content-Type':'application/json',Origin:'http://127.0.0.1:3000'};
+   const status=async()=>(await (await fetch('http://127.0.0.1:3000/api/status',{headers})).json()).desktop_control;
+   const control=async body=>(await (await fetch('http://127.0.0.1:3000/api/desktop/control',{method:'POST',headers,body:JSON.stringify(body)})).json());
+   assert.equal((await fetch('http://127.0.0.1:3000/api/desktop/frame',{})).status,401,'the desktop picture needs the pairing key');
+   if(process.env.PLAZCODE_CONTROL_V2==='1'){
+    assert.deepEqual(await status(),{active:false,paused:false,stopped:false,accent:''});
+    assert.equal((await fetch('http://127.0.0.1:3000/api/desktop/frame',{headers})).status,204,'no picture while PlazCode is not controlling the desktop');
+    assert.equal((await control({accent:'#16a34a'})).control.accent,'#16a34a');
+    assert.equal((await control({action:'stop'})).control.stopped,true);
+    assert.equal((await control({action:'explode'})).ok,false);
+    assert.equal((await control({action:'resume'})).ok,true);
+    console.log('Desktop control state (switched on for this run): status, colour, Stop, refusals, no picture while idle');
+   }else{
+    assert.equal(await status(),null,'desktop control is absent while the rework is switched off');
+    assert.match((await control({action:'stop'})).error,/Not available/);
+   }
+  }
   if(profileGate&&globalThis.__blockbenchLeft){
    // Each profile has its own Blockbench choices. Signed out, the app accepts no helper at all; signed in again, the same helper file works.
    const {headers,file,knock}=globalThis.__blockbenchLeft,word=/WORD = "([0-9a-f]{64})"/.exec(fs.readFileSync(file,'utf8'))[1];

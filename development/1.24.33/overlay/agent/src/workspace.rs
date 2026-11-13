@@ -1802,7 +1802,7 @@ mod desktop {
 #[cfg(windows)]
 /// The whole screen as an image (Windows).
 #[cfg(windows)]
-fn grab_screen() -> Result<image::RgbaImage, String> {
+pub(crate) fn grab_screen() -> Result<image::RgbaImage, String> {
     use desktop::*;
     let (w, h) = unsafe { (GetSystemMetrics(0), GetSystemMetrics(1)) };
     if w <= 0 || h <= 0 { return Err("could not read screen size".into()); }
@@ -2135,6 +2135,8 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
             paths.insert(key.into(),serde_json::json!(ws.root_display()));
         }
     }
+    // 1.24.34 control rework (off in release builds): desktop commands wait for the person, or are refused after Stop.
+    crate::desktop_control::enter(name).await?;
     let result=match name {
         _ if h == const { crate::hidden::fnv("workspace_info") } => tool_workspace_info(ws, a).await,
         _ if h == const { crate::hidden::fnv("list_directory") } => tool_list_directory(ws, a).await,
