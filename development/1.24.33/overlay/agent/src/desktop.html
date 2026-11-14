@@ -2358,7 +2358,7 @@ __PLAZCODE_VERSION_UI__
     Rendereffort(Preferences.rsThinkingLevel || 'default');
     document.documentElement.toggleAttribute("data-sidebar-collapsed",!!Preferences.rsSidebarCollapsed);
     Byid("sidebarCollapse").setAttribute("aria-expanded",String(!Preferences.rsSidebarCollapsed));
-    if (Preferences.rsAppearance && !Appearancepending) { Applyappearance(Preferences.rsAppearance); try { Pzfeelsync(Preferences.rsAppearance); } catch (Error) {} }
+    if (Preferences.rsAppearance && !Appearancepending) { try { Pzrestorecustom(Preferences.rsAppearance); } catch (Error) {} Applyappearance(Preferences.rsAppearance); try { Pzfeelsync(Preferences.rsAppearance); } catch (Error) {} }
     else if (!Preferences.rsAppearance && !Appearancemigrated && !Appearancepending) {
       Appearancemigrated=true;
       var Legacy;try { Legacy=JSON.parse(ProfileStorage.getItem('plazcodeDesktopAppearance') || 'null'); }catch(Error){}
@@ -2679,6 +2679,24 @@ __PLAZCODE_VERSION_UI__
   function Nxsavelook() { try { ProfileStorage.setItem('plazcodeDesktopLook', JSON.stringify(Nxlook)); } catch (Error) {} try { Pzfeelsync(); } catch (Error) {} }
   /* Appearance > Feel is shared with the PlazCode bar in the browser (owner, 2026-11-13): motion, the animated
      theme and click effects ride along with the theme in rsAppearance. Sent only when one of them changes. */
+  // The custom colour is kept in the saved settings (rsAppearance.custom) as well as this window's storage. A window that has lost its own
+  // copy (new launch, the sign-in page, another profile namespace) takes the saved one back, so the colour is never forgotten (owner, 2026-11-14:
+  // "custom themes are never saved like the built-in ones; back to default after closing"). Not while the person is still choosing a colour.
+  var Pzcustompreview = false;
+  function Pzrestorecustom(Saved) {
+    var H = Saved && typeof Saved.custom === 'string' ? Saved.custom.toLowerCase() : '';
+    if (Pzcustompreview || !/^#[0-9a-f]{6}$/.test(H)) return;
+    if (String(Nxcustomactive()).toLowerCase() !== H) { try { ProfileStorage.setItem('plazcodeCustomTheme', H); } catch (Error) {} }
+  }
+  // The sign-in page shows the chosen profile's look, a custom colour included (it is part of that profile's saved appearance).
+  function Pzpreviewprofile(Look) {
+    Look = Look || {};
+    try {
+      if (typeof Look.custom === 'string' && Nxparse(Look.custom)) { Pzcustompreview = false; ProfileStorage.setItem('plazcodeCustomTheme', (Look.custom.charAt(0) === '#' ? Look.custom : '#' + Look.custom).toLowerCase()); }
+      else ProfileStorage.removeItem('plazcodeCustomTheme');
+    } catch (Error) {}
+    return Applyappearance(Look);
+  }
   function Pzcustomhex() { var H = Nxcustomactive(); if (!H || !Nxparse(H)) return ''; H = H.charAt(0) === '#' ? H : '#' + H; return /^#[0-9a-f]{6}$/i.test(H) ? H.toLowerCase() : ''; }
   // The Feel choices and the custom colour stay on this computer and ride along with the theme to the PlazCode bar, popup and side panels.
   function Pzfeelshare() { var L = Nxlook || {}; return {motion: L.motion === 'reduced' || L.motion === 'off' ? L.motion : 'full', anim: L.anim !== false, ripple: L.ripple !== false, custom: Pzcustomhex()}; }
@@ -2834,6 +2852,7 @@ __PLAZCODE_VERSION_UI__
     var Tile = Byid('nxCustomTile'); if (Tile) Tile.setAttribute('aria-pressed', 'true');
   }
   function Nxclearcustom() {
+    Pzcustompreview = false;
     try { ProfileStorage.removeItem('plazcodeCustomTheme'); } catch (Error) {}
     var Root = document.documentElement; Root.removeAttribute('data-nx-custom'); Root.removeAttribute('data-pz-bg');
     ['--canvas', '--surface', '--raised', '--stroke', '--ink-soft', '--text'].forEach(function (Name) { Root.style.removeProperty(Name); });
@@ -2862,10 +2881,10 @@ __PLAZCODE_VERSION_UI__
     Add.onclick = function () { if (Panel) { Panel.classList.toggle('nx-off'); var Current = Nxcustomactive(); if (Color && Current) Color.value = Current; if (Hex) Hex.value = (Color && Color.value) || '#e9ba53'; } };
     if (Color) Color.oninput = function () { if (Hex) Hex.value = Color.value; Nxpreviewcustom(Color.value); };
     if (Hex) Hex.oninput = function () { if (Nxparse(Hex.value)) { var V = Hex.value.charAt(0) === '#' ? Hex.value : '#' + Hex.value; if (Color) Color.value = V; Nxpreviewcustom(V); } };
-    var Apply = Byid('nxCustomApply'); if (Apply) Apply.onclick = function () { var V = Color && Color.value; if (!Nxparse(V)) return; try { ProfileStorage.setItem('plazcodeCustomTheme', V); } catch (Error) {} Nxapplycustom(); try { Pzfeelsync(); } catch (Error) {} if (Panel) Panel.classList.add('nx-off'); };
+    var Apply = Byid('nxCustomApply'); if (Apply) Apply.onclick = function () { var V = Color && Color.value; if (!Nxparse(V)) return; Pzcustompreview = false; try { ProfileStorage.setItem('plazcodeCustomTheme', V); } catch (Error) {} Nxapplycustom(); try { Pzfeelsync(); } catch (Error) {} if (Panel) Panel.classList.add('nx-off'); };
     var Remove = Byid('nxCustomRemove'); if (Remove) Remove.onclick = function () { Nxclearcustom(); var Saved; try { Saved = JSON.parse(ProfileStorage.getItem('plazcodeDesktopAppearance') || '{}'); } catch (Error) {} Applyappearance(Saved || {}); try { Pzfeelsync(); } catch (Error) {} if (Panel) Panel.classList.add('nx-off'); };
   }
-  function Nxpreviewcustom(Hex) { if (!Nxparse(Hex)) return; try { ProfileStorage.setItem('plazcodeCustomTheme', Hex); } catch (Error) {} Nxapplycustom(); }
+  function Nxpreviewcustom(Hex) { if (!Nxparse(Hex)) return; Pzcustompreview = true; try { ProfileStorage.setItem('plazcodeCustomTheme', Hex); } catch (Error) {} Nxapplycustom(); }
 
 
   // Pictures are fetched on demand; status polling carries only a small revision.
@@ -2907,7 +2926,7 @@ __PLAZCODE_VERSION_UI__
       List.textContent='';Actions.hidden=!Selected;Heading.textContent=T(Profiles.length?'Welcome back':'Welcome to PlazCode');Subtitle.textContent=T('Choose your profile to continue.');
       if(!Profiles.length){var Empty=document.createElement('div');Empty.className='pc-signin-empty';Empty.textContent=T('Create your first profile to get started.');List.appendChild(Empty);}
       Profiles.forEach(function(Profile){
-        var Card=document.createElement('button');Card.type='button';Card.className='pc-profile-card';Card.dataset.profileId=Profile.id;if(typeof Desktopthemes==='object'){var Palette=Desktopthemes[Profile.appearance&&Profile.appearance.theme];if(Palette)Card.style.setProperty('--profile-rgb',Palette.rgb);}Card.setAttribute('role','option');Card.setAttribute('aria-selected',String(!!Selected&&Selected.id===Profile.id));
+        var Card=document.createElement('button');Card.type='button';Card.className='pc-profile-card';Card.dataset.profileId=Profile.id;if(typeof Desktopthemes==='object'){var Palette=Desktopthemes[Profile.appearance&&Profile.appearance.theme];if(Palette)Card.style.setProperty('--profile-rgb',Palette.rgb);}var Customrgb=Profile.appearance&&typeof Profile.appearance.custom==='string'?Nxparse(Profile.appearance.custom):null;if(Customrgb)Card.style.setProperty('--profile-rgb',Customrgb.join(' '));Card.setAttribute('role','option');Card.setAttribute('aria-selected',String(!!Selected&&Selected.id===Profile.id));
         var Avatar=document.createElement('span');Avatar.className='pc-profile-avatar';Avatar.setAttribute('data-i18n-user-content','');Avatar.textContent=Array.from(Profile.username||'').slice(0,2).join('').toUpperCase();Avatar.setAttribute('aria-hidden','true');if(typeof ProfilePictures!=='undefined')ProfilePictures.render(Avatar,Profile.id,Profile.username,Profile.picture_revision);
         var Copy=document.createElement('span');Copy.className='pc-profile-copy';var Name=document.createElement('strong');Name.setAttribute('data-i18n-user-content','');Name.dir='auto';Name.textContent=Profile.username;var Detail=document.createElement('small');Detail.textContent=T(Profile.remembered?'Ready to log in':'Enter your password to log in');Copy.append(Name,Detail);var Tick=document.createElement('span');Tick.className='pc-profile-tick';Tick.textContent='✓';Tick.setAttribute('aria-hidden','true');Card.append(Avatar,Copy,Tick);
         Card.onclick=function(Event){if(Busy)return;Host.dataset.profilePointerFocus=Event.detail>0?'true':'false';Selected=Profile;Hooks.previewTheme(Profile.appearance);Render();List.querySelector('[data-profile-id="'+CSS.escape(Profile.id)+'"]').focus();};List.append(Card);
@@ -3839,7 +3858,7 @@ __PLAZCODE_VERSION_UI__
 
         }
         function Action(Value){return Api('/api/desktop/profiles',{method:'POST',body:JSON.stringify(Value)});}
-        ProfileScreen=MountProfileSignIn({guest:function(){return Action({action:'guest'});},create:function(U,P){return Action({action:'register',username:U,password:P});},login:function(Id,U,P){return Action({action:'login',id:Id,username:U,password:P});},remove:function(Id){return Action({action:'remove',id:Id});}},{previewTheme:Applyappearance,enter:async function(Result){ProfileContext=Result.profile;sessionStorage.setItem('plazcode-profile-context',ProfileContext.id);sessionStorage.setItem('plazcode-profile-handoff',ProfileContext.id);try{if(Result.preferences&&Result.preferences.rsAppearance)ProfileStorage.setItem('plazcodeDesktopAppearance',JSON.stringify(Result.preferences.rsAppearance));}catch(Error){}document.body.style.transition='opacity .22s ease';document.body.style.opacity='0';await new Promise(function(R){setTimeout(R,220);});location.reload();}});
+        ProfileScreen=MountProfileSignIn({guest:function(){return Action({action:'guest'});},create:function(U,P){return Action({action:'register',username:U,password:P});},login:function(Id,U,P){return Action({action:'login',id:Id,username:U,password:P});},remove:function(Id){return Action({action:'remove',id:Id});}},{previewTheme:Pzpreviewprofile,enter:async function(Result){ProfileContext=Result.profile;sessionStorage.setItem('plazcode-profile-context',ProfileContext.id);sessionStorage.setItem('plazcode-profile-handoff',ProfileContext.id);try{if(Result.preferences&&Result.preferences.rsAppearance)ProfileStorage.setItem('plazcodeDesktopAppearance',JSON.stringify(Result.preferences.rsAppearance));}catch(Error){}document.body.style.transition='opacity .22s ease';document.body.style.opacity='0';await new Promise(function(R){setTimeout(R,220);});location.reload();}});
       }
 
       Bind();

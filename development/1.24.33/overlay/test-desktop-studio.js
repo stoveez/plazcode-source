@@ -152,6 +152,22 @@ console.log("PASS desktop Studio look: frame functions, hooks, reduced/off motio
       anim: getComputedStyle(document.querySelector(".page.active")).animationName, saved: JSON.parse(localStorage.getItem("plazcodeDesktopLook") || "{}").motionSet }; });
     assert.equal(loud.motion, "full"); assert.equal(loud.leaving, 1, "Full brings the page turn back on a reduced-motion system"); assert.notEqual(loud.anim, "none"); 
     await calm.close();
+    // Owner (2026-11-14): "custom themes are never saved like the built-in ones; back to default after closing". A window with NO colour of
+    // its own (new launch, new namespace) takes the colour the app saved in rsAppearance.custom; a colour still being chosen is not overwritten.
+    const saved = await browser.newPage({ viewport: { width: 1360, height: 860 } });
+    await saved.route("http://127.0.0.1:3000/**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: r.request().url().includes("/api/desktop/state") ? JSON.stringify({ ok: true, preferences: { rsAppearance: { theme: "default", glow: "subtle", gradients: "on", custom: "#336699" } } }) : '{"ok":true}' }));
+    await saved.route("http://plazcode.test/", (r) => r.fulfill({ status: 200, contentType: "text/html", body: page }));
+    await saved.addInitScript(() => { window.__PLAZCODE_BOOT__ = { apiUrl: "http://127.0.0.1:3000" }; });
+    await saved.goto("http://plazcode.test/"); await saved.waitForTimeout(1800);
+    const back = await saved.evaluate(() => ({ attr: document.documentElement.getAttribute("data-nx-custom"), accent: document.documentElement.style.getPropertyValue("--orange"), stored: localStorage.getItem("plazcodeCustomTheme") }));
+    assert.equal(back.stored, "#336699", "the saved colour is taken back into a window that had lost it"); assert.equal(back.attr, "1"); assert.equal(back.accent, "#336699", "and it colours the app");
+    // A colour being chosen (preview) is not replaced by the older saved one while the app keeps reading its settings.
+    await saved.evaluate(() => { document.querySelector('.pz-area[data-area="settings"]').click(); const b = document.querySelector('.navbtn[data-page="appearance"]'); if (b) b.click(); });
+    await saved.waitForTimeout(300);
+    await saved.evaluate(() => { document.getElementById("nxCustomTile").click(); const c = document.getElementById("nxCustomColor"); c.value = "#aa2200"; c.dispatchEvent(new Event("input", { bubbles: true })); });
+    await saved.waitForTimeout(2500);
+    assert.equal(await saved.evaluate(() => localStorage.getItem("plazcodeCustomTheme")), "#aa2200", "a colour being chosen stays while the saved one is read again");
+    await saved.close();
     assert.deepEqual(errors.filter((e) => !/fetch|Failed to load|NetworkError/i.test(e)), [], "no script errors");
     console.log("PASS desktop Studio look in Chromium: sections and tabs, serif title, Feel settings, ripples, custom palette save and remove, page turns, Skills list and editor window, motion setting over the system setting, gliding highlight, no heading numbers");
   } finally { await browser.close(); }
