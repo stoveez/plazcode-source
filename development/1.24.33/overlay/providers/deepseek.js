@@ -956,9 +956,23 @@ const RSProvider = (() => {
     editor.focus();text=String(truncateForSend(text)||'').replace(/\r\n?/g,'\n');job.typedText=text;setTextareaValue(editor,text);
     if(editorText()!==text)throw sendError("DeepSeek did not accept the draft. Nothing was sent.");
     if(images && images.length){
+      const attachStart=(typeof performance!=="undefined"&&performance.now)?performance.now():0;
       const attached=await attachImages(images);assertSendOwner(job);
       if(!attached)throw sendError("The image upload was not confirmed. No message was sent.");
-      const uploaded=await waitSend(()=>{const thumbs=attachThumbs();return thumbs.length>=images.length && thumbs.every(im=>!/^blob:/.test(safeRead(()=>im.getAttribute("src"),"")||""));},25000,job);
+      // Uploaded = every preview left its temporary blob: link, OR the site finished its own upload request(s) and Send is enabled
+      // (steady 1.5 s). Checked live on chat.deepseek.com 2026-11-14: the preview KEEPS its blob: link after a finished upload
+      // (POST /api/v0/file/upload_file answered 200 in under a second), so waiting for the link to change never ended and the send was
+      // paused after 25 s (seen with Ask PlazCode's screenshot).
+      let steadySince=0;
+      const uploadsDone=()=>{try{return performance.getEntriesByType("resource").filter(e=>e.startTime>=attachStart-50&&/\/api\/v\d+\/file\/upload_file/.test(e.name)&&(e.responseStatus===undefined||e.responseStatus===0||e.responseStatus===200)).length;}catch{return 0;}};
+      const uploaded=await waitSend(()=>{
+        const thumbs=attachThumbs();if(thumbs.length<images.length){steadySince=0;return false;}
+        if(thumbs.every(im=>!/^blob:/.test(safeRead(()=>im.getAttribute("src"),"")||"")))return true;
+        const b=getSendBtn(),sendOk=!!b&&!isStopBtn(b)&&safeRead(()=>b.getAttribute("aria-disabled"),null)!=="true";
+        if(uploadsDone()<images.length||!sendOk){steadySince=0;return false;}
+        if(!steadySince)steadySince=Date.now();
+        return Date.now()-steadySince>=1500;
+      },45000,job);
       if(!uploaded)throw sendError("DeepSeek has not confirmed the image upload. PlazCode paused instead of repeatedly pressing Send.");
     }
     const ready=await waitSend(()=>{const b=getSendBtn();return b && !isStopBtn(b) && safeRead(()=>b.getAttribute("aria-disabled"),null)!=="true";},15000,job);
