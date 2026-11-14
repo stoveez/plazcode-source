@@ -21,7 +21,7 @@ function functionSource(name,fn){const text=fs.readFileSync('providers/'+name+'.
  for(const scenario of ['delayed-receipt','upload-failed','not-ready']){
   let clicks=0,waits=0;const editor={setAttribute(){},style:{}};
   const c={getEditor:()=>editor,truncateForSend:x=>x,typeEditorText:async()=>{},attachImages:async()=>scenario!=='upload-failed',waitFor:async()=>++waits===1&&scenario!=='not-ready',sendButton:()=>({disabled:false,click(){clicks++;}}),safeRead:(fn,f)=>{try{return fn();}catch{return f;}},editorText:()=> 'pending',stopButton:()=>null,isGenerating:()=>false};
-  vm.createContext(c);vm.runInContext('let _locked=false;'+functionSource('claude','typeAndSend')+';this.send=typeAndSend;',c);
+  vm.createContext(c);vm.runInContext('let _locked=false,sendGeneration=0;'+functionSource('claude','typeAndSend')+';this.send=typeAndSend;',c);
   if(scenario==='delayed-receipt')await c.send('text',[{}]);else await assert.rejects(c.send('text',[{}]),/not (?:confirm|ready)/);
   assert.equal(clicks,scenario==='delayed-receipt'?1:0,scenario);checks++;
  }

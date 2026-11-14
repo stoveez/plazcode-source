@@ -31,7 +31,7 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
     await panel.evaluate(() => document.getElementById('sharing').dispatchEvent(new Event('change')));
     await panel.waitForFunction(() => /mit PlazCode geteilt/.test(document.getElementById('shareSite').textContent), null, { timeout: 8000 });
     assert.equal(await panel.innerText('#shareSite'), 'control.test · mit PlazCode geteilt');
-    assert.equal(await panel.innerText('#controlText'), 'PlazCode diesen Tab steuern lassen');
+    assert.equal(await panel.innerText('#controlText'), 'PlazCode für mich handeln lassen');
     const look = await worker.evaluate(async (id) => (await chrome.scripting.executeScript({ target: { tabId: id }, func: () => globalThis.__plazcodeControl.state() }))[0].result, ids.shop);
     assert.equal(look.label, 'Mit PlazCode geteilt', 'the mark in the shared tab is German too');
     // A worker message that is one of PlazCode's own sentences is shown translated; one with slots too.

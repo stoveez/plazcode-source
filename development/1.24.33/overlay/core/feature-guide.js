@@ -490,7 +490,7 @@ const PlazCodeFeatureGuide = (() => {
   "steps": [
    "Click Ask PlazCode on the bar (AgentScript mode), press Alt+P, or click the PlazCode icon in the browser toolbar and then Ask PlazCode about this page.",
    "Type a question about the page and press Enter.",
-   "To let PlazCode click and type in the tab, switch on Let PlazCode control this tab."
+   "To let PlazCode click and type in the tab, leave Let PlazCode do things for me switched on; it works in a copy of the tab."
   ],
   "tips": [
    "The shared tab follows the tab you are looking at. Untick Share to stop sharing.",

@@ -1445,5 +1445,7 @@
   "Restart AgentScript server": null,
   "Live": null,
   "Paused": null,
-  "Ended": null
+  "Ended": null,
+  "Let PlazCode do things for me": null,
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": null
 }

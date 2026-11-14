@@ -567,11 +567,11 @@ const RSProvider = (() => {
   // 1.24.33: Stop pressed while a send is still waiting (for Claude to finish, for the box to take the text) must cancel it.
   // The wait ended because Stop removed the Stop button, and the startup message was then sent anyway (seen live 2026-11-14:
   // claude.send.click right after nativeStop). cancelPendingSends() is called by the core on every Stop.
-  let _sendGeneration = 0;
-  function cancelPendingSends() { ++_sendGeneration; }
+  let sendGeneration = 0;
+  function cancelPendingSends() { ++sendGeneration; }
   async function typeAndSend(text, images) {
-    const myGeneration = _sendGeneration;
-    const cancelled = () => myGeneration !== _sendGeneration && (diag("claude.send.cancelled", {}), true);
+    const myGeneration = sendGeneration;
+    const cancelled = () => myGeneration !== sendGeneration && (diag("claude.send.cancelled", {}), true);
     let ed = getEditor();
     if (!ed) throw new Error("Claude input box not found");
     text = truncateForSend(text);

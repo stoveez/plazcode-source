@@ -1445,5 +1445,7 @@
   "Restart AgentScript server": "إعادة تشغيل خادم AgentScript",
   "Live": "مباشر",
   "Paused": "متوقف مؤقتًا",
-  "Ended": "انتهى"
+  "Ended": "انتهى",
+  "Let PlazCode do things for me": "السماح لـ PlazCode بالقيام بالمهام نيابةً عني",
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "فتح PlazCode نسخة من علامة التبويب للعمل فيها. تبقى علامة التبويب الخاصة بك دون تغيير."
 }

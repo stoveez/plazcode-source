@@ -51,7 +51,7 @@ async function run(mode) {
     let s = await look();
     assert(s && s.sharing && s.label === 'Shared with PlazCode' && s.shown, 'the shared tab shows "Shared with PlazCode": ' + JSON.stringify(s));
     assert.equal(await panel.isDisabled('#control'), false);
-    assert.equal(await panel.isChecked('#control'), false, 'control is off unless the person switches it on');
+    assert.equal(await panel.isChecked('#control'), true, 'a shared tab: "do things for me" is on, and works in a copy (own tab stays untouched)');
 
     // A question: the background chat opens on the person's AI site and gets the question, the picture and the rules.
     await panel.fill('#q', 'What is on this page?');
@@ -62,7 +62,7 @@ async function run(mode) {
     const asked = runs[0].ask;
     assert.equal(asked.text, 'What is on this page?');
     assert.deepEqual(asked.share, { tabId: ids.shop, title: 'Shop', url: 'https://control.test/' });
-    assert.equal(asked.control, false);
+    assert.equal(asked.control, true); assert.equal(asked.work, null, 'no copy exists before the AI opens one');
     if (mode === 'real') assert(asked.images.length === 1 && asked.images[0].data.length > 1000, 'a fresh picture of the shared tab goes with the question');
     else {
       assert.equal(asked.images.length, 0);
@@ -93,6 +93,31 @@ async function run(mode) {
     await worker.evaluate(async () => { for (let i = 0; i < 100 && !self.__runs.length; i++) await new Promise((r) => setTimeout(r, 100)); });
     const second = await worker.evaluate(() => self.__runs.splice(0));
     assert.equal(second[0].id, askTab); assert.equal(second[0].ask.control, true);
+    // Owner (2026-11-14): work like Claude in Chrome, in a duplicate tab. The AI opens a copy next to the person's tab; clicking,
+    // typing or going elsewhere in the person's OWN tab is refused; looking at it (picture) is fine; the panel follows the copy.
+    const opened = await worker.evaluate((id) => controlV2Tool({ type: 'tab_open', url: 'https://control.test/' }, { tab: { id } }), askTab);
+    assert.equal(opened.ok, true); assert.match(opened.text, /copy next to their tab \(tabId (\d+)\)/);
+    const copyId = Number(/tabId (\d+)/.exec(opened.text)[1]);
+    const where = await worker.evaluate(async ([a, b]) => { const x = await chrome.tabs.get(a), y = await chrome.tabs.get(b); return { sameWindow: x.windowId === y.windowId, next: y.index === x.index + 1, active: y.active }; }, [ids.shop, copyId]);
+    assert.deepEqual(where, { sameWindow: true, next: true, active: false }, 'the copy sits next to the person\'s tab, in the background');
+    for (const tool of ['tab_click_at', 'tab_type_text', 'tab_key', 'tab_scroll_at', 'tab_navigate']) {
+      const refused = await worker.evaluate(([id, shop, tool]) => controlV2Tool({ type: tool, tabId: shop, x: 5, y: 5, text: 'x', key: 'a', url: 'https://control.test/other', dy: 10 }, { tab: { id } }), [askTab, ids.shop, tool]);
+      assert.equal(refused.ok, false, tool + ' was not refused: ' + JSON.stringify(refused)); assert.match(refused.error, /person's own tab/, tool + ' on the own tab is refused');
+    }
+    const lookOnly = await worker.evaluate(([id, shop]) => controlV2Tool({ type: 'tab_screenshot', tabId: shop }, { tab: { id } }), [askTab, ids.shop]);
+    assert.doesNotMatch(String(lookOnly.error || ''), /person's own tab/, 'a picture of the own tab is allowed');
+    const inCopy = await worker.evaluate(([id, copy]) => controlV2Tool({ type: 'tab_key', tabId: copy, key: 'Tab' }, { tab: { id } }), [askTab, copyId]);
+    assert.doesNotMatch(String(inCopy.error || ''), /person's own tab/, 'the copy is worked in normally');
+    // (the glow from those calls ends on its own after 20 s of quiet; end it now so the sharing checks below see only the share mark)
+    await worker.evaluate(async ([a, b]) => { for (const id of [a, b]) { await controlLiveStop(id); try { await chrome.scripting.executeScript({ target: { tabId: id }, func: () => globalThis.__plazcodeControl && globalThis.__plazcodeControl.hide() }); } catch {} } }, [ids.shop, copyId]);
+    await panel.waitForFunction(() => [...document.querySelectorAll('.msg.note')].some((n) => /opened a copy of your tab/.test(n.textContent)), null, { timeout: 5000 });
+    // A later question about the same tab is told the copy is still open (and no second copy is needed).
+    await worker.evaluate((id) => askFromChat({ type: 'ask_reply', status: 'done', text: 'Done.' }, { tab: { id } }), askTab);
+    await panel.waitForFunction(() => !document.getElementById('go').disabled, null, { timeout: 5000 });
+    await panel.fill('#q', 'And now the next step'); await panel.click('#go');
+    await worker.evaluate(async () => { for (let i = 0; i < 100 && !self.__runs.length; i++) await new Promise((r) => setTimeout(r, 100)); });
+    const third = await worker.evaluate(() => self.__runs.splice(0));
+    assert.equal(third[0].ask.work && third[0].ask.work.tabId, copyId, 'the copy from before is offered again');
     await panel.click('#stop');
     await worker.evaluate(async () => { for (let i = 0; i < 40 && !self.__stops; i++) await new Promise((r) => setTimeout(r, 50)); });
     assert.equal(await worker.evaluate(() => self.__stops), 1);
@@ -116,4 +141,4 @@ async function run(mode) {
     console.log('test-ask-plazcode-browser: PASS (' + mode + ')');
   } finally { await context.close(); fs.rmSync(profile, { recursive: true, force: true }); if (copy) fs.rmSync(copy, { recursive: true, force: true }); }
 }
-(async () => { await run('real'); await run('no-debugger'); console.log('test-ask-plazcode-browser: PASS (Chromium): sharing follows the tab with a "Shared with PlazCode" mark, questions reach one background chat with picture and rules, control off unless switched on, approvals in the panel, only the background chat can answer, Stop, stop sharing from the tab, AI chats never shared, closing the panel ends sharing, Allow offered without the permission'); })().catch((e) => { console.error(e); process.exit(1); });
+(async () => { await run('real'); await run('no-debugger'); console.log('test-ask-plazcode-browser: PASS (Chromium): sharing follows the tab with a "Shared with PlazCode" mark, questions reach one background chat with picture and rules, "do things for me" on by default and working in a copy of the tab (own tab refused, copy offered again), approvals in the panel, only the background chat can answer, Stop, stop sharing from the tab, AI chats never shared, closing the panel ends sharing, Allow offered without the permission'); })().catch((e) => { console.error(e); process.exit(1); });

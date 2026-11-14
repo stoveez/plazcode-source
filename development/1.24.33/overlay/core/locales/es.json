@@ -1445,5 +1445,7 @@
   "Restart AgentScript server": "Reiniciar servidor de AgentScript",
   "Live": "En vivo",
   "Paused": "En pausa",
-  "Ended": "Terminado"
+  "Ended": "Terminado",
+  "Let PlazCode do things for me": "Dejar que PlazCode haga cosas por mí",
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode abrió una copia de tu pestaña para trabajar en ella. Tu pestaña no se toca."
 }

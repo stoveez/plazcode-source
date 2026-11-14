@@ -1445,5 +1445,7 @@
   "Restart AgentScript server": "Перезапустить сервер AgentScript",
   "Live": "В эфире",
   "Paused": "Пауза",
-  "Ended": "Завершено"
+  "Ended": "Завершено",
+  "Let PlazCode do things for me": "Разрешить PlazCode действовать за меня",
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode открыл копию вашей вкладки и работает в ней. Ваша вкладка остаётся нетронутой."
 }

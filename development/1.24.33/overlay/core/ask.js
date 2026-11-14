@@ -11,13 +11,13 @@
   const log = $("log"), q = $("q"), go = $("go"), stop = $("stop"), step = $("step"), sharing = $("sharing"), control = $("control"), screen = $("screen");
   const peek = $("peek"), shareTitle = $("shareTitle"), shareSite = $("shareSite"), banner = $("banner"), bannerText = $("bannerText");
   const fixedWindow = Number(new URLSearchParams(location.search).get("window")) || null;
-  let shared = null, busy = false, viewPort = null;
+  let shared = null, busy = false, viewPort = null, viewTab = null, workTab = null;
   // The "Shared with PlazCode" mark in the shared tab, in the person's language.
   const words = { working: t("PlazCode is working here"), paused: t("Paused, you're in control"), resume: t("Resume"), stop: t("Stop"), shared: t("Shared with PlazCode"), stopSharing: t("Stop sharing") };
   document.title = t(document.title);
   const port = chrome.runtime.connect({ name: "plazcode-ask" });
   const add = (cls, text) => { const p = document.createElement("p"); p.className = "msg " + cls; p.textContent = text; log.append(p); log.scrollTop = log.scrollHeight; return p; };
-  const setBusy = (value) => { busy = value; go.disabled = value; stop.hidden = !value; if (!value) step.textContent = ""; };
+  const setBusy = (value) => { busy = value; go.disabled = value; stop.hidden = !value; if (!value) { step.textContent = ""; workTab = null; } };
   // The tab the person is looking at. From a side panel or a docked window the "current window" can be the panel's own window,
   // whose only tab is this page (shown as "This tab can't be shared" for every site, owner report 2026-11-14), so a page that is
   // not a website falls back to the active tab of the last focused browser window, then of any normal browser window.
@@ -44,11 +44,12 @@
   function watch(tabId) {
     if (viewPort) { try { viewPort.disconnect(); } catch {} viewPort = null; }
     peek.getContext("2d").clearRect(0, 0, peek.width, peek.height);
+    viewTab = Number.isInteger(tabId) ? tabId : null;
     if (!Number.isInteger(tabId)) return;
     viewPort = chrome.runtime.connect({ name: "plazcode-control-view" });
     viewPort.postMessage({ watch: tabId });
     viewPort.onMessage.addListener((m) => {
-      if (!m || m.type !== "rs-control-frame" || !m.data || m.tabId !== shared) return;
+      if (!m || m.type !== "rs-control-frame" || !m.data || m.tabId !== viewTab) return;
       if (/^#[0-9a-f]{6}$/i.test(m.accent || "")) document.documentElement.style.setProperty("--a", m.accent);
       const bin = atob(m.data), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       createImageBitmap(new Blob([bytes], { type: "image/jpeg" })).then((b) => { const g = peek.getContext("2d"), s = Math.max(peek.width / b.width, peek.height / b.height); g.drawImage(b, (peek.width - b.width * s) / 2, 0, b.width * s, b.height * s); b.close(); }, () => {});
@@ -58,6 +59,7 @@
     if (!m) return;
     if (m.type === "ask-busy") { if (m.enabled === false) { add("error", t("Ask PlazCode is not switched on in this version.")); go.disabled = true; return; } setBusy(!!m.busy); }
     else if (m.type === "ask-note") add(m.kind === "error" ? "error" : "note", typeof m.key === "string" ? t(m.key, m.values || {}) : t(m.text));
+    else if (m.type === "ask-work") { if (Number.isInteger(m.tabId)) { workTab = m.tabId; watch(m.tabId); add("note", t("PlazCode opened a copy of your tab to work in. Your own tab stays untouched.")); } }
     else if (m.type === "ask-step") step.textContent = t(m.text);
     else if (m.type === "ask-reply") { add(m.status === "done" ? "ai" : m.status === "stopped" ? "note" : "error", m.status === "done" ? m.text : t(m.text)); setBusy(false); }
     else if (m.type === "ask-permission") { bannerText.textContent = t("PlazCode could not take a picture of the tab.") + " " + t(m.text); banner.hidden = false; }
@@ -69,9 +71,9 @@
       let host = ""; try { host = m.url ? new URL(m.url).host : ""; } catch {}
       shareSite.textContent = shared === -1 ? t("Everything on your screen · shared with PlazCode") : shared ? t("{site} · shared with PlazCode", { site: host }) : t(m.refused ? "Browser pages, extension pages and AI chats are never shared." : "Turn on sharing so PlazCode can see this tab.");
       if (m.screenRefused) { screen.checked = false; add("error", t(m.screenRefused)); }
-      control.disabled = !shared; if (!shared) control.checked = false;
-      $("controlText").textContent = t(shared === -1 ? "Let PlazCode control my computer" : "Let PlazCode control this tab");
-      watch(shared);
+      control.disabled = !shared; if (!shared) control.checked = false; else if (!controlTouched && shared !== -1) control.checked = true;
+      $("controlText").textContent = t(shared === -1 ? "Let PlazCode control my computer" : "Let PlazCode do things for me");
+      watch(busy && workTab ? workTab : shared);
     } else if (m.type === "ask-approve") {
       const card = document.createElement("div"); card.className = "approve"; card.setAttribute("role", "group");
       const kicker = document.createElement("small"); kicker.textContent = m.kicker ? t(m.kicker) : t("Needs your approval");
@@ -94,6 +96,8 @@
   go.addEventListener("click", send);
   q.addEventListener("keydown", (event) => { if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); send(); } });
   stop.addEventListener("click", () => { port.postMessage({ stop: true }); step.textContent = t("Stopping…"); });
+  let controlTouched = false;
+  control.addEventListener("change", () => { controlTouched = true; });
   sharing.addEventListener("change", follow);
   screen.addEventListener("change", follow);
   // Sharing follows the tab the person is looking at.

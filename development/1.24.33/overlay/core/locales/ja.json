@@ -1445,5 +1445,7 @@
   "Restart AgentScript server": "AgentScript サーバーを再起動",
   "Live": "ライブ",
   "Paused": "一時停止中",
-  "Ended": "終了"
+  "Ended": "終了",
+  "Let PlazCode do things for me": "PlazCode に操作を任せる",
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode はタブのコピーを開いてそこで作業します。元のタブは変更されません。"
 }

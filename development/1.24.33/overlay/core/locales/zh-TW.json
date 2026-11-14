@@ -1445,5 +1445,7 @@
   "Restart AgentScript server": "重新啟動 AgentScript 伺服器",
   "Live": "即時",
   "Paused": "已暫停",
-  "Ended": "已結束"
+  "Ended": "已結束",
+  "Let PlazCode do things for me": "允許 PlazCode 替我操作",
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode 已開啟您分頁的副本並在其中操作，您自己的分頁不會被更動。"
 }

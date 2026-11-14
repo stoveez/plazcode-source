@@ -3516,6 +3516,10 @@ async function controlEnter(tab, msg, sender) {
 async function controlledTabAction(kind, msg, sender) {
   const tab = await resolveTab(msg);
   if (!tab) return { ok: false, error: "no target tab (open a page, or pass url_contains)" };
+  // Ask PlazCode works in a copy: clicking, typing, scrolling or navigating in the person's own tab is refused (a picture of it is fine).
+  if (sender && sender.tab && Number.isInteger(ask.tabId) && sender.tab.id === ask.tabId && ask.copy && Number.isInteger(ask.origin) && tab.id === ask.origin && kind !== "read") {
+    return { ok: false, error: "That is the person's own tab, and it stays untouched. Open a copy with tab_open (the same web address) and work in the copy; pass its tabId." };
+  }
   const entered = await controlEnter(tab, msg, sender);
   if (entered.error) return { ok: false, error: entered.error };
   const run = async (func, args) => (await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: args || [], func }))[0].result;
@@ -3681,11 +3685,26 @@ async function controlV2Tool(msg, sender) {
   if (name === "tab_open") {
     const url = String(msg.url || "");
     if (!/^https?:\/\//i.test(url) || CONTROL_STORES.test(url)) return { ok: false, error: "tab_open takes a web address starting with http:// or https://." };
-    const tab = await chrome.tabs.create({ url, active: false });
+    const fromAsk = !!(sender && sender.tab && Number.isInteger(ask.tabId) && sender.tab.id === ask.tabId);
+    let where = { url, active: false };
+    if (fromAsk && ask.copy && Number.isInteger(ask.origin)) {
+      // Next to the person's own tab, in the same window, so the copy is easy to find (and to close).
+      try { const o = await chrome.tabs.get(ask.origin); where = { url, active: false, windowId: o.windowId, index: o.index + 1 }; } catch {}
+    }
+    const tab = await chrome.tabs.create(where);
+    if (fromAsk && ask.copy) {
+      ask.work = tab.id; ask.workOf = ask.origin;
+      askPost({ type: "ask-work", tabId: tab.id });
+      return { ok: true, text: "Opened " + url + " as a copy next to their tab (tabId " + tab.id + "). Work only in tabId " + tab.id + ": pass it to every tab_* command. Their own tab is never clicked or typed in." };
+    }
     return { ok: true, text: "Opened " + url + " in a new tab (tabId " + tab.id + "). Pass tabId " + tab.id + " to the next tab_* command to work there." };
   }
   const tab = await resolveTab(msg);
   if (!tab) return { ok: false, error: "no target tab (open a page, or pass url_contains or tabId)" };
+  // Ask PlazCode works in a copy: clicking, typing, scrolling or navigating in the person's own tab is refused (a picture of it is fine).
+  if (sender && sender.tab && Number.isInteger(ask.tabId) && sender.tab.id === ask.tabId && ask.copy && Number.isInteger(ask.origin) && tab.id === ask.origin && name !== "tab_screenshot") {
+    return { ok: false, error: "That is the person's own tab, and it stays untouched. Open a copy with tab_open (the same web address) and work in the copy; pass its tabId." };
+  }
   const entered = await controlEnter(tab, msg, sender);
   if (entered.error) return { ok: false, error: entered.error };
   const run = async (func, args) => (await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: args || [], func }))[0].result;
@@ -3872,7 +3891,9 @@ async function controlWatch(tabId, sender) {
 // one background chat on the AI site they already use with PlazCode (opened like a helper agent window) does the
 // work as an AgentScript session. Every question carries a fresh picture of the shared tab. Control of that tab is
 // off unless the person switches it on in the panel; then steps 1 and 2 apply, with approvals shown in the panel.
-const ask = { tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null };
+// origin = the person's own tab being looked at; work = the copy of it PlazCode opened to act in (owner, 2026-11-14: "work like Claude in
+// Chrome, in a duplicate tab"). Acting tools never touch the origin tab; looking (picture, text) is fine.
+const ask = { tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null, origin: null, work: null, workOf: null, copy: false };
 const askPorts = new Set();
 const askPost = (m) => { for (const port of askPorts) { try { port.postMessage(m); } catch {} } };
 // The panel translates text that is one of PlazCode's own sentences; key + values carry a sentence with slots.
@@ -3930,6 +3951,7 @@ async function askQuestion(m) {
   const text = String(m.say || "").trim().slice(0, 8000);
   if (!text) return;
   ask.busy = true; askPost({ type: "ask-busy", busy: true });
+  ask.origin = null; ask.copy = false;
   try {
     if (m.share && m.shareTabId === -1) {
       let images = [];
@@ -3949,7 +3971,11 @@ async function askQuestion(m) {
     }
     const ready = await askEnsure();
     if (!ready.ok) { askSay(ready.error, "error"); return; }
-    const reply = await chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-run", ask: { text, images, control: !!(m.control && tab), share: tab ? { tabId: tab.id, title: String(tab.title || "").slice(0, 120), url: String(tab.url || "").slice(0, 300) } : null } });
+    ask.origin = tab ? tab.id : null; ask.copy = !!(m.control && tab);
+    // A copy opened for an earlier question about this same tab is offered again (if it is still open) instead of a new one.
+    let work = null;
+    if (ask.copy && Number.isInteger(ask.work) && ask.workOf === tab.id) { try { const w = await chrome.tabs.get(ask.work); work = { tabId: w.id, title: String(w.title || "").slice(0, 120), url: String(w.url || "").slice(0, 300) }; } catch { ask.work = null; } }
+    const reply = await chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-run", ask: { text, images, control: !!(m.control && tab), work, share: tab ? { tabId: tab.id, title: String(tab.title || "").slice(0, 120), url: String(tab.url || "").slice(0, 300) } : null } });
     if (!reply || !reply.ok) { askSay(String(reply && reply.error || "The background chat did not take the question."), "error"); return; }
     return; // the answer arrives as "ask_reply" from the background chat
   } catch (error) { askSay(String(error && error.message || error).slice(0, 300), "error"); }

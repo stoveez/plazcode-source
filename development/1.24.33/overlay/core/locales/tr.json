@@ -1445,5 +1445,7 @@
   "Restart AgentScript server": "AgentScript sunucusunu yeniden başlat",
   "Live": "Canlı",
   "Paused": "Duraklatıldı",
-  "Ended": "Bitti"
+  "Ended": "Bitti",
+  "Let PlazCode do things for me": "PlazCode'un benim yerime işlem yapmasına izin ver",
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode çalışmak için sekmenizin bir kopyasını açtı. Kendi sekmenize dokunulmaz."
 }

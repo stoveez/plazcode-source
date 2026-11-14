@@ -1445,5 +1445,7 @@
   "Restart AgentScript server": "AgentScript 서버 다시 시작",
   "Live": "실시간",
   "Paused": "일시 중지됨",
-  "Ended": "종료됨"
+  "Ended": "종료됨",
+  "Let PlazCode do things for me": "PlazCode가 대신 작업하도록 허용",
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode가 탭의 복사본을 열어 그곳에서 작업합니다. 원래 탭은 그대로 유지됩니다."
 }
