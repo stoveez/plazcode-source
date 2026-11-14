@@ -106,6 +106,17 @@ async function run(mode) {
     }
     const lookOnly = await worker.evaluate(([id, shop]) => controlV2Tool({ type: 'tab_screenshot', tabId: shop }, { tab: { id } }), [askTab, ids.shop]);
     assert.doesNotMatch(String(lookOnly.error || ''), /person's own tab/, 'a picture of the own tab is allowed');
+    // The copy was opened by the worker; make sure the test's fake site is really loaded in it (the page can be requested before the test's
+    // route is attached to the new tab, and then shows a network error page): load it again until its title is the fake shop's.
+    await worker.evaluate(async (copy) => {
+      for (let tries = 0; tries < 6; tries++) {
+        for (let i = 0; i < 40; i++) { const t = await chrome.tabs.get(copy); if (t.status === 'complete') break; await new Promise((r) => setTimeout(r, 100)); }
+        const t = await chrome.tabs.get(copy);
+        if (t.title === 'Shop') return;
+        await chrome.tabs.update(copy, { url: 'https://control.test/' });
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    }, copyId);
     const inCopy = await worker.evaluate(([id, copy]) => controlV2Tool({ type: 'tab_key', tabId: copy, key: 'Tab' }, { tab: { id } }), [askTab, copyId]);
     assert.doesNotMatch(String(inCopy.error || ''), /person's own tab/, 'the copy is worked in normally');
     // (the glow from those calls ends on its own after 20 s of quiet; end it now so the sharing checks below see only the share mark)
