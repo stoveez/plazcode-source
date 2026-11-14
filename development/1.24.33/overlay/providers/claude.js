@@ -564,7 +564,14 @@ const RSProvider = (() => {
     } catch {}
   }
 
+  // 1.24.33: Stop pressed while a send is still waiting (for Claude to finish, for the box to take the text) must cancel it.
+  // The wait ended because Stop removed the Stop button, and the startup message was then sent anyway (seen live 2026-11-14:
+  // claude.send.click right after nativeStop). cancelPendingSends() is called by the core on every Stop.
+  let _sendGeneration = 0;
+  function cancelPendingSends() { ++_sendGeneration; }
   async function typeAndSend(text, images) {
+    const myGeneration = _sendGeneration;
+    const cancelled = () => myGeneration !== _sendGeneration && (diag("claude.send.cancelled", {}), true);
     let ed = getEditor();
     if (!ed) throw new Error("Claude input box not found");
     text = truncateForSend(text);
@@ -586,6 +593,7 @@ const RSProvider = (() => {
           if (len !== quietLen) { quietLen = len; quietSince = Date.now(); return false; }
           return Date.now() - quietSince >= 1000;
         }, 45000);
+        if (cancelled()) return;
       }
       // Claude swaps its composer for a new one when a reply finishes. Type into the editor that is on the page
       // NOW, not the one found before the wait: text typed into the old, detached editor is lost.
@@ -633,6 +641,7 @@ const RSProvider = (() => {
       // pressing Enter into a busy composer.
       if (stopBefore) { diag("claude.send.waitStopGone", {}); await waitFor(() => !stopButton(), 45000); }
       await waitFor(() => !!sendButton(), Math.min(15000, 2500 + Math.ceil(String(text).length / 25)));
+      if (cancelled()) return;
       const btn = sendButton();
       if (btn) { diag("claude.send.click", {}); btn.click(); }
       else if (stopButton()) { diag("claude.send.stillStreaming", {}); return; }
@@ -821,7 +830,7 @@ const RSProvider = (() => {
     streamLen, snapshot,
     getEditor, editorText, chatIsEmpty, isFreshChat, composerFrame, barAnchor,
     followupPlaceholderTargets() {const ed=getEditor();return ed ? [ed,...safeQueryAll(ed, '[data-placeholder], [placeholder], [aria-placeholder]')] : [];},
-    setInputLock, writeDraft, typeAndSend, stopGeneration,
+    setInputLock, writeDraft, typeAndSend, cancelPendingSends, stopGeneration,
     isGenerating, isBusyNow, isHardGenerating,
     enforceComposer, ensureComposerReady,
     turnHalted, findContinueBtn, clickContinueBtn,

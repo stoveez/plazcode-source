@@ -10540,6 +10540,12 @@ function renderCards(panel) {
         const phase = loopPhaseText();
         if (phase) msg = `<b>PlazCode running</b> — ${phase}`;
       }
+      // After the user pressed Stop nothing is running any more, but the idle text still said "PlazCode running".
+      // Say what is true (seen live 2026-11-14). The next message clears it (userStopped is reset there).
+      if (A.started && !A.running && !A.starting && !A.stopping && A.userStopped && toneClass === "active") {
+        let n = 0; try { n = actualToolCount() || 0; } catch {}
+        msg = `<b>Stopped</b>${n ? ` — ${n} tools ready` : ""} — send a message to continue`;
+      }
       // Parked on visibility: the loop is alive but deliberately frozen because
       // this tab is not the foreground tab of its window. Say so explicitly -
       // otherwise the bar keeps claiming "Agent active" while nothing advances,

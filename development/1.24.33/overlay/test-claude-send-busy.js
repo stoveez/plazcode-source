@@ -55,6 +55,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await runE;
   assert.equal(e.log.clicks, 1, 'sent once after the composer was swapped');
   assert.equal(e.log.enter, 0, 'no Enter');
+  // 2c. Stop pressed while the send waits for Claude: the wait ends (Stop button gone) but nothing may be sent afterwards.
+  // (Seen live 2026-11-14: the startup message was clicked right after PlazCode's Stop, then Claude answered a stopped run.)
+  const k = page(), sendK = k.d.querySelector('button[aria-label="Send message"]'); sendK.style.display = 'none';
+  const stopK = k.d.createElement('button'); stopK.setAttribute('data-testid', 'stop-button'); stopK.setAttribute('aria-label', 'Stop response'); k.d.querySelector('fieldset').appendChild(stopK);
+  const runK = k.P.typeAndSend('Startup text that must not be sent after Stop', null, {});
+  await sleep(400);
+  k.P.cancelPendingSends(); stopK.remove(); sendK.style.display = '';
+  await runK;
+  assert.equal(k.log.clicks, 0, 'Stop while waiting: the message is not sent afterwards');
+  assert.equal(k.log.enter, 0, 'no Enter either');
+  assert.ok(k.events.includes('claude.send.cancelled'), 'cancel is logged');
   // 3. A Stop button in another language (Portuguese UI) is recognised, so PlazCode waits for it.
   const c = page(), pt = c.d.createElement('button'); pt.setAttribute('aria-label', 'Parar resposta'); c.d.querySelector('fieldset').appendChild(pt);
   assert.equal(c.P.isHardGenerating(), true, 'Portuguese Stop button is seen');
