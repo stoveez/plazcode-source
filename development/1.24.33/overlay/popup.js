@@ -6,7 +6,10 @@ let popupAppearance={theme:'default',glow:'subtle',gradients:'on'};
 function applyPopupAppearance(value){
  if(value?.theme==="solar")value={...value,theme:"default"};
  popupAppearance=value&&POPUP_PALETTES[value.theme]?value:{theme:'default',glow:'subtle',gradients:'on'};
- const [accent,light,bg,rgb]=POPUP_PALETTES[popupAppearance.theme],root=document.documentElement;
+ let [accent,light,bg,rgb]=POPUP_PALETTES[popupAppearance.theme];const root=document.documentElement;
+ // The app's custom colour (2026-11-14), mixed the same way as in the app.
+ const cm=/^#([0-9a-f]{6})$/i.exec(String(value?.custom||''));
+ if(cm){const c=[0,2,4].map(i=>parseInt(cm[1].slice(i,i+2),16)),mix=(a,b,t)=>a.map((v,i)=>Math.round(v+(b[i]-v)*t)),hx=r=>'#'+r.map(v=>('0'+Math.max(0,Math.min(255,v)).toString(16)).slice(-2)).join('');accent=hx(c);light=hx(mix(c,[255,255,255],.5));bg=hx(mix([8,9,12],c,.08));rgb=c.join(' ');}
  root.dataset.palette=popupAppearance.theme;root.dataset.glow=popupAppearance.glow||'subtle';root.dataset.gradients=popupAppearance.gradients||'on';
  // Studio look (1.24.33 bar redesign): same Feel as the app and the bar (Full / on / on when an older app sends none).
  root.dataset.studio='';root.dataset.motion=['full','reduced','off'].includes(value?.motion)?value.motion:'full';root.dataset.anim=value?.anim===false||value?.anim==='off'?'off':'on';root.dataset.ripple=value?.ripple===false||value?.ripple==='off'?'off':'on';

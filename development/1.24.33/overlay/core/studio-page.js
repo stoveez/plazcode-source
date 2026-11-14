@@ -8,7 +8,10 @@
   function apply(value) {
     const look = value && typeof value === "object" ? value : {};
     const theme = look.theme === "solar" ? "default" : look.theme;
-    const [accent, light, bg, rgb] = PALETTES[theme] || PALETTES.default;
+    let [accent, light, bg, rgb] = PALETTES[theme] || PALETTES.default;
+    // The app's custom colour (2026-11-14), mixed the same way as in the app.
+    const cm = /^#([0-9a-f]{6})$/i.exec(String(look.custom || ""));
+    if (cm) { const c = [0, 2, 4].map((i) => parseInt(cm[1].slice(i, i + 2), 16)), mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t)), hx = (r) => "#" + r.map((v) => ("0" + Math.max(0, Math.min(255, v)).toString(16)).slice(-2)).join(""); accent = hx(c); light = hx(mix(c, [255, 255, 255], .5)); bg = hx(mix([8, 9, 12], c, .08)); rgb = c.join(" "); }
     root.dataset.studio = "";
     root.dataset.palette = PALETTES[theme] ? theme : "default";
     root.dataset.glow = ["off", "subtle", "strong"].includes(look.glow) ? look.glow : "subtle";

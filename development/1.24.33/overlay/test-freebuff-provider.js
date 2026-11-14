@@ -141,7 +141,15 @@ function composer(w, {revert = false, sendWorks = true, alwaysEnabled = false, i
     ok('a Stop button is generating', () => { assert.equal(f.p.isGenerating(), true); assert.equal(f.p.isHardGenerating(), true); });
     stop.remove();
     f.w.document.querySelector('textarea').value = 'a draft';
-    ok('a draft that Send refuses is busy', () => assert.equal(f.p.genDebug(), 'send-disabled'));
+    // 2026-11-14: a suggested next message sits in the box with a greyed Send. While the reply is still fresh that counts as busy,
+    // but once the reply has been still for 8 s and no Stop button is up, the turn is over (the bar stayed on "Starting" for good).
+    reply.textContent = 'Hello, I am writing a longer answer now, and a bit more';
+    ok('a draft that Send refuses is busy while the reply is fresh', () => assert.equal(f.p.genDebug(), 'send-disabled'));
+    f.advance(15000);
+    ok('a draft that Send refuses is ignored once the reply has been still for 8 s', () => { assert.equal(f.p.isGenerating(), false); assert(f.events.some((e) => e[0] === 'freebuff.softBusyIgnored')); });
+    f.w.document.querySelector('form').append(stop);
+    ok('a Stop button still means busy next to a draft', () => assert.equal(f.p.isGenerating(), true));
+    stop.remove();
     f.w.close();
   }
 

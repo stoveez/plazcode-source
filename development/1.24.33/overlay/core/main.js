@@ -744,14 +744,22 @@
     orchid:{rgb:"205 137 235",accent:"#cd89eb",light:"#edc6ff",bg:"#150e1c",legacy:"sakura",name:"Orchid Noir"}
   };
   let sharedAppearance = null;
+  // The app's custom colour (Appearance > Color theme > Custom), shared with the bar: same mixing as the app (2026-11-14).
+  function customPalette(hex) {
+    const m = /^#([0-9a-f]{6})$/i.exec(String(hex || "")); if (!m) return null;
+    const c = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16)), mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+    const hx = (rgb) => "#" + rgb.map((v) => ("0" + Math.max(0, Math.min(255, v)).toString(16)).slice(-2)).join("");
+    return {rgb: c.join(" "), accent: hx(c), light: hx(mix(c, [255, 255, 255], .5)), bg: hx(mix([8, 9, 12], c, .08))};
+  }
   function applySharedAppearance(value) {
     if(value?.theme === "solar") value={...value,theme:"default"};
     if (!value || !Object.prototype.hasOwnProperty.call(PLAZCODE_PALETTES,value.theme)) return;
     // Feel (motion, animated theme, click effects) comes from the app's Appearance > Feel (2026-11-13); an older
     // app sends none, which means Full / on / on.
     sharedAppearance = {theme:value.theme,glow:["off","strong"].includes(value.glow)?value.glow:"subtle",gradients:value.gradients==="off"?"off":"on",
-      motion:["reduced","off"].includes(value.motion)?value.motion:"full",anim:value.anim!==false,ripple:value.ripple!==false};
-    const palette = PLAZCODE_PALETTES[sharedAppearance.theme], root=document.documentElement;
+      motion:["reduced","off"].includes(value.motion)?value.motion:"full",anim:value.anim!==false,ripple:value.ripple!==false,custom:customPalette(value.custom)?String(value.custom).toLowerCase():""};
+    const palette = Object.assign({}, PLAZCODE_PALETTES[sharedAppearance.theme], customPalette(sharedAppearance.custom) || {}), root=document.documentElement;
+    root.toggleAttribute("data-rs-custom", !!sharedAppearance.custom);
     plazcodeTheme=palette.legacy;
     // The bar's Studio look (owner, 2026-11-13: match the app redesign). One switch for the whole new layer.
     root.setAttribute("data-rs-studio","");
@@ -833,7 +841,7 @@
     if (!PLAZCODE_THEMES[id]) return;
     plazcodeTheme = id;
     const theme={night:"graphite","blood-moon":"crimson",sakura:"rose",starglaze:"amethyst",autumn:"default"}[id];
-    applySharedAppearance({...(sharedAppearance||{}),theme,glow:sharedAppearance?.glow || "subtle",gradients:sharedAppearance?.gradients || "on"});
+    applySharedAppearance({...(sharedAppearance||{}),custom:"",theme,glow:sharedAppearance?.glow || "subtle",gradients:sharedAppearance?.gradients || "on"});
     applyOrSkin();
     try { chrome.storage.local.set({ rsTheme: id, rsAppearance:sharedAppearance }); } catch {}
   }
@@ -4565,10 +4573,21 @@ return result`;
     if (!live.length) return "";
     return `Also connected right now: ${live.map((sv) => `${sv.id} (${sv.tools} commands)`).join(", ")}. These servers are live and usable; do not tell the user they are missing. Get their exact schemas with list_commands {"server":"<id>"} before using them.`;
   }
+  const CAPABILITY_REFUSAL_EXTRA = [
+    /\b(?:i(?:'m| am) (?:not able|unable) to|i (?:can(?:not|'t)|won't)) (?:act|work|operate|function|behave|serve) as\b.{0,80}\b(?:plazcode|agent|command)/i,
+    /\b(?:command interface|command protocol|tool interface|plazcode (?:bridge|engine|protocol|commands?)).{0,100}\b(?:isn't|is not|aren't|are not|not) (?:connected|available|accessible|reachable|enabled)\b/i,
+    /\bmy (?:actual |available |real )?tools (?:are|differ|include)\b.{0,160}\b(?:search|python|memory|browse)/i,
+    /\bno (?:tool|way) (?:named|called|to (?:execute|run))\b.{0,60}\b(?:list_commands|commands?)\b/i,
+    /\b(?:don't|do not) have (?:that|the|a|any) (?:command|tool) (?:interface|access|protocol)\b/i,
+  ];
   function isCapabilityRefuse(text) {
     const t = String(text || "");
     if (!t || isProviderPolicyRefusal(t)) return false;
     if (/###\s*LUA\s*###|"command"\s*:\s*"/i.test(t)) return false;
+    // 1.24.33: Kimi worded it as "I'm not able to act as a PlazCode agent - that command interface isn't connected to me" while the bar
+    // said PlazCode was running. These other ways of saying "I have no command access" count too, so the session is reconnected once.
+    const tt = t.replace(/[’]/g, "'");
+    if (CAPABILITY_REFUSAL_EXTRA.some((re) => re.test(tt))) return true;
     return /\b(?:i (?:can(?:not|'t)|do not|don't|am not able to|'m not able to)|this (?:chat|session|assistant) (?:can(?:not|'t)|does not|doesn't)).{0,100}\b(?:use|call|run|execute|access|control|reach|interact|have)\b.{0,100}\b(?:commands?|tools?|workspace|local (?:engine|project|files)|roblox studio|your (?:computer|machine|project))\b/i.test(t.replace(/[’]/g, "'"));
   }
   const activity = PlazCodeActivity.create(() => { try { ui.renderActivity(); } catch {} try { ui.noteChatSoon('activity'); } catch {} }, () => window.sessionStorage);
@@ -6159,10 +6178,32 @@ return result`;
       }
       // The handshake only needs the command-list request. If the model also appended
       // other calls in the same reply, use the list_commands call instead of failing.
-      const startupCall = listRes.kind === "tool" && listRes.calls && listRes.calls.length
-        ? (listRes.calls.length === 1 ? listRes.calls[0]
-          : listRes.calls.find((c) => c && (c.tool === "list_commands" || c.tool === "list_tools")) || null)
+      const pickStartupCall = (res) => res.kind === "tool" && res.calls && res.calls.length
+        ? (res.calls.length === 1 ? res.calls[0]
+          : res.calls.find((c) => c && (c.tool === "list_commands" || c.tool === "list_tools")) || null)
         : null;
+      let startupCall = pickStartupCall(listRes);
+      // 1.24.33 (Kimi): the reply's code block can appear a moment AFTER the watcher gave up (the model "thinks", then writes the
+      // command), and the banner "Startup handshake failed" then sat next to a perfectly good list_commands block. Look at the
+      // newest reply again for a few seconds before giving up. Never for a refusal, a site notice or a stop.
+      if (P.lateStartupReply && (!startupCall || (startupCall.tool !== "list_commands" && startupCall.tool !== "list_tools")) &&
+          !["context_limit", "stopped"].includes(listRes.kind) && !isProviderPolicyRefusal(listRes.text) &&
+          !(P.userVoiceStartup && looksLikeStartupDecline(listRes.text)) && !A.stop) {
+        const until = Date.now() + 6000;
+        while (Date.now() < until && alive() && !A.stop) {
+          let found = null;
+          try {
+            const item = P.lastAssistant();
+            const txt = item ? String((P.classifyText ? P.classifyText(item, ".rs-chip") : P.itemText(item)) || "") : "";
+            const calls = txt ? RSParse.parseToolCalls(txt) : [];
+            const call = calls.length === 1 ? calls[0] : calls.find((c) => c && (c.tool === "list_commands" || c.tool === "list_tools"));
+            if (call && (call.tool === "list_commands" || call.tool === "list_tools")) found = { kind: "tool", calls: calls, item };
+          } catch {}
+          if (found) { diag("start.lateReply", { provider: P.id }); listRes = found; startupCall = pickStartupCall(found); break; }
+          await new Promise((r) => setTimeout(r, 500));
+        }
+        if (!alive() || A.stop) return;
+      }
       if (!startupCall || (startupCall.tool !== "list_commands" && startupCall.tool !== "list_tools")) {
         // 1.24.21 (Notion new workspace): record what the page really showed (page type, whether a
         // chat address appeared, how many parts, the start of the reply) so a failure can be
@@ -6481,7 +6522,8 @@ return result`;
             (hasBody ?  `<span class="rs-chip-cv">${SVG('<polyline points="6 9 12 15 18 9"/>')}</span>` : "") +
           `</div>` +
           (hasBody ?  (card ? `<div class="rs-chip-body"></div>` : `<div class="rs-chip-body"><pre></pre></div>`) : "");
-        chip.querySelector(".rs-chip-tx").textContent = label;
+        chip.querySelector(".rs-chip-tx").textContent = card && card.kind === "batch" && card.title ? card.title : label;
+        if (card && card.kind === "batch") chip.classList.add("rs-chip-multi");
         if (detail) chip.querySelector(".rs-chip-dt").textContent = detail;
         if (card) chip.classList.add("rs-tc");
         if (card && typeof PlazCodeToolCards !== "undefined") {
@@ -11223,7 +11265,7 @@ function renderCards(panel) {
           clearAnchorPad();
           r = anchorEl.getBoundingClientRect();
           bar.style.left = Math.round(r.left) + "px";
-          bar.style.top = Math.round(P.barOutside ? Math.max(4, r.top - bh - BAR_GAP) : r.top) + "px";
+          bar.style.top = Math.round(P.barOutside || bh > 96 ? Math.max(4, r.top - bh - BAR_GAP) : r.top) + "px";
           bar.style.width = Math.round(r.width) + "px";
           return;
         }
@@ -11232,7 +11274,9 @@ function renderCards(panel) {
         let reserved = false;
         if (P.reserveBarSpace) { try { reserved = P.reserveBarSpace(anchorEl, bh + BAR_GAP) === true; } catch {} }
         if (reserved) r = anchorEl.getBoundingClientRect();
-        const outside = !!P.barOutside && !reserved;
+        // 2026-11-14 (owner: the bar "fills" the Freebuff and use.ai chat boxes): the redesigned bar is a tall panel. Reserving a strip that tall
+        // inside the host's box swallows the box (a cramped input with scrollbars), so a tall bar floats above the box like ChatGPT's does.
+        const outside = (!!P.barOutside || bh > 96) && !reserved;
         if (outside || reserved) {
           clearAnchorPad();
         } else {
@@ -13078,7 +13122,7 @@ rsInterval(() => {
     }
     if (msg && msg.type === "rs-status") {
       checkVersionNotice(msg);
-      ui.setStatus({ connected: msg.connected, bridge_reachable: msg.bridge_reachable, bridge_connecting: msg.bridge_connecting, profile_required: msg.profile_required, mcpAlive: msg.mcpAlive, studio: msg.studio, studioApp: msg.studioApp, studioProc: msg.studioProc, robloxProc: msg.robloxProc, roblox_connected: msg.roblox_connected, studio_checking: msg.studio_checking, engine: msg.engine, tools: msg.tools, servers: msg.servers, local_connected: msg.local_connected, local_full: msg.local_full, local_root: msg.local_root, blender: msg.blender, blender_shim: msg.blender_shim, blender_error: msg.blender_error, bridge_error: msg.bridge_error });
+      ui.setStatus({ connected: msg.connected, bridge_reachable: msg.bridge_reachable, bridge_connecting: msg.bridge_connecting, profile_required: msg.profile_required, mcpAlive: msg.mcpAlive, studio: msg.studio, studioApp: msg.studioApp, studioProc: msg.studioProc, robloxProc: msg.robloxProc, roblox_connected: msg.roblox_connected, studio_checking: msg.studio_checking, engine: msg.engine, tools: msg.tools, servers: msg.servers, local_connected: msg.local_connected, local_full: msg.local_full, local_root: msg.local_root, blender: msg.blender, blender_shim: msg.blender_shim, blender_error: msg.blender_error, bridge_error: msg.bridge_error, control_v2: msg.control_v2 });
     }
     if (msg && msg.type === "rs-fix-connection") {
       try { ui.openFixConnection(); sendResponse({ ok: true }); } catch (e) { sendResponse({ ok: false }); }

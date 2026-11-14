@@ -92,6 +92,14 @@ async function extPage(browser, file, store) {
       assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('#rs-bar')).borderImageSource), 'none', 'gradients off: no gradient rim');
       await page.evaluate(() => window.__fire({ rsAppearance: { theme: 'cyan', glow: 'off', gradients: 'off' } })); await page.waitForTimeout(1000); // after the .45 s fade
       assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('#rs-bar')).boxShadow), 'none', 'glow and gradients off: no shadow');
+      // 4a. The app's custom colour reaches the bar (2026-11-14): accent = the colour, the rest mixed like in the app; removing it goes back to the theme.
+      await page.evaluate(() => window.__fire({ rsAppearance: { theme: 'cyan', glow: 'subtle', gradients: 'on', custom: '#336699' } })); await page.waitForTimeout(250);
+      const mine = await page.evaluate(() => { const r = document.documentElement.style; return { accent: r.getPropertyValue('--pc-accent'), rgb: r.getPropertyValue('--pc-rgb'), light: r.getPropertyValue('--pc-light'), bg: r.getPropertyValue('--pc-bg'), mark: document.documentElement.hasAttribute('data-rs-custom') }; });
+      assert.deepEqual(mine, { accent: '#336699', rgb: '51 102 153', light: '#99b3cc', bg: '#0b1017', mark: true }, 'custom colour on the bar ' + JSON.stringify(mine));
+      await page.evaluate(() => window.__fire({ rsAppearance: { theme: 'cyan', glow: 'subtle', gradients: 'on', custom: 'url(x)' } })); await page.waitForTimeout(250);
+      assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--pc-accent')), '#27c1e7', 'a bad custom value is ignored');
+      await page.evaluate(() => window.__fire({ rsAppearance: { theme: 'cyan', glow: 'subtle', gradients: 'on' } })); await page.waitForTimeout(250);
+      assert.equal(await page.evaluate(() => document.documentElement.hasAttribute('data-rs-custom')), false, 'no custom colour: the theme again');
       assert.deepEqual(errors, []);
       await page.close();
     }

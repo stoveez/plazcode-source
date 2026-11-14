@@ -18,12 +18,22 @@
   const port = chrome.runtime.connect({ name: "plazcode-ask" });
   const add = (cls, text) => { const p = document.createElement("p"); p.className = "msg " + cls; p.textContent = text; log.append(p); log.scrollTop = log.scrollHeight; return p; };
   const setBusy = (value) => { busy = value; go.disabled = value; stop.hidden = !value; if (!value) step.textContent = ""; };
+  // The tab the person is looking at. From a side panel or a docked window the "current window" can be the panel's own window,
+  // whose only tab is this page (shown as "This tab can't be shared" for every site, owner report 2026-11-14), so a page that is
+  // not a website falls back to the active tab of the last focused browser window, then of any normal browser window.
+  const isSite = (tab) => !!tab && /^(?:https?|file):/i.test(String(tab.url || ""));
+  async function activeIn(query) { try { const [tab] = await chrome.tabs.query(query); return tab || null; } catch { return null; } }
   async function currentTab() {
+    const first = await activeIn(fixedWindow ? { active: true, windowId: fixedWindow } : { active: true, currentWindow: true });
+    if (isSite(first) || fixedWindow) return first;
+    const last = await activeIn({ active: true, lastFocusedWindow: true });
+    if (isSite(last)) return last;
     try {
-      const query = fixedWindow ? { active: true, windowId: fixedWindow } : { active: true, currentWindow: true };
-      const [tab] = await chrome.tabs.query(query);
-      return tab || null;
-    } catch { return null; }
+      const wins = await chrome.windows.getAll({ windowTypes: ["normal"] });
+      wins.sort((a, b) => (b.focused ? 1 : 0) - (a.focused ? 1 : 0));
+      for (const win of wins) { const tab = await activeIn({ active: true, windowId: win.id }); if (isSite(tab)) return tab; }
+    } catch {}
+    return first || last || null;
   }
   async function follow() {
     // Step 6: the whole screen (tab id -1) instead of the tab the person is looking at.

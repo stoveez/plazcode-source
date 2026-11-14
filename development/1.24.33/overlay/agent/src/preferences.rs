@@ -101,6 +101,10 @@ pub struct Appearance {
     pub anim: bool,
     #[serde(default = "default_on")]
     pub ripple: bool,
+    /// The app's custom colour ("#rrggbb"), shared with the PlazCode bar, popup and side panels (2026-11-14: the bar did not follow a
+    /// custom theme). Stays on this computer: the account service only accepts the ready-made themes (see account_sync.rs).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom: Option<String>,
 }
 fn default_motion() -> String { "full".into() }
 fn default_on() -> bool { true }
@@ -172,6 +176,7 @@ impl DesktopPreferences {
             if !matches!(value.glow.as_str(), "off" | "subtle" | "strong") { value.glow = "subtle".into(); }
             if !matches!(value.gradients.as_str(), "off" | "on") { value.gradients = "on".into(); }
             if !matches!(value.motion.as_str(), "full" | "reduced" | "off") { value.motion = "full".into(); }
+            if let Some(custom) = &value.custom { let ok = custom.len() == 7 && custom.starts_with('#') && custom[1..].bytes().all(|b| b.is_ascii_hexdigit()); if !ok { value.custom = None; } else { value.custom = Some(custom.to_ascii_lowercase()); } }
         }
         if !matches!(self.engine.as_str(), "roblox" | "local") {
             self.engine = "roblox".to_string();
@@ -383,7 +388,7 @@ mod tests {
     #[test]
     fn ultracode_and_legacy_solar_preferences_are_preserved() {
         let mut prefs=DesktopPreferences::default();prefs.thinking_level="ultracode".into();
-        prefs.appearance=Some(Appearance{theme:"solar".into(),glow:"strong".into(),gradients:"off".into(),motion:"wild".into(),anim:false,ripple:true});
+        prefs.appearance=Some(Appearance{theme:"solar".into(),glow:"strong".into(),gradients:"off".into(),motion:"wild".into(),anim:false,ripple:true,custom:None});
         prefs.normalize();assert_eq!(prefs.thinking_level,"ultracode");
         let appearance=prefs.appearance.unwrap();assert_eq!(appearance.theme,"default");assert_eq!(appearance.glow,"strong");assert_eq!(appearance.gradients,"off");assert_eq!(appearance.motion,"full");assert!(!appearance.anim&&appearance.ripple);
     }
@@ -407,6 +412,18 @@ mod tests {
         assert!(PreferencesStore::load_from(path.clone()).snapshot().continuation_offer,"settings saved by older versions default to on");
         assert!(PreferencesStore::load_from(path.clone()).snapshot().auto_update,"automatic updates default to on for existing installs");
         let _=std::fs::remove_file(path);
+    }
+    #[test]
+    fn a_custom_colour_is_kept_only_when_it_is_a_real_colour() {
+        let path = temp_settings_path();
+        let store = PreferencesStore::load_from(path.clone());
+        store.patch(serde_json::json!({"rsAppearance":{"theme":"rose","glow":"subtle","gradients":"on","custom":"#A1B2C3"}})).unwrap();
+        assert_eq!(PreferencesStore::load_from(path.clone()).snapshot().appearance.unwrap().custom.as_deref(), Some("#a1b2c3"));
+        store.patch(serde_json::json!({"rsAppearance":{"theme":"rose","glow":"subtle","gradients":"on","custom":"url(x)"}})).unwrap();
+        assert!(PreferencesStore::load_from(path.clone()).snapshot().appearance.unwrap().custom.is_none(), "anything but #rrggbb is dropped");
+        store.patch(serde_json::json!({"rsAppearance":{"theme":"rose","glow":"subtle","gradients":"on"}})).unwrap();
+        assert!(PreferencesStore::load_from(path.clone()).snapshot().appearance.unwrap().custom.is_none(), "removing the custom colour removes it for the bar");
+        let _ = std::fs::remove_file(path);
     }
     #[test]
     fn shared_appearance_persists_and_normalizes() {

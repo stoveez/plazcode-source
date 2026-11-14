@@ -6495,3 +6495,13 @@ html[data-rs-studio][data-rs-gradients=off][data-rs-glow=off] #rs-root .rs-live-
    43491298315). In the Studio look it stays in its icon group with Discord and Settings instead. */
 html[data-rs-studio]:not([data-rs-bar-collapsed]) #rs-root #rs-bar.rs-prov-clickup #rs-hide{position:static!important;top:auto!important;right:auto!important}
 html[data-rs-studio] #rs-root #rs-bar.rs-prov-clickup #rs-ctx{margin-right:0!important}
+
+/* Several commands in one reply (2026-11-14): a see-through glass card with the accent colour, so it reads at a glance. */
+.rs-chip.rs-chip-multi{background:linear-gradient(135deg,rgb(var(--pc-rgb,233 186 83) / .16),rgb(var(--pc-rgb,233 186 83) / .05) 55%,rgb(255 255 255 / .03))!important;border:1px solid rgb(var(--pc-rgb,233 186 83) / .55)!important;box-shadow:0 0 0 1px rgb(var(--pc-rgb,233 186 83) / .12) inset,0 8px 28px rgb(0 0 0 / .28),0 0 22px rgb(var(--pc-rgb,233 186 83) / .14)!important;-webkit-backdrop-filter:blur(10px) saturate(1.3);backdrop-filter:blur(10px) saturate(1.3)}
+.rs-chip.rs-chip-multi .rs-chip-tx{color:var(--pc-light,#ffe0a1)!important;font-weight:700}
+.rs-chip.rs-chip-multi .rs-chip-batch{color:var(--rs-text,#eef4ff);opacity:.85}
+.rs-batch-list{list-style:none;margin:0;padding:6px 12px 12px;display:grid;gap:6px}
+.rs-batch-row{display:flex;align-items:baseline;gap:10px;padding:7px 10px;border:1px solid rgb(var(--pc-rgb,233 186 83) / .28);background:rgb(var(--pc-rgb,233 186 83) / .09);border-radius:8px;min-width:0}
+.rs-batch-n{flex:none;min-width:20px;text-align:center;font-weight:700;color:var(--pc-bg,#18140d);background:var(--pc-accent,#e9ba53);border-radius:6px;padding:1px 5px;font-size:11px}
+.rs-batch-name{flex:none;font-weight:600;color:var(--pc-light,#ffe0a1)}
+.rs-batch-target{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--pc-muted,#9fb0c7)}

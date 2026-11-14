@@ -241,6 +241,10 @@ jobs:
         timeout-minutes: 5
         run: node release-tools/test-bar-studio-browser.cjs
         working-directory: build-src-1.24.33/PlazCode
+      - name: DeepSeek never shows the raw command for a paint when it redraws a reply
+        timeout-minutes: 5
+        run: node release-tools/test-deepseek-redraw-browser.cjs
+        working-directory: build-src-1.24.33/PlazCode
       - name: AI site's own console messages are not credited to PlazCode (real extension)
         timeout-minutes: 5
         run: node release-tools/test-site-console-credit-browser.cjs

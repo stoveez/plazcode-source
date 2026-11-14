@@ -1257,6 +1257,23 @@ const RSProvider = (() => {
         i = runEnd + 1;
       }
     }
+    // No flash when DeepSeek redraws the reply (1.24.33): DeepSeek recreates the code block inside a finished reply
+    // (on settle, on the next send, on scrolling), which wipes the hide class and shows the raw JSON until the next
+    // sweep. This watcher runs in the same instant as the redraw, before the screen repaints, and hides the block
+    // again. It only looks at added code blocks, so it costs nothing while text streams.
+    if (ref && !item.__rsDsGuard && typeof MutationObserver === "function") {
+      let busy = false;
+      const looksLikeCode = (n) => n && n.nodeType === 1 && (safeRead(() => n.matches("[class*='code'], .md-code-block, pre"), false) || !!safeQuery(n, "[class*='code'], .md-code-block, pre"));
+      const guard = new MutationObserver((records) => {
+        if (busy || !item.isConnected) return;
+        let added = false;
+        for (const r of records) { for (const n of r.addedNodes) { if (looksLikeCode(n)) { added = true; break; } } if (added) break; }
+        const chipEl = safeQuery(item, ".rs-chip"); if (!added || !chipEl) return;
+        busy = true;
+        try { findToolBlockSpot(item, chipEl); } catch {} finally { busy = false; }
+      });
+      try { guard.observe(item, { childList: true, subtree: true }); item.__rsDsGuard = guard; } catch {}
+    }
     return ref ? { parent, ref } : null;
   }
 

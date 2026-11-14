@@ -90,4 +90,14 @@ assert(host3.querySelector(".rs-card-note") && host3.querySelector(".rs-card-cop
 // earlier-call tag
 const host4 = doc.createElement("div"); Cards.render(host4, evil, { tag: "Earlier call" });
 assert.equal(host4.querySelector(".rs-card-tag").textContent, "Earlier call");
+// several commands in one reply: one card listing them (2026-11-14)
+const batch = Cards.model({ tool: "plazcode_batch", arguments: { calls: [
+  { command: "read_file", params: { path: "a.lua" } }, { command: "grep_files", params: { pattern: "x" } }, { command: "edit_file", params: { path: "b<img>.lua", old_string: "1", new_string: "2" } },
+] } });
+assert.equal(batch.kind, "batch"); assert.equal(batch.title, "3 commands"); assert.equal(batch.defaultTab, "COMMANDS"); assert.deepEqual(Cards.tabs(batch), ["COMMANDS", "RAW REQUEST"]);
+const host5 = doc.createElement("div"); Cards.render(host5, batch, { open: true });
+const rows5 = [...host5.querySelectorAll(".rs-batch-row")];
+assert.equal(rows5.length, 3, "one row per command"); assert.equal(rows5[0].querySelector(".rs-batch-name").textContent, "Read file"); assert.equal(rows5[0].querySelector(".rs-batch-target").textContent, "a.lua");
+assert.equal(host5.querySelectorAll("img").length, 0, "targets are plain text, never HTML"); assert.equal(rows5[2].querySelector(".rs-batch-target").textContent, "b<img>.lua");
+assert.equal(Cards.model({ tool: "plazcode_batch", arguments: { calls: [{ command: "tree", params: {} }] } }).title, "1 command");
 console.log("tool cards: diff data, caps, lazy drawing, plain-text safety and paging checks passed.");

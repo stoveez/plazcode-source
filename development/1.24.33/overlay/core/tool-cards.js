@@ -135,7 +135,17 @@ const PlazCodeToolCards = (() => {
       m.kind = "code";
       m.code = text(args.code).trim();
     }
+    if (name === "plazcode_batch" && Array.isArray(args.calls) && args.calls.length) {
+      // Several commands in one reply (2026-11-14): one card that lists them, each with its own target.
+      m.kind = "batch";
+      m.title = args.calls.length + (args.calls.length === 1 ? " command" : " commands");
+      m.batch = args.calls.slice(0, 8).map((c) => {
+        const p = c && (c.params || c.arguments) && typeof (c.params || c.arguments) === "object" ? (c.params || c.arguments) : {};
+        return { name: bare(c && (c.command || c.tool)) || "command", target: text(first(p, TARGET_KEYS)).slice(0, 120) };
+      });
+    }
     if (m.kind === "edit") m.defaultTab = "CHANGES";
+    else if (m.kind === "batch") m.defaultTab = "COMMANDS";
     else if (m.kind === "code") m.defaultTab = "CODE";
     else if (m.output) m.defaultTab = "OUTPUT";
     m.sig = hash([tool, target, m.kind, m.raw.length, m.output.length, hash(m.raw), hash(m.output)].join("|"));
@@ -144,6 +154,7 @@ const PlazCodeToolCards = (() => {
 
   function tabs(m) {
     const list = [];
+    if (m.kind === "batch") list.push("COMMANDS");
     if (m.kind === "edit" && m.edits.length) list.push("CHANGES");
     if (m.kind === "code") list.push("CODE");
     list.push("RAW REQUEST");
@@ -219,6 +230,16 @@ const PlazCodeToolCards = (() => {
         if (edit.diff.tooLarge) pane.appendChild(el(doc, "div", "rs-card-note", "Too large to compare line by line; showing the new text."));
         pagedRows(doc, pane, edit.diff.tooLarge ? edit.diff.rows : compact(edit.diff.rows));
       });
+    } else if (tab === "COMMANDS") {
+      const list = el(doc, "ol", "rs-batch-list");
+      (m.batch || []).forEach((c, i) => {
+        const row = el(doc, "li", "rs-batch-row");
+        row.appendChild(el(doc, "span", "rs-batch-n", String(i + 1)));
+        row.appendChild(el(doc, "span", "rs-batch-name", nice(c.name)));
+        if (c.target) row.appendChild(el(doc, "span", "rs-batch-target", c.target));
+        list.appendChild(row);
+      });
+      pane.appendChild(list);
     } else if (tab === "CODE") plainPane(doc, pane, m.code, RAW_CAP, "code");
     else if (tab === "OUTPUT") plainPane(doc, pane, m.output, OUT_CAP, "output");
     else plainPane(doc, pane, m.raw, RAW_CAP, "request");
@@ -270,6 +291,7 @@ const PlazCodeToolCards = (() => {
   function headBits(doc, m) {
     const out = [];
     if (!m) return out;
+    if (m.kind === "batch" && m.batch) { const b = el(doc, "span", "rs-chip-tg rs-chip-batch"); b.appendChild(el(doc, "bdi", "", m.batch.map((c) => c.name).slice(0, 3).join(", ") + (m.batch.length > 3 ? " +" + (m.batch.length - 3) : ""))); out.push(b); }
     if (m.target) { const tg = el(doc, "span", "rs-chip-tg"); tg.title = m.target; tg.appendChild(el(doc, "bdi", "", m.target)); out.push(tg); }
     if (m.stats) {
       const st = el(doc, "span", "rs-chip-st");

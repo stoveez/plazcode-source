@@ -835,6 +835,8 @@ const RSProvider = (() => {
     assistantCount, userCount, lastAssistant, readAssistant,
     streamLen, snapshot,
     // composer / state
+    // The reply's command block can appear a moment after the reply was read as finished: core looks again for a few seconds (2026-11-14).
+    lateStartupReply: true,
     getEditor, editorText, chatIsEmpty, isFreshChat, composerFrame, gateTarget, barAnchor,
     setInputLock, typeAndSend, stopGeneration,
     isGenerating, isBusyNow, isHardGenerating,

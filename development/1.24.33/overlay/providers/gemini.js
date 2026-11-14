@@ -708,6 +708,17 @@ const RSProvider = (() => {
     // wiping any chip placed inside it. Tell the core to anchor chips at the
     // turn-element level instead, where they survive those re-renders.
     chipAtItemLevel: true,
+    // 1.24.33: the chip used to sit as the first child of <model-response>, at the page's left edge, while the reply text lives in a
+    // centred column (the "list_commands" card in the start-up looked out of place). Anchor it in the element that holds
+    // <message-content>, the reply column, which keeps its identity through Angular's re-renders just as <message-content> does.
+    chipAnchor(item) {
+      try {
+        const mc = item.querySelector(S.reply);
+        const column = mc && mc.parentElement;
+        if (column && column !== item && item.contains(column) && !column.closest(".rs-chip")) return column;
+      } catch {}
+      return item;
+    },
     // The "Working…" input cover overshoots the editor box by this many px on
     // each side. Gemini's Quill keeps typed text near the rounded corners, so a
     // few px of bleed hides the slivers that would otherwise peek (see placeBar /

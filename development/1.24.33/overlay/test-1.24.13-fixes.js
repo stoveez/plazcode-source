@@ -21,7 +21,7 @@ assert(!bg.includes('alive:localReady,tools:0}'));
 const main=read('core/main.js');
 assert(main.includes('PlazCode startup check: reply with exactly one fenced json code block'));
 assert(!main.includes('if (P.id === "notion" && listRes.kind === "text" && !isProviderPolicyRefusal'));
-assert(main.includes('listRes.calls.find((c) => c && (c.tool === "list_commands"'));
+assert(main.includes('res.calls.find((c) => c && (c.tool === "list_commands"'));
 // Studio access reminder for paste-a-script replies.
 assert(main.includes('STUDIO_ACCESS_REMINDER')&&main.includes('looksLikePasteScript'));
 assert(main.includes('send.retryStuckDraft'));

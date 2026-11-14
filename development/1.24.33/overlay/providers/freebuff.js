@@ -375,9 +375,20 @@ const RSProvider = (() => {
     }
     return "";
   }
+  // 2026-11-14 (owner screenshot): Freebuff had answered "PlazCode is ready." but the bar stayed on "Starting" for good. The
+  // page keeps a suggested next message in the box (hint "Tab") and a greyed Send next to it, which looked like "a draft Send
+  // refuses", so the page counted as busy forever. These soft signs only count while the reply is still growing or the Stop
+  // button is up: once the text has been still for QUIET_MS and no Stop button is showing, the turn is finished.
+  const SOFT_BUSY = /^(?:send-disabled|aria-busy|streaming-marker)$/;
+  const QUIET_MS = 8000;
+  let _softIgnored = false;
   function genWhy() {
     sampleStream();
-    const busy = busyChrome();
+    let busy = busyChrome();
+    if (busy && SOFT_BUSY.test(busy) && !stopButton() && _streamMax > 1 && (!_streamAt || Date.now() - _streamAt >= QUIET_MS)) {
+      if (!_softIgnored) { _softIgnored = true; diag("freebuff.softBusyIgnored", { signal: busy, quietMs: _streamAt ? Date.now() - _streamAt : -1 }); }
+      busy = "";
+    } else if (!busy) _softIgnored = false;
     if (busy) return busy;
     const stop = !!stopButton();
     const now = Date.now();
@@ -771,6 +782,8 @@ const RSProvider = (() => {
     supportsVision: true,
     timings,
     thinkingSel: ".reasoning, [class*='thinking'], [class*='reason']",
+    // 2026-11-14: the taller Studio bar filled the whole chat box when it sat inside it; it floats above the box instead.
+    barOutside: true,
     init({ diag: d } = {}) {
       if (d) diag = d;
       try { document.documentElement.setAttribute("data-rs-freebuff-ver", "2026-09"); } catch {}
