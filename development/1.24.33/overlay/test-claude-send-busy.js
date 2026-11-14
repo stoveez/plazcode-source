@@ -61,5 +61,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   pt.remove(); assert.equal(c.P.isHardGenerating(), false);
   const v = page(), mic = v.d.createElement('button'); mic.setAttribute('aria-label', 'Parar ditado por voz'); v.d.querySelector('fieldset').appendChild(mic);
   assert.equal(v.P.isHardGenerating(), false, 'a voice-dictation stop is not the response Stop');
+  // PlazCode's own bar "Stop" button (shown while Start runs) is not Claude generating: it once made startup wait about a minute.
+  const own = page(); const root = own.d.createElement('div'); root.id = 'rs-root'; root.innerHTML = '<button id="rs-stop"><svg></svg><span class="rs-lbl">Stop</span></button>'; own.d.body.appendChild(root);
+  assert.equal(own.P.isHardGenerating(), false, 'the PlazCode bar Stop button is not Claude\'s Stop');
+  assert.equal(own.P.isGenerating(), false, 'a page with only the PlazCode Stop button is idle');
   console.log('Claude send: waits out a streaming reply, never presses Enter into a busy composer, retypes lost text.');
 })().catch((e) => { console.error(e); process.exit(1); });

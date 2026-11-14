@@ -367,6 +367,9 @@ const RSProvider = (() => {
 
   function visibleBtn(b) {
     if (!b || safeRead(() => b.disabled, true)) return false;
+    // PlazCode's own buttons are never Claude's. The bar's "Stop" button (shown while Start runs) matched the Stop test below, so
+    // Claude looked busy before anything was sent and startup waited about a minute (owner debug log, 2026-11-14).
+    if (safeClosest(b, "#rs-root, #rs-menu, #rs-cards-panel, #rs-approve")) return false;
     if (safeRead(() => b.getAttribute("aria-disabled"), null) === "true") return false;
     const r = safeRect(b);
     return r.width > 8 && r.height > 8;
