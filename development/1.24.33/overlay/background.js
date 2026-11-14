@@ -3978,7 +3978,12 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
     controlKeepWords(m.words);
     if (typeof m.say === "string") askQuestion(m);
     if (Number.isInteger(m.approve)) { const resolve = ask.approvals.get(m.approve); if (resolve) { ask.approvals.delete(m.approve); resolve(m.allowed === true); } }
-    if (m.stop && Number.isInteger(ask.tabId)) { chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-stop" }).catch(() => {}); for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); } }
+    if (m.stop) {
+      // Stop answers at once, even when the background chat is gone or does not answer (owner, 2026-11-14: Stop took very long).
+      if (Number.isInteger(ask.tabId)) chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-stop" }).catch(() => {});
+      for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); }
+      ask.busy = false; askPost({ type: "ask-reply", status: "stopped", text: "Stopped." }); askPost({ type: "ask-busy", busy: false });
+    }
     if ("sharing" in m && m.sharing && m.shareTabId === -1) {
       // Step 6: the whole screen. The app takes the pictures (Windows, Mac); kept alive while the panel is open.
       if (ask.share && ask.share !== -1) { const old = await askShareTab(ask.share); if (old) askShareMark(old, false); }
@@ -4118,6 +4123,15 @@ function controlEvent(msg, sender) {
     if (Number.isInteger(row.by)) chrome.tabs.sendMessage(row.by, { type: "rs-control-stop" }).catch(() => {});
   }
 }
+// Closing the background chat of Ask PlazCode while it works ends the question right away: the panel stops "sending" and a new
+// question opens a fresh chat (owner, 2026-11-14).
+if (chrome.tabs && chrome.tabs.onRemoved) chrome.tabs.onRemoved.addListener((tabId) => {
+  if (tabId !== ask.tabId) return;
+  const wasBusy = ask.busy;
+  ask.tabId = null; ask.windowId = null; ask.busy = false;
+  for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); }
+  if (wasBusy) { askPost({ type: "ask-reply", status: "error", text: "The background chat was closed, so this question stopped. Ask again to open a new one." }); askPost({ type: "ask-busy", busy: false }); }
+});
 if (chrome.tabs && chrome.tabs.onRemoved) chrome.tabs.onRemoved.addListener((tabId) => { controlLiveStop(tabId); controlTabs.delete(tabId); clearTimeout(controlDebug.get(tabId)); controlDebug.delete(tabId); });
 
 // Pick the tab a tab_* tool should act on: explicit tabId > a tab whose URL
