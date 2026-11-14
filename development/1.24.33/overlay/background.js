@@ -3891,16 +3891,22 @@ async function askEnsure() {
   if (!site) return { ok: false, error: "Open your AI chat (ChatGPT, Claude, Gemini or another site PlazCode works with) in this browser once, then ask again. PlazCode uses that site for this chat." };
   const siteName = site.name || new URL(site.url).host;
   askSay("Opening a PlazCode chat on " + siteName + " in the background…", "note", "Opening a PlazCode chat on {site} in the background…", { site: siteName });
+  // Owner (2026-11-14): "reuse one window, minimised so it never appears". The chat is only the engine behind the side panel, so its
+  // window starts minimised and stays that way; the same window is reused for every later question (ask.tabId above).
   const shape = { url: site.url, type: "popup", width: 980, height: 820, left: 40, top: 40 };
-  let created = null;
-  try { created = await chrome.windows.create({ ...shape, focused: false }); } catch { created = await chrome.windows.create(shape); }
+  let created = null, minimised = false;
+  try { created = await chrome.windows.create({ url: site.url, type: "popup", state: "minimized" }); minimised = true; } catch {}
+  if (!created) { try { created = await chrome.windows.create({ ...shape, focused: false }); } catch { created = await chrome.windows.create(shape); } }
   const tab = created && created.tabs && created.tabs[0];
   if (!tab) return { ok: false, error: "The background chat window could not be opened." };
   ask.tabId = tab.id; ask.windowId = created.id;
   tabEngines.set(tab.id, "local");
   try { await chrome.storage.session.set({ ["rs-tab-engine-" + tab.id]: "local" }); } catch {}
-  if (!(await criticTabReady(tab.id))) return { ok: false, error: "The AI site did not load in the background chat window." };
-  if (!(await helperPing(tab.id))) return { ok: false, error: "PlazCode is not running in the background chat window. Is the AI site signed in there?" };
+  // A minimised window can hold a page back (the browser pauses drawing in it). If the chat does not come up that way, show the window
+  // (behind everything, not focused) and try once more instead of failing.
+  const unhide = async () => { if (!minimised) return false; minimised = false; try { await chrome.windows.update(created.id, { state: "normal", focused: false, width: 980, height: 820, left: 40, top: 40 }); return true; } catch { return false; } };
+  if (!(await criticTabReady(tab.id)) && !((await unhide()) && (await criticTabReady(tab.id)))) return { ok: false, error: "The AI site did not load in the background chat window." };
+  if (!(await helperPing(tab.id)) && !((await unhide()) && (await helperPing(tab.id)))) return { ok: false, error: "PlazCode is not running in the background chat window. Is the AI site signed in there?" };
   await criticSleep(1500);
   return { ok: true };
 }
