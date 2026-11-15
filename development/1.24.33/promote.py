@@ -303,7 +303,11 @@ def main():
     from source_proof import source_files, verify, NAME
     reports=[load(find(NAME,platform)) for platform in ['Windows','macOS','Linux']]
     subprocess.run([sys.executable,str(ROOT/'development/1.24.33/prepare.py')],check=True)
-    source=verify(source_files(ROOT/'build-src-1.24.33/PlazCode'),reports)
+    # 1.24.33 added a Linux build, so there are three proofs; source_proof.verify (a validated input) compares two at a
+    # time, so every proof is checked against the rebuilt source in two overlapping pairs.
+    assert len(reports)==3, 'Expected Windows, Mac and Linux source proofs'
+    rebuilt=source_files(ROOT/'build-src-1.24.33/PlazCode')
+    source=verify(rebuilt,reports[:2]);verify(rebuilt,reports[1:])
     # PLAZCODE_QUICK=1 (small fixes only, owner-approved) skips the separate Mac desktop test to save Actions minutes.
     quick=os.environ.get('PLAZCODE_QUICK')=='1'
     if not quick:
