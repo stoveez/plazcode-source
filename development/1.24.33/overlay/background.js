@@ -3894,7 +3894,7 @@ async function controlWatch(tabId, sender) {
 // off unless the person switches it on in the panel; then steps 1 and 2 apply, with approvals shown in the panel.
 // origin = the person's own tab being looked at; work = the copy of it PlazCode opened to act in (owner, 2026-11-14: "work like Claude in
 // Chrome, in a duplicate tab"). Acting tools never touch the origin tab; looking (picture, text) is fine.
-const ask = { tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null, origin: null, work: null, workOf: null, copy: false, panelWin: null, dock: null, log: [], chatId: null, created: 0, chatUrl: "", goto: null };
+const ask = { tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null, origin: null, work: null, workOf: null, copy: false, panelWin: null, dock: null, log: [], chatId: null, created: 0, chatUrl: "", goto: null, unhidden: null };
 // What the panel shows is kept here (and in session storage, so it survives the worker sleeping), so a panel that was closed comes
 // back with the same conversation. The background chat itself is the same chat as long as its window is open.
 const ASK_LOG_MAX = 120;
@@ -4028,15 +4028,26 @@ async function askNoteChatUrl() {
 async function askBringUp(tab, win, siteName, minimised) {
   // A minimised window can hold a page back (the browser pauses drawing in it). If the chat does not come up that way, show the window
   // (behind everything, not focused) and try once more instead of failing.
-  const unhide = async () => { if (!minimised) return false; minimised = false; try { await chrome.windows.update(win.id, { state: "normal", focused: false, width: 980, height: 820, left: 40, top: 40 }); return true; } catch { return false; } };
+  const unhide = async () => { if (!minimised) return false; minimised = false; ask.unhidden = win.id; try { await chrome.windows.update(win.id, { state: "normal", focused: false, width: 980, height: 820, left: 40, top: 40 }); return true; } catch { return false; } };
   if (!(await criticTabReady(tab.id)) && !((await unhide()) && (await criticTabReady(tab.id)))) return (await askSignedOut(tab.id)) ? askNeedSignIn(win, siteName) : { ok: false, error: "The AI site did not load in the background chat window." };
   if (await askSignedOut(tab.id)) return askNeedSignIn(win, siteName);
   if (!(await helperPing(tab.id)) && !((await unhide()) && (await helperPing(tab.id)))) return (await askSignedOut(tab.id)) ? askNeedSignIn(win, siteName) : { ok: false, error: "PlazCode is not running in the background chat window. Is the AI site signed in there?" };
-  await criticSleep(1500);
-  // The chat is up. If the window had to be shown to get here, put it away again: it is only the engine behind the panel and must
-  // never sit over the person's own window (owner, 2026-11-14).
+  // The chat is up. If the window had to be shown to get here, put it away again at once: it is only the engine behind the panel and
+  // must never sit over the person's own window (owner, 2026-11-14). Then give the page a moment to settle.
   try { await chrome.windows.update(win.id, { state: "minimized" }); } catch {}
+  if (ask.unhidden === win.id) ask.unhidden = null;
+  await criticSleep(1500);
   return { ok: true };
+}
+// Keep the background chat window minimised for a while after it opens: if the browser shows it (it can, briefly, on Windows), it is
+// minimised again within a tenth of a second. Never while askBringUp has deliberately shown it (ask.unhidden).
+async function askKeepHidden(winId, ms) {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    if (ask.unhidden === winId) return;
+    try { const w = await chrome.windows.get(winId); if (w.state !== "minimized") await chrome.windows.update(winId, { state: "minimized" }); } catch { return; }
+    await criticSleep(100);
+  }
 }
 async function askEnsure() {
   const want = ask.goto, site = await askSiteUrl();
@@ -4063,6 +4074,9 @@ async function askEnsure() {
   const shape = { url: target, type: "popup", width: 980, height: 820, left: 40, top: 40 };
   let created = null, minimised = false;
   try { created = await chrome.windows.create({ url: target, type: "popup", state: "minimized" }); minimised = true; } catch {}
+  // 2026-11-14 (owner): "should be minimized the moment it opens, shouldn't even be noticeable". On Windows the browser can show a
+  // window created minimised for a moment, or bring it up again while the page loads, so PlazCode puts it straight back.
+  if (created && minimised) askKeepHidden(created.id, 4000);
   if (!created) { try { created = await chrome.windows.create({ ...shape, focused: false }); } catch { created = await chrome.windows.create(shape); } }
   const tab = created && created.tabs && created.tabs[0];
   if (!tab) return { ok: false, error: "The background chat window could not be opened." };
