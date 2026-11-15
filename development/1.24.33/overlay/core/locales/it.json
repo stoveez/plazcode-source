@@ -1447,5 +1447,9 @@
   "Paused": "In pausa",
   "Ended": "Terminato",
   "Let PlazCode do things for me": "Lascia che PlazCode agisca per me",
-  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode ha aperto una copia della tua scheda per lavorarci. La tua scheda resta intatta."
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode ha aperto una copia della tua scheda per lavorarci. La tua scheda resta intatta.",
+  "History": "Cronologia",
+  "New chat": "Nuova chat",
+  "No chats yet. Ask a question and it shows up here.": "Ancora nessuna chat. Fai una domanda e comparirà qui.",
+  "Delete this chat": "Elimina questa chat"
 }

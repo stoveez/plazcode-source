@@ -155,8 +155,36 @@ async function run(mode) {
     await again.waitForFunction(() => document.querySelectorAll('#log .msg').length >= 3, null, { timeout: 8000 });
     const replay = await again.evaluate(() => [...document.querySelectorAll('#log .msg')].map((n) => n.className.replace('msg ', '') + ':' + n.textContent));
     assert(replay.includes('me:What is on this page?') && replay.includes('ai:It is a test shop with a Buy now button.') && replay.some((r) => /^note:.*opened a copy of your tab/.test(r)), 'the reopened panel shows the earlier conversation: ' + JSON.stringify(replay));
+    // History (owner, 2026-11-14): the three-line button lists every chat; New chat empties the panel; picking one brings it back; delete removes it.
+    assert.equal(await again.getAttribute('#menu', 'aria-label'), 'History');
+    assert.equal(await again.locator('#history').isVisible(), false);
+    await again.click('#menu');
+    await again.waitForSelector('#history:not([hidden]) #chats li');
+    assert.equal(await again.locator('#chats li').count(), 1);
+    assert.match(await again.innerText('#chats li'), /What is on this page\?/);
+    assert.equal(await again.locator('#log').isVisible(), false, 'the list replaces the conversation while it is open');
+    assert.equal(await again.getAttribute('#menu', 'aria-expanded'), 'true');
+    if (process.env.PLAZCODE_ASK_SHOT && mode === 'real') { await again.setViewportSize({ width: 420, height: 760 }); await again.screenshot({ path: process.env.PLAZCODE_ASK_SHOT.replace(/\.png$/, '-history.png') }); }
+    await again.keyboard.press('Escape');
+    assert.equal(await again.locator('#history').isVisible(), false); assert.equal(await again.locator('#log').isVisible(), true);
+    await again.click('#menu'); await again.waitForSelector('#chats li');
+    await again.click('#newChat');
+    await again.waitForFunction(() => !document.querySelector('#log .msg') && /Ask anything about the page/.test(document.getElementById('log').textContent), null, { timeout: 5000 });
+    assert.equal(await again.locator('#history').isVisible(), false);
+    assert.equal(await worker.evaluate(() => ask.goto), 'new');
+    await again.click('#menu'); await again.waitForSelector('#chats li');
+    assert.equal(await again.locator('#chats li').count(), 1, 'the earlier chat is still in the list');
+    await again.click('#chats li .open');
+    await again.waitForFunction(() => [...document.querySelectorAll('#log .msg.me')].some((n) => n.textContent === 'What is on this page?'), null, { timeout: 5000 });
+    assert.equal(await again.locator('#history').isVisible(), false);
+    await again.click('#menu'); await again.waitForSelector('#chats li');
+    await again.click('#chats li .del');
+    await again.waitForFunction(() => !document.querySelector('#chats li') && !document.getElementById('noChats').hidden, null, { timeout: 5000 });
+    await again.click('#menu');
+    await again.waitForFunction(() => !document.querySelector('#log .msg') && /Ask anything about the page/.test(document.getElementById('log').textContent), null, { timeout: 5000 });
+    assert.deepEqual(await worker.evaluate(async () => { const got = await chrome.storage.local.get('rsAskChats'); return got.rsAskChats; }), [], 'the deleted chat is gone from storage');
     await again.close();
     console.log('test-ask-plazcode-browser: PASS (' + mode + ')');
   } finally { await context.close(); fs.rmSync(profile, { recursive: true, force: true }); if (copy) fs.rmSync(copy, { recursive: true, force: true }); }
 }
-(async () => { await run('real'); await run('no-debugger'); console.log('test-ask-plazcode-browser: PASS (Chromium): sharing follows the tab with a "Shared with PlazCode" mark, questions reach one background chat with picture and rules, "do things for me" on by default and working in a copy of the tab (own tab refused, copy offered again), approvals in the panel, only the background chat can answer, Stop, stop sharing from the tab, AI chats never shared, closing the panel ends sharing, Allow offered without the permission'); })().catch((e) => { console.error(e); process.exit(1); });
+(async () => { await run('real'); await run('no-debugger'); console.log('test-ask-plazcode-browser: PASS (Chromium): sharing follows the tab with a "Shared with PlazCode" mark, questions reach one background chat with picture and rules, "do things for me" on by default and working in a copy of the tab (own tab refused, copy offered again), approvals in the panel, only the background chat can answer, Stop, stop sharing from the tab, AI chats never shared, closing the panel ends sharing, Allow offered without the permission, History menu (list, new chat, reopen, delete)'); })().catch((e) => { console.error(e); process.exit(1); });

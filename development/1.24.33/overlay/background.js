@@ -3894,29 +3894,98 @@ async function controlWatch(tabId, sender) {
 // off unless the person switches it on in the panel; then steps 1 and 2 apply, with approvals shown in the panel.
 // origin = the person's own tab being looked at; work = the copy of it PlazCode opened to act in (owner, 2026-11-14: "work like Claude in
 // Chrome, in a duplicate tab"). Acting tools never touch the origin tab; looking (picture, text) is fine.
-const ask = { tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null, origin: null, work: null, workOf: null, copy: false, panelWin: null, dock: null, log: [] };
+const ask = { tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null, origin: null, work: null, workOf: null, copy: false, panelWin: null, dock: null, log: [], chatId: null, created: 0, chatUrl: "", goto: null };
 // What the panel shows is kept here (and in session storage, so it survives the worker sleeping), so a panel that was closed comes
 // back with the same conversation. The background chat itself is the same chat as long as its window is open.
 const ASK_LOG_MAX = 120;
 let askSaveTimer = 0;
 function askSave() {
   clearTimeout(askSaveTimer);
-  askSaveTimer = setTimeout(() => { try { chrome.storage.session.set({ rsAskState: { log: ask.log, tabId: ask.tabId, windowId: ask.windowId } }).catch(() => {}); } catch {} }, 300);
+  askSaveTimer = setTimeout(() => { try { chrome.storage.session.set({ rsAskState: { log: ask.log, tabId: ask.tabId, windowId: ask.windowId, chatId: ask.chatId, created: ask.created, chatUrl: ask.chatUrl, goto: ask.goto } }).catch(() => {}); } catch {} }, 300);
+}
+// History (owner, 2026-11-14: a menu with all the Ask PlazCode chats). Every chat is kept on this computer (extension storage, not
+// sent anywhere) with the address of its AI chat page, so opening one from the list shows the conversation again and the next question
+// goes into that same AI chat. New chats are at the top; the list is capped so it never grows without limit.
+const ASK_CHATS_KEY = "rsAskChats", ASK_CHATS_MAX = 40, ASK_CHATS_BYTES = 3000000, ASK_TEXT_MAX = 30000;
+let askChats = null, askChatsTimer = 0;
+async function askChatsLoad() {
+  if (askChats) return askChats;
+  let list = [];
+  try { const got = await chrome.storage.local.get(ASK_CHATS_KEY); if (got && Array.isArray(got[ASK_CHATS_KEY])) list = got[ASK_CHATS_KEY].filter((c) => c && typeof c.id === "string" && Array.isArray(c.log)); } catch {}
+  if (!askChats) askChats = list;
+  return askChats;
+}
+const askHasQuestion = () => ask.log.some((e) => e && e.t === "me");
+function askArchive() {
+  if (!ask.chatId || !askHasQuestion()) return;
+  clearTimeout(askChatsTimer);
+  askChatsTimer = setTimeout(() => { askArchiveNow(); }, 400);
+}
+async function askArchiveNow() {
+  clearTimeout(askChatsTimer);
+  const id = ask.chatId;
+  if (!id || !askHasQuestion()) return;
+  const list = await askChatsLoad();
+  if (id !== ask.chatId) return;
+  const at = list.findIndex((c) => c.id === id), old = at >= 0 ? list[at] : null;
+  const first = ask.log.find((e) => e && e.t === "me");
+  const log = ask.log.map((e) => (e && typeof e.text === "string" && e.text.length > ASK_TEXT_MAX) ? { ...e, text: e.text.slice(0, ASK_TEXT_MAX) } : e);
+  const row = { id, title: old ? old.title : String(first.text || "").replace(/\s+/g, " ").trim().slice(0, 80), created: old ? old.created : (ask.created || Date.now()), updated: Date.now(), url: ask.chatUrl || "", log };
+  if (at >= 0) list.splice(at, 1);
+  list.unshift(row);
+  if (list.length > ASK_CHATS_MAX) list.length = ASK_CHATS_MAX;
+  while (list.length > 1 && JSON.stringify(list).length > ASK_CHATS_BYTES) list.pop();
+  try { await chrome.storage.local.set({ [ASK_CHATS_KEY]: list }); } catch {}
 }
 function askRemember(entry) {
+  if (!ask.chatId) { ask.chatId = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); ask.created = Date.now(); }
   ask.log.push(entry);
   if (ask.log.length > ASK_LOG_MAX) ask.log.splice(0, ask.log.length - ASK_LOG_MAX);
   askSave();
+  askArchive();
 }
 const askRestored = (async () => {
   try {
     const got = await chrome.storage.session.get("rsAskState"), st = got && got.rsAskState;
     if (!st) return;
-    if (!ask.log.length && Array.isArray(st.log)) ask.log = st.log.slice(-ASK_LOG_MAX);
+    if (!ask.log.length && Array.isArray(st.log)) {
+      ask.log = st.log.slice(-ASK_LOG_MAX);
+      if (typeof st.chatId === "string") { ask.chatId = st.chatId; ask.created = Number(st.created) || 0; }
+      ask.chatUrl = typeof st.chatUrl === "string" ? st.chatUrl : "";
+    }
+    if (ask.goto === null && typeof st.goto === "string") ask.goto = st.goto;
     if (!Number.isInteger(ask.tabId) && Number.isInteger(st.tabId)) { try { await chrome.tabs.get(st.tabId); ask.tabId = st.tabId; ask.windowId = st.windowId; } catch {} }
   } catch {}
 })();
 const askPorts = new Set();
+// History list: what the panel shows in its menu, and the three things it can do (open one, start a new one, delete one).
+async function askChatsList() {
+  await askArchiveNow();
+  const list = await askChatsLoad();
+  return { type: "ask-chats", current: ask.chatId, items: list.map((c) => ({ id: c.id, title: c.title, updated: c.updated })) };
+}
+function askReset() { ask.chatId = null; ask.created = 0; ask.log = []; ask.chatUrl = ""; ask.goto = "new"; askSave(); askPost({ type: "ask-history", items: [] }); }
+async function askNewChat() {
+  if (ask.busy) return;
+  await askArchiveNow();
+  askReset();
+}
+async function askOpenChat(id) {
+  if (ask.busy) return;
+  await askArchiveNow();
+  const list = await askChatsLoad(), chat = list.find((c) => c.id === id);
+  if (!chat) { askPost(await askChatsList()); return; }
+  ask.chatId = chat.id; ask.created = chat.created || 0; ask.log = chat.log.slice(-ASK_LOG_MAX); ask.chatUrl = chat.url || ""; ask.goto = chat.url || "new";
+  askSave(); askPost({ type: "ask-history", items: ask.log });
+}
+async function askDeleteChat(id) {
+  const current = id === ask.chatId;
+  if (current && ask.busy) return;
+  const list = await askChatsLoad(), at = list.findIndex((c) => c.id === id);
+  if (at >= 0) { list.splice(at, 1); try { await chrome.storage.local.set({ [ASK_CHATS_KEY]: list }); } catch {} }
+  if (current) { clearTimeout(askChatsTimer); askReset(); }
+  askPost(await askChatsList());
+}
 const askPost = (m) => { for (const port of askPorts) { try { port.postMessage(m); } catch {} } };
 // The panel translates text that is one of PlazCode's own sentences; key + values carry a sentence with slots.
 const askReply = (status, text) => {
@@ -3942,33 +4011,67 @@ async function askNeedSignIn(created, siteName) {
   ask.tabId = null; ask.windowId = null; askSave();
   return { ok: false, error: siteName + " is not signed in. Open " + siteName + " in your browser, sign in, then ask again.", key: "{site} is not signed in. Open {site} in your browser, sign in, then ask again.", values: { site: siteName } };
 }
+// Same page, ignoring a trailing slash and the #fragment; same site = same origin.
+function askUrlKey(u) { try { const x = new URL(u); return x.origin + x.pathname.replace(/\/+$/, "") + x.search; } catch { return ""; } }
+function askSameSite(a, b) { try { return new URL(a).origin === new URL(b).origin; } catch { return false; } }
+// Where the background chat should be: a saved chat of this site, or the site's start page (a new chat).
+function askTarget(site, want) { return want && want !== "new" && askSameSite(want, site.url) ? want : site.url; }
+// Remember the address of the AI chat the answer came from, so the same chat can be opened again later.
+async function askNoteChatUrl() {
+  try {
+    const tab = await chrome.tabs.get(ask.tabId), site = await askSiteUrl();
+    let path = ""; try { path = new URL(tab.url || "").pathname; } catch {}
+    if (askSameSite(tab.url, site.url) && askUrlKey(tab.url) !== askUrlKey(site.url) && !ASK_SIGNIN_URL.test(path)) ask.chatUrl = String(tab.url).slice(0, 500);
+  } catch {}
+}
+// The chat page is up (or still loading): wait for PlazCode to run in it, then put the window away.
+async function askBringUp(tab, win, siteName, minimised) {
+  // A minimised window can hold a page back (the browser pauses drawing in it). If the chat does not come up that way, show the window
+  // (behind everything, not focused) and try once more instead of failing.
+  const unhide = async () => { if (!minimised) return false; minimised = false; try { await chrome.windows.update(win.id, { state: "normal", focused: false, width: 980, height: 820, left: 40, top: 40 }); return true; } catch { return false; } };
+  if (!(await criticTabReady(tab.id)) && !((await unhide()) && (await criticTabReady(tab.id)))) return (await askSignedOut(tab.id)) ? askNeedSignIn(win, siteName) : { ok: false, error: "The AI site did not load in the background chat window." };
+  if (await askSignedOut(tab.id)) return askNeedSignIn(win, siteName);
+  if (!(await helperPing(tab.id)) && !((await unhide()) && (await helperPing(tab.id)))) return (await askSignedOut(tab.id)) ? askNeedSignIn(win, siteName) : { ok: false, error: "PlazCode is not running in the background chat window. Is the AI site signed in there?" };
+  await criticSleep(1500);
+  // The chat is up. If the window had to be shown to get here, put it away again: it is only the engine behind the panel and must
+  // never sit over the person's own window (owner, 2026-11-14).
+  try { await chrome.windows.update(win.id, { state: "minimized" }); } catch {}
+  return { ok: true };
+}
 async function askEnsure() {
-  if (Number.isInteger(ask.tabId)) { try { await chrome.tabs.get(ask.tabId); return { ok: true }; } catch { ask.tabId = null; } }
-  const site = await askSiteUrl();
+  const want = ask.goto, site = await askSiteUrl();
   const siteName = site.name || new URL(site.url).host;
+  const target = askTarget(site, want || ask.chatUrl);
+  if (Number.isInteger(ask.tabId)) {
+    let tab = null;
+    try { tab = await chrome.tabs.get(ask.tabId); } catch { ask.tabId = null; }
+    if (tab) {
+      // The background chat is open. When the person picked another chat in the History list (or started a new one), it goes there first.
+      if (!want || askUrlKey(tab.url) === askUrlKey(target)) { if (want) { ask.goto = null; askSave(); } return { ok: true }; }
+      let minimised = false;
+      try { minimised = (await chrome.windows.get(tab.windowId)).state === "minimized"; } catch {}
+      try { await chrome.tabs.update(tab.id, { url: target }); } catch { ask.tabId = null; askSave(); return { ok: false, error: "The background chat window could not be opened." }; }
+      await criticSleep(600); // lets the old page unload, so the checks below look at the new one
+      const moved = await askBringUp(tab, { id: tab.windowId }, siteName, minimised);
+      if (moved.ok) { ask.goto = null; askSave(); }
+      return moved;
+    }
+  }
   askSay("Opening a PlazCode chat on " + siteName + " in the background…", "note", "Opening a PlazCode chat on {site} in the background…", { site: siteName });
   // Owner (2026-11-14): "reuse one window, minimised so it never appears". The chat is only the engine behind the side panel, so its
   // window starts minimised and stays that way; the same window is reused for every later question (ask.tabId above).
-  const shape = { url: site.url, type: "popup", width: 980, height: 820, left: 40, top: 40 };
+  const shape = { url: target, type: "popup", width: 980, height: 820, left: 40, top: 40 };
   let created = null, minimised = false;
-  try { created = await chrome.windows.create({ url: site.url, type: "popup", state: "minimized" }); minimised = true; } catch {}
+  try { created = await chrome.windows.create({ url: target, type: "popup", state: "minimized" }); minimised = true; } catch {}
   if (!created) { try { created = await chrome.windows.create({ ...shape, focused: false }); } catch { created = await chrome.windows.create(shape); } }
   const tab = created && created.tabs && created.tabs[0];
   if (!tab) return { ok: false, error: "The background chat window could not be opened." };
   ask.tabId = tab.id; ask.windowId = created.id; askSave();
   tabEngines.set(tab.id, "local");
   try { await chrome.storage.session.set({ ["rs-tab-engine-" + tab.id]: "local" }); } catch {}
-  // A minimised window can hold a page back (the browser pauses drawing in it). If the chat does not come up that way, show the window
-  // (behind everything, not focused) and try once more instead of failing.
-  const unhide = async () => { if (!minimised) return false; minimised = false; try { await chrome.windows.update(created.id, { state: "normal", focused: false, width: 980, height: 820, left: 40, top: 40 }); return true; } catch { return false; } };
-  if (!(await criticTabReady(tab.id)) && !((await unhide()) && (await criticTabReady(tab.id)))) return (await askSignedOut(tab.id)) ? askNeedSignIn(created, siteName) : { ok: false, error: "The AI site did not load in the background chat window." };
-  if (await askSignedOut(tab.id)) return askNeedSignIn(created, siteName);
-  if (!(await helperPing(tab.id)) && !((await unhide()) && (await helperPing(tab.id)))) return (await askSignedOut(tab.id)) ? askNeedSignIn(created, siteName) : { ok: false, error: "PlazCode is not running in the background chat window. Is the AI site signed in there?" };
-  await criticSleep(1500);
-  // The chat is up. If the window had to be shown to get here, put it away again: it is only the engine behind the panel and must
-  // never sit over the person's own window (owner, 2026-11-14).
-  try { await chrome.windows.update(created.id, { state: "minimized" }); } catch {}
-  return { ok: true };
+  const done = await askBringUp(tab, created, siteName, minimised);
+  if (done.ok && want) { ask.goto = null; askSave(); }
+  return done;
 }
 async function askShareTab(tabId) {
   if (!Number.isInteger(tabId)) return null;
@@ -4024,7 +4127,7 @@ async function askQuestion(m) {
 // From the background chat (main.js): the answer, a progress line, or an approval question for the person.
 async function askFromChat(msg, sender) {
   if (!sender || !sender.tab || sender.tab.id !== ask.tabId) return { ok: false, error: "Not the Ask PlazCode chat." };
-  if (msg.type === "ask_reply") { ask.busy = false; askReply(String(msg.status || "done"), String(msg.text || "").slice(0, 60000)); askPost({ type: "ask-busy", busy: false }); return { ok: true }; }
+  if (msg.type === "ask_reply") { ask.busy = false; await askNoteChatUrl(); askReply(String(msg.status || "done"), String(msg.text || "").slice(0, 60000)); askPost({ type: "ask-busy", busy: false }); return { ok: true }; }
   if (msg.type === "ask_step") { askPost({ type: "ask-step", text: String(msg.text || "").slice(0, 200) }); return { ok: true }; }
   if (msg.type === "ask_approve") {
     if (!askPorts.size) return { ok: true, allowed: false };
@@ -4044,6 +4147,10 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
     if (!CONTROL_V2 || !m) return;
     controlKeepWords(m.words);
     if (typeof m.say === "string") askQuestion(m);
+    if (m.chats === "list") { try { port.postMessage(await askChatsList()); } catch {} }
+    if (typeof m.openChat === "string") askOpenChat(m.openChat);
+    if (m.newChat === true) askNewChat();
+    if (typeof m.deleteChat === "string") askDeleteChat(m.deleteChat);
     if (Number.isInteger(m.approve)) { const resolve = ask.approvals.get(m.approve); if (resolve) { ask.approvals.delete(m.approve); resolve(m.allowed === true); } }
     if (m.stop) {
       // Stop answers at once, even when the background chat is gone or does not answer (owner, 2026-11-14: Stop took very long).

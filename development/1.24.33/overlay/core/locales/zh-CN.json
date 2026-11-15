@@ -1447,5 +1447,9 @@
   "Paused": "已暂停",
   "Ended": "已结束",
   "Let PlazCode do things for me": "允许 PlazCode 替我操作",
-  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode 已打开您标签页的副本并在其中操作，您自己的标签页不会被改动。"
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode 已打开您标签页的副本并在其中操作，您自己的标签页不会被改动。",
+  "History": "历史记录",
+  "New chat": "新聊天",
+  "No chats yet. Ask a question and it shows up here.": "还没有聊天。提出一个问题,它就会显示在这里。",
+  "Delete this chat": "删除此聊天"
 }

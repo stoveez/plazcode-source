@@ -1447,5 +1447,9 @@
   "Paused": "Duraklatıldı",
   "Ended": "Bitti",
   "Let PlazCode do things for me": "PlazCode'un benim yerime işlem yapmasına izin ver",
-  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode çalışmak için sekmenizin bir kopyasını açtı. Kendi sekmenize dokunulmaz."
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode çalışmak için sekmenizin bir kopyasını açtı. Kendi sekmenize dokunulmaz.",
+  "History": "Geçmiş",
+  "New chat": "Yeni sohbet",
+  "No chats yet. Ask a question and it shows up here.": "Henüz sohbet yok. Bir soru sorun, burada görünsün.",
+  "Delete this chat": "Bu sohbeti sil"
 }

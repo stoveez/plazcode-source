@@ -1447,5 +1447,9 @@
   "Paused": "रुका हुआ",
   "Ended": "समाप्त",
   "Let PlazCode do things for me": "PlazCode को मेरे लिए काम करने दें",
-  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode ने काम करने के लिए आपके टैब की एक कॉपी खोली है। आपका अपना टैब जस का तस रहता है।"
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode ने काम करने के लिए आपके टैब की एक कॉपी खोली है। आपका अपना टैब जस का तस रहता है।",
+  "History": "इतिहास",
+  "New chat": "नई चैट",
+  "No chats yet. Ask a question and it shows up here.": "अभी कोई चैट नहीं है। कोई सवाल पूछें, वह यहाँ दिखाई देगा।",
+  "Delete this chat": "यह चैट हटाएँ"
 }

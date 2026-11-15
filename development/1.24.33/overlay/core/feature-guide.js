@@ -495,6 +495,7 @@ const PlazCodeFeatureGuide = (() => {
   "tips": [
    "Untick Share my whole screen to stop sharing. If the PlazCode app is not running, PlazCode looks at the tab you are looking at instead.",
    "Sharing the whole screen uses the PlazCode app (Windows or Mac); on a Mac allow Screen Recording once.",
+   "The three-line button at the top right opens History: every earlier Ask PlazCode chat. Open one to continue it in the same AI chat, delete it, or start a New chat.",
    "Move your mouse or press Stop to take over at any time."
   ],
   "related": [

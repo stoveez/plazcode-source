@@ -9,15 +9,44 @@
   try { const saved = await chrome.storage.local.get("rsLanguage"); if (L) { L.setLanguage((saved && saved.rsLanguage) || "en"); L.mountStatic(document.body); } } catch {}
   const $ = (id) => document.getElementById(id);
   const log = $("log"), q = $("q"), go = $("go"), stop = $("stop"), step = $("step"), sharing = $("sharing"), control = $("control");
+  const menu = $("menu"), history = $("history"), chats = $("chats"), noChats = $("noChats"), newChat = $("newChat");
   const peek = $("peek"), shareTitle = $("shareTitle"), shareSite = $("shareSite"), banner = $("banner"), bannerText = $("bannerText");
   const fixedWindow = Number(new URLSearchParams(location.search).get("window")) || null;
-  let shared = null, wholeScreen = true, busy = false, viewPort = null, viewTab = null, workTab = null;
+  let shared = null, wholeScreen = true, busy = false, viewPort = null, viewTab = null, workTab = null, historyOpen = false, lastChats = null;
   // The "Shared with PlazCode" mark in the shared tab, in the person's language.
   const words = { working: t("PlazCode is working here"), paused: t("Paused, you're in control"), resume: t("Resume"), stop: t("Stop"), shared: t("Shared with PlazCode"), stopSharing: t("Stop sharing") };
   document.title = t(document.title);
   const port = chrome.runtime.connect({ name: "plazcode-ask" });
   const add = (cls, text) => { const p = document.createElement("p"); p.className = "msg " + cls; p.textContent = text; log.append(p); log.scrollTop = log.scrollHeight; return p; };
-  const setBusy = (value) => { busy = value; go.disabled = value; stop.hidden = !value; if (!value) { step.textContent = ""; workTab = null; } };
+  const setBusy = (value) => { busy = value; go.disabled = value; stop.hidden = !value; if (!value) { step.textContent = ""; workTab = null; } if (lastChats) drawChats(lastChats); };
+  // History (owner, 2026-11-14): the three-line button opens the list of every Ask PlazCode chat; picking one shows it again and the next
+  // question goes into that same AI chat. While PlazCode is answering, the list can be read but the chat cannot be switched.
+  const intro = () => { const p = document.createElement("p"); p.className = "note"; p.textContent = t("Ask anything about the page you're on. PlazCode sees a picture of it with each question."); log.append(p); };
+  function showHistory(on) {
+    historyOpen = on; document.body.classList.toggle("history", on); history.hidden = !on; menu.setAttribute("aria-expanded", on ? "true" : "false");
+    if (on) port.postMessage({ chats: "list" }); else q.focus();
+  }
+  function when(ms) {
+    try { return new Date(ms).toLocaleString(L ? L.getLanguage() : undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); } catch { return ""; }
+  }
+  function drawChats(m) {
+    lastChats = m;
+    const items = Array.isArray(m.items) ? m.items : [];
+    chats.textContent = ""; noChats.hidden = items.length > 0; newChat.disabled = busy;
+    for (const c of items) {
+      const current = c.id === m.current;
+      const li = document.createElement("li"); li.className = "chat"; if (current) li.setAttribute("aria-current", "true");
+      const open = document.createElement("button"); open.type = "button"; open.className = "open"; open.setAttribute("data-i18n-user-content", "");
+      const name = document.createElement("b"); name.textContent = c.title || "…";
+      const date = document.createElement("small"); date.textContent = when(c.updated);
+      open.append(name, date); open.disabled = busy && !current;
+      open.addEventListener("click", () => { if (!current) port.postMessage({ openChat: c.id }); showHistory(false); });
+      const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×";
+      del.setAttribute("aria-label", t("Delete this chat")); del.title = t("Delete this chat"); del.disabled = busy && current;
+      del.addEventListener("click", () => port.postMessage({ deleteChat: c.id }));
+      li.append(open, del); chats.append(li);
+    }
+  }
   // The tab the person is looking at. From a side panel or a docked window the "current window" can be the panel's own window,
   // whose only tab is this page (shown as "This tab can't be shared" for every site, owner report 2026-11-14), so a page that is
   // not a website falls back to the active tab of the last focused browser window, then of any normal browser window.
@@ -62,6 +91,7 @@
     else if (m.type === "ask-history") {
       // A panel that was closed and opened again: show the same conversation.
       log.textContent = "";
+      if (!Array.isArray(m.items) || !m.items.length) intro();
       for (const item of Array.isArray(m.items) ? m.items : []) {
         if (!item) continue;
         if (item.t === "me") add("me", String(item.text || ""));
@@ -69,6 +99,7 @@
         else add(item.t === "error" ? "error" : "note", typeof item.key === "string" ? t(item.key, item.values || {}) : t(String(item.text || "")));
       }
     }
+    else if (m.type === "ask-chats") drawChats(m);
     else if (m.type === "ask-note") add(m.kind === "error" ? "error" : "note", typeof m.key === "string" ? t(m.key, m.values || {}) : t(m.text));
     else if (m.type === "ask-work") { if (Number.isInteger(m.tabId)) { workTab = m.tabId; watch(m.tabId); add("note", t("PlazCode opened a copy of your tab to work in. Your own tab stays untouched.")); } }
     else if (m.type === "ask-step") step.textContent = t(m.text);
@@ -104,6 +135,9 @@
     add("me", text); q.value = ""; setBusy(true); step.textContent = t("Sending…");
     port.postMessage({ say: text, share: shared !== null, shareTabId: shared, control: control.checked });
   }
+  menu.addEventListener("click", () => showHistory(!historyOpen));
+  newChat.addEventListener("click", () => { if (busy) return; port.postMessage({ newChat: true }); showHistory(false); });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && historyOpen) showHistory(false); });
   go.addEventListener("click", send);
   q.addEventListener("keydown", (event) => { if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); send(); } });
   stop.addEventListener("click", () => { port.postMessage({ stop: true }); step.textContent = t("Stopping…"); });

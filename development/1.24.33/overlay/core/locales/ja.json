@@ -1447,5 +1447,9 @@
   "Paused": "一時停止中",
   "Ended": "終了",
   "Let PlazCode do things for me": "PlazCode に操作を任せる",
-  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode はタブのコピーを開いてそこで作業します。元のタブは変更されません。"
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": "PlazCode はタブのコピーを開いてそこで作業します。元のタブは変更されません。",
+  "History": "履歴",
+  "New chat": "新しいチャット",
+  "No chats yet. Ask a question and it shows up here.": "まだチャットはありません。質問するとここに表示されます。",
+  "Delete this chat": "このチャットを削除"
 }

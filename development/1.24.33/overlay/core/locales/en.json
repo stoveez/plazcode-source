@@ -1447,5 +1447,9 @@
   "Paused": null,
   "Ended": null,
   "Let PlazCode do things for me": null,
-  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": null
+  "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.": null,
+  "History": null,
+  "New chat": null,
+  "No chats yet. Ask a question and it shows up here.": null,
+  "Delete this chat": null
 }
