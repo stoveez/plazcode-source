@@ -324,6 +324,7 @@ enum UiEvent {
     Drag,
     Ready,
     JsError(String),
+    JsEngine(String),
     OpenExternal(String),
 }
 
@@ -348,7 +349,14 @@ pub fn run_gui(
     let desktop_started=std::time::Instant::now();
     let desktop_url = format!("http://{addr}/desktop-ui");
     let boot = serde_json::json!({"key":pairing_key,"apiUrl":format!("http://{addr}"),"profiles":true,"nativeWindow":true});
-    let initialization = format!("if(location.href === {}) window.__PLAZCODE_BOOT__ = {};",
+    // 2026-11-15 (owner, macOS 10.15 field report: window drawn but no button works, nothing in the log): the page's own
+    // error reporter lives in its main script, so a script the window's engine cannot even parse reported nothing. This
+    // catcher runs before the page, reports the engine once and every error (file, line, column) to the app's log.
+    let catcher = "(function(){function send(m){try{if(window.ipc&&window.ipc.postMessage)window.ipc.postMessage(m);else if(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.ipc)window.webkit.messageHandlers.ipc.postMessage(m);}catch(e){}}\
+window.addEventListener('error',function(e){send('js-error:'+String(e.message||e)+' @ '+String(e.filename||'')+':'+(e.lineno||0)+':'+(e.colno||0));},true);\
+window.addEventListener('unhandledrejection',function(e){var r=e&&e.reason;send('js-error:unhandled '+String(r&&r.message||r));});\
+document.addEventListener('DOMContentLoaded',function(){send('js-engine:'+navigator.userAgent+' boot='+(window.__PLAZCODE_BOOT__?'yes':'no'));});})();";
+    let initialization = format!("if(location.href === {}) {{ window.__PLAZCODE_BOOT__ = {}; {catcher} }}",
         serde_json::to_string(&desktop_url)?, boot);
 
     let mut event_loop = EventLoopBuilder::<UiEvent>::with_user_event().build();
@@ -389,7 +397,7 @@ pub fn run_gui(
                 "open:blender-guide" => Some(UiEvent::OpenExternal("https://github.com/ahujasid/blender-mcp#installation".to_owned())),
                 _ if body.starts_with("toolkit-store:") => toolkit_store_url(body).map(UiEvent::OpenExternal),
                 _ if body.starts_with("open-url:") => guide_link_url(body).map(UiEvent::OpenExternal),
-                _ => donation_url(body).or_else(|| supported_ai_url(body)).or_else(|| app_download_url(body)).map(|url|UiEvent::OpenExternal(url.to_owned())).or_else(|| body.strip_prefix("js-error:").map(|message| UiEvent::JsError(message.to_string()))),
+                _ => donation_url(body).or_else(|| supported_ai_url(body)).or_else(|| app_download_url(body)).map(|url|UiEvent::OpenExternal(url.to_owned())).or_else(|| body.strip_prefix("js-error:").map(|message| UiEvent::JsError(message.to_string()))).or_else(|| body.strip_prefix("js-engine:").map(|engine| UiEvent::JsEngine(engine.chars().take(300).collect()))),
             };
             if let Some(event) = event {
                 let _ = ipc_proxy.send_event(event);
@@ -471,6 +479,9 @@ pub fn run_gui(
                         shared.log(&format!("Could not confirm updater desktop readiness: {error}"));
                     }
                 }
+            }
+            Event::UserEvent(UiEvent::JsEngine(engine)) => {
+                tracing::info!("desktop window engine: {engine}");
             }
             Event::UserEvent(UiEvent::JsError(message)) => {
                 let line = format!("ERROR desktop WebView JavaScript: {message}");
