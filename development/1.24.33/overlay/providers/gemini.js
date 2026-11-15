@@ -719,10 +719,10 @@ const RSProvider = (() => {
     // column. The card is moved right by the same amount so its left edge lines up with the reply text, and never wider
     // than the reply. Runs every time the card is placed, so a re-render or a window resize is followed.
     alignChip(chip, item) {
-      const mc = item.querySelector(S.reply);
+      const mc = item ? safeQuery(item, S.reply) : null;
       if (!chip || !mc) return;
       chip.style.marginLeft = "";
-      const cr = chip.getBoundingClientRect(), mr = mc.getBoundingClientRect();
+      const cr = safeRect(chip), mr = safeRect(mc);
       if (!cr.width || !mr.width) return;
       const shift = Math.round(mr.left - cr.left);
       if (shift > 2 && shift < 800) { chip.style.marginLeft = shift + "px"; chip.style.maxWidth = Math.round(mr.width) + "px"; }
