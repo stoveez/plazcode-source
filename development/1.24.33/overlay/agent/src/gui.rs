@@ -474,6 +474,9 @@ pub fn run_gui(
             }
             Event::UserEvent(UiEvent::JsError(message)) => {
                 let line = format!("ERROR desktop WebView JavaScript: {message}");
+                // 2026-11-15 (owner, macOS 10.15): window errors also go to agent.log, so a broken window can be
+                // diagnosed from the log file when the window itself cannot show its Logs page.
+                tracing::error!("{line}");
                 shared.log(&line);
                 shared.set_fatal(line);
             }

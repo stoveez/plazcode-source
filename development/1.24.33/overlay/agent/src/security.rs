@@ -241,7 +241,10 @@ pub async fn require_pairing(
     if request.uri().path() == "/api/pair" && request.method() == axum::http::Method::POST {
         if !can_auto_pair(request.headers()) {
             if unofficial_extension(request.headers()) {
-                tracing::warn!("Refused to pair with an extension that is not this installation's official PlazCode-Extension");
+                // The extension ID and the folder are not secret; they show at once whether the browser loaded another folder.
+                let named = request.headers().get("x-plazcode-extension").and_then(|v| v.to_str().ok()).unwrap_or("").to_owned();
+                let expected = official_extension_ids().as_ref().map(|ids| ids.join(", ")).unwrap_or_default();
+                tracing::warn!("Refused to pair with an extension that is not this installation's official PlazCode-Extension (extension {named}; this installation's PlazCode-Extension at {} would be {expected})", crate::platform::installation_root().join("PlazCode-Extension").display());
                 return (axum::http::StatusCode::FORBIDDEN, UNOFFICIAL_EXTENSION).into_response();
             }
             return (axum::http::StatusCode::FORBIDDEN, "Browser extension pairing required").into_response();
