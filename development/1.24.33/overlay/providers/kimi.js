@@ -695,7 +695,12 @@ const RSProvider = (() => {
 
   // /chat/<id> = a real conversation. "/" = a fresh chat with no id yet → ""
   // (transient) so the core never persists it as "started".
-  const conversationKey = () => (/^\/?$/.test(location.pathname) ? "" : location.pathname);
+  // 2026-11-14 (owner report, checked live on kimi.ai): right after the first send of a new chat Kimi shows a temporary
+  // address, /chat/p9425497-8250-..., an id that starts with "p", and about a second later moves to the real one
+  // (/chat/1a1dd10c-...). PlazCode took the temporary address for the chat, saw the "change", called the start
+  // "stopped", and the list_commands reply stayed a raw JSON block. A temporary address is still a new chat ("").
+  const PENDING_CHAT = /^\/chat\/p[0-9a-f]{7}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/i;
+  const conversationKey = () => (/^\/?$/.test(location.pathname) || PENDING_CHAT.test(location.pathname) ? "" : location.pathname);
 
   // ── User-send interception ────────────────────────────────────────────────
   function installSendHooks(handlers) {

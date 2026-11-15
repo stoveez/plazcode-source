@@ -1503,7 +1503,7 @@
     // different conversation, send, or logical assistant turn.
     const sendOwner = { session: A.sessionGen, sendToken: A.sendToken };
     const readChat = () => P.conversationKey ? P.conversationKey() : null;
-    let sendChat = readChat(), moveSince = 0;
+    let sendChat = readChat(), moveSince = 0, adoptedAt = 0;
     const toolResponse = (calls, item, text, token, chat) => ({
       kind: "tool", calls, item, text,
       responseOwner: { ...sendOwner, token, chat, item },
@@ -1671,14 +1671,16 @@
       // not a different conversation: adopt the id instead of abandoning the reply.
       if (!sendChat && chat && A.sessionGen === sendOwner.session && A.sendToken === sendOwner.sendToken) {
         diag("response.chatIdAssigned", {});
-        sendChat = chat;
+        sendChat = chat; adoptedAt = Date.now();
         try { adoptChatId(chat); } catch {}
       }
       // 1.24.33 (Kimi startup): a site can briefly report NO address (or a related one) while it moves a new chat to its real
       // address right after the first send. That is the same chat getting its id, not the person leaving, so keep the reply
       // being read instead of calling the start "stopped" (the list_commands block then stayed as plain JSON).
       if (chat !== sendChat && A.sessionGen === sendOwner.session && A.sendToken === sendOwner.sendToken) {
-        const related = !!chat && !!sendChat && (chat.startsWith(sendChat) || sendChat.startsWith(chat));
+        // An address the chat only got during THIS send (a new chat) may still be a temporary one that the site swaps for
+        // the real address a moment later (Kimi: /chat/p... then /chat/<id>): treat that swap as the same chat too.
+        const related = !!chat && !!sendChat && (chat.startsWith(sendChat) || sendChat.startsWith(chat) || (!!adoptedAt && Date.now() - adoptedAt < 6000));
         if (!moveSince) moveSince = Date.now();
         if ((!chat || related) && Date.now() - moveSince < 4000) {
           if (!sendChat || related) { sendChat = chat || sendChat; try { if (chat) adoptChatId(chat); } catch {} }
