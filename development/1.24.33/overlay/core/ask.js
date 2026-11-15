@@ -58,6 +58,16 @@
   port.onMessage.addListener((m) => {
     if (!m) return;
     if (m.type === "ask-busy") { if (m.enabled === false) { add("error", t("Ask PlazCode is not switched on in this version.")); go.disabled = true; return; } setBusy(!!m.busy); }
+    else if (m.type === "ask-history") {
+      // A panel that was closed and opened again: show the same conversation.
+      log.textContent = "";
+      for (const item of Array.isArray(m.items) ? m.items : []) {
+        if (!item) continue;
+        if (item.t === "me") add("me", String(item.text || ""));
+        else if (item.t === "ai") add("ai", String(item.text || ""));
+        else add(item.t === "error" ? "error" : "note", typeof item.key === "string" ? t(item.key, item.values || {}) : t(String(item.text || "")));
+      }
+    }
     else if (m.type === "ask-note") add(m.kind === "error" ? "error" : "note", typeof m.key === "string" ? t(m.key, m.values || {}) : t(m.text));
     else if (m.type === "ask-work") { if (Number.isInteger(m.tabId)) { workTab = m.tabId; watch(m.tabId); add("note", t("PlazCode opened a copy of your tab to work in. Your own tab stays untouched.")); } }
     else if (m.type === "ask-step") step.textContent = t(m.text);

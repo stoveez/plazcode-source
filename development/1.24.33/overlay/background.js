@@ -3694,6 +3694,7 @@ async function controlV2Tool(msg, sender) {
     const tab = await chrome.tabs.create(where);
     if (fromAsk && ask.copy) {
       ask.work = tab.id; ask.workOf = ask.origin;
+      askRemember({ t: "note", key: "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.", text: "PlazCode opened a copy of your tab to work in. Your own tab stays untouched." });
       askPost({ type: "ask-work", tabId: tab.id });
       return { ok: true, text: "Opened " + url + " as a copy next to their tab (tabId " + tab.id + "). Work only in tabId " + tab.id + ": pass it to every tab_* command. Their own tab is never clicked or typed in." };
     }
@@ -3893,17 +3894,51 @@ async function controlWatch(tabId, sender) {
 // off unless the person switches it on in the panel; then steps 1 and 2 apply, with approvals shown in the panel.
 // origin = the person's own tab being looked at; work = the copy of it PlazCode opened to act in (owner, 2026-11-14: "work like Claude in
 // Chrome, in a duplicate tab"). Acting tools never touch the origin tab; looking (picture, text) is fine.
-const ask = { tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null, origin: null, work: null, workOf: null, copy: false };
+const ask = { tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null, origin: null, work: null, workOf: null, copy: false, panelWin: null, dock: null, log: [] };
+// What the panel shows is kept here (and in session storage, so it survives the worker sleeping), so a panel that was closed comes
+// back with the same conversation. The background chat itself is the same chat as long as its window is open.
+const ASK_LOG_MAX = 120;
+let askSaveTimer = 0;
+function askSave() {
+  clearTimeout(askSaveTimer);
+  askSaveTimer = setTimeout(() => { try { chrome.storage.session.set({ rsAskState: { log: ask.log, tabId: ask.tabId, windowId: ask.windowId } }).catch(() => {}); } catch {} }, 300);
+}
+function askRemember(entry) {
+  ask.log.push(entry);
+  if (ask.log.length > ASK_LOG_MAX) ask.log.splice(0, ask.log.length - ASK_LOG_MAX);
+  askSave();
+}
+const askRestored = (async () => {
+  try {
+    const got = await chrome.storage.session.get("rsAskState"), st = got && got.rsAskState;
+    if (!st) return;
+    if (!ask.log.length && Array.isArray(st.log)) ask.log = st.log.slice(-ASK_LOG_MAX);
+    if (!Number.isInteger(ask.tabId) && Number.isInteger(st.tabId)) { try { await chrome.tabs.get(st.tabId); ask.tabId = st.tabId; ask.windowId = st.windowId; } catch {} }
+  } catch {}
+})();
 const askPorts = new Set();
 const askPost = (m) => { for (const port of askPorts) { try { port.postMessage(m); } catch {} } };
 // The panel translates text that is one of PlazCode's own sentences; key + values carry a sentence with slots.
-const askSay = (text, kind, key, values) => askPost({ type: "ask-note", kind: kind || "note", text, key, values });
+const askReply = (status, text) => {
+  askRemember({ t: status === "done" ? "ai" : status === "stopped" ? "note" : "error", text });
+  askPost({ type: "ask-reply", status, text });
+};
+const askSay = (text, kind, key, values) => { askRemember({ t: kind === "error" ? "error" : "note", text, key, values }); askPost({ type: "ask-note", kind: kind || "note", text, key, values }); };
 async function askSiteUrl() {
   const tabs = (await chrome.tabs.query({})).filter((t) => t.url && isProviderUrl(t.url) && t.id !== ask.tabId && !(helperRoster && helperRoster.byTab && helperRoster.byTab(t.id)));
   tabs.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
   for (const tab of tabs) {
-    try { const reply = await chrome.tabs.sendMessage(tab.id, { type: "rs-ask-site" }); if (reply && reply.ok && /^https:\/\//.test(reply.url || "")) return { url: reply.url, name: String(reply.name || "") }; } catch {}
+    try {
+      const reply = await chrome.tabs.sendMessage(tab.id, { type: "rs-ask-site" });
+      if (reply && reply.ok && /^https:\/\//.test(reply.url || "")) {
+        const site = { url: reply.url, name: String(reply.name || "") };
+        try { await chrome.storage.local.set({ rsAskSite: site }); } catch {}
+        return site;
+      }
+    } catch {}
   }
+  // No AI chat is open right now: use the one this panel used last, so the person need not keep one open.
+  try { const got = await chrome.storage.local.get("rsAskSite"), site = got && got.rsAskSite; if (site && /^https:\/\//.test(site.url || "")) return { url: String(site.url), name: String(site.name || "") }; } catch {}
   return null;
 }
 async function askEnsure() {
@@ -3920,7 +3955,7 @@ async function askEnsure() {
   if (!created) { try { created = await chrome.windows.create({ ...shape, focused: false }); } catch { created = await chrome.windows.create(shape); } }
   const tab = created && created.tabs && created.tabs[0];
   if (!tab) return { ok: false, error: "The background chat window could not be opened." };
-  ask.tabId = tab.id; ask.windowId = created.id;
+  ask.tabId = tab.id; ask.windowId = created.id; askSave();
   tabEngines.set(tab.id, "local");
   try { await chrome.storage.session.set({ ["rs-tab-engine-" + tab.id]: "local" }); } catch {}
   // A minimised window can hold a page back (the browser pauses drawing in it). If the chat does not come up that way, show the window
@@ -3929,6 +3964,9 @@ async function askEnsure() {
   if (!(await criticTabReady(tab.id)) && !((await unhide()) && (await criticTabReady(tab.id)))) return { ok: false, error: "The AI site did not load in the background chat window." };
   if (!(await helperPing(tab.id)) && !((await unhide()) && (await helperPing(tab.id)))) return { ok: false, error: "PlazCode is not running in the background chat window. Is the AI site signed in there?" };
   await criticSleep(1500);
+  // The chat is up. If the window had to be shown to get here, put it away again: it is only the engine behind the panel and must
+  // never sit over the person's own window (owner, 2026-11-14).
+  try { await chrome.windows.update(created.id, { state: "minimized" }); } catch {}
   return { ok: true };
 }
 async function askShareTab(tabId) {
@@ -3950,6 +3988,7 @@ async function askQuestion(m) {
   if (ask.busy) return askSay("PlazCode is still answering. Wait for it, or press Stop.", "error");
   const text = String(m.say || "").trim().slice(0, 8000);
   if (!text) return;
+  askRemember({ t: "me", text });
   ask.busy = true; askPost({ type: "ask-busy", busy: true });
   ask.origin = null; ask.copy = false;
   try {
@@ -3984,7 +4023,7 @@ async function askQuestion(m) {
 // From the background chat (main.js): the answer, a progress line, or an approval question for the person.
 async function askFromChat(msg, sender) {
   if (!sender || !sender.tab || sender.tab.id !== ask.tabId) return { ok: false, error: "Not the Ask PlazCode chat." };
-  if (msg.type === "ask_reply") { ask.busy = false; askPost({ type: "ask-reply", status: String(msg.status || "done"), text: String(msg.text || "").slice(0, 60000) }); askPost({ type: "ask-busy", busy: false }); return { ok: true }; }
+  if (msg.type === "ask_reply") { ask.busy = false; askReply(String(msg.status || "done"), String(msg.text || "").slice(0, 60000)); askPost({ type: "ask-busy", busy: false }); return { ok: true }; }
   if (msg.type === "ask_step") { askPost({ type: "ask-step", text: String(msg.text || "").slice(0, 200) }); return { ok: true }; }
   if (msg.type === "ask_approve") {
     if (!askPorts.size) return { ok: true, allowed: false };
@@ -3998,7 +4037,8 @@ async function askFromChat(msg, sender) {
 if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== "plazcode-ask" || !port.sender || port.sender.id !== chrome.runtime.id || !/\/core\/ask\.html/.test(String(port.sender.url || ""))) return;
   askPorts.add(port);
-  port.postMessage({ type: "ask-busy", busy: ask.busy, enabled: CONTROL_V2 });
+  // The chat so far goes first, so a panel that was closed and opened again shows the same conversation.
+  askRestored.then(() => { try { if (ask.log.length) port.postMessage({ type: "ask-history", items: ask.log }); } catch {} port.postMessage({ type: "ask-busy", busy: ask.busy, enabled: CONTROL_V2 }); });
   port.onMessage.addListener(async (m) => {
     if (!CONTROL_V2 || !m) return;
     controlKeepWords(m.words);
@@ -4008,7 +4048,7 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
       // Stop answers at once, even when the background chat is gone or does not answer (owner, 2026-11-14: Stop took very long).
       if (Number.isInteger(ask.tabId)) chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-stop" }).catch(() => {});
       for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); }
-      ask.busy = false; askPost({ type: "ask-reply", status: "stopped", text: "Stopped." }); askPost({ type: "ask-busy", busy: false });
+      ask.busy = false; askReply("stopped", "Stopped."); askPost({ type: "ask-busy", busy: false });
     }
     if ("sharing" in m && m.sharing && m.shareTabId === -1) {
       // Step 6: the whole screen. The app takes the pictures (Windows, Mac); kept alive while the panel is open.
@@ -4066,16 +4106,53 @@ async function desktopPicture() {
   let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
   return btoa(bin);
 }
-// Open the Ask PlazCode panel: Chrome's side panel where the browser allows it, otherwise a docked window.
+// Open the Ask PlazCode panel: Chrome's side panel where the browser allows it, otherwise a window docked beside the browser (split screen:
+// the browser window is made narrower to leave room, and goes back to its size when the panel closes). The panel remembers its chat: a
+// second click while it is open brings it forward, and after it was closed it comes back with the same conversation (owner, 2026-11-14).
 async function askOpen(windowId) {
+  if (Number.isInteger(ask.panelWin)) { try { await chrome.windows.update(ask.panelWin, { focused: true }); return { ok: true, where: "window" }; } catch { ask.panelWin = null; } }
   if (chrome.sidePanel && typeof chrome.sidePanel.open === "function" && Number.isInteger(windowId)) {
-    try { await chrome.sidePanel.setOptions({ path: "core/ask.html", enabled: true }); await chrome.sidePanel.open({ windowId }); return { ok: true, where: "side panel" }; } catch {}
+    try {
+      // Both calls are made in the same turn: opening a side panel needs the click that asked for it, and that does not survive an await.
+      const set = chrome.sidePanel.setOptions({ path: "core/ask.html", enabled: true });
+      const open = chrome.sidePanel.open({ windowId });
+      await Promise.all([set, open]);
+      return { ok: true, where: "side panel" };
+    } catch {}
   }
-  let left, top, width = 440, height = 760;
-  try { const win = await chrome.windows.get(windowId); left = Math.max(0, (win.left || 0) + (win.width || 1200) - width); top = win.top; height = Math.max(480, win.height || height); } catch {}
-  await chrome.windows.create({ url: chrome.runtime.getURL("core/ask.html?window=" + (Number.isInteger(windowId) ? windowId : "")), type: "popup", width, height, left, top });
+  return askDockedWindow(windowId);
+}
+const ASK_DOCK_WIDTH = 440;
+async function askDockedWindow(windowId) {
+  const width = ASK_DOCK_WIDTH;
+  let left, top, height = 760, origin = null;
+  try { origin = Number.isInteger(windowId) ? await chrome.windows.get(windowId) : null; } catch {}
+  if (origin && origin.state !== "fullscreen" && (origin.width || 0) - width >= 640) {
+    const full = { left: origin.left || 0, top: origin.top || 0, width: origin.width, height: origin.height || height };
+    try {
+      await chrome.windows.update(windowId, { state: "normal", left: full.left, top: full.top, width: full.width - width, height: full.height });
+      ask.dock = { windowId, full, narrowed: full.width - width, wasMaximized: origin.state === "maximized" };
+      left = full.left + full.width - width; top = full.top; height = full.height;
+    } catch { ask.dock = null; }
+  }
+  if (left === undefined) { left = origin ? Math.max(0, (origin.left || 0) + (origin.width || 1200) - width) : undefined; top = origin ? origin.top : undefined; height = Math.max(480, (origin && origin.height) || height); }
+  const created = await chrome.windows.create({ url: chrome.runtime.getURL("core/ask.html?window=" + (Number.isInteger(windowId) ? windowId : "")), type: "popup", width, height, left, top });
+  ask.panelWin = created && created.id;
+  if (!Number.isInteger(ask.panelWin)) askUndock();
   return { ok: true, where: "window" };
 }
+// The panel's window closed: give the browser window its old size back, unless the person has resized it meanwhile.
+async function askUndock() {
+  const dock = ask.dock; ask.dock = null;
+  if (!dock) return;
+  try {
+    const now = await chrome.windows.get(dock.windowId);
+    if (Math.abs((now.width || 0) - dock.narrowed) > 24 || now.state === "minimized") return;
+    if (dock.wasMaximized) await chrome.windows.update(dock.windowId, { state: "maximized" });
+    else await chrome.windows.update(dock.windowId, { left: dock.full.left, top: dock.full.top, width: dock.full.width, height: dock.full.height });
+  } catch {}
+}
+if (chrome.windows && chrome.windows.onRemoved) chrome.windows.onRemoved.addListener((id) => { if (id === ask.panelWin) { ask.panelWin = null; askUndock(); } });
 if (chrome.commands && chrome.commands.onCommand) {
   // The shortcut ("ask-plazcode", Alt+P by default, changeable on the browser's shortcuts page) is in manifest.json.
   chrome.commands.onCommand.addListener((command, tab) => { if (CONTROL_V2 && command === "ask-plazcode") askOpen(tab && tab.windowId).catch(() => {}); });
@@ -4156,7 +4233,8 @@ if (chrome.tabs && chrome.tabs.onRemoved) chrome.tabs.onRemoved.addListener((tab
   const wasBusy = ask.busy;
   ask.tabId = null; ask.windowId = null; ask.busy = false;
   for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); }
-  if (wasBusy) { askPost({ type: "ask-reply", status: "error", text: "The background chat was closed, so this question stopped. Ask again to open a new one." }); askPost({ type: "ask-busy", busy: false }); }
+  askSave();
+  if (wasBusy) { askReply("error", "The background chat was closed, so this question stopped. Ask again to open a new one."); askPost({ type: "ask-busy", busy: false }); }
 });
 if (chrome.tabs && chrome.tabs.onRemoved) chrome.tabs.onRemoved.addListener((tabId) => { controlLiveStop(tabId); controlTabs.delete(tabId); clearTimeout(controlDebug.get(tabId)); controlDebug.delete(tabId); });
 

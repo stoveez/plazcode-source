@@ -149,6 +149,13 @@ async function run(mode) {
     await panel.close();
     await new Promise((r) => setTimeout(r, 800));
     s = await look(); assert(!s.sharing && !s.shown, 'closing the panel ends sharing: ' + JSON.stringify(s));
+    // A panel opened again shows the same conversation (what was asked, what the chat answered, the notes).
+    const again = await context.newPage();
+    await again.goto('chrome-extension://' + extId + '/core/ask.html?window=' + ids.window);
+    await again.waitForFunction(() => document.querySelectorAll('#log .msg').length >= 3, null, { timeout: 8000 });
+    const replay = await again.evaluate(() => [...document.querySelectorAll('#log .msg')].map((n) => n.className.replace('msg ', '') + ':' + n.textContent));
+    assert(replay.includes('me:What is on this page?') && replay.includes('ai:It is a test shop with a Buy now button.') && replay.some((r) => /^note:.*opened a copy of your tab/.test(r)), 'the reopened panel shows the earlier conversation: ' + JSON.stringify(replay));
+    await again.close();
     console.log('test-ask-plazcode-browser: PASS (' + mode + ')');
   } finally { await context.close(); fs.rmSync(profile, { recursive: true, force: true }); if (copy) fs.rmSync(copy, { recursive: true, force: true }); }
 }
