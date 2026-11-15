@@ -1203,7 +1203,12 @@
     }
     // Equal results from distinct command turns must each reach the AI. Only
     // coalesce a retry of the same confirmed delivery from the same source turn.
-    if (!userPrompt && !images && same(A.confirmedSubmit) && Date.now() - A.confirmedSubmit.at < 45000) {
+    // A fresh empty chat has no conversation id yet (key ""), no earlier reply and the same session number as the chat before it, so a Start
+    // pressed there within 45 s of a Start in ANOTHER fresh chat looked like a retry of that delivery: nothing was sent and PlazCode waited
+    // 80 s for an answer to a message that never left (seen live 2026-11-14 on ChatGPT). A real retry always has its own message in the chat.
+    let emptyChatNow = false;
+    try { emptyChatNow = !!((P.isFreshChat && P.isFreshChat()) || (P.chatIsEmpty && P.chatIsEmpty())); } catch {}
+    if (!userPrompt && !images && !emptyChatNow && same(A.confirmedSubmit) && Date.now() - A.confirmedSubmit.at < 45000) {
       diag("send.duplicateSuppressed", {provider:P.id});
       return A.confirmedSubmit.base;
     }
