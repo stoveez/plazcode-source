@@ -215,7 +215,10 @@ def validate(files, platform):
     if platform == 'linux':
         assert files['PlazCode/PlazCode'][0][:4] == b'\x7fELF' and files['PlazCode/PlazCode'][1] >> 16 & 0o111, 'Linux program missing or not runnable'
         assert files['PlazCode/Update-PlazCode-Linux.sh'][1] >> 16 & 0o111, 'Linux update helper must be runnable'
-        assert not any(n.startswith('PlazCode/PlazCode.app/') or n.endswith(('.exe','.command','.ps1','.bat')) for n in files), 'Linux download must not carry Windows or Mac programs'
+        # Windows/Mac programs and launch scripts at the top of the folder must not ship on Linux. The shared extension and
+        # skill folders carry a few PowerShell helper scripts (Blender on Windows, skill scripts) byte for byte across every
+        # platform and listed in the extension's integrity file; they are content, not Linux programs.
+        assert not any(n.startswith('PlazCode/PlazCode.app/') or n.endswith('.exe') or (n.count('/')==1 and n.endswith(('.command','.ps1','.bat'))) for n in files), 'Linux download must not carry Windows or Mac programs'
     app = 'PlazCode/PlazCode.app/Contents/'
     if platform == 'macos':
         info = plistlib.loads(files[app+'Info.plist'][0])
