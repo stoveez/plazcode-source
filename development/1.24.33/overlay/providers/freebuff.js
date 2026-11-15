@@ -47,7 +47,11 @@ const RSProvider = (() => {
     editor:
       'textarea, [contenteditable="true"][role="textbox"], [contenteditable="true"], .ProseMirror, .tiptap, [role="textbox"]',
     sendAria: /^(send|submit|ask)$|send message|submit prompt/i,
-    stopAria: /stop|cancel generation|abort|interrupt|stop generating/i,
+    // 2026-11-14 (owner report, found live): after "PlazCode is ready." the bar said "Freebuff is writing" and kept the chat box
+    // locked. Freebuff's outline panel has "Jump to prompt: <the whole message>" buttons, and PlazCode's message names the
+    // command "command_stop", so a loose /stop/ match took that button for Freebuff's Stop button. A Stop button's label
+    // STARTS with stop / cancel / abort / interrupt and is short.
+    stopAria: /^(?:stop|cancel|abort|interrupt)(?:\s+(?:generating|generation|response|responding|streaming|run|agent))?\s*$/i,
     auth: 'a[href*="login"], button, [class*="login"]',
     errorSurfaces: '[role="alert"],[class*="toast"],[class*="error"],[data-sonner-toast]',
   };
@@ -353,6 +357,11 @@ const RSProvider = (() => {
     return "";
   }
 
+  // Short labels only: a long label is page text (Freebuff's "Jump to prompt: ..." outline buttons repeat whole messages).
+  const isStopLabel = (t) => { t = String(t || "").trim(); return t.length > 0 && t.length <= 40 && !/^jump to/i.test(t) && (S.stopAria.test(t) || /\b(?:stop|interrupt|abort)\b/i.test(t)); };
+  // A plain submit button is only the Send button when it says nothing else (Freebuff's "Copy code" and side-panel tabs are
+  // submit buttons too).
+  const plainSubmit = (b) => safeRead(() => b.type, "") === "submit" && /^(?:|send|submit|ask|send message|↑|➤)$/i.test((safeRead(() => b.textContent, "") || "").trim());
   const ariaOf = (b) => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.title, "") || "").trim();
   const allButtons = () => [...safeQueryAll(document, "button")].filter((b) => !safeClosest(b, "#rs-root"));
   // The Send button that belongs to the chat box: looked for around the box first, so the Send button of a side box
@@ -361,16 +370,16 @@ const RSProvider = (() => {
     const ed = getEditor();
     for (let n = ed && safeRead(() => ed.parentElement, null), i = 0; n && i < 8; n = safeRead(() => n.parentElement, null), i++) {
       const near = [...safeQueryAll(n, "button")].filter((b) => !safeClosest(b, "#rs-root") && visible(b));
-      const hit = near.find((b) => S.sendAria.test(ariaOf(b)) && b.type !== "reset") || near.find((b) => safeRead(() => b.type, "") === "submit");
+      const hit = near.find((b) => S.sendAria.test(ariaOf(b)) && b.type !== "reset") || near.find(plainSubmit);
       if (hit) return hit;
       if (n === document.body) break;
     }
     return allButtons().find((b) => S.sendAria.test(ariaOf(b)) && visible(b) && b.type !== "reset") ||
-      allButtons().find((b) => safeRead(() => b.type, "") === "submit" && visible(b)) ||
+      allButtons().find((b) => plainSubmit(b) && visible(b)) ||
       null;
   };
   const stopButton = () =>
-    allButtons().find((b) => S.stopAria.test(ariaOf(b)) && visible(b)) || null;
+    allButtons().find((b) => isStopLabel(ariaOf(b)) && visible(b)) || null;
 
   function streamText(item) {
     if (!item) return "";
@@ -418,6 +427,7 @@ const RSProvider = (() => {
     for (const b of allButtons()) {
       if (!visible(b)) continue;
       const t = (ariaOf(b) + " " + (safeRead(() => b.textContent, "") || "")).toLowerCase();
+      if (t.length > 60) continue; // page text on a button (a "Jump to prompt: ..." outline entry), not a Stop button
       if (/\b(stop generating|stop response|cancel generation|abort|interrupt)\b/.test(t) || /^stop$/.test(t.trim())) return "stop-text";
     }
     for (const sel of ['[data-streaming="true"]', '[data-status="generating"]', '[class*="is-generating"]', '[class*="streaming"]']) {
@@ -830,7 +840,7 @@ const RSProvider = (() => {
       // PlazCode's own bar buttons (Fix connection, Enhance, ...) are never the site's Send button.
       if (safeClosest(t, "#rs-root")) return;
       const stop = safeRead(() => t.closest, null) && safeClosest(t, "button");
-      if (stop && S.stopAria.test(ariaOf(stop))) { handlers.onNativeStop(); return; }
+      if (stop && isStopLabel(ariaOf(stop))) { handlers.onNativeStop(); return; }
       const btn = safeRead(() => t.closest, null) && safeClosest(t, "button");
       if (!btn) return;
       const isSend = S.sendAria.test(ariaOf(btn)) || safeRead(() => btn.type, "") === "submit";

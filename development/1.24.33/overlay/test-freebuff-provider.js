@@ -152,6 +152,11 @@ function composer(w, {revert = false, sendWorks = true, alwaysEnabled = false, i
     const stop = f.w.document.createElement('button'); stop.setAttribute('aria-label', 'Stop generating'); stop.textContent = 'Stop'; f.w.document.querySelector('form').append(stop);
     ok('a Stop button is generating', () => { assert.equal(f.p.isGenerating(), true); assert.equal(f.p.isHardGenerating(), true); });
     stop.remove();
+    // 2026-11-14 (found live): Freebuff's outline lists "Jump to prompt: <whole message>" buttons, and PlazCode's message names
+    // "command_stop" (and may say "interrupt"). Those buttons are not a Stop button: the bar said "Freebuff is writing" for good.
+    const jump = f.w.document.createElement('button'); jump.setAttribute('aria-label', 'Jump to prompt: [RS-SYS] PlazCode ... then command_status or command_stop. Stop and interrupt are fine words.'); jump.title = jump.getAttribute('aria-label'); f.w.document.querySelector('main').prepend(jump);
+    ok('a "Jump to prompt" outline button naming command_stop is not a Stop button', () => { assert.equal(f.p.isHardGenerating(), false); assert.equal(f.p.isGenerating(), false); });
+    jump.remove();
     f.w.document.querySelector('textarea').value = 'a draft';
     // 2026-11-14: a suggested next message sits in the box with a greyed Send. While the reply is still fresh that counts as busy,
     // but once the reply has been still for 8 s and no Stop button is up, the turn is over (the bar stayed on "Starting" for good).
