@@ -3,13 +3,16 @@
 // "not defined" error at run time, and most such calls sit in try/catch, so the feature just silently does nothing. The
 // TypeScript checker (2026-11-15) found several: the screenshot preview's Copy image / Use as feedback buttons, remembering
 // pictures attached in the chat, the RobloxScript automatic visual check and the "Always approving" note. This test fails
-// when any name declared somewhere in main.js is used where it is not reachable.
+// when any name declared somewhere in a file is used where it is not reachable. It checks main.js and, the same way, every
+// other extension script (background.js, core/, providers/), each on its own.
 const fs = require('fs'), acorn = require('acorn'), assert = require('node:assert/strict');
-const src = fs.readFileSync('core/main.js', 'utf8');
+const BROWSER = new Set(['self', 'window', 'document', 'chrome', 'browser']);
+function check(file) {
+const src = fs.readFileSync(file, 'utf8');
 const ast = acorn.parse(src, {ecmaVersion: 'latest', locations: true});
 // Old features left unreachable for many versions (perf budget pill, next-step hints, session log, Studio checkpoints, a
 // hidden status pill); turning them back on would change what users see, so they are listed here until the owner decides.
-const KNOWN = new Set(['currentMode', 'studioConnected', 'perfParts', 'perfScripts', 'updatePerfPill', 'showSuggestion', 'persistSession', 'createCheckpoint', 'bumpPerf']);
+const KNOWN = new Set(file !== 'core/main.js' ? [] : ['currentMode', 'studioConnected', 'perfParts', 'perfScripts', 'updatePerfPill', 'showSuggestion', 'persistSession', 'createCheckpoint', 'bumpPerf']);
 const declared = new Set();
 const blockTypes = /^(BlockStatement|Program|ForStatement|ForOfStatement|ForInStatement|CatchClause|SwitchStatement)$/;
 function names(p, add) { if (!p) return; if (p.type === 'Identifier') add(p.name); else if (p.type === 'ObjectPattern') p.properties.forEach((q) => names(q.value || q.argument, add)); else if (p.type === 'ArrayPattern') p.elements.forEach((e) => names(e, add)); else if (p.type === 'AssignmentPattern') names(p.left, add); else if (p.type === 'RestElement') names(p.argument, add); }
@@ -39,8 +42,13 @@ const uses = [];
     if (Array.isArray(v)) v.forEach((c) => walk(c, scopes)); else if (v && typeof v.type === 'string') walk(v, scopes);
   }
 })(ast, []);
-const lost = uses.filter(([name, , scopes]) => declared.has(name) && !KNOWN.has(name) && !scopes.some((s) => s.has(name)) && !(name in globalThis));
-assert.deepEqual([...new Set(lost.map(([n, l]) => n + '@' + l))], [], 'names used where they are not reachable (they throw "not defined" at run time)');
+const lost = uses.filter(([name, , scopes]) => declared.has(name) && !KNOWN.has(name) && !BROWSER.has(name) && !scopes.some((s) => s.has(name)) && !(name in globalThis));
+assert.deepEqual([...new Set(lost.map(([n, l]) => n + '@' + l))], [], file + ': names used where they are not reachable (they throw "not defined" at run time)');
+return {lost, declared};
+}
+const {lost, declared} = check('core/main.js');
 for (const name of ['rememberImages', 'imageToBlob', 'boundedImageOperation', 'copyImageToClipboard', 'captureShots', 'toast', 'menuEl', 'buildMenu'])
   assert(!lost.some(([n]) => n === name), name + ' reachable everywhere it is used');
-console.log('PASS core/main.js: every helper is reachable where it is used (' + declared.size + ' names checked).');
+const others = ['background.js', ...fs.readdirSync('core').filter((f) => f.endsWith('.js')).map((f) => 'core/' + f), ...fs.readdirSync('providers').filter((f) => f.endsWith('.js')).map((f) => 'providers/' + f)].filter((f) => f !== 'core/main.js');
+for (const f of others) check(f);
+console.log('PASS core/main.js (' + declared.size + ' names) and ' + others.length + ' other extension scripts: every helper is reachable where it is used.');

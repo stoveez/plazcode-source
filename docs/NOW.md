@@ -9,6 +9,8 @@ Updated: 2026-11-15. Branch `claude/plazcode-dev`. **1.24.33 is published** (val
 
 **Open owner topics:** DeepSeek suspensions with Ask PlazCode (options offered: move Ask PlazCode off DeepSeek, optional official API key mode, send less; owner has not chosen; no anti-detection tools). Freebuff in Code mode makes a project for every chat (Freebuff's behaviour). Antivirus hits on 1.24.32's exe (no proven cause). Deferred plans in `development/1.24.26/`.
 
+**TypeScript, step 1 (owner, 2026-11-15):** `development/1.24.33/typecheck/check.py` runs TypeScript's checker over the providers and parser (and `--page` over the whole page bundle plus background.js) without changing or building anything. It found helpers in `core/main.js` called from places that could not reach them (screenshot Copy image / Use as feedback, remembering attached pictures, RobloxScript visual check, "Always approving" note): fixed in `c96f7b1`, guarded by `test-main-scope.js` for every extension script. Old unreachable features left as they are (perf budget pill, "Next:" hints, session log, Studio checkpoints, hidden status pill), listed in that test; owner to decide. Not in a build yet (extension reload is enough once built). Step 2 (real TypeScript for providers/parser) needs a build step and the owner's go.
+
 **Next step:** wait for the owner's reports on 1.24.33. A next version needs the new-version checklist (`docs/vault/new-version-checklist.md`).
 
 **Rules reminders:** commits as stoveez, no Co-Authored-By or session lines; push after every finished step; tell the owner branch + short commit ID after each push; never publish or change repo visibility without the owner.
