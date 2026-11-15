@@ -281,7 +281,9 @@
   // One-shot permission for the exact delete the user just allowed. The app
   // refuses deletes without it, and the AI can never set it through arguments.
   let deleteConfirmation = null;
-  try { window.__rsAlwaysChanged = (tool) => { try { toast("Always approving “" + PlazCodeApproval.nice(tool) + "”. Remove it in the PlazCode menu under Safety."); if (menuEl && !menuEl.hidden) buildMenu(); } catch {} }; } catch {}
+  // toast and the menu belong to the bar (ui below); calling them by bare name here was a silent "not defined" error, so the
+  // "Always approving ..." note never appeared (found by the TypeScript checker, 2026-11-15).
+  try { window.__rsAlwaysChanged = (tool) => { try { ui.toast("Always approving “" + PlazCodeApproval.nice(tool) + "”. Remove it in the PlazCode menu under Safety."); ui.refreshMenu(); } catch {} }; } catch {}
   const deleteKey = (name, args) => String(name || "").split("__").pop() + "|" + String(args && (args.path || args.command) || "");
   function withDeleteConfirmation(msg) {
     const { confirmed, ...clean } = msg || {};
@@ -3218,6 +3220,114 @@ return result`;
     const complete=results.length===calls.length && results.every(r=>r.ok);
     return (complete?"Output of 'plazcode_batch':\n":"ERROR in plazcode_batch (completed commands are NOT rolled back; do not repeat them):\n")+JSON.stringify({complete,requested:calls.length,results,not_run:Math.max(0,calls.length-results.filter(r=>!r.not_run).length)});
   }
+  // 2026-11-15 (TypeScript checker, step 1): these picture helpers used to sit INSIDE runToolImpl, so the other places that
+  // call them (the screenshot preview's Copy image / Use as feedback buttons, remembering pictures attached in the chat,
+  // the RobloxScript automatic visual check) hit "not defined" errors that were caught and silently ignored. They only use
+  // shared state (A, bg, activeEngine), so they now live at this level where every caller can reach them.
+  // ── Image attachment plumbing (plazcode_screenshot / attach_feedback) ───────────
+  // One place that turns a tool's base64 images into (a) a remembered recent
+  // capture, (b) a real Blob/File, (c) a clipboard item, and (d) a composer
+  // attachment. Every provider's attachImages() already accepts {mimeType,data}
+  // payloads, so nothing here is provider-specific.
+  function rememberImages(images, source) {
+    if (!images || !images.length) return;
+    const at = Date.now();
+    for (const img of images) {
+      if (!img || !img.data) continue;
+      A.recentImages.unshift({ mimeType: img.mimeType || "image/png", data: img.data, at, source: source || "capture" });
+    }
+    if (A.recentImages.length > 8) A.recentImages.length = 8;
+    A.lastShot = A.recentImages[0] || null;
+  }
+  function imageToBlob(img) {
+    const mime = (img && img.mimeType) || "image/png";
+    const bin = atob(String((img && img.data) || ""));
+    const arr = new Uint8Array(bin.length);
+    for (let j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
+    return new Blob([arr], { type: mime });
+  }
+  // Chrome's async clipboard only accepts image/png, so a jpeg/webp capture is
+  // re-encoded through a canvas (which also gives us the pixel size we report).
+  async function boundedImageOperation(operation, ms=15000) {
+    let timer;
+    try { return await Promise.race([operation,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Image operation did not finish. Nothing was retried.')),ms);})]); }
+    finally { clearTimeout(timer); }
+  }
+  async function imageToPngBlob(img) {
+    const blob = imageToBlob(img);
+    let bitmap = null, expired = false;
+    try {
+      const decoding = createImageBitmap(blob);
+      void decoding.then(value=>{if(expired)try{value.close();}catch{}},()=>{});
+      bitmap = await boundedImageOperation(decoding);
+      if (blob.type.includes('png')) return {blob,width:bitmap.width,height:bitmap.height};
+      const canvas = document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;
+      const context=canvas.getContext('2d');if(!context)throw Error('Image conversion canvas is unavailable');context.drawImage(bitmap,0,0);
+      const png=await boundedImageOperation(new Promise((resolve,reject)=>{try{canvas.toBlob(value=>value?resolve(value):reject(Error('Image conversion failed')),'image/png');}catch(error){reject(error);}}));
+      return {blob:png,width:bitmap.width,height:bitmap.height};
+    } catch(error) {
+      if(blob.type.includes('png'))return {blob,width:0,height:0};
+      throw error;
+    } finally { expired=true;if(bitmap)try{bitmap.close();}catch{} }
+  }
+
+  async function copyImageToClipboard(img) {
+    if (!navigator.clipboard || typeof ClipboardItem === "undefined") {
+      return { ok: false, error: "this browser exposes no image clipboard API" };
+    }
+    try {
+      const { blob } = await imageToPngBlob(img);
+      await boundedImageOperation(navigator.clipboard.write([new ClipboardItem({ [blob.type || "image/png"]: blob })]));
+      return { ok: true };
+    } catch (e) {
+      // Chrome demands the tab be focused (and may want a real user gesture) —
+      // report it plainly instead of pretending the copy happened.
+      return { ok: false, error: String((e && e.message) || e).slice(0, 140) };
+    }
+  }
+  function kb(b64) { return Math.round((String(b64 || "").length * 3) / 4 / 102.4) / 10; }
+
+  // Shared capture routine: used by plazcode_screenshot AND attach_feedback so both
+  // agree on what "studio", "tab" and "blender" mean.
+  async function captureShots(target,options={}) {
+    const shots = [];
+    const notes = [];
+    const tryMcp = async (toolName, label) => {
+      try {
+        const r = await bg({ type: "call_tool", name: toolName, arguments: label === "studio" && options.studio_id != null ? {studio_id:options.studio_id} : {}, engine: label === "studio" ? "roblox" : undefined, timeout: options.timeout || 45000, checkpoint_id: label === "studio" && activeEngine() !== "roblox" ? undefined : options.checkpointId || undefined });
+        if (r && r.ok && r.images && r.images.length) {
+          shots.push(...r.images);
+          notes.push(label + ": " + r.images.length + " image(s)");
+          return true;
+        }
+        if (r && !r.ok) notes.push(label + ": " + String(r.error || "failed").slice(0, 160));
+        else if (r && r.ok) notes.push(label + ": returned no image data");
+      } catch (e) {
+        notes.push(label + ": " + String((e && e.message) || e).slice(0, 160));
+      }
+      return false;
+    };
+    const wantStudio = target === "auto" || target === "studio" || target === "roblox" || target === "viewport";
+    const wantBlend = target === "auto" || target === "blender";
+    const wantTab = target === "tab" || target === "chat" || target === "page" || target === "self";
+    if (wantStudio) await tryMcp("screen_capture", "studio");
+    if (wantBlend && !shots.length) await tryMcp("get_viewport_screenshot", "blender");
+    // Newer Blender servers call their screenshot tool "look".
+    if (wantBlend && !shots.length) await tryMcp("look", "blender");
+    if (wantTab || (target === "auto" && !shots.length)) {
+      try {
+        const r = await bg({ type: "capture_tab" });
+        if (r && r.ok && r.images && r.images.length) {
+          shots.push(...r.images);
+          notes.push("tab: " + r.images.length + " image(s)");
+        } else if (r && !r.ok) notes.push("tab: " + String(r.error || "failed").slice(0, 160));
+      } catch (e) {
+        notes.push("tab: " + String((e && e.message) || e).slice(0, 160));
+      }
+    }
+    return { shots, notes };
+  }
+
   async function runToolImpl(call) {
     if (A.stop) return "ERROR: the command was not run — stopped by the user.";
     call.tool = remapToolName(call.tool);
@@ -3850,110 +3960,6 @@ return result`;
       const helperTop = helperNames.size ? `PlazCode helper commands (full details are at the end of this list): ${[...helperNames].join(", ")}\n\n` : "";
       return `Output of '${name}':\n${requested} commands (${scoped.length}${virtualCount ?  ` + ${virtualCount} PlazCode virtual tools` : ""}):\n\n${helperTop}${lines.join("\n\n")}${animLines.length ?  "\n\n" + animLines.join("\n\n") : ""}${skillLines.length ?  "\n\n" + skillLines.join("\n\n") : ""}${agentLines.length ?  "\n\n" + agentLines.join("\n\n") : ""}\n\n${webLines.join("\n")}${requested === curEng && typeof connectedAddonsNote === "function" && connectedAddonsNote(curEng) ? "\n\n" + connectedAddonsNote(curEng) : ""}`;
     }
-    // ── Image attachment plumbing (plazcode_screenshot / attach_feedback) ───────────
-  // One place that turns a tool's base64 images into (a) a remembered recent
-  // capture, (b) a real Blob/File, (c) a clipboard item, and (d) a composer
-  // attachment. Every provider's attachImages() already accepts {mimeType,data}
-  // payloads, so nothing here is provider-specific.
-  function rememberImages(images, source) {
-    if (!images || !images.length) return;
-    const at = Date.now();
-    for (const img of images) {
-      if (!img || !img.data) continue;
-      A.recentImages.unshift({ mimeType: img.mimeType || "image/png", data: img.data, at, source: source || "capture" });
-    }
-    if (A.recentImages.length > 8) A.recentImages.length = 8;
-    A.lastShot = A.recentImages[0] || null;
-  }
-  function imageToBlob(img) {
-    const mime = (img && img.mimeType) || "image/png";
-    const bin = atob(String((img && img.data) || ""));
-    const arr = new Uint8Array(bin.length);
-    for (let j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
-    return new Blob([arr], { type: mime });
-  }
-  // Chrome's async clipboard only accepts image/png, so a jpeg/webp capture is
-  // re-encoded through a canvas (which also gives us the pixel size we report).
-  async function boundedImageOperation(operation, ms=15000) {
-    let timer;
-    try { return await Promise.race([operation,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Image operation did not finish. Nothing was retried.')),ms);})]); }
-    finally { clearTimeout(timer); }
-  }
-  async function imageToPngBlob(img) {
-    const blob = imageToBlob(img);
-    let bitmap = null, expired = false;
-    try {
-      const decoding = createImageBitmap(blob);
-      void decoding.then(value=>{if(expired)try{value.close();}catch{}},()=>{});
-      bitmap = await boundedImageOperation(decoding);
-      if (blob.type.includes('png')) return {blob,width:bitmap.width,height:bitmap.height};
-      const canvas = document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;
-      const context=canvas.getContext('2d');if(!context)throw Error('Image conversion canvas is unavailable');context.drawImage(bitmap,0,0);
-      const png=await boundedImageOperation(new Promise((resolve,reject)=>{try{canvas.toBlob(value=>value?resolve(value):reject(Error('Image conversion failed')),'image/png');}catch(error){reject(error);}}));
-      return {blob:png,width:bitmap.width,height:bitmap.height};
-    } catch(error) {
-      if(blob.type.includes('png'))return {blob,width:0,height:0};
-      throw error;
-    } finally { expired=true;if(bitmap)try{bitmap.close();}catch{} }
-  }
-
-  async function copyImageToClipboard(img) {
-    if (!navigator.clipboard || typeof ClipboardItem === "undefined") {
-      return { ok: false, error: "this browser exposes no image clipboard API" };
-    }
-    try {
-      const { blob } = await imageToPngBlob(img);
-      await boundedImageOperation(navigator.clipboard.write([new ClipboardItem({ [blob.type || "image/png"]: blob })]));
-      return { ok: true };
-    } catch (e) {
-      // Chrome demands the tab be focused (and may want a real user gesture) —
-      // report it plainly instead of pretending the copy happened.
-      return { ok: false, error: String((e && e.message) || e).slice(0, 140) };
-    }
-  }
-  function kb(b64) { return Math.round((String(b64 || "").length * 3) / 4 / 102.4) / 10; }
-
-  // Shared capture routine: used by plazcode_screenshot AND attach_feedback so both
-  // agree on what "studio", "tab" and "blender" mean.
-  async function captureShots(target,options={}) {
-    const shots = [];
-    const notes = [];
-    const tryMcp = async (toolName, label) => {
-      try {
-        const r = await bg({ type: "call_tool", name: toolName, arguments: label === "studio" && options.studio_id != null ? {studio_id:options.studio_id} : {}, engine: label === "studio" ? "roblox" : undefined, timeout: options.timeout || 45000, checkpoint_id: label === "studio" && activeEngine() !== "roblox" ? undefined : options.checkpointId || undefined });
-        if (r && r.ok && r.images && r.images.length) {
-          shots.push(...r.images);
-          notes.push(label + ": " + r.images.length + " image(s)");
-          return true;
-        }
-        if (r && !r.ok) notes.push(label + ": " + String(r.error || "failed").slice(0, 160));
-        else if (r && r.ok) notes.push(label + ": returned no image data");
-      } catch (e) {
-        notes.push(label + ": " + String((e && e.message) || e).slice(0, 160));
-      }
-      return false;
-    };
-    const wantStudio = target === "auto" || target === "studio" || target === "roblox" || target === "viewport";
-    const wantBlend = target === "auto" || target === "blender";
-    const wantTab = target === "tab" || target === "chat" || target === "page" || target === "self";
-    if (wantStudio) await tryMcp("screen_capture", "studio");
-    if (wantBlend && !shots.length) await tryMcp("get_viewport_screenshot", "blender");
-    // Newer Blender servers call their screenshot tool "look".
-    if (wantBlend && !shots.length) await tryMcp("look", "blender");
-    if (wantTab || (target === "auto" && !shots.length)) {
-      try {
-        const r = await bg({ type: "capture_tab" });
-        if (r && r.ok && r.images && r.images.length) {
-          shots.push(...r.images);
-          notes.push("tab: " + r.images.length + " image(s)");
-        } else if (r && !r.ok) notes.push("tab: " + String(r.error || "failed").slice(0, 160));
-      } catch (e) {
-        notes.push("tab: " + String((e && e.message) || e).slice(0, 160));
-      }
-    }
-    return { shots, notes };
-  }
-
   function importedJsonPayload(value) {
     const text = String(value || "");
     for (let start = text.indexOf("{"); start >= 0; start = text.indexOf("{", start + 1)) {
@@ -12402,7 +12408,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
       if (action === "stop" && state.canStop) { stopLoop(); return { ok: true }; }
       return { ok: false, error: "The AI chat is no longer ready for this action." };
     }
-    return { captureHandoff, noteChatSoon, latestChatNotePath: () => latestHere() && latestHere().path || '', isCoworkCoverTarget: node => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, renderAgents, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast, banner, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
+    return { refreshMenu: () => { if (menuEl && !menuEl.hidden) buildMenu(); }, captureHandoff, noteChatSoon, latestChatNotePath: () => latestHere() && latestHere().path || '', isCoworkCoverTarget: node => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, renderAgents, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast, banner, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
   })();
 
   const clarification = PlazCodeClarification.create({

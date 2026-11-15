@@ -52,7 +52,7 @@ assert(text.includes('Read before editing.'));assert(text.length<JSON.stringify(
 
 // Exercise the actual list_commands branch: all names and helper access remain; targeted calls return the full schema.
 const a=main.indexOf('    if (name === "list_commands" || name === "list_tools") {',main.indexOf('async function runToolImpl'));
-const b=main.indexOf('    // ── Image attachment plumbing',a);assert(a>0&&b>a);
+const b=main.indexOf('  function importedJsonPayload(value) {',a);assert(a>0&&b>a);
 Object.assign(box,{A:{toolList:[...tools,{name:'complex',server:'roblox',description:'Full description.',inputSchema:schema}],bridge:{connected:true,roblox_connected:true}},
   ensureTools:async()=>{},activeEngine:()=> 'roblox',P:{id:'arena'},RSAnim:{describeCommands:()=>['animation_test: Animate.\n    bones:array']},
   PlazCodeClarification:{DESCRIPTION:'plazcode_clarify {question,options} — Ask the user.'},diag(){},connectedAddonsNote:()=> 'Also connected: blender',});

@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const main=fs.readFileSync('core/main.js','utf8'),start=main.indexOf('    if (name === "list_commands" || name === "list_tools") {'),end=main.indexOf('    // ── Image attachment plumbing',start);
+const main=fs.readFileSync('core/main.js','utf8'),start=main.indexOf('    if (name === "list_commands" || name === "list_tools") {'),end=main.indexOf('  function importedJsonPayload(value) {',start);
 const rsContext=vm.createContext({});vm.runInContext(fs.readFileSync('core/config.js','utf8')+';this.config=RS',rsContext);
 const tools=[{name:'user_keyboard_input',server:'local',description:'Type input into the workspace. '+ 'Long description. '.repeat(100),inputSchema:{properties:{actions:{type:'array',items:{type:'object',required:['action'],properties:{action:{enum:['press','release']},key:{type:'string'}}}}},required:['actions']}},{name:'other_tool',server:'other',description:'Other server command.',inputSchema:{properties:{}}}];
 async function catalogue(extra={},args={}){
