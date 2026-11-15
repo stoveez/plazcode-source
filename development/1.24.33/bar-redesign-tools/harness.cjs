@@ -11,7 +11,7 @@ function open(browser, opts = {}) {
       #timeline{max-width:760px;margin:0 auto;padding:40px 20px 260px}
       .msg{background:#303030;border-radius:18px;padding:10px 16px;margin:12px 0 12px auto;width:fit-content;max-width:70%}
       .ai{margin:18px 0;color:#ececec}
-      form{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);width:760px;max-width:calc(100% - 40px);background:#303030;border-radius:28px;padding:14px 18px 12px;box-sizing:border-box;box-shadow:0 0 0 1px #ffffff12}
+      form{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);width:${process.env.FW || 760}px;max-width:calc(100% - 40px);background:#303030;border-radius:28px;padding:14px 18px 12px;box-sizing:border-box;box-shadow:0 0 0 1px #ffffff12}
       #prompt-textarea{white-space:pre-wrap;min-height:28px;max-height:160px;overflow:auto;outline:none;color:#ececec}
       #prompt-textarea:empty::before{content:"Ask anything";color:#9b9b9b}
       button[data-testid=send-button]{float:right;height:34px;width:34px;border-radius:50%;border:0;background:#fff;color:#000}

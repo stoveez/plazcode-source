@@ -714,6 +714,20 @@ const RSProvider = (() => {
     // 2026-11-14 (owner screenshot): the card still sat beside the text, at the left edge. The element around <message-content> can be
     // a flex ROW or a grid, where a first child becomes a column of its own. So walk up to the nearest ancestor that stacks its
     // children (block, or a column) and anchor there; the card then sits ABOVE the reply, inside the centred column.
+    // 2026-11-14 (owner screenshot): even in the stacking column the list_commands card started well left of the reply text
+    // and its buttons, because Gemini indents the reply itself (margins on <message-content> and its wrappers), not the
+    // column. The card is moved right by the same amount so its left edge lines up with the reply text, and never wider
+    // than the reply. Runs every time the card is placed, so a re-render or a window resize is followed.
+    alignChip(chip, item) {
+      const mc = item.querySelector(S.reply);
+      if (!chip || !mc) return;
+      chip.style.marginLeft = "";
+      const cr = chip.getBoundingClientRect(), mr = mc.getBoundingClientRect();
+      if (!cr.width || !mr.width) return;
+      const shift = Math.round(mr.left - cr.left);
+      if (shift > 2 && shift < 800) { chip.style.marginLeft = shift + "px"; chip.style.maxWidth = Math.round(mr.width) + "px"; }
+      else chip.style.maxWidth = "";
+    },
     chipAnchor(item) {
       try {
         const mc = item.querySelector(S.reply);

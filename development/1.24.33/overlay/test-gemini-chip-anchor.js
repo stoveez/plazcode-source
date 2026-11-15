@@ -26,3 +26,26 @@ const mc = '<message-content><div class="markdown">hi</div></message-content>';
   assert.equal(P.chipAnchor(item), item);
 }
 console.log('PASS Gemini chip anchor checks.');
+
+// 2026-11-14 (owner screenshot): the card started left of the reply text, because Gemini indents the reply itself.
+// alignChip lines the card's left edge up with the reply text. Real Chromium (needs layout); skipped without it.
+(async () => {
+  let browser = null;
+  try { const {chromium} = require('playwright'); browser = await chromium.launch(process.env.PLAZCODE_CHROMIUM ? {executablePath: process.env.PLAZCODE_CHROMIUM} : {}); }
+  catch (error) { if (process.env.PLAZCODE_REQUIRE_BROWSER === '1') throw error; console.log('SKIP Gemini card alignment (no Chromium)'); return; }
+  try {
+    const page = await browser.newPage({viewport: {width: 1100, height: 600}});
+    await page.setContent('<model-response style="display:block;width:900px"><div class="col" style="display:block"><message-content style="display:block;margin-left:170px;width:700px"><div class="markdown">hi</div></message-content></div></model-response>');
+    await page.addScriptTag({content: src + ';window.P=RSProvider;'});
+    const r = await page.evaluate(() => {
+      const item = document.querySelector('model-response'), anchor = P.chipAnchor(item);
+      const chip = document.createElement('div'); chip.className = 'rs-chip'; chip.style.display = 'block'; chip.textContent = 'list_commands';
+      anchor.insertBefore(chip, anchor.firstChild); P.alignChip(chip, item);
+      const c = chip.getBoundingClientRect(), m = item.querySelector('message-content').getBoundingClientRect();
+      return {chipLeft: Math.round(c.left), replyLeft: Math.round(m.left), chipRight: Math.round(c.right), replyRight: Math.round(m.right)};
+    });
+    assert.equal(r.chipLeft, r.replyLeft, 'card lines up with the reply text ' + JSON.stringify(r));
+    assert(r.chipRight <= r.replyRight + 1, 'and is never wider than the reply ' + JSON.stringify(r));
+    console.log('PASS Gemini card lines up with the reply text.');
+  } finally { await browser.close(); }
+})().catch((e) => { console.error(e); process.exitCode = 1; });

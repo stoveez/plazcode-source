@@ -652,6 +652,8 @@
     btn.innerHTML = barIcon(icon) + (text ? '<span class="rs-lbl"></span>' : "");
     const label = btn.querySelector(".rs-lbl"); if (label) label.textContent = text;
     btn.classList.toggle("rs-icon-only", !text);
+    // The bar may show only the icon when space is short (fitBarRow), so the main button keeps its words as a tooltip.
+    if (btn.id === "rs-action" && text) btn.title = text;
   }
   // Click ripple and spark burst, as in the app (Appearance > Feel there: Motion and Click ripples, shared
   // through rsAppearance). Off motion: nothing. Reduced: ripples only. Full: ripples and sparks.
@@ -6597,6 +6599,9 @@ return result`;
             if (wantLast) anchor.insertBefore(chip, trailRef); // trailRef=null -> append
             else anchor.insertBefore(chip, anchor.firstChild);
           }
+          // A provider may line the chip up with the reply text after placing it (Gemini: the turn's column can start left
+          // of the reply text, so the card stuck out to the left of everything else in the reply).
+          if (P.alignChip) { try { P.alignChip(chip, item); } catch {} }
         } else if (spot) {
           spot.parent.insertBefore(chip, spot.ref);
         } else if (!chip.parentElement) {
@@ -11168,6 +11173,28 @@ function renderCards(panel) {
         if (main) layoutRO.observe(main);
       } catch {}
     }
+    // 2026-11-14 (owner screenshots, Gemini / Kimi / Freebuff): on a chat box narrower than about 800px the bar's
+    // buttons wrapped into two rows (most in AgentScript, where Ask PlazCode joins them) and the bar grew tall. The
+    // buttons are meant to sit on one row, so when they wrap PlazCode takes labels away step by step, least needed first:
+    // 1 Ask PlazCode / Extra / Undo show only their icon, 2 also Enhance and Fix connection, 3 also Start/Restart and Stop.
+    // Each button keeps its tooltip. Measured, not guessed, so longer translations get the same treatment.
+    let fitSig = "";
+    function fitBarRow() {
+      try {
+        const right = bar && bar.querySelector(".rs-cluster-right");
+        if (!right || !bar.offsetWidth) return;
+        const shown = () => [...right.querySelectorAll("button")].filter((b) => !b.hidden && b.offsetWidth > 0);
+        const sig = bar.offsetWidth + "|" + shown().map((b) => b.id + ":" + b.textContent).join(",");
+        if (sig === fitSig) return;
+        const wraps = () => {
+          const mids = shown().map((b) => { const r = b.getBoundingClientRect(); return r.top + r.height / 2; });
+          return mids.length > 1 && Math.max(...mids) - Math.min(...mids) > 8;
+        };
+        bar.classList.remove("rs-fit-1", "rs-fit-2", "rs-fit-3");
+        for (let level = 1; level <= 3 && wraps(); level++) bar.classList.add("rs-fit-" + level);
+        fitSig = bar.offsetWidth + "|" + shown().map((b) => b.id + ":" + b.textContent).join(",");
+      } catch {}
+    }
     let barTimer = null;
     function placeBar() {
       if (barTimer) clearTimeout(barTimer);
@@ -11193,6 +11220,7 @@ function renderCards(panel) {
       // never crowds the row on narrow composers like Gemini. Positioned from the
       // bar's current rect every frame - works in all bar modes since it only
       // reads where the bar ended up. One frame of lag is imperceptible.
+      fitBarRow();
       placeUnstable();
       placeCardsFab();
       placeShowTab();

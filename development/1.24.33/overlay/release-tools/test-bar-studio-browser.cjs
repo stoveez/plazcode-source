@@ -62,6 +62,18 @@ async function extPage(browser, file, store) {
       assert.equal(await askShown(), false, 'Ask PlazCode is hidden in RobloxScript');
       await page.click('#rs-engine .rs-mode-btn:nth-of-type(2)'); await page.waitForTimeout(700);
       assert.equal(await askShown(), true, 'Ask PlazCode shows in AgentScript');
+      // 1b. (owner, 2026-11-14) On a narrow chat box the buttons stay on one row: labels go, icons stay; wide again, labels come back.
+      const rowState = () => page.evaluate(() => {
+        const bar = document.getElementById('rs-bar');
+        const mids = [...bar.querySelectorAll('.rs-cluster-right button')].filter((b) => !b.hidden && b.offsetWidth > 0).map((b) => { const r = b.getBoundingClientRect(); return r.top + r.height / 2; });
+        return { spread: Math.max(...mids) - Math.min(...mids), fit: [...bar.classList].filter((c) => c.startsWith('rs-fit-')) };
+      });
+      await page.evaluate(() => { document.getElementById('rs-fix').hidden = false; document.querySelector('form').style.width = '600px'; }); await page.waitForTimeout(900);
+      const narrow = await rowState();
+      assert(narrow.spread <= 8 && narrow.fit.length > 0, 'narrow chat box: one row of buttons ' + JSON.stringify(narrow));
+      await page.evaluate(() => { document.getElementById('rs-fix').hidden = true; document.querySelector('form').style.width = '760px'; }); await page.waitForTimeout(900);
+      const wide = await rowState();
+      assert(wide.spread <= 8 && wide.fit.length === 0, 'wide chat box: full labels ' + JSON.stringify(wide));
       await page.click('#rs-engine .rs-mode-btn:nth-of-type(1)'); await page.waitForTimeout(700);
       assert.equal(await askShown(), false, 'and hides again back in RobloxScript');
       // 2. Settings menu: six tabs that show only their sections; search across all of them.
