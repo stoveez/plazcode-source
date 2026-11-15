@@ -280,28 +280,32 @@ const RSProvider = (() => {
   // so it was narrower than the box, started right of the + button and its buttons wrapped into two rows. The bar now
   // anchors to the whole chat box: the outermost wrapper around the box that is still about the box's own height (so
   // never the page column) and draws a box of its own (a border, a background or rounded corners).
-  const drawsBox = (n) => {
+  // A wrapper that visibly draws the box: a background, a border or rounded corners. (Freebuff's Chat mode wraps the box,
+  // "composer-box", in a wider invisible "composer" div with side padding: the bar must take the visible box's width.)
+  const visibleBox = (n) => {
     const st = safeStyle(n);
     const bg = String(st.backgroundColor || "");
     const hasBg = !!bg && !/^(transparent|rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\))$/i.test(bg);
     const hasBorder = parseFloat(st.borderTopWidth || "0") > 0 || parseFloat(st.borderBottomWidth || "0") > 0;
     const round = parseFloat(st.borderTopLeftRadius || st.borderRadius || "0") > 0;
-    return hasBg || hasBorder || round || /rounded|composer|input-bar|chat-input/i.test(String(safeRead(() => n.className, "") || ""));
+    return hasBg || hasBorder || round;
   };
+  const boxByName = (n) => /rounded|composer|input-bar|chat-input/i.test(String(safeRead(() => n.className, "") || ""));
   function barAnchor() {
     const ed = getEditor();
     if (!ed) return null;
     const er = safeRect(ed);
     const limit = Math.max(er.height + 160, er.height * 3);
-    let best = null;
+    let seen = null, named = null;
     for (let n = safeRead(() => ed.parentElement, null), i = 0; n && i < 10; n = safeRead(() => n.parentElement, null), i++) {
       if (n === document.body || n === document.documentElement || safeRead(() => n.tagName, "") === "MAIN") break;
       const r = safeRect(n);
       if (r.height > limit || r.width > er.width + 400) break;
       if (r.width + 1 < er.width) continue;
-      if (drawsBox(n)) best = n;
+      if (visibleBox(n)) seen = n;
+      else if (boxByName(n) && !seen) named = n;
     }
-    return best || composerFrame();
+    return seen || named || composerFrame();
   }
 
   function setInputLock(on) {
