@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/freebuff.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/freebuff.js — Freebuff (freebuff.ai / freebuff.com) provider.
 // Same RSProvider interface as providers/deepseek.js. Chat lives at /chat
 // (login-gated). /web and /cloud also host a composer ("Ask Freebuff…").
@@ -7,7 +8,7 @@
 // agent chat (textarea or contenteditable + send). Selectors fail open so a
 // reskin still finds the composer.
 // eslint-disable-next-line no-unused-vars
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
@@ -41,7 +42,7 @@ const RSProvider = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag = () => {};
+  let diag       = () => {};
 
   const S = {
     editor:
@@ -89,7 +90,7 @@ const RSProvider = (() => {
     return true;
   }
 
-  function textWithout(root, excludeSel) {
+  function textWithout(root                , excludeSel         ) {
     if (!root) return "";
     const skip = excludeSel ? `.rs-chip, ${excludeSel}` : ".rs-chip";
     let t = "";
@@ -840,7 +841,7 @@ const RSProvider = (() => {
     }, true);
     document.addEventListener("click", (e) => {
       if (!getEditor()) return;
-      const t = e.target;
+      const t = e.target           ;
       // PlazCode's own bar buttons (Fix connection, Enhance, ...) are never the site's Send button.
       if (safeClosest(t, "#rs-root")) return;
       const stop = safeRead(() => t.closest, null) && safeClosest(t, "button");

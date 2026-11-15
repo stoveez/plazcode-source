@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/kimi.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/kimi.js - the Kimi (www.kimi.com, Moonshot AI) provider.
 // Exports the same RSProvider interface as providers/deepseek.js and gemini.js;
 // the core (core/main.js) is provider-agnostic. To DISABLE Kimi support, remove
@@ -25,7 +26,7 @@
 //    CodeMirror virtualization), so the command JSON survives intact.
 //  - Conversation URL is /chat/<id>; a fresh chat is exactly "/".
 // eslint-disable-next-line no-unused-vars
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
@@ -59,7 +60,7 @@ const RSProvider = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag = () => {}; // injected by core via init()
+  let diag       = () => {}; // injected by core via init()
 
   const S = {
     userItem: ".segment-user",
@@ -139,7 +140,7 @@ const RSProvider = (() => {
   // never run and the JSON stayed raw. Page furniture (that header, code headers, tooltips) is left out, and a code block is
   // read as a real fenced block on its own lines.
   const CHROME_SEL = ".process-flow__header, .segment-code-header, [role='tooltip']";
-  function textWithout(root, excludeSel) {
+  function textWithout(root                , excludeSel         ) {
     if (!root) return "";
     const skip = ".rs-chip, " + CHROME_SEL + (excludeSel ? ", " + excludeSel : "");
     let t = "";
@@ -168,7 +169,7 @@ const RSProvider = (() => {
     item ? safeQuery(item, S.reply) || safeQuery(item, ".segment-content") || item : null;
 
   // Combine the reasoning-area exclusion with any caller-supplied selector.
-  const notThink = (excludeSel) => S.thinking + (excludeSel ? ", " + excludeSel : "");
+  const notThink = (excludeSel         ) => S.thinking + (excludeSel ? ", " + excludeSel : "");
 
   function itemText(item) {
     if (!item) return "";
@@ -741,7 +742,7 @@ const RSProvider = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const ctrl = e.target && safeRead(() => e.target.closest, null) && safeClosest(e.target, S.sendBtn);
+        const ctrl = e.target && safeRead(() => (e.target           ).closest, null) && safeClosest(e.target, S.sendBtn);
         if (!ctrl) return;
         // Stop class = a native stop intent.
         if (isStop(ctrl)) { handlers.onNativeStop(); return; }

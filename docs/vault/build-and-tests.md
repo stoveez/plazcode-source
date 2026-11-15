@@ -12,6 +12,9 @@ updated: 2026-11-01
 - Rust: `cargo test --manifest-path build-src-1.24.33/PlazCode/agent/Cargo.toml` (268 + 5 Linux tests passing on 1.24.33, plus 2 ignored; run the full suite).
 - Desktop tests: `node release-tools/test-*.cjs` (Chromium works in the sandbox; Firefox halves run only in CI).
 
+## TypeScript files (since 2026-11-15)
+Some extension files are written in TypeScript in `development/1.24.33/ts/` (now: `providers/kimi.ts`, `providers/freebuff.ts`, `providers/gemini.ts`, `core/parser.ts`). **Edit the `.ts`, never the matching `overlay/.../*.js`.** Then run `NODE_PATH=build-src-1.24.33/PlazCode/release-tools/node_modules node development/1.24.33/ts/build.cjs` (needs `npm ci --prefix release-tools` in the assembled tree). It erases the types into spaces (ts-blank-space), so the `.js` keeps the same lines and columns and everything after it (prepare.py, tests, protection, hash pins, the release) still works on plain JavaScript; commit both files. `build.cjs --types` runs TypeScript's checker; `types/provider.d.ts` is the contract every site file must keep (a missing or misspelled member is an error). `test-typescript-sources.js` (part of the normal test run, so CI) fails when a `.js` is out of date or a type error appears. To convert another file: copy its `.js` to `ts/<same path>.ts`, add the "Built from" line after the SPDX line, add types until `--types` passes, run `build.cjs`. The TypeScript checker over plain JavaScript (step 1) is `development/1.24.33/typecheck/check.py`; `test-main-scope.js` catches helpers called where they are not reachable.
+
 ## Hash pins
 Protected files (`core/main.js`, `core/config.js`, `providers/vani.js`, `claude.js`, `chatgpt.js`, `notion.js`) have pins in the overlay's `test-desktop-regression.js`. After editing one: run `prepare.py`, then `git hash-object build-src-1.24.30/PlazCode/<file>` and update the pin. Redo after every merge touching them.
 

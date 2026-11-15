@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/core/parser.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // core/parser.js - RobloxScript command parsing. PURE string logic, zero DOM:
 // the provider extracts a turn's text from the site's DOM; everything here
 // operates on that text. The command formats (###LUA### blocks, {"command":…}

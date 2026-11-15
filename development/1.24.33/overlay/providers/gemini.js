@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/gemini.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/gemini.js - the Google Gemini (gemini.google.com) provider.
 // Exports the same RSProvider interface as providers/deepseek.js; the core
 // (core/main.js) is provider-agnostic. To DISABLE Gemini support, simply remove
@@ -23,7 +24,7 @@
 //  - No truncation "Continue" button; no per-turn "stopped" marker we can
 //    rely on → findContinueBtn/turnHalted return null/false.
 // eslint-disable-next-line no-unused-vars
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
@@ -57,7 +58,7 @@ const RSProvider = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag = () => {}; // injected by core via init()
+  let diag       = () => {}; // injected by core via init()
 
   const S = {
     userItem: "user-query",
@@ -108,7 +109,7 @@ const RSProvider = (() => {
   // prefix broke the core's anchored matching (e.g. /^Output of '/), so ALL
   // text extraction walks the tree and skips those (and any excluded) subtrees.
   const SR_HIDDEN = ".cdk-visually-hidden, [class*='screen-reader']";
-  function textWithout(root, excludeSel) {
+  function textWithout(root                , excludeSel         ) {
     if (!root) return "";
     const skip = SR_HIDDEN + (excludeSel ? ", " + excludeSel : "");
     let t = "";
@@ -618,7 +619,7 @@ const RSProvider = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const btn = e.target && safeRead(() => e.target.closest, null) && safeClosest(e.target, `${S.inputArea} button`);
+        const btn = e.target && safeRead(() => (e.target           ).closest, null) && safeClosest(e.target, `${S.inputArea} button`);
         if (!btn) return;
         const ic = iconName(btn);
         if (ic === "stop") {
