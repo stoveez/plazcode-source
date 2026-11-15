@@ -23,8 +23,8 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
     await panel.goto(base + 'ask.html?window=' + ids.window);
     await panel.waitForFunction(() => document.querySelector('h1').textContent === 'PlazCode fragen', null, { timeout: 8000 });
     assert.equal(await panel.title(), 'PlazCode fragen');
-    assert.equal((await panel.innerText('label.sw >> nth=0')).trim(), 'Den Tab teilen, den ich gerade ansehe');
-    assert.equal((await panel.innerText('label.sw >> nth=1')).trim(), 'Stattdessen meinen ganzen Bildschirm teilen');
+    assert.equal((await panel.innerText('label.sw >> nth=0')).trim(), 'Meinen ganzen Bildschirm teilen');
+    assert.equal(await panel.locator('#screen').count(), 0);
     assert.equal(await panel.getAttribute('#q', 'placeholder'), 'Zu dieser Seite fragen…');
     assert.equal(await panel.innerText('#go'), 'Senden');
     await shop.bringToFront();

@@ -28,11 +28,11 @@ async function run(mode) {
     const shop = await context.newPage(); await shop.goto('https://control.test/');
     await shop.bringToFront();
     // The test stands in for the background AI chat: an AI site is any chat.test page here.
-    await worker.evaluate(() => {
+    await worker.evaluate(async () => {
+      await chrome.storage.local.set({ rsAskSite: { url: 'https://chat.test/new', name: 'Test AI' } });
       CONTROL_V2 = true; isProviderUrl = (u) => /^https:\/\/chat\.test\//.test(u || ''); self.__runs = []; self.__stops = 0;
       const send = chrome.tabs.sendMessage.bind(chrome.tabs);
       chrome.tabs.sendMessage = (id, m) => {
-        if (m && m.type === 'rs-ask-site') return Promise.resolve({ ok: true, url: 'https://chat.test/new', name: 'Test AI' });
         if (m && m.type === 'rs-helper-ping') return Promise.resolve({ ok: true, ready: true });
         if (m && m.type === 'rs-ask-run') { self.__runs.push({ id, ask: m.ask }); return Promise.resolve({ ok: true }); }
         if (m && m.type === 'rs-ask-stop') { self.__stops++; return Promise.resolve({ ok: true }); }

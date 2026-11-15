@@ -8,10 +8,10 @@
   const t = (text, values) => L ? L.t(text, values) : (values ? String(text).replace(/\{([A-Za-z0-9_]+)\}/g, (m, k) => k in values ? String(values[k]) : m) : String(text));
   try { const saved = await chrome.storage.local.get("rsLanguage"); if (L) { L.setLanguage((saved && saved.rsLanguage) || "en"); L.mountStatic(document.body); } } catch {}
   const $ = (id) => document.getElementById(id);
-  const log = $("log"), q = $("q"), go = $("go"), stop = $("stop"), step = $("step"), sharing = $("sharing"), control = $("control"), screen = $("screen");
+  const log = $("log"), q = $("q"), go = $("go"), stop = $("stop"), step = $("step"), sharing = $("sharing"), control = $("control");
   const peek = $("peek"), shareTitle = $("shareTitle"), shareSite = $("shareSite"), banner = $("banner"), bannerText = $("bannerText");
   const fixedWindow = Number(new URLSearchParams(location.search).get("window")) || null;
-  let shared = null, busy = false, viewPort = null, viewTab = null, workTab = null;
+  let shared = null, wholeScreen = true, busy = false, viewPort = null, viewTab = null, workTab = null;
   // The "Shared with PlazCode" mark in the shared tab, in the person's language.
   const words = { working: t("PlazCode is working here"), paused: t("Paused, you're in control"), resume: t("Resume"), stop: t("Stop"), shared: t("Shared with PlazCode"), stopSharing: t("Stop sharing") };
   document.title = t(document.title);
@@ -36,8 +36,9 @@
     return first || last || null;
   }
   async function follow() {
-    // Step 6: the whole screen (tab id -1) instead of the tab the person is looking at.
-    if (sharing.checked && screen.checked) { port.postMessage({ sharing: true, shareTabId: -1, words }); return; }
+    // The whole screen (tab id -1) is the default. Only when the PlazCode app cannot show it does PlazCode look at the tab the person is
+    // looking at instead (owner, 2026-11-14: no separate "tab only" choice).
+    if (sharing.checked && wholeScreen) { port.postMessage({ sharing: true, shareTabId: -1, words }); return; }
     const tab = sharing.checked ? await currentTab() : null;
     port.postMessage({ sharing: !!tab, shareTabId: tab ? tab.id : null, words });
   }
@@ -79,8 +80,8 @@
       if (m.stoppedInTab) sharing.checked = false;
       shareTitle.textContent = shared === -1 ? t("Your whole screen") : shared ? (m.title || t("This tab")) : t(m.refused ? "This tab can't be shared" : "Not sharing");
       let host = ""; try { host = m.url ? new URL(m.url).host : ""; } catch {}
-      shareSite.textContent = shared === -1 ? t("Everything on your screen · shared with PlazCode") : shared ? t("{site} · shared with PlazCode", { site: host }) : t(m.refused ? "Browser pages, extension pages and AI chats are never shared." : "Turn on sharing so PlazCode can see this tab.");
-      if (m.screenRefused) { screen.checked = false; add("error", t(m.screenRefused)); }
+      shareSite.textContent = shared === -1 ? t("Everything on your screen · shared with PlazCode") : shared ? t("{site} · shared with PlazCode", { site: host }) : t(m.refused ? "Browser pages, extension pages and AI chats are never shared." : "Turn on sharing so PlazCode can see your screen.");
+      if (m.screenRefused) { wholeScreen = false; add("error", t(m.screenRefused)); follow(); }
       control.disabled = !shared; if (!shared) control.checked = false; else if (!controlTouched && shared !== -1) control.checked = true;
       $("controlText").textContent = t(shared === -1 ? "Let PlazCode control my computer" : "Let PlazCode do things for me");
       watch(busy && workTab ? workTab : shared);
@@ -108,10 +109,9 @@
   stop.addEventListener("click", () => { port.postMessage({ stop: true }); step.textContent = t("Stopping…"); });
   let controlTouched = false;
   control.addEventListener("change", () => { controlTouched = true; });
-  sharing.addEventListener("change", follow);
-  screen.addEventListener("change", follow);
+  sharing.addEventListener("change", () => { wholeScreen = true; follow(); });
   // Sharing follows the tab the person is looking at.
-  chrome.tabs.onActivated.addListener((info) => { if (screen.checked) return; if (!fixedWindow || info.windowId === fixedWindow) follow(); });
+  chrome.tabs.onActivated.addListener((info) => { if (wholeScreen) return; if (!fixedWindow || info.windowId === fixedWindow) follow(); });
   chrome.tabs.onUpdated.addListener((tabId, change) => { if (tabId === shared && (change.url || change.title)) follow(); });
   follow();
   q.focus();

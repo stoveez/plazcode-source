@@ -3924,27 +3924,16 @@ const askReply = (status, text) => {
   askPost({ type: "ask-reply", status, text });
 };
 const askSay = (text, kind, key, values) => { askRemember({ t: kind === "error" ? "error" : "note", text, key, values }); askPost({ type: "ask-note", kind: kind || "note", text, key, values }); };
+// The chat behind the panel is DeepSeek, opened in the background, whatever page the person is on (owner, 2026-11-14: a page that has no
+// AI of its own, such as a shop or a dashboard, still needs one to answer). "rsAskSite" ({url, name}) can name another AI chat site instead.
+const ASK_DEFAULT_SITE = { url: "https://chat.deepseek.com/", name: "DeepSeek" };
 async function askSiteUrl() {
-  const tabs = (await chrome.tabs.query({})).filter((t) => t.url && isProviderUrl(t.url) && t.id !== ask.tabId && !(helperRoster && helperRoster.byTab && helperRoster.byTab(t.id)));
-  tabs.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
-  for (const tab of tabs) {
-    try {
-      const reply = await chrome.tabs.sendMessage(tab.id, { type: "rs-ask-site" });
-      if (reply && reply.ok && /^https:\/\//.test(reply.url || "")) {
-        const site = { url: reply.url, name: String(reply.name || "") };
-        try { await chrome.storage.local.set({ rsAskSite: site }); } catch {}
-        return site;
-      }
-    } catch {}
-  }
-  // No AI chat is open right now: use the one this panel used last, so the person need not keep one open.
   try { const got = await chrome.storage.local.get("rsAskSite"), site = got && got.rsAskSite; if (site && /^https:\/\//.test(site.url || "")) return { url: String(site.url), name: String(site.name || "") }; } catch {}
-  return null;
+  return ASK_DEFAULT_SITE;
 }
 async function askEnsure() {
   if (Number.isInteger(ask.tabId)) { try { await chrome.tabs.get(ask.tabId); return { ok: true }; } catch { ask.tabId = null; } }
   const site = await askSiteUrl();
-  if (!site) return { ok: false, error: "Open your AI chat (ChatGPT, Claude, Gemini or another site PlazCode works with) in this browser once, then ask again. PlazCode uses that site for this chat." };
   const siteName = site.name || new URL(site.url).host;
   askSay("Opening a PlazCode chat on " + siteName + " in the background…", "note", "Opening a PlazCode chat on {site} in the background…", { site: siteName });
   // Owner (2026-11-14): "reuse one window, minimised so it never appears". The chat is only the engine behind the side panel, so its
@@ -4085,7 +4074,7 @@ async function askScreenShare(on) {
   if (!on) { try { await say("unshare"); } catch {} askScreenOn = false; desktopControlUpdate({ active: false }); return { ok: true }; }
   let reply = null;
   try { reply = await say("share"); } catch {}
-  if (!reply || !reply.ok) return { ok: false, error: "Sharing the whole screen needs the PlazCode app (Windows or Mac) running. You can still share a tab." };
+  if (!reply || !reply.ok) return { ok: false, error: "Sharing the whole screen needs the PlazCode app (Windows or Mac) running. PlazCode looks at the tab you're looking at instead." };
   // A first picture proves the app can see the screen (on a Mac this needs the Screen Recording permission).
   try {
     const test = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/frame", { signal: AbortSignal.timeout(6000) });

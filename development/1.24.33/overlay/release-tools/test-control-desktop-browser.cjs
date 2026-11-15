@@ -61,13 +61,13 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
     await worker.evaluate(() => desktopControlUpdate({ active: false, paused: false, stopped: true }));
     assert.equal((await worker.evaluate(() => self.__sent.splice(0))).filter((m) => m.type === 'rs-control-stop').length, 0);
     // Step 6: "Share my whole screen instead" in Ask PlazCode.
-    await worker.evaluate(() => {
+    await worker.evaluate(async () => {
+      await chrome.storage.local.set({ rsAskSite: { url: 'https://chat.test/new', name: 'Test AI' } });
       CONTROL_V2 = true; isProviderUrl = (u) => /^https:\/\/chat\.test\//.test(u || ''); self.__runs = []; self.__frameStatus = 200;
       const plain = bridgeFetch;
       bridgeFetch = async (url, options) => (/\/api\/desktop\/frame$/.test(url) && self.__frameStatus !== 200) ? new Response('PlazCode needs the Mac\'s Screen Recording permission to see the screen.', { status: 503 }) : plain(url, options);
       const send = chrome.tabs.sendMessage;
       chrome.tabs.sendMessage = (id, m) => {
-        if (m && m.type === 'rs-ask-site') return Promise.resolve({ ok: true, url: 'https://chat.test/new', name: 'Test AI' });
         if (m && m.type === 'rs-helper-ping') return Promise.resolve({ ok: true, ready: true });
         if (m && m.type === 'rs-ask-run') { self.__runs.push(m.ask); return Promise.resolve({ ok: true }); }
         return send(id, m);
@@ -76,7 +76,9 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
     const panel = await context.newPage();
     const windowId = await worker.evaluate(async (id) => (await chrome.tabs.get(id)).windowId, chatId);
     await panel.goto('chrome-extension://' + extId + '/core/ask.html?window=' + windowId);
-    await panel.click('#screen');
+    assert.equal(await panel.locator('#screen').count(), 0, 'no separate tab-only / screen switch any more');
+    assert.equal(await panel.isChecked('#sharing'), true, 'sharing is on by default');
+    assert.match(await panel.innerText('label.sw:has(#sharing)'), /Share my whole screen/);
     await panel.waitForFunction(() => document.getElementById('shareTitle').textContent === 'Your whole screen', null, { timeout: 8000 });
     assert.equal(await panel.innerText('#controlText'), 'Let PlazCode control my computer');
     assert(((await worker.evaluate(() => self.__posts.splice(0))).some((p) => p.action === 'share')), 'the app is told the screen is shared');
@@ -87,14 +89,15 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
     assert.equal(asked.length, 1); assert.deepEqual(asked[0].share, { tabId: -1, title: 'Your whole screen', url: '' });
     assert(asked[0].images.length === 1 && asked[0].images[0].data.length > 100, 'a picture of the whole screen goes with the question');
     assert.equal(asked[0].control, false);
-    await panel.uncheck('#screen');
+    await panel.uncheck('#sharing');
     await new Promise((r) => setTimeout(r, 500));
     assert(((await worker.evaluate(() => self.__posts.splice(0))).some((p) => p.action === 'unshare')), 'unsharing tells the app');
     // A computer that cannot take the picture (a Mac without Screen Recording): said plainly, the switch goes back off.
     await worker.evaluate(() => { self.__frameStatus = 503; });
-    await panel.click('#screen');
-    await panel.waitForFunction(() => !document.getElementById('screen').checked, null, { timeout: 8000 });
+    await panel.check('#sharing');
+    await panel.waitForSelector('.msg.error', { timeout: 8000 });
     assert.match(await panel.innerText('.msg.error'), /Screen Recording permission/);
+    await panel.waitForFunction(() => document.getElementById('shareTitle').textContent !== 'Your whole screen', null, { timeout: 8000 });
     await panel.close();
     // Switched off: nothing happens.
     const asksNow = await worker.evaluate(() => self.__frameAsks);

@@ -486,15 +486,15 @@ const PlazCodeFeatureGuide = (() => {
   "title": "Ask PlazCode",
   "group": "Bar",
   "where": "PlazCode bar in AgentScript mode > Ask PlazCode (and the PlazCode toolbar icon)",
-  "does": "Opens a chat beside the page you are looking at. PlazCode sees a picture of that tab (or your whole screen) with each question, and can control it if you switch that on.",
+  "does": "Opens a chat beside the page you are looking at. PlazCode sees a picture of your whole screen with each question (or of the tab you are looking at when the PlazCode app is not running), and can act for you if you switch that on.",
   "steps": [
    "Click Ask PlazCode on the bar (AgentScript mode), press Alt+P, or click the PlazCode icon in the browser toolbar and then Ask PlazCode about this page.",
    "Type a question about the page and press Enter.",
-   "To let PlazCode click and type in the tab, leave Let PlazCode do things for me switched on; it works in a copy of the tab."
+   "PlazCode sees your whole screen by default. To let it click and type, switch on Let PlazCode control my computer."
   ],
   "tips": [
-   "The shared tab follows the tab you are looking at. Untick Share to stop sharing.",
-   "Share my whole screen instead uses the PlazCode app (Windows or Mac); on a Mac allow Screen Recording once.",
+   "Untick Share my whole screen to stop sharing. If the PlazCode app is not running, PlazCode looks at the tab you are looking at instead.",
+   "Sharing the whole screen uses the PlazCode app (Windows or Mac); on a Mac allow Screen Recording once.",
    "Move your mouse or press Stop to take over at any time."
   ],
   "related": [
