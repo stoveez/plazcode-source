@@ -107,17 +107,43 @@ const RSProvider = (() => {
   // still be found, and must never be mistaken for the site being busy.
   let lockedEditor = null;
   const isOurLock = (ed) => !!ed && ed === lockedEditor;
+  // 2026-11-14 (owner screenshot): the bar jumped onto Freebuff's "What could be better?" feedback box under a reply,
+  // because the first visible text box on the page won. Side boxes (feedback, rename, search, editing an old message)
+  // are never the chat box: they are skipped, and of the boxes left the real chat box ("Ask Freebuff...") or else the
+  // lowest one on screen wins, since the chat box sits at the bottom.
+  const SIDE_BOX = /could be better|feedback|tell us|what went wrong|what (did|do) you|comment|report|reason|rename|title|search|filter|find\b/i;
+  const MAIN_BOX = /ask freebuff|use \/ for commands|message freebuff|ask anything/i;
+  const TURN_SEL = "[data-message-role], [data-role='user'], [data-role='assistant'], .msg, .message, [class*='ChatMessage'], [class*='chat-message'], [role='menu']";
+  const boxLabel = (el) => [
+    safeRead(() => el.getAttribute("placeholder"), ""), safeRead(() => el.getAttribute("aria-label"), ""),
+    safeRead(() => el.getAttribute("data-placeholder"), ""), safeRead(() => el.getAttribute("aria-placeholder"), ""),
+    safeRead(() => el.getAttribute("name"), ""),
+  ].filter(Boolean).join(" ");
+  function isSideBox(el) {
+    const label = boxLabel(el);
+    if (MAIN_BOX.test(label)) return false;
+    if (SIDE_BOX.test(label)) return true;
+    return !!safeClosest(el, TURN_SEL);
+  }
   const getEditor = () => {
     if (lockedEditor && safeRead(() => lockedEditor.isConnected, false) && visible(lockedEditor)) return lockedEditor;
-    const sels = S.editor.split(",").map((s) => s.trim());
-    for (const sel of sels) {
-      for (const el of safeQueryAll(document, sel)) {
-        if (!visible(el)) continue;
-        if (safeClosest(el, "nav, header, [role='navigation']")) continue;
-        return el;
-      }
+    const seen = new Set(), boxes = [];
+    for (const el of safeQueryAll(document, S.editor)) {
+      if (seen.has(el)) continue;
+      seen.add(el);
+      if (!visible(el)) continue;
+      if (safeClosest(el, "nav, header, [role='navigation']")) continue;
+      // A contenteditable inside another candidate (ProseMirror inner node) counts once, as the outer box.
+      if (boxes.some((b) => safeRead(() => b.contains(el), false))) continue;
+      if (isSideBox(el)) continue;
+      boxes.push(el);
     }
-    return null;
+    if (boxes.length <= 1) return boxes[0] || null;
+    const named = boxes.find((el) => MAIN_BOX.test(boxLabel(el)));
+    if (named) return named;
+    let best = null, bottom = -Infinity;
+    for (const el of boxes) { const b = safeRect(el).bottom; if (b > bottom) { bottom = b; best = el; } }
+    return best;
   };
 
   const editorText = () => {
@@ -246,16 +272,32 @@ const RSProvider = (() => {
       || safeClosest(ed, "footer")
       || safeRead(() => ed.parentElement, null);
   }
+  // 2026-11-14 (owner screenshot): the bar sat on the inner text strip of the chat box (the first "rounded" wrapper),
+  // so it was narrower than the box, started right of the + button and its buttons wrapped into two rows. The bar now
+  // anchors to the whole chat box: the outermost wrapper around the box that is still about the box's own height (so
+  // never the page column) and draws a box of its own (a border, a background or rounded corners).
+  const drawsBox = (n) => {
+    const st = safeStyle(n);
+    const bg = String(st.backgroundColor || "");
+    const hasBg = !!bg && !/^(transparent|rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\))$/i.test(bg);
+    const hasBorder = parseFloat(st.borderTopWidth || "0") > 0 || parseFloat(st.borderBottomWidth || "0") > 0;
+    const round = parseFloat(st.borderTopLeftRadius || st.borderRadius || "0") > 0;
+    return hasBg || hasBorder || round || /rounded|composer|input-bar|chat-input/i.test(String(safeRead(() => n.className, "") || ""));
+  };
   function barAnchor() {
     const ed = getEditor();
     if (!ed) return null;
-    let n = ed;
-    for (let i = 0; i < 10 && n; i++) {
-      const cls = String(safeRead(() => n.className, "") || "");
-      if (/rounded|composer|input-bar|chat-input/i.test(cls)) return n;
-      n = safeRead(() => n.parentElement, null);
+    const er = safeRect(ed);
+    const limit = Math.max(er.height + 160, er.height * 3);
+    let best = null;
+    for (let n = safeRead(() => ed.parentElement, null), i = 0; n && i < 10; n = safeRead(() => n.parentElement, null), i++) {
+      if (n === document.body || n === document.documentElement || safeRead(() => n.tagName, "") === "MAIN") break;
+      const r = safeRect(n);
+      if (r.height > limit || r.width > er.width + 400) break;
+      if (r.width + 1 < er.width) continue;
+      if (drawsBox(n)) best = n;
     }
-    return composerFrame();
+    return best || composerFrame();
   }
 
   function setInputLock(on) {
@@ -313,10 +355,20 @@ const RSProvider = (() => {
 
   const ariaOf = (b) => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.title, "") || "").trim();
   const allButtons = () => [...safeQueryAll(document, "button")].filter((b) => !safeClosest(b, "#rs-root"));
-  const sendButton = () =>
-    allButtons().find((b) => S.sendAria.test(ariaOf(b)) && visible(b) && b.type !== "reset") ||
-    allButtons().find((b) => safeRead(() => b.type, "") === "submit" && visible(b)) ||
-    null;
+  // The Send button that belongs to the chat box: looked for around the box first, so the Send button of a side box
+  // (Freebuff's "What could be better?" feedback form) is never taken for it.
+  const sendButton = () => {
+    const ed = getEditor();
+    for (let n = ed && safeRead(() => ed.parentElement, null), i = 0; n && i < 8; n = safeRead(() => n.parentElement, null), i++) {
+      const near = [...safeQueryAll(n, "button")].filter((b) => !safeClosest(b, "#rs-root") && visible(b));
+      const hit = near.find((b) => S.sendAria.test(ariaOf(b)) && b.type !== "reset") || near.find((b) => safeRead(() => b.type, "") === "submit");
+      if (hit) return hit;
+      if (n === document.body) break;
+    }
+    return allButtons().find((b) => S.sendAria.test(ariaOf(b)) && visible(b) && b.type !== "reset") ||
+      allButtons().find((b) => safeRead(() => b.type, "") === "submit" && visible(b)) ||
+      null;
+  };
   const stopButton = () =>
     allButtons().find((b) => S.stopAria.test(ariaOf(b)) && visible(b)) || null;
 
@@ -783,6 +835,8 @@ const RSProvider = (() => {
       if (!btn) return;
       const isSend = S.sendAria.test(ariaOf(btn)) || safeRead(() => btn.type, "") === "submit";
       if (!isSend) return;
+      // A side box's own Send (feedback form) is not a chat message.
+      if (btn !== sendButton()) return;
       if (safeRead(() => btn.disabled, true)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
