@@ -15,6 +15,13 @@ updated: 2026-11-01
 ## TypeScript files (since 2026-11-15)
 Some extension files are written in TypeScript in `development/1.24.33/ts/` (now: `providers/kimi.ts`, `providers/freebuff.ts`, `providers/gemini.ts`, `core/parser.ts`). **Edit the `.ts`, never the matching `overlay/.../*.js`.** Then run `NODE_PATH=build-src-1.24.33/PlazCode/release-tools/node_modules node development/1.24.33/ts/build.cjs` (needs `npm ci --prefix release-tools` in the assembled tree). It erases the types into spaces (ts-blank-space), so the `.js` keeps the same lines and columns and everything after it (prepare.py, tests, protection, hash pins, the release) still works on plain JavaScript; commit both files. `build.cjs --types` runs TypeScript's checker; `types/provider.d.ts` is the contract every site file must keep (a missing or misspelled member is an error). `test-typescript-sources.js` (part of the normal test run, so CI) fails when a `.js` is out of date or a type error appears. To convert another file: copy its `.js` to `ts/<same path>.ts`, add the "Built from" line after the SPDX line, add types until `--types` passes, run `build.cjs`. The TypeScript checker over plain JavaScript (step 1) is `development/1.24.33/typecheck/check.py`; `test-main-scope.js` catches helpers called where they are not reachable.
 
+### Split as you go (owner decision, 2026-11-15)
+`core/main.js` (about 13,700 lines) and `background.js` are NOT rewritten in one go. Instead:
+1. When a bug fix or feature touches a part of `core/main.js` (for example Ask PlazCode, the bar, the command runner, the screenshot preview), move that part into its own TypeScript file under `development/1.24.33/ts/` in the same job, with the same behaviour. Untouched parts stay as they are.
+2. When a part moves out, first write down the messages and data it shares with the rest (a type in `ts/types/`), because typed boundaries catch the most mistakes for the least work.
+3. A move is finished only when every existing test, `test-typescript-sources.js`, `test-main-scope.js`, the hash pins and the provider checks pass; behaviour does not change as part of a move (fixes are their own commit).
+4. A new file loaded on AI pages must be added to the manifest's content-script lists (and to the page bundle the typecheck uses) in the right order, before the code that uses it.
+
 ## Hash pins
 Protected files (`core/main.js`, `core/config.js`, `providers/vani.js`, `claude.js`, `chatgpt.js`, `notion.js`) have pins in the overlay's `test-desktop-regression.js`. After editing one: run `prepare.py`, then `git hash-object build-src-1.24.30/PlazCode/<file>` and update the pin. Redo after every merge touching them.
 
