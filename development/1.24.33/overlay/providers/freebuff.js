@@ -381,9 +381,34 @@ const RSProvider = (() => {
   // button is up: once the text has been still for QUIET_MS and no Stop button is showing, the turn is finished.
   const SOFT_BUSY = /^(?:send-disabled|aria-busy|streaming-marker)$/;
   const QUIET_MS = 8000;
-  let _softIgnored = false;
+  let _softIgnored = false, _finishedNoted = false;
+  // 2026-11-14 (owner log): Freebuff showed "PlazCode is ready." at once but the bar kept saying "Starting" for about a minute,
+  // because the slow-stream waits (14 s of "growing", then the stop grace) are tuned for long answers. A finished reply grows
+  // its row of small buttons (copy, thumbs up/down) under it. When that row is there, the Stop button is gone and the text
+  // has been still for a moment, the turn is over: no more waiting.
+  const FINISHED_BTN = /\b(copy|good response|bad response|helpful|thumbs?|like|dislike|regenerate|retry|feedback)\b/i;
+  function replyFinishedRow() {
+    const item = lastAssistant();
+    if (!item) return false;
+    const items = assistantItems();
+    const scopes = [item];
+    const next = safeRead(() => item.nextElementSibling, null);
+    if (next && !items.includes(next) && !allItems().includes(next)) scopes.push(next);
+    let n = 0;
+    for (const scope of scopes) {
+      for (const b of safeQueryAll(scope, 'button,[role="button"]')) {
+        if (!visible(b)) continue;
+        if (FINISHED_BTN.test(ariaOf(b) + " " + (safeRead(() => b.title, "") || ""))) n++;
+      }
+    }
+    return n >= 2;
+  }
   function genWhy() {
     sampleStream();
+    if (!stopButton() && _streamMax > 1 && (!_streamAt || Date.now() - _streamAt >= 1500) && replyFinishedRow()) {
+      if (!_finishedNoted) { _finishedNoted = true; diag("freebuff.replyFinishedRow", { quietMs: _streamAt ? Date.now() - _streamAt : -1 }); }
+      return "";
+    }
     let busy = busyChrome();
     if (busy && SOFT_BUSY.test(busy) && !stopButton() && _streamMax > 1 && (!_streamAt || Date.now() - _streamAt >= QUIET_MS)) {
       if (!_softIgnored) { _softIgnored = true; diag("freebuff.softBusyIgnored", { signal: busy, quietMs: _streamAt ? Date.now() - _streamAt : -1 }); }

@@ -147,6 +147,17 @@ function composer(w, {revert = false, sendWorks = true, alwaysEnabled = false, i
     ok('a draft that Send refuses is busy while the reply is fresh', () => assert.equal(f.p.genDebug(), 'send-disabled'));
     f.advance(15000);
     ok('a draft that Send refuses is ignored once the reply has been still for 8 s', () => { assert.equal(f.p.isGenerating(), false); assert(f.events.some((e) => e[0] === 'freebuff.softBusyIgnored')); });
+    // A finished reply grows copy / thumbs buttons: the turn is over at once (no 14 s "growing" tail).
+    reply.textContent = 'Hello, one more complete answer that is clearly longer than everything said so far in this page, so it counts as growth';
+    ok('fresh text is still busy before the finished row exists', () => assert.equal(f.p.isGenerating(), true));
+    for (const label of ['Copy', 'Good response', 'Bad response']) { const b = f.w.document.createElement('button'); b.setAttribute('aria-label', label); reply.append(b); }
+    f.advance(600);
+    ok('finished row but text only just changed: still busy', () => assert.equal(f.p.isGenerating(), true));
+    f.advance(1200);
+    ok('finished row and 1.5 s of quiet: done, without waiting for the slow-stream timers', () => { assert.equal(f.p.isGenerating(), false); assert(f.events.some((e) => e[0] === 'freebuff.replyFinishedRow')); });
+    f.w.document.querySelector('form').append(stop);
+    ok('a Stop button beats the finished row', () => assert.equal(f.p.isGenerating(), true));
+    stop.remove();
     f.w.document.querySelector('form').append(stop);
     ok('a Stop button still means busy next to a draft', () => assert.equal(f.p.isGenerating(), true));
     stop.remove();

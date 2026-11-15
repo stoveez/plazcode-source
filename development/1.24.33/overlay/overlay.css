@@ -6180,6 +6180,9 @@ html[data-rs-studio] #rs-root #rs-bar #rs-engine .rs-mode-btn.on{color:var(--st-
 html[data-rs-studio] #rs-root #rs-engine .rs-mode-btn:not(.on):hover{color:var(--st-text)!important}
 
 /* Middle: what PlazCode is doing. */
+/* 2026-11-14 (Gemini): with the 'unstable' warning and the token pill showing, a 180px-wide status text pushed the token pill onto a second row and the bar grew tall. The status text may shrink (it ellipsizes) so the pills share its row. */
+html[data-rs-studio] #rs-root #rs-state{flex:1 1 96px!important;min-width:72px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+html[data-rs-studio] #rs-root #rs-unstable-inline,html[data-rs-studio] #rs-root #rs-ctx{flex:none!important;white-space:nowrap!important}
 html[data-rs-studio] #rs-root #rs-state{font:500 12.5px/1.45 var(--st-sans)!important;color:var(--st-soft)!important;letter-spacing:0!important}
 html[data-rs-studio] #rs-root #rs-state b{color:var(--st-l)!important;font-weight:700!important;text-shadow:none!important}
 html[data-rs-studio] #rs-root #rs-state.rs-state-warn,html[data-rs-studio] #rs-root .rs-state-warn{color:#ffb4a8!important}

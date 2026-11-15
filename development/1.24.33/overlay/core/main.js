@@ -1501,7 +1501,7 @@
     // different conversation, send, or logical assistant turn.
     const sendOwner = { session: A.sessionGen, sendToken: A.sendToken };
     const readChat = () => P.conversationKey ? P.conversationKey() : null;
-    let sendChat = readChat();
+    let sendChat = readChat(), moveSince = 0;
     const toolResponse = (calls, item, text, token, chat) => ({
       kind: "tool", calls, item, text,
       responseOwner: { ...sendOwner, token, chat, item },
@@ -1672,8 +1672,21 @@
         sendChat = chat;
         try { adoptChatId(chat); } catch {}
       }
+      // 1.24.33 (Kimi startup): a site can briefly report NO address (or a related one) while it moves a new chat to its real
+      // address right after the first send. That is the same chat getting its id, not the person leaving, so keep the reply
+      // being read instead of calling the start "stopped" (the list_commands block then stayed as plain JSON).
+      if (chat !== sendChat && A.sessionGen === sendOwner.session && A.sendToken === sendOwner.sendToken) {
+        const related = !!chat && !!sendChat && (chat.startsWith(sendChat) || sendChat.startsWith(chat));
+        if (!moveSince) moveSince = Date.now();
+        if ((!chat || related) && Date.now() - moveSince < 4000) {
+          if (!sendChat || related) { sendChat = chat || sendChat; try { if (chat) adoptChatId(chat); } catch {} }
+          diag("response.chatMoveTolerated", { from: String(sendChat || "").slice(0, 60), to: String(chat || "").slice(0, 60) });
+          await sleep(200);
+          continue;
+        }
+      } else moveSince = 0;
       if (A.sessionGen !== sendOwner.session || A.sendToken !== sendOwner.sendToken || chat !== sendChat) {
-        diag("response.ownerChanged", {});
+        diag("response.ownerChanged", { from: String(sendChat || "").slice(0, 60), to: String(chat || "").slice(0, 60) });
         return { kind: "stopped" };
       }
       // A NULL token means the provider could not read an identity for the

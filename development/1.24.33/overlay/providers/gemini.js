@@ -711,11 +711,18 @@ const RSProvider = (() => {
     // 1.24.33: the chip used to sit as the first child of <model-response>, at the page's left edge, while the reply text lives in a
     // centred column (the "list_commands" card in the start-up looked out of place). Anchor it in the element that holds
     // <message-content>, the reply column, which keeps its identity through Angular's re-renders just as <message-content> does.
+    // 2026-11-14 (owner screenshot): the card still sat beside the text, at the left edge. The element around <message-content> can be
+    // a flex ROW or a grid, where a first child becomes a column of its own. So walk up to the nearest ancestor that stacks its
+    // children (block, or a column) and anchor there; the card then sits ABOVE the reply, inside the centred column.
     chipAnchor(item) {
       try {
         const mc = item.querySelector(S.reply);
-        const column = mc && mc.parentElement;
-        if (column && column !== item && item.contains(column) && !column.closest(".rs-chip")) return column;
+        for (let el = mc && mc.parentElement; el && el !== item && item.contains(el); el = el.parentElement) {
+          if (el.closest(".rs-chip")) break;
+          const cs = getComputedStyle(el), d = cs.display || "";
+          const row = (/flex/.test(d) && !/column/.test(cs.flexDirection || "")) || /grid/.test(d) || d === "contents" || /table/.test(d);
+          if (!row) return el;
+        }
       } catch {}
       return item;
     },
