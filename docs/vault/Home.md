@@ -3,7 +3,7 @@ title: Home
 updated: 2026-11-06
 ---
 
-**Current, 2026-11-11:** 1.24.32 is published (validation 42712015243, publish 42718408426). The next update, **1.24.33**, is built on `claude/plazcode-dev` from `development/1.24.33` (workflows `validate-1.24.33.yml` and `publish-1.24.33.yml`); not published. Start with `docs/NOW.md`. Version numbers further down are historical unless they say 1.24.33.
+**Current, 2026-11-14:** 1.24.32 is published (validation 42712015243, publish 42718408426). The next update, **1.24.33**, is built on `claude/plazcode-dev` from `development/1.24.33` (workflows `validate-1.24.33.yml` and `publish-1.24.33.yml`); not published. Start with `docs/NOW.md`. Version numbers further down are historical unless they say 1.24.33.
 
 
 2026-11-05 FOLLOW-UP COMPLETE: full CI42146181204/adf89f6 ALL GREEN, official135PASS/0fail; new exact full Windows/universal Mac inner ZIPs delivered through Drive with name/MIME/byte readback. Bridge discovery, strict ChatGPT receipts, namespace correction, safe native append, DeepSeek stream/progress/composer roots fixed. All262JS on all3hosts (Linux twice), nativeWin304/Mac309/Linux311PASS+2ignored, ChatGPT27/installed HTTPS lifecycle/Chromium+Firefox/preservation958/DOM325/healthy70/pins34 PASS. Full app replacement required; extension reload + AI-tab refresh. Prior42078807676 lacks follow-up. No stable publication. Source Private reminder remains until confirmed; owner PC vault not connected. See connection-startup-followup-2026-11-05.md and verification JSON.
@@ -48,6 +48,7 @@ Previous delivery: [guest/signup replacement builds VERIFIED and DELIVERED](prof
 This folder is the long-term memory for every AI that works on PlazCode (Claude, Codex or any other). **Terms:** this folder is the *PlazCode vault* (notes for AIs that build PlazCode). The *native vault* is the app's own Memory feature, see the map. It is plain Markdown, so GitHub shows it and Obsidian can open it (open the folder `docs/vault` as a vault).
 
 **Read order for a new AI:** [`../NOW.md`](../NOW.md) (the live handoff, 20 lines), then only the notes below that your task needs. Do not read the whole vault.
+**Full pre-rewrite NOW (2026-11-14, all 1.24.33 items):** [now-archive-2026-11-14.md](now-archive-2026-11-14.md)
 **Newest handoff (read first after NOW):** [handoff-1.24.30-2026-11-01-evening.md](handoff-1.24.30-2026-11-01-evening.md)
 
 ## Map
