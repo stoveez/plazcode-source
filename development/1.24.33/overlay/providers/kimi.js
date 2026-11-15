@@ -133,14 +133,29 @@ const RSProvider = (() => {
   const isAssistantItem = (item) => !!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.assistantItem), false);
 
   // Walk an element's text, skipping our own chip and any excluded subtree.
+  // 2026-11-14 (owner report, checked live on kimi.ai): Kimi's reply now sits inside a "process-flow" whose header button says
+  // "Thinking complete", and each code block has a header bar ("JSON", Copy). Read as plain text that became
+  // "Thinking complete JSON Copy {"command": ...}" on one line, which is not a code block, so the startup list_commands was
+  // never run and the JSON stayed raw. Page furniture (that header, code headers, tooltips) is left out, and a code block is
+  // read as a real fenced block on its own lines.
+  const CHROME_SEL = ".process-flow__header, .segment-code-header, [role='tooltip']";
   function textWithout(root, excludeSel) {
     if (!root) return "";
-    const skip = ".rs-chip" + (excludeSel ? ", " + excludeSel : "");
+    const skip = ".rs-chip, " + CHROME_SEL + (excludeSel ? ", " + excludeSel : "");
     let t = "";
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
       if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
+      if (safeRead(() => n.matches(S.codeWrap), false)) {
+        const lang = (safeRead(() => safeQuery(n, ".segment-code-lang").textContent, "") || "").trim().toLowerCase().replace(/[^\w+#.-]/g, "");
+        const body = safeQuery(n, "pre") || safeQuery(n, ".segment-code-content");
+        if (body) {
+          const before = t.length; walk(body); const code = t.slice(before); t = t.slice(0, before);
+          t += (t && !t.endsWith("\n") ? "\n" : "") + "```" + lang + "\n" + code.replace(/\n+$/, "") + "\n```\n";
+          return;
+        }
+      }
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
     };
     walk(root);

@@ -27,7 +27,7 @@ const baseline = {
   "providers/freebuff.js": "5d6b7c81ce7fa7d1d0f1a59f8e8646392731fb70",
   "providers/gemini.js": "484692e86d9fe50f3cd915c6fe3ba3519f96d3f7",
   "providers/glm.js": "5e5cc28eb30123dd9f134d52fcb414ee566b4628",
-  "providers/kimi.js": "b8ede53b8c6a5a84938490440c78c30cff257e98",
+  "providers/kimi.js": "f062aa2e994145dce789e01ba0a68fbcc82ab4cf",
   "providers/meta.js": "247ee1c593a3732851332a4a492396e82c355752",
   "providers/notion.js": "16662b9c911357b99818d7565e2509d6b4651292",
   "providers/oxalpha.js": "de822a4427e71687af99b6bc630a771143d47fcc",
