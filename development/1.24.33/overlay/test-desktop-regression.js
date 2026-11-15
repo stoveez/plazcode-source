@@ -29,7 +29,7 @@ const baseline = {
   "providers/glm.js": "2a7d938fb82a702d5040e3ac787455b74cac08dd",
   "providers/kimi.js": "67e192c3970f3efe52cf6632f768a6b4821db898",
   "providers/meta.js": "be33d1bac71add23acaf15e9d5c96dc1cc1abf38",
-  "providers/notion.js": "a37a7d193ca98088bae299213289710119cefa77",
+  "providers/notion.js": "059481dc3f0bf0a932c4e3e2674e598809a1880a",
   "providers/oxalpha.js": "fb27d69417ab5e0e69e85ed055ef04ea5bfc279a",
   "providers/qwen-net.js": "ef67a5f6731b8935d754d59aeee4910499f012bb",
   "providers/qwen.js": "e4d89cd21da21829e4406dab59da9f22ec5e897b",

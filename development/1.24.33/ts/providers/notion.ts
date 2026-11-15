@@ -2120,7 +2120,8 @@ const RSProvider: PlazCodeProvider = (() => {
   function draftLooksWritten(actual, intended, intendedProfile?, actualProfile?): boolean {
     const a = String(actual || ""), i = String(intended || "");
     if (a === i) return true;
-    if ((draftLooksWritten as any).tolerantText != null && i === (draftLooksWritten as any).tolerantText && formattedDraftMatches(a, i)) return true;
+    // @ts-ignore: tolerantText is a value kept on the function itself
+    if (draftLooksWritten.tolerantText != null && i === draftLooksWritten.tolerantText && formattedDraftMatches(a, i)) return true;
     if (!i) return !a;
     const ap = actualProfile || draftProfile(a);
     const ip = intendedProfile || draftProfile(i);
@@ -2318,9 +2319,11 @@ const RSProvider: PlazCodeProvider = (() => {
     return false;
   }
   async function typeAndSend(text, images, options: any = {}) {
-    const outer = (draftLooksWritten as any).tolerantText == null;
+    // @ts-ignore: tolerantText is a value kept on the function itself
+    const outer = draftLooksWritten.tolerantText == null;
     try { return await typeAndSendOnce(text, images, options); }
-    finally { if (outer) (draftLooksWritten as any).tolerantText = null; }
+    // @ts-ignore: tolerantText is a value kept on the function itself
+    finally { if (outer) draftLooksWritten.tolerantText = null; }
   }
   async function typeAndSendOnce(text, images, options: any = {}) {
     _sendFailureAmbiguous = false;
@@ -2347,7 +2350,8 @@ const RSProvider: PlazCodeProvider = (() => {
       if (startupPayload && _lockWanted && !hasPendingAttachment() && !edText(initialEditor) &&
           !(Array.isArray(images) && images.length) && text.length <= 131072) {
         // Only the startup handshake text, never ordinary tool results/code.
-        if (text.startsWith("⟦RS-SYS⟧") || /^Output of ['"]list_commands['"]:/.test(text)) (draftLooksWritten as any).tolerantText = text;
+        // @ts-ignore: tolerantText is a value kept on the function itself
+        if (text.startsWith("⟦RS-SYS⟧") || /^Output of ['"]list_commands['"]:/.test(text)) draftLooksWritten.tolerantText = text;
         if (await writeRichTextVerified(initialEditor, text)) verifiedNativeEditor = findEditorRaw();
         // Some Notion builds reject native bulk writes and never finish file
         // uploads. Use small clipboard transactions only for this locked startup
