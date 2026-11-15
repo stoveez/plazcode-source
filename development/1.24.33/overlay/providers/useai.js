@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/useai.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/useai.js — Use AI (use.ai) provider.
 // Chat lives at use.ai / use.ai/chat. Adaptive composer (textarea or contenteditable). Selectors fail open so a reskin still finds the box.
 // eslint-disable-next-line no-unused-vars
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
@@ -12,7 +13,7 @@ const RSProvider = (() => {
   function safeQuery(root, selector) {
     return safeRead(() => root.querySelector(selector), null);
   }
-  function safeQueryAll(root, selector) {
+  function safeQueryAll(root, selector)        {
     return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
@@ -36,7 +37,7 @@ const RSProvider = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag = () => {};
+  let diag       = () => {};
 
   const S = {
     editor:
@@ -74,7 +75,7 @@ const RSProvider = (() => {
     return true;
   }
 
-  function textWithout(root, excludeSel) {
+  function textWithout(root                , excludeSel         ) {
     if (!root) return "";
     const skip = excludeSel ? `.rs-chip, ${excludeSel}` : ".rs-chip";
     let t = "";
@@ -485,7 +486,7 @@ const RSProvider = (() => {
     }, true);
     document.addEventListener("click", (e) => {
       if (!getEditor()) return;
-      const t = e.target;
+      const t = e.target           ;
       // PlazCode's own bar buttons (Fix connection, Enhance, ...) are never the site's Send button.
       if (safeClosest(t, "#rs-root")) return;
       const stop = safeRead(() => t.closest, null) && safeClosest(t, "button");

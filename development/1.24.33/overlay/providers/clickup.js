@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/clickup.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // ClickUp Ask Brain and AI-agent DMs. Selectors inspected on the signed-in app.
 // Never target ordinary DMs, task comments, document editors or the agent builder.
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   const S = {
     prompt: 'cu-refinement-prompt[data-test="refinement-prompt"]',
@@ -16,13 +17,13 @@ const RSProvider = (() => {
   };
   const timings = { GEN_IDLE_MS:1800, REASON_IDLE_MS:16000, WARMUP_MS:45000,
     REASON_NOREPLY_MS:120000, STABLE_MS:8000, RESPONSE_TIMEOUT_MS:360000 };
-  let isStopped = () => false;
+  let isStopped                = () => false;
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const safeRead = (fn, fallback = null) => { try { return fn(); } catch { return fallback; } };
   const query = (root, selector) => root ? safeRead(() => root.querySelector(selector)) : null;
   const all = (root, selector) => root ? safeRead(() => Array.from(root.querySelectorAll(selector)), []) : [];
   const closest = (node, selector) => node ? safeRead(() => node.closest(selector)) : null;
-  let diag = () => {}, locked = false, sendInFlight = false, committed = false;
+  let diag       = () => {}, locked = false, sendInFlight = false, committed = false;
   let failure = "", writeGeneration = 0, draftWindow = null;
   const originals = new WeakMap(), ids = new WeakMap(); let nextId = 0;
   const norm = value => String(value || "").replace(/\r\n?/g,"\n").replace(/[\u200b\ufeff]/g,"").replace(/\u00a0/g," ").trim();
@@ -79,7 +80,7 @@ const RSProvider = (() => {
   // each poll. Cache DOM-derived data until its owning message actually changes.
   // takeRecords() makes synchronous reads safe too (before the observer callback).
   let transcript=null, transcriptObserver=null, transcriptRoute='', draining=false;
-  const messageText=new WeakMap(), messageRoles=new WeakMap(), pendingMasks=new Set();
+  const messageText=new WeakMap(), messageRoles=new WeakMap(), pendingMasks=new Set         ();
   function ownedMutationNode(node) {
     const el=node?.nodeType===1?node:node?.parentElement;
     return !!el && !!closest(el,'#rs-root,#rs-input-cover,#rs-diag-log,.rs-chip,.rs-chat-activity');
@@ -243,7 +244,7 @@ const RSProvider = (() => {
   const userCount=()=>transcriptSnapshot().users.length;
   const lastAssistant=()=>transcriptSnapshot().assistants.at(-1)||null;
   const lastAssistantId=()=>itemKey(lastAssistant());
-  const streamLen=item=>itemText(item===undefined?lastAssistant():item).length;
+  const streamLen=(item          )=>itemText(item===undefined?lastAssistant():item).length;
   const readAssistant=()=>{const item=lastAssistant();return {present:!!item,item,reply:itemText(item),thinking:''};};
   const snapshot=()=>({th:0,rp:streamLen()});
   const editorText=()=>textWithout(getEditor());
@@ -348,7 +349,7 @@ const RSProvider = (() => {
     return {ready:!!getEditor(),detail:modeWarning()};
   }
   function enforceComposer() {setupStyles();allItems();syncBarCutout();if(locked)applyLock(getEditor(),true);return {ready:!!getEditor()};}
-  async function writeDraft(text, expected) {
+  async function writeDraft(text, expected ) {
     const editor=getEditor(),key=conversationKey(),generation=++writeGeneration;
     if(!editor)throw Error('ClickUp AI chat box is not available. Open Ask Brain or an agent chat.');
     text=String(text??'');
@@ -411,7 +412,7 @@ const RSProvider = (() => {
   }
   function nativeFailure(item) {
     if(!item)return '';
-    const failed=safeRead(()=>Array.from(item.classList).some(c=>/^_failed_/.test(c)),false) ||
+    const failed=safeRead(()=>Array.from(item.classList                ).some(c=>/^_failed_/.test(c)),false) ||
       safeRead(()=>item.getAttribute('data-state')==='failed',false);
     if(!failed)return '';
     return textWithout(query(item,'[class*="failedLabel"]')) || 'ClickUp marked the message as failed.';

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/deepseek.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/deepseek.js - the DeepSeek (chat.deepseek.com) provider.
 // EVERYTHING that knows DeepSeek's DOM, quirks, and UI strings lives here; the
 // core (core/main.js) only ever talks to the RSProvider interface this file
@@ -19,7 +20,7 @@
 //    REASONING phase there is NO stop button / spinner at all - only text growth
 //    says "still alive".
 // eslint-disable-next-line no-unused-vars
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
@@ -29,7 +30,7 @@ const RSProvider = (() => {
   function safeQuery(root, selector) {
     return safeRead(() => root.querySelector(selector), null);
   }
-  function safeQueryAll(root, selector) {
+  function safeQueryAll(root, selector)        {
     return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
@@ -53,7 +54,7 @@ const RSProvider = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag = () => {}; // injected by core via init()
+  let diag       = () => {}; // injected by core via init()
 
   // DOM selectors for chat.deepseek.com. Grouped so a future site tweak is a
   // one-liner. DeepSeek ships hashed CSS-module class names (e.g. `d29f3d7d`);
@@ -556,7 +557,7 @@ const RSProvider = (() => {
       .join("");
     return thinkTxt + "\n" + replyTxt;
   }
-  const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item ) => streamText(item === undefined ? lastAssistant() : item).length;
 
   // Stream-growth tracking - the ONLY "is it still streaming?" signal during the
   // reasoning phase (no <rect>, no spinner then). We track the MAXIMUM length the
@@ -817,10 +818,10 @@ const RSProvider = (() => {
   const MIN_SEND_GAP_MS = 8000;
   const SEND_JITTER_MS = 1800;
   let _lastSendDoneAt = null, _sendChain = Promise.resolve(), _sendEpoch = 0, _sendSeq = 0;
-  let _contextReader = () => ({}), _pacingRequest = null, _lastDelivered = "", _lastFailure = "";
+  let _contextReader            = () => ({}), _pacingRequest = null, _lastDelivered = "", _lastFailure = "";
   const _pageId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "page-"+Date.now()+"-"+Math.random().toString(36).slice(2);
-  function sendError(message, code = "DEEPSEEK_PAUSED") { const error=new Error(message);error.code=code;return error; }
-  function sendOwner() { return {epoch:_sendEpoch,chat:typeof conversationKey === "function" ? conversationKey() : "",..._contextReader()}; }
+  function sendError(message, code = "DEEPSEEK_PAUSED") { const error     =new Error(message);error.code=code;return error; }
+  function sendOwner()      { return {epoch:_sendEpoch,chat:typeof conversationKey === "function" ? conversationKey() : "",..._contextReader()}; }
   function assertSendOwner(job) {
     const current=sendOwner();
     const ownerChanged=()=>{const error=sendError("The send was cancelled because Stop was pressed or the chat/session changed.","DEEPSEEK_CANCELLED");error.expectedCancellation=true;throw error;};
@@ -856,7 +857,7 @@ const RSProvider = (() => {
     assertSendOwner(job);
   }
   function queueSend(operation) {
-    const job={id:_pageId+":"+(++_sendSeq),owner:sendOwner(),draft:typeof editorText === "function"?editorText():""};
+    const job     ={id:_pageId+":"+(++_sendSeq),owner:sendOwner(),draft:typeof editorText === "function"?editorText():""};
     const run=async()=>{try{await paceBeforeSend(job);return await operation(job);}catch(error){
       _lastFailure=String(error.message||error);
       // Restore only the draft this operation replaced, never text in a different chat or edited by the user.
@@ -964,7 +965,7 @@ const RSProvider = (() => {
       // (POST /api/v0/file/upload_file answered 200 in under a second), so waiting for the link to change never ended and the send was
       // paused after 25 s (seen with Ask PlazCode's screenshot).
       let steadySince=0;
-      const uploadsDone=()=>{try{return performance.getEntriesByType("resource").filter(e=>e.startTime>=attachStart-50&&/\/api\/v\d+\/file\/upload_file/.test(e.name)&&(e.responseStatus===undefined||e.responseStatus===0||e.responseStatus===200)).length;}catch{return 0;}};
+      const uploadsDone=()=>{try{return performance.getEntriesByType("resource").filter((e     )=>e.startTime>=attachStart-50&&/\/api\/v\d+\/file\/upload_file/.test(e.name)&&(e.responseStatus===undefined||e.responseStatus===0||e.responseStatus===200)).length;}catch{return 0;}};
       const uploaded=await waitSend(()=>{
         const thumbs=attachThumbs();if(thumbs.length<images.length){steadySince=0;return false;}
         if(thumbs.every(im=>!/^blob:/.test(safeRead(()=>im.getAttribute("src"),"")||"")))return true;
@@ -1185,7 +1186,7 @@ const RSProvider = (() => {
         }
         // Not on a chat page (e.g. login / OAuth page) - never intercept anything.
         if (!getEditor()) return;
-        const t = e.target;
+        const t = e.target           ;
         // The native "Continue" button = a clear intent to RESUME after a stop.
         const cont = t && safeRead(() => t.closest, null) && safeClosest(t, ".ds-button");
         if (cont && RE.continueBtn.test((safeRead(() => cont.innerText, "") || "").trim())) {

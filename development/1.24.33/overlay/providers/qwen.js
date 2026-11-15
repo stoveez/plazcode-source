@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/qwen.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/qwen.js - the Qwen (chat.qwen.ai, Alibaba Cloud) provider.
 // Exports the same RSProvider interface as providers/deepseek.js and kimi.js;
 // the core (core/main.js) is provider-agnostic. To DISABLE Qwen support, remove
@@ -31,7 +32,7 @@
 //    through to S.composer). NOT in-flow barMount: `.message-input-container` is
 //    React-height-clamped + overflow:hidden, so a mounted child clips the input.
 // eslint-disable-next-line no-unused-vars
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
@@ -41,7 +42,7 @@ const RSProvider = (() => {
   function safeQuery(root, selector) {
     return safeRead(() => root.querySelector(selector), null);
   }
-  function safeQueryAll(root, selector) {
+  function safeQueryAll(root, selector)        {
     return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
@@ -65,7 +66,7 @@ const RSProvider = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag = () => {};
+  let diag       = () => {};
 
   const S = {
     userItem: ".qwen-chat-message-user",
@@ -255,7 +256,7 @@ const RSProvider = (() => {
   // sibling divs with no inter-line text nodes, so plain textContent collapses
   // the whole block onto one line. Uses codeText() so a DISPOSED block still
   // yields its full source from the dataset cache (see the cache section above).
-  function textWithout(root, excludeSel) {
+  function textWithout(root                , excludeSel         ) {
     if (!root) return "";
     const _t0 = (self.performance || Date).now(); // [TRACE]
     const skip = ".rs-chip" + (excludeSel ? ", " + excludeSel : "");
@@ -818,7 +819,7 @@ const RSProvider = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const btn = e.target && safeRead(() => e.target.closest, null) && safeClosest(e.target, S.sendBtn);
+        const btn = e.target && safeRead(() => (e.target           ).closest, null) && safeClosest(e.target, S.sendBtn);
         if (!btn) return;
         if (handlers.isBlocked()) return;
         if (!handlers.isStarted()) {
@@ -1007,7 +1008,7 @@ const RSProvider = (() => {
     // streaming chat's constant mutations don't trigger the full-document query.
     _modelCapObs = new MutationObserver((muts) => {
       for (const m of muts) {
-        for (const n of m.addedNodes) {
+        for (const n of m.addedNodes                       ) {
           if (safeRead(() => n.nodeType, 0) === 1 &&
               (safeRead(() => n.matches?.('[class*="model-item___"]'), false) || safeQuery(n, '[class*="model-item___"]'))) {
             scanModelCaps();

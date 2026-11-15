@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/oxalpha.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/oxalpha.js — Ox Alpha (oxalpha.com / oxalpha.org) provider.
 // Chat lives at oxalpha.com/chat and oxalpha.org/chat. No login. Reasoning-first model; capture thinking nodes. Adaptive composer.
 // eslint-disable-next-line no-unused-vars
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
@@ -12,7 +13,7 @@ const RSProvider = (() => {
   function safeQuery(root, selector) {
     return safeRead(() => root.querySelector(selector), null);
   }
-  function safeQueryAll(root, selector) {
+  function safeQueryAll(root, selector)        {
     return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
@@ -36,9 +37,9 @@ const RSProvider = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag = () => {};
+  let diag       = () => {};
   // Hooks handed over by core/main.js (same ones the Notion provider uses).
-  let isStopped = () => false;
+  let isStopped                = () => false;
   let isSessionActive = () => false;
   let requestStart = () => {};
 
@@ -170,7 +171,7 @@ const RSProvider = (() => {
     return true;
   }
 
-  function textWithout(root, excludeSel) {
+  function textWithout(root                , excludeSel         ) {
     if (!root) return "";
     // Native Copy/Copied/Download controls are chrome, not reply text. Their
     // feedback must not look like the model resumed streaming.
@@ -360,7 +361,7 @@ const RSProvider = (() => {
     return "";
   }
 
-  const ariaOf = (b) => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.title, "") || "").trim();
+  const ariaOf = (b             ) => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.title, "") || "").trim();
   const allButtons = () => [...safeQueryAll(document, "button")].filter((b) => !safeClosest(b, "#rs-root"));
   function composerButtons() {
     const editor = getEditor();
@@ -552,7 +553,7 @@ const RSProvider = (() => {
       diag("oxalpha.send.refusedHome", { path: location.pathname, textLen: String(text || "").length });
       throw new Error("Ox Alpha: this is the home page, not a chat. Open oxalpha.com/chat first, then try again.");
     }
-    return typeAndSend(text, images, options);
+    return (typeAndSend       )(text, images, options);
   }
 
   function stopGeneration() {
@@ -625,7 +626,7 @@ const RSProvider = (() => {
     }, true);
     document.addEventListener("click", (e) => {
       if (!getEditor()) return;
-      const t = e.target;
+      const t = e.target           ;
       // PlazCode's own bar buttons (Fix connection, Enhance, ...) are never the site's Send button.
       if (safeClosest(t, "#rs-root")) return;
       const btn = safeRead(() => t.closest, null) && safeClosest(t, "button");

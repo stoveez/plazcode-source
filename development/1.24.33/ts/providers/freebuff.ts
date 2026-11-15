@@ -18,7 +18,7 @@ const RSProvider: PlazCodeProvider = (() => {
   function safeQuery(root, selector) {
     return safeRead(() => root.querySelector(selector), null);
   }
-  function safeQueryAll(root, selector) {
+  function safeQueryAll(root, selector): any[] {
     return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {

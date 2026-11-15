@@ -10,7 +10,7 @@ interface PlazCodeProvider {
   displayName: string;
   supportsVision: boolean;
   timings: Record<string, number>;
-  init: (options?: { diag?: Diag }) => void;
+  init: (options?: { diag?: Diag; [hook: string]: any }) => void;
   allItems: () => Element[];
   isUserItem: (item: Element) => boolean;
   isAssistantItem: (item: Element) => boolean;
@@ -23,7 +23,7 @@ interface PlazCodeProvider {
   streamLen: (item?: Element | null) => number;
   snapshot: () => object;
   getEditor: () => HTMLElement | null;
-  editorText: () => string;
+  editorText: (el?: any) => string;
   chatIsEmpty: () => boolean;
   isFreshChat: () => boolean;
   composerFrame: () => Element | null;
@@ -34,11 +34,11 @@ interface PlazCodeProvider {
   isGenerating: () => boolean;
   isBusyNow: () => boolean;
   isHardGenerating: () => boolean;
-  enforceComposer: () => unknown;
+  enforceComposer: (reason?: string) => unknown;
   ensureComposerReady: (reason?: string) => Promise<{ ready: boolean; detail?: string }>;
-  turnHalted: () => boolean;
+  turnHalted: (item?: Element | null) => boolean;
   findContinueBtn: () => Element | null;
-  clickContinueBtn: () => boolean;
+  clickContinueBtn: () => boolean | Promise<unknown>;
   scanError: () => string | null;
   isTooLongMsg: (text: string) => boolean;
   isBusyMsg: (text: string) => boolean;
@@ -46,7 +46,7 @@ interface PlazCodeProvider {
   clearAttachments: () => void;
   conversationKey: () => string;
   installSendHooks: (hooks: SendHooks) => void;
-  findToolBlockSpot: (item: Element) => { parent: Element | null; ref: Element | null } | null;
+  findToolBlockSpot: (item: Element, chip?: Element) => { parent: Element | null; ref: Element | null } | null;
   // Optional hooks (loosely typed for now; tighten one at a time).
   activeWorkflowProgress?: any;
   activityItemKey?: any;

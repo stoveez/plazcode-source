@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/mimo.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/mimo.js — Xiaomi MiMo Studio (aistudio.xiaomimimo.com) provider. 1.24.32 (owner request).
 // MiMo Chat (#/c, conversations #/chat/<id>) and UltraSpeed (#/ultra, conversations #/ultra/<id>) share one page
 // layout, validated live 2026-11-01 while signed in:
@@ -14,7 +15,7 @@
 //  - Signed out, the box says "Sign in to continue chatting" and nothing can be sent.
 //  - MiMo Claw (the agent product) is a different surface and is not driven.
 // eslint-disable-next-line no-unused-vars
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   let domReadErrors = 0;
   function safeRead(read, fallback) { try { return read(); } catch { domReadErrors++; return fallback; } }
@@ -29,7 +30,7 @@ const RSProvider = (() => {
     return {ms, polls: Math.ceil(ms / interval)};
   }
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag = () => {};
+  let diag       = () => {};
 
   const S = {
     turn: "div.relative.flex.w-full.mx-auto",
@@ -65,7 +66,7 @@ const RSProvider = (() => {
     const s = safeStyle(el);
     return !(s.display === "none" || s.visibility === "hidden" || parseFloat(s.opacity) === 0);
   }
-  function textWithout(root, excludeSel) {
+  function textWithout(root                , excludeSel         ) {
     if (!root) return "";
     const skip = excludeSel ? `${S.skip}, ${excludeSel}` : S.skip;
     let t = "";

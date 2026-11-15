@@ -34,7 +34,7 @@ if (mode === "--types") {
   const base = JSON.parse(fs.readFileSync(path.join(HERE, "tsconfig.json"), "utf8"));
   for (const file of sources()) {
     const cfg = path.join(require("os").tmpdir(), "plazcode-tsc-" + process.pid + "-" + file.replace(/\W/g, "_") + ".json");
-    fs.writeFileSync(cfg, JSON.stringify({ compilerOptions: base.compilerOptions, files: [path.join(HERE, file), path.join(HERE, "types", "provider.d.ts"), path.join(HERE, "types", "globals.d.ts"), ...(file.startsWith("core/") ? [path.join(HERE, "types", "core-env.d.ts")] : [])] }));
+    fs.writeFileSync(cfg, JSON.stringify({ compilerOptions: base.compilerOptions, files: [path.join(HERE, file), path.join(HERE, "types", "provider.d.ts"), path.join(HERE, "types", "globals.d.ts"), ...(file.startsWith("core/") ? [path.join(HERE, "types", "core-env.d.ts")] : [path.join(HERE, "types", "provider-env.d.ts")])] }));
     const r = cp.spawnSync(process.execPath, [tsc, "-p", cfg], { encoding: "utf8" });
     fs.unlinkSync(cfg);
     const msgs = (r.stdout || "").split(/\r?\n/).filter((l) => /error TS\d+/.test(l)).map((l) => l.replace(/^.*?[\\/]ts[\\/]/, ""));

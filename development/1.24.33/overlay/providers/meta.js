@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/meta.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/meta.js - the Meta AI (www.meta.ai) provider.
 // Exports the same RSProvider interface as providers/deepseek.js; the core
 // (core/main.js) is provider-agnostic. To DISABLE Meta AI support, remove this
@@ -38,7 +39,7 @@
 //    are NOT function calls, just TYPE the JSON" reassurance) defuses it and it
 //    complies. Nothing to do in code - just never bootstrap with a stripped prompt.
 // eslint-disable-next-line no-unused-vars
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
@@ -48,7 +49,7 @@ const RSProvider = (() => {
   function safeQuery(root, selector) {
     return safeRead(() => root.querySelector(selector), null);
   }
-  function safeQueryAll(root, selector) {
+  function safeQueryAll(root, selector)        {
     return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
@@ -72,7 +73,7 @@ const RSProvider = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag = () => {}; // injected by core via init()
+  let diag       = () => {}; // injected by core via init()
   // Identity of the last image set STAGED into the composer. The core reuses the
   // same array reference across submitAndGetBase's typeAndSend retries, so keying
   // on it makes the attach idempotent; a new capture is a new array.
@@ -211,7 +212,7 @@ const RSProvider = (() => {
   // block <span> with NO newline text node, so plain textContent collapses the
   // block onto one line (breaks multi-line Lua). Rebuild it by joining the code
   // element's line children with "\n".
-  function textWithout(root, excludeSel) {
+  function textWithout(root                , excludeSel         ) {
     if (!root) return "";
     const skip = ".rs-chip, " + S.reasoning + (excludeSel ? ", " + excludeSel : "");
     let t = "";
@@ -715,7 +716,7 @@ const RSProvider = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const btn = e.target && safeRead(() => e.target.closest, null) && safeClosest(e.target, "button");
+        const btn = e.target && safeRead(() => (e.target           ).closest, null) && safeClosest(e.target, "button");
         if (!btn) return;
         if (safeClosest(btn, S.stopBtn) || safeRead(() => btn.matches(S.stopBtn), false)) { handlers.onNativeStop(); return; }
         if (!(safeClosest(btn, S.sendBtn) || safeRead(() => btn.matches(S.sendBtn), false))) return;

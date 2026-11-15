@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/glm.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/glm.js - the GLM / Z.ai (chat.z.ai) provider.
 // Exports the same RSProvider interface as providers/deepseek.js and gemini.js;
 // the core (core/main.js) is provider-agnostic. To DISABLE GLM support, remove
@@ -25,7 +26,7 @@
 //    `.copy-code-button`; the command JSON survives in textContent.
 //  - Conversation URL is /c/<uuid>; a fresh chat is exactly "/".
 // eslint-disable-next-line no-unused-vars
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
@@ -35,7 +36,7 @@ const RSProvider = (() => {
   function safeQuery(root, selector) {
     return safeRead(() => root.querySelector(selector), null);
   }
-  function safeQueryAll(root, selector) {
+  function safeQueryAll(root, selector)        {
     return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
@@ -59,7 +60,7 @@ const RSProvider = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag = () => {}; // injected by core via init()
+  let diag       = () => {}; // injected by core via init()
 
   const S = {
     userItem: ".user-message",
@@ -118,7 +119,7 @@ const RSProvider = (() => {
   // Walk an element's text, skipping the reasoning subtree, our own chip, and any
   // excluded selector. Used everywhere a turn's "real" text is needed so tool
   // blocks drafted inside reasoning are never detected, shown, or executed.
-  function textWithout(root, excludeSel) {
+  function textWithout(root                , excludeSel         ) {
     if (!root) return "";
     const skip = S.thinking + ", .rs-chip, " + S.attachment + (excludeSel ? ", " + excludeSel : "");
     let t = "";
@@ -523,7 +524,7 @@ const RSProvider = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const t = e.target;
+        const t = e.target           ;
         // Stop button (round, in the composer) = a native stop intent.
         const stop = t && safeRead(() => t.closest, null) && safeClosest(t, "button");
         if (stop && composerFrame() && safeRead(() => composerFrame().contains(stop), false) &&

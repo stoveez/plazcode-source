@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/notion.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/notion.js - the Notion AI provider (EXPERIMENTAL).
 // Same RSProvider interface the core (core/main.js) drives. Notion's class
 // names are hashed/obfuscated, so every lookup here is tag-agnostic with
@@ -12,7 +13,7 @@
 //    local AI placeholder/send control; candidate classes themselves are hashed.
 //  - Transcript events expose data-agent-service-scroll-anchor. User events
 //    align flex-end, assistant events flex-start, and centered rows are status.
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
@@ -22,7 +23,7 @@ const RSProvider = (() => {
   function safeQuery(root, selector) {
     return safeRead(() => root.querySelector(selector), null);
   }
-  function safeQueryAll(root, selector) {
+  function safeQueryAll(root, selector)        {
     return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
@@ -45,7 +46,7 @@ const RSProvider = (() => {
     return {ms, polls: Math.ceil(ms / interval)};
   }
 
-  let diag = () => {};
+  let diag       = () => {};
   let needsComposer = () => false;
   let isStopped = () => false;
   let isSessionActive = () => false;
@@ -439,7 +440,7 @@ const RSProvider = (() => {
       if (!e.querySelector || !e.querySelector("img.notion-emoji")) return e.textContent || "";
       let out = "";
       const walker = document.createTreeWalker(e, 5); // SHOW_ELEMENT | SHOW_TEXT
-      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      for (let n = walker.nextNode()       ; n; n = walker.nextNode()       ) {
         if (n.nodeType === 3) out += n.nodeValue;
         else if (n.tagName === "IMG" && n.classList && n.classList.contains("notion-emoji")) out += n.getAttribute("alt") || "";
       }
@@ -485,7 +486,7 @@ const RSProvider = (() => {
       STOP_RE.test(ariaOf(b)) || STOP_RE.test(testId) || STOP_RE.test(safeRead(() => b.title, "") || "") ||
       (STOP_RE.test(text) && text.length <= 40);
   };
-  const exactSendControl = (frame, controls) => {
+  const exactSendControl = (frame, controls ) => {
     const exact = (controls || controlsIn(frame)).filter(b =>
       /^(?:agent-send-message-button|agent-chat-send-button)$/.test(safeRead(() => b.getAttribute("data-testid"), null) || ""));
     return exact.find(b => controlAvailable(b) && !controlDisabled(b)) || exact.find(controlAvailable) || null;
@@ -710,7 +711,7 @@ const RSProvider = (() => {
   const _immutableItemBlock = new WeakMap();
   const _immutableItemCard = new WeakMap();
   const _immutableCards = new Map();
-  const _immutableDirty = new Set();
+  const _immutableDirty = new Set     ();
   let _immutableStyle = null, _immutableStyleTimer = 0, _immutableCompactTimer = 0;
   let _immutableCssomFailed = false, _immutableBubbleSeq = 0;
   const cssQuoted = (v) => String(v || "")
@@ -954,7 +955,7 @@ const RSProvider = (() => {
     scheduleImmutableCompaction();
     return card;
   }
-  function renderImmutableChip(item, opts = {}) {
+  function renderImmutableChip(item, opts      = {}) {
     let key = immutableKey(item);
     if (opts.whole && safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null)) {
       key = "row:" + safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null);
@@ -1055,7 +1056,7 @@ const RSProvider = (() => {
     const key = immutableKey(item), card = immutableCardFor(item, key);
     return !!(card && card.owned);
   }
-  function clearImmutableChip(item, options = {}) {
+  function clearImmutableChip(item, options      = {}) {
     const key = immutableKey(item);
     const card = immutableCardFor(item, key);
     if (!card) return;
@@ -1127,9 +1128,9 @@ const RSProvider = (() => {
     if (changed) scheduleImmutableCompaction();
   }
   const FAST_TOOL_SIGNATURE_RE = /["'](?:command|tool)["']\s*:\s*["']|###\s*(?:LUA|LUAU|MCP_TOOL)\s*###|<tool_call>/i;
-  function preprocessMutations(records, state = {}) {
+  function preprocessMutations(records, state      = {}) {
     if (!records || !records.length || !isChatPath()) return;
-    const roots = new Set();
+    const roots = new Set     ();
     const transcriptSel = `${BLOCK_RESPONSE_ROOT_SEL}, ${AGENT_ROW_SEL}`;
     const addNode = (node) => {
       if (!node || safeRead(() => node.nodeType, 0) !== 1) return;
@@ -1280,7 +1281,7 @@ const RSProvider = (() => {
         (frame && (target === frame || safeRead(() => frame.contains(target), false))));
     });
   }
-  function invalidateItems(records) {
+  function invalidateItems(records ) {
     if (!records || !records.length) { _itemsDirty = true; return; }
     const semantic = (node) => {
       if (!node || (safeRead(() => node.nodeType, 0) !== 1 && safeRead(() => node.nodeType, 0) !== 11)) return false;
@@ -1489,7 +1490,7 @@ const RSProvider = (() => {
   // something specific. Returns null banner when nothing specific can be said.
   const NOTION_NOTICE_RE = /\b(?:limit|quota|credits?|upgrade|trial|free plan|plan|subscription|usage|too many|try again|something went wrong|error|unavailable|not available|permission|access)\b/i;
   function startupEvidence(res) {
-    const out = {};
+    const out      = {};
     try {
       const thread = isAiThread(), landing = isAiLanding();
       const items = allItems();
@@ -1574,7 +1575,7 @@ const RSProvider = (() => {
     for (let i = users.length - 1; i >= 0; i--) {
       const text = transcriptText(users[i]).trim();
       if (!text) continue;
-      if ((typeof ZSParse !== "undefined" && ZSParse.isInjectedFeedback(text)) ||
+      if ((typeof RSParse !== "undefined" && RSParse.isInjectedFeedback(text)) ||
           text.includes(RS.SYS_MARKER) || /^\(System .* from PlazCode\b/i.test(text)) continue;
       if (RS.isLongUiRequest && RS.isLongUiRequest(text)) return true;
       // A manual "continue" after a provider interruption is still the same UI
@@ -1682,7 +1683,7 @@ const RSProvider = (() => {
   // ── input lock (same semantics as Arena) ─────────────────────────────────
   let _lockWanted = false, _lockTimer = null, _selfWrite = false;
   let _chunkAppendRejected = false;
-  const _lockedEditors = new Set();
+  const _lockedEditors = new Set     ();
   const LOCK_PLACEHOLDER = "⏳ Agent working… please wait";
   const MISSING_ATTR = "__zs_missing__";
   function saveAttrOnce(ed, attr, store) {
@@ -1720,7 +1721,7 @@ const RSProvider = (() => {
     if (!_lockWanted || _selfWrite || !e.isTrusted) return;
     const ed = findEditorRaw();
     if (!ed) return;
-    const t = e.target;
+    const t = e.target           ;
     const control = t && safeRead(() => t.closest, null) && safeClosest(t, CONTROL_SEL);
     const sendClick = e.type === "click" && control && safeRead(() => composerFrame()?.contains(control), false) && sendControlLike(control) && !stopControlLike(control);
     if (!sendClick && !(t === ed || (t && safeRead(() => t.nodeType, 0) === 1 && safeRead(() => ed.contains(t), false)))) return;
@@ -1849,7 +1850,7 @@ const RSProvider = (() => {
         if (Date.now() - lastChangeAt >= stableMs) break;
       }
     } catch {}
-    const info = { retained, expectedChars: value.length, retainedChars: finalChars || edText(el).length,
+    const info      = { retained, expectedChars: value.length, retainedChars: finalChars || edText(el).length,
       polls, ms: Date.now() - started };
     if (!retained) {
       // Show WHERE Notion's read-back first differs so a rewritten character is
@@ -2116,10 +2117,10 @@ const RSProvider = (() => {
     const i = notionMarkupCompact(intended, true);
     return i.length >= 16 && notionMarkupCompact(actual, false) === i;
   }
-  function draftLooksWritten(actual, intended, intendedProfile, actualProfile) {
+  function draftLooksWritten(actual, intended, intendedProfile , actualProfile )          {
     const a = String(actual || ""), i = String(intended || "");
     if (a === i) return true;
-    if (draftLooksWritten.tolerantText != null && i === draftLooksWritten.tolerantText && formattedDraftMatches(a, i)) return true;
+    if ((draftLooksWritten       ).tolerantText != null && i === (draftLooksWritten       ).tolerantText && formattedDraftMatches(a, i)) return true;
     if (!i) return !a;
     const ap = actualProfile || draftProfile(a);
     const ip = intendedProfile || draftProfile(i);
@@ -2316,12 +2317,12 @@ const RSProvider = (() => {
     }
     return false;
   }
-  async function typeAndSend(text, images, options = {}) {
-    const outer = draftLooksWritten.tolerantText == null;
+  async function typeAndSend(text, images, options      = {}) {
+    const outer = (draftLooksWritten       ).tolerantText == null;
     try { return await typeAndSendOnce(text, images, options); }
-    finally { if (outer) draftLooksWritten.tolerantText = null; }
+    finally { if (outer) (draftLooksWritten       ).tolerantText = null; }
   }
-  async function typeAndSendOnce(text, images, options = {}) {
+  async function typeAndSendOnce(text, images, options      = {}) {
     _sendFailureAmbiguous = false;
     _sendFailureDetail = "";
     _sendRetryable = false;
@@ -2346,7 +2347,7 @@ const RSProvider = (() => {
       if (startupPayload && _lockWanted && !hasPendingAttachment() && !edText(initialEditor) &&
           !(Array.isArray(images) && images.length) && text.length <= 131072) {
         // Only the startup handshake text, never ordinary tool results/code.
-        if (text.startsWith("⟦RS-SYS⟧") || /^Output of ['"]list_commands['"]:/.test(text)) draftLooksWritten.tolerantText = text;
+        if (text.startsWith("⟦RS-SYS⟧") || /^Output of ['"]list_commands['"]:/.test(text)) (draftLooksWritten       ).tolerantText = text;
         if (await writeRichTextVerified(initialEditor, text)) verifiedNativeEditor = findEditorRaw();
         // Some Notion builds reject native bulk writes and never finish file
         // uploads. Use small clipboard transactions only for this locked startup
@@ -3095,7 +3096,7 @@ const RSProvider = (() => {
     const ext = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
     return new File([bytes], `plazcode_web_capture_${Date.now()}_${index}.${ext}`, { type: mime });
   }
-  async function attachImages(images, options = {}) {
+  async function attachImages(images, options      = {}) {
     if (!Array.isArray(images) || !images.length || images.length > 4) return false;
     let files;
     try { files=images.map(screenshotFile); } catch { return false; }
@@ -3103,7 +3104,7 @@ const RSProvider = (() => {
     if (attached) _attachedImages=images;
     return attached;
   }
-  async function attachFiles(files, options = {}) {
+  async function attachFiles(files, options      = {}) {
     const stopped = typeof options.stopped === "function" ? options.stopped : isStopped;
     _lastAttachFailure = "unstaged";
     if (!isAiSurface() || !Array.isArray(files) || !files.length || files.length > 4 || stopped()) return false;
@@ -3236,7 +3237,7 @@ const RSProvider = (() => {
       }
       return safeRead(() => node.parentElement, null) || node;
     };
-    const roots = new Set();
+    const roots = new Set     ();
     for (const node of owned.nodes || []) {
       if (!node || !safeRead(() => node.isConnected, false) || !safeRead(() => frame.contains(node), false)) continue;
       roots.add(cardRoot(node));
@@ -3264,7 +3265,7 @@ const RSProvider = (() => {
     const delayedCleanup = () => {
       const currentFrame = attachmentScope();
       if (!currentFrame) return;
-      const lateRoots = new Set();
+      const lateRoots = new Set     ();
       for (const node of attachmentNodes()) {
         const hay = `${_txt(node)} ${ariaOf(node)} ${safeRead(() => node.getAttribute, null) && (safeRead(() => node.getAttribute("alt"), null) || safeRead(() => node.getAttribute("title"), null) || safeRead(() => node.getAttribute("src"), null) || "")}`;
         if (!owned.names.some((name) => hay.includes(name))) continue;
@@ -3396,7 +3397,7 @@ const RSProvider = (() => {
     }, true);
     document.addEventListener("click", (e) => {
       if (_selfWrite || !e.isTrusted) return;
-      const b = e.target && safeRead(() => e.target.closest, null) ? safeClosest(e.target, CONTROL_SEL) : null;
+      const b = e.target && safeRead(() => (e.target           ).closest, null) ? safeClosest(e.target, CONTROL_SEL) : null;
       if (!b || (!sendControlLike(b) && !stopControlLike(b))) return;
       // Classify the control we already have instead of calling stopButton() and
       // sendButton(), both of which used to rediscover the composer at the exact

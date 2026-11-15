@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/arena.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/arena.js - the Arena (arena.ai) provider.
 // Exports the same RSProvider interface as providers/deepseek.js; the core
 // (core/main.js) is provider-agnostic. To DISABLE Arena support, remove this
@@ -28,7 +29,7 @@
 //    answers; PlazCode always reads answer A. Agent mode (route /agent) uses a tiptap editor and its own turns.
 //    Only Arena's non-chat pages (Code / Build Apps, Search, Image, Video) stay unsupported.
 // eslint-disable-next-line no-unused-vars
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
@@ -38,7 +39,7 @@ const RSProvider = (() => {
   function safeQuery(root, selector) {
     return safeRead(() => root.querySelector(selector), null);
   }
-  function safeQueryAll(root, selector) {
+  function safeQueryAll(root, selector)        {
     return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
@@ -62,7 +63,7 @@ const RSProvider = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag = () => {}; // injected by core via init()
+  let diag       = () => {}; // injected by core via init()
   // Identity of the last image set we STAGED into the composer. The core reuses
   // the same array reference across submitAndGetBase's up-to-4 typeAndSend
   // retries, so keying on it makes the attach idempotent (see typeAndSend) - a
@@ -347,7 +348,7 @@ const RSProvider = (() => {
   }
 
   // Walk the tree skipping the core's chip (and any extra excluded subtree).
-  function textWithout(root, excludeSel) {
+  function textWithout(root                , excludeSel         ) {
     if (!root) return "";
     const skip = ".rs-chip" + (excludeSel ? ", " + excludeSel : "");
     let t = "";
@@ -1108,7 +1109,7 @@ const RSProvider = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const btn = e.target && safeRead(() => e.target.closest, null) && safeClosest(e.target, "button");
+        const btn = e.target && safeRead(() => (e.target           ).closest, null) && safeClosest(e.target, "button");
         if (!btn) return;
         // Recovery uses .click() on the native Stop control. That must end Arena's generation, not cancel
         // PlazCode's task as though the owner pressed Stop. Only a real click on the current control is intent.

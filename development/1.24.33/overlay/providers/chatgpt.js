@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/chatgpt.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/chatgpt.js - the OpenAI ChatGPT (chatgpt.com) provider.
 // Exports the same RSProvider interface as providers/deepseek.js and
 // providers/gemini.js; the core (core/main.js) is provider-agnostic. To DISABLE
@@ -58,7 +59,7 @@
 //    image uploads are available when the current account has quota. Verify the
 //    attachment before submitting; surface quota walls instead of sending text-only.
 // eslint-disable-next-line no-unused-vars
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
@@ -68,7 +69,7 @@ const RSProvider = (() => {
   function safeQuery(root, selector) {
     return safeRead(() => root.querySelector(selector), null);
   }
-  function safeQueryAll(root, selector) {
+  function safeQueryAll(root, selector)        {
     return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
@@ -92,8 +93,8 @@ const RSProvider = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag = () => {}; // injected by core via init()
-  let sendContext = () => ({}), isStopped = () => false, sendGeneration = 0;
+  let diag       = () => {}; // injected by core via init()
+  let sendContext            = () => ({}), isStopped                = () => false, sendGeneration = 0;
 
   const S = {
     msg: "[data-message-author-role], [data-conversation-role], [data-role], [data-message-author]",
@@ -225,7 +226,7 @@ const RSProvider = (() => {
     if (!root || !safeRead(() => root.querySelector, null) || !safeQuery(root, ".cm-content")) return;
     try { document.dispatchEvent(new CustomEvent("rs-cm-sync")); } catch {}
   }
-  function textWithout(root, excludeSel) {
+  function textWithout(root                , excludeSel         ) {
     if (!root) return "";
     syncCM(root);
     let t = "";
@@ -298,7 +299,7 @@ const RSProvider = (() => {
     return top;
   };
 
-  function assistantText(item, excludeSel) {
+  function assistantText(item, excludeSel ) {
     if (!item) return "";
     const reply = replyNodes(item)
       .filter((m) => !(excludeSel && safeRead(() => m.closest, null) && safeClosest(m, excludeSel)))
@@ -342,7 +343,7 @@ const RSProvider = (() => {
   // A message wrapper also contains native headings/actions ("You said", Copy,
   // timestamps). Read the user's content surface, never that surrounding UI.
   // Keep the same reader for delivery receipts, task requests and startup proof.
-  function userText(item, excludeSel) {
+  function userText(item, excludeSel ) {
     const bubbles = safeRead(() => item.matches('[data-user-message-bubble]'), false) ? [item] : safeQueryAll(item, '[data-user-message-bubble]');
     const native = bubbles.filter(node => !safeClosest(node, [excludeSel, '#rs-root,.rs-chip,button,[role="button"]'].filter(Boolean).join(',')));
     if (native.length === 1) {
@@ -386,7 +387,7 @@ const RSProvider = (() => {
   const RECEIPT_PAGE_BOUNDARY = 'main,body,html,form,nav,aside,[role="dialog"],#rs-root';
   const normalizeReceiptText = value => String(value || '').replace(/\s+/g, ' ').trim();
 
-  function singleUserScope(scope, bubble, scopes) {
+  function singleUserScope(scope, bubble, scopes ) {
     if (scopes && scopes.has(scope)) return scopes.get(scope) === bubble;
     const bubbles = safeQueryAll(scope, NATIVE_USER_BUBBLE).filter(node => !safeClosest(node, '.rs-chip,#rs-root'));
     if (scope === bubble) return true;
@@ -402,7 +403,7 @@ const RSProvider = (() => {
     for (let node = safeRead(() => bubble.parentElement, null), depth = 0; node && depth < 4; node = safeRead(() => node.parentElement, null), depth++) {
       if (safeRead(() => node.matches(RECEIPT_PAGE_BOUNDARY + ',' + S.turn), true) || !singleUserScope(node, bubble, scopes)) break;
       if (safeRead(() => node.classList.contains('rs-hidden'), false) &&
-          safeRead(() => Array.from(node.children).some(child => child.classList.contains('rs-chip')), false)) return node;
+          safeRead(() => Array.from(node.children                  ).some(child => child.classList.contains('rs-chip')), false)) return node;
     }
     return null;
   }
@@ -675,7 +676,7 @@ const RSProvider = (() => {
         return '\n';
       }
       let text = '', previousBlock = false;
-      Array.from(node.childNodes).forEach((child, index) => {
+      Array.from(node.childNodes                         ).forEach((child, index) => {
         const block = /^(P|DIV|LI|PRE)$/.test(child.nodeName);
         if (index && (block || previousBlock)) text += '\n';
         text += read(child); previousBlock = block;
@@ -760,7 +761,7 @@ const RSProvider = (() => {
   // being inserted into React-managed DOM. `barOutside` tells the core to position
   // the fixed bar just above this card without adding padding or changing its size.
   let followupStyle = null;
-  const followupNodes = new Set();
+  const followupNodes = new Set         ();
   function setFollowupMode(on) {
     const ed = getEditor(), frame = barAnchor();
     const matches = on && frame ? [...safeQueryAll(frame, 'span, p, div')].filter(node =>
@@ -1071,7 +1072,7 @@ const RSProvider = (() => {
 
   // Fallback: type it. Yielding does not make this faster - it keeps the page
   // alive while it happens, so the user can still click (and Stop still works).
-  async function typeEditorText(ed, text, checkOwner = () => {}, wrote = () => {}) {
+  async function typeEditorText(ed, text, checkOwner             = () => {}, wrote                         = () => {}) {
     const raw = String(text);
     checkOwner();
     if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") {
@@ -1127,9 +1128,9 @@ const RSProvider = (() => {
     // submit value. A previously enabled button can still submit that prefix.
     if (!safeRead(() => document.documentElement.getClientRects().length > 0 && typeof requestAnimationFrame === 'function', false)) return 0;
     const started = clock();
-    return new Promise((resolve, reject) => {
+    return new Promise        ((resolve, reject) => {
       let finished = false, frame = null, frames = 0;
-      const finish = error => {
+      const finish = (error      ) => {
         if (finished) return;
         finished = true; clearTimeout(deadline);
         if (frame !== null) safeRead(() => cancelAnimationFrame(frame), null);
@@ -1147,7 +1148,7 @@ const RSProvider = (() => {
       const deadline = setTimeout(() => {
         try {
           checkOwner();
-          const error = new Error('ChatGPT input did not finish updating. Nothing was submitted. Keep its tab visible, then resume.');
+          const error      = new Error('ChatGPT input did not finish updating. Nothing was submitted. Keep its tab visible, then resume.');
           error.code = 'CHATGPT_COMPOSER_RENDER_TIMEOUT'; finish(error);
         } catch (error) { finish(error); }
       // 1 s was too tight: inserting a ~12k-character startup message makes ChatGPT's
@@ -1173,7 +1174,7 @@ const RSProvider = (() => {
     const checkOwner = (typing = true) => {
       if (generation !== sendGeneration || isStopped() || !sameSession() ||
           ((typing || chat) && chat !== conversationKey()) || (typing && (getEditor() !== ed || !ed.isConnected))) {
-        const error = new Error('ChatGPT delivery cancelled because Stop was pressed or the chat changed.');
+        const error      = new Error('ChatGPT delivery cancelled because Stop was pressed or the chat changed.');
         error.code = 'CHATGPT_CANCELLED'; error.expectedCancellation = true; throw error;
       }
     };
@@ -1289,7 +1290,7 @@ const RSProvider = (() => {
       if (getEditor() === ed && chat === conversationKey() &&
           sendContext().session === context.session && ownedDraft !== null &&
           (editorText() === ownedDraft || (ownedDraft.endsWith('\n') && editorText() === ownedDraft + '\n'))) clearEditor();
-      const proof = {committed, expandedMessage, code:error.code || 'CHATGPT_SEND_FAILED',
+      const proof      = {committed, expandedMessage, code:error.code || 'CHATGPT_SEND_FAILED',
         renderWaitMs:error.renderWaitMs || renderWaitMs,
         receiptWaitMs:receiptStartedAt === null ? 0 : Math.max(0, Math.round(clock() - receiptStartedAt))};
       // Lengths/booleans only: distinguish an unrecognized native message from
@@ -1602,7 +1603,7 @@ const RSProvider = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const t = e.target;
+        const t = e.target           ;
         // Native "Continue generating" = a clear intent to RESUME after truncation.
         const cont = t && safeRead(() => t.closest, null) && safeClosest(t, "button");
         if (cont && RE.continueBtn.test((safeRead(() => cont.innerText, "") || "").trim())) {

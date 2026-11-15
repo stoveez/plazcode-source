@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/providers/claude.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // providers/claude.js — claude.ai / claude.com
 // Same RSProvider interface as chatgpt.js. To disable, remove this file from
 // manifest.json, background.js PROVIDER_URLS, popup.js SUPPORTED_HOSTS, main.js AI_SITES.
@@ -18,7 +19,7 @@
 //  - Stop: aria-label contains "Stop" ("Stop response" / "Stop generating")
 //  - Thinking: [data-is-thinking], [class*="thinking"], [class*="extended-thinking"]
 //  - Chat URL: /new, /chat/<uuid>, /project/<uuid>
-const RSProvider = (() => {
+const RSProvider                   = (() => {
   "use strict";
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
@@ -28,7 +29,7 @@ const RSProvider = (() => {
   function safeQuery(root, selector) {
     return safeRead(() => root.querySelector(selector), null);
   }
-  function safeQueryAll(root, selector) {
+  function safeQueryAll(root, selector)        {
     return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
@@ -62,7 +63,7 @@ const RSProvider = (() => {
     return safePredicate(fn);
   };
 
-  let diag = () => {};
+  let diag       = () => {};
   const timings = {
     GEN_IDLE_MS: 1600,
     REASON_IDLE_MS: 14000,
@@ -177,7 +178,7 @@ const RSProvider = (() => {
     return s;
   }
 
-  function textWithout(root, excludeSel) {
+  function textWithout(root                , excludeSel         ) {
     if (!root) return "";
     let t = "";
     const walk = (n) => {
@@ -452,7 +453,7 @@ const RSProvider = (() => {
     const think = thinkingText(item);
     return think ? (think + "\n" + reply) : reply;
   }
-  const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item ) => streamText(item === undefined ? lastAssistant() : item).length;
   let _streamMax = -1, _streamAt = 0, _streamItem = null;
   function sampleStream() {
     const item = lastAssistant();
@@ -727,7 +728,7 @@ const RSProvider = (() => {
 
     document.addEventListener("click", (e) => {
       if (!getEditor()) return;
-      const t = e.target;
+      const t = e.target           ;
       const cont = t && safeRead(() => t.closest, null) && safeClosest(t, "button");
       if (cont && RE.continueBtn.test((safeRead(() => cont.innerText, "") || "").trim())) {
         if (handlers.onNativeContinue) handlers.onNativeContinue();
