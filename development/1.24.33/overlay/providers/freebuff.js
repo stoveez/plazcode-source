@@ -745,6 +745,13 @@ const RSProvider = (() => {
   // that gains its address after the first message is still the same chat.
   function conversationKey() {
     const path = location.pathname || "";
+    // 2026-11-14 (owner log + live look): a started Freebuff chat lives at freebuff.com/?thread=<id>, with nothing in the path.
+    // Reading that as "no address" made PlazCode think the chat was still new: no command cards, and the start looked unfinished.
+    try {
+      const q = new URLSearchParams(location.search || "");
+      const t = q.get("thread") || q.get("threadId") || q.get("conversation") || q.get("chat");
+      if (t && /^[A-Za-z0-9_-]{6,}$/.test(t)) return t;
+    } catch {}
     const m = path.match(/\/(?:chat|c|conversation|thread)\/([A-Za-z0-9_-]+)/);
     if (m) return /^(?:new|index)$/i.test(m[1]) ? "" : m[1];
     if (/^\/(?:chat|c|web|cloud|desktop|new|home)?\/?$/i.test(path)) return "";
@@ -796,7 +803,13 @@ const RSProvider = (() => {
       if (!CMD_SHAPE.test(safeRead(() => pre.textContent, "") || "")) continue;
       pre.classList.add("rs-tool-hide");
       item.classList.add("rs-cmd-mask");
-      if (!ref && safeRead(() => pre.parentElement, null)) { parent = safeRead(() => pre.parentElement, null); ref = pre; }
+      // 2026-11-14 (owner screenshot, startup cards missing): the page wraps each code block in a few boxes (a code-block shell with
+      // a "json / Copy" header). The card was placed inside that shell, which gets hidden with the code, so it never showed. Put the
+      // card before the OUTERMOST code wrapper instead, and hide the wrapper (header and all) with the code.
+      let anchor = pre;
+      for (let up = safeRead(() => pre.parentElement, null), n = 0; up && up !== item && n < 4 && /md-code|block-clip|code-?block/i.test(String(safeRead(() => up.className, "") || "")); up = safeRead(() => up.parentElement, null), n++) anchor = up;
+      if (anchor !== pre) anchor.classList.add("rs-tool-hide");
+      if (!ref && safeRead(() => anchor.parentElement, null)) { parent = safeRead(() => anchor.parentElement, null); ref = anchor; }
     }
     return ref ? { parent, ref } : null;
   }

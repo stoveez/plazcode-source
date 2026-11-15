@@ -122,6 +122,18 @@ function composer(w, {revert = false, sendWorks = true, alwaysEnabled = false, i
     ok("no address but PlazCode's message: started", () => assert.equal(f.p.chatIsEmpty(), false));
     f.w.close();
   }
+  ok("the card is placed before the outermost code wrapper (a card inside the hidden code shell never showed)", () => {
+    const f = load(SAVED_CHAT, '<article class="msg assistant"><div class="prose"><div class="md-code not-prose"><div class="block-clip"><div class="md-code-head"><span>json</span><button aria-label="Copy code">Copy</button></div><pre class="md-pre"><code>{"command": "list_commands"}</code></pre></div></div></div></article>' + COMPOSER);
+    const item = f.w.document.querySelector('article'), spot = f.p.findToolBlockSpot(item);
+    assert(spot && spot.ref.className.includes('md-code') && spot.parent.className === 'prose', 'ref is the md-code shell, parent is the prose column');
+    assert(spot.ref.classList.contains('rs-tool-hide') && item.querySelector('pre').classList.contains('rs-tool-hide'));
+    f.w.close();
+  });
+  ok('a started chat whose id is in the query (?thread=) has an address', () => {
+    const f = load('https://freebuff.com/?thread=f0e6d91e-7a31-4bc5-8c01-9a62d2a55035', COMPOSER), g = load('https://freebuff.com/chat?thread=abc', COMPOSER);
+    assert.equal(f.p.conversationKey(), 'f0e6d91e-7a31-4bc5-8c01-9a62d2a55035'); assert.equal(g.p.conversationKey(), '');
+    for (const x of [f, g]) x.w.close();
+  });
   ok('addresses', () => {
     const f = load('https://freebuff.com/chat/new', COMPOSER), g = load('https://freebuff.com/chat', COMPOSER), h = load('https://freebuff.com/c/9f3-ab', COMPOSER), k = load('https://freebuff.com/s/xyz', COMPOSER);
     assert.equal(f.p.conversationKey(), ''); assert.equal(g.p.conversationKey(), ''); assert.equal(h.p.conversationKey(), '9f3-ab'); assert.equal(k.p.conversationKey(), '/s/xyz');
