@@ -1405,6 +1405,7 @@
   "Not sharing": "공유하지 않음",
   "Share my whole screen": "전체 화면 공유",
   "Sharing the whole screen needs the PlazCode app (Windows or Mac) running. PlazCode looks at the tab you're looking at instead.": "전체 화면을 공유하려면 PlazCode 앱(Windows 또는 Mac)이 실행 중이어야 합니다. 대신 지금 보고 있는 탭을 PlazCode가 봅니다.",
+  "{site} is not signed in. Open {site} in your browser, sign in, then ask again.": "{site}에 로그인되어 있지 않습니다. 브라우저에서 {site}을(를) 열어 로그인한 다음 다시 질문하세요.",
   "Turn on sharing so PlazCode can see your screen.": "PlazCode가 화면을 볼 수 있도록 공유를 켜세요.",
   "Let PlazCode control this tab": "PlazCode가 이 탭을 제어하도록 허용",
   "Let PlazCode control my computer": "PlazCode가 내 컴퓨터를 제어하도록 허용",

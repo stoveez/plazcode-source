@@ -1405,6 +1405,7 @@
   "Not sharing": "Paylaşılmıyor",
   "Share my whole screen": "Tüm ekranımı paylaş",
   "Sharing the whole screen needs the PlazCode app (Windows or Mac) running. PlazCode looks at the tab you're looking at instead.": "Tüm ekranı paylaşmak için PlazCode uygulamasının (Windows veya Mac) çalışıyor olması gerekir. PlazCode bunun yerine baktığınız sekmeye bakar.",
+  "{site} is not signed in. Open {site} in your browser, sign in, then ask again.": "{site} hesabında oturum açık değil. Tarayıcınızda {site} sitesini açın, oturum açın ve tekrar sorun.",
   "Turn on sharing so PlazCode can see your screen.": "PlazCode'un ekranınızı görebilmesi için paylaşımı açın.",
   "Let PlazCode control this tab": "PlazCode'un bu sekmeyi kontrol etmesine izin ver",
   "Let PlazCode control my computer": "PlazCode'un bilgisayarımı kontrol etmesine izin ver",

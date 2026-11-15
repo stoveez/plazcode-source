@@ -1405,6 +1405,7 @@
   "Not sharing": null,
   "Share my whole screen": null,
   "Sharing the whole screen needs the PlazCode app (Windows or Mac) running. PlazCode looks at the tab you're looking at instead.": null,
+  "{site} is not signed in. Open {site} in your browser, sign in, then ask again.": null,
   "Turn on sharing so PlazCode can see your screen.": null,
   "Let PlazCode control this tab": null,
   "Let PlazCode control my computer": null,

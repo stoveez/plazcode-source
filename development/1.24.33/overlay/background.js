@@ -3931,6 +3931,17 @@ async function askSiteUrl() {
   try { const got = await chrome.storage.local.get("rsAskSite"), site = got && got.rsAskSite; if (site && /^https:\/\//.test(site.url || "")) return { url: String(site.url), name: String(site.name || "") }; } catch {}
   return ASK_DEFAULT_SITE;
 }
+// A signed-out chat site sends the person to its sign-in page (DeepSeek: /sign_in). Said plainly, with the window put away, instead of a
+// vague "did not load".
+const ASK_SIGNIN_URL = /\/(?:sign[_-]?in|log[_-]?in|signup|sign[_-]?up|auth)(?:[/?#]|$)/i;
+async function askSignedOut(tabId) {
+  try { const tab = await chrome.tabs.get(tabId); let path = ""; try { path = new URL(tab.url || "").pathname; } catch {} return ASK_SIGNIN_URL.test(path); } catch { return false; }
+}
+async function askNeedSignIn(created, siteName) {
+  try { await chrome.windows.remove(created.id); } catch {}
+  ask.tabId = null; ask.windowId = null; askSave();
+  return { ok: false, error: siteName + " is not signed in. Open " + siteName + " in your browser, sign in, then ask again.", key: "{site} is not signed in. Open {site} in your browser, sign in, then ask again.", values: { site: siteName } };
+}
 async function askEnsure() {
   if (Number.isInteger(ask.tabId)) { try { await chrome.tabs.get(ask.tabId); return { ok: true }; } catch { ask.tabId = null; } }
   const site = await askSiteUrl();
@@ -3950,8 +3961,9 @@ async function askEnsure() {
   // A minimised window can hold a page back (the browser pauses drawing in it). If the chat does not come up that way, show the window
   // (behind everything, not focused) and try once more instead of failing.
   const unhide = async () => { if (!minimised) return false; minimised = false; try { await chrome.windows.update(created.id, { state: "normal", focused: false, width: 980, height: 820, left: 40, top: 40 }); return true; } catch { return false; } };
-  if (!(await criticTabReady(tab.id)) && !((await unhide()) && (await criticTabReady(tab.id)))) return { ok: false, error: "The AI site did not load in the background chat window." };
-  if (!(await helperPing(tab.id)) && !((await unhide()) && (await helperPing(tab.id)))) return { ok: false, error: "PlazCode is not running in the background chat window. Is the AI site signed in there?" };
+  if (!(await criticTabReady(tab.id)) && !((await unhide()) && (await criticTabReady(tab.id)))) return (await askSignedOut(tab.id)) ? askNeedSignIn(created, siteName) : { ok: false, error: "The AI site did not load in the background chat window." };
+  if (await askSignedOut(tab.id)) return askNeedSignIn(created, siteName);
+  if (!(await helperPing(tab.id)) && !((await unhide()) && (await helperPing(tab.id)))) return (await askSignedOut(tab.id)) ? askNeedSignIn(created, siteName) : { ok: false, error: "PlazCode is not running in the background chat window. Is the AI site signed in there?" };
   await criticSleep(1500);
   // The chat is up. If the window had to be shown to get here, put it away again: it is only the engine behind the panel and must
   // never sit over the person's own window (owner, 2026-11-14).
@@ -3985,7 +3997,7 @@ async function askQuestion(m) {
       let images = [];
       try { images = [{ mimeType: "image/jpeg", data: await desktopPicture() }]; } catch (error) { askSay(String(error && error.message || error), "error"); }
       const ready = await askEnsure();
-      if (!ready.ok) { askSay(ready.error, "error"); return; }
+      if (!ready.ok) { askSay(ready.error, "error", ready.key, ready.values); return; }
       const reply = await chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-run", ask: { text, images, control: !!m.control, share: { tabId: -1, title: "Your whole screen", url: "" } } });
       if (!reply || !reply.ok) { askSay(String(reply && reply.error || "The background chat did not take the question."), "error"); return; }
       return;
@@ -3998,7 +4010,7 @@ async function askQuestion(m) {
       catch (error) { askPost({ type: "ask-permission", text: String(error && error.message || error) }); }
     }
     const ready = await askEnsure();
-    if (!ready.ok) { askSay(ready.error, "error"); return; }
+    if (!ready.ok) { askSay(ready.error, "error", ready.key, ready.values); return; }
     ask.origin = tab ? tab.id : null; ask.copy = !!(m.control && tab);
     // A copy opened for an earlier question about this same tab is offered again (if it is still open) instead of a new one.
     let work = null;

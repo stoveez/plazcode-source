@@ -1405,6 +1405,7 @@
   "Not sharing": "Nicht geteilt",
   "Share my whole screen": "Meinen ganzen Bildschirm teilen",
   "Sharing the whole screen needs the PlazCode app (Windows or Mac) running. PlazCode looks at the tab you're looking at instead.": "Zum Teilen des ganzen Bildschirms muss die PlazCode-App (Windows oder Mac) laufen. PlazCode schaut stattdessen auf den Tab, den Sie gerade ansehen.",
+  "{site} is not signed in. Open {site} in your browser, sign in, then ask again.": "Bei {site} sind Sie nicht angemeldet. Öffnen Sie {site} in Ihrem Browser, melden Sie sich an und fragen Sie dann erneut.",
   "Turn on sharing so PlazCode can see your screen.": "Schalten Sie das Teilen ein, damit PlazCode Ihren Bildschirm sehen kann.",
   "Let PlazCode control this tab": "PlazCode diesen Tab steuern lassen",
   "Let PlazCode control my computer": "PlazCode meinen Computer steuern lassen",

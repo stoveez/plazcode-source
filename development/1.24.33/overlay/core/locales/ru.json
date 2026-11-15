@@ -1405,6 +1405,7 @@
   "Not sharing": "Не показывается",
   "Share my whole screen": "Показывать весь экран",
   "Sharing the whole screen needs the PlazCode app (Windows or Mac) running. PlazCode looks at the tab you're looking at instead.": "Чтобы показывать весь экран, должно быть запущено приложение PlazCode (Windows или Mac). Вместо этого PlazCode смотрит на вкладку, которую вы открыли.",
+  "{site} is not signed in. Open {site} in your browser, sign in, then ask again.": "Вы не вошли в {site}. Откройте {site} в браузере, войдите в аккаунт и задайте вопрос снова.",
   "Turn on sharing so PlazCode can see your screen.": "Включите показ, чтобы PlazCode мог видеть ваш экран.",
   "Let PlazCode control this tab": "Разрешить PlazCode управлять этой вкладкой",
   "Let PlazCode control my computer": "Разрешить PlazCode управлять моим компьютером",

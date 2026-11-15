@@ -1405,6 +1405,7 @@
   "Not sharing": "Nie udostępniono",
   "Share my whole screen": "Udostępnij cały ekran",
   "Sharing the whole screen needs the PlazCode app (Windows or Mac) running. PlazCode looks at the tab you're looking at instead.": "Do udostępniania całego ekranu potrzebna jest uruchomiona aplikacja PlazCode (Windows lub Mac). PlazCode patrzy zamiast tego na kartę, którą oglądasz.",
+  "{site} is not signed in. Open {site} in your browser, sign in, then ask again.": "Nie jesteś zalogowany w {site}. Otwórz {site} w przeglądarce, zaloguj się i zapytaj ponownie.",
   "Turn on sharing so PlazCode can see your screen.": "Włącz udostępnianie, aby PlazCode widział Twój ekran.",
   "Let PlazCode control this tab": "Pozwól PlazCode sterować tą kartą",
   "Let PlazCode control my computer": "Pozwól PlazCode sterować moim komputerem",

@@ -1405,6 +1405,7 @@
   "Not sharing": "未共享",
   "Share my whole screen": "共享整个屏幕",
   "Sharing the whole screen needs the PlazCode app (Windows or Mac) running. PlazCode looks at the tab you're looking at instead.": "共享整个屏幕需要运行 PlazCode 应用（Windows 或 Mac）。PlazCode 会改为查看你正在看的标签页。",
+  "{site} is not signed in. Open {site} in your browser, sign in, then ask again.": "你尚未登录 {site}。请在浏览器中打开 {site} 并登录，然后再提问。",
   "Turn on sharing so PlazCode can see your screen.": "打开共享，让 PlazCode 能看到你的屏幕。",
   "Let PlazCode control this tab": "允许 PlazCode 控制此标签页",
   "Let PlazCode control my computer": "允许 PlazCode 控制我的电脑",

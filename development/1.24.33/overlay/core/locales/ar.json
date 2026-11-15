@@ -1405,6 +1405,7 @@
   "Not sharing": "لا توجد مشاركة",
   "Share my whole screen": "مشاركة شاشتي كاملة",
   "Sharing the whole screen needs the PlazCode app (Windows or Mac) running. PlazCode looks at the tab you're looking at instead.": "لمشاركة الشاشة كاملة يجب أن يكون تطبيق PlazCode (Windows أو Mac) قيد التشغيل. سيعتمد PlazCode على علامة التبويب التي تنظر إليها بدلًا من ذلك.",
+  "{site} is not signed in. Open {site} in your browser, sign in, then ask again.": "{site} غير مسجّل الدخول. افتح {site} في متصفحك وسجّل الدخول، ثم اسأل مجددًا.",
   "Turn on sharing so PlazCode can see your screen.": "شغّل المشاركة حتى يتمكن PlazCode من رؤية شاشتك.",
   "Let PlazCode control this tab": "السماح لـ PlazCode بالتحكم في علامة التبويب هذه",
   "Let PlazCode control my computer": "السماح لـ PlazCode بالتحكم في جهاز الكمبيوتر",
