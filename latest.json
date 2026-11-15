@@ -1,9 +1,75 @@
 {
-  "version": "1.24.31",
-  "desktop_version": "1.24.31",
-  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.31.zip",
-  "sha256": "9a74402d7dbb13191c88bc280165e212c3d3aac27e80bb1e9b3d539574794ca8",
+  "version": "1.24.33",
+  "desktop_version": "1.24.33",
+  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.33.zip",
+  "sha256": "2bfdec916c8cd66b19a16770579fb22c21a6a32573da15e20090a74bb254d990",
   "release_notes": [
+    {
+      "version": "1.24.33",
+      "title": "PlazCode works in your tabs and apps, easy app connections and a fresh look",
+      "summary": "Apps & servers that connect your creative apps for you, helper agents, a fresh look and an easy Linux install.",
+      "added": [
+        "Blender in RobloxScript: models reach Studio at the right size, facing the right way, with colours.",
+        "When the AI works in a tab or desktop app, it glows in your theme colour, shows PlazCode's cursor and a live preview in the chat; moving your mouse takes over.",
+        "Ask PlazCode (Alt+P, or the bar button in AgentScript): a side chat that sees the tab or whole screen you share and can control it when you switch that on.",
+        "New Apps & servers page: connect Blender, Godot, Unity, Figma and Blockbench with a checklist that ticks itself off.",
+        "PlazCode adds its own helpers to Blender, Unity, Figma and Blockbench and removes them on disconnect. Blender can also run in the background with safe mode on.",
+        "Guided browser extension setup on every system: PlazCode opens the extensions page and shows the folder to load.",
+        "Linux: install with one line, curl -fsSL https://raw.githubusercontent.com/stoveez/PlazCode/main/install-linux.sh | sh . It adds itself to your app menu and updates itself. Roblox Studio through Vinegar is experimental.",
+        "Helper agents: the AI can start up to two extra chats to work on parts of a task at once.",
+        "Several commands per reply: reads run together, changes run in order.",
+        "A fresh app look with grouped pages, smoother page changes, glow and a theme builder.",
+        "Mac: now opens on macOS 10.15 Catalina too. Memory search needs macOS 12; on Catalina, use Firefox.",
+        "A redesigned PlazCode bar, settings menu (tabs and search), toolbar popup and Ask PlazCode panel that match the app's look and follow its Feel settings."
+      ],
+      "improved": [],
+      "fixed": [
+        "Notion: commands right after a sentence run again instead of sticking on processing.",
+        "DeepSeek, Qwen, Kimi and similar sites: the startup check no longer fails. Kimi's command card now appears at startup instead of raw JSON.",
+        "Freebuff: the bar no longer gets stuck on \"Starting\" or \"Freebuff is writing\" after PlazCode is ready, and sits on the right chat box in Code and Chat mode.",
+        "Gemini: the command card lines up with the reply. The bar keeps its buttons on one row on narrower chat boxes.",
+        "Ask PlazCode's background chat window stays minimised while it opens.",
+        "Commands no longer wait on the link between the extension and the app.",
+        "AI sites' own console errors are no longer listed as PlazCode errors on the browser's extensions page."
+      ],
+      "notes": [
+        "Update the PlazCode app and the extension together (the app's updater does this).",
+        "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***PlazCode can now work in your tabs and apps while you watch, plus easy app connections and a fresh look.***",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "Ask PlazCode (Alt+P, or the bar button in AgentScript): a side chat that sees your tab or screen and can control it if you allow it.",
+              "When the AI works in a tab or app, it glows in your theme colour with PlazCode's cursor and a live preview in the chat. Move your mouse to take over.",
+              "Apps & servers: connect Blender, Godot, Unity, Figma and Blockbench with a checklist that ticks itself off. Guided extension setup too.",
+              "Blender works in RobloxScript too. Models reach Studio at the right size, facing the right way, with colours.",
+              "Linux: one-line install with automatic updates: curl -fsSL https://raw.githubusercontent.com/stoveez/PlazCode/main/install-linux.sh | sh (Studio via Vinegar: experimental)",
+              "A redesigned PlazCode bar, settings menu and toolbar popup that match the app.",
+              "Helper agents, several commands per reply, and Mac support from macOS 10.15 (memory search needs 12)."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Startup works again on Notion, DeepSeek, Qwen and Kimi (Kimi shows its command card).",
+              "Freebuff no longer sticks on \"Starting\" or \"Freebuff is writing\".",
+              "Gemini's command card lines up; the bar stays on one row.",
+              "Commands no longer wait on the link to the app."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Automated tests on Windows, Mac and Linux. The Kimi/Freebuff fixes and tab control are not yet re-tried on the real sites. Report anything odd.",
+              "Windows is unsigned and Mac is not notarized, as before."
+            ]
+          }
+        ]
+      }
+    },
     {
       "version": "1.24.31",
       "title": "Startup, sign-in and ChatGPT fixes",
@@ -214,54 +280,16 @@
           }
         ]
       }
-    },
-    {
-      "version": "1.24.20",
-      "title": "ClickUp Ask Brain connects again",
-      "summary": "Fixes Start Agent on ClickUp's Ask Brain, which used to stop right after the AI's first reply and never finish connecting. Nothing else changes.",
-      "added": [],
-      "improved": [],
-      "fixed": [
-        "Start Agent now finishes connecting in a new ClickUp Ask Brain chat. Before, PlazCode stopped about a second after Brain's first reply, the bar said \"Not connected to this chat yet\", and the rest of the setup was never sent.",
-        "Why it happened: ClickUp changes the page address as soon as a new chat gets its first message, and PlazCode took that for a different chat. It now treats it as the same chat.",
-        "Everything else is unchanged: other AI sites, ClickUp agent chats, and your settings, memory and connections."
-      ],
-      "notes": [
-        "Tried on a real ClickUp Ask Brain chat in AgentScript mode: all five setup steps went through and PlazCode reported it was ready. Before the fix, the same test stopped after the first reply.",
-        "ClickUp agent chats and Firefox were not changed and were not tried on a live account. Automated tests on Windows, Mac and Linux must pass before this is published.",
-        "The Windows app is unsigned and the Mac app is not notarized, as in earlier versions. Your computer may ask you to confirm opening it."
-      ],
-      "github": {
-        "summary": "Fixes Start Agent on ClickUp's Ask Brain, which stopped right after the AI's first reply and never finished connecting.",
-        "sections": [
-          {
-            "title": "🛠️ What's fixed",
-            "items": [
-              "Start Agent now finishes connecting in a new ClickUp Ask Brain chat. Before, it stopped a second after Brain's first reply and said \"Not connected to this chat yet\".",
-              "ClickUp changes the page address when a new chat gets its first message, and PlazCode mistook that for a different chat. It now knows it is the same chat.",
-              "Nothing else changes: other AI sites, ClickUp agent chats, and your settings, memory and connections stay as they were."
-            ]
-          },
-          {
-            "title": "🧪 What was checked",
-            "items": [
-              "Tried on a real ClickUp Ask Brain chat: all five setup steps went through and PlazCode said it was ready. The same test failed before the fix.",
-              "ClickUp agent chats and Firefox were not changed and not tried on a live account.",
-              "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
-            ]
-          }
-        ]
-      }
     }
   ],
   "platforms": {
     "macos": {
-      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.31.zip",
-      "sha256": "77b99c260a04956bc3a002d2be5e1b351ed83cca2e4bd530872587962e7b687b"
+      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.33.zip",
+      "sha256": "1bd6670e33650418ea68c5353b7cd905ff72b45b017bf970f66a980f47b8dc0f"
     }
   },
   "security": {
-    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.31\",\"platform\":\"windows\",\"sha256\":\"9a74402d7dbb13191c88bc280165e212c3d3aac27e80bb1e9b3d539574794ca8\"}",
-    "signature": "2c41f4f71c5224af389503159f9b28f21c7c527e0ab3693733ef9bd5d42d3dfd03abd53e6c0d13e7a6b077441f15631f054926f77419cf19495cd30ad788eb03"
+    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.33\",\"platform\":\"windows\",\"sha256\":\"2bfdec916c8cd66b19a16770579fb22c21a6a32573da15e20090a74bb254d990\"}",
+    "signature": "0ce6915cf0686a266504c118fa0fa7b5772efde0a6f7699aa5fe317afc43bbac42811065cd7de7a1dc97b54fa082bd860ac1b6cfddee3073096b99c205e62f0d"
   }
 }
