@@ -19,7 +19,10 @@
   "improved": [],
   "fixed": [
     "Notion: commands right after a sentence run again instead of sticking on processing.",
-    "DeepSeek, Qwen, Kimi and similar sites: the startup check no longer fails.",
+    "DeepSeek, Qwen, Kimi and similar sites: the startup check no longer fails. Kimi's command card now appears at startup instead of raw JSON.",
+    "Freebuff: the bar no longer gets stuck on \"Starting\" or \"Freebuff is writing\" after PlazCode is ready, and sits on the right chat box in Code and Chat mode.",
+    "Gemini: the command card lines up with the reply. The bar keeps its buttons on one row on narrower chat boxes.",
+    "Ask PlazCode's background chat window stays minimised while it opens.",
     "Commands no longer wait on the link between the extension and the app.",
     "AI sites' own console errors are no longer listed as PlazCode errors on the browser's extensions page."
   ],
@@ -45,16 +48,16 @@
       {
         "title": "🛠️ What's fixed",
         "items": [
-          "Notion: commands right after a sentence run again.",
-          "DeepSeek, Qwen, Kimi and similar sites: the startup check works again.",
-          "Commands no longer wait on the link to the app.",
-          "AI sites' own errors no longer show as PlazCode errors."
+          "Startup works again on Notion, DeepSeek, Qwen and Kimi (Kimi shows its command card).",
+          "Freebuff no longer sticks on \"Starting\" or \"Freebuff is writing\".",
+          "Gemini's command card lines up; the bar stays on one row.",
+          "Commands no longer wait on the link to the app."
         ]
       },
       {
         "title": "🧪 What was checked",
         "items": [
-          "Automated tests on Windows, Mac and Linux. Tab and screen control tested on practice pages, not on every real site or a real Mac yet. Please report anything odd.",
+          "Automated tests on Windows, Mac and Linux. The Kimi/Freebuff fixes and tab control are not yet re-tried on the real sites. Report anything odd.",
           "Windows is unsigned and Mac is not notarized, as before."
         ]
       }
