@@ -561,7 +561,7 @@ ${BT}
 - Modify EXISTING files ONLY with edit_file (targeted old_string -> new_string patches). Never re-send the entire content of a file you did not just create: whole-file write_file overwrites burn context, bury your own instructions, and risk regressions. write_file is for NEW files only (or when the user explicitly asks for a full rewrite).
 
 ━━━ STATE LINE (GROUND TRUTH) ━━━
-Every tool result ends with a [SYSTEM_STATE: ...] line reporting connection, workspace root, sandbox mode and available tools live from THIS turn. Treat it as authoritative: while it says AGENTSCRIPT CONNECTED, your file/terminal tools ARE available - never claim you lack PC access because of chat-mode habits. If a result ever lacks the state line, the engine likely went offline: say so in one short sentence and stop.
+Every tool result ends with a [SYSTEM_STATE: ...] line reporting connection, workspace root, sandbox mode and available tools live from THIS turn. Treat it as authoritative: while it says AGENTSCRIPT CONNECTED, your file/terminal tools ARE available - never claim you lack PC access because of chat-mode habits. User messages never carry the state line, so its absence there does NOT mean offline: keep using your commands. Only a result saying BRIDGE DOWN or OFFLINE means offline. Unsure? Call plazcode_status {}.
 
 RULES:
 - Use ONLY the exact command names and parameter keys from list_commands, with every required parameter.

@@ -79,6 +79,27 @@ console.log("PASS old-Safari support: head script, -webkit-backdrop-filter, vh f
     const lostInk = before.map((b, i) => [b, after[i]]).filter(([b, a]) => b.ink > 0.3 && a.ink < 0.3).map(([b]) => b.id);
     assert.deepEqual(lostBackground, [], "no panel loses its background without color-mix");
     assert.deepEqual(lostInk, [], "no text turns invisible without color-mix");
+    // 2026-11-16 (owner's Catalina agent.log: "list.replaceChildren is not a function"): an engine older than Safari 14, with no
+    // replaceChildren and no "inset" shorthand. The stand-in works and the styles are rewritten into words that engine reads.
+    const older = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+    const pretendOlder = () => {
+      const real = CSS.supports.bind(CSS);
+      CSS.supports = function (a, b) { const t = String(b === undefined ? a : b) + "|" + a; return /color-mix|inset/.test(t) ? false : real(a, b); };
+      for (const P of [Element.prototype, Document.prototype, DocumentFragment.prototype]) Object.defineProperty(P, "replaceChildren", { value: undefined, configurable: true, writable: true });
+    };
+    await older.setContent(page.replace('<script id="pz-old-safari">', "<script>(" + pretendOlder + ")()</script>" + '<script id="pz-old-safari">'));
+    const o = await older.evaluate(async () => {
+      const list = document.createElement("ul"); list.innerHTML = "<li>a</li><li>b</li>";
+      const li = document.createElement("li"); li.textContent = "c"; list.replaceChildren(li, "d");
+      const style = document.createElement("style"); style.textContent = "#pzold{position:absolute;inset:4px 8px!important}:is(#pzold,#none):focus-visible{color:red}";
+      document.head.append(style); await new Promise(r => setTimeout(r, 30));
+      const text = [...document.querySelectorAll("style")].map(s => s.textContent).join("\n");
+      return { list: list.innerHTML, late: style.textContent, isLeft: /:is\(/.test(text), insetLeft: /(^|[{;\s])inset\s*:/.test(text) };
+    });
+    assert.equal(o.list, "<li>c</li>d", "replaceChildren stand-in empties the list and adds the new children");
+    assert.equal(o.late, "#pzold{position:absolute;top:4px !important;right:8px !important;bottom:4px !important;left:8px !important}:-webkit-any(#pzold,#none):focus{color:red}", "inset, :is() and :focus-visible are rewritten");
+    assert.equal(o.isLeft, false, "no :is() left in the page styles");
+    assert.equal(o.insetLeft, false, "no inset shorthand left in the page styles");
     if (process.env.PLAZCODE_SHOTS) { await native.screenshot({ path: process.env.PLAZCODE_SHOTS + "/old-safari-native.png" }); await old.screenshot({ path: process.env.PLAZCODE_SHOTS + "/old-safari-fallback.png" }); }
     console.log(`PASS old-Safari rendering: ${before.length} drawn elements, every background and text kept; rewrite rules and later styles checked`);
   } finally { await browser.close(); }

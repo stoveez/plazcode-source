@@ -1441,10 +1441,23 @@ html[data-desktop-gradients=off] .cn-ico{background:rgb(var(--pz-rgb,233 186 83)
    (with its transparency where the colour allows it), so panels keep their backgrounds and text stays readable.
    Engines with color-mix (Windows, Linux, macOS 12+ and current browsers) skip all of this. */
 (function(){
+  /* 2026-11-16 (owner's agent.log from a Catalina Mac): "list.replaceChildren is not a function", so the window's script stopped
+     and no button worked. That engine is older than Safari 14, so replaceChildren (Safari 14) is added here, and on an engine
+     without the CSS "inset" shorthand (Safari 14.1) the page's styles are also rewritten into words that engine understands:
+     inset becomes top/right/bottom/left, :is() becomes :-webkit-any(), :focus-visible becomes :focus and dvh becomes vh.
+     Newer engines skip every rewrite. */
+  function addReplaceChildren(proto){if(proto&&!proto.replaceChildren){try{proto.replaceChildren=function(){while(this.lastChild)this.removeChild(this.lastChild);for(var i=0;i<arguments.length;i++){var x=arguments[i];this.appendChild(typeof x=='string'?document.createTextNode(x):x);}};}catch(e){}}}
+  addReplaceChildren(window.Element&&Element.prototype);addReplaceChildren(window.Document&&Document.prototype);addReplaceChildren(window.DocumentFragment&&DocumentFragment.prototype);
   var c=window.crypto;
   if(c&&c.getRandomValues&&!c.randomUUID){try{c.randomUUID=function(){var b=c.getRandomValues(new Uint8Array(16)),h='';b[6]=b[6]&15|64;b[8]=b[8]&63|128;for(var i=0;i<16;i++){h+=(b[i]+256).toString(16).slice(1);if(i==3||i==5||i==7||i==9)h+='-';}return h;};}catch(e){}}
-  var native=false;try{native=!!(window.CSS&&CSS.supports&&CSS.supports('color','color-mix(in srgb, red 50%, blue)'));}catch(e){}
-  if(native)return;
+  var native=false,modern=false;try{native=!!(window.CSS&&CSS.supports&&CSS.supports('color','color-mix(in srgb, red 50%, blue)'));modern=!!(window.CSS&&CSS.supports&&CSS.supports('inset','0px'));}catch(e){}
+  if(native&&modern)return;
+  function sides(v){var imp=/!important\s*$/i.test(v)?' !important':'';v=v.replace(/!important\s*$/i,'').trim();var p=split(v,false);if(!p.length)return null;var t=p[0],r=p[1]||t,b=p[2]||t,l=p[3]||r;return 'top:'+t+imp+';right:'+r+imp+';bottom:'+b+imp+';left:'+l+imp;}
+  function legacy(t){
+    t=t.replace(/(^|[{;\s])inset\s*:\s*([^;{}]+)/g,function(all,lead,v){var x=sides(v);return x?lead+x:all;});
+    t=t.replace(/:is\(/g,':-webkit-any(').replace(/:focus-visible/g,':focus').replace(/(\d)dvh\b/g,'$1vh');
+    return t;
+  }
   function close(t,i){for(var d=0;i<t.length;i++){var ch=t.charAt(i);if(ch=='(')d++;else if(ch==')'&&--d==0)return i;}return -1;}
   function split(t,comma){var out=[],d=0,start=0;for(var i=0;i<t.length;i++){var ch=t.charAt(i);if(ch=='(')d++;else if(ch==')')d--;else if(d==0&&(comma?ch==',':/\s/.test(ch))){out.push(t.slice(start,i));start=i+1;}}out.push(t.slice(start));return out.map(function(x){return x.trim();}).filter(function(x){return x;});}
   function part(t){var words=split(t,false),last=words[words.length-1]||'',weight=null;if(words.length>1&&/^-?[\d.]+%$/.test(last)){weight=parseFloat(last);words.pop();}else if(words.length>1&&/^calc\(/i.test(last)){weight=NaN;words.pop();}return {color:words.join(' '),weight:weight};}
@@ -1460,7 +1473,7 @@ html[data-desktop-gradients=off] .cn-ico{background:rgb(var(--pz-rgb,233 186 83)
     return !known||a.weight>=b.weight?a.color:b.color;
   }
   function rewrite(t){var out='',i=0,k;while((k=t.indexOf('color-mix(',i))>=0){var end=close(t,k+9);if(end<0)break;out+=t.slice(i,k)+mix(rewrite(t.slice(k+10,end)));i=end+1;}return out+t.slice(i);}
-  function fix(node){if(node&&node.nodeName=='STYLE'&&node.textContent.indexOf('color-mix(')>=0)node.textContent=rewrite(node.textContent);}
+  function fix(node){if(!node||node.nodeName!='STYLE')return;var t=node.textContent;if(node.__pzDone===t)return;var out=t;if(!native&&out.indexOf('color-mix(')>=0)out=rewrite(out);if(!modern)out=legacy(out);node.__pzDone=out;if(out!==t)node.textContent=out;}
   window.__plazcodeColorMixFallback=rewrite;
   var styles=document.getElementsByTagName('style');for(var n=0;n<styles.length;n++)fix(styles[n]);
   try{new MutationObserver(function(list){list.forEach(function(change){fix(change.target.nodeType==3?change.target.parentNode:change.target);for(var j=0;j<change.addedNodes.length;j++){var node=change.addedNodes[j];fix(node);if(node.getElementsByTagName){var inner=node.getElementsByTagName('style');for(var x=0;x<inner.length;x++)fix(inner[x]);}}});}).observe(document.documentElement,{childList:true,subtree:true,characterData:true});}catch(e){}
