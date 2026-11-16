@@ -109,9 +109,27 @@ const RSProvider: PlazCodeProvider = (() => {
   // prefix broke the core's anchored matching (e.g. /^Output of '/), so ALL
   // text extraction walks the tree and skips those (and any excluded) subtrees.
   const SR_HIDDEN = ".cdk-visually-hidden, [class*='screen-reader']";
+  // 2026-11-16 (owner: "gemini tends to be laggy/delayed input"): every sweep re-read every turn of the chat through this
+  // node-by-node walk, and typing in the chat box started a sweep. Each result is now remembered per element and reused while
+  // the element's raw text (one fast native read) is unchanged; anything that changes the result (new text, our card, the
+  // screen-reader label) also changes the raw text, so a stale answer is never returned.
+  const textCache = new WeakMap<Element, Map<string, { raw: string; out: string }>>();
   function textWithout(root: Element | null, excludeSel?: string) {
     if (!root) return "";
     const skip = SR_HIDDEN + (excludeSel ? ", " + excludeSel : "");
+    const raw = safeRead(() => root.textContent, null);
+    const known = raw === null ? null : textCache.get(root);
+    const hit = known && known.get(skip);
+    if (hit && hit.raw === raw) return hit.out;
+    const out = walkText(root, skip);
+    if (raw !== null) {
+      const map = known || new Map();
+      map.set(skip, { raw, out });
+      if (!known) safeRead(() => textCache.set(root, map), null);
+    }
+    return out;
+  }
+  function walkText(root: Element, skip: string) {
     let t = "";
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
@@ -805,5 +823,12 @@ const RSProvider: PlazCodeProvider = (() => {
     // actions
     attachImages, clearAttachments, conversationKey,
     installSendHooks, findToolBlockSpot,
+    // 2026-11-16 (owner: laggy typing): typing in the chat box changes only the editor; that never changes a reply, so it no
+    // longer starts a sweep of the whole chat (the 3-second safety sweep and every reply change still run it).
+    ignoreMutationRecords(records) {
+      if (!records || !records.length) return false;
+      const ed = getEditor();
+      return !!ed && records.every((record) => record.target === ed || safeRead(() => ed.contains(record.target), false));
+    },
   };
 })();
