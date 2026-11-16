@@ -286,13 +286,13 @@ select option{background:#10151f;color:#eef4ff;padding:8px 12px}
 select option:checked{background:color-mix(in srgb,var(--orange,#ffbc67) 35%,#10151f);color:#fff}
 .pc-effort-trigger{padding:9px 13px!important;border-radius:11px!important;border:1px solid color-mix(in srgb,var(--orange,#ffbc67) 38%,transparent)!important;font-weight:600;transition:border-color .2s,box-shadow .2s}
 .pc-effort-trigger:hover:not(:disabled){border-color:var(--orange,#ffbc67)!important;box-shadow:0 0 12px color-mix(in srgb,var(--orange,#ffbc67) 25%,transparent)}
-.pc-effort-trigger>span:last-child{font-size:0!important;line-height:0;flex:none;width:7px;height:7px;margin:-3px 3px 0 8px;border:solid var(--orange,#ffbc67);border-width:0 2px 2px 0;transform:rotate(45deg);transition:transform .2s,margin .2s}
-.pc-effort-trigger[aria-expanded=true]>span:last-child{transform:rotate(-135deg);margin-top:3px}
+.pc-effort-trigger>span:nth-child(2){font-size:0!important;line-height:0;flex:none;width:7px;height:7px;margin:-3px 3px 0 8px;border:solid var(--orange,#ffbc67);border-width:0 2px 2px 0;transform:rotate(45deg);transition:transform .2s,margin .2s}
+.pc-effort-trigger[aria-expanded=true]>span:nth-child(2){transform:rotate(-135deg);margin-top:3px}
 .pc-effort-options{padding:6px!important;border-radius:13px!important;border:1px solid color-mix(in srgb,var(--orange,#ffbc67) 35%,transparent)!important;box-shadow:0 14px 34px #0008,0 0 18px color-mix(in srgb,var(--orange,#ffbc67) 14%,transparent)!important}
 .pc-effort-options>button{padding:9px 12px!important;border-radius:9px!important;font-weight:600;transition:background .15s}
 .pc-effort-options>button:hover{background:color-mix(in srgb,var(--orange,#ffbc67) 14%,transparent)!important}
 .pc-effort-options>button[aria-selected=true]{background:color-mix(in srgb,var(--orange,#ffbc67) 22%,transparent)!important;border-color:var(--orange,#ffbc67)!important}
-@media(prefers-reduced-motion:reduce){select,.pc-effort-trigger,.pc-effort-trigger>span:last-child{transition:none}}
+@media(prefers-reduced-motion:reduce){select,.pc-effort-trigger,.pc-effort-trigger>span:nth-child(2){transition:none}}
 
 /* ══ STUDIO LOOK (1.24.33 bar redesign, step 4). Same language as the bar and the app: square panels with a gradient rim,
    lit corner brackets and a diagonal colour sweep; rounded buttons and switches; serif name, spaced mono labels.
@@ -379,7 +379,7 @@ html[data-studio] .work-card.on .work-name{color:var(--st-ink)}
 html[data-studio] .work-card.on .work-sub{color:color-mix(in srgb,var(--st-ink) 70%,var(--st-a))!important}
 html[data-studio] .pc-effort-picker{width:100%;margin-bottom:8px}
 html[data-studio] .pc-effort-trigger{border-radius:10px!important;border:1px solid var(--st-line)!important;background:var(--st-glass),var(--st-card2)!important;color:var(--st-text)!important;font:650 12.5px/1.2 var(--st-sans)!important}
-html[data-studio] .pc-effort-trigger>span:last-child{border-color:var(--st-l)!important}
+html[data-studio] .pc-effort-trigger>span:nth-child(2){border-color:var(--st-l)!important}
 html[data-studio][data-thinking=ultracode] .pc-effort-trigger{border-color:#a879e8!important}
 html[data-studio] .pc-effort-options{border-radius:0!important;border:1px solid transparent!important;border-image:var(--st-rim) 1!important;background:var(--st-panel)!important}
 html[data-studio] .pc-effort-options>button{border-radius:8px!important}

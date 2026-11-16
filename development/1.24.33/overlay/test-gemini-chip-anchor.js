@@ -46,6 +46,42 @@ console.log('PASS Gemini chip anchor checks.');
     });
     assert.equal(r.chipLeft, r.replyLeft, 'card lines up with the reply text ' + JSON.stringify(r));
     assert(r.chipRight <= r.replyRight + 1, 'and is never wider than the reply ' + JSON.stringify(r));
-    console.log('PASS Gemini card lines up with the reply text.');
+    // 2026-11-16 (owner screenshot): a thinking reply has a folded (invisible) <message-content> inside <model-thoughts> before
+    // the real reply. The card must still line up with the real, visible reply text.
+    await page.setContent('<model-response style="display:block;width:900px"><model-thoughts style="display:block"><message-content style="display:none">thinking</message-content></model-thoughts><div class="col" style="display:block"><message-content style="display:block;margin-left:170px;width:700px"><div class="markdown">hi</div></message-content></div></model-response>');
+    await page.addScriptTag({content: src + ';window.P=RSProvider;'});
+    const t = await page.evaluate(() => {
+      const item = document.querySelector('model-response'), anchor = P.chipAnchor(item);
+      const chip = document.createElement('div'); chip.className = 'rs-chip'; chip.style.display = 'block'; chip.textContent = 'list_commands';
+      anchor.insertBefore(chip, anchor.firstChild); P.alignChip(chip, item);
+      const c = chip.getBoundingClientRect(), m = item.querySelector('.col > message-content').getBoundingClientRect();
+      return {chipLeft: Math.round(c.left), replyLeft: Math.round(m.left), inCol: anchor.classList.contains('col')};
+    });
+    assert.equal(t.chipLeft, t.replyLeft, 'with a folded thinking panel the card still lines up with the reply ' + JSON.stringify(t));
+    assert(t.inCol, 'and is placed in the reply column, not the thinking panel ' + JSON.stringify(t));
+    console.log('PASS Gemini card lines up with the reply text (also after a folded thinking panel).');
+    // 2026-11-16, shape read live from gemini.google.com: <message-content> (inline) and the markdown panel span the whole turn,
+    // and each paragraph is centred with its own left margin. The card must line up with the paragraphs, and a turn that is only a
+    // command (its text hidden) must borrow the column from another reply or from a user message.
+    const live = (body) => '<style>body{margin:0}</style><div style="width:1054px"><user-query style="display:block;margin-left:173px;width:708px">Starting Up</user-query>' + body + '</div>';
+    const turn = (para) => '<model-response style="display:block"><div class="container" style="display:block"><message-content style="display:inline"><div class="markdown" style="display:block">' + para + '</div></message-content></div></model-response>';
+    for (const [name, html] of [
+      ['paragraph', live(turn('<p style="margin-left:173px;width:708px">Hello</p>'))],
+      ['command only, borrows another reply', live(turn('<p class="rs-tool-hide">cmd</p>') + turn('<p style="margin-left:173px;width:708px">Hello</p>'))],
+      ['command only, borrows the user message', live(turn('<p class="rs-tool-hide" style="display:none">cmd</p>'))],
+    ]) {
+      await page.setContent(html);
+      await page.addScriptTag({content: src + ';window.P=RSProvider;'});
+      const v = await page.evaluate(() => {
+        const item = document.querySelector('model-response'), anchor = P.chipAnchor(item);
+        const chip = document.createElement('div'); chip.className = 'rs-chip'; chip.style.display = 'block'; chip.textContent = 'list_commands';
+        anchor.insertBefore(chip, anchor.firstChild); P.alignChip(chip, item);
+        const c = chip.getBoundingClientRect();
+        return {chipLeft: Math.round(c.left), chipWidth: Math.round(c.width)};
+      });
+      assert.equal(v.chipLeft, 173, name + ': card starts where the text column starts ' + JSON.stringify(v));
+      assert(v.chipWidth <= 708, name + ': and is no wider than the text column ' + JSON.stringify(v));
+    }
+    console.log('PASS Gemini card lines up with centred paragraphs (live page shape).');
   } finally { await browser.close(); }
 })().catch((e) => { console.error(e); process.exitCode = 1; });

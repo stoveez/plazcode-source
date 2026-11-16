@@ -1,6 +1,6 @@
 ---
 title: Open work and known bugs
-updated: 2026-11-06
+updated: 2026-11-16
 ---
 
 ## Owner field-test list for 1.24.33 (2026-11-11) — each item is NOT verified until the owner has done it
@@ -19,6 +19,7 @@ updated: 2026-11-06
 13. **AgentScript control rework (added 2026-11-13; ships in 1.24.33, owner):** Chrome/Edge/Brave: the glow, label and PlazCode cursor on real websites, no permission warning on the extensions page (the 2026-11-13 morning build had one: fixed), Chrome's "started debugging" bar only while PlazCode works, real clicks and typing, moving your mouse pauses and Resume continues, Stop; the live card and the large view in Chrome's side panel (or the docked window); Ask PlazCode from the bar, the toolbar menu and Alt+P with a real AI site as the background chat; Share my whole screen. Windows: the glow and label windows over the screen, PlazCode's cursor, the person's own mouse or keys pause it. Mac: Accessibility and Screen Recording asked once with the right System Settings page, mouse/keys/pictures/windows work, the mouse pauses it (keys do not on a Mac). Firefox: in-page control and pictures. Translations of the new words (78 sentences, written by the AI).
 14. **App motion (added 2026-11-13, owner):** on Windows and Mac in the real app: the animated theme is clearly moving (also with Windows animation effects off), the sidebar and page-tab highlights glide, sparks on a section or theme pick, and a theme pick fades instead of snapping (a Mac older than Safari 18 changes at once). Check it does not feel heavy on a slow PC.
 15. **PlazCode bar redesign (added 2026-11-13, owner; built, all 5 steps done locally):** field test: the bar, menu and pop-ups on real AI sites (ChatGPT, Claude, Gemini, DeepSeek, Kimi, ClickUp), light sites, narrow windows, Firefox, Arabic (right to left), and the Feel settings reaching the bar from the app.
+16. **Opening an old chat can run its last command (found 2026-11-16, NOT fixed, owner to decide):** on Gemini, with the agent on, opening an older chat from the sidebar ran that chat's last unrun `run_command` on the PC (`autoResume` in `core/main.js`; `bootBaselineId` is only set when a session starts, not when the chat changes). Fixing it moves the resume watchdog into TypeScript (split as you go).
 
 
 2026-11-05 FOLLOW-UP COMPLETE: full CI42146181204/adf89f6 ALL GREEN, official135PASS/0fail; new exact full Windows/universal Mac inner ZIPs delivered through Drive with name/MIME/byte readback. Bridge discovery, strict ChatGPT receipts, namespace correction, safe native append, DeepSeek stream/progress/composer roots fixed. All262JS on all3hosts (Linux twice), nativeWin304/Mac309/Linux311PASS+2ignored, ChatGPT27/installed HTTPS lifecycle/Chromium+Firefox/preservation958/DOM325/healthy70/pins34 PASS. Full app replacement required; extension reload + AI-tab refresh. Prior42078807676 lacks follow-up. No stable publication. Source Private reminder remains until confirmed; owner PC vault not connected. See connection-startup-followup-2026-11-05.md and verification JSON.

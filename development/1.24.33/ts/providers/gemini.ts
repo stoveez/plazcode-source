@@ -656,6 +656,26 @@ const RSProvider: PlazCodeProvider = (() => {
   // a code-block, so hiding the wrapper then fails. The core anchors the chip at
   // the turn level (chipAtItemLevel), so the returned position is unused; this
   // function's real job is applying the .rs-tool-hide classes correctly.
+  // The reply text column of a turn. Read live on 2026-11-16: <message-content> and its markdown panel span the WHOLE turn width
+  // (inline, 1054px), and Gemini centres the text by giving each paragraph a left margin (173px, 708px wide). So the column is
+  // the first laid-out text block inside a reply (outside the thinking panel and our own card). A turn whose own text is all
+  // hidden (a reply that is only a command) borrows the column of another reply, else of a user message (same centred column),
+  // else falls back to the <message-content> box. With `ownOnly`, the turn's first <message-content> outside the thinking panel.
+  function replyColumn(item, ownOnly = false) {
+    const replies = (root) => [...safeQueryAll(root, S.reply)].filter((m) => !safeClosest(m, S.thinking) && !safeClosest(m, ".rs-chip"));
+    const own = replies(item);
+    if (ownOnly) return own[0] || null;
+    const shown = (el) => { const r = safeRect(el); return r.width > 0 && r.height > 0; };
+    const textBlock = (mc) => {
+      const panel = safeQuery(mc, ".markdown") || mc;
+      return [...safeRead(() => panel.children, [])].find((el) => !safeClosest(el, ".rs-chip") && !safeRead(() => el.classList.contains("rs-tool-hide"), false) && shown(el)) || null;
+    };
+    for (const mc of own) { const t = textBlock(mc); if (t) return t; }
+    for (const mc of replies(document)) { const t = textBlock(mc); if (t) return t; }
+    const user = [...safeQueryAll(document, S.userItem)].find((u) => shown(u));
+    if (user) return user;
+    return own.find((m) => safeRect(m).width > 0) || null;
+  }
   const CMD_SHAPE = /"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i;
   function findToolBlockSpot(item /*, chip */) {
     const replies = [...safeQueryAll(item, S.reply)].filter((m) => !safeClosest(m, S.thinking));
@@ -719,19 +739,29 @@ const RSProvider: PlazCodeProvider = (() => {
     // and its buttons, because Gemini indents the reply itself (margins on <message-content> and its wrappers), not the
     // column. The card is moved right by the same amount so its left edge lines up with the reply text, and never wider
     // than the reply. Runs every time the card is placed, so a re-render or a window resize is followed.
+    // 2026-11-16 (owner screenshot, published 1.24.33): the cards still started at the page edge. The first <message-content>
+    // in a turn can be the one inside the (folded, invisible) thinking panel, so the measurement read 0 and nothing moved.
+    // Now the reply column is the turn's first VISIBLE reply outside the thinking panel, else any visible reply on the page
+    // (all turns share one column), and the card retries for a few seconds when nothing is laid out yet.
     alignChip(chip, item) {
-      const mc = item ? safeQuery(item, S.reply) : null;
-      if (!chip || !mc) return;
+      if (!chip || !item) return;
+      const mc = replyColumn(item);
       chip.style.marginLeft = "";
-      const cr = safeRect(chip), mr = safeRect(mc);
-      if (!cr.width || !mr.width) return;
+      const cr = safeRect(chip), mr = mc ? safeRect(mc) : null;
+      if (!cr.width || !mr || !mr.width) {
+        const tries = (chip.__rsAlignTries || 0) + 1;
+        chip.__rsAlignTries = tries;
+        if (tries <= 8) setTimeout(() => { try { if (chip.isConnected) this.alignChip(chip, item); } catch {} }, 500);
+        return;
+      }
+      chip.__rsAlignTries = 0;
       const shift = Math.round(mr.left - cr.left);
       if (shift > 2 && shift < 800) { chip.style.marginLeft = shift + "px"; chip.style.maxWidth = Math.round(mr.width) + "px"; }
       else chip.style.maxWidth = "";
     },
     chipAnchor(item) {
       try {
-        const mc = item.querySelector(S.reply);
+        const mc = replyColumn(item, true) || safeQuery(item, S.reply);
         for (let el = mc && mc.parentElement; el && el !== item && item.contains(el); el = el.parentElement) {
           if (el.closest(".rs-chip")) break;
           const cs = getComputedStyle(el), d = cs.display || "";
