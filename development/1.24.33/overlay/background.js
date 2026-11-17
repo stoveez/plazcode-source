@@ -3864,8 +3864,12 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
     if (Number.isInteger(m.watch)) port.watch = m.watch;
     if (port.watch === -1 && m.action) { bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: m.action }) }).catch(() => {}); return; }
     if (m.action === "stop" && Number.isInteger(port.watch)) { controlEvent({ event: "stop" }, { tab: { id: port.watch }, id: chrome.runtime.id }); chrome.scripting.executeScript({ target: { tabId: port.watch }, func: () => globalThis.__plazcodeControl && globalThis.__plazcodeControl.hide() }).catch(() => {}); }
-    if (m.action === "pause" && Number.isInteger(port.watch)) { const row = controlTabs.get(port.watch); if (row) row.paused = true; }
-    if (m.action === "resume" && Number.isInteger(port.watch)) { const row = controlTabs.get(port.watch); if (row) row.paused = false; }
+    // 2026-11-17 (owner: "when you press Resume it immediately goes back to Pause"): Resume here only cleared this flag; the
+    // layer in the tab stayed paused, and the next action read "paused" from it (show() below) and paused again. Tell the layer.
+    if ((m.action === "pause" || m.action === "resume") && Number.isInteger(port.watch)) {
+      const row = controlTabs.get(port.watch); if (row) row.paused = m.action === "pause";
+      chrome.scripting.executeScript({ target: { tabId: port.watch }, args: [m.action], func: (a) => { const c = globalThis.__plazcodeControl; if (c && typeof c[a] === "function") c[a](); } }).catch(() => {});
+    }
   });
   port.onDisconnect.addListener(() => controlViewers.delete(port));
 });

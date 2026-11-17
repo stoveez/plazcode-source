@@ -64,6 +64,17 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
     assert(reply.ok && reply.result.clicked, 'after Resume the waiting click goes ahead: ' + JSON.stringify(reply));
     assert.equal(await shop.evaluate(() => window.clicks), before + 1);
 
+    // Resume pressed in the live view (not in the tab): the layer in the tab follows, so the next action does not pause again.
+    await shop.mouse.move(310, 310); await shop.mouse.move(360, 330);
+    await worker.evaluate(async () => { for (let i = 0; i < 40; i++) { if ([...controlTabs.values()].some((r) => r.paused)) return; await new Promise((r) => setTimeout(r, 50)); } });
+    assert((await look()).paused, 'paused again by the real mouse');
+    await worker.evaluate(async (tabId) => { const row = controlTabs.get(tabId); row.paused = false; await chrome.scripting.executeScript({ target: { tabId }, args: ['resume'], func: (a) => globalThis.__plazcodeControl[a]() }); }, ids.shop);
+    assert.equal((await look()).paused, false, 'the layer in the tab follows Resume from the live view');
+    reply = await act('click', { selector: '#buy' });
+    assert(reply.ok && reply.result.clicked, 'the next action goes ahead instead of pausing again: ' + JSON.stringify(reply));
+    const bg = fs.readFileSync(path.join(root, 'PlazCode-Extension', 'background.js'), 'utf8');
+    assert(/m\.action === "pause" \|\| m\.action === "resume"\) && Number\.isInteger\(port\.watch\)/.test(bg) && /c\[a\]\(\)/.test(bg), 'the live view tells the tab layer');
+
     // Escape in the tab (real key) is Stop: the AI chat that worked there is told to stop, and new actions are refused.
     await shop.keyboard.press('Escape');
     await worker.evaluate(async () => { for (let i = 0; i < 40 && !self.__stops.length; i++) await new Promise((r) => setTimeout(r, 50)); });

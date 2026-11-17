@@ -45,7 +45,7 @@
   <svg class="cursor" viewBox="0 0 26 26" aria-hidden="true"><path d="M3 2l19 9.5-8.2 2.3L10 22z" fill="var(--a)" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>
 </div>`;
   const frame = root.querySelector(".frame"), text = root.querySelector(".text"), cursor = root.querySelector(".cursor"), stopButton = root.querySelector(".stop");
-  const state = { active: false, paused: false, stopped: false, x: -100, y: -100, idle: 0, expectUntil: 0 };
+  const state = { active: false, paused: false, stopped: false, x: -100, y: -100, idle: 0, expectUntil: 0, settleUntil: 0, settleCap: 0 };
   // Step 7: the words in the person's PlazCode language (the AI tab or the Ask PlazCode panel translates them;
   // the page this runs in never sees PlazCode's language files). English until words arrive.
   const words = { working: "PlazCode is working here", paused: "Paused, you're in control", resume: "Resume", stop: "Stop", shared: "Shared with PlazCode", stopSharing: "Stop sharing" };
@@ -69,6 +69,11 @@
   function personal(event) {
     if (!state.active || state.paused || !event.isTrusted || Date.now() < state.expectUntil) return false;
     if (event.composedPath && event.composedPath().includes(host)) return false;
+    // 2026-11-17 (owner: "when you press Resume it immediately goes back to Pause"): moving the mouse away from Resume paused
+    // again at once. Right after Resume, input only keeps a short window open; it ends once the mouse rests (0.7 s) and
+    // never later than 4 s after Resume. The same rule is in the app (agent/src/desktop_control.rs).
+    const now = Date.now();
+    if (now < state.settleUntil && now < state.settleCap) { state.settleUntil = Math.min(now + 700, state.settleCap); return false; }
     if (event.type === "pointermove" || event.type === "mousemove") return Math.abs(event.movementX || 0) + Math.abs(event.movementY || 0) > 2;
     return true;
   }
@@ -82,7 +87,8 @@
     if (state.sharing && !state.active) { api.share(false); tell("stop_share"); return; }
     api.hide(); state.stopped = true; tell("stop");
   });
-  root.querySelector(".resume").addEventListener("click", (event) => { if (!event.isTrusted) return; setPaused(false); tell("resume"); });
+  const resumeHere = () => { const now = Date.now(); state.settleUntil = now + 1500; state.settleCap = now + 4000; setPaused(false); };
+  root.querySelector(".resume").addEventListener("click", (event) => { if (!event.isTrusted) return; resumeHere(); tell("resume"); });
   const api = {
     show(options) {
       const o = options || {};
@@ -112,6 +118,10 @@
     press() { cursor.classList.add("press"); cursor.style.transform = `translate(${state.x}px,${state.y}px) scale(.82)`; setTimeout(() => { cursor.style.transform = `translate(${state.x}px,${state.y}px)`; cursor.classList.remove("press"); }, 140); idle(); },
     // Hidden for the moment a picture of the tab is taken, so the AI sees the page, not PlazCode's glow.
     veil(on) { host.style.visibility = on ? "hidden" : "visible"; return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); },
+    // Resume / Pause pressed somewhere else (the live view, Ask PlazCode): the layer in the tab follows, so the next action
+    // does not read "paused" from it and pause PlazCode again (owner, 2026-11-17).
+    resume() { if (state.paused) resumeHere(); return api.state(); },
+    pause() { if (state.active && !state.paused) setPaused(true); return api.state(); },
     expect(ms) { state.expectUntil = Date.now() + Math.max(0, Math.min(5000, Number(ms) || 0)); },
     hide() { if (state.sharing) { state.active = false; clearTimeout(state.idle); setPaused(false); api.share(true); cursor.classList.remove("seen"); return; } state.active = false; clearTimeout(state.idle); setPaused(false); clearTimeout(state.idle); frame.classList.remove("on"); cursor.classList.remove("seen"); },
     // "Shared with PlazCode": the quiet mark while this tab is shared in Ask PlazCode (no glow, no cursor).

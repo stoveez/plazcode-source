@@ -38,10 +38,20 @@ pub struct State {
     pub expect_until: Option<Instant>,
     /// Step 6: the whole screen is shared in Ask PlazCode (kept alive by the panel; ends by itself 30 s after its last word).
     pub sharing_until: Option<Instant>,
+    /// 2026-11-17 (owner: "when you press Resume it immediately goes back to Pause"): the click on Resume and the mouse
+    /// moving away from it are the person's own input, and paused PlazCode again at once. Right after Resume, input only
+    /// keeps this window open (it ends once the mouse has rested a moment, and never later than `settle_cap`).
+    pub settle_until: Option<Instant>,
+    pub settle_cap: Option<Instant>,
     /// Step 7: the label's words in the person's PlazCode language (working, paused, resume, stop), from the
     /// extension; empty = English.
     pub words: [String; 4],
 }
+
+/// After Resume: input in the first moment, and input that keeps coming without a rest, is the person finishing the click.
+const RESUME_SETTLE: Duration = Duration::from_millis(1500);
+const RESUME_REST: Duration = Duration::from_millis(700);
+const RESUME_SETTLE_MAX: Duration = Duration::from_secs(4);
 
 /// What `enter` decides at one moment.
 #[derive(Debug, PartialEq, Eq)]
@@ -60,13 +70,20 @@ impl State {
     /// Real input from the person while PlazCode is in control: pause (unless it is PlazCode's own input).
     pub fn person_input(&mut self, now: Instant) -> bool {
         if !self.active(now) || self.paused || self.expecting(now) { return false; }
+        if let (Some(until), Some(cap)) = (self.settle_until, self.settle_cap) {
+            if now < until && now < cap {
+                self.settle_until = Some((now + RESUME_REST).min(cap));
+                return false;
+            }
+        }
+        self.settle_until = None; self.settle_cap = None;
         self.paused = true;
         true
     }
     pub fn act(&mut self, action: &str, now: Instant) -> Result<(), String> {
         match action {
             "stop" => { self.paused = false; self.stopped_at = Some(now); self.active_until = None; Ok(()) }
-            "resume" => { self.paused = false; if self.active(now) || self.active_until.is_some() { self.active_until = Some(now + IDLE_END); } Ok(()) }
+            "resume" => { self.paused = false; self.settle_until = Some(now + RESUME_SETTLE); self.settle_cap = Some(now + RESUME_SETTLE_MAX); if self.active(now) || self.active_until.is_some() { self.active_until = Some(now + IDLE_END); } Ok(()) }
             "pause" => { if self.active(now) { self.paused = true; } Ok(()) }
             "share" => { self.sharing_until = Some(now + Duration::from_secs(30)); Ok(()) }
             "unshare" => { self.sharing_until = None; Ok(()) }
@@ -84,7 +101,7 @@ impl State {
     }
 }
 
-static STATE: Mutex<State> = Mutex::new(State { active_until: None, paused: false, stopped_at: None, accent: String::new(), ai_point: None, expect_until: None, sharing_until: None, words: [String::new(), String::new(), String::new(), String::new()] });
+static STATE: Mutex<State> = Mutex::new(State { active_until: None, paused: false, stopped_at: None, accent: String::new(), ai_point: None, expect_until: None, sharing_until: None, settle_until: None, settle_cap: None, words: [String::new(), String::new(), String::new(), String::new()] });
 pub fn with<T>(f: impl FnOnce(&mut State) -> T) -> T { f(&mut STATE.lock().unwrap_or_else(|e| e.into_inner())) }
 
 /// Before a desktop command: refuse, wait for the person, or go (and mark control as active).
@@ -272,6 +289,21 @@ mod tests {
         assert!(s.sharing(t + Duration::from_secs(29)) && !s.sharing(t + Duration::from_secs(31)) && !s.active(t));
         assert!(!s.person_input(t), "sharing is not control: moving the mouse pauses nothing");
         s.act("unshare", t).unwrap(); assert!(!s.sharing(t));
+    }
+    #[test] fn resume_is_not_undone_by_the_click_on_resume_or_moving_the_mouse_away() {
+        let t = Instant::now(); let ms = |n: u64| t + Duration::from_millis(n);
+        let mut s = State::default();
+        s.mark_active(t);
+        assert!(s.person_input(ms(100)) && s.paused);
+        s.act("resume", ms(1000)).unwrap();
+        assert!(!s.person_input(ms(1050)), "the click on Resume itself does not pause");
+        for n in (1100..=2600).step_by(100) { assert!(!s.person_input(ms(n)), "moving the mouse away right after Resume does not pause ({n} ms)"); }
+        assert!(!s.paused);
+        assert!(s.person_input(ms(3600)) && s.paused, "after the mouse rested, moving it takes over again");
+        // Endless movement after Resume still takes over after the cap.
+        s.act("resume", ms(4000)).unwrap();
+        for n in (4100..8000).step_by(100) { assert!(!s.person_input(ms(n)), "still settling at {n} ms"); }
+        assert!(s.person_input(ms(8100)) && s.paused, "the settle window never lasts more than 4 s");
     }
     #[test] fn the_look_script_carries_page_points_and_never_more_than_it_needs() {
         let look = Look { paused: true, accent: "#16a34a".into(), point: Some((2120, 340)), words: ENGLISH.map(String::from) };
