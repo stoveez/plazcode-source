@@ -23,7 +23,7 @@ pub fn enabled() -> bool {
 
 /// Desktop commands that act on, or look at, the person's screen.
 pub fn is_desktop_tool(name: &str) -> bool {
-    matches!(name, "mouse_move" | "mouse_click" | "key_type" | "focus_window" | "launch_app" | "screen_capture" | "screen_record" | "window_screenshot" | "list_windows")
+    matches!(name, "mouse_move" | "mouse_click" | "key_type" | "focus_window" | "launch_app" | "screen_capture" | "screen_record" | "window_screenshot" | "list_windows" | "app_do")
 }
 
 #[derive(Debug, Default)]
@@ -333,7 +333,7 @@ mod tests {
         assert!(with(|s| s.words.iter().all(String::is_empty)));
     }
     #[test] fn only_desktop_commands_go_through_the_gate_and_it_is_on_for_windows_and_mac() {
-        for name in ["mouse_move", "mouse_click", "key_type", "focus_window", "launch_app", "screen_capture", "window_screenshot", "list_windows"] { assert!(is_desktop_tool(name), "{name}"); }
+        for name in ["mouse_move", "mouse_click", "key_type", "focus_window", "launch_app", "screen_capture", "window_screenshot", "list_windows", "app_do"] { assert!(is_desktop_tool(name), "{name}"); }
         for name in ["read_file", "write_file", "run_command", "tab_click_at"] { assert!(!is_desktop_tool(name), "{name}"); }
         if std::env::var("PLAZCODE_CONTROL_V2").is_err() { assert_eq!(enabled(), cfg!(any(windows, target_os = "macos"))); assert_eq!(status().is_null(), !enabled()); }
         set_accent("javascript:"); set_accent("#12ab3"); assert_eq!(with(|s| s.accent.clone()), "");

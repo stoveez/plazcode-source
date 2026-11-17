@@ -1215,7 +1215,7 @@ fn child_cwd(path: &Path) -> PathBuf {
 }
 
 #[cfg(windows)]
-fn windows_powershell_path() -> String {
+pub(crate) fn windows_powershell_path() -> String {
     std::env::var("SystemRoot").ok()
         .map(|root| Path::new(&root).join("System32").join("WindowsPowerShell").join("v1.0").join("powershell.exe"))
         .filter(|path| path.is_file())
@@ -1508,7 +1508,7 @@ pub async fn tool_process_list(ws: &Workspace, args: &serde_json::Value) -> Resu
     Ok(out)
 }
 
-fn name_is_mac_desktop(name: &str) -> bool { matches!(name, "screen_capture" | "mouse_move" | "mouse_click" | "key_type" | "list_windows" | "focus_window") }
+fn name_is_mac_desktop(name: &str) -> bool { matches!(name, "screen_capture" | "mouse_move" | "mouse_click" | "key_type" | "list_windows" | "focus_window" | "app_do") }
 pub(crate) fn require_full_access(ws:&Workspace,name:&str)->Result<(),String> {
     if ws.full_access(){return Ok(());}
     Err(format!("E_ACCESS: {name} requires FULL PC ACCESS (capability: full_pc_access). It is OFF, so nothing ran. Ask the user to switch Permissions to Full in the PlazCode menu or the desktop app Execution page, or continue with workspace-only tools. Re-check plazcode_status before retrying."))
@@ -1957,6 +1957,64 @@ pub async fn tool_key_type(ws: &Workspace, args: &serde_json::Value) -> Result<S
     Ok(format!("Typed {} characters.", text.chars().count()))
 }
 
+// app_do (agent/src/app_steps.rs): the same real mouse and keys as mouse_click / key_type, with PlazCode's cursor gliding first.
+#[cfg(windows)]
+pub(crate) async fn input_click(x: i32, y: i32, right: bool, double: bool) -> Result<(), String> {
+    crate::desktop_control::point_then_act(x, y).await;
+    if unsafe { desktop::SetCursorPos(x, y) } == 0 { return Err("PlazCode could not move the mouse there.".into()); }
+    crate::desktop_control::expect(900);
+    let (down, up) = if right { (desktop::MOUSEEVENTF_RIGHTDOWN, desktop::MOUSEEVENTF_RIGHTUP) } else { (desktop::MOUSEEVENTF_LEFTDOWN, desktop::MOUSEEVENTF_LEFTUP) };
+    for _ in 0..(if double { 2 } else { 1 }) {
+        send_mouse(down, 0, 0, 0)?;
+        tokio::time::sleep(std::time::Duration::from_millis(30)).await;
+        send_mouse(up, 0, 0, 0)?;
+        tokio::time::sleep(std::time::Duration::from_millis(60)).await;
+    }
+    Ok(())
+}
+#[cfg(windows)]
+pub(crate) fn input_type(text: &str) {
+    use desktop::*;
+    crate::desktop_control::expect(800 + 4 * text.chars().count() as u64);
+    for ch in text.chars() {
+        let mut utf16 = [0u16; 2];
+        for unit in ch.encode_utf16(&mut utf16).iter() {
+            let down = Input { itype: INPUT_KEYBOARD, u: InputUnion { ki: KeybdInput { w_vk: 0, w_scan: *unit, dw_flags: KEYEVENTF_UNICODE, time: 0, dw_extra_info: 0 } } };
+            let up = Input { itype: INPUT_KEYBOARD, u: InputUnion { ki: KeybdInput { w_vk: 0, w_scan: *unit, dw_flags: KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, time: 0, dw_extra_info: 0 } } };
+            unsafe { SendInput(1, &down, std::mem::size_of::<Input>() as i32); SendInput(1, &up, std::mem::size_of::<Input>() as i32); }
+        }
+    }
+}
+/// Holds the modifier keys, taps `vk`, lets go (Ctrl+S, Alt+F4, Enter, ...).
+#[cfg(windows)]
+pub(crate) fn input_keys(mods: &[u16], vk: u16, extended: bool) {
+    use desktop::*;
+    crate::desktop_control::expect(700);
+    let key = |vk: u16, flags: u32| Input { itype: INPUT_KEYBOARD, u: InputUnion { ki: KeybdInput { w_vk: vk, w_scan: 0, dw_flags: flags, time: 0, dw_extra_info: 0 } } };
+    let ext = if extended { 0x0001 } else { 0 };
+    let mut seq: Vec<Input> = mods.iter().map(|m| key(*m, 0)).collect();
+    seq.push(key(vk, ext));
+    seq.push(key(vk, ext | KEYEVENTF_KEYUP));
+    seq.extend(mods.iter().rev().map(|m| key(*m, KEYEVENTF_KEYUP)));
+    unsafe { SendInput(seq.len() as u32, seq.as_ptr(), std::mem::size_of::<Input>() as i32); }
+}
+/// Restores a minimised window and brings it to the front.
+#[cfg(windows)]
+pub(crate) fn bring_to_front(hwnd: isize) {
+    use winctl::*;
+    #[link(name = "user32")]
+    extern "system" { fn SwitchToThisWindow(hwnd: Hwnd, alt_tab: i32); }
+    if hwnd == 0 { return; }
+    let h = hwnd as Hwnd;
+    crate::desktop_control::expect(700);
+    unsafe {
+        if IsIconic(h) != 0 { ShowWindow(h, 9); }
+        // Windows refuses a plain SetForegroundWindow from a background program; switching like Alt+Tab is allowed.
+        SwitchToThisWindow(h, 1);
+        SetForegroundWindow(h);
+    }
+}
+
 #[cfg(windows)]
 mod winctl {
     use std::ffi::c_void;
@@ -2164,6 +2222,7 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
         _ if h == const { crate::hidden::fnv("open_path") } => tool_open_path(ws, a).await,
         _ if h == const { crate::hidden::fnv("download_file") } => tool_download_file(ws, a).await,
         name if crate::engine_tools::is_engine_tool(name) => crate::engine_tools::run(ws, name, a).await,
+        _ if h == const { crate::hidden::fnv("app_do") } => crate::app_steps::app_do(ws, a).await,
         #[cfg(windows)]
         _ if h == const { crate::hidden::fnv("screen_capture") } => tool_screen_capture(ws, a).await,
         #[cfg(windows)]
@@ -2198,7 +2257,7 @@ pub async fn dispatch(ws: &Workspace, name: &str, args: serde_json::Value) -> Re
         _ => Err(format!("E_COMMAND: unknown tool '{name}'. {}", crate::hidden::hidden!("Available AgentScript tools: workspace_info, list_directory, tree, \
 read_file, read_file_base64, write_file, edit_file, create_folder, delete_path, move_path, search_files, grep_files, \
 run_command, file_info, env_info, process_list, process_kill (FULL mode), open_path, download_file, \
-screen_capture / screen_record / mouse_move / mouse_click / key_type / list_windows / focus_window / launch_app / window_screenshot (FULL mode, desktop control). \
+app_do (control another app by the names of its buttons; FULL mode), screen_capture / screen_record / mouse_move / mouse_click / key_type / list_windows / focus_window / launch_app / window_screenshot (FULL mode, desktop control). \
 Engine file tools (no editor needed): godot_project_info / godot_scene_tree / godot_add_node / godot_create_script / godot_check_script / godot_find_uses, unity_project_info / unity_list_assets / unity_scene_objects / unity_create_script / unity_packages, roblox_place_info / roblox_place_scripts / roblox_place_search / roblox_lint_script, blender_file_info / blender_script_check. \
 Read any file as base64 (attachments/images) with read_file_base64 {path}. \
 Call list_commands for full parameter details."))),
@@ -2243,6 +2302,7 @@ pub fn catalog() -> Vec<serde_json::Value> {
         serde_json::json!({"name": crate::hidden::hidden!("process_kill"), "description": crate::hidden::hidden!("Kill a process by PID. Requires FULL PC ACCESS mode - refused otherwise by design."), "inputSchema": schema(serde_json::json!({"pid": {"type": "integer"}}), &["pid"])}),
         serde_json::json!({"name": crate::hidden::hidden!("open_path"), "description": crate::hidden::hidden!("Open a file/folder (workspace-relative, absolute in FULL mode) or an http(s) URL with the OS default application. In FULL PC ACCESS it also opens a program by name (notepad, calc, chrome) and links like ms-settings: or mailto:; args passes arguments to a program. Returns the exact reason when Windows cannot open it."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}, "args": {"type": "string"}}), &["path"])}),
         serde_json::json!({"name": crate::hidden::hidden!("download_file"), "description": crate::hidden::hidden!("Download an http(s) URL to a path (200 MB cap, streamed). Path follows sandbox rules."), "inputSchema": schema(serde_json::json!({"url": {"type": "string"}, "path": {"type": "string"}}), &["url", "path"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("app_do"), "description": crate::hidden::hidden!("Use another desktop app BY NAME in one command (FULL PC ACCESS): PlazCode finds the app's window (opens the app if it is not running), finds each button or field by the name shown on it, glides its cursor there and clicks or types. Use this instead of screen_capture + mouse_click whenever the app has visible names. Steps run in order and stop at the first one that cannot be done, listing the names on screen. Step forms: {click:\"Save\", nth?, button?:\"right\", double?}, {type:\"text\", into?:\"Field name\", replace?:true}, {key:\"Enter\" | \"Ctrl+S\" | \"Alt+F4\"} (on a Mac use Cmd+), {wait:ms}, {wait_for:\"name\"}, {read:\"name\"} or {read:true} for the window's visible text. Example: {app:\"Notepad\", steps:[{click:\"File\"},{click:\"Save as\"},{type:\"notes.txt\",into:\"File name\"},{key:\"Enter\"}]}. If an app shares no names (some games), fall back to screen_capture and mouse_click."), "inputSchema": schema(serde_json::json!({"app": {"type": "string"}, "steps": {"type": "array", "items": {"type": "object"}}, "open": {"type": "boolean"}}), &["app", "steps"])}),
         serde_json::json!({"name": crate::hidden::hidden!("screen_capture"), "description": crate::hidden::hidden!("Capture the full screen to a PNG file. Requires FULL PC ACCESS. Returns the saved path."), "inputSchema": schema(serde_json::json!({"path": {"type": "string"}}), &[])}),
         serde_json::json!({"name": crate::hidden::hidden!("mouse_move"), "description": crate::hidden::hidden!("Move the mouse cursor to absolute screen (x, y). Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"x": {"type": "integer"}, "y": {"type": "integer"}}), &["x", "y"])}),
         serde_json::json!({"name": crate::hidden::hidden!("mouse_click"), "description": crate::hidden::hidden!("Click the mouse (left/right), optionally moving to (x, y) first. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"button": {"type": "string"}, "x": {"type": "integer"}, "y": {"type": "integer"}}), &[])}),
@@ -2259,7 +2319,7 @@ pub fn catalog() -> Vec<serde_json::Value> {
         use crate::hidden::fnv;
         let name = tool["name"].as_str().unwrap_or("");
         if crate::hidden::one_of(name, &[const { fnv("screen_capture") }, const { fnv("screen_record") }, const { fnv("mouse_move") }, const { fnv("mouse_click") },
-            const { fnv("key_type") }, const { fnv("list_windows") }, const { fnv("focus_window") }, const { fnv("window_screenshot") }]) { return false; }
+            const { fnv("key_type") }, const { fnv("list_windows") }, const { fnv("focus_window") }, const { fnv("window_screenshot") }, const { fnv("app_do") }]) { return false; }
         if name == crate::hidden::hidden!("launch_app") { return cfg!(target_os="macos"); }
         true
     }).collect()

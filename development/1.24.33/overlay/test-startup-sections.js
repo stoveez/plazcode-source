@@ -179,7 +179,7 @@ const GOLDEN = {
   'roblox-full-custom-site': { chars: 44287, sha256: '2e5a58e0a09a766e38cc3430a56c620bd6b0866fc8bd2b8d0ab1dab6b356e2a9' },
   'local-full': { chars: 10585, sha256: 'bc5728171fde25ca77a85d912448b08f9b779ffe9157ecbe20bab5a8dbcd70d3' },
   'local-compact-14000': { chars: 10585, sha256: 'bc5728171fde25ca77a85d912448b08f9b779ffe9157ecbe20bab5a8dbcd70d3' },
-  'local-full-access': { chars: 11553, sha256: '7d5cd54e796029fdb240fa8f1cff359664eaedd10b2622d5005338a8a1084559' },
+  'local-full-access': { chars: 11898, sha256: '33655714c2e3ced28498a975bdbf9dbe26bed674e5973c37566062433d4394dc' },
   'local-custom-site': { chars: 10707, sha256: 'f102e26893412b444703266d7ed7f839f4d60121798203807e50ea795b027f14' },
   'notion-roblox': { chars: 7334, sha256: '6ec32534d4b0c9793ff8d458725da56de4440969bb2ed6df414b7894016b228d' },
   'notion-local': { chars: 5831, sha256: '8625608d3d92c2b9ca6b5b72b863b2d7ff616a8c3254f869a75bed60d1bebd83' },

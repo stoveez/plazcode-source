@@ -29,6 +29,7 @@ extern "C" {
     fn CGEventSetIntegerValueField(event: Ref, field: u32, value: i64);
     fn CGEventGetIntegerValueField(event: Ref, field: u32) -> i64;
     fn CGEventPost(tap: u32, event: Ref);
+    fn CGEventSetFlags(event: Ref, flags: u64);
     fn CGMainDisplayID() -> u32;
     fn CGDisplayBounds(display: u32) -> CGRect;
     fn CGPreflightScreenCaptureAccess() -> bool;
@@ -57,7 +58,7 @@ const SCREEN_PAGE: &str = "x-apple.systempreferences:com.apple.preference.securi
 fn open_settings(page: &str) { let _ = std::process::Command::new("/usr/bin/open").arg(page).spawn(); }
 
 /// Mouse, keys and windows need Accessibility. Asks macOS to show its question once, and opens the page.
-fn need_accessibility() -> Result<(), String> {
+pub(crate) fn need_accessibility() -> Result<(), String> {
     if unsafe { AXIsProcessTrusted() } { return Ok(()); }
     static ASKED: std::sync::Once = std::sync::Once::new();
     ASKED.call_once(|| unsafe {
@@ -164,7 +165,38 @@ pub async fn key_type(ws: &Workspace, args: &serde_json::Value) -> Result<String
     Ok(format!("Typed {} characters.", text.chars().count()))
 }
 
-fn osascript(script: &str) -> Result<String, String> {
+// app_do (agent/src/app_steps.rs): the same marked mouse and key events, with PlazCode's cursor gliding first.
+pub(crate) async fn click_at(x: f64, y: f64, right: bool, double: bool) {
+    crate::desktop_control::point_then_act(x.round() as i32, y.round() as i32).await;
+    mouse(5, x, y, 0, 0);
+    let (down, up, button) = if right { (3, 4, 1) } else { (1, 2, 0) };
+    crate::desktop_control::expect(900);
+    for n in 1..=(if double { 2 } else { 1 }) { mouse(down, x, y, button, n); tokio::time::sleep(std::time::Duration::from_millis(30)).await; mouse(up, x, y, button, n); }
+}
+pub(crate) async fn type_text(text: &str) {
+    crate::desktop_control::expect(800 + 4 * text.chars().count() as u64);
+    let units: Vec<u16> = text.encode_utf16().collect();
+    for chunk in units.chunks(20) {
+        for down in [true, false] {
+            let event = unsafe { CGEventCreateKeyboardEvent(std::ptr::null_mut(), 0, down) };
+            if !event.is_null() { unsafe { CGEventKeyboardSetUnicodeString(event, chunk.len(), chunk.as_ptr()) }; }
+            post(event);
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(8)).await;
+    }
+}
+/// One key with modifier flags (command 0x100000, shift 0x20000, control 0x40000, option 0x80000).
+pub(crate) async fn press_key(code: u16, flags: u64) {
+    crate::desktop_control::expect(700);
+    for down in [true, false] {
+        let event = unsafe { CGEventCreateKeyboardEvent(std::ptr::null_mut(), code, down) };
+        if !event.is_null() && flags != 0 { unsafe { CGEventSetFlags(event, flags) }; }
+        post(event);
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    }
+}
+
+pub(crate) fn osascript(script: &str) -> Result<String, String> {
     let out = std::process::Command::new("/usr/bin/osascript").args(["-e", script]).output().map_err(|e| format!("could not ask macOS: {e}"))?;
     if out.status.success() { Ok(String::from_utf8_lossy(&out.stdout).trim().to_string()) } else { Err(String::from_utf8_lossy(&out.stderr).trim().chars().take(300).collect()) }
 }

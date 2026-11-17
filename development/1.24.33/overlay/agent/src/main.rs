@@ -108,6 +108,7 @@ mod connections;
 mod helper_socket;
 mod blockbench;
 mod desktop_control;
+mod app_steps; // app_do: control another desktop app by the names of its buttons and fields
 #[cfg(target_os = "macos")]
 mod mac_control;
 mod figma;

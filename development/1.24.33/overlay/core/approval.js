@@ -20,9 +20,25 @@ const PlazCodeApproval = (() => {
     {value:"bypass",label:"Bypass approval",description:"Automatically approve commands without popups."},
   ]);
   const normalizeMode = value => MODES.some(mode=>mode.value===value) ? value : value===undefined||value==="" ? "" : "ask";
+  // app_do (owner, 2026-11-17: "ask before risky unless approvals are off"): clicks on buttons that send, delete or pay, and
+  // Enter right after typing in a chat or mail app (that sends). Mirrors agent/src/app_steps.rs risky().
+  const RISKY_CLICK=/(?:^|[^a-z0-9])(?:send|post|publish|submit|delete|remove|erase|uninstall|buy|purchase|pay|checkout|order|transfer|confirm|sign out|log out|format|reset|discard|empty trash|move to trash)(?:$|[^a-z0-9])/i;
+  const CHAT_APP=/discord|slack|teams|whatsapp|telegram|messenger|outlook|mail|signal|messages|skype/i;
+  function appStepsRisk(args){
+    const a=args||{},out=[],steps=Array.isArray(a.steps)?a.steps:[];let typed=false;
+    for(const step of steps){
+      if(typeof step==="string"){if(CHAT_APP.test(String(a.app||""))&&typed&&/^\s*(?:enter|return)\s*$/i.test(step))out.push("press Enter after typing (sends the message)");typed=false;continue;}
+      if(!step||typeof step!=="object")continue;
+      if(typeof step.click==="string"){if(RISKY_CLICK.test(step.click))out.push('click "'+step.click.slice(0,60)+'"');typed=false;}
+      else if(typeof step.type==="string")typed=true;
+      else if(typeof step.key==="string"){if(CHAT_APP.test(String(a.app||""))&&typed&&/^\s*(?:enter|return)\s*$/i.test(step.key))out.push("press Enter after typing (sends the message)");typed=false;}
+    }
+    return out;
+  }
   function removes(tool,args,engine,safety) {
     try { if(safety.isDelete(tool,args,engine))return true; } catch {}
     const name=bare(tool),a=args||{};
+    if(name==="app_do"&&appStepsRisk(a).length)return true;
     if(/(?:^|_)(?:delete|remove|destroy|clear)(?:_|$)/i.test(name))return true;
     if(Array.isArray(a.edits)&&a.edits.some(edit=>/^(delete|remove|destroy)$/i.test(String(edit.op||edit.action||edit.type||""))))return true;
     const code=String(a.code||a.script||"");
@@ -60,6 +76,7 @@ const PlazCodeApproval = (() => {
     if (kind === "read") summary = "Looks at " + (target || "your project") + ".";
     else if (kind === "deletes") summary = "Deletes " + (target || "something") + ".";
     else if (kind === "runs code") summary = name === "run_command" && target ? "Runs the command: " + target : "Runs code" + (engine === "local" ? " on your computer." : " in Roblox Studio.");
+    else if (name === "app_do") { const steps = Array.isArray(a.steps) ? a.steps.length : 0; const risk = appStepsRisk(a); summary = "Uses " + String(a.app || "an app").slice(0, 60) + " for you: " + steps + " step" + (steps === 1 ? "" : "s") + (risk.length ? ", including " + risk.join(", ") : "") + "."; }
     else if (edits) summary = "Changes " + edits + " place" + (edits === 1 ? "" : "s") + (target ? " in " + target : "") + ".";
     else summary = nice(tool) + (target ? " on " + target : "") + ".";
     const badge = kind === "read" ? "Read-only" : kind === "deletes" ? "Deletes" : kind === "runs code" ? "Runs code" : "Changes things";
@@ -110,6 +127,6 @@ const PlazCodeApproval = (() => {
   }
   const alwaysRemove = (list, tool) => alwaysNormalize(list).filter((x) => x.tool !== alwaysName(tool));
 
-  return { MODES, normalizeMode, removes, commandDecision, describe, describePlan, planSteps, planGoal, needsApproval, freeze, nice, alwaysNormalize, alwaysHas, alwaysAdd, alwaysRemove };
+  return { MODES, normalizeMode, removes, appStepsRisk, commandDecision, describe, describePlan, planSteps, planGoal, needsApproval, freeze, nice, alwaysNormalize, alwaysHas, alwaysAdd, alwaysRemove };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = PlazCodeApproval;

@@ -530,6 +530,7 @@ The user has lifted the workspace sandbox for this session. You now have:
 - process_kill {pid} to stop processes (never kill anything you did not start or that the user named).
 - open_path on ANY file/folder/URL or program name (e.g. "notepad", "ms-settings:"), download_file to anywhere.
 - run_command takes "cwd" (any folder) and "shell" ("cmd", "powershell", "pwsh", "bash"): use shell "powershell" for PowerShell commands, and "cwd" instead of "cd D:\\x" (cd does not change drive in cmd). "~" and %USERPROFILE% work in paths.
+- OTHER APPS: app_do {app, steps} uses another desktop app in ONE command by the names on its buttons and fields (it opens the app if needed and shows PlazCode's cursor), e.g. steps [{"click":"File"},{"type":"hi","into":"Message"},{"key":"Enter"}]. Prefer it to screen_capture + mouse_click; use pictures only when app_do cannot find the names.
 Rules that still apply: confirm with the user BEFORE destructive actions outside the project folder
 (deleting folders, killing unknown processes, changing system files). Stay inside the project unless
 the task genuinely requires otherwise. Say "FULL PC ACCESS" is active only while the state line confirms it.`;
