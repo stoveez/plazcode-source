@@ -5,6 +5,8 @@ updated: 2026-11-11
 ---
 
 ## 2026-11-11 — 1.24.33 test build ALL GREEN
+**1.24.33 dev test build (2026-11-17, CI run 44150201522 on `8599d95f`, ALL GREEN; NOT published):** Windows, macOS and Linux test-lean artifacts on https://github.com/stoveez/plazcode-source/actions/runs/44150201522 . Adds: app_do (control another app by the names of its buttons; new app), the Resume fix (tab part by extension reload, desktop part new app).
+
 **1.24.33 dev test build (2026-11-17, CI run 44117313595 on `93b342d1`, ALL GREEN after one re-run of the Windows job, whose auto-update check stalled once; NOT published):** Windows, macOS and Linux test-lean artifacts on https://github.com/stoveez/plazcode-source/actions/runs/44117313595 . Adds to the 2026-11-16 build: DeepSeek-on-Edge reply watcher (frozen-tab time not counted as quiet) and the "Use the PlazCode vault" off switch (needs the new app).
 
 **1.24.33 dev test build (2026-11-16, CI run 43923658125 on `b03e2866`, ALL GREEN: Windows, Mac, Linux, browsers, release check; NOT published):** artifacts `plazcode-1.24.33-Windows-test-lean` and `plazcode-1.24.33-macOS-test-lean` on https://github.com/stoveez/plazcode-source/actions/runs/43923658125 (owner downloads from the run page; inner zip not compared by hand). Inside, after 1.24.33: settings dropdown layer and ripple arrow, Gemini card alignment, Gemini typing lag, the "bridge not active" start-up wording, the Catalina window fix (replaceChildren and old-engine style rewrites). Extension fixes: reload is enough; Catalina needs the new app.
