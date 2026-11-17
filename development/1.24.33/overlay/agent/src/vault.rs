@@ -54,6 +54,9 @@ static SECRETS: Lazy<Vec<Regex>> = Lazy::new(|| {
 pub struct Settings {
     pub path: Option<String>,
     pub learning: bool,
+    /// 2026-11-16 (owner): people who keep their own notes/memory tool can turn PlazCode's vault off completely. Off means no
+    /// vault folder is created, read or changed, and every vault action except reading/changing these settings is refused.
+    pub enabled: bool,
 }
 fn data_root() -> PathBuf {crate::profile_paths::data_root()}
 
@@ -68,6 +71,7 @@ fn load_settings() -> Settings {
     Settings {
         path: value["path"].as_str().map(str::trim).filter(|p| !p.is_empty()).map(String::from),
         learning: value["learning"].as_bool().unwrap_or(true),
+        enabled: value["enabled"].as_bool().unwrap_or(true),
     }
 }
 fn save_settings(settings: &Settings) -> anyhow::Result<()> {
@@ -76,7 +80,7 @@ fn save_settings(settings: &Settings) -> anyhow::Result<()> {
         fs::create_dir_all(parent)?;
     }
     let temp = file.with_extension("tmp");
-    fs::write(&temp, serde_json::to_vec_pretty(&json!({"path": settings.path, "learning": settings.learning}))?)?;
+    fs::write(&temp, serde_json::to_vec_pretty(&json!({"path": settings.path, "learning": settings.learning, "enabled": settings.enabled}))?)?;
     fs::rename(&temp, &file)?;
     Ok(())
 }
@@ -1304,7 +1308,7 @@ fn open_target(target: &str) -> anyhow::Result<()> {
 }
 fn describe(root: &Path, settings: &Settings) -> Value {
     let notes = if root.is_dir() { all_notes(root, false, false).len() } else { 0 };
-    json!({"ok": true, "path": root.to_string_lossy(), "default_path": default_vault().to_string_lossy(), "custom": settings.path.is_some(), "learning": settings.learning, "exists": root.is_dir(), "notes": notes, "obsidian_installed": obsidian_installed()})
+    json!({"ok": true, "enabled": settings.enabled, "path": root.to_string_lossy(), "default_path": default_vault().to_string_lossy(), "custom": settings.path.is_some(), "learning": settings.learning, "exists": root.is_dir(), "notes": notes, "obsidian_installed": obsidian_installed()})
 }
 fn execute_in(root: &Path, settings: &Settings, req: &Value) -> anyhow::Result<Value> {
     let action = text_field(req, "action");
@@ -1371,7 +1375,11 @@ fn configure(req: &Value) -> anyhow::Result<Value> {
     if let Some(on) = req["learning"].as_bool() {
         settings.learning = on;
     }
+    if let Some(on) = req["enabled"].as_bool() {
+        settings.enabled = on;
+    }
     if let Some(path) = req["path"].as_str() {
+        anyhow::ensure!(settings.enabled, "{VAULT_OFF}");
         let path = path.trim();
         if path.is_empty() {
             settings.path = None;
@@ -1386,15 +1394,26 @@ fn configure(req: &Value) -> anyhow::Result<Value> {
     }
     save_settings(&settings)?;
     let root = vault_root(&settings);
-    Ok(describe(&root, &settings))
+    Ok(if settings.enabled { describe(&root, &settings) } else { describe_off(&root, &settings) })
+}
+/// The words every refused vault action answers with while the vault is off. The extension looks for "VAULT_OFF".
+const VAULT_OFF: &str = "VAULT_OFF: The PlazCode vault is turned off in Memory settings, so PlazCode does not read or change any vault files. Turn it on in Memory settings to use it.";
+/// Settings while the vault is off: nothing on disk is looked at or created.
+fn describe_off(root: &Path, settings: &Settings) -> Value {
+    json!({"ok": true, "enabled": false, "path": root.to_string_lossy(), "default_path": default_vault().to_string_lossy(), "custom": settings.path.is_some(), "learning": settings.learning, "exists": false, "notes": 0, "obsidian_installed": obsidian_installed()})
+}
+fn execute_with(settings: &Settings, req: &Value) -> anyhow::Result<Value> {
+    let root = vault_root(settings);
+    if !settings.enabled {
+        return if text_field(req, "action") == "settings" { Ok(describe_off(&root, settings)) } else { anyhow::bail!("{VAULT_OFF}") };
+    }
+    execute_in(&root, settings, req)
 }
 fn execute(req: Value) -> anyhow::Result<Value> {
     if text_field(&req, "action") == "configure" {
         return configure(&req);
     }
-    let settings = load_settings();
-    let root = vault_root(&settings);
-    execute_in(&root, &settings, &req)
+    execute_with(&load_settings(), &req)
 }
 pub async fn post(axum::Json(req): axum::Json<Value>) -> axum::response::Response {
     use axum::response::IntoResponse;
@@ -1412,7 +1431,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("plazcode-vault-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
-        (dir.join("Vault"), Settings { path: None, learning: true })
+        (dir.join("Vault"), Settings { path: None, learning: true, enabled: true })
     }
     fn run(root: &Path, s: &Settings, v: Value) -> anyhow::Result<Value> {
         execute_in(root, s, &v)
@@ -1455,6 +1474,20 @@ mod tests {
         let read = run(&root, &s, json!({"action":"read","path":path})).unwrap();
         assert!(read["text"].as_str().unwrap().contains("## Current tasks:") && read["text"].as_str().unwrap().contains("Test it"));
         assert!(run(&root, &s, json!({"action":"write","path":"11 Chats/leak","mode":"create","content":"password: hunter2hunter2"})).is_err(), "secrets are still refused");
+    }
+    #[test]
+    fn an_off_vault_touches_no_files_and_refuses_every_action() {
+        let (root, mut s) = fresh("off");
+        s.enabled = false;
+        s.path = Some(root.to_string_lossy().to_string());
+        for action in ["init", "index", "search", "read", "write", "graph", "tree", "save_raw", "reveal", "open_obsidian", "delete", "archive"] {
+            let error = execute_with(&s, &json!({"action": action, "path": "a", "content": "x"})).unwrap_err().to_string();
+            assert!(error.starts_with("VAULT_OFF"), "{action} is refused while off: {error}");
+        }
+        let info = execute_with(&s, &json!({"action":"settings"})).unwrap();
+        assert_eq!(info["enabled"], json!(false));
+        assert_eq!(info["notes"], json!(0));
+        assert!(!root.exists(), "no vault folder was created");
     }
     #[test]
     fn the_graph_lists_every_note_and_its_links() {

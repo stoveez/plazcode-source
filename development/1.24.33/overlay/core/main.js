@@ -579,7 +579,8 @@
       if (gap > STALL && now - _lastStallLog > 10000) {
         _lastStallLog = now;
         diag("stall.detected", { ms: gap, overBy: gap - EXPECT,
-          toolRunning: A.toolRunning, running: A.running, injecting: A.injecting });
+          toolRunning: A.toolRunning, running: A.running, injecting: A.injecting,
+          hidden: document.hidden, focused: (() => { try { return document.hasFocus(); } catch { return null; } })() });
       }
     }, EXPECT);
   }
@@ -1586,10 +1587,32 @@
     // still EVENTUALLY time out on its own instead of hanging forever while
     // the tab never gets foregrounded again.
     let lastHiddenCheck = Date.now();
+    // Move every quiet-time deadline forward by time this loop did not get to watch the page.
+    const slideDeadlines = (ms) => {
+      lastActiveAt += ms; lastChangeAt += ms; hardProgressAt += ms;
+      if (doneSince) doneSince += ms;
+      if (genFalseSince) genFalseSince += ms;
+      if (preStartSilent) preStartSilent += ms;
+      if (warmSince) warmSince += ms;
+      if (reasonSince) reasonSince += ms;
+      if (noTurnSince) noTurnSince += ms;
+      if (unsettledSince) unsettledSince += ms;
+      if (genOffFirstAt) genOffFirstAt += ms;
+      if (endedEmptySince) endedEmptySince += ms;
+    };
+    // 2026-11-16 (DeepSeek on Edge): the browser can freeze a VISIBLE-again tab's timers for up to a minute (a sleeping or
+    // background tab woken mid-reply). That frozen time was counted as "quiet", so the reply was judged finished before it was
+    // written. Time between two looks that is far longer than a normal beat is not counted (PlazCodeStallGuard.frozenGap).
+    let lastBeatAt = Date.now();
 
     while (Date.now() - lastActiveAt < TIMEOUT) {
       if (A.stop) return { kind: "stopped" };
       A.loopBeatAt = Date.now(); // liveness stamp for the stuck-run monitor (see "Stuck run monitor")
+      if (!document.hidden && typeof PlazCodeStallGuard !== "undefined" && PlazCodeStallGuard.frozenGap) {
+        const frozen = PlazCodeStallGuard.frozenGap(lastBeatAt, Date.now());
+        if (frozen) { slideDeadlines(frozen); diag("response.frozenGap", { ms: frozen, provider: P.id }); }
+      }
+      lastBeatAt = Date.now();
       // NEVER let a deadline expire while the tab is in the background. A hidden
       // tab has no layout (innerText reads come back "", getBoundingClientRect is
       // 0x0) and Chrome throttles its timers, so every read here is unreliable -
@@ -1604,33 +1627,15 @@
       if (document.hidden && !A.stop && !bgMode) {
         const parked = await parkHidden();
         if (A.stop) return { kind: "stopped" };
-        if (parked) {
-          lastActiveAt += parked; lastChangeAt += parked; hardProgressAt += parked;
-          if (doneSince) doneSince += parked;
-          if (genFalseSince) genFalseSince += parked;
-          if (preStartSilent) preStartSilent += parked;
-          if (warmSince) warmSince += parked;
-          if (reasonSince) reasonSince += parked;
-          if (noTurnSince) noTurnSince += parked;
-          if (unsettledSince) unsettledSince += parked;
-          if (genOffFirstAt) genOffFirstAt += parked;
-        }
+        if (parked) slideDeadlines(parked);
+        lastBeatAt = Date.now();
         continue; // re-read everything now that the tab has layout again
       }
       if (document.hidden && !A.stop && bgMode) {
         const now = Date.now();
         const gap = now - lastHiddenCheck;
         if (gap > 1200) { // only slide when the gap shows real throttling
-          const slide = Math.min(gap - 1000, 30000);
-          lastActiveAt += slide; lastChangeAt += slide; hardProgressAt += slide;
-          if (doneSince) doneSince += slide;
-          if (genFalseSince) genFalseSince += slide;
-          if (preStartSilent) preStartSilent += slide;
-          if (warmSince) warmSince += slide;
-          if (reasonSince) reasonSince += slide;
-          if (noTurnSince) noTurnSince += slide;
-          if (unsettledSince) unsettledSince += slide;
-          if (genOffFirstAt) genOffFirstAt += slide;
+          slideDeadlines(Math.min(gap - 1000, 30000));
         }
         lastHiddenCheck = Date.now();
         await sleep(300); // a beat between throttled reads; loop continues below
@@ -2704,7 +2709,7 @@
         tools.push({name:'tab_open',server:activeEngine(),description:'Open a web address in a new background tab; answers its tabId for the next commands.',inputSchema:{type:'object',properties:{url:{type:'string'}},required:['url']}});
       }
       tools.push({name:'plazcode_engram',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_engram,inputSchema:{type:'object',properties:{action:{type:'string',enum:['context','search','read','save','summary']},query:{type:'string'},id:{type:'integer'},title:{type:'string'},content:{type:'string'},evidence:{type:'string'},topic_key:{type:'string'}},required:['action'],additionalProperties:false}});
-      tools.push({name:'plazcode_vault',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_vault,inputSchema:{type:'object',properties:{action:{type:'string',enum:['index','search','read','read_all','write','backlinks','archive','add_image','read_image','map','audit','verify']},cursor:{type:'string'},max_chars:{type:'integer'},path:{type:'string'},paths:{type:'array',items:{type:'string'}},query:{type:'string'},type:{type:'string'},mode:{type:'string',enum:['create','append','replace','section']},section:{type:'string'},content:{type:'string'},evidence:{type:'string',description:'Short exact quote from a real user request or verified project read supporting this lasting note'},project_specific:{type:'boolean'},frontmatter:{type:'object'},reason:{type:'string'},name:{type:'string'},from:{type:'string'},note:{type:'string'},with_last_screenshot:{type:'boolean'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
+      if(!(typeof PlazCodeMemory!=='undefined'&&PlazCodeMemory.vaultOff&&PlazCodeMemory.vaultOff()))tools.push({name:'plazcode_vault',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_vault,inputSchema:{type:'object',properties:{action:{type:'string',enum:['index','search','read','read_all','write','backlinks','archive','add_image','read_image','map','audit','verify']},cursor:{type:'string'},max_chars:{type:'integer'},path:{type:'string'},paths:{type:'array',items:{type:'string'}},query:{type:'string'},type:{type:'string'},mode:{type:'string',enum:['create','append','replace','section']},section:{type:'string'},content:{type:'string'},evidence:{type:'string',description:'Short exact quote from a real user request or verified project read supporting this lasting note'},project_specific:{type:'boolean'},frontmatter:{type:'object'},reason:{type:'string'},name:{type:'string'},from:{type:'string'},note:{type:'string'},with_last_screenshot:{type:'boolean'},offset:{type:'integer'},limit:{type:'integer'}},required:['action']}});
       tools.push({name:'plazcode_critic',server:typeof window.__rsEngine==='function'?window.__rsEngine():'roblox',description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_critic,inputSchema:{type:'object',properties:{references:{type:'array',items:{type:'string'}},rubric:{type:'string'},goal:{type:'string'},new_job:{type:'boolean'}},required:['references'],additionalProperties:false}});
       tools.push({name:'plazcode_helpers',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_helpers,inputSchema:{type:'object',properties:{action:{type:'string',enum:['start','status','wait','stop']},helpers:{type:'array',minItems:1,maxItems:4,items:{type:'object',properties:{title:{type:'string',description:'Short name shown to the user, e.g. Shop scripts'},task:{type:'string',description:'Complete, self-contained instructions for this helper'},area:{type:'string',description:'The only paths this helper may change'}},required:['title','task'],additionalProperties:false}},id:{type:'integer',description:'Helper id, for stop'},timeout_s:{type:'integer',description:'Longest wait in seconds (default 900, at most 1800)'}},required:['action'],additionalProperties:false}});
       tools.push({name:'plazcode_batch',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_batch,inputSchema:{type:'object',properties:{calls:{type:'array',minItems:1,maxItems:8,items:{type:'object',description:'A normal complete call: {command,params}. Single-call tool/name and arguments/args aliases and flat fields are normalized identically; every entry is then validated against its actual command schema.',properties:{command:{type:'string'},tool:{type:'string'},name:{type:'string'},params:{type:['object','string']},arguments:{type:['object','string']},args:{type:['object','string']}},additionalProperties:true}}},required:['calls'],additionalProperties:false}});
@@ -6084,6 +6089,8 @@ return result`;
       await requireStartupConnection();
       phase("connection");
       if (!alive() || A.stop) return;
+      // 2026-11-16: learn whether the vault is turned off BEFORE the command list is built, so an off vault is never offered.
+      try { if (typeof PlazCodeMemory !== "undefined" && PlazCodeMemory.vaultRefresh) await PlazCodeMemory.vaultRefresh(bg, currentProject); } catch {}
       await ensureTools(true); // boot: always take a fresh catalogue (the TTL then
                                // covers the list_commands / list_mcp_servers calls
                                // the model makes seconds later)
@@ -6238,7 +6245,7 @@ return result`;
         // explained from the log. A provider may also word the banner from that evidence.
         let seen = null;
         try { seen = P.startupEvidence ? P.startupEvidence(listRes) : null; } catch {}
-        diag("start.handshakeFailed", { kind: listRes.kind, chars: String(listRes.text || "").length, detail: String(listRes.detail || "").slice(0, 200), seen });
+        diag("start.handshakeFailed", { kind: listRes.kind, chars: String(listRes.text || "").length, head: String(listRes.text || "").replace(/\s+/g, " ").slice(0, 80), detail: String(listRes.detail || "").slice(0, 200), seen });
         if(isProviderPolicyRefusal(listRes.text) || (P.userVoiceStartup && looksLikeStartupDecline(listRes.text))){showStartupRefusal();return;}
         if (seen && seen.banner && listRes.kind !== "context_limit") { ui.banner("warn", seen.banner.title, seen.banner.text); return; }
         // 1.24.21: say what really happened. A site notice is quoted as it is; no reply at all is

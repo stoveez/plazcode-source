@@ -131,5 +131,30 @@ const Memory = require("./core/memory.js");
     assert(settings.includes(key.replace("'", "\\'")), "settings text present: " + key);
     const catalog = JSON.parse(fs.readFileSync("core/locales/de.json", "utf8")); assert(catalog[key], "translated: " + key);
   }
+
+  // 2026-11-16 (owner): the vault can be turned off completely. The app answers "VAULT_OFF"; then nothing is sent at chat
+  // start, no chat note is written, the AI's vault tool explains it is off and the settings card shows the off note.
+  {
+    delete require.cache[require.resolve("./core/memory.js")];
+    const M = require("./core/memory.js");
+    const seen = [];
+    const offBridge = async (message) => { seen.push(message.request.action); return message.request.action === "settings" ? { ok: true, enabled: false, path: "/x", notes: 0 } : { ok: false, error: "VAULT_OFF: The PlazCode vault is turned off in Memory settings." }; };
+    assert.strictEqual(await M.vaultRefresh(offBridge, "Game A"), null, "an off vault gives no startup state");
+    assert.strictEqual(M.vaultOff(), true, "the extension knows the vault is off");
+    assert.strictEqual(M.vaultContext("lean"), "", "nothing about the vault is sent at chat start");
+    assert.strictEqual(M.vaultActive(), false, "no vault pages are read at chat start");
+    assert.match(M.availability({ entries: [] }, "Game A"), /turned off by the user: do not use plazcode_vault/, "the memory line says the vault is off");
+    assert.match(await M.vaultTool({ action: "index" }, {}), /turned off by the user/, "the AI's vault tool answers that it is off");
+    const before = seen.length;
+    assert.deepStrictEqual(await M.chatNoteSave({}, { provider: "ChatGPT", title: "x" }, Date.now()), {}, "no chat note is saved");
+    assert.strictEqual(await M.chatNoteLatest("", ""), null, "no previous chat note is offered");
+    assert.strictEqual(seen.length, before, "and the app was not even asked");
+    const main = fs.readFileSync("core/main.js", "utf8");
+    assert(/PlazCodeMemory\.vaultOff\(\)\)\)tools\.push\(\{name:'plazcode_vault'/.test(main), "the vault command is left out of the AI's command list while off");
+    const src = fs.readFileSync("core/memory.js", "utf8");
+    for (const key of ["Use the PlazCode vault", "The vault is off. PlazCode does not create"]) assert(src.includes(key), "settings switch text: " + key);
+    const rs = fs.readFileSync("agent/src/vault.rs", "utf8");
+    assert(/fn an_off_vault_touches_no_files_and_refuses_every_action/.test(rs), "the app has its own off test");
+  }
   console.log("vault memory (extension side) ok");
 }).catch((error) => { console.error(error); process.exit(1); });

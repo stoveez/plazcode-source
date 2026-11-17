@@ -1451,5 +1451,8 @@
   "History": "기록",
   "New chat": "새 채팅",
   "No chats yet. Ask a question and it shows up here.": "아직 채팅이 없습니다. 질문하면 여기에 표시됩니다.",
-  "Delete this chat": "이 채팅 삭제"
+  "Delete this chat": "이 채팅 삭제",
+  "Use the PlazCode vault": "PlazCode 볼트 사용",
+  "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "직접 쓰는 노트나 기억 도구가 있다면 끄세요. 그러면 AI가 기억을 두 개가 아니라 하나만 갖게 됩니다.",
+  "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "볼트가 꺼져 있습니다. PlazCode는 볼트 파일을 만들거나 읽거나 바꾸지 않고, AI에게 볼트 노트나 볼트 명령을 주지 않으며, 채팅을 노트로 저장하지 않습니다. 저장된 노트(빠른 노트)는 계속 작동합니다."
 }

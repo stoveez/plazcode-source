@@ -1451,5 +1451,8 @@
   "History": "履歴",
   "New chat": "新しいチャット",
   "No chats yet. Ask a question and it shows up here.": "まだチャットはありません。質問するとここに表示されます。",
-  "Delete this chat": "このチャットを削除"
+  "Delete this chat": "このチャットを削除",
+  "Use the PlazCode vault": "PlazCode のボールトを使う",
+  "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "自分のノートや記憶ツールを使っている場合はオフにしてください。AI が持つ記憶が 2 つではなく 1 つになります。",
+  "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "ボールトはオフです。PlazCode はボールトのファイルを作成・読み取り・変更せず、AI にボールトのノートやコマンドを渡さず、チャットをノートとして保存しません。保存済みのノート（クイックノート）は引き続き使えます。"
 }

@@ -309,7 +309,7 @@ function composer(w, {revert = false, sendWorks = true, alwaysEnabled = false, i
 
   // ── 7. The core tells the truth when the handshake fails ───────────────
   const main = fs.readFileSync('core/main.js', 'utf8');
-  ok('startup failure keeps the notice text', () => assert(main.includes('start.handshakeFailed", { kind: listRes.kind, chars: String(listRes.text || "").length, detail:')));
+  ok('startup failure keeps the notice text', () => assert(main.includes('start.handshakeFailed", { kind: listRes.kind, chars: String(listRes.text || "").length, head:')));
   ok('startup failure: a site notice is quoted, no answer is not a limit', () => {
     assert(main.includes('showed a notice') && main.includes('did not answer'));
     const at = main.indexOf('start.handshakeFailed');

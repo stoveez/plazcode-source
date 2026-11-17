@@ -1451,5 +1451,8 @@
   "History": "Historial",
   "New chat": "Chat nuevo",
   "No chats yet. Ask a question and it shows up here.": "Aún no hay chats. Haz una pregunta y aparecerá aquí.",
-  "Delete this chat": "Eliminar este chat"
+  "Delete this chat": "Eliminar este chat",
+  "Use the PlazCode vault": "Usar el vault de PlazCode",
+  "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "Desactívalo si usas tus propias notas o tu propia herramienta de memoria, para que la IA tenga una sola memoria, no dos.",
+  "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "El vault está desactivado. PlazCode no crea, lee ni cambia archivos del vault, no da a la IA notas ni comandos del vault y no guarda los chats como notas. Las notas guardadas (Notas rápidas) siguen funcionando."
 }

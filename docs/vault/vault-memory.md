@@ -1,6 +1,6 @@
 ---
 title: Native vault (PlazCode's own Memory feature)
-updated: 2026-11-02
+updated: 2026-11-17
 ---
 # Native vault: the app's Memory feature
 
@@ -28,6 +28,9 @@ PlazCode itself (not the AI, no extra usage, works even when "Let the AI write n
 
 ## How the owner uses it
 Memory settings in the desktop app: **Open vault** (Obsidian-style window: file tree, links, graph, search, edit, pictures, backlinks, move to archive), **Open vault folder**, **Open in Obsidian** (only if installed), **Let the AI write notes** switch, **Use a different folder**. Quick notes (the older short-fact list) still exist next to it.
+
+## Turning the vault off (2026-11-17)
+Memory settings, Vault card, top switch **Use the PlazCode vault** (default on). Off: the app (`vault-settings.json` `enabled:false`) refuses every vault action except settings with `VAULT_OFF` and creates or touches no files; the extension sends no vault notes at chat start, saves no chat notes, offers no continue-from-note, and leaves `plazcode_vault` out of the command list (rechecked every 15 s). Quick notes keep working. For people with their own notes or memory tool, so the AI gets one memory. Needs the new app.
 
 ## Honest status
 Not tried in the real app on Windows or Mac. The score-and-redo critic loop (`plazcode_critic`, a separate chat) is not tried on real AI sites and costs extra usage per redo; keep it off unless wanted. Live note and attached-picture storage need the desktop app replaced and the extension reloaded.

@@ -45,4 +45,16 @@ assert.equal(g.before(null), null);
   h.after({ tool: 'edit_file', arguments: { path: 'a' } }, true);
   assert.equal(h.before(info), null, 'after an edit the folder may have changed, so it may run again');
 }
+
+// 2026-11-16 (DeepSeek on Edge): time the browser froze the page's timers must not count as quiet reply time.
+{
+  const G = require('./core/stall-guard.js');
+  assert.equal(G.frozenGap(1000, 1400), 0, 'a normal beat is not a freeze');
+  assert.equal(G.frozenGap(1000, 2400), 0, 'just under the threshold is not a freeze');
+  assert.equal(G.frozenGap(1000, 61000), 59700, 'a one-minute freeze is not counted (minus a normal beat)');
+  assert.equal(G.frozenGap(1000, 1000 + 600000), 120000, 'capped, so a deadline can still pass eventually');
+  assert.equal(G.frozenGap(0, 5000), 0, 'no earlier look, nothing to slide');
+  const main = require('fs').readFileSync(__dirname + '/core/main.js', 'utf8');
+  assert.match(main, /PlazCodeStallGuard\.frozenGap\(lastBeatAt, Date\.now\(\)\)/, 'the reply watcher uses it');
+}
 console.log('Stall guard blocks unchanged repeats, spares live-state reads, and escalates after three.');

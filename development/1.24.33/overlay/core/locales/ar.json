@@ -1451,5 +1451,8 @@
   "History": "السجل",
   "New chat": "محادثة جديدة",
   "No chats yet. Ask a question and it shows up here.": "لا توجد محادثات بعد. اطرح سؤالًا وسيظهر هنا.",
-  "Delete this chat": "حذف هذه المحادثة"
+  "Delete this chat": "حذف هذه المحادثة",
+  "Use the PlazCode vault": "استخدام خزنة PlazCode",
+  "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "أوقفها إذا كنت تستخدم ملاحظاتك أو أداة ذاكرتك الخاصة، حتى يحصل الذكاء الاصطناعي على ذاكرة واحدة لا اثنتين.",
+  "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "الخزنة متوقفة. لا ينشئ PlazCode أي ملفات في الخزنة ولا يقرؤها ولا يغيّرها، ولا يعطي الذكاء الاصطناعي ملاحظات الخزنة أو أوامرها، ولا يحفظ المحادثات كملاحظات. الملاحظات المحفوظة (الملاحظات السريعة) تبقى تعمل."
 }

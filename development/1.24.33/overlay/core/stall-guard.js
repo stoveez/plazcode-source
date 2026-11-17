@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.33/ts/core/stall-guard.ts (TypeScript): edit that file, then run node development/1.24.33/ts/build.cjs.
 // Stops the agent from going in circles: the same read repeated with nothing
 // changed in between, or the same failing call retried unchanged. The model is
 // told what to do instead; after several stalls in a row it is told to stop.
@@ -160,9 +161,19 @@ const PlazCodeStallGuard = (() => {
     if (s.stopVisible && hasReply && s.lastGrowthAt && now - s.lastGrowthAt >= cfg.quietMs && (tries.stopContinue | 0) < cfg.maxTries.stopContinue) return { action: 'stop_and_continue', text: CONTINUE_TEXT, line: 'The AI stopped writing mid-reply. Pressed Stop and asked it to continue.' };
     return none;
   }
+  // 2026-11-16 (DeepSeek on Edge, owner's log): the browser froze the page's timers for about a minute (a background or
+  // sleeping tab), then woke it in the middle of waiting for a reply. Every "quiet for N seconds" check then counted the
+  // frozen minute as quiet, so the reply was taken as finished before it was written ("start.handshakeFailed"). Returns
+  // how much of the time since the last look was NOT watched (0 for a normal beat), so the caller can move its deadlines
+  // forward by that much. A normal beat (poll pause plus reading the page) stays far below `threshold`.
+  function frozenGap(lastBeatAt        , now        , { threshold = 1500, normal = 300, cap = 120000 }                                                        = {})         {
+    const gap = now - lastBeatAt;
+    if (!(lastBeatAt > 0) || !(gap > threshold)) return 0;
+    return Math.min(gap - normal, cap);
+  }
   function stop(reason, stalls, limit) {
     return `ERROR: command was not executed. ${reason}` + (stalls >= limit ? ` You have repeated yourself ${stalls} times in a row. Stop calling tools now and tell the user, in one or two sentences, what is blocking you.` : '');
   }
-  return { create, isRead, claimsUnsentCommand, asksUser, unfinishedProgress, hangDecision, hangConfig, endsInsideToolBlock, studioModeHint, backoffMs, HANG_DEFAULTS };
+  return { create, isRead, claimsUnsentCommand, asksUser, unfinishedProgress, hangDecision, hangConfig, endsInsideToolBlock, studioModeHint, backoffMs, HANG_DEFAULTS, frozenGap };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = PlazCodeStallGuard;

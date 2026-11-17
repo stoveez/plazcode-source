@@ -1451,5 +1451,8 @@
   "History": "История",
   "New chat": "Новый чат",
   "No chats yet. Ask a question and it shows up here.": "Чатов пока нет. Задайте вопрос, и он появится здесь.",
-  "Delete this chat": "Удалить этот чат"
+  "Delete this chat": "Удалить этот чат",
+  "Use the PlazCode vault": "Использовать хранилище PlazCode",
+  "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "Выключите, если вы ведёте свои заметки или пользуетесь своим инструментом памяти, чтобы у ИИ была одна память, а не две.",
+  "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "Хранилище выключено. PlazCode не создаёт, не читает и не меняет файлы хранилища, не даёт ИИ заметки и команды хранилища и не сохраняет чаты как заметки. Сохранённые заметки (быстрые заметки) продолжают работать."
 }
