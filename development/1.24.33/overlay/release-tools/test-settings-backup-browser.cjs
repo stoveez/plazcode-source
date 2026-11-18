@@ -1,7 +1,7 @@
-// Settings backup in the real PlazCode menu (ClickUp fixture, production core):
+// Settings backup in the real PlazCode menu (stand-in AI chat page, production core):
 // Copy backup shows the choices without any secret; Restore applies only choices.
 const {chromium} = require('playwright'), assert = require('node:assert/strict');
-const {pageFor} = require('./test-clickup-browser.cjs');
+const {pageFor} = require('./bar-fixture.cjs');
 
 (async () => {
   const browser = await chromium.launch({args: ['--no-sandbox']});

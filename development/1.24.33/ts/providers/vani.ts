@@ -547,7 +547,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // rulebook first (opening with "CONTEXT:" and the RS-SYS tag) and the model
   // answered that it has no filesystem or tool access and would not play along;
   // it then refused the correction too. So Vani gets the same plain, first-person
-  // request that Notion and ClickUp use: a short ordinary message from the user
+  // request that Notion uses: a short ordinary message from the user
   // that explains what the extension does, says it does not override safety rules
   // and asks for ONE fenced json block. The long rules follow only after the model
   // has taken part (see startSession in core/main.js).

@@ -180,30 +180,6 @@ jobs:
       - name: Settings backup copies choices only and restores them, in Chromium
         run: node release-tools/test-settings-backup-browser.cjs
         working-directory: build-src-1.24.33/PlazCode
-      - name: ClickUp Brain and agent startup, tool feedback and composer fixtures
-        run: node release-tools/test-clickup-browser.cjs
-        working-directory: build-src-1.24.33/PlazCode
-      - name: ClickUp accepted multipart startup and model refusal regressions
-        run: node release-tools/test-clickup-startup.cjs
-        working-directory: build-src-1.24.33/PlazCode
-      - name: ClickUp paged tool results, Blender routing and complete GUI schemas
-        run: node release-tools/test-clickup-results.cjs
-        working-directory: build-src-1.24.33/PlazCode
-      - name: ClickUp send readiness and uncertain-send protection
-        run: node release-tools/test-clickup-send-readiness.cjs
-        working-directory: build-src-1.24.33/PlazCode
-      - name: ClickUp delayed model acceptance and protected existing drafts
-        run: node release-tools/test-clickup-startup-model.cjs
-        working-directory: build-src-1.24.33/PlazCode
-      - name: ClickUp long-history bounded reads and cache correctness
-        # Same test as before. On failure it also prints the reason as a run annotation,
-        # which can be read without opening the full log.
-        run: |
-          node release-tools/test-clickup-performance.cjs > "$RUNNER_TEMP/clickup-performance.log" 2>&1 && { cat "$RUNNER_TEMP/clickup-performance.log"; exit 0; }
-          cat "$RUNNER_TEMP/clickup-performance.log"
-          echo "::error title=ClickUp performance check failed::$(grep -E '^ - |^FAIL|Error' "$RUNNER_TEMP/clickup-performance.log" | head -8 | cut -c1-300 | tr '\n' '|')"
-          exit 1
-        working-directory: build-src-1.24.33/PlazCode
       - name: Mixed widgets preserve user content across language changes
         run: node release-tools/test-language-widgets.cjs
         working-directory: build-src-1.24.33/PlazCode

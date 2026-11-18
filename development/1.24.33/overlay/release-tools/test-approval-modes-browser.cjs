@@ -1,5 +1,5 @@
 const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=require('playwright');
-const {pageFor}=require('./test-clickup-browser.cjs');
+const {pageFor}=require('./bar-fixture.cjs');
 const read=file=>fs.readFileSync(file,'utf8');
 async function load(browser,mode){
  const {page,errors}=await pageFor(browser,false,false);
@@ -11,8 +11,8 @@ async function load(browser,mode){
   window.externalApprovalMode=value=>{prefStore.rsApprovalMode=value;for(const listener of prefListeners)listener({rsApprovalMode:{newValue:value}},'local');};
  },{mode,version:JSON.parse(read('manifest.json')).version});
  await page.addStyleTag({path:'overlay.css'});
- const scripts=JSON.parse(read('manifest.json')).content_scripts.find(group=>group.js.includes('providers/clickup.js')).js;
- for(const file of scripts){if(['providers/clickup.js','core/parser.js'].includes(file))continue;let code=read(file);if(file==='core/main.js')code=code.replace('const TOKEN_CHARS = 4;','window.fixture={A,runTool,requestApproval,ui,asStateTag,controlCard,askBrief};const TOKEN_CHARS = 4;');await page.addScriptTag({content:code});}
+ const scripts=JSON.parse(read('manifest.json')).content_scripts.find(group=>group.js.includes('providers/chatgpt.js')).js;
+ for(const file of scripts){if(['providers/chatgpt.js','core/parser.js'].includes(file))continue;let code=read(file);if(file==='core/main.js')code=code.replace('const TOKEN_CHARS = 4;','window.fixture={A,runTool,requestApproval,ui,asStateTag,controlCard,askBrief};const TOKEN_CHARS = 4;');await page.addScriptTag({content:code});}
  await page.waitForSelector('#rs-approval-mode');return {page,errors};
 }
 async function choose(page,value){await page.locator('#rs-approval-mode').click();await page.locator('.pc-approval-menu [data-mode="'+value+'"]').click();await page.waitForFunction(value=>prefStore.rsApprovalMode===value,value);}

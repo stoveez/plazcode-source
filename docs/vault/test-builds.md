@@ -5,6 +5,8 @@ updated: 2026-11-11
 ---
 
 ## 2026-11-11 — 1.24.33 test build ALL GREEN
+**1.24.33 dev test build (2026-11-18, CI run 44312237975 on `32a0b46f`, ALL GREEN; NOT published):** Windows (53,450,612 bytes as GitHub's download), macOS (55,882,998) and Linux test-lean artifacts on https://github.com/stoveez/plazcode-source/actions/runs/44312237975 . Adds: smoother Windows app (no zero-blur glass, animations pause when the window is not in front; new app), shorter state line (extension reload), at most 2 commands per reply (extension reload), DeepSeek startup on non-English pages (extension reload). Does NOT include the ClickUp removal.
+
 **1.24.33 dev test build (2026-11-17, CI run 44150201522 on `8599d95f`, ALL GREEN; NOT published):** Windows, macOS and Linux test-lean artifacts on https://github.com/stoveez/plazcode-source/actions/runs/44150201522 . Adds: app_do (control another app by the names of its buttons; new app), the Resume fix (tab part by extension reload, desktop part new app).
 
 **1.24.33 dev test build (2026-11-17, CI run 44117313595 on `93b342d1`, ALL GREEN after one re-run of the Windows job, whose auto-update check stalled once; NOT published):** Windows, macOS and Linux test-lean artifacts on https://github.com/stoveez/plazcode-source/actions/runs/44117313595 . Adds to the 2026-11-16 build: DeepSeek-on-Edge reply watcher (frozen-tab time not counted as quiet) and the "Use the PlazCode vault" off switch (needs the new app).

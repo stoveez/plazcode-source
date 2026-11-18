@@ -1,8 +1,8 @@
-// Fix connection (1.24.21): full production core on the ClickUp fixture, mocked
+// Fix connection (1.24.21): full production core on the stand-in AI chat page (bar-fixture.cjs), mocked
 // PlazCode app. Proves the button appears only when broken, safe fixes run on
 // their own, nothing is sent to the AI until the user clicks Connect this chat.
 const {chromium, firefox} = require('playwright'), assert = require('node:assert/strict');
-const {pageFor} = require('./test-clickup-browser.cjs');
+const {pageFor} = require('./bar-fixture.cjs');
 
 async function mockBridge(page, {comesBack, studio = 'ok'}) {
   await page.evaluate(({comesBack, studio}) => {

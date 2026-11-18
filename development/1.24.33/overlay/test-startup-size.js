@@ -1,4 +1,4 @@
-// 1.24.22 (owner, 2026-10-25): the startup must fit free plans. Claude and ClickUp free plans used up their limit on the
+// 1.24.22 (owner, 2026-10-25): the startup must fit free plans. Claude free plans (and other sites' free plans) used up their limit on the
 // startup alone and ChatGPT free refused it as too long. Every site now gets the short startup (core/lean-startup.js)
 // unless the user turns on "Full startup" (off by default); the AI fetches the rest with plazcode_help when it needs it.
 const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict');
@@ -51,7 +51,7 @@ assert(/if \(name === "plazcode_help"\) \{[\s\S]{0,500}PlazCodeLeanStartup\.help
 assert(/tools\.push\(\{name:'plazcode_help'/.test(main), 'plazcode_help is in the command list');
 assert(/vaultContext\(\(typeof leanStartupOn === \"function\" && leanStartupOn\(\)\) \? 'lean'/.test(main), 'the vault summary is the smallest one at startup');
 assert(/let digest = offline \? toolFeedback : leanOn \? leanDigest\(0\) \+ addonsNote : fullDigest\(\);/.test(main) && /const leanOn = typeof leanStartupOn === \"function\" && leanStartupOn\(\);/.test(main), 'the short startup uses the compact command list');
-// 1.24.24: richest list that still fits the site in ONE message (ClickUp would split it otherwise).
+// 1.24.24: richest list that still fits the site in ONE message (a site that splits long messages would send several).
 assert(/for \(const level of \[1, 2\]\) \{ if \(fitsOne\(readyPrompt\)\) break; digest = leanDigest\(level\) \+ addonsNote; readyPrompt = readyFor\(digest\);/.test(main), 'falls back to required-only, then names-only');
 // The lean digest for a big Studio command list stays small.
 const start = main.indexOf('const leanDigest = (level = 0) => {'), end = main.indexOf('\n      };', start) + 8;

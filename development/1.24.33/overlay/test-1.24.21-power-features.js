@@ -101,10 +101,10 @@ const flush = () => new Promise((r) => setTimeout(r, 20));
     assert.deepEqual(plan.toolsOn, ["figma"]); assert.equal(plan.storage.rsPermMode, "full");
     assert.deepEqual(Setups.summary(setup, { skills: { "skill-a": "UI style" }, tools: { figma: "Figma" } }).map(([k]) => k), ["Engine", "Effort", "Reasoning", "Access", "Safety", "Memory project", "Skills", "Tools"]);
     const store = { data: {}, get(key, cb) { cb({ [key]: this.data[key] }); }, set(v, cb) { Object.assign(this.data, JSON.parse(JSON.stringify(v))); cb && cb(); } };
-    await Setups.save(store, "notion", setup); await Setups.save(store, "clickup", Setups.capture({ engine: "roblox", storage: {} }));
-    let map = await Setups.load(store); assert.deepEqual(Object.keys(map).sort(), ["clickup", "notion"]); assert.equal(map.notion.auto, true);
-    await Setups.save(store, "notion", null); map = await Setups.load(store); assert.deepEqual(Object.keys(map), ["clickup"]);
-    store.data.rsSiteSetups["../evil"] = setup; assert.deepEqual(Object.keys(await Setups.load(store)), ["clickup"], "odd site keys are ignored");
+    await Setups.save(store, "notion", setup); await Setups.save(store, "kimi", Setups.capture({ engine: "roblox", storage: {} }));
+    let map = await Setups.load(store); assert.deepEqual(Object.keys(map).sort(), ["kimi", "notion"]); assert.equal(map.notion.auto, true);
+    await Setups.save(store, "notion", null); map = await Setups.load(store); assert.deepEqual(Object.keys(map), ["kimi"]);
+    store.data.rsSiteSetups["../evil"] = setup; assert.deepEqual(Object.keys(await Setups.load(store)), ["kimi"], "odd site keys are ignored");
     const merged = Setups.mergePinned([{ id: "m1" }, { id: "p1", title: "dup" }], [{ id: "p1", title: "Pinned" }]);
     assert.deepEqual(merged.map((s) => [s.id, !!s.always_use]), [["p1", true], ["m1", false]], "pinned skills come first, once, as always-use");
   }

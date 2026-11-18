@@ -3,7 +3,7 @@
 // used to leak their size, shadows, rotation and twinkle animation into it,
 // drawing stray marks over the PlazCode title.
 const {chromium} = require('playwright'), assert = require('node:assert/strict');
-const {pageFor} = require('./test-clickup-browser.cjs');
+const {pageFor} = require('./bar-fixture.cjs');
 
 (async () => {
   const browser = await chromium.launch({args: ['--no-sandbox']});

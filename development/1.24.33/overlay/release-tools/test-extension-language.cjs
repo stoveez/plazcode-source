@@ -1,6 +1,6 @@
-// Real Chromium with local ClickUp DOM and mocked extension storage only.
+// Real Chromium with a local stand-in AI chat page (release-tools/bar-fixture.cjs) and mocked extension storage only.
 const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const {pageFor}=require('./test-clickup-browser.cjs');
+const {pageFor}=require('./bar-fixture.cjs');
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const screenshotDir=process.env.PLAZCODE_LANGUAGE_SCREENSHOTS;
 async function shots(page,name){if(!screenshotDir)return;fs.mkdirSync(screenshotDir,{recursive:true});await page.evaluate(()=>{const menu=document.querySelector('#rs-menu');if(menu)menu.scrollTop=0;});await page.waitForTimeout(100);await page.screenshot({path:path.join(screenshotDir,name+'.png'),fullPage:false});}
@@ -9,13 +9,13 @@ const pick=(select,value)=>select.evaluate((node,value)=>{node.value=value;node.
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.PLAZCODE_CHROMIUM?{executablePath:process.env.PLAZCODE_CHROMIUM}:fs.existsSync('/usr/local/bin/chromium')?{executablePath:'/usr/local/bin/chromium'}:{}),args:['--no-sandbox']});try{
  const {page,errors}=await pageFor(browser,false);page.on('pageerror',error=>console.error(error.stack));await storage(page);
  await page.addStyleTag({path:path.join(root,'overlay.css')});
- const scripts=JSON.parse(read('manifest.json')).content_scripts.find(x=>x.js.includes('providers/clickup.js')).js;
- for(const file of scripts)if(!['providers/clickup.js','core/parser.js'].includes(file))await page.addScriptTag({content:read(file)});
+ const scripts=JSON.parse(read('manifest.json')).content_scripts.find(x=>x.js.includes('providers/chatgpt.js')).js;
+ for(const file of scripts)if(!['providers/chatgpt.js','core/parser.js'].includes(file))await page.addScriptTag({content:read(file)});
  await page.waitForSelector('#rs-bar');await page.locator('#rs-settings-btn').click();const generalTab=page.locator('#rs-menu .rs-menu-tab[data-rs-tab=general]');if(await generalTab.count())await generalTab.click(); // Studio look: Language sits in the General tab
 
  const host=page.locator('#rs-menu [data-pc-language-picker]'),select=host.locator('select'),search=host.locator('input');await select.waitFor({state:'attached'});assert.equal(await select.locator('option').count(),15);assert.equal(await select.inputValue(),'en');
  await search.fill('日本');assert.deepEqual(await select.locator('option').evaluateAll(ns=>ns.map(n=>n.value)),['en','ja']);assert.equal(await page.evaluate(()=>localeSaves.filter(x=>x.rsLanguage).length),0);await search.fill('');
- await page.evaluate(()=>provider.writeDraft('Home Settings Save — my own draft'));
+ await page.evaluate(()=>provider.writeDraft('Home Settings Save — my own draft',provider.editorText()));
  await search.fill('Polski');assert.deepEqual(await select.locator('option').evaluateAll(ns=>ns.map(n=>n.value)),['en','pl']);await search.fill('');
  await pick(select,'pl');await page.waitForFunction(()=>PlazCodeI18n.getLanguage()==='pl');assert.equal(await page.evaluate(()=>localeStore.rsLanguage),'pl');assert.equal(await page.evaluate(()=>PlazCodeI18n.t('Settings')),JSON.parse(read('core/locales/pl.json')).Settings);assert.equal(await page.evaluate(()=>provider.editorText()),'Home Settings Save — my own draft');
  await pick(select,'es');await page.waitForFunction(()=>PlazCodeI18n.getLanguage()==='es');assert.equal(await page.evaluate(()=>localeStore.rsLanguage),'es');assert.equal(await page.locator('html').getAttribute('dir'),null,'never set host site direction');assert.equal(await page.evaluate(()=>provider.editorText()),'Home Settings Save — my own draft');await shots(page,'bar-settings-es-desktop');
@@ -27,7 +27,7 @@ const pick=(select,value)=>select.evaluate((node,value)=>{node.value=value;node.
  // Extension popup, all resources served from the local source, no remote calls.
  const popup=await browser.newPage({viewport:{width:420,height:900}});const popupErrors=[];popup.on('pageerror',e=>popupErrors.push(e.message));
  await popup.route('https://plazcode-fixture.invalid/**',route=>{const file=new URL(route.request().url()).pathname.slice(1)||'popup.html';const p=path.join(root,file);if(!p.startsWith(root+path.sep)||!fs.existsSync(p))return route.fulfill({status:404,body:''});return route.fulfill({contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html',body:fs.readFileSync(p)});});
- await popup.addInitScript(()=>{const get=(x,cb)=>{if(cb)cb({});return Promise.resolve({});};window.chrome={runtime:{getManifest:()=>({version:'1.24.18'}),sendMessage:async()=>({ok:true,engine:'roblox',connected:true}),getURL:p=>p,onMessage:{addListener(){}}},tabs:{query:async()=>[{id:1,url:'https://app.clickup.com/1/ai/brain'}],sendMessage:async()=>({ok:true}),create:async()=>{}},storage:{local:{get,set:async()=>{}},onChanged:{addListener(){}}}};});
+ await popup.addInitScript(()=>{const get=(x,cb)=>{if(cb)cb({});return Promise.resolve({});};window.chrome={runtime:{getManifest:()=>({version:'1.24.18'}),sendMessage:async()=>({ok:true,engine:'roblox',connected:true}),getURL:p=>p,onMessage:{addListener(){}}},tabs:{query:async()=>[{id:1,url:'https://chatgpt.com/c/fixture'}],sendMessage:async()=>({ok:true}),create:async()=>{}},storage:{local:{get,set:async()=>{}},onChanged:{addListener(){}}}};});
  await popup.goto('https://plazcode-fixture.invalid/popup.html');await storage(popup);
  // Runtime captured persistence callback reads the live storage API.
  const ph=popup.locator('#popup-language-picker'),ps=ph.locator('select');await ps.waitFor({state:'attached'});assert.equal(await ps.locator('option').count(),15);

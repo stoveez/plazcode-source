@@ -1,9 +1,9 @@
-// 1.24.21 power features in the real PlazCode bar (ClickUp fixture, production core):
+// 1.24.21 power features in the real PlazCode bar (stand-in AI chat page, production core):
 // Safety toggles stop changes before they reach the app, deletes wait for a click
 // and carry a one-time confirmation, the What happened panel lists actions with
 // Undo, and Setup for this site saves and shows a summary.
 const {chromium} = require('playwright'), assert = require('node:assert/strict');
-const {pageFor} = require('./test-clickup-browser.cjs');
+const {pageFor} = require('./bar-fixture.cjs');
 const shots = process.env.PLAZCODE_SHOTS || '';
 
 async function mock(page) {

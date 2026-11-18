@@ -1,6 +1,6 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const {parse}=require('./release-tools/node_modules/acorn');
-const ctx={crypto:crypto.webcrypto,setTimeout,window:{},location:{hostname:'app.clickup.com',pathname:'/123/ai/brain'}};vm.createContext(ctx);
+const ctx={crypto:crypto.webcrypto,setTimeout,window:{},location:{hostname:'chat.example.invalid',pathname:'/c/1'}};vm.createContext(ctx);
 vm.runInContext(fs.readFileSync('core/parser.js','utf8')+';this.parser=RSParse;',ctx);
 function call(value){return ctx.parser.parseToolCalls('```json\n'+JSON.stringify(value)+'\n```');}
 for(const command of ['list_commands','list_tools']){
@@ -9,14 +9,15 @@ for(const command of ['list_commands','list_tools']){
  assert.equal(call({command,server:42}).length,0);
 }
 assert.equal(call({command:'execute_luau',server:'blender',params:{code:'return 1'}})[0].arguments.server,undefined,'do not infer a mutation server');
-vm.runInContext(fs.readFileSync('providers/clickup.js','utf8')+';this.P=RSProvider;',ctx);
+// A site with a small message limit (ClickUp had these limits until its removal in 1.24.33; the paging stays for any such site).
+ctx.P={id:'small-site',toolResultPageChars:10000,toolFeedbackMaxChars:15000};
 let chat='original-chat',engine='roblox';ctx.P.conversationKey=()=>chat;ctx.activeEngine=()=>engine;
 const source=fs.readFileSync('core/main.js','utf8'),names=['resultPageSize','compressToolFeedback','readRetainedToolResult','prepareToolFeedback'],found={};
 function walk(node){if(!node?.type)return;if(node.type==='FunctionDeclaration'&&names.includes(node.id.name))found[node.id.name]=source.slice(node.start,node.end);for(const value of Object.values(node))if(Array.isArray(value))value.forEach(walk);else if(value?.type)walk(value);}
 walk(parse(source,{ecmaVersion:'latest'}));for(const name of names)assert(found[name],name);
 vm.runInContext('const retainedToolResults=new Map();let characterLimits={rsInputLimitEnabled:true,rsInputCharLimit:120000,rsOutputLimitEnabled:true,rsOutputCharLimit:32000};'+names.map(n=>found[n]).join('\n')+';this.compress=compressToolFeedback;this.read=readRetainedToolResult;this.prepare=prepareToolFeedback;this.limits=value=>{characterLimits=value;};',ctx);
 function reconstruct(text){
- const first=ctx.prepare(text).trim();assert(first.length<18000,'final feedback must fit ClickUp transport');
+ const first=ctx.prepare(text).trim();assert(first.length<18000,'final feedback must fit a small-limit site');
  assert(ctx.parser.isInjectedFeedback(first),'owned retained pages keep normal result masking');
  const id=first.match(/id:"([^"]+)"/)[1];let offset=Number(first.match(/offset:(\d+)/)[1]),restored=first.slice(first.indexOf('\n')+1,first.indexOf('\n')+1+offset),count=0;
  while(offset!==null){const page=ctx.read({id,offset,limit:1000000}).trim();assert(page.length<18000);const meta=JSON.parse(page.slice(page.indexOf('\n')+1)).result.content;restored+=meta.text;offset=meta.next_offset;assert(++count<100);}
@@ -31,4 +32,4 @@ chat='other-chat';assert.match(ctx.read({id}),/^ERROR:/);chat='original-chat';en
 delete ctx.P.toolResultPageChars;delete ctx.P.toolFeedbackMaxChars;
 assert.equal(ctx.prepare(original),original,'other providers keep their full existing transport');
 assert.equal(ctx.compress(original,'list_commands'),original,'disabled user limits stay disabled on other providers');
-console.log('PASS ClickUp-sized complete result pages, final appended context, Unicode, disabled limits, project isolation, catalog server repair/conflicts and unchanged other-provider behavior');
+console.log('PASS small-limit-site complete result pages, final appended context, Unicode, disabled limits, project isolation, catalog server repair/conflicts and unchanged other-provider behavior');

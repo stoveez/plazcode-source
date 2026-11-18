@@ -61,7 +61,6 @@ fn donation_url(action: &str) -> Option<&'static str> {
 
 fn supported_ai_url(action: &str) -> Option<&'static str> {
     match action {
-        "open:clickup" => Some("https://app.clickup.com/"),
         "open:chatgpt" => Some("https://chatgpt.com/"),
         "open:deepseek" => Some("https://chat.deepseek.com/"),
         "open:claude" => Some("https://claude.ai/new"),
@@ -583,7 +582,7 @@ mod tests {
 
     #[test] fn supported_ai_links_are_fixed_and_match_desktop_buttons() {
         let html=include_str!("desktop.html");
-        let actions=["clickup","chatgpt","deepseek","claude","gemini","kimi","glm","qwen","arena","freebuff","crax","useai","vani","mimo","oxalpha","notion","ollama"];
+        let actions=["chatgpt","deepseek","claude","gemini","kimi","glm","qwen","arena","freebuff","crax","useai","vani","mimo","oxalpha","notion","ollama"];
         for name in actions {
             let action=format!("open:{name}");let url=supported_ai_url(&action).expect("missing supported AI action");
             assert!(url.starts_with("https://"));assert!(html.contains(&format!("data-ipc=\"{action}\"")));

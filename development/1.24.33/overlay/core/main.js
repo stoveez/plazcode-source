@@ -882,7 +882,6 @@
   }
 
   const AI_SITES = [
-    { name: "ClickUp Brain", url: "https://app.clickup.com/" },
     { name: "DeepSeek", url: "https://chat.deepseek.com/" },
     { name: "ChatGPT", url: "https://chatgpt.com/" },
     { name: "Claude", url: "https://claude.ai/new" },
@@ -4507,7 +4506,7 @@ return result`;
   // handshake", "no filesystem access", or a JSON status object saying so) has
   // said no. Used only for providers that opt in (userVoiceStartup), so the user
   // sees "the AI declined" with what to try instead of a vague "handshake failed".
-  // Plain-voice startup (MiMo, Vani, ClickUp): "PlazCode is ready." first, then optionally a few sentences of the
+  // Plain-voice startup (MiMo, Vani): "PlazCode is ready." first, then optionally a few sentences of the
   // model's own (limits it keeps). Never a command, and never a long essay that only mentions the phrase.
   function startupVoiceReady(text) {
     const t = String(text || "").replace(/[`*#]/g, "").trim().replace(/^_+/, "");
@@ -4519,14 +4518,12 @@ return result`;
     return /\bno[_ ]tool[_ ]access\b|\b(?:i|we)\s+(?:can(?:['’]t|not)|won['’]t|am unable to|(?:do|will) not|(?:do|am) not able to)\b|\bunable to (?:take|run|emit|execute|use|comply|participate)\b|\b(?:no|without) (?:filesystem|file system|tool|file) access\b|\bnot (?:something|a request) i can\b|\bi have no (?:filesystem|tools?|file)|\b(?:i['’]m|i am) not going to (?:emit|enter|output|follow|run|participate|comply|acknowledge|reply)\b/i.test(t);
   }
   function showStartupRefusal() {
-    if (P.userVoiceStartup && P.id !== "clickup") {
+    if (P.userVoiceStartup) {
       ui.banner("warn", `${P.displayName} declined the connection request`,
         `The AI model in ${P.displayName} said it cannot take part in the PlazCode connection, even after PlazCode explained in plain words what it is for. No command ran and nothing was changed. Open a new chat, pick a different model in ${P.displayName}'s model menu, and press Start again. Some models decline this kind of request; the choice of model matters.`);
       return;
     }
-    ui.banner("warn","AI declined the connection request",P.id==="clickup"
-      ? "The selected ClickUp AI model declined the PlazCode connection request. Startup stopped; no project command ran and the request was not repeated. You can choose another available model and start a fresh chat. Model support varies; acceptance is not guaranteed."
-      : "The AI declined the PlazCode connection instructions. No command ran and the bridge was not restarted. You can clarify your request here; refreshing cannot guarantee the AI will accept it.");
+    ui.banner("warn","AI declined the connection request","The AI declined the PlazCode connection instructions. No command ran and the bridge was not restarted. You can clarify your request here; refreshing cannot guarantee the AI will accept it.");
   }
   // 1.24.10 helpers ────────────────────────────────────────────────────────
   // Plain-text equivalents of Markdown that Notion's composer converts into
@@ -6338,7 +6335,7 @@ return result`;
       // calls commands directly. 1.24.22 told it to look up each command before first use, which cost an
       // extra round trip (a whole re-read of the chat) per new command and raised plan usage.
       // level 0 = all parameters, 1 = required only, 2 = names only. The startup uses the richest level whose
-      // message still fits this site in ONE message (ClickUp would otherwise split it into several, costing more).
+      // message still fits this site in ONE message (a site that splits long messages would otherwise send several, costing more).
       const leanDigest = (level = 0) => {
         const items = scoped.map((t) => {
           const schema = t.inputSchema || {};

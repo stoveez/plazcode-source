@@ -7,7 +7,7 @@ const baseline = {
   "core/config.js": "7a244e298f32e8f52dbf81c857db0b6a39f0df9a",
   "core/headless-builder.js": "0d8924dae62e2894a68cdd17617bbb5e36cca33e",
   "core/luau-knowledge.js": "54441b9d7a36e28eac9e64d10b56607c41a34f2e",
-  "core/main.js": "68cda627a8cad34208cdda21c055c2c9aadc07f7",
+  "core/main.js": "5263fc53edc1ea85f54b96435e706ebbb8e3722c",
   "core/motion-interchange.js": "038afa13a5b59c030a809abf7d617a36f2fae82d",
   "core/motion-preview.js": "c364991ffe8e0f9eaad557e6746fff21daea2e86",
   "core/motion-tools.js": "6e1c5ff01153d61038b48b9a0c7181be85b3c9a5",
@@ -34,11 +34,10 @@ const baseline = {
   "providers/qwen-net.js": "ef67a5f6731b8935d754d59aeee4910499f012bb",
   "providers/qwen.js": "e4d89cd21da21829e4406dab59da9f22ec5e897b",
   "providers/useai.js": "79bdaadb3e616f708adcde6e27eae72a5e1c1429",
-  "providers/vani.js": "5daf1ac7a83f08e7fc8f49912ae20a3564e3cd4c",
+  "providers/vani.js": "81500c538b43c82cd85aabb9426cca483310e79b",
   "providers/mimo.js": "7ed45414226ace20d37ed223169b564f939d54cc"
 };
 const requiredProviders = [
-  "providers/clickup.js",
   "providers/deepseek.js",
   "providers/chatgpt.js",
   "providers/claude.js",

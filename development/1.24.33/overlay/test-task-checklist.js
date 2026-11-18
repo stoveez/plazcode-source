@@ -6,11 +6,23 @@ ui.render();assert(ui.panel.hidden);a.sync(true,chat,1);a.task('Fix <img src=x o
 a.checklist([{label:'Inspect current code',status:'completed'},{label:'Fix the bug',status:'in_progress'},{label:'Verify behavior',status:'pending'},{label:'Deliver the change',status:'pending'}]);ui.render();assert.equal(ui.panel.querySelector('.rs-checklist-percent').textContent,'25%');assert.equal(ui.panel.querySelectorAll('[data-status=completed]').length,1);assert.equal(ui.panel.querySelector('.rs-checklist-mark').textContent,'✓');
 const before=JSON.stringify(a.active().plan);assert.throws(()=>a.checklist([{label:'Bad',status:'almost done'}]));assert.equal(JSON.stringify(a.active().plan),before);
 ui.panel.querySelector('button').click();assert(ui.panel.hidden);assert(!ui.tab.hidden);assert.equal(window.sessionStorage.getItem('plazcode.checklistHidden'),'1');ui.tab.click();assert(!ui.panel.hidden);assert(ui.tab.hidden);blocked=true;ui.place();assert(ui.panel.hidden&&ui.tab.hidden);blocked=false;ui.place();assert(!ui.panel.hidden);
-detached=true;ui.place();assert(!ui.panel.hidden);assert.equal(ui.panel.dataset.detached,'true');
+// Owner (2026-11-18): minimizing PlazCode folds the list into its Tasks pill, without saving that as the person's choice.
+detached=true;ui.place();assert(ui.panel.hidden&&!ui.tab.hidden,'minimizing PlazCode minimizes the task list');assert.equal(window.sessionStorage.getItem('plazcode.checklistHidden'),null);
+detached=false;ui.place();assert(!ui.panel.hidden&&ui.tab.hidden,'showing PlazCode again opens the list it folded');
+ui.panel.querySelector('button').click();detached=true;ui.place();detached=false;ui.place();assert(ui.panel.hidden,'a list the person hid stays hidden');ui.tab.click();
+detached=true;ui.place();assert(ui.panel.hidden);ui.tab.click();assert(!ui.panel.hidden,'the pill opens the list while PlazCode is minimized');assert.equal(ui.panel.dataset.detached,'true');
 ui.panel.getBoundingClientRect=()=>({left:parseFloat(ui.panel.style.left)||0,top:parseFloat(ui.panel.style.top)||0,width:300,height:180});
 const pointer=(type,x,y)=>ui.panel.dispatchEvent(new window.MouseEvent(type,{bubbles:true,button:0,clientX:x,clientY:y}));
 pointer('pointerdown',720,400);pointer('pointermove',-900,-900);pointer('pointerup',-900,-900);assert.equal(ui.panel.style.left,'8px');assert.equal(ui.panel.style.top,'8px');assert(JSON.parse(window.sessionStorage.getItem('plazcode.checklistPosition')));
-detached=false;ui.place();assert.equal(ui.panel.dataset.detached,'false');assert.equal(ui.panel.style.left,'480px');assert.equal(ui.panel.style.top,'auto');detached=true;ui.place();assert.equal(ui.panel.style.left,'8px');assert.equal(ui.panel.style.top,'8px');detached=false;ui.place();
+detached=false;ui.place();assert.equal(ui.panel.dataset.detached,'false');assert.equal(ui.panel.style.left,'480px');assert.equal(ui.panel.style.top,'auto');detached=true;ui.place();assert(ui.panel.hidden&&!ui.tab.hidden);assert.equal(ui.tab.style.left,'8px');assert.equal(ui.tab.style.top,'8px');
+// The minimized pill can be dragged while PlazCode is minimized; a short press is still a click, a drag is not.
+ui.tab.getBoundingClientRect=()=>({left:parseFloat(ui.tab.style.left)||0,top:parseFloat(ui.tab.style.top)||0,width:92,height:32});
+const tabPointer=(type,x,y)=>ui.tab.dispatchEvent(new window.MouseEvent(type,{bubbles:true,button:0,clientX:x,clientY:y}));
+tabPointer('pointerdown',20,20);tabPointer('pointermove',22,21);tabPointer('pointerup',22,21);assert.equal(ui.tab.style.left,'8px','under 5 px is not a drag');
+tabPointer('pointerdown',20,20);tabPointer('pointermove',220,170);tabPointer('pointerup',220,170);ui.tab.click();
+assert.equal(ui.tab.style.left,'208px');assert.equal(ui.tab.style.top,'158px');assert(ui.panel.hidden,'the click that ends a drag does not open the list');assert.deepEqual(JSON.parse(window.sessionStorage.getItem('plazcode.checklistPosition')),{x:208,y:158});
+ui.tab.click();assert(!ui.panel.hidden,'a plain click opens it');assert.equal(ui.panel.style.left,'208px','the list opens where the pill was');ui.panel.querySelector('button').click();ui.tab.click();
+detached=false;ui.place();
 a.sync(false,chat,20,{collapse:false});ui.render();assert.equal(ui.panel.dataset.done,'false');assert.equal(ui.panel.querySelector('.rs-checklist-percent').textContent,'25%');
 chat='two';ui.render();assert(ui.panel.hidden);a.sync(true,chat,21);a.task('Second task','task2');a.checklist([{label:'Done',status:'completed'},{label:'Still unverified',status:'pending'}]);a.sync(false,chat,30);ui.render();assert.equal(ui.panel.dataset.done,'false');assert.equal(ui.panel.querySelector('.rs-checklist-percent').textContent,'50%');
 a.sync(true,chat,31);a.task('Complete task','task3',{replace:true});a.checklist([{label:'Inspect',status:'completed'},{label:'Verify',status:'completed'}]);a.sync(false,chat,40);ui.render();assert.equal(ui.panel.dataset.done,'true');assert.equal(ui.panel.querySelector('.rs-checklist-percent').textContent,'100%');assert.equal(ui.panel.querySelectorAll('[data-status=completed]').length,2);

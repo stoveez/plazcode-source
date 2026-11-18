@@ -101,7 +101,7 @@ const { U, tick } = load();
 const J = (s) => JSON.parse(s);
 
 // always-on text
-const full = U.build('roblox', 'claude', 0), small = U.build('roblox', 'deepseek', 0), compact = U.build('roblox', 'clickup', 14000), other = U.build('local', 'claude', 0);
+const full = U.build('roblox', 'claude', 0), small = U.build('roblox', 'deepseek', 0), compact = U.build('roblox', 'notion', 14000), other = U.build('local', 'claude', 0);
 for (const [label, text] of [['full', full], ['deepseek', small], ['compact', compact], ['other engine', other]]) {
   assert(text.startsWith('ULTRA \u2014'), label + ': starts with the Ultra marker');
   assert(text.includes('THINK=ultracode') && /another level is selected|ignore/i.test(text), label + ': says it stops applying when Ultra is not selected');

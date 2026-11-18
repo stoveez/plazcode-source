@@ -20,7 +20,8 @@ const main = fs.readFileSync(__dirname + "/core/main.js", "utf8");
 assert.match(main, /PlazCodeTurnBudget\.stateTag\(asStateTag\(\)/, "results use it");
 assert.match(main, /const MAX_COMMANDS_PER_REPLY = 2;/);
 assert(!/up to eight|at most eight|1–8 complete/i.test(main), "no old limit of eight left in main.js");
-assert(fs.readFileSync(__dirname + "/manifest.json", "utf8").split('"core/turn-budget.js"').length - 1 >= 16, "loaded on every AI site");
+{ const groups = JSON.parse(fs.readFileSync(__dirname + "/manifest.json", "utf8")).content_scripts.filter((g) => g.js.includes("core/main.js"));
+  assert(groups.length >= 10 && groups.every((g) => g.js.indexOf("core/turn-budget.js") > -1 && g.js.indexOf("core/turn-budget.js") < g.js.indexOf("core/main.js")), "loaded on every AI site, before core/main.js"); }
 for (const f of ["core/config.js", "core/lean-startup.js"]) {
   const t = fs.readFileSync(__dirname + "/" + f, "utf8");
   assert(!/up to eight|up to 8 independent/i.test(t), f + ": no old limit of eight");

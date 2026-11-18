@@ -2,7 +2,7 @@
 // 1.24.30 (owner, 2026-11-01: "sometimes i make a new chat or switch ai but the [continue project] pop up never
 // pops up"). The offer only shows in a fresh chat that holds no real request yet. PlazCode's own startup messages
 // were counted as a request: the saved-memory pages ("PLAZCODE MEMORY, PAGE 1 OF 2: ...", sent whenever the vault
-// has notes) and the plain first-person startup used on Notion, Vani, ClickUp and MiMo. So a brand-new chat
+// has notes) and the plain first-person startup used on Notion, Vani and MiMo. So a brand-new chat
 // looked already in use and the offer never appeared, and a startup-only chat could be offered for continuing.
 const assert = require("assert"), fs = require("fs");
 const R = require("./core/reliability.js");

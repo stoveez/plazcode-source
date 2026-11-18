@@ -65,7 +65,6 @@
     "https://www.notion.com/*",
     "https://notion.com/*",
     "https://*.notion.com/*",
-    "https://app.clickup.com/*",
     "https://aistudio.xiaomimimo.com/*"
   ],
   "content_security_policy": {
@@ -139,7 +138,6 @@
         "https://www.notion.com/*",
         "https://notion.com/*",
         "https://*.notion.com/*",
-        "https://app.clickup.com/*",
         "https://aistudio.xiaomimimo.com/*"
       ],
       "js": [
@@ -183,7 +181,6 @@
         "https://www.notion.com/*",
         "https://notion.com/*",
         "https://*.notion.com/*",
-        "https://app.clickup.com/*",
         "https://aistudio.xiaomimimo.com/*"
       ],
       "js": [
@@ -1075,63 +1072,6 @@
         "core/studio_plus.js",
         "core/agent_skills.js",
         "providers/notion.js",
-        "core/activity.js",
-        "core/checklist.js",
-        "core/memory.js",
-        "core/version.js",
-        "core/cowork.js",
-        "core/clarification.js",
-        "core/media.js",
-        "core/reliability.js",
-        "providers/media.js",
-        "core/connection-doctor.js",
-        "core/safety.js",
-        "core/tool-cards.js",
-        "core/approval.js",
-        "core/action-log.js",
-        "core/site-setups.js",
-        "core/main.js"
-      ],
-      "css": [
-        "overlay.css"
-      ],
-      "run_at": "document_idle"
-    },
-    {
-      "matches": [
-        "https://app.clickup.com/*"
-      ],
-      "js": [
-        "core/debug-capture.js",
-        "core/input-isolation.js",
-        "core/i18n-catalog.js",
-        "core/i18n.js",
-        "core/motion-interchange.js",
-        "core/motion-preview.js",
-        "core/motion-tools.js",
-        "core/headless-builder.js",
-        "core/creator.js",
-        "core/chat-creators.js",
-        "core/luau-knowledge.js",
-        "core/ultracode.js",
-        "core/feature-guide.js",
-        "core/text-pack.js",
-        "core/config.js",
-        "core/lean-startup.js",
-        "core/prompt-enhancer.js",
-        "core/parser.js",
-        "core/tool-guard.js",
-        "core/stall-guard.js", "core/turn-budget.js",
-        "core/settings-backup.js",
-        "core/task-center.js",
-        "core/templates.js",
-        "core/animlib.js",
-        "core/studio_skills.js",
-        "core/studio_daily.js",
-        "core/studio_gui.js",
-        "core/studio_plus.js",
-        "core/agent_skills.js",
-        "providers/clickup.js",
         "core/activity.js",
         "core/checklist.js",
         "core/memory.js",

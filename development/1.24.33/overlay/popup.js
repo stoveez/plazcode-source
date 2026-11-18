@@ -17,7 +17,6 @@ function applyPopupAppearance(value){
  for(const [key,value]of Object.entries(vars))root.style.setProperty(key,value);
 }
 const SUPPORTED_HOSTS = [
-  "app.clickup.com",
   "chat.deepseek.com", "deepseek.com", "chatgpt.com", "chat.openai.com",
   "claude.ai", "claude.com",
   "gemini.google.com", "www.kimi.com", "kimi.com",
@@ -246,7 +245,7 @@ if (runHint) {
     const names = {
       "chat.deepseek.com": "DeepSeek", "deepseek.com": "DeepSeek",
       "chatgpt.com": "ChatGPT", "chat.openai.com": "ChatGPT",
-      "app.clickup.com": "ClickUp Brain", "claude.ai": "Claude", "claude.com": "Claude",
+      "claude.ai": "Claude", "claude.com": "Claude",
       "gemini.google.com": "Gemini",
       "kimi.com": "Kimi", "kimi.ai": "Kimi",
       "chat.z.ai": "GLM", "chat.qwen.ai": "Qwen",

@@ -406,7 +406,6 @@ html.rs-light[data-rs-engine] #rs-bar.rs-bar-inline.rs-bar-inside {
 html[data-rs-engine="roblox"] #rs-brand { color: #7dd3fc; }
 html[data-rs-engine="roblox"] .rs-free { color: rgba(125,211,252,0.6); }
 
-
 html[data-rs-engine="local"] #rs-brand { color: #6ee7b7; }
 html[data-rs-engine="local"] .rs-free { color: rgba(110,231,183,0.62); }
 
@@ -1577,7 +1576,6 @@ html[data-rs-engine="roblox"] .rs-free {
   border-color: rgba(125, 211, 252, 0.25); background: rgba(56, 189, 248, 0.08);
 }
 
-
 /* ── primary CTA: deeper luxe gradient, bloom on hover ── */
 #rs-action[data-kind="start"] {
   background: linear-gradient(160deg, #5458ee 0%, #6d6ef6 40%, #8b5cf6 100%);
@@ -1920,11 +1918,7 @@ html { --rsa: #ffffff; }
 
 
 
-
-
 /* Crax GPT: signature orange on black */
-
-
 
 
 
@@ -2168,7 +2162,6 @@ html.rs-light #rs-state b { color: color-mix(in srgb, var(--rsa) 70%, #000000); 
 .rs-chip { border-radius: 10px; font-size: 12.5px; line-height: 1.35; }
 .rs-chip-head { padding: 7px 10px; gap: 8px; }
 .rs-chip-body pre { font-size: 11.5px; padding: 8px 10px; }
-
 
 /* ══════════════════════════════════════════════════════════════
    RS/US SLIDING TOGGLE — rebuilt with real DOM thumb
@@ -2703,10 +2696,6 @@ html {
 
 
 
-
-
-
-
 .rs-toast, #rs-menu, #rs-cards-panel, #rs-setup, #rs-card-embed, #rs-tut-card {
   background: var(--glass) !important;
   backdrop-filter: blur(18px) saturate(1.15);
@@ -3119,7 +3108,6 @@ html.rs-light #rs-mcp-repair { background: rgba(14,165,233,0.10); color: #0369a1
 
 
 
-
 /* ══════════════════════════════════════════════════════════════
    OR — black / white outline theme
    Drops glass tints, engine rainbows, and site-accent fills.
@@ -3261,7 +3249,6 @@ html.rs-light .rs-cards-fab {
   background: #f7f7f7 !important;
   border-color: #000000 !important;
 }
-
 
 /* ══════════════════════════════════════════════════════════════
    OR — smooth black/white
@@ -5540,7 +5527,6 @@ html[data-rs-theme],html.rs-light[data-rs-theme]{--pc-navy:#071426;--pc-navy-2:#
 #rs-cards-btn{background:#071426!important;color:var(--pc-gold-bright)!important;border:1px solid rgba(217,173,82,.5)!important;border-radius:3px 13px 3px 13px!important;box-shadow:0 12px 30px rgba(0,0,0,.42)!important}.rs-cards-tabs,.rs-cards-tab,.rs-lib,.rs-ui,#rs-cards-rng{display:none!important}.rs-cards-top{border-bottom:1px solid rgba(217,173,82,.2)!important}.rs-cards-body{background:#071426!important}.rs-sum-feed{display:grid!important}.rs-sum-row{background:#0b1d34!important;border-color:rgba(217,173,82,.16)!important;border-left:3px solid var(--pc-gold)!important;border-radius:1px 9px 1px 9px!important}
 .rs-menu-mark,.rs-menu-glyph,#rs-ornament,.rs-theme-row,.rs-theme-card{display:none!important}
 
-
 /* PlazCode 1.18.5 — clean labels and Blender connection mark */
 .rs-sec-label::before,
 .rs-sec-label span::before { content: none !important; display: none !important; }
@@ -5802,6 +5788,9 @@ html[data-rs-glow=off] :is(#rs-task-checklist,#rs-checklist-show){box-shadow:non
 #rs-task-checklist[data-detached=true]{cursor:grab}
 #rs-task-checklist[data-detached=true] header{touch-action:none}
 #rs-task-checklist[data-dragging=true]{cursor:grabbing;user-select:none}
+/* While PlazCode is minimized the Tasks pill can be dragged too (owner, 2026-11-18). */
+#rs-checklist-show[data-detached=true]{cursor:grab;touch-action:none}
+#rs-checklist-show[data-dragging=true]{cursor:grabbing;user-select:none}
 #rs-task-checklist header:focus-visible{outline:2px solid var(--pc-accent,#e9ba53);outline-offset:3px;border-radius:6px}
 @media(prefers-reduced-motion:reduce){#rs-task-checklist,#rs-checklist-show,#rs-task-checklist::before,.rs-checklist-fill{transition:none!important}}
 
@@ -6492,12 +6481,6 @@ html[data-rs-studio] #rs-root .rs-live-card .rs-live-big{display:grid;place-item
 html[data-rs-studio] #rs-root .rs-live-card .rs-live-note{color:var(--st-dim)!important;font:500 11px/1.5 var(--st-mono)!important}
 html[data-rs-studio][data-rs-gradients=off] #rs-root .rs-live-card{border-image:none!important;border-color:var(--st-line)!important;background:var(--st-card)!important}
 html[data-rs-studio][data-rs-gradients=off][data-rs-glow=off] #rs-root .rs-live-card{box-shadow:none!important}
-
-/* ClickUp (its own grid, providers/clickup.js) pins the hide button to the bar's top-right corner. With the Studio look the
-   name block is wider, and on a narrow ClickUp panel Firefox's wider letters pushed the RS / AS switch under it (CI run
-   43491298315). In the Studio look it stays in its icon group with Discord and Settings instead. */
-html[data-rs-studio]:not([data-rs-bar-collapsed]) #rs-root #rs-bar.rs-prov-clickup #rs-hide{position:static!important;top:auto!important;right:auto!important}
-html[data-rs-studio] #rs-root #rs-bar.rs-prov-clickup #rs-ctx{margin-right:0!important}
 
 /* Several commands in one reply (2026-11-14): a see-through glass card with the accent colour, so it reads at a glance. */
 .rs-chip.rs-chip-multi{background:linear-gradient(135deg,rgb(var(--pc-rgb,233 186 83) / .16),rgb(var(--pc-rgb,233 186 83) / .05) 55%,rgb(255 255 255 / .03))!important;border:1px solid rgb(var(--pc-rgb,233 186 83) / .55)!important;box-shadow:0 0 0 1px rgb(var(--pc-rgb,233 186 83) / .12) inset,0 8px 28px rgb(0 0 0 / .28),0 0 22px rgb(var(--pc-rgb,233 186 83) / .14)!important;-webkit-backdrop-filter:blur(10px) saturate(1.3);backdrop-filter:blur(10px) saturate(1.3)}

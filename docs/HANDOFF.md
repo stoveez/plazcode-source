@@ -183,7 +183,6 @@ Limits: the Mac zip can only be built on a Mac or by GitHub's Mac runners (publi
 - Rust tests: `cargo test --manifest-path build-src-1.24.27/PlazCode/agent/Cargo.toml` (about 180 tests).
 - **Protected files and hash pins:** after editing a protected file (for example `core/main.js`, `providers/vani.js`, `providers/notion.js`, other providers), update its pin in the overlay copy of `test-desktop-regression.js`. The pin is `git hash-object build-src-1.24.27/PlazCode/<file>` computed AFTER running `prepare.py`. Recompute pins again after every merge that touches those files.
 - CI: `.github/workflows/validate-1.24.27.yml` on the branch. The standard test build for the owner is the two CI artifacts `plazcode-<version>-Windows-test-lean` and `plazcode-<version>-macOS-test-lean` (see `CLAUDE.md` rule 6). Starting CI needs a push; pushing to a `claude/` task branch is allowed, but check `CLAUDE.md` before triggering any publish workflow (not allowed).
-- The long-standing red check "ClickUp performance" in the `browsers` job passes locally and is not caused by new work.
 
 ## 5. Owner rules that always apply (short form; the full list is in CLAUDE.md)
 1. Never break the auto-updater (feed addresses and formats must keep working).

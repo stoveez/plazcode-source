@@ -6,7 +6,9 @@ assert hashlib.sha256(archive.read_bytes()).hexdigest()=="a359139c301580762d2050
 # 1.24.30: the bundled third-party Ro-Engineer pack also ships byte for byte (its LICENSE uses CRLF).
 BINARY={'.png','.jpg','.jpeg','.gif','.ico','.zip','.exe','.dll','.woff','.woff2','.ttf','.otf','.webp'}
 REMOVED=['core/ultracode-deepseek.js','PlazCode-Extension/core/ultracode-deepseek.js','PlazCode-Extension/ultra','PlazCode-Extension/ultragui',
- 'test-deepseek-ultracode.js','test-ultracode-efficiency.js','agent/src/ultra-index.json','agent/src/ultra-resources.json','agent/src/ultragui-index.json','agent/src/ultragui-resources.json']
+ 'test-deepseek-ultracode.js','test-ultracode-efficiency.js','agent/src/ultra-index.json','agent/src/ultra-resources.json','agent/src/ultragui-index.json','agent/src/ultragui-resources.json',
+ 'providers/clickup.js','PlazCode-Extension/providers/clickup.js','test-clickup-provider.js','release-tools/test-clickup-browser.cjs','release-tools/test-clickup-startup.cjs',
+ 'release-tools/test-clickup-results.cjs','release-tools/test-clickup-send-readiness.cjs','release-tools/test-clickup-startup-model.cjs','release-tools/test-clickup-performance.cjs']
 def extract(archive,destination):
  with zipfile.ZipFile(archive) as z:
   for name in z.namelist():
@@ -19,6 +21,7 @@ for path in (here/'overlay').rglob('*'):
   target=source/path.relative_to(here/'overlay');target.parent.mkdir(parents=True,exist_ok=True);data=path.read_bytes();target.write_bytes(data if (path.suffix.lower() in BINARY or b'\0' in data[:8192] or 'ro-engineer' in path.parts) else data.replace(b'\r\n',b'\n'))
 # 1.24.30: Ultra is now the UltraLab pack (core/ultralab, read with ultralab_read). The old Ultra
 # bundles, the DeepSeek-only Ultra and the Rust readers for them are removed completely.
+# 1.24.33 (owner, 2026-11-18): ClickUp support is removed entirely; its site file and tests from older versions go too.
 for name in REMOVED:
  path=source/name
  if path.is_dir():shutil.rmtree(path)

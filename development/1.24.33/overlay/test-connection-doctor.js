@@ -89,8 +89,8 @@ const ids = r => r.steps.map(s => s.id + ":" + s.state).join(" ");
 
   // Chat box missing: the site's own hint is shown.
   { const { act } = actions([okStatus]);
-    const r = await D.run({ engine: "roblox", status: okStatus, composer: async () => ({ ready: false, detail: "ClickUp — open Ask Brain" }) }, act, fast);
-    assert.equal(ids(r), "extension:ok app:ok engine:ok chat-box:action"); assert.match(r.steps[3].text, /Ask Brain/); }
+    const r = await D.run({ engine: "roblox", status: okStatus, composer: async () => ({ ready: false, detail: "Kimi — open a chat" }) }, act, fast);
+    assert.equal(ids(r), "extension:ok app:ok engine:ok chat-box:action"); assert.match(r.steps[3].text, /open a chat/); }
 
   // Not connected to this chat: offer Restart, never do it automatically.
   { const { calls, act } = actions([okStatus]);

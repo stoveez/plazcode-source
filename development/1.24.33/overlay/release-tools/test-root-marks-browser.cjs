@@ -3,7 +3,7 @@
 // the bar's labels black. The full core must put its own marks back and leave
 // the site's attributes alone; a single mark PlazCode itself removes stays gone.
 const {chromium} = require('playwright'), assert = require('node:assert/strict');
-const {pageFor} = require('./test-clickup-browser.cjs');
+const {pageFor} = require('./bar-fixture.cjs');
 
 (async () => {
   const browser = await chromium.launch({args: ['--no-sandbox']});

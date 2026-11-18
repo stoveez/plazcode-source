@@ -15,28 +15,48 @@ const PlazCodeChecklist = (() => {
     } catch { return ''; }
   }
   function mount({root, getGroup, getBar, blocked, getDetached=()=>false, storage}) {
-    const key='plazcode.checklistHidden',positionKey='plazcode.checklistPosition'; let collapsed=false, signature='',position=null,drag=null;
+    // autoCollapsed: folded into the Tasks pill because PlazCode itself was minimized (owner, 2026-11-18); it opens again
+    // with PlazCode unless the person opened or closed it in between. wasDetached: PlazCode's minimized state last seen.
+    const key='plazcode.checklistHidden',positionKey='plazcode.checklistPosition'; let collapsed=false, signature='',position=null,drag=null,autoCollapsed=false,wasDetached=null;
     try { if(!storage)storage=window.sessionStorage;collapsed=storage.getItem(key)==='1';const saved=JSON.parse(storage.getItem(positionKey));if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y))position={x:saved.x,y:saved.y}; } catch {}
     const panel=document.createElement('section');panel.id='rs-task-checklist';panel.hidden=true;panel.setAttribute('aria-label','Task checklist');
     panel.innerHTML='<header><span class="rs-checklist-ring" role="progressbar" aria-label="Task plan progress" aria-valuemin="0" aria-valuemax="100"><svg viewBox="0 0 32 32" aria-hidden="true"><circle class="rs-checklist-track" cx="16" cy="16" r="12"/><circle class="rs-checklist-fill" cx="16" cy="16" r="12" pathLength="100" stroke-dasharray="100" transform="rotate(-90 16 16)"/></svg><span class="rs-checklist-percent"></span></span><span class="rs-checklist-heading"><strong>Task checklist</strong><small></small></span><button type="button" class="rs-checklist-hide" aria-label="Hide task checklist" title="Hide checklist — the AI keeps working">−</button></header><ol></ol>';
     const tab=document.createElement('button');tab.id='rs-checklist-show';tab.type='button';tab.hidden=true;tab.innerHTML='<span class="rs-checklist-tab-icon" aria-hidden="true">✓</span><span class="rs-checklist-tab-label">Tasks</span><span class="rs-checklist-tab-count"></span>';tab.setAttribute('aria-label','Show task checklist');
     root.append(panel,tab);
     function setCollapsed(value) {
-      collapsed=value;try{if(value)storage.setItem(key,'1');else storage.removeItem(key);}catch{}
+      collapsed=value;autoCollapsed=false;try{if(value)storage.setItem(key,'1');else storage.removeItem(key);}catch{}
       place();(value?tab:panel.querySelector('button')).focus({preventScroll:true});
     }
-    panel.querySelector('button').onclick=()=>setCollapsed(true);tab.onclick=()=>setCollapsed(false);
+    // Minimizing PlazCode folds the list into its pill, without saving that as the person's choice and without moving focus.
+    function followBar(detached) {
+      if(wasDetached===detached)return;const first=wasDetached===null;wasDetached=detached;
+      if(detached&&!collapsed){collapsed=true;autoCollapsed=true;}
+      else if(!detached&&!first&&autoCollapsed){collapsed=false;autoCollapsed=false;}
+    }
+    panel.querySelector('button').onclick=()=>setCollapsed(true);
     function savePosition(){try{storage.setItem(positionKey,JSON.stringify(position));}catch{}}
-    function stopDrag(){if(drag){const id=drag.id;drag=null;try{panel.releasePointerCapture(id);}catch{}panel.removeAttribute('data-dragging');savePosition();}}
-    panel.addEventListener('pointerdown',event=>{
-      if(!getDetached()||event.button!==0||event.target.closest('button'))return;
-      const rect=panel.getBoundingClientRect();position={x:rect.left,y:rect.top};drag={id:event.pointerId,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top};
-      try{panel.setPointerCapture(event.pointerId);}catch{}panel.dataset.dragging='true';event.preventDefault();
-    });
-    panel.addEventListener('pointermove',event=>{if(!drag||event.pointerId!==drag.id)return;position={x:drag.left+event.clientX-drag.x,y:drag.top+event.clientY-drag.y};place();event.preventDefault();});
-    panel.addEventListener('pointerup',stopDrag);panel.addEventListener('pointercancel',stopDrag);panel.addEventListener('lostpointercapture',stopDrag);window.addEventListener('blur',stopDrag);
+    // While PlazCode is minimized, the list and its Tasks pill can be dragged anywhere and share one saved spot. The pill
+    // moves only after the pointer travels 5 px, so a plain click still opens the list (as PlazCode's own minimized button).
+    function stopDrag(){if(drag){const {id,element,moved}=drag;drag=null;try{element.releasePointerCapture(id);}catch{}element.removeAttribute('data-dragging');if(moved){savePosition();if(element===tab){suppressClick=true;setTimeout(()=>{suppressClick=false;},60);}}}}
+    let suppressClick=false;
+    function startDrag(element,event,threshold){
+      const rect=element.getBoundingClientRect();drag={id:event.pointerId,element,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top,threshold,moved:false};
+      try{element.setPointerCapture(event.pointerId);}catch{}
+      if(!threshold){drag.moved=true;position={x:rect.left,y:rect.top};element.dataset.dragging='true';event.preventDefault();}
+    }
+    function moveDrag(event){
+      if(!drag||event.pointerId!==drag.id)return;const dx=event.clientX-drag.x,dy=event.clientY-drag.y;
+      if(!drag.moved){if(Math.hypot(dx,dy)<drag.threshold)return;drag.moved=true;drag.element.dataset.dragging='true';}
+      position={x:drag.left+dx,y:drag.top+dy};place();event.preventDefault();
+    }
+    panel.addEventListener('pointerdown',event=>{if(!getDetached()||event.button!==0||event.target.closest('button'))return;startDrag(panel,event,0);});
+    tab.addEventListener('pointerdown',event=>{if(!getDetached()||event.button!==0)return;startDrag(tab,event,5);});
+    for(const element of [panel,tab]){element.addEventListener('pointermove',moveDrag);element.addEventListener('pointerup',stopDrag);element.addEventListener('pointercancel',stopDrag);element.addEventListener('lostpointercapture',stopDrag);}
+    window.addEventListener('blur',stopDrag);
+    tab.onclick=event=>{if(suppressClick){suppressClick=false;event.preventDefault();return;}setCollapsed(false);};
+    const arrows=element=>event=>{if(!getDetached()||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;const rect=element.getBoundingClientRect(),step=event.shiftKey?40:10;position={x:rect.left+(event.key==='ArrowLeft'?-step:event.key==='ArrowRight'?step:0),y:rect.top+(event.key==='ArrowUp'?-step:event.key==='ArrowDown'?step:0)};place();savePosition();event.preventDefault();};
     const header=panel.querySelector('header');header.tabIndex=0;header.title='When the bar is hidden, drag this box or use arrow keys to move it.';header.setAttribute('aria-label','Task checklist; use arrow keys to move when detached');
-    header.addEventListener('keydown',event=>{if(!getDetached()||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;const rect=panel.getBoundingClientRect(),step=event.shiftKey?40:10;position={x:rect.left+(event.key==='ArrowLeft'?-step:event.key==='ArrowRight'?step:0),y:rect.top+(event.key==='ArrowUp'?-step:event.key==='ArrowDown'?step:0)};place();savePosition();event.preventDefault();});
+    header.addEventListener('keydown',arrows(panel));tab.addEventListener('keydown',arrows(tab));
     function render() {
       const group=getGroup();
       if (!group || !group.taskLabel) {panel.hidden=true;tab.hidden=true;return;}
@@ -63,11 +83,11 @@ const PlazCodeChecklist = (() => {
     }
     function place() {
       const group=getGroup(),bar=getBar(),rect=bar?.isConnected&&bar.style.display!=='none'?bar.getBoundingClientRect():null;
-      const detached=!!getDetached(),available=!!group?.taskLabel&&(detached||!!rect?.width&&rect.top>64)&&!blocked();
+      const detached=!!getDetached();followBar(detached);const available=!!group?.taskLabel&&(detached||!!rect?.width&&rect.top>64)&&!blocked();
       panel.hidden=!available||collapsed;tab.hidden=!available||!collapsed;
       if(!available)return;
       const element=collapsed?tab:panel,width=collapsed?(tab.querySelector('.rs-checklist-tab-count')?.textContent?124:92):Math.min(300,window.innerWidth-16);
-      panel.dataset.detached=String(detached);
+      panel.dataset.detached=String(detached);tab.dataset.detached=String(detached);
       if(detached){
         if(!position){const previous=element.getBoundingClientRect();position={x:previous.width?previous.left:Math.max(8,window.innerWidth-316),y:previous.height?previous.top:Math.max(8,window.innerHeight-380)};}
         element.style.width=width+'px';element.style.bottom='auto';panel.style.maxHeight=Math.max(48,Math.min(330,window.innerHeight-16))+'px';panel.style.setProperty('--rs-checklist-space',Math.max(48,Math.min(330,window.innerHeight-16))+'px');

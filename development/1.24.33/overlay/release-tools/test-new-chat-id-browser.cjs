@@ -3,7 +3,7 @@
 // the send). The startup must finish and the agent must connect instead of
 // being abandoned as "response owner changed" ("Not connected to this chat yet").
 const {chromium} = require('playwright'), assert = require('node:assert/strict');
-const {pageFor} = require('./test-clickup-browser.cjs');
+const {pageFor} = require('./bar-fixture.cjs');
 
 async function run(page, assignAfterMs) {
   return page.evaluate(async (assignAfterMs) => {
@@ -12,7 +12,7 @@ async function run(page, assignAfterMs) {
     // The AI answers slowly, and the site assigns the chat its address while the
     // reply is still on its way (Vani: about a second after the send).
     autoReply = false;
-    const button = provider.composerFrame().querySelector('[data-test="refinement-prompt-submit-button"]'), original = button.onclick;
+    const button = document.querySelector('[data-testid="send-button"]'), original = button.onclick;
     button.onclick = (event) => {
       original(event); const n = sent.length;
       setTimeout(() => { if (n === 1) window.__key = 'abc-123'; }, assignAfterMs);

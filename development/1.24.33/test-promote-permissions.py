@@ -131,7 +131,7 @@ with tempfile.TemporaryDirectory(prefix='plazcode-overlay-parity-') as directory
  finally:promotion.ROOT=previous
 print('PASS all 15 complete catalogs/runtime and exact canonical overlay bytes required in source archive.')
 
-shared={'PlazCode/core/main.js':(b'validated UI',mode),'PlazCode/providers/clickup.js':(b'validated startup/performance',mode),'PlazCode/core/locales/tr.json':(b'validated locale',mode)}
+shared={'PlazCode/core/main.js':(b'validated UI',mode),'PlazCode/providers/kimi.js':(b'validated startup/performance',mode),'PlazCode/core/locales/tr.json':(b'validated locale',mode)}
 for relative in ['launch_studio_mcp.py','launch_blender_mcp.py','blender_ops.py']:shared['PlazCode/'+relative]=(b'validated launcher',mode)
 native={}
 firefox={}
@@ -145,7 +145,7 @@ native['PlazCode/PlazCode-Extension/production-build.json']=(json.dumps({'channe
 promotion.verify_shared_code(shared,[native,dict(native)],firefox)
 variant_bad=copy.deepcopy(native);variant_row=json.loads(variant_bad['PlazCode/PlazCode-Extension/production-build.json'][0]);variant_row['release_variant']['mark']='c'*16;variant_bad['PlazCode/PlazCode-Extension/production-build.json']=(json.dumps(variant_row).encode(),mode)
 rejected(promotion.verify_shared_code,shared,[native,variant_bad],firefox)
-bad=dict(native);bad['PlazCode/PlazCode-Extension-Firefox/providers/clickup.js']=(b'stale composer',mode)
+bad=dict(native);bad['PlazCode/PlazCode-Extension-Firefox/providers/kimi.js']=(b'stale composer',mode)
 rejected(promotion.verify_shared_code,shared,[bad],firefox)
 bad=dict(firefox);bad['core/locales/tr.json']=(b'stale locale',mode)
 rejected(promotion.verify_shared_code,shared,[native],bad)

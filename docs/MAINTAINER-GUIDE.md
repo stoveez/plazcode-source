@@ -12,7 +12,7 @@ The owner is not a programmer. Talk to them in plain words. Ask before anything 
 
 ## 1. What PlazCode is
 
-PlazCode turns the AI chat sites people already use (ChatGPT, Claude, Gemini, DeepSeek, Notion AI, ClickUp, Vani and more) into an agent that can build in Roblox Studio and work on the user's computer. It has two parts that talk to each other:
+PlazCode turns the AI chat sites people already use (ChatGPT, Claude, Gemini, DeepSeek, Notion AI, Vani and more) into an agent that can build in Roblox Studio and work on the user's computer. It has two parts that talk to each other:
 
 1. **A browser extension** (Chrome, Edge, Brave and other Chromium browsers, plus a Firefox build). It puts a PlazCode bar above the chat box, sends instructions to the AI, reads the AI's replies, finds tool calls in them, runs them and pastes the results back into the chat.
 2. **A desktop app** (Rust; Windows and Mac). It does the real work on the computer: runs tools, talks to Roblox Studio and other programs, keeps memory, checks safety rules, updates itself, and shows the PlazCode window.
@@ -40,7 +40,7 @@ Everything below ships today. Do not break any of it.
 - **Argument repair** for badly formed tool calls (`core/tool-guard.js`, `core/parser.js`).
 - **Themes**, 15 interface languages, a debug report (Settings > Copy debug report).
 - **Auto-updater** (`agent/src/updater.rs`, `Update-PlazCode.ps1`).
-- **Supported AI sites** are the files in `providers/` (arena, chatgpt, claude, clickup, copilot, crax, deepseek, freebuff, gemini, glm, kimi, meta, notion, oxalpha, qwen, useai, vani).
+- **Supported AI sites** are the files in `providers/` (arena, chatgpt, claude, copilot, crax, deepseek, freebuff, gemini, glm, kimi, meta, mimo, notion, oxalpha, qwen, useai, vani).
 
 ---
 
@@ -117,7 +117,7 @@ build-src-1.24.27/PlazCode/   (the built source tree, made by prepare.py)
 Chat sites change their pages and are hard to test live. Rules that were learned the hard way:
 - A click hook must ignore PlazCode's own buttons (check `safeClosest(target, "#rs-root")`), or Fix connection starts a phantom run that waits 5 minutes.
 - Never click Send twice. After a click, prove whether the site took the message before retrying; only retry when it is provably not taken (the draft or file is still in the box).
-- Every site has quirks (Notion shows files as chips, ClickUp renames the address of a new chat, Vani rewrites the page root). Read the provider's existing comments before touching it.
+- Every site has quirks (Notion shows files as chips, Vani renames the address of a new chat and rewrites the page root). Read the provider's existing comments before touching it.
 - Test on the fake pages in the test suite, and say clearly that live sites were or were not tried.
 
 ---
