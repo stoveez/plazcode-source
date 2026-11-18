@@ -1,0 +1,296 @@
+{
+  "version": "1.24.34",
+  "desktop_version": "1.24.34",
+  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-Linux-1.24.34.tar.gz",
+  "sha256": "2f017bd4b8ea50890e65e27b219a217110ba9cee2ada6d0ca95753030fe3937c",
+  "release_notes": [
+    {
+      "version": "1.24.34",
+      "title": "Ask PlazCode in your own chat, a smoother app and less plan usage",
+      "summary": "Ask PlazCode runs in the chat you are using, the app is smoother, and PlazCode uses less of your AI plan.",
+      "added": [
+        "Ask PlazCode runs in the AI chat you are using (the tab you opened it from, else the AI tab you used last) instead of a background DeepSeek chat. A background chat opens only when no AI chat tab is open.",
+        "Ask PlazCode shows the reply as it is written, with thinking dots while you wait.",
+        "The AI can use other desktop apps by the names on their buttons and fields (app_do), on Windows and Mac; it asks before risky steps such as send, delete or buy.",
+        "The AI can maximize, minimize or restore a window in one step.",
+        "The live preview can be dragged and minimized into a small Live pill.",
+        "The glow stays on while the AI is still working.",
+        "Taking control back needs a click or a key press; moving the mouse or scrolling no longer pauses the AI.",
+        "Less AI plan usage: the status line after each command is sent in full only when it changes, the start-up command list is smaller, and the AI sends at most 2 commands per reply.",
+        "A switch to turn off the PlazCode vault (both Memory settings) for people who keep their own notes tool.",
+        "The task list folds into its pill when you minimize PlazCode, and the pill can be dragged.",
+        "Smoother Windows app: lighter page changes, no blur when none is chosen, and endless animations rest while the window is behind others.",
+        "ClickUp support has been removed; the app lists 15 browser AIs + Ollama."
+      ],
+      "improved": [],
+      "fixed": [
+        "Resume no longer flips straight back to Pause.",
+        "DeepSeek starts on DeepSeek pages in other languages and on Edge.",
+        "Gemini: command cards line up with the reply, typing is no longer laggy, and it no longer says the bridge is not active.",
+        "Ask PlazCode answers no longer go missing or arrive late.",
+        "ChatGPT keeps working when its window is not in front.",
+        "plazcode_clarify: your own \"Other\" answer can be submitted, and the buttons no longer cover that box.",
+        "The Mac app window works on macOS 10.15 Catalina again.",
+        "Settings: the language list no longer opens behind other sections, and the stray arrow in its corner is gone."
+      ],
+      "notes": [
+        "Update the PlazCode app and the extension together (the app's updater does this).",
+        "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***Ask PlazCode runs in your own chat, a smoother app, and less AI plan usage.***",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "Ask PlazCode runs in the AI chat you are using, not a background DeepSeek chat. Replies show as they are written.",
+              "The AI can use other desktop apps by their button names and maximize, minimize or restore windows in one step.",
+              "Live preview can be dragged or minimized; the glow stays on while the AI works.",
+              "Only a click or key press takes control back; moving the mouse or scrolling no longer pauses the AI.",
+              "Less AI plan usage: shorter status lines, smaller start-up list, at most 2 commands per reply.",
+              "Switch to turn off the PlazCode vault if you use your own notes.",
+              "The task list folds away with PlazCode and can be dragged.",
+              "Smoother Windows app: lighter page changes, less blur, idle animations rest.",
+              "ClickUp support removed; the app lists 15 browser AIs + Ollama."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Resume no longer flips back to Pause.",
+              "DeepSeek starts on non-English pages and on Edge.",
+              "Gemini: cards line up, no typing lag, no false \"bridge not active\".",
+              "Ask PlazCode answers no longer go missing, and it shows thinking dots.",
+              "ChatGPT keeps working when its window is not in front.",
+              "plazcode_clarify: your own \"Other\" answer can be sent.",
+              "Mac app window works on Catalina again.",
+              "Settings language list no longer hides behind sections."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Automated tests on Windows, Mac and Linux; Gemini checked live, most others not yet. Report anything odd.",
+              "Windows is unsigned and Mac is not notarized, as before."
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "version": "1.24.31",
+      "title": "Startup, sign-in and ChatGPT fixes",
+      "summary": "Fixes for ChatGPT, DeepSeek, startup and sign-in problems found since 1.24.30, plus a guest mode.",
+      "added": [
+        "Guest mode: if a profile can't be created, \"Use PlazCode as a guest\" keeps your settings, skills and memory on this computer, separate from online profiles.",
+        "Safer file work: the AI can use paths inside your project and preview files read-only.",
+        "Memory notes are loaded only when they are relevant, and AI results use one standard shape.",
+        "Command batches use one call shape, and the AI is told which capabilities are granted."
+      ],
+      "improved": [
+        "Windows startup errors now name the folder and the missing file, and the Mac check matches the real app layout.",
+        "Slow Blender scenes get more time, and long single-line edits are handled in safe pieces."
+      ],
+      "fixed": [
+        "ChatGPT: startup no longer hangs on \"Starting Up\" or \"Send paused\", including in Work mode.",
+        "ChatGPT: typing freezes, false \"sent\" confirmations and lost tool results.",
+        "Leftover startup text no longer stays in the message box.",
+        "The screenshot pop-up no longer shows a black box.",
+        "DeepSeek: false startup warnings, stuck sends and broken line breaks.",
+        "Sign-up and log-in recover from busy or offline servers; saved logins stay usable.",
+        "Windows: false \"program files changed\" startup error, and Windows paths inside the project.",
+        "Blender: first-time setup on Windows.",
+        "Ox Alpha: Copy is no longer counted as a message sent.",
+        "The AI keeps working on your project after short follow-ups."
+      ],
+      "notes": [
+        "Update the PlazCode app and the extension together (the app's updater does this).",
+        "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***Fixes for ChatGPT, DeepSeek, startup and sign-in problems found since 1.24.30.***",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "Guest mode: if a profile can't be created, \"Use PlazCode as a guest\" keeps your settings, skills and memory on this computer.",
+              "Safer file work: the AI can use paths inside your project and preview files read-only.",
+              "Memory is loaded only when it's relevant."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "ChatGPT: startup no longer hangs on \"Starting Up\" or \"Send paused\", including in Work mode.",
+              "ChatGPT: typing freezes, false \"sent\" confirmations and lost tool results are fixed.",
+              "Leftover startup text no longer stays in the message box.",
+              "Screenshot pop-up no longer shows a black box.",
+              "DeepSeek: false startup warnings, stuck sends and broken line breaks.",
+              "Sign-up and log-in recover from busy or offline servers; saved logins stay.",
+              "Windows: false \"program files changed\" startup error. Windows paths work in the project.",
+              "Blender: first-time setup on Windows and slow scenes.",
+              "Ox Alpha: Copy no longer counts as a message sent.",
+              "The AI keeps working on your project after short follow-ups."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Automated tests on Windows, Mac and Linux, and on practice pages. ChatGPT Work mode was tried live; other AI sites and Studio were not.",
+              "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "version": "1.24.26",
+      "title": "Remembered approvals and protected program files",
+      "summary": "Approve all remembers your choice across tasks, chats and AI sites. Program files and future updates are checked for changes automatically.",
+      "added": [],
+      "improved": [
+        "Program files are protected with signed checks and less readable browser code, without a new login, setup step or internet requirement."
+      ],
+      "fixed": [
+        "Approve all remembers that tool type until you remove it under Safety > Always approved.",
+        "Chat-mode saves handle browser storage failures cleanly."
+      ],
+      "notes": [
+        "Your own skills, notes and settings stay editable. Reload the extension and refresh AI tabs after the complete update.",
+        "The Windows app is unsigned and the Mac app is not notarized."
+      ],
+      "github": {
+        "summary": "***Remember approvals across chats, with automatic checks for program changes.***",
+        "added": [],
+        "improved": [
+          "Program files and updates now carry signed checks. Changed program files are blocked; your skills, notes and settings stay editable.",
+          "Browser program code is protected. No new login, setup steps or internet requirement."
+        ],
+        "fixed": [
+          "Approve all remembers that tool type across tasks, chats and AI sites. Remove it in Safety to be asked again.",
+          "Chat-mode saves now handle browser storage failures cleanly."
+        ],
+        "notes": [
+          "Windows, Mac and Linux checks, protected Chromium/Firefox, approvals, changed-file rejection, updates and Mac startup/relaunch.",
+          "Tested on practice pages. Real AI accounts and Studio projects were not tested live.",
+          "Windows is unsigned and Mac is not notarized; opening prompts may still appear."
+        ],
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "Program files and updates now carry signed checks. Changed program files are blocked; your skills, notes and settings stay editable.",
+              "Browser program code is protected. No new login, setup steps or internet requirement."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Approve all remembers that tool type across tasks, chats and AI sites. Remove it in Safety to be asked again.",
+              "Chat-mode saves now handle browser storage failures cleanly."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Windows, Mac and Linux checks, protected Chromium/Firefox, approvals, changed-file rejection, updates and Mac startup/relaunch.",
+              "Tested on practice pages. Real AI accounts and Studio projects were not tested live.",
+              "Windows is unsigned and Mac is not notarized; opening prompts may still appear."
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "version": "1.24.25",
+      "title": "Screenshots, approvals and update warnings",
+      "summary": "Improves screenshot display, remembers task approvals in Plan Mode, and makes mismatched app and extension versions clear.",
+      "added": [],
+      "improved": [
+        "The desktop Updates page shows active browser extension versions. Known outdated versions stay red when a later check fails."
+      ],
+      "fixed": [
+        "Screenshot previews render from image bytes instead of image URLs that AI sites can block. Unreadable image data shows an error.",
+        "Approve all for this task now applies to the same command in Plan Mode.",
+        "Creation previews explain missing app support, oversized requests and invalid responses instead of showing a JSON parsing error."
+      ],
+      "notes": [
+        "Replacing only the EXE does not update an extension loaded from another folder. Use the full update and load the updated extension folder.",
+        "Real Studio captures and the reported creation-preview failure were not reproduced on the affected computer.",
+        "The Windows app is unsigned and the Mac app is not notarized."
+      ],
+      "github": {
+        "summary": "***Screenshots, approvals and updates:*** clearer results and fewer repeated prompts.",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "The Updates page shows active browser extension versions and warns when the app and extension do not match."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Screenshot previews can display even when an AI site blocks image URLs; unreadable captures show an error.",
+              "Approve all for this task now skips repeats of that command in Plan Mode.",
+              "Known outdated versions stay red when a later update check fails.",
+              "Creation previews explain missing app support, large requests and invalid replies instead of a JSON parsing error."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Full Windows, Mac and Linux tests, including the packaged Mac app; screenshot pixels checked in Chromium and Firefox. Small creation drafts checked through the real desktop endpoint.",
+              "The affected computer and real Studio captures were not tested live. Updating only the EXE cannot update a separate extension folder.",
+              "The Windows app is unsigned and the Mac app is not notarized, as before."
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "version": "1.24.24",
+      "title": "Fewer limit errors and lower usage",
+      "summary": "Fixes the \"message exceeds your input limit\" error that stopped Claude in the middle of normal work, and makes PlazCode use noticeably less of your AI plan.",
+      "added": [],
+      "improved": [
+        "PlazCode uses less of your AI plan: the AI no longer has to look up each command before using it, Ultra mode no longer re-sends its whole skill pack with every request, and the extra reference PlazCode adds to a request is smaller.",
+        "When the AI saves a note to your vault, PlazCode no longer sends the whole vault summary straight back to it."
+      ],
+      "fixed": [
+        "Claude (and other sites) stopped with \"This message exceeds your 12000 character input limit\" even after a normal prompt. The extra notes PlazCode adds now always fit your limit: they are shortened, or wait for the next message. Command results themselves are never cut."
+      ],
+      "notes": [
+        "Your Input characters setting still works the same for everything you type.",
+        "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***Fewer limit errors, lower usage:*** fixes the input-limit error that stopped Claude mid-work, and PlazCode now uses less of your AI plan.",
+        "sections": [
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Claude stopped with \"This message exceeds your 12000 character input limit\" even after a normal prompt. PlazCode's own extra notes now always fit your limit.",
+              "The AI no longer looks up each command before using it, which used extra messages.",
+              "Ultra mode no longer re-sends its whole skill pack with every request.",
+              "The extra reference added to each request is smaller, and vault saves are not echoed back to the AI."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Full tests passed on Windows, Mac and Linux, including the Mac app.",
+              "The exact limit error from the report was recreated in a test and now fits the limit.",
+              "Command results are never cut; only PlazCode's own extra notes are shortened or wait.",
+              "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "security": {
+    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.34\",\"platform\":\"linux\",\"sha256\":\"2f017bd4b8ea50890e65e27b219a217110ba9cee2ada6d0ca95753030fe3937c\"}",
+    "signature": "19ed3aa1e4ea46953a83a999c4c182729922d4611f0b3ff73cde15eaa9caba4a3900ff5b802e4d30e24ebf5a3acc91ba113725baff46c5de203df5f4c1958d0f"
+  }
+}

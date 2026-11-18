@@ -1,9 +1,82 @@
 {
-  "version": "1.24.31",
-  "desktop_version": "1.24.31",
-  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.31.zip",
-  "sha256": "9a74402d7dbb13191c88bc280165e212c3d3aac27e80bb1e9b3d539574794ca8",
+  "version": "1.24.34",
+  "desktop_version": "1.24.34",
+  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.34.zip",
+  "sha256": "d3867afabbbc4394b399b4cf5e26c27bc063e8d9bcf74e840f813d69197ff251",
   "release_notes": [
+    {
+      "version": "1.24.34",
+      "title": "Ask PlazCode in your own chat, a smoother app and less plan usage",
+      "summary": "Ask PlazCode runs in the chat you are using, the app is smoother, and PlazCode uses less of your AI plan.",
+      "added": [
+        "Ask PlazCode runs in the AI chat you are using (the tab you opened it from, else the AI tab you used last) instead of a background DeepSeek chat. A background chat opens only when no AI chat tab is open.",
+        "Ask PlazCode shows the reply as it is written, with thinking dots while you wait.",
+        "The AI can use other desktop apps by the names on their buttons and fields (app_do), on Windows and Mac; it asks before risky steps such as send, delete or buy.",
+        "The AI can maximize, minimize or restore a window in one step.",
+        "The live preview can be dragged and minimized into a small Live pill.",
+        "The glow stays on while the AI is still working.",
+        "Taking control back needs a click or a key press; moving the mouse or scrolling no longer pauses the AI.",
+        "Less AI plan usage: the status line after each command is sent in full only when it changes, the start-up command list is smaller, and the AI sends at most 2 commands per reply.",
+        "A switch to turn off the PlazCode vault (both Memory settings) for people who keep their own notes tool.",
+        "The task list folds into its pill when you minimize PlazCode, and the pill can be dragged.",
+        "Smoother Windows app: lighter page changes, no blur when none is chosen, and endless animations rest while the window is behind others.",
+        "ClickUp support has been removed; the app lists 15 browser AIs + Ollama."
+      ],
+      "improved": [],
+      "fixed": [
+        "Resume no longer flips straight back to Pause.",
+        "DeepSeek starts on DeepSeek pages in other languages and on Edge.",
+        "Gemini: command cards line up with the reply, typing is no longer laggy, and it no longer says the bridge is not active.",
+        "Ask PlazCode answers no longer go missing or arrive late.",
+        "ChatGPT keeps working when its window is not in front.",
+        "plazcode_clarify: your own \"Other\" answer can be submitted, and the buttons no longer cover that box.",
+        "The Mac app window works on macOS 10.15 Catalina again.",
+        "Settings: the language list no longer opens behind other sections, and the stray arrow in its corner is gone."
+      ],
+      "notes": [
+        "Update the PlazCode app and the extension together (the app's updater does this).",
+        "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***Ask PlazCode runs in your own chat, a smoother app, and less AI plan usage.***",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "Ask PlazCode runs in the AI chat you are using, not a background DeepSeek chat. Replies show as they are written.",
+              "The AI can use other desktop apps by their button names and maximize, minimize or restore windows in one step.",
+              "Live preview can be dragged or minimized; the glow stays on while the AI works.",
+              "Only a click or key press takes control back; moving the mouse or scrolling no longer pauses the AI.",
+              "Less AI plan usage: shorter status lines, smaller start-up list, at most 2 commands per reply.",
+              "Switch to turn off the PlazCode vault if you use your own notes.",
+              "The task list folds away with PlazCode and can be dragged.",
+              "Smoother Windows app: lighter page changes, less blur, idle animations rest.",
+              "ClickUp support removed; the app lists 15 browser AIs + Ollama."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Resume no longer flips back to Pause.",
+              "DeepSeek starts on non-English pages and on Edge.",
+              "Gemini: cards line up, no typing lag, no false \"bridge not active\".",
+              "Ask PlazCode answers no longer go missing, and it shows thinking dots.",
+              "ChatGPT keeps working when its window is not in front.",
+              "plazcode_clarify: your own \"Other\" answer can be sent.",
+              "Mac app window works on Catalina again.",
+              "Settings language list no longer hides behind sections."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Automated tests on Windows, Mac and Linux; Gemini checked live, most others not yet. Report anything odd.",
+              "Windows is unsigned and Mac is not notarized, as before."
+            ]
+          }
+        ]
+      }
+    },
     {
       "version": "1.24.31",
       "title": "Startup, sign-in and ChatGPT fixes",
@@ -214,54 +287,16 @@
           }
         ]
       }
-    },
-    {
-      "version": "1.24.20",
-      "title": "ClickUp Ask Brain connects again",
-      "summary": "Fixes Start Agent on ClickUp's Ask Brain, which used to stop right after the AI's first reply and never finish connecting. Nothing else changes.",
-      "added": [],
-      "improved": [],
-      "fixed": [
-        "Start Agent now finishes connecting in a new ClickUp Ask Brain chat. Before, PlazCode stopped about a second after Brain's first reply, the bar said \"Not connected to this chat yet\", and the rest of the setup was never sent.",
-        "Why it happened: ClickUp changes the page address as soon as a new chat gets its first message, and PlazCode took that for a different chat. It now treats it as the same chat.",
-        "Everything else is unchanged: other AI sites, ClickUp agent chats, and your settings, memory and connections."
-      ],
-      "notes": [
-        "Tried on a real ClickUp Ask Brain chat in AgentScript mode: all five setup steps went through and PlazCode reported it was ready. Before the fix, the same test stopped after the first reply.",
-        "ClickUp agent chats and Firefox were not changed and were not tried on a live account. Automated tests on Windows, Mac and Linux must pass before this is published.",
-        "The Windows app is unsigned and the Mac app is not notarized, as in earlier versions. Your computer may ask you to confirm opening it."
-      ],
-      "github": {
-        "summary": "Fixes Start Agent on ClickUp's Ask Brain, which stopped right after the AI's first reply and never finished connecting.",
-        "sections": [
-          {
-            "title": "🛠️ What's fixed",
-            "items": [
-              "Start Agent now finishes connecting in a new ClickUp Ask Brain chat. Before, it stopped a second after Brain's first reply and said \"Not connected to this chat yet\".",
-              "ClickUp changes the page address when a new chat gets its first message, and PlazCode mistook that for a different chat. It now knows it is the same chat.",
-              "Nothing else changes: other AI sites, ClickUp agent chats, and your settings, memory and connections stay as they were."
-            ]
-          },
-          {
-            "title": "🧪 What was checked",
-            "items": [
-              "Tried on a real ClickUp Ask Brain chat: all five setup steps went through and PlazCode said it was ready. The same test failed before the fix.",
-              "ClickUp agent chats and Firefox were not changed and not tried on a live account.",
-              "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
-            ]
-          }
-        ]
-      }
     }
   ],
   "platforms": {
     "macos": {
-      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.31.zip",
-      "sha256": "77b99c260a04956bc3a002d2be5e1b351ed83cca2e4bd530872587962e7b687b"
+      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.34.zip",
+      "sha256": "a5e4f8be486f8a597d96d60f8ee6507c0b5c20dc516a947670e073db41063f5a"
     }
   },
   "security": {
-    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.31\",\"platform\":\"windows\",\"sha256\":\"9a74402d7dbb13191c88bc280165e212c3d3aac27e80bb1e9b3d539574794ca8\"}",
-    "signature": "2c41f4f71c5224af389503159f9b28f21c7c527e0ab3693733ef9bd5d42d3dfd03abd53e6c0d13e7a6b077441f15631f054926f77419cf19495cd30ad788eb03"
+    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.34\",\"platform\":\"windows\",\"sha256\":\"d3867afabbbc4394b399b4cf5e26c27bc063e8d9bcf74e840f813d69197ff251\"}",
+    "signature": "357f1dae2207d9ba00da8eba2325e275903a8484f9757f455ff9d25b5af530f70727640bc4e26982d35958f906471c10fdb7f11dfa2203bccab6c2515fed2308"
   }
 }
