@@ -1536,6 +1536,7 @@ function releaseRunTab(tabId) {
 function noteRunBeat(tabId, running) {
   if (!Number.isInteger(tabId)) return;
   if (!running) { releaseRunTab(tabId); return; }
+  try { controlKeepAlive(tabId); } catch {}
   if (!runTabs.has(tabId)) {
     try { const p = chrome.tabs.update(tabId, { autoDiscardable: false }); if (p && p.catch) p.catch(() => {}); } catch {}
   }
@@ -2722,7 +2723,7 @@ function answerWithin(final, job, sendResponse) {
   });
 }
 chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
-  askNoteSite(_sender);
+  try { askNoteSite(_sender); } catch {}
   if (msg && msg.type === "deepseek-requests") {
     if (!deepSeekRequests) { rawSendResponse({ok:false}); return; }
     deepSeekRequests.snapshot(_sender).then(rawSendResponse,()=>rawSendResponse({ok:false}));
@@ -3441,7 +3442,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         break;
       case "ask_open":
         if (!CONTROL_V2) { sendResponse({ ok: false, error: "Not available in this version." }); break; }
-        try { const opener = _sender && _sender.tab; if (opener && !ask.busy && !opener.incognito && PlazCodeAskSite.siteFor(opener.url || "")) { askLastTab = { id: opener.id, at: Date.now() }; askUseOwn(opener); }
+        try { const opener = _sender && _sender.tab; if (opener && !ask.busy && !opener.incognito && AskSites.siteFor(opener.url || "")) { askLastTab = { id: opener.id, at: Date.now() }; askUseOwn(opener); }
           sendResponse(await askOpen(Number.isInteger(msg.windowId) ? msg.windowId : opener ? opener.windowId : undefined)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
       case "ask_reply": case "ask_step": case "ask_partial": case "ask_approve":
@@ -3472,6 +3473,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
 let CONTROL_V2 = true;
 // tabId -> { paused, stoppedAt, by } : what the person did in the controlled tab, and which AI tab is working there.
 const controlTabs = new Map();
+// While the AI chat that controls a tab (or the screen) is still running, its glow stays on (owner, 2026-11-18: it vanished after a
+// while). Called with every run heartbeat (rs-run-beat, every 5 s); the tab layer and the app hide 8 s after the last one.
+function controlKeepAlive(byTab) {
+  if (!CONTROL_V2) return;
+  for (const [id, row] of controlTabs) {
+    if (id < 0 || row.by !== byTab || row.paused || row.stoppedAt) continue;
+    chrome.scripting.executeScript({ target: { tabId: id }, func: () => { const c = globalThis.__plazcodeControl; if (c && typeof c.keep === "function") c.keep(); } }).catch(() => {});
+  }
+  if (desktopBy === byTab) bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "keep" }) }).catch(() => {});
+}
 // Step 7: the overlay's and the desktop label's words in the person's PlazCode language. The AI tab and the
 // Ask PlazCode panel translate them (this worker has no language files) and send them along; English until then.
 let controlWords = null;
@@ -4005,7 +4016,10 @@ const askSay = (text, kind, key, values) => { askRemember({ t: kind === "error" 
 // DeepSeek, make Ask PlazCode powered by the current AI chat you're using"), as a new chat there so their own chat is untouched.
 // DeepSeek only when no AI chat has been seen yet (owner, 2026-11-14: a page with no AI of its own still needs one to answer).
 // "rsAskSite" ({url, name}) can still name a site. The choice itself is core/ask-site.js.
-const ASK_DEFAULT_SITE = PlazCodeAskSite.FALLBACK;
+const ASK_DEFAULT_SITE = { url: "https://chat.deepseek.com/", name: "DeepSeek" };
+// When core/ask-site.js is missing (an older test harness loading this file alone), Ask PlazCode keeps its old DeepSeek-only behaviour.
+const AskSites = typeof PlazCodeAskSite !== "undefined" ? PlazCodeAskSite : { FALLBACK: ASK_DEFAULT_SITE, siteFor: () => null,
+  choose: (chosen) => (chosen && /^https:\/\//.test(chosen.url || "") ? { url: String(chosen.url), name: String(chosen.name || "") } : ASK_DEFAULT_SITE) };
 let askLastSite = null; // {url, name} of the last AI chat tab PlazCode ran in (also kept in local storage)
 // Owner (2026-11-18, again): "if you're using Gemini and press Ask PlazCode, that should be powered by and open the Gemini chat you're
 // CURRENTLY USING, not a DeepSeek one". So the exact tab is noted too, and Ask PlazCode uses that chat itself (ask.own).
@@ -4014,7 +4028,7 @@ let askLastTab = null; // {id, at} of the last AI chat tab PlazCode ran in
 function askNoteSite(sender) {
   try {
     const tab = sender && sender.tab; if (!tab || !tab.url || tab.incognito || (tab.id === ask.tabId && !ask.own)) return;
-    const site = PlazCodeAskSite.siteFor(tab.url); if (!site) return;
+    const site = AskSites.siteFor(tab.url); if (!site) return;
     // Only the tab in front of its window: other AI tabs keep checking their status in the background.
     if (!tab.active) return;
     askLastTab = { id: tab.id, at: Date.now() };
@@ -4027,7 +4041,7 @@ function askNoteSite(sender) {
 async function askCurrentChat() {
   for (const id of [askLastTab && askLastTab.id, ask.own ? ask.tabId : null]) {
     if (!Number.isInteger(id)) continue;
-    try { const tab = await chrome.tabs.get(id); if (tab && !tab.incognito && PlazCodeAskSite.siteFor(tab.url || "")) return tab; } catch {}
+    try { const tab = await chrome.tabs.get(id); if (tab && !tab.incognito && AskSites.siteFor(tab.url || "")) return tab; } catch {}
   }
   return null;
 }
@@ -4039,7 +4053,7 @@ function askUseOwn(tab) {
 async function askSiteUrl() {
   let chosen = null, last = askLastSite;
   try { const got = await chrome.storage.local.get(["rsAskSite", "rsAskLastSite"]); chosen = got && got.rsAskSite; if (!last) last = askLastSite = got && got.rsAskLastSite || null; } catch {}
-  const pick = PlazCodeAskSite.choose(chosen, last);
+  const pick = AskSites.choose(chosen, last);
   return { url: pick.url, name: pick.name };
 }
 // A signed-out chat site sends the person to its sign-in page (DeepSeek: /sign_in). Said plainly, with the window put away, instead of a
@@ -4099,7 +4113,7 @@ async function askEnsure() {
     if (tab) {
       const want = ask.goto;
       // Picking a chat in the History list (or "New chat") takes the person's own tab there, as they asked.
-      if (want) { const site = PlazCodeAskSite.siteFor(tab.url || ""); const target = want === "new" ? (site ? site.url : "") : want; ask.goto = null; askSave();
+      if (want) { const site = AskSites.siteFor(tab.url || ""); const target = want === "new" ? (site ? site.url : "") : want; ask.goto = null; askSave();
         if (target && askUrlKey(tab.url) !== askUrlKey(target) && (!site || askSameSite(target, site.url) || want === "new")) { try { await chrome.tabs.update(tab.id, { url: target }); await criticSleep(600); } catch {} } }
       if (!(await criticTabReady(tab.id)) || !(await helperPing(tab.id))) return { ok: false, error: "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.", key: "PlazCode is not running in your AI chat tab. Reload that tab, then ask again." };
       return { ok: true };
@@ -4115,7 +4129,7 @@ async function askEnsure() {
     if (tab) {
       // The background chat is open. When the person picked another chat in the History list (or started a new one), it goes there first.
       // 2026-11-18: and when the person now uses PlazCode on another AI site, the background chat moves to that site.
-      const sameSite = askSameSite(tab.url, site.url) || (PlazCodeAskSite.siteFor(tab.url) || {}).url === site.url;
+      const sameSite = askSameSite(tab.url, site.url) || (AskSites.siteFor(tab.url) || {}).url === site.url;
       if ((!want && sameSite) || askUrlKey(tab.url) === askUrlKey(target)) { if (want) { ask.goto = null; askSave(); } return { ok: true }; }
       if (!sameSite) { ask.chatUrl = ""; askSay("Opening a PlazCode chat on " + siteName + " in the background…", "note", "Opening a PlazCode chat on {site} in the background…", { site: siteName }); }
       let minimised = false;

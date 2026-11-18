@@ -8,7 +8,7 @@ const fs = require("fs"), assert = require("node:assert/strict");
 const html = fs.readFileSync(__dirname + "/agent/src/desktop.html", "utf8");
 for (const need of ["function Pzstudio()", "function Pzsync(Area)", "function Pzripples()", "function Pzfeel()", "function Pzmaker()", "function Pzapplypalette(Root)",
   "try { Pzstudio(); } catch (Error) {}", "try { Pzmaker(); } catch (Error) {}", "try { Pzsync(Area); } catch (Error) {}", "try { Pzapplypalette(Root); } catch (Error) {}",
-  "motion:'full',anim:true,ripple:true", "function Pzturn(Name)", "try { Pzturn(Name); } catch (Error) {}", "@keyframes pz-leave", "@keyframes pz-settle", "data-pz-motion", "@media(prefers-reduced-motion:reduce){html[data-pz-studio]", "html[data-pz-motion=off] *", "function Pzmotionrules()", "function Pzskills()", "motionSet:false"])
+  "motion:'full',anim:true,ripple:true", "function Pzturn(Name)", "try { Pzturn(Name); } catch (Error) {}", "@keyframes pz-page", "data-pz-motion", "@media(prefers-reduced-motion:reduce){html[data-pz-studio]", "html[data-pz-motion=off] *", "function Pzmotionrules()", "function Pzskills()", "motionSet:false"])
   assert(html.includes(need), "desktop.html has " + need);
 // The redesign only adds a frame: every page, route and original control is still in the markup.
 for (const id of ["dragbar", "content", "sideStatus", "sideDot", "sidebarCollapse", "nxSideSearch", "nxThemes", "nxCustomPanel", "nxCustomColor", "nxCustomHex", "nxCustomApply", "nxCustomRemove", "nxGradients", "killStudio"])
@@ -81,16 +81,17 @@ console.log("PASS desktop Studio look: frame functions, hooks, reduced/off motio
     await tab.click("#nxCustomRemove");
     const removed = await tab.evaluate(() => ({ bg: document.documentElement.dataset.pzBg || "", text: document.documentElement.style.getPropertyValue("--text") }));
     assert.deepEqual(removed, { bg: "", text: "" }, "removing the custom palette restores the theme");
-    // Page turns: with motion Full the page being left fades away while the next one settles in, then both marks clear.
+    // Page turns: with motion Full the new page fades in as one piece (owner, 2026-11-18: lighter, for the frame rate; the page being
+    // left goes at once), then the mark clears. Reduced and Off switch at once.
     // Reduced and Off switch at once. The Skills page lays its list and editor out side by side with roomy rows.
     await tab.click('.pz-area[data-area="settings"]'); await tab.waitForTimeout(400);
     await tab.evaluate(() => { const b = document.querySelector('.navbtn[data-page="appearance"]'); if (b) b.click(); }); await tab.waitForTimeout(400);
     await tab.click('[data-look-motion="full"]'); await tab.waitForTimeout(100);
     const turn = await tab.evaluate(() => { const from = document.querySelector(".page.active").id; document.querySelector('.pz-area[data-area="home"]').click();
       return { from, to: document.querySelector(".page.active").id, leaving: [...document.querySelectorAll(".page.pz-leaving")].map((n) => n.id), entering: [...document.querySelectorAll(".page.pz-entering")].map((n) => n.id),
-        shown: getComputedStyle(document.querySelector(".page.pz-leaving")).display, placed: getComputedStyle(document.querySelector(".page.pz-leaving")).position }; });
-    assert.notEqual(turn.from, turn.to, "the page changed straight away"); assert.deepEqual(turn.leaving, [turn.from], "the old page stays painted while it fades");
-    assert.deepEqual(turn.entering, [turn.to]); assert.equal(turn.shown, "block"); assert.equal(turn.placed, "absolute");
+        oldShown: getComputedStyle(document.getElementById(from)).display, anim: getComputedStyle(document.querySelector(".page.active")).animationName }; });
+    assert.notEqual(turn.from, turn.to, "the page changed straight away"); assert.deepEqual(turn.leaving, [], "the old page goes at once");
+    assert.equal(turn.oldShown, "none"); assert.deepEqual(turn.entering, [turn.to]); assert.equal(turn.anim, "pz-page", "the new page fades in");
     await tab.waitForTimeout(1500);
     assert.deepEqual(await tab.evaluate(() => [document.querySelectorAll(".pz-leaving").length, document.querySelectorAll(".pz-entering").length]), [0, 0], "the page-turn marks clear");
     await tab.evaluate(() => document.documentElement.setAttribute("data-pz-motion", "reduced"));
@@ -150,7 +151,7 @@ console.log("PASS desktop Studio look: frame functions, hooks, reduced/off motio
     await quiet.click('[data-look-motion="full"]'); await quiet.waitForTimeout(150);
     const loud = await quiet.evaluate(() => { document.querySelector('.pz-area[data-area="home"]').click(); return { motion: document.documentElement.getAttribute("data-pz-motion"), leaving: document.querySelectorAll(".pz-leaving").length,
       anim: getComputedStyle(document.querySelector(".page.active")).animationName, saved: JSON.parse(localStorage.getItem("plazcodeDesktopLook") || "{}").motionSet }; });
-    assert.equal(loud.motion, "full"); assert.equal(loud.leaving, 1, "Full brings the page turn back on a reduced-motion system"); assert.notEqual(loud.anim, "none"); 
+    assert.equal(loud.motion, "full"); assert.equal(loud.leaving, 0); assert.notEqual(loud.anim, "none", "Full brings the page turn back on a reduced-motion system"); 
     await calm.close();
     // Owner (2026-11-14): "custom themes are never saved like the built-in ones; back to default after closing". A window with NO colour of
     // its own (new launch, new namespace) takes the colour the app saved in rsAppearance.custom; a colour still being chosen is not overwritten.

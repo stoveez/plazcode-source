@@ -496,6 +496,11 @@ async function checks(browser){
     const got=await page.evaluate(async()=>{window.requestAnimationFrame=()=>1;const timeout=setTimeout;window.setTimeout=(fn,ms,...args)=>timeout(fn,ms>=500?5:ms,...args);let code='';try{await provider.typeAndSend('A result without a rendered form');}catch(error){code=error.code;}return{code,sends:sent.length,draft:provider.editorText()};});
     assert.equal(got.code,'CHATGPT_COMPOSER_RENDER_TIMEOUT');assert.equal(got.sends,0);assert.equal(got.draft,'');
   });
+  // Owner (2026-11-18): work stopped when the AI's window was not in front. A hidden tab never paints, so the send must not wait for frames.
+  await check('a hidden tab that never paints still sends once (timers instead of frames)',false,async page=>{
+    const got=await page.evaluate(async()=>{window.requestAnimationFrame=()=>1;Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'hidden'});let code='',accepted=false;try{accepted=await provider.typeAndSend('Sent while the tab is hidden');}catch(error){code=error.code||String(error.message);}return{accepted,code,sends:sent.length};});
+    assert.equal(got.code,'',JSON.stringify(got));assert.equal(got.sends,1);assert.equal(got.accepted,true);
+  });
   await check('field semantic text beats outer content chrome and preserves literal UI words',false,async page=>{
     const result=await page.evaluate(()=>{
       const text='You said: keep Copy and 16:22 in this actual message.\n  Preserve this line too.';

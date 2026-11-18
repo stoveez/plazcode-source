@@ -85,6 +85,9 @@ impl State {
             "stop" => { self.paused = false; self.stopped_at = Some(now); self.active_until = None; Ok(()) }
             "resume" => { self.paused = false; self.settle_until = Some(now + RESUME_SETTLE); self.settle_cap = Some(now + RESUME_SETTLE_MAX); if self.active(now) || self.active_until.is_some() { self.active_until = Some(now + IDLE_END); } Ok(()) }
             "pause" => { if self.active(now) { self.paused = true; } Ok(()) }
+            // Owner (2026-11-18): the glow vanished during a long think. While the AI chat that controls the screen is still running,
+            // the extension sends "keep" with its heartbeat (every 5 s) and PlazCode stays in control (only while it already is).
+            "keep" => { if self.active(now) && !self.paused { self.active_until = Some(now + IDLE_END); } Ok(()) }
             "share" => { self.sharing_until = Some(now + Duration::from_secs(30)); Ok(()) }
             "unshare" => { self.sharing_until = None; Ok(()) }
             other => Err(format!("unknown control action '{}'", other.chars().take(20).collect::<String>())),
@@ -276,6 +279,18 @@ pub async fn frame() -> axum::response::Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn keep_holds_control_only_while_it_is_already_held() {
+        let t = Instant::now();
+        let mut s = State::default();
+        s.act("keep", t).unwrap();
+        assert!(!s.active(t), "keep never starts control");
+        s.mark_active(t);
+        for n in 1..=6 { s.act("keep", t + Duration::from_secs(5 * n)).unwrap(); }
+        assert!(s.active(t + Duration::from_secs(36)), "the run heartbeat keeps the glow on through a long think");
+        assert!(!s.active(t + Duration::from_secs(39)), "it ends 8 s after the last heartbeat");
+        s.act("keep", t + Duration::from_secs(40)).unwrap();
+        assert!(!s.active(t + Duration::from_secs(41)), "a heartbeat after it ended does not bring it back");
+    }
     #[test] fn stop_refuses_for_a_while_then_control_can_start_again() {
         let t = Instant::now();
         let mut s = State::default();

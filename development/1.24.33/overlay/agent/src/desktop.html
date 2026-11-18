@@ -1104,9 +1104,8 @@ html[data-pz-studio] .page.pz-leaving{display:block!important;position:absolute;
 html[data-pz-studio][data-pz-turning] .app::after,html[data-pz-studio][data-pz-turning] .app::before{animation-play-state:paused!important}
 html[data-pz-studio] .page.pz-leaving{will-change:opacity,transform}
 html[data-pz-studio] .page.pz-leaving *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;transition:none!important}
-html[data-pz-studio] .page.active.pz-entering{animation:pz-page .4s var(--pz-ease) .06s backwards}
-html[data-pz-studio] .page.pz-entering>*,html[data-pz-studio] .page.pz-entering>#skillsWorkspace>*{animation:pz-settle .36s var(--pz-ease) backwards;animation-delay:calc(.06s + var(--pz-i,0)*.04s)}
-html[data-pz-studio] .page.pz-entering>*:nth-child(2),html[data-pz-studio] .page.pz-entering>#skillsWorkspace>*:nth-child(2){--pz-i:1}html[data-pz-studio] .page.pz-entering>*:nth-child(3),html[data-pz-studio] .page.pz-entering>#skillsWorkspace>*:nth-child(3){--pz-i:2}html[data-pz-studio] .page.pz-entering>*:nth-child(4),html[data-pz-studio] .page.pz-entering>#skillsWorkspace>*:nth-child(4){--pz-i:3}html[data-pz-studio] .page.pz-entering>*:nth-child(5),html[data-pz-studio] .page.pz-entering>#skillsWorkspace>*:nth-child(5){--pz-i:4}html[data-pz-studio] .page.pz-entering>*:nth-child(6),html[data-pz-studio] .page.pz-entering>#skillsWorkspace>*:nth-child(6){--pz-i:5}html[data-pz-studio] .page.pz-entering>*:nth-child(7),html[data-pz-studio] .page.pz-entering>#skillsWorkspace>*:nth-child(7){--pz-i:6}html[data-pz-studio] .page.pz-entering>*:nth-child(n+8),html[data-pz-studio] .page.pz-entering>#skillsWorkspace>*:nth-child(n+8){--pz-i:7}
+html[data-pz-studio] .page.active.pz-entering{animation:pz-page .22s var(--pz-ease) backwards}
+
 @keyframes pz-settle{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 
 /* Skills page: room to breathe. A wide list of roomy rows on the left, the editor beside it. */
@@ -3145,14 +3144,13 @@ __PLAZCODE_VERSION_UI__
     Toarray(document.querySelectorAll('.page.pz-leaving')).forEach(Pzgone);
     if (!Next || !Old || Old === Next || !Content || !Root.hasAttribute('data-pz-studio')) return;
     if (Root.getAttribute('data-pz-motion') !== 'full') return;
-    var Box = Old.getBoundingClientRect(), Frame = Content.getBoundingClientRect();
-    if (Box.width > 0) {
-      Old.style.top = (Box.top - Frame.top - Content.clientTop) + 'px'; Old.style.left = (Box.left - Frame.left - Content.clientLeft) + 'px'; Old.style.width = Box.width + 'px';
-      Old.classList.add('pz-leaving'); Old.pzLeaveTimer = window.setTimeout(function () { Pzgone(Old); }, 210);
-    }
+    // Owner (2026-11-18): "in the app when clicking on pages there is still some delay/fps drop". The page being left used to stay
+    // painted and fade out while each block of the next page settled in one after another (about 0.7 s of two pages animating, and a
+    // layout read on every click). Now the old page goes at once and the new page fades in as one piece (0.22 s): measured in
+    // Chromium, about half the dropped frames per switch.
     Toarray(document.querySelectorAll('.page.pz-entering')).forEach(function (Node) { window.clearTimeout(Node.pzEnterTimer); Node.classList.remove('pz-entering'); });
-    Next.classList.add('pz-entering'); Next.pzEnterTimer = window.setTimeout(function () { Next.classList.remove('pz-entering'); }, 800);
-    Root.setAttribute('data-pz-turning', ''); window.clearTimeout(Pzturn.done); Pzturn.done = window.setTimeout(function () { Root.removeAttribute('data-pz-turning'); }, 850);
+    Next.classList.add('pz-entering'); Next.pzEnterTimer = window.setTimeout(function () { Next.classList.remove('pz-entering'); }, 300);
+    Root.setAttribute('data-pz-turning', ''); window.clearTimeout(Pzturn.done); Pzturn.done = window.setTimeout(function () { Root.removeAttribute('data-pz-turning'); }, 320);
   }
   // The sidebar highlight is one element that glides to the selected section instead of jumping.
   function Pzglide() {

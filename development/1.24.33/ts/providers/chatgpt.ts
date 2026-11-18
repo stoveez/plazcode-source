@@ -1128,6 +1128,13 @@ const RSProvider: PlazCodeProvider = (() => {
     // submit value. A previously enabled button can still submit that prefix.
     if (!safeRead(() => document.documentElement.getClientRects().length > 0 && typeof requestAnimationFrame === 'function', false)) return 0;
     const started = clock();
+    // Owner (2026-11-18): "when I'm not on the window the AI is working on it sometimes just stops". A hidden or covered tab never
+    // paints, so the two animation frames below never came and the send stopped after 8 s ("Keep its tab visible"). ChatGPT still
+    // updates its composer in a hidden tab (React runs on timers and messages, not frames), so there two short timer ticks do the job.
+    if (safeRead(() => document.hidden || document.visibilityState === 'hidden', false)) {
+      for (let i = 0; i < 2; i++) { await new Promise((r) => setTimeout(r, 120)); checkOwner(); }
+      return Math.max(0, Math.round(clock() - started));
+    }
     return new Promise<number>((resolve, reject) => {
       let finished = false, frame = null, frames = 0;
       const finish = (error?: any) => {

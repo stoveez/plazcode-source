@@ -123,6 +123,10 @@
     resume() { if (state.paused) resumeHere(); return api.state(); },
     pause() { if (state.active && !state.paused) setPaused(true); return api.state(); },
     expect(ms) { state.expectUntil = Date.now() + Math.max(0, Math.min(5000, Number(ms) || 0)); },
+    // Owner (2026-11-18): "the PlazCode is working popup with the glowing corners ... just disappears after a certain amount of time".
+    // It hid itself 8 s after the AI's last action, so a long think between two steps took it away. While the AI chat that controls
+    // this tab is still running, the extension calls keep() with its run heartbeat (every 5 s), and the glow stays on.
+    keep() { if (state.active && !state.paused) idle(); return { active: !!state.active, paused: !!state.paused }; },
     hide() { if (state.sharing) { state.active = false; clearTimeout(state.idle); setPaused(false); api.share(true); cursor.classList.remove("seen"); return; } state.active = false; clearTimeout(state.idle); setPaused(false); clearTimeout(state.idle); frame.classList.remove("on"); cursor.classList.remove("seen"); },
     // "Shared with PlazCode": the quiet mark while this tab is shared in Ask PlazCode (no glow, no cursor).
     share(on, given) {
