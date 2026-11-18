@@ -4,7 +4,7 @@ const crypto = require("crypto");
 const baseline = {
   "core/agent_skills.js": "62f13ebb16c1e0c5eefbabd3a1561279d2ec0735",
   "core/animlib.js": "7d032068c63c493caa5ec938fac756df3f662369",
-  "core/config.js": "7a244e298f32e8f52dbf81c857db0b6a39f0df9a",
+  "core/config.js": "24a591234442ada9324774f784ff530c0e3195c5",
   "core/headless-builder.js": "0d8924dae62e2894a68cdd17617bbb5e36cca33e",
   "core/luau-knowledge.js": "54441b9d7a36e28eac9e64d10b56607c41a34f2e",
   "core/main.js": "7e90ba93979f393e3d5c288aa14e009b1e9b385a",

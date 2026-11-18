@@ -2084,9 +2084,47 @@ pub async fn tool_focus_window(ws: &Workspace, args: &serde_json::Value) -> Resu
     let wins = collect_windows();
     let found = wins.iter().find(|(_, t)| t.to_lowercase().contains(&want));
     let Some((hwnd, title)) = found else { return Err(format!("no visible window whose title contains '{want}'")); };
-    let h = *hwnd as Hwnd;
-    unsafe { if IsIconic(h) != 0 { ShowWindow(h, 9); } SetForegroundWindow(h); }
-    Ok(format!("Focused window \"{}\".", title.chars().take(90).collect::<String>()))
+    let (hwnd, name) = (*hwnd, title.chars().take(90).collect::<String>());
+    // Owner (2026-11-18): the AI struggled to maximize or minimize windows (it tried PowerShell commands that did nothing).
+    // `state` does it in one step, and the answer says what the window really is afterwards.
+    #[link(name = "user32")]
+    extern "system" { fn ShowWindowAsync(hwnd: Hwnd, cmd: i32) -> i32; fn IsZoomed(hwnd: Hwnd) -> i32; }
+    let h = hwnd as Hwnd;
+    let state = window_state_arg(args)?;
+    crate::desktop_control::expect(900);
+    match state {
+        WindowState::Front => bring_to_front(hwnd),
+        WindowState::Maximize => { bring_to_front(hwnd); unsafe { ShowWindowAsync(h, 3); } }
+        WindowState::Minimize => { unsafe { ShowWindowAsync(h, 6); } }
+        WindowState::Restore => { unsafe { ShowWindowAsync(h, 9); } bring_to_front(hwnd); }
+    }
+    tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+    let (zoomed, minimized) = unsafe { (IsZoomed(h) != 0, IsIconic(h) != 0) };
+    let now = if minimized { "minimized" } else if zoomed { "maximized" } else { "a normal window" };
+    let ok = match state { WindowState::Maximize => zoomed && !minimized, WindowState::Minimize => minimized, WindowState::Restore => !zoomed && !minimized, WindowState::Front => !minimized };
+    if ok { Ok(format!("{} window \"{name}\"; it is now {now}.", state.done())) }
+    else { Err(format!("Asked Windows to {} \"{name}\", but it is still {now}. The app may block this; try mouse_click on its own button.", state.verb())) }
+}
+
+/// focus_window's optional `state`: bring to front (default), maximize, minimize or restore.
+#[derive(Clone, Copy, PartialEq, Debug)]
+#[cfg_attr(not(any(windows, target_os = "macos")), allow(dead_code))]
+pub(crate) enum WindowState { Front, Maximize, Minimize, Restore }
+#[cfg_attr(not(any(windows, target_os = "macos")), allow(dead_code))]
+impl WindowState {
+    pub(crate) fn verb(self) -> &'static str { match self { Self::Front => "bring to the front", Self::Maximize => "maximize", Self::Minimize => "minimize", Self::Restore => "restore" } }
+    pub(crate) fn done(self) -> &'static str { match self { Self::Front => "Focused", Self::Maximize => "Maximized", Self::Minimize => "Minimized", Self::Restore => "Restored" } }
+}
+#[cfg_attr(not(any(windows, target_os = "macos")), allow(dead_code))]
+pub(crate) fn window_state_arg(args: &serde_json::Value) -> Result<WindowState, String> {
+    let raw = args.get("state").or_else(|| args.get("action")).and_then(|v| v.as_str()).unwrap_or("").trim().to_lowercase();
+    Ok(match raw.as_str() {
+        "" | "front" | "focus" | "show" | "activate" => WindowState::Front,
+        "maximize" | "maximise" | "maximized" | "max" | "fullscreen" | "full screen" | "zoom" => WindowState::Maximize,
+        "minimize" | "minimise" | "minimized" | "min" | "hide" => WindowState::Minimize,
+        "restore" | "normal" | "unmaximize" | "unminimize" | "restored" => WindowState::Restore,
+        other => return Err(format!("focus_window state must be maximize, minimize or restore (or leave it out to bring the window to the front), not '{other}'")),
+    })
 }
 
 #[cfg(any(windows,target_os="macos"))]
@@ -2308,7 +2346,7 @@ pub fn catalog() -> Vec<serde_json::Value> {
         serde_json::json!({"name": crate::hidden::hidden!("mouse_click"), "description": crate::hidden::hidden!("Click the mouse (left/right), optionally moving to (x, y) first. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"button": {"type": "string"}, "x": {"type": "integer"}, "y": {"type": "integer"}}), &[])}),
         serde_json::json!({"name": crate::hidden::hidden!("key_type"), "description": crate::hidden::hidden!("Type a string of text via synthetic keystrokes into the focused window. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"text": {"type": "string"}}), &["text"])}),
         serde_json::json!({"name": crate::hidden::hidden!("list_windows"), "description": crate::hidden::hidden!("List visible top-level windows (hwnd + title). Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({}), &[])}),
-        serde_json::json!({"name": crate::hidden::hidden!("focus_window"), "description": crate::hidden::hidden!("Bring the first visible window whose title contains 'title' to the foreground. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"title": {"type": "string"}}), &["title"])}),
+        serde_json::json!({"name": crate::hidden::hidden!("focus_window"), "description": crate::hidden::hidden!("Bring the first window whose title contains 'title' to the front, or with state maximize / minimize / restore change its size in one step (no PowerShell needed). Says what the window is afterwards. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"title": {"type": "string"}, "state": {"type": "string", "enum": ["maximize", "minimize", "restore"]}}), &["title"])}),
         serde_json::json!({"name": crate::hidden::hidden!("launch_app"), "description": crate::hidden::hidden!("Launch a program by name or path (e.g. 'notepad', 'calc', 'chrome', or a full .exe path); if it is not a plain program on PATH, Windows finds it like Start > Run. Use argv (array of strings) for paths with spaces, or legacy simple args. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"target": {"type": "string"}, "args": {"type": "string"}, "argv": {"type":"array", "items":{"type":"string"}}}), &["target"])}),
         serde_json::json!({"name": crate::hidden::hidden!("screen_record"), "description": crate::hidden::hidden!("Record up to 5 seconds of the screen (seconds 1-5, fps 1-4) as numbered PNG frames in a folder plus sheet.png, one picture of the sampled frames. Attach sheet.png with attach_feedback to see the clip. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"seconds": {"type": "number"}, "fps": {"type": "number"}, "path": {"type": "string"}}), &[])}),
         serde_json::json!({"name": crate::hidden::hidden!("window_screenshot"), "description": crate::hidden::hidden!("Capture a single window (by title substring, or the first window) to a PNG. Requires FULL PC ACCESS."), "inputSchema": schema(serde_json::json!({"title": {"type": "string"}, "path": {"type": "string"}}), &[])}),
@@ -2327,6 +2365,20 @@ pub fn catalog() -> Vec<serde_json::Value> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn focus_window_state_words_are_understood_and_wrong_ones_explained() {
+        use super::{window_state_arg, WindowState};
+        let st = |v: serde_json::Value| window_state_arg(&v);
+        assert_eq!(st(serde_json::json!({"title": "Notepad"})).unwrap(), WindowState::Front);
+        assert_eq!(st(serde_json::json!({"title": "x", "state": "Maximize"})).unwrap(), WindowState::Maximize);
+        assert_eq!(st(serde_json::json!({"title": "x", "state": "maximise"})).unwrap(), WindowState::Maximize);
+        assert_eq!(st(serde_json::json!({"title": "x", "state": "minimize"})).unwrap(), WindowState::Minimize);
+        assert_eq!(st(serde_json::json!({"title": "x", "action": "restore"})).unwrap(), WindowState::Restore);
+        let e = st(serde_json::json!({"title": "x", "state": "close"})).unwrap_err();
+        assert!(e.contains("maximize, minimize or restore"), "{e}");
+        assert_eq!(WindowState::Minimize.done(), "Minimized");
+    }
 
     #[test]
     fn recording_samples_spread_frames_and_sheet_holds_them_all() {

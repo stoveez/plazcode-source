@@ -224,26 +224,60 @@ pub async fn focus_window(ws: &Workspace, args: &serde_json::Value) -> Result<St
     crate::workspace::require_full_access(ws, "focus_window")?;
     need_accessibility()?;
     let wanted = args.get("title").and_then(|v| v.as_str()).ok_or("focus_window needs title (part of the app or window name)")?.to_string();
+    // Owner (2026-11-18): maximize / minimize / restore in one step. Maximize fills the screen (minus the menu bar) instead of
+    // the green button, which would move the window to a full-screen Space of its own.
+    let state = crate::workspace::window_state_arg(args)?;
     // Passed to AppleScript as a quoted string: no quotes or backslashes from the AI reach the script as code.
     let safe: String = wanted.chars().filter(|c| *c != '"' && *c != '\\' && !c.is_control()).take(120).collect();
+    let act = match state {
+        crate::workspace::WindowState::Front => r#"set value of attribute "AXMinimized" of w to false
+    set frontmost of p to true
+    perform action "AXRaise" of w
+    return "Brought " & (name of p) & " to the front.""#,
+        crate::workspace::WindowState::Minimize => r#"set value of attribute "AXMinimized" of w to true
+    return "Minimized " & (name of p) & ".""#,
+        crate::workspace::WindowState::Restore => r#"set value of attribute "AXMinimized" of w to false
+    set frontmost of p to true
+    perform action "AXRaise" of w
+    return "Restored " & (name of p) & ".""#,
+        crate::workspace::WindowState::Maximize => r#"set value of attribute "AXMinimized" of w to false
+    set frontmost of p to true
+    perform action "AXRaise" of w
+    tell application "Finder" to set b to bounds of window of desktop
+    set position of w to {0, 25}
+    set size of w to {item 3 of b, (item 4 of b) - 25}
+    return "Maximized " & (name of p) & ".""#,
+    };
     let script = format!(r#"tell application "System Events"
-  repeat with p in (every process whose background only is false)
-    if (name of p) contains "{safe}" then
-      set frontmost of p to true
-      return name of p
-    end if
-    repeat with w in (every window of p)
-      if (name of w) contains "{safe}" then
-        set frontmost of p to true
-        perform action "AXRaise" of w
-        return (name of p) & " — " & (name of w)
+  set w to missing value
+  set p to missing value
+  repeat with q in (every process whose background only is false)
+    repeat with x in (every window of q)
+      if (name of x) contains "{safe}" then
+        set w to x
+        set p to q
+        exit repeat
       end if
     end repeat
+    if w is not missing value then exit repeat
+    if (name of q) contains "{safe}" and (count of windows of q) > 0 then
+      set w to window 1 of q
+      set p to q
+      exit repeat
+    end if
   end repeat
-end tell
-return """#);
+  if w is missing value then return ""
+  try
+    {act}
+  on error e
+    return "ERROR " & e
+  end try
+end tell"#);
+    crate::desktop_control::expect(900);
     let found = tokio::task::spawn_blocking(move || osascript(&script)).await.map_err(|e| e.to_string())??;
-    if found.is_empty() { Err(format!("No window named like \"{safe}\". Use list_windows to see the names.")) } else { Ok(format!("Brought {found} to the front.")) }
+    if found.is_empty() { return Err(format!("No window named like \"{safe}\". Use list_windows to see the names.")); }
+    if let Some(error) = found.strip_prefix("ERROR ") { return Err(format!("macOS did not let PlazCode {} that window: {error}", state.verb())); }
+    Ok(found)
 }
 
 /// Scroll at the current mouse position (lines; negative = down).
