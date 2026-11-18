@@ -14,8 +14,8 @@ permissions:
 env:
   GH_TOKEN: ${{ github.token }}
   # Set only after the final source commit has a successful validation run.
-  VALIDATED_SHA: 'SET_VALIDATED_SHA_AFTER_SUCCESS'
-  VALIDATION_RUN: 'SET_VALIDATION_RUN_AFTER_SUCCESS'
+  VALIDATED_SHA: '3ea08a4abd438565ff6d7f618c358df97b84315f'
+  VALIDATION_RUN: '44403715588'
   # Owner-approved quick mode for small fixes: '1' skips the Mac desktop lifetime test.
   PLAZCODE_QUICK: '0'
   PUBLIC_REPO: stoveez/PlazCode
@@ -135,7 +135,7 @@ jobs:
           git config user.email ''
           python3 development/1.24.34/record-release.py prepared
           git add docs/NOW.md docs/vault/open-work.md latest.json latest-macos.json latest-linux.json install-linux.sh release-notes.json release-metadata.json release-description-1.24.34.txt release-validation-1.24.34
-          git commit -m 'Release PlazCode 1.24.34: Notion bar, chatbox and status fixes'
+          git commit -m 'Release PlazCode 1.24.34: Ask PlazCode in your own chat, a smoother app and less plan usage'
           git push origin HEAD:refs/heads/release-record-1.24.34-final
       - name: Publish downloads and update feeds to the public repo (no source)
         env:
