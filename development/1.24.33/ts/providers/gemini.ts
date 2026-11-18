@@ -764,7 +764,7 @@ const RSProvider: PlazCodeProvider = (() => {
     alignChip(chip, item) {
       if (!chip || !item) return;
       const mc = replyColumn(item);
-      chip.style.marginLeft = "";
+      chip.style.removeProperty("margin-left");
       const cr = safeRect(chip), mr = mc ? safeRect(mc) : null;
       if (!cr.width || !mr || !mr.width) {
         const tries = (chip.__rsAlignTries || 0) + 1;
@@ -774,7 +774,10 @@ const RSProvider: PlazCodeProvider = (() => {
       }
       chip.__rsAlignTries = 0;
       const shift = Math.round(mr.left - cr.left);
-      if (shift > 2 && shift < 800) { chip.style.marginLeft = shift + "px"; chip.style.maxWidth = Math.round(mr.width) + "px"; }
+      // "important": overlay.css gives every card `margin:10px 0!important`, which beat a plain inline margin, so the shift was
+      // worked out right but the card never moved on the real page (owner screenshot, 2026-11-18; read live: inline 173px,
+      // computed 0px). An inline !important wins over a stylesheet !important.
+      if (shift > 2 && shift < 800) { chip.style.setProperty("margin-left", shift + "px", "important"); chip.style.maxWidth = Math.round(mr.width) + "px"; }
       else chip.style.maxWidth = "";
     },
     chipAnchor(item) {

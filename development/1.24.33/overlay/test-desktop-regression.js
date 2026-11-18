@@ -25,7 +25,7 @@ const baseline = {
   "providers/crax.js": "45909e7a238b7ec1769b9f2e92213750291609fd",
   "providers/deepseek.js": "e7766e91b6e506def7443d977f2dbd876b462f86",
   "providers/freebuff.js": "363473ad0e19e43b40b9480fcc71fb83d5013952",
-  "providers/gemini.js": "77e955146e94fa6340087c4faca3598ecb619e56",
+  "providers/gemini.js": "9fd965407dce36c855271e8850681817a27115bc",
   "providers/glm.js": "2a7d938fb82a702d5040e3ac787455b74cac08dd",
   "providers/kimi.js": "67e192c3970f3efe52cf6632f768a6b4821db898",
   "providers/meta.js": "be33d1bac71add23acaf15e9d5c96dc1cc1abf38",

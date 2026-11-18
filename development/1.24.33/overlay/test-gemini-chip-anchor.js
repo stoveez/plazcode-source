@@ -9,6 +9,9 @@ function load(inner) {
   return {w: d.window, P: d.window.P, item: d.window.document.querySelector('model-response')};
 }
 const mc = '<message-content><div class="markdown">hi</div></message-content>';
+// PlazCode's own card rule (overlay.css). 2026-11-18: its `margin:10px 0!important` silently undid the shift on the real page.
+const CARD_CSS = (fs.readFileSync('overlay.css', 'utf8').match(/\.rs-chip\{[^}]*margin:[^}]*\}/) || [''])[0];
+assert(/!important/.test(CARD_CSS), 'the card rule from overlay.css is in the test page');
 { // plain block column: anchored right around message-content's parent
   const {P, item} = load('<div class="col" style="display:block">' + mc + '</div>');
   assert.equal(P.chipAnchor(item).className, 'col');
@@ -36,7 +39,7 @@ console.log('PASS Gemini chip anchor checks.');
   try {
     const page = await browser.newPage({viewport: {width: 1100, height: 600}});
     await page.setContent('<model-response style="display:block;width:900px"><div class="col" style="display:block"><message-content style="display:block;margin-left:170px;width:700px"><div class="markdown">hi</div></message-content></div></model-response>');
-    await page.addScriptTag({content: src + ';window.P=RSProvider;'});
+    await page.addStyleTag({content: CARD_CSS}); await page.addScriptTag({content: src + ';window.P=RSProvider;'});
     const r = await page.evaluate(() => {
       const item = document.querySelector('model-response'), anchor = P.chipAnchor(item);
       const chip = document.createElement('div'); chip.className = 'rs-chip'; chip.style.display = 'block'; chip.textContent = 'list_commands';
@@ -49,7 +52,7 @@ console.log('PASS Gemini chip anchor checks.');
     // 2026-11-16 (owner screenshot): a thinking reply has a folded (invisible) <message-content> inside <model-thoughts> before
     // the real reply. The card must still line up with the real, visible reply text.
     await page.setContent('<model-response style="display:block;width:900px"><model-thoughts style="display:block"><message-content style="display:none">thinking</message-content></model-thoughts><div class="col" style="display:block"><message-content style="display:block;margin-left:170px;width:700px"><div class="markdown">hi</div></message-content></div></model-response>');
-    await page.addScriptTag({content: src + ';window.P=RSProvider;'});
+    await page.addStyleTag({content: CARD_CSS}); await page.addScriptTag({content: src + ';window.P=RSProvider;'});
     const t = await page.evaluate(() => {
       const item = document.querySelector('model-response'), anchor = P.chipAnchor(item);
       const chip = document.createElement('div'); chip.className = 'rs-chip'; chip.style.display = 'block'; chip.textContent = 'list_commands';
@@ -71,7 +74,7 @@ console.log('PASS Gemini chip anchor checks.');
       ['command only, borrows the user message', live(turn('<p class="rs-tool-hide" style="display:none">cmd</p>'))],
     ]) {
       await page.setContent(html);
-      await page.addScriptTag({content: src + ';window.P=RSProvider;'});
+      await page.addStyleTag({content: CARD_CSS}); await page.addScriptTag({content: src + ';window.P=RSProvider;'});
       const v = await page.evaluate(() => {
         const item = document.querySelector('model-response'), anchor = P.chipAnchor(item);
         const chip = document.createElement('div'); chip.className = 'rs-chip'; chip.style.display = 'block'; chip.textContent = 'list_commands';
