@@ -1452,5 +1452,7 @@
   "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "Выключите, если вы ведёте свои заметки или пользуетесь своим инструментом памяти, чтобы у ИИ была одна память, а не две.",
   "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "Хранилище выключено. PlazCode не создаёт, не читает и не меняет файлы хранилища, не даёт ИИ заметки и команды хранилища и не сохраняет чаты как заметки. Сохранённые заметки (быстрые заметки) продолжают работать.",
   "Minimize the live view": "Свернуть просмотр в реальном времени",
-  "Live view minimized. Press to show it again.": "Просмотр в реальном времени свёрнут. Нажмите, чтобы показать его снова."
+  "Live view minimized. Press to show it again.": "Просмотр в реальном времени свёрнут. Нажмите, чтобы показать его снова.",
+  "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode не запущен во вкладке чата с ИИ. Перезагрузите эту вкладку и спросите снова.",
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "Чат с ИИ был закрыт, поэтому этот вопрос остановлен. Спросите снова из другого чата с ИИ."
 }

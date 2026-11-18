@@ -10,6 +10,8 @@ async function run(url, { ready = true, ping = true } = {}) {
     ask: { tabId: null, windowId: null }, askSave() {}, askSay() {}, tabEngines: new Map(), setTimeout, URL,
     askSiteUrl: async () => ({ url: 'https://chat.deepseek.com/', name: 'DeepSeek' }),
     criticTabReady: async () => ready, helperPing: async () => ping, criticSleep: async () => {},
+    // No AI chat tab is open in these cases, so Ask PlazCode opens its own background chat (2026-11-18).
+    askCurrentChat: async () => null, askUseOwn() {},
     chrome: {
       storage: { session: { set: async () => {} } },
       windows: { create: async () => ({ id: 7, tabs: [{ id: 5 }] }), update: async (...a) => { log.push(['update', ...a]); }, remove: async (id) => { log.push(['remove', id]); } },

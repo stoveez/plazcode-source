@@ -1452,5 +1452,7 @@
   "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "如果你有自己的笔记或记忆工具，请关闭此项，这样 AI 只有一份记忆，而不是两份。",
   "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "知识库已关闭。PlazCode 不会创建、读取或修改任何知识库文件，不会向 AI 提供知识库笔记或知识库命令，也不会把聊天保存为笔记。已保存的笔记（快速笔记）仍然可用。",
   "Minimize the live view": "最小化实时画面",
-  "Live view minimized. Press to show it again.": "实时画面已最小化。按下即可重新显示。"
+  "Live view minimized. Press to show it again.": "实时画面已最小化。按下即可重新显示。",
+  "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode 没有在你的 AI 聊天标签页中运行。请重新加载该标签页，然后再问一次。",
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI 聊天已关闭，所以这个问题已停止。请从另一个 AI 聊天中再问一次。"
 }

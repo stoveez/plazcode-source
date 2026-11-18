@@ -1452,5 +1452,7 @@
   "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "自分のノートや記憶ツールを使っている場合はオフにしてください。AI が持つ記憶が 2 つではなく 1 つになります。",
   "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "ボールトはオフです。PlazCode はボールトのファイルを作成・読み取り・変更せず、AI にボールトのノートやコマンドを渡さず、チャットをノートとして保存しません。保存済みのノート（クイックノート）は引き続き使えます。",
   "Minimize the live view": "ライブビューを最小化",
-  "Live view minimized. Press to show it again.": "ライブビューを最小化しました。押すと再表示します。"
+  "Live view minimized. Press to show it again.": "ライブビューを最小化しました。押すと再表示します。",
+  "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode が AI チャットのタブで動いていません。そのタブを再読み込みしてから、もう一度質問してください。",
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI チャットが閉じられたため、この質問は止まりました。別の AI チャットからもう一度質問してください。"
 }

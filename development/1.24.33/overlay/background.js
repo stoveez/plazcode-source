@@ -3441,7 +3441,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         break;
       case "ask_open":
         if (!CONTROL_V2) { sendResponse({ ok: false, error: "Not available in this version." }); break; }
-        try { sendResponse(await askOpen(Number.isInteger(msg.windowId) ? msg.windowId : _sender && _sender.tab ? _sender.tab.windowId : undefined)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
+        try { const opener = _sender && _sender.tab; if (opener && !ask.busy && !opener.incognito && PlazCodeAskSite.siteFor(opener.url || "")) { askLastTab = { id: opener.id, at: Date.now() }; askUseOwn(opener); }
+          sendResponse(await askOpen(Number.isInteger(msg.windowId) ? msg.windowId : opener ? opener.windowId : undefined)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
       case "ask_reply": case "ask_step": case "ask_approve":
         if (!CONTROL_V2) { sendResponse({ ok: false }); break; }
@@ -3901,14 +3902,14 @@ async function controlWatch(tabId, sender) {
 // off unless the person switches it on in the panel; then steps 1 and 2 apply, with approvals shown in the panel.
 // origin = the person's own tab being looked at; work = the copy of it PlazCode opened to act in (owner, 2026-11-14: "work like Claude in
 // Chrome, in a duplicate tab"). Acting tools never touch the origin tab; looking (picture, text) is fine.
-const ask = { tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null, origin: null, work: null, workOf: null, copy: false, panelWin: null, dock: null, log: [], chatId: null, created: 0, chatUrl: "", goto: null, unhidden: null };
+const ask = { own: false, tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null, origin: null, work: null, workOf: null, copy: false, panelWin: null, dock: null, log: [], chatId: null, created: 0, chatUrl: "", goto: null, unhidden: null };
 // What the panel shows is kept here (and in session storage, so it survives the worker sleeping), so a panel that was closed comes
 // back with the same conversation. The background chat itself is the same chat as long as its window is open.
 const ASK_LOG_MAX = 120;
 let askSaveTimer = 0;
 function askSave() {
   clearTimeout(askSaveTimer);
-  askSaveTimer = setTimeout(() => { try { chrome.storage.session.set({ rsAskState: { log: ask.log, tabId: ask.tabId, windowId: ask.windowId, chatId: ask.chatId, created: ask.created, chatUrl: ask.chatUrl, goto: ask.goto } }).catch(() => {}); } catch {} }, 300);
+  askSaveTimer = setTimeout(() => { try { chrome.storage.session.set({ rsAskState: { log: ask.log, own: ask.own, tabId: ask.tabId, windowId: ask.windowId, chatId: ask.chatId, created: ask.created, chatUrl: ask.chatUrl, goto: ask.goto } }).catch(() => {}); } catch {} }, 300);
 }
 // History (owner, 2026-11-14: a menu with all the Ask PlazCode chats). Every chat is kept on this computer (extension storage, not
 // sent anywhere) with the address of its AI chat page, so opening one from the list shows the conversation again and the next question
@@ -3961,7 +3962,7 @@ const askRestored = (async () => {
       ask.chatUrl = typeof st.chatUrl === "string" ? st.chatUrl : "";
     }
     if (ask.goto === null && typeof st.goto === "string") ask.goto = st.goto;
-    if (!Number.isInteger(ask.tabId) && Number.isInteger(st.tabId)) { try { await chrome.tabs.get(st.tabId); ask.tabId = st.tabId; ask.windowId = st.windowId; } catch {} }
+    if (!Number.isInteger(ask.tabId) && Number.isInteger(st.tabId)) { try { await chrome.tabs.get(st.tabId); ask.tabId = st.tabId; ask.windowId = st.windowId; ask.own = !!st.own; } catch {} }
   } catch {}
 })();
 const askPorts = new Set();
@@ -4006,13 +4007,34 @@ const askSay = (text, kind, key, values) => { askRemember({ t: kind === "error" 
 // "rsAskSite" ({url, name}) can still name a site. The choice itself is core/ask-site.js.
 const ASK_DEFAULT_SITE = PlazCodeAskSite.FALLBACK;
 let askLastSite = null; // {url, name} of the last AI chat tab PlazCode ran in (also kept in local storage)
-// Every message from a PlazCode AI tab notes that tab's site (never the background chat itself or a helper window).
+// Owner (2026-11-18, again): "if you're using Gemini and press Ask PlazCode, that should be powered by and open the Gemini chat you're
+// CURRENTLY USING, not a DeepSeek one". So the exact tab is noted too, and Ask PlazCode uses that chat itself (ask.own).
+let askLastTab = null; // {id, at} of the last AI chat tab PlazCode ran in
+// Every message from a PlazCode AI tab notes that tab (never Ask PlazCode's own background chat window).
 function askNoteSite(sender) {
   try {
-    const tab = sender && sender.tab; if (!tab || !tab.url || tab.id === ask.tabId || tab.incognito) return;
-    const site = PlazCodeAskSite.siteFor(tab.url); if (!site || (askLastSite && askLastSite.url === site.url)) return;
+    const tab = sender && sender.tab; if (!tab || !tab.url || tab.incognito || (tab.id === ask.tabId && !ask.own)) return;
+    const site = PlazCodeAskSite.siteFor(tab.url); if (!site) return;
+    // Only the tab in front of its window: other AI tabs keep checking their status in the background.
+    if (!tab.active) return;
+    askLastTab = { id: tab.id, at: Date.now() };
+    if (askLastSite && askLastSite.url === site.url) return;
     askLastSite = site; chrome.storage.local.set({ rsAskLastSite: site }).catch(() => {});
   } catch {}
+}
+// The AI chat tab the person is using, if it is still open on an AI chat site: the one they used last (opening the panel from a
+// chat counts as using it), else the chat Ask PlazCode already uses.
+async function askCurrentChat() {
+  for (const id of [askLastTab && askLastTab.id, ask.own ? ask.tabId : null]) {
+    if (!Number.isInteger(id)) continue;
+    try { const tab = await chrome.tabs.get(id); if (tab && !tab.incognito && PlazCodeAskSite.siteFor(tab.url || "")) return tab; } catch {}
+  }
+  return null;
+}
+// Use the person's own chat for Ask PlazCode. Their window is never minimised, moved or closed by PlazCode.
+function askUseOwn(tab) {
+  if (ask.own && ask.tabId === tab.id) return;
+  ask.own = true; ask.tabId = tab.id; ask.windowId = tab.windowId; ask.chatUrl = ""; askSave();
 }
 async function askSiteUrl() {
   let chosen = null, last = askLastSite;
@@ -4070,6 +4092,20 @@ async function askKeepHidden(winId, ms) {
   }
 }
 async function askEnsure() {
+  // The chat the person is using (2026-11-18). Only when no AI chat tab is open does PlazCode open one in the background.
+  { const current = await askCurrentChat(); if (current) askUseOwn(current); }
+  if (ask.own && Number.isInteger(ask.tabId)) {
+    let tab = null; try { tab = await chrome.tabs.get(ask.tabId); } catch {}
+    if (tab) {
+      const want = ask.goto;
+      // Picking a chat in the History list (or "New chat") takes the person's own tab there, as they asked.
+      if (want) { const site = PlazCodeAskSite.siteFor(tab.url || ""); const target = want === "new" ? (site ? site.url : "") : want; ask.goto = null; askSave();
+        if (target && askUrlKey(tab.url) !== askUrlKey(target) && (!site || askSameSite(target, site.url) || want === "new")) { try { await chrome.tabs.update(tab.id, { url: target }); await criticSleep(600); } catch {} } }
+      if (!(await criticTabReady(tab.id)) || !(await helperPing(tab.id))) return { ok: false, error: "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.", key: "PlazCode is not running in your AI chat tab. Reload that tab, then ask again." };
+      return { ok: true };
+    }
+    ask.own = false; ask.tabId = null; ask.windowId = null; askSave();
+  }
   const want = ask.goto, site = await askSiteUrl();
   const siteName = site.name || new URL(site.url).host;
   const target = askTarget(site, want || ask.chatUrl);
@@ -4375,11 +4411,11 @@ function controlEvent(msg, sender) {
 // question opens a fresh chat (owner, 2026-11-14).
 if (chrome.tabs && chrome.tabs.onRemoved) chrome.tabs.onRemoved.addListener((tabId) => {
   if (tabId !== ask.tabId) return;
-  const wasBusy = ask.busy;
-  ask.tabId = null; ask.windowId = null; ask.busy = false;
+  const wasBusy = ask.busy, own = ask.own;
+  ask.tabId = null; ask.windowId = null; ask.busy = false; ask.own = false;
   for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); }
   askSave();
-  if (wasBusy) { askReply("error", "The background chat was closed, so this question stopped. Ask again to open a new one."); askPost({ type: "ask-busy", busy: false }); }
+  if (wasBusy) { askReply("error", own ? "The AI chat was closed, so this question stopped. Ask again from another AI chat." : "The background chat was closed, so this question stopped. Ask again to open a new one."); askPost({ type: "ask-busy", busy: false }); }
 });
 if (chrome.tabs && chrome.tabs.onRemoved) chrome.tabs.onRemoved.addListener((tabId) => { controlLiveStop(tabId); controlTabs.delete(tabId); clearTimeout(controlDebug.get(tabId)); controlDebug.delete(tabId); });
 

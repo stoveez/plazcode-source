@@ -16,14 +16,14 @@ const make = (stored) => {
 (async () => {
   let t = make({});
   assert.deepEqual(await t.site(), { url: 'https://chat.deepseek.com/', name: 'DeepSeek' }, 'no AI chat seen yet: DeepSeek');
-  t.note({ id: 7, url: 'https://gemini.google.com/app/abc' });
+  t.note({ id: 7, active: true, url: 'https://gemini.google.com/app/abc' });
   assert.deepEqual(await t.site(), { url: 'https://gemini.google.com/app', name: 'Gemini' }, 'the AI chat the person uses');
   assert.deepEqual(JSON.parse(JSON.stringify(t.saved.rsAskLastSite)), { url: 'https://gemini.google.com/app', name: 'Gemini' }, 'remembered for later');
-  t.note({ id: 8, url: 'https://www.amazon.com/' });
+  t.note({ id: 8, active: true, url: 'https://www.amazon.com/' });
   assert.equal((await t.site()).name, 'Gemini', 'a page that is not an AI chat changes nothing');
-  t.note({ id: 50, url: 'https://claude.ai/chat/1' });
+  t.note({ id: 50, active: true, url: 'https://claude.ai/chat/1' });
   assert.equal((await t.site()).name, 'Gemini', 'the background chat itself does not count');
-  t.note({ id: 9, url: 'https://claude.ai/chat/1' });
+  t.note({ id: 9, active: true, url: 'https://claude.ai/chat/1' });
   assert.deepEqual(await t.site(), { url: 'https://claude.ai/new', name: 'Claude' }, 'switching AI site moves Ask PlazCode with it');
   t = make({ rsAskLastSite: { url: 'https://chat.qwen.ai/', name: 'Qwen' } });
   assert.equal((await t.site()).name, 'Qwen', 'remembered after the background restarts');

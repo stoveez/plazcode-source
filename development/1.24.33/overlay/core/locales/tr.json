@@ -1452,5 +1452,7 @@
   "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "Kendi notlarınızı veya kendi hafıza aracınızı kullanıyorsanız bunu kapatın; böylece yapay zekânın iki değil, tek bir hafızası olur.",
   "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "Kasa kapalı. PlazCode kasa dosyası oluşturmaz, okumaz veya değiştirmez, yapay zekâya kasa notları ya da kasa komutları vermez ve sohbetleri not olarak kaydetmez. Kaydedilmiş notlar (Hızlı notlar) çalışmaya devam eder.",
   "Minimize the live view": "Canlı görünümü simge durumuna küçültün",
-  "Live view minimized. Press to show it again.": "Canlı görünüm küçültüldü. Yeniden göstermek için basın."
+  "Live view minimized. Press to show it again.": "Canlı görünüm küçültüldü. Yeniden göstermek için basın.",
+  "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode yapay zekâ sohbet sekmenizde çalışmıyor. O sekmeyi yeniden yükleyin, ardından tekrar sorun.",
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "Yapay zekâ sohbeti kapatıldığı için bu soru durdu. Başka bir yapay zekâ sohbetinden tekrar sorun."
 }

@@ -1452,5 +1452,7 @@
   "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "अगर आप अपने खुद के नोट्स या मेमोरी टूल रखते हैं तो इसे बंद करें, ताकि AI के पास दो नहीं, एक ही मेमोरी हो।",
   "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "वॉल्ट बंद है। PlazCode कोई वॉल्ट फ़ाइल नहीं बनाता, पढ़ता या बदलता, AI को वॉल्ट नोट्स या वॉल्ट कमांड नहीं देता, और चैट को नोट के रूप में सेव नहीं करता। सेव किए गए नोट्स (क्विक नोट्स) काम करते रहते हैं।",
   "Minimize the live view": "लाइव व्यू छोटा करें",
-  "Live view minimized. Press to show it again.": "लाइव व्यू छोटा किया गया है। फिर से दिखाने के लिए दबाएँ।"
+  "Live view minimized. Press to show it again.": "लाइव व्यू छोटा किया गया है। फिर से दिखाने के लिए दबाएँ।",
+  "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode आपके AI चैट टैब में नहीं चल रहा है। उस टैब को फिर से लोड करें, फिर दोबारा पूछें।",
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI चैट बंद हो गई, इसलिए यह सवाल रुक गया। किसी दूसरी AI चैट से फिर से पूछें।"
 }

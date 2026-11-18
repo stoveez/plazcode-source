@@ -1452,5 +1452,7 @@
   "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "직접 쓰는 노트나 기억 도구가 있다면 끄세요. 그러면 AI가 기억을 두 개가 아니라 하나만 갖게 됩니다.",
   "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "볼트가 꺼져 있습니다. PlazCode는 볼트 파일을 만들거나 읽거나 바꾸지 않고, AI에게 볼트 노트나 볼트 명령을 주지 않으며, 채팅을 노트로 저장하지 않습니다. 저장된 노트(빠른 노트)는 계속 작동합니다.",
   "Minimize the live view": "라이브 보기 최소화",
-  "Live view minimized. Press to show it again.": "라이브 보기가 최소화되었습니다. 누르면 다시 표시됩니다."
+  "Live view minimized. Press to show it again.": "라이브 보기가 최소화되었습니다. 누르면 다시 표시됩니다.",
+  "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode가 AI 채팅 탭에서 실행되고 있지 않습니다. 해당 탭을 새로고침한 다음 다시 질문하세요.",
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI 채팅이 닫혀서 이 질문이 중단되었습니다. 다른 AI 채팅에서 다시 질문하세요."
 }

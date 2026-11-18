@@ -1452,5 +1452,7 @@
   "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "Schalten Sie das aus, wenn Sie eigene Notizen oder ein eigenes Gedächtnis-Tool nutzen, damit die KI nur ein Gedächtnis hat, nicht zwei.",
   "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "Der Vault ist aus. PlazCode erstellt, liest und ändert keine Vault-Dateien, gibt der KI keine Vault-Notizen oder Vault-Befehle und speichert Chats nicht als Notizen. Gespeicherte Notizen (Schnellnotizen) funktionieren weiter.",
   "Minimize the live view": "Live-Ansicht minimieren",
-  "Live view minimized. Press to show it again.": "Live-Ansicht minimiert. Drücken Sie, um sie wieder anzuzeigen."
+  "Live view minimized. Press to show it again.": "Live-Ansicht minimiert. Drücken Sie, um sie wieder anzuzeigen.",
+  "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode läuft nicht in Ihrem KI-Chat-Tab. Laden Sie diesen Tab neu und fragen Sie dann erneut.",
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "Der KI-Chat wurde geschlossen, daher wurde diese Frage beendet. Fragen Sie erneut aus einem anderen KI-Chat."
 }

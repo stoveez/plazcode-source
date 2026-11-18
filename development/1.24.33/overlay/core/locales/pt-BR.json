@@ -1452,5 +1452,7 @@
   "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "Desligue se você usa suas próprias notas ou sua própria ferramenta de memória, para que a IA tenha uma memória só, não duas.",
   "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "O vault está desligado. O PlazCode não cria, lê nem altera arquivos do vault, não dá à IA notas nem comandos do vault e não salva os chats como notas. As notas salvas (Notas rápidas) continuam funcionando.",
   "Minimize the live view": "Minimizar a visualização ao vivo",
-  "Live view minimized. Press to show it again.": "Visualização ao vivo minimizada. Pressione para mostrá-la de novo."
+  "Live view minimized. Press to show it again.": "Visualização ao vivo minimizada. Pressione para mostrá-la de novo.",
+  "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "O PlazCode não está rodando na sua aba de chat de IA. Recarregue essa aba e pergunte de novo.",
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "O chat de IA foi fechado, então esta pergunta parou. Pergunte de novo a partir de outro chat de IA."
 }
