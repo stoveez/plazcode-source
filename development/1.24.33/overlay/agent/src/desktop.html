@@ -1432,6 +1432,14 @@ html:not([data-pz-motion=off]):not([data-pz-motion=reduced]) .cn-step[data-state
 .cn-wfoot .cn-gap{flex:1 1 auto}
 html[data-desktop-gradients=off] :is(.cn-tile){background:var(--surface,#161a23)}
 html[data-desktop-gradients=off] .cn-ico{background:rgb(var(--pz-rgb,233 186 83))}html[data-desktop-gradients=off] .cn-ico.cn-ico-logo{background:#fbf8f1}
+
+/* 2026-11-18 (owner: "the Windows app is laggy, needs an fps boost"). Measured in Chromium (the engine behind the Windows app):
+   cards, rows, panels and the sidebar carried a glass blur of 0 px (the default). A 0 px blur still makes the engine
+   repaint everything behind each card on every frame of the animated theme, which halved the frame rate. With no glass
+   blur chosen, there is now no blur at all; and while the app window is in the background (not focused), its endless
+   animations pause. */
+html:not([data-look-blur]) :is(.nx-card,.nx-row,.panel,.settingcard,.stat,.sidebar,.titlebar){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html[data-pz-asleep] *,html[data-pz-asleep] *::before,html[data-pz-asleep] *::after{animation-play-state:paused!important}
 </style>
 <script id="pz-old-safari">
 /* 1.24.33 (owner: PlazCode runs on macOS 10.15 Catalina). On a Mac this window is drawn by the system Safari engine,
@@ -2734,6 +2742,7 @@ __PLAZCODE_VERSION_UI__
     Array.prototype.slice.call(document.querySelectorAll('[data-look-font]')).forEach(function (Node) { Node.style.fontFamily = NXFONTS[Node.getAttribute('data-look-font')] || NXFONTS.sans; });
     Root.style.setProperty('--nx-panel', String(L.panel / 100));
     Root.style.setProperty('--nx-blur', L.blur + 'px');
+    Root.toggleAttribute('data-look-blur', Number(L.blur) > 0);
     Root.style.setProperty('--nx-bgs', String(L.bgstrength / 100));
     Root.toggleAttribute('data-look-rainbow', !!L.rainbow);
     Root.toggleAttribute('data-look-grid', !!L.grid);
@@ -3982,6 +3991,16 @@ pcEnhanceSelects('body');
     Bootstrap();
   }
 }());
+</script>
+<script>
+/* Pause the app's endless animations while its window is not in front (owner, 2026-11-18: lag on Windows). */
+(function () {
+  var Root = document.documentElement, Timer = 0;
+  function Sleep() { clearTimeout(Timer); Timer = setTimeout(function () { if (!document.hasFocus()) Root.setAttribute('data-pz-asleep', ''); }, 1500); }
+  function Wake() { clearTimeout(Timer); Root.removeAttribute('data-pz-asleep'); }
+  window.addEventListener('blur', Sleep); window.addEventListener('focus', Wake);
+  document.addEventListener('pointerdown', Wake, true); document.addEventListener('visibilitychange', function () { if (!document.hidden && document.hasFocus()) Wake(); });
+})();
 </script>
 </body>
 </html>

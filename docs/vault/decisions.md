@@ -87,3 +87,4 @@ The owner chose that PlazCode writes the chat summary itself (free, always works
 - 2026-11-11: No required effort level. The owner chooses the model and effort for each session (for example medium); the AI does not ask to raise it. Careful tracing on security, the Luau library, hard bugs and planning still applies.
 
 - 2026-11-15: TypeScript is adopted gradually. Site files (providers) and the command reader are TypeScript in `development/1.24.33/ts/`; `core/main.js` and `background.js` are split into TypeScript pieces only as each part is touched by a fix or feature ("split as you go"), never in one big rewrite. Details: [build and tests](build-and-tests.md).
+- 2026-11-18 (owner): the AI may send at most TWO commands per reply (was eight), stated plainly in every prompt; the full state block is repeated only when it changes (or every 8th result) to save plan usage.

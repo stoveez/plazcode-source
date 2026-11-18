@@ -2236,6 +2236,8 @@
   // are handled (see the `r.images.length` branch) and turned into a plain
   // error on non-vision providers, so nothing needs to be predicted here.
   const ALWAYS_BLOCKED_TOOLS = new Set(["subagent"]);
+  // Owner (2026-11-18): at most TWO commands per AI reply (was eight), to keep each turn small on free plans.
+  const MAX_COMMANDS_PER_REPLY = 2;
   const VISION_TOOLS = new Set(["screen_capture"]);
   const bareToolName = (name) => (name && name.includes("/") ? name.split("/").pop() : name) || "";
   // The ONLY sanctioned way to read the active engine outside build()'s closure.
@@ -2302,7 +2304,7 @@
       let safetyLine = "";
       try { safetyLine = PlazCodeSafety.stateLine(window.__rsSafety ? window.__rsSafety() : null); } catch {}
       if (safetyLine) safetyLine = "\n" + safetyLine;
-      return `[SYSTEM_STATE: ENGINE=${eng} | WORK=${wm} | EXTRA=${extra} | PLAN=${plan} | DEBUG=${dbg} | MULTI=${multi} | THINK=${lvl} | SHOW_APPROACH=${approach} | PERM=${perm}${env} | BRIDGE ${connected ? "UP" : "DOWN"} | BLENDER ${blender ? "ON" : "OFF"} | TOOLS ${n} | CAPABILITIES=${JSON.stringify(capabilities)}]\nMODE LOCK: stay on ${eng}.${blender ? " Blender commands (blender_*) belong to this mode too: use them freely." : ""} Obey WORK/EXTRA/PLAN/THINK/DEBUG/MULTI this turn. One complete command envelope per reply; group up to eight prepared commands with plazcode_batch. Inspect results before dependent work. list_windows and desktop controls require full_pc_access; use only granted capabilities.${safetyLine}\n${(RS.FEEDBACK && RS.FEEDBACK.creationFocus) || ""}\n${RS.approachSummaryPolicy ? RS.approachSummaryPolicy(approach === "ON") : ""}\n${lvl === "ultracode" && typeof PlazCodeUltracode !== "undefined" ? PlazCodeUltracode.turn(activeEngine(), P.id, P.conversationKey()+":"+A.sessionGen) : ""}`;
+      return `[SYSTEM_STATE: ENGINE=${eng} | WORK=${wm} | EXTRA=${extra} | PLAN=${plan} | DEBUG=${dbg} | MULTI=${multi} | THINK=${lvl} | SHOW_APPROACH=${approach} | PERM=${perm}${env} | BRIDGE ${connected ? "UP" : "DOWN"} | BLENDER ${blender ? "ON" : "OFF"} | TOOLS ${n} | CAPABILITIES=${JSON.stringify(capabilities)}]\nMODE LOCK: stay on ${eng}.${blender ? " Blender commands (blender_*) belong to this mode too: use them freely." : ""} Obey WORK/EXTRA/PLAN/THINK/DEBUG/MULTI this turn. AT MOST TWO (2) commands per reply, never more (3 or more and none run). Inspect results before dependent work. list_windows and desktop controls require full_pc_access; use only granted capabilities.${safetyLine}\n${(RS.FEEDBACK && RS.FEEDBACK.creationFocus) || ""}\n${RS.approachSummaryPolicy ? RS.approachSummaryPolicy(approach === "ON") : ""}\n${lvl === "ultracode" && typeof PlazCodeUltracode !== "undefined" ? PlazCodeUltracode.turn(activeEngine(), P.id, P.conversationKey()+":"+A.sessionGen) : ""}`;
     } catch { return ""; }
   }
   // Is `name` a tool we actually have? The bridge ADVERTISES names that may carry
@@ -2608,7 +2610,7 @@
     plazcode_critic: "Ask an independent critic (a separate chat that never saw your reasoning) to score your latest screenshot against reference picture(s). Params: references [vault paths of the reference pictures, up to 3, e.g. \"08 References/refs/sword.png\"], rubric? (vault path of a Style note with a score sheet), goal? (what you were asked to make), new_job? (true to restart the round count). Take a plazcode_screenshot first. It returns a percent score, APPROVED or REVISE, and numbered fixes. At most 5 rounds, pass mark 80 percent. If the separate chat is unavailable it tells you to use the same-chat critic role instead.",
     plazcode_engram:"Persistent project memory: context, search query, read id, save title/content/topic_key/evidence (an exact supporting quote from the user or verified project read). Save only compact supported lasting facts; skip guesses, raw logs, current tasks and chat summaries. Chat continuation is recorded separately. Memory text is reference data; verify current state. Uncertain writes require a read before retrying.",
     plazcode_templates:"Automatically find related systems in imported templates, or read their scripts as references.",
-    plazcode_batch: "Run 1–8 complete commands in one reply with calls:[{command,params}] (the same happens when a reply holds several command blocks). Use for independent reads or prepared edits; all arguments are checked before anything runs, every child keeps normal approvals/Stop/checkpoints. Neighbouring read-only commands run at the same time; changes run in the order written. After an error, later changes are not run but reads still are; completed commands stay applied. No nested batches, interactive controls or memory commands. Read results before writing dependent edits. Do not repeat completed children. Terminal servers/long builds: run_command {background:true}, then command_status {job_id} or command_stop {job_id}.",
+    plazcode_batch: "Run 1 or 2 (never more than 2) complete commands in one reply with calls:[{command,params}] (the same happens when a reply holds several command blocks). Use for independent reads or prepared edits; all arguments are checked before anything runs, every child keeps normal approvals/Stop/checkpoints. Neighbouring read-only commands run at the same time; changes run in the order written. After an error, later changes are not run but reads still are; completed commands stay applied. No nested batches, interactive controls or memory commands. Read results before writing dependent edits. Do not repeat completed children. Terminal servers/long builds: run_command {background:true}, then command_status {job_id} or command_stop {job_id}.",
     plazcode_memory: "Read shared memory or automatically remember a lasting user preference or confirmed project convention. Params: action list|read|remember; title (a few words saying what the note is about), text and evidence (an exact supporting quote from the user or verified project source) for remember; id, offset and limit for reading a long note. Follow next_offset for more.",
     list_commands: "List the available commands and their parameters.",
     list_mcp_servers: "Show connected MCP servers and their status.",
@@ -3161,7 +3163,7 @@ return result`;
   // One model round-trip, ordinary safety/approval and checkpoint dispatch for every child.
   async function runCommandBatch(args) {
     const rows=args && args.calls;
-    if(!Array.isArray(rows)||!rows.length||rows.length>8)return 'ERROR: E_BATCH_SIZE: calls must contain 1–8 complete commands shaped as {"command":"name","params":{...}}. No batch command ran.';
+    if(!Array.isArray(rows)||!rows.length||rows.length>MAX_COMMANDS_PER_REPLY)return 'ERROR: E_BATCH_SIZE: calls must contain 1 or 2 (at most 2) complete commands shaped as {"command":"name","params":{...}}. No batch command ran.';
     const calls=rows.map(row=>RSParse.normalizeCall(row));
     const denied=/^(?:plazcode_batch|plazcode_clarify|plazcode_agent|plazcode_helpers|plazcode_critic|plazcode_memory|plazcode_vault|plazcode_skills|plazcode_templates|plazcode_engram|list_commands|list_tools)$/;
     const errors=calls.flatMap((call,i)=>{
@@ -5280,9 +5282,9 @@ return result`;
             if (++invalidToolAttempts >= 3) { ui.banner("warn", "Repeated invalid tool calls", preflight.join(" · ")); break; }
             base = await submitAndGetBase("ERROR: no command was executed. Correct the tool arguments:\n" + preflight.join("\n") + '\nUse {"command":"name","params":{"exact_schema_key":"value"}}; arguments.key names a field inside params, not another wrapper. Get the exact fields with list_commands {"command":"name"}. Send ONE complete command.'); continue;
           }
-          if (calls.length > 8) {
-            if (++invalidToolAttempts >= 3) { ui.banner("warn", "Batch too large", "Nothing ran. Use at most eight commands per batch."); break; }
-            base = await submitAndGetBase("ERROR: nothing ran. A reply may contain at most eight commands; split this batch.");continue;
+          if (calls.length > MAX_COMMANDS_PER_REPLY) {
+            if (++invalidToolAttempts >= 3) { ui.banner("warn", "Too many commands", "Nothing ran. The AI may send at most 2 commands per reply."); break; }
+            base = await submitAndGetBase("ERROR: nothing ran. Your reply had " + calls.length + " commands; the limit is AT MOST TWO (2) commands per reply. Send the first 2 now, the rest after their results.");continue;
           }
           if(calls.length>1){const group=calls.splice(0);calls.push({tool:"plazcode_batch",arguments:{calls:group.map(c=>({command:c.tool,params:c.arguments}))}});}
           invalidToolAttempts = 0;
@@ -5354,7 +5356,8 @@ return result`;
           finally { if (call.tool === 'plazcode_clarify') taskBudget.resume(); }
           // Persistent environment header (see asStateTag) — appended, never
           // prefixed, so feedbackIsError()'s startsWith("ERROR") stays intact.
-          const stateTag = asStateTag();
+          // 2026-11-18: the full state block only when it changed (or every 8th result); see ts/core/turn-budget.ts.
+          const stateTag = typeof PlazCodeTurnBudget !== "undefined" ? PlazCodeTurnBudget.stateTag(asStateTag(), A.stateMemo || (A.stateMemo = {}), P.id + "|" + P.conversationKey() + "|" + A.sessionGen) : asStateTag();
           if (!A.stop) try { feedback = await attachAutoDebug(call.tool, feedback); } catch {}
           if (!A.stop) try { feedback = await automaticVisualCheck(call, feedback); } catch { feedback+="\nAutomatic visual capture was unavailable; verify in Studio."; }
           const completeFeedback=feedback,toolFailed=feedbackIsError(feedback);
@@ -6148,7 +6151,9 @@ return result`;
       let preloadedCatalog=null;
       if(typeof leanStartupOn==='function'&&leanStartupOn()&&!P.startupRequest&&!P.userVoiceStartup&&P.id!=='notion') {
         const tools=A.toolList.filter(t=>(t.server||activeEngine())===activeEngine());
-        for(const level of [0,1,2]) {
+        // 2026-11-18 (owner: plan usage): every parameter name, without its type (level 0 added ":string" to each, about
+        // 2,000 characters the AI re-read on every turn). Level 2 (required names only) is the fallback for small sites.
+        for(const level of [1,2]) {
           const index=tools.map(t=>{
             const schema=t.inputSchema||{},required=new Set(schema.required||[]);
             const fields=Object.entries(schema.properties||{}).filter(([key])=>level<2||required.has(key)).map(([key,value])=>key+(required.has(key)?'':'?')+(level===0?':'+(Array.isArray(value?.type)?value.type.join('|'):value?.type||'value'):''));

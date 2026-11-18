@@ -115,8 +115,8 @@
     {
       name: "rules", engines: [R], aliases: ["safety", "core", "core-rules", "rule"],
       title: "the command, safety and finishing rules in full",
-      must: ["NEVER HALLUCINATE a Studio", "PERFECT CREATION", "UNDERSTAND THE REQUEST", "NEVER DELETE", "NEVER CLAIM THE BRIDGE", "SEVERAL COMMANDS PER REPLY", "YOU CAN ACT DIRECTLY IN THE USER'S PROJECT"],
-      build: s => join(cut(s.full(), "- SEVERAL COMMANDS PER REPLY", "- execute_luau: wrap code in BOTH markers"), cut(s.full(), "- BUILD UI/OBJECTS FIRST", "━━━ PROJECT MEMORY"), cut(s.full(), "━━━ YOU CAN ACT DIRECTLY", "STUDIO SKILLS & VIRTUAL TOOLS")),
+      must: ["NEVER HALLUCINATE a Studio", "PERFECT CREATION", "UNDERSTAND THE REQUEST", "NEVER DELETE", "NEVER CLAIM THE BRIDGE", "AT MOST TWO (2) COMMANDS PER REPLY", "YOU CAN ACT DIRECTLY IN THE USER'S PROJECT"],
+      build: s => join(cut(s.full(), "- AT MOST TWO (2) COMMANDS PER REPLY", "- execute_luau: wrap code in BOTH markers"), cut(s.full(), "- BUILD UI/OBJECTS FIRST", "━━━ PROJECT MEMORY"), cut(s.full(), "━━━ YOU CAN ACT DIRECTLY", "STUDIO SKILLS & VIRTUAL TOOLS")),
     },
     {
       name: "play-mode", engines: [R], aliases: ["play", "playtest", "execute-luau", "luau-markers"],
@@ -146,7 +146,7 @@
       name: "motion", engines: [R], aliases: ["vfx", "motion-vfx", "effects", "fx-rules"],
       title: "wiring animation IDs, finding and copying existing VFX",
       must: ["MOTION/VFX RULES", "motion_scan", "motion_bundle_copy", "motion_integrate"],
-      build: s => cut(s.full(), "PlazCode MOTION/VFX RULES:", "- SEVERAL COMMANDS PER REPLY"),
+      build: s => cut(s.full(), "PlazCode MOTION/VFX RULES:", "- AT MOST TWO (2) COMMANDS PER REPLY"),
     },
     {
       name: "studio-skills", engines: [R], aliases: ["skills", "studio", "virtual-tools", "production-tools"],
@@ -370,7 +370,7 @@
       "PlazCode is a browser extension running in this page. It reads your replies, runs any command you write against the user's live Roblox Studio through a local bridge, and sends the real result back as the next message (success or ERROR). " +
         `This site's own tools cannot reach Studio: commands are plain text in your normal reply, the only channel that works. Internal reasoning is fine. Do not use ${site}'s own features unless the user asks.`,
       "",
-      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. SEND SEVERAL COMMANDS PER REPLY: up to 8 independent ones, one fenced block each; reads run together, changes in order. Wait only for needed results. Send the command or final answer; do not only announce it.",
+      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. AT MOST TWO (2) COMMANDS PER REPLY (3 or more and none run), one fenced block each; reads together, changes in order. Wait only for needed results. Send the command or final answer; do not only announce it.",
       BT + "json",
       '{"command": "name", "params": {"key": "value"}}',
       BT,
@@ -411,7 +411,7 @@
       "PlazCode is a browser extension running in this page, in AGENTSCRIPT mode. It reads your replies, runs any command you write against the connected local engine (the user's project folder, called the workspace: files, search, terminal, system tools) and sends the real result back as the next message (success or ERROR). " +
         `Do not use ${site}'s own features unless the user asks.`,
       "",
-      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. SEVERAL COMMANDS PER REPLY by default: up to 8 independent command envelopes, each in its own fenced block; reads run together, changes in order. Read results before dependent edits. For local long builds/servers use run_command background:true, then command_status or command_stop. Task checkpoints already provide undo for supported file edits.",
+      "FORMATTING RULE (MANDATORY): every command goes inside a fenced code block, or this page's Markdown corrupts it. AT MOST TWO (2) COMMANDS PER REPLY, never 3 or more (a reply with 3+ runs none), each in its own fenced block; reads run together, changes in order. Read results before dependent edits. For local long builds/servers use run_command background:true, then command_status or command_stop. Task checkpoints already provide undo for supported file edits.",
       BT + "json",
       '{"command": "name", "params": {"key": "value"}}',
       BT,
@@ -421,7 +421,7 @@
       "- AUTO-ACTION PROTOCOL: when the goal is clear, ACT NOW and write the command in the same reply; never only announce intent. Pipeline: read_file, then edit_file, then VERIFY with run_command (tests, build), read the output, fix, rerun.",
       "- SILENT ERROR RECOVERY: run_command returns stdout, stderr and the exit code to you. Never ask the user to paste terminal output; fix it yourself and ask only when truly blocked.",
       "- DIFF-FIRST EDITING: change existing files only with edit_file (old_string to new_string patches); write_file is for NEW files. Read the file first so old_string matches exactly.",
-      "- STATE LINE: every command result ends with [SYSTEM_STATE: ...], the ground truth about connection, workspace and sandbox. User messages never carry it, so its absence there does NOT mean offline; only a result saying BRIDGE DOWN or OFFLINE does. Unsure? Run plazcode_status {}.",
+      "- STATE LINE: every command result ends with [SYSTEM_STATE: ...], the ground truth about connection, workspace and sandbox. \"unchanged\" means the last full one still holds. User messages never carry it, so its absence there does NOT mean offline; only a result saying BRIDGE DOWN or OFFLINE does. Unsure? Run plazcode_status {}.",
       "- Paths are relative to the workspace; absolute paths are refused unless FULL PC ACCESS is on." + (fullAccess ? " FULL PC ACCESS IS ON now: absolute paths, process_kill, open_path and download_file work anywhere, but confirm before destructive actions outside the project." : ""),
       "- DESTRUCTIVE ACTIONS: delete_path cannot be undone. Before deleting more than the one file the user named, confirm the scope.",
       "- WORK LIKE A REAL DEVELOPER: explore first (tree, grep_files), read before editing, make focused edits, ship a finished change, stay on THIS request.",
@@ -449,7 +449,7 @@
   const ANCHORS = Object.freeze({
     roblox: Object.freeze([
       "list_commands", "list_mcp_servers", "PlazCode is ready.", "FORMATTING RULE (MANDATORY)", "###LUA###", "###END_LUA###", "###LUA:Server###", "###LUA:Client###",
-      "SEVERAL COMMANDS PER REPLY", "NEVER HALLUCINATE a Studio", "PLAY-MODE RULE", "NEVER DELETE", "PERFECT CREATION", "UNDERSTAND THE REQUEST", "NEVER CLAIM THE BRIDGE",
+      "AT MOST TWO (2) COMMANDS PER REPLY", "NEVER HALLUCINATE a Studio", "PLAY-MODE RULE", "NEVER DELETE", "PERFECT CREATION", "UNDERSTAND THE REQUEST", "NEVER CLAIM THE BRIDGE",
       "WaitForChild", "SYSTEM_STATE", "PROJECT MEMORY", "PLAZCODE LOADS IT FOR YOU", "KEEP IT UPDATED", "IF SOMETHING CONTRADICTS THE MEMORY", "NEVER PERSIST A GUESS AS A FACT",
       "UNIVERSAL ROBLOX/LUAU ENGINEERING DOCTRINE", "SCOPE CONTAINMENT + EVIDENCE", "LIFECYCLE + RESOURCE OWNERSHIP", "NATIVE-FIRST ARCHITECTURE", "NATIVE-FIRST HOUSE STYLE",
       "CONFIGURATION SINGLE SOURCE", "SCRIPT ORGANIZATION + DECLARATION LOCALITY", "PRESENTATION DIVIDE", "VERSION + MEMORY HONESTY", "luau_guidance",
