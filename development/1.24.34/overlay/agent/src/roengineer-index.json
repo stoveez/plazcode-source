@@ -1,0 +1,178 @@
+[
+ {
+  "id": "starter-roengineer-core",
+  "title": "Ro-Engineer: Roblox engineering standards",
+  "description": "Always-on Roblox/Luau standards for any Studio script, system or bug: plan first, design before code. --!strict modules that return one table, no globals; task.spawn/defer/delay/wait, never legacy spawn/delay/wait; generalized iteration (for k, v in t do); export typed public interfaces; composition over inheritance; the simplest pattern that works. Server is authoritative: validate every remote payload (type, range, ownership, cooldown) and rate-limit. Disconnect every :Connect() and destroy or pool every instance on cleanup. Economy math on the server; know every currency's sources and sinks. Ro-Engineer by excaldev (MIT); verify against the project.",
+  "domain": "roblox",
+  "scope": "",
+  "steps": [
+   "Read with plazcode_skills action read, id starter-roengineer-core, resource SKILL.md (then PLAZCODE-ADAPTER.md, references/sharp-edges.md). Follow next_offset until complete; load only what the task needs.",
+   "Inspect the real project first (read_scripts for many scripts at once). Fit the guidance to this game's existing structure and the user's request; the user's request and PlazCode's safety settings win."
+  ],
+  "pitfalls": [
+   "Reference guidance, not proof: check every API against the docs and test in Studio.",
+   "Distributed under the MIT licence; keep the excaldev credit and LICENSE."
+  ],
+  "verification": [
+   "Run the checks the reference names in the current project and report what was actually verified."
+  ],
+  "confirmed": true,
+  "enabled": true,
+  "revision": 1,
+  "community": false
+ },
+ {
+  "id": "starter-roengineer-luau",
+  "title": "Ro-Engineer: modern and typed Luau",
+  "description": "Modern Luau syntax and strict typing: --!strict, type annotations, export type, generics, narrowing optional Instance results, string interpolation, if-expressions, compound assignment, table.freeze, typed module templates; fixing type checker errors and warnings. Ro-Engineer by excaldev (MIT); verify against the project.",
+  "domain": "roblox",
+  "scope": "",
+  "steps": [
+   "Read with plazcode_skills action read, id starter-roengineer-luau, resource references/luau-modern.md (then references/luau-types.md, templates/module-template.md). Follow next_offset until complete; load only what the task needs.",
+   "Inspect the real project first (read_scripts for many scripts at once). Fit the guidance to this game's existing structure and the user's request; the user's request and PlazCode's safety settings win."
+  ],
+  "pitfalls": [
+   "Reference guidance, not proof: check every API against the docs and test in Studio.",
+   "Distributed under the MIT licence; keep the excaldev credit and LICENSE."
+  ],
+  "verification": [
+   "Run the checks the reference names in the current project and report what was actually verified."
+  ],
+  "confirmed": true,
+  "enabled": false,
+  "revision": 1,
+  "community": false
+ },
+ {
+  "id": "starter-roengineer-architecture",
+  "title": "Ro-Engineer: system design and patterns",
+  "description": "Designing and structuring Roblox systems: how to structure a feature, design docs, choosing between composition/components, OOP classes, ECS for many entities, state management and replicated state, object pooling for projectiles, VFX and frequent spawn/destroy. Avoid deep inheritance and over-engineering. Ro-Engineer by excaldev (MIT); verify against the project.",
+  "domain": "roblox",
+  "scope": "",
+  "steps": [
+   "Read with plazcode_skills action read, id starter-roengineer-architecture, resource workflows/design-system.md (then references/system-design.md, references/pattern-selection.md, references/composition.md, references/oop-patterns.md, references/ecs.md, references/state-management.md, references/object-pooling.md). Follow next_offset until complete; load only what the task needs.",
+   "Inspect the real project first (read_scripts for many scripts at once). Fit the guidance to this game's existing structure and the user's request; the user's request and PlazCode's safety settings win."
+  ],
+  "pitfalls": [
+   "Reference guidance, not proof: check every API against the docs and test in Studio.",
+   "Distributed under the MIT licence; keep the excaldev credit and LICENSE."
+  ],
+  "verification": [
+   "Run the checks the reference names in the current project and report what was actually verified."
+  ],
+  "confirmed": true,
+  "enabled": false,
+  "revision": 1,
+  "community": false
+ },
+ {
+  "id": "starter-roengineer-network",
+  "title": "Ro-Engineer: client/server, remotes and security",
+  "description": "Client-server boundaries and networking: RemoteEvent and RemoteFunction design, validating untrusted client input on the server, exploit prevention, rate limiting remote flooding, replication, never trusting client currency or state. Ro-Engineer by excaldev (MIT); verify against the project.",
+  "domain": "roblox",
+  "scope": "",
+  "steps": [
+   "Read with plazcode_skills action read, id starter-roengineer-network, resource references/client-server-boundaries.md (then references/networking-remotes.md). Follow next_offset until complete; load only what the task needs.",
+   "Inspect the real project first (read_scripts for many scripts at once). Fit the guidance to this game's existing structure and the user's request; the user's request and PlazCode's safety settings win."
+  ],
+  "pitfalls": [
+   "Reference guidance, not proof: check every API against the docs and test in Studio.",
+   "Distributed under the MIT licence; keep the excaldev credit and LICENSE."
+  ],
+  "verification": [
+   "Run the checks the reference names in the current project and report what was actually verified."
+  ],
+  "confirmed": true,
+  "enabled": false,
+  "revision": 1,
+  "community": false
+ },
+ {
+  "id": "starter-roengineer-performance",
+  "title": "Ro-Engineer: performance, lag and memory leaks",
+  "description": "Fixing lag, slow scripts, frame drops and memory leaks: performance audits, per-frame (Heartbeat/RenderStepped) cost, cleanup and lifecycle with Maid/Trove, leaked connections, stale pooled objects. Ro-Engineer by excaldev (MIT); verify against the project.",
+  "domain": "roblox",
+  "scope": "",
+  "steps": [
+   "Read with plazcode_skills action read, id starter-roengineer-performance, resource workflows/performance-audit.md (then references/performance.md, references/cleanup-lifecycle.md). Follow next_offset until complete; load only what the task needs.",
+   "Inspect the real project first (read_scripts for many scripts at once). Fit the guidance to this game's existing structure and the user's request; the user's request and PlazCode's safety settings win."
+  ],
+  "pitfalls": [
+   "Reference guidance, not proof: check every API against the docs and test in Studio.",
+   "Distributed under the MIT licence; keep the excaldev credit and LICENSE."
+  ],
+  "verification": [
+   "Run the checks the reference names in the current project and report what was actually verified."
+  ],
+  "confirmed": true,
+  "enabled": false,
+  "revision": 1,
+  "community": false
+ },
+ {
+  "id": "starter-roengineer-review",
+  "title": "Ro-Engineer: plan, implement, review and test",
+  "description": "Planning a feature into steps, implementing an approved design, reviewing Luau code for bugs, exploits and leaks, and setting up tests (TestEZ, pure logic modules). Bugs and gotchas reference. Ro-Engineer by excaldev (MIT); verify against the project.",
+  "domain": "roblox",
+  "scope": "",
+  "steps": [
+   "Read with plazcode_skills action read, id starter-roengineer-review, resource workflows/plan.md (then workflows/implement.md, workflows/code-review.md, references/testing.md, templates/plan-template.md). Follow next_offset until complete; load only what the task needs.",
+   "Inspect the real project first (read_scripts for many scripts at once). Fit the guidance to this game's existing structure and the user's request; the user's request and PlazCode's safety settings win."
+  ],
+  "pitfalls": [
+   "Reference guidance, not proof: check every API against the docs and test in Studio.",
+   "Distributed under the MIT licence; keep the excaldev credit and LICENSE."
+  ],
+  "verification": [
+   "Run the checks the reference names in the current project and report what was actually verified."
+  ],
+  "confirmed": true,
+  "enabled": false,
+  "revision": 1,
+  "community": false
+ },
+ {
+  "id": "starter-roengineer-design",
+  "title": "Ro-Engineer: game loops and retention",
+  "description": "Game design: core gameplay loop, what keeps players playing, first reward in the first minute, onboarding, daily rewards, hooks, live ops events, breaking down hit games and choosing a twist, retention audits. Avoid manipulative patterns; many players are young. Ro-Engineer by excaldev (MIT); verify against the project.",
+  "domain": "roblox",
+  "scope": "",
+  "steps": [
+   "Read with plazcode_skills action read, id starter-roengineer-design, resource workflows/design-game-loop.md (then references/game-loops.md, references/market-references.md, references/player-incentives.md, references/retention-psychology.md, references/live-ops-events.md, templates/game-loop-template.md). Follow next_offset until complete; load only what the task needs.",
+   "Inspect the real project first (read_scripts for many scripts at once). Fit the guidance to this game's existing structure and the user's request; the user's request and PlazCode's safety settings win."
+  ],
+  "pitfalls": [
+   "Reference guidance, not proof: check every API against the docs and test in Studio.",
+   "Distributed under the MIT licence; keep the excaldev credit and LICENSE."
+  ],
+  "verification": [
+   "Run the checks the reference names in the current project and report what was actually verified."
+  ],
+  "confirmed": true,
+  "enabled": false,
+  "revision": 1,
+  "community": false
+ },
+ {
+  "id": "starter-roengineer-economy",
+  "title": "Ro-Engineer: progression and economy",
+  "description": "Progression and economy design: currencies, upgrades, rebirth/prestige, sources and sinks, inflation, server-side economy math, economy audits. Check current Roblox policies before paid random rewards. Ro-Engineer by excaldev (MIT); verify against the project.",
+  "domain": "roblox",
+  "scope": "",
+  "steps": [
+   "Read with plazcode_skills action read, id starter-roengineer-economy, resource references/progression-economy.md (then workflows/economy-audit.md). Follow next_offset until complete; load only what the task needs.",
+   "Inspect the real project first (read_scripts for many scripts at once). Fit the guidance to this game's existing structure and the user's request; the user's request and PlazCode's safety settings win."
+  ],
+  "pitfalls": [
+   "Reference guidance, not proof: check every API against the docs and test in Studio.",
+   "Distributed under the MIT licence; keep the excaldev credit and LICENSE."
+  ],
+  "verification": [
+   "Run the checks the reference names in the current project and report what was actually verified."
+  ],
+  "confirmed": true,
+  "enabled": false,
+  "revision": 1,
+  "community": false
+ }
+]

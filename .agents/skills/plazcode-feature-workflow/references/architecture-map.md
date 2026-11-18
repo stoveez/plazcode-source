@@ -4,7 +4,7 @@ All permanent edits happen in `development/<ver>/ts/` or `development/<ver>/over
 
 ## 1. TypeScript Sources (`development/<ver>/ts/`)
 Compiled to line-preserving JavaScript in `overlay/` via `node development/<ver>/ts/build.cjs`:
-- `ts/providers/*.ts`: The AI-site adapters (`arena`, `chatgpt`, `claude`, `copilot`, `crax`, `deepseek`, `freebuff`, `gemini`, `glm`, `kimi`, `meta`, `mimo`, `notion`, `oxalpha`, `qwen`, `useai`, `vani`; ClickUp removed in 1.24.33). Adding or removing a site also changes the app's "N browser AIs" label (`test-supported-ai-count.js`). Must satisfy `ts/types/provider.d.ts`.
+- `ts/providers/*.ts`: The AI-site adapters (`arena`, `chatgpt`, `claude`, `copilot`, `crax`, `deepseek`, `freebuff`, `gemini`, `glm`, `kimi`, `meta`, `mimo`, `notion`, `oxalpha`, `qwen`, `useai`, `vani`; ClickUp removed in 1.24.34). Adding or removing a site also changes the app's "N browser AIs" label (`test-supported-ai-count.js`). Must satisfy `ts/types/provider.d.ts`.
 - `ts/core/parser.ts`: Command block & JSON/DSML parser.
 - `ts/core/stall-guard.ts`: `PlazCodeStallGuard` loop/stall & frozen-tab deadline compensation.
 - `ts/types/`: Shared contracts (`provider.d.ts`, `globals.d.ts`, `core-env.d.ts`, `provider-env.d.ts`).

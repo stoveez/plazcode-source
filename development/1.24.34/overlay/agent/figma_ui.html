@@ -1,0 +1,63 @@
+<!-- PlazCode helper for Figma (its small window). Made by PlazCode on this computer. It only talks to the PlazCode
+     app on this computer and passes PlazCode's named Figma actions on to the helper. Safe to delete. -->
+<!-- plazcode-helper-file:figma -->
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { font: 13px/1.45 Inter, system-ui, sans-serif; color: var(--figma-color-text, #222); background: var(--figma-color-bg, #fff); display: flex; align-items: center; }
+  main { padding: 14px 16px; display: grid; gap: 6px; width: 100%; box-sizing: border-box; }
+  .row { display: flex; align-items: center; gap: 9px; font-weight: 600; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #b9b9b9; flex: none; }
+  .dot.on { background: #1bc47d; }
+  .dot.bad { background: #f24822; }
+  p { margin: 0; color: var(--figma-color-text-secondary, #666); }
+</style>
+<main>
+  <div class="row"><span class="dot" id="dot"></span><span id="state">Looking for PlazCode</span></div>
+  <p id="note">Keep this small window open while you work with the AI.</p>
+</main>
+<script>
+(function () {
+  "use strict";
+  var WORD = "__PLAZCODE_WORD__", PORT = __PLAZCODE_PORT__;
+  var socket = null, timer = null, wait = 1000, refused = 0;
+  function show(kind, state, note) {
+    document.getElementById("dot").className = "dot" + (kind ? " " + kind : "");
+    document.getElementById("state").textContent = state;
+    document.getElementById("note").textContent = note;
+  }
+  function again() {
+    clearTimeout(timer);
+    // A refused pairing word will not start working by itself: after a few tries, ask only now and then.
+    timer = setTimeout(connect, refused >= 3 ? 120000 : wait);
+    wait = Math.min(wait * 2, 15000);
+  }
+  function connect() {
+    if (socket) return;
+    var paired = false, opened = false, mine;
+    try { mine = socket = new WebSocket("ws://localhost:" + PORT + "/helper"); } catch (error) { socket = null; again(); return; }
+    mine.onopen = function () { opened = true; mine.send(JSON.stringify({ hello: 1, app: "figma", word: WORD, version: "1.0.0", variant: "desktop" })); };
+    mine.onmessage = function (event) {
+      var message; try { message = JSON.parse(event.data); } catch (error) { return; }
+      if (message.paired === true) { paired = true; refused = 0; wait = 1000; show("on", "Connected to PlazCode", "Keep this small window open while you work with the AI."); return; }
+      if (typeof message.id !== "number" || typeof message.cmd !== "string") return;
+      parent.postMessage({ pluginMessage: { type: "run", id: message.id, cmd: message.cmd, args: message.args } }, "*");
+    };
+    mine.onerror = function () {};
+    mine.onclose = function () {
+      if (socket === mine) socket = null;
+      if (opened && !paired) refused += 1;
+      if (refused >= 3) show("bad", "PlazCode did not accept this helper", "Open PlazCode, go to Apps & servers, open Figma and follow the steps there again.");
+      else show("", "Looking for PlazCode", "Open the PlazCode app on this computer. This window connects by itself.");
+      again();
+    };
+  }
+  // Answers from the helper go back to PlazCode. Only messages from Figma's own plugin side are read.
+  window.onmessage = function (event) {
+    var message = event.data && event.data.pluginMessage;
+    if (!message || message.type !== "answer" || typeof message.id !== "number") return;
+    if (socket && socket.readyState === 1) socket.send(JSON.stringify({ id: message.id, ok: message.ok === true, result: message.result, message: message.message }));
+  };
+  setInterval(function () { if (socket && socket.readyState === 1) socket.send("{\"beat\":1}"); }, 20000);
+  connect();
+})();
+</script>

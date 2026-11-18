@@ -3,7 +3,7 @@ title: Home
 updated: 2026-11-06
 ---
 
-**Current, 2026-11-14:** 1.24.32 is published (validation 42712015243, publish 42718408426). The next update, **1.24.33**, is built on `claude/plazcode-dev` from `development/1.24.33` (workflows `validate-1.24.33.yml` and `publish-1.24.33.yml`); not published. Start with `docs/NOW.md`. Version numbers further down are historical unless they say 1.24.33.
+**Current, 2026-11-18:** 1.24.33 is published (validation 43729798476, publish 43735956823). **1.24.34** is being released from `development/1.24.34` on `claude/plazcode-dev` (workflows `validate-1.24.34.yml` / `publish-1.24.34.yml`, release notes `development/1.24.34/release-entry.json`). Live state: [../NOW.md](../NOW.md).
 
 
 2026-11-05 FOLLOW-UP COMPLETE: full CI42146181204/adf89f6 ALL GREEN, official135PASS/0fail; new exact full Windows/universal Mac inner ZIPs delivered through Drive with name/MIME/byte readback. Bridge discovery, strict ChatGPT receipts, namespace correction, safe native append, DeepSeek stream/progress/composer roots fixed. All262JS on all3hosts (Linux twice), nativeWin304/Mac309/Linux311PASS+2ignored, ChatGPT27/installed HTTPS lifecycle/Chromium+Firefox/preservation958/DOM325/healthy70/pins34 PASS. Full app replacement required; extension reload + AI-tab refresh. Prior42078807676 lacks follow-up. No stable publication. Source Private reminder remains until confirmed; owner PC vault not connected. See connection-startup-followup-2026-11-05.md and verification JSON.

@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "allowJs": false, "noEmit": true, "target": "es2022", "lib": ["dom", "dom.iterable", "es2022"], "skipLibCheck": true,
+    "types": [], "strict": false, "noImplicitAny": false, "noUnusedLocals": false, "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true, "allowUnreachableCode": false, "verbatimModuleSyntax": false
+  }
+}
