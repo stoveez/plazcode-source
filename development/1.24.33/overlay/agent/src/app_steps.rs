@@ -287,8 +287,7 @@ mod platform {
 
     impl Session {
         pub async fn start() -> Result<Self, String> {
-            use std::os::windows::process::CommandExt;
-            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000; // tokio's Command has creation_flags itself
             static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
             let file = std::env::temp_dir().join(format!("plazcode-app-{}-{}.ps1", std::process::id(), N.fetch_add(1, std::sync::atomic::Ordering::Relaxed)));
             std::fs::write(&file, crate::workspace::powershell_file_bytes(&crate::hidden::hidden!(include_str!("app_steps.ps1")))).map_err(|e| format!("could not prepare the app helper: {e}"))?;

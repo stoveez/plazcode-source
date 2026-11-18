@@ -2084,7 +2084,7 @@ pub async fn tool_focus_window(ws: &Workspace, args: &serde_json::Value) -> Resu
     let wins = collect_windows();
     let found = wins.iter().find(|(_, t)| t.to_lowercase().contains(&want));
     let Some((hwnd, title)) = found else { return Err(format!("no visible window whose title contains '{want}'")); };
-    let (hwnd, name) = (*hwnd, title.chars().take(90).collect::<String>());
+    let (hwnd, name) = (*hwnd as isize, title.chars().take(90).collect::<String>());
     // Owner (2026-11-18): the AI struggled to maximize or minimize windows (it tried PowerShell commands that did nothing).
     // `state` does it in one step, and the answer says what the window really is afterwards.
     #[link(name = "user32")]
