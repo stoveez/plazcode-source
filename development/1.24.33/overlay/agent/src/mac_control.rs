@@ -249,18 +249,23 @@ return """#);
 /// Scroll at the current mouse position (lines; negative = down).
 pub fn scroll(lines: i32) { let event = unsafe { CGEventCreateScrollWheelEvent(std::ptr::null_mut(), 1, 1, lines) }; post(event); }
 
-// ---- the person taking over: listen-only tap on mouse events ----------------------------------------------------
-extern "C" fn tapped(_proxy: Ref, _kind: u32, event: Ref, _info: Ref) -> Ref {
-    if !event.is_null() && unsafe { CGEventGetIntegerValueField(event, SOURCE_USER_DATA) } != MARK { crate::desktop_control::person_input(); }
+// ---- the person taking over: listen-only tap on clicks and key presses ----------------------------------------------------
+extern "C" fn tapped(_proxy: Ref, kind: u32, event: Ref, _info: Ref) -> Ref {
+    // Only a button or key going down (1 left, 3 right, 25 other, 10 key), never the tap's own "disabled" notices.
+    let pressed = matches!(kind, 1 | 3 | 10 | 25);
+    if pressed && !event.is_null() && unsafe { CGEventGetIntegerValueField(event, SOURCE_USER_DATA) } != MARK { crate::desktop_control::person_input(); }
     event
 }
 pub fn watch_person() {
     static STARTED: std::sync::Once = std::sync::Once::new();
     STARTED.call_once(|| {
         let _ = std::thread::Builder::new().name("plazcode-control-watch".into()).spawn(|| unsafe {
-            // Mouse moved, left/right down, left/right dragged, scroll wheel.
-            let mask: u64 = (1 << 5) | (1 << 1) | (1 << 3) | (1 << 6) | (1 << 7) | (1 << 22);
-            let tap = CGEventTapCreate(1, 0, 1, mask, tapped, std::ptr::null_mut()); // session tap, head, listen only
+            // Owner (2026-11-18): only a click or a key press takes over; moving the mouse or scrolling does not.
+            // Left, right and other mouse button down, and key down. Seeing keys can need more permission on newer macOS;
+            // if the Mac refuses that, watch the clicks alone (as before, when keys were never seen on a Mac).
+            let clicks: u64 = (1 << 1) | (1 << 3) | (1 << 25);
+            let mut tap = CGEventTapCreate(1, 0, 1, clicks | (1 << 10), tapped, std::ptr::null_mut()); // session tap, head, listen only
+            if tap.is_null() { tap = CGEventTapCreate(1, 0, 1, clicks, tapped, std::ptr::null_mut()); }
             if tap.is_null() { tracing::warn!("control rework: could not watch the mouse (Accessibility permission missing?)"); return; }
             let source = CFMachPortCreateRunLoopSource(std::ptr::null_mut(), tap, 0);
             CFRunLoopAddSource(CFRunLoopGetCurrent(), source, kCFRunLoopCommonModes);

@@ -113,7 +113,7 @@ pub async fn enter(name: &str) -> Result<(), String> {
         match with(|s| s.gate(now)) {
             Gate::Refuse(why) => return Err(why.to_string()),
             Gate::Go => { with(|s| s.mark_active(now)); watch_person(); return Ok(()); }
-            Gate::Wait if now.duration_since(started) >= PAUSE_WAIT => return Err("The person is using the computer (PlazCode paused when they moved the mouse or typed). Nothing was done. Ask them whether to continue; they can press Resume.".into()),
+            Gate::Wait if now.duration_since(started) >= PAUSE_WAIT => return Err("The person is using the computer (PlazCode paused when they clicked or pressed a key). Nothing was done. Ask them whether to continue; they can press Resume.".into()),
             Gate::Wait => tokio::time::sleep(Duration::from_millis(200)).await,
         }
     }
@@ -197,7 +197,7 @@ mod input_watch {
     use std::time::{Duration, Instant};
     #[repr(C)] struct LastInput { size: u32, time: u32 }
     #[link(name = "user32")]
-    extern "system" { fn GetLastInputInfo(info: *mut LastInput) -> i32; }
+    extern "system" { fn GetLastInputInfo(info: *mut LastInput) -> i32; fn GetAsyncKeyState(key: i32) -> i16; }
     #[link(name = "kernel32")]
     extern "system" { fn GetTickCount() -> u32; }
     /// Windows' tick (milliseconds) of the last input, or None if it cannot say.
@@ -205,17 +205,37 @@ mod input_watch {
         let mut info = LastInput { size: std::mem::size_of::<LastInput>() as u32, time: 0 };
         (unsafe { GetLastInputInfo(&mut info) } != 0).then_some(info.time)
     }
+    /// Owner (2026-11-18): only a click or a key press takes over; moving the mouse or scrolling does not. Windows'
+    /// last-input time cannot tell them apart, so when it changes, ask once whether any mouse button or key went down
+    /// since the last time we asked (a yes/no answer; which key is never kept). Asking also clears the "went down"
+    /// marks, so the next answer covers only the newest input. Mouse buttons are 1, 2, 4, 5, 6; keys are 8 and up.
+    fn pressed_since_last_look() -> bool {
+        let mut any = false;
+        for key in [1, 2, 4, 5, 6].into_iter().chain(8..=254) {
+            let state = unsafe { GetAsyncKeyState(key) } as u16;
+            if state & 0x8001 != 0 { any = true; }
+        }
+        any
+    }
     pub fn start() {
         static STARTED: std::sync::Once = std::sync::Once::new();
         STARTED.call_once(|| {
             let _ = std::thread::Builder::new().name("plazcode-control-watch".into()).spawn(|| {
                 let mut seen = last_input();
                 if seen.is_none() { tracing::warn!("control rework: could not watch for the person's input"); return; }
+                let mut watching = false;
                 loop {
                     std::thread::sleep(Duration::from_millis(100));
+                    // Ask only while PlazCode is in control. When control starts, one look clears older marks, so a
+                    // key pressed before PlazCode took the screen never counts.
+                    let in_control = super::with(|s| s.active(Instant::now()));
+                    if !in_control { watching = false; } else if !watching { watching = true; pressed_since_last_look(); }
                     let Some(now_tick) = last_input() else { continue };
                     if Some(now_tick) == seen { continue; }
                     seen = Some(now_tick);
+                    if !in_control { continue; }
+                    // A move of the mouse or a turn of the wheel alone is not taking over.
+                    if !pressed_since_last_look() { continue; }
                     // Judge the input at the moment it happened (a poll can be a little late), not when it was noticed.
                     let age = unsafe { GetTickCount() }.wrapping_sub(now_tick);
                     let when = super::input_instant(Instant::now(), age.min(10_000));

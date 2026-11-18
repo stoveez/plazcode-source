@@ -3508,7 +3508,7 @@ async function controlEnter(tab, msg, sender) {
     const until = Date.now() + 90000;
     while (row.paused && !row.stoppedAt && Date.now() < until) await new Promise((r) => setTimeout(r, 250));
     if (row.stoppedAt) return { error: "The person pressed Stop, so PlazCode did nothing." };
-    if (row.paused) return { error: "The person is using that tab (PlazCode paused when they moved the mouse or typed). Nothing was done. Ask them whether to continue; they can press Resume in the tab." };
+    if (row.paused) return { error: "The person is using that tab (PlazCode paused when they clicked or pressed a key). Nothing was done. Ask them whether to continue; they can press Resume in the tab." };
   }
   return { ok: true };
 }

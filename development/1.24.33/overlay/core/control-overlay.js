@@ -2,7 +2,7 @@
 // AgentScript control look (1.24.33) (owner, 2026-11-12). Put into a web tab by the extension's worker while the AI
 // works there: a glow around the page edges in the PlazCode theme colour, a "PlazCode is working here" label with
 // Stop, and PlazCode's own cursor that glides to each target before a click or typing. Real input from the person
-// (mouse movement, click, wheel, key) pauses the AI ("Paused, you're in control" + Resume); Escape stops it.
+// (a click or a key press; owner 2026-11-18: moving the mouse or scrolling does not) pauses the AI ("Paused, you're in control" + Resume); Escape stops it.
 // Everything sits in a closed shadow root and ignores the mouse, except the label's two buttons, so the page is
 // never blocked. Runs in the extension's own isolated world: the page cannot reach this object.
 (() => {
@@ -74,14 +74,14 @@
     // never later than 4 s after Resume. The same rule is in the app (agent/src/desktop_control.rs).
     const now = Date.now();
     if (now < state.settleUntil && now < state.settleCap) { state.settleUntil = Math.min(now + 700, state.settleCap); return false; }
-    if (event.type === "pointermove" || event.type === "mousemove") return Math.abs(event.movementX || 0) + Math.abs(event.movementY || 0) > 2;
     return true;
   }
   const onInput = (event) => {
     if (event.type === "keydown" && event.key === "Escape" && event.isTrusted && state.active && Date.now() >= state.expectUntil) { api.hide(); state.stopped = true; tell("stop"); return; }
     if (personal(event)) { setPaused(true); tell("paused"); }
   };
-  for (const type of ["pointermove", "pointerdown", "wheel", "keydown"]) addEventListener(type, onInput, { capture: true, passive: true });
+  // Owner (2026-11-18): "it should only pause when you click your mouse or press a key, moving your mouse or scrolling shouldn't count".
+  for (const type of ["pointerdown", "keydown"]) addEventListener(type, onInput, { capture: true, passive: true });
   root.querySelector(".stop").addEventListener("click", (event) => {
     if (!event.isTrusted) return;
     if (state.sharing && !state.active) { api.share(false); tell("stop_share"); return; }

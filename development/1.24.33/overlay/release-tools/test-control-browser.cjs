@@ -51,10 +51,13 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
     assert.equal((await look()).paused, false);
     await shop.screenshot({ path: process.env.PLAZCODE_CONTROL_SHOT || path.join(os.tmpdir(), 'plazcode-control.png') });
 
-    // The person moves the real mouse: PlazCode pauses and waits instead of acting under their hands.
-    await shop.mouse.move(300, 300); await shop.mouse.move(340, 320);
+    // Owner (2026-11-18): moving the mouse or scrolling does not take over; a click does. PlazCode then pauses and waits.
+    await shop.mouse.move(300, 300); await shop.mouse.move(340, 320); await shop.mouse.wheel(0, 200);
+    await new Promise((r) => setTimeout(r, 600));
+    assert.equal((await look()).paused, false, 'moving the real mouse and scrolling do not pause PlazCode');
+    await shop.mouse.click(340, 320);
     await worker.evaluate(async () => { for (let i = 0; i < 40; i++) { if ([...controlTabs.values()].some((r) => r.paused)) return; await new Promise((r) => setTimeout(r, 50)); } });
-    s = await look(); assert(s.paused, 'real mouse movement pauses PlazCode');
+    s = await look(); assert(s.paused, 'a real click pauses PlazCode');
     const before = await shop.evaluate(() => window.clicks);
     const waiting = act('click', { selector: '#buy' });
     await new Promise((r) => setTimeout(r, 1200));
@@ -65,9 +68,9 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
     assert.equal(await shop.evaluate(() => window.clicks), before + 1);
 
     // Resume pressed in the live view (not in the tab): the layer in the tab follows, so the next action does not pause again.
-    await shop.mouse.move(310, 310); await shop.mouse.move(360, 330);
+    await shop.keyboard.press('Shift');
     await worker.evaluate(async () => { for (let i = 0; i < 40; i++) { if ([...controlTabs.values()].some((r) => r.paused)) return; await new Promise((r) => setTimeout(r, 50)); } });
-    assert((await look()).paused, 'paused again by the real mouse');
+    assert((await look()).paused, 'paused again by a real key press');
     await worker.evaluate(async (tabId) => { const row = controlTabs.get(tabId); row.paused = false; await chrome.scripting.executeScript({ target: { tabId }, args: ['resume'], func: (a) => globalThis.__plazcodeControl[a]() }); }, ids.shop);
     assert.equal((await look()).paused, false, 'the layer in the tab follows Resume from the live view');
     reply = await act('click', { selector: '#buy' });
