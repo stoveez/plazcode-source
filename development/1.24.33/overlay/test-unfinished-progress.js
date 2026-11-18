@@ -10,7 +10,7 @@ async function run({repeat=false,question=false,readOnly=false,stop=false,kind}=
  const sent=[],ran=[],finished=[],errors=[],banners=[];let n=0;
  const A={requestKind:kind,started:true,sessionGen:1,toolList:[],taskRequest:'Create the requested two files',imageTools:new Set(),pendingReference:''};
  const tool=()=>({kind:'tool',text:'command',item:{dataset:{}},calls:[{tool:readOnly?'workspace_info':'write_file',arguments:{path:n?'second.txt':'first.txt',content:'safe'}}]});
- const box={Map,Set,Date,Promise,A,document:{hidden:false},RS:{toolCategory:name=>name==='write_file'?'edit':'read',FEEDBACK:{}},PlazCodeStallGuard:guard,PlazCodeToolGuard:{check:()=>[],repair:x=>x},
+ const box={MAX_COMMANDS_PER_REPLY:2,Map,Set,Date,Promise,A,document:{hidden:false},RS:{toolCategory:name=>name==='write_file'?'edit':'read',FEEDBACK:{}},PlazCodeStallGuard:guard,PlazCodeToolGuard:{check:()=>[],repair:x=>x},
  P:{id:'deepseek',displayName:'DeepSeek',conversationKey:()=> 'chat-a',allItems:()=>[],isUserItem:()=>false,assistantCount:()=>n,lastAssistant:()=>null,isHardGenerating:()=>false,editorText:()=>'',setInputLock(){}},
  PlazCodeReliability:{createBudget:()=>({check:()=>null,consume(){},status:()=>({used:1})})},reliabilitySettings:{},activity:{active:()=>true,sync(){},step(){}},syncActivityItems(){},markActivity(){},
  diag:(name,value)=>{if(name==='loop.error')errors.push(value);},ui:{showStop(){},inputCover(){},toast(){},trackCard(){},banner:(_,name)=>banners.push(name)},beginTaskCheckpoint:async()=>{},finishTaskCheckpoint:async complete=>finished.push(complete),cowork:{take:async()=>null,snapshot:()=>({pending:[]})},

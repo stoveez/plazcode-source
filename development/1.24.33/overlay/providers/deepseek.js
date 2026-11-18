@@ -151,13 +151,33 @@ const RSProvider                   = (() => {
   }
   const isAssistantItem = (item) => !!item && !isUserItem(item);
 
+  // Reply text without the code box's header buttons. DeepSeek writes their captions in the page's language
+  // ("Копировать", "Скачать" on a Russian page) and textContent glues them onto the command, so the command
+  // reader saw prose and startup failed for everyone whose DeepSeek is not in English (owner, 2026-11-18). The
+  // language label ("json") stays: it tells a command block from a quoted text block.
+  const CODE_BUTTON = "button, [role='button'], .ds-atom-button, .ds-button";
+  function mdText(m) {
+    const all = safeRead(() => m.textContent, "") || "";
+    if (!safeQuery(m, CODE_BUTTON)) return all;
+    let out = "";
+    const walk = (n) => {
+      for (const c of safeRead(() => n.childNodes, [])) {
+        const type = safeRead(() => c.nodeType, 0);
+        if (type === 3) out += safeRead(() => c.nodeValue, "") || "";
+        else if (type === 1 && !(safeRead(() => c.matches(CODE_BUTTON), false) && safeClosest(c, "pre, [class*='code-block'], [class*='code_block'], [class*='codeblock']"))) walk(c);
+      }
+    };
+    walk(m);
+    return out;
+  }
+
   // Text of an item for signature detection. For assistant turns we use ONLY
   // the non-thinking markdown, so tool blocks the model merely drafts inside
   // its reasoning are never detected, shown, or executed.
   function itemText(item) {
     if (isAssistantItem(item)) {
       const mds = [...safeQueryAll(item, S.markdown)].filter((m) => !safeClosest(m, S.thinking));
-      return mds.map((m) => safeRead(() => m.textContent, "")).join("\n");
+      return mds.map(mdText).join("\n");
     }
     return safeRead(() => item.textContent, "") || "";
   }
@@ -169,7 +189,7 @@ const RSProvider                   = (() => {
     if (isAssistantItem(item)) {
       return [...safeQueryAll(item, S.markdown)]
         .filter((m) => !safeClosest(m, S.thinking) && !(excludeSel && safeClosest(m, excludeSel)))
-        .map((m) => safeRead(() => m.textContent, "")).join("\n");
+        .map(mdText).join("\n");
     }
     let t = "";
     for (const n of safeRead(() => item.childNodes, [])) {
@@ -723,7 +743,7 @@ const RSProvider                   = (() => {
     const mds = [...safeQueryAll(item, S.markdown)].filter((m) => !safeClosest(m, S.thinking));
     return {
       present: true,
-      reply: mds.map((m) => safeRead(() => m.textContent, "")).join("\n").trim(),
+      reply: mds.map(mdText).join("\n").trim(),
       thinking: th ? safeRead(() => th.textContent, "").trim() : "",
       item,
     };

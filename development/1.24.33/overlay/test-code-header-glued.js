@@ -18,6 +18,13 @@ for(const [why,text,want] of [
  ['sentence then a space','Listing them. '+cmd,'list_windows'],
  ['language then a space','json '+cmd,'list_windows'],
  ['header button then a space','jsonCopy '+cmd,'list_windows'],
+ // Owner's screenshot, 2026-11-18: a Russian DeepSeek page; 48 characters, the startup probe was never run.
+ ['Russian DeepSeek header','jsonКопироватьСкачать'+probe,'list_commands'],
+ ['Chinese header','json复制下载'+probe,'list_commands'],
+ ['Spanish header with a space','jsonCopiarDescargar '+probe,'list_commands'],
+ ['French header','jsonCopierTélécharger'+cmd,'list_windows'],
+ ['Japanese header','jsonコピーダウンロード'+cmd,'list_windows'],
+ ['Vietnamese header (two-word captions)','jsonSao chépTải xuống'+cmd,'list_windows'],
 ]){assert.equal(names(text),want,why+' must run');assert.equal(P.hasToolSignature(text),true,why+' counts as a command attempt');}
 for(const [why,text] of [
  ['prose example on the same line','To list windows send '+cmd],
@@ -27,6 +34,8 @@ for(const [why,text] of [
  ['plaintext-labelled block with buttons','plaintextCopyDownload'+cmd],
  ['markdown-labelled block','markdown'+cmd],
  ['Plain Text label','Plain TextCopy'+cmd],
+ ['text-labelled block, Russian buttons','textКопироватьСкачать'+cmd],
+ ['Russian prose before the command','Затем отправь '+cmd],
 ]){assert.equal(names(text),'',why+' must not run');assert.equal(P.hasToolSignature(text),false,why+' sends no error reply');}
 P.setFlatTranscript(null);
-console.log('PASS code blocks whose header is glued onto the command (DeepSeek, Qwen, ...) run; prose examples and text-labelled blocks do not.');
+console.log('PASS code blocks whose header is glued onto the command (DeepSeek, Qwen, ..., in any page language) run; prose examples and text-labelled blocks do not.');

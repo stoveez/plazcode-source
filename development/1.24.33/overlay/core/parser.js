@@ -438,13 +438,19 @@ const RSParse = (() => {
   // ("Startup handshake failed"). Allowed: nothing; a language label; header buttons; and/or the end of a
   // sentence glued on WITHOUT a space. A prose example ("then send {...}") has a word and a space before the
   // brace and stays ignored; a text/plaintext label is two words and stays ignored too.
-  const BLOCK_PREFIX_RE = /^(?:.*[.!?:)\]"'\u201d\u2019]|)(?:([A-Za-z][\w+#.-]{0,14}?)(?=Copy|Copied|Download|Run|Edit|Wrap|Collapse|Expand|Preview|Apply|$))?(?:Copy(?: code)?|Copied!?|Download|Run|Edit|Wrap|Collapse|Expand|Preview|Apply)*$/;
+  // The header buttons are in the page's own language: a Russian DeepSeek page reads
+  // "jsonКопироватьСкачать{...}" (owner's screenshot, 2026-11-18: startup failed for users whose DeepSeek is not in
+  // English while the reply was a correct list_commands block). Copy/Copied/Download in the languages these sites offer.
+  const LOCAL_BUTTONS = "Копировать|Скопировать|Скопировано|Скачать|Копіювати|Завантажити|Copier|Copié|Télécharger|Copiar|Copiado|Descargar|Baixar|Transferir|Kopieren|Kopiert|Herunterladen|Copia|Copiato|Scarica|Kopyala|Kopyalandı|İndir|Kopiuj|Skopiowano|Pobierz|Kopiëren|Downloaden|Sao chép|Đã sao chép|Tải xuống|Salin|Disalin|Unduh|نسخ|تم النسخ|تنزيل|复制|已复制|下载|複製|已複製|下載|コピー|コピーしました|ダウンロード|복사|복사됨|다운로드|คัดลอก|ดาวน์โหลด";
+  const BUTTONS = "Copy(?: code)?|Copied!?|Download|Run|Edit|Wrap|Collapse|Expand|Preview|Apply|" + LOCAL_BUTTONS;
+  const BLOCK_PREFIX_RE = new RegExp("^(?:.*[.!?:)\\]\"'\u201d\u2019]|)(?:([A-Za-z][\\w+#.-]{0,14}?)(?=" + BUTTONS + "|$))?(?:" + BUTTONS + ")*$");
+  const BUTTON_END_RE = new RegExp("(?:[.!?:)\\]\"'\u201d\u2019]|" + BUTTONS + "|^(?:json|jsonc|json5|lua|luau|js|javascript|ts|typescript|python|py))$", "i");
   const blockPrefix = (prefix) => {
     if (!prefix.trim()) return true;
     const bare = prefix.replace(/\s+$/, "");
     // A space before the brace is only allowed after a sentence end, a header button or a code language
     // ("Done. {", "jsonCopy {", "json {"); "Use {" or "send {" is prose.
-    if (bare !== prefix && !/(?:[.!?:)\]"'\u201d\u2019]|Copy|Copied!?|Download|Run|Edit|Wrap|Collapse|Expand|Preview|Apply|^(?:json|jsonc|json5|lua|luau|js|javascript|ts|typescript|python|py))$/i.test(bare)) return false;
+    if (bare !== prefix && !BUTTON_END_RE.test(bare)) return false;
     const m = BLOCK_PREFIX_RE.exec(bare);
     // A code block labelled text/plaintext/markdown/... is quoted material, never a command.
     return !!m && !(m[1] && IGNORED_FENCE.has(m[1].toLowerCase()));

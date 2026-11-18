@@ -21,7 +21,7 @@ const skills=new Function(fs.readFileSync(__dirname+'/core/agent_skills.js','utf
  const current=structuredClone(legacy);Object.assign(current[0].inputSchema.properties,{append:{type:'boolean'},ensure_newline:{type:'boolean'}});
  assert.equal(guard.check({tool:'append_file',arguments:{path:'large.txt',content:'more'}},current).length,0);
  const main=fs.readFileSync(__dirname+'/core/main.js','utf8'),start=main.indexOf('  async function runCommandBatch('),end=main.indexOf('  async function runToolImpl(',start);let writes=0;
- const vm=require('vm'),box={A:{toolList:legacy},RSParse:parser,remapToolName:x=>x,PlazCodeToolGuard:guard,runTool:async()=>{writes++;return 'must not write';}};
+ const vm=require('vm'),box={MAX_COMMANDS_PER_REPLY:2,A:{toolList:legacy},RSParse:parser,remapToolName:x=>x,PlazCodeToolGuard:guard,runTool:async()=>{writes++;return 'must not write';}};
  vm.createContext(box);vm.runInContext(main.slice(start,end)+';this.batch=runCommandBatch;',box);
  const blocked=await box.batch({calls:[{command:'write_file',params:{path:'first.txt',content:'new'}},{command:'append_file',params:{path:'large.txt',content:'tail'}}]});
  assert(blocked.includes('E_NATIVE_VERSION')&&blocked.includes('no batch command ran'));assert.equal(writes,0,'unsupported append is caught in all-child preflight before an earlier write');

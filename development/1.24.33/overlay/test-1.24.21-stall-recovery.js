@@ -41,7 +41,7 @@ assert(helperStart > 0 && helperEnd > helperStart && loopStart > 0 && loopEnd > 
 async function run(replies, opts = {}) {
   const sent = [], warnings = [], toasts = [], finishes = [], paints = [], cards = [], ran = [];
   let clock = 1000;
-  const box = {
+  const box = { MAX_COMMANDS_PER_REPLY: 2,
     Map, Set, Promise, RSParse: parser, PlazCodeStallGuard: guard, Date: { now: () => clock },
     A: { started: true, sessionGen: 1, toolList: [], imageTools: new Set(), taskRequest: "task" },
     P: {
@@ -124,7 +124,7 @@ async function run(replies, opts = {}) {
     const P = { id: "chatgpt", displayName: "ChatGPT", conversationKey: () => "chat-a", isHardGenerating: () => true, isGenerating: () => true,
       readAssistant: () => ({ item: itemNode, reply: "", thinking: "Thinking" }), lastAssistantId: () => "fresh", assistantCount: () => 2, scanError: () => null,
       isTooLongMsg: () => false, turnComplete: () => false, turnHalted: () => false, findContinueBtn: () => null };
-    const box = { A, P, T: { RESPONSE_TIMEOUT_MS: 20000, STABLE_MS: 1000, WARMUP_MS: 300, REASON_NOREPLY_MS: 300, PRESTART_MS: 1000, ...timings }, RSParse: parser,
+    const box = { MAX_COMMANDS_PER_REPLY: 2, A, P, T: { RESPONSE_TIMEOUT_MS: 20000, STABLE_MS: 1000, WARMUP_MS: 300, REASON_NOREPLY_MS: 300, PRESTART_MS: 1000, ...timings }, RSParse: parser,
       Date: { now: () => now }, document: { hidden: false }, bgMode: false, sleep: async (ms) => { now += ms; },
       diag: (n) => events.push(n), log() {}, ui: { toast: (m) => toasts.push(m) } };
     vm.createContext(box);
