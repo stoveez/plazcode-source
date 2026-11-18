@@ -1454,5 +1454,6 @@
   "Minimize the live view": "最小化即時畫面",
   "Live view minimized. Press to show it again.": "即時畫面已最小化。按下即可重新顯示。",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode 沒有在你的 AI 聊天分頁中執行。請重新載入該分頁，然後再問一次。",
-  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI 聊天已關閉，所以這個問題已停止。請從另一個 AI 聊天中再問一次。"
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI 聊天已關閉，所以這個問題已停止。請從另一個 AI 聊天中再問一次。",
+  "PlazCode is thinking…": "PlazCode 正在思考…"
 }

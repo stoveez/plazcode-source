@@ -1454,5 +1454,6 @@
   "Minimize the live view": null,
   "Live view minimized. Press to show it again.": null,
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": null,
-  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": null
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": null,
+  "PlazCode is thinking…": null
 }

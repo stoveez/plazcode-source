@@ -1454,5 +1454,6 @@
   "Minimize the live view": "라이브 보기 최소화",
   "Live view minimized. Press to show it again.": "라이브 보기가 최소화되었습니다. 누르면 다시 표시됩니다.",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode가 AI 채팅 탭에서 실행되고 있지 않습니다. 해당 탭을 새로고침한 다음 다시 질문하세요.",
-  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI 채팅이 닫혀서 이 질문이 중단되었습니다. 다른 AI 채팅에서 다시 질문하세요."
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI 채팅이 닫혀서 이 질문이 중단되었습니다. 다른 AI 채팅에서 다시 질문하세요.",
+  "PlazCode is thinking…": "PlazCode가 생각하는 중…"
 }

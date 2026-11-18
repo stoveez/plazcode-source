@@ -1454,5 +1454,6 @@
   "Minimize the live view": "Свернуть просмотр в реальном времени",
   "Live view minimized. Press to show it again.": "Просмотр в реальном времени свёрнут. Нажмите, чтобы показать его снова.",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode не запущен во вкладке чата с ИИ. Перезагрузите эту вкладку и спросите снова.",
-  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "Чат с ИИ был закрыт, поэтому этот вопрос остановлен. Спросите снова из другого чата с ИИ."
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "Чат с ИИ был закрыт, поэтому этот вопрос остановлен. Спросите снова из другого чата с ИИ.",
+  "PlazCode is thinking…": "PlazCode думает…"
 }

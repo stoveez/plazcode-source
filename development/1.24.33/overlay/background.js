@@ -3444,7 +3444,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         try { const opener = _sender && _sender.tab; if (opener && !ask.busy && !opener.incognito && PlazCodeAskSite.siteFor(opener.url || "")) { askLastTab = { id: opener.id, at: Date.now() }; askUseOwn(opener); }
           sendResponse(await askOpen(Number.isInteger(msg.windowId) ? msg.windowId : opener ? opener.windowId : undefined)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
-      case "ask_reply": case "ask_step": case "ask_approve":
+      case "ask_reply": case "ask_step": case "ask_partial": case "ask_approve":
         if (!CONTROL_V2) { sendResponse({ ok: false }); break; }
         try { sendResponse(await askFromChat(msg, _sender)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
@@ -4202,6 +4202,8 @@ async function askFromChat(msg, sender) {
   if (!sender || !sender.tab || sender.tab.id !== ask.tabId) return { ok: false, error: "Not the Ask PlazCode chat." };
   if (msg.type === "ask_reply") { ask.busy = false; await askNoteChatUrl(); askReply(String(msg.status || "done"), String(msg.text || "").slice(0, 60000)); askPost({ type: "ask-busy", busy: false }); return { ok: true }; }
   if (msg.type === "ask_step") { askPost({ type: "ask-step", text: String(msg.text || "").slice(0, 200) }); return { ok: true }; }
+  // The reply as the AI writes it (2026-11-18), shown in the panel as a draft until the finished answer arrives.
+  if (msg.type === "ask_partial") { if (ask.busy) askPost({ type: "ask-partial", text: String(msg.text || "").slice(0, 60000) }); return { ok: true }; }
   if (msg.type === "ask_approve") {
     if (!askPorts.size) return { ok: true, allowed: false };
     const id = ++ask.seq;

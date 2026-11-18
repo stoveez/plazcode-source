@@ -1454,5 +1454,6 @@
   "Minimize the live view": "تصغير العرض المباشر",
   "Live view minimized. Press to show it again.": "العرض المباشر مصغّر. اضغط لإظهاره مرة أخرى.",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode لا يعمل في علامة تبويب دردشة الذكاء الاصطناعي. أعد تحميل علامة التبويب، ثم اسأل مرة أخرى.",
-  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "أُغلقت دردشة الذكاء الاصطناعي، لذا توقف هذا السؤال. اسأل مرة أخرى من دردشة ذكاء اصطناعي أخرى."
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "أُغلقت دردشة الذكاء الاصطناعي، لذا توقف هذا السؤال. اسأل مرة أخرى من دردشة ذكاء اصطناعي أخرى.",
+  "PlazCode is thinking…": "PlazCode يفكر…"
 }

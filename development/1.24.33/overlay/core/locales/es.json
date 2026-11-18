@@ -1454,5 +1454,6 @@
   "Minimize the live view": "Minimizar la vista en directo",
   "Live view minimized. Press to show it again.": "Vista en directo minimizada. Pulsa para mostrarla de nuevo.",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode no se está ejecutando en tu pestaña de chat de IA. Recarga esa pestaña y vuelve a preguntar.",
-  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "Se cerró el chat de IA, así que esta pregunta se detuvo. Vuelve a preguntar desde otro chat de IA."
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "Se cerró el chat de IA, así que esta pregunta se detuvo. Vuelve a preguntar desde otro chat de IA.",
+  "PlazCode is thinking…": "PlazCode está pensando…"
 }

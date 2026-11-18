@@ -18,7 +18,21 @@
   document.title = t(document.title);
   const port = chrome.runtime.connect({ name: "plazcode-ask" });
   const add = (cls, text) => { const p = document.createElement("p"); p.className = "msg " + cls; p.textContent = text; log.append(p); log.scrollTop = log.scrollHeight; return p; };
-  const setBusy = (value) => { busy = value; go.disabled = value; stop.hidden = !value; if (!value) { step.textContent = ""; workTab = null; } if (lastChats) drawChats(lastChats); };
+  // Owner (2026-11-18): "there should be some kind of indicator that the AI is thinking/replying whenever you say something to it", and
+  // replies came late. A "thinking" bubble shows from sending until the first words arrive; the reply then appears as the AI writes it
+  // (a draft bubble) and is replaced by the finished answer.
+  let typing = null, draft = null;
+  const showTyping = (on) => {
+    if (on && !typing && !draft) { typing = document.createElement("p"); typing.className = "msg ai typing"; typing.setAttribute("role", "status"); typing.setAttribute("aria-label", t("PlazCode is thinking…")); typing.innerHTML = "<span></span><span></span><span></span>"; log.append(typing); log.scrollTop = log.scrollHeight; }
+    else if (!on && typing) { typing.remove(); typing = null; }
+  };
+  const showDraft = (text) => {
+    if (!text) return; showTyping(false);
+    if (!draft) { draft = add("ai", text); draft.classList.add("draft"); draft.setAttribute("aria-busy", "true"); }
+    else { const end = log.scrollHeight - log.scrollTop - log.clientHeight < 40; draft.textContent = text; if (end) log.scrollTop = log.scrollHeight; }
+  };
+  const endDraft = () => { showTyping(false); if (draft) { draft.remove(); draft = null; } };
+  const setBusy = (value) => { busy = value; go.disabled = value; stop.hidden = !value; showTyping(value); if (!value) { step.textContent = ""; workTab = null; endDraft(); } if (lastChats) drawChats(lastChats); };
   // History (owner, 2026-11-14): the three-line button opens the list of every Ask PlazCode chat; picking one shows it again and the next
   // question goes into that same AI chat. While PlazCode is answering, the list can be read but the chat cannot be switched.
   const intro = () => { const p = document.createElement("p"); p.className = "note"; p.textContent = t("Ask anything about the page you're on. PlazCode sees a picture of it with each question."); log.append(p); };
@@ -103,7 +117,8 @@
     else if (m.type === "ask-note") add(m.kind === "error" ? "error" : "note", typeof m.key === "string" ? t(m.key, m.values || {}) : t(m.text));
     else if (m.type === "ask-work") { if (Number.isInteger(m.tabId)) { workTab = m.tabId; watch(m.tabId); add("note", t("PlazCode opened a copy of your tab to work in. Your own tab stays untouched.")); } }
     else if (m.type === "ask-step") step.textContent = t(m.text);
-    else if (m.type === "ask-reply") { add(m.status === "done" ? "ai" : m.status === "stopped" ? "note" : "error", m.status === "done" ? m.text : t(m.text)); setBusy(false); }
+    else if (m.type === "ask-partial") { if (busy) showDraft(String(m.text || "")); }
+    else if (m.type === "ask-reply") { endDraft(); add(m.status === "done" ? "ai" : m.status === "stopped" ? "note" : "error", m.status === "done" ? m.text : t(m.text)); setBusy(false); }
     else if (m.type === "ask-permission") { bannerText.textContent = t("PlazCode could not take a picture of the tab.") + " " + t(m.text); banner.hidden = false; }
     else if (m.type === "ask-share") {
       shared = Number.isInteger(m.tabId) ? m.tabId : null;

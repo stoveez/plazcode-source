@@ -1454,5 +1454,6 @@
   "Minimize the live view": "लाइव व्यू छोटा करें",
   "Live view minimized. Press to show it again.": "लाइव व्यू छोटा किया गया है। फिर से दिखाने के लिए दबाएँ।",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode आपके AI चैट टैब में नहीं चल रहा है। उस टैब को फिर से लोड करें, फिर दोबारा पूछें।",
-  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI चैट बंद हो गई, इसलिए यह सवाल रुक गया। किसी दूसरी AI चैट से फिर से पूछें।"
+  "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI चैट बंद हो गई, इसलिए यह सवाल रुक गया। किसी दूसरी AI चैट से फिर से पूछें।",
+  "PlazCode is thinking…": "PlazCode सोच रहा है…"
 }

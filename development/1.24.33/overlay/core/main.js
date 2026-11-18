@@ -12513,29 +12513,39 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
       job.sent = true;
       try { bg({ type: "ask_step", text: ct("Thinking…") }); } catch {}
       const images = Array.isArray(job.q.images) && job.q.images.length ? job.q.images : null;
+      try { job.before = P.lastAssistant(); } catch { job.before = null; }
       const base = await submitAndGetBase(askBrief(job.q), images);
+      askWatchReply(job);
       if (A.ask !== job || job.stopped) return;
       agentLoop(base);
     } catch (error) { askReport(job, "failed", ct("PlazCode could not send the question: {error}", { error: String(error && error.message || error).slice(0, 200) })); }
   }
+  // The reply of this question as it stands (null while the AI has not started a new reply).
+  function askReplyText(job) {
+    let item = null; try { item = P.lastAssistant(); } catch {}
+    if (!item || item === job.before) return null;
+    let text = ""; try { text = String(P.classifyText(item, ".rs-chip") || "").trim(); } catch {}
+    return text;
+  }
+  // Drafts while the AI writes, and the finished answer once it is really there: core/ask-reply.js (TypeScript: ts/core/ask-reply.ts).
+  const askReplies = PlazCodeAskReply.create({
+    current: () => A.ask, busy: () => !!(A.starting || A.injecting || A.enhancing || A.pendingToolSettles), running: () => !!A.running,
+    stopped: (job) => !!(job.stopped || A.userStopped || A.stop), read: askReplyText,
+    command: (text) => RSParse.hasToolSignature(text) || RSParse.hasOpenToolBlock(text),
+    partial: (text) => { try { bg({ type: "ask_partial", text }); } catch {} },
+    report: (job, status, text) => askReport(job, status, text),
+    words: { get stopped() { return ct("Stopped."); }, get failed() { return ct("PlazCode stopped before writing an answer."); } }, // in the language of the moment
+  });
+  const askWatchReply = (job) => askReplies.watch(job);
   function askReport(job, status, text) {
     if (!job || job.reported) return;
     job.reported = true;
+    clearInterval(job.watch);
     if (A.ask === job) A.ask = null;
     try { bg({ type: "ask_reply", status, text }); } catch {}
   }
-  function askAfterRun() {
-    const job = A.ask;
-    if (!job || !job.sent || job.reported) return;
-    setTimeout(() => {
-      if (A.ask !== job || job.reported || A.running || A.starting || A.injecting || A.enhancing || A.pendingToolSettles) return;
-      let text = "";
-      try { text = String(P.classifyText(P.lastAssistant(), ".rs-chip") || "").trim(); } catch {}
-      if (job.stopped || A.userStopped || A.stop) askReport(job, "stopped", text && !RSParse.hasToolSignature(text) ? text : ct("Stopped."));
-      else if (!text || RSParse.hasToolSignature(text) || RSParse.hasOpenToolBlock(text)) askReport(job, "failed", ct("PlazCode stopped before writing an answer."));
-      else askReport(job, "done", text);
-    }, 2000);
-  }
+  // The run ended: report the answer (core/ask-reply.js waits until PlazCode is idle and the reply has stopped changing).
+  function askAfterRun() { const job = A.ask; if (job && job.sent) askReplies.afterRun(job); }
   // Approvals in the background chat would be out of sight: ask the person in the panel instead.
   function askApproval(op, args, opts) {
     const o = opts || {};
