@@ -28,6 +28,7 @@ function world({ tabUrl = SITE, stored = {}, session = {} } = {}) {
       },
     },
   });
+  vm.runInContext(fs.readFileSync('core/ask-site.js', 'utf8'), ctx); // the site chooser background.js loads first (2026-11-18)
   vm.runInContext(askLine + '\n' + src.slice(from, to) + '\naskPorts.add({ postMessage: (m) => posts.push(m) });', ctx);
   return { ctx, calls, posts, store, tabs, run: (code) => vm.runInContext(code, ctx) };
 }

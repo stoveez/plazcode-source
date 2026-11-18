@@ -64,6 +64,8 @@ const deepSeekRequests = (() => {
 })();
 
 if (typeof importScripts === "function") importScripts("protection.js");
+// Which AI chat site runs Ask PlazCode (core/ask-site.js, TypeScript: ts/core/ask-site.ts). Firefox lists it as a background script.
+if (typeof importScripts === "function") importScripts("core/ask-site.js");
 // 1.24.30 (protection review): a missing or broken verifier now stops work instead of passing; the packaged
 // protection.js always carries the release key (an unconfigured key only exists in unpackaged development source).
 const protectionCheck = async () => {
@@ -2720,6 +2722,7 @@ function answerWithin(final, job, sendResponse) {
   });
 }
 chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
+  askNoteSite(_sender);
   if (msg && msg.type === "deepseek-requests") {
     if (!deepSeekRequests) { rawSendResponse({ok:false}); return; }
     deepSeekRequests.snapshot(_sender).then(rawSendResponse,()=>rawSendResponse({ok:false}));
@@ -3997,12 +4000,25 @@ const askReply = (status, text) => {
   askPost({ type: "ask-reply", status, text });
 };
 const askSay = (text, kind, key, values) => { askRemember({ t: kind === "error" ? "error" : "note", text, key, values }); askPost({ type: "ask-note", kind: kind || "note", text, key, values }); };
-// The chat behind the panel is DeepSeek, opened in the background, whatever page the person is on (owner, 2026-11-14: a page that has no
-// AI of its own, such as a shop or a dashboard, still needs one to answer). "rsAskSite" ({url, name}) can name another AI chat site instead.
-const ASK_DEFAULT_SITE = { url: "https://chat.deepseek.com/", name: "DeepSeek" };
+// The chat behind the panel runs on the AI chat site the person last used PlazCode in (owner, 2026-11-18: "instead of a backup
+// DeepSeek, make Ask PlazCode powered by the current AI chat you're using"), as a new chat there so their own chat is untouched.
+// DeepSeek only when no AI chat has been seen yet (owner, 2026-11-14: a page with no AI of its own still needs one to answer).
+// "rsAskSite" ({url, name}) can still name a site. The choice itself is core/ask-site.js.
+const ASK_DEFAULT_SITE = PlazCodeAskSite.FALLBACK;
+let askLastSite = null; // {url, name} of the last AI chat tab PlazCode ran in (also kept in local storage)
+// Every message from a PlazCode AI tab notes that tab's site (never the background chat itself or a helper window).
+function askNoteSite(sender) {
+  try {
+    const tab = sender && sender.tab; if (!tab || !tab.url || tab.id === ask.tabId || tab.incognito) return;
+    const site = PlazCodeAskSite.siteFor(tab.url); if (!site || (askLastSite && askLastSite.url === site.url)) return;
+    askLastSite = site; chrome.storage.local.set({ rsAskLastSite: site }).catch(() => {});
+  } catch {}
+}
 async function askSiteUrl() {
-  try { const got = await chrome.storage.local.get("rsAskSite"), site = got && got.rsAskSite; if (site && /^https:\/\//.test(site.url || "")) return { url: String(site.url), name: String(site.name || "") }; } catch {}
-  return ASK_DEFAULT_SITE;
+  let chosen = null, last = askLastSite;
+  try { const got = await chrome.storage.local.get(["rsAskSite", "rsAskLastSite"]); chosen = got && got.rsAskSite; if (!last) last = askLastSite = got && got.rsAskLastSite || null; } catch {}
+  const pick = PlazCodeAskSite.choose(chosen, last);
+  return { url: pick.url, name: pick.name };
 }
 // A signed-out chat site sends the person to its sign-in page (DeepSeek: /sign_in). Said plainly, with the window put away, instead of a
 // vague "did not load".
@@ -4062,7 +4078,10 @@ async function askEnsure() {
     try { tab = await chrome.tabs.get(ask.tabId); } catch { ask.tabId = null; }
     if (tab) {
       // The background chat is open. When the person picked another chat in the History list (or started a new one), it goes there first.
-      if (!want || askUrlKey(tab.url) === askUrlKey(target)) { if (want) { ask.goto = null; askSave(); } return { ok: true }; }
+      // 2026-11-18: and when the person now uses PlazCode on another AI site, the background chat moves to that site.
+      const sameSite = askSameSite(tab.url, site.url) || (PlazCodeAskSite.siteFor(tab.url) || {}).url === site.url;
+      if ((!want && sameSite) || askUrlKey(tab.url) === askUrlKey(target)) { if (want) { ask.goto = null; askSave(); } return { ok: true }; }
+      if (!sameSite) { ask.chatUrl = ""; askSay("Opening a PlazCode chat on " + siteName + " in the background…", "note", "Opening a PlazCode chat on {site} in the background…", { site: siteName }); }
       let minimised = false;
       try { minimised = (await chrome.windows.get(tab.windowId)).state === "minimized"; } catch {}
       try { await chrome.tabs.update(tab.id, { url: target }); } catch { ask.tabId = null; askSave(); return { ok: false, error: "The background chat window could not be opened." }; }
