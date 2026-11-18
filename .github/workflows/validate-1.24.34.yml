@@ -343,13 +343,18 @@ jobs:
         working-directory: build-src-1.24.34/PlazCode
       - name: Install real Blender on Linux
         if: runner.os == 'Linux'
-        timeout-minutes: 6
+        timeout-minutes: 12
         run: |
-          curl --fail --location --retry 2 --retry-max-time 240 --connect-timeout 20 --max-time 180 \
-            https://download.blender.org/release/Blender4.5/blender-4.5.3-linux-x64.tar.xz \
-            --output "$RUNNER_TEMP/blender.tar.xz"
+          # 2026-11-18: download.blender.org refused GitHub's machines (403) on every run; Blender's official mirrors are tried
+          # next. The checksum below is checked whichever server answered, so a mirror cannot change the file.
           echo '975c58fcb244273838534bba771e64ad87739216b0f9b39a888531a49a72d845  blender.tar.xz' > "$RUNNER_TEMP/blender.sha256"
-          (cd "$RUNNER_TEMP" && sha256sum --check blender.sha256)
+          got=0
+          for base in https://download.blender.org/release https://mirrors.ocf.berkeley.edu/blender/release https://ftp.nluug.nl/pub/graphics/blender/release https://mirror.clarkson.edu/blender/release; do
+            rm -f "$RUNNER_TEMP/blender.tar.xz"
+            if curl --fail --location --retry 1 --connect-timeout 20 --max-time 180 "$base/Blender4.5/blender-4.5.3-linux-x64.tar.xz" --output "$RUNNER_TEMP/blender.tar.xz" \
+               && (cd "$RUNNER_TEMP" && sha256sum --check blender.sha256); then got=1; echo "Blender from $base"; break; fi
+          done
+          [ "$got" = 1 ] || { echo "Blender could not be downloaded from any official server"; exit 1; }
           tar -xJf "$RUNNER_TEMP/blender.tar.xz" -C "$RUNNER_TEMP"
           echo "PLAZCODE_BLENDER=$RUNNER_TEMP/blender-4.5.3-linux-x64/blender" >> "$GITHUB_ENV"
       - name: Real Blender geometry and primitive regressions
