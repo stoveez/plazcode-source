@@ -2089,17 +2089,21 @@ pub async fn tool_focus_window(ws: &Workspace, args: &serde_json::Value) -> Resu
     // `state` does it in one step, and the answer says what the window really is afterwards.
     #[link(name = "user32")]
     extern "system" { fn ShowWindowAsync(hwnd: Hwnd, cmd: i32) -> i32; fn IsZoomed(hwnd: Hwnd) -> i32; }
-    let h = hwnd as Hwnd;
     let state = window_state_arg(args)?;
     crate::desktop_control::expect(900);
-    match state {
-        WindowState::Front => bring_to_front(hwnd),
-        WindowState::Maximize => { bring_to_front(hwnd); unsafe { ShowWindowAsync(h, 3); } }
-        WindowState::Minimize => { unsafe { ShowWindowAsync(h, 6); } }
-        WindowState::Restore => { unsafe { ShowWindowAsync(h, 9); } bring_to_front(hwnd); }
+    // The raw window handle is made where it is used and never held across the wait below (a raw pointer cannot cross an await in
+    // a task that may move between threads).
+    {
+        let h = hwnd as Hwnd;
+        match state {
+            WindowState::Front => bring_to_front(hwnd),
+            WindowState::Maximize => { bring_to_front(hwnd); unsafe { ShowWindowAsync(h, 3); } }
+            WindowState::Minimize => { unsafe { ShowWindowAsync(h, 6); } }
+            WindowState::Restore => { unsafe { ShowWindowAsync(h, 9); } bring_to_front(hwnd); }
+        }
     }
     tokio::time::sleep(std::time::Duration::from_millis(250)).await;
-    let (zoomed, minimized) = unsafe { (IsZoomed(h) != 0, IsIconic(h) != 0) };
+    let (zoomed, minimized) = { let h = hwnd as Hwnd; unsafe { (IsZoomed(h) != 0, IsIconic(h) != 0) } };
     let now = if minimized { "minimized" } else if zoomed { "maximized" } else { "a normal window" };
     let ok = match state { WindowState::Maximize => zoomed && !minimized, WindowState::Minimize => minimized, WindowState::Restore => !zoomed && !minimized, WindowState::Front => !minimized };
     if ok { Ok(format!("{} window \"{name}\"; it is now {now}.", state.done())) }
