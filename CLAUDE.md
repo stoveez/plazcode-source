@@ -1,6 +1,6 @@
 # PlazCode private repo: instructions for any AI working here
 
-**Current: 1.24.33 published. Next update 1.24.34 (release in progress, 2026-11-18) is built from `development/1.24.34` on `claude/plazcode-dev` (workflows `validate-1.24.34.yml` / `publish-1.24.34.yml`): Ask PlazCode in your own chat, app_do and window maximize/minimize, click-or-key takeover, draggable live preview, less plan usage (2 commands per reply), vault off switch, ClickUp removed, smoother Windows app, many fixes. See docs/NOW.md.** See `docs/NOW.md`.
+**Current: 1.24.34 published (2026-11-18; validation 44403715588 on `3ea08a4`, publish run 44412679897, release https://github.com/stoveez/PlazCode/releases/tag/v1.24.34). Further work continues in `development/1.24.34` on `claude/plazcode-dev` until the next version bump (`docs/vault/new-version-checklist.md`). See docs/NOW.md.** See `docs/NOW.md`.
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.

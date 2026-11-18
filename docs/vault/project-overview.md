@@ -3,7 +3,7 @@ title: Project overview
 updated: 2026-10-26
 ---
 
-**Current, 2026-11-18:** 1.24.33 is published. **1.24.34** is being released from `development/1.24.34` on `claude/plazcode-dev` (workflows `validate-1.24.34.yml` / `publish-1.24.34.yml`). See [../NOW.md](../NOW.md).
+**Current, 2026-11-18:** 1.24.34 is published (validation 44403715588, publish 44412679897). Work continues in `development/1.24.34`. See [../NOW.md](../NOW.md).
 
 # What PlazCode is
 

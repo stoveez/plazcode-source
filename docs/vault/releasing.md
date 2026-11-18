@@ -4,7 +4,7 @@ updated: 2026-10-28
 ---
 # Releasing
 
-**Current (2026-11-18): 1.24.33 published; 1.24.34 is being released (workflows `validate-1.24.34.yml` / `publish-1.24.34.yml`, folder `development/1.24.34`, release notes in `development/1.24.34/release-entry.json`, preview `release-notes-preview.md`). The owner said to release it (2026-11-18).** The steps below were written for 1.24.30: read every `1.24.30` in them as the current version.
+**Current (2026-11-18): 1.24.34 published** (validation 44403715588 on `3ea08a4`, publish 44412679897 from `release/1.24.34-publish`, pin commit `a013d656`). The next version needs the new-version checklist. The steps below were written for 1.24.30: read every `1.24.30` in them as the current version.
 
 Official releases live in the public repo `stoveez/PlazCode`, branch `main`: only zips and the feeds. They are prepared and published from the private repo, branch `release/1.24.30-publish`, by the workflow `publish-1.24.30.yml`. Nothing is rebuilt at publish time. Private `main` is the old line and is not used for releases.
 
@@ -44,3 +44,6 @@ Published in 40781780030 using exact-source validation 40772509288 / a74ae17, wi
 **1.24.30 owner rule (2026-11-01): no source ZIP distribution.** Packaging/promotion create no source archive and CI excludes source ZIP uploads. Hash-only `source-proof.json` reports bind prepared source to Windows/Mac validation; promotion reconstructs from the exact checkout and checks both. Keep `PLAZCODE_PUBLISH_SOURCE=0`. Preserve old releases and licence notices; retained GPL corresponding-source obligations remain unresolved before a public release.
 
 **Latest licensing decision (2026-11-01, supersedes earlier GPL-gap status):** owner confirmed ownership of all first-party code and rejected future GPL terms. First-party 1.24.30 is now proprietary (LICENSE / LicenseRef-PlazCode-Proprietary); current headers/Rust metadata/root/browser notices updated, normal user content/use retained. Old GPL releases and third-party licences remain. Root package notices now come from current source; dependency notices ship in runtime. No source ZIP distribution; no Luraph. See license-and-branding-review.md. Full replacement validation/test ZIPs pending.
+
+## 1.24.34 publication record (2026-11-18)
+Owner said "just release the update" as 1.24.34. Copied `development/1.24.33` to `development/1.24.34` with a global version replace; lines that compared two versions (1.24.33 vs 1.24.34) collapsed and had to be moved up to 1.24.34 vs 1.24.35 (`agent/src/release_variant.rs`, `test-release-variant.mjs`). `validate-1.24.33.yml` no longer runs on the dev branch. The Linux job failed all day on download.blender.org answering 403 to GitHub runners; the workflow now tries Blender's official mirrors with the same sha256. Validation 44403715588 on `3ea08a4` all green; publish 44412679897 (wait-native, Mac desktop lifetime test, publish) green; public commit `f7dbbeb`. Feeds `latest.json`, `latest-macos.json`, `latest-linux.json` read 1.24.34 and the Windows zip's sha256 (53,460,853 bytes) matches the feed. Dev merged `origin/main` with `-s ours` afterwards (`e2e5dc9`).
