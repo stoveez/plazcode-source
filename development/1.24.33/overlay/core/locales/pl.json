@@ -1450,5 +1450,7 @@
   "Delete this chat": "Usuń ten czat",
   "Use the PlazCode vault": "Używaj sejfu PlazCode",
   "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "Wyłącz to, jeśli masz własne notatki lub własne narzędzie pamięci, aby AI miało jedną pamięć, a nie dwie.",
-  "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "Sejf jest wyłączony. PlazCode nie tworzy, nie czyta i nie zmienia żadnych plików sejfu, nie daje AI notatek ani poleceń sejfu i nie zapisuje czatów jako notatek. Zapisane notatki (Szybkie notatki) nadal działają."
+  "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "Sejf jest wyłączony. PlazCode nie tworzy, nie czyta i nie zmienia żadnych plików sejfu, nie daje AI notatek ani poleceń sejfu i nie zapisuje czatów jako notatek. Zapisane notatki (Szybkie notatki) nadal działają.",
+  "Minimize the live view": "Zminimalizuj podgląd na żywo",
+  "Live view minimized. Press to show it again.": "Podgląd na żywo zminimalizowany. Naciśnij, aby pokazać go ponownie."
 }

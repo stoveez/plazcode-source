@@ -1450,5 +1450,7 @@
   "Delete this chat": null,
   "Use the PlazCode vault": null,
   "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": null,
-  "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": null
+  "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": null,
+  "Minimize the live view": null,
+  "Live view minimized. Press to show it again.": null
 }

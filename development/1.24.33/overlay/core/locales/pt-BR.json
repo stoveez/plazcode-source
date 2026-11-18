@@ -1450,5 +1450,7 @@
   "Delete this chat": "Excluir este chat",
   "Use the PlazCode vault": "Usar o vault do PlazCode",
   "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "Desligue se você usa suas próprias notas ou sua própria ferramenta de memória, para que a IA tenha uma memória só, não duas.",
-  "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "O vault está desligado. O PlazCode não cria, lê nem altera arquivos do vault, não dá à IA notas nem comandos do vault e não salva os chats como notas. As notas salvas (Notas rápidas) continuam funcionando."
+  "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "O vault está desligado. O PlazCode não cria, lê nem altera arquivos do vault, não dá à IA notas nem comandos do vault e não salva os chats como notas. As notas salvas (Notas rápidas) continuam funcionando.",
+  "Minimize the live view": "Minimizar a visualização ao vivo",
+  "Live view minimized. Press to show it again.": "Visualização ao vivo minimizada. Pressione para mostrá-la de novo."
 }

@@ -1450,5 +1450,7 @@
   "Delete this chat": "删除此聊天",
   "Use the PlazCode vault": "使用 PlazCode 知识库",
   "Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.": "如果你有自己的笔记或记忆工具，请关闭此项，这样 AI 只有一份记忆，而不是两份。",
-  "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "知识库已关闭。PlazCode 不会创建、读取或修改任何知识库文件，不会向 AI 提供知识库笔记或知识库命令，也不会把聊天保存为笔记。已保存的笔记（快速笔记）仍然可用。"
+  "The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.": "知识库已关闭。PlazCode 不会创建、读取或修改任何知识库文件，不会向 AI 提供知识库笔记或知识库命令，也不会把聊天保存为笔记。已保存的笔记（快速笔记）仍然可用。",
+  "Minimize the live view": "最小化实时画面",
+  "Live view minimized. Press to show it again.": "实时画面已最小化。按下即可重新显示。"
 }

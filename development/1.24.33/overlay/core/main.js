@@ -12432,34 +12432,30 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
   //    timer survives re-renders / conversation switches. ────────────────────
   // AgentScript control rework (1.24.33), step 3: the live card. While PlazCode works in another tab (one the person is not looking
   // at), a small live picture of it sits above the PlazCode bar; clicking it opens the large live view beside the chat.
-  const controlCards = new Map(); // tabId -> { el, canvas, timer, drawing }
+  const controlCards = new Map(); // tabId -> { el, live, canvas, timer, drawing }
   function controlCard(msg) {
     const tabId = msg && msg.tabId;
     if (!Number.isInteger(tabId)) return;
     let card = controlCards.get(tabId);
-    if (msg.type === "rs-control-end") { if (card) { clearTimeout(card.timer); card.el.remove(); controlCards.delete(tabId); } return; }
+    if (msg.type === "rs-control-end") { if (card) { clearTimeout(card.timer); card.live.remove(); controlCards.delete(tabId); } return; }
     if (!card) {
-      const el = document.createElement("div");
-      el.className = "rs-live-card"; el.setAttribute("role", "button"); el.tabIndex = 0;
-      el.innerHTML = '<style>.rs-live-card{position:fixed;right:18px;bottom:96px;width:300px;z-index:2147483645;border-radius:14px;overflow:hidden;cursor:pointer;font:13px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;color:#eef0f6;background:color-mix(in srgb,var(--pc-bg,#141722) 92%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--pc-accent,#8b5cf6) 55%,transparent),0 10px 34px rgba(0,0,0,.45);backdrop-filter:blur(10px)}.rs-live-card:focus-visible{outline:2px solid var(--pc-accent,#8b5cf6);outline-offset:2px}.rs-live-card canvas{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;background:#1a1d26}.rs-live-row{display:flex;align-items:center;gap:8px;padding:8px 10px}.rs-live-dot{width:8px;height:8px;border-radius:50%;background:var(--pc-accent,#8b5cf6);box-shadow:0 0 8px var(--pc-accent,#8b5cf6);flex:none}.rs-live-card.paused .rs-live-dot{background:transparent;border:2px solid var(--pc-accent,#8b5cf6);box-shadow:none}.rs-live-txt{flex:1;min-width:0}.rs-live-txt b,.rs-live-txt small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rs-live-txt small{color:#9aa0ae}.rs-live-note{padding:18px 12px;color:#9aa0ae;text-align:center}.rs-live-big{font-size:15px;opacity:.8}</style>' +
-        '<canvas width="480" height="300" aria-hidden="true"></canvas><p class="rs-live-note" hidden></p><div class="rs-live-row"><span class="rs-live-dot" aria-hidden="true"></span><span class="rs-live-txt"><b></b><small></small></span><span class="rs-live-big" aria-hidden="true">⤢</span></div>';
-      try { const theme = getComputedStyle(document.querySelector("#rs-root") || document.documentElement); for (const key of ["--pc-bg", "--pc-accent"]) { const v = theme.getPropertyValue(key); if (v) el.style.setProperty(key, v); } } catch {}
-      const open = () => { bg({ type: "control_watch", tabId }).catch?.(() => {}); };
-      el.addEventListener("click", open);
-      el.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } });
-      (document.querySelector("#rs-root") || document.documentElement).append(el);
-      card = { el, canvas: el.querySelector("canvas"), timer: 0, drawing: false };
+      // The card itself (look, drag, minimize) is core/live-card.js (TypeScript: ts/core/live-card.ts).
+      const live = PlazCodeLiveCard.create({ root: document.querySelector("#rs-root") || document.documentElement, words: (t) => ct(t), onOpen: () => { bg({ type: "control_watch", tabId }).catch?.(() => {}); } });
+      try { const theme = getComputedStyle(document.querySelector("#rs-root") || document.documentElement); for (const key of ["--pc-bg", "--pc-accent"]) { const v = theme.getPropertyValue(key); if (v) live.el.style.setProperty(key, v); } } catch {}
+      card = { el: live.el, live, canvas: live.canvas, timer: 0, drawing: false };
       controlCards.set(tabId, card);
     }
     clearTimeout(card.timer);
     card.timer = setTimeout(() => controlCard({ type: "rs-control-end", tabId }), 25000);
     let host = ""; try { host = msg.url ? new URL(msg.url).host : ""; } catch {}
     const title = tabId === -1 ? ct("Your screen") : msg.title;
-    card.el.querySelector("b").textContent = msg.paused ? ct("Paused, you're in control") : (title || host || ct("PlazCode is working"));
-    card.el.querySelector("small").textContent = host ? host + " · " + ct("PlazCode is working here") : ct("PlazCode is working here");
-    card.el.classList.toggle("paused", !!msg.paused);
-    card.el.dataset.tag = ct(msg.paused ? "Paused" : "Live"); // the Live / Paused tag on the picture (bar redesign)
-    card.el.setAttribute("aria-label", ct("Live view of {name}. Open it beside the chat.", { name: title || host || ct("the tab PlazCode is working in") }));
+    card.live.show({
+      title: msg.paused ? ct("Paused, you're in control") : (title || host || ct("PlazCode is working")),
+      sub: host ? host + " · " + ct("PlazCode is working here") : ct("PlazCode is working here"),
+      paused: !!msg.paused,
+      tag: ct(msg.paused ? "Paused" : "Live"), // the Live / Paused tag on the picture (bar redesign)
+      label: ct("Live view of {name}. Open it beside the chat.", { name: title || host || ct("the tab PlazCode is working in") }),
+    });
     const noteEl = card.el.querySelector(".rs-live-note");
     if (!msg.data) { noteEl.textContent = msg.note ? ct(msg.note) : ""; noteEl.hidden = !msg.note; card.canvas.hidden = !!msg.note; return; }
     noteEl.hidden = true; card.canvas.hidden = false;

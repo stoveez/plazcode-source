@@ -6478,6 +6478,11 @@ html[data-rs-studio][data-rs-motion=full] #rs-root .rs-live-card:not(.paused) .r
 @keyframes rs-st-live{from{transform:scale(.7);opacity:.8}to{transform:scale(2.1);opacity:0}}
 html[data-rs-studio] #rs-root .rs-live-card.paused .rs-live-dot{background:transparent!important;border:2px solid var(--st-l)!important;box-shadow:none!important}
 html[data-rs-studio] #rs-root .rs-live-card .rs-live-big{display:grid;place-items:center;width:26px;height:26px;border-radius:999px;border:1px solid var(--st-line);background:var(--st-glass);color:var(--st-l);font-size:13px!important;opacity:1!important}
+/* Owner (2026-11-18): the live card can be dragged and minimized (core/live-card.js). Minimized it is a small pill without the picture or its tag. */
+html[data-rs-studio] #rs-root .rs-live-card.min::before{display:none}
+html[data-rs-studio] #rs-root .rs-live-card[data-dragging=true],html[data-rs-studio] #rs-root .rs-live-card[data-dragging=true]:hover{transform:none;transition:none!important}
+html[data-rs-studio] #rs-root .rs-live-card .rs-live-min{border-color:var(--st-line);background:var(--st-glass);color:var(--st-l)}
+html[data-rs-studio] #rs-root .rs-live-card.min .rs-live-pill{font:700 9px/1 var(--st-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--st-l)}
 html[data-rs-studio] #rs-root .rs-live-card .rs-live-note{color:var(--st-dim)!important;font:500 11px/1.5 var(--st-mono)!important}
 html[data-rs-studio][data-rs-gradients=off] #rs-root .rs-live-card{border-image:none!important;border-color:var(--st-line)!important;background:var(--st-card)!important}
 html[data-rs-studio][data-rs-gradients=off][data-rs-glow=off] #rs-root .rs-live-card{box-shadow:none!important}
