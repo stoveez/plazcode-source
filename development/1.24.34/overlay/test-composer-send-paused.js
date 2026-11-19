@@ -13,6 +13,7 @@ const read = (p) => fs.readFileSync(p, "utf8");
   assert.match(bgSrc, /const STALE_MS\s*=\s*10\s*\*\s*60\s*\*\s*1000/, "background.js defines 10-minute stale TTL for DeepSeek open requests");
   assert.match(bgSrc, /chrome\.tabs\.onUpdated\?\.addListener/, "background.js clears open DeepSeek requests on tab reload/navigation");
   assert.match(bgSrc, /changeInfo\.status\s*===\s*'loading'/, "tab reload clears open DeepSeek requests when loading starts");
+  assert.match(bgSrc, /function broadcastStatus\(\) \{[\s\S]{0,220}if \(chrome\.runtime\.lastError \|\| !Array\.isArray\(tabs\)\) return;/, "broadcastStatus guards against undefined tabs when Chrome refuses chrome.tabs.query during tab drags or window transitions");
 
   // Run the actual deepSeekRequests IIFE in a sandboxed VM to verify behavior directly.
   const sliceEnd = bgSrc.indexOf('if (typeof importScripts === "function")');

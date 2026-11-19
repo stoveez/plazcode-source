@@ -1576,6 +1576,7 @@ chrome.tabs.onRemoved?.addListener(tabId => { runTabs.delete(tabId); });
 function broadcastStatus() {
   chrome.runtime.sendMessage(statusObj()).catch(() => {});
   chrome.tabs.query({ url: PROVIDER_URLS }, (tabs) => {
+    if (chrome.runtime.lastError || !Array.isArray(tabs)) return;
     for (const t of tabs) tabEngine(t.id).then(mode=>chrome.tabs.sendMessage(t.id, statusObj(mode))).catch(() => {});
   });
 }
