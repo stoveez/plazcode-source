@@ -461,12 +461,13 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   async function typeAndSend(text, images) {
-    const ed = getEditor();
+    let ed = getEditor();
     if (!ed) throw new Error("Kimi input box not found");
+    const normDraft = (v) => String(v == null ? "" : v).replace(/\r\n?/g, "\n").replace(/\u00A0/g, " ").trim();
     const relock = _locked;
     try {
       if (relock) { _injecting = true; ed.setAttribute("contenteditable", "true"); } // injection needs it editable
-      if (editorText() !== text) setEditorText(ed, text);
+      if (normDraft(editorText()) !== normDraft(text)) setEditorText(ed, text);
       // Attach images LAST, right before the send click - see gemini.js's
       // typeAndSend for why (attaching before retyping the text can sever the
       // site's binding between the pending upload and the message being sent).
@@ -477,9 +478,16 @@ const RSProvider: PlazCodeProvider = (() => {
       }
       // Wait for the send control to enable (proof Lexical registered the text).
       await waitFor(() => !!sendButton(), 1500);
+      ed = getEditor() || ed;
+      if (relock && ed) ed.setAttribute("contenteditable", "true");
+      if (!sendButton() && normDraft(editorText()) !== normDraft(text)) {
+        setEditorText(ed, text);
+        await waitFor(() => !!sendButton(), 1500);
+      }
       const btn = sendButton();
       if (btn) { btn.click(); return; }
       // Fallback: Enter sends in Lexical's composer.
+      ed = getEditor() || ed;
       const o = { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true };
       ed.dispatchEvent(new KeyboardEvent("keydown", o));
       ed.dispatchEvent(new KeyboardEvent("keyup", o));

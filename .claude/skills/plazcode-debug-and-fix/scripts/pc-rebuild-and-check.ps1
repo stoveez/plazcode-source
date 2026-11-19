@@ -30,15 +30,15 @@ $buildSource = Join-Path $repoRoot "build-src-$Version\PlazCode"
 $nodeModules = Join-Path $buildSource "release-tools\node_modules"
 
 function Invoke-Python {
-    param([string[]]$Args)
+    param([string[]]$PyArgs)
     if (Get-Command python -ErrorAction SilentlyContinue) {
-        & python @Args
+        & python @PyArgs
     } elseif (Get-Command python3 -ErrorAction SilentlyContinue) {
-        & python3 @Args
+        & python3 @PyArgs
     } else {
         throw "Neither python nor python3 was found on PATH."
     }
-    if ($LASTEXITCODE -ne 0) { throw "Python command failed: $($Args -join ' ')" }
+    if ($LASTEXITCODE -ne 0) { throw "Python command failed: $($PyArgs -join ' ')" }
 }
 
 Write-Host "=== PlazCode Rebuild & Check (version $Version) ===" -ForegroundColor Cyan
@@ -83,7 +83,7 @@ try {
             Write-Host "[5/6] Syncing protected file hash pins in overlay/test-desktop-regression.js..."
             $pinScript = @'
 const fs = require("fs"), path = require("path"), crypto = require("crypto");
-const [regPath, overlayDir, buildSource] = process.argv.slice(1);
+const [regPath, overlayDir, buildSource] = process.argv.slice(2);
 let src = fs.readFileSync(regPath, "utf8");
 const m = src.match(/(const baseline = \{)([\s\S]*?)(\n\};)/);
 if (!m) { console.log("No baseline block found."); process.exit(0); }

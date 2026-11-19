@@ -1468,5 +1468,13 @@
   "UI check skipped: Studio did not answer": "Oberflächenprüfung übersprungen: Studio hat nicht geantwortet",
   "UI check passed: no new layout problems": "Oberflächenprüfung bestanden: keine neuen Layoutprobleme",
   "UI check still shows problems": "Die Oberflächenprüfung zeigt weiterhin Probleme",
-  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode hat die KI zweimal um Behebung gebeten. Weiterhin fehlerhaft:"
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode hat die KI zweimal um Behebung gebeten. Weiterhin fehlerhaft:",
+  "Interrupted run found": "Unterbrochener Lauf gefunden",
+  "1 step finished before this tab reloaded.": "1 Schritt wurde abgeschlossen, bevor dieser Tab neu geladen wurde.",
+  "{count} steps finished before this tab reloaded.": "{count} Schritte wurden abgeschlossen, bevor dieser Tab neu geladen wurde.",
+  "This run was interrupted when the tab reloaded.": "Dieser Lauf wurde beim Neuladen des Tabs unterbrochen.",
+  "Last step: {step}": "Letzter Schritt: {step}",
+  "Finished steps will not run again.": "Abgeschlossene Schritte werden nicht erneut ausgeführt.",
+  "Start fresh": "Neu starten",
+  "Keep my computer awake during runs": "Computer während Läufen wach halten"
 }

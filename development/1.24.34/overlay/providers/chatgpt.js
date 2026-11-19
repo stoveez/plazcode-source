@@ -1092,6 +1092,25 @@ const RSProvider                   = (() => {
     let written = "";
     for (let offset = 0; offset < raw.length || (offset === 0 && !raw.length);) {
       checkOwner();
+      if (offset > 0) {
+        // Focus can blink away between yielded chunks (background window, tooltip, or React re-render).
+        // Restore focus and park the caret at the end of the composer before inserting the next chunk
+        // so ProseMirror never drops the tail of a long tool result.
+        const sel = safeRead(() => window.getSelection(), null);
+        const inside = !!(sel && sel.rangeCount > 0 && safeRead(() => ed.contains(sel.anchorNode), false));
+        if (safeRead(() => document.activeElement, null) !== ed || !inside) {
+          try { ed.focus(); } catch {}
+          if (sel) {
+            try {
+              const range = document.createRange();
+              range.selectNodeContents(ed);
+              range.collapse(false);
+              sel.removeAllRanges();
+              sel.addRange(range);
+            } catch {}
+          }
+        }
+      }
       let end = Math.min(raw.length, offset + INSERT_CHUNK_CHARS), newline = offset;
       for (let count = 0; count < INSERT_CHUNK_LINES; count++) {
         newline = raw.indexOf('\n', newline);
@@ -1123,7 +1142,7 @@ const RSProvider                   = (() => {
     await typeEditorText(ed, text, checkOwner, wrote);
   }
 
-  async function settleComposerRender(checkOwner, clock) {
+  async function settleComposerRender(checkOwner, clock, isReady                ) {
     // The editable DOM/model can finish before React publishes the form's
     // submit value. A previously enabled button can still submit that prefix.
     if (!safeRead(() => document.documentElement.getClientRects().length > 0 && typeof requestAnimationFrame === 'function', false)) return 0;
@@ -1131,18 +1150,32 @@ const RSProvider                   = (() => {
     // Owner (2026-11-18): "when I'm not on the window the AI is working on it sometimes just stops". A hidden or covered tab never
     // paints, so the two animation frames below never came and the send stopped after 8 s ("Keep its tab visible"). ChatGPT still
     // updates its composer in a hidden tab (React runs on timers and messages, not frames), so there two short timer ticks do the job.
-    if (safeRead(() => document.hidden || document.visibilityState === 'hidden', false)) {
+    const settleHidden = async () => {
       for (let i = 0; i < 2; i++) { await new Promise((r) => setTimeout(r, 120)); checkOwner(); }
       return Math.max(0, Math.round(clock() - started));
-    }
+    };
+    if (safeRead(() => document.hidden || document.visibilityState === 'hidden', false)) return settleHidden();
     return new Promise        ((resolve, reject) => {
-      let finished = false, frame = null, frames = 0;
+      let finished = false, frame = null, frames = 0, occludedTimer = null;
+      const cleanup = () => {
+        clearTimeout(deadline);
+        if (occludedTimer !== null) clearInterval(occludedTimer);
+        if (frame !== null) safeRead(() => cancelAnimationFrame(frame), null);
+        try { document.removeEventListener('visibilitychange', onVis); } catch {}
+      };
       const finish = (error      ) => {
         if (finished) return;
-        finished = true; clearTimeout(deadline);
-        if (frame !== null) safeRead(() => cancelAnimationFrame(frame), null);
+        finished = true; cleanup();
         const ms = Math.max(0, Math.round(clock() - started));
         if (error) { try { error.renderWaitMs = ms; } catch {} reject(error); } else resolve(ms);
+      };
+      const onVis = () => {
+        if (finished) return;
+        if (safeRead(() => document.hidden || document.visibilityState === 'hidden', false)) {
+          cleanup();
+          finished = true;
+          settleHidden().then(resolve, reject);
+        }
       };
       const advance = () => {
         if (finished) return;
@@ -1152,24 +1185,37 @@ const RSProvider                   = (() => {
           else frame = requestAnimationFrame(advance);
         } catch (error) { finish(error); }
       };
+      // Covered/occluded windows on Windows & macOS keep document.hidden === false while Chrome pauses
+      // requestAnimationFrame. When the window is NOT focused (!document.hasFocus()), once 1.5 s pass
+      // without 2 frames and the composer already holds the exact draft with Send enabled, accept it
+      // instead of timing out with "Send paused". A focused foreground window still requires 2 frames.
+      const windowUnfocused = () => typeof document.hasFocus === 'function' && !safeRead(() => document.hasFocus(), true);
+      occludedTimer = setInterval(() => {
+        if (finished) return;
+        try {
+          checkOwner();
+          if (windowUnfocused() && clock() - started >= 1500 && typeof isReady === 'function' && safePredicate(isReady)) finish();
+        } catch (error) { finish(error); }
+      }, 200);
       const deadline = setTimeout(() => {
         try {
           checkOwner();
+          if (windowUnfocused() && clock() - started >= 1500 && typeof isReady === 'function' && safePredicate(isReady)) { finish(); return; }
           const error      = new Error('ChatGPT input did not finish updating. Nothing was submitted. Keep its tab visible, then resume.');
           error.code = 'CHATGPT_COMPOSER_RENDER_TIMEOUT'; finish(error);
         } catch (error) { finish(error); }
       // 1 s was too tight: inserting a ~12k-character startup message makes ChatGPT's
       // composer block the page for 3+ s, so two animation frames took longer and
-      // startup paused with "input did not finish updating". A hidden tab never
-      // paints, so it still times out here. Nothing has been submitted at this point.
+      // startup paused with "input did not finish updating". Nothing has been submitted at this point.
       }, 8000);
+      try { document.addEventListener('visibilitychange', onVis); } catch {}
       try { frame = requestAnimationFrame(advance); } catch (error) { finish(error); }
     });
   }
 
   async function typeAndSend(text, images) {
     lastConfirmedDelivery = null;
-    const ed = getEditor();
+    let ed = getEditor();
     if (!ed) throw new Error("ChatGPT input box not found");
     text = truncateForSend(text);
     const context = sendContext(), generation = sendGeneration, chat = conversationKey();
@@ -1178,14 +1224,20 @@ const RSProvider                   = (() => {
       const current = sendContext();
       return context.session === current.session && context.stop === current.stop;
     };
+    const editorMatches = () => getEditor() === ed && !!safeRead(() => ed.isConnected, false);
     const checkOwner = (typing = true) => {
       if (generation !== sendGeneration || isStopped() || !sameSession() ||
-          ((typing || chat) && chat !== conversationKey()) || (typing && (getEditor() !== ed || !ed.isConnected))) {
+          ((typing || chat) && chat !== conversationKey())) {
         const error      = new Error('ChatGPT delivery cancelled because Stop was pressed or the chat changed.');
         error.code = 'CHATGPT_CANCELLED'; error.expectedCancellation = true; throw error;
       }
+      if (typing && !editorMatches()) {
+        const error      = new Error('ChatGPT composer remounted while preparing the message.');
+        error.code = 'CHATGPT_COMPOSER_REMOUNTED'; throw error;
+      }
     };
     const normalize = normalizeReceiptText;
+    const logical = value => String(value == null ? '' : value).replace(/\r\n?/g, '\n').replace(/\u00A0/g, ' ').trim();
     const usersBefore = new Map(receiptUsers(true).map(item => [item, receiptKey(item)]));
     const keysBefore = new Set([...usersBefore.values()].filter(Boolean));
     const freshReceipt = item => {
@@ -1198,6 +1250,7 @@ const RSProvider                   = (() => {
     const clock = () => safeRead(() => performance.now(), Date.now());
     let receiptStartedAt = null, renderWaitMs = 0;
     let expandedMessage = false;
+    const EXPAND_RE = /^(?:read more|show more|expand message|voir plus|afficher plus|lire la suite|ver m[áa]s|mostrar m[áa]s|leer m[áa]s|mehr anzeigen|weiterlesen|mostrar mais|ver mais|ler mais|mostra di pi[ùu]|mostra altro|показать больше|читать далее|poka[żz] wi[ęe]cej|daha fazla g[öo]ster|عرض المزيد|もっと見る|더 보기|展开|显示更多|और दिखाएं)$/i;
     const receipt = () => receiptUsers().some(item => {
       if (!freshReceipt(item)) return false;
       const body = normalize(userText(item, '.rs-chip'));
@@ -1217,7 +1270,7 @@ const RSProvider                   = (() => {
       for (const scope of scopes) for (const button of safeQueryAll(scope, 'button,[role="button"]')) {
         if (safeClosest(button, '.rs-chip') || safeRead(() => button.disabled, false) || safeRead(() => button.getAttribute('aria-disabled') === 'true', false)) continue;
         const labels = [safeRead(() => button.getAttribute('aria-label'), ''), safeRead(() => button.getAttribute('title'), ''), safeRead(() => button.textContent, '')];
-        if (!labels.some(label => /^(?:read more|show more|expand message)$/i.test(normalize(label)))) continue;
+        if (!labels.some(label => EXPAND_RE.test(normalize(label)))) continue;
         expandedMessage = true;
         diag('send.expandUserMessage', {chars:prefix.length, expectedChars:want.length});
         button.click();
@@ -1226,63 +1279,142 @@ const RSProvider                   = (() => {
       return false;
     });
     const waitDelivery = async (predicate, timeout, typing = true) => {
-      const budget = waitBudget(timeout, 120), until = Date.now() + budget.ms;
+      const budget = waitBudget(timeout, 120);
+      let until = Date.now() + budget.ms, lastBeatAt = Date.now();
       for (let poll = 0; poll <= budget.polls; poll++) {
         checkOwner(typing);
+        const now = Date.now();
+        if (!safeRead(() => document.hidden, false) && typeof PlazCodeStallGuard !== "undefined" && PlazCodeStallGuard && PlazCodeStallGuard.frozenGap) {
+          const frozen = PlazCodeStallGuard.frozenGap(lastBeatAt, now);
+          if (frozen) until += frozen;
+        }
+        lastBeatAt = now;
         if (predicate()) return true;
-        if (Date.now() >= until) break;
+        if (now >= until) break;
         await sleep(120);
       }
       return false;
     };
     const relock = _locked;
-    const oldOpacity = safeRead(() => ed.style.opacity, "");
-    const oldCaret = safeRead(() => ed.style.caretColor, "");
+    let oldOpacity = safeRead(() => ed.style.opacity, "");
+    let oldCaret = safeRead(() => ed.style.caretColor, "");
+    const prepareEditor = (node) => {
+      oldOpacity = safeRead(() => node.style.opacity, "");
+      oldCaret = safeRead(() => node.style.caretColor, "");
+      node.style.opacity = "0";
+      node.style.caretColor = "transparent";
+      if (relock) {
+        if (safeRead(() => node.tagName, "") === "TEXTAREA" || safeRead(() => node.tagName, "") === "INPUT") node.readOnly = false;
+        else node.setAttribute("contenteditable", "true");
+      }
+    };
+    const restoreEditor = (node) => {
+      if (node && safeRead(() => node.isConnected, false)) {
+        safeRead(() => { node.style.opacity = oldOpacity; }, null);
+        safeRead(() => { node.style.caretColor = oldCaret; }, null);
+        if (relock && _locked) {
+          if (safeRead(() => node.tagName, "") === "TEXTAREA" || safeRead(() => node.tagName, "") === "INPUT") safeRead(() => { node.readOnly = true; }, null);
+          else safeRead(() => node.setAttribute("contenteditable", "false"), null);
+        }
+      }
+    };
+    const reacquireEditor = async () => {
+      if (committed) return false;
+      checkOwner(false);
+      let fresh = getEditor();
+      const deadline = Date.now() + 1500;
+      while ((!fresh || !safeRead(() => fresh.isConnected, false)) && Date.now() < deadline) {
+        await sleep(120);
+        checkOwner(false);
+        fresh = getEditor();
+      }
+      if (!fresh || !safeRead(() => fresh.isConnected, false)) return false;
+      if (fresh !== ed) {
+        restoreEditor(ed);
+        ed = fresh;
+        prepareEditor(ed);
+        diag('send.editorReacquired', {});
+      }
+      return true;
+    };
+    const writeFullDraft = async () => {
+      for (let remountTry = 0; remountTry < 2; remountTry++) {
+        try {
+          await setEditorText(ed, text, checkOwner, value => { ownedDraft = value; });
+          checkOwner();
+          if (logical(editorText()) !== logical(text)) {
+            // ChatGPT can reset its message box while a long message is typed (owner logs, Work mode: only the last
+            // 1 397 of 11 998 characters were left, then "Send paused"). Nothing has been submitted, so clear the
+            // box and type the whole message once more before giving up.
+            diag('send.retypeAfterReset', {chars: String(editorText() || '').length, expectedChars: text.length});
+            clearEditor();
+            await sleep(250);
+            checkOwner();
+            await setEditorText(ed, text, checkOwner, value => { ownedDraft = value; });
+            checkOwner();
+          }
+          return;
+        } catch (err     ) {
+          if (err && err.code === 'CHATGPT_COMPOSER_REMOUNTED' && remountTry === 0 && await reacquireEditor()) {
+            await sleep(150);
+            continue;
+          }
+          throw err;
+        }
+      }
+    };
     try {
       try { document.documentElement.classList.add("rs-chatgpt-injecting"); } catch {}
       // Internal PlazCode messages are implementation detail. Keep the composer
       // visually blank while they are inserted so the user does not watch a huge
       // system prompt or tool result appear to be pasted into their chat box.
-      ed.style.opacity = "0";
-      ed.style.caretColor = "transparent";
-      if (relock) {
-        if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") ed.readOnly = false;
-        else ed.setAttribute("contenteditable", "true");
-      }
-      await setEditorText(ed, text, checkOwner, value => { ownedDraft = value; });
-      checkOwner();
-      const logical = value => String(value).replace(/\r\n?/g, '\n').trim();
-      if (logical(editorText()) !== logical(text)) {
-        // ChatGPT can reset its message box while a long message is typed (owner logs, Work mode: only the last
-        // 1 397 of 11 998 characters were left, then "Send paused"). Nothing has been submitted, so clear the
-        // box and type the whole message once more before giving up.
-        diag('send.retypeAfterReset', {chars: String(editorText() || '').length, expectedChars: text.length});
-        clearEditor();
-        await sleep(250);
-        checkOwner();
-        await setEditorText(ed, text, checkOwner, value => { ownedDraft = value; });
-        checkOwner();
-        if (logical(editorText()) !== logical(text)) throw new Error('ChatGPT did not accept the complete tool result into its input box. Nothing was sent.');
-      }
+      prepareEditor(ed);
+      await writeFullDraft();
+      if (logical(editorText()) !== logical(text)) throw new Error('ChatGPT did not accept the complete tool result into its input box. Nothing was sent.');
       // Attach images LAST, right before the send click - see gemini.js/deepseek.js
       // typeAndSend for why (attaching first and then retyping the text can sever
       // the site's binding between the pending upload and the message sent).
       if (images && images.length) {
         if (!await attachImages(images)) throw new Error('ChatGPT did not confirm the screenshot upload. Check its file/image quota or upload error; the message was not submitted.');
       }
-      renderWaitMs = await settleComposerRender(checkOwner, clock);
+      const composerReady = () => {
+        const b = sendButton();
+        return logical(editorText()) === logical(text) && !!b && !safeRead(() => b.disabled, true);
+      };
+      try {
+        renderWaitMs = await settleComposerRender(checkOwner, clock, composerReady);
+      } catch (err     ) {
+        if (err && err.code === 'CHATGPT_COMPOSER_REMOUNTED' && !(images && images.length) && await reacquireEditor()) {
+          await writeFullDraft();
+          renderWaitMs = await settleComposerRender(checkOwner, clock, composerReady);
+        } else throw err;
+      }
       await sleep(0); // finish the rendering task before invoking the native submit handler
       checkOwner();
-      if (logical(editorText()) !== logical(text)) throw new Error('ChatGPT input changed before submission. Nothing was sent.');
+      if (logical(editorText()) !== logical(text)) {
+        if (!(images && images.length)) {
+          diag('send.retypeBeforeSubmit', {chars: String(editorText() || '').length, expectedChars: text.length});
+          clearEditor();
+          await sleep(150);
+          await writeFullDraft();
+          renderWaitMs = await settleComposerRender(checkOwner, clock, composerReady);
+          await sleep(0);
+          checkOwner();
+        }
+        if (logical(editorText()) !== logical(text)) throw new Error('ChatGPT input changed before submission. Nothing was sent.');
+      }
       // React may enable Send after the input transaction finishes. Wait for an
       // enabled SEND control, never submit through a lingering Stop or Enter.
       const ready = await waitDelivery(() => {
         const button = sendButton();
         return button && !safeRead(() => button.disabled, true);
-      }, images && images.length ? 25000 : 6000);
+      }, images && images.length ? 25000 : 15000);
       checkOwner();
       const button = ready && sendButton();
-      if (!button || safeRead(() => button.disabled, true)) throw new Error('ChatGPT is not ready to send. Check its message limit or connection, then resume; nothing was sent.');
+      if (!button || safeRead(() => button.disabled, true)) {
+        if (composerWedged()) throw new Error('ChatGPT\'s composer is stuck on "stop" and won\'t send — reload the page to recover this conversation.');
+        throw new Error('ChatGPT is not ready to send. Check its message limit or connection, then resume; nothing was sent.');
+      }
       committed = true;
       button.click(); // Exactly one commit. No retry after an uncertain click.
       receiptStartedAt = clock();
@@ -1296,7 +1428,7 @@ const RSProvider                   = (() => {
       // Never erase a newer draft after a navigation, remount or user edit.
       if (getEditor() === ed && chat === conversationKey() &&
           sendContext().session === context.session && ownedDraft !== null &&
-          (editorText() === ownedDraft || (ownedDraft.endsWith('\n') && editorText() === ownedDraft + '\n'))) clearEditor();
+          (editorText() === ownedDraft || logical(editorText()) === logical(ownedDraft) || (ownedDraft.endsWith('\n') && editorText() === ownedDraft + '\n'))) clearEditor();
       const proof      = {committed, expandedMessage, code:error.code || 'CHATGPT_SEND_FAILED',
         renderWaitMs:error.renderWaitMs || renderWaitMs,
         receiptWaitMs:receiptStartedAt === null ? 0 : Math.max(0, Math.round(clock() - receiptStartedAt))};
@@ -1329,15 +1461,7 @@ const RSProvider                   = (() => {
       throw error;
     } finally {
       try { document.documentElement.classList.remove("rs-chatgpt-injecting"); } catch {}
-      const e2 = ed;
-      if (e2.isConnected) {
-        safeRead(() => { e2.style.opacity = oldOpacity; }, null);
-        safeRead(() => { e2.style.caretColor = oldCaret; }, null);
-        if (relock && _locked) {
-          if (safeRead(() => e2.tagName, "") === "TEXTAREA" || safeRead(() => e2.tagName, "") === "INPUT") safeRead(() => { e2.readOnly = true; }, null);
-          else safeRead(() => e2.setAttribute("contenteditable", "false"), null);
-        }
-      }
+      restoreEditor(ed);
     }
   }
 

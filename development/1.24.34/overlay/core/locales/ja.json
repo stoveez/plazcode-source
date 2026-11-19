@@ -1468,5 +1468,13 @@
   "UI check skipped: Studio did not answer": "UI チェックを省略: Studio が応答しませんでした",
   "UI check passed: no new layout problems": "UI チェック合格: 新しいレイアウトの問題はありません",
   "UI check still shows problems": "UI チェックでまだ問題があります",
-  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode は AI に 2 回修正を頼みました。まだ問題があります:"
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode は AI に 2 回修正を頼みました。まだ問題があります:",
+  "Interrupted run found": "中断された実行が見つかりました",
+  "1 step finished before this tab reloaded.": "このタブが再読み込みされる前に 1 件のステップが完了しました。",
+  "{count} steps finished before this tab reloaded.": "このタブが再読み込みされる前に {count} 件のステップが完了しました。",
+  "This run was interrupted when the tab reloaded.": "タブの再読み込み時にこの実行が中断されました。",
+  "Last step: {step}": "最後のステップ: {step}",
+  "Finished steps will not run again.": "完了済みのステップは再実行されません。",
+  "Start fresh": "最初から始める",
+  "Keep my computer awake during runs": "実行中はコンピューターをスリープさせない"
 }

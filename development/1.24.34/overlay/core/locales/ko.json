@@ -1468,5 +1468,13 @@
   "UI check skipped: Studio did not answer": "UI 검사 건너뜀: Studio가 응답하지 않았습니다",
   "UI check passed: no new layout problems": "UI 검사 통과: 새 레이아웃 문제 없음",
   "UI check still shows problems": "UI 검사에 아직 문제가 있습니다",
-  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode가 AI에게 두 번 고치도록 요청했습니다. 아직 잘못됨:"
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode가 AI에게 두 번 고치도록 요청했습니다. 아직 잘못됨:",
+  "Interrupted run found": "중단된 실행을 찾았습니다",
+  "1 step finished before this tab reloaded.": "이 탭이 새로고침되기 전에 1개 단계가 완료되었습니다.",
+  "{count} steps finished before this tab reloaded.": "이 탭이 새로고침되기 전에 {count}개 단계가 완료되었습니다.",
+  "This run was interrupted when the tab reloaded.": "탭이 새로고침되면서 이 실행이 중단되었습니다.",
+  "Last step: {step}": "마지막 단계: {step}",
+  "Finished steps will not run again.": "완료된 단계는 다시 실행되지 않습니다.",
+  "Start fresh": "새로 시작",
+  "Keep my computer awake during runs": "실행 중 컴퓨터 절전 방지"
 }

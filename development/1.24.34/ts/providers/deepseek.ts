@@ -889,7 +889,7 @@ const RSProvider: PlazCodeProvider = (() => {
   function typeAndSend(text, images, opts) { return queueSend(job=>typeAndSendRaw(text,images,opts,job)); }
   async function commitSend(job, button) {
     let lease=null;
-    try {
+    const claimLease = async () => {
       while(!lease){
         assertSendOwner(job);
         const notice=visibleLimit();if(notice){await noteRateLimit(notice.text,notice);throw sendError("DeepSeek still shows a limit or account notice. Resolve it and wait before starting again.");}
@@ -898,19 +898,57 @@ const RSProvider: PlazCodeProvider = (() => {
         else if(result.paused)throw sendError(result.error||"DeepSeek requested a cooldown.");
         else await sleepForSend(Math.max(100,Number(result.wait_ms)||250),job);
       }
+    };
+    const releaseLease = async () => {
+      if (!lease) return;
+      const prev = lease; lease = null;
+      try { await pacing({action:"finish",id:job.id,sent:false}); } catch {}
+      return prev;
+    };
+    try {
+      await claimLease();
       assertSendOwner(job);
-      if(Date.now()>=lease.valid_until)throw sendError("The send permission expired while the page was busy. Nothing was sent.");
+      // If the tab paused between claim and validate, release and re-claim once before failing.
+      if(Date.now()>=lease.valid_until){
+        await releaseLease();
+        await claimLease();
+        assertSendOwner(job);
+        if(Date.now()>=lease.valid_until)throw sendError("The send permission expired while the page was busy. Nothing was sent.");
+      }
       // A manual send or a limit in another tab/browser can revoke a grant while this page is awaiting it.
       const permission=await pacing({action:"validate",id:job.id});
       if(!permission.allowed)throw sendError("Another DeepSeek message or limit cancelled this send permission. Nothing was sent.");
       assertSendOwner(job);
-      // Re-read after every await: a former send button may now be Stop, or belong to another draft.
-      const live=job.continue?findContinueBtn():getSendBtn();
-      if(responsePending())throw sendError("DeepSeek is still responding. Nothing was sent.");
-      if(!live || (!job.continue && (isStopBtn(live) || safeRead(()=>live.getAttribute("aria-disabled"),null)==="true")))throw sendError("DeepSeek's send control changed. Nothing was sent.");
+      // If a trailing request is still draining right as validate returns, wait briefly inside the lease window.
+      if(responsePending()){
+        const remain=Math.max(0,Math.min(15000,lease.valid_until-Date.now()-250));
+        if(remain>0)await waitSend(()=>!responsePending(),remain,job);
+        if(responsePending())throw sendError("DeepSeek is still responding. Nothing was sent.");
+      }
+      // Re-read after every await: a former send button may now be Stop, or flicker disabled for a frame after validate.
+      const readLive=()=>job.continue?findContinueBtn():getSendBtn();
+      const liveUsable=el=>!!el && (job.continue || (!isStopBtn(el) && safeRead(()=>el.getAttribute("aria-disabled"),null)!=="true"));
+      let live=readLive();
+      if(!liveUsable(live)){
+        const flickerBudget=Math.max(0,Math.min(2000,lease.valid_until-Date.now()-150));
+        if(flickerBudget>0){
+          await waitSend(()=>liveUsable(readLive()),flickerBudget,job);
+          live=readLive();
+        }
+      }
+      if(!liveUsable(live))throw sendError("DeepSeek's send control changed. Nothing was sent.");
       const users=userCount(),assistants=assistantCount(),before=job.continue?streamLen():0;
       if(!job.continue && editorText()!==job.typedText)throw sendError("Your draft changed before sending. Nothing was sent.","DEEPSEEK_CANCELLED");
-      assertSendOwner(job);if(Date.now()>=lease.valid_until)throw sendError("The send permission expired. Nothing was sent.");
+      assertSendOwner(job);
+      if(Date.now()>=lease.valid_until){
+        await releaseLease();
+        await claimLease();
+        const reval=await pacing({action:"validate",id:job.id});
+        if(!reval.allowed)throw sendError("Another DeepSeek message or limit cancelled this send permission. Nothing was sent.");
+        assertSendOwner(job);
+        live=readLive();
+        if(!liveUsable(live) || Date.now()>=lease.valid_until)throw sendError("The send permission expired. Nothing was sent.");
+      }
       job.awaitingChatAssignment=!job.continue&&!job.owner.chat;
       if(job.awaitingChatAssignment)job.beforeUserItems=new Set(allItems().filter(isUserItem));
       let accepted;
@@ -937,9 +975,40 @@ const RSProvider: PlazCodeProvider = (() => {
     } finally { if(lease)try{await pacing({action:"finish",id:job.id,sent:false});}catch{} }
   }
   async function waitSend(predicate,timeout,job) {
-    const started=Date.now();
-    while(Date.now()-started<timeout){const ready=safePredicate(predicate);assertSendOwner(job);if(ready)return true;await sleepForSend(120,job);}
+    let started=Date.now(), lastBeatAt=started;
+    while(Date.now()-started<timeout){
+      const now=Date.now();
+      if(!safeRead(()=>document.hidden,false) && typeof PlazCodeStallGuard!=="undefined" && PlazCodeStallGuard && PlazCodeStallGuard.frozenGap){
+        const frozen=PlazCodeStallGuard.frozenGap(lastBeatAt,now);
+        if(frozen)started+=frozen;
+      }
+      lastBeatAt=now;
+      const ready=safePredicate(predicate);assertSendOwner(job);if(ready)return true;await sleepForSend(120,job);
+    }
     return false;
+  }
+  // Remove only a leftover PlazCode internal draft (startup marker, tool output, or system note)
+  // that survived a crash, reload, or failed send. Never erase text typed by the person.
+  const INTERNAL_DRAFT_RE = /^(?:⟦RS-SYS⟧|Output of '[^']+':|\(System note:)/;
+  let _sendingInternal = false, _staleDraftText = null, _staleDraftTicks = 0;
+  function isInternalDraft(value) {
+    const trimmed = String(value || "").trimStart();
+    return trimmed.length >= 20 && INTERNAL_DRAFT_RE.test(trimmed);
+  }
+  function sweepStaleInternalDraft() {
+    try {
+      if (_sendingInternal) { _staleDraftText = null; _staleDraftTicks = 0; return false; }
+      const editor = getEditor();
+      if (!editor) { _staleDraftText = null; _staleDraftTicks = 0; return false; }
+      const value = editorText();
+      if (!isInternalDraft(value)) { _staleDraftText = null; _staleDraftTicks = 0; return false; }
+      if (value !== _staleDraftText) { _staleDraftText = value; _staleDraftTicks = 1; return false; }
+      if (++_staleDraftTicks < 2) return false;
+      _staleDraftText = null; _staleDraftTicks = 0;
+      setTextareaValue(editor, "");
+      diag("composer.staleInternalDraftCleared", { chars: value.length });
+      return editorText().trim() === "";
+    } catch { return false; }
   }
   function holdInputGeometry(editor, holdFrame) {
     const nodes=[editor], frame=holdFrame ? barAnchor() : null;
@@ -965,11 +1034,21 @@ const RSProvider: PlazCodeProvider = (() => {
   }
   async function typeAndSendRaw(text, images, opts, job) {
     assertSendOwner(job);
-    if(responsePending())throw sendError("DeepSeek is still responding. Nothing was sent.");
+    if(responsePending()){
+      await waitSend(()=>!responsePending(),15000,job);
+      if(responsePending())throw sendError("DeepSeek is still responding. Nothing was sent.");
+    }
     const editor=getEditor();if(!editor)throw sendError("DeepSeek input box not found.");
-    const current=editorText();if(current.trim())throw sendError("Your draft changed or still contains text. PlazCode kept your draft; clear it before sending an automatic request.","DEEPSEEK_CANCELLED");
+    let current=editorText();
+    if(current.trim() && isInternalDraft(current)){
+      setTextareaValue(editor,"");
+      current=editorText();
+      diag("send.clearedLeftoverInternalDraft",{});
+    }
+    if(current.trim())throw sendError("Your draft changed or still contains text. PlazCode kept your draft; clear it before sending an automatic request.","DEEPSEEK_CANCELLED");
     job.editor=editor;job.previousDraft=current;
     const releaseGeometry=holdInputGeometry(editor,!(images && images.length));
+    _sendingInternal = true;
     try {
     // Browser textareas normalize CRLF and bare CR to LF. Compare/authorize the
     // native representation, so Windows results do not fail the exact-draft
@@ -1000,7 +1079,7 @@ const RSProvider: PlazCodeProvider = (() => {
     if(!ready)throw sendError("DeepSeek is not ready to send. PlazCode paused without another attempt.");
     assertSendOwner(job);if(editorText()!==text)throw sendError("The draft changed before sending. Nothing was sent.","DEEPSEEK_CANCELLED");
     return await commitSend(job,getSendBtn());
-    } finally { releaseGeometry(); }
+    } finally { _sendingInternal = false; releaseGeometry(); }
   }
   function observeManualSend() {
     cancelPendingSends();
@@ -1360,7 +1439,7 @@ const RSProvider: PlazCodeProvider = (() => {
     guardedSender: true,
     sendFailureDetail: () => _lastFailure,
     isGenerating, isBusyNow, isHardGenerating, responsePending, genDebug,
-    enforceComposer, ensureComposerReady,
+    enforceComposer, ensureComposerReady, sweepStaleInternalDraft,
     turnHalted, findContinueBtn, clickContinueBtn,
     scanError, scanBusy, isTooLongMsg, isBusyMsg,
     // actions

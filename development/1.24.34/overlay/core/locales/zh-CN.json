@@ -1468,5 +1468,13 @@
   "UI check skipped: Studio did not answer": "已跳过界面检查：Studio 没有响应",
   "UI check passed: no new layout problems": "界面检查通过：没有新的布局问题",
   "UI check still shows problems": "界面检查仍有问题",
-  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode 已两次要求 AI 修复。仍有问题："
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode 已两次要求 AI 修复。仍有问题：",
+  "Interrupted run found": "发现中断的运行",
+  "1 step finished before this tab reloaded.": "在此标签页重新加载前已完成 1 个步骤。",
+  "{count} steps finished before this tab reloaded.": "在此标签页重新加载前已完成 {count} 个步骤。",
+  "This run was interrupted when the tab reloaded.": "此运行在标签页重新加载时中断。",
+  "Last step: {step}": "上一步：{step}",
+  "Finished steps will not run again.": "已完成的步骤不会重新运行。",
+  "Start fresh": "重新开始",
+  "Keep my computer awake during runs": "运行时保持电脑唤醒"
 }

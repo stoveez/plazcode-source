@@ -11,17 +11,28 @@
 // webRequest completes AFTER the response body, even when native Stop is absent.
 const deepSeekRequests = (() => {
   const api = chrome.webRequest, store = chrome.storage.session, key = 'rs-deepseek-open-requests';
+  // An aborted or orphaned stream must never lock DeepSeek's responsePending() forever.
+  const STALE_MS = 10 * 60 * 1000;
   if (!api?.onBeforeRequest || !api?.onCompleted || !api?.onErrorOccurred) return null;
   let state = {revision:0, active:[]};
+  const pruneStale = (now = Date.now()) => {
+    const before = state.active.length;
+    state.active = state.active.filter(r => r && Number.isFinite(r.startedAt) && now - r.startedAt < STALE_MS);
+    return state.active.length !== before;
+  };
   let chain = Promise.resolve(store?.get(key)).then(saved => {
     const old = saved?.[key];
-    if (old && Number.isSafeInteger(old.revision) && Array.isArray(old.active)) state = old;
+    if (old && Number.isSafeInteger(old.revision) && Array.isArray(old.active)) {
+      state = old;
+      if (pruneStale()) { state.revision++; try { void store?.set({[key]:state}); } catch {} }
+    }
   }).catch(() => {});
   const enqueue = fn => { chain = chain.then(fn).catch(() => {}); return chain; };
   const sameDocument = (r, tabId, documentId) => r.tabId === tabId && (!documentId || !r.documentId || r.documentId === documentId);
   const view = (tabId, documentId) => ({ok:true, revision:state.revision,
     active:state.active.filter(r => sameDocument(r,tabId,documentId)).map(({id,path,startedAt}) => ({id,path,startedAt}))});
   async function saveAndNotify(record) {
+    pruneStale();
     state.revision++;
     try { await store?.set({[key]:state}); } catch {}
     try {
@@ -51,14 +62,21 @@ const deepSeekRequests = (() => {
   }); };
   api.onCompleted.addListener(terminal,filter);
   api.onErrorOccurred.addListener(terminal,filter);
-  chrome.tabs.onRemoved.addListener(tabId => { void enqueue(async()=>{
+  const clearTab = tabId => { void enqueue(async()=>{
     if(!state.active.some(r=>r.tabId===tabId))return;
     state.active=state.active.filter(r=>r.tabId!==tabId);state.revision++;
     try { await store?.set({[key]:state}); } catch {}
-  }); });
-  return {snapshot:sender=>enqueue(()=>{
+  }); };
+  chrome.tabs.onRemoved.addListener(clearTab);
+  // A tab reload or full navigation discards the old document; clear its open
+  // request entries immediately so a reload never inherits a stuck "still responding" lock.
+  chrome.tabs.onUpdated?.addListener((tabId, changeInfo) => {
+    if (changeInfo && changeInfo.status === 'loading') clearTab(tabId);
+  });
+  return {snapshot:sender=>enqueue(async()=>{
     let url;try{url=new URL(sender.url || sender.tab?.url);}catch{return {ok:false};}
     if(url.origin!=='https://chat.deepseek.com' || sender.frameId && sender.frameId!==0 || !Number.isInteger(sender.tab?.id))return {ok:false};
+    if (pruneStale()) { state.revision++; try { await store?.set({[key]:state}); } catch {} }
     return view(sender.tab.id,sender.documentId);
   })};
 })();
@@ -1558,6 +1576,7 @@ chrome.tabs.onRemoved?.addListener(tabId => { runTabs.delete(tabId); });
 function broadcastStatus() {
   chrome.runtime.sendMessage(statusObj()).catch(() => {});
   chrome.tabs.query({ url: PROVIDER_URLS }, (tabs) => {
+    if (chrome.runtime.lastError || !Array.isArray(tabs)) return;
     for (const t of tabs) tabEngine(t.id).then(mode=>chrome.tabs.sendMessage(t.id, statusObj(mode))).catch(() => {});
   });
 }

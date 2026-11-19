@@ -457,11 +457,12 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   async function typeAndSend(text, images) {
-    const ed = getEditor();
+    let ed = getEditor();
     if (!ed) throw new Error("Gemini input box not found");
     // Cap BEFORE any comparison below, so the retry path's `editorText() !== text`
     // test compares against what we actually typed.
     text = truncateForSend(text);
+    const normDraft = (v) => String(v == null ? "" : v).replace(/\r\n?/g, "\n").replace(/\u00A0/g, " ").trim();
     const relock = _locked;
     try {
       if (relock) ed.setAttribute("contenteditable", "true"); // injection needs it editable
@@ -474,7 +475,7 @@ const RSProvider: PlazCodeProvider = (() => {
       // calls with 3 different files, and the model's replies stayed generic
       // - it never got one coherent image). So: only retype if the text isn't
       // already there, and only attach if nothing is pending yet.
-      if (editorText() !== text) await setEditorText(ed, text);
+      if (normDraft(editorText()) !== normDraft(text)) await setEditorText(ed, text);
       const hasPendingAttachment = () => {
         const box = safeQuery(document, S.inputArea);
         return !!(box && safeQuery(box, "[class*='preview'], [class*='thumbnail']"));
@@ -492,12 +493,14 @@ const RSProvider: PlazCodeProvider = (() => {
       // it registered the text. The Quill-API injection (see setEditorText)
       // fires text-change so this resolves; if it doesn't, the send won't work.
       await waitFor(() => !!sendButton(), 3000);
+      ed = getEditor() || ed;
+      if (relock && ed) ed.setAttribute("contenteditable", "true");
       // Last resort before the Enter fallback: re-type. A composer that was
       // wedged when setEditorText ran can swallow the insert entirely, leaving
       // an empty editor and therefore no send button - the "Start did nothing,
       // the system prompt was never sent" report. Retyping now that the stop is
       // cleared is safe: the editor is either empty or holds our own text.
-      if (!sendButton() && editorText() !== text) {
+      if (!sendButton() && normDraft(editorText()) !== normDraft(text)) {
         diag("send.retype", {});
         await setEditorText(ed, text);
         await waitFor(() => !!sendButton(), 2000);
@@ -506,6 +509,7 @@ const RSProvider: PlazCodeProvider = (() => {
       diag("send.click", { found: !!btn, pending: hasPendingAttachment() });
       if (btn) { btn.click(); return; }
       // Fallback: Enter sends in Gemini's composer.
+      ed = getEditor() || ed;
       const o = { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true };
       ed.dispatchEvent(new KeyboardEvent("keydown", o));
       ed.dispatchEvent(new KeyboardEvent("keyup", o));

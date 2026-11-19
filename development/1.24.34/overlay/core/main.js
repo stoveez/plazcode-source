@@ -1036,8 +1036,14 @@
   try { P.init({ diag, sendContext: () => ({session:A.sessionGen,stop:A.stopAt || 0,cooldown:normalizeCooldown(reliabilitySettings.rsCommandCooldown)*1000}), pacingRequest: request => bg({type:"provider-pacing",request,page:request.client}), isStopped: () => A.stop, isSessionActive: () => A.started || A.running, requestStart: () => startSession() }); } catch {}
 
   async function waitFor(pred, timeout) {
-    const t0 = Date.now();
+    let t0 = Date.now(), lastBeatAt = t0;
     while (Date.now() - t0 < timeout) {
+      const now = Date.now();
+      if (!document.hidden && typeof PlazCodeStallGuard !== "undefined" && PlazCodeStallGuard.frozenGap) {
+        const frozen = PlazCodeStallGuard.frozenGap(lastBeatAt, now);
+        if (frozen) t0 += frozen;
+      }
+      lastBeatAt = now;
       if (pred()) return true;
       await sleep(120);
     }
@@ -1254,8 +1260,15 @@
     const savedCoworkDraft=!userPrompt && cowork.snapshot().enabled && typeof P.writeDraft==='function' ? String(P.editorText()||'') : '';
     if(savedCoworkDraft){
       P.setInputLock(true);
-      const cleared=await P.writeDraft('',savedCoworkDraft);
-      if(!cleared || !cleared.ok)throw new SendAbortedError('Your follow-up draft changed. Tool feedback was not sent.');
+      let cleared=await P.writeDraft('',savedCoworkDraft);
+      if((!cleared || !cleared.ok) && String(P.editorText()||'')===savedCoworkDraft){
+        await sleep(120);
+        cleared=await P.writeDraft('',savedCoworkDraft);
+      }
+      if(!cleared || !cleared.ok){
+        ui.banner("warn","Send paused","Your follow-up draft changed while PlazCode tried to send a tool result. Clear or send your draft, then resume.");
+        throw new SendAbortedError('Your follow-up draft changed. Tool feedback was not sent.');
+      }
     }
     A.injecting = true;
     const injection = A.injectGeneration = (A.injectGeneration || 0) + 1;
@@ -4992,6 +5005,19 @@ return result`;
     P.setInputLock(true); // prevent user from typing while the agent is active
     ui.inputCover(true);  // keep the "Agent is working" cover up for the WHOLE loop
     A.loopBeatAt = Date.now();
+    A.recoveryPending = null;
+    try { ui.clearRecoveryPrompt(); } catch {}
+    if (typeof runRecovery !== "undefined" && runRecovery && typeof PlazCodeRunRecovery !== "undefined") {
+      const recChat = P.conversationKey();
+      const rec = PlazCodeRunRecovery.beginRun(A.recoveryRecord, {
+        provider: P.id,
+        chat: recChat,
+        engine: activeEngine(),
+        lastGoal: A.taskRequest || "",
+        lastAssistantId: P.lastAssistantId ? String(P.lastAssistantId() || "") : "",
+      });
+      if (rec) { A.recoveryRecord = rec; void runRecovery.save(rec); }
+    }
     diag("loop.start", { base });
     try {
       if (!recoveryAttempt) try { playtestCheck?.reset(); uiCheck?.reset(); } catch {}
@@ -5396,6 +5422,18 @@ return result`;
           // watchdog never re-fires it after a scroll re-render wipes the node's
           // zloop/zResume markers (see the `executed` map).
           rememberExecuted(res.item, res.text);
+          if (typeof runRecovery !== "undefined" && runRecovery && typeof PlazCodeRunRecovery !== "undefined") {
+            const recChat = A.loopKey || P.conversationKey();
+            const baseRec = A.recoveryRecord || PlazCodeRunRecovery.beginRun(null, { provider: P.id, chat: recChat, engine: activeEngine(), lastGoal: A.taskRequest || "" });
+            const nextRec = PlazCodeRunRecovery.recordToolStart(baseRec, {
+              tool: call.tool,
+              arg: argSummary(call),
+              turnKey: turnKey(res.item),
+              turnPrefix: String(res.text || "").slice(0, 60),
+              lastAssistantId: P.lastAssistantId ? String(P.lastAssistantId() || "") : "",
+            });
+            if (nextRec) { A.recoveryRecord = nextRec; void runRecovery.save(nextRec); }
+          }
           markActivity(res.item);
           if (!/^(?:list_commands|list_tools)$/.test(call.tool)) activity.step(call.tool, argSummary(call));
           diag("tool.start", { name: call.tool });
@@ -5506,7 +5544,25 @@ return result`;
           A.loopBeatAt = Date.now();
           const preparedFeedback = prepareToolFeedback(toSendFinal);
           completedFeedback = {text:preparedFeedback,chat:P.conversationKey(),engine:activeEngine(),session:A.sessionGen};
+          if (typeof runRecovery !== "undefined" && runRecovery && typeof PlazCodeRunRecovery !== "undefined") {
+            const recChat = A.loopKey || P.conversationKey();
+            const baseRec = A.recoveryRecord || PlazCodeRunRecovery.beginRun(null, { provider: P.id, chat: recChat, engine: activeEngine(), lastGoal: A.taskRequest || "" });
+            const doneRec = PlazCodeRunRecovery.recordToolDone(baseRec, {
+              tool: call.tool,
+              ok: !isErr,
+              summary: outSummary(feedback),
+              pendingFeedbackText: preparedFeedback,
+              afterAssistantId: P.lastAssistantId ? String(P.lastAssistantId() || "") : "",
+            });
+            if (doneRec) { A.recoveryRecord = doneRec; void runRecovery.save(doneRec); }
+          }
           base = await submitAndGetBase(preparedFeedback, images);
+          if (typeof runRecovery !== "undefined" && runRecovery && typeof PlazCodeRunRecovery !== "undefined" && A.recoveryRecord) {
+            const sentRec = PlazCodeRunRecovery.recordFeedbackSent(A.recoveryRecord, {
+              lastAssistantId: P.lastAssistantId ? String(P.lastAssistantId() || "") : "",
+            });
+            if (sentRec) { A.recoveryRecord = sentRec; void runRecovery.save(sentRec); }
+          }
           A.loopBeatAt = Date.now();
           markActivity(P.allItems().filter(P.isUserItem).at(-1));
         }
@@ -5537,6 +5593,10 @@ return result`;
       try{diag('turn.end',{completed:!!completed,stopped:!!A.stop,ms:A.turnStartedAt?Date.now()-A.turnStartedAt:null});}catch{} // 1.24.30
       if(A.taskBudget===taskBudget)A.taskBudget=null;
       void finishTaskCheckpoint(completed);
+      if ((completed || A.userStopped) && typeof runRecovery !== "undefined" && runRecovery) {
+        void runRecovery.clear(P.id, A.loopKey || P.conversationKey());
+        A.recoveryRecord = null;
+      }
       if (!completed && !recoverSession && cowork.snapshot().pending.length) cowork.pause("The agent stopped before finishing. Check the chat, then resume the queue.");
       try { playSfx(A.stop ? "stop" : (A._sfxErr ? "error" : "done")); A._sfxErr = false; } catch {}
       A.running = false;
@@ -5778,6 +5838,12 @@ return result`;
     }
     A.stopMode = stopMode;
     A.budgetResume=null;
+    A.recoveryPending = null;
+    try { ui.clearRecoveryPrompt(); } catch {}
+    if (typeof runRecovery !== "undefined" && runRecovery) {
+      void runRecovery.clear(P.id, A.loopKey || P.conversationKey());
+      A.recoveryRecord = null;
+    }
     if (A.starting) { ++A.startGen; A.starting = false; A.startingKey = null; }
     A.stopping = true;
     A.stopAt = Date.now(); // grace anchor for the regenerate-as-resume gates
@@ -11813,6 +11879,57 @@ function renderCards(panel) {
       root.appendChild(b);
     }
 
+    let recoveryBannerEl = null;
+    function clearRecoveryPrompt() {
+      if (recoveryBannerEl) { try { recoveryBannerEl.remove(); } catch {} recoveryBannerEl = null; }
+    }
+    function showRecoveryPrompt(record, { onResume, onFresh } = {}) {
+      if (!root || !record) return;
+      const sig = `${record.key}|${record.updatedAt}|${record.stepsDone}|${record.lastStep}`;
+      if (recoveryBannerEl && recoveryBannerEl.isConnected && recoveryBannerEl.dataset.sig === sig) return;
+      clearRecoveryPrompt();
+      const b = document.createElement("div");
+      b.className = "rs-banner warn rs-recovery";
+      b.dataset.sig = sig;
+      const tr = (s, vals) => (typeof PlazCodeI18n !== "undefined" && PlazCodeI18n.t) ? PlazCodeI18n.t(s, vals) : s;
+      const titleEl = document.createElement("div");
+      titleEl.className = "rs-banner-t";
+      titleEl.setAttribute("data-pc-i18n", "");
+      titleEl.textContent = tr("Interrupted run found");
+      const msgEl = document.createElement("div");
+      msgEl.className = "rs-banner-m";
+      const parts = [];
+      if (record.stepsDone > 0) parts.push(tr(record.stepsDone === 1 ? "1 step finished before this tab reloaded." : "{count} steps finished before this tab reloaded.", { count: record.stepsDone }));
+      else parts.push(tr("This run was interrupted when the tab reloaded."));
+      if (record.lastStep) parts.push(tr("Last step: {step}", { step: record.lastStep }));
+      parts.push(tr("Finished steps will not run again."));
+      msgEl.textContent = parts.join(" ");
+      const acts = document.createElement("div");
+      acts.className = "rs-banner-acts";
+      const resumeBtn = document.createElement("button");
+      resumeBtn.type = "button";
+      resumeBtn.className = "rs-recovery-resume";
+      resumeBtn.textContent = tr("Resume");
+      resumeBtn.addEventListener("click", () => {
+        resumeBtn.disabled = true;
+        freshBtn.disabled = true;
+        clearRecoveryPrompt();
+        if (typeof onResume === "function") onResume();
+      });
+      const freshBtn = document.createElement("button");
+      freshBtn.type = "button";
+      freshBtn.className = "rs-banner-x rs-recovery-fresh";
+      freshBtn.textContent = tr("Start fresh");
+      freshBtn.addEventListener("click", () => {
+        clearRecoveryPrompt();
+        if (typeof onFresh === "function") onFresh();
+      });
+      acts.append(resumeBtn, freshBtn);
+      b.append(titleEl, msgEl, acts);
+      root.appendChild(b);
+      recoveryBannerEl = b;
+    }
+
     // Left-hand RobloxScript popup showing the latest screen_capture. Fed from the
     // in-memory base64 (a data: URL always renders), so it works identically on
     // every provider and never touches the site's DOM. Only the most recent
@@ -12491,7 +12608,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
       if (action === "stop" && state.canStop) { stopLoop(); return { ok: true }; }
       return { ok: false, error: "The AI chat is no longer ready for this action." };
     }
-    return { refreshMenu: () => { if (menuEl && !menuEl.hidden) buildMenu(); }, captureHandoff, noteChatSoon, latestChatNotePath: () => latestHere() && latestHere().path || '', isCoworkCoverTarget: node => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, renderAgents, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast, banner, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
+    return { refreshMenu: () => { if (menuEl && !menuEl.hidden) buildMenu(); }, captureHandoff, noteChatSoon, latestChatNotePath: () => latestHere() && latestHere().path || '', isCoworkCoverTarget: node => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, renderAgents, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast, banner, showRecoveryPrompt, clearRecoveryPrompt, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
   })();
 
   const clarification = PlazCodeClarification.create({
@@ -13378,6 +13495,92 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
     }
     return false;
   }
+  const runRecovery = typeof PlazCodeRunRecovery !== "undefined" ? PlazCodeRunRecovery.createStore() : null;
+  function dismissRecoveredRun(rec) {
+    A.recoveryPending = null;
+    A.recoveryRecord = null;
+    try { ui.clearRecoveryPrompt(); } catch {}
+    if (runRecovery && rec) void runRecovery.clear(rec.provider, rec.chat);
+    diag("recovery.dismissed", { chat: rec && rec.chat });
+    ui.toast("Cleared interrupted run. Ready to start fresh.");
+  }
+  async function resumeRecoveredRun(rec) {
+    if (!rec || A.running || A.starting || typeof PlazCodeRunRecovery === "undefined") return;
+    A.recoveryPending = null;
+    A.recoveryRecord = rec;
+    try { ui.clearRecoveryPrompt(); } catch {}
+    // Restore already-dispatched turns into the off-DOM dedupe map so no finished tool ever runs twice.
+    for (const turn of (rec.completedTurns || [])) {
+      if (turn && turn.turnKey && turn.prefix) executed.set(`${rec.chat}|${turn.turnKey}`, turn.prefix);
+    }
+    const last = P.lastAssistant();
+    const all = P.allItems();
+    const after = last ? all[all.indexOf(last) + 1] : null;
+    const hasFeedbackAfter = !!(after && P.isUserItem(after) && RSParse.isInjectedFeedback(P.classifyText(after, ".rs-chip")));
+    const lastTxt = last ? P.itemText(last) : "";
+    const hasUnrunTool = !!(last && !hasFeedbackAfter && RSParse.hasToolSignature(lastTxt) && RSParse.parseToolCalls(lastTxt).length > 0 && !isRememberedExecuted(last, lastTxt));
+    const plan = PlazCodeRunRecovery.decideResume(rec, {
+      lastAssistantId: P.lastAssistantId ? String(P.lastAssistantId() || "") : "",
+      hasFeedbackAfterLastAssistant: hasFeedbackAfter,
+      hasUnrunToolOnLastAssistant: hasUnrunTool,
+      lastAssistantTurnKey: last ? turnKey(last) : "",
+      lastAssistantText: lastTxt,
+    });
+    A.started = true;
+    ui.setStarted(true);
+    rememberSession(rec.chat);
+    A.userStopped = false;
+    A.stop = false;
+    A.stopping = false;
+    diag("recovery.resume", { mode: plan.mode, stepsDone: rec.stepsDone });
+    try {
+      if (plan.mode === "run_unexecuted_turn") {
+        A.sendToken = null;
+        await agentLoop(Math.max(0, P.assistantCount() - 1));
+      } else {
+        const base = await submitAndGetBase(plan.text);
+        if (plan.mode === "deliver_pending_feedback" && runRecovery && A.recoveryRecord) {
+          const sentRec = PlazCodeRunRecovery.recordFeedbackSent(A.recoveryRecord, {
+            lastAssistantId: P.lastAssistantId ? String(P.lastAssistantId() || "") : "",
+          });
+          if (sentRec) { A.recoveryRecord = sentRec; void runRecovery.save(sentRec); }
+        }
+        if (!A.stop) await agentLoop(base);
+      }
+    } catch (err) {
+      if (!(err instanceof SendAbortedError)) {
+        ui.banner("warn", "Could not resume run", String((err && err.message) || err));
+      }
+    }
+  }
+  function checkRunRecovery() {
+    if (!runRecovery || typeof PlazCodeRunRecovery === "undefined") return;
+    const chat = P.conversationKey();
+    if (!chat || A.running || A.starting || A.userStopped) {
+      if (A.recoveryPending && (!chat || A.recoveryPending.chat !== chat || A.running || A.starting)) {
+        A.recoveryPending = null;
+        try { ui.clearRecoveryPrompt(); } catch {}
+      }
+      return;
+    }
+    const rec = runRecovery.getSync(P.id, chat);
+    if (PlazCodeRunRecovery.canOfferRecovery(rec, { provider: P.id, chat, running: A.running, starting: A.starting })) {
+      A.recoveryPending = rec;
+      if (!A.started) { A.started = true; ui.setStarted(true); }
+      try {
+        ui.showRecoveryPrompt(rec, {
+          onResume: () => { void resumeRecoveredRun(rec); },
+          onFresh: () => dismissRecoveredRun(rec),
+        });
+      } catch {}
+    } else if (A.recoveryPending) {
+      A.recoveryPending = null;
+      try { ui.clearRecoveryPrompt(); } catch {}
+    }
+  }
+  if (runRecovery) {
+    void runRecovery.load().then(() => { try { checkRunRecovery(); } catch {} }).catch(() => {});
+  }
   function syncSessionState() {
     // While a bootstrap runs, track its conversation. The bootstrap chat gets a
     // real id only AFTER the prompt lands (fresh "/app" → "/app/<id>"), so we pin
@@ -13453,13 +13656,18 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
       has = A.started || markerInDom || (!!path && sessionKnown(path));
     } else {
       // Different conversation → recompute from scratch.
+      // Reset the boot baseline and recent-generation timestamp on chat switch so opening
+      // an old chat with an unrun command never triggers the auto-resume watchdog by mistake.
       has = markerInDom || (!!path && sessionKnown(path));
       lastSyncPath = path;
+      A.bootBaselineId = P.lastAssistantId ? P.lastAssistantId() : null;
+      A.lastGenAt = 0;
     }
     if (has !== A.started) {
       A.started = has;
       ui.setStarted(has);
     }
+    checkRunRecovery();
   }
 
   // Schedule a debounced sweep. requestAnimationFrame is PAUSED in a background
@@ -13677,7 +13885,7 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
   // spontaneously fires a command on some later unrelated DOM churn.
 const RESUME_FRESH_MS = 180000;
 rsInterval(() => {
-if (!A.started || A.running || A.starting || A.injecting || A.enhancing || A.budgetResume || A.pendingToolSettles) return;
+if (!A.started || A.running || A.starting || A.injecting || A.enhancing || A.budgetResume || A.pendingToolSettles || A.recoveryPending) return;
 if (document.hidden && !bgMode) return;              // parking mode: don't parse/exec off-screen (agentLoop gate
 if (A.userStopped) return;                          // user halted → never relaunch
     if (P.isGenerating()) {

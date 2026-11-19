@@ -1468,5 +1468,13 @@
   "UI check skipped: Studio did not answer": "Controllo dell'interfaccia saltato: Studio non ha risposto",
   "UI check passed: no new layout problems": "Controllo dell'interfaccia superato: nessun nuovo problema di layout",
   "UI check still shows problems": "Il controllo dell'interfaccia mostra ancora problemi",
-  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode ha chiesto due volte all'IA di correggerli. Ancora sbagliato:"
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode ha chiesto due volte all'IA di correggerli. Ancora sbagliato:",
+  "Interrupted run found": "Esecuzione interrotta trovata",
+  "1 step finished before this tab reloaded.": "1 passaggio completato prima del ricaricamento di questa scheda.",
+  "{count} steps finished before this tab reloaded.": "{count} passaggi completati prima del ricaricamento di questa scheda.",
+  "This run was interrupted when the tab reloaded.": "Questa esecuzione è stata interrotta al ricaricamento della scheda.",
+  "Last step: {step}": "Ultimo passaggio: {step}",
+  "Finished steps will not run again.": "I passaggi completati non verranno eseguiti di nuovo.",
+  "Start fresh": "Ricomincia",
+  "Keep my computer awake during runs": "Mantieni attivo il computer durante le esecuzioni"
 }

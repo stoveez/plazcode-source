@@ -1468,5 +1468,13 @@
   "UI check skipped: Studio did not answer": "Проверка интерфейса пропущена: Studio не ответил",
   "UI check passed: no new layout problems": "Проверка интерфейса пройдена: новых проблем с раскладкой нет",
   "UI check still shows problems": "Проверка интерфейса всё ещё показывает проблемы",
-  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode дважды просил ИИ их исправить. Всё ещё не так:"
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode дважды просил ИИ их исправить. Всё ещё не так:",
+  "Interrupted run found": "Найдена прерванная задача",
+  "1 step finished before this tab reloaded.": "1 шаг завершился до перезагрузки этой вкладки.",
+  "{count} steps finished before this tab reloaded.": "Завершено шагов до перезагрузки вкладки: {count}.",
+  "This run was interrupted when the tab reloaded.": "Эта задача была прервана при перезагрузке вкладки.",
+  "Last step: {step}": "Последний шаг: {step}",
+  "Finished steps will not run again.": "Завершённые шаги не будут выполняться повторно.",
+  "Start fresh": "Начать заново",
+  "Keep my computer awake during runs": "Не давать компьютеру засыпать во время работы"
 }

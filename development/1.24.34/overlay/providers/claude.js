@@ -626,8 +626,10 @@ const RSProvider                   = (() => {
       // nothing until then, with no error). Keep typing it again, half a second apart, until the text is really in
       // the box, instead of "sending" an empty one.
       for (let attempt = 1; attempt <= 20 && !stillDraft(); attempt++) {
+        if (cancelled()) return;
         diag("claude.send.retype", { attempt, stale: !ed.isConnected, ce: safeRead(() => ed.getAttribute("contenteditable"), null) });
         await sleep(500);
+        if (cancelled()) return;
         ed = getEditor() || ed;
         if (relock) ed.setAttribute("contenteditable", "true");
         await typeEditorText(ed, text);
@@ -640,12 +642,15 @@ const RSProvider                   = (() => {
       }
       // Claude refuses a new message while it is still streaming. Wait for the Stop button to go away instead of
       // pressing Enter into a busy composer.
-      if (stopBefore) { diag("claude.send.waitStopGone", {}); await waitFor(() => !stopButton(), 45000); }
-      await waitFor(() => !!sendButton(), Math.min(15000, 2500 + Math.ceil(String(text).length / 25)));
+      if (stopBefore) { diag("claude.send.waitStopGone", {}); await waitFor(() => cancelled() || !stopButton(), 45000); }
+      await waitFor(() => cancelled() || !!sendButton(), Math.min(15000, 2500 + Math.ceil(String(text).length / 25)));
       if (cancelled()) return;
       const btn = sendButton();
       if (btn) { diag("claude.send.click", {}); btn.click(); }
-      else if (stopButton()) { diag("claude.send.stillStreaming", {}); return; }
+      else if (stopButton()) {
+        diag("claude.send.stillStreaming", {});
+        throw new Error("Claude is still streaming its previous reply and is not ready to send. Nothing was sent.");
+      }
       else { diag("claude.send.enter", { candidates: sendCandidates().length }); pressEnter(getEditor() || ed); }
       // The draft is still there untouched and nothing started: the first attempt
       // provably did not submit, so one Enter cannot duplicate the message.
