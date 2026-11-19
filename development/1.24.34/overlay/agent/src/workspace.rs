@@ -1841,7 +1841,8 @@ pub async fn tool_screen_capture(ws: &Workspace, args: &serde_json::Value) -> Re
     let dest = ws.resolve_path(path_rel.as_str(), false)?;
     #[cfg(windows)]
     {
-        let img = grab_screen()?;
+        // While the whole screen is shared in Ask PlazCode, the Ask PlazCode panel is left out of the AI's picture (2026-11-19).
+        let img = crate::desktop_control::screen_for_ai()?;
         img.save(&dest).map_err(|e| format!("could not write PNG: {e}"))?;
         return Ok(format!("Captured {}x{} screen to {}", img.width(), img.height(), ws.display(&dest)));
     }
@@ -2035,7 +2036,7 @@ mod winctl {
 }
 
 #[cfg(windows)]
-fn collect_windows() -> Vec<(usize, String)> {
+pub(crate) fn collect_windows() -> Vec<(usize, String)> {
     use std::sync::Mutex;
     use once_cell::sync::Lazy;
     use winctl::*;

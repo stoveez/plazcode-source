@@ -46,6 +46,41 @@ pub struct State {
     /// Step 7: the label's words in the person's PlazCode language (working, paused, resume, stop), from the
     /// extension; empty = English.
     pub words: [String; 4],
+    /// 2026-11-19 (owner: "in the Ask PlazCode screenshots the panel should be hidden, the rest of the screen visible"):
+    /// where the Ask PlazCode panel is, sent by the extension with each "share" heartbeat. Left out of the AI's pictures.
+    pub panel: Option<Panel>,
+}
+
+/// The Ask PlazCode panel on screen, in the browser's screen coordinates (CSS pixels of the screen `screen_w` wide).
+/// `window`: a separate window docked beside the browser (hidden for a moment while the AI's picture is taken, so what is
+/// behind it shows); otherwise Chrome's side panel, a strip of the browser window with nothing behind it (blanked out).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Panel { pub window: bool, pub title: String, pub x: f64, pub y: f64, pub w: f64, pub h: f64, pub screen_w: f64 }
+
+/// The panel description the extension sends (`{kind: "window"|"strip", title, x, y, w, h, screenWidth}`), checked.
+pub fn panel_from(v: &Value) -> Option<Panel> {
+    let n = |k: &str| v[k].as_f64().filter(|x| x.is_finite() && x.abs() < 100_000.0);
+    let (x, y, w, h, screen_w) = (n("x")?, n("y")?, n("w")?, n("h")?, n("screenWidth")?);
+    if w <= 0.0 || h <= 0.0 || screen_w <= 0.0 { return None; }
+    let title: String = v["title"].as_str().unwrap_or("Ask PlazCode").chars().take(80).collect();
+    Some(Panel { window: v["kind"].as_str() == Some("window"), title: if title.trim().is_empty() { "Ask PlazCode".into() } else { title }, x, y, w, h, screen_w })
+}
+
+/// The pixels of a `img_w` x `img_h` screen picture the panel covers (left, top, width, height), or None when it is off it.
+pub fn panel_pixels(p: &Panel, img_w: u32, img_h: u32) -> Option<(u32, u32, u32, u32)> {
+    let k = img_w as f64 / p.screen_w;
+    let x0 = (p.x * k).floor().max(0.0).min(img_w as f64);
+    let y0 = (p.y * k).floor().max(0.0).min(img_h as f64);
+    let x1 = ((p.x + p.w) * k).ceil().max(0.0).min(img_w as f64);
+    let y1 = ((p.y + p.h) * k).ceil().max(0.0).min(img_h as f64);
+    if x1 <= x0 || y1 <= y0 { return None; }
+    Some((x0 as u32, y0 as u32, (x1 - x0) as u32, (y1 - y0) as u32))
+}
+
+/// Paints the panel's area a plain dark grey (the AI then sees an empty strip, not PlazCode's own chat).
+pub fn blank_panel(img: &mut image::RgbaImage, area: (u32, u32, u32, u32)) {
+    let (x0, y0, w, h) = area;
+    for y in y0..(y0 + h).min(img.height()) { for x in x0..(x0 + w).min(img.width()) { img.put_pixel(x, y, image::Rgba([24, 26, 31, 255])); } }
 }
 
 /// After Resume: input in the first moment, and input that keeps coming without a rest, is the person finishing the click.
@@ -89,7 +124,7 @@ impl State {
             // the extension sends "keep" with its heartbeat (every 5 s) and PlazCode stays in control (only while it already is).
             "keep" => { if self.active(now) && !self.paused { self.active_until = Some(now + IDLE_END); } Ok(()) }
             "share" => { self.sharing_until = Some(now + Duration::from_secs(30)); Ok(()) }
-            "unshare" => { self.sharing_until = None; Ok(()) }
+            "unshare" => { self.sharing_until = None; self.panel = None; Ok(()) }
             other => Err(format!("unknown control action '{}'", other.chars().take(20).collect::<String>())),
         }
     }
@@ -104,7 +139,7 @@ impl State {
     }
 }
 
-static STATE: Mutex<State> = Mutex::new(State { active_until: None, paused: false, stopped_at: None, accent: String::new(), ai_point: None, expect_until: None, sharing_until: None, settle_until: None, settle_cap: None, words: [String::new(), String::new(), String::new(), String::new()] });
+static STATE: Mutex<State> = Mutex::new(State { active_until: None, paused: false, stopped_at: None, accent: String::new(), ai_point: None, expect_until: None, sharing_until: None, settle_until: None, settle_cap: None, words: [String::new(), String::new(), String::new(), String::new()], panel: None });
 pub fn with<T>(f: impl FnOnce(&mut State) -> T) -> T { f(&mut STATE.lock().unwrap_or_else(|e| e.into_inner())) }
 
 /// Before a desktop command: refuse, wait for the person, or go (and mark control as active).
@@ -172,6 +207,7 @@ pub async fn post(axum::Json(body): axum::Json<Value>) -> axum::Json<Value> {
     if !enabled() { return axum::Json(json!({"ok": false, "error": "Not available in this version."})); }
     if let Some(accent) = body["accent"].as_str() { set_accent(accent); }
     if body["words"].is_object() { set_words(&body["words"]); }
+    if let Some(panel) = body.get("panel") { let panel = panel_from(panel); with(|s| s.panel = panel); }
     match body["action"].as_str() {
         Some(action) => match act(action) { Ok(()) => axum::Json(json!({"ok": true, "control": status()})), Err(error) => axum::Json(json!({"ok": false, "error": error})) },
         None => axum::Json(json!({"ok": true, "control": status()})),
@@ -250,14 +286,64 @@ mod input_watch {
 }
 
 /// The screen as a small PNG (at most 960 wide) for the live card, while PlazCode controls the desktop.
-pub fn frame_png() -> Result<Vec<u8>, String> {
-    let shot = screen()?;
+pub fn frame_png() -> Result<Vec<u8>, String> { frame_png_from(screen) }
+fn frame_png_from(take: fn() -> Result<image::RgbaImage, String>) -> Result<Vec<u8>, String> {
+    let shot = take()?;
     let width = shot.width().max(1);
     let small = if width > 960 { image::imageops::resize(&shot, 960, ((shot.height() as u64 * 960) / width as u64).max(1) as u32, image::imageops::FilterType::Triangle) } else { shot };
     let mut out = std::io::Cursor::new(Vec::new());
     small.write_to(&mut out, image::ImageFormat::Png).map_err(|e| format!("could not make the picture: {e}"))?;
     Ok(out.into_inner())
 }
+/// A picture of the screen for the AI. While the whole screen is shared in Ask PlazCode, the Ask PlazCode panel is left out
+/// (owner, 2026-11-19; owner's choice: hide it per picture): a docked panel window is hidden for a moment so what is
+/// behind it shows; Chrome's side panel (nothing behind it) and anything the window trick cannot do is blanked out.
+/// The live picture in the panel keeps using `screen()` (hiding the window for every frame would make it flicker).
+pub fn screen_for_ai() -> Result<image::RgbaImage, String> {
+    let now = Instant::now();
+    let panel = with(|s| if s.sharing(now) { s.panel.clone() } else { None });
+    let Some(panel) = panel else { return screen(); };
+    #[cfg(windows)]
+    {
+        if panel.window {
+            if let Some(shot) = hide_panel::capture_without(&panel.title, screen) { return shot; }
+        }
+    }
+    let mut shot = screen()?;
+    if let Some(area) = panel_pixels(&panel, shot.width(), shot.height()) { blank_panel(&mut shot, area); }
+    Ok(shot)
+}
+
+/// Windows: the docked Ask PlazCode window (a browser popup titled "Ask PlazCode") is hidden while the picture is taken,
+/// then shown again without taking the focus. Only narrow windows with exactly that title (or that title followed by
+/// " - ...") count, so a full browser window is never touched.
+#[cfg(windows)]
+mod hide_panel {
+    use std::ffi::c_void;
+    type Hwnd = *mut c_void;
+    #[repr(C)] #[derive(Default)] struct Rect { left: i32, top: i32, right: i32, bottom: i32 }
+    #[link(name = "user32")]
+    extern "system" {
+        fn ShowWindowAsync(hwnd: Hwnd, cmd: i32) -> i32;
+        fn GetWindowRect(hwnd: Hwnd, rect: *mut Rect) -> i32;
+        fn GetSystemMetrics(index: i32) -> i32;
+    }
+    pub fn capture_without(title: &str, grab: fn() -> Result<image::RgbaImage, String>) -> Option<Result<image::RgbaImage, String>> {
+        let screen_w = unsafe { GetSystemMetrics(0) }.max(1);
+        let wanted: Vec<isize> = crate::workspace::collect_windows().into_iter()
+            .filter(|(_, t)| t == title || t.starts_with(&format!("{title} - ")))
+            .map(|(h, _)| h as isize)
+            .filter(|h| { let mut r = Rect::default(); (unsafe { GetWindowRect(*h as Hwnd, &mut r) }) != 0 && (r.right - r.left) < screen_w * 7 / 10 })
+            .collect();
+        if wanted.is_empty() { return None; }
+        for h in &wanted { unsafe { ShowWindowAsync(*h as Hwnd, 0); } }
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        let shot = grab();
+        for h in &wanted { unsafe { ShowWindowAsync(*h as Hwnd, 4); } }
+        Some(shot)
+    }
+}
+
 #[cfg(windows)]
 fn screen() -> Result<image::RgbaImage, String> { crate::workspace::grab_screen() }
 #[cfg(target_os = "macos")]
@@ -265,12 +351,14 @@ fn screen() -> Result<image::RgbaImage, String> { crate::mac_control::capture() 
 #[cfg(not(any(windows, target_os = "macos")))]
 fn screen() -> Result<image::RgbaImage, String> { Err("PlazCode cannot take pictures of the screen on this system yet.".into()) }
 
-/// `GET /api/desktop/frame`: only while the rework is on and PlazCode is controlling the desktop.
-pub async fn frame() -> axum::response::Response {
+/// `GET /api/desktop/frame`: only while the rework is on and PlazCode is controlling the desktop. `?for=ai`: the picture
+/// goes to the AI, so the Ask PlazCode panel is left out (`screen_for_ai`).
+pub async fn frame(axum::extract::Query(query): axum::extract::Query<std::collections::HashMap<String, String>>) -> axum::response::Response {
     use axum::response::IntoResponse;
     let active = enabled() && { let now = Instant::now(); with(|s| s.active(now) || s.paused || s.sharing(now)) };
     if !active { return (axum::http::StatusCode::NO_CONTENT, "").into_response(); }
-    match tokio::task::spawn_blocking(frame_png).await.unwrap_or_else(|e| Err(e.to_string())) {
+    let for_ai = query.get("for").map(String::as_str) == Some("ai");
+    match tokio::task::spawn_blocking(move || frame_png_from(if for_ai { screen_for_ai } else { screen })).await.unwrap_or_else(|e| Err(e.to_string())) {
         Ok(png) => ([(axum::http::header::CONTENT_TYPE, "image/png"), (axum::http::header::CACHE_CONTROL, "no-store")], png).into_response(),
         Err(error) => (axum::http::StatusCode::SERVICE_UNAVAILABLE, error).into_response(),
     }
@@ -279,6 +367,28 @@ pub async fn frame() -> axum::response::Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn ask_panel_is_left_out_of_the_ai_picture() {
+        let side = panel_from(&json!({"kind": "strip", "title": "Ask PlazCode", "x": 1500, "y": 80, "w": 420, "h": 1000, "screenWidth": 1920})).unwrap();
+        assert!(!side.window);
+        // A 150% screen: the browser's 1920-wide screen is 2880 pixels in the picture.
+        assert_eq!(panel_pixels(&side, 2880, 1620), Some((2250, 120, 630, 1500)));
+        let mut img = image::RgbaImage::from_pixel(2880, 1620, image::Rgba([255, 255, 255, 255]));
+        blank_panel(&mut img, panel_pixels(&side, 2880, 1620).unwrap());
+        assert_eq!(img.get_pixel(2500, 800).0, [24, 26, 31, 255], "the panel's strip is blank");
+        assert_eq!(img.get_pixel(1000, 800).0, [255, 255, 255, 255], "the rest of the screen is untouched");
+        let win = panel_from(&json!({"kind": "window", "x": -50, "y": 0, "w": 400, "h": 900, "screenWidth": 1920})).unwrap();
+        assert!(win.window && win.title == "Ask PlazCode");
+        assert_eq!(panel_pixels(&win, 1920, 1080), Some((0, 0, 350, 900)), "clipped to the screen");
+        assert!(panel_from(&json!({"kind": "window", "x": 0, "y": 0, "w": 0, "h": 9, "screenWidth": 1920})).is_none());
+        assert!(panel_from(&json!({"x": "a"})).is_none());
+        let off = panel_from(&json!({"kind": "strip", "x": 3000, "y": 0, "w": 400, "h": 900, "screenWidth": 1920})).unwrap();
+        assert_eq!(panel_pixels(&off, 1920, 1080), None, "a panel on another screen changes nothing");
+        // Sharing ends: the panel is forgotten.
+        let t = Instant::now();
+        let mut s = State { panel: Some(side), ..State::default() };
+        s.act("share", t).unwrap(); assert!(s.panel.is_some());
+        s.act("unshare", t).unwrap(); assert!(s.panel.is_none());
+    }
     #[test] fn keep_holds_control_only_while_it_is_already_held() {
         let t = Instant::now();
         let mut s = State::default();

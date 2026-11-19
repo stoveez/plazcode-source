@@ -4247,6 +4247,11 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
       for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); }
       ask.busy = false; askReply("stopped", "Stopped."); askPost({ type: "ask-busy", busy: false });
     }
+    // Where the panel is (core/ask-panel.js): the app leaves it out of the AI's pictures of the whole screen (owner, 2026-11-19).
+    if ("panel" in m) {
+      ask.panel = m.panel && typeof m.panel === "object" ? m.panel : null;
+      if (ask.share === -1 && !("sharing" in m)) bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ panel: ask.panel }) }).catch(() => {});
+    }
     if ("sharing" in m && m.sharing && m.shareTabId === -1) {
       // Step 6: the whole screen. The app takes the pictures (Windows, Mac); kept alive while the panel is open.
       if (ask.share && ask.share !== -1) { const old = await askShareTab(ask.share); if (old) askShareMark(old, false); }
@@ -4278,7 +4283,7 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
 let askScreenTimer = 0;
 async function askScreenShare(on) {
   clearInterval(askScreenTimer); askScreenTimer = 0;
-  const say = async (action) => { const r = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) }); return r.ok ? await r.json().catch(() => ({})) : { ok: false }; };
+  const say = async (action) => { const r = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(action === "share" ? { action, panel: ask.panel || null } : { action }) }); return r.ok ? await r.json().catch(() => ({})) : { ok: false }; };
   if (!on) { try { await say("unshare"); } catch {} askScreenOn = false; desktopControlUpdate({ active: false }); return { ok: true }; }
   let reply = null;
   try { reply = await say("share"); } catch {}
@@ -4295,7 +4300,8 @@ async function askScreenShare(on) {
 }
 let askScreenOn = false;
 async function desktopPicture() {
-  const response = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/frame", { signal: AbortSignal.timeout(6000) });
+  // ?for=ai: the picture goes to the AI, so the app leaves the Ask PlazCode panel out of it (2026-11-19).
+  const response = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/frame?for=ai", { signal: AbortSignal.timeout(6000) });
   if (response.status !== 200) throw new Error((await response.text().catch(() => "")) || "PlazCode could not take a picture of the screen.");
   const bitmap = await createImageBitmap(await response.blob());
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height); canvas.getContext("2d").drawImage(bitmap, 0, 0);

@@ -78,10 +78,25 @@
     } catch {}
     return first || last || null;
   }
+  // Where this panel is on screen, so the app leaves it out of the AI's pictures of the whole screen (owner, 2026-11-19; ask-panel.js).
+  async function panelPlace() {
+    if (typeof PlazCodeAskPanel === "undefined") return null;
+    try {
+      const win = await chrome.windows.getCurrent();
+      return PlazCodeAskPanel.place({ win, innerWidth: window.innerWidth, innerHeight: window.innerHeight, screenX: window.screenX, screenWidth: window.screen.width, title: document.title });
+    } catch { return null; }
+  }
+  // The panel can be resized or the browser moved while the screen is shared: tell the app the new place (checked every 3 s).
+  let panelSent = "";
+  setInterval(async () => {
+    if (shared !== -1) { panelSent = ""; return; }
+    const place = await panelPlace(), text = JSON.stringify(place);
+    if (text !== panelSent) { panelSent = text; port.postMessage({ panel: place }); }
+  }, 3000);
   async function follow() {
     // The whole screen (tab id -1) is the default. Only when the PlazCode app cannot show it does PlazCode look at the tab the person is
     // looking at instead (owner, 2026-11-14: no separate "tab only" choice).
-    if (sharing.checked && wholeScreen) { port.postMessage({ sharing: true, shareTabId: -1, words }); return; }
+    if (sharing.checked && wholeScreen) { port.postMessage({ sharing: true, shareTabId: -1, words, panel: await panelPlace() }); return; }
     const tab = sharing.checked ? await currentTab() : null;
     port.postMessage({ sharing: !!tab, shareTabId: tab ? tab.id : null, words });
   }
