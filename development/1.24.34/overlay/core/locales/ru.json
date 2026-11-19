@@ -1455,5 +1455,18 @@
   "Live view minimized. Press to show it again.": "Просмотр в реальном времени свёрнут. Нажмите, чтобы показать его снова.",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode не запущен во вкладке чата с ИИ. Перезагрузите эту вкладку и спросите снова.",
   "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "Чат с ИИ был закрыт, поэтому этот вопрос остановлен. Спросите снова из другого чата с ИИ.",
-  "PlazCode is thinking…": "PlazCode думает…"
+  "PlazCode is thinking…": "PlazCode думает…",
+  "Playtest when done": "Тестировать игру по завершении",
+  "When the AI finishes a Roblox task that changed scripts, PlazCode plays the game for 10 seconds and sends any errors back to fix (at most 2 rounds).": "Когда ИИ завершает задачу Roblox, в которой менялись скрипты, PlazCode запускает игру на 10 секунд и отправляет ошибки обратно для исправления (не более 2 раундов).",
+  "Playtest: playing the game for 10 seconds to check for errors": "Тест: игра запущена на 10 секунд для поиска ошибок",
+  "Playtest skipped: Studio could not start Play": "Тест пропущен: Studio не смог запустить Play",
+  "Playtest passed: no errors in 10 seconds of Play": "Тест пройден: за 10 секунд Play ошибок нет",
+  "Playtest still shows errors": "Тест всё ещё показывает ошибки",
+  "PlazCode asked the AI to fix them twice. Still in Output:": "PlazCode дважды просил ИИ их исправить. Всё ещё в Output:",
+  "Check UI when done": "Проверять интерфейс по завершении",
+  "When the AI finishes Roblox UI work, PlazCode checks it on a phone and a desktop screen and sends back cut-off text, off-screen or overlapping buttons, tiny buttons and low contrast to fix (at most 2 rounds).": "Когда ИИ завершает работу над интерфейсом Roblox, PlazCode проверяет его на экране телефона и компьютера и возвращает для исправления обрезанный текст, кнопки за краем экрана или друг на друге, слишком мелкие кнопки и низкий контраст (не более 2 раундов).",
+  "UI check skipped: Studio did not answer": "Проверка интерфейса пропущена: Studio не ответил",
+  "UI check passed: no new layout problems": "Проверка интерфейса пройдена: новых проблем с раскладкой нет",
+  "UI check still shows problems": "Проверка интерфейса всё ещё показывает проблемы",
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode дважды просил ИИ их исправить. Всё ещё не так:"
 }

@@ -1455,5 +1455,18 @@
   "Live view minimized. Press to show it again.": "Vista en directo minimizada. Pulsa para mostrarla de nuevo.",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode no se está ejecutando en tu pestaña de chat de IA. Recarga esa pestaña y vuelve a preguntar.",
   "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "Se cerró el chat de IA, así que esta pregunta se detuvo. Vuelve a preguntar desde otro chat de IA.",
-  "PlazCode is thinking…": "PlazCode está pensando…"
+  "PlazCode is thinking…": "PlazCode está pensando…",
+  "Playtest when done": "Probar el juego al terminar",
+  "When the AI finishes a Roblox task that changed scripts, PlazCode plays the game for 10 seconds and sends any errors back to fix (at most 2 rounds).": "Cuando la IA termina una tarea de Roblox que cambió scripts, PlazCode juega 10 segundos y le envía los errores para corregirlos (como máximo 2 rondas).",
+  "Playtest: playing the game for 10 seconds to check for errors": "Prueba: jugando 10 segundos para buscar errores",
+  "Playtest skipped: Studio could not start Play": "Prueba omitida: Studio no pudo iniciar Play",
+  "Playtest passed: no errors in 10 seconds of Play": "Prueba superada: sin errores en 10 segundos de Play",
+  "Playtest still shows errors": "La prueba sigue mostrando errores",
+  "PlazCode asked the AI to fix them twice. Still in Output:": "PlazCode pidió a la IA que los corrigiera dos veces. Siguen en Output:",
+  "Check UI when done": "Revisar la interfaz al terminar",
+  "When the AI finishes Roblox UI work, PlazCode checks it on a phone and a desktop screen and sends back cut-off text, off-screen or overlapping buttons, tiny buttons and low contrast to fix (at most 2 rounds).": "Cuando la IA termina un trabajo de interfaz en Roblox, PlazCode lo revisa en una pantalla de teléfono y de escritorio y le devuelve texto cortado, botones fuera de pantalla o superpuestos, botones diminutos y bajo contraste para corregirlos (como máximo 2 rondas).",
+  "UI check skipped: Studio did not answer": "Revisión de interfaz omitida: Studio no respondió",
+  "UI check passed: no new layout problems": "Revisión de interfaz superada: sin problemas nuevos de diseño",
+  "UI check still shows problems": "La revisión de interfaz sigue mostrando problemas",
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode pidió a la IA que los corrigiera dos veces. Siguen mal:"
 }

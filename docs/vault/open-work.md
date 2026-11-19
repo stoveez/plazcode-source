@@ -1,7 +1,12 @@
 ---
 title: Open work and known bugs
-updated: 2026-11-16
+updated: 2026-11-19
 ---
+
+## Not tried in real Roblox Studio yet (built 2026-11-19 for 1.24.35)
+1. **Playtest when done:** Play really starts and stops through Studio's MCP, the LogService read in the Server and Client datamodels returns the play errors (fallback: Output text), and the AI gets them after saying done.
+2. **ui_audit on real screens:** the phone/desktop layout it works out matches what Studio shows (especially UIGridLayout, AutomaticSize, TextScaled), and it does not flag good UI. Check UI when done only sends problems new in the task.
+3. **PlazLib in Studio:** every helper in a real place (parts, welds, tweens and touch pads in a running game, UI helpers with saved ui_tokens), and an error inside build code still names the AI's own line.
 
 ## Owner field-test list for 1.24.33 (2026-11-11) — each item is NOT verified until the owner has done it
 1. **Godot:** the recent-projects list from a real Godot install (Windows and Mac); the helper starts and the AI can run the project.

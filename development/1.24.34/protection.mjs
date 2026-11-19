@@ -120,7 +120,7 @@ export async function verifyTree(root, hex, manifest=FILE_MANIFEST) {
 // core/text-pack.bin that only the PlazCode app opens (agent/src/text_pack.rs) and serves to the paired,
 // official extension. Development source and tests keep the text inline. Load-time text is never moved,
 // so nothing runs before the app has answered.
-export const TEXT_PACK_FILES={'core/config.js':'config','core/lean-startup.js':'lean','core/studio_skills.js':'skills'};
+export const TEXT_PACK_FILES={'core/config.js':'config','core/lean-startup.js':'lean','core/studio_skills.js':'skills','core/plazlib-data.js':'plazlib'};
 export const TEXT_PACK_FILE='core/text-pack.bin';
 const TEXT_PACK_MIN=200;
 export function textPackKey(version,seed=variantSeed()){return packConfig(version,seed).key;}

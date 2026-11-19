@@ -2,3 +2,4 @@
 declare const PlazCodeMedia: { fileFrom(data: ImagePayload, index: number): File } | undefined;
 interface Window { __rsLimitOutgoing?: (text: string) => string; }
 declare const module: { exports: unknown } | undefined;
+declare const PlazCodePlazLibData: unknown;

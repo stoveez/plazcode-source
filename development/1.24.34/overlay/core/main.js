@@ -4199,6 +4199,14 @@ return result`;
     // it can only be right. (It still needs the game RUNNING; that's documented.)
     if ((bareName === "user_keyboard_input" || bareName === "user_mouse_input") && !args.datamodel_type)
       args.datamodel_type = "Client";
+    // PlazLib (owner, 2026-11-19; ts/core/plazlib.ts): build code that calls PL.* gets just the helpers it uses on its
+    // first line (line numbers stay the AI's own); an unknown PL name is refused before anything runs.
+    if (bareName === "execute_luau" && !args._orChunk && typeof args.code === "string" && /\bPL\./.test(args.code) && typeof PlazCodePlazLib !== "undefined") {
+      if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) return "ERROR: " + PlazCodeText.error();
+      const injected = PlazCodePlazLib.inject(args.code);
+      if (injected.error) return "ERROR calling 'execute_luau': " + injected.error;
+      if (injected.used.length) { args.code = injected.code; diag("plazlib.inject", { helpers: injected.used.join(","), chars: injected.code.length }); }
+    }
     if (bareName === "execute_luau" && !args._orChunk && typeof args.code === "string") {
       const pieces = splitLuauChunks(args.code, LUAU_CHUNK_MAX);
       if (pieces && pieces.length > 1) {
@@ -4890,6 +4898,41 @@ return result`;
     }
   }
 
+  // Playtest & Fix (owner, 2026-11-19; ts/core/playtest-check.ts): when the AI says a Roblox task that changed scripts is
+  // done, PlazCode plays the game for 10 s, reads red errors, stops Play and sends them back (at most 2 fix rounds).
+  const playtestCheck = typeof PlazCodePlaytest !== "undefined" ? PlazCodePlaytest.create({
+    enabled: () => { try { return !window.__rsPlaytest || window.__rsPlaytest() !== false; } catch { return true; } },
+    roblox: () => { try { return activeEngine() === "roblox" && !!(A.bridge && (A.bridge.connected || A.bridge.roblox_connected)); } catch { return false; } },
+    stopped: () => !!(A.stop || A.userStopped),
+    call: (name, args, timeout) => Promise.race([bg({ type: "call_tool", name, arguments: args, timeout }), new Promise((res) => setTimeout(() => res({ ok: false, error: "timed out" }), timeout + 3000))]),
+    wait: (ms) => new Promise((res) => setTimeout(res, ms)),
+    status: (text) => { try { ui.toast(text); } catch {} diag("playtest.status", { text }); },
+    banner: (title, text) => { try { ui.banner("warn", title, text); } catch {} },
+    diag: (event, data) => diag(event, data),
+    words: (text) => { try { return globalThis.PlazCodeI18n ? PlazCodeI18n.t(text) : text; } catch { return text; } },
+  }) : null;
+  // UI check (owner, 2026-11-19; ts/core/ui-check.ts): when the AI finishes a task that changed UI, PlazCode runs ui_audit
+  // (core/studio_skills.js) and sends back new errors (cut-off text, off-screen or overlapping buttons, tiny buttons, low contrast).
+  const uiCheck = typeof PlazCodeUiCheck !== "undefined" ? PlazCodeUiCheck.create({
+    enabled: () => { try { return !window.__rsUiCheck || window.__rsUiCheck() !== false; } catch { return true; } },
+    roblox: () => { try { return activeEngine() === "roblox" && !!(A.bridge && (A.bridge.connected || A.bridge.roblox_connected)); } catch { return false; } },
+    stopped: () => !!(A.stop || A.userStopped),
+    audit: async () => {
+      if (typeof RobloxScriptSkills === "undefined") return null;
+      if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) return null;
+      const built = RobloxScriptSkills.buildLuau("ui_audit", {});
+      if (built.err) return null;
+      const r = await Promise.race([bg({ type: "call_tool", name: "execute_luau", arguments: { code: built.code, datamodel_type: "Edit" }, timeout: 30000 }), new Promise((res) => setTimeout(() => res(null), 33000))]);
+      if (!r || r.ok === false || typeof r.text !== "string") return null;
+      const m = r.text.match(/\{[\s\S]*\}/);
+      if (!m) return null;
+      try { const j = JSON.parse(m[0]); return j && j.ok !== false && typeof j.text === "string" ? j.text : null; } catch { return null; }
+    },
+    status: (text) => { try { ui.toast(text); } catch {} diag("uicheck.status", { text }); },
+    banner: (title, text) => { try { ui.banner("warn", title, text); } catch {} },
+    diag: (event, data) => diag(event, data),
+    words: (text) => { try { return globalThis.PlazCodeI18n ? PlazCodeI18n.t(text) : text; } catch { return text; } },
+  }) : null;
   async function agentLoop(base, recoveryAttempt = 0) {
     if (A.running || A.starting || A.stopping || A.enhancing || A.pendingToolSettles || (A.budgetResume && A.budgetResume.chat===P.conversationKey())) return;
     A.running = true;
@@ -4951,6 +4994,7 @@ return result`;
     A.loopBeatAt = Date.now();
     diag("loop.start", { base });
     try {
+      if (!recoveryAttempt) try { playtestCheck?.reset(); uiCheck?.reset(); } catch {}
       try { await beginTaskCheckpoint(); } catch(error) { A.checkpointId=null;ui.toast("Task checkpoint unavailable: "+(error.message||String(error))); }
       while (!A.stop) {
         A.loopBeatAt = Date.now(); // liveness stamp for the stuck-run monitor
@@ -5253,6 +5297,15 @@ return result`;
             diag("hang.question");
             try { ui.toast(`${P.displayName} is asking you a question. Nothing was sent for you.`); } catch {}
           }
+          // Finish checks (2026-11-19): a finished Roblox task that changed UI gets ui_audit, one that changed scripts is played
+          // for 10 s; new problems go back to the AI (each check at most 2 rounds) before the reply counts as done.
+          const finishUi = typeof uiCheck !== "undefined" ? uiCheck : null, finishPlay = typeof playtestCheck !== "undefined" ? playtestCheck : null;
+          if ((finishUi || finishPlay) && !A.stop && !A.userStopped && !A.waitingForClarification && !(typeof PlazCodeStallGuard !== "undefined" && PlazCodeStallGuard.asksUser && PlazCodeStallGuard.asksUser(body))) {
+            let fix = null;
+            try { fix = finishUi ? await finishUi.afterDone() : null; } catch (error) { diag("uicheck.failed", { error: String(error && error.message || error) }); }
+            if (!fix && finishPlay && !A.stop && !A.userStopped) try { fix = await finishPlay.afterDone(); } catch (error) { diag("playtest.failed", { error: String(error && error.message || error) }); }
+            if (fix && !A.stop && !A.userStopped) { base = await submitAndGetBase(fix); continue; }
+          }
           completed = true;
           ui.inputCover(false);
           P.setInputLock(false);
@@ -5349,6 +5402,7 @@ return result`;
           try { ui.trackCard(call.tool, "run", "executing\u2026", category); } catch {}
           let feedback;
           if (call.tool === 'plazcode_clarify') taskBudget.pause();
+          try { await uiCheck?.before(call); } catch {}
           try { feedback = await runTool(call); }
           finally { if (call.tool === 'plazcode_clarify') taskBudget.resume(); }
           // Persistent environment header (see asStateTag) — appended, never
@@ -5377,6 +5431,7 @@ return result`;
             progressNudges=0;
             const workCalls=call.tool==='plazcode_batch' ? call.arguments?.calls || [] : [call];
             if(workCalls.some(c=>['edit','generate'].includes(RS.toolCategory(c.tool || c.command))))completedWork++;
+            try { playtestCheck?.note(call); uiCheck?.note(call); } catch {}
           }
           failedToolAttempts=isErr ? failedToolAttempts+1 : 0;
           const outBody = stripOutputPrefix(feedback);
@@ -8021,15 +8076,18 @@ return result`;
     // All four persist. The loads below restore the user's choices after a
     // reload - they used to silently reset to these defaults on every page
     // refresh because only the setters ever touched chrome.storage.
-    let autoFixEnabled = true, extraThinking = false, showApproach = false, planMode = false, forgeMode = false, autoFixStopPlay = true, autoDebugEnabled = true, multiAgent = false;
+    let autoFixEnabled = true, extraThinking = false, showApproach = false, planMode = false, forgeMode = false, autoFixStopPlay = true, autoDebugEnabled = true, multiAgent = false, playtestEnabled = true, uiCheckEnabled = true;
     let workMode = "balanced";
     try { window.__rsWorkMode = () => workMode; window.__rsShowApproach = () => showApproach; } catch {}
     try { window.__rsPlanMode = () => planMode; } catch {}
     try { window.__rsAutoDebug = () => autoDebugEnabled; } catch {}
     try { window.__rsMultiAgent = () => multiAgent; } catch {}
+    try { window.__rsPlaytest = () => playtestEnabled; window.__rsUiCheck = () => uiCheckEnabled; } catch {}
     try {
-      chrome.storage.local.get(["rsAutoFix", "rsExtraThinking", "rsShowApproach", "rsPlanMode", "rsForgeMode", "rsAutoFixStopPlay", "rsWorkMode", "rsAutoDebug", "rsMultiAgent"], (r) => {
+      chrome.storage.local.get(["rsAutoFix", "rsExtraThinking", "rsShowApproach", "rsPlanMode", "rsForgeMode", "rsAutoFixStopPlay", "rsWorkMode", "rsAutoDebug", "rsMultiAgent", "rsPlaytestCheck", "rsUiCheck"], (r) => {
         if (!r) return;
+        if (typeof r.rsPlaytestCheck === "boolean") playtestEnabled = r.rsPlaytestCheck;
+        if (typeof r.rsUiCheck === "boolean") uiCheckEnabled = r.rsUiCheck;
         if (typeof r.rsAutoFix === "boolean") autoFixEnabled = r.rsAutoFix;
         if (typeof r.rsExtraThinking === "boolean") {
           extraThinking = r.rsExtraThinking;
@@ -8114,6 +8172,8 @@ return result`;
           try { window.__rsAutoDebug = () => autoDebugEnabled; } catch {}
           dirty = true;
         }
+        if (changes.rsPlaytestCheck && typeof changes.rsPlaytestCheck.newValue === "boolean") { playtestEnabled = changes.rsPlaytestCheck.newValue; dirty = true; }
+        if (changes.rsUiCheck && typeof changes.rsUiCheck.newValue === "boolean") { uiCheckEnabled = changes.rsUiCheck.newValue; dirty = true; }
         if (changes.rsMultiAgent && typeof changes.rsMultiAgent.newValue === "boolean") {
           multiAgent = changes.rsMultiAgent.newValue;
           try { window.__rsMultiAgent = () => multiAgent; } catch {}
@@ -8320,6 +8380,8 @@ return result`;
     }
     setTimeout(tryResumeSession, 1800);
     function setAutoFix(v){ autoFixEnabled=!!v; try{chrome.storage.local.set({rsAutoFix: autoFixEnabled});}catch{}; buildMenu(); }
+    function setUiCheck(v){ uiCheckEnabled=!!v; try{chrome.storage.local.set({rsUiCheck: uiCheckEnabled});}catch{}; buildMenu(); }
+    function setPlaytest(v){ playtestEnabled=!!v; try{chrome.storage.local.set({rsPlaytestCheck: playtestEnabled});}catch{}; buildMenu(); }
     function setAutoFixStopPlay(v){ autoFixStopPlay=!!v; try{chrome.storage.local.set({rsAutoFixStopPlay: autoFixStopPlay});}catch{}; buildMenu(); }
     // ── Background mode (v1.12): keep working on other sites ──
     function setBgMode(v){
@@ -8766,6 +8828,16 @@ return result`;
               <span class="rs-tgl-sub">Stop Play when an error is caught (off = keep playing while the AI fixes it).</span></span>
               <span class="rs-tgl ${autoFixStopPlay ? "on" : ""}"></span>
             </div>
+            <div class="rs-tgl-row" data-mode="playtest" role="switch" aria-checked="${playtestEnabled}" tabindex="0">
+              <span class="rs-tgl-info"><span class="rs-tgl-name">Playtest when done</span>
+              <span class="rs-tgl-sub">When the AI finishes a Roblox task that changed scripts, PlazCode plays the game for 10 seconds and sends any errors back to fix (at most 2 rounds).</span></span>
+              <span class="rs-tgl ${playtestEnabled ? "on" : ""}"></span>
+            </div>
+            <div class="rs-tgl-row" data-mode="uicheck" role="switch" aria-checked="${uiCheckEnabled}" tabindex="0">
+              <span class="rs-tgl-info"><span class="rs-tgl-name">Check UI when done</span>
+              <span class="rs-tgl-sub">When the AI finishes Roblox UI work, PlazCode checks it on a phone and a desktop screen and sends back cut-off text, off-screen or overlapping buttons, tiny buttons and low contrast to fix (at most 2 rounds).</span></span>
+              <span class="rs-tgl ${uiCheckEnabled ? "on" : ""}"></span>
+            </div>
             <div class="rs-tgl-row" data-mode="extra" role="switch" aria-checked="${extraThinking}" tabindex="0">
               <span class="rs-tgl-info"><span class="rs-tgl-name">Extra Thinking</span>
               <span class="rs-tgl-sub">The AI reviews its own work and iterates until it is satisfied.</span></span>
@@ -8979,6 +9051,8 @@ return result`;
           const m=btn.dataset.mode;
           if(m==="autofix") setAutoFix(!autoFixEnabled);
           else if(m==="autofixstop") setAutoFixStopPlay(!autoFixStopPlay);
+          else if(m==="playtest") setPlaytest(!playtestEnabled);
+          else if(m==="uicheck") setUiCheck(!uiCheckEnabled);
           else if(m==="bgmode") setBgMode(!bgMode);
           else if(m==="extra") setExtraThinking(!extraThinking);
           else if(m==="approach") setShowApproach(!showApproach);

@@ -1455,5 +1455,18 @@
   "Live view minimized. Press to show it again.": "라이브 보기가 최소화되었습니다. 누르면 다시 표시됩니다.",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode가 AI 채팅 탭에서 실행되고 있지 않습니다. 해당 탭을 새로고침한 다음 다시 질문하세요.",
   "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI 채팅이 닫혀서 이 질문이 중단되었습니다. 다른 AI 채팅에서 다시 질문하세요.",
-  "PlazCode is thinking…": "PlazCode가 생각하는 중…"
+  "PlazCode is thinking…": "PlazCode가 생각하는 중…",
+  "Playtest when done": "완료 시 플레이 테스트",
+  "When the AI finishes a Roblox task that changed scripts, PlazCode plays the game for 10 seconds and sends any errors back to fix (at most 2 rounds).": "AI가 스크립트를 바꾼 Roblox 작업을 마치면 PlazCode가 게임을 10초 동안 실행하고 오류를 고치도록 다시 보냅니다(최대 2회).",
+  "Playtest: playing the game for 10 seconds to check for errors": "플레이 테스트: 오류 확인을 위해 10초 동안 실행 중",
+  "Playtest skipped: Studio could not start Play": "플레이 테스트 건너뜀: Studio가 Play를 시작하지 못했습니다",
+  "Playtest passed: no errors in 10 seconds of Play": "플레이 테스트 통과: 10초 동안 Play에서 오류 없음",
+  "Playtest still shows errors": "플레이 테스트에 아직 오류가 있습니다",
+  "PlazCode asked the AI to fix them twice. Still in Output:": "PlazCode가 AI에게 두 번 고치도록 요청했습니다. Output에 아직 남아 있음:",
+  "Check UI when done": "완료 시 UI 검사",
+  "When the AI finishes Roblox UI work, PlazCode checks it on a phone and a desktop screen and sends back cut-off text, off-screen or overlapping buttons, tiny buttons and low contrast to fix (at most 2 rounds).": "AI가 Roblox UI 작업을 마치면 PlazCode가 휴대폰과 데스크톱 화면에서 검사하고, 잘린 글자, 화면 밖이나 겹친 버튼, 너무 작은 버튼, 낮은 대비를 고치도록 다시 보냅니다(최대 2회).",
+  "UI check skipped: Studio did not answer": "UI 검사 건너뜀: Studio가 응답하지 않았습니다",
+  "UI check passed: no new layout problems": "UI 검사 통과: 새 레이아웃 문제 없음",
+  "UI check still shows problems": "UI 검사에 아직 문제가 있습니다",
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode가 AI에게 두 번 고치도록 요청했습니다. 아직 잘못됨:"
 }

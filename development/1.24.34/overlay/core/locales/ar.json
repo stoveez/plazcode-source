@@ -1455,5 +1455,18 @@
   "Live view minimized. Press to show it again.": "العرض المباشر مصغّر. اضغط لإظهاره مرة أخرى.",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode لا يعمل في علامة تبويب دردشة الذكاء الاصطناعي. أعد تحميل علامة التبويب، ثم اسأل مرة أخرى.",
   "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "أُغلقت دردشة الذكاء الاصطناعي، لذا توقف هذا السؤال. اسأل مرة أخرى من دردشة ذكاء اصطناعي أخرى.",
-  "PlazCode is thinking…": "PlazCode يفكر…"
+  "PlazCode is thinking…": "PlazCode يفكر…",
+  "Playtest when done": "اختبار اللعبة عند الانتهاء",
+  "When the AI finishes a Roblox task that changed scripts, PlazCode plays the game for 10 seconds and sends any errors back to fix (at most 2 rounds).": "عندما ينهي الذكاء الاصطناعي مهمة Roblox غيّرت سكربتات، يشغّل PlazCode اللعبة 10 ثوانٍ ويعيد أي أخطاء لإصلاحها (جولتان كحد أقصى).",
+  "Playtest: playing the game for 10 seconds to check for errors": "اختبار: تشغيل اللعبة 10 ثوانٍ للبحث عن أخطاء",
+  "Playtest skipped: Studio could not start Play": "تم تخطي الاختبار: تعذّر على Studio بدء Play",
+  "Playtest passed: no errors in 10 seconds of Play": "نجح الاختبار: لا أخطاء خلال 10 ثوانٍ من Play",
+  "Playtest still shows errors": "لا يزال الاختبار يُظهر أخطاء",
+  "PlazCode asked the AI to fix them twice. Still in Output:": "طلب PlazCode من الذكاء الاصطناعي إصلاحها مرتين. لا تزال في Output:",
+  "Check UI when done": "فحص الواجهة عند الانتهاء",
+  "When the AI finishes Roblox UI work, PlazCode checks it on a phone and a desktop screen and sends back cut-off text, off-screen or overlapping buttons, tiny buttons and low contrast to fix (at most 2 rounds).": "عندما ينهي الذكاء الاصطناعي عمل واجهة في Roblox، يفحصه PlazCode على شاشة هاتف وشاشة حاسوب ويعيد النص المقطوع والأزرار الخارجة عن الشاشة أو المتداخلة والأزرار الصغيرة جدًا والتباين المنخفض لإصلاحها (جولتان كحد أقصى).",
+  "UI check skipped: Studio did not answer": "تم تخطي فحص الواجهة: لم يستجب Studio",
+  "UI check passed: no new layout problems": "نجح فحص الواجهة: لا مشكلات تخطيط جديدة",
+  "UI check still shows problems": "لا يزال فحص الواجهة يُظهر مشكلات",
+  "PlazCode asked the AI to fix them twice. Still wrong:": "طلب PlazCode من الذكاء الاصطناعي إصلاحها مرتين. لا تزال خاطئة:"
 }

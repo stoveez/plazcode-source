@@ -1455,5 +1455,18 @@
   "Live view minimized. Press to show it again.": "Canlı görünüm küçültüldü. Yeniden göstermek için basın.",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode yapay zekâ sohbet sekmenizde çalışmıyor. O sekmeyi yeniden yükleyin, ardından tekrar sorun.",
   "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "Yapay zekâ sohbeti kapatıldığı için bu soru durdu. Başka bir yapay zekâ sohbetinden tekrar sorun.",
-  "PlazCode is thinking…": "PlazCode düşünüyor…"
+  "PlazCode is thinking…": "PlazCode düşünüyor…",
+  "Playtest when done": "Bitince oyunu test et",
+  "When the AI finishes a Roblox task that changed scripts, PlazCode plays the game for 10 seconds and sends any errors back to fix (at most 2 rounds).": "Yapay zekâ betikleri değiştiren bir Roblox görevini bitirdiğinde PlazCode oyunu 10 saniye oynatır ve hataları düzeltilmesi için geri gönderir (en fazla 2 tur).",
+  "Playtest: playing the game for 10 seconds to check for errors": "Test: hataları bulmak için oyun 10 saniye oynatılıyor",
+  "Playtest skipped: Studio could not start Play": "Test atlandı: Studio Play'i başlatamadı",
+  "Playtest passed: no errors in 10 seconds of Play": "Test geçti: 10 saniyelik Play'de hata yok",
+  "Playtest still shows errors": "Test hâlâ hata gösteriyor",
+  "PlazCode asked the AI to fix them twice. Still in Output:": "PlazCode yapay zekâdan bunları iki kez düzeltmesini istedi. Output'ta hâlâ:",
+  "Check UI when done": "Bitince arayüzü denetle",
+  "When the AI finishes Roblox UI work, PlazCode checks it on a phone and a desktop screen and sends back cut-off text, off-screen or overlapping buttons, tiny buttons and low contrast to fix (at most 2 rounds).": "Yapay zekâ bir Roblox arayüz işini bitirdiğinde PlazCode onu telefon ve masaüstü ekranında denetler; kesik metni, ekran dışına taşan veya üst üste binen düğmeleri, çok küçük düğmeleri ve düşük karşıtlığı düzeltilmesi için geri gönderir (en fazla 2 tur).",
+  "UI check skipped: Studio did not answer": "Arayüz denetimi atlandı: Studio yanıt vermedi",
+  "UI check passed: no new layout problems": "Arayüz denetimi geçti: yeni yerleşim sorunu yok",
+  "UI check still shows problems": "Arayüz denetimi hâlâ sorun gösteriyor",
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode yapay zekâdan bunları iki kez düzeltmesini istedi. Hâlâ hatalı:"
 }

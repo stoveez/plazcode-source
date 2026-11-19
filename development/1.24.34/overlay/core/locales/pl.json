@@ -1455,5 +1455,18 @@
   "Live view minimized. Press to show it again.": "Podgląd na żywo zminimalizowany. Naciśnij, aby pokazać go ponownie.",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode nie działa w karcie czatu AI. Odśwież tę kartę, a potem zapytaj ponownie.",
   "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "Czat AI został zamknięty, więc to pytanie zostało przerwane. Zapytaj ponownie z innego czatu AI.",
-  "PlazCode is thinking…": "PlazCode myśli…"
+  "PlazCode is thinking…": "PlazCode myśli…",
+  "Playtest when done": "Testuj grę po zakończeniu",
+  "When the AI finishes a Roblox task that changed scripts, PlazCode plays the game for 10 seconds and sends any errors back to fix (at most 2 rounds).": "Gdy AI skończy zadanie Roblox, które zmieniło skrypty, PlazCode uruchamia grę na 10 sekund i odsyła błędy do poprawienia (najwyżej 2 rundy).",
+  "Playtest: playing the game for 10 seconds to check for errors": "Test: gra działa 10 sekund, szukam błędów",
+  "Playtest skipped: Studio could not start Play": "Test pominięty: Studio nie mogło uruchomić Play",
+  "Playtest passed: no errors in 10 seconds of Play": "Test zaliczony: brak błędów w 10 sekundach Play",
+  "Playtest still shows errors": "Test nadal pokazuje błędy",
+  "PlazCode asked the AI to fix them twice. Still in Output:": "PlazCode dwa razy poprosił AI o poprawki. Nadal w Output:",
+  "Check UI when done": "Sprawdzaj interfejs po zakończeniu",
+  "When the AI finishes Roblox UI work, PlazCode checks it on a phone and a desktop screen and sends back cut-off text, off-screen or overlapping buttons, tiny buttons and low contrast to fix (at most 2 rounds).": "Gdy AI skończy pracę nad interfejsem Roblox, PlazCode sprawdza go na ekranie telefonu i komputera i odsyła do poprawy ucięty tekst, przyciski poza ekranem lub nachodzące na siebie, za małe przyciski i słaby kontrast (najwyżej 2 rundy).",
+  "UI check skipped: Studio did not answer": "Sprawdzenie interfejsu pominięte: Studio nie odpowiedziało",
+  "UI check passed: no new layout problems": "Sprawdzenie interfejsu zaliczone: brak nowych problemów z układem",
+  "UI check still shows problems": "Sprawdzenie interfejsu nadal pokazuje problemy",
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode dwa razy poprosił AI o poprawki. Nadal źle:"
 }

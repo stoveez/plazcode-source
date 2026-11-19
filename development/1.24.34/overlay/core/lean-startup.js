@@ -110,6 +110,16 @@
   // ── Topics ─────────────────────────────────────────────────────────────────────────────────────────────────────
   // engines: where the topic applies. build(s): the text, cut from the real prompt. must: phrases the text has to
   // contain (the test checks them, so a reworded section is noticed). aliases: other names, already normalised.
+  // PlazCode's own UI standard (owner, 2026-11-19: higher-quality UI with fewer tokens; sent with the studio-gui topic on
+  // every effort level, once per chat). Written for PlazCode; nothing copied from other tools.
+  const UI_STANDARD = [
+    "UI STANDARD (PlazCode, for every Roblox UI request):",
+    "- LOOK FIRST: call ui_tokens before building. If none are saved, pick one palette (background, surface, primary, accent, text, muted, danger, success), a body font and a heading font, one corner radius, one spacing step (multiples of 4 or 8 px) and one stroke width, and save them once with ui_tokens_set. Every screen of this game uses only these.",
+    "- LAYOUT: size and place with Scale plus AnchorPoint; UIAspectRatioConstraint on square or icon items, UISizeConstraint to cap widths on big screens, UIListLayout / UIGridLayout with UIPadding instead of hand-placed offsets. Keep a 12-24 px margin from screen edges and leave the top-left top-bar area (top 60 px) free. It must work on a phone (844x390) and a desktop (1920x1080).",
+    "- TEXT: body 14 px or more on a phone, headings larger; TextScaled only with a UITextSizeConstraint (MinTextSize 10 or more); TextWrapped for sentences; contrast at least 4.5:1 (3:1 for big headings); text over the 3D world gets a backing panel or UIStroke.",
+    "- BUTTONS: at least 44x44 px on a phone, never on top of another button, hover/press feedback (a short tween of colour or UIScale), one clear main action per screen; every popup has a close button and opens with a 0.15-0.25 s tween.",
+    "- FINISH: run ui_audit and fix every ERROR it reports before saying done (PlazCode also runs it when you finish UI work).",
+  ].join("\n");
   const R = "roblox", L = "local", BOTH = [R, L];
   const TOPIC_DEFS = [
     {
@@ -133,8 +143,16 @@
     {
       name: "studio-gui", engines: [R], aliases: ["ui", "gui", "hud", "interface", "screengui", "ui-rules"],
       title: "building and restyling UI / HUD / ScreenGuis",
-      must: ["MODERN UI & HUD", "GUI MUTATION", "ui_build", "ui_set_property"],
-      build: s => join(cut(s.full(), "- MODERN UI & HUD", "- FX & PARTICLES"), cut(s.full(), "- GUI MUTATION", "- ASSET BRIDGE:"), cut(s.full(), "For new UI and reference reconstruction", "PRESENTATION DIVIDE")),
+      must: ["MODERN UI & HUD", "GUI MUTATION", "ui_build", "ui_set_property", "UI STANDARD", "ui_audit", "ui_tokens_set"],
+      build: s => join(UI_STANDARD, cut(s.full(), "- MODERN UI & HUD", "- FX & PARTICLES"), cut(s.full(), "- GUI MUTATION", "- ASSET BRIDGE:"), cut(s.full(), "For new UI and reference reconstruction", "PRESENTATION DIVIDE")),
+    },
+    {
+      // PlazLib (owner, 2026-11-19): PL.* Luau helpers for build code; the catalog is generated with the helpers
+      // (development/<ver>/plazlib/), so what the AI is told always matches what PlazCode injects (core/plazlib.js).
+      name: "plazlib", engines: [R], aliases: ["pl", "helpers", "plaz-lib", "luau-helpers", "build-helpers"],
+      title: "PlazLib: short PL.* Luau helpers for build code (parts, welds, tweens, touch pads, UI)",
+      must: ["PLAZLIB", "PL.part", "PL.weld", "PL.tween", "PL.touchPad", "PL.ui.button"],
+      build: () => (typeof PlazCodePlazLib !== "undefined" ? PlazCodePlazLib.reference() : ""),
     },
     {
       name: "animation", engines: [R], aliases: ["anim", "animations", "animation-tools", "keyframes"],
@@ -502,6 +520,7 @@
   // Keyword map, in priority order. A greeting or a plain question matches nothing, so nothing is pushed.
   const ROUTES = [
     ["studio-gui", [R], /\b(?:gui|ui|hud|screen ?gui|menus?|buttons?|text ?labels?|health ?bar|interface|layouts?|scrolling ?frame|billboard ?gui|surface ?gui|crosshair|inventory (?:screen|ui|gui)|shop (?:screen|ui|gui)|leaderboard (?:ui|gui))\b/i],
+    ["plazlib", [R], /\b(?:build|make|create|place|add|spawn|generate)\b[^.\n]{0,60}\b(?:parts?|models?|maps?|obby|obbies|house|buildings?|platforms?|pads?|doors?|walls?|floors?|bridges?|towers?|ui|gui|hud|menus?|buttons?|shops?|screens?)\b|\bPL\.[a-z]|\bplazlib\b/i],
     ["animation", [R], /\b(?:animat\w*|keyframes?|poses?|posing|rigs?|rigged|rigging|r15|r6|emotes?|moon ?animator|walk cycle)\b/i],
     ["motion", [R], /\b(?:vfx|particles?|emitters?|trails?|beams?|slash|hit ?effects?|effects?|animation ids?|animation wiring|animate script|combat anim\w*|idle|swim|climb)\b/i],
     ["play-mode", [R], /\b(?:play ?tests?|play ?mode|while playing|in play|press play|run the game|start_stop_play)\b/i],
@@ -573,7 +592,7 @@
   }
 
   return Object.freeze({
-    SYS_MARKER, CORE_MAX_CHARS, HELP_MAX_CHARS, TOPICS, ANCHORS, ROUTES: ROUTES.map(([name, engines]) => ({ name, engines: engines.slice() })),
+    SYS_MARKER, CORE_MAX_CHARS, HELP_MAX_CHARS, TOPICS, UI_STANDARD, ANCHORS, ROUTES: ROUTES.map(([name, engines]) => ({ name, engines: engines.slice() })),
     buildLeanCore, supports, listTopics, topicListText, resolveTopic, helpFor, routeTopics, createTracker, pushFor, coverage, diagnose, use,
   });
 });

@@ -82,6 +82,8 @@ jobs:
       - run: python3 development/1.24.34/test-prepare-overlay.py
       - name: Ultra generated files match the generator
         run: python3 development/1.24.34/test-ultralab-generated.py
+      - name: PlazLib data matches its Luau source
+        run: python3 development/1.24.34/plazlib/build_plazlib.py --check
       - name: Cross-platform release proof gate regressions
         run: python3 development/1.24.34/test-release-check.py
       - run: python3 development/1.24.34/prepare.py
@@ -104,6 +106,18 @@ jobs:
         working-directory: build-src-1.24.34/PlazCode
         env:
           PLAZCODE_LUAU_COMPILE: ${{ github.workspace }}/validation-luau/build/luau-compile
+          PLAZCODE_REQUIRE_LUAU: '1'
+      - name: ui_audit's Luau finds every planted UI problem in the official Luau VM
+        run: node test-ui-check.js
+        working-directory: build-src-1.24.34/PlazCode
+        env:
+          PLAZCODE_LUAU: ${{ github.workspace }}/validation-luau/build/luau
+          PLAZCODE_REQUIRE_LUAU: '1'
+      - name: Every PlazLib helper runs in the official Luau VM and the scripts it writes compile
+        run: node test-plazlib.js
+        working-directory: build-src-1.24.34/PlazCode
+        env:
+          PLAZCODE_LUAU: ${{ github.workspace }}/validation-luau/build/luau
           PLAZCODE_REQUIRE_LUAU: '1'
       - run: npm ci --prefix release-tools --ignore-scripts
         working-directory: build-src-1.24.34/PlazCode

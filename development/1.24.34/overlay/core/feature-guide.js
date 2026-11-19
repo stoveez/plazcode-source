@@ -1056,6 +1056,43 @@ const PlazCodeFeatureGuide = (() => {
   "index": true
  },
  {
+  "id": "finish-check",
+  "title": "Playtest and UI check when the AI finishes",
+  "group": "Menu",
+  "where": "PlazCode menu (gear button on the bar) > Automation > Playtest when done / Check UI when done",
+  "does": "When the AI says a Roblox task is done, PlazCode checks it: ui_audit for UI it changed, 10 seconds of Play for scripts it changed. New problems go back to the AI, at most 2 rounds each.",
+  "steps": [
+   "Open the PlazCode menu, then Automation.",
+   "Leave Playtest when done and Check UI when done on (both start on), or turn either off."
+  ],
+  "tips": [
+   "UI problems that were already in your game before the task are not sent to the AI.",
+   "The AI can also run ui_audit itself, and keeps one look per game with ui_tokens."
+  ],
+  "related": [
+   "auto-fix",
+   "auto-debug"
+  ],
+  "keywords": [
+   "playtest",
+   "play test",
+   "ui audit",
+   "ui check",
+   "errors",
+   "mobile buttons",
+   "contrast",
+   "design tokens"
+  ],
+  "anchors": [
+   "mode:playtest",
+   "mode:uicheck"
+  ],
+  "surfaces": [
+   "extension"
+  ],
+  "index": false
+ },
+ {
   "id": "auto-debug",
   "title": "Automatic Debugger",
   "group": "Menu",

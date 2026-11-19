@@ -1455,5 +1455,18 @@
   "Live view minimized. Press to show it again.": "即時畫面已最小化。按下即可重新顯示。",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode 沒有在你的 AI 聊天分頁中執行。請重新載入該分頁，然後再問一次。",
   "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI 聊天已關閉，所以這個問題已停止。請從另一個 AI 聊天中再問一次。",
-  "PlazCode is thinking…": "PlazCode 正在思考…"
+  "PlazCode is thinking…": "PlazCode 正在思考…",
+  "Playtest when done": "完成後試玩",
+  "When the AI finishes a Roblox task that changed scripts, PlazCode plays the game for 10 seconds and sends any errors back to fix (at most 2 rounds).": "當 AI 完成一個修改了腳本的 Roblox 任務時，PlazCode 會執行遊戲 10 秒，並把出現的錯誤傳回去修正（最多 2 輪）。",
+  "Playtest: playing the game for 10 seconds to check for errors": "試玩：執行遊戲 10 秒以檢查錯誤",
+  "Playtest skipped: Studio could not start Play": "已略過試玩：Studio 無法開始 Play",
+  "Playtest passed: no errors in 10 seconds of Play": "試玩通過：10 秒 Play 中沒有錯誤",
+  "Playtest still shows errors": "試玩仍有錯誤",
+  "PlazCode asked the AI to fix them twice. Still in Output:": "PlazCode 已兩次要求 AI 修正。Output 中仍有：",
+  "Check UI when done": "完成後檢查介面",
+  "When the AI finishes Roblox UI work, PlazCode checks it on a phone and a desktop screen and sends back cut-off text, off-screen or overlapping buttons, tiny buttons and low contrast to fix (at most 2 rounds).": "當 AI 完成 Roblox 介面工作時，PlazCode 會在手機和電腦螢幕上檢查，並把被截斷的文字、超出螢幕或重疊的按鈕、過小的按鈕和低對比度傳回去修正（最多 2 輪）。",
+  "UI check skipped: Studio did not answer": "已略過介面檢查：Studio 沒有回應",
+  "UI check passed: no new layout problems": "介面檢查通過：沒有新的版面問題",
+  "UI check still shows problems": "介面檢查仍有問題",
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode 已兩次要求 AI 修正。仍有問題："
 }

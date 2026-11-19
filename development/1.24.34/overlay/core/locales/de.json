@@ -1455,5 +1455,18 @@
   "Live view minimized. Press to show it again.": "Live-Ansicht minimiert. Drücken Sie, um sie wieder anzuzeigen.",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode läuft nicht in Ihrem KI-Chat-Tab. Laden Sie diesen Tab neu und fragen Sie dann erneut.",
   "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "Der KI-Chat wurde geschlossen, daher wurde diese Frage beendet. Fragen Sie erneut aus einem anderen KI-Chat.",
-  "PlazCode is thinking…": "PlazCode denkt nach…"
+  "PlazCode is thinking…": "PlazCode denkt nach…",
+  "Playtest when done": "Nach Abschluss testen",
+  "When the AI finishes a Roblox task that changed scripts, PlazCode plays the game for 10 seconds and sends any errors back to fix (at most 2 rounds).": "Wenn die KI eine Roblox-Aufgabe mit geänderten Skripten abschließt, spielt PlazCode das Spiel 10 Sekunden lang und sendet Fehler zur Behebung zurück (höchstens 2 Runden).",
+  "Playtest: playing the game for 10 seconds to check for errors": "Test: Das Spiel läuft 10 Sekunden zur Fehlersuche",
+  "Playtest skipped: Studio could not start Play": "Test übersprungen: Studio konnte Play nicht starten",
+  "Playtest passed: no errors in 10 seconds of Play": "Test bestanden: keine Fehler in 10 Sekunden Play",
+  "Playtest still shows errors": "Der Test zeigt weiterhin Fehler",
+  "PlazCode asked the AI to fix them twice. Still in Output:": "PlazCode hat die KI zweimal um Behebung gebeten. Weiterhin in Output:",
+  "Check UI when done": "Oberfläche nach Abschluss prüfen",
+  "When the AI finishes Roblox UI work, PlazCode checks it on a phone and a desktop screen and sends back cut-off text, off-screen or overlapping buttons, tiny buttons and low contrast to fix (at most 2 rounds).": "Wenn die KI eine Roblox-Oberfläche fertigstellt, prüft PlazCode sie auf einem Handy- und einem Desktop-Bildschirm und sendet abgeschnittenen Text, Schaltflächen außerhalb des Bildschirms oder übereinander, zu kleine Schaltflächen und geringen Kontrast zur Behebung zurück (höchstens 2 Runden).",
+  "UI check skipped: Studio did not answer": "Oberflächenprüfung übersprungen: Studio hat nicht geantwortet",
+  "UI check passed: no new layout problems": "Oberflächenprüfung bestanden: keine neuen Layoutprobleme",
+  "UI check still shows problems": "Die Oberflächenprüfung zeigt weiterhin Probleme",
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode hat die KI zweimal um Behebung gebeten. Weiterhin fehlerhaft:"
 }

@@ -1455,5 +1455,18 @@
   "Live view minimized. Press to show it again.": "ライブビューを最小化しました。押すと再表示します。",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode が AI チャットのタブで動いていません。そのタブを再読み込みしてから、もう一度質問してください。",
   "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI チャットが閉じられたため、この質問は止まりました。別の AI チャットからもう一度質問してください。",
-  "PlazCode is thinking…": "PlazCode が考えています…"
+  "PlazCode is thinking…": "PlazCode が考えています…",
+  "Playtest when done": "完了時にテストプレイ",
+  "When the AI finishes a Roblox task that changed scripts, PlazCode plays the game for 10 seconds and sends any errors back to fix (at most 2 rounds).": "AI がスクリプトを変更した Roblox のタスクを終えると、PlazCode がゲームを 10 秒間プレイし、エラーがあれば修正のために送り返します（最大 2 回）。",
+  "Playtest: playing the game for 10 seconds to check for errors": "テストプレイ: エラー確認のため 10 秒間プレイ中",
+  "Playtest skipped: Studio could not start Play": "テストプレイを省略: Studio が Play を開始できませんでした",
+  "Playtest passed: no errors in 10 seconds of Play": "テストプレイ合格: 10 秒間の Play でエラーなし",
+  "Playtest still shows errors": "テストプレイでまだエラーがあります",
+  "PlazCode asked the AI to fix them twice. Still in Output:": "PlazCode は AI に 2 回修正を頼みました。Output にまだ残っています:",
+  "Check UI when done": "完了時に UI をチェック",
+  "When the AI finishes Roblox UI work, PlazCode checks it on a phone and a desktop screen and sends back cut-off text, off-screen or overlapping buttons, tiny buttons and low contrast to fix (at most 2 rounds).": "AI が Roblox の UI 作業を終えると、PlazCode がスマホとパソコンの画面でチェックし、切れた文字、画面外や重なったボタン、小さすぎるボタン、低いコントラストを修正のために送り返します（最大 2 回）。",
+  "UI check skipped: Studio did not answer": "UI チェックを省略: Studio が応答しませんでした",
+  "UI check passed: no new layout problems": "UI チェック合格: 新しいレイアウトの問題はありません",
+  "UI check still shows problems": "UI チェックでまだ問題があります",
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode は AI に 2 回修正を頼みました。まだ問題があります:"
 }

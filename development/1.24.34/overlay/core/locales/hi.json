@@ -1455,5 +1455,18 @@
   "Live view minimized. Press to show it again.": "लाइव व्यू छोटा किया गया है। फिर से दिखाने के लिए दबाएँ।",
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": "PlazCode आपके AI चैट टैब में नहीं चल रहा है। उस टैब को फिर से लोड करें, फिर दोबारा पूछें।",
   "The AI chat was closed, so this question stopped. Ask again from another AI chat.": "AI चैट बंद हो गई, इसलिए यह सवाल रुक गया। किसी दूसरी AI चैट से फिर से पूछें।",
-  "PlazCode is thinking…": "PlazCode सोच रहा है…"
+  "PlazCode is thinking…": "PlazCode सोच रहा है…",
+  "Playtest when done": "पूरा होने पर प्लेटेस्ट",
+  "When the AI finishes a Roblox task that changed scripts, PlazCode plays the game for 10 seconds and sends any errors back to fix (at most 2 rounds).": "जब AI ऐसा Roblox काम पूरा करता है जिसमें स्क्रिप्ट बदली गईं, तो PlazCode गेम को 10 सेकंड चलाता है और कोई भी गलती ठीक करने के लिए वापस भेजता है (अधिकतम 2 बार)।",
+  "Playtest: playing the game for 10 seconds to check for errors": "प्लेटेस्ट: गलतियाँ जाँचने के लिए गेम 10 सेकंड चल रहा है",
+  "Playtest skipped: Studio could not start Play": "प्लेटेस्ट छोड़ा गया: Studio Play शुरू नहीं कर सका",
+  "Playtest passed: no errors in 10 seconds of Play": "प्लेटेस्ट पास: 10 सेकंड के Play में कोई गलती नहीं",
+  "Playtest still shows errors": "प्लेटेस्ट में अब भी गलतियाँ हैं",
+  "PlazCode asked the AI to fix them twice. Still in Output:": "PlazCode ने AI से इन्हें दो बार ठीक करने को कहा। Output में अब भी:",
+  "Check UI when done": "पूरा होने पर UI जाँचें",
+  "When the AI finishes Roblox UI work, PlazCode checks it on a phone and a desktop screen and sends back cut-off text, off-screen or overlapping buttons, tiny buttons and low contrast to fix (at most 2 rounds).": "जब AI Roblox UI का काम पूरा करता है, तो PlazCode उसे फ़ोन और डेस्कटॉप स्क्रीन पर जाँचता है और कटे हुए टेक्स्ट, स्क्रीन से बाहर या एक-दूसरे पर चढ़े बटन, बहुत छोटे बटन और कम कंट्रास्ट ठीक करने के लिए वापस भेजता है (अधिकतम 2 बार)।",
+  "UI check skipped: Studio did not answer": "UI जाँच छोड़ी गई: Studio ने जवाब नहीं दिया",
+  "UI check passed: no new layout problems": "UI जाँच पास: लेआउट की कोई नई समस्या नहीं",
+  "UI check still shows problems": "UI जाँच में अब भी समस्याएँ हैं",
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode ने AI से इन्हें दो बार ठीक करने को कहा। अब भी गलत:"
 }

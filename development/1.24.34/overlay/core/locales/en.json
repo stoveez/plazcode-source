@@ -1455,5 +1455,18 @@
   "Live view minimized. Press to show it again.": null,
   "PlazCode is not running in your AI chat tab. Reload that tab, then ask again.": null,
   "The AI chat was closed, so this question stopped. Ask again from another AI chat.": null,
-  "PlazCode is thinking…": null
+  "PlazCode is thinking…": null,
+  "Playtest when done": null,
+  "When the AI finishes a Roblox task that changed scripts, PlazCode plays the game for 10 seconds and sends any errors back to fix (at most 2 rounds).": null,
+  "Playtest: playing the game for 10 seconds to check for errors": null,
+  "Playtest skipped: Studio could not start Play": null,
+  "Playtest passed: no errors in 10 seconds of Play": null,
+  "Playtest still shows errors": null,
+  "PlazCode asked the AI to fix them twice. Still in Output:": null,
+  "Check UI when done": null,
+  "When the AI finishes Roblox UI work, PlazCode checks it on a phone and a desktop screen and sends back cut-off text, off-screen or overlapping buttons, tiny buttons and low contrast to fix (at most 2 rounds).": null,
+  "UI check skipped: Studio did not answer": null,
+  "UI check passed: no new layout problems": null,
+  "UI check still shows problems": null,
+  "PlazCode asked the AI to fix them twice. Still wrong:": null
 }

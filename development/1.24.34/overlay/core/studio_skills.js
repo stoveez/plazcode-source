@@ -1071,6 +1071,364 @@ function api.ui_inspect(a)
 	return okdata({ items = guis }, ("StarterGui contains %d top-level GUI element(s)"):format(#guis))
 end
 
+-- ════════════════════════════════════════════════════════════════════════
+-- UI AUDIT + DESIGN TOKENS (owner, 2026-11-19; PlazCode's own code and rules)
+-- ui_audit lays every visible ScreenGui out again for a phone (844x390) and a desktop (1920x1080) screen and reports
+-- cut-off text, buttons off screen, overlapping buttons or text, buttons too small to tap, low contrast and text too small
+-- to read; errors must be fixed, warnings are advice. ui_tokens / ui_tokens_set keep one look per game (StarterGui
+-- attribute PlazCodeUiTokens).
+-- ════════════════════════════════════════════════════════════════════════
+local UI_TOKENS_ATTR = "PlazCodeUiTokens"
+
+function api.ui_tokens(a)
+	local raw = StarterGui:GetAttribute(UI_TOKENS_ATTR)
+	if type(raw) ~= "string" or raw == "" then
+		return okdata({ tokens = false }, "No UI design tokens saved for this game yet. Choose one palette (background, surface, primary, accent, text, muted, danger, success as hex), font, heading_font, corner (px), spacing (px) and stroke, then save them with ui_tokens_set {tokens:{...}} and use only them on every screen.")
+	end
+	local ok, t = pcall(jdec, raw)
+	if not ok or type(t) ~= "table" then return fail("the saved UI tokens are not valid JSON; save them again with ui_tokens_set") end
+	return okdata({ tokens = t }, "UI design tokens for this game. Use only these colours, fonts, corner radius and spacing on every screen.")
+end
+
+function api.ui_tokens_set(a)
+	local t = a.tokens
+	if type(t) ~= "table" then return fail("tokens must be an object, for example {palette:{background:'#111827',text:'#F9FAFB',primary:'#6366F1'},font:'GothamMedium',heading_font:'GothamBold',corner:10,spacing:8}") end
+	local merged = {}
+	local raw = StarterGui:GetAttribute(UI_TOKENS_ATTR)
+	if type(raw) == "string" and raw ~= "" then
+		local ok, old = pcall(jdec, raw)
+		if ok and type(old) == "table" then merged = old end
+	end
+	for k, v in pairs(t) do merged[k] = v end
+	local s = jenc(merged)
+	if #s > 4000 then return fail("tokens are too long (keep them under 4000 characters)") end
+	StarterGui:SetAttribute(UI_TOKENS_ATTR, s)
+	return okdata({ tokens = merged }, "Saved the UI design tokens for this game.")
+end
+
+function api.ui_audit(a)
+	local TextService = game:GetService("TextService")
+	local TOPBAR = 58
+	local VIEWS = { { name = "phone", w = 844, h = 390 }, { name = "desktop", w = 1920, h = 1080 } }
+	if a.viewport == "phone" then VIEWS = { VIEWS[1] } elseif a.viewport == "desktop" then VIEWS = { VIEWS[2] } end
+	local MAX_OBJECTS, MAX_ISSUES = 2500, 30
+	local roots = {}
+	if a.screen ~= nil and a.screen ~= "" then
+		local s = StarterGui:FindFirstChild(tostring(a.screen)) or resolvePath(a.screen)
+		if not s then return fail("screen not found: " .. tostring(a.screen)) end
+		roots[1] = s
+	else
+		for _, c in ipairs(StarterGui:GetChildren()) do
+			if c:IsA("ScreenGui") and c.Enabled then roots[#roots + 1] = c end
+		end
+	end
+	if #roots == 0 then return okdata({ errors = 0, warnings = 0, issues = {} }, "ui_audit: no enabled ScreenGui in StarterGui, nothing to check.") end
+
+	local issues, seen, nErr, nWarn = {}, {}, 0, 0
+	local function short(inst)
+		local p = pathOf(inst)
+		if p:sub(1, 11) == "StarterGui." then p = p:sub(12) end
+		return p
+	end
+	local function add(level, view, inst, kind, detail)
+		local key = level .. "|" .. short(inst) .. "|" .. kind
+		if seen[key] then return end
+		seen[key] = true
+		if level == "E" then nErr += 1 else nWarn += 1 end
+		issues[#issues + 1] = { level = level, text = (level == "E" and "ERROR " or "warn ") .. view .. " " .. short(inst) .. ": " .. detail }
+	end
+	local function udim(u, size) return u.Scale * size + u.Offset end
+	local function area(r) return math.max(0, r.w) * math.max(0, r.h) end
+	local function cross(r1, r2)
+		local x1, y1 = math.max(r1.x, r2.x), math.max(r1.y, r2.y)
+		local x2, y2 = math.min(r1.x + r1.w, r2.x + r2.w), math.min(r1.y + r1.h, r2.y + r2.h)
+		if x2 <= x1 or y2 <= y1 then return nil end
+		return { x = x1, y = y1, w = x2 - x1, h = y2 - y1 }
+	end
+	local function lum(c)
+		local function ch(v) if v <= 0.03928 then return v / 12.92 end return ((v + 0.055) / 1.055) ^ 2.4 end
+		return 0.2126 * ch(c.R) + 0.7152 * ch(c.G) + 0.0722 * ch(c.B)
+	end
+	local function contrast(c1, c2)
+		local l1, l2 = lum(c1), lum(c2)
+		if l1 < l2 then l1, l2 = l2, l1 end
+		return (l1 + 0.05) / (l2 + 0.05)
+	end
+	local function isAncestor(p, c)
+		local cur = c.Parent
+		while cur do if cur == p then return true end cur = cur.Parent end
+		return false
+	end
+	local function plain(s) return (tostring(s or ""):gsub("<[^>]+>", "")) end
+	local function fontOf(o)
+		local ok, f = pcall(function() return o.Font end)
+		if ok and f and f.Name ~= "Unknown" then return f end
+		return Enum.Font.Gotham
+	end
+	local function px(v) return math.floor((tonumber(v) or 0) + 0.5) end
+	local function measure(text, size, font, width)
+		local ok, v = pcall(function() return TextService:GetTextSize(text, size, font, Vector2.new(width, 100000)) end)
+		if ok and v then return v end
+		return Vector2.new(#text * size * 0.55, size)
+	end
+	local count = 0
+
+	-- Lay one ScreenGui out for one screen size. Returns a list of { o = object, r = rect, clip = visible rect or nil, scroll = inside a ScrollingFrame }.
+	local function layout(screen, vp)
+		local out = {}
+		local top = 0
+		local okInset, ignore = pcall(function() return screen.IgnoreGuiInset end)
+		if okInset and ignore == false then top = TOPBAR end
+		local function sizeOf(o, cb)
+			local s = o.Size
+			local w, h = udim(s.X, cb.w), udim(s.Y, cb.h)
+			local okSc, sc = pcall(function() return o.SizeConstraint end)
+			if okSc and sc == Enum.SizeConstraint.RelativeXX then h = udim(s.Y, cb.w) elseif okSc and sc == Enum.SizeConstraint.RelativeYY then w = udim(s.X, cb.h) end
+			local ar = o:FindFirstChildOfClass("UIAspectRatioConstraint")
+			if ar and ar.AspectRatio > 0 then
+				local ratio = ar.AspectRatio
+				if ar.AspectType == Enum.AspectType.ScaleWithParentSize then
+					if ar.DominantAxis == Enum.DominantAxis.Height then w = h * ratio else h = w / ratio end
+				elseif h > 0 and w / h > ratio then w = h * ratio else h = w / ratio end
+			end
+			local sz = o:FindFirstChildOfClass("UISizeConstraint")
+			if sz then
+				w = math.clamp(w, sz.MinSize.X, math.max(sz.MinSize.X, sz.MaxSize.X))
+				h = math.clamp(h, sz.MinSize.Y, math.max(sz.MinSize.Y, sz.MaxSize.Y))
+			end
+			local us = o:FindFirstChildOfClass("UIScale")
+			if us then w, h = w * us.Scale, h * us.Scale end
+			return w, h
+		end
+		local function place(parent, box, clip, scroll)
+			count += 1
+			if count > MAX_OBJECTS then return end
+			local cb = box
+			local pad = parent:FindFirstChildOfClass("UIPadding")
+			if pad then
+				local l, r = udim(pad.PaddingLeft, box.w), udim(pad.PaddingRight, box.w)
+				local t, b = udim(pad.PaddingTop, box.h), udim(pad.PaddingBottom, box.h)
+				cb = { x = box.x + l, y = box.y + t, w = math.max(0, box.w - l - r), h = math.max(0, box.h - t - b) }
+			end
+			if parent:IsA("ScrollingFrame") then
+				local cs = parent.CanvasSize
+				local cw, chh = udim(cs.X, cb.w), udim(cs.Y, cb.h)
+				cb = { x = cb.x, y = cb.y, w = math.max(cb.w, cw), h = math.max(cb.h, chh) }
+				scroll = true
+			end
+			local items = {}
+			for _, k in ipairs(parent:GetChildren()) do
+				if k:IsA("GuiObject") and k.Visible then items[#items + 1] = k end
+			end
+			local list = parent:FindFirstChildOfClass("UIListLayout")
+			local grid = parent:FindFirstChildOfClass("UIGridLayout")
+			local lay = list or grid
+			if lay then
+				local byName = lay.SortOrder == Enum.SortOrder.Name
+				table.sort(items, function(x, y)
+					if not byName and x.LayoutOrder ~= y.LayoutOrder then return x.LayoutOrder < y.LayoutOrder end
+					return x.Name < y.Name
+				end)
+			end
+			local rects = {}
+			if grid then
+				local cw, chh = udim(grid.CellSize.X, cb.w), udim(grid.CellSize.Y, cb.h)
+				local px, py = udim(grid.CellPadding.X, cb.w), udim(grid.CellPadding.Y, cb.h)
+				local cols = math.max(1, math.floor((cb.w + px) / math.max(1, cw + px)))
+				if grid.FillDirectionMaxCells > 0 then cols = math.min(cols, grid.FillDirectionMaxCells) end
+				for i, k in ipairs(items) do
+					local c, r = (i - 1) % cols, math.floor((i - 1) / cols)
+					rects[k] = { x = cb.x + c * (cw + px), y = cb.y + r * (chh + py), w = cw, h = chh }
+				end
+			elseif list then
+				local vertical = list.FillDirection == Enum.FillDirection.Vertical
+				local gap = udim(list.Padding, vertical and cb.h or cb.w)
+				local sizes, total = {}, 0
+				for i, k in ipairs(items) do
+					local w, h = sizeOf(k, cb)
+					sizes[i] = { w, h }
+					total += (vertical and h or w) + (i > 1 and gap or 0)
+				end
+				local cursor = vertical and cb.y or cb.x
+				local valign, halign = list.VerticalAlignment, list.HorizontalAlignment
+				if vertical and valign == Enum.VerticalAlignment.Center then cursor += (cb.h - total) / 2
+				elseif vertical and valign == Enum.VerticalAlignment.Bottom then cursor += cb.h - total
+				elseif not vertical and halign == Enum.HorizontalAlignment.Center then cursor += (cb.w - total) / 2
+				elseif not vertical and halign == Enum.HorizontalAlignment.Right then cursor += cb.w - total end
+				for i, k in ipairs(items) do
+					local w, h = sizes[i][1], sizes[i][2]
+					local x, y
+					if vertical then
+						y = cursor
+						if halign == Enum.HorizontalAlignment.Center then x = cb.x + (cb.w - w) / 2 elseif halign == Enum.HorizontalAlignment.Right then x = cb.x + cb.w - w else x = cb.x end
+						cursor += h + gap
+					else
+						x = cursor
+						if valign == Enum.VerticalAlignment.Center then y = cb.y + (cb.h - h) / 2 elseif valign == Enum.VerticalAlignment.Bottom then y = cb.y + cb.h - h else y = cb.y end
+						cursor += w + gap
+					end
+					rects[k] = { x = x, y = y, w = w, h = h }
+				end
+			else
+				for _, k in ipairs(items) do
+					local w, h = sizeOf(k, cb)
+					local p, an = k.Position, k.AnchorPoint
+					rects[k] = { x = cb.x + udim(p.X, cb.w) - an.X * w, y = cb.y + udim(p.Y, cb.h) - an.Y * h, w = w, h = h }
+				end
+			end
+			for _, k in ipairs(items) do
+				local r = rects[k]
+				local vis = clip and cross(r, clip) or (not clip and r) or nil
+				out[#out + 1] = { o = k, r = r, clip = clip, vis = vis, scroll = scroll, layout = lay ~= nil, parent = parent, top = top }
+				local childClip = clip
+				if k.ClipsDescendants or k:IsA("ScrollingFrame") then childClip = clip and cross(clip, r) or r end
+				if childClip == nil and clip ~= nil then childClip = { x = 0, y = 0, w = 0, h = 0 } end
+				place(k, r, childClip, scroll)
+			end
+		end
+		place(screen, { x = 0, y = top, w = vp.w, h = vp.h - top }, nil, false)
+		return out
+	end
+
+	local fonts, corners = {}, {}
+	local tokens = nil
+	do
+		local raw = StarterGui:GetAttribute(UI_TOKENS_ATTR)
+		if type(raw) == "string" and raw ~= "" then
+			local ok, t = pcall(jdec, raw)
+			if ok and type(t) == "table" then tokens = t end
+		end
+	end
+	for _, view in ipairs(VIEWS) do
+		local phone = view.name == "phone"
+		local screenRect = { x = 0, y = 0, w = view.w, h = view.h }
+		local buttons, texts = {}, {}
+		for _, screen in ipairs(roots) do
+			for _, it in ipairs(layout(screen, view)) do
+				local o, r = it.o, it.r
+				local interactive = o:IsA("GuiButton") or o:IsA("TextBox")
+				local isText = (o:IsA("TextLabel") or o:IsA("TextButton") or o:IsA("TextBox")) and plain(o.Text):match("%S") ~= nil and o.TextTransparency < 0.9
+				if area(r) > 0 then
+					local seenArea = it.vis and area(it.vis) or 0
+					if interactive then
+						buttons[#buttons + 1] = it
+						if not it.scroll then
+							local on = cross(r, screenRect)
+							if (on and area(on) or 0) < 0.8 * area(r) then add("E", view.name, o, "offscreen", ("partly off screen (%dx%d px at %d,%d on a %dx%d screen); use Scale positions with AnchorPoint"):format(px(r.w), px(r.h), px(r.x), px(r.y), view.w, view.h)) end
+						end
+						if it.clip and not it.scroll and seenArea < 0.6 * area(r) then add("E", view.name, o, "clipped", "mostly hidden by a parent that clips its children (ClipsDescendants or a ScrollingFrame); make the parent bigger or move it") end
+						if phone and (r.w < 32 or r.h < 32) then add("E", view.name, o, "tiny", ("too small to tap on a phone (%dx%d px, needs at least 44x44)"):format(px(r.w), px(r.h)))
+						elseif phone and (r.w < 44 or r.h < 44) then add("W", view.name, o, "small", ("small to tap on a phone (%dx%d px, 44x44 is better)"):format(px(r.w), px(r.h))) end
+						if it.top == 0 and r.y < TOPBAR and r.x < 280 then add("W", view.name, o, "topbar", "sits under Roblox's own top-bar buttons (top-left corner); move it down or right") end
+					end
+					if isText then
+						if not interactive then texts[#texts + 1] = it end
+						local text, font = plain(o.Text), fontOf(o)
+						fonts[font.Name] = true
+						local ip = o:FindFirstChildOfClass("UIPadding")
+						local bw, bh = r.w, r.h
+						if ip then bw = bw - udim(ip.PaddingLeft, r.w) - udim(ip.PaddingRight, r.w); bh = bh - udim(ip.PaddingTop, r.h) - udim(ip.PaddingBottom, r.h) end
+						local size = o.TextSize
+						local tc = o:FindFirstChildOfClass("UITextSizeConstraint")
+						if o.TextScaled then
+							local lo, hi = 1, 100
+							if tc then hi = math.max(1, tc.MaxTextSize) end
+							while lo < hi do
+								local mid = math.ceil((lo + hi) / 2)
+								local b = measure(text, mid, font, o.TextWrapped and math.max(1, bw) or 100000)
+								if b.X <= bw + 1 and b.Y <= bh + 1 then lo = mid else hi = mid - 1 end
+							end
+							size = lo
+							if tc and size < tc.MinTextSize then
+								size = tc.MinTextSize
+								add("E", view.name, o, "cutoff", ("text does not fit even at its minimum size %d px; make the box bigger or the text shorter"):format(px(size)))
+							end
+						elseif o.AutomaticSize == Enum.AutomaticSize.None then
+							local b = measure(text, size, font, o.TextWrapped and math.max(1, bw) or 100000)
+							if (b.X > bw + 2 and not o.TextWrapped) or b.Y > bh + 2 then
+								if o.TextTruncate ~= Enum.TextTruncate.None then add("W", view.name, o, "truncated", ("text is shortened with ... (needs %dx%d px, box is %dx%d)"):format(px(b.X), px(b.Y), px(bw), px(bh)))
+								else add("E", view.name, o, "cutoff", ("text is cut off (needs %dx%d px at size %d, box is %dx%d); use TextWrapped, a bigger box, or TextScaled with UITextSizeConstraint"):format(px(b.X), px(b.Y), px(size), px(bw), px(bh))) end
+							end
+						end
+						if phone and size < 9 then add("E", view.name, o, "tinytext", ("text is too small to read on a phone (%d px)"):format(px(size)))
+						elseif phone and size < 12 then add("W", view.name, o, "smalltext", ("text is small on a phone (%d px, 14 or more reads better)"):format(px(size))) end
+						if it.clip and not it.scroll and seenArea < 0.8 * area(r) then add("E", view.name, o, "textclipped", "text is cut off by a parent that clips its children; make the parent bigger or move the text") end
+						if view == VIEWS[1] then
+							local bg, unknown, cur = nil, false, o
+							while cur and cur:IsA("GuiObject") do
+								if cur:FindFirstChildOfClass("UIGradient") and cur.BackgroundTransparency < 0.35 then unknown = true break end
+								if (cur:IsA("ImageLabel") or cur:IsA("ImageButton")) and cur.Image ~= "" and cur.ImageTransparency < 0.5 then unknown = true break end
+								if cur.BackgroundTransparency < 0.35 then bg = cur.BackgroundColor3 break end
+								cur = cur.Parent
+							end
+							if bg then
+								local ratio = contrast(o.TextColor3, bg)
+								if ratio < 3 then add("E", view.name, o, "contrast", ("text is hard to read: contrast %.1f:1 against its background (needs 4.5:1, 3:1 for big headings)"):format(ratio))
+								elseif ratio < 4.5 and size < 18 then add("W", view.name, o, "lowcontrast", ("text contrast is low (%.1f:1; 4.5:1 is better for small text)"):format(ratio)) end
+							elseif not unknown then
+								local stroke = o:FindFirstChildOfClass("UIStroke")
+								if o.TextStrokeTransparency > 0.6 and not (stroke and stroke.ApplyStrokeMode == Enum.ApplyStrokeMode.Contextual and stroke.Transparency < 0.6) then
+									add("W", view.name, o, "noback", "text sits over the game view with no background or outline; add a backing panel or a UIStroke")
+								end
+							end
+						end
+					end
+					if view == VIEWS[1] then
+						local c = o:FindFirstChildOfClass("UICorner")
+						if c then corners[tostring(math.floor(c.CornerRadius.Offset + 0.5)) .. (c.CornerRadius.Scale > 0 and "+s" or "")] = true end
+					end
+				end
+			end
+		end
+		-- Buttons on top of buttons, and text on top of text (layouts never overlap their own items, so those pairs are skipped).
+		local function overlaps(list, kind, what)
+			for i = 1, #list do
+				for j = i + 1, #list do
+					local A, B = list[i], list[j]
+					if not (A.layout and B.layout and A.parent == B.parent) and not isAncestor(A.o, B.o) and not isAncestor(B.o, A.o) then
+						local x = cross(A.r, B.r)
+						if x and area(x) > 0.25 * math.min(area(A.r), area(B.r)) then
+							add("E", view.name, B.o, kind .. short(A.o), what .. " " .. short(A.o) .. "; move one of them or put them in a UIListLayout")
+						end
+					end
+				end
+			end
+		end
+		if #buttons <= 300 then overlaps(buttons, "overlap:", "overlaps the button") end
+		if #texts <= 300 then overlaps(texts, "textover:", "text overlaps the text of") end
+		if #issues >= MAX_ISSUES * 3 then break end
+	end
+	-- Style: one look per game.
+	local fontList, cornerList = {}, {}
+	for f in pairs(fonts) do fontList[#fontList + 1] = f end
+	for c in pairs(corners) do cornerList[#cornerList + 1] = c end
+	table.sort(fontList); table.sort(cornerList)
+	local style = {}
+	if #fontList > 3 then style[#style + 1] = ("%d different fonts (%s); use one body font and one heading font"):format(#fontList, table.concat(fontList, ", ")) end
+	if #cornerList > 4 then style[#style + 1] = ("%d different corner radii (%s); use one"):format(#cornerList, table.concat(cornerList, ", ")) end
+	if tokens then
+		local allowed = {}
+		for _, k in ipairs({ "font", "heading_font", "body_font" }) do if type(tokens[k]) == "string" then allowed[tokens[k]] = true end end
+		local off = {}
+		if next(allowed) then for _, f in ipairs(fontList) do if not allowed[f] then off[#off + 1] = f end end end
+		if #off > 0 then style[#style + 1] = "fonts not in this game's tokens: " .. table.concat(off, ", ") end
+	else
+		style[#style + 1] = "no UI design tokens saved for this game (ui_tokens): save one palette, font and corner radius and use them everywhere"
+	end
+	for _, s in ipairs(style) do nWarn += 1; issues[#issues + 1] = { level = "W", text = "warn style: " .. s } end
+	table.sort(issues, function(x, y) if x.level ~= y.level then return x.level == "E" end return x.text < y.text end)
+	local lines = {}
+	for i = 1, math.min(#issues, MAX_ISSUES) do lines[i] = issues[i].text end
+	if #issues > MAX_ISSUES then lines[#lines + 1] = ("... and %d more"):format(#issues - MAX_ISSUES) end
+	local names = {}
+	for _, s in ipairs(roots) do names[#names + 1] = s.Name end
+	local head = ("ui_audit (%s; phone 844x390, desktop 1920x1080): %d error(s), %d warning(s)."):format(table.concat(names, ", "), nErr, nWarn)
+	if count > MAX_OBJECTS then head = head .. " Only the first " .. MAX_OBJECTS .. " objects were checked." end
+	if nErr > 0 then head = head .. " Fix every ERROR before saying done." end
+	local NL = string.char(10)
+	return okdata({ errors = nErr, warnings = nWarn }, head .. (#lines > 0 and (NL .. table.concat(lines, NL)) or ""))
+end
+
 -- ═════════════════════════════════════════════════════════════════════════════
 -- FX & PARTICLE STUDIO
 -- ═════════════════════════════════════════════════════════════════════════════
@@ -2688,6 +3046,9 @@ local dispatch = {
 	ui_create_screen = api.ui_create_screen,
 	ui_create_component = api.ui_create_component,
 	ui_inspect = api.ui_inspect,
+	ui_audit = api.ui_audit,
+	ui_tokens = api.ui_tokens,
+	ui_tokens_set = api.ui_tokens_set,
 	fx_create_emitter = api.fx_create_emitter,
 	fx_create_light = api.fx_create_light,
 	fx_create_vfx = api.fx_create_vfx,
@@ -2780,6 +3141,26 @@ const SKILL_COMMANDS = [
     description: "Inspect the GUI hierarchy and components currently in StarterGui.",
     params: {
       screen_name: { type: "string", req: false, desc: "optional specific ScreenGui name" }
+    }
+  },
+  {
+    name: "ui_audit",
+    description: "Check the game's UI like a phone (844x390) and a desktop (1920x1080) screen: cut-off text, buttons off screen or hidden by a clipping parent, buttons or text on top of each other, buttons too small to tap (under 44x44 px on a phone), low contrast, text too small to read, and a mixed look (fonts, corners, this game's ui_tokens). Errors must be fixed before saying done; PlazCode also runs it when you finish UI work.",
+    params: {
+      screen: { type: "string", req: false, desc: "one ScreenGui name in StarterGui (default: every enabled ScreenGui)" },
+      viewport: { type: "string", req: false, desc: "phone, desktop or both (default both)" }
+    }
+  },
+  {
+    name: "ui_tokens",
+    description: "Read this game's saved UI design tokens (one palette, fonts, corner radius, spacing, stroke). Call it before building UI and use only these values on every screen.",
+    params: {}
+  },
+  {
+    name: "ui_tokens_set",
+    description: "Save or update this game's UI design tokens once (merged into what is saved), e.g. {tokens:{palette:{background:'#0F172A',surface:'#1E293B',primary:'#6366F1',accent:'#F59E0B',text:'#F8FAFC',muted:'#94A3B8',danger:'#EF4444',success:'#22C55E'},font:'GothamMedium',heading_font:'GothamBold',corner:10,spacing:8,stroke:2}}.",
+    params: {
+      tokens: { type: "object", req: true, desc: "palette (hex colours), font, heading_font, corner (px), spacing (px), stroke (px)" }
     }
   },
   {

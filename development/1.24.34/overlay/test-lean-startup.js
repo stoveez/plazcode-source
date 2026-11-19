@@ -16,7 +16,7 @@ const windowStub = {
   __rsAutoDebug: () => true, __rsWorkMode: () => '',
 };
 const context = vm.createContext({ window: windowStub, console });
-for (const file of ['core/luau-knowledge.js', 'core/chat-creators.js', 'core/ultracode.js', 'core/clarification.js', 'core/config.js', 'core/lean-startup.js']) {
+for (const file of ['core/luau-knowledge.js', 'core/chat-creators.js', 'core/ultracode.js', 'core/clarification.js', 'core/config.js', 'core/plazlib-data.js', 'core/plazlib.js', 'core/lean-startup.js']) {
   vm.runInContext(read(file), context, { filename: file });
 }
 const RS = vm.runInContext('RS', context);
@@ -122,7 +122,8 @@ assert.equal(flags.blender, false);
 assert.equal(Object.prototype.hasOwnProperty.call(windowStub, '__rsBlender'), true);
 
 // Every paragraph of every topic is real text from the current builders (so nothing is duplicated or can drift).
-const originals = [fullPrompt, compactPrompt, blenderPrompt, localPrompt, localAccessPrompt, CLARIFY.INSTRUCTION, vm.runInContext('PlazCodeUltracode.build("roblox","",0)', context)];
+// 2026-11-19: two topics also carry text written only for them: the UI standard (studio-gui) and the PlazLib catalog (plazlib).
+const originals = [fullPrompt, compactPrompt, blenderPrompt, localPrompt, localAccessPrompt, CLARIFY.INSTRUCTION, vm.runInContext('PlazCodeUltracode.build("roblox","",0)', context), Lean.UI_STANDARD, vm.runInContext('PlazCodePlazLib.reference()', context)];
 for (const name of Object.keys(Lean.TOPICS)) {
   const text = Lean.TOPICS[name];
   for (const chunk of text.split('\n\n').map(c => c.trim()).filter(Boolean)) {
