@@ -1468,5 +1468,13 @@
   "UI check skipped: Studio did not answer": "Sprawdzenie interfejsu pominięte: Studio nie odpowiedziało",
   "UI check passed: no new layout problems": "Sprawdzenie interfejsu zaliczone: brak nowych problemów z układem",
   "UI check still shows problems": "Sprawdzenie interfejsu nadal pokazuje problemy",
-  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode dwa razy poprosił AI o poprawki. Nadal źle:"
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode dwa razy poprosił AI o poprawki. Nadal źle:",
+  "Interrupted run found": "Znaleziono przerwane uruchomienie",
+  "1 step finished before this tab reloaded.": "1 krok zakończył się przed przeładowaniem tej karty.",
+  "{count} steps finished before this tab reloaded.": "{count} kroki zakończyły się przed przeładowaniem tej karty.",
+  "This run was interrupted when the tab reloaded.": "To uruchomienie zostało przerwane po przeładowaniu karty.",
+  "Last step: {step}": "Ostatni krok: {step}",
+  "Finished steps will not run again.": "Zakończone kroki nie zostaną uruchomione ponownie.",
+  "Start fresh": "Zacznij od nowa",
+  "Keep my computer awake during runs": "Nie usypiaj komputera podczas działania"
 }

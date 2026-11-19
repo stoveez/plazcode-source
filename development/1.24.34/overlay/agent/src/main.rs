@@ -81,6 +81,7 @@ mod engine_tools;
 mod security;
 mod integrity;
 mod preferences;
+mod power;
 mod provider_pacing;
 mod learning;
 mod profile_paths;
@@ -215,6 +216,7 @@ struct AppState {
     addon_cache: Arc<std::sync::Mutex<(Vec<serde_json::Value>, Vec<mcp_addons::ServerSummary>)>>,
     addon_refreshing: Arc<AtomicBool>,
     preferences: Arc<preferences::PreferencesStore>,
+    keep_awake: Arc<power::KeepAwake>,
     ui: Arc<gui::UiShared>,
 }
 
@@ -228,6 +230,7 @@ impl AppState {
         preferences: Arc<preferences::PreferencesStore>,
         ui: Arc<gui::UiShared>,
     ) -> Self {
+        let keep_awake = Arc::new(power::KeepAwake::new(preferences.snapshot().keep_awake));
         Self {
             pairing_key,
             accounts: Arc::new(accounts::Manager::disabled()),
@@ -249,8 +252,14 @@ impl AppState {
             addon_cache: Arc::new(std::sync::Mutex::new((Vec::new(), Vec::new()))),
             addon_refreshing: Arc::new(AtomicBool::new(false)),
             preferences,
+            keep_awake,
             ui,
         }
+    }
+
+    fn sync_keep_awake(&self) {
+        let enabled = self.preferences.snapshot().keep_awake;
+        self.keep_awake.update(enabled, updater::bridge_busy());
     }
 
     /// 1.24.13: the auto-connect loop already ignored one or two failed probes, but
@@ -1402,6 +1411,14 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         security::allowed_origin(&headers)
     })).allow_methods([Method::GET, Method::POST, Method::OPTIONS]).allow_headers(Any);
     updater::start_checker();
+    let s_power = state.clone();
+    tokio::spawn(async move {
+        let mut tick = tokio::time::interval(Duration::from_secs(2));
+        loop {
+            tick.tick().await;
+            s_power.sync_keep_awake();
+        }
+    });
     // Blockbench: the pairing word the helper connection accepts and the helper file follow the saved choices.
     blockbench::resync();figma::resync();
     let linux_launch = linux_launch_routes(state.clone());
@@ -1598,6 +1615,7 @@ fn preferences_response(state: &AppState, patch: &serde_json::Value, outcome: an
             ).into_response(),
         },
     };
+    state.sync_keep_awake();
     if prefs.read_only {workspace::stop_profile_jobs();}
     let full = full_access_after(patch, &prefs.perm_mode, state.workspace.full_access());
     if full != state.workspace.full_access() { state.workspace.set_full_access(full); }
@@ -2163,6 +2181,7 @@ async fn desktop_kill_studio_handler(State(state): State<AppState>) -> impl Into
 async fn browser_agent_handler(State(state): State<AppState>, Json(value): Json<serde_json::Value>) -> impl IntoResponse {
     state.ui.mark_extension_seen();
     if value["canStop"]==true { updater::touch_activity(); }
+    state.sync_keep_awake();
     let mut slot=state.ui.browser_agent.lock().unwrap_or_else(|error|error.into_inner());
     let replace=slot.as_ref().map_or(true,|(at,current)|at.elapsed()>Duration::from_secs(3) || value["browser_focused"]==true || current["browser_id"]==value["browser_id"]);
     if replace {*slot=Some((std::time::Instant::now(),value));}

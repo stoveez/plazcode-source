@@ -1468,5 +1468,13 @@
   "UI check skipped: Studio did not answer": "Arayüz denetimi atlandı: Studio yanıt vermedi",
   "UI check passed: no new layout problems": "Arayüz denetimi geçti: yeni yerleşim sorunu yok",
   "UI check still shows problems": "Arayüz denetimi hâlâ sorun gösteriyor",
-  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode yapay zekâdan bunları iki kez düzeltmesini istedi. Hâlâ hatalı:"
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode yapay zekâdan bunları iki kez düzeltmesini istedi. Hâlâ hatalı:",
+  "Interrupted run found": "Yarıda kalan çalışma bulundu",
+  "1 step finished before this tab reloaded.": "Bu sekme yeniden yüklenmeden önce 1 adım tamamlandı.",
+  "{count} steps finished before this tab reloaded.": "Bu sekme yeniden yüklenmeden önce {count} adım tamamlandı.",
+  "This run was interrupted when the tab reloaded.": "Sekme yeniden yüklendiğinde bu çalışma yarıda kaldı.",
+  "Last step: {step}": "Son adım: {step}",
+  "Finished steps will not run again.": "Tamamlanan adımlar tekrar çalıştırılmaz.",
+  "Start fresh": "Sıfırdan başla",
+  "Keep my computer awake during runs": "Çalışmalar sırasında bilgisayarımı uyanık tut"
 }

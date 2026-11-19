@@ -1468,5 +1468,13 @@
   "UI check skipped: Studio did not answer": "تم تخطي فحص الواجهة: لم يستجب Studio",
   "UI check passed: no new layout problems": "نجح فحص الواجهة: لا مشكلات تخطيط جديدة",
   "UI check still shows problems": "لا يزال فحص الواجهة يُظهر مشكلات",
-  "PlazCode asked the AI to fix them twice. Still wrong:": "طلب PlazCode من الذكاء الاصطناعي إصلاحها مرتين. لا تزال خاطئة:"
+  "PlazCode asked the AI to fix them twice. Still wrong:": "طلب PlazCode من الذكاء الاصطناعي إصلاحها مرتين. لا تزال خاطئة:",
+  "Interrupted run found": "تم العثور على تشغيل متوقف",
+  "1 step finished before this tab reloaded.": "اكتملت خطوة واحدة قبل إعادة تحميل علامة التبويب هذه.",
+  "{count} steps finished before this tab reloaded.": "اكتملت {count} خطوات قبل إعادة تحميل علامة التبويب هذه.",
+  "This run was interrupted when the tab reloaded.": "توقف هذا التشغيل عند إعادة تحميل علامة التبويب.",
+  "Last step: {step}": "آخر خطوة: {step}",
+  "Finished steps will not run again.": "لن يتم تشغيل الخطوات المكتملة مرة أخرى.",
+  "Start fresh": "البدء من جديد",
+  "Keep my computer awake during runs": "إبقاء الكمبيوتر مستيقظًا أثناء التشغيل"
 }

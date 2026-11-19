@@ -1468,5 +1468,13 @@
   "UI check skipped: Studio did not answer": "Verificação da interface ignorada: o Studio não respondeu",
   "UI check passed: no new layout problems": "Verificação da interface aprovada: nenhum problema novo de layout",
   "UI check still shows problems": "A verificação da interface ainda mostra problemas",
-  "PlazCode asked the AI to fix them twice. Still wrong:": "O PlazCode pediu à IA para corrigi-los duas vezes. Ainda errado:"
+  "PlazCode asked the AI to fix them twice. Still wrong:": "O PlazCode pediu à IA para corrigi-los duas vezes. Ainda errado:",
+  "Interrupted run found": "Execução interrompida encontrada",
+  "1 step finished before this tab reloaded.": "1 etapa foi concluída antes desta aba recarregar.",
+  "{count} steps finished before this tab reloaded.": "{count} etapas foram concluídas antes desta aba recarregar.",
+  "This run was interrupted when the tab reloaded.": "Esta execução foi interrompida quando a aba recarregou.",
+  "Last step: {step}": "Última etapa: {step}",
+  "Finished steps will not run again.": "As etapas concluídas não serão executadas novamente.",
+  "Start fresh": "Começar do zero",
+  "Keep my computer awake during runs": "Manter meu computador acordado durante as execuções"
 }

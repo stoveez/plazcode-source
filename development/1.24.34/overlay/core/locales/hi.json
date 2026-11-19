@@ -1468,5 +1468,13 @@
   "UI check skipped: Studio did not answer": "UI जाँच छोड़ी गई: Studio ने जवाब नहीं दिया",
   "UI check passed: no new layout problems": "UI जाँच पास: लेआउट की कोई नई समस्या नहीं",
   "UI check still shows problems": "UI जाँच में अब भी समस्याएँ हैं",
-  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode ने AI से इन्हें दो बार ठीक करने को कहा। अब भी गलत:"
+  "PlazCode asked the AI to fix them twice. Still wrong:": "PlazCode ने AI से इन्हें दो बार ठीक करने को कहा। अब भी गलत:",
+  "Interrupted run found": "बाधित रन मिला",
+  "1 step finished before this tab reloaded.": "इस टैब के रीलोड होने से पहले 1 चरण पूरा हुआ।",
+  "{count} steps finished before this tab reloaded.": "इस टैब के रीलोड होने से पहले {count} चरण पूरे हुए।",
+  "This run was interrupted when the tab reloaded.": "टैब रीलोड होने पर यह रन बाधित हो गया था।",
+  "Last step: {step}": "अंतिम चरण: {step}",
+  "Finished steps will not run again.": "पूरे हो चुके चरण फिर से नहीं चलेंगे।",
+  "Start fresh": "नए सिरे से शुरू करें",
+  "Keep my computer awake during runs": "रन के दौरान मेरे कंप्यूटर को जागृत रखें"
 }

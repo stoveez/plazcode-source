@@ -1468,5 +1468,13 @@
   "UI check skipped: Studio did not answer": null,
   "UI check passed: no new layout problems": null,
   "UI check still shows problems": null,
-  "PlazCode asked the AI to fix them twice. Still wrong:": null
+  "PlazCode asked the AI to fix them twice. Still wrong:": null,
+  "Interrupted run found": "Interrupted run found",
+  "1 step finished before this tab reloaded.": "1 step finished before this tab reloaded.",
+  "{count} steps finished before this tab reloaded.": "{count} steps finished before this tab reloaded.",
+  "This run was interrupted when the tab reloaded.": "This run was interrupted when the tab reloaded.",
+  "Last step: {step}": "Last step: {step}",
+  "Finished steps will not run again.": "Finished steps will not run again.",
+  "Start fresh": "Start fresh",
+  "Keep my computer awake during runs": "Keep my computer awake during runs"
 }

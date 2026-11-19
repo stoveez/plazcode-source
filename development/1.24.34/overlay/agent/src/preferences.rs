@@ -54,6 +54,9 @@ pub struct DesktopPreferences {
     pub auto_fix: bool,
     #[serde(rename = "rsBgMode")]
     pub bg_mode: bool,
+    /// Keep the computer awake while an active PlazCode run is in progress (default off).
+    #[serde(rename = "rsKeepAwake")]
+    pub keep_awake: bool,
     #[serde(rename = "rsCustomPrompt", skip_serializing_if = "Option::is_none")]
     pub custom_prompt: Option<String>,
     #[serde(rename = "rsAppearance", skip_serializing_if = "Option::is_none")]
@@ -127,6 +130,7 @@ impl Default for DesktopPreferences {
             forge_mode: true,
             auto_fix: true,
             bg_mode: true,
+            keep_awake: false,
             custom_prompt: None,
             appearance: None,
             sidebar_collapsed: false, explorer_auto_sync: true, skill_auto_learn: true, shared_learning: true, auto_update: true,
@@ -529,6 +533,17 @@ mod tests {
         for mode in ["ask","auto","bypass"] {
             let mut prefs:DesktopPreferences=serde_json::from_value(serde_json::json!({"rsApprovalMode":mode})).unwrap();prefs.normalize();let encoded=serde_json::to_value(&prefs).unwrap();assert_eq!(encoded["rsApprovalMode"],mode);
         }
+    }
+    #[test] fn keep_awake_defaults_off_and_persists_on() {
+        let path = temp_settings_path();
+        let store = PreferencesStore::load_from(path.clone());
+        assert!(!store.snapshot().keep_awake, "keep awake must default off");
+        store.patch(serde_json::json!({"rsKeepAwake": true})).expect("enable keep awake");
+        let reopened = PreferencesStore::load_from(path.clone());
+        assert!(reopened.snapshot().keep_awake, "keep awake persists across reopen");
+        reopened.patch(serde_json::json!({"rsKeepAwake": false})).expect("disable keep awake");
+        assert!(!PreferencesStore::load_from(path.clone()).snapshot().keep_awake);
+        let _ = std::fs::remove_file(path);
     }
 
 }
