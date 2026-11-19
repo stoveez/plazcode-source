@@ -1068,7 +1068,7 @@ html[data-pz-studio]:not([data-desktop-gradients=off]) .page :is(.nx-block,.sett
 html[data-pz-studio]:not([data-desktop-gradients=off]) .page :is(.nx-block,.settingcard)::after{content:"";position:absolute;left:26px;right:26px;top:-1px;height:1px;border-radius:1px;background:linear-gradient(90deg,transparent,rgb(var(--pz-rgb)/.85) 22%,color-mix(in srgb,var(--orange2,#ffc052) 60%,#fff) 50%,rgb(var(--pz-rgb)/.85) 78%,transparent);opacity:.75;pointer-events:none}
 /* Tabs and the sidebar. */
 html[data-pz-studio]:not([data-desktop-gradients=off]) .pz-tabs .navbtn.active{background:linear-gradient(180deg,rgb(255 255 255/.10),transparent 55%),linear-gradient(135deg,rgb(var(--pz-rgb)/.34),rgb(var(--pz-rgb)/.08))!important;border-color:rgb(var(--pz-rgb)/.55)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.16),0 8px 22px -12px rgb(var(--pz-rgb)/calc(.9*var(--pz-g)))!important}
-html[data-pz-studio]:not([data-desktop-gradients=off]) .pz-tabs .navbtn.active svg{color:var(--orange2,#ffc052);opacity:1}
+html[data-pz-studio] .pz-tabs .navbtn.active svg{color:var(--orange2,#ffc052)!important;opacity:1}
 html[data-pz-studio]:not([data-desktop-gradients=off]) .pz-area.active{background:linear-gradient(180deg,rgb(255 255 255/.09),transparent 50%),linear-gradient(120deg,rgb(var(--pz-rgb)/.40),rgb(var(--pz-rgb)/.09) 78%);box-shadow:inset 0 1px 0 rgb(255 255 255/.2),0 12px 30px -12px rgb(var(--pz-rgb)/calc(.75*var(--pz-g)))}
 html[data-pz-studio]:not([data-desktop-gradients=off]) .pz-area.active b{background:linear-gradient(96deg,var(--text,#fff) 30%,var(--orange2,#ffc052));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;width:fit-content}
 html[data-pz-studio]:not([data-desktop-gradients=off]) .pz-area svg{box-sizing:content-box;padding:6px;margin:-6px;border-radius:10px;background:linear-gradient(145deg,rgb(var(--pz-rgb)/.22),rgb(var(--pz-rgb)/.04));box-shadow:inset 0 1px 0 rgb(255 255 255/.1)}
@@ -1460,9 +1460,28 @@ html[data-pz-asleep] *,html[data-pz-asleep] *::before,html[data-pz-asleep] *::af
   var native=false,modern=false;try{native=!!(window.CSS&&CSS.supports&&CSS.supports('color','color-mix(in srgb, red 50%, blue)'));modern=!!(window.CSS&&CSS.supports&&CSS.supports('inset','0px'));}catch(e){}
   if(native&&modern)return;
   function sides(v){var imp=/!important\s*$/i.test(v)?' !important':'';v=v.replace(/!important\s*$/i,'').trim();var p=split(v,false);if(!p.length)return null;var t=p[0],r=p[1]||t,b=p[2]||t,l=p[3]||r;return 'top:'+t+imp+';right:'+r+imp+';bottom:'+b+imp+';left:'+l+imp;}
+  /* 2026-11-19 (owner's Catalina screenshots: the folded sidebar still showed every label). :-webkit-any() only takes simple
+     selectors, so a rule like "[folded] :is(.a h2,.b){display:none}" was thrown away whole by that engine. Each :is() in a
+     rule's selector is now written out as a plain selector list instead ("[folded] .a h2,[folded] .b"), which every engine
+     reads; only an :is() inside another bracket, or a list that would grow past 300 selectors, keeps :-webkit-any(). */
+  function expand(sel,out){
+    var k=-1,d=0;for(var i=0;i<sel.length;i++){var ch=sel.charAt(i);if(ch=='(')d++;else if(ch==')')d--;else if(d==0&&sel.substr(i,4)==':is('){k=i;break;}}
+    var end=k<0?-1:close(sel,k+3);
+    if(end<0||out.length>300){out.push(sel.replace(/:is\(/g,':-webkit-any('));return;}
+    var args=split(sel.slice(k+4,end),true);
+    for(var a=0;a<args.length;a++)expand(sel.slice(0,k)+args[a]+sel.slice(end+1),out);
+  }
+  function selectors(t){
+    return t.replace(/(^|[{}])([^{}]*)(?=\{)/g,function(all,lead,pre){
+      if(pre.indexOf(':is(')<0||/^\s*@/.test(pre))return all;
+      var list=split(pre,true),out=[];for(var i=0;i<list.length;i++)expand(list[i],out);
+      return lead+out.join(',');
+    });
+  }
   function legacy(t){
+    t=t.replace(/\/\*[\s\S]*?\*\//g,'');
     t=t.replace(/(^|[{;\s])inset\s*:\s*([^;{}]+)/g,function(all,lead,v){var x=sides(v);return x?lead+x:all;});
-    t=t.replace(/:is\(/g,':-webkit-any(').replace(/:focus-visible/g,':focus').replace(/(\d)dvh\b/g,'$1vh');
+    t=selectors(t).replace(/:is\(/g,':-webkit-any(').replace(/:focus-visible/g,':focus').replace(/(\d)dvh\b/g,'$1vh');
     return t;
   }
   function close(t,i){for(var d=0;i<t.length;i++){var ch=t.charAt(i);if(ch=='(')d++;else if(ch==')'&&--d==0)return i;}return -1;}
@@ -1481,6 +1500,83 @@ html[data-pz-asleep] *,html[data-pz-asleep] *::before,html[data-pz-asleep] *::af
   }
   function rewrite(t){var out='',i=0,k;while((k=t.indexOf('color-mix(',i))>=0){var end=close(t,k+9);if(end<0)break;out+=t.slice(i,k)+mix(rewrite(t.slice(k+10,end)));i=end+1;}return out+t.slice(i);}
   function fix(node){if(!node||node.nodeName!='STYLE')return;var t=node.textContent;if(node.__pzDone===t)return;var out=t;if(!native&&out.indexOf('color-mix(')>=0)out=rewrite(out);if(!modern)out=legacy(out);node.__pzDone=out;if(out!==t)node.textContent=out;}
+  /* 2026-11-19 (owner's Catalina screenshots). Two more layout gaps of engines older than Safari 14.1, found once the page's
+     own styles were readable there:
+     - Flex "gap" (Safari 14.1): status dots touched their words ("●BRIDGE") and rows of buttons stuck together. Where the
+       engine draws no flex gap, each flex box's gap becomes a margin on its children (only where the child has none of
+       its own), and is worked out again when the page changes (pages, the folded sidebar, a resized window).
+     - A button laid out as a grid (the sidebar sections, the theme tiles): that engine stacks the grid's parts, so each
+       section's icon sat above its name. There these buttons get a simple side-by-side layout instead.
+     Each is switched on only after a small test shows the engine lacks it. */
+  function gaps(){
+    var mine=[],marked=[],sheet=null,timer=0,last=0,watch=null;
+    function css(e,p){return window.getComputedStyle(e,p);}
+    function shown(s){return s.display!='none'&&s.position!='absolute'&&s.position!='fixed';}
+    function run(){
+      timer=0;last=Date.now();
+      for(var i=0;i<mine.length;i++){var m=mine[i];if(m[0].style.getPropertyValue(m[1])===m[2])m[0].style.removeProperty(m[1]);}
+      for(var r=0;r<marked.length;r++){marked[r].removeAttribute('data-pz-gb');marked[r].removeAttribute('data-pz-ga');}
+      mine=[];marked=[];var all=document.body?document.body.getElementsByTagName('*'):[],todo=[],tags=[],rules={};
+      for(var j=0;j<all.length;j++){
+        var el=all[j];if(!el.firstChild||!(el.offsetWidth||el.offsetHeight))continue;
+        var s=css(el);if(s.display!='flex'&&s.display!='inline-flex')continue;
+        var dir=s.flexDirection,col=dir.indexOf('column')==0,rev=dir.indexOf('reverse')>0,rtl=s.direction=='rtl',wrap=s.flexWrap!='nowrap';
+        var along=parseFloat(col?s.rowGap:s.columnGap)||0,across=parseFloat(col?s.columnGap:s.rowGap)||0;
+        if(!along&&!(wrap&&across))continue;
+        /* The flex box's parts in order: its ::before, child elements, runs of text and its ::after. */
+        var items=[],pb=css(el,'::before'),pa=css(el,'::after');
+        if(pb&&pb.content&&pb.content!='none'&&pb.content!='normal'&&shown(pb))items.push({p:'b',s:pb});
+        for(var c=el.firstChild;c;c=c.nextSibling){if(c.nodeType==1){var cs=css(c);if(shown(cs))items.push({el:c,s:cs});}else if(c.nodeType==3&&/\S/.test(c.nodeValue))items.push({});}
+        if(pa&&pa.content&&pa.content!='none'&&pa.content!='normal'&&shown(pa))items.push({p:'a',s:pa});
+        if(items.length<2)continue;
+        var start=col?(rev?'bottom':'top'):((rev!=rtl)?'right':'left'),end={top:'bottom',bottom:'top',left:'right',right:'left'}[start],side=col?(rtl?'left':'right'):'bottom';
+        var put=function(item,where,size){
+          if(!size||!item.s||parseFloat(item.s['margin-'+where])!==0)return;
+          if(item.el)todo.push([item.el,'margin-'+where,size+'px']);
+          else{var key=where+':'+size;tags.push([el,'data-pz-g'+item.p,key]);rules['[data-pz-g'+item.p+'="'+key+'"]::'+(item.p=='b'?'before':'after')+'{margin-'+where+':'+size+'px!important}']=1;}
+        };
+        for(var n=0;n<items.length;n++){
+          var it=items[n];
+          if(wrap){if(n<items.length-1&&(it.el||it.p=='b'))put(it,end,along);if(it.el)put(it,side,across);continue;}
+          if(!n)continue;
+          if(it.el||it.p=='a')put(it,start,along);else if(items[n-1].el||items[n-1].p=='b')put(items[n-1],end,along);
+        }
+      }
+      for(var w=0;w<todo.length;w++){var x=todo[w];if(!x[0].style.getPropertyValue(x[1])){x[0].style.setProperty(x[1],x[2]);mine.push(x);}}
+      for(var g=0;g<tags.length;g++){tags[g][0].setAttribute(tags[g][1],tags[g][2]);marked.push(tags[g][0]);}
+      var text=Object.keys(rules).join('');
+      if(!sheet){sheet=document.createElement('style');sheet.id='pz-flex-gap';document.head.appendChild(sheet);}
+      if(sheet.textContent!==text)sheet.textContent=text;
+      if(watch)watch.takeRecords();
+    }
+    function soon(){if(!timer)timer=setTimeout(run,Math.max(60,400-(Date.now()-last)));}
+    window.__plazcodeFlexGapFill=run;
+    try{watch=new MutationObserver(soon);watch.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden','open','data-sidebar-collapsed','data-pz-studio']});}catch(e){}
+    window.addEventListener('resize',soon);window.addEventListener('load',soon);run();
+  }
+  var BUTTONS='html[data-pz-oldbutton] .pz-area{display:block!important;white-space:nowrap}'+
+    'html[data-pz-oldbutton] .pz-area>svg{display:inline-block!important;vertical-align:middle;margin:0 17px 0 5px!important}'+
+    'html[data-pz-oldbutton][data-pz-studio]:not([data-desktop-gradients=off]) .pz-area>svg{margin:-6px 11px -6px -1px!important}'+
+    'html[data-pz-oldbutton] .pz-area>span{display:inline-block;vertical-align:middle;white-space:normal;width:calc(100% - 42px)}'+
+    'html[data-pz-oldbutton][data-sidebar-collapsed] .pz-area{text-align:center}'+
+    'html[data-pz-oldbutton][data-sidebar-collapsed] .pz-area>svg{margin:0!important}'+
+    'html[data-pz-oldbutton][data-sidebar-collapsed][data-pz-studio]:not([data-desktop-gradients=off]) .pz-area>svg{margin:-6px!important}'+
+    'html[data-pz-oldbutton][data-pz-studio] .nx-theme{display:block!important}'+
+    'html[data-pz-oldbutton][data-pz-studio] .nx-theme .nx-theme-prev{float:left;margin-right:14px}'+
+    'html[data-pz-oldbutton][data-pz-studio] .nx-theme .nx-theme-name,html[data-pz-oldbutton][data-pz-studio] .nx-theme .nx-theme-desc{display:block;margin-right:30px;overflow:hidden}'+
+    'html[data-pz-oldbutton][data-pz-studio] .nx-theme .nx-theme-name{padding-top:4px}'+
+    'html[data-pz-oldbutton][data-pz-studio] .nx-theme .nx-theme-tick{position:absolute!important;right:14px;top:50%;margin-top:-10px}';
+  function probe(){
+    var body=document.body;if(!body)return;
+    var box=document.createElement('div');box.style.cssText='position:absolute;left:-9999px;top:0;visibility:hidden';
+    box.innerHTML='<div style="display:flex;flex-direction:column;row-gap:1px"><div></div><div></div></div><button type="button" style="display:grid;grid-template-columns:10px 10px;width:20px;padding:0;border:0"><span></span><span></span></button>';
+    body.appendChild(box);
+    var flex=box.firstChild,button=box.lastChild,flexGap=flex.offsetHeight==1&&!window.__pzForceNoFlexGap,buttonGrid=button.lastChild.offsetLeft-button.firstChild.offsetLeft==10&&!window.__pzForceNoButtonGrid;
+    body.removeChild(box);
+    if(!buttonGrid){document.documentElement.setAttribute('data-pz-oldbutton','');var st=document.createElement('style');st.id='pz-old-buttons';st.textContent=BUTTONS;document.head.appendChild(st);}
+    if(!flexGap)gaps();
+  }
+  if(document.readyState=='loading')document.addEventListener('DOMContentLoaded',probe);else probe();
   window.__plazcodeColorMixFallback=rewrite;
   var styles=document.getElementsByTagName('style');for(var n=0;n<styles.length;n++)fix(styles[n]);
   try{new MutationObserver(function(list){list.forEach(function(change){fix(change.target.nodeType==3?change.target.parentNode:change.target);for(var j=0;j<change.addedNodes.length;j++){var node=change.addedNodes[j];fix(node);if(node.getElementsByTagName){var inner=node.getElementsByTagName('style');for(var x=0;x<inner.length;x++)fix(inner[x]);}}});}).observe(document.documentElement,{childList:true,subtree:true,characterData:true});}catch(e){}

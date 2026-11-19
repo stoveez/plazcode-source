@@ -86,6 +86,8 @@ console.log("PASS old-Safari support: head script, -webkit-backdrop-filter, vh f
       const real = CSS.supports.bind(CSS);
       CSS.supports = function (a, b) { const t = String(b === undefined ? a : b) + "|" + a; return /color-mix|inset/.test(t) ? false : real(a, b); };
       for (const P of [Element.prototype, Document.prototype, DocumentFragment.prototype]) Object.defineProperty(P, "replaceChildren", { value: undefined, configurable: true, writable: true });
+      // 2026-11-19: that engine also draws no flex gap and stacks the parts of a button laid out as a grid.
+      window.__pzForceNoFlexGap = true; window.__pzForceNoButtonGrid = true;
     };
     await older.setContent(page.replace('<script id="pz-old-safari">', "<script>(" + pretendOlder + ")()</script>" + '<script id="pz-old-safari">'));
     const o = await older.evaluate(async () => {
@@ -94,10 +96,26 @@ console.log("PASS old-Safari support: head script, -webkit-backdrop-filter, vh f
       const style = document.createElement("style"); style.textContent = "#pzold{position:absolute;inset:4px 8px!important}:is(#pzold,#none):focus-visible{color:red}";
       document.head.append(style); await new Promise(r => setTimeout(r, 30));
       const text = [...document.querySelectorAll("style")].map(s => s.textContent).join("\n");
-      return { list: list.innerHTML, late: style.textContent, isLeft: /:is\(/.test(text), insetLeft: /(^|[{;\s])inset\s*:/.test(text) };
+      // 2026-11-19 (owner's Catalina screenshots: the folded sidebar kept its labels): :is() lists with descendant parts are
+      // written out as plain selector lists, inside @media too; comments are dropped first.
+      const expand = document.createElement("style");
+      expand.textContent = "/* a { b } */html[x] :is(.a h2,.b) > i{display:none!important}@media (max-width:9px){:is(.c,.d .e):hover{color:red}}main:is(#m,[data-p]) .f{top:0}";
+      document.head.append(expand); await new Promise(r => setTimeout(r, 30));
+      // Flex gap becomes margins (children and ::before); a grid button gets the side-by-side fallback.
+      const box = document.createElement("div"); box.id = "pzgapbox"; box.innerHTML = "<span>a</span><span>b</span>text<span style='margin-left:3px'>c</span>";
+      const dot = document.createElement("div"); dot.id = "pzgapdot"; dot.textContent = "Bridge";
+      const gapStyle = document.createElement("style"); gapStyle.textContent = "#pzgapbox,#pzgapdot{display:flex;gap:8px}#pzgapdot::before{content:'';width:4px;height:4px}";
+      document.head.append(gapStyle); document.body.append(box, dot); window.__plazcodeFlexGapFill();
+      const kids = [...box.children].map(k => k.style.marginLeft + "|" + k.style.marginRight);
+      return { list: list.innerHTML, late: style.textContent, isLeft: /:is\(/.test(text), insetLeft: /(^|[{;\s])inset\s*:/.test(text), expanded: expand.textContent,
+        kids, before: dot.getAttribute("data-pz-gb"), beforeMargin: getComputedStyle(dot, "::before").marginRight, oldButton: document.documentElement.hasAttribute("data-pz-oldbutton") && !!document.getElementById("pz-old-buttons") };
     });
     assert.equal(o.list, "<li>c</li>d", "replaceChildren stand-in empties the list and adds the new children");
-    assert.equal(o.late, "#pzold{position:absolute;top:4px !important;right:8px !important;bottom:4px !important;left:8px !important}:-webkit-any(#pzold,#none):focus{color:red}", "inset, :is() and :focus-visible are rewritten");
+    assert.equal(o.late, "#pzold{position:absolute;top:4px !important;right:8px !important;bottom:4px !important;left:8px !important}#pzold:focus,#none:focus{color:red}", "inset, :is() and :focus-visible are rewritten");
+    assert.equal(o.expanded, "html[x] .a h2 > i,html[x] .b > i{display:none!important}@media (max-width:9px){.c:hover,.d .e:hover{color:red}}main#m .f,main[data-p] .f{top:0}", ":is() lists become plain selector lists");
+    assert.deepEqual(o.kids, ["|", "8px|8px", "3px|"], "flex gap becomes a margin between parts (also around text), never over a margin of its own");
+    assert.equal(o.before, "right:8", "a status dot drawn as ::before gets the gap before its word"); assert.equal(o.beforeMargin, "8px");
+    assert.equal(o.oldButton, true, "grid buttons get the side-by-side fallback");
     assert.equal(o.isLeft, false, "no :is() left in the page styles");
     assert.equal(o.insetLeft, false, "no inset shorthand left in the page styles");
     if (process.env.PLAZCODE_SHOTS) { await native.screenshot({ path: process.env.PLAZCODE_SHOTS + "/old-safari-native.png" }); await old.screenshot({ path: process.env.PLAZCODE_SHOTS + "/old-safari-fallback.png" }); }
