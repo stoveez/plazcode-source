@@ -1186,19 +1186,21 @@ const RSProvider: PlazCodeProvider = (() => {
         } catch (error) { finish(error); }
       };
       // Covered/occluded windows on Windows & macOS keep document.hidden === false while Chrome pauses
-      // requestAnimationFrame. Once 1.5 s pass without 2 frames, if the composer already holds the exact
-      // draft and React enabled Send, accept it instead of timing out with "Send paused".
+      // requestAnimationFrame. When the window is NOT focused (!document.hasFocus()), once 1.5 s pass
+      // without 2 frames and the composer already holds the exact draft with Send enabled, accept it
+      // instead of timing out with "Send paused". A focused foreground window still requires 2 frames.
+      const windowUnfocused = () => typeof document.hasFocus === 'function' && !safeRead(() => document.hasFocus(), true);
       occludedTimer = setInterval(() => {
         if (finished) return;
         try {
           checkOwner();
-          if (clock() - started >= 1500 && typeof isReady === 'function' && safePredicate(isReady)) finish();
+          if (windowUnfocused() && clock() - started >= 1500 && typeof isReady === 'function' && safePredicate(isReady)) finish();
         } catch (error) { finish(error); }
       }, 200);
       const deadline = setTimeout(() => {
         try {
           checkOwner();
-          if (typeof isReady === 'function' && safePredicate(isReady)) { finish(); return; }
+          if (windowUnfocused() && clock() - started >= 1500 && typeof isReady === 'function' && safePredicate(isReady)) { finish(); return; }
           const error: any = new Error('ChatGPT input did not finish updating. Nothing was submitted. Keep its tab visible, then resume.');
           error.code = 'CHATGPT_COMPOSER_RENDER_TIMEOUT'; finish(error);
         } catch (error) { finish(error); }

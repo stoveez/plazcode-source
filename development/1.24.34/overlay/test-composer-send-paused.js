@@ -89,6 +89,7 @@ const read = (p) => fs.readFileSync(p, "utf8");
   assert.match(src, /replace\(\/\\u00A0\/g,\s*' '\)/, "ChatGPT logical() normalizes NBSP from ProseMirror");
   assert.match(src, /addEventListener\('visibilitychange',\s*onVis\)/, "ChatGPT settleComposerRender handles mid-wait visibilitychange");
   assert.match(src, /occludedTimer\s*=\s*setInterval/, "ChatGPT settleComposerRender has occluded-window fallback");
+  assert.match(src, /const windowUnfocused = \(\) => typeof document\.hasFocus === 'function' && !safeRead\(\(\) => document\.hasFocus\(\), true\)/, "ChatGPT occluded fallback only bypasses rAF when window is unfocused (preserving foreground render deadline)");
   assert.match(src, /CHATGPT_COMPOSER_REMOUNTED/, "ChatGPT separates pre-commit remount from user cancellation");
   assert.match(src, /reacquireEditor/, "ChatGPT reacquires remounted ProseMirror editor before failing");
   assert.match(src, /PlazCodeStallGuard\.frozenGap\(lastBeatAt,\s*now\)/, "ChatGPT waitDelivery compensates for sleeping/frozen tabs");
