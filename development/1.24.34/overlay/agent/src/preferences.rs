@@ -89,6 +89,20 @@ pub struct DesktopPreferences {
     /// "advisory" (default: edits always apply, new problems are reported) or "blocking" (a NEW syntax error puts the script back).
     #[serde(rename = "rsLuauMode")]
     pub luau_mode: String,
+    /// 2026-11-20 (owner: "settings from the extension don't sync well to the app"): the extension's own switches are kept
+    /// here too, so they show in the app, survive an extension reinstall and reach every browser with PlazCode.
+    #[serde(rename = "rsFullStartup")]
+    pub full_startup: bool,
+    #[serde(rename = "rsAutoDebug")]
+    pub auto_debug: bool,
+    #[serde(rename = "rsAutoFixStopPlay")]
+    pub auto_fix_stop_play: bool,
+    #[serde(rename = "rsMultiAgent")]
+    pub multi_agent: bool,
+    #[serde(rename = "rsPlaytestCheck")]
+    pub playtest_check: bool,
+    #[serde(rename = "rsUiCheck")]
+    pub ui_check: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -136,6 +150,7 @@ impl Default for DesktopPreferences {
             sidebar_collapsed: false, explorer_auto_sync: true, skill_auto_learn: true, shared_learning: true, auto_update: true,
             read_only: false, confirm_delete: true, allowed_folders: Vec::new(),
             luau_check: true, luau_mode: "advisory".to_string(),
+            full_startup: false, auto_debug: true, auto_fix_stop_play: true, multi_agent: false, playtest_check: true, ui_check: true,
         }
     }
 }
@@ -213,6 +228,30 @@ pub struct PreferencesStore {
     operation:std::sync::Mutex<()>,
     path: RwLock<PathBuf>,
     inner: RwLock<DesktopPreferences>,
+    /// The settings someone actually chose (in the file or sent since). The rest are defaults; the extension keeps its own
+    /// value for those instead of taking the app's default (an app that never knew a setting must not reset it).
+    saved: RwLock<std::collections::BTreeSet<String>>,
+}
+
+/// Lays `patch` over `base` one setting at a time: a setting with a value of the wrong kind is skipped instead of making the
+/// whole change (or the whole settings file) fail. Returns the result and the names of the settings that were kept.
+fn overlay(base: &DesktopPreferences, patch: &serde_json::Map<String, serde_json::Value>) -> (DesktopPreferences, Vec<String>) {
+    let (prefs, kept, _) = overlay_checked(base, patch);
+    (prefs, kept)
+}
+/// As `overlay`, also naming the known settings whose value was of the wrong kind.
+fn overlay_checked(base: &DesktopPreferences, patch: &serde_json::Map<String, serde_json::Value>) -> (DesktopPreferences, Vec<String>, Vec<String>) {
+    let mut value = serde_json::to_value(base).unwrap_or_else(|_| serde_json::json!({}));
+    let mut kept = Vec::new();
+    let mut refused = Vec::new();
+    for (key, val) in patch {
+        let known = value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance";
+        if !known { continue; }
+        let mut candidate = value.clone();
+        if let Some(object) = candidate.as_object_mut() { object.insert(key.clone(), val.clone()); }
+        if serde_json::from_value::<DesktopPreferences>(candidate.clone()).is_ok() { value = candidate; kept.push(key.clone()); } else { refused.push(key.clone()); }
+    }
+    (serde_json::from_value(value).unwrap_or_else(|_| base.clone()), kept, refused)
 }
 
 impl PreferencesStore {
@@ -221,13 +260,18 @@ impl PreferencesStore {
     }
 
     pub(crate) fn load_from(path: PathBuf) -> Self {
-        let mut prefs = std::fs::read_to_string(&path)
-            .ok()
-            .and_then(|raw| serde_json::from_str::<DesktopPreferences>(&raw).ok())
-            .unwrap_or_default();
+        // One setting of the wrong kind in the file used to reset every setting to its default; now only that one is.
+        let file = std::fs::read_to_string(&path).ok().and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok());
+        let (mut prefs, kept) = match file.as_ref().and_then(|v| v.as_object()) {
+            Some(object) => overlay(&DesktopPreferences::default(), object),
+            None => (DesktopPreferences::default(), Vec::new()),
+        };
         prefs.normalize();
-        Self { operation:std::sync::Mutex::new(()), path: RwLock::new(path), inner: RwLock::new(prefs) }
+        Self { operation:std::sync::Mutex::new(()), path: RwLock::new(path), inner: RwLock::new(prefs), saved: RwLock::new(kept.into_iter().collect()) }
     }
+
+    /// The names of the settings someone chose (sent to the extension as `_plazcodeSaved`).
+    pub fn saved_keys(&self) -> Vec<String> { self.saved.read().map(|s| s.iter().cloned().collect()).unwrap_or_default() }
 
     pub fn persisted(&self) -> bool {
         self.path.read().map(|p|p.exists()).unwrap_or(false)
@@ -253,15 +297,13 @@ impl PreferencesStore {
     pub fn patch(&self, patch: serde_json::Value) -> anyhow::Result<DesktopPreferences> {
         let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;
         let current = self.snapshot();
-        let mut value = serde_json::to_value(current)?;
-        let dst = value.as_object_mut().ok_or_else(|| anyhow::anyhow!("preferences are not an object"))?;
         let src = patch.as_object().ok_or_else(|| anyhow::anyhow!("preferences patch must be an object"))?;
-        for (key, val) in src {
-            if dst.contains_key(key) || key == "rsCustomPrompt" || key == "rsAppearance" {
-                dst.insert(key.clone(), val.clone());
-            }
-        }
-        let next = serde_json::from_value::<DesktopPreferences>(value)?;
+        // A setting with a value of the wrong kind is skipped; the others still apply (one bad value used to block every
+        // setting the extension sent, so nothing synced).
+        let (next, kept, refused) = overlay_checked(&current, src);
+        // Only bad values (nothing usable at all): refused as before, so the sender knows.
+        if kept.is_empty() && !refused.is_empty() { anyhow::bail!("these settings have values of the wrong kind: {}", refused.join(", ")); }
+        if let Ok(mut saved) = self.saved.write() { saved.extend(kept); }
         self.replace_unlocked(next)
     }
 
@@ -286,7 +328,9 @@ impl PreferencesStore {
         let loaded=Self::load_from(path.clone());
         let mut target=self.path.write().map_err(|_|anyhow::anyhow!("preferences path lock poisoned"))?;
         let mut inner=self.inner.write().map_err(|_|anyhow::anyhow!("preferences lock poisoned"))?;
-        *target=path;*inner=loaded.snapshot();Ok(())
+        *target=path;*inner=loaded.snapshot();
+        if let Ok(mut saved)=self.saved.write(){*saved=loaded.saved_keys().into_iter().collect();}
+        Ok(())
     }
     fn save(&self,prefs:&DesktopPreferences)->anyhow::Result<()> {
         let path=self.path.read().map_err(|_|anyhow::anyhow!("preferences path lock poisoned"))?;
@@ -549,3 +593,39 @@ mod tests {
 }
 
 #[cfg(test)]mod sync_tests{use super::*;#[test]fn sync_preserves_changes_made_during_network_wait(){let path=std::env::temp_dir().join(format!("plazcode-sync-prefs-{}-{}.json",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));let store=PreferencesStore::load_from(path.clone());let before=serde_json::to_value(store.snapshot()).unwrap();store.patch(serde_json::json!({"rsSounds":false})).unwrap();store.patch_if_unchanged(&before,&serde_json::json!({"rsSounds":true,"rsLanguage":"fr"})).unwrap();assert!(!store.snapshot().sounds);assert_eq!(store.snapshot().language,"fr");let _=std::fs::remove_file(path);}}
+#[cfg(test)]
+mod extension_sync_tests {
+    use super::*;
+    fn temp(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("plazcode-ext-sync-{name}-{}-{}.json", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()))
+    }
+    #[test]
+    fn one_bad_value_does_not_block_the_other_settings() {
+        let path = temp("patch");
+        let store = PreferencesStore::load_from(path.clone());
+        // rsToolBudget sent as text (wrong kind): skipped; the other two still apply.
+        store.patch(serde_json::json!({"rsToolBudget":"lots","rsSounds":false,"rsPlaytestCheck":false})).unwrap();
+        let now = store.snapshot();
+        assert!(!now.sounds && !now.playtest_check && now.tool_budget == 0);
+        let saved = store.saved_keys();
+        assert!(saved.contains(&"rsSounds".to_string()) && saved.contains(&"rsPlaytestCheck".to_string()) && !saved.contains(&"rsToolBudget".to_string()));
+        let _ = std::fs::remove_file(path);
+    }
+    #[test]
+    fn one_bad_value_in_the_file_does_not_reset_every_setting() {
+        let path = temp("file");
+        std::fs::write(&path, br#"{"rsSounds":false,"rsToolBudget":"lots","rsAutoDebug":false,"rsStopMode":"safe"}"#).unwrap();
+        let store = PreferencesStore::load_from(path.clone());
+        let now = store.snapshot();
+        assert!(!now.sounds && !now.auto_debug && now.stop_mode == "safe" && now.tool_budget == 0);
+        assert_eq!(store.saved_keys(), vec!["rsAutoDebug".to_string(), "rsSounds".to_string(), "rsStopMode".to_string()]);
+        let _ = std::fs::remove_file(path);
+    }
+    #[test]
+    fn extension_switches_have_the_extension_defaults() {
+        let d = DesktopPreferences::default();
+        assert!(!d.full_startup && d.auto_debug && d.auto_fix_stop_play && !d.multi_agent && d.playtest_check && d.ui_check);
+        let v = serde_json::to_value(&d).unwrap();
+        for key in ["rsFullStartup", "rsAutoDebug", "rsAutoFixStopPlay", "rsMultiAgent", "rsPlaytestCheck", "rsUiCheck"] { assert!(v.get(key).is_some(), "{key}"); }
+    }
+}

@@ -2310,6 +2310,7 @@ async fn preferences_get_handler(State(state): State<AppState>) -> impl IntoResp
     let mut value = serde_json::to_value(state.preferences.snapshot()).unwrap_or_else(|_| serde_json::json!({}));
     if let Some(object) = value.as_object_mut() {
         object.insert("_plazcodePersisted".to_string(), serde_json::Value::Bool(state.preferences.persisted()));
+        object.insert("_plazcodeSaved".to_string(), serde_json::json!(state.preferences.saved_keys()));
     }
     if let Some(profile)=state.accounts.active(){value["_plazcodeProfile"]=serde_json::to_value(profile).unwrap_or_default();}
     Json(value)

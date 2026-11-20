@@ -25,5 +25,5 @@ assert.equal(S.choose(null, { url: "https://evil.example/" }).why, "fallback", "
 // The background notes the site from every PlazCode AI tab and loads the chooser in Chrome and Firefox.
 const bg = fs.readFileSync(__dirname + "/background.js", "utf8");
 assert(/importScripts\("core\/ask-site\.js"\)/.test(bg) && /askNoteSite\(_sender\);/.test(bg), "background.js loads and uses the chooser");
-assert(/'core\/ask-site\.js', 'background\.js'/.test(fs.readFileSync(__dirname + "/release-tools/build-firefox.py", "utf8")), "Firefox loads it before background.js");
+assert(/'core\/ask-site\.js', (?:'core\/pref-sync\.js', )?'background\.js'/.test(fs.readFileSync(__dirname + "/release-tools/build-firefox.py", "utf8")), "Firefox loads it before background.js");
 console.log("PASS Ask PlazCode site: runs on the AI chat the person last used (every supported site known), DeepSeek only as the fallback.");

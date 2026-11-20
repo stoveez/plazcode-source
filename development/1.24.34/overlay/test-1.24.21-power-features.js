@@ -2,7 +2,7 @@
 const fs = require("fs"), vm = require("vm"), assert = require("node:assert/strict");
 const { JSDOM } = require("jsdom");
 const Safety = require("./core/safety.js"), Log = require("./core/action-log.js"), Setups = require("./core/site-setups.js"), Skills = require("./core/skills-ui.js");
-const main = fs.readFileSync("core/main.js", "utf8"), background = fs.readFileSync("background.js", "utf8");
+const main = fs.readFileSync("core/main.js", "utf8"), background = fs.readFileSync("background.js", "utf8") + fs.readFileSync("core/pref-sync.js", "utf8"); // settings list moved there 2026-11-20
 const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8")), desktop = fs.readFileSync("agent/src/desktop.html", "utf8");
 const flush = () => new Promise((r) => setTimeout(r, 20));
 

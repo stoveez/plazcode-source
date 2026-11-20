@@ -12,7 +12,7 @@ def build(extension, destination, archive):
     manifest.pop('minimum_chrome_version', None)
     # Firefox has no debugging connection for extensions: its PlazCode controls tabs with in-page input only.
     manifest['permissions'] = [p for p in manifest.get('permissions', []) if p not in ('sidePanel', 'debugger')]  # Chrome-only APIs
-    manifest['background'] = {'scripts': ['protection.js', 'core/ask-site.js', 'background.js']}
+    manifest['background'] = {'scripts': ['protection.js', 'core/ask-site.js', 'core/pref-sync.js', 'background.js']}
     # Firefox hides content-script DataTransfer text/files from pages. Each
     # isolated provider group loads the transfer shim first, paired with a
     # MAIN-world helper on the same sites. Chromium manifests stay unchanged.

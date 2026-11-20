@@ -434,7 +434,8 @@ for (const entry of manifest.content_scripts || []) {
   }
 }
 
-const background = fs.readFileSync("background.js", "utf8");
+// 2026-11-20: the settings sharing moved to core/pref-sync.js (split as you go); the contract covers both files.
+const background = fs.readFileSync("background.js", "utf8") + fs.readFileSync("core/pref-sync.js", "utf8");
 for (const token of [
   "DESKTOP_PREF_KEYS",
   "/api/preferences",

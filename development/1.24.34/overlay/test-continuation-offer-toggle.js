@@ -64,7 +64,7 @@ const offer=d=>d.querySelector('.rs-continuation-offer');
   for(let i=0;i<4;i++)await lastReal.tick(1500);assert.equal(offer(lastReal.d),null,'and it stays closed');
  }finally{lastReal.dom.window.close();}
  // Bar settings control and desktop sync wiring.
- const main=fs.readFileSync(root+'/core/main.js','utf8'),bg=fs.readFileSync(root+'/background.js','utf8'),desk=fs.readFileSync(root+'/agent/src/desktop.html','utf8'),prefs=fs.readFileSync(root+'/agent/src/preferences.rs','utf8');
+ const main=fs.readFileSync(root+'/core/main.js','utf8'),bg=fs.readFileSync(root+'/background.js','utf8')+fs.readFileSync(root+'/core/pref-sync.js','utf8'),desk=fs.readFileSync(root+'/agent/src/desktop.html','utf8'),prefs=fs.readFileSync(root+'/agent/src/preferences.rs','utf8');
  assert(main.includes('id="rs-continuation-offer" type="checkbox"'),'bar settings has the toggle');
  assert(main.includes('["rs-continuation-offer","rsContinuationOffer"]'),'bar toggle saves the shared preference');
  assert(/"rsVisualCheck",\s*"rsContinuationOffer",/.test(bg),'extension syncs the preference with the desktop app');

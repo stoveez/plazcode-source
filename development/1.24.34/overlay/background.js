@@ -84,6 +84,7 @@ const deepSeekRequests = (() => {
 if (typeof importScripts === "function") importScripts("protection.js");
 // Which AI chat site runs Ask PlazCode (core/ask-site.js, TypeScript: ts/core/ask-site.ts). Firefox lists it as a background script.
 if (typeof importScripts === "function") importScripts("core/ask-site.js");
+if (typeof importScripts === "function") importScripts("core/pref-sync.js");
 // 1.24.30 (protection review): a missing or broken verifier now stops work instead of passing; the packaged
 // protection.js always carries the release key (an unconfigured key only exists in unpackaged development source).
 const protectionCheck = async () => {
@@ -149,8 +150,8 @@ async function ensureAccountContext(liveStatus){
       const outgoing=Object.fromEntries(keys.map(k=>[k,saved[k]]));
       if(previous)await chrome.storage.local.set({['plazcode-profile-data:'+previous]:outgoing});
       const incoming=saved['plazcode-profile-data:'+next.id]||(next.owns_legacy_data&&!previous?outgoing:{});
-      desktopPendingPreferences.clear();desktopRemoteWrites.clear();clearTimeout(desktopSyncPushTimer);
-      desktopSyncApplying=true;try{await chrome.storage.local.remove(keys);await chrome.storage.local.set({...incoming,'plazcode-profile-id':next.id});}finally{desktopSyncApplying=false;}
+      const swap=async()=>{await chrome.storage.local.remove(keys);await chrome.storage.local.set({...incoming,'plazcode-profile-id':next.id});};
+      const prefSync=typeof desktopPrefSync!=='undefined'?desktopPrefSync:null;if(prefSync){prefSync.reset();await prefSync.silently(swap);}else await swap();
       if(typeof chrome.runtime.reload==='function'){chrome.runtime.reload();throw new Error('PlazCode profile selected. Refresh this AI tab.');}
     }
     accountEpoch=next.epoch;accountIdentity=next.id;
@@ -338,152 +339,18 @@ const PORT_LOCAL = 17615; // AgentScript — native FS/terminal engine
 const BLENDER_ADDON_PORT = 9876;
 const RUST_ROBLOX_HTTP = "http://127.0.0.1:3000";
 const ENGINE_KEY = "rs-engine";
-const DESKTOP_PREF_KEYS = [
-  "rsLanguage",
-  "rsReadOnly",
-  "rsConfirmDelete",
-  "rsApprovalMode",
-  "rsAllowedFolders",
-  "rsWorkMode",
-  "rsPermMode",
-  "rsSounds",
-  "rsStopMode",
-  "rsInputLimitEnabled",
-  "rsInputCharLimit",
-  "rsOutputLimitEnabled",
-  "rsOutputCharLimit",
-  "rsRunLimitsEnabled",
-  "rsToolBudget",
-  "rsTaskMinutes",
-  "rsVisualCheck",
-  "rsContinuationOffer",
-  "rsCommandCooldown",
-  "rsFullStartup",
-  "rsExtraThinking",
-  "rsShowApproach",
-  "rsPlanMode",
-  "rsThinkingLevel",
-  "rsForgeMode",
-  "rsAutoFix",
-  "rsBgMode",
-  "rsCustomPrompt",
-  "rsAppearance",
-];
-let desktopSyncApplying = false;
-let desktopSyncPushTimer = null;
-const desktopPendingPreferences = new Map();
-const desktopRemoteWrites = new Map();
-let desktopPushInFlight = false;
-
-async function applyDesktopPreferences(remote) {
-  if (!remote || typeof remote !== "object") return false;
-  const local = await chrome.storage.local.get(DESKTOP_PREF_KEYS);
-  const updates = {};
-  for (const key of DESKTOP_PREF_KEYS) {
-    if (!(key in remote) || desktopPendingPreferences.has(key)) continue;
-    if (JSON.stringify(local[key]) !== JSON.stringify(remote[key])) updates[key] = remote[key];
-  }
-  if (Object.keys(updates).length) {
-    desktopSyncApplying = true;
-    for (const [key, value] of Object.entries(updates)) desktopRemoteWrites.set(key, JSON.stringify(value));
-    try { await chrome.storage.local.set(updates); }
-    catch (error) { for (const key of Object.keys(updates)) desktopRemoteWrites.delete(key); throw error; }
-    finally { desktopSyncApplying = false; }
-  }
-  return true;
-}
-
-async function pullDesktopPreferences() {
-  try {
-    const response = await bridgeFetch("http://127.0.0.1:3000/api/preferences", { method: "GET", signal: AbortSignal.timeout(5000) });
-    if (!response.ok) return false;
-    return await applyDesktopPreferences(await response.json());
-  } catch {
-    return false;
-  }
-}
-
-async function pushDesktopPreferences() {
-  if (desktopPushInFlight) return false;
-  desktopPushInFlight = true;
-  try {
-    const prefs = desktopPendingPreferences.size
-      ? Object.fromEntries(desktopPendingPreferences) : await chrome.storage.local.get(DESKTOP_PREF_KEYS);
-    const response = await bridgeFetch("http://127.0.0.1:3000/api/preferences", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(prefs),
-      signal: AbortSignal.timeout(5000),
-    });
-    if (response.ok) {
-      for (const [key, value] of Object.entries(prefs)) {
-        if (desktopPendingPreferences.has(key) && JSON.stringify(desktopPendingPreferences.get(key)) === JSON.stringify(value)) desktopPendingPreferences.delete(key);
-      }
-    }
-    return response.ok;
-  } catch {
-    return false;
-  } finally {
-    desktopPushInFlight = false;
-    if (desktopPendingPreferences.size) {
-      clearTimeout(desktopSyncPushTimer);
-      desktopSyncPushTimer = setTimeout(() => { pushDesktopPreferences(); }, 500);
-    }
-  }
-}
-
-async function initialDesktopPreferencesSync() {
-  try {
-    const response = await bridgeFetch("http://127.0.0.1:3000/api/preferences", { method: "GET", signal: AbortSignal.timeout(5000) });
-    if (!response.ok) return false;
-    const remote = await response.json();
-    if(remote&&remote._plazcodeProfile)return await applyDesktopPreferences(remote);
-    if (remote && remote._plazcodePersisted === true) {
-      if (typeof remote.rsCustomPrompt !== "string") {
-        const existing = await chrome.storage.local.get("rsCustomPrompt");
-        if (typeof existing.rsCustomPrompt === "string") {
-          const seeded = await bridgeFetch("http://127.0.0.1:3000/api/preferences", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ rsCustomPrompt: existing.rsCustomPrompt }),
-            signal: AbortSignal.timeout(5000),
-          });
-          if (!seeded.ok) return false;
-          const saved = await seeded.json();
-          return await applyDesktopPreferences(saved.preferences || saved);
-        }
-      }
-      return await applyDesktopPreferences(remote);
-    }
-
-    const local = await chrome.storage.local.get(DESKTOP_PREF_KEYS);
-    const hasExisting = DESKTOP_PREF_KEYS.some((key) => local[key] !== undefined);
-    if (hasExisting) return await pushDesktopPreferences();
-
-    if (!(await applyDesktopPreferences(remote))) return false;
-    return await pushDesktopPreferences();
-  } catch {
-    return false;
-  }
-}
-
-function scheduleDesktopPreferencesPush() {
-  clearTimeout(desktopSyncPushTimer);
-  desktopSyncPushTimer = setTimeout(() => { pushDesktopPreferences(); }, 50);
-}
-
-chrome.storage?.onChanged.addListener((changes, area) => {
-  if (area !== "local") return;
-  let changed = false;
-  for (const key of DESKTOP_PREF_KEYS) {
-    if (!changes[key]) continue;
-    const value = changes[key].newValue;
-    if (desktopRemoteWrites.has(key) && desktopRemoteWrites.get(key) === JSON.stringify(value)) { desktopRemoteWrites.delete(key); continue; }
-    desktopPendingPreferences.set(key, value);
-    changed = true;
-  }
-  if (changed) scheduleDesktopPreferencesPush();
-});
+// Settings shared with the PlazCode app: core/pref-sync.js (ts/core/pref-sync.ts; moved out of here 2026-11-20, owner: "settings
+// from the extension don't sync well to the app"). The names below stay so the health check, the app's pushes and the
+// profile switch keep calling the same functions.
+// Without the module (a test that loads only this file) settings simply are not shared; nothing else depends on it.
+const desktopPrefSync = typeof PlazCodePrefSync !== "undefined" && chrome.storage?.local
+  ? PlazCodePrefSync.create({ fetch: (url, init) => bridgeFetch(url, init), storage: chrome.storage.local, url: "http://127.0.0.1:3000/api/preferences" }) : null;
+const DESKTOP_PREF_KEYS = typeof PlazCodePrefSync !== "undefined" ? PlazCodePrefSync.KEYS : [];
+async function applyDesktopPreferences(remote) { return desktopPrefSync ? desktopPrefSync.apply(remote) : false; }
+async function pullDesktopPreferences() { return desktopPrefSync ? desktopPrefSync.pull() : false; }
+async function pushDesktopPreferences() { return desktopPrefSync ? desktopPrefSync.push() : false; }
+async function initialDesktopPreferencesSync() { return desktopPrefSync ? desktopPrefSync.initial() : false; }
+chrome.storage?.onChanged.addListener((changes, area) => { if (area === "local" && desktopPrefSync) desktopPrefSync.noteLocal(changes); });
 
 // "anim" (Animation mode) is a persona-driven view of the SAME Roblox bridge:
 // it maps to 17613 everywhere a port/HTTP target is picked, but keeps its own
