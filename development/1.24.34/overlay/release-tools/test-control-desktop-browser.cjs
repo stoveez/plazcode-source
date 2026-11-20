@@ -21,7 +21,7 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
       const c = new OffscreenCanvas(320, 200), g = c.getContext('2d'); g.fillStyle = '#2563eb'; g.fillRect(0, 0, 320, 200);
       self.__png = await c.convertToBlob({ type: 'image/png' });
       bridgeFetch = async (url, options = {}) => {
-        if (/\/api\/desktop\/frame$/.test(url)) { self.__frameAsks++; return new Response(self.__png, { status: 200, headers: { 'content-type': 'image/png' } }); }
+        if (/\/api\/desktop\/frame(?:\?for=ai)?$/.test(url)) { self.__frameAsks++; return new Response(self.__png, { status: 200, headers: { 'content-type': 'image/png' } }); }
         if (/\/api\/desktop\/control$/.test(url)) { self.__posts.push(JSON.parse(options.body)); return new Response('{"ok":true}', { status: 200 }); }
         return new Response('{}', { status: 404 });
       };
@@ -65,7 +65,7 @@ const { chromium } = require('playwright'), fs = require('fs'), os = require('os
       await chrome.storage.local.set({ rsAskSite: { url: 'https://chat.test/new', name: 'Test AI' } });
       CONTROL_V2 = true; isProviderUrl = (u) => /^https:\/\/chat\.test\//.test(u || ''); self.__runs = []; self.__frameStatus = 200;
       const plain = bridgeFetch;
-      bridgeFetch = async (url, options) => (/\/api\/desktop\/frame$/.test(url) && self.__frameStatus !== 200) ? new Response('PlazCode needs the Mac\'s Screen Recording permission to see the screen.', { status: 503 }) : plain(url, options);
+      bridgeFetch = async (url, options) => (/\/api\/desktop\/frame(?:\?for=ai)?$/.test(url) && self.__frameStatus !== 200) ? new Response('PlazCode needs the Mac\'s Screen Recording permission to see the screen.', { status: 503 }) : plain(url, options);
       const send = chrome.tabs.sendMessage;
       chrome.tabs.sendMessage = (id, m) => {
         if (m && m.type === 'rs-helper-ping') return Promise.resolve({ ok: true, ready: true });
