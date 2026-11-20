@@ -22,7 +22,7 @@ const PlazCodeSkillContext = (() => {
       out = { ...skill };
       delete out.source; delete out.import_digest;
     }
-    return skill.favorite ? { ...out, always_use: true } : out;
+    return skill.favorite ? { ...out, always_use:true } : out;
   }
   function text(skills: Skill[], max = 9000): string { return JSON.stringify((skills || []).map(item)).slice(0, max); }
   return { item, text };

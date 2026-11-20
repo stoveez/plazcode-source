@@ -30,6 +30,6 @@ assert(notice.includes('https://github.com/stoveez/PlazCode/'),'Preserve a sourc
 // From 1.24.21 PlazCode is closed source: the notice says so instead of naming a licence.
 assert.match(notice,/source code for this version is not published/);
 // Builds 4-6 are still present alongside the merged fixes.
-const main=fs.readFileSync('core/main.js','utf8'),manifest=fs.readFileSync('manifest.json','utf8');
+const main=fs.readFileSync('core/main.js','utf8')+fs.readFileSync('core/skill-context.js','utf8'),/* the skill reference moved to core/skill-context.js (2026-11-20) */manifest=fs.readFileSync('manifest.json','utf8');
 assert.match(main,/function showSkillSuggestion/);assert.match(main,/SKILL_OFFER_MS=45000/);assert.match(main,/always_use:true/);assert(manifest.includes('core/input-isolation.js'));
 console.log('1.24.13 merged fixes: Studio heal guard, fresh Blender screenshots, honest dashboard status, clean release files, plus builds 4-6');
