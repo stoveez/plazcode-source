@@ -126,7 +126,9 @@ A real update is the same build that passed the full check, promoted by the priv
 Read `publish-1.24.25.yml` and `development/1.24.25/promote.py` before the first real publish; they are the source of truth and this list is a summary. Test builds are not publishing and need only steps 1, the build and the zips, then the Private reminder.
 
 ## What is in the latest test zips and what is NOT yet (kept up to date by every AI)
-**CURRENT dev test build (2026-11-20): CI run 44759365337 on `a929bd2f` (adds the settings sync fix, NOW item 32). Windows, Linux and browsers green; the Mac job failed once on a GitHub network error (could not reach github.com) and was re-run. NOT published. Windows zip delivered to the owner as the run's artifact link. NOT in these zips: importing a whole folder of skills (NOW item 33, source only).**
+**CURRENT dev test build (2026-11-20, later): CI run 44775897553 on `e63684a0`, ALL GREEN (Windows, Mac, Linux, browsers, release check). NOT published. Has the settings sync fix (NOW item 32) and importing a whole folder of skills (NOW item 33). Windows and Mac lean zips delivered to the owner as artifact links. Not yet tried by the owner.**
+
+**Earlier 2026-11-20 build: CI run 44759365337 on `a929bd2f` (adds the settings sync fix, NOW item 32). Windows, Linux and browsers green; the Mac job failed once on a GitHub network error (could not reach github.com) and was re-run. NOT published. Windows zip delivered to the owner as the run's artifact link.**
 
 **Previous dev test build (2026-11-19): CI run 44571317070 on `d8bbf9a7`, ALL GREEN: Windows, Mac, Linux, browsers, release check. NOT published.** Zips `plazcode-1.24.34-Windows-test-lean` (53,602,168 bytes as GitHub's download), `plazcode-1.24.34-macOS-test-lean` (56,049,593) and Linux on https://github.com/stoveez/plazcode-source/actions/runs/44571317070 . Inside: everything after 1.24.34 so far: the Catalina app layout fix (item 25), Playtest & Fix, UI standard + `ui_audit` + Check UI when done, PlazLib (items 26-28). Needs the new app AND an extension reload. None of it tried in real Studio or on a real Catalina Mac yet.
 
