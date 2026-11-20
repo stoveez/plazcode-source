@@ -1476,5 +1476,11 @@
   "Last step: {step}": "Letzter Schritt: {step}",
   "Finished steps will not run again.": "Abgeschlossene Schritte werden nicht erneut ausgeführt.",
   "Start fresh": "Neu starten",
-  "Keep my computer awake during runs": "Computer während Läufen wach halten"
+  "Keep my computer awake during runs": "Computer während Läufen wach halten",
+  "Import a whole folder: each folder with a SKILL.md becomes one skill and its other files become references the AI opens only when needed. Loose .md and .txt files become their own skills. You can also drop a folder or a .zip anywhere on this page.": "Einen ganzen Ordner importieren: Jeder Ordner mit einer SKILL.md wird zu einer Fähigkeit, und seine anderen Dateien werden zu Referenzen, die die KI nur bei Bedarf öffnet. Einzelne .md- und .txt-Dateien werden zu eigenen Fähigkeiten. Du kannst auch einen Ordner oder eine .zip-Datei irgendwo auf dieser Seite ablegen.",
+  "Choose a folder": "Ordner auswählen",
+  "Drop to import skills": "Ablegen, um Fähigkeiten zu importieren",
+  "Read the full skill": "Ganze Fähigkeit lesen",
+  "Skill from a folder": "Fähigkeit aus einem Ordner",
+  "From a folder": "Aus einem Ordner"
 }

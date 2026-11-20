@@ -1476,5 +1476,11 @@
   "Last step: {step}": "Последний шаг: {step}",
   "Finished steps will not run again.": "Завершённые шаги не будут выполняться повторно.",
   "Start fresh": "Начать заново",
-  "Keep my computer awake during runs": "Не давать компьютеру засыпать во время работы"
+  "Keep my computer awake during runs": "Не давать компьютеру засыпать во время работы",
+  "Import a whole folder: each folder with a SKILL.md becomes one skill and its other files become references the AI opens only when needed. Loose .md and .txt files become their own skills. You can also drop a folder or a .zip anywhere on this page.": "Импортируйте целую папку: каждая папка с файлом SKILL.md становится одним навыком, а остальные файлы в ней — справочными материалами, которые ИИ открывает только при необходимости. Отдельные файлы .md и .txt становятся отдельными навыками. Можно также перетащить папку или .zip в любое место этой страницы.",
+  "Choose a folder": "Выбрать папку",
+  "Drop to import skills": "Отпустите, чтобы импортировать навыки",
+  "Read the full skill": "Прочитать навык полностью",
+  "Skill from a folder": "Навык из папки",
+  "From a folder": "Из папки"
 }

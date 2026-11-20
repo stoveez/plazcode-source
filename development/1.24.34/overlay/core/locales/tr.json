@@ -1476,5 +1476,11 @@
   "Last step: {step}": "Son adım: {step}",
   "Finished steps will not run again.": "Tamamlanan adımlar tekrar çalıştırılmaz.",
   "Start fresh": "Sıfırdan başla",
-  "Keep my computer awake during runs": "Çalışmalar sırasında bilgisayarımı uyanık tut"
+  "Keep my computer awake during runs": "Çalışmalar sırasında bilgisayarımı uyanık tut",
+  "Import a whole folder: each folder with a SKILL.md becomes one skill and its other files become references the AI opens only when needed. Loose .md and .txt files become their own skills. You can also drop a folder or a .zip anywhere on this page.": "Bütün bir klasörü içe aktarın: SKILL.md içeren her klasör bir beceri olur, içindeki diğer dosyalar ise yapay zekânın yalnızca gerektiğinde açtığı başvuru dosyaları olur. Tek başına duran .md ve .txt dosyaları kendi becerileri olur. Bir klasörü veya .zip dosyasını bu sayfanın herhangi bir yerine de bırakabilirsiniz.",
+  "Choose a folder": "Klasör seç",
+  "Drop to import skills": "Becerileri içe aktarmak için bırakın",
+  "Read the full skill": "Becerinin tamamını oku",
+  "Skill from a folder": "Klasörden gelen beceri",
+  "From a folder": "Klasörden"
 }

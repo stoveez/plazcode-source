@@ -1476,5 +1476,11 @@
   "Last step: {step}": "Última etapa: {step}",
   "Finished steps will not run again.": "As etapas concluídas não serão executadas novamente.",
   "Start fresh": "Começar do zero",
-  "Keep my computer awake during runs": "Manter meu computador acordado durante as execuções"
+  "Keep my computer awake during runs": "Manter meu computador acordado durante as execuções",
+  "Import a whole folder: each folder with a SKILL.md becomes one skill and its other files become references the AI opens only when needed. Loose .md and .txt files become their own skills. You can also drop a folder or a .zip anywhere on this page.": "Importe uma pasta inteira: cada pasta com um SKILL.md vira uma habilidade, e os outros arquivos dela viram referências que a IA abre só quando precisa. Arquivos .md e .txt soltos viram habilidades próprias. Você também pode soltar uma pasta ou um .zip em qualquer lugar desta página.",
+  "Choose a folder": "Escolher uma pasta",
+  "Drop to import skills": "Solte para importar habilidades",
+  "Read the full skill": "Ler a habilidade completa",
+  "Skill from a folder": "Habilidade de uma pasta",
+  "From a folder": "De uma pasta"
 }

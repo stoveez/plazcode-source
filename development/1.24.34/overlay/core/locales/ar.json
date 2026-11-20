@@ -1476,5 +1476,11 @@
   "Last step: {step}": "آخر خطوة: {step}",
   "Finished steps will not run again.": "لن يتم تشغيل الخطوات المكتملة مرة أخرى.",
   "Start fresh": "البدء من جديد",
-  "Keep my computer awake during runs": "إبقاء الكمبيوتر مستيقظًا أثناء التشغيل"
+  "Keep my computer awake during runs": "إبقاء الكمبيوتر مستيقظًا أثناء التشغيل",
+  "Import a whole folder: each folder with a SKILL.md becomes one skill and its other files become references the AI opens only when needed. Loose .md and .txt files become their own skills. You can also drop a folder or a .zip anywhere on this page.": "استورد مجلدًا كاملًا: كل مجلد يحتوي على SKILL.md يصبح مهارة واحدة، وتصبح ملفاته الأخرى مراجع لا يفتحها الذكاء الاصطناعي إلا عند الحاجة. تصبح ملفات .md و.txt المنفردة مهارات مستقلة. يمكنك أيضًا إفلات مجلد أو ملف .zip في أي مكان في هذه الصفحة.",
+  "Choose a folder": "اختر مجلدًا",
+  "Drop to import skills": "أفلِت لاستيراد المهارات",
+  "Read the full skill": "اقرأ المهارة كاملة",
+  "Skill from a folder": "مهارة من مجلد",
+  "From a folder": "من مجلد"
 }

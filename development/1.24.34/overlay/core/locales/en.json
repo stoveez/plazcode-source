@@ -1476,5 +1476,11 @@
   "Last step: {step}": "Last step: {step}",
   "Finished steps will not run again.": "Finished steps will not run again.",
   "Start fresh": "Start fresh",
-  "Keep my computer awake during runs": "Keep my computer awake during runs"
+  "Keep my computer awake during runs": "Keep my computer awake during runs",
+  "Import a whole folder: each folder with a SKILL.md becomes one skill and its other files become references the AI opens only when needed. Loose .md and .txt files become their own skills. You can also drop a folder or a .zip anywhere on this page.": null,
+  "Choose a folder": null,
+  "Drop to import skills": null,
+  "Read the full skill": null,
+  "Skill from a folder": null,
+  "From a folder": null
 }

@@ -95,6 +95,7 @@ const SURFACES = {
   "run-log": ["core/main.js", "rs-cards-btn"],
   "popup": ["popup.html", "Open on-page menu"],
   "live-card": ["core/live-card.js", "rs-live-card"],
+  "skill-import": ["core/skills-ui.js", "Choose a folder"],
 };
 const claimedSurfaces = new Set();
 for (const e of E) for (const a of e.anchors) if (a.startsWith("surface:")) {

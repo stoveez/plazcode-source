@@ -93,6 +93,7 @@ mod templates;
 mod creations;
 mod explorer;
 mod skills;
+mod skill_folder;
 mod shared_learning;
 mod starter_skills;
 mod creation_export;
@@ -1450,7 +1451,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/checkpoints", post(checkpoint_handler))
         .route("/api/toolkit", post(toolkit::post).layer(axum::extract::DefaultBodyLimit::max(64000)))
         .route("/api/blender", post(blender::post).layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
-        .route("/api/skills", post(skills::post).layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
+        .route("/api/skills", post(skills::post).layer(axum::extract::DefaultBodyLimit::max(48 * 1024 * 1024))) // 2026-11-20: whole skill folders and .zip files (skill_folder.rs caps the text at 24 MB)
         .route("/api/explorer", post(explorer::post).layer(axum::extract::DefaultBodyLimit::max(3 * 1024 * 1024)))
         .route("/api/creations", post(creations::post).layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
         .route("/api/templates", post(templates::post))

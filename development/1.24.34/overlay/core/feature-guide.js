@@ -1674,6 +1674,42 @@ const PlazCodeFeatureGuide = (() => {
   "index": true
  },
  {
+  "id": "skill-import",
+  "title": "Import a folder of skills",
+  "group": "Skills",
+  "where": "PlazCode app > Skills > Import > Choose a folder (or drop a folder or .zip on the Skills page)",
+  "does": "Each folder with a SKILL.md becomes one skill; its other files become references the AI opens only when needed. Loose .md and .txt files become their own skills.",
+  "steps": [
+   "Open the PlazCode app, then Skills.",
+   "Click Import, then Choose a folder, or drop a folder or a .zip on the page.",
+   "Read the summary: new, updated and skipped files.",
+   "Import the same folder again after you change it to update those skills."
+  ],
+  "tips": [
+   "A skill you changed by hand is kept as a separate copy marked (your edit) when the folder is imported again.",
+   "Only text files are imported; pictures and other files are skipped."
+  ],
+  "related": [],
+  "keywords": [
+   "skill",
+   "skills",
+   "folder",
+   "import",
+   "zip",
+   "SKILL.md",
+   "references",
+   "drag",
+   "drop"
+  ],
+  "anchors": [
+   "surface:skill-import"
+  ],
+  "surfaces": [
+   "desktop"
+  ],
+  "index": false
+ },
+ {
   "id": "vault-import",
   "title": "Import a folder of notes",
   "group": "Memory",

@@ -1476,5 +1476,11 @@
   "Last step: {step}": "마지막 단계: {step}",
   "Finished steps will not run again.": "완료된 단계는 다시 실행되지 않습니다.",
   "Start fresh": "새로 시작",
-  "Keep my computer awake during runs": "실행 중 컴퓨터 절전 방지"
+  "Keep my computer awake during runs": "실행 중 컴퓨터 절전 방지",
+  "Import a whole folder: each folder with a SKILL.md becomes one skill and its other files become references the AI opens only when needed. Loose .md and .txt files become their own skills. You can also drop a folder or a .zip anywhere on this page.": "폴더 전체 가져오기: SKILL.md가 있는 폴더는 각각 하나의 스킬이 되고, 그 안의 다른 파일은 AI가 필요할 때만 여는 참고 자료가 됩니다. 따로 있는 .md 및 .txt 파일은 각각 별도의 스킬이 됩니다. 폴더나 .zip을 이 페이지 아무 곳에나 끌어다 놓을 수도 있습니다.",
+  "Choose a folder": "폴더 선택",
+  "Drop to import skills": "놓아서 스킬 가져오기",
+  "Read the full skill": "스킬 전체 읽기",
+  "Skill from a folder": "폴더에서 가져온 스킬",
+  "From a folder": "폴더에서"
 }

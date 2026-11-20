@@ -1476,5 +1476,11 @@
   "Last step: {step}": "上一步：{step}",
   "Finished steps will not run again.": "已完成的步骤不会重新运行。",
   "Start fresh": "重新开始",
-  "Keep my computer awake during runs": "运行时保持电脑唤醒"
+  "Keep my computer awake during runs": "运行时保持电脑唤醒",
+  "Import a whole folder: each folder with a SKILL.md becomes one skill and its other files become references the AI opens only when needed. Loose .md and .txt files become their own skills. You can also drop a folder or a .zip anywhere on this page.": "导入整个文件夹：每个包含 SKILL.md 的文件夹都会成为一个技能，其中的其他文件会成为参考资料，AI 只在需要时才打开。单独的 .md 和 .txt 文件会各自成为技能。你也可以把文件夹或 .zip 拖放到本页面的任意位置。",
+  "Choose a folder": "选择文件夹",
+  "Drop to import skills": "松开以导入技能",
+  "Read the full skill": "阅读完整技能",
+  "Skill from a folder": "来自文件夹的技能",
+  "From a folder": "来自文件夹"
 }

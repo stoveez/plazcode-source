@@ -1476,5 +1476,11 @@
   "Last step: {step}": "最後のステップ: {step}",
   "Finished steps will not run again.": "完了済みのステップは再実行されません。",
   "Start fresh": "最初から始める",
-  "Keep my computer awake during runs": "実行中はコンピューターをスリープさせない"
+  "Keep my computer awake during runs": "実行中はコンピューターをスリープさせない",
+  "Import a whole folder: each folder with a SKILL.md becomes one skill and its other files become references the AI opens only when needed. Loose .md and .txt files become their own skills. You can also drop a folder or a .zip anywhere on this page.": "フォルダーをまるごとインポート：SKILL.md があるフォルダーはそれぞれ 1 つのスキルになり、その中のほかのファイルは AI が必要なときだけ開く参考資料になります。単独の .md と .txt ファイルはそれぞれ別のスキルになります。フォルダーや .zip をこのページのどこにでもドロップすることもできます。",
+  "Choose a folder": "フォルダーを選択",
+  "Drop to import skills": "ドロップしてスキルをインポート",
+  "Read the full skill": "スキル全体を読む",
+  "Skill from a folder": "フォルダーからのスキル",
+  "From a folder": "フォルダーから"
 }

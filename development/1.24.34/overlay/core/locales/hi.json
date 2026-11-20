@@ -1476,5 +1476,11 @@
   "Last step: {step}": "अंतिम चरण: {step}",
   "Finished steps will not run again.": "पूरे हो चुके चरण फिर से नहीं चलेंगे।",
   "Start fresh": "नए सिरे से शुरू करें",
-  "Keep my computer awake during runs": "रन के दौरान मेरे कंप्यूटर को जागृत रखें"
+  "Keep my computer awake during runs": "रन के दौरान मेरे कंप्यूटर को जागृत रखें",
+  "Import a whole folder: each folder with a SKILL.md becomes one skill and its other files become references the AI opens only when needed. Loose .md and .txt files become their own skills. You can also drop a folder or a .zip anywhere on this page.": "पूरा फ़ोल्डर इम्पोर्ट करें: SKILL.md वाला हर फ़ोल्डर एक स्किल बन जाता है, और उसकी बाकी फ़ाइलें संदर्भ बन जाती हैं जिन्हें AI सिर्फ़ ज़रूरत पड़ने पर खोलता है। अलग .md और .txt फ़ाइलें अपनी अलग स्किल बन जाती हैं। आप इस पेज पर कहीं भी कोई फ़ोल्डर या .zip छोड़ भी सकते हैं।",
+  "Choose a folder": "फ़ोल्डर चुनें",
+  "Drop to import skills": "स्किल इम्पोर्ट करने के लिए छोड़ें",
+  "Read the full skill": "पूरी स्किल पढ़ें",
+  "Skill from a folder": "फ़ोल्डर से आई स्किल",
+  "From a folder": "फ़ोल्डर से"
 }
