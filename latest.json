@@ -1,9 +1,54 @@
 {
-  "version": "1.24.31",
-  "desktop_version": "1.24.31",
-  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.31.zip",
-  "sha256": "9a74402d7dbb13191c88bc280165e212c3d3aac27e80bb1e9b3d539574794ca8",
+  "version": "1.24.36",
+  "desktop_version": "1.24.36",
+  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.36.zip",
+  "sha256": "88d5e6653de4823f797816b447271b75c106f389d81edc9de82c90c4715a9d8f",
   "release_notes": [
+    {
+      "version": "1.24.36",
+      "title": "The taskbar stays usable while the AI controls the screen, and Roblox Studio through TuxBlox on Linux",
+      "summary": "A quick follow-up: your taskbar works while the AI controls the screen, and Linux users can connect Roblox Studio through TuxBlox.",
+      "added": [
+        "Linux: Roblox Studio through TuxBlox as well as Vinegar. PlazCode starts TuxBlox's own Studio helper directly (normal install or Flatpak), so no fake flatpak or edited menu entry is needed. When Studio is open, PlazCode uses whichever one runs it, else TuxBlox first.",
+        "Linux: the Roblox Studio card on the Apps page covers TuxBlox and Vinegar and shows the helper's own message when it cannot start."
+      ],
+      "improved": [
+        "Linux: a Studio helper that stops at once is retried after a growing pause instead of every second, and a slow first start gets up to a minute."
+      ],
+      "fixed": [
+        "Windows: while the AI controls the screen (glowing edges and the Stop bar at the top), the taskbar no longer disappears: it shows when you move the mouse down, appears in screenshots and works while paused."
+      ],
+      "notes": [
+        "Update the PlazCode app and the extension together (the app's updater does this).",
+        "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***A quick follow-up: your taskbar works while the AI controls the screen, and Linux users can connect Roblox Studio through TuxBlox.***",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "Linux: Roblox Studio works through TuxBlox as well as Vinegar. No fake flatpak or edited menu entry needed.",
+              "Linux: PlazCode uses whichever one runs your open Studio (TuxBlox first) and shows the helper's own message if it cannot start.",
+              "Linux: a helper that stops at once is retried less often, and a slow first start gets up to a minute."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "Windows: the taskbar no longer disappears while the AI controls your screen. It shows when you move the mouse down, appears in screenshots and works while paused."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Automated tests on Windows, Mac and Linux, including the real Linux app with a stand-in TuxBlox. Not yet tried on a real Linux PC with TuxBlox, or with a real taskbar. Report anything odd.",
+              "Windows is unsigned and Mac is not notarized, as before."
+            ]
+          }
+        ]
+      }
+    },
     {
       "version": "1.24.31",
       "title": "Startup, sign-in and ChatGPT fixes",
@@ -214,54 +259,16 @@
           }
         ]
       }
-    },
-    {
-      "version": "1.24.20",
-      "title": "ClickUp Ask Brain connects again",
-      "summary": "Fixes Start Agent on ClickUp's Ask Brain, which used to stop right after the AI's first reply and never finish connecting. Nothing else changes.",
-      "added": [],
-      "improved": [],
-      "fixed": [
-        "Start Agent now finishes connecting in a new ClickUp Ask Brain chat. Before, PlazCode stopped about a second after Brain's first reply, the bar said \"Not connected to this chat yet\", and the rest of the setup was never sent.",
-        "Why it happened: ClickUp changes the page address as soon as a new chat gets its first message, and PlazCode took that for a different chat. It now treats it as the same chat.",
-        "Everything else is unchanged: other AI sites, ClickUp agent chats, and your settings, memory and connections."
-      ],
-      "notes": [
-        "Tried on a real ClickUp Ask Brain chat in AgentScript mode: all five setup steps went through and PlazCode reported it was ready. Before the fix, the same test stopped after the first reply.",
-        "ClickUp agent chats and Firefox were not changed and were not tried on a live account. Automated tests on Windows, Mac and Linux must pass before this is published.",
-        "The Windows app is unsigned and the Mac app is not notarized, as in earlier versions. Your computer may ask you to confirm opening it."
-      ],
-      "github": {
-        "summary": "Fixes Start Agent on ClickUp's Ask Brain, which stopped right after the AI's first reply and never finished connecting.",
-        "sections": [
-          {
-            "title": "🛠️ What's fixed",
-            "items": [
-              "Start Agent now finishes connecting in a new ClickUp Ask Brain chat. Before, it stopped a second after Brain's first reply and said \"Not connected to this chat yet\".",
-              "ClickUp changes the page address when a new chat gets its first message, and PlazCode mistook that for a different chat. It now knows it is the same chat.",
-              "Nothing else changes: other AI sites, ClickUp agent chats, and your settings, memory and connections stay as they were."
-            ]
-          },
-          {
-            "title": "🧪 What was checked",
-            "items": [
-              "Tried on a real ClickUp Ask Brain chat: all five setup steps went through and PlazCode said it was ready. The same test failed before the fix.",
-              "ClickUp agent chats and Firefox were not changed and not tried on a live account.",
-              "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
-            ]
-          }
-        ]
-      }
     }
   ],
   "platforms": {
     "macos": {
-      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.31.zip",
-      "sha256": "77b99c260a04956bc3a002d2be5e1b351ed83cca2e4bd530872587962e7b687b"
+      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.36.zip",
+      "sha256": "0d39822b34a8275a429cc6256deec7a952e53b16cd15dcbbe3726ac86befb2af"
     }
   },
   "security": {
-    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.31\",\"platform\":\"windows\",\"sha256\":\"9a74402d7dbb13191c88bc280165e212c3d3aac27e80bb1e9b3d539574794ca8\"}",
-    "signature": "2c41f4f71c5224af389503159f9b28f21c7c527e0ab3693733ef9bd5d42d3dfd03abd53e6c0d13e7a6b077441f15631f054926f77419cf19495cd30ad788eb03"
+    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.36\",\"platform\":\"windows\",\"sha256\":\"88d5e6653de4823f797816b447271b75c106f389d81edc9de82c90c4715a9d8f\"}",
+    "signature": "3ed16068a184ec86e96f52ef593cffbedcf5fc19e0d6f57f50b83f866b52fcbbf1530a753a3b24f7824066d6303502475486fa127611456d2341a6d3475d2f09"
   }
 }
