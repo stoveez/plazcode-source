@@ -4,7 +4,7 @@ updated: 2026-10-28
 ---
 # Releasing
 
-**Current (2026-11-21): 1.24.35 being released** (copied from `development/1.24.34`, workflows `validate-1.24.35.yml` / `publish-1.24.35.yml`, branch `release/1.24.35-publish`). The steps below were written for 1.24.30: read every `1.24.30` in them as the current version.
+**Current (2026-11-21): 1.24.35 published** (validation 44919915936 on `c7b9ca15`, publish 44928385233 from `release/1.24.35-publish`, pin commit `7ddbcc0e`). The next version needs the new-version checklist. The steps below were written for 1.24.30: read every `1.24.30` in them as the current version.
 
 Official releases live in the public repo `stoveez/PlazCode`, branch `main`: only zips and the feeds. They are prepared and published from the private repo, branch `release/1.24.30-publish`, by the workflow `publish-1.24.30.yml`. Nothing is rebuilt at publish time. Private `main` is the old line and is not used for releases.
 
@@ -47,3 +47,6 @@ Published in 40781780030 using exact-source validation 40772509288 / a74ae17, wi
 
 ## 1.24.34 publication record (2026-11-18)
 Owner said "just release the update" as 1.24.34. Copied `development/1.24.33` to `development/1.24.34` with a global version replace; lines that compared two versions (1.24.33 vs 1.24.34) collapsed and had to be moved up to 1.24.34 vs 1.24.35 (`agent/src/release_variant.rs`, `test-release-variant.mjs`). `validate-1.24.33.yml` no longer runs on the dev branch. The Linux job failed all day on download.blender.org answering 403 to GitHub runners; the workflow now tries Blender's official mirrors with the same sha256. Validation 44403715588 on `3ea08a4` all green; publish 44412679897 (wait-native, Mac desktop lifetime test, publish) green; public commit `f7dbbeb`. Feeds `latest.json`, `latest-macos.json`, `latest-linux.json` read 1.24.34 and the Windows zip's sha256 (53,460,853 bytes) matches the feed. Dev merged `origin/main` with `-s ours` afterwards (`e2e5dc9`).
+
+## 1.24.35 publication record (2026-11-21)
+Owner said "release the update". Copied `development/1.24.34` to `development/1.24.35`: replaced 1.24.35 with 1.24.36 first and then 1.24.34 with 1.24.35, so lines comparing two versions stayed apart (`release_variant.rs`, `test-release-variant.mjs`); regex spots `1\.24\.34` (test-update-handoff.py, test-plazlib.js) fixed by hand. While validating, the owner reported three DeepSeek problems, fixed before publishing (NOW items 34-36). Release notes shown to the owner first (1,994 characters). Validation 44919915936 on `c7b9ca15`: the Linux job timed out once in test-linux-desktop.cjs ("Blockbench card ready after a real answer", passed on the same code before) and passed on `gh run rerun --failed` (attempt 2); promote accepted the re-run. Publish 44928385233 (wait-native, Mac desktop, publish) green; public commit `c9ddb6a`. Feeds `latest.json`, `latest-macos.json`, `latest-linux.json` read 1.24.35; sha256 of the Windows (53,778,138 bytes), Mac (56,252,102) and Linux (50,983,508) downloads match the feeds. Dev merged `origin/main` with `-s ours` afterwards.

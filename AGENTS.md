@@ -1,6 +1,6 @@
 # AGENTS.md - instructions for any AI working in this repo (Codex, Claude, or others)
 
-**Current: 1.24.35 being released (2026-11-21, owner: "release the update"); work is in `development/1.24.35` on `claude/plazcode-dev`. Previous published: 1.24.34 (release https://github.com/stoveez/PlazCode/releases/tag/v1.24.34). See docs/NOW.md.** See `docs/NOW.md`.
+**Current: 1.24.35 published (2026-11-21; validation 44919915936 on `c7b9ca15`, publish run 44928385233, release https://github.com/stoveez/PlazCode/releases/tag/v1.24.35). Further work continues in `development/1.24.35` on `claude/plazcode-dev` until the next version bump (`docs/vault/new-version-checklist.md`). See docs/NOW.md.** See `docs/NOW.md`.
 > **Start here:** read `docs/NOW.md` first (where the work is, what is unfinished, the next step). Then open only the notes you need from `docs/vault/Home.md`; do not read the whole vault. At the end of a session rewrite `docs/NOW.md`, file anything permanent in the vault, push, and tell the owner. How: `docs/vault/how-we-work.md`. The rules below stay binding.
 >
 > Personal vault (owner's universal notes): if the private repo `stoveez/stoveez` is attached to the session or cloned at `~/stoveez-vault`, also read its `about-me.md` (short). Never copy anything from it into this repo's files, and never put secrets in it.
