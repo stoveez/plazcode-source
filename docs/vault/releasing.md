@@ -4,7 +4,7 @@ updated: 2026-10-28
 ---
 # Releasing
 
-**Current (2026-11-21): 1.24.35 published** (validation 44919915936 on `c7b9ca15`, publish 44928385233 from `release/1.24.35-publish`, pin commit `7ddbcc0e`). The next version needs the new-version checklist. The steps below were written for 1.24.30: read every `1.24.30` in them as the current version.
+**Current (2026-11-21): 1.24.36 published** (validation 44936501888 on `137838e6`, publish 44941406099 from `release/1.24.36-publish`, pin commit `11798940`). The next version needs the new-version checklist. The steps below were written for 1.24.30: read every `1.24.30` in them as the current version.
 
 Official releases live in the public repo `stoveez/PlazCode`, branch `main`: only zips and the feeds. They are prepared and published from the private repo, branch `release/1.24.30-publish`, by the workflow `publish-1.24.30.yml`. Nothing is rebuilt at publish time. Private `main` is the old line and is not used for releases.
 
@@ -50,3 +50,6 @@ Owner said "just release the update" as 1.24.34. Copied `development/1.24.33` to
 
 ## 1.24.35 publication record (2026-11-21)
 Owner said "release the update". Copied `development/1.24.34` to `development/1.24.35`: replaced 1.24.35 with 1.24.36 first and then 1.24.34 with 1.24.35, so lines comparing two versions stayed apart (`release_variant.rs`, `test-release-variant.mjs`); regex spots `1\.24\.34` (test-update-handoff.py, test-plazlib.js) fixed by hand. While validating, the owner reported three DeepSeek problems, fixed before publishing (NOW items 34-36). Release notes shown to the owner first (1,994 characters). Validation 44919915936 on `c7b9ca15`: the Linux job timed out once in test-linux-desktop.cjs ("Blockbench card ready after a real answer", passed on the same code before) and passed on `gh run rerun --failed` (attempt 2); promote accepted the re-run. Publish 44928385233 (wait-native, Mac desktop, publish) green; public commit `c9ddb6a`. Feeds `latest.json`, `latest-macos.json`, `latest-linux.json` read 1.24.35; sha256 of the Windows (53,778,138 bytes), Mac (56,252,102) and Linux (50,983,508) downloads match the feeds. Dev merged `origin/main` with `-s ours` afterwards.
+
+## 1.24.36 publication record (2026-11-21)
+Owner: "just publish upd again, no need to test" (no separate test build). Same copy method as 1.24.35 (1.24.36 -> 1.24.37 first, then 1.24.35 -> 1.24.36, plus the escaped `1\.24\.35` regex spots). Contents: Windows taskbar fix (NOW 37) and Roblox Studio through TuxBlox on Linux (NOW 38). Release notes 1,408 characters, shown to the owner first. Validation 44936501888 on `137838e6` green first try; publish 44941406099 green; public commit `e1ec6a0`. Feeds read 1.24.36; sha256 of the Windows (53,813,680 bytes), Mac (56,299,634) and Linux (51,019,630) downloads match. Dev merged `origin/main` with `-s ours`.
