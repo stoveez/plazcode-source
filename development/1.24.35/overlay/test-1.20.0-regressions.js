@@ -71,6 +71,7 @@ const rs = read("agent/src/main.rs");
 check("Studio detection tolerates empty state text and single misses", () => {
   assert.ok(/fn studio_should_drop\(was_connected: bool, misses: u32, helper_dead: bool\)/.test(rs));
   assert.ok(!/if text\.is_empty\(\) \|\| text\.contains\("Unable to find an active Studio instance"\)/.test(rs));
-  assert.ok(/Duration::from_secs\(20\), async \{/.test(rs));
+  // 2026-11-21: 20 s, or 60 s on Linux before the first connection (a cold Wine start for TuxBlox / Vinegar).
+  assert.ok(/let window = if cfg!\(target_os = "linux"\) && !autoconnect_state\.roblox_editor_connected\.load\(Ordering::Relaxed\) \{ 60 \} else \{ 20 \};/.test(rs) && /Duration::from_secs\(window\), async \{/.test(rs));
 });
 console.log(passed + " passed");
