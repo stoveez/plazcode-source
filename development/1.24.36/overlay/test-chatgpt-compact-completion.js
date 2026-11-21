@@ -1,0 +1,11 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+const {JSDOM}=require('jsdom');
+const dom=new JSDOM('<main><div data-message-author-role="assistant" id="answer"><div class="markdown">PlazCode is ready.</div><button data-testid="copy-turn-action-button">Copy</button></div><div data-message-author-role="user" id="user">A request<button data-testid="copy-turn-action-button">Copy</button></div><textarea id="prompt-textarea"></textarea></main>',{url:'https://chatgpt.com/c/test',runScripts:'outside-only',pretendToBeVisual:true});
+const w=dom.window;w.HTMLElement.prototype.getBoundingClientRect=()=>({width:100,height:30,top:0,bottom:30,left:0,right:100});Object.defineProperty(w.HTMLElement.prototype,'offsetParent',{get(){return this.parentElement;}});
+vm.runInContext(fs.readFileSync(process.argv[2]||'providers/chatgpt.js','utf8')+';this.provider=RSProvider;',dom.getInternalVMContext());
+const answer=w.document.getElementById('answer');
+assert(w.provider.turnComplete(answer),'A completed assistant row with its own action strip does not require an outer article');
+assert(!w.provider.turnComplete(w.document.getElementById('user')),'User copy controls are not assistant completion');
+answer.querySelector('button').remove();assert(!w.provider.turnComplete(answer),'Another row action strip cannot finish this answer');
+answer.insertAdjacentHTML('beforeend','<button data-testid="copy-turn-action-button">Copy</button>');w.document.querySelector('main').insertAdjacentHTML('beforeend','<button id="composer-submit-button" data-testid="stop-button" aria-label="Stop generating">Stop</button>');assert(!w.provider.turnComplete(answer),'A real Stop button always prevents early completion');
+w.close();console.log('PASS actual ChatGPT provider: compact completed rows settle without an optional article; user/foreign controls and real Stop remain excluded.');

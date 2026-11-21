@@ -1,0 +1,45 @@
+{
+  "version": "1.24.36",
+  "title": "The taskbar stays usable while the AI controls the screen, and Roblox Studio through TuxBlox on Linux",
+  "summary": "A quick follow-up: your taskbar works while the AI controls the screen, and Linux users can connect Roblox Studio through TuxBlox.",
+  "added": [
+    "Linux: Roblox Studio through TuxBlox as well as Vinegar. PlazCode starts TuxBlox's own Studio helper directly (normal install or Flatpak), so no fake flatpak or edited menu entry is needed. When Studio is open, PlazCode uses whichever one runs it, else TuxBlox first.",
+    "Linux: the Roblox Studio card on the Apps page covers TuxBlox and Vinegar and shows the helper's own message when it cannot start."
+  ],
+  "improved": [
+    "Linux: a Studio helper that stops at once is retried after a growing pause instead of every second, and a slow first start gets up to a minute."
+  ],
+  "fixed": [
+    "Windows: while the AI controls the screen (glowing edges and the Stop bar at the top), the taskbar no longer disappears: it shows when you move the mouse down, appears in screenshots and works while paused."
+  ],
+  "notes": [
+    "Update the PlazCode app and the extension together (the app's updater does this).",
+    "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+  ],
+  "github": {
+    "summary": "***A quick follow-up: your taskbar works while the AI controls the screen, and Linux users can connect Roblox Studio through TuxBlox.***",
+    "sections": [
+      {
+        "title": "✨ What's new",
+        "items": [
+          "Linux: Roblox Studio works through TuxBlox as well as Vinegar. No fake flatpak or edited menu entry needed.",
+          "Linux: PlazCode uses whichever one runs your open Studio (TuxBlox first) and shows the helper's own message if it cannot start.",
+          "Linux: a helper that stops at once is retried less often, and a slow first start gets up to a minute."
+        ]
+      },
+      {
+        "title": "🛠️ What's fixed",
+        "items": [
+          "Windows: the taskbar no longer disappears while the AI controls your screen. It shows when you move the mouse down, appears in screenshots and works while paused."
+        ]
+      },
+      {
+        "title": "🧪 What was checked",
+        "items": [
+          "Automated tests on Windows, Mac and Linux, including the real Linux app with a stand-in TuxBlox. Not yet tried on a real Linux PC with TuxBlox, or with a real taskbar. Report anything odd.",
+          "Windows is unsigned and Mac is not notarized, as before."
+        ]
+      }
+    ]
+  }
+}

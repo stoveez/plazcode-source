@@ -1,0 +1,13 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('core/main.js','utf8');let chat='source';
+const box={P:{conversationKey:()=>chat},activeEngine:()=> 'roblox'};vm.createContext(box);
+const a=source.indexOf('  function retainedResultCorrection('),b=source.indexOf('  function prepareToolFeedback(',a);
+vm.runInContext('const retainedToolResults=new Map();this.results=retainedToolResults;'+source.slice(a,b),box);
+assert.equal(box.retainedResultCorrection('plazcode_result_read'),'');box.results.set('id',{chat:'source',engine:'roblox'});
+assert.match(box.retainedResultCorrection('`plazcode_result_read`'),/no new command was received or executed/);
+const correction=box.retainedResultCorrection('plazcode_result_read');const reliability=require('./core/reliability.js');const parser=new Function(fs.readFileSync('core/parser.js','utf8')+';return RSParse;')();assert.equal(reliability.userRequest({role:'user',text:correction}),false,'The correction is internal protocol, never a real user preference/request');assert(parser.isInjectedFeedback(correction),'Correction can be camouflaged as internal feedback');
+for(const text of ['The command is plazcode_result_read.','{"command":"plazcode_result_read","params":{"id":"x"}}','script_read'])assert.equal(box.retainedResultCorrection(text),'');
+chat='different';assert.equal(box.retainedResultCorrection('plazcode_result_read'),'');
+assert(source.includes("tools.push({name:'plazcode_result_read'"),'Reader schema is included in the startup tool list');
+assert(source.includes('retainedReadNudges++===0'),'A bare-name correction is bounded to once per run');
+console.log('PASS retained-result reader is advertised, complete JSON is shown, and only an exact bare reader name with a scoped retained result gets a bounded correction.');

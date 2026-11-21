@@ -1,0 +1,14 @@
+{
+  "name": "PlazCode",
+  "id": "plazcode-figma-helper",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["none"],
+    "devAllowedDomains": ["ws://localhost:__PLAZCODE_PORT__"],
+    "reasoning": "PlazCode's helper talks only to the PlazCode app on this computer. It never reaches the internet."
+  }
+}
