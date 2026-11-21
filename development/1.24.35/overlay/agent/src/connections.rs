@@ -413,7 +413,7 @@ pub fn blender_app(saved: &SavedApp, facts: &BlenderFacts) -> Value {
 /// Everything the page needs, for the apps this build sets up itself. Apps not listed here are drawn by the page
 /// from the older server list, so adding an app is one entry here and nothing in the page.
 /// `extension`: the browser extension talked to this app in the last moments (the browser card ticks itself off).
-/// `studio`: (Roblox Studio is running, PlazCode is connected to it); used by the Linux Studio card (Vinegar).
+/// `studio`: (Roblox Studio is running, PlazCode is connected to it); used by the Linux Studio card (TuxBlox or Vinegar).
 pub fn report(servers: &[ServerSummary], preview: Option<String>, extension: bool, studio: (bool, bool)) -> Value {
     let _ = studio;
     if extension { crate::browser_setup::remember_connected(); }
@@ -447,9 +447,9 @@ pub fn report(servers: &[ServerSummary], preview: Option<String>, extension: boo
         crate::figma::card(&saved.apps.get(crate::figma::APP).cloned().unwrap_or_default(), &crate::figma::facts()),
         unity_card,
     ];
-    // 1.24.35 (Linux, experimental): Roblox Studio through Vinegar gets a real setup card; elsewhere Studio is built in.
+    // 1.24.35 (Linux, experimental): Roblox Studio through TuxBlox or Vinegar gets a real setup card; elsewhere Studio is built in.
     #[cfg(target_os = "linux")]
-    apps.insert(0, crate::vinegar::card(&crate::vinegar::facts(studio.0, studio.1)));
+    apps.insert(0, crate::linux_studio::card(&crate::linux_studio::facts(studio.0, studio.1)));
     json!({"ok": true, "apps": start.into_iter().chain(apps).collect::<Vec<_>>()})
 }
 

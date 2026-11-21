@@ -1482,5 +1482,14 @@
   "Drop to import skills": "Solte para importar habilidades",
   "Read the full skill": "Ler a habilidade completa",
   "Skill from a folder": "Habilidade de uma pasta",
-  "From a folder": "De uma pasta"
+  "From a folder": "De uma pasta",
+  "Install TuxBlox or Vinegar": "Instale o TuxBlox ou o Vinegar",
+  "Roblox Studio runs on Linux through TuxBlox (recommended) or Vinegar. Install one, then come back here.": "O Roblox Studio roda no Linux pelo TuxBlox (recomendado) ou pelo Vinegar. Instale um deles e volte aqui.",
+  "Get TuxBlox": "Obter TuxBlox",
+  "Install Roblox Studio": "Instale o Roblox Studio",
+  "Open Roblox Studio from TuxBlox once so it finishes installing and updating.": "Abra o Roblox Studio pelo TuxBlox uma vez para ele terminar de instalar e atualizar.",
+  "PlazCode keeps trying while Studio is open. If it never connects, open Technical details and send us what it says with your Linux version.": "O PlazCode continua tentando enquanto o Studio estiver aberto. Se nunca conectar, abra os detalhes técnicos e mande para nós o que aparece lá, junto com sua versão do Linux.",
+  "Experimental on Linux: Roblox Studio through TuxBlox or Vinegar.": "Experimental no Linux: Roblox Studio pelo TuxBlox ou pelo Vinegar.",
+  "Experimental: Roblox Studio has no Linux version, so it runs through TuxBlox or Vinegar. PlazCode starts Roblox's own Studio connection through the one that runs your Studio (TuxBlox first). Please tell us if it works for you.": "Experimental: o Roblox Studio não tem versão para Linux, então roda pelo TuxBlox ou pelo Vinegar. O PlazCode inicia a conexão própria do Roblox com o Studio pelo programa que roda o seu Studio (TuxBlox primeiro). Conte para nós se funcionar para você.",
+  "PlazCode is connected to Roblox Studio through TuxBlox.": "O PlazCode está conectado ao Roblox Studio pelo TuxBlox."
 }

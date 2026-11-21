@@ -74,6 +74,10 @@ mod linux_desktop;
 mod linux_setup;
 #[cfg(target_os="linux")]
 mod vinegar;
+#[cfg(target_os="linux")]
+mod tuxblox;
+#[cfg(target_os="linux")]
+mod linux_studio;
 mod browser_setup;
 mod workspace;
 mod safety;
@@ -324,10 +328,10 @@ impl McpRuntime {
             if let Some(path) = paths.iter().find(|path| path.is_file()) { return Ok((path.to_string_lossy().into_owned(), vec![])); }
             anyhow::bail!("Roblox Studio MCP launcher is missing. Install Roblox Studio and enable Studio as MCP server in Assistant settings.");
         }
-        // 1.24.35 (Linux rework, experimental): Roblox Studio runs through Vinegar on Linux; its own StudioMCP.exe is
-        // started with Vinegar's Wine in Studio's prefix (vinegar.rs).
+        // 1.24.35 (Linux rework, experimental): Roblox Studio runs through TuxBlox or Vinegar on Linux (linux_studio.rs
+        // picks the one that runs the open Studio, else TuxBlox, else Vinegar).
         #[cfg(target_os = "linux")]
-        { return vinegar::launcher(); }
+        { return linux_studio::launcher(); }
         #[cfg(not(any(target_os = "macos", target_os = "linux")))]
         {
         let local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
@@ -396,20 +400,34 @@ impl McpRuntime {
         cmd.args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null());
+            // Linux (TuxBlox / Vinegar): the helper's own messages are kept (the last few lines) so a helper that stops
+            // at once says why, in agent.log and on the Studio card (owner, 2026-11-21). Elsewhere they are not needed.
+            .stderr(if cfg!(target_os = "linux") { Stdio::piped() } else { Stdio::null() });
         #[cfg(windows)]
         cmd.creation_flags(CREATE_NO_WINDOW);
         let mut child = cmd.spawn().map_err(|e| { tracing::error!("MCP helper spawn failed: {e}"); e })?;
         info!("MCP helper spawned OK");
+        if let Some(stderr) = child.stderr.take() { keep_helper_messages(stderr); }
         self.stdin = child.stdin.take();
         self.stdout = child.stdout.take().map(|s| BufReader::new(s).lines());
         self.child = Some(child);
-        let _ = self.request("initialize", serde_json::json!({
+        let initialized = self.request("initialize", serde_json::json!({
             "protocolVersion": "2025-06-18",
             "capabilities": {},
             "clientInfo": {"name": "PlazCode", "version": env!("CARGO_PKG_VERSION")}
-        })).await.map_err(|e| { tracing::warn!("MCP initialize failed: {e:#}"); e })?;
+        })).await;
+        let _ = match initialized {
+            Ok(value) => value,
+            Err(error) => {
+                // Give the helper's last words a moment to arrive, then add them to the error.
+                tokio::time::sleep(Duration::from_millis(150)).await;
+                let error = match helper_said() { Some(said) => { *LAST_HELPER_MESSAGE.lock().unwrap_or_else(|e| e.into_inner()) = Some(said.clone()); anyhow::anyhow!("{error:#}; the helper said: {said}") } None => error };
+                tracing::warn!("MCP initialize failed: {error:#}");
+                return Err(error);
+            }
+        };
         self.notify("notifications/initialized", serde_json::json!({})).await?;
+        *LAST_HELPER_MESSAGE.lock().unwrap_or_else(|e| e.into_inner()) = None;
         self.alive.store(true, Ordering::Relaxed);
         Ok(())
     }
@@ -1340,6 +1358,8 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
     tokio::spawn(async move {
         let mut previous_error = String::new();
         let mut misses: u32 = 0;
+        // Linux (owner, 2026-11-21): a helper that dies at once used to be started again every second for ever.
+        let mut dead_streak: u32 = 0;
         loop {
             if autoconnect_state.accounts.required()&&autoconnect_state.accounts.active().is_none(){tokio::time::sleep(Duration::from_millis(500)).await;continue;}
             let lease=accounts::ACCESS.read().await;
@@ -1349,7 +1369,9 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
             // later, even if the host cannot enumerate its process name.
             if autoconnect_state.mcp_in_flight.load(Ordering::Relaxed) == 0 {
                 if let Ok(mut mcp) = autoconnect_state.roblox_mcp.try_lock() {
-                    let connection = match tokio::time::timeout(Duration::from_secs(20), async {
+                    // A cold Wine start (TuxBlox / Vinegar) can take longer than 20 s; cutting it off made it start cold again.
+                    let window = if cfg!(target_os = "linux") && !autoconnect_state.roblox_editor_connected.load(Ordering::Relaxed) { 60 } else { 20 };
+                    let connection = match tokio::time::timeout(Duration::from_secs(window), async {
                         let tools = mcp.list_tools().await?;
                         mcp.probe_studio().await?;
                         anyhow::Ok(tools)
@@ -1367,6 +1389,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
                             autoconnect_state.set_editor_connection(true, Some(&tools));
                             previous_error.clear();
                             misses = 0;
+                            dead_streak = 0;
                         }
                         Err(error) => {
                             misses = misses.saturating_add(1);
@@ -1380,7 +1403,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
                                 tracing::warn!("Studio auto-connect: {message}");
                                 previous_error = message;
                             }
-                            if helper_is_dead(&error) { mcp.reset().await; }
+                            if helper_is_dead(&error) { mcp.reset().await; dead_streak = dead_streak.saturating_add(1); }
                             if !autoconnect_state.roblox_editor_connected.load(Ordering::Relaxed)
                                 && autoconnect_state.roblox_proc.load(Ordering::Relaxed)
                                 && should_clear_competitors(misses) {
@@ -1396,8 +1419,9 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
                     }
                 }
             }
-            let retry = if autoconnect_state.roblox_editor_connected.load(Ordering::Relaxed) { 5000 }
+            let mut retry: u64 = if autoconnect_state.roblox_editor_connected.load(Ordering::Relaxed) { 5000 }
                 else if autoconnect_state.roblox_proc.load(Ordering::Relaxed) { 1000 } else { 5000 };
+            if cfg!(target_os = "linux") { retry = retry.max(dead_helper_pause(dead_streak)); }
             drop(lease);tokio::time::sleep(Duration::from_millis(retry)).await;
         }
     });
@@ -2677,6 +2701,52 @@ fn probe_failure_is_fatal(error: &anyhow::Error) -> bool {
     let msg = format!("{error:#}");
     msg.contains("exited") || msg.contains("stdin unavailable") || msg.contains("stdout unavailable") || msg.contains("spawn failed")
 }
+/// The Studio helper's own messages (Linux): the last few lines, without Wine's debug chatter.
+static HELPER_TAIL: std::sync::Mutex<std::collections::VecDeque<String>> = std::sync::Mutex::new(std::collections::VecDeque::new());
+/// What the helper said when it last failed to start (cleared once it connects); shown on the Linux Studio card.
+static LAST_HELPER_MESSAGE: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub(crate) fn last_helper_message() -> Option<String> { LAST_HELPER_MESSAGE.lock().unwrap_or_else(|e| e.into_inner()).clone() }
+/// Wine's debug lines ("0024:fixme:ntdll:...", "err:..."), which say nothing about why the helper stopped.
+fn wine_chatter(line: &str) -> bool {
+    let rest = line.split_once(':').filter(|(id, _)| id.len() == 4 && id.bytes().all(|b| b.is_ascii_hexdigit())).map(|(_, rest)| rest).unwrap_or(line);
+    ["fixme:", "err:", "warn:", "trace:"].iter().any(|p| rest.starts_with(p))
+}
+fn keep_helper_messages(stderr: tokio::process::ChildStderr) {
+    HELPER_TAIL.lock().unwrap_or_else(|e| e.into_inner()).clear();
+    tokio::spawn(async move {
+        let mut lines = BufReader::new(stderr).lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            let line = line.trim();
+            if line.is_empty() || wine_chatter(line) { continue; }
+            let mut tail = HELPER_TAIL.lock().unwrap_or_else(|e| e.into_inner());
+            tail.push_back(line.chars().take(300).collect());
+            while tail.len() > 6 { tail.pop_front(); }
+        }
+    });
+}
+fn helper_said() -> Option<String> {
+    let tail = HELPER_TAIL.lock().unwrap_or_else(|e| e.into_inner());
+    if tail.is_empty() { return None; }
+    // A message often spans a few lines ("TuxBlox: ... is not installed." / "Install it by ..."): keep the last three.
+    Some(tail.iter().rev().take(3).rev().cloned().collect::<Vec<_>>().join(" "))
+}
+#[test]
+fn wine_debug_lines_are_left_out_of_the_helpers_message() {
+    assert!(wine_chatter("0024:fixme:ntdll:NtQuerySystemInformation info_class 0x6c"));
+    assert!(wine_chatter("err:module:import_dll Library x.dll not found"));
+    assert!(!wine_chatter("TuxBlox: Roblox's Studio MCP server is not installed."));
+    assert!(!wine_chatter("wine: could not load kernel32.dll"));
+}
+
+/// How long to wait after the helper died `streak` times in a row: 2, 4, 8, 16, then 30 s (0 when it did not die).
+fn dead_helper_pause(streak: u32) -> u64 { if streak == 0 { 0 } else { (1000u64 << streak.min(5)).min(30_000) } }
+#[test]
+fn a_helper_that_keeps_dying_is_retried_less_and_less_often() {
+    assert_eq!((1..=7).map(dead_helper_pause).collect::<Vec<_>>(), [2000, 4000, 8000, 16000, 30000, 30000, 30000]);
+    assert_eq!(dead_helper_pause(0), 0);
+}
+
 fn helper_is_dead(error: &anyhow::Error) -> bool {
     let msg = format!("{error:#}");
     msg.contains("exited") || msg.contains("timed out") || msg.contains("stdin unavailable")

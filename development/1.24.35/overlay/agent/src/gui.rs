@@ -92,6 +92,7 @@ fn app_download_url(action: &str) -> Option<&'static str> {
         "open:blockbench-web" => Some("https://web.blockbench.net/"),
         "open:get-git" => Some("https://git-scm.com/downloads"),
         "open:get-vinegar" => Some("https://vinegarhq.org/"),
+        "open:get-tuxblox" => Some("https://tuxblox.net/"),
         _ => None,
     }
 }

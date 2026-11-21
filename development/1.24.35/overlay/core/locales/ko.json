@@ -1482,5 +1482,14 @@
   "Drop to import skills": "놓아서 스킬 가져오기",
   "Read the full skill": "스킬 전체 읽기",
   "Skill from a folder": "폴더에서 가져온 스킬",
-  "From a folder": "폴더에서"
+  "From a folder": "폴더에서",
+  "Install TuxBlox or Vinegar": "TuxBlox 또는 Vinegar 설치",
+  "Roblox Studio runs on Linux through TuxBlox (recommended) or Vinegar. Install one, then come back here.": "Linux에서 Roblox Studio는 TuxBlox(권장) 또는 Vinegar로 실행됩니다. 하나를 설치한 뒤 여기로 돌아오세요.",
+  "Get TuxBlox": "TuxBlox 받기",
+  "Install Roblox Studio": "Roblox Studio 설치",
+  "Open Roblox Studio from TuxBlox once so it finishes installing and updating.": "TuxBlox에서 Roblox Studio를 한 번 열어 설치와 업데이트를 마치세요.",
+  "PlazCode keeps trying while Studio is open. If it never connects, open Technical details and send us what it says with your Linux version.": "Studio가 열려 있는 동안 PlazCode가 계속 시도합니다. 끝내 연결되지 않으면 기술 세부 정보를 열고 그 내용과 Linux 버전을 보내 주세요.",
+  "Experimental on Linux: Roblox Studio through TuxBlox or Vinegar.": "Linux 실험 기능: TuxBlox 또는 Vinegar를 통한 Roblox Studio.",
+  "Experimental: Roblox Studio has no Linux version, so it runs through TuxBlox or Vinegar. PlazCode starts Roblox's own Studio connection through the one that runs your Studio (TuxBlox first). Please tell us if it works for you.": "실험 기능: Roblox Studio는 Linux 버전이 없어 TuxBlox 또는 Vinegar로 실행됩니다. PlazCode는 Studio를 실행 중인 쪽(TuxBlox 우선)을 통해 Roblox 자체 Studio 연결을 시작합니다. 잘 되는지 알려 주세요.",
+  "PlazCode is connected to Roblox Studio through TuxBlox.": "PlazCode가 TuxBlox를 통해 Roblox Studio에 연결되었습니다."
 }

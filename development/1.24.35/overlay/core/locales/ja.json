@@ -1482,5 +1482,14 @@
   "Drop to import skills": "ドロップしてスキルをインポート",
   "Read the full skill": "スキル全体を読む",
   "Skill from a folder": "フォルダーからのスキル",
-  "From a folder": "フォルダーから"
+  "From a folder": "フォルダーから",
+  "Install TuxBlox or Vinegar": "TuxBlox または Vinegar をインストール",
+  "Roblox Studio runs on Linux through TuxBlox (recommended) or Vinegar. Install one, then come back here.": "Linux では Roblox Studio は TuxBlox（おすすめ）または Vinegar で動きます。どちらかをインストールしてから、ここに戻ってください。",
+  "Get TuxBlox": "TuxBlox を入手",
+  "Install Roblox Studio": "Roblox Studio をインストール",
+  "Open Roblox Studio from TuxBlox once so it finishes installing and updating.": "TuxBlox から Roblox Studio を一度開いて、インストールと更新を完了させてください。",
+  "PlazCode keeps trying while Studio is open. If it never connects, open Technical details and send us what it says with your Linux version.": "Studio が開いている間、PlazCode は接続を試し続けます。どうしても接続できない場合は、技術的な詳細を開き、その内容と Linux のバージョンを送ってください。",
+  "Experimental on Linux: Roblox Studio through TuxBlox or Vinegar.": "Linux では試験的：TuxBlox または Vinegar 経由の Roblox Studio。",
+  "Experimental: Roblox Studio has no Linux version, so it runs through TuxBlox or Vinegar. PlazCode starts Roblox's own Studio connection through the one that runs your Studio (TuxBlox first). Please tell us if it works for you.": "試験的：Roblox Studio には Linux 版がないため、TuxBlox または Vinegar で動きます。PlazCode は、お使いの Studio を動かしている方（TuxBlox 優先）を通して Roblox 独自の Studio 接続を開始します。うまく動いたかどうか教えてください。",
+  "PlazCode is connected to Roblox Studio through TuxBlox.": "PlazCode は TuxBlox 経由で Roblox Studio に接続しました。"
 }

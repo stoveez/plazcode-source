@@ -1482,5 +1482,14 @@
   "Drop to import skills": "स्किल इम्पोर्ट करने के लिए छोड़ें",
   "Read the full skill": "पूरी स्किल पढ़ें",
   "Skill from a folder": "फ़ोल्डर से आई स्किल",
-  "From a folder": "फ़ोल्डर से"
+  "From a folder": "फ़ोल्डर से",
+  "Install TuxBlox or Vinegar": "TuxBlox या Vinegar इंस्टॉल करें",
+  "Roblox Studio runs on Linux through TuxBlox (recommended) or Vinegar. Install one, then come back here.": "Linux पर Roblox Studio, TuxBlox (सुझाया गया) या Vinegar के ज़रिए चलता है। इनमें से एक इंस्टॉल करें, फिर यहाँ वापस आएँ।",
+  "Get TuxBlox": "TuxBlox पाएँ",
+  "Install Roblox Studio": "Roblox Studio इंस्टॉल करें",
+  "Open Roblox Studio from TuxBlox once so it finishes installing and updating.": "TuxBlox से एक बार Roblox Studio खोलें ताकि उसका इंस्टॉल और अपडेट पूरा हो जाए।",
+  "PlazCode keeps trying while Studio is open. If it never connects, open Technical details and send us what it says with your Linux version.": "Studio खुला रहने तक PlazCode कोशिश करता रहता है। अगर यह कभी कनेक्ट न हो, तो तकनीकी विवरण खोलें और उसमें जो लिखा है वह अपने Linux संस्करण के साथ हमें भेजें।",
+  "Experimental on Linux: Roblox Studio through TuxBlox or Vinegar.": "Linux पर प्रयोगात्मक: TuxBlox या Vinegar के ज़रिए Roblox Studio।",
+  "Experimental: Roblox Studio has no Linux version, so it runs through TuxBlox or Vinegar. PlazCode starts Roblox's own Studio connection through the one that runs your Studio (TuxBlox first). Please tell us if it works for you.": "प्रयोगात्मक: Roblox Studio का कोई Linux संस्करण नहीं है, इसलिए यह TuxBlox या Vinegar के ज़रिए चलता है। PlazCode, आपका Studio जिसके ज़रिए चल रहा है (पहले TuxBlox), उसी से Roblox का अपना Studio कनेक्शन शुरू करता है। हमें बताएँ कि यह आपके लिए काम करता है या नहीं।",
+  "PlazCode is connected to Roblox Studio through TuxBlox.": "PlazCode, TuxBlox के ज़रिए Roblox Studio से कनेक्ट है।"
 }

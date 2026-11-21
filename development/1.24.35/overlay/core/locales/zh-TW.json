@@ -1482,5 +1482,14 @@
   "Drop to import skills": "放開以匯入技能",
   "Read the full skill": "閱讀完整技能",
   "Skill from a folder": "來自資料夾的技能",
-  "From a folder": "來自資料夾"
+  "From a folder": "來自資料夾",
+  "Install TuxBlox or Vinegar": "安裝 TuxBlox 或 Vinegar",
+  "Roblox Studio runs on Linux through TuxBlox (recommended) or Vinegar. Install one, then come back here.": "Roblox Studio 在 Linux 上透過 TuxBlox（建議）或 Vinegar 執行。安裝其中一個，然後回到這裡。",
+  "Get TuxBlox": "取得 TuxBlox",
+  "Install Roblox Studio": "安裝 Roblox Studio",
+  "Open Roblox Studio from TuxBlox once so it finishes installing and updating.": "從 TuxBlox 開啟一次 Roblox Studio，讓它完成安裝和更新。",
+  "PlazCode keeps trying while Studio is open. If it never connects, open Technical details and send us what it says with your Linux version.": "只要 Studio 開著，PlazCode 就會持續嘗試。如果一直連不上，請開啟技術詳細資料，把其中的內容和你的 Linux 版本傳給我們。",
+  "Experimental on Linux: Roblox Studio through TuxBlox or Vinegar.": "Linux 上的實驗功能：透過 TuxBlox 或 Vinegar 執行 Roblox Studio。",
+  "Experimental: Roblox Studio has no Linux version, so it runs through TuxBlox or Vinegar. PlazCode starts Roblox's own Studio connection through the one that runs your Studio (TuxBlox first). Please tell us if it works for you.": "實驗功能：Roblox Studio 沒有 Linux 版本，因此透過 TuxBlox 或 Vinegar 執行。PlazCode 會透過執行你的 Studio 的那一個（優先 TuxBlox）啟動 Roblox 自己的 Studio 連線。請告訴我們它是否可用。",
+  "PlazCode is connected to Roblox Studio through TuxBlox.": "PlazCode 已透過 TuxBlox 連線到 Roblox Studio。"
 }

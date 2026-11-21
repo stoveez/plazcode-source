@@ -10,7 +10,6 @@
 //! real Linux desktop: the card says so.
 //! Folders (Vinegar's documentation): Flatpak `~/.var/app/org.vinegarhq.Vinegar/data/vinegar/prefixes/studio`, other
 //! installs `~/.local/share/vinegar/prefixes/studio`; Vinegar's Wine build "Kombucha" in `<data>/kombucha/bin/wine`.
-use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
 pub const FLATPAK_ID: &str = "org.vinegarhq.Vinegar";
@@ -82,58 +81,7 @@ pub fn command(install: &Install, helper: &Path) -> (String, Vec<String>) {
     }
 }
 
-const NO_VINEGAR: &str = "Roblox Studio runs on Linux through Vinegar (experimental in PlazCode). Install Vinegar, open Roblox Studio from it once, then turn on Studio's MCP server (Assistant, then Manage MCP Servers, then Enable Studio as MCP server).";
-const NO_HELPER: &str = "Vinegar is installed, but Roblox Studio's MCP helper (StudioMCP.exe) was not found. Open Roblox Studio from Vinegar once so it finishes installing and updating.";
-
-/// For the Studio connection (main.rs `McpRuntime::launcher`).
-pub fn launcher() -> anyhow::Result<(String, Vec<String>)> {
-    let all = installs_here();
-    anyhow::ensure!(!all.is_empty(), "{NO_VINEGAR}");
-    let (install, helper) = all.iter().find_map(|install| find_helper(install).map(|helper| (install, helper))).ok_or_else(|| anyhow::anyhow!("{NO_HELPER}"))?;
-    Ok(command(install, &helper))
-}
-
-// ---- the card (Apps & servers, Linux only) ---------------------------------------------------------------------------
-
-pub struct Facts { pub installs: Vec<Install>, pub helper: Option<(Install, PathBuf)>, pub studio_running: bool, pub connected: bool }
-
-pub fn facts(studio_running: bool, connected: bool) -> Facts {
-    let installs = installs_here();
-    let helper = installs.iter().find_map(|install| find_helper(install).map(|helper| (install.clone(), helper)));
-    Facts { installs, helper, studio_running, connected }
-}
-
-fn step(id: &str, title: &str, state: &str) -> Value { json!({"id": id, "title": title, "state": state}) }
-fn with(mut value: Value, key: &str, extra: Value) -> Value { if let Some(map) = value.as_object_mut() { map.insert(key.to_string(), extra); } value }
-
-pub fn card(facts: &Facts) -> Value {
-    let vinegar = if let Some(first) = facts.installs.first() {
-        with(step("vinegar", "Install Vinegar", "done"), "detail", json!(if first.flatpak { "Vinegar (Flatpak)" } else { "Vinegar" }))
-    } else {
-        with(with(step("vinegar", "Install Vinegar", "needs_you"), "hint", json!("Vinegar runs Roblox Studio on Linux. Install it from your software centre (Flathub: Vinegar), then come back here.")),
-            "link", json!({"key": "get-vinegar", "label": "Get Vinegar"}))
-    };
-    let studio = match (&facts.helper, facts.installs.is_empty()) {
-        (Some((_, helper)), _) => with(step("studio", "Install Roblox Studio in Vinegar", "done"), "detail", json!(helper.parent().and_then(|p| p.file_name()).map(|n| n.to_string_lossy().into_owned()).unwrap_or_default())),
-        (None, true) => step("studio", "Install Roblox Studio in Vinegar", "waiting"),
-        (None, false) => with(step("studio", "Install Roblox Studio in Vinegar", "needs_you"), "hint", json!("Open Vinegar and install Studio, or open Roblox Studio from Vinegar once so it finishes updating.")),
-    };
-    let mcp = if facts.connected { step("mcp", "Turn on Studio's MCP server", "done") } else if facts.helper.is_some() {
-        with(step("mcp", "Turn on Studio's MCP server", "needs_you"), "hint", json!("In Roblox Studio open Assistant, press the three dots, choose Manage MCP Servers and turn on Enable Studio as MCP server. Keep a place open."))
-    } else { step("mcp", "Turn on Studio's MCP server", "waiting") };
-    let connect = if facts.connected { step("connect", "PlazCode connects to Studio", "done") } else if facts.helper.is_some() && facts.studio_running {
-        with(step("connect", "PlazCode connects to Studio", "working"), "hint", json!("PlazCode keeps trying while Studio is open. This is experimental on Linux: if it never connects, tell us your Linux and Vinegar versions."))
-    } else { step("connect", "PlazCode connects to Studio", "waiting") };
-    let technical = facts.helper.as_ref().map(|(install, helper)| { let (program, args) = command(install, helper); format!("{program} {}", args.join(" ")) })
-        .unwrap_or_else(|| "Roblox Studio's MCP helper was not found in Vinegar's folders yet.".into());
-    json!({
-        "id": "studio", "name": "Roblox Studio", "state": if facts.connected { "ready" } else { "setting_up" },
-        "line": "Experimental on Linux: Roblox Studio through Vinegar.",
-        "lead": "Experimental: Roblox Studio has no Linux version, so it runs through Vinegar. PlazCode starts Roblox's own Studio connection inside Vinegar. This has not been tried on a real Linux computer yet; please tell us if it works for you.",
-        "done": "PlazCode is connected to Roblox Studio through Vinegar.",
-        "steps": [vinegar, studio, mcp, connect], "technical": technical, "test": false, "leave": false,
-    })
-}
+// The launcher choice (TuxBlox or Vinegar) and the Studio setup card are in linux_studio.rs (2026-11-21).
 
 #[cfg(test)]
 mod tests {
@@ -167,22 +115,5 @@ mod tests {
         std::fs::remove_file(home.join(".config/vinegar/config.toml")).unwrap();
         assert_eq!(wine(&all[1]), PathBuf::from("wine"), "no Kombucha in a normal install: the system Wine");
         let _ = std::fs::remove_dir_all(&home);
-    }
-
-    #[test] fn the_studio_card_walks_through_vinegar() {
-        let states = |card: &Value| card["steps"].as_array().unwrap().iter().map(|s| format!("{}:{}", s["id"].as_str().unwrap(), s["state"].as_str().unwrap())).collect::<Vec<_>>();
-        let none = card(&Facts { installs: vec![], helper: None, studio_running: false, connected: false });
-        assert_eq!(states(&none), ["vinegar:needs_you", "studio:waiting", "mcp:waiting", "connect:waiting"]);
-        assert_eq!(none["steps"][0]["link"]["key"], "get-vinegar");
-        assert!(none["lead"].as_str().unwrap().starts_with("Experimental"));assert_eq!(none["leave"], false);
-        let install = Install { flatpak: true, data: "/h/.var/app/org.vinegarhq.Vinegar/data/vinegar".into(), config: "/h/c".into() };
-        let installed = card(&Facts { installs: vec![install.clone()], helper: None, studio_running: false, connected: false });
-        assert_eq!(states(&installed), ["vinegar:done", "studio:needs_you", "mcp:waiting", "connect:waiting"]);
-        let helper = PathBuf::from("/h/.var/app/org.vinegarhq.Vinegar/data/vinegar/versions/version-1/StudioMCP.exe");
-        let open = card(&Facts { installs: vec![install.clone()], helper: Some((install.clone(), helper.clone())), studio_running: true, connected: false });
-        assert_eq!(states(&open), ["vinegar:done", "studio:done", "mcp:needs_you", "connect:working"]);
-        assert!(open["technical"].as_str().unwrap().starts_with("flatpak run --command="));
-        let live = card(&Facts { installs: vec![install.clone()], helper: Some((install, helper)), studio_running: true, connected: true });
-        assert_eq!(live["state"], "ready");assert!(states(&live).iter().all(|s| s.ends_with(":done")));
     }
 }

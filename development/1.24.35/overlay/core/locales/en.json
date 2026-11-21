@@ -1482,5 +1482,14 @@
   "Drop to import skills": null,
   "Read the full skill": null,
   "Skill from a folder": null,
-  "From a folder": null
+  "From a folder": null,
+  "Install TuxBlox or Vinegar": null,
+  "Roblox Studio runs on Linux through TuxBlox (recommended) or Vinegar. Install one, then come back here.": null,
+  "Get TuxBlox": null,
+  "Install Roblox Studio": null,
+  "Open Roblox Studio from TuxBlox once so it finishes installing and updating.": null,
+  "PlazCode keeps trying while Studio is open. If it never connects, open Technical details and send us what it says with your Linux version.": null,
+  "Experimental on Linux: Roblox Studio through TuxBlox or Vinegar.": null,
+  "Experimental: Roblox Studio has no Linux version, so it runs through TuxBlox or Vinegar. PlazCode starts Roblox's own Studio connection through the one that runs your Studio (TuxBlox first). Please tell us if it works for you.": null,
+  "PlazCode is connected to Roblox Studio through TuxBlox.": null
 }
