@@ -1,9 +1,76 @@
 {
-  "version": "1.24.31",
-  "desktop_version": "1.24.31",
-  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.31.zip",
-  "sha256": "9a74402d7dbb13191c88bc280165e212c3d3aac27e80bb1e9b3d539574794ca8",
+  "version": "1.24.35",
+  "desktop_version": "1.24.35",
+  "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-1.24.35.zip",
+  "sha256": "7808b41a7929054648b9c1ecdef115b16d1ab4370a94a233b724f227e6e8264f",
   "release_notes": [
+    {
+      "version": "1.24.35",
+      "title": "The AI tests and fixes your Roblox games, folder skills and synced settings",
+      "summary": "When the AI finishes a Roblox task, PlazCode now plays the game, checks the UI and has the AI fix what broke.",
+      "added": [
+        "Playtest & Fix: when the AI says a Roblox task that changed scripts is done, PlazCode presses Play for 10 seconds, reads the errors from the server and the client, stops Play and has the AI fix them (at most 2 rounds). Switch: Playtest when done.",
+        "UI check: a Roblox UI standard for the AI, ui_audit / ui_tokens studio skills, and an automatic check of the menus the AI built before the playtest. Switch: Check UI when done.",
+        "PlazLib: ready-made Luau building helpers (parts, models, tweens, touch pads, UI) added to build code only when used.",
+        "Import a whole folder of skills: Choose a folder, drop a folder, or a .zip. Each folder with a SKILL.md becomes a skill; its other files are references the AI opens only when needed. Importing again updates them.",
+        "Resume or Start fresh after a tab reload or crash during a run.",
+        "Keep my computer awake during runs (app Settings, Automation; off by default).",
+        "The Ask PlazCode panel is left out of the AI's pictures of your screen.",
+        "Automatic Debugger, Stop playtest on error, Multi-Agent, Playtest when done and Check UI when done are now in the app's Automation settings too."
+      ],
+      "improved": [],
+      "fixed": [
+        "DeepSeek with web search on: commands after a citation number or a heading were read as plain text, so nothing ran and the raw JSON stayed on screen. They run now.",
+        "DeepSeek no longer turns on DeepThink or turns off Search when you press Start; your own choices are kept.",
+        "DeepSeek: the raw JSON no longer flickers with the tool card while the AI writes.",
+        "\"Send paused\" while the AI uses a tool happens far less on ChatGPT, DeepSeek, Claude, Gemini and Kimi.",
+        "An old chat no longer starts running by itself when you switch to it.",
+        "Every Appearance setting works: panel opacity, blur, corner radius, border thickness and colour.",
+        "Settings changed in the extension reach the app and back, even if the app was closed; they no longer flip back.",
+        "The Mac app layout on macOS 10.15 Catalina."
+      ],
+      "notes": [
+        "Update the PlazCode app and the extension together (the app's updater does this).",
+        "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+      ],
+      "github": {
+        "summary": "***When the AI finishes a Roblox task, PlazCode now plays the game, checks the UI and has the AI fix what broke.***",
+        "sections": [
+          {
+            "title": "✨ What's new",
+            "items": [
+              "Playtest & Fix: after a Roblox task, PlazCode plays the game for 10 s, reads the errors and has the AI fix them.",
+              "UI check: the AI follows a UI standard and the menus it builds are checked and fixed before the playtest.",
+              "PlazLib: ready-made Luau helpers so the AI builds faster with fewer mistakes.",
+              "Import a whole folder of skills (or drop a folder or .zip).",
+              "Resume or Start fresh after a tab reload or crash during a run.",
+              "Keep my computer awake during runs (off by default).",
+              "The Ask PlazCode panel is hidden from the AI's screen pictures.",
+              "Automation switches like Playtest when done are in the app too."
+            ]
+          },
+          {
+            "title": "🛠️ What's fixed",
+            "items": [
+              "DeepSeek with web search on: commands that stayed raw JSON blocks and did nothing now run.",
+              "DeepSeek keeps your DeepThink and Search choices at Start; no more raw JSON flicker.",
+              "\"Send paused\" during tool use is far rarer on ChatGPT, DeepSeek, Claude, Gemini and Kimi.",
+              "Old chats no longer start running by themselves.",
+              "Every Appearance setting works, including panel opacity, blur, corners and borders.",
+              "Settings from the extension sync to the app and back, even if the app was closed.",
+              "Mac app layout on Catalina."
+            ]
+          },
+          {
+            "title": "🧪 What was checked",
+            "items": [
+              "Automated tests on Windows, Mac and Linux; the Roblox helpers ran in the real Luau engine. Not yet tried in real Studio or most live AI sites. Report anything odd.",
+              "Windows is unsigned and Mac is not notarized, as before."
+            ]
+          }
+        ]
+      }
+    },
     {
       "version": "1.24.31",
       "title": "Startup, sign-in and ChatGPT fixes",
@@ -214,54 +281,16 @@
           }
         ]
       }
-    },
-    {
-      "version": "1.24.20",
-      "title": "ClickUp Ask Brain connects again",
-      "summary": "Fixes Start Agent on ClickUp's Ask Brain, which used to stop right after the AI's first reply and never finish connecting. Nothing else changes.",
-      "added": [],
-      "improved": [],
-      "fixed": [
-        "Start Agent now finishes connecting in a new ClickUp Ask Brain chat. Before, PlazCode stopped about a second after Brain's first reply, the bar said \"Not connected to this chat yet\", and the rest of the setup was never sent.",
-        "Why it happened: ClickUp changes the page address as soon as a new chat gets its first message, and PlazCode took that for a different chat. It now treats it as the same chat.",
-        "Everything else is unchanged: other AI sites, ClickUp agent chats, and your settings, memory and connections."
-      ],
-      "notes": [
-        "Tried on a real ClickUp Ask Brain chat in AgentScript mode: all five setup steps went through and PlazCode reported it was ready. Before the fix, the same test stopped after the first reply.",
-        "ClickUp agent chats and Firefox were not changed and were not tried on a live account. Automated tests on Windows, Mac and Linux must pass before this is published.",
-        "The Windows app is unsigned and the Mac app is not notarized, as in earlier versions. Your computer may ask you to confirm opening it."
-      ],
-      "github": {
-        "summary": "Fixes Start Agent on ClickUp's Ask Brain, which stopped right after the AI's first reply and never finished connecting.",
-        "sections": [
-          {
-            "title": "🛠️ What's fixed",
-            "items": [
-              "Start Agent now finishes connecting in a new ClickUp Ask Brain chat. Before, it stopped a second after Brain's first reply and said \"Not connected to this chat yet\".",
-              "ClickUp changes the page address when a new chat gets its first message, and PlazCode mistook that for a different chat. It now knows it is the same chat.",
-              "Nothing else changes: other AI sites, ClickUp agent chats, and your settings, memory and connections stay as they were."
-            ]
-          },
-          {
-            "title": "🧪 What was checked",
-            "items": [
-              "Tried on a real ClickUp Ask Brain chat: all five setup steps went through and PlazCode said it was ready. The same test failed before the fix.",
-              "ClickUp agent chats and Firefox were not changed and not tried on a live account.",
-              "The Windows app is unsigned and the Mac app is not notarized, as before. Your computer may ask you to confirm opening it."
-            ]
-          }
-        ]
-      }
     }
   ],
   "platforms": {
     "macos": {
-      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.31.zip",
-      "sha256": "77b99c260a04956bc3a002d2be5e1b351ed83cca2e4bd530872587962e7b687b"
+      "url": "https://raw.githubusercontent.com/stoveez/PlazCode/main/PlazCode-macOS-1.24.35.zip",
+      "sha256": "4ec4fd84f2c3958331f0bbb38955640afa812e9a65edfbe78c4880f06009b6d5"
     }
   },
   "security": {
-    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.31\",\"platform\":\"windows\",\"sha256\":\"9a74402d7dbb13191c88bc280165e212c3d3aac27e80bb1e9b3d539574794ca8\"}",
-    "signature": "2c41f4f71c5224af389503159f9b28f21c7c527e0ab3693733ef9bd5d42d3dfd03abd53e6c0d13e7a6b077441f15631f054926f77419cf19495cd30ad788eb03"
+    "payload": "{\"schema\":1,\"kind\":\"update\",\"channel\":\"release\",\"version\":\"1.24.35\",\"platform\":\"windows\",\"sha256\":\"7808b41a7929054648b9c1ecdef115b16d1ab4370a94a233b724f227e6e8264f\"}",
+    "signature": "61c6aa5a79866f7b294e8d61b37e5c17253205a3bd664938e75a8bc7a2562676e3797c6a7ee7b9128a80a1cff33caba70de3b3997b01b9f7d894cdf04306cd00"
   }
 }

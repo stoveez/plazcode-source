@@ -1,5 +1,72 @@
 [
   {
+    "version": "1.24.35",
+    "title": "The AI tests and fixes your Roblox games, folder skills and synced settings",
+    "summary": "When the AI finishes a Roblox task, PlazCode now plays the game, checks the UI and has the AI fix what broke.",
+    "added": [
+      "Playtest & Fix: when the AI says a Roblox task that changed scripts is done, PlazCode presses Play for 10 seconds, reads the errors from the server and the client, stops Play and has the AI fix them (at most 2 rounds). Switch: Playtest when done.",
+      "UI check: a Roblox UI standard for the AI, ui_audit / ui_tokens studio skills, and an automatic check of the menus the AI built before the playtest. Switch: Check UI when done.",
+      "PlazLib: ready-made Luau building helpers (parts, models, tweens, touch pads, UI) added to build code only when used.",
+      "Import a whole folder of skills: Choose a folder, drop a folder, or a .zip. Each folder with a SKILL.md becomes a skill; its other files are references the AI opens only when needed. Importing again updates them.",
+      "Resume or Start fresh after a tab reload or crash during a run.",
+      "Keep my computer awake during runs (app Settings, Automation; off by default).",
+      "The Ask PlazCode panel is left out of the AI's pictures of your screen.",
+      "Automatic Debugger, Stop playtest on error, Multi-Agent, Playtest when done and Check UI when done are now in the app's Automation settings too."
+    ],
+    "improved": [],
+    "fixed": [
+      "DeepSeek with web search on: commands after a citation number or a heading were read as plain text, so nothing ran and the raw JSON stayed on screen. They run now.",
+      "DeepSeek no longer turns on DeepThink or turns off Search when you press Start; your own choices are kept.",
+      "DeepSeek: the raw JSON no longer flickers with the tool card while the AI writes.",
+      "\"Send paused\" while the AI uses a tool happens far less on ChatGPT, DeepSeek, Claude, Gemini and Kimi.",
+      "An old chat no longer starts running by itself when you switch to it.",
+      "Every Appearance setting works: panel opacity, blur, corner radius, border thickness and colour.",
+      "Settings changed in the extension reach the app and back, even if the app was closed; they no longer flip back.",
+      "The Mac app layout on macOS 10.15 Catalina."
+    ],
+    "notes": [
+      "Update the PlazCode app and the extension together (the app's updater does this).",
+      "Windows is unsigned and Mac is not notarized, as before; your computer may ask you to confirm opening it."
+    ],
+    "github": {
+      "summary": "***When the AI finishes a Roblox task, PlazCode now plays the game, checks the UI and has the AI fix what broke.***",
+      "sections": [
+        {
+          "title": "✨ What's new",
+          "items": [
+            "Playtest & Fix: after a Roblox task, PlazCode plays the game for 10 s, reads the errors and has the AI fix them.",
+            "UI check: the AI follows a UI standard and the menus it builds are checked and fixed before the playtest.",
+            "PlazLib: ready-made Luau helpers so the AI builds faster with fewer mistakes.",
+            "Import a whole folder of skills (or drop a folder or .zip).",
+            "Resume or Start fresh after a tab reload or crash during a run.",
+            "Keep my computer awake during runs (off by default).",
+            "The Ask PlazCode panel is hidden from the AI's screen pictures.",
+            "Automation switches like Playtest when done are in the app too."
+          ]
+        },
+        {
+          "title": "🛠️ What's fixed",
+          "items": [
+            "DeepSeek with web search on: commands that stayed raw JSON blocks and did nothing now run.",
+            "DeepSeek keeps your DeepThink and Search choices at Start; no more raw JSON flicker.",
+            "\"Send paused\" during tool use is far rarer on ChatGPT, DeepSeek, Claude, Gemini and Kimi.",
+            "Old chats no longer start running by themselves.",
+            "Every Appearance setting works, including panel opacity, blur, corners and borders.",
+            "Settings from the extension sync to the app and back, even if the app was closed.",
+            "Mac app layout on Catalina."
+          ]
+        },
+        {
+          "title": "🧪 What was checked",
+          "items": [
+            "Automated tests on Windows, Mac and Linux; the Roblox helpers ran in the real Luau engine. Not yet tried in real Studio or most live AI sites. Report anything odd.",
+            "Windows is unsigned and Mac is not notarized, as before."
+          ]
+        }
+      ]
+    }
+  },
+  {
     "version": "1.24.31",
     "title": "Startup, sign-in and ChatGPT fixes",
     "summary": "Fixes for ChatGPT, DeepSeek, startup and sign-in problems found since 1.24.30, plus a guest mode.",

@@ -1,0 +1,25 @@
+{
+  "version": "1.24.35",
+  "validated_sha": "c7b9ca15012c19a0a4af045f7b15be450bc66150",
+  "validation_run": "44919915936",
+  "files": [
+    {
+      "platform": "Windows",
+      "file": "PlazCode-1.24.35-Windows-private-maps.encrypted.json",
+      "bytes": 8832645,
+      "sha256": "788223add1a37f38825dc88150f1b4e3f204218945e677f3e2c4ee0afea4c798"
+    },
+    {
+      "platform": "macOS",
+      "file": "PlazCode-1.24.35-Darwin-private-maps.encrypted.json",
+      "bytes": 8832205,
+      "sha256": "a78968ac3213f24a5aa1e934d46dd5337f1cff838df27aab102a61d77880e237"
+    },
+    {
+      "platform": "Linux",
+      "file": "PlazCode-1.24.35-Linux-private-maps.encrypted.json",
+      "bytes": 8832205,
+      "sha256": "b5dae5b41d5fec8f41af6c7489168df3077a0906855d8527293e15b8e501a0ef"
+    }
+  ]
+}
