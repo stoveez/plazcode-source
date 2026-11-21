@@ -30,6 +30,46 @@ button{all:unset;cursor:pointer;padding:4px 10px;border-radius:8px;background:rg
 <script>document.getElementById('stop').onclick=function(){window.ipc.postMessage('control:stop')};document.getElementById('resume').onclick=function(){window.ipc.postMessage('control:resume')};
 window.__pz=function(s){var r=document.documentElement;if(/^#[0-9a-f]{6}$/i.test(s.accent||''))r.style.setProperty('--a',s.accent);document.body.classList.toggle('paused',!!s.paused);var w=s.words||{};document.getElementById('t').textContent=s.paused?(w.paused||"Paused, you're in control"):(w.working||'PlazCode is working here');if(w.resume)document.getElementById('resume').textContent=w.resume;if(w.stop)document.getElementById('stop').textContent=w.stop;};</script></body></html>"##;
 
+/// Where the glow layer goes (owner, 2026-11-21: "whenever the AI controls your screen ... you can't bring your mouse down
+/// to show the windows in the taskbar, and in screenshots it doesn't appear, even when paused"). Windows takes an
+/// always-on-top window that covers the whole screen for a full-screen app: the taskbar drops behind it, an auto-hidden
+/// taskbar no longer pops up, and it is missing from screenshots. So on Windows the layer covers the work area (the
+/// screen above or beside the taskbar), and when that is the whole screen (auto-hide, or no taskbar) it leaves a 2 px
+/// strip free at the bottom, which is enough for Windows not to treat it as full-screen. Mac and others: the whole screen.
+fn glow_area(position: tao::dpi::PhysicalPosition<i32>, size: tao::dpi::PhysicalSize<u32>) -> (tao::dpi::PhysicalPosition<i32>, tao::dpi::PhysicalSize<u32>) {
+    let screen = (position.x, position.y, position.x + size.width as i32, position.y + size.height as i32);
+    #[cfg(windows)]
+    let (left, top, right, bottom) = fit_below_taskbar(screen, work_area(position).unwrap_or(screen));
+    #[cfg(not(windows))]
+    let (left, top, right, bottom) = screen;
+    (tao::dpi::PhysicalPosition::new(left, top), tao::dpi::PhysicalSize::new((right - left).max(1) as u32, (bottom - top).max(1) as u32))
+}
+/// The glow's rectangle (left, top, right, bottom) from the screen and its work area; never the exact whole screen.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn fit_below_taskbar(screen: (i32, i32, i32, i32), work: (i32, i32, i32, i32)) -> (i32, i32, i32, i32) {
+    let inside = work.0 >= screen.0 && work.1 >= screen.1 && work.2 <= screen.2 && work.3 <= screen.3 && work.2 - work.0 > 200 && work.3 - work.1 > 200;
+    let (left, top, right, bottom) = if inside { work } else { screen };
+    if (left, top, right, bottom) == screen { (left, top, right, bottom - 2) } else { (left, top, right, bottom) }
+}
+#[cfg(windows)]
+fn work_area(position: tao::dpi::PhysicalPosition<i32>) -> Option<(i32, i32, i32, i32)> {
+    use std::ffi::c_void;
+    #[repr(C)] #[derive(Clone, Copy, Default)] struct Rect { left: i32, top: i32, right: i32, bottom: i32 }
+    #[repr(C)] #[derive(Clone, Copy)] struct Point { x: i32, y: i32 }
+    #[repr(C)] struct MonitorInfo { size: u32, monitor: Rect, work: Rect, flags: u32 }
+    #[link(name = "user32")]
+    extern "system" {
+        fn MonitorFromPoint(point: Point, flags: u32) -> *mut c_void;
+        fn GetMonitorInfoW(monitor: *mut c_void, info: *mut MonitorInfo) -> i32;
+    }
+    // MONITOR_DEFAULTTOPRIMARY = 1: the screen the layer is placed on.
+    let monitor = unsafe { MonitorFromPoint(Point { x: position.x + 1, y: position.y + 1 }, 1) };
+    if monitor.is_null() { return None; }
+    let mut info = MonitorInfo { size: std::mem::size_of::<MonitorInfo>() as u32, monitor: Rect::default(), work: Rect::default(), flags: 0 };
+    if unsafe { GetMonitorInfoW(monitor, &mut info) } == 0 { return None; }
+    Some((info.work.left, info.work.top, info.work.right, info.work.bottom))
+}
+
 pub struct ControlLook { glow: Window, glow_view: WebView, label: Window, label_view: WebView, origin: (i32, i32), scale: f64, shown: Option<crate::desktop_control::Look> }
 
 fn base() -> WindowBuilder {
@@ -45,6 +85,7 @@ impl ControlLook {
     pub fn new<T: 'static>(target: &EventLoopWindowTarget<T>) -> anyhow::Result<Self> {
         let monitor = target.primary_monitor().or_else(|| target.available_monitors().next()).ok_or_else(|| anyhow::anyhow!("no screen found"))?;
         let (position, size, scale) = (monitor.position(), monitor.size(), monitor.scale_factor());
+        let (position, size) = glow_area(position, size);
         let glow = base().with_position(position).with_inner_size(size).build(target).map_err(|e| anyhow::anyhow!("control layer window: {e}"))?;
         // The layer lets every click and key through to the apps below it.
         let _ = glow.set_ignore_cursor_events(true);
@@ -74,5 +115,20 @@ impl ControlLook {
             None => { self.glow.set_visible(false); self.label.set_visible(false); }
         }
         self.shown = look;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fit_below_taskbar;
+    #[test]
+    fn the_glow_never_covers_the_taskbar_or_the_exact_whole_screen() {
+        let screen = (0, 0, 1920, 1080);
+        assert_eq!(fit_below_taskbar(screen, (0, 0, 1920, 1032)), (0, 0, 1920, 1032), "taskbar at the bottom stays uncovered");
+        assert_eq!(fit_below_taskbar(screen, (0, 48, 1920, 1080)), (0, 48, 1920, 1080), "taskbar at the top");
+        assert_eq!(fit_below_taskbar(screen, (62, 0, 1920, 1080)), (62, 0, 1920, 1080), "taskbar on the left");
+        assert_eq!(fit_below_taskbar(screen, screen), (0, 0, 1920, 1078), "auto-hidden taskbar: a 2 px strip is left so it can pop up");
+        assert_eq!(fit_below_taskbar((-1920, 0, 0, 1080), (-1920, 0, 0, 1040)), (-1920, 0, 0, 1040), "a screen left of the main one");
+        assert_eq!(fit_below_taskbar(screen, (0, 0, 50, 50)), (0, 0, 1920, 1078), "a nonsense work area falls back to the screen");
     }
 }
