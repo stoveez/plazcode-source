@@ -1,6 +1,6 @@
 # PlazCode maintainer guide
 
-**Current, 2026-11-21:** 1.24.35 being released from `development/1.24.35` (1.24.34 was the last published). Start with `docs/NOW.md`. Older entries below are historical.
+**Current, 2026-11-21:** 1.24.35 published. Validation 44919915936 on `c7b9ca1`; publish run 44928385233. Start with `docs/NOW.md`. Older entries below are historical.
 
 For any AI (Codex, Claude Code or another) or person who works on PlazCode. Read this whole file before changing anything. The short rules are in `AGENTS.md` / `CLAUDE.md`; this file explains everything behind them.
 
