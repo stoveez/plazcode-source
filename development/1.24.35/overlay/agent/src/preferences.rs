@@ -1,0 +1,631 @@
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+use std::sync::RwLock;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DesktopPreferences {
+    /// PlazCode interface language only; never used to rewrite AI prompts or tool arguments.
+    #[serde(rename = "rsLanguage", deserialize_with = "deserialize_language")]
+    pub language: String,
+    #[serde(rename = "rs-engine")]
+    pub engine: String,
+    #[serde(rename = "rsWorkMode")]
+    pub work_mode: String,
+    #[serde(rename = "rsPermMode")]
+    pub perm_mode: String,
+    #[serde(rename = "rsApprovalMode", deserialize_with = "deserialize_approval_mode")]
+    pub approval_mode: String,
+    #[serde(rename = "rsStopMode")]
+    pub stop_mode: String,
+    #[serde(rename = "rsToolBudget")]
+    pub tool_budget: u32,
+    #[serde(rename = "rsRunLimitsEnabled")]
+    pub run_limits_enabled: bool,
+    #[serde(rename = "rsInputLimitEnabled")]
+    pub input_limit_enabled: bool,
+    #[serde(rename = "rsInputCharLimit")]
+    pub input_char_limit: u32,
+    #[serde(rename = "rsOutputLimitEnabled")]
+    pub output_limit_enabled: bool,
+    #[serde(rename = "rsOutputCharLimit")]
+    pub output_char_limit: u32,
+    #[serde(rename = "rsTaskMinutes")]
+    pub task_minutes: u32,
+    #[serde(rename = "rsVisualCheck")]
+    pub visual_check: bool,
+    #[serde(rename = "rsContinuationOffer")]
+    pub continuation_offer: bool,
+    #[serde(rename = "rsCommandCooldown")]
+    pub command_cooldown: f64,
+    #[serde(rename = "rsSounds")]
+    pub sounds: bool,
+    #[serde(rename = "rsExtraThinking")]
+    pub extra_thinking: bool,
+    #[serde(rename = "rsShowApproach")]
+    pub show_approach: bool,
+    #[serde(rename = "rsPlanMode")]
+    pub plan_mode: bool,
+    #[serde(rename = "rsThinkingLevel")]
+    pub thinking_level: String,
+    #[serde(rename = "rsForgeMode")]
+    pub forge_mode: bool,
+    #[serde(rename = "rsAutoFix")]
+    pub auto_fix: bool,
+    #[serde(rename = "rsBgMode")]
+    pub bg_mode: bool,
+    /// Keep the computer awake while an active PlazCode run is in progress (default off).
+    #[serde(rename = "rsKeepAwake")]
+    pub keep_awake: bool,
+    #[serde(rename = "rsCustomPrompt", skip_serializing_if = "Option::is_none")]
+    pub custom_prompt: Option<String>,
+    #[serde(rename = "rsAppearance", skip_serializing_if = "Option::is_none")]
+    pub appearance: Option<Appearance>,
+    #[serde(rename = "rsSidebarCollapsed")]
+    pub sidebar_collapsed: bool,
+    #[serde(rename = "rsExplorerAutoSync")]
+    pub explorer_auto_sync: bool,
+    #[serde(rename = "rsSkillAutoLearn")]
+    pub skill_auto_learn: bool,
+    #[serde(rename = "rsSharedLearning")]
+    pub shared_learning: bool,
+    /// On (default): install new releases automatically when idle. Off: only
+    /// report that an update is available; the user installs with Update now.
+    #[serde(rename = "rsAutoUpdate")]
+    pub auto_update: bool,
+    /// 1.24.21 safety limits. Read-only: the AI may look but not change anything.
+    #[serde(rename = "rsReadOnly")]
+    pub read_only: bool,
+    /// Ask before the AI deletes files or runs a delete command (default on).
+    #[serde(rename = "rsConfirmDelete")]
+    pub confirm_delete: bool,
+    /// With Full PC access, absolute paths must be inside the workspace or one
+    /// of these folders. Empty = no extra limit.
+    #[serde(rename = "rsAllowedFolders")]
+    pub allowed_folders: Vec<String>,
+    /// 1.24.30 Luau validation of Studio script edits (default on). Read for every edit, so changes apply at once.
+    #[serde(rename = "rsLuauCheck")]
+    pub luau_check: bool,
+    /// "advisory" (default: edits always apply, new problems are reported) or "blocking" (a NEW syntax error puts the script back).
+    #[serde(rename = "rsLuauMode")]
+    pub luau_mode: String,
+    /// 2026-11-20 (owner: "settings from the extension don't sync well to the app"): the extension's own switches are kept
+    /// here too, so they show in the app, survive an extension reinstall and reach every browser with PlazCode.
+    #[serde(rename = "rsFullStartup")]
+    pub full_startup: bool,
+    #[serde(rename = "rsAutoDebug")]
+    pub auto_debug: bool,
+    #[serde(rename = "rsAutoFixStopPlay")]
+    pub auto_fix_stop_play: bool,
+    #[serde(rename = "rsMultiAgent")]
+    pub multi_agent: bool,
+    #[serde(rename = "rsPlaytestCheck")]
+    pub playtest_check: bool,
+    #[serde(rename = "rsUiCheck")]
+    pub ui_check: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Appearance {
+    pub theme: String,
+    pub glow: String,
+    pub gradients: String,
+    /// The app's Appearance > Feel choices, shared with the PlazCode bar (2026-11-13):
+    /// "full" | "reduced" | "off", the animated theme and the click effects. Older files have none: Full / on / on.
+    #[serde(default = "default_motion")]
+    pub motion: String,
+    #[serde(default = "default_on")]
+    pub anim: bool,
+    #[serde(default = "default_on")]
+    pub ripple: bool,
+    /// The app's custom colour ("#rrggbb"), shared with the PlazCode bar, popup and side panels (2026-11-14: the bar did not follow a
+    /// custom theme). Stays on this computer: the account service only accepts the ready-made themes (see account_sync.rs).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom: Option<String>,
+}
+fn default_motion() -> String { "full".into() }
+fn default_on() -> bool { true }
+
+impl Default for DesktopPreferences {
+    fn default() -> Self {
+        Self {
+            language: "en".to_string(),
+            engine: "roblox".to_string(),
+            work_mode: "balanced".to_string(),
+            perm_mode: "sandbox".to_string(),
+            approval_mode: String::new(),
+            sounds: true,
+            stop_mode: "immediate".into(),
+            input_limit_enabled:true,input_char_limit:120000,output_limit_enabled:true,output_char_limit:32000,tool_budget:0,run_limits_enabled:false,task_minutes:0,visual_check:true,continuation_offer:true,command_cooldown:0.0,
+            extra_thinking: false,
+            show_approach: false,
+            plan_mode: false,
+            thinking_level: "default".to_string(),
+            forge_mode: true,
+            auto_fix: true,
+            bg_mode: true,
+            keep_awake: false,
+            custom_prompt: None,
+            appearance: None,
+            sidebar_collapsed: false, explorer_auto_sync: true, skill_auto_learn: true, shared_learning: true, auto_update: true,
+            read_only: false, confirm_delete: true, allowed_folders: Vec::new(),
+            luau_check: true, luau_mode: "advisory".to_string(),
+            full_startup: false, auto_debug: true, auto_fix_stop_play: true, multi_agent: false, playtest_check: true, ui_check: true,
+        }
+    }
+}
+
+// Keep this allowlist aligned with the shared interface picker, not OS/browser locales.
+fn normalize_language(code: &str) -> &str {
+    match code {
+        "en" | "es" | "fr" | "ru" | "ar" | "zh-CN" | "zh-TW" | "ja" | "ko" |
+        "de" | "pt-BR" | "it" | "hi" | "tr" | "pl" => code,
+        _ => "en",
+    }
+}
+
+fn deserialize_language<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+    // A malformed language must not discard the user's other saved preferences.
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(normalize_language(value.as_str().unwrap_or("en")).to_string())
+}
+
+fn deserialize_approval_mode<'de,D:serde::Deserializer<'de>>(deserializer:D)->Result<String,D::Error>{
+    let value=serde_json::Value::deserialize(deserializer)?;
+    Ok(match value.as_str(){Some("ask")=>"ask",Some("auto")=>"auto",Some("bypass")=>"bypass",Some("")=>"",_=>"ask"}.to_string())
+}
+
+impl DesktopPreferences {
+    pub fn normalize(&mut self) {
+        self.language = normalize_language(&self.language).to_string();
+        self.shared_learning=true; // mandatory privacy-safe global workflow learning
+        self.input_char_limit=self.input_char_limit.clamp(1000,2000000);self.output_char_limit=self.output_char_limit.clamp(1000,2000000);
+        self.tool_budget=self.tool_budget.min(1000);self.task_minutes=self.task_minutes.min(240);
+        self.command_cooldown=if self.command_cooldown.is_finite(){(self.command_cooldown.clamp(0.0,120.0)*10.0).round()/10.0}else{0.0};
+        if !matches!(self.stop_mode.as_str(),"safe"|"immediate") {self.stop_mode="immediate".into();}
+        if !matches!(self.luau_mode.as_str(),"advisory"|"blocking") {self.luau_mode="advisory".into();}
+        let mut folders:Vec<String>=Vec::new();
+        for folder in self.allowed_folders.iter().map(|f|f.trim().trim_end_matches(['/','\\']).to_string()).filter(|f|!f.is_empty()&&f.chars().count()<=500) {
+            if !folders.iter().any(|known|known.eq_ignore_ascii_case(&folder)) && folders.len()<20 {folders.push(folder);}
+        }
+        self.allowed_folders=folders;
+        if let Some(value) = &mut self.appearance {
+            if value.theme=="solar" {value.theme="default".into();}
+            if !matches!(value.theme.as_str(), "default" | "amethyst" | "cyan" | "rose" | "emerald" | "graphite" | "crimson" | "ocean" | "copper" | "aurora" | "orchid") { value.theme = "default".into(); }
+            if !matches!(value.glow.as_str(), "off" | "subtle" | "strong") { value.glow = "subtle".into(); }
+            if !matches!(value.gradients.as_str(), "off" | "on") { value.gradients = "on".into(); }
+            if !matches!(value.motion.as_str(), "full" | "reduced" | "off") { value.motion = "full".into(); }
+            if let Some(custom) = &value.custom { let ok = custom.len() == 7 && custom.starts_with('#') && custom[1..].bytes().all(|b| b.is_ascii_hexdigit()); if !ok { value.custom = None; } else { value.custom = Some(custom.to_ascii_lowercase()); } }
+        }
+        if !matches!(self.engine.as_str(), "roblox" | "local") {
+            self.engine = "roblox".to_string();
+        }
+        if !matches!(self.work_mode.as_str(), "fast" | "balanced" | "thorough") {
+            self.work_mode = "balanced".to_string();
+        }
+        if !matches!(self.perm_mode.as_str(), "sandbox" | "ask" | "full") {
+            self.perm_mode = "sandbox".to_string();
+        }
+        if self.approval_mode.is_empty(){self.approval_mode=if self.perm_mode=="ask"{"ask"}else if !self.confirm_delete{"bypass"}else{"auto"}.into();}
+        if !matches!(self.approval_mode.as_str(),"ask"|"auto"|"bypass"){self.approval_mode="ask".into();}
+        if !matches!(self.thinking_level.as_str(), "default" | "low" | "mid" | "high" | "max" | "ultracode") {
+            self.thinking_level = "default".to_string();
+        }
+    }
+}
+
+/// The new settings are in memory and in use, but the settings file could not be written.
+#[derive(Debug)]
+pub struct SaveFailed(pub String);
+impl std::fmt::Display for SaveFailed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "The settings are in use but could not be saved to disk ({}), so they will be forgotten when PlazCode closes. Check that the PlazCode folder is writable.", self.0)
+    }
+}
+impl std::error::Error for SaveFailed {}
+
+pub struct PreferencesStore {
+    operation:std::sync::Mutex<()>,
+    path: RwLock<PathBuf>,
+    inner: RwLock<DesktopPreferences>,
+    /// The settings someone actually chose (in the file or sent since). The rest are defaults; the extension keeps its own
+    /// value for those instead of taking the app's default (an app that never knew a setting must not reset it).
+    saved: RwLock<std::collections::BTreeSet<String>>,
+}
+
+/// Lays `patch` over `base` one setting at a time: a setting with a value of the wrong kind is skipped instead of making the
+/// whole change (or the whole settings file) fail. Returns the result and the names of the settings that were kept.
+fn overlay(base: &DesktopPreferences, patch: &serde_json::Map<String, serde_json::Value>) -> (DesktopPreferences, Vec<String>) {
+    let (prefs, kept, _) = overlay_checked(base, patch);
+    (prefs, kept)
+}
+/// As `overlay`, also naming the known settings whose value was of the wrong kind.
+fn overlay_checked(base: &DesktopPreferences, patch: &serde_json::Map<String, serde_json::Value>) -> (DesktopPreferences, Vec<String>, Vec<String>) {
+    let mut value = serde_json::to_value(base).unwrap_or_else(|_| serde_json::json!({}));
+    let mut kept = Vec::new();
+    let mut refused = Vec::new();
+    for (key, val) in patch {
+        let known = value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance";
+        if !known { continue; }
+        let mut candidate = value.clone();
+        if let Some(object) = candidate.as_object_mut() { object.insert(key.clone(), val.clone()); }
+        if serde_json::from_value::<DesktopPreferences>(candidate.clone()).is_ok() { value = candidate; kept.push(key.clone()); } else { refused.push(key.clone()); }
+    }
+    (serde_json::from_value(value).unwrap_or_else(|_| base.clone()), kept, refused)
+}
+
+impl PreferencesStore {
+    pub fn load() -> Self {
+        Self::load_from(settings_path())
+    }
+
+    pub(crate) fn load_from(path: PathBuf) -> Self {
+        // One setting of the wrong kind in the file used to reset every setting to its default; now only that one is.
+        let file = std::fs::read_to_string(&path).ok().and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok());
+        let (mut prefs, kept) = match file.as_ref().and_then(|v| v.as_object()) {
+            Some(object) => overlay(&DesktopPreferences::default(), object),
+            None => (DesktopPreferences::default(), Vec::new()),
+        };
+        prefs.normalize();
+        Self { operation:std::sync::Mutex::new(()), path: RwLock::new(path), inner: RwLock::new(prefs), saved: RwLock::new(kept.into_iter().collect()) }
+    }
+
+    /// The names of the settings someone chose (sent to the extension as `_plazcodeSaved`).
+    pub fn saved_keys(&self) -> Vec<String> { self.saved.read().map(|s| s.iter().cloned().collect()).unwrap_or_default() }
+
+    pub fn persisted(&self) -> bool {
+        self.path.read().map(|p|p.exists()).unwrap_or(false)
+    }
+
+    pub fn snapshot(&self) -> DesktopPreferences {
+        self.inner.read().map(|p| p.clone()).unwrap_or_default()
+    }
+
+    pub fn replace(&self,prefs:DesktopPreferences)->anyhow::Result<DesktopPreferences>{let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;self.replace_unlocked(prefs)}
+    fn replace_unlocked(&self, mut prefs: DesktopPreferences) -> anyhow::Result<DesktopPreferences> {
+        prefs.normalize();
+        {
+            let mut guard = self.inner.write().map_err(|_| anyhow::anyhow!("preferences lock poisoned"))?;
+            *guard = prefs.clone();
+        }
+        // The new values are already in use above. If the file cannot be written, say exactly that
+        // (SaveFailed) so callers can keep using them instead of treating the change as rejected.
+        if let Err(error) = self.save(&prefs) { return Err(anyhow::Error::new(SaveFailed(error.to_string()))); }
+        Ok(prefs)
+    }
+
+    pub fn patch(&self, patch: serde_json::Value) -> anyhow::Result<DesktopPreferences> {
+        let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;
+        let current = self.snapshot();
+        let src = patch.as_object().ok_or_else(|| anyhow::anyhow!("preferences patch must be an object"))?;
+        // A setting with a value of the wrong kind is skipped; the others still apply (one bad value used to block every
+        // setting the extension sent, so nothing synced).
+        let (next, kept, refused) = overlay_checked(&current, src);
+        // Only bad values (nothing usable at all): refused as before, so the sender knows.
+        if kept.is_empty() && !refused.is_empty() { anyhow::bail!("these settings have values of the wrong kind: {}", refused.join(", ")); }
+        if let Ok(mut saved) = self.saved.write() { saved.extend(kept); }
+        self.replace_unlocked(next)
+    }
+
+    pub fn update<F>(&self, mut edit: F) -> anyhow::Result<DesktopPreferences>
+    where
+        F: FnMut(&mut DesktopPreferences),
+    {
+        let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;
+        let mut next = self.snapshot();
+        edit(&mut next);
+        self.replace_unlocked(next)
+    }
+
+    pub fn patch_if_unchanged(&self,before:&serde_json::Value,incoming:&serde_json::Value)->anyhow::Result<DesktopPreferences>{
+        let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;
+        let mut current=serde_json::to_value(self.snapshot())?;
+        for(key,value)in incoming.as_object().ok_or_else(||anyhow::anyhow!("Invalid synced preferences"))?{if current.get(key)==before.get(key){current[key]=value.clone();}}
+        self.replace_unlocked(serde_json::from_value(current)?)
+    }
+    pub fn select_path(&self,path:PathBuf)->anyhow::Result<()> {
+        let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;
+        let loaded=Self::load_from(path.clone());
+        let mut target=self.path.write().map_err(|_|anyhow::anyhow!("preferences path lock poisoned"))?;
+        let mut inner=self.inner.write().map_err(|_|anyhow::anyhow!("preferences lock poisoned"))?;
+        *target=path;*inner=loaded.snapshot();
+        if let Ok(mut saved)=self.saved.write(){*saved=loaded.saved_keys().into_iter().collect();}
+        Ok(())
+    }
+    fn save(&self,prefs:&DesktopPreferences)->anyhow::Result<()> {
+        let path=self.path.read().map_err(|_|anyhow::anyhow!("preferences path lock poisoned"))?;
+        if let Some(parent)=path.parent(){std::fs::create_dir_all(parent)?;}
+        let tmp=path.with_extension("json.tmp");std::fs::write(&tmp,serde_json::to_vec_pretty(prefs)?)?;
+        if path.exists(){std::fs::remove_file(&*path)?;}std::fs::rename(&tmp,&*path)?;Ok(())
+    }
+    pub fn path(&self)->PathBuf {self.path.read().unwrap_or_else(|e|e.into_inner()).clone()}
+
+}
+
+fn settings_path() -> PathBuf { crate::profile_paths::settings_path() }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_settings_path() -> PathBuf {
+        // macOS clocks can return the same timestamp in parallel test threads.
+        // A process-local sequence keeps both final and .tmp paths isolated.
+        static SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let sequence = SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        std::env::temp_dir().join(format!("plazcode-settings-{}-{nonce}-{sequence}.json", std::process::id()))
+    }
+
+    #[test]
+    fn language_defaults_to_english_and_migrates_old_settings_without_losing_choices() {
+        let path = temp_settings_path();
+        let store = PreferencesStore::load_from(path.clone());
+        assert_eq!(store.snapshot().language, "en");
+        assert_eq!(serde_json::to_value(store.snapshot()).unwrap()["rsLanguage"], "en");
+        std::fs::write(&path, serde_json::to_vec(&serde_json::json!({
+            "rs-engine":"local", "rsStopMode":"safe", "rsAutoUpdate":false,
+            "rsThinkingLevel":"ultracode", "rsCustomPrompt":"Settings\nمرحبا café 你好",
+            "rsAppearance":{"theme":"cyan","glow":"strong","gradients":"off"}
+        })).unwrap()).unwrap();
+        let legacy = PreferencesStore::load_from(path.clone());
+        assert_eq!(legacy.snapshot().language, "en");
+        legacy.patch(serde_json::json!({"rsLanguage":"ar"})).unwrap();
+        let reopened = PreferencesStore::load_from(path.clone()).snapshot();
+        assert_eq!(reopened.language, "ar");
+        assert_eq!(reopened.engine, "local");
+        assert_eq!(reopened.stop_mode, "safe");
+        assert!(!reopened.auto_update);
+        assert_eq!(reopened.thinking_level, "ultracode");
+        assert_eq!(reopened.custom_prompt.as_deref(), Some("Settings\nمرحبا café 你好"));
+        assert_eq!(reopened.appearance.unwrap().theme, "cyan");
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn every_supported_language_persists_across_reopen_and_unrelated_patches() {
+        let path = temp_settings_path();
+        for language in ["en", "es", "fr", "ru", "ar", "zh-CN", "zh-TW", "ja", "ko", "de", "pt-BR", "it", "hi", "tr", "pl"] {
+            let store = PreferencesStore::load_from(path.clone());
+            store.patch(serde_json::json!({"rsLanguage":language})).unwrap();
+            let reopened = PreferencesStore::load_from(path.clone());
+            assert_eq!(reopened.snapshot().language, language);
+            reopened.patch(serde_json::json!({"rsSounds":false})).unwrap();
+            assert_eq!(PreferencesStore::load_from(path.clone()).snapshot().language, language);
+            let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+            assert_eq!(saved["rsLanguage"], language);
+        }
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn invalid_language_falls_back_without_resetting_other_preferences() {
+        let path = temp_settings_path();
+        let store = PreferencesStore::load_from(path.clone());
+        store.patch(serde_json::json!({"rsAutoUpdate":false,"rsStopMode":"safe","rsCustomPrompt":"Do not translate Settings or C:\\Game\\main.lua"})).unwrap();
+        for value in [serde_json::json!(""), serde_json::json!("xx"), serde_json::json!("AR"),
+            serde_json::json!("zh"), serde_json::json!("pt"), serde_json::json!(" es "),
+            serde_json::json!(null), serde_json::json!(42), serde_json::json!(false),
+            serde_json::json!([]), serde_json::json!({"code":"es"})] {
+            store.patch(serde_json::json!({"rsLanguage":"fr"})).unwrap();
+            store.patch(serde_json::json!({"rsLanguage":value})).unwrap();
+            let reopened = PreferencesStore::load_from(path.clone()).snapshot();
+            assert_eq!(reopened.language, "en");
+            assert!(!reopened.auto_update);
+            assert_eq!(reopened.stop_mode, "safe");
+            assert_eq!(reopened.custom_prompt.as_deref(), Some("Do not translate Settings or C:\\Game\\main.lua"));
+        }
+        // Invalid saved types should also preserve unrelated settings on load.
+        std::fs::write(&path, br#"{"rsLanguage":{},"rsAutoUpdate":false,"rsStopMode":"safe"}"#).unwrap();
+        let loaded = PreferencesStore::load_from(path.clone()).snapshot();
+        assert_eq!(loaded.language, "en");
+        assert!(!loaded.auto_update);
+        assert_eq!(loaded.stop_mode, "safe");
+        let mut direct = loaded;
+        direct.language = "invalid".into();
+        store.replace(direct).unwrap();
+        assert_eq!(PreferencesStore::load_from(path.clone()).snapshot().language, "en");
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn ultracode_and_legacy_solar_preferences_are_preserved() {
+        let mut prefs=DesktopPreferences::default();prefs.thinking_level="ultracode".into();
+        prefs.appearance=Some(Appearance{theme:"solar".into(),glow:"strong".into(),gradients:"off".into(),motion:"wild".into(),anim:false,ripple:true,custom:None});
+        prefs.normalize();assert_eq!(prefs.thinking_level,"ultracode");
+        let appearance=prefs.appearance.unwrap();assert_eq!(appearance.theme,"default");assert_eq!(appearance.glow,"strong");assert_eq!(appearance.gradients,"off");assert_eq!(appearance.motion,"full");assert!(!appearance.anim&&appearance.ripple);
+    }
+    #[test]
+    fn immediate_stop_default_and_selected_safe_mode_persist() {
+        let path=temp_settings_path();let store=PreferencesStore::load_from(path.clone());
+        assert_eq!(store.snapshot().stop_mode,"immediate");
+        store.patch(serde_json::json!({"rsStopMode":"safe"})).unwrap();
+        assert_eq!(PreferencesStore::load_from(path.clone()).snapshot().stop_mode,"safe");
+        store.patch(serde_json::json!({"rsStopMode":"invalid"})).unwrap();
+        assert_eq!(store.snapshot().stop_mode,"immediate");let _=std::fs::remove_file(path);
+    }
+    #[test]
+    fn continuation_offer_defaults_on_and_persists_off() {
+        let path=temp_settings_path();let store=PreferencesStore::load_from(path.clone());
+        assert!(store.snapshot().continuation_offer,"new installs keep the continuation prompt on");
+        assert_eq!(serde_json::to_value(store.snapshot()).unwrap()["rsContinuationOffer"],serde_json::json!(true));
+        store.patch(serde_json::json!({"rsContinuationOffer":false})).unwrap();
+        assert!(!PreferencesStore::load_from(path.clone()).snapshot().continuation_offer,"turning the prompt off survives a restart");
+        std::fs::write(&path,br#"{"rsStopMode":"safe"}"#).unwrap();
+        assert!(PreferencesStore::load_from(path.clone()).snapshot().continuation_offer,"settings saved by older versions default to on");
+        assert!(PreferencesStore::load_from(path.clone()).snapshot().auto_update,"automatic updates default to on for existing installs");
+        let _=std::fs::remove_file(path);
+    }
+    #[test]
+    fn a_custom_colour_is_kept_only_when_it_is_a_real_colour() {
+        let path = temp_settings_path();
+        let store = PreferencesStore::load_from(path.clone());
+        store.patch(serde_json::json!({"rsAppearance":{"theme":"rose","glow":"subtle","gradients":"on","custom":"#A1B2C3"}})).unwrap();
+        assert_eq!(PreferencesStore::load_from(path.clone()).snapshot().appearance.unwrap().custom.as_deref(), Some("#a1b2c3"));
+        store.patch(serde_json::json!({"rsAppearance":{"theme":"rose","glow":"subtle","gradients":"on","custom":"url(x)"}})).unwrap();
+        assert!(PreferencesStore::load_from(path.clone()).snapshot().appearance.unwrap().custom.is_none(), "anything but #rrggbb is dropped");
+        store.patch(serde_json::json!({"rsAppearance":{"theme":"rose","glow":"subtle","gradients":"on"}})).unwrap();
+        assert!(PreferencesStore::load_from(path.clone()).snapshot().appearance.unwrap().custom.is_none(), "removing the custom colour removes it for the bar");
+        let _ = std::fs::remove_file(path);
+    }
+    #[test]
+    fn shared_appearance_persists_and_normalizes() {
+        let path = temp_settings_path();
+        let store = PreferencesStore::load_from(path.clone());
+        assert!(store.snapshot().appearance.is_none());
+        store.patch(serde_json::json!({"rsAppearance":{"theme":"cyan","glow":"strong","gradients":"off"}})).unwrap();
+        let reopened = PreferencesStore::load_from(path.clone());
+        let value = reopened.snapshot().appearance.unwrap();
+        assert_eq!(value.theme, "cyan");
+        assert_eq!(value.glow, "strong");
+        assert_eq!(value.gradients, "off");
+        reopened.patch(serde_json::json!({"rsAppearance":{"theme":"unknown","glow":"bad","gradients":"bad"}})).unwrap();
+        let value = reopened.snapshot().appearance.unwrap();
+        assert_eq!(value.theme, "default");
+        assert_eq!(value.glow, "subtle");
+        assert_eq!(value.gradients, "on");
+        assert_eq!((value.motion.as_str(), value.anim, value.ripple), ("full", true, true), "an older app sends no Feel: Full / on / on");
+        reopened.patch(serde_json::json!({"rsAppearance":{"theme":"rose","glow":"subtle","gradients":"on","motion":"reduced","anim":false,"ripple":false}})).unwrap();
+        let value = PreferencesStore::load_from(path.clone()).snapshot().appearance.unwrap();
+        assert_eq!((value.motion.as_str(), value.anim, value.ripple), ("reduced", false, false), "the Feel choices reach the bar");
+        std::fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn preferences_persist_across_reopen() {
+        let path = temp_settings_path();
+        let store = PreferencesStore::load_from(path.clone());
+        assert!(!store.persisted());
+
+        let mut prefs = store.snapshot();
+        prefs.engine = "local".to_string();
+        prefs.work_mode = "thorough".to_string();
+        prefs.perm_mode = "ask".to_string();
+        prefs.sounds = false;
+        prefs.extra_thinking = true;
+        assert!(!prefs.show_approach);
+        prefs.show_approach = true;
+        prefs.plan_mode = true;
+        prefs.thinking_level = "max".to_string();
+        prefs.forge_mode = false;
+        prefs.auto_fix = false;
+        prefs.bg_mode = false;
+        store.replace(prefs).expect("save preferences");
+        assert!(store.persisted());
+
+        let reopened = PreferencesStore::load_from(path.clone()).snapshot();
+        assert_eq!(reopened.engine, "local");
+        assert_eq!(reopened.work_mode, "thorough");
+        assert_eq!(reopened.perm_mode, "ask");
+        assert!(!reopened.sounds);
+        assert!(reopened.extra_thinking);
+        assert!(reopened.show_approach);
+        assert!(reopened.plan_mode);
+        assert_eq!(reopened.thinking_level, "max");
+        assert!(!reopened.forge_mode);
+        assert!(!reopened.auto_fix);
+        assert!(!reopened.bg_mode);
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn instructions_preserve_old_settings_and_persist_multiline_and_clear() {
+        let path = temp_settings_path();
+        let store = PreferencesStore::load_from(path.clone());
+        assert!(serde_json::to_value(store.snapshot()).unwrap().get("rsCustomPrompt").is_none());
+        let text = "Keep working behavior.\nPreserve Unicode: café.";
+        store.patch(serde_json::json!({"rsCustomPrompt":text})).unwrap();
+        let reopened = PreferencesStore::load_from(path.clone());
+        assert_eq!(reopened.snapshot().custom_prompt.as_deref(), Some(text));
+        reopened.patch(serde_json::json!({"rsCustomPrompt":""})).unwrap();
+        let cleared = PreferencesStore::load_from(path.clone());
+        assert_eq!(serde_json::to_value(cleared.snapshot()).unwrap()["rsCustomPrompt"], "");
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn invalid_saved_choices_are_normalized() {
+        let path = temp_settings_path();
+        std::fs::write(&path, r#"{
+            "rs-engine":"bad",
+            "rsWorkMode":"bad",
+            "rsPermMode":"bad",
+            "rsThinkingLevel":"bad"
+        }"#).expect("write invalid preferences");
+
+        let reopened = PreferencesStore::load_from(path.clone()).snapshot();
+        assert_eq!(reopened.engine, "roblox");
+        assert_eq!(reopened.work_mode, "balanced");
+        assert_eq!(reopened.perm_mode, "sandbox");
+        assert_eq!(reopened.thinking_level, "default");
+
+        let _ = std::fs::remove_file(path);
+    }
+    #[test] fn approval_mode_migrates_and_invalid_values_never_enable_bypass() {
+        for (perm,delete,expected) in [("sandbox",true,"auto"),("ask",true,"ask"),("full",false,"bypass")] {
+            let mut prefs=DesktopPreferences::default();prefs.perm_mode=perm.into();prefs.confirm_delete=delete;prefs.normalize();assert_eq!(prefs.approval_mode,expected);
+        }
+        for value in [serde_json::json!("bad"),serde_json::json!(true),serde_json::json!(null)] {
+            let mut prefs:DesktopPreferences=serde_json::from_value(serde_json::json!({"rsApprovalMode":value,"rsThinkingLevel":"max"})).unwrap();prefs.normalize();assert_eq!(prefs.approval_mode,"ask");assert_eq!(prefs.thinking_level,"max");
+        }
+        for mode in ["ask","auto","bypass"] {
+            let mut prefs:DesktopPreferences=serde_json::from_value(serde_json::json!({"rsApprovalMode":mode})).unwrap();prefs.normalize();let encoded=serde_json::to_value(&prefs).unwrap();assert_eq!(encoded["rsApprovalMode"],mode);
+        }
+    }
+    #[test] fn keep_awake_defaults_off_and_persists_on() {
+        let path = temp_settings_path();
+        let store = PreferencesStore::load_from(path.clone());
+        assert!(!store.snapshot().keep_awake, "keep awake must default off");
+        store.patch(serde_json::json!({"rsKeepAwake": true})).expect("enable keep awake");
+        let reopened = PreferencesStore::load_from(path.clone());
+        assert!(reopened.snapshot().keep_awake, "keep awake persists across reopen");
+        reopened.patch(serde_json::json!({"rsKeepAwake": false})).expect("disable keep awake");
+        assert!(!PreferencesStore::load_from(path.clone()).snapshot().keep_awake);
+        let _ = std::fs::remove_file(path);
+    }
+
+}
+
+#[cfg(test)]mod sync_tests{use super::*;#[test]fn sync_preserves_changes_made_during_network_wait(){let path=std::env::temp_dir().join(format!("plazcode-sync-prefs-{}-{}.json",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));let store=PreferencesStore::load_from(path.clone());let before=serde_json::to_value(store.snapshot()).unwrap();store.patch(serde_json::json!({"rsSounds":false})).unwrap();store.patch_if_unchanged(&before,&serde_json::json!({"rsSounds":true,"rsLanguage":"fr"})).unwrap();assert!(!store.snapshot().sounds);assert_eq!(store.snapshot().language,"fr");let _=std::fs::remove_file(path);}}
+#[cfg(test)]
+mod extension_sync_tests {
+    use super::*;
+    fn temp(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("plazcode-ext-sync-{name}-{}-{}.json", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()))
+    }
+    #[test]
+    fn one_bad_value_does_not_block_the_other_settings() {
+        let path = temp("patch");
+        let store = PreferencesStore::load_from(path.clone());
+        // rsToolBudget sent as text (wrong kind): skipped; the other two still apply.
+        store.patch(serde_json::json!({"rsToolBudget":"lots","rsSounds":false,"rsPlaytestCheck":false})).unwrap();
+        let now = store.snapshot();
+        assert!(!now.sounds && !now.playtest_check && now.tool_budget == 0);
+        let saved = store.saved_keys();
+        assert!(saved.contains(&"rsSounds".to_string()) && saved.contains(&"rsPlaytestCheck".to_string()) && !saved.contains(&"rsToolBudget".to_string()));
+        let _ = std::fs::remove_file(path);
+    }
+    #[test]
+    fn one_bad_value_in_the_file_does_not_reset_every_setting() {
+        let path = temp("file");
+        std::fs::write(&path, br#"{"rsSounds":false,"rsToolBudget":"lots","rsAutoDebug":false,"rsStopMode":"safe"}"#).unwrap();
+        let store = PreferencesStore::load_from(path.clone());
+        let now = store.snapshot();
+        assert!(!now.sounds && !now.auto_debug && now.stop_mode == "safe" && now.tool_budget == 0);
+        assert_eq!(store.saved_keys(), vec!["rsAutoDebug".to_string(), "rsSounds".to_string(), "rsStopMode".to_string()]);
+        let _ = std::fs::remove_file(path);
+    }
+    #[test]
+    fn extension_switches_have_the_extension_defaults() {
+        let d = DesktopPreferences::default();
+        assert!(!d.full_startup && d.auto_debug && d.auto_fix_stop_play && !d.multi_agent && d.playtest_check && d.ui_check);
+        let v = serde_json::to_value(&d).unwrap();
+        for key in ["rsFullStartup", "rsAutoDebug", "rsAutoFixStopPlay", "rsMultiAgent", "rsPlaytestCheck", "rsUiCheck"] { assert!(v.get(key).is_some(), "{key}"); }
+    }
+}

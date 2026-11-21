@@ -4,7 +4,7 @@ updated: 2026-10-28
 ---
 # Releasing
 
-**Current (2026-11-18): 1.24.34 published** (validation 44403715588 on `3ea08a4`, publish 44412679897 from `release/1.24.34-publish`, pin commit `a013d656`). The next version needs the new-version checklist. The steps below were written for 1.24.30: read every `1.24.30` in them as the current version.
+**Current (2026-11-21): 1.24.35 being released** (copied from `development/1.24.34`, workflows `validate-1.24.35.yml` / `publish-1.24.35.yml`, branch `release/1.24.35-publish`). The steps below were written for 1.24.30: read every `1.24.30` in them as the current version.
 
 Official releases live in the public repo `stoveez/PlazCode`, branch `main`: only zips and the feeds. They are prepared and published from the private repo, branch `release/1.24.30-publish`, by the workflow `publish-1.24.30.yml`. Nothing is rebuilt at publish time. Private `main` is the old line and is not used for releases.
 
