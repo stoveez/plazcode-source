@@ -124,6 +124,9 @@ Full CI [41449512168](https://github.com/stoveez/plazcode-source/actions/runs/41
 
 # Finished work
 
+## 2026-11-21: 1.24.36 published
+DeepSeek shared send serialization and completion-based pacing for all programmatic calls. Validation 44936501888 (`137838e`), publication 44941406099, packaged Mac lifetime/relaunch passed. No app signing or new end-user setup. User data stays editable; original affected live Studio/account setups were not tested.
+
 ## 2026-11-15: 1.24.33 published
 Apps & servers rework (Blender, Godot, Unity, Figma, Blockbench), AgentScript control in tabs and apps with Ask PlazCode, helper agents, several commands per reply, Linux one-line install with its own feed, macOS 10.15, redesigned bar and app look, plus the 2026-11-14 Kimi/Freebuff/Gemini/bar fixes. Validation 43729798476 (`855f75e`), publication 43735956823 (third attempt: the publish script's new Linux checks were fixed twice, program files untouched). Live feeds and the Windows download checked (version 1.24.33, sha256 matches). Kimi/Freebuff fixes and tab control not yet re-tried live.
 
