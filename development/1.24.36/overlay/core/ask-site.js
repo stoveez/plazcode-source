@@ -23,6 +23,10 @@ const PlazCodeAskSite = (() => {
     { hosts: ["aistudio.xiaomimimo.com"], url: "https://aistudio.xiaomimimo.com/#/c", name: "MiMo" },
     { hosts: ["oxalpha.com", "oxalpha.org"], url: "https://oxalpha.com/chat", name: "Oxalpha" },
     { hosts: ["notion.so", "notion.com", "app.notion.so"], url: "https://www.notion.so/ai", name: "Notion AI" },
+    { hosts: ["grok.com"], url: "https://grok.com/", name: "Grok" },
+    { hosts: ["aistudio.google.com"], url: "https://aistudio.google.com/prompts/new_chat", name: "Google AI Studio" },
+    { hosts: ["chat.mistral.ai"], url: "https://chat.mistral.ai/work", name: "Mistral" },
+    { hosts: ["workbuddy.ai"], url: "https://www.workbuddy.ai/app", name: "WorkBuddy" },
   ];
   const FALLBACK       = { url: "https://chat.deepseek.com/", name: "DeepSeek" };
   // The AI chat site a page belongs to, or null (any other page, a sign-in page of one still counts as that site).

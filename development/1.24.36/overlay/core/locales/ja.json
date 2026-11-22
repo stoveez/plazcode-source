@@ -1491,5 +1491,15 @@
   "PlazCode keeps trying while Studio is open. If it never connects, open Technical details and send us what it says with your Linux version.": "Studio が開いている間、PlazCode は接続を試し続けます。どうしても接続できない場合は、技術的な詳細を開き、その内容と Linux のバージョンを送ってください。",
   "Experimental on Linux: Roblox Studio through TuxBlox or Vinegar.": "Linux では試験的：TuxBlox または Vinegar 経由の Roblox Studio。",
   "Experimental: Roblox Studio has no Linux version, so it runs through TuxBlox or Vinegar. PlazCode starts Roblox's own Studio connection through the one that runs your Studio (TuxBlox first). Please tell us if it works for you.": "試験的：Roblox Studio には Linux 版がないため、TuxBlox または Vinegar で動きます。PlazCode は、お使いの Studio を動かしている方（TuxBlox 優先）を通して Roblox 独自の Studio 接続を開始します。うまく動いたかどうか教えてください。",
-  "PlazCode is connected to Roblox Studio through TuxBlox.": "PlazCode は TuxBlox 経由で Roblox Studio に接続しました。"
+  "PlazCode is connected to Roblox Studio through TuxBlox.": "PlazCode は TuxBlox 経由で Roblox Studio に接続しました。",
+  "19 browser AIs + Ollama": "19 種のブラウザー AI + Ollama",
+  "Grok": "Grok",
+  "Open Grok in the browser": "ブラウザーで Grok を開く",
+  "Google AI Studio": "Google AI Studio",
+  "Open Google AI Studio in the browser": "ブラウザーで Google AI Studio を開く",
+  "Mistral": "Mistral",
+  "Open Mistral in the browser": "ブラウザーで Mistral を開く",
+  "WorkBuddy": "WorkBuddy",
+  "Open WorkBuddy in the browser": "ブラウザーで WorkBuddy を開く",
+  "Work & Code modes": "作業・コードモード"
 }

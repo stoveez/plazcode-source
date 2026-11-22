@@ -1491,5 +1491,15 @@
   "PlazCode keeps trying while Studio is open. If it never connects, open Technical details and send us what it says with your Linux version.": "只要 Studio 开着，PlazCode 就会一直尝试。如果一直连不上，请打开技术详情，把其中的内容和你的 Linux 版本发给我们。",
   "Experimental on Linux: Roblox Studio through TuxBlox or Vinegar.": "Linux 上的实验功能：通过 TuxBlox 或 Vinegar 运行 Roblox Studio。",
   "Experimental: Roblox Studio has no Linux version, so it runs through TuxBlox or Vinegar. PlazCode starts Roblox's own Studio connection through the one that runs your Studio (TuxBlox first). Please tell us if it works for you.": "实验功能：Roblox Studio 没有 Linux 版本，因此通过 TuxBlox 或 Vinegar 运行。PlazCode 会通过运行你的 Studio 的那一个（优先 TuxBlox）启动 Roblox 自己的 Studio 连接。请告诉我们它是否可用。",
-  "PlazCode is connected to Roblox Studio through TuxBlox.": "PlazCode 已通过 TuxBlox 连接到 Roblox Studio。"
+  "PlazCode is connected to Roblox Studio through TuxBlox.": "PlazCode 已通过 TuxBlox 连接到 Roblox Studio。",
+  "19 browser AIs + Ollama": "19 款浏览器 AI + Ollama",
+  "Grok": "Grok",
+  "Open Grok in the browser": "在浏览器中打开 Grok",
+  "Google AI Studio": "Google AI Studio",
+  "Open Google AI Studio in the browser": "在浏览器中打开 Google AI Studio",
+  "Mistral": "Mistral",
+  "Open Mistral in the browser": "在浏览器中打开 Mistral",
+  "WorkBuddy": "WorkBuddy",
+  "Open WorkBuddy in the browser": "在浏览器中打开 WorkBuddy",
+  "Work & Code modes": "工作与代码模式"
 }

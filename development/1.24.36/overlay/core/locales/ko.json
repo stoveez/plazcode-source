@@ -1491,5 +1491,15 @@
   "PlazCode keeps trying while Studio is open. If it never connects, open Technical details and send us what it says with your Linux version.": "Studio가 열려 있는 동안 PlazCode가 계속 시도합니다. 끝내 연결되지 않으면 기술 세부 정보를 열고 그 내용과 Linux 버전을 보내 주세요.",
   "Experimental on Linux: Roblox Studio through TuxBlox or Vinegar.": "Linux 실험 기능: TuxBlox 또는 Vinegar를 통한 Roblox Studio.",
   "Experimental: Roblox Studio has no Linux version, so it runs through TuxBlox or Vinegar. PlazCode starts Roblox's own Studio connection through the one that runs your Studio (TuxBlox first). Please tell us if it works for you.": "실험 기능: Roblox Studio는 Linux 버전이 없어 TuxBlox 또는 Vinegar로 실행됩니다. PlazCode는 Studio를 실행 중인 쪽(TuxBlox 우선)을 통해 Roblox 자체 Studio 연결을 시작합니다. 잘 되는지 알려 주세요.",
-  "PlazCode is connected to Roblox Studio through TuxBlox.": "PlazCode가 TuxBlox를 통해 Roblox Studio에 연결되었습니다."
+  "PlazCode is connected to Roblox Studio through TuxBlox.": "PlazCode가 TuxBlox를 통해 Roblox Studio에 연결되었습니다.",
+  "19 browser AIs + Ollama": "브라우저 AI 19개 + Ollama",
+  "Grok": "Grok",
+  "Open Grok in the browser": "브라우저에서 Grok 열기",
+  "Google AI Studio": "Google AI Studio",
+  "Open Google AI Studio in the browser": "브라우저에서 Google AI Studio 열기",
+  "Mistral": "Mistral",
+  "Open Mistral in the browser": "브라우저에서 Mistral 열기",
+  "WorkBuddy": "WorkBuddy",
+  "Open WorkBuddy in the browser": "브라우저에서 WorkBuddy 열기",
+  "Work & Code modes": "작업 및 코드 모드"
 }
