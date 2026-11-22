@@ -1491,5 +1491,15 @@
   "PlazCode keeps trying while Studio is open. If it never connects, open Technical details and send us what it says with your Linux version.": null,
   "Experimental on Linux: Roblox Studio through TuxBlox or Vinegar.": null,
   "Experimental: Roblox Studio has no Linux version, so it runs through TuxBlox or Vinegar. PlazCode starts Roblox's own Studio connection through the one that runs your Studio (TuxBlox first). Please tell us if it works for you.": null,
-  "PlazCode is connected to Roblox Studio through TuxBlox.": null
+  "PlazCode is connected to Roblox Studio through TuxBlox.": null,
+  "19 browser AIs + Ollama": null,
+  "Grok": null,
+  "Open Grok in the browser": null,
+  "Google AI Studio": null,
+  "Open Google AI Studio in the browser": null,
+  "Mistral": null,
+  "Open Mistral in the browser": null,
+  "WorkBuddy": null,
+  "Open WorkBuddy in the browser": null,
+  "Work & Code modes": null
 }

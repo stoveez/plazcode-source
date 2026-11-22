@@ -22,6 +22,7 @@ const SUPPORTED_HOSTS = [
   "gemini.google.com", "www.kimi.com", "kimi.com",
   "chat.z.ai", "chat.qwen.ai", "arena.ai", "freebuff.ai", "freebuff.com", "notion.so", "notion.com",
   "gpt.crax.lol", "use.ai", "www.use.ai", "c.vani.ai", "aistudio.xiaomimimo.com", "oxalpha.com", "www.oxalpha.com", "oxalpha.org", "www.oxalpha.org",
+  "grok.com", "www.grok.com", "aistudio.google.com", "chat.mistral.ai", "www.workbuddy.ai", "workbuddy.ai",
   "localhost", "127.0.0.1", "ollama.com",
 ];
 const DEFAULT_AI_URL = "https://chat.deepseek.com/";
@@ -251,6 +252,7 @@ if (runHint) {
       "chat.z.ai": "GLM", "chat.qwen.ai": "Qwen",
       "arena.ai": "Arena",
       "freebuff.ai": "Freebuff", "freebuff.com": "Freebuff", "notion.so": "Notion", "notion.com": "Notion",
+      "grok.com": "Grok", "aistudio.google.com": "Google AI Studio", "chat.mistral.ai": "Mistral", "workbuddy.ai": "WorkBuddy",
       "gpt.crax.lol": "Crax", "localhost": "Ollama", "127.0.0.1": "Ollama",
       "ollama.com": "Ollama",
     };

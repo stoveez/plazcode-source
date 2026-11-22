@@ -76,6 +76,10 @@ fn supported_ai_url(action: &str) -> Option<&'static str> {
         "open:mimo" => Some("https://aistudio.xiaomimimo.com/#/c"),
         "open:oxalpha" => Some("https://oxalpha.com/chat"),
         "open:notion" => Some("https://www.notion.so/ai"),
+        "open:grok" => Some("https://grok.com/"),
+        "open:aistudio" => Some("https://aistudio.google.com/prompts/new_chat"),
+        "open:mistral" => Some("https://chat.mistral.ai/work"),
+        "open:workbuddy" => Some("https://www.workbuddy.ai/app"),
         "open:ollama" => Some("https://ollama.com/"),
         _ => None,
     }
@@ -583,7 +587,7 @@ mod tests {
 
     #[test] fn supported_ai_links_are_fixed_and_match_desktop_buttons() {
         let html=include_str!("desktop.html");
-        let actions=["chatgpt","deepseek","claude","gemini","kimi","glm","qwen","arena","freebuff","crax","useai","vani","mimo","oxalpha","notion","ollama"];
+        let actions=["chatgpt","deepseek","claude","gemini","kimi","glm","qwen","arena","freebuff","crax","useai","vani","mimo","oxalpha","notion","grok","aistudio","mistral","workbuddy","ollama"];
         for name in actions {
             let action=format!("open:{name}");let url=supported_ai_url(&action).expect("missing supported AI action");
             assert!(url.starts_with("https://"));assert!(html.contains(&format!("data-ipc=\"{action}\"")));

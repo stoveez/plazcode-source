@@ -897,6 +897,10 @@
     { name: "Vani AI", url: "https://c.vani.ai/c" },
     { name: "MiMo", url: "https://aistudio.xiaomimimo.com/#/c" },
     { name: "Ox Alpha", url: "https://oxalpha.com/chat" },
+    { name: "Grok", url: "https://grok.com/" },
+    { name: "Google AI Studio", url: "https://aistudio.google.com/prompts/new_chat" },
+    { name: "Mistral", url: "https://chat.mistral.ai/work" },
+    { name: "WorkBuddy", url: "https://www.workbuddy.ai/app" },
     { name: "Ollama", url: "ollama://local" },
   ];
 
