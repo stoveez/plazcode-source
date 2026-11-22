@@ -44,6 +44,14 @@ const ids = r => r.steps.map(s => s.id + ":" + s.state).join(" ");
   { const { act } = actions([{ connected: false, bridge_error: "Local bridge pairing failed: Automatic pairing failed (HTTP 403). Update the desktop and extension together" }]);
     const r = await D.run({ engine: "roblox", status: { connected: false }, composer: ready }, act, fast);
     assert.match(r.steps[1].text, /refused this browser/); }
+  // An extension loaded from another folder gets the folder-mismatch message, not "app isn't running".
+  { const { act } = actions([{ connected: false, bridge_error: "This PlazCode extension is not the official one from this PlazCode folder, so the app will not connect to it. Load the PlazCode-Extension folder from the PlazCode folder you downloaded." }]);
+    const r = await D.run({ engine: "roblox", status: { connected: false }, composer: ready }, act, fast);
+    assert.match(r.steps[1].text, /another folder/); }
+  // Detected local-network / localhost site-access block gets the permission-block message.
+  { const { act } = actions([{ connected: false, bridge_error: "Local bridge pairing failed: Local network access is blocked for PlazCode in your browser settings. Allow Local network access for PlazCode and try again." }]);
+    const r = await D.run({ engine: "roblox", status: { connected: false }, composer: ready }, act, fast);
+    assert.match(r.steps[1].text, /blocked PlazCode/); }
   // A closed app makes the pairing request fail to fetch: that is "not running", not "refused".
   { const { act } = actions([{ connected: false, bridge_error: "Local bridge pairing failed: Failed to fetch. In Edge or Brave, check that PlazCode is enabled" }]);
     const r = await D.run({ engine: "roblox", status: { connected: false }, composer: ready }, act, fast);

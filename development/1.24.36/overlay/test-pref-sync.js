@@ -92,6 +92,43 @@ function world({ appUp = true, app = {}, saved = null } = {}) {
   await s.silently(async () => { await w.change(s, "rsSounds", true); });
   await w.run(); assert.equal(w.posts.length, 0);
 
+  // 8. apply() awaits persisted pending queue after worker wake so WS desktop_preferences never overwrites pending edits.
+  w = world({ app: { rsSounds: true }, saved: ["rsSounds"] });
+  w.local["rs-desktop-pending"] = { rsSounds: false };
+  w.local.rsSounds = false;
+  s = w.make();
+  await s.apply({ rsSounds: true, _plazcodeEpoch: "e1", _plazcodeRev: 2, _plazcodeSaved: ["rsSounds"] });
+  assert.equal(w.local.rsSounds, false, "persisted pending change survives early WS apply before initial()");
+
+  // 9. Monotonic revision ordering blocks stale GET responses after a newer WS push.
+  w = world({ app: { rsLanguage: "en" }, saved: ["rsLanguage"] });
+  s = w.make();
+  await s.apply({ rsLanguage: "ja", _plazcodeEpoch: "e1", _plazcodeRev: 5, _plazcodeSaved: ["rsLanguage"] });
+  await s.apply({ rsLanguage: "es", _plazcodeEpoch: "e1", _plazcodeRev: 4, _plazcodeSaved: ["rsLanguage"] });
+  assert.equal(w.local.rsLanguage, "ja", "older revision does not overwrite newer WS state");
+
+  // 10. remoteWrites is cleared on subsequent change so reverting back to the remote value is still synced.
+  w = world({ app: { rsSounds: true }, saved: ["rsSounds"] });
+  s = w.make();
+  await s.apply({ rsSounds: true, _plazcodeEpoch: "e1", _plazcodeRev: 1, _plazcodeSaved: ["rsSounds"] });
+  await w.change(s, "rsSounds", false);
+  await w.run();
+  await w.change(s, "rsSounds", true);
+  await w.run();
+  assert.equal(w.app.rsSounds, true, "reverting back to earlier remote value is sent to the app");
+
+  // 11. Non-persisted in-memory rev > 0 on the app is not overwritten by a secondary browser's initial().
+  w = world({ app: { rsLanguage: "fr" }, saved: ["rsLanguage"] });
+  w.fetch = async (url, init = {}) => {
+    if (init.method === "POST") { w.posts.push(JSON.parse(init.body)); return { ok: true, json: async () => ({ ok: true, preferences: w.app }) }; }
+    return { ok: true, json: async () => ({ ...w.app, _plazcodePersisted: false, _plazcodeEpoch: "e1", _plazcodeRev: 2, _plazcodeSaved: ["rsLanguage"] }) };
+  };
+  w.local.rsLanguage = "de";
+  s = w.make();
+  await s.initial();
+  assert.equal(w.posts.length, 0, "secondary browser must not push(true) over live rev > 0 app state");
+  assert.equal(w.local.rsLanguage, "fr");
+
   const bg = fs.readFileSync("background.js", "utf8");
   assert.match(bg, /importScripts\("core\/pref-sync\.js"\)/);
   console.log("PASS settings sync: waiting changes survive a sleeping worker, late reads never undo a change, app defaults never reset an extension choice, back-off, the extension's switches shared and shown in the app");

@@ -56,14 +56,21 @@ const PlazCodeConnectionDoctor = (() => {
       try { await act.reconnect(); } catch {}
       status = await waitUntil(s => !!(s && s.connected), act.status, opts.bridgeWaitMs ?? 10000, stepMs) || {};
       if (!status.connected) {
-        // Only an explicit HTTP 401/403 from the app is a refusal. "Failed to fetch",
-        // timeouts and aborted requests just mean the app is not running.
-        const pairing = /\bHTTP 40[13]\b/.test(String(status.bridge_error || ""));
+        // Distinguish: (1) unofficial/wrong unpacked folder, (2) browser blocking localhost/local network access,
+        // (3) HTTP 401/403 pairing refusal, vs (4) app not running ("Failed to fetch" / timeout).
+        const rawErr = String(status.bridge_error || "");
+        const unofficial = /not the official one|PlazCode-Extension folder/i.test(rawErr);
+        const blocked = /Site access to localhost|Local network access is blocked/i.test(rawErr);
+        const pairing = /\bHTTP 40[13]\b/.test(rawErr);
         if (!opts.passive) steps.pop();
-        push({ id: "app", state: "action", text: pairing
+        push({ id: "app", state: "action", text: unofficial
+          ? tr("This browser loaded PlazCode from another folder. Remove this copy in Extensions and load PlazCode-Extension from your PlazCode app folder.")
+          : blocked
+          ? tr("This browser blocked PlazCode from reaching the local app. Allow Local network access and localhost site access for PlazCode in browser settings, then click Fix connection again.")
+          : pairing
           ? tr("The PlazCode app refused this browser. Close and reopen the PlazCode app, then click Fix connection again.")
           : tr("The PlazCode app isn't running. Open PlazCode on your computer, then click Fix connection again."),
-          detail: String(status.bridge_error || "").replace(/\s+/g, " ").slice(0, 240) });
+          detail: rawErr.replace(/\s+/g, " ").slice(0, 240) });
         return done("");
       }
       if (!opts.passive) steps.pop();

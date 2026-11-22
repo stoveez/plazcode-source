@@ -2916,7 +2916,7 @@ return result`;
     return {rsInputLimitEnabled:value.rsInputLimitEnabled!==false,rsInputCharLimit:limit('rsInputCharLimit',120000),rsOutputLimitEnabled:value.rsOutputLimitEnabled!==false,rsOutputCharLimit:limit('rsOutputCharLimit',32000)};
   }
   chrome.storage.local.get(Object.keys(characterLimits), value=>{characterLimits=normalizeCharacterLimits(value||{});});
-  chrome.storage.onChanged.addListener((changes,area)=>{if(area!=='local')return;const next={...characterLimits};for(const key of Object.keys(next))if(changes[key])next[key]=changes[key].newValue;characterLimits=normalizeCharacterLimits(next);});
+  chrome.storage.onChanged.addListener((changes,area)=>{if(area!=='local')return;const next={...characterLimits};let changed=false;for(const key of Object.keys(next))if(changes[key]){next[key]=changes[key].newValue;changed=true;}characterLimits=normalizeCharacterLimits(next);if(changed)try{ui?.refreshMenu?.();}catch{}});
   window.__rsLimitOutgoing = text => {
     const value=String(text||'');
     if(characterLimits.rsInputLimitEnabled&&value.length>characterLimits.rsInputCharLimit)throw Error('This message exceeds your '+characterLimits.rsInputCharLimit+' character input limit. Nothing was omitted or sent. Raise or disable the input limit in Settings.');
@@ -5797,9 +5797,9 @@ return result`;
   chrome.storage.onChanged.addListener((changes,area)=>{
     if(area!=='local')return;
     const fields={};for(const key of ['rsRunLimitsEnabled','rsToolBudget','rsTaskMinutes','rsVisualCheck','rsFullStartup','rsContinuationOffer','rsCommandCooldown'])if(changes[key])fields[key]=changes[key].newValue;
-    if(Object.keys(fields).length)reliabilitySettings=normalizeReliability({...reliabilitySettings,...fields});
+    if(Object.keys(fields).length){reliabilitySettings=normalizeReliability({...reliabilitySettings,...fields});try{ui?.refreshMenu?.();}catch{}}
+    if(changes.rsLatestHandoff){handoffRevision++;savedHandoff=changes.rsLatestHandoff.newValue||null;}
   });
-  chrome.storage.onChanged.addListener(changes=>{const merged={...reliabilitySettings};for(const key of Object.keys(merged))if(changes[key])merged[key]=changes[key].newValue;reliabilitySettings=normalizeReliability(merged);if(changes.rsLatestHandoff){handoffRevision++;savedHandoff=changes.rsLatestHandoff.newValue||null;}});
   function downloadHandoff(value){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:"application/json"}));const link=document.createElement("a");link.href=url;link.download="PlazCode-continuation.json";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   async function automaticVisualCheck(call,feedback){
     if(A.stop||!reliabilitySettings.rsVisualCheck||activeEngine()!=="roblox"||!P.supportsVision||feedbackIsError(feedback)||A.pendingImages?.length||!(call.tool==="creation_insert" || PlazCodeReliability.visual(call) || (call.tool==="plazcode_batch" && call.arguments.calls.some(c=>PlazCodeReliability.visual({tool:c.command,arguments:c.params})))))return feedback;
@@ -5816,7 +5816,7 @@ return result`;
   }
   let stopMode = "immediate";
   chrome.storage.local.get("rsStopMode", value => { stopMode=value && value.rsStopMode === "safe" ? "safe" : "immediate"; });
-  chrome.storage.onChanged.addListener(changes => { if(changes.rsStopMode)stopMode=changes.rsStopMode.newValue === "safe" ? "safe" : "immediate"; });
+  chrome.storage.onChanged.addListener((changes,area) => { if(area==='local'&&changes.rsStopMode){stopMode=changes.rsStopMode.newValue === "safe" ? "safe" : "immediate";try{ui?.refreshMenu?.();}catch{}} });
   function stopLoop({ native = false } = {}) {
     try { P.cancelPendingSends?.(); } catch {}
     clarification.cancel();
@@ -8209,7 +8209,7 @@ return result`;
       chrome.storage.onChanged.addListener((changes, area) => {
         if (area !== "local" || !changes) return;
         let dirty = false;
-        if (changes.rsLanguage) {globalThis.PlazCodeI18n?.setLanguage(changes.rsLanguage.newValue || 'en');renderApprovalMode();}
+        if (changes.rsLanguage) {globalThis.PlazCodeI18n?.setLanguage(changes.rsLanguage.newValue || 'en');renderApprovalMode();dirty=true;}
         if (changes.rsPersonalMemory) personalMemory = changes.rsPersonalMemory.newValue || null;
         if (changes.rsReadOnly || changes.rsConfirmDelete || changes.rsAllowedFolders) {
           chrome.storage.local.get(PlazCodeSafety.KEYS, (values) => { safetySettings = PlazCodeSafety.fromStorage(values); if (!menuEl.hidden) buildMenu(); });

@@ -7,6 +7,13 @@
   const L = globalThis.PlazCodeI18n;
   const t = (text, values) => L ? L.t(text, values) : (values ? String(text).replace(/\{([A-Za-z0-9_]+)\}/g, (m, k) => k in values ? String(values[k]) : m) : String(text));
   try { const saved = await chrome.storage.local.get("rsLanguage"); if (L) { L.setLanguage((saved && saved.rsLanguage) || "en"); L.mountStatic(document.body); } } catch {}
+  try {
+    chrome.storage?.onChanged?.addListener((changes, area) => {
+      if (area === "local" && changes && changes.rsLanguage && L) {
+        L.setLanguage(changes.rsLanguage.newValue || "en");
+      }
+    });
+  } catch {}
   const $ = (id) => document.getElementById(id);
   const log = $("log"), q = $("q"), go = $("go"), stop = $("stop"), step = $("step"), sharing = $("sharing"), control = $("control");
   const menu = $("menu"), history = $("history"), chats = $("chats"), noChats = $("noChats"), newChat = $("newChat");

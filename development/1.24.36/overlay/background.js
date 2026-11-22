@@ -100,6 +100,21 @@ let bridgeError = "";
 const pairingReady = chrome.storage.local.get(PAIRING_KEY).then((value) => {
   pairingKey = value[PAIRING_KEY] || "";
 }).catch(() => {});
+async function diagnoseLocalNetworkBlock() {
+  try {
+    if (chrome.permissions && typeof chrome.permissions.contains === "function") {
+      const hasLocal = await chrome.permissions.contains({ origins: ["http://127.0.0.1/*", "http://localhost/*"] });
+      if (hasLocal === false) return "Site access to localhost / 127.0.0.1 is disabled for PlazCode in your browser's Extensions settings.";
+    }
+  } catch {}
+  try {
+    if (typeof navigator !== "undefined" && navigator.permissions && typeof navigator.permissions.query === "function") {
+      const status = await navigator.permissions.query({ name: "local-network-access" });
+      if (status && status.state === "denied") return "Local network access is blocked for PlazCode in your browser settings. Allow Local network access for PlazCode and try again.";
+    }
+  } catch {}
+  return "";
+}
 async function ensurePairing(force = false) {
   await protectionCheck();
   await pairingReady;
@@ -125,7 +140,12 @@ async function ensurePairing(force = false) {
       pairingKey = data.key;
       try { await chrome.storage.local.set({ [PAIRING_KEY]: pairingKey }); } catch {}
       return pairingKey;
-    } catch(error) { if (error && error.plazcodeUnofficial) throw error; throw new Error("Local bridge pairing failed: "+String(error.message || error)+". In Edge or Brave, check that PlazCode is enabled, its site access includes the AI page and localhost, and local-network access is allowed. Browser permission blocks cannot be fixed by restarting Studio."); }
+    } catch(error) {
+      if (error && error.plazcodeUnofficial) throw error;
+      const permDiag = await diagnoseLocalNetworkBlock();
+      if (permDiag) throw new Error("Local bridge pairing failed: " + permDiag);
+      throw new Error("Local bridge pairing failed: "+String(error.message || error)+". In Edge or Brave, check that PlazCode is enabled, its site access includes the AI page and localhost, and local-network access is allowed. Browser permission blocks cannot be fixed by restarting Studio.");
+    }
     finally { clearTimeout(timer); }
   })();
   try { return await pairingInFlight; } finally { pairingInFlight = null; }
@@ -200,7 +220,16 @@ async function bridgeFetchOnce(url, options = {}) {
     const headers = new Headers(options.headers || {});
     headers.set("Authorization", "Bearer " + pairingKey);
     if(expectedEpoch)headers.set("X-PlazCode-Profile",expectedEpoch);
-    const response = await fetch(url, { ...options, headers, signal, redirect: "error" });
+    const response = await fetch(url, { ...options, headers, signal, redirect: "error" }).catch(async (error) => {
+      const permDiag = await diagnoseLocalNetworkBlock();
+      if (permDiag) throw new Error(permDiag);
+      throw error;
+    });
+    if (response.status === 403) {
+      const reason = String(await response.text().catch(() => "")).slice(0, 600);
+      if (/not the official one/i.test(reason)) throw Object.assign(new Error(reason), { plazcodeUnofficial: true });
+      return { ok: false, status: response.status, statusText: response.statusText, headers: response.headers, text: async () => reason, json: async () => JSON.parse(reason) };
+    }
     if (response.status !== 401) return response;
     if (attempt === 0) await ensurePairing(true);
   }
@@ -791,6 +820,7 @@ function connectionNote() {
 // ── WebSocket lifecycle ─────────────────────────────────────────────────
 let connectInFlight = null;
 let socketConnectTimer = null;
+let wsAuthSuspect = false;
 const SOCKET_CONNECT_TIMEOUT_MS = 8000;
 async function connect() {
   // Claim the attempt BEFORE pairing/profile awaits. Several tabs can wake the
@@ -798,7 +828,7 @@ async function connect() {
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
   if (connectInFlight) return connectInFlight;
   connectInFlight = (async () => {
-  try { await ensurePairing(true); } catch (error) {
+  try { await ensurePairing(wsAuthSuspect || !/^[a-f0-9]{64}$/i.test(pairingKey)); } catch (error) {
     bridgeError = String(error.message || "Agent unavailable for automatic pairing");
     log(bridgeError);
     broadcastStatus();
@@ -812,8 +842,11 @@ async function connect() {
   reconnectTimer = null;
   const url = engineUrl();
   let sock;
+  let sockOpened = false;
   try {
     await ensureAccountContext();
+    if (profileRequired) return;
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
     sock = new WebSocket(url, pairingProtocols());
   } catch (e) {
     bridgeError = String(e.message || e);
@@ -826,6 +859,8 @@ async function connect() {
 
   sock.onopen = () => {
     if (sock !== ws) return;
+    sockOpened = true;
+    wsAuthSuspect = false;
     clearTimeout(socketConnectTimer);
     socketConnectTimer = null;
     connected = true;
@@ -863,6 +898,7 @@ async function connect() {
 
   sock.onclose = (event) => {
     if (sock !== ws) return;
+    if (!sockOpened) wsAuthSuspect = true;
     clearTimeout(socketConnectTimer);
     socketConnectTimer = null;
     ws = null;
@@ -1096,6 +1132,11 @@ function handleBridgeMessage(msg) {
     return;
   }
   if (msg.type === "desktop_preferences") {
+    if (typeof msg.local_full === "boolean" && msg.local_full !== localFull) {
+      localFull = msg.local_full;
+      try { chrome.storage.local.set({ "rs-local-full": localFull }); } catch {}
+      broadcastStatus();
+    }
     applyDesktopPreferences(msg.preferences).catch(() => {});
     return;
   }
@@ -1266,6 +1307,7 @@ async function refreshProcStatus() {
       localReady = false;
       robloxEditorConnected = false;
       accountEpoch = "";
+      desktopPreferencesStarted = false;
       bridgeError = "Choose a profile or Use PlazCode as a guest in the desktop app.";
       broadcastStatus();
       return;
@@ -1297,39 +1339,40 @@ async function refreshProcStatus() {
     localRoot = nrRoot;
     if (changed) broadcastStatus();
     // Settings are optional background work, not a health-check dependency.
-    syncDesktopPreferencesAfterHealth();
+    const prefSyncPromise = syncDesktopPreferencesAfterHealth();
     if (!wasUsable) {
       reconnectAttempts = 0;
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
       connect();
+    } else if (!connected && !connectInFlight && !reconnectTimer) {
+      connect();
     }
-    // Full access re-sync (one-shot, only ever turns Full ON). The old code
-    // copied a stale "rs-local-full" value from browser storage back to the
-    // agent after every extension restart, which could flip the agent's Full
-    // switch against what the user chose on the desktop. Now the agent is the
-    // source of truth: we only re-apply Full when the user's saved permission
-    // choice (rsPermMode) is "full" while the agent reports it OFF, and we
-    // never switch it off from here.
+    // Full access re-sync: run ONLY after initial preference sync converges so a stale
+    // secondary browser with an old rsPermMode="full" never flips the desktop back on.
     if (!fullSyncedOnce) {
-      fullSyncedOnce = true;
-      try {
-        chrome.storage.local.get("rsPermMode", (o) => {
-          const wantFull = o && o.rsPermMode === "full";
-          if (wantFull && !localFull) {
-            bridgeFetch(`${RUST_ROBLOX_HTTP}/api/local-full`, {
-              method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ enabled: true }), signal: AbortSignal.timeout(5000),
-            }).then((r2) => r2.json()).then((j2) => { localFull = j2.local_full === true; broadcastStatus(); }).catch(() => {});
-          }
-        });
-      } catch {}
+      prefSyncPromise.then(() => {
+        if (fullSyncedOnce || !desktopPreferencesStarted) return;
+        fullSyncedOnce = true;
+        try {
+          chrome.storage.local.get("rsPermMode", (o) => {
+            const wantFull = o && o.rsPermMode === "full";
+            if (wantFull && !localFull) {
+              bridgeFetch(`${RUST_ROBLOX_HTTP}/api/local-full`, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ enabled: true }), signal: AbortSignal.timeout(5000),
+              }).then((r2) => r2.json()).then((j2) => { localFull = j2.local_full === true; broadcastStatus(); }).catch(() => {});
+            }
+          });
+        } catch {}
+      }).catch(() => {});
     }
   } catch (error) {
     const changed = bridgeReachable || localReady || profileRequired;
     bridgeReachable = false;
     profileRequired = false;
     localReady = false;
+    desktopPreferencesStarted = false;
     bridgeError = String(error.message || error);
     if (changed) broadcastStatus();
   } finally { procStatusReading = false; }
@@ -2955,6 +2998,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         reconnectAttempts = 0;
         clearTimeout(reconnectTimer);
         reconnectTimer = null;
+        if (ws && (ws.readyState === WebSocket.CONNECTING || (ws.readyState === WebSocket.OPEN && lastMessageAt && Date.now() - lastMessageAt > HEARTBEAT_MS * 2))) {
+          const stale = ws; ws = null; connected = false;
+          try { stale.close(); } catch {}
+        }
         refreshProcStatus();
         connect();
         sendResponse({ ok: true });

@@ -7,7 +7,7 @@ const baseline = {
   "core/config.js": "24a591234442ada9324774f784ff530c0e3195c5",
   "core/headless-builder.js": "0d8924dae62e2894a68cdd17617bbb5e36cca33e",
   "core/luau-knowledge.js": "54441b9d7a36e28eac9e64d10b56607c41a34f2e",
-  "core/main.js": "f5dec099ad8e440c8d83de9d7abe358d0fe253c7",
+  "core/main.js": "f499d65be5d75050e2c0180e40c63319e86f3b77",
   "core/motion-interchange.js": "038afa13a5b59c030a809abf7d617a36f2fae82d",
   "core/motion-preview.js": "c364991ffe8e0f9eaad557e6746fff21daea2e86",
   "core/motion-tools.js": "6e1c5ff01153d61038b48b9a0c7181be85b3c9a5",

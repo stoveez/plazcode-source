@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::RwLock;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
@@ -224,13 +227,47 @@ impl std::fmt::Display for SaveFailed {
 }
 impl std::error::Error for SaveFailed {}
 
+static EPOCH_SEQ: AtomicU64 = AtomicU64::new(1);
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
+}
+
+fn next_epoch() -> String {
+    format!("{}-{}", now_ms(), EPOCH_SEQ.fetch_add(1, Ordering::Relaxed))
+}
+
+#[derive(Clone, Debug)]
+struct SyncState {
+    epoch: String,
+    revision: u64,
+    updated_at: u64,
+    saved: BTreeSet<String>,
+    key_revisions: BTreeMap<String, u64>,
+    key_updated_at: BTreeMap<String, u64>,
+}
+
+#[derive(Clone, Debug)]
+struct StoreState {
+    prefs: DesktopPreferences,
+    sync: SyncState,
+}
+
+#[derive(Clone, Debug)]
+pub struct SyncPatchOutcome {
+    pub preferences: DesktopPreferences,
+    pub skipped_stale: Vec<String>,
+    pub changed: bool,
+    pub save_warning: Option<String>,
+}
+
 pub struct PreferencesStore {
-    operation:std::sync::Mutex<()>,
+    operation: std::sync::Mutex<()>,
     path: RwLock<PathBuf>,
-    inner: RwLock<DesktopPreferences>,
-    /// The settings someone actually chose (in the file or sent since). The rest are defaults; the extension keeps its own
-    /// value for those instead of taking the app's default (an app that never knew a setting must not reset it).
-    saved: RwLock<std::collections::BTreeSet<String>>,
+    state: RwLock<StoreState>,
 }
 
 /// Lays `patch` over `base` one setting at a time: a setting with a value of the wrong kind is skipped instead of making the
@@ -254,6 +291,19 @@ fn overlay_checked(base: &DesktopPreferences, patch: &serde_json::Map<String, se
     (serde_json::from_value(value).unwrap_or_else(|_| base.clone()), kept, refused)
 }
 
+fn is_known_key(base_value: &serde_json::Value, key: &str) -> bool {
+    base_value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance"
+}
+
+fn changed_keys(before: &DesktopPreferences, after: &DesktopPreferences) -> Vec<String> {
+    let a = serde_json::to_value(before).unwrap_or_else(|_| serde_json::json!({}));
+    let b = serde_json::to_value(after).unwrap_or_else(|_| serde_json::json!({}));
+    let (Some(ao), Some(bo)) = (a.as_object(), b.as_object()) else { return Vec::new(); };
+    let mut keys: BTreeSet<String> = ao.keys().chain(bo.keys()).cloned().collect();
+    keys.retain(|k| ao.get(k) != bo.get(k));
+    keys.into_iter().collect()
+}
+
 impl PreferencesStore {
     pub fn load() -> Self {
         Self::load_from(settings_path())
@@ -267,78 +317,326 @@ impl PreferencesStore {
             None => (DesktopPreferences::default(), Vec::new()),
         };
         prefs.normalize();
-        Self { operation:std::sync::Mutex::new(()), path: RwLock::new(path), inner: RwLock::new(prefs), saved: RwLock::new(kept.into_iter().collect()) }
+        let file_mtime_ms = std::fs::metadata(&path)
+            .ok()
+            .and_then(|m| m.modified().ok())
+            .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        let sync_obj = file.as_ref().and_then(|v| v.get("_plazcodeSync")).and_then(|v| v.as_object());
+        let loaded_rev = sync_obj
+            .and_then(|o| o.get("revision"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(if kept.is_empty() { 0 } else { 1 });
+        let revision = if kept.is_empty() { loaded_rev } else { loaded_rev.max(1) };
+        let loaded_updated_at = sync_obj
+            .and_then(|o| o.get("updatedAt"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(if kept.is_empty() { 0 } else { file_mtime_ms });
+        let loaded_key_ts = sync_obj
+            .and_then(|o| o.get("keyUpdatedAt"))
+            .and_then(|v| v.as_object());
+        let mut key_revisions = BTreeMap::new();
+        let mut key_updated_at = BTreeMap::new();
+        let mut max_ts = loaded_updated_at;
+        for k in &kept {
+            key_revisions.insert(k.clone(), revision);
+            let ts = loaded_key_ts
+                .and_then(|m| m.get(k))
+                .and_then(|v| v.as_u64())
+                .unwrap_or(loaded_updated_at);
+            if ts > max_ts { max_ts = ts; }
+            key_updated_at.insert(k.clone(), ts);
+        }
+        let saved: BTreeSet<String> = kept.into_iter().collect();
+        let sync = SyncState {
+            epoch: next_epoch(),
+            revision,
+            updated_at: max_ts,
+            saved,
+            key_revisions,
+            key_updated_at,
+        };
+        Self {
+            operation: std::sync::Mutex::new(()),
+            path: RwLock::new(path),
+            state: RwLock::new(StoreState { prefs, sync }),
+        }
     }
 
     /// The names of the settings someone chose (sent to the extension as `_plazcodeSaved`).
-    pub fn saved_keys(&self) -> Vec<String> { self.saved.read().map(|s| s.iter().cloned().collect()).unwrap_or_default() }
+    pub fn saved_keys(&self) -> Vec<String> {
+        self.state.read().map(|s| s.sync.saved.iter().cloned().collect()).unwrap_or_default()
+    }
 
     pub fn persisted(&self) -> bool {
-        self.path.read().map(|p|p.exists()).unwrap_or(false)
+        self.path.read().map(|p| p.exists()).unwrap_or(false)
     }
 
     pub fn snapshot(&self) -> DesktopPreferences {
-        self.inner.read().map(|p| p.clone()).unwrap_or_default()
+        self.state.read().map(|s| s.prefs.clone()).unwrap_or_default()
     }
 
-    pub fn replace(&self,prefs:DesktopPreferences)->anyhow::Result<DesktopPreferences>{let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;self.replace_unlocked(prefs)}
-    fn replace_unlocked(&self, mut prefs: DesktopPreferences) -> anyhow::Result<DesktopPreferences> {
-        prefs.normalize();
-        {
-            let mut guard = self.inner.write().map_err(|_| anyhow::anyhow!("preferences lock poisoned"))?;
-            *guard = prefs.clone();
+    pub fn revision(&self) -> u64 {
+        self.state.read().map(|s| s.sync.revision).unwrap_or(0)
+    }
+
+    pub fn epoch(&self) -> String {
+        self.state.read().map(|s| s.sync.epoch.clone()).unwrap_or_default()
+    }
+
+    /// Atomic snapshot with monotonic revision, store epoch, saved-key set, and per-key timestamps
+    /// for HTTP `/api/preferences` and WebSocket `desktop_preferences` delivery.
+    pub fn wire_value(&self) -> serde_json::Value {
+        let guard = self.state.read();
+        let (prefs, persisted, sync) = match guard {
+            Ok(s) => (s.prefs.clone(), self.persisted(), s.sync.clone()),
+            Err(_) => (
+                DesktopPreferences::default(),
+                false,
+                SyncState {
+                    epoch: String::new(),
+                    revision: 0,
+                    updated_at: 0,
+                    saved: BTreeSet::new(),
+                    key_revisions: BTreeMap::new(),
+                    key_updated_at: BTreeMap::new(),
+                },
+            ),
+        };
+        let mut value = serde_json::to_value(&prefs).unwrap_or_else(|_| serde_json::json!({}));
+        if let Some(object) = value.as_object_mut() {
+            object.insert("_plazcodePersisted".to_string(), serde_json::Value::Bool(persisted));
+            object.insert("_plazcodeSaved".to_string(), serde_json::json!(sync.saved.iter().cloned().collect::<Vec<_>>()));
+            object.insert("_plazcodeEpoch".to_string(), serde_json::Value::String(sync.epoch));
+            object.insert("_plazcodeRev".to_string(), serde_json::Value::from(sync.revision));
+            object.insert("_plazcodeUpdatedAt".to_string(), serde_json::Value::from(sync.updated_at));
+            object.insert("_plazcodeKeyUpdatedAt".to_string(), serde_json::json!(sync.key_updated_at));
+            object.insert("_plazcodeKeyRev".to_string(), serde_json::json!(sync.key_revisions));
         }
+        value
+    }
+
+    pub fn replace(&self, prefs: DesktopPreferences) -> anyhow::Result<DesktopPreferences> {
+        let _op = self.operation.lock().map_err(|_| anyhow::anyhow!("preferences operation lock poisoned"))?;
+        let current = self.snapshot();
+        let touched = changed_keys(&current, &prefs);
+        self.replace_unlocked(prefs, &touched, None)
+    }
+
+    fn replace_unlocked(
+        &self,
+        mut prefs: DesktopPreferences,
+        touched: &[String],
+        key_ts_overrides: Option<&BTreeMap<String, u64>>,
+    ) -> anyhow::Result<DesktopPreferences> {
+        prefs.normalize();
+        let save_sync = {
+            let mut guard = self.state.write().map_err(|_| anyhow::anyhow!("preferences lock poisoned"))?;
+            let now = now_ms();
+            let mut changed = !touched.is_empty();
+            if !changed && serde_json::to_value(&guard.prefs).ok() != serde_json::to_value(&prefs).ok() {
+                changed = true;
+            }
+            if changed || guard.sync.revision == 0 && !touched.is_empty() {
+                guard.sync.revision = guard.sync.revision.saturating_add(1);
+                guard.sync.updated_at = now.max(guard.sync.updated_at);
+                let rev = guard.sync.revision;
+                let default_ts = guard.sync.updated_at;
+                for key in touched {
+                    guard.sync.saved.insert(key.clone());
+                    guard.sync.key_revisions.insert(key.clone(), rev);
+                    let ts = key_ts_overrides
+                        .and_then(|m| m.get(key).copied())
+                        .map(|t| t.min(now.saturating_add(60_000)))
+                        .unwrap_or(default_ts);
+                    let prev_ts = guard.sync.key_updated_at.get(key).copied().unwrap_or(0);
+                    guard.sync.key_updated_at.insert(key.clone(), ts.max(prev_ts));
+                    if ts > guard.sync.updated_at { guard.sync.updated_at = ts; }
+                }
+            }
+            guard.prefs = prefs.clone();
+            guard.sync.clone()
+        };
         // The new values are already in use above. If the file cannot be written, say exactly that
         // (SaveFailed) so callers can keep using them instead of treating the change as rejected.
-        if let Err(error) = self.save(&prefs) { return Err(anyhow::Error::new(SaveFailed(error.to_string()))); }
+        if let Err(error) = self.save(&prefs, &save_sync) {
+            return Err(anyhow::Error::new(SaveFailed(error.to_string())));
+        }
         Ok(prefs)
     }
 
     pub fn patch(&self, patch: serde_json::Value) -> anyhow::Result<DesktopPreferences> {
-        let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;
-        let current = self.snapshot();
+        let outcome = self.patch_synced(patch)?;
+        if let Some(warning) = outcome.save_warning {
+            return Err(anyhow::Error::new(SaveFailed(warning)));
+        }
+        Ok(outcome.preferences)
+    }
+
+    /// Applies an extension/desktop patch with optional monotonic revision and per-key timestamp checks
+    /// so a waking or stale browser cannot overwrite newer desktop/primary-browser settings.
+    pub fn patch_synced(&self, patch: serde_json::Value) -> anyhow::Result<SyncPatchOutcome> {
+        let _op = self.operation.lock().map_err(|_| anyhow::anyhow!("preferences operation lock poisoned"))?;
         let src = patch.as_object().ok_or_else(|| anyhow::anyhow!("preferences patch must be an object"))?;
+        let (current, sync) = {
+            let guard = self.state.read().map_err(|_| anyhow::anyhow!("preferences lock poisoned"))?;
+            (guard.prefs.clone(), guard.sync.clone())
+        };
+        let has_sync_meta = src.contains_key("_plazcodeBaseEpoch")
+            || src.contains_key("_plazcodeBaseRev")
+            || src.contains_key("_plazcodeKeyTimestamps")
+            || src.contains_key("_plazcodeKeyBaseRev")
+            || src.contains_key("_plazcodeKeyBaseEpoch");
+        let global_base_epoch = src.get("_plazcodeBaseEpoch").and_then(|v| v.as_str());
+        let global_base_rev = src.get("_plazcodeBaseRev").and_then(|v| v.as_u64());
+        let key_timestamps: BTreeMap<String, u64> = src
+            .get("_plazcodeKeyTimestamps")
+            .and_then(|v| v.as_object())
+            .map(|m| m.iter().filter_map(|(k, v)| v.as_u64().map(|t| (k.clone(), t))).collect())
+            .unwrap_or_default();
+        let key_base_revs: BTreeMap<String, u64> = src
+            .get("_plazcodeKeyBaseRev")
+            .and_then(|v| v.as_object())
+            .map(|m| m.iter().filter_map(|(k, v)| v.as_u64().map(|r| (k.clone(), r))).collect())
+            .unwrap_or_default();
+        let key_base_epochs: BTreeMap<String, String> = src
+            .get("_plazcodeKeyBaseEpoch")
+            .and_then(|v| v.as_object())
+            .map(|m| m.iter().filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string()))).collect())
+            .unwrap_or_default();
+
+        let current_value = serde_json::to_value(&current).unwrap_or_else(|_| serde_json::json!({}));
+        let mut filtered = serde_json::Map::new();
+        let mut skipped_stale = Vec::new();
+        for (key, val) in src {
+            if key.starts_with("_plazcode") || !is_known_key(&current_value, key) { continue; }
+            if has_sync_meta {
+                let is_saved = sync.saved.contains(key);
+                let server_key_rev = sync.key_revisions.get(key).copied().unwrap_or(0);
+                let server_key_ts = sync.key_updated_at.get(key).copied().unwrap_or(0);
+                let base_epoch = key_base_epochs.get(key).map(String::as_str).or(global_base_epoch);
+                let base_rev = key_base_revs.get(key).copied().or(global_base_rev).unwrap_or(0);
+                let client_ts = key_timestamps.get(key).copied().unwrap_or(0);
+                let stale = if !is_saved {
+                    false
+                } else if base_epoch == Some(sync.epoch.as_str()) {
+                    if base_rev >= server_key_rev {
+                        false
+                    } else {
+                        client_ts <= server_key_ts
+                    }
+                } else if server_key_ts > 0 {
+                    client_ts <= server_key_ts
+                } else {
+                    client_ts == 0 && server_key_rev > 0
+                };
+                if stale {
+                    skipped_stale.push(key.clone());
+                    continue;
+                }
+            }
+            filtered.insert(key.clone(), val.clone());
+        }
+
+        if filtered.is_empty() && !skipped_stale.is_empty() {
+            return Ok(SyncPatchOutcome {
+                preferences: current,
+                skipped_stale,
+                changed: false,
+                save_warning: None,
+            });
+        }
+
         // A setting with a value of the wrong kind is skipped; the others still apply (one bad value used to block every
         // setting the extension sent, so nothing synced).
-        let (next, kept, refused) = overlay_checked(&current, src);
+        let (next, kept, refused) = overlay_checked(&current, &filtered);
         // Only bad values (nothing usable at all): refused as before, so the sender knows.
-        if kept.is_empty() && !refused.is_empty() { anyhow::bail!("these settings have values of the wrong kind: {}", refused.join(", ")); }
-        if let Ok(mut saved) = self.saved.write() { saved.extend(kept); }
-        self.replace_unlocked(next)
+        if kept.is_empty() && !refused.is_empty() {
+            anyhow::bail!("these settings have values of the wrong kind: {}", refused.join(", "));
+        }
+        if kept.is_empty() {
+            return Ok(SyncPatchOutcome {
+                preferences: current,
+                skipped_stale,
+                changed: false,
+                save_warning: None,
+            });
+        }
+        let ts_overrides = if key_timestamps.is_empty() { None } else { Some(&key_timestamps) };
+        match self.replace_unlocked(next, &kept, ts_overrides) {
+            Ok(preferences) => Ok(SyncPatchOutcome {
+                preferences,
+                skipped_stale,
+                changed: true,
+                save_warning: None,
+            }),
+            Err(error) => match error.downcast_ref::<SaveFailed>() {
+                Some(failed) => Ok(SyncPatchOutcome {
+                    preferences: self.snapshot(),
+                    skipped_stale,
+                    changed: true,
+                    save_warning: Some(failed.to_string()),
+                }),
+                None => Err(error),
+            },
+        }
     }
 
     pub fn update<F>(&self, mut edit: F) -> anyhow::Result<DesktopPreferences>
     where
         F: FnMut(&mut DesktopPreferences),
     {
-        let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;
-        let mut next = self.snapshot();
+        let _op = self.operation.lock().map_err(|_| anyhow::anyhow!("preferences operation lock poisoned"))?;
+        let current = self.snapshot();
+        let mut next = current.clone();
         edit(&mut next);
-        self.replace_unlocked(next)
+        let touched = changed_keys(&current, &next);
+        self.replace_unlocked(next, &touched, None)
     }
 
-    pub fn patch_if_unchanged(&self,before:&serde_json::Value,incoming:&serde_json::Value)->anyhow::Result<DesktopPreferences>{
-        let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;
-        let mut current=serde_json::to_value(self.snapshot())?;
-        for(key,value)in incoming.as_object().ok_or_else(||anyhow::anyhow!("Invalid synced preferences"))?{if current.get(key)==before.get(key){current[key]=value.clone();}}
-        self.replace_unlocked(serde_json::from_value(current)?)
+    pub fn patch_if_unchanged(&self, before: &serde_json::Value, incoming: &serde_json::Value) -> anyhow::Result<DesktopPreferences> {
+        let _op = self.operation.lock().map_err(|_| anyhow::anyhow!("preferences operation lock poisoned"))?;
+        let prev = self.snapshot();
+        let mut current = serde_json::to_value(&prev)?;
+        for (key, value) in incoming.as_object().ok_or_else(|| anyhow::anyhow!("Invalid synced preferences"))? {
+            if current.get(key) == before.get(key) { current[key] = value.clone(); }
+        }
+        let next: DesktopPreferences = serde_json::from_value(current)?;
+        let touched = changed_keys(&prev, &next);
+        self.replace_unlocked(next, &touched, None)
     }
-    pub fn select_path(&self,path:PathBuf)->anyhow::Result<()> {
-        let _op=self.operation.lock().map_err(|_|anyhow::anyhow!("preferences operation lock poisoned"))?;
-        let loaded=Self::load_from(path.clone());
-        let mut target=self.path.write().map_err(|_|anyhow::anyhow!("preferences path lock poisoned"))?;
-        let mut inner=self.inner.write().map_err(|_|anyhow::anyhow!("preferences lock poisoned"))?;
-        *target=path;*inner=loaded.snapshot();
-        if let Ok(mut saved)=self.saved.write(){*saved=loaded.saved_keys().into_iter().collect();}
+
+    pub fn select_path(&self, path: PathBuf) -> anyhow::Result<()> {
+        let _op = self.operation.lock().map_err(|_| anyhow::anyhow!("preferences operation lock poisoned"))?;
+        let loaded = Self::load_from(path.clone());
+        let loaded_state = loaded.state.read().map_err(|_| anyhow::anyhow!("preferences lock poisoned"))?.clone();
+        let mut target = self.path.write().map_err(|_| anyhow::anyhow!("preferences path lock poisoned"))?;
+        let mut state = self.state.write().map_err(|_| anyhow::anyhow!("preferences lock poisoned"))?;
+        *target = path;
+        *state = loaded_state;
         Ok(())
     }
-    fn save(&self,prefs:&DesktopPreferences)->anyhow::Result<()> {
-        let path=self.path.read().map_err(|_|anyhow::anyhow!("preferences path lock poisoned"))?;
-        if let Some(parent)=path.parent(){std::fs::create_dir_all(parent)?;}
-        let tmp=path.with_extension("json.tmp");std::fs::write(&tmp,serde_json::to_vec_pretty(prefs)?)?;
-        if path.exists(){std::fs::remove_file(&*path)?;}std::fs::rename(&tmp,&*path)?;Ok(())
+
+    fn save(&self, prefs: &DesktopPreferences, sync: &SyncState) -> anyhow::Result<()> {
+        let path = self.path.read().map_err(|_| anyhow::anyhow!("preferences path lock poisoned"))?;
+        if let Some(parent) = path.parent() { std::fs::create_dir_all(parent)?; }
+        let mut doc = serde_json::to_value(prefs)?;
+        if let Some(object) = doc.as_object_mut() {
+            object.insert("_plazcodeSync".to_string(), serde_json::json!({
+                "revision": sync.revision,
+                "updatedAt": sync.updated_at,
+                "keyUpdatedAt": sync.key_updated_at,
+            }));
+        }
+        let tmp = path.with_extension("json.tmp");
+        std::fs::write(&tmp, serde_json::to_vec_pretty(&doc)?)?;
+        if path.exists() { std::fs::remove_file(&*path)?; }
+        std::fs::rename(&tmp, &*path)?;
+        Ok(())
     }
-    pub fn path(&self)->PathBuf {self.path.read().unwrap_or_else(|e|e.into_inner()).clone()}
+
+    pub fn path(&self) -> PathBuf { self.path.read().unwrap_or_else(|e| e.into_inner()).clone() }
 
 }
 
@@ -627,5 +925,68 @@ mod extension_sync_tests {
         assert!(!d.full_startup && d.auto_debug && d.auto_fix_stop_play && !d.multi_agent && d.playtest_check && d.ui_check);
         let v = serde_json::to_value(&d).unwrap();
         for key in ["rsFullStartup", "rsAutoDebug", "rsAutoFixStopPlay", "rsMultiAgent", "rsPlaytestCheck", "rsUiCheck"] { assert!(v.get(key).is_some(), "{key}"); }
+    }
+    #[test]
+    fn monotonic_revision_blocks_stale_secondary_browser_overwrites() {
+        let path = temp("multi-browser");
+        let store = PreferencesStore::load_from(path.clone());
+        let initial = store.wire_value();
+        let epoch = initial["_plazcodeEpoch"].as_str().unwrap().to_string();
+        assert_eq!(initial["_plazcodeRev"].as_u64(), Some(0));
+
+        // Desktop/primary browser changes language and theme at rev 1 & 2.
+        let r1 = store.patch(serde_json::json!({"rsLanguage": "fr"})).unwrap();
+        assert_eq!(r1.language, "fr");
+        let w1 = store.wire_value();
+        let rev1 = w1["_plazcodeRev"].as_u64().unwrap();
+        let ts_lang = w1["_plazcodeKeyUpdatedAt"]["rsLanguage"].as_u64().unwrap();
+        assert!(rev1 >= 1);
+
+        // A stale secondary browser (still at rev 0 with an older edit timestamp) tries to overwrite rsLanguage,
+        // while also updating an untouched key rsSounds.
+        let out = store.patch_synced(serde_json::json!({
+            "rsLanguage": "es",
+            "rsSounds": false,
+            "_plazcodeBaseEpoch": epoch,
+            "_plazcodeBaseRev": 0,
+            "_plazcodeKeyTimestamps": {
+                "rsLanguage": ts_lang.saturating_sub(500),
+                "rsSounds": ts_lang.saturating_sub(500)
+            }
+        })).unwrap();
+        assert_eq!(out.preferences.language, "fr", "stale secondary browser must not overwrite newer rsLanguage");
+        assert!(!out.preferences.sounds, "untouched/unsaved key still applies");
+        assert_eq!(out.skipped_stale, vec!["rsLanguage".to_string()]);
+
+        // A genuinely newer user edit in the secondary browser (even before polling latest rev) wins.
+        let newer = store.patch_synced(serde_json::json!({
+            "rsLanguage": "ja",
+            "_plazcodeBaseEpoch": epoch,
+            "_plazcodeBaseRev": 0,
+            "_plazcodeKeyTimestamps": { "rsLanguage": ts_lang + 500 }
+        })).unwrap();
+        assert_eq!(newer.preferences.language, "ja");
+        assert!(newer.skipped_stale.is_empty());
+
+        // App restarts (new epoch, persisted revision & timestamps loaded from disk).
+        let reopened = PreferencesStore::load_from(path.clone());
+        let w_reopen = reopened.wire_value();
+        assert_ne!(w_reopen["_plazcodeEpoch"].as_str().unwrap(), epoch);
+        assert!(w_reopen["_plazcodeRev"].as_u64().unwrap() >= 2);
+        let stale_after_restart = reopened.patch_synced(serde_json::json!({
+            "rsLanguage": "de",
+            "_plazcodeBaseEpoch": epoch,
+            "_plazcodeBaseRev": rev1,
+            "_plazcodeKeyTimestamps": { "rsLanguage": ts_lang }
+        })).unwrap();
+        assert_eq!(stale_after_restart.preferences.language, "ja", "stale edit from previous app run cannot overwrite persisted newer choice");
+        assert_eq!(stale_after_restart.skipped_stale, vec!["rsLanguage".to_string()]);
+
+        // update() (used by local_full_handler) records modified keys in saved_keys and bumps revision.
+        let before_rev = reopened.revision();
+        reopened.update(|p| { p.perm_mode = "full".to_string(); }).unwrap();
+        assert!(reopened.revision() > before_rev);
+        assert!(reopened.saved_keys().contains(&"rsPermMode".to_string()));
+        let _ = std::fs::remove_file(path);
     }
 }

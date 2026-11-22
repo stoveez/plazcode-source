@@ -1602,6 +1602,14 @@ async fn disconnect_handler(State(state): State<AppState>, Json(req): Json<serde
     Json(serde_json::json!({"ok": true}))
 }
 
+fn desktop_preferences_event(state: &AppState) -> serde_json::Value {
+    serde_json::json!({
+        "type": "desktop_preferences",
+        "preferences": state.preferences.wire_value(),
+        "local_full": state.workspace.full_access(),
+    })
+}
+
 #[derive(serde::Deserialize)]
 struct LocalFullReq { enabled: bool }
 async fn local_full_handler(State(state): State<AppState>, Json(req): Json<LocalFullReq>) -> impl IntoResponse {
@@ -1615,7 +1623,7 @@ async fn local_full_handler(State(state): State<AppState>, Json(req): Json<Local
         else if prefs.perm_mode == "full" { prefs.perm_mode = "sandbox".to_string(); }
     });
     if let Err(error) = &saved { tracing::warn!("Full access changed but the settings file could not be saved: {error}"); }
-    let _ = state.ui.desktop_events.send(serde_json::json!({"type":"desktop_preferences","preferences":state.preferences.snapshot()}));
+    let _ = state.ui.desktop_events.send(desktop_preferences_event(&state));
     Json(serde_json::json!({"ok": true, "local_full": req.enabled}))
 }
 
@@ -1629,25 +1637,29 @@ fn full_access_after(patch: &serde_json::Value, perm_mode: &str, current: bool) 
 /// A settings file that cannot be written (read-only install folder, a locked file) still
 /// leaves the new values in use, so Full access and the folder list follow them anyway
 /// and the reply says what happened instead of failing the whole change.
-fn preferences_response(state: &AppState, patch: &serde_json::Value, outcome: anyhow::Result<preferences::DesktopPreferences>) -> axum::response::Response {
-    let (prefs, warning) = match outcome {
-        Ok(prefs) => (prefs, None),
-        Err(error) => match error.downcast_ref::<preferences::SaveFailed>() {
-            Some(failed) => { tracing::warn!("{failed}"); (state.preferences.snapshot(), Some(failed.to_string())) }
-            None => return (
-                axum::http::StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({"ok": false, "error": error.to_string()})),
-            ).into_response(),
-        },
+fn preferences_response(state: &AppState, patch: &serde_json::Value, outcome: anyhow::Result<preferences::SyncPatchOutcome>) -> axum::response::Response {
+    let out = match outcome {
+        Ok(out) => out,
+        Err(error) => return (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"ok": false, "error": error.to_string()})),
+        ).into_response(),
     };
+    if let Some(warning) = &out.save_warning {
+        tracing::warn!("{warning}");
+    }
     state.sync_keep_awake();
-    if prefs.read_only {workspace::stop_profile_jobs();}
-    let full = full_access_after(patch, &prefs.perm_mode, state.workspace.full_access());
+    if out.preferences.read_only {workspace::stop_profile_jobs();}
+    let perm_applied = patch.get("rsPermMode").is_some() && !out.skipped_stale.iter().any(|k| k == "rsPermMode");
+    let full = if perm_applied { full_access_after(patch, &out.preferences.perm_mode, state.workspace.full_access()) } else { state.workspace.full_access() };
     if full != state.workspace.full_access() { state.workspace.set_full_access(full); }
-    state.workspace.set_allowed_folders(&prefs.allowed_folders);
-    let _ = state.ui.desktop_events.send(serde_json::json!({"type":"desktop_preferences","preferences":prefs}));
-    let mut body = serde_json::json!({"ok": true, "preferences": prefs});
-    if let Some(warning) = warning { body["warning"] = serde_json::Value::String(warning); }
+    state.workspace.set_allowed_folders(&out.preferences.allowed_folders);
+    if out.changed {
+        let _ = state.ui.desktop_events.send(desktop_preferences_event(&state));
+    }
+    let mut body = serde_json::json!({"ok": true, "preferences": state.preferences.wire_value()});
+    if let Some(warning) = out.save_warning { body["warning"] = serde_json::Value::String(warning); }
+    if !out.skipped_stale.is_empty() { body["_plazcodeRejected"] = serde_json::json!(out.skipped_stale); }
     Json(body).into_response()
 }
 
@@ -2156,7 +2168,7 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
 }
 
 async fn desktop_preferences_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
-    let outcome = state.preferences.patch(req.clone());
+    let outcome = state.preferences.patch_synced(req.clone());
     preferences_response(&state, &req, outcome)
 }
 
@@ -2332,18 +2344,15 @@ async fn shutdown_handler(State(state): State<AppState>) -> impl IntoResponse {
 
 async fn preferences_get_handler(State(state): State<AppState>) -> impl IntoResponse {
     state.ui.mark_extension_seen();
-    let mut value = serde_json::to_value(state.preferences.snapshot()).unwrap_or_else(|_| serde_json::json!({}));
-    if let Some(object) = value.as_object_mut() {
-        object.insert("_plazcodePersisted".to_string(), serde_json::Value::Bool(state.preferences.persisted()));
-        object.insert("_plazcodeSaved".to_string(), serde_json::json!(state.preferences.saved_keys()));
-    }
+    // wire_value() includes "_plazcodePersisted", "_plazcodeSaved", "_plazcodeEpoch", "_plazcodeRev", and per-key timestamps.
+    let mut value = state.preferences.wire_value();
     if let Some(profile)=state.accounts.active(){value["_plazcodeProfile"]=serde_json::to_value(profile).unwrap_or_default();}
     Json(value)
 }
 
 async fn preferences_post_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
     state.ui.mark_extension_seen();
-    let outcome = state.preferences.patch(req.clone());
+    let outcome = state.preferences.patch_synced(req.clone());
     preferences_response(&state, &req, outcome)
 }
 
@@ -2959,7 +2968,10 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
         loop {
             match desktop_rx.recv().await {
                 Ok(event) => {let _lease=accounts::ACCESS.read().await;if event_state.accounts.required()&&(event_epoch.is_none()||event_epoch!=event_state.accounts.active().map(|p|p.epoch)){break;}if desktop_tx.send(event.to_string()).is_err(){break;}},
-                Err(broadcast::error::RecvError::Lagged(_)) => continue,
+                Err(broadcast::error::RecvError::Lagged(_)) => {
+                    let _lease=accounts::ACCESS.read().await;if event_state.accounts.required()&&(event_epoch.is_none()||event_epoch!=event_state.accounts.active().map(|p|p.epoch)){break;}
+                    if desktop_tx.send(desktop_preferences_event(&event_state).to_string()).is_err(){break;}
+                },
                 Err(_) => break,
             }
         }
@@ -2981,7 +2993,7 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
     let known_studio = engine == "roblox" && state.roblox_editor_connected.load(Ordering::Relaxed);
     send_json(&out_tx, serde_json::json!({"type":"connected","id":0,"ok":true,
         "mcp_alive":known_studio,"studio":known_studio,"studio_checking":engine != "local" && !known_studio,"tools":[],"servers":[]}));
-    send_json(&out_tx, serde_json::json!({"type":"desktop_preferences","preferences":state.preferences.snapshot()}));
+    send_json(&out_tx, desktop_preferences_event(&state));
     let intro_state = state.clone();
     let intro_engine = engine.clone();
     let intro_tx = out_tx.clone();
@@ -3363,5 +3375,38 @@ mod full_access_tests {
         assert_eq!(tool_budget("run_command", Some(120000), &json!({"timeout_seconds": "600"})), Duration::from_secs(615));
         assert_eq!(tool_budget("run_command", Some(120000), &json!({"timeout_seconds": 5000})), Duration::from_secs(615), "the app caps commands at 600 s");
         assert_eq!(tool_budget("read_file", Some(120000), &json!({"timeout_seconds": 300})), Duration::from_secs(120));
+    }
+
+    #[tokio::test]
+    async fn stale_browser_preferences_post_cannot_flip_full_access_or_overwrite_newer_settings() {
+        let (state, folder) = test_state("stale-post");
+        let mut rx = state.ui.desktop_events.subscribe();
+        let epoch = state.preferences.epoch();
+        let _ = desktop_preferences_handler(State(state.clone()), Json(json!({"rsPermMode": "sandbox", "rsLanguage": "fr"}))).await.into_response();
+        assert!(!state.workspace.full_access());
+        let event = rx.recv().await.unwrap();
+        assert_eq!(event["type"], "desktop_preferences");
+        assert_eq!(event["local_full"], false);
+        let wire = state.preferences.wire_value();
+        let lang_ts = wire["_plazcodeKeyUpdatedAt"]["rsLanguage"].as_u64().unwrap();
+        let perm_ts = wire["_plazcodeKeyUpdatedAt"]["rsPermMode"].as_u64().unwrap();
+        assert!(wire["_plazcodeSaved"].as_array().unwrap().iter().any(|v| v == "rsPermMode"));
+
+        // Stale secondary browser sends older rsPermMode=full and rsLanguage=es at baseRev=0.
+        let resp = preferences_post_handler(State(state.clone()), Json(json!({
+            "rsPermMode": "full",
+            "rsLanguage": "es",
+            "_plazcodeBaseEpoch": epoch,
+            "_plazcodeBaseRev": 0,
+            "_plazcodeKeyTimestamps": {
+                "rsPermMode": perm_ts.saturating_sub(100),
+                "rsLanguage": lang_ts.saturating_sub(100),
+            }
+        }))).await.into_response();
+        assert_eq!(resp.status(), axum::http::StatusCode::OK);
+        assert!(!state.workspace.full_access(), "stale browser cannot flip full_access on");
+        assert_eq!(state.preferences.snapshot().perm_mode, "sandbox");
+        assert_eq!(state.preferences.snapshot().language, "fr");
+        let _ = std::fs::remove_dir_all(folder);
     }
 }
