@@ -207,6 +207,63 @@ interface PlazCodeTextApi {
   error(): string;
   [key: string]: any;
 }
+interface PlazCodeTabKeepAwakeState {
+  enabled: boolean;
+  running: boolean;
+  active: boolean;
+}
+interface PlazCodeTabKeepAwakeController {
+  setEnabled(next: boolean): boolean;
+  setActive(next: boolean): boolean;
+  update(patch: { enabled?: boolean; active?: boolean }): boolean;
+  isEnabled(): boolean;
+  isRunning(): boolean;
+  isActive(): boolean;
+  state(): PlazCodeTabKeepAwakeState;
+  destroy(): void;
+}
+interface PlazCodeTabKeepAwakeApi extends PlazCodeTabKeepAwakeController {
+  EVENT_NAME: string;
+  DATASET_KEY: string;
+  create(options?: { doc?: Document | null; enabled?: boolean; active?: boolean }): PlazCodeTabKeepAwakeController;
+}
+interface PlazCodeDomCacheStats {
+  epoch: number;
+  size: number;
+  hits: number;
+  misses: number;
+  invalidations: number;
+  reasons: Record<string, number>;
+}
+interface PlazCodeDomCacheInstance {
+  STRUCTURAL_TTL_MS: number;
+  BUSY_TTL_MS: number;
+  epoch(): number;
+  cached<T>(key: string, compute: () => T, opts?: { kind?: "structural" | "busy"; ttlMs?: number; checkConnected?: boolean }): T;
+  invalidate(reason?: "mutation" | "url" | "disconnected" | "ttl" | "action" | "manual"): number;
+  observe(target?: Node | null): boolean;
+  wrapProvider<T extends Record<string, any>>(provider: T): T;
+  stats(): PlazCodeDomCacheStats;
+  resetStats(): void;
+  destroy(): void;
+}
+interface PlazCodeDomCacheApi {
+  STRUCTURAL_TTL_MS: number;
+  BUSY_TTL_MS: number;
+  STRUCTURAL_METHODS: string[];
+  BUSY_METHODS: string[];
+  create(options?: {
+    doc?: Document | null;
+    win?: Window | null;
+    root?: Node | null;
+    now?: () => number;
+    getUrl?: () => string;
+    structuralTtlMs?: number;
+    busyTtlMs?: number;
+    ignoreRecords?: (records: MutationRecord[]) => boolean;
+    MutationObserverCtor?: typeof MutationObserver;
+  }): PlazCodeDomCacheInstance;
+}
 interface PlazCodeMediaApi {
   mime(file: File): string;
   fileFrom(data: ImagePayload, index?: number): File;
@@ -229,6 +286,8 @@ interface Window {
   __plazcodeControl?: any;
   __plazcodeDebugCapture?: any;
   __plazcodeInputIsolation?: any;
+  __plazcodeTabKeepAwakeMain?: boolean;
+  __plazcodeDomCacheStats?: () => PlazCodeDomCacheStats;
   __vaultImport?: any;
   __ollamaHistory?: () => any[];
   __ollamaModel?: () => string | null;

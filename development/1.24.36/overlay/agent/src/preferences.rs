@@ -60,6 +60,9 @@ pub struct DesktopPreferences {
     /// Keep the computer awake while an active PlazCode run is in progress (default off).
     #[serde(rename = "rsKeepAwake")]
     pub keep_awake: bool,
+    /// Keep the active AI browser tab awake during active PlazCode runs/turns (default on).
+    #[serde(rename = "rsTabKeepAwake")]
+    pub tab_keep_awake: bool,
     #[serde(rename = "rsCustomPrompt", skip_serializing_if = "Option::is_none")]
     pub custom_prompt: Option<String>,
     #[serde(rename = "rsAppearance", skip_serializing_if = "Option::is_none")]
@@ -158,6 +161,7 @@ impl Default for DesktopPreferences {
             auto_fix: true,
             bg_mode: true,
             keep_awake: false,
+            tab_keep_awake: true,
             custom_prompt: None,
             appearance: None,
             sidebar_collapsed: false, explorer_auto_sync: true, skill_auto_learn: true, shared_learning: true, auto_update: true,
@@ -897,6 +901,17 @@ mod tests {
         assert!(reopened.snapshot().keep_awake, "keep awake persists across reopen");
         reopened.patch(serde_json::json!({"rsKeepAwake": false})).expect("disable keep awake");
         assert!(!PreferencesStore::load_from(path.clone()).snapshot().keep_awake);
+        let _ = std::fs::remove_file(path);
+    }
+    #[test] fn tab_keep_awake_defaults_on_and_persists_off() {
+        let path = temp_settings_path();
+        let store = PreferencesStore::load_from(path.clone());
+        assert!(store.snapshot().tab_keep_awake, "tab keep awake must default on");
+        store.patch(serde_json::json!({"rsTabKeepAwake": false})).expect("disable tab keep awake");
+        let reopened = PreferencesStore::load_from(path.clone());
+        assert!(!reopened.snapshot().tab_keep_awake, "tab keep awake false persists across reopen");
+        reopened.patch(serde_json::json!({"rsTabKeepAwake": true})).expect("enable tab keep awake");
+        assert!(PreferencesStore::load_from(path.clone()).snapshot().tab_keep_awake);
         let _ = std::fs::remove_file(path);
     }
 

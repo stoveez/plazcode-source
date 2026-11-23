@@ -18,7 +18,7 @@ const PlazCodePrefSync = (() => {
     "rsLanguage", "rsReadOnly", "rsConfirmDelete", "rsApprovalMode", "rsAllowedFolders", "rsWorkMode", "rsPermMode", "rsSounds", "rsStopMode",
     "rsInputLimitEnabled", "rsInputCharLimit", "rsOutputLimitEnabled", "rsOutputCharLimit", "rsRunLimitsEnabled", "rsToolBudget", "rsTaskMinutes",
     "rsVisualCheck", "rsContinuationOffer", "rsCommandCooldown", "rsFullStartup", "rsExtraThinking", "rsShowApproach", "rsPlanMode", "rsThinkingLevel",
-    "rsForgeMode", "rsAutoFix", "rsBgMode", "rsCustomPrompt", "rsAppearance",
+    "rsForgeMode", "rsAutoFix", "rsBgMode", "rsTabKeepAwake", "rsCustomPrompt", "rsAppearance",
     "rsAutoDebug", "rsAutoFixStopPlay", "rsMultiAgent", "rsPlaytestCheck", "rsUiCheck",
   ];
   const PENDING_KEY = "rs-desktop-pending";

@@ -1559,5 +1559,6 @@
   "Start a new Codex session or reopen Codex to load PlazCode.": null,
   "Restart OpenCode or reload its servers list to pick up PlazCode.": null,
   "Reload Antigravity or refresh its external servers list to pick up PlazCode.": null,
-  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": null
+  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": null,
+  "Keep AI tab awake during active runs": "Keep AI tab awake during active runs"
 }

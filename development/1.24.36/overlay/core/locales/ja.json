@@ -1559,5 +1559,6 @@
   "Start a new Codex session or reopen Codex to load PlazCode.": "PlazCode を読み込むには、新しい Codex セッションを開始するか Codex を開き直してください。",
   "Restart OpenCode or reload its servers list to pick up PlazCode.": "PlazCode を認識させるには、OpenCode を再起動するかサーバー一覧を再読み込みしてください。",
   "Reload Antigravity or refresh its external servers list to pick up PlazCode.": "PlazCode を読み込むには、Antigravity を再読み込みするか外部サーバー一覧を更新してください。",
-  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "PlazCode の準備が整ったことを確認するには、Gemini CLI を再起動するか /mcp を実行してください。"
+  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "PlazCode の準備が整ったことを確認するには、Gemini CLI を再起動するか /mcp を実行してください。",
+  "Keep AI tab awake during active runs": "実行中はAIタブをスリープさせない"
 }

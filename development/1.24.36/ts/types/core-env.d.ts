@@ -22,6 +22,8 @@ declare var PlazCodeConnectionDoctor: any;
 declare var PlazCodeCowork: any;
 declare var PlazCodeCreator: any;
 declare var PlazCodeCreatorUI: any;
+declare var PlazCodeDomCache: PlazCodeDomCacheApi;
+declare var PlazCodeTabKeepAwake: PlazCodeTabKeepAwakeApi;
 declare var PlazCodeEnhancer: any;
 declare var PlazCodeExplorerUI: any;
 declare var PlazCodeFeatureGuide: any;

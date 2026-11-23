@@ -14,8 +14,16 @@
 
 (() => {
   "use strict";
-  const P = RSProvider;
+  const rawP = RSProvider;
+  const domCache = typeof PlazCodeDomCache !== "undefined"
+    ? PlazCodeDomCache.create({
+        ignoreRecords: (records: MutationRecord[]) =>
+          records.every(isOwnMutation) || !!(rawP.ignoreMutationRecords && rawP.ignoreMutationRecords(records)),
+      })
+    : null;
+  const P: PlazCodeProvider = domCache ? domCache.wrapProvider(rawP) : rawP;
   const T = P.timings;
+  try { if (domCache) window.__plazcodeDomCacheStats = () => domCache.stats(); } catch {}
   const log = (...a: any[]) => console.log("[plazcode]", ...a);
 
   // ── Timing (v1.12.2: all-native, no Web Worker) ────────────────────────────
@@ -147,8 +155,24 @@
     }).catch(()=>{});
   }
   let bgMode = true;
+  let tabKeepAwake = true;
+  let agentReady = false;
+  function syncTabKeepAwake(streaming?: boolean) {
+    if (typeof PlazCodeTabKeepAwake === "undefined") return;
+    if (!agentReady) { PlazCodeTabKeepAwake.setEnabled(tabKeepAwake); return; }
+    const stopped = !!(A.stop || A.stopping || A.userStopped);
+    const active = !stopped && !!(
+      A.running || A.starting || A.injecting || A.enhancing ||
+      (A.started && (streaming !== undefined ? streaming : (P.isHardGenerating ? P.isHardGenerating() : P.isGenerating())))
+    );
+    PlazCodeTabKeepAwake.update({ enabled: tabKeepAwake, active });
+  }
   try {
-    chrome.storage.local.get("rsBgMode", (r) => { if (r && typeof r.rsBgMode === "boolean") bgMode = r.rsBgMode; });
+    chrome.storage.local.get(["rsBgMode", "rsTabKeepAwake"], (r) => {
+      if (r && typeof r.rsBgMode === "boolean") bgMode = r.rsBgMode;
+      if (r && typeof r.rsTabKeepAwake === "boolean") tabKeepAwake = r.rsTabKeepAwake;
+      syncTabKeepAwake();
+    });
   } catch {}
   // Codex-style permission: sandbox (Studio + workspace only) | ask (confirm writes) | full (entire PC).
   let permMode = "sandbox";
@@ -1029,6 +1053,8 @@
     // Timestamp of the last successful tool-catalogue refresh (see ensureTools).
     toolsAt: 0,
   };
+  agentReady = true;
+  syncTabKeepAwake();
 
   function createAgentLifecycle(onExit: (previous: string, next: string) => void = () => {}) {
     let phase = 'idle', owner = 'idle', revision = 0;
@@ -4995,6 +5021,7 @@ return result`;
   async function agentLoop(base: any, recoveryAttempt = 0) {
     if (A.running || A.starting || A.stopping || A.enhancing || A.pendingToolSettles || (A.budgetResume && A.budgetResume.chat===P.conversationKey())) return;
     A.running = true;
+    syncTabKeepAwake(true);
     A.budgetResume=null;A.visualChecks=0;
     const taskBudget=A.taskBudget=PlazCodeReliability.createBudget({calls:reliabilitySettings.rsRunLimitsEnabled?reliabilitySettings.rsToolBudget:0,minutes:reliabilitySettings.rsRunLimitsEnabled?reliabilitySettings.rsTaskMinutes:0});
     if (!activity.active()) {
@@ -5646,6 +5673,7 @@ return result`;
       if (!completed && !recoverSession && cowork.snapshot().pending.length) cowork.pause("The agent stopped before finishing. Check the chat, then resume the queue.");
       try { playSfx(A.stop ? "stop" : (A._sfxErr ? "error" : "done")); A._sfxErr = false; } catch {}
       A.running = false;
+      syncTabKeepAwake(false);
       A.approveAll = null; // Plan approval lasts for one task; saved tool approvals persist.
       A.planApproved = false; // an approved plan covers one task
       activity.sync(false, P.conversationKey(), undefined, {collapse: completed}); syncActivityItems();
@@ -5876,6 +5904,7 @@ return result`;
       cowork.pause("Stopped. Pending requests are saved here until you resume.");
     }
     A.stop = true;
+    syncTabKeepAwake(false);
     A.approveAll = null; A.planApproved = false;
     if (approvalCancel) { try { approvalCancel(); } catch {} }
     A.nativeSendIntent = null;
@@ -6218,6 +6247,7 @@ return result`;
     // restored execute_luau can't leak into the freshly started conversation.
     A.bootBaselineId = P.lastAssistantId ?  P.lastAssistantId() : null;
     A.starting = true;
+    syncTabKeepAwake(true);
     A._startingSince = Date.now(); // stale-bootstrap failsafe anchor (meter loop)
     const myGen = ++A.startGen;   // identity of THIS bootstrap
     A.startupOwner = myGen; // keep cancelled sends isolated until their promise settles
@@ -6628,6 +6658,7 @@ return result`;
         }
         A.starting = false;
         A.startingKey = null;
+        syncTabKeepAwake();
         try { ui.setStarting(false); } catch {}
         try { ui.inputCover(false); } catch {}
         try { P.setInputLock(false); } catch {}
@@ -8307,6 +8338,11 @@ return result`;
         }
         if (changes.rsBgMode && typeof changes.rsBgMode.newValue === "boolean") {
           bgMode = changes.rsBgMode.newValue; dirty = true;
+        }
+        if (changes.rsTabKeepAwake && typeof changes.rsTabKeepAwake.newValue === "boolean") {
+          tabKeepAwake = changes.rsTabKeepAwake.newValue;
+          try { syncTabKeepAwake(); } catch {}
+          dirty = true;
         }
         if (changes.rsThinkingLevel && ["default","low","mid","high","max","ultracode"].includes(changes.rsThinkingLevel.newValue)) {
           thinkingLevel = changes.rsThinkingLevel.newValue;
@@ -12518,7 +12554,7 @@ function renderCards(panel: any) {
           if(request.chat!==P.id+'|'+P.conversationKey())return {ok:false,error:"Selected chat changed. No Studio command was sent."};
           let passes: any;try{passes=PlazCodeCreator.batches(request.blueprint,!!request.welded);}catch(error: any){return {ok:false,error:error.message};}
           const chat=P.conversationKey(),engine=activeEngine(),started=Date.now();let done=0;const waypoint=async (label: any)=>{try{await runTool({tool:"execute_luau",arguments:{code:'local h=game:GetService("ChangeHistoryService") pcall(function() h:SetEnabled(true) end) h:SetWaypoint('+JSON.stringify(String(label))+') return "ok"'}});}catch{}};
-          A.stop=false;A.stopping=false;A.running=true;inputCover(true);
+          A.stop=false;A.stopping=false;A.running=true;syncTabKeepAwake(true);inputCover(true);
           try{
             await waypoint('Before PlazCode insert');
             for(const pass of passes){
@@ -12556,7 +12592,7 @@ h:SetWaypoint("PlazCode insert")
 return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code}});if(/^ERROR/.test(placed))throw Error(placed);}
             return {ok:true,message:`Inserted ${request.blueprint.nodes.length} nodes as one "${request.blueprint.root_name||'PlazCode build'}" ${request.blueprint.mode==='ui'?'ScreenGui in StarterGui':'Model in front of the camera'}. Ctrl+Z undoes it.`};
           }catch(error: any){await waypoint('PlazCode partial insert');return {ok:false,error:`Partial insertion (${done}/${passes.length} passes): ${error.message||error}`};}
-          finally{A.running=false;inputCover(false);}
+          finally{A.running=false;syncTabKeepAwake(false);inputCover(false);}
         })();
         if(requestId){coworkAccepted.set(requestId,operation);if(coworkAccepted.size>100)coworkAccepted.delete(coworkAccepted.keys().next().value);}return operation;
       }
@@ -12983,6 +13019,7 @@ rsInterval(() => {
           A.starting = false;
           A.startingKey = null;
           A._startingSince = 0;
+          syncTabKeepAwake();
           try { ui.setStarting(false); } catch {}
           try { ui.inputCover(false); } catch {}
           try { P.setInputLock(false); } catch {}
@@ -13161,6 +13198,7 @@ rsInterval(() => {
       }
     }
     ui.showStop(A.starting || A.enhancing || A.running || A.toolRunning || A.stopping || (A.started && P.isHardGenerating()));
+    syncTabKeepAwake(gen || hardGen);
 
     // Tool is executing on the MCP → timer on its chip.
     if (A.waitingForClarification) return;
@@ -13194,6 +13232,7 @@ rsInterval(() => {
   let _runBeatActive = false, _releaseRunLock: any = null;
   function syncRunBeat() {
     const active = !!(A.running || A.starting);
+    syncTabKeepAwake();
     if (active || _runBeatActive) {
       try { const p = chrome.runtime.sendMessage({ type: "rs-run-beat", running: active, hidden: document.hidden }); if (p && p.catch) p.catch(() => {}); } catch {}
     }
@@ -13705,6 +13744,7 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
         A.startGen++;
         A.starting = false;
         A.startingKey = null;
+        syncTabKeepAwake();
         P.setInputLock(false);
         ui.setStarting(false);
         // CRITICAL: startSession's own finally is gated on `alive()` (this abandon
