@@ -25,7 +25,7 @@ const BASE_HEADERS = {
   'X-Frame-Options': 'DENY',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Workshop-Client',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Workshop-Client, X-Owner-Token',
 };
 
 class ApiError extends Error {
@@ -180,23 +180,42 @@ function bearerToken(request) {
   return m ? m[1].trim() : '';
 }
 
-function isOwner(request, env) {
+async function isOwner(request, env) {
   const expected = env.WORKSHOP_OWNER_TOKEN;
-  if (!expected) return false;
-  return constantTimeEqual(bearerToken(request), expected);
+  const headerSecret = request.headers.get('x-owner-token') || '';
+  const bearer = bearerToken(request);
+  if (expected && (constantTimeEqual(bearer, expected) || constantTimeEqual(headerSecret, expected))) {
+    return true;
+  }
+  if (bearer && env.ACCOUNT_SESSION_URL) {
+    try {
+      const res = await fetch(`${env.ACCOUNT_SESSION_URL.replace(/\/+$/, '')}/v1/session`, {
+        headers: { Authorization: `Bearer ${bearer}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data?.profile?.is_owner === true;
+      }
+    } catch {}
+  }
+  return false;
 }
 
-function requireOwner(request, env) {
-  if (!env.WORKSHOP_OWNER_TOKEN) {
+async function requireOwner(request, env) {
+  if (!env.WORKSHOP_OWNER_TOKEN && !env.ACCOUNT_SESSION_URL) {
     throw new ApiError(503, 'Owner moderation secret is not configured on this worker.');
   }
-  if (!isOwner(request, env)) {
+  if (!(await isOwner(request, env))) {
     throw new ApiError(403, 'Owner authorization required.');
   }
 }
 
 async function resolveActor(request, env, { allowClientHeader = false } = {}) {
   const token = bearerToken(request);
+  const ownerHeader = request.headers.get('x-owner-token') || '';
+  if (env.WORKSHOP_OWNER_TOKEN && constantTimeEqual(ownerHeader, env.WORKSHOP_OWNER_TOKEN)) {
+    return { userId: 'owner:plazcode', username: 'PlazCode', owner: true };
+  }
   if (token) {
     if (env.WORKSHOP_OWNER_TOKEN && constantTimeEqual(token, env.WORKSHOP_OWNER_TOKEN)) {
       return { userId: 'owner:plazcode', username: 'PlazCode', owner: true };
@@ -209,13 +228,18 @@ async function resolveActor(request, env, { allowClientHeader = false } = {}) {
       const res = await fetch(`${env.ACCOUNT_SESSION_URL.replace(/\/+$/, '')}/v1/session`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 403) {
+        let errBody = null;
+        try { errBody = await res.json(); } catch {}
+        throw new ApiError(403, errBody?.error || 'This account is banned from using PlazCode.');
+      }
       if (!res.ok) throw new ApiError(401, 'Invalid or expired account session.');
       const data = await res.json();
       if (!data?.profile?.id) throw new ApiError(401, 'Account profile missing.');
       return {
         userId: `acct:${data.profile.id}`,
         username: String(data.profile.username || 'community').slice(0, 48),
-        owner: false,
+        owner: Boolean(data.profile.is_owner),
       };
     }
     if (env.WORKSHOP_PUBLIC_UPLOADS === 'true') {
@@ -245,7 +269,7 @@ async function enforceBudget(db, key, limit, windowMs, now) {
   if (!row) throw new ApiError(429, 'Rate limit exceeded. Please try again later.');
 }
 
-function serializeSkillRow(row, includeFiles = false) {
+function serializeSkillRow(row, includeFiles = false, includeOwnerMeta = false) {
   let tags = [];
   try { tags = JSON.parse(row.tags || '[]'); } catch {}
   const out = {
@@ -272,6 +296,10 @@ function serializeSkillRow(row, includeFiles = false) {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+  if (includeOwnerMeta) {
+    out.author_key = row.author_key || '';
+    if (row.reject_reason) out.reject_reason = row.reject_reason;
+  }
   if (includeFiles) {
     try { out.files = JSON.parse(row.files_json || '[]'); } catch { out.files = []; }
     if (row.reject_reason) out.reject_reason = row.reject_reason;
@@ -343,7 +371,7 @@ export default {
         const id = skillGet[1];
         const row = await db.prepare('SELECT * FROM skills WHERE id = ?').bind(id).first();
         if (!row) throw new ApiError(404, 'Skill not found.');
-        if (row.status !== 'approved' && !isOwner(request, env)) {
+        if (row.status !== 'approved' && !(await isOwner(request, env))) {
           throw new ApiError(404, 'Skill not found.');
         }
         return json({ ok: true, skill: serializeSkillRow(row, true) });
@@ -431,7 +459,7 @@ export default {
             status,
             message: approved
               ? 'Published and approved in Workshop.'
-              : 'Submitted for owner review. It becomes public once approved.',
+              : 'Submitted for owner approval. It becomes public once approved in the Owner Panel.',
             skill: serializeSkillRow(created, false),
           },
           201
@@ -520,29 +548,61 @@ export default {
 
       // Owner moderation endpoints
       if (path === '/api/v1/owner/queue' && request.method === 'GET') {
-        requireOwner(request, env);
+        await requireOwner(request, env);
         const rows = await db
           .prepare("SELECT * FROM skills WHERE status IN ('pending', 'hidden') ORDER BY report_count DESC, created_at ASC LIMIT 100")
           .all();
-        return json({ ok: true, queue: (rows.results || []).map((r) => serializeSkillRow(r, true)) });
+        return json({ ok: true, queue: (rows.results || []).map((r) => serializeSkillRow(r, true, true)) });
+      }
+
+      if (path === '/api/v1/owner/skills' && request.method === 'GET') {
+        await requireOwner(request, env);
+        const statusFilter = String(url.searchParams.get('status') || 'all').trim().toLowerCase();
+        const q = String(url.searchParams.get('q') || '').trim().toLowerCase();
+        const rows = await db
+          .prepare('SELECT * FROM skills ORDER BY report_count DESC, updated_at DESC LIMIT 200')
+          .all();
+        const allSkills = rows.results || [];
+        const counts = { all: allSkills.length, approved: 0, hidden: 0, pending: 0, rejected: 0, removed: 0 };
+        for (const r of allSkills) {
+          if (Object.prototype.hasOwnProperty.call(counts, r.status)) counts[r.status] += 1;
+        }
+        const filtered = allSkills.filter((r) => {
+          if (statusFilter && statusFilter !== 'all' && r.status !== statusFilter) return false;
+          if (q) {
+            const hay = `${r.title || ''} ${r.summary || ''} ${r.author || ''} ${r.author_key || ''} ${r.tags || ''}`.toLowerCase();
+            if (!hay.includes(q)) return false;
+          }
+          return true;
+        });
+        const bannedRows = await db
+          .prepare('SELECT author_key, reason, banned_at FROM banned_authors ORDER BY banned_at DESC LIMIT 200')
+          .all();
+        return json({
+          ok: true,
+          skills: filtered.map((r) => serializeSkillRow(r, true, true)),
+          counts,
+          banned_authors: bannedRows.results || [],
+        });
       }
 
       if (path === '/api/v1/owner/approve' && request.method === 'POST') {
-        requireOwner(request, env);
+        await requireOwner(request, env);
         const body = await boundedJson(request, MAX_SMALL_BODY_BYTES);
         const id = String(body.id || '').trim();
         if (!id) throw new ApiError(400, 'Skill id is required.');
         const featured = body.featured === true ? 1 : 0;
         const row = await db
-          .prepare("UPDATE skills SET status = 'approved', reviewed_by = 'PlazCode', featured = ?, reject_reason = '', updated_at = ? WHERE id = ? RETURNING *")
+          .prepare("UPDATE skills SET status = 'approved', reviewed_by = 'PlazCode', featured = ?, reject_reason = '', report_count = 0, updated_at = ? WHERE id = ? RETURNING *")
           .bind(featured, now, id)
           .first();
         if (!row) throw new ApiError(404, 'Skill not found.');
-        return json({ ok: true, skill: serializeSkillRow(row, false) });
+        await db.prepare('DELETE FROM reports WHERE skill_id = ?').bind(id).run();
+        return json({ ok: true, skill: serializeSkillRow(row, false, true) });
       }
 
       if (path === '/api/v1/owner/reject' && request.method === 'POST') {
-        requireOwner(request, env);
+        await requireOwner(request, env);
         const body = await boundedJson(request, MAX_SMALL_BODY_BYTES);
         const id = String(body.id || '').trim();
         const reason = String(body.reason || 'Does not meet Workshop guidelines.').trim().slice(0, 300);
@@ -552,11 +612,11 @@ export default {
           .bind(reason, now, id)
           .first();
         if (!row) throw new ApiError(404, 'Skill not found.');
-        return json({ ok: true, skill: serializeSkillRow(row, false) });
+        return json({ ok: true, skill: serializeSkillRow(row, false, true) });
       }
 
       if (path === '/api/v1/owner/remove' && request.method === 'POST') {
-        requireOwner(request, env);
+        await requireOwner(request, env);
         const body = await boundedJson(request, MAX_SMALL_BODY_BYTES);
         const id = String(body.id || '').trim();
         if (!id) throw new ApiError(400, 'Skill id is required.');
@@ -569,7 +629,7 @@ export default {
       }
 
       if (path === '/api/v1/owner/ban' && request.method === 'POST') {
-        requireOwner(request, env);
+        await requireOwner(request, env);
         const body = await boundedJson(request, MAX_SMALL_BODY_BYTES);
         const rawAuthor = String(body.author_key || body.author || '').trim();
         const reason = String(body.reason || 'Banned by owner.').trim().slice(0, 300);
@@ -588,6 +648,29 @@ export default {
           .bind(now, rawAuthor, rawAuthor.toLowerCase())
           .run();
         return json({ ok: true, author_key: rawAuthor, banned: true });
+      }
+
+      if (path === '/api/v1/owner/unban' && request.method === 'POST') {
+        await requireOwner(request, env);
+        const body = await boundedJson(request, MAX_SMALL_BODY_BYTES);
+        const rawAuthor = String(body.author_key || body.author || '').trim();
+        if (!rawAuthor) throw new ApiError(400, 'author_key is required.');
+        const keys = new Set([rawAuthor, rawAuthor.toLowerCase()]);
+        const existing = await db
+          .prepare('SELECT DISTINCT author_key, LOWER(author) AS lower_author FROM skills WHERE author_key = ? OR LOWER(author) = ?')
+          .bind(rawAuthor, rawAuthor.toLowerCase())
+          .all();
+        for (const r of existing.results || []) {
+          if (r.author_key) keys.add(r.author_key);
+          if (r.lower_author) keys.add(r.lower_author);
+        }
+        for (const key of keys) {
+          await db
+            .prepare('DELETE FROM banned_authors WHERE author_key = ? OR LOWER(author_key) = ?')
+            .bind(key, key.toLowerCase())
+            .run();
+        }
+        return json({ ok: true, author_key: rawAuthor, unbanned: true });
       }
 
       throw new ApiError(404, 'Not found.');

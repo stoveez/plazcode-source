@@ -9,7 +9,8 @@ try:
 except ImportError:
     print("SKIPPED: no Blender here (run with blender --background --python, or install bpy)"); sys.exit(0)
 here = os.path.dirname(os.path.abspath(__file__))
-source = open(os.path.join(here, "overlay", "blender_ops.py"), encoding="utf-8").read()
+dev = os.path.join(os.path.dirname(os.path.dirname(here)), "development", "1.24.36")
+source = open(os.path.join(dev, "overlay", "blender_ops.py"), encoding="utf-8").read()
 scratch = tempfile.mkdtemp(prefix="plazcode-send-")
 def op(cmd, args):
     code = (source.replace("__PLAZCODE_CMD__", cmd).replace("__PLAZCODE_ARGS__", json.dumps(args))

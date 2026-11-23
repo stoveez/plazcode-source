@@ -58,7 +58,7 @@ def record(phase):
         p = ROOT / 'docs/vault/code-protection.md'
         p.write_text(p.read_text().replace('No protected release has shipped; Windows/Mac and installed-extension gates are still required.',
             f'Protected release 1.24.36 shipped after all platform/browser and packaged Mac gates passed (validation {run}, publication {publish}).'))
-        p = ROOT / 'development/1.24.36/NEXT-UPDATE-PLAN.md'
+        p = ROOT / 'docs/version-notes/1.24.36/NEXT-UPDATE-PLAN.md'
         text = p.read_text()
         text = text.replace('code protection and permanent tool approvals are now in progress.', 'code protection and permanent tool approvals shipped in 1.24.36.')
         p.write_text(text)

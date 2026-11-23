@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {generateKeyPairSync,createDecipheriv} from 'node:crypto';
-import {variantSeed,variantInfo,deriveVariant,packConfig} from './release-variant.mjs';
-import {sealTextPack,openTextPack} from './protection.mjs';
+import {variantSeed,variantInfo,deriveVariant,packConfig} from '../../development/1.24.36/release-variant.mjs';
+import {sealTextPack,openTextPack} from '../../development/1.24.36/protection.mjs';
 
 const {privateKey}=generateKeyPairSync('ed25519');
 const first=deriveVariant(privateKey,'1.24.36','release');

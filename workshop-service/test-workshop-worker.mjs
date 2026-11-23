@@ -47,13 +47,15 @@ function createMockD1() {
         if (norm.startsWith('SELECT author_key FROM banned_authors WHERE author_key = ? OR author_key = ?')) {
           return tables.banned_authors.get(args[0]) || tables.banned_authors.get(args[1]) || null;
         }
-        if (norm.startsWith('SELECT DISTINCT author_key FROM skills')) {
+        if (norm.startsWith('SELECT DISTINCT author_key')) {
           const [ak, a] = args;
-          const seen = new Set();
+          const seen = new Map();
           for (const s of tables.skills.values()) {
-            if (s.author_key === ak || s.author.toLowerCase() === a) seen.add(s.author_key);
+            if (s.author_key === ak || s.author.toLowerCase() === a) {
+              seen.set(s.author_key, { author_key: s.author_key, lower_author: s.author.toLowerCase() });
+            }
           }
-          return { results: [...seen].map((author_key) => ({ author_key })) };
+          return { results: [...seen.values()] };
         }
         if (norm.startsWith('SELECT * FROM skills WHERE id = ?')) {
           return tables.skills.get(args[0]) || null;
@@ -94,6 +96,7 @@ function createMockD1() {
           s.reviewed_by = 'PlazCode';
           s.featured = featured;
           s.reject_reason = '';
+          s.report_count = 0;
           s.updated_at = now;
           return s;
         }
@@ -117,13 +120,25 @@ function createMockD1() {
         return null;
       },
       async all() {
-        if (norm.startsWith('SELECT DISTINCT author_key FROM skills')) {
+        if (norm.startsWith('SELECT DISTINCT author_key')) {
           const [ak, a] = args;
-          const seen = new Set();
+          const seen = new Map();
           for (const s of tables.skills.values()) {
-            if (s.author_key === ak || s.author.toLowerCase() === a) seen.add(s.author_key);
+            if (s.author_key === ak || s.author.toLowerCase() === a) {
+              seen.set(s.author_key, { author_key: s.author_key, lower_author: s.author.toLowerCase() });
+            }
           }
-          return { results: [...seen].map((author_key) => ({ author_key })) };
+          return { results: [...seen.values()] };
+        }
+        if (norm.startsWith('SELECT * FROM skills ORDER BY report_count DESC, updated_at DESC')) {
+          const results = [...tables.skills.values()].sort(
+            (a, b) => b.report_count - a.report_count || b.updated_at - a.updated_at
+          );
+          return { results };
+        }
+        if (norm.startsWith('SELECT author_key, reason, banned_at FROM banned_authors')) {
+          const results = [...tables.banned_authors.values()].sort((a, b) => b.banned_at - a.banned_at);
+          return { results };
         }
         if (norm.startsWith("SELECT * FROM skills WHERE status IN ('pending', 'hidden')")) {
           const results = [...tables.skills.values()]
@@ -228,6 +243,20 @@ function createMockD1() {
           }
           return { success: true };
         }
+        if (norm.startsWith('DELETE FROM reports WHERE skill_id = ?')) {
+          const [skillId] = args;
+          for (const key of [...tables.reports.keys()]) {
+            if (key.startsWith(`${skillId}:`)) tables.reports.delete(key);
+          }
+          return { success: true };
+        }
+        if (norm.startsWith('DELETE FROM banned_authors WHERE author_key = ? OR LOWER(author_key) = ?')) {
+          const [ak, low] = args;
+          for (const key of [...tables.banned_authors.keys()]) {
+            if (key === ak || key.toLowerCase() === low) tables.banned_authors.delete(key);
+          }
+          return { success: true };
+        }
         return { success: true };
       },
     };
@@ -323,7 +352,7 @@ async function req(env, urlPath, { method = 'GET', body = null, headers = {} } =
   const getBefore = await req(env, `/api/v1/skills/${skillId}`);
   assert.equal(getBefore.status, 404, 'pending skill GET returns 404 to public');
 
-  // 6. Owner queue & approval flow (reject unauthorized owner calls)
+  // 6. Owner queue, all-skills listing, & approval flow (reject unauthorized owner calls)
   const badOwner = await req(env, '/api/v1/owner/queue', {
     headers: { Authorization: 'Bearer community-upload-token-456' },
   });
@@ -335,6 +364,14 @@ async function req(env, urlPath, { method = 'GET', body = null, headers = {} } =
   assert.equal(queue.status, 200);
   assert.equal(queue.data.queue.length, 1);
   assert.equal(queue.data.queue[0].id, skillId);
+
+  const allSkills = await req(env, '/api/v1/owner/skills?status=pending&q=hud', {
+    headers: { 'X-Owner-Token': 'owner-secret-token-123' },
+  });
+  assert.equal(allSkills.status, 200);
+  assert.equal(allSkills.data.skills.length, 1);
+  assert.equal(allSkills.data.counts.pending, 1);
+  assert(allSkills.data.skills[0].author_key, 'owner skills listing includes author_key');
 
   const approve = await req(env, '/api/v1/owner/approve', {
     method: 'POST',
@@ -375,7 +412,7 @@ async function req(env, urlPath, { method = 'GET', body = null, headers = {} } =
   assert.equal(r1Update.data.rating_avg, 5, 'same user updates existing rating instead of duplicating');
   assert.equal(r1Update.data.rating_count, 1);
 
-  // 8. 3-report auto-hide
+  // 8. 3-report auto-hide & owner restore resets report_count
   for (const [idx, user] of ['rep-1', 'rep-2', 'rep-3'].entries()) {
     const rep = await req(env, `/api/v1/skills/${skillId}/report`, {
       method: 'POST',
@@ -389,7 +426,16 @@ async function req(env, urlPath, { method = 'GET', body = null, headers = {} } =
   const hiddenList = await req(env, '/api/v1/skills');
   assert.equal(hiddenList.data.skills.length, 0, '3 reports auto-hide the skill');
 
-  // 9. Owner reject, remove, ban author
+  const restored = await req(env, '/api/v1/owner/approve', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer owner-secret-token-123' },
+    body: { id: skillId, featured: false },
+  });
+  assert.equal(restored.status, 200);
+  assert.equal(restored.data.skill.status, 'approved');
+  assert.equal(restored.data.skill.report_count, 0);
+
+  // 9. Owner reject, remove, ban & unban author
   const ownerPub = await req(env, '/api/v1/skills', {
     method: 'POST',
     headers: { Authorization: 'Bearer owner-secret-token-123' },
@@ -434,5 +480,56 @@ async function req(env, urlPath, { method = 'GET', body = null, headers = {} } =
   });
   assert.equal(bannedSubmit.status, 403);
 
-  console.log('PASS workshop-service worker: health, scanner, pending moderation, ratings, 3-report auto-hide, installs, owner approve/reject/remove/ban');
+  const unban = await req(env, '/api/v1/owner/unban', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer owner-secret-token-123' },
+    body: { author: 'alice' },
+  });
+  assert.equal(unban.data.unbanned, true);
+
+  const unbannedSubmit = await req(env, '/api/v1/skills', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer community-upload-token-456', 'X-Workshop-Client': 'alice' },
+    body: {
+      title: 'After unban',
+      summary: 'Returns to pending queue once unbanned',
+      files: [{ path: 'SKILL.md', text: '# Back online' }],
+    },
+  });
+  assert.equal(unbannedSubmit.status, 201);
+  assert.equal(unbannedSubmit.data.status, 'pending');
+
+  // 10. Account-session owner authorization & banned-session pass-through
+  const origFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async (url, init) => {
+      const auth = init?.headers?.Authorization || init?.headers?.authorization || '';
+      if (auth === 'Bearer owner-session-tok') {
+        return new Response(JSON.stringify({ profile: { id: 'o1', username: 'Plaz', is_owner: true } }), { status: 200 });
+      }
+      if (auth === 'Bearer banned-session-tok') {
+        return new Response(JSON.stringify({ error: 'Account banned for spam' }), { status: 403 });
+      }
+      return new Response(JSON.stringify({ profile: { id: 'u1', username: 'user1', is_owner: false } }), { status: 200 });
+    };
+    const acctEnv = { ...env, WORKSHOP_OWNER_TOKEN: '', ACCOUNT_SESSION_URL: 'https://accounts.example' };
+    const acctOwnerSkills = await req(acctEnv, '/api/v1/owner/skills', {
+      headers: { Authorization: 'Bearer owner-session-tok' },
+    });
+    assert.equal(acctOwnerSkills.status, 200);
+    const nonOwnerSkills = await req(acctEnv, '/api/v1/owner/skills', {
+      headers: { Authorization: 'Bearer user-session-tok' },
+    });
+    assert.equal(nonOwnerSkills.status, 403);
+    const bannedSessionPost = await req(acctEnv, '/api/v1/skills', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer banned-session-tok' },
+      body: { title: 'Blocked', summary: 'Banned session', files: [{ path: 'SKILL.md', text: '# No' }] },
+    });
+    assert.equal(bannedSessionPost.status, 403);
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+
+  console.log('PASS workshop-service worker: health, scanner, pending moderation, ratings, 3-report auto-hide, installs, owner skills/queue/approve/reject/remove/ban/unban, account-session owner auth');
 })();

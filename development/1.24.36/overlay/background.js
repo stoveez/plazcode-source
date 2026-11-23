@@ -1428,7 +1428,7 @@ async function reportDesktopAgentState() {
           reply = lastTabState.reply;
         } else if (reply) lastTabState = { tabId: tab.id, reply, at: Date.now() };
         if (reply) {
-          control = { ...reply, tab_id: tab.id };
+          control = { ...reply, tab_id: tab.id, tab_title: String(tab.title || "").trim().slice(0, 140) };
           if(reply.barVisible===false && !reply.canStop){control.canStart=false;control.status="PlazCode page bar is hidden. Refresh the AI tab after reloading the extension.";}
         }
       } catch { control.status = "Refresh the selected AI chat to reconnect PlazCode."; }

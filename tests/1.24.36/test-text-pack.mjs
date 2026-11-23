@@ -11,7 +11,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
-import {moveText,sealTextPack,openTextPack,TEXT_PACK_FILES} from './protection.mjs';
+import {moveText,sealTextPack,openTextPack,TEXT_PACK_FILES} from '../../development/1.24.36/protection.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const source=process.argv[2]?path.resolve(process.argv[2]):path.resolve(here,'../../build-src-1.24.36/PlazCode');
 const require=createRequire(path.join(source,'release-tools/package.json'));

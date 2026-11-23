@@ -887,6 +887,37 @@ pub struct NormalizedTurnResponse {
     pub text: String,
     pub reasoning: String,
     pub tool_calls: Vec<NormalizedToolCall>,
+    pub usage_tokens: Option<u64>,
+}
+
+fn extract_usage_tokens(val: &Value) -> Option<u64> {
+    if let Some(usage) = val.get("usage") {
+        if let Some(t) = usage.get("total_tokens").and_then(|v| v.as_u64()).filter(|&n| n > 0) {
+            return Some(t);
+        }
+        let inp = usage
+            .get("input_tokens")
+            .or_else(|| usage.get("prompt_tokens"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let out = usage
+            .get("output_tokens")
+            .or_else(|| usage.get("completion_tokens"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        if inp + out > 0 {
+            return Some(inp + out);
+        }
+    }
+    if let Some(t) = val
+        .get("usageMetadata")
+        .and_then(|u| u.get("totalTokenCount"))
+        .and_then(|v| v.as_u64())
+        .filter(|&n| n > 0)
+    {
+        return Some(t);
+    }
+    None
 }
 
 #[derive(Clone, Debug)]
@@ -1371,6 +1402,7 @@ pub fn parse_nonstream_response(api: &RequestApi, resp: &Value) -> NormalizedTur
                 text,
                 reasoning,
                 tool_calls,
+                usage_tokens: extract_usage_tokens(resp),
             }
         }
         RequestApi::Gemini => {
@@ -1408,6 +1440,7 @@ pub fn parse_nonstream_response(api: &RequestApi, resp: &Value) -> NormalizedTur
                 text,
                 reasoning: String::new(),
                 tool_calls,
+                usage_tokens: extract_usage_tokens(resp),
             }
         }
         RequestApi::Responses => {
@@ -1459,6 +1492,7 @@ pub fn parse_nonstream_response(api: &RequestApi, resp: &Value) -> NormalizedTur
                 text,
                 reasoning: String::new(),
                 tool_calls,
+                usage_tokens: extract_usage_tokens(resp),
             }
         }
         RequestApi::ChatCompletions | RequestApi::Auto => {
@@ -1512,6 +1546,7 @@ pub fn parse_nonstream_response(api: &RequestApi, resp: &Value) -> NormalizedTur
                 text,
                 reasoning,
                 tool_calls,
+                usage_tokens: extract_usage_tokens(resp),
             }
         }
     }
@@ -1649,6 +1684,7 @@ async fn stream_or_json_provider_turn(
         // Stream SSE chunks
         let mut full_text = String::new();
         let mut full_reasoning = String::new();
+        let mut usage_tokens: Option<u64> = None;
         // index -> (id, name, args_str)
         let mut oa_tc_acc: HashMap<usize, (String, String, String)> = HashMap::new();
         // Anthropic block index -> (id, name, json_str)
@@ -1681,6 +1717,9 @@ async fn stream_or_json_provider_turn(
                 let Ok(ev) = serde_json::from_str::<Value>(payload_str) else {
                     continue;
                 };
+                if let Some(u) = extract_usage_tokens(&ev).or_else(|| ev.get("response").and_then(extract_usage_tokens)) {
+                    usage_tokens = Some(u);
+                }
                 match api {
                     RequestApi::Anthropic => {
                         let typ = ev.get("type").and_then(|v| v.as_str()).unwrap_or("");
@@ -1833,6 +1872,7 @@ async fn stream_or_json_provider_turn(
                 text: full_text,
                 reasoning: full_reasoning,
                 tool_calls,
+                usage_tokens,
             },
             key_idx,
         ));
@@ -3145,6 +3185,25 @@ async fn run_agent_loop(
         }
     }
 
+    let chat_title = {
+        let _guard = STORE_LOCK.lock().await;
+        let cstore = load_chats_store(&root);
+        cstore
+            .chats
+            .iter()
+            .find(|c| c.id == chat_id)
+            .map(|c| c.title.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "New Chat".to_string())
+    };
+    let telemetry_key = format!("byok|{chat_id}");
+    let provider_label = plat.name.clone();
+    let display_title = format!(
+        "{} | {}",
+        chat_title,
+        model.display_name.as_deref().unwrap_or(&model.name)
+    );
+
     let mut assistant_text = String::new();
     let mut assistant_reasoning = String::new();
     let mut recorded_tools: Vec<ToolCallRecord> = Vec::new();
@@ -3177,6 +3236,9 @@ async fn run_agent_loop(
             ),
         };
 
+        let turn_started = std::time::Instant::now();
+        let req_bytes = body.to_string().len();
+
         match stream_or_json_provider_turn(
             &url,
             &api,
@@ -3189,6 +3251,19 @@ async fn run_agent_loop(
         .await
         {
             Ok((turn, used_idx)) => {
+                let turn_ms = turn_started.elapsed().as_millis() as u64;
+                let reply_bytes = turn.text.len() + turn.reasoning.len();
+                let turn_tokens = turn
+                    .usage_tokens
+                    .filter(|&n| n > 0)
+                    .unwrap_or_else(|| crate::telemetry::estimate_tokens(req_bytes + reply_bytes));
+                crate::telemetry::record_activity(
+                    &telemetry_key,
+                    &display_title,
+                    &provider_label,
+                    turn_ms,
+                    turn_tokens,
+                );
                 cursor = used_idx;
                 {
                     let _guard = STORE_LOCK.lock().await;
@@ -3233,6 +3308,7 @@ async fn run_agent_loop(
                     )
                     .await;
 
+                    let args_bytes = tc.arguments.to_string().len();
                     let (status, output) = execute_bridged_tool(
                         &state,
                         &mode,
@@ -3242,6 +3318,13 @@ async fn run_agent_loop(
                         confirmed_delete,
                     )
                     .await;
+                    crate::telemetry::record_command(
+                        &telemetry_key,
+                        &display_title,
+                        &provider_label,
+                        status == "ok",
+                        crate::telemetry::estimate_tokens(args_bytes + output.len()),
+                    );
 
                     if status == "ok" {
                         let engine = tool_engine_for(&mode, &tc.name);

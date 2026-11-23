@@ -5,7 +5,7 @@ import os from 'node:os';
 import vm from 'node:vm';
 import {generateKeyPairSync,webcrypto} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {envelope,openEnvelope,publicHex,parseSigningKey,protect,verifyTree,signInstallation,encryptMaps,decryptMaps,safePath,FILE_MANIFEST,EXT_MANIFEST} from './protection.mjs';
+import {envelope,openEnvelope,publicHex,parseSigningKey,protect,verifyTree,signInstallation,encryptMaps,decryptMaps,safePath,FILE_MANIFEST,EXT_MANIFEST} from '../../development/1.24.36/protection.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const source=path.resolve(here,'../../build-src-1.24.36/PlazCode');

@@ -1661,6 +1661,23 @@ html[data-plazcode-pixel="1"] .content{background-image:repeating-linear-gradien
 .byok-modal-err{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,105,108,.45);background:rgba(255,105,108,.1);font-size:12px}
 .byok-modal-foot{display:flex;justify-content:flex-end;gap:8px}
 @media(max-width:960px){.byok-chat-shell{grid-template-columns:1fr}.byok-chat-rail{max-height:180px}}
+.telemetry-card{position:relative;margin:14px 0 18px;padding:18px 20px;border-radius:var(--nx-r,16px);border:var(--nx-bw,1px) solid var(--pz-line,var(--stroke,#2b303b));background:color-mix(in srgb,var(--surface,#12151c) calc(var(--pz-alpha,.92) * 100%),transparent)}
+.telemetry-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding-bottom:14px;border-bottom:1px solid var(--pz-line,var(--stroke,#2b303b));margin-bottom:14px}
+.telemetry-eyebrow{font:700 10.5px/1.2 var(--pz-mono,monospace);letter-spacing:.14em;text-transform:uppercase;color:var(--orange2,#ff8d6b);margin-bottom:4px}
+.telemetry-title{margin:0;font-size:16px;font-weight:750;letter-spacing:-.2px;color:var(--text,#f5f8ff)}
+.telemetry-reset{padding:7px 14px;border-radius:9px;border:1px solid var(--pz-line,var(--stroke,#2b303b));background:transparent;color:var(--text,#f5f8ff);font:700 10.5px/1 var(--pz-mono,monospace);letter-spacing:.11em;cursor:pointer;transition:border-color .15s,background .15s}
+.telemetry-reset:hover:not(:disabled){border-color:var(--orange2,#ff8d6b);background:rgb(var(--pz-rgb,255 141 107)/.12)}
+.telemetry-reset:disabled{opacity:.55;cursor:wait}
+.telemetry-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.telemetry-kpi{padding:12px 14px;border-radius:calc(var(--nx-r,14px) - 2px);border:1px solid var(--pz-line,var(--stroke,#2b303b));background:var(--raised,#191d26)}
+.telemetry-kpi-label{font:600 10px/1.2 var(--pz-mono,monospace);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft,#9299aa);margin-bottom:8px}
+.telemetry-kpi-val{font:700 18px/1.15 var(--pz-mono,monospace);font-variant-numeric:tabular-nums;color:var(--text,#f5f8ff)}
+.telemetry-list{display:flex;flex-direction:column;gap:8px}
+.telemetry-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 14px;border-radius:calc(var(--nx-r,14px) - 3px);border:1px solid var(--pz-line,var(--stroke,#2b303b));background:color-mix(in srgb,var(--canvas,#0b0d12) 45%,var(--surface,#12151c))}
+.telemetry-row-title{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;font-weight:600;color:var(--text,#f5f8ff)}
+.telemetry-row-metrics{display:flex;align-items:center;gap:14px;flex-shrink:0;font:600 11.5px/1.2 var(--pz-mono,monospace);font-variant-numeric:tabular-nums;color:var(--ink-soft,#9299aa)}
+.telemetry-empty{padding:12px 14px;border-radius:calc(var(--nx-r,14px) - 3px);border:1px dashed var(--pz-line,var(--stroke,#2b303b));font-size:12px;color:var(--ink-soft,#9299aa);text-align:center}
+@media(max-width:780px){.telemetry-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.telemetry-row{flex-direction:column;align-items:flex-start;gap:6px}.telemetry-row-metrics{flex-wrap:wrap;gap:10px}}
 </style>
 <script id="pz-old-safari">
 /* 1.24.36 (owner: PlazCode runs on macOS 10.15 Catalina). On a Mac this window is drawn by the system Safari engine,
@@ -1838,7 +1855,7 @@ html[data-plazcode-pixel="1"] .content{background-image:repeating-linear-gradien
           <div class="stat" data-tone="amber"><div class="stat-head"><span id="studioDot" class="dot"></span>Roblox Studio</div><div id="studioVal" class="stat-val">Offline</div><div class="stat-sub">Primary Studio MCP</div></div>
           <div class="stat" data-tone="blue"><div class="stat-head"><span class="dot on" style="background:var(--blue)"></span>Tools</div><div id="toolCount" class="stat-val">0</div><div class="stat-sub">Live tool catalog</div></div>
           <div class="stat" data-tone="purple"><div class="stat-head"><span class="dot on" style="background:var(--purple)"></span>Workspace</div><div id="workspaceVal" class="stat-val">Off</div><div id="workspaceSub" data-i18n-user-content dir="auto" class="stat-sub">AgentScript files</div></div>
-        </div><div class="nx-grid" style="margin-top:8px"><button type="button" class="nx-card nx-link-card" data-ipc="open:github"><div><div class="nx-k">GitHub</div><div class="nx-v">PlazCode downloads</div></div><span class="nx-arrow">↗</span></button><button type="button" class="nx-card nx-link-card" data-ipc="open:discord"><div><div class="nx-k">Discord</div><div class="nx-v">Join the community</div></div><span class="nx-arrow">↗</span></button></div><div class="nx-sectionhead"><h2>What's New</h2><button type="button" class="nx-btn ghost" data-go="updates">All updates</button></div><div class="nx-card nx-note-card"><div class="nx-note-top"><span class="nx-k">Latest release</span><span class="nx-pill" id="ovNotesVersion">v__PLAZCODE_VERSION__</span></div><h3 id="ovNotesTitle">Release notes load when the update server answers.</h3><p id="ovNotesSummary"></p><ul id="ovNotesList"></ul></div><h2 class="nx-agent-head">Agent</h2>
+        </div><div class="nx-grid" style="margin-top:8px"><button type="button" class="nx-card nx-link-card" data-ipc="open:github"><div><div class="nx-k">GitHub</div><div class="nx-v">PlazCode downloads</div></div><span class="nx-arrow">↗</span></button><button type="button" class="nx-card nx-link-card" data-ipc="open:discord"><div><div class="nx-k">Discord</div><div class="nx-v">Join the community</div></div><span class="nx-arrow">↗</span></button></div><section id="homeTelemetry" class="telemetry-card" aria-label="Session telemetry"><div class="telemetry-head"><div><div class="telemetry-eyebrow">SESSION TELEMETRY</div><h2 class="telemetry-title">Project usage &amp; tokens</h2></div><button type="button" id="telemetryResetBtn" class="telemetry-reset">RESET STATS</button></div><div class="telemetry-kpis"><div class="telemetry-kpi"><div class="telemetry-kpi-label">ACTIVE SESSION</div><div id="telActiveSession" class="telemetry-kpi-val" data-i18n-user-content dir="ltr">0m 00s</div></div><div class="telemetry-kpi"><div class="telemetry-kpi-label">COMMANDS RUN</div><div id="telCommandsRun" class="telemetry-kpi-val" data-i18n-user-content dir="ltr">0</div></div><div class="telemetry-kpi" id="telSuccessCard"><div class="telemetry-kpi-label">SUCCESS RATE</div><div id="telSuccessRate" class="telemetry-kpi-val" data-i18n-user-content dir="ltr">—</div></div><div class="telemetry-kpi"><div class="telemetry-kpi-label">EST. TOKENS</div><div id="telEstTokens" class="telemetry-kpi-val" data-i18n-user-content dir="ltr">0</div></div></div><div id="telemetryChats" class="telemetry-list" role="list"></div></section><div class="nx-sectionhead"><h2>What's New</h2><button type="button" class="nx-btn ghost" data-go="updates">All updates</button></div><div class="nx-card nx-note-card"><div class="nx-note-top"><span class="nx-k">Latest release</span><span class="nx-pill" id="ovNotesVersion">v__PLAZCODE_VERSION__</span></div><h3 id="ovNotesTitle">Release notes load when the update server answers.</h3><p id="ovNotesSummary"></p><ul id="ovNotesList"></ul></div><h2 class="nx-agent-head">Agent</h2>
         <div class="home-heading"><div><span class="eyebrow">YOUR CONTROL CENTER</span><h1>Your workspace.</h1><p>Bring your ideas to life with your AI.</p></div><div class="workspace-chip"><span aria-hidden="true">⌘</span> PLAZCODE DESKTOP</div></div>
         <div class="hero">
           <div class="hero-info"><div class="hero-title">CREATE WITH YOUR AI</div><div class="hero-name">Choose your <span>AI.</span></div><p class="hero-description">Open a chat, connect PlazCode, and start building.</p>
@@ -2249,7 +2266,7 @@ __PLAZCODE_BACKDROP_FX__
         return {};
       }).then(function (Body) {
         if (!Response.ok) {
-          var Failure=new Error(Body.error || ("HTTP " + Response.status));Failure.code=Body.code;throw Failure;
+          var Failure=new Error(Body.error || ("HTTP " + Response.status));Failure.code=Body.code;Failure.warning=Body.warning;throw Failure;
         }
         return Body;
       });
@@ -2975,6 +2992,88 @@ __PLAZCODE_BACKDROP_FX__
     return Api("/api/desktop/clear-logs", { method: "POST" }).then(Refresh).catch(Showerror);
   }
 
+  var TelemetrySignature = "";
+  function FormatTelemetryDuration(Ms) {
+    var Sec = Math.max(0, Math.floor((Number(Ms) || 0) / 1000));
+    var H = Math.floor(Sec / 3600), M = Math.floor((Sec % 3600) / 60), S = Sec % 60;
+    var Pad = function (N) { return N < 10 ? "0" + N : String(N); };
+    return H > 0 ? (H + "h " + Pad(M) + "m") : (M + "m " + Pad(S) + "s");
+  }
+  function FormatTelemetryNumber(N) {
+    return Math.max(0, Math.round(Number(N) || 0)).toLocaleString("en-US");
+  }
+  function Rendertelemetry(Data) {
+    var ActiveEl = Byid("telActiveSession"), CmdsEl = Byid("telCommandsRun"), RateEl = Byid("telSuccessRate"), TokEl = Byid("telEstTokens"), ListEl = Byid("telemetryChats"), RateCard = Byid("telSuccessCard");
+    if (!ActiveEl || !CmdsEl || !RateEl || !TokEl || !ListEl) return;
+    var D = (Data && typeof Data === "object") ? Data : {};
+    var Lang = (typeof I18n !== "undefined" && I18n && typeof I18n.getLanguage === "function") ? I18n.getLanguage() : "en";
+    var Sig = Lang + "|" + JSON.stringify(D);
+    if (Sig === TelemetrySignature) return;
+    TelemetrySignature = Sig;
+
+    var ActiveMs = Number(D.active_session_ms || 0);
+    var CmdsRun = Number(D.commands_run || 0);
+    var CmdsOk = Number(D.commands_succeeded || 0);
+    var EstTokens = Number(D.est_tokens || 0);
+    var Chats = Array.isArray(D.chats) ? D.chats : [];
+
+    ActiveEl.textContent = FormatTelemetryDuration(ActiveMs);
+    CmdsEl.textContent = FormatTelemetryNumber(CmdsRun);
+    RateEl.textContent = (CmdsRun > 0 && D.success_rate !== null && D.success_rate !== undefined) ? (String(D.success_rate) + "%") : "—";
+    TokEl.textContent = FormatTelemetryNumber(EstTokens);
+    if (RateCard) {
+      RateCard.title = CmdsRun > 0 ? (FormatTelemetryNumber(CmdsOk) + " / " + FormatTelemetryNumber(CmdsRun) + " commands succeeded") : "";
+    }
+
+    ListEl.replaceChildren();
+    if (!Chats.length) {
+      var Empty = document.createElement("div");
+      Empty.className = "telemetry-empty";
+      Empty.textContent = Pzt("No chat telemetry recorded yet. Start an AI chat or run commands to track usage.");
+      ListEl.appendChild(Empty);
+      return;
+    }
+
+    Chats.forEach(function (Chat) {
+      var Row = document.createElement("div");
+      Row.className = "telemetry-row";
+      Row.setAttribute("role", "listitem");
+
+      var Title = document.createElement("div");
+      Title.className = "telemetry-row-title";
+      Title.setAttribute("data-i18n-user-content", "");
+      Title.dir = "auto";
+      Title.textContent = Chat.title || Chat.provider || "AI Chat";
+
+      var Metrics = document.createElement("div");
+      Metrics.className = "telemetry-row-metrics";
+      Metrics.setAttribute("data-i18n-user-content", "");
+      Metrics.dir = "ltr";
+
+      var CCount = Number(Chat.commands_run || 0);
+      var CmdSpan = document.createElement("span");
+      CmdSpan.textContent = CCount === 1 ? "1 cmd" : (FormatTelemetryNumber(CCount) + " cmds");
+
+      var RateSpan = document.createElement("span");
+      RateSpan.textContent = (CCount > 0 && Chat.success_rate !== null && Chat.success_rate !== undefined) ? (String(Chat.success_rate) + "% ok") : "—";
+
+      var TimeSpan = document.createElement("span");
+      TimeSpan.textContent = FormatTelemetryDuration(Chat.active_ms || 0);
+
+      var TokSpan = document.createElement("span");
+      TokSpan.textContent = FormatTelemetryNumber(Chat.est_tokens || 0) + " tok";
+
+      Metrics.appendChild(CmdSpan);
+      Metrics.appendChild(RateSpan);
+      Metrics.appendChild(TimeSpan);
+      Metrics.appendChild(TokSpan);
+
+      Row.appendChild(Title);
+      Row.appendChild(Metrics);
+      ListEl.appendChild(Row);
+    });
+  }
+
   function Render() {
     if (!State) return;
     if(ProfileContext)ProfilePictures.current(State.profile_picture_revision);
@@ -3055,7 +3154,27 @@ __PLAZCODE_BACKDROP_FX__
 
     Renderlogs();
     Rendertools();
+    Rendertelemetry(State.telemetry);
     Rendersettings();
+  }
+
+  var LockoutTriggered = false;
+  async function HandleAccountLockout(WarningMessage) {
+    if (LockoutTriggered) return;
+    LockoutTriggered = true;
+    ProfileContext = null;
+    sessionStorage.setItem('plazcode-profile-context', 'locked');
+    try {
+      ProfilePortal = await Api('/api/desktop/profiles');
+    } catch (_) {}
+    var Msg = WarningMessage || (ProfilePortal && ProfilePortal.warning) || 'Your session was signed out.';
+    if (ProfileScreen && !ProfileScreen.isOpen()) {
+      await ProfileScreen.open(ProfilePortal || { profiles: [], warning: Msg });
+    }
+    var Err = Byid('profileSignInError');
+    if (Err) Err.textContent = Msg;
+    var Status = Byid('profileSignInStatus');
+    if (Status) Status.textContent = Msg;
   }
 
   function Refresh() {
@@ -3064,12 +3183,18 @@ __PLAZCODE_BACKDROP_FX__
     Refreshing = true;
 
     return RefreshPromise=Api("/api/desktop/state").then(function (Nextstate) {
+      if (Boot.profiles && ProfileContext && !Nextstate.profile && Nextstate.account_warning) {
+        return HandleAccountLockout(Nextstate.account_warning);
+      }
       State = Nextstate;
       if(Byid("profileSyncStatus"))Byid("profileSyncStatus").textContent=State.account_sync||"";
       Render();
       Homesetupcheck();
       return Loadcatalog();
     }).catch(function (Error) {
+      if (Boot.profiles && ProfileContext && Error && (Error.code === "profile_required" || Error.code === "profile_changed")) {
+        return HandleAccountLockout(Error.warning || Error.message);
+      }
       Showbridgestarting();
       Byid("fatal").textContent = "Bridge refresh failed: " + (Error && Error.name === "AbortError" ? "request timed out; retrying automatically…" : (Error && Error.message || String(Error))) + " (" + Apiurl + ")";
     }).then(function () {
@@ -4465,6 +4590,25 @@ __PLAZCODE_BACKDROP_FX__
     };
 
     Byid("clearHome").onclick = Clearlogs;
+    var TelResetBtn = Byid("telemetryResetBtn");
+    if (TelResetBtn) {
+      TelResetBtn.onclick = function () {
+        TelResetBtn.disabled = true;
+        Api("/api/desktop/telemetry/reset", { method: "POST" }).then(function (Res) {
+          if (State && Res && Res.telemetry) State.telemetry = Res.telemetry;
+          TelemetrySignature = "";
+          Rendertelemetry(Res && Res.telemetry ? Res.telemetry : null);
+        }).catch(Showerror).then(function () {
+          TelResetBtn.disabled = false;
+        });
+      };
+    }
+    if (typeof I18n !== "undefined" && I18n && typeof I18n.onChange === "function") {
+      I18n.onChange(function () {
+        TelemetrySignature = "";
+        Rendertelemetry(State && State.telemetry);
+      });
+    }
     Byid("clearTerminal").onclick = Clearlogs;
 
     Byid("restartMcp").onclick = function () {

@@ -6,7 +6,7 @@ Cloudflare Worker + D1 registry backend for the PlazCode Skill & Specialist Work
 - Public read catalog (`GET /api/v1/skills`, `GET /api/v1/skills/:id`, `GET /api/v1/health`) serving only `approved` items.
 - Submission pipeline (`POST /api/v1/skills`) with strict JSON bounds, path traversal validation, and safety/injection/secret/fetch-and-run scanning. Community submissions default to `pending` until owner-approved.
 - Community feedback: 1-5 star ratings (`POST /api/v1/skills/:id/rate`, one rating per user per skill), install tracking (`POST /api/v1/skills/:id/install`), and abuse reporting (`POST /api/v1/skills/:id/report`, automatically hides after 3 distinct reports).
-- Owner moderation (`GET /api/v1/owner/queue`, `POST /api/v1/owner/approve`, `/reject`, `/remove`, `/ban`) gated by the server-only `WORKSHOP_OWNER_TOKEN` secret.
+- Owner moderation (`GET /api/v1/owner/queue`, `GET /api/v1/owner/skills`, `POST /api/v1/owner/approve`, `/reject`, `/remove`, `/ban`, `/unban`) authorized via `WORKSHOP_OWNER_TOKEN` (`Bearer` or `X-Owner-Token`) or an owner `account-service` session (`profile.is_owner === true`).
 
 ## Deployment with Wrangler
 1. Create a D1 database:

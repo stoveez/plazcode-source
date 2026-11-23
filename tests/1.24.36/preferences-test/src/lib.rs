@@ -1,10 +1,10 @@
 //! Test-only harness: compile the real overlay preferences module unchanged.
 #![allow(dead_code)]
 
-#[path = "../../overlay/agent/src/profile_paths.rs"]
+#[path = "../../../../development/1.24.36/overlay/agent/src/profile_paths.rs"]
 mod profile_paths;
 
-#[path = "../../overlay/agent/src/preferences.rs"]
+#[path = "../../../../development/1.24.36/overlay/agent/src/preferences.rs"]
 mod preferences;
 
 // The module tests use explicit temporary paths, never the production settings path.

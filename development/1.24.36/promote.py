@@ -16,7 +16,7 @@ def unpack(path):
         assert archive.testzip() is None
         names=archive.namelist()
         assert len(names)==len(set(names)), 'Duplicate archive paths'
-        assert all(not Path(n).is_absolute() and '..' not in Path(n).parts and '\\' not in n and not re.match(r'^[A-Za-z]:',n) for n in names), 'Unsafe archive path'
+        assert all(not Path(n).is_absolute() and not n.startswith('/') and '..' not in Path(n).parts and '\\' not in n and not re.match(r'^[A-Za-z]:',n) for n in names), 'Unsafe archive path'
         return {i.filename:(archive.read(i),i.external_attr) for i in archive.infolist() if not i.is_dir()}
 
 def firefox_text(files):
@@ -29,32 +29,33 @@ def firefox_text(files):
 # recipe must still match the successful source commit exactly.
 SOURCE_INPUTS=(
     'development/1.24.36/overlay',
+    'tests/1.24.36/overlay',
     'development/1.24.36/prepare.py',
     'development/1.24.36/source_proof.py',
     'development/1.24.36/collect_licenses.py',
     'development/1.24.36/dependency-notices',
     'development/1.24.36/ultralab',
-    'development/1.24.36/test-ultralab-generated.py',
-    'development/1.24.36/test-licenses.py',
+    'tests/1.24.36/test-ultralab-generated.py',
+    'tests/1.24.36/test-licenses.py',
     'development/1.24.36/package.py',
     'development/1.24.36/macos_floor.py',
-    'development/1.24.36/test-macos-floor.py',
+    'tests/1.24.36/test-macos-floor.py',
     'development/1.24.36/protection.mjs',
     'development/1.24.36/release-variant.mjs',
-    'development/1.24.36/test-release-variant.mjs',
-    'development/1.24.36/test-protection.mjs',
-    'development/1.24.36/test-protection-browser.mjs',
-    'development/1.24.36/test-release-verifier.mjs',
+    'tests/1.24.36/test-release-variant.mjs',
+    'tests/1.24.36/test-protection.mjs',
+    'tests/1.24.36/test-protection-browser.mjs',
+    'tests/1.24.36/test-release-verifier.mjs',
     'development/1.24.36/build-locales.py',
-    'development/1.24.36/preferences-test',
-    'development/1.24.36/test-locales.py',
-    'development/1.24.36/test-prepare-overlay.py',
-    'development/1.24.36/test-package-size.py',
-    'development/1.24.36/test-starter-pack.py',
-    'development/1.24.36/test-roengineer-pack.py',
-    'development/1.24.36/test-text-pack.mjs',
+    'tests/1.24.36/preferences-test',
+    'tests/1.24.36/test-locales.py',
+    'tests/1.24.36/test-prepare-overlay.py',
+    'tests/1.24.36/test-package-size.py',
+    'tests/1.24.36/test-starter-pack.py',
+    'tests/1.24.36/test-roengineer-pack.py',
+    'tests/1.24.36/test-text-pack.mjs',
     'development/1.24.36/release-check.py',
-    'development/1.24.36/test-release-check.py',
+    'tests/1.24.36/test-release-check.py',
     'development/1.24.36/ro-engineer-v1.zip',
     '.github/workflows/validate-1.24.36.yml',
     'PlazCode-source-1.24.20.zip',

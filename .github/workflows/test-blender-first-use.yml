@@ -4,7 +4,7 @@ on:
     branches: [claude/plazcode-dev]
     paths:
       - .github/workflows/test-blender-first-use.yml
-      - development/1.24.36/test-blender-first-use.ps1
+      - tests/1.24.36/test-blender-first-use.ps1
   workflow_dispatch:
     inputs:
       build_run:
@@ -50,4 +50,4 @@ jobs:
       - name: Real packaged app with no UV installation and no UV on PATH
         if: github.event_name == 'workflow_dispatch' && !inputs.installer_only
         shell: pwsh
-        run: ./development/1.24.36/test-blender-first-use.ps1 -Package "$PWD/first-use-package/PlazCode-1.24.36-test-lean.zip"
+        run: ./tests/1.24.36/test-blender-first-use.ps1 -Package "$PWD/first-use-package/PlazCode-1.24.36-test-lean.zip"

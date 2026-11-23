@@ -15,9 +15,14 @@ const WorkshopUI = require("./core/workshop-ui.js");
   assert(html.includes('id="workshopRegistryUrlInput"'), "Workshop registry setting input present");
 
   const mainRs = fs.readFileSync("agent/src/main.rs", "utf8");
-  for (const route of ["/api/workshop/catalog", "/api/workshop/install", "/api/workshop/upload", "/api/workshop/export", "/api/workshop/scan", "/api/workshop/rate", "/api/workshop/report"]) {
+  for (const route of [
+    "/api/workshop/catalog", "/api/workshop/install", "/api/workshop/upload", "/api/workshop/export", "/api/workshop/scan", "/api/workshop/rate", "/api/workshop/report",
+    "/api/owner/status", "/api/owner/unlock", "/api/owner/lock", "/api/owner/users", "/api/owner/users/ban", "/api/owner/users/unban", "/api/owner/users/remove", "/api/owner/workshop/skills", "/api/owner/workshop/action",
+  ]) {
     assert(mainRs.includes(route), "main.rs wires " + route);
   }
+  assert(fs.readFileSync("agent/src/accounts.rs", "utf8").includes("force_lock"), "accounts.rs implements force_lock");
+  assert(fs.readFileSync("agent/src/workshop.rs", "utf8").includes("owner_skills_list"), "workshop.rs implements owner_skills_list");
   assert(fs.readFileSync("agent/src/preferences.rs", "utf8").includes("workshopRegistryUrl"), "preferences.rs defines workshopRegistryUrl");
   assert(fs.existsSync("agent/src/workshop.rs"), "agent/src/workshop.rs exists");
 
@@ -95,9 +100,18 @@ const WorkshopUI = require("./core/workshop-ui.js");
   assert.equal(injCheck.safety.safe, false);
   assert(injCheck.safety.issues.length >= 2);
 
-  // 3. Dedicated Workshop page DOM + interactions test
+  // 3. Dedicated Workshop page + Owner Panel DOM + interactions test
   const wsCalls = [];
   let prefs = { workshopRegistryUrl: "" };
+  let ownerUnlocked = false;
+  let ownerSkillsState = [
+    { id: "pend-1", slug: "pend-1", kind: "skill", title: "Pending Obby Kit", summary: "Needs owner check.", author: "TestPlayer", author_key: "acct:u-1", version: "1.0.0", category: "Scripting", engine: "roblox", tags: [], badge: "COMMUNITY", status: "pending", featured: false, review_status: "community, not checked by PlazCode", body_bytes: 512, file_count: 1, rating_avg: 0, rating_count: 0, report_count: 2, install_count: 0, created_at: 1795400000000 },
+  ];
+  let ownerBannedState = [{ author_key: "acct:spam-1", reason: "Spam", banned_at: 1795400000000 }];
+  let ownerUsersState = [
+    { id: "u-1", username: "TestPlayer", created_at: 1795390000000, last_seen_at: 1795400000000, online: true, app_version: "1.24.36", banned: false, is_owner: false, profile_picture: "data:image/png;base64,iVBORw0KGgo=" },
+    { id: "u-2", username: "BannedPlayer", created_at: 1795380000000, last_seen_at: 0, online: false, app_version: "", banned: true, ban_reason: "Abuse", is_owner: false, profile_picture: null },
+  ];
   const sampleItems = [
     { id: "plazcode-spec-ui-designer", slug: "ui-designer", kind: "specialist", title: "Roblox UI Designer", summary: "Responsive Scale UI.", author: "PlazCode (built-in)", version: "1.24.36", category: "Interface", engine: "roblox", tags: ["ui", "specialist"], badge: "FEATURED", review_status: "reviewed by PlazCode", body_bytes: 4096, file_count: 2, rating_avg: 4.9, rating_count: 24, install_count: 420 },
     { id: "comm-voxel", slug: "voxel", kind: "skill", title: "Voxel Builder", summary: "Stud voxel helper.", author: "Community", version: "1.0.0", category: "3D Assets", engine: "blender", tags: ["3d"], badge: "COMMUNITY", review_status: "community, not checked by PlazCode", body_bytes: 2048, file_count: 1, rating_avg: 4.5, rating_count: 4, install_count: 12 },
@@ -116,7 +130,53 @@ const WorkshopUI = require("./core/workshop-ui.js");
     if (url === "/api/workshop/rate") return { ok: true, rating_avg: body.stars };
     if (url === "/api/workshop/report") return { ok: true, reported: true };
     if (url === "/api/workshop/scan") return { ok: true, validation: { safety: { safe: true, issues: [] } } };
-    if (url === "/api/workshop/upload") return { ok: true, message: "Submitted for owner review." };
+    if (url === "/api/workshop/upload") return { ok: true, status: "pending", message: "Submitted for owner approval. It becomes public once approved in the Owner Panel." };
+    if (url === "/api/owner/status") {
+      return { ok: true, is_owner: false, account_owner: ownerUnlocked, workshop_owner: ownerUnlocked, unlocked: ownerUnlocked, registry_configured: Boolean(prefs.workshopRegistryUrl) };
+    }
+    if (url === "/api/owner/unlock") {
+      if (body.account_token === "bad") throw Error("Owner authorization required.");
+      ownerUnlocked = true;
+      return { ok: true, unlocked: true };
+    }
+    if (url === "/api/owner/lock") {
+      ownerUnlocked = false;
+      return { ok: true, unlocked: false };
+    }
+    if (url.startsWith("/api/owner/users?")) {
+      const u = new URL("http://localhost" + url);
+      const q = (u.searchParams.get("q") || "").toLowerCase();
+      const flt = u.searchParams.get("filter") || "all";
+      const list = ownerUsersState.filter((usr) => {
+        if (flt === "online" && !usr.online) return false;
+        if (flt === "banned" && !usr.banned) return false;
+        if (q && !usr.username.toLowerCase().includes(q)) return false;
+        return true;
+      });
+      return { ok: true, users: list, counts: { total: ownerUsersState.length, online: 1, banned: 1 } };
+    }
+    if (url === "/api/owner/users/ban") {
+      const target = ownerUsersState.find((u) => u.id === body.id);
+      if (target) { target.banned = true; target.online = false; target.ban_reason = body.reason; }
+      return { ok: true, banned: true };
+    }
+    if (url === "/api/owner/users/unban") {
+      const target = ownerUsersState.find((u) => u.id === body.id);
+      if (target) { target.banned = false; target.ban_reason = ""; }
+      return { ok: true, banned: false };
+    }
+    if (url === "/api/owner/users/remove") {
+      ownerUsersState = ownerUsersState.filter((u) => u.id !== body.id);
+      return { ok: true, removed: true };
+    }
+    if (url.startsWith("/api/owner/workshop/skills?")) {
+      return { ok: true, skills: ownerSkillsState, counts: { all: ownerSkillsState.length, pending: ownerSkillsState.filter((s) => s.status === "pending").length, hidden: 0, approved: 0, rejected: 0, removed: 0 }, banned_authors: ownerBannedState };
+    }
+    if (url === "/api/owner/workshop/action") {
+      if (body.action === "approve") ownerSkillsState = ownerSkillsState.map((s) => (s.id === body.payload.id ? { ...s, status: "approved", report_count: 0 } : s));
+      if (body.action === "unban") ownerBannedState = ownerBannedState.filter((b) => b.author_key !== body.payload.author_key);
+      return { ok: true };
+    }
     return { ok: true };
   };
 
@@ -134,7 +194,7 @@ const WorkshopUI = require("./core/workshop-ui.js");
   assert(wsCalls.some((c) => c.url === "/api/workshop/install" && c.body.id === "plazcode-spec-ui-designer"));
   assert.equal(wq('[data-ws-install="plazcode-spec-ui-designer"]').textContent, "Installed");
 
-  // Upload modal + safety check + submit
+  // Upload modal + safety check + submit -> pending approval message
   wq('[data-ws="open-upload"]').click();
   assert.equal(wq('[data-ws="upload-modal"]').hidden, false);
   wq('[data-ws="up-scan"]').click();
@@ -143,6 +203,7 @@ const WorkshopUI = require("./core/workshop-ui.js");
   wq('[data-ws="up-submit"]').click();
   await new Promise((r) => setTimeout(r, 20));
   assert(wsCalls.some((c) => c.url === "/api/workshop/upload"));
+  assert.match(wq('[data-ws="status"]').textContent, /owner approval/i);
 
   // Registry URL configuration
   wq('[data-ws="reg-config"]').click();
@@ -151,8 +212,54 @@ const WorkshopUI = require("./core/workshop-ui.js");
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(prefs.workshopRegistryUrl, "https://plazcode-workshop.workers.dev");
 
+  // Owner Panel: hidden before unlock -> unlock rejected -> unlock succeeds -> Users & Workshop Moderation
+  assert.equal(wq('[data-ws="open-owner"]').hidden, true, "Owner Panel hidden for non-owners before unlock");
+  wq('[data-ws="owner-unlock-btn"]').click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(wq('[data-ws="owner-unlock-modal"]').hidden, false);
+  wq('[data-ws="unlock-acct-token"]').value = "bad";
+  wq('[data-ws="unlock-submit"]').click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(wq('[data-ws="unlock-error"]').hidden, false);
+
+  wq('[data-ws="unlock-acct-token"]').value = "valid-owner-tok";
+  wq('[data-ws="unlock-ws-token"]').value = "valid-ws-tok";
+  wq('[data-ws="unlock-submit"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(wq('[data-ws="open-owner"]').hidden, false, "Owner Panel button visible after unlock");
+  assert.equal(wq('[data-ws="owner-panel"]').hidden, false, "Owner Panel opens after unlock");
+  assert.match(wq('[data-ws="owner-users-view"]').textContent, /scrypt/);
+  assert.match(wq('[data-ws="owner-users-list"]').textContent, /TestPlayer/);
+  assert.match(wq('[data-ws="owner-users-list"]').textContent, /Using PlazCode now/);
+  assert(wq('[data-ws="owner-users-list"] img.ws-avatar-img'), "renders validated profile picture");
+
+  // Ban confirmation + Remove confirmation
+  wq('[data-ws-user-ban="u-1"]').click();
+  wq('[data-ws-user-confirm="u-1"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert(wsCalls.some((c) => c.url === "/api/owner/users/ban" && c.body.id === "u-1"));
+  wq('[data-ws-user-remove="u-2"]').click();
+  wq('[data-ws-user-confirm="u-2"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert(wsCalls.some((c) => c.url === "/api/owner/users/remove" && c.body.id === "u-2"));
+
+  // Switch to Workshop Moderation tab -> approve pending skill
+  wq('[data-ws-owner-tab="workshop"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.match(wq('[data-ws="owner-ws-list"]').textContent, /Pending Obby Kit/);
+  assert.match(wq('[data-ws="owner-ws-list"]').textContent, /2 reports/);
+  wq('[data-ws-mod-approve="pend-1"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert(wsCalls.some((c) => c.url === "/api/owner/workshop/action" && c.body.action === "approve"));
+
+  // Lock clears Owner Panel & hides button
+  wq('[data-ws="owner-lock"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(wq('[data-ws="owner-panel"]').hidden, true);
+  assert.equal(wq('[data-ws="open-owner"]').hidden, true);
+
   dom.window.close();
-  console.log("PASS workshop & workbench UI: 3-pane Workbench, 60k part meter, validation/scanner, verbatim preview, dedicated Workshop page, install/rate/report/upload");
+  console.log("PASS workshop & workbench UI: 3-pane Workbench, 60k part meter, validation/scanner, verbatim preview, dedicated Workshop page, pending upload, Owner Panel Users & Moderation");
 })().catch((err) => {
   console.error(err);
   process.exit(1);

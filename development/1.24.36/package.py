@@ -94,7 +94,7 @@ if osname=='Windows':
 # where it is (the app, updaters, launchers, helpers, both extension folders, legacy root copies, licences).
 INTERNAL=['.gitignore','MAINTENANCE.md','UPDATE.txt','UPDATER.txt','VALIDATION.txt','agent/embed-plazcode-icon.ps1']
 for name in INTERNAL:(package/name).unlink(missing_ok=True)
-assert not [p for p in package.iterdir() if p.is_file() and p.name.startswith('test-')],'test files must not ship'
+assert not [p for p in package.rglob('*') if p.is_file() and p.name.startswith('test-')],'test files must not ship'
 app_name='PlazCode.exe' if osname=='Windows' else 'PlazCode' if osname=='Linux' else 'PlazCode.app'
 if osname!='Linux':(package/'README.md').write_text(
  '# PlazCode\n\n'

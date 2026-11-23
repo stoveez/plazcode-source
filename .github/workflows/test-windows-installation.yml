@@ -4,7 +4,7 @@ on:
     branches: [claude/plazcode-dev]
     paths:
       - .github/workflows/test-windows-installation.yml
-      - development/1.24.36/test-windows-installation-paths.py
+      - tests/1.24.36/test-windows-installation-paths.py
   workflow_dispatch:
     inputs:
       build_run:
@@ -46,7 +46,7 @@ jobs:
         run: |
           $Packages = @(Get-ChildItem installation-package -Filter '*.zip')
           if ($Packages.Count -ne 1) { throw 'Exactly one complete Windows package is required.' }
-          $Arguments = @('development/1.24.36/test-windows-installation-paths.py', '--package', $Packages[0].FullName)
+          $Arguments = @('tests/1.24.36/test-windows-installation-paths.py', '--package', $Packages[0].FullName)
           if ($env:REPRODUCE_OLD -eq 'true') { $Arguments += '--expect-old-root-bug' }
           else {
             python -m pip install --disable-pip-version-check Pillow==11.2.1

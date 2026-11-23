@@ -11,6 +11,7 @@ import hashlib
 import zipfile
 
 here = Path(__file__).resolve().parent
+dev = here.parents[1] / 'development/1.24.36'
 # Baseline: the pinned, hash-checked 1.24.20 source this release is built from.
 archive = here.parents[1] / 'PlazCode-source-1.24.20.zip'
 assert hashlib.sha256(archive.read_bytes()).hexdigest() == 'a359139c301580762d20508f15a02bc52caa1e2383df16d1106fda960a5a0762'
@@ -20,8 +21,8 @@ with zipfile.ZipFile(archive) as zipped:
         if name.startswith(('PlazCode/core/', 'PlazCode/popup.html')) and not name.endswith('/'):
             zipped.extract(name, baseline)
 # 1.24.30 adds the Fix connection strings: test the overlay catalogs on top of the baseline.
-for path in (here / 'overlay').rglob('*'):
-    rel = path.relative_to(here / 'overlay').as_posix()
+for path in (dev / 'overlay').rglob('*'):
+    rel = path.relative_to(dev / 'overlay').as_posix()
     if path.is_file() and (rel.startswith('core/') or rel == 'popup.html'):
         target = baseline / 'PlazCode' / rel
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -45,14 +46,14 @@ for code in codes[1:]:
 committed = (core / 'i18n-catalog.js').read_bytes().replace(b'\r\n', b'\n')
 with tempfile.TemporaryDirectory(prefix='plazcode-catalog-verification-') as temporary:
     work = Path(temporary)
-    shutil.copy2(here / 'build-locales.py', work / 'build-locales.py')
+    shutil.copy2(dev / 'build-locales.py', work / 'build-locales.py')
     shutil.copytree(folder, work / 'overlay/core/locales')
     generated = work / 'overlay/core/i18n-catalog.js'
     for attempt in range(2):
         subprocess.run([sys.executable, str(work / 'build-locales.py')], check=True, timeout=60)
         assert generated.read_bytes().replace(b'\r\n', b'\n') == committed, 'committed i18n-catalog.js differs from strict compiler output'
 
-manifest = json.loads((here / 'overlay/manifest.json').read_text(encoding='utf-8'))
+manifest = json.loads((dev / 'overlay/manifest.json').read_text(encoding='utf-8'))
 assert manifest['version'] == '1.24.36'
 entry_count = 0
 for entry in manifest['content_scripts']:

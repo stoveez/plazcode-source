@@ -3,7 +3,8 @@ from pathlib import Path
 import ast,copy,hashlib,importlib.util,json,os,re,subprocess,sys,tempfile,zipfile
 from unittest import mock
 sys.dont_write_bytecode=True
-spec=importlib.util.spec_from_file_location('promotion',Path(__file__).with_name('promote.py'))
+dev=Path(__file__).resolve().parents[2]/'development/1.24.36'
+spec=importlib.util.spec_from_file_location('promotion',dev/'promote.py')
 promotion=importlib.util.module_from_spec(spec);spec.loader.exec_module(promotion)
 
 def rejected(function,*args):
@@ -97,7 +98,7 @@ with tempfile.TemporaryDirectory(prefix='plazcode-source-gate-') as directory:
    (root/'development/1.24.36/release-entry.json').write_text('{}')
    promotion.verify_source_inputs(commit)
  finally:promotion.ROOT=previous
-assert {'development/1.24.36/overlay','development/1.24.36/prepare.py','development/1.24.36/package.py','development/1.24.36/build-locales.py','.github/workflows/validate-1.24.36.yml','PlazCode-source-1.24.20.zip','PlazCode-1.23.0.zip','PlazCode-macOS-1.23.0.zip'}<=set(promotion.SOURCE_INPUTS)
+assert {'development/1.24.36/overlay','tests/1.24.36/overlay','development/1.24.36/prepare.py','development/1.24.36/package.py','development/1.24.36/build-locales.py','.github/workflows/validate-1.24.36.yml','PlazCode-source-1.24.20.zip','PlazCode-1.23.0.zip','PlazCode-macOS-1.23.0.zip'}<=set(promotion.SOURCE_INPUTS)
 print('PASS every source/prepare/package/catalog compiler/validation/base ZIP input rejects drift and untracked overlays; publication-only metadata remains independent.')
 
 with tempfile.TemporaryDirectory(prefix='plazcode-desktop-gate-') as directory:
@@ -170,7 +171,7 @@ print('PASS promotion rejects matching development descriptors and boolean layou
 
 here=Path(__file__).parent
 mac_source=(here/'test-macos-desktop.py').read_text()
-old_mac=(here.parent/'1.24.20/test-macos-desktop.py').read_text()
+old_mac=(dev.parent/'1.24.20/test-macos-desktop.py').read_text()
 def functions(text):return {node.name:ast.dump(node) for node in ast.parse(text).body if isinstance(node,ast.FunctionDef)}
 assert functions(mac_source)==functions(old_mac),'Actual desktop visibility/process/cleanup checks must remain intact'
 for proof in ["duration = 210 if mode == 'foreground' else 15",'while time.monotonic() < deadline:',"assert alive(pid)",'assert on_screen(pid)==expected_visible',"['/usr/bin/codesign','--verify','--deep','--strict'"]:
@@ -202,11 +203,11 @@ for expected in ['promote.py --check-validation','PLAZCODE_MAC_TEST_ARCHIVE','ne
 # Closed source: never push the source archive to the public repo; publish before recording on private main.
 assert 'PLAZCODE_PUBLISH_SOURCE: 1' not in workflow
 assert 'git add docs/NOW.md docs/vault/open-work.md PlazCode-source-' not in workflow
-assert "(f'PlazCode-source-{VERSION}.zip','source',source)" not in (here/'promote.py').read_text()
-assert "with zipfile.ZipFile(output/'PlazCode-source-" not in (here/'package.py').read_text()
+assert "(f'PlazCode-source-{VERSION}.zip','source',source)" not in (dev/'promote.py').read_text()
+assert "with zipfile.ZipFile(output/'PlazCode-source-" not in (dev/'package.py').read_text()
 assert workflow.index('python3 publish_public.py')<workflow.index('git push origin HEAD:main')
 assert 'prepare-ultra.py' not in workflow
-entry=json.loads((here/'release-entry.json').read_text())
+entry=json.loads((dev/'release-entry.json').read_text())
 assert entry['version']=='1.24.36' and all(isinstance(entry[key],list) for key in ['added','improved','fixed','notes'])
 assert all(item['title'] and item['items'] for item in entry['github']['sections'])
 assert 'unsigned' in ' '.join(entry['notes']) and 'not notarized' in ' '.join(entry['notes'])

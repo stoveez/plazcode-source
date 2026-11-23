@@ -16,9 +16,11 @@ def extract(archive,destination):
   z.extractall(destination)
 # The published 1.24.20 source already contains every released overlay and edit.
 extract(archive,root/'build-src-1.24.36');source=root/'build-src-1.24.36/PlazCode'
-for path in (here/'overlay').rglob('*'):
- if path.is_file():
-  target=source/path.relative_to(here/'overlay');target.parent.mkdir(parents=True,exist_ok=True);data=path.read_bytes();target.write_bytes(data if (path.suffix.lower() in BINARY or b'\0' in data[:8192] or 'ro-engineer' in path.parts) else data.replace(b'\r\n',b'\n'))
+for overlay_root in [here/'overlay',root/'tests/1.24.36/overlay']:
+ if not overlay_root.is_dir():continue
+ for path in overlay_root.rglob('*'):
+  if path.is_file():
+   target=source/path.relative_to(overlay_root);target.parent.mkdir(parents=True,exist_ok=True);data=path.read_bytes();target.write_bytes(data if (path.suffix.lower() in BINARY or b'\0' in data[:8192] or 'ro-engineer' in path.parts) else data.replace(b'\r\n',b'\n'))
 # 1.24.30: Ultra is now the UltraLab pack (core/ultralab, read with ultralab_read). The old Ultra
 # bundles, the DeepSeek-only Ultra and the Rust readers for them are removed completely.
 # 1.24.36 (owner, 2026-11-18): ClickUp support is removed entirely; its site file and tests from older versions go too.

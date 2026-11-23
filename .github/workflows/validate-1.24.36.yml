@@ -3,7 +3,7 @@ on:
   push:
     branches: [release/1.24.36, claude/plazcode-dev]
   pull_request:
-    paths: [development/1.24.36/**, learned-skills/**, .github/workflows/validate-1.24.36.yml]
+    paths: [development/1.24.36/**, tests/1.24.36/**, learned-skills/**, .github/workflows/validate-1.24.36.yml]
   workflow_dispatch:
     inputs:
       bootstrap_integrity_key:
@@ -78,17 +78,17 @@ jobs:
           cmake -S validation-luau -B validation-luau/build -DLUAU_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
           cmake --build validation-luau/build --target Luau.Repl.CLI Luau.Compile.CLI -j 4
       - name: Verify committed catalogs and manifest i18n wiring without source regeneration
-        run: python3 development/1.24.36/test-locales.py
-      - run: python3 development/1.24.36/test-prepare-overlay.py
+        run: python3 tests/1.24.36/test-locales.py
+      - run: python3 tests/1.24.36/test-prepare-overlay.py
       - name: Ultra generated files match the generator
-        run: python3 development/1.24.36/test-ultralab-generated.py
+        run: python3 tests/1.24.36/test-ultralab-generated.py
       - name: PlazLib data matches its Luau source
         run: python3 development/1.24.36/plazlib/build_plazlib.py --check
       - name: Cross-platform release proof gate regressions
-        run: python3 development/1.24.36/test-release-check.py
+        run: python3 tests/1.24.36/test-release-check.py
       - run: python3 development/1.24.36/prepare.py
-      - run: python3 development/1.24.36/test-licenses.py
-      - run: python3 development/1.24.36/test-macos-floor.py
+      - run: python3 tests/1.24.36/test-licenses.py
+      - run: python3 tests/1.24.36/test-macos-floor.py
       - run: npm ci --prefix release-tools --ignore-scripts
         working-directory: build-src-1.24.36/PlazCode
       - name: Test production mesh transfer transactions
@@ -124,9 +124,9 @@ jobs:
       - run: node release-tools/node_modules/playwright/cli.js install --with-deps chromium firefox
         working-directory: build-src-1.24.36/PlazCode
       - name: Text moved into the app gives byte-identical prompts and skills
-        run: node development/1.24.36/test-text-pack.mjs build-src-1.24.36/PlazCode
+        run: node tests/1.24.36/test-text-pack.mjs build-src-1.24.36/PlazCode
       - name: Real protected Chromium and Firefox integrity tests
-        run: node development/1.24.36/test-protection-browser.mjs
+        run: node tests/1.24.36/test-protection-browser.mjs
       - name: DeepSeek shared sender and cancellation in Chromium and Firefox
         run: node release-tools/test-deepseek-guard-browser.cjs
         working-directory: build-src-1.24.36/PlazCode
@@ -279,7 +279,7 @@ jobs:
         working-directory: build-src-1.24.36/PlazCode
       - run: node release-tools/test-desktop-performance.cjs
         working-directory: build-src-1.24.36/PlazCode
-      - run: python3 development/1.24.36/test-package-size.py
+      - run: python3 tests/1.24.36/test-package-size.py
       - run: node release-tools/test-checklist-appearance.cjs
         working-directory: build-src-1.24.36/PlazCode
   native:
@@ -306,9 +306,9 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.12'
-      - run: python development/1.24.36/test-prepare-overlay.py
+      - run: python tests/1.24.36/test-prepare-overlay.py
       - run: python development/1.24.36/prepare.py
-      - run: python development/1.24.36/test-licenses.py
+      - run: python tests/1.24.36/test-licenses.py
       - name: Configure public release trust or isolated validation keys
         shell: bash
         run: |
@@ -326,7 +326,7 @@ jobs:
           if [ "$PLAZCODE_PROTECTION_CHANNEL" = validation ]; then unset PLAZCODE_RELEASE_SIGNING_KEY; fi
           node development/1.24.36/protection.mjs configure-variant "$GITHUB_ENV"
       - name: Release variant and all authenticated text layouts
-        run: node development/1.24.36/test-release-variant.mjs
+        run: node tests/1.24.36/test-release-variant.mjs
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         with:
           workspaces: build-src-1.24.36/PlazCode/agent
@@ -335,8 +335,8 @@ jobs:
         run: |
           node --experimental-strip-types learning-service/test-protocol.mjs
           python learning-service/test-sql.py
-          python development/1.24.36/test-starter-pack.py
-          python development/1.24.36/test-roengineer-pack.py build-src-1.24.36/PlazCode
+          python tests/1.24.36/test-starter-pack.py
+          python tests/1.24.36/test-roengineer-pack.py build-src-1.24.36/PlazCode
           python test-release-feed.py
           python test-release-notes.py
           python build-src-1.24.36/PlazCode/test-update-marker.py
@@ -346,7 +346,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          cargo +stable test --locked --manifest-path development/1.24.36/preferences-test/Cargo.toml 2>&1 | tee native-preference-tests.log
+          cargo +stable test --locked --manifest-path tests/1.24.36/preferences-test/Cargo.toml 2>&1 | tee native-preference-tests.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -387,7 +387,7 @@ jobs:
         env:
           NODE_PATH: release-tools/node_modules
       - name: Signed integrity and obfuscation regressions
-        run: node development/1.24.36/test-protection.mjs
+        run: node tests/1.24.36/test-protection.mjs
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         if: runner.os == 'Linux'
         with:
@@ -440,7 +440,7 @@ jobs:
       - name: Real Blender, send to Studio (whole model, right way round, colours)
         if: runner.os == 'Linux'
         run: |
-          "$PLAZCODE_BLENDER" --background --python development/1.24.36/test-blender-send-to-studio.py > send.log 2>&1 || (cat send.log; exit 1)
+          "$PLAZCODE_BLENDER" --background --python tests/1.24.36/test-blender-send-to-studio.py > send.log 2>&1 || (cat send.log; exit 1)
           cat send.log; grep -q "^PASS send to Studio" send.log
       - name: Real Blender with PlazCode's own open-window helper (added and removed by Blender itself, pairing word, safe mode)
         if: runner.os == 'Linux'
@@ -490,7 +490,7 @@ jobs:
         working-directory: build-src-1.24.36/PlazCode
       - name: Optimized native signed-file and authenticated-work integration
         if: runner.os == 'Linux'
-        run: node development/1.24.36/test-release-verifier.mjs
+        run: node tests/1.24.36/test-release-verifier.mjs
       - name: Build signed native Linux test package
         if: runner.os == 'Linux' && github.event_name != 'pull_request'
         env:
@@ -610,7 +610,7 @@ jobs:
         shell: bash
         run: |
           zip=$(ls artifacts/*-test-lean.zip | head -1)
-          node development/1.24.36/test-text-pack.mjs build-src-1.24.36/PlazCode "$zip"
+          node tests/1.24.36/test-text-pack.mjs build-src-1.24.36/PlazCode "$zip"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: github.event_name != 'pull_request'
         with:

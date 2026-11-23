@@ -6,7 +6,7 @@ name: Publish PlazCode 1.24.36 verified update
 on:
   push:
     branches: [release/1.24.36-publish]
-    paths: [.github/workflows/publish-1.24.36.yml, development/1.24.36/promote.py, development/1.24.36/release-entry.json, development/1.24.36/test-promote-permissions.py, development/1.24.36/test-macos-desktop.py]
+    paths: [.github/workflows/publish-1.24.36.yml, development/1.24.36/promote.py, development/1.24.36/release-entry.json, tests/1.24.36/test-promote-permissions.py, tests/1.24.36/test-macos-desktop.py]
   workflow_dispatch:
 permissions:
   contents: read
@@ -73,7 +73,7 @@ jobs:
       - name: Real macOS desktop lifetime and updater relaunch
         env:
           PLAZCODE_MAC_TEST_INSTALL: ${{ github.workspace }}/mac-desktop-install/PlazCode
-        run: python3 development/1.24.36/test-macos-desktop.py
+        run: python3 tests/1.24.36/test-macos-desktop.py
       - name: Record desktop validation source and run
         run: |
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > desktop-validation-run.json
@@ -122,7 +122,7 @@ jobs:
         env:
           PLAZCODE_RELEASE_SIGNING_KEY: ${{ secrets.PLAZCODE_RELEASE_SIGNING_KEY }}
         run: |
-          python3 development/1.24.36/test-promote-permissions.py
+          python3 tests/1.24.36/test-promote-permissions.py
           python3 development/1.24.36/promote.py
           python3 test-release-feed.py
           python3 test-release-notes.py

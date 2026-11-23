@@ -22,8 +22,8 @@ struct Registry {#[serde(default)]profiles:BTreeMap<String,Saved>,#[serde(defaul
 #[derive(Serialize,Deserialize)]
 struct Envelope {version:u32,nonce:String,ciphertext:String}
 #[derive(Clone,Serialize)]
-pub struct Active {pub id:String,pub username:String,pub epoch:String,pub offline:bool,pub guest:bool,pub migrate_ui:bool,pub owns_legacy_data:bool}
-pub struct Candidate {saved:Saved,pub offline:bool}
+pub struct Active {pub id:String,pub username:String,pub epoch:String,pub offline:bool,pub guest:bool,pub migrate_ui:bool,pub owns_legacy_data:bool,pub is_owner:bool}
+pub struct Candidate {saved:Saved,pub offline:bool,pub is_owner:bool}
 #[derive(Debug)]
 pub struct AccountError {pub status:u16,pub code:&'static str,pub message:String}
 impl std::fmt::Display for AccountError{fn fmt(&self,f:&mut std::fmt::Formatter<'_>)->std::fmt::Result{f.write_str(&self.message)}}
@@ -72,6 +72,47 @@ impl Manager {
  pub fn active(&self)->Option<Active>{self.active.read().unwrap_or_else(|e|e.into_inner()).clone()}
  pub async fn active_token(&self)->Option<String>{let active=self.active()?;if active.guest{return None;}self.registry.lock().await.profiles.get(&active.id).and_then(|p|p.token.clone())}
  pub fn lock(&self){*self.active.write().unwrap_or_else(|e|e.into_inner())=None;}
+ pub fn warning(&self)->Option<String>{self.warning.read().unwrap_or_else(|e|e.into_inner()).clone()}
+ pub fn set_warning(&self,message:Option<String>){*self.warning.write().unwrap_or_else(|e|e.into_inner())=message;}
+ pub async fn force_lock(&self,reason:&str){
+  if let Some(active)=self.active().filter(|a|!a.guest){
+   let mut registry=self.registry.lock().await;
+   if let Some(saved)=registry.profiles.get_mut(&active.id){
+    saved.token=None;
+    if !self.file.as_os_str().is_empty(){let _=atomic_registry(&self.file,&registry,&self.key);}
+   }
+  }
+  self.lock();
+  self.set_warning(Some(reason.to_string()));
+ }
+ pub async fn heartbeat(&self,app_version:&str,closing:bool)->Result<bool>{
+  let Some(active)=self.active()else{return Ok(false);};
+  if active.guest{return Ok(true);}
+  let Some(token)=self.registry.lock().await.profiles.get(&active.id).and_then(|p|p.token.clone())else{return Ok(true);};
+  let body=json!({"status":if closing{"closing"}else{"active"},"app_version":app_version});
+  match self.request_once_with(reqwest::Method::POST,"/v1/heartbeat",Some(body),Some(&token),None).await{
+   Ok(value)=>{
+    if let Some(owner)=value["is_owner"].as_bool(){
+     if let Some(current)=self.active.write().unwrap_or_else(|e|e.into_inner()).as_mut(){current.is_owner=owner;}
+    }
+    Ok(true)
+   },
+   Err(error)=>{
+    if let Some(ae)=error.downcast_ref::<AccountError>(){
+     if ae.code=="account_banned"||(ae.status==401&&ae.code=="password_required"){
+      self.force_lock(&ae.message).await;
+      return Ok(false);
+     }
+    }
+    Ok(true)
+   }
+  }
+ }
+ pub async fn owner_request(&self,method:reqwest::Method,path:&str,body:Option<Value>,ram_owner_token:Option<&str>)->Result<Value>{
+  let token=self.active_token().await;
+  anyhow::ensure!(ram_owner_token.is_some()||token.is_some(),"Sign in as owner or enter an owner token first.");
+  self.request_once_with(method,path,body,token.as_deref(),ram_owner_token).await
+ }
  pub async fn has_saved(&self,id:&str)->bool{if id==GUEST_ID{return self.root.join("profiles").join(GUEST_ID).join(".profile-ready").is_file();}self.registry.lock().await.profiles.contains_key(id)}
  pub async fn portal(&self)->Value{let registry=self.registry.lock().await;let profiles=registry.profiles.values().map(|p|json!({"id":p.id,"username":p.username,"picture_revision":crate::profile_picture::revision(&p.id),"appearance":crate::profile_paths::profile_root(&p.id).ok().filter(|root|root.join("plazcode-settings.json").is_file()).map(|root|appearance(&root)).unwrap_or_else(||p.appearance.clone()),"remembered":p.token.is_some()&&p.expires_at>now()})).collect::<Vec<_>>();json!({"enabled":self.required(),"profiles":profiles,"active":self.active(),"warning":self.warning.read().unwrap_or_else(|e|e.into_inner()).clone()})}
  // Only read-only requests and disposable challenges may replay automatically.
@@ -86,8 +127,11 @@ impl Manager {
   result
  }
  async fn request_once(&self,method:reqwest::Method,path:&str,body:Option<Value>,token:Option<&str>)->Result<Value>{
+  self.request_once_with(method,path,body,token,None).await
+ }
+ async fn request_once_with(&self,method:reqwest::Method,path:&str,body:Option<Value>,token:Option<&str>,owner_token:Option<&str>)->Result<Value>{
   let mut request=self.client.request(method,format!("{}{path}",self.service));
-  if let Some(body)=body{request=request.json(&body);}if let Some(token)=token{request=request.bearer_auth(token);}
+  if let Some(body)=body{request=request.json(&body);}if let Some(token)=token{request=request.bearer_auth(token);}if let Some(owner)=owner_token{request=request.header("X-Owner-Token",owner);}
   #[cfg(debug_assertions)]if self.service==SERVICE{if let Some(token)=&self.service_access{request=request.header("OAI-Sites-Authorization",format!("Bearer {token}"));}}
   let response=request.send().await.map_err(|_|failure(503,"offline","Could not reach the account service. Check your connection or use PlazCode as a guest."))?;
   let status=response.status();let kind=response.headers().get("content-type").and_then(|v|v.to_str().ok()).unwrap_or("").chars().take(60).collect::<String>();
@@ -101,7 +145,7 @@ impl Manager {
   if !status.is_success(){
    crate::events::record("app","warn","account.service","Account request did not finish",json!({"path":path,"status":status.as_u16()}));
    let message=value["error"].as_str().unwrap_or("The account service could not finish this request.").chars().take(240).collect::<String>();
-   let code=if status.as_u16()==429{if message.starts_with("Sign-in is busy."){"busy"}else{"rate_limited"}}else if status.is_server_error(){"offline"}else if status.as_u16()==401&&message.contains("challenge"){"challenge_expired"}else if status.as_u16()==401{"password_required"}else{"service_error"};
+   let code=if status.as_u16()==403&&(value["code"].as_str()==Some("account_banned")||value["banned"].as_bool()==Some(true)){"account_banned"}else if status.as_u16()==429{if message.starts_with("Sign-in is busy."){"busy"}else{"rate_limited"}}else if status.is_server_error(){"offline"}else if status.as_u16()==401&&message.contains("challenge"){"challenge_expired"}else if status.as_u16()==401{"password_required"}else{"service_error"};
    return Err(AccountError{status:status.as_u16(),code,message}.into());
   }
   Ok(value)
@@ -140,15 +184,15 @@ impl Manager {
   self.request(reqwest::Method::POST,path,Some(json!({"username":name,"password":password,"proof":proof})),None).await
  }
  async fn proof(&self)->Result<Value>{let challenge=self.request(reqwest::Method::POST,"/v1/challenge",Some(json!({})),None).await?;let id=challenge["id"].as_str().unwrap_or("").to_string();let bits=challenge["bits"].as_u64().unwrap_or(0) as u32;anyhow::ensure!(id.len()==48&&id.bytes().all(|b|b.is_ascii_hexdigit())&&(1..=22).contains(&bits),"Invalid account challenge");let copy=id.clone();let nonce=tokio::task::spawn_blocking(move||solve(&copy,bits)).await??;Ok(json!({"id":id,"nonce":nonce}))}
- pub async fn authenticate(&self,id:Option<&str>,name:&str,password:&str,create:bool)->Result<Candidate>{if password.is_empty()&&!create{let id=id.context("Choose a profile")?;let cached=self.registry.lock().await.profiles.get(id).cloned().context("Choose a saved profile")?;let token=cached.token.as_deref().ok_or_else(||failure(401,"password_required","Enter your password to log in."))?;if cached.expires_at<=now(){return Err(failure(401,"password_required","Enter your password to log in again."));}match self.request(reqwest::Method::GET,"/v1/session",None,Some(token)).await{Ok(value)=>{anyhow::ensure!(value["profile"]["id"]==cached.id,"Account identity changed");let mut saved=cached;saved.expires_at=value["expires_at"].as_u64().unwrap_or(saved.expires_at);return Ok(Candidate{saved,offline:false});},Err(error)=>{if error.downcast_ref::<AccountError>().is_some_and(|e|e.status>=500||e.status==429){return Ok(Candidate{saved:cached,offline:true});}if error.downcast_ref::<AccountError>().is_some_and(|e|e.code=="password_required"){let mut registry=self.registry.lock().await;if let Some(saved)=registry.profiles.get_mut(id){saved.token=None;}atomic_registry(&self.file,&registry,&self.key)?;}return Err(error);}}}
- anyhow::ensure!(name.len()>=3&&name.len()<=32&&name.as_bytes()[0].is_ascii_alphanumeric()&&name.bytes().all(|b|b.is_ascii_alphanumeric()||b"_.-".contains(&b)),"Use 3–32 letters, numbers, dots, underscores or hyphens for your username");anyhow::ensure!(password.chars().count()>=10&&password.len()<=512,"Use a password of at least 10 characters");let value=self.password_request(name,password,create).await?;let profile=&value["profile"];let remote_id=profile["id"].as_str().context("Account identity is missing")?.to_string();crate::profile_paths::profile_root(&remote_id)?;anyhow::ensure!(remote_id!=GUEST_ID,"Invalid online account identity");if let Some(id)=id{anyhow::ensure!(id==remote_id,"The selected profile does not match this account");}let token=value["token"].as_str().filter(|s|s.len()==64&&s.bytes().all(|b|b.is_ascii_hexdigit())).context("Invalid account session")?.to_string();let username=profile["username"].as_str().filter(|s|!s.is_empty()&&s.len()<=32).context("Invalid account username")?.to_string();Ok(Candidate{saved:Saved{id:remote_id,username,token:Some(token),expires_at:value["expires_at"].as_u64().context("Invalid session expiry")?,appearance:Value::Null,ui_migrated:false},offline:false})}
+ pub async fn authenticate(&self,id:Option<&str>,name:&str,password:&str,create:bool)->Result<Candidate>{if password.is_empty()&&!create{let id=id.context("Choose a profile")?;let cached=self.registry.lock().await.profiles.get(id).cloned().context("Choose a saved profile")?;let token=cached.token.as_deref().ok_or_else(||failure(401,"password_required","Enter your password to log in."))?;if cached.expires_at<=now(){return Err(failure(401,"password_required","Enter your password to log in again."));}match self.request(reqwest::Method::GET,"/v1/session",None,Some(token)).await{Ok(value)=>{anyhow::ensure!(value["profile"]["id"]==cached.id,"Account identity changed");let mut saved=cached;saved.expires_at=value["expires_at"].as_u64().unwrap_or(saved.expires_at);let is_owner=value["profile"]["is_owner"].as_bool().unwrap_or(false);return Ok(Candidate{saved,offline:false,is_owner});},Err(error)=>{if error.downcast_ref::<AccountError>().is_some_and(|e|e.status>=500||e.status==429){return Ok(Candidate{saved:cached,offline:true,is_owner:false});}if error.downcast_ref::<AccountError>().is_some_and(|e|e.code=="password_required"||e.code=="account_banned"){let mut registry=self.registry.lock().await;if let Some(saved)=registry.profiles.get_mut(id){saved.token=None;}if !self.file.as_os_str().is_empty(){atomic_registry(&self.file,&registry,&self.key)?;}}return Err(error);}}}
+ anyhow::ensure!(name.len()>=3&&name.len()<=32&&name.as_bytes()[0].is_ascii_alphanumeric()&&name.bytes().all(|b|b.is_ascii_alphanumeric()||b"_.-".contains(&b)),"Use 3–32 letters, numbers, dots, underscores or hyphens for your username");anyhow::ensure!(password.chars().count()>=10&&password.len()<=512,"Use a password of at least 10 characters");let value=self.password_request(name,password,create).await?;let profile=&value["profile"];let remote_id=profile["id"].as_str().context("Account identity is missing")?.to_string();crate::profile_paths::profile_root(&remote_id)?;anyhow::ensure!(remote_id!=GUEST_ID,"Invalid online account identity");if let Some(id)=id{anyhow::ensure!(id==remote_id,"The selected profile does not match this account");}let token=value["token"].as_str().filter(|s|s.len()==64&&s.bytes().all(|b|b.is_ascii_hexdigit())).context("Invalid account session")?.to_string();let username=profile["username"].as_str().filter(|s|!s.is_empty()&&s.len()<=32).context("Invalid account username")?.to_string();let is_owner=profile["is_owner"].as_bool().unwrap_or(false);Ok(Candidate{saved:Saved{id:remote_id,username,token:Some(token),expires_at:value["expires_at"].as_u64().context("Invalid session expiry")?,appearance:Value::Null,ui_migrated:false},offline:false,is_owner})}
  pub async fn commit(&self,candidate:Candidate)->Result<Active>{self.required.store(true,Ordering::Release);let mut registry=self.registry.lock().await;let mut saved=candidate.saved;if let Some(previous)=registry.profiles.get(&saved.id){saved.appearance=previous.appearance.clone();saved.ui_migrated=previous.ui_migrated;}anyhow::ensure!(registry.profiles.contains_key(&saved.id)||registry.profiles.len()<50,"This computer already has 50 saved profiles. Remove a saved sign-in first.");if registry.first_profile.is_none(){let owner=self.root.join("first-profile");if owner.exists(){registry.first_profile=Some(std::fs::read_to_string(&owner)?.trim().into());}else{write_private(&owner,saved.id.as_bytes())?;registry.first_profile=Some(saved.id.clone());}}
- registry.profiles.insert(saved.id.clone(),saved.clone());atomic_registry(&self.file,&registry,&self.key)?;let first=registry.first_profile.as_deref()==Some(saved.id.as_str());drop(registry);let root=crate::profile_paths::profile_root(&saved.id)?;let destination=root.clone();tokio::task::spawn_blocking(move||migrate(&destination,first)).await??;saved.appearance=appearance(&root);let active=Active{id:saved.id.clone(),username:saved.username.clone(),epoch:hex(&random(16)?),offline:candidate.offline,guest:false,migrate_ui:first&&!saved.ui_migrated,owns_legacy_data:first};let mut registry=self.registry.lock().await;registry.profiles.insert(saved.id.clone(),saved);atomic_registry(&self.file,&registry,&self.key)?;*self.active.write().unwrap_or_else(|e|e.into_inner())=Some(active.clone());*self.warning.write().unwrap_or_else(|e|e.into_inner())=None;Ok(active)}
+ registry.profiles.insert(saved.id.clone(),saved.clone());atomic_registry(&self.file,&registry,&self.key)?;let first=registry.first_profile.as_deref()==Some(saved.id.as_str());drop(registry);let root=crate::profile_paths::profile_root(&saved.id)?;let destination=root.clone();tokio::task::spawn_blocking(move||migrate(&destination,first)).await??;saved.appearance=appearance(&root);let active=Active{id:saved.id.clone(),username:saved.username.clone(),epoch:hex(&random(16)?),offline:candidate.offline,guest:false,migrate_ui:first&&!saved.ui_migrated,owns_legacy_data:first,is_owner:candidate.is_owner};let mut registry=self.registry.lock().await;registry.profiles.insert(saved.id.clone(),saved);atomic_registry(&self.file,&registry,&self.key)?;*self.active.write().unwrap_or_else(|e|e.into_inner())=Some(active.clone());*self.warning.write().unwrap_or_else(|e|e.into_inner())=None;Ok(active)}
  pub async fn enter_guest(&self)->Result<Active>{
   self.begin_profile_mode();
   let root=self.root.join("profiles").join(GUEST_ID);let destination=root.clone();
   tokio::task::spawn_blocking(move||migrate(&destination,false)).await??;
-  let active=Active{id:GUEST_ID.into(),username:"Guest".into(),epoch:hex(&random(16)?),offline:false,guest:true,migrate_ui:false,owns_legacy_data:false};
+  let active=Active{id:GUEST_ID.into(),username:"Guest".into(),epoch:hex(&random(16)?),offline:false,guest:true,migrate_ui:false,owns_legacy_data:false,is_owner:false};
   *self.active.write().unwrap_or_else(|e|e.into_inner())=Some(active.clone());
   Ok(active)
  }
@@ -183,7 +227,7 @@ impl ResultRoutes{
 }
 #[cfg(test)]mod result_route_tests{use super::*;#[test]fn late_studio_results_cannot_reach_a_new_profile_even_with_reused_caller_ids(){let routes=ResultRoutes::default();let old=routes.issue("old-session","p-1");routes.clear();let new=routes.issue("new-session","p-1");assert_ne!(old,new);assert_eq!(routes.consume("new-session",&old),None);assert_eq!(routes.consume("new-session",&new),Some("p-1".into()));assert_eq!(routes.consume("new-session",&new),None);}}
 
-#[cfg(test)]mod ui_migration_tests{use super::*;#[tokio::test]async fn completed_ui_migration_does_not_restore_deleted_wallpaper_on_page_reload(){let dir=std::env::temp_dir().join(format!("plazcode-ui-migration-{}",hex(&random(8).unwrap())));private_dir(&dir).unwrap();let mut manager=Manager::disabled();manager.file=dir.join("accounts.v1.json");manager.root=dir.clone();manager.key=[1;32];*manager.active.write().unwrap()=Some(Active{id:"12345678-1234-1234-1234-123456789abc".into(),username:"Test".into(),epoch:"test".into(),offline:false,guest:false,migrate_ui:true,owns_legacy_data:true});manager.acknowledge_ui().await.unwrap();assert!(!manager.active().unwrap().migrate_ui);std::fs::remove_dir_all(dir).unwrap();}}
+#[cfg(test)]mod ui_migration_tests{use super::*;#[tokio::test]async fn completed_ui_migration_does_not_restore_deleted_wallpaper_on_page_reload(){let dir=std::env::temp_dir().join(format!("plazcode-ui-migration-{}",hex(&random(8).unwrap())));private_dir(&dir).unwrap();let mut manager=Manager::disabled();manager.file=dir.join("accounts.v1.json");manager.root=dir.clone();manager.key=[1;32];*manager.active.write().unwrap()=Some(Active{id:"12345678-1234-1234-1234-123456789abc".into(),username:"Test".into(),epoch:"test".into(),offline:false,guest:false,migrate_ui:true,owns_legacy_data:true,is_owner:false});manager.acknowledge_ui().await.unwrap();assert!(!manager.active().unwrap().migrate_ui);std::fs::remove_dir_all(dir).unwrap();}}
 
 #[cfg(test)]mod recovery_tests{
  use super::*;
@@ -238,5 +282,31 @@ impl ResultRoutes{
   assert!(manager.cloud_read().await.is_err());assert!(manager.cloud_write(0,json!({})).await.is_err());manager.acknowledge_ui().await.unwrap();manager.cache_appearance(json!({})).await.unwrap();manager.lock();
   let second=manager.enter_guest().await.unwrap();assert_eq!(first.id,second.id);assert_ne!(first.epoch,second.epoch);assert_eq!(std::fs::read(guest.join("memory.json")).unwrap(),b"guest memory");assert_eq!(std::fs::read(root.join("memory.json")).unwrap(),b"original account data");
   assert!(manager.registry.lock().await.profiles.is_empty());assert!(manager.registry.lock().await.first_profile.is_none());assert!(!root.join("first-profile").exists());assert!(!manager.file.exists());std::fs::remove_dir_all(root).unwrap();
+ }
+ #[tokio::test]async fn banned_session_and_heartbeat_lock_out_without_offline_fallback(){
+  async fn ban_mock(uri:axum::http::Uri)->axum::response::Response{
+   use axum::response::IntoResponse;
+   if uri.path()=="/v1/session"||uri.path()=="/v1/heartbeat"{
+    return (axum::http::StatusCode::FORBIDDEN,axum::Json(json!({"error":"Account banned: Spam","code":"account_banned","banned":true,"reason":"Spam"}))).into_response();
+   }
+   (axum::http::StatusCode::NOT_FOUND,axum::Json(json!({"error":"not found"}))).into_response()
+  }
+  let app=axum::Router::new().fallback(ban_mock);
+  let listener=tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();let addr=listener.local_addr().unwrap();
+  let task=tokio::spawn(async move{axum::serve(listener,app).await.unwrap();});
+  let mut manager=Manager::disabled();manager.service=format!("http://{addr}");
+  let id="12345678-1234-4234-8234-123456789abc";
+  manager.registry.lock().await.profiles.insert(id.into(),Saved{id:id.into(),username:"BannedUser".into(),token:Some("a".repeat(64)),expires_at:now()+86400000,appearance:Value::Null,ui_migrated:true});
+  let err=manager.authenticate(Some(id),"","",false).await.err().unwrap();
+  let ae=err.downcast_ref::<AccountError>().unwrap();
+  assert_eq!(ae.status,403);assert_eq!(ae.code,"account_banned");
+  assert!(manager.registry.lock().await.profiles[id].token.is_none());
+  *manager.active.write().unwrap()=Some(Active{id:id.into(),username:"BannedUser".into(),epoch:"ep1".into(),offline:false,guest:false,migrate_ui:false,owns_legacy_data:false,is_owner:false});
+  manager.registry.lock().await.profiles.get_mut(id).unwrap().token=Some("b".repeat(64));
+  let alive=manager.heartbeat("1.24.36",false).await.unwrap();
+  assert!(!alive);
+  assert!(manager.active().is_none());
+  assert_eq!(manager.warning().as_deref(),Some("Account banned: Spam"));
+  task.abort();
  }
 }

@@ -5,6 +5,7 @@ updated: 2026-11-01
 # Build and tests
 
 - **Edit only the overlay** (`development/1.24.36/overlay`). Never edit `build-src-1.24.36/` (regenerated). A file not in the overlay is first copied there from `build-src-1.24.36/PlazCode/`.
+- **Keep test and info files out of `development/1.24.36/`:** tests (`test-*`, `preferences-test/`, `test-support/`, test fixtures) live in `tests/1.24.36/` (with overlay tests in `tests/1.24.36/overlay/`) and design/plan/info `.md` files live in `docs/version-notes/1.24.36/`. `prepare.py` automatically mirrors `tests/1.24.36/overlay/` into `build-src-1.24.36/PlazCode` for running tests while keeping `development/1.24.36/` lean.
 - Build: `python3 development/1.24.36/prepare.py`. Do not run it while the full suite runs.
 - Feature guide: `test-feature-guide.js` reads the real menu and bar in `core/main.js` and fails for any control with no entry in `core/feature-guide.js`. After editing the guide, regenerate nothing: the JSON in that file is the source. Startup text changes need `node test-startup-sections.js --update-golden` and new pins for `core/config.js` and `core/main.js`.
 - One JS test: from `build-src-1.24.36/PlazCode`, `NODE_PATH=release-tools/node_modules node test-<name>.js`.

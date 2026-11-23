@@ -133,6 +133,7 @@ mod chat_history;
 mod byok_chat;
 mod engram;
 mod vault;
+mod telemetry;
 mod debug_report;
 mod tidy;
 mod text_pack;
@@ -208,6 +209,8 @@ struct AppState {
     profile_results:Arc<accounts::ResultRoutes>,
     profile_switch:Arc<Mutex<()>>,
     profile_change:Arc<tokio::sync::watch::Sender<u64>>,
+    owner_account_token: Arc<RwLock<Option<String>>>,
+    owner_workshop_token: Arc<RwLock<Option<String>>>,
     cancellation: Arc<cancellation::Hub>,
     roblox_queue: Arc<Mutex<VecDeque<Payload>>>,
     roblox_clients: Arc<RwLock<HashMap<String, String>>>,
@@ -249,6 +252,8 @@ impl AppState {
             profile_results:Arc::new(accounts::ResultRoutes::default()),
             profile_switch:Arc::new(Mutex::new(())),
             profile_change:Arc::new(tokio::sync::watch::channel(0).0),
+            owner_account_token: Arc::new(RwLock::new(None)),
+            owner_workshop_token: Arc::new(RwLock::new(None)),
             cancellation: Arc::new(cancellation::Hub::default()),
             roblox_queue: Arc::new(Mutex::new(VecDeque::new())),
             roblox_clients: Arc::new(RwLock::new(HashMap::new())),
@@ -1060,6 +1065,7 @@ for line in sys.stdin:
     fn status_polls_are_passive_but_run_heartbeats_defer_updates() {
         let post = axum::http::Method::POST;
         assert!(!is_work_request(&post, "/api/desktop/browser-agent"));
+        assert!(!is_work_request(&post, "/api/desktop/telemetry/reset"));
         assert!(!is_work_request(&post, "/api/desktop/update"));
         assert!(!is_work_request(&post, "/api/debug/browser-log"), "debug uploads never defer updates");
         assert!(!is_work_request(&axum::http::Method::GET, "/api/desktop/activity"));
@@ -1254,7 +1260,7 @@ async fn start() -> anyhow::Result<()> {
         shared.clone(),
     );
     state.accounts=accounts;
-    let sync_state=state.clone();tokio::spawn(async move{loop{tokio::time::sleep(Duration::from_secs(60)).await;let _lease=accounts::ACCESS.read().await;if sync_state.accounts.active().is_some(){let _=account_sync::run(&sync_state).await;}}});
+    let sync_state=state.clone();tokio::spawn(async move{loop{tokio::time::sleep(Duration::from_secs(60)).await;let _lease=accounts::ACCESS.read().await;if sync_state.accounts.active().is_some(){if matches!(sync_state.accounts.heartbeat(env!("CARGO_PKG_VERSION"),false).await,Ok(false)){sync_state.profile_change.send_modify(|v|*v=v.wrapping_add(1));}else{let _=account_sync::run(&sync_state).await;}}}});
     // 1.24.30: the Logs page shows when the desktop's "bridge connected" changed and why (last browser request,
     // open browser connections, last frame on them), so a "Desktop bridge disconnected" report can be traced.
     let watch_ui = state.ui.clone();
@@ -1483,6 +1489,8 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/desktop/agent", post(desktop_agent_handler).layer(axum::extract::DefaultBodyLimit::max(18 * 1024 * 1024)))
         .route("/api/desktop/kill-studio", post(desktop_kill_studio_handler))
         .route("/api/desktop/browser-agent", post(browser_agent_handler))
+        .route("/api/desktop/telemetry", get(desktop_telemetry_handler))
+        .route("/api/desktop/telemetry/reset", post(desktop_telemetry_reset_handler))
         .route("/api/desktop/activity", post(|| async { Json(serde_json::json!({"ok":true})) }))
         .route("/api/desktop/agent-result", post(desktop_agent_result_handler))
         .route("/api/studio-dock/state", get(studio_dock::state_handler))
@@ -1502,6 +1510,15 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/workshop/scan", post(workshop::scan_handler).layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
         .route("/api/workshop/rate", post(workshop::rate_handler))
         .route("/api/workshop/report", post(workshop::report_handler))
+        .route("/api/owner/status", get(owner_status_handler))
+        .route("/api/owner/unlock", post(owner_unlock_handler))
+        .route("/api/owner/lock", post(owner_lock_handler))
+        .route("/api/owner/users", get(owner_users_handler))
+        .route("/api/owner/users/ban", post(owner_user_ban_handler))
+        .route("/api/owner/users/unban", post(owner_user_unban_handler))
+        .route("/api/owner/users/remove", post(owner_user_remove_handler))
+        .route("/api/owner/workshop/skills", get(owner_workshop_skills_handler))
+        .route("/api/owner/workshop/action", post(owner_workshop_action_handler))
         .route("/api/explorer", post(explorer::post).layer(axum::extract::DefaultBodyLimit::max(3 * 1024 * 1024)))
         .route("/api/creations", post(creations::post).layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
         .route("/api/templates", post(templates::post))
@@ -1584,8 +1601,8 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
 // agent run is in progress. /api/desktop/activity is the extension's run
 // heartbeat, which also covers long model replies with no tool calls.
 fn is_work_request(method: &axum::http::Method, path: &str) -> bool {
-    method == axum::http::Method::POST && !matches!(path,
-        "/api/desktop/profiles" | "/api/desktop/profile-picture" | "/api/desktop/update" | "/api/desktop/browser-agent" | "/api/show" | "/api/shutdown" | "/api/desktop/preferences" | "/api/preferences" | "/api/provider-pacing" |
+    method == axum::http::Method::POST && !path.starts_with("/api/owner/") && !matches!(path,
+        "/api/desktop/profiles" | "/api/desktop/profile-picture" | "/api/desktop/update" | "/api/desktop/browser-agent" | "/api/desktop/telemetry/reset" | "/api/show" | "/api/shutdown" | "/api/desktop/preferences" | "/api/preferences" | "/api/provider-pacing" |
         "/api/desktop/restart" | "/api/desktop/clear-logs" | "/api/connect" | "/api/disconnect" | "/api/pair" | "/api/local-full" | "/api/mcp/toggle" | "/api/mcp/desktop-apps/connect" | "/api/mcp/desktop-apps/disconnect" | "/api/mcp/studio/resources/read" | "/api/connections/setup" | "/api/debug/browser-log")
 }
 async fn track_tool_activity(request: axum::extract::Request, next: axum::middleware::Next) -> axum::response::Response {
@@ -1792,7 +1809,7 @@ fn tool_budget(name: &str, requested: Option<u64>, args: &serde_json::Value) -> 
 }
 /// 1.24.21: every AI tool call (non-empty checkpoint id) passes the safety
 /// limits, then runs, then lands in the task's "What happened" log.
-async fn guarded_tool(state: &AppState, engine: &str, id: &str, name: &str, args: serde_json::Value, budget: Duration, confirmed: bool) -> anyhow::Result<McpOutput> {
+async fn guarded_tool_observed(state: &AppState, engine: &str, id: &str, name: &str, args: serde_json::Value, budget: Duration, confirmed: bool) -> (anyhow::Result<McpOutput>, bool) {
     let prefs = state.preferences.snapshot();
     if let Err(reason) = safety::gate(prefs.read_only, prefs.confirm_delete, engine, name, &args, confirmed) {
         if !id.is_empty() {
@@ -1800,10 +1817,14 @@ async fn guarded_tool(state: &AppState, engine: &str, id: &str, name: &str, args
             journal.event(id, engine, name, &args, "blocked", &reason);
             let _ = journal.save();
         }
-        anyhow::bail!(reason);
+        return (Err(anyhow::anyhow!(reason)), false);
     }
     // Missing undo bookkeeping must never bypass the actual permission gate.
-    if id.is_empty() { return checkpoint_tool_bounded(state,engine,id,name,args,budget).await; }
+    if id.is_empty() {
+        let outcome = checkpoint_tool_bounded(state, engine, id, name, args, budget).await;
+        let succeeded = outcome.is_ok();
+        return (outcome, succeeded);
+    }
     // Log paths the way the journal stores them (relative to the workspace),
     // so the log can offer Undo on the matching change.
     let preview=safety::file_preview(engine,name,&args);
@@ -1824,7 +1845,11 @@ async fn guarded_tool(state: &AppState, engine: &str, id: &str, name: &str, args
     // Reads are logged in memory and written with the next change, so a long
     // run of Studio inspections does not rewrite the journal on every call.
     if result != "ok" || (safety::is_change(engine, name) && !preview) { let _ = journal.save(); }
-    outcome
+    let succeeded = result == "ok" || result == "started";
+    (outcome, succeeded)
+}
+async fn guarded_tool(state: &AppState, engine: &str, id: &str, name: &str, args: serde_json::Value, budget: Duration, confirmed: bool) -> anyhow::Result<McpOutput> {
+    guarded_tool_observed(state, engine, id, name, args, budget, confirmed).await.0
 }
 async fn checkpoint_tool_bounded(state: &AppState, engine: &str, id: &str, name: &str, args: serde_json::Value, budget: Duration) -> anyhow::Result<McpOutput> {
     match tokio::time::timeout(budget, checkpoint_tool(state,engine,id,name,args)).await {
@@ -2051,7 +2076,7 @@ async fn profile_access(State(state):State<AppState>,request:axum::extract::Requ
     if control{return next.run(request).await;}
     let guard=accounts::ACCESS.read().await;
     if state.accounts.required(){
-        let Some(active)=state.accounts.active()else{return(axum::http::StatusCode::LOCKED,Json(serde_json::json!({"ok":false,"code":"profile_required","error":"Open PlazCode, choose a profile and log in before using tools."}))).into_response();};
+        let Some(active)=state.accounts.active()else{return(axum::http::StatusCode::LOCKED,Json(serde_json::json!({"ok":false,"code":"profile_required","error":"Open PlazCode, choose a profile and log in before using tools.","warning":state.accounts.warning()}))).into_response();};
         let expected=request.headers().get("x-plazcode-profile").and_then(|v|v.to_str().ok()).map(str::to_string)
             .or_else(||request.headers().get("sec-websocket-protocol").and_then(|v|v.to_str().ok()).and_then(|v|v.split(',').find_map(|part|part.trim().strip_prefix("plazcode-profile.").map(str::to_string))));
         let engine_callback=matches!(path,"/api/connect"|"/api/disconnect"|"/api/poll"|"/api/result");
@@ -2089,6 +2114,7 @@ fn profile_result(result:anyhow::Result<serde_json::Value>)->axum::response::Res
 async fn reset_profile_runtime(state:&AppState){
     workspace::stop_profile_jobs();
     luau_service::clear_profile().await;luau_check::clear_profile();
+    telemetry::clear_profile_cache();
     state.profile_results.clear();
     state.roblox_queue.lock().await.clear();
     state.roblox_clients.write().await.clear();state.local_clients.write().await.clear();
@@ -2121,6 +2147,10 @@ async fn profile_action_handler(State(state):State<AppState>,headers:axum::http:
                     profile_paths::select(Some(profile_paths::profile_root(&active.id)?));blockbench::resync();figma::resync();
                     state.preferences.select_path(profile_paths::settings_path())?;
                     let _=account_sync::run(&state).await;
+                    if !active.guest && !active.offline {
+                        let hb_state = state.clone();
+                        tokio::spawn(async move { let _ = hb_state.accounts.heartbeat(env!("CARGO_PKG_VERSION"), false).await; });
+                    }
                     let prefs=state.preferences.snapshot();state.workspace.set_full_access(prefs.perm_mode=="full");state.workspace.set_allowed_folders(&prefs.allowed_folders);state.workspace.set_compact_outputs(prefs.compact_outputs);
                     state.profile_change.send_modify(|value|*value=value.wrapping_add(1));
                     Ok::<_,anyhow::Error>(serde_json::json!({"ok":true,"profile":active,"preferences":prefs}))
@@ -2134,6 +2164,9 @@ async fn profile_action_handler(State(state):State<AppState>,headers:axum::http:
                 anyhow::ensure!(headers.get("x-plazcode-profile").and_then(|v|v.to_str().ok())==Some(active.epoch.as_str()),"The active profile changed. Reopen PlazCode.");
                 if action.action=="sync"{let _lease=accounts::ACCESS.read().await;account_sync::run(&state).await?;return Ok(serde_json::json!({"ok":true,"status":account_sync::status(&active.id)}));}
                 if action.action=="ui-migrated"{state.accounts.acknowledge_ui().await?;return Ok(serde_json::json!({"ok":true}));}
+                let _ = tokio::time::timeout(Duration::from_millis(1200), state.accounts.heartbeat(env!("CARGO_PKG_VERSION"), true)).await;
+                *state.owner_account_token.write().await = None;
+                *state.owner_workshop_token.write().await = None;
                 state.cancellation.cancel_all();let _guard=accounts::ACCESS.write().await;
                 reset_profile_runtime(&state).await;state.accounts.lock();profile_paths::select(None);state.preferences.select_path(profile_paths::settings_path())?;blockbench::resync();figma::resync();
                 state.workspace.set_full_access(false);state.workspace.set_allowed_folders(&[]);state.workspace.set_compact_outputs(true);
@@ -2223,7 +2256,11 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
         "preferences": state.preferences.snapshot(),
         "hotkeyError": state.ui.studio_dock.hotkey_error(),
         "browser_agent": state.ui.browser_agent_snapshot(),
+        "telemetry": telemetry::snapshot(),
         "profile":state.accounts.active(),
+        "is_owner":state.accounts.active().is_some_and(|p|p.is_owner),
+        "owner_unlocked":state.owner_account_token.read().await.is_some()||state.owner_workshop_token.read().await.is_some(),
+        "account_warning":state.accounts.warning(),
         "profile_picture_revision":state.accounts.active().and_then(|p|profile_picture::revision(&p.id)),
         "account_sync":state.accounts.active().map(|p|account_sync::status(&p.id)),
     }))
@@ -2284,6 +2321,7 @@ async fn browser_agent_handler(State(state): State<AppState>, Json(value): Json<
     let mut slot=state.ui.browser_agent.lock().unwrap_or_else(|error|error.into_inner());
     let replace=slot.as_ref().map_or(true,|(at,current)|at.elapsed()>Duration::from_secs(3) || value["browser_focused"]==true || current["browser_id"]==value["browser_id"]);
     if replace {
+        telemetry::record_browser_poll(&value);
         let writing_changed = slot.as_ref().map_or(true, |(_, prev)| {
             prev["writing"] != value["writing"] || prev["provider"] != value["provider"]
         });
@@ -2293,6 +2331,14 @@ async fn browser_agent_handler(State(state): State<AppState>, Json(value): Json<
         }
     }
     Json(serde_json::json!({"ok":true}))
+}
+
+async fn desktop_telemetry_handler() -> impl IntoResponse {
+    Json(serde_json::json!({"ok":true,"telemetry":telemetry::snapshot()}))
+}
+
+async fn desktop_telemetry_reset_handler() -> impl IntoResponse {
+    Json(serde_json::json!({"ok":true,"telemetry":telemetry::reset()}))
 }
 
 async fn desktop_agent_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
@@ -2417,8 +2463,221 @@ async fn show_handler(State(state): State<AppState>) -> impl IntoResponse {
 }
 
 async fn shutdown_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let _ = tokio::time::timeout(Duration::from_millis(1200), state.accounts.heartbeat(env!("CARGO_PKG_VERSION"), true)).await;
     state.ui.request_quit();
     Json(serde_json::json!({"ok": true, "shutting_down": true}))
+}
+
+fn valid_account_id(id: &str) -> bool {
+    let trimmed = id.trim();
+    !trimmed.is_empty() && trimmed.len() <= 80 && trimmed.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+}
+
+async fn owner_status_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let is_account_owner = state.accounts.active().is_some_and(|p| p.is_owner);
+    let ram_acct = state.owner_account_token.read().await.clone();
+    let ram_ws = state.owner_workshop_token.read().await.clone();
+    let prefs = state.preferences.snapshot();
+    let registry_configured = !prefs.workshop_registry_url.trim().is_empty();
+    let account_owner = if is_account_owner || ram_acct.is_some() {
+        true
+    } else {
+        false
+    };
+    let workshop_owner = if is_account_owner || ram_ws.is_some() {
+        true
+    } else {
+        false
+    };
+    Json(serde_json::json!({
+        "ok": true,
+        "is_owner": is_account_owner,
+        "account_owner": account_owner,
+        "workshop_owner": workshop_owner,
+        "unlocked": ram_acct.is_some() || ram_ws.is_some(),
+        "has_account_token": ram_acct.is_some(),
+        "has_workshop_token": ram_ws.is_some(),
+        "registry_configured": registry_configured
+    }))
+}
+
+async fn owner_unlock_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+    let result: anyhow::Result<serde_json::Value> = async {
+        let acct_tok = req["account_token"].as_str().map(str::trim).filter(|s| !s.is_empty()).map(str::to_string);
+        let ws_tok = req["workshop_token"].as_str().map(str::trim).filter(|s| !s.is_empty()).map(str::to_string);
+        anyhow::ensure!(acct_tok.is_some() || ws_tok.is_some(), "Enter an account owner token or workshop owner token.");
+        if let Some(ref tok) = acct_tok {
+            state.accounts.owner_request(reqwest::Method::GET, "/v1/owner/status", None, Some(tok)).await?;
+        }
+        if let Some(ref tok) = ws_tok {
+            let ok = workshop::owner_check(&state, Some(tok)).await?;
+            anyhow::ensure!(ok, "Workshop owner token was rejected by the registry.");
+        }
+        if let Some(tok) = acct_tok {
+            *state.owner_account_token.write().await = Some(tok);
+        }
+        if let Some(tok) = ws_tok {
+            *state.owner_workshop_token.write().await = Some(tok);
+        }
+        let has_acct = state.owner_account_token.read().await.is_some();
+        let has_ws = state.owner_workshop_token.read().await.is_some();
+        Ok(serde_json::json!({"ok": true, "unlocked": has_acct || has_ws, "has_account_token": has_acct, "has_workshop_token": has_ws}))
+    }.await;
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(err) => {
+            let status = err.downcast_ref::<accounts::AccountError>().map(|e| axum::http::StatusCode::from_u16(e.status).unwrap_or(axum::http::StatusCode::FORBIDDEN)).unwrap_or(axum::http::StatusCode::FORBIDDEN);
+            (status, Json(serde_json::json!({"ok": false, "error": err.to_string()}))).into_response()
+        }
+    }
+}
+
+async fn owner_lock_handler(State(state): State<AppState>) -> impl IntoResponse {
+    *state.owner_account_token.write().await = None;
+    *state.owner_workshop_token.write().await = None;
+    Json(serde_json::json!({"ok": true, "unlocked": false}))
+}
+
+async fn owner_users_handler(State(state): State<AppState>, Query(params): Query<HashMap<String, String>>) -> impl IntoResponse {
+    let result: anyhow::Result<serde_json::Value> = async {
+        let mut url = reqwest::Url::parse("https://placeholder.invalid/v1/owner/users")?;
+        {
+            let mut qp = url.query_pairs_mut();
+            if let Some(q) = params.get("q").map(String::as_str).map(str::trim).filter(|s| !s.is_empty()) {
+                qp.append_pair("q", q);
+            }
+            if let Some(f) = params.get("filter").map(String::as_str).map(str::trim).filter(|s| !s.is_empty()) {
+                qp.append_pair("filter", f);
+            }
+        }
+        let path = match url.query() {
+            Some(qs) if !qs.is_empty() => format!("/v1/owner/users?{qs}"),
+            _ => "/v1/owner/users".to_string(),
+        };
+        let tok = state.owner_account_token.read().await.clone();
+        state.accounts.owner_request(reqwest::Method::GET, &path, None, tok.as_deref()).await
+    }.await;
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(err) => {
+            let status = err.downcast_ref::<accounts::AccountError>().map(|e| axum::http::StatusCode::from_u16(e.status).unwrap_or(axum::http::StatusCode::BAD_REQUEST)).unwrap_or(axum::http::StatusCode::BAD_REQUEST);
+            (status, Json(serde_json::json!({"ok": false, "error": err.to_string()}))).into_response()
+        }
+    }
+}
+
+async fn owner_user_ban_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+    let result: anyhow::Result<serde_json::Value> = async {
+        let id = req["id"].as_str().map(str::trim).unwrap_or("");
+        anyhow::ensure!(valid_account_id(id), "Valid user id is required.");
+        let reason = req["reason"].as_str().unwrap_or("Banned by owner.").trim();
+        let username = req["username"].as_str().map(str::trim).unwrap_or("");
+        let remove_ws = req["remove_workshop_skills"].as_bool() == Some(true);
+        let tok = state.owner_account_token.read().await.clone();
+        let mut res = state.accounts.owner_request(
+            reqwest::Method::POST,
+            &format!("/v1/owner/users/{id}/ban"),
+            Some(serde_json::json!({"reason": reason})),
+            tok.as_deref(),
+        ).await?;
+        if remove_ws && !username.is_empty() && !state.preferences.snapshot().workshop_registry_url.trim().is_empty() {
+            let ws_res = workshop::owner_action(&state, "ban", serde_json::json!({
+                "author": username,
+                "author_key": format!("acct:{id}"),
+                "reason": reason
+            })).await;
+            res["workshop_result"] = match ws_res {
+                Ok(v) => v,
+                Err(e) => serde_json::json!({"ok": false, "error": e.to_string()}),
+            };
+        }
+        Ok(res)
+    }.await;
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(err) => (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": err.to_string()}))).into_response(),
+    }
+}
+
+async fn owner_user_unban_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+    let result: anyhow::Result<serde_json::Value> = async {
+        let id = req["id"].as_str().map(str::trim).unwrap_or("");
+        anyhow::ensure!(valid_account_id(id), "Valid user id is required.");
+        let username = req["username"].as_str().map(str::trim).unwrap_or("");
+        let unban_ws = req["unban_workshop"].as_bool() == Some(true);
+        let tok = state.owner_account_token.read().await.clone();
+        let mut res = state.accounts.owner_request(
+            reqwest::Method::POST,
+            &format!("/v1/owner/users/{id}/unban"),
+            Some(serde_json::json!({})),
+            tok.as_deref(),
+        ).await?;
+        if unban_ws && !username.is_empty() && !state.preferences.snapshot().workshop_registry_url.trim().is_empty() {
+            let ws_res = workshop::owner_action(&state, "unban", serde_json::json!({
+                "author": username,
+                "author_key": format!("acct:{id}")
+            })).await;
+            res["workshop_result"] = match ws_res {
+                Ok(v) => v,
+                Err(e) => serde_json::json!({"ok": false, "error": e.to_string()}),
+            };
+        }
+        Ok(res)
+    }.await;
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(err) => (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": err.to_string()}))).into_response(),
+    }
+}
+
+async fn owner_user_remove_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+    let result: anyhow::Result<serde_json::Value> = async {
+        let id = req["id"].as_str().map(str::trim).unwrap_or("");
+        anyhow::ensure!(valid_account_id(id), "Valid user id is required.");
+        let username = req["username"].as_str().map(str::trim).unwrap_or("");
+        let remove_ws = req["remove_workshop_skills"].as_bool() == Some(true);
+        let tok = state.owner_account_token.read().await.clone();
+        let mut res = state.accounts.owner_request(
+            reqwest::Method::DELETE,
+            &format!("/v1/owner/users/{id}"),
+            None,
+            tok.as_deref(),
+        ).await?;
+        if remove_ws && !username.is_empty() && !state.preferences.snapshot().workshop_registry_url.trim().is_empty() {
+            let ws_res = workshop::owner_action(&state, "ban", serde_json::json!({
+                "author": username,
+                "author_key": format!("acct:{id}"),
+                "reason": "Account removed by owner."
+            })).await;
+            res["workshop_result"] = match ws_res {
+                Ok(v) => v,
+                Err(e) => serde_json::json!({"ok": false, "error": e.to_string()}),
+            };
+        }
+        Ok(res)
+    }.await;
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(err) => (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": err.to_string()}))).into_response(),
+    }
+}
+
+async fn owner_workshop_skills_handler(State(state): State<AppState>, Query(params): Query<HashMap<String, String>>) -> impl IntoResponse {
+    let status_filter = params.get("status").map(String::as_str).unwrap_or("all");
+    let q = params.get("q").map(String::as_str).unwrap_or("");
+    match workshop::owner_skills_list(&state, status_filter, q).await {
+        Ok(v) => Json(v).into_response(),
+        Err(err) => (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": err.to_string()}))).into_response(),
+    }
+}
+
+async fn owner_workshop_action_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+    let action = req["action"].as_str().unwrap_or("");
+    let payload = if req["payload"].is_object() { req["payload"].clone() } else { req.clone() };
+    match workshop::owner_action(&state, action, payload).await {
+        Ok(v) => Json(v).into_response(),
+        Err(err) => (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": err.to_string()}))).into_response(),
+    }
 }
 
 async fn preferences_get_handler(State(state): State<AppState>) -> impl IntoResponse {
@@ -2777,24 +3036,50 @@ async fn bridge_studio_call(state: &AppState, name: &str, args: serde_json::Valu
         }).to_string(), Vec::new());
     }
     if name == luau_check::TOOL {
+        let args_bytes = args.to_string().len();
         return match analyze_luau_tool(state, args).await {
-            Ok(out) => mcp_server::tool_success_result(out.text, out.images),
-            Err(error) => mcp_server::tool_error_result("analyze_luau_failed", &error.to_string(), serde_json::json!({"tool": name})),
+            Ok(out) => {
+                telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", true, telemetry::estimate_tokens(args_bytes + out.text.len()));
+                mcp_server::tool_success_result(out.text, out.images)
+            }
+            Err(error) => {
+                let msg = error.to_string();
+                telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", false, telemetry::estimate_tokens(args_bytes + msg.len()));
+                mcp_server::tool_error_result("analyze_luau_failed", &msg, serde_json::json!({"tool": name}))
+            }
         };
     }
     if name == luau_service::LOOKUP_TOOL {
-        return match guarded_tool(state, "roblox", "", name, args, Duration::from_secs(90), false).await {
-            Ok(out) => mcp_server::tool_success_result(out.text, out.images),
-            Err(error) => mcp_server::tool_error_result("luau_lookup_failed", &error.to_string(), serde_json::json!({"tool": name})),
+        let args_bytes = args.to_string().len();
+        let (outcome, succeeded) = guarded_tool_observed(state, "roblox", "", name, args, Duration::from_secs(90), false).await;
+        return match outcome {
+            Ok(out) => {
+                telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", succeeded, telemetry::estimate_tokens(args_bytes + out.text.len()));
+                mcp_server::tool_success_result(out.text, out.images)
+            }
+            Err(error) => {
+                let msg = error.to_string();
+                telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", false, telemetry::estimate_tokens(args_bytes + msg.len()));
+                mcp_server::tool_error_result("luau_lookup_failed", &msg, serde_json::json!({"tool": name}))
+            }
         };
     }
     if name.starts_with("roblox_place_") || name == "roblox_lint_script" {
         if !state.workspace.ready() {
             return mcp_server::tool_error_result("workspace_not_ready", "No project folder is selected in PlazCode. Open or select a project folder in PlazCode to use local place file tools.", serde_json::json!({"workspace_ready": false}));
         }
-        return match guarded_tool(state, "local", "", name, args, Duration::from_secs(60), false).await {
-            Ok(out) => mcp_server::tool_success_result(out.text, out.images),
-            Err(error) => mcp_server::tool_error_result("workspace_tool_error", &error.to_string(), serde_json::json!({"tool": name})),
+        let args_bytes = args.to_string().len();
+        let (outcome, succeeded) = guarded_tool_observed(state, "local", "", name, args, Duration::from_secs(60), false).await;
+        return match outcome {
+            Ok(out) => {
+                telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", succeeded, telemetry::estimate_tokens(args_bytes + out.text.len()));
+                mcp_server::tool_success_result(out.text, out.images)
+            }
+            Err(error) => {
+                let msg = error.to_string();
+                telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", false, telemetry::estimate_tokens(args_bytes + msg.len()));
+                mcp_server::tool_error_result("workspace_tool_error", &msg, serde_json::json!({"tool": name}))
+            }
         };
     }
     if name.contains("__") {
@@ -2815,10 +3100,16 @@ async fn bridge_studio_call(state: &AppState, name: &str, args: serde_json::Valu
             }),
         );
     }
-    match guarded_tool(state, "roblox", "", name, args, native_tool_timeout(name, None), false).await {
-        Ok(out) => mcp_server::tool_success_result(out.text, out.images),
+    let args_bytes = args.to_string().len();
+    let (outcome, succeeded) = guarded_tool_observed(state, "roblox", "", name, args, native_tool_timeout(name, None), false).await;
+    match outcome {
+        Ok(out) => {
+            telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", succeeded, telemetry::estimate_tokens(args_bytes + out.text.len()));
+            mcp_server::tool_success_result(out.text, out.images)
+        }
         Err(error) => {
             let msg = error.to_string();
+            telemetry::record_command("mcp|desktop-ai", "Desktop AI (MCP)", "MCP", false, telemetry::estimate_tokens(args_bytes + msg.len()));
             let code = if studio_text_disconnected(&msg) || msg.contains("MCP launcher is missing") || msg.contains("Studio ID unavailable") || msg.contains("not connected") {
                 "studio_not_running"
             } else if msg.contains("Read-only") || msg.contains("permission") || msg.contains("confirm") {
@@ -3534,7 +3825,14 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                         let task_epoch=epoch.clone();
                         tokio::spawn(async move {
                             let _lease=accounts::ACCESS.read().await;if state2.accounts.required()&&(task_epoch.is_none()||task_epoch!=state2.accounts.active().map(|p|p.epoch)){return;}
-                            let outcome = guarded_tool(&state2, &eng, &checkpoint_id, &name, args, budget, confirmed).await;
+                            let args_bytes = args.to_string().len();
+                            let (outcome, succeeded) = guarded_tool_observed(&state2, &eng, &checkpoint_id, &name, args, budget, confirmed).await;
+                            let out_bytes = match &outcome {
+                                Ok(out) => out.text.len(),
+                                Err(error) => error.to_string().len(),
+                            };
+                            let (chat_key, chat_title, chat_provider) = telemetry::resolve_browser_chat(&state2.ui.browser_agent_snapshot());
+                            telemetry::record_command(&chat_key, &chat_title, &chat_provider, succeeded, telemetry::estimate_tokens(args_bytes + out_bytes));
                             let response = match outcome {
                                 Ok(out) => {
                                     let mut frame = serde_json::json!({"type":"tool_result","id":id,"ok":true,"text":out.text});

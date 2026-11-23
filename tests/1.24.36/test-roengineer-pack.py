@@ -3,9 +3,10 @@ licence, PlazCode's adapter note, credit in THIRD-PARTY-NOTICES and one default 
 from pathlib import Path
 import hashlib,json,zipfile,sys
 here=Path(__file__).resolve().parent
-archive=here/'ro-engineer-v1.zip'
+dev=here.parents[1]/'development/1.24.36'
+archive=dev/'ro-engineer-v1.zip'
 assert hashlib.sha256(archive.read_bytes()).hexdigest()=='0094b4dea5c0b4065df914d571a99ee7d596a3b01bbcb0b1e5c0a02d76e3f365','Ro-Engineer archive changed'
-target=Path(sys.argv[1]) if len(sys.argv)>1 else here/'overlay'
+target=Path(sys.argv[1]) if len(sys.argv)>1 else dev/'overlay'
 pack=target/'PlazCode-Extension/starter-skills/ro-engineer'
 names=set()
 with zipfile.ZipFile(archive) as z:
@@ -19,7 +20,7 @@ assert 'MIT License' in (pack/'LICENSE').read_text() and 'excaldev' in (pack/'LI
 assert 'excaldev' in (pack/'PLAZCODE-ADAPTER.md').read_text()
 shipped={p.relative_to(pack).as_posix() for p in pack.rglob('*') if p.is_file()}
 assert shipped==names|{'PLAZCODE-ADAPTER.md'},shipped^(names|{'PLAZCODE-ADAPTER.md'})
-overlay=here/'overlay'
+overlay=dev/'overlay'
 resources=json.loads((overlay/'agent/src/roengineer-resources.json').read_text())
 assert set(resources)==shipped
 cards=json.loads((overlay/'agent/src/roengineer-index.json').read_text())

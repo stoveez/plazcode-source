@@ -768,9 +768,10 @@ pub async fn upload_handler(State(state): State<crate::AppState>, Json(req): Jso
             scan["issues"][0]["reason"].as_str().unwrap_or("unsafe content")
         );
 
+        let ram_owner = state.owner_workshop_token.read().await.clone();
         let token = match req["token"].as_str().map(str::trim).filter(|t| !t.is_empty()) {
             Some(t) => Some(t.to_string()),
-            None => state.accounts.active_token().await,
+            None => state.accounts.active_token().await.or_else(|| ram_owner.clone()),
         };
         let token = token.ok_or_else(|| anyhow::anyhow!("Sign in to your PlazCode account (or provide an upload token) to submit to the Workshop registry."))?;
 
@@ -788,7 +789,11 @@ pub async fn upload_handler(State(state): State<crate::AppState>, Json(req): Jso
             "files": files
         });
         let client = http_client()?;
-        let resp = client.post(url).bearer_auth(token).json(&payload).send().await?;
+        let mut request = client.post(url).bearer_auth(token).json(&payload);
+        if let Some(ref owner_tok) = ram_owner {
+            request = request.header("X-Owner-Token", owner_tok);
+        }
+        let resp = request.send().await?;
         let status = resp.status();
         let body: Value = resp.json().await.unwrap_or_else(|_| json!({"error": "Invalid registry response"}));
         anyhow::ensure!(
@@ -882,6 +887,86 @@ pub async fn report_handler(State(state): State<crate::AppState>, Json(req): Jso
         Ok(val) => Json(val).into_response(),
         Err(err) => (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "error": err.to_string()}))).into_response(),
     }
+}
+
+async fn apply_owner_headers(
+    mut builder: reqwest::RequestBuilder,
+    state: &crate::AppState,
+    explicit_owner_token: Option<&str>,
+) -> anyhow::Result<reqwest::RequestBuilder> {
+    let ram_owner = match explicit_owner_token.map(str::trim).filter(|t| !t.is_empty()) {
+        Some(t) => Some(t.to_string()),
+        None => state.owner_workshop_token.read().await.clone(),
+    };
+    let active_tok = state.accounts.active_token().await;
+    anyhow::ensure!(
+        ram_owner.is_some() || active_tok.is_some(),
+        "Sign in as owner or enter an owner token first."
+    );
+    if let Some(tok) = active_tok {
+        builder = builder.bearer_auth(tok);
+    }
+    if let Some(owner_tok) = ram_owner {
+        builder = builder.header("X-Owner-Token", owner_tok);
+    }
+    Ok(builder)
+}
+
+pub async fn owner_check(state: &crate::AppState, explicit_owner_token: Option<&str>) -> anyhow::Result<bool> {
+    let prefs = state.preferences.snapshot();
+    let Some(base) = validate_registry_url(&prefs.workshop_registry_url)? else {
+        return Ok(false);
+    };
+    let mut url = base.clone();
+    url.set_path(&format!("{}/api/v1/owner/skills", base.path().trim_end_matches('/')));
+    url.query_pairs_mut().append_pair("status", "pending");
+    let client = http_client()?;
+    let req = apply_owner_headers(client.get(url), state, explicit_owner_token).await?;
+    let resp = req.send().await?;
+    Ok(resp.status().is_success())
+}
+
+pub async fn owner_skills_list(state: &crate::AppState, status_filter: &str, q: &str) -> anyhow::Result<Value> {
+    let prefs = state.preferences.snapshot();
+    let base = validate_registry_url(&prefs.workshop_registry_url)?
+        .ok_or_else(|| anyhow::anyhow!("Configure workshopRegistryUrl first."))?;
+    let mut url = base.clone();
+    url.set_path(&format!("{}/api/v1/owner/skills", base.path().trim_end_matches('/')));
+    {
+        let mut qp = url.query_pairs_mut();
+        if !status_filter.trim().is_empty() {
+            qp.append_pair("status", status_filter.trim());
+        }
+        if !q.trim().is_empty() {
+            qp.append_pair("q", q.trim());
+        }
+    }
+    let client = http_client()?;
+    let req = apply_owner_headers(client.get(url), state, None).await?;
+    let resp = req.send().await?;
+    let status = resp.status();
+    let body: Value = resp.json().await.unwrap_or_else(|_| json!({"error": "Invalid registry response"}));
+    anyhow::ensure!(status.is_success(), "{}", body["error"].as_str().unwrap_or("Workshop owner request refused."));
+    Ok(body)
+}
+
+pub async fn owner_action(state: &crate::AppState, action: &str, payload: Value) -> anyhow::Result<Value> {
+    anyhow::ensure!(
+        matches!(action, "approve" | "reject" | "remove" | "ban" | "unban"),
+        "Unsupported workshop moderation action."
+    );
+    let prefs = state.preferences.snapshot();
+    let base = validate_registry_url(&prefs.workshop_registry_url)?
+        .ok_or_else(|| anyhow::anyhow!("Configure workshopRegistryUrl first."))?;
+    let mut url = base.clone();
+    url.set_path(&format!("{}/api/v1/owner/{}", base.path().trim_end_matches('/'), action));
+    let client = http_client()?;
+    let req = apply_owner_headers(client.post(url).json(&payload), state, None).await?;
+    let resp = req.send().await?;
+    let status = resp.status();
+    let body: Value = resp.json().await.unwrap_or_else(|_| json!({"error": "Invalid registry response"}));
+    anyhow::ensure!(status.is_success(), "{}", body["error"].as_str().unwrap_or("Workshop moderation action failed."));
+    Ok(body)
 }
 
 #[cfg(test)]

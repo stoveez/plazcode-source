@@ -8,7 +8,7 @@ import {generateKeyPairSync} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
-import {protect} from './protection.mjs';
+import {protect} from '../../development/1.24.36/protection.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url)),source=path.resolve(here,'../../build-src-1.24.36/PlazCode');
 const require=createRequire(path.join(source,'release-tools/package.json')),{chromium,firefox}=require('playwright');
 const temporary=await fs.mkdtemp(path.join(os.tmpdir(),'plazcode-protected-browser-')),root=path.join(temporary,'PlazCode');

@@ -3,7 +3,8 @@ from pathlib import Path
 import struct, sys, tempfile, zipfile, plistlib
 
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE))
+DEV = HERE.parents[1] / 'development/1.24.36'
+sys.path.insert(0, str(DEV))
 import macos_floor  # noqa: E402
 
 def thin(cpu, command, version):
@@ -54,7 +55,7 @@ if baseline.is_file():
             helper.write_bytes(archive.read(f'PlazCode/PlazCode.app/Contents/Resources/engram/engram-darwin-{arch}'))
             assert list(macos_floor.minimum_versions(helper).values()) == [(12, 0)]
 
-package = (HERE / 'package.py').read_text(encoding='utf-8')
+package = (DEV / 'package.py').read_text(encoding='utf-8')
 assert "value['LSMinimumSystemVersion']='10.15'" in package and 'macos_floor.minimum_versions' in package
 workflow = (HERE.parents[1] / '.github/workflows/validate-1.24.36.yml').read_text(encoding='utf-8')
 assert 'MACOSX_DEPLOYMENT_TARGET=10.15 cargo +stable build --release --locked --manifest-path agent/Cargo.toml --target x86_64-apple-darwin' in workflow

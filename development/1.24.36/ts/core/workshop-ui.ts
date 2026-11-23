@@ -27,7 +27,58 @@ const PlazCodeWorkshopUI = (() => {
     install_count: number;
   }
 
+  interface OwnerUser {
+    id: string;
+    username: string;
+    created_at: number;
+    last_seen_at?: number | null;
+    online: boolean;
+    app_version?: string;
+    banned: boolean;
+    banned_at?: number | null;
+    ban_reason?: string;
+    is_owner?: boolean;
+    profile_picture?: string | null;
+  }
+
+  interface OwnerSkill extends WorkshopItem {
+    status: string;
+    featured?: boolean;
+    author_key?: string;
+    reviewed_by?: string;
+    reject_reason?: string;
+    report_count?: number;
+    created_at?: number;
+    updated_at?: number;
+  }
+
+  interface BannedAuthor {
+    author_key: string;
+    reason?: string;
+    banned_at?: number;
+  }
+
+  interface OwnerStatus {
+    is_owner?: boolean;
+    account_owner?: boolean;
+    workshop_owner?: boolean;
+    unlocked?: boolean;
+    has_account_token?: boolean;
+    has_workshop_token?: boolean;
+    registry_configured?: boolean;
+  }
+
   const CATEGORIES = ['All categories', '3D Assets', 'Animation', 'Interface', 'Tools', 'Worldbuilding', 'Scripting'];
+
+  function formatDateTime(ms?: number | null): string {
+    if (!ms || typeof ms !== 'number' || ms <= 0) return 'Unknown';
+    try { return new Date(ms).toLocaleString(); } catch { return 'Unknown'; }
+  }
+
+  function validAvatarDataUrl(v?: string | null): string | null {
+    if (typeof v !== 'string') return null;
+    return /^data:image\/(png|jpeg|gif);base64,[A-Za-z0-9+/=]+$/.test(v) ? v : null;
+  }
 
   function formatBytes(bytes: number): string {
     if (!bytes || bytes < 1024) return Math.max(1, bytes || 0) + ' B';
@@ -103,6 +154,23 @@ const PlazCodeWorkshopUI = (() => {
 .ws-scan-box{padding:10px 12px;border-radius:10px;border:1px solid var(--pz-line,#2b3952);font-size:12px}
 .ws-scan-box.ok{border-color:#31e0a466;color:#31e0a4}
 .ws-scan-box.bad{border-color:#ff696c66;color:#ff696c}
+.ws-owner-card{width:min(940px,96vw);max-height:90vh;overflow-y:auto;display:grid;gap:14px;padding:22px;border-radius:18px;border:1px solid var(--pz-line,var(--stroke,#2b3952));background:var(--canvas,#0d1522);box-shadow:0 32px 90px rgb(0 0 0/.72)}
+.ws-owner-list{display:grid;gap:10px}
+.ws-owner-row{display:grid;gap:10px;padding:12px 14px;border-radius:13px;border:1px solid var(--pz-line,var(--stroke,#253650));background:var(--pz-card,var(--surface,#0a1423))}
+.ws-owner-row-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.ws-owner-user{display:flex;align-items:center;gap:12px;min-width:0}
+.ws-avatar-img{width:38px;height:38px;border-radius:999px;object-fit:cover;border:1px solid var(--pz-line,#2b3952);flex:0 0 auto}
+.ws-avatar-fallback{width:38px;height:38px;border-radius:999px;border:1px solid var(--pz-line,#2b3952);background:rgb(var(--pz-rgb,255 146 38)/.16);color:var(--text,#f5f8ff);display:grid;place-items:center;font:700 14px/1 var(--pz-mono,monospace);flex:0 0 auto}
+.ws-presence{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft,#9aa8be)}
+.ws-pill-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font:700 10.5px/1.3 var(--pz-mono,monospace);text-transform:uppercase;border:1px solid var(--pz-line,#2b3952);color:var(--ink-soft,#9aa8be)}
+.ws-pill-tag.warn{border-color:rgb(255 179 63/.55);color:var(--amber,#ffb33f)}
+.ws-pill-tag.bad{border-color:rgb(255 105 108/.55);color:var(--red,#ff696c)}
+.ws-pill-tag.ok{border-color:rgb(49 224 164/.55);color:var(--green,#31e0a4)}
+.ws-owner-confirm{display:grid;gap:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--pz-line,#2b3952);background:rgb(0 0 0/.28)}
+.ws-count-pill{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--red,#ff696c);color:#09111d;font:700 10.5px/1 var(--pz-mono,monospace)}
+.ws-note-bar{padding:9px 12px;border-radius:10px;border:1px solid var(--pz-line,#253650);background:rgb(255 255 255/.03);font-size:12px;color:var(--ink-soft,#9aa8be)}
+.ws-owner-view{display:grid;gap:12px}
+.ws-owner-view[hidden]{display:none}
 </style>`;
 
   function mount(host: HTMLElement, api: ApiFn, getPreferences: PrefsFn, setPreferences: SetPrefsFn, goPage?: GoFn) {
@@ -122,9 +190,13 @@ const PlazCodeWorkshopUI = (() => {
       <strong>Public Registry</strong>
       <span data-ws="reg-text" style="color:var(--ink-soft,#9aa8be)">Offline starter catalog · Set a Cloudflare Worker URL to browse and publish live</span>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button type="button" class="softbtn" data-ws="reg-config">Configure Registry</button>
       <button type="button" class="softbtn" data-ws="reg-settings" hidden>Settings</button>
+      <button type="button" class="accentbtn" data-ws="open-owner" hidden>Owner Panel <span data-ws="owner-badge" class="ws-count-pill" hidden>0</span></button>
+      <button type="button" class="softbtn" data-ws="owner-unlock-btn" title="Owner access (Ctrl+Shift+O)" aria-label="Owner access">
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="vertical-align:-2px"><rect x="4" y="11" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+      </button>
     </div>
   </div>
 
@@ -191,6 +263,7 @@ const PlazCodeWorkshopUI = (() => {
         <label>Version<input type="text" data-ws="up-version" value="1.0.0"></label>
       </div>
       <label>Tags (comma-separated)<input type="text" data-ws="up-tags" placeholder="ui, roblox, layout"></label>
+      <p style="margin:0;font-size:12px;color:var(--ink-soft,#9aa8be)">Community uploads pass safety checks and wait in the Owner Approval queue before going live.</p>
       <div class="ws-scan-box" data-ws="up-scan-result" hidden></div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center">
         <button type="button" class="softbtn" data-ws="up-scan">Run Safety Check</button>
@@ -231,12 +304,99 @@ const PlazCodeWorkshopUI = (() => {
       </div>
     </div>
   </div>
+
+  <div class="ws-modal" data-ws="owner-unlock-modal" hidden role="dialog" aria-modal="true" aria-label="Owner Access">
+    <div class="ws-modal-card" style="width:min(460px,94vw)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Owner Access</h3>
+        <button type="button" class="softbtn" data-ws="unlock-close">Close</button>
+      </div>
+      <p style="margin:0;font-size:12.5px;color:var(--ink-soft,#9aa8be)">Tokens stay strictly in app memory (RAM) for this session and clear automatically when you lock or quit PlazCode. Signed-in owner accounts unlock automatically.</p>
+      <label>Account Owner Token (optional)
+        <input type="password" autocomplete="off" data-ws="unlock-acct-token" placeholder="OWNER_ADMIN_TOKEN">
+      </label>
+      <label>Workshop Owner Token (optional)
+        <input type="password" autocomplete="off" data-ws="unlock-ws-token" placeholder="WORKSHOP_OWNER_TOKEN">
+      </label>
+      <div class="ws-scan-box bad" data-ws="unlock-error" hidden></div>
+      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <button type="button" class="dangerbtn" data-ws="unlock-lock" hidden>Lock Owner Session</button>
+        <div style="display:flex;gap:8px;margin-left:auto">
+          <button type="button" class="accentbtn" data-ws="unlock-submit">Unlock Owner Access</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ws-modal" data-ws="owner-panel" hidden role="dialog" aria-modal="true" aria-label="Owner Moderation &amp; Users">
+    <div class="ws-owner-card">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px">
+        <div>
+          <h3 style="margin:0;font-size:20px">Owner Panel</h3>
+          <p data-ws="owner-status-line" style="margin:2px 0 0;font-size:12px;color:var(--ink-soft,#9aa8be)">Manage PlazCode users, live presence, and pending Workshop submissions.</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button type="button" class="softbtn" data-ws="owner-refresh">Refresh</button>
+          <button type="button" class="softbtn" data-ws="owner-lock" hidden>Lock</button>
+          <button type="button" class="softbtn" data-ws="owner-close">Close</button>
+        </div>
+      </div>
+
+      <div class="ws-pills" role="tablist" aria-label="Owner Panel sections">
+        <button type="button" role="tab" data-ws-owner-tab="users" aria-selected="true" aria-pressed="true">Users <span data-ws="owner-users-count"></span></button>
+        <button type="button" role="tab" data-ws-owner-tab="workshop" aria-selected="false" aria-pressed="false">Workshop Moderation <span data-ws="owner-pending-count"></span></button>
+      </div>
+
+      <section data-ws="owner-users-view" class="ws-owner-view">
+        <div class="ws-note-bar">Passwords are encrypted with one-way scrypt hashing and cannot be viewed by anyone, including the owner.</div>
+        <div class="ws-toolbar">
+          <div class="ws-pills" role="group" aria-label="Filter users">
+            <button type="button" data-ws-ufilter="all" aria-pressed="true">All</button>
+            <button type="button" data-ws-ufilter="online" aria-pressed="false">Online Now</button>
+            <button type="button" data-ws-ufilter="banned" aria-pressed="false">Banned</button>
+          </div>
+          <input type="search" class="ws-search" data-ws="owner-user-search" placeholder="Search usernames..." aria-label="Search usernames">
+        </div>
+        <div class="ws-owner-list" data-ws="owner-users-list"></div>
+      </section>
+
+      <section data-ws="owner-workshop-view" class="ws-owner-view" hidden>
+        <div class="ws-toolbar">
+          <div class="ws-pills" role="group" aria-label="Filter submissions">
+            <button type="button" data-ws-wfilter="pending" aria-pressed="true">Pending</button>
+            <button type="button" data-ws-wfilter="hidden" aria-pressed="false">Hidden</button>
+            <button type="button" data-ws-wfilter="all" aria-pressed="false">All</button>
+            <button type="button" data-ws-wfilter="approved" aria-pressed="false">Approved</button>
+            <button type="button" data-ws-wfilter="rejected" aria-pressed="false">Rejected</button>
+            <button type="button" data-ws-wfilter="removed" aria-pressed="false">Removed</button>
+          </div>
+          <input type="search" class="ws-search" data-ws="owner-ws-search" placeholder="Filter skills or authors..." aria-label="Filter Workshop submissions">
+        </div>
+        <div class="ws-owner-list" data-ws="owner-ws-list"></div>
+        <div style="display:grid;gap:8px;padding-top:8px;border-top:1px solid var(--pz-line,#253650)">
+          <strong style="font-size:13px">Banned Workshop Authors</strong>
+          <div class="ws-owner-list" data-ws="owner-banned-authors"></div>
+        </div>
+      </section>
+    </div>
+  </div>
 </div>`;
 
     const find = <T extends HTMLElement = HTMLElement>(name: string) => host.querySelector('[data-ws="' + name + '"]') as T;
     const status = (msg: string) => { find('status').textContent = msg || ''; };
     let kindFilter = 'all', categoryFilter = 'All categories', items: WorkshopItem[] = [], installedIds = new Set<string>();
     let localRatings: Record<string, number> = {}, localSkills: any[] = [], reportTargetId = '', busy = false;
+    let ownerStatus: OwnerStatus = {};
+    let ownerTab: 'users' | 'workshop' = 'users';
+    let userFilter: 'all' | 'online' | 'banned' = 'all';
+    let wsModFilter: string = 'pending';
+    let ownerUsers: OwnerUser[] = [];
+    let ownerUserCounts: { total?: number; online?: number; banned?: number } = {};
+    let ownerSkills: OwnerSkill[] = [];
+    let ownerWsCounts: Record<string, number> = {};
+    let ownerBannedAuthors: BannedAuthor[] = [];
+    let pendingUserConfirm: { id: string; mode: 'ban' | 'remove'; username: string } | null = null;
+    let pendingRejectSkillId = '';
 
     const run = (fn: (...args: any[]) => Promise<void>) => async (...args: any[]) => {
       if (busy) return;
@@ -399,6 +559,7 @@ const PlazCodeWorkshopUI = (() => {
         : (regUrl ? `Registry offline (${res?.registry_error || 'unreachable'}) · Showing built-in starter catalog` : 'Offline starter catalog · Configure a Cloudflare Worker URL to browse & publish live');
 
       renderGrid();
+      await refreshOwnerStatus();
     }
 
     function populateUploadSkills() {
@@ -499,7 +660,7 @@ const PlazCodeWorkshopUI = (() => {
       const payload = uploadPayload();
       const res = await api('/api/workshop/upload', { method: 'POST', body: JSON.stringify(payload) });
       find('upload-modal').hidden = true;
-      status(res?.message || 'Submitted to Workshop.');
+      status(res?.message || 'Submitted for owner approval.');
       await refresh();
     });
 
@@ -528,6 +689,565 @@ const PlazCodeWorkshopUI = (() => {
       await refresh();
       status(url ? 'Workshop registry URL saved.' : 'Switched to offline starter catalog.');
     });
+
+    function setOwnerStatusLine(msg: string) {
+      find('owner-status-line').textContent = msg;
+    }
+
+    async function refreshOwnerStatus() {
+      try {
+        ownerStatus = await api('/api/owner/status') || {};
+      } catch {
+        ownerStatus = {};
+      }
+      const canOpen = Boolean(ownerStatus.is_owner || ownerStatus.unlocked);
+      find('open-owner').hidden = !canOpen;
+      find('owner-lock').hidden = !ownerStatus.unlocked;
+      find('unlock-lock').hidden = !ownerStatus.unlocked;
+      if (canOpen && ownerStatus.registry_configured && ownerStatus.workshop_owner) {
+        try {
+          const preview = await api('/api/owner/workshop/skills?status=pending');
+          const pending = Number(preview?.counts?.pending || 0) + Number(preview?.counts?.hidden || 0);
+          const badge = find('owner-badge');
+          badge.hidden = pending <= 0;
+          badge.textContent = String(pending);
+          find('owner-pending-count').textContent = pending > 0 ? `(${pending})` : '';
+        } catch {}
+      } else {
+        find('owner-badge').hidden = true;
+      }
+    }
+
+    function selectOwnerTab(tab: 'users' | 'workshop') {
+      ownerTab = tab;
+      host.querySelectorAll<HTMLButtonElement>('[data-ws-owner-tab]').forEach(btn => {
+        const active = btn.getAttribute('data-ws-owner-tab') === tab;
+        btn.setAttribute('aria-pressed', String(active));
+        btn.setAttribute('aria-selected', String(active));
+      });
+      find('owner-users-view').hidden = tab !== 'users';
+      find('owner-workshop-view').hidden = tab !== 'workshop';
+    }
+
+    function renderOwnerUsers() {
+      const list = find('owner-users-list');
+      list.replaceChildren();
+      const total = Number(ownerUserCounts.total ?? ownerUsers.length);
+      find('owner-users-count').textContent = total ? `(${total})` : '';
+      if (!ownerUsers.length) {
+        const empty = document.createElement('p');
+        empty.style.color = 'var(--ink-soft,#9aa8be)';
+        empty.textContent = 'No matching PlazCode user accounts found.';
+        list.appendChild(empty);
+        return;
+      }
+      for (const u of ownerUsers) {
+        const row = document.createElement('div');
+        row.className = 'ws-owner-row';
+        row.setAttribute('data-ws-owner-user', u.id);
+
+        const head = document.createElement('div');
+        head.className = 'ws-owner-row-head';
+
+        const left = document.createElement('div');
+        left.className = 'ws-owner-user';
+        const safePic = validAvatarDataUrl(u.profile_picture);
+        if (safePic) {
+          const img = document.createElement('img');
+          img.className = 'ws-avatar-img';
+          img.src = safePic;
+          img.alt = `${u.username} avatar`;
+          left.appendChild(img);
+        } else {
+          const avatar = document.createElement('div');
+          avatar.className = 'ws-avatar-fallback';
+          avatar.textContent = (u.username || '?').slice(0, 1).toUpperCase();
+          left.appendChild(avatar);
+        }
+
+        const info = document.createElement('div');
+        info.style.display = 'grid';
+        info.style.gap = '3px';
+
+        const titleRow = document.createElement('div');
+        titleRow.style.display = 'flex';
+        titleRow.style.flexWrap = 'wrap';
+        titleRow.style.alignItems = 'center';
+        titleRow.style.gap = '6px';
+
+        const nameEl = document.createElement('strong');
+        nameEl.textContent = u.username;
+        titleRow.appendChild(nameEl);
+
+        if (u.is_owner) {
+          const ownerTag = document.createElement('span');
+          ownerTag.className = 'ws-pill-tag ok';
+          ownerTag.textContent = 'Owner';
+          titleRow.appendChild(ownerTag);
+        }
+        if (u.banned) {
+          const banTag = document.createElement('span');
+          banTag.className = 'ws-pill-tag bad';
+          banTag.textContent = 'Banned';
+          titleRow.appendChild(banTag);
+        }
+
+        const presence = document.createElement('span');
+        presence.className = 'ws-presence';
+        const dot = document.createElement('span');
+        dot.className = 'ws-dot' + (u.online ? ' on' : '');
+        const pText = document.createElement('span');
+        pText.textContent = u.online
+          ? `Using PlazCode now${u.app_version ? ' · v' + u.app_version : ''}`
+          : (u.last_seen_at ? `Offline · last active ${formatDateTime(u.last_seen_at)}` : 'Offline · never seen');
+        presence.append(dot, pText);
+
+        const joined = document.createElement('small');
+        joined.style.color = 'var(--ink-soft,#9aa8be)';
+        joined.textContent = `Joined ${formatDateTime(u.created_at)}${u.banned && u.ban_reason ? ' · Ban reason: ' + u.ban_reason : ''}`;
+
+        info.append(titleRow, presence, joined);
+        left.appendChild(info);
+
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.gap = '6px';
+        actions.style.flexWrap = 'wrap';
+        if (!u.is_owner) {
+          const banBtn = document.createElement('button');
+          banBtn.type = 'button';
+          banBtn.className = u.banned ? 'softbtn' : 'dangerbtn';
+          banBtn.textContent = u.banned ? 'Unban' : 'Ban';
+          banBtn.setAttribute('data-ws-user-ban', u.id);
+          if (u.banned) {
+            banBtn.onclick = run(async () => {
+              await api('/api/owner/users/unban', {
+                method: 'POST',
+                body: JSON.stringify({ id: u.id, username: u.username, unban_workshop: true }),
+              });
+              setOwnerStatusLine(`Unbanned ${u.username}.`);
+              await loadOwnerUsers();
+            });
+          } else {
+            banBtn.onclick = () => {
+              pendingUserConfirm = { id: u.id, mode: 'ban', username: u.username };
+              renderOwnerUsers();
+            };
+          }
+
+          const rmBtn = document.createElement('button');
+          rmBtn.type = 'button';
+          rmBtn.className = 'dangerbtn';
+          rmBtn.textContent = 'Remove Profile';
+          rmBtn.setAttribute('data-ws-user-remove', u.id);
+          rmBtn.onclick = () => {
+            pendingUserConfirm = { id: u.id, mode: 'remove', username: u.username };
+            renderOwnerUsers();
+          };
+          actions.append(banBtn, rmBtn);
+        }
+        head.append(left, actions);
+        row.appendChild(head);
+
+        if (pendingUserConfirm && pendingUserConfirm.id === u.id) {
+          const confirmBox = document.createElement('div');
+          confirmBox.className = 'ws-owner-confirm';
+          const isBan = pendingUserConfirm.mode === 'ban';
+          const msg = document.createElement('div');
+          msg.style.fontSize = '12.5px';
+          msg.textContent = isBan
+            ? `Ban ${u.username} from PlazCode? Active sessions are revoked immediately.`
+            : `Permanently delete ${u.username}'s profile, sessions, and synced settings? This cannot be undone.`;
+          confirmBox.appendChild(msg);
+
+          let reasonInput: HTMLInputElement | null = null;
+          if (isBan) {
+            reasonInput = document.createElement('input');
+            reasonInput.type = 'text';
+            reasonInput.placeholder = 'Optional ban reason (shown to user)';
+            reasonInput.value = 'Banned by owner.';
+            reasonInput.style.cssText = 'padding:7px 10px;border-radius:8px;border:1px solid var(--pz-line,#2b3952);background:rgb(0 0 0/.24);color:var(--text,#f5f8ff)';
+            confirmBox.appendChild(reasonInput);
+          }
+
+          const wsCheckLabel = document.createElement('label');
+          wsCheckLabel.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer';
+          const wsCheck = document.createElement('input');
+          wsCheck.type = 'checkbox';
+          wsCheck.checked = true;
+          wsCheckLabel.append(wsCheck, document.createTextNode('Also remove their Workshop uploads'));
+          confirmBox.appendChild(wsCheckLabel);
+
+          const cBtns = document.createElement('div');
+          cBtns.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
+          const cancelBtn = document.createElement('button');
+          cancelBtn.type = 'button';
+          cancelBtn.className = 'softbtn';
+          cancelBtn.textContent = 'Cancel';
+          cancelBtn.onclick = () => { pendingUserConfirm = null; renderOwnerUsers(); };
+
+          const confirmBtn = document.createElement('button');
+          confirmBtn.type = 'button';
+          confirmBtn.className = 'dangerbtn';
+          confirmBtn.textContent = isBan ? 'Confirm Ban' : 'Confirm Remove';
+          confirmBtn.setAttribute('data-ws-user-confirm', u.id);
+          confirmBtn.onclick = run(async () => {
+            if (isBan) {
+              await api('/api/owner/users/ban', {
+                method: 'POST',
+                body: JSON.stringify({
+                  id: u.id,
+                  username: u.username,
+                  reason: reasonInput?.value.trim() || 'Banned by owner.',
+                  remove_workshop_skills: wsCheck.checked,
+                }),
+              });
+              setOwnerStatusLine(`Banned ${u.username} from PlazCode.`);
+            } else {
+              await api('/api/owner/users/remove', {
+                method: 'POST',
+                body: JSON.stringify({
+                  id: u.id,
+                  username: u.username,
+                  remove_workshop_skills: wsCheck.checked,
+                }),
+              });
+              setOwnerStatusLine(`Removed ${u.username}'s PlazCode profile.`);
+            }
+            pendingUserConfirm = null;
+            await loadOwnerUsers();
+            if (ownerStatus.registry_configured && ownerStatus.workshop_owner) await loadOwnerWorkshop();
+          });
+          cBtns.append(cancelBtn, confirmBtn);
+          confirmBox.appendChild(cBtns);
+          row.appendChild(confirmBox);
+        }
+
+        list.appendChild(row);
+      }
+    }
+
+    function renderOwnerWorkshop() {
+      const list = find('owner-ws-list');
+      list.replaceChildren();
+      const pending = Number(ownerWsCounts.pending || 0) + Number(ownerWsCounts.hidden || 0);
+      find('owner-pending-count').textContent = pending > 0 ? `(${pending})` : '';
+      const badge = find('owner-badge');
+      badge.hidden = pending <= 0;
+      badge.textContent = String(pending);
+
+      if (!ownerStatus.registry_configured) {
+        const empty = document.createElement('p');
+        empty.style.color = 'var(--ink-soft,#9aa8be)';
+        empty.textContent = 'Configure a Workshop Registry URL first to moderate community submissions.';
+        list.appendChild(empty);
+      } else if (!ownerSkills.length) {
+        const empty = document.createElement('p');
+        empty.style.color = 'var(--ink-soft,#9aa8be)';
+        empty.textContent = `No Workshop items in "${wsModFilter}".`;
+        list.appendChild(empty);
+      } else {
+        for (const s of ownerSkills) {
+          const row = document.createElement('div');
+          row.className = 'ws-owner-row';
+          row.setAttribute('data-ws-owner-skill', s.id);
+
+          const head = document.createElement('div');
+          head.className = 'ws-owner-row-head';
+
+          const left = document.createElement('div');
+          left.style.cssText = 'display:grid;gap:4px;min-width:0;flex:1 1 320px';
+
+          const topLine = document.createElement('div');
+          topLine.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:6px';
+          const titleEl = document.createElement('strong');
+          titleEl.textContent = s.title;
+          const stPill = document.createElement('span');
+          stPill.className = 'ws-pill-tag ' + (s.status === 'approved' ? 'ok' : (s.status === 'pending' ? 'warn' : 'bad'));
+          stPill.textContent = s.status;
+          topLine.append(titleEl, stPill);
+          if (s.featured) {
+            const featPill = document.createElement('span');
+            featPill.className = 'ws-pill-tag warn';
+            featPill.textContent = 'Featured';
+            topLine.appendChild(featPill);
+          }
+          if (Number(s.report_count || 0) > 0) {
+            const repPill = document.createElement('span');
+            repPill.className = 'ws-pill-tag bad';
+            repPill.textContent = `${s.report_count} report${s.report_count === 1 ? '' : 's'}`;
+            topLine.appendChild(repPill);
+          }
+
+          const meta = document.createElement('small');
+          meta.style.color = 'var(--ink-soft,#9aa8be)';
+          meta.textContent = `${s.author} · ${s.kind} · ${s.category} · ${s.engine} · v${s.version} · ${formatDateTime(s.created_at)}`;
+          const sum = document.createElement('div');
+          sum.style.fontSize = '12.5px';
+          sum.textContent = s.summary;
+          left.append(topLine, meta, sum);
+          if (s.reject_reason) {
+            const rej = document.createElement('small');
+            rej.style.color = 'var(--red,#ff696c)';
+            rej.textContent = `Rejected reason: ${s.reject_reason}`;
+            left.appendChild(rej);
+          }
+
+          const actions = document.createElement('div');
+          actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center';
+          const modAction = (action: string, payload: Record<string, unknown>, label: string) => run(async () => {
+            await api('/api/owner/workshop/action', {
+              method: 'POST',
+              body: JSON.stringify({ action, payload }),
+            });
+            setOwnerStatusLine(`${label}: ${s.title}`);
+            pendingRejectSkillId = '';
+            await loadOwnerWorkshop();
+            await refresh();
+          });
+
+          if (s.status !== 'approved') {
+            const appBtn = document.createElement('button');
+            appBtn.type = 'button';
+            appBtn.className = 'accentbtn';
+            appBtn.textContent = 'Approve';
+            appBtn.setAttribute('data-ws-mod-approve', s.id);
+            appBtn.onclick = modAction('approve', { id: s.id, featured: false }, 'Approved');
+            actions.appendChild(appBtn);
+          }
+          const featBtn = document.createElement('button');
+          featBtn.type = 'button';
+          featBtn.className = 'softbtn';
+          featBtn.textContent = s.featured ? 'Unfeature' : 'Approve & Feature';
+          featBtn.onclick = modAction('approve', { id: s.id, featured: !s.featured }, s.featured ? 'Updated' : 'Featured');
+          actions.appendChild(featBtn);
+
+          if (s.status !== 'rejected') {
+            const rejBtn = document.createElement('button');
+            rejBtn.type = 'button';
+            rejBtn.className = 'softbtn';
+            rejBtn.textContent = 'Reject';
+            rejBtn.onclick = () => { pendingRejectSkillId = s.id; renderOwnerWorkshop(); };
+            actions.appendChild(rejBtn);
+          }
+
+          if (s.status !== 'removed') {
+            const remBtn = document.createElement('button');
+            remBtn.type = 'button';
+            remBtn.className = 'dangerbtn';
+            remBtn.textContent = 'Remove';
+            remBtn.setAttribute('data-ws-mod-remove', s.id);
+            remBtn.onclick = modAction('remove', { id: s.id }, 'Removed');
+            actions.appendChild(remBtn);
+          }
+
+          if (s.author_key || s.author) {
+            const banAuthBtn = document.createElement('button');
+            banAuthBtn.type = 'button';
+            banAuthBtn.className = 'dangerbtn';
+            banAuthBtn.textContent = 'Ban Author';
+            banAuthBtn.onclick = modAction('ban', {
+              author_key: s.author_key || s.author,
+              author: s.author,
+              reason: 'Banned by owner.',
+            }, 'Banned author');
+            actions.appendChild(banAuthBtn);
+          }
+
+          head.append(left, actions);
+          row.appendChild(head);
+
+          if (pendingRejectSkillId === s.id) {
+            const rejBox = document.createElement('div');
+            rejBox.className = 'ws-owner-confirm';
+            const rejInput = document.createElement('input');
+            rejInput.type = 'text';
+            rejInput.placeholder = 'Rejection reason shown in moderation history';
+            rejInput.value = 'Does not meet Workshop guidelines.';
+            rejInput.style.cssText = 'padding:7px 10px;border-radius:8px;border:1px solid var(--pz-line,#2b3952);background:rgb(0 0 0/.24);color:var(--text,#f5f8ff)';
+            const btns = document.createElement('div');
+            btns.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
+            const cBtn = document.createElement('button');
+            cBtn.type = 'button';
+            cBtn.className = 'softbtn';
+            cBtn.textContent = 'Cancel';
+            cBtn.onclick = () => { pendingRejectSkillId = ''; renderOwnerWorkshop(); };
+            const sBtn = document.createElement('button');
+            sBtn.type = 'button';
+            sBtn.className = 'dangerbtn';
+            sBtn.textContent = 'Confirm Reject';
+            sBtn.onclick = run(async () => {
+              await api('/api/owner/workshop/action', {
+                method: 'POST',
+                body: JSON.stringify({ action: 'reject', payload: { id: s.id, reason: rejInput.value.trim() || 'Does not meet Workshop guidelines.' } }),
+              });
+              pendingRejectSkillId = '';
+              setOwnerStatusLine(`Rejected ${s.title}`);
+              await loadOwnerWorkshop();
+            });
+            btns.append(cBtn, sBtn);
+            rejBox.append(rejInput, btns);
+            row.appendChild(rejBox);
+          }
+          list.appendChild(row);
+        }
+      }
+
+      const bannedBox = find('owner-banned-authors');
+      bannedBox.replaceChildren();
+      if (!ownerBannedAuthors.length) {
+        const none = document.createElement('small');
+        none.style.color = 'var(--ink-soft,#9aa8be)';
+        none.textContent = 'No banned Workshop authors.';
+        bannedBox.appendChild(none);
+      } else {
+        for (const b of ownerBannedAuthors) {
+          const item = document.createElement('div');
+          item.className = 'ws-owner-row-head';
+          item.style.cssText = 'padding:8px 10px;border-radius:9px;border:1px solid var(--pz-line,#253650)';
+          const txt = document.createElement('span');
+          txt.style.fontSize = '12px';
+          txt.textContent = `${b.author_key}${b.reason ? ' — ' + b.reason : ''}`;
+          const unbanBtn = document.createElement('button');
+          unbanBtn.type = 'button';
+          unbanBtn.className = 'softbtn';
+          unbanBtn.textContent = 'Unban';
+          unbanBtn.onclick = run(async () => {
+            await api('/api/owner/workshop/action', {
+              method: 'POST',
+              body: JSON.stringify({ action: 'unban', payload: { author_key: b.author_key } }),
+            });
+            setOwnerStatusLine(`Unbanned author ${b.author_key}.`);
+            await loadOwnerWorkshop();
+          });
+          item.append(txt, unbanBtn);
+          bannedBox.appendChild(item);
+        }
+      }
+    }
+
+    async function loadOwnerUsers() {
+      if (!ownerStatus.account_owner) {
+        ownerUsers = [];
+        find('owner-users-list').replaceChildren();
+        const msg = document.createElement('p');
+        msg.style.color = 'var(--ink-soft,#9aa8be)';
+        msg.textContent = 'Unlock with an Owner Account session or Account Owner Token to manage registered PlazCode users.';
+        find('owner-users-list').appendChild(msg);
+        return;
+      }
+      const q = encodeURIComponent(find<HTMLInputElement>('owner-user-search').value.trim());
+      const res = await api(`/api/owner/users?filter=${encodeURIComponent(userFilter)}&q=${q}`);
+      ownerUsers = res?.users || [];
+      ownerUserCounts = res?.counts || {};
+      renderOwnerUsers();
+    }
+
+    async function loadOwnerWorkshop() {
+      if (!ownerStatus.registry_configured || !ownerStatus.workshop_owner) {
+        ownerSkills = [];
+        ownerBannedAuthors = [];
+        renderOwnerWorkshop();
+        return;
+      }
+      const q = encodeURIComponent(find<HTMLInputElement>('owner-ws-search').value.trim());
+      const res = await api(`/api/owner/workshop/skills?status=${encodeURIComponent(wsModFilter)}&q=${q}`);
+      ownerSkills = res?.skills || [];
+      ownerWsCounts = res?.counts || {};
+      ownerBannedAuthors = res?.banned_authors || [];
+      renderOwnerWorkshop();
+    }
+
+    async function openOwnerPanel() {
+      await refreshOwnerStatus();
+      if (!ownerStatus.is_owner && !ownerStatus.unlocked) {
+        find('unlock-error').hidden = true;
+        find('owner-unlock-modal').hidden = false;
+        return;
+      }
+      find('owner-panel').hidden = false;
+      selectOwnerTab(ownerTab);
+      await Promise.all([loadOwnerUsers(), loadOwnerWorkshop()]);
+    }
+
+    find('open-owner').onclick = run(openOwnerPanel);
+    find('owner-close').onclick = () => { find('owner-panel').hidden = true; };
+    find('owner-refresh').onclick = run(async () => {
+      await Promise.all([loadOwnerUsers(), loadOwnerWorkshop()]);
+      setOwnerStatusLine('Owner panel refreshed.');
+    });
+    const doOwnerLock = run(async () => {
+      await api('/api/owner/lock', { method: 'POST', body: JSON.stringify({}) });
+      find('owner-panel').hidden = true;
+      find('owner-unlock-modal').hidden = true;
+      find<HTMLInputElement>('unlock-acct-token').value = '';
+      find<HTMLInputElement>('unlock-ws-token').value = '';
+      await refreshOwnerStatus();
+      status('Owner access locked.');
+    });
+    find('owner-lock').onclick = doOwnerLock;
+    find('unlock-lock').onclick = doOwnerLock;
+
+    find('owner-unlock-btn').onclick = async () => {
+      await refreshOwnerStatus();
+      find('unlock-error').hidden = true;
+      find('owner-unlock-modal').hidden = false;
+    };
+    find('unlock-close').onclick = () => { find('owner-unlock-modal').hidden = true; };
+    find('unlock-submit').onclick = run(async () => {
+      const account_token = find<HTMLInputElement>('unlock-acct-token').value.trim();
+      const workshop_token = find<HTMLInputElement>('unlock-ws-token').value.trim();
+      const errBox = find('unlock-error');
+      errBox.hidden = true;
+      try {
+        await api('/api/owner/unlock', {
+          method: 'POST',
+          body: JSON.stringify({ account_token, workshop_token }),
+        });
+        find<HTMLInputElement>('unlock-acct-token').value = '';
+        find<HTMLInputElement>('unlock-ws-token').value = '';
+        find('owner-unlock-modal').hidden = true;
+        await openOwnerPanel();
+      } catch (e) {
+        errBox.hidden = false;
+        errBox.textContent = (e as Error)?.message || 'Owner unlock failed.';
+      }
+    });
+
+    host.querySelectorAll<HTMLButtonElement>('[data-ws-owner-tab]').forEach(btn => {
+      btn.onclick = run(async () => {
+        const tab = (btn.getAttribute('data-ws-owner-tab') === 'workshop' ? 'workshop' : 'users') as 'users' | 'workshop';
+        selectOwnerTab(tab);
+        if (tab === 'users') await loadOwnerUsers();
+        else await loadOwnerWorkshop();
+      });
+    });
+    host.querySelectorAll<HTMLButtonElement>('[data-ws-ufilter]').forEach(btn => {
+      btn.onclick = run(async () => {
+        userFilter = (btn.getAttribute('data-ws-ufilter') || 'all') as 'all' | 'online' | 'banned';
+        host.querySelectorAll<HTMLButtonElement>('[data-ws-ufilter]').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+        await loadOwnerUsers();
+      });
+    });
+    find('owner-user-search').addEventListener('input', () => { void loadOwnerUsers(); });
+
+    host.querySelectorAll<HTMLButtonElement>('[data-ws-wfilter]').forEach(btn => {
+      btn.onclick = run(async () => {
+        wsModFilter = btn.getAttribute('data-ws-wfilter') || 'pending';
+        host.querySelectorAll<HTMLButtonElement>('[data-ws-wfilter]').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+        await loadOwnerWorkshop();
+      });
+    });
+    find('owner-ws-search').addEventListener('input', () => { void loadOwnerWorkshop(); });
+
+    const onKey = (ev: KeyboardEvent) => {
+      if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && (ev.key === 'O' || ev.key === 'o')) {
+        if (!host.isConnected || host.hidden) return;
+        ev.preventDefault();
+        void openOwnerPanel();
+      }
+    };
+    window.addEventListener('keydown', onKey);
 
     renderCategories();
     return { refresh };

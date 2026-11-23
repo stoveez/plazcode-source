@@ -4,6 +4,7 @@ import contextlib, io, json, os, runpy, sys, tempfile, types
 from unittest import mock
 
 HERE=Path(__file__).parent
+DEV=HERE.parents[1]/'development/1.24.36'
 with tempfile.TemporaryDirectory() as temporary:
     root=Path(temporary)
     descriptor={'schema':1,'mark':'a'*16,'seed_sha256':'b'*64,'layout':1}
@@ -19,7 +20,7 @@ with tempfile.TemporaryDirectory() as temporary:
     def run():
         output=io.StringIO()
         with mock.patch.object(sys,'argv',['release-check.py','123','stoveez/plazcode-source']), mock.patch.dict(os.environ,{'PLAZCODE_VARIANT_REPORTS':str(root)}), mock.patch('subprocess.run',side_effect=gh), contextlib.redirect_stdout(output):
-            try:runpy.run_path(str(HERE/'release-check.py'),run_name='__main__')
+            try:runpy.run_path(str(DEV/'release-check.py'),run_name='__main__')
             except SystemExit as exit:return exit.code,output.getvalue()
         raise AssertionError('Missing readiness exit code')
     code,text=run();assert code==0 and 'everything passed' in text and 'Sealed text across platforms: PASS' in text
