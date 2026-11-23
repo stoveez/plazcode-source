@@ -121,6 +121,8 @@ pub struct DesktopPreferences {
     pub parallel_reads: bool,
     #[serde(rename = "rsTaskLedger")]
     pub task_ledger: bool,
+    #[serde(rename = "workshopRegistryUrl")]
+    pub workshop_registry_url: String,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -187,6 +189,7 @@ impl Default for DesktopPreferences {
             compact_outputs: true,
             parallel_reads: true,
             task_ledger: true,
+            workshop_registry_url: String::new(),
         }
     }
 }
@@ -426,6 +429,13 @@ impl DesktopPreferences {
         if !matches!(self.thinking_level.as_str(), "default" | "low" | "mid" | "high" | "max" | "ultracode") {
             self.thinking_level = "default".to_string();
         }
+        let reg = self.workshop_registry_url.trim().trim_end_matches('/').to_string();
+        let valid_reg = reg.is_empty()
+            || (reg.len() <= 300
+                && (reg.starts_with("https://")
+                    || reg.starts_with("http://127.0.0.1")
+                    || reg.starts_with("http://localhost")));
+        self.workshop_registry_url = if valid_reg { reg } else { String::new() };
     }
 }
 
@@ -1246,5 +1256,20 @@ mod extension_sync_tests {
         assert!(!snap.parallel_reads);
         assert!(!snap.task_ledger);
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn workshop_registry_url_normalizes_and_rejects_unsafe_schemes() {
+        let mut p = DesktopPreferences::default();
+        assert_eq!(p.workshop_registry_url, "");
+        p.workshop_registry_url = " https://plazcode-workshop.workers.dev/ ".into();
+        p.normalize();
+        assert_eq!(p.workshop_registry_url, "https://plazcode-workshop.workers.dev");
+        p.workshop_registry_url = "http://127.0.0.1:8787/".into();
+        p.normalize();
+        assert_eq!(p.workshop_registry_url, "http://127.0.0.1:8787");
+        p.workshop_registry_url = "javascript:alert(1)".into();
+        p.normalize();
+        assert_eq!(p.workshop_registry_url, "");
     }
 }

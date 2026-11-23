@@ -1,0 +1,11 @@
+name = "plazcode-workshop"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+WORKSHOP_PUBLIC_UPLOADS = "false"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "plazcode-workshop"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"

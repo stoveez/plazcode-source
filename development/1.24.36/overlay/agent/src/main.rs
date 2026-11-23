@@ -100,6 +100,7 @@ mod creations;
 mod explorer;
 mod skills;
 mod skill_folder;
+mod workshop;
 mod shared_learning;
 mod starter_skills;
 mod creation_export;
@@ -1493,6 +1494,13 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/toolkit", post(toolkit::post).layer(axum::extract::DefaultBodyLimit::max(64000)))
         .route("/api/blender", post(blender::post).layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
         .route("/api/skills", post(skills::post).layer(axum::extract::DefaultBodyLimit::max(48 * 1024 * 1024))) // 2026-11-20: whole skill folders and .zip files (skill_folder.rs caps the text at 24 MB)
+        .route("/api/workshop/catalog", get(workshop::catalog_handler))
+        .route("/api/workshop/install", post(workshop::install_handler).layer(axum::extract::DefaultBodyLimit::max(36 * 1024 * 1024)))
+        .route("/api/workshop/upload", post(workshop::upload_handler).layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
+        .route("/api/workshop/export", post(workshop::export_handler).layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
+        .route("/api/workshop/scan", post(workshop::scan_handler).layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
+        .route("/api/workshop/rate", post(workshop::rate_handler))
+        .route("/api/workshop/report", post(workshop::report_handler))
         .route("/api/explorer", post(explorer::post).layer(axum::extract::DefaultBodyLimit::max(3 * 1024 * 1024)))
         .route("/api/creations", post(creations::post).layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
         .route("/api/templates", post(templates::post))
@@ -2131,6 +2139,7 @@ async fn desktop_shell_handler() -> impl IntoResponse {
         .replace("__PLAZCODE_I18N_CATALOG__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/i18n-catalog.js")))
         .replace("__PLAZCODE_I18N__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/i18n.js")))
         .replace("__PLAZCODE_SKILLS_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/skills-ui.js")))
+        .replace("__PLAZCODE_WORKSHOP_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/workshop-ui.js")))
         .replace("__PLAZCODE_EXPLORER_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/explorer-ui.js")))
         .replace("__PLAZCODE_MEDIA_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/media.js")))
         .replace("__PLAZCODE_MEMORY_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/memory.js")))
@@ -2154,6 +2163,7 @@ async fn desktop_handler(State(state): State<AppState>) -> Html<String> {
         .replace("__PLAZCODE_I18N_CATALOG__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/i18n-catalog.js")))
         .replace("__PLAZCODE_I18N__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/i18n.js")))
         .replace("__PLAZCODE_SKILLS_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/skills-ui.js")))
+        .replace("__PLAZCODE_WORKSHOP_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/workshop-ui.js")))
         .replace("__PLAZCODE_EXPLORER_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/explorer-ui.js")))
         .replace("__PLAZCODE_MEDIA_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/media.js")))
         .replace("__PLAZCODE_MEMORY_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/memory.js")))
