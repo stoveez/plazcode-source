@@ -1592,5 +1592,21 @@
   "Keep AI tab awake during active runs": "Manter a aba de IA ativa durante execuções ativas",
   "Compact noisy tool outputs": "Compactar saídas verbosas de ferramentas",
   "Parallel read-only tools": "Ferramentas somente leitura em paralelo",
-  "Task intent ledger": "Registro de intenção da tarefa"
+  "Task intent ledger": "Registro de intenção da tarefa",
+  "LIVE COMMAND FEED": "FEED DE COMANDOS AO VIVO",
+  "Writing...": "Escrevendo...",
+  "Writing... wait until finished": "Escrevendo... aguarde terminar",
+  "ok": "ok",
+  "failed": "falhou",
+  "Plan": "Plano",
+  "Plan mode — research first, then review and approve a plan before any edits": "Modo Plano — pesquise primeiro, depois revise e aprove um plano antes de editar",
+  "Plan mode ON — read-only research first, then review and approve before edits": "Modo Plano ATIVO — pesquisa somente leitura primeiro, depois aprove antes de editar",
+  "Researching": "Pesquisando",
+  "Refining plan": "Refinando plano",
+  "Ready for review": "Pronto para revisão",
+  "Approved": "Aprovado",
+  "Reject plan": "Rejeitar plano",
+  "Request changes": "Solicitar alterações",
+  "Research findings": "Descobertas da pesquisa",
+  "Verification": "Verificação"
 }

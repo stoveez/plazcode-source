@@ -32,6 +32,7 @@ declare var PlazCodeLiveCard: any;
 declare var PlazCodeMemory: any;
 declare var PlazCodeMountEffortPicker: (select: HTMLSelectElement | null) => { refresh(): void; close(focus?: boolean): void } | null;
 declare var PlazCodeNotifications: any;
+declare var PlazCodePlanMode: any;
 declare var PlazCodePlaytest: any;
 declare var PlazCodePlazLib: any;
 declare var PlazCodePrefSync: any;

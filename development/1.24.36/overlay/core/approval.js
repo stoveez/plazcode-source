@@ -105,8 +105,34 @@ const PlazCodeApproval = (() => {
     const line = t.split("\n").map(clean).find((l) => l.length > 20 && !/^(plan|goal|steps?|approach)\b[:\s]*$/i.test(l));
     return line || "The AI wrote a plan.";
   }
+  function planSectionItems(planText, headingRe) {
+    const lines = String(planText || "").split(/\r?\n/);
+    const out = [];
+    let inSection = false;
+    for (const raw of lines) {
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      if (!inSection) {
+        const inline = headingRe.exec(trimmed);
+        if (inline) {
+          inSection = true;
+          const rest = clean(inline[1]);
+          if (rest) out.push(rest);
+        }
+        continue;
+      }
+      if (/^(?:#{1,4}\s|\*\*[A-Za-z ]+:\*\*|\d+[.)]\s)/.test(trimmed)) break;
+      const m = /^[-*+•]\s+(?!\[[ xX]\])(.+)$/.exec(trimmed);
+      const item = clean(m ? m[1] : trimmed);
+      if (item) out.push(item);
+      if (out.length >= 8) break;
+    }
+    return out;
+  }
   function describePlan(planText) {
-    return { title: "Proposed plan", kind: "plan", badge: "Plan", note: "Nothing is changed until you approve. After you approve, the AI works through the steps without asking again; deletes still ask.", target: "", summary: planGoal(planText), steps: planSteps(planText), destructive: false };
+    const findings = planSectionItems(planText, /^(?:#{1,4}\s*)?(?:\*\*)?research findings(?:\*\*)?\s*[:\-–—]?\s*(.*)$/i);
+    const verification = planSectionItems(planText, /^(?:#{1,4}\s*)?(?:\*\*)?(?:verification|verify)(?:\*\*)?\s*[:\-–—]?\s*(.*)$/i);
+    return { title: "Proposed plan", kind: "plan", badge: "Plan", note: "Nothing is changed until you approve. After you approve, the AI works through the steps without asking again; deletes still ask.", target: "", summary: planGoal(planText), steps: planSteps(planText), findings, verification, destructive: false };
   }
 
   // ── "Always approve" list (kept in the browser's storage as rsAlwaysApprove): action names the person chose to stop being asked about ──

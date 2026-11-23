@@ -1592,5 +1592,21 @@
   "Keep AI tab awake during active runs": "Keep AI tab awake during active runs",
   "Compact noisy tool outputs": null,
   "Parallel read-only tools": null,
-  "Task intent ledger": null
+  "Task intent ledger": null,
+  "LIVE COMMAND FEED": null,
+  "Writing...": null,
+  "Writing... wait until finished": null,
+  "ok": null,
+  "failed": null,
+  "Plan": null,
+  "Plan mode — research first, then review and approve a plan before any edits": null,
+  "Plan mode ON — read-only research first, then review and approve before edits": null,
+  "Researching": null,
+  "Refining plan": null,
+  "Ready for review": null,
+  "Approved": null,
+  "Reject plan": null,
+  "Request changes": null,
+  "Research findings": null,
+  "Verification": null
 }

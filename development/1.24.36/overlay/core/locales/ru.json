@@ -1592,5 +1592,21 @@
   "Keep AI tab awake during active runs": "Не давать вкладке ИИ засыпать во время активной работы",
   "Compact noisy tool outputs": "Сжимать шумный вывод инструментов",
   "Parallel read-only tools": "Параллельное выполнение чтения",
-  "Task intent ledger": "Журнал намерений задачи"
+  "Task intent ledger": "Журнал намерений задачи",
+  "LIVE COMMAND FEED": "ЛЕНТА КОМАНД",
+  "Writing...": "Печатает...",
+  "Writing... wait until finished": "Печатает... дождитесь завершения",
+  "ok": "ок",
+  "failed": "ошибка",
+  "Plan": "План",
+  "Plan mode — research first, then review and approve a plan before any edits": "Режим плана — сначала исследование, затем проверка и утверждение плана до правок",
+  "Plan mode ON — read-only research first, then review and approve before edits": "Режим плана ВКЛ — сначала исследование только для чтения, затем утверждение перед правками",
+  "Researching": "Исследование",
+  "Refining plan": "Уточнение плана",
+  "Ready for review": "Готово к проверке",
+  "Approved": "Утверждено",
+  "Reject plan": "Отклонить план",
+  "Request changes": "Запросить изменения",
+  "Research findings": "Результаты исследования",
+  "Verification": "Проверка"
 }

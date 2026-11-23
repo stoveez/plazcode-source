@@ -331,7 +331,7 @@
   const alwaysSet = (next: unknown) => { alwaysList = PlazCodeApproval.alwaysNormalize(next); try { chrome.storage.local.set({ rsAlwaysApprove: alwaysList }); } catch {} };
   // One card at a time, first come first served. Never approves by itself: it waits for the person.
   function requestApproval(op: string, args: any, opts?: Record<string, any>) {
-    if(typeof approvalMode!=="undefined"&&(approvalMode==="bypass"||(approvalMode==="auto"&&opts&&opts.plan)))return Promise.resolve(true);
+    if(typeof approvalMode!=="undefined"&&!(opts&&opts.plan)&&approvalMode==="bypass")return Promise.resolve(true);
     approvalWaiting++;
     if (typeof helperNote === "function") helperNote("Waiting for your approval");
     const job = approvalChain.then(() => showApproval(op, args, opts || {}));
@@ -353,22 +353,44 @@
         if (approvalCancel) { try { approvalCancel(); } catch {} }
         const kicker = root.querySelector(".rs-approve-kicker"), title = root.querySelector(".rs-approve-title");
         const badge = document.getElementById("rs-approve-badge"), queue = document.getElementById("rs-approve-queue");
+        const approvePhase = document.getElementById("rs-approve-phase");
         const noteEl = document.getElementById("rs-approve-note"), more = document.getElementById("rs-approve-more");
         const details = document.getElementById("rs-approve-details"), allBtn = document.getElementById("rs-approve-all");
-        const oldKicker = kicker ? kicker.textContent : "", oldTitle = title ? title.textContent : "", oldAllow = allow.textContent;
+        const feedbackWrap = document.getElementById("rs-approve-feedback-wrap");
+        const feedbackEl = document.getElementById("rs-approve-feedback") as HTMLTextAreaElement | null;
+        const oldKicker = kicker ? kicker.textContent : "", oldTitle = title ? title.textContent : "", oldAllow = allow.textContent, oldDeny = deny.textContent;
         const call = opts.call || null;
-        let info = null;
+        let info: any = null;
         if (opts.plan && typeof PlazCodeApproval !== "undefined") {
           try { info = PlazCodeApproval.describePlan(opts.plan.text); } catch { info = null; }
         } else if (call && typeof PlazCodeApproval !== "undefined") {
           try { info = PlazCodeApproval.describe(call.tool, call.arguments, opts.engine || "studio", PlazCodeSafety); } catch { info = null; }
         }
         const changesBtn = document.getElementById("rs-approve-changes");
+        const oldChanges = changesBtn ? changesBtn.textContent : "";
         const frozen = typeof PlazCodeApproval !== "undefined" ? PlazCodeApproval.freeze(args) : "";
         if (kicker) kicker.textContent = opts.kicker || (info ? "Needs your approval" : oldKicker);
         if (title) title.textContent = opts.title || (info ? info.title : oldTitle);
         allow.textContent = opts.plan ? "Approve plan" : info ? "Approve" : oldAllow;
-        if (changesBtn) changesBtn.hidden = !(opts.plan && opts.changesButton);
+        if (opts.plan) deny.textContent = "Reject plan";
+        if (changesBtn) {
+          changesBtn.hidden = !(opts.plan && opts.changesButton);
+          if (opts.plan && opts.changesButton) changesBtn.textContent = "Request changes";
+        }
+        if (approvePhase) {
+          if (opts.plan) {
+            const rev = (opts.planMeta && opts.planMeta.revision) || 1;
+            approvePhase.textContent = "Ready for review · v" + rev;
+            approvePhase.hidden = false;
+          } else {
+            approvePhase.textContent = "";
+            approvePhase.hidden = true;
+          }
+        }
+        if (feedbackWrap && feedbackEl) {
+          feedbackEl.value = "";
+          feedbackWrap.hidden = !(opts.plan && opts.changesButton);
+        }
         const preview = (() => { try { return JSON.stringify(args || {}, null, 0).slice(0, 280); } catch { return ""; } })();
         // Plain text only: the delete path is chosen by the AI and must never become HTML.
         if (body) {
@@ -389,10 +411,23 @@
         const drawDetails = () => {
           if (opts.plan && details && !detailsDrawn) {
             detailsDrawn = true;
+            details.textContent = "";
+            if (info && Array.isArray(info.findings) && info.findings.length) {
+              const fBox = document.createElement("div"); fBox.className = "rs-plan-sec";
+              const fHead = document.createElement("div"); fHead.className = "rs-plan-sec-title"; fHead.textContent = "Research findings"; fBox.appendChild(fHead);
+              for (const item of info.findings) { const row = document.createElement("div"); row.className = "rs-plan-sec-row"; row.textContent = item; fBox.appendChild(row); }
+              details.appendChild(fBox);
+            }
             const list = document.createElement("ol"); list.className = "rs-approve-steps";
             for (const step of (info && info.steps) || []) { const li = document.createElement("li"); li.textContent = step; list.appendChild(li); }
             if (!list.children.length) { const li = document.createElement("li"); li.textContent = "The AI did not list clear steps. Ask for changes if you need them."; list.appendChild(li); }
-            details.textContent = ""; details.appendChild(list);
+            details.appendChild(list);
+            if (info && Array.isArray(info.verification) && info.verification.length) {
+              const vBox = document.createElement("div"); vBox.className = "rs-plan-sec";
+              const vHead = document.createElement("div"); vHead.className = "rs-plan-sec-title"; vHead.textContent = "Verification"; vBox.appendChild(vHead);
+              for (const item of info.verification) { const row = document.createElement("div"); row.className = "rs-plan-sec-row"; row.textContent = item; vBox.appendChild(row); }
+              details.appendChild(vBox);
+            }
             return;
           }
           if (!details || detailsDrawn || !call || typeof PlazCodeToolCards === "undefined") return;
@@ -438,13 +473,16 @@
           if (kicker) kicker.textContent = oldKicker;
           if (title) title.textContent = oldTitle;
           allow.textContent = oldAllow;
+          deny.textContent = oldDeny;
+          if (approvePhase) { approvePhase.textContent = ""; approvePhase.hidden = true; }
+          if (feedbackWrap && feedbackEl) { feedbackEl.value = ""; feedbackWrap.hidden = true; }
           if (details) details.textContent = "";
           try { if (chipDt && chipDt.textContent === "waiting for approval") chipDt.textContent = oldDt; } catch {}
           allow.removeEventListener("click", onAllow);
           deny.removeEventListener("click", onDeny);
           if (allBtn) allBtn.removeEventListener("click", onAll);
           if (alwaysBtn) { alwaysBtn.removeEventListener("click", onAlways); alwaysBtn.hidden = true; }
-          if (changesBtn) { changesBtn.removeEventListener("click", onChanges); changesBtn.hidden = true; }
+          if (changesBtn) { changesBtn.removeEventListener("click", onChanges); changesBtn.textContent = oldChanges; changesBtn.hidden = true; }
           // The command runs only if its request is exactly what the card showed.
           if (ok && frozen && typeof PlazCodeApproval !== "undefined" && PlazCodeApproval.freeze(args) !== frozen) ok = false;
           resolve(ok);
@@ -470,7 +508,10 @@
           try { window.__rsAlwaysChanged && window.__rsAlwaysChanged(String(call.tool)); } catch {}
         };
         const cancel = () => done(false);
-        const onChanges = () => done("changes");
+        const onChanges = () => {
+          try { A.planChangeFeedback = feedbackEl ? feedbackEl.value.trim() : ""; } catch {}
+          done("changes");
+        };
         // Esc denies. Enter is never handled here, so typing in the AI site's own box can never approve.
         const onKey = (event: KeyboardEvent) => {
           if (event.key !== "Escape") return;
@@ -663,6 +704,7 @@
     brain: '<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a3 3 0 0 0-3-1z"/><path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/>',
     ask: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.5-5A8 8 0 1 1 21 12z"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5"/><path d="M12 16.5h.01"/>',
     cowork: '<circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M2.5 19a5.5 5.5 0 0 1 11 0"/><path d="M14 14.6a4.5 4.5 0 0 1 7.5 3.4"/>',
+    plan: '<path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="M4 6l1 1 2-2"/><path d="M4 12l1 1 2-2"/><path d="M4 18l1 1 2-2"/>',
     undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
   };
   function barIcon(name: string) { return BAR_ICONS[name] ? '<svg class="rs-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + BAR_ICONS[name] + '</svg>' : ""; }
@@ -3671,6 +3713,13 @@ return result`;
       const refusal = await helperLockRefusal(bareName, args);
       if (refusal) return refusal;
     }
+    // Interactive Plan Mode strict read-only research gate: blocks mutating tools while unapproved; read/search/inspect tools run freely.
+    if (!trustedRead && typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.isResearchGateActive && PlazCodePlanMode.isResearchGateActive(planOnNow(), A)) {
+      const gated = PlazCodePlanMode.gateTool(bareName, safetyEngine, PlazCodeSafety, args);
+      if (!gated.allowed) return gated.error;
+      PlazCodePlanMode.recordRead(bareName);
+      try { ui.refreshPlan?.(); } catch {}
+    }
     if(typeof approvalModeReady!=="undefined")await approvalModeReady;
     if(trustedRead){
       // PlazCode's own read: nothing to approve.
@@ -4717,6 +4766,7 @@ return result`;
   // "Ask for changes": put the start of a reply in the AI site's own box (never sends it).
   function stagePlanChange() {
     try {
+      if (A.planChangeFeedback) return false;
       const ed: any = P.getEditor && P.getEditor();
       if (!ed) return false;
       ed.focus();
@@ -5031,6 +5081,11 @@ return result`;
     // memory) once per task. Re-matching on every loop restart sent the same
     // reference in place of each new command.
     A.referenceTaskKey=JSON.stringify([P.conversationKey(),activeEngine(),A.taskRequest]);
+    if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.beginRun) {
+      PlazCodePlanMode.setEnabled(planOnNow());
+      PlazCodePlanMode.beginRun();
+      try { ui.refreshPlan?.(); } catch {}
+    }
     if(!A.referenceDelivered)A.referenceDelivered=new Set();
     const referenceDue=!A.referenceDelivered.has(A.referenceTaskKey);
     if(referenceDue){
@@ -5429,15 +5484,40 @@ return result`;
           }
           // Plan Mode (switched on by the person): show the plan for approval instead of carrying on by itself.
           if (!A.planApproved && toolsThisLoop === 0 && !A.stop && planOnNow() && looksLikePlanOnly(body)) {
-            const decision: any = await requestApproval("plan", {}, { plan: { text: body }, kicker: "Plan Mode", title: "Proposed plan", changesButton: true });
+            if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.needsRefinement && PlazCodePlanMode.needsRefinement(body)) {
+              const snap = PlazCodePlanMode.startRefinement();
+              try { ui.refreshPlan?.(); } catch {}
+              diag("loop.planRefine", { rev: snap.revision, chars: body.length });
+              base = await submitAndGetBase(PlazCodePlanMode.buildRefinementPrompt(snap.revision, body, snap.feedback));
+              continue;
+            }
+            const planMeta = typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.markReady ? PlazCodePlanMode.markReady(body) : null;
+            try { ui.refreshPlan?.(); } catch {}
+            const kickerLabel = planMeta ? `Plan Mode · v${planMeta.revision}` : "Plan Mode";
+            const decision: any = await requestApproval("plan", {}, { plan: { text: body }, kicker: kickerLabel, title: "Proposed plan", changesButton: true, planMeta });
             if (A.stop) break;
             if (decision === true) {
+              if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.approve) PlazCodePlanMode.approve();
+              try { ui.refreshPlan?.(); } catch {}
               A.planApproved = true; A.approveAll = new Set(["*"]); planContinues++;
               diag("loop.planApproved", { chars: body.length });
               base = await submitAndGetBase(PLAN_APPROVED_FEEDBACK);
               continue;
             }
             if (decision === "changes") stagePlanChange();
+            const inlineFb = String(A.planChangeFeedback || "").trim();
+            A.planChangeFeedback = "";
+            if (decision === "changes" && inlineFb && typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.requestChanges) {
+              const refinePrompt = PlazCodePlanMode.requestChanges(inlineFb);
+              try { ui.refreshPlan?.(); } catch {}
+              diag("loop.planRequestChanges", { chars: inlineFb.length });
+              base = await submitAndGetBase(refinePrompt);
+              continue;
+            }
+            if (decision === false && typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.reject) {
+              PlazCodePlanMode.reject();
+              try { ui.refreshPlan?.(); } catch {}
+            }
             diag("loop.planNotApproved", { decision: String(decision) });
           }
           if (planContinues < 2 && toolsThisLoop === 0 && !A.stop && (!planOnNow() || A.planApproved) && planWantsImplementation() && looksLikePlanOnly(body)) {
@@ -5774,6 +5854,10 @@ return result`;
       syncTabKeepAwake(false);
       A.approveAll = null; // Plan approval lasts for one task; saved tool approvals persist.
       A.planApproved = false; // an approved plan covers one task
+      if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.resetRun) {
+        PlazCodePlanMode.resetRun();
+        try { ui.refreshPlan?.(); } catch {}
+      }
       activity.sync(false, P.conversationKey(), undefined, {collapse: completed}); syncActivityItems();
       if (!A.pendingToolSettles) A.stop = false;
       // Keep the "Stopping…" state while the site's stream is still draining
@@ -6007,6 +6091,10 @@ return result`;
     A.stop = true;
     syncTabKeepAwake(false);
     A.approveAll = null; A.planApproved = false;
+    if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.resetRun) {
+      PlazCodePlanMode.resetRun();
+      try { ui.refreshPlan?.(); } catch {}
+    }
     if (approvalCancel) { try { approvalCancel(); } catch {} }
     A.nativeSendIntent = null;
     for (const record of A.inflightTools || []) if (!record.draining) {
@@ -6082,6 +6170,7 @@ return result`;
       let engine = "roblox";
       try { if (typeof window.__rsEngine === "function") engine = window.__rsEngine(); } catch {}
       const memoryContext = personalMemoryContext();
+      const planExtra = planOnNow() && typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.promptExtra ? PlazCodePlanMode.promptExtra({ engine }) : "";
       const text = RS.buildSystemPrompt({
         siteName: P.displayName,
         providerId: P.id,
@@ -6090,8 +6179,8 @@ return result`;
         engine,
         fullAccess: !!(typeof window.__rsFullAccess === "function" && window.__rsFullAccess()),
         leanStartup: (typeof leanStartupOn === "function" && leanStartupOn()),
-        maxChars: P.sysMaxChars ? Math.max(1000, P.sysMaxChars - memoryContext.length - PlazCodeClarification.INSTRUCTION.length) : 0,
-      }) + PlazCodeClarification.INSTRUCTION + memoryContext;
+        maxChars: P.sysMaxChars ? Math.max(1000, P.sysMaxChars - memoryContext.length - PlazCodeClarification.INSTRUCTION.length - planExtra.length) : 0,
+      }) + PlazCodeClarification.INSTRUCTION + planExtra + memoryContext;
       // Context-meter cache: the bar shows an approximate token cost next to
       // Start so users understand why big prompts can degrade weaker chats.
       try { A.sysInfo = { len: text.length, tokens: Math.round(text.length / 4), engine }; } catch {}
@@ -7513,6 +7602,7 @@ return result`;
           <button id="rs-stop" hidden>${barIcon("stop")}<span class="rs-lbl">Stop</span></button>
           </div>
           <div class="rs-grp rs-grp-pills">
+          <button id="rs-plan" type="button" aria-pressed="false" title="Plan mode — research first, then review and approve a plan before any edits">${barIcon("plan")}<span class="rs-lbl">Plan</span><span id="rs-plan-phase" class="rs-plan-phase" hidden></span></button>
           <button id="rs-cowork" aria-pressed="false" title="Co-work mode — keep chatting while the agent works">Co-Work: Off</button>
           <button id="rs-cowork-queue" hidden title="View pending requests">Pending</button>
           <button id="rs-ask-plazcode" hidden title="Ask PlazCode about the page you are looking at, in a chat beside it">${barIcon("ask")}<span class="rs-lbl">Ask PlazCode</span></button>
@@ -7583,6 +7673,7 @@ return result`;
           <div class="rs-approve-card">
             <div class="rs-approve-head">
               <div class="rs-approve-kicker">Ask mode</div>
+              <span id="rs-approve-phase" hidden></span>
               <span id="rs-approve-badge" hidden></span>
               <span id="rs-approve-queue" hidden></span>
             </div>
@@ -7591,6 +7682,10 @@ return result`;
             <div id="rs-approve-note" hidden></div>
             <button type="button" id="rs-approve-more" hidden aria-expanded="false">Show details</button>
             <div id="rs-approve-details" hidden></div>
+            <div id="rs-approve-feedback-wrap" hidden>
+              <label for="rs-approve-feedback" class="rs-approve-fb-label">Request changes</label>
+              <textarea id="rs-approve-feedback" rows="2" placeholder="Describe edits or extra instructions for a refined plan…"></textarea>
+            </div>
             <div class="rs-approve-actions">
               <button type="button" id="rs-approve-all" hidden></button>
               <button type="button" id="rs-approve-changes" hidden>Ask for changes</button>
@@ -7851,6 +7946,9 @@ return result`;
       }
       root.querySelector("#rs-memory-close").onclick = () => { root.querySelector("#rs-memory-panel").hidden = true; };
       root.addEventListener("click", (event: any) => { if (event.target.closest("#rs-memory-settings")) { menuEl.hidden = true; openMemory(); } });
+      root.querySelector("#rs-plan").onclick = () => {
+        setPlanMode(!planMode);
+      };
       root.querySelector("#rs-cowork").onclick = () => {
         desktopAgentAction(cowork.snapshot().enabled ? "cowork-off" : "cowork-on");
       };
@@ -8341,6 +8439,8 @@ return result`;
         if (typeof r.rsPlanMode === "boolean") {
           planMode = r.rsPlanMode;
           try { window.__rsPlanMode = () => planMode; } catch {}
+          if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.setEnabled) PlazCodePlanMode.setEnabled(planMode);
+          renderPlanPill();
         }
         if (typeof r.rsAutoDebug === "boolean") {
           autoDebugEnabled = r.rsAutoDebug;
@@ -8408,6 +8508,7 @@ return result`;
         if (changes.rsPlanMode && typeof changes.rsPlanMode.newValue === "boolean") {
           planMode = changes.rsPlanMode.newValue;
           try { window.__rsPlanMode = () => planMode; } catch {}
+          if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.setEnabled) PlazCodePlanMode.setEnabled(planMode);
           dirty = true;
         }
         if (changes.rsShowApproach && typeof changes.rsShowApproach.newValue === "boolean") { showApproach = changes.rsShowApproach.newValue; dirty = true; }
@@ -8668,7 +8769,29 @@ return result`;
     }
     function setShowApproach(v: any){ showApproach=!!v; try{chrome.storage.local.set({rsShowApproach:showApproach});}catch{}; buildMenu(); markModesChanged(); toast(showApproach ? "Approach summaries on" : "Approach summaries off"); }
     function setExtraThinking(v: any){ extraThinking=!!v; try{chrome.storage.local.set({rsExtraThinking: extraThinking});}catch{}; try{ window.__rsExtraThinking = () => extraThinking; }catch{}; buildMenu(); updateExtraButton(); renderBar(); toast(v ? "Extra Thinking on — the AI will review its own work" : "Extra Thinking off"); markModesChanged(); }
-    function setPlanMode(v: any){ planMode=!!v; try{chrome.storage.local.set({rsPlanMode: planMode});}catch{}; try{ window.__rsPlanMode = () => planMode; }catch{}; buildMenu(); renderBar(); toast(v ? "Plan mode on — the AI writes a plan, then production code" : "Plan mode off"); markModesChanged(); }
+    function renderPlanPill() {
+      const btn = root && root.querySelector("#rs-plan") as HTMLElement | null;
+      if (!btn) return;
+      const snap = (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.snapshot) ? PlazCodePlanMode.snapshot() : null;
+      const on = !!planMode;
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      const phase = on && snap ? snap.phase : "off";
+      btn.dataset.phase = phase;
+      const phaseEl = btn.querySelector("#rs-plan-phase") as HTMLElement | null;
+      const rawPhaseText = on && snap && snap.phaseLabel ? snap.phaseLabel : "";
+      const tr = (s: string) => (globalThis.PlazCodeI18n?.t ? globalThis.PlazCodeI18n.t(s) : s);
+      if (phaseEl) {
+        const showPhase = !!(rawPhaseText && (A.running || phase === "refining" || phase === "ready" || phase === "approved"));
+        phaseEl.hidden = !showPhase;
+        phaseEl.textContent = showPhase ? tr(rawPhaseText) : "";
+      }
+      const lblEl = btn.querySelector(".rs-lbl") as HTMLElement | null;
+      if (lblEl) lblEl.textContent = tr("Plan");
+      btn.title = on
+        ? tr("Plan mode ON — read-only research first, then review and approve before edits")
+        : tr("Plan mode — research first, then review and approve a plan before any edits");
+    }
+    function setPlanMode(v: any){ planMode=!!v; try{chrome.storage.local.set({rsPlanMode: planMode});}catch{}; try{ window.__rsPlanMode = () => planMode; }catch{}; if (typeof PlazCodePlanMode !== "undefined" && PlazCodePlanMode.setEnabled) PlazCodePlanMode.setEnabled(planMode); buildMenu(); renderBar(); toast(v ? "Plan mode on — the AI writes a plan, then production code" : "Plan mode off"); markModesChanged(); }
     function setAutoDebug(v: any){ autoDebugEnabled=!!v; try{chrome.storage.local.set({rsAutoDebug: autoDebugEnabled});}catch{}; try{ window.__rsAutoDebug = () => autoDebugEnabled; }catch{}; buildMenu(); toast(v ? "Automatic Debugger on — new Studio errors are sent to the AI" : "Automatic Debugger off"); markModesChanged(); }
     function setMultiAgent(v: any){ multiAgent=!!v; try{chrome.storage.local.set({rsMultiAgent: multiAgent});}catch{}; try{ window.__rsMultiAgent = () => multiAgent; }catch{}; buildMenu(); toast(v ? "Multi-Agent on — planner, builder, reviewer, debugger" : "Multi-Agent off"); markModesChanged(); }
     function setForgeMode(v: any){ forgeMode=!!v; try{chrome.storage.local.set({rsForgeMode: forgeMode});}catch{}; try{ document.documentElement.setAttribute("data-rs-forge", forgeMode?"1":"0"); window.__rsForge = () => forgeMode; }catch{}; buildMenu(); markModesChanged(); }
@@ -9600,16 +9723,34 @@ return result`;
     function escRs(s: any) {
       return String(s == null ? "" : s).replace(/[&<>"']/g, (ch: string) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" } as Record<string, string>)[ch] || ch));
     }
+    let dockFeedSeq = 0;
     function trackCard(tool: any, status: any, detail: any, category?: any) {
       const top = recentCards[0];
+      let feedId = "";
+      let skipDock = false;
       // (A Stop settles the card from several places; a repeat "err" for the same call updates it, never duplicates it.)
       if (top && top.tool === tool && status !== "run" && (top.status === "run" || (top.status === "err" && status === "err" && Date.now() - top.at < 15000))) {
+        skipDock = top.status === "err" && status === "err";
         top.status = status;
         top.detail = String(detail || "").slice(0, 120);
         top.at = Date.now();
+        feedId = top.feedId || "";
       } else {
-        recentCards.unshift({ tool, status, detail: String(detail || "").slice(0, 120), category: category || "tool", at: Date.now() });
+        feedId = "df-" + (++dockFeedSeq);
+        recentCards.unshift({ tool, status, detail: String(detail || "").slice(0, 120), category: category || "tool", at: Date.now(), feedId });
         if (recentCards.length > 24) recentCards.pop();
+      }
+      if (!skipDock && tool) {
+        try {
+          void bg({
+            type: "rs-dock-feed",
+            id: feedId,
+            tool: String(tool || ""),
+            status: status === "run" ? "running" : status === "err" ? "err" : "ok",
+            detail: String(detail || "").slice(0, 140),
+            ts: Date.now(),
+          }).catch(() => {});
+        } catch {}
       }
       if (cardsTab === "activity" || (activeEngine() === "local" && cardsPanel && !cardsPanel.hidden)) renderCards(cardsPanel);
     }
@@ -10660,11 +10801,25 @@ function renderCards(panel: any) {
       const askBtn = document.querySelector("#rs-ask-plazcode") as HTMLElement | null;
       if (askBtn) askBtn.hidden = !(A.bridge && A.bridge.control_v2 && currentEngine === "local");
     }
+    let lastDockWriting: boolean | null = null;
+    function isDockWritingNow() {
+      if (A.toolRunning || A.waitingForClarification || A.stopping) return false;
+      if (!(A.started || A.running || A.injecting || A.enhancing)) return false;
+      try { return !!(P.isHardGenerating ? P.isHardGenerating() : P.isGenerating()); } catch { return false; }
+    }
     function renderBar() {
       try { showAskButton(); } catch {}
       if (!bar) return;
       renderEffort();
+      renderPlanPill();
       renderCowork();
+      try {
+        const wNow = isDockWritingNow();
+        if (lastDockWriting !== wNow) {
+          lastDockWriting = wNow;
+          void bg({ type: "rs-dock-writing", writing: wNow }).catch(() => {});
+        }
+      } catch {}
       // Persona badge: only visible when a specialist persona is active.
       
       try {
@@ -12423,11 +12578,12 @@ function renderCards(panel: any) {
       const rect=pageMounted ? bar.getBoundingClientRect() : null;
       const barVisible=!!(rect && rect.width>0 && rect.height>0 && rect.bottom>0 && rect.top<window.innerHeight && rect.right>0 && rect.left<window.innerWidth && getComputedStyle(bar).display!=="none" && (barCollapsed || getComputedStyle(bar).visibility!=="hidden"));
       const busy = !!(A.running || A.starting || A.injecting || A.enhancing || A.pendingToolSettles || P.isGenerating());
+      const writing = isDockWritingNow();
       let latestReply = "";
       try { latestReply = String((P.readAssistant && (P.readAssistant() as any)?.reply) || "").trim().slice(-1800); } catch {}
       const canDockSend = !A.staleExtension && !!P.getEditor() && !String(P.editorText() || "").trim() &&
         (A.started ? (!busy || cowork.snapshot().enabled) : (!busy && !!actionBtn && !actionBtn.disabled && !actionBtn.hidden && (kind === "start" || kind === "start-degraded")));
-      return { provider: P.displayName, providerId: P.id, started: !!A.started, busy, pageMounted, barVisible, barCollapsed,
+      return { provider: P.displayName, providerId: P.id, started: !!A.started, busy, writing, pageMounted, barVisible, barCollapsed,
         canStart: !A.staleExtension && !busy && !!actionBtn && !actionBtn.disabled &&
           !actionBtn.hidden && (kind === "start" || kind === "start-degraded"),
         canStop: !A.staleExtension && busy && !A.stopping,
@@ -12858,7 +13014,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
       if (action === "stop" && state.canStop) { stopLoop(); return { ok: true }; }
       return { ok: false, error: "The AI chat is no longer ready for this action." };
     }
-    return { refreshMenu: () => { if (menuEl && !menuEl.hidden) buildMenu(); }, captureHandoff, noteChatSoon, latestChatNotePath: () => latestHere() && latestHere().path || '', isCoworkCoverTarget: (node: any) => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, renderAgents, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast: toast as (msg: any, _ms?: any) => void, banner, showRecoveryPrompt, clearRecoveryPrompt, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport?: any) => openMenuFn && openMenuFn(toSupport) };
+    return { refreshPlan: renderPlanPill, refreshMenu: () => { if (menuEl && !menuEl.hidden) buildMenu(); }, captureHandoff, noteChatSoon, latestChatNotePath: () => latestHere() && latestHere().path || '', isCoworkCoverTarget: (node: any) => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, renderAgents, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast: toast as (msg: any, _ms?: any) => void, banner, showRecoveryPrompt, clearRecoveryPrompt, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport?: any) => openMenuFn && openMenuFn(toSupport) };
   })();
 
   const clarification = PlazCodeClarification.create({

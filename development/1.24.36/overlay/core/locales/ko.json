@@ -1592,5 +1592,21 @@
   "Keep AI tab awake during active runs": "활성 실행 중 AI 탭 절전 방지",
   "Compact noisy tool outputs": "장황한 도구 출력 압축",
   "Parallel read-only tools": "읽기 전용 도구 병렬 실행",
-  "Task intent ledger": "작업 의도 원장"
+  "Task intent ledger": "작업 의도 원장",
+  "LIVE COMMAND FEED": "실시간 명령 피드",
+  "Writing...": "작성 중...",
+  "Writing... wait until finished": "작성 중... 완료될 때까지 기다리세요",
+  "ok": "완료",
+  "failed": "실패",
+  "Plan": "계획",
+  "Plan mode — research first, then review and approve a plan before any edits": "계획 모드 — 먼저 조사한 뒤 계획을 검토하고 승인한 후 수정합니다",
+  "Plan mode ON — read-only research first, then review and approve before edits": "계획 모드 켜짐 — 읽기 전용 조사 후 수정 전에 검토 및 승인합니다",
+  "Researching": "조사 중",
+  "Refining plan": "계획 다듬는 중",
+  "Ready for review": "검토 준비됨",
+  "Approved": "승인됨",
+  "Reject plan": "계획 거부",
+  "Request changes": "수정 요청",
+  "Research findings": "조사 결과",
+  "Verification": "검증"
 }

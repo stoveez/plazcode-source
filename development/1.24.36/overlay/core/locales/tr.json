@@ -1592,5 +1592,21 @@
   "Keep AI tab awake during active runs": "Etkin çalışmalar sırasında yapay zekâ sekmesini uyanık tut",
   "Compact noisy tool outputs": "Gürültülü araç çıktılarını sıkıştır",
   "Parallel read-only tools": "Salt okunur araçları paralel çalıştır",
-  "Task intent ledger": "Görev niyet defteri"
+  "Task intent ledger": "Görev niyet defteri",
+  "LIVE COMMAND FEED": "CANLI KOMUT AKIŞI",
+  "Writing...": "Yazıyor...",
+  "Writing... wait until finished": "Yazıyor... bitene kadar bekleyin",
+  "ok": "tamam",
+  "failed": "başarısız",
+  "Plan": "Plan",
+  "Plan mode — research first, then review and approve a plan before any edits": "Plan modu — önce araştırın, düzenleme yapmadan önce planı inceleyip onaylayın",
+  "Plan mode ON — read-only research first, then review and approve before edits": "Plan modu AÇIK — önce salt okunur araştırma, düzenlemeden önce inceleme ve onay",
+  "Researching": "Araştırılıyor",
+  "Refining plan": "Plan iyileştiriliyor",
+  "Ready for review": "İncelemeye hazır",
+  "Approved": "Onaylandı",
+  "Reject plan": "Planı reddet",
+  "Request changes": "Değişiklik iste",
+  "Research findings": "Araştırma bulguları",
+  "Verification": "Doğrulama"
 }

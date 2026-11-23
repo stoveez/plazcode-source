@@ -1592,5 +1592,21 @@
   "Keep AI tab awake during active runs": "सक्रिय रन के दौरान AI टैब को जागृत रखें",
   "Compact noisy tool outputs": "शोरगुल वाले टूल आउटपुट संक्षिप्त करें",
   "Parallel read-only tools": "केवल-पठन टूल समानांतर चलाएँ",
-  "Task intent ledger": "कार्य उद्देश्य बही"
+  "Task intent ledger": "कार्य उद्देश्य बही",
+  "LIVE COMMAND FEED": "लाइव कमांड फ़ीड",
+  "Writing...": "लिख रहा है...",
+  "Writing... wait until finished": "लिख रहा है... पूरा होने तक प्रतीक्षा करें",
+  "ok": "ठीक",
+  "failed": "विफल",
+  "Plan": "योजना",
+  "Plan mode — research first, then review and approve a plan before any edits": "प्लान मोड — पहले शोध करें, फिर किसी भी बदलाव से पहले योजना की समीक्षा और स्वीकृति दें",
+  "Plan mode ON — read-only research first, then review and approve before edits": "प्लान मोड चालू — पहले केवल-पठन शोध, फिर बदलाव से पहले समीक्षा और स्वीकृति",
+  "Researching": "शोध जारी",
+  "Refining plan": "योजना परिष्कृत हो रही है",
+  "Ready for review": "समीक्षा के लिए तैयार",
+  "Approved": "स्वीकृत",
+  "Reject plan": "योजना अस्वीकार करें",
+  "Request changes": "बदलाव का अनुरोध करें",
+  "Research findings": "शोध निष्कर्ष",
+  "Verification": "सत्यापन"
 }

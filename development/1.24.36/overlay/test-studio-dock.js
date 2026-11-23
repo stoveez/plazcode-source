@@ -185,6 +185,14 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
   new Function(dockUiScript); // syntax valid
 
   for (const token of [
+    'id="dockLiveFeed"',
+    'id="dockFeedClear"',
+    'id="dockFeedList"',
+    'id="dockWritingDots"',
+    '/api/studio-dock/feed/clear',
+    'Writing... wait until finished',
+    'data-pz-asleep',
+    '__plazcodeDockFeedPush',
     'id="dockDrawer"',
     'id="dockMediaPanel"',
     'id="dockVideoWarn"',
@@ -254,13 +262,16 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
         classList: { toggle: () => {}, add: () => {}, remove: () => {} },
         addEventListener: (ev, fn) => { (elemListeners[id][ev] = elemListeners[id][ev] || []).push(fn); },
         focus: () => { if (id === "dockPrompt") promptFocusCount++; },
-        replaceChildren: () => {},
-        appendChild: () => {},
+        replaceChildren: function () { this.children = []; },
+        appendChild: function (ch) { (this.children = this.children || []).push(ch); },
+        children: [],
       };
     }
     return elems[id];
   };
   let nextMockState = null;
+  const fetchCalls = [];
+  const ipcCalls = [];
   const fakeDoc = {
     hidden: false,
     documentElement: {
@@ -285,14 +296,17 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
     window: {
       __PLAZCODE_DOCK_BOOT__: { apiUrl: "http://127.0.0.1:3000", key: "k" },
       addEventListener: () => {},
-      ipc: { postMessage: (msg) => { ipcSent.push(String(msg)); } },
+      ipc: { postMessage: (msg) => { ipcSent.push(String(msg)); ipcCalls.push(msg); } },
       crypto: { randomUUID: () => "u-1" },
     },
-    fetch: async () => ({
-      ok: true,
-      status: 200,
-      json: async () => nextMockState || { bridge_connected: false, language: "en", browser_agent: {}, providers: [] },
-    }),
+    fetch: async (url, init) => {
+      fetchCalls.push([url, init && init.method]);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => nextMockState || { bridge_connected: false, language: "en", browser_agent: {}, providers: [] },
+      };
+    },
     FileReader: MockFileReader,
     document: fakeDoc,
     setInterval: () => 0,
@@ -415,7 +429,51 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
   }
   assert(ipcSent.includes("dock:dismiss"), "Escape dismisses dock when no popup/menu/drawer is open");
 
-  console.log("PASS Studio floating dock bridge, 19 AI providers, Feel modes, hotkeys, and UI shell checks.");
+  // 7. Streaming Writing status + Live Command Feed + Clear + Height IPC + wiring checks
+  nextMockState = {
+    bridge_connected: true,
+    language: "en",
+    browser_agent: { provider: "Google AI Studio", providerId: "aistudio", writing: true, busy: true, canStop: true },
+    feed: [
+      { id: "c1", tool: "astrox_getskills", status: "ok", detail: "ok", updated_at: 10 },
+      { id: "c2", tool: "script_read", status: "running", detail: "executing...", updated_at: 11 },
+      { id: "c3", tool: "write_file", status: "err", detail: "Permission denied", updated_at: 12 },
+    ],
+    feed_revision: 3,
+    providers: dockSites,
+  };
+  ipcSent.length = 0;
+  uiCtx.window.__plazcodeDockWake();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(elems.dockAiName.textContent, "Google AI Studio · Writing...");
+  assert.equal(elems.dockWritingDots.hidden, false, "3-dot indicator visible while writing");
+  assert.equal(elems.dockPrompt.placeholder, "Writing... wait until finished");
+  assert.equal(elems.dockLiveFeed.hidden, false, "Live Command Feed shown when feed has items");
+  assert.equal(elems.dockFeedList.children.length, 3, "renders 3 live command feed rows");
+  assert(ipcSent.some((m) => m.startsWith("dock:height:")), "SyncHeight emits dock:height IPC");
+
+  // Clear button hides Live Command Feed and posts /api/studio-dock/feed/clear
+  fetchCalls.length = 0;
+  elems.dockFeedClear.onclick();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(elems.dockLiveFeed.hidden, true, "Live Command Feed auto-hides after Clear");
+  assert(fetchCalls.some((c) => c[0].endsWith("/api/studio-dock/feed/clear") && c[1] === "POST"), "Clear calls /api/studio-dock/feed/clear");
+
+  // Push IPC helper updates writing + feed without waiting for poll
+  uiCtx.window.__plazcodeDockFeedPush({
+    writing: false,
+    provider: "Google AI Studio",
+    feed: [{ id: "c4", tool: "inspect_instance", status: "ok", detail: "ok", updated_at: 20 }],
+    feed_revision: 4,
+  });
+  assert.equal(elems.dockAiName.textContent, "Google AI Studio");
+  assert.equal(elems.dockWritingDots.hidden, true);
+  assert.equal(elems.dockLiveFeed.hidden, false);
+
+  assert(mainSrc.includes('type: "rs-dock-feed"') && mainSrc.includes("isDockWritingNow()") && mainSrc.includes("busy, writing,"), "main.ts emits feed events and writing state");
+  assert(bgSrc.includes('case "rs-dock-feed":') && bgSrc.includes('/api/studio-dock/feed'), "background.ts relays dock feed events");
+
+  console.log("PASS Studio floating dock bridge, 19 AI providers, Feel modes, hotkeys, Live Command Feed, Writing status, and UI shell checks.");
 })().catch((err) => {
   console.error(err);
   process.exit(1);

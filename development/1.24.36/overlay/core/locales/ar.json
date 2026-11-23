@@ -1592,5 +1592,21 @@
   "Keep AI tab awake during active runs": "إبقاء تبويب الذكاء الاصطناعي نشطًا أثناء التشغيل النشط",
   "Compact noisy tool outputs": "ضغط مخرجات الأدوات المزدحمة",
   "Parallel read-only tools": "أدوات القراءة المتوازية",
-  "Task intent ledger": "سجل نية المهمة"
+  "Task intent ledger": "سجل نية المهمة",
+  "LIVE COMMAND FEED": "سجل الأوامر المباشر",
+  "Writing...": "يكتب...",
+  "Writing... wait until finished": "يكتب... انتظر حتى ينتهي",
+  "ok": "تم",
+  "failed": "فشل",
+  "Plan": "خطة",
+  "Plan mode — research first, then review and approve a plan before any edits": "وضع الخطة — ابحث أولاً ثم راجع الخطة ووافق عليها قبل أي تعديل",
+  "Plan mode ON — read-only research first, then review and approve before edits": "وضع الخطة مُفعّل — بحث للقراءة فقط أولاً ثم مراجعة وموافقة قبل التعديلات",
+  "Researching": "جارٍ البحث",
+  "Refining plan": "تحسين الخطة",
+  "Ready for review": "جاهز للمراجعة",
+  "Approved": "تمت الموافقة",
+  "Reject plan": "رفض الخطة",
+  "Request changes": "طلب تعديلات",
+  "Research findings": "نتائج البحث",
+  "Verification": "التحقق"
 }

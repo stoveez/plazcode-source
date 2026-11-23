@@ -1592,5 +1592,21 @@
   "Keep AI tab awake during active runs": "KI-Tab während aktiver Läufe wach halten",
   "Compact noisy tool outputs": "Umfangreiche Tool-Ausgaben komprimieren",
   "Parallel read-only tools": "Nur-Lese-Tools parallel ausführen",
-  "Task intent ledger": "Aufgaben-Absichtsprotokoll"
+  "Task intent ledger": "Aufgaben-Absichtsprotokoll",
+  "LIVE COMMAND FEED": "LIVE-BEFEHLSFEED",
+  "Writing...": "Schreibt...",
+  "Writing... wait until finished": "Schreibt... bitte warten",
+  "ok": "ok",
+  "failed": "fehlgeschlagen",
+  "Plan": "Plan",
+  "Plan mode — research first, then review and approve a plan before any edits": "Plan-Modus — erst recherchieren, dann Plan vor Änderungen prüfen und freigeben",
+  "Plan mode ON — read-only research first, then review and approve before edits": "Plan-Modus EIN — erst schreibgeschützte Recherche, dann Freigabe vor Änderungen",
+  "Researching": "Recherchiert",
+  "Refining plan": "Plan wird verfeinert",
+  "Ready for review": "Bereit zur Prüfung",
+  "Approved": "Freigegeben",
+  "Reject plan": "Plan ablehnen",
+  "Request changes": "Änderungen anfordern",
+  "Research findings": "Recherche-Ergebnisse",
+  "Verification": "Überprüfung"
 }

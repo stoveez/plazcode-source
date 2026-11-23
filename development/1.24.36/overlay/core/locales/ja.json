@@ -1592,5 +1592,21 @@
   "Keep AI tab awake during active runs": "実行中はAIタブをスリープさせない",
   "Compact noisy tool outputs": "冗長なツール出力を圧縮",
   "Parallel read-only tools": "読み取り専用ツールを並列実行",
-  "Task intent ledger": "タスク意図台帳"
+  "Task intent ledger": "タスク意図台帳",
+  "LIVE COMMAND FEED": "ライブコマンドフィード",
+  "Writing...": "入力中...",
+  "Writing... wait until finished": "入力中... 完了までお待ちください",
+  "ok": "ok",
+  "failed": "失敗",
+  "Plan": "プラン",
+  "Plan mode — research first, then review and approve a plan before any edits": "プランモード — 先に調査し、計画を確認・承認してから編集します",
+  "Plan mode ON — read-only research first, then review and approve before edits": "プランモード ON — 読み取り専用で調査後、編集前に確認・承認します",
+  "Researching": "調査中",
+  "Refining plan": "計画を精査中",
+  "Ready for review": "レビュー待ち",
+  "Approved": "承認済み",
+  "Reject plan": "計画を却下",
+  "Request changes": "変更をリクエスト",
+  "Research findings": "調査結果",
+  "Verification": "検証方法"
 }

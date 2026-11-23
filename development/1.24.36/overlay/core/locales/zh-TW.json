@@ -1592,5 +1592,21 @@
   "Keep AI tab awake during active runs": "在活躍執行期間保持 AI 分頁喚醒",
   "Compact noisy tool outputs": "壓縮冗長的工具輸出",
   "Parallel read-only tools": "平行執行唯讀工具",
-  "Task intent ledger": "任務意圖帳本"
+  "Task intent ledger": "任務意圖帳本",
+  "LIVE COMMAND FEED": "即時命令動態",
+  "Writing...": "正在輸入...",
+  "Writing... wait until finished": "正在輸入... 請等待完成",
+  "ok": "完成",
+  "failed": "失敗",
+  "Plan": "規劃",
+  "Plan mode — research first, then review and approve a plan before any edits": "規劃模式 — 先唯讀調研，審核並核准計畫後再進行修改",
+  "Plan mode ON — read-only research first, then review and approve before edits": "規劃模式已開啟 — 先唯讀調研，審核核准後再執行修改",
+  "Researching": "調研中",
+  "Refining plan": "完善計畫中",
+  "Ready for review": "待審核",
+  "Approved": "已核准",
+  "Reject plan": "拒絕計畫",
+  "Request changes": "要求修改",
+  "Research findings": "調研發現",
+  "Verification": "驗證方式"
 }

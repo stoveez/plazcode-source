@@ -1484,6 +1484,8 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/desktop/activity", post(|| async { Json(serde_json::json!({"ok":true})) }))
         .route("/api/desktop/agent-result", post(desktop_agent_result_handler))
         .route("/api/studio-dock/state", get(studio_dock::state_handler))
+        .route("/api/studio-dock/feed", get(studio_dock::feed_get_handler).post(studio_dock::feed_post_handler))
+        .route("/api/studio-dock/feed/clear", post(studio_dock::feed_clear_handler))
         .route("/api/studio-dock/screenshot", post(studio_dock::screenshot_handler))
         .route("/api/studio-dock/open-ai", post(studio_dock::open_ai_handler))
         .route("/api/studio-dock/position", post(studio_dock::position_handler))
@@ -2257,7 +2259,15 @@ async fn browser_agent_handler(State(state): State<AppState>, Json(value): Json<
     state.sync_keep_awake();
     let mut slot=state.ui.browser_agent.lock().unwrap_or_else(|error|error.into_inner());
     let replace=slot.as_ref().map_or(true,|(at,current)|at.elapsed()>Duration::from_secs(3) || value["browser_focused"]==true || current["browser_id"]==value["browser_id"]);
-    if replace {*slot=Some((std::time::Instant::now(),value));}
+    if replace {
+        let writing_changed = slot.as_ref().map_or(true, |(_, prev)| {
+            prev["writing"] != value["writing"] || prev["provider"] != value["provider"]
+        });
+        *slot=Some((std::time::Instant::now(),value));
+        if writing_changed {
+            state.ui.studio_dock.request_sync();
+        }
+    }
     Json(serde_json::json!({"ok":true}))
 }
 
