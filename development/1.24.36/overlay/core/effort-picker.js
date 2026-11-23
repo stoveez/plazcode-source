@@ -24,8 +24,12 @@ function PlazCodeMountEffortPicker(select){
  function choose(value){if(panel.hidden)return;select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));refresh();close(true);}
  trigger.onclick=()=>panel.hidden?open():close();trigger.onkeydown=e=>{if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();open(e.key==='Home'?0:e.key==='End'?options.length-1:undefined);}};
  panel.onkeydown=e=>{const index=options.indexOf(document.activeElement);if(e.key==='Escape'){e.preventDefault();close(true);}else if(e.key==='Tab')close();else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?options.length-1:(index+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;options[next].focus();}else if(e.key==='Enter'||e.key===' '){e.preventDefault();if(index>=0)choose(options[index].dataset.value);}};
- const outside=e=>{if(!wrap.contains(e.target))close();};document.addEventListener('pointerdown',outside);select.addEventListener('change',refresh);
- const timer=setInterval(()=>{if(!wrap.isConnected){clearInterval(timer);document.removeEventListener('pointerdown',outside);return;}refresh();},500);refresh();
+ const doc=select.ownerDocument,win=doc&&doc.defaultView;let mo=null;
+ function cleanup(){if(mo){mo.disconnect();mo=null;}doc.removeEventListener('pointerdown',outside);}
+ const outside=e=>{if(!wrap.isConnected){cleanup();return;}if(!wrap.contains(e.target))close();};doc.addEventListener('pointerdown',outside);select.addEventListener('change',refresh);select.addEventListener('input',refresh);
+ const MO=win&&win.MutationObserver||(typeof MutationObserver==='function'?MutationObserver:null);
+ if(MO){mo=new MO(()=>{if(!wrap.isConnected){cleanup();return;}refresh();});mo.observe(select,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['disabled']});}
+ refresh();
  return select._ultraPicker={refresh,close};
 }
 if(typeof module!=='undefined')module.exports=PlazCodeMountEffortPicker;

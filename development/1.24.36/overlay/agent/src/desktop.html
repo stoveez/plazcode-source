@@ -328,6 +328,7 @@ html[data-desktop-thinking=ultracode] .explorer-layout{border-color:#a879e866;bo
 @supports ((-webkit-background-clip:text) or (background-clip:text)){
  .pc-ultra-label{background-image:linear-gradient(110deg,#b48aff 0%,#e2c5ff 22%,#ffffff 38%,#a5eaff 50%,#d5a5ff 66%,#b48aff 100%);background-size:260% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:pc-ultra-shine 3.2s linear infinite}
 }
+html[data-pz-motion=off] .pc-ultra-label,html[data-pz-motion=reduced] .pc-ultra-label,html[data-pz-asleep] .pc-ultra-label{animation:none!important;background-position:38% 50%}
 @keyframes pc-ultra-shine{from{background-position:200% 50%}to{background-position:-60% 50%}}
 .pc-effort-picker{position:relative;display:inline-block;min-width:138px;max-width:100%}.pc-effort-picker>select[hidden]{display:none!important}.pc-effort-trigger{display:flex!important;align-items:center;justify-content:space-between;gap:14px;min-height:38px;width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid var(--stroke,var(--border,#414454));border-radius:8px;background:var(--canvas,var(--panel,#151821));color:var(--ink,var(--text,#e8ebf3));font:inherit;text-align:left;cursor:pointer}.pc-effort-trigger:focus-visible,.pc-effort-options>button:focus-visible{outline:2px solid var(--orange,var(--accent,#c5a1f9));outline-offset:2px}.pc-effort-options{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:2147483600;display:grid;gap:3px;max-height:280px;overflow:auto;padding:6px;border:1px solid var(--stroke,var(--border,#414454));border-radius:10px;background:var(--canvas,var(--panel,#151821));box-shadow:0 12px 32px #0007}.pc-effort-options[hidden]{display:none!important}
 /* A themed card has a blur effect (backdrop-filter), which traps the open list inside its own card so the next card paints over it. Lift the card that has an open list. */
@@ -511,7 +512,7 @@ html[data-desktop-theme] .nx-legacy{display:none!important}
    animate a custom property (older Mac web views) the colour steps from one stop to the next instead of gliding. */
 @property --nx-rb{syntax:"<number>";inherits:true;initial-value:350}
 @keyframes nxRainbowHue{0%{--nx-rb:350}17%{--nx-rb:35}33%{--nx-rb:75}50%{--nx-rb:170}67%{--nx-rb:220}83%{--nx-rb:285}100%{--nx-rb:350}}
-html[data-look-rainbow]{animation:nxRainbowHue 7s linear infinite}
+html[data-look-rainbow]:not([data-pz-motion=off]):not([data-pz-motion=reduced]):not([data-pz-asleep]){animation:nxRainbowHue 7s linear infinite}
 html[data-look-rainbow][data-pz-turning]{animation-play-state:paused}
 html[data-look-rainbow][data-pz-motion=off],html[data-look-rainbow][data-pz-motion=reduced]{--nx-rb:285}
 html[data-look-rainbow] :is(.nx-card,.nx-row,.nx-theme,.stat,.settingcard,.panel,.nx-account,.toolcard,.mcpcard,.nx-block,.navbtn.active,.nx-area.active,.pz-area.active,.pz-tabs .navbtn.active,.nx-seg button[aria-pressed=true]){border-color:hsl(var(--nx-rb) 92% 64%)!important;border-image:none!important}
@@ -631,6 +632,7 @@ html[data-desktop-theme] .dx-top .dx-search input:focus{border-color:rgb(var(--n
 .dx-card-title{margin-top:10px;font-size:19px;font-weight:800;letter-spacing:-.4px;line-height:1.2}
 .dx-card-sum{margin-top:6px;font-size:13px;line-height:1.5;color:var(--ink-soft,#9299aa);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .dx-skel{height:260px;border-radius:var(--nx-r);background:linear-gradient(100deg,rgb(255 255 255/.03) 30%,rgb(255 255 255/.08) 50%,rgb(255 255 255/.03) 70%);background-size:200% 100%;animation:dxSkel 1.4s linear infinite}
+html[data-pz-motion=off] .dx-skel,html[data-pz-motion=reduced] .dx-skel,html[data-pz-asleep] .dx-skel{animation:none!important}
 @keyframes dxSkel{to{background-position:-200% 0}}
 .dx-state{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px 16px;text-align:center;border:1px dashed var(--stroke,#2b303b);border-radius:var(--nx-r)}
 .dx-state p{margin:0;color:var(--ink-soft,#9299aa);font-size:13.5px}
@@ -794,17 +796,18 @@ html[data-desktop-glow=off] .pc-profile-login{box-shadow:inset 0 1px 0 #ffffff80
 .pc-profile-card{flex-direction:row;justify-content:flex-start;align-items:center;min-height:86px;padding:17px 18px;gap:16px;border-radius:14px;text-align:left}.pc-profile-card:hover{transform:translateX(2px)}.pc-profile-avatar{width:48px;height:48px;border-radius:14px;font-size:18px;letter-spacing:-.4px}.pc-profile-card[aria-selected=true] .pc-profile-avatar{transform:none}.pc-profile-copy{flex:1;width:auto;padding-right:28px}.pc-profile-copy strong{font-size:14px;font-weight:600}.pc-profile-copy small{font-size:11px;margin-top:5px}.pc-profile-tick{right:18px;top:50%;transform:translateY(-50%) scale(.8)}.pc-profile-card[aria-selected=true] .pc-profile-tick{transform:translateY(-50%) scale(1)}
 /* The canvas shares the same polished light and reflections as the panel. */
 .pc-signin{background:radial-gradient(ellipse at 18% 37%,rgb(var(--theme-rgb)/calc(var(--theme-glow)*.3)),transparent 48%),radial-gradient(ellipse at 84% 72%,rgb(var(--theme-rgb)/calc(var(--theme-glow)*.22)),transparent 48%),linear-gradient(145deg,#14161c,#090b10 45%,#101218)}.pc-signin-inner{z-index:1}.pc-signin:before{z-index:2;border-color:#ffffff0d;box-shadow:inset 0 1px 0 #ffffff04}.pc-signin-dismiss{z-index:3}
-.pc-signin-atmosphere{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}.pc-signin-atmosphere i{position:absolute;width:75vw;height:75vw;left:-24vw;top:-30vw;border-radius:50%;background:radial-gradient(circle,rgb(var(--theme-rgb)/calc(var(--theme-glow)*.47)),transparent 68%);opacity:.6;animation:pc-atmosphere-drift 16s ease-in-out infinite alternate;will-change:transform}.pc-signin-atmosphere i:nth-child(2){width:65vw;height:65vw;left:auto;top:auto;right:-25vw;bottom:-32vw;opacity:.5;animation-delay:-9s}.pc-signin-atmosphere:before{content:"";position:absolute;inset:0;background:linear-gradient(145deg,#ffffff08,transparent 37%,#ffffff05 66%,transparent 85%);opacity:.65}.pc-signin-atmosphere:after{content:"";position:absolute;inset:-35% -45%;background:linear-gradient(118deg,transparent 32%,#ffffff04 40%,#ffffff12 47%,rgb(var(--theme-rgb)/.045) 50%,#ffffff02 54%,transparent 65%);opacity:.5;animation:pc-backdrop-shine 18s ease-in-out infinite alternate;will-change:transform}
+.pc-signin-atmosphere{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0;contain:strict}.pc-signin-atmosphere i{position:absolute;width:75vw;height:75vw;left:-24vw;top:-30vw;border-radius:50%;background:radial-gradient(circle,rgb(var(--theme-rgb)/calc(var(--theme-glow)*.47)),transparent 68%);opacity:.6;animation:pc-atmosphere-drift 16s ease-in-out infinite alternate;will-change:transform;contain:strict}.pc-signin-atmosphere i:nth-child(2){width:65vw;height:65vw;left:auto;top:auto;right:-25vw;bottom:-32vw;opacity:.5;animation-delay:-9s}.pc-signin-atmosphere:before{content:"";position:absolute;inset:0;background:linear-gradient(145deg,#ffffff08,transparent 37%,#ffffff05 66%,transparent 85%);opacity:.65}.pc-signin-atmosphere:after{content:"";position:absolute;inset:-35% -45%;background:linear-gradient(118deg,transparent 32%,#ffffff04 40%,#ffffff12 47%,rgb(var(--theme-rgb)/.045) 50%,#ffffff02 54%,transparent 65%);opacity:.5;animation:pc-backdrop-shine 18s ease-in-out infinite alternate;will-change:transform;contain:strict}
 @keyframes pc-atmosphere-drift{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(35px,25px,0) scale(1.07)}}
 @keyframes pc-backdrop-shine{from{transform:translate3d(-11%,0,0)}to{transform:translate3d(11%,0,0)}}
 html[data-desktop-glow=off] .pc-signin-atmosphere i{opacity:0}
 /* Keep the approved canvas drift, reflected shine and crossfade consistent on Windows. */
 .pc-signin{transition:opacity .65s ease,background .5s ease!important}
 .pc-signin-inner{transition:transform .7s cubic-bezier(.2,.7,.2,1)!important}
-.pc-signin-atmosphere i{animation:pc-atmosphere-drift 16s ease-in-out infinite alternate!important}
-.pc-signin-atmosphere i:nth-child(2){animation-delay:-9s!important}
-.pc-signin-atmosphere:after{animation:pc-backdrop-shine 18s ease-in-out infinite alternate!important}
-.pc-signin .pc-profile-login:before,.pc-signin .pc-profile-remove:after{animation:pc-control-shine 7s var(--p-ease,ease) infinite!important}
+html:not([data-pz-motion=off]):not([data-pz-motion=reduced]):not([data-pz-asleep]) .pc-signin:not([hidden]) .pc-signin-atmosphere i{animation:pc-atmosphere-drift 16s ease-in-out infinite alternate!important}
+html:not([data-pz-motion=off]):not([data-pz-motion=reduced]):not([data-pz-asleep]) .pc-signin:not([hidden]) .pc-signin-atmosphere i:nth-child(2){animation-delay:-9s!important}
+html:not([data-pz-motion=off]):not([data-pz-motion=reduced]):not([data-pz-asleep]) .pc-signin:not([hidden]) .pc-signin-atmosphere:after{animation:pc-backdrop-shine 18s ease-in-out infinite alternate!important}
+html:not([data-pz-motion=off]):not([data-pz-motion=reduced]):not([data-pz-asleep]) .pc-signin:not([hidden]) .pc-profile-login:before,html:not([data-pz-motion=off]):not([data-pz-motion=reduced]):not([data-pz-asleep]) .pc-signin:not([hidden]) .pc-profile-remove:after{animation:pc-control-shine 7s var(--p-ease,ease) infinite!important}
+html[data-pz-motion=reduced] .pc-signin :is(.pc-signin-atmosphere i,.pc-signin-atmosphere:after,.pc-profile-login:before,.pc-profile-remove:after),.pc-signin[hidden] :is(.pc-signin-atmosphere i,.pc-signin-atmosphere:after,.pc-profile-login:before,.pc-profile-remove:after){animation:none!important}
 .pc-signin .pc-profile-remove:after{animation-delay:1.1s!important}
 .pc-signin .pc-profile-card{transition:transform .3s var(--p-ease,ease),border-color .3s ease,box-shadow .35s ease!important}
 .pc-signin .pc-profile-card:before{transition:transform .95s var(--p-ease,ease),opacity .5s ease!important}
@@ -867,7 +870,7 @@ html[data-pz-studio] .app{grid-template-columns:var(--pz-side) minmax(0,1fr)!imp
 /* Theme atmosphere: soft light pools in the palette colours. Animated, two layers drift in opposite
    directions far enough to see (owner, 2026-11-13: "the background is never animated"); Gradient keeps them
    still; Solid, a wallpaper or Gradients off hide them. Only transform animates, so it stays on the GPU. */
-html[data-pz-studio] .app::after,html[data-pz-studio] .app::before{content:"";position:absolute;z-index:-1;pointer-events:none}
+html[data-pz-studio] .app::after,html[data-pz-studio] .app::before{content:"";position:absolute;z-index:-1;pointer-events:none;contain:strict;will-change:transform}
 html[data-pz-studio] .app::after{inset:-12%;background:radial-gradient(38% 34% at 18% 22%,rgb(var(--pz-rgb)/.30),transparent 70%),radial-gradient(34% 30% at 82% 12%,rgb(var(--pz-rgb)/.20),transparent 72%),radial-gradient(40% 36% at 64% 84%,rgb(var(--pz-rgb)/.18),transparent 70%);opacity:.95}
 html[data-pz-studio] .app::before{inset:-22%;display:none;background:radial-gradient(26% 24% at 70% 38%,color-mix(in srgb,var(--orange2,#ffe0a1) 22%,transparent),transparent 70%),radial-gradient(30% 26% at 28% 72%,rgb(var(--pz-rgb)/.22),transparent 70%),radial-gradient(22% 20% at 52% 52%,rgb(var(--pz-rgb)/.12),transparent 70%)}
 html[data-pz-studio][data-pz-anim]:not([data-pz-bg]):not([data-pz-motion=off]) .app::after,html[data-pz-studio][data-pz-bg=animated]:not([data-pz-motion=off]) .app::after{animation:pz-atmos 15s ease-in-out infinite alternate;will-change:transform}
@@ -998,7 +1001,7 @@ html[data-pz-studio] .pz-maker{display:grid;grid-template-columns:minmax(260px,3
 html[data-pz-studio] .pz-maker[hidden]{display:none}
 html[data-pz-studio] .pz-preview{position:relative;overflow:hidden;min-height:250px;padding:22px;border-radius:18px;border:1px solid var(--pz-pv-line,#ffffff22);background:var(--pz-pv-canvas,#0b0d12);color:var(--pz-pv-text,#f5f8ff);box-shadow:0 24px 50px -28px #000}
 html[data-pz-studio] .pz-preview[data-bg=gradient],html[data-pz-studio] .pz-preview[data-bg=animated]{background:radial-gradient(60% 60% at 15% 15%,color-mix(in srgb,var(--pz-pv-accent) 32%,transparent),transparent 70%),radial-gradient(50% 50% at 90% 95%,color-mix(in srgb,var(--pz-pv-accent) 22%,transparent),transparent 70%),var(--pz-pv-canvas,#0b0d12);background-size:140% 140%}
-html[data-pz-studio]:not([data-pz-motion=off]) .pz-preview[data-bg=animated]{animation:pz-preview-drift 9s ease-in-out infinite alternate}
+html[data-pz-studio]:not([data-pz-motion=off]):not([data-pz-motion=reduced]):not([data-pz-asleep]) .pz-preview[data-bg=animated]{animation:pz-preview-drift 9s ease-in-out infinite alternate}
 @keyframes pz-preview-drift{from{background-position:0% 0%}to{background-position:100% 100%}}
 html[data-pz-studio] .pz-preview .pz-eyebrow{color:var(--pz-pv-accent)}
 html[data-pz-studio] .pz-preview h4{margin:14px 0 6px;font:500 30px/1.05 var(--pz-serif)}
@@ -1051,10 +1054,8 @@ html[data-pz-studio]:not([data-desktop-gradients=off]) :is(.accentbtn,.nx-btn:no
 html[data-pz-studio]{--pz-flow:linear-gradient(90deg,color-mix(in srgb,var(--orange2,#ffc052) 78%,#fff) 0%,var(--orange,#ff9226) 16.667%,color-mix(in srgb,var(--orange2,#ffc052) 78%,#fff) 33.333%,var(--orange,#ff9226) 50%,color-mix(in srgb,var(--orange2,#ffc052) 78%,#fff) 66.667%,var(--orange,#ff9226) 83.333%,color-mix(in srgb,var(--orange2,#ffc052) 78%,#fff) 100%);--pz-flow-soft:linear-gradient(90deg,rgb(var(--pz-rgb)/.30) 0%,rgb(var(--pz-rgb)/.02) 16.667%,rgb(var(--pz-rgb)/.30) 33.333%,rgb(var(--pz-rgb)/.02) 50%,rgb(var(--pz-rgb)/.30) 66.667%,rgb(var(--pz-rgb)/.02) 83.333%,rgb(var(--pz-rgb)/.30) 100%)}
 @property --pz-x{syntax:"<percentage>";inherits:false;initial-value:0%}
 @keyframes pz-flow{from{--pz-x:0%}to{--pz-x:100%}}
-html[data-pz-studio]:not([data-desktop-gradients=off]) :is(.accentbtn,.nx-btn:not(.ghost),.nx-seg button[aria-pressed=true]){transition:--pz-x .8s var(--pz-ease),transform .2s var(--pz-ease),box-shadow .25s var(--pz-ease),filter .2s!important}
-html[data-pz-studio]:not([data-pz-motion=off]):not([data-pz-motion=reduced]):not([data-desktop-gradients=off]) :is(.accentbtn,.nx-btn:not(.ghost):not(.pc-picture-remove),.nx-seg button[aria-pressed=true]):hover:not(:disabled){animation:pz-flow 2.2s linear infinite}
-html[data-pz-studio]:not([data-pz-motion=off]):not([data-pz-motion=reduced]):not([data-desktop-gradients=off]) :is(.softbtn,.clearbtn,.nx-btn.ghost,.sidebar .nx-link,.nx-seg button:not([aria-pressed=true])):hover:not(:disabled){animation:pz-flow 2.6s linear infinite}
-html[data-pz-studio]:not([data-desktop-gradients=off]) :is(.softbtn,.clearbtn,.nx-btn.ghost,.sidebar .nx-link,.nx-seg button:not([aria-pressed=true])){transition:--pz-x .8s var(--pz-ease),transform .2s var(--pz-ease),box-shadow .25s var(--pz-ease),border-color .2s,color .2s!important}
+html[data-pz-studio]:not([data-desktop-gradients=off]) :is(.accentbtn,.nx-btn:not(.ghost),.nx-seg button[aria-pressed=true]){transition:transform .2s var(--pz-ease),box-shadow .25s var(--pz-ease),filter .2s!important}
+html[data-pz-studio]:not([data-desktop-gradients=off]) :is(.softbtn,.clearbtn,.nx-btn.ghost,.sidebar .nx-link,.nx-seg button:not([aria-pressed=true])){transition:transform .2s var(--pz-ease),box-shadow .25s var(--pz-ease),border-color .2s,color .2s!important}
 html[data-pz-studio]:not([data-desktop-gradients=off]) :is(.accentbtn,.nx-btn:not(.ghost)) svg{color:#0b0d12}
 /* Quiet buttons: tinted glass with a bright rim. */
 html[data-pz-studio]:not([data-desktop-gradients=off]) :is(.softbtn,.clearbtn,.nx-btn.ghost,.nx-btn.pc-picture-remove,.sidebar .nx-link,.nx-seg button,.pz-search,.pz-pill,.winbtn:not(.close)){background:var(--pz-glass),var(--pz-flow-soft) var(--pz-x) 0/300% 100%,var(--pz-card)!important;border-color:color-mix(in srgb,var(--stroke,#2b303b) 55%,rgb(var(--pz-rgb)) 45%)!important;box-shadow:inset 0 1px 0 rgb(255 255 255/.13),inset 0 -1px 0 rgb(0 0 0/.25),0 6px 16px -10px rgb(0 0 0/.8)!important;color:var(--text,#eef2f8)}
@@ -1470,6 +1471,8 @@ html[data-desktop-gradients=off] .cn-ico{background:rgb(var(--pz-rgb,233 186 83)
    animations pause. */
 html:not([data-look-blur]) :is(.nx-card,.nx-row,.panel,.settingcard,.stat,.sidebar,.titlebar){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 html[data-pz-asleep] *,html[data-pz-asleep] *::before,html[data-pz-asleep] *::after{animation-play-state:paused!important}
+.toolcard,.mcpcard,.desktop-ai-card{contain:layout style;content-visibility:auto;contain-intrinsic-size:auto 84px}
+.nx-row,.logline{contain:layout style}
 /* 2026-11-19 (owner: "ensure all of the settings in Appearance actually work; panel opacity doesn't even do anything").
    The Studio look gave cards fixed corners, a fixed 1 px border, a fixed border colour and a fixed card colour, so
    Corner radius, Border thickness, Border color and Panel opacity changed nothing, and Panel blur had nothing to show
@@ -1945,7 +1948,7 @@ __PLAZCODE_VERSION_UI__
   try{var Logstyle=document.createElement("style");Logstyle.textContent=PlazCodeActionLog.CSS;(document.head||document.documentElement).appendChild(Logstyle);}catch(Error){}
   var Actionlog = PlazCodeActionLog.mount(Byid("actionLog"), function (Request) { return Api("/api/checkpoints", {method:"POST",body:JSON.stringify(Request)}); });
   var Actionlogtimer = null;
-  Byid("homeActionLog").ontoggle = function () { clearInterval(Actionlogtimer); Actionlogtimer = null; if (this.open) { Actionlog.refresh(); Actionlogtimer = setInterval(function () { if (!document.hidden) Actionlog.refresh(); }, 3000); } };
+  Byid("homeActionLog").ontoggle = function () { clearInterval(Actionlogtimer); Actionlogtimer = null; if (this.open) { Actionlog.refresh(); Actionlogtimer = setInterval(function () { var Home = Byid("page-home"); if (!document.hidden && Home && Home.classList.contains("active")) Actionlog.refresh(); }, 3000); } };
   (function () {
     var Folders = Byid("allowedFolders"), Save = Byid("saveAllowedFolders"), Status = Byid("allowedFoldersStatus");
     Folders.oninput = function () { Folders.dataset.dirty = "1"; };
@@ -2186,16 +2189,19 @@ __PLAZCODE_VERSION_UI__
     });
 
     var Filterbox = Byid("toolFilters");
-    Filterbox.innerHTML = Object.keys(Counts).map(function (Name) {
+    var Filterhtml = Object.keys(Counts).map(function (Name) {
       return '<button class="filter ' + (Toolfilter === Name ? "active" : "") + '" data-filter="' + Name + '">' + Name + " " + Counts[Name] + "</button>";
     }).join("");
-
-    Toarray(document.querySelectorAll("[data-filter]")).forEach(function (Button) {
-      Button.onclick = function () {
-        Toolfilter = Button.getAttribute("data-filter");
-        Rendertools();
-      };
-    });
+    if (Filterbox && Filterbox._filtersHtml !== Filterhtml) {
+      Filterbox._filtersHtml = Filterhtml;
+      Filterbox.innerHTML = Filterhtml;
+      Toarray(document.querySelectorAll("[data-filter]")).forEach(function (Button) {
+        Button.onclick = function () {
+          Toolfilter = Button.getAttribute("data-filter");
+          Rendertools();
+        };
+      });
+    }
 
     var Query = Toolquery.toLowerCase();
     var Filtered = Tools.filter(function (Tool) {
@@ -2424,7 +2430,7 @@ __PLAZCODE_VERSION_UI__
     var Win=Cnshell();Cnlastid=Id;Cnopenid=Id;Cnwinsig='';Cnpaint();
     var Shade=Byid('cnShade');Shade.classList.add('cn-on');Win.classList.add('cn-on');Win.setAttribute('aria-hidden','false');
     var First=Win.querySelector('.cn-consent button,[data-cn-act=close],button');if(First)First.focus();
-    if(!Cnpoll)Cnpoll=window.setInterval(function(){if(Cnopenid){Cnat=0;Refresh();}},2000);
+    if(!Cnpoll)Cnpoll=window.setInterval(function(){var Page=Byid('page-mcp');if(Cnopenid&&!document.hidden&&Page&&Page.classList.contains('active')){Cnat=0;Refresh();}},2000);
   }
   function Cnclose(){
     var Win=Byid('cnWin'),Shade=Byid('cnShade');if(!Win)return;
@@ -2483,8 +2489,11 @@ __PLAZCODE_VERSION_UI__
         var Signature=Starthtml+'|'+Html+'|'+More+'|'+JSON.stringify(PendingMcp);
         if(Signature!==Catalogsignature){
           Catalogsignature=Signature;
-          Byid('cnStart').innerHTML=Starthtml;Byid('cnStartWrap').hidden=!Start.length;
-          Byid('cnApps').innerHTML=Html;Byid('mcpGrid').innerHTML=More;
+          var StartEl=Byid('cnStart'),AppsEl=Byid('cnApps'),MoreEl=Byid('mcpGrid');
+          if(StartEl&&StartEl._cnHtml!==Starthtml){StartEl._cnHtml=Starthtml;StartEl.innerHTML=Starthtml;}
+          Byid('cnStartWrap').hidden=!Start.length;
+          if(AppsEl&&AppsEl._cnHtml!==Html){AppsEl._cnHtml=Html;AppsEl.innerHTML=Html;}
+          if(MoreEl&&MoreEl._cnHtml!==More){MoreEl._cnHtml=More;MoreEl.innerHTML=More;}
         }
         Homesetup(Start);
         Cnshell();
@@ -2493,7 +2502,8 @@ __PLAZCODE_VERSION_UI__
       });
     }).catch(function (Error) {
       Catalogcached=null;Catalogsignature='';
-      Byid("cnApps").innerHTML = '<div class="empty">' + Escape(Error.message || Error) + '</div>';
+      var ErrHtml='<div class="empty">' + Escape(Error.message || Error) + '</div>',AppsEl=Byid("cnApps");
+      if(AppsEl&&AppsEl._cnHtml!==ErrHtml){AppsEl._cnHtml=ErrHtml;AppsEl.innerHTML=ErrHtml;}
     }).finally(function () {
       Loaddesktopai(Force);
     });
@@ -2531,7 +2541,7 @@ __PLAZCODE_VERSION_UI__
     'Reload Antigravity or refresh its external servers list to pick up PlazCode.':1,
     'Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.':1
   };
-  function DesktopAiT(Text){return I18n?I18n.t(Text):Text;}
+  function DesktopAiT(Text){return (typeof I18n!=='undefined'&&I18n)?I18n.t(Text):Text;}
   function DesktopAiBadgeState(State){return State==='connected'?'ready':State==='needs_attention'?'needs_attention':'not_set_up';}
   function DesktopAiBadgeLabel(State){
     if(State==='connected')return DesktopAiT('Connected');
@@ -2545,19 +2555,15 @@ __PLAZCODE_VERSION_UI__
     if(!Apps.length){Wrap.hidden=true;return;}
     Wrap.hidden=false;
     if(Banner){
-      if(DesktopAiNotice&&DesktopAiNotice.text){
-        Banner.hidden=false;
-        Banner.setAttribute('data-kind',DesktopAiNotice.kind||'ok');
-        Banner.innerHTML='<span class="desktop-ai-banner-text" data-i18n-user-content dir="auto">'+Escape(DesktopAiNotice.text)+'</span><button type="button" class="softbtn" data-dai-dismiss="1">'+Escape(DesktopAiT('Dismiss'))+'</button>';
-      }else{
-        Banner.hidden=true;
-        Banner.innerHTML='';
-      }
+      var BannerHtml=(DesktopAiNotice&&DesktopAiNotice.text)?('<span class="desktop-ai-banner-text" data-i18n-user-content dir="auto">'+Escape(DesktopAiNotice.text)+'</span><button type="button" class="softbtn" data-dai-dismiss="1">'+Escape(DesktopAiT('Dismiss'))+'</button>'):'';
+      Banner.hidden=!BannerHtml;
+      if(BannerHtml)Banner.setAttribute('data-kind',DesktopAiNotice.kind||'ok');
+      if(Banner._daiBannerHtml!==BannerHtml){Banner._daiBannerHtml=BannerHtml;Banner.innerHTML=BannerHtml;}
     }
-    var NextSig=JSON.stringify(Apps)+'|'+JSON.stringify(DesktopAiPending)+'|'+(I18n?I18n.getLanguage():'en');
+    var NextSig=JSON.stringify(Apps)+'|'+JSON.stringify(DesktopAiPending)+'|'+((typeof I18n!=='undefined'&&I18n)?I18n.getLanguage():'en');
     if(NextSig===DesktopAiSig)return;
     DesktopAiSig=NextSig;
-    Grid.innerHTML=Apps.map(function(App){
+    var GridHtml=Apps.map(function(App){
       var Busy=!!DesktopAiPending[App.id],State=App.state||'not_connected';
       var Icon=DesktopAiIcons[App.id]||'<circle cx="12" cy="12" r="8"/>';
       var PillState=DesktopAiBadgeState(State),PillLabel=DesktopAiBadgeLabel(State);
@@ -2579,12 +2585,13 @@ __PLAZCODE_VERSION_UI__
         +'<div class="desktop-ai-actions"><button type="button" class="'+ConnectCls+'" data-dai-connect="'+Escape(App.id)+'"'+(Busy?' disabled':'')+'>'+Escape(Busy?DesktopAiT('Saving...'):ConnectLabel)+'</button>'+DisconnectBtn+'<button type="button" class="softbtn" data-dai-copy="'+Escape(App.id)+'">'+Escape(DesktopAiT('Copy config'))+'</button></div>'
         +'</article>';
     }).join('');
+    if(Grid._daiHtml!==GridHtml){Grid._daiHtml=GridHtml;Grid.innerHTML=GridHtml;}
   }
   function DesktopAiWire(){
     if(DesktopAiWired)return;
     var Wrap=Byid('desktopAiWrap');if(!Wrap||!Wrap.addEventListener)return;
     DesktopAiWired=true;
-    if(I18n&&typeof I18n.onChange==='function'){I18n.onChange(function(){DesktopAiSig='';DesktopAiRender();});}
+    if(typeof I18n!=='undefined'&&I18n&&typeof I18n.onChange==='function'){I18n.onChange(function(){DesktopAiSig='';DesktopAiRender();});}
     Wrap.addEventListener('click',function(Event){
       var Node=Event.target&&Event.target.closest?Event.target.closest('[data-dai-connect],[data-dai-disconnect],[data-dai-copy],[data-dai-dismiss]'):null;
       if(!Node)return;
@@ -2625,7 +2632,8 @@ __PLAZCODE_VERSION_UI__
     var Recent=JSON.stringify(Last);
     if(Recent!==Recentlogsignature){
       Recentlogsignature=Recent;
-      Byid('recent').innerHTML=Last.length?Last.map(function(Line){var Errorline=/ERROR/i.test(Line),Warnline=/WARN/i.test(Line),Style=Errorline?'background:var(--red)':Warnline?'background:var(--amber)':'';return '<div class="activity-row"><span class="dot '+(!Errorline&&!Warnline?'on':'')+'" style="'+Style+'"></span><div class="activity-text">'+Escape(Line)+'</div><span class="activity-time"></span></div>';}).join(''):'<div class="empty">No recent activity.</div>';
+      var RecentEl=Byid('recent'),RecentHtml=Last.length?Last.map(function(Line){var Errorline=/ERROR/i.test(Line),Warnline=/WARN/i.test(Line),Style=Errorline?'background:var(--red)':Warnline?'background:var(--amber)':'';return '<div class="activity-row"><span class="dot '+(!Errorline&&!Warnline?'on':'')+'" style="'+Style+'"></span><div class="activity-text">'+Escape(Line)+'</div><span class="activity-time"></span></div>';}).join(''):'<div class="empty">No recent activity.</div>';
+      if(RecentEl&&RecentEl._recentHtml!==RecentHtml){RecentEl._recentHtml=RecentHtml;RecentEl.innerHTML=RecentHtml;}
     }
     if(!Byid('page-terminal').classList.contains('active'))return;
     if(Terminalrendered&&Logs.length===Terminallogs.length&&Logs.every(function(Line,Index){return Line===Terminallogs[Index];}))return;
@@ -2677,9 +2685,11 @@ __PLAZCODE_VERSION_UI__
 
     Toarray(document.querySelectorAll("select[data-pref], input[type=number][data-pref]")).forEach(function (Element) {
       var Name = Element.getAttribute("data-pref");
-      if(Name==="rs-engine"){Element.value=State && State.browser_agent && State.browser_agent.engine || "roblox";return;}
+      if(Name==="rs-engine"){Element.value=State && State.browser_agent && State.browser_agent.engine || "roblox";if(Element._pcRefresh)Element._pcRefresh();return;}
       if (Preferences[Name] !== undefined && document.activeElement !== Element && !Element.dataset.saving) {
         Element.value = Preferences[Name];
+        if(Element._ultraPicker)Element._ultraPicker.refresh();
+        if(Element._pcRefresh)Element._pcRefresh();
       }
     });
 
@@ -2907,6 +2917,7 @@ __PLAZCODE_VERSION_UI__
     Root.style.setProperty('--orange',Theme.accent);Root.style.setProperty('--orange2',Theme.light);Root.style.setProperty('--bg',Theme.bg);
     Root.style.setProperty('--theme-rgb',Theme.rgb);Root.style.setProperty('--theme-glow',Glow==='off'?'0':Glow==='strong'?'.35':'.13');
     Byid('desktopTheme').value=Name;Byid('desktopGlow').value=Glow;Byid('desktopGradients').value=Gradients;
+    ['desktopTheme','desktopGlow','desktopGradients'].forEach(function(Id){var El=Byid(Id);if(El&&El._pcRefresh)El._pcRefresh();});
     document.querySelectorAll('[data-desktop-palette]').forEach(function(Button){Button.setAttribute('aria-pressed',String(Button.dataset.desktopPalette===Name));});
     try{Nxapplycustom();Nxsyncglow(Glow,Gradients);}catch(Error){}
     return {theme:Name,glow:Glow,gradients:Gradients};
@@ -3458,27 +3469,117 @@ __PLAZCODE_VERSION_UI__
     var Tabs = document.querySelector('.pz-tabs'); if (Tabs) Tabs.setAttribute('data-single', document.querySelectorAll('.pz-tabs .navbtn:not(.nx-off)').length < 2 ? '1' : '0');
   }
   // A soft ripple where a button or card is pressed (Appearance > Feel > Click ripples).
-  /* Buttons whose gradient flows while hovered (CSS animation of --pz-x): when the pointer leaves, glide the
-     gradient back to rest instead of snapping. The colours repeat every 50%, so the nearest lower multiple of
-     50% looks exactly like rest. */
+  /* Buttons and pills whose gradient flows while hovered: unified WAAPI controller captures live --pz-x
+     phase before cancelling any prior settle/flow animation, resumes continuous linear flow from that exact phase
+     (wrapping % 50 since the gradient repeats every 50%), and eases cleanly back to the nearest 50% rest multiple on leave. */
   function Pzflow() {
-    var Pick = '.accentbtn,.nx-btn,.softbtn,.clearbtn,.nx-link,.nx-seg button', Started = new WeakMap();
-    document.addEventListener('mouseover', function (Event) {
-      var Node = Event.target && Event.target.closest ? Event.target.closest(Pick) : null;
-      if (!Node || Started.has(Node)) return;
-      var Style = getComputedStyle(Node), Length = parseFloat(Style.animationDuration) * 1000;
-      if (Style.animationName.indexOf('pz-flow') < 0 || !(Length > 0)) return;
-      Started.set(Node, { at: performance.now(), length: Length });
+    var Pick = '.accentbtn,.nx-btn,.softbtn,.clearbtn,.nx-link,.nx-seg button,.pz-pv-btn,.pz-pill';
+    var Primary = '.accentbtn,.nx-btn:not(.ghost):not(.pc-picture-remove),.nx-seg button[aria-pressed=true],.pz-pv-btn';
+    var FlowMap = new WeakMap(), Active = new Set();
+    function Reduced() {
+      try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (Error) { return false; }
+    }
+    function CanFlow(Node) {
+      var Root = document.documentElement;
+      if (!Root || !Root.hasAttribute('data-pz-studio')) return false;
+      if (Root.getAttribute('data-desktop-gradients') === 'off') return false;
+      var Motion = Root.getAttribute('data-pz-motion');
+      if (Motion === 'off' || Motion === 'reduced') return false;
+      if (Root.hasAttribute('data-pz-asleep') || document.hidden || Reduced()) return false;
+      if (!Node || Node.disabled || (Node.getAttribute && Node.getAttribute('aria-disabled') === 'true')) return false;
+      if (Node.matches && Node.matches('.pc-picture-remove')) return false;
+      return true;
+    }
+    function PhaseOf(Node) {
+      var Entry = FlowMap.get(Node), Raw = NaN;
+      try {
+        if (typeof getComputedStyle === 'function') {
+          var Val = parseFloat(getComputedStyle(Node).getPropertyValue('--pz-x'));
+          if (Number.isFinite(Val)) Raw = Val;
+        }
+      } catch (Error) {}
+      if (Entry && Entry.anim && Entry.anim.playState === 'running') {
+        var Time = Number(Entry.anim.currentTime);
+        if (Entry.kind === 'flow' && Number.isFinite(Time) && Entry.duration > 0) {
+          var FlowVal = Entry.from + (Time / Entry.duration) * 100;
+          if (!Number.isFinite(Raw) || (Time > 0 && Math.abs(Raw - Entry.from) < 1e-4)) Raw = FlowVal;
+        } else if (Entry.kind === 'settle') {
+          var Progress = null;
+          try { Progress = Entry.anim.effect && Entry.anim.effect.getComputedTiming ? Entry.anim.effect.getComputedTiming().progress : null; } catch (Error) {}
+          if (typeof Progress === 'number' && Number.isFinite(Progress)) {
+            var SettleVal = Entry.from + (Entry.to - Entry.from) * Progress;
+            if (!Number.isFinite(Raw) || (Progress > 0 && Math.abs(Raw - Entry.from) < 1e-4)) Raw = SettleVal;
+          }
+        }
+      }
+      if (!Number.isFinite(Raw)) Raw = Entry ? Entry.phase : 0;
+      return ((Raw % 50) + 50) % 50;
+    }
+    function StopFlow(Node, KeepPhase) {
+      var Entry = FlowMap.get(Node);
+      var Live = KeepPhase ? PhaseOf(Node) : 0;
+      if (Entry && Entry.anim) {
+        try { Entry.anim.cancel(); } catch (Error) {}
+      }
+      Active.delete(Node);
+      if (KeepPhase) FlowMap.set(Node, { anim: null, phase: Live, kind: 'idle', from: Live, to: Live, duration: 0 });
+      else FlowMap.delete(Node);
+      return Live;
+    }
+    function StartFlow(Node) {
+      if (!Node || !Node.animate || !CanFlow(Node)) return;
+      var Cur = StopFlow(Node, true);
+      var Dur = Node.matches && Node.matches(Primary) ? 2200 : 2600;
+      try {
+        var Anim = Node.animate({ '--pz-x': [Cur + '%', (Cur + 100) + '%'] }, { duration: Dur, iterations: Infinity, easing: 'linear' });
+        FlowMap.set(Node, { anim: Anim, phase: Cur, kind: 'flow', from: Cur, to: Cur + 100, duration: Dur });
+        Active.add(Node);
+        Anim.oncancel = function () {
+          var CurEntry = FlowMap.get(Node);
+          if (CurEntry && CurEntry.anim === Anim) { CurEntry.anim = null; Active.delete(Node); }
+        };
+      } catch (Error) {}
+    }
+    function StartSettle(Node) {
+      if (!Node || !Node.animate) return;
+      var Entry = FlowMap.get(Node);
+      if (!Entry || Entry.kind !== 'flow') return;
+      var Cur = StopFlow(Node, true);
+      var Rest = Math.round(Cur / 50) * 50;
+      if (Math.abs(Cur - Rest) < 0.5) { FlowMap.delete(Node); return; }
+      var Dur = 420 + Math.abs(Cur - Rest) * 16;
+      try {
+        var Anim = Node.animate({ '--pz-x': [Cur + '%', Rest + '%'] }, { duration: Dur, easing: 'cubic-bezier(.22,1,.36,1)' });
+        FlowMap.set(Node, { anim: Anim, phase: Cur, kind: 'settle', from: Cur, to: Rest, duration: Dur });
+        Active.add(Node);
+        var Done = function () {
+          var CurEntry = FlowMap.get(Node);
+          if (CurEntry && CurEntry.anim === Anim) { FlowMap.delete(Node); Active.delete(Node); }
+        };
+        Anim.onfinish = Done;
+        Anim.oncancel = function () {
+          var CurEntry = FlowMap.get(Node);
+          if (CurEntry && CurEntry.anim === Anim) { CurEntry.anim = null; Active.delete(Node); }
+        };
+      } catch (Error) { FlowMap.delete(Node); }
+    }
+    function PauseAll() {
+      Array.from(Active).forEach(function (Node) { StopFlow(Node, false); });
+      Active.clear();
+    }
+    document.addEventListener('pointerenter', function (Event) {
+      var Node = Event.target;
+      if (!Node || Node.nodeType !== 1 || !Node.matches || !Node.matches(Pick)) return;
+      if (Event.relatedTarget && Node.contains(Event.relatedTarget)) return;
+      StartFlow(Node);
     }, true);
-    document.addEventListener('mouseout', function (Event) {
-      var Node = Event.target && Event.target.closest ? Event.target.closest(Pick) : null;
-      if (!Node || (Event.relatedTarget && Node.contains(Event.relatedTarget))) return;
-      var Run = Started.get(Node); Started.delete(Node);
-      if (!Run || !Node.animate) return;
-      var Now = ((performance.now() - Run.at) % Run.length) / Run.length * 100, Rest = Math.floor(Now / 50) * 50;
-      if (Now - Rest < 0.5) return;
-      try { Node.animate({ '--pz-x': [Now + '%', Rest + '%'] }, { duration: 450 + (Now - Rest) * 18, easing: 'cubic-bezier(.22,1,.36,1)' }); } catch (Error) {}
+    document.addEventListener('pointerleave', function (Event) {
+      var Node = Event.target;
+      if (!Node || Node.nodeType !== 1 || !Node.matches || !Node.matches(Pick)) return;
+      if (Event.relatedTarget && Node.contains(Event.relatedTarget)) return;
+      StartSettle(Node);
     }, true);
+    window.__pzFlowPauseAll = PauseAll;
   }
   /* A spark burst where a section or theme is picked: a ring, a flash and a handful of glowing specks that
      fly out and fade (owner, 2026-11-13, from the FeatherScript reference). Full motion and Click ripples only.
@@ -3944,7 +4045,7 @@ __PLAZCODE_VERSION_UI__
     Byid('installUpdate').onclick = function () { Updateaction('install'); };
     Byid('closeUpdateError').onclick = function () { UpdateerrorDismissed=true; Byid('updateOverlay').hidden=true; };
     Refreshupdates();
-    var Lastupdatepoll=Date.now();window.setInterval(function(){if(document.hidden&&Date.now()-Lastupdatepoll<5000)return;Lastupdatepoll=Date.now();Refreshupdates();},1000);
+    window.setInterval(function(){var Updates=Byid('page-updates');if(document.hidden)return;if(!Updating&&(!Updates||!Updates.classList.contains('active')))return;Refreshupdates();},1000);
     var Returncheck=0;function Checkreturn(){if(document.hidden||Date.now()-Returncheck<30000)return;Returncheck=Date.now();Api("/api/desktop/update",{method:"POST",body:JSON.stringify({action:"check",background:true})}).catch(function(){}).then(Refreshupdates);}document.addEventListener("visibilitychange",Checkreturn);window.addEventListener("focus",Checkreturn);
 
     window.PlazCodeVaultApi = function (Request) { return Api("/api/vault", {method: "POST", body: JSON.stringify(Request)}); };
@@ -3956,7 +4057,7 @@ __PLAZCODE_VERSION_UI__
       importChat:function(Value){return Api("/api/desktop/agent",{method:'POST',body:JSON.stringify({action:'memory-import',prompt:JSON.stringify(Value),request_id:crypto.randomUUID()})});}
     });
     Setupsettingssections(function(){Memoryui.refresh();});
-    window.setInterval(function () { var Section=Byid("memorySettings").closest("details.settings-section");if (!document.hidden && Byid("page-settings").classList.contains("active") && Section && Section.open) Memoryui.refresh(); }, 3000);
+    window.setInterval(function () { var Mem=Byid("memorySettings"),Page=Byid("page-settings"),Section=Mem&&Mem.closest("details.settings-section");if (!document.hidden && !document.documentElement.hasAttribute("data-pz-asleep") && Page && Page.classList.contains("active") && Section && Section.open) Memoryui.refresh(); }, 3000);
     // 1.22.0: Settings -> Copy debug report (bridge + extension + AI-site logs).
     function Copydebugtext(Text){
       var Fallback=function(){var Area=document.createElement('textarea');Area.value=Text;Area.setAttribute('readonly','');Area.style.position='fixed';Area.style.opacity='0';document.body.appendChild(Area);Area.select();var Done=false;try{Done=document.execCommand('copy');}catch(_){}Area.remove();return Done;};
@@ -4188,7 +4289,7 @@ __PLAZCODE_VERSION_UI__
       }
       Ipc("ui-ready");
       if(!Boot.profiles||ProfileContext)Refresh();
-      var Laststatepoll=Date.now();window.setInterval(function(){if(document.hidden&&Date.now()-Laststatepoll<5000)return;Laststatepoll=Date.now();Refresh();},1000);
+      window.setInterval(function(){if(document.hidden)return;Refresh();},1000);
       function Resumeview(){if(!document.hidden){Refresh();Refreshupdates();}}document.addEventListener('visibilitychange',Resumeview);window.addEventListener('focus',Resumeview);
     } catch (Error) {
       Showerror(Error);
@@ -4230,8 +4331,12 @@ function PlazCodeMountEffortPicker(select){
  function choose(value){if(panel.hidden)return;select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));refresh();close(true);}
  trigger.onclick=()=>panel.hidden?open():close();trigger.onkeydown=e=>{if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();open(e.key==='Home'?0:e.key==='End'?options.length-1:undefined);}};
  panel.onkeydown=e=>{const index=options.indexOf(document.activeElement);if(e.key==='Escape'){e.preventDefault();close(true);}else if(e.key==='Tab')close();else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?options.length-1:(index+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;options[next].focus();}else if(e.key==='Enter'||e.key===' '){e.preventDefault();if(index>=0)choose(options[index].dataset.value);}};
- const outside=e=>{if(!wrap.contains(e.target))close();};document.addEventListener('pointerdown',outside);select.addEventListener('change',refresh);
- const timer=setInterval(()=>{if(!wrap.isConnected){clearInterval(timer);document.removeEventListener('pointerdown',outside);return;}refresh();},500);refresh();
+ const doc=select.ownerDocument,win=doc&&doc.defaultView;let mo=null;
+ function cleanup(){if(mo){mo.disconnect();mo=null;}doc.removeEventListener('pointerdown',outside);}
+ const outside=e=>{if(!wrap.isConnected){cleanup();return;}if(!wrap.contains(e.target))close();};doc.addEventListener('pointerdown',outside);select.addEventListener('change',refresh);select.addEventListener('input',refresh);
+ const MO=win&&win.MutationObserver||(typeof MutationObserver==='function'?MutationObserver:null);
+ if(MO){mo=new MO(()=>{if(!wrap.isConnected){cleanup();return;}refresh();});mo.observe(select,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['disabled']});}
+ refresh();
  return select._ultraPicker={refresh,close};
 }
 
@@ -4257,19 +4362,31 @@ function pcEnhanceSelect(select){
   trigger.onclick=()=>panel.hidden?open():close();
   trigger.onkeydown=e=>{if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();open(e.key==='Home'?0:e.key==='End'?options.length-1:undefined);}};
   panel.onkeydown=e=>{const i=options.indexOf(doc.activeElement);if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close(true);}else if(e.key==='Tab')close();else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const n=e.key==='Home'?0:e.key==='End'?options.length-1:(i+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;options[n].focus();}else if(e.key==='Enter'||e.key===' '){e.preventDefault();if(i>=0)choose(options[i].dataset.value);}};
-  const outside=e=>{if(!wrap.contains(e.target))close();};doc.addEventListener('pointerdown',outside);select.addEventListener('change',refresh);
-  const timer=setInterval(()=>{if(!wrap.isConnected){clearInterval(timer);doc.removeEventListener('pointerdown',outside);return;}refresh();},500);
-  rebuild();refresh();select._pcDD=true;
+  const win=doc&&doc.defaultView;let mo=null;
+  function cleanup(){if(mo){mo.disconnect();mo=null;}doc.removeEventListener('pointerdown',outside);}
+  const outside=e=>{if(!wrap.isConnected){cleanup();return;}if(!wrap.contains(e.target))close();};doc.addEventListener('pointerdown',outside);select.addEventListener('change',refresh);select.addEventListener('input',refresh);
+  const MO=win&&win.MutationObserver||(typeof MutationObserver==='function'?MutationObserver:null);
+  if(MO){mo=new MO(()=>{if(!wrap.isConnected){cleanup();return;}refresh();});mo.observe(select,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['disabled']});}
+  rebuild();refresh();select._pcDD=true;select._pcRefresh=refresh;
 }
 function pcEnhanceSelects(scopeRoots){
-  let queued=false;
-  const run=()=>{queued=false;try{document.querySelectorAll(scopeRoots.split(',').map(r=>r.trim()+' select').join(',')).forEach(pcEnhanceSelect);}catch{}};
-  const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(run);};
-  if(typeof MutationObserver==='undefined'||typeof requestAnimationFrame==='undefined')return;
-  new MutationObserver(muts=>{for(const m of muts){const t=m.target,el=t.nodeType===1?t:t.parentElement;if(!el)continue;
-    if(el.closest&&el.closest(scopeRoots)){schedule();return;}
-    if(el===document.body||el===document.documentElement){for(const n of m.addedNodes){if(n.nodeType===1&&((n.matches&&n.matches(scopeRoots))||(n.querySelector&&n.querySelector(scopeRoots)))){schedule();return;}}}}}).observe(document.documentElement,{childList:true,subtree:true});
-  schedule();
+  const roots=scopeRoots.split(',').map(r=>r.trim()).filter(Boolean);
+  const inScope=el=>!!(el&&el.closest&&roots.some(r=>el.closest(r)));
+  const visit=node=>{
+    if(!node||node.nodeType!==1)return;
+    if(node.tagName==='SELECT'){if(inScope(node))pcEnhanceSelect(node);return;}
+    if(!node.firstElementChild)return;
+    if(node.querySelectorAll){node.querySelectorAll('select').forEach(s=>{if(inScope(s))pcEnhanceSelect(s);});}
+  };
+  try{document.querySelectorAll(roots.map(r=>r+' select').join(',')).forEach(pcEnhanceSelect);}catch{}
+  if(typeof MutationObserver==='undefined')return;
+  new MutationObserver(muts=>{
+    for(const m of muts){
+      for(const n of m.addedNodes){
+        if(n.nodeType===1)visit(n);
+      }
+    }
+  }).observe(document.body||document.documentElement,{childList:true,subtree:true});
 }
 pcEnhanceSelects('body');
 
@@ -4284,10 +4401,42 @@ pcEnhanceSelects('body');
 /* Pause the app's endless animations while its window is not in front (owner, 2026-11-18: lag on Windows). */
 (function () {
   var Root = document.documentElement, Timer = 0;
-  function Sleep() { clearTimeout(Timer); Timer = setTimeout(function () { if (!document.hasFocus()) Root.setAttribute('data-pz-asleep', ''); }, 1500); }
-  function Wake() { clearTimeout(Timer); Root.removeAttribute('data-pz-asleep'); }
-  window.addEventListener('blur', Sleep); window.addEventListener('focus', Wake);
-  document.addEventListener('pointerdown', Wake, true); document.addEventListener('visibilitychange', function () { if (!document.hidden && document.hasFocus()) Wake(); });
+  function PauseWaapi() {
+    try { if (typeof window.__pzFlowPauseAll === 'function') window.__pzFlowPauseAll(); } catch (Error) {}
+    try {
+      if (typeof document.getAnimations === 'function') {
+        document.getAnimations().forEach(function (Anim) {
+          try {
+            if (Anim.playState === 'running' && !('animationName' in Anim) && !('transitionProperty' in Anim)) Anim.cancel();
+          } catch (Error) {}
+        });
+      }
+    } catch (Error) {}
+  }
+  function EnterSleep() {
+    clearTimeout(Timer);
+    Root.setAttribute('data-pz-asleep', '');
+    PauseWaapi();
+  }
+  function Sleep() {
+    clearTimeout(Timer);
+    if (document.hidden) { EnterSleep(); return; }
+    Timer = setTimeout(function () {
+      if (document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus())) EnterSleep();
+    }, 1500);
+  }
+  function Wake() {
+    clearTimeout(Timer);
+    if (!document.hidden) Root.removeAttribute('data-pz-asleep');
+  }
+  window.addEventListener('blur', Sleep);
+  window.addEventListener('focus', Wake);
+  document.addEventListener('pointerdown', Wake, true);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) EnterSleep();
+    else if (typeof document.hasFocus !== 'function' || document.hasFocus()) Wake();
+  });
+  if (document.hidden) EnterSleep();
 })();
 </script>
 </body>
