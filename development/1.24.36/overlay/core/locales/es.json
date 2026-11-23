@@ -1586,5 +1586,8 @@
   "Paper Light": "Papel claro",
   "Crisp warm paper with deep ink contrast.": "Papel cálido nítido con tinta de alto contraste.",
   "Mono Contrast": "Contraste mono",
-  "Stark monochrome silver on pitch black.": "Plata monocromática intensa sobre negro absoluto."
+  "Stark monochrome silver on pitch black.": "Plata monocromática intensa sobre negro absoluto.",
+  "Set thinking level: Ultra": "Establecer nivel de razonamiento: Ultra",
+  "Ultra": "Ultra",
+  "Keep AI tab awake during active runs": "Mantener activa la pestaña de IA durante las ejecuciones activas"
 }

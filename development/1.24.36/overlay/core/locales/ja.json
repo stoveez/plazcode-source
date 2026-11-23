@@ -1586,5 +1586,8 @@
   "Paper Light": "ペーパーライト",
   "Crisp warm paper with deep ink contrast.": "くっきりした温かな紙面と深いインクのコントラスト。",
   "Mono Contrast": "モノコントラスト",
-  "Stark monochrome silver on pitch black.": "漆黒に際立つ鮮烈なモノクロシルバー。"
+  "Stark monochrome silver on pitch black.": "漆黒に際立つ鮮烈なモノクロシルバー。",
+  "Set thinking level: Ultra": "思考レベルを設定：Ultra",
+  "Ultra": "Ultra",
+  "Keep AI tab awake during active runs": "実行中はAIタブをスリープさせない"
 }

@@ -1586,5 +1586,8 @@
   "Paper Light": "페이퍼 라이트",
   "Crisp warm paper with deep ink contrast.": "깊은 잉크 대비의 산뜻하고 따뜻한 종이 질감.",
   "Mono Contrast": "모노 콘트라스트",
-  "Stark monochrome silver on pitch black.": "칠흑 같은 검정 위의 선명한 모노크롬 실버."
+  "Stark monochrome silver on pitch black.": "칠흑 같은 검정 위의 선명한 모노크롬 실버.",
+  "Set thinking level: Ultra": "사고 수준 설정: Ultra",
+  "Ultra": "Ultra",
+  "Keep AI tab awake during active runs": "활성 실행 중 AI 탭 절전 방지"
 }

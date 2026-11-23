@@ -1586,5 +1586,8 @@
   "Paper Light": "ورق فاتح",
   "Crisp warm paper with deep ink contrast.": "ورق دافئ نقي مع تباين حبر عميق.",
   "Mono Contrast": "تباين أحادي",
-  "Stark monochrome silver on pitch black.": "فضي أحادي حاد على سواد حالك."
+  "Stark monochrome silver on pitch black.": "فضي أحادي حاد على سواد حالك.",
+  "Set thinking level: Ultra": "ضبط مستوى التفكير: Ultra",
+  "Ultra": "Ultra",
+  "Keep AI tab awake during active runs": "إبقاء تبويب الذكاء الاصطناعي نشطًا أثناء التشغيل النشط"
 }
