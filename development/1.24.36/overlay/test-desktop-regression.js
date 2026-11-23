@@ -4,10 +4,10 @@ const crypto = require("crypto");
 const baseline = {
   "core/agent_skills.js": "f180cb3c42f14d1748f5b9e0de8622bce197c138",
   "core/animlib.js": "b1765567330427cefb90bb83b4e0dd982d43bb2e",
-  "core/config.js": "4680a836fa7d73e5b7d985dab6c10ce213ebd6c4",
+  "core/config.js": "aaf385e7882a26eabdcbe0e2c7419826d1009b23",
   "core/headless-builder.js": "d8ceb3852b4c2fb1f375dfd7c5fcd1d68600bd71",
   "core/luau-knowledge.js": "0c98c23721a506f7a3436c22a1d641ef63dcf25c",
-  "core/main.js": "6a1b26412c601c95c340610d6e8110180c759dc4",
+  "core/main.js": "a0caef8051ad35c9535862485afd053fa66caf3f",
   "core/motion-interchange.js": "038afa13a5b59c030a809abf7d617a36f2fae82d",
   "core/motion-preview.js": "707da79d9d9bf0a38b8e5b32e8221cce8aa1082a",
   "core/motion-tools.js": "a3616177c680c0e45da58934ba7970674a681aa2",
@@ -104,7 +104,6 @@ for (const token of [
   if (!desktopHtml.includes(token)) throw new Error("Desktop WebView contract missing: " + token);
 }
 for (const forbidden of [
-  'data-page="chat"',
   "BUILD MORE",
   "CODE SMARTER",
   "AI-powered development companion",
@@ -117,7 +116,7 @@ for (const forbidden of [
 for (const removed of ['Model Builder','UI Creator','modelWorkspace','uiWorkspace','PlazCodeCreatorUI','Mountbuilder','__PLAZCODE_CREATOR','__PLAZCODE_HEADLESS']) if (desktopHtml.includes(removed)) throw Error('Removed desktop creator leaked: '+removed);
 // Approved localization guards/hooks; behavioral Toolkit/Notifications fixtures remain.
 const toolkit=fs.readFileSync('core/toolkit-ui.js','utf8');if(crypto.createHash('sha256').update(toolkit.replace(/\r\n/g,'\n')).digest('hex')!=='ee974c6b6b6e4a3c7c267b80c9f48a1d88b6b4b800accb1a09a616106f70abb0')throw Error('Toolkit localization baseline changed');
-const desktopScript = desktopHtml.match(/<script>([\s\S]*?)<\/script>/)?.[1]?.replace("__PLAZCODE_I18N_CATALOG__", "").replace("__PLAZCODE_I18N__", "").replace("__PLAZCODE_SKILLS_UI__", fs.readFileSync("core/skills-ui.js", "utf8")).replace("__PLAZCODE_WORKSHOP_UI__", fs.readFileSync("core/workshop-ui.js", "utf8")).replace("__PLAZCODE_EXPLORER_UI__", fs.readFileSync("core/explorer-ui.js", "utf8")).replace("__PLAZCODE_TOOLKIT_UI__", fs.readFileSync("core/toolkit-ui.js", "utf8")).replace("__PLAZCODE_TEMPLATE_UI__", fs.readFileSync("core/templates.js", "utf8")).replace("__PLAZCODE_TASK_UI__", fs.readFileSync("core/task-center.js", "utf8")).replace("__PLAZCODE_ACTION_LOG_UI__", fs.readFileSync("core/action-log.js", "utf8")).replace("__PLAZCODE_SAFETY_UI__", fs.readFileSync("core/safety.js", "utf8")).replace("__PLAZCODE_MEDIA_UI__", fs.readFileSync("core/media.js", "utf8")).replace("__PLAZCODE_MEMORY_UI__", fs.readFileSync("core/memory.js", "utf8")).replace("__PLAZCODE_VERSION_UI__", fs.readFileSync("core/version.js", "utf8")).replace(/__PLAZCODE_VERSION__/g, "1.19.33");
+const desktopScript = desktopHtml.match(/<script>([\s\S]*?)<\/script>/)?.[1]?.replace("__PLAZCODE_I18N_CATALOG__", "").replace("__PLAZCODE_I18N__", "").replace("__PLAZCODE_SKILLS_UI__", fs.readFileSync("core/skills-ui.js", "utf8")).replace("__PLAZCODE_WORKSHOP_UI__", fs.readFileSync("core/workshop-ui.js", "utf8")).replace("__PLAZCODE_BYOK_CHAT_UI__", fs.readFileSync("core/byok-chat-ui.js", "utf8")).replace("__PLAZCODE_EXPLORER_UI__", fs.readFileSync("core/explorer-ui.js", "utf8")).replace("__PLAZCODE_TOOLKIT_UI__", fs.readFileSync("core/toolkit-ui.js", "utf8")).replace("__PLAZCODE_TEMPLATE_UI__", fs.readFileSync("core/templates.js", "utf8")).replace("__PLAZCODE_TASK_UI__", fs.readFileSync("core/task-center.js", "utf8")).replace("__PLAZCODE_ACTION_LOG_UI__", fs.readFileSync("core/action-log.js", "utf8")).replace("__PLAZCODE_SAFETY_UI__", fs.readFileSync("core/safety.js", "utf8")).replace("__PLAZCODE_MEDIA_UI__", fs.readFileSync("core/media.js", "utf8")).replace("__PLAZCODE_MEMORY_UI__", fs.readFileSync("core/memory.js", "utf8")).replace("__PLAZCODE_VERSION_UI__", fs.readFileSync("core/version.js", "utf8")).replace("__PLAZCODE_THEME_PRESETS__", fs.readFileSync("core/theme-presets.js", "utf8")).replace("__PLAZCODE_BACKDROP_FX__", fs.readFileSync("core/backdrop-fx.js", "utf8")).replace(/__PLAZCODE_VERSION__/g, "1.19.33");
 if (!desktopScript) throw new Error("Desktop WebView script block missing");
 new Function(desktopScript);
 

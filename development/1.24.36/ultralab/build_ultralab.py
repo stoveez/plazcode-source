@@ -221,7 +221,9 @@ def build():
                 f.read_bytes().decode("utf-8")
             except UnicodeDecodeError:
                 kind = "binary"
-        index.append({"path": rel, "bytes": f.stat().st_size, "kind": kind})
+        raw = f.read_bytes()
+        size = len(raw.replace(b"\r\n", b"\n")) if kind == "text" else len(raw)
+        index.append({"path": rel, "bytes": size, "kind": kind})
 
     return {
         TS_OUT: js,

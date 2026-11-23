@@ -97,7 +97,8 @@ const pick=(select,value)=>select.evaluate((node,value)=>{node.value=value;node.
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     const base=`http://127.0.0.1:${server.address().port}`;
     // Native source defaults to :3000; the fixture boot redirects only to this private local server.
-    browser=await playwright.chromium.launch({headless:true,...(process.env.PLAZCODE_TEST_CHROMIUM?{executablePath:process.env.PLAZCODE_TEST_CHROMIUM}:fs.existsSync('/usr/local/bin/chromium')?{executablePath:'/usr/local/bin/chromium'}:{}),args:['--no-sandbox']});
+    const exe = process.env.PLAZCODE_CHROMIUM || process.env.PLAZCODE_TEST_CHROMIUM || (fs.existsSync('/usr/local/bin/chromium') ? '/usr/local/bin/chromium' : null);
+    browser=await playwright.chromium.launch({headless:true,...(exe?{executablePath:exe}:{}),args:['--no-sandbox']});
     const context=await browser.newContext({viewport:{width:1360,height:1000}});
     await context.addInitScript(url=>{window.__PLAZCODE_BOOT__={apiUrl:url,key:'fixture-only-key'};},base);
     const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));

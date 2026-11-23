@@ -662,7 +662,7 @@ const PlazCodeSkillsUI=(()=>{
     const card=document.createElement('div');card.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid var(--pz-line,#253650);border-radius:12px';
     const info=document.createElement('div');const b=document.createElement('strong');b.textContent=displayName(skill);const sm=document.createElement('div');sm.style.cssText='font-size:11.5px;color:var(--ink-soft,#9aa8be)';sm.textContent=skill.id;info.append(b,sm);
     const btns=document.createElement('div');btns.style.cssText='display:flex;gap:8px';
-    const resBtn=document.createElement('button');resBtn.type='button';resBtn.className='softbtn';resBtn.textContent='Restore';
+    const resBtn=document.createElement('button');resBtn.type='button';resBtn.className='softbtn';resBtn.setAttribute('data-sk-restore',skill.id);resBtn.textContent='Restore';
     resBtn.onclick=run(async()=>{await request({action:'restore',id:skill.id,revision:skill.revision});await refreshDeleted();await refresh(true);status('Restored.');});
     const purgeBtn=document.createElement('button');purgeBtn.type='button';purgeBtn.className='dangerbtn';purgeBtn.textContent=pendingPurge===skill.id?'Confirm permanent delete':'Delete permanently';
     purgeBtn.onclick=run(async()=>{if(pendingPurge!==skill.id){pendingPurge=skill.id;renderDeleted();return;}pendingPurge=null;await request({action:'purge',id:skill.id,revision:skill.revision,confirm:true});await refreshDeleted();status('Permanently deleted.');});

@@ -6,7 +6,8 @@ const renderCode=text=>between(text,'  function Sourcemeta(','  var Blendercheck
 const clean=current.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
 const globals=`var State={tools:[],logs:[]},Toolfilter='All',Toolquery='';function Byid(id){return document.getElementById(id);}function Toarray(v){return Array.from(v);}function Escape(v){var n=document.createElement('span');n.textContent=String(v);return n.innerHTML;}`;
 (async()=>{for(const [name,engine] of [['chromium',chromium],['firefox',firefox]]){
- const browser=await engine.launch({headless:true}),page=await browser.newPage({viewport:{width:1440,height:1000}}),results={};
+ if(process.env.PLAZCODE_TEST_BROWSER&&process.env.PLAZCODE_TEST_BROWSER!==name)continue;
+ const browser=await engine.launch({headless:true,...(name==='chromium'&&process.env.PLAZCODE_CHROMIUM?{executablePath:process.env.PLAZCODE_CHROMIUM}:{})}),page=await browser.newPage({viewport:{width:1440,height:1000}}),results={};
  for(const [label,source] of [['before',baseline],['after',current]]){
   await page.setContent(clean);await page.addScriptTag({content:globals+renderCode(source)});
   results[label]=await page.evaluate(()=>{
@@ -28,7 +29,7 @@ const globals=`var State={tools:[],logs:[]},Toolfilter='All',Toolquery='';functi
  await page.evaluate(()=>{State.logs=[];Renderlogs();});assert.equal(await page.locator('#terminal .empty').count(),1);
  await page.evaluate(()=>{Byid('page-terminal').classList.remove('active');State.logs=['deferred'];Renderlogs();});assert.equal(await page.locator('#terminal .empty').count(),1);
  await page.evaluate(()=>{Byid('page-terminal').classList.add('active');Renderlogs();});assert.equal(await page.locator('#terminal .logline').innerText(),'deferred');
- await page.addScriptTag({content:`var PendingMcp={},calls=0,probes=0;function Api(Path){if(Path==='/api/connections'){probes++;return Promise.reject(new Error('HTTP 404'));}calls++;return Promise.resolve({servers:[{id:'sample',name:'Sample',enabled:false,args:[],command:'sample',description:'Sample server'}]});}function Showerror(){}function Refresh(){return Promise.resolve();}`+between(current,'  var Blendercheck','  var Recentlogsignature=')});
+ await page.addScriptTag({content:`var PendingMcp={},calls=0,probes=0;function Api(Path){if(Path==='/api/connections'){probes++;return Promise.reject(new Error('HTTP 404'));}if(Path==='/api/mcp/desktop-apps')return Promise.resolve({apps:[]});calls++;return Promise.resolve({servers:[{id:'sample',name:'Sample',enabled:false,args:[],command:'sample',description:'Sample server'}]});}function Showerror(){}function Refresh(){return Promise.resolve();}`+between(current,'  var Blendercheck','  var Recentlogsignature=')});
  await page.evaluate(()=>{Byid('page-mcp').classList.remove('active');return Loadcatalog();});assert.equal(await page.evaluate(()=>calls),0);
  await page.evaluate(()=>{Byid('page-mcp').classList.add('active');return Promise.all([Loadcatalog(),Loadcatalog()]);});assert.equal(await page.evaluate(()=>calls),1,'concurrent catalogue calls share one request');
  await page.evaluate(()=>Loadcatalog());assert.equal(await page.evaluate(()=>calls),1,'cached catalogue avoids repeated requests');

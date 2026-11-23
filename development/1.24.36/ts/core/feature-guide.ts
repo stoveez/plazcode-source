@@ -1980,6 +1980,100 @@ const PlazCodeFeatureGuide = (() => {
    "extension"
   ],
   "index": false
+ },
+ {
+  "id": "compact-outputs",
+  "title": "Compact noisy tool outputs",
+  "group": "Settings",
+  "where": "Extension menu > Speed & tokens > Compact noisy tool outputs",
+  "does": "Compresses repetitive test, lint, and build command output before sending it back to the AI, while keeping file reads lossless.",
+  "steps": [
+   "Open the PlazCode menu on the bar.",
+   "Find Compact noisy tool outputs under the token-saving switches.",
+   "Leave it ON to cut token waste on noisy output, or turn it OFF for full raw logs."
+  ],
+  "tips": [],
+  "related": [
+   "parallel-reads",
+   "task-ledger"
+  ],
+  "keywords": [
+   "compact",
+   "output",
+   "tokens",
+   "rtk",
+   "trim",
+   "logs"
+  ],
+  "anchors": [
+   "ctl:rs-compact-outputs"
+  ],
+  "surfaces": [
+   "extension"
+  ],
+  "index": false
+ },
+ {
+  "id": "parallel-reads",
+  "title": "Parallel read-only tools",
+  "group": "Settings",
+  "where": "Extension menu > Speed & tokens > Parallel read-only tools",
+  "does": "Runs consecutive read-only inspections together behind a strict write barrier so research turns finish faster.",
+  "steps": [
+   "Open the PlazCode menu on the bar.",
+   "Find Parallel read-only tools.",
+   "Turn it ON to batch up to 4 read-only checks together."
+  ],
+  "tips": [],
+  "related": [
+   "compact-outputs",
+   "task-ledger"
+  ],
+  "keywords": [
+   "parallel",
+   "reads",
+   "speed",
+   "batch",
+   "concurrent"
+  ],
+  "anchors": [
+   "ctl:rs-parallel-reads"
+  ],
+  "surfaces": [
+   "extension"
+  ],
+  "index": false
+ },
+ {
+  "id": "task-ledger",
+  "title": "Task intent ledger",
+  "group": "Settings",
+  "where": "Extension menu > Speed & tokens > Task intent ledger",
+  "does": "Keeps a tiny structured ledger of the user goal, verified facts, touched files, and pending checks across turns and site switches.",
+  "steps": [
+   "Open the PlazCode menu on the bar.",
+   "Find Task intent ledger.",
+   "Leave it ON so long or multi-turn tasks keep context without bloated transcripts."
+  ],
+  "tips": [],
+  "related": [
+   "compact-outputs",
+   "parallel-reads"
+  ],
+  "keywords": [
+   "ledger",
+   "intent",
+   "memory",
+   "handoff",
+   "continuity"
+  ],
+  "anchors": [
+   "ctl:rs-task-ledger"
+  ],
+  "surfaces": [
+   "extension"
+  ],
+  "index": false
  }
 ]/*GUIDE-JSON-END*/;
 

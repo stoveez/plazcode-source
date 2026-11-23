@@ -48,7 +48,7 @@ console.log("PASS desktop Studio look: frame functions, hooks, reduced/off motio
       tabsHoldNav: !!document.querySelector(".pz-tabs .nav"), title: document.getElementById("pzTitle")?.textContent, eyebrow: document.getElementById("pzEyebrow")?.textContent,
       oldBarHidden: getComputedStyle(document.getElementById("areaBar")).display === "none", pill: !!document.getElementById("pzBridgePill") }));
     assert.equal(start.studio, true, "Studio look switched on");
-    assert.deepEqual(start.areas, ["home", "workspace", "connections", "docs", "settings", "support"], "six sections in the sidebar");
+    assert.deepEqual(start.areas, ["home", "chat", "workspace", "connections", "docs", "settings", "support"], "seven sections in the sidebar (six original plus Chat)");
     assert.equal(start.tabsHoldNav, true, "the section's pages became tabs"); assert.equal(start.oldBarHidden, true, "the old top section bar is hidden");
     assert.equal(start.title, "Overview"); assert.equal(start.eyebrow, "Home"); assert.equal(start.pill, true);
     await tab.click('.pz-area[data-area="connections"]'); await tab.waitForTimeout(300);

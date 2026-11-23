@@ -6,7 +6,7 @@ const {chromium} = require('playwright'), assert = require('node:assert/strict')
 const {pageFor} = require('./bar-fixture.cjs');
 
 (async () => {
-  const browser = await chromium.launch({args: ['--no-sandbox']});
+  const browser = await chromium.launch({...(process.env.PLAZCODE_CHROMIUM ? {executablePath: process.env.PLAZCODE_CHROMIUM} : {}), args: ['--no-sandbox']});
   try {
     const {page, errors} = await pageFor(browser, false, true);
     await page.waitForSelector('#rs-bar');
@@ -16,7 +16,10 @@ const {pageFor} = require('./bar-fixture.cjs');
           const h = document.documentElement;
           h.setAttribute('data-rs-theme', theme); h.dataset.rsThinking = thinking;
         }, [theme, thinking]);
-        await page.waitForTimeout(600); // the line fades in and out over .42s
+        await page.waitForFunction((want) => {
+          const b = document.querySelector('#rs-bar');
+          return b && getComputedStyle(b, '::after').opacity === want;
+        }, thinking === 'ultracode' ? '1' : '0', { timeout: 2500 }).catch(() => {});
         const line = await page.evaluate(() => {
           const bar = document.querySelector('#rs-bar'), c = getComputedStyle(bar, '::after');
           return {width: parseFloat(c.width), barWidth: bar.getBoundingClientRect().width, height: c.height, shadow: c.boxShadow, transform: c.transform, animation: c.animationName, opacity: c.opacity};
