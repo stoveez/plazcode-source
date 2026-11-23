@@ -10,6 +10,7 @@ declare var PlazCodeLocaleData: Record<string, Record<string, string>>;
 declare var PlazCodeText: PlazCodeTextApi;
 declare var PlazCodeIntegrity: { check(): Promise<void> };
 declare var PlazCodeActionLog: any;
+declare var PlazCodeByokChatUI: any;
 declare var PlazCodeActivity: any;
 declare var PlazCodeApproval: any;
 declare var PlazCodeAskPanel: any;

@@ -110,6 +110,12 @@ pub struct DesktopPreferences {
     pub studio_dock_enabled: bool,
     #[serde(rename = "rsStudioDockPos", default, skip_serializing_if = "Option::is_none")]
     pub studio_dock_pos: Option<StudioDockPos>,
+    #[serde(rename = "rsByokActiveModel", default, skip_serializing_if = "Option::is_none")]
+    pub byok_active_model: Option<String>,
+    #[serde(rename = "rsByokChatMode", default = "default_byok_chat_mode")]
+    pub byok_chat_mode: String,
+    #[serde(rename = "rsByokEffort", default = "default_byok_effort")]
+    pub byok_effort: String,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -138,6 +144,8 @@ pub struct Appearance {
 }
 fn default_motion() -> String { "full".into() }
 fn default_on() -> bool { true }
+fn default_byok_chat_mode() -> String { "roblox".into() }
+fn default_byok_effort() -> String { "default".into() }
 
 impl Default for DesktopPreferences {
     fn default() -> Self {
@@ -166,6 +174,9 @@ impl Default for DesktopPreferences {
             full_startup: false, auto_debug: true, auto_fix_stop_play: true, multi_agent: false, playtest_check: true, ui_check: true,
             studio_dock_enabled: true,
             studio_dock_pos: None,
+            byok_active_model: None,
+            byok_chat_mode: default_byok_chat_mode(),
+            byok_effort: default_byok_effort(),
         }
     }
 }
@@ -225,6 +236,20 @@ impl DesktopPreferences {
         if !matches!(self.approval_mode.as_str(),"ask"|"auto"|"bypass"){self.approval_mode="ask".into();}
         if !matches!(self.thinking_level.as_str(), "default" | "low" | "mid" | "high" | "max" | "ultracode") {
             self.thinking_level = "default".to_string();
+        }
+        if !matches!(self.byok_chat_mode.as_str(), "roblox" | "local") {
+            self.byok_chat_mode = default_byok_chat_mode();
+        }
+        if !matches!(self.byok_effort.as_str(), "default" | "low" | "mid" | "high" | "max") {
+            self.byok_effort = default_byok_effort();
+        }
+        if let Some(model) = &mut self.byok_active_model {
+            let trimmed = model.trim().to_string();
+            if trimmed.is_empty() || trimmed.len() > 200 {
+                self.byok_active_model = None;
+            } else {
+                *model = trimmed;
+            }
         }
     }
 }
@@ -294,7 +319,7 @@ fn overlay_checked(base: &DesktopPreferences, patch: &serde_json::Map<String, se
     let mut kept = Vec::new();
     let mut refused = Vec::new();
     for (key, val) in patch {
-        let known = value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance" || key == "rsStudioDockPos";
+        let known = value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance" || key == "rsStudioDockPos" || key == "rsByokActiveModel";
         if !known { continue; }
         let mut candidate = value.clone();
         if let Some(object) = candidate.as_object_mut() { object.insert(key.clone(), val.clone()); }
@@ -304,7 +329,7 @@ fn overlay_checked(base: &DesktopPreferences, patch: &serde_json::Map<String, se
 }
 
 fn is_known_key(base_value: &serde_json::Value, key: &str) -> bool {
-    base_value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance" || key == "rsStudioDockPos"
+    base_value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance" || key == "rsStudioDockPos" || key == "rsByokActiveModel"
 }
 
 fn changed_keys(before: &DesktopPreferences, after: &DesktopPreferences) -> Vec<String> {
