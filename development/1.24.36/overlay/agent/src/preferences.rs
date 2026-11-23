@@ -110,6 +110,12 @@ pub struct DesktopPreferences {
     pub studio_dock_enabled: bool,
     #[serde(rename = "rsStudioDockPos", default, skip_serializing_if = "Option::is_none")]
     pub studio_dock_pos: Option<StudioDockPos>,
+    #[serde(rename = "rsCompactOutputs")]
+    pub compact_outputs: bool,
+    #[serde(rename = "rsParallelReads")]
+    pub parallel_reads: bool,
+    #[serde(rename = "rsTaskLedger")]
+    pub task_ledger: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -166,6 +172,9 @@ impl Default for DesktopPreferences {
             full_startup: false, auto_debug: true, auto_fix_stop_play: true, multi_agent: false, playtest_check: true, ui_check: true,
             studio_dock_enabled: true,
             studio_dock_pos: None,
+            compact_outputs: true,
+            parallel_reads: true,
+            task_ledger: true,
         }
     }
 }
@@ -999,6 +1008,33 @@ mod extension_sync_tests {
         reopened.update(|p| { p.perm_mode = "full".to_string(); }).unwrap();
         assert!(reopened.revision() > before_rev);
         assert!(reopened.saved_keys().contains(&"rsPermMode".to_string()));
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn agent_token_preferences_default_on_and_persist_off() {
+        let path = std::env::temp_dir().join(format!("plazcode-agent-token-prefs-{}.json", std::process::id()));
+        let _ = std::fs::remove_file(&path);
+        let store = PreferencesStore::load_from(path.clone());
+        let defaults = store.snapshot();
+        assert!(defaults.compact_outputs);
+        assert!(defaults.parallel_reads);
+        assert!(defaults.task_ledger);
+
+        let patched = store.patch_synced(serde_json::json!({
+            "rsCompactOutputs": false,
+            "rsParallelReads": false,
+            "rsTaskLedger": false
+        })).unwrap();
+        assert!(!patched.preferences.compact_outputs);
+        assert!(!patched.preferences.parallel_reads);
+        assert!(!patched.preferences.task_ledger);
+
+        let reopened = PreferencesStore::load_from(path.clone());
+        let snap = reopened.snapshot();
+        assert!(!snap.compact_outputs);
+        assert!(!snap.parallel_reads);
+        assert!(!snap.task_ledger);
         let _ = std::fs::remove_file(path);
     }
 }

@@ -129,4 +129,37 @@ for(const need of ['"plazcode_helpers"','plazcode_helpers: "Start helper agents'
 assert(/const denied=\/\^\(\?:[^/]*plazcode_helpers/.test(main),'helpers cannot be started from inside a batch');
 for(const need of ['case "helpers":','rs-helper-run','rs-helper-ping','rsHelperRoster','type: "popup"'])assert(background.includes(need),'background.js has '+need);
 for(const need of ['#rs-agents-panel{','rs-agents-spin','conic-gradient','--pc-rgb','#rs-fix,#rs-agents)'])assert(css.includes(need),'overlay.css has '+need);
-console.log('PASS helper agents: queue of two, complete-task check, results handed over once, edit locks between helpers and the main agent, closed windows, worker restart, lock keys, helper instructions and wiring.');
+{
+ let dClock = 1000;
+ const dRoster = box.make({ limit: 2, slotMs: 5000, runMs: 9000, now: () => dClock });
+ const added = dRoster.add({ tabId: 30, chat: 'notion|/c/d' }, [spec('Alpha'), spec('Beta')]);
+ assert.equal(added.ok, true);
+ assert.ok(added.runId, 'add returns a runId');
+ const started = dRoster.next(30);
+ dRoster.placed(started[0].id, { tabId: 31, windowId: 301 });
+ dRoster.placed(started[1].id, { tabId: 32, windowId: 302 });
+ assert.equal(dRoster.lock(31, ['ServerScriptService.Alpha']).ok, true);
+ assert.equal(dRoster.lock(32, ['ServerScriptService.Beta']).ok, true);
+ // cancelHelper immediately releases its edit locks.
+ const cancelledOne = dRoster.cancelHelper(started[0].id, 'Cancelled alpha');
+ assert.equal(cancelledOne.status, 'stopped');
+ assert.equal(dRoster.lock(32, ['ServerScriptService.Alpha']).ok, true, 'cancelHelper releases edit lock immediately');
+ // sweepExpired enforces slot deadline and releases locks.
+ dClock = 6500;
+ const swept = dRoster.sweepExpired();
+ assert.equal(swept.expired.length, 1);
+ assert.equal(swept.expired[0].expired, true);
+ assert.equal(dRoster.lock(30, ['ServerScriptService.Beta']).ok, true, 'sweepExpired releases edit locks immediately');
+ const taken = dRoster.take(30);
+ assert.equal(taken.length, 2);
+ assert.equal(taken[1].expired, true);
+ // cancelRun stops all helpers in a run and releases locks.
+ const runAdded = dRoster.add({ tabId: 30, chat: 'notion|/c/d' }, [spec('Gamma'), spec('Delta')]);
+ const runStarted = dRoster.next(30);
+ dRoster.placed(runStarted[0].id, { tabId: 33, windowId: 303 });
+ assert.equal(dRoster.lock(33, ['ServerScriptService.Gamma']).ok, true);
+ const cancelledRun = dRoster.cancelRun(runAdded.runId, 'Aborting run');
+ assert.equal(cancelledRun.length, 2);
+ assert.equal(dRoster.lock(30, ['ServerScriptService.Gamma']).ok, true, 'cancelRun releases all edit locks immediately');
+}
+console.log('PASS helper agents: queue of two, complete-task check, results handed over once, edit locks between helpers and the main agent, closed windows, worker restart, lock keys, helper instructions, deadlines/cancel/sweep, and wiring.');

@@ -1559,5 +1559,8 @@
   "Start a new Codex session or reopen Codex to load PlazCode.": "Démarrez une nouvelle session Codex ou rouvrez Codex pour charger PlazCode.",
   "Restart OpenCode or reload its servers list to pick up PlazCode.": "Redémarrez OpenCode ou rechargez sa liste de serveurs pour détecter PlazCode.",
   "Reload Antigravity or refresh its external servers list to pick up PlazCode.": "Rechargez Antigravity ou actualisez sa liste de serveurs externes pour détecter PlazCode.",
-  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "Redémarrez Gemini CLI ou exécutez /mcp dans Gemini CLI pour confirmer que PlazCode est prêt."
+  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "Redémarrez Gemini CLI ou exécutez /mcp dans Gemini CLI pour confirmer que PlazCode est prêt.",
+  "Compact noisy tool outputs": "Compacter les sorties verbeuses des outils",
+  "Parallel read-only tools": "Outils en lecture seule en parallèle",
+  "Task intent ledger": "Journal d’intention de tâche"
 }

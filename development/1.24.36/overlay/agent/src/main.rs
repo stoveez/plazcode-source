@@ -81,6 +81,7 @@ mod tuxblox;
 mod linux_studio;
 mod browser_setup;
 mod workspace;
+mod output_compact;
 mod safety;
 mod engine_tools;
 mod security;
@@ -1233,6 +1234,7 @@ async fn start() -> anyhow::Result<()> {
         workspace.set_full_access(true);
     }
     workspace.set_allowed_folders(&preferences.snapshot().allowed_folders);
+    workspace.set_compact_outputs(preferences.snapshot().compact_outputs);
     shared.attach_workspace(workspace.root_display(), workspace.full_flag());
     shared.set_local_tools(&workspace::catalog(), workspace.ready());
     shared.log(&format!("plazcode-agent v{} — native bridge for roblox studio / local fs", env!("CARGO_PKG_VERSION")));
@@ -1676,6 +1678,7 @@ fn preferences_response(state: &AppState, patch: &serde_json::Value, outcome: an
     let full = if perm_applied { full_access_after(patch, &out.preferences.perm_mode, state.workspace.full_access()) } else { state.workspace.full_access() };
     if full != state.workspace.full_access() { state.workspace.set_full_access(full); }
     state.workspace.set_allowed_folders(&out.preferences.allowed_folders);
+    state.workspace.set_compact_outputs(out.preferences.compact_outputs);
     if out.changed {
         let _ = state.ui.desktop_events.send(desktop_preferences_event(&state));
     }
@@ -2090,7 +2093,7 @@ async fn profile_action_handler(State(state):State<AppState>,headers:axum::http:
                     profile_paths::select(Some(profile_paths::profile_root(&active.id)?));blockbench::resync();figma::resync();
                     state.preferences.select_path(profile_paths::settings_path())?;
                     let _=account_sync::run(&state).await;
-                    let prefs=state.preferences.snapshot();state.workspace.set_full_access(prefs.perm_mode=="full");state.workspace.set_allowed_folders(&prefs.allowed_folders);
+                    let prefs=state.preferences.snapshot();state.workspace.set_full_access(prefs.perm_mode=="full");state.workspace.set_allowed_folders(&prefs.allowed_folders);state.workspace.set_compact_outputs(prefs.compact_outputs);
                     state.profile_change.send_modify(|value|*value=value.wrapping_add(1));
                     Ok::<_,anyhow::Error>(serde_json::json!({"ok":true,"profile":active,"preferences":prefs}))
                 }.await;
@@ -2105,7 +2108,7 @@ async fn profile_action_handler(State(state):State<AppState>,headers:axum::http:
                 if action.action=="ui-migrated"{state.accounts.acknowledge_ui().await?;return Ok(serde_json::json!({"ok":true}));}
                 state.cancellation.cancel_all();let _guard=accounts::ACCESS.write().await;
                 reset_profile_runtime(&state).await;state.accounts.lock();profile_paths::select(None);state.preferences.select_path(profile_paths::settings_path())?;blockbench::resync();figma::resync();
-                state.workspace.set_full_access(false);state.workspace.set_allowed_folders(&[]);
+                state.workspace.set_full_access(false);state.workspace.set_allowed_folders(&[]);state.workspace.set_compact_outputs(true);
                 state.profile_change.send_modify(|value|*value=value.wrapping_add(1));
                 Ok(serde_json::json!({"ok":true}))
             },
