@@ -7,10 +7,10 @@ use std::{collections::{BTreeMap,BTreeSet},path::PathBuf};
 use sha2::{Digest,Sha256};
 use futures::StreamExt;
 #[derive(Clone,Serialize,Deserialize)]
-struct Skill {id:String,#[serde(default)]title:String,description:String,domain:String,#[serde(default)]scope:String,steps:Vec<String>,#[serde(default)]pitfalls:Vec<String>,#[serde(default)]verification:Vec<String>,#[serde(default)]confirmed:bool,#[serde(default)]enabled:bool,#[serde(default)]revision:u64,#[serde(default)]community:bool,#[serde(default,skip_serializing_if="std::ops::Not::not")]favorite:bool,
+pub(crate) struct Skill {pub(crate) id:String,#[serde(default)]pub(crate) title:String,pub(crate) description:String,pub(crate) domain:String,#[serde(default)]pub(crate) scope:String,pub(crate) steps:Vec<String>,#[serde(default)]pub(crate) pitfalls:Vec<String>,#[serde(default)]pub(crate) verification:Vec<String>,#[serde(default)]pub(crate) confirmed:bool,#[serde(default)]pub(crate) enabled:bool,#[serde(default)]pub(crate) revision:u64,#[serde(default)]pub(crate) community:bool,#[serde(default,skip_serializing_if="std::ops::Not::not")]pub(crate) favorite:bool,
  // 2026-11-20 folder import (skill_folder.rs): reference files kept in skill-files/<id>/, where the skill came from, and a
  // fingerprint of the card as imported (a different fingerprint now means the person edited it by hand).
- #[serde(default,skip_serializing_if="Vec::is_empty")]files:Vec<String>,#[serde(default,skip_serializing_if="String::is_empty")]source:String,#[serde(default,skip_serializing_if="String::is_empty")]import_digest:String}
+ #[serde(default,skip_serializing_if="Vec::is_empty")]pub(crate) files:Vec<String>,#[serde(default,skip_serializing_if="String::is_empty")]pub(crate) source:String,#[serde(default,skip_serializing_if="String::is_empty")]pub(crate) import_digest:String}
 #[derive(Clone,Serialize,Deserialize)]
 struct DeletedSkill {#[serde(flatten)]skill:Skill,deleted_at:u64}
 #[derive(Default,Clone,Serialize,Deserialize)]
@@ -62,10 +62,66 @@ impl Store {
   else if self.path.is_file(){std::fs::copy(&self.path,self.path.with_extension("json.backup"))?;}
   std::fs::rename(&temporary,&self.path)?;self.data=data;Ok(())
  }
- fn request(&mut self,request:&Value)->anyhow::Result<Value> {
+ pub(crate) fn request(&mut self,request:&Value)->anyhow::Result<Value> {
   anyhow::ensure!(self.error.is_none(),"Skills could not be loaded; existing data is preserved.");
   let action=request["action"].as_str().unwrap_or("list");
-  if action=="list" {return Ok(json!({"ok":true,"skills":self.data.skills.values().collect::<Vec<_>>() }));}
+  if action=="list" {
+   let mut meta=serde_json::Map::new();
+   for (id,skill) in &self.data.skills { meta.insert(id.clone(),self.skill_meta(skill)); }
+   return Ok(json!({"ok":true,"skills":self.data.skills.values().collect::<Vec<_>>(),"skills_dir":self.files_root().display().to_string(),"meta":meta }));
+  }
+  if action=="workbench_load" {
+   let id=request["id"].as_str().unwrap_or("");
+   let skill=self.data.skills.get(id).ok_or_else(||anyhow::anyhow!("Skill not found."))?;
+   let files=self.workbench_files(skill);
+   let validation=crate::skill_folder::validate_skill_workbench(&files);
+   let preview=crate::skill_folder::build_agent_preview(&skill.id,&skill.title,&files);
+   let file_rows:Vec<Value>=files.iter().map(|(path,text)|json!({"path":path,"text":text,"bytes":text.len(),"chars":text.chars().count()})).collect();
+   let folder_path=if is_read_only_skill(&skill.id) {
+    crate::starter_skills::bundle_folder(&crate::platform::installation_root(),&skill.id).unwrap_or_else(||self.files_root()).display().to_string()
+   } else { self.files_root().join(&skill.id).display().to_string() };
+   return Ok(json!({"ok":true,"skill":skill,"files":file_rows,"folder_path":folder_path,"read_only":is_read_only_skill(&skill.id),"validation":validation,"preview":preview}));
+  }
+  if action=="workbench_validate" {
+   let files=if let Some(arr)=request["files"].as_array() {
+    arr.iter().map(|v|(v["path"].as_str().unwrap_or("").to_string(),v["text"].as_str().unwrap_or("").to_string())).collect::<Vec<_>>()
+   } else {
+    let id=request["id"].as_str().unwrap_or("");
+    let skill=self.data.skills.get(id).ok_or_else(||anyhow::anyhow!("Skill not found."))?;
+    self.workbench_files(skill)
+   };
+   return Ok(crate::skill_folder::validate_skill_workbench(&files));
+  }
+  if action=="workbench_preview" {
+   let id=request["id"].as_str().unwrap_or("");
+   let (title,files)=if let Some(arr)=request["files"].as_array() {
+    let title=request["title"].as_str().unwrap_or("Skill").to_string();
+    let files=arr.iter().map(|v|(v["path"].as_str().unwrap_or("").to_string(),v["text"].as_str().unwrap_or("").to_string())).collect::<Vec<_>>();
+    (title,files)
+   } else {
+    let skill=self.data.skills.get(id).ok_or_else(||anyhow::anyhow!("Skill not found."))?;
+    (skill.title.clone(),self.workbench_files(skill))
+   };
+   return Ok(crate::skill_folder::build_agent_preview(id,&title,&files));
+  }
+  if action=="open_folder" {
+   let id=request["id"].as_str().unwrap_or("");
+   let target=if !id.is_empty() && id.bytes().all(|b|b.is_ascii_alphanumeric()||b"_-".contains(&b)) {
+    if let Some(bundle)=crate::starter_skills::bundle_folder(&crate::platform::installation_root(),id) {
+     if bundle.is_dir() { bundle } else { self.files_root() }
+    } else {
+     let dir=self.files_root().join(id);
+     std::fs::create_dir_all(&dir)?;
+     dir
+    }
+   } else {
+    let root=self.files_root();
+    std::fs::create_dir_all(&root)?;
+    root
+   };
+   open_local_folder(&target)?;
+   return Ok(json!({"ok":true,"path":target.display().to_string()}));
+  }
   if action=="list_deleted" {return Ok(json!({"ok":true,"skills":self.data.deleted.values().collect::<Vec<_>>(),"trash_revision":self.data.trash_revision}));}
   if action=="match" {
    let query=request["query"].as_str().unwrap_or("").to_lowercase();let domain=request["domain"].as_str().unwrap_or("");let scope=request["scope"].as_str().unwrap_or("");
@@ -90,6 +146,81 @@ impl Store {
    "purge_all"=>{anyhow::ensure!(request["confirm"]==true,"Confirm permanent deletion of all Deleted Skills; this cannot be undone.");anyhow::ensure!(request["trash_revision"].as_u64()==Some(data.trash_revision),"Deleted Skills changed. Refresh and confirm again.");let purged=data.deleted.len();let ids:Vec<String>=data.deleted.keys().cloned().collect();data.suppressed.extend(ids.iter().cloned());data.deleted.clear();data.trash_revision+=1;self.persist_with_backup(data,true)?;for id in ids{self.remove_files(&id);}return Ok(json!({"ok":true,"purged":purged}));},
    "favorite"=>{let favorite=request["favorite"].as_bool().ok_or_else(||anyhow::anyhow!("Choose favourite true or false."))?;let skill=data.skills.get_mut(id).ok_or_else(||anyhow::anyhow!("Skill not found."))?;skill.favorite=favorite;let skill=skill.clone();self.persist(data)?;return Ok(json!({"ok":true,"skill":skill}));},
    "delete_all"=>{let ids:Vec<String>=data.skills.iter().filter(|(id,s)|!s.favorite&&!kept_by_delete_all(id)).map(|(id,_)|id.clone()).collect();let removed=ids.len();for id in ids{move_to_deleted(&mut data,&id)?;}let kept=data.skills.len();self.persist(data)?;return Ok(json!({"ok":true,"removed":removed,"kept":kept}));},
+   "workbench_save_file"=>{
+    anyhow::ensure!(!is_read_only_skill(id),"Starter and automatic workflow skills are read-only; create a new skill to edit.");
+    let rel=request["path"].as_str().unwrap_or("SKILL.md").replace('\\',"/");
+    anyhow::ensure!(crate::skill_folder::safe_reference(&rel),"Unsafe file path.");
+    let text=request["text"].as_str().ok_or_else(||anyhow::anyhow!("File text is required."))?.replace("\r\n","\n");
+    anyhow::ensure!(!text.contains('\0') && text.len()<=crate::skill_folder::MAX_FILE_BYTES,"File must be valid UTF-8 text under 1 MB.");
+    let mut skill=data.skills.get(id).ok_or_else(||anyhow::anyhow!("Skill not found."))?.clone();
+    if let Some(expected_rev)=request["revision"].as_u64() {
+     anyhow::ensure!(expected_rev==skill.revision,"Skill changed. Reload before saving.");
+    }
+    let dir=self.files_root().join(&skill.id);
+    std::fs::create_dir_all(&dir)?;
+    // Ensure SKILL.md exists on disk if saving a sibling reference for the first time.
+    if !rel.eq_ignore_ascii_case("SKILL.md") && !dir.join("SKILL.md").is_file() {
+     let synth=synthesize_skill_md(&skill);
+     std::fs::write(dir.join("SKILL.md"),synth)?;
+     if !skill.files.iter().any(|p|p.eq_ignore_ascii_case("SKILL.md")) { skill.files.insert(0,"SKILL.md".into()); }
+    }
+    let target=dir.join(&rel);
+    if let Some(parent)=target.parent() { std::fs::create_dir_all(parent)?; }
+    std::fs::write(&target,&text)?;
+    if !skill.files.iter().any(|p|p==&rel) {
+     if rel.eq_ignore_ascii_case("SKILL.md") { skill.files.insert(0,rel.clone()); } else { skill.files.push(rel.clone()); }
+    }
+    if rel.eq_ignore_ascii_case("SKILL.md") {
+     let (title,desc,domain,steps,_)=crate::skill_folder::card_from_skill_md(&skill.id,&text,&skill.title);
+     skill.title=title;
+     if !desc.trim().is_empty() { skill.description=desc; }
+     if domain!="all" || skill.domain=="all" { skill.domain=domain; }
+     if !steps.is_empty() { skill.steps=steps; }
+    }
+    skill.revision+=1;
+    skill.import_digest.clear();
+    validate(&skill)?;
+    data.skills.insert(skill.id.clone(),skill.clone());
+    self.persist(data)?;
+    let files=self.workbench_files(&skill);
+    let validation=crate::skill_folder::validate_skill_workbench(&files);
+    let preview=crate::skill_folder::build_agent_preview(&skill.id,&skill.title,&files);
+    return Ok(json!({"ok":true,"skill":skill,"meta":self.skill_meta(&skill),"validation":validation,"preview":preview}));
+   },
+   "workbench_add_files"=>{
+    anyhow::ensure!(!is_read_only_skill(id),"Starter and automatic workflow skills are read-only; create a new skill to edit.");
+    let mut skill=data.skills.get(id).ok_or_else(||anyhow::anyhow!("Skill not found."))?.clone();
+    let incoming=request["files"].as_array().ok_or_else(||anyhow::anyhow!("Provide files to add."))?;
+    anyhow::ensure!(!incoming.is_empty() && incoming.len()<=50,"Add between 1 and 50 files at a time.");
+    let dir=self.files_root().join(&skill.id);
+    std::fs::create_dir_all(&dir)?;
+    if !dir.join("SKILL.md").is_file() {
+     std::fs::write(dir.join("SKILL.md"),synthesize_skill_md(&skill))?;
+     if !skill.files.iter().any(|p|p.eq_ignore_ascii_case("SKILL.md")) { skill.files.insert(0,"SKILL.md".into()); }
+    }
+    let mut added=Vec::new();
+    for item in incoming {
+     let rel=item["path"].as_str().unwrap_or("").replace('\\',"/");
+     anyhow::ensure!(crate::skill_folder::safe_reference(&rel),"Unsafe file path: {rel}");
+     let text=item["text"].as_str().ok_or_else(||anyhow::anyhow!("File text required for {rel}"))?.replace("\r\n","\n");
+     anyhow::ensure!(!text.contains('\0') && text.len()<=crate::skill_folder::MAX_FILE_BYTES,"File {rel} must be valid UTF-8 text under 1 MB.");
+     let target=dir.join(&rel);
+     if let Some(parent)=target.parent() { std::fs::create_dir_all(parent)?; }
+     std::fs::write(&target,&text)?;
+     if !skill.files.iter().any(|p|p==&rel) { skill.files.push(rel.clone()); }
+     added.push(rel);
+    }
+    anyhow::ensure!(skill.files.len()<=crate::skill_folder::MAX_REFERENCES,"Too many reference files in one skill.");
+    skill.revision+=1;
+    skill.import_digest.clear();
+    validate(&skill)?;
+    data.skills.insert(skill.id.clone(),skill.clone());
+    self.persist(data)?;
+    let files=self.workbench_files(&skill);
+    let validation=crate::skill_folder::validate_skill_workbench(&files);
+    let preview=crate::skill_folder::build_agent_preview(&skill.id,&skill.title,&files);
+    return Ok(json!({"ok":true,"added":added,"skill":skill,"meta":self.skill_meta(&skill),"validation":validation,"preview":preview}));
+   },
    _=>anyhow::bail!("Unknown skill action.")
   }
   self.persist(data)?;Ok(json!({"ok":true}))
@@ -97,8 +228,95 @@ impl Store {
 }
 impl Store {
  /// Reference files of imported folder skills: skill-files/<id>/ next to skills.json (so each profile has its own).
- fn files_root(&self)->PathBuf{self.path.parent().map(|p|p.join("skill-files")).unwrap_or_else(||PathBuf::from("skill-files"))}
+ pub(crate) fn files_root(&self)->PathBuf{self.path.parent().map(|p|p.join("skill-files")).unwrap_or_else(||PathBuf::from("skill-files"))}
  fn remove_files(&self,id:&str){if id.bytes().all(|b|b.is_ascii_alphanumeric()||b"_-".contains(&b))&&!id.is_empty(){let _=std::fs::remove_dir_all(self.files_root().join(id));}}
+ pub(crate) fn workbench_files(&self,skill:&Skill)->Vec<(String,String)>{
+  let mut out=Vec::new();
+  if let Some(bundle)=crate::starter_skills::bundle_folder(&crate::platform::installation_root(),&skill.id) {
+   if bundle.is_dir() {
+    if let Ok(read)=crate::starter_skills::read(&bundle,&skill.id,&json!({"limit":24000})) {
+     if let Some(res)=read["resource"].as_str() {
+      let name=if res.ends_with("SKILL.md"){"SKILL.md".to_string()}else{res.to_string()};
+      out.push((name,read["content"].as_str().unwrap_or("").to_string()));
+     }
+    }
+   }
+  }
+  if out.is_empty() && !skill.files.is_empty() {
+   let dir=self.files_root().join(&skill.id);
+   for rel in &skill.files {
+    if let Ok(text)=std::fs::read_to_string(dir.join(rel)) { out.push((rel.clone(),text.replace("\r\n","\n"))); }
+   }
+  }
+  if out.is_empty() {
+   out.push(("SKILL.md".into(),synthesize_skill_md(skill)));
+  }
+  out
+ }
+ pub(crate) fn skill_meta(&self,skill:&Skill)->Value {
+  let files=self.workbench_files(skill);
+  let file_count=files.len();
+  let total_bytes:usize=files.iter().map(|(_,t)|t.len()).sum();
+  let total_chars:usize=files.iter().map(|(_,t)|t.chars().count()).sum();
+  let parts=(total_chars.max(1)+crate::skill_folder::PART_CHARS-1)/crate::skill_folder::PART_CHARS;
+  let origin=if crate::starter_skills::is_starter(&skill.id){"starter"}else if skill.community{"community"}else if skill.id.starts_with(crate::skill_folder::ID_PREFIX){"folder"}else{"local"};
+  json!({"file_count":file_count,"total_bytes":total_bytes,"total_chars":total_chars,"parts":parts,"origin":origin,"read_only":is_read_only_skill(&skill.id)})
+ }
+ pub(crate) fn list_local_for_workshop(&self)->Vec<Value> {
+  self.data.skills.values().filter(|s|!s.id.starts_with("bundled-")).map(|s|{
+   let files=self.workbench_files(s);
+   let file_rows:Vec<Value>=files.iter().map(|(p,t)|json!({"path":p,"text":t})).collect();
+   json!({"id":s.id,"title":s.title,"description":s.description,"domain":s.domain,"community":s.community,"files":file_rows,"meta":self.skill_meta(s)})
+  }).collect()
+ }
+ pub(crate) fn install_workshop_skill(&mut self,slug:&str,title:&str,description:&str,domain:&str,files:Vec<(String,String)>,source_label:&str)->anyhow::Result<Value>{
+  anyhow::ensure!(self.error.is_none(),"Skills could not be loaded; existing data is preserved.");
+  let clean_slug:String=slug.to_ascii_lowercase().chars().map(|c|if c.is_ascii_alphanumeric()||c=='-'{c}else{'-'}).collect::<String>().trim_matches('-').chars().take(48).collect();
+  let clean_slug=if clean_slug.is_empty(){"skill".to_string()}else{clean_slug};
+  let mut id=format!("community-{clean_slug}");
+  let mut n=2usize;
+  while self.data.skills.contains_key(&id)||self.data.deleted.contains_key(&id) {
+   id=format!("community-{clean_slug}-{n}");
+   n+=1;
+  }
+  anyhow::ensure!(!files.is_empty(),"Package has no files.");
+  let main_text=files.iter().find(|(p,_)|p.eq_ignore_ascii_case("SKILL.md")).map(|(_,t)|t.as_str()).unwrap_or(&files[0].1);
+  let (_,_,parsed_domain,mut steps,_)=crate::skill_folder::card_from_skill_md(&id,main_text,title);
+  if steps.is_empty() { steps.push(title.to_string()); }
+  let final_domain=if matches!(domain,"all"|"roblox"|"local"|"blender"|"model"|"ui"){domain}else if matches!(parsed_domain.as_str(),"all"|"roblox"|"local"|"blender"|"model"|"ui"){parsed_domain.as_str()}else{"all"};
+  let clean_files:Vec<(String,String)>=files.into_iter().filter(|(p,_)|crate::skill_folder::safe_reference(p)).collect();
+  anyhow::ensure!(!clean_files.is_empty(),"Package has no valid safe file paths.");
+  let skill=Skill{
+   id:id.clone(),
+   title:crate::skill_folder::cut(title.trim(),200),
+   description:crate::skill_folder::cut(description.trim(),2000),
+   domain:final_domain.to_string(),
+   scope:String::new(),
+   steps,
+   pitfalls:Vec::new(),
+   verification:Vec::new(),
+   confirmed:false,
+   enabled:true,
+   revision:1,
+   community:true,
+   favorite:false,
+   files:clean_files.iter().map(|(p,_)|p.clone()).collect(),
+   source:crate::skill_folder::cut(source_label,600),
+   import_digest:String::new(),
+  };
+  validate(&skill)?;
+  let mut data=self.data.clone();
+  let dir=self.files_root().join(&id);
+  std::fs::create_dir_all(&dir)?;
+  for (rel,text) in &clean_files {
+   let target=dir.join(rel);
+   if let Some(parent)=target.parent(){std::fs::create_dir_all(parent)?;}
+   std::fs::write(&target,text)?;
+  }
+  data.skills.insert(id.clone(),skill.clone());
+  self.persist(data)?;
+  Ok(json!({"ok":true,"skill":skill,"meta":self.skill_meta(&skill)}))
+ }
  /// 2026-11-20: a whole folder (or .zip) becomes skills; see skill_folder.rs. Importing the same folder again updates the skills
  /// that came from it: a skill the person edited by hand is kept as a separate copy "(your edit)", favourites stay, and a skill
  /// sitting in Deleted Skills is left there.
@@ -190,6 +408,31 @@ fn move_to_deleted(data:&mut Catalog,id:&str)->anyhow::Result<()> {
  let mut skill=data.skills.remove(id).ok_or_else(||anyhow::anyhow!("Skill not found."))?;skill.revision+=1;
  let deleted_at=std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
  data.deleted.insert(id.to_owned(),DeletedSkill{skill,deleted_at});data.trash_revision+=1;Ok(())
+}
+fn is_read_only_skill(id:&str)->bool{id.starts_with("starter-syphodev-")||id.starts_with("starter-roengineer-")||id.starts_with("bundled-")||id.starts_with("global-workflow-")}
+fn synthesize_skill_md(s:&Skill)->String{
+ let mut body=String::new();
+ for step in &s.steps { if !body.is_empty(){body.push_str("\n\n");} body.push_str(step); }
+ if !s.pitfalls.is_empty() {
+  body.push_str("\n\n## Pitfalls\n");
+  for p in &s.pitfalls { body.push_str(&format!("- {p}\n")); }
+ }
+ if !s.verification.is_empty() {
+  body.push_str("\n\n## Verification\n");
+  for v in &s.verification { body.push_str(&format!("- {v}\n")); }
+ }
+ crate::skill_folder::render_skill_md(&s.title,&s.description,&s.domain,&body)
+}
+fn open_local_folder(target:&std::path::Path)->anyhow::Result<()>{
+ let s=target.display().to_string();
+ #[cfg(windows)]
+ { return crate::workspace::windows_open::open(&s,None).map_err(|e|anyhow::anyhow!("Could not open folder: {e}")); }
+ #[cfg(not(windows))]
+ {
+  let program=if cfg!(target_os="macos"){"/usr/bin/open"}else{"xdg-open"};
+  std::process::Command::new(program).arg(&s).stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null())
+   .spawn().map(|_|()).map_err(|e|anyhow::anyhow!("Could not open folder: {e}"))
+ }
 }
 fn validate(s:&Skill)->anyhow::Result<()> {
  anyhow::ensure!(!s.id.is_empty()&&s.id.len()<=96&&s.id.bytes().all(|b|b.is_ascii_alphanumeric()||b"_-".contains(&b)),"Invalid skill ID.");
@@ -528,3 +771,31 @@ fn portable_skill(id:&str,skill:&Skill)->bool{!skill.community&&skill.files.is_e
 pub async fn account_export()->anyhow::Result<Value>{let store=STORE.lock().await;anyhow::ensure!(store.error.is_none(),"Skills could not be loaded; sync paused");let mut map=serde_json::Map::new();for(id,skill)in &store.data.skills{if portable_skill(id,skill){let mut skill=skill.clone();skill.scope.clear();map.insert(id.clone(),serde_json::to_value(skill)?);}}Ok(Value::Object(map))}
 pub fn validate_account_document(value:&Value)->anyhow::Result<()>{let map=value.as_object().ok_or_else(||anyhow::anyhow!("Invalid cloud skills"))?;anyhow::ensure!(map.len()<=500,"Cloud skill limit reached");for(id,value)in map{let skill:Skill=serde_json::from_value(value.clone())?;validate(&skill)?;anyhow::ensure!(skill.id==*id&&skill.scope.is_empty()&&portable_skill(id,&skill),"Invalid portable skill");}Ok(())}
 pub async fn account_apply(before:&Value,merged:&Value)->anyhow::Result<()>{validate_account_document(merged)?;let mut store=STORE.lock().await;let mut data=store.data.clone();let before=before.as_object().ok_or_else(||anyhow::anyhow!("Invalid local skills"))?;let merged=merged.as_object().unwrap();let ids:BTreeSet<_>=before.keys().chain(merged.keys()).collect();for id in ids{let current=data.skills.get(id).filter(|skill|portable_skill(id,skill)).map(|skill|{let mut skill=skill.clone();skill.scope.clear();serde_json::to_value(skill).unwrap_or_default()});if current.as_ref()!=before.get(id){continue;}if let Some(value)=merged.get(id){let mut skill:Skill=serde_json::from_value(value.clone())?;if let Some(old)=data.skills.get(id){skill.scope=old.scope.clone();}if !data.deleted.contains_key(id){data.skills.insert(id.clone(),skill);}}else if data.skills.contains_key(id){move_to_deleted(&mut data,id)?;}}if serde_json::to_value(&data)?!=serde_json::to_value(&store.data)?{store.persist(data)?;}Ok(())}
+
+#[cfg(test)]
+mod workbench_tests {
+ use super::*;
+ #[test]
+ fn workbench_load_save_add_files_and_community_install() {
+  let dir=std::env::temp_dir().join(format!("plazcode-wb-{}",std::process::id()));
+  let _=std::fs::remove_dir_all(&dir);
+  std::fs::create_dir_all(&dir).unwrap();
+  let mut store=Store::load(dir.join("skills.json"));
+  store.request(&json!({"action":"save","revision":0,"skill":{"id":"wb-1","title":"Initial","description":"Desc","domain":"roblox","scope":"","steps":["Step 1"],"pitfalls":[],"verification":[],"confirmed":false,"enabled":true}})).unwrap();
+  let loaded=store.request(&json!({"action":"workbench_load","id":"wb-1"})).unwrap();
+  assert_eq!(loaded["files"][0]["path"],"SKILL.md");
+  assert_eq!(loaded["validation"]["has_name"],true);
+  let saved=store.request(&json!({"action":"workbench_save_file","id":"wb-1","path":"SKILL.md","revision":1,"text":"---\nname: Updated Title\ndescription: Updated desc\ndomain: ui\n---\nSee [ref](references/guide.md).\n"})).unwrap();
+  assert_eq!(saved["skill"]["title"],"Updated Title");
+  assert_eq!(saved["validation"]["references_ok"],false);
+  let added=store.request(&json!({"action":"workbench_add_files","id":"wb-1","files":[{"path":"references/guide.md","text":"Guide text"}]})).unwrap();
+  assert_eq!(added["validation"]["references_ok"],true);
+  // Community install never overwrites existing skills
+  let first=store.install_workshop_skill("hud","HUD Designer","Build HUDs","ui",vec![("SKILL.md".into(),"---\nname: HUD Designer\ndescription: Build HUDs\n---\nUse Scale.".into())],"workshop:PlazCode:reviewed").unwrap();
+  let second=store.install_workshop_skill("hud","HUD Designer","Build HUDs","ui",vec![("SKILL.md".into(),"---\nname: HUD Designer\ndescription: Build HUDs\n---\nUse Scale.".into())],"workshop:PlazCode:reviewed").unwrap();
+  assert_eq!(first["skill"]["id"],"community-hud");
+  assert_eq!(second["skill"]["id"],"community-hud-2");
+  assert_eq!(first["skill"]["community"],true);
+  let _=std::fs::remove_dir_all(&dir);
+ }
+}

@@ -70,6 +70,7 @@ impl Manager {
  pub fn begin_profile_mode(&self){self.required.store(true,Ordering::Release);}
  pub fn required(&self)->bool{self.required.load(Ordering::Acquire)}
  pub fn active(&self)->Option<Active>{self.active.read().unwrap_or_else(|e|e.into_inner()).clone()}
+ pub async fn active_token(&self)->Option<String>{let active=self.active()?;if active.guest{return None;}self.registry.lock().await.profiles.get(&active.id).and_then(|p|p.token.clone())}
  pub fn lock(&self){*self.active.write().unwrap_or_else(|e|e.into_inner())=None;}
  pub async fn has_saved(&self,id:&str)->bool{if id==GUEST_ID{return self.root.join("profiles").join(GUEST_ID).join(".profile-ready").is_file();}self.registry.lock().await.profiles.contains_key(id)}
  pub async fn portal(&self)->Value{let registry=self.registry.lock().await;let profiles=registry.profiles.values().map(|p|json!({"id":p.id,"username":p.username,"picture_revision":crate::profile_picture::revision(&p.id),"appearance":crate::profile_paths::profile_root(&p.id).ok().filter(|root|root.join("plazcode-settings.json").is_file()).map(|root|appearance(&root)).unwrap_or_else(||p.appearance.clone()),"remembered":p.token.is_some()&&p.expires_at>now()})).collect::<Vec<_>>();json!({"enabled":self.required(),"profiles":profiles,"active":self.active(),"warning":self.warning.read().unwrap_or_else(|e|e.into_inner()).clone()})}

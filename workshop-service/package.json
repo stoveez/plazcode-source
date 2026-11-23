@@ -1,0 +1,14 @@
+{
+  "name": "plazcode-workshop-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PlazCode Skill & Specialist Workshop Cloudflare Worker + D1 registry",
+  "scripts": {
+    "test": "node test-workshop-worker.mjs",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init:local": "wrangler d1 execute plazcode-workshop --local --file=./db/schema.sql",
+    "db:init:remote": "wrangler d1 execute plazcode-workshop --remote --file=./db/schema.sql"
+  }
+}

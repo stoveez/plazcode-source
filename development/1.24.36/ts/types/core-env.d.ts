@@ -41,6 +41,7 @@ declare var PlazCodeSettingsBackup: any;
 declare var PlazCodeSiteSetups: any;
 declare var PlazCodeSkillContext: any;
 declare var PlazCodeSkillsUI: any;
+declare var PlazCodeWorkshopUI: any;
 declare var PlazCodeStallGuard: any;
 declare var PlazCodeTaskCenter: any;
 declare var PlazCodeTemplates: any;

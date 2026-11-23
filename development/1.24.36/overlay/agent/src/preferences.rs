@@ -110,6 +110,8 @@ pub struct DesktopPreferences {
     pub studio_dock_enabled: bool,
     #[serde(rename = "rsStudioDockPos", default, skip_serializing_if = "Option::is_none")]
     pub studio_dock_pos: Option<StudioDockPos>,
+    #[serde(rename = "workshopRegistryUrl")]
+    pub workshop_registry_url: String,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -166,6 +168,7 @@ impl Default for DesktopPreferences {
             full_startup: false, auto_debug: true, auto_fix_stop_play: true, multi_agent: false, playtest_check: true, ui_check: true,
             studio_dock_enabled: true,
             studio_dock_pos: None,
+            workshop_registry_url: String::new(),
         }
     }
 }
@@ -226,6 +229,13 @@ impl DesktopPreferences {
         if !matches!(self.thinking_level.as_str(), "default" | "low" | "mid" | "high" | "max" | "ultracode") {
             self.thinking_level = "default".to_string();
         }
+        let reg = self.workshop_registry_url.trim().trim_end_matches('/').to_string();
+        let valid_reg = reg.is_empty()
+            || (reg.len() <= 300
+                && (reg.starts_with("https://")
+                    || reg.starts_with("http://127.0.0.1")
+                    || reg.starts_with("http://localhost")));
+        self.workshop_registry_url = if valid_reg { reg } else { String::new() };
     }
 }
 
@@ -1000,5 +1010,20 @@ mod extension_sync_tests {
         assert!(reopened.revision() > before_rev);
         assert!(reopened.saved_keys().contains(&"rsPermMode".to_string()));
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn workshop_registry_url_normalizes_and_rejects_unsafe_schemes() {
+        let mut p = DesktopPreferences::default();
+        assert_eq!(p.workshop_registry_url, "");
+        p.workshop_registry_url = " https://plazcode-workshop.workers.dev/ ".into();
+        p.normalize();
+        assert_eq!(p.workshop_registry_url, "https://plazcode-workshop.workers.dev");
+        p.workshop_registry_url = "http://127.0.0.1:8787/".into();
+        p.normalize();
+        assert_eq!(p.workshop_registry_url, "http://127.0.0.1:8787");
+        p.workshop_registry_url = "javascript:alert(1)".into();
+        p.normalize();
+        assert_eq!(p.workshop_registry_url, "");
     }
 }
