@@ -8,6 +8,7 @@ const main=fs.readFileSync('core/main.js','utf8');const b=main.indexOf('  const 
 const browser={document,PLAZCODE_THEMES:{},plazcodeTheme:'night'};vm.createContext(browser);vm.runInContext(main.slice(b,e),browser);
 const rust=fs.readFileSync('agent/src/preferences.rs','utf8');
 const themes=['default','amethyst','cyan','rose','emerald','graphite','crimson','ocean','copper','aurora','orchid'];
+const proThemes=['midnight-slate','obsidian-gold','sunset-ember','sakura-dusk','nord-frost','amber-terminal','paper-light','mono-contrast'];
 for(const theme of themes){
  const result=vm.runInContext(`Applyappearance({theme:'${theme}',glow:'off',gradients:'off'})`,c);
  assert.equal(result.theme,theme);assert.equal(document.documentElement.dataset.desktopTheme,theme);
@@ -18,6 +19,14 @@ for(const theme of themes){
  assert.equal(document.documentElement.style.getPropertyValue('--theme-glow'),'0');
  assert.equal(document.documentElement.style.getPropertyValue('--pc-glow-strength'),'0');
  if(theme!=='crimson')assert.equal(document.querySelector(`[data-desktop-palette="${theme}"]`).getAttribute('aria-pressed'),'true');
+}
+for(const theme of proThemes){
+ const result=vm.runInContext(`Applyappearance({theme:'${theme}',glow:'subtle',gradients:'on'})`,c);
+ assert.equal(result.theme,theme);assert.equal(document.documentElement.dataset.desktopTheme,theme);
+ assert.equal(document.getElementById('desktopTheme').value,theme);
+ assert(rust.includes('"'+theme+'"'),'native preference accepts '+theme);
+ vm.runInContext(`applySharedAppearance({theme:'${theme}',glow:'subtle',gradients:'on'})`,browser);
+ assert.equal(document.documentElement.dataset.rsPalette,theme);
 }
 assert.equal(vm.runInContext('Applyappearance({theme:"missing"}).theme',c),'default');
 assert.equal(vm.runInContext('Applyappearance({theme:"solar"}).theme',c),'default');

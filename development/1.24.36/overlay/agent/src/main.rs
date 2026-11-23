@@ -2129,6 +2129,8 @@ async fn desktop_shell_handler() -> impl IntoResponse {
         .replace("__PLAZCODE_SAFETY_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/safety.js")))
         .replace("__PLAZCODE_TEMPLATE_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/templates.js")))
         .replace("__PLAZCODE_VERSION_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/version.js")))
+        .replace("__PLAZCODE_THEME_PRESETS__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/theme-presets.js")))
+        .replace("__PLAZCODE_BACKDROP_FX__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/backdrop-fx.js")))
         .replace("__PLAZCODE_PAIRING_KEY__", "")
         .replace("__PLAZCODE_VERSION__", env!("CARGO_PKG_VERSION"));
     #[cfg(target_os="linux")]
@@ -2150,6 +2152,8 @@ async fn desktop_handler(State(state): State<AppState>) -> Html<String> {
         .replace("__PLAZCODE_SAFETY_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/safety.js")))
         .replace("__PLAZCODE_TEMPLATE_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/templates.js")))
         .replace("__PLAZCODE_VERSION_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/version.js")))
+        .replace("__PLAZCODE_THEME_PRESETS__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/theme-presets.js")))
+        .replace("__PLAZCODE_BACKDROP_FX__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/backdrop-fx.js")))
         .replace("__PLAZCODE_PAIRING_KEY__", state.pairing_key.as_str())
         .replace("__PLAZCODE_VERSION__", env!("CARGO_PKG_VERSION"));
     Html(html)

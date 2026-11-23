@@ -211,6 +211,9 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
     '__PLAZCODE_I18N_CATALOG__',
     '__PLAZCODE_I18N__',
     '__PLAZCODE_MEDIA_UI__',
+    '__PLAZCODE_THEME_PRESETS__',
+    '__PLAZCODE_BACKDROP_FX__',
+    'dockRainCanvas',
   ]) {
     assert(dockHtml.includes(token), "studio_dock.html contains " + token);
   }
@@ -311,6 +314,14 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
   assert.equal(attrs["data-pz-motion"], "off");
   assert.equal(attrs["data-desktop-glow"], "off");
   assert.equal(attrs["data-desktop-gradients"], "off");
+
+  uiCtx.window.__plazcodeDockAppearance({ theme: "paper-light", pixelMode: true, signalRain: true, motion: "reduced" });
+  assert.equal(attrs["data-theme-tone"], "light");
+  assert.equal(attrs["data-plazcode-pixel"], "1");
+  assert.equal(attrs["data-pz-motion"], "reduced");
+  uiCtx.window.__plazcodeDockAppearance({ theme: "obsidian-gold", pixelMode: false, signalRain: false, motion: "full" });
+  assert.equal(attrs["data-theme-tone"], "dark");
+  assert(!("data-plazcode-pixel" in attrs), "pixelMode=false clears data-plazcode-pixel");
 
   // 6. Verify live state refresh + offline banner + drag-drop video warning logic end-to-end
   nextMockState = {

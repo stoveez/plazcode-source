@@ -736,17 +736,25 @@
     autumn:     { name: "Autumn",     sub: "Harvest ember",    glyph: "❧", blurb: "Autumn — falling leaves and harvest fire." },
   };
   const PLAZCODE_PALETTES = {
-    default:{rgb:"233 186 83",accent:"#e9ba53",light:"#ffe0a1",bg:"#18140d",legacy:"autumn",name:"Default"},
-    amethyst:{rgb:"165 113 255",accent:"#a571ff",light:"#d7b8ff",bg:"#0c0918",legacy:"starglaze",name:"Amethyst"},
-    cyan:{rgb:"39 193 231",accent:"#27c1e7",light:"#a5eaff",bg:"#041017",legacy:"starglaze",name:"Cyan"},
-    rose:{rgb:"241 112 151",accent:"#f17097",light:"#ffbdd1",bg:"#160912",legacy:"sakura",name:"Rose"},
-    emerald:{rgb:"41 200 148",accent:"#29c894",light:"#a6f3d1",bg:"#05130f",legacy:"autumn",name:"Emerald"},
-    graphite:{rgb:"156 170 192",accent:"#9caac0",light:"#e0e7f2",bg:"#0a0d13",legacy:"night",name:"Graphite"},
-    crimson:{rgb:"239 85 105",accent:"#ef5569",light:"#ffb0bb",bg:"#16080c",legacy:"blood-moon",name:"Crimson"},
-    ocean:{rgb:"70 146 246",accent:"#4692f6",light:"#a5ceff",bg:"#091323",legacy:"starglaze",name:"Oceanic"},
-    copper:{rgb:"219 144 102",accent:"#db9066",light:"#f4c4a3",bg:"#17110f",legacy:"autumn",name:"Copper Atelier"},
-    aurora:{rgb:"102 211 184",accent:"#66d3b8",light:"#b4f6e7",bg:"#0c151b",legacy:"starglaze",name:"Aurora"},
-    orchid:{rgb:"205 137 235",accent:"#cd89eb",light:"#edc6ff",bg:"#150e1c",legacy:"sakura",name:"Orchid Noir"}
+    default:{rgb:"233 186 83",accent:"#e9ba53",light:"#ffe0a1",bg:"#18140d",surface:"#272116",border:"#5b4b30",glow:"rgb(233 186 83 / .22)",tone:"dark",legacy:"autumn",name:"Default"},
+    amethyst:{rgb:"165 113 255",accent:"#a571ff",light:"#d7b8ff",bg:"#0c0918",surface:"#17122b",border:"#41336d",glow:"rgb(165 113 255 / .24)",tone:"dark",legacy:"starglaze",name:"Amethyst"},
+    cyan:{rgb:"39 193 231",accent:"#27c1e7",light:"#a5eaff",bg:"#041017",surface:"#0b1e29",border:"#224d63",glow:"rgb(39 193 231 / .24)",tone:"dark",legacy:"starglaze",name:"Cyan"},
+    rose:{rgb:"241 112 151",accent:"#f17097",light:"#ffbdd1",bg:"#160912",surface:"#271220",border:"#5e304d",glow:"rgb(241 112 151 / .24)",tone:"dark",legacy:"sakura",name:"Rose"},
+    emerald:{rgb:"41 200 148",accent:"#29c894",light:"#a6f3d1",bg:"#05130f",surface:"#0d241d",border:"#265a49",glow:"rgb(41 200 148 / .24)",tone:"dark",legacy:"autumn",name:"Emerald"},
+    graphite:{rgb:"156 170 192",accent:"#9caac0",light:"#e0e7f2",bg:"#0a0d13",surface:"#141923",border:"#364255",glow:"rgb(156 170 192 / .20)",tone:"dark",legacy:"night",name:"Graphite"},
+    crimson:{rgb:"239 85 105",accent:"#ef5569",light:"#ffb0bb",bg:"#16080c",surface:"#29171e",border:"#5b3541",glow:"rgb(239 85 105 / .24)",tone:"dark",legacy:"blood-moon",name:"Crimson"},
+    ocean:{rgb:"70 146 246",accent:"#4692f6",light:"#a5ceff",bg:"#091323",surface:"#142238",border:"#365475",glow:"rgb(70 146 246 / .24)",tone:"dark",legacy:"starglaze",name:"Oceanic"},
+    copper:{rgb:"219 144 102",accent:"#db9066",light:"#f4c4a3",bg:"#17110f",surface:"#251c18",border:"#594236",glow:"rgb(219 144 102 / .22)",tone:"dark",legacy:"autumn",name:"Copper Atelier"},
+    aurora:{rgb:"102 211 184",accent:"#66d3b8",light:"#b4f6e7",bg:"#0c151b",surface:"#15262e",border:"#355965",glow:"rgb(102 211 184 / .24)",tone:"dark",legacy:"starglaze",name:"Aurora"},
+    orchid:{rgb:"205 137 235",accent:"#cd89eb",light:"#edc6ff",bg:"#150e1c",surface:"#251930",border:"#584167",glow:"rgb(205 137 235 / .24)",tone:"dark",legacy:"sakura",name:"Orchid Noir"},
+    "midnight-slate":{rgb:"125 162 216",accent:"#7da2d8",light:"#c4daf8",bg:"#0b1018",surface:"#141c28",border:"#33455e",glow:"rgb(125 162 216 / .22)",tone:"dark",legacy:"night",name:"Midnight Slate"},
+    "obsidian-gold":{rgb:"245 196 81",accent:"#f5c451",light:"#ffe79e",bg:"#08080a",surface:"#131216",border:"#453c24",glow:"rgb(245 196 81 / .24)",tone:"dark",legacy:"autumn",name:"Obsidian Gold"},
+    "sunset-ember":{rgb:"255 122 89",accent:"#ff7a59",light:"#ffc1ae",bg:"#170d0c",surface:"#261614",border:"#5e362f",glow:"rgb(255 122 89 / .24)",tone:"dark",legacy:"autumn",name:"Sunset Ember"},
+    "sakura-dusk":{rgb:"245 154 189",accent:"#f59abd",light:"#ffd7e7",bg:"#140d18",surface:"#221629",border:"#563963",glow:"rgb(245 154 189 / .24)",tone:"dark",legacy:"sakura",name:"Sakura Dusk"},
+    "nord-frost":{rgb:"136 192 208",accent:"#88c0d0",light:"#cce8f0",bg:"#0e141b",surface:"#17202b",border:"#384c61",glow:"rgb(136 192 208 / .22)",tone:"dark",legacy:"starglaze",name:"Nord Frost"},
+    "amber-terminal":{rgb:"255 176 0",accent:"#ffb000",light:"#ffe07a",bg:"#110d05",surface:"#1d1709",border:"#544018",glow:"rgb(255 176 0 / .24)",tone:"dark",legacy:"autumn",name:"Amber Terminal"},
+    "paper-light":{rgb:"45 91 158",accent:"#2d5b9e",light:"#1e4278",bg:"#f4f0e8",surface:"#eae4d8",border:"#c2b8a4",glow:"rgb(45 91 158 / .18)",tone:"light",legacy:"night",name:"Paper Light"},
+    "mono-contrast":{rgb:"235 239 245",accent:"#ebeff5",light:"#ffffff",bg:"#050507",surface:"#101114",border:"#3c404a",glow:"rgb(235 239 245 / .20)",tone:"dark",legacy:"night",name:"Mono Contrast"}
   };
   let sharedAppearance = null;
   // The app's custom colour (Appearance > Color theme > Custom), shared with the bar: same mixing as the app (2026-11-14).
@@ -754,7 +762,7 @@
     const m = /^#([0-9a-f]{6})$/i.exec(String(hex || "")); if (!m) return null;
     const c = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16)), mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
     const hx = (rgb) => "#" + rgb.map((v) => ("0" + Math.max(0, Math.min(255, v)).toString(16)).slice(-2)).join("");
-    return {rgb: c.join(" "), accent: hx(c), light: hx(mix(c, [255, 255, 255], .5)), bg: hx(mix([8, 9, 12], c, .08))};
+    return {rgb: c.join(" "), accent: hx(c), light: hx(mix(c, [255, 255, 255], .5)), bg: hx(mix([8, 9, 12], c, .08)), surface: hx(mix([14, 15, 20], c, .12)), border: hx(mix([40, 42, 52], c, .26)), tone: "dark"};
   }
   function applySharedAppearance(value) {
     if(value?.theme === "solar") value={...value,theme:"default"};
@@ -762,7 +770,8 @@
     // Feel (motion, animated theme, click effects) comes from the app's Appearance > Feel (2026-11-13); an older
     // app sends none, which means Full / on / on.
     sharedAppearance = {theme:value.theme,glow:["off","strong"].includes(value.glow)?value.glow:"subtle",gradients:value.gradients==="off"?"off":"on",
-      motion:["reduced","off"].includes(value.motion)?value.motion:"full",anim:value.anim!==false,ripple:value.ripple!==false,custom:customPalette(value.custom)?String(value.custom).toLowerCase():""};
+      motion:["reduced","off"].includes(value.motion)?value.motion:"full",anim:value.anim!==false,ripple:value.ripple!==false,custom:customPalette(value.custom)?String(value.custom).toLowerCase():"",
+      pixelMode:value.pixelMode===true,signalRain:value.signalRain===true};
     const palette = Object.assign({}, PLAZCODE_PALETTES[sharedAppearance.theme], customPalette(sharedAppearance.custom) || {}), root=document.documentElement;
     root.toggleAttribute("data-rs-custom", !!sharedAppearance.custom);
     plazcodeTheme=palette.legacy;
@@ -772,9 +781,12 @@
     root.setAttribute("data-rs-glow",sharedAppearance.glow);
     root.setAttribute("data-rs-gradients",sharedAppearance.gradients);
     root.setAttribute("data-rs-motion",sharedAppearance.motion);
+    root.setAttribute("data-rs-tone",palette.tone || "dark");
+    if (sharedAppearance.pixelMode) root.setAttribute("data-plazcode-pixel", "1");
+    else if (typeof root.removeAttribute === "function") root.removeAttribute("data-plazcode-pixel");
     root.toggleAttribute("data-rs-anim",sharedAppearance.anim);
     root.toggleAttribute("data-rs-ripple",sharedAppearance.ripple);
-    for(const [key,val] of Object.entries({"--pc-accent":palette.accent,"--pc-light":palette.light,"--pc-bg":palette.bg,"--pc-rgb":palette.rgb,"--pc-glow-strength":sharedAppearance.glow==="off"?"0":sharedAppearance.glow==="strong"?".35":".13"})) root.style.setProperty(key,val);
+    for(const [key,val] of Object.entries({"--pc-accent":palette.accent,"--pc-light":palette.light,"--pc-bg":palette.bg,"--pc-rgb":palette.rgb,"--pc-surface":palette.surface || "#171b25","--pc-border":palette.border || "#65718666","--pc-glow":palette.glow || "rgb(233 186 83 / .22)","--pc-glow-strength":sharedAppearance.glow==="off"?"0":sharedAppearance.glow==="strong"?".35":".13"})) root.style.setProperty(key,val);
   }
   let plazcodeTheme = "night";
   applySharedAppearance({theme:"default",glow:"subtle",gradients:"on"});
@@ -785,10 +797,10 @@
   (function guardRootMarks() {
     const html = document.documentElement;
     if (!html || typeof MutationObserver !== "function") return;
-    const PC_VARS = ["--pc-accent", "--pc-light", "--pc-bg", "--pc-rgb", "--pc-glow-strength"];
+    const PC_VARS = ["--pc-accent", "--pc-light", "--pc-bg", "--pc-rgb", "--pc-surface", "--pc-border", "--pc-glow", "--pc-glow-strength"];
     const owned = () => {
       const attrs = {};
-      for (const at of html.attributes) if (at.name.startsWith("data-rs-")) attrs[at.name] = at.value;
+      for (const at of html.attributes) if (at.name.startsWith("data-rs-") || at.name === "data-plazcode-pixel") attrs[at.name] = at.value;
       const vars = {};
       for (const k of PC_VARS) { const v = html.style.getPropertyValue(k); if (v) vars[k] = v; }
       return {attrs, classes: [...html.classList].filter((c) => c.startsWith("rs-")), vars, count: Object.keys(attrs).length};
@@ -839,7 +851,25 @@
         el.classList.toggle("on", el.getAttribute("data-theme") === plazcodeTheme);
       });
       const barEl = document.getElementById("rs-bar");
-      if (barEl) barEl.setAttribute("data-plazcode-theme", plazcodeTheme || "night");
+      if (barEl) {
+        barEl.setAttribute("data-plazcode-theme", plazcodeTheme || "night");
+        const Fx = typeof PlazCodeBackdropFx !== "undefined" ? PlazCodeBackdropFx : null;
+        if (Fx && typeof Fx.mount === "function") {
+          let cv = barEl.querySelector("#rs-signal-rain");
+          const on = !!(sharedAppearance && sharedAppearance.signalRain && sharedAppearance.motion !== "off");
+          if (on && !cv) {
+            cv = document.createElement("canvas");
+            cv.id = "rs-signal-rain";
+            cv.className = "rs-signal-rain";
+            cv.setAttribute("aria-hidden", "true");
+            barEl.prepend(cv);
+          }
+          if (cv) {
+            if (!applyOrSkin._fx) applyOrSkin._fx = Fx.mount(cv, { enabled: on, feel: sharedAppearance ? sharedAppearance.motion : "full", alpha: 0.22 });
+            else applyOrSkin._fx.update({ enabled: on, feel: sharedAppearance ? sharedAppearance.motion : "full", alpha: 0.22 });
+          }
+        }
+      }
     } catch {}
   }
   function setOrTheme(id) {

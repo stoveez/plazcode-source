@@ -135,6 +135,11 @@ pub struct Appearance {
     /// custom theme). Stays on this computer: the account service only accepts the ready-made themes (see account_sync.rs).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub custom: Option<String>,
+    /// Optional crisp Pixel Mode toggle & lightweight Canvas Signal Rain backdrop (stay on this computer alongside Feel).
+    #[serde(rename = "pixelMode", default)]
+    pub pixel_mode: bool,
+    #[serde(rename = "signalRain", default)]
+    pub signal_rain: bool,
 }
 fn default_motion() -> String { "full".into() }
 fn default_on() -> bool { true }
@@ -206,7 +211,11 @@ impl DesktopPreferences {
         self.allowed_folders=folders;
         if let Some(value) = &mut self.appearance {
             if value.theme=="solar" {value.theme="default".into();}
-            if !matches!(value.theme.as_str(), "default" | "amethyst" | "cyan" | "rose" | "emerald" | "graphite" | "crimson" | "ocean" | "copper" | "aurora" | "orchid") { value.theme = "default".into(); }
+            if !matches!(
+                value.theme.as_str(),
+                "default" | "amethyst" | "cyan" | "rose" | "emerald" | "graphite" | "crimson" | "ocean" | "copper" | "aurora" | "orchid"
+                | "midnight-slate" | "obsidian-gold" | "sunset-ember" | "sakura-dusk" | "nord-frost" | "amber-terminal" | "paper-light" | "mono-contrast"
+            ) { value.theme = "default".into(); }
             if !matches!(value.glow.as_str(), "off" | "subtle" | "strong") { value.glow = "subtle".into(); }
             if !matches!(value.gradients.as_str(), "off" | "on") { value.gradients = "on".into(); }
             if !matches!(value.motion.as_str(), "full" | "reduced" | "off") { value.motion = "full".into(); }
@@ -746,7 +755,7 @@ mod tests {
     #[test]
     fn ultracode_and_legacy_solar_preferences_are_preserved() {
         let mut prefs=DesktopPreferences::default();prefs.thinking_level="ultracode".into();
-        prefs.appearance=Some(Appearance{theme:"solar".into(),glow:"strong".into(),gradients:"off".into(),motion:"wild".into(),anim:false,ripple:true,custom:None});
+        prefs.appearance=Some(Appearance{theme:"solar".into(),glow:"strong".into(),gradients:"off".into(),motion:"wild".into(),anim:false,ripple:true,custom:None,pixel_mode:false,signal_rain:false});
         prefs.normalize();assert_eq!(prefs.thinking_level,"ultracode");
         let appearance=prefs.appearance.unwrap();assert_eq!(appearance.theme,"default");assert_eq!(appearance.glow,"strong");assert_eq!(appearance.gradients,"off");assert_eq!(appearance.motion,"full");assert!(!appearance.anim&&appearance.ripple);
     }
@@ -803,6 +812,12 @@ mod tests {
         reopened.patch(serde_json::json!({"rsAppearance":{"theme":"rose","glow":"subtle","gradients":"on","motion":"reduced","anim":false,"ripple":false}})).unwrap();
         let value = PreferencesStore::load_from(path.clone()).snapshot().appearance.unwrap();
         assert_eq!((value.motion.as_str(), value.anim, value.ripple), ("reduced", false, false), "the Feel choices reach the bar");
+        for pro in ["midnight-slate", "obsidian-gold", "sunset-ember", "sakura-dusk", "nord-frost", "amber-terminal", "paper-light", "mono-contrast"] {
+            reopened.patch(serde_json::json!({"rsAppearance":{"theme":pro,"glow":"strong","gradients":"on","pixelMode":true,"signalRain":true}})).unwrap();
+            let v = reopened.snapshot().appearance.unwrap();
+            assert_eq!(v.theme, pro);
+            assert!(v.pixel_mode && v.signal_rain);
+        }
         std::fs::remove_file(path).ok();
     }
 

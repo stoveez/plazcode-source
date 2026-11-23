@@ -43,7 +43,7 @@ const sync = Sync.create({ fetch: async () => ({ ok: false, json: async () => ({
   };
   const syncChrome = Sync.create({ fetch: async () => ({ ok: false, json: async () => ({}) }), storage: chromeStore, url: 'x', later: () => 0, cancel: () => {} });
   const syncEdge = Sync.create({ fetch: async () => ({ ok: false, json: async () => ({}) }), storage: edgeStore, url: 'x', later: () => 0, cancel: () => {} });
-  const newerLook = { theme: 'ocean', glow: 'strong', gradients: 'on', motion: 'reduced', anim: false, ripple: true, custom: '#123456' };
+  const newerLook = { theme: 'ocean', glow: 'strong', gradients: 'on', motion: 'reduced', anim: false, ripple: true, custom: '#123456', pixelMode: true, signalRain: true };
   const olderLook = { theme: 'rose', glow: 'off', gradients: 'off', motion: 'full', anim: true, ripple: true };
   await syncChrome.apply({ rsAppearance: newerLook, _plazcodeEpoch: 'ep-1', _plazcodeRev: 5, _plazcodeSaved: ['rsAppearance'] });
   await syncEdge.apply({ rsAppearance: newerLook, _plazcodeEpoch: 'ep-1', _plazcodeRev: 5, _plazcodeSaved: ['rsAppearance'] });

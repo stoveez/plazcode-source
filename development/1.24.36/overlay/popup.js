@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
 const DISCORD_URL = "https://discord.gg/FmKY5bXZn";
 const THEMES = [];
-const POPUP_PALETTES={default:['#e9ba53','#ffe0a1','#18140d','233 186 83'],amethyst:['#a571ff','#d7b8ff','#0c0918','165 113 255'],cyan:['#27c1e7','#a5eaff','#041017','39 193 231'],rose:['#f17097','#ffbdd1','#160912','241 112 151'],emerald:['#29c894','#a6f3d1','#05130f','41 200 148'],graphite:['#9caac0','#e0e7f2','#0a0d13','156 170 192'],crimson:['#ef5569','#ffb0bb','#16080c','239 85 105'],ocean:['#4692f6','#a5ceff','#091323','70 146 246'],copper:['#db9066','#f4c4a3','#17110f','219 144 102'],aurora:['#66d3b8','#b4f6e7','#0c151b','102 211 184'],orchid:['#cd89eb','#edc6ff','#150e1c','205 137 235']};
+const POPUP_PALETTES={default:['#e9ba53','#ffe0a1','#18140d','233 186 83'],amethyst:['#a571ff','#d7b8ff','#0c0918','165 113 255'],cyan:['#27c1e7','#a5eaff','#041017','39 193 231'],rose:['#f17097','#ffbdd1','#160912','241 112 151'],emerald:['#29c894','#a6f3d1','#05130f','41 200 148'],graphite:['#9caac0','#e0e7f2','#0a0d13','156 170 192'],crimson:['#ef5569','#ffb0bb','#16080c','239 85 105'],ocean:['#4692f6','#a5ceff','#091323','70 146 246'],copper:['#db9066','#f4c4a3','#17110f','219 144 102'],aurora:['#66d3b8','#b4f6e7','#0c151b','102 211 184'],orchid:['#cd89eb','#edc6ff','#150e1c','205 137 235'],'midnight-slate':['#7da2d8','#c4daf8','#0b1018','125 162 216'],'obsidian-gold':['#f5c451','#ffe79e','#08080a','245 196 81'],'sunset-ember':['#ff7a59','#ffc1ae','#170d0c','255 122 89'],'sakura-dusk':['#f59abd','#ffd7e7','#140d18','245 154 189'],'nord-frost':['#88c0d0','#cce8f0','#0e141b','136 192 208'],'amber-terminal':['#ffb000','#ffe07a','#110d05','255 176 0'],'paper-light':['#2d5b9e','#1e4278','#f4f0e8','45 91 158'],'mono-contrast':['#ebeff5','#ffffff','#050507','235 239 245']};
 let popupAppearance={theme:'default',glow:'subtle',gradients:'on'};
 function applyPopupAppearance(value){
  if(value?.theme==="solar")value={...value,theme:"default"};
@@ -11,9 +11,11 @@ function applyPopupAppearance(value){
  const cm=/^#([0-9a-f]{6})$/i.exec(String(value?.custom||''));
  if(cm){const c=[0,2,4].map(i=>parseInt(cm[1].slice(i,i+2),16)),mix=(a,b,t)=>a.map((v,i)=>Math.round(v+(b[i]-v)*t)),hx=r=>'#'+r.map(v=>('0'+Math.max(0,Math.min(255,v)).toString(16)).slice(-2)).join('');accent=hx(c);light=hx(mix(c,[255,255,255],.5));bg=hx(mix([8,9,12],c,.08));rgb=c.join(' ');}
  root.dataset.palette=popupAppearance.theme;root.dataset.glow=popupAppearance.glow||'subtle';root.dataset.gradients=popupAppearance.gradients||'on';
+ if(value?.pixelMode===true)root.setAttribute('data-plazcode-pixel','1');else if(typeof root.removeAttribute==='function')root.removeAttribute('data-plazcode-pixel');
  // Studio look (1.24.36 bar redesign): same Feel as the app and the bar (Full / on / on when an older app sends none).
  root.dataset.studio='';root.dataset.motion=['full','reduced','off'].includes(value?.motion)?value.motion:'full';root.dataset.anim=value?.anim===false||value?.anim==='off'?'off':'on';root.dataset.ripple=value?.ripple===false||value?.ripple==='off'?'off':'on';
- const vars={'--bg':bg,'--accent':accent,'--accent-light':light,'--text':'#eef4ff','--text-dim':light,'--text-faint':'#96a0b0','--surface':`color-mix(in srgb, ${bg} 89%, ${accent})`,'--surface-2':`color-mix(in srgb, ${bg} 78%, ${accent})`,'--line':`rgb(${rgb} / .24)`,'--rgb':rgb,'--glow':popupAppearance.glow==='off'?'transparent':`rgb(${rgb} / ${popupAppearance.glow==='strong'?'.5':'.22'})`};
+ const isLight=!cm&&popupAppearance.theme==='paper-light';
+ const vars={'--bg':bg,'--accent':accent,'--accent-light':light,'--text':isLight?'#171a20':'#eef4ff','--text-dim':light,'--text-faint':isLight?'#4a505c':'#96a0b0','--surface':`color-mix(in srgb, ${bg} 89%, ${accent})`,'--surface-2':`color-mix(in srgb, ${bg} 78%, ${accent})`,'--line':`rgb(${rgb} / .24)`,'--rgb':rgb,'--glow':popupAppearance.glow==='off'?'transparent':`rgb(${rgb} / ${popupAppearance.glow==='strong'?'.5':'.22'})`};
  for(const [key,value]of Object.entries(vars))root.style.setProperty(key,value);
 }
 const SUPPORTED_HOSTS = [

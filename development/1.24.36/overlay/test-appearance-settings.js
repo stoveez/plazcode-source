@@ -19,7 +19,8 @@ assert(!/html\[[^\]]*\](?:\[[^\]]*\])* html\[/.test(html), "no rule written as '
   try {
     const parts = { __PLAZCODE_I18N_CATALOG__: "core/i18n-catalog.js", __PLAZCODE_I18N__: "core/i18n.js", __PLAZCODE_SKILLS_UI__: "core/skills-ui.js", __PLAZCODE_EXPLORER_UI__: "core/explorer-ui.js",
       __PLAZCODE_MEDIA_UI__: "core/media.js", __PLAZCODE_MEMORY_UI__: "core/memory.js", __PLAZCODE_TOOLKIT_UI__: "core/toolkit-ui.js", __PLAZCODE_TASK_UI__: "core/task-center.js",
-      __PLAZCODE_ACTION_LOG_UI__: "core/action-log.js", __PLAZCODE_SAFETY_UI__: "core/safety.js", __PLAZCODE_TEMPLATE_UI__: "core/templates.js", __PLAZCODE_VERSION_UI__: "core/version.js" };
+      __PLAZCODE_ACTION_LOG_UI__: "core/action-log.js", __PLAZCODE_SAFETY_UI__: "core/safety.js", __PLAZCODE_TEMPLATE_UI__: "core/templates.js", __PLAZCODE_VERSION_UI__: "core/version.js",
+      __PLAZCODE_THEME_PRESETS__: "core/theme-presets.js", __PLAZCODE_BACKDROP_FX__: "core/backdrop-fx.js" };
     let page = html;
     for (const [mark, file] of Object.entries(parts)) page = page.split(mark).join(fs.readFileSync(__dirname + "/" + file, "utf8"));
     page = page.split("__PLAZCODE_PAIRING_KEY__").join("").split("__PLAZCODE_VERSION__").join("1.24.36");
@@ -35,7 +36,7 @@ assert(!/html\[[^\]]*\](?:\[[^\]]*\])* html\[/.test(html), "no rule written as '
     await tab.click('.pz-tabs .navbtn:has-text("Appearance")'); await tab.waitForTimeout(300);
 
     // Every control on the Appearance page this test knows (a new one must be added here with a real check).
-    const known = ["radius", "bw", "rainbow", "grid", "bgstrength", "blur", "panel", "anim", "ripple", "font", "bc", "motion", "glow", "gradients", "palette", "wallpaper", "custom", "reset"];
+    const known = ["radius", "bw", "rainbow", "grid", "pixel", "rain", "bgstrength", "blur", "panel", "anim", "ripple", "font", "bc", "motion", "glow", "gradients", "palette", "wallpaper", "custom", "reset"];
     const found = await tab.evaluate(() => {
       const out = new Set();
       for (const e of document.querySelectorAll("#page-appearance [data-look]")) out.add(e.getAttribute("data-look"));
@@ -87,10 +88,27 @@ assert(!/html\[[^\]]*\](?:\[[^\]]*\])* html\[/.test(html), "no rule written as '
       assert.notDeepEqual(await style(sel, [prop]), before, id + "=" + value + " changes " + prop);
       await tab.evaluate(([i]) => { const s = document.getElementById(i); s.value = i === "desktopGlow" ? "subtle" : "on"; s.dispatchEvent(new Event("change", { bubbles: true })); }, [id]); await tab.waitForTimeout(80);
     }
-    // A colour theme recolours the app.
+    // A colour theme recolours the app, including curated pro presets and Pixel / Signal Rain controls.
     const rgb = () => tab.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--theme-rgb").trim());
     const was = await rgb(); await tab.click('[data-desktop-palette="emerald"]'); await tab.waitForTimeout(150);
-    assert.notEqual(await rgb(), was, "Emerald theme recolours"); await tab.click("#nxThemeReset"); await tab.waitForTimeout(150); assert.equal(await rgb(), was, "Restore default theme");
+    assert.notEqual(await rgb(), was, "Emerald theme recolours");
+    assert.equal(await tab.evaluate(() => document.querySelectorAll('#nxThemes [data-desktop-palette]').length), 19, "all 19 theme cards rendered in #nxThemes");
+    for (const proId of ["midnight-slate", "obsidian-gold", "sunset-ember", "sakura-dusk", "nord-frost", "amber-terminal", "paper-light", "mono-contrast"]) {
+      await tab.click(`#nxThemes [data-desktop-palette="${proId}"]`); await tab.waitForTimeout(80);
+      assert.equal(await tab.evaluate(() => document.documentElement.dataset.desktopTheme), proId, "curated preset " + proId + " applies");
+      if (proId === "paper-light") assert.equal(await tab.evaluate(() => document.documentElement.dataset.themeTone), "light", "paper-light sets light tone");
+    }
+    await tab.click("#nxThemeReset"); await tab.waitForTimeout(150); assert.equal(await rgb(), was, "Restore default theme");
+    await changes("Pixel mode", card, ["border-top-left-radius"], async () => { await tab.click("#nxPixelMode"); await tab.waitForTimeout(80); });
+    assert.equal(await tab.evaluate(() => document.documentElement.getAttribute("data-plazcode-pixel")), "1", "Pixel mode sets data-plazcode-pixel=1");
+    await tab.click("#nxSignalRain"); await tab.waitForTimeout(120);
+    assert.equal(await tab.evaluate(() => ({ hidden: document.getElementById("nxSignalRainCanvas").hidden, mode: document.getElementById("nxSignalRainCanvas").getAttribute("data-signal-rain") })).then(x => !x.hidden && x.mode === "running"), true, "Signal rain starts running");
+    await tab.evaluate(() => document.querySelector('[data-look-motion="reduced"]').click()); await tab.waitForTimeout(80);
+    assert.equal(await tab.evaluate(() => document.getElementById("nxSignalRainCanvas").getAttribute("data-signal-rain")), "static", "Signal rain draws static frame on reduced motion");
+    await tab.evaluate(() => document.querySelector('[data-look-motion="off"]').click()); await tab.waitForTimeout(80);
+    assert.equal(await tab.evaluate(() => document.getElementById("nxSignalRainCanvas").hidden), true, "Signal rain turns off when motion=off");
+    await tab.click("#nxThemeReset"); await tab.waitForTimeout(100);
+    assert.equal(await tab.evaluate(() => !document.documentElement.hasAttribute("data-plazcode-pixel") && document.getElementById("nxSignalRainCanvas").hidden), true, "#nxThemeReset clears pixelMode and signalRain");
     // Wallpaper, then its strength, and Panel opacity / blur on the side bar over the picture.
     const png = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "pz-wall-")), "wall.png");
     fs.writeFileSync(png, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAIElEQVR4nGP8z8DwnwEJMDEwMDAwMjIyQPmMDHABqDQAhUgJAe7VKw0AAAAASUVORK5CYII=", "base64"));

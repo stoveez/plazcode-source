@@ -7,7 +7,7 @@ pub fn status(id:&str)->String{STATUS.read().unwrap_or_else(|e|e.into_inner()).g
 // The account service keeps the look as theme, glow and gradients only (account-service/lib/protocol.js is strict). The
 // app's Feel (motion, animated theme, click effects; 1.24.36) stays on this computer: it is left out of what is sent and
 // put back from this computer's preferences before the synced look is applied.
-const FEEL:&[&str]=&["motion","anim","ripple","custom"];
+const FEEL:&[&str]=&["motion","anim","ripple","custom","pixelMode","signalRain"];
 fn portable_appearance(value:&Value)->Value{Value::Object(value.as_object().into_iter().flatten().filter(|(key,_)|!FEEL.contains(&key.as_str())).map(|(k,v)|(k.clone(),v.clone())).collect())}
 fn settings(value:Value)->Value{let mut out:serde_json::Map<String,Value>=value.as_object().into_iter().flatten().filter(|(key,_)|KEYS.contains(&key.as_str())).map(|(k,v)|(k.clone(),v.clone())).collect();if let Some(look)=out.get("rsAppearance").filter(|v|v.is_object()).cloned(){out.insert("rsAppearance".into(),portable_appearance(&look));}Value::Object(out)}
 fn with_feel(settings:&Value,device:&Value)->Value{let mut out=settings.clone();if let Some(look)=out.get_mut("rsAppearance").and_then(Value::as_object_mut){for key in FEEL{if let Some(v)=device.get(*key){look.insert((*key).into(),v.clone());}}}out}

@@ -266,11 +266,21 @@ html[data-pz-motion=full][data-desktop-gradients=on][data-pz-anim] .dock-btn:hov
   position:absolute;border-radius:50%;width:24px;height:24px;pointer-events:none;
   background:rgba(255,255,255,.38);transform:scale(0);animation:pz-ripple .42s ease-out forwards;
 }
+.dock-shell{overflow:hidden}
+.dock-shell>:not(.dock-rain){position:relative;z-index:1}
+.dock-rain{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;border-radius:inherit;opacity:.28}
+.dock-rain[hidden]{display:none!important}
+html[data-plazcode-pixel="1"] :is(.dock-shell,.dock-drawer,.dock-media-panel,.dock-banner,.dock-btn,.badge-ai,.status-pill,.dock-input-wrap,.status-card,.activity-item,.provider-grid,.provider-chip){border-radius:2px!important}
+html[data-plazcode-pixel="1"] .dock-shell{box-shadow:0 0 0 1px rgb(var(--pz-rgb)/.35),0 14px 36px -12px rgba(0,0,0,.78)}
+html[data-theme-tone=light]{--dock-surface:rgba(244,240,232,.95);--dock-card:rgba(234,228,216,.94);--dock-text:#171a20;--dock-muted:#4a505c;--dock-line:rgba(23,26,32,.18)}
+html[data-theme-tone=light] :is(.status-card,.dock-textarea){color:#171a20!important}
+html[data-theme-tone=light] .btn-primary{color:#ffffff!important}
 </style>
 </head>
 <body>
 <div class="dock-root">
   <div class="dock-shell" id="dockShell">
+    <canvas class="dock-rain" id="dockRainCanvas" aria-hidden="true" hidden></canvas>
     <!-- Upward Expandable Response & Progress Drawer -->
     <div class="dock-drawer" id="dockDrawer" hidden>
       <div class="drawer-head">
@@ -356,6 +366,12 @@ __PLAZCODE_I18N__
 __PLAZCODE_MEDIA_UI__
 </script>
 <script>
+__PLAZCODE_THEME_PRESETS__
+</script>
+<script>
+__PLAZCODE_BACKDROP_FX__
+</script>
+<script>
 (function () {
   var Boot = window.__PLAZCODE_DOCK_BOOT__ || {};
   var ApiUrl = Boot.apiUrl || "";
@@ -363,19 +379,28 @@ __PLAZCODE_MEDIA_UI__
   var I18n = window.PlazCodeI18n || null;
   function T(Text, Vars) { return I18n && I18n.t ? I18n.t(Text, Vars) : Text; }
 
-  var Themes = {
-    "default": { rgb: "233 186 83", accent: "#e9ba53", light: "#ffe0a1", bg: "#18140d" },
-    amethyst: { rgb: "165 113 255", accent: "#a571ff", light: "#d7b8ff", bg: "#0c0918" },
-    cyan: { rgb: "39 193 231", accent: "#27c1e7", light: "#a5eaff", bg: "#041017" },
-    rose: { rgb: "241 112 151", accent: "#f17097", light: "#ffbdd1", bg: "#160912" },
-    emerald: { rgb: "41 200 148", accent: "#29c894", light: "#a6f3d1", bg: "#05130f" },
-    graphite: { rgb: "156 170 192", accent: "#9caac0", light: "#e0e7f2", bg: "#0a0d13" },
-    crimson: { rgb: "239 85 105", accent: "#ef5569", light: "#ffb0bb", bg: "#16080c" },
-    ocean: { rgb: "70 146 246", accent: "#4692f6", light: "#a5ceff", bg: "#091323" },
-    copper: { rgb: "219 144 102", accent: "#db9066", light: "#f4c4a3", bg: "#17110f" },
-    aurora: { rgb: "102 211 184", accent: "#66d3b8", light: "#b4f6e7", bg: "#0c151b" },
-    orchid: { rgb: "205 137 235", accent: "#cd89eb", light: "#edc6ff", bg: "#150e1c" }
+  var Themes = (window.PlazCodeThemePresets && window.PlazCodeThemePresets.PRESETS) || {
+    "default": { rgb: "233 186 83", accent: "#e9ba53", light: "#ffe0a1", bg: "#18140d", tone: "dark" },
+    amethyst: { rgb: "165 113 255", accent: "#a571ff", light: "#d7b8ff", bg: "#0c0918", tone: "dark" },
+    cyan: { rgb: "39 193 231", accent: "#27c1e7", light: "#a5eaff", bg: "#041017", tone: "dark" },
+    rose: { rgb: "241 112 151", accent: "#f17097", light: "#ffbdd1", bg: "#160912", tone: "dark" },
+    emerald: { rgb: "41 200 148", accent: "#29c894", light: "#a6f3d1", bg: "#05130f", tone: "dark" },
+    graphite: { rgb: "156 170 192", accent: "#9caac0", light: "#e0e7f2", bg: "#0a0d13", tone: "dark" },
+    crimson: { rgb: "239 85 105", accent: "#ef5569", light: "#ffb0bb", bg: "#16080c", tone: "dark" },
+    ocean: { rgb: "70 146 246", accent: "#4692f6", light: "#a5ceff", bg: "#091323", tone: "dark" },
+    copper: { rgb: "219 144 102", accent: "#db9066", light: "#f4c4a3", bg: "#17110f", tone: "dark" },
+    aurora: { rgb: "102 211 184", accent: "#66d3b8", light: "#b4f6e7", bg: "#0c151b", tone: "dark" },
+    orchid: { rgb: "205 137 235", accent: "#cd89eb", light: "#edc6ff", bg: "#150e1c", tone: "dark" },
+    "midnight-slate": { rgb: "125 162 216", accent: "#7da2d8", light: "#c4daf8", bg: "#0b1018", tone: "dark" },
+    "obsidian-gold": { rgb: "245 196 81", accent: "#f5c451", light: "#ffe79e", bg: "#08080a", tone: "dark" },
+    "sunset-ember": { rgb: "255 122 89", accent: "#ff7a59", light: "#ffc1ae", bg: "#170d0c", tone: "dark" },
+    "sakura-dusk": { rgb: "245 154 189", accent: "#f59abd", light: "#ffd7e7", bg: "#140d18", tone: "dark" },
+    "nord-frost": { rgb: "136 192 208", accent: "#88c0d0", light: "#cce8f0", bg: "#0e141b", tone: "dark" },
+    "amber-terminal": { rgb: "255 176 0", accent: "#ffb000", light: "#ffe07a", bg: "#110d05", tone: "dark" },
+    "paper-light": { rgb: "45 91 158", accent: "#2d5b9e", light: "#1e4278", bg: "#f4f0e8", tone: "light" },
+    "mono-contrast": { rgb: "235 239 245", accent: "#ebeff5", light: "#ffffff", bg: "#050507", tone: "dark" }
   };
+  var DockRainCtrl = null;
 
   function Byid(Id) { return document.getElementById(Id); }
   function Ipc(Msg) { try { if (window.ipc && typeof window.ipc.postMessage === "function") window.ipc.postMessage(Msg); } catch (E) {} }
@@ -414,28 +439,44 @@ __PLAZCODE_MEDIA_UI__
   function ApplyAppearance(App) {
     App = App || {};
     var Root = document.documentElement;
-    var Base = Themes[App.theme] || Themes["default"];
-    var Accent = Base.accent, Light = Base.light, Bg = Base.bg, RgbStr = Base.rgb;
+    var ThemeKey = App.theme === "solar" ? "default" : App.theme;
+    var Base = Themes[ThemeKey] || Themes["default"];
+    var Accent = Base.accent, Light = Base.light, Bg = Base.bg, RgbStr = Base.rgb, Tone = Base.tone || "dark";
     var CustomRgb = HexToRgb(App.custom);
     if (CustomRgb) {
       Accent = App.custom;
       Light = RgbHex(MixRgb(CustomRgb, { r: 255, g: 255, b: 255 }, 0.56));
       Bg = RgbHex(MixRgb(CustomRgb, { r: 10, g: 12, b: 18 }, 0.88));
       RgbStr = CustomRgb.r + " " + CustomRgb.g + " " + CustomRgb.b;
+      Tone = "dark";
     }
     var Motion = (App.motion === "reduced" || App.motion === "off") ? App.motion : "full";
     var Glow = (App.glow === "off" || App.glow === "strong") ? App.glow : "subtle";
     var Grad = App.gradients === "off" ? "off" : "on";
+    var Pixel = App.pixelMode === true;
+    var Rain = App.signalRain === true && Motion !== "off";
 
     Root.setAttribute("data-pz-motion", Motion);
     Root.setAttribute("data-desktop-glow", Glow);
     Root.setAttribute("data-desktop-gradients", Grad);
+    Root.setAttribute("data-theme-tone", Tone);
+    if (Pixel) Root.setAttribute("data-plazcode-pixel", "1");
+    else if (typeof Root.removeAttribute === "function") Root.removeAttribute("data-plazcode-pixel");
+    else Root.toggleAttribute("data-plazcode-pixel", false);
     Root.toggleAttribute("data-pz-anim", App.anim !== false);
     Root.toggleAttribute("data-pz-ripple", App.ripple !== false);
     Root.style.setProperty("--orange", Accent);
     Root.style.setProperty("--orange2", Light);
     Root.style.setProperty("--bg", Bg);
     Root.style.setProperty("--pz-rgb", RgbStr);
+    try {
+      var RainCanvas = Byid("dockRainCanvas");
+      var Fx = typeof PlazCodeBackdropFx !== "undefined" ? PlazCodeBackdropFx : window.PlazCodeBackdropFx;
+      if (RainCanvas && Fx && typeof Fx.mount === "function") {
+        if (!DockRainCtrl) DockRainCtrl = Fx.mount(RainCanvas, { enabled: Rain, feel: Motion, rgb: RgbStr, alpha: 0.22 });
+        else DockRainCtrl.update({ enabled: Rain, feel: Motion, rgb: RgbStr, alpha: 0.22 });
+      }
+    } catch (E) {}
   }
   window.__plazcodeDockAppearance = ApplyAppearance;
 
