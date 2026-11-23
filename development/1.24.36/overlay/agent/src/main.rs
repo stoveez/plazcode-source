@@ -110,6 +110,7 @@ mod unity;
 mod platform;
 mod checkpoints;
 mod mcp_addons;
+mod mcp_server;
 mod connections;
 mod helper_socket;
 mod blockbench;
@@ -187,6 +188,8 @@ struct Args {
     update_ready_file: Option<PathBuf>,
     #[arg(long, default_value = "127.0.0.1:3000")]
     roblox_addr: String,
+    #[arg(long, help = "Run as a standard MCP stdio server bridging to the running PlazCode app")]
+    mcp_server: bool,
     #[arg(long, help = "Workspace root for the LOCAL (FS) engine [env: PLAZCODE_WORKSPACE_ROOT]")]
     workspace: Option<String>,
 }
@@ -1131,7 +1134,9 @@ fn main() {
                 tracing::error!("I/O reactor failed with a transient system-resource error; relaunched PlazCode");
                 std::process::exit(0);
             }
-        } else if std::thread::current().name().is_some_and(|name| name.starts_with("tokio-runtime-worker")) {
+        } else if std::env::args().any(|arg| arg == "--mcp-server")
+            || std::thread::current().name().is_some_and(|name| name.starts_with("tokio-runtime-worker"))
+        {
             // A panic inside a spawned task is contained by tokio. A modal
             // MessageBox on a runtime worker would stall that worker (and every
             // task queued on it), so it is logged without blocking.
@@ -1144,7 +1149,7 @@ fn main() {
         let msg = integrity::startup_error(&e,&platform::installation_root());
         #[cfg(any(windows,target_os="macos"))]
         // Headless and verification commands must fail on stderr, never wait for a modal dialog.
-        let verification_mode=std::env::args().any(|arg|matches!(arg.as_str(),"--headless"|"--verify-package"|"--verify-package-zip"|"--protection-info"));
+        let verification_mode=std::env::args().any(|arg|matches!(arg.as_str(),"--headless"|"--mcp-server"|"--verify-package"|"--verify-package-zip"|"--protection-info"));
         #[cfg(windows)]
         if !verification_mode {win_alert("PlazCode Agent failed to start", &msg);}
         #[cfg(target_os="macos")]
@@ -1176,6 +1181,9 @@ async fn start() -> anyhow::Result<()> {
         { println!("{}",linux_setup::command(action)?);return Ok(()); }
         #[cfg(not(target_os="linux"))]
         anyhow::bail!("--linux-setup {action} is only for Linux.");
+    }
+    if args.mcp_server {
+        return mcp_server::run_stdio(&args.roblox_addr).await;
     }
     #[cfg(target_os="macos")]
     platform::prepare_application_path();
@@ -1501,6 +1509,14 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/tools/browser", post(browser_tools_handler))
         .route("/api/mcp/catalog", get(mcp_catalog_handler))
         .route("/api/mcp/toggle", post(mcp_toggle_handler))
+        .route("/api/mcp/desktop-apps", get(mcp_desktop_apps_handler))
+        .route("/api/mcp/desktop-apps/connect", post(mcp_desktop_apps_connect_handler))
+        .route("/api/mcp/desktop-apps/disconnect", post(mcp_desktop_apps_disconnect_handler))
+        .route("/api/mcp/studio/tools", get(mcp_studio_tools_handler))
+        .route("/api/mcp/studio/call", post(mcp_studio_call_handler))
+        .route("/api/mcp/studio/resources", get(mcp_studio_resources_handler))
+        .route("/api/mcp/studio/resources/read", post(mcp_studio_resource_read_handler))
+        .route("/api/mcp", post(mcp_rpc_handler))
         .route("/api/connections", get(connections_handler))
         .route("/api/connections/setup", post(connections_setup_handler))
         .route("/api/desktop/control", post(desktop_control::post))
@@ -1540,7 +1556,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
 fn is_work_request(method: &axum::http::Method, path: &str) -> bool {
     method == axum::http::Method::POST && !matches!(path,
         "/api/desktop/profiles" | "/api/desktop/profile-picture" | "/api/desktop/update" | "/api/desktop/browser-agent" | "/api/show" | "/api/shutdown" | "/api/desktop/preferences" | "/api/preferences" | "/api/provider-pacing" |
-        "/api/desktop/restart" | "/api/desktop/clear-logs" | "/api/connect" | "/api/disconnect" | "/api/pair" | "/api/local-full" | "/api/mcp/toggle" | "/api/connections/setup" | "/api/debug/browser-log")
+        "/api/desktop/restart" | "/api/desktop/clear-logs" | "/api/connect" | "/api/disconnect" | "/api/pair" | "/api/local-full" | "/api/mcp/toggle" | "/api/mcp/desktop-apps/connect" | "/api/mcp/desktop-apps/disconnect" | "/api/mcp/studio/resources/read" | "/api/connections/setup" | "/api/debug/browser-log")
 }
 async fn track_tool_activity(request: axum::extract::Request, next: axum::middleware::Next) -> axum::response::Response {
     if is_work_request(request.method(),request.uri().path()) && request.uri().path()!="/api/stop" {
@@ -2602,6 +2618,277 @@ async fn mcp_toggle_handler(State(state): State<AppState>, Json(req): Json<McpTo
             Json(serde_json::json!({"ok": false, "error": error.to_string()})),
         ).into_response(),
     }
+}
+
+async fn mcp_desktop_apps_handler() -> impl IntoResponse {
+    match tokio::task::spawn_blocking(|| {
+        let env = mcp_server::PathEnv::from_process();
+        let exe = mcp_server::current_plazcode_command();
+        serde_json::json!({
+            "ok": true,
+            "exe": exe,
+            "bridge_url": format!("http://127.0.0.1:{}", BRIDGE_PORT),
+            "apps": mcp_server::inspect_all(&env, &exe),
+        })
+    }).await {
+        Ok(payload) => Json(payload).into_response(),
+        Err(error) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(),
+    }
+}
+
+async fn mcp_desktop_apps_connect_handler(Json(req): Json<mcp_server::AppActionRequest>) -> impl IntoResponse {
+    let outcome = tokio::task::spawn_blocking(move || {
+        let env = mcp_server::PathEnv::from_process();
+        let exe = mcp_server::current_plazcode_command();
+        mcp_server::connect_app(req.id, &env, &exe)
+    }).await.unwrap_or_else(|e| Err(anyhow::anyhow!(e.to_string())));
+    match outcome {
+        Ok(result) => Json(result).into_response(),
+        Err(error) => (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(),
+    }
+}
+
+async fn mcp_desktop_apps_disconnect_handler(Json(req): Json<mcp_server::AppActionRequest>) -> impl IntoResponse {
+    let outcome = tokio::task::spawn_blocking(move || {
+        let env = mcp_server::PathEnv::from_process();
+        let exe = mcp_server::current_plazcode_command();
+        mcp_server::disconnect_app(req.id, &env, &exe)
+    }).await.unwrap_or_else(|e| Err(anyhow::anyhow!(e.to_string())));
+    match outcome {
+        Ok(result) => Json(result).into_response(),
+        Err(error) => (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": error.to_string()}))).into_response(),
+    }
+}
+
+async fn bridge_studio_tools(state: &AppState) -> (Vec<serde_json::Value>, bool) {
+    let studio_up = state.ui.studio_running.load(Ordering::Relaxed)
+        || state.ui.mcp_alive.load(Ordering::Relaxed)
+        || std::env::var_os("PLAZCODE_MCP_COMMAND").is_some()
+        || std::env::var_os("ROBLOXSCRIPT_MCP_COMMAND").is_some();
+    let (live, connected) = if studio_up {
+        let probe = tokio::time::timeout(Duration::from_secs(6), async {
+            let mut mcp = state.roblox_mcp.lock().await;
+            match mcp.list_tools().await {
+                Ok(tools) => Ok(tools),
+                Err(error) if helper_is_dead(&error) => {
+                    mcp.reset().await;
+                    mcp.list_tools().await
+                }
+                Err(error) => Err(error),
+            }
+        }).await;
+        match probe {
+            Ok(Ok(primary)) => {
+                state.ui.set_roblox_tools(&primary, true);
+                (primary, true)
+            }
+            _ => (Vec::new(), false),
+        }
+    } else {
+        (Vec::new(), false)
+    };
+    (mcp_server::merge_studio_tools(live, state.workspace.ready()), connected)
+}
+
+async fn bridge_studio_call(state: &AppState, name: &str, args: serde_json::Value) -> serde_json::Value {
+    let args = if args.is_null() { serde_json::json!({}) } else { args };
+    if !args.is_object() {
+        return mcp_server::tool_error_result("invalid_arguments", "Tool arguments must be a JSON object.", serde_json::json!({"tool": name}));
+    }
+    let prefs = state.preferences.snapshot();
+    if name == mcp_server::STATUS_TOOL {
+        let studio_running = state.ui.studio_running.load(Ordering::Relaxed);
+        let mcp_alive = state.ui.mcp_alive.load(Ordering::Relaxed);
+        let (_, connected) = bridge_studio_tools(state).await;
+        return mcp_server::tool_success_result(serde_json::json!({
+            "ok": true,
+            "plazcode_running": true,
+            "version": env!("CARGO_PKG_VERSION"),
+            "studio_running": studio_running,
+            "mcp_alive": mcp_alive,
+            "studio_connected": connected || state.roblox_editor_connected.load(Ordering::Relaxed),
+            "read_only": prefs.read_only,
+            "confirm_delete": prefs.confirm_delete,
+            "workspace_ready": state.workspace.ready(),
+            "workspace_root": state.workspace.root_display(),
+        }).to_string(), Vec::new());
+    }
+    if name == luau_check::TOOL {
+        return match analyze_luau_tool(state, args).await {
+            Ok(out) => mcp_server::tool_success_result(out.text, out.images),
+            Err(error) => mcp_server::tool_error_result("analyze_luau_failed", &error.to_string(), serde_json::json!({"tool": name})),
+        };
+    }
+    if name == luau_service::LOOKUP_TOOL {
+        return match guarded_tool(state, "roblox", "", name, args, Duration::from_secs(90), false).await {
+            Ok(out) => mcp_server::tool_success_result(out.text, out.images),
+            Err(error) => mcp_server::tool_error_result("luau_lookup_failed", &error.to_string(), serde_json::json!({"tool": name})),
+        };
+    }
+    if name.starts_with("roblox_place_") || name == "roblox_lint_script" {
+        if !state.workspace.ready() {
+            return mcp_server::tool_error_result("workspace_not_ready", "No project folder is selected in PlazCode. Open or select a project folder in PlazCode to use local place file tools.", serde_json::json!({"workspace_ready": false}));
+        }
+        return match guarded_tool(state, "local", "", name, args, Duration::from_secs(60), false).await {
+            Ok(out) => mcp_server::tool_success_result(out.text, out.images),
+            Err(error) => mcp_server::tool_error_result("workspace_tool_error", &error.to_string(), serde_json::json!({"tool": name})),
+        };
+    }
+    if name.contains("__") {
+        return mcp_server::tool_error_result("unknown_tool", "External add-on tools are not exposed through PlazCode's Roblox Studio bridge.", serde_json::json!({"tool": name}));
+    }
+    let studio_up = state.ui.studio_running.load(Ordering::Relaxed)
+        || state.ui.mcp_alive.load(Ordering::Relaxed)
+        || std::env::var_os("PLAZCODE_MCP_COMMAND").is_some()
+        || std::env::var_os("ROBLOXSCRIPT_MCP_COMMAND").is_some();
+    if !studio_up {
+        return mcp_server::tool_error_result(
+            "studio_not_running",
+            "Roblox Studio is not open or Studio MCP is off. Open Roblox Studio, enable Assistant -> Manage MCP Servers -> Enable Studio as MCP server, then retry.",
+            serde_json::json!({
+                "studio_running": false,
+                "mcp_alive": false,
+                "tool": name
+            }),
+        );
+    }
+    match guarded_tool(state, "roblox", "", name, args, native_tool_timeout(name, None), false).await {
+        Ok(out) => mcp_server::tool_success_result(out.text, out.images),
+        Err(error) => {
+            let msg = error.to_string();
+            let code = if studio_text_disconnected(&msg) || msg.contains("MCP launcher is missing") || msg.contains("Studio ID unavailable") || msg.contains("not connected") {
+                "studio_not_running"
+            } else if msg.contains("Read-only") || msg.contains("permission") || msg.contains("confirm") {
+                "blocked_by_safety"
+            } else {
+                "studio_tool_error"
+            };
+            mcp_server::tool_error_result(code, &msg, serde_json::json!({
+                "tool": name,
+                "studio_running": state.ui.studio_running.load(Ordering::Relaxed),
+                "mcp_alive": state.ui.mcp_alive.load(Ordering::Relaxed)
+            }))
+        }
+    }
+}
+
+async fn bridge_read_resource(state: &AppState, uri: &str) -> Result<serde_json::Value, (i64, String, Option<serde_json::Value>)> {
+    match uri {
+        mcp_server::RESOURCE_STATUS_URI => {
+            let (tools, connected) = bridge_studio_tools(state).await;
+            let prefs = state.preferences.snapshot();
+            let body = serde_json::json!({
+                "ok": true,
+                "version": env!("CARGO_PKG_VERSION"),
+                "studio_running": state.ui.studio_running.load(Ordering::Relaxed),
+                "mcp_alive": state.ui.mcp_alive.load(Ordering::Relaxed),
+                "studio_connected": connected || state.roblox_editor_connected.load(Ordering::Relaxed),
+                "read_only": prefs.read_only,
+                "workspace_ready": state.workspace.ready(),
+                "workspace_root": state.workspace.root_display(),
+                "tool_count": tools.len()
+            });
+            Ok(serde_json::json!({"contents": [{"uri": uri, "mimeType": "application/json", "text": body.to_string()}]}))
+        }
+        mcp_server::RESOURCE_TOOLS_URI => {
+            let (tools, connected) = bridge_studio_tools(state).await;
+            let body = serde_json::json!({ "studio_connected": connected, "tools": tools });
+            Ok(serde_json::json!({"contents": [{"uri": uri, "mimeType": "application/json", "text": body.to_string()}]}))
+        }
+        mcp_server::RESOURCE_PLACE_URI => {
+            let studio_up = state.ui.studio_running.load(Ordering::Relaxed)
+                || state.ui.mcp_alive.load(Ordering::Relaxed)
+                || std::env::var_os("PLAZCODE_MCP_COMMAND").is_some();
+            let text = if !studio_up {
+                serde_json::json!({
+                    "ok": false,
+                    "code": "studio_not_running",
+                    "message": "Roblox Studio is not open or Studio MCP is off."
+                }).to_string()
+            } else {
+                match guarded_tool(state, "roblox", "", "get_studio_state", serde_json::json!({}), Duration::from_secs(15), false).await {
+                    Ok(out) => out.text,
+                    Err(error) => serde_json::json!({
+                        "ok": false,
+                        "code": "studio_not_running",
+                        "error": error.to_string()
+                    }).to_string(),
+                }
+            };
+            Ok(serde_json::json!({"contents": [{"uri": uri, "mimeType": "application/json", "text": text}]}))
+        }
+        _ => Err((-32002, format!("Resource not found: {uri}"), Some(serde_json::json!({"uri": uri})))),
+    }
+}
+
+async fn mcp_studio_tools_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let (tools, connected) = bridge_studio_tools(&state).await;
+    Json(serde_json::json!({
+        "ok": true,
+        "studio_running": state.ui.studio_running.load(Ordering::Relaxed),
+        "mcp_alive": state.ui.mcp_alive.load(Ordering::Relaxed),
+        "studio_connected": connected || state.roblox_editor_connected.load(Ordering::Relaxed),
+        "read_only": state.preferences.snapshot().read_only,
+        "tools": tools,
+    }))
+}
+
+async fn mcp_studio_call_handler(State(state): State<AppState>, Json(req): Json<mcp_server::BridgeCallRequest>) -> impl IntoResponse {
+    let name = req.name.trim().to_string();
+    if name.is_empty() {
+        return (axum::http::StatusCode::BAD_REQUEST, Json(mcp_server::tool_error_result("invalid_arguments", "Tool name is required.", serde_json::json!({})))).into_response();
+    }
+    Json(bridge_studio_call(&state, &name, req.arguments).await).into_response()
+}
+
+async fn mcp_studio_resources_handler() -> impl IntoResponse {
+    Json(serde_json::json!({ "ok": true, "resources": mcp_server::studio_resources_catalog() }))
+}
+
+async fn mcp_studio_resource_read_handler(State(state): State<AppState>, Json(req): Json<mcp_server::ResourceReadRequest>) -> impl IntoResponse {
+    match bridge_read_resource(&state, req.uri.trim()).await {
+        Ok(result) => Json(serde_json::json!({"ok": true, "contents": result["contents"]})).into_response(),
+        Err((_, msg, data)) => (axum::http::StatusCode::NOT_FOUND, Json(serde_json::json!({"ok": false, "error": msg, "data": data}))).into_response(),
+    }
+}
+
+async fn mcp_rpc_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+    let id = req.get("id").cloned().unwrap_or(serde_json::Value::Null);
+    let Some(method) = req.get("method").and_then(|v| v.as_str()) else {
+        return Json(mcp_server::rpc_error(id, -32600, "Invalid JSON-RPC request: missing method", None)).into_response();
+    };
+    let params = req.get("params").cloned().unwrap_or_else(|| serde_json::json!({}));
+    let reply = match method {
+        "initialize" => mcp_server::rpc_result(id, mcp_server::initialize_result(&params)),
+        "ping" | "notifications/initialized" | "notifications/cancelled" => mcp_server::rpc_result(id, serde_json::json!({})),
+        "tools/list" => {
+            let (tools, _) = bridge_studio_tools(&state).await;
+            mcp_server::rpc_result(id, serde_json::json!({ "tools": tools }))
+        }
+        "tools/call" => {
+            let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("").trim();
+            if name.is_empty() {
+                mcp_server::rpc_error(id, -32602, "Invalid params: 'name' must be a non-empty string", None)
+            } else {
+                let args = params.get("arguments").cloned().unwrap_or_else(|| serde_json::json!({}));
+                mcp_server::rpc_result(id, bridge_studio_call(&state, name, args).await)
+            }
+        }
+        "resources/list" => mcp_server::rpc_result(id, serde_json::json!({ "resources": mcp_server::studio_resources_catalog() })),
+        "resources/read" => {
+            let uri = params.get("uri").and_then(|v| v.as_str()).unwrap_or("").trim();
+            if uri.is_empty() {
+                mcp_server::rpc_error(id, -32602, "Invalid params: 'uri' must be a non-empty string", None)
+            } else {
+                match bridge_read_resource(&state, uri).await {
+                    Ok(result) => mcp_server::rpc_result(id, result),
+                    Err((code, msg, data)) => mcp_server::rpc_error(id, code, &msg, data),
+                }
+            }
+        }
+        _ => mcp_server::rpc_error(id, -32601, &format!("Method not found: {method}"), None),
+    };
+    Json(reply).into_response()
 }
 
 async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {
