@@ -744,7 +744,8 @@ const PlazCodeSkillsUI=(()=>{
    syncCurrentBuffer();
    let prev: any;
    try{prev=await request({action:'workbench_preview',id:current?.id||'new-skill',title:current?displayName(current):'New Skill',files:wbFiles});}
-   catch{prev=buildPreviewLocal(current?.id||'new-skill',current?displayName(current):'New Skill',wbFiles);}
+   catch{prev=null;}
+   if(!prev||typeof prev.total_chars!=='number')prev=buildPreviewLocal(current?.id||'new-skill',current?displayName(current):'New Skill',wbFiles);
    find('preview-meta').textContent=`${prev.file_count} file(s) · ${prev.total_chars.toLocaleString()} chars · ${prev.part_count} loader part(s) (60,000 chars/part)`;
    find('preview-body').textContent=prev.verbatim||'';
    find('preview-modal').hidden=false;
