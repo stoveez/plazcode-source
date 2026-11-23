@@ -9,6 +9,12 @@
 @keyframes pz-flow{from{--pz-x:0%}to{--pz-x:100%}}
 @keyframes pz-pulse{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.18)}}
 @keyframes pz-ripple{from{opacity:.42;transform:scale(0)}to{opacity:0;transform:scale(2.4)}}
+@keyframes pc-ultra-shine{from{background-position:200% 50%}to{background-position:-60% 50%}}
+@keyframes pc-hyper-glow{
+  0%,100%{border-color:rgba(255,255,255,.78);box-shadow:inset 0 1px 0 rgba(255,255,255,.32),0 14px 36px -12px rgba(0,0,0,.78),0 0 calc(28px * var(--pz-g)) -4px rgba(255,255,255,.46),0 0 calc(16px * var(--pz-g)) -2px rgba(210,246,255,.28)}
+  33%{border-color:rgba(255,222,238,.86);box-shadow:inset 0 1px 0 rgba(255,255,255,.36),0 14px 36px -12px rgba(0,0,0,.78),0 0 calc(30px * var(--pz-g)) -4px rgba(255,255,255,.52),0 0 calc(18px * var(--pz-g)) -2px rgba(255,216,232,.34)}
+  66%{border-color:rgba(217,255,236,.86);box-shadow:inset 0 1px 0 rgba(255,255,255,.36),0 14px 36px -12px rgba(0,0,0,.78),0 0 calc(30px * var(--pz-g)) -4px rgba(255,255,255,.52),0 0 calc(18px * var(--pz-g)) -2px rgba(210,246,255,.34)}
+}
 
 :root{
   --bg:#18140d;
@@ -99,6 +105,43 @@ html[data-pz-motion=off] *{
 html:not([data-pz-anim]) *{
   animation:none!important;
 }
+
+/* Hyper effort: mainly-white prismatic rainbow border, glow and label shimmer */
+.pc-ultra-label{font-weight:700;color:#f7f9ff}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .pc-ultra-label{background-image:linear-gradient(110deg,#ffffff 0%,#fffafd 22%,#ffd8e8 30%,#fff1dd 38%,#ffffff 48%,#d9ffec 57%,#d2f6ff 65%,#e7dcff 73%,#ffffff 84%,#ffffff 100%);background-size:260% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:pc-ultra-shine 3.2s linear infinite}
+}
+.dock-hyper-pill{
+  display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10.5px;letter-spacing:.02em;
+  background:linear-gradient(125deg,rgba(255,255,255,.16),rgba(255,222,238,.12) 40%,rgba(210,246,255,.14) 75%,rgba(255,255,255,.16));
+  border:1px solid rgba(255,255,255,.55);box-shadow:0 0 12px rgba(255,255,255,.22);flex:none;
+}
+html[data-desktop-thinking=ultracode] .dock-shell{
+  border-color:rgba(255,255,255,.78);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.30),0 14px 36px -12px rgba(0,0,0,.78),0 0 calc(28px * var(--pz-g)) -4px rgba(255,255,255,.46),0 0 calc(16px * var(--pz-g)) -2px rgba(210,246,255,.28);
+  animation:pc-hyper-glow 5.2s ease-in-out infinite;
+}
+html[data-desktop-thinking=ultracode] .dock-shell::before,
+html[data-desktop-thinking=ultracode] .dock-shell::after{
+  border-color:rgba(255,255,255,.82);
+}
+html[data-desktop-thinking=ultracode] .btn-primary{
+  border-color:rgba(255,255,255,.88)!important;
+  background:linear-gradient(125deg,#ffffff 0%,#fff9fc 25%,#ffe4ef 38%,#ffffff 52%,#e3fff2 68%,#dff6ff 82%,#ffffff 100%)!important;
+  color:#151821!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 6px 20px -4px rgba(255,255,255,.48)!important;
+}
+html[data-desktop-thinking=ultracode][data-desktop-glow=off] .dock-shell{
+  animation:none!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 14px 36px -12px rgba(0,0,0,.78)!important;
+}
+html[data-desktop-thinking=ultracode][data-desktop-glow=off] .dock-hyper-pill,
+html[data-desktop-thinking=ultracode][data-desktop-glow=off] .btn-primary{box-shadow:none!important}
+html[data-desktop-gradients=off] .dock-hyper-pill{background:rgba(255,255,255,.12)!important}
+html[data-desktop-thinking=ultracode][data-desktop-gradients=off] .btn-primary{background:#f2f6ff!important;color:#151821!important}
+html[data-pz-motion=reduced] .pc-ultra-label,html[data-pz-motion=off] .pc-ultra-label,html:not([data-pz-anim]) .pc-ultra-label{animation:none!important;background-position:38% 50%}
+@media(prefers-reduced-motion:reduce){.dock-shell,.pc-ultra-label{animation:none!important}.pc-ultra-label{background-position:38% 50%}}
+@media(forced-colors:active){.pc-ultra-label{animation:none!important;background:none!important;color:Highlight!important;-webkit-text-fill-color:currentColor!important}}
 
 /* Drawer & Popups (expand UPWARD above bottom strip) */
 .dock-drawer{
@@ -321,6 +364,7 @@ html[data-pz-motion=full][data-desktop-gradients=on][data-pz-anim] .dock-btn:hov
         <span class="status-dot" id="dockDot"></span>
         <span id="dockAiName">ChatGPT</span>
       </button>
+      <span class="dock-hyper-pill" id="dockHyperPill" hidden><span class="pc-ultra-label">Hyper</span></span>
       <span class="status-pill" id="dockStatusPill">Ready</span>
       <button type="button" class="dock-btn compact" id="dockOpenTabStrip" hidden>Open AI tab</button>
       <button type="button" class="dock-btn compact" id="dockHideBtn" title="Hide floating dock" aria-label="Hide floating dock">✕</button>
@@ -426,12 +470,18 @@ __PLAZCODE_MEDIA_UI__
     var Motion = (App.motion === "reduced" || App.motion === "off") ? App.motion : "full";
     var Glow = (App.glow === "off" || App.glow === "strong") ? App.glow : "subtle";
     var Grad = App.gradients === "off" ? "off" : "on";
+    var RawThinking = String(App.thinking_level || "").toLowerCase();
+    var IsHyper = App.is_hyper === true || RawThinking === "ultracode" || RawThinking === "hyper";
+    var Thinking = IsHyper ? "ultracode" : (RawThinking || "default");
 
     Root.setAttribute("data-pz-motion", Motion);
     Root.setAttribute("data-desktop-glow", Glow);
     Root.setAttribute("data-desktop-gradients", Grad);
+    Root.setAttribute("data-desktop-thinking", Thinking);
     Root.toggleAttribute("data-pz-anim", App.anim !== false);
     Root.toggleAttribute("data-pz-ripple", App.ripple !== false);
+    var HyperPill = Byid("dockHyperPill");
+    if (HyperPill) HyperPill.hidden = !IsHyper;
     Root.style.setProperty("--orange", Accent);
     Root.style.setProperty("--orange2", Light);
     Root.style.setProperty("--bg", Bg);

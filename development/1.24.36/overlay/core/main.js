@@ -2711,7 +2711,7 @@
       if (typeof PlazCodeLeanStartup !== 'undefined') tools.push({name:'plazcode_help',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_help,inputSchema:{type:'object',properties:{topic:{type:'string'},command:{type:'string'}}}});
       tools.push({name:'plazcode_skills',server:activeEngine(),description:'Read reusable methods with list/read/match. Bundled starter skills and skills imported from a folder (they list reference_files) return their files with read, a page at a time: pass resource (a file name from the list), offset and limit, and read the references this task needs before applying the skill. When the user states a lasting preference or rule about how or when to work (coding style, naming, structure, workflow), apply it and call action suggest once with a short title, a description and the instructions as steps; PlazCode shows the user a one-click Save as skill button and only their click saves it. Never save such preferences yourself; use save only when the user explicitly asks you to save a skill, with user_approved:true. Never suggest routine task steps or repeat a suggestion. Give it a concise descriptive title and detailed description explaining when it is useful, adaptable steps, pitfalls and verification checks. List before saving; update an existing skill with the same purpose (its id and revision) instead of adding a duplicate. Use a new unique ID only for a new method; set confirmed:false unless actually verified. Keep private project details in a project scope. Save observable methods, never hidden reasoning or raw chat logs. The user verifies candidates in Skills. Adapt methods to the current project; never blindly copy code.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','match','save','suggest']},id:{type:'string'},resource:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:24000},revision:{type:'integer'},query:{type:'string'},title:{type:'string'},description:{type:'string'},domain:{type:'string',enum:['all','roblox','local','blender','model','ui']},steps:{type:'array',items:{type:'string'}},pitfalls:{type:'array',items:{type:'string'}},verification:{type:'array',items:{type:'string'}},user_approved:{type:'boolean',description:'true only when the user asked for or agreed to this skill'},project_only:{type:'boolean',description:'suggest: true when the preference applies only to the current project'}},required:['action'],additionalProperties:false}});
       if (window.__rsThinkingLevel?.() === 'ultracode' && activeEngine() === 'roblox' && typeof PlazCodeUltracode !== 'undefined' && PlazCodeUltracode.runTool) {
-        tools.push({name:'ultralab_read',server:'roblox',description:'Open the Ultra pack: every skill, agent, reference, script and vault note. action list {prefix?} lists files; read {path, offset?, limit?} returns exact text in pages (follow next_offset for more); search {query, prefix?} finds matching lines in text files. Open the skills, scripts and Check-UI modules a task needs before you build. Read-only.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','search']},path:{type:'string'},prefix:{type:'string'},query:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:40000}},required:['action'],additionalProperties:false}});
+        tools.push({name:'ultralab_read',server:'roblox',description:'Open the Hyper pack: every skill, reference, script and fwjelaa vault note. action list {prefix?} lists files; read {path, offset?, limit?} returns exact text in pages (follow next_offset for more); search {query, prefix?} finds matching lines in text files. Open the skills, resources and scripts a task needs before you build. Read-only.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','search']},path:{type:'string'},prefix:{type:'string'},query:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:40000}},required:['action'],additionalProperties:false}});
         tools.push({name:'roblox_docs',server:'roblox',description:'Search the Roblox developer docs (create.roblox.com/docs) with query, or read one docs page with url (it must start with https://create.roblox.com/docs/). Use it to verify every Roblox API signature before you use it. Read-only.',inputSchema:{type:'object',properties:{query:{type:'string'},url:{type:'string'},max_chars:{type:'integer',minimum:500,maximum:60000}},additionalProperties:false}});
       }
       if (A.bridge && A.bridge.control_v2) {
@@ -3399,11 +3399,11 @@ return result`;
       const result=await bg({type:"templates",request:args});return result?.ok ? "Output of 'plazcode_templates':\n"+JSON.stringify(result) : "ERROR: "+String(result?.error || "Template bridge unavailable.");
     }
     if (name === "ultralab_read") {
-      if (window.__rsThinkingLevel?.() !== "ultracode" || typeof PlazCodeUltracode === "undefined" || !PlazCodeUltracode.runTool) return "ERROR: ultralab_read is available only at Ultra effort.";
+      if (window.__rsThinkingLevel?.() !== "ultracode" || typeof PlazCodeUltracode === "undefined" || !PlazCodeUltracode.runTool) return "ERROR: ultralab_read is available only at Hyper effort.";
       return "Output of 'ultralab_read':\n" + await PlazCodeUltracode.runTool(args);
     }
     if (name === "roblox_docs") {
-      if (window.__rsThinkingLevel?.() !== "ultracode") return "ERROR: roblox_docs is available only at Ultra effort.";
+      if (window.__rsThinkingLevel?.() !== "ultracode") return "ERROR: roblox_docs is available only at Hyper effort.";
       const a = args || {};
       const target = String(a.url || "").trim();
       const maxChars = Math.max(500, Math.min(60000, Math.floor(Number(a.max_chars)) || 24000));
@@ -3425,7 +3425,7 @@ return result`;
     if (name === "plazcode_skills") {
       try {
         if(!['list','read','match','save','suggest'].includes(args.action))throw Error('Use list, read, match, save or suggest. Confirmation and sharing belong in Skills.');
-        if(args.action==='read'&&/^(bundled-ultra-|bundled-ultragui-|bundled-ultracode-)/.test(String(args.id||'')))throw Error('The built-in Ultra skills moved: at Ultra effort open them with the ultralab_read tool (action list, then read).');
+        if(args.action==='read'&&/^(bundled-ultra-|bundled-ultragui-|bundled-ultracode-)/.test(String(args.id||'')))throw Error('The built-in Hyper skills moved: at Hyper effort open them with the ultralab_read tool (action list, then read).');
         if(args.action==='suggest'){
           const steps=(Array.isArray(args.steps)?args.steps:[args.steps]).map(step=>String(step||'').trim()).filter(Boolean).slice(0,30).map(step=>step.slice(0,1000));
           const title=String(args.title||'').trim().slice(0,100);
@@ -8195,7 +8195,7 @@ return result`;
     let thinkingLevel = "default";
     function renderEffort() {
       const node=root?.querySelector('#rs-effort');if(!node)return;
-      const names={default:'Default',low:'Low',mid:'Mid',high:'High',max:'Max',ultracode:'Ultra'};
+      const names={default:'Default',low:'Low',mid:'Mid',high:'High',max:'Max',ultracode:'Hyper'};
       const level=names[thinkingLevel]?thinkingLevel:'default';
       if(node.dataset.effort!==level){node.dataset.effort=level;node.querySelector('span').textContent=names[level];node.querySelector('span').classList.toggle('pc-ultra-label',level==='ultracode');}
     }
@@ -8308,11 +8308,11 @@ return result`;
       try{ chrome.storage.local.set({rsThinkingLevel: v}); }catch{}
       try{ window.__rsThinkingLevel = () => thinkingLevel; document.documentElement.dataset.rsThinking = thinkingLevel; renderEffort(); }catch{}
       buildMenu(); markModesChanged();
-      if (v !== "default") toast("Thinking level: " + (v==="ultracode"?"Ultra":v.toUpperCase()));
+      if (v !== "default") toast("Thinking level: " + (v==="ultracode"?"Hyper":v.toUpperCase()));
     }
     // ── Effort picker: clicking "Effort: …" in the bar opens a short list of levels ──
     (function(){
-      const LEVELS=[["default","Default"],["low","Low"],["mid","Mid"],["high","High"],["max","Max"],["ultracode","Ultra"]];
+      const LEVELS=[["default","Default"],["low","Low"],["mid","Mid"],["high","High"],["max","Max"],["ultracode","Hyper"]];
       let menu=null,cleanup=null;
       function close(focusBack){
         if(menu){menu.remove();menu=null;}
@@ -8877,9 +8877,9 @@ return result`;
               <div class="rs-sec-label"><span>Reasoning</span></div>
               <div class="rs-menu-note">How much the AI plans and self-reviews. Higher is slower and more careful. Extra Thinking is a separate toggle.</div>
               <div class="rs-thinking-row">
-                ${["default","low","mid","high","max","ultracode"].map(l => `<button class="rs-lvl-btn ${thinkingLevel===l?"on":""}" data-lvl="${l}" title="Set thinking level: ${l==="ultracode"?"Ultra":l}">${l==="ultracode"?'<span class="pc-ultra-label">Ultra</span>':l[0].toUpperCase()+l.slice(1)}</button>`).join("")}
+                ${["default","low","mid","high","max","ultracode"].map(l => `<button class="rs-lvl-btn ${thinkingLevel===l?"on":""}" data-lvl="${l}" title="Set thinking level: ${l==="ultracode"?"Hyper":l}">${l==="ultracode"?'<span class="pc-ultra-label">Hyper</span>':l[0].toUpperCase()+l.slice(1)}</button>`).join("")}
               </div>
-              <div class="rs-menu-note" id="rs-thinking-hint" style="margin-top:8px;">${thinkingLevel==="default" ? "Default — this site picks its own thinking depth." : `Level ${thinkingLevel.toUpperCase()} — applied on the next turn.`}</div>
+              <div class="rs-menu-note" id="rs-thinking-hint" style="margin-top:8px;">${thinkingLevel==="default" ? "Default — this site picks its own thinking depth." : `Level ${thinkingLevel==="ultracode"?"HYPER":thinkingLevel.toUpperCase()} — applied on the next turn.`}</div>
             </section>
           <section class="rs-menu-sec">
             <div class="rs-sec-label"><span>Automation</span></div>
@@ -11864,7 +11864,7 @@ function renderCards(panel) {
     function toast(msg) {
       const t = document.createElement("div");
       t.className = "rs-toast";
-      if(msg==="Thinking level: Ultra"){t.append(document.createTextNode("Thinking level: "));const label=document.createElement("span");label.className="pc-ultra-label";label.textContent="Ultra";t.append(label);}else t.textContent = msg;
+      if(msg==="Thinking level: Hyper"){t.append(document.createTextNode("Thinking level: "));const label=document.createElement("span");label.className="pc-ultra-label";label.textContent="Hyper";t.append(label);}else t.textContent = msg;
       root.appendChild(t);
       setTimeout(() => t.classList.add("show"), 10);
       setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 3500);

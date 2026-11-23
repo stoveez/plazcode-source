@@ -80,7 +80,7 @@ const PlazCodeFeatureGuide = (() => {
   "title": "Effort level (how deeply the AI thinks)",
   "group": "Bar",
   "where": "PlazCode bar (top of the chat) > Effort chip, or PlazCode menu (gear button on the bar) > Reasoning",
-  "does": "Sets how much the AI plans and checks itself. Higher is slower and more careful. Levels: Default, Low, Mid, High, Max and Ultra.",
+  "does": "Sets how much the AI plans and checks itself. Higher is slower and more careful. Levels: Default, Low, Mid, High, Max and Hyper.",
   "steps": [
    "Click the Effort chip under the PlazCode name on the bar.",
    "Pick a level from the list. It applies on the next message.",
@@ -96,6 +96,7 @@ const PlazCodeFeatureGuide = (() => {
    "reasoning",
    "thinking",
    "level",
+   "hyper",
    "ultra",
    "ultracode",
    "max",

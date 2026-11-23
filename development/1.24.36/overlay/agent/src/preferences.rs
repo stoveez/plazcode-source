@@ -223,6 +223,9 @@ impl DesktopPreferences {
         }
         if self.approval_mode.is_empty(){self.approval_mode=if self.perm_mode=="ask"{"ask"}else if !self.confirm_delete{"bypass"}else{"auto"}.into();}
         if !matches!(self.approval_mode.as_str(),"ask"|"auto"|"bypass"){self.approval_mode="ask".into();}
+        if self.thinking_level.eq_ignore_ascii_case("hyper") {
+            self.thinking_level = "ultracode".to_string();
+        }
         if !matches!(self.thinking_level.as_str(), "default" | "low" | "mid" | "high" | "max" | "ultracode") {
             self.thinking_level = "default".to_string();
         }
@@ -749,6 +752,8 @@ mod tests {
         prefs.appearance=Some(Appearance{theme:"solar".into(),glow:"strong".into(),gradients:"off".into(),motion:"wild".into(),anim:false,ripple:true,custom:None});
         prefs.normalize();assert_eq!(prefs.thinking_level,"ultracode");
         let appearance=prefs.appearance.unwrap();assert_eq!(appearance.theme,"default");assert_eq!(appearance.glow,"strong");assert_eq!(appearance.gradients,"off");assert_eq!(appearance.motion,"full");assert!(!appearance.anim&&appearance.ripple);
+        let mut hyper_prefs=DesktopPreferences::default();hyper_prefs.thinking_level="Hyper".into();
+        hyper_prefs.normalize();assert_eq!(hyper_prefs.thinking_level,"ultracode");
     }
     #[test]
     fn immediate_stop_default_and_selected_safe_mode_persist() {

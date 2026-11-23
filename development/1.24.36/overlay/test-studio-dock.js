@@ -298,19 +298,26 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
     motion: "reduced",
     anim: false,
     ripple: false,
+    thinking_level: "ultracode",
+    is_hyper: true,
     custom: "#33aa77",
   });
   assert.equal(attrs["data-pz-motion"], "reduced");
   assert.equal(attrs["data-desktop-glow"], "strong");
   assert.equal(attrs["data-desktop-gradients"], "on");
+  assert.equal(attrs["data-desktop-thinking"], "ultracode");
+  assert.equal(elems.dockHyperPill.hidden, false);
   assert(!("data-pz-anim" in attrs), "anim=false unsets data-pz-anim");
   assert(!("data-pz-ripple" in attrs), "ripple=false unsets data-pz-ripple");
   assert.equal(props["--orange"], "#33aa77");
 
-  uiCtx.window.__plazcodeDockAppearance({ motion: "off", glow: "off", gradients: "off", anim: true, ripple: true });
+  uiCtx.window.__plazcodeDockAppearance({ motion: "off", glow: "off", gradients: "off", thinking_level: "default", is_hyper: false, anim: true, ripple: true });
   assert.equal(attrs["data-pz-motion"], "off");
   assert.equal(attrs["data-desktop-glow"], "off");
   assert.equal(attrs["data-desktop-gradients"], "off");
+  assert.equal(attrs["data-desktop-thinking"], "default");
+  assert.equal(elems.dockHyperPill.hidden, true);
+  assert(dockHtml.includes("pc-hyper-glow") && dockHtml.includes("data-desktop-thinking=ultracode"));
 
   // 6. Verify live state refresh + offline banner + drag-drop video warning logic end-to-end
   nextMockState = {

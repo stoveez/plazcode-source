@@ -11,7 +11,7 @@ try{
   const main=fs.readFileSync('core/main.js','utf8'),start=main.indexOf('function personalMemoryContext()'),end=main.indexOf('  // ── Periodic system-prompt',start);
   assert(start>0&&end>start);w.eval(main.slice(start,end)+';window.context=personalMemoryContext;window.prompt=systemPrompt;');
   const compact=w.prompt(),notes=w.context();
-  assert(compact.includes('ULTRA —'),'selected Ultra policy must remain');assert(!notes.includes('OTHER PROJECT'));
+  assert(compact.includes('HYPER —'),'selected Hyper policy must remain');assert(!notes.includes('OTHER PROJECT'));
   assert(notes.length<3000,'long saved notes use bounded previews');assert(notes.includes('plazcode_memory action read, id note-'),'full notes remain addressable');
   const configured=w.P.sysMaxChars;w.P.sysMaxChars=0;const previous=w.prompt();w.P.sysMaxChars=configured;
   assert(compact.length<previous.length-15000,'reduce defaults and note previews without cutting custom instructions');
