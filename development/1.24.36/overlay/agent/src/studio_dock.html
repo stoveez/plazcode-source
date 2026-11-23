@@ -242,7 +242,7 @@ html:not([data-pz-anim]) *{
   border:1px solid color-mix(in srgb,var(--dock-line) 60%,rgb(var(--pz-rgb)) 40%);
   background:var(--pz-glass),var(--pz-flow-soft) var(--pz-x) 0/300% 100%,rgba(22,28,40,.86);
   color:var(--dock-text);font-size:12px;font-weight:650;white-space:nowrap;
-  transition:--pz-x .7s var(--pz-ease),transform .16s var(--pz-ease),border-color .18s,box-shadow .18s;
+  transition:transform .16s var(--pz-ease),border-color .18s,box-shadow .18s;
 }
 .dock-btn.compact{height:24px;min-width:24px;padding:0 7px;border-radius:7px;font-size:11px}
 .dock-btn:hover:not(:disabled){
@@ -250,9 +250,7 @@ html:not([data-pz-anim]) *{
   transform:translateY(-1px);
   box-shadow:0 4px 14px -6px rgb(var(--pz-rgb)/calc(.65 * var(--pz-g) + .2));
 }
-html[data-pz-motion=full][data-desktop-gradients=on][data-pz-anim] .dock-btn:hover:not(:disabled){
-  animation:pz-flow 2.4s linear infinite;
-}
+html[data-pz-asleep] *,html[data-pz-asleep] *::before,html[data-pz-asleep] *::after{animation-play-state:paused!important}
 .dock-btn:disabled{opacity:.42;cursor:not-allowed;transform:none}
 
 .btn-primary{
@@ -980,6 +978,145 @@ __PLAZCODE_MEDIA_UI__
   Byid("dockSendBtn").onclick = SendPrompt;
   Byid("dockEnhanceBtn").onclick = EnhancePrompt;
   Byid("dockStopBtn").onclick = StopAgent;
+
+  // Unified WAAPI gradient flow controller for dock buttons & pills (0ms freeze / 0% jump across hover swaps)
+  var PauseDockFlow = (function () {
+    var Pick = ".dock-btn,.badge-ai", FlowMap = new WeakMap(), Active = new Set();
+    function Reduced() {
+      try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (E) { return false; }
+    }
+    function CanFlow(Node) {
+      var Root = document.documentElement;
+      if (!Root) return false;
+      if (Root.getAttribute("data-desktop-gradients") === "off") return false;
+      if (Root.getAttribute("data-pz-motion") !== "full") return false;
+      if (!Root.hasAttribute("data-pz-anim")) return false;
+      if (Root.hasAttribute("data-pz-asleep") || document.hidden || Reduced()) return false;
+      if (!Node || Node.disabled) return false;
+      return true;
+    }
+    function PhaseOf(Node) {
+      var Entry = FlowMap.get(Node), Raw = NaN;
+      try {
+        if (typeof getComputedStyle === "function") {
+          var Val = parseFloat(getComputedStyle(Node).getPropertyValue("--pz-x"));
+          if (Number.isFinite(Val)) Raw = Val;
+        }
+      } catch (E) {}
+      if (Entry && Entry.anim && Entry.anim.playState === "running") {
+        var Time = Number(Entry.anim.currentTime);
+        if (Entry.kind === "flow" && Number.isFinite(Time) && Entry.duration > 0) {
+          var FlowVal = Entry.from + (Time / Entry.duration) * 100;
+          if (!Number.isFinite(Raw) || (Time > 0 && Math.abs(Raw - Entry.from) < 1e-4)) Raw = FlowVal;
+        } else if (Entry.kind === "settle") {
+          var Progress = null;
+          try { Progress = Entry.anim.effect && Entry.anim.effect.getComputedTiming ? Entry.anim.effect.getComputedTiming().progress : null; } catch (E) {}
+          if (typeof Progress === "number" && Number.isFinite(Progress)) {
+            var SettleVal = Entry.from + (Entry.to - Entry.from) * Progress;
+            if (!Number.isFinite(Raw) || (Progress > 0 && Math.abs(Raw - Entry.from) < 1e-4)) Raw = SettleVal;
+          }
+        }
+      }
+      if (!Number.isFinite(Raw)) Raw = Entry ? Entry.phase : 0;
+      return ((Raw % 50) + 50) % 50;
+    }
+    function StopFlow(Node, KeepPhase) {
+      var Entry = FlowMap.get(Node);
+      var Live = KeepPhase ? PhaseOf(Node) : 0;
+      if (Entry && Entry.anim) {
+        try { Entry.anim.cancel(); } catch (E) {}
+      }
+      Active.delete(Node);
+      if (KeepPhase) FlowMap.set(Node, { anim: null, phase: Live, kind: "idle", from: Live, to: Live, duration: 0 });
+      else FlowMap.delete(Node);
+      return Live;
+    }
+    function StartFlow(Node) {
+      if (!Node || !Node.animate || !CanFlow(Node)) return;
+      var Cur = StopFlow(Node, true);
+      try {
+        var Anim = Node.animate({ "--pz-x": [Cur + "%", (Cur + 100) + "%"] }, { duration: 2400, iterations: Infinity, easing: "linear" });
+        FlowMap.set(Node, { anim: Anim, phase: Cur, kind: "flow", from: Cur, to: Cur + 100, duration: 2400 });
+        Active.add(Node);
+        Anim.oncancel = function () {
+          var CurEntry = FlowMap.get(Node);
+          if (CurEntry && CurEntry.anim === Anim) { CurEntry.anim = null; Active.delete(Node); }
+        };
+      } catch (E) {}
+    }
+    function StartSettle(Node) {
+      if (!Node || !Node.animate) return;
+      var Entry = FlowMap.get(Node);
+      if (!Entry || Entry.kind !== "flow") return;
+      var Cur = StopFlow(Node, true);
+      var Rest = Math.round(Cur / 50) * 50;
+      if (Math.abs(Cur - Rest) < 0.5) { FlowMap.delete(Node); return; }
+      var Dur = 400 + Math.abs(Cur - Rest) * 16;
+      try {
+        var Anim = Node.animate({ "--pz-x": [Cur + "%", Rest + "%"] }, { duration: Dur, easing: "cubic-bezier(.22,1,.36,1)" });
+        FlowMap.set(Node, { anim: Anim, phase: Cur, kind: "settle", from: Cur, to: Rest, duration: Dur });
+        Active.add(Node);
+        var Done = function () {
+          var CurEntry = FlowMap.get(Node);
+          if (CurEntry && CurEntry.anim === Anim) { FlowMap.delete(Node); Active.delete(Node); }
+        };
+        Anim.onfinish = Done;
+        Anim.oncancel = function () {
+          var CurEntry = FlowMap.get(Node);
+          if (CurEntry && CurEntry.anim === Anim) { CurEntry.anim = null; Active.delete(Node); }
+        };
+      } catch (E) { FlowMap.delete(Node); }
+    }
+    document.addEventListener("pointerenter", function (E) {
+      var Node = E.target;
+      if (!Node || Node.nodeType !== 1 || !Node.matches || !Node.matches(Pick)) return;
+      if (E.relatedTarget && Node.contains(E.relatedTarget)) return;
+      StartFlow(Node);
+    }, true);
+    document.addEventListener("pointerleave", function (E) {
+      var Node = E.target;
+      if (!Node || Node.nodeType !== 1 || !Node.matches || !Node.matches(Pick)) return;
+      if (E.relatedTarget && Node.contains(E.relatedTarget)) return;
+      StartSettle(Node);
+    }, true);
+    return function () {
+      Array.from(Active).forEach(function (Node) { StopFlow(Node, false); });
+      Active.clear();
+    };
+  })();
+
+  (function () {
+    var Root = document.documentElement, SleepTimer = 0;
+    function ClearSleep() { if (SleepTimer && typeof clearTimeout === "function") clearTimeout(SleepTimer); SleepTimer = 0; }
+    function EnterSleep() {
+      ClearSleep();
+      Root.toggleAttribute("data-pz-asleep", true);
+      PauseDockFlow();
+    }
+    function Sleep() {
+      ClearSleep();
+      if (document.hidden) { EnterSleep(); return; }
+      if (typeof setTimeout === "function") {
+        SleepTimer = setTimeout(function () {
+          if (document.hidden || (typeof document.hasFocus === "function" && !document.hasFocus())) EnterSleep();
+        }, 1500);
+      }
+    }
+    function Wake() {
+      ClearSleep();
+      if (!document.hidden) Root.toggleAttribute("data-pz-asleep", false);
+    }
+    window.addEventListener("blur", Sleep);
+    window.addEventListener("focus", Wake);
+    document.addEventListener("pointerdown", Wake, true);
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) EnterSleep();
+      else {
+        if (typeof document.hasFocus !== "function" || document.hasFocus()) Wake();
+        RefreshState();
+      }
+    });
+  })();
 
   if (I18n && I18n.mountStatic && document.body) { I18n.mountStatic(document.body); }
   if (typeof ResizeObserver === "function") {

@@ -1106,6 +1106,7 @@ ol.flex-col-reverse > div.w-full:not(.mx-auto) > .rs-chip {
 /* Chips — minimal, tactile */
 .rs-chip {
   --cat: #8b8b93;
+  contain: layout style;
   display: block; width: fit-content; max-width: 100%;
   align-self: flex-start;
   margin: 6px 0; padding: 0;
@@ -1186,6 +1187,7 @@ ol.flex-col-reverse > div.w-full:not(.mx-auto) > .rs-chip {
 }
 /* scroll by exactly one tile → last frame == first frame → seamless loop */
 @keyframes rs-shimmer { from { background-position: 0 0; } to { background-position: 210px 0; } }
+html[data-rs-motion=off] .rs-chip.run,html[data-rs-motion=reduced] .rs-chip.run,#rs-root[hidden] .rs-chip.run,[hidden] .rs-chip.run{animation:none!important}
 
 /* ── toast ─────────────────────────────────────────────────── */
 .rs-toast {
@@ -5816,6 +5818,7 @@ html[data-rs-glow=off] :is(#rs-task-checklist,#rs-checklist-show){box-shadow:non
 @keyframes pc-ultra-shine{from{background-position:200% 50%}to{background-position:-60% 50%}}
 .pc-effort-picker{position:relative;display:inline-block;min-width:138px;max-width:100%}.pc-effort-picker>select[hidden]{display:none!important}.pc-effort-trigger{display:flex!important;align-items:center;justify-content:space-between;gap:14px;min-height:38px;width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid var(--stroke,var(--border,#414454));border-radius:8px;background:var(--canvas,var(--panel,#151821));color:var(--ink,var(--text,#e8ebf3));font:inherit;text-align:left;cursor:pointer}.pc-effort-trigger:focus-visible,.pc-effort-options>button:focus-visible{outline:2px solid var(--orange,var(--accent,#c5a1f9));outline-offset:2px}.pc-effort-options{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:2147483600;display:grid;gap:3px;max-height:280px;overflow:auto;padding:6px;border:1px solid var(--stroke,var(--border,#414454));border-radius:10px;background:var(--canvas,var(--panel,#151821));box-shadow:0 12px 32px #0007}.pc-effort-options[hidden]{display:none!important}.pc-effort-picker[data-open-up] .pc-effort-options{top:auto;bottom:calc(100% + 5px)}.pc-effort-options>button{display:block;width:100%;padding:8px 10px;min-height:32px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--ink,var(--text,#e8ebf3));text-align:left;font:inherit;cursor:pointer}.pc-effort-options>button[aria-selected=true]{border-color:var(--orange,var(--accent,#c5a1f9))}.pc-effort-options>button:hover{background:#ffffff12}
 @media(prefers-reduced-motion:reduce){.pc-ultra-label{animation:none!important;background-position:38% 50%}}
+html[data-rs-motion=off] .pc-ultra-label,html[data-rs-motion=reduced] .pc-ultra-label,#rs-root[hidden] .pc-ultra-label{animation:none!important;background-position:38% 50%}
 @media(forced-colors:active){.pc-ultra-label{animation:none!important;background:none!important;color:Highlight!important;-webkit-text-fill-color:currentColor!important}}
 
 /* Localized settings remain inside narrow viewports, independent of chat width. */
