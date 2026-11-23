@@ -1559,5 +1559,12 @@
   "Start a new Codex session or reopen Codex to load PlazCode.": "Avvia una nuova sessione di Codex o riapri Codex per caricare PlazCode.",
   "Restart OpenCode or reload its servers list to pick up PlazCode.": "Riavvia OpenCode o ricarica l'elenco dei server per rilevare PlazCode.",
   "Reload Antigravity or refresh its external servers list to pick up PlazCode.": "Ricarica Antigravity o aggiorna l'elenco dei server esterni per rilevare PlazCode.",
-  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "Riavvia Gemini CLI o esegui /mcp in Gemini CLI per verificare che PlazCode sia pronto."
+  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "Riavvia Gemini CLI o esegui /mcp in Gemini CLI per verificare che PlazCode sia pronto.",
+  "Dock shortcut": "Scorciatoia dock",
+  "Press shortcut…": "Premi scorciatoia…",
+  "Disable dock shortcut": "Disattiva scorciatoia dock",
+  "Reset dock shortcut": "Reimposta scorciatoia dock",
+  "Reset": "Reimposta",
+  "Global dock shortcut": "Scorciatoia globale dock",
+  "Include Ctrl, Alt, Shift, or Win.": "Includi Ctrl, Alt, Shift o Win."
 }

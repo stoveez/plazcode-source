@@ -1677,9 +1677,15 @@ fn preferences_response(state: &AppState, patch: &serde_json::Value, outcome: an
     if full != state.workspace.full_access() { state.workspace.set_full_access(full); }
     state.workspace.set_allowed_folders(&out.preferences.allowed_folders);
     if out.changed {
+        state.ui.studio_dock.update_hotkey(&out.preferences.dock_hotkey, Some(&state.ui));
+        state.ui.studio_dock.request_sync();
         let _ = state.ui.desktop_events.send(desktop_preferences_event(&state));
     }
-    let mut body = serde_json::json!({"ok": true, "preferences": state.preferences.wire_value()});
+    let mut body = serde_json::json!({
+        "ok": true,
+        "preferences": state.preferences.wire_value(),
+        "hotkeyError": state.ui.studio_dock.hotkey_error(),
+    });
     if let Some(warning) = out.save_warning { body["warning"] = serde_json::Value::String(warning); }
     if !out.skipped_stale.is_empty() { body["_plazcodeRejected"] = serde_json::json!(out.skipped_stale); }
     Json(body).into_response()
@@ -2182,6 +2188,7 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
         "logs": logs,
         "fatal": fatal,
         "preferences": state.preferences.snapshot(),
+        "hotkeyError": state.ui.studio_dock.hotkey_error(),
         "browser_agent": state.ui.browser_agent_snapshot(),
         "profile":state.accounts.active(),
         "profile_picture_revision":state.accounts.active().and_then(|p|profile_picture::revision(&p.id)),

@@ -110,6 +110,8 @@ pub struct DesktopPreferences {
     pub studio_dock_enabled: bool,
     #[serde(rename = "rsStudioDockPos", default, skip_serializing_if = "Option::is_none")]
     pub studio_dock_pos: Option<StudioDockPos>,
+    #[serde(rename = "rsDockHotkey", deserialize_with = "deserialize_dock_hotkey")]
+    pub dock_hotkey: String,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -166,7 +168,179 @@ impl Default for DesktopPreferences {
             full_startup: false, auto_debug: true, auto_fix_stop_play: true, multi_agent: false, playtest_check: true, ui_check: true,
             studio_dock_enabled: true,
             studio_dock_pos: None,
+            dock_hotkey: DEFAULT_DOCK_HOTKEY.to_string(),
         }
+    }
+}
+
+pub const DEFAULT_DOCK_HOTKEY: &str = "Alt+Space";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ParsedHotkey {
+    pub ctrl: bool,
+    pub alt: bool,
+    pub shift: bool,
+    pub win: bool,
+    pub vk: u32,
+    pub key_label: &'static str,
+}
+
+impl ParsedHotkey {
+    pub fn canonical(self) -> String {
+        let mut parts: Vec<&'static str> = Vec::with_capacity(5);
+        if self.ctrl { parts.push("Ctrl"); }
+        if self.alt { parts.push("Alt"); }
+        if self.shift { parts.push("Shift"); }
+        if self.win { parts.push("Win"); }
+        parts.push(self.key_label);
+        parts.join("+")
+    }
+
+    pub fn win_modifiers(self) -> u32 {
+        let mut mods = 0u32;
+        if self.alt { mods |= 0x0001; }
+        if self.ctrl { mods |= 0x0002; }
+        if self.shift { mods |= 0x0004; }
+        if self.win { mods |= 0x0008; }
+        mods
+    }
+}
+
+fn hotkey_key_from_token(token_lower: &str) -> Option<(u32, &'static str)> {
+    const LETTERS: [&str; 26] = [
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+        "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+    ];
+    const DIGITS: [&str; 10] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+    const FKEYS: [&str; 24] = [
+        "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+        "F13", "F14", "F15", "F16", "F17", "F18", "F19", "F20", "F21", "F22", "F23", "F24",
+    ];
+
+    if token_lower.len() == 1 {
+        let b = token_lower.as_bytes()[0];
+        if b.is_ascii_lowercase() {
+            let idx = (b - b'a') as usize;
+            return Some((0x41 + idx as u32, LETTERS[idx]));
+        }
+        if b.is_ascii_digit() {
+            let idx = (b - b'0') as usize;
+            return Some((0x30 + idx as u32, DIGITS[idx]));
+        }
+    }
+    if let Some(rest) = token_lower.strip_prefix('f') {
+        if let Ok(num) = rest.parse::<usize>() {
+            if (1..=24).contains(&num) {
+                return Some((0x70 + (num as u32 - 1), FKEYS[num - 1]));
+            }
+        }
+    }
+    match token_lower {
+        "space" | "spacebar" => Some((0x20, "Space")),
+        "tab" => Some((0x09, "Tab")),
+        "enter" | "return" => Some((0x0D, "Enter")),
+        "esc" | "escape" => Some((0x1B, "Esc")),
+        "backspace" | "back" => Some((0x08, "Backspace")),
+        "insert" | "ins" => Some((0x2D, "Insert")),
+        "delete" | "del" => Some((0x2E, "Delete")),
+        "home" => Some((0x24, "Home")),
+        "end" => Some((0x23, "End")),
+        "pageup" | "pgup" => Some((0x21, "PageUp")),
+        "pagedown" | "pgdn" => Some((0x22, "PageDown")),
+        "up" | "arrowup" => Some((0x26, "Up")),
+        "down" | "arrowdown" => Some((0x28, "Down")),
+        "left" | "arrowleft" => Some((0x25, "Left")),
+        "right" | "arrowright" => Some((0x27, "Right")),
+        "`" | "backquote" | "tilde" => Some((0xC0, "`")),
+        "-" | "minus" => Some((0xBD, "-")),
+        "=" | "equal" | "plus" => Some((0xBB, "=")),
+        "[" | "bracketleft" => Some((0xDB, "[")),
+        "]" | "bracketright" => Some((0xDD, "]")),
+        "\\" | "backslash" => Some((0xDC, "\\")),
+        ";" | "semicolon" => Some((0xBA, ";")),
+        "'" | "quote" => Some((0xDE, "'")),
+        "," | "comma" => Some((0xBC, ",")),
+        "." | "period" => Some((0xBE, ".")),
+        "/" | "slash" => Some((0xBF, "/")),
+        _ => None,
+    }
+}
+
+/// Parses and validates a global dock hotkey string (e.g. "Alt+Space", "Ctrl+Shift+P", or "" / "off").
+pub fn parse_hotkey(raw: &str) -> Result<Option<ParsedHotkey>, String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty()
+        || trimmed.eq_ignore_ascii_case("off")
+        || trimmed.eq_ignore_ascii_case("none")
+        || trimmed.eq_ignore_ascii_case("disabled")
+    {
+        return Ok(None);
+    }
+
+    let mut ctrl = false;
+    let mut alt = false;
+    let mut shift = false;
+    let mut win = false;
+    let mut key: Option<(u32, &'static str)> = None;
+
+    for part in trimmed.split('+') {
+        let tok = part.trim().to_ascii_lowercase();
+        if tok.is_empty() {
+            return Err("Invalid hotkey format: empty key token.".to_string());
+        }
+        match tok.as_str() {
+            "ctrl" | "control" => ctrl = true,
+            "alt" | "option" => alt = true,
+            "shift" => shift = true,
+            "win" | "super" | "meta" | "cmd" | "command" => win = true,
+            _ => {
+                let parsed = hotkey_key_from_token(&tok)
+                    .ok_or_else(|| format!("Unsupported hotkey key: '{}'.", part.trim()))?;
+                if key.is_some() {
+                    return Err("Hotkey may specify only one main key.".to_string());
+                }
+                key = Some(parsed);
+            }
+        }
+    }
+
+    if !(ctrl || alt || shift || win) {
+        return Err("Hotkey must include at least one modifier (Ctrl, Alt, Shift, or Win).".to_string());
+    }
+    let Some((vk, key_label)) = key else {
+        return Err("Hotkey must include a main key (for example Space, A-Z, or F1-F12).".to_string());
+    };
+
+    Ok(Some(ParsedHotkey {
+        ctrl,
+        alt,
+        shift,
+        win,
+        vk,
+        key_label,
+    }))
+}
+
+pub fn normalize_dock_hotkey(raw: &str) -> String {
+    match parse_hotkey(raw) {
+        Ok(Some(hk)) => hk.canonical(),
+        Ok(None) => String::new(),
+        Err(_) => DEFAULT_DOCK_HOTKEY.to_string(),
+    }
+}
+
+fn deserialize_dock_hotkey<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+    let value = serde_json::Value::deserialize(deserializer)?;
+    if value.is_null() {
+        return Ok(DEFAULT_DOCK_HOTKEY.to_string());
+    }
+    let raw = value
+        .as_str()
+        .ok_or_else(|| serde::de::Error::custom("rsDockHotkey must be a string"))?;
+    match parse_hotkey(raw) {
+        Ok(Some(hk)) => Ok(hk.canonical()),
+        Ok(None) => Ok(String::new()),
+        Err(err) => Err(serde::de::Error::custom(err)),
     }
 }
 
@@ -193,6 +367,7 @@ fn deserialize_approval_mode<'de,D:serde::Deserializer<'de>>(deserializer:D)->Re
 impl DesktopPreferences {
     pub fn normalize(&mut self) {
         self.language = normalize_language(&self.language).to_string();
+        self.dock_hotkey = normalize_dock_hotkey(&self.dock_hotkey);
         self.shared_learning=true; // mandatory privacy-safe global workflow learning
         self.input_char_limit=self.input_char_limit.clamp(1000,2000000);self.output_char_limit=self.output_char_limit.clamp(1000,2000000);
         self.tool_budget=self.tool_budget.min(1000);self.task_minutes=self.task_minutes.min(240);
