@@ -1851,6 +1851,15 @@ html[data-pz-studio][data-look-bg][data-look-blur] :is(.sidebar,.titlebar){-webk
             <div class="settingrow"><label>Autosave</label><span style="margin-left:auto;color:var(--green);font-size:11px;font-weight:700">Active</span></div>
             <div class="settingrow"><label>Version</label><span id="settingsVersion" style="margin-left:auto;font-size:11px">v__PLAZCODE_VERSION__ (Not checked)</span></div>
             <div class="settingrow"><label>Roblox Studio floating dock</label><div class="toggle" data-pref="rsStudioDockEnabled" role="switch" aria-label="Roblox Studio floating dock"></div></div>
+            <div class="settingrow" style="gap:8px;flex-wrap:wrap">
+              <label for="dockHotkeyInput">Dock shortcut</label>
+              <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+                <input id="dockHotkeyInput" type="text" data-pref="rsDockHotkey" readonly placeholder="Press shortcut…" aria-label="Dock shortcut" style="width:138px;background:#091522;border:1px solid #2c4260;color:#fff;border-radius:8px;padding:6px 10px;font:600 11px ui-monospace,Consolas,monospace;cursor:pointer;text-align:center">
+                <button class="softbtn" type="button" id="dockHotkeyClear" title="Disable dock shortcut">Off</button>
+                <button class="softbtn" type="button" id="dockHotkeyReset" title="Reset dock shortcut">Reset</button>
+              </div>
+            </div>
+            <p class="settinghelp" id="dockHotkeyStatus" role="status" hidden></p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="softbtn" type="button" id="resetStudioDockPos">Reset dock position</button><button class="accentbtn" data-ipc="hide">Hide to background</button><button class="dangerbtn" data-ipc="quit">Exit PlazCode</button></div>
           </div>
         </div>
@@ -2687,6 +2696,20 @@ __PLAZCODE_VERSION_UI__
       var Name = Element.getAttribute("data-pref");
       Element.classList.toggle("on", !!Preferences[Name]);
     });
+
+    var HotkeyInput = Byid("dockHotkeyInput");
+    if (HotkeyInput && !HotkeyInput.dataset.saving && !HotkeyInput.dataset.capturing) {
+      var RawHk = typeof Preferences.rsDockHotkey === "string" ? Preferences.rsDockHotkey : "Alt+Space";
+      HotkeyInput.dataset.rawValue = RawHk;
+      HotkeyInput.value = RawHk || (I18n ? I18n.t("Off") : "Off");
+    }
+    var HotkeyStatus = Byid("dockHotkeyStatus");
+    if (HotkeyStatus && !(HotkeyInput && HotkeyInput.dataset.capturing)) {
+      var HkErr = State && typeof State.hotkeyError === "string" ? State.hotkeyError : "";
+      HotkeyStatus.hidden = !HkErr;
+      HotkeyStatus.textContent = HkErr;
+      HotkeyStatus.style.color = HkErr ? "#ffb33f" : "";
+    }
   }
 
   function Patchpref(Name, Value) {
@@ -4149,6 +4172,102 @@ __PLAZCODE_VERSION_UI__
           .then(function () { return Refresh(); })
           .catch(Showerror);
       };
+    }
+
+    var HotkeyInput = Byid("dockHotkeyInput");
+    var HotkeyClear = Byid("dockHotkeyClear");
+    var HotkeyReset = Byid("dockHotkeyReset");
+    var HotkeyStatus = Byid("dockHotkeyStatus");
+    function DockT(Text) { return I18n ? I18n.t(Text) : Text; }
+    function CaptureHotkeyKey(E) {
+      var Code = String(E.code || "");
+      var KeyName = String(E.key || "");
+      if (Code === "Space" || KeyName === " ") return "Space";
+      if (/^Key([A-Z])$/.test(Code)) return Code.slice(3);
+      if (/^Digit([0-9])$/.test(Code)) return Code.slice(5);
+      if (/^F([1-9]|1[0-9]|2[0-4])$/i.test(KeyName)) return KeyName.toUpperCase();
+      if (/^[a-z0-9]$/i.test(KeyName)) return KeyName.toUpperCase();
+      var MapKeys = {
+        Tab: "Tab", Enter: "Enter", Escape: "Esc", Backspace: "Backspace",
+        Insert: "Insert", Delete: "Delete", Home: "Home", End: "End",
+        PageUp: "PageUp", PageDown: "PageDown",
+        ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right",
+        Backquote: "`", Minus: "-", Equal: "=", BracketLeft: "[", BracketRight: "]",
+        Backslash: "\\", Semicolon: ";", Quote: "'", Comma: ",", Period: ".", Slash: "/"
+      };
+      return MapKeys[Code] || MapKeys[KeyName] || "";
+    }
+    function SaveDockHotkey(NextValue) {
+      if (!HotkeyInput) return Promise.resolve();
+      HotkeyInput.dataset.saving = "1";
+      delete HotkeyInput.dataset.capturing;
+      return Patchpref("rsDockHotkey", NextValue).finally(function () {
+        if (HotkeyInput) delete HotkeyInput.dataset.saving;
+        if (HotkeyInput && State && State.preferences) Applypreferences(State.preferences);
+      });
+    }
+    if (HotkeyInput) {
+      var StartCapture = function () {
+        HotkeyInput.dataset.capturing = "1";
+        HotkeyInput.value = DockT("Press shortcut…");
+        if (HotkeyStatus) {
+          HotkeyStatus.hidden = true;
+          HotkeyStatus.textContent = "";
+        }
+      };
+      HotkeyInput.addEventListener("focus", StartCapture);
+      HotkeyInput.addEventListener("click", StartCapture);
+      HotkeyInput.addEventListener("blur", function () {
+        if (!HotkeyInput.dataset.capturing) return;
+        delete HotkeyInput.dataset.capturing;
+        var Raw = HotkeyInput.dataset.rawValue !== undefined ? HotkeyInput.dataset.rawValue : "Alt+Space";
+        HotkeyInput.value = Raw || DockT("Off");
+      });
+      HotkeyInput.addEventListener("keydown", function (E) {
+        if (typeof E.preventDefault === "function") E.preventDefault();
+        if (typeof E.stopPropagation === "function") E.stopPropagation();
+        var Key = String(E.key || "");
+        var AnyMod = !!(E.ctrlKey || E.altKey || E.shiftKey || E.metaKey);
+        if (Key === "Escape" && !AnyMod) {
+          delete HotkeyInput.dataset.capturing;
+          var Raw = HotkeyInput.dataset.rawValue !== undefined ? HotkeyInput.dataset.rawValue : "Alt+Space";
+          HotkeyInput.value = Raw || DockT("Off");
+          if (typeof HotkeyInput.blur === "function") HotkeyInput.blur();
+          return;
+        }
+        if ((Key === "Backspace" || Key === "Delete") && !AnyMod) {
+          SaveDockHotkey("");
+          if (typeof HotkeyInput.blur === "function") HotkeyInput.blur();
+          return;
+        }
+        if (Key === "Control" || Key === "Alt" || Key === "Shift" || Key === "Meta" || Key === "OS") return;
+        if (!AnyMod) {
+          if (HotkeyStatus) {
+            HotkeyStatus.hidden = false;
+            HotkeyStatus.style.color = "#ffb33f";
+            HotkeyStatus.textContent = DockT("Include Ctrl, Alt, Shift, or Win.");
+          }
+          return;
+        }
+        var MainKey = CaptureHotkeyKey(E);
+        if (!MainKey) return;
+        var Parts = [];
+        if (E.ctrlKey) Parts.push("Ctrl");
+        if (E.altKey) Parts.push("Alt");
+        if (E.shiftKey) Parts.push("Shift");
+        if (E.metaKey) Parts.push("Win");
+        Parts.push(MainKey);
+        var Combo = Parts.join("+");
+        HotkeyInput.value = Combo;
+        SaveDockHotkey(Combo);
+        if (typeof HotkeyInput.blur === "function") HotkeyInput.blur();
+      });
+    }
+    if (HotkeyClear) {
+      HotkeyClear.onclick = function () { SaveDockHotkey(""); };
+    }
+    if (HotkeyReset) {
+      HotkeyReset.onclick = function () { SaveDockHotkey("Alt+Space"); };
     }
   }
 

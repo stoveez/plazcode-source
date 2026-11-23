@@ -10,10 +10,10 @@ use axum::{
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use std::sync::{
-    atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering},
-    Arc, Mutex,
+    atomic::{AtomicBool, AtomicIsize, AtomicU32, AtomicU64, Ordering},
+    Arc, Condvar, Mutex,
 };
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::preferences::{DesktopPreferences, PreferencesStore, StudioDockPos};
 use crate::{now_ms, AppState};
@@ -24,6 +24,8 @@ pub const DOCK_MIN_HEIGHT_LOGICAL: i32 = 88;
 pub const DOCK_MAX_HEIGHT_LOGICAL: i32 = 468;
 pub const DOCK_BOTTOM_MARGIN_LOGICAL: i32 = 16;
 pub const DOCK_OFFSET_LIMIT: i32 = 8192;
+pub const DOCK_POLL_ACTIVE_MS: u64 = 120;
+pub const DOCK_POLL_IDLE_MS: u64 = 500;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AiSiteSpec {
@@ -314,6 +316,9 @@ pub struct DockVisibilityState {
     pub drag_active: bool,
     pub picker_open_until_ms: u64,
     pub requested_height_logical: i32,
+    pub hotkey_pinned: bool,
+    pub user_dismissed: bool,
+    pub pending_focus_on_ready: bool,
 }
 
 impl DockVisibilityState {
@@ -329,6 +334,27 @@ impl DockVisibilityState {
             height_logical.clamp(DOCK_MIN_HEIGHT_LOGICAL, DOCK_MAX_HEIGHT_LOGICAL);
     }
 
+    pub fn toggle_hotkey(&mut self, now_ms: u64) -> bool {
+        if self.visible {
+            self.visible = false;
+            self.hotkey_pinned = false;
+            self.user_dismissed = true;
+            false
+        } else {
+            self.visible = true;
+            self.hotkey_pinned = true;
+            self.user_dismissed = false;
+            self.last_studio_focus_ms = now_ms;
+            true
+        }
+    }
+
+    pub fn dismiss(&mut self) {
+        self.visible = false;
+        self.hotkey_pinned = false;
+        self.user_dismissed = true;
+    }
+
     pub fn step(
         &mut self,
         enabled: bool,
@@ -336,43 +362,97 @@ impl DockVisibilityState {
         fg: ForegroundKind,
         now_ms: u64,
     ) -> Option<(isize, RectPx)> {
-        if !enabled {
+        if let Some((hwnd, rect)) = studio {
+            if self.studio_hwnd.is_none() {
+                self.user_dismissed = false;
+            }
+            self.studio_hwnd = Some(hwnd);
+            self.last_studio_rect = Some(rect);
+        } else {
+            self.studio_hwnd = None;
+            self.drag_active = false;
+            if !self.hotkey_pinned {
+                self.visible = false;
+                return None;
+            }
+        }
+
+        if !enabled && !self.hotkey_pinned {
             self.visible = false;
             self.drag_active = false;
             return None;
         }
-        let Some((hwnd, rect)) = studio else {
+
+        if self.user_dismissed {
             self.visible = false;
-            self.studio_hwnd = None;
-            self.drag_active = false;
             return None;
-        };
-        self.studio_hwnd = Some(hwnd);
-        self.last_studio_rect = Some(rect);
+        }
 
         match fg {
             ForegroundKind::Studio => {
                 self.visible = true;
                 self.last_studio_focus_ms = now_ms;
+                if enabled {
+                    self.hotkey_pinned = false;
+                }
             }
             ForegroundKind::Dock => {
-                if self.visible || now_ms.saturating_sub(self.last_studio_focus_ms) < 5_000 {
+                if self.visible
+                    || self.hotkey_pinned
+                    || now_ms.saturating_sub(self.last_studio_focus_ms) < 5_000
+                {
                     self.visible = true;
                 }
             }
             ForegroundKind::Other => {
                 if !self.drag_active && now_ms >= self.picker_open_until_ms {
                     self.visible = false;
+                    self.hotkey_pinned = false;
                 }
             }
         }
 
         if self.visible {
-            Some((hwnd, rect))
+            studio
         } else {
             None
         }
     }
+}
+
+pub fn adaptive_poll_interval_ms(
+    dock_enabled: bool,
+    dock_visible: bool,
+    studio_present: bool,
+    fg: ForegroundKind,
+) -> u64 {
+    if dock_visible
+        || (dock_enabled && (studio_present || !matches!(fg, ForegroundKind::Other)))
+    {
+        DOCK_POLL_ACTIVE_MS
+    } else {
+        DOCK_POLL_IDLE_MS
+    }
+}
+
+pub fn should_push_state(last_sig: &mut String, next_serialized: &str) -> bool {
+    if last_sig == next_serialized {
+        false
+    } else {
+        *last_sig = next_serialized.to_owned();
+        true
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct DockPushPayload {
+    pub bridge_connected: bool,
+    pub dock_enabled: bool,
+    pub dock_hotkey: String,
+    #[serde(rename = "hotkeyError", skip_serializing_if = "Option::is_none")]
+    pub hotkey_error: Option<String>,
+    pub language: String,
+    pub appearance: DockAppearanceState,
 }
 
 /// Shared state bridged between the GUI event loop and HTTP handlers.
@@ -384,6 +464,10 @@ pub struct DockShared {
     pub force_sync: AtomicBool,
     pub requested_height: AtomicU64,
     pub pending_drag_offset: Mutex<Option<StudioDockPos>>,
+    pub hotkey_error: Mutex<Option<String>>,
+    pub hotkey_desired: Mutex<String>,
+    pub hotkey_thread_id: AtomicU32,
+    pub hotkey_cv: (Mutex<u64>, Condvar),
 }
 
 impl Default for DockShared {
@@ -402,11 +486,112 @@ impl DockShared {
             force_sync: AtomicBool::new(false),
             requested_height: AtomicU64::new(DOCK_MIN_HEIGHT_LOGICAL as u64),
             pending_drag_offset: Mutex::new(None),
+            hotkey_error: Mutex::new(None),
+            hotkey_desired: Mutex::new(crate::preferences::DEFAULT_DOCK_HOTKEY.to_string()),
+            hotkey_thread_id: AtomicU32::new(0),
+            hotkey_cv: (Mutex::new(0), Condvar::new()),
         }
     }
 
     pub fn request_sync(&self) {
         self.force_sync.store(true, Ordering::Relaxed);
+    }
+
+    pub fn set_hotkey_error(&self, err: Option<String>) {
+        if let Ok(mut slot) = self.hotkey_error.lock() {
+            *slot = err;
+        }
+    }
+
+    pub fn hotkey_error(&self) -> Option<String> {
+        self.hotkey_error
+            .lock()
+            .ok()
+            .and_then(|slot| slot.clone())
+    }
+
+    pub fn notify_hotkey_applied(&self) {
+        if let Ok(mut guard) = self.hotkey_cv.0.lock() {
+            *guard = guard.saturating_add(1);
+            self.hotkey_cv.1.notify_all();
+        }
+    }
+
+    pub fn update_hotkey(
+        &self,
+        raw_hotkey: &str,
+        ui_shared: Option<&Arc<crate::gui::UiShared>>,
+    ) {
+        let normalized = match crate::preferences::parse_hotkey(raw_hotkey) {
+            Ok(Some(hk)) => hk.canonical(),
+            Ok(None) => String::new(),
+            Err(err) => {
+                if let Some(ui) = ui_shared {
+                    ui.log(&format!("WARN invalid dock shortcut: {err}"));
+                }
+                self.set_hotkey_error(Some(err));
+                self.request_sync();
+                return;
+            }
+        };
+
+        let changed = {
+            let mut desired = self
+                .hotkey_desired
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            if *desired == normalized {
+                false
+            } else {
+                *desired = normalized.clone();
+                true
+            }
+        };
+        if !changed {
+            return;
+        }
+
+        let tid = self.hotkey_thread_id.load(Ordering::Acquire);
+        if tid == 0 {
+            self.set_hotkey_error(None);
+            self.request_sync();
+            return;
+        }
+
+        #[cfg(windows)]
+        {
+            let target_gen = {
+                let guard = self
+                    .hotkey_cv
+                    .0
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner());
+                *guard
+            };
+            if win32::post_hotkey_reload(tid) {
+                let guard = self
+                    .hotkey_cv
+                    .0
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner());
+                let _ = self.hotkey_cv.1.wait_timeout_while(
+                    guard,
+                    Duration::from_millis(80),
+                    |g| *g == target_gen,
+                );
+            }
+            if let Some(err) = self.hotkey_error() {
+                if let Some(ui) = ui_shared {
+                    ui.log(&format!("WARN {err}"));
+                }
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = ui_shared;
+            self.set_hotkey_error(None);
+        }
+        self.request_sync();
     }
 }
 
@@ -463,6 +648,8 @@ pub async fn state_handler(State(state): State<AppState>) -> impl IntoResponse {
         "dock_visible": dock_shared.dock_visible.load(Ordering::Relaxed),
         "dock_enabled": prefs.studio_dock_enabled,
         "dock_pos": prefs.studio_dock_pos,
+        "dock_hotkey": prefs.dock_hotkey,
+        "hotkeyError": dock_shared.hotkey_error(),
         "language": prefs.language,
         "appearance": appearance,
         "browser_agent": browser_agent,
@@ -801,6 +988,23 @@ mod win32 {
         bi_clr_important: u32,
     }
 
+    #[repr(C)]
+    #[derive(Clone, Copy, Default)]
+    pub struct Point {
+        pub x: i32,
+        pub y: i32,
+    }
+
+    #[repr(C)]
+    pub struct Msg {
+        pub hwnd: Hwnd,
+        pub message: u32,
+        pub wparam: usize,
+        pub lparam: isize,
+        pub time: u32,
+        pub pt: Point,
+    }
+
     const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
     const GA_ROOTOWNER: u32 = 3;
     const GW_OWNER: u32 = 4;
@@ -809,14 +1013,24 @@ mod win32 {
     const DIB_RGB_COLORS: u32 = 0;
     const SW_HIDE: i32 = 0;
     const SW_SHOWNOACTIVATE: i32 = 4;
+    const SW_SHOW: i32 = 5;
     pub const HWND_TOPMOST: isize = -1;
     pub const SWP_NOACTIVATE: u32 = 0x0010;
     pub const SWP_SHOWWINDOW: u32 = 0x0040;
     pub const SWP_NOZORDER: u32 = 0x0004;
+    const MOD_NOREPEAT: u32 = 0x4000;
+    const WM_HOTKEY: u32 = 0x0312;
+    const WM_QUIT: u32 = 0x0012;
+    const WM_APP_RELOAD_HOTKEY: u32 = 0x8001;
+    const WM_APP_QUIT_HOTKEY: u32 = 0x8002;
+    const PM_NOREMOVE: u32 = 0x0000;
+    const DOCK_HOTKEY_ID: i32 = 1;
+    const ERROR_HOTKEY_ALREADY_REGISTERED: u32 = 1409;
 
     #[link(name = "user32")]
     extern "system" {
         fn GetForegroundWindow() -> Hwnd;
+        fn SetForegroundWindow(hwnd: Hwnd) -> i32;
         fn GetAncestor(hwnd: Hwnd, flags: u32) -> Hwnd;
         fn GetWindow(hwnd: Hwnd, cmd: u32) -> Hwnd;
         fn GetWindowThreadProcessId(hwnd: Hwnd, pid: *mut u32) -> u32;
@@ -825,6 +1039,8 @@ mod win32 {
         fn GetWindowRect(hwnd: Hwnd, rect: *mut Rect) -> i32;
         fn EnumWindows(cb: extern "system" fn(Hwnd, isize) -> i32, lparam: isize) -> i32;
         fn MonitorFromWindow(hwnd: Hwnd, flags: u32) -> Hmonitor;
+        fn MonitorFromPoint(pt: Point, flags: u32) -> Hmonitor;
+        fn GetCursorPos(pt: *mut Point) -> i32;
         fn GetMonitorInfoW(hmon: Hmonitor, info: *mut MonitorInfo) -> i32;
         fn GetDpiForWindow(hwnd: Hwnd) -> u32;
         fn SetWindowPos(
@@ -839,6 +1055,11 @@ mod win32 {
         fn ShowWindow(hwnd: Hwnd, cmd: i32) -> i32;
         fn GetDC(hwnd: Hwnd) -> Hdc;
         fn ReleaseDC(hwnd: Hwnd, hdc: Hdc) -> i32;
+        fn RegisterHotKey(hwnd: Hwnd, id: i32, fs_modifiers: u32, vk: u32) -> i32;
+        fn UnregisterHotKey(hwnd: Hwnd, id: i32) -> i32;
+        fn PeekMessageW(msg: *mut Msg, hwnd: Hwnd, min: u32, max: u32, remove: u32) -> i32;
+        fn GetMessageW(msg: *mut Msg, hwnd: Hwnd, min: u32, max: u32) -> i32;
+        fn PostThreadMessageW(id_thread: u32, msg: u32, wparam: usize, lparam: isize) -> i32;
     }
 
     #[link(name = "kernel32")]
@@ -851,6 +1072,8 @@ mod win32 {
             size: *mut u32,
         ) -> i32;
         fn CloseHandle(handle: *mut c_void) -> i32;
+        fn GetCurrentThreadId() -> u32;
+        fn GetLastError() -> u32;
     }
 
     #[link(name = "gdi32")]
@@ -1012,6 +1235,33 @@ mod win32 {
         )
     }
 
+    pub fn active_monitor_work_area_and_scale() -> (RectPx, f64) {
+        let fg = unsafe { GetForegroundWindow() };
+        if !fg.is_null() {
+            return monitor_work_area_and_scale(fg as isize);
+        }
+        let mut pt = Point::default();
+        unsafe { GetCursorPos(&mut pt) };
+        let hmon = unsafe { MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST) };
+        let mut info = MonitorInfo {
+            cb_size: std::mem::size_of::<MonitorInfo>() as u32,
+            rc_monitor: Rect::default(),
+            rc_work: Rect::default(),
+            dw_flags: 0,
+        };
+        let ok = unsafe { GetMonitorInfoW(hmon, &mut info) } != 0;
+        let r = if ok { info.rc_work } else { Rect { left: 0, top: 0, right: 1920, bottom: 1080 } };
+        (
+            RectPx {
+                left: r.left,
+                top: r.top,
+                right: r.right,
+                bottom: r.bottom,
+            },
+            1.0,
+        )
+    }
+
     pub fn set_window_rect_no_activate(hwnd_val: isize, rect: RectPx, show: bool) {
         if hwnd_val == 0 {
             return;
@@ -1035,12 +1285,156 @@ mod win32 {
         }
     }
 
+    pub fn set_window_rect_focus(hwnd_val: isize, rect: RectPx) {
+        if hwnd_val == 0 {
+            return;
+        }
+        unsafe {
+            ShowWindow(hwnd_val as Hwnd, SW_SHOW);
+            SetWindowPos(
+                hwnd_val as Hwnd,
+                HWND_TOPMOST as Hwnd,
+                rect.left,
+                rect.top,
+                rect.width(),
+                rect.height(),
+                SWP_SHOWWINDOW,
+            );
+            SetForegroundWindow(hwnd_val as Hwnd);
+        }
+    }
+
     pub fn hide_window(hwnd_val: isize) {
         if hwnd_val != 0 {
             unsafe {
                 ShowWindow(hwnd_val as Hwnd, SW_HIDE);
             }
         }
+    }
+
+    pub fn post_hotkey_reload(tid: u32) -> bool {
+        if tid == 0 {
+            return false;
+        }
+        unsafe { PostThreadMessageW(tid, WM_APP_RELOAD_HOTKEY, 0, 0) != 0 }
+    }
+
+    pub fn post_hotkey_quit(tid: u32) {
+        if tid != 0 {
+            unsafe {
+                PostThreadMessageW(tid, WM_APP_QUIT_HOTKEY, 0, 0);
+            }
+        }
+    }
+
+    fn apply_thread_hotkey(desired: &str, registered: &mut bool) -> Option<String> {
+        if *registered {
+            unsafe { UnregisterHotKey(std::ptr::null_mut(), DOCK_HOTKEY_ID) };
+            *registered = false;
+        }
+        match crate::preferences::parse_hotkey(desired) {
+            Ok(None) => None,
+            Ok(Some(hk)) => {
+                let ok = unsafe {
+                    RegisterHotKey(
+                        std::ptr::null_mut(),
+                        DOCK_HOTKEY_ID,
+                        hk.win_modifiers() | MOD_NOREPEAT,
+                        hk.vk,
+                    )
+                };
+                if ok != 0 {
+                    *registered = true;
+                    None
+                } else {
+                    let code = unsafe { GetLastError() };
+                    let msg = if code == ERROR_HOTKEY_ALREADY_REGISTERED {
+                        format!(
+                            "Shortcut {} is already claimed by another app.",
+                            hk.canonical()
+                        )
+                    } else {
+                        format!(
+                            "Could not register shortcut {} (Win32 error {code}).",
+                            hk.canonical()
+                        )
+                    };
+                    Some(msg)
+                }
+            }
+            Err(err) => Some(err),
+        }
+    }
+
+    pub fn run_hotkey_loop(
+        ui_shared: std::sync::Arc<crate::gui::UiShared>,
+        proxy: tao::event_loop::EventLoopProxy<crate::gui::UiEvent>,
+        ready_tx: std::sync::mpsc::SyncSender<u32>,
+    ) {
+        let mut msg = Msg {
+            hwnd: std::ptr::null_mut(),
+            message: 0,
+            wparam: 0,
+            lparam: 0,
+            time: 0,
+            pt: Point::default(),
+        };
+        // Ensure a Win32 message queue exists before exposing our thread id.
+        unsafe { PeekMessageW(&mut msg, std::ptr::null_mut(), 0, 0, PM_NOREMOVE) };
+        let tid = unsafe { GetCurrentThreadId() };
+        ui_shared
+            .studio_dock
+            .hotkey_thread_id
+            .store(tid, std::sync::atomic::Ordering::Release);
+
+        let mut registered = false;
+        let initial = ui_shared
+            .studio_dock
+            .hotkey_desired
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        let err = apply_thread_hotkey(&initial, &mut registered);
+        if let Some(ref msg_text) = err {
+            tracing::warn!("{msg_text}");
+            ui_shared.log(&format!("WARN {msg_text}"));
+        }
+        ui_shared.studio_dock.set_hotkey_error(err);
+        ui_shared.studio_dock.notify_hotkey_applied();
+        let _ = ready_tx.send(tid);
+
+        loop {
+            let ret = unsafe { GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) };
+            if ret <= 0 {
+                break;
+            }
+            if msg.message == WM_HOTKEY && msg.wparam == DOCK_HOTKEY_ID as usize {
+                let _ = proxy.send_event(crate::gui::UiEvent::DockHotkeyToggle);
+            } else if msg.message == WM_APP_RELOAD_HOTKEY {
+                let desired = ui_shared
+                    .studio_dock
+                    .hotkey_desired
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .clone();
+                let err = apply_thread_hotkey(&desired, &mut registered);
+                if let Some(ref msg_text) = err {
+                    tracing::warn!("{msg_text}");
+                }
+                ui_shared.studio_dock.set_hotkey_error(err);
+                ui_shared.studio_dock.notify_hotkey_applied();
+            } else if msg.message == WM_APP_QUIT_HOTKEY || msg.message == WM_QUIT {
+                break;
+            }
+        }
+
+        if registered {
+            unsafe { UnregisterHotKey(std::ptr::null_mut(), DOCK_HOTKEY_ID) };
+        }
+        ui_shared
+            .studio_dock
+            .hotkey_thread_id
+            .store(0, std::sync::atomic::Ordering::Release);
     }
 
     pub fn capture_window_png(
@@ -1207,13 +1601,88 @@ pub fn has_visible_studio_window() -> bool {
 }
 
 #[cfg(any(windows, target_os = "macos"))]
+pub struct DockHotkeyGuard {
+    thread_id: Arc<AtomicU32>,
+    #[cfg(windows)]
+    join: Option<std::thread::JoinHandle<()>>,
+}
+
+#[cfg(any(windows, target_os = "macos"))]
+impl Drop for DockHotkeyGuard {
+    fn drop(&mut self) {
+        #[cfg(windows)]
+        {
+            let tid = self.thread_id.swap(0, Ordering::AcqRel);
+            if tid != 0 {
+                win32::post_hotkey_quit(tid);
+            }
+            if let Some(handle) = self.join.take() {
+                let _ = handle.join();
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = &self.thread_id;
+        }
+    }
+}
+
+#[cfg(any(windows, target_os = "macos"))]
+pub fn start_hotkey_listener(
+    shared: &Arc<crate::gui::UiShared>,
+    initial_hotkey: &str,
+    proxy: tao::event_loop::EventLoopProxy<crate::gui::UiEvent>,
+) -> DockHotkeyGuard {
+    let normalized = crate::preferences::normalize_dock_hotkey(initial_hotkey);
+    {
+        let mut desired = shared
+            .studio_dock
+            .hotkey_desired
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        *desired = normalized;
+    }
+
+    #[cfg(windows)]
+    {
+        let (tx, rx) = std::sync::mpsc::sync_channel::<u32>(1);
+        let shared_clone = shared.clone();
+        let thread_id = Arc::new(AtomicU32::new(0));
+        let thread_id_clone = thread_id.clone();
+        let join = std::thread::Builder::new()
+            .name("plazcode-dock-hotkey".to_string())
+            .spawn(move || {
+                win32::run_hotkey_loop(shared_clone, proxy, tx);
+            })
+            .ok();
+        if let Ok(tid) = rx.recv_timeout(Duration::from_secs(2)) {
+            thread_id_clone.store(tid, Ordering::Release);
+        }
+        DockHotkeyGuard { thread_id, join }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = proxy;
+        if let Err(err) = crate::preferences::parse_hotkey(initial_hotkey) {
+            shared.studio_dock.set_hotkey_error(Some(err));
+        } else {
+            shared.studio_dock.set_hotkey_error(None);
+        }
+        DockHotkeyGuard {
+            thread_id: Arc::new(AtomicU32::new(0)),
+        }
+    }
+}
+
+#[cfg(any(windows, target_os = "macos"))]
 pub struct StudioDockWindow {
     window: tao::window::Window,
     webview: wry::WebView,
     pub state: DockVisibilityState,
     last_applied_rect: Option<RectPx>,
-    last_appearance_sig: String,
-    last_bridge_connected: bool,
+    last_state_sig: String,
+    last_poll_at: Option<Instant>,
+    poll_interval_ms: u64,
     ready: bool,
 }
 
@@ -1279,8 +1748,9 @@ impl StudioDockWindow {
             webview,
             state: DockVisibilityState::new(),
             last_applied_rect: None,
-            last_appearance_sig: String::new(),
-            last_bridge_connected: false,
+            last_state_sig: String::new(),
+            last_poll_at: None,
+            poll_interval_ms: DOCK_POLL_IDLE_MS,
             ready: false,
         })
     }
@@ -1301,6 +1771,14 @@ impl StudioDockWindow {
         }
     }
 
+    fn focus_prompt_script(&self) {
+        if self.ready {
+            let _ = self
+                .webview
+                .evaluate_script("if(window.__plazcodeDockFocus)window.__plazcodeDockFocus();");
+        }
+    }
+
     pub fn handle_ipc(
         &mut self,
         msg: &str,
@@ -1309,7 +1787,12 @@ impl StudioDockWindow {
     ) {
         if msg == "dock:ready" {
             self.ready = true;
-            self.push_appearance(prefs);
+            let snapshot = prefs.snapshot();
+            self.push_state_if_changed(shared, &snapshot, true);
+            if self.state.pending_focus_on_ready {
+                self.state.pending_focus_on_ready = false;
+                self.focus_prompt_script();
+            }
             shared.studio_dock.request_sync();
             return;
         }
@@ -1325,6 +1808,11 @@ impl StudioDockWindow {
             self.state.picker_open_until_ms = 0;
             return;
         }
+        if msg == "dock:dismiss" {
+            self.state.dismiss();
+            self.apply_hidden(shared);
+            return;
+        }
         if msg == "dock:hide" {
             let _ = prefs.patch_synced(serde_json::json!({ "rsStudioDockEnabled": false }));
             let _ = shared.desktop_events.send(serde_json::json!({
@@ -1333,6 +1821,8 @@ impl StudioDockWindow {
                 "local_full": shared.full_access_enabled(),
             }));
             self.state.visible = false;
+            self.state.hotkey_pinned = false;
+            self.state.user_dismissed = false;
             self.apply_hidden(shared);
             return;
         }
@@ -1425,26 +1915,146 @@ impl StudioDockWindow {
         self.last_applied_rect = None;
     }
 
-    fn push_appearance(&mut self, prefs: &PreferencesStore) {
+    fn push_state_if_changed(
+        &mut self,
+        shared: &Arc<crate::gui::UiShared>,
+        prefs: &DesktopPreferences,
+        force_wake: bool,
+    ) {
         if !self.ready {
             return;
         }
-        let app = appearance_state_from_prefs(&prefs.snapshot());
-        let json = serde_json::to_string(&app).unwrap_or_default();
-        if json != self.last_appearance_sig {
-            self.last_appearance_sig = json.clone();
+        let payload = DockPushPayload {
+            bridge_connected: shared.extension_recent(),
+            dock_enabled: prefs.studio_dock_enabled,
+            dock_hotkey: prefs.dock_hotkey.clone(),
+            hotkey_error: shared.studio_dock.hotkey_error(),
+            language: prefs.language.clone(),
+            appearance: appearance_state_from_prefs(prefs),
+        };
+        let json = serde_json::to_string(&payload).unwrap_or_default();
+        if should_push_state(&mut self.last_state_sig, &json) {
             let script = format!(
-                "if(window.__plazcodeDockAppearance)window.__plazcodeDockAppearance({json});"
+                "if(window.__plazcodeDockState)window.__plazcodeDockState({json});\
+                 else if(window.__plazcodeDockAppearance)window.__plazcodeDockAppearance({});",
+                serde_json::to_string(&payload.appearance).unwrap_or_default()
             );
             let _ = self.webview.evaluate_script(&script);
+        } else if force_wake {
+            let _ = self
+                .webview
+                .evaluate_script("if(window.__plazcodeDockWake)window.__plazcodeDockWake();");
+        }
+    }
+
+    pub fn toggle_hotkey(
+        &mut self,
+        shared: &Arc<crate::gui::UiShared>,
+        prefs: &Arc<PreferencesStore>,
+    ) {
+        let dock_hwnd = self.hwnd_val();
+        shared.studio_dock.dock_hwnd.store(dock_hwnd, Ordering::Relaxed);
+        let now = sync_timestamp_ms();
+        let summoned = self.state.toggle_hotkey(now);
+        if !summoned {
+            self.apply_hidden(shared);
+            self.poll_interval_ms = DOCK_POLL_IDLE_MS;
+            self.last_poll_at = Some(Instant::now());
+            return;
+        }
+
+        let snapshot = prefs.snapshot();
+        #[cfg(windows)]
+        let (studio_opt, _fg) = win32::detect_focus_and_studio(dock_hwnd);
+        #[cfg(not(windows))]
+        let studio_opt: Option<(isize, RectPx)> = None;
+
+        if let Some((shwnd, srect)) = studio_opt {
+            self.state.studio_hwnd = Some(shwnd);
+            self.state.last_studio_rect = Some(srect);
+            shared.studio_dock.studio_hwnd.store(shwnd, Ordering::Relaxed);
+            shared.studio_dock.studio_focused.store(true, Ordering::Relaxed);
+        } else {
+            shared.studio_dock.studio_hwnd.store(0, Ordering::Relaxed);
+        }
+
+        #[cfg(windows)]
+        let (anchor, work, scale) = if let Some((shwnd, srect)) = studio_opt {
+            let (w, s) = win32::monitor_work_area_and_scale(shwnd);
+            (srect, w, s)
+        } else {
+            let (w, s) = win32::active_monitor_work_area_and_scale();
+            (w, w, s)
+        };
+        #[cfg(not(windows))]
+        let (anchor, work, scale) = {
+            let w = RectPx {
+                left: 0,
+                top: 0,
+                right: 1920,
+                bottom: 1080,
+            };
+            (studio_opt.map(|(_, r)| r).unwrap_or(w), w, 1.0)
+        };
+
+        let (rect, _lw, _lh) = compute_dock_rect(
+            anchor,
+            work,
+            scale,
+            self.state.requested_height_logical,
+            snapshot.studio_dock_pos.as_ref(),
+        );
+        self.last_applied_rect = Some(rect);
+        shared.studio_dock.dock_visible.store(true, Ordering::Relaxed);
+        self.poll_interval_ms = DOCK_POLL_ACTIVE_MS;
+        self.last_poll_at = Some(Instant::now());
+
+        #[cfg(windows)]
+        win32::set_window_rect_focus(dock_hwnd, rect);
+        #[cfg(not(windows))]
+        {
+            use tao::dpi::{PhysicalPosition, PhysicalSize};
+            self.window
+                .set_outer_position(PhysicalPosition::new(rect.left, rect.top));
+            self.window
+                .set_inner_size(PhysicalSize::new(rect.width() as u32, rect.height() as u32));
+            self.window.set_visible(true);
+        }
+        self.window.set_focus();
+
+        self.push_state_if_changed(shared, &snapshot, false);
+        if self.ready {
+            self.state.pending_focus_on_ready = false;
+            self.focus_prompt_script();
+        } else {
+            self.state.pending_focus_on_ready = true;
         }
     }
 
     pub fn sync(&mut self, shared: &Arc<crate::gui::UiShared>, prefs: &Arc<PreferencesStore>) {
+        let force = shared.studio_dock.force_sync.swap(false, Ordering::Relaxed);
+        if !force
+            && self
+                .last_poll_at
+                .is_some_and(|t| t.elapsed() < Duration::from_millis(self.poll_interval_ms))
+        {
+            return;
+        }
+        self.last_poll_at = Some(Instant::now());
+
         let dock_hwnd = self.hwnd_val();
         shared.studio_dock.dock_hwnd.store(dock_hwnd, Ordering::Relaxed);
         let snapshot = prefs.snapshot();
         let now = sync_timestamp_ms();
+
+        // Fast idle skip when dock auto-follow is off and dock is not currently shown/pinned.
+        if !snapshot.studio_dock_enabled && !self.state.hotkey_pinned && !self.state.visible {
+            shared.studio_dock.studio_focused.store(false, Ordering::Relaxed);
+            self.apply_hidden(shared);
+            self.poll_interval_ms = DOCK_POLL_IDLE_MS;
+            self.push_state_if_changed(shared, &snapshot, false);
+            return;
+        }
 
         #[cfg(windows)]
         let (studio_opt, fg) = win32::detect_focus_and_studio(dock_hwnd);
@@ -1465,13 +2075,63 @@ impl StudioDockWindow {
             .state
             .step(snapshot.studio_dock_enabled, studio_opt, fg, now);
 
+        self.poll_interval_ms = adaptive_poll_interval_ms(
+            snapshot.studio_dock_enabled,
+            self.state.visible,
+            studio_opt.is_some(),
+            fg,
+        );
+
         let Some((studio_hwnd, studio_rect)) = target else {
+            if self.state.visible && self.state.hotkey_pinned {
+                let was_visible = shared.studio_dock.dock_visible.load(Ordering::Relaxed);
+                if !was_visible || force || self.last_applied_rect.is_none() {
+                    #[cfg(windows)]
+                    let (work, scale) = win32::active_monitor_work_area_and_scale();
+                    #[cfg(not(windows))]
+                    let (work, scale) = (
+                        RectPx {
+                            left: 0,
+                            top: 0,
+                            right: 1920,
+                            bottom: 1080,
+                        },
+                        1.0,
+                    );
+                    let (rect, _lw, _lh) = compute_dock_rect(
+                        work,
+                        work,
+                        scale,
+                        self.state.requested_height_logical,
+                        snapshot.studio_dock_pos.as_ref(),
+                    );
+                    self.last_applied_rect = Some(rect);
+                    shared.studio_dock.dock_visible.store(true, Ordering::Relaxed);
+                    #[cfg(windows)]
+                    win32::set_window_rect_no_activate(dock_hwnd, rect, !was_visible);
+                    #[cfg(not(windows))]
+                    {
+                        use tao::dpi::{PhysicalPosition, PhysicalSize};
+                        self.window
+                            .set_outer_position(PhysicalPosition::new(rect.left, rect.top));
+                        self.window.set_inner_size(PhysicalSize::new(
+                            rect.width() as u32,
+                            rect.height() as u32,
+                        ));
+                        if !was_visible {
+                            self.window.set_visible(true);
+                        }
+                    }
+                }
+                self.push_state_if_changed(shared, &snapshot, !was_visible);
+                return;
+            }
             self.apply_hidden(shared);
+            self.push_state_if_changed(shared, &snapshot, false);
             return;
         };
 
         let was_visible = shared.studio_dock.dock_visible.load(Ordering::Relaxed);
-        let force = shared.studio_dock.force_sync.swap(false, Ordering::Relaxed);
 
         #[cfg(windows)]
         let (work, scale) = win32::monitor_work_area_and_scale(studio_hwnd);
@@ -1511,21 +2171,9 @@ impl StudioDockWindow {
                     self.window.set_visible(true);
                 }
             }
-            if !was_visible && self.ready {
-                let _ = self
-                    .webview
-                    .evaluate_script("if(window.__plazcodeDockWake)window.__plazcodeDockWake();");
-            }
         }
 
-        self.push_appearance(prefs);
-        let ext = shared.extension_recent();
-        if ext != self.last_bridge_connected && self.ready {
-            self.last_bridge_connected = ext;
-            let _ = self
-                .webview
-                .evaluate_script("if(window.__plazcodeDockWake)window.__plazcodeDockWake();");
-        }
+        self.push_state_if_changed(shared, &snapshot, !was_visible);
     }
 }
 
@@ -1724,6 +2372,8 @@ mod tests {
         assert_eq!(val["ok"], true);
         assert_eq!(val["dock_enabled"], true);
         assert_eq!(val["dock_pos"]["dx"], 85);
+        assert_eq!(val["dock_hotkey"], "Alt+Space");
+        assert!(val["hotkeyError"].is_null());
         assert_eq!(val["providers"].as_array().unwrap().len(), 19);
 
         let reset = position_handler(
@@ -1736,6 +2386,81 @@ mod tests {
         assert_eq!(prefs.snapshot().studio_dock_pos, None);
 
         let _ = std::fs::remove_dir_all(folder);
+    }
+
+    #[test]
+    fn adaptive_poll_interval_adapts_active_vs_idle() {
+        assert_eq!(
+            adaptive_poll_interval_ms(true, false, false, ForegroundKind::Other),
+            DOCK_POLL_IDLE_MS
+        );
+        assert_eq!(
+            adaptive_poll_interval_ms(false, false, true, ForegroundKind::Other),
+            DOCK_POLL_IDLE_MS
+        );
+        assert_eq!(
+            adaptive_poll_interval_ms(true, false, true, ForegroundKind::Other),
+            DOCK_POLL_ACTIVE_MS
+        );
+        assert_eq!(
+            adaptive_poll_interval_ms(false, true, false, ForegroundKind::Dock),
+            DOCK_POLL_ACTIVE_MS
+        );
+        assert_eq!(
+            adaptive_poll_interval_ms(true, true, true, ForegroundKind::Studio),
+            DOCK_POLL_ACTIVE_MS
+        );
+    }
+
+    #[test]
+    fn state_diffing_skips_redundant_ipc_pushes() {
+        let mut sig = String::new();
+        let a = serde_json::to_string(&DockPushPayload {
+            bridge_connected: false,
+            dock_enabled: true,
+            dock_hotkey: "Alt+Space".into(),
+            hotkey_error: None,
+            language: "en".into(),
+            appearance: appearance_state_from_prefs(&DesktopPreferences::default()),
+        })
+        .unwrap();
+        assert!(should_push_state(&mut sig, &a));
+        assert!(!should_push_state(&mut sig, &a));
+
+        let b = serde_json::to_string(&DockPushPayload {
+            bridge_connected: false,
+            dock_enabled: true,
+            dock_hotkey: "Ctrl+Shift+Space".into(),
+            hotkey_error: Some("conflict".into()),
+            language: "en".into(),
+            appearance: appearance_state_from_prefs(&DesktopPreferences::default()),
+        })
+        .unwrap();
+        assert!(should_push_state(&mut sig, &b));
+        assert!(!should_push_state(&mut sig, &b));
+    }
+
+    #[test]
+    fn hotkey_toggle_and_dismiss_visibility_flow() {
+        let mut st = DockVisibilityState::new();
+        let studio = Some((7, RectPx { left: 0, top: 0, right: 1600, bottom: 900 }));
+
+        // Summon even when auto-follow is off
+        assert!(st.toggle_hotkey(1_000));
+        assert!(st.visible && st.hotkey_pinned && !st.user_dismissed);
+        assert!(st.step(false, studio, ForegroundKind::Dock, 1_100).is_some());
+
+        // Second press hides cleanly and suppresses immediate Studio re-pop
+        assert!(!st.toggle_hotkey(1_200));
+        assert!(!st.visible && st.user_dismissed);
+        assert!(st.step(true, studio, ForegroundKind::Studio, 1_300).is_none());
+
+        // Summon again restores visibility, Escape dismiss hides again
+        assert!(st.toggle_hotkey(1_400));
+        assert!(st.visible);
+        st.dismiss();
+        assert!(!st.visible && st.user_dismissed);
+        assert!(st.step(true, studio, ForegroundKind::Studio, 1_500).is_none());
     }
 
     #[test]

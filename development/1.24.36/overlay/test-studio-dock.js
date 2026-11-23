@@ -197,6 +197,10 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
     'id="dockCaptureShot"',
     'id="dockQuickShotBtn"',
     'id="dockHideBtn"',
+    'id="dockHotkeyPill"',
+    'dock:dismiss',
+    '__plazcodeDockFocus',
+    '__plazcodeDockState',
     '/api/studio-dock/screenshot',
     '/api/studio-dock/open-ai',
     '/api/studio-dock/state',
@@ -215,8 +219,12 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
     assert(dockHtml.includes(token), "studio_dock.html contains " + token);
   }
 
-  // 4. desktop.html has explicit Roblox Studio floating dock toggle & position reset
+  // 4. desktop.html has explicit Roblox Studio floating dock toggle, hotkey controls & position reset
   assert(desktopHtml.includes('data-pref="rsStudioDockEnabled"'), "desktop.html exposes dock visibility toggle");
+  assert(desktopHtml.includes('data-pref="rsDockHotkey"'), "desktop.html exposes dock hotkey preference");
+  assert(desktopHtml.includes('id="dockHotkeyInput"'), "desktop.html exposes dock hotkey capture input");
+  assert(desktopHtml.includes('id="dockHotkeyReset"'), "desktop.html exposes dock hotkey reset button");
+  assert(desktopHtml.includes('id="dockHotkeyClear"'), "desktop.html exposes dock hotkey off button");
   assert(desktopHtml.includes('id="resetStudioDockPos"'), "desktop.html exposes reset dock position button");
 
   // 5. Simulate dock UI Feel mode application & appearance updates cleanly
@@ -224,6 +232,9 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
   const props = {};
   const elems = {};
   const elemListeners = {};
+  const docListeners = {};
+  const ipcSent = [];
+  let promptFocusCount = 0;
   const mkEl = (id) => {
     if (!elems[id]) {
       elemListeners[id] = {};
@@ -231,6 +242,7 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
         id,
         value: "",
         textContent: "",
+        title: "",
         offsetHeight: 88,
         hidden: false,
         disabled: false,
@@ -238,6 +250,7 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
         style: { setProperty: () => {}, height: "" },
         classList: { toggle: () => {}, add: () => {}, remove: () => {} },
         addEventListener: (ev, fn) => { (elemListeners[id][ev] = elemListeners[id][ev] || []).push(fn); },
+        focus: () => { if (id === "dockPrompt") promptFocusCount++; },
         replaceChildren: () => {},
         appendChild: () => {},
       };
@@ -246,6 +259,7 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
   };
   let nextMockState = null;
   const fakeDoc = {
+    hidden: false,
     documentElement: {
       lang: "en",
       dir: "ltr",
@@ -257,7 +271,7 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
     },
     getElementById: (id) => mkEl(id),
     createElement: () => mkEl("tmp-" + Math.random()),
-    addEventListener: () => {},
+    addEventListener: (ev, fn) => { (docListeners[ev] = docListeners[ev] || []).push(fn); },
   };
   function MockFileReader() {}
   MockFileReader.prototype.readAsDataURL = function () {
@@ -268,7 +282,7 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
     window: {
       __PLAZCODE_DOCK_BOOT__: { apiUrl: "http://127.0.0.1:3000", key: "k" },
       addEventListener: () => {},
-      ipc: { postMessage: () => {} },
+      ipc: { postMessage: (msg) => { ipcSent.push(String(msg)); } },
       crypto: { randomUUID: () => "u-1" },
     },
     fetch: async () => ({
@@ -341,7 +355,49 @@ assert.deepEqual(Array.from(dockSites, (s) => s.id), ALL_19, "all 19 AI provider
   assert.equal(elems.dockVideoWarn.hidden, false, "inline video warning shown when AI lacks nativeVideo");
   assert.equal(elems.dockSendBtn.disabled, true, "Send stays disabled while unsupported video is attached");
 
-  console.log("PASS Studio floating dock bridge, 19 AI providers, Feel modes, and UI shell checks.");
+  // 7. Verify hotkey pill updates, summon focus, and Escape popup-vs-dismiss behavior
+  uiCtx.window.__plazcodeDockState({ dock_hotkey: "Ctrl+Shift+Space", hotkeyError: "" });
+  assert.equal(elems.dockHotkeyPill.hidden, false);
+  assert.equal(elems.dockHotkeyPill.textContent, "Ctrl+Shift+Space");
+  assert(!elems.dockHotkeyPill.className.includes("error"));
+
+  uiCtx.window.__plazcodeDockState({ dock_hotkey: "Alt+Space", hotkeyError: "Shortcut Alt+Space is already claimed" });
+  assert.equal(elems.dockHotkeyPill.hidden, false);
+  assert(elems.dockHotkeyPill.className.includes("error"));
+  assert(elems.dockHotkeyPill.title.includes("claimed"));
+
+  uiCtx.window.__plazcodeDockState({ dock_hotkey: "", hotkeyError: "" });
+  assert.equal(elems.dockHotkeyPill.hidden, true, "hotkey pill hidden when hotkey disabled");
+
+  const focusBefore = promptFocusCount;
+  uiCtx.window.__plazcodeDockFocus();
+  assert.equal(promptFocusCount, focusBefore + 1, "summon focuses prompt textarea immediately");
+
+  // Escape closes open media panel and drawer first without dismissing the dock
+  ipcSent.length = 0;
+  // Media panel was opened by drop earlier; Escape closes it before hiding dock
+  assert.equal(elems.dockMediaPanel.hidden, false);
+  for (const fn of docListeners.keydown || []) {
+    fn({ key: "Escape", preventDefault: () => {} });
+  }
+  assert.equal(elems.dockMediaPanel.hidden, true, "Escape closes open media panel first");
+  assert(!ipcSent.includes("dock:dismiss"), "Escape does not hide dock while media panel was open");
+
+  elems.dockDrawerBtn.onclick(); // opens drawer
+  assert.equal(elems.dockDrawer.hidden, false);
+  for (const fn of docListeners.keydown || []) {
+    fn({ key: "Escape", preventDefault: () => {} });
+  }
+  assert.equal(elems.dockDrawer.hidden, true, "Escape closes open drawer before hiding dock");
+  assert(!ipcSent.includes("dock:dismiss"), "Escape does not hide dock while drawer was open");
+
+  // With all popups/panels closed, Escape hides the dock cleanly
+  for (const fn of docListeners.keydown || []) {
+    fn({ key: "Escape", preventDefault: () => {} });
+  }
+  assert(ipcSent.includes("dock:dismiss"), "Escape dismisses dock when no popup/menu/drawer is open");
+
+  console.log("PASS Studio floating dock bridge, 19 AI providers, Feel modes, hotkeys, and UI shell checks.");
 })().catch((err) => {
   console.error(err);
   process.exit(1);

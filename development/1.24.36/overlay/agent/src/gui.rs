@@ -340,6 +340,7 @@ pub(crate) enum UiEvent {
     JsEngine(String),
     OpenExternal(String),
     Dock(String),
+    DockHotkeyToggle,
 }
 
 #[cfg(any(windows, target_os = "macos"))]
@@ -452,6 +453,12 @@ document.addEventListener('DOMContentLoaded',function(){send('js-engine:'+naviga
     let mut look_failed = false;
     let mut dock: Option<crate::studio_dock::StudioDockWindow> = None;
     let mut dock_failed = false;
+    let mut last_studio_probe = Instant::now() - Duration::from_secs(1);
+    let _dock_hotkey_guard = crate::studio_dock::start_hotkey_listener(
+        &shared,
+        &_preferences.snapshot().dock_hotkey,
+        proxy.clone(),
+    );
     event_loop.run_return(|event, target, control_flow| {
         *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(100));
 
@@ -523,6 +530,20 @@ document.addEventListener('DOMContentLoaded',function(){send('js-engine:'+naviga
                     d.handle_ipc(&message, &shared, &_preferences);
                 }
             }
+            Event::UserEvent(UiEvent::DockHotkeyToggle) => {
+                if dock.is_none() && !dock_failed {
+                    match crate::studio_dock::StudioDockWindow::new(target, addr, pairing_key, proxy.clone()) {
+                        Ok(made) => dock = Some(made),
+                        Err(error) => {
+                            dock_failed = true;
+                            shared.log(&format!("Could not create Studio floating dock: {error}"));
+                        }
+                    }
+                }
+                if let Some(d) = dock.as_mut() {
+                    d.toggle_hotkey(&shared, &_preferences);
+                }
+            }
             Event::WindowEvent {
                 window_id,
                 event: WindowEvent::CloseRequested,
@@ -562,10 +583,18 @@ document.addEventListener('DOMContentLoaded',function(){send('js-engine:'+naviga
                         match control_look::ControlLook::new(target) { Ok(made) => look = Some(made), Err(error) => { look_failed = true; shared.log(&format!("Could not show the control glow on screen: {error}")); } }
                     }
                     if let Some(look) = look.as_mut() { look.sync(wanted); }
+                    let studio_hint = if shared.studio_running.load(Ordering::Relaxed) {
+                        true
+                    } else if dock.is_none()
+                        && last_studio_probe.elapsed() >= Duration::from_millis(crate::studio_dock::DOCK_POLL_IDLE_MS)
+                    {
+                        last_studio_probe = Instant::now();
+                        crate::studio_dock::has_visible_studio_window()
+                    } else {
+                        false
+                    };
                     let dock_wanted = _preferences.snapshot().studio_dock_enabled
-                        && (dock.is_some()
-                            || shared.studio_running.load(Ordering::Relaxed)
-                            || crate::studio_dock::has_visible_studio_window());
+                        && (dock.is_some() || studio_hint);
                     if dock_wanted && dock.is_none() && !dock_failed {
                         match crate::studio_dock::StudioDockWindow::new(target, addr, pairing_key, proxy.clone()) {
                             Ok(made) => dock = Some(made),

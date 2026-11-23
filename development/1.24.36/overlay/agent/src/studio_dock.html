@@ -205,6 +205,15 @@ html:not([data-pz-anim]) *{
   font-size:11px;color:var(--dock-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   flex:1;min-width:0;
 }
+.hotkey-pill{
+  display:inline-flex;align-items:center;padding:2px 6px;border-radius:6px;
+  border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);
+  color:var(--dock-muted);font:600 10px/1.2 ui-monospace,Consolas,monospace;
+  white-space:nowrap;flex:none;letter-spacing:.02em;
+}
+.hotkey-pill.error{
+  border-color:rgba(255,179,63,.55);background:rgba(255,179,63,.14);color:#ffd994;
+}
 
 .dock-strip-row{
   display:flex;align-items:flex-end;gap:6px;
@@ -322,6 +331,7 @@ html[data-pz-motion=full][data-desktop-gradients=on][data-pz-anim] .dock-btn:hov
         <span id="dockAiName">ChatGPT</span>
       </button>
       <span class="status-pill" id="dockStatusPill">Ready</span>
+      <span class="hotkey-pill" id="dockHotkeyPill" title="Global dock shortcut">Alt+Space</span>
       <button type="button" class="dock-btn compact" id="dockOpenTabStrip" hidden>Open AI tab</button>
       <button type="button" class="dock-btn compact" id="dockHideBtn" title="Hide floating dock" aria-label="Hide floating dock">✕</button>
     </div>
@@ -666,6 +676,16 @@ __PLAZCODE_MEDIA_UI__
     Byid("dockStatusPill").textContent = StatusText;
     Byid("dockStatusDetail").textContent = StatusText;
 
+    var HotkeyPill = Byid("dockHotkeyPill");
+    if (HotkeyPill) {
+      var HotkeyText = typeof St.dock_hotkey === "string" ? St.dock_hotkey : "Alt+Space";
+      var HotkeyErr = typeof St.hotkeyError === "string" ? St.hotkeyError : "";
+      HotkeyPill.hidden = !HotkeyText && !HotkeyErr;
+      HotkeyPill.textContent = HotkeyText || T("Off");
+      HotkeyPill.className = "hotkey-pill" + (HotkeyErr ? " error" : "");
+      HotkeyPill.title = HotkeyErr || T("Global dock shortcut");
+    }
+
     // Show "Open AI tab" right on the strip whenever offline or no AI tab selected
     Byid("dockOpenTabStrip").hidden = BridgeOn && HasAi;
 
@@ -821,6 +841,19 @@ __PLAZCODE_MEDIA_UI__
     }).catch(function () {});
   }
   window.__plazcodeDockWake = RefreshState;
+  window.__plazcodeDockState = function (Payload) {
+    if (!Payload || typeof Payload !== "object") return;
+    var Prev = DockState.state || {};
+    DockState.state = Object.assign({}, Prev, Payload);
+    Render();
+  };
+  window.__plazcodeDockFocus = function () {
+    var Prompt = Byid("dockPrompt");
+    if (Prompt && typeof Prompt.focus === "function") {
+      try { Prompt.focus(); } catch (E) {}
+    }
+    RefreshState();
+  };
 
   // Bind UI controls
   var Shell = Byid("dockShell");
@@ -918,6 +951,32 @@ __PLAZCODE_MEDIA_UI__
     }
   });
 
+  function HasOpenDockPopup() {
+    return !!(DockState.providersOpen || DockState.mediaOpen || DockState.drawerOpen ||
+      (document.querySelector && document.querySelector('[role="menu"]:not([hidden]), .dropdown.open, [aria-expanded="true"]')));
+  }
+  document.addEventListener("keydown", function (E) {
+    if (E.key !== "Escape" || E.defaultPrevented) return;
+    if (DockState.providersOpen) {
+      DockState.providersOpen = false;
+      Render();
+      return;
+    }
+    if (DockState.mediaOpen) {
+      DockState.mediaOpen = false;
+      Render();
+      return;
+    }
+    if (DockState.drawerOpen) {
+      DockState.drawerOpen = false;
+      Render();
+      return;
+    }
+    if (HasOpenDockPopup()) return;
+    if (typeof E.preventDefault === "function") E.preventDefault();
+    Ipc("dock:dismiss");
+  });
+
   Byid("dockSendBtn").onclick = SendPrompt;
   Byid("dockEnhanceBtn").onclick = EnhancePrompt;
   Byid("dockStopBtn").onclick = StopAgent;
@@ -927,7 +986,11 @@ __PLAZCODE_MEDIA_UI__
     new ResizeObserver(SyncHeight).observe(Shell);
   }
   RefreshState();
-  setInterval(RefreshState, 650);
+  setInterval(function () {
+    if (document.hidden) return;
+    if (DockState.state && DockState.state.dock_visible === false) return;
+    RefreshState();
+  }, 650);
   Ipc("dock:ready");
 })();
 </script>
