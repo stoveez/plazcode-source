@@ -1,10 +1,12 @@
 ---
 title: DeepSeek send pacing
-updated: 2026-11-02
+updated: 2026-11-23
 ---
 # DeepSeek send pacing
 
-**Current 1.24.30:** install-wide persisted native leases/cooldowns cover Chrome/Firefox/tabs/profiles on this computer, including Continue, manual activity and direct UI/library calls. Stop/chat changes cancel queues, one actual click requires delivery evidence, limits pause safely and missing bridge fails closed. No coordination across computers or suspension guarantee. Details: [safety follow-up](deepseek-safety-followup-2026-11-02.md).
+**Current 1.24.36 (DeepSeek Anti-Ban Shield v5):** layered on top of the preserved 1.24.30 native leases/cooldowns via `core/deepseek-antiban.ts` (loaded after `providers/deepseek.js` and before `core/main.js` in the DeepSeek `manifest.json` block) plus `provider_pacing.rs` v5 state. Enforces an exact `5.0s` post-tool slow send (`bellJitterMs` + hidden-tab grace), a `4`-tool `20s` heat-reset cooldown, a `0–100%` heat meter (`<20%` Safe, `>=20%` Heated, `>80%` `15s` cooldown), a `3`-turn Safe Checkpoint (`Resume`, `MAX_EMPTY=0`, `MAX_TRUNC=1`, `MAX_PARSE_ERR=1`), rolling `2m` (`3` sends), `10m` (`9/8`), `1h` (`24/20`), and `24h` (`90`) cross-tab quotas (`plazcodeDeepSeekGuardV5`), Dual-Tier cooldown (`25s` breather) vs `5m` Risk Lock (`Reset Shield`, never retrying into active warnings), `humanClick` interior pointer/mouse dispatch, `humanFillText` burst typing (`<=140` chars) + `1.15–5.0s` review dwell, `>22,000`-char output compaction, and early Turnstile/GeeTest/Yidun/CAPTCHA/WAF DOM scanning. Live DeepSeek account behavior remains untested; no ban-prevention guarantee.
+
+**Previous 1.24.30:** install-wide persisted native leases/cooldowns cover Chrome/Firefox/tabs/profiles on this computer, including Continue, manual activity and direct UI/library calls. Stop/chat changes cancel queues, one actual click requires delivery evidence, limits pause safely and missing bridge fails closed. No coordination across computers or suspension guarantee. Details: [safety follow-up](deepseek-safety-followup-2026-11-02.md).
 
 **New verified source-only fix:** [false startup Send paused warning](deepseek-startup-warning-2026-11-02.md). Fresh chat address may arrive before message DOM; provisionally wait for proof of our own new message. Typed owner cancellations are diagnostics, real send failures stay visible. Native pacing retained. Existing delivered guest ZIPs lack this new fix. Final full local JS has 0 failures; Chromium/Firefox and safeguard checks pass.
 

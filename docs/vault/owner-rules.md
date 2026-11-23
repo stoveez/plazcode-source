@@ -1,6 +1,6 @@
 ---
 title: Owner rules (short form)
-updated: 2026-10-24
+updated: 2026-11-23
 ---
 # Owner rules
 

@@ -255,6 +255,7 @@
         "core/studio_plus.js",
         "core/agent_skills.js",
         "providers/deepseek.js",
+        "core/deepseek-antiban.js",
         "core/activity.js",
         "core/checklist.js",
         "core/memory.js",
