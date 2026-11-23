@@ -1185,7 +1185,8 @@ const PlazCodeFeatureGuide = (() => {
    "review first"
   ],
   "anchors": [
-   "mode:plan"
+   "mode:plan",
+   "bar:rs-plan"
   ],
   "surfaces": [
    "extension"

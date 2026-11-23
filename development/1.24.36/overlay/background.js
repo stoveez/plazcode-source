@@ -2776,6 +2776,30 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         noteRunBeat(tabId, msg.running === true);
         sendResponse({ ok: true });
         break;
+      case "rs-dock-feed": {
+        if (rustMode && msg.tool) {
+          try {
+            await bridgeFetch("http://127.0.0.1:3000/api/studio-dock/feed", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id: typeof msg.id === "string" ? msg.id : undefined,
+                tool: String(msg.tool || ""),
+                status: String(msg.status || "running"),
+                detail: typeof msg.detail === "string" ? msg.detail : "",
+                ts: typeof msg.ts === "number" ? msg.ts : Date.now(),
+              }),
+              signal: AbortSignal.timeout(3000),
+            });
+          } catch {}
+        }
+        sendResponse({ ok: true });
+        break;
+      }
+      case "rs-dock-writing":
+        if (rustMode) void reportDesktopAgentState();
+        sendResponse({ ok: true });
+        break;
       case "rs-toolkit": {
         const request = msg.request || {};
         if (request.action !== "insert-typed-asset") { sendResponse({ ok: false, error: "Only asset uploads are available here." }); break; }

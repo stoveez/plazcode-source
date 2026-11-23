@@ -1559,5 +1559,21 @@
   "Start a new Codex session or reopen Codex to load PlazCode.": "PlazCode लोड करने के लिए नया Codex सत्र शुरू करें या Codex को फिर से खोलें।",
   "Restart OpenCode or reload its servers list to pick up PlazCode.": "PlazCode को लोड करने के लिए OpenCode को पुनः आरंभ करें या उसकी सर्वर सूची रीलोड करें।",
   "Reload Antigravity or refresh its external servers list to pick up PlazCode.": "PlazCode को लोड करने के लिए Antigravity को रीलोड करें या उसकी बाहरी सर्वर सूची रीफ़्रेश करें।",
-  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "PlazCode तैयार है इसकी पुष्टि करने के लिए Gemini CLI को पुनः आरंभ करें या /mcp चलाएँ।"
+  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "PlazCode तैयार है इसकी पुष्टि करने के लिए Gemini CLI को पुनः आरंभ करें या /mcp चलाएँ।",
+  "LIVE COMMAND FEED": "लाइव कमांड फ़ीड",
+  "Writing...": "लिख रहा है...",
+  "Writing... wait until finished": "लिख रहा है... पूरा होने तक प्रतीक्षा करें",
+  "ok": "ठीक",
+  "failed": "विफल",
+  "Plan": "योजना",
+  "Plan mode — research first, then review and approve a plan before any edits": "प्लान मोड — पहले शोध करें, फिर किसी भी बदलाव से पहले योजना की समीक्षा और स्वीकृति दें",
+  "Plan mode ON — read-only research first, then review and approve before edits": "प्लान मोड चालू — पहले केवल-पठन शोध, फिर बदलाव से पहले समीक्षा और स्वीकृति",
+  "Researching": "शोध जारी",
+  "Refining plan": "योजना परिष्कृत हो रही है",
+  "Ready for review": "समीक्षा के लिए तैयार",
+  "Approved": "स्वीकृत",
+  "Reject plan": "योजना अस्वीकार करें",
+  "Request changes": "बदलाव का अनुरोध करें",
+  "Research findings": "शोध निष्कर्ष",
+  "Verification": "सत्यापन"
 }

@@ -6519,3 +6519,67 @@ html[data-rs-studio] #rs-root #rs-bar.rs-fit-3 :is(#rs-action,#rs-stop){gap:0!im
 /* (Same report: the "weird arrow in the top left" was the click ripple. It is added inside the button as one more <span>, and the
    chevron used to be styled as the button's LAST span, so for a moment the ripple was drawn as a small chevron at the top-left
    while the real chevron fell back to a tiny "⌄". The chevron is now styled as the second span, which it always is.) */
+/* Interactive Plan Mode pill in #rs-bar + structured plan approval controls */
+#rs-root #rs-bar #rs-plan{
+  appearance:none;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  flex:0 0 auto;height:28px;padding:0 11px;margin:0;border:1px solid rgba(255,255,255,.16);border-radius:999px;
+  background:rgba(255,255,255,.04);color:inherit;font:650 12px/1 system-ui;
+  white-space:nowrap;cursor:pointer;
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease,color .18s ease;
+}
+#rs-root #rs-bar #rs-plan .rs-ico{width:14px;height:14px;flex:none}
+#rs-root #rs-bar #rs-plan:hover:not(:disabled){border-color:#ffac43;transform:translateY(-1px);box-shadow:0 0 12px #ff922632}
+#rs-root #rs-bar #rs-plan[aria-pressed="true"]{
+  border-color:#ff9226b3;background:linear-gradient(135deg,rgba(233,186,83,.22),rgba(233,186,83,.08));
+  color:#ffe5be;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 0 14px rgba(233,186,83,.28);font-weight:750;
+}
+#rs-root #rs-bar #rs-plan .rs-plan-phase{
+  display:inline-flex;align-items:center;padding:2px 6px;border-radius:999px;
+  background:rgba(255,255,255,.10);font-size:10px;font-weight:700;letter-spacing:.02em;color:inherit;
+}
+html[data-rs-studio] #rs-root #rs-bar #rs-plan{
+  border-radius:999px!important;border:1px solid var(--st-line)!important;
+  background:var(--st-glass),rgba(255,255,255,.03)!important;color:var(--st-text)!important;
+}
+html[data-rs-studio] #rs-root #rs-bar #rs-plan[aria-pressed="true"]{
+  border-color:color-mix(in srgb,var(--st-l) 68%,transparent)!important;
+  background:var(--st-glass),linear-gradient(135deg,rgb(var(--st-rgb)/.26),rgb(var(--st-rgb)/.09))!important;
+  color:var(--st-l)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 0 calc(16px * var(--st-g)) -2px rgb(var(--st-rgb)/.65)!important;
+}
+html[data-rs-studio] #rs-root #rs-bar #rs-plan[data-phase="researching"] .rs-plan-phase{
+  background:rgb(var(--st-rgb)/.18);color:var(--st-l);
+}
+html[data-rs-studio] #rs-root #rs-bar #rs-plan[data-phase="refining"] .rs-plan-phase{
+  background:rgba(255,179,63,.2);color:#ffd58a;
+}
+html[data-rs-studio] #rs-root #rs-bar #rs-plan[data-phase="ready"] .rs-plan-phase{
+  background:rgba(49,224,164,.18);color:#8af3cd;
+}
+html[data-rs-studio][data-rs-gradients=off] #rs-root #rs-bar #rs-plan[aria-pressed="true"]{
+  background:rgb(var(--st-rgb)/.18)!important;
+}
+html[data-rs-studio][data-rs-glow=off] #rs-root #rs-bar #rs-plan[aria-pressed="true"]{
+  box-shadow:none!important;
+}
+@media(prefers-reduced-motion:reduce){
+  #rs-root #rs-bar #rs-plan{transition:none}
+  #rs-root #rs-bar #rs-plan:hover:not(:disabled){transform:none}
+}
+#rs-approve-phase{
+  margin-inline-start:auto;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:700;
+  background:rgb(var(--st-rgb,233 186 83)/.18);border:1px solid rgb(var(--st-rgb,233 186 83)/.42);
+  color:var(--st-l,#ffe0a1);white-space:nowrap;
+}
+.rs-plan-sec{margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.10)}
+.rs-plan-sec-title{font-size:10.5px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:var(--st-l,#ffe0a1);margin-bottom:4px}
+.rs-plan-sec-row{font-size:12px;line-height:1.42;padding:2px 0}
+#rs-approve-feedback-wrap{margin:10px 0 6px;display:flex;flex-direction:column;gap:5px}
+.rs-approve-fb-label{font-size:11px;font-weight:700;color:var(--st-soft,#b9c4d8)}
+#rs-approve-feedback{
+  width:100%;box-sizing:border-box;min-height:52px;max-height:140px;resize:vertical;
+  padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);
+  background:rgba(0,0,0,.32);color:inherit;font:12.5px/1.4 system-ui;
+}
+#rs-approve-feedback:focus-visible{outline:0;border-color:var(--st-l,#ffe0a1);box-shadow:0 0 0 2px rgb(var(--st-rgb,233 186 83)/.24)}
+

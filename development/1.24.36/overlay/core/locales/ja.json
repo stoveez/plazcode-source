@@ -1559,5 +1559,21 @@
   "Start a new Codex session or reopen Codex to load PlazCode.": "PlazCode を読み込むには、新しい Codex セッションを開始するか Codex を開き直してください。",
   "Restart OpenCode or reload its servers list to pick up PlazCode.": "PlazCode を認識させるには、OpenCode を再起動するかサーバー一覧を再読み込みしてください。",
   "Reload Antigravity or refresh its external servers list to pick up PlazCode.": "PlazCode を読み込むには、Antigravity を再読み込みするか外部サーバー一覧を更新してください。",
-  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "PlazCode の準備が整ったことを確認するには、Gemini CLI を再起動するか /mcp を実行してください。"
+  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "PlazCode の準備が整ったことを確認するには、Gemini CLI を再起動するか /mcp を実行してください。",
+  "LIVE COMMAND FEED": "ライブコマンドフィード",
+  "Writing...": "入力中...",
+  "Writing... wait until finished": "入力中... 完了までお待ちください",
+  "ok": "ok",
+  "failed": "失敗",
+  "Plan": "プラン",
+  "Plan mode — research first, then review and approve a plan before any edits": "プランモード — 先に調査し、計画を確認・承認してから編集します",
+  "Plan mode ON — read-only research first, then review and approve before edits": "プランモード ON — 読み取り専用で調査後、編集前に確認・承認します",
+  "Researching": "調査中",
+  "Refining plan": "計画を精査中",
+  "Ready for review": "レビュー待ち",
+  "Approved": "承認済み",
+  "Reject plan": "計画を却下",
+  "Request changes": "変更をリクエスト",
+  "Research findings": "調査結果",
+  "Verification": "検証方法"
 }

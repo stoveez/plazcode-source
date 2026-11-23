@@ -1559,5 +1559,21 @@
   "Start a new Codex session or reopen Codex to load PlazCode.": "开始新的 Codex 会话或重新打开 Codex 以加载 PlazCode。",
   "Restart OpenCode or reload its servers list to pick up PlazCode.": "重启 OpenCode 或重新加载其服务器列表以识别 PlazCode。",
   "Reload Antigravity or refresh its external servers list to pick up PlazCode.": "重新加载 Antigravity 或刷新其外部服务器列表以加载 PlazCode。",
-  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "重启 Gemini CLI 或在 Gemini CLI 中运行 /mcp 以确认 PlazCode 已就绪。"
+  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "重启 Gemini CLI 或在 Gemini CLI 中运行 /mcp 以确认 PlazCode 已就绪。",
+  "LIVE COMMAND FEED": "实时命令动态",
+  "Writing...": "正在输入...",
+  "Writing... wait until finished": "正在输入... 请等待完成",
+  "ok": "完成",
+  "failed": "失败",
+  "Plan": "规划",
+  "Plan mode — research first, then review and approve a plan before any edits": "规划模式 — 先只读调研，审核并批准计划后再进行修改",
+  "Plan mode ON — read-only research first, then review and approve before edits": "规划模式已开启 — 先只读调研，审核批准后再执行修改",
+  "Researching": "调研中",
+  "Refining plan": "完善计划中",
+  "Ready for review": "待审核",
+  "Approved": "已批准",
+  "Reject plan": "拒绝计划",
+  "Request changes": "要求修改",
+  "Research findings": "调研发现",
+  "Verification": "验证方式"
 }

@@ -21,9 +21,10 @@ use crate::{now_ms, AppState};
 pub const DOCK_WIDTH_LOGICAL: i32 = 680;
 pub const DOCK_MIN_WIDTH_LOGICAL: i32 = 360;
 pub const DOCK_MIN_HEIGHT_LOGICAL: i32 = 88;
-pub const DOCK_MAX_HEIGHT_LOGICAL: i32 = 468;
+pub const DOCK_MAX_HEIGHT_LOGICAL: i32 = 540;
 pub const DOCK_BOTTOM_MARGIN_LOGICAL: i32 = 16;
 pub const DOCK_OFFSET_LIMIT: i32 = 8192;
+pub const DOCK_FEED_MAX_ITEMS: usize = 16;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AiSiteSpec {
@@ -375,6 +376,91 @@ impl DockVisibilityState {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DockFeedItem {
+    pub id: String,
+    pub tool: String,
+    pub status: String,
+    #[serde(default)]
+    pub detail: String,
+    pub updated_at: u64,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct DockFeedBuffer {
+    items: Vec<DockFeedItem>,
+    next_seq: u64,
+}
+
+impl DockFeedBuffer {
+    pub fn push(
+        &mut self,
+        id: Option<&str>,
+        tool: &str,
+        status: &str,
+        detail: &str,
+        now: u64,
+    ) -> Option<DockFeedItem> {
+        let clean_tool: String = tool.trim().chars().take(80).collect();
+        if clean_tool.is_empty() {
+            return None;
+        }
+        let norm_status = match status.trim().to_ascii_lowercase().as_str() {
+            "run" | "running" | "pending" => "running",
+            "err" | "error" | "failed" | "fail" => "err",
+            _ => "ok",
+        }
+        .to_string();
+        let clean_detail: String = detail.trim().chars().take(160).collect();
+        let explicit_id = id.map(str::trim).filter(|s| !s.is_empty());
+
+        if norm_status != "running" {
+            let match_pos = if let Some(eid) = explicit_id {
+                self.items.iter().rposition(|row| row.id == eid)
+            } else {
+                self.items
+                    .iter()
+                    .rposition(|row| row.tool == clean_tool && row.status == "running")
+            };
+            if let Some(pos) = match_pos {
+                let row = &mut self.items[pos];
+                row.status = norm_status;
+                if !clean_detail.is_empty() {
+                    row.detail = clean_detail;
+                }
+                row.updated_at = now;
+                return Some(row.clone());
+            }
+        }
+
+        self.next_seq = self.next_seq.saturating_add(1);
+        let item_id = explicit_id
+            .map(|s| s.chars().take(64).collect())
+            .unwrap_or_else(|| format!("feed-{}", self.next_seq));
+        let entry = DockFeedItem {
+            id: item_id,
+            tool: clean_tool,
+            status: norm_status,
+            detail: clean_detail,
+            updated_at: now,
+        };
+        if self.items.len() >= DOCK_FEED_MAX_ITEMS {
+            let excess = self.items.len() + 1 - DOCK_FEED_MAX_ITEMS;
+            self.items.drain(0..excess);
+        }
+        self.items.push(entry.clone());
+        Some(entry)
+    }
+
+    pub fn clear(&mut self) {
+        self.items.clear();
+    }
+
+    pub fn snapshot(&self) -> Vec<DockFeedItem> {
+        self.items.clone()
+    }
+}
+
 /// Shared state bridged between the GUI event loop and HTTP handlers.
 pub struct DockShared {
     pub studio_focused: AtomicBool,
@@ -384,6 +470,8 @@ pub struct DockShared {
     pub force_sync: AtomicBool,
     pub requested_height: AtomicU64,
     pub pending_drag_offset: Mutex<Option<StudioDockPos>>,
+    pub feed: Mutex<DockFeedBuffer>,
+    pub feed_revision: AtomicU64,
 }
 
 impl Default for DockShared {
@@ -402,11 +490,43 @@ impl DockShared {
             force_sync: AtomicBool::new(false),
             requested_height: AtomicU64::new(DOCK_MIN_HEIGHT_LOGICAL as u64),
             pending_drag_offset: Mutex::new(None),
+            feed: Mutex::new(DockFeedBuffer::default()),
+            feed_revision: AtomicU64::new(0),
         }
     }
 
     pub fn request_sync(&self) {
         self.force_sync.store(true, Ordering::Relaxed);
+    }
+
+    pub fn push_feed_event(
+        &self,
+        id: Option<&str>,
+        tool: &str,
+        status: &str,
+        detail: &str,
+        now: u64,
+    ) -> (u64, Vec<DockFeedItem>) {
+        let mut buf = self.feed.lock().unwrap_or_else(|e| e.into_inner());
+        if buf.push(id, tool, status, detail, now).is_some() {
+            let rev = self.feed_revision.fetch_add(1, Ordering::Relaxed).saturating_add(1);
+            return (rev, buf.snapshot());
+        }
+        let rev = self.feed_revision.load(Ordering::Relaxed);
+        (rev, buf.snapshot())
+    }
+
+    pub fn clear_feed(&self) -> u64 {
+        let mut buf = self.feed.lock().unwrap_or_else(|e| e.into_inner());
+        buf.clear();
+        self.feed_revision.fetch_add(1, Ordering::Relaxed).saturating_add(1)
+    }
+
+    pub fn feed_snapshot(&self) -> Vec<DockFeedItem> {
+        self.feed
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .snapshot()
     }
 }
 
@@ -453,6 +573,8 @@ pub async fn state_handler(State(state): State<AppState>) -> impl IntoResponse {
     let appearance = appearance_state_from_prefs(&prefs);
     let browser_agent = state.ui.browser_agent_snapshot();
     let dock_shared = &state.ui.studio_dock;
+    let feed = dock_shared.feed_snapshot();
+    let feed_revision = dock_shared.feed_revision.load(Ordering::Relaxed);
 
     Json(serde_json::json!({
         "ok": true,
@@ -466,7 +588,63 @@ pub async fn state_handler(State(state): State<AppState>) -> impl IntoResponse {
         "language": prefs.language,
         "appearance": appearance,
         "browser_agent": browser_agent,
+        "feed": feed,
+        "feed_revision": feed_revision,
         "providers": all_ai_sites_json(),
+    }))
+}
+
+#[derive(Deserialize)]
+pub struct FeedEventReq {
+    #[serde(default)]
+    pub id: Option<String>,
+    pub tool: String,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub detail: Option<String>,
+    #[serde(default)]
+    pub ts: Option<u64>,
+}
+
+pub async fn feed_get_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let dock = &state.ui.studio_dock;
+    Json(serde_json::json!({
+        "ok": true,
+        "revision": dock.feed_revision.load(Ordering::Relaxed),
+        "items": dock.feed_snapshot(),
+    }))
+}
+
+pub async fn feed_post_handler(
+    State(state): State<AppState>,
+    Json(req): Json<FeedEventReq>,
+) -> impl IntoResponse {
+    let ts = req.ts.filter(|&v| v > 0).unwrap_or_else(sync_timestamp_ms);
+    let status = req.status.as_deref().unwrap_or("running");
+    let detail = req.detail.as_deref().unwrap_or("");
+    let (rev, items) = state.ui.studio_dock.push_feed_event(
+        req.id.as_deref(),
+        &req.tool,
+        status,
+        detail,
+        ts,
+    );
+    state.ui.studio_dock.request_sync();
+    Json(serde_json::json!({
+        "ok": true,
+        "revision": rev,
+        "items": items,
+    }))
+}
+
+pub async fn feed_clear_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let rev = state.ui.studio_dock.clear_feed();
+    state.ui.studio_dock.request_sync();
+    Json(serde_json::json!({
+        "ok": true,
+        "revision": rev,
+        "items": [],
     }))
 }
 
@@ -1214,6 +1392,8 @@ pub struct StudioDockWindow {
     last_applied_rect: Option<RectPx>,
     last_appearance_sig: String,
     last_bridge_connected: bool,
+    last_feed_revision: u64,
+    last_writing_sig: String,
     ready: bool,
 }
 
@@ -1281,6 +1461,8 @@ impl StudioDockWindow {
             last_applied_rect: None,
             last_appearance_sig: String::new(),
             last_bridge_connected: false,
+            last_feed_revision: 0,
+            last_writing_sig: String::new(),
             ready: false,
         })
     }
@@ -1519,6 +1701,7 @@ impl StudioDockWindow {
         }
 
         self.push_appearance(prefs);
+        self.push_feed_and_writing(shared);
         let ext = shared.extension_recent();
         if ext != self.last_bridge_connected && self.ready {
             self.last_bridge_connected = ext;
@@ -1526,6 +1709,37 @@ impl StudioDockWindow {
                 .webview
                 .evaluate_script("if(window.__plazcodeDockWake)window.__plazcodeDockWake();");
         }
+    }
+
+    fn push_feed_and_writing(&mut self, shared: &Arc<crate::gui::UiShared>) {
+        if !self.ready {
+            return;
+        }
+        let rev = shared.studio_dock.feed_revision.load(Ordering::Relaxed);
+        let ba = shared.browser_agent_snapshot();
+        let writing = ba.get("writing").and_then(|v| v.as_bool()).unwrap_or(false);
+        let busy = ba.get("busy").and_then(|v| v.as_bool()).unwrap_or(false);
+        let provider = ba.get("provider").and_then(|v| v.as_str()).unwrap_or("");
+        let provider_id = ba.get("providerId").and_then(|v| v.as_str()).unwrap_or("");
+        let writing_sig = format!("{writing}|{busy}|{provider}|{provider_id}");
+        if rev == self.last_feed_revision && writing_sig == self.last_writing_sig {
+            return;
+        }
+        self.last_feed_revision = rev;
+        self.last_writing_sig = writing_sig;
+        let payload = serde_json::json!({
+            "feed": shared.studio_dock.feed_snapshot(),
+            "feed_revision": rev,
+            "writing": writing,
+            "busy": busy,
+            "provider": provider,
+            "providerId": provider_id,
+        });
+        let json = serde_json::to_string(&payload).unwrap_or_default();
+        let script = format!(
+            "if(window.__plazcodeDockFeedPush)window.__plazcodeDockFeedPush({json});"
+        );
+        let _ = self.webview.evaluate_script(&script);
     }
 }
 
@@ -1742,5 +1956,100 @@ mod tests {
     fn external_url_opener_rejects_unsafe_schemes() {
         assert!(open_external_url("file:///etc/passwd").is_err());
         assert!(open_external_url("javascript:alert(1)").is_err());
+    }
+
+    #[test]
+    fn dock_feed_ring_buffer_transitions_evicts_and_clears() {
+        let mut buf = DockFeedBuffer::default();
+        assert!(buf.push(None, "   ", "running", "", 1).is_none());
+
+        let row = buf.push(Some("call-1"), "astrox_getskills", "running", "fetching", 100).unwrap();
+        assert_eq!(row.status, "running");
+        assert_eq!(buf.snapshot().len(), 1);
+
+        let updated = buf.push(Some("call-1"), "astrox_getskills", "ok", "17 skills", 150).unwrap();
+        assert_eq!(updated.status, "ok");
+        assert_eq!(updated.detail, "17 skills");
+        assert_eq!(buf.snapshot().len(), 1);
+
+        buf.push(None, "script_write", "running", "", 200);
+        let err = buf.push(None, "script_write", "err", "Syntax error", 250).unwrap();
+        assert_eq!(err.status, "err");
+        assert_eq!(buf.snapshot().len(), 2);
+
+        for i in 0..24 {
+            buf.push(None, &format!("tool_{i}"), "ok", "", 300 + i as u64);
+        }
+        let snap = buf.snapshot();
+        assert_eq!(snap.len(), DOCK_FEED_MAX_ITEMS);
+        assert_eq!(snap.first().unwrap().tool, "tool_8");
+        assert_eq!(snap.last().unwrap().tool, "tool_23");
+
+        buf.clear();
+        assert!(buf.snapshot().is_empty());
+    }
+
+    #[tokio::test]
+    async fn dock_feed_http_handlers_roundtrip_and_clear() {
+        let folder = std::env::temp_dir().join(format!(
+            "plazcode-dock-feed-test-{}-{}",
+            std::process::id(),
+            sync_timestamp_ms()
+        ));
+        let _ = std::fs::remove_dir_all(&folder);
+        let workspace = Arc::new(crate::workspace::Workspace::new(Some(folder.to_str().unwrap())).unwrap());
+        let alive = Arc::new(AtomicBool::new(true));
+        let ui = Arc::new(crate::gui::UiShared::new(alive.clone()));
+        let prefs = Arc::new(PreferencesStore::load_from(folder.join("settings.json")));
+        let state = AppState::new(
+            tokio::sync::broadcast::channel(16).0,
+            alive,
+            Arc::new(AtomicBool::new(false)),
+            workspace,
+            Arc::new("test-key".into()),
+            prefs,
+            ui.clone(),
+        );
+
+        let post1 = feed_post_handler(
+            State(state.clone()),
+            Json(FeedEventReq {
+                id: Some("t-1".into()),
+                tool: "script_read".into(),
+                status: Some("running".into()),
+                detail: Some("reading".into()),
+                ts: Some(1000),
+            }),
+        )
+        .await
+        .into_response();
+        assert_eq!(post1.status(), StatusCode::OK);
+
+        let post2 = feed_post_handler(
+            State(state.clone()),
+            Json(FeedEventReq {
+                id: Some("t-1".into()),
+                tool: "script_read".into(),
+                status: Some("ok".into()),
+                detail: Some("ok".into()),
+                ts: Some(1200),
+            }),
+        )
+        .await
+        .into_response();
+        assert_eq!(post2.status(), StatusCode::OK);
+
+        let get_resp = feed_get_handler(State(state.clone())).await.into_response();
+        let get_bytes = axum::body::to_bytes(get_resp.into_body(), 1024 * 1024).await.unwrap();
+        let get_val: serde_json::Value = serde_json::from_slice(&get_bytes).unwrap();
+        assert_eq!(get_val["ok"], true);
+        assert_eq!(get_val["items"].as_array().unwrap().len(), 1);
+        assert_eq!(get_val["items"][0]["status"], "ok");
+
+        let clear_resp = feed_clear_handler(State(state.clone())).await.into_response();
+        assert_eq!(clear_resp.status(), StatusCode::OK);
+        assert!(state.ui.studio_dock.feed_snapshot().is_empty());
+
+        let _ = std::fs::remove_dir_all(folder);
     }
 }

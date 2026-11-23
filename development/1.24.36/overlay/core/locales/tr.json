@@ -1559,5 +1559,21 @@
   "Start a new Codex session or reopen Codex to load PlazCode.": "PlazCode'u yüklemek için yeni bir Codex oturumu başlatın veya Codex'i yeniden açın.",
   "Restart OpenCode or reload its servers list to pick up PlazCode.": "PlazCode'u algılamak için OpenCode'u yeniden başlatın veya sunucu listesini yenileyin.",
   "Reload Antigravity or refresh its external servers list to pick up PlazCode.": "PlazCode'u algılamak için Antigravity'yi yeniden yükleyin veya harici sunucu listesini yenileyin.",
-  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "PlazCode'un hazır olduğunu doğrulamak için Gemini CLI'ı yeniden başlatın veya /mcp komutunu çalıştırın."
+  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "PlazCode'un hazır olduğunu doğrulamak için Gemini CLI'ı yeniden başlatın veya /mcp komutunu çalıştırın.",
+  "LIVE COMMAND FEED": "CANLI KOMUT AKIŞI",
+  "Writing...": "Yazıyor...",
+  "Writing... wait until finished": "Yazıyor... bitene kadar bekleyin",
+  "ok": "tamam",
+  "failed": "başarısız",
+  "Plan": "Plan",
+  "Plan mode — research first, then review and approve a plan before any edits": "Plan modu — önce araştırın, düzenleme yapmadan önce planı inceleyip onaylayın",
+  "Plan mode ON — read-only research first, then review and approve before edits": "Plan modu AÇIK — önce salt okunur araştırma, düzenlemeden önce inceleme ve onay",
+  "Researching": "Araştırılıyor",
+  "Refining plan": "Plan iyileştiriliyor",
+  "Ready for review": "İncelemeye hazır",
+  "Approved": "Onaylandı",
+  "Reject plan": "Planı reddet",
+  "Request changes": "Değişiklik iste",
+  "Research findings": "Araştırma bulguları",
+  "Verification": "Doğrulama"
 }

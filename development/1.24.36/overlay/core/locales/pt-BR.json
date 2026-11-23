@@ -1559,5 +1559,21 @@
   "Start a new Codex session or reopen Codex to load PlazCode.": "Inicie uma nova sessão do Codex ou reabra o Codex para carregar o PlazCode.",
   "Restart OpenCode or reload its servers list to pick up PlazCode.": "Reinicie o OpenCode ou recarregue a lista de servidores para detectar o PlazCode.",
   "Reload Antigravity or refresh its external servers list to pick up PlazCode.": "Recarregue o Antigravity ou atualize sua lista de servidores externos para detectar o PlazCode.",
-  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "Reinicie o Gemini CLI ou execute /mcp no Gemini CLI para confirmar que o PlazCode está pronto."
+  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": "Reinicie o Gemini CLI ou execute /mcp no Gemini CLI para confirmar que o PlazCode está pronto.",
+  "LIVE COMMAND FEED": "FEED DE COMANDOS AO VIVO",
+  "Writing...": "Escrevendo...",
+  "Writing... wait until finished": "Escrevendo... aguarde terminar",
+  "ok": "ok",
+  "failed": "falhou",
+  "Plan": "Plano",
+  "Plan mode — research first, then review and approve a plan before any edits": "Modo Plano — pesquise primeiro, depois revise e aprove um plano antes de editar",
+  "Plan mode ON — read-only research first, then review and approve before edits": "Modo Plano ATIVO — pesquisa somente leitura primeiro, depois aprove antes de editar",
+  "Researching": "Pesquisando",
+  "Refining plan": "Refinando plano",
+  "Ready for review": "Pronto para revisão",
+  "Approved": "Aprovado",
+  "Reject plan": "Rejeitar plano",
+  "Request changes": "Solicitar alterações",
+  "Research findings": "Descobertas da pesquisa",
+  "Verification": "Verificação"
 }

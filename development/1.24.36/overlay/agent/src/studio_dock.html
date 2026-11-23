@@ -8,6 +8,8 @@
 @property --pz-x{syntax:"<percentage>";inherits:false;initial-value:0%}
 @keyframes pz-flow{from{--pz-x:0%}to{--pz-x:100%}}
 @keyframes pz-pulse{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.18)}}
+@keyframes pz-dot-pulse{0%,80%,100%{opacity:.28;transform:scale(.75)}40%{opacity:1;transform:scale(1.15)}}
+@keyframes pz-spin{to{transform:rotate(360deg)}}
 @keyframes pz-ripple{from{opacity:.42;transform:scale(0)}to{opacity:0;transform:scale(2.4)}}
 
 :root{
@@ -42,9 +44,64 @@ button,input,textarea,select{font:inherit;color:inherit}
 [hidden]{display:none!important}
 
 .dock-root{
-  display:flex;flex-direction:column;justify-content:flex-end;
+  display:flex;flex-direction:column;justify-content:flex-end;gap:7px;
   width:100%;height:100%;padding:6px 8px 6px;
 }
+
+/* Floating Live Command Feed (above Variant B dock strip, auto-hidden when empty) */
+.dock-live-feed{
+  display:flex;flex-direction:column;gap:5px;
+  border-radius:14px;padding:7px 11px;
+  background:var(--dock-surface);
+  border:1px solid color-mix(in srgb,var(--dock-line) 55%,rgb(var(--pz-rgb)) 45%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    0 10px 26px -10px rgba(0,0,0,.74),
+    0 0 calc(18px * var(--pz-g)) -8px rgb(var(--pz-rgb)/.36);
+  backdrop-filter:blur(22px) saturate(140%);
+  -webkit-backdrop-filter:blur(22px) saturate(140%);
+}
+.feed-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.feed-title{font-size:10px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--dock-muted)}
+.feed-clear-btn{
+  border:0;background:transparent;color:var(--dock-muted);cursor:pointer;
+  font-size:11px;font-weight:600;padding:1px 5px;border-radius:6px;
+  transition:color .16s,background .16s;
+}
+.feed-clear-btn:hover{color:var(--dock-text);background:rgba(255,255,255,.08)}
+.feed-list{
+  display:flex;flex-direction:column;gap:3px;max-height:112px;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.22) transparent;
+}
+.feed-list::-webkit-scrollbar{width:5px}
+.feed-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.22);border-radius:5px}
+.feed-row{
+  display:flex;align-items:center;gap:6px;min-height:18px;
+  font-size:11.5px;line-height:1.3;color:var(--dock-text);
+}
+.feed-spin{
+  width:10px;height:10px;border-radius:50%;flex:none;
+  border:1.5px solid rgba(255,255,255,.22);border-top-color:var(--orange2);
+  animation:pz-spin .75s linear infinite;
+}
+.feed-check{color:var(--green);font-weight:800;font-size:11.5px;flex:none}
+.feed-err-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:14px;height:14px;padding:0 4px;border-radius:999px;flex:none;
+  background:rgba(255,105,108,.22);border:1px solid rgba(255,105,108,.55);
+  color:#ffb3b5;font-size:9.5px;font-weight:800;
+}
+.feed-tool{font-weight:700;color:var(--dock-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.feed-ok{color:var(--dock-muted);font-weight:500}
+.feed-err-tag{color:#ffb3b5;font-size:10.5px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.writing-dots{display:inline-flex;align-items:center;gap:3px;margin-inline-start:2px;flex:none}
+.writing-dots span{
+  width:4px;height:4px;border-radius:50%;background:var(--orange2);opacity:.45;
+  animation:pz-dot-pulse 1.15s ease-in-out infinite;
+}
+.writing-dots span:nth-child(2){animation-delay:.18s}
+.writing-dots span:nth-child(3){animation-delay:.36s}
 
 .dock-shell{
   position:relative;display:flex;flex-direction:column;gap:6px;
@@ -98,6 +155,12 @@ html[data-pz-motion=off] *{
 }
 html:not([data-pz-anim]) *{
   animation:none!important;
+}
+html[data-pz-asleep] *,html[data-pz-asleep] *::before,html[data-pz-asleep] *::after{
+  animation-play-state:paused!important;
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important;}
 }
 
 /* Drawer & Popups (expand UPWARD above bottom strip) */
@@ -270,6 +333,15 @@ html[data-pz-motion=full][data-desktop-gradients=on][data-pz-anim] .dock-btn:hov
 </head>
 <body>
 <div class="dock-root">
+  <!-- Floating Live Command Feed (auto-hidden when empty/cleared) -->
+  <div class="dock-live-feed" id="dockLiveFeed" hidden>
+    <div class="feed-head">
+      <span class="feed-title" data-pc-i18n="">LIVE COMMAND FEED</span>
+      <button type="button" class="feed-clear-btn" id="dockFeedClear" data-pc-i18n="">Clear</button>
+    </div>
+    <div class="feed-list" id="dockFeedList"></div>
+  </div>
+
   <div class="dock-shell" id="dockShell">
     <!-- Upward Expandable Response & Progress Drawer -->
     <div class="dock-drawer" id="dockDrawer" hidden>
@@ -320,6 +392,7 @@ html[data-pz-motion=full][data-desktop-gradients=on][data-pz-anim] .dock-btn:hov
       <button type="button" class="badge-ai" id="dockAiBadge" title="Toggle assistant drawer">
         <span class="status-dot" id="dockDot"></span>
         <span id="dockAiName">ChatGPT</span>
+        <span class="writing-dots" id="dockWritingDots" aria-hidden="true" hidden><span></span><span></span><span></span></span>
       </button>
       <span class="status-pill" id="dockStatusPill">Ready</span>
       <button type="button" class="dock-btn compact" id="dockOpenTabStrip" hidden>Open AI tab</button>
@@ -447,13 +520,17 @@ __PLAZCODE_MEDIA_UI__
     sending: false,
     lastHeight: 0,
     media: [], // { name, mimeType, kind, data, file }
+    feed: [],
+    feedRevision: -1,
     inlineError: ""
   };
 
   function SyncHeight() {
     var Shell = Byid("dockShell");
+    var Feed = Byid("dockLiveFeed");
     if (!Shell) return;
-    var H = Math.max(88, Math.min(468, Math.ceil((Shell.offsetHeight || 88) + 14)));
+    var FeedH = (Feed && !Feed.hidden) ? ((Feed.offsetHeight || 54) + 7) : 0;
+    var H = Math.max(88, Math.min(540, Math.ceil((Shell.offsetHeight || 88) + FeedH + 14)));
     if (H !== DockState.lastHeight) {
       DockState.lastHeight = H;
       Ipc("dock:height:" + H);
@@ -644,6 +721,59 @@ __PLAZCODE_MEDIA_UI__
     });
   }
 
+  function RenderFeed() {
+    var Panel = Byid("dockLiveFeed");
+    var List = Byid("dockFeedList");
+    if (!Panel || !List) return;
+    var Items = Array.isArray(DockState.feed) ? DockState.feed : [];
+    Panel.hidden = !Items.length;
+    List.replaceChildren();
+    if (!Items.length) return;
+    Items.slice(-6).forEach(function (Item) {
+      var Row = document.createElement("div");
+      Row.className = "feed-row";
+      var St = String(Item.status || "ok").toLowerCase();
+      if (St === "running") {
+        var Spin = document.createElement("span");
+        Spin.className = "feed-spin";
+        Row.appendChild(Spin);
+      } else if (St === "err") {
+        var ErrBadge = document.createElement("span");
+        ErrBadge.className = "feed-err-badge";
+        ErrBadge.textContent = "!";
+        Row.appendChild(ErrBadge);
+      } else {
+        var Check = document.createElement("span");
+        Check.className = "feed-check";
+        Check.textContent = "✓";
+        Row.appendChild(Check);
+      }
+      var ToolEl = document.createElement("span");
+      ToolEl.className = "feed-tool";
+      ToolEl.textContent = Item.tool || "";
+      Row.appendChild(ToolEl);
+      if (St === "ok") {
+        var OkEl = document.createElement("span");
+        OkEl.className = "feed-ok";
+        OkEl.textContent = T("ok");
+        Row.appendChild(OkEl);
+      } else if (St === "err") {
+        var ErrEl = document.createElement("span");
+        ErrEl.className = "feed-err-tag";
+        ErrEl.textContent = Item.detail ? Item.detail : T("failed");
+        Row.appendChild(ErrEl);
+      }
+      List.appendChild(Row);
+    });
+  }
+
+  function ClearFeed() {
+    DockState.feed = [];
+    Render();
+    if (!ApiUrl) return;
+    Api("/api/studio-dock/feed/clear", { method: "POST", body: "{}" }).catch(function () {});
+  }
+
   function Render() {
     var St = DockState.state || {};
     var Ctrl = St.browser_agent || {};
@@ -652,13 +782,24 @@ __PLAZCODE_MEDIA_UI__
     document.documentElement.lang = Lang;
     document.documentElement.dir = Lang === "ar" ? "rtl" : "ltr";
     if (St.appearance) ApplyAppearance(St.appearance);
+    if (Array.isArray(St.feed) && (typeof St.feed_revision !== "number" || St.feed_revision !== DockState.feedRevision)) {
+      DockState.feed = St.feed;
+      if (typeof St.feed_revision === "number") DockState.feedRevision = St.feed_revision;
+    }
 
     var BridgeOn = St.bridge_connected === true;
     var HasAi = !!Ctrl.provider;
     var Busy = !!(Ctrl.busy || Ctrl.canStop);
+    var Writing = !!(Ctrl.writing && BridgeOn && HasAi && !DockState.inlineError);
     var CanSend = !!((Ctrl.canDockSend || Ctrl.canStart || Ctrl.canTaskSend || Ctrl.canQueue) && BridgeOn && HasAi);
 
-    Byid("dockAiName").textContent = Ctrl.provider || T("No AI tab");
+    Byid("dockAiName").textContent = Writing
+      ? (Ctrl.provider + " · " + T("Writing..."))
+      : (Ctrl.provider || T("No AI tab"));
+    Byid("dockWritingDots").hidden = !Writing;
+    Byid("dockPrompt").placeholder = Writing
+      ? T("Writing... wait until finished")
+      : T("Ask PlazCode about this Roblox Studio place…");
     var Dot = Byid("dockDot");
     Dot.className = "status-dot " + (!BridgeOn || !HasAi ? "off" : Busy ? "busy" : "ready");
 
@@ -718,6 +859,7 @@ __PLAZCODE_MEDIA_UI__
       }
     }
 
+    RenderFeed();
     RenderMedia();
 
     var PromptVal = Byid("dockPrompt").value;
@@ -821,6 +963,47 @@ __PLAZCODE_MEDIA_UI__
     }).catch(function () {});
   }
   window.__plazcodeDockWake = RefreshState;
+  window.__plazcodeDockFeedPush = function (Data) {
+    Data = Data || {};
+    if (!DockState.state) DockState.state = { bridge_connected: true, browser_agent: {}, providers: [] };
+    if (!DockState.state.browser_agent) DockState.state.browser_agent = {};
+    if (typeof Data.writing === "boolean") DockState.state.browser_agent.writing = Data.writing;
+    if (typeof Data.busy === "boolean") DockState.state.browser_agent.busy = Data.busy;
+    if (Data.provider) DockState.state.browser_agent.provider = Data.provider;
+    if (Data.providerId) DockState.state.browser_agent.providerId = Data.providerId;
+    if (Array.isArray(Data.feed)) {
+      DockState.state.feed = Data.feed;
+      DockState.feed = Data.feed;
+    }
+    if (typeof Data.feed_revision === "number") {
+      DockState.state.feed_revision = Data.feed_revision;
+      DockState.feedRevision = Data.feed_revision;
+    }
+    Render();
+  };
+
+  // Pause CSS animations when dock loses focus/visibility (matches desktop.html Feel asleep contract)
+  var SleepTimer = null;
+  function DockSleep() {
+    if (typeof clearTimeout === "function" && SleepTimer) clearTimeout(SleepTimer);
+    SleepTimer = setTimeout(function () {
+      var Focused = typeof document.hasFocus === "function" ? document.hasFocus() : true;
+      if (!Focused && document.documentElement && document.documentElement.toggleAttribute) {
+        document.documentElement.toggleAttribute("data-pz-asleep", true);
+      }
+    }, 1500);
+  }
+  function DockWake() {
+    if (typeof clearTimeout === "function" && SleepTimer) clearTimeout(SleepTimer);
+    if (document.documentElement && document.documentElement.toggleAttribute) {
+      document.documentElement.toggleAttribute("data-pz-asleep", false);
+    }
+  }
+  window.addEventListener("blur", DockSleep);
+  window.addEventListener("focus", DockWake);
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) DockSleep(); else DockWake();
+  });
 
   // Bind UI controls
   var Shell = Byid("dockShell");
@@ -921,10 +1104,14 @@ __PLAZCODE_MEDIA_UI__
   Byid("dockSendBtn").onclick = SendPrompt;
   Byid("dockEnhanceBtn").onclick = EnhancePrompt;
   Byid("dockStopBtn").onclick = StopAgent;
+  Byid("dockFeedClear").onclick = ClearFeed;
 
   if (I18n && I18n.mountStatic && document.body) { I18n.mountStatic(document.body); }
   if (typeof ResizeObserver === "function") {
-    new ResizeObserver(SyncHeight).observe(Shell);
+    var RO = new ResizeObserver(SyncHeight);
+    RO.observe(Shell);
+    var FeedEl = Byid("dockLiveFeed");
+    if (FeedEl) RO.observe(FeedEl);
   }
   RefreshState();
   setInterval(RefreshState, 650);

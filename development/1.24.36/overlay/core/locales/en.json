@@ -1559,5 +1559,21 @@
   "Start a new Codex session or reopen Codex to load PlazCode.": null,
   "Restart OpenCode or reload its servers list to pick up PlazCode.": null,
   "Reload Antigravity or refresh its external servers list to pick up PlazCode.": null,
-  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": null
+  "Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.": null,
+  "LIVE COMMAND FEED": null,
+  "Writing...": null,
+  "Writing... wait until finished": null,
+  "ok": null,
+  "failed": null,
+  "Plan": null,
+  "Plan mode — research first, then review and approve a plan before any edits": null,
+  "Plan mode ON — read-only research first, then review and approve before edits": null,
+  "Researching": null,
+  "Refining plan": null,
+  "Ready for review": null,
+  "Approved": null,
+  "Reject plan": null,
+  "Request changes": null,
+  "Research findings": null,
+  "Verification": null
 }
