@@ -58,7 +58,7 @@ function contractRuntime() {
 let html=htmlSource;
 html=html.replace('__PLAZCODE_I18N_CATALOG__',actual?read('core/i18n-catalog.js'):'');
 html=html.replace('__PLAZCODE_I18N__',actual?read('core/i18n.js'):`(${contractRuntime.toString()})();`);
-for(const [token,file] of Object.entries({SKILLS:'skills-ui.js',WORKSHOP:'workshop-ui.js',EXPLORER:'explorer-ui.js',MEDIA:'media.js',MEMORY:'memory.js',TASK:'task-center.js',ACTION_LOG:'action-log.js',SAFETY:'safety.js',TEMPLATE:'templates.js',TOOLKIT:'toolkit-ui.js',VERSION:'version.js'})) html=html.replace(`__PLAZCODE_${token}_UI__`,()=>read(`core/${file}`));
+for(const [token,file] of Object.entries({SKILLS:'skills-ui.js',WORKSHOP:'workshop-ui.js',BYOK_CHAT:'byok-chat-ui.js',EXPLORER:'explorer-ui.js',MEDIA:'media.js',MEMORY:'memory.js',TASK:'task-center.js',ACTION_LOG:'action-log.js',SAFETY:'safety.js',TEMPLATE:'templates.js',TOOLKIT:'toolkit-ui.js',VERSION:'version.js'})) html=html.replace(`__PLAZCODE_${token}_UI__`,()=>read(`core/${file}`));
 html=html.replace('__PLAZCODE_THEME_PRESETS__',()=>read('core/theme-presets.js')).replace('__PLAZCODE_BACKDROP_FX__',()=>read('core/backdrop-fx.js'));
 html=html.replace(/__PLAZCODE_VERSION__/g,'1.24.18').replace(/__PLAZCODE_PAIRING_KEY__/g,'fixture-only-key');
 const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];

@@ -17,7 +17,7 @@ assert(!/html\[[^\]]*\](?:\[[^\]]*\])* html\[/.test(html), "no rule written as '
     console.log("SKIP real-browser Appearance check (" + why.slice(0, 120) + ")"); return;
   }
   try {
-    const parts = { __PLAZCODE_I18N_CATALOG__: "core/i18n-catalog.js", __PLAZCODE_I18N__: "core/i18n.js", __PLAZCODE_SKILLS_UI__: "core/skills-ui.js", __PLAZCODE_WORKSHOP_UI__: "core/workshop-ui.js", __PLAZCODE_EXPLORER_UI__: "core/explorer-ui.js",
+    const parts = { __PLAZCODE_I18N_CATALOG__: "core/i18n-catalog.js", __PLAZCODE_I18N__: "core/i18n.js", __PLAZCODE_SKILLS_UI__: "core/skills-ui.js", __PLAZCODE_WORKSHOP_UI__: "core/workshop-ui.js", __PLAZCODE_BYOK_CHAT_UI__: "core/byok-chat-ui.js", __PLAZCODE_EXPLORER_UI__: "core/explorer-ui.js",
       __PLAZCODE_MEDIA_UI__: "core/media.js", __PLAZCODE_MEMORY_UI__: "core/memory.js", __PLAZCODE_TOOLKIT_UI__: "core/toolkit-ui.js", __PLAZCODE_TASK_UI__: "core/task-center.js",
       __PLAZCODE_ACTION_LOG_UI__: "core/action-log.js", __PLAZCODE_SAFETY_UI__: "core/safety.js", __PLAZCODE_TEMPLATE_UI__: "core/templates.js", __PLAZCODE_VERSION_UI__: "core/version.js",
       __PLAZCODE_THEME_PRESETS__: "core/theme-presets.js", __PLAZCODE_BACKDROP_FX__: "core/backdrop-fx.js" };

@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use axum::{extract::{Query, State}, http::Method, response::{Html, IntoResponse}, routing::{get, post}, Json, Router};
+use axum::{extract::{Query, State}, http::Method, response::{Html, IntoResponse}, routing::{delete, get, post, put}, Json, Router};
 use clap::Parser;
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -130,6 +130,7 @@ mod studio_launcher;
 mod media;
 mod cancellation;
 mod chat_history;
+mod byok_chat;
 mod engram;
 mod vault;
 mod debug_report;
@@ -1446,7 +1447,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         let mut headers = axum::http::HeaderMap::new();
         headers.insert("origin", origin.clone());
         security::allowed_origin(&headers)
-    })).allow_methods([Method::GET, Method::POST, Method::OPTIONS]).allow_headers(Any);
+    })).allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS]).allow_headers(Any);
     updater::start_checker();
     let s_power = state.clone();
     tokio::spawn(async move {
@@ -1540,6 +1541,17 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/desktop/frame", get(desktop_control::frame))
         .route("/api/blockbench", post(blockbench::post).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024)))
         .route("/api/figma", post(figma::post).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024)))
+        .route("/api/byok/platforms", get(byok_chat::platforms_get).post(byok_chat::platforms_post).put(byok_chat::platforms_put).delete(byok_chat::platforms_delete))
+        .route("/api/byok/platforms/:id", put(byok_chat::platforms_put_by_id).delete(byok_chat::platforms_delete_by_id))
+        .route("/api/byok/models/discover", post(byok_chat::models_discover))
+        .route("/api/byok/models/health", post(byok_chat::models_health))
+        .route("/api/byok/health/clear", post(byok_chat::health_clear))
+        .route("/api/byok/chats", get(byok_chat::chats_get).post(byok_chat::chats_post).delete(byok_chat::chats_delete))
+        .route("/api/byok/chats/:id", delete(byok_chat::chats_delete_by_id))
+        .route("/api/byok/chat/send", post(byok_chat::chat_send).layer(axum::extract::DefaultBodyLimit::max(18 * 1024 * 1024)))
+        .route("/api/byok/chat/stop", post(byok_chat::chat_stop))
+        .route("/api/byok/chat/events/:id", get(byok_chat::chat_events))
+        .route("/api/byok/files", get(byok_chat::workspace_files))
         .route("/ws", get(ws_handler))
         .layer(axum::middleware::from_fn(track_tool_activity))
         .merge(linux_authenticated_routes())
@@ -2148,6 +2160,7 @@ async fn desktop_shell_handler() -> impl IntoResponse {
         .replace("__PLAZCODE_ACTION_LOG_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/action-log.js")))
         .replace("__PLAZCODE_SAFETY_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/safety.js")))
         .replace("__PLAZCODE_TEMPLATE_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/templates.js")))
+        .replace("__PLAZCODE_BYOK_CHAT_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/byok-chat-ui.js")))
         .replace("__PLAZCODE_VERSION_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/version.js")))
         .replace("__PLAZCODE_THEME_PRESETS__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/theme-presets.js")))
         .replace("__PLAZCODE_BACKDROP_FX__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/backdrop-fx.js")))
@@ -2172,6 +2185,7 @@ async fn desktop_handler(State(state): State<AppState>) -> Html<String> {
         .replace("__PLAZCODE_ACTION_LOG_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/action-log.js")))
         .replace("__PLAZCODE_SAFETY_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/safety.js")))
         .replace("__PLAZCODE_TEMPLATE_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/templates.js")))
+        .replace("__PLAZCODE_BYOK_CHAT_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/byok-chat-ui.js")))
         .replace("__PLAZCODE_VERSION_UI__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/version.js")))
         .replace("__PLAZCODE_THEME_PRESETS__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/theme-presets.js")))
         .replace("__PLAZCODE_BACKDROP_FX__", include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/backdrop-fx.js")))
