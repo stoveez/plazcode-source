@@ -3,21 +3,23 @@
 // providers/oxalpha.js — Ox Alpha (oxalpha.com / oxalpha.org) provider.
 // Chat lives at oxalpha.com/chat and oxalpha.org/chat. No login. Reasoning-first model; capture thinking nodes. Adaptive composer.
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
     return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
@@ -37,9 +39,9 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {};
+  let diag = () => {};
   // Hooks handed over by core/main.js (same ones the Notion provider uses).
-  let isStopped                = () => false;
+  let isStopped = () => false;
   let isSessionActive = () => false;
   let requestStart = () => {};
 
@@ -88,6 +90,7 @@ const RSProvider                   = (() => {
     return href;
   }
 
+  ;
   const PENDING_START_KEY = "plazcode.oxalpha.pendingStart";
   const PENDING_MAX_MS = 120000;
   const PENDING_MAX_NAVS = 3;
@@ -171,7 +174,7 @@ const RSProvider                   = (() => {
     return true;
   }
 
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     // Native Copy/Copied/Download controls are chrome, not reply text. Their
     // feedback must not look like the model resumed streaming.
@@ -181,9 +184,9 @@ const RSProvider                   = (() => {
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      if (safeRead(() => n.tagName, "") === "BR") { t += "\n"; return; }
-      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(safeRead(() => n.tagName, ""));
+      if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(skip), false)) return;
+      if (safeRead(() => (n).tagName, "") === "BR") { t += "\n"; return; }
+      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(safeRead(() => (n).tagName, ""));
       if (isBlock && t && !t.endsWith("\n")) t += "\n";
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
       if (isBlock && !t.endsWith("\n")) t += "\n";
@@ -207,7 +210,7 @@ const RSProvider                   = (() => {
   const editorText = () => {
     const e = getEditor();
     if (!e) return "";
-    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => e.value, "") || "";
+    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => (e).value, "") || "";
     return (safeRead(() => e.innerText, "") || safeRead(() => e.textContent, "") || "").replace(/\u00a0/g, " ");
   };
 
@@ -262,7 +265,7 @@ const RSProvider                   = (() => {
     const r = roleOf(item);
     if (/assistant|agent|ai|model/.test(r)) return true;
     if (/user|human/.test(r)) return false;
-    return !isUserItem(item) && !!(item && (safeRead(() => item.innerText, "") || "").trim());
+    return !isUserItem(item) && !!(item && (safeRead(() => (item).innerText, "") || "").trim());
   }
 
   function itemText(item) {
@@ -361,20 +364,21 @@ const RSProvider                   = (() => {
     return "";
   }
 
-  const ariaOf = (b             ) => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.title, "") || "").trim();
+  const ariaOf = (b) => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.title, "") || "").trim();
   const allButtons = () => [...safeQueryAll(document, "button")].filter((b) => !safeClosest(b, "#rs-root"));
   function composerButtons() {
     const editor = getEditor();
     let frame = composerFrame();
     if (!editor || !frame) return [];
-    const form = safeRead(() => editor.form, null);
+    const form = safeRead(() => (editor).form, null);
     // A textarea can have an inner wrapper while Send is its sibling. For a
     // non-form composer, include that local shell without reaching the chat
     // transcript, navigation or the whole page.
     if (!form) for (let i = 0; i < 4; i++) {
-      const cls = String(safeRead(() => frame.className, ""));
-      if (/composer|input-bar|chat-input/i.test(cls) || safeRead(() => frame.tagName, "") === "FOOTER") break;
-      const parent = safeRead(() => frame.parentElement, null);
+      const curFrame = frame;
+      const cls = String(safeRead(() => curFrame.className, ""));
+      if (/composer|input-bar|chat-input/i.test(cls) || safeRead(() => curFrame.tagName, "") === "FOOTER") break;
+      const parent = safeRead(() => curFrame.parentElement, null);
       if (!parent || /^(?:MAIN|BODY|HTML)$/.test(safeRead(() => parent.tagName, "")) ||
           safeQuery(parent, '[data-message-role], [data-role="assistant"], [data-role="user"], article, .message, .msg')) break;
       frame = parent;
@@ -478,7 +482,7 @@ const RSProvider                   = (() => {
     const proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
     const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
     if (setter && setter.set) setter.set.call(el, v);
-    else el.value = v;
+    else (el).value = v;
     el.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
@@ -553,7 +557,7 @@ const RSProvider                   = (() => {
       diag("oxalpha.send.refusedHome", { path: location.pathname, textLen: String(text || "").length });
       throw new Error("Ox Alpha: this is the home page, not a chat. Open oxalpha.com/chat first, then try again.");
     }
-    return (typeAndSend       )(text, images, options);
+    return (typeAndSend)(text, images, options);
   }
 
   function stopGeneration() {
@@ -626,7 +630,7 @@ const RSProvider                   = (() => {
     }, true);
     document.addEventListener("click", (e) => {
       if (!getEditor()) return;
-      const t = e.target           ;
+      const t = e.target;
       // PlazCode's own bar buttons (Fix connection, Enhance, ...) are never the site's Send button.
       if (safeClosest(t, "#rs-root")) return;
       const btn = safeRead(() => t.closest, null) && safeClosest(t, "button");

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/providers/chatgpt-cm.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // providers/chatgpt-cm.js - ChatGPT CodeMirror tap (runs in the MAIN world).
 //
 // WHY THIS EXISTS: ChatGPT renders fenced code blocks with CodeMirror, and the
@@ -49,9 +50,11 @@
   function safeClosest(node, selector) {
     return safeRead(() => node.closest(selector), null);
   }
+  ;
   function safeRect(node) {
     return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
+  ;
   function safeStyle(node) {
     return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
   }
@@ -83,8 +86,10 @@
   const USER_EXCLUDE = '#rs-root,.rs-chip,form,button,[role="button"],[contenteditable="true"],[data-message-author-role="assistant"],[data-conversation-role="assistant"]';
   function committedUserText(surface, bubble) {
     const keys = Object.keys(surface);
-    const fiber = surface[keys.find(key => key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$'))];
-    const props = surface[keys.find(key => key.startsWith('__reactProps$'))];
+    const fiberKey = keys.find(key => key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$'));
+    const propsKey = keys.find(key => key.startsWith('__reactProps$'));
+    const fiber = fiberKey ? surface[fiberKey] : null;
+    const props = propsKey ? surface[propsKey] : null;
     if (!fiber || !props) return null;
     const texts = [];
     for (const start of [fiber, fiber.alternate]) {
@@ -114,7 +119,7 @@
   }
   function syncUserSource(event) {
     const bubble = event.target;
-    if (!safeRead(() => bubble?.matches?.(USER), false) || !bubble.isConnected || safeClosest(bubble, USER_EXCLUDE)) return;
+    if (!safeRead(() => !!bubble?.matches?.(USER), false) || !bubble || !bubble.isConnected || safeClosest(bubble, USER_EXCLUDE)) return;
     let source = null, state = 'unavailable';
     try {
       const surfaces = safeQueryAll(bubble, '.whitespace-pre-wrap')

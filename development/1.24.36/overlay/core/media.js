@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/media.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 const PlazCodeMedia = (() => {
+
+
+
+
+
   const types = {jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp',gif:'image/gif',bmp:'image/bmp',svg:'image/svg+xml',avif:'image/avif',heic:'image/heic',heif:'image/heif',tif:'image/tiff',tiff:'image/tiff',mp4:'video/mp4',m4v:'video/mp4',mov:'video/quicktime',webm:'video/webm',mkv:'video/x-matroska',avi:'video/x-msvideo',mpeg:'video/mpeg',mpg:'video/mpeg',ogv:'video/ogg',wmv:'video/x-ms-wmv',flv:'video/x-flv', '3gp':'video/3gpp'};
   const MAX_BYTES = 12 * 1024 * 1024, MAX_FILES = 8;
-  function mime(file) { return file.type && file.type !== 'application/octet-stream' ? file.type : types[String(file.name || '').split('.').pop().toLowerCase()] || ''; }
+  function mime(file) { return file.type && file.type !== 'application/octet-stream' ? file.type : types[(String(file.name || '').split('.').pop() || '').toLowerCase()] || ''; }
   function fileFrom(payload, index = 0) {
     const type = payload.mimeType || 'image/jpeg', bin = atob(payload.data), bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
     const ext = Object.keys(types).find(key => types[key] === type) || 'bin';
@@ -46,7 +52,7 @@ const PlazCodeMedia = (() => {
     if(!Array.isArray(payloads)||!payloads.length||payloads.length>MAX_FILES)throw Error('Send 1–8 attachments at a time.');
     let bytes=0;
     for(const p of payloads){
-      if(!p || typeof p.name!=='string'||p.name.length>512||!/^((image|video)\/[a-z0-9.+-]+)$/.test(p.mimeType)||typeof p.data!=='string'||!p.data.length||p.data.length%4!==0||!/^[A-Za-z0-9+/]*={0,2}$/.test(p.data))throw Error('Invalid media attachment.');
+      if(!p || typeof p.name!=='string'||p.name.length>512||typeof p.mimeType!=='string'||!/^((image|video)\/[a-z0-9.+-]+)$/.test(p.mimeType)||typeof p.data!=='string'||!p.data.length||p.data.length%4!==0||!/^[A-Za-z0-9+/]*={0,2}$/.test(p.data))throw Error('Invalid media attachment.');
       bytes+=p.data.length*3/4;
     }
     if(bytes>MAX_BYTES)throw Error('Attachments exceed the 12 MB transfer limit. Use fewer files or video frames.');
@@ -54,7 +60,7 @@ const PlazCodeMedia = (() => {
   }
   async function prepare(files,{nativeVideo=false,frames=false,progress=()=>{},convert,quality}={}) {
     const result=[], notices=[];
-    async function decode(file,video){try{return await pixels(file,video,progress,quality);}catch(error){if(!convert)throw error;progress('Trying the local decoder for '+file.name+'…');const converted=await convert(file,video);if(!converted || !converted.ok)throw Error(converted && converted.error || 'Local conversion failed.');return converted.files;}}
+    async function decode(file,video){try{return await pixels(file,video,progress,quality);}catch(error){if(!convert)throw error;progress('Trying the local decoder for '+file.name+'…');const converted=await convert(file,video);if(!converted || !converted.ok)throw Error(converted && converted.error || 'Local conversion failed.');return converted.files || [];}}
     for(const file of Array.from(files)){
       const type=mime(file);progress('Preparing '+file.name+'…');
       if(!type.startsWith('image/')&&!type.startsWith('video/'))throw Error('Choose an image or video file: '+file.name);

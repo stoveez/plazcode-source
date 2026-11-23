@@ -5,9 +5,9 @@
 // AI chat the person last used PlazCode in (a new chat there, so their own chat is not touched); DeepSeek is only the
 // fallback when no AI chat has been seen yet. Loaded by background.js (importScripts; Firefox: the background script list).
 const PlazCodeAskSite = (() => {
-                                            
+
   // Each supported AI site's new-chat page (the same addresses as the app's "All supported AIs" buttons, agent/src/gui.rs).
-  const SITES                                                        = [
+  const SITES = [
     { hosts: ["chat.deepseek.com", "deepseek.com"], url: "https://chat.deepseek.com/", name: "DeepSeek" },
     { hosts: ["chatgpt.com", "chat.openai.com"], url: "https://chatgpt.com/", name: "ChatGPT" },
     { hosts: ["claude.ai", "claude.com"], url: "https://claude.ai/new", name: "Claude" },
@@ -28,17 +28,17 @@ const PlazCodeAskSite = (() => {
     { hosts: ["chat.mistral.ai"], url: "https://chat.mistral.ai/work", name: "Mistral" },
     { hosts: ["workbuddy.ai"], url: "https://www.workbuddy.ai/app", name: "WorkBuddy" },
   ];
-  const FALLBACK       = { url: "https://chat.deepseek.com/", name: "DeepSeek" };
+  const FALLBACK = { url: "https://chat.deepseek.com/", name: "DeepSeek" };
   // The AI chat site a page belongs to, or null (any other page, a sign-in page of one still counts as that site).
-  function siteFor(address        )              {
+  function siteFor(address) {
     let host = "";
     try { const u = new URL(address); if (u.protocol !== "https:") return null; host = u.hostname.toLowerCase().replace(/^www\./, ""); } catch { return null; }
     const hit = SITES.find((s) => s.hosts.some((h) => host === h || host.endsWith("." + h)));
     return hit ? { url: hit.url, name: hit.name } : null;
   }
   // The site for Ask PlazCode: a site the person chose (rsAskSite), else the AI chat they last used, else DeepSeek.
-  function choose(chosen         , last         )                                                    {
-    const ok = (v     )            => !!v && typeof v.url === "string" && /^https:\/\//.test(v.url);
+  function choose(chosen, last) {
+    const ok = (v) => !!v && typeof v.url === "string" && /^https:\/\//.test(v.url);
     if (ok(chosen)) return { url: String(chosen.url), name: String(chosen.name || ""), why: "chosen" };
     if (ok(last)) { const known = siteFor(last.url); if (known) return { ...known, why: "current" }; }
     return { ...FALLBACK, why: "fallback" };

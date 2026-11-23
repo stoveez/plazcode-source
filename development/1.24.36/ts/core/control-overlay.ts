@@ -1,0 +1,144 @@
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/control-overlay.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
+// AgentScript control look (1.24.36) (owner, 2026-11-12). Put into a web tab by the extension's worker while the AI
+// works there: a glow around the page edges in the PlazCode theme colour, a "PlazCode is working here" label with
+// Stop, and PlazCode's own cursor that glides to each target before a click or typing. Real input from the person
+// (a click or a key press; owner 2026-11-18: moving the mouse or scrolling does not) pauses the AI ("Paused, you're in control" + Resume); Escape stops it.
+// Everything sits in a closed shadow root and ignores the mouse, except the label's two buttons, so the page is
+// never blocked. Runs in the extension's own isolated world: the page cannot reach this object.
+(() => {
+  "use strict";
+  type ControlWords = { working: string; paused: string; resume: string; stop: string; shared: string; stopSharing: string };
+  if ((globalThis as { __plazcodeControl?: unknown }).__plazcodeControl) return;
+  const doc = document;
+  const reduced = () => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } };
+  const host = doc.createElement("plazcode-control");
+  host.setAttribute("aria-live", "polite");
+  host.style.cssText = "all:initial;position:fixed;inset:0;z-index:2147483647;pointer-events:none;display:block";
+  const root = host.attachShadow({ mode: "closed" });
+  root.innerHTML = `<style>
+  :host{all:initial}
+  *{box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .glow{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .35s ease;
+    box-shadow:inset 0 0 0 2px var(--a),inset 0 0 22px 4px color-mix(in srgb,var(--a) 70%,transparent),inset 0 0 70px 14px color-mix(in srgb,var(--a) 32%,transparent)}
+  .on .glow{opacity:1}
+  .paused .glow{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--a) 55%,#888),inset 0 0 26px 4px color-mix(in srgb,var(--a) 25%,transparent)}
+  .label{position:fixed;top:0;left:50%;transform:translate(-50%,-110%);transition:transform .35s ease;pointer-events:auto;
+    display:flex;align-items:center;gap:10px;padding:8px 10px 8px 16px;border-radius:0 0 12px 12px;color:#fff;font-size:13px;font-weight:600;
+    background:linear-gradient(135deg,var(--a),color-mix(in srgb,var(--a) 62%,#000));box-shadow:0 6px 24px color-mix(in srgb,var(--a) 45%,transparent)}
+  .on .label{transform:translate(-50%,0)}
+  .dot{width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 8px #fff}
+  .paused .dot{background:transparent;border:2px solid #fff;box-shadow:none}
+  button{all:unset;cursor:pointer;padding:4px 10px;border-radius:8px;background:rgba(255,255,255,.18);font-size:12px;font-weight:600;color:#fff}
+  button:hover{background:rgba(255,255,255,.3)}
+  button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  .resume{display:none}.paused .resume{display:inline-block}
+  .cursor{position:fixed;left:0;top:0;width:26px;height:26px;pointer-events:none;opacity:0;transform:translate(-100px,-100px);
+    transition:transform .38s cubic-bezier(.3,.7,.25,1),opacity .2s ease;filter:drop-shadow(0 2px 6px color-mix(in srgb,var(--a) 70%,transparent))}
+  .on .cursor.seen{opacity:1}
+  .cursor.press{transition:transform .1s ease}
+  .still .glow,.still .label,.still .cursor{transition:none}
+  .sharing .glow{opacity:0}
+</style>
+<div class="frame" part="frame">
+  <div class="glow"></div>
+  <div class="label" role="status"><span class="dot"></span><span class="text">PlazCode is working here</span>
+    <button class="resume" type="button">Resume</button><button class="stop" type="button">Stop</button></div>
+  <svg class="cursor" viewBox="0 0 26 26" aria-hidden="true"><path d="M3 2l19 9.5-8.2 2.3L10 22z" fill="var(--a)" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>
+</div>`;
+  const frame = root.querySelector(".frame") as HTMLElement, text = root.querySelector(".text") as HTMLElement, cursor = root.querySelector(".cursor") as SVGElement, stopButton = root.querySelector(".stop") as HTMLButtonElement;
+  const state: { active: boolean; paused: boolean; stopped: boolean; sharing?: boolean; x: number; y: number; idle: number; expectUntil: number; settleUntil: number; settleCap: number } = { active: false, paused: false, stopped: false, x: -100, y: -100, idle: 0, expectUntil: 0, settleUntil: 0, settleCap: 0 };
+  // Step 7: the words in the person's PlazCode language (the AI tab or the Ask PlazCode panel translates them;
+  // the page this runs in never sees PlazCode's language files). English until words arrive.
+  const words: ControlWords = { working: "PlazCode is working here", paused: "Paused, you're in control", resume: "Resume", stop: "Stop", shared: "Shared with PlazCode", stopSharing: "Stop sharing" };
+  const resumeButton = root.querySelector(".resume") as HTMLButtonElement;
+  function setWords(given: Record<string, unknown> | undefined) {
+    if (!given || typeof given !== "object") return;
+    for (const key of Object.keys(words) as Array<keyof ControlWords>) if (typeof given[key] === "string" && (given[key] as string).trim() && (given[key] as string).length <= 80) words[key] = (given[key] as string).trim();
+    resumeButton.textContent = words.resume;
+  }
+  const tell = (event: string) => { try { chrome.runtime.sendMessage({ type: "control_event", event }); } catch {} };
+  const mount = () => { if (!host.isConnected) (doc.documentElement || doc.body).appendChild(host); };
+  const idle = () => { clearTimeout(state.idle); state.idle = setTimeout(() => { if (!state.paused) api.hide(); }, 8000); };
+  function setPaused(paused: boolean) {
+    state.paused = paused;
+    frame.classList.toggle("paused", paused);
+    text.textContent = paused ? words.paused : (state.sharing && !state.active ? words.shared : words.working);
+    if (paused) clearTimeout(state.idle); else idle();
+  }
+  // Only the person's own input counts. The AI's in-page events are not "trusted"; its real input (debugging
+  // connection, step 2) is announced first with expect(), so it never pauses itself.
+  function personal(event: Event) {
+    if (!state.active || state.paused || !event.isTrusted || Date.now() < state.expectUntil) return false;
+    if (event.composedPath && event.composedPath().includes(host)) return false;
+    // 2026-11-17 (owner: "when you press Resume it immediately goes back to Pause"): moving the mouse away from Resume paused
+    // again at once. Right after Resume, input only keeps a short window open; it ends once the mouse rests (0.7 s) and
+    // never later than 4 s after Resume. The same rule is in the app (agent/src/desktop_control.rs).
+    const now = Date.now();
+    if (now < state.settleUntil && now < state.settleCap) { state.settleUntil = Math.min(now + 700, state.settleCap); return false; }
+    return true;
+  }
+  const onInput = (event: Event) => {
+    if (event.type === "keydown" && (event as KeyboardEvent).key === "Escape" && event.isTrusted && state.active && Date.now() >= state.expectUntil) { api.hide(); state.stopped = true; tell("stop"); return; }
+    if (personal(event)) { setPaused(true); tell("paused"); }
+  };
+  // Owner (2026-11-18): "it should only pause when you click your mouse or press a key, moving your mouse or scrolling shouldn't count".
+  for (const type of ["pointerdown", "keydown"]) addEventListener(type, onInput, { capture: true, passive: true });
+  (root.querySelector(".stop") as HTMLButtonElement).addEventListener("click", (event: MouseEvent) => {
+    if (!event.isTrusted) return;
+    if (state.sharing && !state.active) { api.share(false); tell("stop_share"); return; }
+    api.hide(); state.stopped = true; tell("stop");
+  });
+  const resumeHere = () => { const now = Date.now(); state.settleUntil = now + 1500; state.settleCap = now + 4000; setPaused(false); };
+  (root.querySelector(".resume") as HTMLButtonElement).addEventListener("click", (event: MouseEvent) => { if (!event.isTrusted) return; resumeHere(); tell("resume"); });
+  const api = {
+    show(options?: { words?: Record<string, unknown>; accent?: string }) {
+      const o = options || {};
+      setWords(o.words);
+      if (typeof o.accent === "string" && /^#[0-9a-f]{6}$/i.test(o.accent.trim())) host.style.setProperty("--a", o.accent.trim());
+      else if (!host.style.getPropertyValue("--a")) host.style.setProperty("--a", "#8b5cf6");
+      mount();
+      frame.classList.toggle("still", reduced());
+      state.active = true; state.stopped = false;
+      frame.classList.remove("sharing"); text.textContent = state.paused ? words.paused : words.working; stopButton.textContent = words.stop;
+      // A frame later, so the glow fades in instead of appearing at once.
+      requestAnimationFrame(() => frame.classList.add("on"));
+      idle();
+      return api.state();
+    },
+    // Glide PlazCode's cursor to a point of the visible page (CSS pixels). Resolves when it has arrived.
+    moveTo(x: number, y: number) {
+      const px = Math.max(0, Math.min(innerWidth - 4, Number(x) || 0)), py = Math.max(0, Math.min(innerHeight - 4, Number(y) || 0));
+      const first = !cursor.classList.contains("seen");
+      cursor.classList.add("seen");
+      if (first) { cursor.style.transition = "none"; cursor.style.transform = `translate(${innerWidth / 2}px,${innerHeight / 2}px)`; void cursor.getBoundingClientRect(); cursor.style.transition = ""; }
+      cursor.style.transform = `translate(${px}px,${py}px)`;
+      state.x = px; state.y = py; idle();
+      const wait = reduced() ? 0 : 400;
+      return new Promise<{ x: number; y: number }>((resolve) => setTimeout(() => resolve({ x: px, y: py }), wait));
+    },
+    press() { cursor.classList.add("press"); cursor.style.transform = `translate(${state.x}px,${state.y}px) scale(.82)`; setTimeout(() => { cursor.style.transform = `translate(${state.x}px,${state.y}px)`; cursor.classList.remove("press"); }, 140); idle(); },
+    // Hidden for the moment a picture of the tab is taken, so the AI sees the page, not PlazCode's glow.
+    veil(on: boolean) { host.style.visibility = on ? "hidden" : "visible"; return new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve as unknown as FrameRequestCallback))); },
+    // Resume / Pause pressed somewhere else (the live view, Ask PlazCode): the layer in the tab follows, so the next action
+    // does not read "paused" from it and pause PlazCode again (owner, 2026-11-17).
+    resume() { if (state.paused) resumeHere(); return api.state(); },
+    pause() { if (state.active && !state.paused) setPaused(true); return api.state(); },
+    expect(ms: number) { state.expectUntil = Date.now() + Math.max(0, Math.min(5000, Number(ms) || 0)); },
+    // Owner (2026-11-18): "the PlazCode is working popup with the glowing corners ... just disappears after a certain amount of time".
+    // It hid itself 8 s after the AI's last action, so a long think between two steps took it away. While the AI chat that controls
+    // this tab is still running, the extension calls keep() with its run heartbeat (every 5 s), and the glow stays on.
+    keep() { if (state.active && !state.paused) idle(); return { active: !!state.active, paused: !!state.paused }; },
+    hide() { if (state.sharing) { state.active = false; clearTimeout(state.idle); setPaused(false); api.share(true); cursor.classList.remove("seen"); return; } state.active = false; clearTimeout(state.idle); setPaused(false); clearTimeout(state.idle); frame.classList.remove("on"); cursor.classList.remove("seen"); },
+    // "Shared with PlazCode": the quiet mark while this tab is shared in Ask PlazCode (no glow, no cursor).
+    share(on: boolean, given?: Record<string, unknown>) {
+      setWords(given);
+      if (on) { mount(); if (!state.active) { frame.classList.add("on", "sharing"); text.textContent = words.shared; stopButton.textContent = words.stopSharing; } state.sharing = true; }
+      else { state.sharing = false; frame.classList.remove("sharing"); stopButton.textContent = words.stop; if (!state.active) frame.classList.remove("on"); else text.textContent = words.working; }
+      return api.state();
+    },
+    state() { return { sharing: !!state.sharing, label: text.textContent, active: state.active, paused: state.paused, stopped: state.stopped, x: state.x, y: state.y, accent: host.style.getPropertyValue("--a"), shown: host.isConnected && frame.classList.contains("on") }; },
+    target: null,
+  };
+  Object.defineProperty(globalThis, "__plazcodeControl", { value: api, configurable: false, writable: false });
+})();

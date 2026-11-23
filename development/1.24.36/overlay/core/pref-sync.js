@@ -23,29 +23,29 @@ const PlazCodePrefSync = (() => {
   ];
   const PENDING_KEY = "rs-desktop-pending";
   const META_KEY = "rs-desktop-pending-meta";
-  ;                                    
-  ;                                                                  
-  ;                                                                                                                                               
-  ;            
-                                                                                       
-                   
-                
-                                                    
-                                   
-                       
-    
-  const same = (a         , b         ) => JSON.stringify(a) === JSON.stringify(b);
-  function create(d      ) {
-    const later = d.later || ((fn            , ms        ) => setTimeout(fn, ms));
-    const cancel = d.cancel || ((id         ) => clearTimeout(id       ));
+  ;
+  ;
+  ;
+  ;
+
+
+
+
+
+
+
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  function create(d) {
+    const later = d.later || ((fn, ms) => setTimeout(fn, ms));
+    const cancel = d.cancel || ((id) => clearTimeout(id));
     const wallNow = d.now || (() => Date.now());
-    const pending = new Map                 ();        // local changes not yet confirmed by the app
-    const pendingMeta = new Map                  ();   // edit timestamps + base epoch/revision per pending key
-    const remoteWrites = new Map                ();    // values PlazCode itself just wrote from the app (not local changes)
-    const editedAt = new Map                ();        // when each setting was last changed here (a counter)
-    let edits = 0, quiet = 0, timer          = null, inFlight = false, retry = 500, loaded                       = null;
+    const pending = new Map();        // local changes not yet confirmed by the app
+    const pendingMeta = new Map();   // edit timestamps + base epoch/revision per pending key
+    const remoteWrites = new Map();    // values PlazCode itself just wrote from the app (not local changes)
+    const editedAt = new Map();        // when each setting was last changed here (a counter)
+    let edits = 0, quiet = 0, timer = null, inFlight = false, retry = 500, loaded = null;
     let remoteEpoch = "", remoteRev = 0, lastEditAtMs = 0;
-    const remoteKeyUpdatedAt                         = {};
+    const remoteKeyUpdatedAt = {};
     const nextTs = () => { lastEditAtMs = Math.max(wallNow(), lastEditAtMs + 1); return lastEditAtMs; };
     const timeout = () => { try { return AbortSignal.timeout(5000); } catch { return undefined; } };
     function load() {
@@ -53,13 +53,13 @@ const PlazCodePrefSync = (() => {
         try {
           const got = await d.storage.get([PENDING_KEY, META_KEY]);
           const saved = got[PENDING_KEY];
-          const meta = got[META_KEY]                                                                                             ;
+          const meta = got[META_KEY];
           if (meta && typeof meta === "object") {
             if (!remoteEpoch && typeof meta.epoch === "string") remoteEpoch = meta.epoch;
             if (!remoteRev && typeof meta.rev === "number" && Number.isFinite(meta.rev)) remoteRev = meta.rev;
           }
-          if (saved && typeof saved === "object") for (const key of KEYS) if (key in (saved         ) && !pending.has(key)) {
-            pending.set(key, (saved         )[key]);
+          if (saved && typeof saved === "object") for (const key of KEYS) if (key in (saved) && !pending.has(key)) {
+            pending.set(key, (saved)[key]);
             const m = meta && meta.edits && meta.edits[key];
             if (m && typeof m === "object") {
               const at = typeof m.at === "number" && Number.isFinite(m.at) ? m.at : 0;
@@ -76,7 +76,7 @@ const PlazCodePrefSync = (() => {
     async function remember() {
       try {
         if (pending.size) {
-          const editsMeta                           = {};
+          const editsMeta = {};
           for (const key of pending.keys()) {
             editsMeta[key] = pendingMeta.get(key) || { at: 0, baseEpoch: remoteEpoch, baseRev: remoteRev };
           }
@@ -89,9 +89,9 @@ const PlazCodePrefSync = (() => {
         }
       } catch {}
     }
-    function schedule(ms        ) { if (timer) cancel(timer); timer = later(() => { timer = null; void push(); }, ms); }
+    function schedule(ms) { if (timer) cancel(timer); timer = later(() => { timer = null; void push(); }, ms); }
     // From chrome.storage.onChanged (local area): a setting changed in the extension.
-    function noteLocal(changes                                        ) {
+    function noteLocal(changes) {
       if (quiet) return;
       let changed = false;
       for (const key of KEYS) {
@@ -110,10 +110,10 @@ const PlazCodePrefSync = (() => {
       if (changed) { retry = 500; void remember(); schedule(50); }
     }
     // The app's settings into the extension. `since`: the change counter when the read began; a setting changed later is left alone.
-    async function apply(remote         , since = Infinity)                   {
+    async function apply(remote, since = Infinity) {
       await load();
       if (!remote || typeof remote !== "object") return false;
-      const r = remote         ;
+      const r = remote;
       const incomingEpoch = typeof r._plazcodeEpoch === "string" ? r._plazcodeEpoch : "";
       const incomingRev = typeof r._plazcodeRev === "number" && Number.isFinite(r._plazcodeRev) ? r._plazcodeRev : null;
       if (incomingEpoch && incomingRev !== null) {
@@ -125,13 +125,13 @@ const PlazCodePrefSync = (() => {
         remoteRev = incomingRev;
       }
       if (r._plazcodeKeyUpdatedAt && typeof r._plazcodeKeyUpdatedAt === "object") {
-        for (const [k, v] of Object.entries(r._plazcodeKeyUpdatedAt                           )) {
+        for (const [k, v] of Object.entries(r._plazcodeKeyUpdatedAt)) {
           if (typeof v === "number" && Number.isFinite(v)) remoteKeyUpdatedAt[k] = v;
         }
       }
-      const chosen = Array.isArray(r._plazcodeSaved) ? new Set(r._plazcodeSaved            ) : null;
+      const chosen = Array.isArray(r._plazcodeSaved) ? new Set(r._plazcodeSaved) : null;
       const local = await d.storage.get(KEYS);
-      const updates        = {};
+      const updates = {};
       let keepLocal = false;
       for (const key of KEYS) {
         if (!(key in r) || pending.has(key) || (editedAt.get(key) || 0) > since) continue;
@@ -153,7 +153,7 @@ const PlazCodePrefSync = (() => {
       if (keepLocal) { void remember(); schedule(50); }
       return true;
     }
-    async function push(all = false)                   {
+    async function push(all = false) {
       if (inFlight) return false;
       inFlight = true;
       let ok = false;
@@ -162,10 +162,10 @@ const PlazCodePrefSync = (() => {
         const prefs = all ? await d.storage.get(KEYS) : Object.fromEntries(pending);
         if (!Object.keys(prefs).length) { ok = true; return true; }
         const pushEdits = edits;
-        const payload        = { ...prefs };
-        const keyTimestamps                         = {};
-        const keyBaseRev                         = {};
-        const keyBaseEpoch                         = {};
+        const payload = { ...prefs };
+        const keyTimestamps = {};
+        const keyBaseRev = {};
+        const keyBaseEpoch = {};
         for (const key of Object.keys(prefs)) {
           const m = pendingMeta.get(key);
           keyTimestamps[key] = m ? m.at : 0;
@@ -180,9 +180,9 @@ const PlazCodePrefSync = (() => {
         const response = await d.fetch(d.url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: timeout() });
         ok = !!response && response.ok;
         if (ok) {
-          let body      = null;
+          let body = null;
           try { body = await response.json(); } catch {}
-          const rejected = new Set        (Array.isArray(body && body._plazcodeRejected) ? body._plazcodeRejected : []);
+          const rejected = new Set(Array.isArray(body && body._plazcodeRejected) ? body._plazcodeRejected : []);
           for (const [key, value] of Object.entries(prefs)) {
             if (!pending.has(key)) continue;
             const changedDuringPush = (editedAt.get(key) || 0) > pushEdits;
@@ -204,12 +204,12 @@ const PlazCodePrefSync = (() => {
         if (pending.size) { const wait = ok ? 50 : retry; if (!ok) retry = Math.min(10000, retry * 2); schedule(wait); }
       }
     }
-    async function read()                        {
+    async function read() {
       const response = await d.fetch(d.url, { method: "GET", signal: timeout() });
       return response && response.ok ? await response.json() : null;
     }
     // Regular read (every health check). Changes waiting to be sent go first.
-    async function pull()                   {
+    async function pull() {
       try {
         await load();
         if (pending.size && !(await push())) return false;
@@ -218,7 +218,7 @@ const PlazCodePrefSync = (() => {
       } catch { return false; }
     }
     // First contact with the app after the extension starts.
-    async function initial()                   {
+    async function initial() {
       try {
         await load();
         if (pending.size && !(await push())) return false;
@@ -256,7 +256,7 @@ const PlazCodePrefSync = (() => {
       if (timer) cancel(timer); timer = null; retry = 500; loaded = Promise.resolve();
     }
     // Storage writes that are not the person's changes (profile switch): not sent to the app.
-    async function silently   (work                  )             { quiet++; try { return await work(); } finally { later(() => { quiet--; }, 1000); } }
+    async function silently(work) { quiet++; try { return await work(); } finally { later(() => { quiet--; }, 1000); } }
     return { apply, push, pull, initial, noteLocal, reset, silently, ready: () => load(), get pending() { return pending; } };
   }
   return { create, KEYS, PENDING_KEY, META_KEY };

@@ -26,21 +26,23 @@
 //    CodeMirror virtualization), so the command JSON survives intact.
 //  - Conversation URL is /chat/<id>; a fresh chat is exactly "/".
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
     return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
@@ -60,7 +62,7 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {}; // injected by core via init()
+  let diag = () => {}; // injected by core via init()
 
   const S = {
     userItem: ".segment-user",
@@ -130,8 +132,8 @@ const RSProvider                   = (() => {
   };
 
   // ── Turn classification ───────────────────────────────────────────────────
-  const isUserItem = (item) => !!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.userItem), false);
-  const isAssistantItem = (item) => !!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.assistantItem), false);
+  const isUserItem = (item) => !!item && safeRead(() => item.matches, null) && (safeRead(() => item.matches(S.userItem), false));
+  const isAssistantItem = (item) => !!item && safeRead(() => item.matches, null) && (safeRead(() => item.matches(S.assistantItem), false));
 
   // Walk an element's text, skipping our own chip and any excluded subtree.
   // 2026-11-14 (owner report, checked live on kimi.ai): Kimi's reply now sits inside a "process-flow" whose header button says
@@ -140,15 +142,15 @@ const RSProvider                   = (() => {
   // never run and the JSON stayed raw. Page furniture (that header, code headers, tooltips) is left out, and a code block is
   // read as a real fenced block on its own lines.
   const CHROME_SEL = ".process-flow__header, .segment-code-header, [role='tooltip']";
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     const skip = ".rs-chip, " + CHROME_SEL + (excludeSel ? ", " + excludeSel : "");
     let t = "";
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      if (safeRead(() => n.matches(S.codeWrap), false)) {
+      if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(skip), false)) return;
+      if (safeRead(() => (n).matches(S.codeWrap), false)) {
         const lang = (safeRead(() => safeQuery(n, ".segment-code-lang").textContent, "") || "").trim().toLowerCase().replace(/[^\w+#.-]/g, "");
         const body = safeQuery(n, "pre") || safeQuery(n, ".segment-code-content");
         if (body) {
@@ -169,7 +171,7 @@ const RSProvider                   = (() => {
     item ? safeQuery(item, S.reply) || safeQuery(item, ".segment-content") || item : null;
 
   // Combine the reasoning-area exclusion with any caller-supplied selector.
-  const notThink = (excludeSel         ) => S.thinking + (excludeSel ? ", " + excludeSel : "");
+  const notThink = (excludeSel) => S.thinking + (excludeSel ? ", " + excludeSel : "");
 
   function itemText(item) {
     if (!item) return "";
@@ -576,7 +578,7 @@ const RSProvider                   = (() => {
   // "Swarm" actually breaks the command protocol, so that is the only thing we
   // match. Anything else is left strictly alone, in any language.
   const SWARM_RE = /swarm|集群|蜂群/i;
-  const currentModelIsUsable = () => !SWARM_RE.test(safeRead(() => (modelBtn() || {}).textContent, "") || "");
+  const currentModelIsUsable = () => !SWARM_RE.test(safeRead(() => ((modelBtn() || {})).textContent, "") || "");
   const MAX_PICKER_TRIES = 6;
   const visibleModelItems = () =>
     [...safeQueryAll(document, ".model-item")].filter(
@@ -604,7 +606,7 @@ const RSProvider                   = (() => {
     // Nothing usable on offer (Kimi renamed things again): give up rather than
     // re-opening the picker forever. modeWarning() still tells the user what to do.
     if (++pickerTries > MAX_PICKER_TRIES) {
-      diag("kimi.defaultModel.giveUp", { tries: pickerTries, label: safeRead(() => (modelBtn() || {}).textContent, "") });
+      diag("kimi.defaultModel.giveUp", { tries: pickerTries, label: safeRead(() => ((modelBtn() || {})).textContent, "") });
       defaultArmed = false;
       return;
     }
@@ -689,7 +691,7 @@ const RSProvider                   = (() => {
     if (!fi) { diag("attach.noFileInput"); return false; }
     diag("attach.setFiles", { count: dt.items.length });
     try { fi.files = dt.files; fi.dispatchEvent(new Event("change", { bubbles: true })); }
-    catch (e) { diag("attach.setFilesThrew", { msg: String((e && e.message) || e) }); return false; }
+    catch (e) { diag("attach.setFilesThrew", { msg: String((e && (e).message) || e) }); return false; }
     // A real file pick closes the toolkit menu; our programmatic set doesn't, and
     // Escape does NOT dismiss it (validated live). Toggle the trigger to close it
     // so it doesn't sit open over the composer. The hidden input persists once
@@ -750,7 +752,7 @@ const RSProvider                   = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const ctrl = e.target && safeRead(() => (e.target           ).closest, null) && safeClosest(e.target, S.sendBtn);
+        const ctrl = e.target && safeRead(() => (e.target).closest, null) && safeClosest(e.target, S.sendBtn);
         if (!ctrl) return;
         // Stop class = a native stop intent.
         if (isStop(ctrl)) { handlers.onNativeStop(); return; }
@@ -780,7 +782,7 @@ const RSProvider                   = (() => {
   // ANY length - the length-capped direct-children pass misses those on two
   // counts (nesting + a big inline command over the cap).
   const STARTS_CMD = /^\s*(?:```(?:json)?\s*)?(?:\{?\s*"(?:command|tool)"\s*:|###\s*lua|###mcp_tool###)/i;
-  function findToolBlockSpot(item /*, chip */) {
+  function findToolBlockSpot(item) {
     const md = bodyEl(item);
     if (!md) return null;
     let hidAny = null;

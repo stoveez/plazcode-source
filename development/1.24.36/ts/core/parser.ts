@@ -10,6 +10,7 @@
 const RSParse = (() => {
   "use strict";
 
+  type ParsedCall = { tool: string; arguments: Record<string, any>; argumentError?: string };
   const START_M = "###MCP_TOOL###";
   const END_M = "###END_MCP_TOOL###";
   // Whitespace-tolerant markers: site markdown can insert spaces around the
@@ -22,18 +23,18 @@ const RSParse = (() => {
   const LUA_START_RE = /###\s*lua(?:\s*[:\-_ ]\s*(edit|client|server))?\s*(?:###|---)/i;
   const LUA_END_RE = /###\s*end[_\- ]?lua\s*###/i;
   const LUA_DEFAULT_DM = "Edit";
-  const dmName = (m) => (m ? m[0].toUpperCase() + m.slice(1).toLowerCase() : LUA_DEFAULT_DM);
+  const dmName = (m: string | undefined) => (m ? m[0].toUpperCase() + m.slice(1).toLowerCase() : LUA_DEFAULT_DM);
 
   // Find the first LUA start marker at or after `from`. Returns { pos, len, dm }
   // where len is the marker's own length to skip past it and dm the requested
   // datamodel ("Edit" when unspecified).
-  function findLuaStart(text, from = 0) {
+  function findLuaStart(text: string, from = 0) {
     const m = LUA_START_RE.exec(text.slice(from));
     return m ? { pos: from + m.index, len: m[0].length, dm: dmName(m[1]) } : { pos: -1, len: 0, dm: LUA_DEFAULT_DM };
   }
 
   // Find the first LUA end marker at or after `from`. Returns its start index or -1.
-  function findLuaEnd(text, from = 0) {
+  function findLuaEnd(text: string, from = 0) {
     const m = LUA_END_RE.exec(text.slice(from));
     return m ? from + m.index : -1;
   }
@@ -47,7 +48,7 @@ const RSParse = (() => {
   // this at line ~206; mirror it for the raw ###LUA### extraction. Requires
   // trailing whitespace (\s+) so it never eats a legitimate identifier like
   // `Copy(x)` that a script might genuinely start with.
-  function stripCodeChrome(code) {
+  function stripCodeChrome(code: unknown) {
     return String(code || "")
       .replace(/^[\u200B-\u200D\uFEFF]+/, "")
       .replace(/^(?:json|copy|lua|luau|javascript|js|python|py|text)\s+/i, "");
@@ -75,7 +76,7 @@ const RSParse = (() => {
   // function_calls or just calls, so every delimiter is matched loosely.
   // string="true" means a raw string; string="false" means a JSON value.
   const DSML_BAR = "[\\s|\\uFF5C\\u2502\\u2223\\u01C0]*";
-  const DSML_TAG = (closing, tag) => "<\\s*" + (closing ? "\\/" : "") + DSML_BAR + "DSML" + DSML_BAR + tag;
+  const DSML_TAG = (closing: boolean, tag: string) => "<\\s*" + (closing ? "\\/" : "") + DSML_BAR + "DSML" + DSML_BAR + tag;
   const DSML_SIG_RE = new RegExp(DSML_TAG(false, "(?:[a-z_]*calls|invoke)\\b"), "i");
   const DSML_CALLS_OPEN_RE = new RegExp(DSML_TAG(false, "[a-z_]*calls\\s*>"), "gi");
   const DSML_CALLS_CLOSE_RE = new RegExp(DSML_TAG(true, "[a-z_]*calls\\s*>"), "gi");
@@ -90,25 +91,25 @@ const RSParse = (() => {
     "((?:\\s+[a-z_]+\\s*=\\s*[\"'\\u201C\\u201D][^\"'\\u201C\\u201D>]*[\"'\\u201C\\u201D])*)\\s*>" +
     "([\\s\\S]*?)" + DSML_TAG(true, "parameter\\s*>"), "gi");
 
-  const lastIndexOf = (re, text) => {
+  const lastIndexOf = (re: RegExp, text: string) => {
     re.lastIndex = 0;
-    let last = -1, m;
+    let last = -1, m: RegExpExecArray | null;
     while ((m = re.exec(text))) { last = m.index; if (m[0].length === 0) re.lastIndex++; }
     return last;
   };
 
-  function hasDsml(r) {
+  function hasDsml(r: unknown) {
     return DSML_SIG_RE.test(String(r || ""));
   }
 
   // Native closing tokens alone contain neither a tool nor arguments. Inspect
   // the WHOLE reply, so quoted examples, JSON values and code are never mistaken
   // for a decoder runaway. A partial final closer may still be streaming.
-  function closingDsmlTail(r) {
+  function closingDsmlTail(r: unknown) {
     const text=String(r||'').trim();
     if(!/^[<{`]/.test(text)||!/DSML/i.test(text))return null;
     const token=new RegExp(DSML_TAG(true,'>'),'gi');
-    let from=0,start=0,count=0,match;
+    let from=0,start=0,count=0,match: RegExpExecArray | null;
     while((match=token.exec(text))){
       if(text.slice(from,match.index).trim()){start=match.index;count=0;}
       count++;from=token.lastIndex;
@@ -116,11 +117,11 @@ const RSParse = (() => {
     const tail=text.slice(from).replace(/[\s|\uFF5C\u2502\u2223\u01C0]/g,'').toLowerCase();
     return count&&(!tail||'</dsml>'.startsWith(tail))?{count,prefix:text.slice(0,start).trimEnd()}:null;
   }
-  function orphanDsmlClosers(r) {
+  function orphanDsmlClosers(r: unknown) {
     const tail=closingDsmlTail(r);
     return tail&&!tail.prefix?tail.count:0;
   }
-  function dsmlClosingRun(r) {
+  function dsmlClosingRun(r: unknown) {
     const tail=closingDsmlTail(r);if(!tail)return null;
     if(!tail.prefix)return {closers:tail.count,orphan:true};
     const prefix=tail.prefix;
@@ -149,19 +150,20 @@ const RSParse = (() => {
 
   // A DSML call still being written: the last wrapper or invoke that opened has
   // not closed yet.
-  function hasOpenDsml(r) {
+  function hasOpenDsml(r: unknown) {
     if (!hasDsml(r)) return false;
-    const lastOpen = lastIndexOf(DSML_CALLS_OPEN_RE, r);
-    if (lastOpen !== -1 && lastIndexOf(DSML_CALLS_CLOSE_RE, r) < lastOpen) {
+    const text = String(r || "");
+    const lastOpen = lastIndexOf(DSML_CALLS_OPEN_RE, text);
+    if (lastOpen !== -1 && lastIndexOf(DSML_CALLS_CLOSE_RE, text) < lastOpen) {
       // A complete invoke inside an unclosed wrapper is still mid-stream only
       // while another invoke may follow; the wrapper closer is what ends it.
       return true;
     }
-    const lastInvoke = lastIndexOf(DSML_INVOKE_OPEN_RE, r);
-    return lastInvoke !== -1 && lastIndexOf(DSML_INVOKE_CLOSE_RE, r) < lastInvoke;
+    const lastInvoke = lastIndexOf(DSML_INVOKE_OPEN_RE, text);
+    return lastInvoke !== -1 && lastIndexOf(DSML_INVOKE_CLOSE_RE, text) < lastInvoke;
   }
 
-  function dsmlValue(raw, attrs) {
+  function dsmlValue(raw: unknown, attrs?: string) {
     const isString = /string\s*=\s*["'\u201C\u201D]\s*true/i.test(attrs || "");
     const isJson = /string\s*=\s*["'\u201C\u201D]\s*false/i.test(attrs || "");
     const text = String(raw);
@@ -174,18 +176,18 @@ const RSParse = (() => {
   }
 
   // Every COMPLETE DSML invoke in the reply, as {tool, arguments}.
-  function parseDsml(r) {
+  function parseDsml(r: unknown): ParsedCall[] {
     const text = String(r || "");
     if (!hasDsml(text)) return [];
-    const out = [];
+    const out: ParsedCall[] = [];
     DSML_INVOKE_RE.lastIndex = 0;
-    let m;
+    let m: RegExpExecArray | null;
     while ((m = DSML_INVOKE_RE.exec(text))) {
       const name = String(m[1] || "").trim();
       if (!name) continue;
-      const args = {};
+      const args: Record<string, any> = {};
       DSML_PARAM_RE.lastIndex = 0;
-      let p;
+      let p: RegExpExecArray | null;
       while ((p = DSML_PARAM_RE.exec(m[2]))) {
         const key = String(p[1] || "").trim();
         if (key) args[key] = dsmlValue(p[3], p[2]);
@@ -205,10 +207,10 @@ const RSParse = (() => {
   // A returned result is data, even when the assistant echoes its JSON, Luau
   // markers or batch child commands. Skip only complete, explicitly versioned
   // result envelopes; a real command beside one must still be read normally.
-  function withoutResultEnvelopes(text) {
+  function withoutResultEnvelopes(text: unknown): string {
     const raw=String(text||'');if(!raw.includes('plazcode-result/1'))return raw;
     let output='',from=0,start=raw.indexOf('{');
-    while(start>=0){const end=matchBrace(raw,start);let value;
+    while(start>=0){const end=matchBrace(raw,start);let value: any;
       if(end<0&&/^\{\s*(?:"result"\s*:\s*\{)?[^{}]*"format"\s*:\s*"plazcode-result\/1"/.test(raw.slice(start))){return output+raw.slice(from,start);}
       if(end>=0)try{value=JSON.parse(raw.slice(start,end+1));}catch{}
       const result=value?.format==='plazcode-result/1'||(!value?.command&&!value?.tool&&value?.result?.format==='plazcode-result/1');
@@ -217,29 +219,29 @@ const RSParse = (() => {
     }
     return output+raw.slice(from);
   }
-  function hasToolSignature(r) {
-    r=withoutResultEnvelopes(r);
+  function hasToolSignature(r: unknown): boolean {
+    const s = withoutResultEnvelopes(r);
     return (
-      r.includes(START_M) ||
-      r.includes("MCP_TOOL") ||
-      LUA_START_RE.test(r) ||
-      CMD_KEY_RE.test(commandZone(r)) ||
-      hasDsml(r)
+      s.includes(START_M) ||
+      s.includes("MCP_TOOL") ||
+      LUA_START_RE.test(s) ||
+      CMD_KEY_RE.test(commandZone(s)) ||
+      hasDsml(s)
     );
   }
 
   // True if the reply contains a tool block that has STARTED but not yet CLOSED
   // (a ###LUA### / ###MCP_TOOL### opener with no matching end marker). Used by the
   // response watcher to avoid finalizing a command that is still being streamed.
-  function hasOpenToolBlock(r) {
-    r=withoutResultEnvelopes(r);
-    if (!r) return false;
-    if (hasOpenDsml(r)) return true;
-    const { pos: ls, len } = findLuaStart(r);
-    if (ls !== -1 && findLuaEnd(r, ls + len) === -1) return true;
-    const sm = r.indexOf(START_M);
+  function hasOpenToolBlock(r: unknown): boolean {
+    const s = withoutResultEnvelopes(r);
+    if (!s) return false;
+    if (hasOpenDsml(s)) return true;
+    const { pos: ls, len } = findLuaStart(s);
+    if (ls !== -1 && findLuaEnd(s, ls + len) === -1) return true;
+    const sm = s.indexOf(START_M);
     if (sm !== -1) {
-      const low = r.toLowerCase();
+      const low = s.toLowerCase();
       if (low.indexOf("###end_mcp_tool###", sm) === -1 && low.indexOf("###end-mcp_tool###", sm) === -1) return true;
     }
     // An inline JSON command ({"command"/"tool": …}) whose object has NOT closed yet
@@ -247,10 +249,10 @@ const RSParse = (() => {
     // open so the watcher keeps waiting instead of finalizing - and failing to parse -
     // half a command, which would drop the tool and end the turn as plain text.
     for (const key of ['"command"', '"tool"']) {
-      const k = r.indexOf(key);
+      const k = s.indexOf(key);
       if (k === -1) continue;
-      for (const open of keyOpeners(r, k)) {
-        const end = matchBrace(r, open);
+      for (const open of keyOpeners(s, k)) {
+        const end = matchBrace(s, open);
         if (end === -1) return true;  // the command object is still streaming
         if (end > k) break;           // the object holding the key is closed
       }
@@ -261,24 +263,24 @@ const RSParse = (() => {
   // Normalise a parsed JSON object into { tool, arguments }, accepting both the
   // new RobloxScript schema ("command"/"params") and the legacy/function-calling
   // schema ("tool"/"arguments"/"name"/"args"). Returns null if not a valid call.
-  function normalizeCall(o) {
+  function normalizeCall(o: any): ParsedCall | null {
     if (!o || typeof o !== "object") return null;
     const nameKey = o.command != null ? "command" : o.tool != null ? "tool" : "name";
     const name = o[nameKey];
     if (typeof name !== "string" || !name.trim()) return null;
     const wrappers = ["params", "arguments", "args"];
     const present = wrappers.filter(key => o[key] != null);
-    const decode = value => {
+    const decode = (value: unknown): Record<string, any> | null => {
       if (typeof value === "string") { try { value = parseLoose(value); } catch { return null; } }
-      return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+      return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, any>) : null;
     };
-    let args = present.length ? decode(o[present[0]]) : {};
+    let args: Record<string, any> | null = present.length ? decode(o[present[0]]) : {};
     if (!args) return null;
     args = { ...args };
     let argumentError = "";
     // Preserve explicitly supplied fields; never discard a flat path/code or silently choose between conflicting
     // wrappers. Schema-aware repair below still decides whether those fields actually belong to this tool.
-    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
     for (const key of present.slice(1)) {
       const extra = decode(o[key]);
       if (!extra || !same(extra, args)) argumentError = "Conflicting parameter wrappers. Send one params object.";
@@ -307,7 +309,7 @@ const RSParse = (() => {
   // value (e.g. multi_edit's edits / a Lua snippet), grabs the wrong end, and makes
   // JSON.parse fail - which silently dropped the command, so the tool never ran and
   // the turn was treated as a plain-text answer. Returns -1 if unbalanced.
-  function matchBrace(text, start) {
+  function matchBrace(text: string, start: number): number {
     let depth = 0, inStr = false, esc = false;
     for (let i = start; i < text.length; i++) {
       const c = text[i];
@@ -332,7 +334,7 @@ const RSParse = (() => {
   // trailing comma before } or ] (DeepSeek/Qwen habit) and NO-BREAK SPACE
   // between tokens (code blocks copied from rendered DOM text). Both made strict
   // JSON.parse fail, so a complete command cost a parse-error retry turn.
-  function parseLoose(raw) {
+  function parseLoose(raw: string): any {
     try {
       return JSON.parse(raw);
     } catch (e0) {
@@ -357,7 +359,7 @@ const RSParse = (() => {
     }
   }
 
-  function extractJson(raw) {
+  function extractJson(raw: string): any {
     raw = raw.trim().replace(/^(?:json|JSON)\s*/, "");
     raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
     const s = raw.indexOf("{");
@@ -377,8 +379,8 @@ const RSParse = (() => {
   // only the nearest "{" dropped the call (1.19.35). Only JSON-looking openers
   // ({ followed by a quote) are considered, at most a few levels out.
   const MAX_KEY_DEPTH = 6;
-  function keyOpeners(text, s) {
-    const out = [];
+  function keyOpeners(text: string, s: number): number[] {
+    const out: number[] = [];
     let start = text.lastIndexOf("{", s);
     while (start !== -1 && out.length < MAX_KEY_DEPTH) {
       if (/^\{\s*"/.test(text.slice(start, start + 24))) out.push(start);
@@ -387,26 +389,27 @@ const RSParse = (() => {
     return out;
   }
 
-  function extractToolsAnywhere(text) {
-    const out=[];const keys=/"(?:command|tool)"\s*:/g;let key;
+  function extractToolsAnywhere(text: string): ParsedCall[] {
+    const out: ParsedCall[]=[];const keys=/"(?:command|tool)"\s*:/g;let key: RegExpExecArray | null;
     while((key=keys.exec(text)) && out.length<9){
-      const starts=keyOpeners(text,key.index);let accepted=false;
+      const keyIndex=key.index;
+      const starts=keyOpeners(text,keyIndex);let accepted=false;
       for(const start of starts){
         const end=matchBrace(text,start);
         // Never run nested children from an incomplete enclosing envelope.
         if(end<0)return [];
-        if(end<key.index)continue;
+        if(end<keyIndex)continue;
         try{const call=normalizeCall(parseLoose(text.slice(start,end+1)));if(call){out.push(call);keys.lastIndex=end+1;accepted=true;break;}}catch{}
       }
-      if(!accepted && starts.some(start=>/"(?:command|tool)"\s*:/.test(text.slice(start,key.index+20))))return [];
+      if(!accepted && starts.some(start=>/"(?:command|tool)"\s*:/.test(text.slice(start,keyIndex+20))))return [];
     }
     return out;
   }
-  function extractToolAnywhere(text) {return extractToolsAnywhere(text)[0]||null;}
-  function commandDiagnosis(text) {
-    text=String(text||'');const key=/"(?:command|tool)"\s*:/.exec(text);
-    if(key){const starts=keyOpeners(text,key.index);for(const start of starts){const end=matchBrace(text,start);if(end<0)return "Received "+text.length+" characters. The JSON envelope has an unfinished string or missing closing braces. Nothing ran; the model/site output may be cut off. Split the next attempt into smaller complete edits; do not resend the same large payload unchanged.";try{parseLoose(text.slice(start,end+1));}catch(error){return "Received "+text.length+" characters. JSON parsing reported: "+String(error.message||error).slice(0,200)+". Check quoting/escapes at that position; do not assume a length limit.";}}}
-    return "Received "+text.length+" characters. The command markers or argument envelope are incomplete. Nothing ran. Check both markers and use smaller complete commands when output is cut off.";
+  function extractToolAnywhere(text: string): ParsedCall | null {return extractToolsAnywhere(text)[0]||null;}
+  function commandDiagnosis(text: unknown): string {
+    const raw=String(text||'');const key=/"(?:command|tool)"\s*:/.exec(raw);
+    if(key){const starts=keyOpeners(raw,key.index);for(const start of starts){const end=matchBrace(raw,start);if(end<0)return "Received "+raw.length+" characters. The JSON envelope has an unfinished string or missing closing braces. Nothing ran; the model/site output may be cut off. Split the next attempt into smaller complete edits; do not resend the same large payload unchanged.";try{parseLoose(raw.slice(start,end+1));}catch(error){return "Received "+raw.length+" characters. JSON parsing reported: "+String(((error as Error)&&(error as Error).message)||error).slice(0,200)+". Check quoting/escapes at that position; do not assume a length limit.";}}}
+    return "Received "+raw.length+" characters. The command markers or argument envelope are incomplete. Nothing ran. Check both markers and use smaller complete commands when output is cut off.";
   }
 
   // Only an ACTIONABLE command envelope may run from loose JSON. Replies often
@@ -448,7 +451,7 @@ const RSParse = (() => {
   // numbers ("2", "[3]", "²") may follow the sentence end.
   const BLOCK_PREFIX_RE = new RegExp("^(?:.*[.!?:)\\]\"'\u201d\u2019](?:\\d{1,3}|\\[\\d{1,3}\\]|[\u00b9\u00b2\u00b3\u2070-\u2079]{1,3}){0,3}|)(?:([A-Za-z][\\w+#.-]{0,14}?)(?=" + BUTTONS + "|$))?(?:" + BUTTONS + ")*$");
   const BUTTON_END_RE = new RegExp("(?:[.!?:)\\]\"'\u201d\u2019]|" + BUTTONS + "|^(?:json|jsonc|json5|lua|luau|js|javascript|ts|typescript|python|py))$", "i");
-  const blockPrefix = (prefix) => {
+  const blockPrefix = (prefix: string) => {
     if (!prefix.trim()) return true;
     const bare = prefix.replace(/\s+$/, "");
     // A space before the brace is only allowed after a sentence end, a header button or a code language
@@ -462,19 +465,19 @@ const RSParse = (() => {
   // A closing sentence after the command is normal ("I will wait for the result
   // before continuing."); only a reply that carries on at length is prose.
   const ZONE_TAIL = 200;  // most prose allowed after the last command
-  let _flatOverride = null;
-  function setFlatTranscript(value) { _flatOverride = value == null ? null : !!value; }
+  let _flatOverride: boolean | null = null;
+  function setFlatTranscript(value: unknown) { _flatOverride = value == null ? null : !!value; }
   function flatTranscript() {
     if (_flatOverride !== null) return _flatOverride;
     try { return typeof RSProvider !== "undefined" && !!RSProvider && RSProvider.flatTranscript === true; } catch { return false; }
   }
   // Top-level command objects of `text`, in order. An object that has not closed
   // yet (still streaming) is reported with end -1 and ends the list.
-  function commandSpans(text) {
-    const spans = [], keys = /"(?:command|tool)"\s*:\s*"/g;
-    let key;
+  function commandSpans(text: string) {
+    const spans: Array<{ start: number; end: number }> = [], keys = /"(?:command|tool)"\s*:\s*"/g;
+    let key: RegExpExecArray | null;
     while ((key = keys.exec(text)) && spans.length < 16) {
-      let found = null;
+      let found: { start: number; end: number } | null = null;
       for (const start of keyOpeners(text, key.index)) {
         const end = matchBrace(text, start);
         if (end < 0) { found = { start, end: -1 }; continue; }
@@ -489,13 +492,13 @@ const RSParse = (() => {
     }
     return spans;
   }
-  function commandZone(text) {
+  function commandZone(text: unknown): string {
     const raw = withoutResultEnvelopes(text);
     if (!CMD_KEY_RE.test(raw)) return "";
-    const fences = [];
-    let outside = "", at = 0, m;
+    const fences: Array<{ body: string; start: number; end: number }> = [];
+    let outside = "", at = 0, m: RegExpExecArray | null;
     const fenceRe = /```([^\n`]*)\n([\s\S]*?)(?:```|$)/g;
-    const inline = (t) => t.replace(/(?<!`)`[^`\n]+`(?!`)/g, " ");
+    const inline = (t: string) => t.replace(/(?<!`)`[^`\n]+`(?!`)/g, " ");
     while ((m = fenceRe.exec(raw))) {
       outside += inline(raw.slice(at, m.index)) + "\n";
       at = m.index + m[0].length;
@@ -523,7 +526,7 @@ const RSParse = (() => {
     let first = spans.length - 1;
     while (first > 0 && outside.slice(spans[first - 1].end + 1, spans[first].start).trim().length <= ZONE_GAP) first--;
     if (flat) return outside.slice(spans[first].start);
-    const eligible = (start) => {
+    const eligible = (start: number) => {
       const lineStart = outside.lastIndexOf("\n", start - 1) + 1;
       if (!blockPrefix(outside.slice(lineStart, start))) return false;
       const before = outside.slice(0, lineStart).split("\n").map(l => l.trim()).filter(Boolean).slice(-3);
@@ -535,12 +538,12 @@ const RSParse = (() => {
     return first < spans.length ? outside.slice(spans[first].start) : "";
   }
 
-  function parseToolCalls(r) {
-    r=withoutResultEnvelopes(r);
+  function parseToolCalls(r: unknown): ParsedCall[] {
+    const src = withoutResultEnvelopes(r);
     // Lowercase for case-insensitive end-marker search. Models write
     // ###end_mcp_tool### (underscore) or ###end-mcp_tool### (dash).
-    const rLow = r.toLowerCase();
-    const findEndM = (from) => {
+    const rLow = src.toLowerCase();
+    const findEndM = (from: number) => {
       const a = rLow.indexOf("###end_mcp_tool###", from);
       const b = rLow.indexOf("###end-mcp_tool###", from);
       if (a === -1 && b === -1) return -1;
@@ -548,14 +551,14 @@ const RSParse = (() => {
       if (b === -1) return a;
       return Math.min(a, b);
     };
-    const out = [];
+    const out: ParsedCall[] = [];
     let from = 0;
     while (true) {
-      const sm = r.indexOf(START_M, from);
+      const sm = src.indexOf(START_M, from);
       if (sm === -1) break;
       const em = findEndM(sm);
       if (em === -1) break;
-      const body = r.slice(sm + START_M.length, em);
+      const body = src.slice(sm + START_M.length, em);
       const { pos: ls, len: luaLen, dm } = findLuaStart(body);
       const le = findLuaEnd(body, ls === -1 ? 0 : ls + luaLen);
       if (ls !== -1 && le !== -1 && le > ls) {
@@ -573,21 +576,21 @@ const RSParse = (() => {
     }
     // DeepSeek's own DSML markup (see parseDsml). Checked before the loose JSON
     // search so a JSON value inside a DSML parameter is never taken as the call.
-    if (out.length === 0) out.push(...parseDsml(r));
+    if (out.length === 0) out.push(...parseDsml(src));
     // Prefer a JSON command envelope when one is present: a model may wrap
     // execute_luau as {"command":"execute_luau","params":{"code":"###LUA###…"}},
     // and the bare-marker fallback below would slice the still-ESCAPED JSON
     // source (literal \n, \") instead of the decoded code. extractToolAnywhere
     // JSON-decodes it; cleanLuaCall (applied at the end) then strips the markers.
     if (out.length === 0) {
-      out.push(...extractToolsAnywhere(commandZone(r)));
+      out.push(...extractToolsAnywhere(commandZone(src)));
     }
     // Bare ###LUA### … ###END_LUA### block with no JSON envelope at all.
     if (out.length === 0) {
-      const { pos: ls, len: luaLen, dm } = findLuaStart(r);
-      const le = findLuaEnd(r, ls === -1 ? 0 : ls + luaLen);
+      const { pos: ls, len: luaLen, dm } = findLuaStart(src);
+      const le = findLuaEnd(src, ls === -1 ? 0 : ls + luaLen);
       if (ls !== -1 && le !== -1 && le > ls) {
-        out.push({ tool: "execute_luau", arguments: { code: stripCodeChrome(r.slice(ls + luaLen, le).trim()), datamodel_type: dm } });
+        out.push({ tool: "execute_luau", arguments: { code: stripCodeChrome(src.slice(ls + luaLen, le).trim()), datamodel_type: dm } });
       }
     }
     return out.map(cleanLuaCall);
@@ -600,7 +603,7 @@ const RSParse = (() => {
   // MCP rejects ("Failed to parse command code"). Strip a leading start marker
   // and a trailing end marker from execute_luau's code, and adopt the marker's
   // datamodel when none was given. No-op for a clean code string.
-  function cleanLuaCall(call) {
+  function cleanLuaCall(call: ParsedCall): ParsedCall {
     if (!call || call.tool !== "execute_luau") return call;
     const code = call.arguments && call.arguments.code;
     if (typeof code !== "string") return call;
@@ -628,7 +631,7 @@ const RSParse = (() => {
   // Callers must only invoke this once generation has ENDED (the watcher's
   // parse_error branch), never on a still-streaming reply.
   const MAX_SALVAGE_CLOSERS = 2;
-  function salvageCutOff(text) {
+  function salvageCutOff(text: string): ParsedCall | null {
     for (const key of ['"command"', '"tool"']) {
       const k = text.indexOf(key);
       if (k === -1) continue;
@@ -636,7 +639,7 @@ const RSParse = (() => {
       if (start === -1) continue;
       if (matchBrace(text, start) !== -1) continue; // closed → not our case
       // String-aware bracket stack from the opener to the end of the text.
-      const stack = [];
+      const stack: string[] = [];
       let inStr = false, esc = false;
       for (let i = start; i < text.length; i++) {
         const c = text[i];
@@ -664,7 +667,7 @@ const RSParse = (() => {
     return null;
   }
 
-  function toolNameFromText(txt) {
+  function toolNameFromText(txt: string): string {
     // Match the name even BEFORE its closing quote (`[^"]*`), so the chip shows
     // the real command name AS IT IS TYPED instead of a generic "command"
     // placeholder until the JSON closes. A still-empty value falls through.
@@ -686,7 +689,7 @@ const RSParse = (() => {
   // ERROR, or a "(System note: …)" control message. Matched ONLY by the fixed
   // shapes we emit - never by command-like keywords, since a parse-error note
   // quotes a {"command": …} example that must NOT be read as a real command.
-  function isInjectedFeedback(txt) {
+  function isInjectedFeedback(txt: string): boolean {
     return /^\s*Output of '/.test(txt) ||
            /^\s*\[PlazCode retained the COMPLETE result\. This is the first page, not truncated source\. Read the rest with plazcode_result_read \{id:"[a-f0-9-]{36}",offset:\d+\}/.test(txt) ||
            /^\s*ERROR\b/.test(txt) ||
@@ -694,12 +697,12 @@ const RSParse = (() => {
   }
 
   // The assistant emitted a RobloxScript command (JSON or a ###LUA### block).
-  function hasCommandShape(txt) {
-    txt=withoutResultEnvelopes(txt);
-    return txt.includes(START_M) ||
-           LUA_START_RE.test(txt) ||
-           CMD_KEY_RE.test(commandZone(txt)) || // command/tool with PlazCode without params (e.g. list_commands)
-           hasDsml(txt);           // DeepSeek's own DSML tool-call markup
+  function hasCommandShape(txt: unknown): boolean {
+    const s = withoutResultEnvelopes(txt);
+    return s.includes(START_M) ||
+           LUA_START_RE.test(s) ||
+           CMD_KEY_RE.test(commandZone(s)) || // command/tool with PlazCode without params (e.g. list_commands)
+           hasDsml(s);           // DeepSeek's own DSML tool-call markup
   }
 
   return {

@@ -10,20 +10,22 @@
 //  - S.modeActive / S.modeControl (Work vs Code / Vibe Code route & tab/pill selectors)
 //  - S.sendBtn / S.stopBtn / S.attachBtn / S.fileInput
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
+  ;
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
     return safeRead(() => node.getBoundingClientRect(), { x: 0, y: 0, left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, readFailed: true });
@@ -42,7 +44,7 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {};
+  let diag = () => {};
 
   const S = {
     turn: '[data-message-author-role], [data-message-id], [data-testid*="user-message"], [data-testid*="assistant-message"], [class*="message-row"], article',
@@ -121,7 +123,7 @@ const RSProvider                   = (() => {
     return /\b(active|selected)\b/i.test(cls);
   }
 
-  function detectMode()                           {
+  function detectMode() {
     const path = (location.pathname || "").toLowerCase();
     const full = (path + " " + (location.search || "") + " " + (location.hash || "")).toLowerCase();
     if (/\/(?:vibe-?code|vibe|code)(?:\/|$|\?)/.test(path) || /[?&](?:mode|view|tab)=(?:vibe|code)/i.test(full)) return "code";
@@ -140,7 +142,7 @@ const RSProvider                   = (() => {
     return "chat";
   }
 
-  function findModeControl(target                 ) {
+  function findModeControl(target) {
     const re = target === "code" ? RE.codeMode : RE.workMode;
     for (const el of safeQueryAll(document, S.modeControl)) {
       if (safeClosest(el, "#rs-root") || !visible(el)) continue;
@@ -155,7 +157,7 @@ const RSProvider                   = (() => {
     return null;
   }
 
-  async function switchMode(target                 ) {
+  async function switchMode(target) {
     if (detectMode() === target) return true;
     const ctrl = findModeControl(target);
     if (!ctrl) return false;
@@ -164,11 +166,11 @@ const RSProvider                   = (() => {
   }
 
   // ── Editor & Composer ─────────────────────────────────────────────────────
-  let lockedEditor      = null;
+  let lockedEditor = null;
   function getEditor() {
-    if (lockedEditor && safeRead(() => lockedEditor.isConnected, false) && visible(lockedEditor)) return lockedEditor;
+    if (lockedEditor && safeRead(() => lockedEditor?.isConnected ?? false, false) && visible(lockedEditor)) return lockedEditor;
     const seen = new Set();
-    const candidates        = [];
+    const candidates = [];
     for (const el of safeQueryAll(document, S.editor)) {
       if (seen.has(el)) continue;
       seen.add(el);
@@ -192,11 +194,11 @@ const RSProvider                   = (() => {
     return candidates[candidates.length - 1] || candidates[0];
   }
 
-  function editorText(el ) {
+  function editorText(el) {
     const e = el || getEditor();
     if (!e) return "";
     const tag = safeRead(() => e.tagName, "");
-    if (tag === "TEXTAREA" || tag === "INPUT") return safeRead(() => e.value, "") || "";
+    if (tag === "TEXTAREA" || tag === "INPUT") return safeRead(() => (e).value, "") || "";
     return (safeRead(() => e.innerText, "") || safeRead(() => e.textContent, "") || "").replace(/\u00a0/g, " ");
   }
 
@@ -211,18 +213,19 @@ const RSProvider                   = (() => {
     if (!ed) return null;
     let n = safeRead(() => ed.parentElement, null);
     for (let i = 0; i < 10 && n && n !== document.body; i++) {
-      const cls = String(safeRead(() => n.className, "") || "");
-      const r = parseFloat(safeStyle(n).borderTopLeftRadius) || 0;
-      if (/rounded|composer|chat-input/i.test(cls) || r >= 12) return n;
-      n = safeRead(() => n.parentElement, null);
+      const cur = n;
+      const cls = String(safeRead(() => cur.className, "") || "");
+      const r = parseFloat(safeStyle(cur).borderTopLeftRadius) || 0;
+      if (/rounded|composer|chat-input/i.test(cls) || r >= 12) return cur;
+      n = safeRead(() => cur.parentElement, null);
     }
     return composerFrame();
   }
 
   // ── Turns & Text Extraction ───────────────────────────────────────────────
-  function allItems()            {
+  function allItems() {
     const seen = new Set();
-    const out            = [];
+    const out = [];
     for (const el of safeQueryAll(document, S.turn)) {
       if (seen.has(el) || safeClosest(el, S.nonComposerScope)) continue;
       seen.add(el);
@@ -252,7 +255,7 @@ const RSProvider                   = (() => {
   const isAssistantItem = (item) => !!item && !isUserItem(item);
 
   const CODE_CHROME = "button, [role='button'], .sr-only, [class*='copy' i], [class*='code-header' i]";
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     const skip = ".rs-chip, " + CODE_CHROME + (excludeSel ? ", " + excludeSel : "");
     let t = "";
@@ -260,10 +263,11 @@ const RSProvider                   = (() => {
       const type = safeRead(() => n.nodeType, 0);
       if (type === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (type !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      const tag = safeRead(() => n.tagName, "");
+      const el = n;
+      if (safeRead(() => el.matches, null) && safeRead(() => el.matches(skip), false)) return;
+      const tag = safeRead(() => el.tagName, "");
       if (tag === "BR") { t += "\n"; return; }
-      const isCode = tag === "PRE" || (safeRead(() => n.matches, null) && safeRead(() => n.matches(S.codeWrap), false));
+      const isCode = tag === "PRE" || (safeRead(() => el.matches, null) && safeRead(() => el.matches(S.codeWrap), false));
       const isBlock = isCode || /^(P|DIV|LI|UL|OL|BLOCKQUOTE|H[1-6]|TABLE|TR|SECTION|ARTICLE)$/.test(tag);
       if (isBlock && t && !t.endsWith("\n")) t += "\n";
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
@@ -292,7 +296,7 @@ const RSProvider                   = (() => {
     return textWithout(item);
   }
 
-  function classifyText(item, excludeSel ) {
+  function classifyText(item, excludeSel) {
     if (!item) return "";
     const skip = excludeSel ? `${S.thinking}, ${excludeSel}` : S.thinking;
     if (isAssistantItem(item)) return replyRoots(item).map((m) => textWithout(m, skip)).join("\n");
@@ -364,9 +368,9 @@ const RSProvider                   = (() => {
     const replyTxt = replyRoots(item).map((m) => textWithout(m, ".rs-chip, " + S.thinking)).join("\n");
     return (thinkTxt + "\n" + replyTxt).trim();
   }
-  const streamLen = (item ) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
 
-  let _streamMax = -1, _streamAt = 0, _streamItem      = null;
+  let _streamMax = -1, _streamAt = 0, _streamItem = null;
   function sampleStream() {
     const item = lastAssistant();
     const len = streamText(item).length;
@@ -413,7 +417,7 @@ const RSProvider                   = (() => {
     } catch { return {}; }
   }
 
-  function readAssistant()                {
+  function readAssistant() {
     const item = lastAssistant();
     if (!item) return { present: false, reply: "", thinking: "", item: null };
     const think = safeQuery(item, S.thinking);
@@ -437,7 +441,7 @@ const RSProvider                   = (() => {
 
   // ── Input Lock, Draft & Sending ───────────────────────────────────────────
   let _locked = false;
-  function setInputLock(on         ) {
+  function setInputLock(on) {
     _locked = !!on;
     const ed = getEditor();
     if (!ed) return;
@@ -473,7 +477,7 @@ const RSProvider                   = (() => {
     const proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
     const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
     if (setter && setter.set) setter.set.call(el, v);
-    else el.value = v;
+    else (el).value = v;
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
   }
@@ -489,8 +493,10 @@ const RSProvider                   = (() => {
       const sel = window.getSelection();
       const range = document.createRange();
       range.selectNodeContents(el);
-      sel.removeAllRanges();
-      sel.addRange(range);
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
     } catch {}
     let ok = false;
     try { ok = document.execCommand("insertText", false, text); } catch {}
@@ -550,7 +556,7 @@ const RSProvider                   = (() => {
     if (!dt.items.length) return false;
 
     let fi = safeQueryAll(document, S.fileInput).find((i) => !safeClosest(i, "#rs-root")) || null;
-    let opened      = null;
+    let opened = null;
     if (!fi) {
       opened = safeQuery(document, S.attachBtn);
       if (opened) {
@@ -595,7 +601,7 @@ const RSProvider                   = (() => {
     } catch {}
   }
 
-  async function typeAndSend(text, images ) {
+  async function typeAndSend(text, images) {
     const ed = getEditor();
     if (!ed) throw new Error("Mistral chat box not found — open chat.mistral.ai/work");
     const relock = _locked || safeRead(() => ed.getAttribute("contenteditable"), null) === "false" || safeRead(() => ed.hasAttribute("readonly"), false);
@@ -657,12 +663,12 @@ const RSProvider                   = (() => {
     return null;
   }
 
-  function installSendHooks(handlers           ) {
+  function installSendHooks(handlers) {
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
       const ed = getEditor();
       if (!ed || !safeRead(() => ed.contains(e.target), false) || editorText(ed).trim() === "") return;
-      if ((handlers       ).onCoworkSend && (handlers       ).onCoworkSend(e)) return;
+      if (handlers.onCoworkSend && (handlers.onCoworkSend)(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (chatIsEmpty()) handlers.onBlockedAttempt();
@@ -673,7 +679,7 @@ const RSProvider                   = (() => {
 
     document.addEventListener("click", (e) => {
       if (!getEditor() || safeClosest(e.target, "#rs-root")) return;
-      const btn = safeRead(() => (e.target           ).closest, null) && safeClosest(e.target, "button");
+      const btn = safeRead(() => (e.target).closest, null) && safeClosest(e.target, "button");
       if (!btn) return;
       if (isStopBtn(btn)) {
         if (e.isTrusted !== false) handlers.onNativeStop();
@@ -681,7 +687,7 @@ const RSProvider                   = (() => {
       }
       const isSend = S.sendAria.test(ariaOf(btn)) || safeRead(() => btn.type, "") === "submit";
       if (!isSend || safeRead(() => btn.disabled, false) || safeRead(() => btn.getAttribute("aria-disabled"), null) === "true") return;
-      if ((handlers       ).onCoworkSend && (handlers       ).onCoworkSend(e)) return;
+      if (handlers.onCoworkSend && (handlers.onCoworkSend)(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (chatIsEmpty()) handlers.onBlockedAttempt();
@@ -694,7 +700,7 @@ const RSProvider                   = (() => {
   const CMD_SHAPE = /"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i;
   function findToolBlockSpot(item) {
     if (!item) return null;
-    let spot                                                         = null;
+    let spot = null;
     for (const block of safeQueryAll(item, S.codeWrap)) {
       if (safeClosest(block, ".rs-chip") || safeClosest(block, S.thinking)) continue;
       if (!CMD_SHAPE.test(safeRead(() => block.textContent, "") || "")) continue;

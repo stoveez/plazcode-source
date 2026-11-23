@@ -26,38 +26,39 @@
 // eslint-disable-next-line no-unused-vars
 const RSProvider: PlazCodeProvider = (() => {
   "use strict";
+  type RectBox = { x: number; y: number; left: number; top: number; right: number; bottom: number; width: number; height: number; readFailed?: boolean };
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
-  function safeRead(read, fallback) {
+  function safeRead<T, F = T>(read: () => T, fallback: F): T | F {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
-  function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+  function safeQuery<T extends Element = Element>(root: ParentNode | null, selector: string): T | null {
+    return safeRead(() => (root as ParentNode).querySelector<T>(selector), null);
   }
-  function safeQueryAll(root, selector): any[] {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll<T extends Element = Element>(root: ParentNode | null, selector: string): T[] {
+    return safeRead(() => Array.from((root as ParentNode).querySelectorAll<T>(selector)), []);
   }
-  function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+  function safeClosest(node: EventTarget | Node | null | undefined, selector: string): Element | null {
+    return safeRead(() => (node as Element).closest(selector), null);
   }
-  function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+  function safeRect(node: Element | null | undefined): RectBox {
+    return safeRead(() => (node as Element).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
-  function safeStyle(node) {
-    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
+  function safeStyle(node: Element | null | undefined): CSSStyleDeclaration {
+    return safeRead(() => getComputedStyle(node as Element), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'} as CSSStyleDeclaration);
   }
-  function safePredicate(predicate) {
+  function safePredicate<T>(predicate: () => T): T | false {
     const before = domReadErrors;
-    const result = safeRead(predicate, false);
+    const result = safeRead(predicate, false as const);
     return before === domReadErrors ? result : false;
   }
   // A poll-count limit also bounds waits if the wall clock moves backwards.
-  function waitBudget(timeout, interval) {
+  function waitBudget(timeout: number, interval: number): { ms: number; polls: number } {
     const ms = Number.isFinite(timeout) ? Math.min(600000, Math.max(0, timeout)) : 30000;
     return {ms, polls: Math.ceil(ms / interval)};
   }
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
   let diag: Diag = () => {}; // injected by core via init()
 
   const S = {
@@ -101,8 +102,8 @@ const RSProvider: PlazCodeProvider = (() => {
   };
 
   // ── Turn classification ───────────────────────────────────────────────────
-  const isUserItem = (item) => !!item && safeRead(() => item.tagName, "") === "USER-QUERY";
-  const isAssistantItem = (item) => !!item && safeRead(() => item.tagName, "") === "MODEL-RESPONSE";
+  const isUserItem = (item: Element | null): boolean => !!item && safeRead(() => item.tagName, "") === "USER-QUERY";
+  const isAssistantItem = (item: Element | null): boolean => !!item && safeRead(() => item.tagName, "") === "MODEL-RESPONSE";
 
   // Gemini prefixes every turn's textContent with a screen-reader label
   // ("Vous avez dit" / "Gemini a dit", inside .cdk-visually-hidden). That
@@ -114,7 +115,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // the element's raw text (one fast native read) is unchanged; anything that changes the result (new text, our card, the
   // screen-reader label) also changes the raw text, so a stale answer is never returned.
   const textCache = new WeakMap<Element, Map<string, { raw: string; out: string }>>();
-  function textWithout(root: Element | null, excludeSel?: string) {
+  function textWithout(root: Element | null, excludeSel?: string): string {
     if (!root) return "";
     const skip = SR_HIDDEN + (excludeSel ? ", " + excludeSel : "");
     const raw = safeRead(() => root.textContent, null);
@@ -129,13 +130,13 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return out;
   }
-  function walkText(root: Element, skip: string) {
+  function walkText(root: Element, skip: string): string {
     let t = "";
-    const walk = (n) => {
-      if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
-      if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      for (const c of safeRead(() => n.childNodes, [])) walk(c);
+    const walk = (n: Node | null): void => {
+      if (safeRead(() => n!.nodeType, 0) === 3) { t += safeRead(() => n!.nodeValue, ""); return; }
+      if (safeRead(() => n!.nodeType, 0) !== 1) return;
+      if (safeRead(() => (n as Element).matches, null) && safeRead(() => (n as Element).matches(skip), false)) return;
+      for (const c of safeRead(() => n!.childNodes, [])) walk(c);
     };
     walk(root);
     return t;
@@ -143,7 +144,7 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // Non-thinking reply text only (tool blocks drafted inside the model's
   // reasoning must never be detected or executed).
-  function itemText(item) {
+  function itemText(item: Element | null): string {
     if (!item) return "";
     if (isAssistantItem(item)) {
       const md = safeQuery(item, S.reply);
@@ -152,7 +153,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return textWithout(item);
   }
 
-  function classifyText(item, excludeSel) {
+  function classifyText(item: Element | null, excludeSel?: string): string {
     if (isAssistantItem(item)) {
       const md = safeQuery(item, S.reply);
       if (!md || (excludeSel && safeClosest(md, excludeSel))) return "";
@@ -162,34 +163,34 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── DOM primitives ────────────────────────────────────────────────────────
-  const allItems = () => [...safeQueryAll(document, S.anyItem)];
-  const assistantItems = () => [...safeQueryAll(document, S.assistantItem)];
-  const assistantCount = () => assistantItems().length;
-  const userCount = () => safeQueryAll(document, S.userItem).length;
+  const allItems = (): Element[] => [...safeQueryAll(document, S.anyItem)];
+  const assistantItems = (): Element[] => [...safeQueryAll(document, S.assistantItem)];
+  const assistantCount = (): number => assistantItems().length;
+  const userCount = (): number => safeQueryAll(document, S.userItem).length;
   // Scope to the SITE's composer only: skip PlazCode's own injected UI (the
   // settings textarea #rs-set-text in #rs-root). On login/OAuth pages with no
   // site editor this returns null, keeping the "not on a chat page" guard in
   // the send hooks intact (otherwise our own textarea would defeat it and the
   // hooks could swallow the site's login button).
-  const getEditor = () => {
+  const getEditor = (): HTMLElement | null => {
     for (const sel of [S.editor, ".ql-editor"]) {
-      for (const e of safeQueryAll(document, sel)) {
+      for (const e of safeQueryAll<HTMLElement>(document, sel)) {
         if (!safeClosest(e, "#rs-root")) return e;
       }
     }
     return null;
   };
-  const editorText = () => {
+  const editorText = (): string => {
     const e = getEditor();
     return e ? safeRead(() => e.textContent, "") || "" : "";
   };
 
-  const lastAssistant = () => {
+  const lastAssistant = (): Element | null => {
     const it = assistantItems();
     return it.length ? it[it.length - 1] : null;
   };
 
-  const chatIsEmpty = () => allItems().length === 0;
+  const chatIsEmpty = (): boolean => allItems().length === 0;
   // A genuinely fresh chat: no turns rendered yet, with the composer mounted.
   // NOTE: we intentionally do NOT also require the bare "/app" route anymore -
   // Gemini's own "New chat" button clears the turn list WITHOUT resetting the
@@ -198,10 +199,10 @@ const RSProvider: PlazCodeProvider = (() => {
   // isFreshChat() - and, transitively, conversationKey() below - still seeing
   // the OLD conversation id on a chat that was visually empty, so the
   // PlazCode bar stuck on "Agent active" with no way to start a new session.
-  const isFreshChat = () => chatIsEmpty() && !!getEditor();
+  const isFreshChat = (): boolean => chatIsEmpty() && !!getEditor();
 
   // The composer box the Start gate hides as one unit.
-  const composerFrame = () => safeQuery(document, S.inputArea);
+  const composerFrame = (): Element | null => safeQuery(document, S.inputArea);
 
   // Gemini's Angular reconciles the composer subtree, so inserting #rs-bar
   // into it breaks the next diff. Use barAnchor() instead — the core's
@@ -209,7 +210,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // input-area-v2 top edge from outside. Never returns a mount.
   // Fallbacks guard against DOM renames (tag → div, class shifts) so the
   // bar never falls back to floating and sticks out.
-  function barAnchor() {
+  function barAnchor(): Element | null {
     return safeQuery(document, S.inputArea)
         || safeQuery(document, "rich-textarea")
         || safeClosest(safeQuery(document, ".ql-editor"), "input-area-v2, rich-textarea, div")
@@ -220,7 +221,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // Quill is a contenteditable: flipping contenteditable=false would also block
   // our own execCommand injection, so typeAndSend temporarily re-enables it.
   let _locked = false;
-  function setInputLock(on) {
+  function setInputLock(on: boolean): void {
     _locked = on;
     const ed = getEditor();
     if (!ed) return;
@@ -231,32 +232,32 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── Action button (send / stop / mic) ─────────────────────────────────────
-  const iconName = (el) => {
+  const iconName = (el: Element | null): string => {
     const i = el && safeQuery(el, "mat-icon");
     return i ? (safeRead(() => i.getAttribute("fonticon"), null) || safeRead(() => i.getAttribute("data-mat-icon-name"), null) || (safeRead(() => i.textContent, "") || "").trim()) : "";
   };
-  function actionButtons() {
+  function actionButtons(): HTMLElement[] {
     const box = safeQuery(document, S.inputArea);
-    return box ? [...safeQueryAll(box, "button")].filter((b) => safeRead(() => b.offsetParent, null) !== null) : [];
+    return box ? [...safeQueryAll<HTMLElement>(box, "button")].filter((b) => safeRead(() => b.offsetParent, null) !== null) : [];
   }
-  const findButtonByIcon = (name) => actionButtons().find((b) => iconName(b) === name) || null;
-  const sendButton = () => findButtonByIcon("arrow_upward");
-  const stopButton = () => findButtonByIcon("stop");
+  const findButtonByIcon = (name: string): HTMLElement | null => actionButtons().find((b) => iconName(b) === name) || null;
+  const sendButton = (): HTMLElement | null => findButtonByIcon("arrow_upward");
+  const stopButton = (): HTMLElement | null => findButtonByIcon("stop");
 
   // ── Generation detection ──────────────────────────────────────────────────
   // The stop icon is present for the ENTIRE generation (validated live), which
   // makes detection far simpler than DeepSeek. Growth tracking remains as a
   // belt-and-braces fallback for the instants around start/end.
-  function streamText(item) {
+  function streamText(item: Element | null): string {
     if (!item) return "";
     const think = safeQuery(item, S.thinking);
     const md = safeQuery(item, S.reply);
     return (think ? safeRead(() => think.textContent, "") || "" : "") + "\n" + (md ? textWithout(md, ".rs-chip") : "");
   }
-  const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item?: Element | null): number => streamText(item === undefined ? lastAssistant() : item).length;
 
-  let _streamMax = -1, _streamAt = 0, _streamItem = null;
-  function sampleStream() {
+  let _streamMax = -1, _streamAt = 0, _streamItem: Element | null = null;
+  function sampleStream(): void {
     const item = lastAssistant();
     const len = streamText(item).length;
     const now = Date.now();
@@ -265,7 +266,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     if (len > _streamMax) { _streamMax = len; _streamAt = now; }
   }
-  const grewWithin = (ms) => _streamMax > 1 && Date.now() - _streamAt < ms;
+  const grewWithin = (ms: number): boolean => _streamMax > 1 && Date.now() - _streamAt < ms;
 
   // CRITICAL Gemini quirk (validated live): the stop button can WEDGE in the ON
   // state after a generation finishes - the icon stays "stop" with the text
@@ -276,7 +277,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // wedged ⇒ not generating.
   const WEDGE_MS = 10000;
   let _stopSince = 0;
-  function genActive() {
+  function genActive(): boolean {
     sampleStream();
     const stop = !!stopButton();
     const now = Date.now();
@@ -299,7 +300,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // be sent"). Clicking the frozen stop resets the composer to its idle state and
   // arrow_upward reappears (validated live). Guarded by genActive so a genuinely
   // live generation is NEVER aborted. Returns true if it clicked.
-  function unwedgeStop() {
+  function unwedgeStop(): boolean {
     const stop = stopButton();
     if (stop && !genActive()) {
       diag("send.unwedge", {});
@@ -319,7 +320,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // which does nothing on a wedged composer. Retrying across the latch window
   // fixes it without ever touching a genuinely live generation (genActive stays
   // true for the whole of a real stream, so every attempt is refused then).
-  async function unwedgeStopPersistently(totalMs = 4000) {
+  async function unwedgeStopPersistently(totalMs = 4000): Promise<boolean> {
     const t0 = Date.now();
     while (Date.now() - t0 < totalMs) {
       if (sendButton()) return true;
@@ -330,12 +331,12 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // Gemini exposes no reliable per-turn "stopped" marker → never halted.
-  const turnHalted = () => false;
+  const turnHalted = (): boolean => false;
   // No truncation Continue button on Gemini.
-  const findContinueBtn = () => null;
-  const clickContinueBtn = () => false;
+  const findContinueBtn = (): Element | null => null;
+  const clickContinueBtn = (): boolean => false;
 
-  function snapshot() {
+  function snapshot(): Record<string, number> {
     try {
       const it = lastAssistant();
       if (!it) return { th: 0, rp: 0 };
@@ -348,7 +349,7 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch { return {}; }
   }
 
-  function readAssistant() {
+  function readAssistant(): AssistantRead {
     const item = lastAssistant();
     if (!item) return { present: false, reply: "", thinking: "", item: null };
     const think = safeQuery(item, S.thinking);
@@ -361,7 +362,7 @@ const RSProvider: PlazCodeProvider = (() => {
     };
   }
 
-  async function waitFor(pred, timeout) {
+  async function waitFor(pred: () => unknown, timeout: number): Promise<boolean> {
     const budget = waitBudget(timeout, 120), t0 = Date.now();
     for (let poll = 0; poll < budget.polls && Date.now() - t0 < budget.ms; poll++) {
       const result = safePredicate(pred);
@@ -405,16 +406,16 @@ const RSProvider: PlazCodeProvider = (() => {
   // content was dropped so it does not re-run the command.
   const SEND_MAX_CHARS = 120000;
   const SEND_MAX_LINES = 1200;   // the line count is what actually hurts
-  function truncateForSend(text) {
+  function truncateForSend(text: string): string {
     if(typeof window.__rsLimitOutgoing==="function")return window.__rsLimitOutgoing(text);
     if (!text) return text;
     const lines = String(text).split("\n");
     if (text.length <= SEND_MAX_CHARS && lines.length <= SEND_MAX_LINES) return text;
-    const marker = (what) =>
+    const marker = (what: string): string =>
       `\n\n[…PlazCode: result truncated (${what}) so it can be pasted into ` +
       `Gemini's composer without freezing the page. Do NOT re-run the command; ` +
       `work with the head and tail shown here…]\n\n`;
-    let out, note;
+    let out: string, note: string;
     if (lines.length > SEND_MAX_LINES) {
       const head = Math.floor(SEND_MAX_LINES * 0.85);
       const tail = SEND_MAX_LINES - head;
@@ -439,13 +440,13 @@ const RSProvider: PlazCodeProvider = (() => {
   // Yielding does not make the insert faster, it makes the page stay alive while
   // it happens - and lets the Stop button remain usable.
   const INSERT_CHUNK_LINES = 120;
-  async function setEditorText(ed, text) {
+  async function setEditorText(ed: HTMLElement, text: string): Promise<void> {
     ed.focus();
     const sel = window.getSelection();
     const range = document.createRange();
     range.selectNodeContents(ed);
-    sel.removeAllRanges();
-    sel.addRange(range);
+    sel!.removeAllRanges();
+    sel!.addRange(range);
     const lines = String(text).split("\n");
     const t0 = Date.now();
     for (let i = 0; i < lines.length; i++) {
@@ -456,13 +457,13 @@ const RSProvider: PlazCodeProvider = (() => {
     if (lines.length > INSERT_CHUNK_LINES) diag("send.insertDone", { lines: lines.length, ms: Date.now() - t0 });
   }
 
-  async function typeAndSend(text, images) {
+  async function typeAndSend(text: string, images?: ImagePayloadList): Promise<void> {
     let ed = getEditor();
     if (!ed) throw new Error("Gemini input box not found");
     // Cap BEFORE any comparison below, so the retry path's `editorText() !== text`
     // test compares against what we actually typed.
     text = truncateForSend(text);
-    const normDraft = (v) => String(v == null ? "" : v).replace(/\r\n?/g, "\n").replace(/\u00A0/g, " ").trim();
+    const normDraft = (v: unknown): string => String(v == null ? "" : v).replace(/\r\n?/g, "\n").replace(/\u00A0/g, " ").trim();
     const relock = _locked;
     try {
       if (relock) ed.setAttribute("contenteditable", "true"); // injection needs it editable
@@ -476,14 +477,14 @@ const RSProvider: PlazCodeProvider = (() => {
       // - it never got one coherent image). So: only retype if the text isn't
       // already there, and only attach if nothing is pending yet.
       if (normDraft(editorText()) !== normDraft(text)) await setEditorText(ed, text);
-      const hasPendingAttachment = () => {
+      const hasPendingAttachment = (): boolean => {
         const box = safeQuery(document, S.inputArea);
         return !!(box && safeQuery(box, "[class*='preview'], [class*='thumbnail']"));
       };
       if (images && images.length && !hasPendingAttachment()) {
         diag("attach.beforeCall", { count: images.length });
         try { const ok = await attachImages(images); diag("attach.afterCall", { ok }); }
-        catch (e) { diag("attach.threw", { msg: String((e && e.message) || e) }); }
+        catch (e: unknown) { diag("attach.threw", { msg: String((e && (e as Error).message) || e) }); }
       }
       // A generation that just ended can leave the action button WEDGED on the
       // stop icon (see unwedgeStop), so arrow_upward never appears and the send
@@ -518,22 +519,22 @@ const RSProvider: PlazCodeProvider = (() => {
     }
   }
 
-  function stopGeneration() {
+  function stopGeneration(): void {
     const b = stopButton();
     if (b) try { b.click(); } catch {}
   }
 
   // No site modes to enforce on Gemini (model picker is left to the user).
-  function enforceComposer() { return { ready: true }; }
-  async function ensureComposerReady(reason) {
+  function enforceComposer(): { ready: boolean } { return { ready: true }; }
+  async function ensureComposerReady(reason?: string): Promise<{ ready: boolean }> {
     diag("mode_ready", { reason, provider: "gemini" });
     return { ready: !!getEditor() };
   }
 
   // ── Error / limit detection (site chrome only) ────────────────────────────
-  function scanError() {
+  function scanError(): string | null {
     try {
-      for (const el of safeQueryAll(document, S.errorSurfaces)) {
+      for (const el of safeQueryAll<HTMLElement>(document, S.errorSurfaces)) {
         if (safeRead(() => el.offsetParent, null) === null) continue;
         if (safeClosest(el, S.anyItem)) continue; // model content, not UI chrome
         const t = (safeRead(() => el.innerText, "") || "").trim();
@@ -543,11 +544,11 @@ const RSProvider: PlazCodeProvider = (() => {
     if (!getEditor()) return "The input box disappeared (session ended?).";
     return null;
   }
-  const isTooLongMsg = (text) => RE.tooLong.test(text);
-  const isBusyMsg = (text) => RE.busy.test(text);
+  const isTooLongMsg = (text: string): boolean => RE.tooLong.test(text);
+  const isBusyMsg = (text: string): boolean => RE.busy.test(text);
 
   // ── Image attachment (best effort: paste onto the composer) ──────────────
-  function fileFromImage(img, i) {
+  function fileFromImage(img: ImagePayload, i: number): File {
     if (typeof PlazCodeMedia !== "undefined") return PlazCodeMedia.fileFrom(img, i);
     const mime = img.mimeType || "image/jpeg";
     const bin = atob(img.data);
@@ -556,7 +557,7 @@ const RSProvider: PlazCodeProvider = (() => {
     const ext = mime.includes("png") ? "png" : "jpg";
     return new File([arr], `robloxscript_${Date.now()}_${i}.${ext}`, { type: mime });
   }
-  async function attachImages(images) {
+  async function attachImages(images: ImagePayloadList): Promise<boolean> {
     const ed = getEditor();
     if (!ed) { diag("attach.noEditor"); return false; }
     if (!images || !images.length) return false;
@@ -585,7 +586,7 @@ const RSProvider: PlazCodeProvider = (() => {
     // the attachment stuck loading in the composer). Verified live: the mat-spinner
     // is present ~2-4s (grows with file size), then removed on completion.
     const spinnerSel = 'mat-spinner, mat-progress-spinner, progress, [role="progressbar"]';
-    const hasSpinner = () => {
+    const hasSpinner = (): boolean => {
       const box = safeQuery(document, S.inputArea);
       return !!(box && safeQuery(box, spinnerSel));
     };
@@ -598,11 +599,11 @@ const RSProvider: PlazCodeProvider = (() => {
     diag("attach.spinnerCleared", { spinnerCleared });
     return !!spinnerCleared;
   }
-  function clearAttachments() {
+  function clearAttachments(): void {
     try {
       const box = safeQuery(document, S.inputArea);
       if (!box) return;
-      safeQueryAll(box, "[aria-label*='upprimer'], [aria-label*='emove'], [class*='delete'], [class*='remove']")
+      safeQueryAll<HTMLElement>(box, "[aria-label*='upprimer'], [aria-label*='emove'], [class*='delete'], [class*='remove']")
         .forEach((d) => { try { d.click(); } catch {} });
     } catch {}
   }
@@ -614,17 +615,17 @@ const RSProvider: PlazCodeProvider = (() => {
   // which clears the turn list but keeps the PREVIOUS conversation's /app/<id>
   // in the address bar until the first message is actually sent (see
   // isFreshChat() above for the full story).
-  const conversationKey = () =>
+  const conversationKey = (): string =>
     (chatIsEmpty() || /\/app\/?$/.test(location.pathname)) ? "" : location.pathname;
 
   // ── User-send interception ────────────────────────────────────────────────
-  function installSendHooks(handlers) {
+  function installSendHooks(handlers: SendHooks): void {
     document.addEventListener(
       "keydown",
       (e) => {
         if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
         const ed = getEditor();
-        if (!ed || !safeRead(() => ed.contains(e.target), false)) return;
+        if (!ed || !safeRead(() => ed.contains(e.target as Node), false)) return;
         if (editorText().trim() === "") return;
         if (handlers.isBlocked()) return;
         if (!handlers.isStarted()) {
@@ -683,12 +684,12 @@ const RSProvider: PlazCodeProvider = (() => {
   // the first laid-out text block inside a reply (outside the thinking panel and our own card). A turn whose own text is all
   // hidden (a reply that is only a command) borrows the column of another reply, else of a user message (same centred column),
   // else falls back to the <message-content> box. With `ownOnly`, the turn's first <message-content> outside the thinking panel.
-  function replyColumn(item, ownOnly = false) {
-    const replies = (root) => [...safeQueryAll(root, S.reply)].filter((m) => !safeClosest(m, S.thinking) && !safeClosest(m, ".rs-chip"));
+  function replyColumn(item: Element, ownOnly = false): Element | null {
+    const replies = (root: ParentNode): Element[] => [...safeQueryAll(root, S.reply)].filter((m) => !safeClosest(m, S.thinking) && !safeClosest(m, ".rs-chip"));
     const own = replies(item);
     if (ownOnly) return own[0] || null;
-    const shown = (el) => { const r = safeRect(el); return r.width > 0 && r.height > 0; };
-    const textBlock = (mc) => {
+    const shown = (el: Element): boolean => { const r = safeRect(el); return r.width > 0 && r.height > 0; };
+    const textBlock = (mc: Element): Element | null => {
       const panel = safeQuery(mc, ".markdown") || mc;
       return [...safeRead(() => panel.children, [])].find((el) => !safeClosest(el, ".rs-chip") && !safeRead(() => el.classList.contains("rs-tool-hide"), false) && shown(el)) || null;
     };
@@ -699,9 +700,9 @@ const RSProvider: PlazCodeProvider = (() => {
     return own.find((m) => safeRect(m).width > 0) || null;
   }
   const CMD_SHAPE = /"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i;
-  function findToolBlockSpot(item /*, chip */) {
+  function findToolBlockSpot(item: Element | null /*, chip */): { parent: Element | null; ref: Element | null } | null {
     const replies = [...safeQueryAll(item, S.reply)].filter((m) => !safeClosest(m, S.thinking));
-    let hidAny = null;
+    let hidAny: { parent: Element | null; ref: Element | null } | null = null;
     for (const mc of replies) {
       // 1. Fenced code blocks carrying a command.
       safeQueryAll(mc, S.codeWrap).forEach((cb) => {
@@ -765,7 +766,7 @@ const RSProvider: PlazCodeProvider = (() => {
     // in a turn can be the one inside the (folded, invisible) thinking panel, so the measurement read 0 and nothing moved.
     // Now the reply column is the turn's first VISIBLE reply outside the thinking panel, else any visible reply on the page
     // (all turns share one column), and the card retries for a few seconds when nothing is laid out yet.
-    alignChip(chip, item) {
+    alignChip(chip: HTMLElement & { __rsAlignTries?: number }, item: Element): void {
       if (!chip || !item) return;
       const mc = replyColumn(item);
       chip.style.removeProperty("margin-left");
@@ -784,7 +785,7 @@ const RSProvider: PlazCodeProvider = (() => {
       if (shift > 2 && shift < 800) { chip.style.setProperty("margin-left", shift + "px", "important"); chip.style.maxWidth = Math.round(mr.width) + "px"; }
       else chip.style.maxWidth = "";
     },
-    chipAnchor(item) {
+    chipAnchor(item: Element): Element {
       try {
         const mc = replyColumn(item, true) || safeQuery(item, S.reply);
         for (let el = mc && mc.parentElement; el && el !== item && item.contains(el); el = el.parentElement) {
@@ -832,10 +833,10 @@ const RSProvider: PlazCodeProvider = (() => {
     installSendHooks, findToolBlockSpot,
     // 2026-11-16 (owner: laggy typing): typing in the chat box changes only the editor; that never changes a reply, so it no
     // longer starts a sweep of the whole chat (the 3-second safety sweep and every reply change still run it).
-    ignoreMutationRecords(records) {
+    ignoreMutationRecords(records: MutationRecord[]) {
       if (!records || !records.length) return false;
       const ed = getEditor();
-      return !!ed && records.every((record) => record.target === ed || safeRead(() => ed.contains(record.target), false));
+      return !!ed && records.every((record) => record.target === ed || safeRead(() => ed.contains(record.target as Node), false));
     },
   };
 })();

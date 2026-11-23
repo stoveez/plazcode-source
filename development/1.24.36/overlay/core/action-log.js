@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/action-log.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // 1.24.21 "What happened" log: a plain list of what the AI did, with Undo for
 // file and script changes. Shared by the PlazCode bar and the desktop app.
 const PlazCodeActionLog = (() => {
+
+
+
+
+
+
   const VERBS = {
     write_file: "Wrote", edit_file: "Edited", append_file: "Added to", delete_path: "Deleted", move_path: "Moved",
     copy_file: "Copied", create_folder: "Created folder", download_file: "Downloaded", read_file: "Read",
@@ -27,7 +34,7 @@ const PlazCodeActionLog = (() => {
     const verb = VERBS[tool];
     let text;
     if (verb) text = target ? verb + " " + target : verb;
-    else if (server(event && event.tool)) text = cap(server(event.tool)) + ": " + words(tool) + (target ? " " + target : "");
+    else if (server(event && event.tool)) text = cap(server(event && event.tool)) + ": " + words(tool) + (target ? " " + target : "");
     else text = cap(words(tool)) + (target ? " · " + target : "");
     const result = String(event && event.result || "ok");
     return { text, result, look: LOOK.test(tool), note: String(event && event.note || "") };
@@ -50,7 +57,7 @@ const PlazCodeActionLog = (() => {
     const options = opts || {};
     const el = (tag, text, cls) => { const n = document.createElement(tag); if (text) n.textContent = text; if (cls) n.className = cls; return n; };
     const user = (tag, text, cls) => { const n = el(tag, text, cls); n.setAttribute("data-i18n-user-content", ""); n.dir = "auto"; return n; };
-    const localize = () => { try { globalThis.PlazCodeI18n?.mountStatic?.(container); } catch {} };
+    const localize = () => { try { (globalThis).PlazCodeI18n?.mountStatic?.(container); } catch {} };
     const confirmUndo = options.confirm || ((message) => window.confirm(message));
     const head = el("div", "", "pc-alog-head"), refresh = el("button", "Refresh", "pc-alog-refresh"), showLooks = el("label", "", "pc-alog-looks");
     const looksBox = el("input"); looksBox.type = "checkbox"; showLooks.append(looksBox, el("span", "Show reads and searches"));
@@ -60,12 +67,13 @@ const PlazCodeActionLog = (() => {
     let busy = false, lastTasks = [];
 
     async function undo(task, change, button) {
-      if (!confirmUndo((globalThis.PlazCodeI18n?.t || ((x) => x))("Undo this change? Later edits to it block the undo.") + "\n" + change.path)) return;
+      if (!confirmUndo(((globalThis).PlazCodeI18n?.t || ((x) => x))("Undo this change? Later edits to it block the undo.") + "\n" + change.path)) return;
       button.disabled = true;
       try {
         const reply = await request({ action: "revert-one", id: task.id, path: change.path, studio_id: change.studio_id });
         if (!reply || reply.ok === false) throw new Error(reply && reply.error || "Undo failed.");
-        status.textContent = globalThis.PlazCodeI18n?.t ? globalThis.PlazCodeI18n.t("Undone: {path}", { path: change.path }) : "Undone: " + change.path; status.dataset.kind = "done";
+        const i18n = (globalThis).PlazCodeI18n;
+        status.textContent = i18n?.t ? i18n.t("Undone: {path}", { path: change.path }) : "Undone: " + change.path; status.dataset.kind = "done";
         await update();
       } catch (error) { status.textContent = error.message || String(error); status.dataset.kind = "error"; button.disabled = false; }
     }
@@ -121,7 +129,7 @@ const PlazCodeActionLog = (() => {
         lastTasks = Array.isArray(reply.tasks) ? reply.tasks : [];
         // An older PlazCode app (before 1.24.21) only reports changed files, never the commands and reads.
         const oldApp = lastTasks.length > 0 && lastTasks.every((task) => !Array.isArray(task.events));
-        if (oldApp) { status.textContent = (globalThis.PlazCodeI18n?.t || ((x) => x))("Your PlazCode app is older than this extension, so it can only list changed files. Update the PlazCode app to also see commands, reads and searches."); status.dataset.kind = "error"; }
+        if (oldApp) { status.textContent = ((globalThis).PlazCodeI18n?.t || ((x) => x))("Your PlazCode app is older than this extension, so it can only list changed files. Update the PlazCode app to also see commands, reads and searches."); status.dataset.kind = "error"; }
         else if (status.dataset.kind === "error") { status.textContent = ""; status.dataset.kind = ""; }
         render();
       } catch (error) { status.textContent = error.message || String(error); status.dataset.kind = "error"; }

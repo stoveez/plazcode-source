@@ -10,38 +10,39 @@
 // eslint-disable-next-line no-unused-vars
 const RSProvider: PlazCodeProvider = (() => {
   "use strict";
+  type RectBox = { x: number; y: number; left: number; top: number; right: number; bottom: number; width: number; height: number; readFailed?: boolean };
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
-  function safeRead(read, fallback) {
+  function safeRead<T, F = T>(read: () => T, fallback: F): T | F {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
-  function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+  function safeQuery<T extends Element = Element>(root: ParentNode | null, selector: string): T | null {
+    return safeRead(() => (root as ParentNode).querySelector<T>(selector), null);
   }
-  function safeQueryAll(root, selector): any[] {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll<T extends Element = Element>(root: ParentNode | null, selector: string): T[] {
+    return safeRead(() => Array.from((root as ParentNode).querySelectorAll<T>(selector)), []);
   }
-  function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+  function safeClosest(node: EventTarget | Node | null | undefined, selector: string): Element | null {
+    return safeRead(() => (node as Element).closest(selector), null);
   }
-  function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+  function safeRect(node: Element | null | undefined): RectBox {
+    return safeRead(() => (node as Element).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
-  function safeStyle(node) {
-    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
+  function safeStyle(node: Element | null | undefined): CSSStyleDeclaration {
+    return safeRead(() => getComputedStyle(node as Element), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'} as CSSStyleDeclaration);
   }
-  function safePredicate(predicate) {
+  function safePredicate<T>(predicate: () => T): T | false {
     const before = domReadErrors;
-    const result = safeRead(predicate, false);
+    const result = safeRead(predicate, false as const);
     return before === domReadErrors ? result : false;
   }
   // A poll-count limit also bounds waits if the wall clock moves backwards.
-  function waitBudget(timeout, interval) {
+  function waitBudget(timeout: number, interval: number): { ms: number; polls: number } {
     const ms = Number.isFinite(timeout) ? Math.min(600000, Math.max(0, timeout)) : 30000;
     return {ms, polls: Math.ceil(ms / interval)};
   }
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
   let diag: Diag = () => {};
 
   const S = {
@@ -79,7 +80,7 @@ const RSProvider: PlazCodeProvider = (() => {
     GEN_STOP_GRACE_MS: 12000,
   };
 
-  function visible(el) {
+  function visible(el: Element | null): boolean {
     if (!el || safeClosest(el, "#rs-root")) return false;
     try {
       const r = safeRect(el);
@@ -90,16 +91,16 @@ const RSProvider: PlazCodeProvider = (() => {
     return true;
   }
 
-  function textWithout(root: Element | null, excludeSel?: string) {
+  function textWithout(root: Element | null, excludeSel?: string): string {
     if (!root) return "";
     const skip = excludeSel ? `.rs-chip, ${excludeSel}` : ".rs-chip";
     let t = "";
-    const walk = (n) => {
+    const walk = (n: Node): void => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      if (safeRead(() => n.tagName, "") === "BR") { t += "\n"; return; }
-      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(safeRead(() => n.tagName, ""));
+      if (safeRead(() => (n as Element).matches, null) && safeRead(() => (n as Element).matches(skip), false)) return;
+      if (safeRead(() => (n as Element).tagName, "") === "BR") { t += "\n"; return; }
+      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(safeRead(() => (n as Element).tagName, ""));
       if (isBlock && t && !t.endsWith("\n")) t += "\n";
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
       if (isBlock && !t.endsWith("\n")) t += "\n";
@@ -110,8 +111,8 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // PlazCode locks the box while it works (see setInputLock). A locked box must
   // still be found, and must never be mistaken for the site being busy.
-  let lockedEditor = null;
-  const isOurLock = (ed) => !!ed && ed === lockedEditor;
+  let lockedEditor: HTMLElement | null = null;
+  const isOurLock = (ed: Element | null): boolean => !!ed && ed === lockedEditor;
   // 2026-11-14 (owner screenshot): the bar jumped onto Freebuff's "What could be better?" feedback box under a reply,
   // because the first visible text box on the page won. Side boxes (feedback, rename, search, editing an old message)
   // are never the chat box: they are skipped, and of the boxes left the real chat box ("Ask Freebuff...") or else the
@@ -119,21 +120,21 @@ const RSProvider: PlazCodeProvider = (() => {
   const SIDE_BOX = /could be better|feedback|tell us|what went wrong|what (did|do) you|comment|report|reason|rename|title|search|filter|find\b/i;
   const MAIN_BOX = /ask freebuff|use \/ for commands|message freebuff|ask anything/i;
   const TURN_SEL = "[data-message-role], [data-role='user'], [data-role='assistant'], .msg, .message, [class*='ChatMessage'], [class*='chat-message'], [role='menu']";
-  const boxLabel = (el) => [
+  const boxLabel = (el: Element): string => [
     safeRead(() => el.getAttribute("placeholder"), ""), safeRead(() => el.getAttribute("aria-label"), ""),
     safeRead(() => el.getAttribute("data-placeholder"), ""), safeRead(() => el.getAttribute("aria-placeholder"), ""),
     safeRead(() => el.getAttribute("name"), ""),
   ].filter(Boolean).join(" ");
-  function isSideBox(el) {
+  function isSideBox(el: Element): boolean {
     const label = boxLabel(el);
     if (MAIN_BOX.test(label)) return false;
     if (SIDE_BOX.test(label)) return true;
     return !!safeClosest(el, TURN_SEL);
   }
-  const getEditor = () => {
-    if (lockedEditor && safeRead(() => lockedEditor.isConnected, false) && visible(lockedEditor)) return lockedEditor;
-    const seen = new Set(), boxes = [];
-    for (const el of safeQueryAll(document, S.editor)) {
+  const getEditor = (): HTMLElement | null => {
+    if (lockedEditor && safeRead(() => lockedEditor!.isConnected, false) && visible(lockedEditor)) return lockedEditor;
+    const seen = new Set<HTMLElement>(), boxes: HTMLElement[] = [];
+    for (const el of safeQueryAll<HTMLElement>(document, S.editor)) {
       if (seen.has(el)) continue;
       seen.add(el);
       if (!visible(el)) continue;
@@ -146,19 +147,19 @@ const RSProvider: PlazCodeProvider = (() => {
     if (boxes.length <= 1) return boxes[0] || null;
     const named = boxes.find((el) => MAIN_BOX.test(boxLabel(el)));
     if (named) return named;
-    let best = null, bottom = -Infinity;
+    let best: HTMLElement | null = null, bottom = -Infinity;
     for (const el of boxes) { const b = safeRect(el).bottom; if (b > bottom) { bottom = b; best = el; } }
     return best;
   };
 
-  const editorText = () => {
+  const editorText = (): string => {
     const e = getEditor();
     if (!e) return "";
-    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => e.value, "") || "";
+    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => (e as HTMLTextAreaElement).value, "") || "";
     return (safeRead(() => e.innerText, "") || safeRead(() => e.textContent, "") || "").replace(/\u00a0/g, " ");
   };
 
-  function roleOf(item) {
+  function roleOf(item: Element | null): string {
     if (!item) return "";
     const a = (safeRead(() => item.getAttribute("data-message-role"), null) || safeRead(() => item.getAttribute("data-role"), null) || safeRead(() => item.getAttribute("data-author"), null) || "").toLowerCase();
     if (a) return a;
@@ -173,13 +174,13 @@ const RSProvider: PlazCodeProvider = (() => {
   // Page furniture is never a chat turn: menus and sidebars, dialogs, or any
   // wrapper that holds the chat box itself.
   const FURNITURE = "nav, [role='navigation'], [role='menu'], [role='listbox'], [role='dialog'], [role='tooltip']";
-  function notATurn(el, ed) {
+  function notATurn(el: Element, ed: Element | null): boolean {
     return !!safeClosest(el, FURNITURE) || (!!ed && safeRead(() => el.contains(ed), false));
   }
   // What PlazCode itself puts into a chat: proof that a chat is no longer new.
   const ARTEFACT = /⟦RS-SYS⟧|(^|\n)\s*Output of '[^'\n]+':|\(System note:/;
-  const isArtefact = (el) => ARTEFACT.test(safeRead(() => el.textContent, "") || "");
-  function rawItems() {
+  const isArtefact = (el: Element): boolean => ARTEFACT.test(safeRead(() => el.textContent, "") || "");
+  function rawItems(): Element[] {
     const ed = getEditor();
     const sels = [
       "[data-message-role]",
@@ -188,8 +189,8 @@ const RSProvider: PlazCodeProvider = (() => {
       ".msg, .message, [class*='ChatMessage'], [class*='chat-message']",
       "article",
     ];
-    const seen = new Set();
-    const out = [];
+    const seen = new Set<Element>();
+    const out: Element[] = [];
     for (const s of sels) {
       for (const el of safeQueryAll(document, s)) {
         if (seen.has(el) || !visible(el) || notATurn(el, ed)) continue;
@@ -208,7 +209,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return out;
   }
-  function allItems() {
+  function allItems(): Element[] {
     const out = rawItems();
     // A new chat has no address yet. The generic selectors above can then match
     // page text that is not a conversation (a welcome card, a tip). Unless
@@ -218,58 +219,58 @@ const RSProvider: PlazCodeProvider = (() => {
     return out.some((el) => roleOf(el) !== "" || isArtefact(el)) ? out : [];
   }
 
-  function isUserItem(item) {
+  function isUserItem(item: Element | null): boolean {
     const r = roleOf(item);
     if (/user|human/.test(r)) return true;
     if (/assistant|agent|ai|model|system/.test(r)) return false;
     return /\bml-auto\b|justify-end|items-end/.test(String(item && safeRead(() => item.className, "") || ""));
   }
-  function isAssistantItem(item) {
+  function isAssistantItem(item: Element | null): boolean {
     const r = roleOf(item);
     if (/assistant|agent|ai|model/.test(r)) return true;
     if (/user|human/.test(r)) return false;
-    return !isUserItem(item) && !!(item && (safeRead(() => item.innerText, "") || "").trim());
+    return !isUserItem(item) && !!(item && (safeRead(() => (item as HTMLElement).innerText, "") || "").trim());
   }
 
-  function itemText(item) {
+  function itemText(item: Element | null): string {
     if (!item) return "";
     const body = safeQuery(item, ".prose, .markdown, .bubble, [class*='message-content'], [class*='md']") || item;
     return textWithout(body);
   }
-  function classifyText(item, excludeSel) {
+  function classifyText(item: Element | null, excludeSel?: string): string {
     if (!item) return "";
     const body = safeQuery(item, ".prose, .markdown, .bubble, [class*='message-content']") || item;
     if (excludeSel && safeRead(() => body.closest, null) && safeClosest(body, excludeSel)) return "";
     return textWithout(body, excludeSel);
   }
 
-  const assistantItems = () => allItems().filter(isAssistantItem);
-  const assistantCount = () => assistantItems().length;
-  const userCount = () => allItems().filter(isUserItem).length;
-  const lastAssistant = () => { const it = assistantItems(); return it.length ? it[it.length - 1] : null; };
+  const assistantItems = (): Element[] => allItems().filter(isAssistantItem);
+  const assistantCount = (): number => assistantItems().length;
+  const userCount = (): number => allItems().filter(isUserItem).length;
+  const lastAssistant = (): Element | null => { const it = assistantItems(); return it.length ? it[it.length - 1] : null; };
 
-  const _idMap = new WeakMap();
+  const _idMap = new WeakMap<Element, number>();
   let _idSeq = 0;
-  function itemKey(item) {
+  function itemKey(item: Element | null): number | null {
     if (!item) return null;
     let id = _idMap.get(item);
     if (!id) { id = ++_idSeq; _idMap.set(item, id); }
     return id;
   }
-  const lastAssistantId = () => itemKey(lastAssistant());
+  const lastAssistantId = (): number | null => itemKey(lastAssistant());
 
   // A chat with an address (/chat/<id>) is a saved chat. Without one it only
   // counts as started once a user turn exists, so a greeting from the site
   // does not turn a brand-new chat into an existing one.
-  function chatIsEmpty() {
+  function chatIsEmpty(): boolean {
     const items = allItems();
     if (!items.length) return true;
     if (conversationKey()) return false;
     return !items.some((el) => /user|human/.test(roleOf(el)) || isArtefact(el));
   }
-  const isFreshChat = () => chatIsEmpty() && !!getEditor();
+  const isFreshChat = (): boolean => chatIsEmpty() && !!getEditor();
 
-  function composerFrame() {
+  function composerFrame(): Element | null {
     const ed = getEditor();
     if (!ed) return null;
     return safeClosest(ed, "form")
@@ -283,7 +284,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // never the page column) and draws a box of its own (a border, a background or rounded corners).
   // A wrapper that visibly draws the box: a background, a border or rounded corners. (Freebuff's Chat mode wraps the box,
   // "composer-box", in a wider invisible "composer" div with side padding: the bar must take the visible box's width.)
-  const visibleBox = (n) => {
+  const visibleBox = (n: Element): boolean => {
     const st = safeStyle(n);
     const bg = String(st.backgroundColor || "");
     const hasBg = !!bg && !/^(transparent|rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\))$/i.test(bg);
@@ -291,14 +292,14 @@ const RSProvider: PlazCodeProvider = (() => {
     const round = parseFloat(st.borderTopLeftRadius || st.borderRadius || "0") > 0;
     return hasBg || hasBorder || round;
   };
-  const boxByName = (n) => /rounded|composer|input-bar|chat-input/i.test(String(safeRead(() => n.className, "") || ""));
-  function barAnchor() {
+  const boxByName = (n: Element): boolean => /rounded|composer|input-bar|chat-input/i.test(String(safeRead(() => n.className, "") || ""));
+  function barAnchor(): Element | null {
     const ed = getEditor();
     if (!ed) return null;
     const er = safeRect(ed);
     const limit = Math.max(er.height + 160, er.height * 3);
-    let seen = null, named = null;
-    for (let n = safeRead(() => ed.parentElement, null), i = 0; n && i < 10; n = safeRead(() => n.parentElement, null), i++) {
+    let seen: Element | null = null, named: Element | null = null;
+    for (let n: Element | null = safeRead(() => ed.parentElement, null), i = 0; n && i < 10; n = safeRead(() => n.parentElement, null), i++) {
       if (n === document.body || n === document.documentElement || safeRead(() => n.tagName, "") === "MAIN") break;
       const r = safeRect(n);
       if (r.height > limit || r.width > er.width + 400) break;
@@ -309,7 +310,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return seen || named || composerFrame();
   }
 
-  function setInputLock(on) {
+  function setInputLock(on: boolean): void {
     const ed = getEditor();
     if (!ed) return;
     // A box we locked reads contenteditable="false" (and isContentEditable false),
@@ -363,18 +364,18 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // Short labels only: a long label is page text (Freebuff's "Jump to prompt: ..." outline buttons repeat whole messages).
-  const isStopLabel = (t) => { t = String(t || "").trim(); return t.length > 0 && t.length <= 40 && !/^jump to/i.test(t) && (S.stopAria.test(t) || /\b(?:stop|interrupt|abort)\b/i.test(t)); };
+  const isStopLabel = (t: string): boolean => { t = String(t || "").trim(); return t.length > 0 && t.length <= 40 && !/^jump to/i.test(t) && (S.stopAria.test(t) || /\b(?:stop|interrupt|abort)\b/i.test(t)); };
   // A plain submit button is only the Send button when it says nothing else (Freebuff's "Copy code" and side-panel tabs are
   // submit buttons too).
-  const plainSubmit = (b) => safeRead(() => b.type, "") === "submit" && /^(?:|send|submit|ask|send message|↑|➤)$/i.test((safeRead(() => b.textContent, "") || "").trim());
-  const ariaOf = (b) => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.title, "") || "").trim();
-  const allButtons = () => [...safeQueryAll(document, "button")].filter((b) => !safeClosest(b, "#rs-root"));
+  const plainSubmit = (b: HTMLButtonElement): boolean => safeRead(() => b.type, "") === "submit" && /^(?:|send|submit|ask|send message|↑|➤)$/i.test((safeRead(() => b.textContent, "") || "").trim());
+  const ariaOf = (b: Element): string => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => (b as HTMLElement).title, "") || "").trim();
+  const allButtons = (): HTMLButtonElement[] => [...safeQueryAll<HTMLButtonElement>(document, "button")].filter((b) => !safeClosest(b, "#rs-root"));
   // The Send button that belongs to the chat box: looked for around the box first, so the Send button of a side box
   // (Freebuff's "What could be better?" feedback form) is never taken for it.
-  const sendButton = () => {
+  const sendButton = (): HTMLButtonElement | null => {
     const ed = getEditor();
     for (let n = ed && safeRead(() => ed.parentElement, null), i = 0; n && i < 8; n = safeRead(() => n.parentElement, null), i++) {
-      const near = [...safeQueryAll(n, "button")].filter((b) => !safeClosest(b, "#rs-root") && visible(b));
+      const near = [...safeQueryAll<HTMLButtonElement>(n, "button")].filter((b) => !safeClosest(b, "#rs-root") && visible(b));
       const hit = near.find((b) => S.sendAria.test(ariaOf(b)) && b.type !== "reset") || near.find(plainSubmit);
       if (hit) return hit;
       if (n === document.body) break;
@@ -383,17 +384,17 @@ const RSProvider: PlazCodeProvider = (() => {
       allButtons().find((b) => plainSubmit(b) && visible(b)) ||
       null;
   };
-  const stopButton = () =>
+  const stopButton = (): HTMLButtonElement | null =>
     allButtons().find((b) => isStopLabel(ariaOf(b)) && visible(b)) || null;
 
-  function streamText(item) {
+  function streamText(item: Element | null): string {
     if (!item) return "";
     return classifyText(item, ".rs-chip").trim();
   }
-  const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item?: Element | null): number => streamText(item === undefined ? lastAssistant() : item).length;
 
-  let _streamMax = -1, _streamAt = 0, _streamItem = null, _streamSeen = false;
-  function sampleStream() {
+  let _streamMax = -1, _streamAt = 0, _streamItem: Element | null = null, _streamSeen = false;
+  function sampleStream(): void {
     const item = lastAssistant();
     const len = streamText(item).length;
     const now = Date.now();
@@ -408,15 +409,15 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     if (len > _streamMax) { _streamMax = len; _streamAt = now; }
   }
-  const grewWithin = (ms) => _streamMax > 1 && Date.now() - _streamAt < ms;
+  const grewWithin = (ms: number): boolean => _streamMax > 1 && Date.now() - _streamAt < ms;
 
   const WEDGE_MS = 30000;
   let _stopSince = 0;
   // Says WHY the page looks busy ("" = not busy). The reason goes into the
   // diagnostic log, so a wrong "generating" can be traced to its signal.
-  function busyChrome() {
+  function busyChrome(): string {
     const ui = safeRead(() => document.getElementById("rs-root"), null);
-    const ours = (el) => ui && el && safeRead(() => ui.contains(el), false);
+    const ours = (el: Element | null): boolean => (ui && el && safeRead(() => ui.contains(el), false)) as boolean;
     for (const el of safeQueryAll(document, '[aria-busy="true"]')) {
       if (!ours(el) && visible(el)) return "aria-busy";
     }
@@ -428,7 +429,7 @@ const RSProvider: PlazCodeProvider = (() => {
       if (send && (safeRead(() => send.disabled, true) || safeRead(() => send.getAttribute("aria-disabled"), null) === "true")) return "send-disabled";
     }
     // The box PlazCode itself locked (contenteditable=false) is not the site being busy.
-    if (ed && (safeRead(() => ed.disabled, true) || (!isOurLock(ed) && safeRead(() => ed.getAttribute("contenteditable"), null) === "false") || safeRead(() => ed.getAttribute("aria-disabled"), null) === "true")) return "composer-disabled";
+    if (ed && (safeRead(() => (ed as HTMLTextAreaElement).disabled, true) || (!isOurLock(ed) && safeRead(() => ed.getAttribute("contenteditable"), null) === "false") || safeRead(() => ed.getAttribute("aria-disabled"), null) === "true")) return "composer-disabled";
     for (const b of allButtons()) {
       if (!visible(b)) continue;
       const t = (ariaOf(b) + " " + (safeRead(() => b.textContent, "") || "")).toLowerCase();
@@ -465,7 +466,7 @@ const RSProvider: PlazCodeProvider = (() => {
     for (const scope of scopes) {
       for (const b of safeQueryAll(scope, 'button,[role="button"]')) {
         if (!visible(b)) continue;
-        if (FINISHED_BTN.test(ariaOf(b) + " " + (safeRead(() => b.title, "") || ""))) n++;
+        if (FINISHED_BTN.test(ariaOf(b) + " " + (safeRead(() => (b as HTMLElement).title, "") || ""))) n++;
       }
     }
     return n >= 2;
@@ -516,7 +517,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return { present: true, reply: streamText(item).trim(), thinking: "", item };
   }
 
-  async function waitFor(pred, timeout) {
+  async function waitFor(pred: () => unknown, timeout: number): Promise<boolean> {
     const budget = waitBudget(timeout, 120), t0 = Date.now();
     for (let poll = 0; poll < budget.polls && Date.now() - t0 < budget.ms; poll++) {
       const result = safePredicate(pred);
@@ -527,7 +528,7 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   const SEND_MAX = 120000;
-  function truncateForSend(text) {
+  function truncateForSend(text: string): string {
     if(typeof window.__rsLimitOutgoing==="function")return window.__rsLimitOutgoing(text);
     if (!text || text.length <= SEND_MAX) return text;
     const omitted = text.length - SEND_MAX;
@@ -538,7 +539,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return text.slice(0, headLen) + marker + text.slice(text.length - tailLen);
   }
 
-  function setTextareaValue(el, v) {
+  function setTextareaValue(el: HTMLTextAreaElement | HTMLInputElement, v: string): void {
     const proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
     const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
     if (setter && setter.set) setter.set.call(el, v);
@@ -546,9 +547,9 @@ const RSProvider: PlazCodeProvider = (() => {
     el.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
-  function setRichText(el, text) {
+  function setRichText(el: HTMLElement, text: string): void {
     if (safeRead(() => el.tagName, "") === "TEXTAREA" || safeRead(() => el.tagName, "") === "INPUT") {
-      setTextareaValue(el, text);
+      setTextareaValue(el as HTMLTextAreaElement, text);
       return;
     }
     el.focus();
@@ -556,8 +557,8 @@ const RSProvider: PlazCodeProvider = (() => {
       const sel = window.getSelection();
       const range = document.createRange();
       range.selectNodeContents(el);
-      sel.removeAllRanges();
-      sel.addRange(range);
+      sel!.removeAllRanges();
+      sel!.addRange(range);
     } catch {}
     let ok = false;
     try { ok = document.execCommand("insertText", false, text); } catch {}
@@ -571,7 +572,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
   }
 
-  function pressEnter(editor) {
+  function pressEnter(editor: Element): void {
     const o = { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true };
     editor.dispatchEvent(new KeyboardEvent("keydown", o));
     editor.dispatchEvent(new KeyboardEvent("keyup", o));
@@ -581,45 +582,45 @@ const RSProvider: PlazCodeProvider = (() => {
   // Type the text, CHECK it really is in the box, submit, then CHECK it went.
   // The result is true only when the message is confirmed sent, so PlazCode
   // stops with a clear message instead of waiting for a reply that cannot come.
-  const squash = (s) => String(s || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
-  let _sendDetail = "", _sendAmbiguous = false, _sendRetryable = false, _lastHas = null;
+  const squash = (s: unknown): string => String(s || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+  let _sendDetail = "", _sendAmbiguous = false, _sendRetryable = false, _lastHas: (() => boolean) | null = null;
 
   // The SITE refuses input (not PlazCode's own lock).
-  const boxRefusesInput = (ed) => !!ed && (safeRead(() => ed.disabled, false) === true || safeRead(() => ed.getAttribute("aria-disabled"), null) === "true");
-  function pasteText(el, text) {
+  const boxRefusesInput = (ed: Element | null): boolean => !!ed && (safeRead(() => (ed as HTMLTextAreaElement).disabled, false) === true || safeRead(() => ed.getAttribute("aria-disabled"), null) === "true");
+  function pasteText(el: HTMLElement, text: string): void {
     el.focus();
     try {
       const sel = window.getSelection();
       const range = document.createRange();
       range.selectNodeContents(el);
-      sel.removeAllRanges();
-      sel.addRange(range);
+      sel!.removeAllRanges();
+      sel!.addRange(range);
     } catch {}
     const dt = new DataTransfer();
     dt.setData("text/plain", text);
     el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
   }
-  function directText(el, text) {
-    if (safeRead(() => el.tagName, "") === "TEXTAREA" || safeRead(() => el.tagName, "") === "INPUT") { setTextareaValue(el, text); return; }
+  function directText(el: HTMLElement, text: string): void {
+    if (safeRead(() => el.tagName, "") === "TEXTAREA" || safeRead(() => el.tagName, "") === "INPUT") { setTextareaValue(el as HTMLTextAreaElement, text); return; }
     el.focus();
     el.textContent = text;
     try { el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text })); }
     catch { el.dispatchEvent(new Event("input", { bubbles: true })); }
   }
   // Remove PlazCode's own unsent text from the box (never anything else).
-  function clearOwnDraft(has) {
+  function clearOwnDraft(has: (() => boolean) | null): boolean {
     const ed = getEditor();
     if (!ed || typeof has !== "function" || !has()) return false;
     try {
-      if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") setTextareaValue(ed, "");
+      if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") setTextareaValue(ed as HTMLTextAreaElement, "");
       else {
         ed.focus();
         try {
           const range = document.createRange();
           range.selectNodeContents(ed);
           const sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
+          sel!.removeAllRanges();
+          sel!.addRange(range);
           document.execCommand("delete", false);
         } catch {}
         if (editorText().trim() !== "") {
@@ -630,13 +631,13 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch {}
     return editorText().trim() === "";
   }
-  const clearEditor = () => clearOwnDraft(_lastHas);
-  const sendReadyNow = () => {
+  const clearEditor = (): boolean => clearOwnDraft(_lastHas);
+  const sendReadyNow = (): boolean => {
     const b = sendButton();
     return !!b && !safeRead(() => b.disabled, true) && safeRead(() => b.getAttribute("aria-disabled"), null) !== "true";
   };
 
-  async function typeAndSend(text, images) {
+  async function typeAndSend(text: string, images?: ImagePayloadList): Promise<boolean> {
     _sendDetail = ""; _sendAmbiguous = false; _sendRetryable = false;
     // The box can still be loading, or swapping between the home view and a chat.
     await waitFor(() => { const e = getEditor(); return !!e && !boxRefusesInput(e); }, 15000);
@@ -649,7 +650,7 @@ const RSProvider: PlazCodeProvider = (() => {
     const full = squash(text), want = full.slice(-48);
     // "Our text is in the box": its ending is there, or - if the box reformats text
     // (markdown, list markers) - most of it is.
-    const has = () => {
+    const has = (): boolean => {
       const now = squash(editorText());
       return now.includes(want) || (now.length >= 20 && now.length >= full.length * 0.6);
     };
@@ -661,7 +662,7 @@ const RSProvider: PlazCodeProvider = (() => {
     try {
       const before = { users: userCount(), replies: assistantCount(), key: conversationKey(), stop: isHardGenerating() };
       // 1) Put the text in the box. Try the usual way first, then a paste, then a direct write.
-      const writers = [
+      const writers: Array<(el: HTMLElement) => void> = [
         (el) => { el.focus(); setRichText(el, text); },
         (el) => pasteText(el, text),
         (el) => directText(el, text),
@@ -690,7 +691,7 @@ const RSProvider: PlazCodeProvider = (() => {
         return false;
       }
       // 2) Submit, and look for proof that Freebuff took the message.
-      const evidence = () => {
+      const evidence = (): string => {
         if (userCount() > before.users) return "user-turn";
         if (assistantCount() > before.replies) return "reply-turn";
         if (conversationKey() !== before.key) return "new-address";
@@ -700,7 +701,7 @@ const RSProvider: PlazCodeProvider = (() => {
       };
       const submitters = [
         () => { const b = sendButton(); if (!b || safeRead(() => b.disabled, true)) return false; b.click(); return true; },
-        () => { const form = safeClosest(getEditor() || editor, "form"); if (!form || typeof form.requestSubmit !== "function") return false; form.requestSubmit(); return true; },
+        () => { const form = safeClosest(getEditor() || editor, "form") as HTMLFormElement | null; if (!form || typeof form.requestSubmit !== "function") return false; form.requestSubmit(); return true; },
         () => { pressEnter(getEditor() || editor); return true; },
       ];
       let last = -1, proof = "", attempts = 0;
@@ -734,7 +735,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
   }
 
-  function stopGeneration() {
+  function stopGeneration(): void {
     const b = stopButton();
     if (b) { try { b.click(); } catch {} }
   }
@@ -742,11 +743,11 @@ const RSProvider: PlazCodeProvider = (() => {
   // A limit message counts only if it is a real, visible notice of the site:
   // not chat text (ours or the model's), not the chat box, and not something
   // that was already on the page before PlazCode sent its message.
-  const _oldNotices = new WeakMap();
-  function limitNotices() {
-    const out = [];
+  const _oldNotices = new WeakMap<Element, string>();
+  function limitNotices(): Array<[Element, string]> {
+    const out: Array<[Element, string]> = [];
     const ed = getEditor(), items = allItems();
-    for (const el of safeQueryAll(document, S.errorSurfaces)) {
+    for (const el of safeQueryAll<HTMLElement>(document, S.errorSurfaces)) {
       if (!visible(el)) continue;
       if (ed && (el === ed || safeRead(() => el.contains(ed) || ed.contains(el), false))) continue;
       if (items.some((it) => it === el || safeRead(() => it.contains(el) || el.contains(it), false))) continue;
@@ -755,11 +756,11 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return out;
   }
-  function markExistingNotices() {
+  function markExistingNotices(): void {
     try { for (const [el, t] of limitNotices()) _oldNotices.set(el, t); } catch {}
   }
   let _noEditorSince = 0;
-  function scanError() {
+  function scanError(): string | null {
     try {
       for (const [el, t] of limitNotices()) {
         if (_oldNotices.get(el) === t) continue;
@@ -774,10 +775,10 @@ const RSProvider: PlazCodeProvider = (() => {
     } else _noEditorSince = 0;
     return null;
   }
-  const isTooLongMsg = (text) => RE.tooLong.test(text);
-  const isBusyMsg = (text) => RE.busy.test(text);
+  const isTooLongMsg = (text: string): boolean => RE.tooLong.test(text);
+  const isBusyMsg = (text: string): boolean => RE.busy.test(text);
 
-  function fileFromImage(img, i) {
+  function fileFromImage(img: ImagePayload, i: number): File {
     if (typeof PlazCodeMedia !== "undefined") return PlazCodeMedia.fileFrom(img, i);
     const mime = img.mimeType || "image/jpeg";
     const bin = atob(img.data);
@@ -786,14 +787,14 @@ const RSProvider: PlazCodeProvider = (() => {
     const ext = mime.includes("png") ? "png" : "jpg";
     return new File([arr], `or_${Date.now()}_${i}.${ext}`, { type: mime });
   }
-  function clearAttachments() {}
-  async function attachImages(images) {
+  function clearAttachments(): void {}
+  async function attachImages(images: ImagePayloadList): Promise<boolean> {
     const editor = getEditor();
     if (!editor || !images || !images.length) return false;
     const dt = new DataTransfer();
     images.forEach((img, i) => { try { dt.items.add(fileFromImage(img, i)); } catch {} });
     if (!dt.items.length) return false;
-    const fileInput = safeQuery(document, 'input[type="file"]');
+    const fileInput = safeQuery<HTMLInputElement>(document, 'input[type="file"]');
     if (fileInput) {
       try {
         fileInput.files = dt.files;
@@ -810,7 +811,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // "" = a new chat that has no address yet (the home page, or the bare chat
   // page). The core treats that differently from "a different chat", so a chat
   // that gains its address after the first message is still the same chat.
-  function conversationKey() {
+  function conversationKey(): string {
     const path = location.pathname || "";
     // 2026-11-14 (owner log + live look): a started Freebuff chat lives at freebuff.com/?thread=<id>, with nothing in the path.
     // Reading that as "no address" made PlazCode think the chat was still new: no command cards, and the start looked unfinished.
@@ -825,11 +826,11 @@ const RSProvider: PlazCodeProvider = (() => {
     return path;
   }
 
-  function installSendHooks(handlers) {
+  function installSendHooks(handlers: SendHooks): void {
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
       const ed = getEditor();
-      if (!ed || !safeRead(() => ed.contains(e.target), false)) return;
+      if (!ed || !safeRead(() => ed.contains(e.target as Node), false)) return;
       if (editorText().trim() === "") return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
@@ -846,7 +847,7 @@ const RSProvider: PlazCodeProvider = (() => {
       if (safeClosest(t, "#rs-root")) return;
       const stop = safeRead(() => t.closest, null) && safeClosest(t, "button");
       if (stop && isStopLabel(ariaOf(stop))) { handlers.onNativeStop(); return; }
-      const btn = safeRead(() => t.closest, null) && safeClosest(t, "button");
+      const btn = safeRead(() => t.closest, null) && (safeClosest(t, "button") as HTMLButtonElement | null);
       if (!btn) return;
       const isSend = S.sendAria.test(ariaOf(btn)) || safeRead(() => btn.type, "") === "submit";
       if (!isSend) return;
@@ -864,9 +865,9 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   const CMD_SHAPE = /"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i;
-  function findToolBlockSpot(item) {
+  function findToolBlockSpot(item: Element | null): { parent: Element | null; ref: Element | null } | null {
     if (!item) return null;
-    let parent = null, ref = null;
+    let parent: Element | null = null, ref: Element | null = null;
     for (const pre of safeQueryAll(item, "pre")) {
       if (safeRead(() => pre.closest, null) && safeClosest(pre, ".rs-chip")) continue;
       if (!CMD_SHAPE.test(safeRead(() => pre.textContent, "") || "")) continue;
@@ -875,8 +876,8 @@ const RSProvider: PlazCodeProvider = (() => {
       // 2026-11-14 (owner screenshot, startup cards missing): the page wraps each code block in a few boxes (a code-block shell with
       // a "json / Copy" header). The card was placed inside that shell, which gets hidden with the code, so it never showed. Put the
       // card before the OUTERMOST code wrapper instead, and hide the wrapper (header and all) with the code.
-      let anchor = pre;
-      for (let up = safeRead(() => pre.parentElement, null), n = 0; up && up !== item && n < 4 && /md-code|block-clip|code-?block/i.test(String(safeRead(() => up.className, "") || "")); up = safeRead(() => up.parentElement, null), n++) anchor = up;
+      let anchor: Element = pre;
+      for (let up: Element | null = safeRead(() => pre.parentElement, null), n = 0; up && up !== item && n < 4 && /md-code|block-clip|code-?block/i.test(String(safeRead(() => up!.className, "") || "")); up = safeRead((): Element | null => up!.parentElement, null), n++) anchor = up;
       if (anchor !== pre) anchor.classList.add("rs-tool-hide");
       if (!ref && safeRead(() => anchor.parentElement, null)) { parent = safeRead(() => anchor.parentElement, null); ref = anchor; }
     }
@@ -909,7 +910,7 @@ const RSProvider: PlazCodeProvider = (() => {
     isGenerating, isBusyNow, isHardGenerating,
     genDebug: genWhy,
     enforceComposer() { return { ready: true }; },
-    async ensureComposerReady(reason) {
+    async ensureComposerReady(reason?: string) {
       // The page may still be loading, or swapping between the home view and a chat.
       if (!loginGatePresent()) await waitFor(() => !!getEditor() && !boxRefusesInput(getEditor()), 8000);
       markExistingNotices();

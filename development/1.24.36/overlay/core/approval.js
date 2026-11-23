@@ -1,7 +1,11 @@
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/approval.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // PlazCode approval cards (1.24.21+): describes an action in plain words for the "Needs your approval" card.
 // Pure logic, no DOM. The card itself is drawn by core/main.js.
 // Unknown tools count as changes (fail closed): only tools the safety module knows are read-only skip the card.
 const PlazCodeApproval = (() => {
+
+
   const bare = (name) => String(name || "").split("__").pop();
   const nice = (name) => {
     const words = bare(name).replace(/[_-]+/g, " ").trim();
@@ -19,13 +23,13 @@ const PlazCodeApproval = (() => {
     {value:"auto",label:"Approve for me",description:"Ask only before commands that delete or remove things."},
     {value:"bypass",label:"Bypass approval",description:"Automatically approve commands without popups."},
   ]);
-  const normalizeMode = value => MODES.some(mode=>mode.value===value) ? value : value===undefined||value==="" ? "" : "ask";
+  const normalizeMode = (value) => MODES.some(mode=>mode.value===value) ? (value) : value===undefined||value==="" ? "" : "ask";
   // app_do (owner, 2026-11-17: "ask before risky unless approvals are off"): clicks on buttons that send, delete or pay, and
   // Enter right after typing in a chat or mail app (that sends). Mirrors agent/src/app_steps.rs risky().
   const RISKY_CLICK=/(?:^|[^a-z0-9])(?:send|post|publish|submit|delete|remove|erase|uninstall|buy|purchase|pay|checkout|order|transfer|confirm|sign out|log out|format|reset|discard|empty trash|move to trash)(?:$|[^a-z0-9])/i;
   const CHAT_APP=/discord|slack|teams|whatsapp|telegram|messenger|outlook|mail|signal|messages|skype/i;
   function appStepsRisk(args){
-    const a=args||{},out=[],steps=Array.isArray(a.steps)?a.steps:[];let typed=false;
+    const a=(args||{}),out=[],steps=Array.isArray(a.steps)?a.steps:[];let typed=false;
     for(const step of steps){
       if(typeof step==="string"){if(CHAT_APP.test(String(a.app||""))&&typed&&/^\s*(?:enter|return)\s*$/i.test(step))out.push("press Enter after typing (sends the message)");typed=false;continue;}
       if(!step||typeof step!=="object")continue;
@@ -35,16 +39,16 @@ const PlazCodeApproval = (() => {
     }
     return out;
   }
-  function removes(tool,args,engine,safety) {
+  function removes(tool, args, engine, safety) {
     try { if(safety.isDelete(tool,args,engine))return true; } catch {}
-    const name=bare(tool),a=args||{};
+    const name=bare(tool),a=(args||{});
     if(name==="app_do"&&appStepsRisk(a).length)return true;
     if(/(?:^|_)(?:delete|remove|destroy|clear)(?:_|$)/i.test(name))return true;
-    if(Array.isArray(a.edits)&&a.edits.some(edit=>/^(delete|remove|destroy)$/i.test(String(edit.op||edit.action||edit.type||""))))return true;
+    if(Array.isArray(a.edits)&&a.edits.some((edit)=>/^(delete|remove|destroy)$/i.test(String(edit.op||edit.action||edit.type||""))))return true;
     const code=String(a.code||a.script||"");
     return /:(?:Destroy|ClearAllChildren)\s*\(|table\.(?:remove|clear)\s*\(|\.Parent\s*=\s*nil\b|bpy\.ops\.object\.delete\s*\(|bpy\.data\.[\w.]+\.remove\s*\(/i.test(code);
   }
-  function commandDecision(mode,tool,args,engine,safety) {
+  function commandDecision(mode, tool, args, engine, safety) {
     mode=normalizeMode(mode);if(!mode)return "legacy";
     if(mode==="bypass")return "allow";
     if(removes(tool,args,engine,safety))return "ask";
@@ -57,7 +61,7 @@ const PlazCodeApproval = (() => {
 
   // Returns {title, kind, badge, note, target, summary, destructive}
   function describe(tool, args, engine, safety) {
-    const a = args && typeof args === "object" ? args : {};
+    const a = (args && typeof args === "object" ? args : {});
     const name = bare(tool);
     let del = false, change = true;
     try { del = !!safety.isDelete(tool, a, engine); } catch {}
@@ -111,9 +115,9 @@ const PlazCodeApproval = (() => {
   function alwaysNormalize(list) {
     const out = [], seen = new Set();
     for (const item of Array.isArray(list) ? list : []) {
-      const n = alwaysName(item && typeof item === "object" ? item.tool : item);
+      const n = alwaysName(item && typeof item === "object" ? (item).tool : item);
       if (!n || seen.has(n)) continue;
-      seen.add(n); out.push({ tool: n, at: Number(item && item.at) > 0 ? Number(item.at) : 0 });
+      seen.add(n); out.push({ tool: n, at: Number(item && (item).at) > 0 ? Number((item).at) : 0 });
       if (out.length >= ALWAYS_MAX) break;
     }
     return out;

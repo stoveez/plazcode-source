@@ -29,24 +29,25 @@
 //    answers; PlazCode always reads answer A. Agent mode (route /agent) uses a tiptap editor and its own turns.
 //    Only Arena's non-chat pages (Code / Build Apps, Search, Image, Video) stay unsupported.
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+    return safeRead(() => (node).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
   function safeStyle(node) {
     return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
@@ -63,7 +64,7 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {}; // injected by core via init()
+  let diag = () => {}; // injected by core via init()
   // Identity of the last image set we STAGED into the composer. The core reuses
   // the same array reference across submitAndGetBase's up-to-4 typeAndSend
   // retries, so keying on it makes the attach idempotent (see typeAndSend) - a
@@ -86,7 +87,7 @@ const RSProvider                   = (() => {
     return true;
   }
   function visibleBtn(b) {
-    if (!b || safeClosest(b, "#rs-root") || safeRead(() => b.disabled, true)) return false;
+    if (!b || safeClosest(b, "#rs-root") || safeRead(() => (b).disabled, true)) return false;
     try {
       const r = safeRect(b);
       if (r.width < 8 || r.height < 8) return false;
@@ -328,7 +329,7 @@ const RSProvider                   = (() => {
       const target = r.target.nodeType === 1 ? r.target : r.target.parentElement;
       if (!target || safeClosest(target, ".rs-chip")) continue;
       const nodes = [...(r.addedNodes || []), ...(r.removedNodes || [])];
-      if (r.type === "childList" && nodes.length && nodes.every(n => n.nodeType === 1 && safeRead(() => n.matches(".rs-chip"), false))) continue;
+      if (r.type === "childList" && nodes.length && nodes.every(n => n.nodeType === 1 && safeRead(() => (n).matches(".rs-chip"), false))) continue;
       const md = safeClosest(target, S.box);
       if (md) textCache.delete(md);
     }
@@ -348,7 +349,7 @@ const RSProvider                   = (() => {
   }
 
   // Walk the tree skipping the core's chip (and any extra excluded subtree).
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     const skip = ".rs-chip" + (excludeSel ? ", " + excludeSel : "");
     let t = "";
@@ -359,8 +360,8 @@ const RSProvider                   = (() => {
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      const tag = safeRead(() => n.tagName, "");
+      if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(skip), false)) return;
+      const tag = safeRead(() => (n).tagName, "");
       if (tag === "BR") { t += "\n"; return; }
       const block = BLOCK.test(tag);
       if (block) breakLine();
@@ -414,7 +415,7 @@ const RSProvider                   = (() => {
   const editorText = () => {
     const e = getEditor();
     if (!e) return "";
-    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => e.value, "") || "";
+    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => (e).value, "") || "";
     return (safeRead(() => e.innerText, "") || safeRead(() => e.textContent, "") || "").replace(/\u00a0/g, " ");
   };
 
@@ -749,7 +750,7 @@ const RSProvider                   = (() => {
         const ok = await attachImages(images);
         if (ok) _attachedImages = images;
         diag("arena.tas.attached", { imgId: images.__rsId, ok, pendingAfter: pendingCount() });
-      } catch (e) { diag("arena.tas.attachErr", { msg: String(e && e.message || e) }); }
+      } catch (e) { diag("arena.tas.attachErr", { msg: String(e && (e).message || e) }); }
       // Staging the file re-disables send for ~0.4s while Arena ingests it.
       await waitFor(sendReady, 6000);
     } else {
@@ -1109,7 +1110,7 @@ const RSProvider                   = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const btn = e.target && safeRead(() => (e.target           ).closest, null) && safeClosest(e.target, "button");
+        const btn = e.target && safeRead(() => (e.target).closest, null) && (safeClosest(e.target, "button"));
         if (!btn) return;
         // Recovery uses .click() on the native Stop control. That must end Arena's generation, not cancel
         // PlazCode's task as though the owner pressed Stop. Only a real click on the current control is intent.
@@ -1150,7 +1151,7 @@ const RSProvider                   = (() => {
     const blocks = [];
     let pending = "";
     for (const node of md.childNodes) {
-      if (node.nodeType === 1 && safeRead(() => node.matches(".rs-chip"), false)) continue;
+      if (node.nodeType === 1 && safeRead(() => (node).matches(".rs-chip"), false)) continue;
       const text = node.textContent || "";
       if (!pending && !CMD_SHAPE.test(text)) continue;
       // An unfenced ###LUA### block can span hundreds of paragraphs. Hide from its opener through its

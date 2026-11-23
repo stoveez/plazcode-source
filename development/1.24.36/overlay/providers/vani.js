@@ -3,21 +3,23 @@
 // providers/vani.js — Vani AI (c.vani.ai) provider.
 // Chat lives at c.vani.ai/c (no sign-up needed for the free shared allowance). Adaptive composer (textarea or contenteditable). Selectors fail open so a reskin still finds the box.
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
     return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
@@ -37,7 +39,7 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {};
+  let diag = () => {};
 
   const S = {
     editor:
@@ -75,16 +77,17 @@ const RSProvider                   = (() => {
     return true;
   }
 
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     const skip = excludeSel ? `.rs-chip, ${excludeSel}` : ".rs-chip";
     let t = "";
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      if (safeRead(() => n.tagName, "") === "BR") { t += "\n"; return; }
-      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(safeRead(() => n.tagName, ""));
+      const el = n;
+      if (safeRead(() => el.matches, null) && safeRead(() => el.matches(skip), false)) return;
+      if (safeRead(() => el.tagName, "") === "BR") { t += "\n"; return; }
+      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(safeRead(() => el.tagName, ""));
       if (isBlock && t && !t.endsWith("\n")) t += "\n";
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
       if (isBlock && !t.endsWith("\n")) t += "\n";
@@ -108,7 +111,7 @@ const RSProvider                   = (() => {
   const editorText = () => {
     const e = getEditor();
     if (!e) return "";
-    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => e.value, "") || "";
+    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => (e).value, "") || "";
     return (safeRead(() => e.innerText, "") || safeRead(() => e.textContent, "") || "").replace(/\u00a0/g, " ");
   };
 
@@ -170,7 +173,7 @@ const RSProvider                   = (() => {
     const r = roleOf(item);
     if (/assistant|agent|ai|model/.test(r)) return true;
     if (/user|human/.test(r)) return false;
-    return !isUserItem(item) && !!(item && (safeRead(() => item.innerText, "") || "").trim());
+    return !isUserItem(item) && !!(item && (safeRead(() => (item).innerText, "") || "").trim());
   }
 
   function itemText(item) {
@@ -220,9 +223,10 @@ const RSProvider                   = (() => {
     if (!ed) return null;
     let n = ed;
     for (let i = 0; i < 10 && n; i++) {
-      const cls = String(safeRead(() => n.className, "") || "");
-      if (/rounded|composer|input-bar|chat-input/i.test(cls)) return n;
-      n = safeRead(() => n.parentElement, null);
+      const cur = n;
+      const cls = String(safeRead(() => cur.className, "") || "");
+      if (/rounded|composer|input-bar|chat-input/i.test(cls)) return cur;
+      n = safeRead(() => cur.parentElement, null);
     }
     return composerFrame();
   }
@@ -346,7 +350,7 @@ const RSProvider                   = (() => {
     const proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
     const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
     if (setter && setter.set) setter.set.call(el, v);
-    else el.value = v;
+    else (el).value = v;
     el.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
@@ -360,8 +364,10 @@ const RSProvider                   = (() => {
       const sel = window.getSelection();
       const range = document.createRange();
       range.selectNodeContents(el);
-      sel.removeAllRanges();
-      sel.addRange(range);
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
     } catch {}
     let ok = false;
     try { ok = document.execCommand("insertText", false, text); } catch {}
@@ -496,7 +502,7 @@ const RSProvider                   = (() => {
       const ed = getEditor();
       if (!ed || !safeRead(() => ed.contains(e.target), false)) return;
       if (editorText().trim() === "") return;
-      if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+      if (handlers.onCoworkSend && (handlers.onCoworkSend)(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (!chatIsEmpty()) return;
@@ -507,7 +513,7 @@ const RSProvider                   = (() => {
     }, true);
     document.addEventListener("click", (e) => {
       if (!getEditor()) return;
-      const t = e.target           ;
+      const t = e.target;
       // PlazCode's own bar buttons (Fix connection, Enhance, ...) are never the site's Send button.
       if (safeClosest(t, "#rs-root")) return;
       const stop = safeRead(() => t.closest, null) && safeClosest(t, "button");
@@ -517,7 +523,7 @@ const RSProvider                   = (() => {
       const isSend = S.sendAria.test(ariaOf(btn)) || safeRead(() => btn.type, "") === "submit";
       if (!isSend) return;
       if (safeRead(() => btn.disabled, true)) return;
-      if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+      if (handlers.onCoworkSend && (handlers.onCoworkSend)(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (!chatIsEmpty()) return;

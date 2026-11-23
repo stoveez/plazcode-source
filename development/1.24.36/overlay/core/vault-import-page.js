@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/vault-import-page.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // The import page (core/vault-import.html). Runs as a PlazCode page, never inside an AI site, so the site cannot see the files.
 (function (win) {
   const doc = win.document, $ = (id) => doc.getElementById(id);
@@ -23,9 +25,10 @@
       let name = info.custom ? info.path : 'PlazCode vault';
       try { const got = await new Promise((r) => win.chrome.storage.local.get(['rsActiveVault'], r)); if (got && got.rsActiveVault && got.rsActiveVault.name) name = got.rsActiveVault.name; } catch { /* name is a nicety */ }
       $('vault').textContent = name;
-    } catch (e) { $('vault').textContent = 'Not connected'; say(e.message, 'bad'); }
+    } catch (e) { $('vault').textContent = 'Not connected'; say((e).message, 'bad'); }
   }
   function renderPreview() {
+    if (!planned || !Imp) return;
     const box = $('preview'); box.textContent = ''; box.hidden = false;
     box.append(el('strong', 'Folder: ' + planned.folder));
     const ready = el('div', undefined, 'row'); ready.append(el('span', 'Notes ready to import'), el('span', String(planned.notes.length), 'num')); box.append(ready);
@@ -41,6 +44,7 @@
   // Blob.text() where the browser has it, otherwise FileReader.
   const readText = (file) => typeof file.text === 'function' ? file.text() : new Promise((resolve, reject) => { const r = new win.FileReader(); r.onload = () => resolve(String(r.result || '')); r.onerror = () => reject(r.error); r.readAsText(file); });
   async function pick(files) {
+    if (!Imp) return;
     say(''); $('preview').hidden = true;
     const all = Array.from(files || []); if (!all.length) return;
     say('Reading ' + all.length + ' files...');
@@ -51,12 +55,12 @@
       if (isNote && f.size <= Imp.limits.MAX_BYTES && !/(^|\/)\./.test(path)) { try { text = await readText(f); } catch { text = null; } }
       rows.push({ path, size: f.size, text });
     }
-    planned = Imp.plan(rows, { redact: Rel && Rel.redact });
+    planned = Imp.plan(rows, { redact: Rel ? Rel.redact : undefined });
     say(''); renderPreview();
   }
   async function start() {
-    if (!planned || !planned.notes.length) return;
-    $('go').disabled = true; $('pickLabel').hidden = true; controller = new AbortController();
+    if (!planned || !planned.notes.length || !Imp) return;
+    ($('go')).disabled = true; $('pickLabel').hidden = true; controller = new AbortController();
     const box = $('progressBox'); box.hidden = false; const bar = $('bar'), text = $('progressText');
     bar.max = planned.notes.length; bar.value = 0;
     try {
@@ -64,14 +68,14 @@
       const body = Imp.report(planned, result);
       const path = planned.prefix + 'Import report.md';
       const write = (mode) => send({ action: 'write', mode, path, content: body, frontmatter: { tags: ['imported', 'report'], origin: 'import' }, reason: 'import report' });
-      try { await write('create'); } catch (e) { if (/already exists/i.test(String(e && e.message))) await write('replace'); }
+      try { await write('create'); } catch (e) { if (/already exists/i.test(String((e)?.message))) await write('replace'); }
       const skippedTotal = planned.skipped.length + result.skipped.length + result.failed.length;
       say('Done. ' + result.imported.length + ' notes imported, ' + skippedTotal + ' skipped. A report note is in the same folder. Open PlazCode, Memory, Open vault to see them.', 'ok');
-    } catch (e) { say(e.message || 'The import stopped.', 'bad'); }
+    } catch (e) { say((e).message || 'The import stopped.', 'bad'); }
     box.hidden = true; $('pickLabel').hidden = false; $('preview').hidden = true;
   }
   $('cancel').onclick = () => { if (controller) controller.abort(); };
-  $('folder').addEventListener('change', (event) => { pick(event.target.files); });
+  $('folder').addEventListener('change', (event) => { pick((event.target).files); });
   showVault();
   win.__vaultImport = { pick, start, plan: () => planned };
 })(window);

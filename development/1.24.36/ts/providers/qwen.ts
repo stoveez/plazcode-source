@@ -34,38 +34,40 @@
 // eslint-disable-next-line no-unused-vars
 const RSProvider: PlazCodeProvider = (() => {
   "use strict";
+  type SafeRect = { x: number; y: number; left: number; top: number; right: number; bottom: number; width: number; height: number; readFailed?: boolean };
+  type ToolSpot = { parent: Element | null; ref: Element | null };
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
-  function safeRead(read, fallback) {
+  function safeRead<T, F = T>(read: () => T, fallback: F): T | F {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
-  function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+  function safeQuery<T extends Element = HTMLElement>(root: ParentNode | null | undefined, selector: string): T | null {
+    return safeRead(() => (root as ParentNode).querySelector<T>(selector), null);
   }
-  function safeQueryAll(root, selector): any[] {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll<T extends Element = HTMLElement>(root: ParentNode | null | undefined, selector: string): T[] {
+    return safeRead(() => Array.from((root as ParentNode).querySelectorAll<T>(selector)), []);
   }
-  function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+  function safeClosest<T extends Element = HTMLElement>(node: Node | EventTarget | null | undefined, selector: string): T | null {
+    return safeRead(() => (node as Element).closest<T>(selector), null);
   }
-  function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+  function safeRect(node: Element): SafeRect {
+    return safeRead<DOMRect, SafeRect>(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
-  function safeStyle(node) {
-    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
+  function safeStyle(node: Element): CSSStyleDeclaration {
+    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'} as unknown as CSSStyleDeclaration);
   }
-  function safePredicate(predicate) {
+  function safePredicate<T>(predicate: () => T): T | false {
     const before = domReadErrors;
-    const result = safeRead(predicate, false);
+    const result = safeRead(predicate, false as const);
     return before === domReadErrors ? result : false;
   }
   // A poll-count limit also bounds waits if the wall clock moves backwards.
-  function waitBudget(timeout, interval) {
+  function waitBudget(timeout: number, interval: number): { ms: number; polls: number } {
     const ms = Number.isFinite(timeout) ? Math.min(600000, Math.max(0, timeout)) : 30000;
     return {ms, polls: Math.ceil(ms / interval)};
   }
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
   let diag: Diag = () => {};
 
   const S = {
@@ -128,11 +130,11 @@ const RSProvider: PlazCodeProvider = (() => {
   // MutationObserver snapshots its joined source into `pre.dataset.rsCode`,
   // keeping the LONGEST capture. After disposal the full source survives in the
   // attribute, so codeText() below always returns the complete code.
-  const codeLinesText = (pre) => {
+  const codeLinesText = (pre: Element): string => {
     const lines = safeQueryAll(pre, ".view-line");
     return lines.length ? [...lines].map((l) => safeRead(() => l.textContent, "")).join("\n") : "";
   };
-  function snapshotCode(pre) {
+  function snapshotCode(pre: HTMLElement): void {
     const live = codeLinesText(pre);
     if (!live) return;
     const prev = pre.dataset.rsCode || "";
@@ -140,13 +142,13 @@ const RSProvider: PlazCodeProvider = (() => {
   }
   // Full code for a block: the cached snapshot if present/longer (survives
   // disposal), else the live view-lines, else raw textContent as a last resort.
-  function codeText(pre) {
+  function codeText(pre: HTMLElement): string {
     const cached = pre.dataset.rsCode || "";
     const live = codeLinesText(pre);
     const best = cached.length >= live.length ? cached : live;
     return best || safeRead(() => pre.textContent, "") || "";
   }
-  let _codeObs = null;
+  let _codeObs: MutationObserver | null = null;
   function ensureCodeObserver() {
     if (_codeObs) return;
     // [TRACE] Suspect #1 for the "15-20s freeze after N tools": this observer
@@ -187,11 +189,11 @@ const RSProvider: PlazCodeProvider = (() => {
   // This is the SOURCE OF TRUTH for the latest assistant turn's text: the DOM
   // (Monaco) disposes/partials code blocks, so a command read from the DOM can be
   // truncated, but the network text is always the model's verbatim output.
-  function netLatest() {
+  function netLatest(): { rid?: string; text: string; done?: boolean } | null {
     try {
       const n = safeRead(() => document.getElementById("rs-qwen-net"), null);
       if (!n || !safeRead(() => n.textContent, "")) return null;
-      const o = JSON.parse(safeRead(() => n.textContent, ""));
+      const o = JSON.parse(safeRead(() => n.textContent, "") as string);
       return o && typeof o.text === "string" ? o : null;
     } catch { return null; }
   }
@@ -201,7 +203,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // ending the loop early (rescued ~5s later by autoResume - the "tool frozen with
   // no timer/tokens for 15-20s" the user saw). We record the rid at send time and
   // treat the tap as STALE until its rid changes to a genuinely new response.
-  let _sentRid = null;
+  let _sentRid: string | null = null;
   function rememberSentResponse() {
     const net = netLatest();
     if (net && net.rid) _sentRid = net.rid;
@@ -225,7 +227,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // gen-state too made netGenState fall back to flickery DOM signals, so the watcher
   // judged a still-streaming execute_luau "done but unclosed" and fired a premature
   // parse_error - sending an ERROR to Qwen mid-generation (validated live, 2026-06).
-  function netReplyFor(item) {
+  function netReplyFor(item: Element | null): string | null {
     if (item !== lastAssistant()) return null;
     if (latestIsDual()) return null; // A/B: text interleaved - read DOM candidate 1
     const net = netCurrent();
@@ -233,8 +235,8 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── Turn classification ───────────────────────────────────────────────────
-  const isUserItem = (item) => !!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.userItem), false);
-  const isAssistantItem = (item) => !!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.assistantItem), false);
+  const isUserItem = (item: Element | null | undefined): boolean => !!item && safeRead(() => item.matches, null) && (safeRead(() => item.matches(S.userItem), false) as any);
+  const isAssistantItem = (item: Element | null | undefined): boolean => !!item && safeRead(() => item.matches, null) && (safeRead(() => item.matches(S.assistantItem), false) as any);
 
   // Qwen A/B "Which response do you prefer?" comparison turn. ONE assistant turn
   // (class `qwen-chat-message-dual-message`) carries TWO candidate replies, each
@@ -247,8 +249,8 @@ const RSProvider: PlazCodeProvider = (() => {
   // back"). Per the product decision we use ONLY the first candidate (sending the
   // next message auto-selects it anyway) and READ IT FROM THE DOM, abandoning the
   // corrupted tap for these turns (see netCurrent() + bodyEl()).
-  const isDualItem = (item) =>
-    !!item && item.classList && safeRead(() => item.classList.contains("qwen-chat-message-dual-message"), false);
+  const isDualItem = (item: Element | null | undefined): boolean =>
+    !!item && item.classList && (safeRead(() => item.classList.contains("qwen-chat-message-dual-message"), false) as any);
   const latestIsDual = () => isDualItem(lastAssistant());
 
   // Walk element text, skipping .rs-chip and any excluded selector.
@@ -256,22 +258,22 @@ const RSProvider: PlazCodeProvider = (() => {
   // sibling divs with no inter-line text nodes, so plain textContent collapses
   // the whole block onto one line. Uses codeText() so a DISPOSED block still
   // yields its full source from the dataset cache (see the cache section above).
-  function textWithout(root: Element | null, excludeSel?: string) {
+  function textWithout(root: Element | null, excludeSel?: string): string {
     if (!root) return "";
     const _t0 = (self.performance || Date).now(); // [TRACE]
     const skip = ".rs-chip" + (excludeSel ? ", " + excludeSel : "");
     let t = "";
     let _nodes = 0; // [TRACE]
-    const walk = (n) => {
+    const walk = (n: Node): void => {
       _nodes++; // [TRACE]
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(S.codeWrap), false)) {
-        const code = codeText(n);
+      if (safeRead(() => (n as Element).matches, null) && safeRead(() => (n as Element).matches(skip), false)) return;
+      if (safeRead(() => (n as Element).matches, null) && safeRead(() => (n as Element).matches(S.codeWrap), false)) {
+        const code = codeText(n as HTMLElement);
         if (code) { t += "\n" + code; return; }
       }
-      for (const c of safeRead(() => n.childNodes, [])) walk(c);
+      for (const c of safeRead(() => n.childNodes, [] as Node[])) walk(c);
     };
     walk(root);
     // [TRACE] Only log a genuinely expensive walk so the normal path stays quiet.
@@ -283,7 +285,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // Reply body: prefer the phase-answer div (excludes thinking-phase cards that
   // live outside it). Falls back to any .response-message-content, then the
   // whole item.
-  const bodyEl = (item) => {
+  const bodyEl = (item: Element | null | undefined): Element | null => {
     if (!item) return null;
     // A/B turn: restrict every DOM read (text, code, generation) to the FIRST
     // candidate's box so we never mix in candidate 2's reply.
@@ -301,7 +303,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // tap (verbatim markdown, immune to Monaco disposal); only fall back to the DOM
   // when the tap has nothing yet (e.g. before qwen-net.js has seen a stream). For
   // OLDER turns we use the DOM (the tap only holds the most recent response).
-  function assistantReplyText(item) {
+  function assistantReplyText(item: Element | null): string {
     if (item === lastAssistant()) {
       const net = netReplyFor(item);
       if (net) return net;
@@ -309,12 +311,12 @@ const RSProvider: PlazCodeProvider = (() => {
     const bd = bodyEl(item);
     return bd ? textWithout(bd) : "";
   }
-  function itemText(item) {
+  function itemText(item: Element): string {
     if (!item) return "";
     if (isAssistantItem(item)) return assistantReplyText(item);
     return textWithout(item);
   }
-  function classifyText(item, excludeSel) {
+  function classifyText(item: Element, excludeSel?: string): string {
     // excludeSel only matters for DOM walks (thinking/chip exclusion); the network
     // text is already answer-phase only, so it needs no exclusion.
     if (isAssistantItem(item)) {
@@ -337,8 +339,8 @@ const RSProvider: PlazCodeProvider = (() => {
   // Scope to the site's composer only; skip PlazCode's own injected textarea
   // (#rs-set-text inside #rs-root) so login pages without a site editor return
   // null and the send-hook guards stay intact.
-  const getEditor = () => {
-    for (const e of safeQueryAll(document, S.editor)) {
+  const getEditor = (): HTMLTextAreaElement | null => {
+    for (const e of safeQueryAll<HTMLTextAreaElement>(document, S.editor)) {
       if (!safeClosest(e, "#rs-root")) return e;
     }
     return null;
@@ -377,7 +379,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // virtualization, so exposing it as itemKey gives the core a collision-proof key.
   // Returns a STRING uuid; the core's numeric maxTurnId guards use Number.isFinite
   // so a non-numeric key is safely ignored there (same as having no itemKey).
-  function itemKey(item) {
+  function itemKey(item: Element | null): string | null {
     if (!item) return null;
     const rc = safeRead(() => item.querySelector, null) && safeQuery(item, '[id^="chat-response-message-"]');
     if (rc) {
@@ -436,7 +438,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // makes it a flex sibling laid out BESIDE the reply text. Redirect into the
   // content COLUMN `.chat-response-message-right` (display:block) so the chip
   // stacks under the text instead of next to it (validated live, 2026-06).
-  function chipAnchor(item) {
+  function chipAnchor(item: Element): Element {
     if (!item) return item;
     return (
       safeQuery(item, ".chat-response-message-right") ||
@@ -449,7 +451,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // LAST child is actually `.message-hoc-container` (the copy/like/share action
   // row), not the reply. Appending after that would sink the chip below those
   // buttons. Name it as the fixed point the chip must stay just BEFORE.
-  function chipTrailRef(item) {
+  function chipTrailRef(item: Element): Element | null {
     const anchor = chipAnchor(item);
     return (anchor && safeQuery(anchor, ":scope > .message-hoc-container")) || null;
   }
@@ -458,9 +460,9 @@ const RSProvider: PlazCodeProvider = (() => {
   // Real <textarea>: swap placeholder text and set readonly. No re-assert loop
   // needed -- React doesn't recreate this element between inject/clear cycles.
   const LOCK_MSG = "⏳ Agent working… please wait";
-  let _origPlaceholder = null;
+  let _origPlaceholder: string | null = null;
 
-  function setInputLock(on) {
+  function setInputLock(on: boolean): void {
     const ed = getEditor();
     if (!ed) return;
     if (on) {
@@ -488,13 +490,13 @@ const RSProvider: PlazCodeProvider = (() => {
   // never sent and the agent loop hung after a tool result (the "stuck on active,
   // tools never sent back" bug). Gating on enabled makes the wait block until the
   // real send control is clickable (same lesson as GLM's send-button re-enable).
-  const sendButton = () => {
+  const sendButton = (): HTMLButtonElement | null => {
     const scope =
       safeQuery(document, ".message-input-right-button-send") ||
       safeQuery(document, ".chat-prompt-send-button");
     const btn =
-      (scope ? safeQuery(scope, S.sendBtn) : null) ||
-      safeQuery(document, S.sendBtn) ||
+      (scope ? safeQuery<HTMLButtonElement>(scope, S.sendBtn) : null) ||
+      safeQuery<HTMLButtonElement>(document, S.sendBtn) ||
       null;
     if (!btn) return null;
     if (safeRead(() => btn.disabled, true) || safeRead(() => btn.classList.contains("disabled"), false)) return null;
@@ -509,7 +511,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // ── Generation detection ──────────────────────────────────────────────────
   // For the latest turn, the network tap's growing text is the most reliable
   // growth signal (DOM/Monaco can re-render non-monotonically); fall back to DOM.
-  function streamText(item) {
+  function streamText(item: Element | null | undefined): string {
     if (item === lastAssistant()) {
       const net = netReplyFor(item);
       if (net) return net;
@@ -517,11 +519,11 @@ const RSProvider: PlazCodeProvider = (() => {
     const bd = bodyEl(item);
     return bd ? textWithout(bd, ".rs-chip") : "";
   }
-  const streamLen = (item) =>
+  const streamLen = (item?: Element | null): number =>
     streamText(item === undefined ? lastAssistant() : item).length;
 
-  let _streamMax = -1, _streamAt = 0, _streamItem = null;
-  function sampleStream() {
+  let _streamMax = -1, _streamAt = 0, _streamItem: Element | null = null;
+  function sampleStream(): void {
     const item = lastAssistant();
     const len = streamText(item).length;
     const now = Date.now();
@@ -530,7 +532,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     if (len > _streamMax) { _streamMax = len; _streamAt = now; }
   }
-  const grewWithin = (ms) => _streamMax > 1 && Date.now() - _streamAt < ms;
+  const grewWithin = (ms: number): boolean => _streamMax > 1 && Date.now() - _streamAt < ms;
 
   // Core hook: is the LATEST turn's text still an unsettled read? Only the A/B
   // "dual" turn is at risk - the network tap flips `done` when the SSE ends, but
@@ -539,7 +541,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // fired a premature parse_error. sampleStream() tracks candidate-1's own text;
   // report unsettled while it is still growing. Non-dual turns are read from the
   // verbatim network tap and are never unsettled this way.
-  function replyUnsettled(item) {
+  function replyUnsettled(item: Element): boolean {
     if (!isDualItem(item)) return false;
     sampleStream();
     return grewWithin(timings.GEN_IDLE_MS);
@@ -548,7 +550,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // Core hook: is `item` an unresolved A/B "carousel" turn? While one is showing,
   // the site REMOVES the composer from the DOM (getEditor() is null), so the agent
   // cannot send the tool result until a candidate is selected.
-  const isComparisonTurn = (item) => isDualItem(item);
+  const isComparisonTurn = (item: Element): boolean => isDualItem(item);
 
   // Core hook: resolve the carousel by selecting the FIRST candidate (Response 1),
   // per the product rule that we always use candidate 1. Clicking its "I prefer
@@ -635,7 +637,7 @@ const RSProvider: PlazCodeProvider = (() => {
     };
   }
 
-  async function waitFor(pred, timeout) {
+  async function waitFor(pred: () => unknown, timeout: number): Promise<boolean> {
     const budget = waitBudget(timeout, 120), t0 = Date.now();
     for (let poll = 0; poll < budget.polls && Date.now() - t0 < budget.ms; poll++) {
       const result = safePredicate(pred);
@@ -662,7 +664,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // retry the whole call. Qwen-only cap; other providers keep their own.
   const SEND_CAP = 131072;   // composer hard limit
   const SEND_MAX = 130000;   // leave margin for the truncation marker
-  function truncateForSend(text) {
+  function truncateForSend(text: string): string {
     if(typeof window.__rsLimitOutgoing==="function")return window.__rsLimitOutgoing(text);
     if (!text || text.length <= SEND_CAP) return text;
     const omitted = text.length - SEND_MAX;
@@ -676,7 +678,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return text.slice(0, headLen) + marker + text.slice(text.length - tailLen);
   }
 
-  async function typeAndSend(text, images) {
+  async function typeAndSend(text: string, images?: ImagePayloadList): Promise<void> {
     const ed = getEditor();
     if (!ed) throw new Error("Qwen input box not found");
     text = truncateForSend(text);
@@ -714,7 +716,7 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   function enforceComposer() { return { ready: !!getEditor() }; }
-  async function ensureComposerReady(reason) {
+  async function ensureComposerReady(reason?: string) {
     diag("mode_ready", { reason, provider: "qwen" });
     return { ready: !!getEditor() };
   }
@@ -732,11 +734,11 @@ const RSProvider: PlazCodeProvider = (() => {
     if (!getEditor()) return "The input box disappeared (session ended?).";
     return null;
   }
-  const isTooLongMsg = (text) => RE.tooLong.test(text);
-  const isBusyMsg = (text) => RE.busy.test(text);
+  const isTooLongMsg = (text: string): boolean => RE.tooLong.test(text);
+  const isBusyMsg = (text: string): boolean => RE.busy.test(text);
 
   // ── Image attachment ──────────────────────────────────────────────────────
-  function fileFromImage(img, i) {
+  function fileFromImage(img: ImagePayload, i: number): File {
     if (typeof PlazCodeMedia !== "undefined") return PlazCodeMedia.fileFrom(img, i);
     const mime = img.mimeType || "image/jpeg";
     const bin = atob(img.data);
@@ -766,7 +768,7 @@ const RSProvider: PlazCodeProvider = (() => {
       .filter((im) => !safeClosest(im, S.userItem));
     return imgs.length > 0 && imgs.every((im) => /^https?:\/\//.test(safeRead(() => im.getAttribute("src"), null) || ""));
   };
-  async function attachImages(images) {
+  async function attachImages(images: ImagePayloadList): Promise<boolean> {
     const ed = getEditor();
     if (!ed || !images || !images.length) return false;
     const dt = new DataTransfer();
@@ -796,13 +798,13 @@ const RSProvider: PlazCodeProvider = (() => {
     /^\/?$/.test(location.pathname) ? "" : location.pathname;
 
   // ── User-send interception ────────────────────────────────────────────────
-  function installSendHooks(handlers) {
+  function installSendHooks(handlers: SendHooks): void {
     document.addEventListener(
       "keydown",
       (e) => {
         if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
         const ed = getEditor();
-        if (!ed || (e.target !== ed && !safeRead(() => ed.contains(e.target), false))) return;
+        if (!ed || (e.target !== ed && !safeRead(() => ed.contains(e.target as Node | null), false))) return;
         if ((safeRead(() => ed.value, "") || "").trim() === "") return;
         if (handlers.isBlocked()) return;
         if (!handlers.isStarted()) {
@@ -839,10 +841,10 @@ const RSProvider: PlazCodeProvider = (() => {
   // .rs-cmd-mask and let the CSS rule (overlay.css) re-hide recreated pre
   // elements with no flash.
   const CMD_SHAPE = /"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i;
-  function findToolBlockSpot(item) {
+  function findToolBlockSpot(item: Element): ToolSpot | null {
     const bd = bodyEl(item);
     if (!bd) return null;
-    let hidAny = null;
+    let hidAny: ToolSpot | null = null;
     // If the network tap shows this (latest) turn carries a command, the DOM code
     // block may be disposed/partial - hide EVERY code block in the turn so the raw
     // command never flashes even when codeText() can't see it in the DOM.
@@ -862,7 +864,7 @@ const RSProvider: PlazCodeProvider = (() => {
         hidAny = hidAny || { parent: safeRead(() => cw.parentElement, null), ref: cw };
       }
     });
-    [...safeRead(() => bd.children, [])].forEach((el) => {
+    [...safeRead(() => bd.children, [] as Element[])].forEach((el) => {
       if (safeRead(() => el.classList.contains("rs-chip"), false) || safeClosest(el, S.codeWrap) || safeQuery(el, S.codeWrap)) return;
       const t = safeRead(() => el.textContent, "") || "";
       if (t.length < 600 && CMD_SHAPE.test(t)) {
@@ -912,7 +914,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // ALLOWED - see currentModelSupportsVision for why deny-by-default was the
   // same trap DeepSeek's removed model picker sprang on us.
   const MODEL_VIS_LS = "rsQwenModelVision2"; // bumped: old key may hold a stale Max-Preview=false
-  const modelVis = new Map([
+  const modelVis = new Map<string, boolean>([
     // Seed. Some of these are USER-CONFIRMED, not derivable from the description:
     // Qwen3.8-Max-Preview reads images (user-confirmed 2026-07) yet its selector
     // description says NEITHER "multimodal" NOR "text-only" - so the description
@@ -942,7 +944,7 @@ const RSProvider: PlazCodeProvider = (() => {
   //           state-of-the-art performance") → UNKNOWN, so the scan must leave the
   //           seed/cache/user-set value untouched (a silent description is NOT
   //           proof of text-only; Max-Preview reads images despite saying nothing).
-  function visionFromDesc(desc) {
+  function visionFromDesc(desc: string | null | undefined): boolean | null {
     const d = (desc || "").toLowerCase();
     // Negatives FIRST (they win). Note Qwen3.6-Max-Preview reads "vision
     // capabilities are not yet supported" - the "not ... support" comes AFTER the
@@ -1000,7 +1002,7 @@ const RSProvider: PlazCodeProvider = (() => {
     if (_unknownLogged !== nm) { _unknownLogged = nm; diag("model.unknown_allow", { model: nm }); }
     return true;
   }
-  let _modelCapObs = null;
+  let _modelCapObs: MutationObserver | null = null;
   function startModelCapWatch() {
     scanModelCaps(); // catch a dropdown already open at init
     if (_modelCapObs) return;

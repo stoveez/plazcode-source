@@ -1,8 +1,31 @@
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/tool-cards.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // PlazCode tool cards (1.24.21+): turns a tool call into a readable card.
 // Edits show a CHANGES tab (red and green lines) and a RAW REQUEST tab.
 // The diff always comes from the request the AI sent; the result only adds the OUTPUT tab.
 // Pure logic plus a small DOM renderer. Every piece of text goes in through textContent.
 const PlazCodeToolCards = (() => {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   const MAX_SIDE = 2000;        // lines per side that are compared
   const MAX_CELLS = 1500000;    // diff table size limit (keeps a big edit fast)
   const PAGE = 500;             // diff rows drawn at a time
@@ -11,7 +34,7 @@ const PlazCodeToolCards = (() => {
   const OUT_CAP = 100000;       // characters of output drawn
   const CONTEXT = 3;            // unchanged lines kept around a change
 
-  const bare = (name) => String(name || "").split("__").pop();
+  const bare = (name) => String(name || "").split("__").pop() || "";
   const nice = (name) => {
     const words = bare(name).replace(/[_-]+/g, " ").trim();
     return words ? words.charAt(0).toUpperCase() + words.slice(1) : "Tool";
@@ -92,7 +115,7 @@ const PlazCodeToolCards = (() => {
   const OLD_KEYS = ["old_string", "old", "search", "find", "before"];
   const NEW_KEYS = ["new_string", "new", "replacement", "replace", "after"];
   function cleanEdit(edit) {
-    const e = edit && typeof edit === "object" ? edit : {};
+    const e = edit && typeof edit === "object" ? (edit) : {};
     return { old: text(first(e, OLD_KEYS)), next: text(first(e, NEW_KEYS)), all: e.replace_all === true };
   }
 

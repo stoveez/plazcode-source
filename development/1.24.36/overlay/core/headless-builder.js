@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/headless-builder.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // core/headless-builder.js - strict, deterministic JSON/DOM-blueprint compiler
 // for headless Roblox Instance construction. It never opens a browser tab,
 // invokes a website, uploads an asset, or touches Studio UI. The compiler first
@@ -7,6 +8,68 @@
 // eslint-disable-next-line no-unused-vars
 const ZSHeadlessBuilder = (() => {
   "use strict";
+
+  ;
+  ;
+  ;
+  ;
+  ;
+  ;
+
+
+
+
+
+
+
+
+  ;
+
+
+
+
+
+
+
+
+  ;
+
+
+
+
+
+
+
+
+
+
+
+  ;
+
+
+
+
+
+
+
+
+
+
+  ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   const FORMAT_VERSION = 1;
   const MAX_REQUEST_CHARS = 60000;
@@ -204,7 +267,7 @@ const ZSHeadlessBuilder = (() => {
         if (!ownObject(point)) throw new Error(`${label}.keypoints[${index}] must be an object`);
         return {
           time: finite(point.time, `${label}.keypoints[${index}].time`, 0, 1),
-          color: normalizeColor(point.color || {}, `${label}.keypoints[${index}].color`),
+          color: normalizeColor((point.color || {}), `${label}.keypoints[${index}].color`),
         };
       }).sort((a, b) => a.time - b.time);
       if (keypoints[0].time !== 0 || keypoints[keypoints.length - 1].time !== 1) throw new Error(`${label} must start at time 0 and end at time 1`);
@@ -236,7 +299,8 @@ const ZSHeadlessBuilder = (() => {
     return "";
   }
   function valueKind(value) {
-    if (value && typeof value === "object" && typeof value.type === "string") return value.type;
+    const typed = value;
+    if (typed && typeof typed === "object" && typeof typed.type === "string") return typed.type;
     return typeof value;
   }
   function normalizeMap(raw, label, refs, className, attributes = false) {
@@ -329,7 +393,7 @@ const ZSHeadlessBuilder = (() => {
     const visit = (el, parentId) => {
       if (nodes.length >= MAX_NODES) throw new Error(`html expands beyond ${MAX_NODES} Roblox instances`);
       const tag = el.tagName.toLowerCase();
-      const style = el.style;
+      const style = (el).style;
       let className = /^(button)$/.test(tag) ? "TextButton" : /^(input|textarea)$/.test(tag) ? "TextBox" :
         tag === "img" ? "ImageLabel" : /^(p|span|label|h[1-6])$/.test(tag) ? "TextLabel" : "Frame";
       if (style.opacity && Number(style.opacity) < 1 && className === "Frame") className = "CanvasGroup";
@@ -432,7 +496,7 @@ const ZSHeadlessBuilder = (() => {
     if (!NAME_RE.test(rootName)) throw new Error("root_name cannot contain dots or control characters");
     const rootId = args.root_id == null ? "root" : cleanString(args.root_id, "root_id", 64);
     if (!NODE_ID_RE.test(rootId)) throw new Error("root_id is invalid");
-    let rawNodes = args.html != null ? safeHtmlBlueprint({ ...args, mode, operation, root_name: rootName, root_id: rootId }) : args.nodes;
+    const rawNodes = args.html != null ? safeHtmlBlueprint({ ...args, mode, operation, root_name: rootName, root_id: rootId }) : args.nodes;
     if (!Array.isArray(rawNodes) || !rawNodes.length || rawNodes.length > MAX_NODES) throw new Error(`nodes must contain 1-${MAX_NODES} records`);
     if (args.html != null && args.nodes != null) throw new Error("use either html or nodes, not both");
     const classes = mode === "ui" ? UI_CLASSES : MODEL_CLASSES;
@@ -446,10 +510,10 @@ const ZSHeadlessBuilder = (() => {
       ids.add(id);
       const create = operation === "replace" ? true : raw.create === true;
       if (operation === "replace" && raw.create != null && raw.create !== true) throw new Error(`nodes[${index}].create cannot be false during replace`);
-      let className = raw.class == null ? "" : cleanString(raw.class, `nodes[${index}].class`, 64);
+      const className = raw.class == null ? "" : cleanString(raw.class, `nodes[${index}].class`, 64);
       if (create && (!className || !classes.has(className))) throw new Error(`nodes[${index}].class '${className || "missing"}' is not allowed in ${mode} mode`);
       if (!create && className) throw new Error(`nodes[${index}] updates an existing id and must omit class`);
-      let parent = raw.parent == null ? "" : cleanString(raw.parent, `nodes[${index}].parent`, 64);
+      const parent = raw.parent == null ? "" : cleanString(raw.parent, `nodes[${index}].parent`, 64);
       if (parent && !NODE_ID_RE.test(parent)) throw new Error(`nodes[${index}].parent is invalid`);
       if (operation === "patch" && create && !parent) throw new Error(`nodes[${index}] is a patch create and requires parent`);
       if (operation === "patch" && !create && parent) throw new Error(`nodes[${index}] updates an existing id and cannot move it; omit parent`);
@@ -471,22 +535,22 @@ const ZSHeadlessBuilder = (() => {
       const visiting = new Set(), done = new Set(), depth = new Map();
       const walk = (id) => {
         if (visiting.has(id)) throw new Error(`hierarchy contains a parent cycle at '${id}'`);
-        if (done.has(id)) return depth.get(id);
+        if (done.has(id)) return depth.get(id) ?? 0;
         visiting.add(id);
         const node = byId.get(id);
-        const d = node.parent ? walk(node.parent) + 1 : 0;
+        const d = node && node.parent ? walk(node.parent) + 1 : 0;
         if (d > MAX_DEPTH) throw new Error(`hierarchy depth exceeds ${MAX_DEPTH} at '${id}'`);
         visiting.delete(id); done.add(id); depth.set(id, d); return d;
       };
       for (const node of nodes) walk(node.id);
-      ordered = [...nodes].sort((a, b) => depth.get(a.id) - depth.get(b.id) || a.id.localeCompare(b.id));
+      ordered = [...nodes].sort((a, b) => (depth.get(a.id) ?? 0) - (depth.get(b.id) ?? 0) || a.id.localeCompare(b.id));
     } else {
       if (args.html != null) throw new Error("html cannot be used for patch");
       const creates = new Set(nodes.filter((node) => node.create).map((node) => node.id));
       const visiting = new Set(), done = new Set(), depth = new Map();
       const walk = (id) => {
         if (visiting.has(id)) throw new Error(`patch creates contain a parent cycle at '${id}'`);
-        if (done.has(id)) return depth.get(id);
+        if (done.has(id)) return depth.get(id) ?? 0;
         visiting.add(id);
         const node = byId.get(id);
         const d = node && node.create && creates.has(node.parent) ? walk(node.parent) + 1 : 0;
@@ -802,7 +866,7 @@ return respond(result)`;
         },
       };
     } catch (caught) {
-      return error(caught && caught.message || caught);
+      return error((caught)?.message || caught);
     }
   }
 

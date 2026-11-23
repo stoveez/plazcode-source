@@ -28,38 +28,39 @@
 // eslint-disable-next-line no-unused-vars
 const RSProvider: PlazCodeProvider = (() => {
   "use strict";
+  type RectBox = { x: number; y: number; left: number; top: number; right: number; bottom: number; width: number; height: number; readFailed?: boolean };
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
-  function safeRead(read, fallback) {
+  function safeRead<T, F = T>(read: () => T, fallback: F): T | F {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
-  function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+  function safeQuery<T extends Element = Element>(root: ParentNode | null, selector: string): T | null {
+    return safeRead(() => (root as ParentNode).querySelector<T>(selector), null);
   }
-  function safeQueryAll(root, selector): any[] {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll<T extends Element = Element>(root: ParentNode | null, selector: string): T[] {
+    return safeRead(() => Array.from((root as ParentNode).querySelectorAll<T>(selector)), []);
   }
-  function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+  function safeClosest(node: EventTarget | Node | null | undefined, selector: string): Element | null {
+    return safeRead(() => (node as Element).closest(selector), null);
   }
-  function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+  function safeRect(node: Element | null | undefined): RectBox {
+    return safeRead(() => (node as Element).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
-  function safeStyle(node) {
-    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
+  function safeStyle(node: Element | null | undefined): CSSStyleDeclaration {
+    return safeRead(() => getComputedStyle(node as Element), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'} as CSSStyleDeclaration);
   }
-  function safePredicate(predicate) {
+  function safePredicate<T>(predicate: () => T): T | false {
     const before = domReadErrors;
-    const result = safeRead(predicate, false);
+    const result = safeRead(predicate, false as const);
     return before === domReadErrors ? result : false;
   }
   // A poll-count limit also bounds waits if the wall clock moves backwards.
-  function waitBudget(timeout, interval) {
+  function waitBudget(timeout: number, interval: number): { ms: number; polls: number } {
     const ms = Number.isFinite(timeout) ? Math.min(600000, Math.max(0, timeout)) : 30000;
     return {ms, polls: Math.ceil(ms / interval)};
   }
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
   let diag: Diag = () => {}; // injected by core via init()
 
   const S = {
@@ -113,74 +114,74 @@ const RSProvider: PlazCodeProvider = (() => {
   };
 
   // ── Turn classification ───────────────────────────────────────────────────
-  const isUserItem = (item) => !!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.userItem), false);
-  const isAssistantItem = (item) => !!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.assistantItem), false);
+  const isUserItem = (item: Element | null): boolean => (!!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.userItem), false)) as boolean;
+  const isAssistantItem = (item: Element | null): boolean => (!!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.assistantItem), false)) as boolean;
 
   // Walk an element's text, skipping the reasoning subtree, our own chip, and any
   // excluded selector. Used everywhere a turn's "real" text is needed so tool
   // blocks drafted inside reasoning are never detected, shown, or executed.
-  function textWithout(root: Element | null, excludeSel?: string) {
+  function textWithout(root: Element | null, excludeSel?: string): string {
     if (!root) return "";
     const skip = S.thinking + ", .rs-chip, " + S.attachment + (excludeSel ? ", " + excludeSel : "");
     let t = "";
-    const walk = (n) => {
-      if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
-      if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
+    const walk = (n: Node | null): void => {
+      if (safeRead(() => n!.nodeType, 0) === 3) { t += safeRead(() => n!.nodeValue, ""); return; }
+      if (safeRead(() => n!.nodeType, 0) !== 1) return;
+      if (safeRead(() => (n as Element).matches, null) && safeRead(() => (n as Element).matches(skip), false)) return;
       // GLM renders fenced code in a CodeMirror editor whose lines are separate
       // <div class="cm-line"> with NO newline text nodes, so textContent collapses
       // the whole block onto ONE line - which breaks Lua (a `--` then comments out
       // the rest) and any multi-line command. Rebuild the real source by joining
       // the cm-line elements with "\n" (and skip the .cm-announced a11y duplicate).
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(".cm-editor, .cm-content"), false)) {
-        const lines = safeQueryAll(n, ".cm-line");
+      if (safeRead(() => (n as Element).matches, null) && safeRead(() => (n as Element).matches(".cm-editor, .cm-content"), false)) {
+        const lines = safeQueryAll(n as Element, ".cm-line");
         if (lines.length) { t += "\n" + [...lines].map((l) => safeRead(() => l.textContent, "")).join("\n"); return; }
       }
-      for (const c of safeRead(() => n.childNodes, [])) walk(c);
+      for (const c of safeRead(() => n!.childNodes, [])) walk(c);
     };
     walk(root);
     return t;
   }
 
-  const itemText = (item) =>
+  const itemText = (item: Element | null): string =>
     isAssistantItem(item) ? textWithout(item) : textWithout(item);
-  const classifyText = (item, excludeSel) => textWithout(item, excludeSel);
+  const classifyText = (item: Element | null, excludeSel?: string): string => textWithout(item, excludeSel);
 
   // ── DOM primitives ────────────────────────────────────────────────────────
-  const allItems = () => [...safeQueryAll(document, S.anyItem)];
-  const assistantItems = () => [...safeQueryAll(document, S.assistantItem)];
-  const assistantCount = () => assistantItems().length;
-  const userCount = () => safeQueryAll(document, S.userItem).length;
+  const allItems = (): Element[] => [...safeQueryAll(document, S.anyItem)];
+  const assistantItems = (): Element[] => [...safeQueryAll(document, S.assistantItem)];
+  const assistantCount = (): number => assistantItems().length;
+  const userCount = (): number => safeQueryAll(document, S.userItem).length;
   // Scope to the SITE's composer only: skip PlazCode's own injected UI (the
   // settings textarea #rs-set-text in #rs-root). On login/OAuth pages with no
   // site editor this returns null, keeping the "not on a chat page" guard in
   // the send hooks intact (otherwise our own textarea would defeat it and the
   // hooks could swallow the site's login button).
-  const getEditor = () => {
-    for (const e of safeQueryAll(document, S.editor)) {
+  const getEditor = (): HTMLElement | null => {
+    for (const e of safeQueryAll<HTMLElement>(document, S.editor)) {
       if (!safeClosest(e, "#rs-root")) return e;
     }
     return null;
   };
-  const editorText = () => {
+  const editorText = (): string => {
     const e = getEditor();
     if (!e) return "";
-    return safeRead(() => e.value, "") != null ? safeRead(() => e.value, "") : safeRead(() => e.textContent, "") || "";
+    return safeRead(() => (e as HTMLTextAreaElement).value, "") != null ? safeRead(() => (e as HTMLTextAreaElement).value, "") : safeRead(() => e.textContent, "") || "";
   };
 
-  const lastAssistant = () => {
+  const lastAssistant = (): Element | null => {
     const it = assistantItems();
     return it.length ? it[it.length - 1] : null;
   };
 
   // Stable per-turn identity: the `message-<uuid>` class on the assistant turn's
   // wrapper (survives Svelte re-renders / list virtualization). null if absent.
-  function lastAssistantId() {
-    let n = lastAssistant();
+  function lastAssistantId(): string | null {
+    let n: Element | null = lastAssistant();
     while (n) {
-      const m = (safeRead(() => n.className, "") || "").toString().match(/message-([0-9a-f-]{20,})/);
+      const m = (safeRead(() => n!.className, "") || "").toString().match(/message-([0-9a-f-]{20,})/);
       if (m) return m[1];
-      n = safeRead(() => n.parentElement, null);
+      n = safeRead((): Element | null => n!.parentElement, null);
     }
     return null;
   }
@@ -193,7 +194,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // `aria-hidden` spacer; the copy/regenerate action bar lives OUTSIDE the turn,
   // validated live). Anchoring the chip there + chipAppend stacks it UNDER the
   // reply (parity with Qwen/Kimi) instead of pinned above the whole turn.
-  function chipAnchor(item) {
+  function chipAnchor(item: Element | null): Element | null {
     if (!item) return item;
     const mp = safeQuery(item, ".markdown-prose");
     return (mp && safeRead(() => mp.parentElement, null)) || item;
@@ -202,18 +203,18 @@ const RSProvider: PlazCodeProvider = (() => {
   // `aria-hidden` spacer; name it as the fixed point the chip stays just BEFORE
   // so it hugs the reply text rather than sinking below the spacer. null when
   // absent -> the chip simply appends after the reply (still below it).
-  function chipTrailRef(item) {
+  function chipTrailRef(item: Element | null): Element | null {
     const anchor = chipAnchor(item);
     return (anchor && safeQuery(anchor, ':scope > div[aria-hidden="true"]')) || null;
   }
 
-  const chatIsEmpty = () => allItems().length === 0;
+  const chatIsEmpty = (): boolean => allItems().length === 0;
   // A genuinely fresh chat: the "/" route with the composer rendered and no turns.
-  const isFreshChat = () =>
+  const isFreshChat = (): boolean =>
     chatIsEmpty() && /^\/?$/.test(location.pathname) && !!getEditor();
 
   // The composer box the Start gate hides as one unit.
-  const composerFrame = () =>
+  const composerFrame = (): Element | null =>
     safeQuery(document, S.composer) ||
     (getEditor() ? safeClosest(getEditor(), "form, .relative") : null);
 
@@ -226,7 +227,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // bar in #rs-root, positions it to hug that card's top edge at full width, and
   // reserves the strip with padding-top. Validated live: full width, hugs top,
   // pushes the input down with no overlap.
-  function barAnchor() {
+  function barAnchor(): Element | null {
     const ed = getEditor();
     return (ed && safeClosest(ed, '.flex-col[class*="rounded"]')) || null;
   }
@@ -235,7 +236,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // The textarea is a real <textarea>: `readonly` blocks the user but is ignored
   // by the native prototype setter used in setTextareaValue(), so our own
   // injections still work.
-  function setInputLock(on) {
+  function setInputLock(on: boolean): void {
     const ed = getEditor();
     if (!ed) return;
     if (on) {
@@ -249,16 +250,16 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── Send / stop buttons ────────────────────────────────────────────────────
-  const sendButton = () => {
+  const sendButton = (): HTMLButtonElement | null => {
     const c = composerFrame();
-    return (c && safeQuery(c, S.sendBtn)) || safeQuery(document, S.sendBtn);
+    return (c && safeQuery<HTMLButtonElement>(c, S.sendBtn)) || safeQuery<HTMLButtonElement>(document, S.sendBtn);
   };
   // While generating, the send button is replaced by a round stop button inside
   // the composer (a submit button with `rounded-full`/`bg-black` and no id).
-  function stopButton() {
+  function stopButton(): HTMLElement | null {
     const c = composerFrame();
     if (!c) return null;
-    return [...safeQueryAll(c, "button")].find(
+    return [...safeQueryAll<HTMLElement>(c, "button")].find(
       (b) => safeRead(() => b.id, "") !== "send-message-button" &&
              /rounded-full/.test(safeRead(() => b.className, "")) &&
              /bg-black|bg-white/.test(safeRead(() => b.className, "")) &&
@@ -274,15 +275,15 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── Generation detection ──────────────────────────────────────────────────
-  function streamText(item) {
+  function streamText(item: Element | null): string {
     if (!item) return "";
     const think = safeQuery(item, S.thinking);
     return (think ? safeRead(() => think.textContent, "") || "" : "") + "\n" + textWithout(item);
   }
-  const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item?: Element | null): number => streamText(item === undefined ? lastAssistant() : item).length;
 
-  let _streamMax = -1, _streamAt = 0, _streamItem = null;
-  function sampleStream() {
+  let _streamMax = -1, _streamAt = 0, _streamItem: Element | null = null;
+  function sampleStream(): void {
     const item = lastAssistant();
     const len = streamText(item).length;
     const now = Date.now();
@@ -291,7 +292,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     if (len > _streamMax) { _streamMax = len; _streamAt = now; }
   }
-  const grewWithin = (ms) => _streamMax > 1 && Date.now() - _streamAt < ms;
+  const grewWithin = (ms: number): boolean => _streamMax > 1 && Date.now() - _streamAt < ms;
 
   // GLM's stop button is present for the ENTIRE generation and reliably clears
   // when it ends (validated live), so we TRUST it directly. We must NOT gate it
@@ -302,21 +303,21 @@ const RSProvider: PlazCodeProvider = (() => {
   // half-written command, and the feedback we sent aborted GLM mid-reply - the
   // parse_error / truncation loop. Trusting the button avoids that entirely;
   // the growth check only covers the brief tail right after the button clears.
-  function genActive() {
+  function genActive(): boolean {
     sampleStream();
     if (stopButton()) return true;
     return grewWithin(timings.GEN_IDLE_MS);
   }
   const isGenerating = genActive;
   const isBusyNow = genActive;
-  const isHardGenerating = () => !!stopButton();
+  const isHardGenerating = (): boolean => !!stopButton();
 
   // GLM exposes no reliable per-turn "stopped" marker → never halted.
-  const turnHalted = () => false;
-  const findContinueBtn = () => null;
-  const clickContinueBtn = () => false;
+  const turnHalted = (): boolean => false;
+  const findContinueBtn = (): Element | null => null;
+  const clickContinueBtn = (): boolean => false;
 
-  function snapshot() {
+  function snapshot(): Record<string, number> {
     try {
       const it = lastAssistant();
       if (!it) return { th: 0, rp: 0 };
@@ -328,7 +329,7 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch { return {}; }
   }
 
-  function readAssistant() {
+  function readAssistant(): AssistantRead {
     const item = lastAssistant();
     if (!item) return { present: false, reply: "", thinking: "", item: null };
     const think = safeQuery(item, S.thinking);
@@ -340,7 +341,7 @@ const RSProvider: PlazCodeProvider = (() => {
     };
   }
 
-  async function waitFor(pred, timeout) {
+  async function waitFor(pred: () => unknown, timeout: number): Promise<boolean> {
     const budget = waitBudget(timeout, 120), t0 = Date.now();
     for (let poll = 0; poll < budget.polls && Date.now() - t0 < budget.ms; poll++) {
       const result = safePredicate(pred);
@@ -354,22 +355,22 @@ const RSProvider: PlazCodeProvider = (() => {
   // Real <textarea> driven by Svelte: set .value via the native prototype setter
   // so the framework's input handler fires, dispatch an input event, then click
   // the send button ONCE it re-enables (a fresh value disables it for a frame).
-  function setTextareaValue(el, v) {
+  function setTextareaValue(el: HTMLElement, v: string): void {
     const proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
     const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
     if (setter && setter.set) setter.set.call(el, v);
-    else el.value = v;
+    else (el as HTMLTextAreaElement).value = v;
     el.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
-  function clickSendButton() {
+  function clickSendButton(): boolean {
     if (isBusyNow()) return false;
     const btn = sendButton();
     if (btn && !safeRead(() => btn.disabled, true)) { btn.click(); return true; }
     return false;
   }
 
-  async function typeAndSend(text, images) {
+  async function typeAndSend(text: string, images?: ImagePayloadList): Promise<void> {
     const editor = getEditor();
     if (!editor) throw new Error("GLM input box not found");
     editor.focus();
@@ -408,22 +409,22 @@ const RSProvider: PlazCodeProvider = (() => {
     }
   }
 
-  function stopGeneration() {
+  function stopGeneration(): void {
     const b = stopButton();
     if (b) try { b.click(); } catch {}
   }
 
   // No site modes to enforce (model / reasoning toggle left to the user).
-  function enforceComposer() { return { ready: !!getEditor() }; }
-  async function ensureComposerReady(reason) {
+  function enforceComposer(): { ready: boolean } { return { ready: !!getEditor() }; }
+  async function ensureComposerReady(reason?: string): Promise<{ ready: boolean }> {
     diag("mode_ready", { reason, provider: "glm" });
     return { ready: !!getEditor() };
   }
 
   // ── Error / limit detection (site chrome only) ────────────────────────────
-  function scanError() {
+  function scanError(): string | null {
     try {
-      for (const el of safeQueryAll(document, S.errorSurfaces)) {
+      for (const el of safeQueryAll<HTMLElement>(document, S.errorSurfaces)) {
         if (safeRead(() => el.offsetParent, null) === null) continue;
         if (safeClosest(el, S.anyItem)) continue; // model content, not UI chrome
         const t = (safeRead(() => el.innerText, "") || "").trim();
@@ -433,11 +434,11 @@ const RSProvider: PlazCodeProvider = (() => {
     if (!getEditor()) return "The input box disappeared (session ended?).";
     return null;
   }
-  const isTooLongMsg = (text) => RE.tooLong.test(text);
-  const isBusyMsg = (text) => RE.busy.test(text);
+  const isTooLongMsg = (text: string): boolean => RE.tooLong.test(text);
+  const isBusyMsg = (text: string): boolean => RE.busy.test(text);
 
   // ── Image attachment (best effort) ────────────────────────────────────────
-  function fileFromImage(img, i) {
+  function fileFromImage(img: ImagePayload, i: number): File {
     if (typeof PlazCodeMedia !== "undefined") return PlazCodeMedia.fileFrom(img, i);
     const mime = img.mimeType || "image/jpeg";
     const bin = atob(img.data);
@@ -452,20 +453,20 @@ const RSProvider: PlazCodeProvider = (() => {
   // composer card excludes history - which stops a leftover chip from a PREVIOUS
   // capture reading as "already pending" and skipping the next attach (the
   // 2nd-capture-never-attaches bug seen on Kimi). Validated live on chat.z.ai.
-  const pendingChip = () => {
+  const pendingChip = (): Element | null => {
     const host = barAnchor() || document;
     return safeQuery(host, ".chip-scroll > button");
   };
-  const hasPendingAttachment = () => !!pendingChip();
+  const hasPendingAttachment = (): boolean => !!pendingChip();
   // Upload done = the chip's <img data-cy="image"> src has flipped from its local
   // placeholder to the remote CDN url (https://z-cdn-media.chatglm.cn/…). Sending
   // before that goes out text-only, so we WAIT for the http(s) src.
-  const attachmentReady = () => {
+  const attachmentReady = (): boolean => {
     const host = barAnchor() || document;
     const im = safeQuery(host, '.chip-scroll img[data-cy="image"]') || safeQuery(host, ".chip-scroll img");
     return !!(im && /^https?:\/\//.test(safeRead(() => im.getAttribute("src"), null) || ""));
   };
-  async function attachImages(images) {
+  async function attachImages(images: ImagePayloadList): Promise<boolean> {
     if (!images || !images.length) return false;
     const dt = new DataTransfer();
     images.forEach((img, i) => { try { dt.items.add(fileFromImage(img, i)); } catch {} });
@@ -473,23 +474,23 @@ const RSProvider: PlazCodeProvider = (() => {
     // z.ai keeps a single always-mounted <input type=file> in the composer
     // (accepts png/jpg among others); setting .files + change stages the upload -
     // no "+" menu to open (unlike Kimi). A synthetic paste is NOT needed.
-    const fileInput = safeQuery(document, 'input[type="file"]');
+    const fileInput = safeQuery<HTMLInputElement>(document, 'input[type="file"]');
     if (!fileInput) { diag("attach.noFileInput"); return false; }
     diag("attach.setFiles", { count: dt.items.length });
     try { fileInput.files = dt.files; fileInput.dispatchEvent(new Event("change", { bubbles: true })); }
-    catch (e) { diag("attach.setFilesThrew", { msg: String((e && e.message) || e) }); return false; }
+    catch (e: unknown) { diag("attach.setFilesThrew", { msg: String((e && (e as Error).message) || e) }); return false; }
     if (!(await waitFor(pendingChip, 15000))) { diag("attach.noChip"); return false; }
     const ok = await waitFor(attachmentReady, 30000);
     diag("attach.uploadDone", { ok });
     return ok;
   }
-  function clearAttachments() {
+  function clearAttachments(): void {
     try {
       const host = barAnchor() || document;
-      safeQueryAll(host, ".chip-scroll > button").forEach((chip) => {
+      safeQueryAll<HTMLElement>(host, ".chip-scroll > button").forEach((chip) => {
         // The per-chip remove control is the small button revealed on hover
         // (`invisible text-icon-…`); fall back to the chip's last inner button.
-        const inner = [...safeQueryAll(chip, "button")];
+        const inner = [...safeQueryAll<HTMLButtonElement>(chip, "button")];
         const rm = inner.find((b) => /invisible|text-icon/.test(safeRead(() => b.className, ""))) || inner[inner.length - 1];
         if (rm) try { rm.click(); } catch {}
       });
@@ -498,16 +499,16 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // /c/<uuid> = a real conversation. "/" = a fresh chat with no id yet → ""
   // (transient) so the core never persists it as "started".
-  const conversationKey = () => (/^\/?$/.test(location.pathname) ? "" : location.pathname);
+  const conversationKey = (): string => (/^\/?$/.test(location.pathname) ? "" : location.pathname);
 
   // ── User-send interception ────────────────────────────────────────────────
-  function installSendHooks(handlers) {
+  function installSendHooks(handlers: SendHooks): void {
     document.addEventListener(
       "keydown",
       (e) => {
         if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
         const ed = getEditor();
-        if (!ed || !safeRead(() => ed.contains(e.target), false)) return;
+        if (!ed || !safeRead(() => ed.contains(e.target as Node), false)) return;
         if (editorText().trim() === "") return;
         if (handlers.isBlocked()) return;
         if (!handlers.isStarted()) {
@@ -527,14 +528,14 @@ const RSProvider: PlazCodeProvider = (() => {
         const t = e.target as Element;
         // Stop button (round, in the composer) = a native stop intent.
         const stop = t && safeRead(() => t.closest, null) && safeClosest(t, "button");
-        if (stop && composerFrame() && safeRead(() => composerFrame().contains(stop), false) &&
+        if (stop && composerFrame() && safeRead(() => composerFrame()!.contains(stop), false) &&
             safeRead(() => stop.id, "") !== "send-message-button" &&
             /rounded-full/.test(safeRead(() => stop.className, "")) && /bg-black|bg-white/.test(safeRead(() => stop.className, "")) &&
             !safeQuery(stop, "svg")) { // exclude the scroll-to-bottom arrows (see stopButton)
           handlers.onNativeStop();
           return;
         }
-        const btn = t && safeRead(() => t.closest, null) && safeClosest(t, S.sendBtn);
+        const btn = t && safeRead(() => t.closest, null) && (safeClosest(t, S.sendBtn) as HTMLButtonElement | null);
         if (!btn) return;
         if (safeRead(() => btn.disabled, true)) return;
         if (handlers.isBlocked()) return;
@@ -558,9 +559,9 @@ const RSProvider: PlazCodeProvider = (() => {
   // identity) with .rs-cmd-mask so a CSS rule re-hides recreated wrappers with
   // zero flash. Also catch a stray bare inline command paragraph.
   const CMD_SHAPE = /"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i;
-  function findToolBlockSpot(item /*, chip */) {
+  function findToolBlockSpot(item: Element | null /*, chip */): { parent: Element | null; ref: Element | null } | null {
     if (!item) return null;
-    let hidAny = null;
+    let hidAny: { parent: Element | null; ref: Element | null } | null = null;
     // 1. Fenced code blocks carrying a command (skip ones inside the reasoning).
     for (const cc of safeQueryAll(item, S.copyCodeBtn)) {
       if (safeClosest(cc, S.thinking)) continue;

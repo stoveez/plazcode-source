@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/tool-guard.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 const PlazCodeToolGuard = (() => {
-  const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
   function validate(value, schema, path = 'arguments', depth = 0) {
     if (!object(schema) || depth > 12) return [];
     const errors = [], types = Array.isArray(schema.type) ? schema.type : schema.type ? [schema.type] : [];
-    const matches = type => type === 'object' ? object(value) : type === 'array' ? Array.isArray(value) : type === 'integer' ? Number.isInteger(value) : type === 'number' ? typeof value === 'number' && Number.isFinite(value) : type === 'null' ? value === null : typeof value === type;
+    const matches = (type) => type === 'object' ? object(value) : type === 'array' ? Array.isArray(value) : type === 'integer' ? Number.isInteger(value) : type === 'number' ? typeof value === 'number' && Number.isFinite(value) : type === 'null' ? value === null : typeof value === type;
     if (types.length && !types.some(matches)) return [`${path}: expected ${types.join(' or ')}`];
-    if (schema.enum && !schema.enum.some(entry => JSON.stringify(entry) === JSON.stringify(value))) errors.push(`${path}: use ${JSON.stringify(schema.enum)}`);
+    if (schema.enum && !schema.enum.some((entry) => JSON.stringify(entry) === JSON.stringify(value))) errors.push(`${path}: use ${JSON.stringify(schema.enum)}`);
     if (Object.hasOwn(schema, 'const') && JSON.stringify(schema.const) !== JSON.stringify(value)) errors.push(`${path}: expected ${JSON.stringify(schema.const)}`);
     if (typeof value === 'string') {
       if (schema.minLength != null && [...value].length < schema.minLength) errors.push(`${path}: too short`);
@@ -28,8 +29,8 @@ const PlazCodeToolGuard = (() => {
       if (schema.maxItems != null && value.length > schema.maxItems) errors.push(`${path}: too many entries`);
       if (schema.items && !Array.isArray(schema.items)) for (let i = 0; i < Math.min(value.length, 2000); i++) errors.push(...validate(value[i], schema.items, `${path}[${i}]`, depth + 1));
     }
-    if (schema.anyOf && !schema.anyOf.some(branch => !validate(value, branch, path, depth + 1).length)) errors.push(`${path}: no allowed argument shape matches`);
-    if (schema.oneOf && schema.oneOf.filter(branch => !validate(value, branch, path, depth + 1).length).length !== 1) errors.push(`${path}: expected one allowed argument shape`);
+    if (schema.anyOf && !schema.anyOf.some((branch) => !validate(value, branch, path, depth + 1).length)) errors.push(`${path}: no allowed argument shape matches`);
+    if (schema.oneOf && schema.oneOf.filter((branch) => !validate(value, branch, path, depth + 1).length).length !== 1) errors.push(`${path}: expected one allowed argument shape`);
     for (const branch of schema.allOf || []) errors.push(...validate(value, branch, path, depth + 1));
     return errors.slice(0, 12);
   }
@@ -60,7 +61,7 @@ const PlazCodeToolGuard = (() => {
     if (call.argumentError) return [call.argumentError];
     const args = call.arguments == null ? {} : call.arguments;
     if (!object(args)) return ['arguments must be a JSON object, not a string or array.'];
-    const name = call.tool.split('/').pop();
+    const name = call.tool.split('/').pop() || '';
     const tool = (tools || []).find(tool => tool.name === call.tool || tool.name === name);
     const normalized = Object.fromEntries(Object.entries(args).filter(([key]) => !['_orChunk', '_orNoTxn'].includes(key)));
     if (name === 'execute_luau' && !normalized.datamodel_type) normalized.datamodel_type = 'Edit';
@@ -87,12 +88,12 @@ const PlazCodeToolGuard = (() => {
   // bouncing back as an error turn. Real mistakes are left for check().
   function coerce(value, schema, depth = 0, notes = null, path = 'arguments') {
     if (!object(schema) || depth > 12) return value;
-    const note = text => { if (notes && notes.length < 12) notes.push(text); };
+    const note = (text) => { if (notes && notes.length < 12) notes.push(text); };
     const types = Array.isArray(schema.type) ? schema.type : schema.type ? [schema.type] : [];
     if (typeof value === 'string') {
       const t = value.trim();
       if (types.includes('string')) {
-        if (Array.isArray(schema.enum) && !schema.enum.includes(value)) { const hit = schema.enum.find(e => typeof e === 'string' && e.toLowerCase() === t.toLowerCase()); if (hit !== undefined) { note(`${path}: "${value}" is spelled "${hit}"`); return hit; } }
+        if (Array.isArray(schema.enum) && !schema.enum.includes(value)) { const hit = schema.enum.find((e) => typeof e === 'string' && e.toLowerCase() === t.toLowerCase()); if (hit !== undefined) { note(`${path}: "${value}" is spelled "${hit}"`); return hit; } }
         return value;
       }
       if ((types.includes('integer') || types.includes('number')) && /^-?\d+(?:\.\d+)?$/.test(t)) { const n = Number(t); if (Number.isInteger(n) || types.includes('number')) { note(`${path}: sent as a number`); return clampNumber(n, schema, note, path); } }
@@ -130,7 +131,7 @@ const PlazCodeToolGuard = (() => {
   // A key is renamed only when exactly one schema property matches after
   // ignoring case and separators (or is one letter away on a long name), the
   // property was not sent already, and the key is not itself a valid property.
-  const squash = key => String(key).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const squash = (key) => String(key).toLowerCase().replace(/[^a-z0-9]/g, '');
   function oneEdit(a, b) {
     if (Math.abs(a.length - b.length) > 1 || a === b) return false;
     let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++;
@@ -165,7 +166,7 @@ const PlazCodeToolGuard = (() => {
   // which fails with "Unknown skill". When the name is an advertised tool (and
   // not skill itself), call that tool directly with the nested arguments.
   function rerouteSkill(call, tools) {
-    const bare = String(call.tool || '').split('/').pop();
+    const bare = String(call.tool || '').split('/').pop() || '';
     if (bare !== 'skill' && !/__skill$/.test(bare)) return;
     const args = call.arguments, key = ['name', 'skill', 'skill_name'].find(k => typeof args[k] === 'string');
     if (!key) return;
@@ -205,7 +206,7 @@ const PlazCodeToolGuard = (() => {
     }
     if (!object(call.arguments)) return call;
     rerouteSkill(call, tools);
-    const name = typeof call.tool === 'string' ? call.tool.split('/').pop() : '';
+    const name = typeof call.tool === 'string' ? (call.tool.split('/').pop() || '') : '';
     const tool = (tools || []).find(t => t.name === call.tool || t.name === name);
     const schema = tool?.inputSchema || tool?.input_schema || tool?.parameters, notes = Array.isArray(call.repairs) ? call.repairs.slice(0,12) : [];
     unwrapEnvelope(call, schema, text => notes.push(text));

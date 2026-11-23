@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/input-isolation.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // 1.24.13: keep the host page from hijacking clipboard and edit shortcuts in
 // PlazCode's own text boxes (prompt enhancer, Co-work, memory, menus).
 // Some sites (Notion) install page-wide handlers that cancel paste/edit events
@@ -11,19 +12,20 @@
 // untouched.
 (() => {
   'use strict';
-  if (typeof window === 'undefined' || window.__plazcodeInputIsolation) return;
-  window.__plazcodeInputIsolation = true;
+  ;
+  if (typeof window === 'undefined' || (window).__plazcodeInputIsolation) return;
+  (window).__plazcodeInputIsolation = true;
   const OWN = '#rs-root,#rs-input-cover,#rs-setup-tutorial,#rs-tutorial,.rs-continuation-offer,.rs-shot-overlay';
   const TEXT = 'textarea,input:not([type]),input[type=text],input[type=search],input[type=url],input[type=email],input[type=number],input[type=password],input[type=tel]';
   function ownTextControl(event) {
-    let node = (event.composedPath && event.composedPath()[0]) || event.target;
+    let node = ((event.composedPath && event.composedPath()[0]) || event.target);
     if (node && node.nodeType !== 1) node = node.parentElement;
     if (!node || typeof node.closest !== 'function' || !node.closest(OWN)) return null;
     return node.matches(TEXT) || node.isContentEditable ? node : null;
   }
-  const editShortcut = event => ((event.ctrlKey || event.metaKey) && !event.altKey && /^[vcxazy]$/i.test(event.key || '')) ||
+  const editShortcut = (event) => ((event.ctrlKey || event.metaKey) && !event.altKey && /^[vcxazy]$/i.test(event.key || '')) ||
     (event.key === 'Insert' && (event.shiftKey || event.ctrlKey));
-  const carriesFiles = event => Array.from((event.clipboardData && event.clipboardData.items) || []).some(item => item.kind === 'file');
+  const carriesFiles = (event) => Array.from((event.clipboardData && event.clipboardData.items) || []).some((item) => item.kind === 'file');
   function guard(event) {
     if (!event.isTrusted || !ownTextControl(event)) return;
     if (event.type === 'keydown' && !editShortcut(event)) return;

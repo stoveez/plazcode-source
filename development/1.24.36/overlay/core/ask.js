@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/ask.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // AgentScript control rework (1.24.36), step 4: the "Ask PlazCode" side chat (Chrome's side panel, or a window docked to the right).
 // Questions go to the extension worker, which asks a background chat on the person's AI site and sends the answer
 // back. The shared tab follows the tab the person is looking at; a live picture of it sits at the top.
 (async () => {
+
   // Step 7: PlazCode's language (the same files and setting as the toolbar menu). t() fills {slots} either way.
-  const L = globalThis.PlazCodeI18n;
-  const t = (text, values) => L ? L.t(text, values) : (values ? String(text).replace(/\{([A-Za-z0-9_]+)\}/g, (m, k) => k in values ? String(values[k]) : m) : String(text));
+  const L = (globalThis).PlazCodeI18n;
+  const t = (text, values) => L ? L.t(String(text), values) : (values ? String(text).replace(/\{([A-Za-z0-9_]+)\}/g, (m, k) => k in values ? String(values[k]) : m) : String(text));
   try { const saved = await chrome.storage.local.get("rsLanguage"); if (L) { L.setLanguage((saved && saved.rsLanguage) || "en"); L.mountStatic(document.body); } } catch {}
   try {
     chrome.storage?.onChanged?.addListener((changes, area) => {
@@ -109,7 +111,7 @@
   }
   function watch(tabId) {
     if (viewPort) { try { viewPort.disconnect(); } catch {} viewPort = null; }
-    peek.getContext("2d").clearRect(0, 0, peek.width, peek.height);
+    (peek.getContext("2d")).clearRect(0, 0, peek.width, peek.height);
     viewTab = Number.isInteger(tabId) ? tabId : null;
     if (!Number.isInteger(tabId)) return;
     viewPort = chrome.runtime.connect({ name: "plazcode-control-view" });

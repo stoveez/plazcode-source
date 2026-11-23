@@ -5,11 +5,11 @@
 // the description, the first steps (all of them when short), the file names and how to read them, so a big folder never fills
 // the request (free-plan limits); the AI opens SKILL.md and the references with plazcode_skills read only when it needs them.
 const PlazCodeSkillContext = (() => {
-                                                                                                                                                     
+
   const SHORT = 3000, FILES = 40;
-  function item(skill       )                          {
+  function item(skill) {
     const id = String(skill.id || "");
-    let out                         ;
+    let out;
     if (id.startsWith("starter-syphodev-")) {
       out = { id: skill.id, title: skill.title, description: String(skill.description || "").slice(0, 500), steps: (skill.steps || []).slice(0, 1), starter_reference: true };
     } else if (Array.isArray(skill.files) && skill.files.length) {
@@ -24,7 +24,7 @@ const PlazCodeSkillContext = (() => {
     }
     return skill.favorite ? { ...out, always_use:true } : out;
   }
-  function text(skills         , max = 9000)         { return JSON.stringify((skills || []).map(item)).slice(0, max); }
+  function text(skills, max = 9000) { return JSON.stringify((skills || []).map(item)).slice(0, max); }
   return { item, text };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = PlazCodeSkillContext;

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/effort-picker.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // Styled, keyboard-accessible effort menu. The original select remains the state/event contract.
 function PlazCodeMountEffortPicker(select){
  if(!select||select.tagName!=='SELECT')return null;if(select._ultraPicker)return select._ultraPicker;
@@ -5,12 +7,13 @@ function PlazCodeMountEffortPicker(select){
  const trigger=document.createElement('button');trigger.type='button';trigger.className='pc-effort-trigger';trigger.setAttribute('aria-haspopup','listbox');trigger.setAttribute('aria-expanded','false');
  const label=document.createElement('span'),arrow=document.createElement('span');arrow.textContent='⌄';arrow.setAttribute('aria-hidden','true');trigger.append(label,arrow);
  const panel=document.createElement('div');panel.className='pc-effort-options';panel.hidden=true;panel.setAttribute('role','listbox');panel.setAttribute('aria-label','Reasoning effort');
- const options=Array.from(select.options).map(option=>{const button=document.createElement('button');button.type='button';button.setAttribute('role','option');button.tabIndex=-1;button.dataset.value=option.value;const text=document.createElement('span');text.textContent=option.textContent;text.classList.toggle('pc-ultra-label',option.value==='ultracode');button.append(text);button.onclick=()=>choose(option.value);panel.append(button);return button;});
+ const options=Array.from(select.options).map((option)=>{const button=document.createElement('button');button.type='button';button.setAttribute('role','option');button.tabIndex=-1;button.dataset.value=option.value;const text=document.createElement('span');text.textContent=option.textContent;text.classList.toggle('pc-ultra-label',option.value==='ultracode');button.append(text);button.onclick=()=>choose(option.value);panel.append(button);return button;});
  wrap.append(trigger,panel);
- function refresh(){const value=select.value,text=Array.from(select.options).find(o=>o.value===value)?.textContent||'Default';if(label.textContent!==text)label.textContent=text;label.classList.toggle('pc-ultra-label',value==='ultracode');trigger.disabled=select.disabled;trigger.setAttribute('aria-label','Reasoning effort: '+text);for(const b of options)b.setAttribute('aria-selected',String(b.dataset.value===value));}
+ function refresh(){if(!select)return;const value=select.value,text=Array.from(select.options).find(o=>o.value===value)?.textContent||'Default';if(label.textContent!==text)label.textContent=text;label.classList.toggle('pc-ultra-label',value==='ultracode');trigger.disabled=select.disabled;trigger.setAttribute('aria-label','Reasoning effort: '+text);for(const b of options)b.setAttribute('aria-selected',String(b.dataset.value===value));}
  let lifted=null;function lift(on){try{if(on){lifted=wrap.closest('.settingcard,.panel');if(lifted)lifted.classList.add('pc-effort-lift');}else if(lifted){lifted.classList.remove('pc-effort-lift');lifted=null;}}catch{}}
  function close(focus=false){lift(false);panel.hidden=true;trigger.setAttribute('aria-expanded','false');if(focus)trigger.focus();}
  function open(index){
+  if(!select)return;
   refresh();if(trigger.disabled)return;const rect=trigger.getBoundingClientRect();
   panel.hidden=false;lift(true);
   const bounds=wrap.closest('.content,#rs-menu')?.getBoundingClientRect();
@@ -21,10 +24,10 @@ function PlazCodeMountEffortPicker(select){
   trigger.setAttribute('aria-expanded','true');const target=options[index]||options.find(b=>b.dataset.value===select.value)||options[0];
   if(target){target.focus();target.scrollIntoView?.({block:'nearest'});}
  }
- function choose(value){if(panel.hidden)return;select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));refresh();close(true);}
- trigger.onclick=()=>panel.hidden?open():close();trigger.onkeydown=e=>{if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();open(e.key==='Home'?0:e.key==='End'?options.length-1:undefined);}};
- panel.onkeydown=e=>{const index=options.indexOf(document.activeElement);if(e.key==='Escape'){e.preventDefault();close(true);}else if(e.key==='Tab')close();else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?options.length-1:(index+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;options[next].focus();}else if(e.key==='Enter'||e.key===' '){e.preventDefault();if(index>=0)choose(options[index].dataset.value);}};
- const outside=e=>{if(!wrap.contains(e.target))close();};document.addEventListener('pointerdown',outside);select.addEventListener('change',refresh);
+ function choose(value){if(!select||panel.hidden)return;select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));refresh();close(true);}
+ trigger.onclick=()=>panel.hidden?open():close();trigger.onkeydown=(e)=>{if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();open(e.key==='Home'?0:e.key==='End'?options.length-1:undefined);}};
+ panel.onkeydown=(e)=>{const index=options.indexOf(document.activeElement);if(e.key==='Escape'){e.preventDefault();close(true);}else if(e.key==='Tab')close();else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?options.length-1:(index+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;options[next].focus();}else if(e.key==='Enter'||e.key===' '){e.preventDefault();if(index>=0)choose(options[index].dataset.value);}};
+ const outside=(e)=>{if(!wrap.contains(e.target))close();};document.addEventListener('pointerdown',outside);select.addEventListener('change',refresh);
  const timer=setInterval(()=>{if(!wrap.isConnected){clearInterval(timer);document.removeEventListener('pointerdown',outside);return;}refresh();},500);refresh();
  return select._ultraPicker={refresh,close};
 }

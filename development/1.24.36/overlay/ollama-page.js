@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/ollama-page.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // Surface ANY runtime error visibly in the status dot instead of a dead page.
 window.addEventListener('error', function(e){
   var s=document.getElementById('status');
@@ -10,30 +11,33 @@ window.addEventListener('unhandledrejection', function(e){
 });
 // ollama-page.js - page logic for ollama.html (external file: extension CSP forbids inline scripts).
 // ── Ollama local chat — talks to 127.0.0.1:11434 via the background proxy ──
+(() => {
 const $ = (id) => document.getElementById(id);
 const chatEl=$('chat'), inputEl=$('chat-input'), formEl=$('chatForm'),
       barModelBtn=$('barModelBtn'), barName=barModelBtn.querySelector('.bName'),
       modelListEl=$('modelList'), statusEl=$('status'), sendBtn=$('sendBtn');
 
+;
+;
 let history=[];
 let selectedModel = (()=>{ try{return localStorage.getItem('rs-ollama-model');}catch{return null;} })();
 let modelsCache = [];
 let listOpen=false;
 
-function saveSel(){ try{ localStorage.setItem('rs-ollama-model', selectedModel);}catch{} }
-function updateLabels(){
+function saveSel() { try{ if(selectedModel!==null)localStorage.setItem('rs-ollama-model', selectedModel);}catch{} }
+function updateLabels() {
   const label = selectedModel || 'Select model';
   barName.textContent = label;
   barName.title = selectedModel || '';
 }
-async function bgMsg(msg){
+async function bgMsg(msg) {
   return new Promise((res)=>{
     try{ chrome.runtime.sendMessage(msg, (r)=> res(r||{ok:false,error:'no response'})); }catch(e){ res({ok:false,error:String(e)}); }
   });
 }
 
 // ── Popover rendering (single shared element, never rebuilt while open) ──
-function renderModelList(){
+function renderModelList() {
   // Guard: don't wipe the list out from under an open popover mid-hover/click.
   // Only swap contents when closed; when open, defer to next close.
   if(listOpen){ pendingRender=true; return; }
@@ -47,7 +51,7 @@ function renderModelList(){
     return;
   }
   modelsCache.forEach(m=>{
-    const name=m.name||m.model;
+    const name=m.name||m.model||'';
     const det=m.details||{};
     const meta=[det.parameter_size, det.family, det.quantization_level].filter(Boolean).join(' · ');
     const item=document.createElement('div');
@@ -60,7 +64,7 @@ function renderModelList(){
 let pendingRender=false;
 
 // Position the single popover under (or above) whichever trigger was clicked.
-function openPicker(anchorEl){
+function openPicker(anchorEl) {
   renderModelList();
   modelListEl.classList.add('open');
   listOpen=true;
@@ -78,7 +82,7 @@ function openPicker(anchorEl){
     modelListEl.style.top='auto';
   }
 }
-function closePicker(){
+function closePicker() {
   modelListEl.classList.remove('open');
   listOpen=false;
   if(pendingRender) renderModelList();
@@ -86,24 +90,25 @@ function closePicker(){
 
 // Event DELEGATION — survives any DOM churn, one set of listeners total.
 document.addEventListener('click', (e)=>{
-  const trig = e.target.closest('#barModelBtn');
-  const opt  = e.target.closest('.modelItem');
+  const target = e.target;
+  const trig = target?.closest('#barModelBtn');
+  const opt  = target?.closest('.modelItem');
   if(trig){
     e.preventDefault();
     listOpen ? closePicker() : openPicker(trig);
     return;
   }
   if(opt){
-    selectedModel = opt.dataset.model;
+    selectedModel = opt.dataset.model || null;
     saveSel(); updateLabels(); closePicker();
     return;
   }
   // click anywhere else closes it
-  if(listOpen && !e.target.closest('#modelList')) closePicker();
+  if(listOpen && !target?.closest('#modelList')) closePicker();
 }, false);
 
 // ── Model fetch ──
-async function refreshModels(){
+async function refreshModels() {
   let r = await bgMsg({type:'ollama_list_models'});
   if(!r || !r.ok){
     try{
@@ -115,8 +120,8 @@ async function refreshModels(){
     modelsCache = r.models;
     if(!modelsCache.some(m=> (m.name||m.model)===selectedModel)){
       // prefer a coder model by default if present
-      const pref = modelsCache.find(m=>/coder|code/i.test(m.name||m.model));
-      selectedModel = (pref||modelsCache[0]).name||(pref||modelsCache[0]).model;
+      const pref = modelsCache.find(m=>/coder|code/i.test(m.name||m.model||''));
+      selectedModel = (pref||modelsCache[0]).name||(pref||modelsCache[0]).model||null;
       saveSel();
     }
     updateLabels();
@@ -140,7 +145,7 @@ async function refreshModels(){
 // ── Chat ──
 let busy = false;              // a request is in flight — nothing else may send
 const sendQueue = [];          // turns that arrived while busy (agent feedback!)
-function addMessage(role, text){
+function addMessage(role, text) {
   const wrap=document.createElement('div');
   wrap.className='message'; wrap.dataset.role=role;
   wrap.dataset.messageId='m-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
@@ -150,7 +155,7 @@ function addMessage(role, text){
   chatEl.appendChild(wrap); chatEl.scrollTop=chatEl.scrollHeight;
   return md;
 }
-function setBusy(v){
+function setBusy(v) {
   busy = v;
   sendBtn.disabled = v;
   sendBtn.innerHTML = v
@@ -160,7 +165,7 @@ function setBusy(v){
   inputEl.placeholder = v ? 'Ollama is thinking…' : 'Ask Ollama…';
 }
 // Entry point used by BOTH the user (submit) and the agent loop (typeAndSend).
-function submitTurn(text){
+function submitTurn(text) {
   if (busy) {
     // NEVER drop or interleave: the agent loop's tool results MUST reach the
     // model in order, so queue and drain sequentially after the current turn.
@@ -177,7 +182,7 @@ function submitTurn(text){
     setBusy(false);
   });
 }
-async function sendToOllama(text){
+async function sendToOllama(text) {
   const isSys = text.trim().startsWith('⟦RS-SYS⟧') || text.trim().startsWith('⟦US-SYS⟧');
   history.push({role:isSys?'system':'user', content:text});
   if(!isSys || text.length<400) addMessage('user', text);
@@ -225,7 +230,7 @@ async function sendToOllama(text){
   chatEl.scrollTop=chatEl.scrollHeight;
   document.documentElement.setAttribute('data-rs-ollama-last', String(Date.now()));
 }
-function autoResize(){ inputEl.style.height='auto'; inputEl.style.height=Math.min(inputEl.scrollHeight,120)+'px'; }
+function autoResize() { inputEl.style.height='auto'; inputEl.style.height=Math.min(inputEl.scrollHeight,120)+'px'; }
 inputEl.addEventListener('input', autoResize);
 formEl.addEventListener('submit',(e)=>{ e.preventDefault(); const t=inputEl.value.trim(); if(t) submitTurn(t); });
 inputEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); const t=inputEl.value.trim(); if(t) submitTurn(t); } });
@@ -250,3 +255,4 @@ window.__ollamaHistory=()=>history;
 window.__ollamaModel=()=>selectedModel;
 window.__ollamaBusy=()=>busy;
 console.log('[ollama] page ready — delegation active');
+})();

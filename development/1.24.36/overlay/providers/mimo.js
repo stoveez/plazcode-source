@@ -15,13 +15,15 @@
 //  - Signed out, the box says "Sign in to continue chatting" and nothing can be sent.
 //  - MiMo Claw (the agent product) is a different surface and is not driven.
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
+  ;
   let domReadErrors = 0;
   function safeRead(read, fallback) { try { return read(); } catch { domReadErrors++; return fallback; } }
-  const safeQuery = (root, sel) => safeRead(() => root.querySelector(sel), null);
-  const safeQueryAll = (root, sel) => safeRead(() => Array.from(root.querySelectorAll(sel)), []);
-  const safeClosest = (node, sel) => safeRead(() => node.closest(sel), null);
+  const safeQuery = (root, sel) => safeRead(() => (root).querySelector(sel), null);
+  const safeQueryAll = (root, sel) => safeRead(() => Array.from((root).querySelectorAll(sel)), []);
+  const safeClosest = (node, sel) => safeRead(() => (node).closest(sel), null);
   const safeRect = (node) => safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   const safeStyle = (node) => safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0'});
   function safePredicate(predicate) { const before = domReadErrors; const result = safeRead(predicate, false); return before === domReadErrors ? result : false; }
@@ -30,7 +32,7 @@ const RSProvider                   = (() => {
     return {ms, polls: Math.ceil(ms / interval)};
   }
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {};
+  let diag = () => {};
 
   const S = {
     turn: "div.relative.flex.w-full.mx-auto",
@@ -66,7 +68,7 @@ const RSProvider                   = (() => {
     const s = safeStyle(el);
     return !(s.display === "none" || s.visibility === "hidden" || parseFloat(s.opacity) === 0);
   }
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     const skip = excludeSel ? `${S.skip}, ${excludeSel}` : S.skip;
     let t = "";
@@ -74,8 +76,9 @@ const RSProvider                   = (() => {
       const type = safeRead(() => n.nodeType, 0);
       if (type === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (type !== 1) return;
-      if (safeRead(() => n.matches(skip), false)) return;
-      const tag = safeRead(() => n.tagName, "");
+      const el = n;
+      if (safeRead(() => el.matches(skip), false)) return;
+      const tag = safeRead(() => el.tagName, "");
       if (tag === "BR") { t += "\n"; return; }
       const block = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|TABLE|TR)$/.test(tag);
       if (block && t && !t.endsWith("\n")) t += "\n";
@@ -98,8 +101,9 @@ const RSProvider                   = (() => {
     if (!ed) return null;
     let n = ed;
     for (let i = 0; i < 8 && n; i++) {
-      if (safeQuery(n, 'button[aria-label="Send message"], button[aria-label="Stop"]') && /rounded|border/.test(String(safeRead(() => n.className, "")))) return n;
-      n = safeRead(() => n.parentElement, null);
+      const cur = n;
+      if (safeQuery(cur, 'button[aria-label="Send message"], button[aria-label="Stop"]') && /rounded|border/.test(String(safeRead(() => cur.className, "")))) return cur;
+      n = safeRead(() => cur.parentElement, null);
     }
     return safeRead(() => ed.parentElement, null);
   }
@@ -285,7 +289,7 @@ const RSProvider                   = (() => {
       if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
       const ed = getEditor();
       if (!ed || !safeRead(() => ed.contains(e.target), false) || editorText().trim() === "") return;
-      if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+      if (handlers.onCoworkSend && (handlers.onCoworkSend)(e)) return;
       gate();
     }, true);
     document.addEventListener("click", (e) => {
@@ -294,7 +298,7 @@ const RSProvider                   = (() => {
       if (!btn) return;
       if (S.stopAria.test(ariaOf(btn))) { handlers.onNativeStop(); return; }
       if (!S.sendAria.test(ariaOf(btn)) || safeRead(() => btn.disabled, true)) return;
-      if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+      if (handlers.onCoworkSend && (handlers.onCoworkSend)(e)) return;
       gate();
     }, true);
   }

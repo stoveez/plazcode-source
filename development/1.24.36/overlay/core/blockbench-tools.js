@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/blockbench-tools.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // PlazCode's Blockbench toolset. Written from scratch against Blockbench's public plugin API (blockbench.net/wiki).
 // One file, used two ways: the browser extension runs it inside the web.blockbench.net tab, and the desktop app
 // wraps the same text into the plugin file plazcode_blockbench.js. Named operations only: there is no "run any
@@ -153,7 +155,7 @@
     duplicate: { change: true, run: function (args) {
       project(); var picked = targets(args);
       return edit({ elements: [], outliner: true }, "duplicate parts", function () {
-        var copies = picked.map(function (node) { var copy = node.duplicate(); var offset = vec(args.offset, null); if (offset && copy && Array.isArray(copy.from)) copy.extend({ from: copy.from.map(function (v, i) { return v + offset[i]; }), to: copy.to.map(function (v, i) { return v + offset[i]; }), origin: copy.origin.map(function (v, i) { return v + offset[i]; }) }); return copy; }).filter(Boolean);
+        var copies = picked.map(function (node) { var copy = node.duplicate(); var offset = vec(args.offset, null); if (offset && copy && Array.isArray(copy.from)) copy.extend({ from: copy.from.map(function (v, i) { return v + (offset)[i]; }), to: copy.to.map(function (v, i) { return v + (offset)[i]; }), origin: copy.origin.map(function (v, i) { return v + (offset)[i]; }) }); return copy; }).filter(Boolean);
         return { aspects: { elements: copies.filter(function (node) { return kind(node) !== "group"; }), outliner: true }, value: copies.map(brief) };
       });
     } },
@@ -200,7 +202,7 @@
       return edit({ animations: [animation] }, "add keyframe", function () {
         if (animation.select) animation.select();
         var animator = animation.getBoneAnimator(group);
-        animator.createKeyframe({ x: values[0], y: values[1], z: values[2] }, Math.max(0, num(args.time, 0)), channel, false, false);
+        animator.createKeyframe({ x: (values)[0], y: (values)[1], z: (values)[2] }, Math.max(0, num(args.time, 0)), channel, false, false);
         return { value: { animation: animation.name, part: group.name, channel: channel, time: Math.max(0, num(args.time, 0)) } };
       });
     } },

@@ -22,38 +22,58 @@
 // eslint-disable-next-line no-unused-vars
 const RSProvider: PlazCodeProvider = (() => {
   "use strict";
+  type RectBox = { x: number; y: number; left: number; top: number; right: number; bottom: number; width: number; height: number; readFailed?: boolean };
+  type OpenReq = { id: string; path: string; startedAt: number };
+  type ReqMsg = { type?: string; revision?: number; ok?: boolean; active?: Array<{ id?: unknown; path?: unknown; startedAt?: unknown }> };
+  type BusyNotice = { text: string; id: string; restricted: boolean; reported?: boolean };
+  type SendHooksExt = SendHooks & { onCoworkSend?: (e: Event) => boolean; onNativeContinue?: () => void };
+  type PacingLease = { valid_until: number; ok?: boolean; error?: string; allowed?: boolean; paused?: boolean; wait_ms?: number; [k: string]: unknown };
+  type SendJob = {
+    id: string;
+    owner: { epoch: number; chat: string; session?: unknown; stop?: unknown; [k: string]: unknown };
+    draft: string;
+    editor?: HTMLElement;
+    previousDraft?: string;
+    typedText?: string;
+    awaitingChatAssignment?: boolean;
+    assignedChat?: string;
+    beforeUserItems?: Set<Element>;
+    commitAt?: number;
+    continue?: boolean;
+  };
+  type GuardedItem = Element & { __rsDsChip?: Element; __rsDsGuard?: MutationObserver };
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
-  function safeRead(read, fallback) {
+  function safeRead<T, F = T>(read: () => T, fallback: F): T | F {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
-  function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+  function safeQuery<T extends Element = Element>(root: ParentNode | null, selector: string): T | null {
+    return safeRead(() => (root as ParentNode).querySelector<T>(selector), null);
   }
-  function safeQueryAll(root, selector): any[] {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll<T extends Element = Element>(root: ParentNode | null, selector: string): T[] {
+    return safeRead(() => Array.from((root as ParentNode).querySelectorAll<T>(selector)), []);
   }
-  function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+  function safeClosest(node: EventTarget | Node | null | undefined, selector: string): Element | null {
+    return safeRead(() => (node as Element).closest(selector), null);
   }
-  function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+  function safeRect(node: Element | null | undefined): RectBox {
+    return safeRead(() => (node as Element).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
-  function safeStyle(node) {
-    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
+  function safeStyle(node: Element | null | undefined): CSSStyleDeclaration {
+    return safeRead(() => getComputedStyle(node as Element), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'} as CSSStyleDeclaration);
   }
-  function safePredicate(predicate) {
+  function safePredicate<T>(predicate: () => T): T | false {
     const before = domReadErrors;
-    const result = safeRead(predicate, false);
+    const result = safeRead(predicate, false as const);
     return before === domReadErrors ? result : false;
   }
   // A poll-count limit also bounds waits if the wall clock moves backwards.
-  function waitBudget(timeout, interval) {
+  function waitBudget(timeout: number, interval: number): { ms: number; polls: number } {
     const ms = Number.isFinite(timeout) ? Math.min(600000, Math.max(0, timeout)) : 30000;
     return {ms, polls: Math.ceil(ms / interval)};
   }
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
   let diag: Diag = () => {}; // injected by core via init()
 
   // DOM selectors for chat.deepseek.com. Grouped so a future site tweak is a
@@ -126,7 +146,7 @@ const RSProvider: PlazCodeProvider = (() => {
   };
 
   // ── Turn classification (multi-signal, virtualization-safe) ──────────────
-  function isUserItem(item) {
+  function isUserItem(item: Element | null): boolean {
     if (!item) return false;
     const role = (safeRead(() => item.getAttribute("data-role"), null) || safeRead(() => item.getAttribute("data-author"), null) ||
                   safeRead(() => item.getAttribute("data-message-author-role"), null) || "").toLowerCase();
@@ -149,14 +169,14 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch {}
     return false;
   }
-  const isAssistantItem = (item) => !!item && !isUserItem(item);
+  const isAssistantItem = (item: Element | null): boolean => !!item && !isUserItem(item);
 
   // Reply text without the code box's header buttons. DeepSeek writes their captions in the page's language
   // ("Копировать", "Скачать" on a Russian page) and textContent glues them onto the command, so the command
   // reader saw prose and startup failed for everyone whose DeepSeek is not in English (owner, 2026-11-18). The
   // language label ("json") stays: it tells a command block from a quoted text block.
   const CODE_BUTTON = "button, [role='button'], .ds-atom-button, .ds-button";
-  function mdText(m) {
+  function mdText(m: Element): string {
     const all = safeRead(() => m.textContent, "") || "";
     const BLOCK = ".md-code-block, pre";
     if (!safeQuery(m, CODE_BUTTON) && !safeQuery(m, BLOCK)) return all;
@@ -165,8 +185,8 @@ const RSProvider: PlazCodeProvider = (() => {
     // so the command was read as prose, shown as a raw JSON block and never run. The code block's own buttons are left
     // out in any language, the language label is kept.
     let out = "", breakNext = false;
-    const walk = (n) => {
-      for (const c of safeRead(() => n.childNodes, [])) {
+    const walk = (n: Node | null): void => {
+      for (const c of safeRead(() => n!.childNodes, [])) {
         const type = safeRead(() => c.nodeType, 0);
         if (type === 3) {
           const v = safeRead(() => c.nodeValue, "") || "";
@@ -175,8 +195,8 @@ const RSProvider: PlazCodeProvider = (() => {
           out += v; continue;
         }
         if (type !== 1) continue;
-        if (safeRead(() => c.matches(CODE_BUTTON), false) && safeClosest(c, "pre, [class*='code-block'], [class*='code_block'], [class*='codeblock']")) continue;
-        const block = safeRead(() => c.matches(BLOCK), false) && !safeClosest(safeRead(() => c.parentElement, null), BLOCK);
+        if (safeRead(() => (c as Element).matches(CODE_BUTTON), false) && safeClosest(c, "pre, [class*='code-block'], [class*='code_block'], [class*='codeblock']")) continue;
+        const block = safeRead(() => (c as Element).matches(BLOCK), false) && !safeClosest(safeRead(() => c.parentElement, null), BLOCK);
         if (block && out && !out.endsWith("\n")) out += "\n";
         if (block) breakNext = false;
         walk(c);
@@ -190,58 +210,58 @@ const RSProvider: PlazCodeProvider = (() => {
   // Text of an item for signature detection. For assistant turns we use ONLY
   // the non-thinking markdown, so tool blocks the model merely drafts inside
   // its reasoning are never detected, shown, or executed.
-  function itemText(item) {
+  function itemText(item: Element | null): string {
     if (isAssistantItem(item)) {
       const mds = [...safeQueryAll(item, S.markdown)].filter((m) => !safeClosest(m, S.thinking));
       return mds.map(mdText).join("\n");
     }
-    return safeRead(() => item.textContent, "") || "";
+    return safeRead(() => item!.textContent, "") || "";
   }
 
   // Text used by the core to CLASSIFY a turn for camouflage - excludes the
   // reasoning area AND any element matching `excludeSel` (the core's own chip),
   // so a recycled (virtualized) node wearing a stale chip is never mis-detected.
-  function classifyText(item, excludeSel) {
+  function classifyText(item: Element | null, excludeSel?: string): string {
     if (isAssistantItem(item)) {
       return [...safeQueryAll(item, S.markdown)]
         .filter((m) => !safeClosest(m, S.thinking) && !(excludeSel && safeClosest(m, excludeSel)))
         .map(mdText).join("\n");
     }
     let t = "";
-    for (const n of safeRead(() => item.childNodes, [])) {
-      if (excludeSel && safeRead(() => n.nodeType, 0) === 1 && safeRead(() => n.matches, null) && safeRead(() => n.matches(excludeSel), false)) continue;
+    for (const n of safeRead(() => item!.childNodes, [])) {
+      if (excludeSel && safeRead(() => n.nodeType, 0) === 1 && safeRead(() => (n as Element).matches, null) && safeRead(() => (n as Element).matches(excludeSel), false)) continue;
       t += safeRead(() => n.textContent, "") || "";
     }
     return t;
   }
 
   // ── DOM primitives ────────────────────────────────────────────────────────
-  let itemsCache = [], itemsCacheAt = 0;
-  const allItems = () => {
+  let itemsCache: Element[] = [], itemsCacheAt = 0;
+  const allItems = (): Element[] => {
     const now = Date.now();
     if (now - itemsCacheAt < 200 && itemsCache.length && safeRead(() => itemsCache[itemsCache.length - 1].isConnected, false)) return itemsCache;
-    const rootSkip = (n) => n && !safeClosest(n, "#rs-root");
+    const rootSkip = (n: Element | null): boolean => (n && !safeClosest(n, "#rs-root")) as boolean;
     let nodes = [...safeQueryAll(document, ".ds-message")].filter(rootSkip);
     if (!nodes.length) nodes = [...safeQueryAll(document, S.chatItem)].filter(rootSkip);
     itemsCache = nodes;
     itemsCacheAt = now;
     return nodes;
   };
-  const assistantItems = () => allItems().filter(isAssistantItem);
-  const assistantCount = () => assistantItems().length;
-  const userCount = () => allItems().filter(isUserItem).length;
+  const assistantItems = (): Element[] => allItems().filter(isAssistantItem);
+  const assistantCount = (): number => assistantItems().length;
+  const userCount = (): number => allItems().filter(isUserItem).length;
   // Scope to the SITE's composer only: never match PlazCode's own injected
   // UI (e.g. the settings textarea #rs-set-text in #rs-root). Otherwise on the
   // login/OAuth pages - which have no site textarea - getEditor() would return
   // our own panel's textarea, defeating the "not on a chat page" guard in the
   // send hooks and letting them swallow the DeepSeek "Log in" click (which is
   // itself a .ds-button--primary, the same selector as the send button).
-  let lockedEditor = null;
-  const getEditor = () => {
+  let lockedEditor: HTMLElement | null = null;
+  const getEditor = (): HTMLElement | null => {
     // A rich composer becomes contenteditable=false while PlazCode locks it.
     // Keep that exact site editor discoverable for readiness and our own writes.
-    if (lockedEditor && safeRead(() => lockedEditor.isConnected, false) && safeRead(() => lockedEditor.offsetParent, null) !== null) return lockedEditor;
-    const site = [...safeQueryAll(document, S.editor)].filter(
+    if (lockedEditor && safeRead(() => lockedEditor!.isConnected, false) && safeRead(() => lockedEditor!.offsetParent, null) !== null) return lockedEditor;
+    const site = [...safeQueryAll<HTMLElement>(document, S.editor)].filter(
       (e) => !safeClosest(e, "#rs-root") && safeRead(() => e.offsetParent, null) !== null
     );
     // Prefer the bottom composer over the inline message-EDIT box. When the user
@@ -256,18 +276,18 @@ const RSProvider: PlazCodeProvider = (() => {
     return ce || site.find((e) => !safeClosest(e, S.msgEditBox)) || site[0] || null;
   };
   // Composer may be a <textarea> (classic) or contenteditable (2026 UI).
-  const editorText = () => {
+  const editorText = (): string => {
     const e = getEditor();
     if (!e) return "";
-    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => e.value, "") || "";
+    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => (e as HTMLTextAreaElement).value, "") || "";
     return (safeRead(() => e.innerText, "") || safeRead(() => e.textContent, "") || "");
   };
 
-  function getSendBtn() {
+  function getSendBtn(): HTMLElement | null {
     const sel = S.sendBtn + ", " + S.stopBtn + ", button.ds-icon-button";
-    const cand = [...safeQueryAll(document, sel)].filter((b) =>
+    const cand = [...safeQueryAll<HTMLElement>(document, sel)].filter((b) =>
       safeRead(() => b.offsetParent, null) !== null && !safeClosest(b, "#rs-root") && !safeClosest(b, ".ds-message"));
-    if (!cand.length) return safeQuery(document, ".ds-button--primary");
+    if (!cand.length) return safeQuery<HTMLElement>(document, ".ds-button--primary");
     const ed = getEditor();
     if (!ed) return cand[0];
     const er = safeRect(ed);
@@ -283,7 +303,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // Lock / unlock the user textarea during agent activity. `readonly` blocks
   // interactive typing but is IGNORED by the native prototype setter used in
   // setTextareaValue(), so the loop's own injections continue to work normally.
-  function setInputLock(on) {
+  function setInputLock(on: boolean): void {
     const ed = getEditor();
     if (!ed) return;
     if (on) {
@@ -300,7 +320,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
   }
 
-  const lastAssistant = () => {
+  const lastAssistant = (): Element | null => {
     const it = assistantItems();
     return it.length ? it[it.length - 1] : null;
   };
@@ -314,7 +334,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // chip was repainted onto the NEW streaming command turn (the "chip appears
   // done with no spinner while DeepSeek is still writing" report). This key is
   // immune to that; the core prefers it over the count whenever it exists.
-  function lastAssistantId() {
+  function lastAssistantId(): string | null {
     const last = lastAssistant();
     return itemKey(last);
   }
@@ -327,7 +347,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // command turn takes a low index that collides with a current turn's key and
   // the "already ran this" memory misses - the watchdog then re-fires the
   // scrolled-back tool ("commands re-execute when I scroll up" report).
-  function itemKey(item) {
+  function itemKey(item: Element | null): string | null {
     if (!item) return null;
     const p = safeRead(() => item.parentElement, null);
     const key = safeRead(() => item.getAttribute("data-message-id"), null) ||
@@ -349,16 +369,16 @@ const RSProvider: PlazCodeProvider = (() => {
   // The whole composer "box" = the smallest ancestor that contains the input, the
   // send button AND (on a blank chat) the Expert/Rapide mode selector. The core's
   // Start gate hides this entire frame at once. Returns null if no input yet.
-  function composerFrame() {
+  function composerFrame(): Element | null {
     const ta = getEditor();
     if (!ta) return null;
     const sb = getSendBtn();
     const group = safeQuery(document, S.modeRadioGroup);
     const targets = [sb, group].filter(Boolean);
-    let n = ta;
-    for (let i = 0; i < 14 && n && safeRead(() => n.parentElement, null); i++) {
-      if (targets.every((t) => safeRead(() => n.contains(t), false))) return n;
-      n = safeRead(() => n.parentElement, null);
+    let n: Element | null = ta;
+    for (let i = 0; i < 14 && n && safeRead(() => n!.parentElement, null); i++) {
+      if (targets.every((t) => safeRead(() => n!.contains(t), false))) return n;
+      n = safeRead((): Element | null => n!.parentElement, null);
     }
     // Prefer a semantic boundary when controls have not mounted yet.
     return safeClosest(ta, 'form, [role="region"], [data-testid="composer"]')
@@ -378,10 +398,10 @@ const RSProvider: PlazCodeProvider = (() => {
   // gets fought over on every re-render (flicker/overlap). So use ANCHORED
   // mode — the bar lives in our own #rs-root (position:fixed) and hugs the
   // rounded chatbox's top edge from outside the DOM tree. React never sees it.
-  function barAnchor() {
+  function barAnchor(): Element | null {
     const ta = getEditor();
     if (!ta) return null;
-    for (let n = safeRead(() => ta.parentElement, null), i = 0; n && n !== document.body && i < 8; i++, n = safeRead(() => n.parentElement, null)) {
+    for (let n: Element | null = safeRead(() => ta.parentElement, null), i = 0; n && n !== document.body && i < 8; i++, n = safeRead((): Element | null => n!.parentElement, null)) {
       try {
         const r = parseFloat(safeStyle(n).borderTopLeftRadius) || 0;
         if (r >= 12) return n;
@@ -391,25 +411,25 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── Composer mode at startup: model, DeepThink and Search left as the person chose (2026-11-21) ──
-  const nodeText = (n) => (n && (safeRead(() => n.innerText, "") || safeRead(() => n.textContent, "") || "").trim()) || "";
-  const isPressedOn = (n) =>
-    n && (safeRead(() => n.getAttribute("aria-pressed"), null) === "true" ||
+  const nodeText = (n: Element | null): string => (n && (safeRead(() => (n as HTMLElement).innerText, "") || safeRead(() => n.textContent, "") || "").trim()) || "";
+  const isPressedOn = (n: Element | null): boolean =>
+    (n && (safeRead(() => n.getAttribute("aria-pressed"), null) === "true" ||
           safeRead(() => n.getAttribute("aria-checked"), null) === "true" ||
-          safeRead(() => n.classList.contains("ds-toggle-button--selected"), false));
+          safeRead(() => n.classList.contains("ds-toggle-button--selected"), false))) as boolean;
 
   // Model tabs carry data-model-type: "default" (Instant), "expert", "vision"
   // (validated live 2026-07 on DeepSeek V4). Find one by type, falling back to a
   // label regex if the site ever drops the attribute.
-  function findModeRadio(type, re) {
+  function findModeRadio(type: string, re?: RegExp): Element | null {
     const group = safeQuery(document, S.modeRadioGroup);
     const radios = group ? [...safeQueryAll(group, S.modeRadio)] : [...safeQueryAll(document, S.modeRadio)];
     return radios.find((r) => safeRead(() => r.getAttribute("data-model-type"), null) === type) ||
            (re && radios.find((r) => re.test(nodeText(r)))) ||
            null;
   }
-  const findExpertRadio = () => findModeRadio("expert", RE.expertMode);
-  const findVisionRadio = () => findModeRadio("vision", RE.visionMode);
-  const radioOn = (r) => !!r && safeRead(() => r.getAttribute("aria-checked"), null) === "true";
+  const findExpertRadio = (): Element | null => findModeRadio("expert", RE.expertMode);
+  const findVisionRadio = (): Element | null => findModeRadio("vision", RE.visionMode);
+  const radioOn = (r: Element | null): boolean => !!r && safeRead(() => r.getAttribute("aria-checked"), null) === "true";
 
   // LEGACY-UI ONLY (kept working in case DeepSeek restores the picker): when the
   // old Instant / Expert / Vision tabs are on screen, the selected Vision tab
@@ -426,7 +446,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // is "Instant"/"Expert"/"Vision"). Throttled + latched so the badge scan stops
   // once a value is known.
   let _visAt = 0, _visCache = true;   // last answer + throttle stamp
-  function badgeVision() {
+  function badgeVision(): boolean | null {
     const els = [...safeQueryAll(document, "div,span")].filter(
       (e) => e.childElementCount === 0 &&
              /^(instant|expert|vision)$/i.test((safeRead(() => e.textContent, "") || "").trim()) &&
@@ -453,7 +473,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // The asymmetry is deliberate: guessing "no vision" wrongly blocks the whole
   // feature, while guessing "vision" wrongly costs one attach, which the provider
   // now reports honestly instead of failing silently.
-  function detectVision() {
+  function detectVision(): boolean {
     const now = Date.now();
     if (now - _visAt < 400) return _visCache;      // throttle the DOM work
     _visAt = now;
@@ -466,9 +486,9 @@ const RSProvider: PlazCodeProvider = (() => {
     if (b != null) return (_visCache = b);
     return (_visCache = true);                     // unified model: images allowed
   }
-  const isVisionSelected = () => detectVision();
+  const isVisionSelected = (): boolean => detectVision();
 
-  function findToggleBy(re) {
+  function findToggleBy(re: RegExp): Element | null {
     return [...safeQueryAll(document, S.deepThinkToggle)].find((t) => re.test(nodeText(t))) || null;
   }
 
@@ -490,7 +510,7 @@ const RSProvider: PlazCodeProvider = (() => {
     };
   }
 
-  function enforceComposer(reason) {
+  function enforceComposer(reason?: string) {
     // We only DRIVE the composer when given a reason (i.e. at session startup).
     // Per-sweep calls pass no reason and are READ-ONLY: that leaves the user free
     // to switch the model tab afterwards (e.g. Expert → Instant to turn thinking
@@ -505,15 +525,15 @@ const RSProvider: PlazCodeProvider = (() => {
       const state = composerModeState();
       diag("mode_enforce", { reason, ...state });
       return state;
-    } catch (e) {
-      diag("mode_fallback", { reason, target: "composer", error: String(e && e.message || e) });
+    } catch (e: unknown) {
+      diag("mode_fallback", { reason, target: "composer", error: String(e && (e as Error).message || e) });
       return composerModeState();
     }
   }
 
   // Drive the composer into its required modes; returns the final state with
   // `.ready` (the core gates session start on it).
-  async function ensureComposerReady(reason) {
+  async function ensureComposerReady(reason?: string) {
     let state = composerModeState();
     // Start only reads the composer now (model, DeepThink and Search stay as the person set them, 2026-11-21), so there
     // is nothing to wait for; a composer is the only real "ready".
@@ -535,9 +555,9 @@ const RSProvider: PlazCodeProvider = (() => {
   // origin ("M2 …"). We treat the button as "stop" when it carries a <rect> PlazCode a
   // square-ish path (leading move to x ≤ 3) - never the M8 arrow. One-liner to
   // update if DeepSeek reskins the footer button.
-  function isStopBtn(btn) {
+  function isStopBtn(btn: Element | null): boolean {
     if (!btn) return false;
-    const label = (safeRead(() => btn.getAttribute("aria-label"), null) || safeRead(() => btn.getAttribute("title"), null) || safeRead(() => btn.innerText, "") || "").trim();
+    const label = (safeRead(() => btn.getAttribute("aria-label"), null) || safeRead(() => btn.getAttribute("title"), null) || safeRead(() => (btn as HTMLElement).innerText, "") || "").trim();
     if (/stop|停止|暂停|arr[eê]t/i.test(label) && !/send|发送/i.test(label)) return true;
     if (/send|发送/i.test(label)) return false; // explicit site label outranks SVG heuristics
     if (safeQuery(btn, "rect")) return true; // legacy stop square
@@ -550,7 +570,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // Everything DeepSeek is streaming for a turn: its reasoning + its answer.
   // Excludes the core's own chip so the live token meter can't masquerade as
   // model output.
-  function streamText(item) {
+  function streamText(item: Element | null): string {
     if (!item) return "";
     const think = safeQuery(item, S.thinking);
     const thinkTxt = think ? safeRead(() => think.textContent, "") || "" : "";
@@ -560,16 +580,16 @@ const RSProvider: PlazCodeProvider = (() => {
       .join("");
     return thinkTxt + "\n" + replyTxt;
   }
-  const streamLen = (item?) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item?: Element | null): number => streamText(item === undefined ? lastAssistant() : item).length;
 
   // Stream-growth tracking - the ONLY "is it still streaming?" signal during the
   // reasoning phase (no <rect>, no spinner then). We track the MAXIMUM length the
   // current turn has reached and WHEN it last advanced; DOM flicker of a few
   // chars never counts - only a new maximum (see content history for the full
   // war story: counting churn as growth froze the loop).
-  let _streamMax = -1, _streamAt = 0, _streamItem = null;
+  let _streamMax = -1, _streamAt = 0, _streamItem: Element | null = null;
 
-  function sampleStream() {
+  function sampleStream(): void {
     const item = lastAssistant();
     const len = streamText(item).length;
     const now = Date.now();
@@ -580,11 +600,11 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     if (len > _streamMax) { _streamMax = len; _streamAt = now; } // forward progress only
   }
-  const grewWithin = (ms) => _streamMax > 1 && Date.now() - _streamAt < ms;
+  const grewWithin = (ms: number): boolean => _streamMax > 1 && Date.now() - _streamAt < ms;
 
   // True iff `item` is an assistant turn that has begun REASONING but produced no
   // answer yet and has NOT been halted.
-  function reasoningInProgress(item) {
+  function reasoningInProgress(item: Element | null): boolean {
     if (!item) return false;
     const think = safeQuery(item, S.thinking);
     const thinkTxt = think ? (safeRead(() => think.textContent, "") || "") : "";
@@ -600,7 +620,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // The turn carries DeepSeek's "Arrêté/Stopped" UI marker (manual stop or a
   // forced interruption) - distinguished from the model merely WRITING such a
   // word in its reasoning by requiring the marker OUTSIDE the reasoning text.
-  function turnHalted(item) {
+  function turnHalted(item?: Element | null): boolean {
     if (!item) return false;
     const excluded = S.markdown + "," + S.thinking + ",.rs-chip";
     const nodes = [item, ...safeQueryAll(item, "*")];
@@ -610,26 +630,26 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // Only metadata from our extension worker, scoped to this document and chat.
   // DOM growth remains the fallback when browser request observation is unavailable.
-  let requestRevision=-1, openRequests=[], requestsInstalled=false, freshRequestAssignment=null;
-  function receiveRequests(message) {
-    if (!message || !Number.isSafeInteger(message.revision) || message.revision<=requestRevision || !Array.isArray(message.active)) return;
-    requestRevision=message.revision;
-    openRequests=message.active.filter(r=>typeof r.id==='string' && typeof r.path==='string' && Number.isFinite(r.startedAt));
+  let requestRevision=-1, openRequests: OpenReq[]=[], requestsInstalled=false, freshRequestAssignment: { path: string; since: number } | null=null;
+  function receiveRequests(message: ReqMsg): void {
+    if (!message || !Number.isSafeInteger(message.revision) || (message.revision as number)<=requestRevision || !Array.isArray(message.active)) return;
+    requestRevision=message.revision as number;
+    openRequests=message.active.filter(r=>typeof r.id==='string' && typeof r.path==='string' && Number.isFinite(r.startedAt)) as OpenReq[];
   }
-  function installRequestObserver() {
+  function installRequestObserver(): void {
     if(requestsInstalled || typeof chrome==='undefined' || !chrome.runtime?.onMessage || !chrome.runtime?.sendMessage)return;
     requestsInstalled=true;
-    chrome.runtime.onMessage.addListener(message=>{if(message?.type==='rs-deepseek-requests')receiveRequests(message);});
-    Promise.resolve(chrome.runtime.sendMessage({type:'deepseek-requests'})).then(result=>{if(result?.ok)receiveRequests(result);}).catch(()=>{});
+    chrome.runtime.onMessage.addListener((message: ReqMsg)=>{if(message?.type==='rs-deepseek-requests')receiveRequests(message);});
+    Promise.resolve(chrome.runtime.sendMessage({type:'deepseek-requests'})).then((result: ReqMsg)=>{if(result?.ok)receiveRequests(result);}).catch(()=>{});
   }
-  function responsePending() {
+  function responsePending(): boolean {
     const path=safeRead(()=>location.pathname,'');
     return openRequests.some(r=>r.path===path || (freshRequestAssignment && path===freshRequestAssignment.path &&
       r.path==='/' && r.startedAt>=freshRequestAssignment.since));
   }
 
   // Growth-tolerant "is a generation in progress?" - the response watcher's signal.
-  function isGenerating() {
+  function isGenerating(): boolean {
     if (responsePending()) return true;
     if (safeQuery(document, S.generating)) return true; // spin-up spinner
     const btn = getSendBtn();
@@ -642,7 +662,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // STRICT "is a generation happening RIGHT NOW?" - the gate for SENDING (the send
   // button doubles as stop, so sending mid-generation aborts the turn). Does NOT
   // linger after the answer ends.
-  function isBusyNow() {
+  function isBusyNow(): boolean {
     if (responsePending()) return true;
     if (safeQuery(document, S.generating)) return true;
     const btn = getSendBtn();
@@ -654,7 +674,7 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // HARD signal only (the visible stop-square): never true just because a
   // conversation (re)loads or the user scrolls. Used for the Stop button.
-  function isHardGenerating() {
+  function isHardGenerating(): boolean {
     return responsePending() || isStopBtn(getSendBtn());
   }
 
@@ -689,11 +709,11 @@ const RSProvider: PlazCodeProvider = (() => {
         grewReason: grewWithin(timings.REASON_IDLE_MS),
         gen: isGenerating(),
       };
-    } catch (e) { return { err: String(e && e.message || e) }; }
+    } catch (e: unknown) { return { err: String(e && (e as Error).message || e) }; }
   }
 
   // Lightweight turn snapshot for diagnostics (reasoning/reply lengths).
-  function snapshot() {
+  function snapshot(): Record<string, number> {
     try {
       const it = lastAssistant();
       if (!it) return { th: 0, rp: 0 };
@@ -706,20 +726,20 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── Truncation "Continue" button ──────────────────────────────────────────
-  function findContinueBtn() {
-    for (const b of safeQueryAll(document, ".ds-button")) {
+  function findContinueBtn(): HTMLElement | null {
+    for (const b of safeQueryAll<HTMLElement>(document, ".ds-button")) {
       if (safeRead(() => b.offsetParent, null) === null) continue; // not visible
       if (RE.continueBtn.test((safeRead(() => b.innerText, "") || "").trim())) return b;
     }
     return null;
   }
 
-  function clickContinueBtn() {
+  function clickContinueBtn(): boolean | Promise<boolean> {
     if(!findContinueBtn())return false;
     return queueSend(async job=>{job.continue=true;const button=findContinueBtn();if(!button)return false;return commitSend(job,button);});
   }
 
-  function readAssistant() {
+  function readAssistant(): AssistantRead {
     const item = lastAssistant();
     if (!item) return { present: false, reply: "", thinking: "", item: null };
     const th = safeQuery(item, `${S.thinking} ${S.markdown}`);
@@ -727,12 +747,12 @@ const RSProvider: PlazCodeProvider = (() => {
     return {
       present: true,
       reply: mds.map(mdText).join("\n").trim(),
-      thinking: th ? safeRead(() => th.textContent, "").trim() : "",
+      thinking: th ? (safeRead(() => th.textContent, "") as string).trim() : "",
       item,
     };
   }
 
-  async function waitFor(pred, timeout) {
+  async function waitFor(pred: () => unknown, timeout: number): Promise<boolean> {
     const budget = waitBudget(timeout, 120), t0 = Date.now();
     for (let poll = 0; poll < budget.polls && Date.now() - t0 < budget.ms; poll++) {
       const result = safePredicate(pred);
@@ -746,12 +766,12 @@ const RSProvider: PlazCodeProvider = (() => {
   // DeepSeek's composer is a <textarea> driven by React. We must set .value via
   // the native prototype setter so React's onChange fires, then dispatch an input
   // event, then click the primary send button (Enter inserts a newline).
-  function setTextareaValue(el, v) {
+  function setTextareaValue(el: HTMLElement, v: string): void {
     if (safeRead(() => el.tagName, "") === "TEXTAREA" || safeRead(() => el.tagName, "") === "INPUT") {
       const proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
       const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
       if (setter && setter.set) setter.set.call(el, v);
-      else el.value = v;
+      else (el as HTMLTextAreaElement).value = v;
       el.dispatchEvent(new Event("input", { bubbles: true }));
       return;
     }
@@ -762,8 +782,8 @@ const RSProvider: PlazCodeProvider = (() => {
       const sel = window.getSelection();
       const range = document.createRange();
       range.selectNodeContents(el);
-      sel.removeAllRanges();
-      sel.addRange(range);
+      sel!.removeAllRanges();
+      sel!.addRange(range);
       if (!document.execCommand("insertText", false, v)) throw new Error("DeepSeek editor rejected insertText");
     } catch {
       el.textContent = v;
@@ -773,7 +793,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
   }
 
-  function pressEnter(editor) {
+  function pressEnter(editor: HTMLElement): void {
     const o = { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true };
     editor.dispatchEvent(new KeyboardEvent("keydown", o));
     editor.dispatchEvent(new KeyboardEvent("keyup", o));
@@ -781,7 +801,7 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // Click DeepSeek's primary footer button to send. Send arrow and stop square
   // are the SAME button, so we refuse to click whenever a generation is live.
-  function clickSendButton() {
+  function clickSendButton(): boolean {
     if (isBusyNow()) return false;
     const btn = getSendBtn();
     if (btn && !isStopBtn(btn) && safeRead(() => btn.getAttribute("aria-disabled"), null) !== "true") {
@@ -803,7 +823,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // own. Same head+tail approach as qwen.js / arena.js.
   const SEND_CAP = 163840;   // composer send-guard limit
   const SEND_MAX = 160000;   // prudent margin below the cap (+ room for the marker)
-  function truncateForSend(text) {
+  function truncateForSend(text: string): string {
     if(typeof window.__rsLimitOutgoing==="function")return window.__rsLimitOutgoing(text);
     if (!text || text.length <= SEND_MAX) return text;
     const omitted = text.length - SEND_MAX;
@@ -820,14 +840,14 @@ const RSProvider: PlazCodeProvider = (() => {
   // The local queue preserves routine ordering; the desktop lease protects actual commits across browsers/tabs.
   const MIN_SEND_GAP_MS = 8000;
   const SEND_JITTER_MS = 1800;
-  let _lastSendDoneAt = null, _sendChain = Promise.resolve(), _sendEpoch = 0, _sendSeq = 0;
-  let _contextReader: () => any = () => ({}), _pacingRequest = null, _lastDelivered = "", _lastFailure = "";
+  let _lastSendDoneAt: number | null = null, _sendChain: Promise<unknown> = Promise.resolve(), _sendEpoch = 0, _sendSeq = 0;
+  let _contextReader: () => Record<string, any> = () => ({}), _pacingRequest: ((req: Record<string, unknown>) => Promise<PacingLease>) | null = null, _lastDelivered = "", _lastFailure = "";
   const _pageId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "page-"+Date.now()+"-"+Math.random().toString(36).slice(2);
-  function sendError(message, code = "DEEPSEEK_PAUSED") { const error: any=new Error(message);error.code=code;return error; }
-  function sendOwner(): any { return {epoch:_sendEpoch,chat:typeof conversationKey === "function" ? conversationKey() : "",..._contextReader()}; }
-  function assertSendOwner(job) {
+  function sendError(message: string, code = "DEEPSEEK_PAUSED"): Error & { code?: string; expectedCancellation?: boolean } { const error: Error & { code?: string; expectedCancellation?: boolean } = new Error(message); error.code = code; return error; }
+  function sendOwner(): SendJob["owner"] { return {epoch:_sendEpoch,chat:typeof conversationKey === "function" ? conversationKey() : "",..._contextReader()}; }
+  function assertSendOwner(job: SendJob): void {
     const current=sendOwner();
-    const ownerChanged=()=>{const error=sendError("The send was cancelled because Stop was pressed or the chat/session changed.","DEEPSEEK_CANCELLED");error.expectedCancellation=true;throw error;};
+    const ownerChanged=(): never=>{const error=sendError("The send was cancelled because Stop was pressed or the chat/session changed.","DEEPSEEK_CANCELLED");error.expectedCancellation=true;throw error;};
     if(current.epoch!==job.owner.epoch || current.session!==job.owner.session || current.stop!==job.owner.stop)ownerChanged();
     // One committed message can acquire its first chat address before React
     // renders its row. Wait for our own message; never authorize another click.
@@ -837,41 +857,41 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     if(current.chat!==job.owner.chat)ownerChanged();
   }
-  function confirmsFreshChatSend(job) {
+  function confirmsFreshChatSend(job: SendJob): boolean {
     const users=allItems().filter(isUserItem),last=users[users.length-1];
-    if(!last || job.beforeUserItems.has(last))return false;
-    const normalize=value=>String(value||"").replace(/\s+/g," ").trim();
+    if(!last || job.beforeUserItems!.has(last))return false;
+    const normalize=(value: unknown): string=>String(value||"").replace(/\s+/g," ").trim();
     const expected=normalize(job.typedText);
     return !!expected && normalize(itemText(last)).includes(expected);
   }
-  function cancelPendingSends() { _sendEpoch++; }
-  async function pacing(request) {
+  function cancelPendingSends(): void { _sendEpoch++; }
+  async function pacing(request: Record<string, unknown>): Promise<PacingLease> {
     if(!_pacingRequest)throw sendError("Update the complete PlazCode app and extension together. The shared DeepSeek request timer is unavailable.");
     const result=await _pacingRequest({...request,client:_pageId});
     if(!result || !result.ok)throw sendError(result && result.error || "The shared DeepSeek request timer did not answer. No send was authorized.");
     return result;
   }
-  async function sleepForSend(ms,job) { let left=ms;while(left>0){assertSendOwner(job);const step=Math.min(250,left);await sleep(step);left-=step;}assertSendOwner(job); }
-  async function paceBeforeSend(job) {
+  async function sleepForSend(ms: number, job: SendJob): Promise<void> { let left=ms;while(left>0){assertSendOwner(job);const step=Math.min(250,left);await sleep(step);left-=step;}assertSendOwner(job); }
+  async function paceBeforeSend(job: SendJob): Promise<void> {
     const gap=MIN_SEND_GAP_MS+Math.random()*SEND_JITTER_MS;
     let remaining=_lastSendDoneAt!==null?_lastSendDoneAt+gap-Date.now():0;
     if(remaining>0)try{diag("send.pace",{ms:Math.round(remaining)});}catch{}
-    while(remaining>0){await sleepForSend(Math.min(250,remaining),job);remaining=_lastSendDoneAt+gap-Date.now();}
+    while(remaining>0){await sleepForSend(Math.min(250,remaining),job);remaining=_lastSendDoneAt!+gap-Date.now();}
     assertSendOwner(job);
   }
-  function queueSend(operation) {
-    const job: any={id:_pageId+":"+(++_sendSeq),owner:sendOwner(),draft:typeof editorText === "function"?editorText():""};
-    const run=async()=>{try{await paceBeforeSend(job);return await operation(job);}catch(error){
-      _lastFailure=String(error.message||error);
+  function queueSend<T>(operation: (job: SendJob) => Promise<T>): Promise<T> {
+    const job: SendJob={id:_pageId+":"+(++_sendSeq),owner:sendOwner(),draft:typeof editorText === "function"?editorText():""};
+    const run=async()=>{try{await paceBeforeSend(job);return await operation(job);}catch(error: unknown){
+      _lastFailure=String((error as Error).message||error);
       // Restore only the draft this operation replaced, never text in a different chat or edited by the user.
       try{if(job.editor && job.owner.chat===conversationKey() && getEditor()===job.editor && editorText()===job.typedText)setTextareaValue(job.editor,job.previousDraft||"");}catch{}
       throw error;
     }finally{_lastSendDoneAt=Date.now();}};
     const promise=_sendChain.then(run,run);_sendChain=promise.catch(()=>{});return promise;
   }
-  function typeAndSend(text, images, opts) { return queueSend(job=>typeAndSendRaw(text,images,opts,job)); }
-  async function commitSend(job, button) {
-    let lease=null;
+  function typeAndSend(text: string, images?: ImagePayloadList, opts?: object): Promise<boolean> { return queueSend(job=>typeAndSendRaw(text,images,opts,job)); }
+  async function commitSend(job: SendJob, button: HTMLElement | null): Promise<boolean> {
+    let lease: PacingLease | null = null;
     const claimLease = async () => {
       while(!lease){
         assertSendOwner(job);
@@ -892,11 +912,11 @@ const RSProvider: PlazCodeProvider = (() => {
       await claimLease();
       assertSendOwner(job);
       // If the tab paused between claim and validate, release and re-claim once before failing.
-      if(Date.now()>=lease.valid_until){
+      if(Date.now()>=lease!.valid_until){
         await releaseLease();
         await claimLease();
         assertSendOwner(job);
-        if(Date.now()>=lease.valid_until)throw sendError("The send permission expired while the page was busy. Nothing was sent.");
+        if(Date.now()>=lease!.valid_until)throw sendError("The send permission expired while the page was busy. Nothing was sent.");
       }
       // A manual send or a limit in another tab/browser can revoke a grant while this page is awaiting it.
       const permission=await pacing({action:"validate",id:job.id});
@@ -904,16 +924,16 @@ const RSProvider: PlazCodeProvider = (() => {
       assertSendOwner(job);
       // If a trailing request is still draining right as validate returns, wait briefly inside the lease window.
       if(responsePending()){
-        const remain=Math.max(0,Math.min(15000,lease.valid_until-Date.now()-250));
+        const remain=Math.max(0,Math.min(15000,lease!.valid_until-Date.now()-250));
         if(remain>0)await waitSend(()=>!responsePending(),remain,job);
         if(responsePending())throw sendError("DeepSeek is still responding. Nothing was sent.");
       }
       // Re-read after every await: a former send button may now be Stop, or flicker disabled for a frame after validate.
-      const readLive=()=>job.continue?findContinueBtn():getSendBtn();
-      const liveUsable=el=>!!el && (job.continue || (!isStopBtn(el) && safeRead(()=>el.getAttribute("aria-disabled"),null)!=="true"));
+      const readLive=(): HTMLElement | null =>job.continue?findContinueBtn():getSendBtn();
+      const liveUsable=(el: HTMLElement | null): boolean =>!!el && (job.continue || (!isStopBtn(el) && safeRead(()=>el.getAttribute("aria-disabled"),null)!=="true"));
       let live=readLive();
       if(!liveUsable(live)){
-        const flickerBudget=Math.max(0,Math.min(2000,lease.valid_until-Date.now()-150));
+        const flickerBudget=Math.max(0,Math.min(2000,lease!.valid_until-Date.now()-150));
         if(flickerBudget>0){
           await waitSend(()=>liveUsable(readLive()),flickerBudget,job);
           live=readLive();
@@ -923,21 +943,21 @@ const RSProvider: PlazCodeProvider = (() => {
       const users=userCount(),assistants=assistantCount(),before=job.continue?streamLen():0;
       if(!job.continue && editorText()!==job.typedText)throw sendError("Your draft changed before sending. Nothing was sent.","DEEPSEEK_CANCELLED");
       assertSendOwner(job);
-      if(Date.now()>=lease.valid_until){
+      if(Date.now()>=lease!.valid_until){
         await releaseLease();
         await claimLease();
         const reval=await pacing({action:"validate",id:job.id});
         if(!reval.allowed)throw sendError("Another DeepSeek message or limit cancelled this send permission. Nothing was sent.");
         assertSendOwner(job);
         live=readLive();
-        if(!liveUsable(live) || Date.now()>=lease.valid_until)throw sendError("The send permission expired. Nothing was sent.");
+        if(!liveUsable(live) || Date.now()>=lease!.valid_until)throw sendError("The send permission expired. Nothing was sent.");
       }
       job.awaitingChatAssignment=!job.continue&&!job.owner.chat;
       if(job.awaitingChatAssignment)job.beforeUserItems=new Set(allItems().filter(isUserItem));
-      let accepted;
+      let accepted: boolean;
       job.commitAt=Date.now();
       try {
-        live.click(); // exactly ONE commit; never poll by clicking again
+        live!.click(); // exactly ONE commit; never poll by clicking again
         accepted=await waitSend(()=>{
           const landed=isStopBtn(getSendBtn()) || userCount()>users || assistantCount()>assistants || (job.continue && streamLen()>before);
           const chat=conversationKey();
@@ -947,7 +967,7 @@ const RSProvider: PlazCodeProvider = (() => {
             if(!chat || !job.awaitingChatAssignment || !confirmsFreshChatSend(job))return false;
             if(job.assignedChat && chat!==job.assignedChat)return false;
             job.owner.chat=chat;
-            freshRequestAssignment={path:chat,since:job.commitAt};
+            freshRequestAssignment={path:chat,since:job.commitAt!};
           }
           return landed;
         },12000,job);
@@ -957,7 +977,7 @@ const RSProvider: PlazCodeProvider = (() => {
       return true;
     } finally { if(lease)try{await pacing({action:"finish",id:job.id,sent:false});}catch{} }
   }
-  async function waitSend(predicate,timeout,job) {
+  async function waitSend<T>(predicate: () => T, timeout: number, job: SendJob): Promise<boolean> {
     let started=Date.now(), lastBeatAt=started;
     while(Date.now()-started<timeout){
       const now=Date.now();
@@ -973,12 +993,12 @@ const RSProvider: PlazCodeProvider = (() => {
   // Remove only a leftover PlazCode internal draft (startup marker, tool output, or system note)
   // that survived a crash, reload, or failed send. Never erase text typed by the person.
   const INTERNAL_DRAFT_RE = /^(?:⟦RS-SYS⟧|Output of '[^']+':|\(System note:)/;
-  let _sendingInternal = false, _staleDraftText = null, _staleDraftTicks = 0;
-  function isInternalDraft(value) {
+  let _sendingInternal = false, _staleDraftText: string | null = null, _staleDraftTicks = 0;
+  function isInternalDraft(value: unknown): boolean {
     const trimmed = String(value || "").trimStart();
     return trimmed.length >= 20 && INTERNAL_DRAFT_RE.test(trimmed);
   }
-  function sweepStaleInternalDraft() {
+  function sweepStaleInternalDraft(): boolean {
     try {
       if (_sendingInternal) { _staleDraftText = null; _staleDraftTicks = 0; return false; }
       const editor = getEditor();
@@ -993,10 +1013,10 @@ const RSProvider: PlazCodeProvider = (() => {
       return editorText().trim() === "";
     } catch { return false; }
   }
-  function holdInputGeometry(editor, holdFrame) {
-    const nodes=[editor], frame=holdFrame ? barAnchor() : null;
+  function holdInputGeometry(editor: HTMLElement, holdFrame: boolean): () => void {
+    const nodes: HTMLElement[]=[editor], frame=holdFrame ? barAnchor() as HTMLElement | null : null;
     if(frame && frame!==editor && frame!==document.body && frame!==document.documentElement && safeRead(()=>frame.contains(editor),false))nodes.push(frame);
-    const owned=[];
+    const owned: Array<{ node: HTMLElement; name: string; value: string; priority: string; size: string }>=[];
     for(const node of nodes){
       const height=parseFloat(safeStyle(node).height) || safeRect(node).height;
       if(!node?.style || !(height>0))continue;
@@ -1015,7 +1035,7 @@ const RSProvider: PlazCodeProvider = (() => {
       if(safeRead(()=>editor.isConnected,false))editor.dispatchEvent(new Event('input',{bubbles:true}));
     };
   }
-  async function typeAndSendRaw(text, images, opts, job) {
+  async function typeAndSendRaw(text: string, images: ImagePayloadList | undefined, opts: object | undefined, job: SendJob): Promise<boolean> {
     assertSendOwner(job);
     if(responsePending()){
       await waitSend(()=>!responsePending(),15000,job);
@@ -1064,7 +1084,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return await commitSend(job,getSendBtn());
     } finally { _sendingInternal = false; releaseGeometry(); }
   }
-  function observeManualSend() {
+  function observeManualSend(): void {
     cancelPendingSends();
     const epoch=_sendEpoch,chat=conversationKey(),users=userCount();
     void (async()=>{
@@ -1076,22 +1096,22 @@ const RSProvider: PlazCodeProvider = (() => {
       }
       // An uncertain native send still gets a conservative final anchor, never an automatic replay.
       if(epoch===_sendEpoch && chat===conversationKey())await pacing({action:"observe"});
-    })().catch(error=>{try{diag("send.paceUnavailable",{error:String(error.message||error)});}catch{}});
+    })().catch((error: unknown)=>{try{diag("send.paceUnavailable",{error:String((error as Error).message||error)});}catch{}});
   }
 
-  async function noteHealthyReply() { if(_lastDelivered)try{await pacing({action:"healthy",id:_lastDelivered});}catch{} }
+  async function noteHealthyReply(): Promise<void> { if(_lastDelivered)try{await pacing({action:"healthy",id:_lastDelivered});}catch{} }
 
   // Click DeepSeek's stop only if it is actually in the stop state (<rect>), so
   // we never accidentally re-trigger a send.
-  function stopGeneration() {
+  function stopGeneration(): void {
     const b = getSendBtn();
-    if (isStopBtn(b)) try { b.click(); } catch {}
+    if (isStopBtn(b)) try { b!.click(); } catch {}
   }
 
   // ── Error / limit detection (site chrome only, never model output) ───────
-  function scanError() {
+  function scanError(): string | null {
     try {
-      for (const el of safeQueryAll(document, S.errorSurfaces)) {
+      for (const el of safeQueryAll<HTMLElement>(document, S.errorSurfaces)) {
         if (safeRead(() => el.offsetParent, null) === null) continue;
         if (safeClosest(el, S.chatItem)) continue; // inside a chat turn ⇒ model content, not UI
         const t = (safeRead(() => el.innerText, "") || "").trim();
@@ -1105,10 +1125,10 @@ const RSProvider: PlazCodeProvider = (() => {
   // Short SYSTEM-message shapes the site renders as an assistant reply.
   // 1.21.0: rate-limit / busy toasts. Each toast element is reported once so a
   // lingering toast does not re-trigger after the automatic resend.
-  const _busySeen = new WeakMap();let _noticeSeq=0,_lastNotice=null;
+  const _busySeen = new WeakMap<Element, BusyNotice>();let _noticeSeq=0,_lastNotice: BusyNotice | null=null;
   const RESTRICTED=/account.{0,40}(?:suspend|restrict|ban|disable)|unusual activity|captcha|verify you are human|账号.{0,12}(?:封禁|限制)|访问过于频繁/i;
-  function visibleLimit() {
-    for(const el of safeQueryAll(document,S.errorSurfaces)){
+  function visibleLimit(): BusyNotice | null {
+    for(const el of safeQueryAll<HTMLElement>(document,S.errorSurfaces)){
       if(safeRead(()=>el.offsetParent,null)===null || safeClosest(el,S.chatItem))continue;
       const text=(safeRead(()=>el.innerText,"")||"").trim();
       if(text.length<5 || text.length>600 || !(RE.busy.test(text)||RESTRICTED.test(text)))continue;
@@ -1118,19 +1138,19 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return null;
   }
-  function scanBusy() {const notice=visibleLimit();if(!notice || notice.reported)return null;notice.reported=true;return notice.text;}
-  async function noteRateLimit(text,existing) {
+  function scanBusy(): string | null {const notice=visibleLimit();if(!notice || notice.reported)return null;notice.reported=true;return notice.text;}
+  async function noteRateLimit(text: string, existing?: BusyNotice | null): Promise<PacingLease> {
     const visible=existing || visibleLimit();
     const notice=visible && visible.text===text ? visible : {text,id:_pageId+":notice:"+(++_noticeSeq),restricted:RESTRICTED.test(text)};
     const match=String(text||"").match(/(?:try again|wait|retry|稍后|等待)[^0-9]{0,30}(\d+(?:\.\d+)?)\s*(seconds?|secs?|minutes?|mins?|hours?|秒|分钟|小时)/i);
     const duration=match?Number(match[1])*(/hour|小时/i.test(match[2])?3600000:/min|分钟/i.test(match[2])?60000:1000):0;
     return pacing({action:"limit",notice:notice.id,rate:/too frequent|too many|rate.?limit|messages too|频繁/i.test(text),restricted:notice.restricted,wait_ms:duration});
   }
-  const isTooLongMsg = (text) => RE.tooLong.test(text);
-  const isBusyMsg = (text) => RE.busy.test(text);
+  const isTooLongMsg = (text: string): boolean => RE.tooLong.test(text);
+  const isBusyMsg = (text: string): boolean => RE.busy.test(text);
 
   // ── Image attachment (Studio captures → composer) ────────────────────────
-  function fileFromImage(img, i) {
+  function fileFromImage(img: ImagePayload, i: number): File {
     if (typeof PlazCodeMedia !== "undefined") return PlazCodeMedia.fileFrom(img, i);
     const mime = img.mimeType || "image/jpeg";
     const bin = atob(img.data);
@@ -1148,9 +1168,9 @@ const RSProvider: PlazCodeProvider = (() => {
   // the idempotency + paste-vs-fileinput dedup depend on; with the stale selector
   // both were inert and one capture re-attached ~20x (seen live), wedging the
   // uploads and the send.
-  const _uploadNames = new Set();
-  let _attachedImages = null;
-  const attachThumbs = () => {
+  const _uploadNames = new Set<string>();
+  let _attachedImages: ImagePayloadList | null = null;
+  const attachThumbs = (): Element[] => {
     try {
       return [...safeQueryAll(document, "img")].filter(
         (im) => !safeClosest(im, S.chatItem) &&
@@ -1163,7 +1183,7 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // Remove any pending attachments from the composer (used to clean up a
   // failed upload so the feedback message still sends as clean text).
-  function clearAttachments() {
+  function clearAttachments(): void {
     try {
       safeQueryAll(document, `${S.attachArea} [class*='delete'], ${S.attachArea} [class*='close'], ${S.attachArea} [class*='remove']`)
         .forEach((d) => ["mouseover", "mousedown", "mouseup", "click"]
@@ -1171,7 +1191,7 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch {}
   }
 
-  async function attachImages(images) {
+  async function attachImages(images: ImagePayloadList): Promise<boolean> {
     const editor = getEditor();
     if (!editor || !images || !images.length) return false;
     // IDEMPOTENCY: submitAndGetBase retries typeAndSend up to 4x, reusing the same
@@ -1191,7 +1211,7 @@ const RSProvider: PlazCodeProvider = (() => {
     // and NEVER uploads (validated live: no upload_file request, `.ds-loading`
     // spinner stuck forever, DeepSeek refuses the send) - so paste is only a
     // last-resort fallback when no file input exists.
-    const fileInput = safeQuery(document, 'input[type="file"]');
+    const fileInput = safeQuery<HTMLInputElement>(document, 'input[type="file"]');
     if (fileInput) {
       try {
         fileInput.files = dt.files;
@@ -1208,7 +1228,7 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // Stable identity of the current conversation (used to persist "started").
   // The root path = a fresh chat with no id yet → "" (transient, never persisted).
-  const conversationKey = () => (location.pathname === "/" ? "" : location.pathname);
+  const conversationKey = (): string => (location.pathname === "/" ? "" : location.pathname);
 
   // ── User-send interception ────────────────────────────────────────────────
   // The core supplies callbacks; this provider wires them to DeepSeek's
@@ -1221,14 +1241,14 @@ const RSProvider: PlazCodeProvider = (() => {
   //   onNativeStop()          - user clicked the site's own stop button
   //   onNativeContinue()      - user clicked the site's truncation Continue
   // }
-  async function writeDraft(value, expectedCurrent) {
+  async function writeDraft(value: unknown, expectedCurrent: unknown): Promise<{ ok: boolean; reason?: string }> {
     const ed = getEditor();
     if (!ed || editorText() !== String(expectedCurrent)) return {ok:false,reason:'draft-changed'};
-    const relock = !!safeRead(() => ed.readOnly, true);
+    const relock = !!safeRead(() => (ed as HTMLTextAreaElement).readOnly, true);
     try { setInputLock(false); setTextareaValue(ed, String(value)); return {ok:editorText() === String(value)}; }
     finally { if(relock)setInputLock(true); }
   }
-  function installSendHooks(handlers) {
+  function installSendHooks(handlers: SendHooks): void {
     // A first route assigned by DeepSeek is different from a person's navigation.
     try{window.addEventListener("popstate",event=>{if(event.isTrusted)cancelPendingSends();});}catch{}
     document.addEventListener(
@@ -1236,11 +1256,11 @@ const RSProvider: PlazCodeProvider = (() => {
       (e) => {
         if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
         const editor = getEditor();
-        if (!editor || !safeRead(() => editor.contains(e.target), false)) return;
+        if (!editor || !safeRead(() => editor.contains(e.target as Node), false)) return;
         const text = editorText().trim();
         if (text === "") return;
 
-        if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+        if ((handlers as SendHooksExt).onCoworkSend && (handlers as SendHooksExt).onCoworkSend!(e)) return;
         if(e.isTrusted)observeManualSend();
         if (handlers.isBlocked()) return;
 
@@ -1262,7 +1282,7 @@ const RSProvider: PlazCodeProvider = (() => {
       "click",
       (e) => {
         if(e.isTrusted && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && (e.button==null || e.button===0)){
-          const link=safeClosest(e.target,"a[href]");
+          const link=safeClosest(e.target,"a[href]") as HTMLAnchorElement | null;
           const destination=link && safeRead(()=>!link.hasAttribute("download") && (!link.target || link.target==="_self") ? new URL(link.href,location.href) : null,null);
           if(destination && destination.origin===location.origin && destination.pathname!==location.pathname)cancelPendingSends();
         }
@@ -1270,9 +1290,9 @@ const RSProvider: PlazCodeProvider = (() => {
         if (!getEditor()) return;
         const t = e.target as Element;
         // The native "Continue" button = a clear intent to RESUME after a stop.
-        const cont = t && safeRead(() => t.closest, null) && safeClosest(t, ".ds-button");
+        const cont = t && safeRead(() => t.closest, null) && (safeClosest(t, ".ds-button") as HTMLElement | null);
         if (cont && RE.continueBtn.test((safeRead(() => cont.innerText, "") || "").trim())) {
-          if(e.isTrusted){observeManualSend();handlers.onNativeContinue();}
+          if(e.isTrusted){observeManualSend();(handlers as SendHooksExt).onNativeContinue!();}
           return;
         }
         const btn = t && safeRead(() => t.closest, null) && safeClosest(t, S.sendBtn);
@@ -1283,7 +1303,7 @@ const RSProvider: PlazCodeProvider = (() => {
           return;
         }
         if (safeRead(() => btn.getAttribute("aria-disabled"), null) === "true") return;
-        if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+        if ((handlers as SendHooksExt).onCoworkSend && (handlers as SendHooksExt).onCoworkSend!(e)) return;
         if(e.isTrusted)observeManualSend();
         if (handlers.isBlocked()) return;
         if (!handlers.isStarted()) {
@@ -1303,7 +1323,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // several <p> paragraphs, so we hide the whole CONTIGUOUS RUN of block-level
   // children from the start marker through the end marker. Returns where to
   // insert the chip: {parent, ref} - or null if no tool block was found.
-  function findToolBlockSpot(item, chip) {
+  function findToolBlockSpot(item: Element, chip?: Element | null): { parent: Element | null; ref: Element | null } | null {
     const P = RSParse;
     // DeepSeek's own DSML tool-call markup (1.24.27) is hidden the same way; its
     // block ends at the wrapper closer, or at the invoke closer when unwrapped.
@@ -1311,15 +1331,15 @@ const RSProvider: PlazCodeProvider = (() => {
     const dsmlEnd = new RegExp("<\\s*\\/" + BAR + "dsml" + BAR + "(?:[a-z_]*calls|invoke)\\s*>", "i");
     const dsmlWrapStart = new RegExp("<\\s*" + BAR + "dsml" + BAR + "[a-z_]*calls", "i");
     const dsmlWrapEnd = new RegExp("<\\s*\\/" + BAR + "dsml" + BAR + "[a-z_]*calls\\s*>", "i");
-    const dsmlStart = (t) => !!(P.DSML_SIG_RE && P.DSML_SIG_RE.test(t));
-    const orphan = t => typeof P.orphanDsmlClosers==='function'&&P.orphanDsmlClosers(t)>0;
-    const hasStart = (t) => P.LUA_START_RE.test(t) || t.includes("###mcp_tool###") || dsmlStart(t) || orphan(t);
-    const hasEnd = (t) => P.LUA_END_RE.test(t) || t.includes("###end_mcp_tool###") || t.includes("###end-mcp_tool###") || dsmlEnd.test(t) || orphan(t);
-    const isJson = (t) => /\{\s*"(?:command|tool)"\s*:/.test(t);
+    const dsmlStart = (t: string): boolean => !!(P.DSML_SIG_RE && P.DSML_SIG_RE.test(t));
+    const orphan = (t: string): boolean => typeof P.orphanDsmlClosers==='function'&&P.orphanDsmlClosers(t)>0;
+    const hasStart = (t: string): boolean => P.LUA_START_RE.test(t) || t.includes("###mcp_tool###") || dsmlStart(t) || orphan(t);
+    const hasEnd = (t: string): boolean => P.LUA_END_RE.test(t) || t.includes("###end_mcp_tool###") || t.includes("###end-mcp_tool###") || dsmlEnd.test(t) || orphan(t);
+    const isJson = (t: string): boolean => /\{\s*"(?:command|tool)"\s*:/.test(t);
     // The reply markdown containers (never the reasoning/think area).
     const containers = [...safeQueryAll(item, S.markdown)].filter((m) => !safeClosest(m, S.thinking));
     if (!containers.length) return null;
-    let parent = null, ref = null;
+    let parent: Element | null = null, ref: Element | null = null;
     for (const container of containers) {
       const kids = [...safeRead(() => container.children, [])].filter((k) => k !== chip && !(chip && safeRead(() => k.contains(chip), false)));
       let i = 0;
@@ -1332,7 +1352,7 @@ const RSProvider: PlazCodeProvider = (() => {
         const runStart = i;
         let runEnd = i;
         // A wrapped DSML call ends at its wrapper closer, not at the first invoke closer.
-        const endOf = dsmlWrapStart.test(tLow) ? (t) => dsmlWrapEnd.test(t) : hasEnd;
+        const endOf = dsmlWrapStart.test(tLow) ? (t: string): boolean => dsmlWrapEnd.test(t) : hasEnd;
         if (startsBlock && !endOf(tLow)) {
           // multi-element LUA/MCP block → extend until the end marker (or, if the
           // turn is still truncated, to the end of this container).
@@ -1364,17 +1384,17 @@ const RSProvider: PlazCodeProvider = (() => {
     const fenced = !!ref && (safeRead(() => ref.matches(".md-code-block, [class*='md-code-block']"), false) || !!safeQuery(ref, ".md-code-block"));
     if (fenced) { if (!safeRead(() => item.classList.contains("rs-cmd-mask"), false)) safeRead(() => item.classList.add("rs-cmd-mask"), null); }
     else if (!ref) safeRead(() => item.classList.remove("rs-cmd-mask"), null);
-    if (chip && ref) item.__rsDsChip = chip;
-    if (ref && !item.__rsDsGuard && typeof MutationObserver === "function") {
+    if (chip && ref) (item as GuardedItem).__rsDsChip = chip;
+    if (ref && !(item as GuardedItem).__rsDsGuard && typeof MutationObserver === "function") {
       let busy = false;
-      const looksLikeCode = (n) => n && n.nodeType === 1 && (safeRead(() => n.matches("[class*='code'], .md-code-block, pre"), false) || !!safeQuery(n, "[class*='code'], .md-code-block, pre"));
+      const looksLikeCode = (n: Node | null): boolean => (n && n.nodeType === 1 && (safeRead(() => (n as Element).matches("[class*='code'], .md-code-block, pre"), false) || !!safeQuery(n as Element, "[class*='code'], .md-code-block, pre"))) as boolean;
       const guard = new MutationObserver((records) => {
         if (busy || !item.isConnected) return;
-        const card = item.__rsDsChip;
+        const card = (item as GuardedItem).__rsDsChip;
         let redraw = false;
         for (const r of records) {
           for (const n of r.addedNodes) { if (looksLikeCode(n)) { redraw = true; break; } }
-          if (!redraw && card) for (const n of r.removedNodes) { if (n === card || (n.nodeType === 1 && safeRead(() => n.contains(card), false))) { redraw = true; break; } }
+          if (!redraw && card) for (const n of r.removedNodes) { if (n === card || (n.nodeType === 1 && safeRead(() => (n as Element).contains(card!), false))) { redraw = true; break; } }
           if (redraw) break;
         }
         if (!redraw) return;
@@ -1382,10 +1402,10 @@ const RSProvider: PlazCodeProvider = (() => {
         try {
           const chipEl = safeQuery(item, ".rs-chip") || card || null;
           const spot = findToolBlockSpot(item, chipEl);
-          if (spot && chipEl && !chipEl.isConnected) spot.parent.insertBefore(chipEl, spot.ref);
+          if (spot && chipEl && !chipEl.isConnected) spot.parent!.insertBefore(chipEl, spot.ref);
         } catch {} finally { busy = false; }
       });
-      try { guard.observe(item, { childList: true, subtree: true }); item.__rsDsGuard = guard; } catch {}
+      try { guard.observe(item, { childList: true, subtree: true }); (item as GuardedItem).__rsDsGuard = guard; } catch {}
     }
     return ref ? { parent, ref } : null;
   }

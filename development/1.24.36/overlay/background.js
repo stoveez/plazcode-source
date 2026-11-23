@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/background.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // background.js - service worker.
 // Owns ONE resilient WebSocket to the local bridge (ws://127.0.0.1:PORT).
 // Keeping the socket here (not in the content script) avoids https→ws mixed
@@ -14,6 +15,7 @@ const deepSeekRequests = (() => {
   // An aborted or orphaned stream must never lock DeepSeek's responsePending() forever.
   const STALE_MS = 10 * 60 * 1000;
   if (!api?.onBeforeRequest || !api?.onCompleted || !api?.onErrorOccurred) return null;
+  ;
   let state = {revision:0, active:[]};
   const pruneStale = (now = Date.now()) => {
     const before = state.active.length;
@@ -27,7 +29,7 @@ const deepSeekRequests = (() => {
       if (pruneStale()) { state.revision++; try { void store?.set({[key]:state}); } catch {} }
     }
   }).catch(() => {});
-  const enqueue = fn => { chain = chain.then(fn).catch(() => {}); return chain; };
+  const enqueue = (fn) => { chain = chain.then(fn).catch(() => {}); return chain; };
   const sameDocument = (r, tabId, documentId) => r.tabId === tabId && (!documentId || !r.documentId || r.documentId === documentId);
   const view = (tabId, documentId) => ({ok:true, revision:state.revision,
     active:state.active.filter(r => sameDocument(r,tabId,documentId)).map(({id,path,startedAt}) => ({id,path,startedAt}))});
@@ -43,26 +45,26 @@ const deepSeekRequests = (() => {
   const filter = {urls:['https://chat.deepseek.com/api/v0/chat/*'],types:['xmlhttprequest']};
   api.onBeforeRequest.addListener(details => {
     let url, source;
-    try { url=new URL(details.url);source=new URL(details.initiator || details.originUrl || details.documentUrl); } catch { return; }
+    try { url=new URL(details.url);source=new URL((details.initiator || details.originUrl || details.documentUrl)); } catch { return; }
     if (details.frameId !== 0 || details.tabId < 0 || source.origin !== 'https://chat.deepseek.com' ||
         !/^\/api\/v0\/chat\/(?:completion|continue|regenerate)\/?$/.test(url.pathname)) return;
     const startedAt=Date.now();
     void enqueue(async () => {
       let path;
-      try { const page=new URL(details.documentUrl || (await chrome.tabs.get(details.tabId)).url);if(page.origin!==source.origin)return;path=page.pathname; } catch { return; }
+      try { const page=new URL((details.documentUrl || (await chrome.tabs.get(details.tabId)).url));if(page.origin!==source.origin)return;path=page.pathname; } catch { return; }
       const record={id:String(details.requestId),tabId:details.tabId,documentId:details.documentId || '',path,startedAt};
       state.active=state.active.filter(r => r.id!==record.id);
       state.active.push(record);
       await saveAndNotify(record);
     });
   },filter);
-  const terminal = details => { void enqueue(async () => {
+  const terminal = (details) => { void enqueue(async () => {
     const record=state.active.find(r=>r.id===String(details.requestId));if(!record)return;
     state.active=state.active.filter(r=>r.id!==record.id);await saveAndNotify(record);
   }); };
   api.onCompleted.addListener(terminal,filter);
   api.onErrorOccurred.addListener(terminal,filter);
-  const clearTab = tabId => { void enqueue(async()=>{
+  const clearTab = (tabId) => { void enqueue(async()=>{
     if(!state.active.some(r=>r.tabId===tabId))return;
     state.active=state.active.filter(r=>r.tabId!==tabId);state.revision++;
     try { await store?.set({[key]:state}); } catch {}
@@ -73,8 +75,8 @@ const deepSeekRequests = (() => {
   chrome.tabs.onUpdated?.addListener((tabId, changeInfo) => {
     if (changeInfo && changeInfo.status === 'loading') clearTab(tabId);
   });
-  return {snapshot:sender=>enqueue(async()=>{
-    let url;try{url=new URL(sender.url || sender.tab?.url);}catch{return {ok:false};}
+  return {snapshot:(sender)=>enqueue(async()=>{
+    let url;try{url=new URL((sender.url || sender.tab?.url));}catch{return {ok:false};}
     if(url.origin!=='https://chat.deepseek.com' || sender.frameId && sender.frameId!==0 || !Number.isInteger(sender.tab?.id))return {ok:false};
     if (pruneStale()) { state.revision++; try { await store?.set({[key]:state}); } catch {} }
     return view(sender.tab.id,sender.documentId);
@@ -144,7 +146,7 @@ async function ensurePairing(force = false) {
       if (error && error.plazcodeUnofficial) throw error;
       const permDiag = await diagnoseLocalNetworkBlock();
       if (permDiag) throw new Error("Local bridge pairing failed: " + permDiag);
-      throw new Error("Local bridge pairing failed: "+String(error.message || error)+". In Edge or Brave, check that PlazCode is enabled, its site access includes the AI page and localhost, and local-network access is allowed. Browser permission blocks cannot be fixed by restarting Studio.");
+      throw new Error("Local bridge pairing failed: "+String(error?.message || error)+". In Edge or Brave, check that PlazCode is enabled, its site access includes the AI page and localhost, and local-network access is allowed. Browser permission blocks cannot be fixed by restarting Studio.");
     }
     finally { clearTimeout(timer); }
   })();
@@ -243,6 +245,19 @@ async function bridgeFetchOnce(url, options = {}) {
 // Settings -> Copy debug report. Uploads only happen while the bridge answers,
 // are single-flight with a short timeout, and never change any other request.
 const DEBUG_PROBLEM_CAP = 300, DEBUG_INFO_CAP = 150, DEBUG_TAB_CAP = 6;
+;
+
+
+
+
+
+
+
+
+
+
+
+
 const debugProblems = [], debugInfo = [], debugTabs = new Map();
 let debugSeq = 0, debugSentSeq = 0, debugTabsSentAt = 0, debugDirty = false, debugUploading = false, debugLast = null, debugDropped = 0;
 let lastBridgeOkAt = 0;
@@ -295,11 +310,12 @@ function debugRecord(entry) {
 }
 (() => {
   let inside = false;
+  const con = console;
   for (const method of ["error", "warn", "info", "log"]) {
-    const original = console[method];
+    const original = con[method];
     if (typeof original !== "function") continue;
     const level = method === "log" ? "info" : method;
-    console[method] = function debugConsole(...args) {
+    con[method] = function debugConsole( ...args) {
       const result = original.apply(this, args);
       if (!inside && (method !== "log" || (typeof args[0] === "string" && args[0].startsWith("[plazcode")))) {
         inside = true;
@@ -336,7 +352,7 @@ function debugAcceptTab(msg, sender) {
   if ((Array.isArray(msg.diag) || fresh.length) && tabId != null) {
     debugTabs.delete(tabId);
     debugTabs.set(tabId, { host, path: debugRedact(page.path || "").slice(0, 80), at: Date.now(), diag: Array.isArray(msg.diag) ? msg.diag.slice(-40) : (previous && previous.diag || []), fresh });
-    while (debugTabs.size > DEBUG_TAB_CAP) debugTabs.delete(debugTabs.keys().next().value);
+    while (debugTabs.size > DEBUG_TAB_CAP) { const first = debugTabs.keys().next().value; if (first !== undefined) debugTabs.delete(first); else break; }
     debugDirty = true;
   }
 }
@@ -391,10 +407,10 @@ let rustMode = false; // true if Rust agent on 3000 is reachable (preferred)
 // Engine selection belongs to a browser tab, never desktop preferences.
 const tabEngines = new Map();
 async function tabEngine(tabId) {
-  if (!Number.isInteger(tabId)) return "roblox";
+  if (tabId == null || !Number.isInteger(tabId)) return "roblox";
   if (tabEngines.has(tabId)) return tabEngines.get(tabId);
   try { const key="rs-tab-engine-"+tabId; const saved=await chrome.storage.session.get(key); if (!tabEngines.has(tabId)) tabEngines.set(tabId,normalizeEngine(saved[key])); } catch { if (!tabEngines.has(tabId)) tabEngines.set(tabId,"roblox"); }
-  return tabEngines.get(tabId);
+  return tabEngines.get(tabId) || "roblox";
 }
 chrome.tabs.onRemoved?.addListener(tabId=>{tabEngines.delete(tabId);try{chrome.storage.session.remove("rs-tab-engine-"+tabId);}catch{}});
 // The single native health reader below handles first discovery and recovery.
@@ -653,7 +669,7 @@ async function blockbenchWatch(force) {
   blockbenchWatching = true; blockbenchWatchedAt = Date.now();
   try {
     let ready = false, version = "";
-    try { const tab = await blockbenchTab(); if (tab) { const reply = await blockbenchInTab(tab.id, "status", {}, 5000); ready = !!(reply && reply.ok && reply.result && reply.result.blockbench); version = ready ? String(reply.result.blockbench) : ""; } } catch {}
+    try { const tab = await blockbenchTab(); if (tab && tab.id != null) { const reply = await blockbenchInTab(tab.id, "status", {}, 5000); ready = !!(reply && reply.ok && reply.result && reply.result.blockbench); version = ready ? String(reply.result.blockbench) : ""; } } catch {}
     if (ready !== blockbenchWebReady) { blockbenchWebReady = ready; broadcastStatus(); }
     const report = ready + "|" + version;
     if (report !== blockbenchReport || Date.now() - blockbenchReportAt > 20000) {
@@ -681,7 +697,7 @@ async function blockbenchCall(name, args, timeout) {
       reply = body.ok ? { ok: true, result: body.result } : { ok: false, message: body.error || "The PlazCode app could not reach Blockbench." };
     } else {
       const tab = await blockbenchTab();
-      if (!tab) return { ok: false, error: "Blockbench is not open in this browser. Open web.blockbench.net in a tab, then try again. (To use the Blockbench app instead, change the way in PlazCode under Apps & servers.)" };
+      if (!tab || tab.id == null) return { ok: false, error: "Blockbench is not open in this browser. Open web.blockbench.net in a tab, then try again. (To use the Blockbench app instead, change the way in PlazCode under Apps & servers.)" };
       reply = await blockbenchInTab(tab.id, cmd, args, limit);
     }
   } catch (error) { return { ok: false, error: "Blockbench could not be reached (" + String(error && error.message || error).slice(0, 200) + ")." }; }
@@ -838,7 +854,7 @@ async function connect() {
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
     return;
   }
-  clearTimeout(reconnectTimer);
+  clearTimeout(reconnectTimer ?? undefined);
   reconnectTimer = null;
   const url = engineUrl();
   let sock;
@@ -861,7 +877,7 @@ async function connect() {
     if (sock !== ws) return;
     sockOpened = true;
     wsAuthSuspect = false;
-    clearTimeout(socketConnectTimer);
+    clearTimeout(socketConnectTimer ?? undefined);
     socketConnectTimer = null;
     connected = true;
     bridgeError = "";
@@ -899,7 +915,7 @@ async function connect() {
   sock.onclose = (event) => {
     if (sock !== ws) return;
     if (!sockOpened) wsAuthSuspect = true;
-    clearTimeout(socketConnectTimer);
+    clearTimeout(socketConnectTimer ?? undefined);
     socketConnectTimer = null;
     ws = null;
     try {
@@ -943,7 +959,7 @@ async function connect() {
 }
 
 function scheduleReconnect() {
-  clearTimeout(reconnectTimer);
+  clearTimeout(reconnectTimer ?? undefined);
   reconnectTimer = setTimeout(() => { reconnectTimer = null; connect(); }, reconnectDelayFor(reconnectAttempts));
   reconnectAttempts++;
   reconnectDelay = Math.min(reconnectDelay * 1.7, RECONNECT_MAX);
@@ -960,7 +976,7 @@ function startHeartbeat() {
       if (lastMessageAt && Date.now() - lastMessageAt > STALE_SOCKET_MS) {
         if (toolPending) return; // execute_luau owns the helper — pong resumes after it
         log("socket stale, forcing reconnect");
-        try { ws.close(); } catch {}
+        try { ws?.close(); } catch {}
         return;
       }
       // Keeps the MV3 service worker alive AND detects a half-open socket.
@@ -1028,7 +1044,7 @@ const MCP_HEAL_GRACE_MS = 60000;    // let Studio auto-connect settle after (re)
 const MCP_HEAL_COOLDOWN_MS = 180000; // at most one heal every 3 min
 
 function stopHeartbeat() {
-  clearInterval(heartbeatTimer);
+  clearInterval(heartbeatTimer ?? undefined);
   heartbeatTimer = null;
 }
 
@@ -1342,7 +1358,7 @@ async function refreshProcStatus() {
     const prefSyncPromise = syncDesktopPreferencesAfterHealth();
     if (!wasUsable) {
       reconnectAttempts = 0;
-      clearTimeout(reconnectTimer);
+      clearTimeout(reconnectTimer ?? undefined);
       reconnectTimer = null;
       connect();
     } else if (!connected && !connectInFlight && !reconnectTimer) {
@@ -1401,7 +1417,7 @@ async function reportDesktopAgentState() {
     const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true, url: PROVIDER_URLS });
     const tab = tabs[0];
     let control = { canStart: false, canStop: false, pageMounted:false, barVisible:false, status: "Select a supported AI chat in your browser." };
-    if (tab && Number.isInteger(tab.id)) {
+    if (tab && tab.id != null && Number.isInteger(tab.id)) {
       try {
         // 1.24.30: a frozen or busy AI tab never answers; without a limit this report (every 750 ms) stopped for good.
         // A tab that is only slow keeps its last answer for 15 s instead of flashing "Refresh the AI chat".
@@ -1462,7 +1478,7 @@ function releaseRunTab(tabId) {
   try { const p = chrome.tabs.update(tabId, { autoDiscardable: true }); if (p && p.catch) p.catch(() => {}); } catch {}
 }
 function noteRunBeat(tabId, running) {
-  if (!Number.isInteger(tabId)) return;
+  if (tabId == null || !Number.isInteger(tabId)) return;
   if (!running) { releaseRunTab(tabId); return; }
   try { controlKeepAlive(tabId); } catch {}
   if (!runTabs.has(tabId)) {
@@ -1487,7 +1503,11 @@ function broadcastStatus() {
   chrome.runtime.sendMessage(statusObj()).catch(() => {});
   chrome.tabs.query({ url: PROVIDER_URLS }, (tabs) => {
     if (chrome.runtime.lastError || !Array.isArray(tabs)) return;
-    for (const t of tabs) tabEngine(t.id).then(mode=>chrome.tabs.sendMessage(t.id, statusObj(mode))).catch(() => {});
+    for (const t of tabs) {
+      if (t.id == null) continue;
+      const tid = t.id;
+      tabEngine(tid).then(mode=>chrome.tabs.sendMessage(tid, statusObj(mode))).catch(() => {});
+    }
   });
 }
 
@@ -1536,7 +1556,7 @@ function webHeaders(extra, referer) {
 async function fetchWithTimeout(url, opts, ms) {
   const controller = new AbortController();
   const callerSignal = opts && opts.signal;
-  const cancel = () => { try { controller.abort(callerSignal.reason); } catch {} };
+  const cancel = () => { try { controller.abort(callerSignal?.reason); } catch {} };
   if (callerSignal) { if (callerSignal.aborted) cancel(); else callerSignal.addEventListener("abort", cancel, { once: true }); }
   let timer;
   try {
@@ -1771,6 +1791,7 @@ async function sendLocalEngine(obj, timeout = 25000) {
     catch (e) { resolve({ ok: false, error: "PlazCode.exe is not running" }); return; }
     const id = 800000 + Math.floor(Math.random() * 99999);
     let settled = false;
+    let timer;
     const done = (v) => {
       if (settled) return;
       settled = true;
@@ -1778,7 +1799,7 @@ async function sendLocalEngine(obj, timeout = 25000) {
       try { sock.close(); } catch {}
       resolve(v);
     };
-    const timer = setTimeout(() => done({ ok: false, error: "PlazCode.exe did not answer — is it running?" }), timeout);
+    timer = setTimeout(() => done({ ok: false, error: "PlazCode.exe did not answer — is it running?" }), timeout);
     sock.onerror = () => done({ ok: false, error: "AgentScript connection failed. Start PlazCode and allow the extension access to localhost in this browser." });
     sock.onopen = () => {
       try { sock.send(JSON.stringify({ ...obj, id })); }
@@ -1859,6 +1880,7 @@ async function localReadAll(path) {
 // Read ANY workspace file as base64 (images/binaries included) through the
 // native AgentScript engine. This is the ONLY way browser-side code can get at
 // bytes on disk, so it backs every "attach this file / screenshot" feature.
+// async function localReadBase64(path)
 async function localReadBase64(path) {
   const r = await sendLocalEngine({ type: "call_tool", name: "read_file_base64", arguments: { path } }, 30000);
   if (!r || !r.ok) throw new Error((r && r.error) || ("could not read " + path));
@@ -2054,7 +2076,7 @@ async function blenderPayload(name, args) {
     // the pixels back (see the screenshot branch there) without guessing.
     return { type: "plazcode_shot", params: { filepath: shot, max_size: Math.max(64, Math.min(4096, Number(a.max_size) || 1000)) }, _orShot: shot, _orReadShot: relativeShot, _orIsShot: true };
   }
-  const mapped = BLENDER_CMD[bare];
+  const mapped = (BLENDER_CMD)[bare];
   if (mapped) return { type: "plazcode_op", params: { cmd: mapped, args: a }, _orStatus: "plazcode_status.json", _orMesh: "plazcode_mesh.json" };
   const params = Object.assign({}, a);
   delete params.user_prompt;
@@ -2339,7 +2361,7 @@ async function readReleaseStatus() {
     // One slow or dropped read (the app is busy, a brief network blip) is not an outage: only report the
     // bridge as unavailable after 8 failed reads in a row, so the bar never contradicts a live connection.
     if (++releaseStatusFailures < 8) return;
-    const previous=await chrome.storage.local.get("rsReleaseStatus").catch(()=>({}));const status={...(previous.rsReleaseStatus||{}),check_error:"Bridge unavailable."},signature=JSON.stringify(status);if(signature!==lastReleaseSignature){await chrome.storage.local.set({rsReleaseStatus:status}).catch(()=>{});lastReleaseSignature=signature;}
+    const previous = await chrome.storage.local.get("rsReleaseStatus").catch(()=>({}));const status={...(previous.rsReleaseStatus||{}),check_error:"Bridge unavailable."},signature=JSON.stringify(status);if(signature!==lastReleaseSignature){await chrome.storage.local.set({rsReleaseStatus:status}).catch(()=>{});lastReleaseSignature=signature;}
   } finally { releaseStatusReading = false; }
 }
 setInterval(() => { if (rustMode) readReleaseStatus(); }, 1000);
@@ -2356,7 +2378,7 @@ const CRITIC_NEW_CHAT = [
   [/^chat\.qwen\.ai$/, "https://chat.qwen.ai/"],
   [/^chat\.z\.ai$/, "https://chat.z.ai/"],
 ];
-let criticWin = null; // { windowId, tabId, host }
+let criticWin = null;
 const criticSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function criticClose() {
   const win = criticWin; criticWin = null;
@@ -2383,7 +2405,7 @@ async function criticTabReady(tabId) {
   }
   return false;
 }
-async function runCritic(msg) {
+const runCritic = async function runCritic(msg) {
   if (msg.op === "close") { await criticClose(); return { ok: true }; }
   const host = String(msg.host || "");
   const entry = CRITIC_NEW_CHAT.find(([re]) => re.test(host));
@@ -2394,9 +2416,10 @@ async function runCritic(msg) {
     await criticClose();
     const created = await chrome.windows.create({ url, type: "popup", focused: false, width: 560, height: 760 });
     const tab = created && created.tabs && created.tabs[0];
-    if (!created || !tab) return { ok: false, error: "the critic window could not be opened" };
+    if (!created || !tab || tab.id == null) return { ok: false, error: "the critic window could not be opened" };
     criticWin = { windowId: created.id, tabId: tab.id, host };
   }
+  if (!criticWin) return { ok: false, error: "the critic window could not be opened" };
   if (!(await criticTabReady(criticWin.tabId))) { await criticClose(); return { ok: false, error: "the critic chat did not load" }; }
   const ready = await criticPing(criticWin.tabId);
   if (!ready) { await criticClose(); return { ok: false, error: "PlazCode is not running in the critic window (is the site signed in?)" }; }
@@ -2410,7 +2433,7 @@ async function runCritic(msg) {
   ]).catch((error) => ({ ok: false, error: String(error && error.message || error).slice(0, 160) }));
   clearTimeout(timer);
   return answer || { ok: false, error: "no answer from the critic window" };
-}
+};
 try { if (chrome.windows && chrome.windows.onRemoved) chrome.windows.onRemoved.addListener((windowId) => { if (criticWin && criticWin.windowId === windowId) criticWin = null; }); } catch {}
 
 // ── Helper agents (after 1.24.32) ───────────────────────────────────────────
@@ -2506,8 +2529,8 @@ function createHelperRoster({ limit = 2, maxOpen = 8, now = () => Date.now() } =
     for (const key of wanted) {
       const held = locks.get(parentTab + "|" + key);
       if (!held || held.owner === owner) continue;
-      const holder = held.owner === "main" ? (now() - held.at < 600000) : (rows.get(Number(held.owner.slice(1))) || {}).status;
-      if (held.owner === "main" ? holder : ACTIVE.has(holder)) return { ok: false, key, holder: held.title };
+      const active = held.owner === "main" ? (now() - held.at < 600000) : ACTIVE.has(String((rows.get(Number(held.owner.slice(1))) || {}).status || ""));
+      if (active) return { ok: false, key, holder: held.title };
     }
     for (const key of wanted) locks.set(parentTab + "|" + key, { owner, title, at: now() });
     return { ok: true };
@@ -2579,19 +2602,20 @@ async function helperStart(row) {
     // Open behind the user's window where the browser allows it (Firefox does not accept "focused").
     try { created = await chrome.windows.create({ ...shape, focused: false }); } catch { created = await chrome.windows.create(shape); }
     const tab = created && created.tabs && created.tabs[0];
-    if (!created || !tab) throw new Error("the helper window could not be opened");
-    helperRoster.placed(row.id, { tabId: tab.id, windowId: created.id });
+    if (!created || !tab || tab.id == null) throw new Error("the helper window could not be opened");
+    const helperTabId = tab.id;
+    helperRoster.placed(row.id, { tabId: helperTabId, windowId: created.id });
     // The helper works with the same engine (RobloxScript or AgentScript) as the chat that asked for it.
-    tabEngines.set(tab.id, normalizeEngine(row.engine));
-    try { await chrome.storage.session.set({ ["rs-tab-engine-" + tab.id]: normalizeEngine(row.engine) }); } catch {}
+    tabEngines.set(helperTabId, normalizeEngine(row.engine));
+    try { await chrome.storage.session.set({ ["rs-tab-engine-" + helperTabId]: normalizeEngine(row.engine) }); } catch {}
     helperSave();
     if (!live()) { helperCloseWindow(row); return; }
-    if (!(await criticTabReady(tab.id))) throw new Error("the helper chat did not load");
-    const ready = await helperPing(tab.id);
+    if (!(await criticTabReady(helperTabId))) throw new Error("the helper chat did not load");
+    const ready = await helperPing(helperTabId);
     if (!live()) { helperCloseWindow(row); return; }
     if (!ready) throw new Error("PlazCode is not running in the helper window (is the site signed in?)");
     await criticSleep(1500); // let the new chat finish drawing its message box
-    const answer = await chrome.tabs.sendMessage(tab.id, { type: "rs-helper-run", helper: { id: row.id, title: row.title, task: row.task, area: row.area, engine: row.engine } });
+    const answer = await chrome.tabs.sendMessage(helperTabId, { type: "rs-helper-run", helper: { id: row.id, title: row.title, task: row.task, area: row.area, engine: row.engine } });
     if (!answer || !answer.ok) throw new Error(String((answer && answer.error) || "the helper chat did not accept the task").slice(0, 200));
     // From here the helper's own tab reports its progress and its result ("helpers" messages).
   } catch (error) {
@@ -2601,7 +2625,7 @@ async function helperStart(row) {
 async function helperRequest(tabId, request) {
   await helperLoad();
   const action = String(request && request.action || "");
-  if (!Number.isInteger(tabId)) return { ok: false, error: "Helpers need an AI chat tab." };
+  if (tabId == null || !Number.isInteger(tabId)) return { ok: false, error: "Helpers need an AI chat tab." };
   if (action === "start") {
     const added = helperRoster.add({ tabId, chat: request.chat }, request.helpers, { url: request.url, engine: request.engine });
     if (!added.ok) return added;
@@ -2654,7 +2678,7 @@ function answerWithin(final, job, sendResponse) {
 chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
   try { askNoteSite(_sender); } catch {}
   if (msg && msg.type === "deepseek-requests") {
-    if (!deepSeekRequests) { rawSendResponse({ok:false}); return; }
+    if (!deepSeekRequests) { rawSendResponse({ok:false}); return undefined; }
     deepSeekRequests.snapshot(_sender).then(rawSendResponse,()=>rawSendResponse({ok:false}));
     return true;
   }
@@ -2687,7 +2711,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
       case "provider-pacing": {
         try {
           const origin=new URL(_sender.url || _sender.tab?.url || "");
-          if(origin.protocol!=="https:" || !["chat.deepseek.com","deepseek.com"].includes(origin.hostname) || !Number.isInteger(_sender.tab?.id))throw new Error("Request pacing is only available to the DeepSeek chat.");
+          if(origin.protocol!=="https:" || !["chat.deepseek.com","deepseek.com"].includes(origin.hostname) || !_sender.tab || !Number.isInteger(_sender.tab.id))throw new Error("Request pacing is only available to the DeepSeek chat.");
           const request={...msg.request,provider:"deepseek",owner:pairingIdentity()+":"+_sender.tab.id+":"+String(_sender.documentId || msg.page || "").slice(0,100)};
           const response=await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/provider-pacing`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(request),signal:AbortSignal.timeout(5000)});
           const value=await response.json();sendResponse(response.ok ? value : {ok:false,error:value.error || "The shared request timer could not be reached. Update the complete PlazCode app and extension together."});
@@ -2717,13 +2741,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         sendResponse({engine:mode}); break;
       case "rs-set-engine": {
         const next=normalizeEngine(msg.engine);
-        if (!Number.isInteger(tabId)) {sendResponse({ok:false,error:"Select an AI tab before changing its engine."});break;}
+        if (tabId == null || !Number.isInteger(tabId)) {sendResponse({ok:false,error:"Select an AI tab before changing its engine."});break;}
         // Leaving AgentScript for Roblox needs a connected Studio: otherwise stay on AgentScript and say why.
         if (next==="roblox" && (tabEngines.get(tabId)||mode)==="local") {
           let studioUp=false;
           try {
             const live=await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/status`,{method:"GET",signal:AbortSignal.timeout(4000)});
-            studioUp=live.ok && (await live.json()).roblox_connected===true;
+            studioUp=live.ok && ((await live.json())).roblox_connected===true;
           } catch {}
           if (!studioUp) {sendResponse({ok:false,engine:"local",error:"studio_not_connected",message:"Roblox Studio isn't connected. Open Roblox Studio and connect it to PlazCode, then switch to Roblox again."});break;}
         }
@@ -2996,7 +3020,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
       case "reconnect":
         reconnectDelay = RECONNECT_MIN;
         reconnectAttempts = 0;
-        clearTimeout(reconnectTimer);
+        clearTimeout(reconnectTimer ?? undefined);
         reconnectTimer = null;
         if (ws && (ws.readyState === WebSocket.CONNECTING || (ws.readyState === WebSocket.OPEN && lastMessageAt && Date.now() - lastMessageAt > HEARTBEAT_MS * 2))) {
           const stale = ws; ws = null; connected = false;
@@ -3171,7 +3195,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
           let available = [];
           try {
             const tr = await fetch("http://127.0.0.1:11434/api/tags", { signal: AbortSignal.timeout(OLLAMA_TAGS_TIMEOUT_MS) });
-            if (tr.ok) { const tj = await tr.json(); available = (tj.models || []).map(m => m.name); }
+            if (tr.ok) { const tj = await tr.json(); available = (tj.models || []).map((m) => String(m.name)); }
           } catch {}
           if (!available.length) {
             sendResponse({ ok:false, errKind:"no_server", error:"ERR: OLLAMA NOT RUNNING - nothing answered on 127.0.0.1:11434." });
@@ -3231,7 +3255,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
           const dataUrl = await new Promise((resolve, reject) => {
             let settled=false;
             const timer=setTimeout(()=>done(new Error("Browser did not finish the screen capture")),15000);
-            const done=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);if(error)reject(error);else resolve(value);};
+            const done=(error, value)=>{if(settled)return;settled=true;clearTimeout(timer);if(error)reject(error);else resolve(value);};
             try {
               chrome.tabs.captureVisibleTab(windowId, { format: "png" }, (url) => {
                 try { if (chrome.runtime.lastError) done(new Error(chrome.runtime.lastError.message)); else done(null,url); } catch(error) { done(error); }
@@ -3253,7 +3277,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         if (CONTROL_V2) { try { const tab = await resolveTab(msg); const entered = tab ? await controlEnter(tab, msg, _sender) : { error: "no target tab (open a page, or pass url_contains)" }; if (entered.error) { sendResponse({ ok: false, error: entered.error }); break; } } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); break; } }
         try {
           const tab = await resolveTab(msg);
-          if (!tab) { sendResponse({ ok: false, error: "no target tab (open a page, or pass url_contains)" }); break; }
+          if (!tab || tab.id == null) { sendResponse({ ok: false, error: "no target tab (open a page, or pass url_contains)" }); break; }
           const [res] = await chrome.scripting.executeScript({
             target: { tabId: tab.id },
             func: () => {
@@ -3288,7 +3312,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         if (CONTROL_V2) { try { sendResponse(await controlledTabAction("click", msg, _sender)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); } break; }
         try {
           const tab = await resolveTab(msg);
-          if (!tab) { sendResponse({ ok: false, error: "no target tab" }); break; }
+          if (!tab || tab.id == null) { sendResponse({ ok: false, error: "no target tab" }); break; }
           const [res] = await chrome.scripting.executeScript({
             target: { tabId: tab.id },
             args: [String(msg.selector || ""), String(msg.text || "")],
@@ -3321,7 +3345,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         if (CONTROL_V2) { try { sendResponse(await controlledTabAction("type", msg, _sender)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); } break; }
         try {
           const tab = await resolveTab(msg);
-          if (!tab) { sendResponse({ ok: false, error: "no target tab" }); break; }
+          if (!tab || tab.id == null) { sendResponse({ ok: false, error: "no target tab" }); break; }
           const [res] = await chrome.scripting.executeScript({
             target: { tabId: tab.id },
             args: [String(msg.selector || ""), String(msg.text || ""), !!msg.submit],
@@ -3355,7 +3379,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         if (CONTROL_V2) { try { sendResponse(await controlledTabAction("scroll", msg, _sender)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); } break; }
         try {
           const tab = await resolveTab(msg);
-          if (!tab) { sendResponse({ ok: false, error: "no target tab" }); break; }
+          if (!tab || tab.id == null) { sendResponse({ ok: false, error: "no target tab" }); break; }
           const [res] = await chrome.scripting.executeScript({
             target: { tabId: tab.id },
             args: [Number(msg.amount) || 600],
@@ -3375,7 +3399,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, rawSendResponse) => {
         break;
       case "ask_open":
         if (!CONTROL_V2) { sendResponse({ ok: false, error: "Not available in this version." }); break; }
-        try { const opener = _sender && _sender.tab; if (opener && !ask.busy && !opener.incognito && AskSites.siteFor(opener.url || "")) { askLastTab = { id: opener.id, at: Date.now() }; askUseOwn(opener); }
+        try { const opener = _sender && _sender.tab; if (opener && opener.id != null && !ask.busy && !opener.incognito && AskSites.siteFor(opener.url || "")) { askLastTab = { id: opener.id, at: Date.now() }; askUseOwn(opener); }
           sendResponse(await askOpen(Number.isInteger(msg.windowId) ? msg.windowId : opener ? opener.windowId : undefined)); } catch (e) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
       case "ask_reply": case "ask_step": case "ask_partial": case "ask_approve":
@@ -3421,8 +3445,9 @@ function controlKeepAlive(byTab) {
 let controlWords = null;
 function controlKeepWords(given) {
   if (!given || typeof given !== "object") return;
+  const g = given;
   const kept = {};
-  for (const key of ["working", "paused", "resume", "stop", "shared", "stopSharing"]) if (typeof given[key] === "string" && given[key].trim() && given[key].length <= 80) kept[key] = given[key].trim();
+  for (const key of ["working", "paused", "resume", "stop", "shared", "stopSharing"]) if (typeof g[key] === "string" && g[key].trim() && g[key].length <= 80) kept[key] = g[key].trim();
   if (Object.keys(kept).length) controlWords = kept;
 }
 const CONTROL_STORES = /^https:\/\/(?:chromewebstore\.google\.com|chrome\.google\.com\/webstore|microsoftedge\.microsoft\.com\/addons|addons\.mozilla\.org)(?:\/|$)/i;
@@ -3440,16 +3465,18 @@ function controlRefusal(tab, sender) {
 async function controlEnter(tab, msg, sender) {
   const refusal = controlRefusal(tab, sender);
   if (refusal) return { error: refusal };
-  const row = controlTabs.get(tab.id) || { paused: false, stoppedAt: 0, by: null };
+  if (tab.id == null) return { error: "no target tab" };
+  const tabId = tab.id;
+  const row = controlTabs.get(tabId) || { paused: false, stoppedAt: 0, by: null };
   if (row.stoppedAt && Date.now() - row.stoppedAt < 15000) return { error: "The person pressed Stop in that tab a moment ago, so PlazCode did nothing. Ask them before working there again." };
   row.stoppedAt = 0; row.by = sender && sender.tab ? sender.tab.id : row.by;
-  controlTabs.set(tab.id, row);
-  controlLiveStart(tab.id, row.by).catch(() => {});
+  controlTabs.set(tabId, row);
+  controlLiveStart(tabId, row.by).catch(() => {});
   const accent = /^#[0-9a-f]{6}$/i.test(String(msg.accent || "").trim()) ? String(msg.accent).trim() : "";
   if (accent) row.accent = accent;
   controlKeepWords(msg.words);
-  await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["core/control-overlay.js"] });
-  const [shown] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: [accent, controlWords], func: (a, w) => globalThis.__plazcodeControl.show({ accent: a, words: w }) });
+  await chrome.scripting.executeScript({ target: { tabId }, files: ["core/control-overlay.js"] });
+  const [shown] = await chrome.scripting.executeScript({ target: { tabId }, args: [accent, controlWords], func: (a, w) => globalThis.__plazcodeControl.show({ accent: a, words: w }) });
   if (shown && shown.result && shown.result.paused) row.paused = true;
   if (row.paused) {
     // The person took over: wait for Resume (or Stop) instead of acting under their hands.
@@ -3463,14 +3490,15 @@ async function controlEnter(tab, msg, sender) {
 // One tab action the controlled way: glow and label on, PlazCode's cursor glides to the target, then the action.
 async function controlledTabAction(kind, msg, sender) {
   const tab = await resolveTab(msg);
-  if (!tab) return { ok: false, error: "no target tab (open a page, or pass url_contains)" };
+  if (!tab || tab.id == null) return { ok: false, error: "no target tab (open a page, or pass url_contains)" };
+  const tabId = tab.id;
   // Ask PlazCode works in a copy: clicking, typing, scrolling or navigating in the person's own tab is refused (a picture of it is fine).
-  if (sender && sender.tab && Number.isInteger(ask.tabId) && sender.tab.id === ask.tabId && ask.copy && Number.isInteger(ask.origin) && tab.id === ask.origin && kind !== "read") {
+  if (sender && sender.tab && Number.isInteger(ask.tabId) && sender.tab.id === ask.tabId && ask.copy && Number.isInteger(ask.origin) && tabId === ask.origin && kind !== "read") {
     return { ok: false, error: "That is the person's own tab, and it stays untouched. Open a copy with tab_open (the same web address) and work in the copy; pass its tabId." };
   }
   const entered = await controlEnter(tab, msg, sender);
   if (entered.error) return { ok: false, error: entered.error };
-  const run = async (func, args) => (await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: args || [], func }))[0].result;
+  const run = async (func, args) => (await chrome.scripting.executeScript({ target: { tabId }, args: args || [], func }))[0].result;
   if (kind === "read") return null; // reading shows the glow; the page is read by the usual code
   if (kind === "scroll") {
     return { ok: true, result: await run((amount) => { window.scrollBy({ top: amount, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); return { scrolled: amount, y: Math.round(window.scrollY + amount) }; }, [Number(msg.amount) || 600]) };
@@ -3484,7 +3512,7 @@ async function controlledTabAction(kind, msg, sender) {
       else if (kind === "type") el = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
       if (!el && text && kind === "click") {
         const t = text.toLowerCase();
-        el = Array.from(document.querySelectorAll("a, button, input, [role=button], [onclick], summary, select, textarea, label"))
+        el = (Array.from(document.querySelectorAll("a, button, input, [role=button], [onclick], summary, select, textarea, label")))
           .find((c) => ((c.innerText || c.value || c.getAttribute("aria-label") || c.getAttribute("placeholder") || "").toLowerCase().includes(t)));
       }
     } catch { return { error: "Invalid selector" }; }
@@ -3496,18 +3524,18 @@ async function controlledTabAction(kind, msg, sender) {
   }, [kind, String(msg.selector || ""), String(msg.text || "")]);
   if (!found || found.error) return { ok: true, result: kind === "type" ? { typed: false, error: found && found.error } : { clicked: false, error: found && found.error } };
   await run((x, y) => globalThis.__plazcodeControl.moveTo(x, y), [found.x, found.y]);
-  const row = controlTabs.get(tab.id);
+  const row = controlTabs.get(tabId);
   if (row && (row.paused || row.stoppedAt)) return { ok: false, error: row.stoppedAt ? "The person pressed Stop, so PlazCode did nothing." : "The person took over the tab just before the action, so nothing was done. Ask them whether to continue." };
   if (kind === "click") {
     return { ok: true, result: await run(() => {
-      const control = globalThis.__plazcodeControl, el = control.target; control.target = null;
+      const control = globalThis.__plazcodeControl; const el = control.target; control.target = null;
       if (!el || !el.isConnected) return { clicked: false, error: "The element went away before the click; nothing was clicked." };
       try { control.press(); const receipt = { clicked: true, tag: el.tagName.toLowerCase(), label: (el.innerText || el.value || "").trim().slice(0, 60) }; el.focus && el.focus(); el.click(); return receipt; }
       catch (error) { return { clicked: false, error: String(error.message || error), note: "The click was not repeated; inspect the page before retrying." }; }
     }) };
   }
   return { ok: true, result: await run((text, submit) => {
-    const control = globalThis.__plazcodeControl, el = control.target; control.target = null;
+    const control = globalThis.__plazcodeControl; const el = control.target; control.target = null;
     if (!el || !el.isConnected) return { typed: false, error: "The field went away before typing; nothing was typed." };
     try {
       control.press(); el.focus();
@@ -3544,7 +3572,7 @@ const cdp = (tabId, method, params) => chrome.debugger.sendCommand({ tabId }, me
 if (chrome.debugger && chrome.debugger.onDetach) {
   chrome.debugger.onDetach.addListener((source, reason) => {
     const tabId = source && source.tabId;
-    if (!Number.isInteger(tabId)) return;
+    if (tabId == null || !Number.isInteger(tabId)) return;
     clearTimeout(controlDebug.get(tabId)); controlDebug.delete(tabId);
     // The person pressed Cancel on the browser's "started debugging" bar: that is Stop.
     if (reason === "canceled_by_user") controlEvent({ event: "stop" }, { tab: { id: tabId }, id: chrome.runtime.id });
@@ -3600,17 +3628,18 @@ function base64Blob(data, type) {
 }
 // A picture of the target tab in CSS pixels (so its x/y are the ones tab_click_at takes), at most 1400 wide.
 async function controlPicture(tab, debug) {
-  const run = async (func, args) => (await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: args || [], func }))[0].result;
+  const tabId = tab.id;
+  const run = async (func, args) => (await chrome.scripting.executeScript({ target: { tabId }, args: args || [], func }))[0].result;
   const view = await run(() => ({ w: innerWidth, h: innerHeight, dpr: devicePixelRatio || 1 }));
   await run((on) => globalThis.__plazcodeControl && globalThis.__plazcodeControl.veil(on), [true]);
   let blob;
   try {
     if (debug) {
-      await debugAttach(tab.id);
-      const shot = await cdp(tab.id, "Page.captureScreenshot", { format: "png", fromSurface: true });
+      await debugAttach(tabId);
+      const shot = await cdp(tabId, "Page.captureScreenshot", { format: "png", fromSurface: true });
       blob = base64Blob(shot.data, "image/png");
     } else if (typeof chrome.tabs.captureTab === "function") {
-      blob = base64Blob(String(await chrome.tabs.captureTab(tab.id, { format: "png" })).replace(/^data:[^,]*,/, ""), "image/png"); // Firefox: any tab
+      blob = base64Blob(String(await chrome.tabs.captureTab(tabId, { format: "png" })).replace(/^data:[^,]*,/, ""), "image/png"); // Firefox: any tab
     } else {
       // Chrome lets an extension take pictures of tabs only through the debugging connection (or right after the
       // person clicks the PlazCode icon); a browser without it gets no picture.
@@ -3640,7 +3669,7 @@ async function controlV2Tool(msg, sender) {
       try { const o = await chrome.tabs.get(ask.origin); where = { url, active: false, windowId: o.windowId, index: o.index + 1 }; } catch {}
     }
     const tab = await chrome.tabs.create(where);
-    if (fromAsk && ask.copy) {
+    if (fromAsk && ask.copy && tab.id != null) {
       ask.work = tab.id; ask.workOf = ask.origin;
       askRemember({ t: "note", key: "PlazCode opened a copy of your tab to work in. Your own tab stays untouched.", text: "PlazCode opened a copy of your tab to work in. Your own tab stays untouched." });
       askPost({ type: "ask-work", tabId: tab.id });
@@ -3649,14 +3678,15 @@ async function controlV2Tool(msg, sender) {
     return { ok: true, text: "Opened " + url + " in a new tab (tabId " + tab.id + "). Pass tabId " + tab.id + " to the next tab_* command to work there." };
   }
   const tab = await resolveTab(msg);
-  if (!tab) return { ok: false, error: "no target tab (open a page, or pass url_contains or tabId)" };
+  if (!tab || tab.id == null) return { ok: false, error: "no target tab (open a page, or pass url_contains or tabId)" };
+  const tabId = tab.id;
   // Ask PlazCode works in a copy: clicking, typing, scrolling or navigating in the person's own tab is refused (a picture of it is fine).
-  if (sender && sender.tab && Number.isInteger(ask.tabId) && sender.tab.id === ask.tabId && ask.copy && Number.isInteger(ask.origin) && tab.id === ask.origin && name !== "tab_screenshot") {
+  if (sender && sender.tab && Number.isInteger(ask.tabId) && sender.tab.id === ask.tabId && ask.copy && Number.isInteger(ask.origin) && tabId === ask.origin && name !== "tab_screenshot") {
     return { ok: false, error: "That is the person's own tab, and it stays untouched. Open a copy with tab_open (the same web address) and work in the copy; pass its tabId." };
   }
   const entered = await controlEnter(tab, msg, sender);
   if (entered.error) return { ok: false, error: entered.error };
-  const run = async (func, args) => (await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: args || [], func }))[0].result;
+  const run = async (func, args) => (await chrome.scripting.executeScript({ target: { tabId }, args: args || [], func }))[0].result;
   const point = () => { const x = Number(msg.x), y = Number(msg.y); return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 ? [x, y] : null; };
   const askFirst = async (kind, at) => {
     if (msg.confirmed === true) return "";
@@ -3665,9 +3695,9 @@ async function controlV2Tool(msg, sender) {
   if (name === "tab_navigate") {
     const url = String(msg.url || "");
     if (!/^https?:\/\//i.test(url) || CONTROL_STORES.test(url) || isProviderUrl(url)) return { ok: false, error: "tab_navigate takes a web address starting with http:// or https:// (not an AI chat or the extension store)." };
-    await chrome.tabs.update(tab.id, { url });
+    await chrome.tabs.update(tabId, { url });
     const until = Date.now() + 20000;
-    while (Date.now() < until) { await new Promise((r) => setTimeout(r, 250)); const now = await chrome.tabs.get(tab.id).catch(() => null); if (!now) break; if (now.status === "complete" && now.url && now.url !== tab.url) break; }
+    while (Date.now() < until) { await new Promise((r) => setTimeout(r, 250)); const now = await chrome.tabs.get(tabId).catch(() => null); if (!now) break; if (now.status === "complete" && now.url && now.url !== tab.url) break; }
     return { ok: true, text: "Went to " + url + "." };
   }
   if (name === "tab_screenshot") {
@@ -3681,22 +3711,22 @@ async function controlV2Tool(msg, sender) {
     if (name === "tab_click_at") { const ask = await askFirst("click", at); if (ask) return controlConfirm(ask, tab, false); }
     const target = await run((x, y) => { const el = document.elementFromPoint(x, y); return el ? (el.tagName.toLowerCase() + (el.innerText ? ' "' + el.innerText.trim().replace(/\s+/g, " ").slice(0, 40) + '"' : "")) : "nothing"; }, at);
     await run((x, y) => globalThis.__plazcodeControl.moveTo(x, y), at);
-    const row = controlTabs.get(tab.id);
+    const row = controlTabs.get(tabId);
     if (row && (row.paused || row.stoppedAt)) return { ok: false, error: "The person took over the tab just before the action, so nothing was done." };
     if (name === "tab_scroll_at") {
       const dy = Math.max(-5000, Math.min(5000, Number(msg.dy) || 600)), dx = Math.max(-5000, Math.min(5000, Number(msg.dx) || 0));
-      if (debug) { await debugAttach(tab.id); await run((ms) => globalThis.__plazcodeControl.expect(ms), [1500]); await cdp(tab.id, "Input.dispatchMouseEvent", { type: "mouseWheel", x: at[0], y: at[1], deltaX: dx, deltaY: dy }); }
+      if (debug) { await debugAttach(tabId); await run((ms) => globalThis.__plazcodeControl.expect(ms), [1500]); await cdp(tabId, "Input.dispatchMouseEvent", { type: "mouseWheel", x: at[0], y: at[1], deltaX: dx, deltaY: dy }); }
       else await run((x, y, dx, dy) => { let el = document.elementFromPoint(x, y); while (el && el !== document.documentElement && !(el.scrollHeight > el.clientHeight + 2 && /auto|scroll/.test(getComputedStyle(el).overflowY))) el = el.parentElement; (el && el !== document.documentElement ? el : window).scrollBy(dx, dy); }, [at[0], at[1], dx, dy]);
       return { ok: true, text: "Scrolled " + dy + " at (" + Math.round(at[0]) + ", " + Math.round(at[1]) + ") over " + target + how + "." };
     }
     const button = msg.button === "right" ? "right" : "left", clicks = msg.double ? 2 : 1;
     await run(() => globalThis.__plazcodeControl.press());
     if (debug) {
-      await debugAttach(tab.id);
+      await debugAttach(tabId);
       await run((ms) => globalThis.__plazcodeControl.expect(ms), [1500]);
       const base = { x: at[0], y: at[1], button, buttons: button === "right" ? 2 : 1 };
-      await cdp(tab.id, "Input.dispatchMouseEvent", { type: "mouseMoved", x: at[0], y: at[1] });
-      for (let i = 1; i <= clicks; i++) { await cdp(tab.id, "Input.dispatchMouseEvent", { ...base, type: "mousePressed", clickCount: i }); await cdp(tab.id, "Input.dispatchMouseEvent", { ...base, type: "mouseReleased", clickCount: i }); }
+      await cdp(tabId, "Input.dispatchMouseEvent", { type: "mouseMoved", x: at[0], y: at[1] });
+      for (let i = 1; i <= clicks; i++) { await cdp(tabId, "Input.dispatchMouseEvent", { ...base, type: "mousePressed", clickCount: i }); await cdp(tabId, "Input.dispatchMouseEvent", { ...base, type: "mouseReleased", clickCount: i }); }
     } else {
       await run((x, y, button, clicks) => {
         const el = document.elementFromPoint(x, y); if (!el) return;
@@ -3720,7 +3750,7 @@ async function controlV2Tool(msg, sender) {
     const into = await run(() => { const el = document.activeElement; return el && el !== document.body ? el.tagName.toLowerCase() : ""; });
     if (!into) return { ok: false, error: "No field is selected in that tab. Click the field first with tab_click_at, then type." };
     await run(() => globalThis.__plazcodeControl.press());
-    if (debug) { await debugAttach(tab.id); await run((ms) => globalThis.__plazcodeControl.expect(ms), [Math.min(5000, 800 + text.length * 5)]); await cdp(tab.id, "Input.insertText", { text }); }
+    if (debug) { await debugAttach(tabId); await run((ms) => globalThis.__plazcodeControl.expect(ms), [Math.min(5000, 800 + text.length * 5)]); await cdp(tabId, "Input.insertText", { text }); }
     else await run((text) => { const el = document.activeElement; if ("value" in el && typeof el.setRangeText === "function") { try { el.setRangeText(text, el.selectionStart ?? el.value.length, el.selectionEnd ?? el.value.length, "end"); } catch { el.value += text; } el.dispatchEvent(new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" })); el.dispatchEvent(new Event("change", { bubbles: true })); } else document.execCommand("insertText", false, text); }, [text]);
     return { ok: true, text: "Typed " + text.length + " characters into <" + into + ">" + how + "." };
   }
@@ -3729,10 +3759,10 @@ async function controlV2Tool(msg, sender) {
     if (!key) return { ok: false, error: 'tab_key takes one key, optionally with Ctrl/Shift/Alt/Meta: for example "Enter", "Tab", "Escape", "ArrowDown", "Ctrl+A", "Shift+Tab".' };
     if (key.key === "Enter") { const ask = await askFirst("type"); if (ask) return controlConfirm(ask, tab, true); }
     if (debug) {
-      await debugAttach(tab.id); await run((ms) => globalThis.__plazcodeControl.expect(ms), [1500]);
+      await debugAttach(tabId); await run((ms) => globalThis.__plazcodeControl.expect(ms), [1500]);
       const base = { key: key.key, code: key.code, windowsVirtualKeyCode: key.vk, nativeVirtualKeyCode: key.vk, modifiers: key.modifiers };
-      await cdp(tab.id, "Input.dispatchKeyEvent", { ...base, type: key.text ? "keyDown" : "rawKeyDown", text: key.text || undefined });
-      await cdp(tab.id, "Input.dispatchKeyEvent", { ...base, type: "keyUp" });
+      await cdp(tabId, "Input.dispatchKeyEvent", { ...base, type: key.text ? "keyDown" : "rawKeyDown", text: key.text || undefined });
+      await cdp(tabId, "Input.dispatchKeyEvent", { ...base, type: "keyUp" });
     } else await run((k) => { const el = document.activeElement || document.body; const o = { key: k.key, code: k.code, keyCode: k.vk, bubbles: true, cancelable: true, ctrlKey: !!(k.modifiers & 2), shiftKey: !!(k.modifiers & 8), altKey: !!(k.modifiers & 1), metaKey: !!(k.modifiers & 4) }; el.dispatchEvent(new KeyboardEvent("keydown", o)); el.dispatchEvent(new KeyboardEvent("keyup", o)); if (k.key === "Enter" && el.form && el.form.requestSubmit) el.form.requestSubmit(); }, [key]);
     return { ok: true, text: "Pressed " + String(msg.key) + how + "." };
   }
@@ -3761,11 +3791,11 @@ async function controlSendFrame(tabId, data) {
   const frame = { type: "rs-control-frame", tabId, data, title: String(tab.title || "").slice(0, 120), url: String(tab.url || "").slice(0, 300), paused: !!row.paused, accent: row.accent || "", at: now };
   for (const port of controlViewers) { if (port.watch === tabId) { try { port.postMessage(frame); } catch {} } }
   // No card while the person is looking at that tab already.
-  if (Number.isInteger(live.by) && live.by !== ask.tabId && !(await controlLooking(tabId))) chrome.tabs.sendMessage(live.by, frame).catch(() => {});
+  if (live.by != null && Number.isInteger(live.by) && live.by !== ask.tabId && !(await controlLooking(tabId))) chrome.tabs.sendMessage(live.by, frame).catch(() => {});
 }
 async function controlLiveStart(tabId, by) {
   let live = controlLive.get(tabId);
-  if (live) { live.lastAt = Date.now(); if (Number.isInteger(by)) live.by = by; return; }
+  if (live) { live.lastAt = Date.now(); if (by != null && Number.isInteger(by)) live.by = by; return; }
   live = { by, lastAt: Date.now(), sentAt: 0, poll: 0, cast: false };
   controlLive.set(tabId, live);
   if (await canDebug()) {
@@ -3781,7 +3811,7 @@ async function controlLiveStart(tabId, by) {
       try { const url = await chrome.tabs.captureTab(tabId, { format: "jpeg", quality: 55 }); controlSendFrame(tabId, String(url).replace(/^data:[^,]*,/, "")); } catch {}
     }, 500);
   }
-  if (!live.cast && !live.poll && Number.isInteger(by)) {
+  if (!live.cast && !live.poll && by != null && Number.isInteger(by)) {
     chrome.tabs.sendMessage(by, { type: "rs-control-frame", tabId, data: "", note: "No live picture of this tab in this browser.", title: "", url: "", at: Date.now() }).catch(() => {});
   }
 }
@@ -3793,13 +3823,14 @@ async function controlLiveStop(tabId) {
   if (live.cast) { try { await cdp(tabId, "Page.stopScreencast"); } catch {} }
   const end = { type: "rs-control-end", tabId };
   for (const port of controlViewers) { if (port.watch === tabId) { try { port.postMessage(end); } catch {} } }
-  if (Number.isInteger(live.by)) chrome.tabs.sendMessage(live.by, end).catch(() => {});
+  if (live.by != null && Number.isInteger(live.by)) chrome.tabs.sendMessage(live.by, end).catch(() => {});
 }
 if (chrome.debugger && chrome.debugger.onEvent) {
   chrome.debugger.onEvent.addListener((source, method, params) => {
-    if (method !== "Page.screencastFrame" || !source || !Number.isInteger(source.tabId)) return;
-    cdp(source.tabId, "Page.screencastFrameAck", { sessionId: params.sessionId }).catch(() => {});
-    if (controlLive.has(source.tabId)) controlSendFrame(source.tabId, params.data);
+    const tid = source && source.tabId;
+    if (method !== "Page.screencastFrame" || tid == null || !Number.isInteger(tid)) return;
+    cdp(tid, "Page.screencastFrameAck", { sessionId: params.sessionId }).catch(() => {});
+    if (controlLive.has(tid)) controlSendFrame(tid, params.data);
   });
 }
 // The live picture ends 20 s after the last action (when the glow has gone), at Stop and when the tab closes.
@@ -3811,12 +3842,13 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
     if (!CONTROL_V2 || !m) return;
     if (Number.isInteger(m.watch)) port.watch = m.watch;
     if (port.watch === -1 && m.action) { bridgeFetch(RUST_ROBLOX_HTTP + "/api/desktop/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: m.action }) }).catch(() => {}); return; }
-    if (m.action === "stop" && Number.isInteger(port.watch)) { controlEvent({ event: "stop" }, { tab: { id: port.watch }, id: chrome.runtime.id }); chrome.scripting.executeScript({ target: { tabId: port.watch }, func: () => globalThis.__plazcodeControl && globalThis.__plazcodeControl.hide() }).catch(() => {}); }
+    if (m.action === "stop" && port.watch != null && Number.isInteger(port.watch)) { const w = port.watch; controlEvent({ event: "stop" }, { tab: { id: w }, id: chrome.runtime.id }); chrome.scripting.executeScript({ target: { tabId: w }, func: () => globalThis.__plazcodeControl && globalThis.__plazcodeControl.hide() }).catch(() => {}); }
     // 2026-11-17 (owner: "when you press Resume it immediately goes back to Pause"): Resume here only cleared this flag; the
     // layer in the tab stayed paused, and the next action read "paused" from it (show() below) and paused again. Tell the layer.
-    if ((m.action === "pause" || m.action === "resume") && Number.isInteger(port.watch)) {
-      const row = controlTabs.get(port.watch); if (row) row.paused = m.action === "pause";
-      chrome.scripting.executeScript({ target: { tabId: port.watch }, args: [m.action], func: (a) => { const c = globalThis.__plazcodeControl; if (c && typeof c[a] === "function") c[a](); } }).catch(() => {});
+    if ((m.action === "pause" || m.action === "resume") && port.watch != null && Number.isInteger(port.watch)) {
+      const w = port.watch;
+      const row = controlTabs.get(w); if (row) row.paused = m.action === "pause";
+      chrome.scripting.executeScript({ target: { tabId: w }, args: [m.action], func: (a) => { const c = globalThis.__plazcodeControl; if (c && typeof c[a] === "function") c[a](); } }).catch(() => {});
     }
   });
   port.onDisconnect.addListener(() => controlViewers.delete(port));
@@ -3826,7 +3858,7 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
 async function controlWatch(tabId, sender) {
   const page = "core/control-view.html?tab=" + tabId;
   const from = sender && sender.tab;
-  if (chrome.sidePanel && typeof chrome.sidePanel.open === "function" && from && Number.isInteger(from.id)) {
+  if (chrome.sidePanel && typeof chrome.sidePanel.open === "function" && from && from.id != null && Number.isInteger(from.id)) {
     try {
       await chrome.sidePanel.setOptions({ tabId: from.id, path: page, enabled: true });
       await chrome.sidePanel.open({ tabId: from.id });
@@ -3846,7 +3878,7 @@ async function controlWatch(tabId, sender) {
 // off unless the person switches it on in the panel; then steps 1 and 2 apply, with approvals shown in the panel.
 // origin = the person's own tab being looked at; work = the copy of it PlazCode opened to act in (owner, 2026-11-14: "work like Claude in
 // Chrome, in a duplicate tab"). Acting tools never touch the origin tab; looking (picture, text) is fine.
-const ask = { own: false, tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null, origin: null, work: null, workOf: null, copy: false, panelWin: null, dock: null, log: [], chatId: null, created: 0, chatUrl: "", goto: null, unhidden: null };
+const ask = { own: false, tabId: null, windowId: null, busy: false, approvals: new Map(), seq: 0, share: null, origin: null, work: null, workOf: null, copy: false, panelWin: null, dock: null, log: [], chatId: null, created: 0, chatUrl: "", goto: null, unhidden: null, panel: null };
 // What the panel shows is kept here (and in session storage, so it survives the worker sleeping), so a panel that was closed comes
 // back with the same conversation. The background chat itself is the same chat as long as its window is open.
 const ASK_LOG_MAX = 120;
@@ -3906,7 +3938,7 @@ const askRestored = (async () => {
       ask.chatUrl = typeof st.chatUrl === "string" ? st.chatUrl : "";
     }
     if (ask.goto === null && typeof st.goto === "string") ask.goto = st.goto;
-    if (!Number.isInteger(ask.tabId) && Number.isInteger(st.tabId)) { try { await chrome.tabs.get(st.tabId); ask.tabId = st.tabId; ask.windowId = st.windowId; ask.own = !!st.own; } catch {} }
+    if ((ask.tabId == null || !Number.isInteger(ask.tabId)) && Number.isInteger(st.tabId)) { try { await chrome.tabs.get(st.tabId); ask.tabId = st.tabId; ask.windowId = st.windowId; ask.own = !!st.own; } catch {} }
   } catch {}
 })();
 const askPorts = new Set();
@@ -3960,7 +3992,7 @@ let askLastTab = null; // {id, at} of the last AI chat tab PlazCode ran in
 // Every message from a PlazCode AI tab notes that tab (never Ask PlazCode's own background chat window).
 function askNoteSite(sender) {
   try {
-    const tab = sender && sender.tab; if (!tab || !tab.url || tab.incognito || (tab.id === ask.tabId && !ask.own)) return;
+    const tab = sender && sender.tab; if (!tab || tab.id == null || !tab.url || tab.incognito || (tab.id === ask.tabId && !ask.own)) return;
     const site = AskSites.siteFor(tab.url); if (!site) return;
     // Only the tab in front of its window: other AI tabs keep checking their status in the background.
     if (!tab.active) return;
@@ -3973,15 +4005,15 @@ function askNoteSite(sender) {
 // chat counts as using it), else the chat Ask PlazCode already uses.
 async function askCurrentChat() {
   for (const id of [askLastTab && askLastTab.id, ask.own ? ask.tabId : null]) {
-    if (!Number.isInteger(id)) continue;
+    if (id == null || !Number.isInteger(id)) continue;
     try { const tab = await chrome.tabs.get(id); if (tab && !tab.incognito && AskSites.siteFor(tab.url || "")) return tab; } catch {}
   }
   return null;
 }
 // Use the person's own chat for Ask PlazCode. Their window is never minimised, moved or closed by PlazCode.
 function askUseOwn(tab) {
-  if (ask.own && ask.tabId === tab.id) return;
-  ask.own = true; ask.tabId = tab.id; ask.windowId = tab.windowId; ask.chatUrl = ""; askSave();
+  if (tab.id == null || (ask.own && ask.tabId === tab.id)) return;
+  ask.own = true; ask.tabId = tab.id; ask.windowId = tab.windowId ?? null; ask.chatUrl = ""; askSave();
 }
 async function askSiteUrl() {
   let chosen = null, last = askLastSite;
@@ -3996,18 +4028,19 @@ async function askSignedOut(tabId) {
   try { const tab = await chrome.tabs.get(tabId); let path = ""; try { path = new URL(tab.url || "").pathname; } catch {} return ASK_SIGNIN_URL.test(path); } catch { return false; }
 }
 async function askNeedSignIn(created, siteName) {
-  try { await chrome.windows.remove(created.id); } catch {}
+  try { if (created.id != null) await chrome.windows.remove(created.id); } catch {}
   ask.tabId = null; ask.windowId = null; askSave();
   return { ok: false, error: siteName + " is not signed in. Open " + siteName + " in your browser, sign in, then ask again.", key: "{site} is not signed in. Open {site} in your browser, sign in, then ask again.", values: { site: siteName } };
 }
 // Same page, ignoring a trailing slash and the #fragment; same site = same origin.
-function askUrlKey(u) { try { const x = new URL(u); return x.origin + x.pathname.replace(/\/+$/, "") + x.search; } catch { return ""; } }
-function askSameSite(a, b) { try { return new URL(a).origin === new URL(b).origin; } catch { return false; } }
+function askUrlKey(u) { try { const x = new URL(u || ""); return x.origin + x.pathname.replace(/\/+$/, "") + x.search; } catch { return ""; } }
+function askSameSite(a, b) { try { return new URL(a || "").origin === new URL(b || "").origin; } catch { return false; } }
 // Where the background chat should be: a saved chat of this site, or the site's start page (a new chat).
 function askTarget(site, want) { return want && want !== "new" && askSameSite(want, site.url) ? want : site.url; }
 // Remember the address of the AI chat the answer came from, so the same chat can be opened again later.
 async function askNoteChatUrl() {
   try {
+    if (ask.tabId == null) return;
     const tab = await chrome.tabs.get(ask.tabId), site = await askSiteUrl();
     let path = ""; try { path = new URL(tab.url || "").pathname; } catch {}
     if (askSameSite(tab.url, site.url) && askUrlKey(tab.url) !== askUrlKey(site.url) && !ASK_SIGNIN_URL.test(path)) ask.chatUrl = String(tab.url).slice(0, 500);
@@ -4017,10 +4050,11 @@ async function askNoteChatUrl() {
 async function askBringUp(tab, win, siteName, minimised) {
   // A minimised window can hold a page back (the browser pauses drawing in it). If the chat does not come up that way, show the window
   // (behind everything, not focused) and try once more instead of failing.
+  const tabId = tab.id;
   const unhide = async () => { if (!minimised) return false; minimised = false; ask.unhidden = win.id; try { await chrome.windows.update(win.id, { state: "normal", focused: false, width: 980, height: 820, left: 40, top: 40 }); return true; } catch { return false; } };
-  if (!(await criticTabReady(tab.id)) && !((await unhide()) && (await criticTabReady(tab.id)))) return (await askSignedOut(tab.id)) ? askNeedSignIn(win, siteName) : { ok: false, error: "The AI site did not load in the background chat window." };
-  if (await askSignedOut(tab.id)) return askNeedSignIn(win, siteName);
-  if (!(await helperPing(tab.id)) && !((await unhide()) && (await helperPing(tab.id)))) return (await askSignedOut(tab.id)) ? askNeedSignIn(win, siteName) : { ok: false, error: "PlazCode is not running in the background chat window. Is the AI site signed in there?" };
+  if (!(await criticTabReady(tabId)) && !((await unhide()) && (await criticTabReady(tabId)))) return (await askSignedOut(tabId)) ? askNeedSignIn(win, siteName) : { ok: false, error: "The AI site did not load in the background chat window." };
+  if (await askSignedOut(tabId)) return askNeedSignIn(win, siteName);
+  if (!(await helperPing(tabId)) && !((await unhide()) && (await helperPing(tabId)))) return (await askSignedOut(tabId)) ? askNeedSignIn(win, siteName) : { ok: false, error: "PlazCode is not running in the background chat window. Is the AI site signed in there?" };
   // The chat is up. If the window had to be shown to get here, put it away again at once: it is only the engine behind the panel and
   // must never sit over the person's own window (owner, 2026-11-14). Then give the page a moment to settle.
   try { await chrome.windows.update(win.id, { state: "minimized" }); } catch {}
@@ -4041,9 +4075,10 @@ async function askKeepHidden(winId, ms) {
 async function askEnsure() {
   // The chat the person is using (2026-11-18). Only when no AI chat tab is open does PlazCode open one in the background.
   { const current = await askCurrentChat(); if (current) askUseOwn(current); }
-  if (ask.own && Number.isInteger(ask.tabId)) {
-    let tab = null; try { tab = await chrome.tabs.get(ask.tabId); } catch {}
-    if (tab) {
+  if (ask.own && ask.tabId != null && Number.isInteger(ask.tabId)) {
+    const ownId = ask.tabId;
+    let tab = null; try { tab = await chrome.tabs.get(ownId); } catch {}
+    if (tab && tab.id != null) {
       const want = ask.goto;
       // Picking a chat in the History list (or "New chat") takes the person's own tab there, as they asked.
       if (want) { const site = AskSites.siteFor(tab.url || ""); const target = want === "new" ? (site ? site.url : "") : want; ask.goto = null; askSave();
@@ -4056,13 +4091,14 @@ async function askEnsure() {
   const want = ask.goto, site = await askSiteUrl();
   const siteName = site.name || new URL(site.url).host;
   const target = askTarget(site, want || ask.chatUrl);
-  if (Number.isInteger(ask.tabId)) {
+  if (ask.tabId != null && Number.isInteger(ask.tabId)) {
+    const bgId = ask.tabId;
     let tab = null;
-    try { tab = await chrome.tabs.get(ask.tabId); } catch { ask.tabId = null; }
-    if (tab) {
+    try { tab = await chrome.tabs.get(bgId); } catch { ask.tabId = null; }
+    if (tab && tab.id != null && tab.windowId != null) {
       // The background chat is open. When the person picked another chat in the History list (or started a new one), it goes there first.
       // 2026-11-18: and when the person now uses PlazCode on another AI site, the background chat moves to that site.
-      const sameSite = askSameSite(tab.url, site.url) || (AskSites.siteFor(tab.url) || {}).url === site.url;
+      const sameSite = askSameSite(tab.url, site.url) || (AskSites.siteFor(tab.url || "") || {}).url === site.url;
       if ((!want && sameSite) || askUrlKey(tab.url) === askUrlKey(target)) { if (want) { ask.goto = null; askSave(); } return { ok: true }; }
       if (!sameSite) { ask.chatUrl = ""; askSay("Opening a PlazCode chat on " + siteName + " in the background…", "note", "Opening a PlazCode chat on {site} in the background…", { site: siteName }); }
       let minimised = false;
@@ -4082,30 +4118,33 @@ async function askEnsure() {
   try { created = await chrome.windows.create({ url: target, type: "popup", state: "minimized" }); minimised = true; } catch {}
   // 2026-11-14 (owner): "should be minimized the moment it opens, shouldn't even be noticeable". On Windows the browser can show a
   // window created minimised for a moment, or bring it up again while the page loads, so PlazCode puts it straight back.
-  if (created && minimised) askKeepHidden(created.id, 4000);
+  if (created && created.id != null) { if (created && minimised) askKeepHidden(created.id, 4000); }
   if (!created) { try { created = await chrome.windows.create({ ...shape, focused: false }); } catch { created = await chrome.windows.create(shape); } }
   const tab = created && created.tabs && created.tabs[0];
-  if (!tab) return { ok: false, error: "The background chat window could not be opened." };
-  ask.tabId = tab.id; ask.windowId = created.id; askSave();
-  tabEngines.set(tab.id, "local");
-  try { await chrome.storage.session.set({ ["rs-tab-engine-" + tab.id]: "local" }); } catch {}
+  if (!tab || tab.id == null) return { ok: false, error: "The background chat window could not be opened." };
+  const newTabId = tab.id;
+  ask.tabId = newTabId; ask.windowId = created.id; askSave();
+  tabEngines.set(newTabId, "local");
+  try { await chrome.storage.session.set({ ["rs-tab-engine-" + newTabId]: "local" }); } catch {}
   const done = await askBringUp(tab, created, siteName, minimised);
   if (done.ok && want) { ask.goto = null; askSave(); }
   return done;
 }
 async function askShareTab(tabId) {
-  if (!Number.isInteger(tabId)) return null;
+  if (typeof tabId !== "number" || !Number.isInteger(tabId)) return null;
   try { const tab = await chrome.tabs.get(tabId); return controlRefusal(tab, null) ? null : tab; } catch { return null; }
 }
 // Show "Shared with PlazCode" in the shared tab, and stream it to the panel, while sharing is on.
 async function askShareMark(tab, on) {
+  const tabId = tab.id;
+  if (tabId == null) return;
   try {
     if (on) {
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["core/control-overlay.js"] });
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: [controlWords], func: (w) => globalThis.__plazcodeControl.share(true, w) });
-      const live = controlLive.get(tab.id);
-      if (live) live.lastAt = Date.now(); else await controlLiveStart(tab.id, null);
-    } else await chrome.scripting.executeScript({ target: { tabId: tab.id }, args: [controlWords], func: (w) => globalThis.__plazcodeControl && globalThis.__plazcodeControl.share(false, w) });
+      await chrome.scripting.executeScript({ target: { tabId }, files: ["core/control-overlay.js"] });
+      await chrome.scripting.executeScript({ target: { tabId }, args: [controlWords], func: (w) => globalThis.__plazcodeControl.share(true, w) });
+      const live = controlLive.get(tabId);
+      if (live) live.lastAt = Date.now(); else await controlLiveStart(tabId, null);
+    } else await chrome.scripting.executeScript({ target: { tabId }, args: [controlWords], func: (w) => globalThis.__plazcodeControl && globalThis.__plazcodeControl.share(false, w) });
   } catch {}
 }
 async function askQuestion(m) {
@@ -4134,10 +4173,10 @@ async function askQuestion(m) {
     }
     const ready = await askEnsure();
     if (!ready.ok) { askSay(ready.error, "error", ready.key, ready.values); return; }
-    ask.origin = tab ? tab.id : null; ask.copy = !!(m.control && tab);
+    ask.origin = tab && tab.id != null ? tab.id : null; ask.copy = !!(m.control && tab);
     // A copy opened for an earlier question about this same tab is offered again (if it is still open) instead of a new one.
     let work = null;
-    if (ask.copy && Number.isInteger(ask.work) && ask.workOf === tab.id) { try { const w = await chrome.tabs.get(ask.work); work = { tabId: w.id, title: String(w.title || "").slice(0, 120), url: String(w.url || "").slice(0, 300) }; } catch { ask.work = null; } }
+    if (ask.copy && tab && tab.id != null && ask.work != null && Number.isInteger(ask.work) && ask.workOf === tab.id) { try { const w = await chrome.tabs.get(ask.work); work = { tabId: w.id, title: String(w.title || "").slice(0, 120), url: String(w.url || "").slice(0, 300) }; } catch { ask.work = null; } }
     const reply = await chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-run", ask: { text, images, control: !!(m.control && tab), work, share: tab ? { tabId: tab.id, title: String(tab.title || "").slice(0, 120), url: String(tab.url || "").slice(0, 300) } : null } });
     if (!reply || !reply.ok) { askSay(String(reply && reply.error || "The background chat did not take the question."), "error"); return; }
     return; // the answer arrives as "ask_reply" from the background chat
@@ -4176,7 +4215,7 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
     if (Number.isInteger(m.approve)) { const resolve = ask.approvals.get(m.approve); if (resolve) { ask.approvals.delete(m.approve); resolve(m.allowed === true); } }
     if (m.stop) {
       // Stop answers at once, even when the background chat is gone or does not answer (owner, 2026-11-14: Stop took very long).
-      if (Number.isInteger(ask.tabId)) chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-stop" }).catch(() => {});
+      if (ask.tabId != null && Number.isInteger(ask.tabId)) chrome.tabs.sendMessage(ask.tabId, { type: "rs-ask-stop" }).catch(() => {});
       for (const [id, resolve] of ask.approvals) { ask.approvals.delete(id); resolve(false); }
       ask.busy = false; askReply("stopped", "Stopped."); askPost({ type: "ask-busy", busy: false });
     }
@@ -4198,7 +4237,7 @@ if (chrome.runtime && chrome.runtime.onConnect) chrome.runtime.onConnect.addList
       const tab = m.sharing ? await askShareTab(m.shareTabId) : null;
       if (ask.share && (!tab || ask.share !== tab.id)) { const old = await askShareTab(ask.share); if (old) askShareMark(old, false); ask.share = null; }
       // The panel says "shared" only once the mark is showing in that tab.
-      if (tab) { ask.share = tab.id; await askShareMark(tab, true); }
+      if (tab && tab.id != null) { ask.share = tab.id; await askShareMark(tab, true); }
       port.postMessage({ type: "ask-share", tabId: tab ? tab.id : null, title: tab ? String(tab.title || "") : "", url: tab ? String(tab.url || "") : "", refused: !!(m.sharing && !tab) });
     }
   });
@@ -4245,9 +4284,9 @@ async function desktopPicture() {
 // Open the Ask PlazCode panel: Chrome's side panel where the browser allows it, otherwise a window docked beside the browser (split screen:
 // the browser window is made narrower to leave room, and goes back to its size when the panel closes). The panel remembers its chat: a
 // second click while it is open brings it forward, and after it was closed it comes back with the same conversation (owner, 2026-11-14).
-async function askOpen(windowId) {
-  if (Number.isInteger(ask.panelWin)) { try { await chrome.windows.update(ask.panelWin, { focused: true }); return { ok: true, where: "window" }; } catch { ask.panelWin = null; } }
-  if (chrome.sidePanel && typeof chrome.sidePanel.open === "function" && Number.isInteger(windowId)) {
+const askOpen = async function askOpen(windowId) {
+  if (ask.panelWin != null && Number.isInteger(ask.panelWin)) { try { await chrome.windows.update(ask.panelWin, { focused: true }); return { ok: true, where: "window" }; } catch { ask.panelWin = null; } }
+  if (chrome.sidePanel && typeof chrome.sidePanel.open === "function" && windowId != null && Number.isInteger(windowId)) {
     try {
       // Both calls are made in the same turn: opening a side panel needs the click that asked for it, and that does not survive an await.
       const set = chrome.sidePanel.setOptions({ path: "core/ask.html", enabled: true });
@@ -4257,13 +4296,13 @@ async function askOpen(windowId) {
     } catch {}
   }
   return askDockedWindow(windowId);
-}
+};
 const ASK_DOCK_WIDTH = 440;
 async function askDockedWindow(windowId) {
   const width = ASK_DOCK_WIDTH;
   let left, top, height = 760, origin = null;
-  try { origin = Number.isInteger(windowId) ? await chrome.windows.get(windowId) : null; } catch {}
-  if (origin && origin.state !== "fullscreen" && (origin.width || 0) - width >= 640) {
+  try { origin = windowId != null && Number.isInteger(windowId) ? await chrome.windows.get(windowId) : null; } catch {}
+  if (origin && origin.state !== "fullscreen" && (origin.width || 0) - width >= 640 && windowId != null) {
     const full = { left: origin.left || 0, top: origin.top || 0, width: origin.width, height: origin.height || height };
     try {
       await chrome.windows.update(windowId, { state: "normal", left: full.left, top: full.top, width: full.width - width, height: full.height });
@@ -4272,9 +4311,9 @@ async function askDockedWindow(windowId) {
     } catch { ask.dock = null; }
   }
   if (left === undefined) { left = origin ? Math.max(0, (origin.left || 0) + (origin.width || 1200) - width) : undefined; top = origin ? origin.top : undefined; height = Math.max(480, (origin && origin.height) || height); }
-  const created = await chrome.windows.create({ url: chrome.runtime.getURL("core/ask.html?window=" + (Number.isInteger(windowId) ? windowId : "")), type: "popup", width, height, left, top });
-  ask.panelWin = created && created.id;
-  if (!Number.isInteger(ask.panelWin)) askUndock();
+  const created = await chrome.windows.create({ url: chrome.runtime.getURL("core/ask.html?window=" + (windowId != null && Number.isInteger(windowId) ? windowId : "")), type: "popup", width, height, left, top });
+  ask.panelWin = created && created.id != null ? created.id : null;
+  if (ask.panelWin == null || !Number.isInteger(ask.panelWin)) askUndock();
   return { ok: true, where: "window" };
 }
 // The panel's window closed: give the browser window its old size back, unless the person has resized it meanwhile.
@@ -4319,7 +4358,7 @@ async function desktopFrame() {
     let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
     const frame = { type: "rs-control-frame", tabId: -1, data: btoa(bin), title: "Your screen", url: "", paused: !!desktopPaused, accent: desktopAccentSent, at: Date.now() };
     for (const port of controlViewers) { if (port.watch === -1) { try { port.postMessage(frame); } catch {} } }
-    if (Number.isInteger(desktopBy)) chrome.tabs.sendMessage(desktopBy, frame).catch(() => {});
+    if (desktopBy != null && Number.isInteger(desktopBy)) chrome.tabs.sendMessage(desktopBy, frame).catch(() => {});
   } catch {}
 }
 let desktopPaused = false;
@@ -4334,17 +4373,17 @@ function desktopControlUpdate(dc) {
     clearInterval(desktopPoll); desktopPoll = 0;
     const end = { type: "rs-control-end", tabId: -1 };
     for (const port of controlViewers) { if (port.watch === -1) { try { port.postMessage(end); } catch {} } }
-    if (Number.isInteger(desktopBy)) chrome.tabs.sendMessage(desktopBy, end).catch(() => {});
+    if (desktopBy != null && Number.isInteger(desktopBy)) chrome.tabs.sendMessage(desktopBy, end).catch(() => {});
   }
   // Stop on the screen (the app's label) is Stop for the AI chat that was using the computer.
-  if (stopped && !desktopWasStopped && Number.isInteger(desktopBy)) chrome.tabs.sendMessage(desktopBy, { type: "rs-control-stop" }).catch(() => {});
+  if (stopped && !desktopWasStopped && desktopBy != null && Number.isInteger(desktopBy)) chrome.tabs.sendMessage(desktopBy, { type: "rs-control-stop" }).catch(() => {});
   desktopWasStopped = stopped;
 }
 
 // What the person did in a controlled tab (sent by core/control-overlay.js from that tab only).
 function controlEvent(msg, sender) {
   const tabId = sender && sender.tab && sender.tab.id;
-  if (!Number.isInteger(tabId) || sender.id !== chrome.runtime.id) return;
+  if (tabId == null || !Number.isInteger(tabId) || sender.id !== chrome.runtime.id) return;
   if (msg.event === "stop_share") {
     // "Stop sharing" in the shared tab itself.
     if (ask.share === tabId) { ask.share = null; askPost({ type: "ask-share", tabId: null, title: "", url: "", stoppedInTab: true }); }
@@ -4359,7 +4398,7 @@ function controlEvent(msg, sender) {
     row.paused = false; row.stoppedAt = Date.now();
     controlLiveStop(tabId).finally(() => debugDetach(tabId));
     // Stop in the tab is Stop for the AI: the chat that was working there ends its run.
-    if (Number.isInteger(row.by)) chrome.tabs.sendMessage(row.by, { type: "rs-control-stop" }).catch(() => {});
+    if (row.by != null && Number.isInteger(row.by)) chrome.tabs.sendMessage(row.by, { type: "rs-control-stop" }).catch(() => {});
   }
 }
 // Closing the background chat of Ask PlazCode while it works ends the question right away: the panel stops "sending" and a new

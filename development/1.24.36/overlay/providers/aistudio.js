@@ -16,23 +16,24 @@
 //  - S.runBtn / S.stopBtn (`ms-run-button button`, `button[aria-label*="Run" i]`, `button[aria-label*="Stop" i]`)
 //  - S.addMediaBtn / S.fileInput (`ms-add-chunk-menu`, `input[type="file"]`, `ms-image-chunk`, `ms-media-chunk`)
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), { x: 0, y: 0, left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, readFailed: true });
+    return safeRead(() => (node).getBoundingClientRect(), { x: 0, y: 0, left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, readFailed: true });
   }
   function safeStyle(node) {
     return safeRead(() => getComputedStyle(node), { display: "none", visibility: "hidden", opacity: "0", overflow: "hidden", overflowY: "hidden" });
@@ -48,7 +49,7 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {};
+  let diag = () => {};
 
   const S = {
     turn: 'ms-chat-turn, .chat-turn-container, [data-turn-role]',
@@ -104,11 +105,11 @@ const RSProvider                   = (() => {
   }
 
   // ── Editor & Composer ─────────────────────────────────────────────────────
-  let lockedEditor      = null;
+  let lockedEditor = null;
   function getEditor() {
     if (lockedEditor && safeRead(() => lockedEditor.isConnected, false) && visible(lockedEditor)) return lockedEditor;
     const seen = new Set();
-    const candidates        = [];
+    const candidates = [];
     for (const el of safeQueryAll(document, S.editor)) {
       if (seen.has(el)) continue;
       seen.add(el);
@@ -130,12 +131,12 @@ const RSProvider                   = (() => {
     return candidates[candidates.length - 1] || candidates[0];
   }
 
-  function editorText(el ) {
+  function editorText(el) {
     const e = el || getEditor();
     if (!e) return "";
     const tag = safeRead(() => e.tagName, "");
-    if (tag === "TEXTAREA" || tag === "INPUT") return safeRead(() => e.value, "") || "";
-    return (safeRead(() => e.innerText, "") || safeRead(() => e.textContent, "") || "").replace(/\u00a0/g, " ");
+    if (tag === "TEXTAREA" || tag === "INPUT") return safeRead(() => (e).value, "") || "";
+    return (safeRead(() => (e).innerText, "") || safeRead(() => e.textContent, "") || "").replace(/\u00a0/g, " ");
   }
 
   function composerFrame() {
@@ -146,9 +147,9 @@ const RSProvider                   = (() => {
   const barAnchor = composerFrame;
 
   // ── Turns & Text Extraction ───────────────────────────────────────────────
-  function allItems()            {
+  function allItems() {
     const seen = new Set();
-    const out            = [];
+    const out = [];
     for (const el of safeQueryAll(document, S.turn)) {
       if (seen.has(el) || safeClosest(el, "#rs-root")) continue;
       seen.add(el);
@@ -183,7 +184,7 @@ const RSProvider                   = (() => {
   }
 
   const CHROME_SKIP = ".rs-chip, .cdk-visually-hidden, [class*='screen-reader'], button, [role='button'], mat-icon, .code-block-header, [class*='header-actions']";
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     const skip = CHROME_SKIP + (excludeSel ? ", " + excludeSel : "");
     let t = "";
@@ -191,10 +192,10 @@ const RSProvider                   = (() => {
       const type = safeRead(() => n.nodeType, 0);
       if (type === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (type !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      const tag = safeRead(() => n.tagName, "");
+      if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(skip), false)) return;
+      const tag = safeRead(() => (n).tagName, "");
       if (tag === "BR") { t += "\n"; return; }
-      const isCode = tag === "PRE" || tag === "MS-CODE-BLOCK" || (safeRead(() => n.matches, null) && safeRead(() => n.matches(S.codeWrap), false));
+      const isCode = tag === "PRE" || tag === "MS-CODE-BLOCK" || (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(S.codeWrap), false));
       const isBlock = isCode || /^(P|DIV|LI|UL|OL|BLOCKQUOTE|H[1-6]|TABLE|TR|MS-CMARK-NODE|MS-TEXT-CHUNK)$/.test(tag);
       if (isBlock && t && !t.endsWith("\n")) t += "\n";
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
@@ -225,7 +226,7 @@ const RSProvider                   = (() => {
     return textWithout(item);
   }
 
-  function classifyText(item, excludeSel ) {
+  function classifyText(item, excludeSel) {
     if (!item) return "";
     const skip = excludeSel ? `${S.thinking}, ${excludeSel}` : S.thinking;
     if (isAssistantItem(item)) {
@@ -271,7 +272,7 @@ const RSProvider                   = (() => {
   const btnLabel = (btn) => [
     safeRead(() => btn.getAttribute("aria-label"), ""),
     safeRead(() => btn.getAttribute("mattooltip"), ""),
-    safeRead(() => btn.innerText, "") || safeRead(() => btn.textContent, ""),
+    safeRead(() => (btn).innerText, "") || safeRead(() => btn.textContent, ""),
   ].filter(Boolean).join(" ").trim();
 
   function isStopBtn(btn) {
@@ -315,9 +316,9 @@ const RSProvider                   = (() => {
     const replyTxt = replyRoots(item).map((m) => textWithout(m, ".rs-chip, " + S.thinking)).join("\n");
     return (thinkTxt + "\n" + replyTxt).trim();
   }
-  const streamLen = (item ) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
 
-  let _streamMax = -1, _streamAt = 0, _streamItem      = null;
+  let _streamMax = -1, _streamAt = 0, _streamItem = null;
   function sampleStream() {
     const item = lastAssistant();
     const len = streamText(item).length;
@@ -364,7 +365,7 @@ const RSProvider                   = (() => {
     } catch { return {}; }
   }
 
-  function readAssistant()                {
+  function readAssistant() {
     const item = lastAssistant();
     if (!item) return { present: false, reply: "", thinking: "", item: null };
     const think = safeQuery(item, S.thinking);
@@ -388,7 +389,7 @@ const RSProvider                   = (() => {
 
   // ── Input Lock, Draft & Sending (Run button / Ctrl+Enter) ─────────────────
   let _locked = false;
-  function setInputLock(on         ) {
+  function setInputLock(on) {
     _locked = !!on;
     const ed = getEditor();
     if (!ed) return;
@@ -498,7 +499,7 @@ const RSProvider                   = (() => {
       null;
 
     let fi = findInput();
-    let opened      = null;
+    let opened = null;
     if (!fi) {
       opened = safeQuery(document, S.addMenuBtn);
       if (opened) {
@@ -543,7 +544,7 @@ const RSProvider                   = (() => {
     } catch {}
   }
 
-  async function typeAndSend(text, images ) {
+  async function typeAndSend(text, images) {
     const ed = getEditor();
     if (!ed) throw new Error("Google AI Studio prompt box not found — open aistudio.google.com/prompts/new_chat");
     const relock = _locked || safeRead(() => ed.getAttribute("contenteditable"), null) === "false" || safeRead(() => ed.hasAttribute("readonly"), false);
@@ -601,13 +602,13 @@ const RSProvider                   = (() => {
   }
 
   // ── Send Hooks (Ctrl+Enter / Cmd+Enter + Run/Stop Button) ─────────────────
-  function installSendHooks(handlers           ) {
+  function installSendHooks(handlers) {
     document.addEventListener("keydown", (e) => {
       // AI Studio submits on Ctrl+Enter / Cmd+Enter; plain Enter only inserts a newline.
       if (e.key !== "Enter" || (!e.ctrlKey && !e.metaKey) || e.shiftKey || e.isComposing) return;
       const ed = getEditor();
       if (!ed || !safeRead(() => ed.contains(e.target), false) || editorText(ed).trim() === "") return;
-      if ((handlers       ).onCoworkSend && (handlers       ).onCoworkSend(e)) return;
+      if ((handlers).onCoworkSend && (handlers).onCoworkSend(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (chatIsEmpty()) handlers.onBlockedAttempt();
@@ -618,7 +619,7 @@ const RSProvider                   = (() => {
 
     document.addEventListener("click", (e) => {
       if (!getEditor() || safeClosest(e.target, "#rs-root")) return;
-      const btn = safeRead(() => (e.target           ).closest, null) && safeClosest(e.target, "button");
+      const btn = safeRead(() => (e.target).closest, null) && (safeClosest(e.target, "button"));
       if (!btn) return;
       if (isStopBtn(btn)) {
         if (e.isTrusted !== false) handlers.onNativeStop();
@@ -626,7 +627,7 @@ const RSProvider                   = (() => {
       }
       const isRun = btn === runButton() || (safeClosest(btn, "ms-run-button") != null && !isStopBtn(btn));
       if (!isRun || safeRead(() => btn.disabled, false) || safeRead(() => btn.getAttribute("aria-disabled"), null) === "true") return;
-      if ((handlers       ).onCoworkSend && (handlers       ).onCoworkSend(e)) return;
+      if ((handlers).onCoworkSend && (handlers).onCoworkSend(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (chatIsEmpty()) handlers.onBlockedAttempt();
@@ -639,7 +640,7 @@ const RSProvider                   = (() => {
   const CMD_SHAPE = /"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i;
   function findToolBlockSpot(item) {
     if (!item) return null;
-    let spot                                                         = null;
+    let spot = null;
     for (const cb of safeQueryAll(item, S.codeWrap)) {
       if (safeClosest(cb, ".rs-chip") || safeClosest(cb, S.thinking)) continue;
       if (!CMD_SHAPE.test(safeRead(() => cb.textContent, "") || "")) continue;

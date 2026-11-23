@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/control-overlay.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // AgentScript control look (1.24.36) (owner, 2026-11-12). Put into a web tab by the extension's worker while the AI
 // works there: a glow around the page edges in the PlazCode theme colour, a "PlazCode is working here" label with
 // Stop, and PlazCode's own cursor that glides to each target before a click or typing. Real input from the person
@@ -7,7 +8,8 @@
 // never blocked. Runs in the extension's own isolated world: the page cannot reach this object.
 (() => {
   "use strict";
-  if (globalThis.__plazcodeControl) return;
+  ;
+  if ((globalThis).__plazcodeControl) return;
   const doc = document;
   const reduced = () => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } };
   const host = doc.createElement("plazcode-control");
@@ -52,7 +54,7 @@
   const resumeButton = root.querySelector(".resume");
   function setWords(given) {
     if (!given || typeof given !== "object") return;
-    for (const key of Object.keys(words)) if (typeof given[key] === "string" && given[key].trim() && given[key].length <= 80) words[key] = given[key].trim();
+    for (const key of Object.keys(words)) if (typeof given[key] === "string" && (given[key]).trim() && (given[key]).length <= 80) words[key] = (given[key]).trim();
     resumeButton.textContent = words.resume;
   }
   const tell = (event) => { try { chrome.runtime.sendMessage({ type: "control_event", event }); } catch {} };
@@ -77,18 +79,18 @@
     return true;
   }
   const onInput = (event) => {
-    if (event.type === "keydown" && event.key === "Escape" && event.isTrusted && state.active && Date.now() >= state.expectUntil) { api.hide(); state.stopped = true; tell("stop"); return; }
+    if (event.type === "keydown" && (event).key === "Escape" && event.isTrusted && state.active && Date.now() >= state.expectUntil) { api.hide(); state.stopped = true; tell("stop"); return; }
     if (personal(event)) { setPaused(true); tell("paused"); }
   };
   // Owner (2026-11-18): "it should only pause when you click your mouse or press a key, moving your mouse or scrolling shouldn't count".
   for (const type of ["pointerdown", "keydown"]) addEventListener(type, onInput, { capture: true, passive: true });
-  root.querySelector(".stop").addEventListener("click", (event) => {
+  (root.querySelector(".stop")).addEventListener("click", (event) => {
     if (!event.isTrusted) return;
     if (state.sharing && !state.active) { api.share(false); tell("stop_share"); return; }
     api.hide(); state.stopped = true; tell("stop");
   });
   const resumeHere = () => { const now = Date.now(); state.settleUntil = now + 1500; state.settleCap = now + 4000; setPaused(false); };
-  root.querySelector(".resume").addEventListener("click", (event) => { if (!event.isTrusted) return; resumeHere(); tell("resume"); });
+  (root.querySelector(".resume")).addEventListener("click", (event) => { if (!event.isTrusted) return; resumeHere(); tell("resume"); });
   const api = {
     show(options) {
       const o = options || {};

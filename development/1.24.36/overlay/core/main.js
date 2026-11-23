@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/main.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // core/main.js - the provider-agnostic agentic loop, UI and session state.
 // Drives any AI chat site through the RSProvider interface (providers/*.js):
 // waits for the model's reply, parses PlazCode commands (RSParse), asks the
@@ -84,8 +85,8 @@
     return reply.skipped ? {...personalMemory,saveSkipped:reply.reason || "No lasting fact was saved."} : personalMemory;
   }
   function learningContext() {
-    const rows=P.allItems().filter(item=>P.isUserItem(item)).slice(-20).map(item=>({role:"user",injected:item.classList?.contains("rs-hidden")===true,text:P.classifyText?P.classifyText(item,".rs-chip,.rs-chat-activity"):P.itemText(item)}));
-    return {user:rows.filter(PlazCodeReliability.userRequest).slice(-8).map(r=>PlazCodeReliability.redact(r.text).slice(0,2000)),project:(A.learningReads || []).filter(r=>r.project===currentProject && r.chat===P.conversationKey() && r.session===A.sessionGen).slice(-6).map(r=>r.text),project_id:currentProject};
+    const rows=P.allItems().filter((item)=>P.isUserItem(item)).slice(-20).map((item)=>({role:"user",injected:item.classList?.contains("rs-hidden")===true,text:P.classifyText?P.classifyText(item,".rs-chip,.rs-chat-activity"):P.itemText(item)}));
+    return {user:rows.filter(PlazCodeReliability.userRequest).slice(-8).map((r)=>PlazCodeReliability.redact(r.text).slice(0,2000)),project:(A.learningReads || []).filter((r)=>r.project===currentProject && r.chat===P.conversationKey() && r.session===A.sessionGen).slice(-6).map((r)=>r.text),project_id:currentProject};
   }
   let continuedEngramScope="",continuedEngramChat="",engramRecallGeneration=0;
   // 1.24.13: one-click "Save as skill" offer. The AI proposes a lasting user
@@ -111,12 +112,12 @@
       save.disabled=dismiss.disabled=true;status.textContent='Saving…';
       try{
         const listed=await bg({type:'skills',request:{action:'list'}});
-        const twin=listed?.ok?(listed.skills||[]).find(item=>skillTitleKey(item.title)===skillTitleKey(skill.title)):null;
+        const twin=listed?.ok?(listed.skills||[]).find((item)=>skillTitleKey(item.title)===skillTitleKey(skill.title)):null;
         if(twin){status.textContent='Already saved as “'+twin.title+'”.';save.textContent='Saved';setTimeout(()=>closeSkillOffer(node),2500);return;}
         const result=await bg({type:'skills',request:{action:'save',revision:0,skill:{...skill,id:'skill-'+crypto.randomUUID(),confirmed:false,enabled:true,revision:0,community:false}}});
         if(!result?.ok)throw Error(result?.error||'The skill could not be saved.');
         status.textContent='Saved “'+(result.skill?.title||skill.title)+'”. The AI will use it for relevant tasks.';save.textContent='Saved';setTimeout(()=>closeSkillOffer(node),2500);
-      }catch(error){status.textContent=String(error?.message||error);save.disabled=dismiss.disabled=false;}
+      }catch(error){status.textContent=String((error)?.message||error);save.disabled=dismiss.disabled=false;}
     };
     dismiss.onclick=()=>closeSkillOffer(node);
     const actions=document.createElement('div');actions.append(save,dismiss);
@@ -219,7 +220,7 @@
   }
   function arenaToolReference(tool) {
     const schema = tool.inputSchema || tool.input_schema || tool.parameters || {};
-    const structural = value => {
+    const structural = (value) => {
       if (Array.isArray(value)) return value.map(structural);
       if (!value || typeof value !== "object") return value;
       // Only schema annotations are omitted. Never strip a PROPERTY actually named description/title/examples.
@@ -237,7 +238,7 @@
     return `${tool.name}: ${String(tool.description || "").split("\n")[0]}\nschema: ${JSON.stringify(structural(schema))}${note ? "\n⚠ " + note : ""}`;
   }
   // Migration only: retire saved lockouts from older builds on every provider.
-  try { const clear=chrome.storage.local.remove("rsCondoLock"); if(clear?.catch)clear.catch(()=>{}); } catch {}
+  try { const clear=chrome.storage.local.remove("rsCondoLock"); if(clear&&typeof (clear).catch==="function")(clear).catch(()=>{}); } catch {}
   try { const old=document.getElementById("rs-condo-lock"); if(old){clearTimeout(old._t);old.remove();} } catch {}
   const ASK_OPS = new Set([
     "execute_luau","multi_edit","write_file","edit_file","delete_path","move_path","create_folder",
@@ -269,10 +270,10 @@
   let approvalMode = "";
   const approvalModeReady = new Promise(resolve=>{
     let loaded=false;
-    const finish=values=>{if(loaded)return;loaded=true;approvalMode=typeof PlazCodeApproval!=="undefined"&&typeof PlazCodeApproval.normalizeMode==="function"?PlazCodeApproval.normalizeMode(values&&values.rsApprovalMode):"";resolve();};
+    const finish=(values)=>{if(loaded)return;loaded=true;approvalMode=typeof PlazCodeApproval!=="undefined"&&typeof PlazCodeApproval.normalizeMode==="function"?PlazCodeApproval.normalizeMode(values&&values.rsApprovalMode):"";resolve();};
     try {const pending=chrome.storage.local.get("rsApprovalMode",finish);if(pending&&typeof pending.then==="function")pending.then(finish,()=>finish());}catch{finish();}
   });
-  function approvalModeLabel(){const mode=approvalMode||(permMode==="ask"?"ask":"auto");const label=PlazCodeApproval.MODES.find(item=>item.value===mode)?.label||"Approve for me";return globalThis.PlazCodeI18n?.t(label)||label;}
+  function approvalModeLabel(){const mode=approvalMode||(permMode==="ask"?"ask":"auto");const label=PlazCodeApproval.MODES.find((item)=>item.value===mode)?.label||"Approve for me";return globalThis.PlazCodeI18n?.t(label)||label;}
   function renderApprovalMode(){const node=document.getElementById("rs-approval-mode");if(node){node.querySelector("span").textContent=approvalModeLabel();node.dataset.mode=approvalMode||"legacy";}}
   async function setApprovalMode(value){
     const next=PlazCodeApproval.normalizeMode(value);if(!next)return;
@@ -401,7 +402,7 @@
         root.hidden = false;
         // The chat chip says it is waiting, so the transcript matches the card.
         let chipDt = null, oldDt = "";
-        try { chipDt = A.toolItem && A.toolItem.querySelector && A.toolItem.querySelector(".rs-chip-dt"); if (chipDt) { oldDt = chipDt.textContent; chipDt.textContent = "waiting for approval"; } } catch {}
+        try { chipDt = A.toolItem && A.toolItem.querySelector && A.toolItem.querySelector(".rs-chip-dt"); if (chipDt) { oldDt = chipDt.textContent || ""; chipDt.textContent = "waiting for approval"; } } catch {}
         let finished = false;
         const done = (ok) => {
           if (finished) return;
@@ -649,7 +650,7 @@
     const key = raw + "|" + (iconName || "");
     if (btn.dataset.rsLabel === key && btn.querySelector(".rs-lbl,.rs-ico")) return;
     btn.dataset.rsLabel = key;
-    let text = raw, icon = iconName || "";
+    let text = String(raw), icon = iconName || "";
     for (const [glyph, name] of BAR_GLYPHS) if (text.startsWith(glyph)) { icon = icon || name; text = text.slice(glyph.length); break; }
     text = text.replace(/^[\s\ufe0e\ufe0f]+/, "").trim();
     btn.innerHTML = barIcon(icon) + (text ? '<span class="rs-lbl"></span>' : "");
@@ -691,13 +692,17 @@
   function rsFeelHooks(host) {
     if (!host || host.rsFeelHooked) return; host.rsFeelHooked = true;
     host.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0) return;
-      const t = e.target && e.target.closest ? e.target.closest("button,[role=button]") : null;
-      if (t && !t.disabled && !t.closest("#rs-engine") && !t.closest("input,select,textarea")) rsRipple(e, t);
+      const me = e;
+      if (me.button !== 0) return;
+      const raw = me.target;
+      const t = raw && typeof raw.closest === "function" ? raw.closest("button,[role=button]") : null;
+      if (t && !t.disabled && !t.closest("#rs-engine") && !t.closest("input,select,textarea")) rsRipple(me, t);
     }, true);
     host.addEventListener("click", (e) => {
-      const t = e.target && e.target.closest ? e.target.closest("#rs-action,#rs-engine .rs-mode-btn:not(.on),[data-rs-spark]") : null;
-      if (t && !t.disabled) { const at = rsPoint(e, t); rsBurst(at[0], at[1]); }
+      const me = e;
+      const raw = me.target;
+      const t = raw && typeof raw.closest === "function" ? raw.closest("#rs-action,#rs-engine .rs-mode-btn:not(.on),[data-rs-spark]") : null;
+      if (t && !t.disabled) { const at = rsPoint(me, t); rsBurst(at[0], at[1]); }
     }, true);
   }
   // Shown in the panel instead of a static "Free" label, so a user's screenshot
@@ -845,7 +850,8 @@
   function setOrTheme(id) {
     if (!PLAZCODE_THEMES[id]) return;
     plazcodeTheme = id;
-    const theme={night:"graphite","blood-moon":"crimson",sakura:"rose",starglaze:"amethyst",autumn:"default"}[id];
+    const themeMap = {night:"graphite","blood-moon":"crimson",sakura:"rose",starglaze:"amethyst",autumn:"default"};
+    const theme = themeMap[id];
     applySharedAppearance({...(sharedAppearance||{}),custom:"",theme,glow:sharedAppearance?.glow || "subtle",gradients:sharedAppearance?.gradients || "on"});
     applyOrSkin();
     try { chrome.storage.local.set({ rsTheme: id, rsAppearance:sharedAppearance }); } catch {}
@@ -859,7 +865,8 @@
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
-      const ctx = playSfx._ctx || (playSfx._ctx = new AC());
+      const fn = playSfx;
+      const ctx = fn._ctx || (fn._ctx = new AC());
       if (ctx.state === "suspended") ctx.resume();
       const now = ctx.currentTime;
       const beep = (freq, t, dur, type, gain) => {
@@ -903,6 +910,40 @@
     { name: "WorkBuddy", url: "https://www.workbuddy.ai/app" },
     { name: "Ollama", url: "ollama://local" },
   ];
+
+  ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   const A = {
     running: false,
@@ -997,7 +1038,7 @@
       phase = next; owner = nextOwner; revision++;
       try { onExit(previous, next); } catch (error) { log('Lifecycle cleanup failed', error); }
     };
-    const active = name => phase === name || phase === 'stopping' && owner === name;
+    const active = (name) => phase === name || phase === 'stopping' && owner === name;
     return {
       snapshot: () => ({phase, owner, revision}),
       active,
@@ -1037,7 +1078,7 @@
 
   // Provider init must happen after A is defined — diag() reads A.running and
   // copilot's init calls diag() immediately, which would TDZ if init ran before A.
-  try { P.init({ diag, sendContext: () => ({session:A.sessionGen,stop:A.stopAt || 0,cooldown:normalizeCooldown(reliabilitySettings.rsCommandCooldown)*1000}), pacingRequest: request => bg({type:"provider-pacing",request,page:request.client}), isStopped: () => A.stop, isSessionActive: () => A.started || A.running, requestStart: () => startSession() }); } catch {}
+  try { P.init({ diag, sendContext: () => ({session:A.sessionGen,stop:A.stopAt || 0,cooldown:normalizeCooldown(reliabilitySettings.rsCommandCooldown)*1000}), pacingRequest: (request) => bg({type:"provider-pacing",request,page:request.client}), isStopped: () => A.stop, isSessionActive: () => A.started || A.running, requestStart: () => startSession() }); } catch {}
 
   async function waitFor(pred, timeout) {
     let t0 = Date.now(), lastBeatAt = t0;
@@ -1160,7 +1201,8 @@
         if (e.defaultPrevented) return;
         const f = e.target;
         if (!f || f.tagName !== "FORM") return;
-        const method = String((e.submitter && e.submitter.getAttribute && e.submitter.getAttribute("formmethod")) || f.getAttribute("method") || "get").toLowerCase();
+        const submitter = (e).submitter;
+        const method = String((submitter && submitter.getAttribute && submitter.getAttribute("formmethod")) || f.getAttribute("method") || "get").toLowerCase();
         if (method !== "get") return;
         let qs = "";
         try {
@@ -1199,7 +1241,7 @@
   async function submitAndGetBase(text, images, userPrompt = false) {
     if (A.stop && !userPrompt) throw new SendAbortedError("Stopped before feedback delivery.");
     if (!userPrompt && A.running && !A.starting && !A.enhancing && !A.stop && !A.stopping) {
-      return cowork.deliverWithFeedback(text, combined => submitCore(combined, images, false));
+      return cowork.deliverWithFeedback(text, (combined) => submitCore(combined, images, false));
     }
     return submitCore(text, images, userPrompt);
   }
@@ -1208,7 +1250,7 @@
     const origin = P.lastAssistantId?.() ?? P.lastAssistant();
     const chat = P.conversationKey(), generation = A.sessionGen;
     const payload = String(text || "");
-    const same = entry => entry && entry.origin === origin && entry.chat === chat &&
+    const same = (entry) => entry && entry.origin === origin && entry.chat === chat &&
       entry.generation === generation && entry.text === payload && entry.userPrompt === userPrompt && entry.images === images;
     const pending = A.pendingSubmit;
     if (pending) {
@@ -1344,8 +1386,8 @@
         diag("submit.typeAndSend", { hasImages: !!(images && images.length) });
         try { armUrlGuard(text); } catch (eGuard) {} // the safety net must never stop a send
         let sendResult;
-        try {sendResult = await P.typeAndSend(typeof window !== "undefined" && typeof window.__rsLimitOutgoing === "function" ? window.__rsLimitOutgoing(text) : text, images, { userPrompt: userPrompt === true });}
-        catch(error){if(P.guardedSender){reportGuardedSendFailure(error);throw new SendAbortedError(String(error.message||error));}throw error;}
+        try {sendResult = await P.typeAndSend(typeof window !== "undefined" && typeof window.__rsLimitOutgoing === "function" ? window.__rsLimitOutgoing(text) : (text), images, { userPrompt: userPrompt === true });}
+        catch(error){if(P.guardedSender){reportGuardedSendFailure(error);throw new SendAbortedError(String((error)?.message||error));}throw error;}
         if (P.strictSendReceipt && sendResult !== true) throw new SendAbortedError("ChatGPT did not confirm this delivery. No automatic resend was attempted.");
         if (P.authoritativeSendResult) {
           if (sendResult === true) messageSent = true;
@@ -1370,7 +1412,7 @@
             // sending it, and the user had to type "continue". When the very text we just
             // wrote is verifiably still in the composer and no new turn appeared, deliver it
             // once more, whatever its size. Never retried for attachments.
-            const norm = value => String(value || "").replace(/\s+/g, " ").trim();
+            const norm = (value) => String(value || "").replace(/\s+/g, " ").trim();
             const stuckTail = norm(sentTail).slice(-40);
             // Never during startup or after an ambiguous click: those keep the 1.24.12 behaviour.
             const draftStuck = !A.stop && !A.starting && !retriedUnsent && !(images && images.length) && stuckTail.length >= 8 &&
@@ -2180,7 +2222,7 @@
   // Every user meets this eventually - Chrome auto-updates extensions under
   // open tabs - so it is worth its own message.
   const isContextInvalidated = (m) =>
-    /Extension context invalidated|Receiving end does not exist|message port closed/i.test(m || "");
+    /Extension context invalidated|Receiving end does not exist|message port closed/i.test(String(m || ""));
 
   function bgRequestTimeoutMs(msg) {
     if (msg?.type === "call_tool") {
@@ -2199,7 +2241,7 @@
       const tool = msg?.type === "call_tool", record = {draining:false};
       let settled = false;
       if (tool) { A.inflightTools ||= new Set(); A.inflightTools.add(record); }
-      const finish = value => {
+      const finish = (value) => {
         if (settled) return;
         settled = true; clearTimeout(timer);
         if (tool) A.inflightTools.delete(record);
@@ -2209,17 +2251,17 @@
       const timer = setTimeout(() => finish({ok:false,kind:"timeout",error:
         "No reply from the extension worker before the request deadline." +
         (tool ? " The command may already have run. Inspect current state before retrying; it was not replayed." : "")}), bgRequestTimeoutMs(msg));
-      const fail = m => finish({ok:false,kind:isContextInvalidated(m)?"stale-extension":"disconnected",error:m});
+      const fail = (m) => finish({ok:false,kind:isContextInvalidated(m)?"stale-extension":"disconnected",error:m});
       // 1.24.30: a long command answers "still-running" every 4 minutes (the browser stops a worker whose message
       // takes 5); keep asking until the real answer or this request's own deadline.
-      const ask = request => {
+      const ask = (request) => {
         try {
           chrome.runtime.sendMessage(request, resp => {
             if (chrome.runtime.lastError) fail(chrome.runtime.lastError.message);
             else if (resp && resp.kind === "still-running" && resp.job && !settled) ask({type:"job-wait", job:resp.job});
             else finish(resp || {ok:false,kind:"disconnected",error:"no response from background"});
           });
-        } catch (e) { fail(String(e && e.message || e)); }
+        } catch (e) { fail(String(((e) && (e).message) || e)); }
       };
       ask({...msg, engine: activeEngine()});
     });
@@ -2255,7 +2297,7 @@
   // Owner (2026-11-18): at most TWO commands per AI reply (was eight), to keep each turn small on free plans.
   const MAX_COMMANDS_PER_REPLY = 2;
   const VISION_TOOLS = new Set(["screen_capture"]);
-  const bareToolName = (name) => (name && name.includes("/") ? name.split("/").pop() : name) || "";
+  const bareToolName = (name) => (name && String(name).includes("/") ? String(name).split("/").pop() : String(name || "")) || "";
   // The ONLY sanctioned way to read the active engine outside build()'s closure.
   // Returns exactly "roblox" | "local". Legacy "anim" storage maps onto Roblox
   // (animation tools + Motion tab live on RS now).
@@ -2884,12 +2926,12 @@ return result`;
       return "ERROR in asset_bridge_import: Blender returned no meshes. Add or select mesh objects, then blender_send_to_studio.\n" + textOut.slice(0, 400);
     }
     if(meshes.length>128)return "ERROR in asset_bridge_import: transfer at most 128 objects per request.";
-    const finite=value=>typeof value==='number'&&Number.isFinite(value);
+    const finite=(value)=>typeof value==='number'&&Number.isFinite(value);
     for(const entry of meshes){
-      if(!Array.isArray(entry.verts)||!entry.verts.length||entry.verts.length>60000||entry.verts.some(v=>!Array.isArray(v)||v.length!==3||!v.every(finite)))return "ERROR in asset_bridge_import: invalid mesh vertices; nothing was imported.";
-      if(!Array.isArray(entry.faces)||!entry.faces.length||entry.faces.length>20000||entry.faces.some(f=>!Array.isArray(f)||f.length!==3||!f.every(v=>Number.isInteger(v)&&v>=0&&v<entry.verts.length)))return "ERROR in asset_bridge_import: invalid mesh triangles; nothing was imported.";
-      if(entry.face_uvs&&(!Array.isArray(entry.face_uvs)||entry.face_uvs.length!==entry.faces.length||entry.face_uvs.some(f=>!Array.isArray(f)||f.length!==3||f.some(uv=>!Array.isArray(uv)||uv.length!==2||!uv.every(finite)))))return "ERROR in asset_bridge_import: invalid UV mapping; nothing was imported.";
-      if(entry.face_colors&&(!Array.isArray(entry.face_colors)||entry.face_colors.length!==entry.faces.length||entry.face_colors.some(color=>!Array.isArray(color)||color.length!==4||!color.every(finite))))return "ERROR in asset_bridge_import: invalid material colors; nothing was imported.";
+      if(!Array.isArray(entry.verts)||!entry.verts.length||entry.verts.length>60000||entry.verts.some((v)=>!Array.isArray(v)||v.length!==3||!v.every(finite)))return "ERROR in asset_bridge_import: invalid mesh vertices; nothing was imported.";
+      if(!Array.isArray(entry.faces)||!entry.faces.length||entry.faces.length>20000||entry.faces.some((f)=>!Array.isArray(f)||f.length!==3||!f.every((v)=>Number.isInteger(v)&&v>=0&&v<entry.verts.length)))return "ERROR in asset_bridge_import: invalid mesh triangles; nothing was imported.";
+      if(entry.face_uvs&&(!Array.isArray(entry.face_uvs)||entry.face_uvs.length!==entry.faces.length||entry.face_uvs.some((f)=>!Array.isArray(f)||f.length!==3||f.some((uv)=>!Array.isArray(uv)||uv.length!==2||!uv.every(finite)))))return "ERROR in asset_bridge_import: invalid UV mapping; nothing was imported.";
+      if(entry.face_colors&&(!Array.isArray(entry.face_colors)||entry.face_colors.length!==entry.faces.length||entry.face_colors.some((color)=>!Array.isArray(color)||color.length!==4||!color.every(finite))))return "ERROR in asset_bridge_import: invalid material colors; nothing was imported.";
     }
     const transfer=crypto.randomUUID(),owner={chat:P.conversationKey(),engine:activeEngine(),generation:A.sessionGen};
     const current=()=>!A.stop&&owner.chat===P.conversationKey()&&owner.engine===activeEngine()&&owner.generation===A.sessionGen;
@@ -2921,7 +2963,7 @@ return result`;
   }
   chrome.storage.local.get(Object.keys(characterLimits), value=>{characterLimits=normalizeCharacterLimits(value||{});});
   chrome.storage.onChanged.addListener((changes,area)=>{if(area!=='local')return;const next={...characterLimits};let changed=false;for(const key of Object.keys(next))if(changes[key]){next[key]=changes[key].newValue;changed=true;}characterLimits=normalizeCharacterLimits(next);if(changed)try{ui?.refreshMenu?.();}catch{}});
-  window.__rsLimitOutgoing = text => {
+  window.__rsLimitOutgoing = (text) => {
     const value=String(text||'');
     if(characterLimits.rsInputLimitEnabled&&value.length>characterLimits.rsInputCharLimit)throw Error('This message exceeds your '+characterLimits.rsInputCharLimit+' character input limit. Nothing was omitted or sent. Raise or disable the input limit in Settings.');
     return value;
@@ -2950,7 +2992,7 @@ return result`;
     const requested=args.limit===undefined?resultPageSize():Number(args.limit);
     if(requested!==Infinity&&(!Number.isSafeInteger(requested)||requested<1))return 'ERROR: limit must be a positive character count.';
     const budget=resultPageSize();
-    const packet=end=>"Output of 'plazcode_result_read':\n"+JSON.stringify({result:{version:1,format:'plazcode-result/1',tool:'plazcode_result_read',ok:true,kind:'retained_page',content:{id:args.id,offset,next_offset:end<record.text.length?end:null,total_characters:record.text.length,text:record.text.slice(offset,end)}}});
+    const packet=(end)=>"Output of 'plazcode_result_read':\n"+JSON.stringify({result:{version:1,format:'plazcode-result/1',tool:'plazcode_result_read',ok:true,kind:'retained_page',content:{id:args.id,offset,next_offset:end<record.text.length?end:null,total_characters:record.text.length,text:record.text.slice(offset,end)}}});
     let low=offset,high=Math.min(record.text.length,offset+Math.min(requested,budget));
     // Count the serialized envelope, including escaped source characters, so a
     // page never creates another retained page merely because JSON expanded it.
@@ -2997,7 +3039,7 @@ return result`;
     const id=crypto.randomUUID();retainedToolResults.set(id,{text:body,chat:P.conversationKey(),engine:activeEngine()});
     let retained=0;for(const entry of retainedToolResults.values())retained+=entry.text.length;
     while(retainedToolResults.size>32||retained>64000000&&retainedToolResults.size>1){const first=retainedToolResults.keys().next().value;retained-=retainedToolResults.get(first).text.length;retainedToolResults.delete(first);}
-    const page=end=>prefix+JSON.stringify({result:{version:1,format:'plazcode-result/1',tool,ok:!failed,kind:'retained_result',original_kind:kind,...(failed?{error:result.error}:{}),content:{total_characters:body.length,text:body.slice(0,end)},next_call:end<body.length?{command:'plazcode_result_read',params:{id,offset:end}}:null}});
+    const page=(end)=>prefix+JSON.stringify({result:{version:1,format:'plazcode-result/1',tool,ok:!failed,kind:'retained_result',original_kind:kind,...(failed?{error:result.error}:{}),content:{total_characters:body.length,text:body.slice(0,end)},next_call:end<body.length?{command:'plazcode_result_read',params:{id,offset:end}}:null}});
     let low=0,high=Math.min(body.length,budget);
     while(low<high){const mid=Math.ceil((low+high)/2);if(page(mid).length<=budget)low=mid;else high=mid-1;}
     if(low<body.length&&low>0&&/[\uD800-\uDBFF]/.test(body[low-1]))low--;
@@ -3015,7 +3057,7 @@ return result`;
     const cached=A.debugReady && A.debugReady.scope===scope?A.debugReady.text:"";A.debugReady=null;
     let change=false;try{change=PlazCodeSafety.isChange(toolName,activeEngine()) || (toolName==="plazcode_batch");}catch{}
     if(change && !A.stop){
-      void collectAutoDebug(toolName,"").then(text=>{if(text && !A.stop && scope===P.id+"|"+P.conversationKey()+"|"+A.sessionGen)A.debugReady={scope,text};}).catch(error=>diag("debug.backgroundFailed",{error:String(error.message||error)}));
+      void collectAutoDebug(toolName,"").then(text=>{if(text && !A.stop && scope===P.id+"|"+P.conversationKey()+"|"+A.sessionGen)A.debugReady={scope,text};}).catch(error=>diag("debug.backgroundFailed",{error:String((error)?.message||error)}));
     }
     return feedback+cached;
   }
@@ -3088,7 +3130,7 @@ return result`;
       try { ui.toast("Nothing to undo in Studio"); } catch {}
       return false;
     } catch (e) {
-      try { ui.toast("Undo failed — " + String(e && e.message || e).slice(0, 80)); } catch {}
+      try { ui.toast("Undo failed — " + String((e && (e).message) || e).slice(0, 80)); } catch {}
       return false;
     }
   }
@@ -3188,7 +3230,7 @@ return result`;
       call.tool=remapToolName(call.tool);PlazCodeToolGuard.repair(call,A.toolList);
       if(denied.test(call.tool))return ['E_BATCH_CONTROL calls['+i+']: interactive/control/memory commands must run separately.'];
       if(!A.toolList.some(t=>t.name===call.tool))return ['E_COMMAND calls['+i+']: unknown command '+call.tool+'. Get an exact name with list_commands, then use that name in command.'];
-      return PlazCodeToolGuard.check(call,A.toolList).map(e=>'E_ARGUMENT calls['+i+']: '+e+' Put argument fields in this entry\'s params object.');
+      return PlazCodeToolGuard.check(call,A.toolList).map((e)=>'E_ARGUMENT calls['+i+']: '+e+' Put argument fields in this entry\'s params object.');
     });
     if(errors.length)return "ERROR: no batch command ran. "+errors.join("; ");
     const owner={chat:P.conversationKey(),session:A.sessionGen,engine:activeEngine()},results=[];
@@ -3199,8 +3241,8 @@ return result`;
     // but never cancels reads, so one bad read does not cost the rest of the reply. Reads that hand back
     // pictures, drive a browser tab or wait on something keep their place in line.
     const PARALLEL_UNSAFE=/^(?:plazcode_|tab_|browser_)|screen|record|base64|wait|^look$/;
-    const parallelRead=call=>{try{const bare=bareToolName(call.tool);return typeof PlazCodeSafety!=="undefined" && !PlazCodeSafety.isChange(bare,owner.engine) && !PARALLEL_UNSAFE.test(bare);}catch{return false;}};
-    const runChild=async i=>{
+    const parallelRead=(call)=>{try{const bare=bareToolName(call.tool);return typeof PlazCodeSafety!=="undefined" && !PlazCodeSafety.isChange(bare,owner.engine) && !PARALLEL_UNSAFE.test(bare);}catch{return false;}};
+    const runChild=async (i)=>{
       const call=calls[i];BATCH_OWNERS.set(call,live);const started=Date.now();
       try{activity.step(call.tool,argSummary(call));ui.trackCard(call.tool,"run","executing…",RS.toolCategory(call.tool));}catch{}
       diag("batch.childStart",{index:i+1,name:call.tool});
@@ -3216,7 +3258,7 @@ return result`;
       return !failed;
     };
     // The batch envelope already consumed one slot. Account for each extra child.
-    const budgetStop=i=>{if(i>0 && A.taskBudget){const reason=A.taskBudget.check();if(reason)return reason;A.taskBudget.consume();}return "";};
+    const budgetStop=(i)=>{if(i>0 && A.taskBudget){const reason=A.taskBudget.check();if(reason)return reason;A.taskBudget.consume();}return "";};
     let held=false,ended=false;
     for(let i=0;i<calls.length && !ended;){
       if(!live()){results[i]={index:i+1,not_run:true,error:"Stopped or chat/session changed; remaining commands did not run."};break;}
@@ -3305,7 +3347,7 @@ return result`;
     } catch (e) {
       // Chrome demands the tab be focused (and may want a real user gesture) —
       // report it plainly instead of pretending the copy happened.
-      return { ok: false, error: String((e && e.message) || e).slice(0, 140) };
+      return { ok: false, error: String((e && (e).message) || e).slice(0, 140) };
     }
   }
   function kb(b64) { return Math.round((String(b64 || "").length * 3) / 4 / 102.4) / 10; }
@@ -3326,7 +3368,7 @@ return result`;
         if (r && !r.ok) notes.push(label + ": " + String(r.error || "failed").slice(0, 160));
         else if (r && r.ok) notes.push(label + ": returned no image data");
       } catch (e) {
-        notes.push(label + ": " + String((e && e.message) || e).slice(0, 160));
+        notes.push(label + ": " + String((e && (e).message) || e).slice(0, 160));
       }
       return false;
     };
@@ -3345,7 +3387,7 @@ return result`;
           notes.push("tab: " + r.images.length + " image(s)");
         } else if (r && !r.ok) notes.push("tab: " + String(r.error || "failed").slice(0, 160));
       } catch (e) {
-        notes.push("tab: " + String((e && e.message) || e).slice(0, 160));
+        notes.push("tab: " + String((e && (e).message) || e).slice(0, 160));
       }
     }
     return { shots, notes };
@@ -3356,19 +3398,19 @@ return result`;
     call.tool = remapToolName(call.tool);
     PlazCodeToolGuard.repair(call, A.toolList);
     let name = call.tool;
-    const args = call.arguments == null ? {} : call.arguments;
+    let args = call.arguments == null ? {} : call.arguments;
     if (name === "plazcode_batch") return runCommandBatch(args);
     if (name === "plazcode_clarify") {
-      try { PlazCodeClarification.validate(args); } catch (error) { return "ERROR: " + error.message; }
+      try { PlazCodeClarification.validate(args); } catch (error) { return "ERROR: " + (error).message; }
       if (A.stop) throw new SendAbortedError("Clarification was stopped.");
       try { return "Output of 'plazcode_clarify':\n" + JSON.stringify(await clarification.request(args)); }
-      catch (error) { if (error.name === 'AbortError') throw new SendAbortedError(error.message); throw error; }
+      catch (error) { if ((error)?.name === 'AbortError') throw new SendAbortedError((error).message); throw error; }
     }
     if (name === "plazcode_help") {
       if (typeof PlazCodeLeanStartup === "undefined") return "ERROR: plazcode_help is not available in this build. Use list_commands for command details.";
       if (!(typeof PlazCodeText === "undefined" || await PlazCodeText.ready())) return "ERROR: " + PlazCodeText.error();
       try { return "Output of 'plazcode_help':\n" + PlazCodeLeanStartup.helpFor({ topic: args && (args.topic || args.area || args.query), command: args && (args.command || args.name), engine: activeEngine(), siteName: P.displayName }); }
-      catch (error) { return "ERROR: " + error.message; }
+      catch (error) { return "ERROR: " + (error).message; }
     }
     // 1.24.30 (owner): the AI reads PlazCode's on-disk logs (desktop app, logs/events) to find out what went wrong.
     if (name === "plazcode_logs") {
@@ -3390,7 +3432,7 @@ return result`;
     if (name === "plazcode_result_read") return readRetainedToolResult(args);
     if (name === "plazcode_checklist") {
       try { return "Output of 'plazcode_checklist':\n" + JSON.stringify(activity.checklist(args.steps)); }
-      catch(error) { return "ERROR: " + error.message; }
+      catch(error) { return "ERROR: " + (error).message; }
     }
     const preflight = PlazCodeToolGuard.check(call, A.toolList);
     if (preflight.length) return "ERROR: command was not executed. Fix these arguments before retrying:\n" + preflight.join("\n");
@@ -3427,14 +3469,14 @@ return result`;
         if(!['list','read','match','save','suggest'].includes(args.action))throw Error('Use list, read, match, save or suggest. Confirmation and sharing belong in Skills.');
         if(args.action==='read'&&/^(bundled-ultra-|bundled-ultragui-|bundled-ultracode-)/.test(String(args.id||'')))throw Error('The built-in Ultra skills moved: at Ultra effort open them with the ultralab_read tool (action list, then read).');
         if(args.action==='suggest'){
-          const steps=(Array.isArray(args.steps)?args.steps:[args.steps]).map(step=>String(step||'').trim()).filter(Boolean).slice(0,30).map(step=>step.slice(0,1000));
+          const steps=(Array.isArray(args.steps)?args.steps:[args.steps]).map((step)=>String(step||'').trim()).filter(Boolean).slice(0,30).map((step)=>step.slice(0,1000));
           const title=String(args.title||'').trim().slice(0,100);
           if(!title||!steps.length)throw Error('suggest needs a short title and the instructions as steps.');
           const offerKey=P.conversationKey()+'|'+skillTitleKey(title);
-          const output=value=>"Output of 'plazcode_skills':\n"+JSON.stringify(value);
+          const output=(value)=>"Output of 'plazcode_skills':\n"+JSON.stringify(value);
           if(skillOffersShown.has(offerKey))return output({ok:true,shown:false,note:'Already offered in this chat. Do not offer it again; continue with the current request.'});
           const listed=await bg({type:'skills',request:{action:'list'}});
-          const twin=listed?.ok?(listed.skills||[]).find(skill=>skillTitleKey(skill.title)===skillTitleKey(title)):null;
+          const twin=listed?.ok?(listed.skills||[]).find((skill)=>skillTitleKey(skill.title)===skillTitleKey(title)):null;
           if(twin)return output({ok:true,shown:false,note:"A skill named '"+twin.title+"' already exists (id "+twin.id+"). Do not offer it again; update it only if the user asks."});
           skillOffersShown.add(offerKey);
           showSkillSuggestion({title,description:String(args.description||steps[0]).trim().slice(0,2000),domain:['all','roblox','local','blender','model','ui'].includes(args.domain)?args.domain:'all',scope:args.project_only===true?engramScope():'',steps,pitfalls:[],verification:[]});
@@ -3446,19 +3488,19 @@ return result`;
           // the existing one. User-approved guidance is enabled so it is used.
           const sameTitle=skillTitleKey;
           const listed=await bg({type:'skills',request:{action:'list'}});
-          const twin=sameTitle(args.title)&&listed?.ok?(listed.skills||[]).find(skill=>skill.id!==args.id&&sameTitle(skill.title)===sameTitle(args.title)):null;
+          const twin=sameTitle(args.title)&&listed?.ok?(listed.skills||[]).find((skill)=>skill.id!==args.id&&sameTitle(skill.title)===sameTitle(args.title)):null;
           if(twin)return "ERROR: A skill named '"+twin.title+"' already exists (id "+twin.id+", revision "+twin.revision+"). Update it with that id and revision, or choose a clearly different method name. Do not save duplicates.";
-          const previous=args.id&&listed?.ok?(listed.skills||[]).find(skill=>skill.id===args.id):null;
+          const previous=args.id&&listed?.ok?(listed.skills||[]).find((skill)=>skill.id===args.id):null;
           request={action:'save',revision:args.revision||0,skill:{id:args.id||'skill-'+crypto.randomUUID(),title:args.title||'',description:args.description||'',domain:args.domain||activeEngine(),scope:engramScope(),steps:args.steps||[],pitfalls:args.pitfalls||[],verification:args.verification||[],confirmed:false,enabled:args.user_approved===true||!!previous?.enabled,revision:args.revision||0,community:false}};
         }
         request.effort=typeof window!=="undefined"?window.__rsThinkingLevel?.()||'default':'default';const result=await bg({type:'skills',request});return result?.ok?"Output of 'plazcode_skills':\n"+JSON.stringify(result):'ERROR: '+String(result?.error||'Skills unavailable.');
-      } catch(error){return 'ERROR: '+String(error.message||error);}
+      } catch(error){return 'ERROR: '+String((error).message||error);}
     }
     if (name === "plazcode_vault") {
       try {
         const output = await PlazCodeMemory.vaultTool(args, { project: currentProject, learningContext:learningContext(), lastImage: () => (A.recentImages && A.recentImages[0]) || null, attach: (pictures) => { A.pendingImages = pictures; rememberImages(pictures, "vault"); } });
         return "Output of 'plazcode_vault':\n" + output;
-      } catch (error) { return "ERROR in plazcode_vault: " + (error.message || String(error)); }
+      } catch (error) { return "ERROR in plazcode_vault: " + ((error).message || String(error)); }
     }
     if (name === "plazcode_critic") {
       try {
@@ -3470,13 +3512,13 @@ return result`;
           close: () => bg({ type: "rs-critic", op: "close" }),
         });
         return "Output of 'plazcode_critic':\n" + output;
-      } catch (error) { return "ERROR in plazcode_critic: " + (error.message || String(error)); }
+      } catch (error) { return "ERROR in plazcode_critic: " + ((error).message || String(error)); }
     }
     if (name === "plazcode_engram") {
       try{
         if(!['context','search','read','save','summary'].includes(args.action))throw Error('Use context, search, read, save or summary.');
         const result=await engramRequest(args);return "Output of 'plazcode_engram':\n"+result.text+(result.truncated?'\n[Memory response truncated; search or read a specific observation.]':'');
-      }catch(error){return 'ERROR: '+(error.message||String(error));}
+      }catch(error){return 'ERROR: '+((error).message||String(error));}
     }
     if (name === "studio_upload_asset") {
       try {
@@ -3484,14 +3526,14 @@ return result`;
         const reply = await bg({ type: "rs-toolkit", request: { action: "insert-typed-asset", kind: String(args.kind || args.type || ""), asset_id: assetId } });
         if (!reply || reply.ok === false) throw new Error(reply && reply.error || "Studio upload is unavailable. Open the PlazCode desktop app.");
         return "Output of 'studio_upload_asset':\n" + (reply.text || "Asset added.");
-      } catch (error) { return "ERROR in studio_upload_asset: " + (error.message || String(error)); }
+      } catch (error) { return "ERROR in studio_upload_asset: " + ((error).message || String(error)); }
     }
     if (name === "plazcode_memory") {
       try {
         if (!['list','read','remember'].includes(args.action)) throw new Error("Use action list, read or remember. Manual edits and removals belong in Memory settings.");
         const memory = await refreshPersonalMemory(args.action === 'remember' ? {action:'remember',title:typeof args.title==='string'?args.title.slice(0,120):'',text:args.text,evidence:args.evidence,learning_context:learningContext(),source:P.displayName + ' · ' + P.conversationKey(),chat_id:P.conversationKey() ? P.id + '|' + P.conversationKey() : ''} : undefined);
         return "Output of 'plazcode_memory':\n" + (args.action === 'remember' ? (memory.saveSkipped ? 'No lasting memory added: '+memory.saveSkipped+' Continue the original task; do not retry saving this note.' : 'Memory saved. Continue the original task.') : JSON.stringify(PlazCodeMemory.read({...memory,project_scope:currentProject},args)));
-      } catch (error) { return "ERROR: " + (error.message || String(error)); }
+      } catch (error) { return "ERROR: " + ((error).message || String(error)); }
     }
     if (!name) return RS.FEEDBACK.parseError("malformed");
     try { name = remapToolName(name); } catch {}
@@ -3651,7 +3693,7 @@ return result`;
         lines.push("Page text:");
         lines.push(String(p.text || "").slice(0, 4000));
         return "Output of 'tab_read':\n" + lines.join("\n");
-      } catch (e) { return "ERROR: tab_read — " + String((e && e.message) || e); }
+      } catch (e) { return "ERROR: tab_read — " + String((e && (e).message) || e); }
     }
     if (name === "tab_click") {
       try {
@@ -3660,7 +3702,7 @@ return result`;
         const res = r.result || {};
         if (!res.clicked) return "tab_click: could not find the element (" + (res.error || "no match") + "). Try tab_read to see what is clickable.";
         return "tab_click: clicked <" + res.tag + "> \"" + res.label + "\".";
-      } catch (e) { return "ERROR: tab_click — " + String((e && e.message) || e); }
+      } catch (e) { return "ERROR: tab_click — " + String((e && (e).message) || e); }
     }
     if (name === "tab_type") {
       try {
@@ -3669,14 +3711,14 @@ return result`;
         const res = r.result || {};
         if (!res.typed) return "tab_type: " + (res.error || "could not type");
         return "tab_type: typed into <" + res.tag + ">" + (args.submit ? " and pressed Enter." : ".");
-      } catch (e) { return "ERROR: tab_type — " + String((e && e.message) || e); }
+      } catch (e) { return "ERROR: tab_type — " + String((e && (e).message) || e); }
     }
     if (name === "tab_scroll") {
       try {
         const r = await bg({ type: "tab_scroll", accent: controlAccent(), words: controlWords(), tabId: args.tabId, url_contains: args.url_contains, amount: args.amount });
         if (!r || !r.ok) return "ERROR: tab_scroll failed — " + String((r && r.error) || "no response");
         return "tab_scroll: scrolled to y=" + ((r.result && r.result.y) || "?");
-      } catch (e) { return "ERROR: tab_scroll — " + String((e && e.message) || e); }
+      } catch (e) { return "ERROR: tab_scroll — " + String((e && (e).message) || e); }
     }
     // AgentScript control rework (1.24.36; offered while the worker reports control_v2): real control of web tabs.
     if (/^tab_(?:screenshot|click_at|type_text|key|scroll_at|navigate|open)$/.test(name)) {
@@ -3699,7 +3741,7 @@ return result`;
           return `Output of '${name}':\n${r.text || "Picture taken."}\n(The image is attached to THIS message - you can see it directly. Analyse it and continue.)`;
         }
         return `Output of '${name}':\n${r.text || "Done."}`;
-      } catch (e) { return "ERROR: " + name + " — " + String((e && e.message) || e); }
+      } catch (e) { return "ERROR: " + name + " — " + String((e && (e).message) || e); }
     }
     // ── attach_feedback: copy / paste / RE-SEND a screenshot or file ────────
     // Three jobs in one command, because they are the same image pipeline:
@@ -3864,7 +3906,7 @@ return result`;
           if (!usable) {
             return `Output of '${name}':\nAgentScript is currently OFFLINE (the native agent process is not running), so its commands cannot run. This is an environment problem on the user's machine, not your mistake. Tell the user in one short sentence to start PlazCode.exe.`;
           }
-        } else if (curEng !== "local") {
+        } else if ((curEng) !== "local") {
           const rbx = srv.find((x) => x.id === "roblox" || x.id === "studio");
           const rbxUsable = !!s.connected && (
             s.roblox_connected === true ||
@@ -4019,8 +4061,8 @@ return result`;
     if (!chatCreatorInserter) chatCreatorInserter = PlazCodeChatCreators.create({
       context: () => JSON.stringify([P.id,P.conversationKey(),activeEngine(),A.sessionGen]),
       allowed: () => A.started && activeEngine() === "roblox" && !A.stop && !A.stopping && !A.pendingToolSettles,
-      read: build_id => bg({type:"creations",request:{action:"read",build_id}}),
-      execute: compiled => runImportedStudioProgram(compiled.code)
+      read: (build_id) => bg({type:"creations",request:{action:"read",build_id}}),
+      execute: (compiled) => runImportedStudioProgram(compiled.code)
     });
     return chatCreatorInserter.insert(args);
   }
@@ -4050,20 +4092,20 @@ return result`;
         try{
           if(typeof args.blueprint==="string"){try{args.blueprint=JSON.parse(args.blueprint);}catch{throw Error("blueprint must be a JSON object, not quoted text");}}if(!args.blueprint&&args.draft&&typeof args.draft==="object")args.blueprint=args.draft;if(args.blueprint&&typeof args.blueprint==="object"&&!Array.isArray(args.blueprint.nodes)&&Array.isArray(args.blueprint.parts))args.blueprint.nodes=args.blueprint.parts;if(args.blueprint&&typeof args.blueprint==="object"&&(args.blueprint.action_id==null||args.blueprint.action_id===""))args.blueprint.action_id="preview-"+crypto.randomUUID();const id=args.blueprint?.build_id;if(!id)throw Error("Supply a headless_build blueprint with build_id (a stable id such as crate-1), root_id and nodes");
           const list=await bg({type:"creations",request:{action:"list"}});if(!list?.ok)throw Error(list?.error||"Creator bridge unavailable.");
-          const existing=list.records.find(record=>record.build_id===id);let previous=null;
+          const existing=list.records.find((record)=>record.build_id===id);let previous=null;
           if(existing){const read=await bg({type:"creations",request:{action:"read",build_id:id}});if(!read?.ok)throw Error(read?.error);previous=read.record.blueprint;if(args.revision!==read.record.revision)throw Error("Draft changed. Read the latest revision before patching.");}
           let draft=PlazCodeCreator.merge(previous,args.blueprint);let notes=[];
           if(args.status === "ready"){const result=PlazCodeCreator.polish(draft);draft=result.draft;notes=result.notes;}
           request={action:"save",build_id:id,blueprint:draft,revision:existing?args.revision:0,status:args.status||"building",stage:args.stage||"Draft pass"};
           const result=await bg({type:"creations",request});return result?.ok?"Output of 'creation_preview':\n"+JSON.stringify({...result,build_id:id,nodes:draft.nodes.length,status:request.status,fixes:notes,studio_changed:false}):"ERROR: "+String(result?.error||"Creator save failed.");
-        }catch(error){return "ERROR: "+String(error.message||error)+". No Studio changes were made.";}
+        }catch(error){return "ERROR: "+String((error).message||error)+". No Studio changes were made.";}
       }
       const result=await bg({type:"creations",request});
       if(result?.ok && args.action==='read'){
         const draft=result.record.blueprint,offset=Math.max(0,Number(args.offset)||0),limit=Math.max(1,Math.min(60,Number(args.limit)||60));
         if(!Number.isInteger(offset)||offset>=draft.nodes.length)return "ERROR: offset is beyond this draft.";
         const nodes=[];let chars=0;for(const node of draft.nodes.slice(offset,offset+limit)){const size=JSON.stringify(node).length;if(chars+size>50000&&nodes.length)break;nodes.push(node);chars+=size;}
-        return "Output of 'creation_preview':\n"+JSON.stringify({ok:true,blueprint:{...draft,nodes},revision:result.record.revision,status:result.record.status,total_nodes:draft.nodes.length,offset,next_offset:offset+nodes.length<draft.nodes.length?offset+nodes.length:null,feedback:result.feedback.filter(note=>note.mode===draft.mode)});
+        return "Output of 'creation_preview':\n"+JSON.stringify({ok:true,blueprint:{...draft,nodes},revision:result.record.revision,status:result.record.status,total_nodes:draft.nodes.length,offset,next_offset:offset+nodes.length<draft.nodes.length?offset+nodes.length:null,feedback:result.feedback.filter((note)=>note.mode===draft.mode)});
       }
       return result?.ok?"Output of 'creation_preview':\n"+JSON.stringify(result):"ERROR: "+String(result?.error||"Creator bridge unavailable.");
     }
@@ -4666,8 +4708,8 @@ return result`;
   let activityIdleToken = null, activityIdleChat = null;
   let activitySeenItems = new WeakSet();
   const activityTranscript = PlazCodeActivity.renderer({
-    label: group => activity.label(group),
-    toggle: id => { activity.toggle(id); syncActivityItems(); },
+    label: (group) => activity.label(group),
+    toggle: (id) => { activity.toggle(id); syncActivityItems(); },
     mount: (item, node) => {
       if (P.mountActivitySummary) return P.mountActivitySummary(item, node);
       if (!item.parentNode) return null;
@@ -4711,21 +4753,21 @@ return result`;
       return;
     }
     const groups = activity.list(P.conversationKey());
-    const retained = new Set(groups.map(group => group.id));
+    const retained = new Set(groups.map((group) => group.id));
     for (const [key,id] of activityItems) if (!retained.has(id)) activityItems.delete(key);
     for (const [id] of activityAnchors) if (!retained.has(id)) activityAnchors.delete(id);
     for (const [item,id] of activityTrackedItems) if (!item.isConnected || !retained.has(id)) activityTrackedItems.delete(item);
     const items = P.allItems();
-    const mounted = activityTranscript.sync(groups, group => {
+    const mounted = activityTranscript.sync(groups, (group) => {
       const anchor = activityAnchors.get(group.id);if (!anchor) return null;
       if (anchor.item.isConnected) return anchor.item;
-      const replacement = items.find(item => !P.isUserItem(item) && activityAnchorKey(item) === anchor.key);
+      const replacement = items.find((item) => !P.isUserItem(item) && activityAnchorKey(item) === anchor.key);
       if (replacement) anchor.item = replacement;
       return replacement || null;
     });
     for (const item of new Set([...activityTrackedItems.keys(), ...items.slice(-120)])) {
       const id = activityTrackedItems.get(item) || activityItems.get(activityKey(item));
-      const group = groups.find(group => group.id === id);
+      const group = groups.find((group) => group.id === id);
       const folded = !!group && !group.expanded && !!mounted?.has(id) && P.isUserItem(item) && RSParse.isInjectedFeedback(String(P.classifyText(item, ".rs-chip") || ""));
       if (P.setActivityFolded) P.setActivityFolded(item, folded);
       else if (group) { item.dataset.rsActivity = id; item.dataset.rsActivityFolded = folded ? '1' : '0'; }
@@ -4756,9 +4798,9 @@ return result`;
     ready: () => A.started && !A.stop && !A.stopping && !A.starting && !A.enhancing && !A.injecting &&
       !A.staleExtension && ui.coworkReady() &&
       !(P.isHardGenerating ? P.isHardGenerating() : P.isBusyNow()) && !String(P.editorText() || "").trim(),
-    send: text => submitAndGetBase(text, undefined, true),
+    send: (text) => submitAndGetBase(text, undefined, true),
     changed: () => { try { ui.renderCowork(); } catch {} },
-    delivered: texts => {A.creatorFollowups=texts;A.creatorBrief='Current task request:\n'+String(A.taskRequest||'')+'\nLatest exact follow-up requests:\n'+JSON.stringify(texts);A.creatorRequestKey='followup-'+(A.creatorFollowupNumber=(A.creatorFollowupNumber||0)+1);},
+    delivered: (texts) => {A.creatorFollowups=texts;A.creatorBrief='Current task request:\n'+String(A.taskRequest||'')+'\nLatest exact follow-up requests:\n'+JSON.stringify(texts);A.creatorRequestKey='followup-'+(A.creatorFollowupNumber=(A.creatorFollowupNumber||0)+1);},
   });
   let coworkPumping = false;
   async function pumpCowork() {
@@ -4782,11 +4824,11 @@ return result`;
   // boundary: cut off the AI's current reply, keep the queue, and deliver it as soon as the chat is quiet.
   function coworkSendNow() {
     const state = cowork.snapshot();
-    if (!state.enabled || !A.started || A.staleExtension || !state.pending.some(item => item.status === "queued")) return { ok: false };
+    if (!state.enabled || !A.started || A.staleExtension || !state.pending.some((item) => item.status === "queued")) return { ok: false };
     const taskActive = A.running || (P.isHardGenerating ? P.isHardGenerating() : P.isGenerating());
     if (!taskActive) { pumpCowork(); return { ok: true, idle: true }; }
     if (A.stopping) return { ok: true };
-    try { ui.toast((globalThis.PlazCodeI18n?.t || (x => x))("Stopping the AI's reply and sending your follow-up now.")); } catch {}
+    try { ui.toast((globalThis.PlazCodeI18n?.t || ((x) => x))("Stopping the AI's reply and sending your follow-up now.")); } catch {}
     stopLoop();                         // pauses the queue; the pump resumes it once the chat is quiet
     A.coworkSendNow = true;             // set AFTER stopLoop, which clears it so a manual Stop never sends
     return { ok: true };
@@ -4794,7 +4836,7 @@ return result`;
   document.addEventListener("keydown", event => {
     if (event.key !== "Enter" || !(event.ctrlKey || event.metaKey) || event.isComposing || !event.isTrusted || event.defaultPrevented) return;
     const state = cowork.snapshot();
-    if (!state.enabled || !A.started || !state.pending.some(item => item.status === "queued")) return;
+    if (!state.enabled || !A.started || !state.pending.some((item) => item.status === "queued")) return;
     if (ui.isCoworkCoverTarget && ui.isCoworkCoverTarget(event.target)) return;   // its own handler enqueues the draft first
     if (String(P.editorText() || "").trim()) return;                              // the composer hook enqueues the draft first
     if (!(A.running || (P.isHardGenerating ? P.isHardGenerating() : P.isGenerating()))) return;
@@ -4811,7 +4853,7 @@ return result`;
       const enhanced=await PlazCodeEnhancer.waitForRewrite({read:()=>{const fresh=P.lastAssistantId&&previousId!==undefined?P.lastAssistantId()!==previousId:P.lastAssistant()!==previous||P.assistantCount()>previousCount;return fresh?String((P.readAssistant()||{}).reply||''):'';},busy:()=>P.isBusyNow()||!!(P.responsePending&&P.responsePending(P.lastAssistant())),cancelled:()=>{try{check();return false;}catch{return true;}},sleep});
       check();rememberExecuted(P.lastAssistant(),enhanced);return enhanced;
     },
-    send:text=>submitAndGetBase(text),
+    send:(text)=>submitAndGetBase(text),
   });
   async function enhanceCreationBeforeTools(res){
     if(activeEngine()!=='roblox')return null;
@@ -4819,7 +4861,7 @@ return result`;
     // 1.24.10: enhance only right before a real creator mutation. Previously
     // any first command (multi_edit, read_file…) of a UI/model task was
     // discarded and replaced by a rewrite turn, which confused the AI mid-task.
-    const mutates=calls.some(call=>{const name=call.tool||call.command;return (name==='creation_preview'&&call.arguments?.action==='save')||name==='creation_insert';});
+    const mutates=calls.some((call)=>{const name=call.tool||call.command;return (name==='creation_preview'&&call.arguments?.action==='save')||name==='creation_insert';});
     if(!mutates||A.creatorEnhancedKey===A.creatorRequestKey)return null;
     rememberExecuted(res.item||P.lastAssistant());A.enhancing=true;A.enhancerStatus='Enhancing model/UI prompt…';ui.toast(A.enhancerStatus);
     try{const result=await creatorPromptEnhancer.perform(A.creatorRequestKey,A.creatorBrief||A.taskRequest);A.creatorEnhancedKey=A.creatorRequestKey;A.creatorContext='';A.enhancerStatus='Creation prompt enhanced.';return result;}
@@ -4828,7 +4870,7 @@ return result`;
       // for this request; let the AI's original command run normally.
       A.creatorEnhancedKey=A.creatorRequestKey;A.enhancerStatus='';
       if(A.stop||A.userStopped)throw error;
-      diag("creator.enhanceFailed",{error:String(error&&error.message||error).slice(0,200)});
+      diag("creator.enhanceFailed",{error:String((error&&(error).message)||error).slice(0,200)});
       try{ui.toast("Prompt enhancement skipped — continuing with the AI's command.");}catch{}
       return null;
     }finally{A.enhancing=false;}
@@ -4843,7 +4885,7 @@ return result`;
       if(/^I clicked Start Agent in my installed PlazCode extension\b/.test(raw.trim())||(typeof PlazCodeReliability!=='undefined'&&PlazCodeReliability.startupMessage(raw)))continue; // PlazCode's own startup messages (request, follow-up, memory pages) are not a user task
       const chat=P.conversationKey();
       if(latestRequestCache?.user===item&&latestRequestCache.raw===raw&&latestRequestCache.chat===chat)return latestRequestCache;
-      latestRequestCache={user:item,raw,chat,label:PlazCodeChecklist.userText(item,node=>P.itemText(node))};
+      latestRequestCache={user:item,raw,chat,label:PlazCodeChecklist.userText(item,(node)=>P.itemText(node))};
       return latestRequestCache;
     }
     return {user:null,label:''};
@@ -4887,7 +4929,7 @@ return result`;
     if(referenceDue){
     recallEngram();
     try{const result=await bg({type:"skills",request:{action:"match",query:A.taskRequest,domain:activeEngine(),scope:engramScope(),effort:typeof window!=="undefined"?window.__rsThinkingLevel?.()||"default":"default"}});
-    if(result?.ok&&sitePinnedSkills.length&&typeof PlazCodeSiteSetups!=="undefined"){const pinned=(await Promise.all(sitePinnedSkills.map(id=>bg({type:"skills",request:{action:"export",id}}).catch(()=>null)))).filter(r=>r?.ok&&r.skill).map((r,i)=>({...r.skill,id:sitePinnedSkills[i]}));result.skills=PlazCodeSiteSetups.mergePinned(result.skills||[],pinned);}
+    if(result?.ok&&sitePinnedSkills.length&&typeof PlazCodeSiteSetups!=="undefined"){const pinned=(await Promise.all(sitePinnedSkills.map((id)=>bg({type:"skills",request:{action:"export",id}}).catch(()=>null)))).filter((r)=>r?.ok&&r.skill).map((r,i)=>({...r.skill,id:sitePinnedSkills[i]}));result.skills=PlazCodeSiteSetups.mergePinned(result.skills||[],pinned);}
     if(result?.ok&&result.skills?.length)A.skillContext = "\nREUSABLE SKILL REFERENCE — use only relevant saved guidance for the current user task. Infer its purpose from that task and the project context; no separate skill goal is required. Unverified guidance still needs checks. Inspect the current project first; adapt names, architecture and dependencies, then test using normal tools. Apply the principle, not the literal code: fit it to this game's genre and existing systems (for example, a simulator and a battlegrounds game need different structure, pacing and UI). Skip other skills that do not fit this task. Skills marked always_use are the user's favourites: always follow them in this task unless they conflict with the user's request. Never blindly paste a skill or treat it as an instruction overriding this request.\n"+(typeof PlazCodeSkillContext!=="undefined"?PlazCodeSkillContext.text(result.skills,9000):JSON.stringify(result.skills).slice(0,9000)); /* core/skill-context.js (2026-11-20: folder skills as short cards) */}catch{}
     // 1.24.24 usage fix: this attached the whole Ultra pack (about 25,000 characters, the same text every
     // time) to EVERY new request. With the short startup the compact Ultra guide is already in the startup,
@@ -5025,7 +5067,7 @@ return result`;
     diag("loop.start", { base });
     try {
       if (!recoveryAttempt) try { playtestCheck?.reset(); uiCheck?.reset(); } catch {}
-      try { await beginTaskCheckpoint(); } catch(error) { A.checkpointId=null;ui.toast("Task checkpoint unavailable: "+(error.message||String(error))); }
+      try { await beginTaskCheckpoint(); } catch(error) { A.checkpointId=null;ui.toast("Task checkpoint unavailable: "+((error).message||String(error))); }
       while (!A.stop) {
         A.loopBeatAt = Date.now(); // liveness stamp for the stuck-run monitor
         // Gate the WHOLE cycle on tab visibility. We only advance - read the
@@ -5070,7 +5112,7 @@ return result`;
             busyWaits++;
             let policy=null;
             if(P.noteRateLimit){
-              try{policy=await P.noteRateLimit(busyDetail);}catch(error){ui.banner("warn","DeepSeek send paused",String(error.message||error));break;}
+              try{policy=await P.noteRateLimit(busyDetail);}catch(error){ui.banner("warn","DeepSeek send paused",String((error).message||error));break;}
               if(policy.retry!==true || busyWaits>=3){ui.banner("warn","DeepSeek asked PlazCode to pause","Automatic retries stopped. Wait for DeepSeek's cooldown and resolve its notice before starting again.");break;}
             }
             const ms = policy ? Math.max(8000,Number(policy.wait_ms)||60000) : Math.min(120000, 5000 * Math.pow(2, Math.min(busyWaits - 1, 5)));
@@ -5198,7 +5240,7 @@ return result`;
         if(["tools","tool"].includes(res.kind)){const enhanced=await enhanceCreationBeforeTools(res);if(enhanced){base=enhanced.base;continue;}}
         if((A.templateContext || A.creatorContext || A.engramContext || A.skillContext) && ["tools","tool"].includes(res.kind)){
           const calls = res.calls || [];
-          const alreadyCreator = calls.length && calls.every(call => ["creation_preview","creation_insert"].includes(call.tool || call.command));
+          const alreadyCreator = calls.length && calls.every((call) => ["creation_preview","creation_insert"].includes(call.tool || call.command));
           const reference=[A.templateContext,alreadyCreator ? "" : A.creatorContext,A.engramContext,A.skillContext].filter(Boolean).join("\n\n");
           A.templateContext="";A.creatorContext="";A.engramContext="";A.skillContext="";
           if(A.referenceTaskKey){if(!A.referenceDelivered)A.referenceDelivered=new Set();A.referenceDelivered.add(A.referenceTaskKey);if(A.referenceDelivered.size>60)A.referenceDelivered.delete(A.referenceDelivered.values().next().value);}
@@ -5208,7 +5250,7 @@ return result`;
           // normally; the one-time reference rides after its real result.
           if(reference){
             A.pendingReference=reference;
-            diag("loop.referenceAfterTool",{held:calls.map(call=>call.tool||call.command).filter(Boolean).join(", ").slice(0,80)});
+            diag("loop.referenceAfterTool",{held:calls.map((call)=>call.tool||call.command).filter(Boolean).join(", ").slice(0,80)});
           }
         }
         if(res.kind==='protocol_error'){
@@ -5332,8 +5374,8 @@ return result`;
           const finishUi = typeof uiCheck !== "undefined" ? uiCheck : null, finishPlay = typeof playtestCheck !== "undefined" ? playtestCheck : null;
           if ((finishUi || finishPlay) && !A.stop && !A.userStopped && !A.waitingForClarification && !(typeof PlazCodeStallGuard !== "undefined" && PlazCodeStallGuard.asksUser && PlazCodeStallGuard.asksUser(body))) {
             let fix = null;
-            try { fix = finishUi ? await finishUi.afterDone() : null; } catch (error) { diag("uicheck.failed", { error: String(error && error.message || error) }); }
-            if (!fix && finishPlay && !A.stop && !A.userStopped) try { fix = await finishPlay.afterDone(); } catch (error) { diag("playtest.failed", { error: String(error && error.message || error) }); }
+            try { fix = finishUi ? await finishUi.afterDone() : null; } catch (error) { diag("uicheck.failed", { error: String((error && (error).message) || error) }); }
+            if (!fix && finishPlay && !A.stop && !A.userStopped) try { fix = await finishPlay.afterDone(); } catch (error) { diag("playtest.failed", { error: String((error && (error).message) || error) }); }
             if (fix && !A.stop && !A.userStopped) { base = await submitAndGetBase(fix); continue; }
           }
           completed = true;
@@ -5353,9 +5395,9 @@ return result`;
         if (res.kind === "tool") {
           A.hangTries = {}; // a command arrived, so the next stall in this run gets its own single recovery
           const calls = res.calls;
-          const preflight = calls.flatMap(call => {
+          const preflight = calls.flatMap((call) => {
             call.tool = remapToolName(call.tool);
-            return PlazCodeToolGuard.check(PlazCodeToolGuard.repair(call, A.toolList), A.toolList).map(error =>
+            return PlazCodeToolGuard.check(PlazCodeToolGuard.repair(call, A.toolList), A.toolList).map((error) =>
               (call.argumentError ? 'E_SHAPE: ' : 'E_ARGUMENT: ') + error);
           });
           if (preflight.length) {
@@ -5366,7 +5408,7 @@ return result`;
             if (++invalidToolAttempts >= 3) { ui.banner("warn", "Too many commands", "Nothing ran. The AI may send at most 2 commands per reply."); break; }
             base = await submitAndGetBase("ERROR: nothing ran. Your reply had " + calls.length + " commands; the limit is AT MOST TWO (2) commands per reply. Send the first 2 now, the rest after their results.");continue;
           }
-          if(calls.length>1){const group=calls.splice(0);calls.push({tool:"plazcode_batch",arguments:{calls:group.map(c=>({command:c.tool,params:c.arguments}))}});}
+          if(calls.length>1){const group=calls.splice(0);calls.push({tool:"plazcode_batch",arguments:{calls:group.map((c)=>({command:c.tool,params:c.arguments}))}});}
           invalidToolAttempts = 0;
           claimNudges = 0; // a real command arrived: the next unsent-command claim gets its own nudge
           const call = calls[0];
@@ -5472,7 +5514,7 @@ return result`;
           if(!isErr){
             progressNudges=0;
             const workCalls=call.tool==='plazcode_batch' ? call.arguments?.calls || [] : [call];
-            if(workCalls.some(c=>['edit','generate'].includes(RS.toolCategory(c.tool || c.command))))completedWork++;
+            if(workCalls.some((c)=>['edit','generate'].includes(RS.toolCategory(c.tool || c.command))))completedWork++;
             try { playtestCheck?.note(call); uiCheck?.note(call); } catch {}
           }
           failedToolAttempts=isErr ? failedToolAttempts+1 : 0;
@@ -5526,7 +5568,7 @@ return result`;
           let toSend = formatToolFeedback(completeFeedback,call,A.pendingImages,isErr);
           if (toSend.length + reserve > inputBudget()) toSend = compressToolFeedback(toSend, "combined_feedback");
           // Changed saved memory rides along only if it fits; the AI's own vault/memory write is not echoed back.
-          const ownMemoryWrite = calls.some(call => /^(?:plazcode_vault|plazcode_memory)$/.test(String(call.tool || call.command || "")) && /^(?:write|save|archive|add_image|append|replace|section)$/.test(String((call.params || call.arguments || {}).action || (call.params || call.arguments || {}).mode || "write")));
+          const ownMemoryWrite = calls.some((call) => /^(?:plazcode_vault|plazcode_memory)$/.test(String(call.tool || call.command || "")) && /^(?:write|save|archive|add_image|append|replace|section)$/.test(String((call.params || call.arguments || {}).action || (call.params || call.arguments || {}).mode || "write")));
           const memoryContext = personalMemoryContext();
           if (memoryContext !== lastMemoryContext) {
             if (ownMemoryWrite) lastMemoryContext = memoryContext;
@@ -5577,8 +5619,8 @@ return result`;
         // just stop quietly instead of piling an "internal error" on top.
         diag("loop.sendAborted", {});
       } else {
-        diag("loop.error", { msg: String((e && e.message) || e) });
-        ui.banner("warn", "Internal loop error", String((e && e.message) || e));
+        diag("loop.error", { msg: String((e && (e).message) || e) });
+        ui.banner("warn", "Internal loop error", String((e && (e).message) || e));
         // An error while a command was running must not leave its card spinning forever.
         if (A.toolRunning && A.toolItem) { try { decorate.toolBox(A.toolItem, A.toolName, "err", "interrupted", true, "", RS.toolCategory(A.toolName)); } catch {} }
         try { A._sfxErr = true; } catch {}
@@ -5648,7 +5690,7 @@ return result`;
       const base = await submitAndGetBase(sessionReminderPrompt() + "\n\nContinue the existing unfinished request after reconnecting. Do not repeat completed or uncertain mutations; inspect current state first.\nOriginal request: " + saved.task);
       if (!A.userStopped && !A.stop) await agentLoop(base, attempt);
     } catch (error) {
-      diag("loop.capabilityRecoveryFailed", {error:String(error.message || error)});
+      diag("loop.capabilityRecoveryFailed", {error:String((error).message || error)});
       ui.toast("Command access recovery did not finish. Check the last reply before retrying.");
     }
   }
@@ -5741,7 +5783,7 @@ return result`;
     if (!executed.size) return false;
     try {
       const pref = executed.get(`${P.conversationKey()}|${turnKey(item)}`);
-      return (pref != null && (txt || "").startsWith(pref)) || !!startupOutcome(item, txt);
+      return (pref != null && String(txt || "").startsWith(pref)) || !!startupOutcome(item, txt);
     } catch { return false; }
   }
   const startupOutcomes = new Map();
@@ -5767,7 +5809,7 @@ return result`;
   }
   function startupOutcome(item, text) {
     if (!startupOutcomes.size || !P.isAssistantItem(item)) return null;
-    const matches = outcome => outcome && String(text || "").trim().startsWith(outcome.prefix);
+    const matches = (outcome) => outcome && String(text || "").trim().startsWith(outcome.prefix);
     const outcome = startupOutcomes.get(`${P.conversationKey()}|${turnKey(item)}`);
     if (matches(outcome)) return outcome;
     // Notion replaces the event anchor as a response settles. Match only the
@@ -5793,7 +5835,7 @@ return result`;
     }
   }
   let reliabilitySettings={rsToolBudget:0,rsTaskMinutes:0,rsRunLimitsEnabled:false,rsVisualCheck:true,rsFullStartup:false,rsContinuationOffer:true,rsCommandCooldown:0},savedHandoff=null;
-  const normalizeReliability = value => ({rsRunLimitsEnabled:value.rsRunLimitsEnabled===true,rsToolBudget:Math.max(0,Math.min(1000,Number.isFinite(Number(value.rsToolBudget))?Math.floor(Number(value.rsToolBudget)):0)),rsTaskMinutes:Math.max(0,Math.min(240,Number.isFinite(Number(value.rsTaskMinutes))?Math.floor(Number(value.rsTaskMinutes)):0)),rsVisualCheck:value.rsVisualCheck!==false,rsContinuationOffer:value.rsContinuationOffer!==false,rsCommandCooldown:normalizeCooldown(value.rsCommandCooldown),rsFullStartup:value.rsFullStartup===true});
+  const normalizeReliability = (value) => ({rsRunLimitsEnabled:value.rsRunLimitsEnabled===true,rsToolBudget:Math.max(0,Math.min(1000,Number.isFinite(Number(value.rsToolBudget))?Math.floor(Number(value.rsToolBudget)):0)),rsTaskMinutes:Math.max(0,Math.min(240,Number.isFinite(Number(value.rsTaskMinutes))?Math.floor(Number(value.rsTaskMinutes)):0)),rsVisualCheck:value.rsVisualCheck!==false,rsContinuationOffer:value.rsContinuationOffer!==false,rsCommandCooldown:normalizeCooldown(value.rsCommandCooldown),rsFullStartup:value.rsFullStartup===true});
   // 1.24.22: the short startup is used unless the user switched on "Full startup" (off by default).
   function leanStartupOn() { return reliabilitySettings.rsFullStartup !== true && typeof PlazCodeLeanStartup !== "undefined"; }
   let handoffRevision=0;
@@ -5806,7 +5848,7 @@ return result`;
   });
   function downloadHandoff(value){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:"application/json"}));const link=document.createElement("a");link.href=url;link.download="PlazCode-continuation.json";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   async function automaticVisualCheck(call,feedback){
-    if(A.stop||!reliabilitySettings.rsVisualCheck||activeEngine()!=="roblox"||!P.supportsVision||feedbackIsError(feedback)||A.pendingImages?.length||!(call.tool==="creation_insert" || PlazCodeReliability.visual(call) || (call.tool==="plazcode_batch" && call.arguments.calls.some(c=>PlazCodeReliability.visual({tool:c.command,arguments:c.params})))))return feedback;
+    if(A.stop||!reliabilitySettings.rsVisualCheck||activeEngine()!=="roblox"||!P.supportsVision||feedbackIsError(feedback)||A.pendingImages?.length||!(call.tool==="creation_insert" || PlazCodeReliability.visual(call) || (call.tool==="plazcode_batch" && call.arguments.calls.some((c)=>PlazCodeReliability.visual({tool:c.command,arguments:c.params})))))return feedback;
     // 1.21.0: no cap on visual checks; a short gap only avoids duplicate captures.
     if(Date.now()-(A.lastVisualCheck||0)<3000)return feedback;
     A.lastVisualCheck=Date.now();A.visualChecks=(A.visualChecks||0)+1;
@@ -5814,7 +5856,7 @@ return result`;
     const operation=captureShots("studio",{timeout:10000,checkpointId:A.checkpointId}).finally(()=>{settled=true;if(draining)A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);});
     const stopped=new Promise(resolve=>{timer=setInterval(()=>{if(A.stop && A.stopMode!=='safe'){if(!settled){draining=true;A.pendingToolSettles=(A.pendingToolSettles||0)+1;}clearInterval(timer);resolve({shots:[]});}},50);});
     let shots;try{({shots}=await Promise.race([operation,stopped]));}finally{clearInterval(timer);}if(A.stop)return feedback;
-    const shot=shots.find(x=>x&&typeof x.data==="string"&&x.data.length<=2800000);if(!shot)return feedback+"\nVisual check unavailable: no bounded Studio image was captured. Verify the change in Studio.";
+    const shot=shots.find((x)=>x&&typeof x.data==="string"&&x.data.length<=2800000);if(!shot)return feedback+"\nVisual check unavailable: no bounded Studio image was captured. Verify the change in Studio.";
     const key=PlazCodeReliability.fingerprint(shot);if(key===A.visualFingerprint)return feedback;A.visualFingerprint=key;A.pendingImages=[shot];
     return feedback+"\nA Studio screenshot is attached for visual review. Compare it with what the task intends (positions, scale, orientation, colours, VFX, UI layout). If anything looks off - e.g. a weapon held at the wrong angle, a misplaced effect, overlapping UI - fix it now without asking the user, then check again. Keep correcting until it looks right. A screenshot does not verify runtime logic or hidden UI; do not claim a visual test passed without inspecting it.";
   }
@@ -5896,7 +5938,7 @@ return result`;
       if (typeof leanStartupOn === 'function' && leanStartupOn()) return PlazCodeMemory.availability(personalMemory,currentProject);
       const smallContext = !!P.sysMaxChars || (typeof leanStartupOn === "function" && leanStartupOn());
       { const vaultPrompt = PlazCodeMemory.vaultContext((typeof leanStartupOn === "function" && leanStartupOn()) ? 'lean' : !!P.sysMaxChars); if (vaultPrompt) return vaultPrompt; }
-      const scoped=personalMemory ? {...personalMemory,project_scope:currentProject,entries:personalMemory.entries.filter(entry=>!entry.project || entry.project===currentProject)} : null;
+      const scoped=personalMemory ? {...personalMemory,project_scope:currentProject,entries:personalMemory.entries.filter((entry)=>!entry.project || entry.project===currentProject)} : null;
       if (!scoped || !smallContext) return PlazCodeMemory.prompt(scoped);
       const entries = []; let size = 0;
       for (const entry of [...scoped.entries].reverse()) {
@@ -6095,11 +6137,11 @@ return result`;
       if (typeof PlazCodeMemory !== "undefined" && PlazCodeMemory.vaultActive && PlazCodeMemory.vaultActive() && PlazCodeMemory.vaultReadAllPages) {
         for (const page of await PlazCodeMemory.vaultReadAllPages(budget, 40)) pages.push({ kind: "vault", text: page.text });
       }
-    } catch (error) { diag("start.memoryVault", { error: String((error && error.message) || error).slice(0, 160) }); }
+    } catch (error) { diag("start.memoryVault", { error: String((error && (error).message) || error).slice(0, 160) }); }
     try {
       const project = await readProjectMemoryText(budget);
       if (project.trim()) pages.push({ kind: "project", text: project });
-    } catch (error) { diag("start.memoryProject", { error: String((error && error.message) || error).slice(0, 160) }); }
+    } catch (error) { diag("start.memoryProject", { error: String((error && (error).message) || error).slice(0, 160) }); }
     diag("start.memoryPages", { pages: pages.length, chars: pages.reduce((n, p) => n + p.text.length, 0) });
     const total = pages.length;
     return pages.map((page, i) => {
@@ -6114,12 +6156,12 @@ return result`;
       };
     });
   }
-  function startupFeedbackStages(memoryStages,readyPrompt) {
+  function startupFeedbackStages(memoryStages, readyPrompt) {
     const ordinary=[...memoryStages,...(P.startupFeedbackMessages?P.startupFeedbackMessages(readyPrompt):[{text:readyPrompt}])];
     // Normal ChatGPT can read a small complete memory set with the command list,
     // avoiding a separate model round trip for each memory acknowledgement.
-    if(P.id!=="chatgpt" || !memoryStages.length || memoryStages.some(stage=>!stage.referenceText))return ordinary;
-    const combined=readyPrompt+"\n\n"+memoryStages.map(stage=>stage.referenceText).join("\n\n")+'\n\nRead all the memory above before acknowledging startup. Reply with exactly "PlazCode is ready." and nothing else.';
+    if(P.id!=="chatgpt" || !memoryStages.length || memoryStages.some((stage)=>!stage.referenceText))return ordinary;
+    const combined=readyPrompt+"\n\n"+memoryStages.map((stage)=>stage.referenceText).join("\n\n")+'\n\nRead all the memory above before acknowledging startup. Reply with exactly "PlazCode is ready." and nothing else.';
     if(combined.length>Math.min(30000,inputBudget()-1000) || combined.split("\n").length>220)return ordinary;
     diag("start.memoryCombined",{pages:memoryStages.length,chars:combined.length});
     return [{text:combined}];
@@ -6149,15 +6191,15 @@ return result`;
     }
     const isRestart = !!(opts && opts.restart);
     if (!isRestart && A.started && !P.chatIsEmpty()) {
-      try{await requireStartupConnection(true);}catch(error){ui.banner("warn","PlazCode connection not ready",error.message);return {ready:false};}
+      try{await requireStartupConnection(true);}catch(error){ui.banner("warn","PlazCode connection not ready",(error).message);return {ready:false};}
       diag("start.alreadyReady", { path: P.conversationKey() });
       return { ready: true, alreadyStarted: true, chat:P.conversationKey(), generation:A.sessionGen };
     }
     if (A.startupOwner && !A.starting) {
       try { ui.toast("The previous startup is still cancelling. Try again shortly, or reload the page."); } catch {}
-      return;
+      return undefined;
     }
-    if (A.running || A.starting || A.startupOwner || A.enhancing || A.injecting || A.stopping || A.pendingToolSettles) return;
+    if (A.running || A.starting || A.startupOwner || A.enhancing || A.injecting || A.stopping || A.pendingToolSettles) return undefined;
     if (A.stallGuard) A.stallGuard.reset();
     A.hangTries = {};
     // "Start session" is normally allowed ONLY on a blank conversation.
@@ -6165,7 +6207,7 @@ return result`;
     // this and injects the system prompt mid-chat so the AI will work.
     if (!isRestart && !P.prepareSessionStart && !P.chatIsEmpty() && !A.started) {
       ui.toast("Open a new chat first, then Start");
-      return;
+      return undefined;
     }
     A.userStopped = false;
     A._confirmedStartup = false;
@@ -6194,12 +6236,12 @@ return result`;
         P.setInputLock(true);
         ui.inputCover(true);
         const prepared = await P.prepareSessionStart("startup");
-        if (!alive() || (prepared && prepared.navigating)) return;
+        if (!alive() || (prepared && prepared.navigating)) return undefined;
         if (!prepared || !prepared.ready) {
           ui.banner("warn", `${P.displayName} isn't ready`,
             (prepared && (prepared.detail || prepared.error)) ||
             `Couldn't find ${P.displayName}'s chat box. Open a new chat or reload the page.`);
-          return;
+          return undefined;
         }
       }
       // The lock/cover live INSIDE the try: if any UI/provider call between
@@ -6270,7 +6312,7 @@ return result`;
       // catalog then suffice; no extra model turn is spent saying "ready".
       // Custom first-person/owned-provider flows retain their verified framing.
       const catalogSnapshot=()=>JSON.stringify({engine:activeEngine(),root:A.bridge?.local_root||'',full:A.bridge?.local_full,readOnly:safetySettings.readOnly,tools:A.toolList.filter(t=>(t.server||activeEngine())===activeEngine()).map(t=>({name:t.name,schema:t.inputSchema||{},description:t.description||''})).sort((a,b)=>String(a.name).localeCompare(String(b.name)))});
-      let preloadedCatalog=null;
+      let preloadedCatalog = null;
       if(typeof leanStartupOn==='function'&&leanStartupOn()&&!P.startupRequest&&!P.userVoiceStartup&&P.id!=='notion') {
         const tools=A.toolList.filter(t=>(t.server||activeEngine())===activeEngine());
         // 2026-11-18 (owner: plan usage): every parameter name, without its type (level 0 added ":string" to each, about
@@ -6443,7 +6485,7 @@ return result`;
           if(P.confirmedDeliveryMatches)exactContext=P.confirmedDeliveryMatches(startupPrompt);
           else {
             const last=P.allItems().filter(P.isUserItem).at(-1),key=last&&(P.itemKey?.(last)||last);
-            const normalize=value=>String(value||'').replace(/\s+/g,' ').trim();
+            const normalize=(value)=>String(value||'').replace(/\s+/g,' ').trim();
             exactContext=!!last&&!preloadedCatalog.users.has(key)&&normalize(P.classifyText(last,'.rs-chip'))===normalize(startupPrompt);
           }
         }catch{}
@@ -6572,7 +6614,7 @@ return result`;
         // leave Start available instead of a raw "Startup failed" banner.
         diag("start.sendAborted", {});
       } else if (alive()) {
-        ui.banner("warn", "Startup failed", String((e && e.message) || e));
+        ui.banner("warn", "Startup failed", String((e && (e).message) || e));
       }
     } finally {
       // Only tear down our OWN starting state. If we were superseded (the user
@@ -7303,7 +7345,7 @@ return result`;
     let lastManualEngineAt = 0; // user toggled recently — auto-switch must not fight them
 
     const followupPlaceholders=new WeakMap();
-    let followupEditor=null;
+    let followupEditor = null;
     function build() {
       root = document.createElement("div");
       root.id = "rs-root";
@@ -7672,11 +7714,11 @@ return result`;
       let memorySummary;
       function openMemory() {
         root.querySelector("#rs-memory-panel").hidden = false;
-        if (!memorySummary) memorySummary = PlazCodeMemory.mount(root.querySelector("#rs-memory-summary"), refreshPersonalMemory, {exportChat: includeHistory => desktopAgentAction("memory-export", includeHistory ? "" : "memory-only"), importChat: value => desktopAgentAction("memory-import", JSON.stringify(value))});
+        if (!memorySummary) memorySummary = PlazCodeMemory.mount(root.querySelector("#rs-memory-summary"), refreshPersonalMemory, {exportChat: (includeHistory) => desktopAgentAction("memory-export", includeHistory ? "" : "memory-only"), importChat: (value) => desktopAgentAction("memory-import", JSON.stringify(value))});
         else memorySummary.refresh();
       }
       root.querySelector("#rs-memory-close").onclick = () => { root.querySelector("#rs-memory-panel").hidden = true; };
-      root.addEventListener("click", event => { if (event.target.closest("#rs-memory-settings")) { menuEl.hidden = true; openMemory(); } });
+      root.addEventListener("click", (event) => { if (event.target.closest("#rs-memory-settings")) { menuEl.hidden = true; openMemory(); } });
       root.querySelector("#rs-cowork").onclick = () => {
         desktopAgentAction(cowork.snapshot().enabled ? "cowork-off" : "cowork-on");
       };
@@ -7688,7 +7730,7 @@ return result`;
       root.querySelector("#rs-cowork-resume").onclick = () => {
         const result = desktopAgentAction("cowork-resume"); if (!result.ok) ui.toast(result.error);
       };
-      try { chrome.storage.local.get("rsCowork", value => { cowork.setEnabled(value.rsCowork === true); }); } catch {}
+      try { chrome.storage.local.get("rsCowork", (value) => { cowork.setEnabled(value.rsCowork === true); }); } catch {}
       root.querySelector("#rs-enhance").onclick = () => { enhancerPanel.hidden = !enhancerPanel.hidden; if (!enhancerPanel.hidden) enhancerInput.focus(); };
       root.querySelector("#rs-enhancer-close").onclick = () => { enhancerPanel.hidden = true; };
       enhancerSend.onclick = () => beginPromptEnhancement(enhancerInput.value);
@@ -7751,7 +7793,7 @@ return result`;
       let chatEngines = {}, chatEngineKey = "", chatEnginesLoaded = false, tabEngine = "", tabEngineAnswered = false; const chatEngineBootAt = Date.now();
       const chatEngineId = () => { const k = P.conversationKey(); return k ? P.id + "|" + k : ""; };
       const saveChatEngines = () => { const keys = Object.keys(chatEngines); if (keys.length > 300) for (const k of keys.slice(0, keys.length - 300)) delete chatEngines[k]; try { Promise.resolve(chrome.storage.local.set({ rsChatEngines: chatEngines })).catch(() => {}); } catch {} };
-      try { chrome.storage.local.get("rsChatEngines", value => { chatEngines = value && value.rsChatEngines && typeof value.rsChatEngines === "object" ? value.rsChatEngines : {}; chatEnginesLoaded = true; }); } catch { chatEnginesLoaded = true; }
+      try { chrome.storage.local.get("rsChatEngines", (value) => { chatEngines = value && value.rsChatEngines && typeof value.rsChatEngines === "object" ? value.rsChatEngines : {}; chatEnginesLoaded = true; }); } catch { chatEnginesLoaded = true; }
       rsInterval(() => {
         const id = chatEngineId();
         if (!chatEnginesLoaded || !id || id === chatEngineKey) return;
@@ -7769,7 +7811,7 @@ return result`;
       const engineEl = root.querySelector("#rs-engine");
       currentEngine = "roblox";
       // The tab-wide mode (kept by the background page) applies to a new chat; a chat that has its own saved mode restores that instead.
-      try { chrome.runtime.sendMessage({type:"rs-get-engine"}, o => { tabEngineAnswered = true; if (o?.engine !== "local" || lastManualEngineAt) return; tabEngine = "local"; if (!chatEngineId()) setEngine("local"); }); } catch {}
+      try { chrome.runtime.sendMessage({type:"rs-get-engine"}, (o) => { tabEngineAnswered = true; if (o?.engine !== "local" || lastManualEngineAt) return; tabEngine = "local"; if (!chatEngineId()) setEngine("local"); }); } catch {}
       chrome.runtime.onMessage.addListener((m)=>{
         if (!(m && m.type === "rs-engine" && m.engine)) return;
         const v = m.engine === "local" ? "local" : "roblox";
@@ -7799,7 +7841,7 @@ return result`;
           const isLocal = currentMode==="local";
           try {
             const btns = engineEl.querySelectorAll(".rs-mode-btn");
-            btns.forEach(b => {
+            btns.forEach((b) => {
               const isOn = b.dataset.mode === currentMode;
               b.classList.toggle("on", isOn);
               b.setAttribute("aria-selected", isOn ?  "true" : "false");
@@ -8084,7 +8126,7 @@ return result`;
       fixRunning = true;
       const go = root.querySelector("#rs-fix-go"), again = root.querySelector("#rs-fix-again");
       if (!passive) { fixNext = ""; go.hidden = true; again.disabled = true; }
-      if (!passive) renderFixSteps([{ id: "start", state: "working", text: (globalThis.PlazCodeI18n?.t || (x => x))("Checking the connection…") }]);
+      if (!passive) renderFixSteps([{ id: "start", state: "working", text: (globalThis.PlazCodeI18n?.t || ((x) => x))("Checking the connection…") }]);
       const status = async () => {
         const s = await bg({ type: "status" });
         if (s && s.kind === "stale-extension") { staleExtensionAlert(); return { connected: false, stale: true }; }
@@ -8109,13 +8151,13 @@ return result`;
         if (passive && fixPanel.hidden) return;
         renderFixSteps(result.steps);
         fixNext = result.action; go.hidden = true;
-        diag("doctor.result", { steps: result.steps.map(x => x.id + ":" + x.state).join(" "), action: result.action });
+        diag("doctor.result", { steps: result.steps.map((x) => x.id + ":" + x.state).join(" "), action: result.action });
         if (fixNext) {
-          go.textContent = (globalThis.PlazCodeI18n?.t || (x => x))(fixNext === "reload" ? "Refresh page" : "Connect this chat");
+          go.textContent = (globalThis.PlazCodeI18n?.t || ((x) => x))(fixNext === "reload" ? "Refresh page" : "Connect this chat");
           go.hidden = false;
         }
       } catch (e) {
-        if (!passive) renderFixSteps([{ id: "error", state: "action", text: (globalThis.PlazCodeI18n?.t || (x => x))("The check could not finish. Refresh the page and try again.") }]);
+        if (!passive) renderFixSteps([{ id: "error", state: "action", text: (globalThis.PlazCodeI18n?.t || ((x) => x))("The check could not finish. Refresh the page and try again.") }]);
         diag("doctor.error", { error: String(e && e.message || e) });
       } finally {
         fixRunning = false; again.disabled = false;
@@ -8313,7 +8355,7 @@ return result`;
     // ── Effort picker: clicking "Effort: …" in the bar opens a short list of levels ──
     (function(){
       const LEVELS=[["default","Default"],["low","Low"],["mid","Mid"],["high","High"],["max","Max"],["ultracode","Ultra"]];
-      let menu=null,cleanup=null;
+      let menu = null, cleanup = null;
       function close(focusBack){
         if(menu){menu.remove();menu=null;}
         if(cleanup){cleanup();cleanup=null;}
@@ -8343,9 +8385,9 @@ return result`;
         menu.style.top=(up?rect.top-height-6:rect.bottom+6)+"px";
         node.setAttribute("aria-expanded","true");
         const items=Array.from(menu.querySelectorAll("button"));
-        (items.find(b=>b.dataset.level===thinkingLevel)||items[0]).focus();
-        const onDown=e=>{if(menu&&!menu.contains(e.target)&&!node.contains(e.target))close(false);};
-        const onKey=e=>{
+        (items.find((b)=>b.dataset.level===thinkingLevel)||items[0]).focus();
+        const onDown=(e)=>{if(menu&&!menu.contains(e.target)&&!node.contains(e.target))close(false);};
+        const onKey=(e)=>{
           if(!menu)return;const i=items.indexOf(document.activeElement);
           if(e.key==="Escape"){e.preventDefault();e.stopPropagation();close(true);}
           else if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();e.stopPropagation();items[(i+(e.key==="ArrowDown"?1:-1)+items.length)%items.length].focus();}
@@ -8354,9 +8396,9 @@ return result`;
         document.addEventListener("pointerdown",onDown,true);document.addEventListener("keydown",onKey,true);
         cleanup=()=>{document.removeEventListener("pointerdown",onDown,true);document.removeEventListener("keydown",onKey,true);};
       }
-      const toggle=node=>{if(menu)close(false);else open(node);};
-      document.addEventListener("click",e=>{const node=e.target&&e.target.closest&&e.target.closest("#rs-effort");if(node){e.preventDefault();e.stopPropagation();toggle(node);}},true);
-      document.addEventListener("keydown",e=>{const node=e.target&&e.target.closest&&e.target.closest("#rs-effort");if(node&&(e.key==="Enter"||e.key===" ")){e.preventDefault();e.stopPropagation();toggle(node);}},true);
+      const toggle=(node)=>{if(menu)close(false);else open(node);};
+      document.addEventListener("click",(e)=>{const node=e.target&&e.target.closest&&e.target.closest("#rs-effort");if(node){e.preventDefault();e.stopPropagation();toggle(node);}},true);
+      document.addEventListener("keydown",(e)=>{const node=e.target&&e.target.closest&&e.target.closest("#rs-effort");if(node&&(e.key==="Enter"||e.key===" ")){e.preventDefault();e.stopPropagation();toggle(node);}},true);
     })();
     // Approval controls use saved extension/desktop preferences, independent of effort.
     (function(){
@@ -8369,16 +8411,16 @@ return result`;
           const copy=document.createElement("span"),title=document.createElement("strong"),description=document.createElement("small");title.textContent=globalThis.PlazCodeI18n?.t(option.label)||option.label;description.textContent=globalThis.PlazCodeI18n?.t(option.description)||option.description;copy.append(title,description);const tick=document.createElement("em");tick.textContent=item.getAttribute("aria-checked")==="true"?"✓":"";item.append(copy,tick);
           item.onclick=async()=>{item.disabled=true;try{await setApprovalMode(option.value);close();button.focus();}catch{item.disabled=false;toast("Could not save approval mode. Try again.");}};menu.append(item);
         }
-        document.documentElement.append(menu);const r=button.getBoundingClientRect(),width=menu.offsetWidth,height=menu.offsetHeight;menu.style.left=Math.max(8,Math.min(r.left,innerWidth-width-8))+"px";menu.style.maxHeight=Math.max(40,innerHeight-16)+"px";const desired=r.top>=height+14?r.top-height-6:r.bottom+6;menu.style.top=Math.max(8,Math.min(desired,innerHeight-height-8))+"px";button.setAttribute("aria-expanded","true");menu.querySelector('[aria-checked="true"]')?.focus();
+        document.documentElement.append(menu);const r=button.getBoundingClientRect(),width=menu.offsetWidth,height=menu.offsetHeight;menu.style.left=Math.max(8,Math.min(r.left,innerWidth-width-8))+"px";menu.style.maxHeight=Math.max(40,innerHeight-16)+"px";const desired=r.top>=height+14?r.top-height-6:r.bottom+6;menu.style.top=Math.max(8,Math.min(desired,innerHeight-height-8))+"px";button.setAttribute("aria-expanded","true");(menu.querySelector('[aria-checked="true"]'))?.focus();
       }
-      document.addEventListener("click",event=>{const button=event.target.closest?.("#rs-approval-mode");if(button){event.preventDefault();event.stopPropagation();if(menu)close();else open(button);}},true);
-      document.addEventListener("pointerdown",event=>{if(menu&&!menu.contains(event.target)&&!event.target.closest?.("#rs-approval-mode"))close();},true);
-      document.addEventListener("keydown",event=>{const button=event.target.closest?.("#rs-approval-mode");if(button&&(event.key==="Enter"||event.key===" ")){event.preventDefault();if(menu)close();else open(button);}else if(menu&&event.key==="Escape"){event.preventDefault();close();document.getElementById("rs-approval-mode")?.focus();}else if(menu&&(event.key==="ArrowDown"||event.key==="ArrowUp")){event.preventDefault();const items=[...menu.querySelectorAll("button")],index=items.indexOf(document.activeElement);items[(index+(event.key==="ArrowDown"?1:-1)+items.length)%items.length].focus();}else if(menu&&event.key==="Tab")close();},true);
+      document.addEventListener("click",(event)=>{const button=event.target.closest?.("#rs-approval-mode");if(button){event.preventDefault();event.stopPropagation();if(menu)close();else open(button);}},true);
+      document.addEventListener("pointerdown",(event)=>{if(menu&&!menu.contains(event.target)&&!event.target.closest?.("#rs-approval-mode"))close();},true);
+      document.addEventListener("keydown",(event)=>{const button=event.target.closest?.("#rs-approval-mode");if(button&&(event.key==="Enter"||event.key===" ")){event.preventDefault();if(menu)close();else open(button);}else if(menu&&event.key==="Escape"){event.preventDefault();close();document.getElementById("rs-approval-mode")?.focus();}else if(menu&&(event.key==="ArrowDown"||event.key==="ArrowUp")){event.preventDefault();const items=[...menu.querySelectorAll("button")],index=items.indexOf(document.activeElement);items[(index+(event.key==="ArrowDown"?1:-1)+items.length)%items.length].focus();}else if(menu&&event.key==="Tab")close();},true);
       approvalModeReady.then(renderApprovalMode);
     })();
     // ── Smart Checkpoint & Undo (auto-snapshot before mutating tools) ──
     let rsCheckpoints = [];
-    try{ chrome.storage.local.get("rsCheckpoints", r=>{ if(Array.isArray(r.rsCheckpoints)) rsCheckpoints=r.rsCheckpoints; }); }catch{}
+    try{ chrome.storage.local.get("rsCheckpoints", (r)=>{ if(Array.isArray(r.rsCheckpoints)) rsCheckpoints=r.rsCheckpoints; }); }catch{}
     const MUTATING_OPS = new Set(["lighting_set_preset","lighting_setup_day_night","terrain_fill_region","terrain_clear","ui_create_screen","ui_create_component","fx_create_emitter","fx_create_light","fx_create_vfx","audio_setup_sound_hierarchy","audio_create_sound","camera_set_style","datastore_setup","leaderboard_setup","remote_setup","teams_setup","npc_spawn_pathfinding","proximity_setup","tween_create","marketplace_setup","web_fetch","web_search","plugin_create"]);
     function createCheckpoint(op, args){
       try{
@@ -8413,7 +8455,7 @@ return result`;
       updatePerfPill();
       try{ chrome.storage.local.set({rsPerf:{parts:perfParts, scripts:perfScripts}}); }catch{}
     }
-    try{ chrome.storage.local.get("rsPerf", r=>{ if(r.rsPerf){ perfParts=r.rsPerf.parts||0; perfScripts=r.rsPerf.scripts||0; updatePerfPill(); }}); }catch{}
+    try{ chrome.storage.local.get("rsPerf", (r)=>{ if(r.rsPerf){ perfParts=r.rsPerf.parts||0; perfScripts=r.rsPerf.scripts||0; updatePerfPill(); }}); }catch{}
     // ── Smart Next-Step Suggestions ──
     const NEXT_STEP = {
       lighting_set_preset: "Next: add terrain (terrain_fill_region) or a HUD (ui_create_component)",
@@ -8425,7 +8467,7 @@ return result`;
       _default: "Next: run diagnostics_audit to check health"
     };
     function showSuggestion(op){
-      const hint = NEXT_STEP[op] || NEXT_STEP._default;
+      const hint = (NEXT_STEP)[op] || NEXT_STEP._default;
       try{
         const s = document.getElementById("rs-state");
         if(s && !A.running) { /* subtle hint in state line for 4s */ const prev=s.textContent; s.textContent=hint; s.style.opacity="0.95"; setTimeout(()=>{ if(s) { s.textContent=prev; s.style.opacity=""; } }, 4000); }
@@ -8434,7 +8476,7 @@ return result`;
     }
     // ── Smart Session Continuity & Auto-Resume ──
     let sessionOps = [];
-    try{ chrome.storage.local.get("rsSessionOps", r=>{ if(Array.isArray(r.rsSessionOps)) sessionOps=r.rsSessionOps; }); }catch{}
+    try{ chrome.storage.local.get("rsSessionOps", (r)=>{ if(Array.isArray(r.rsSessionOps)) sessionOps=r.rsSessionOps; }); }catch{}
     function persistSession(op, args, ok){
       try{
         sessionOps.unshift({op, args: JSON.parse(JSON.stringify(args||{})), ok: !!ok, at: Date.now()});
@@ -8465,11 +8507,11 @@ return result`;
     function setWorkMode(id, silent){
       if (!["fast","balanced","thorough"].includes(id)) return;
       workMode = id;
-      const preset = {
+      const preset = ({
         fast: { thinking: "low" },
         balanced: { thinking: "mid" },
         thorough: { thinking: "max" },
-      }[id];
+      })[id];
       thinkingLevel = preset.thinking;
       try {
         chrome.storage.local.set({
@@ -8769,7 +8811,7 @@ return result`;
         const label = `${p.amount.toLocaleString("en-US")} Robux`;
         passes += `<button class="rs-tip-opt rs-tip-rbx" data-u="${p.url}" data-pass="${p.id}" aria-label="Donate ${label}"><span class="rs-rbx-cur" aria-hidden="true">R$</span><span class="rs-rbx-amt">${label}</span></button>`;
       }
-      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]));
       const mergedServers = mergedMcpServers();
       // Roblox always heads the list as the primary target. Its health is shown
       // by the main status dot and it cannot be removed from this menu.
@@ -8855,7 +8897,7 @@ return result`;
               </div>
               <div class="rs-always-box" id="rs-always-box">
                 <div class="rs-always-head">Always approved</div>
-                ${alwaysList.length ? `<ul class="rs-always-list">${alwaysList.map((x) => `<li><span class="rs-always-name" data-i18n-user-content>${esc(PlazCodeApproval.nice(x.tool))}</span><button type="button" data-always-remove="${esc(x.tool)}" aria-label="Stop always approving ${esc(PlazCodeApproval.nice(x.tool))}">Remove</button></li>`).join("")}</ul><button type="button" class="rs-always-clear" id="rs-always-clear">Remove all</button>` : `<div class="rs-menu-note">Nothing yet. When an approval card shows, "Always approve" stops PlazCode asking about that action. Deleting and running code can be added too, so be careful with those.</div>`}
+                ${alwaysList.length ? `<ul class="rs-always-list">${(alwaysList).map((x) => `<li><span class="rs-always-name" data-i18n-user-content>${esc(PlazCodeApproval.nice(x.tool))}</span><button type="button" data-always-remove="${esc(x.tool)}" aria-label="Stop always approving ${esc(PlazCodeApproval.nice(x.tool))}">Remove</button></li>`).join("")}</ul><button type="button" class="rs-always-clear" id="rs-always-clear">Remove all</button>` : `<div class="rs-menu-note">Nothing yet. When an approval card shows, "Always approve" stops PlazCode asking about that action. Deleting and running code can be added too, so be careful with those.</div>`}
               </div>
               <div class="rs-prompt-field rs-allowed-field">
                 <label for="rs-allowed-folders">Allowed folders (Full access)</label>
@@ -9033,11 +9075,11 @@ return result`;
         status.textContent = "Saved ✓";
         setTimeout(() => { status.textContent = ""; }, 1600);
       });
-      for(const [id,key] of [["rs-input-limit-enabled","rsInputLimitEnabled"],["rs-input-char-limit","rsInputCharLimit"],["rs-output-limit-enabled","rsOutputLimitEnabled"],["rs-output-char-limit","rsOutputCharLimit"]])menuEl.querySelector("#"+id).onchange=event=>{try{const toggle=key.endsWith('Enabled');if(!toggle&&(event.target.value.trim()===''||!event.target.checkValidity()))return;characterLimits=normalizeCharacterLimits({...characterLimits,[key]:toggle?event.target.checked:Number(event.target.value)});chrome.storage.local.set({[key]:characterLimits[key]});}catch(error){log('Message size setting failed',error);}};
-      for(const [id,key] of [["rs-run-limits","rsRunLimitsEnabled"],["rs-tool-budget","rsToolBudget"],["rs-task-minutes","rsTaskMinutes"],["rs-visual-check","rsVisualCheck"],["rs-continuation-offer","rsContinuationOffer"],["rs-full-startup","rsFullStartup"],["rs-command-cooldown","rsCommandCooldown"]])menuEl.querySelector("#"+id).onchange=event=>{const toggle=key==='rsRunLimitsEnabled'||key==='rsVisualCheck'||key==='rsContinuationOffer'||key==='rsFullStartup';if(!toggle && (event.target.value.trim()==='' || !event.target.checkValidity()))return;const value=toggle?event.target.checked:Number(event.target.value);reliabilitySettings=normalizeReliability({...reliabilitySettings,[key]:value});chrome.storage.local.set({[key]:reliabilitySettings[key]});};
+      for(const [id,key] of [["rs-input-limit-enabled","rsInputLimitEnabled"],["rs-input-char-limit","rsInputCharLimit"],["rs-output-limit-enabled","rsOutputLimitEnabled"],["rs-output-char-limit","rsOutputCharLimit"]])menuEl.querySelector("#"+id).onchange=(event)=>{try{const toggle=key.endsWith('Enabled');if(!toggle&&(event.target.value.trim()===''||!event.target.checkValidity()))return;characterLimits=normalizeCharacterLimits({...characterLimits,[key]:toggle?event.target.checked:Number(event.target.value)});chrome.storage.local.set({[key]:characterLimits[key]});}catch(error){log('Message size setting failed',error);}};
+      for(const [id,key] of [["rs-run-limits","rsRunLimitsEnabled"],["rs-tool-budget","rsToolBudget"],["rs-task-minutes","rsTaskMinutes"],["rs-visual-check","rsVisualCheck"],["rs-continuation-offer","rsContinuationOffer"],["rs-full-startup","rsFullStartup"],["rs-command-cooldown","rsCommandCooldown"]])menuEl.querySelector("#"+id).onchange=(event)=>{const toggle=key==='rsRunLimitsEnabled'||key==='rsVisualCheck'||key==='rsContinuationOffer'||key==='rsFullStartup';if(!toggle && (event.target.value.trim()==='' || !event.target.checkValidity()))return;const value=toggle?event.target.checked:Number(event.target.value);reliabilitySettings=normalizeReliability({...reliabilitySettings,[key]:value});chrome.storage.local.set({[key]:(reliabilitySettings)[key]});};
       menuEl.querySelector("#rs-save-handoff").onclick=()=>{const value=captureHandoff("User requested continuation");downloadHandoff(value);};
       menuEl.querySelector("#rs-budget-resume").onclick=()=>{const result=desktopAgentAction("budget-resume");if(!result.ok)ui.toast(result.error);};
-      menuEl.querySelector("#rs-stop-mode").onchange = event => { stopMode=event.target.value;chrome.storage.local.set({rsStopMode:stopMode}); };
+      menuEl.querySelector("#rs-stop-mode").onchange = (event) => { stopMode=event.target.value;chrome.storage.local.set({rsStopMode:stopMode}); };
       {
         const folders = menuEl.querySelector("#rs-allowed-folders"), saveFolders = menuEl.querySelector("#rs-allowed-save"), folderStatus = menuEl.querySelector("#rs-allowed-status");
         if (folders) folders.value = (safetySettings.allowedFolders || []).join("\n");
@@ -9116,7 +9158,7 @@ return result`;
         const logBtn = menuEl.querySelector("#rs-action-log-open");
         if (logBtn) logBtn.onclick = () => { menuEl.hidden = true; openActionLog(); };
       }
-      menuEl.querySelectorAll("[data-mode]").forEach(btn=>{
+      menuEl.querySelectorAll("[data-mode]").forEach((btn)=>{
         const flip = () => {
           const m=btn.dataset.mode;
           if(m==="autofix") setAutoFix(!autoFixEnabled);
@@ -9153,7 +9195,7 @@ return result`;
       const i2mBtn = menuEl.querySelector("#rs-i2m-btn");
       if (i2mBtn) i2mBtn.addEventListener("click", async () => {
         let visionOk = false;
-        try { visionOk = typeof P.supportsVision === "function" ? !!P.supportsVision() : !!P.supportsVision; } catch {}
+        try { visionOk = typeof (P).supportsVision === "function" ? !!(P).supportsVision() : !!P.supportsVision; } catch {}
         if (!visionOk) {
           // Honest refusal: a non-vision chat can never see the attached image,
           // so the flow would silently build from nothing.
@@ -9299,10 +9341,10 @@ return result`;
       });
 
       // ── Work mode cards ──
-      menuEl.querySelectorAll("[data-work]").forEach(btn=>{
+      menuEl.querySelectorAll("[data-work]").forEach((btn)=>{
         btn.addEventListener("click", () => setWorkMode(btn.dataset.work));
       });
-      menuEl.querySelectorAll("[data-theme]").forEach(btn=>{
+      menuEl.querySelectorAll("[data-theme]").forEach((btn)=>{
         btn.addEventListener("click", () => {
           setOrTheme(btn.dataset.theme);
           try { buildMenu(); } catch {}
@@ -9310,7 +9352,7 @@ return result`;
           try { toast("Theme: " + (th ? th.name : plazcodeTheme)); playSfx("ok"); } catch {}
         });
       });
-      menuEl.querySelectorAll("[data-perm]").forEach(btn=>{
+      menuEl.querySelectorAll("[data-perm]").forEach((btn)=>{
         btn.addEventListener("click", () => {
           setPermMode(btn.dataset.perm);
           try { buildMenu(); } catch {}
@@ -9319,16 +9361,16 @@ return result`;
         });
       });
       // ── Thinking level buttons ──
-      menuEl.querySelectorAll(".rs-lvl-btn").forEach(btn=>{
+      menuEl.querySelectorAll(".rs-lvl-btn").forEach((btn)=>{
         btn.addEventListener("click", ()=>{
           setThinkingLevel(btn.dataset.lvl);
-          menuEl.querySelectorAll(".rs-lvl-btn").forEach(b=>b.classList.toggle("on", b.dataset.lvl===btn.dataset.lvl));
+          menuEl.querySelectorAll(".rs-lvl-btn").forEach((b)=>b.classList.toggle("on", b.dataset.lvl===btn.dataset.lvl));
           const hint = menuEl.querySelector("#rs-thinking-hint");
           if (hint) hint.textContent = btn.dataset.lvl==="default" ? "Default — this site picks its own thinking depth." : "Level " + btn.dataset.lvl.toUpperCase() + " — applied on the next turn.";
         });
       });
       // ── Checkpoints undo ──
-      menuEl.querySelectorAll(".rs-checkpoint-undo").forEach(btn=>{
+      menuEl.querySelectorAll(".rs-checkpoint-undo").forEach((btn)=>{
         btn.addEventListener("click", ()=>{ undoLastCheckpoint(); });
       });
       try { studioMenu(); } catch {}
@@ -9416,7 +9458,7 @@ return result`;
     let visibleLibCache = [];
     let cardsQuery = "";
     function escRs(s) {
-      return String(s == null ? "" : s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+      return String(s == null ? "" : s).replace(/[&<>"']/g, (ch) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch] || ch));
     }
     function trackCard(tool, status, detail, category) {
       const top = recentCards[0];
@@ -9656,7 +9698,7 @@ return result`;
         + (errN ? '<span class="rs-cards-count err">' + errN + '<i>err</i></span>' : "")
         + '<button id="rs-cards-clear" type="button">Clear</button></div>';
       return head + shown.map((c, i) => {
-        const icon = { edit: "\u270E", read: "\u2139", screen: "\u25A3", generate: "\u2726", roblox: "\u25A6", tool: "\u2699" }[c.category] || "\u2699";
+        const icon = ({ edit: "\u270E", read: "\u2139", screen: "\u25A3", generate: "\u2726", roblox: "\u25A6", tool: "\u2699" })[c.category] || "\u2699";
         const cls = c.status === "ok" ? "done" : c.status === "err" ? "err" : "run";
         const ago = Math.max(0, Math.round((Date.now() - c.at) / 1000));
         const agoStr = ago < 60 ? ago + "s" : ago < 3600 ? Math.round(ago / 60) + "m" : Math.round(ago / 3600) + "h";
@@ -9713,7 +9755,7 @@ return result`;
         + (errs ? chip(errs, "failed", "er") : "")
         + '</div>';
       const rows = acts.slice(0, 30).map((c, i) => {
-        const icon = { edit: "\u270E", read: "\u2139", screen: "\u25A3", generate: "\u2726", roblox: "\u25A6", tool: "\u2699" }[c.category] || "\u2699";
+        const icon = ({ edit: "\u270E", read: "\u2139", screen: "\u25A3", generate: "\u2726", roblox: "\u25A6", tool: "\u2699" })[c.category] || "\u2699";
         const cls = c.status === "ok" ? "done" : c.status === "err" ? "err" : "run";
         const ago = Math.max(0, Math.round((Date.now() - c.at) / 1000));
         const agoStr = ago < 60 ? ago + "s" : ago < 3600 ? Math.round(ago / 60) + "m" : Math.round(ago / 3600) + "h";
@@ -9846,10 +9888,10 @@ let cardsUiStyle = "modern";
       paintUiRefs();
     }
     function uiCreatorHtml() {
-      const st = UI_STYLES[cardsUiStyle] || UI_STYLES.modern;
+      const st = (UI_STYLES)[cardsUiStyle] || UI_STYLES.modern;
       let tiles = "";
       Object.keys(UI_STYLES).forEach((id) => {
-        const s = UI_STYLES[id];
+        const s = (UI_STYLES)[id];
         tiles += '<button type="button" class="rs-ui-style' + (cardsUiStyle === id ? " on" : "") + '" data-ui-style="' + id + '">'
           + '<span class="rs-ui-swatch" data-style="' + id + '"></span>'
           + '<span class="rs-ui-name">' + s.title + "</span>"
@@ -9871,7 +9913,7 @@ let cardsUiStyle = "modern";
       );
     }
     function uiBuildPrompt(styleId, want) {
-      const st = UI_STYLES[styleId] || UI_STYLES.modern;
+      const st = (UI_STYLES)[styleId] || UI_STYLES.modern;
       const thing = want || "a compact HUD: health bar, currency, and a pause button";
       const nImg = cardsUiRefs.length;
       const vision = nImg
@@ -9902,7 +9944,7 @@ let cardsUiStyle = "modern";
       if (sendUiBusy) return;
       const ta = cardsPanel && cardsPanel.querySelector("#rs-ui-prompt");
       if (ta) cardsUiPrompt = ta.value;
-      const st = UI_STYLES[cardsUiStyle] || UI_STYLES.modern;
+      const st = (UI_STYLES)[cardsUiStyle] || UI_STYLES.modern;
       const status = cardsPanel && cardsPanel.querySelector("#rs-ui-status");
       const btn = cardsPanel && cardsPanel.querySelector("[data-ui-build]");
       const text = uiBuildPrompt(cardsUiStyle, (cardsUiPrompt || "").trim());
@@ -10038,7 +10080,7 @@ function renderCards(panel) {
         const pasted = pasteLibraryCard(card, { silent: true });
         try {
           const btn = document.querySelector('[aria-label*="Send" i], [data-testid*="send" i], button[type="submit"]');
-          if (btn && pasted) { btn.click(); sent = true; }
+          if (btn && pasted) { (btn).click(); sent = true; }
         } catch {}
         if (!sent) showCardEmbed(card, pasted ? "paste" : "err");
       }
@@ -10069,8 +10111,8 @@ function renderCards(panel) {
           const range = document.createRange();
           range.selectNodeContents(ed);
           range.collapse(false);
-          sel.removeAllRanges();
-          sel.addRange(range);
+          sel?.removeAllRanges();
+          sel?.addRange(range);
         }
       } catch {}
       let ok = false;
@@ -10312,21 +10354,21 @@ function renderCards(panel) {
         A.mediaFiles.length = 0;
       }
 
-      receiveDesktopMedia = async payloads => {
+      receiveDesktopMedia = async (payloads) => {
         if(A.running || A.starting || A.injecting || A.enhancing || P.isGenerating()) throw Error("Wait for the AI to finish before attaching media.");
         PlazCodeMedia.validate(payloads);
-        if(payloads.some(p=>p.mimeType.startsWith("video/")) && !PlazCodeProviderMedia.nativeVideo(P)) throw Error("This chat cannot accept native video. Select Use video frames and send again.");
+        if(payloads.some((p)=>p.mimeType.startsWith("video/")) && !PlazCodeProviderMedia.nativeVideo(P)) throw Error("This chat cannot accept native video. Select Use video frames and send again.");
         if (A.mediaFiles.length + payloads.length > 50) throw Error("Remove some staged media before adding more.");
-        const entries = payloads.map(p => ({file:p.mimeType.startsWith('video/')?PlazCodeMedia.fileFrom(p):null,name:p.name,type:p.mimeType,kind:p.mimeType.startsWith('video/')?'video':'image',url:p.mimeType.startsWith('image/')?'data:'+p.mimeType+';base64,'+p.data:null,data:p.data,delivered:false}));
+        const entries = payloads.map((p) => ({file:p.mimeType.startsWith('video/')?PlazCodeMedia.fileFrom(p):null,name:p.name,type:p.mimeType,kind:p.mimeType.startsWith('video/')?'video':'image',url:p.mimeType.startsWith('image/')?'data:'+p.mimeType+';base64,'+p.data:null,data:p.data,delivered:false}));
         A.mediaFiles.push(...entries); renderMedia(); await stageToComposer();
-        if (entries.some(m => !m.delivered)) return {ok:false,error:"The site did not confirm every attachment. Check the browser composer before retrying; automatic resend is disabled."};
+        if (entries.some((m) => !m.delivered)) return {ok:false,error:"The site did not confirm every attachment. Check the browser composer before retrying; automatic resend is disabled."};
         return {ok:true,count:entries.length};
       };
       receiveDesktopMedia.clear = () => { clearMediaFiles(); renderMedia(); };
       async function addFiles(files) {
         const chat = P.conversationKey();
         try {
-          const prepared = await PlazCodeMedia.prepare(files, {nativeVideo:PlazCodeProviderMedia.nativeVideo(P),quality:QUALITY[A.mediaQuality],progress:message=>{if(countEl)countEl.textContent=message;},convert:async(file,video)=>{if(file.size>64*1024*1024)throw Error("Local conversion accepts files up to 64 MB.");const encoded=await PlazCodeMedia.encode(file);return bg({type:"media-convert",data:encoded.data,video});}});
+          const prepared = await PlazCodeMedia.prepare(files, {nativeVideo:PlazCodeProviderMedia.nativeVideo(P),quality:(QUALITY)[A.mediaQuality],progress:(message)=>{if(countEl)countEl.textContent=message;},convert:async(file,video)=>{if(file.size>64*1024*1024)throw Error("Local conversion accepts files up to 64 MB.");const encoded=await PlazCodeMedia.encode(file);return bg({type:"media-convert",data:encoded.data,video});}});
           if (P.conversationKey() !== chat) throw Error("Chat changed while preparing media. Select the intended chat and add the files again.");
           const result = await receiveDesktopMedia(prepared.files);
           if (!result.ok) throw Error(result.error);
@@ -10340,11 +10382,11 @@ function renderCards(panel) {
         if (m.converting) return;
         m.converting = true;
         try {
-          const frames = await PlazCodeMedia.pixels(m.file, true, message => { if (countEl) countEl.textContent = message; }, QUALITY[A.mediaQuality]);
+          const frames = await PlazCodeMedia.pixels(m.file, true, (message) => { if (countEl) countEl.textContent = message; }, (QUALITY)[A.mediaQuality]);
           const at = A.mediaFiles.indexOf(m);
           if (at < 0) return;
           if (A.mediaFiles.length - 1 + frames.length > 50) throw Error("Remove some staged media before adding video frames.");
-          A.mediaFiles.splice(at, 1, ...frames.map(p => ({...p, type:p.mimeType, kind:'image', file:null, url:'data:'+p.mimeType+';base64,'+p.data, delivered:false})));
+          A.mediaFiles.splice(at, 1, ...frames.map((p) => ({...p, type:p.mimeType, kind:'image', file:null, url:'data:'+p.mimeType+';base64,'+p.data, delivered:false})));
           releaseMediaUrl(m); renderMedia(); await stageToComposer();
           if (countEl) countEl.textContent = "Video sent as sampled frames; audio is not included.";
         } catch (error) { ui.toast(error.message || String(error)); }
@@ -10424,7 +10466,7 @@ function renderCards(panel) {
       }));
       const sendBtn = root.querySelector("#rs-media-send");
       if(sendBtn)sendBtn.onclick=async()=>{
-        if(A.mediaFiles.length && A.mediaFiles.some(m=>!m.delivered)){ui.toast("Some attachments were not confirmed. Check the composer before sending.");return;}
+        if(A.mediaFiles.length && A.mediaFiles.some((m)=>!m.delivered)){ui.toast("Some attachments were not confirmed. Check the composer before sending.");return;}
         if(!A.mediaFiles.length){ui.toast("Choose an image or video first.");return;}
         if(A.running || A.starting || A.injecting || A.enhancing || P.isGenerating()){ui.toast("Wait for the current response before sending media.");return;}
         sendBtn.disabled=true;
@@ -10507,7 +10549,7 @@ function renderCards(panel) {
       // No action button here: the banner already carries the Reload one.
       if (A.waitingForClarification) {
         toneClass = "standby";
-        msg = `${String(P.displayName).replace(/[&<>]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[character]))} is asking you…`;
+        msg = `${String(P.displayName).replace(/[&<>]/g, (character) => (({'&':'&amp;','<':'&lt;','>':'&gt;'})[character] || character))} is asking you…`;
         kind = ""; disabled = true;
       } else if (A.staleExtension) {
         if (dot) dot.className = "off";
@@ -10857,8 +10899,8 @@ function renderCards(panel) {
     let lastBarSig = "";
 
     // Thin wrappers kept for the core's call sites; the decision lives in renderBar.
-    function setStarted() { try{updateExtraButton();}catch{}; renderBar(); }
-    function setStarting() { try{updateExtraButton();}catch{}; renderBar(); }
+    function setStarted(_) { try{updateExtraButton();}catch{}; renderBar(); }
+    function setStarting(_) { try{updateExtraButton();}catch{}; renderBar(); }
 
     function setStatus(s) {
       if (!s) return;
@@ -11344,7 +11386,7 @@ function renderCards(panel) {
       try {
         const right = bar && bar.querySelector(".rs-cluster-right");
         if (!right || !bar.offsetWidth) return;
-        const shown = () => [...right.querySelectorAll("button")].filter((b) => !b.hidden && b.offsetWidth > 0);
+        const shown = () => ([...right.querySelectorAll("button")]).filter((b) => !b.hidden && b.offsetWidth > 0);
         const sig = bar.offsetWidth + "|" + shown().map((b) => b.id + ":" + b.textContent).join(",");
         if (sig === fitSig) return;
         const wraps = () => {
@@ -11498,22 +11540,22 @@ function renderCards(panel) {
           // Reserve the strip INSIDE the card so the bar reads as part of the chatbox
           // and widen the card itself so the bar's pill row fits without overlapping
           // the rounded sides (user request: "make the chatbox itself the sides larger").
-          anchorEl.style.paddingTop = (bh + 4) + "px";
+          (anchorEl).style.paddingTop = (bh + 4) + "px";
           try {
             // Only widen if the card is narrower than needed for the bar (≈640px).
             // 900px gives comfortable side breathing room on Gemini and other
             // anchored composers without breaking centered layout.
             const curMax = parseInt(getComputedStyle(anchorEl).maxWidth) || 0;
-            if (!anchorEl.dataset.rsOrigMax) anchorEl.dataset.rsOrigMax = anchorEl.style.maxWidth || "";
+            if (!(anchorEl).dataset.rsOrigMax) (anchorEl).dataset.rsOrigMax = (anchorEl).style.maxWidth || "";
             if (r.width < 800) {
-              anchorEl.style.maxWidth = "900px";
-              anchorEl.style.width = "100%";
-              anchorEl.style.marginLeft = "auto";
-              anchorEl.style.marginRight = "auto";
+              (anchorEl).style.maxWidth = "900px";
+              (anchorEl).style.width = "100%";
+              (anchorEl).style.marginLeft = "auto";
+              (anchorEl).style.marginRight = "auto";
               // Re-measure after widening so the bar hugs the new wider card
               r = anchorEl.getBoundingClientRect();
             } else if (curMax && curMax < 820) {
-              anchorEl.style.maxWidth = "900px";
+              (anchorEl).style.maxWidth = "900px";
             }
           } catch {}
         }
@@ -11656,7 +11698,7 @@ function renderCards(panel) {
           // Bounded drafts are retained separately for each chat and engine.
           while (coworkCoverDrafts.size > 20) coworkCoverDrafts.delete(coworkCoverDrafts.keys().next().value);
         });
-        const submit = event => {
+        const submit = (event) => {
           event.preventDefault(); event.stopPropagation();
           if (coworkComposer.context !== coworkCoverContext() || !A.started || A.staleExtension) return;
           const result = cowork.enqueue(editor.value);
@@ -11666,7 +11708,7 @@ function renderCards(panel) {
           renderCowork(); pumpCowork(); inputCover(!!A.running);
         };
         form.addEventListener('submit', submit);
-        editor.addEventListener('keydown', event => {
+        editor.addEventListener('keydown', (event) => {
           if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
           if ((event.ctrlKey || event.metaKey) && !editor.value.trim()) { event.preventDefault(); event.stopPropagation(); coworkSendNow(); return; }
           submit(event);
@@ -11961,7 +12003,7 @@ function renderCards(panel) {
         if (previousFocus?.isConnected) { try { previousFocus.focus({preventScroll:true}); } catch {} }
         if (screenshotCleanup === cleanup) screenshotCleanup = null;
       };
-      const keyboard = event => {
+      const keyboard = (event) => {
         if (!expanded) return;
         if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); cleanup(); }
         if (event.key === "Tab") {
@@ -11980,7 +12022,7 @@ function renderCards(panel) {
         style.textContent = `.rs-shot-overlay{position:fixed;inset:0;z-index:2147483646;background:#0009;display:flex;align-items:center;justify-content:center;padding:64px 24px 28px;box-sizing:border-box}.rs-shot-overlay .rs-shot{position:relative;inset:auto;width:min(1100px,95vw);max-width:95vw;max-height:88vh;display:flex;flex-direction:column;background:var(--pc-bg,#241f14);color:var(--pc-ink,#fff5df);border:1px solid var(--pc-accent,#e9ba53);border-radius:14px;overflow:visible}.rs-shot-overlay .rs-shot-body{padding:12px;display:flex;gap:16px;flex-direction:column;overflow:auto;min-height:0}.rs-shot-overlay .rs-shot-img{max-width:100%;width:auto;max-height:70vh;object-fit:contain;align-self:center;cursor:default}.rs-shot-overlay .rs-shot-hdr{padding:12px 16px}.rs-shot-overlay .rs-shot-x{position:fixed;top:18px;right:22px;width:42px;height:42px;border-radius:50%;font-size:22px;background:#24221e;color:#fff;border:1px solid #ffffff66;cursor:pointer}.rs-shot-overlay .rs-shot-bar{display:flex;justify-content:center;gap:12px;padding:14px}.rs-shot-overlay .rs-shot-btn{border:1px solid var(--pc-accent,#e9ba53);background:#302919;color:#fff2d2;border-radius:9px;padding:10px 18px;font:600 14px system-ui;cursor:pointer}`;
         try { const theme = getComputedStyle(root); for (const key of ["--pc-bg", "--pc-accent", "--pc-ink"]) overlay.style.setProperty(key, theme.getPropertyValue(key)); } catch {}
         overlay.append(style, wrap); document.documentElement.append(overlay);
-        overlay.addEventListener("click", event => { if (event.target === overlay) cleanup(); });
+        overlay.addEventListener("click", (event) => { if (event.target === overlay) cleanup(); });
         document.addEventListener("keydown", keyboard, true); close.focus({preventScroll:true});
       };
       close.addEventListener("click", cleanup);
@@ -12025,7 +12067,7 @@ function renderCards(panel) {
               finally { if (url) { try { URL.revokeObjectURL(url); } catch {} } }
             }
             if (disposed) return;
-            try { diag("screenshot.shown", { how: shown || "none", ms: Date.now() - started, chars: String(img && img.data || "").length, mime: String(img && img.mimeType || ""), failures: failures.map(text => text.slice(0, 80)) }); } catch {}
+            try { diag("screenshot.shown", { how: shown || "none", ms: Date.now() - started, chars: String(img && img.data || "").length, mime: String(img && img.mimeType || ""), failures: failures.map((text) => text.slice(0, 80)) }); } catch {}
             if (!shown) throw Error(failures.join(" | ") || "unknown problem");
             el.setAttribute("aria-label", "Enlarge screenshot");
           } catch (error) {
@@ -12049,7 +12091,7 @@ function renderCards(panel) {
           finally { el.disabled = false; }
         }); bar.append(el);
       };
-      button("Copy image", async el => { const result = await copyImageToClipboard(images[0]); el.textContent = result.ok ? "Copied ✓" : "Copy image"; ui.toast(result.ok ? "Screenshot copied — paste with Ctrl+V." : result.error || "Copy failed.", 5000); });
+      button("Copy image", async (el) => { const result = await copyImageToClipboard(images[0]); el.textContent = result.ok ? "Copied ✓" : "Copy image"; ui.toast(result.ok ? "Screenshot copied — paste with Ctrl+V." : result.error || "Copy failed.", 5000); });
       button("Use as feedback", () => { A.pendingImages = images.slice(); rememberImages(images, "popup"); ui.toast("Capture will be attached to the next message.", 4000); });
       const expiry = window.setTimeout(cleanup, 10000);
       screenshotCleanup = cleanup; root.append(wrap);
@@ -12120,13 +12162,13 @@ function renderCards(panel) {
       panel.dataset.running = group.ended ? '' : group.id;
       button.setAttribute('aria-expanded', String(!panel.hidden));
       if (panel.hidden) return;
-      const signature = JSON.stringify(groups.map(group => [group.id, group.ended, group.expanded, group.events]));
+      const signature = JSON.stringify(groups.map((group) => [group.id, group.ended, group.expanded, group.events]));
       if (panel.dataset.signature === signature) return;
       panel.dataset.signature = signature; panel.replaceChildren();
-      groups.forEach(group => {
+      groups.forEach((group) => {
         const heading = document.createElement('button'); heading.textContent = activity.label(group) + (group.expanded ? ' ▾' : ' ▸');
         heading.onclick = () => { activity.toggle(group.id); syncActivityItems(); }; panel.appendChild(heading);
-        if (group.expanded) group.events.forEach(event => { const detail = document.createElement('div'); detail.textContent = event.name + ' · ' + event.detail; detail.style.cssText = 'padding:6px 0;overflow-wrap:anywhere'; panel.appendChild(detail); });
+        if (group.expanded) group.events.forEach((event) => { const detail = document.createElement('div'); detail.textContent = event.name + ' · ' + event.detail; detail.style.cssText = 'padding:6px 0;overflow-wrap:anywhere'; panel.appendChild(detail); });
       });
     }
     function captureCoworkFocus() {
@@ -12150,7 +12192,7 @@ function renderCards(panel) {
       if(on){
         if(!followupPlaceholders.has(ed))followupPlaceholders.set(ed,[]);
         const saved=followupPlaceholders.get(ed);
-        for(const node of targets.filter(Boolean))for(const key of ['placeholder','data-placeholder','aria-placeholder'])if(!saved.some(value=>value[0]===node && value[1]===key))saved.push([node,key,node.getAttribute(key)]);
+        for(const node of targets.filter(Boolean))for(const key of ['placeholder','data-placeholder','aria-placeholder'])if(!saved.some((value)=>value[0]===node && value[1]===key))saved.push([node,key,node.getAttribute(key)]);
         for(const [node,key,original] of followupPlaceholders.get(ed))if(original!==null || key===(node.tagName==='TEXTAREA'?'placeholder':'data-placeholder'))node.setAttribute(key,'Follow up');
         followupEditor=ed;
       }else{
@@ -12184,31 +12226,31 @@ function renderCards(panel) {
       root.querySelector("#rs-cowork-resume").hidden = !queuePaused;
       root.querySelector("#rs-cowork-status").textContent = !state.enabled ? "Off. Pending requests will wait until Co-work is on." : (state.reason || (state.pending.length ? state.pending.length + " follow-up(s) received. Sending at the next safe message boundary." : "Ready for your next request."));
       const list = root.querySelector("#rs-cowork-list");
-      const signature = JSON.stringify([state.pending, (state.receipts || []).map(item => [item.id, item.status])]);
+      const signature = JSON.stringify([state.pending, (state.receipts || []).map((item) => [item.id, item.status])]);
       if (list.dataset.signature === signature) return;
       list.dataset.signature = signature; list.replaceChildren();
-      state.pending.forEach(item => {
+      state.pending.forEach((item) => {
         const entry = document.createElement("div"); entry.className = "rs-cowork-entry";
         const text = document.createElement("div"); text.textContent = item.status + " · " + item.preview;
         const remove = document.createElement("button"); remove.textContent = "Remove"; remove.disabled = item.status === "sending";
         remove.onclick = () => cowork.remove(item.id); entry.append(text, remove); list.appendChild(entry);
       });
-      if (state.pending.some(item => item.status === "queued")) {
+      if (state.pending.some((item) => item.status === "queued")) {
         const hint = document.createElement("div"); hint.className = "rs-cowork-hint";
-        hint.textContent = (globalThis.PlazCodeI18n?.t || (x => x))("Press Ctrl+Enter to send now. This stops the AI's current reply.");
+        hint.textContent = (globalThis.PlazCodeI18n?.t || ((x) => x))("Press Ctrl+Enter to send now. This stops the AI's current reply.");
         list.appendChild(hint);
       }
     }
     function renderCoworkReceipts(receipts) {
       // Confirmed requests are already in the chat. Keep queued, sending and
       // uncertain cards only; remove mounted sent cards on this same render.
-      receipts = receipts.filter(item => item.status !== 'sent');
+      receipts = receipts.filter((item) => item.status !== 'sent');
       const labels = { queued: 'Queued · waiting for a safe send boundary', sending: 'Sending to AI…', sent: 'Sent to AI', unconfirmed: 'Send not confirmed · check the chat before retrying' };
       const mounted = [...document.querySelectorAll('.rs-cowork-receipt')];
-      const active = new Set(receipts.map(item => String(item.id)));
+      const active = new Set(receipts.map((item) => String(item.id)));
       for (const node of mounted) if (!active.has(node.dataset.receiptId)) node.remove();
       for (const item of receipts) {
-        let node = mounted.find(node => node.dataset.receiptId === String(item.id));
+        let node = mounted.find((node) => node.dataset.receiptId === String(item.id));
         if (!node) {
           const anchor = P.lastAssistant();
           if (!anchor || !anchor.parentElement) continue;
@@ -12222,13 +12264,13 @@ function renderCards(panel) {
           while (tail.nextElementSibling && tail.nextElementSibling.classList.contains('rs-cowork-receipt')) tail = tail.nextElementSibling;
           tail.after(node);
         }
-        const label = 'Co-work follow-up · ' + (labels[item.status] || item.status);
+        const label = 'Co-work follow-up · ' + ((labels)[item.status] || item.status);
         if (node.firstChild.textContent !== label) node.firstChild.textContent = label;
         if (node.dataset.status !== item.status) node.dataset.status = item.status;
         // Under queued follow-ups: the shortcut that sends them right now.
         let hint = node.querySelector('.rs-cowork-hint');
         if (item.status === 'queued') {
-          const hintText = (globalThis.PlazCodeI18n?.t || (x => x))("Press Ctrl+Enter to send now. This stops the AI's current reply.");
+          const hintText = (globalThis.PlazCodeI18n?.t || ((x) => x))("Press Ctrl+Enter to send now. This stops the AI's current reply.");
           if (!hint) { hint = document.createElement('small'); hint.className = 'rs-cowork-hint'; node.append(hint); }
           if (hint.textContent !== hintText) hint.textContent = hintText;
         } else if (hint) hint.remove();
@@ -12254,7 +12296,7 @@ function renderCards(panel) {
         canResumeBudget:!!A.budgetResume&&!busy,
         canCoWork: !A.staleExtension, canQueue: !A.staleExtension && A.started && cowork.snapshot().enabled,
         cowork: cowork.snapshot(),
-        activity: activity.list(P.conversationKey()).map(group => ({ id:group.id,label:activity.label(group),events:group.events,revision:group.revision,expanded:group.expanded,done:!!group.ended })),
+        activity: activity.list(P.conversationKey()).map((group) => ({ id:group.id,label:activity.label(group),events:group.events,revision:group.revision,expanded:group.expanded,done:!!group.ended })),
         memoryImportStatus: A.memoryImportStatus || "",
         enhancerStatus: A.enhancerStatus || "",
         status: A.pendingToolSettles ? "AI stopped. Waiting for external tool cancellation to settle." : stateEl ? stateEl.textContent.trim() : "Waiting for the AI chat…" };
@@ -12267,17 +12309,17 @@ function renderCards(panel) {
       const key=P.conversationKey();
       if(exportChatKey!==key){exportChatKey=key;exportRows=[];exportIndex.clear();exportBytes=0;exportOverflow=false;exportDirty=true;}
       if (!force && !exportDirty) return;
-      const mounted=P.allItems().filter(item=>P.isUserItem(item)||P.isAssistantItem(item));
+      const mounted=P.allItems().filter((item)=>P.isUserItem(item)||P.isAssistantItem(item));
       const first=mounted[0],firstId=first && (P.isUserItem(first)?'user':'assistant')+'|'+(P.itemKey?P.itemKey(first):turnKey(first));
       const items=force || !exportRows.length || !exportIndex.has(firstId) ? mounted : mounted.slice(-120);
-      const incoming=items.map(item=>{
+      const incoming=items.map((item)=>{
         const role=P.isUserItem(item)?'user':'assistant';
         const id=role+'|'+(P.itemKey?P.itemKey(item):turnKey(item));
         const cached=exportTextCache.get(item),signature=item.textContent;
         const text=cached && cached.id===id && cached.signature===signature ? cached.text : (P.classifyText ? P.classifyText(item,".rs-chip,.rs-chat-activity") : P.itemText(item));
         const injected=role==='user' && !!(item.classList?.contains("rs-hidden"));
         exportTextCache.set(item,{id,text,signature});return {id,role,text,injected};
-      }).filter(row=>row.text);
+      }).filter((row)=>row.text);
       let before=null;
       for(let i=incoming.length-1;i>=0;i--){
         const row=incoming[i],known=exportIndex.get(row.id);
@@ -12291,10 +12333,10 @@ function renderCards(panel) {
     }
     rsInterval(()=>{if(!exportDirty || document.hidden || Date.now()-exportCapturedAt<2500)return;try{captureExportHistory(false);}catch{}},2500);
     let archiveBusy=false,archiveSignature='',offerBusy=false,offerReady=false,offerNode=null,offerFreshSince=0,offerDecision=false,offerKey='',continuationChoices={};
-    chrome.storage.local.get('rsContinuationChoices',value=>{continuationChoices=value&&value.rsContinuationChoices||{};offerReady=true;});
+    chrome.storage.local.get('rsContinuationChoices',(value)=>{continuationChoices=value&&value.rsContinuationChoices||{};offerReady=true;});
     // Restore from the desktop only on a genuinely empty extension store. A
     // deliberate new-project choice is persisted as null, not resurrected here.
-    reliabilityReady.then(async stored=>{if(stored)return;const revision=handoffRevision;const result=await bg({type:'chat-history'});if(revision===handoffRevision&&!savedHandoff&&result?.handoff){savedHandoff=result.handoff;chrome.storage.local.set({rsLatestHandoff:savedHandoff});}}).catch(()=>{});
+    reliabilityReady.then(async (stored)=>{if(stored)return;const revision=handoffRevision;const result=await bg({type:'chat-history'});if(revision===handoffRevision&&!savedHandoff&&result?.handoff){savedHandoff=result.handoff;chrome.storage.local.set({rsLatestHandoff:savedHandoff});}}).catch(()=>{});
     function hasRealRequest(){return exportRows.some(row=>PlazCodeReliability.userRequest(row)&&!RSParse.isInjectedFeedback(row.text));}
     async function logChat(leaving=false){
       if(!P.conversationKey())return;captureExportHistory(false);if(!hasRealRequest())return;
@@ -12318,10 +12360,10 @@ function renderCards(panel) {
     // 1.24.21: every chat is also saved into the vault as a note under "11 Chats" (summary, key points and a "Current tasks:" section).
     // PlazCode writes it itself; it is on by default and works even when the AI may not write notes.
     let activeVaultId='default';const noteKey=id=>activeVaultId==='default'?id:activeVaultId+'|'+id;
-    chrome.storage.local.get(['rsActiveVault'],v=>{if(v&&v.rsActiveVault&&typeof v.rsActiveVault.id==='string')activeVaultId=v.rsActiveVault.id;});
+    chrome.storage.local.get(['rsActiveVault'],(v)=>{if(v&&v.rsActiveVault&&typeof v.rsActiveVault.id==='string')activeVaultId=v.rsActiveVault.id;});
     try{chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.rsActiveVault&&changes.rsActiveVault.newValue&&typeof changes.rsActiveVault.newValue.id==='string')activeVaultId=changes.rsActiveVault.newValue.id;});}catch{}
     let chatNoteStates={},latestChatNote=null,chatNoteBusy=false,chatNoteLastAt=0,chatNoteTimer=0,chatNoteForce=false;const chatNoteTasks={};
-    chrome.storage.local.get(['rsChatNotes','rsLatestChatNote'],value=>{if(value&&value.rsChatNotes&&typeof value.rsChatNotes==='object')chatNoteStates=value.rsChatNotes;if(value&&value.rsLatestChatNote)latestChatNote=value.rsLatestChatNote;});
+    chrome.storage.local.get(['rsChatNotes','rsLatestChatNote'],(value)=>{if(value&&value.rsChatNotes&&typeof value.rsChatNotes==='object')chatNoteStates=value.rsChatNotes;if(value&&value.rsLatestChatNote)latestChatNote=value.rsLatestChatNote;});
     chrome.storage.onChanged.addListener((changes,area)=>{if(area!=='local')return;if(changes.rsChatNotes)chatNoteStates=changes.rsChatNotes.newValue||{};if(changes.rsLatestChatNote)latestChatNote=changes.rsLatestChatNote.newValue||null;});
     // Each vault has its own note for a chat and its own "latest chat" pointer (the pointer is ignored after a switch).
     const latestHere=()=>latestChatNote&&(latestChatNote.vault||'default')===activeVaultId?latestChatNote:null;
@@ -12331,7 +12373,7 @@ function renderCards(panel) {
       if(!hasRealRequest())return;
       const force=reason==='hidden'||reason==='finish'||chatNoteForce,now=Date.now();chatNoteForce=false;
       const plan=(activity.active()&&activity.active().plan)||(activity.saved(key)&&activity.saved(key).plan)||null;
-      const tasksSig=JSON.stringify(((plan&&plan.items)||[]).map(item=>item.label+'|'+item.status)),id=P.id+'|'+key,sk=noteKey(id);
+      const tasksSig=JSON.stringify(((plan&&plan.items)||[]).map((item)=>item.label+'|'+item.status)),id=P.id+'|'+key,sk=noteKey(id);
       // Task changes are written within about 10 s; plain chat text is refreshed at most every 2 minutes (each write adds a Log line).
       if(!force&&now-chatNoteLastAt<(tasksSig!==chatNoteTasks[sk]?10000:120000))return;
       chatNoteBusy=true;
@@ -12373,9 +12415,10 @@ function renderCards(panel) {
       const detail=document.createElement('p');detail.className='rs-co-detail';detail.textContent='PlazCode has the AI read the summary note it saved from that chat (key points and current tasks), then check the current state before continuing. Without a saved note it uses a short excerpt of the chat.';
       const yes=document.createElement('button'),no=document.createElement('button'),never=document.createElement('button'),status=document.createElement('p');yes.type=no.type=never.type='button';yes.className='rs-co-yes';no.className='rs-co-no';never.className='rs-co-never';status.className='rs-co-status';status.setAttribute('role','status');
       yes.textContent='Yes, continue.';no.textContent='No, I wanna start a new project.';never.textContent="Start new project, and don't show this again.";never.title='You can turn this question back on in the PlazCode menu: Automation, Offer to continue the previous chat.';
-      no.onclick=()=>{rememberChoice(key);currentProject='';continuedEngramScope='';continuedEngramChat='';engramRecallGeneration++;A.engramContext='';A.taskRequest='';savedHandoff=null;chrome.storage.local.set({rsLatestHandoff:null});closeOffer();};
+      const resetOfferProject = ()=>{rememberChoice(key);currentProject='';continuedEngramScope='';continuedEngramChat='';engramRecallGeneration++;A.engramContext='';A.taskRequest='';savedHandoff=null;chrome.storage.local.set({rsLatestHandoff:null});closeOffer();};
+      no.onclick=resetOfferProject;
       // Same as "start a new project", and the question is turned off (the same switch as in the PlazCode menu and the desktop Settings).
-      never.onclick=()=>{no.onclick();reliabilitySettings={...reliabilitySettings,rsContinuationOffer:false};try{chrome.storage.local.set({rsContinuationOffer:false});}catch{}try{toast("Won't ask again. Turn it back on in the PlazCode menu under Automation.");}catch{}};
+      never.onclick=()=>{resetOfferProject();reliabilitySettings={...reliabilitySettings,rsContinuationOffer:false};try{chrome.storage.local.set({rsContinuationOffer:false});}catch{}try{toast("Won't ask again. Turn it back on in the PlazCode menu under Automation.");}catch{}};
       const actions=document.createElement('div');actions.className='rs-co-actions';actions.append(no,yes);
       yes.onclick=async()=>{
         if(offerBusy)return;offerBusy=true;yes.disabled=true;no.disabled=true;never.disabled=true;const page=location.href;const generation=A.sessionGen;
@@ -12414,7 +12457,7 @@ function renderCards(panel) {
       offerNode.append(kicker,title,from,detail,actions,never,status);root.appendChild(offerNode);
     },1000);
     function captureHandoff(reason,onlyLong=false){
-      const history=captureExportHistory();
+      const history=captureExportHistory()||[];
       if(onlyLong&&history.reduce((n,x)=>n+x.text.length,0)<180000)return null;
       savedHandoff=PlazCodeReliability.handoff({provider:P.displayName,chat:P.id+'|'+P.conversationKey(),history,pending:cowork.snapshot().pending,reason,engine:activeEngine(),checkpoint:A.checkpointId||A.budgetResume?.checkpoint||'',request:A.taskRequest||''});
       savedHandoff.engram_scope=engramScope();savedHandoff.project=currentProject;
@@ -12459,7 +12502,7 @@ function renderCards(panel) {
       }
       if (action === "activity-read") {
         let request; try { request = JSON.parse(prompt); } catch { return {ok:false,error:"Invalid activity request."}; }
-        if (!request || request.chat !== P.id+'|'+P.conversationKey() || !activity.list(P.conversationKey()).some(group=>group.id===request.id)) return {ok:false,error:"Return to this activity's original browser chat."};
+        if (!request || request.chat !== P.id+'|'+P.conversationKey() || !activity.list(P.conversationKey()).some((group)=>group.id===request.id)) return {ok:false,error:"Return to this activity's original browser chat."};
         return activity.read(request.id, request.revision);
       }
       if(action === "creator-insert") {
@@ -12469,7 +12512,7 @@ function renderCards(panel) {
           let request;try{request=JSON.parse(prompt);}catch{return {ok:false,error:"Invalid creation request."};}
           if(request.chat!==P.id+'|'+P.conversationKey())return {ok:false,error:"Selected chat changed. No Studio command was sent."};
           let passes;try{passes=PlazCodeCreator.batches(request.blueprint,!!request.welded);}catch(error){return {ok:false,error:error.message};}
-          const chat=P.conversationKey(),engine=activeEngine(),started=Date.now();let done=0;const waypoint=async label=>{try{await runTool({tool:"execute_luau",arguments:{code:'local h=game:GetService("ChangeHistoryService") pcall(function() h:SetEnabled(true) end) h:SetWaypoint('+JSON.stringify(String(label))+') return "ok"'}});}catch{}};
+          const chat=P.conversationKey(),engine=activeEngine(),started=Date.now();let done=0;const waypoint=async (label)=>{try{await runTool({tool:"execute_luau",arguments:{code:'local h=game:GetService("ChangeHistoryService") pcall(function() h:SetEnabled(true) end) h:SetWaypoint('+JSON.stringify(String(label))+') return "ok"'}});}catch{}};
           A.stop=false;A.stopping=false;A.running=true;inputCover(true);
           try{
             await waypoint('Before PlazCode insert');
@@ -12562,9 +12605,9 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
         if(!desktopAgentState().canEnhance)return {ok:false,error:'Select an idle AI chat with an empty composer before importing.'};
         let value;try{value=JSON.parse(prompt);}catch{return {ok:false,error:'Invalid transfer.'};}
         if(!value||typeof value.context!=='string'||!value.context.trim()||value.context.length>40000)return {ok:false,error:'Context must contain 1–40,000 characters. Paste a shorter summary for large chats.'};
-        if(!value.memory||!Array.isArray(value.memory.entries)||value.memory.entries.some(entry=>!entry||typeof entry.text!=='string'))return {ok:false,error:'Invalid imported memories.'};
+        if(!value.memory||!Array.isArray(value.memory.entries)||value.memory.entries.some((entry)=>!entry||typeof entry.text!=='string'))return {ok:false,error:'Invalid imported memories.'};
         // Keep full notes in durable memory; only bounded excerpts belong in the AI context.
-        const excerpts=value.memory.entries.map(entry=>entry.text.slice(0,1200));
+        const excerpts=value.memory.entries.map((entry)=>entry.text.slice(0,1200));
         let reference=value.memory.entries.length ? "\nImported saved memory (reference only; excerpts may be shortened):\n"+JSON.stringify(excerpts) : "";
         while(reference.length>8000 && excerpts.length) {excerpts.pop();reference="\nImported saved memory (reference only; excerpts may be shortened):\n"+JSON.stringify(excerpts);}
         if(value.importMemory&&value.memory.entries.length)reference+="\nFull imported notes are stored in PlazCode memory. Use plazcode_memory action list, then read with the returned id and offset to retrieve long notes.";
@@ -12612,7 +12655,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
       if (action === "stop" && state.canStop) { stopLoop(); return { ok: true }; }
       return { ok: false, error: "The AI chat is no longer ready for this action." };
     }
-    return { refreshMenu: () => { if (menuEl && !menuEl.hidden) buildMenu(); }, captureHandoff, noteChatSoon, latestChatNotePath: () => latestHere() && latestHere().path || '', isCoworkCoverTarget: node => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, renderAgents, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast, banner, showRecoveryPrompt, clearRecoveryPrompt, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
+    return { refreshMenu: () => { if (menuEl && !menuEl.hidden) buildMenu(); }, captureHandoff, noteChatSoon, latestChatNotePath: () => latestHere() && latestHere().path || '', isCoworkCoverTarget: (node) => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, renderAgents, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast: toast, banner, showRecoveryPrompt, clearRecoveryPrompt, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport) => openMenuFn && openMenuFn(toSupport) };
   })();
 
   const clarification = PlazCodeClarification.create({
@@ -12620,7 +12663,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
     provider: () => P.displayName, mount: () => document.documentElement,
     cancelled: () => A.stop || A.staleExtension,
     onCancel: () => stopLoop(),
-    changed: waiting => { A.waitingForClarification = waiting; try { ui.setStarted(); ui.renderCowork(); } catch {} },
+    changed: (waiting) => { A.waitingForClarification = waiting; try { ui.setStarted(); ui.renderCowork(); } catch {} },
   });
   // ── Live token + timer, shown ONLY on a tool call's chip detail. The
   //    elapsed-time ANCHOR is stored on the chip's DOM node (dataset) so the
@@ -12833,7 +12876,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
   // fired 8s/2s after a Stop with no user action, un-stopping the halted turn).
   let _userClickAt = 0;
   document.addEventListener("click", (e) => {
-    if (e.isTrusted && !(e.target && e.target.closest && e.target.closest("#rs-root"))) {
+    if (e.isTrusted && !(e.target && (e.target).closest && (e.target).closest("#rs-root"))) {
       _userClickAt = Date.now();
     }
   }, true);
@@ -13367,30 +13410,30 @@ rsInterval(() => {
     } finally { A.enhancing = false; A.criticTab = false; try { ui.inputCover(false); ui.showStop(false); P.setInputLock(false); } catch {} }
   }
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg && msg.type === "rs-critic-ping") { sendResponse({ ok: true, provider: P.id, idle: !(A.started || A.running || A.starting) }); return; }
+    if (msg && msg.type === "rs-critic-ping") { sendResponse({ ok: true, provider: P.id, idle: !(A.started || A.running || A.starting) }); return undefined; }
     if (msg && msg.type === "rs-critic-run") {
       criticRun(msg).then(sendResponse, (error) => sendResponse({ ok: false, error: String(error && error.message || error) }));
       return true;
     }
     // AgentScript control rework (1.24.36), Ask PlazCode: this tab may be the background chat behind the side panel.
-    if (msg && msg.type === "rs-ask-site") { let name = ""; try { name = P.name || P.id || location.host; } catch {} sendResponse({ ok: true, url: helperChatUrl(), name: String(name) }); return; }
-    if (msg && msg.type === "rs-ask-run") { try { sendResponse(askRun(msg.ask)); } catch (error) { sendResponse({ ok: false, error: String(error && error.message || error) }); } return; }
-    if (msg && msg.type === "rs-ask-stop") { try { if (A.ask) A.ask.stopped = true; if (A.running || A.starting) stopLoop(); sendResponse({ ok: true }); } catch { try { sendResponse({ ok: false }); } catch {} } return; }
-    if (msg && (msg.type === "rs-control-frame" || msg.type === "rs-control-end")) { try { controlCard(msg); } catch {} try { sendResponse({ ok: true }); } catch {} return; }
+    if (msg && msg.type === "rs-ask-site") { let name = ""; try { name = P.name || P.id || location.host; } catch {} sendResponse({ ok: true, url: helperChatUrl(), name: String(name) }); return undefined; }
+    if (msg && msg.type === "rs-ask-run") { try { sendResponse(askRun(msg.ask)); } catch (error) { sendResponse({ ok: false, error: String(error && error.message || error) }); } return undefined; }
+    if (msg && msg.type === "rs-ask-stop") { try { if (A.ask) A.ask.stopped = true; if (A.running || A.starting) stopLoop(); sendResponse({ ok: true }); } catch { try { sendResponse({ ok: false }); } catch {} } return undefined; }
+    if (msg && (msg.type === "rs-control-frame" || msg.type === "rs-control-end")) { try { controlCard(msg); } catch {} try { sendResponse({ ok: true }); } catch {} return undefined; }
     // AgentScript control rework (1.24.36): the person pressed Stop (or Escape) in the tab the AI was working in.
-    if (msg && msg.type === "rs-control-stop") { try { if (A.running || A.starting) stopLoop(); sendResponse({ ok: true }); } catch { try { sendResponse({ ok: false }); } catch {} } return; }
-    if (msg && msg.type === "rs-wake") { wakeDueSleepers(); try { sendResponse({ ok: true }); } catch {} return; }
-    if (msg && msg.type === "rs-helper-ping") { let ready = false; try { ready = !!P.getEditor(); } catch {} sendResponse({ ok: true, provider: P.id, ready, idle: !(A.started || A.running || A.starting) }); return; }
-    if (msg && msg.type === "rs-helper-run") { try { sendResponse(helperRun(msg.helper)); } catch (error) { sendResponse({ ok: false, error: String(error && error.message || error) }); } return; }
-    if (msg && msg.type === "rs-helper-stop") { try { if (A.helper) { A.helper.cancelled = true; A.helper.reported = true; } if (A.running || A.starting) stopLoop(); sendResponse({ ok: true }); } catch { try { sendResponse({ ok: false }); } catch {} } return; }
-    if (msg && msg.type === "rs-helper-update") { try { onHelperUpdate(msg.helpers); sendResponse({ ok: true }); } catch { try { sendResponse({ ok: false }); } catch {} } return; }
+    if (msg && msg.type === "rs-control-stop") { try { if (A.running || A.starting) stopLoop(); sendResponse({ ok: true }); } catch { try { sendResponse({ ok: false }); } catch {} } return undefined; }
+    if (msg && msg.type === "rs-wake") { wakeDueSleepers(); try { sendResponse({ ok: true }); } catch {} return undefined; }
+    if (msg && msg.type === "rs-helper-ping") { let ready = false; try { ready = !!P.getEditor(); } catch {} sendResponse({ ok: true, provider: P.id, ready, idle: !(A.started || A.running || A.starting) }); return undefined; }
+    if (msg && msg.type === "rs-helper-run") { try { sendResponse(helperRun(msg.helper)); } catch (error) { sendResponse({ ok: false, error: String(error && error.message || error) }); } return undefined; }
+    if (msg && msg.type === "rs-helper-stop") { try { if (A.helper) { A.helper.cancelled = true; A.helper.reported = true; } if (A.running || A.starting) stopLoop(); sendResponse({ ok: true }); } catch { try { sendResponse({ ok: false }); } catch {} } return undefined; }
+    if (msg && msg.type === "rs-helper-update") { try { onHelperUpdate(msg.helpers); sendResponse({ ok: true }); } catch { try { sendResponse({ ok: false }); } catch {} } return undefined; }
     if (msg && (msg.type === "rs-desktop-agent-state" || msg.type === "rs-desktop-agent-action")) {
       try {
         const result=msg.type === "rs-desktop-agent-state" ? ui.desktopAgentState() : ui.desktopAgentAction(msg.action, msg.prompt, msg.request_id);
-        if(result && typeof result.then === "function"){result.then(sendResponse,error=>sendResponse({ok:false,error:String(error.message||error)}));return true;}
+        if(result && typeof result.then === "function"){result.then(sendResponse,(error)=>sendResponse({ok:false,error:String(error.message||error)}));return true;}
         sendResponse(result);
       } catch (error) { sendResponse({ ok: false, canStart: false, canStop: false, error: String(error.message || error) }); }
-      return;
+      return undefined;
     }
     if (msg && msg.type === "rs-status") {
       checkVersionNotice(msg);
@@ -13398,11 +13441,12 @@ rsInterval(() => {
     }
     if (msg && msg.type === "rs-fix-connection") {
       try { ui.openFixConnection(); sendResponse({ ok: true }); } catch (e) { sendResponse({ ok: false }); }
-      return;
+      return undefined;
     }
     if (msg && msg.type === "rs-open-menu") {
       ui.openMenu(false); // from the popup's Settings button — opens at the top (Switch AI / custom prompt)
     }
+    return undefined;
   });
   // A helper window that reloaded its page, or a main chat that reloaded while helpers work, picks them up again.
   setTimeout(() => { helperResume(); }, 1500);
@@ -13451,7 +13495,7 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
     if(P.canRestoreSession && !P.canRestoreSession())return false;
     if (!path) return false;
     if (startedSessions.has(path)) return true;
-    try { return (typeof P.conversationAliases === "function" ? P.conversationAliases() : []).some(alias => alias && startedSessions.has(alias)); } catch { return false; }
+    try { return (typeof P.conversationAliases === "function" ? P.conversationAliases() : []).some((alias) => alias && startedSessions.has(alias)); } catch { return false; }
   }
   function rememberSession(path) {
     // A falsy key = a TRANSIENT conversation URL (e.g. Gemini's /app before an
@@ -13994,24 +14038,24 @@ function pcEnhanceSelect(select){
   const panel=doc.createElement('div');panel.className='pc-effort-options';panel.hidden=true;panel.setAttribute('role','listbox');panel.setAttribute('aria-label',name);
   wrap.append(trigger,panel);
   let options=[],sig='';
-  const signature=()=>Array.from(select.options).map(o=>o.value+'|'+o.textContent+'|'+o.disabled).join('\n');
-  function rebuild(){sig=signature();panel.textContent='';options=Array.from(select.options).map(o=>{const b=doc.createElement('button');b.type='button';b.setAttribute('role','option');b.tabIndex=-1;b.dataset.value=o.value;b.disabled=o.disabled;const t=doc.createElement('span');t.textContent=o.textContent;b.append(t);b.onclick=()=>choose(o.value);panel.append(b);return b;});}
+  const signature=()=>Array.from(select.options).map((o)=>o.value+'|'+o.textContent+'|'+o.disabled).join('\n');
+  function rebuild(){sig=signature();panel.textContent='';options=Array.from(select.options).map((o)=>{const b=doc.createElement('button');b.type='button';b.setAttribute('role','option');b.tabIndex=-1;b.dataset.value=o.value;b.disabled=o.disabled;const t=doc.createElement('span');t.textContent=o.textContent;b.append(t);b.onclick=()=>choose(o.value);panel.append(b);return b;});}
   function refresh(){if(signature()!==sig)rebuild();const cur=select.options[select.selectedIndex],text=cur?cur.textContent:'';if(label.textContent!==text)label.textContent=text;trigger.disabled=select.disabled;trigger.setAttribute('aria-label',name+': '+text);for(const b of options)b.setAttribute('aria-selected',String(b.dataset.value===select.value));}
   function close(focus){panel.hidden=true;trigger.setAttribute('aria-expanded','false');if(focus)trigger.focus();}
-  function open(index){refresh();if(trigger.disabled)return;const r=trigger.getBoundingClientRect(),vh=doc.defaultView.innerHeight;wrap.toggleAttribute('data-open-up',vh-r.bottom<260&&r.top>260);panel.hidden=false;trigger.setAttribute('aria-expanded','true');const t=options[index]||options.find(b=>b.dataset.value===select.value)||options[0];if(t){t.focus();t.scrollIntoView({block:'nearest'});}}
+  function open(index){refresh();if(trigger.disabled)return;const r=trigger.getBoundingClientRect(),vh=doc.defaultView.innerHeight;wrap.toggleAttribute('data-open-up',vh-r.bottom<260&&r.top>260);panel.hidden=false;trigger.setAttribute('aria-expanded','true');const t=options[index]||options.find((b)=>b.dataset.value===select.value)||options[0];if(t){t.focus();t.scrollIntoView({block:'nearest'});}}
   function choose(v){if(panel.hidden)return;select.value=v;select.dispatchEvent(new Event('input',{bubbles:true}));select.dispatchEvent(new Event('change',{bubbles:true}));refresh();close(true);}
   trigger.onclick=()=>panel.hidden?open():close();
-  trigger.onkeydown=e=>{if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();open(e.key==='Home'?0:e.key==='End'?options.length-1:undefined);}};
-  panel.onkeydown=e=>{const i=options.indexOf(doc.activeElement);if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close(true);}else if(e.key==='Tab')close();else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const n=e.key==='Home'?0:e.key==='End'?options.length-1:(i+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;options[n].focus();}else if(e.key==='Enter'||e.key===' '){e.preventDefault();if(i>=0)choose(options[i].dataset.value);}};
-  const outside=e=>{if(!wrap.contains(e.target))close();};doc.addEventListener('pointerdown',outside);select.addEventListener('change',refresh);
+  trigger.onkeydown=(e)=>{if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();open(e.key==='Home'?0:e.key==='End'?options.length-1:undefined);}};
+  panel.onkeydown=(e)=>{const i=options.indexOf(doc.activeElement);if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close(true);}else if(e.key==='Tab')close();else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const n=e.key==='Home'?0:e.key==='End'?options.length-1:(i+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;options[n].focus();}else if(e.key==='Enter'||e.key===' '){e.preventDefault();if(i>=0)choose(options[i].dataset.value);}};
+  const outside=(e)=>{if(!wrap.contains(e.target))close();};doc.addEventListener('pointerdown',outside);select.addEventListener('change',refresh);
   const timer=setInterval(()=>{if(!wrap.isConnected){clearInterval(timer);doc.removeEventListener('pointerdown',outside);return;}refresh();},500);
   rebuild();refresh();select._pcDD=true;
 }
 function pcEnhanceSelects(scopeRoots){
   let queued=false;
-  const run=()=>{queued=false;try{document.querySelectorAll(scopeRoots.split(',').map(r=>r.trim()+' select').join(',')).forEach(pcEnhanceSelect);}catch{}};
+  const run=()=>{queued=false;try{document.querySelectorAll(scopeRoots.split(',').map((r)=>r.trim()+' select').join(',')).forEach(pcEnhanceSelect);}catch{}};
   const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(run);};
-  new MutationObserver(muts=>{for(const m of muts){const t=m.target,el=t.nodeType===1?t:t.parentElement;if(!el)continue;
+  new MutationObserver((muts)=>{for(const m of muts){const t=m.target,el=t.nodeType===1?t:t.parentElement;if(!el)continue;
     if(el.closest&&el.closest(scopeRoots)){schedule();return;}
     if(el===document.body||el===document.documentElement){for(const n of m.addedNodes){if(n.nodeType===1&&((n.matches&&n.matches(scopeRoots))||(n.querySelector&&n.querySelector(scopeRoots)))){schedule();return;}}}}}).observe(document.documentElement,{childList:true,subtree:true});
   schedule();

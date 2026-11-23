@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/memory.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 const PlazCodeMemory = (() => {
+
   function titleOf(entry) {
     const title = String(entry && entry.title || '').trim(); if (title) return title;
     const line = String(entry && entry.text || '').split('\n').map(part => part.trim()).find(Boolean) || 'Untitled note';
@@ -29,10 +31,10 @@ const PlazCodeMemory = (() => {
   // While off, the app refuses every vault action with "VAULT_OFF"; here nothing is sent at chat start, no chat is saved as a
   // note, and the AI is not offered plazcode_vault. Checked again every 15 seconds so turning it back on is picked up.
   let vaultOffSeen = false, vaultOffAt = 0;
-  const isVaultOffError = error => /VAULT_OFF/.test(String(error && error.message || error || ''));
+  const isVaultOffError = (error) => /VAULT_OFF/.test(String((error && (error).message) || error || ''));
   function vaultOff() { return vaultOffSeen; }
   function availability(memory,project='') {
-    const saved=(memory?.entries||[]).filter(entry=>!entry.project||entry.project===project).length;
+    const saved=(memory?.entries||[]).filter((entry)=>!entry.project||entry.project===project).length;
     if(vaultOffSeen)return '\nMEMORY: '+saved+' saved notes; project='+JSON.stringify(project||'none')+'. The PlazCode vault is turned off by the user: do not use plazcode_vault. Use plazcode_memory list/read for saved notes.';
     const vault=vaultState?Math.max(0,Number(vaultState.total)||vaultState.notes?.length||0):0;
     const learning=vaultState?vaultState.learning!==false:memory?.automatic===true;
@@ -41,12 +43,12 @@ const PlazCodeMemory = (() => {
   const VAULT_ACTIONS = ['index','search','read','read_all','write','backlinks','archive','add_image','read_image','map','audit','verify'];
   // ---- Several vaults (1.24.21): the list of vaults lives in browser storage; the desktop app holds the one ACTIVE vault ----
   const vaultRegistry = (() => {
-    const norm = p => String(p || '').trim().replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    const norm = (p) => String(p || '').trim().replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
     const nested = (a, b) => !!a && !!b && (a === b || a.startsWith(b + '/') || b.startsWith(a + '/'));
-    const cleanName = n => String(n || '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
-    const baseName = p => { const parts = String(p || '').trim().replace(/\\/g, '/').replace(/\/+$/, '').split('/'); return cleanName(parts[parts.length - 1]) || 'Vault'; };
-    const newId = list => { let id; do { id = 'v' + Math.random().toString(36).slice(2, 8); } while ((list || []).some(v => v.id === id)); return id; };
-    const withDefault = list => {
+    const cleanName = (n) => String(n || '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+    const baseName = (p) => { const parts = String(p || '').trim().replace(/\\/g, '/').replace(/\/+$/, '').split('/'); return cleanName(parts[parts.length - 1]) || 'Vault'; };
+    const newId = (list) => { let id; do { id = 'v' + Math.random().toString(36).slice(2, 8); } while ((list || []).some(v => v.id === id)); return id; };
+    const withDefault = (list) => {
       const out = (Array.isArray(list) ? list : []).filter(v => v && typeof v.id === 'string' && v.id !== 'default').map(v => ({ id: v.id, name: cleanName(v.name) || baseName(v.path), path: String(v.path || '').slice(0, 400) })).filter(v => v.path);
       return [{ id: 'default', name: 'PlazCode vault', path: '' }, ...out].slice(0, 30);
     };
@@ -79,8 +81,8 @@ const PlazCodeMemory = (() => {
     return { norm, nested, cleanName, baseName, withDefault, activeId, adopt, add, rename, forget };
   })();
   const storeApi = () => (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) ? chrome.storage.local : null;
-  const storeGet = keys => new Promise(resolve => { const st = storeApi(); if (!st) return resolve({}); try { st.get(keys, v => resolve(v || {})); } catch (e) { resolve({}); } });
-  const storeSet = values => new Promise(resolve => { const st = storeApi(); if (!st) return resolve(false); try { st.set(values, () => resolve(true)); } catch (e) { resolve(false); } });
+  const storeGet = (keys) => new Promise(resolve => { const st = storeApi(); if (!st) return resolve({}); try { st.get(keys, (v) => resolve(v || {})); } catch (e) { resolve({}); } });
+  const storeSet = (values) => new Promise(resolve => { const st = storeApi(); if (!st) return resolve(false); try { st.set(values, () => resolve(true)); } catch (e) { resolve(false); } });
   let seenVault = null, vaultSwitchNotice = '';
   // Every tab calls this: when another tab or the settings page switched vaults, drop what this tab cached.
   async function syncActiveVault() {
@@ -131,7 +133,7 @@ const PlazCodeMemory = (() => {
       const reply = await vaultCall({ action: 'index', project: project || '', limit: 30 });
       // The brain map: every note and every link. An older app without it just keeps the short list.
       let graph = null; try { graph = await vaultCall({ action: 'graph' }); } catch { graph = null; }
-      { const R = chatR(); if (R && Array.isArray(reply.notes)) reply.notes = reply.notes.filter(n => !R.isChatNotePath(n.path)); } vaultState = { ...reply, project, graph: withoutChatNotes(graph) }; vaultFailedAt = 0; vaultFetchedAt = Date.now(); return vaultState;
+      { const R = chatR(); if (R && Array.isArray(reply.notes)) reply.notes = reply.notes.filter((n) => !R.isChatNotePath(n.path)); } vaultState = { ...reply, project, graph: withoutChatNotes(graph) }; vaultFailedAt = 0; vaultFetchedAt = Date.now(); return vaultState;
     } catch (error) { vaultState = null; if (!isVaultOffError(error)) vaultFailedAt = Date.now(); return null; }
   }
   // ---- Chat notes: PlazCode saves every chat into the vault as a note under 11 Chats (see core/reliability.js chatNote) ----
@@ -147,10 +149,10 @@ const PlazCodeMemory = (() => {
     state.path = state.path || R.chatNotePath({ provider: input.provider, startedAt: state.startedAt, title: note.title });
     const signature = note.content + '|' + note.frontmatter.status;
     if (state.signature === signature) return state;
-    const send = mode => vaultCall({ action: 'write', path: state.path, mode, content: note.content, frontmatter: note.frontmatter, reason: 'chat saved' });
+    const send = (mode) => vaultCall({ action: 'write', path: state.path, mode, content: note.content, frontmatter: note.frontmatter, reason: 'chat saved' });
     try { await send(state.created ? 'replace' : 'create'); }
     catch (error) {
-      const text = String(error && error.message || error);
+      const text = String((error && (error).message) || error);
       if (/already exists/i.test(text)) await send('replace');
       else if (/does not exist/i.test(text)) await send('create');
       else throw error;
@@ -165,7 +167,7 @@ const PlazCodeMemory = (() => {
     if (!path) {
       try {
         const found = await vaultCall({ action: 'search', query: 'chat', type: 'previous-chat', limit: 30 });
-        path = (found.results || []).map(r => r.path).filter(x => R.isChatNotePath(x) && x !== exclude).sort().reverse()[0] || '';
+        path = (found.results || []).map((r) => r.path).filter((x) => !!R && R.isChatNotePath(x) && x !== exclude).sort().reverse()[0] || '';
       } catch { path = ''; }
     }
     if (!path) return null;
@@ -177,7 +179,7 @@ const PlazCodeMemory = (() => {
     if (!graph || !Array.isArray(graph.nodes) || !R) return graph;
     const keep = [], remap = new Map();
     graph.nodes.forEach((n, i) => { if (!R.isChatNotePath(n.path)) { remap.set(i, keep.length); keep.push(n); } });
-    const edges = (graph.edges || []).filter(e => remap.has(e[0]) && remap.has(e[1])).map(e => [remap.get(e[0]), remap.get(e[1]), ...e.slice(2)]);
+    const edges = (graph.edges || []).filter((e) => remap.has(e[0]) && remap.has(e[1])).map((e) => [remap.get(e[0]), remap.get(e[1]), ...e.slice(2)]);
     return { ...graph, nodes: keep, edges };
   }
   function vaultLearningText(on, compact) {
@@ -192,15 +194,15 @@ const PlazCodeMemory = (() => {
   function brainMap(graph, budget) {
     if (!graph || !Array.isArray(graph.nodes) || !graph.nodes.length) return '';
     const nodes = graph.nodes, edges = Array.isArray(graph.edges) ? graph.edges : [];
-    const home = nodes.findIndex(n => n.path === '00 Start Here/Home.md');
+    const home = nodes.findIndex((n) => n.path === '00 Start Here/Home.md');
     const degree = nodes.map(() => 0), outs = nodes.map(() => []);
     for (const e of edges) { const a = e[0], b = e[1]; if (a === home || b === home || !nodes[a] || !nodes[b]) continue; degree[a]++; degree[b]++; outs[a].push(b); }
     const groups = new Map();
     nodes.forEach((n, i) => { const dir = n.dir || '(top level)'; if (!groups.has(dir)) groups.set(dir, []); groups.get(dir).push(i); });
     const dirs = [...groups.keys()].sort();
-    const clip = (t, n) => { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+    const clip = (t, n) => { const s = String(t || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
     const head = 'BRAIN MAP (' + nodes.length + ' notes, ' + edges.length + ' links' + (graph.truncated ? ', first ' + nodes.length + ' of ' + graph.total : '') + '). This is everything your vault holds. Names are note names; open one with plazcode_vault read {path:"<folder>/<name>"}; [[x]] in a note is a link to note x.\n';
-    const level = mode => dirs.map(dir => {
+    const level = (mode) => dirs.map(dir => {
       const ids = groups.get(dir).slice();
       if (mode === 0) {
         ids.sort((a, b) => degree[b] - degree[a] || nodes[a].title.localeCompare(nodes[b].title));
@@ -240,7 +242,7 @@ const PlazCodeMemory = (() => {
   }
   function vaultActive() { return !vaultOffSeen && !!vaultState; }
   function vaultLearning() { return !vaultState || vaultState.learning !== false; }
-  function clipText(text, max) { text = String(text == null ? '' : text); return text.length > max ? text.slice(0, max) + '…' : text; }
+  function clipText(text, max) { const s = String(text == null ? '' : text); return s.length > max ? s.slice(0, max) + '…' : s; }
   // 1.24.29 (owner, 2026-10-31: "make sure that by default the AI reads all memory notes and all memory in the vault").
   // Every vault note except saved chats (11 Chats) and _Archive/_Templates, in path order, as pages of whole notes
   // (a note bigger than a page is split by characters). cursor "i" or "i:offset" continues where the last page ended.
@@ -248,7 +250,7 @@ const PlazCodeMemory = (() => {
   async function vaultReadAllPage(cursor, maxChars) {
     const R = chatR();
     const g = await vaultCall({ action: 'graph' });
-    const paths = [...new Set((g && Array.isArray(g.nodes) ? g.nodes : []).map(n => String(n.path || '')))]
+    const paths = [...new Set((g && Array.isArray(g.nodes) ? g.nodes : []).map((n) => String(n.path || '')))]
       .filter(p => p && !(R && R.isChatNotePath(p)) && !/^_(?:Archive|Templates)\//.test(p)).sort();
     const budget = Math.min(90000, Math.max(2000, Math.floor(Number(maxChars) || 60000)));
     const m = /^\s*(\d+)(?:\s*:\s*(\d+))?\s*$/.exec(cursor == null || cursor === '' ? '1' : String(cursor));
@@ -270,7 +272,7 @@ const PlazCodeMemory = (() => {
     for (let i = start; i <= total; i++) {
       const path = paths[i - 1], from = i === start ? startOffset : 0;
       let note;
-      try { note = await readNote(path, from); } catch (error) { note = { text: '(could not read this note: ' + (error.message || error) + ')', size: 0 }; }
+      try { note = await readNote(path, from); } catch (error) { note = { text: '(could not read this note: ' + ((error)?.message || error) + ')', size: 0 }; }
       const header = '=== ' + path + (from ? ' (continued from character ' + from + ')' : '') + ' ===';
       // Notes are joined by one blank line; the end-of-page line follows one blank line.
       const piece = header + '\n' + note.text.replace(/\s+$/, '');
@@ -311,11 +313,11 @@ const PlazCodeMemory = (() => {
     if (['write', 'archive', 'add_image'].includes(action) && !vaultLearning()) throw new Error('Learning is turned off in PlazCode settings, so the vault is read-only for you. Tell the user what you would have saved.');
     if (action === 'index') {
       const r = await vaultCall({ action, project, limit: Math.min(200, Math.max(1, Number(args.limit) || 60)) });
-      return 'Vault index (' + r.total + ' notes for this project; newest first):\n' + (r.notes.map(n => '- ' + n.path + ' | ' + (n.type || '?') + (n.project ? ' | ' + n.project : '') + ' | ' + n.updated + ' | ' + clipText(n.summary, 110)).join('\n') || '(none yet)');
+      return 'Vault index (' + r.total + ' notes for this project; newest first):\n' + (r.notes.map((n) => '- ' + n.path + ' | ' + (n.type || '?') + (n.project ? ' | ' + n.project : '') + ' | ' + n.updated + ' | ' + clipText(n.summary, 110)).join('\n') || '(none yet)');
     }
     if (action === 'search') {
       const r = await vaultCall({ action, query: args.query, type: args.type, project: args.project == null ? project : String(args.project), limit: args.limit, include_archive: args.include_archive === true });
-      return r.count ? 'Found ' + r.count + ' note(s):\n' + r.results.map(n => '- ' + n.path + ' | ' + (n.type || '?') + ' | updated ' + n.updated + '\n' + (n.snippets || []).map(s => '    ' + s).join('\n')).join('\n') : 'No notes match. Try fewer or different words, or use index.';
+      return r.count ? 'Found ' + r.count + ' note(s):\n' + r.results.map((n) => '- ' + n.path + ' | ' + (n.type || '?') + ' | updated ' + n.updated + '\n' + (n.snippets || []).map((s) => '    ' + s).join('\n')).join('\n') : 'No notes match. Try fewer or different words, or use index.';
     }
     if (action === 'read_all') return (await vaultReadAllPage(args.cursor, args.max_chars)).text;
     if (action === 'read') {
@@ -336,7 +338,7 @@ const PlazCodeMemory = (() => {
     if (action === 'audit') {
       const r = await vaultCall({ action });
       if (!r.count) return 'Memory audit: no note points at things inside the Roblox place and none is marked low confidence, so there is nothing to check.';
-      return 'Memory audit: ' + r.count + ' note(s) point into the Roblox place or are low confidence; ' + r.due + ' not checked in the last 30 days (listed first).\nFor each one: look at the listed places in Studio with your READ-ONLY tools. If a note is still true, call plazcode_vault verify {path} (add confidence high|medium|low). If it is wrong or out of date, fix it with plazcode_vault write (mode replace or section) and then verify it, or archive it if it no longer applies. Never change the place itself during an audit.\n' + r.notes.map(n => '- ' + n.path + (n.due ? ' [due]' : ' [checked ' + n.verified + ']') + (n.confidence ? ' | confidence ' + n.confidence : '') + (n.source ? ' | source: ' + clipText(n.source, 50) : '') + (n.studio_paths.length ? '\n    places: ' + n.studio_paths.join(', ') : '')).join('\n');
+      return 'Memory audit: ' + r.count + ' note(s) point into the Roblox place or are low confidence; ' + r.due + ' not checked in the last 30 days (listed first).\nFor each one: look at the listed places in Studio with your READ-ONLY tools. If a note is still true, call plazcode_vault verify {path} (add confidence high|medium|low). If it is wrong or out of date, fix it with plazcode_vault write (mode replace or section) and then verify it, or archive it if it no longer applies. Never change the place itself during an audit.\n' + r.notes.map((n) => '- ' + n.path + (n.due ? ' [due]' : ' [checked ' + n.verified + ']') + (n.confidence ? ' | confidence ' + n.confidence : '') + (n.source ? ' | source: ' + clipText(n.source, 50) : '') + (n.studio_paths.length ? '\n    places: ' + n.studio_paths.join(', ') : '')).join('\n');
     }
     if (action === 'verify') {
       if (!args.path) throw new Error('Give the path of the note you checked.');
@@ -345,7 +347,7 @@ const PlazCodeMemory = (() => {
     }
     if (action === 'backlinks') {
       const r = await vaultCall({ action, path: args.path });
-      return r.count ? 'Notes linking to it:\n' + r.backlinks.map(n => '- ' + n.path).join('\n') : 'No other notes link to it yet.';
+      return r.count ? 'Notes linking to it:\n' + r.backlinks.map((n) => '- ' + n.path).join('\n') : 'No other notes link to it yet.';
     }
     if (action === 'archive') {
       const r = await vaultCall({ action, ai: true, path: args.path, reason: args.reason });
@@ -421,12 +423,12 @@ const PlazCodeMemory = (() => {
     const images = []; const names = [];
     try {
       for (const path of refs) { const r = await vaultCall({ action: 'read_image', path }); images.push({ mimeType: r.mimeType, data: r.data, name: r.path || path }); names.push('reference ' + (names.length + 1)); }
-    } catch (error) { throw new Error('Could not read a reference picture from the vault: ' + (error.message || error)); }
+    } catch (error) { throw new Error('Could not read a reference picture from the vault: ' + ((error)?.message || error)); }
     images.push({ mimeType: shot.mimeType || 'image/png', data: shot.data, name: 'latest-screenshot' }); names.push('RESULT (latest screenshot)');
     if (typeof ctx.ask !== 'function') return criticFallback('this PlazCode version cannot open a second chat here');
     let answer;
     try { answer = await ctx.ask({ prompt: criticPrompt({ names, goal: clipText(args.goal || '', 600), rubric, round }), images, round }); }
-    catch (error) { return criticFallback(String(error && error.message || error).slice(0, 160)); }
+    catch (error) { return criticFallback(String((error)?.message || error).slice(0, 160)); }
     if (!answer || !answer.ok || !String(answer.reply || '').trim()) return criticFallback(String(answer && answer.error || 'no answer came back').slice(0, 160));
     criticRounds.set(key, round);
     const parsed = criticParse(answer.reply);
@@ -438,18 +440,18 @@ const PlazCodeMemory = (() => {
   async function vaultSettings() { return vaultCall({ action: 'settings' }); }
   function mountVault(box, localize) {
     box.innerHTML = '<div data-vault-card><label data-vault-onrow><input type="checkbox" data-vault-enabled><span><strong>Use the PlazCode vault</strong><small>Turn this off if you keep your own notes or memory tool, so the AI gets one memory, not two.</small></span></label><p data-vault-offnote hidden>The vault is off. PlazCode does not create, read or change any vault files, does not give the AI vault notes or vault commands, and does not save chats as notes. Saved notes (Quick notes) keep working.</p><div data-vault-head><div><h3>Vault</h3><p>A folder of linked notes. The AI reads it before it starts and keeps it up to date. It opens in Obsidian too.</p></div><small><span data-vault-count></span> <span>notes in the vault</span></small></div><div data-vault-buttons><button type="button" data-vault-view>Open vault</button><button type="button" data-vault-import hidden>Import a folder of notes</button></div><details data-vault-more><summary>More options</summary><div data-vault-options><section data-vault-switch hidden><h4>Your vaults</h4><ul data-vault-list></ul><div data-vault-addrow><input data-vault-newname aria-label="Vault name" maxlength="60" placeholder="Name (optional)"><input data-vault-newpath aria-label="Vault folder to add" maxlength="400" placeholder="Folder, for example D:\\Game notes"><button type="button" data-vault-add>Add and open</button></div><p data-vault-switchnote>Opening another vault changes which notes every chat reads and writes. Your files are never deleted: removing a vault only takes it off this list.</p></section><p data-vault-folderline><span>Vault folder</span> <code data-vault-path data-i18n-user-content></code></p><div data-vault-buttons><button type="button" data-vault-open>Open vault folder</button><button type="button" data-vault-obsidian hidden>Open in Obsidian</button></div><label data-vault-learn><input type="checkbox" data-vault-learning><span><strong>Let the AI write notes</strong><small>It saves what it learns from your work. Turn this off and the AI can still read the vault.</small></span></label><label data-vault-folderlabel>Use a different folder<input data-vault-folder aria-label="Vault folder" maxlength="400" placeholder="Full path, for example D:\\PlazCode Vault"></label><button type="button" data-vault-save>Use this folder</button></div></details><p data-vault-unavailable hidden>The vault could not start. Close PlazCode fully (also from the background icon), open the newest PlazCode app, then try again.</p><div data-vault-status role="status" data-i18n-user-content></div></div>';
-    const q = sel => box.querySelector(sel), status = q('[data-vault-status]');
-    const say = text => { status.textContent = text; };
+    const q = (sel) => box.querySelector(sel), status = q('[data-vault-status]');
+    const say = (text) => { status.textContent = text; };
     const offParts = ['[data-vault-head]', '[data-vault-buttons]', '[data-vault-more]', '[data-vault-unavailable]'];
-    const showOn = on => { q('[data-vault-enabled]').checked = on; q('[data-vault-offnote]').hidden = on; for (const sel of offParts) { const el = q(sel); if (el && !on) el.hidden = true; else if (el && sel !== '[data-vault-unavailable]') el.hidden = false; } };
-    const show = info => {
+    const showOn = (on) => { q('[data-vault-enabled]').checked = on; q('[data-vault-offnote]').hidden = on; for (const sel of offParts) { const el = q(sel); if (el && !on) el.hidden = true; else if (el && sel !== '[data-vault-unavailable]') el.hidden = false; } };
+    const show = (info) => {
       showOn(info.enabled !== false); if (info.enabled === false) return;
       q('[data-vault-path]').textContent = info.path; q('[data-vault-count]').textContent = String(info.notes);
       q('[data-vault-learning]').checked = info.learning !== false; q('[data-vault-obsidian]').hidden = !info.obsidian_installed;
       q('[data-vault-unavailable]').hidden = true; q('[data-vault-folder]').value = info.custom ? info.path : '';
     };
-    const load = async () => { try { const first = await vaultSettings(); if (first.enabled === false) { show(first); return; } await vaultCall({ action: 'init' }); show(await vaultSettings()); } catch (error) { q('[data-vault-unavailable]').hidden = false; q('[data-vault-path]').textContent = ''; say(error && error.message ? error.message : ''); } };
-    q('[data-vault-enabled]').onchange = async event => {
+    const load = async () => { try { const first = await vaultSettings(); if (first.enabled === false) { show(first); return; } await vaultCall({ action: 'init' }); show(await vaultSettings()); } catch (error) { q('[data-vault-unavailable]').hidden = false; q('[data-vault-path]').textContent = ''; say((error)?.message || ''); } };
+    q('[data-vault-enabled]').onchange = async (event) => {
       const on = event.target.checked;
       try {
         const info = await vaultCall({ action: 'configure', enabled: on });
@@ -457,17 +459,17 @@ const PlazCodeMemory = (() => {
         vaultOffSeen = !on; vaultOffAt = Date.now(); vaultState = null; vaultReady = false; vaultFetchedAt = 0; vaultFailedAt = 0;
         if (on) { await vaultCall({ action: 'init' }); show(await vaultSettings()); } else show(info);
         say(on ? 'The vault is on. New chats get your vault notes again.' : 'The vault is off. New chats will not get vault notes or vault commands; chats already open keep what they were told.');
-      } catch (error) { event.target.checked = !on; say(error.message); }
+      } catch (error) { event.target.checked = !on; say((error)?.message || String(error)); }
     };
-    q('[data-vault-learning]').onchange = async event => { try { show(await vaultCall({ action: 'configure', learning: event.target.checked })); if (vaultState) vaultState.learning = event.target.checked; say(event.target.checked ? 'The AI will now write notes as it learns.' : 'The AI can read the vault but will not write to it.'); } catch (error) { say(error.message); } };
-    q('[data-vault-view]').onclick = () => { try { openVaultViewer({}); } catch (error) { say(error.message); } };
-    q('[data-vault-open]').onclick = async () => { try { await vaultCall({ action: 'reveal' }); } catch (error) { say(error.message); } };
-    q('[data-vault-obsidian]').onclick = async () => { try { await vaultCall({ action: 'open_obsidian' }); say('Asked Obsidian to open the vault. The first time, Obsidian may ask you to open the folder as a vault.'); } catch (error) { say(error.message); } };
-    q('[data-vault-save]').onclick = async () => { try { show(await vaultCall({ action: 'configure', path: q('[data-vault-folder]').value.trim() })); vaultFetchedAt = 0; vaultReady = false; await vaultRefresh(vaultBridge, vaultProject); say('The vault folder was changed. Notes in the old folder stay where they are.'); } catch (error) { say(error.message); } };
+    q('[data-vault-learning]').onchange = async (event) => { try { show(await vaultCall({ action: 'configure', learning: event.target.checked })); if (vaultState) vaultState.learning = event.target.checked; say(event.target.checked ? 'The AI will now write notes as it learns.' : 'The AI can read the vault but will not write to it.'); } catch (error) { say((error)?.message || String(error)); } };
+    q('[data-vault-view]').onclick = () => { try { openVaultViewer({}); } catch (error) { say((error)?.message || String(error)); } };
+    q('[data-vault-open]').onclick = async () => { try { await vaultCall({ action: 'reveal' }); } catch (error) { say((error)?.message || String(error)); } };
+    q('[data-vault-obsidian]').onclick = async () => { try { await vaultCall({ action: 'open_obsidian' }); say('Asked Obsidian to open the vault. The first time, Obsidian may ask you to open the folder as a vault.'); } catch (error) { say((error)?.message || String(error)); } };
+    q('[data-vault-save]').onclick = async () => { try { show(await vaultCall({ action: 'configure', path: q('[data-vault-folder]').value.trim() })); vaultFetchedAt = 0; vaultReady = false; await vaultRefresh(vaultBridge, vaultProject); say('The vault folder was changed. Notes in the old folder stay where they are.'); } catch (error) { say((error)?.message || String(error)); } };
     // Import a folder of notes: opens PlazCode's own import page (extension only; the desktop window gets it with the next app update).
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage && storeApi()) {
       q('[data-vault-import]').hidden = false;
-      q('[data-vault-import]').onclick = () => { try { chrome.runtime.sendMessage({ type: 'rs-open-vault-import' }, reply => { if (reply && reply.ok === false) say(reply.error || 'The import page could not open.'); }); } catch (error) { say('The import page could not open.'); } };
+      q('[data-vault-import]').onclick = () => { try { chrome.runtime.sendMessage({ type: 'rs-open-vault-import' }, (reply) => { if (reply && reply.ok === false) say(reply.error || 'The import page could not open.'); }); } catch (error) { say('The import page could not open.'); } };
     }
     // ── the list of vaults (only where browser storage exists; the desktop window gets this with the next app update) ──
     const section = q('[data-vault-switch]');
@@ -481,7 +483,7 @@ const PlazCodeMemory = (() => {
         const text = document.createElement('div'); text.dataset.vaultText = '';
         if (editing === v.id) {
           const input = document.createElement('input'); input.value = v.name; input.maxLength = 60; input.setAttribute('aria-label', 'New name'); input.dataset.vaultRenameInput = '';
-          const ok = document.createElement('button'); ok.type = 'button'; ok.textContent = 'Save name'; ok.onclick = async () => { try { list = vaultRegistry.rename(list, v.id, input.value); editing = ''; await saveList(); renderList(); say('Renamed.'); } catch (e) { say(e.message); } };
+          const ok = document.createElement('button'); ok.type = 'button'; ok.textContent = 'Save name'; ok.onclick = async () => { try { list = vaultRegistry.rename(list, v.id, input.value); editing = ''; await saveList(); renderList(); say('Renamed.'); } catch (e) { say((e)?.message || String(e)); } };
           const no = document.createElement('button'); no.type = 'button'; no.textContent = 'Cancel'; no.onclick = () => { editing = ''; renderList(); };
           text.append(input, ok, no);
         } else {
@@ -498,13 +500,13 @@ const PlazCodeMemory = (() => {
         if (editing !== v.id && v.id !== 'default') { const rn = document.createElement('button'); rn.type = 'button'; rn.textContent = 'Rename'; rn.onclick = () => { editing = v.id; removing = ''; renderList(); }; row.append(rn); }
         if (editing !== v.id && v.id !== 'default' && v.id !== active) {
           const rm = document.createElement('button'); rm.type = 'button'; rm.textContent = removing === v.id ? 'Click again: take off the list (files stay)' : 'Remove from list';
-          rm.onclick = async () => { if (removing !== v.id) { removing = v.id; renderList(); return; } try { list = vaultRegistry.forget(list, v.id, active); removing = ''; await saveList(); renderList(); say('Taken off the list. The folder and its notes were not touched.'); } catch (e) { say(e.message); } };
+          rm.onclick = async () => { if (removing !== v.id) { removing = v.id; renderList(); return; } try { list = vaultRegistry.forget(list, v.id, active); removing = ''; await saveList(); renderList(); say('Taken off the list. The folder and its notes were not touched.'); } catch (e) { say((e)?.message || String(e)); } };
           row.append(rm);
         }
         li.append(row); ul.append(li);
       }
     };
-    const switchTo = async v => {
+    const switchTo = async (v) => {
       try {
         const info = await vaultCall({ action: 'configure', path: v.path });
         vaultFetchedAt = 0; vaultReady = false; vaultState = null; vaultFailedAt = 0;
@@ -512,7 +514,7 @@ const PlazCodeMemory = (() => {
         vaultSwitchNotice = 'Note from PlazCode: the active vault is now "' + v.name + '". What you read from the old vault earlier is out of date. Read Home (and the index) again before you continue.';
         show(info); lastInfo = info; renderList(); await vaultRefresh(vaultBridge, vaultProject);
         say('"' + v.name + '" is open. Chats now read and write its notes. A task that is running keeps what it already read until the AI reads Home again.');
-      } catch (e) { say(e && e.message ? e.message : 'The vault could not be opened.'); }
+      } catch (e) { say((e)?.message || 'The vault could not be opened.'); }
     };
     q('[data-vault-add]').onclick = async () => {
       try {
@@ -520,7 +522,7 @@ const PlazCodeMemory = (() => {
         const v = list[list.length - 1]; await saveList();
         q('[data-vault-newname]').value = ''; q('[data-vault-newpath]').value = '';
         await switchTo(v);
-      } catch (e) { say(e.message); }
+      } catch (e) { say((e)?.message || String(e)); }
     };
     const loadList = async () => {
       if (!storeApi()) return;
@@ -552,8 +554,8 @@ const PlazCodeMemory = (() => {
     plus: '<path d="M12 5v14M5 12h14"/>', minus: '<path d="M5 12h14"/>', fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', graph: '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.3 6.7l7.4.8M7.2 8.2l3.6 7.6M16.9 10.3l-3.6 5.9"/>', trash: '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6"/>', collapse: '<path d="m7 20 5-5 5 5M7 4l5 5 5-5"/>', expand: '<path d="m7 15 5 5 5-5M7 9l5-5 5 5"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>'
   };
   function ico(name, size) { size = size || 16; return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (PCV_ICONS[name] || '') + '</svg>'; }
-  const vvEsc = value => String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  const vvT = text => { try { return (globalThis.PlazCodeI18n && globalThis.PlazCodeI18n.t) ? globalThis.PlazCodeI18n.t(text) : text; } catch { return text; } };
+  const vvEsc = (value) => String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const vvT = (text) => { try { return (globalThis.PlazCodeI18n && globalThis.PlazCodeI18n.t) ? globalThis.PlazCodeI18n.t(text) : text; } catch { return text; } };
 
   // Inline Markdown. The text is escaped first, so nothing a note says can become markup.
   function vvInline(source) {
@@ -618,7 +620,7 @@ const PlazCodeMemory = (() => {
   function vvBlocks(lines) {
     const out = [];
     let i = 0;
-    const startsBlock = line => /^\s{0,3}(#{1,6}\s|>|```|~~~)/.test(line) || /^\s*([-*_])(\s*\1){2,}\s*$/.test(line) || VV_LIST_ITEM.test(line);
+    const startsBlock = (line) => /^\s{0,3}(#{1,6}\s|>|```|~~~)/.test(line) || /^\s*([-*_])(\s*\1){2,}\s*$/.test(line) || VV_LIST_ITEM.test(line);
     while (i < lines.length) {
       const line = lines[i];
       if (/^\s*$/.test(line)) { i++; continue; }
@@ -681,15 +683,15 @@ const PlazCodeMemory = (() => {
     if (!m) return String(value);
     try { return new Intl.DateTimeFormat(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))); } catch { return m[0]; }
   }
-  const vvUnquote = value => { const v = String(value == null ? '' : value).trim(); return v.length > 1 && /^(["']).*\1$/.test(v) ? v.slice(1, -1) : v; };
+  const vvUnquote = (value) => { const v = String(value == null ? '' : value).trim(); return v.length > 1 && /^(["']).*\1$/.test(v) ? v.slice(1, -1) : v; };
   function vvProps(front, open) {
     const order = (front && front.order) || [];
     if (!order.length) return '';
-    const rows = order.map(key => {
+    const rows = (order).map(key => {
       const raw = String((front.fields || {})[key] == null ? '' : front.fields[key]);
       let icon = 'text', value;
-      if (key === 'tags') { icon = 'tag'; value = (front.tags || []).map(tag => '<span class="pcv-chip">' + vvEsc(tag) + '</span>').join(''); }
-      else if (key === 'aliases') { icon = 'alias'; value = (front.aliases || []).map(alias => '<span class="pcv-pill">' + vvEsc(alias) + '</span>').join(''); }
+      if (key === 'tags') { icon = 'tag'; value = (front.tags || []).map((tag) => '<span class="pcv-chip">' + vvEsc(tag) + '</span>').join(''); }
+      else if (key === 'aliases') { icon = 'alias'; value = (front.aliases || []).map((alias) => '<span class="pcv-pill">' + vvEsc(alias) + '</span>').join(''); }
       else if (/^\d{4}-\d{2}-\d{2}/.test(vvUnquote(raw))) { icon = 'calendar'; value = '<span class="pcv-date">' + vvEsc(vvDate(vvUnquote(raw))) + '</span>'; }
       else if (/^\[.*\]$/.test(raw.trim())) { value = raw.trim().slice(1, -1).split(',').map(vvUnquote).filter(Boolean).map(item => '<span class="pcv-pill">' + vvEsc(item) + '</span>').join(''); }
       else value = '<span class="pcv-text">' + vvEsc(vvUnquote(raw)) + '</span>';
@@ -832,21 +834,21 @@ const PlazCodeMemory = (() => {
       + '<div class="pcv-ginfo" data-ginfo hidden></div><div class="pcv-glegend" data-glegend></div><div class="pcv-gempty" data-gempty hidden></div>';
     const canvas = host.querySelector('canvas'), ctx = canvas.getContext('2d');
     const infoBox = host.querySelector('[data-ginfo]'), legend = host.querySelector('[data-glegend]'), emptyBox = host.querySelector('[data-gempty]'), filterBox = host.querySelector('[data-gfilter]');
-    const opt = name => host.querySelector('[data-gopt="' + name + '"]').checked;
+    const opt = (name) => host.querySelector('[data-gopt="' + name + '"]').checked;
     const gridSize = () => Math.max(16, Math.min(120, Number(host.querySelector('[data-gsize]').value) || 48));
     const reduce = () => { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch { return false; } };
     let data = null, nodes = [], edges = [], deg = [], sim = null, view = { x: 0, y: 0, k: 1 }, hover = -1, matches = null, frameId = 0, w = 0, h = 0, dpr = 1, fitted = false, colors = null, dirColor = new Map(), keep = new Map();
     const css = (name, fallback) => { try { return (getComputedStyle(host).getPropertyValue(name) || '').trim() || fallback; } catch { return fallback; } };
     // Dots keep a steady size on screen (they grow a little as you zoom in), so a zoomed-out map is still readable.
-    const radius = i => (3.6 + Math.sqrt(deg[i]) * 1.8) * Math.max(0.85, Math.min(2.2, Math.sqrt(view.k))) / view.k;
+    const radius = (i) => (3.6 + Math.sqrt(deg[i]) * 1.8) * Math.max(0.85, Math.min(2.2, Math.sqrt(view.k))) / view.k;
     function build() {
       if (sim && nodes.length) nodes.forEach((n, i) => { keep.set(n.path, [sim.x[i], sim.y[i]]); });
-      const all = data.nodes, home = all.findIndex(n => n.path === '00 Start Here/Home.md');
-      const useEdges = data.edges.filter(e => e[0] !== e[1] && all[e[0]] && all[e[1]] && (opt('home') || (e[0] !== home && e[1] !== home)));
-      const linked = new Set(); useEdges.forEach(e => { linked.add(e[0]); linked.add(e[1]); });
+      const all = data.nodes, home = all.findIndex((n) => n.path === '00 Start Here/Home.md');
+      const useEdges = data.edges.filter((e) => e[0] !== e[1] && all[e[0]] && all[e[1]] && (opt('home') || (e[0] !== home && e[1] !== home)));
+      const linked = new Set(); useEdges.forEach((e) => { linked.add(e[0]); linked.add(e[1]); });
       const show = []; const map = new Map();
       all.forEach((n, i) => { if (opt('orphans') || linked.has(i)) { map.set(i, show.length); show.push(n); } });
-      nodes = show; edges = useEdges.map(e => [map.get(e[0]), map.get(e[1])]).filter(e => e[0] != null && e[1] != null);
+      nodes = show; edges = useEdges.map(e => [map.get(e[0]), map.get(e[1])]).filter((e) => e[0] != null && e[1] != null);
       deg = nodes.map(() => 0); edges.forEach(e => { deg[e[0]]++; deg[e[1]]++; });
       sim = graphSim(nodes.length, edges, nodes.map(n => keep.get(n.path) || null));
       const dirs = [...new Set(nodes.map(n => n.dir || ''))].sort(); dirColor = new Map(dirs.map((d, i) => [d, VV_GRAPH_COLORS[i % VV_GRAPH_COLORS.length]]));
@@ -889,7 +891,7 @@ const PlazCodeMemory = (() => {
       if (!w || !sim) return;
       const text = css('--v-text', '#eef4ff'), muted = css('--v-muted', '#9fb0c7'), accent = css('--v-accent', '#e9ba53');
       const colored = opt('colors'), k = view.k, near = hover >= 0 ? neighbours(hover) : null;
-      const hue = i => dirColor.get(nodes[i].dir || '');
+      const hue = (i) => dirColor.get(nodes[i].dir || '') ?? 0;
       const tone = (i, l, a) => colored ? 'hsla(' + hue(i) + ',72%,' + l + '%,' + (a == null ? 1 : a) + ')' : 'hsla(215,18%,' + (l + 6) + '%,' + (a == null ? 1 : a) + ')';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h); ctx.globalCompositeOperation = 'source-over';
       // A soft pool of light in the middle, so the map sits in a space instead of on a flat sheet.
@@ -909,7 +911,7 @@ const PlazCodeMemory = (() => {
         }
         ctx.globalAlpha = 1;
       }
-      const faded = i => (near && !near.has(i)) || (matches && !matches.has(i));
+      const faded = (i) => (near && !near.has(i)) || (matches && !matches.has(i));
       // Lines: a wide faint glow under a thin bright core, blending from one note's colour to the other's.
       ctx.globalCompositeOperation = 'lighter';
       for (const e of edges) {
@@ -966,7 +968,7 @@ const PlazCodeMemory = (() => {
     function kick() { if (!frameId && !host.hidden) frameId = requestAnimationFrame(frame); }
     // Pointer: drag a dot to move it, drag the background to pan, wheel to zoom, click a dot to open the note.
     let dragging = -1, panning = false, last = null, moved = 0;
-    const local = event => { const r = canvas.getBoundingClientRect(); return [event.clientX - r.left, event.clientY - r.top]; };
+    const local = (event) => { const r = canvas.getBoundingClientRect(); return [event.clientX - r.left, event.clientY - r.top]; };
     const hit = (sx, sy) => {
       let best = -1, bd = 1e9;
       for (let i = 0; i < nodes.length; i++) { const dx = sim.x[i] * view.k + view.x - sx, dy = sim.y[i] * view.k + view.y - sy, d = Math.sqrt(dx * dx + dy * dy); if (d <= radius(i) * view.k + 6 && d < bd) { bd = d; best = i; } }
@@ -996,7 +998,7 @@ const PlazCodeMemory = (() => {
       } else if (panning) { view.x += sx - last[0]; view.y += sy - last[1]; moved += Math.abs(sx - last[0]) + Math.abs(sy - last[1]); last = [sx, sy]; canvas.style.cursor = 'grabbing'; draw(); }
       else { const i = hit(sx, sy); if (i !== hover) { hover = i; canvas.style.cursor = i >= 0 ? 'pointer' : 'grab'; showInfo(i); draw(); } }
     });
-    const release = event => {
+    const release = (event) => {
       if (!sim) return;
       if (dragging >= 0) { if (moved <= 5) api.onOpen(nodes[dragging].path); sim.release(dragging); }
       dragging = -1; panning = false; canvas.style.cursor = hover >= 0 ? 'pointer' : 'grab';
@@ -1017,12 +1019,12 @@ const PlazCodeMemory = (() => {
       if (used) event.preventDefault();
     });
     host.addEventListener('click', event => {
-      const target = event.target.closest ? event.target.closest('[data-gact]') : null; if (!target) return;
+      const raw = event.target; const target = raw && raw.closest ? raw.closest('[data-gact]') : null; if (!target) return;
       const a = target.dataset.gact;
       if (a === 'in') zoomAt(1.25, w / 2, h / 2); else if (a === 'out') zoomAt(1 / 1.25, w / 2, h / 2); else if (a === 'fit') { fit(); draw(); }
     });
     host.addEventListener('change', event => {
-      const box = event.target.matches && event.target.matches('[data-gopt]') ? event.target : null; if (!box) return;
+      const raw = event.target; const box = raw && raw.matches && raw.matches('[data-gopt]') ? raw : null; if (!box) return;
       if (box.dataset.gopt === 'grid') { host.querySelector('[data-gsize]').disabled = !box.checked; draw(); } else build();
     });
     host.querySelector('[data-gsize]').addEventListener('input', () => draw());
@@ -1049,7 +1051,7 @@ const PlazCodeMemory = (() => {
       + '<div class="pcv-scroll" data-scroll><article class="pcv-note" data-note></article></div><div class="pcv-graph" data-graph hidden></div><div class="pcv-status" data-status></div><div class="pcv-toast" data-toast role="status" hidden></div></section></div>';
     document.body.appendChild(root);
     pcvRoot = root;
-    const q = selector => root.querySelector(selector);
+    const q = (selector) => root.querySelector(selector);
     const tree = q('[data-tree]'), note = q('[data-note]'), crumb = q('[data-crumb]'), status = q('[data-status]'), toast = q('[data-toast]'), menu = q('[data-menu]'), search = q('[data-search]'), navActions = q('[data-nav-actions]'), scroll = q('[data-scroll]');
     let entries = [], kids = new Map(), nameMap = new Map(), imageMap = new Map(), kindOf = new Map(), expanded = new Set(['00 Start Here']);
     let current = null, history = [], hpos = -1, editing = false, propsOpen = true, archiveArmed = false, deleteArmed = false, toastTimer = 0, searchTimer = 0, openToken = 0;
@@ -1067,18 +1069,18 @@ const PlazCodeMemory = (() => {
         q('[data-tab]').textContent = vvT('Graph view'); crumb.innerHTML = '<b>' + vvEsc(vvT('Graph view')) + '</b>'; navActions.textContent = '';
         status.textContent = data.nodes.length + ' ' + vvT('notes') + ' · ' + data.edges.length + ' ' + vvT('links') + (data.truncated ? ' · ' + vvT('showing the first') + ' ' + data.nodes.length : '');
         graphView.show(data);
-      } catch (error) { say(/unknown vault action/i.test((error && error.message) || '') ? vvT('The graph view needs the newest PlazCode desktop app. Update the app to use it.') : ((error && error.message) || String(error))); }
+      } catch (error) { say(/unknown vault action/i.test(((error) && (error).message) || '') ? vvT('The graph view needs the newest PlazCode desktop app. Update the app to use it.') : (((error) && (error).message) || String(error))); }
     }
     function hideGraph() {
       if (!graphOpen) return;
       graphOpen = false; if (graphView) graphView.hide(); mainPane.classList.remove('pcv-graph-on'); markRail('files'); paint();
     }
-    const say = text => { toast.textContent = text; toast.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { toast.hidden = true; }, 4200); };
-    const failure = error => say((error && error.message) || String(error));
-    const baseName = path => String(path).split('/').pop().replace(/\.md$/i, '');
+    const say = (text) => { toast.textContent = text; toast.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { toast.hidden = true; }, 4200); };
+    const failure = (error) => say(((error) && (error).message) || String(error));
+    const baseName = (path) => String(path).split('/').pop().replace(/\.md$/i, '');
     const addTo = (map, key, value) => { const list = map.get(key) || []; if (!list.includes(value)) list.push(value); map.set(key, list); };
     // The root swallows keys and paste so the AI site's own editor never reacts to typing inside the window.
-    for (const type of ['keydown', 'keyup', 'keypress', 'beforeinput', 'input', 'copy', 'cut', 'paste']) root.addEventListener(type, event => { if (event.target && event.target.matches && event.target.matches('input,textarea')) event.stopPropagation(); });
+    for (const type of ['keydown', 'keyup', 'keypress', 'beforeinput', 'input', 'copy', 'cut', 'paste']) root.addEventListener(type, event => { const t = event.target; if (t && t.matches && t.matches('input,textarea')) event.stopPropagation(); });
 
     function indexEntries(list) {
       entries = list; kids = new Map(); nameMap = new Map(); imageMap = new Map(); kindOf = new Map();
@@ -1092,15 +1094,15 @@ const PlazCodeMemory = (() => {
         } else if (entry.kind === 'image') { addTo(imageMap, entry.path.split('/').pop().toLowerCase(), entry.path); addTo(imageMap, entry.path.toLowerCase(), entry.path); }
       }
     }
-    const shortest = list => list && list.length ? list.slice().sort((a, b) => a.length - b.length || a.localeCompare(b))[0] : null;
-    const resolveNote = target => { const t = String(target).split('#')[0].split('^')[0].trim().toLowerCase().replace(/\.md$/, ''); return t ? shortest(nameMap.get(t)) : null; };
-    const resolveImage = target => shortest(imageMap.get(String(target).split('|')[0].trim().toLowerCase()));
+    const shortest = (list) => list && list.length ? list.slice().sort((a, b) => a.length - b.length || a.localeCompare(b))[0] : null;
+    const resolveNote = (target) => { const t = String(target).split('#')[0].split('^')[0].trim().toLowerCase().replace(/\.md$/, ''); return t ? shortest(nameMap.get(t)) : null; };
+    const resolveImage = (target) => shortest(imageMap.get(String(target).split('|')[0].trim().toLowerCase()));
     const natural = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 
     function drawTree() {
       tree.textContent = '';
       const build = (parent, depth, into) => {
-        const tail = e => e.path.split('/').pop().startsWith('_') ? 1 : 0;
+        const tail = (e) => e.path.split('/').pop().startsWith('_') ? 1 : 0;
         const list = (kids.get(parent) || []).slice().sort((a, b) => tail(a) - tail(b) || (a.kind === 'folder' ? 0 : 1) - (b.kind === 'folder' ? 0 : 1) || natural(a.path.split('/').pop(), b.path.split('/').pop()));
         for (const entry of list) {
           const row = document.createElement('div'), name = entry.path.split('/').pop();
@@ -1179,12 +1181,12 @@ const PlazCodeMemory = (() => {
         }
         const [read, back] = await Promise.all([vaultCall({ action: 'read', path, view: true }), vaultCall({ action: 'backlinks', path }).catch(() => ({ backlinks: [] }))]);
         if (token !== openToken) return;
-        current = read.path; revealPath(current);
+        current = String(read.path); revealPath(current);
         const links = (back.backlinks || []);
         note.innerHTML = '<h1 class="pcv-title"></h1>' + vvProps(read.front, propsOpen) + '<div class="pcv-md">' + renderMarkdown(read.body) + '</div>'
           + (links.length ? '<div class="pcv-back"><h4>' + vvEsc(vvT('Linked from')) + '</h4>' + links.map(l => '<a href="#" class="pcv-link" data-path="' + vvEsc(l.path) + '">' + vvEsc(l.title) + '</a>').join('') + '</div>' : '');
         note.querySelector('.pcv-title').textContent = baseName(current);
-        note.__raw = read.raw;
+        (note).__raw = read.raw;
         decorate();
         if (push !== false) { history = history.slice(0, hpos + 1); history.push(current); hpos = history.length - 1; }
         const count = (read.front.order || []).length;
@@ -1197,7 +1199,7 @@ const PlazCodeMemory = (() => {
 
     function startEdit() {
       if (!current || kindOf.get(current) !== 'note' || editing) return;
-      const area = document.createElement('textarea'); area.className = 'pcv-editor'; area.setAttribute('aria-label', vvT('Edit note')); area.maxLength = 64000; area.value = note.__raw || '';
+      const area = document.createElement('textarea'); area.className = 'pcv-editor'; area.setAttribute('aria-label', vvT('Edit note')); area.maxLength = 64000; area.value = (note).__raw || '';
       note.textContent = ''; const title = document.createElement('h1'); title.className = 'pcv-title'; title.textContent = baseName(current); note.append(title, area);
       editing = true; setNavActions(); area.focus();
     }
@@ -1220,14 +1222,14 @@ const PlazCodeMemory = (() => {
       if (editing) { say(vvT('Save or cancel your edit first.')); return; }
       root.querySelectorAll('.pcv-newrow').forEach(node => node.remove());
       expanded.add(folder); drawTree();
-      const parent = Array.prototype.find.call(tree.querySelectorAll('.pcv-row[data-kind="folder"]'), node => node.dataset.path === folder);
+      const parent = Array.prototype.find.call(tree.querySelectorAll('.pcv-row[data-kind="folder"]'), (node) => node.dataset.path === folder);
       if (!parent) return;
       const depth = folder.split('/').length;
       const holder = document.createElement('div'); holder.className = 'pcv-newrow'; holder.style.paddingLeft = (8 + depth * 16) + 'px';
       const input = document.createElement('input'); input.type = 'text'; input.maxLength = 80; input.placeholder = vvT('Name the new note, then press Enter'); input.setAttribute('aria-label', vvT('New note name'));
       holder.appendChild(input); parent.after(holder); input.focus();
       let done = false;
-      const finish = async create => {
+      const finish = async (create) => {
         if (done) return; done = true;
         const name = input.value.replace(/[\\/:*?"<>|#^\[\]]/g, ' ').replace(/\s+/g, ' ').trim().replace(/\.md$/i, '');
         holder.remove();
@@ -1255,7 +1257,7 @@ const PlazCodeMemory = (() => {
     }
 
     root.addEventListener('click', event => {
-      const target = event.target.closest ? event.target : event.target.parentElement; if (!target) return;
+      const raw = event.target; const target = raw && typeof raw.closest === 'function' ? raw : raw?.parentElement; if (!target) return;
       const act = target.closest('[data-act]');
       if (menu && !menu.hidden && !target.closest('[data-menu]') && !(act && act.dataset.act === 'menu')) menu.hidden = true;
       const props = target.closest('.pcv-props-head');
@@ -1287,7 +1289,7 @@ const PlazCodeMemory = (() => {
     });
     root.addEventListener('keydown', event => {
       if (event.key === 'Escape') { event.stopPropagation(); if (!menu.hidden) menu.hidden = true; else if (editing) cancelEdit(); else root.hidden = true; return; }
-      if ((event.key === 'Enter' || event.key === ' ') && event.target.matches && event.target.matches('[data-path][data-kind]')) { event.preventDefault(); open(event.target.dataset.path, true); }
+      const et = event.target; if ((event.key === 'Enter' || event.key === ' ') && et && et.matches && et.matches('[data-path][data-kind]')) { event.preventDefault(); open(et.dataset.path, true); }
       if (event.altKey && event.key === 'ArrowLeft') { event.preventDefault(); go(-1); }
       if (event.altKey && event.key === 'ArrowRight') { event.preventDefault(); go(1); }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's' && editing) { event.preventDefault(); saveEdit(); }
@@ -1300,9 +1302,9 @@ const PlazCodeMemory = (() => {
         const info = await vaultCall({ action: 'settings' }); const folderName = String(info.path || '').split(/[\\/]/).filter(Boolean).pop() || 'Vault'; q('[data-vname]').textContent = folderName === 'Vault' ? 'PlazCode Vault' : folderName;
         await loadTree();
         await open(options.path && kindOf.get(options.path) ? options.path : '00 Start Here/Home.md', true);
-      } catch (error) { note.innerHTML = '<p class="pcv-empty"></p>'; note.firstChild.textContent = (error && error.message) || vvT('The vault needs the newest PlazCode desktop app. Update the app to use it.'); }
+      } catch (error) { note.innerHTML = '<p class="pcv-empty"></p>'; (note.firstChild).textContent = ((error) && (error).message) || vvT('The vault needs the newest PlazCode desktop app. Update the app to use it.'); }
     })();
-    root.focus && root.setAttribute('tabindex', '-1');
+    (root).focus && root.setAttribute('tabindex', '-1');
     return root;
   }
 
@@ -1327,7 +1329,7 @@ const PlazCodeMemory = (() => {
     // 1.24.12: the panel lives on AI sites whose editors capture keyboard and
     // clipboard events. Keep typing/paste inside PlazCode's own note fields and
     // insert pasted text ourselves so a site handler can never swallow it.
-    for (const type of ['keydown','keyup','keypress','beforeinput','input','copy','cut','paste']) root.addEventListener(type, event => { if (event.target && event.target.matches && event.target.matches('input,textarea')) event.stopPropagation(); });
+    for (const type of ['keydown','keyup','keypress','beforeinput','input','copy','cut','paste']) root.addEventListener(type, event => { const t = event.target; if (t && t.matches && t.matches('input,textarea')) event.stopPropagation(); });
     function insertText(field, text) {
       const value = String(text == null ? '' : text).replace(/\r\n?/g, '\n');
       const start = typeof field.selectionStart === 'number' ? field.selectionStart : field.value.length, end = typeof field.selectionEnd === 'number' ? field.selectionEnd : start;
@@ -1352,7 +1354,7 @@ const PlazCodeMemory = (() => {
         if (signature === next || (root.contains(document.activeElement) && document.activeElement.matches('[data-entry-text],[data-entry-title]'))) return;
         signature = next; const list = root.querySelector('[data-memory-list]'); list.replaceChildren();
         if (!memory.entries.length) { const empty = document.createElement('div'); empty.setAttribute('data-pcm-empty',''); const head = document.createElement('strong'); head.textContent = 'No notes yet'; const hint = document.createElement('p'); hint.textContent = 'Useful things the AI learns will show up here. You can also add your own with Add a note below.'; empty.append(head, hint); list.appendChild(empty); }
-        memory.entries.forEach(entry => {
+        memory.entries.forEach((entry) => {
           const row = document.createElement('details'); row.setAttribute('data-memory-entry', String(entry.id)); row.open = openIds.has(entry.id);
           row.ontoggle = () => { if (row.open) openIds.add(entry.id); else openIds.delete(entry.id); };
           const summary = document.createElement('summary'); const main = document.createElement('span'); main.className = 'pcm-main';
@@ -1372,7 +1374,7 @@ const PlazCodeMemory = (() => {
           row.append(summary, form); list.appendChild(row);
         });
         applyFilter();
-      } catch (error) { status.textContent = error.message || String(error); } finally {localize();}
+      } catch (error) { status.textContent = (error)?.message || String(error); } finally {localize();}
     }
     function applyFilter() {
       const word = root.querySelector('[data-memory-filter]').value.trim().toLowerCase(); let shown = 0, total = 0;
@@ -1384,10 +1386,10 @@ const PlazCodeMemory = (() => {
     async function mutate(action) {
       if (busy) return false; busy = true;
       try { await request(action); status.textContent = 'Memory saved.'; signature = ''; await refresh(); return true; }
-      catch (error) { status.textContent = error.message || String(error); return false; }
+      catch (error) { status.textContent = (error)?.message || String(error); return false; }
       finally { busy = false; }
     }
-    root.querySelector('[data-memory-auto]').onchange = event => mutate({action:'toggle',enabled:event.target.checked});
+    root.querySelector('[data-memory-auto]').onchange = event => mutate({action:'toggle',enabled:(event.target).checked});
     root.querySelector('[data-memory-refresh]').onclick = refresh;
     root.querySelector('[data-memory-add]').onclick = async () => {
       const input = root.querySelector('[data-memory-new]'), titleInput = root.querySelector('[data-memory-new-title]'), text = input.value, title = titleInput.value;
@@ -1399,7 +1401,7 @@ const PlazCodeMemory = (() => {
       catch { field.focus(); status.textContent = 'Clipboard access was blocked. Click the note box and press Ctrl+V (Cmd+V on Mac).'; }
     };
     root.querySelector('[data-memory-import]').onchange = async event => {
-      const files = [...(event.target.files || [])]; event.target.value = '';
+      const inp = event.target; const files = [...(inp.files || [])]; inp.value = '';
       let added = 0; const problems = [];
       for (const file of files) {
         try {
@@ -1409,7 +1411,7 @@ const PlazCodeMemory = (() => {
           if (!text.trim()) throw Error('file is empty');
           const title = file.name.replace(/\.[^.]+$/, '').slice(0, 120);
           if (await mutate({action:'add', title, text})) added++; else problems.push(file.name + ': ' + status.textContent);
-        } catch (error) { problems.push(file.name + ': ' + (error.message || String(error))); }
+        } catch (error) { problems.push(file.name + ': ' + ((error)?.message || String(error))); }
       }
       status.textContent = (added ? 'Imported ' + added + ' note' + (added === 1 ? '' : 's') + ' exactly as written.' : 'No notes imported.') + (problems.length ? ' ' + problems.join(' · ') : '');
     };
@@ -1431,23 +1433,23 @@ const PlazCodeMemory = (() => {
           downloadUrl = URL.createObjectURL(new Blob([text.value],{type:'application/json'}));
           const link = section.querySelector('[data-transfer-download]'); link.href=downloadUrl;link.download='PlazCode-chat-transfer.json';link.hidden=false;
           status.textContent='Export ready. Saved memories: ' + JSON.parse(text.value).memory.entries.length + '. ' + (includeHistory ? 'Captured messages: ' + result.history.length + '. ' + (result.history_notice || 'Messages never loaded by the site may be missing.') + ' ' : 'Chat history excluded. ') + 'Copy or download the file.';
-        } catch(error) {status.textContent=error.message||String(error);}
+        } catch(error) {status.textContent=(error)?.message||String(error);}
       };
       section.querySelector('[data-transfer-copy]').onclick = async () => {try {await navigator.clipboard.writeText(text.value);status.textContent='Copied.';}catch {text.focus();text.select();status.textContent='Select and copy the export text.';}};
       section.querySelector('[data-transfer-file]').onchange = async event => {
-        const file=event.target.files[0]; if(!file)return;
+        const file=(event.target).files[0]; if(!file)return;
         if(file.size>4000000){status.textContent='Transfer file is too large (maximum 4 MB).';return;} text.value=await file.text();status.textContent='File loaded. Select the destination chat, then click Load into selected chat.';
       };
       section.querySelector('[data-transfer-import]').onclick = async () => {
         try {
           const value=parseTransfer(text.value);
-          value.importMemory=section.querySelector('[data-transfer-memory]').checked;
-          if(value.memoryOnly && value.importMemory){await request({action:'import',entries:value.memory.entries});signature='';await refresh();status.textContent='Saved notes loaded into PlazCode memory. They are available across chats; no old conversation was sent.';return;}
+          (value).importMemory=section.querySelector('[data-transfer-memory]').checked;
+          if(value.memoryOnly && (value).importMemory){await request({action:'import',entries:value.memory.entries});signature='';await refresh();status.textContent='Saved notes loaded into PlazCode memory. They are available across chats; no old conversation was sent.';return;}
           const result=await transfer.importChat(value);
           if(result && result.ok===false)throw Error(result.error);
           status.textContent='Context import started in the selected chat. Wait for its acknowledgement before sending a new request.';
           await refresh();
-        }catch(error){status.textContent=error.message||String(error);}
+        }catch(error){status.textContent=(error)?.message||String(error);}
       };
     }
     for(const field of root.querySelectorAll('[data-memory-new-title],[data-memory-new],[data-transfer-text]'))field.dir='auto';
@@ -1455,22 +1457,22 @@ const PlazCodeMemory = (() => {
   }
   function exportPackage(memory, chat, scope, includeHistory) {
     if (scope === 'chat' && !chat.chat_id) throw Error('This chat has no stable conversation ID yet. Send a message first, or choose All saved notes (every chat).');
-    const entries = scope === 'all' ? memory.entries : memory.entries.filter(entry => (entry.chat_ids || []).includes(chat.chat_id) || entry.source === chat.legacy_source);
+    const entries = scope === 'all' ? memory.entries : memory.entries.filter((entry) => (entry.chat_ids || []).includes(chat.chat_id) || entry.source === chat.legacy_source);
     return {format:'plazcode-chat-transfer',version:1,provider:chat.provider,chat_id:chat.chat_id,memory_scope:scope,history:includeHistory ? chat.history : [],memory:{...memory,entries}};
   }
   function parseTransfer(raw) {
     if(typeof raw!=='string'||!raw.trim()||raw.length>4000000)throw Error('Enter context or an export up to 4 MB.');
     let data;try{data=JSON.parse(raw);}catch{return {context:raw,memory:{entries:[]}};}
     if(data.format!=='plazcode-chat-transfer'||data.version!==1||!Array.isArray(data.history))throw Error('Unsupported export format. Paste a plain-text context summary instead.');
-    if(data.history.some(item=>!item||!['user','assistant'].includes(item.role)||typeof item.text!=='string'))throw Error('Invalid chat history.');
-    if(!data.memory||!Array.isArray(data.memory.entries)||data.memory.entries.some(item=>!item||typeof item.text!=='string'))throw Error('Invalid saved memory.');
+    if(data.history.some((item)=>!item||!['user','assistant'].includes(item.role)||typeof item.text!=='string'))throw Error('Invalid chat history.');
+    if(!data.memory||!Array.isArray(data.memory.entries)||data.memory.entries.some((item)=>!item||typeof item.text!=='string'))throw Error('Invalid saved memory.');
     return {context:JSON.stringify({provider:data.provider,history:data.history}),memory:data.memory,memoryOnly:data.history.length===0 && data.memory.entries.length>0};
   }
   function read(memory,args={}) {
-    const scoped=(memory.entries || []).filter(entry=>!entry.project || entry.project===memory.project_scope);
+    const scoped=(memory.entries || []).filter((entry)=>!entry.project || entry.project===memory.project_scope);
     const offset=Math.max(0,Math.floor(Number(args.offset)||0));
     if(args.action==='read'){
-      const entry=scoped.find(entry=>entry.id===Number(args.id));if(!entry)throw Error('Saved note not found in this project.');
+      const entry=scoped.find((entry)=>entry.id===Number(args.id));if(!entry)throw Error('Saved note not found in this project.');
       if(offset>entry.text.length)throw Error('Offset is beyond this saved note.');
       let text=entry.text.slice(offset,offset+Math.min(6000,Math.max(1,Math.floor(Number(args.limit)||4000))));
       while(JSON.stringify(text).length>7000)text=text.slice(0,Math.floor(text.length/2));

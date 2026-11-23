@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/i18n.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // PlazCode-owned interface text only. Never translates host websites, chat,
 // user values, tool names/protocols, source code, or external-service errors.
 (function(global){
 'use strict';
+;
+;
+;
+;
+;
 const languages=Object.freeze([
  {code:'en',name:'English',nativeName:'English',dir:'ltr'},
  {code:'es',name:'Spanish',nativeName:'Español',dir:'ltr'},
@@ -20,40 +26,41 @@ const languages=Object.freeze([
  {code:'tr',name:'Turkish',nativeName:'Türkçe',dir:'ltr'},
  {code:'pl',name:'Polish',nativeName:'Polski',dir:'ltr'}
 ]);
-const normalize=code=>languages.find(x=>x.code===code)?.code||'en';
-const key=text=>String(text??'').replace(/\s+/g,' ').trim();
+const normalize=(code)=>languages.find(x=>x.code===code)?.code||'en';
+const key=(text)=>String(text??'').replace(/\s+/g,' ').trim();
 const data=()=>global.PlazCodeLocaleData||{en:{}};
-const has=source=>Object.prototype.hasOwnProperty.call(data().en||{},key(source));
+const has=(source)=>Object.prototype.hasOwnProperty.call(data().en||{},key(source));
 let language='en';const bindings=new Set(),nodeBindings=new WeakMap(),mounts=new WeakMap(),owners=new Set(),pickers=new Set(),listeners=new Set();
 const EXCLUDE='.brand-word,.pc-ultra-label,script,style,textarea,input,pre,code,kbd,samp,[contenteditable],[data-i18n-user-content],[data-pc-language-options],.rs-mcp-info,.rs-task-title,.rs-task-label,.rs-tool-raw,.rs-tool-output,.rs-template-name,.rs-memory-content,.rs-lib-card,.rs-cowork-item,.rs-task-row,[data-prompt-index]';
 const SAFE_NEW='button,label,option,summary,[data-pc-i18n],[data-plazcode-version],#rs-action,#rs-status,#rs-state,#titleEffort,#sidebarEffort';
-const excluded=node=>{const e=node.nodeType===1?node:node.parentElement;return !e||!!e.closest(EXCLUDE);};
+const excluded=(node)=>{const e=node.nodeType===1?(node):node.parentElement;return !e||!!e.closest(EXCLUDE);};
 function t(source,values){
  const k=key(source),value=(data()[language]||{})[k];let result=typeof value==='string'&&value?value:String(source??'');
  if(values)result=result.replace(/\{([A-Za-z0-9_]+)\}/g,(m,k)=>Object.prototype.hasOwnProperty.call(values,k)?String(values[k]):m);
  return result;
 }
 function addBinding(node,attr){
- if(excluded(node)&&!(attr&&['placeholder','aria-label'].includes(attr)&&node.matches?.('input,textarea')&&!node.parentElement?.closest('[data-i18n-user-content]')))return;
- const raw=attr?node.getAttribute(attr):node.nodeValue;if(!raw||!has(raw))return;
+ const el=node;
+ if(excluded(node)&&!(attr&&['placeholder','aria-label'].includes(attr)&&el.matches?.('input,textarea')&&!node.parentElement?.closest('[data-i18n-user-content]')))return;
+ const raw=attr?el.getAttribute(attr):node.nodeValue;if(!raw||!has(raw))return;
  let list=nodeBindings.get(node);if(!list){list=new Map();nodeBindings.set(node,list);}const id=attr||'text';
  if(list.has(id)){applyBinding(list.get(id));return;}
  const b={node,attr,source:key(raw),raw,last:raw};list.set(id,b);bindings.add(b);applyBinding(b);
 }
 function applyBinding(b){
- const node=b.node;if(!node.isConnected||(excluded(node)&&!(b.attr&&['placeholder','aria-label'].includes(b.attr)&&node.matches?.('input,textarea')&&!node.parentElement?.closest('[data-i18n-user-content]'))))return;
- const current=b.attr?node.getAttribute(b.attr):node.nodeValue;
+ const node=b.node,el=node;if(!node.isConnected||(excluded(node)&&!(b.attr&&['placeholder','aria-label'].includes(b.attr)&&el.matches?.('input,textarea')&&!node.parentElement?.closest('[data-i18n-user-content]'))))return;
+ const current=b.attr?el.getAttribute(b.attr):node.nodeValue;
  if(current!==b.last){if(!has(current))return;b.source=key(current);b.raw=current;}
  const translated=t(b.source),leading=b.raw.match(/^\s*/)?.[0]||'',trailing=b.raw.match(/\s*$/)?.[0]||'';
  const next=language==='en'?b.raw:leading+translated+trailing;
- if(current!==next){if(b.attr)node.setAttribute(b.attr,next);else node.nodeValue=next;}b.last=next;
+ if(current!==next){if(b.attr)el.setAttribute(b.attr,next);else node.nodeValue=next;}b.last=next;
 }
 function scan(root){
  if(!root||excluded(root))return;
  if(root.nodeType===3){addBinding(root);return;}
  const doc=root.ownerDocument||global.document;
  if(!doc)return;
- for(const e of [root,...root.querySelectorAll('*')]){
+ for(const e of [root,...(root).querySelectorAll('*')]){
   if(excluded(e)){if(e.matches?.('input,textarea'))for(const attr of ['placeholder','aria-label'])if(e.hasAttribute(attr))addBinding(e,attr);continue;}
   for(const attr of ['title','aria-label','placeholder'])if(e.hasAttribute?.(attr))addBinding(e,attr);
   for(const n of e.childNodes||[])if(n.nodeType===3)addBinding(n);
@@ -74,8 +81,8 @@ function ensureStyles(doc){
  `;(doc.head||doc.documentElement).append(style);
 }
 function applyOwner(root){if(!root.isConnected)return;const lang=languages.find(x=>x.code===language);root.setAttribute('lang',language);root.setAttribute('dir',lang.dir);root.setAttribute('data-pc-locale',language);}
-function mountStatic(root){
- if(!root)return null;ensureStyles(root.ownerDocument||global.document);owners.add(root);applyOwner(root);scan(root);
+function mountStatic(rawRoot){
+ if(!rawRoot)return null;const root=rawRoot;ensureStyles(root.ownerDocument||global.document);owners.add(root);applyOwner(root);scan(root);
  if(mounts.has(root))return mounts.get(root);
  let busy=false;
  const observer=new MutationObserver(records=>{
@@ -83,14 +90,15 @@ function mountStatic(root){
   try{
    for(const record of records){
     if(record.type==='characterData'){const b=nodeBindings.get(record.target)?.get('text');if(b)applyBinding(b);}
-    if(record.type==='attributes'){const b=nodeBindings.get(record.target)?.get(record.attributeName);if(b)applyBinding(b);}
+    if(record.type==='attributes'&&record.attributeName){const b=nodeBindings.get(record.target)?.get(record.attributeName);if(b)applyBinding(b);}
     if(record.type==='childList'){
      // New user data is never generally scanned. Only explicit UI controls or
      // marked built-in roots are eligible after the initial static snapshot.
-     if(record.target.nodeType===1&&record.target.matches(SAFE_NEW)&&!excluded(record.target))scan(record.target);
+     if(record.target.nodeType===1&&(record.target).matches(SAFE_NEW)&&!excluded(record.target))scan(record.target);
      for(const n of record.addedNodes)if(n.nodeType===1&&!excluded(n)){
-      if(n.matches(SAFE_NEW))scan(n);
-      for(const e of n.querySelectorAll(SAFE_NEW))scan(e);
+      const el=n;
+      if(el.matches(SAFE_NEW))scan(el);
+      for(const e of el.querySelectorAll(SAFE_NEW))scan(e);
      }
     }
    }
@@ -110,7 +118,7 @@ function setLanguage(value){
 function fold(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase();}
 let pickerId=0;
 function mountPicker(host,options={}){
- if(!host)return null;if(host._pcLanguagePicker){host._pcLanguagePicker.refresh(options.value||language);return host._pcLanguagePicker;}
+ if(!host)return null;if(host._pcLanguagePicker){host._pcLanguagePicker.refresh((options.value||language));return host._pcLanguagePicker;}
  ensureStyles(host.ownerDocument);host.classList.add('pc-language-picker');host.setAttribute('data-pc-language-picker','');
  const doc=host.ownerDocument,id='pc-language-'+(++pickerId),searchLabel=doc.createElement('label'),search=doc.createElement('input'),label=doc.createElement('label'),select=doc.createElement('select'),status=doc.createElement('small'),help=doc.createElement('small');
  search.id=id+'-search';search.type='search';search.autocomplete='off';search.dir='auto';searchLabel.htmlFor=search.id;

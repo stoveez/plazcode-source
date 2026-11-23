@@ -15,47 +15,49 @@
 //    align flex-end, assistant events flex-start, and centered rows are status.
 const RSProvider: PlazCodeProvider = (() => {
   "use strict";
+  type SafeRect = { x: number; y: number; left: number; top: number; right: number; bottom: number; width: number; height: number; readFailed?: boolean };
+  type ToolSpot = { parent: Element | null; ref: Element | null };
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
-  function safeRead(read, fallback) {
+  function safeRead<T, F = T>(read: () => T, fallback: F): T | F {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
-  function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+  function safeQuery<T extends Element = HTMLElement>(root: ParentNode | null | undefined, selector: string): T | null {
+    return safeRead(() => (root as ParentNode).querySelector<T>(selector), null);
   }
-  function safeQueryAll(root, selector): any[] {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll<T extends Element = HTMLElement>(root: ParentNode | null | undefined, selector: string): T[] {
+    return safeRead(() => Array.from((root as ParentNode).querySelectorAll<T>(selector)), []);
   }
-  function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+  function safeClosest<T extends Element = HTMLElement>(node: Node | EventTarget | null | undefined, selector: string): T | null {
+    return safeRead(() => (node as Element).closest<T>(selector), null);
   }
-  function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+  function safeRect(node: Element): SafeRect {
+    return safeRead<DOMRect, SafeRect>(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
-  function safeStyle(node) {
-    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
+  function safeStyle(node: Element): CSSStyleDeclaration {
+    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'} as unknown as CSSStyleDeclaration);
   }
-  function safePredicate(predicate) {
+  function safePredicate<T>(predicate: () => T): T | false {
     const before = domReadErrors;
-    const result = safeRead(predicate, false);
+    const result = safeRead(predicate, false as const);
     return before === domReadErrors ? result : false;
   }
   // A poll-count limit also bounds waits if the wall clock moves backwards.
-  function waitBudget(timeout, interval) {
+  function waitBudget(timeout: number, interval: number): { ms: number; polls: number } {
     const ms = Number.isFinite(timeout) ? Math.min(600000, Math.max(0, timeout)) : 30000;
     return {ms, polls: Math.ceil(ms / interval)};
   }
 
   let diag: Diag = () => {};
-  let needsComposer = () => false;
-  let isStopped = () => false;
-  let isSessionActive = () => false;
-  let requestStart = () => {};
+  let needsComposer: () => boolean = () => false;
+  let isStopped: () => boolean = () => false;
+  let isSessionActive: () => boolean = () => false;
+  let requestStart: () => void = () => {};
 
-  const _txt = (el) => (el && safeRead(() => el.textContent, "") || "").replace(/\s+/g, " ").trim();
-  const visible = (el) => {
+  const _txt = (el: Node | null | undefined): string => (el && safeRead(() => el.textContent, "") || "").replace(/\s+/g, " ").trim();
+  const visible = (el: Element | null | undefined): boolean => {
     if (!el || !safeRead(() => el.isConnected, false)) return false;
-    if (safeRead(() => el.hidden, true)) return false;
+    if (safeRead(() => (el as HTMLElement).hidden, true)) return false;
     try {
       const r = safeRect(el);
       if (r.readFailed) return false;
@@ -64,12 +66,12 @@ const RSProvider: PlazCodeProvider = (() => {
       return st.display !== "none" && st.visibility !== "hidden";
     } catch { return false; }
   };
-  const ariaOf = (el) => (safeRead(() => el.getAttribute, null) && (safeRead(() => el.getAttribute("aria-label"), null) || "")) || "";
+  const ariaOf = (el: Element | null | undefined): string => (safeRead(() => el!.getAttribute, null) && (safeRead(() => el!.getAttribute("aria-label"), null) || "")) || "";
   // Notion implements its composer controls as focusable DIVs with role=button,
   // not native <button> elements (live: agent-send-message-button).
   const CONTROL_SEL = "button, [role='button']";
-  const controlDisabled = (el) => !el || safeRead(() => el.disabled, true) === true ||
-    (safeRead(() => el.getAttribute, null) && safeRead(() => el.getAttribute("aria-disabled"), null) === "true");
+  const controlDisabled = (el: Element | null | undefined): boolean => !el || safeRead(() => (el as HTMLButtonElement).disabled, true) === true ||
+    ((safeRead(() => el.getAttribute, null) as any) && safeRead(() => el.getAttribute("aria-disabled"), null) === "true");
 
   // Notion has TWO completely different editable surfaces on app.notion.com:
   // normal page blocks (/p/...) and the full-page AI chat (/ai + /chat).  A page
@@ -145,10 +147,10 @@ const RSProvider: PlazCodeProvider = (() => {
   // positive composer is stable for the lifetime of this route, so retain it
   // until Notion actually detaches it; negative results stay briefly cached so a
   // lazily mounting composer is still discovered quickly.
-  let _editorCache = null, _editorAt = 0, _candAt = 0, _candCache = [];
-  let _editorRoute = "", _lastEditorLogged = null;
-  let _frameCache = null, _frameEditor = null;
-  let _phCache = null, _phAt = 0; let _phAttrEditor = null;
+  let _editorCache: HTMLElement | null = null, _editorAt = 0, _candAt = 0, _candCache: HTMLElement[] = [];
+  let _editorRoute = "", _lastEditorLogged: HTMLElement | null = null;
+  let _frameCache: HTMLElement | null = null, _frameEditor: HTMLElement | null = null;
+  let _phCache: HTMLElement | null = null, _phAt = 0; let _phAttrEditor: HTMLElement | null = null;
   const EDITOR_SEL =
     "textarea, input[type='text'], input[type='search'], [contenteditable], " +
     ".ProseMirror, .tiptap, [role='textbox']";
@@ -157,19 +159,20 @@ const RSProvider: PlazCodeProvider = (() => {
   const COMPOSER_TEXT_RE = /(do anything with|anything with ai|ask notion ai|ask ai|ask anything|what would you like|message.*(?:ai|notion)|start typing|reply to|your message|frag(?:e)? notion[-\s]?(?:ki|ai)|frage.*(?:ki|notion)|demande[rz]? .*notion|pregunta.*notion|pergunte.*notion)/i;
   // Placeholder wording that is only trusted as an attribute on (or labelling)
   // the composer: as free text, AI replies also say "How can I help...".
-  const COMPOSER_PLACEHOLDER_RE = /how can i help|wie kann ich (?:dir|ihnen) helfen|was m[öo]chtest du|frag(?:e)? (?:die )?ki|ki etwas fragen|comment puis-je|comment (?:puis|peux).*aider|c[óo]mo puedo ayudar|como posso ajudar/i;
-  const isTextControl = (el) => !!el && /^(INPUT|TEXTAREA)$/.test(safeRead(() => el.tagName, "") || "");
+  const COMPOSER_PLACEHOLDER_RE = /how can i help|wie kann ich (?:dir|ihnen) helfen|was m[öo]chtest du|frag(?:e)? (?:die )?ki|ki etwas fragen|comment puis-je|comment (?:puis|peux).*aider|c[óo]mo puedo ajudar|como posso ajudar/i;
+  const isTextControl = (el: Element | null | undefined): el is HTMLInputElement | HTMLTextAreaElement =>
+    !!el && /^(INPUT|TEXTAREA)$/.test(safeRead(() => el.tagName, "") || "");
 
   // The page layout changed (a page opened or closed beside the chat, window
   // resize): forget the short-lived position caches so the bar re-seats on the
   // very next placement instead of waiting for them to expire.
-  function layoutChanged() {
+  function layoutChanged(): void {
     _navCardAt = 0; _navCardRect = null;
     _candAt = 0; _candCache = [];
     _frameCache = null; _frameEditor = null;
     if (!_editorCache) _editorAt = 0;
   }
-  function resetEditorCacheForRoute() {
+  function resetEditorCacheForRoute(): void {
     const key = routeKey();
     if (key === _editorRoute) return;
     _editorRoute = key;
@@ -179,8 +182,8 @@ const RSProvider: PlazCodeProvider = (() => {
     _frameCache = null; _frameEditor = null;
     _lastEditorLogged = null;
   }
-  function candidateVisible(el) {
-    if (!el || !safeRead(() => el.isConnected, false) || safeRead(() => el.hidden, true)) return false;
+  function candidateVisible(el: Element | null | undefined): boolean {
+    if (!el || !safeRead(() => el.isConnected, false) || safeRead(() => (el as HTMLElement).hidden, true)) return false;
     try {
       // One geometry read only. The old visible() + second rect pair doubled the
       // forced-layout cost for every historical editor candidate.
@@ -189,22 +192,22 @@ const RSProvider: PlazCodeProvider = (() => {
       return r.width >= 80 && r.height >= 12 && r.bottom > 0 && r.top < innerHeight + 120;
     } catch { return false; }
   }
-  function editableNode(el) {
+  function editableNode(el: Element | null | undefined): HTMLElement | null {
     if (!el) return null;
-    if (safeRead(() => el.matches, null) && safeRead(() => el.matches(EDITOR_SEL), false)) return el;
+    if (safeRead(() => el.matches, null) && safeRead(() => el.matches(EDITOR_SEL), false)) return el as HTMLElement;
     return (safeRead(() => el.closest, null) && safeClosest(el, EDITOR_SEL)) || null;
   }
-  function editableNear(el) {
+  function editableNear(el: Element | null | undefined): HTMLElement | null {
     if (!el) return null;
     const direct = editableNode(el);
     if (direct) return direct;
     // The visible placeholder can be a sibling overlay rather than an attribute
     // on the textarea. Walk only a few local wrappers and look inside each one.
-    let n = safeRead(() => el.parentElement, null);
-    for (let i = 0; n && i < 6; n = safeRead(() => n.parentElement, null), i++) {
+    let n: HTMLElement | null = safeRead(() => el.parentElement, null);
+    for (let i = 0; n && i < 6; n = safeRead(() => n!.parentElement, null), i++) {
       const own = editableNode(n);
       if (own) return own;
-      const inside = safeRead(() => n.querySelector, null) && safeQuery(n, EDITOR_SEL);
+      const inside = safeRead(() => n!.querySelector, null) && safeQuery(n, EDITOR_SEL);
       if (inside) return inside;
     }
     return null;
@@ -222,9 +225,9 @@ const RSProvider: PlazCodeProvider = (() => {
     "[data-placeholder*='notion-ki' i], [aria-placeholder*='notion-ki' i], [placeholder*='notion-ki' i], [aria-label*='notion-ki' i], " +
     // Attribute-only: as free text "How can I help" also appears in AI replies.
     "[data-placeholder*='how can i help' i], [aria-placeholder*='how can i help' i], [placeholder*='how can i help' i]";
-  function directPlaceholderEditable() {
+  function directPlaceholderEditable(): HTMLElement | null {
     if (!isAiSurface()) return null;
-    let best = null, bestBottom = -Infinity;
+    let best: HTMLElement | null = null, bestBottom = -Infinity;
     try {
       for (const n of safeQueryAll(document, DIRECT_PLACEHOLDER_SEL)) {
         if (safeRead(() => n.closest, null) && safeClosest(n, "#rs-root")) continue;
@@ -238,10 +241,10 @@ const RSProvider: PlazCodeProvider = (() => {
     if (best) _phAttrEditor = best; // attribute selector match: composer evidence
     return best;
   }
-  function placeholderEditable() {
+  function placeholderEditable(): HTMLElement | null {
     if (!isAiSurface()) return null;
     const now = Date.now();
-    if (_phAt && now - _phAt < 900) return _phCache && safeRead(() => _phCache.isConnected, false) ? _phCache : null;
+    if (_phAt && now - _phAt < 900) return _phCache && safeRead(() => _phCache!.isConnected, false) ? _phCache : null;
     _phAt = now; _phCache = null; _phAttrEditor = null;
     // First use attributes/labels. This is cheap and catches normal textarea
     // builds even when the composer mounts a few seconds after the page shell.
@@ -272,11 +275,11 @@ const RSProvider: PlazCodeProvider = (() => {
     try {
       const root = document.body || document.documentElement;
       const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-      let n, seen = 0;
+      let n: Node | null, seen = 0;
       while ((n = walker.nextNode()) && ++seen <= 1400) {
-        const text = (safeRead(() => n.nodeValue, "") || "").replace(/\s+/g, " ").trim();
+        const text = (safeRead(() => n!.nodeValue, "") || "").replace(/\s+/g, " ").trim();
         if (!text || text.length > 100 || !COMPOSER_TEXT_RE.test(text)) continue;
-        const ed = editableNear(safeRead(() => n.parentElement, null));
+        const ed = editableNear(safeRead(() => n!.parentElement, null));
         if (ed && safeRead(() => ed.isConnected, false) && candidateVisible(ed) && !(safeRead(() => ed.closest, null) && safeClosest(ed, "#rs-root"))) {
           _phCache = ed; return ed;
         }
@@ -291,7 +294,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return null;
   }
-  function editorCandidates() {
+  function editorCandidates(): HTMLElement[] {
     resetEditorCacheForRoute();
     if (!isAiSurface()) return [];
     const now = Date.now();
@@ -304,8 +307,8 @@ const RSProvider: PlazCodeProvider = (() => {
       _candAt = now; _candCache = [direct];
       return _candCache;
     }
-    const out = [];
-    const push = (e) => {
+    const out: HTMLElement[] = [];
+    const push = (e: HTMLElement | null | undefined): void => {
       if (e && safeRead(() => e.isConnected, false) && !(safeRead(() => e.closest, null) && safeClosest(e, "#rs-root")) &&
           candidateVisible(e) && !out.includes(e)) out.push(e);
     };
@@ -324,7 +327,7 @@ const RSProvider: PlazCodeProvider = (() => {
     _candAt = now; _candCache = out;
     return out;
   }
-  function editorHintScore(e) {
+  function editorHintScore(e: HTMLElement): number {
     let s = 0;
     if (safeRead(() => e.tagName, "") === "TEXTAREA") s += 8; // current full-page Agent build
     else if (safeRead(() => e.tagName, "") === "INPUT") s += 4;
@@ -348,20 +351,20 @@ const RSProvider: PlazCodeProvider = (() => {
     // Notion uses content-editable-leaf-rtl for both page blocks and its AI
     // composer. A placeholder can be an adjacent overlay, not an attribute on
     // the editor, so inspect the local wrapper before applying the penalty.
-    for (let n = safeRead(() => e.parentElement, null), i = 0; n && i < 3; n = safeRead(() => n.parentElement, null), i++) {
+    for (let n: HTMLElement | null = safeRead(() => e.parentElement, null), i = 0; n && i < 3; n = safeRead(() => n!.parentElement, null), i++) {
       // Notion's own composer send control (stable data-testid) within three
       // wrappers is definitive: the editor is the AI composer even when Notion
       // A/B-tests placeholder copy that COMPOSER_TEXT_RE does not know yet.
       if (safeRead(() => n.querySelector, null) && safeQuery(n, "[data-testid='agent-chat-send-button'], [data-testid='agent-send-message-button']")) { s += 4; definitiveSend = true; break; }
     }
-    for (let n = safeRead(() => e.parentElement, null), i = 0; n && i < 6; n = safeRead(() => n.parentElement, null), i++) {
+    for (let n: HTMLElement | null = safeRead(() => e.parentElement, null), i = 0; n && i < 6; n = safeRead(() => n!.parentElement, null), i++) {
       if (safeRead(() => n.querySelector, null) && [...safeQueryAll(n, CONTROL_SEL)].some((b) =>
         SEND_RE.test(ariaOf(b)) || SEND_RE.test(safeRead(() => b.getAttribute("data-testid"), null) || "") ||
         SEND_RE.test(safeRead(() => b.title, "") || "") || STOP_RE.test(ariaOf(b)))) { s += 5; break; }
     }
     let nearbyComposerHint = false;
-    for (let n = safeRead(() => e.parentElement, null), i = 0; n && i < 4; n = safeRead(() => n.parentElement, null), i++) {
-      if (COMPOSER_TEXT_RE.test((safeRead(() => n.textContent, "") || "").slice(0, 220))) {
+    for (let n: HTMLElement | null = safeRead(() => e.parentElement, null), i = 0; n && i < 4; n = safeRead(() => n!.parentElement, null), i++) {
+      if (COMPOSER_TEXT_RE.test((safeRead(() => n!.textContent, "") || "").slice(0, 220))) {
         nearbyComposerHint = true; s += 7; break;
       }
     }
@@ -373,7 +376,7 @@ const RSProvider: PlazCodeProvider = (() => {
         !strongComposerHint && !nearbyComposerHint && !definitiveSend) s -= 12;
     return s;
   }
-  function findEditorRaw() {
+  function findEditorRaw(): HTMLElement | null {
     // Absolutely never inspect normal Notion page editors. This one guard fixes
     // the exact /p/Welcome-to-Notion false positive in the v2.3.4 console trace.
     resetEditorCacheForRoute();
@@ -382,8 +385,8 @@ const RSProvider: PlazCodeProvider = (() => {
     // Reuse the live composer without enumerating historical editables. React
     // can hide the landing composer while keeping it connected; that node must
     // not win over the replacement composer during startup.
-    if (_editorCache && candidateVisible(_editorCache) && !safeRead(() => _editorCache.disabled, true) &&
-        (isTextControl(_editorCache) || safeRead(() => _editorCache.getAttribute("contenteditable"), null) !== "false")) return _editorCache;
+    if (_editorCache && candidateVisible(_editorCache) && !safeRead(() => (_editorCache as HTMLInputElement).disabled, true) &&
+        (isTextControl(_editorCache) || safeRead(() => _editorCache!.getAttribute("contenteditable"), null) !== "false")) return _editorCache;
     if (_editorCache) {
       _editorCache = null; _editorAt = 0;
       _frameCache = null; _frameEditor = null;
@@ -423,13 +426,13 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return top;
   }
-  const getEditor = () => {
+  const getEditor = (): HTMLElement | null => {
     const e = findEditorRaw();
-    if (!e || safeRead(() => e.disabled, true)) return null;
+    if (!e || safeRead(() => (e as HTMLInputElement).disabled, true)) return null;
     if (isTextControl(e)) return e;
     return safeRead(() => e.getAttribute("contenteditable"), null) !== "false" ? e : null;
   };
-  const edText = (e) => {
+  const edText = (e: HTMLElement | null | undefined): string => {
     if (!e) return "";
     if (isTextControl(e)) return safeRead(() => e.value, "") || "";
     // Notion renders emoji as <img class="notion-emoji" alt="✅">, which textContent
@@ -440,26 +443,33 @@ const RSProvider: PlazCodeProvider = (() => {
       if (!e.querySelector || !e.querySelector("img.notion-emoji")) return e.textContent || "";
       let out = "";
       const walker = document.createTreeWalker(e, 5); // SHOW_ELEMENT | SHOW_TEXT
-      for (let n = walker.nextNode() as any; n; n = walker.nextNode() as any) {
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
         if (n.nodeType === 3) out += n.nodeValue;
-        else if (n.tagName === "IMG" && n.classList && n.classList.contains("notion-emoji")) out += n.getAttribute("alt") || "";
+        else if (n.nodeType === 1) {
+          const el = n as Element;
+          if (el.tagName === "IMG" && el.classList && el.classList.contains("notion-emoji")) out += el.getAttribute("alt") || "";
+        }
       }
       return out;
     }, "") || "";
   };
-  const editorText = (el) => edText(el || findEditorRaw());
-  function composerFrame() {
+  const editorText = (el?: HTMLElement | null): string => edText(el || findEditorRaw());
+  function composerFrame(): HTMLElement | null {
     if (!isAiSurface()) return null;
     const e = findEditorRaw();
     if (!e) return null;
-    const hasCommit = n => controlsIn(n).some(control => controlAvailable(control) && (sendControlLike(control) || stopControlLike(control)));
-    if (_frameEditor === e && _frameCache && safeRead(() => _frameCache.isConnected, false) &&
-        safeRead(() => _frameCache.contains(e), false) && hasCommit(_frameCache)) return _frameCache;
-    let fallback = safeRead(() => e.parentElement, null), chosen = null;
+    const hasCommit = (n: ParentNode | null): boolean => controlsIn(n).some(control => controlAvailable(control) && (sendControlLike(control) || stopControlLike(control)));
+    const fc = _frameCache;
+    if (_frameEditor === e && fc && safeRead(() => fc.isConnected, false) &&
+        safeRead(() => fc.contains(e), false) && hasCommit(fc)) return fc;
+    let fallback: HTMLElement | null = safeRead(() => e.parentElement, null), chosen: HTMLElement | null = null;
     // A long retained protocol draft can make its composer taller than 360px.
     // Find its own semantic send/stop controls rather than rejecting that frame.
-    for (let n = fallback, i = 0; n && n !== document.body && i < 7; n = safeRead(() => n.parentElement, null), i++) {
-      if (hasCommit(n)) { chosen = n; break; }
+    for (let n: HTMLElement | null = fallback, i = 0; n && n !== document.body && i < 7; ) {
+      const cur: HTMLElement = n;
+      if (hasCommit(cur)) { chosen = cur; break; }
+      n = safeRead(() => cur.parentElement, null);
+      i++;
     }
     if (!chosen) {
       const semantic = safeClosest(e, 'form, [role="region"], [role="main"], main');
@@ -474,24 +484,24 @@ const RSProvider: PlazCodeProvider = (() => {
   // ── send / stop ──────────────────────────────────────────────────────────
   const SEND_RE = /send|submit|senden|abschicken|envoyer|enviar/i;
   const STOP_RE = /(?:^|\b)(?:stop|cancel|interrupt|arr[êe]ter|stoppen|anhalten|abbrechen)(?:\b|$)/i;
-  const controlsIn = (root) => root ? [...safeQueryAll(root, CONTROL_SEL)] : [];
-  const sendControlLike = (b) => !!b &&
+  const controlsIn = (root: ParentNode | null | undefined): HTMLElement[] => root ? [...safeQueryAll(root, CONTROL_SEL)] : [];
+  const sendControlLike = (b: Element | null | undefined): boolean => !!b &&
     (/^(?:agent-send-message-button|agent-chat-send-button)$/.test(safeRead(() => b.getAttribute("data-testid"), null) || "") ||
      SEND_RE.test(ariaOf(b)) || SEND_RE.test(safeRead(() => b.getAttribute("data-testid"), null) || "") ||
-     SEND_RE.test(safeRead(() => b.title, "") || ""));
-  const stopControlLike = (b) => {
+     SEND_RE.test(safeRead(() => (b as HTMLElement).title, "") || ""));
+  const stopControlLike = (b: Element | null | undefined): boolean => {
     if (!b) return false;
     const text = _txt(b), testId = safeRead(() => b.getAttribute("data-testid"), null) || "";
     return /agent-(?:stop|interrupt)/i.test(testId) ||
-      STOP_RE.test(ariaOf(b)) || STOP_RE.test(testId) || STOP_RE.test(safeRead(() => b.title, "") || "") ||
+      STOP_RE.test(ariaOf(b)) || STOP_RE.test(testId) || STOP_RE.test(safeRead(() => (b as HTMLElement).title, "") || "") ||
       (STOP_RE.test(text) && text.length <= 40);
   };
-  const exactSendControl = (frame, controls?) => {
+  const exactSendControl = (frame: ParentNode | null | undefined, controls?: HTMLElement[]): HTMLElement | null => {
     const exact = (controls || controlsIn(frame)).filter(b =>
       /^(?:agent-send-message-button|agent-chat-send-button)$/.test(safeRead(() => b.getAttribute("data-testid"), null) || ""));
     return exact.find(b => controlAvailable(b) && !controlDisabled(b)) || exact.find(controlAvailable) || null;
   };
-  function controlAvailable(el) {
+  function controlAvailable(el: Element | null | undefined): boolean {
     if (!el || !safeRead(() => el.isConnected, false)) return false;
     if (!safeRead(() => document.hidden, true)) return visible(el);
     // Background tabs can report a zero viewport rectangle even for the live
@@ -501,7 +511,7 @@ const RSProvider: PlazCodeProvider = (() => {
       return s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity || 1) !== 0;
     } catch { return false; }
   }
-  function sendButton() {
+  function sendButton(): HTMLElement | null {
     if (!isAiSurface()) return null;
     const frame = composerFrame();
     if (!frame) return null; // never search every control on a normal Notion page
@@ -524,14 +534,15 @@ const RSProvider: PlazCodeProvider = (() => {
   // Every click is still verified by the receipt logic; a wrong guess is
   // reported as an unconfirmed send, never retried blindly.
   const NOT_SEND_LABEL_RE = /attach|upload|add\b|plus|mic|voice|dictat|record|model|menu|more|setting|search|tool|mention|@|file|image|photo|emoji|stop|cancel|interrupt|close|dismiss|remove|delete|clear|copy|expand|collapse|source|connect|web|think|mode|slash|command/i;
-  function inferSendControl() {
+  function inferSendControl(): HTMLElement | null {
     try {
       const ed = findEditorRaw();
       if (!ed || !edText(ed).trim()) return null;
       const er = safeRect(ed);
-      for (let n = safeRead(() => ed.parentElement, null), depth = 0; n && n !== document.body && depth < 7; n = safeRead(() => n.parentElement, null), depth++) {
-        const scored = [];
-        const controls = controlsIn(n).filter((b) => !safeClosest(b, "#rs-root") && !safeRead(() => b.contains(ed), false) && !safeRead(() => ed.contains(b), false));
+      for (let n: HTMLElement | null = safeRead(() => ed.parentElement, null), depth = 0; n && n !== document.body && depth < 7; ) {
+        const cur: HTMLElement = n;
+        const scored: Array<{ b: HTMLElement; score: number }> = [];
+        const controls = controlsIn(cur).filter((b) => !safeClosest(b, "#rs-root") && !safeRead(() => b.contains(ed), false) && !safeRead(() => ed.contains(b), false));
         controls.forEach((b, index) => {
           if (!controlAvailable(b) || controlDisabled(b)) return;
           const label = (ariaOf(b) + " " + (safeRead(() => b.getAttribute("data-testid"), null) || "") + " " + (safeRead(() => b.title, "") || "")).trim();
@@ -542,7 +553,7 @@ const RSProvider: PlazCodeProvider = (() => {
           if (!r.width || !r.height || r.width > 64 || r.height > 64) return;
           let score = 0;
           if (safeQuery(b, "svg, img")) score += 2;
-          if (safeRead(() => b.type, "") === "submit") score += 4;
+          if (safeRead(() => (b as HTMLButtonElement).type, "") === "submit") score += 4;
           if (Math.abs(r.width - r.height) <= 4) score += 2;
           if (r.left >= er.left + er.width * 0.5) score += 2;
           if (r.bottom >= er.top) score += 1;
@@ -550,7 +561,11 @@ const RSProvider: PlazCodeProvider = (() => {
           if (/ask|go\b|run|post|reply|enter|arrow|up\b|submit|send/i.test(label)) score += 3;
           scored.push({ b, score });
         });
-        if (!scored.length) continue;
+        if (!scored.length) {
+          n = safeRead(() => cur.parentElement, null);
+          depth++;
+          continue;
+        }
         scored.sort((a, c) => c.score - a.score);
         const best = scored[0], next = scored[1];
         if (best.score >= 6 && (!next || best.score - next.score >= 2)) {
@@ -562,7 +577,7 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch {}
     return null;
   }
-  function stopButton() {
+  function stopButton(): HTMLElement | null {
     if (!isAiSurface()) return null;
     const frame = composerFrame();
     if (!frame) return null;
@@ -579,8 +594,8 @@ const RSProvider: PlazCodeProvider = (() => {
   // User rows are flex-end; assistant rows are flex-start; status rows center.
   // Using it fixes v2.3.4's `items:0` even when messages were visibly on screen.
   const AGENT_ROW_SEL = "[data-agent-service-scroll-anchor]";
-  const _alignCache = new WeakMap();
-  function rowAlign(row) {
+  const _alignCache = new WeakMap<Element, string>();
+  function rowAlign(row: HTMLElement | null | undefined): string {
     if (!row) return "";
     const inline = safeRead(() => row.style && row.style.justifyContent, "");
     if (inline) return inline;
@@ -591,17 +606,17 @@ const RSProvider: PlazCodeProvider = (() => {
     if (v) _alignCache.set(row, v);
     return v;
   }
-  function rawAgentRows() {
+  function rawAgentRows(): HTMLElement[] {
     if (!isAiSurface()) return [];
-    let rows = [];
+    let rows: HTMLElement[] = [];
     try { rows = [...safeQueryAll(document, AGENT_ROW_SEL)]; } catch { return []; }
     // Tool-detail rows may carry the same anchor inside a top-level message row;
     // only expose top-level transcript events to the core.
     return rows.filter((r) =>
       !(safeRead(() => r.closest, null) && safeClosest(r, "#rs-root")) &&
-      !(safeRead(() => r.parentElement, null) && safeRead(() => safeRead(() => r.parentElement, null).closest, null) && safeClosest(safeRead(() => r.parentElement, null), AGENT_ROW_SEL)));
+      !(safeRead(() => r.parentElement, null) && safeRead(() => safeRead(() => r.parentElement, null)!.closest, null) && safeClosest(safeRead(() => r.parentElement, null)!, AGENT_ROW_SEL)));
   }
-  function agentMessageRows(rows = rawAgentRows()) {
+  function agentMessageRows(rows = rawAgentRows()): HTMLElement[] {
     return rows.filter((r) => {
       const align = rowAlign(r);
       if (align === "flex-end") return true; // user message (including hidden system prompt)
@@ -622,18 +637,19 @@ const RSProvider: PlazCodeProvider = (() => {
   // reply used exactly this structure. Keep this route-gated and structural so
   // ordinary /p document roots can never enter the transcript.
   const BLOCK_RESPONSE_ROOT_SEL = "[data-content-editable-root='true']";
-  const _endAlignedCache = new WeakMap();
-  function hasEndAlignedAncestor(el) {
+  const _endAlignedCache = new WeakMap<Element, { value: boolean; parent: HTMLElement | null; at: number; checks: number }>();
+  function hasEndAlignedAncestor(el: Element): boolean {
     const now = Date.now(), cached = _endAlignedCache.get(el);
     // A positive user-bubble alignment is stable. Recheck an initial negative
     // once after mount, because Notion can apply wrapper layout a tick later;
     // after two negatives this historical assistant no longer needs style walks.
     if (cached && cached.parent === safeRead(() => el.parentElement, null) &&
         (now - cached.at < 1500 || (!cached.value && cached.checks >= 2))) return cached.value;
-    for (let n = el, i = 0; n && n !== document.body && i < 6; n = safeRead(() => n.parentElement, null), i++) {
-      let jc = safeRead(() => n.style && n.style.justifyContent, "") || "", fd = safeRead(() => n.style && n.style.flexDirection, "") || "";
+    for (let n: HTMLElement | null = el as HTMLElement, i = 0; n && n !== document.body && i < 6; ) {
+      const cur: HTMLElement = n;
+      let jc = safeRead(() => cur.style && cur.style.justifyContent, "") || "", fd = safeRead(() => cur.style && cur.style.flexDirection, "") || "";
       try {
-        const cs = safeStyle(n);
+        const cs = safeStyle(cur);
         if (!jc) jc = cs.justifyContent || "";
         if (!fd) fd = cs.flexDirection || "";
       } catch {}
@@ -643,24 +659,27 @@ const RSProvider: PlazCodeProvider = (() => {
         _endAlignedCache.set(el, { value: true, parent: safeRead(() => el.parentElement, null), at: now, checks: (cached?.checks || 0) + 1 });
         return true;
       }
+      n = safeRead(() => cur.parentElement, null);
+      i++;
     }
     _endAlignedCache.set(el, { value: false, parent: safeRead(() => el.parentElement, null), at: now, checks: (cached?.checks || 0) + 1 });
     return false;
   }
-  const _blockUserItems = new WeakSet();
-  function blockAssistantRoots() {
+  const _blockUserItems = new WeakSet<Element>();
+  function blockAssistantRoots(): HTMLElement[] {
     if (!isChatPath()) return [];
-    let roots = [];
+    let roots: HTMLElement[] = [];
     try { roots = [...safeQueryAll(document, BLOCK_RESPONSE_ROOT_SEL)]; }
     catch { return []; }
     const ed = findEditorRaw();
     const frame = composerFrame();
     return roots.filter((r) => {
+      const parentEl = safeRead(() => r.parentElement, null);
       if (!safeRead(() => r.isConnected, false) || (safeRead(() => r.closest, null) && safeClosest(r, "#rs-root"))) return false;
       if ((ed && (r === ed || safeRead(() => r.contains(ed), false) || safeRead(() => ed.contains(r), false))) ||
           (frame && safeRead(() => frame.contains(r), false))) return false;
       // A nested editor root is a block detail, not a second chat turn.
-      if (safeRead(() => r.parentElement, null) && safeClosest(safeRead(() => r.parentElement, null), BLOCK_RESPONSE_ROOT_SEL)) return false;
+      if (parentEl && safeClosest(parentEl, BLOCK_RESPONSE_ROOT_SEL)) return false;
       if (!safeQuery(r, "[data-block-id]")) return false;
       // Avoid whitespace-normalizing every historical response on each scan.
       // Native textContent plus a one-character non-whitespace probe is enough
@@ -676,25 +695,27 @@ const RSProvider: PlazCodeProvider = (() => {
       return true;
     });
   }
-  function blockTranscriptItems() {
+  function blockTranscriptItems(): HTMLElement[] {
     const roots = blockAssistantRoots();
     const ed = findEditorRaw(), frame = composerFrame();
     // Plain user bubbles have no editor/block ID. Inspect semantic user rows
     // and end-aligned wrappers, not every div/style in a long conversation.
     const candidates = safeQueryAll(document,
       '[data-message-role="user"], [data-role="user"], [style*="justify-content"]');
-    const users = [], userSet = new WeakSet();
+    const users: HTMLElement[] = [], userSet = new WeakSet<Element>();
     for (const item of candidates) {
       if (safeClosest(item, "#rs-root") || (frame && safeRead(() => frame.contains(item), false)) ||
           (ed && (item === ed || safeRead(() => item.contains(ed), false))) ||
           safeClosest(item, BLOCK_RESPONSE_ROOT_SEL) || safeQuery(item, BLOCK_RESPONSE_ROOT_SEL)) continue;
-      const role = safeRead(() => item.getAttribute("data-message-role") || item.getAttribute("data-role"), "");
+      const role = safeRead(() => item.getAttribute("data-message-role") || item.getAttribute("data-role"), "") || "";
       const css = safeStyle(item), align = safeRead(() => item.style.justifyContent, "") || css.justifyContent || "";
       if (!/user|human/i.test(role) && (!(align === "flex-end" || align === "end") || /^column/.test(css.flexDirection || ""))) continue;
-      if (!/\S/.test(safeRead(() => item.textContent, "")) && !safeQuery(item, "img")) continue;
+      if (!/\S/.test(safeRead(() => item.textContent, "") || "") && !safeQuery(item, "img")) continue;
       let nested = false;
-      for (let parent = safeRead(() => item.parentElement, null); parent && parent !== document.body; parent = safeRead(() => parent.parentElement, null)) {
-        if (userSet.has(parent)) { nested = true; break; }
+      for (let parent: HTMLElement | null = safeRead(() => item.parentElement, null); parent && parent !== document.body; ) {
+        const curP: HTMLElement = parent;
+        if (userSet.has(curP)) { nested = true; break; }
+        parent = safeRead(() => curP.parentElement, null);
       }
       if (nested) continue;
       _blockUserItems.add(item); userSet.add(item); users.push(item);
@@ -707,24 +728,47 @@ const RSProvider: PlazCodeProvider = (() => {
   // touching that subtree: a stylesheet in #rs-root replaces only the command
   // block's visual children with a CSS pseudo-card. The underlying text remains
   // intact for parsing, and any surrounding assistant prose remains visible.
-  const _immutableItemKey = new WeakMap();
-  const _immutableItemBlock = new WeakMap();
-  const _immutableItemCard = new WeakMap();
-  const _immutableCards = new Map();
-  const _immutableDirty = new Set<any>();
-  let _immutableStyle = null, _immutableStyleTimer = 0, _immutableCompactTimer = 0;
+  type ImmutableCardRules = { host: CSSStyleRule; before: CSSStyleRule };
+  type ImmutableCard = {
+    key: string;
+    label: string;
+    detail: string;
+    phase: string;
+    owned: boolean;
+    item: Element | null;
+    block: HTMLElement | null;
+    sheet: CSSStyleSheet | null;
+    rules: ImmutableCardRules | null;
+    missingAt: number;
+    missingSignatureAt?: number;
+    cleared: boolean;
+    updatedAt: number;
+  };
+  type ImmutableChipOptions = {
+    whole?: boolean;
+    label?: string;
+    detail?: string;
+    phase?: string;
+    owned?: boolean;
+  };
+  const _immutableItemKey = new WeakMap<Element, string>();
+  const _immutableItemBlock = new WeakMap<Element, HTMLElement>();
+  const _immutableItemCard = new WeakMap<Element, ImmutableCard>();
+  const _immutableCards = new Map<string, ImmutableCard>();
+  const _immutableDirty = new Set<string>();
+  let _immutableStyle: HTMLStyleElement | null = null, _immutableStyleTimer = 0, _immutableCompactTimer = 0;
   let _immutableCssomFailed = false, _immutableBubbleSeq = 0;
-  const cssQuoted = (v) => String(v || "")
+  const cssQuoted = (v: unknown): string => String(v || "")
     .replace(/\\/g, "\\\\")
-    .replace(/"/g, (q) => "\\" + q);
-  const cssAttr = (v) => cssQuoted(v);
-  const cssText = (v) => cssQuoted(v).replace(/[\r\n]+/g, " ");
+    .replace(/"/g, (q: string) => "\\" + q);
+  const cssAttr = (v: unknown): string => cssQuoted(v);
+  const cssText = (v: unknown): string => cssQuoted(v).replace(/[\r\n]+/g, " ");
   // Notion streams a reply's prose before its code block. Falling back to the
   // first block attached the card to that prose (hiding it) while the command
   // stayed raw JSON. Only a code block, or a block whose text is the command,
   // may carry a card; with neither yet, return null and let the next sweep attach it.
-  const isNotionCodeBlock = (b) => /(?:^|\s)notion-code-block(?:\s|$)/.test(String(safeRead(() => b.className, "") || ""));
-  function immutableCommandBlock(item) {
+  const isNotionCodeBlock = (b: Element): boolean => /(?:^|\s)notion-code-block(?:\s|$)/.test(String(safeRead(() => b.className, "") || ""));
+  function immutableCommandBlock(item: Element | null | undefined): HTMLElement | null {
     if (!item) return null;
     const blocks = [...safeQueryAll(item, "[data-block-id]")];
     return blocks.find((b) => {
@@ -733,7 +777,7 @@ const RSProvider: PlazCodeProvider = (() => {
         /###\s*(?:LUA|LUAU)\s*###/i.test(t) || /<tool_call>/i.test(t);
     }) || blocks.find(isNotionCodeBlock) || null;
   }
-  function immutableKey(item) {
+  function immutableKey(item: Element | null | undefined): string {
     if (!item) return "";
     const cached = _immutableItemKey.get(item) || "";
     if (cached.startsWith("bubble:") && safeRead(() => item.getAttribute("data-plazcode-notion-card"), null) === cached.slice(7)) return cached;
@@ -766,8 +810,8 @@ const RSProvider: PlazCodeProvider = (() => {
     if (current && current !== cached) _immutableItemKey.set(item, current);
     return current || cached;
   }
-  function ensureImmutableStyle() {
-    if (_immutableStyle && safeRead(() => _immutableStyle.isConnected, false)) return _immutableStyle;
+  function ensureImmutableStyle(): HTMLStyleElement | null {
+    if (_immutableStyle && safeRead(() => _immutableStyle!.isConnected, false)) return _immutableStyle;
     const style = document.createElement("style");
     style.id = "zs-notion-immutable-cards";
     // The stylesheet itself is extension-owned too. If core has not mounted its
@@ -785,28 +829,28 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return style;
   }
-  async function collectExportHistory(capture) {
+  async function collectExportHistory(capture: () => unknown[]): Promise<void> {
     const route=routeKey(), items=allItems();
     if(!items.length)return;
-    let scroller=safeRead(() => items[0].parentElement, null);
+    let scroller: Element | null = safeRead(() => items[0].parentElement, null);
     while(scroller && scroller!==document.body){
       const css=safeStyle(scroller);
-      if(/auto|scroll/.test(css.overflowY) && safeRead(() => scroller.scrollHeight, 0)>safeRead(() => scroller.clientHeight, 0)+20)break;
-      scroller=safeRead(() => scroller.parentElement, null);
+      if(/auto|scroll/.test(css.overflowY) && safeRead(() => scroller!.scrollHeight, 0)>safeRead(() => scroller!.clientHeight, 0)+20)break;
+      scroller=safeRead(() => scroller!.parentElement, null);
     }
     if(!scroller||scroller===document.body)scroller=document.scrollingElement;
     if(!scroller)return;
-    const original=safeRead(() => scroller.scrollTop, 0),deadline=Date.now()+3000;let quiet=0,lastCount=-1;
+    const original=safeRead(() => scroller!.scrollTop, 0),deadline=Date.now()+3000;let quiet=0,lastCount=-1;
     try{
       while(Date.now()<deadline && route===routeKey()){
-        scroller.scrollTop=Math.max(0,safeRead(() => scroller.scrollTop, 0)-Math.max(200,safeRead(() => scroller.clientHeight, 0)*.8));
+        scroller.scrollTop=Math.max(0,safeRead(() => scroller!.scrollTop, 0)-Math.max(200,safeRead(() => scroller!.clientHeight, 0)*.8));
         await sleep(180);invalidateItems();const count=capture().length;
-        quiet=safeRead(() => scroller.scrollTop, 0)===0 && count===lastCount?quiet+1:0;lastCount=count;
+        quiet=safeRead(() => scroller!.scrollTop, 0)===0 && count===lastCount?quiet+1:0;lastCount=count;
         if(quiet>=3)break;
       }
     }finally{if(route===routeKey())scroller.scrollTop=original;}
   }
-  function renderReadyAcknowledgement(item) {
+  function renderReadyAcknowledgement(item: Element | null | undefined): void {
     if (!item) return;
     const row = safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null);
     const key = row ? "row:" + row : immutableKey(item);
@@ -817,7 +861,7 @@ const RSProvider: PlazCodeProvider = (() => {
     style.textContent = selector + '{font-size:0!important}' + selector + '>*{display:none!important}' + selector + '::after{content:"PlazCode is ready.";display:block;font:14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",sans-serif;color:inherit}';
     root.appendChild(style);
   }
-  function immutableVisual(card) {
+  function immutableVisual(card: { phase?: string; detail?: string; label?: string }): { color: string; label: string } {
     const icon = card.phase === "run" ? "⏳" : card.phase === "err" ? "⚠" : card.phase === "idle" ? "○" : "✓";
     const detail = card.detail ? ` · ${card.detail}` : "";
     const color = card.phase === "err" ? "#ef8b8b" : card.phase === "run" ? "#8fa7ff" : card.phase === "idle" ? "#a8a8b0" : "#6fd0a7";
@@ -827,14 +871,14 @@ const RSProvider: PlazCodeProvider = (() => {
   // CSS because Notion's blocks cannot hold PlazCode's own card; the phase colour is the stripe on the left.
   const CARD_BG = "linear-gradient(135deg,var(--pc-navy-2,#0b213b) 0%,var(--pc-navy,#071426) 60%)";
   const CARD_BORDER = "1px solid color-mix(in srgb,var(--pc-gold,#d9ad52) 34%,transparent)";
-  const cardShadow = (color) => `inset 4px 0 0 ${color},0 10px 24px rgba(0,0,0,.28)`;
-  function immutableSelector(key) {
+  const cardShadow = (color: string): string => `inset 4px 0 0 ${color},0 10px 24px rgba(0,0,0,.28)`;
+  function immutableSelector(key: string): string {
     return key.startsWith("row:")
       ? `[data-agent-service-scroll-anchor="${cssAttr(key.slice(4))}"]`
       : key.startsWith("bubble:") ? `[data-plazcode-notion-card="${cssAttr(key.slice(7))}"]`
       : `[data-block-id="${cssAttr(key)}"]`;
   }
-  function immutableRuleText(key, card) {
+  function immutableRuleText(key: string, card: ImmutableCard): string {
     const sel = immutableSelector(key);
     const { color, label } = immutableVisual(card);
     return `${sel}{font-size:0!important;color:transparent!important;min-height:58px!important;` +
@@ -845,35 +889,37 @@ const RSProvider: PlazCodeProvider = (() => {
       `box-sizing:border-box!important;padding:10px 14px 10px 18px!important;border:${CARD_BORDER}!important;border-radius:3px 16px 3px 16px!important;background:${CARD_BG}!important;box-shadow:${cardShadow(color)}!important;` +
       `letter-spacing:.1px!important;color:#eef4ff!important;white-space:normal!important;text-align:left!important;overflow-wrap:anywhere!important}`;
   }
-  function insertImmutableRules(style, key, card) {
+  function insertImmutableRules(style: HTMLStyleElement, key: string, card: ImmutableCard): boolean {
     const sheet = style && style.sheet;
     if (!sheet || typeof sheet.insertRule !== "function") return false;
     const sel = immutableSelector(key);
     try {
       let i = sheet.cssRules.length;
       sheet.insertRule(`${sel}{font-size:0!important;color:transparent!important;min-height:58px!important;display:block!important;height:auto!important;box-sizing:border-box!important;padding:8px 0!important;border:0!important;border-radius:0!important;background:transparent!important}`, i);
-      const hostRule = sheet.cssRules[i];
+      const hostRule = sheet.cssRules[i] as CSSStyleRule;
       i = sheet.cssRules.length;
       sheet.insertRule(`${sel}>*{display:none!important}`, i);
       i = sheet.cssRules.length;
       sheet.insertRule(`${sel}::before{display:block!important;box-sizing:border-box!important;padding:10px 14px 10px 18px!important;border-radius:3px 16px 3px 16px!important;font:600 13px/22px ui-sans-serif,-apple-system,"Segoe UI",sans-serif!important;letter-spacing:.1px!important;white-space:normal!important;text-align:left!important;overflow-wrap:anywhere!important}`, i);
       card.sheet = sheet;
-      card.rules = { host: hostRule, before: sheet.cssRules[i] };
+      card.rules = { host: hostRule, before: sheet.cssRules[i] as CSSStyleRule };
       return true;
     } catch {
       card.sheet = null; card.rules = null;
       return false;
     }
   }
-  function updateImmutableRule(style, key, card) {
+  function updateImmutableRule(style: HTMLStyleElement, key: string, card: ImmutableCard): boolean {
     const sheet = style && style.sheet;
     if (!sheet) return false;
     if (card.sheet !== sheet || !card.rules) {
       if (!insertImmutableRules(style, key, card)) return false;
     }
+    const rules = card.rules;
+    if (!rules) return false;
     const { color, label } = immutableVisual(card);
     try {
-      const hs = card.rules.host.style, bs = card.rules.before.style;
+      const hs = rules.host.style, bs = rules.before.style;
       bs.setProperty("border", CARD_BORDER, "important");
       bs.setProperty("background", CARD_BG, "important");
       bs.setProperty("box-shadow", cardShadow(color), "important");
@@ -882,12 +928,12 @@ const RSProvider: PlazCodeProvider = (() => {
       return true;
     } catch { return false; }
   }
-  function rebuildImmutableFallback(style) {
+  function rebuildImmutableFallback(style: HTMLStyleElement): void {
     _immutableCssomFailed = true;
     style.textContent = [..._immutableCards].map(([key, card]) => immutableRuleText(key, card)).join("\n");
     for (const card of _immutableCards.values()) { card.sheet = null; card.rules = null; }
   }
-  function flushImmutableStyles() {
+  function flushImmutableStyles(): void {
     if (_immutableStyleTimer) clearTimeout(_immutableStyleTimer);
     _immutableStyleTimer = 0;
     const style = ensureImmutableStyle();
@@ -904,13 +950,13 @@ const RSProvider: PlazCodeProvider = (() => {
       }
     }
   }
-  function markImmutableStyle(key, immediate) {
+  function markImmutableStyle(key: string, immediate?: boolean): void {
     if (key) _immutableDirty.add(key);
     if (immediate) { flushImmutableStyles(); return; }
     if (_immutableStyleTimer) return;
     _immutableStyleTimer = setTimeout(flushImmutableStyles, 350);
   }
-  function compactImmutableStyles() {
+  function compactImmutableStyles(): void {
     if (_immutableCompactTimer) clearTimeout(_immutableCompactTimer);
     _immutableCompactTimer = 0;
     const style = ensureImmutableStyle();
@@ -931,11 +977,11 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     flushImmutableStyles();
   }
-  function scheduleImmutableCompaction(delay = 1400) {
+  function scheduleImmutableCompaction(delay = 1400): void {
     if (_immutableCompactTimer) clearTimeout(_immutableCompactTimer);
     _immutableCompactTimer = setTimeout(compactImmutableStyles, delay);
   }
-  function migrateImmutableCard(item, card, key) {
+  function migrateImmutableCard(item: Element, card: ImmutableCard, key: string): ImmutableCard {
     if (!card || !key || card.key === key) return card;
     const oldKey = card.key;
     if (oldKey) _immutableCards.delete(oldKey);
@@ -955,23 +1001,23 @@ const RSProvider: PlazCodeProvider = (() => {
     scheduleImmutableCompaction();
     return card;
   }
-  function renderImmutableChip(item, opts: any = {}) {
+  function renderImmutableChip(item: Element | null | undefined, opts: ImmutableChipOptions = {}): void {
     let key = immutableKey(item);
-    if (opts.whole && safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null)) {
-      key = "row:" + safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null);
-      _immutableItemKey.set(item, key);
+    if (opts.whole && safeRead(() => (item as Element).getAttribute("data-agent-service-scroll-anchor"), null)) {
+      key = "row:" + safeRead(() => (item as Element).getAttribute("data-agent-service-scroll-anchor"), null);
+      _immutableItemKey.set(item as Element, key);
     }
     if (opts.whole && isUserItem(item) && !key.startsWith("row:")) {
       // Attribute-only ownership leaves React's locked child tree untouched.
       // Mask the entire result, including text/code spread over several blocks.
-      let id = safeRead(() => item.getAttribute("data-plazcode-notion-card"), null);
+      let id = safeRead(() => (item as Element).getAttribute("data-plazcode-notion-card"), null);
       if (!id) {
         id = Date.now().toString(36) + "-" + String(++_immutableBubbleSeq);
-        try { item.setAttribute("data-plazcode-notion-card", id); } catch { return; }
+        try { (item as Element).setAttribute("data-plazcode-notion-card", id); } catch { return; }
       }
-      key = "bubble:" + id; _immutableItemKey.set(item, key);
+      key = "bubble:" + id; _immutableItemKey.set(item as Element, key);
     }
-    if (!key) return;
+    if (!item || !key) return;
     let byItem = _immutableItemCard.get(item) || null;
     if (byItem && byItem.cleared) byItem = null;
     // The core may still hold the old response node when Notion has already
@@ -980,59 +1026,62 @@ const RSProvider: PlazCodeProvider = (() => {
     if (byItem && byItem.key && byItem.key !== key && safeRead(() => item.isConnected, false)) {
       byItem = migrateImmutableCard(item, byItem, key);
     }
-    let prev = _immutableCards.get(key) || byItem || null;
+    let prev: ImmutableCard | null = _immutableCards.get(key) || byItem || null;
     // A full response-root remount can also assign a fresh block ID. Reown the
     // one recent running card (the loop executes one tool at a time) rather than
     // creating a second spinner that the old node can never settle.
     if (!prev && safeRead(() => item.isConnected, false)) {
       const wanted = opts.label || "";
-      const orphan = [..._immutableCards.values()].reverse().find((card) =>
-        card && (card.phase === "run" || card.phase === "idle") &&
-        card.item && !safeRead(() => card.item.isConnected, false) &&
-        (card.owned || Date.now() - (card.updatedAt || 0) < 15000) &&
-        (!wanted || !card.label || card.label === wanted || card.label === "command"));
+      const orphan = [..._immutableCards.values()].reverse().find((card) => {
+        const cardItem = card && card.item;
+        return !!(card && (card.phase === "run" || card.phase === "idle") &&
+          cardItem && !safeRead(() => cardItem.isConnected, false) &&
+          (card.owned || Date.now() - (card.updatedAt || 0) < 15000) &&
+          (!wanted || !card.label || card.label === wanted || card.label === "command"));
+      });
       if (orphan) prev = byItem = migrateImmutableCard(item, orphan, key);
     }
-    prev = prev || {};
+    const prevCard: Partial<ImmutableCard> = prev || {};
     // A turn executes once. React may replay an earlier running decoration
     // after completion; retain the final outcome for this same command key.
-    const staleRunning = prev.owned && /^(done|err)$/.test(prev.phase || "") &&
-      /^(run|idle)$/.test(opts.phase || "");
-    if (staleRunning) opts = { ...opts, phase: prev.phase, detail: prev.detail, label: prev.label };
-    const liveItem = safeRead(() => item.isConnected, false) ? item : (prev.item || item);
+    const staleRunning = !!(prevCard.owned && /^(done|err)$/.test(prevCard.phase || "") &&
+      /^(run|idle)$/.test(opts.phase || ""));
+    if (staleRunning) opts = { ...opts, phase: prevCard.phase, detail: prevCard.detail, label: prevCard.label };
+    const liveItem = safeRead(() => item.isConnected, false) ? item : (prevCard.item || item);
     const liveBlock = safeRead(() => item.isConnected, false)
-      ? (_immutableItemBlock.get(item) || prev.block || null)
-      : (prev.block || _immutableItemBlock.get(item) || null);
-    const next = {
+      ? (_immutableItemBlock.get(item) || prevCard.block || null)
+      : (prevCard.block || _immutableItemBlock.get(item) || null);
+    const next: ImmutableCard = {
       key,
-      label: opts.label || prev.label || "command",
-      detail: opts.detail != null ? opts.detail : (prev.detail || ""),
-      phase: opts.phase || prev.phase || "idle",
-      owned: opts.owned != null ? !!opts.owned : !!prev.owned,
+      label: opts.label || prevCard.label || "command",
+      detail: opts.detail != null ? opts.detail : (prevCard.detail || ""),
+      phase: opts.phase || prevCard.phase || "idle",
+      owned: opts.owned != null ? !!opts.owned : !!prevCard.owned,
       item: liveItem,
       block: liveBlock,
-      sheet: prev.sheet || null,
-      rules: prev.rules || null,
+      sheet: prevCard.sheet || null,
+      rules: prevCard.rules || null,
       missingAt: 0,
       missingSignatureAt: 0,
       cleared: false,
       updatedAt: Date.now(),
     };
-    const changed = prev.label !== next.label || prev.detail !== next.detail ||
-      prev.phase !== next.phase || prev.owned !== next.owned;
+    const changed = prevCard.label !== next.label || prevCard.detail !== next.detail ||
+      prevCard.phase !== next.phase || prevCard.owned !== next.owned;
     _immutableCards.set(key, next);
     _immutableItemCard.set(item, next);
     if (liveItem && liveItem !== item) _immutableItemCard.set(liveItem, next);
-    if (changed || !_immutableStyle || !safeRead(() => _immutableStyle.isConnected, false)) markImmutableStyle(key, true);
+    const curStyle = _immutableStyle;
+    if (changed || !curStyle || !safeRead(() => curStyle.isConnected, false)) markImmutableStyle(key, true);
   }
-  function refreshImmutableCardRef(item, card) {
+  function refreshImmutableCardRef(item: Element | null | undefined, card: ImmutableCard | null): ImmutableCard | null {
     if (!card || !item) return card;
     card.item = item;
     card.block = _immutableItemBlock.get(item) || card.block || null;
     _immutableItemCard.set(item, card);
     return card;
   }
-  function immutableCardFor(item, key) {
+  function immutableCardFor(item: Element | null | undefined, key: string): ImmutableCard | null {
     if (!item || !key) return null;
     let card = _immutableCards.get(key) || _immutableItemCard.get(item) || null;
     if (card && card.cleared) return null;
@@ -1040,26 +1089,26 @@ const RSProvider: PlazCodeProvider = (() => {
     if (card && card.key && card.key !== key) card = migrateImmutableCard(item, card, key);
     return refreshImmutableCardRef(item, card);
   }
-  function updateImmutableChipDetail(item, detail) {
+  function updateImmutableChipDetail(item: Element | null | undefined, detail: string): void {
     const key = immutableKey(item), card = immutableCardFor(item, key);
     // The growth-tolerant generation signal can remain true briefly after a tool
     // settles; never let that meter overwrite a final done/error summary.
     if (!card || card.phase === "done" || card.phase === "err" || card.detail === detail) return;
     card.detail = detail || ""; markImmutableStyle(card.key || key, false);
   }
-  function updateImmutableChipLabel(item, label) {
+  function updateImmutableChipLabel(item: Element | null | undefined, label: string): void {
     const key = immutableKey(item), card = immutableCardFor(item, key);
     if (!card || card.phase === "done" || card.phase === "err" || !label || card.label === label) return;
     card.label = label; markImmutableStyle(card.key || key, true);
   }
-  function immutableChipOwned(item) {
+  function immutableChipOwned(item: Element | null | undefined): boolean {
     const key = immutableKey(item), card = immutableCardFor(item, key);
     return !!(card && card.owned);
   }
-  function clearImmutableChip(item, options: any = {}) {
+  function clearImmutableChip(item: Element | null | undefined, options: { force?: boolean } = {}): void {
     const key = immutableKey(item);
     const card = immutableCardFor(item, key);
-    if (!card) return;
+    if (!item || !card) return;
     if (options.force) {
       if (key.startsWith("bubble:")) {
         try { item.removeAttribute("data-plazcode-notion-card"); } catch {}
@@ -1085,15 +1134,16 @@ const RSProvider: PlazCodeProvider = (() => {
     _immutableItemCard.delete(item);
     scheduleImmutableCompaction();
   }
-  function syncImmutableChips() {
+  function syncImmutableChips(): void {
     let changed = false;
     const now = Date.now();
     for (const [key, card] of [..._immutableCards]) {
       // Each card already knows its exact host block. A document-wide selector
       // per historical command made cleanup O(cards × page size) every sweep.
       if (key.startsWith("row:") || key.startsWith("bubble:")) {
-        const row = key.startsWith("bubble:") && safeRead(() => card.item.isConnected, false)
-          ? card.item : safeQuery(document, immutableSelector(key));
+        const cardItem = card.item;
+        const row = key.startsWith("bubble:") && cardItem && safeRead(() => cardItem.isConnected, false)
+          ? cardItem : safeQuery<Element>(document, immutableSelector(key));
         if (row) { card.item = row; _immutableItemCard.set(row, card); _immutableItemKey.set(row, key); card.missingAt = 0; continue; }
       }
       const block = card && card.block;
@@ -1128,33 +1178,35 @@ const RSProvider: PlazCodeProvider = (() => {
     if (changed) scheduleImmutableCompaction();
   }
   const FAST_TOOL_SIGNATURE_RE = /["'](?:command|tool)["']\s*:\s*["']|###\s*(?:LUA|LUAU|MCP_TOOL)\s*###|<tool_call>/i;
-  function preprocessMutations(records, state: any = {}) {
+  function preprocessMutations(records: MutationRecord[], state: { active?: boolean } = {}): void {
     if (!records || !records.length || !isChatPath()) return;
-    const roots = new Set<any>();
+    const roots = new Set<Element>();
     const transcriptSel = `${BLOCK_RESPONSE_ROOT_SEL}, ${AGENT_ROW_SEL}`;
-    const addNode = (node) => {
+    const addNode = (node: Node | null | undefined) => {
       if (!node || safeRead(() => node.nodeType, 0) !== 1) return;
       try {
-        if (safeRead(() => node.matches, null) && safeRead(() => node.matches(transcriptSel), false)) roots.add(node);
-        const closest = safeRead(() => node.closest, null) && safeClosest(node, transcriptSel);
+        if (safeRead(() => (node as Element).matches, null) && safeRead(() => (node as Element).matches(transcriptSel), false)) roots.add(node as Element);
+        const closest = safeRead(() => (node as Element).closest, null) && safeClosest<Element>(node, transcriptSel);
         if (closest) roots.add(closest);
-        if (safeRead(() => node.querySelectorAll, null)) {
-          for (const root of safeQueryAll(node, transcriptSel)) roots.add(root);
+        if (safeRead(() => (node as Element).querySelectorAll, null)) {
+          for (const root of safeQueryAll<Element>(node as Element, transcriptSel)) roots.add(root);
         }
       } catch {}
     };
     for (const r of records) {
-      addNode(r.target && (safeRead(() => r.target.nodeType, 0) === 1 ? r.target : safeRead(() => r.target.parentElement, null)));
+      const targetNode = r.target;
+      addNode(targetNode && (safeRead(() => targetNode.nodeType, 0) === 1 ? targetNode : safeRead(() => targetNode.parentElement, null)));
       for (const node of r.addedNodes || []) addNode(node);
     }
     for (const item of roots) {
       if (!item || !safeRead(() => item.isConnected, false) || safeClosest(item, "#rs-root")) continue;
       const remembered = _immutableItemCard.get(item);
       const existing = remembered && !remembered.cleared ? remembered : null;
+      const existingBlock = existing && existing.block;
       // Normal token churn inside the same block needs no work: its CSS selector
       // is already active. Only a block/root replacement needs synchronous rekey.
-      if (existing && existing.block && safeRead(() => existing.block.isConnected, false) && safeRead(() => item.contains(existing.block), false) &&
-          safeRead(() => existing.block.getAttribute("data-block-id"), null) === existing.key) continue;
+      if (existing && existingBlock && safeRead(() => existingBlock.isConnected, false) && safeRead(() => item.contains(existingBlock), false) &&
+          safeRead(() => existingBlock.getAttribute("data-block-id"), null) === existing.key) continue;
       if (existing) {
         renderImmutableChip(item, {});
         continue;
@@ -1172,8 +1224,8 @@ const RSProvider: PlazCodeProvider = (() => {
     }
   }
 
-  let _chatListCache = null, _chatListAt = 0, _chatListRoute = "";
-  function chatList() {
+  let _chatListCache: HTMLElement | null = null, _chatListAt = 0, _chatListRoute = "";
+  function chatList(): HTMLElement | null {
     if (!isAiSurface()) return null;
     const route = routeKey();
     if (route !== _chatListRoute) {
@@ -1183,21 +1235,25 @@ const RSProvider: PlazCodeProvider = (() => {
     if (raw.length) {
       // Find the nearest scrolling ancestor of a real row. This is used only for
       // positioning/fallback; allItems reads the semantic rows directly.
-      for (let n = safeRead(() => raw[0].parentElement, null); n && n !== document.body; n = safeRead(() => n.parentElement, null)) {
+      for (let n: HTMLElement | null = safeRead(() => raw[0].parentElement, null); n && n !== document.body; ) {
+        const cur: HTMLElement = n;
         try {
-          const st = safeStyle(n);
-          if (/auto|scroll/.test(st.overflowY)) return n;
+          const st = safeStyle(cur);
+          if (/auto|scroll/.test(st.overflowY)) return cur;
         } catch {}
+        n = safeRead(() => cur.parentElement, null);
       }
       return safeRead(() => raw[0].parentElement, null);
     }
     const e = findEditorRaw();
     if (e) {
-      for (let n = safeRead(() => e.parentElement, null); n && n !== document.body; n = safeRead(() => n.parentElement, null)) {
+      for (let n: HTMLElement | null = safeRead(() => e.parentElement, null); n && n !== document.body; ) {
+        const cur: HTMLElement = n;
         try {
-          const st = safeStyle(n);
-          if (/auto|scroll/.test(st.overflowY) && safeRead(() => n.children, []).length) return n;
+          const st = safeStyle(cur);
+          if (/auto|scroll/.test(st.overflowY) && safeRead(() => cur.children, []).length) return cur;
         } catch {}
+        n = safeRead(() => cur.parentElement, null);
       }
       return safeClosest(e, '[role="main"], [role="region"], main, form') || safeRead(() => e.parentElement, null);
     }
@@ -1205,7 +1261,7 @@ const RSProvider: PlazCodeProvider = (() => {
     const now = Date.now();
     if (_chatListCache && now - _chatListAt < 1500) return _chatListCache;
     _chatListAt = now;
-    let found = null, scanned = 0;
+    let found: HTMLElement | null = null, scanned = 0;
     for (const n of safeQueryAll(document, "div")) {
       if (++scanned > 300) break;
       try {
@@ -1218,7 +1274,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return found;
   }
   let _itemsMode = "none";
-  function collectItems() {
+  function collectItems(): Element[] {
     if (!isAiSurface()) { _itemsMode = "none"; return []; }
     const raw = rawAgentRows();
     if (raw.length) { _itemsMode = "agent"; return agentMessageRows(raw); }
@@ -1235,7 +1291,7 @@ const RSProvider: PlazCodeProvider = (() => {
     if (rows.length) return rows.filter((r) => !safeClosest(r, "#rs-root"));
     // Last-resort legacy layout: direct children, excluding the composer.
     const ed = findEditorRaw();
-    return [...safeRead(() => list.children, [])].filter((c) =>
+    return [...safeRead<Iterable<Element>, Element[]>(() => list.children, [])].filter((c) =>
       !safeClosest(c, "#rs-root") && !(ed && safeRead(() => c.contains(ed), false)) && (_txt(c) || safeQuery(c, "pre, code")));
   }
   // Core asks for counts, the last turn, generation state and sweep items through
@@ -1244,9 +1300,9 @@ const RSProvider: PlazCodeProvider = (() => {
   // retained element references. A 700ms time-only cache still rescanned a deep
   // idle chat ~1.4 times/second from the meter. Keep it until a semantic turn
   // mutation invalidates it, with a 15s safety refresh for unknown DOM variants.
-  let _itemsCache = [], _itemsAt = 0, _itemsRoute = "", _itemsDirty = true;
+  let _itemsCache: Element[] = [], _itemsAt = 0, _itemsRoute = "", _itemsDirty = true;
   const ITEMS_CACHE_MS = 15000;
-  function allItems() {
+  function allItems(): Element[] {
     if (!isAiSurface()) return [];
     const route = routeKey(), now = Date.now();
     if (route !== _itemsRoute) _itemsDirty = true;
@@ -1258,14 +1314,14 @@ const RSProvider: PlazCodeProvider = (() => {
     _itemsCache = collectItems();
     return _itemsCache;
   }
-  function ignoreMutationRecords(records) {
+  function ignoreMutationRecords(records: MutationRecord[]): boolean {
     if (!records || !records.length) return false;
-    const ed = _editorCache && safeRead(() => _editorCache.isConnected, false) ? _editorCache : null;
-    const frame = _frameCache && safeRead(() => _frameCache.isConnected, false) ? _frameCache : null;
+    const ed = _editorCache && safeRead(() => _editorCache!.isConnected, false) ? _editorCache : null;
+    const frame = _frameCache && safeRead(() => _frameCache!.isConnected, false) ? _frameCache : null;
     if (!ed && !frame) return false;
     const transcriptSel = `${AGENT_ROW_SEL}, ${BLOCK_RESPONSE_ROOT_SEL}`;
     return records.every((r) => {
-      const target = r.target && (safeRead(() => r.target.nodeType, 0) === 1 ? r.target : safeRead(() => r.target.parentElement, null));
+      const target: Element | null = r.target && (safeRead(() => r.target.nodeType, 0) === 1 ? (r.target as Element) : safeRead(() => r.target.parentElement, null));
       if (!target) return false;
       try {
         // Never suppress a real turn mount or stream mutation even if a future
@@ -1273,30 +1329,30 @@ const RSProvider: PlazCodeProvider = (() => {
         if (safeRead(() => target.closest, null) && safeClosest(target, transcriptSel)) return false;
         for (const node of [...(r.addedNodes || []), ...(r.removedNodes || [])]) {
           if (safeRead(() => node.nodeType, 0) === 1 &&
-              ((safeRead(() => node.matches, null) && safeRead(() => node.matches(transcriptSel), false)) ||
-               (safeRead(() => node.querySelector, null) && safeQuery(node, transcriptSel)))) return false;
+              ((safeRead(() => (node as Element).matches, null) && safeRead(() => (node as Element).matches(transcriptSel), false)) ||
+               (safeRead(() => (node as Element).querySelector, null) && safeQuery(node as Element, transcriptSel)))) return false;
         }
       } catch {}
       return !!((ed && (target === ed || safeRead(() => ed.contains(target), false))) ||
         (frame && (target === frame || safeRead(() => frame.contains(target), false))));
     });
   }
-  function invalidateItems(records?) {
+  function invalidateItems(records?: MutationRecord[]): void {
     if (!records || !records.length) { _itemsDirty = true; return; }
-    const semantic = (node) => {
+    const semantic = (node: Node | null | undefined): boolean => {
       if (!node || (safeRead(() => node.nodeType, 0) !== 1 && safeRead(() => node.nodeType, 0) !== 11)) return false;
       try {
-        return (safeRead(() => node.matches, null) && safeRead(() => node.matches(`${AGENT_ROW_SEL}, ${BLOCK_RESPONSE_ROOT_SEL}`), false)) ||
-          !!(safeRead(() => node.querySelector, null) && safeQuery(node, `${AGENT_ROW_SEL}, ${BLOCK_RESPONSE_ROOT_SEL}`));
+        return (safeRead(() => (node as Element).matches, null) && (safeRead(() => (node as Element).matches(`${AGENT_ROW_SEL}, ${BLOCK_RESPONSE_ROOT_SEL}`), false) as any)) ||
+          !!(safeRead(() => (node as Element).querySelector, null) && safeQuery(node as Element, `${AGENT_ROW_SEL}, ${BLOCK_RESPONSE_ROOT_SEL}`));
       } catch { return false; }
     };
     for (const r of records) {
       if ([...(r.addedNodes || []), ...(r.removedNodes || [])].some(semantic)) {
         _itemsDirty = true; return;
       }
-      const target = r.target && (safeRead(() => r.target.nodeType, 0) === 1 ? r.target : safeRead(() => r.target.parentElement, null));
+      const target: Element | null = r.target && (safeRead(() => r.target.nodeType, 0) === 1 ? (r.target as Element) : safeRead(() => r.target.parentElement, null));
       if (!target || (safeRead(() => target.closest, null) && safeClosest(target, "#rs-root"))) continue;
-      let root = null;
+      let root: Element | null = null;
       try { root = safeRead(() => target.closest, null) && safeClosest(target, `${AGENT_ROW_SEL}, ${BLOCK_RESPONSE_ROOT_SEL}`); } catch {}
       // A blank response shell is omitted until its first text/block appears.
       // Its child mutation must invalidate until that root joins the cached list;
@@ -1306,9 +1362,9 @@ const RSProvider: PlazCodeProvider = (() => {
       if (_itemsMode === "legacy") { _itemsDirty = true; return; }
     }
   }
-  function isUserItem(item) {
+  function isUserItem(item: Element | null | undefined): boolean {
     if (!item) return false;
-    if (safeRead(() => item.matches, null) && safeRead(() => item.matches(AGENT_ROW_SEL), false)) return rowAlign(item) === "flex-end";
+    if (safeRead(() => item.matches, null) && safeRead(() => item.matches(AGENT_ROW_SEL), false)) return rowAlign(item as HTMLElement) === "flex-end";
     if (safeRead(() => item.matches, null) && safeRead(() => item.matches(BLOCK_RESPONSE_ROOT_SEL), false)) return hasEndAlignedAncestor(item);
     if (_blockUserItems.has(item)) return true;
     const role = safeRead(() => item.getAttribute, null) && (safeRead(() => item.getAttribute("data-message-role"), null) ||
@@ -1323,15 +1379,15 @@ const RSProvider: PlazCodeProvider = (() => {
     if (AI_MARK_RE.test(t.slice(0, 160))) return false;
     return true;
   }
-  function isAssistantItem(item) {
+  function isAssistantItem(item: Element | null | undefined): boolean {
     if (!item) return false;
-    if (safeRead(() => item.matches, null) && safeRead(() => item.matches(AGENT_ROW_SEL), false)) return rowAlign(item) === "flex-start";
+    if (safeRead(() => item.matches, null) && safeRead(() => item.matches(AGENT_ROW_SEL), false)) return rowAlign(item as HTMLElement) === "flex-start";
     if (safeRead(() => item.matches, null) && safeRead(() => item.matches(BLOCK_RESPONSE_ROOT_SEL), false)) return !hasEndAlignedAncestor(item);
     if (_blockUserItems.has(item)) return false;
     return !isUserItem(item);
   }
-  let _roleItemsRef = null, _assistantItemsCache = [], _userItemsCache = [];
-  function roleItems() {
+  let _roleItemsRef: Element[] | null = null, _assistantItemsCache: Element[] = [], _userItemsCache: Element[] = [];
+  function roleItems(): { assistants: Element[]; users: Element[] } {
     const items = allItems();
     if (items !== _roleItemsRef) {
       _roleItemsRef = items;
@@ -1340,11 +1396,11 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return { assistants: _assistantItemsCache, users: _userItemsCache };
   }
-  const assistantItems = () => roleItems().assistants;
-  const assistantCount = () => roleItems().assistants.length;
-  const userCount = () => roleItems().users.length;
+  const assistantItems = (): Element[] => roleItems().assistants;
+  const assistantCount = (): number => roleItems().assistants.length;
+  const userCount = (): number => roleItems().users.length;
   // The very last assistant item on the page (what older versions called the last turn).
-  const tailAssistant = () => {
+  const tailAssistant = (): Element | null => {
     const it = roleItems().assistants;
     return it.length ? it[it.length - 1] : null;
   };
@@ -1358,23 +1414,25 @@ const RSProvider: PlazCodeProvider = (() => {
   // answer or a command that is already the last part behaves exactly as before.
   const TURN_COMMAND_SHAPE_RE = /["'](?:command|tool)["']\s*:\s*["'][A-Za-z0-9_.:\/-]+["']|###\s*(?:LUA|LUAU)\s*###|<tool_call>/i;
   const TURN_LOOKBACK = 6;
-  let _turnPick = null;
-  function partHasCommand(item, complete) {
+  let _turnPick: { all: Element[]; tail: Element; item: Element | null } | null = null;
+  function partHasCommand(item: Element | null | undefined, complete: boolean): boolean {
     const text = transcriptText(item);
     if (!text || !TURN_COMMAND_SHAPE_RE.test(text)) return false;
     if (!complete) return true;
     if (typeof RSParse === "undefined" || !RSParse.parseToolCalls) return true;
     try { return RSParse.parseToolCalls(text).length > 0; } catch { return false; }
   }
-  function lastAssistant() {
+  function lastAssistant(): Element | null {
     const tail = tailAssistant();
     if (!tail || partHasCommand(tail, false)) return tail;
     const all = allItems(), at = all.lastIndexOf(tail);
     if (at < 1) return tail;
-    if (_turnPick && _turnPick.all === all && _turnPick.tail === tail && (!_turnPick.item || safeRead(() => _turnPick.item.isConnected, false))) {
-      return _turnPick.item || tail;
+    const turnPick = _turnPick;
+    const pickItem = turnPick && turnPick.item;
+    if (turnPick && turnPick.all === all && turnPick.tail === tail && (!pickItem || safeRead(() => pickItem.isConnected, false))) {
+      return pickItem || tail;
     }
-    let picked = null;
+    let picked: Element | null = null;
     for (let i = at - 1, n = 0; i >= 0 && n < TURN_LOOKBACK; i--, n++) {
       const it = all[i];
       if (isUserItem(it)) break;               // the user's own message ends the answer
@@ -1383,9 +1441,9 @@ const RSProvider: PlazCodeProvider = (() => {
     _turnPick = { all, tail, item: picked };
     return picked || tail;
   }
-  const _idMap = new WeakMap();
+  const _idMap = new WeakMap<Element, number>();
   let _idSeq = 0;
-  function lastAssistantId() {
+  function lastAssistantId(): string | number | null {
     const it = lastAssistant();
     if (!it) return null;
     const stable = safeRead(() => it.getAttribute, null) && safeRead(() => it.getAttribute("data-agent-service-scroll-anchor"), null);
@@ -1405,16 +1463,16 @@ const RSProvider: PlazCodeProvider = (() => {
   // read, identity, snapshot and meter paths in one task. Reading a very large
   // script from the DOM each time is costly, so share it for this microtask only;
   // the cache expires before any later DOM mutation/timer can be observed.
-  const _transcriptTextCache = new WeakMap();
+  const _transcriptTextCache = new WeakMap<Element, { epoch: number; text: string }>();
   let _textReadEpoch = 1, _textEpochQueued = false;
-  function transcriptText(item) {
+  function transcriptText(item: Element | null | undefined): string {
     if (!item) return "";
     const cached = _transcriptTextCache.get(item);
     if (cached && cached.epoch === _textReadEpoch) return cached.text;
-    let text;
+    let text: string;
     if (safeQuery(item, ".rs-chip")) {
       // Legacy/injected-result chips are extension UI, never assistant tokens.
-      const copy = item.cloneNode(true);
+      const copy = item.cloneNode(true) as Element;
       safeQueryAll(copy, ".rs-chip").forEach((node) => node.remove());
       text = safeRead(() => copy.textContent, "") || "";
     } else text = safeRead(() => item.textContent, "") || "";
@@ -1427,20 +1485,20 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return text;
   }
-  const itemText = (item) => transcriptText(item);
-  const classifyText = (item, _excludeSel) => transcriptText(item);
-  function readAssistant() {
+  const itemText = (item: Element | null | undefined): string => transcriptText(item);
+  const classifyText = (item: Element | null | undefined, _excludeSel?: string): string => transcriptText(item);
+  function readAssistant(): AssistantRead {
     const item = lastAssistant();
     if (!item) return { present: false, reply: "", thinking: "", item: null };
     return { present: true, reply: transcriptText(item).trim(), thinking: "", item };
   }
-  function streamText(item) {
+  function streamText(item?: Element | null): string {
     const it = item === undefined ? lastAssistant() : item;
     return transcriptText(it);
   }
-  const streamLen = (item) => streamText(item).length;
-  let _streamMax = -1, _streamAt = 0, _streamItem = null;
-  function sampleStream() {
+  const streamLen = (item?: Element | null): number => streamText(item).length;
+  let _streamMax = -1, _streamAt = 0, _streamItem: Element | null = null;
+  function sampleStream(): void {
     // Growth is watched on the very last part: a spoken part still being written after a
     // finished command part is still generation.
     const item = tailAssistant();
@@ -1451,8 +1509,8 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     if (len > _streamMax) { _streamMax = len; _streamAt = now; }
   }
-  const grewWithin = (ms) => _streamMax > 1 && Date.now() - _streamAt < ms;
-  function snapshot() {
+  const grewWithin = (ms: number): boolean => _streamMax > 1 && Date.now() - _streamAt < ms;
+  function snapshot(): { th?: number; rp?: number } {
     try {
       const it = lastAssistant();
       return { th: 0, rp: it ? (safeRead(() => it.textContent, "") || "").length : 0 };
@@ -1461,7 +1519,7 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // ── generation state ─────────────────────────────────────────────────────
   let _stopSince = 0;
-  function genActive() {
+  function genActive(): boolean {
     sampleStream();
     const stop = !!stopButton();
     const now = Date.now();
@@ -1476,7 +1534,7 @@ const RSProvider: PlazCodeProvider = (() => {
   }
   const isGenerating = genActive;
   const isBusyNow = genActive;
-  function startupReplySettled() {
+  function startupReplySettled(): boolean {
     sampleStream();
     if (stopButton() || activeWorkflowProgress(tailAssistant())) return false;
     const reply = streamText(lastAssistant());
@@ -1489,8 +1547,8 @@ const RSProvider: PlazCodeProvider = (() => {
   // the diagnostics (never the user's text), and a banner worded from them when they show
   // something specific. Returns null banner when nothing specific can be said.
   const NOTION_NOTICE_RE = /\b(?:limit|quota|credits?|upgrade|trial|free plan|plan|subscription|usage|too many|try again|something went wrong|error|unavailable|not available|permission|access)\b/i;
-  function startupEvidence(res) {
-    const out: any = {};
+  function startupEvidence(res: { text?: string; kind?: string } | null | undefined): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
     try {
       const thread = isAiThread(), landing = isAiLanding();
       const items = allItems();
@@ -1504,7 +1562,7 @@ const RSProvider: PlazCodeProvider = (() => {
         kind: res && res.kind, replyChars: reply.length, replyHead: reply.slice(0, 120),
       });
       const next = "Open Notion AI > New chat, then press Start.";
-      if ((!reply || (res && /^(?:empty|timeout|busy_timeout)$/.test(res.kind))) && out.page === "home" && out.items === 0) {
+      if ((!reply || (res && /^(?:empty|timeout|busy_timeout)$/.test(res.kind || ""))) && out.page === "home" && out.items === 0) {
         out.banner = { title: "Notion AI did not open a chat",
           text: `PlazCode sent its message, but Notion AI is still on its home page and no chat appeared. PlazCode stayed stopped. ${next}` };
       } else if (reply && res && res.kind === "text") {
@@ -1516,7 +1574,7 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch {}
     return out;
   }
-  const isHardGenerating = () => !!stopButton();
+  const isHardGenerating = (): boolean => !!stopButton();
 
   // Notion renders active agent/tool work in a separate centered status row
   // (not in the assistant response root). allItems intentionally excludes those
@@ -1527,8 +1585,8 @@ const RSProvider: PlazCodeProvider = (() => {
   // changes normal response settlement or any Studio/MCP deadline.
   const ACTIVE_WORKFLOW_KEY_RE = /^(?:running-placeholder|working|thinking|processing|tool-running|tool-call-running)(?::|$)/i;
   const ACTIVE_WORKFLOW_TEXT_RE = /\b(?:thinking|working|processing|running|searching|reading|writing|creating|building|editing|checking|executing|generating|using (?:a |the )?tool)\b/i;
-  let _workflowProbeAt = 0, _workflowProbeItem = null, _workflowProbeValue = false;
-  function activeWorkflowProgress(item) {
+  let _workflowProbeAt = 0, _workflowProbeItem: Element | null | undefined = null, _workflowProbeValue = false;
+  function activeWorkflowProgress(item?: Element | null): boolean {
     if (!isAiSurface()) return false;
     const now = Date.now();
     if (item === _workflowProbeItem && now - _workflowProbeAt < 350) return _workflowProbeValue;
@@ -1567,7 +1625,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // turns are skipped so they cannot accidentally broaden the exemption. Core
   // applies this to both the ordinary 45-second no-progress path and the separate
   // four-second closed-command thinking-tail path.
-  function suppressThinkingWatchdog(_item, reply) {
+  function suppressThinkingWatchdog(_item: Element | null | undefined, reply: unknown): boolean {
     if (/"(?:command|tool)"\s*:\s*"web_figma_(?:apply|export|handoff)"/i.test(String(reply || ""))) {
       return true;
     }
@@ -1591,16 +1649,16 @@ const RSProvider: PlazCodeProvider = (() => {
   // Scan labelled controls in this response only. The old English-only selector
   // discarded otherwise valid Helpful controls and localized completion actions.
   const FINAL_TURN_ACTION_SEL = "button[aria-label], button[title], [role='button'][aria-label], [role='button'][title]";
-  const _finalActionCache = new WeakMap();
-  function hasFinalTurnAction(item) {
+  const _finalActionCache = new WeakMap<Element, { at: number; value: boolean }>();
+  function hasFinalTurnAction(item: Element | null | undefined): boolean {
     if (!item) return false;
     const now = Date.now(), cached = _finalActionCache.get(item);
-    if (cached && now - cached.at < 500) return safeRead(() => cached.value, "");
+    if (cached && now - cached.at < 500) return safeRead(() => cached.value, "" as any);
     let value = false;
     // Only trust controls inside this response root. A parent can contain every
     // historical response, where an older Regenerate button would be a dangerous
     // false completion signal for the current still-streaming turn.
-    for (let n = item, depth = 0; n && depth < 1; n = safeRead(() => n.parentElement, null), depth++) {
+    for (let n: Element | null = item, depth = 0; n && depth < 1; n = safeRead<Element | null>(() => n!.parentElement, null), depth++) {
       try {
         for (const el of safeQueryAll(n, FINAL_TURN_ACTION_SEL)) {
           const label = `${ariaOf(el)} ${safeRead(() => el.title, "") || ""}`;
@@ -1622,10 +1680,10 @@ const RSProvider: PlazCodeProvider = (() => {
   // Notion has shown its own "finished" controls (copy / like) on this reply and
   // no Stop button or live work row is left: the turn is over, so the core can
   // release the chat box after a short re-read instead of its long default.
-  function turnComplete(item) {
+  function turnComplete(item: Element | null | undefined): boolean {
     return !!item && !stopButton() && !activeWorkflowProgress(item) && hasFinalTurnAction(item);
   }
-  function softGenerationSettled(item, reply, idleMs) {
+  function softGenerationSettled(item: Element | null | undefined, reply: unknown, idleMs: number): boolean {
     if (!item || stopButton() || activeWorkflowProgress(item)) return false;
     const readyAcknowledgement = /^(?:PLAZCODE_READY|PlazCode is ready|PlazCode ist bereit)[.!]?$/i.test(String(reply || "").replace(/[`*#]/g, "").trim());
     const finalAction = idleMs >= 450 && hasFinalTurnAction(item);
@@ -1641,19 +1699,19 @@ const RSProvider: PlazCodeProvider = (() => {
     return true;
   }
 
-  const activityFoldRules = new Map();
-  let activityFoldStyle;
-  function setActivityFolded(item, folded) {
-    const row = safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null), key = row ? "row:" + row : immutableKey(item);
+  const activityFoldRules = new Map<string, boolean>();
+  let activityFoldStyle: HTMLStyleElement | undefined;
+  function setActivityFolded(item: Element | null | undefined, folded: boolean): void {
+    const row = safeRead(() => (item as Element).getAttribute("data-agent-service-scroll-anchor"), null), key = row ? "row:" + row : immutableKey(item);
     if (!key) return;
     const selector = immutableSelector(key);
     if (activityFoldRules.has(selector) === folded) return;
     if (folded) activityFoldRules.set(selector, true); else activityFoldRules.delete(selector);
-    if (!activityFoldStyle || !safeRead(() => activityFoldStyle.isConnected, false)) { activityFoldStyle=document.createElement("style");document.documentElement.appendChild(activityFoldStyle); }
+    if (!activityFoldStyle || !safeRead(() => activityFoldStyle!.isConnected, false)) { activityFoldStyle=document.createElement("style");document.documentElement.appendChild(activityFoldStyle); }
     activityFoldStyle.textContent=[...activityFoldRules.keys()].map(selector => selector + selector + '{height:0!important;max-height:0!important;min-height:0!important;padding:0!important;border:0!important;overflow:hidden!important;opacity:0!important}').join("\n");
   }
-  function mountActivitySummary(item, node) {
-    const row = safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null);
+  function mountActivitySummary(item: Element | null | undefined, node: HTMLElement): { place: () => void; dispose: () => void } | null {
+    const row = safeRead(() => (item as Element).getAttribute("data-agent-service-scroll-anchor"), null);
     const key = row ? "row:" + row : immutableKey(item);
     if (!key) return null;
     const selector = immutableSelector(key), target = safeQuery(document, selector);
@@ -1665,38 +1723,38 @@ const RSProvider: PlazCodeProvider = (() => {
     const place = () => {
       if (!safeRead(() => node.isConnected, false)) return;
       const live = safeQuery(document, selector);
-      if (!live) { node.hidden = true;return; }
+      if (!live) { node.hidden = true; return; }
       node.hidden = false;
       const rect = safeRect(live);
       node.style.width = Math.max(160, rect.width) + "px";
       const nextHeight = Math.ceil(safeRect(node).height) + 8;
-      if (height !== nextHeight) { height = nextHeight;style.textContent = selector + '{margin-top:' + (nativeMargin + height) + 'px!important}'; }
+      if (height !== nextHeight) { height = nextHeight; style.textContent = selector + '{margin-top:' + (nativeMargin + height) + 'px!important}'; }
       const updated = safeRect(live);
-      node.style.left = updated.left + "px";node.style.top = (updated.top - height) + "px";
+      node.style.left = updated.left + "px"; node.style.top = (updated.top - height) + "px";
       node.style.visibility = updated.bottom < 0 || updated.top - height > innerHeight ? "hidden" : "visible";
     };
-    const schedule = () => { cancelAnimationFrame(frame);frame=requestAnimationFrame(place); };
-    window.addEventListener("scroll",schedule,true);window.addEventListener("resize",schedule);
-    return {place,dispose(){cancelAnimationFrame(frame);window.removeEventListener("scroll",schedule,true);window.removeEventListener("resize",schedule);style.remove();node.remove();}};
+    const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(place); };
+    window.addEventListener("scroll", schedule, true); window.addEventListener("resize", schedule);
+    return { place, dispose() { cancelAnimationFrame(frame); window.removeEventListener("scroll", schedule, true); window.removeEventListener("resize", schedule); style.remove(); node.remove(); } };
   }
 
   // ── input lock (same semantics as Arena) ─────────────────────────────────
-  let _lockWanted = false, _lockTimer = null, _selfWrite = false;
+  let _lockWanted = false, _lockTimer: number | null = null, _selfWrite = false;
   let _chunkAppendRejected = false;
-  const _lockedEditors = new Set<any>();
+  const _lockedEditors = new Set<HTMLElement>();
   const LOCK_PLACEHOLDER = "⏳ Agent working… please wait";
   const MISSING_ATTR = "__zs_missing__";
-  function saveAttrOnce(ed, attr, store) {
+  function saveAttrOnce(ed: Element, attr: string, store: string): void {
     if (safeRead(() => ed.hasAttribute(store), false)) return;
     ed.setAttribute(store, safeRead(() => ed.hasAttribute(attr), false) ? (safeRead(() => ed.getAttribute(attr), null) || "") : MISSING_ATTR);
   }
-  function restoreAttr(ed, attr, store) {
+  function restoreAttr(ed: Element, attr: string, store: string): void {
     if (!safeRead(() => ed.hasAttribute(store), false)) return;
     const v = safeRead(() => ed.getAttribute(store), null);
     if (v === MISSING_ATTR) ed.removeAttribute(attr); else ed.setAttribute(attr, v || "");
     ed.removeAttribute(store);
   }
-  function applyLockAttrs(ed) {
+  function applyLockAttrs(ed: HTMLElement | null): void {
     if (!ed) return;
     if (isTextControl(ed)) {
       _lockedEditors.add(ed);
@@ -1710,25 +1768,25 @@ const RSProvider: PlazCodeProvider = (() => {
     // The rich editor is React-owned. The cover and trusted-event capture below
     // guard it without mutating its placeholder, editability, or readonly state.
   }
-  const lockDrifted = (ed) => !!ed && isTextControl(ed) && !safeRead(() => ed.readOnly, true);
-  function enforceLock() {
+  const lockDrifted = (ed: HTMLElement | null): boolean => !!ed && isTextControl(ed) && !safeRead(() => ed.readOnly, true);
+  function enforceLock(): void {
     if (!_lockWanted) return;
     const ed = findEditorRaw();
     if (lockDrifted(ed)) applyLockAttrs(ed);
   }
   const LOCK_NAV = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown", "Escape"];
-  function onLockedInput(e) {
+  function onLockedInput(e: Event): void {
     if (!_lockWanted || _selfWrite || !e.isTrusted) return;
     const ed = findEditorRaw();
     if (!ed) return;
-    const t = e.target as Element;
-    const control = t && safeRead(() => t.closest, null) && safeClosest(t, CONTROL_SEL);
+    const t = e.target as Node | null;
+    const control = t && safeRead(() => (t as Element).closest, null) && safeClosest(t, CONTROL_SEL);
     const sendClick = e.type === "click" && control && safeRead(() => composerFrame()?.contains(control), false) && sendControlLike(control) && !stopControlLike(control);
     if (!sendClick && !(t === ed || (t && safeRead(() => t.nodeType, 0) === 1 && safeRead(() => ed.contains(t), false)))) return;
     if (e.type === "keydown") {
-      const k = e.key || "";
+      const k = (e as KeyboardEvent).key || "";
       if (LOCK_NAV.indexOf(k) !== -1) return;
-      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+      if (((e as KeyboardEvent).ctrlKey || (e as KeyboardEvent).metaKey) && !(e as KeyboardEvent).altKey) {
         const lk = k.toLowerCase();
         if (lk === "c" || lk === "a") return;
       }
@@ -1743,7 +1801,7 @@ const RSProvider: PlazCodeProvider = (() => {
     document.addEventListener("keydown", onLockedInput, true);
     document.addEventListener("beforeinput", onLockedInput, true);
   } catch {}
-  function setInputLock(on) {
+  function setInputLock(on: boolean): void {
     _lockWanted = !!on;
     const ed = findEditorRaw();
     if (on) {
@@ -1775,7 +1833,7 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── typing + sending ─────────────────────────────────────────────────────
-  function setRichText(el, v) {
+  function setRichText(el: HTMLElement, v: string): "input" | "insertText" | "rejected" {
     // Support both controlled native textareas and Notion's live rich-text DIV.
     // Native controls need their prototype value setter so React sees the edit.
     if (isTextControl(el)) {
@@ -1809,12 +1867,12 @@ const RSProvider: PlazCodeProvider = (() => {
     try {
       const selection = window.getSelection(), range = document.createRange();
       range.selectNodeContents(el);
-      selection.removeAllRanges(); selection.addRange(range);
+      selection!.removeAllRanges(); selection!.addRange(range);
       return document.execCommand("insertText", false, v) ? "insertText" : "rejected";
     } catch { return "rejected"; }
     finally { _selfWrite = false; }
   }
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
   // A large native insert can block the page for many seconds (a live Windows
   // trace: 38,089 characters froze the tab for 17 s) and Notion then renders the
   // new blocks over the following moments. Two fixed 140 ms looks therefore saw a
@@ -1822,7 +1880,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // that was still landing. Poll until the complete draft is visible twice in a
   // row, and give up only when the text has stopped changing for a size-scaled
   // window or the overall budget is spent. Never succeeds on a changed draft.
-  async function writeRichTextVerified(el, value) {
+  async function writeRichTextVerified(el: HTMLElement, value: string): Promise<boolean> {
     const route = safeRead(() => window.location.href, "");
     const started = Date.now();
     const intendedProfile = draftProfile(value);
@@ -1838,7 +1896,7 @@ const RSProvider: PlazCodeProvider = (() => {
         polls++;
         if (isStopped() || safeRead(() => window.location.href, "") !== route) break;
         const live = findEditorRaw();
-        const text = safeRead(() => live && live.isConnected, false) ? edText(live) : "";
+        const text = live && safeRead(() => live.isConnected, false) ? edText(live) : "";
         finalChars = text.length;
         if (text.length !== lastLen) { lastLen = text.length; lastChangeAt = Date.now(); }
         if (text && draftLooksWritten(text, value, intendedProfile)) {
@@ -1850,7 +1908,7 @@ const RSProvider: PlazCodeProvider = (() => {
         if (Date.now() - lastChangeAt >= stableMs) break;
       }
     } catch {}
-    const info: any = { retained, expectedChars: value.length, retainedChars: finalChars || edText(el).length,
+    const info: Record<string, unknown> = { retained, expectedChars: value.length, retainedChars: finalChars || edText(el).length,
       polls, ms: Date.now() - started };
     if (!retained) {
       // Show WHERE Notion's read-back first differs so a rewritten character is
@@ -1867,7 +1925,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // True only for an editor that is empty or holds a strict prefix of the draft we
   // just wrote (the composer was empty and locked before the write), in which case
   // clearing it destroys nothing the user typed. Anything else is left untouched.
-  async function clearOwnedPartialDraft(text) {
+  async function clearOwnedPartialDraft(text: string): Promise<boolean> {
     let ed = findEditorRaw();
     if (!ed) return false;
     const current = edText(ed);
@@ -1884,8 +1942,10 @@ const RSProvider: PlazCodeProvider = (() => {
         _selfWrite = true;
         try {
           const sel = window.getSelection(), range = document.createRange();
-          range.selectNodeContents(ed); sel.removeAllRanges(); sel.addRange(range);
-          document.execCommand("delete");
+          if (sel) {
+            range.selectNodeContents(ed); sel.removeAllRanges(); sel.addRange(range);
+            document.execCommand("delete");
+          }
         } catch {} finally { _selfWrite = false; }
       }
       if (await waitFor(() => { const e = findEditorRaw(); return !!e && !edText(e).trim(); }, 2000)) {
@@ -1895,19 +1955,20 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return false;
   }
-  function literalPasteHtml(value) {
+  function literalPasteHtml(value: unknown): string {
     const escaped = String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     return '<pre><code>' + escaped + '</code></pre>';
   }
-  async function pasteRichText(el, value, literal = true, append = false, expected = value, delay = 200, settle = 0) {
-    const route=safeRead(() => window.location.href, "");
+  async function pasteRichText(el: HTMLElement, value: string, literal = true, append = false, expected = value, delay = 200, settle = 0): Promise<boolean> {
+    const route = safeRead(() => window.location.href, "");
     // Let the controlled editor's paste handler update its document model.
     // DOM-only writes can be reverted by the next Notion React render.
     if (!window.DataTransfer || !window.ClipboardEvent) return false;
     el.focus();
     const selection = window.getSelection(), range = document.createRange();
+    if (!selection) return false;
     range.selectNodeContents(el);
-    if(append)range.collapse(false);
+    if (append) range.collapse(false);
     selection.removeAllRanges(); selection.addRange(range);
     const data = new window.DataTransfer();
     data.setData("text/plain", value);
@@ -1944,16 +2005,16 @@ const RSProvider: PlazCodeProvider = (() => {
         await sleep(delay);
         const live = findEditorRaw();
         if (safeRead(() => window.location.href, "") !== route) break;
-        hits = !!safeRead(() => live.isConnected, false) && draftLooksWritten(edText(live), expected) ? hits + 1 : 0;
+        hits = live && safeRead(() => live.isConnected, false) && draftLooksWritten(edText(live), expected) ? hits + 1 : 0;
         if (hits >= 2) { accepted = true; break; }
       }
     } else {
       await sleep(delay);
-      const current=findEditorRaw();
-      const first=!!safeRead(() => current.isConnected,false) && draftLooksWritten(edText(current),expected);
+      const current = findEditorRaw();
+      const first = current && safeRead(() => current.isConnected, false) && draftLooksWritten(edText(current), expected);
       await sleep(delay);
-      const live=findEditorRaw();
-      accepted=!!first && !isStopped() && safeRead(() => window.location.href, "")===route && !!safeRead(() => live.isConnected,false) && draftLooksWritten(edText(live),expected);
+      const live = findEditorRaw();
+      accepted = !!first && !isStopped() && safeRead(() => window.location.href, "") === route && !!(live && safeRead(() => live.isConnected, false)) && draftLooksWritten(edText(live), expected);
     }
     diag(accepted ? "notion.write.pasteAccepted" : "notion.write.pasteRejected", {
       expectedChars: value.length, retainedChars: edText(el).length, connected: safeRead(() => el.isConnected, false),
@@ -1963,40 +2024,40 @@ const RSProvider: PlazCodeProvider = (() => {
     });
     return accepted;
   }
-  async function pasteRichTextChunked(el,value,deadline=Date.now()+12000){
-    let offset=0,prefix='';
-    const route=safeRead(() => window.location.href,'');
-    while(offset<value.length){
-      const live=findEditorRaw();
-      if(live!==el){if(!safeRead(() => live.isConnected,false)||!draftLooksWritten(edText(live),prefix))return false;el=live;}
-      if(isStopped()||safeRead(() => window.location.href,'')!==route||!safeRead(() => el.isConnected, false)||Date.now()>=deadline)return false;
-      let end=Math.min(value.length,offset+600),lines=0;
-      for(let at=offset;at<end;at++)if(value[at]==='\n'&&++lines>=12){end=at+1;break;}
-      if(end<value.length&&/[\uD800-\uDBFF]/.test(value[end-1]))end--;
-      const chunk=value.slice(offset,end),before=prefix;prefix+=chunk;
-      let ok=await pasteRichText(el,chunk,true,offset>0,prefix,40,3000);
-      if(!ok&&!isStopped()&&Date.now()<deadline){
+  async function pasteRichTextChunked(el: HTMLElement, value: string, deadline = Date.now() + 12000): Promise<boolean> {
+    let offset = 0, prefix = '';
+    const route = safeRead(() => window.location.href, '');
+    while (offset < value.length) {
+      const live = findEditorRaw();
+      if (live !== el) { if (!live || !safeRead(() => live.isConnected, false) || !draftLooksWritten(edText(live), prefix)) return false; el = live; }
+      if (isStopped() || safeRead(() => window.location.href, '') !== route || !safeRead(() => el.isConnected, false) || Date.now() >= deadline) return false;
+      let end = Math.min(value.length, offset + 600), lines = 0;
+      for (let at = offset; at < end; at++) if (value[at] === '\n' && ++lines >= 12) { end = at + 1; break; }
+      if (end < value.length && /[\uD800-\uDBFF]/.test(value[end - 1])) end--;
+      const chunk = value.slice(offset, end), before = prefix; prefix += chunk;
+      let ok = await pasteRichText(el, chunk, true, offset > 0, prefix, 40, 3000);
+      if (!ok && !isStopped() && Date.now() < deadline) {
         // A paste Notion ignored leaves the editor exactly at the previous prefix.
         // Re-send that one chunk once; any other state (late/partial/changed) is not
         // retried, so text can never be appended twice.
-        const cur=findEditorRaw();
-        if(cur&&safeRead(() => cur.isConnected,false)&&(offset===0?!edText(cur).trim():draftProfile(edText(cur)).compact===draftProfile(before).compact)){
-          diag('notion.write.pasteRetry',{offset,chunkChars:chunk.length});
-          el=cur;ok=await pasteRichText(el,chunk,true,offset>0,prefix,40,3000);
+        const cur = findEditorRaw();
+        if (cur && safeRead(() => cur.isConnected, false) && (offset === 0 ? !edText(cur).trim() : draftProfile(edText(cur)).compact === draftProfile(before).compact)) {
+          diag('notion.write.pasteRetry', { offset, chunkChars: chunk.length });
+          el = cur; ok = await pasteRichText(el, chunk, true, offset > 0, prefix, 40, 3000);
         }
       }
-      if(!ok){
+      if (!ok) {
         // Remember that this editor ignored an appended chunk: later startup
         // sends in this tab go straight to the protocol file instead of waiting.
-        if(offset>0)_chunkAppendRejected=true;
-        const actual=edText(el);if(actual&&draftLooksWritten(actual,prefix))setRichText(el,'');
-        diag('notion.write.smallPasteRejected',{offset,chars:value.length,retainedChars:edText(el).length});return false;
+        if (offset > 0) _chunkAppendRejected = true;
+        const actual = edText(el); if (actual && draftLooksWritten(actual, prefix)) setRichText(el, '');
+        diag('notion.write.smallPasteRejected', { offset, chars: value.length, retainedChars: edText(el).length }); return false;
       }
-      offset=end;
+      offset = end;
     }
-    diag('notion.write.smallPasteAccepted',{chars:value.length});return draftLooksWritten(edText(el),value);
+    diag('notion.write.smallPasteAccepted', { chars: value.length }); return draftLooksWritten(edText(el), value);
   }
-  async function setRichTextChunked(el, value, chunkSize) {
+  async function setRichTextChunked(el: HTMLElement, value: string, chunkSize: number): Promise<"chunkedInsertText" | "chunkRejected"> {
     const deadline = Date.now() + 5000;
     const first = Math.min(48, chunkSize);
     const chunks = [value.slice(0, first)];
@@ -2009,7 +2070,7 @@ const RSProvider: PlazCodeProvider = (() => {
       const sel = window.getSelection(), range = document.createRange();
       range.selectNodeContents(el);
       if (i > 0) range.collapse(false);
-      sel.removeAllRanges(); sel.addRange(range);
+      sel!.removeAllRanges(); sel!.addRange(range);
       _selfWrite = true;
       let ok = false;
       try { ok = document.execCommand("insertText", false, chunks[i]); } catch {}
@@ -2030,7 +2091,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return prefix.length === value.length ? "chunkedInsertText" : "chunkRejected";
   }
-  async function waitFor(pred, timeout) {
+  async function waitFor(pred: () => boolean, timeout: number): Promise<boolean> {
     const budget = waitBudget(timeout, 100), t0 = Date.now();
     for (let poll = 0; poll < budget.polls && Date.now() - t0 < budget.ms; poll++) {
       const result = safePredicate(pred);
@@ -2039,7 +2100,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return safePredicate(pred);
   }
-  function sendReady() {
+  function sendReady(): boolean {
     if (!isAiSurface()) return false;
     const ed = findEditorRaw();
     if (!ed) return false;
@@ -2049,7 +2110,7 @@ const RSProvider: PlazCodeProvider = (() => {
     if (controlsIn(composerFrame()).some(b => sendControlLike(b) || stopControlLike(b))) return false;
     return isTextControl(ed) && edText(ed).trim() !== "";
   }
-  function normalizedDraft(text) {
+  function normalizedDraft(text: unknown): string {
     return String(text || "")
       .replace(/[\u200B-\u200D\u2060\uFEFF\uFE0E\uFE0F]/g, "")
       .replace(/\r\n?/g, "\n")
@@ -2062,18 +2123,19 @@ const RSProvider: PlazCodeProvider = (() => {
       .replace(/\s+/g, " ")
       .trim();
   }
-  function draftProfile(text) {
+  type DraftProfile = { raw: string; normalized: string; compact: string };
+  function draftProfile(text: unknown): DraftProfile {
     const raw = String(text || "");
     const normalized = normalizedDraft(raw);
     return { raw, normalized, compact: normalized.replace(/\s+/g, "") };
   }
   // Markdown-insensitive compact form: Notion renders/inserts list markers,
   // emphasis and code marks as formatting, so those characters can vanish.
-  const looseCompact = (text) => String(text || "").replace(/[\s\u200B-\u200D\u2060\uFEFF*_`#>~|\\-]/g, "");
+  const looseCompact = (text: unknown): string => String(text || "").replace(/[\s\u200B-\u200D\u2060\uFEFF*_`#>~|\\-]/g, "");
   // True when `actual` is recognisably the extension's own write of `intended`
   // with only formatting characters consumed: same opening, an in-order
   // subsequence of the intended text, few foreign characters and most content.
-  function ownTransformedDraft(actual, intended) {
+  function ownTransformedDraft(actual: unknown, intended: unknown): boolean {
     const a = looseCompact(actual), i = looseCompact(intended);
     if (a.length < 16 || i.length < 16 || a.slice(0, 16) !== i.slice(0, 16)) return false;
     let at = 0, extra = 0;
@@ -2087,14 +2149,14 @@ const RSProvider: PlazCodeProvider = (() => {
   // 1.24.11: a chunked startup paste can stop part-way (Notion accepted the
   // first chunks, then ignored an append). What remains is the opening of our
   // own locked draft, possibly reformatted; it is ours to clear.
-  function ownPartialDraft(actual, intended) {
+  function ownPartialDraft(actual: unknown, intended: unknown): boolean {
     const a = looseCompact(actual), i = looseCompact(intended);
     if (a.length < 16 || i.length < 16) return false;
     if (i.startsWith(a)) return true;
     const head = String(intended || "").slice(0, String(actual || "").length + 200);
     return ownTransformedDraft(actual, head);
   }
-  function receiptMatchesSend(receiptText, sentText) {
+  function receiptMatchesSend(receiptText: string, sentText: string): boolean {
     if (receiptText === sentText || (sentText.length >= 32 && receiptText.includes(sentText))) return true;
     // Notion shows each line as its own block (textContent has no separator)
     // and renders Markdown, so compare without whitespace/formatting marks.
@@ -2110,17 +2172,16 @@ const RSProvider: PlazCodeProvider = (() => {
   // read-back lost "- " and "**"). Only for the locked, extension-owned startup
   // draft, accept a read-back that differs from the intended text solely by
   // those representation changes. Words, identifiers and order must match.
-  const notionMarkupCompact = (text, intended) => normalizedDraft(intended
+  const notionMarkupCompact = (text: unknown, intended?: boolean): string => normalizedDraft(intended
     ? String(text || "").split(/\r\n?|\n/).map(line => line.replace(/^\s*(?:[-*+•]|\d{1,3}[.)]|#{1,6}|>|\[[ xX]?\])\s+/, "")).join("\n")
     : text).replace(/\*\*/g, "").replace(/\s+/g, "");
-  function formattedDraftMatches(actual, intended) {
+  function formattedDraftMatches(actual: unknown, intended: unknown): boolean {
     const i = notionMarkupCompact(intended, true);
     return i.length >= 16 && notionMarkupCompact(actual, false) === i;
   }
-  function draftLooksWritten(actual, intended, intendedProfile?, actualProfile?): boolean {
+  function draftLooksWritten(actual: unknown, intended: unknown, intendedProfile?: DraftProfile, actualProfile?: DraftProfile): boolean {
     const a = String(actual || ""), i = String(intended || "");
     if (a === i) return true;
-    // @ts-ignore: tolerantText is a value kept on the function itself
     if (draftLooksWritten.tolerantText != null && i === draftLooksWritten.tolerantText && formattedDraftMatches(a, i)) return true;
     if (!i) return !a;
     const ap = actualProfile || draftProfile(a);
@@ -2140,11 +2201,12 @@ const RSProvider: PlazCodeProvider = (() => {
     if (compactIntended && compactActual === compactIntended) return true;
     return false;
   }
+  draftLooksWritten.tolerantText = null as string | null;
   // Draft-only path for explicit user-clicked composer helpers. This deliberately
   // does not mark the text as an injected tool-result draft, click Send, dispatch
   // Enter, or alter attachments. The exact pre-write value is a compare-and-set
   // guard against erasing text typed after the menu first read the composer.
-  function writeDraft(value, expectedCurrent) {
+  function writeDraft(value: unknown, expectedCurrent?: unknown): { ok: boolean; reason: string } {
     if (!isAiSurface()) return { ok: false, reason: "wrong-surface" };
     const editor = getEditor();
     if (!editor || !safeRead(() => editor.isConnected, false)) return { ok: false, reason: "composer-unavailable" };
@@ -2164,7 +2226,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // wait only needs to notice React discarding/replacing that owned draft. Avoid
   // repeatedly normalizing and compacting a 50k+ script every 100ms while the
   // blue arrow enables; length plus edge/interior samples catch hydration rewrites.
-  function draftStillPresent(editor, written) {
+  function draftStillPresent(editor: HTMLElement | null | undefined, written: string): boolean {
     if (!editor || !safeRead(() => editor.isConnected, false)) return false;
     const current = edText(editor);
     if (!current) return false;
@@ -2184,7 +2246,7 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   const PENDING_DRAFT_KEY = "zs:notion:pending-injected-draft:v1";
-  function draftHash(text) {
+  function draftHash(text: unknown): string {
     let h = 2166136261;
     const s = String(text || "");
     for (let i = 0; i < s.length; i++) {
@@ -2192,22 +2254,23 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return (h >>> 0).toString(36);
   }
-  function readPendingDraft() {
+  type PendingDraftMarker = { at: number; len: number; hash: string; prefix: string };
+  function readPendingDraft(): PendingDraftMarker | null {
     try {
       const v = JSON.parse(sessionStorage.getItem(PENDING_DRAFT_KEY) || "null");
       return v && typeof v.at === "number" ? v : null;
     } catch { return null; }
   }
-  function markPendingDraft(text) {
+  function markPendingDraft(text: unknown): void {
     const s = String(text || "");
     try { sessionStorage.setItem(PENDING_DRAFT_KEY, JSON.stringify({
       at: Date.now(), len: s.length, hash: draftHash(s), prefix: s.slice(0, 80),
     })); } catch {}
   }
-  function clearPendingDraft() {
+  function clearPendingDraft(): void {
     try { sessionStorage.removeItem(PENDING_DRAFT_KEY); } catch {}
   }
-  function markerMatchesDraft(marker, text) {
+  function markerMatchesDraft(marker: PendingDraftMarker | null, text: unknown): boolean {
     const s = String(text || "");
     return !!marker && marker.len === s.length && marker.hash === draftHash(s);
   }
@@ -2215,7 +2278,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // The legacy prefix is uniquely generated by runTool; normal user drafts are
   // never cleared. The marker covers every future injected message without
   // storing a 27k command catalogue in sessionStorage.
-  function armStaleDraftCleanup() {
+  function armStaleDraftCleanup(): void {
     let tries = 0;
     const armedAt = Date.now();
     const tick = () => {
@@ -2248,7 +2311,7 @@ const RSProvider: PlazCodeProvider = (() => {
     setTimeout(tick, 0);
   }
 
-  function dispatchEnter(el) {
+  function dispatchEnter(el: Element): void {
     _selfWrite = true;
     try {
       const K = window.KeyboardEvent;
@@ -2258,7 +2321,18 @@ const RSProvider: PlazCodeProvider = (() => {
       el.dispatchEvent(new K("keyup", o));
     } finally { _selfWrite = false; }
   }
-  let _lastSend = null;
+  type LastSendState = {
+    at: number;
+    confirmUntil: number;
+    route: string;
+    users: number;
+    assistantId: string | number | null;
+    generating: boolean;
+    editor: HTMLElement;
+    text: string;
+    receipts: Set<string>;
+  };
+  let _lastSend: LastSendState | null = null;
   let _sendFailureAmbiguous = false;
   let _sendFailureDetail = "";
   // True only when typeAndSend gave up BEFORE its single commit click (the
@@ -2266,16 +2340,16 @@ const RSProvider: PlazCodeProvider = (() => {
   // Nothing reached Notion, so core may safely try that delivery once more.
   let _sendRetryable = false;
   let _sendNotTaken = false;
-  const sendFailureDetail = () => _sendFailureDetail;
-  const sendFailureAmbiguous = () => _sendFailureAmbiguous;
-  const sendRetryable = () => _sendRetryable && !_sendFailureAmbiguous;
-  const sendNotTaken = () => _sendNotTaken && !_sendFailureAmbiguous;
+  const sendFailureDetail = (): string => _sendFailureDetail;
+  const sendFailureAmbiguous = (): boolean => _sendFailureAmbiguous;
+  const sendRetryable = (): boolean => _sendRetryable && !_sendFailureAmbiguous;
+  const sendNotTaken = (): boolean => _sendNotTaken && !_sendFailureAmbiguous;
   // After the normal 15-second acknowledgement window, Notion sometimes shows
   // the submitted row (or starts replying) much later under load. When the
   // draft has already left the composer, keep watching this much longer
   // before calling the commit ambiguous. Never clicks Send again.
   const LATE_CONFIRM_MS = 30000;
-  async function waitLateConfirm(ms) {
+  async function waitLateConfirm(ms: number): Promise<boolean> {
     const until = Date.now() + ms;
     if (_lastSend) _lastSend.confirmUntil = Math.max(_lastSend.confirmUntil, until + 1000);
     for (let remaining = Math.ceil(ms / 250); remaining > 0 && Date.now() < until; remaining--) {
@@ -2285,12 +2359,12 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return sendLanded();
   }
-  function userReceipts() {
+  function userReceipts(): { key: string; text: string }[] {
     // Read semantic rows directly: a virtualizer can reuse both the row count
     // and a DOM node while changing its event key and message text.
     const rows = rawAgentRows();
     return (rows.length ? rows.filter(isUserItem) : roleItems().users).map((row) => {
-      let identity = safeRead(() => row.getAttribute("data-agent-service-scroll-anchor"), null) || safeRead(() => row.getAttribute("data-block-id"), null);
+      let identity: string | number | null | undefined = safeRead(() => row.getAttribute("data-agent-service-scroll-anchor"), null) || safeRead(() => row.getAttribute("data-block-id"), null);
       if (!identity) {
         identity = _idMap.get(row);
         if (!identity) { identity = ++_idSeq; _idMap.set(row, identity); }
@@ -2299,33 +2373,44 @@ const RSProvider: PlazCodeProvider = (() => {
       return { key: JSON.stringify([identity, text]), text };
     });
   }
-  function sendLanded() {
-    if (!_lastSend || Date.now() > _lastSend.confirmUntil) return false;
+  function sendLanded(): boolean {
+    const lastSend = _lastSend;
+    if (!lastSend || Date.now() > lastSend.confirmUntil) return false;
     // The first message turns Notion's /ai landing page into /chat. The old
     // textarea can disappear before the replacement mounts, so route change is
     // definitive proof of acceptance even while no editor exists for a moment.
-    if (_lastSend.route !== routeKey() && isAiThread()) return true;
+    if (lastSend.route !== routeKey() && isAiThread()) return true;
     const receipts = userReceipts();
-    if (receipts.some((receipt) => !_lastSend.receipts.has(receipt.key) && receiptMatchesSend(receipt.text, _lastSend.text))) return true;
+    if (receipts.some((receipt) => !lastSend.receipts.has(receipt.key) && receiptMatchesSend(receipt.text, lastSend.text))) return true;
     // Virtualized transcripts need not increase their user-row count. Like the
     // other chat providers, recognize a consumed draft and a new reply/Stop
     // state. A disappearing editor or a hydration-cleared draft alone is not
     // proof: keep those sends ambiguous and never submit the same turn twice.
     const ed = findEditorRaw();
     if (ed && !edText(ed).trim()) {
-      const freshReply = lastAssistantId() !== _lastSend.assistantId && !!lastAssistant();
-      if ((!_lastSend.generating && isHardGenerating()) || freshReply) return true;
+      const freshReply = lastAssistantId() !== lastSend.assistantId && !!lastAssistant();
+      if ((!lastSend.generating && isHardGenerating()) || freshReply) return true;
     }
     return false;
   }
-  async function typeAndSend(text, images, options: any = {}) {
-    // @ts-ignore: tolerantText is a value kept on the function itself
+  type TypeAndSendOptions = {
+    protocolFile?: boolean;
+    userPrompt?: boolean;
+    attempts?: number;
+    editorWaitMs?: number;
+    readyWaitMs?: number;
+    sentWaitMs?: number;
+    retryDelayMs?: number;
+    lateConfirmMs?: number;
+    [key: string]: unknown;
+  };
+  async function typeAndSend(text: string, images?: ImagePayloadList | null, rawOptions: object = {}): Promise<boolean> {
     const outer = draftLooksWritten.tolerantText == null;
-    try { return await typeAndSendOnce(text, images, options); }
-    // @ts-ignore: tolerantText is a value kept on the function itself
+    try { return await typeAndSendOnce(text, images, rawOptions); }
     finally { if (outer) draftLooksWritten.tolerantText = null; }
   }
-  async function typeAndSendOnce(text, images, options: any = {}) {
+  async function typeAndSendOnce(text: string, images?: ImagePayloadList | null, rawOptions: object = {}): Promise<boolean> {
+    const options = rawOptions as TypeAndSendOptions;
     _sendFailureAmbiguous = false;
     _sendFailureDetail = "";
     _sendRetryable = false;
@@ -2338,7 +2423,7 @@ const RSProvider: PlazCodeProvider = (() => {
     // and indexing delay of a file. Verify it across renders before committing.
     // Clipboard pastes still use the exact file fallback for large payloads.
     const initialEditor = findEditorRaw();
-    let verifiedNativeEditor = null;
+    let verifiedNativeEditor: HTMLElement | null = null;
     if (!options.protocolFile && initialEditor && !isTextControl(initialEditor) &&
         (text.length > 2500 || text.split("\n").length > 60)) {
       if (hasPendingAttachment() && !_ownedAttachment) {
@@ -2350,7 +2435,6 @@ const RSProvider: PlazCodeProvider = (() => {
       if (startupPayload && _lockWanted && !hasPendingAttachment() && !edText(initialEditor) &&
           !(Array.isArray(images) && images.length) && text.length <= 131072) {
         // Only the startup handshake text, never ordinary tool results/code.
-        // @ts-ignore: tolerantText is a value kept on the function itself
         if (text.startsWith("⟦RS-SYS⟧") || /^Output of ['"]list_commands['"]:/.test(text)) draftLooksWritten.tolerantText = text;
         if (await writeRichTextVerified(initialEditor, text)) verifiedNativeEditor = findEditorRaw();
         // Some Notion builds reject native bulk writes and never finish file
@@ -2414,13 +2498,13 @@ const RSProvider: PlazCodeProvider = (() => {
         ? `Follow-up request\nThe complete request is in the attached file ${name}. It is my own message, attached as a text file only because it is too long to paste. Please read it and continue the current task.`
         : `${lead}\nThe complete PlazCode message is in the attached file ${name}. It was attached as a plain text file only because it is too long to paste into the chat. ${resultFile ? "It is the output of the command you requested earlier in this chat. Please read it and continue the current task using that output; do not restart it." : "It is my PlazCode connection message: the available command list and my project preferences. Please read it and reply as it describes. Do not claim readiness until the enclosed startup handshake is complete."}`;
       diag("notion.protocol.file", { chars:text.length, filename:name });
-      const sent = await typeAndSend(instruction, null, { ...options, protocolFile:true });
+      const sent: boolean = await typeAndSend(instruction, null, { ...options, protocolFile:true });
       if (!sent && _ownedAttachment) clearAttachments();
       return sent;
       }
     }
     const deadline = Date.now() + 30000;
-    let ownedDraft = null;
+    let ownedDraft: { editor: HTMLElement; text: string } | null = null;
     const intendedProfile = draftProfile(text);
     const hasImages = Array.isArray(images) && images.length > 0;
     const hasAttachments = hasImages || !!options.protocolFile;
@@ -2448,14 +2532,15 @@ const RSProvider: PlazCodeProvider = (() => {
         break; // repeating the same full wait cannot send without a composer
       }
       const chunkSize = [256, 48, 16][Math.min(attempt, 2)];
-      let writeMethod;
+      let writeMethod: string;
       const largePaste=text.length>2500||text.split('\n').length>60;
       // Literal HTML code protects internal protocol payloads. Human follow-ups
       // use the site's ordinary plain-text paste so they are not red code pills.
-      const retainedNative = verifiedNativeEditor === editor && draftLooksWritten(edText(editor), text) && !hasPendingAttachment();
-      let pasted = retainedNative || (!isTextControl(editor) && await pasteRichText(editor, text, !options.userPrompt));
-      if (!pasted && !largePaste && !isTextControl(editor) && Date.now() < deadline) pasted = await pasteRichText(editor, text, false);
-      if (_lockWanted && safeRead(() => editor.isConnected, false)) ownedDraft = { editor, text: edText(editor) };
+      const firstEditor = editor;
+      const retainedNative = verifiedNativeEditor === firstEditor && draftLooksWritten(edText(firstEditor), text) && !hasPendingAttachment();
+      let pasted = retainedNative || (!isTextControl(firstEditor) && await pasteRichText(firstEditor, text, !options.userPrompt));
+      if (!pasted && !largePaste && !isTextControl(firstEditor) && Date.now() < deadline) pasted = await pasteRichText(firstEditor, text, false);
+      if (_lockWanted && safeRead(() => firstEditor.isConnected, false)) ownedDraft = { editor: firstEditor, text: edText(firstEditor) };
       if (Date.now() >= deadline) { diag("notion.tas.deadline", { attempt }); break; }
       if (pasted) {
         writeMethod = retainedNative ? "nativeVerified" : "paste";
@@ -2496,7 +2581,8 @@ const RSProvider: PlazCodeProvider = (() => {
       // /ai editor is still hydrating (live trace: 12,940 chars → 0). Retry as
       // soon as that happens rather than burning the full eight-second enable
       // window before the second, successful write.
-      await waitFor(() => sendReady() || !draftStillPresent(editor, actualDraft), readyWaitMs);
+      const activeEditor = editor;
+      await waitFor(() => sendReady() || !draftStillPresent(activeEditor, actualDraft), readyWaitMs);
       const ready = sendReady();
       if (!ready) {
         const frame = composerFrame();
@@ -2642,12 +2728,12 @@ const RSProvider: PlazCodeProvider = (() => {
     diag("notion.tas.failed", { path: location.pathname, draftCleared, retryable: _sendRetryable });
     return false;
   }
-  async function recoverInternalError(text) {
+  async function recoverInternalError(text: unknown): Promise<boolean> {
     // A short, explicit recovery turn can succeed when the original large result
     // failed to process/send. It uses the same verified single-message path, so
     // it cannot overlap a still-running Studio call or synthesize duplicate sends.
     diag("notion.recoveryNudge.start", { chars: String(text || "").length });
-    const sent = await typeAndSend(text, null, {
+    const sent = await typeAndSend(text as string, null, {
       attempts: 1, editorWaitMs: 1200, readyWaitMs: 3000,
       sentWaitMs: 2200, retryDelayMs: 0,
     });
@@ -2655,7 +2741,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return !!sent;
   }
 
-  function stopGeneration() {
+  function stopGeneration(): boolean {
     const sb = stopButton();
     if (sb) {
       _selfWrite = true;
@@ -2669,16 +2755,17 @@ const RSProvider: PlazCodeProvider = (() => {
   // /ai is Notion's official new-chat landing route; /chat is a persisted
   // thread. Starting from /chat or a normal /p page must navigate to /ai first.
   const PENDING_START_KEY = "zs:notion:pending-start:v1";
-  function readPendingStart() {
+  type PendingStartState = { at: number; navs?: number; lastNav?: number; reason?: string };
+  function readPendingStart(): PendingStartState | null {
     try {
       const v = JSON.parse(sessionStorage.getItem(PENDING_START_KEY) || "null");
       return v && typeof v.at === "number" ? v : null;
     } catch { return null; }
   }
-  function writePendingStart(v) {
+  function writePendingStart(v: PendingStartState): void {
     try { sessionStorage.setItem(PENDING_START_KEY, JSON.stringify(v)); } catch {}
   }
-  function clearPendingStart() {
+  function clearPendingStart(): void {
     try { sessionStorage.removeItem(PENDING_START_KEY); } catch {}
   }
   // Labels of Notion's own "start a new AI chat" controls. Matched against the
@@ -2690,21 +2777,21 @@ const RSProvider: PlazCodeProvider = (() => {
   // Notion's router target for a fresh chat. /ai is the older landing; /chat is
   // the current one. A hard navigation tries /ai first (still served by every
   // bundle seen so far, redirecting where needed) and falls back to /chat.
-  function cleanAiUrls() {
+  function cleanAiUrls(): string[] {
     return [new URL("/ai", location.origin).href, new URL("/chat", location.origin).href];
   }
-  function isCleanAiHref(url) {
+  function isCleanAiHref(url: URL): boolean {
     if (url.origin !== location.origin || url.hash) return false;
     const path = url.pathname.replace(/\/+$/, "") || "/";
     if (path !== "/ai" && path !== "/chat") return false;
     for (const [k, v] of url.searchParams) if (LAUNCH_PAYLOAD_PARAM_RE.test(k) || (THREAD_PARAM_RE.test(k) && v)) return false;
     return true;
   }
-  function openCleanAi(attempt = 0) {
+  function openCleanAi(attempt = 0): void {
     // Let Notion's own router open its new-chat page when it exposes a clean
     // link. A hard navigation can be intercepted by a failing service-worker
     // fetch even while the current workspace page is already running.
-    for (const link of safeQueryAll(document, "a[href]")) {
+    for (const link of safeQueryAll<HTMLAnchorElement>(document, "a[href]")) {
       try {
         if (safeRead(() => link.target, "") === "_blank") continue;
         const url = new URL(link.href, location.href);
@@ -2736,24 +2823,24 @@ const RSProvider: PlazCodeProvider = (() => {
     try { location.assign(target); }
     catch { try { location.href = target; } catch {} }
   }
-  function navigateToFreshAi(reason) {
+  function navigateToFreshAi(reason?: string): { ready: boolean; navigating: boolean } {
     const prev = readPendingStart();
     const now = Date.now();
-    const state = {
+    const state: PendingStartState = {
       at: prev && now - prev.at < 120000 ? prev.at : now,
       navs: (prev && prev.navs || 0) + 1,
       lastNav: now,
       reason: reason || "startup",
     };
     writePendingStart(state);
-    diag("notion.start.navigate", { from: routeKey(), to: state.navs > 1 ? "/chat" : "/ai", navs: state.navs, reason });
-    openCleanAi(state.navs - 1);
+    diag("notion.start.navigate", { from: routeKey(), to: (state.navs || 0) > 1 ? "/chat" : "/ai", navs: state.navs, reason });
+    openCleanAi((state.navs || 1) - 1);
     return { ready: false, navigating: true };
   }
   // Called by core BEFORE it injects anything. It guarantees the target is the
   // empty /ai landing page, so Start can never write into a normal Notion doc or
   // reuse an old AI conversation.
-  async function prepareSessionStart(reason) {
+  async function prepareSessionStart(reason?: string): Promise<{ ready: boolean; navigating?: boolean; editor?: boolean; error?: string }> {
     if (!isCleanAiLanding() || !chatIsEmpty()) {
       const why = isAiLanding() ? "clear-launch-payload" : (reason || "startup");
       diag("notion.start.requireCleanLanding", {
@@ -2768,7 +2855,7 @@ const RSProvider: PlazCodeProvider = (() => {
     diag("notion.start.prepared", { ready: !!state.ready, path: location.pathname });
     return state;
   }
-  function armPendingAutoStart() {
+  function armPendingAutoStart(): void {
     if (!readPendingStart()) return;
     let fired = false;
     const startedAt = Date.now();
@@ -2818,12 +2905,13 @@ const RSProvider: PlazCodeProvider = (() => {
     setTimeout(tick, 0);
   }
 
-  const chatIsEmpty = () => !isAiSurface() || allItems().length === 0;
-  const isFreshChat = () => isAiLanding() && chatIsEmpty() && !!findEditorRaw();
+  const chatIsEmpty = (): boolean => !isAiSurface() || allItems().length === 0;
+  const isFreshChat = (): boolean => isAiLanding() && chatIsEmpty() && !!findEditorRaw();
   // Keep the bar in #rs-root rather than Notion's React tree. A temporary fixed
   // anchor is used only during the lazy /ai or /chat composer mount; normal
   // pages, databases, settings, login, and every non-AI route return no anchor.
-  let _navBarAnchor = null, _navCardAt = 0, _navCardRect = null;
+  type NavCardRect = { left: number; top: number; width: number; height: number };
+  let _navBarAnchor: HTMLElement | null = null, _navCardAt = 0, _navCardRect: NavCardRect | null = null;
   // Geometry only: when the composer is on screen but has not been confirmed
   // as the typing target yet (slow mount, unfamiliar placeholder, layouts with
   // a sidebar or side panel), seat the temporary anchor on that visible card
@@ -2831,13 +2919,13 @@ const RSProvider: PlazCodeProvider = (() => {
   // Typing still waits for findEditorRaw's full evidence.
   // Notion's send button carries stable test ids even when its placeholder text
   // changes. Seat the bar on the card around it so it sits on the chat box.
-  function notionSendCardRect() {
+  function notionSendCardRect(): NavCardRect | null {
     const vh = window.innerHeight || 0;
     const sends = safeQueryAll(document, '[data-testid="agent-chat-send-button"], [data-testid="agent-send-message-button"], [aria-label="Submit AI message"]');
     for (const b of sends) {
       if (safeRead(() => b.closest, null) && safeClosest(b, '[id^="rs-"]')) continue;
-      for (let n = safeRead(() => b.parentElement, null), i = 0; n && n !== document.body && i < 8; n = safeRead(() => n.parentElement, null), i++) {
-        let r; try { r = safeRect(n); } catch { break; }
+      for (let n: HTMLElement | null = safeRead(() => b.parentElement, null), i = 0; n && n !== document.body && i < 8; n = safeRead(() => n!.parentElement, null), i++) {
+        let r: SafeRect; try { r = safeRect(n); } catch { break; }
         if (!r || r.width < 260 || r.height < 40 || r.height > 360 || r.bottom < vh * 0.3) continue;
         if (!safeQuery(n, '[contenteditable="true"], textarea, [role="textbox"]')) continue;
         return { left: r.left, top: r.top, width: r.width, height: r.height };
@@ -2845,33 +2933,33 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return null;
   }
-  function mainColumnCss() {
+  function mainColumnCss(): string | null {
     const main = safeQuery(document, 'main, [role="main"], .notion-frame');
-    let r = null; try { r = main && safeRect(main); } catch {}
+    let r: SafeRect | null = null; try { r = main && safeRect(main); } catch {}
     if (!r || r.width < 320) return null;
     const w = Math.min(560, r.width - 24);
     return "position:fixed;left:" + Math.round(r.left + r.width / 2) + "px;bottom:18px;transform:translateX(-50%);" +
       "width:" + Math.round(w) + "px;height:46px;box-sizing:border-box;pointer-events:none;opacity:0;z-index:-1";
   }
-  function visibleComposerCardRect() {
+  function visibleComposerCardRect(): NavCardRect | null {
     const now = Date.now();
     if (_navCardAt && now - _navCardAt < 300) return _navCardRect;
     _navCardAt = now; _navCardRect = null;
     const vh = window.innerHeight || 0;
-    let best = null, bestScore = -Infinity, bestBottom = -Infinity;
+    let best: HTMLElement | null = null, bestScore = -Infinity, bestBottom = -Infinity;
     for (const e of editorCandidates()) {
-      let r; try { r = safeRect(e); } catch { continue; }
+      let r: SafeRect; try { r = safeRect(e); } catch { continue; }
       if (!r || !r.width || !r.height || r.bottom < vh * 0.4 || r.top > vh) continue;
       const score = editorHintScore(e);
       if (score > bestScore || (score === bestScore && r.bottom > bestBottom)) { best = e; bestScore = score; bestBottom = r.bottom; }
     }
     if (!best || bestScore < 5) { _navCardRect = notionSendCardRect(); return _navCardRect; }
-    for (let n = safeRead(() => best.parentElement, null), i = 0; n && n !== document.body && i < 7; n = safeRead(() => n.parentElement, null), i++) {
-      let r; try { r = safeRect(n); } catch { break; }
+    for (let n: HTMLElement | null = safeRead(() => best.parentElement, null), i = 0; n && n !== document.body && i < 7; n = safeRead(() => n!.parentElement, null), i++) {
+      let r: SafeRect; try { r = safeRect(n); } catch { break; }
       if (!r || r.width < 260 || r.height < 40 || r.height > 360) continue;
       const controls = safeRead(() => n.querySelectorAll, null) ? [...safeQueryAll(n, CONTROL_SEL)] : [];
       if (controls.some((b) => SEND_RE.test(ariaOf(b)) || STOP_RE.test(ariaOf(b)) ||
-          SEND_RE.test(safeRead(() => b.getAttribute("data-testid"), null) || "") || SEND_RE.test(safeRead(() => b.title, "") || "") || safeRead(() => b.type, "") === "submit")) {
+          SEND_RE.test(safeRead(() => b.getAttribute("data-testid"), null) || "") || SEND_RE.test(safeRead(() => b.title, "") || "") || safeRead(() => (b as HTMLButtonElement).type, "") === "submit")) {
         _navCardRect = { left: r.left, top: r.top, width: r.width, height: r.height };
         return _navCardRect;
       }
@@ -2882,17 +2970,17 @@ const RSProvider: PlazCodeProvider = (() => {
   const NAV_ANCHOR_CENTERED = "position:fixed;left:50%;bottom:18px;transform:translateX(-50%);" +
     "width:min(560px,calc(100vw - 24px));height:46px;box-sizing:border-box;" +
     "pointer-events:none;opacity:0;z-index:-1";
-  function seatNavAnchor(a) {
+  function seatNavAnchor(a: HTMLElement): HTMLElement {
     let css = NAV_ANCHOR_CENTERED;
     try { css = mainColumnCss() || css; } catch {}
-    let card = null; try { card = visibleComposerCardRect(); } catch {}
+    let card: NavCardRect | null = null; try { card = visibleComposerCardRect(); } catch {}
     if (card) css = "position:fixed;left:" + Math.round(card.left) + "px;top:" + Math.round(card.top) + "px;width:" +
       Math.round(card.width) + "px;height:" + Math.round(card.height) + "px;box-sizing:border-box;pointer-events:none;opacity:0;z-index:-1";
     if (a.dataset.rsSeat !== css) { a.dataset.rsSeat = css; a.style.cssText = css; }
     return a;
   }
-  function standaloneNavAnchor() {
-    if (_navBarAnchor && safeRead(() => _navBarAnchor.isConnected, false)) return seatNavAnchor(_navBarAnchor);
+  function standaloneNavAnchor(): HTMLElement {
+    if (_navBarAnchor && safeRead(() => _navBarAnchor!.isConnected, false)) return seatNavAnchor(_navBarAnchor);
     const a = document.createElement("div");
     a.id = "zs-notion-nav-anchor";
     a.setAttribute("aria-hidden", "true");
@@ -2905,14 +2993,14 @@ const RSProvider: PlazCodeProvider = (() => {
   }
   // Reserve a real composer strip instead of floating over the last reply.
   // Only our stylesheet changes; React-owned DOM and editor attributes stay intact.
-  let barSpaceStyle = null, barSpaceFrame = null, barSpacePadding = 0, barSpaceHeight = 0;
-  function reserveBarSpace(frame, pixels) {
+  let barSpaceStyle: HTMLStyleElement | null = null, barSpaceFrame: Element | null = null, barSpacePadding = 0, barSpaceHeight = 0;
+  function reserveBarSpace(frame: Element | null | undefined, pixels: number): boolean {
     if (!frame || frame === _navBarAnchor || !safeRead(() => frame.isConnected, false)) {
       if (barSpaceStyle) barSpaceStyle.textContent = "";
       barSpaceFrame = null;
       return false;
     }
-    if (!barSpaceStyle || !safeRead(() => barSpaceStyle.isConnected, false)) {
+    if (!barSpaceStyle || !safeRead(() => barSpaceStyle!.isConnected, false)) {
       barSpaceStyle = document.createElement("style");document.documentElement.appendChild(barSpaceStyle);
     }
     if (barSpaceFrame !== frame) {
@@ -2922,17 +3010,17 @@ const RSProvider: PlazCodeProvider = (() => {
       barSpaceHeight = safeRect(frame).height;
       barSpaceFrame = frame;
     }
-    const parts = [];
-    for (let node = frame; node && node !== document.documentElement; node = safeRead(() => node.parentElement, null)) {
+    const parts: string[] = [];
+    for (let node: Element | null = frame; node && node !== document.documentElement; node = safeRead<Element | null>(() => node!.parentElement, null)) {
       let index = 1;
-      for (let sibling = safeRead(() => node.previousElementSibling, null); sibling; sibling = safeRead(() => sibling.previousElementSibling, null)) if (safeRead(() => sibling.tagName, "") === safeRead(() => node.tagName, "")) index++;
+      for (let sibling: Element | null = safeRead(() => node.previousElementSibling, null); sibling; sibling = safeRead<Element | null>(() => sibling!.previousElementSibling, null)) if (safeRead(() => sibling.tagName, "") === safeRead(() => node.tagName, "")) index++;
       parts.unshift(safeRead(() => node.tagName, "").toLowerCase() + ":nth-of-type(" + index + ")");
     }
     const rule = "html>" + parts.join(">") + "{box-sizing:border-box!important;padding-top:" + (barSpacePadding + pixels) + "px!important;min-height:" + (barSpaceHeight + pixels) + "px!important}";
-    if (safeRead(() => barSpaceStyle.textContent, "") !== rule) barSpaceStyle.textContent = rule;
+    if (safeRead(() => barSpaceStyle!.textContent, "") !== rule) barSpaceStyle.textContent = rule;
     return true;
   }
-  function barAnchor() {
+  function barAnchor(): Element | null {
     if (isAiSurface()) {
       const frame = composerFrame();
       if (frame) {
@@ -2948,7 +3036,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return null;
   }
   // Cover a bounded composer card, never an ancestor that can grow over the page.
-  const coverTarget = () => {
+  const coverTarget = (): Element | null => {
     const editor = getEditor(), frame = composerFrame();
     if (stopButton()) return editor;
     if (editor && frame && safeRead(() => frame.contains(editor), false)) {
@@ -2957,15 +3045,15 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return editor;
   };
-  const modeWarning = () => null;
-  const captchaPresent = () => false;
+  const modeWarning = (): null => null;
+  const captchaPresent = (): boolean => false;
   // Settings opens above the AI chat without changing its route. Do not let
   // the floating bar cover settings actions, including nested model controls.
-  function overlayBlocking() {
-    const shown = (node) => {
+  function overlayBlocking(): boolean {
+    const shown = (node: Element | null | undefined): boolean => {
       if (!node || !safeRead(() => node.isConnected, false) || safeClosest(node, '[id^="rs-"], [aria-hidden="true"]')) return false;
-      for (let el = node; el; el = safeRead(() => el.parentElement, null)) {
-        if (safeRead(() => el.hidden, true)) return false;
+      for (let el: Element | null = node; el; el = safeRead<Element | null>(() => el!.parentElement, null)) {
+        if (safeRead(() => (el as HTMLElement).hidden, true)) return false;
         const style = safeStyle(el);
         if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") return false;
       }
@@ -2979,31 +3067,32 @@ const RSProvider: PlazCodeProvider = (() => {
       const label = [safeRead(() => dialog.getAttribute("aria-label"), null), safeRead(() => dialog.getAttribute("data-testid"), null)].filter(Boolean).join(" ");
       if (/\bsettings\b|restrict models from notion agent/i.test(label)) return true;
       const labelledBy = (safeRead(() => dialog.getAttribute("aria-labelledby"), null) || "").split(/\s+/).filter(Boolean);
-      const titles = labelledBy.map(id => safeRead(() => document.getElementById(id), null)).concat(Array.from(safeQueryAll(dialog, 'h1, h2, h3, [role="heading"]')));
+      const titles = labelledBy.map<Element | null>(id => safeRead(() => document.getElementById(id), null)).concat(Array.from(safeQueryAll<Element>(dialog, 'h1, h2, h3, [role="heading"]')));
       if (titles.some(title => shown(title) && /^(?:settings|preferences|restrict models from notion agent)$/i.test(_txt(title)))) return true;
     }
     return false;
   }
-  const turnHalted = () => false;
-  const findContinueBtn = () => null;
-  const clickContinueBtn = () => false;
-  const scanError = () => null;
-  const isTooLongMsg = () => false;
-  const isBusyMsg = () => false;
+  const turnHalted = (): boolean => false;
+  const findContinueBtn = (): Element | null => null;
+  const clickContinueBtn = (): boolean => false;
+  const scanError = (): string | null => null;
+  const isTooLongMsg = (): boolean => false;
+  const isBusyMsg = (): boolean => false;
   // ── Browser screenshot attachment ────────────────────────────────────────
   // Notion AI accepts images through a composer-scoped file input. Stage only
   // bounded browser captures, prove that a new preview mounted and finished
   // uploading, and remove only previews owned by this provider transaction if
   // the message is stopped/rejected before submission.
-  let _attachedImages = null;
+  type OwnedAttachment = { id: number; files: File[]; names: string[]; nodes: HTMLElement[] };
+  let _attachedImages: ImagePayloadList | File[] | null = null;
   let _imageSeq = 0;
-  let _ownedAttachment = null;
+  let _ownedAttachment: OwnedAttachment | null = null;
   // Why the last attachFiles() call failed; only upload timeouts are retried.
   let _lastAttachFailure = "";
   const PROTOCOL_ATTACH_ATTEMPTS = 4;
   const PROTOCOL_RETRY_DELAYS = [1500, 4000, 10000];
   const PROTOCOL_RETRYABLE = new Set(["preview", "busy"]);
-  function removeNamedAttachments(names) {
+  function removeNamedAttachments(names: string[]): void {
     // Name-scoped: unique PlazCode filenames never match a user's attachment.
     const nodes = attachmentNodes().filter((node) => {
       const hay = `${_txt(node)} ${ariaOf(node)} ${safeRead(() => node.getAttribute, null) && (safeRead(() => node.getAttribute("title"), null) || "")}`;
@@ -3014,14 +3103,14 @@ const RSProvider: PlazCodeProvider = (() => {
     _ownedAttachment = { ...owned, names: [...new Set([...(owned.names || []), ...names])], nodes: [...new Set([...(owned.nodes || []), ...nodes])] };
     clearAttachments();
   }
-  function attachmentScope() {
+  function attachmentScope(): HTMLElement | null {
     const frame = composerFrame(), editor = findEditorRaw();
     if (!frame || !editor) return frame;
     let scope = frame;
     const width = safeRect(frame).width;
     // File cards can be siblings of the smaller editor/send-control frame.
     // Expand only within the local composer, never into transcript history.
-    for (let parent = safeRead(() => frame.parentElement, null), depth = 0; parent && parent !== document.body && depth < 3; parent = safeRead(() => parent.parentElement, null), depth++) {
+    for (let parent: HTMLElement | null = safeRead(() => frame.parentElement, null), depth = 0; parent && parent !== document.body && depth < 3; parent = safeRead(() => parent!.parentElement, null), depth++) {
       const rect = safeRect(parent);
       if (rect.height > 640 || rect.width > width + 160 || rect.width < width - 48 ||
           safeQuery(parent, "[data-agent-service-scroll-anchor]") ||
@@ -3030,11 +3119,11 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return scope;
   }
-  const attachmentFileInput = (textFile = false) => {
+  const attachmentFileInput = (textFile = false): HTMLInputElement | null => {
     const frame = attachmentScope();
     if (!frame) return null;
-    const local = [...safeQueryAll(frame, 'input[type="file"]')];
-    const candidates = local.length ? local : [...safeQueryAll(document, 'input[type="file"]')].filter((input) => {
+    const local = [...safeQueryAll<HTMLInputElement>(frame, 'input[type="file"]')];
+    const candidates = local.length ? local : [...safeQueryAll<HTMLInputElement>(document, 'input[type="file"]')].filter((input) => {
       if (safeRead(() => input.closest, null) && safeClosest(input, "#rs-root")) return false;
       const accept = (safeRead(() => input.getAttribute("accept"), null) || "").toLowerCase();
       if (textFile ? /(?:text\/plain|\.txt|\*\/\*)/.test(accept) : /(?:image|\.png|\.jpe?g|\.webp)/.test(accept)) return true;
@@ -3042,10 +3131,10 @@ const RSProvider: PlazCodeProvider = (() => {
       const r = safeRead(() => input.getBoundingClientRect, null) ? safeRect(input) : null;
       return !r || r.bottom >= innerHeight * 0.45;
     });
-    if(textFile) return candidates.find(input=>{const accept=(safeRead(() => input.getAttribute("accept"), null)||"").toLowerCase();return !accept || /(?:text\/plain|\.txt|\*\/\*)/.test(accept);}) || null;
+    if (textFile) return candidates.find(input => { const accept = (safeRead(() => input.getAttribute("accept"), null) || "").toLowerCase(); return !accept || /(?:text\/plain|\.txt|\*\/\*)/.test(accept); }) || null;
     return candidates.find((input) => /(?:image|\.png|\.jpe?g|\.webp)/i.test(safeRead(() => input.getAttribute("accept"), null) || "")) || candidates[0] || null;
   };
-  const attachmentNodes = () => {
+  const attachmentNodes = (): HTMLElement[] => {
     const frame = attachmentScope();
     if (!frame) return [];
     const selector = [
@@ -3055,9 +3144,9 @@ const RSProvider: PlazCodeProvider = (() => {
       "[aria-label*='remove image' i]",
     ].join(",");
     try {
-      const nodes=[...safeQueryAll(frame, selector)];
+      const nodes = [...safeQueryAll(frame, selector)];
       // Plain-text attachment cards can have no image or stable test ID.
-      let scanned=0;
+      let scanned = 0;
       for (const node of safeQueryAll(frame, "span, div, [role='listitem']")) {
         if (++scanned > 160) break;
         if ((safeRead(() => node.closest, null) && safeClosest(node, "#rs-root")) || safeRead(() => node.contains(findEditorRaw()), false)) continue;
@@ -3070,8 +3159,8 @@ const RSProvider: PlazCodeProvider = (() => {
       return [...new Set(nodes)];
     } catch { return []; }
   };
-  const hasPendingAttachment = () => attachmentNodes().length > 0;
-  const attachmentBusy = () => {
+  const hasPendingAttachment = (): boolean => attachmentNodes().length > 0;
+  const attachmentBusy = (): boolean => {
     const frame = attachmentScope();
     if (!frame) return false;
     try {
@@ -3082,7 +3171,7 @@ const RSProvider: PlazCodeProvider = (() => {
             `${ariaOf(node)} ${safeRead(() => node.getAttribute("data-testid"), null) || ""} ${_txt(safeRead(() => node.parentElement, null)).slice(0, 160)}`)));
     } catch { return false; }
   };
-  function screenshotFile(img, index) {
+  function screenshotFile(img: ImagePayload, index: number): File {
     const mime = String(img && img.mimeType || "image/jpeg").toLowerCase();
     if (!/^image\/(?:jpeg|png|webp)$/.test(mime)) throw new Error("unsupported screenshot MIME type");
     const encoded = String(img && img.data || "");
@@ -3100,15 +3189,15 @@ const RSProvider: PlazCodeProvider = (() => {
     const ext = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
     return new File([bytes], `plazcode_web_capture_${Date.now()}_${index}.${ext}`, { type: mime });
   }
-  async function attachImages(images, options: any = {}) {
+  async function attachImages(images: ImagePayloadList, options: { stopped?: () => boolean; waitForText?: boolean; preferDrop?: boolean } = {}): Promise<boolean> {
     if (!Array.isArray(images) || !images.length || images.length > 4) return false;
-    let files;
-    try { files=images.map(screenshotFile); } catch { return false; }
-    const attached=await attachFiles(files,options);
-    if (attached) _attachedImages=images;
+    let files: File[];
+    try { files = images.map(screenshotFile); } catch { return false; }
+    const attached = await attachFiles(files, options);
+    if (attached) _attachedImages = images;
     return attached;
   }
-  async function attachFiles(files, options: any = {}) {
+  async function attachFiles(files: File[], options: { stopped?: () => boolean; waitForText?: boolean; preferDrop?: boolean } = {}): Promise<boolean> {
     const stopped = typeof options.stopped === "function" ? options.stopped : isStopped;
     _lastAttachFailure = "unstaged";
     if (!isAiSurface() || !Array.isArray(files) || !files.length || files.length > 4 || stopped()) return false;
@@ -3122,18 +3211,18 @@ const RSProvider: PlazCodeProvider = (() => {
     if (!frame) return false;
     const before = new Set(attachmentNodes());
     const dt = new DataTransfer();
-    const names = [];
+    const names: string[] = [];
     try {
       files.forEach((file) => {
         names.push(file.name);
         dt.items.add(file);
       });
     } catch (error) {
-      diag("notion.attach.fileError", { error: String(error && error.message || error) });
+      diag("notion.attach.fileError", { error: String(error && (error as { message?: unknown }).message || error) });
       return false;
     }
     if (dt.items.length !== files.length || stopped()) return false;
-    const textFile=files.some(file=>file.type==="text/plain");
+    const textFile = files.some(file => file.type === "text/plain");
     let input = options.preferDrop && typeof window.DragEvent === "function" ? null : attachmentFileInput(textFile);
     if (!input && !options.waitForText) {
       // Protocol files use the existing direct-drop path without opening the general plus menu.
@@ -3161,7 +3250,7 @@ const RSProvider: PlazCodeProvider = (() => {
         } finally { _selfWrite = false; }
         staged = true; mode = "file-input";
       } catch (error) {
-        diag("notion.attach.inputError", { error: String(error && error.message || error) });
+        diag("notion.attach.inputError", { error: String(error && (error as { message?: unknown }).message || error) });
       }
     }
     if (!staged) {
@@ -3171,7 +3260,7 @@ const RSProvider: PlazCodeProvider = (() => {
         // Native DragEvent fields cross Chrome's isolated-world boundary;
         // expando properties on a generic Event are invisible to page handlers.
         if (typeof window.DragEvent !== "function") throw new Error("Native file-drop events unavailable");
-        const dispatchDropEvent = (type) => {
+        const dispatchDropEvent = (type: string) => {
           const event = new window.DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt });
           if (!event.dataTransfer) throw new Error("Native file-drop data unavailable");
           _selfWrite = true;
@@ -3185,7 +3274,7 @@ const RSProvider: PlazCodeProvider = (() => {
         }
         staged = true; mode = "composer-drop";
       } catch (error) {
-        diag("notion.attach.dropError", { error: String(error && error.message || error) });
+        diag("notion.attach.dropError", { error: String(error && (error as { message?: unknown }).message || error) });
       }
     }
     if (!staged) return false;
@@ -3219,34 +3308,34 @@ const RSProvider: PlazCodeProvider = (() => {
     _lastAttachFailure = "";
     return true;
   }
-  function clearAttachments() {
+  function clearAttachments(): void {
     const owned = _ownedAttachment;
     _attachedImages = null;
     _ownedAttachment = null;
     if (!owned) return;
     const frame = attachmentScope();
     if (!frame) return;
-    const removeLike = (control) => /(?:remove|delete|dismiss|clear).*(?:file|image|attachment)|(?:file|image|attachment).*(?:remove|delete|dismiss|clear)/i.test(
+    const removeLike = (control: HTMLElement): boolean => /(?:remove|delete|dismiss|clear).*(?:file|image|attachment)|(?:file|image|attachment).*(?:remove|delete|dismiss|clear)/i.test(
       `${ariaOf(control)} ${safeRead(() => control.title, "") || ""} ${safeRead(() => control.getAttribute("data-testid"), null) || ""}`) ||
       /^(?:remove|delete|dismiss|clear|close|x|\u00d7|\u2715)$/i.test((ariaOf(control) || safeRead(() => control.title, "") || _txt(control)).trim()) ||
       (!ariaOf(control) && !safeRead(() => control.title, "") && !_txt(control) && !!safeQuery(control, "svg") &&
         safeRect(control).width > 0 && safeRect(control).width <= 40 &&
         safeRect(control).height > 0 && safeRect(control).height <= 40);
-    const cardRoot = (node) => {
+    const cardRoot = (node: HTMLElement): HTMLElement => {
       const editor = findEditorRaw();
-      for (let root = node, depth = 0; root && safeRead(() => frame.contains(root), false) && depth < 5; root = safeRead(() => root.parentElement, null), depth++) {
+      for (let root: HTMLElement | null = node, depth = 0; root && safeRead(() => frame.contains(root!), false) && depth < 5; root = safeRead<HTMLElement | null>(() => root!.parentElement, null), depth++) {
         if (safeRead(() => root.contains(editor), false)) break;
         if (safeRead(() => root.matches("[data-testid*='attachment' i], [data-testid*='upload' i], figure, li, [role='listitem']"), false) ||
             controlsIn(root).some(removeLike)) return root;
       }
       return safeRead(() => node.parentElement, null) || node;
     };
-    const roots = new Set<any>();
+    const roots = new Set<HTMLElement>();
     for (const node of owned.nodes || []) {
       if (!node || !safeRead(() => node.isConnected, false) || !safeRead(() => frame.contains(node), false)) continue;
       roots.add(cardRoot(node));
     }
-    const controls = [];
+    const controls: HTMLElement[] = [];
     for (const root of roots) {
       if (safeRead(() => root.matches, null) && safeRead(() => root.matches(CONTROL_SEL), false) && removeLike(root)) controls.push(root);
       if (safeRead(() => root.querySelectorAll, null)) controls.push(...[...safeQueryAll(root, CONTROL_SEL)].filter(removeLike));
@@ -3269,7 +3358,7 @@ const RSProvider: PlazCodeProvider = (() => {
     const delayedCleanup = () => {
       const currentFrame = attachmentScope();
       if (!currentFrame) return;
-      const lateRoots = new Set<any>();
+      const lateRoots = new Set<HTMLElement>();
       for (const node of attachmentNodes()) {
         const hay = `${_txt(node)} ${ariaOf(node)} ${safeRead(() => node.getAttribute, null) && (safeRead(() => node.getAttribute("alt"), null) || safeRead(() => node.getAttribute("title"), null) || safeRead(() => node.getAttribute("src"), null) || "")}`;
         if (!owned.names.some((name) => hay.includes(name))) continue;
@@ -3286,7 +3375,7 @@ const RSProvider: PlazCodeProvider = (() => {
     setTimeout(delayedCleanup, 1400);
     diag("notion.attach.cleared", { controls: controls.length, id: safeRead(() => owned.id, "") });
   }
-  const conversationKey = () => {
+  const conversationKey = (): string => {
     try {
       // Every new chat shares /ai, so it must stay a transient/falsy key. Notion
       // assigns a stable /chat URL as soon as the first message is accepted.
@@ -3298,10 +3387,10 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch { return ""; }
   };
   // Both URL shapes Notion uses for the same saved thread.
-  const conversationAliases = () => {
+  const conversationAliases = (): string[] => {
     try { const id = threadId(); return id ? [`/chat/${id}`, `/chat?t=${id}`] : []; } catch { return []; }
   };
-  function enforceComposer() {
+  function enforceComposer(): { ready: boolean; editor: boolean } {
     if (!isAiSurface()) return { ready: false, editor: false };
     const ed = findEditorRaw();
     if (!ed) return { ready: false, editor: false };
@@ -3316,30 +3405,30 @@ const RSProvider: PlazCodeProvider = (() => {
   // composer. Edge hydrates Notion's editor with fewer hints than Chrome.
   const PROVISIONAL_RELAXED_AFTER_MS = 15000;
   let _composerWaitStart = 0;
-  function provisionalEditor() {
+  function provisionalEditor(): HTMLElement | null {
     if (!isAiSurface()) return null;
     // Edge can report innerHeight 0 for a restored/sleeping or prerendered tab;
     // a 0 viewport previously rejected every candidate (r.top > 0).
     const vh = window.innerHeight || (document.documentElement && safeRead(() => document.documentElement.clientHeight, 0)) || 100000;
     const relaxed = _composerWaitStart && Date.now() - _composerWaitStart >= PROVISIONAL_RELAXED_AFTER_MS;
-    let best = null, bestScore = -Infinity, bestBottom = -Infinity;
+    let best: HTMLElement | null = null, bestScore = -Infinity, bestBottom = -Infinity;
     for (const e of editorCandidates()) {
-      if (!e || safeRead(() => e.disabled, true)) continue;
+      if (!e || safeRead(() => (e as HTMLInputElement).disabled, true)) continue;
       if (!isTextControl(e) && safeRead(() => e.getAttribute, null) && safeRead(() => e.getAttribute("contenteditable"), null) === "false") continue;
-      let r; try { r = safeRect(e); } catch { continue; }
+      let r: SafeRect; try { r = safeRect(e); } catch { continue; }
       if (!r || !r.width || !r.height || r.bottom < vh * 0.4 || r.top > vh) continue;
       const s = editorHintScore(e);
       if (s > bestScore || (s === bestScore && r.bottom > bestBottom)) { best = e; bestScore = s; bestBottom = r.bottom; }
     }
     if (!best || bestScore < (relaxed ? 4 : 7)) return null;
-    for (let n = safeRead(() => best.parentElement, null), i = 0; n && n !== document.body && i < (relaxed ? 10 : 7); n = safeRead(() => n.parentElement, null), i++) {
+    for (let n: HTMLElement | null = safeRead(() => best.parentElement, null), i = 0; n && n !== document.body && i < (relaxed ? 10 : 7); n = safeRead(() => n!.parentElement, null), i++) {
       const ctrls = safeRead(() => n.querySelectorAll, null) ? [...safeQueryAll(n, CONTROL_SEL)] : [];
-      if (ctrls.some((b) => sendControlLike(b) || stopControlLike(b) || safeRead(() => b.type, "") === "submit")) return best;
+      if (ctrls.some((b) => sendControlLike(b) || stopControlLike(b) || safeRead(() => (b as HTMLButtonElement).type, "") === "submit")) return best;
       if (relaxed && safeRead(() => n.querySelector, null) && safeQuery(n, '[data-testid="agent-chat-send-button"],[data-testid="agent-send-message-button"]')) return best;
     }
     return null;
   }
-  function adoptProvisionalEditor(reason) {
+  function adoptProvisionalEditor(reason: string): HTMLElement | null {
     const e = provisionalEditor();
     if (!e) return null;
     _editorCache = e; _editorAt = Date.now();
@@ -3348,7 +3437,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return e;
   }
   const COMPOSER_WAIT_MS = 60000;
-  async function ensureComposerReady(reason) {
+  async function ensureComposerReady(reason = ""): Promise<{ ready: boolean; editor: boolean; error: string }> {
     if (!isAiSurface()) {
       diag("notion.composer.wrongRoute", { reason, path: location.pathname });
       return { ready: false, editor: false, error: "Notion AI chat is not open." };
@@ -3374,8 +3463,8 @@ const RSProvider: PlazCodeProvider = (() => {
       error: ed ? "" : "Notion did not load its AI editor at " + (location.pathname || "/ai") + " after 60 seconds. Open a new AI chat in Notion, then retry; if that page itself fails to load, reload Notion. On Microsoft Edge, also turn off Efficiency mode / sleeping tabs for notion.so." };
   }
 
-  const findToolBlockSpot = () => null;
-  function installSendHooks(hooks) {
+  const findToolBlockSpot = (): null => null;
+  function installSendHooks(hooks: SendHooks): void {
     const dispatchUserMessage = () => {
       // Snapshot BEFORE Notion handles the trusted event. Its new assistant
       // shell can mount inside the historical 50ms defer; capturing afterward
@@ -3386,11 +3475,11 @@ const RSProvider: PlazCodeProvider = (() => {
         hooks.onUserMessage && hooks.onUserMessage(base, preSendToken);
       }, 50);
     };
-    document.addEventListener("keydown", (e) => {
+    document.addEventListener("keydown", (e: KeyboardEvent) => {
       if (_selfWrite || !e.isTrusted) return;
       if (e.key !== "Enter" || e.shiftKey) return;
       const ed = findEditorRaw();
-      if (!ed || !(e.target === ed || (e.target && safeRead(() => ed.contains(e.target), false)))) return;
+      if (!ed || !(e.target === ed || (e.target && safeRead(() => ed.contains(e.target as Node), false)))) return;
       if (hooks.onCoworkSend && hooks.onCoworkSend(e)) return;
       if (hooks.isBlocked && hooks.isBlocked()) {
         e.preventDefault(); e.stopPropagation();
@@ -3399,7 +3488,7 @@ const RSProvider: PlazCodeProvider = (() => {
       }
       dispatchUserMessage();
     }, true);
-    document.addEventListener("click", (e) => {
+    document.addEventListener("click", (e: MouseEvent) => {
       if (_selfWrite || !e.isTrusted) return;
       const b = e.target && safeRead(() => (e.target as Element).closest, null) ? safeClosest(e.target, CONTROL_SEL) : null;
       if (!b || (!sendControlLike(b) && !stopControlLike(b))) return;
@@ -3457,10 +3546,10 @@ const RSProvider: PlazCodeProvider = (() => {
     // Never append chips/classes under Notion's DOM-locked response editor.
     immutableTranscript: true,
     mountActivitySummary, setActivityFolded, renderReadyAcknowledgement, collectExportHistory,
-    activityItemKey: item => safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null) || immutableKey(item),
-    itemKey: item => safeRead(() => safeClosest(item, AGENT_ROW_SEL)?.getAttribute("data-agent-service-scroll-anchor"), null) || null,
-    canRenderImmutableChip: (item, opts) => !opts.whole || isUserItem(item) || !!safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null),
-    immutableChipPresent: (item) => !!immutableCardFor(item, immutableKey(item)),
+    activityItemKey: (item: Element | null | undefined) => safeRead(() => (item as Element).getAttribute("data-agent-service-scroll-anchor"), null) || immutableKey(item),
+    itemKey: (item: Element | null | undefined) => safeRead(() => safeClosest(item, AGENT_ROW_SEL)?.getAttribute("data-agent-service-scroll-anchor"), null) || null,
+    canRenderImmutableChip: (item: Element | null | undefined, opts: { whole?: boolean } = {}) => !opts.whole || isUserItem(item) || !!safeRead(() => (item as Element).getAttribute("data-agent-service-scroll-anchor"), null),
+    immutableChipPresent: (item: Element | null | undefined) => !!immutableCardFor(item, immutableKey(item)),
     renderImmutableChip, updateImmutableChipDetail, updateImmutableChipLabel,
     immutableChipOwned, clearImmutableChip, syncImmutableChips, preprocessMutations,
     // Notion streams through a very mutation-heavy block editor. Bound global
@@ -3491,7 +3580,7 @@ const RSProvider: PlazCodeProvider = (() => {
     mutationAttributeFilter: ["data-block-id"],
     timings,
     chipAtItemLevel: false,
-    chipAnchor(item) { return item; },
+    chipAnchor(item: Element) { return item; },
     chipAppend: true,
     reliableCounts: false,
     // Notion's own tools (page search/edit, database ops) act on Notion's
@@ -3516,7 +3605,7 @@ const RSProvider: PlazCodeProvider = (() => {
       "each result, issue the next command without re-summarizing or re-analyzing " +
       "the whole task. Continue one command per reply until done, then report in " +
       "one short sentence.",
-    init({ diag: d, needsComposer: nc, isStopped: stopped, isSessionActive: active, requestStart: rs } = {}) {
+    init({ diag: d, needsComposer: nc, isStopped: stopped, isSessionActive: active, requestStart: rs }: { diag?: Diag; needsComposer?: () => boolean; isStopped?: () => boolean; isSessionActive?: () => boolean; requestStart?: () => void; [hook: string]: any } = {}) {
       if (d) diag = d;
       if (nc) needsComposer = nc;
       if (stopped) isStopped = stopped;
@@ -3548,9 +3637,10 @@ const RSProvider: PlazCodeProvider = (() => {
             diag("notion.dom.probe", { url: routeKey(), surface: false, skipped: true });
             return;
           }
-          const q = (s) => { try { return safeQueryAll(document, s).length; } catch { return 0; } };
+          const q = (s: string): number => { try { return safeQueryAll(document, s).length; } catch { return 0; } };
           const ph = placeholderEditable();
           const ed = findEditorRaw();
+          const ae = document.activeElement;
           diag("notion.dom.probe", {
             url: routeKey(), surface: isAiSurface(), landing: isAiLanding(), thread: isAiThread(),
             ce: q("[contenteditable]"), mirror: q(".ProseMirror"), tip: q(".tiptap"),
@@ -3560,7 +3650,7 @@ const RSProvider: PlazCodeProvider = (() => {
             phEditable: !!ph, editor: !!ed,
             editorTag: ed ? `${safeRead(() => ed.tagName, "")}.${String(safeRead(() => ed.className, "") || "").slice(0, 50)}` : "",
             phTag: ph ? `${safeRead(() => ph.tagName, "")}.${String(safeRead(() => ph.className, "") || "").slice(0, 50)}` : "",
-            active: (document.activeElement && safeRead(() => document.activeElement.tagName, "")) || "",
+            active: (ae && safeRead(() => ae.tagName, "")) || "",
           });
         } catch {}
       }, 4000);

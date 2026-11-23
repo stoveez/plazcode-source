@@ -1,13 +1,48 @@
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/connection-doctor.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // PlazCode connection doctor: "Fix connection" checks, safe automatic fixes and
 // plain-language next steps. Pure logic; the bar supplies a status snapshot and
 // the actions it may take. It never sends anything to the AI chat by itself:
 // connecting a chat (Start/Restart Agent) always needs the user's click.
 const PlazCodeConnectionDoctor = (() => {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   const tr = (text, values) => {
-    try { if (globalThis.PlazCodeI18n) return globalThis.PlazCodeI18n.t(text, values); } catch {}
+    try { const i18n = (globalThis).PlazCodeI18n; if (i18n) return i18n.t(text, values); } catch {}
     return values ? String(text).replace(/\{(\w+)\}/g, (m, k) => (k in values ? String(values[k]) : m)) : String(text);
   };
-  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   // Engine readiness from a bridge status object (the same fields the bar reads).
   function engineState(status, engine) {
@@ -37,8 +72,8 @@ const PlazCodeConnectionDoctor = (() => {
   // act: { status(), reconnect(), restartMcp() }
   // opts: { bridgeWaitMs, mcpWaitMs, stepMs, onStep(step), passive }  (passive = background re-check: no restarts, no progress rows)
   async function run(ctx, act, opts = {}) {
-    const steps = [], push = step => { steps.push(step); try { opts.onStep && opts.onStep(step, steps); } catch {} return step; };
-    const stepMs = opts.stepMs ?? 1000, done = action => ({ steps, action: action || "" });
+    const steps = [], push = (step) => { steps.push(step); try { opts.onStep && opts.onStep(step, steps); } catch {} return step; };
+    const stepMs = opts.stepMs ?? 1000, done = (action) => ({ steps, action: action || "" });
     const engine = ctx.engine === "local" ? "local" : "roblox";
     const tool = engine === "local" ? "AgentScript" : "Roblox Studio";
 

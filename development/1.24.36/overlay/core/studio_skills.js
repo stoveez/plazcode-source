@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/studio_skills.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // core/studio_skills.js - RobloxScript Studio Skills & Virtual Tool Suite (33 tools).
 //
 // HOW IT WORKS: Roblox Studio's MCP server (StudioMCP) exposes core primitives
@@ -3091,6 +3092,8 @@ if not ok2 then return fail("studio skill error: " .. tostring(res)) end
 return res
 `; }
 
+;
+;
 const SKILL_COMMANDS = [
   {
     name: "lighting_set_preset",
@@ -3445,6 +3448,8 @@ const SKILL_COMMANDS = [
   },
 ];
 
+;
+;
 const LIGHTING_PRESETS_JS = {
   cyberpunk: { technology: "Future", clockTime: 0, brightness: 1.2, outdoorAmbient: [15,10,40], ambient: [20,15,50], colorShift_Top: [0,220,255], colorShift_Bottom: [255,0,128], exposure: 0.2, shadowSoftness: 0.2, atmosphere: { density: 0.35, offset: 0.25, color: [30,20,70], decay: [200,0,150], glare: 0.5, haze: 1.8 }, bloom: { intensity: 1.4, size: 32, threshold: 0.75 }, colorCorrection: { contrast: 0.25, saturation: 0.4, tintColor: [240,245,255] }, sunRays: { intensity: 0.1, spread: 0.8 } },
   sunset_warm: { technology: "Future", clockTime: 17.8, brightness: 2.5, outdoorAmbient: [120,70,50], ambient: [90,50,40], colorShift_Top: [255,180,100], colorShift_Bottom: [180,80,50], exposure: 0.1, shadowSoftness: 0.6, atmosphere: { density: 0.4, offset: 0.5, color: [255,150,80], decay: [180,60,40], glare: 1.2, haze: 2.5 }, bloom: { intensity: 0.8, size: 24, threshold: 0.85 }, colorCorrection: { contrast: 0.15, saturation: 0.3, tintColor: [255,240,230] }, sunRays: { intensity: 0.4, spread: 0.9 } },
@@ -3476,7 +3481,7 @@ function buildLightingPresetLuau(args) {
 function buildFxBeamLuau(a){
   const pPath = String(a.parent_path||"");
   if(!pPath) return {err:"ERROR: parent_path is required for fx_create_beam"};
-  const color = Array.isArray(a.color)&&a.color.length===3 ? `Color3.fromRGB(${a.color.map(n=>Math.min(255,Math.max(0,parseInt(n)||0)).toString()).join(",")})` : "Color3.fromRGB(0,200,255)";
+  const color = Array.isArray(a.color)&&a.color.length===3 ? `Color3.fromRGB(${a.color.map((n)=>Math.min(255,Math.max(0,parseInt(n)||0)).toString()).join(",")})` : "Color3.fromRGB(0,200,255)";
   const tex = a.texture ? String(a.texture).replace(/"/g,"") : "rbxasset://textures/particles/sparkles_main.dds";
   const w0 = parseFloat(a.width0 ?? a.width ?? 0.6) || 0.6;
   const w1 = parseFloat(a.width1 ?? (w0*0.35)) || w0*0.35;
@@ -3489,7 +3494,7 @@ function buildFxBeamLuau(a){
 }
 function buildFxTrailLuau(a){
   const pPath=String(a.parent_path||""); if(!pPath) return {err:"ERROR: parent_path is required for fx_create_trail"};
-  const color = Array.isArray(a.color)&&a.color.length===3 ? `Color3.fromRGB(${a.color.map(n=>Math.min(255,Math.max(0,parseInt(n)||0)).toString()).join(",")})` : "Color3.fromRGB(255,255,255)";
+  const color = Array.isArray(a.color)&&a.color.length===3 ? `Color3.fromRGB(${a.color.map((n)=>Math.min(255,Math.max(0,parseInt(n)||0)).toString()).join(",")})` : "Color3.fromRGB(255,255,255)";
   const tex = a.texture ? String(a.texture).replace(/"/g,"") : "rbxasset://textures/particles/smoke_main.dds";
   const life = Math.min(5, Math.max(0.05, parseFloat(a.lifetime)||0.6));
   const minL = parseFloat(a.min_length)||0.1;
@@ -3498,7 +3503,7 @@ function buildFxTrailLuau(a){
 }
 function buildFxExplosionLuau(a){
   const pPath=String(a.parent_path||"Workspace"); const blastP = Math.min(100000, Math.max(0, parseFloat(a.blast_pressure ?? a.pressure ?? 10000)||10000)); const blastR = Math.min(100, Math.max(1, parseFloat(a.blast_radius ?? a.radius ?? 12)||12)); const destr = Math.min(100, Math.max(0, parseFloat(a.destroy_joint_radius_percent??30)||30));
-  const pos = Array.isArray(a.position)&&a.position.length===3 ? `Vector3.new(${a.position.map(n=>parseFloat(n)||0).join(",")})` : null;
+  const pos = Array.isArray(a.position)&&a.position.length===3 ? `Vector3.new(${a.position.map((n)=>parseFloat(n)||0).join(",")})` : null;
   const eType = String(a.explosion_type||"NoCraters").replace(/"/g,"");
   const lua = `local host=game:GetService("HttpService")\nlocal p=game for _,s in ipairs(string.split("${pPath.replace(/"/g,"")}", ".")) do p=p:FindFirstChild(s) if not p then break end end if not p then p=workspace end\nlocal pos=${pos || `p:IsA("BasePart") and p.Position or (p:IsA("Attachment") and p.WorldPosition or Vector3.new(0,10,0))`}\nlocal e=Instance.new("Explosion") e.Name="VFXExplosion" e.BlastPressure=${blastP} e.BlastRadius=${blastR} e.DestroyJointRadiusPercent=${destr} pcall(function() e.ExplosionType=Enum.ExplosionType["${eType}"] end) e.Position=pos e.Parent=workspace\nlocal anchor=Instance.new("Part") anchor.Name="ExplosionAnchor" anchor.Anchored=true anchor.CanCollide=false anchor.Transparency=1 anchor.Size=Vector3.new(1,1,1) anchor.CFrame=CFrame.new(pos) anchor.Parent=workspace local light=Instance.new("PointLight") light.Color=Color3.fromRGB(255,180,60) light.Brightness=6 light.Range=${blastR*2} light.Parent=anchor game:GetService("Debris"):AddItem(anchor,2)\nreturn host:JSONEncode({ok=true,data={path=e:GetFullName(),blastRadius=e.BlastRadius},text="created explosion at "..tostring(pos)})`;
   return {code: lua};

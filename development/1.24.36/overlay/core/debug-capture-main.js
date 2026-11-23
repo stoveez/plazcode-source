@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/debug-capture-main.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // Debug capture (AI page world, document_start). Passive only: it listens for
 // the site's own uncaught errors, failed resource loads and failed API
 // responses, and relays them to core/debug-capture.js as JSON strings. 1.24.32: it also copies the site's own
@@ -6,6 +7,9 @@
 // 1.24.36: the printing is handed back to the browser so Chrome does not list the site's messages as PlazCode errors.
 (() => {
   "use strict";
+  ;
+  ;
+  ;
   const EXT_RE = /(?:chrome|moz)-extension:\/\//;
   const pending = [];
   let ready = false, windowStart = Date.now(), inWindow = 0;
@@ -25,7 +29,7 @@
   });
   window.addEventListener("error", (event) => {
     try {
-      const target = event && event.target;
+      const target = (event && event.target);
       if (target && target !== window && target.tagName) {
         const src = target.currentSrc || target.src || target.href || "";
         if (!src || EXT_RE.test(src)) return;
@@ -61,7 +65,7 @@
     try {
       const original = console[method];
       if (typeof original !== "function" || original.__plazcodeCopied) continue;
-      const copied = function (...args) {
+      const copied = function ( ...args) {
         // 1.24.36 (owner screenshot: claude.ai's "[bootstrap] Eager fetch failed" listed under PlazCode's errors on
         // chrome://extensions): calling the original from this function made Chrome credit the site's own message
         // to PlazCode (the top script frame was this file). The original now runs a moment later from a bound native

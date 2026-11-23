@@ -1,5 +1,40 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/activity.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 const PlazCodeActivity = (() => {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   function replacesTask(text) {
     text=String(text||'').replace(/[‘’]/g,"'");
     if(/\b(?:do not|don't|never)\s+(?:change|replace|reset|clear|drop|forget|discard|ignore|abandon|stop)\b/i.test(text))return false;
@@ -33,8 +68,8 @@ const PlazCodeActivity = (() => {
   // 1.24.10: automatic goal/step detection. Most AIs never call
   // plazcode_checklist, so derive numbered steps from the user's request and
   // from plans the AI writes, and advance them as the AI reports progress.
-  const cleanLabel=text=>String(text||'').replace(/\*\*|__|`/g,'').replace(/^\s*(?:step\s+\d+\s*[:.)-]\s*)/i,'').replace(/\s+/g,' ').replace(/[\s.;:,]+$/,'').trim().slice(0,180);
-  const conciseGoal=text=>cleanLabel(text).split(/[.!?](?:\s+|(?=I['’](?:ll|m|ve)\b))/,1)[0].split(/\s+/).slice(0,8).join(' ').replace(/[\s,;:.!?]+$/,'');
+  const cleanLabel=(text)=>String(text||'').replace(/\*\*|__|`/g,'').replace(/^\s*(?:step\s+\d+\s*[:.)-]\s*)/i,'').replace(/\s+/g,' ').replace(/[\s.;:,]+$/,'').trim().slice(0,180);
+  const conciseGoal=(text)=>cleanLabel(text).split(/[.!?](?:\s+|(?=I['’](?:ll|m|ve)\b))/,1)[0].split(/\s+/).slice(0,8).join(' ').replace(/[\s,;:.!?]+$/,'');
   // 1.24.13: the checklist used to echo the user's sentences word for word
   // ("So I want you to see if you can fix the model? Check how ... etc"). Reduce each
   // sentence to a short imperative of what the AI has to do.
@@ -61,7 +96,7 @@ const PlazCodeActivity = (() => {
   }
   const NAME_SENTENCE=/^(?:it|this|that|he|she|they)(?:'s| is| was|\s+are)?\s+(?:called|named|known as)\s+["'“]?([A-Za-z0-9][\w' -]{0,40}?)["'”]?$/i;
   // The user wrote their own numbered or bulleted list of steps.
-  const userListed=request=>[...String(request||'').replace(/```[\s\S]*?(?:```|$)/g,' ').matchAll(/^\s*(?:\d+[.)]|[-*•])\s+(.+)$/gm)].length>=2;
+  const userListed=(request)=>[...String(request||'').replace(/```[\s\S]*?(?:```|$)/g,' ').matchAll(/^\s*(?:\d+[.)]|[-*•])\s+(.+)$/gm)].length>=2;
   function requestSteps(request) {
     const text=String(request||'').replace(/```[\s\S]*?(?:```|$)/g,' ').trim();
     const listed=[...text.matchAll(/^\s*(?:\d+[.)]|[-*•])\s+(.+)$/gm)].map(m=>cleanLabel(m[1])).filter(label=>label.split(' ').length>=2);
@@ -76,7 +111,7 @@ const PlazCodeActivity = (() => {
     parts=parts.filter(label=>{const m=NAME_SENTENCE.exec(label);if(m){name=m[1].trim();return false;}return true;});
     parts=parts.map(condenseStep).filter(label=>label.split(' ').length>=2);
     if(name&&parts.length)parts[0]=parts[0].replace(/\b(?:a|an|the|this|that)\s+(\w+)/i,(_,noun)=>`${name} ${noun}`);
-    const words=label=>new Set(label.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(word=>word&&!/^(?:a|an|the|of|to|in|on|for|and|my|our)$/.test(word)));
+    const words=(label)=>new Set(label.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(word=>word&&!/^(?:a|an|the|of|to|in|on|for|and|my|our)$/.test(word)));
     parts=parts.filter((label,index)=>{
       const mine=words(label);
       return !parts.some((other,at)=>at!==index&&(other!==label||at<index)&&mine.size<=words(other).size&&[...mine].every(word=>words(other).has(word))&&(mine.size<words(other).size||at<index));
@@ -98,7 +133,7 @@ const PlazCodeActivity = (() => {
     return bullets.length>=3?bullets.filter(Boolean).slice(0,20):[];
   }
   function create(changed = () => {}, storage = null) {
-    let current, sequence = 0;
+    let current = null, sequence = 0;
     const groups = [], tasks = new Map(), goalSources = new WeakMap();
     const taskStorageKey='plazcode.mainTasks.v1';
     try {
@@ -108,14 +143,14 @@ const PlazCodeActivity = (() => {
         if(typeof chat!=='string'||!value||typeof value.label!=='string'||typeof value.key!=='string')continue;
         if(requestKind(value.label.replace(/\d{1,2}:\d{2}\s*[AP]M$/i,''))!=='work')continue;
         const items=value.plan?.items;
-        if(items&&(!Array.isArray(items)||!items.length||items.length>20||items.some(item=>typeof item.label!=='string'||!item.label.trim()||item.label.length>180||!['pending','in_progress','completed'].includes(item.status))))continue;
+        if(items&&(!Array.isArray(items)||!items.length||items.length>20||items.some((item)=>typeof item.label!=='string'||!item.label.trim()||item.label.length>180||!['pending','in_progress','completed'].includes(item.status))))continue;
         // Repair only the legacy automatic single-goal row. Explicit checklists
         // and user-numbered steps retain their exact labels and status.
         if(value.objective&&value.plan?.auto==='request'&&!value.plan.listed&&items?.length===1&&items[0].label===value.objective){const goal=conciseGoal(value.objective);if(goal){value.objective=goal;items[0]={...items[0],label:goal};}}
-        tasks.set(chat,{label:value.label.slice(0,300),key:value.key,objective:typeof value.objective==='string'?value.objective.slice(0,180):'',plan:items?{items,total:items.length,done:items.filter(item=>item.status==='completed').length,...(value.plan.auto==='request'||value.plan.auto==='reply'?{auto:value.plan.auto}:{}),...(value.plan.listed===true?{listed:true}:{})}:null});
+        tasks.set(chat,{label:value.label.slice(0,300),key:value.key,objective:typeof value.objective==='string'?value.objective.slice(0,180):'',plan:items?{items,total:items.length,done:items.filter((item)=>item.status==='completed').length,...(value.plan.auto==='request'||value.plan.auto==='reply'?{auto:value.plan.auto}:{}),...(value.plan.listed===true?{listed:true}:{})}:null});
       }}
     } catch {}
-    function persistTasks(){try{const saved=[...tasks].map(([chat,value])=>[chat,{...value,key:String(value.key).slice(0,2000)}]);let raw=JSON.stringify(saved);while(raw.length>512000&&saved.length>1){saved.shift();raw=JSON.stringify(saved);}if(raw.length<=512000)storage?.setItem(taskStorageKey,raw);}catch{}}
+    function persistTasks(){try{const saved=[...tasks].map(([chat,value])=>[chat,{...value,key:String(value.key).slice(0,2000)}]);let raw=JSON.stringify(saved);while(raw.length>512000&&saved.length>1){saved.shift();raw=JSON.stringify(saved);}if(raw.length<=512000)(storage)?.setItem(taskStorageKey,raw);}catch{}}
 
     function sync(busy, chat, now = Date.now(), options = {}) {
       if (current && current.chat !== chat) finish(now, {collapse: false});
@@ -225,11 +260,11 @@ const PlazCodeActivity = (() => {
     function record(id, key, role, text) {
       const group = groups.find(group => group.id === id); if (!group) return;
       text = String(text || '');
-      const oversized = text.length > 200000;
+      const oversized = (text).length > 200000;
       if (oversized) text = '[This reply exceeds the desktop detail limit. Read the full reply in its original browser chat.]';
       // Plans often arrive in the same reply as the first command ("command").
       if (role === 'assistant' || role === 'command') {
-        const plain = text.replace(/```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)/g, '');
+        const plain = (text).replace(/```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)/g, '');
         captureGoal(group, plain, key);
         const steps = [...plain.matchAll(/^\s*[-*+]\s+\[([ xX])\]\s+([^\n]+)$/gm)].slice(0, 64);
         if (/^\s*(?:#{1,6}\s*)?(?:\*\*)?(?:task\s+)?(?:plan|checklist)(?:\*\*)?\s*:?\s*$/im.test(plain) && steps.length >= 2) {
@@ -244,12 +279,12 @@ const PlazCodeActivity = (() => {
       if (known && known.text === text && known.role === role) return;
       if (oversized) group.omitted++;
       if (known) { known.text = text; known.role = role; }
-      else group.messages.push({key,role,text});
+      else group.messages.push({key,role,text:text});
       group.revision++;
       function size(g) { return g.messages.reduce((sum,message)=>sum+message.text.length,0); }
       while (group.messages.length > 120 || size(group) > 200000) { group.messages.shift();group.omitted++;group.revision++; }
       let total = groups.reduce((sum,g)=>sum+size(g),0);
-      for (const old of groups) while (total > 800000 && old.messages.length) { total-=old.messages.shift().text.length;old.omitted++;old.revision++; }
+      for (const old of groups) while (total > 800000 && old.messages.length) { total-=(old.messages.shift()).text.length;old.omitted++;old.revision++; }
     }
     function removeMessage(id, key) {
       const group = groups.find(group => group.id === id); if (!group) return;
@@ -267,14 +302,14 @@ const PlazCodeActivity = (() => {
       const seconds = Math.floor(((group.ended || now) - group.started) / 1000);
       return `${group.ended ? 'Worked' : 'Working'} for ${Math.floor(seconds / 60)}m ${seconds % 60}s`;
     }
-    return { sync, finish, step, task, checklist, record, removeMessage, read, toggle, list, label, active: () => current, saved: chat => tasks.get(chat) || null };
+    return { sync, finish, step, task, checklist, record, removeMessage, read, toggle, list, label, active: () => current, saved: (chat) => tasks.get(chat) || null };
   }
   function exempt(text, calls = []) {
     const clean = String(text || '').replace(/[`*#]/g, '').trim();
     return /^(?:PLAZCODE_READY|PlazCode is ready)[.!]?$/i.test(clean) ||
       /^Output of '(?:list_commands|list_tools)'/.test(clean) ||
       /^⟦RS-SYS⟧/.test(clean) ||
-      (calls.length > 0 && calls.every(call => /^(?:list_commands|list_tools)$/.test(call.tool)));
+      (calls.length > 0 && calls.every(call => /^(?:list_commands|list_tools)$/.test(call.tool || '')));
   }
   function progress(group) {
     if (group.completed) return 1;
@@ -305,7 +340,7 @@ const PlazCodeActivity = (() => {
         view.node.hidden = !view.binding;
         view.node.dataset.done=group.ended?'1':'0';view.title.textContent=label(group);const fraction = progress(group);
         view.node.dataset.progress = fraction === null ? 'unknown' : 'known';
-        view.icon.querySelector('.rs-activity-fill').style.strokeDashoffset = String(100 * (1 - (fraction === null ? group.ended ? 0 : .25 : fraction)));
+        (view.icon.querySelector('.rs-activity-fill')).style.strokeDashoffset = String(100 * (1 - (fraction === null ? group.ended ? 0 : .25 : fraction)));
         view.heading.title = group.completed ? 'Task completed' : group.plan ? 'Plan progress: ' + group.plan.done + ' of ' + group.plan.total + ' steps complete' : group.ended ? 'Stopped before completion' : 'Working; total task progress is not known yet';
         view.heading.setAttribute('aria-expanded',String(group.expanded));view.arrow.style.transform=group.expanded?'rotate(90deg)':'rotate(0deg)';view.body.hidden=!group.expanded;
         const signature=group.expanded ? JSON.stringify([group.ended,group.events,!!group.messages.length]) : 'collapsed';

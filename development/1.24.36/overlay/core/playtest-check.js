@@ -10,33 +10,33 @@
 //   message for the AI (fix round) or null (nothing to fix, check skipped, or the rounds are used up).
 // - reset() when a new task starts.
 const PlazCodePlaytest = (() => {
-                                                                                  
-                                                                                 
-               
-                                                               
-                                                                                   
-                                                                                          
-                                                                                                                                      
-                                        
-                                                                                         
-                                                  
-                                                                   
-                                                                                   
-                       
-                                                                                 
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   const ROUNDS = 2, PLAY_MS = 10000, MAX_ERRORS = 6;
   // Studio skills that write scripts into the place (core/studio_skills.js).
   const SCRIPT_SKILLS = new Set(["datastore_setup", "leaderboard_setup", "remote_setup", "teams_setup", "npc_spawn_pathfinding", "proximity_setup",
     "tween_create", "marketplace_setup", "camera_set_style", "lighting_setup_day_night", "ui_bind_button", "diagnostics_fix_common", "audio_setup_sound_hierarchy"]);
   const SCRIPT_TOOLS = new Set(["multi_edit", "script_set_source", "script_append", "script_disable"]);
   const SCRIPT_CODE = /\.Source\s*=|Instance\.new\(\s*["'](?:Script|LocalScript|ModuleScript)["']|ScriptEditorService|UpdateSourceAsync|\.Disabled\s*=/;
-  const bare = (name         ) => String(name || "").replace(/^.*__/, "").replace(/^(?:roblox|studio)[._:]/i, "");
+  const bare = (name) => String(name || "").replace(/^.*__/, "").replace(/^(?:roblox|studio)[._:]/i, "");
   // Does this command (or any command in a batch) change a script?
-  function changesScripts(call                         )          {
+  function changesScripts(call) {
     if (!call) return false;
     const name = bare(call.tool || call.command), args = call.arguments || call.params || {};
-    if (name === "plazcode_batch") return (Array.isArray(args.calls) ? args.calls : []).some((c      ) => changesScripts(c));
+    if (name === "plazcode_batch") return (Array.isArray(args.calls) ? args.calls : []).some((c) => changesScripts(c));
     if (SCRIPT_TOOLS.has(name) || SCRIPT_SKILLS.has(name)) return true;
     if (name === "execute_luau") return SCRIPT_CODE.test(String(args.code || ""));
     return false;
@@ -44,7 +44,7 @@ const PlazCodePlaytest = (() => {
   // Studio's own noise (plugins, the Roblox core scripts, asset loading) is not the game's fault.
   const NOISE = /^(?:Plugin|cloud_\d|builtin_|user_)|\b(?:CorePackages|CoreGui|RobloxGui|CoreScripts?)\b|Failed to load (?:sound|animation|image)|ContentProvider|rbxasset:\/\/|Asset (?:is not|type does not)/i;
   // Reads the errors written since `since` (seconds) in one play datamodel, through LogService.
-  function logCode(since        ) {
+  function logCode(since) {
     return [
       "local hs=game:GetService(\"HttpService\")",
       "local out={}",
@@ -55,20 +55,20 @@ const PlazCodePlaytest = (() => {
       "return hs:JSONEncode(out)",
     ].join("\n");
   }
-  function parseList(reply       )                  {
+  function parseList(reply) {
     if (!reply || reply.ok === false || typeof reply.text !== "string") return null;
     const m = reply.text.match(/\[[\s\S]*\]/);
     if (!m) return null;
     try { const list = JSON.parse(m[0]); return Array.isArray(list) ? list.map(String) : null; } catch { return null; }
   }
   // Fallback when LogService cannot be read: the Output text added since Play started, error lines only.
-  function errorsFromOutput(before        , after        )           {
+  function errorsFromOutput(before, after) {
     const fresh = before && after.startsWith(before) ? after.slice(before.length) : after.slice(-4000);
     return fresh.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && (/(?:^|\s)(?:error|exception)\b/i.test(l) || /:\d+: /.test(l)) && !/^(?:Stack|Script ')/i.test(l));
   }
   // Same error from the server and the client, or repeated every frame, counts once; Studio noise is dropped.
-  function clean(lines          )           {
-    const seen = new Set        (), out           = [];
+  function clean(lines) {
+    const seen = new Set(), out = [];
     for (const raw of lines) {
       const line = String(raw).replace(/\s+/g, " ").trim();
       if (!line || NOISE.test(line)) continue;
@@ -79,16 +79,16 @@ const PlazCodePlaytest = (() => {
     }
     return out;
   }
-  function create(d      ) {
-    const t = (s        ) => (d.words ? d.words(s) : s);
+  function create(d) {
+    const t = (s) => (d.words ? d.words(s) : s);
     const now = () => (d.now ? d.now() : Date.now());
     let dirty = false, rounds = 0, busy = false;
-    function note(call      ) { if (changesScripts(call)) dirty = true; }
+    function note(call) { if (changesScripts(call)) dirty = true; }
     function reset() { dirty = false; rounds = 0; }
-    async function play()                           {
+    async function play() {
       const before = await d.call("get_console_output", {}, 8000).catch(() => null);
       const since = now() / 1000 - 1;
-      const start = await d.call("start_stop_play", { is_start: true }, 30000).catch((e)        => ({ ok: false, error: String(e) }));
+      const start = await d.call("start_stop_play", { is_start: true }, 30000).catch((e) => ({ ok: false, error: String(e) }));
       const startText = String((start && (start.text || start.error)) || "");
       const startedHere = !!start && start.ok !== false && !/error|not connected|unavailable|failed/i.test(startText);
       if (!startedHere && !/already|running|playing/i.test(startText)) { d.diag?.("playtest.startFailed", { text: startText.slice(0, 120) }); return null; }
@@ -105,7 +105,7 @@ const PlazCodePlaytest = (() => {
         if (startedHere) await d.call("start_stop_play", { is_start: false }, 30000).catch(() => null);
       }
     }
-    async function afterDone()                         {
+    async function afterDone() {
       if (busy || !dirty || !d.enabled() || !d.roblox() || d.stopped()) return null;
       busy = true; dirty = false;
       try {

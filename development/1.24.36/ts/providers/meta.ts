@@ -41,43 +41,45 @@
 // eslint-disable-next-line no-unused-vars
 const RSProvider: PlazCodeProvider = (() => {
   "use strict";
+  type SafeRect = { x: number; y: number; left: number; top: number; right: number; bottom: number; width: number; height: number; readFailed?: boolean };
+  type ToolSpot = { parent: Element | null; ref: Element | null };
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
-  function safeRead(read, fallback) {
+  function safeRead<T, F = T>(read: () => T, fallback: F): T | F {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
-  function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+  function safeQuery<T extends Element = HTMLElement>(root: ParentNode | null | undefined, selector: string): T | null {
+    return safeRead(() => (root as ParentNode).querySelector<T>(selector), null);
   }
-  function safeQueryAll(root, selector): any[] {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll<T extends Element = HTMLElement>(root: ParentNode | null | undefined, selector: string): T[] {
+    return safeRead(() => Array.from((root as ParentNode).querySelectorAll<T>(selector)), []);
   }
-  function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+  function safeClosest<T extends Element = HTMLElement>(node: Node | EventTarget | null | undefined, selector: string): T | null {
+    return safeRead(() => (node as Element).closest<T>(selector), null);
   }
-  function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+  function safeRect(node: Element): SafeRect {
+    return safeRead<DOMRect, SafeRect>(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
-  function safeStyle(node) {
-    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
+  function safeStyle(node: Element): CSSStyleDeclaration {
+    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'} as unknown as CSSStyleDeclaration);
   }
-  function safePredicate(predicate) {
+  function safePredicate<T>(predicate: () => T): T | false {
     const before = domReadErrors;
-    const result = safeRead(predicate, false);
+    const result = safeRead(predicate, false as const);
     return before === domReadErrors ? result : false;
   }
   // A poll-count limit also bounds waits if the wall clock moves backwards.
-  function waitBudget(timeout, interval) {
+  function waitBudget(timeout: number, interval: number): { ms: number; polls: number } {
     const ms = Number.isFinite(timeout) ? Math.min(600000, Math.max(0, timeout)) : 30000;
     return {ms, polls: Math.ceil(ms / interval)};
   }
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
   let diag: Diag = () => {}; // injected by core via init()
   // Identity of the last image set STAGED into the composer. The core reuses the
   // same array reference across submitAndGetBase's typeAndSend retries, so keying
   // on it makes the attach idempotent; a new capture is a new array.
-  let _attachedImages = null;
+  let _attachedImages: ImagePayloadList | null = null;
   // Whether the composer is locked (agent working). React re-renders the composer
   // and restores the placeholder/contenteditable, so setInputLock's effects must
   // be RE-ASSERTED every sweep (enforceComposer) while this is true.
@@ -136,15 +138,15 @@ const RSProvider: PlazCodeProvider = (() => {
   // The message list is the <div class="flex flex-col"> that holds an
   // assistant-message and >1 child turn. Climb from any assistant-message to it;
   // fall back to the nearest such container. Returns null on a fresh/empty chat.
-  function listEl() {
+  function listEl(): HTMLElement | null {
     const any = safeQuery(document, S.asst);
     if (!any) return null;
-    let n = safeRead(() => any.parentElement, null);
-    for (let i = 0; i < 12 && n; i++, n = safeRead(() => n.parentElement, null)) {
+    let n: HTMLElement | null = safeRead(() => any.parentElement, null);
+    for (let i = 0; i < 12 && n; i++, n = safeRead(() => n!.parentElement, null)) {
       if (
-        safeRead(() => n.classList.contains("flex"), false) &&
-        safeRead(() => n.classList.contains("flex-col"), false) &&
-        safeRead(() => n.children, []).length >= 2 &&
+        safeRead(() => n!.classList.contains("flex"), false) &&
+        safeRead(() => n!.classList.contains("flex-col"), false) &&
+        safeRead(() => n!.children, [] as unknown as HTMLCollection).length >= 2 &&
         safeQuery(n, S.asst)
       ) {
         return n;
@@ -161,32 +163,32 @@ const RSProvider: PlazCodeProvider = (() => {
   // from allItems() so classify() never built their sys / "· result" chips (the
   // result box rendered as literally nothing). textContent ignores CSS, so the
   // hidden turns stay enumerated and get decorated.
-  function isTurnChild(c) {
+  function isTurnChild(c: Element | null | undefined): boolean {
     if (!c) return false;
     if (safeRead(() => c.classList.contains("pointer-events-none"), false) && safeRead(() => c.classList.contains("absolute"), false)) return false;
     return !!safeQuery(c, S.asst) || (safeRead(() => c.textContent, "") || "").trim().length > 0;
   }
-  function domTurns() {
+  function domTurns(): Element[] {
     const list = listEl();
     if (!list) return [];
-    return [...safeRead(() => list.children, [])].filter(isTurnChild);
+    return [...safeRead(() => list.children, [] as Element[])].filter(isTurnChild);
   }
 
-  const isAssistantItem = (item) => !!item && !!safeQuery(item, S.asst);
-  const isUserItem = (item) => !!item && !isAssistantItem(item);
+  const isAssistantItem = (item: Element | null | undefined): boolean => !!item && !!safeQuery(item, S.asst);
+  const isUserItem = (item: Element | null | undefined): boolean => !!item && !isAssistantItem(item);
 
   // The assistant-message body element inside an assistant turn (reasoning still
   // nested; excluded when we read it). For a user turn it is the turn itself.
-  function bodyOf(item) {
+  function bodyOf(item: Element | null | undefined): Element | null {
     if (!item) return null;
     return isAssistantItem(item) ? safeQuery(item, S.asst) : item;
   }
 
-  const allItems = () => domTurns();
-  const assistantItems = () => allItems().filter(isAssistantItem);
-  const assistantCount = () => assistantItems().length;
-  const userCount = () => allItems().filter(isUserItem).length;
-  const lastAssistant = () => {
+  const allItems = (): Element[] => domTurns();
+  const assistantItems = (): Element[] => allItems().filter(isAssistantItem);
+  const assistantCount = (): number => assistantItems().length;
+  const userCount = (): number => allItems().filter(isUserItem).length;
+  const lastAssistant = (): Element | null => {
     const it = assistantItems();
     return it.length ? it[it.length - 1] : null;
   };
@@ -194,9 +196,9 @@ const RSProvider: PlazCodeProvider = (() => {
   // Stable per-NODE id for the latest assistant turn (the core prefers this over
   // count-based detection). A WeakMap assigns each turn a monotonic id on first
   // sight, so a genuinely new reply node yields a new id immediately.
-  const _idMap = new WeakMap();
+  const _idMap = new WeakMap<Element, number>();
   let _idSeq = 0;
-  function lastAssistantId() {
+  function lastAssistantId(): number | null {
     const it = lastAssistant();
     if (!it) return null;
     let id = _idMap.get(it);
@@ -204,7 +206,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return id;
   }
 
-  const chatIsEmpty = () => allItems().length === 0;
+  const chatIsEmpty = (): boolean => allItems().length === 0;
 
   // ── Text extraction ─────────────────────────────────────────────────────────
   // Walk the tree skipping the core's chip, the reasoning blocks, and any extra
@@ -212,14 +214,14 @@ const RSProvider: PlazCodeProvider = (() => {
   // block <span> with NO newline text node, so plain textContent collapses the
   // block onto one line (breaks multi-line Lua). Rebuild it by joining the code
   // element's line children with "\n".
-  function textWithout(root: Element | null, excludeSel?: string) {
+  function textWithout(root: Element | null, excludeSel?: string): string {
     if (!root) return "";
     const skip = ".rs-chip, " + S.reasoning + (excludeSel ? ", " + excludeSel : "");
     let t = "";
-    const walk = (n) => {
+    const walk = (n: Node): void => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
+      if (safeRead(() => (n as Element).matches, null) && safeRead(() => (n as Element).matches(skip), false)) return;
       // A ```json fence renders as the INTERACTIVE JSON-VIEWER widget (a
       // .ur-code-block with a JSON/Tree/Raw toolbar and a collapsible tree), NOT
       // a <pre>. In its Tree view it injects a ▶/▼ expander glyph BEFORE every
@@ -229,7 +231,7 @@ const RSProvider: PlazCodeProvider = (() => {
       // command with a nested object, then it retried, re-rendered, and failed
       // again (the reported spam). Detect the viewer (a .ur-code-block with no
       // <pre>) and hand the parser the cleaned JSON instead of the raw tree text.
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(S.codeWrap), false) && !safeQuery(n, "pre")) {
+      if (safeRead(() => (n as Element).matches, null) && safeRead(() => (n as Element).matches(S.codeWrap), false) && !safeQuery(n as Element, "pre")) {
         // The viewer's Tree view does not just decorate the JSON, it ABRIDGES it:
         // a large array/object is rendered as a summary placeholder instead of its
         // contents, e.g. `…,"edits":[1 item]}}` for a 19k-char multi_edit payload
@@ -237,12 +239,12 @@ const RSProvider: PlazCodeProvider = (() => {
         // big command). The full source only exists in the viewer's Raw tab. Flip
         // command-shaped viewers to Raw; the widget then renders a real <pre> and
         // the branch below reads the complete JSON.
-        ensureRawView(n);
+        ensureRawView(n as Element);
         t += cleanJsonViewer(safeRead(() => n.textContent, "") || "");
         return;
       }
-      if (safeRead(() => n.tagName, "") === "PRE") { t += preText(n); return; }
-      for (const c of safeRead(() => n.childNodes, [])) walk(c);
+      if (safeRead(() => (n as Element).tagName, "") === "PRE") { t += preText(n as Element); return; }
+      for (const c of safeRead(() => n.childNodes, [] as Node[])) walk(c);
     };
     walk(root);
     return t;
@@ -254,8 +256,8 @@ const RSProvider: PlazCodeProvider = (() => {
   // the Raw <pre> by the time this call returns - that is fine: the core re-reads
   // the reply every sweep, so the following read picks up the complete text (a
   // partial read just looks like one more streaming tick).
-  const _rawSwitched = new WeakSet();
-  function ensureRawView(wrap) {
+  const _rawSwitched = new WeakSet<Element>();
+  function ensureRawView(wrap: Element): void {
     try {
       if (_rawSwitched.has(wrap)) return;
       const txt = safeRead(() => wrap.textContent, "") || "";
@@ -274,25 +276,25 @@ const RSProvider: PlazCodeProvider = (() => {
   // between JSON tokens, then drop the leading "JSONTreeRaw" toolbar text that
   // precedes the first "{". Trailing toolbar/Copy chrome after the JSON is
   // harmless - the core's brace-matched extractor stops at the closing brace.
-  function cleanJsonViewer(text) {
+  function cleanJsonViewer(text: string): string {
     const t = text.replace(/[▲▴▶▸►▼▾◀◂]/g, "");
     const i = t.indexOf("{");
     return i > 0 ? t.slice(i) : t;
   }
   // Rebuild a <pre>'s source: join the code element's per-line block children
   // with "\n". A single-line block (no element children) falls back to textContent.
-  function preText(pre) {
+  function preText(pre: Element): string {
     const code = safeQuery(pre, "code") || pre;
-    const lines = [...safeRead(() => code.children, [])].filter((c) => safeRead(() => c.nodeType, 0) === 1);
+    const lines = [...safeRead(() => code.children, [] as Element[])].filter((c) => safeRead(() => c.nodeType, 0) === 1);
     if (lines.length) return lines.map((l) => safeRead(() => l.textContent, "")).join("\n");
     return safeRead(() => code.textContent, "") || "";
   }
 
-  function itemText(item) {
+  function itemText(item: Element): string {
     const b = bodyOf(item);
     return b ? textWithout(b) : "";
   }
-  function classifyText(item, excludeSel) {
+  function classifyText(item: Element, excludeSel?: string): string {
     const b = bodyOf(item);
     if (!b) return "";
     return textWithout(b, excludeSel);
@@ -302,7 +304,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // Anchor the chip inside the assistant-message body so it sits under the reply.
   // React reconciles the turn subtree on stream updates; ensureOwnedChip rebuilds
   // the chip after each wipe (same as the other providers).
-  function chipAnchor(item) {
+  function chipAnchor(item: Element): Element {
     const body = bodyOf(item);
     if (!body) return item;
     // Anchor into the reply's CENTERED content column (mx-auto max-w-3xl flex-col),
@@ -326,13 +328,13 @@ const RSProvider: PlazCodeProvider = (() => {
   // with an image staged inline (validated live 2026-07-13). So we treat the
   // textarea as the source of truth for READ/WRITE, and the visible div for
   // geometry (barAnchor) and user-event targeting (installSendHooks).
-  const editorEls = () => [...safeQueryAll(document, S.input)].filter((e) => !safeClosest(e, "#rs-root"));
-  const isTextareaEditor = (e) => !!e && safeRead(() => e.tagName, "") === "TEXTAREA";
+  const editorEls = (): HTMLElement[] => [...safeQueryAll(document, S.input)].filter((e) => !safeClosest(e, "#rs-root"));
+  const isTextareaEditor = (e: Element | null | undefined): e is HTMLTextAreaElement => !!e && safeRead(() => e.tagName, "") === "TEXTAREA";
   // getEditor() = the ON-SCREEN editor (the Lexical div). The core anchors the
   // "Agent is working…" cover and the .rs-typing mask to P.getEditor(), so it MUST
   // be the visible node (the hidden mirror textarea has a 0x0 rect and put the
   // cover off-screen). Layout (barAnchor) and event targeting use this too.
-  const getEditor = () => {
+  const getEditor = (): HTMLElement | null => {
     const all = editorEls();
     return all.find((e) => !isTextareaEditor(e) && safeRead(() => e.offsetParent, null) !== null) ||
            all.find((e) => safeRead(() => e.offsetParent, null) !== null) || all[0] || null;
@@ -341,26 +343,26 @@ const RSProvider: PlazCodeProvider = (() => {
   // writeEl() = the controlled mirror textarea we WRITE to: setting its value via
   // the native setter drives the visible Lexical editor and clears it cleanly.
   // Falls back to the on-screen editor if Meta ever drops the textarea.
-  const writeEl = () => editorEls().find(isTextareaEditor) || getEditor();
-  const editorText = () => {
+  const writeEl = (): HTMLElement | null => editorEls().find(isTextareaEditor) || getEditor();
+  const editorText = (): string => {
     const e = writeEl();
     if (!e) return "";
     return isTextareaEditor(e) ? (safeRead(() => e.value, "") || "") : (safeRead(() => e.textContent, "") || "");
   };
   // No <form> around the composer; the rounded card is the closest stable frame.
-  const composerFrame = () => barAnchor() || (visibleEditor() && safeRead(() => visibleEditor().parentElement, null)) || null;
+  const composerFrame = (): Element | null => barAnchor() || (visibleEditor() && safeRead(() => visibleEditor()!.parentElement, null)) || null;
 
   // A fresh chat: root path "/" with the composer present and no turns.
-  const isFreshChat = () => chatIsEmpty() && location.pathname === "/" && !!getEditor();
+  const isFreshChat = (): boolean => chatIsEmpty() && location.pathname === "/" && !!getEditor();
 
   // Meta is a React app that reconciles the composer subtree, so we do NOT insert
   // #rs-bar into it. barAnchor() returns the rounded composer card; the core
   // keeps the bar in #rs-root and hugs the card's top edge.
-  function barAnchor() {
+  function barAnchor(): HTMLElement | null {
     const ed = visibleEditor();
     if (!ed) return null;
-    let n = ed;
-    for (let i = 0; i < 10 && n; i++, n = safeRead(() => n.parentElement, null)) {
+    let n: HTMLElement | null = ed;
+    for (let i = 0; i < 10 && n; i++, n = safeRead(() => n!.parentElement, null)) {
       if ([...n.classList].some((c) => c.startsWith("rounded"))) return n;
     }
     return (ed && safeRead(() => ed.parentElement, null)) || null;
@@ -372,12 +374,12 @@ const RSProvider: PlazCodeProvider = (() => {
   // Réflexion-Instantané mode toggle / send). Return band [0] (the card child that
   // contains the editor) so the cover leaves the controls - and the RS bar above -
   // uncovered and usable. Falls back to the editor if the structure changes.
-  function coverTarget() {
+  function coverTarget(): Element | null {
     const card = barAnchor();
     const ed = getEditor();
     if (!card || !ed) return ed;
-    let n = ed;
-    while (n && safeRead(() => n.parentElement, null) && safeRead(() => n.parentElement, null) !== card) n = safeRead(() => n.parentElement, null);
+    let n: HTMLElement | null = ed;
+    while (n && safeRead(() => n!.parentElement, null) && safeRead(() => n!.parentElement, null) !== card) n = safeRead(() => n!.parentElement, null);
     return (n && safeRead(() => n.parentElement, null) === card) ? n : ed;
   }
 
@@ -386,7 +388,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // the mirror textarea, so locking the on-screen Lexical div's `contenteditable`
   // stops user edits without affecting our own writes. Also mark the textarea
   // readonly as a belt-and-braces (the native setter ignores readonly).
-  function setInputLock(on) {
+  function setInputLock(on: boolean): void {
     _locked = on;
     applyLock();
   }
@@ -414,23 +416,23 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── Buttons / generation detection ──────────────────────────────────────────
-  const sendButton = () => {
-    const b = safeQuery(document, S.sendBtn);
+  const sendButton = (): HTMLButtonElement | null => {
+    const b = safeQuery<HTMLButtonElement>(document, S.sendBtn);
     return b && safeRead(() => b.offsetParent, null) !== null ? b : null;
   };
-  const stopButton = () => {
-    const b = safeQuery(document, S.stopBtn);
+  const stopButton = (): HTMLButtonElement | null => {
+    const b = safeQuery<HTMLButtonElement>(document, S.stopBtn);
     return b && safeRead(() => b.offsetParent, null) !== null ? b : null;
   };
 
-  function streamText(item) {
+  function streamText(item: Element | null | undefined): string {
     const b = bodyOf(item);
     return b ? textWithout(b, ".rs-chip") : "";
   }
-  const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item?: Element | null): number => streamText(item === undefined ? lastAssistant() : item).length;
 
-  let _streamMax = -1, _streamAt = 0, _streamItem = null;
-  function sampleStream() {
+  let _streamMax = -1, _streamAt = 0, _streamItem: Element | null = null;
+  function sampleStream(): void {
     const item = lastAssistant();
     const len = streamText(item).length;
     const now = Date.now();
@@ -439,7 +441,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     if (len > _streamMax) { _streamMax = len; _streamAt = now; }
   }
-  const grewWithin = (ms) => _streamMax > 1 && Date.now() - _streamAt < ms;
+  const grewWithin = (ms: number): boolean => _streamMax > 1 && Date.now() - _streamAt < ms;
 
   function genActive() {
     sampleStream();
@@ -477,7 +479,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return { present: true, reply: b ? textWithout(b, ".rs-chip").trim() : "", thinking: "", item };
   }
 
-  async function waitFor(pred, timeout) {
+  async function waitFor(pred: () => unknown, timeout: number): Promise<boolean> {
     const budget = waitBudget(timeout, 120), t0 = Date.now();
     for (let poll = 0; poll < budget.polls && Date.now() - t0 < budget.ms; poll++) {
       const result = safePredicate(pred);
@@ -497,7 +499,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // present. NOTE: the end-to-end send-with-image path is wired from the DOM
   // contract but not yet exercised live (the test account's message quota was
   // exhausted) - verify with a real screen_capture round-trip.
-  function fileFromImage(img, i) {
+  function fileFromImage(img: ImagePayload, i: number): File {
     const mime = img.mimeType || "image/jpeg";
     const bin = atob(img.data);
     const arr = new Uint8Array(bin.length);
@@ -505,8 +507,8 @@ const RSProvider: PlazCodeProvider = (() => {
     const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : mime.includes("gif") ? "gif" : "jpg";
     return new File([arr], `robloxscript_${Date.now()}_${i}.${ext}`, { type: mime });
   }
-  const fileInputEl = () => {
-    for (const inp of safeQueryAll(document, 'input[type="file"]')) {
+  const fileInputEl = (): HTMLInputElement | null => {
+    for (const inp of safeQueryAll<HTMLInputElement>(document, 'input[type="file"]')) {
       if (!safeClosest(inp, "#rs-root")) return inp;
     }
     return null;
@@ -523,14 +525,14 @@ const RSProvider: PlazCodeProvider = (() => {
   };
   const hasPendingAttachment = () => !!pendingPreview();
   let _imgSeq = 0;
-  function tagImages(images) {
+  function tagImages(images: ImagePayloadList): ImagePayloadList {
     if (images && images.__rsId == null) {
       try { Object.defineProperty(images, "__rsId", { value: ++_imgSeq, enumerable: false }); }
       catch { images.__rsId = ++_imgSeq; }
     }
     return images;
   }
-  async function attachImages(images) {
+  async function attachImages(images: ImagePayloadList): Promise<boolean> {
     const inp = fileInputEl();
     if (!inp || !images || !images.length) return false;
     tagImages(images);
@@ -553,15 +555,15 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── Sending ─────────────────────────────────────────────────────────────────
-  function setTextareaValue(el, v) {
+  function setTextareaValue(el: HTMLElement, v: string): void {
     const proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
     const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
     if (setter && setter.set) setter.set.call(el, v);
-    else el.value = v;
+    else (el as HTMLTextAreaElement).value = v;
     el.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
-  async function typeAndSend(text, images) {
+  async function typeAndSend(text: string, images?: ImagePayloadList): Promise<void> {
     // Images FIRST: staging swaps in the inline image; the mirror textarea still
     // drives the composed text alongside it. Idempotent across the core's up-to-4
     // retries via the _attachedImages identity guard.
@@ -571,7 +573,7 @@ const RSProvider: PlazCodeProvider = (() => {
         const ok = await attachImages(images);
         if (ok) _attachedImages = images;
         diag("meta.tas.attached", { ok, imgId: images.__rsId });
-      } catch (e) { diag("meta.tas.attachErr", { msg: String((e && e.message) || e) }); }
+      } catch (e) { diag("meta.tas.attachErr", { msg: String((e && (e as { message?: unknown }).message) || e) }); }
     }
     // Write via the mirror textarea (the controlled input that drives Lexical).
     const editor = writeEl();
@@ -589,7 +591,7 @@ const RSProvider: PlazCodeProvider = (() => {
     let sent = false;
     for (let i = 0; i < 6 && !sent; i++) {
       if (sendReady()) {
-        try { sendButton().click(); } catch {}
+        try { sendButton()!.click(); } catch {}
       } else if (!isHardGenerating()) {
         // Fallback: Enter on the on-screen editor (the send button click is the
         // primary path; this only covers a swallowed click).
@@ -628,13 +630,13 @@ const RSProvider: PlazCodeProvider = (() => {
     if (!b || isReflexion()) return; // absent or already Réflexion → nothing to do
     _modeInFlight = true;
     try {
-      const fire = (el, t) =>
+      const fire = (el: Element, t: string) =>
         el.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 1, pointerType: "mouse", button: 0 }));
       fire(b, "pointerdown"); fire(b, "pointerup"); try { b.click(); } catch {}
       const opened = await waitFor(() => !!safeQuery(document, S.modeOptHard), 2000);
       if (opened) {
         const opt = safeQuery(document, S.modeOptHard);
-        try { opt.click(); } catch {}
+        try { opt!.click(); } catch {}
         await waitFor(isReflexion, 2000);
       }
       // Close the menu if it is still open (Radix closes on select, but be safe).
@@ -643,7 +645,7 @@ const RSProvider: PlazCodeProvider = (() => {
       }
       diag("meta.mode.set", { reflexion: isReflexion() });
     } catch (e) {
-      diag("meta.mode.err", { msg: String((e && e.message) || e) });
+      diag("meta.mode.err", { msg: String((e && (e as { message?: unknown }).message) || e) });
     } finally {
       _modeInFlight = false;
     }
@@ -651,7 +653,7 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // ── Composer readiness ──────────────────────────────────────────────────────
   function enforceComposer() { if (_locked) applyLock(); return { ready: true }; }
-  async function ensureComposerReady(reason) {
+  async function ensureComposerReady(reason?: string) {
     // Force Réflexion before the session runs (Instantané is much weaker). Fire and
     // forget - readiness never blocks on it (the mode flip is best-effort).
     ensureThinkMode();
@@ -683,15 +685,15 @@ const RSProvider: PlazCodeProvider = (() => {
     if (!getEditor()) return "The input box disappeared (session ended?).";
     return null;
   }
-  const isTooLongMsg = (text) => RE.tooLong.test(text);
-  const isBusyMsg = (text) => RE.busy.test(text);
+  const isTooLongMsg = (text: string): boolean => RE.tooLong.test(text);
+  const isBusyMsg = (text: string): boolean => RE.busy.test(text);
 
   // /  = a fresh chat with no conversation id yet → "" (never persisted as
   // "started"). A real conversation is /prompt/<uuid>.
   const conversationKey = () => (location.pathname === "/" ? "" : location.pathname);
 
   // ── User-send interception ──────────────────────────────────────────────────
-  function installSendHooks(handlers) {
+  function installSendHooks(handlers: SendHooks): void {
     document.addEventListener(
       "keydown",
       (e) => {
@@ -699,7 +701,7 @@ const RSProvider: PlazCodeProvider = (() => {
         // The user types in the on-screen Lexical div, so match the event target
         // against THAT (getEditor() is the hidden mirror textarea).
         const editor = visibleEditor();
-        if (!editor || !safeRead(() => editor.contains(e.target), false)) return;
+        if (!editor || !safeRead(() => editor.contains(e.target as Node | null), false)) return;
         if (editorText().trim() === "") return;
         if (handlers.isBlocked()) return;
         if (!handlers.isStarted()) {
@@ -716,7 +718,7 @@ const RSProvider: PlazCodeProvider = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const btn = e.target && safeRead(() => (e.target as Element).closest, null) && safeClosest(e.target, "button");
+        const btn = e.target && safeRead(() => (e.target as Element).closest, null) && safeClosest<HTMLButtonElement>(e.target, "button");
         if (!btn) return;
         if (safeClosest(btn, S.stopBtn) || safeRead(() => btn.matches(S.stopBtn), false)) { handlers.onNativeStop(); return; }
         if (!(safeClosest(btn, S.sendBtn) || safeRead(() => btn.matches(S.sendBtn), false))) return;
@@ -741,10 +743,10 @@ const RSProvider: PlazCodeProvider = (() => {
   // (its identity survives) with .rs-cmd-mask; the overlay.css rule keeps recreated
   // code wrappers hidden.
   const CMD_SHAPE = /"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i;
-  function findToolBlockSpot(item /*, chip */) {
+  function findToolBlockSpot(item: Element): ToolSpot | null {
     const b = bodyOf(item);
     if (!b) return null;
-    let hidAny = null;
+    let hidAny: ToolSpot | null = null;
     // 1. Code wrappers (JSON viewer or <pre>) carrying a command.
     safeQueryAll(b, S.codeWrap).forEach((cw) => {
       if (safeClosest(cw, ".rs-chip")) return;

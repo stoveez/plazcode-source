@@ -6,8 +6,8 @@
 // every turn. The full block is now sent when anything in it changed, on the first result of a chat, and every
 // `every` results; in between, one short line says it is unchanged (the bridge state stays visible on every result).
 const PlazCodeTurnBudget = (() => {
-                                                                  
-  function stateTag(full        , memo      , scope        , every = 8)         {
+
+  function stateTag(full, memo, scope, every = 8) {
     if (!full || !memo) return full;
     if (memo.scope !== scope) { memo.scope = scope; memo.last = ""; memo.repeats = 0; }
     if (full === memo.last && (memo.repeats || 0) < every - 1) {

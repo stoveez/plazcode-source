@@ -18,8 +18,11 @@ if (!have('typescript') || !have('ts-blank-space')) {
 }
 const env = {...process.env, NODE_PATH: modules.join(path.delimiter)};
 const run = (mode) => cp.spawnSync(process.execPath, [path.join(tsDir, 'build.cjs'), mode], {encoding: 'utf8', env, cwd: process.cwd()});
-const sources = ['providers', 'core'].flatMap((d) => fs.existsSync(path.join(tsDir, d)) ? fs.readdirSync(path.join(tsDir, d)).filter((f) => f.endsWith('.ts')).map((f) => d + '/' + f) : []);
-assert(sources.includes('providers/kimi.ts') && sources.includes('core/parser.ts') && sources.includes('core/stall-guard.ts'), 'the converted files are there: ' + sources.join(', '));
+const sources = [
+  ...fs.readdirSync(tsDir).filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts')),
+  ...['providers', 'core'].flatMap((d) => fs.existsSync(path.join(tsDir, d)) ? fs.readdirSync(path.join(tsDir, d)).filter((f) => f.endsWith('.ts')).map((f) => d + '/' + f) : []),
+];
+assert(sources.includes('background.ts') && sources.includes('popup.ts') && sources.includes('ollama-page.ts') && sources.includes('providers/kimi.ts') && sources.includes('core/parser.ts') && sources.includes('core/stall-guard.ts'), 'the converted files are there: ' + sources.join(', '));
 const check = run('--check');
 assert.equal(check.status, 0, 'every .js matches its .ts:\n' + check.stdout + check.stderr);
 const types = run('--types');

@@ -20,24 +20,44 @@
 //    REASONING phase there is NO stop button / spinner at all - only text growth
 //    says "still alive".
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
+  ;
+  ;
+  ;
+  ;
+  ;
+  ;
+
+
+
+
+
+
+
+
+
+
+
+
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+    return safeRead(() => (node).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
   function safeStyle(node) {
     return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
@@ -54,7 +74,7 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {}; // injected by core via init()
+  let diag = () => {}; // injected by core via init()
 
   // DOM selectors for chat.deepseek.com. Grouped so a future site tweak is a
   // one-liner. DeepSeek ships hashed CSS-module class names (e.g. `d29f3d7d`);
@@ -175,8 +195,8 @@ const RSProvider                   = (() => {
           out += v; continue;
         }
         if (type !== 1) continue;
-        if (safeRead(() => c.matches(CODE_BUTTON), false) && safeClosest(c, "pre, [class*='code-block'], [class*='code_block'], [class*='codeblock']")) continue;
-        const block = safeRead(() => c.matches(BLOCK), false) && !safeClosest(safeRead(() => c.parentElement, null), BLOCK);
+        if (safeRead(() => (c).matches(CODE_BUTTON), false) && safeClosest(c, "pre, [class*='code-block'], [class*='code_block'], [class*='codeblock']")) continue;
+        const block = safeRead(() => (c).matches(BLOCK), false) && !safeClosest(safeRead(() => c.parentElement, null), BLOCK);
         if (block && out && !out.endsWith("\n")) out += "\n";
         if (block) breakNext = false;
         walk(c);
@@ -209,7 +229,7 @@ const RSProvider                   = (() => {
     }
     let t = "";
     for (const n of safeRead(() => item.childNodes, [])) {
-      if (excludeSel && safeRead(() => n.nodeType, 0) === 1 && safeRead(() => n.matches, null) && safeRead(() => n.matches(excludeSel), false)) continue;
+      if (excludeSel && safeRead(() => n.nodeType, 0) === 1 && safeRead(() => (n).matches, null) && safeRead(() => (n).matches(excludeSel), false)) continue;
       t += safeRead(() => n.textContent, "") || "";
     }
     return t;
@@ -220,7 +240,7 @@ const RSProvider                   = (() => {
   const allItems = () => {
     const now = Date.now();
     if (now - itemsCacheAt < 200 && itemsCache.length && safeRead(() => itemsCache[itemsCache.length - 1].isConnected, false)) return itemsCache;
-    const rootSkip = (n) => n && !safeClosest(n, "#rs-root");
+    const rootSkip = (n) => (n && !safeClosest(n, "#rs-root"));
     let nodes = [...safeQueryAll(document, ".ds-message")].filter(rootSkip);
     if (!nodes.length) nodes = [...safeQueryAll(document, S.chatItem)].filter(rootSkip);
     itemsCache = nodes;
@@ -259,7 +279,7 @@ const RSProvider                   = (() => {
   const editorText = () => {
     const e = getEditor();
     if (!e) return "";
-    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => e.value, "") || "";
+    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => (e).value, "") || "";
     return (safeRead(() => e.innerText, "") || safeRead(() => e.textContent, "") || "");
   };
 
@@ -391,11 +411,11 @@ const RSProvider                   = (() => {
   }
 
   // ── Composer mode at startup: model, DeepThink and Search left as the person chose (2026-11-21) ──
-  const nodeText = (n) => (n && (safeRead(() => n.innerText, "") || safeRead(() => n.textContent, "") || "").trim()) || "";
+  const nodeText = (n) => (n && (safeRead(() => (n).innerText, "") || safeRead(() => n.textContent, "") || "").trim()) || "";
   const isPressedOn = (n) =>
-    n && (safeRead(() => n.getAttribute("aria-pressed"), null) === "true" ||
+    (n && (safeRead(() => n.getAttribute("aria-pressed"), null) === "true" ||
           safeRead(() => n.getAttribute("aria-checked"), null) === "true" ||
-          safeRead(() => n.classList.contains("ds-toggle-button--selected"), false));
+          safeRead(() => n.classList.contains("ds-toggle-button--selected"), false)));
 
   // Model tabs carry data-model-type: "default" (Instant), "expert", "vision"
   // (validated live 2026-07 on DeepSeek V4). Find one by type, falling back to a
@@ -506,7 +526,7 @@ const RSProvider                   = (() => {
       diag("mode_enforce", { reason, ...state });
       return state;
     } catch (e) {
-      diag("mode_fallback", { reason, target: "composer", error: String(e && e.message || e) });
+      diag("mode_fallback", { reason, target: "composer", error: String(e && (e).message || e) });
       return composerModeState();
     }
   }
@@ -537,7 +557,7 @@ const RSProvider                   = (() => {
   // update if DeepSeek reskins the footer button.
   function isStopBtn(btn) {
     if (!btn) return false;
-    const label = (safeRead(() => btn.getAttribute("aria-label"), null) || safeRead(() => btn.getAttribute("title"), null) || safeRead(() => btn.innerText, "") || "").trim();
+    const label = (safeRead(() => btn.getAttribute("aria-label"), null) || safeRead(() => btn.getAttribute("title"), null) || safeRead(() => (btn).innerText, "") || "").trim();
     if (/stop|停止|暂停|arr[eê]t/i.test(label) && !/send|发送/i.test(label)) return true;
     if (/send|发送/i.test(label)) return false; // explicit site label outranks SVG heuristics
     if (safeQuery(btn, "rect")) return true; // legacy stop square
@@ -560,7 +580,7 @@ const RSProvider                   = (() => {
       .join("");
     return thinkTxt + "\n" + replyTxt;
   }
-  const streamLen = (item ) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
 
   // Stream-growth tracking - the ONLY "is it still streaming?" signal during the
   // reasoning phase (no <rect>, no spinner then). We track the MAXIMUM length the
@@ -612,15 +632,15 @@ const RSProvider                   = (() => {
   // DOM growth remains the fallback when browser request observation is unavailable.
   let requestRevision=-1, openRequests=[], requestsInstalled=false, freshRequestAssignment=null;
   function receiveRequests(message) {
-    if (!message || !Number.isSafeInteger(message.revision) || message.revision<=requestRevision || !Array.isArray(message.active)) return;
+    if (!message || !Number.isSafeInteger(message.revision) || (message.revision)<=requestRevision || !Array.isArray(message.active)) return;
     requestRevision=message.revision;
     openRequests=message.active.filter(r=>typeof r.id==='string' && typeof r.path==='string' && Number.isFinite(r.startedAt));
   }
   function installRequestObserver() {
     if(requestsInstalled || typeof chrome==='undefined' || !chrome.runtime?.onMessage || !chrome.runtime?.sendMessage)return;
     requestsInstalled=true;
-    chrome.runtime.onMessage.addListener(message=>{if(message?.type==='rs-deepseek-requests')receiveRequests(message);});
-    Promise.resolve(chrome.runtime.sendMessage({type:'deepseek-requests'})).then(result=>{if(result?.ok)receiveRequests(result);}).catch(()=>{});
+    chrome.runtime.onMessage.addListener((message)=>{if(message?.type==='rs-deepseek-requests')receiveRequests(message);});
+    Promise.resolve(chrome.runtime.sendMessage({type:'deepseek-requests'})).then((result)=>{if(result?.ok)receiveRequests(result);}).catch(()=>{});
   }
   function responsePending() {
     const path=safeRead(()=>location.pathname,'');
@@ -689,7 +709,7 @@ const RSProvider                   = (() => {
         grewReason: grewWithin(timings.REASON_IDLE_MS),
         gen: isGenerating(),
       };
-    } catch (e) { return { err: String(e && e.message || e) }; }
+    } catch (e) { return { err: String(e && (e).message || e) }; }
   }
 
   // Lightweight turn snapshot for diagnostics (reasoning/reply lengths).
@@ -727,7 +747,7 @@ const RSProvider                   = (() => {
     return {
       present: true,
       reply: mds.map(mdText).join("\n").trim(),
-      thinking: th ? safeRead(() => th.textContent, "").trim() : "",
+      thinking: th ? (safeRead(() => th.textContent, "")).trim() : "",
       item,
     };
   }
@@ -751,7 +771,7 @@ const RSProvider                   = (() => {
       const proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
       const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
       if (setter && setter.set) setter.set.call(el, v);
-      else el.value = v;
+      else (el).value = v;
       el.dispatchEvent(new Event("input", { bubbles: true }));
       return;
     }
@@ -821,10 +841,10 @@ const RSProvider                   = (() => {
   const MIN_SEND_GAP_MS = 8000;
   const SEND_JITTER_MS = 1800;
   let _lastSendDoneAt = null, _sendChain = Promise.resolve(), _sendEpoch = 0, _sendSeq = 0;
-  let _contextReader            = () => ({}), _pacingRequest = null, _lastDelivered = "", _lastFailure = "";
+  let _contextReader = () => ({}), _pacingRequest = null, _lastDelivered = "", _lastFailure = "";
   const _pageId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "page-"+Date.now()+"-"+Math.random().toString(36).slice(2);
-  function sendError(message, code = "DEEPSEEK_PAUSED") { const error     =new Error(message);error.code=code;return error; }
-  function sendOwner()      { return {epoch:_sendEpoch,chat:typeof conversationKey === "function" ? conversationKey() : "",..._contextReader()}; }
+  function sendError(message, code = "DEEPSEEK_PAUSED") { const error = new Error(message); error.code = code; return error; }
+  function sendOwner() { return {epoch:_sendEpoch,chat:typeof conversationKey === "function" ? conversationKey() : "",..._contextReader()}; }
   function assertSendOwner(job) {
     const current=sendOwner();
     const ownerChanged=()=>{const error=sendError("The send was cancelled because Stop was pressed or the chat/session changed.","DEEPSEEK_CANCELLED");error.expectedCancellation=true;throw error;};
@@ -840,7 +860,7 @@ const RSProvider                   = (() => {
   function confirmsFreshChatSend(job) {
     const users=allItems().filter(isUserItem),last=users[users.length-1];
     if(!last || job.beforeUserItems.has(last))return false;
-    const normalize=value=>String(value||"").replace(/\s+/g," ").trim();
+    const normalize=(value)=>String(value||"").replace(/\s+/g," ").trim();
     const expected=normalize(job.typedText);
     return !!expected && normalize(itemText(last)).includes(expected);
   }
@@ -851,7 +871,7 @@ const RSProvider                   = (() => {
     if(!result || !result.ok)throw sendError(result && result.error || "The shared DeepSeek request timer did not answer. No send was authorized.");
     return result;
   }
-  async function sleepForSend(ms,job) { let left=ms;while(left>0){assertSendOwner(job);const step=Math.min(250,left);await sleep(step);left-=step;}assertSendOwner(job); }
+  async function sleepForSend(ms, job) { let left=ms;while(left>0){assertSendOwner(job);const step=Math.min(250,left);await sleep(step);left-=step;}assertSendOwner(job); }
   async function paceBeforeSend(job) {
     const gap=MIN_SEND_GAP_MS+Math.random()*SEND_JITTER_MS;
     let remaining=_lastSendDoneAt!==null?_lastSendDoneAt+gap-Date.now():0;
@@ -860,9 +880,9 @@ const RSProvider                   = (() => {
     assertSendOwner(job);
   }
   function queueSend(operation) {
-    const job     ={id:_pageId+":"+(++_sendSeq),owner:sendOwner(),draft:typeof editorText === "function"?editorText():""};
+    const job={id:_pageId+":"+(++_sendSeq),owner:sendOwner(),draft:typeof editorText === "function"?editorText():""};
     const run=async()=>{try{await paceBeforeSend(job);return await operation(job);}catch(error){
-      _lastFailure=String(error.message||error);
+      _lastFailure=String((error).message||error);
       // Restore only the draft this operation replaced, never text in a different chat or edited by the user.
       try{if(job.editor && job.owner.chat===conversationKey() && getEditor()===job.editor && editorText()===job.typedText)setTextareaValue(job.editor,job.previousDraft||"");}catch{}
       throw error;
@@ -871,7 +891,7 @@ const RSProvider                   = (() => {
   }
   function typeAndSend(text, images, opts) { return queueSend(job=>typeAndSendRaw(text,images,opts,job)); }
   async function commitSend(job, button) {
-    let lease=null;
+    let lease = null;
     const claimLease = async () => {
       while(!lease){
         assertSendOwner(job);
@@ -909,8 +929,8 @@ const RSProvider                   = (() => {
         if(responsePending())throw sendError("DeepSeek is still responding. Nothing was sent.");
       }
       // Re-read after every await: a former send button may now be Stop, or flicker disabled for a frame after validate.
-      const readLive=()=>job.continue?findContinueBtn():getSendBtn();
-      const liveUsable=el=>!!el && (job.continue || (!isStopBtn(el) && safeRead(()=>el.getAttribute("aria-disabled"),null)!=="true"));
+      const readLive=() =>job.continue?findContinueBtn():getSendBtn();
+      const liveUsable=(el) =>!!el && (job.continue || (!isStopBtn(el) && safeRead(()=>el.getAttribute("aria-disabled"),null)!=="true"));
       let live=readLive();
       if(!liveUsable(live)){
         const flickerBudget=Math.max(0,Math.min(2000,lease.valid_until-Date.now()-150));
@@ -957,7 +977,7 @@ const RSProvider                   = (() => {
       return true;
     } finally { if(lease)try{await pacing({action:"finish",id:job.id,sent:false});}catch{} }
   }
-  async function waitSend(predicate,timeout,job) {
+  async function waitSend(predicate, timeout, job) {
     let started=Date.now(), lastBeatAt=started;
     while(Date.now()-started<timeout){
       const now=Date.now();
@@ -1047,7 +1067,7 @@ const RSProvider                   = (() => {
       // (POST /api/v0/file/upload_file answered 200 in under a second), so waiting for the link to change never ended and the send was
       // paused after 25 s (seen with Ask PlazCode's screenshot).
       let steadySince=0;
-      const uploadsDone=()=>{try{return performance.getEntriesByType("resource").filter((e     )=>e.startTime>=attachStart-50&&/\/api\/v\d+\/file\/upload_file/.test(e.name)&&(e.responseStatus===undefined||e.responseStatus===0||e.responseStatus===200)).length;}catch{return 0;}};
+      const uploadsDone=()=>{try{return performance.getEntriesByType("resource").filter((e)=>e.startTime>=attachStart-50&&/\/api\/v\d+\/file\/upload_file/.test(e.name)&&(e.responseStatus===undefined||e.responseStatus===0||e.responseStatus===200)).length;}catch{return 0;}};
       const uploaded=await waitSend(()=>{
         const thumbs=attachThumbs();if(thumbs.length<images.length){steadySince=0;return false;}
         if(thumbs.every(im=>!/^blob:/.test(safeRead(()=>im.getAttribute("src"),"")||"")))return true;
@@ -1076,7 +1096,7 @@ const RSProvider                   = (() => {
       }
       // An uncertain native send still gets a conservative final anchor, never an automatic replay.
       if(epoch===_sendEpoch && chat===conversationKey())await pacing({action:"observe"});
-    })().catch(error=>{try{diag("send.paceUnavailable",{error:String(error.message||error)});}catch{}});
+    })().catch((error)=>{try{diag("send.paceUnavailable",{error:String((error).message||error)});}catch{}});
   }
 
   async function noteHealthyReply() { if(_lastDelivered)try{await pacing({action:"healthy",id:_lastDelivered});}catch{} }
@@ -1119,7 +1139,7 @@ const RSProvider                   = (() => {
     return null;
   }
   function scanBusy() {const notice=visibleLimit();if(!notice || notice.reported)return null;notice.reported=true;return notice.text;}
-  async function noteRateLimit(text,existing) {
+  async function noteRateLimit(text, existing) {
     const visible=existing || visibleLimit();
     const notice=visible && visible.text===text ? visible : {text,id:_pageId+":notice:"+(++_noticeSeq),restricted:RESTRICTED.test(text)};
     const match=String(text||"").match(/(?:try again|wait|retry|稍后|等待)[^0-9]{0,30}(\d+(?:\.\d+)?)\s*(seconds?|secs?|minutes?|mins?|hours?|秒|分钟|小时)/i);
@@ -1224,7 +1244,7 @@ const RSProvider                   = (() => {
   async function writeDraft(value, expectedCurrent) {
     const ed = getEditor();
     if (!ed || editorText() !== String(expectedCurrent)) return {ok:false,reason:'draft-changed'};
-    const relock = !!safeRead(() => ed.readOnly, true);
+    const relock = !!safeRead(() => (ed).readOnly, true);
     try { setInputLock(false); setTextareaValue(ed, String(value)); return {ok:editorText() === String(value)}; }
     finally { if(relock)setInputLock(true); }
   }
@@ -1240,7 +1260,7 @@ const RSProvider                   = (() => {
         const text = editorText().trim();
         if (text === "") return;
 
-        if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+        if ((handlers).onCoworkSend && (handlers).onCoworkSend(e)) return;
         if(e.isTrusted)observeManualSend();
         if (handlers.isBlocked()) return;
 
@@ -1268,11 +1288,11 @@ const RSProvider                   = (() => {
         }
         // Not on a chat page (e.g. login / OAuth page) - never intercept anything.
         if (!getEditor()) return;
-        const t = e.target           ;
+        const t = e.target;
         // The native "Continue" button = a clear intent to RESUME after a stop.
-        const cont = t && safeRead(() => t.closest, null) && safeClosest(t, ".ds-button");
+        const cont = t && safeRead(() => t.closest, null) && (safeClosest(t, ".ds-button"));
         if (cont && RE.continueBtn.test((safeRead(() => cont.innerText, "") || "").trim())) {
-          if(e.isTrusted){observeManualSend();handlers.onNativeContinue();}
+          if(e.isTrusted){observeManualSend();(handlers).onNativeContinue();}
           return;
         }
         const btn = t && safeRead(() => t.closest, null) && safeClosest(t, S.sendBtn);
@@ -1283,7 +1303,7 @@ const RSProvider                   = (() => {
           return;
         }
         if (safeRead(() => btn.getAttribute("aria-disabled"), null) === "true") return;
-        if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+        if ((handlers).onCoworkSend && (handlers).onCoworkSend(e)) return;
         if(e.isTrusted)observeManualSend();
         if (handlers.isBlocked()) return;
         if (!handlers.isStarted()) {
@@ -1312,7 +1332,7 @@ const RSProvider                   = (() => {
     const dsmlWrapStart = new RegExp("<\\s*" + BAR + "dsml" + BAR + "[a-z_]*calls", "i");
     const dsmlWrapEnd = new RegExp("<\\s*\\/" + BAR + "dsml" + BAR + "[a-z_]*calls\\s*>", "i");
     const dsmlStart = (t) => !!(P.DSML_SIG_RE && P.DSML_SIG_RE.test(t));
-    const orphan = t => typeof P.orphanDsmlClosers==='function'&&P.orphanDsmlClosers(t)>0;
+    const orphan = (t) => typeof P.orphanDsmlClosers==='function'&&P.orphanDsmlClosers(t)>0;
     const hasStart = (t) => P.LUA_START_RE.test(t) || t.includes("###mcp_tool###") || dsmlStart(t) || orphan(t);
     const hasEnd = (t) => P.LUA_END_RE.test(t) || t.includes("###end_mcp_tool###") || t.includes("###end-mcp_tool###") || dsmlEnd.test(t) || orphan(t);
     const isJson = (t) => /\{\s*"(?:command|tool)"\s*:/.test(t);
@@ -1364,17 +1384,17 @@ const RSProvider                   = (() => {
     const fenced = !!ref && (safeRead(() => ref.matches(".md-code-block, [class*='md-code-block']"), false) || !!safeQuery(ref, ".md-code-block"));
     if (fenced) { if (!safeRead(() => item.classList.contains("rs-cmd-mask"), false)) safeRead(() => item.classList.add("rs-cmd-mask"), null); }
     else if (!ref) safeRead(() => item.classList.remove("rs-cmd-mask"), null);
-    if (chip && ref) item.__rsDsChip = chip;
-    if (ref && !item.__rsDsGuard && typeof MutationObserver === "function") {
+    if (chip && ref) (item).__rsDsChip = chip;
+    if (ref && !(item).__rsDsGuard && typeof MutationObserver === "function") {
       let busy = false;
-      const looksLikeCode = (n) => n && n.nodeType === 1 && (safeRead(() => n.matches("[class*='code'], .md-code-block, pre"), false) || !!safeQuery(n, "[class*='code'], .md-code-block, pre"));
+      const looksLikeCode = (n) => (n && n.nodeType === 1 && (safeRead(() => (n).matches("[class*='code'], .md-code-block, pre"), false) || !!safeQuery(n, "[class*='code'], .md-code-block, pre")));
       const guard = new MutationObserver((records) => {
         if (busy || !item.isConnected) return;
-        const card = item.__rsDsChip;
+        const card = (item).__rsDsChip;
         let redraw = false;
         for (const r of records) {
           for (const n of r.addedNodes) { if (looksLikeCode(n)) { redraw = true; break; } }
-          if (!redraw && card) for (const n of r.removedNodes) { if (n === card || (n.nodeType === 1 && safeRead(() => n.contains(card), false))) { redraw = true; break; } }
+          if (!redraw && card) for (const n of r.removedNodes) { if (n === card || (n.nodeType === 1 && safeRead(() => (n).contains(card), false))) { redraw = true; break; } }
           if (redraw) break;
         }
         if (!redraw) return;
@@ -1385,7 +1405,7 @@ const RSProvider                   = (() => {
           if (spot && chipEl && !chipEl.isConnected) spot.parent.insertBefore(chipEl, spot.ref);
         } catch {} finally { busy = false; }
       });
-      try { guard.observe(item, { childList: true, subtree: true }); item.__rsDsGuard = guard; } catch {}
+      try { guard.observe(item, { childList: true, subtree: true }); (item).__rsDsGuard = guard; } catch {}
     }
     return ref ? { parent, ref } : null;
   }

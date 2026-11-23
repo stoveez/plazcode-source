@@ -39,21 +39,23 @@
 //    are NOT function calls, just TYPE the JSON" reassurance) defuses it and it
 //    complies. Nothing to do in code - just never bootstrap with a stripped prompt.
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
     return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
@@ -73,7 +75,7 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {}; // injected by core via init()
+  let diag = () => {}; // injected by core via init()
   // Identity of the last image set STAGED into the composer. The core reuses the
   // same array reference across submitAndGetBase's typeAndSend retries, so keying
   // on it makes the attach idempotent; a new capture is a new array.
@@ -212,14 +214,14 @@ const RSProvider                   = (() => {
   // block <span> with NO newline text node, so plain textContent collapses the
   // block onto one line (breaks multi-line Lua). Rebuild it by joining the code
   // element's line children with "\n".
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     const skip = ".rs-chip, " + S.reasoning + (excludeSel ? ", " + excludeSel : "");
     let t = "";
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
+      if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(skip), false)) return;
       // A ```json fence renders as the INTERACTIVE JSON-VIEWER widget (a
       // .ur-code-block with a JSON/Tree/Raw toolbar and a collapsible tree), NOT
       // a <pre>. In its Tree view it injects a ▶/▼ expander glyph BEFORE every
@@ -229,7 +231,7 @@ const RSProvider                   = (() => {
       // command with a nested object, then it retried, re-rendered, and failed
       // again (the reported spam). Detect the viewer (a .ur-code-block with no
       // <pre>) and hand the parser the cleaned JSON instead of the raw tree text.
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(S.codeWrap), false) && !safeQuery(n, "pre")) {
+      if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(S.codeWrap), false) && !safeQuery(n, "pre")) {
         // The viewer's Tree view does not just decorate the JSON, it ABRIDGES it:
         // a large array/object is rendered as a summary placeholder instead of its
         // contents, e.g. `…,"edits":[1 item]}}` for a 19k-char multi_edit payload
@@ -241,7 +243,7 @@ const RSProvider                   = (() => {
         t += cleanJsonViewer(safeRead(() => n.textContent, "") || "");
         return;
       }
-      if (safeRead(() => n.tagName, "") === "PRE") { t += preText(n); return; }
+      if (safeRead(() => (n).tagName, "") === "PRE") { t += preText(n); return; }
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
     };
     walk(root);
@@ -557,7 +559,7 @@ const RSProvider                   = (() => {
     const proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
     const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
     if (setter && setter.set) setter.set.call(el, v);
-    else el.value = v;
+    else (el).value = v;
     el.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
@@ -571,7 +573,7 @@ const RSProvider                   = (() => {
         const ok = await attachImages(images);
         if (ok) _attachedImages = images;
         diag("meta.tas.attached", { ok, imgId: images.__rsId });
-      } catch (e) { diag("meta.tas.attachErr", { msg: String((e && e.message) || e) }); }
+      } catch (e) { diag("meta.tas.attachErr", { msg: String((e && (e).message) || e) }); }
     }
     // Write via the mirror textarea (the controlled input that drives Lexical).
     const editor = writeEl();
@@ -643,7 +645,7 @@ const RSProvider                   = (() => {
       }
       diag("meta.mode.set", { reflexion: isReflexion() });
     } catch (e) {
-      diag("meta.mode.err", { msg: String((e && e.message) || e) });
+      diag("meta.mode.err", { msg: String((e && (e).message) || e) });
     } finally {
       _modeInFlight = false;
     }
@@ -716,7 +718,7 @@ const RSProvider                   = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const btn = e.target && safeRead(() => (e.target           ).closest, null) && safeClosest(e.target, "button");
+        const btn = e.target && safeRead(() => (e.target).closest, null) && safeClosest(e.target, "button");
         if (!btn) return;
         if (safeClosest(btn, S.stopBtn) || safeRead(() => btn.matches(S.stopBtn), false)) { handlers.onNativeStop(); return; }
         if (!(safeClosest(btn, S.sendBtn) || safeRead(() => btn.matches(S.sendBtn), false))) return;
@@ -741,7 +743,7 @@ const RSProvider                   = (() => {
   // (its identity survives) with .rs-cmd-mask; the overlay.css rule keeps recreated
   // code wrappers hidden.
   const CMD_SHAPE = /"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i;
-  function findToolBlockSpot(item /*, chip */) {
+  function findToolBlockSpot(item) {
     const b = bodyOf(item);
     if (!b) return null;
     let hidAny = null;

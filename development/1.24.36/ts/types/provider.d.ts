@@ -2,9 +2,10 @@
 // required members; the optional ones are the extra hooks some sites use. A member not listed here is a typo or a new hook:
 // add it here first (TypeScript, step 2, owner 2026-11-15).
 type Diag = (name: string, data?: object) => void;
-interface ImagePayload { mimeType?: string; data: string }
+interface ImagePayload { mimeType?: string; data: string; name?: string; size?: number; kind?: string; [extra: string]: unknown }
+interface ImagePayloadList extends Array<ImagePayload> { __rsId?: string | number }
 interface AssistantRead { present: boolean; reply: string; thinking: string; item: Element | null; [extra: string]: unknown }
-interface SendHooks { isBlocked(): boolean; isStarted(): boolean; onBlockedAttempt(): void; onUserMessage(count: number): void; onNativeStop(): void; [extra: string]: unknown }
+interface SendHooks { isBlocked(): boolean; isStarted(): boolean; onBlockedAttempt(): void; onUserMessage(count: number, token?: any): void; onNativeStop(): void; onCoworkSend?(event: any): boolean; [extra: string]: unknown }
 interface PlazCodeProvider {
   id: string;
   displayName: string;
@@ -29,7 +30,7 @@ interface PlazCodeProvider {
   composerFrame: () => Element | null;
   barAnchor: () => Element | null;
   setInputLock: (on: boolean) => void;
-  typeAndSend: (text: string, images?: ImagePayload[], options?: object) => Promise<boolean | void>;
+  typeAndSend: (text: string, images?: ImagePayloadList, options?: object) => Promise<boolean | void>;
   stopGeneration: () => void;
   isGenerating: () => boolean;
   isBusyNow: () => boolean;
@@ -42,7 +43,7 @@ interface PlazCodeProvider {
   scanError: () => string | null;
   isTooLongMsg: (text: string) => boolean;
   isBusyMsg: (text: string) => boolean;
-  attachImages: (images: ImagePayload[]) => unknown;
+  attachImages: (images: ImagePayloadList) => unknown;
   clearAttachments: () => void;
   conversationKey: () => string;
   installSendHooks: (hooks: SendHooks) => void;
@@ -55,6 +56,7 @@ interface PlazCodeProvider {
   authoritativeSendResult?: any;
   autoResumeUnstarted?: any;
   backgroundAgentSupported?: any;
+  barMount?: any;
   barOutside?: any;
   barTrackIntervalMs?: any;
   canRenderImmutableChip?: any;
@@ -76,6 +78,7 @@ interface PlazCodeProvider {
   coverOffsetY?: any;
   coverPad?: any;
   coverTarget?: any;
+  deterministicBootstrapList?: any;
   emptyReplyGraceMs?: any;
   expandCollapsedWork?: any;
   failHardOnSendFailure?: any;
@@ -86,6 +89,8 @@ interface PlazCodeProvider {
   getEditorRaw?: any;
   guardedSender?: any;
   hasPendingAttachment?: any;
+  hasRegenerate?: any;
+  helperChatUrl?: any;
   ignoreMutationRecords?: any;
   immutableChipOwned?: any;
   immutableChipPresent?: any;
@@ -103,6 +108,7 @@ interface PlazCodeProvider {
   modeWarning?: any;
   mountActivitySummary?: any;
   mutationAttributeFilter?: any;
+  name?: any;
   noteHealthyReply?: any;
   noteRateLimit?: any;
   observeCharacterData?: any;

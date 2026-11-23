@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/lean-startup.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // core/lean-startup.js - the SHORT startup message and the on-demand help behind it ("lean startup").
 //
 // Today every chat starts with up to ~42,500 characters (Roblox, full) or ~14,000 (compact) that the AI mostly never
@@ -17,7 +18,7 @@
   const api = factory(root);
   if (root) root.PlazCodeLeanStartup = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
-})(typeof globalThis !== "undefined" ? globalThis : (typeof self !== "undefined" ? self : this), function () {
+})((typeof globalThis !== "undefined" ? globalThis : (typeof self !== "undefined" ? self : (this))), function () {
   "use strict";
 
   const SYS_MARKER = "⟦RS-SYS⟧"; // same marker as RS.SYS_MARKER (core/config.js); the message must start with it
@@ -26,6 +27,33 @@
   const DEFAULT_SITE = "this AI site";
   const BT = "```";
 
+  ;
+
+
+
+  ;
+
+
+  ;
+  ;
+  ;
+
+
+
+
+
+
+
+
+  ;
+
+
+
+
+
+
+
+
   // ── Where the real text lives ──────────────────────────────────────────────────────────────────────────────────
   // Everything is looked up when it is needed (never copied at load time) so a later edit to the full prompt flows
   // straight into the help topics. `use()` lets a node test that load the file with require() hand the pieces over.
@@ -33,7 +61,7 @@
   function use(sources) { injected = sources && typeof sources === "object" ? { ...sources } : {}; }
   function pick(name, probe) {
     if (injected[name]) return injected[name];
-    try { return probe(); } catch { return null; }
+    try { return probe() ?? null; } catch { return null; }
   }
   const getRS = () => pick("RS", () => (typeof RS !== "undefined" ? RS : null));
   const getClarification = () => pick("Clarification", () => (typeof PlazCodeClarification !== "undefined" ? PlazCodeClarification : null));
@@ -272,8 +300,8 @@
     ALIASES[def.name] = def.name;
     for (const alias of def.aliases) { if (!ALIASES[alias]) ALIASES[alias] = def.name; }
   }
-  const normalise = value => String(value == null ? "" : value).toLowerCase().trim().replace(/[\s_/\\]+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
-  const normEngine = engine => (engine === "local" ? L : R); // unreal / anim fold into roblox, like the rest of PlazCode
+  const normalise = (value) => String(value == null ? "" : value).toLowerCase().trim().replace(/[\s_/\\]+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  const normEngine = (engine) => (engine === "local" ? L : R); // unreal / anim fold into roblox, like the rest of PlazCode
   const available = (def, engine) => def.engines.includes(normEngine(engine));
 
   function topicText(name, siteName) {
@@ -307,7 +335,7 @@
     [/^plazcode_checklist$/, "checklist"], [/^developer_product|^create_dev/, "developer-products"], [/^plazcode_(?:debug|agent)$/, "debug-agents"],
     [/^plazcode_clarify$/, "clarify"], [/^(?:start_stop_play|execute_luau)$/, "play-mode"], [/^plazcode_status$/, "modes"], [/^luau_guidance$/, "luau"],
   ];
-  const escapeRe = value => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapeRe = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   function capReply(text) {
     if (text.length <= HELP_MAX_CHARS) return text;
@@ -338,7 +366,8 @@
       }
       if (found.length >= 4) break;
     }
-    const prefixTopic = (COMMAND_TOPIC.find(([pattern]) => pattern.test(name)) || [])[1];
+    const prefixMatch = COMMAND_TOPIC.find(([pattern]) => pattern.test(name));
+    const prefixTopic = prefixMatch ? prefixMatch[1] : undefined;
     if (!found.length && !notes) {
       if (prefixTopic && BY_NAME[prefixTopic] && available(BY_NAME[prefixTopic], engine)) {
         const text = topicText(prefixTopic, siteName);
@@ -352,7 +381,7 @@
   // helpFor({topic, command, engine, siteName}) -> text for the AI. Never empty, never an error object.
   function helpFor(args) {
     const a = args && typeof args === "object" ? args : (typeof args === "string" ? { topic: args } : {});
-    const engine = normEngine(a.engine), siteName = a.siteName || DEFAULT_SITE;
+    const engine = normEngine(a.engine), siteName = typeof a.siteName === "string" && a.siteName ? a.siteName : DEFAULT_SITE;
     const wantTopic = a.topic != null && String(a.topic).trim() !== "";
     const wantCommand = a.command != null && String(a.command).trim() !== "";
     const parts = [];
@@ -456,12 +485,12 @@
   }
 
   function buildLeanCore(options) {
-    const o = options && typeof options === "object" ? options : {};
-    const site = o.siteName || DEFAULT_SITE;
+    const o = (options && typeof options === "object" ? options : {});
+    const site = typeof o.siteName === "string" && o.siteName ? o.siteName : DEFAULT_SITE;
     return normEngine(o.engine) === L ? localCore(site, o.fullAccess === true) : robloxCore(site);
   }
   // Notion keeps its own plain "user preferences" text (core/config.js); the lean core is not meant for it.
-  const supports = options => !(options && String(options.provider || options.providerId || "") === "notion");
+  const supports = (options) => !(options && String(options.provider || options.providerId || "") === "notion");
 
   // ── Anchors: phrases of today's full prompts that must still be reachable (lean core or some topic) ───────────
   const ANCHORS = Object.freeze({
@@ -484,10 +513,11 @@
   });
   // Where each anchor is: "core", "topic:<name>", or "" when it is nowhere (a test fails on that).
   function coverage(options) {
-    const o = options && typeof options === "object" ? options : {};
+    const o = (options && typeof options === "object" ? options : {});
     const engine = normEngine(o.engine), key = engine === L ? "local" : "roblox";
-    const core = buildLeanCore({ engine, siteName: o.siteName });
-    const s = sources(o.siteName);
+    const siteName = typeof o.siteName === "string" ? o.siteName : undefined;
+    const core = buildLeanCore({ engine, siteName });
+    const s = sources(siteName);
     const texts = listTopics(engine).map(t => {
       let text = "";
       try { text = BY_NAME[t.name].build(s) || ""; } catch { text = ""; }
@@ -506,8 +536,8 @@
   }
   // For tests / diagnostics: size of every topic and which required phrases it lacks.
   function diagnose(options) {
-    const o = options && typeof options === "object" ? options : {};
-    const s = sources(o.siteName), out = {};
+    const o = (options && typeof options === "object" ? options : {});
+    const s = sources(typeof o.siteName === "string" ? o.siteName : undefined), out = {};
     for (const def of TOPIC_DEFS) {
       let text = "";
       try { text = (def.build(s) || "").trim(); } catch { text = ""; }
@@ -537,10 +567,18 @@
     ["agentscript", [L], /\b(?:files?|folders?|directory|terminal|shell|git|npm|pip|python|node|build|compile|tests?|repo|install|download|refactor\w*|bugs?|fix\w*)\b/i],
     ["full-access", [L], /\b(?:full pc|absolute paths?|processes|process_kill|kill)\b|\b[A-Z]:\\/i],
   ];
+  ;
+
+
+
+
+
+
+
   function routeTopics(requestText, options) {
-    const o = options && typeof options === "object" ? options : {};
-    const engine = normEngine(o.engine), max = Number.isFinite(o.max) ? Math.max(0, o.max) : 4;
-    const skip = new Set((o.exclude || []).map(resolveTopic));
+    const o = (options && typeof options === "object" ? options : {});
+    const engine = normEngine(o.engine), max = typeof o.max === "number" && Number.isFinite(o.max) ? Math.max(0, o.max) : 4;
+    const skip = new Set((Array.isArray(o.exclude) ? o.exclude : []).map(resolveTopic));
     const text = String(requestText == null ? "" : requestText).slice(0, 8000);
     const out = [];
     if (!text.trim()) return out;
@@ -554,34 +592,43 @@
 
   // Remembers which topics were already pushed into which chat, so each is sent once per chat.
   function createTracker(limit) {
-    const cap = Number.isFinite(limit) && limit > 0 ? limit : 64;
+    const cap = Number.isFinite(limit) && (limit) > 0 ? (limit) : 64;
     const chats = new Map();
-    const key = chat => String(chat == null ? "" : chat);
-    const set = chat => {
+    const key = (chat) => String(chat == null ? "" : chat);
+    const set = (chat) => {
       const k = key(chat);
-      if (!chats.has(k)) { chats.set(k, new Set()); if (chats.size > cap) chats.delete(chats.keys().next().value); }
-      return chats.get(k);
+      let entry = chats.get(k);
+      if (!entry) {
+        entry = new Set();
+        chats.set(k, entry);
+        if (chats.size > cap) {
+          const oldest = chats.keys().next().value;
+          if (oldest !== undefined) chats.delete(oldest);
+        }
+      }
+      return entry;
     };
     return {
       has: (chat, topic) => (chats.get(key(chat)) || new Set()).has(resolveTopic(topic) || normalise(topic)),
-      mark(chat, topics) { const s = set(chat); for (const t of [].concat(topics || [])) { const n = resolveTopic(t); if (n) s.add(n); } },
+      mark(chat, topics) { const s = set(chat); for (const t of ([]).concat(topics || [])) { const n = resolveTopic(t); if (n) s.add(n); } },
       // the topics from `topics` that this chat has not had yet (does not mark them)
-      fresh: (chat, topics) => [].concat(topics || []).map(resolveTopic).filter((n, i, all) => n && all.indexOf(n) === i && !(chats.get(key(chat)) || new Set()).has(n)),
-      delivered: chat => Array.from(chats.get(key(chat)) || []),
+      fresh: (chat, topics) => ([]).concat(topics || []).map(resolveTopic).filter((n, i, all) => Boolean(n) && all.indexOf(n) === i && !(chats.get(key(chat)) || new Set()).has(n)),
+      delivered: (chat) => Array.from(chats.get(key(chat)) || []),
       reset(chat) { if (chat === undefined) chats.clear(); else chats.delete(key(chat)); },
       size: () => chats.size,
     };
   }
   // pushFor(request, tracker, chat, {engine, max, budget}) -> {topics, text}. Marks what it returns as delivered.
   function pushFor(requestText, tracker, chat, options) {
-    const o = options && typeof options === "object" ? options : {};
-    const engine = normEngine(o.engine), budget = Number.isFinite(o.budget) ? o.budget : 24000;
+    const o = (options && typeof options === "object" ? options : {});
+    const engine = normEngine(o.engine), budget = typeof o.budget === "number" && Number.isFinite(o.budget) ? o.budget : 24000;
     const wanted = routeTopics(requestText, { engine, max: o.max });
     const todo = tracker ? tracker.fresh(chat, wanted) : wanted;
     const sent = [], blocks = [];
     let used = 0;
+    const siteName = typeof o.siteName === "string" ? o.siteName : undefined;
     for (const name of todo) {
-      const text = topicText(name, o.siteName);
+      const text = topicText(name, siteName);
       if (!text) continue;
       const block = `[PlazCode reference for this request - topic "${name}"]\n${text}`;
       if (sent.length && used + block.length > budget) break;

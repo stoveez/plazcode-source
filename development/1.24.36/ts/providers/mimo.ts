@@ -17,19 +17,21 @@
 // eslint-disable-next-line no-unused-vars
 const RSProvider: PlazCodeProvider = (() => {
   "use strict";
+  type SafeRect = { x: number; y: number; left: number; top: number; right: number; bottom: number; width: number; height: number; readFailed?: boolean };
+  type ToolSpot = { parent: Element | null; ref: Element | null };
   let domReadErrors = 0;
-  function safeRead(read, fallback) { try { return read(); } catch { domReadErrors++; return fallback; } }
-  const safeQuery = (root, sel) => safeRead(() => root.querySelector(sel), null);
-  const safeQueryAll = (root, sel) => safeRead(() => Array.from(root.querySelectorAll(sel)), []);
-  const safeClosest = (node, sel) => safeRead(() => node.closest(sel), null);
-  const safeRect = (node) => safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
-  const safeStyle = (node) => safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0'});
-  function safePredicate(predicate) { const before = domReadErrors; const result = safeRead(predicate, false); return before === domReadErrors ? result : false; }
-  function waitBudget(timeout, interval) {
+  function safeRead<T, F = T>(read: () => T, fallback: F): T | F { try { return read(); } catch { domReadErrors++; return fallback; } }
+  const safeQuery = <T extends Element = HTMLElement>(root: ParentNode | null | undefined, sel: string): T | null => safeRead(() => (root as ParentNode).querySelector<T>(sel), null);
+  const safeQueryAll = <T extends Element = HTMLElement>(root: ParentNode | null | undefined, sel: string): T[] => safeRead(() => Array.from((root as ParentNode).querySelectorAll<T>(sel)), []);
+  const safeClosest = <T extends Element = HTMLElement>(node: Node | EventTarget | null | undefined, sel: string): T | null => safeRead(() => (node as Element).closest<T>(sel), null);
+  const safeRect = (node: Element): SafeRect => safeRead<DOMRect, SafeRect>(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+  const safeStyle = (node: Element): CSSStyleDeclaration => safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0'} as unknown as CSSStyleDeclaration);
+  function safePredicate<T>(predicate: () => T): T | false { const before = domReadErrors; const result = safeRead(predicate, false as const); return before === domReadErrors ? result : false; }
+  function waitBudget(timeout: number, interval: number): { ms: number; polls: number } {
     const ms = Number.isFinite(timeout) ? Math.min(600000, Math.max(0, timeout)) : 30000;
     return {ms, polls: Math.ceil(ms / interval)};
   }
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
   let diag: Diag = () => {};
 
   const S = {
@@ -59,27 +61,28 @@ const RSProvider: PlazCodeProvider = (() => {
   const route = () => String(location.hash || "").replace(/^#/, "");
   const isClaw = () => /^\/claw(\/|$)/i.test(route());
 
-  function visible(el) {
+  function visible(el: Element | null | undefined): boolean {
     if (!el || safeClosest(el, "#rs-root")) return false;
     const r = safeRect(el);
     if (r.width < 8 || r.height < 4) return false;
     const s = safeStyle(el);
     return !(s.display === "none" || s.visibility === "hidden" || parseFloat(s.opacity) === 0);
   }
-  function textWithout(root: Element | null, excludeSel?: string) {
+  function textWithout(root: Element | null, excludeSel?: string): string {
     if (!root) return "";
     const skip = excludeSel ? `${S.skip}, ${excludeSel}` : S.skip;
     let t = "";
-    const walk = (n) => {
+    const walk = (n: Node): void => {
       const type = safeRead(() => n.nodeType, 0);
       if (type === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (type !== 1) return;
-      if (safeRead(() => n.matches(skip), false)) return;
-      const tag = safeRead(() => n.tagName, "");
+      const el = n as Element;
+      if (safeRead(() => el.matches(skip), false)) return;
+      const tag = safeRead(() => el.tagName, "");
       if (tag === "BR") { t += "\n"; return; }
       const block = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|TABLE|TR)$/.test(tag);
       if (block && t && !t.endsWith("\n")) t += "\n";
-      for (const c of safeRead(() => n.childNodes, [])) walk(c);
+      for (const c of safeRead(() => n.childNodes, [] as Node[])) walk(c);
       if (block && !t.endsWith("\n")) t += "\n";
     };
     walk(root);
@@ -87,24 +90,25 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── Composer ────────────────────────────────────────────────────────────────
-  const getEditor = () => safeQueryAll(document, "textarea").find((t) => visible(t) && !safeClosest(t, "nav, aside, [role='dialog']")) || null;
-  const editorText = () => { const e = getEditor(); return e ? (safeRead(() => e.value, "") || "") : ""; };
-  function signedOut() {
+  const getEditor = (): HTMLTextAreaElement | null => safeQueryAll<HTMLTextAreaElement>(document, "textarea").find((t) => visible(t) && !safeClosest(t, "nav, aside, [role='dialog']")) || null;
+  const editorText = (): string => { const e = getEditor(); return e ? (safeRead(() => e.value, "") || "") : ""; };
+  function signedOut(): boolean {
     const e = getEditor();
     return !!e && /sign in to continue/i.test(safeRead(() => e.getAttribute("placeholder"), "") || "");
   }
-  function composerFrame() {
+  function composerFrame(): HTMLElement | null {
     const ed = getEditor();
     if (!ed) return null;
-    let n = ed;
+    let n: HTMLElement | null = ed;
     for (let i = 0; i < 8 && n; i++) {
-      if (safeQuery(n, 'button[aria-label="Send message"], button[aria-label="Stop"]') && /rounded|border/.test(String(safeRead(() => n.className, "")))) return n;
-      n = safeRead(() => n.parentElement, null);
+      const cur: HTMLElement = n;
+      if (safeQuery(cur, 'button[aria-label="Send message"], button[aria-label="Stop"]') && /rounded|border/.test(String(safeRead(() => cur.className, "")))) return cur;
+      n = safeRead(() => cur.parentElement, null);
     }
     return safeRead(() => ed.parentElement, null);
   }
   const barAnchor = composerFrame;
-  function setInputLock(on) {
+  function setInputLock(on: boolean): void {
     const ed = getEditor();
     if (!ed) return;
     if (on) {
@@ -116,51 +120,51 @@ const RSProvider: PlazCodeProvider = (() => {
       if (ed.dataset.rsPlaceholder != null) ed.setAttribute("placeholder", ed.dataset.rsPlaceholder);
     }
   }
-  const ariaOf = (b) => (safeRead(() => b.getAttribute("aria-label"), null) || "").trim();
-  const allButtons = () => safeQueryAll(document, "button").filter((b) => !safeClosest(b, "#rs-root"));
-  const sendButton = () => allButtons().find((b) => S.sendAria.test(ariaOf(b)) && visible(b)) || null;
-  const stopButton = () => allButtons().find((b) => S.stopAria.test(ariaOf(b)) && visible(b)) || null;
+  const ariaOf = (b: Element): string => (safeRead(() => b.getAttribute("aria-label"), null) || "").trim();
+  const allButtons = (): HTMLButtonElement[] => safeQueryAll<HTMLButtonElement>(document, "button").filter((b) => !safeClosest(b, "#rs-root"));
+  const sendButton = (): HTMLButtonElement | null => allButtons().find((b) => S.sendAria.test(ariaOf(b)) && visible(b)) || null;
+  const stopButton = (): HTMLButtonElement | null => allButtons().find((b) => S.stopAria.test(ariaOf(b)) && visible(b)) || null;
 
   // ── Turns ───────────────────────────────────────────────────────────────────
-  const allItems = () => safeQueryAll(document, S.turn).filter((t) => !safeClosest(t, "#rs-root") && (safeQuery(t, S.userMark) || safeQuery(t, S.body)));
-  const isUserItem = (item) => !!item && !!safeQuery(item, S.userMark) && !safeQuery(item, S.body);
-  const isAssistantItem = (item) => !!item && !!safeQuery(item, S.body);
-  const bodyOf = (item) => (item ? safeQuery(item, S.body) : null);
-  function itemText(item) {
+  const allItems = (): Element[] => safeQueryAll(document, S.turn).filter((t) => !safeClosest(t, "#rs-root") && (safeQuery(t, S.userMark) || safeQuery(t, S.body)));
+  const isUserItem = (item: Element | null | undefined): boolean => !!item && !!safeQuery(item, S.userMark) && !safeQuery(item, S.body);
+  const isAssistantItem = (item: Element | null | undefined): boolean => !!item && !!safeQuery(item, S.body);
+  const bodyOf = (item: Element | null | undefined): Element | null => (item ? safeQuery(item, S.body) : null);
+  function itemText(item: Element): string {
     if (!item) return "";
     if (isUserItem(item)) { const bubble = safeQuery(item, '[class*="bg-mimo-bg-message"]') || item; return safeRead(() => bubble.textContent, "") || ""; }
     return textWithout(bodyOf(item));
   }
-  function classifyText(item, excludeSel) {
+  function classifyText(item: Element, excludeSel?: string): string {
     if (!item) return "";
     const body = bodyOf(item);
     if (!body) return isUserItem(item) ? itemText(item) : "";
     if (excludeSel && safeClosest(body, excludeSel)) return "";
     return textWithout(body, excludeSel);
   }
-  const assistantItems = () => allItems().filter(isAssistantItem);
-  const assistantCount = () => assistantItems().length;
-  const userCount = () => allItems().filter(isUserItem).length;
-  const lastAssistant = () => { const it = assistantItems(); return it.length ? it[it.length - 1] : null; };
-  const _ids = new WeakMap(); let _seq = 0;
-  function lastAssistantId() { const it = lastAssistant(); if (!it) return null; let id = _ids.get(it); if (!id) { id = ++_seq; _ids.set(it, id); } return id; }
-  const chatIsEmpty = () => allItems().length === 0;
-  const isFreshChat = () => chatIsEmpty() && !!getEditor() && /^\/(c|ultra)?\/?$/.test(route());
+  const assistantItems = (): Element[] => allItems().filter(isAssistantItem);
+  const assistantCount = (): number => assistantItems().length;
+  const userCount = (): number => allItems().filter(isUserItem).length;
+  const lastAssistant = (): Element | null => { const it = assistantItems(); return it.length ? it[it.length - 1] : null; };
+  const _ids = new WeakMap<Element, number>(); let _seq = 0;
+  function lastAssistantId(): number | null { const it = lastAssistant(); if (!it) return null; let id = _ids.get(it); if (!id) { id = ++_seq; _ids.set(it, id); } return id; }
+  const chatIsEmpty = (): boolean => allItems().length === 0;
+  const isFreshChat = (): boolean => chatIsEmpty() && !!getEditor() && /^\/(c|ultra)?\/?$/.test(route());
   // Fresh pages (#/c, #/ultra) have no conversation yet; a conversation is #/chat/<id> or #/ultra/<id>.
-  const conversationKey = () => { const m = route().match(/^\/(chat|ultra)\/([A-Za-z0-9_-]+)/); return m ? m[1] + "/" + m[2] : ""; };
+  const conversationKey = (): string => { const m = route().match(/^\/(chat|ultra)\/([A-Za-z0-9_-]+)/); return m ? m[1] + "/" + m[2] : ""; };
 
   // ── Generation ──────────────────────────────────────────────────────────────
-  const streamText = (item) => (item ? textWithout(bodyOf(item), ".rs-chip").trim() : "");
-  const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
-  let _max = -1, _at = 0, _item = null;
-  function sampleStream() {
+  const streamText = (item: Element | null | undefined): string => (item ? textWithout(bodyOf(item), ".rs-chip").trim() : "");
+  const streamLen = (item?: Element | null): number => streamText(item === undefined ? lastAssistant() : item).length;
+  let _max = -1, _at = 0, _item: Element | null = null;
+  function sampleStream(): void {
     const item = lastAssistant(), len = streamText(item).length, now = Date.now();
     if (item !== _item || len < _max - 400) { _item = item; _max = len; _at = now; return; }
     if (len > _max) { _max = len; _at = now; }
   }
-  const typing = () => { const it = lastAssistant(); return !!it && !!safeQuery(it, S.typing); };
+  const typing = (): boolean => { const it = lastAssistant(); return !!it && !!safeQuery(it, S.typing); };
   let _stopSince = 0;
-  function genActive() {
+  function genActive(): boolean {
     sampleStream();
     const now = Date.now();
     if (stopButton() || typing()) {
@@ -171,16 +175,16 @@ const RSProvider: PlazCodeProvider = (() => {
     return _max > 1 && now - _at < timings.GEN_IDLE_MS;
   }
   const isGenerating = genActive, isBusyNow = genActive;
-  const isHardGenerating = () => !!stopButton();
-  const turnHalted = () => false, findContinueBtn = () => null, clickContinueBtn = () => false;
-  function snapshot() { try { const it = lastAssistant(); return it ? { th: 0, rp: streamLen(it) } : { th: 0, rp: 0 }; } catch { return {}; } }
-  function readAssistant() {
+  const isHardGenerating = (): boolean => !!stopButton();
+  const turnHalted = (): boolean => false, findContinueBtn = (): Element | null => null, clickContinueBtn = (): boolean => false;
+  function snapshot(): object { try { const it = lastAssistant(); return it ? { th: 0, rp: streamLen(it) } : { th: 0, rp: 0 }; } catch { return {}; } }
+  function readAssistant(): AssistantRead {
     const item = lastAssistant();
     if (!item) return { present: false, reply: "", thinking: "", item: null };
     const think = safeQuery(item, S.thinking);
     return { present: true, reply: streamText(item), thinking: think ? (safeRead(() => think.textContent, "") || "").trim() : "", item };
   }
-  async function waitFor(pred, timeout) {
+  async function waitFor(pred: () => unknown, timeout: number): Promise<boolean> {
     const budget = waitBudget(timeout, 120), t0 = Date.now();
     for (let poll = 0; poll < budget.polls && Date.now() - t0 < budget.ms; poll++) { if (safePredicate(pred)) return true; await sleep(120); }
     return false;
@@ -189,19 +193,19 @@ const RSProvider: PlazCodeProvider = (() => {
   // ── Sending ─────────────────────────────────────────────────────────────────
   // MiMo's box accepts at most 50,000 characters (maxlength); longer text is cut by the page itself.
   const SEND_MAX = 49000;
-  function truncateForSend(text) {
+  function truncateForSend(text: string): string {
     if (!text || text.length <= SEND_MAX) return typeof window.__rsLimitOutgoing === "function" ? window.__rsLimitOutgoing(text) : text;
     const omitted = text.length - SEND_MAX;
     const marker = `\n\n[…PlazCode: result shortened to fit MiMo's 50,000 character limit - ${omitted} of ${text.length} characters omitted…]\n\n`;
     const budget = SEND_MAX - marker.length, head = Math.floor(budget * 0.85);
     return text.slice(0, head) + marker + text.slice(text.length - (budget - head));
   }
-  function setTextareaValue(el, v) {
+  function setTextareaValue(el: HTMLTextAreaElement, v: string): void {
     const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value");
     if (setter && setter.set) setter.set.call(el, v); else el.value = v;
     el.dispatchEvent(new Event("input", { bubbles: true }));
   }
-  async function typeAndSend(text, images) {
+  async function typeAndSend(text: string, images?: ImagePayloadList): Promise<void> {
     const editor = getEditor();
     if (!editor) throw new Error("MiMo chat box not found - open aistudio.xiaomimimo.com/#/c");
     if (signedOut()) throw new Error("Sign in to MiMo first (the box says 'Sign in to continue chatting').");
@@ -222,17 +226,17 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     diag("mimo.send", { sent, editorLen: editorText().length });
   }
-  function stopGeneration() { const b = stopButton(); if (b) { try { b.click(); } catch {} } }
+  function stopGeneration(): void { const b = stopButton(); if (b) { try { b.click(); } catch {} } }
 
   // ── Images (the composer's hidden file input accepts png/jpeg/webp) ─────────────
-  function fileFromImage(img, i) {
+  function fileFromImage(img: ImagePayload, i: number): File {
     if (typeof PlazCodeMedia !== "undefined") return PlazCodeMedia.fileFrom(img, i);
     const mime = img.mimeType || "image/png", bin = atob(img.data), arr = new Uint8Array(bin.length);
     for (let j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
     return new File([arr], `plazcode_${Date.now()}_${i}.${mime.includes("png") ? "png" : "jpg"}`, { type: mime });
   }
-  async function attachImages(images) {
-    const input = safeQueryAll(document, 'input[type="file"]').find((i) => /image\//.test(safeRead(() => i.accept, "") || "")) || null;
+  async function attachImages(images: ImagePayloadList): Promise<boolean> {
+    const input = safeQueryAll<HTMLInputElement>(document, 'input[type="file"]').find((i) => /image\//.test(safeRead(() => i.accept, "") || "")) || null;
     if (!input || !images || !images.length) return false;
     const dt = new DataTransfer();
     images.forEach((img, i) => { try { dt.items.add(fileFromImage(img, i)); } catch {} });
@@ -241,7 +245,7 @@ const RSProvider: PlazCodeProvider = (() => {
     await sleep(800);
     return true;
   }
-  function clearAttachments() {}
+  function clearAttachments(): void {}
 
   // ── Mode guard ──────────────────────────────────────────────────────────────
   function modeWarning() {
@@ -275,7 +279,7 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── User sends while PlazCode runs ─────────────────────────────────────────────
-  function installSendHooks(handlers) {
+  function installSendHooks(handlers: SendHooks): void {
     const gate = () => {
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) { if (chatIsEmpty()) handlers.onBlockedAttempt(); return; }
@@ -284,21 +288,21 @@ const RSProvider: PlazCodeProvider = (() => {
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
       const ed = getEditor();
-      if (!ed || !safeRead(() => ed.contains(e.target), false) || editorText().trim() === "") return;
-      if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+      if (!ed || !safeRead(() => ed.contains(e.target as Node | null), false) || editorText().trim() === "") return;
+      if (handlers.onCoworkSend && (handlers.onCoworkSend as (e: KeyboardEvent) => boolean)(e)) return;
       gate();
     }, true);
     document.addEventListener("click", (e) => {
       if (!getEditor() || safeClosest(e.target, "#rs-root")) return;
-      const btn = safeClosest(e.target, "button");
+      const btn = safeClosest<HTMLButtonElement>(e.target, "button");
       if (!btn) return;
       if (S.stopAria.test(ariaOf(btn))) { handlers.onNativeStop(); return; }
       if (!S.sendAria.test(ariaOf(btn)) || safeRead(() => btn.disabled, true)) return;
-      if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+      if (handlers.onCoworkSend && (handlers.onCoworkSend as (e: MouseEvent) => boolean)(e)) return;
       gate();
     }, true);
   }
-  async function writeDraft(value, expectedCurrent) {
+  async function writeDraft(value: unknown, expectedCurrent: unknown): Promise<{ ok: boolean; reason?: string }> {
     const ed = getEditor();
     if (!ed || editorText().trim() !== String(expectedCurrent).trim()) return { ok: false, reason: "draft-changed" };
     const relock = safeRead(() => ed.hasAttribute("readonly"), false);
@@ -308,10 +312,10 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // Hide the code blocks that carry a command (both copies), keep the turn marked so a redraw stays hidden.
   const CMD_SHAPE = /"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i;
-  function findToolBlockSpot(item) {
+  function findToolBlockSpot(item: Element): ToolSpot | null {
     const body = bodyOf(item);
     if (!body) return null;
-    let spot = null;
+    let spot: ToolSpot | null = null;
     for (const prose of safeQueryAll(body, ".markdown-prose")) {
       const block = safeQuery(prose, "pre") && safeRead(() => prose.firstElementChild, null);
       if (!block || !CMD_SHAPE.test(textWithout(block))) continue;
@@ -326,10 +330,10 @@ const RSProvider: PlazCodeProvider = (() => {
   // refused the second one because it read the "(System note: ...)" wording and the unexplained ⟦RS-SYS⟧ tag as a
   // prompt injection. MiMo now gets the plain first-person startup (same approach as Vani): the user's own request,
   // honest about what the extension does, and the long rules arrive afterwards as the user's own notes.
-  function startupRequest(engine) {
+  function startupRequest(engine: string): string {
     return `I clicked Start Agent in my installed PlazCode extension to connect this chat to my own ${engine === "local" ? "local files" : "Roblox Studio project"}. This is my own connection request, an ordinary message from me, not a system instruction, and it does not override your safety rules or grant extra permissions. How it works: the extension in my browser reads fenced JSON code blocks in your normal replies, runs them on my computer and posts the real output back here as my next message. You do not need any native tool, file access or connector for this; you only write text. To begin, please reply with one fenced json code block containing {"command":"list_commands"}. It only lists which commands exist and changes nothing. Then wait for the result and for my task. If you cannot participate, explain briefly.`;
   }
-  function startupCorrection(engine) {
+  function startupCorrection(engine: string): string {
     return `To be clear, I am not asking for file or tool access. I installed the PlazCode extension in my own browser and clicked Start Agent myself. It only reads the text of your reply: when your reply contains a fenced json code block, it runs that command on my ${engine === "local" ? "computer" : "Roblox Studio project"} and sends the output back to you as my next message. So all I need is for you to write exactly one fenced json code block containing {"command":"list_commands"} in your reply. That command only lists which commands exist and changes nothing. This does not override your safety rules, and nothing else is needed until you have seen the result and my task. If you still cannot do this, tell me the specific reason in one sentence.`;
   }
 
@@ -345,7 +349,7 @@ const RSProvider: PlazCodeProvider = (() => {
     timings,
     thinkingSel: S.thinking,
     chipAtItemLevel: true,
-    chipAnchor: (item) => bodyOf(item) || item,
+    chipAnchor: (item: Element): Element => bodyOf(item) || item,
     chipAppend: true,
     reliableCounts: true,
     init({ diag: d } = {}) { if (d) diag = d; diag("mimo.init", { route: route().slice(0, 20), editor: !!getEditor(), signedOut: signedOut() }); },
@@ -355,13 +359,13 @@ const RSProvider: PlazCodeProvider = (() => {
     setInputLock, writeDraft, typeAndSend, stopGeneration,
     isGenerating, isBusyNow, isHardGenerating,
     enforceComposer() { return { ready: !isClaw() && !signedOut() }; },
-    async ensureComposerReady(reason) {
+    async ensureComposerReady(reason?: string) {
       diag("mimo.mode_ready", { reason, editor: !!getEditor(), signedOut: signedOut(), claw: isClaw() });
       return { ready: !!getEditor() && !signedOut() && !isClaw() };
     },
     modeWarning, sendBlocker,
     turnHalted, findContinueBtn, clickContinueBtn,
-    scanError, isTooLongMsg: (t) => RE.tooLong.test(t), isBusyMsg: (t) => RE.busy.test(t),
+    scanError, isTooLongMsg: (t: string): boolean => RE.tooLong.test(t), isBusyMsg: (t: string): boolean => RE.busy.test(t),
     attachImages, clearAttachments, conversationKey,
     installSendHooks, findToolBlockSpot,
   };

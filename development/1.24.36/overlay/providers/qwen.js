@@ -32,21 +32,23 @@
 //    through to S.composer). NOT in-flow barMount: `.message-input-container` is
 //    React-height-clamped + overflow:hidden, so a mounted child clips the input.
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
     return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
@@ -66,7 +68,7 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {};
+  let diag = () => {};
 
   const S = {
     userItem: ".qwen-chat-message-user",
@@ -233,8 +235,8 @@ const RSProvider                   = (() => {
   }
 
   // ── Turn classification ───────────────────────────────────────────────────
-  const isUserItem = (item) => !!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.userItem), false);
-  const isAssistantItem = (item) => !!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.assistantItem), false);
+  const isUserItem = (item) => !!item && safeRead(() => item.matches, null) && (safeRead(() => item.matches(S.userItem), false));
+  const isAssistantItem = (item) => !!item && safeRead(() => item.matches, null) && (safeRead(() => item.matches(S.assistantItem), false));
 
   // Qwen A/B "Which response do you prefer?" comparison turn. ONE assistant turn
   // (class `qwen-chat-message-dual-message`) carries TWO candidate replies, each
@@ -248,7 +250,7 @@ const RSProvider                   = (() => {
   // next message auto-selects it anyway) and READ IT FROM THE DOM, abandoning the
   // corrupted tap for these turns (see netCurrent() + bodyEl()).
   const isDualItem = (item) =>
-    !!item && item.classList && safeRead(() => item.classList.contains("qwen-chat-message-dual-message"), false);
+    !!item && item.classList && (safeRead(() => item.classList.contains("qwen-chat-message-dual-message"), false));
   const latestIsDual = () => isDualItem(lastAssistant());
 
   // Walk element text, skipping .rs-chip and any excluded selector.
@@ -256,7 +258,7 @@ const RSProvider                   = (() => {
   // sibling divs with no inter-line text nodes, so plain textContent collapses
   // the whole block onto one line. Uses codeText() so a DISPOSED block still
   // yields its full source from the dataset cache (see the cache section above).
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     const _t0 = (self.performance || Date).now(); // [TRACE]
     const skip = ".rs-chip" + (excludeSel ? ", " + excludeSel : "");
@@ -266,8 +268,8 @@ const RSProvider                   = (() => {
       _nodes++; // [TRACE]
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(S.codeWrap), false)) {
+      if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(skip), false)) return;
+      if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(S.codeWrap), false)) {
         const code = codeText(n);
         if (code) { t += "\n" + code; return; }
       }
@@ -819,7 +821,7 @@ const RSProvider                   = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const btn = e.target && safeRead(() => (e.target           ).closest, null) && safeClosest(e.target, S.sendBtn);
+        const btn = e.target && safeRead(() => (e.target).closest, null) && safeClosest(e.target, S.sendBtn);
         if (!btn) return;
         if (handlers.isBlocked()) return;
         if (!handlers.isStarted()) {
@@ -1008,7 +1010,7 @@ const RSProvider                   = (() => {
     // streaming chat's constant mutations don't trigger the full-document query.
     _modelCapObs = new MutationObserver((muts) => {
       for (const m of muts) {
-        for (const n of m.addedNodes                       ) {
+        for (const n of m.addedNodes) {
           if (safeRead(() => n.nodeType, 0) === 1 &&
               (safeRead(() => n.matches?.('[class*="model-item___"]'), false) || safeQuery(n, '[class*="model-item___"]'))) {
             scanModelCaps();

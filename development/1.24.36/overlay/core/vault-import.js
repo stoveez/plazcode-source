@@ -1,9 +1,16 @@
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/vault-import.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // PlazCode vault import (1.24.21+): turns a folder of notes into vault notes under "10 Inbox/Imported <folder>/".
 // Pure planning plus a runner that takes the vault call as a parameter, so it is easy to test.
 // Rules: only .md notes; hidden/system folders, pictures and other files are skipped; notes that look like they hold
 // secrets, notes over 60,000 characters, empty notes and notes whose name already exists are skipped and reported.
 // The original text is kept exactly as written (the vault app stores it with its own front matter rules).
 const PlazCodeVaultImport = (() => {
+
+
+
+
+
   const MAX_NOTES = 300, MAX_CHARS = 60000, MAX_BYTES = 300000, MAX_PATH = 240, INBOX = '10 Inbox';
   const RESERVED = /^(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])$/i;
   const SKIP_DIRS = new Set(['node_modules', '.obsidian', '.git', '.trash', '.github', '__macosx']);
@@ -74,11 +81,11 @@ const PlazCodeVaultImport = (() => {
         await call({ action: 'write', mode: 'create', path: note.dest, content: 'Importing this note.', frontmatter: { tags: ['imported'], origin: 'import' }, reason: 'imported from a folder' });
         try { await call({ action: 'save_raw', path: note.dest, text: note.text }); imported.push(note.dest); }
         catch (error) {
-          failed.push({ rel: note.rel, reason: 'failed', why: String(error && error.message || error).slice(0, 160) });
-          try { await call({ action: 'write', mode: 'replace', path: note.dest, content: 'This note could not be imported (' + String(error && error.message || error).slice(0, 120) + '). Original file: ' + note.rel + '.', reason: 'import failed' }); } catch { /* the stub says nothing wrong; leave it */ }
+          failed.push({ rel: note.rel, reason: 'failed', why: String((error)?.message || error).slice(0, 160) });
+          try { await call({ action: 'write', mode: 'replace', path: note.dest, content: 'This note could not be imported (' + String((error)?.message || error).slice(0, 120) + '). Original file: ' + note.rel + '.', reason: 'import failed' }); } catch { /* the stub says nothing wrong; leave it */ }
         }
       } catch (error) {
-        const text = String(error && error.message || error);
+        const text = String((error)?.message || error);
         if (/already exists/i.test(text)) skipped.push({ rel: note.rel, reason: 'same-name' });
         else failed.push({ rel: note.rel, reason: 'failed', why: text.slice(0, 160) });
       }

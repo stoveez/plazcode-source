@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/studio-page.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // PlazCode bar redesign (1.24.36), step 4: the Studio look for PlazCode's own pages beside the chat (Ask PlazCode and the
 // large live view). Reads the app's look (rsAppearance: palette, glow, gradients, Feel) and follows changes, like the bar.
 // Square panels with a gradient rim and lit corner brackets; rounded buttons and switches. Plan: BAR-REDESIGN-PLAN.md.
@@ -27,7 +28,8 @@
   } catch {}
   // Click ripples on buttons (Feel: not when motion is off or ripples are off).
   document.addEventListener("pointerdown", (event) => {
-    const target = event.target.closest && event.target.closest("button,label.sw");
+    const raw = event.target;
+    const target = raw && raw.closest && raw.closest("button,label.sw");
     if (!target || root.dataset.motion === "off" || root.dataset.ripple === "off") return;
     const box = target.getBoundingClientRect(), ring = document.createElement("span"), size = Math.max(box.width, box.height) * 2;
     ring.className = "st-rpl"; ring.setAttribute("aria-hidden", "true");

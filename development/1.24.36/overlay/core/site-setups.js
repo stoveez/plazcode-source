@@ -1,8 +1,24 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/site-setups.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // 1.24.21 saved setups per site: one click (or automatic on open) puts back the
 // engine, effort, access, safety, instructions, memory project, pinned skills
 // and tool add-ons a person uses on that site (Notion, Claude, …).
 const PlazCodeSiteSetups = (() => {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   const STORAGE_KEY = "rsSiteSetups";
   // Bar settings a setup remembers, with the values each one may take.
   const SETTINGS = {
@@ -20,14 +36,17 @@ const PlazCodeSiteSetups = (() => {
     const rule = SETTINGS[key];
     if (rule === "boolean") return typeof value === "boolean";
     if (rule === "text") return typeof value === "string" && value.length <= LIMITS.prompt;
-    return Array.isArray(rule) && rule.includes(value);
+    return Array.isArray(rule) && typeof value === "string" && rule.includes(value);
   }
   const ids = (list, max) => [...new Set((Array.isArray(list) ? list : []).map((v) => String(v || "").trim()).filter((v) => v && v.length <= 200))].slice(0, max);
 
   // Display names for the chosen skills and tools, so the summary reads well.
   function labelsOf(raw, keep) {
     const out = {};
-    if (raw && typeof raw === "object") for (const id of keep) if (typeof raw[id] === "string" && raw[id].trim()) out[id] = raw[id].trim().slice(0, 100);
+    if (raw && typeof raw === "object") {
+      const rec = raw;
+      for (const id of keep) if (typeof rec[id] === "string" && (rec[id]).trim()) out[id] = (rec[id]).trim().slice(0, 100);
+    }
     return out;
   }
   function normalize(raw) {
@@ -65,9 +84,9 @@ const PlazCodeSiteSetups = (() => {
     const s = normalize(setup), out = [];
     const n = names || { skills: s.labels, tools: s.labels };
     out.push(["Engine", s.engine === "local" ? "AgentScript" : "Roblox Studio"]);
-    if (s.settings.rsWorkMode) out.push(["Effort", s.settings.rsWorkMode]);
-    if (s.settings.rsThinkingLevel) out.push(["Reasoning", s.settings.rsThinkingLevel === "ultracode" ? "Ultra" : s.settings.rsThinkingLevel]);
-    if (s.settings.rsPermMode) out.push(["Access", s.settings.rsPermMode]);
+    if (s.settings.rsWorkMode) out.push(["Effort", String(s.settings.rsWorkMode)]);
+    if (s.settings.rsThinkingLevel) out.push(["Reasoning", s.settings.rsThinkingLevel === "ultracode" ? "Ultra" : String(s.settings.rsThinkingLevel)]);
+    if (s.settings.rsPermMode) out.push(["Access", String(s.settings.rsPermMode)]);
     if (s.settings.rsReadOnly) out.push(["Safety", "Read-only"]);
     if (s.memoryProject) out.push(["Memory project", s.memoryProject]);
     if (s.skills.length) out.push(["Skills", s.skills.map((id) => (n.skills && n.skills[id]) || id).join(", ")]);
@@ -96,7 +115,7 @@ const PlazCodeSiteSetups = (() => {
   // Pinned skills join the task's skill reference as always-use, ahead of matches.
   function mergePinned(matched, pinned) {
     const seen = new Set((pinned || []).map((s) => s && s.id));
-    return [...(pinned || []).filter(Boolean).map((skill) => ({ ...skill, always_use: true, pinned_for_site: true })), ...(matched || []).filter((s) => !seen.has(s && s.id))];
+    return [...(pinned || []).filter((s) => Boolean(s)).map((skill) => ({ ...skill, always_use: true, pinned_for_site: true })), ...(matched || []).filter((s) => Boolean(s && !seen.has(s.id)))];
   }
 
   return { STORAGE_KEY, SETTING_KEYS, LIMITS, normalize, capture, plan, summary, all, load, save, mergePinned };

@@ -21,24 +21,26 @@
 //    "log in first" warning instead of a Start button that goes nowhere.
 //  - Legacy selectors (chatField/chatInput/chat-msg) kept as fallbacks.
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+    return safeRead(() => (node).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
   function safeStyle(node) {
     return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
@@ -55,7 +57,7 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {};
+  let diag = () => {};
 
   const S = {
     chatContainer: ".thread, .chat-messages",
@@ -105,17 +107,17 @@ const RSProvider                   = (() => {
     return !!item && (safeRead(() => item.classList.contains("msg-assistant"), false) || safeRead(() => item.classList.contains("chat-msg--assistant"), false));
   }
 
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     const skip = excludeSel ? `.rs-chip, ${excludeSel}` : ".rs-chip";
     let t = "";
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      if (safeRead(() => n.tagName, "") === "BR") { t += "\n"; return; }
+      if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(skip), false)) return;
+      if (safeRead(() => (n).tagName, "") === "BR") { t += "\n"; return; }
       // Crax renders markdown as <p>, <pre>, <li> etc inside chat-msg__text
-      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|TABLE|TR)$/.test(safeRead(() => n.tagName, ""));
+      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|TABLE|TR)$/.test(safeRead(() => (n).tagName, ""));
       if (isBlock && t && !t.endsWith("\n")) t += "\n";
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
       if (isBlock && !t.endsWith("\n")) t += "\n";
@@ -162,7 +164,7 @@ const RSProvider                   = (() => {
   };
   const editorText = () => {
     const e = getEditor();
-    return e ? (safeRead(() => e.value, "") != null ? safeRead(() => e.value, "") : safeRead(() => e.textContent, "") || "") : "";
+    return e ? (safeRead(() => (e).value, "") != null ? safeRead(() => (e).value, "") : safeRead(() => e.textContent, "") || "") : "";
   };
 
   function setInputLock(on) {
@@ -338,7 +340,7 @@ const RSProvider                   = (() => {
     const proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
     const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
     if (setter && setter.set) setter.set.call(el, v);
-    else el.value = v;
+    else (el).value = v;
     el.dispatchEvent(new Event("input", { bubbles: true }));
     // Trigger autoResize listener
     el.dispatchEvent(new Event("input", { bubbles: true }));
@@ -384,7 +386,7 @@ const RSProvider                   = (() => {
     if (editorText().trim().length === 0 && text.trim().length > 0) {
       const proto = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(editor), "value");
       if (proto && proto.set) proto.set.call(editor, text);
-      else editor.value = text;
+      else (editor).value = text;
       editor.dispatchEvent(new Event("input", { bubbles: true }));
       await sleep(100);
     }
@@ -486,7 +488,7 @@ const RSProvider                   = (() => {
     if (!dt.items.length) return false;
     editor.focus();
     // Try fileInput first (hidden <input type="file"> if present)
-    const fileInput = safeRead(() => document.getElementById("fileInput"), null) || safeQuery(document, 'input[type="file"]');
+    const fileInput = (safeRead(() => document.getElementById("fileInput"), null) || safeQuery(document, 'input[type="file"]'));
     if (fileInput) {
       try {
         fileInput.files = dt.files;
@@ -541,15 +543,15 @@ const RSProvider                   = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const t = e.target           ;
+        const t = e.target;
         const stop = safeRead(() => t.closest, null) && safeClosest(t, S.stopBtn);
         if (stop) { handlers.onNativeStop(); return; }
-        const cont = safeRead(() => t.closest, null) && safeClosest(t, "button");
+        const cont = safeRead(() => t.closest, null) && (safeClosest(t, "button"));
         if (cont && RE.continueBtn.test((safeRead(() => cont.innerText, "") || "").trim())) {
-          handlers.onNativeContinue();
+          (handlers).onNativeContinue();
           return;
         }
-        const btn = safeRead(() => t.closest, null) && safeClosest(t, S.sendBtn);
+        const btn = safeRead(() => t.closest, null) && (safeClosest(t, S.sendBtn));
         if (!btn) return;
         if (safeRead(() => btn.disabled, true)) return;
         if (safeStyle(btn).display === "none") return;

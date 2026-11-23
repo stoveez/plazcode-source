@@ -26,24 +26,25 @@
 //    `.copy-code-button`; the command JSON survives in textContent.
 //  - Conversation URL is /c/<uuid>; a fresh chat is exactly "/".
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+    return safeRead(() => (node).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
   function safeStyle(node) {
     return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
@@ -60,7 +61,7 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {}; // injected by core via init()
+  let diag = () => {}; // injected by core via init()
 
   const S = {
     userItem: ".user-message",
@@ -113,26 +114,26 @@ const RSProvider                   = (() => {
   };
 
   // ── Turn classification ───────────────────────────────────────────────────
-  const isUserItem = (item) => !!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.userItem), false);
-  const isAssistantItem = (item) => !!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.assistantItem), false);
+  const isUserItem = (item) => (!!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.userItem), false));
+  const isAssistantItem = (item) => (!!item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.assistantItem), false));
 
   // Walk an element's text, skipping the reasoning subtree, our own chip, and any
   // excluded selector. Used everywhere a turn's "real" text is needed so tool
   // blocks drafted inside reasoning are never detected, shown, or executed.
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     const skip = S.thinking + ", .rs-chip, " + S.attachment + (excludeSel ? ", " + excludeSel : "");
     let t = "";
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
+      if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(skip), false)) return;
       // GLM renders fenced code in a CodeMirror editor whose lines are separate
       // <div class="cm-line"> with NO newline text nodes, so textContent collapses
       // the whole block onto ONE line - which breaks Lua (a `--` then comments out
       // the rest) and any multi-line command. Rebuild the real source by joining
       // the cm-line elements with "\n" (and skip the .cm-announced a11y duplicate).
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(".cm-editor, .cm-content"), false)) {
+      if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(".cm-editor, .cm-content"), false)) {
         const lines = safeQueryAll(n, ".cm-line");
         if (lines.length) { t += "\n" + [...lines].map((l) => safeRead(() => l.textContent, "")).join("\n"); return; }
       }
@@ -165,7 +166,7 @@ const RSProvider                   = (() => {
   const editorText = () => {
     const e = getEditor();
     if (!e) return "";
-    return safeRead(() => e.value, "") != null ? safeRead(() => e.value, "") : safeRead(() => e.textContent, "") || "";
+    return safeRead(() => (e).value, "") != null ? safeRead(() => (e).value, "") : safeRead(() => e.textContent, "") || "";
   };
 
   const lastAssistant = () => {
@@ -358,7 +359,7 @@ const RSProvider                   = (() => {
     const proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
     const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
     if (setter && setter.set) setter.set.call(el, v);
-    else el.value = v;
+    else (el).value = v;
     el.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
@@ -477,7 +478,7 @@ const RSProvider                   = (() => {
     if (!fileInput) { diag("attach.noFileInput"); return false; }
     diag("attach.setFiles", { count: dt.items.length });
     try { fileInput.files = dt.files; fileInput.dispatchEvent(new Event("change", { bubbles: true })); }
-    catch (e) { diag("attach.setFilesThrew", { msg: String((e && e.message) || e) }); return false; }
+    catch (e) { diag("attach.setFilesThrew", { msg: String((e && (e).message) || e) }); return false; }
     if (!(await waitFor(pendingChip, 15000))) { diag("attach.noChip"); return false; }
     const ok = await waitFor(attachmentReady, 30000);
     diag("attach.uploadDone", { ok });
@@ -524,7 +525,7 @@ const RSProvider                   = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const t = e.target           ;
+        const t = e.target;
         // Stop button (round, in the composer) = a native stop intent.
         const stop = t && safeRead(() => t.closest, null) && safeClosest(t, "button");
         if (stop && composerFrame() && safeRead(() => composerFrame().contains(stop), false) &&
@@ -534,7 +535,7 @@ const RSProvider                   = (() => {
           handlers.onNativeStop();
           return;
         }
-        const btn = t && safeRead(() => t.closest, null) && safeClosest(t, S.sendBtn);
+        const btn = t && safeRead(() => t.closest, null) && (safeClosest(t, S.sendBtn));
         if (!btn) return;
         if (safeRead(() => btn.disabled, true)) return;
         if (handlers.isBlocked()) return;

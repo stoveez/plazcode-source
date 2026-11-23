@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/providers/qwen-net.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // providers/qwen-net.js - Qwen network tap (runs in the MAIN world).
 //
 // WHY THIS EXISTS: Qwen renders assistant replies (and the fenced code blocks
@@ -26,14 +27,22 @@
   const node = () => {
     let n = document.getElementById(NODE_ID);
     if (!n) {
-      n = document.createElement("script");
-      n.type = "application/json";
-      n.id = NODE_ID;
-      (document.body || document.documentElement).appendChild(n);
+      const s = document.createElement("script");
+      s.type = "application/json";
+      s.id = NODE_ID;
+      (document.body || document.documentElement).appendChild(s);
+      n = s;
     }
     return n;
   };
   const publish = (obj) => { try { node().textContent = JSON.stringify(obj); } catch {} };
+
+  ;
+
+
+
+
+
 
   // Parse the SSE lines we have so far, folding `answer`-phase content into `acc`.
   // Returns the updated accumulator { rid, text, done }.
@@ -93,7 +102,7 @@
       }
       if (buf) foldLine(buf, acc);
     } catch (error) {
-      acc.error = String(error?.message || "Stream observation failed");
+      acc.error = String((error)?.message || "Stream observation failed");
     } finally {
       clearTimeout(timer);
       if (reader) {
@@ -107,8 +116,9 @@
   }
 
   const origFetch = window.fetch;
-  window.fetch = function (...args) {
-    const url = (args[0] && args[0].url) || args[0];
+  window.fetch = function ( ...args) {
+    const first = args[0];
+    const url = (first && first.url) || first;
     const p = origFetch.apply(this, args);
     try {
       if (typeof url === "string" && /\/chat\/completions/i.test(url)) {

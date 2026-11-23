@@ -6,12 +6,12 @@
 // pictures: a docked panel window is hidden for a moment (what is behind it shows), Chrome's side panel (a strip of the browser
 // window with nothing behind it) is blanked out. Coordinates are the browser's screen coordinates (CSS pixels).
 const PlazCodeAskPanel = (() => {
-                                                                                             
-                                                                                                                                   
-                                                                                                                            
+
+
+
   const HEADER = 56, EDGE = 8; // Chrome's side panel title row, and the window's resize border (both covered, to be safe)
-  const num = (v         ) => (typeof v === "number" && Number.isFinite(v) ? v : NaN);
-  function place(o       )               {
+  const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : NaN);
+  function place(o) {
     const w = o.win || {};
     const left = num(w.left), top = num(w.top), width = num(w.width), height = num(w.height), sw = num(o.screenWidth);
     const title = String(o.title || "Ask PlazCode").slice(0, 80) || "Ask PlazCode";

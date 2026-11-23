@@ -1,4 +1,5 @@
 ﻿// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/animlib.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // core/animlib.js - RobloxScript animation tools (virtual commands).
 //
 // HOW IT WORKS: Roblox Studio's MCP server (StudioMCP) only advertises its own
@@ -1194,6 +1195,26 @@ if not ok2 then return fail("animation error: " .. tostring(res)) end
 return res
 `;
 
+;
+
+
+
+
+
+;
+
+
+
+
+
+;
+
+
+
+
+
+;
+
 // Virtual animation command definitions shown to the model via list_commands.
 const ANIM_COMMANDS = [
   {
@@ -1385,15 +1406,22 @@ function normalizePoses(arg) {
     out.push(e);
   };
   if (Array.isArray(arg)) {
-    for (const item of arg) push(item.bone, item);
+    for (const item of arg) {
+      const rec = item;
+      push(rec.bone, rec);
+    }
   } else if (arg && typeof arg === "object") {
-    if (arg.bone !== undefined) push(arg.bone, arg);
-    const bones = arg.bones;
+    const rec = arg;
+    if (rec.bone !== undefined) push(rec.bone, rec);
+    const bones = rec.bones;
     if (bones && typeof bones === "object") {
       if (Array.isArray(bones)) {
-        for (const item of bones) push(item.bone, item);
+        for (const item of bones) {
+          const boneRec = item;
+          push(boneRec.bone, boneRec);
+        }
       } else {
-        for (const [bone, p] of Object.entries(bones)) push(bone, p || {});
+        for (const [bone, p] of Object.entries(bones)) push(bone, (p || {}));
       }
     }
   }
@@ -1443,7 +1471,7 @@ function buildLuau(op, args) {
     if (!poses.poses) return { err: `ERROR calling 'animation_${op}': provide 'poses' as [{bone:\"...\", pos:[x,y,z], rot:[x,y,z]}] (deg) - inspect an animation first for the exact bone names.` };
     base.t = t;
     base.poses = poses.poses;
-    if (op === "set_pose" || op === "add_keyframe") base.upsert = true;
+    if ((op) === "set_pose" || (op) === "add_keyframe") base.upsert = true;
   } else if (op === "add_keyframe") {
     const t = Number(args.t);
     if (args.t === undefined || !nonNegativeTime(args.t)) return { err: "ERROR calling 'animation_add_keyframe': 't' (seconds) is required and must be a finite value >= 0." };

@@ -5,38 +5,40 @@
 // eslint-disable-next-line no-unused-vars
 const RSProvider: PlazCodeProvider = (() => {
   "use strict";
+  type SafeRect = { x: number; y: number; left: number; top: number; right: number; bottom: number; width: number; height: number; readFailed?: boolean };
+  type ToolSpot = { parent: Element | null; ref: Element | null };
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
-  function safeRead(read, fallback) {
+  function safeRead<T, F = T>(read: () => T, fallback: F): T | F {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
-  function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+  function safeQuery<T extends Element = HTMLElement>(root: ParentNode | null | undefined, selector: string): T | null {
+    return safeRead(() => (root as ParentNode).querySelector<T>(selector), null);
   }
-  function safeQueryAll(root, selector): any[] {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll<T extends Element = HTMLElement>(root: ParentNode | null | undefined, selector: string): T[] {
+    return safeRead(() => Array.from((root as ParentNode).querySelectorAll<T>(selector)), []);
   }
-  function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+  function safeClosest<T extends Element = HTMLElement>(node: Node | EventTarget | null | undefined, selector: string): T | null {
+    return safeRead(() => (node as Element).closest<T>(selector), null);
   }
-  function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+  function safeRect(node: Element): SafeRect {
+    return safeRead<DOMRect, SafeRect>(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
-  function safeStyle(node) {
-    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
+  function safeStyle(node: Element): CSSStyleDeclaration {
+    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'} as unknown as CSSStyleDeclaration);
   }
-  function safePredicate(predicate) {
+  function safePredicate<T>(predicate: () => T): T | false {
     const before = domReadErrors;
-    const result = safeRead(predicate, false);
+    const result = safeRead(predicate, false as const);
     return before === domReadErrors ? result : false;
   }
   // A poll-count limit also bounds waits if the wall clock moves backwards.
-  function waitBudget(timeout, interval) {
+  function waitBudget(timeout: number, interval: number): { ms: number; polls: number } {
     const ms = Number.isFinite(timeout) ? Math.min(600000, Math.max(0, timeout)) : 30000;
     return {ms, polls: Math.ceil(ms / interval)};
   }
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
   let diag: Diag = () => {};
   // Hooks handed over by core/main.js (same ones the Notion provider uses).
   let isStopped: () => boolean = () => false;
@@ -88,21 +90,22 @@ const RSProvider: PlazCodeProvider = (() => {
     return href;
   }
 
+  type PendingStart = { at: number; navs?: number; lastNav?: number; reason?: string };
   const PENDING_START_KEY = "plazcode.oxalpha.pendingStart";
   const PENDING_MAX_MS = 120000;
   const PENDING_MAX_NAVS = 3;
-  function readPendingStart() {
+  function readPendingStart(): PendingStart | null {
     try {
       const v = JSON.parse(sessionStorage.getItem(PENDING_START_KEY) || "null");
       return v && typeof v.at === "number" ? v : null;
     } catch { return null; }
   }
-  function writePendingStart(v) { try { sessionStorage.setItem(PENDING_START_KEY, JSON.stringify(v)); } catch {} }
-  function clearPendingStart() { try { sessionStorage.removeItem(PENDING_START_KEY); } catch {} }
+  function writePendingStart(v: PendingStart): void { try { sessionStorage.setItem(PENDING_START_KEY, JSON.stringify(v)); } catch {} }
+  function clearPendingStart(): void { try { sessionStorage.removeItem(PENDING_START_KEY); } catch {} }
 
   // Takes the tab to the clean chat page and remembers (per tab) that a Start was
   // asked for, so the new page can finish it by itself. Only text-free state is saved.
-  function leaveHomeForChat(reason) {
+  function leaveHomeForChat(reason?: string): { ready: boolean; detail?: string; navigating?: boolean } {
     const prev = readPendingStart();
     const now = Date.now();
     const state = {
@@ -124,11 +127,11 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // After the page changed, finish the Start that was asked for (once).
-  function armPendingAutoStart() {
+  function armPendingAutoStart(): void {
     if (!readPendingStart()) return;
     let done = false;
     const startedAt = Date.now();
-    let iv = null;
+    let iv: ReturnType<typeof setInterval> | null = null;
     const finish = () => { done = true; if (iv) clearInterval(iv); };
     const tick = () => {
       if (done) return;
@@ -160,7 +163,7 @@ const RSProvider: PlazCodeProvider = (() => {
     setTimeout(tick, 0);
   }
 
-  function visible(el) {
+  function visible(el: Element | null | undefined): boolean {
     if (!el || safeClosest(el, "#rs-root")) return false;
     try {
       const r = safeRect(el);
@@ -171,28 +174,28 @@ const RSProvider: PlazCodeProvider = (() => {
     return true;
   }
 
-  function textWithout(root: Element | null, excludeSel?: string) {
+  function textWithout(root: Element | null, excludeSel?: string): string {
     if (!root) return "";
     // Native Copy/Copied/Download controls are chrome, not reply text. Their
     // feedback must not look like the model resumed streaming.
     const chrome = '.rs-chip, button, [role="button"], [role="tooltip"], svg';
     const skip = excludeSel ? `${chrome}, ${excludeSel}` : chrome;
     let t = "";
-    const walk = (n) => {
+    const walk = (n: Node): void => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      if (safeRead(() => n.tagName, "") === "BR") { t += "\n"; return; }
-      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(safeRead(() => n.tagName, ""));
+      if (safeRead(() => (n as Element).matches, null) && safeRead(() => (n as Element).matches(skip), false)) return;
+      if (safeRead(() => (n as Element).tagName, "") === "BR") { t += "\n"; return; }
+      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(safeRead(() => (n as Element).tagName, ""));
       if (isBlock && t && !t.endsWith("\n")) t += "\n";
-      for (const c of safeRead(() => n.childNodes, [])) walk(c);
+      for (const c of safeRead(() => n.childNodes, [] as Node[])) walk(c);
       if (isBlock && !t.endsWith("\n")) t += "\n";
     };
     walk(root);
     return t;
   }
 
-  const getEditor = () => {
+  const getEditor = (): HTMLElement | null => {
     const sels = S.editor.split(",").map((s) => s.trim());
     for (const sel of sels) {
       for (const el of safeQueryAll(document, sel)) {
@@ -204,14 +207,14 @@ const RSProvider: PlazCodeProvider = (() => {
     return null;
   };
 
-  const editorText = () => {
+  const editorText = (): string => {
     const e = getEditor();
     if (!e) return "";
-    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => e.value, "") || "";
+    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => (e as HTMLInputElement | HTMLTextAreaElement).value, "") || "";
     return (safeRead(() => e.innerText, "") || safeRead(() => e.textContent, "") || "").replace(/\u00a0/g, " ");
   };
 
-  function roleOf(item) {
+  function roleOf(item: Element | null | undefined): string {
     if (!item) return "";
     const a = (safeRead(() => item.getAttribute("data-message-role"), null) || safeRead(() => item.getAttribute("data-role"), null) || safeRead(() => item.getAttribute("data-author"), null) || "").toLowerCase();
     if (a) return a;
@@ -223,7 +226,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return "";
   }
 
-  function allItems() {
+  function allItems(): Element[] {
     const sels = [
       "[data-message-role]",
       "[data-role='user']",
@@ -231,8 +234,8 @@ const RSProvider: PlazCodeProvider = (() => {
       ".msg, .message, [class*='ChatMessage'], [class*='chat-message']",
       "article",
     ];
-    const seen = new Set();
-    const out = [];
+    const seen = new Set<Element>();
+    const out: Element[] = [];
     for (const s of sels) {
       for (const el of safeQueryAll(document, s)) {
         if (seen.has(el) || !visible(el)) continue;
@@ -244,7 +247,7 @@ const RSProvider: PlazCodeProvider = (() => {
     if (!out.length) {
       const log = safeQuery(document, "[role='log'], [role='feed'], main [class*='thread'], main [class*='messages']");
       if (log) {
-        for (const el of safeRead(() => log.children, [])) {
+        for (const el of safeRead(() => log.children, [] as Element[])) {
           if (safeRead(() => el.nodeType, 0) === 1 && visible(el)) out.push(el);
         }
       }
@@ -252,25 +255,25 @@ const RSProvider: PlazCodeProvider = (() => {
     return out;
   }
 
-  function isUserItem(item) {
+  function isUserItem(item: Element | null | undefined): boolean {
     const r = roleOf(item);
     if (/user|human/.test(r)) return true;
     if (/assistant|agent|ai|model|system/.test(r)) return false;
     return /\bml-auto\b|justify-end|items-end/.test(String(item && safeRead(() => item.className, "") || ""));
   }
-  function isAssistantItem(item) {
+  function isAssistantItem(item: Element | null | undefined): boolean {
     const r = roleOf(item);
     if (/assistant|agent|ai|model/.test(r)) return true;
     if (/user|human/.test(r)) return false;
-    return !isUserItem(item) && !!(item && (safeRead(() => item.innerText, "") || "").trim());
+    return !isUserItem(item) && !!(item && (safeRead(() => (item as HTMLElement).innerText, "") || "").trim());
   }
 
-  function itemText(item) {
+  function itemText(item: Element): string {
     if (!item) return "";
     const body = safeQuery(item, ".prose, .markdown, .bubble, [class*='message-content'], [class*='md']") || item;
     return textWithout(body);
   }
-  function classifyText(item, excludeSel) {
+  function classifyText(item: Element, excludeSel?: string): string {
     if (!item) return "";
     const body = safeQuery(item, ".prose, .markdown, .bubble, [class*='message-content']") || item;
     if (excludeSel && safeRead(() => body.closest, null) && safeClosest(body, excludeSel)) return "";
@@ -282,9 +285,9 @@ const RSProvider: PlazCodeProvider = (() => {
   const userCount = () => allItems().filter(isUserItem).length;
   const lastAssistant = () => { const it = assistantItems(); return it.length ? it[it.length - 1] : null; };
 
-  const _idMap = new WeakMap();
+  const _idMap = new WeakMap<Element, number>();
   let _idSeq = 0;
-  function itemKey(item) {
+  function itemKey(item: Element | null): number | null {
     if (!item) return null;
     let id = _idMap.get(item);
     if (!id) { id = ++_idSeq; _idMap.set(item, id); }
@@ -295,7 +298,7 @@ const RSProvider: PlazCodeProvider = (() => {
   const chatIsEmpty = () => allItems().length === 0;
   const isFreshChat = () => chatIsEmpty() && !!getEditor();
 
-  function composerFrame() {
+  function composerFrame(): HTMLElement | null {
     const ed = getEditor();
     if (!ed) return null;
     return safeClosest(ed, "form")
@@ -303,19 +306,19 @@ const RSProvider: PlazCodeProvider = (() => {
       || safeClosest(ed, "footer")
       || safeRead(() => ed.parentElement, null);
   }
-  function barAnchor() {
+  function barAnchor(): HTMLElement | null {
     const ed = getEditor();
     if (!ed) return null;
-    let n = ed;
+    let n: HTMLElement | null = ed;
     for (let i = 0; i < 10 && n; i++) {
-      const cls = String(safeRead(() => n.className, "") || "");
+      const cls = String(safeRead(() => n!.className, "") || "");
       if (/rounded|composer|input-bar|chat-input/i.test(cls)) return n;
-      n = safeRead(() => n.parentElement, null);
+      n = safeRead(() => n!.parentElement, null);
     }
     return composerFrame();
   }
 
-  function setInputLock(on) {
+  function setInputLock(on: boolean): void {
     const ed = getEditor();
     if (!ed) return;
     if (ed.isContentEditable || safeRead(() => ed.getAttribute("contenteditable"), null) === "true") {
@@ -361,26 +364,27 @@ const RSProvider: PlazCodeProvider = (() => {
     return "";
   }
 
-  const ariaOf = (b: HTMLElement) => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.title, "") || "").trim();
-  const allButtons = () => [...safeQueryAll(document, "button")].filter((b) => !safeClosest(b, "#rs-root"));
-  function composerButtons() {
+  const ariaOf = (b: HTMLElement): string => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.title, "") || "").trim();
+  const allButtons = (): HTMLButtonElement[] => [...safeQueryAll<HTMLButtonElement>(document, "button")].filter((b) => !safeClosest(b, "#rs-root"));
+  function composerButtons(): HTMLButtonElement[] {
     const editor = getEditor();
     let frame = composerFrame();
     if (!editor || !frame) return [];
-    const form = safeRead(() => editor.form, null);
+    const form = safeRead(() => (editor as HTMLTextAreaElement).form, null);
     // A textarea can have an inner wrapper while Send is its sibling. For a
     // non-form composer, include that local shell without reaching the chat
     // transcript, navigation or the whole page.
     if (!form) for (let i = 0; i < 4; i++) {
-      const cls = String(safeRead(() => frame.className, ""));
-      if (/composer|input-bar|chat-input/i.test(cls) || safeRead(() => frame.tagName, "") === "FOOTER") break;
-      const parent = safeRead(() => frame.parentElement, null);
+      const curFrame: HTMLElement = frame;
+      const cls = String(safeRead(() => curFrame.className, ""));
+      if (/composer|input-bar|chat-input/i.test(cls) || safeRead(() => curFrame.tagName, "") === "FOOTER") break;
+      const parent = safeRead(() => curFrame.parentElement, null);
       if (!parent || /^(?:MAIN|BODY|HTML)$/.test(safeRead(() => parent.tagName, "")) ||
           safeQuery(parent, '[data-message-role], [data-role="assistant"], [data-role="user"], article, .message, .msg')) break;
       frame = parent;
     }
-    const candidates = new Set(safeQueryAll(frame, "button"));
-    if (form) for (const button of safeQueryAll(document, "button[form]")) {
+    const candidates = new Set<HTMLButtonElement>(safeQueryAll<HTMLButtonElement>(frame, "button"));
+    if (form) for (const button of safeQueryAll<HTMLButtonElement>(document, "button[form]")) {
       if (safeRead(() => button.form === form, false)) candidates.add(button);
     }
     return [...candidates].filter(button => {
@@ -400,14 +404,14 @@ const RSProvider: PlazCodeProvider = (() => {
   const stopButton = () =>
     composerButtons().find((b) => S.stopAria.test(ariaOf(b)) && visible(b)) || null;
 
-  function streamText(item) {
+  function streamText(item: Element | null | undefined): string {
     if (!item) return "";
     return classifyText(item, ".rs-chip").trim();
   }
-  const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item?: Element | null): number => streamText(item === undefined ? lastAssistant() : item).length;
 
-  let _streamMax = -1, _streamAt = 0, _streamItem = null;
-  function sampleStream() {
+  let _streamMax = -1, _streamAt = 0, _streamItem: Element | null = null;
+  function sampleStream(): void {
     const item = lastAssistant();
     const len = streamText(item).length;
     const now = Date.now();
@@ -416,7 +420,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     if (len > _streamMax) { _streamMax = len; _streamAt = now; }
   }
-  const grewWithin = (ms) => _streamMax > 1 && Date.now() - _streamAt < ms;
+  const grewWithin = (ms: number): boolean => _streamMax > 1 && Date.now() - _streamAt < ms;
 
   const WEDGE_MS = 10000;
   let _stopSince = 0;
@@ -452,7 +456,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return { present: true, reply: streamText(item).trim(), thinking: "", item };
   }
 
-  async function waitFor(pred, timeout) {
+  async function waitFor(pred: () => unknown, timeout: number): Promise<boolean> {
     const budget = waitBudget(timeout, 120), t0 = Date.now();
     for (let poll = 0; poll < budget.polls && Date.now() - t0 < budget.ms; poll++) {
       const result = safePredicate(pred);
@@ -463,7 +467,7 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   const SEND_MAX = 120000;
-  function truncateForSend(text) {
+  function truncateForSend(text: string): string {
     if(typeof window.__rsLimitOutgoing==="function")return window.__rsLimitOutgoing(text);
     if (!text || text.length <= SEND_MAX) return text;
     const omitted = text.length - SEND_MAX;
@@ -474,15 +478,15 @@ const RSProvider: PlazCodeProvider = (() => {
     return text.slice(0, headLen) + marker + text.slice(text.length - tailLen);
   }
 
-  function setTextareaValue(el, v) {
+  function setTextareaValue(el: HTMLElement, v: string): void {
     const proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
     const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
     if (setter && setter.set) setter.set.call(el, v);
-    else el.value = v;
+    else (el as HTMLTextAreaElement).value = v;
     el.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
-  function setRichText(el, text) {
+  function setRichText(el: HTMLElement, text: string): void {
     if (safeRead(() => el.tagName, "") === "TEXTAREA" || safeRead(() => el.tagName, "") === "INPUT") {
       setTextareaValue(el, text);
       return;
@@ -492,8 +496,8 @@ const RSProvider: PlazCodeProvider = (() => {
       const sel = window.getSelection();
       const range = document.createRange();
       range.selectNodeContents(el);
-      sel.removeAllRanges();
-      sel.addRange(range);
+      sel!.removeAllRanges();
+      sel!.addRange(range);
     } catch {}
     let ok = false;
     try { ok = document.execCommand("insertText", false, text); } catch {}
@@ -507,13 +511,13 @@ const RSProvider: PlazCodeProvider = (() => {
     }
   }
 
-  function pressEnter(editor) {
+  function pressEnter(editor: HTMLElement): void {
     const o = { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true };
     editor.dispatchEvent(new KeyboardEvent("keydown", o));
     editor.dispatchEvent(new KeyboardEvent("keyup", o));
   }
 
-  async function typeAndSend(text, images) {
+  async function typeAndSend(text: string, images?: ImagePayloadList): Promise<void> {
     const editor = getEditor();
     if (!editor) throw new Error("Ox Alpha chat box not found — open oxalpha.com/chat");
     editor.focus();
@@ -536,7 +540,7 @@ const RSProvider: PlazCodeProvider = (() => {
       if (b && !safeRead(() => b.disabled, true)) { try { b.click(); } catch {} }
       else {
         try {
-          const form = safeClosest(editor, "form");
+          const form = safeClosest<HTMLFormElement>(editor, "form");
           if (form && typeof form.requestSubmit === "function") form.requestSubmit();
           else pressEnter(editor);
         } catch { pressEnter(editor); }
@@ -548,7 +552,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // What the rest of PlazCode calls. The home page's box turns whatever is typed
   // into a web address (/chat?q=...), so refuse to type there at all: the text must
   // only ever go into a real chat. (typeAndSend itself is left exactly as it was.)
-  async function sendToChat(text, images, options) {
+  async function sendToChat(text: string, images?: ImagePayloadList, options?: object): Promise<void> {
     if (!onChatRoute()) {
       diag("oxalpha.send.refusedHome", { path: location.pathname, textLen: String(text || "").length });
       throw new Error("Ox Alpha: this is the home page, not a chat. Open oxalpha.com/chat first, then try again.");
@@ -572,10 +576,10 @@ const RSProvider: PlazCodeProvider = (() => {
     if (!getEditor() && !loginGatePresent()) return "The input box disappeared (session ended?).";
     return null;
   }
-  const isTooLongMsg = (text) => RE.tooLong.test(text);
-  const isBusyMsg = (text) => RE.busy.test(text);
+  const isTooLongMsg = (text: string): boolean => RE.tooLong.test(text);
+  const isBusyMsg = (text: string): boolean => RE.busy.test(text);
 
-  function fileFromImage(img, i) {
+  function fileFromImage(img: ImagePayload, i: number): File {
     if (typeof PlazCodeMedia !== "undefined") return PlazCodeMedia.fileFrom(img, i);
     const mime = img.mimeType || "image/jpeg";
     const bin = atob(img.data);
@@ -585,13 +589,13 @@ const RSProvider: PlazCodeProvider = (() => {
     return new File([arr], `or_${Date.now()}_${i}.${ext}`, { type: mime });
   }
   function clearAttachments() {}
-  async function attachImages(images) {
+  async function attachImages(images: ImagePayloadList): Promise<boolean> {
     const editor = getEditor();
     if (!editor || !images || !images.length) return false;
     const dt = new DataTransfer();
     images.forEach((img, i) => { try { dt.items.add(fileFromImage(img, i)); } catch {} });
     if (!dt.items.length) return false;
-    const fileInput = safeQuery(document, 'input[type="file"]');
+    const fileInput = safeQuery<HTMLInputElement>(document, 'input[type="file"]');
     if (fileInput) {
       try {
         fileInput.files = dt.files;
@@ -610,11 +614,11 @@ const RSProvider: PlazCodeProvider = (() => {
     return m ? m[1] : location.pathname;
   };
 
-  function installSendHooks(handlers) {
+  function installSendHooks(handlers: SendHooks): void {
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
       const ed = getEditor();
-      if (!ed || !safeRead(() => ed.contains(e.target), false)) return;
+      if (!ed || !safeRead(() => ed.contains(e.target as Node | null), false)) return;
       if (editorText().trim() === "") return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
@@ -629,7 +633,7 @@ const RSProvider: PlazCodeProvider = (() => {
       const t = e.target as Element;
       // PlazCode's own bar buttons (Fix connection, Enhance, ...) are never the site's Send button.
       if (safeClosest(t, "#rs-root")) return;
-      const btn = safeRead(() => t.closest, null) && safeClosest(t, "button");
+      const btn = safeRead(() => t.closest, null) && safeClosest<HTMLButtonElement>(t, "button");
       if (!btn) return;
       if (btn === stopButton()) { handlers.onNativeStop(); return; }
       if (btn !== sendButton()) return;
@@ -645,9 +649,9 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   const CMD_SHAPE = /"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i;
-  function findToolBlockSpot(item) {
+  function findToolBlockSpot(item: Element): ToolSpot | null {
     if (!item) return null;
-    let parent = null, ref = null;
+    let parent: Element | null = null, ref: Element | null = null;
     for (const pre of safeQueryAll(item, "pre")) {
       if (safeRead(() => pre.closest, null) && safeClosest(pre, ".rs-chip")) continue;
       if (!CMD_SHAPE.test(safeRead(() => pre.textContent, "") || "")) continue;
@@ -680,7 +684,7 @@ const RSProvider: PlazCodeProvider = (() => {
     setInputLock, typeAndSend: sendToChat, stopGeneration,
     isGenerating, isBusyNow, isHardGenerating,
     enforceComposer() { return { ready: true }; },
-    async ensureComposerReady(reason) {
+    async ensureComposerReady(reason?: string) {
       diag("oxalpha.mode_ready", { reason, hasEditor: !!getEditor(), login: loginGatePresent(), chat: onChatRoute() });
       // Start / Restart pressed on the home page (or any non-chat page): its box
       // would put the whole start prompt into the address. Go to the plain chat

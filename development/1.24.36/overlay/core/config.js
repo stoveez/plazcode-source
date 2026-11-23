@@ -1,10 +1,27 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/config.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // core/config.js - provider-agnostic constants: app identity, system prompt,
 // feedback strings, tool categorisation. NOTHING in this file may reference a
 // specific AI site (DOM, selectors, site names) - that lives in providers/*.
 // eslint-disable-next-line no-unused-vars
 const RS = (() => {
   "use strict";
+
+  ;
+
+
+
+
+  ;
+
+
+
+
+
+
+
+
+
 
   // Display name + unique marker injected at the top of the system prompt so the
   // content script can reliably recognise (and camouflage) the bootstrap turn.
@@ -28,7 +45,8 @@ const RS = (() => {
   // Roblox Studio MCP only. Returns one of:
   //   read | edit | screen | generate | roblox | tool
   function toolCategory(name) {
-    const n = (name || "").includes("/") ? name.split("/").pop() : (name || "");
+    const raw = name || "";
+    const n = raw.includes("/") ? (raw.split("/").pop() || "") : raw;
     if (n === "list_commands" || n === "list_tools") return "read";
     if (/^(web_fetch|web_search)$/.test(n)) return "read";
     if (/^(script_read|read_scripts|script_search|script_grep|search_game_tree|inspect_instance|get_studio_state|get_console_output|search_creator_store|script_analysis)$/.test(n))
@@ -298,12 +316,12 @@ ${opts.customPrompt ? 'My additional project preferences: '+opts.customPrompt : 
       const isForge = window.__rsForge && window.__rsForge();
       const isBlender = window.__rsBlender && window.__rsBlender();
       const lvl = (window.__rsThinkingLevel && window.__rsThinkingLevel()) || "default";
-      const lvlNote = {
+      const lvlNote = ({
         low:  "LOW THINKING: one quick self-check before finalizing — catch obvious bugs only, keep replies fast.",
         mid:  "MID THINKING: after writing code, list 1-2 flaws, fix them, then answer. One loop.",
         high: "HIGH THINKING: before acting, plan the steps; after writing code, critique 2-3 flaws or edge cases and fix them; verify with a read-back (script_read/inspect_instance) before declaring done. Two loops max.",
         max:  "MAX THINKING: full rigor — (1) PLAN: outline the approach in 2-3 sentences first; (2) BUILD: implement; (3) REVIEW: critique 3+ flaws/edge cases; (4) FIX; (5) VERIFY: read back the result (script_read / inspect_instance / lighting_inspect) and confirm it matches the request; (6) only then give a one-sentence summary. Loop review+fix up to 3 times. Use web_search for any API/property you are not 100% sure of BEFORE writing code.",
-      }[lvl];
+      })[lvl];
       if (lvlNote) modeExtra += `\n\n━━━ THINKING LEVEL: ${lvl.toUpperCase()} ━━━\n${lvlNote}`;
       if (isExtra) modeExtra += `\n\n━━━ EXTRA THINKING MODE (user enabled via 🧠 button after Start) ━━━\nYou are in Extra Thinking mode. This is mandatory, not optional. After every script or GUI change: (1) list 2-3 flaws or edge cases in one short paragraph, (2) FIX them with another command, (3) verify with script_read / ui_list_tree / inspect_instance. Do not declare done until a verify command succeeded. Keep critiques short.`;
       if (isPlan) modeExtra += `\n\n━━━ PLAN MODE (user enabled) ━━━\nYou are in Plan Mode. Before any mutating command, your FIRST reply is a written plan — not a command. PlazCode shows the plan to the user for approval; nothing may change until they approve it, and PlazCode tells you when they have. Do not ask \"shall I proceed?\" yourself.\nPLAN format:\n- Goal (one sentence)\n- Architecture: services, remotes, GUI tree, Server vs Local scripts\n- Ordered steps (3–8), each step = one later command\n- Risks: respawn, mobile, Play vs Edit\nThe plan must list implied systems the request needs to be complete, not only the words they typed. Then implement. Every script is production code: clear names, early returns, WaitForChild with timeouts, no TODO stubs, no leftover prints, no default grey Frame standing in for UI. Match existing project style when you can read it first. Do not skip the plan even if the task looks small.`;
@@ -323,8 +341,8 @@ ${opts.customPrompt ? 'My additional project preferences: '+opts.customPrompt : 
     } catch {}
     return modeExtra;
   }
-  function buildBaseSystemPrompt(opts = {}) {
-    if (typeof opts === "string") opts = { siteName: opts };
+  function buildBaseSystemPrompt(rawOpts = {}) {
+    const opts = typeof rawOpts === "string" ? { siteName: rawOpts } : rawOpts;
     const { siteName = "this AI site", customPrompt = "", providerNotes = "", maxChars = 0 } = opts;
     let engine = opts.engine || "roblox";
     if (engine === "unreal" || engine === "anim") engine = "roblox"; // Unreal/AN folded into Roblox
@@ -504,12 +522,12 @@ IMPORTANT: after the list_commands result, reply with exactly "PlazCode is ready
     try {
       const isExtra = window.__rsExtraThinking && window.__rsExtraThinking();
       const lvl = (window.__rsThinkingLevel && window.__rsThinkingLevel()) || "default";
-      const lvlNote = {
+      const lvlNote = ({
         low:  "LOW THINKING: one quick self-check before finalizing — catch obvious pose/timing bugs only.",
         mid:  "MID THINKING: after each keyframe batch, verify with animation_inspect before continuing.",
         high: "HIGH THINKING: plan the motion (anticipation, extremes, spacing) before posing; QA with animation_simulate before declaring done.",
         max:  "MAX THINKING: plan the motion, build it, simulate QA (animation_simulate all:true), fix every flagged metric, re-preview, and only then summarize. Loop up to 3 times.",
-      }[lvl];
+      })[lvl];
       if (lvlNote) modeExtra += `\n\n━━━ THINKING LEVEL: ${lvl.toUpperCase()} ━━━\n${lvlNote}`;
       if (isExtra) modeExtra += `\n\n━━━ EXTRA THINKING MODE (AN) ━━━\nAfter each posing pass, critique timing/arcs/symmetry yourself, fix, and loop until satisfied.`;
     } catch {}

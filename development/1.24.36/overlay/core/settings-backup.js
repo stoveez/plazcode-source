@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/settings-backup.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // Settings backup: one block of text that carries the user's PlazCode choices
 // to another browser or back after a reset. It never carries passwords, keys,
 // tokens, launch commands, chat or session state, or anything private.
@@ -9,8 +10,8 @@ const PlazCodeSettingsBackup = (() => {
   // Live state, bulky data and anything that launches programs.
   const NOT_SETTINGS = new Set(["rsStartedSessions", "rsLatestHandoff", "rsSessionOps", "rsCheckpoints", "rsPerf", "rsCustomMcpServers",
     "rsSetupSeen", "rsTutorialSeen", "rsContinuationChoices", "rsSys"]);
-  const eligible = key => /^rs[A-Z]/.test(key) && !SECRET.test(key) && !NOT_SETTINGS.has(key) && !/mcp|server|session|handoff|queue|history/i.test(key);
-  const plain = value => {
+  const eligible = (key) => /^rs[A-Z]/.test(key) && !SECRET.test(key) && !NOT_SETTINGS.has(key) && !/mcp|server|session|handoff|queue|history/i.test(key);
+  const plain = (value) => {
     const type = typeof value;
     if (value === null || type === "string" || type === "boolean") return true;
     if (type === "number") return Number.isFinite(value);
@@ -22,8 +23,9 @@ const PlazCodeSettingsBackup = (() => {
   function create(values, now = new Date()) {
     const settings = {};
     for (const key of Object.keys(values || {}).sort()) {
-      if (!eligible(key) || !plain(values[key]) || values[key] === undefined) continue;
-      settings[key] = values[key];
+      const val = (values)[key];
+      if (!eligible(key) || !plain(val) || val === undefined) continue;
+      settings[key] = val;
     }
     return JSON.stringify({ format: FORMAT, version: VERSION, saved: now.toISOString(), settings }, null, 2);
   }
@@ -40,7 +42,7 @@ const PlazCodeSettingsBackup = (() => {
     const changes = {}, skipped = [];
     const entries = Object.entries(data.settings);
     if (entries.length > MAX_KEYS) return { ok: false, error: "too-big" };
-    const kind = value => value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
+    const kind = (value) => value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
     for (const [key, value] of entries) {
       if (!eligible(key) || !plain(value)) { skipped.push(key); continue; }
       const had = Object.prototype.hasOwnProperty.call(current, key) ? current[key] : undefined;

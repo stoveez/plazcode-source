@@ -24,24 +24,25 @@
 //  - No truncation "Continue" button; no per-turn "stopped" marker we can
 //    rely on → findContinueBtn/turnHalted return null/false.
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+    return safeRead(() => (node).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
   function safeStyle(node) {
     return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
@@ -58,7 +59,7 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {}; // injected by core via init()
+  let diag = () => {}; // injected by core via init()
 
   const S = {
     userItem: "user-query",
@@ -113,8 +114,8 @@ const RSProvider                   = (() => {
   // node-by-node walk, and typing in the chat box started a sweep. Each result is now remembered per element and reused while
   // the element's raw text (one fast native read) is unchanged; anything that changes the result (new text, our card, the
   // screen-reader label) also changes the raw text, so a stale answer is never returned.
-  const textCache = new WeakMap                                                    ();
-  function textWithout(root                , excludeSel         ) {
+  const textCache = new WeakMap();
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     const skip = SR_HIDDEN + (excludeSel ? ", " + excludeSel : "");
     const raw = safeRead(() => root.textContent, null);
@@ -129,12 +130,12 @@ const RSProvider                   = (() => {
     }
     return out;
   }
-  function walkText(root         , skip        ) {
+  function walkText(root, skip) {
     let t = "";
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
+      if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(skip), false)) return;
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
     };
     walk(root);
@@ -483,7 +484,7 @@ const RSProvider                   = (() => {
       if (images && images.length && !hasPendingAttachment()) {
         diag("attach.beforeCall", { count: images.length });
         try { const ok = await attachImages(images); diag("attach.afterCall", { ok }); }
-        catch (e) { diag("attach.threw", { msg: String((e && e.message) || e) }); }
+        catch (e) { diag("attach.threw", { msg: String((e && (e).message) || e) }); }
       }
       // A generation that just ended can leave the action button WEDGED on the
       // stop icon (see unwedgeStop), so arrow_upward never appears and the send
@@ -641,7 +642,7 @@ const RSProvider                   = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const btn = e.target && safeRead(() => (e.target           ).closest, null) && safeClosest(e.target, `${S.inputArea} button`);
+        const btn = e.target && safeRead(() => (e.target).closest, null) && safeClosest(e.target, `${S.inputArea} button`);
         if (!btn) return;
         const ic = iconName(btn);
         if (ic === "stop") {

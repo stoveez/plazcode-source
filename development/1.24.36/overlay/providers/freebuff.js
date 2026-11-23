@@ -8,24 +8,25 @@
 // agent chat (textarea or contenteditable + send). Selectors fail open so a
 // reskin still finds the composer.
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+    return safeRead(() => (node).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
   function safeStyle(node) {
     return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
@@ -42,7 +43,7 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {};
+  let diag = () => {};
 
   const S = {
     editor:
@@ -90,16 +91,16 @@ const RSProvider                   = (() => {
     return true;
   }
 
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     const skip = excludeSel ? `.rs-chip, ${excludeSel}` : ".rs-chip";
     let t = "";
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      if (safeRead(() => n.tagName, "") === "BR") { t += "\n"; return; }
-      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(safeRead(() => n.tagName, ""));
+      if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(skip), false)) return;
+      if (safeRead(() => (n).tagName, "") === "BR") { t += "\n"; return; }
+      const isBlock = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(safeRead(() => (n).tagName, ""));
       if (isBlock && t && !t.endsWith("\n")) t += "\n";
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
       if (isBlock && !t.endsWith("\n")) t += "\n";
@@ -154,7 +155,7 @@ const RSProvider                   = (() => {
   const editorText = () => {
     const e = getEditor();
     if (!e) return "";
-    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => e.value, "") || "";
+    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => (e).value, "") || "";
     return (safeRead(() => e.innerText, "") || safeRead(() => e.textContent, "") || "").replace(/\u00a0/g, " ");
   };
 
@@ -228,7 +229,7 @@ const RSProvider                   = (() => {
     const r = roleOf(item);
     if (/assistant|agent|ai|model/.test(r)) return true;
     if (/user|human/.test(r)) return false;
-    return !isUserItem(item) && !!(item && (safeRead(() => item.innerText, "") || "").trim());
+    return !isUserItem(item) && !!(item && (safeRead(() => (item).innerText, "") || "").trim());
   }
 
   function itemText(item) {
@@ -367,7 +368,7 @@ const RSProvider                   = (() => {
   // A plain submit button is only the Send button when it says nothing else (Freebuff's "Copy code" and side-panel tabs are
   // submit buttons too).
   const plainSubmit = (b) => safeRead(() => b.type, "") === "submit" && /^(?:|send|submit|ask|send message|↑|➤)$/i.test((safeRead(() => b.textContent, "") || "").trim());
-  const ariaOf = (b) => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.title, "") || "").trim();
+  const ariaOf = (b) => (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => (b).title, "") || "").trim();
   const allButtons = () => [...safeQueryAll(document, "button")].filter((b) => !safeClosest(b, "#rs-root"));
   // The Send button that belongs to the chat box: looked for around the box first, so the Send button of a side box
   // (Freebuff's "What could be better?" feedback form) is never taken for it.
@@ -416,7 +417,7 @@ const RSProvider                   = (() => {
   // diagnostic log, so a wrong "generating" can be traced to its signal.
   function busyChrome() {
     const ui = safeRead(() => document.getElementById("rs-root"), null);
-    const ours = (el) => ui && el && safeRead(() => ui.contains(el), false);
+    const ours = (el) => (ui && el && safeRead(() => ui.contains(el), false));
     for (const el of safeQueryAll(document, '[aria-busy="true"]')) {
       if (!ours(el) && visible(el)) return "aria-busy";
     }
@@ -428,7 +429,7 @@ const RSProvider                   = (() => {
       if (send && (safeRead(() => send.disabled, true) || safeRead(() => send.getAttribute("aria-disabled"), null) === "true")) return "send-disabled";
     }
     // The box PlazCode itself locked (contenteditable=false) is not the site being busy.
-    if (ed && (safeRead(() => ed.disabled, true) || (!isOurLock(ed) && safeRead(() => ed.getAttribute("contenteditable"), null) === "false") || safeRead(() => ed.getAttribute("aria-disabled"), null) === "true")) return "composer-disabled";
+    if (ed && (safeRead(() => (ed).disabled, true) || (!isOurLock(ed) && safeRead(() => ed.getAttribute("contenteditable"), null) === "false") || safeRead(() => ed.getAttribute("aria-disabled"), null) === "true")) return "composer-disabled";
     for (const b of allButtons()) {
       if (!visible(b)) continue;
       const t = (ariaOf(b) + " " + (safeRead(() => b.textContent, "") || "")).toLowerCase();
@@ -465,7 +466,7 @@ const RSProvider                   = (() => {
     for (const scope of scopes) {
       for (const b of safeQueryAll(scope, 'button,[role="button"]')) {
         if (!visible(b)) continue;
-        if (FINISHED_BTN.test(ariaOf(b) + " " + (safeRead(() => b.title, "") || ""))) n++;
+        if (FINISHED_BTN.test(ariaOf(b) + " " + (safeRead(() => (b).title, "") || ""))) n++;
       }
     }
     return n >= 2;
@@ -585,7 +586,7 @@ const RSProvider                   = (() => {
   let _sendDetail = "", _sendAmbiguous = false, _sendRetryable = false, _lastHas = null;
 
   // The SITE refuses input (not PlazCode's own lock).
-  const boxRefusesInput = (ed) => !!ed && (safeRead(() => ed.disabled, false) === true || safeRead(() => ed.getAttribute("aria-disabled"), null) === "true");
+  const boxRefusesInput = (ed) => !!ed && (safeRead(() => (ed).disabled, false) === true || safeRead(() => ed.getAttribute("aria-disabled"), null) === "true");
   function pasteText(el, text) {
     el.focus();
     try {
@@ -841,12 +842,12 @@ const RSProvider                   = (() => {
     }, true);
     document.addEventListener("click", (e) => {
       if (!getEditor()) return;
-      const t = e.target           ;
+      const t = e.target;
       // PlazCode's own bar buttons (Fix connection, Enhance, ...) are never the site's Send button.
       if (safeClosest(t, "#rs-root")) return;
       const stop = safeRead(() => t.closest, null) && safeClosest(t, "button");
       if (stop && isStopLabel(ariaOf(stop))) { handlers.onNativeStop(); return; }
-      const btn = safeRead(() => t.closest, null) && safeClosest(t, "button");
+      const btn = safeRead(() => t.closest, null) && (safeClosest(t, "button"));
       if (!btn) return;
       const isSend = S.sendAria.test(ariaOf(btn)) || safeRead(() => btn.type, "") === "submit";
       if (!isSend) return;

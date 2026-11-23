@@ -59,24 +59,26 @@
 //    image uploads are available when the current account has quota. Verify the
 //    attachment before submitting; surface quota walls instead of sending text-only.
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+    return safeRead(() => (node).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
   function safeStyle(node) {
     return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
@@ -93,8 +95,8 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {}; // injected by core via init()
-  let sendContext            = () => ({}), isStopped                = () => false, sendGeneration = 0;
+  let diag = () => {}; // injected by core via init()
+  let sendContext = () => ({}), isStopped = () => false, sendGeneration = 0;
 
   const S = {
     msg: "[data-message-author-role], [data-conversation-role], [data-role], [data-message-author]",
@@ -226,7 +228,7 @@ const RSProvider                   = (() => {
     if (!root || !safeRead(() => root.querySelector, null) || !safeQuery(root, ".cm-content")) return;
     try { document.dispatchEvent(new CustomEvent("rs-cm-sync")); } catch {}
   }
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     syncCM(root);
     let t = "";
@@ -234,12 +236,12 @@ const RSProvider                   = (() => {
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (excludeSel && safeRead(() => n.matches, null) && safeRead(() => n.matches(excludeSel), false)) return;
-      if (safeRead(() => n.tagName, "") === "BR") { t += "\n"; return; }
+      if (excludeSel && safeRead(() => (n).matches, null) && safeRead(() => (n).matches(excludeSel), false)) return;
+      if (safeRead(() => (n).tagName, "") === "BR") { t += "\n"; return; }
       // The editor's TRUE document, published by the MAIN-world tap. This is the
       // only complete source for a long block - take it and skip the subtree.
-      if (n.classList && safeRead(() => n.classList.contains("cm-content"), false)) {
-        const full = safeRead(() => n.getAttribute("data-rs-cm"), null);
+      if ((n).classList && safeRead(() => (n).classList.contains("cm-content"), false)) {
+        const full = safeRead(() => (n).getAttribute("data-rs-cm"), null);
         if (full !== null) {
           breakLine();
           t += full;
@@ -254,12 +256,12 @@ const RSProvider                   = (() => {
       }
       // One CodeMirror line = one source line, ALWAYS terminated - an empty
       // .cm-line is a blank line in the source and must not be swallowed.
-      if (n.classList && safeRead(() => n.classList.contains("cm-line"), false)) {
+      if ((n).classList && safeRead(() => (n).classList.contains("cm-line"), false)) {
         for (const c of safeRead(() => n.childNodes, [])) walk(c);
         t += "\n";
         return;
       }
-      const isBlock = BLOCK_TAGS.test(safeRead(() => n.tagName, ""));
+      const isBlock = BLOCK_TAGS.test(safeRead(() => (n).tagName, ""));
       if (isBlock) breakLine();
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
       if (isBlock) breakLine();
@@ -299,7 +301,7 @@ const RSProvider                   = (() => {
     return top;
   };
 
-  function assistantText(item, excludeSel ) {
+  function assistantText(item, excludeSel) {
     if (!item) return "";
     const reply = replyNodes(item)
       .filter((m) => !(excludeSel && safeRead(() => m.closest, null) && safeClosest(m, excludeSel)))
@@ -343,7 +345,7 @@ const RSProvider                   = (() => {
   // A message wrapper also contains native headings/actions ("You said", Copy,
   // timestamps). Read the user's content surface, never that surrounding UI.
   // Keep the same reader for delivery receipts, task requests and startup proof.
-  function userText(item, excludeSel ) {
+  function userText(item, excludeSel) {
     const bubbles = safeRead(() => item.matches('[data-user-message-bubble]'), false) ? [item] : safeQueryAll(item, '[data-user-message-bubble]');
     const native = bubbles.filter(node => !safeClosest(node, [excludeSel, '#rs-root,.rs-chip,button,[role="button"]'].filter(Boolean).join(',')));
     if (native.length === 1) {
@@ -385,14 +387,14 @@ const RSProvider                   = (() => {
   const NATIVE_USER_BUBBLE = '[data-user-message-bubble]';
   const NATIVE_USER_ROLE = '[data-message-author-role="user"],[data-conversation-role="user"],[data-role="user"],[data-message-author="user"],[data-turn="user"]';
   const RECEIPT_PAGE_BOUNDARY = 'main,body,html,form,nav,aside,[role="dialog"],#rs-root';
-  const normalizeReceiptText = value => String(value || '').replace(/\s+/g, ' ').trim();
+  const normalizeReceiptText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
 
-  function singleUserScope(scope, bubble, scopes ) {
+  function singleUserScope(scope, bubble, scopes) {
     if (scopes && scopes.has(scope)) return scopes.get(scope) === bubble;
     const bubbles = safeQueryAll(scope, NATIVE_USER_BUBBLE).filter(node => !safeClosest(node, '.rs-chip,#rs-root'));
     if (scope === bubble) return true;
     if (bubbles.length !== 1 || bubbles[0] !== bubble) { if (scopes) scopes.set(scope, null); return false; }
-    const outsideUser = node => !safeRead(() => bubble.contains(node), false) && !safeClosest(node, '.rs-chip');
+    const outsideUser = (node) => !safeRead(() => bubble.contains(node), false) && !safeClosest(node, '.rs-chip');
     const exclusive = !safeQueryAll(scope, S.msg).some(node => outsideUser(node) && isAssistantItem(node)) &&
       !safeQueryAll(scope, S.reply).some(outsideUser);
     if (scopes) scopes.set(scope, exclusive ? bubble : null);
@@ -403,7 +405,7 @@ const RSProvider                   = (() => {
     for (let node = safeRead(() => bubble.parentElement, null), depth = 0; node && depth < 4; node = safeRead(() => node.parentElement, null), depth++) {
       if (safeRead(() => node.matches(RECEIPT_PAGE_BOUNDARY + ',' + S.turn), true) || !singleUserScope(node, bubble, scopes)) break;
       if (safeRead(() => node.classList.contains('rs-hidden'), false) &&
-          safeRead(() => Array.from(node.children                  ).some(child => child.classList.contains('rs-chip')), false)) return node;
+          safeRead(() => Array.from(node.children).some(child => child.classList.contains('rs-chip')), false)) return node;
     }
     return null;
   }
@@ -411,7 +413,7 @@ const RSProvider                   = (() => {
   function receiptRendered(item) {
     if (safeRead(() => item.getClientRects().length > 0, false)) {
       const style = safeStyle(item);
-      return !/^(hidden|collapse)$/.test(style.visibility) && style.contentVisibility !== 'hidden' && !safeRead(() => item.hidden, true);
+      return !/^(hidden|collapse)$/.test(style.visibility) && style.contentVisibility !== 'hidden' && !safeRead(() => (item).hidden, true);
     }
     let ownMask = false;
     for (let node = item; node; node = safeRead(() => node.parentElement, null)) {
@@ -422,7 +424,7 @@ const RSProvider                   = (() => {
       // Read through our own direct-child mask only. Native hidden attributes,
       // inline hiding and a hidden conversation ancestor still reject the item.
       if (!parent || !safeRead(() => parent.classList.contains('rs-hidden'), false) ||
-          safeRead(() => node.hidden || node.matches('.hidden') || node.style.display === 'none', true)) return false;
+          safeRead(() => (node).hidden || node.matches('.hidden') || (node).style.display === 'none', true)) return false;
       ownMask = true;
     }
     return ownMask || safeQueryAll(item, '.whitespace-pre-wrap,[data-message-content],.rs-chip')
@@ -431,7 +433,7 @@ const RSProvider                   = (() => {
 
   function receiptUsers(includeHidden = false) {
     const seen = new Set(), result = [], hasLayout = safeRead(() => document.documentElement.getClientRects().length > 0, false);
-    const add = item => {
+    const add = (item) => {
       const work = item && safeClosest(item, S.workItem);
       if (work) { if (!isUserItem(work)) return; item = work; }
       if (!item || seen.has(item) || safeClosest(item, '.rs-chip,#rs-root') || safeRead(() => /^H[1-6]$/.test(item.tagName), true)) return;
@@ -521,7 +523,7 @@ const RSProvider                   = (() => {
 
   let activityControlsStyle;
   function setActivityFolded(item, folded) {
-    item.dataset.rsActivityFolded = folded ? '1' : '0';
+    (item).dataset.rsActivityFolded = folded ? '1' : '0';
     const turn = safeClosest(item, S.turn);
     if (!turn) return;
     if (!activityControlsStyle || !safeRead(() => activityControlsStyle.isConnected, false)) {
@@ -542,10 +544,10 @@ const RSProvider                   = (() => {
         if (safeQuery(parent, '[data-message-author-role],.markdown,.prose,.rs-chip,.rs-chat-activity')) break;
         strip = parent;
       }
-      strip.dataset.rsActivityControlsFolded = folded ? '1' : '0';
+      (strip).dataset.rsActivityControlsFolded = folded ? '1' : '0';
     }
   }
-  let transcriptSnapshot=null,assistantSnapshot=null,userSnapshot=null;
+  let transcriptSnapshot = null, assistantSnapshot = null, userSnapshot = null;
   function withTranscriptSnapshot(read) {
     if(transcriptSnapshot)return read();
     transcriptSnapshot=allItems();
@@ -649,7 +651,7 @@ const RSProvider                   = (() => {
     const candidates = [...safeQueryAll(document, "textarea, [contenteditable='true'], [contenteditable=''], [role='textbox']")].filter((e) => {
       if (safeClosest(e, "#rs-root") || safeClosest(e, S.turn) || safeClosest(e, S.workItem) || safeClosest(e, "[data-message-author-role]")) return false;
       if (safeClosest(e, "nav, aside, header, [role='dialog'], [role='menu'], [role='listbox'], [role='search'], [role='combobox'], pre, code")) return false;
-      if (safeRead(() => e.getAttribute("type"), null) === "search" || safeRead(() => e.disabled, false) || safeRead(() => e.readOnly, false)) return false;
+      if (safeRead(() => e.getAttribute("type"), null) === "search" || safeRead(() => (e).disabled, false) || safeRead(() => (e).readOnly, false)) return false;
       if (/search/i.test([safeRead(() => e.getAttribute("placeholder"), null), safeRead(() => e.getAttribute("aria-label"), null)].filter(Boolean).join(" "))) return false;
       try {
         const r = safeRect(e), st = safeStyle(e);
@@ -664,19 +666,19 @@ const RSProvider                   = (() => {
   const editorText = () => {
     const e = getEditor();
     if (!e) return "";
-    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => e.value, "") || "";
+    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => (e).value, "") || "";
     // ProseMirror stores lines in paragraphs/BRs: textContent joins them and
     // innerText adds paragraph spacing (and forces layout). Read logical lines.
-    const read = node => {
+    const read = (node) => {
       if (node.nodeType === 3) return node.nodeValue || "";
       if (node.nodeType !== 1) return "";
-      if (node.tagName === 'BR') {
-        if (safeRead(() => node.classList.contains('ProseMirror-trailingBreak'), false) ||
+      if ((node).tagName === 'BR') {
+        if (safeRead(() => (node).classList.contains('ProseMirror-trailingBreak'), false) ||
             (!node.nextSibling && (!node.previousSibling || node.previousSibling.nodeName === 'BR'))) return '';
         return '\n';
       }
       let text = '', previousBlock = false;
-      Array.from(node.childNodes                         ).forEach((child, index) => {
+      Array.from(node.childNodes).forEach((child, index) => {
         const block = /^(P|DIV|LI|PRE)$/.test(child.nodeName);
         if (index && (block || previousBlock)) text += '\n';
         text += read(child); previousBlock = block;
@@ -709,7 +711,7 @@ const RSProvider                   = (() => {
     const nested = safeRead(() => item.querySelector, null) && safeQuery(item, "[data-message-id], [data-turn-key]");
     const keyed = safeRead(() => item.closest, null) && safeClosest(item, "[data-turn-key]");
     const outer = safeRead(() => item.closest, null) && safeClosest(item, S.turn);
-    const nativeTestKey = node => {
+    const nativeTestKey = (node) => {
       const value = safeRead(() => node.getAttribute('data-testid'), null);
       return value && /^conversation-turn-.+/.test(value) ? value : null;
     };
@@ -761,7 +763,7 @@ const RSProvider                   = (() => {
   // being inserted into React-managed DOM. `barOutside` tells the core to position
   // the fixed bar just above this card without adding padding or changing its size.
   let followupStyle = null;
-  const followupNodes = new Set         ();
+  const followupNodes = new Set();
   function setFollowupMode(on) {
     const ed = getEditor(), frame = barAnchor();
     const matches = on && frame ? [...safeQueryAll(frame, 'span, p, div')].filter(node =>
@@ -775,7 +777,7 @@ const RSProvider                   = (() => {
       document.documentElement.appendChild(followupStyle);
     }
     for (const node of matches) {
-      if (!followupNodes.has(node)) node.style.setProperty('--rs-followup-size',safeStyle(node).fontSize || '14px');
+      if (!followupNodes.has(node)) (node).style.setProperty('--rs-followup-size',safeStyle(node).fontSize || '14px');
       node.setAttribute('data-rs-followup-label','1');followupNodes.add(node);
     }
   }
@@ -813,7 +815,7 @@ const RSProvider                   = (() => {
     _locked = on;
     const ed = getEditor();
     if (!ed) return;
-    if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") ed.readOnly = on;
+    if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") (ed).readOnly = on;
     else ed.setAttribute("contenteditable", on ? "false" : "true");
     if (on) ed.setAttribute("data-rs-locked", "1");
     else ed.removeAttribute("data-rs-locked");
@@ -832,7 +834,7 @@ const RSProvider                   = (() => {
   const isStopBtn = (b) => {
     if (!b || !safeRead(() => b.getAttribute, null)) return false;
     if (/stop/i.test(safeRead(() => b.getAttribute("data-testid"), null) || "")) return true;
-    const label = [safeRead(() => b.getAttribute("aria-label"), null), safeRead(() => b.getAttribute("title"), null), safeRead(() => b.innerText, "")].filter(Boolean).join(" ");
+    const label = [safeRead(() => b.getAttribute("aria-label"), null), safeRead(() => b.getAttribute("title"), null), safeRead(() => (b).innerText, "")].filter(Boolean).join(" ");
     return STOP_RE.test(label);
   };
   const submitButton = () => {
@@ -1072,7 +1074,7 @@ const RSProvider                   = (() => {
 
   // Fallback: type it. Yielding does not make this faster - it keeps the page
   // alive while it happens, so the user can still click (and Stop still works).
-  async function typeEditorText(ed, text, checkOwner             = () => {}, wrote                         = () => {}) {
+  async function typeEditorText(ed, text, checkOwner = () => {}, wrote = () => {}) {
     const raw = String(text);
     checkOwner();
     if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") {
@@ -1142,7 +1144,7 @@ const RSProvider                   = (() => {
     await typeEditorText(ed, text, checkOwner, wrote);
   }
 
-  async function settleComposerRender(checkOwner, clock, isReady                ) {
+  async function settleComposerRender(checkOwner, clock, isReady) {
     // The editable DOM/model can finish before React publishes the form's
     // submit value. A previously enabled button can still submit that prefix.
     if (!safeRead(() => document.documentElement.getClientRects().length > 0 && typeof requestAnimationFrame === 'function', false)) return 0;
@@ -1155,7 +1157,7 @@ const RSProvider                   = (() => {
       return Math.max(0, Math.round(clock() - started));
     };
     if (safeRead(() => document.hidden || document.visibilityState === 'hidden', false)) return settleHidden();
-    return new Promise        ((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       let finished = false, frame = null, frames = 0, occludedTimer = null;
       const cleanup = () => {
         clearTimeout(deadline);
@@ -1163,7 +1165,7 @@ const RSProvider                   = (() => {
         if (frame !== null) safeRead(() => cancelAnimationFrame(frame), null);
         try { document.removeEventListener('visibilitychange', onVis); } catch {}
       };
-      const finish = (error      ) => {
+      const finish = (error) => {
         if (finished) return;
         finished = true; cleanup();
         const ms = Math.max(0, Math.round(clock() - started));
@@ -1201,7 +1203,7 @@ const RSProvider                   = (() => {
         try {
           checkOwner();
           if (windowUnfocused() && clock() - started >= 1500 && typeof isReady === 'function' && safePredicate(isReady)) { finish(); return; }
-          const error      = new Error('ChatGPT input did not finish updating. Nothing was submitted. Keep its tab visible, then resume.');
+          const error = new Error('ChatGPT input did not finish updating. Nothing was submitted. Keep its tab visible, then resume.');
           error.code = 'CHATGPT_COMPOSER_RENDER_TIMEOUT'; finish(error);
         } catch (error) { finish(error); }
       // 1 s was too tight: inserting a ~12k-character startup message makes ChatGPT's
@@ -1228,19 +1230,19 @@ const RSProvider                   = (() => {
     const checkOwner = (typing = true) => {
       if (generation !== sendGeneration || isStopped() || !sameSession() ||
           ((typing || chat) && chat !== conversationKey())) {
-        const error      = new Error('ChatGPT delivery cancelled because Stop was pressed or the chat changed.');
+        const error = new Error('ChatGPT delivery cancelled because Stop was pressed or the chat changed.');
         error.code = 'CHATGPT_CANCELLED'; error.expectedCancellation = true; throw error;
       }
       if (typing && !editorMatches()) {
-        const error      = new Error('ChatGPT composer remounted while preparing the message.');
+        const error = new Error('ChatGPT composer remounted while preparing the message.');
         error.code = 'CHATGPT_COMPOSER_REMOUNTED'; throw error;
       }
     };
     const normalize = normalizeReceiptText;
-    const logical = value => String(value == null ? '' : value).replace(/\r\n?/g, '\n').replace(/\u00A0/g, ' ').trim();
+    const logical = (value) => String(value == null ? '' : value).replace(/\r\n?/g, '\n').replace(/\u00A0/g, ' ').trim();
     const usersBefore = new Map(receiptUsers(true).map(item => [item, receiptKey(item)]));
     const keysBefore = new Set([...usersBefore.values()].filter(Boolean));
-    const freshReceipt = item => {
+    const freshReceipt = (item) => {
       const key = receiptKey(item), previous = usersBefore.get(item);
       // An old node acquiring metadata is still old. A recycled node with a
       // different genuine message key can represent the newly submitted turn.
@@ -1304,7 +1306,7 @@ const RSProvider                   = (() => {
       node.style.opacity = "0";
       node.style.caretColor = "transparent";
       if (relock) {
-        if (safeRead(() => node.tagName, "") === "TEXTAREA" || safeRead(() => node.tagName, "") === "INPUT") node.readOnly = false;
+        if (safeRead(() => node.tagName, "") === "TEXTAREA" || safeRead(() => node.tagName, "") === "INPUT") (node).readOnly = false;
         else node.setAttribute("contenteditable", "true");
       }
     };
@@ -1313,7 +1315,7 @@ const RSProvider                   = (() => {
         safeRead(() => { node.style.opacity = oldOpacity; }, null);
         safeRead(() => { node.style.caretColor = oldCaret; }, null);
         if (relock && _locked) {
-          if (safeRead(() => node.tagName, "") === "TEXTAREA" || safeRead(() => node.tagName, "") === "INPUT") safeRead(() => { node.readOnly = true; }, null);
+          if (safeRead(() => node.tagName, "") === "TEXTAREA" || safeRead(() => node.tagName, "") === "INPUT") safeRead(() => { (node).readOnly = true; }, null);
           else safeRead(() => node.setAttribute("contenteditable", "false"), null);
         }
       }
@@ -1354,7 +1356,7 @@ const RSProvider                   = (() => {
             checkOwner();
           }
           return;
-        } catch (err     ) {
+        } catch (err) {
           if (err && err.code === 'CHATGPT_COMPOSER_REMOUNTED' && remountTry === 0 && await reacquireEditor()) {
             await sleep(150);
             continue;
@@ -1383,7 +1385,7 @@ const RSProvider                   = (() => {
       };
       try {
         renderWaitMs = await settleComposerRender(checkOwner, clock, composerReady);
-      } catch (err     ) {
+      } catch (err) {
         if (err && err.code === 'CHATGPT_COMPOSER_REMOUNTED' && !(images && images.length) && await reacquireEditor()) {
           await writeFullDraft();
           renderWaitMs = await settleComposerRender(checkOwner, clock, composerReady);
@@ -1407,7 +1409,7 @@ const RSProvider                   = (() => {
       // enabled SEND control, never submit through a lingering Stop or Enter.
       const ready = await waitDelivery(() => {
         const button = sendButton();
-        return button && !safeRead(() => button.disabled, true);
+        return (button && !safeRead(() => button.disabled, true));
       }, images && images.length ? 25000 : 15000);
       checkOwner();
       const button = ready && sendButton();
@@ -1428,9 +1430,9 @@ const RSProvider                   = (() => {
       // Never erase a newer draft after a navigation, remount or user edit.
       if (getEditor() === ed && chat === conversationKey() &&
           sendContext().session === context.session && ownedDraft !== null &&
-          (editorText() === ownedDraft || logical(editorText()) === logical(ownedDraft) || (ownedDraft.endsWith('\n') && editorText() === ownedDraft + '\n'))) clearEditor();
-      const proof      = {committed, expandedMessage, code:error.code || 'CHATGPT_SEND_FAILED',
-        renderWaitMs:error.renderWaitMs || renderWaitMs,
+          (editorText() === ownedDraft || logical(editorText()) === logical(ownedDraft) || ((ownedDraft).endsWith('\n') && editorText() === ownedDraft + '\n'))) clearEditor();
+      const proof = {committed, expandedMessage, code: (error).code || 'CHATGPT_SEND_FAILED',
+        renderWaitMs: (error).renderWaitMs || renderWaitMs,
         receiptWaitMs:receiptStartedAt === null ? 0 : Math.max(0, Math.round(clock() - receiptStartedAt))};
       // Lengths/booleans only: distinguish an unrecognized native message from
       // a partial/different body without logging prompts, results or identities.
@@ -1451,7 +1453,7 @@ const RSProvider                   = (() => {
               boxed:safeRead(() => item.getClientRects().length > 0, false), display:safeStyle(item).display};
           });
           proof.receiptEvidence = !users.length ? 'no_native_user_message' : !freshUsers.length ? 'no_new_message_identity' :
-            proof.users.some(item => item.matches) ? 'matching_message_after_wait' : 'new_message_text_mismatch';
+            proof.users.some((item) => item.matches) ? 'matching_message_after_wait' : 'new_message_text_mismatch';
           proof.bubbles = safeQueryAll(document, '[data-user-message-bubble]').slice(-3).map(item => ({
             chars:normalize(userText(item, '.rs-chip')).length, boxed:safeRead(() => item.getClientRects().length > 0, false)
           }));
@@ -1712,7 +1714,7 @@ const RSProvider                   = (() => {
         const ed = getEditor();
         if (!ed || !safeRead(() => ed.contains(e.target), false)) return;
         if (editorText().trim() === "") return;
-        if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+        if ((handlers).onCoworkSend && (handlers).onCoworkSend(e)) return;
         if (handlers.isBlocked()) return;
         // No session yet → nudge toward Start, but NEVER block the send. The
         // user is entitled to just chat with ChatGPT; the extension is opt-in.
@@ -1734,11 +1736,11 @@ const RSProvider                   = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const t = e.target           ;
+        const t = e.target;
         // Native "Continue generating" = a clear intent to RESUME after truncation.
-        const cont = t && safeRead(() => t.closest, null) && safeClosest(t, "button");
+        const cont = t && safeRead(() => t.closest, null) && (safeClosest(t, "button"));
         if (cont && RE.continueBtn.test((safeRead(() => cont.innerText, "") || "").trim())) {
-          handlers.onNativeContinue();
+          (handlers).onNativeContinue();
           return;
         }
         // Stop is tested FIRST: it is the same node as send, just in its other
@@ -1747,7 +1749,7 @@ const RSProvider                   = (() => {
         if (stop) { handlers.onNativeStop(); return; }
         const btn = t && safeRead(() => t.closest, null) && safeClosest(t, S.submitBtn);
         if (!btn || isStopBtn(btn)) return;
-        if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+        if ((handlers).onCoworkSend && (handlers).onCoworkSend(e)) return;
         if (handlers.isBlocked()) return;
         // Same as the keydown path: nudge, never block (see the comment there).
         if (!handlers.isStarted()) {

@@ -8,9 +8,9 @@
 // - Minimize: the "–" button folds the card into a small "Live" pill; clicking the pill brings the card back.
 // - The spot and the minimized choice are remembered on this site (localStorage; the page keeps working without it).
 const PlazCodeLiveCard = (() => {
-                                                                                          
-                                        
-                                                                                             
+
+
+
   const POS = "plazcode.liveCardPosition", MIN = "plazcode.liveCardMinimized";
   const CSS = '.rs-live-card{position:fixed;right:18px;bottom:96px;width:300px;z-index:2147483645;border-radius:14px;overflow:hidden;cursor:pointer;touch-action:none;font:13px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;color:#eef0f6;background:color-mix(in srgb,var(--pc-bg,#141722) 92%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--pc-accent,#8b5cf6) 55%,transparent),0 10px 34px rgba(0,0,0,.45);backdrop-filter:blur(10px)}' +
     '.rs-live-card:focus-visible{outline:2px solid var(--pc-accent,#8b5cf6);outline-offset:2px}.rs-live-card[data-dragging=true]{cursor:grabbing;user-select:none}' +
@@ -22,18 +22,18 @@ const PlazCodeLiveCard = (() => {
     // Minimized: only the dot and a short "Live" / "Paused" word, as a pill.
     '.rs-live-card.min{width:auto;border-radius:999px}.rs-live-card.min canvas,.rs-live-card.min .rs-live-note,.rs-live-card.min .rs-live-txt,.rs-live-card.min .rs-live-min,.rs-live-card.min .rs-live-big{display:none!important}' +
     '.rs-live-card.min .rs-live-row{padding:7px 12px}.rs-live-card.min .rs-live-pill{display:block;font-weight:600;white-space:nowrap}';
-  function create(o         ) {
+  function create(o) {
     const store = o.storage === undefined ? (() => { try { return window.localStorage; } catch { return null; } })() : o.storage;
-    const read = (k        ) => { try { return store ? store.getItem(k) : null; } catch { return null; } };
-    const write = (k        , v        ) => { try { if (store) store.setItem(k, v); } catch {} };
+    const read = (k) => { try { return store ? store.getItem(k) : null; } catch { return null; } };
+    const write = (k, v) => { try { if (store) store.setItem(k, v); } catch {} };
     const el = document.createElement("div");
     el.className = "rs-live-card"; el.setAttribute("role", "button"); el.tabIndex = 0;
     el.innerHTML = "<style>" + CSS + "</style>" +
       '<canvas width="480" height="300" aria-hidden="true"></canvas><p class="rs-live-note" hidden></p><div class="rs-live-row"><span class="rs-live-dot" aria-hidden="true"></span>' +
       '<span class="rs-live-txt"><b></b><small></small></span><span class="rs-live-pill"></span><button type="button" class="rs-live-min"></button><span class="rs-live-big" aria-hidden="true">⤢</span></div>';
-    const min = el.querySelector(".rs-live-min")                     , pill = el.querySelector(".rs-live-pill")               ;
+    const min = el.querySelector(".rs-live-min"), pill = el.querySelector(".rs-live-pill");
     min.textContent = "–"; min.title = o.words("Minimize the live view"); min.setAttribute("aria-label", min.title);
-    let minimized = read(MIN) === "1", position                                  = null;
+    let minimized = read(MIN) === "1", position = null;
     try { const p = JSON.parse(read(POS) || "null"); if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) position = { x: p.x, y: p.y }; } catch {}
     // Keep the card fully on screen (also after the window gets smaller).
     function place() {
@@ -43,7 +43,7 @@ const PlazCodeLiveCard = (() => {
       const x = Math.max(8, Math.min(position.x, window.innerWidth - w - 8)), y = Math.max(8, Math.min(position.y, window.innerHeight - h - 8));
       el.style.right = el.style.bottom = "auto"; el.style.left = Math.round(x) + "px"; el.style.top = Math.round(y) + "px";
     }
-    function setMinimized(value         ) {
+    function setMinimized(value) {
       minimized = value; write(MIN, value ? "1" : "0"); place();
       el.setAttribute("aria-expanded", String(!value));
       if (!value) { try { min.focus({ preventScroll: true }); } catch {} }
@@ -51,9 +51,9 @@ const PlazCodeLiveCard = (() => {
     min.addEventListener("click", (event) => { event.stopPropagation(); setMinimized(true); });
     min.addEventListener("keydown", (event) => event.stopPropagation());
     // Drag, with a 5 px start so a plain click stays a click.
-    let drag                                                                                         = null, swallow = false;
+    let drag = null, swallow = false;
     el.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0 || (event.target           ).closest(".rs-live-min")) return;
+      if (event.button !== 0 || (event.target).closest(".rs-live-min")) return;
       const r = el.getBoundingClientRect();
       drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: r.left, top: r.top, moved: false };
       try { el.setPointerCapture(event.pointerId); } catch {}
@@ -76,7 +76,7 @@ const PlazCodeLiveCard = (() => {
     });
     el.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (minimized) setMinimized(false); else o.onOpen(); return; }
-      const step = event.shiftKey ? 40 : 10, moves                                   = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+      const step = event.shiftKey ? 40 : 10, moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
       const move = moves[event.key]; if (!move) return;
       const r = el.getBoundingClientRect(); position = { x: r.left + move[0], y: r.top + move[1] }; place(); write(POS, JSON.stringify(position)); event.preventDefault();
     });
@@ -85,11 +85,11 @@ const PlazCodeLiveCard = (() => {
     o.root.append(el); place(); el.setAttribute("aria-expanded", String(!minimized));
     return {
       el,
-      canvas: el.querySelector("canvas")                     ,
+      canvas: el.querySelector("canvas"),
       // Title, second line, paused state, the Live/Paused word and the spoken label.
-      show(s                                                                             ) {
-        (el.querySelector("b")               ).textContent = s.title;
-        (el.querySelector("small")               ).textContent = s.sub;
+      show(s) {
+        (el.querySelector("b")).textContent = s.title;
+        (el.querySelector("small")).textContent = s.sub;
         el.classList.toggle("paused", s.paused); el.dataset.tag = s.tag; pill.textContent = s.tag;
         el.setAttribute("aria-label", minimized ? o.words("Live view minimized. Press to show it again.") + " " + s.label : s.label);
       },

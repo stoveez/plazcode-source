@@ -21,39 +21,42 @@
 //  - Chat URL: /new, /chat/<uuid>, /project/<uuid>
 const RSProvider: PlazCodeProvider = (() => {
   "use strict";
+  type RectBox = { x: number; y: number; left: number; top: number; right: number; bottom: number; width: number; height: number; readFailed?: boolean };
+  type ModelCap = { GEN_IDLE_MS: number; REASON_IDLE_MS: number; WARMUP_MS: number; REASON_NOREPLY_MS: number; STABLE_MS: number; RESPONSE_TIMEOUT_MS: number; sysMaxChars: number; resendEvery: number };
+  type SendHooksExt = SendHooks & { onCoworkSend?: (e: Event) => boolean; onNativeContinue?: () => void };
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
-  function safeRead(read, fallback) {
+  function safeRead<T, F = T>(read: () => T, fallback: F): T | F {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
-  function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+  function safeQuery<T extends Element = Element>(root: ParentNode | null, selector: string): T | null {
+    return safeRead(() => (root as ParentNode).querySelector<T>(selector), null);
   }
-  function safeQueryAll(root, selector): any[] {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll<T extends Element = Element>(root: ParentNode | null, selector: string): T[] {
+    return safeRead(() => Array.from((root as ParentNode).querySelectorAll<T>(selector)), []);
   }
-  function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+  function safeClosest(node: EventTarget | Node | null | undefined, selector: string): Element | null {
+    return safeRead(() => (node as Element).closest(selector), null);
   }
-  function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+  function safeRect(node: Element | null | undefined): RectBox {
+    return safeRead(() => (node as Element).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
-  function safeStyle(node) {
-    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
+  function safeStyle(node: Element | null | undefined): CSSStyleDeclaration {
+    return safeRead(() => getComputedStyle(node as Element), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'} as CSSStyleDeclaration);
   }
-  function safePredicate(predicate) {
+  function safePredicate<T>(predicate: () => T): T | false {
     const before = domReadErrors;
-    const result = safeRead(predicate, false);
+    const result = safeRead(predicate, false as const);
     return before === domReadErrors ? result : false;
   }
   // A poll-count limit also bounds waits if the wall clock moves backwards.
-  function waitBudget(timeout, interval) {
+  function waitBudget(timeout: number, interval: number): { ms: number; polls: number } {
     const ms = Number.isFinite(timeout) ? Math.min(600000, Math.max(0, timeout)) : 30000;
     return {ms, polls: Math.ceil(ms / interval)};
   }
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const waitFor = async (fn, ms) => {
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+  const waitFor = async <T>(fn: () => T, ms: number): Promise<T | false> => {
     const budget = waitBudget(ms, 80), t0 = Date.now();
     for (let poll = 0; poll < budget.polls && Date.now() - t0 < budget.ms; poll++) {
       const result = safePredicate(fn);
@@ -107,7 +110,7 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // Every current + recent Claude family. Unknown labels fall through to sonnet
   // (the site default) rather than fighting the picker.
-  const MODEL_CAPS = {
+  const MODEL_CAPS: Record<string, ModelCap> = {
     haiku:   { GEN_IDLE_MS: 1200, REASON_IDLE_MS: 8000,  WARMUP_MS: 30000, REASON_NOREPLY_MS: 45000,  STABLE_MS: 6000,  RESPONSE_TIMEOUT_MS: 180000, sysMaxChars: 12000, resendEvery: 8 },
     sonnet:  { GEN_IDLE_MS: 1600, REASON_IDLE_MS: 14000, WARMUP_MS: 45000, REASON_NOREPLY_MS: 90000,  STABLE_MS: 8000,  RESPONSE_TIMEOUT_MS: 300000, sysMaxChars: 0,     resendEvery: 0 },
     sonnet5: { GEN_IDLE_MS: 2800, REASON_IDLE_MS: 28000, WARMUP_MS: 90000, REASON_NOREPLY_MS: 240000, STABLE_MS: 14000, RESPONSE_TIMEOUT_MS: 720000, sysMaxChars: 0,     resendEvery: 0 },
@@ -121,8 +124,8 @@ const RSProvider: PlazCodeProvider = (() => {
   let _sysMaxChars = 0;
   let _resendEvery = 0;
 
-  function currentModelLabel() {
-    const tryText = (el) => (el && (safeRead(() => el.getAttribute("aria-label"), null) || safeRead(() => el.getAttribute("title"), null) || safeRead(() => el.textContent, "")) || "").replace(/\s+/g, " ").trim();
+  function currentModelLabel(): string {
+    const tryText = (el: Element | null): string => (el && (safeRead(() => el.getAttribute("aria-label"), null) || safeRead(() => el.getAttribute("title"), null) || safeRead(() => el.textContent, "")) || "").replace(/\s+/g, " ").trim();
     for (const el of safeQueryAll(document, S.modelBtn)) {
       const t = tryText(el);
       if (t && RE.modelFamily.test(t) && t.length < 80) return t;
@@ -138,7 +141,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return _modelLabel;
   }
-  function familyFromLabel(label) {
+  function familyFromLabel(label: string): string {
     const s = String(label || "");
     if (/\bmythos\b/i.test(s)) return "mythos";
     if (/\bfable\b/i.test(s)) return "fable";
@@ -149,7 +152,7 @@ const RSProvider: PlazCodeProvider = (() => {
     const m = RE.modelFamily.exec(s);
     return m ? m[1].toLowerCase() : "sonnet";
   }
-  function applyModelCaps(reason) {
+  function applyModelCaps(reason?: string): void {
     const label = currentModelLabel();
     const fam = familyFromLabel(label);
     const caps = MODEL_CAPS[fam] || MODEL_CAPS.sonnet;
@@ -167,7 +170,7 @@ const RSProvider: PlazCodeProvider = (() => {
     if (changed && label) diag("claude.model", { family: fam, label, reason: reason || "sweep" });
   }
 
-  function truncateForSend(text) {
+  function truncateForSend(text: string): string {
     if(typeof window.__rsLimitOutgoing==="function")return window.__rsLimitOutgoing(text);
     if (!text) return text;
     let s = String(text);
@@ -178,21 +181,21 @@ const RSProvider: PlazCodeProvider = (() => {
     return s;
   }
 
-  function textWithout(root: Element | null, excludeSel?: string) {
+  function textWithout(root: Element | null, excludeSel?: string): string {
     if (!root) return "";
     let t = "";
-    const walk = (n) => {
+    const walk = (n: Node): void => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (excludeSel && safeRead(() => n.matches, null) && safeRead(() => n.matches(excludeSel), false)) return;
-      if (n.classList && safeRead(() => n.classList.contains("rs-chip"), false)) return;
-      if (safeRead(() => n.tagName, "") === "BR") { t += "\n"; return; }
-      if (n.classList && safeRead(() => n.classList.contains("cm-line"), false)) {
+      if (excludeSel && safeRead(() => (n as Element).matches, null) && safeRead(() => (n as Element).matches(excludeSel), false)) return;
+      if ((n as Element).classList && safeRead(() => (n as Element).classList.contains("rs-chip"), false)) return;
+      if (safeRead(() => (n as Element).tagName, "") === "BR") { t += "\n"; return; }
+      if ((n as Element).classList && safeRead(() => (n as Element).classList.contains("cm-line"), false)) {
         for (const c of safeRead(() => n.childNodes, [])) walk(c);
         t += "\n";
         return;
       }
-      const block = /^(P|DIV|LI|PRE|H1|H2|H3|H4|TR|ARTICLE|SECTION)$/.test(safeRead(() => n.tagName, ""));
+      const block = /^(P|DIV|LI|PRE|H1|H2|H3|H4|TR|ARTICLE|SECTION)$/.test(safeRead(() => (n as Element).tagName, ""));
       if (block && t && !t.endsWith("\n")) t += "\n";
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
       if (block && t && !t.endsWith("\n")) t += "\n";
@@ -203,16 +206,16 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // Only message bubbles — not [data-role=assistant] on a page-wide wrapper,
   // which would hide the live composer from getEditor().
-  const inTurn = (el) => !!(el && safeClosest(el, '[data-testid="user-message"], [data-testid="user-turn"], [data-testid="assistant-message"], [data-testid="assistant-turn"], [data-testid="claude-response"], .font-claude-response'));
+  const inTurn = (el: Element | null): boolean => !!(el && safeClosest(el, '[data-testid="user-message"], [data-testid="user-turn"], [data-testid="assistant-message"], [data-testid="assistant-turn"], [data-testid="claude-response"], .font-claude-response'));
 
-  function visibleComposer(n) {
+  function visibleComposer(n: Element | null): boolean {
     if (!n || safeClosest(n, "#rs-root")) return false;
     if (inTurn(n)) return false;
     if (safeClosest(n, "pre, .cm-editor, [data-testid='artifact']")) return false;
     return true;
   }
-  function getEditor() {
-    const all = [...safeQueryAll(document, S.editor)].filter((n) => n && !safeClosest(n, "#rs-root"));
+  function getEditor(): HTMLElement | null {
+    const all = [...safeQueryAll<HTMLElement>(document, S.editor)].filter((n) => n && !safeClosest(n, "#rs-root"));
     let nodes = all.filter(visibleComposer);
     if (!nodes.length) nodes = all.filter((n) => !inTurn(n));
     if (!nodes.length) nodes = all;
@@ -222,25 +225,25 @@ const RSProvider: PlazCodeProvider = (() => {
     try { pool.sort((a, b) => safeRect(a).top - safeRect(b).top); } catch {}
     return pool[pool.length - 1] || pool[0] || null;
   }
-  const editorText = () => {
+  const editorText = (): string => {
     const e = getEditor();
     return e ? (safeRead(() => e.textContent, "") || "") : "";
   };
 
-  function docPos(a, b) {
+  function docPos(a: Node, b: Node): number {
     const r = safeRead(() => a.compareDocumentPosition(b), 0);
     if (r & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
     if (r & Node.DOCUMENT_POSITION_PRECEDING) return 1;
     return 0;
   }
 
-  const allItems = () => {
+  const allItems = (): Element[] => {
     const users = [...safeQueryAll(document, S.user)];
     // Claude nests response/markdown nodes inside the owning assistant turn.
     // Counting each match as a separate turn can select an empty trailing child
     // after the real reply has finished, falsely reporting "sent nothing".
     const candidates = safeQueryAll(document, S.assistant).filter(el => !safeQuery(el, S.user));
-    const roots = new Set(candidates);
+    const roots = new Set<Element>(candidates);
     const asst = candidates.filter(el => {
       let parent = safeClosest(el.parentElement, S.assistant);
       while (parent) {
@@ -253,12 +256,12 @@ const RSProvider: PlazCodeProvider = (() => {
     mixed.sort(docPos);
     return mixed;
   };
-  const isUserItem = (item) => !!(item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.user), false));
-  const isAssistantItem = (item) => !!(item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.assistant), false));
-  const assistantItems = () => allItems().filter(isAssistantItem);
-  const assistantCount = () => assistantItems().length;
-  const userCount = () => allItems().filter(isUserItem).length;
-  const lastAssistant = () => {
+  const isUserItem = (item: Element | null): boolean => !!(item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.user), false));
+  const isAssistantItem = (item: Element | null): boolean => !!(item && safeRead(() => item.matches, null) && safeRead(() => item.matches(S.assistant), false));
+  const assistantItems = (): Element[] => allItems().filter(isAssistantItem);
+  const assistantCount = (): number => assistantItems().length;
+  const userCount = (): number => allItems().filter(isUserItem).length;
+  const lastAssistant = (): Element | null => {
     const it = assistantItems();
     return it.length ? it[it.length - 1] : null;
   };
@@ -268,8 +271,8 @@ const RSProvider: PlazCodeProvider = (() => {
   // commands of the same tool) got the SAME key. The core then believed no new reply had arrived and paused with
   // "Response changed - run paused", and its "already ran this command" memory missed. For an assistant turn the
   // key is now the site's own id when it has one, otherwise an id tied to the page element: stable for the whole turn and different for every turn. Other turns keep the old key.
-  const turnUids = new WeakMap(); let turnUidCount = 0;
-  const itemKey = (item) => {
+  const turnUids = new WeakMap<Element, string>(); let turnUidCount = 0;
+  const itemKey = (item: Element | null): string | null => {
     if (!item || !safeRead(() => item.getAttribute, null)) return null;
     const own = safeRead(() => item.getAttribute("data-message-id"), null);
     if (own) return own;
@@ -285,17 +288,17 @@ const RSProvider: PlazCodeProvider = (() => {
     return safeRead(() => item.getAttribute("data-testid"), null) + ":" + (safeRead(() => item.textContent, "") || "").slice(0, 24)
       || null;
   };
-  const lastAssistantId = () => itemKey(lastAssistant());
+  const lastAssistantId = (): string | null => itemKey(lastAssistant());
 
-  function replyRoots(item) {
+  function replyRoots(item: Element | null): Element[] {
     if (!item) return [];
     // Thinking can contain the first markdown block. Read all non-thinking
     // answer blocks, without double-reading nested markdown wrappers.
-    const answerOnly = nodes => nodes.filter(node => !safeClosest(node, S.thinking));
+    const answerOnly = (nodes: Element[]): Element[] => nodes.filter(node => !safeClosest(node, S.thinking));
     let nodes = answerOnly(safeQueryAll(item, ".standard-markdown, [data-testid='markdown']"));
     if (!nodes.length) nodes = answerOnly(safeQueryAll(item, ".font-claude-response"));
     if (!nodes.length) return safeClosest(item, S.thinking) ? [] : [item];
-    const selected = new Set(nodes);
+    const selected = new Set<Element>(nodes);
     return nodes.filter(node => {
       for (let parent = node.parentElement; parent && parent !== item; parent = parent.parentElement) {
         if (selected.has(parent)) return false;
@@ -303,7 +306,7 @@ const RSProvider: PlazCodeProvider = (() => {
       return true;
     });
   }
-  function artifactText(item) {
+  function artifactText(item: Element | null): string {
     if (!item) return "";
     let t = "";
     safeQueryAll(item, S.artifact).forEach((el) => {
@@ -312,12 +315,12 @@ const RSProvider: PlazCodeProvider = (() => {
     });
     return t.trim();
   }
-  function thinkingText(item) {
+  function thinkingText(item: Element | null): string {
     if (!item) return "";
     const nodes = [...safeQueryAll(item, S.thinking)];
     return nodes.map((n) => textWithout(n)).join("\n").trim();
   }
-  function itemText(item) {
+  function itemText(item: Element | null): string {
     if (!item) return "";
     if (isAssistantItem(item)) {
       const body = replyRoots(item).map(node => textWithout(node, S.thinking)).filter(Boolean).join("\n");
@@ -326,7 +329,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     return textWithout(item);
   }
-  function classifyText(item, excludeSel) {
+  function classifyText(item: Element | null, excludeSel?: string): string {
     if (!item) return "";
     const skip = [S.thinking, excludeSel].filter(Boolean).join(",");
     if (isAssistantItem(item)) {
@@ -337,27 +340,27 @@ const RSProvider: PlazCodeProvider = (() => {
     return textWithout(item, skip);
   }
 
-  const chatIsEmpty = () => allItems().length === 0;
-  const isFreshChat = () => {
+  const chatIsEmpty = (): boolean => allItems().length === 0;
+  const isFreshChat = (): boolean => {
     const path = (location.pathname.replace(/\/+$/, "") || "/");
     return chatIsEmpty() && /(\/(new|chat|project))?$/.test(path) && !!getEditor();
   };
-  const conversationKey = () =>
+  const conversationKey = (): string =>
     (/\/(chat|project)\//.test(location.pathname) ? location.pathname : "");
 
-  const composerFrame = () => {
+  const composerFrame = (): Element | null => {
     const ed = getEditor();
     if (!ed) return null;
     return safeClosest(ed, "fieldset") || safeClosest(ed, "form") || safeClosest(ed, "[class*='composer']") || safeRead(() => ed.parentElement, null);
   };
-  function barAnchor() {
+  function barAnchor(): Element | null {
     const ed = getEditor();
     if (!ed) return null;
     return safeClosest(ed, "fieldset") || safeClosest(ed, "[class*='composer']") || safeClosest(ed, "form") || safeRead(() => ed.parentElement, null);
   }
 
   let _locked = false;
-  function setInputLock(on) {
+  function setInputLock(on: boolean): void {
     _locked = on;
     const ed = getEditor();
     if (!ed) return;
@@ -366,8 +369,8 @@ const RSProvider: PlazCodeProvider = (() => {
     else ed.removeAttribute("data-rs-locked");
   }
 
-  function visibleBtn(b) {
-    if (!b || safeRead(() => b.disabled, true)) return false;
+  function visibleBtn(b: Element | null): boolean {
+    if (!b || safeRead(() => (b as HTMLButtonElement).disabled, true)) return false;
     // PlazCode's own buttons are never Claude's. The bar's "Stop" button (shown while Start runs) matched the Stop test below, so
     // Claude looked busy before anything was sent and startup waited about a minute (owner debug log, 2026-11-14).
     if (safeClosest(b, "#rs-root, #rs-menu, #rs-cards-panel, #rs-approve")) return false;
@@ -375,21 +378,21 @@ const RSProvider: PlazCodeProvider = (() => {
     const r = safeRect(b);
     return r.width > 8 && r.height > 8;
   }
-  function labelOf(b) {
+  function labelOf(b: Element | null): string {
     return ((b && (safeRead(() => b.getAttribute("aria-label"), null) || safeRead(() => b.getAttribute("title"), null) || safeRead(() => b.textContent, ""))) || "").toLowerCase();
   }
-  function stopButton() {
+  function stopButton(): HTMLButtonElement | null {
     for (const s of [
       'button[data-testid="stop-button"]',
       'button[aria-label*="Stop response" i]',
       'button[aria-label*="Stop generating" i]',
       'button[aria-label*="Stop" i]',
     ]) {
-      for (const b of safeQueryAll(document, s)) {
+      for (const b of safeQueryAll<HTMLButtonElement>(document, s)) {
         if (visibleBtn(b) && !inTurn(b)) return b;
       }
     }
-    for (const b of safeQueryAll(document, "button")) {
+    for (const b of safeQueryAll<HTMLButtonElement>(document, "button")) {
       if (!visibleBtn(b) || inTurn(b)) continue;
       const l = labelOf(b);
       if (l.includes("stop") && (l.includes("response") || l.includes("generat") || l === "stop")) return b;
@@ -397,7 +400,7 @@ const RSProvider: PlazCodeProvider = (() => {
     // Claude labels this button in the UI language ("Parar resposta", "Antwort stoppen", ...). Without this a
     // Portuguese or German page never showed a Stop button to PlazCode, so results were typed while Claude was
     // still streaming and the editor dropped them.
-    for (const b of safeQueryAll(document, "button")) {
+    for (const b of safeQueryAll<HTMLButtonElement>(document, "button")) {
       if (!visibleBtn(b) || inTurn(b)) continue;
       if (STOP_LABEL_RE.test(labelOf(b)) && !NOT_STOP_RE.test(labelOf(b))) return b;
     }
@@ -413,18 +416,18 @@ const RSProvider: PlazCodeProvider = (() => {
   // startup ended with "Claude wouldn't take the message after 2 tries".
   const SEND_LABEL_RE = /\bsend\b|senden|envoyer|enviar|invia|verstuur|verzend|wy[sś]lij|odeslat|g[öo]nder|отправ|надісл|送信|发送|發送|보내기|kirim|gửi|ส่ง|إرسال|שלח/i;
   const NOT_SEND_RE = /stop|voice|dictat|micro|mikro|sprach/i;
-  function sendCandidates() {
-    const out = [];
+  function sendCandidates(): HTMLButtonElement[] {
+    const out: HTMLButtonElement[] = [];
     for (const s of [
       'button[aria-label="Send message"]',
       'button[aria-label="Send Message"]',
       'button[aria-label*="Send message" i]',
       'button[data-testid="send-button"]',
-    ]) for (const b of safeQueryAll(document, s)) if (!inTurn(b) && !out.includes(b)) out.push(b);
+    ]) for (const b of safeQueryAll<HTMLButtonElement>(document, s)) if (!inTurn(b) && !out.includes(b)) out.push(b);
     const ed = getEditor();
     const root = (ed && (safeClosest(ed, "fieldset") || safeClosest(ed, "form") || safeRead(() => ed.parentElement && ed.parentElement.parentElement, null))) || null;
     if (root) {
-      for (const b of safeQueryAll(root, "button")) {
+      for (const b of safeQueryAll<HTMLButtonElement>(root, "button")) {
         if (inTurn(b) || out.includes(b)) continue;
         const l = labelOf(b);
         if ((SEND_LABEL_RE.test(l) || safeRead(() => b.getAttribute("type"), "") === "submit") && !NOT_SEND_RE.test(l)) out.push(b);
@@ -433,12 +436,12 @@ const RSProvider: PlazCodeProvider = (() => {
     return out;
   }
   // An ENABLED, visible send control, or null. Never a guessed neighbour button.
-  function sendButton() {
+  function sendButton(): HTMLButtonElement | null {
     if (stopButton()) return null;
     for (const b of sendCandidates()) if (visibleBtn(b)) return b;
     return null;
   }
-  function pressEnter(ed) {
+  function pressEnter(ed: HTMLElement | null): void {
     if (!ed) return;
     try { ed.focus(); } catch {}
     const o = { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true };
@@ -447,15 +450,15 @@ const RSProvider: PlazCodeProvider = (() => {
     ed.dispatchEvent(new KeyboardEvent("keyup", o));
   }
 
-  function streamText(item) {
+  function streamText(item: Element | null): string {
     if (!item) return "";
     const reply = itemText(item);
     const think = thinkingText(item);
     return think ? (think + "\n" + reply) : reply;
   }
-  const streamLen = (item?) => streamText(item === undefined ? lastAssistant() : item).length;
-  let _streamMax = -1, _streamAt = 0, _streamItem = null;
-  function sampleStream() {
+  const streamLen = (item?: Element | null): number => streamText(item === undefined ? lastAssistant() : item).length;
+  let _streamMax = -1, _streamAt = 0, _streamItem: Element | null = null;
+  function sampleStream(): void {
     const item = lastAssistant();
     const len = streamText(item).length;
     const now = Date.now();
@@ -464,37 +467,37 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     if (len > _streamMax) { _streamMax = len; _streamAt = now; }
   }
-  function isGenerating() {
+  function isGenerating(): boolean {
     sampleStream();
     if (stopButton()) return true;
     const last = lastAssistant();
     if (last && safeQuery(last, '[data-is-thinking="true"], [data-thinking="true"], [data-is-streaming="true"]')) return true;
     return _streamMax > 1 && Date.now() - _streamAt < timings.GEN_IDLE_MS;
   }
-  const isBusyNow = () => isGenerating();
-  const isHardGenerating = () => !!stopButton();
+  const isBusyNow = (): boolean => isGenerating();
+  const isHardGenerating = (): boolean => !!stopButton();
 
-  function snapshot() {
+  function snapshot(): object {
     try {
       const it = lastAssistant();
       if (!it) return { th: 0, rp: 0 };
       return { th: thinkingText(it).length, rp: itemText(it).length };
     } catch { return {}; }
   }
-  function readAssistant() {
+  function readAssistant(): AssistantRead {
     const item = lastAssistant();
     if (!item) return { present: false, reply: "", thinking: "", item: null };
     return { present: true, reply: itemText(item), thinking: thinkingText(item), item };
   }
 
-  function selectAll(ed) {
+  function selectAll(ed: HTMLElement): void {
     const range = document.createRange();
     range.selectNodeContents(ed);
     const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
+    sel!.removeAllRanges();
+    sel!.addRange(range);
   }
-  async function typeEditorText(ed, text) {
+  async function typeEditorText(ed: HTMLElement, text: string): Promise<void> {
     // execCommand types into the FOCUSED editable only. While PlazCode has the composer locked the box cannot
     // hold focus, so after it is unlocked for a send the text went nowhere (seen live: the box stayed empty, no
     // message was sent, and the run paused a minute later). Focus it first.
@@ -514,8 +517,8 @@ const RSProvider: PlazCodeProvider = (() => {
   }
   // When the browser has no place to type (Claude is still restoring an emptied box), wait a moment for Claude to
   // repair it, then select again: the whole box before anything is typed, otherwise the end of what is there.
-  function canInsert() { try { return document.queryCommandEnabled("insertText") !== false; } catch { return true; } }
-  async function caretReady(ed, typed) {
+  function canInsert(): boolean { try { return document.queryCommandEnabled("insertText") !== false; } catch { return true; } }
+  async function caretReady(ed: HTMLElement, typed: boolean): Promise<void> {
     for (let attempt = 0; attempt < 5 && !canInsert(); attempt++) {
       await sleep(30);
       try { ed.focus({ preventScroll: true }); } catch {}
@@ -523,13 +526,13 @@ const RSProvider: PlazCodeProvider = (() => {
       else {
         try {
           const range = document.createRange(); range.selectNodeContents(ed); range.collapse(false);
-          const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+          const sel = window.getSelection(); sel!.removeAllRanges(); sel!.addRange(range);
         } catch {}
       }
     }
   }
 
-  function fileFromImage(img, i) {
+  function fileFromImage(img: ImagePayload, i: number): File {
     if (typeof PlazCodeMedia !== "undefined") return PlazCodeMedia.fileFrom(img, i);
     const mime = img.mimeType || "image/jpeg";
     const bin = atob(img.data);
@@ -538,7 +541,7 @@ const RSProvider: PlazCodeProvider = (() => {
     const ext = mime.includes("png") ? "png" : "jpg";
     return new File([arr], `orscript_${Date.now()}_${i}.${ext}`, { type: mime });
   }
-  async function attachImages(images) {
+  async function attachImages(images: ImagePayloadList): Promise<boolean> {
     const ed = getEditor();
     if (!ed || !images || !images.length) return false;
     const dt = new DataTransfer();
@@ -546,8 +549,8 @@ const RSProvider: PlazCodeProvider = (() => {
     if (!dt.items.length) return false;
     ed.focus();
     ed.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
-    const fileInput = safeQuery(document, 'input[type="file"][accept*="image"]') ||
-      safeQuery(document, 'input[type="file"]');
+    const fileInput = safeQuery<HTMLInputElement>(document, 'input[type="file"][accept*="image"]') ||
+      safeQuery<HTMLInputElement>(document, 'input[type="file"]');
     if (fileInput) {
       try { fileInput.files = dt.files; fileInput.dispatchEvent(new Event("change", { bubbles: true })); } catch {}
     }
@@ -556,11 +559,11 @@ const RSProvider: PlazCodeProvider = (() => {
       return !!(box && safeQuery(box, "img, [class*='preview'], [class*='thumbnail'], [class*='attachment']"));
     }, 15000);
   }
-  function clearAttachments() {
+  function clearAttachments(): void {
     try {
       const box = composerFrame();
       if (!box) return;
-      safeQueryAll(box, "[aria-label*='emove' i], [aria-label*='elete' i], [aria-label*='Remove'], [class*='delete'], [class*='remove']")
+      safeQueryAll<HTMLElement>(box, "[aria-label*='emove' i], [aria-label*='elete' i], [aria-label*='Remove'], [class*='delete'], [class*='remove']")
         .forEach((d) => { try { d.click(); } catch {} });
     } catch {}
   }
@@ -569,10 +572,10 @@ const RSProvider: PlazCodeProvider = (() => {
   // The wait ended because Stop removed the Stop button, and the startup message was then sent anyway (seen live 2026-11-14:
   // claude.send.click right after nativeStop). cancelPendingSends() is called by the core on every Stop.
   let sendGeneration = 0;
-  function cancelPendingSends() { ++sendGeneration; }
-  async function typeAndSend(text, images) {
+  function cancelPendingSends(): void { ++sendGeneration; }
+  async function typeAndSend(text: string, images?: ImagePayloadList): Promise<void> {
     const myGeneration = sendGeneration;
-    const cancelled = () => myGeneration !== sendGeneration && (diag("claude.send.cancelled", {}), true);
+    const cancelled = (): boolean => myGeneration !== sendGeneration && (diag("claude.send.cancelled", {}), true);
     let ed = getEditor();
     if (!ed) throw new Error("Claude input box not found");
     text = truncateForSend(text);
@@ -615,11 +618,11 @@ const RSProvider: PlazCodeProvider = (() => {
       // for the real (enabled) control instead of clicking whatever is there.
       const before = userCount();
       const tail = String(text).replace(/\s+/g, "").slice(-24);
-      const stillDraft = () => tail.length > 0 && String(editorText()).replace(/\s+/g, "").includes(tail);
+      const stillDraft = (): boolean => tail.length > 0 && String(editorText()).replace(/\s+/g, "").includes(tail);
       // A Stop button that was already up before we sent is Claude still streaming its last reply, not proof that
       // our message was taken. Only a Stop button that appears after the send counts.
       const stopBefore = !!stopButton();
-      const sent = () => (!stopBefore && !!stopButton()) || userCount() > before || !stillDraft();
+      const sent = (): boolean => (!stopBefore && !!stopButton()) || userCount() > before || !stillDraft();
       // The editor sometimes loses the typed text when Claude re-renders it. An empty box then looked like a sent
       // message and the run waited a minute for a reply that was never asked for. Type it once more.
       // Claude keeps its composer read-only for about three seconds after a reply ends (measured live: typing does
@@ -627,7 +630,7 @@ const RSProvider: PlazCodeProvider = (() => {
       // the box, instead of "sending" an empty one.
       for (let attempt = 1; attempt <= 20 && !stillDraft(); attempt++) {
         if (cancelled()) return;
-        diag("claude.send.retype", { attempt, stale: !ed.isConnected, ce: safeRead(() => ed.getAttribute("contenteditable"), null) });
+        diag("claude.send.retype", { attempt, stale: !ed.isConnected, ce: safeRead(() => ed!.getAttribute("contenteditable"), null) });
         await sleep(500);
         if (cancelled()) return;
         ed = getEditor() || ed;
@@ -663,16 +666,16 @@ const RSProvider: PlazCodeProvider = (() => {
       if (relock) { const e2 = getEditor(); safeRead(() => { if (e2) e2.setAttribute("contenteditable", "false"); }, null); }
     }
   }
-  function stopGeneration() {
+  function stopGeneration(): void {
     const b = stopButton();
     if (b) try { b.click(); } catch {}
   }
-  function enforceComposer() {
+  function enforceComposer(): { ready: boolean } {
     applyModelCaps("sweep");
     // Never refuse a sweep because the picker label is unknown — the user owns the model.
     return { ready: !!getEditor() };
   }
-  async function ensureComposerReady(reason) {
+  async function ensureComposerReady(reason?: string): Promise<{ ready: boolean }> {
     applyModelCaps(reason || "ready");
     // startSession locks the box first. Wait for the (possibly locked) composer;
     // do not gate Start on Haiku/Sonnet/Opus/Fable/Mythos — any of them is fine.
@@ -686,9 +689,9 @@ const RSProvider: PlazCodeProvider = (() => {
     return { ready };
   }
 
-  function scanError() {
+  function scanError(): string {
     try {
-      for (const el of safeQueryAll(document, S.errorSurfaces)) {
+      for (const el of safeQueryAll<HTMLElement>(document, S.errorSurfaces)) {
         if (safeRead(() => el.offsetParent, null) === null) continue;
         const t = (safeRead(() => el.innerText, "") || "").trim();
         if (t.length > 8 && t.length < 600 && RE.contextLimit.test(t)) return t.slice(0, 240);
@@ -696,32 +699,32 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch {}
     return "";
   }
-  const isTooLongMsg = (t) => RE.tooLong.test(t || "");
-  const isBusyMsg = (t) => RE.busy.test(t || "");
-  const turnHalted = () => false;
-  const findContinueBtn = () => {
-    for (const b of safeQueryAll(document, "button")) {
+  const isTooLongMsg = (t: string): boolean => RE.tooLong.test(t || "");
+  const isBusyMsg = (t: string): boolean => RE.busy.test(t || "");
+  const turnHalted = (): boolean => false;
+  const findContinueBtn = (): HTMLButtonElement | null => {
+    for (const b of safeQueryAll<HTMLButtonElement>(document, "button")) {
       if (visibleBtn(b) && RE.continueBtn.test((safeRead(() => b.textContent, "") || "").trim())) return b;
     }
     return null;
   };
   // Returns whether a button was clicked: the loop only trusts the native Continue when this is true.
-  const clickContinueBtn = () => { const b = findContinueBtn(); if (!b) return false; try { b.click(); return true; } catch { return false; } };
+  const clickContinueBtn = (): boolean => { const b = findContinueBtn(); if (!b) return false; try { b.click(); return true; } catch { return false; } };
 
-  async function writeDraft(value, expectedCurrent) {
+  async function writeDraft(value: unknown, expectedCurrent: unknown): Promise<{ ok: boolean; reason?: string }> {
     const ed = getEditor();
     if (!ed || editorText() !== String(expectedCurrent)) return {ok:false,reason:'draft-changed'};
     const relock = _locked;
     try { setInputLock(false); await typeEditorText(ed, String(value)); return {ok:editorText() === String(value)}; }
     finally { if(relock)setInputLock(true); }
   }
-  function installSendHooks(handlers) {
+  function installSendHooks(handlers: SendHooks): void {
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
       const ed = getEditor();
-      if (!ed || !safeRead(() => ed.contains(e.target), false)) return;
+      if (!ed || !safeRead(() => ed.contains(e.target as Node), false)) return;
       if (editorText().trim() === "") return;
-      if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+      if ((handlers as SendHooksExt).onCoworkSend && (handlers as SendHooksExt).onCoworkSend!(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (!chatIsEmpty()) return;
@@ -734,9 +737,9 @@ const RSProvider: PlazCodeProvider = (() => {
     document.addEventListener("click", (e) => {
       if (!getEditor()) return;
       const t = e.target as Element;
-      const cont = t && safeRead(() => t.closest, null) && safeClosest(t, "button");
+      const cont = t && safeRead(() => t.closest, null) && (safeClosest(t, "button") as HTMLElement | null);
       if (cont && RE.continueBtn.test((safeRead(() => cont.innerText, "") || "").trim())) {
-        if (handlers.onNativeContinue) handlers.onNativeContinue();
+        if ((handlers as SendHooksExt).onNativeContinue) (handlers as SendHooksExt).onNativeContinue!();
         return;
       }
       const stop = stopButton();
@@ -746,7 +749,7 @@ const RSProvider: PlazCodeProvider = (() => {
       }
       const btn = t && safeRead(() => t.closest, null) && safeClosest(t, "button");
       if (!btn || btn !== sendButton()) return;
-      if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+      if ((handlers as SendHooksExt).onCoworkSend && (handlers as SendHooksExt).onCoworkSend!(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (!chatIsEmpty()) return;
@@ -757,10 +760,10 @@ const RSProvider: PlazCodeProvider = (() => {
     }, true);
   }
 
-  function findToolBlockSpot(item) {
+  function findToolBlockSpot(item: Element | null): { parent: Element | null; ref: Element | null } | null {
     if (!item) return null;
-    let hidAny = null;
-    const hide = (el) => {
+    let hidAny: { parent: Element | null; ref: Element | null } | null = null;
+    const hide = (el: Element): void => {
       el.classList.add("rs-tool-hide");
       hidAny = hidAny || { parent: safeRead(() => el.parentElement, null), ref: el };
     };
@@ -778,7 +781,7 @@ const RSProvider: PlazCodeProvider = (() => {
                 safeQuery(parent, 'h1, h2, h3, h4, img, video, textarea, [contenteditable="true"]')) break;
             const buttons = [...safeQueryAll(parent, "button, [role='button']")];
             if (buttons.some((button) => !/^(?:copy(?: code)?(?: to clipboard)?|download(?: code| file)?|expand(?: code)?|collapse(?: code)?|toggle (?:line )?wrap(?:ping)?)$/i.test(
-              (safeRead(() => button.getAttribute("aria-label"), null) || safeRead(() => button.title, "") || safeRead(() => button.textContent, "") || "").trim()))) break;
+              (safeRead(() => button.getAttribute("aria-label"), null) || safeRead(() => (button as HTMLElement).title, "") || safeRead(() => button.textContent, "") || "").trim()))) break;
             // Button text is left out, and icon-font glyphs (private-use characters such as Claude's copy icon) and zero-width marks are dropped, so a frame holding only a "json" label and a copy button is hidden whole.
             let extra = (safeRead(() => parent.textContent, "") || "").replace(safeRead(() => pre.textContent, "") || "", "");
             for (const button of buttons) { const label = safeRead(() => button.textContent, "") || ""; if (label) extra = extra.replace(label, ""); }
@@ -799,7 +802,7 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // A PlazCode turn hidden with no chip left in it (a result before its chip lands, or a masked startup) still left Claude's
   // empty grey message bubble and its action row behind. Hide that user row while the turn shows nothing; show it again otherwise.
-  function syncHiddenShell(item) {
+  function syncHiddenShell(item: Element | null): void {
     if (!item) return;
     const scope = safeClosest(item, "[data-user-scope]");
     if (!scope || safeQuery(scope, '[data-testid="user-message"]:not(.rs-hidden)')) { if (scope) scope.classList.remove("rs-empty-turn"); return; }

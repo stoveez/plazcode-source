@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/providers/crax-net.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // providers/crax-net.js - Crax GPT system-prompt interceptor (MAIN world).
 // Runs in the page's MAIN world at document_start, before crax's script.js.
 // Intercepts fetch to /v1/chat/completions and neuters the site's restrictive
@@ -29,10 +30,16 @@
     return REFUSAL_RE.test(content);
   }
 
+  ;
+
+
+
+
+
   function patchMessages(messages) {
     if (!Array.isArray(messages) || !messages.length) return messages;
     let patched = false;
-    const out = messages.map((m, idx) => {
+    const out = messages.map((m) => {
       if (m && m.role === "system" && typeof m.content === "string" && isRefusalSystem(m.content)) {
         patched = true;
         // Replace the refusal blob with override; keep any trailing non-refusal
@@ -54,7 +61,7 @@
       // For now, don't inject blindly — only when we patched something.
     }
     // If we patched, ensure the first system message is clearly permissive
-    if (patched && out[0] && out[0].role === "system") {
+    if (patched && out[0] && out[0].role === "system" && typeof out[0].content === "string") {
       if (!out[0].content.includes("PlazCode agent")) {
         out[0].content = OVERRIDE_PREFIX + "\n\n" + out[0].content;
       }
@@ -81,7 +88,7 @@
   }
 
   const origFetch = window.fetch;
-  window.fetch = function (...args) {
+  window.fetch = function ( ...args) {
     let url = "";
     let init = {};
     if (args[0] instanceof Request) {
@@ -102,7 +109,7 @@
     const isChat = typeof url === "string" && /\/v1\/(chat\/completions|images\/generations)|proxy-qwen|proxy-seedance|proxy-seedream/i.test(url);
     if (isChat && init && init.body) {
       try {
-        let bodyStr = init.body;
+        const bodyStr = init.body;
         // body may be already stringified JSON
         if (typeof bodyStr === "string") {
           const patched = tryPatchBody(bodyStr);

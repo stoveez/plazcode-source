@@ -13,21 +13,23 @@
 //    local AI placeholder/send control; candidate classes themselves are hashed.
 //  - Transcript events expose data-agent-service-scroll-anchor. User events
 //    align flex-end, assistant events flex-start, and centered rows are status.
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
     return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
@@ -46,7 +48,7 @@ const RSProvider                   = (() => {
     return {ms, polls: Math.ceil(ms / interval)};
   }
 
-  let diag       = () => {};
+  let diag = () => {};
   let needsComposer = () => false;
   let isStopped = () => false;
   let isSessionActive = () => false;
@@ -55,7 +57,7 @@ const RSProvider                   = (() => {
   const _txt = (el) => (el && safeRead(() => el.textContent, "") || "").replace(/\s+/g, " ").trim();
   const visible = (el) => {
     if (!el || !safeRead(() => el.isConnected, false)) return false;
-    if (safeRead(() => el.hidden, true)) return false;
+    if (safeRead(() => (el).hidden, true)) return false;
     try {
       const r = safeRect(el);
       if (r.readFailed) return false;
@@ -68,8 +70,8 @@ const RSProvider                   = (() => {
   // Notion implements its composer controls as focusable DIVs with role=button,
   // not native <button> elements (live: agent-send-message-button).
   const CONTROL_SEL = "button, [role='button']";
-  const controlDisabled = (el) => !el || safeRead(() => el.disabled, true) === true ||
-    (safeRead(() => el.getAttribute, null) && safeRead(() => el.getAttribute("aria-disabled"), null) === "true");
+  const controlDisabled = (el) => !el || safeRead(() => (el).disabled, true) === true ||
+    ((safeRead(() => el.getAttribute, null)) && safeRead(() => el.getAttribute("aria-disabled"), null) === "true");
 
   // Notion has TWO completely different editable surfaces on app.notion.com:
   // normal page blocks (/p/...) and the full-page AI chat (/ai + /chat).  A page
@@ -157,8 +159,9 @@ const RSProvider                   = (() => {
   const COMPOSER_TEXT_RE = /(do anything with|anything with ai|ask notion ai|ask ai|ask anything|what would you like|message.*(?:ai|notion)|start typing|reply to|your message|frag(?:e)? notion[-\s]?(?:ki|ai)|frage.*(?:ki|notion)|demande[rz]? .*notion|pregunta.*notion|pergunte.*notion)/i;
   // Placeholder wording that is only trusted as an attribute on (or labelling)
   // the composer: as free text, AI replies also say "How can I help...".
-  const COMPOSER_PLACEHOLDER_RE = /how can i help|wie kann ich (?:dir|ihnen) helfen|was m[öo]chtest du|frag(?:e)? (?:die )?ki|ki etwas fragen|comment puis-je|comment (?:puis|peux).*aider|c[óo]mo puedo ayudar|como posso ajudar/i;
-  const isTextControl = (el) => !!el && /^(INPUT|TEXTAREA)$/.test(safeRead(() => el.tagName, "") || "");
+  const COMPOSER_PLACEHOLDER_RE = /how can i help|wie kann ich (?:dir|ihnen) helfen|was m[öo]chtest du|frag(?:e)? (?:die )?ki|ki etwas fragen|comment puis-je|comment (?:puis|peux).*aider|c[óo]mo puedo ajudar|como posso ajudar/i;
+  const isTextControl = (el) =>
+    !!el && /^(INPUT|TEXTAREA)$/.test(safeRead(() => el.tagName, "") || "");
 
   // The page layout changed (a page opened or closed beside the chat, window
   // resize): forget the short-lived position caches so the bar re-seats on the
@@ -180,7 +183,7 @@ const RSProvider                   = (() => {
     _lastEditorLogged = null;
   }
   function candidateVisible(el) {
-    if (!el || !safeRead(() => el.isConnected, false) || safeRead(() => el.hidden, true)) return false;
+    if (!el || !safeRead(() => el.isConnected, false) || safeRead(() => (el).hidden, true)) return false;
     try {
       // One geometry read only. The old visible() + second rect pair doubled the
       // forced-layout cost for every historical editor candidate.
@@ -382,7 +385,7 @@ const RSProvider                   = (() => {
     // Reuse the live composer without enumerating historical editables. React
     // can hide the landing composer while keeping it connected; that node must
     // not win over the replacement composer during startup.
-    if (_editorCache && candidateVisible(_editorCache) && !safeRead(() => _editorCache.disabled, true) &&
+    if (_editorCache && candidateVisible(_editorCache) && !safeRead(() => (_editorCache).disabled, true) &&
         (isTextControl(_editorCache) || safeRead(() => _editorCache.getAttribute("contenteditable"), null) !== "false")) return _editorCache;
     if (_editorCache) {
       _editorCache = null; _editorAt = 0;
@@ -425,7 +428,7 @@ const RSProvider                   = (() => {
   }
   const getEditor = () => {
     const e = findEditorRaw();
-    if (!e || safeRead(() => e.disabled, true)) return null;
+    if (!e || safeRead(() => (e).disabled, true)) return null;
     if (isTextControl(e)) return e;
     return safeRead(() => e.getAttribute("contenteditable"), null) !== "false" ? e : null;
   };
@@ -440,9 +443,12 @@ const RSProvider                   = (() => {
       if (!e.querySelector || !e.querySelector("img.notion-emoji")) return e.textContent || "";
       let out = "";
       const walker = document.createTreeWalker(e, 5); // SHOW_ELEMENT | SHOW_TEXT
-      for (let n = walker.nextNode()       ; n; n = walker.nextNode()       ) {
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
         if (n.nodeType === 3) out += n.nodeValue;
-        else if (n.tagName === "IMG" && n.classList && n.classList.contains("notion-emoji")) out += n.getAttribute("alt") || "";
+        else if (n.nodeType === 1) {
+          const el = n;
+          if (el.tagName === "IMG" && el.classList && el.classList.contains("notion-emoji")) out += el.getAttribute("alt") || "";
+        }
       }
       return out;
     }, "") || "";
@@ -452,14 +458,18 @@ const RSProvider                   = (() => {
     if (!isAiSurface()) return null;
     const e = findEditorRaw();
     if (!e) return null;
-    const hasCommit = n => controlsIn(n).some(control => controlAvailable(control) && (sendControlLike(control) || stopControlLike(control)));
-    if (_frameEditor === e && _frameCache && safeRead(() => _frameCache.isConnected, false) &&
-        safeRead(() => _frameCache.contains(e), false) && hasCommit(_frameCache)) return _frameCache;
+    const hasCommit = (n) => controlsIn(n).some(control => controlAvailable(control) && (sendControlLike(control) || stopControlLike(control)));
+    const fc = _frameCache;
+    if (_frameEditor === e && fc && safeRead(() => fc.isConnected, false) &&
+        safeRead(() => fc.contains(e), false) && hasCommit(fc)) return fc;
     let fallback = safeRead(() => e.parentElement, null), chosen = null;
     // A long retained protocol draft can make its composer taller than 360px.
     // Find its own semantic send/stop controls rather than rejecting that frame.
-    for (let n = fallback, i = 0; n && n !== document.body && i < 7; n = safeRead(() => n.parentElement, null), i++) {
-      if (hasCommit(n)) { chosen = n; break; }
+    for (let n = fallback, i = 0; n && n !== document.body && i < 7; ) {
+      const cur = n;
+      if (hasCommit(cur)) { chosen = cur; break; }
+      n = safeRead(() => cur.parentElement, null);
+      i++;
     }
     if (!chosen) {
       const semantic = safeClosest(e, 'form, [role="region"], [role="main"], main');
@@ -478,15 +488,15 @@ const RSProvider                   = (() => {
   const sendControlLike = (b) => !!b &&
     (/^(?:agent-send-message-button|agent-chat-send-button)$/.test(safeRead(() => b.getAttribute("data-testid"), null) || "") ||
      SEND_RE.test(ariaOf(b)) || SEND_RE.test(safeRead(() => b.getAttribute("data-testid"), null) || "") ||
-     SEND_RE.test(safeRead(() => b.title, "") || ""));
+     SEND_RE.test(safeRead(() => (b).title, "") || ""));
   const stopControlLike = (b) => {
     if (!b) return false;
     const text = _txt(b), testId = safeRead(() => b.getAttribute("data-testid"), null) || "";
     return /agent-(?:stop|interrupt)/i.test(testId) ||
-      STOP_RE.test(ariaOf(b)) || STOP_RE.test(testId) || STOP_RE.test(safeRead(() => b.title, "") || "") ||
+      STOP_RE.test(ariaOf(b)) || STOP_RE.test(testId) || STOP_RE.test(safeRead(() => (b).title, "") || "") ||
       (STOP_RE.test(text) && text.length <= 40);
   };
-  const exactSendControl = (frame, controls ) => {
+  const exactSendControl = (frame, controls) => {
     const exact = (controls || controlsIn(frame)).filter(b =>
       /^(?:agent-send-message-button|agent-chat-send-button)$/.test(safeRead(() => b.getAttribute("data-testid"), null) || ""));
     return exact.find(b => controlAvailable(b) && !controlDisabled(b)) || exact.find(controlAvailable) || null;
@@ -529,9 +539,10 @@ const RSProvider                   = (() => {
       const ed = findEditorRaw();
       if (!ed || !edText(ed).trim()) return null;
       const er = safeRect(ed);
-      for (let n = safeRead(() => ed.parentElement, null), depth = 0; n && n !== document.body && depth < 7; n = safeRead(() => n.parentElement, null), depth++) {
+      for (let n = safeRead(() => ed.parentElement, null), depth = 0; n && n !== document.body && depth < 7; ) {
+        const cur = n;
         const scored = [];
-        const controls = controlsIn(n).filter((b) => !safeClosest(b, "#rs-root") && !safeRead(() => b.contains(ed), false) && !safeRead(() => ed.contains(b), false));
+        const controls = controlsIn(cur).filter((b) => !safeClosest(b, "#rs-root") && !safeRead(() => b.contains(ed), false) && !safeRead(() => ed.contains(b), false));
         controls.forEach((b, index) => {
           if (!controlAvailable(b) || controlDisabled(b)) return;
           const label = (ariaOf(b) + " " + (safeRead(() => b.getAttribute("data-testid"), null) || "") + " " + (safeRead(() => b.title, "") || "")).trim();
@@ -542,7 +553,7 @@ const RSProvider                   = (() => {
           if (!r.width || !r.height || r.width > 64 || r.height > 64) return;
           let score = 0;
           if (safeQuery(b, "svg, img")) score += 2;
-          if (safeRead(() => b.type, "") === "submit") score += 4;
+          if (safeRead(() => (b).type, "") === "submit") score += 4;
           if (Math.abs(r.width - r.height) <= 4) score += 2;
           if (r.left >= er.left + er.width * 0.5) score += 2;
           if (r.bottom >= er.top) score += 1;
@@ -550,7 +561,11 @@ const RSProvider                   = (() => {
           if (/ask|go\b|run|post|reply|enter|arrow|up\b|submit|send/i.test(label)) score += 3;
           scored.push({ b, score });
         });
-        if (!scored.length) continue;
+        if (!scored.length) {
+          n = safeRead(() => cur.parentElement, null);
+          depth++;
+          continue;
+        }
         scored.sort((a, c) => c.score - a.score);
         const best = scored[0], next = scored[1];
         if (best.score >= 6 && (!next || best.score - next.score >= 2)) {
@@ -630,10 +645,11 @@ const RSProvider                   = (() => {
     // after two negatives this historical assistant no longer needs style walks.
     if (cached && cached.parent === safeRead(() => el.parentElement, null) &&
         (now - cached.at < 1500 || (!cached.value && cached.checks >= 2))) return cached.value;
-    for (let n = el, i = 0; n && n !== document.body && i < 6; n = safeRead(() => n.parentElement, null), i++) {
-      let jc = safeRead(() => n.style && n.style.justifyContent, "") || "", fd = safeRead(() => n.style && n.style.flexDirection, "") || "";
+    for (let n = el, i = 0; n && n !== document.body && i < 6; ) {
+      const cur = n;
+      let jc = safeRead(() => cur.style && cur.style.justifyContent, "") || "", fd = safeRead(() => cur.style && cur.style.flexDirection, "") || "";
       try {
-        const cs = safeStyle(n);
+        const cs = safeStyle(cur);
         if (!jc) jc = cs.justifyContent || "";
         if (!fd) fd = cs.flexDirection || "";
       } catch {}
@@ -643,6 +659,8 @@ const RSProvider                   = (() => {
         _endAlignedCache.set(el, { value: true, parent: safeRead(() => el.parentElement, null), at: now, checks: (cached?.checks || 0) + 1 });
         return true;
       }
+      n = safeRead(() => cur.parentElement, null);
+      i++;
     }
     _endAlignedCache.set(el, { value: false, parent: safeRead(() => el.parentElement, null), at: now, checks: (cached?.checks || 0) + 1 });
     return false;
@@ -656,11 +674,12 @@ const RSProvider                   = (() => {
     const ed = findEditorRaw();
     const frame = composerFrame();
     return roots.filter((r) => {
+      const parentEl = safeRead(() => r.parentElement, null);
       if (!safeRead(() => r.isConnected, false) || (safeRead(() => r.closest, null) && safeClosest(r, "#rs-root"))) return false;
       if ((ed && (r === ed || safeRead(() => r.contains(ed), false) || safeRead(() => ed.contains(r), false))) ||
           (frame && safeRead(() => frame.contains(r), false))) return false;
       // A nested editor root is a block detail, not a second chat turn.
-      if (safeRead(() => r.parentElement, null) && safeClosest(safeRead(() => r.parentElement, null), BLOCK_RESPONSE_ROOT_SEL)) return false;
+      if (parentEl && safeClosest(parentEl, BLOCK_RESPONSE_ROOT_SEL)) return false;
       if (!safeQuery(r, "[data-block-id]")) return false;
       // Avoid whitespace-normalizing every historical response on each scan.
       // Native textContent plus a one-character non-whitespace probe is enough
@@ -688,13 +707,15 @@ const RSProvider                   = (() => {
       if (safeClosest(item, "#rs-root") || (frame && safeRead(() => frame.contains(item), false)) ||
           (ed && (item === ed || safeRead(() => item.contains(ed), false))) ||
           safeClosest(item, BLOCK_RESPONSE_ROOT_SEL) || safeQuery(item, BLOCK_RESPONSE_ROOT_SEL)) continue;
-      const role = safeRead(() => item.getAttribute("data-message-role") || item.getAttribute("data-role"), "");
+      const role = safeRead(() => item.getAttribute("data-message-role") || item.getAttribute("data-role"), "") || "";
       const css = safeStyle(item), align = safeRead(() => item.style.justifyContent, "") || css.justifyContent || "";
       if (!/user|human/i.test(role) && (!(align === "flex-end" || align === "end") || /^column/.test(css.flexDirection || ""))) continue;
-      if (!/\S/.test(safeRead(() => item.textContent, "")) && !safeQuery(item, "img")) continue;
+      if (!/\S/.test(safeRead(() => item.textContent, "") || "") && !safeQuery(item, "img")) continue;
       let nested = false;
-      for (let parent = safeRead(() => item.parentElement, null); parent && parent !== document.body; parent = safeRead(() => parent.parentElement, null)) {
-        if (userSet.has(parent)) { nested = true; break; }
+      for (let parent = safeRead(() => item.parentElement, null); parent && parent !== document.body; ) {
+        const curP = parent;
+        if (userSet.has(curP)) { nested = true; break; }
+        parent = safeRead(() => curP.parentElement, null);
       }
       if (nested) continue;
       _blockUserItems.add(item); userSet.add(item); users.push(item);
@@ -707,11 +728,34 @@ const RSProvider                   = (() => {
   // touching that subtree: a stylesheet in #rs-root replaces only the command
   // block's visual children with a CSS pseudo-card. The underlying text remains
   // intact for parsing, and any surrounding assistant prose remains visible.
+  ;
+  ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ;
+
+
+
+
+
+
   const _immutableItemKey = new WeakMap();
   const _immutableItemBlock = new WeakMap();
   const _immutableItemCard = new WeakMap();
   const _immutableCards = new Map();
-  const _immutableDirty = new Set     ();
+  const _immutableDirty = new Set();
   let _immutableStyle = null, _immutableStyleTimer = 0, _immutableCompactTimer = 0;
   let _immutableCssomFailed = false, _immutableBubbleSeq = 0;
   const cssQuoted = (v) => String(v || "")
@@ -788,7 +832,7 @@ const RSProvider                   = (() => {
   async function collectExportHistory(capture) {
     const route=routeKey(), items=allItems();
     if(!items.length)return;
-    let scroller=safeRead(() => items[0].parentElement, null);
+    let scroller = safeRead(() => items[0].parentElement, null);
     while(scroller && scroller!==document.body){
       const css=safeStyle(scroller);
       if(/auto|scroll/.test(css.overflowY) && safeRead(() => scroller.scrollHeight, 0)>safeRead(() => scroller.clientHeight, 0)+20)break;
@@ -871,9 +915,11 @@ const RSProvider                   = (() => {
     if (card.sheet !== sheet || !card.rules) {
       if (!insertImmutableRules(style, key, card)) return false;
     }
+    const rules = card.rules;
+    if (!rules) return false;
     const { color, label } = immutableVisual(card);
     try {
-      const hs = card.rules.host.style, bs = card.rules.before.style;
+      const hs = rules.host.style, bs = rules.before.style;
       bs.setProperty("border", CARD_BORDER, "important");
       bs.setProperty("background", CARD_BG, "important");
       bs.setProperty("box-shadow", cardShadow(color), "important");
@@ -955,23 +1001,23 @@ const RSProvider                   = (() => {
     scheduleImmutableCompaction();
     return card;
   }
-  function renderImmutableChip(item, opts      = {}) {
+  function renderImmutableChip(item, opts = {}) {
     let key = immutableKey(item);
-    if (opts.whole && safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null)) {
-      key = "row:" + safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null);
+    if (opts.whole && safeRead(() => (item).getAttribute("data-agent-service-scroll-anchor"), null)) {
+      key = "row:" + safeRead(() => (item).getAttribute("data-agent-service-scroll-anchor"), null);
       _immutableItemKey.set(item, key);
     }
     if (opts.whole && isUserItem(item) && !key.startsWith("row:")) {
       // Attribute-only ownership leaves React's locked child tree untouched.
       // Mask the entire result, including text/code spread over several blocks.
-      let id = safeRead(() => item.getAttribute("data-plazcode-notion-card"), null);
+      let id = safeRead(() => (item).getAttribute("data-plazcode-notion-card"), null);
       if (!id) {
         id = Date.now().toString(36) + "-" + String(++_immutableBubbleSeq);
-        try { item.setAttribute("data-plazcode-notion-card", id); } catch { return; }
+        try { (item).setAttribute("data-plazcode-notion-card", id); } catch { return; }
       }
       key = "bubble:" + id; _immutableItemKey.set(item, key);
     }
-    if (!key) return;
+    if (!item || !key) return;
     let byItem = _immutableItemCard.get(item) || null;
     if (byItem && byItem.cleared) byItem = null;
     // The core may still hold the old response node when Notion has already
@@ -986,44 +1032,47 @@ const RSProvider                   = (() => {
     // creating a second spinner that the old node can never settle.
     if (!prev && safeRead(() => item.isConnected, false)) {
       const wanted = opts.label || "";
-      const orphan = [..._immutableCards.values()].reverse().find((card) =>
-        card && (card.phase === "run" || card.phase === "idle") &&
-        card.item && !safeRead(() => card.item.isConnected, false) &&
-        (card.owned || Date.now() - (card.updatedAt || 0) < 15000) &&
-        (!wanted || !card.label || card.label === wanted || card.label === "command"));
+      const orphan = [..._immutableCards.values()].reverse().find((card) => {
+        const cardItem = card && card.item;
+        return !!(card && (card.phase === "run" || card.phase === "idle") &&
+          cardItem && !safeRead(() => cardItem.isConnected, false) &&
+          (card.owned || Date.now() - (card.updatedAt || 0) < 15000) &&
+          (!wanted || !card.label || card.label === wanted || card.label === "command"));
+      });
       if (orphan) prev = byItem = migrateImmutableCard(item, orphan, key);
     }
-    prev = prev || {};
+    const prevCard = prev || {};
     // A turn executes once. React may replay an earlier running decoration
     // after completion; retain the final outcome for this same command key.
-    const staleRunning = prev.owned && /^(done|err)$/.test(prev.phase || "") &&
-      /^(run|idle)$/.test(opts.phase || "");
-    if (staleRunning) opts = { ...opts, phase: prev.phase, detail: prev.detail, label: prev.label };
-    const liveItem = safeRead(() => item.isConnected, false) ? item : (prev.item || item);
+    const staleRunning = !!(prevCard.owned && /^(done|err)$/.test(prevCard.phase || "") &&
+      /^(run|idle)$/.test(opts.phase || ""));
+    if (staleRunning) opts = { ...opts, phase: prevCard.phase, detail: prevCard.detail, label: prevCard.label };
+    const liveItem = safeRead(() => item.isConnected, false) ? item : (prevCard.item || item);
     const liveBlock = safeRead(() => item.isConnected, false)
-      ? (_immutableItemBlock.get(item) || prev.block || null)
-      : (prev.block || _immutableItemBlock.get(item) || null);
+      ? (_immutableItemBlock.get(item) || prevCard.block || null)
+      : (prevCard.block || _immutableItemBlock.get(item) || null);
     const next = {
       key,
-      label: opts.label || prev.label || "command",
-      detail: opts.detail != null ? opts.detail : (prev.detail || ""),
-      phase: opts.phase || prev.phase || "idle",
-      owned: opts.owned != null ? !!opts.owned : !!prev.owned,
+      label: opts.label || prevCard.label || "command",
+      detail: opts.detail != null ? opts.detail : (prevCard.detail || ""),
+      phase: opts.phase || prevCard.phase || "idle",
+      owned: opts.owned != null ? !!opts.owned : !!prevCard.owned,
       item: liveItem,
       block: liveBlock,
-      sheet: prev.sheet || null,
-      rules: prev.rules || null,
+      sheet: prevCard.sheet || null,
+      rules: prevCard.rules || null,
       missingAt: 0,
       missingSignatureAt: 0,
       cleared: false,
       updatedAt: Date.now(),
     };
-    const changed = prev.label !== next.label || prev.detail !== next.detail ||
-      prev.phase !== next.phase || prev.owned !== next.owned;
+    const changed = prevCard.label !== next.label || prevCard.detail !== next.detail ||
+      prevCard.phase !== next.phase || prevCard.owned !== next.owned;
     _immutableCards.set(key, next);
     _immutableItemCard.set(item, next);
     if (liveItem && liveItem !== item) _immutableItemCard.set(liveItem, next);
-    if (changed || !_immutableStyle || !safeRead(() => _immutableStyle.isConnected, false)) markImmutableStyle(key, true);
+    const curStyle = _immutableStyle;
+    if (changed || !curStyle || !safeRead(() => curStyle.isConnected, false)) markImmutableStyle(key, true);
   }
   function refreshImmutableCardRef(item, card) {
     if (!card || !item) return card;
@@ -1056,10 +1105,10 @@ const RSProvider                   = (() => {
     const key = immutableKey(item), card = immutableCardFor(item, key);
     return !!(card && card.owned);
   }
-  function clearImmutableChip(item, options      = {}) {
+  function clearImmutableChip(item, options = {}) {
     const key = immutableKey(item);
     const card = immutableCardFor(item, key);
-    if (!card) return;
+    if (!item || !card) return;
     if (options.force) {
       if (key.startsWith("bubble:")) {
         try { item.removeAttribute("data-plazcode-notion-card"); } catch {}
@@ -1092,8 +1141,9 @@ const RSProvider                   = (() => {
       // Each card already knows its exact host block. A document-wide selector
       // per historical command made cleanup O(cards × page size) every sweep.
       if (key.startsWith("row:") || key.startsWith("bubble:")) {
-        const row = key.startsWith("bubble:") && safeRead(() => card.item.isConnected, false)
-          ? card.item : safeQuery(document, immutableSelector(key));
+        const cardItem = card.item;
+        const row = key.startsWith("bubble:") && cardItem && safeRead(() => cardItem.isConnected, false)
+          ? cardItem : safeQuery(document, immutableSelector(key));
         if (row) { card.item = row; _immutableItemCard.set(row, card); _immutableItemKey.set(row, key); card.missingAt = 0; continue; }
       }
       const block = card && card.block;
@@ -1128,33 +1178,35 @@ const RSProvider                   = (() => {
     if (changed) scheduleImmutableCompaction();
   }
   const FAST_TOOL_SIGNATURE_RE = /["'](?:command|tool)["']\s*:\s*["']|###\s*(?:LUA|LUAU|MCP_TOOL)\s*###|<tool_call>/i;
-  function preprocessMutations(records, state      = {}) {
+  function preprocessMutations(records, state = {}) {
     if (!records || !records.length || !isChatPath()) return;
-    const roots = new Set     ();
+    const roots = new Set();
     const transcriptSel = `${BLOCK_RESPONSE_ROOT_SEL}, ${AGENT_ROW_SEL}`;
     const addNode = (node) => {
       if (!node || safeRead(() => node.nodeType, 0) !== 1) return;
       try {
-        if (safeRead(() => node.matches, null) && safeRead(() => node.matches(transcriptSel), false)) roots.add(node);
-        const closest = safeRead(() => node.closest, null) && safeClosest(node, transcriptSel);
+        if (safeRead(() => (node).matches, null) && safeRead(() => (node).matches(transcriptSel), false)) roots.add(node);
+        const closest = safeRead(() => (node).closest, null) && safeClosest(node, transcriptSel);
         if (closest) roots.add(closest);
-        if (safeRead(() => node.querySelectorAll, null)) {
+        if (safeRead(() => (node).querySelectorAll, null)) {
           for (const root of safeQueryAll(node, transcriptSel)) roots.add(root);
         }
       } catch {}
     };
     for (const r of records) {
-      addNode(r.target && (safeRead(() => r.target.nodeType, 0) === 1 ? r.target : safeRead(() => r.target.parentElement, null)));
+      const targetNode = r.target;
+      addNode(targetNode && (safeRead(() => targetNode.nodeType, 0) === 1 ? targetNode : safeRead(() => targetNode.parentElement, null)));
       for (const node of r.addedNodes || []) addNode(node);
     }
     for (const item of roots) {
       if (!item || !safeRead(() => item.isConnected, false) || safeClosest(item, "#rs-root")) continue;
       const remembered = _immutableItemCard.get(item);
       const existing = remembered && !remembered.cleared ? remembered : null;
+      const existingBlock = existing && existing.block;
       // Normal token churn inside the same block needs no work: its CSS selector
       // is already active. Only a block/root replacement needs synchronous rekey.
-      if (existing && existing.block && safeRead(() => existing.block.isConnected, false) && safeRead(() => item.contains(existing.block), false) &&
-          safeRead(() => existing.block.getAttribute("data-block-id"), null) === existing.key) continue;
+      if (existing && existingBlock && safeRead(() => existingBlock.isConnected, false) && safeRead(() => item.contains(existingBlock), false) &&
+          safeRead(() => existingBlock.getAttribute("data-block-id"), null) === existing.key) continue;
       if (existing) {
         renderImmutableChip(item, {});
         continue;
@@ -1183,21 +1235,25 @@ const RSProvider                   = (() => {
     if (raw.length) {
       // Find the nearest scrolling ancestor of a real row. This is used only for
       // positioning/fallback; allItems reads the semantic rows directly.
-      for (let n = safeRead(() => raw[0].parentElement, null); n && n !== document.body; n = safeRead(() => n.parentElement, null)) {
+      for (let n = safeRead(() => raw[0].parentElement, null); n && n !== document.body; ) {
+        const cur = n;
         try {
-          const st = safeStyle(n);
-          if (/auto|scroll/.test(st.overflowY)) return n;
+          const st = safeStyle(cur);
+          if (/auto|scroll/.test(st.overflowY)) return cur;
         } catch {}
+        n = safeRead(() => cur.parentElement, null);
       }
       return safeRead(() => raw[0].parentElement, null);
     }
     const e = findEditorRaw();
     if (e) {
-      for (let n = safeRead(() => e.parentElement, null); n && n !== document.body; n = safeRead(() => n.parentElement, null)) {
+      for (let n = safeRead(() => e.parentElement, null); n && n !== document.body; ) {
+        const cur = n;
         try {
-          const st = safeStyle(n);
-          if (/auto|scroll/.test(st.overflowY) && safeRead(() => n.children, []).length) return n;
+          const st = safeStyle(cur);
+          if (/auto|scroll/.test(st.overflowY) && safeRead(() => cur.children, []).length) return cur;
         } catch {}
+        n = safeRead(() => cur.parentElement, null);
       }
       return safeClosest(e, '[role="main"], [role="region"], main, form') || safeRead(() => e.parentElement, null);
     }
@@ -1265,7 +1321,7 @@ const RSProvider                   = (() => {
     if (!ed && !frame) return false;
     const transcriptSel = `${AGENT_ROW_SEL}, ${BLOCK_RESPONSE_ROOT_SEL}`;
     return records.every((r) => {
-      const target = r.target && (safeRead(() => r.target.nodeType, 0) === 1 ? r.target : safeRead(() => r.target.parentElement, null));
+      const target = r.target && (safeRead(() => r.target.nodeType, 0) === 1 ? (r.target) : safeRead(() => r.target.parentElement, null));
       if (!target) return false;
       try {
         // Never suppress a real turn mount or stream mutation even if a future
@@ -1273,28 +1329,28 @@ const RSProvider                   = (() => {
         if (safeRead(() => target.closest, null) && safeClosest(target, transcriptSel)) return false;
         for (const node of [...(r.addedNodes || []), ...(r.removedNodes || [])]) {
           if (safeRead(() => node.nodeType, 0) === 1 &&
-              ((safeRead(() => node.matches, null) && safeRead(() => node.matches(transcriptSel), false)) ||
-               (safeRead(() => node.querySelector, null) && safeQuery(node, transcriptSel)))) return false;
+              ((safeRead(() => (node).matches, null) && safeRead(() => (node).matches(transcriptSel), false)) ||
+               (safeRead(() => (node).querySelector, null) && safeQuery(node, transcriptSel)))) return false;
         }
       } catch {}
       return !!((ed && (target === ed || safeRead(() => ed.contains(target), false))) ||
         (frame && (target === frame || safeRead(() => frame.contains(target), false))));
     });
   }
-  function invalidateItems(records ) {
+  function invalidateItems(records) {
     if (!records || !records.length) { _itemsDirty = true; return; }
     const semantic = (node) => {
       if (!node || (safeRead(() => node.nodeType, 0) !== 1 && safeRead(() => node.nodeType, 0) !== 11)) return false;
       try {
-        return (safeRead(() => node.matches, null) && safeRead(() => node.matches(`${AGENT_ROW_SEL}, ${BLOCK_RESPONSE_ROOT_SEL}`), false)) ||
-          !!(safeRead(() => node.querySelector, null) && safeQuery(node, `${AGENT_ROW_SEL}, ${BLOCK_RESPONSE_ROOT_SEL}`));
+        return (safeRead(() => (node).matches, null) && (safeRead(() => (node).matches(`${AGENT_ROW_SEL}, ${BLOCK_RESPONSE_ROOT_SEL}`), false))) ||
+          !!(safeRead(() => (node).querySelector, null) && safeQuery(node, `${AGENT_ROW_SEL}, ${BLOCK_RESPONSE_ROOT_SEL}`));
       } catch { return false; }
     };
     for (const r of records) {
       if ([...(r.addedNodes || []), ...(r.removedNodes || [])].some(semantic)) {
         _itemsDirty = true; return;
       }
-      const target = r.target && (safeRead(() => r.target.nodeType, 0) === 1 ? r.target : safeRead(() => r.target.parentElement, null));
+      const target = r.target && (safeRead(() => r.target.nodeType, 0) === 1 ? (r.target) : safeRead(() => r.target.parentElement, null));
       if (!target || (safeRead(() => target.closest, null) && safeClosest(target, "#rs-root"))) continue;
       let root = null;
       try { root = safeRead(() => target.closest, null) && safeClosest(target, `${AGENT_ROW_SEL}, ${BLOCK_RESPONSE_ROOT_SEL}`); } catch {}
@@ -1371,8 +1427,10 @@ const RSProvider                   = (() => {
     if (!tail || partHasCommand(tail, false)) return tail;
     const all = allItems(), at = all.lastIndexOf(tail);
     if (at < 1) return tail;
-    if (_turnPick && _turnPick.all === all && _turnPick.tail === tail && (!_turnPick.item || safeRead(() => _turnPick.item.isConnected, false))) {
-      return _turnPick.item || tail;
+    const turnPick = _turnPick;
+    const pickItem = turnPick && turnPick.item;
+    if (turnPick && turnPick.all === all && turnPick.tail === tail && (!pickItem || safeRead(() => pickItem.isConnected, false))) {
+      return pickItem || tail;
     }
     let picked = null;
     for (let i = at - 1, n = 0; i >= 0 && n < TURN_LOOKBACK; i--, n++) {
@@ -1490,7 +1548,7 @@ const RSProvider                   = (() => {
   // something specific. Returns null banner when nothing specific can be said.
   const NOTION_NOTICE_RE = /\b(?:limit|quota|credits?|upgrade|trial|free plan|plan|subscription|usage|too many|try again|something went wrong|error|unavailable|not available|permission|access)\b/i;
   function startupEvidence(res) {
-    const out      = {};
+    const out = {};
     try {
       const thread = isAiThread(), landing = isAiLanding();
       const items = allItems();
@@ -1504,7 +1562,7 @@ const RSProvider                   = (() => {
         kind: res && res.kind, replyChars: reply.length, replyHead: reply.slice(0, 120),
       });
       const next = "Open Notion AI > New chat, then press Start.";
-      if ((!reply || (res && /^(?:empty|timeout|busy_timeout)$/.test(res.kind))) && out.page === "home" && out.items === 0) {
+      if ((!reply || (res && /^(?:empty|timeout|busy_timeout)$/.test(res.kind || ""))) && out.page === "home" && out.items === 0) {
         out.banner = { title: "Notion AI did not open a chat",
           text: `PlazCode sent its message, but Notion AI is still on its home page and no chat appeared. PlazCode stayed stopped. ${next}` };
       } else if (reply && res && res.kind === "text") {
@@ -1644,7 +1702,7 @@ const RSProvider                   = (() => {
   const activityFoldRules = new Map();
   let activityFoldStyle;
   function setActivityFolded(item, folded) {
-    const row = safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null), key = row ? "row:" + row : immutableKey(item);
+    const row = safeRead(() => (item).getAttribute("data-agent-service-scroll-anchor"), null), key = row ? "row:" + row : immutableKey(item);
     if (!key) return;
     const selector = immutableSelector(key);
     if (activityFoldRules.has(selector) === folded) return;
@@ -1653,7 +1711,7 @@ const RSProvider                   = (() => {
     activityFoldStyle.textContent=[...activityFoldRules.keys()].map(selector => selector + selector + '{height:0!important;max-height:0!important;min-height:0!important;padding:0!important;border:0!important;overflow:hidden!important;opacity:0!important}').join("\n");
   }
   function mountActivitySummary(item, node) {
-    const row = safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null);
+    const row = safeRead(() => (item).getAttribute("data-agent-service-scroll-anchor"), null);
     const key = row ? "row:" + row : immutableKey(item);
     if (!key) return null;
     const selector = immutableSelector(key), target = safeQuery(document, selector);
@@ -1665,25 +1723,25 @@ const RSProvider                   = (() => {
     const place = () => {
       if (!safeRead(() => node.isConnected, false)) return;
       const live = safeQuery(document, selector);
-      if (!live) { node.hidden = true;return; }
+      if (!live) { node.hidden = true; return; }
       node.hidden = false;
       const rect = safeRect(live);
       node.style.width = Math.max(160, rect.width) + "px";
       const nextHeight = Math.ceil(safeRect(node).height) + 8;
-      if (height !== nextHeight) { height = nextHeight;style.textContent = selector + '{margin-top:' + (nativeMargin + height) + 'px!important}'; }
+      if (height !== nextHeight) { height = nextHeight; style.textContent = selector + '{margin-top:' + (nativeMargin + height) + 'px!important}'; }
       const updated = safeRect(live);
-      node.style.left = updated.left + "px";node.style.top = (updated.top - height) + "px";
+      node.style.left = updated.left + "px"; node.style.top = (updated.top - height) + "px";
       node.style.visibility = updated.bottom < 0 || updated.top - height > innerHeight ? "hidden" : "visible";
     };
-    const schedule = () => { cancelAnimationFrame(frame);frame=requestAnimationFrame(place); };
-    window.addEventListener("scroll",schedule,true);window.addEventListener("resize",schedule);
-    return {place,dispose(){cancelAnimationFrame(frame);window.removeEventListener("scroll",schedule,true);window.removeEventListener("resize",schedule);style.remove();node.remove();}};
+    const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(place); };
+    window.addEventListener("scroll", schedule, true); window.addEventListener("resize", schedule);
+    return { place, dispose() { cancelAnimationFrame(frame); window.removeEventListener("scroll", schedule, true); window.removeEventListener("resize", schedule); style.remove(); node.remove(); } };
   }
 
   // ── input lock (same semantics as Arena) ─────────────────────────────────
   let _lockWanted = false, _lockTimer = null, _selfWrite = false;
   let _chunkAppendRejected = false;
-  const _lockedEditors = new Set     ();
+  const _lockedEditors = new Set();
   const LOCK_PLACEHOLDER = "⏳ Agent working… please wait";
   const MISSING_ATTR = "__zs_missing__";
   function saveAttrOnce(ed, attr, store) {
@@ -1721,14 +1779,14 @@ const RSProvider                   = (() => {
     if (!_lockWanted || _selfWrite || !e.isTrusted) return;
     const ed = findEditorRaw();
     if (!ed) return;
-    const t = e.target           ;
-    const control = t && safeRead(() => t.closest, null) && safeClosest(t, CONTROL_SEL);
+    const t = e.target;
+    const control = t && safeRead(() => (t).closest, null) && safeClosest(t, CONTROL_SEL);
     const sendClick = e.type === "click" && control && safeRead(() => composerFrame()?.contains(control), false) && sendControlLike(control) && !stopControlLike(control);
     if (!sendClick && !(t === ed || (t && safeRead(() => t.nodeType, 0) === 1 && safeRead(() => ed.contains(t), false)))) return;
     if (e.type === "keydown") {
-      const k = e.key || "";
+      const k = (e).key || "";
       if (LOCK_NAV.indexOf(k) !== -1) return;
-      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+      if (((e).ctrlKey || (e).metaKey) && !(e).altKey) {
         const lk = k.toLowerCase();
         if (lk === "c" || lk === "a") return;
       }
@@ -1838,7 +1896,7 @@ const RSProvider                   = (() => {
         polls++;
         if (isStopped() || safeRead(() => window.location.href, "") !== route) break;
         const live = findEditorRaw();
-        const text = safeRead(() => live && live.isConnected, false) ? edText(live) : "";
+        const text = live && safeRead(() => live.isConnected, false) ? edText(live) : "";
         finalChars = text.length;
         if (text.length !== lastLen) { lastLen = text.length; lastChangeAt = Date.now(); }
         if (text && draftLooksWritten(text, value, intendedProfile)) {
@@ -1850,7 +1908,7 @@ const RSProvider                   = (() => {
         if (Date.now() - lastChangeAt >= stableMs) break;
       }
     } catch {}
-    const info      = { retained, expectedChars: value.length, retainedChars: finalChars || edText(el).length,
+    const info = { retained, expectedChars: value.length, retainedChars: finalChars || edText(el).length,
       polls, ms: Date.now() - started };
     if (!retained) {
       // Show WHERE Notion's read-back first differs so a rewritten character is
@@ -1884,8 +1942,10 @@ const RSProvider                   = (() => {
         _selfWrite = true;
         try {
           const sel = window.getSelection(), range = document.createRange();
-          range.selectNodeContents(ed); sel.removeAllRanges(); sel.addRange(range);
-          document.execCommand("delete");
+          if (sel) {
+            range.selectNodeContents(ed); sel.removeAllRanges(); sel.addRange(range);
+            document.execCommand("delete");
+          }
         } catch {} finally { _selfWrite = false; }
       }
       if (await waitFor(() => { const e = findEditorRaw(); return !!e && !edText(e).trim(); }, 2000)) {
@@ -1900,14 +1960,15 @@ const RSProvider                   = (() => {
     return '<pre><code>' + escaped + '</code></pre>';
   }
   async function pasteRichText(el, value, literal = true, append = false, expected = value, delay = 200, settle = 0) {
-    const route=safeRead(() => window.location.href, "");
+    const route = safeRead(() => window.location.href, "");
     // Let the controlled editor's paste handler update its document model.
     // DOM-only writes can be reverted by the next Notion React render.
     if (!window.DataTransfer || !window.ClipboardEvent) return false;
     el.focus();
     const selection = window.getSelection(), range = document.createRange();
+    if (!selection) return false;
     range.selectNodeContents(el);
-    if(append)range.collapse(false);
+    if (append) range.collapse(false);
     selection.removeAllRanges(); selection.addRange(range);
     const data = new window.DataTransfer();
     data.setData("text/plain", value);
@@ -1944,16 +2005,16 @@ const RSProvider                   = (() => {
         await sleep(delay);
         const live = findEditorRaw();
         if (safeRead(() => window.location.href, "") !== route) break;
-        hits = !!safeRead(() => live.isConnected, false) && draftLooksWritten(edText(live), expected) ? hits + 1 : 0;
+        hits = live && safeRead(() => live.isConnected, false) && draftLooksWritten(edText(live), expected) ? hits + 1 : 0;
         if (hits >= 2) { accepted = true; break; }
       }
     } else {
       await sleep(delay);
-      const current=findEditorRaw();
-      const first=!!safeRead(() => current.isConnected,false) && draftLooksWritten(edText(current),expected);
+      const current = findEditorRaw();
+      const first = current && safeRead(() => current.isConnected, false) && draftLooksWritten(edText(current), expected);
       await sleep(delay);
-      const live=findEditorRaw();
-      accepted=!!first && !isStopped() && safeRead(() => window.location.href, "")===route && !!safeRead(() => live.isConnected,false) && draftLooksWritten(edText(live),expected);
+      const live = findEditorRaw();
+      accepted = !!first && !isStopped() && safeRead(() => window.location.href, "") === route && !!(live && safeRead(() => live.isConnected, false)) && draftLooksWritten(edText(live), expected);
     }
     diag(accepted ? "notion.write.pasteAccepted" : "notion.write.pasteRejected", {
       expectedChars: value.length, retainedChars: edText(el).length, connected: safeRead(() => el.isConnected, false),
@@ -1963,38 +2024,38 @@ const RSProvider                   = (() => {
     });
     return accepted;
   }
-  async function pasteRichTextChunked(el,value,deadline=Date.now()+12000){
-    let offset=0,prefix='';
-    const route=safeRead(() => window.location.href,'');
-    while(offset<value.length){
-      const live=findEditorRaw();
-      if(live!==el){if(!safeRead(() => live.isConnected,false)||!draftLooksWritten(edText(live),prefix))return false;el=live;}
-      if(isStopped()||safeRead(() => window.location.href,'')!==route||!safeRead(() => el.isConnected, false)||Date.now()>=deadline)return false;
-      let end=Math.min(value.length,offset+600),lines=0;
-      for(let at=offset;at<end;at++)if(value[at]==='\n'&&++lines>=12){end=at+1;break;}
-      if(end<value.length&&/[\uD800-\uDBFF]/.test(value[end-1]))end--;
-      const chunk=value.slice(offset,end),before=prefix;prefix+=chunk;
-      let ok=await pasteRichText(el,chunk,true,offset>0,prefix,40,3000);
-      if(!ok&&!isStopped()&&Date.now()<deadline){
+  async function pasteRichTextChunked(el, value, deadline = Date.now() + 12000) {
+    let offset = 0, prefix = '';
+    const route = safeRead(() => window.location.href, '');
+    while (offset < value.length) {
+      const live = findEditorRaw();
+      if (live !== el) { if (!live || !safeRead(() => live.isConnected, false) || !draftLooksWritten(edText(live), prefix)) return false; el = live; }
+      if (isStopped() || safeRead(() => window.location.href, '') !== route || !safeRead(() => el.isConnected, false) || Date.now() >= deadline) return false;
+      let end = Math.min(value.length, offset + 600), lines = 0;
+      for (let at = offset; at < end; at++) if (value[at] === '\n' && ++lines >= 12) { end = at + 1; break; }
+      if (end < value.length && /[\uD800-\uDBFF]/.test(value[end - 1])) end--;
+      const chunk = value.slice(offset, end), before = prefix; prefix += chunk;
+      let ok = await pasteRichText(el, chunk, true, offset > 0, prefix, 40, 3000);
+      if (!ok && !isStopped() && Date.now() < deadline) {
         // A paste Notion ignored leaves the editor exactly at the previous prefix.
         // Re-send that one chunk once; any other state (late/partial/changed) is not
         // retried, so text can never be appended twice.
-        const cur=findEditorRaw();
-        if(cur&&safeRead(() => cur.isConnected,false)&&(offset===0?!edText(cur).trim():draftProfile(edText(cur)).compact===draftProfile(before).compact)){
-          diag('notion.write.pasteRetry',{offset,chunkChars:chunk.length});
-          el=cur;ok=await pasteRichText(el,chunk,true,offset>0,prefix,40,3000);
+        const cur = findEditorRaw();
+        if (cur && safeRead(() => cur.isConnected, false) && (offset === 0 ? !edText(cur).trim() : draftProfile(edText(cur)).compact === draftProfile(before).compact)) {
+          diag('notion.write.pasteRetry', { offset, chunkChars: chunk.length });
+          el = cur; ok = await pasteRichText(el, chunk, true, offset > 0, prefix, 40, 3000);
         }
       }
-      if(!ok){
+      if (!ok) {
         // Remember that this editor ignored an appended chunk: later startup
         // sends in this tab go straight to the protocol file instead of waiting.
-        if(offset>0)_chunkAppendRejected=true;
-        const actual=edText(el);if(actual&&draftLooksWritten(actual,prefix))setRichText(el,'');
-        diag('notion.write.smallPasteRejected',{offset,chars:value.length,retainedChars:edText(el).length});return false;
+        if (offset > 0) _chunkAppendRejected = true;
+        const actual = edText(el); if (actual && draftLooksWritten(actual, prefix)) setRichText(el, '');
+        diag('notion.write.smallPasteRejected', { offset, chars: value.length, retainedChars: edText(el).length }); return false;
       }
-      offset=end;
+      offset = end;
     }
-    diag('notion.write.smallPasteAccepted',{chars:value.length});return draftLooksWritten(edText(el),value);
+    diag('notion.write.smallPasteAccepted', { chars: value.length }); return draftLooksWritten(edText(el), value);
   }
   async function setRichTextChunked(el, value, chunkSize) {
     const deadline = Date.now() + 5000;
@@ -2062,6 +2123,7 @@ const RSProvider                   = (() => {
       .replace(/\s+/g, " ")
       .trim();
   }
+  ;
   function draftProfile(text) {
     const raw = String(text || "");
     const normalized = normalizedDraft(raw);
@@ -2117,10 +2179,9 @@ const RSProvider                   = (() => {
     const i = notionMarkupCompact(intended, true);
     return i.length >= 16 && notionMarkupCompact(actual, false) === i;
   }
-  function draftLooksWritten(actual, intended, intendedProfile , actualProfile )          {
+  function draftLooksWritten(actual, intended, intendedProfile, actualProfile) {
     const a = String(actual || ""), i = String(intended || "");
     if (a === i) return true;
-    // @ts-ignore: tolerantText is a value kept on the function itself
     if (draftLooksWritten.tolerantText != null && i === draftLooksWritten.tolerantText && formattedDraftMatches(a, i)) return true;
     if (!i) return !a;
     const ap = actualProfile || draftProfile(a);
@@ -2140,6 +2201,7 @@ const RSProvider                   = (() => {
     if (compactIntended && compactActual === compactIntended) return true;
     return false;
   }
+  draftLooksWritten.tolerantText = null;
   // Draft-only path for explicit user-clicked composer helpers. This deliberately
   // does not mark the text as an injected tool-result draft, click Send, dispatch
   // Enter, or alter attachments. The exact pre-write value is a compare-and-set
@@ -2192,6 +2254,7 @@ const RSProvider                   = (() => {
     }
     return (h >>> 0).toString(36);
   }
+  ;
   function readPendingDraft() {
     try {
       const v = JSON.parse(sessionStorage.getItem(PENDING_DRAFT_KEY) || "null");
@@ -2258,6 +2321,17 @@ const RSProvider                   = (() => {
       el.dispatchEvent(new K("keyup", o));
     } finally { _selfWrite = false; }
   }
+  ;
+
+
+
+
+
+
+
+
+
+
   let _lastSend = null;
   let _sendFailureAmbiguous = false;
   let _sendFailureDetail = "";
@@ -2300,32 +2374,43 @@ const RSProvider                   = (() => {
     });
   }
   function sendLanded() {
-    if (!_lastSend || Date.now() > _lastSend.confirmUntil) return false;
+    const lastSend = _lastSend;
+    if (!lastSend || Date.now() > lastSend.confirmUntil) return false;
     // The first message turns Notion's /ai landing page into /chat. The old
     // textarea can disappear before the replacement mounts, so route change is
     // definitive proof of acceptance even while no editor exists for a moment.
-    if (_lastSend.route !== routeKey() && isAiThread()) return true;
+    if (lastSend.route !== routeKey() && isAiThread()) return true;
     const receipts = userReceipts();
-    if (receipts.some((receipt) => !_lastSend.receipts.has(receipt.key) && receiptMatchesSend(receipt.text, _lastSend.text))) return true;
+    if (receipts.some((receipt) => !lastSend.receipts.has(receipt.key) && receiptMatchesSend(receipt.text, lastSend.text))) return true;
     // Virtualized transcripts need not increase their user-row count. Like the
     // other chat providers, recognize a consumed draft and a new reply/Stop
     // state. A disappearing editor or a hydration-cleared draft alone is not
     // proof: keep those sends ambiguous and never submit the same turn twice.
     const ed = findEditorRaw();
     if (ed && !edText(ed).trim()) {
-      const freshReply = lastAssistantId() !== _lastSend.assistantId && !!lastAssistant();
-      if ((!_lastSend.generating && isHardGenerating()) || freshReply) return true;
+      const freshReply = lastAssistantId() !== lastSend.assistantId && !!lastAssistant();
+      if ((!lastSend.generating && isHardGenerating()) || freshReply) return true;
     }
     return false;
   }
-  async function typeAndSend(text, images, options      = {}) {
-    // @ts-ignore: tolerantText is a value kept on the function itself
+  ;
+
+
+
+
+
+
+
+
+
+
+  async function typeAndSend(text, images, rawOptions = {}) {
     const outer = draftLooksWritten.tolerantText == null;
-    try { return await typeAndSendOnce(text, images, options); }
-    // @ts-ignore: tolerantText is a value kept on the function itself
+    try { return await typeAndSendOnce(text, images, rawOptions); }
     finally { if (outer) draftLooksWritten.tolerantText = null; }
   }
-  async function typeAndSendOnce(text, images, options      = {}) {
+  async function typeAndSendOnce(text, images, rawOptions = {}) {
+    const options = rawOptions;
     _sendFailureAmbiguous = false;
     _sendFailureDetail = "";
     _sendRetryable = false;
@@ -2350,7 +2435,6 @@ const RSProvider                   = (() => {
       if (startupPayload && _lockWanted && !hasPendingAttachment() && !edText(initialEditor) &&
           !(Array.isArray(images) && images.length) && text.length <= 131072) {
         // Only the startup handshake text, never ordinary tool results/code.
-        // @ts-ignore: tolerantText is a value kept on the function itself
         if (text.startsWith("⟦RS-SYS⟧") || /^Output of ['"]list_commands['"]:/.test(text)) draftLooksWritten.tolerantText = text;
         if (await writeRichTextVerified(initialEditor, text)) verifiedNativeEditor = findEditorRaw();
         // Some Notion builds reject native bulk writes and never finish file
@@ -2452,10 +2536,11 @@ const RSProvider                   = (() => {
       const largePaste=text.length>2500||text.split('\n').length>60;
       // Literal HTML code protects internal protocol payloads. Human follow-ups
       // use the site's ordinary plain-text paste so they are not red code pills.
-      const retainedNative = verifiedNativeEditor === editor && draftLooksWritten(edText(editor), text) && !hasPendingAttachment();
-      let pasted = retainedNative || (!isTextControl(editor) && await pasteRichText(editor, text, !options.userPrompt));
-      if (!pasted && !largePaste && !isTextControl(editor) && Date.now() < deadline) pasted = await pasteRichText(editor, text, false);
-      if (_lockWanted && safeRead(() => editor.isConnected, false)) ownedDraft = { editor, text: edText(editor) };
+      const firstEditor = editor;
+      const retainedNative = verifiedNativeEditor === firstEditor && draftLooksWritten(edText(firstEditor), text) && !hasPendingAttachment();
+      let pasted = retainedNative || (!isTextControl(firstEditor) && await pasteRichText(firstEditor, text, !options.userPrompt));
+      if (!pasted && !largePaste && !isTextControl(firstEditor) && Date.now() < deadline) pasted = await pasteRichText(firstEditor, text, false);
+      if (_lockWanted && safeRead(() => firstEditor.isConnected, false)) ownedDraft = { editor: firstEditor, text: edText(firstEditor) };
       if (Date.now() >= deadline) { diag("notion.tas.deadline", { attempt }); break; }
       if (pasted) {
         writeMethod = retainedNative ? "nativeVerified" : "paste";
@@ -2496,7 +2581,8 @@ const RSProvider                   = (() => {
       // /ai editor is still hydrating (live trace: 12,940 chars → 0). Retry as
       // soon as that happens rather than burning the full eight-second enable
       // window before the second, successful write.
-      await waitFor(() => sendReady() || !draftStillPresent(editor, actualDraft), readyWaitMs);
+      const activeEditor = editor;
+      await waitFor(() => sendReady() || !draftStillPresent(activeEditor, actualDraft), readyWaitMs);
       const ready = sendReady();
       if (!ready) {
         const frame = composerFrame();
@@ -2669,6 +2755,7 @@ const RSProvider                   = (() => {
   // /ai is Notion's official new-chat landing route; /chat is a persisted
   // thread. Starting from /chat or a normal /p page must navigate to /ai first.
   const PENDING_START_KEY = "zs:notion:pending-start:v1";
+  ;
   function readPendingStart() {
     try {
       const v = JSON.parse(sessionStorage.getItem(PENDING_START_KEY) || "null");
@@ -2746,8 +2833,8 @@ const RSProvider                   = (() => {
       reason: reason || "startup",
     };
     writePendingStart(state);
-    diag("notion.start.navigate", { from: routeKey(), to: state.navs > 1 ? "/chat" : "/ai", navs: state.navs, reason });
-    openCleanAi(state.navs - 1);
+    diag("notion.start.navigate", { from: routeKey(), to: (state.navs || 0) > 1 ? "/chat" : "/ai", navs: state.navs, reason });
+    openCleanAi((state.navs || 1) - 1);
     return { ready: false, navigating: true };
   }
   // Called by core BEFORE it injects anything. It guarantees the target is the
@@ -2823,6 +2910,7 @@ const RSProvider                   = (() => {
   // Keep the bar in #rs-root rather than Notion's React tree. A temporary fixed
   // anchor is used only during the lazy /ai or /chat composer mount; normal
   // pages, databases, settings, login, and every non-AI route return no anchor.
+  ;
   let _navBarAnchor = null, _navCardAt = 0, _navCardRect = null;
   // Geometry only: when the composer is on screen but has not been confirmed
   // as the typing target yet (slow mount, unfamiliar placeholder, layouts with
@@ -2871,7 +2959,7 @@ const RSProvider                   = (() => {
       if (!r || r.width < 260 || r.height < 40 || r.height > 360) continue;
       const controls = safeRead(() => n.querySelectorAll, null) ? [...safeQueryAll(n, CONTROL_SEL)] : [];
       if (controls.some((b) => SEND_RE.test(ariaOf(b)) || STOP_RE.test(ariaOf(b)) ||
-          SEND_RE.test(safeRead(() => b.getAttribute("data-testid"), null) || "") || SEND_RE.test(safeRead(() => b.title, "") || "") || safeRead(() => b.type, "") === "submit")) {
+          SEND_RE.test(safeRead(() => b.getAttribute("data-testid"), null) || "") || SEND_RE.test(safeRead(() => b.title, "") || "") || safeRead(() => (b).type, "") === "submit")) {
         _navCardRect = { left: r.left, top: r.top, width: r.width, height: r.height };
         return _navCardRect;
       }
@@ -2965,7 +3053,7 @@ const RSProvider                   = (() => {
     const shown = (node) => {
       if (!node || !safeRead(() => node.isConnected, false) || safeClosest(node, '[id^="rs-"], [aria-hidden="true"]')) return false;
       for (let el = node; el; el = safeRead(() => el.parentElement, null)) {
-        if (safeRead(() => el.hidden, true)) return false;
+        if (safeRead(() => (el).hidden, true)) return false;
         const style = safeStyle(el);
         if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") return false;
       }
@@ -2995,6 +3083,7 @@ const RSProvider                   = (() => {
   // bounded browser captures, prove that a new preview mounted and finished
   // uploading, and remove only previews owned by this provider transaction if
   // the message is stopped/rejected before submission.
+  ;
   let _attachedImages = null;
   let _imageSeq = 0;
   let _ownedAttachment = null;
@@ -3042,7 +3131,7 @@ const RSProvider                   = (() => {
       const r = safeRead(() => input.getBoundingClientRect, null) ? safeRect(input) : null;
       return !r || r.bottom >= innerHeight * 0.45;
     });
-    if(textFile) return candidates.find(input=>{const accept=(safeRead(() => input.getAttribute("accept"), null)||"").toLowerCase();return !accept || /(?:text\/plain|\.txt|\*\/\*)/.test(accept);}) || null;
+    if (textFile) return candidates.find(input => { const accept = (safeRead(() => input.getAttribute("accept"), null) || "").toLowerCase(); return !accept || /(?:text\/plain|\.txt|\*\/\*)/.test(accept); }) || null;
     return candidates.find((input) => /(?:image|\.png|\.jpe?g|\.webp)/i.test(safeRead(() => input.getAttribute("accept"), null) || "")) || candidates[0] || null;
   };
   const attachmentNodes = () => {
@@ -3055,9 +3144,9 @@ const RSProvider                   = (() => {
       "[aria-label*='remove image' i]",
     ].join(",");
     try {
-      const nodes=[...safeQueryAll(frame, selector)];
+      const nodes = [...safeQueryAll(frame, selector)];
       // Plain-text attachment cards can have no image or stable test ID.
-      let scanned=0;
+      let scanned = 0;
       for (const node of safeQueryAll(frame, "span, div, [role='listitem']")) {
         if (++scanned > 160) break;
         if ((safeRead(() => node.closest, null) && safeClosest(node, "#rs-root")) || safeRead(() => node.contains(findEditorRaw()), false)) continue;
@@ -3100,15 +3189,15 @@ const RSProvider                   = (() => {
     const ext = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
     return new File([bytes], `plazcode_web_capture_${Date.now()}_${index}.${ext}`, { type: mime });
   }
-  async function attachImages(images, options      = {}) {
+  async function attachImages(images, options = {}) {
     if (!Array.isArray(images) || !images.length || images.length > 4) return false;
     let files;
-    try { files=images.map(screenshotFile); } catch { return false; }
-    const attached=await attachFiles(files,options);
-    if (attached) _attachedImages=images;
+    try { files = images.map(screenshotFile); } catch { return false; }
+    const attached = await attachFiles(files, options);
+    if (attached) _attachedImages = images;
     return attached;
   }
-  async function attachFiles(files, options      = {}) {
+  async function attachFiles(files, options = {}) {
     const stopped = typeof options.stopped === "function" ? options.stopped : isStopped;
     _lastAttachFailure = "unstaged";
     if (!isAiSurface() || !Array.isArray(files) || !files.length || files.length > 4 || stopped()) return false;
@@ -3129,11 +3218,11 @@ const RSProvider                   = (() => {
         dt.items.add(file);
       });
     } catch (error) {
-      diag("notion.attach.fileError", { error: String(error && error.message || error) });
+      diag("notion.attach.fileError", { error: String(error && (error).message || error) });
       return false;
     }
     if (dt.items.length !== files.length || stopped()) return false;
-    const textFile=files.some(file=>file.type==="text/plain");
+    const textFile = files.some(file => file.type === "text/plain");
     let input = options.preferDrop && typeof window.DragEvent === "function" ? null : attachmentFileInput(textFile);
     if (!input && !options.waitForText) {
       // Protocol files use the existing direct-drop path without opening the general plus menu.
@@ -3161,7 +3250,7 @@ const RSProvider                   = (() => {
         } finally { _selfWrite = false; }
         staged = true; mode = "file-input";
       } catch (error) {
-        diag("notion.attach.inputError", { error: String(error && error.message || error) });
+        diag("notion.attach.inputError", { error: String(error && (error).message || error) });
       }
     }
     if (!staged) {
@@ -3185,7 +3274,7 @@ const RSProvider                   = (() => {
         }
         staged = true; mode = "composer-drop";
       } catch (error) {
-        diag("notion.attach.dropError", { error: String(error && error.message || error) });
+        diag("notion.attach.dropError", { error: String(error && (error).message || error) });
       }
     }
     if (!staged) return false;
@@ -3241,7 +3330,7 @@ const RSProvider                   = (() => {
       }
       return safeRead(() => node.parentElement, null) || node;
     };
-    const roots = new Set     ();
+    const roots = new Set();
     for (const node of owned.nodes || []) {
       if (!node || !safeRead(() => node.isConnected, false) || !safeRead(() => frame.contains(node), false)) continue;
       roots.add(cardRoot(node));
@@ -3269,7 +3358,7 @@ const RSProvider                   = (() => {
     const delayedCleanup = () => {
       const currentFrame = attachmentScope();
       if (!currentFrame) return;
-      const lateRoots = new Set     ();
+      const lateRoots = new Set();
       for (const node of attachmentNodes()) {
         const hay = `${_txt(node)} ${ariaOf(node)} ${safeRead(() => node.getAttribute, null) && (safeRead(() => node.getAttribute("alt"), null) || safeRead(() => node.getAttribute("title"), null) || safeRead(() => node.getAttribute("src"), null) || "")}`;
         if (!owned.names.some((name) => hay.includes(name))) continue;
@@ -3324,7 +3413,7 @@ const RSProvider                   = (() => {
     const relaxed = _composerWaitStart && Date.now() - _composerWaitStart >= PROVISIONAL_RELAXED_AFTER_MS;
     let best = null, bestScore = -Infinity, bestBottom = -Infinity;
     for (const e of editorCandidates()) {
-      if (!e || safeRead(() => e.disabled, true)) continue;
+      if (!e || safeRead(() => (e).disabled, true)) continue;
       if (!isTextControl(e) && safeRead(() => e.getAttribute, null) && safeRead(() => e.getAttribute("contenteditable"), null) === "false") continue;
       let r; try { r = safeRect(e); } catch { continue; }
       if (!r || !r.width || !r.height || r.bottom < vh * 0.4 || r.top > vh) continue;
@@ -3334,7 +3423,7 @@ const RSProvider                   = (() => {
     if (!best || bestScore < (relaxed ? 4 : 7)) return null;
     for (let n = safeRead(() => best.parentElement, null), i = 0; n && n !== document.body && i < (relaxed ? 10 : 7); n = safeRead(() => n.parentElement, null), i++) {
       const ctrls = safeRead(() => n.querySelectorAll, null) ? [...safeQueryAll(n, CONTROL_SEL)] : [];
-      if (ctrls.some((b) => sendControlLike(b) || stopControlLike(b) || safeRead(() => b.type, "") === "submit")) return best;
+      if (ctrls.some((b) => sendControlLike(b) || stopControlLike(b) || safeRead(() => (b).type, "") === "submit")) return best;
       if (relaxed && safeRead(() => n.querySelector, null) && safeQuery(n, '[data-testid="agent-chat-send-button"],[data-testid="agent-send-message-button"]')) return best;
     }
     return null;
@@ -3348,7 +3437,7 @@ const RSProvider                   = (() => {
     return e;
   }
   const COMPOSER_WAIT_MS = 60000;
-  async function ensureComposerReady(reason) {
+  async function ensureComposerReady(reason = "") {
     if (!isAiSurface()) {
       diag("notion.composer.wrongRoute", { reason, path: location.pathname });
       return { ready: false, editor: false, error: "Notion AI chat is not open." };
@@ -3401,7 +3490,7 @@ const RSProvider                   = (() => {
     }, true);
     document.addEventListener("click", (e) => {
       if (_selfWrite || !e.isTrusted) return;
-      const b = e.target && safeRead(() => (e.target           ).closest, null) ? safeClosest(e.target, CONTROL_SEL) : null;
+      const b = e.target && safeRead(() => (e.target).closest, null) ? safeClosest(e.target, CONTROL_SEL) : null;
       if (!b || (!sendControlLike(b) && !stopControlLike(b))) return;
       // Classify the control we already have instead of calling stopButton() and
       // sendButton(), both of which used to rediscover the composer at the exact
@@ -3457,9 +3546,9 @@ const RSProvider                   = (() => {
     // Never append chips/classes under Notion's DOM-locked response editor.
     immutableTranscript: true,
     mountActivitySummary, setActivityFolded, renderReadyAcknowledgement, collectExportHistory,
-    activityItemKey: item => safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null) || immutableKey(item),
-    itemKey: item => safeRead(() => safeClosest(item, AGENT_ROW_SEL)?.getAttribute("data-agent-service-scroll-anchor"), null) || null,
-    canRenderImmutableChip: (item, opts) => !opts.whole || isUserItem(item) || !!safeRead(() => item.getAttribute("data-agent-service-scroll-anchor"), null),
+    activityItemKey: (item) => safeRead(() => (item).getAttribute("data-agent-service-scroll-anchor"), null) || immutableKey(item),
+    itemKey: (item) => safeRead(() => safeClosest(item, AGENT_ROW_SEL)?.getAttribute("data-agent-service-scroll-anchor"), null) || null,
+    canRenderImmutableChip: (item, opts = {}) => !opts.whole || isUserItem(item) || !!safeRead(() => (item).getAttribute("data-agent-service-scroll-anchor"), null),
     immutableChipPresent: (item) => !!immutableCardFor(item, immutableKey(item)),
     renderImmutableChip, updateImmutableChipDetail, updateImmutableChipLabel,
     immutableChipOwned, clearImmutableChip, syncImmutableChips, preprocessMutations,
@@ -3551,6 +3640,7 @@ const RSProvider                   = (() => {
           const q = (s) => { try { return safeQueryAll(document, s).length; } catch { return 0; } };
           const ph = placeholderEditable();
           const ed = findEditorRaw();
+          const ae = document.activeElement;
           diag("notion.dom.probe", {
             url: routeKey(), surface: isAiSurface(), landing: isAiLanding(), thread: isAiThread(),
             ce: q("[contenteditable]"), mirror: q(".ProseMirror"), tip: q(".tiptap"),
@@ -3560,7 +3650,7 @@ const RSProvider                   = (() => {
             phEditable: !!ph, editor: !!ed,
             editorTag: ed ? `${safeRead(() => ed.tagName, "")}.${String(safeRead(() => ed.className, "") || "").slice(0, 50)}` : "",
             phTag: ph ? `${safeRead(() => ph.tagName, "")}.${String(safeRead(() => ph.className, "") || "").slice(0, 50)}` : "",
-            active: (document.activeElement && safeRead(() => document.activeElement.tagName, "")) || "",
+            active: (ae && safeRead(() => ae.tagName, "")) || "",
           });
         } catch {}
       }, 4000);

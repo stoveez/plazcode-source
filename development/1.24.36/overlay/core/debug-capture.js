@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/debug-capture.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // Debug capture (isolated content-script world).
 // Records PlazCode's own console errors, warnings and info, uncaught extension
 // errors, the agent's recent diag events, and AI-site problems relayed by
@@ -8,7 +9,11 @@
 // here throws or awaits on a caller's path, and buffers are capped.
 (() => {
   "use strict";
-  if (globalThis.__plazcodeDebugCapture) return;
+  ;
+  ;
+  ;
+  ;
+  if ((globalThis).__plazcodeDebugCapture) return;
   const MAX_TEXT = 600, MAX_QUEUE = 150, FLUSH_MS = 3000, REPEAT_MS = 5000, DIAG_TAIL = 40;
   const queue = [];
   let dropped = 0, last = null, inside = false, stopped = false, diagSig = "";
@@ -41,7 +46,7 @@
   }
   // Duck-typed so errors from other realms (frames, page objects) still count.
   function isError(arg) {
-    return !!arg && typeof arg === "object" && typeof arg.message === "string" && typeof arg.stack === "string";
+    return !!arg && typeof arg === "object" && typeof (arg).message === "string" && typeof (arg).stack === "string";
   }
   function describe(arg) {
     if (isError(arg)) return arg.name + ": " + arg.message;
@@ -70,7 +75,7 @@
     const original = console[method];
     const level = method === "log" ? "info" : method;
     if (typeof original !== "function") continue;
-    const wrapped = function (...args) {
+    const wrapped = function ( ...args) {
       const result = original.apply(this, args);
       if (!inside) {
         inside = true;
@@ -108,7 +113,7 @@
   // AI-site problems from the passive MAIN-world helper (string detail only).
   document.addEventListener("plazcode:site-log", (event) => {
     try {
-      const data = JSON.parse(String(event.detail || "{}"));
+      const data = JSON.parse(String((event).detail || "{}"));
       record({ source: "site", level: data.level === "error" ? "error" : data.level === "info" ? "info" : "warn",
         kind: String(data.kind || "error").slice(0, 20), text: String(data.text || ""), file: data.file, status: Number(data.status) || undefined });
     } catch {}
@@ -133,13 +138,13 @@
   const sentDiag = new WeakSet();
   const cleanEvent = (e) => ({ t: e.t, event: String(e.event).slice(0, 60), data: cleanDiag(e.data, 0), snap: cleanDiag(e.snap, 1) });
   function diagFresh() {
-    const list = Array.isArray(window.__rsDiag) ? window.__rsDiag : [];
+    const list = Array.isArray((window).__rsDiag) ? (window).__rsDiag : [];
     const fresh = list.filter((e) => e && typeof e === "object" && !sentDiag.has(e)).slice(-150);
     for (const e of fresh) sentDiag.add(e);
     return fresh.map(cleanEvent);
   }
   function diagTail() {
-    const list = Array.isArray(window.__rsDiag) ? window.__rsDiag : [];
+    const list = Array.isArray((window).__rsDiag) ? (window).__rsDiag : [];
     if (!list.length) return null;
     const tail = list.slice(-DIAG_TAIL), sig = list.length + ":" + tail[tail.length - 1].t;
     if (sig === diagSig) return null;
@@ -159,5 +164,5 @@
       if (sent && sent.catch) sent.catch(() => {});
     } catch { stopped = true; clearInterval(timer); }
   }, FLUSH_MS);
-  globalThis.__plazcodeDebugCapture = { redact, where, record, pending: () => queue.slice() };
+  (globalThis).__plazcodeDebugCapture = { redact, where, record, pending: () => queue.slice() };
 })();

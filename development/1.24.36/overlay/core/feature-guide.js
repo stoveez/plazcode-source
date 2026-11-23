@@ -1,9 +1,24 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/feature-guide.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // 1.24.21 feature guide: ONE list of every PlazCode feature (where to click, what
 // it does, the steps). The AI reads it through the plazcode_features command and
 // the short index in the startup text; the website guides read the same JSON
 // between the GUIDE-JSON markers. A test fails when a menu item has no entry.
 const PlazCodeFeatureGuide = (() => {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   // Keep this list strict JSON (double quotes, no comments, no trailing commas).
   const ENTRIES = /*GUIDE-JSON-START*/[
  {

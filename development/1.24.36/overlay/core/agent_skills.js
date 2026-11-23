@@ -1,7 +1,13 @@
+// SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/agent_skills.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // Extra AgentScript (LOCAL) commands layered on the native workspace tools.
 // list_commands advertises them; runTool intercepts and maps onto read/write/run_command.
 const AgentScriptSkills = (() => {
   "use strict";
+
+  ;
+  ;
+  ;
 
   const SKILL_COMMANDS = [
     { name: "append_file", description: "Append text to a file (creates it if missing).", params: { path: { type: "string", req: true }, content: { type: "string", req: true } } },
@@ -220,7 +226,7 @@ const AgentScriptSkills = (() => {
       const timeout = Number(args.timeout_seconds) || 60;
       if (args.file) return await call("run_command", { command: `python "${args.file}"`, timeout_seconds: timeout });
       if (args.code) {
-        const b64 = typeof btoa === "function" ? btoa(unescape(encodeURIComponent(args.code))) : Buffer.from(args.code, "utf8").toString("base64");
+        const b64 = typeof btoa === "function" ? btoa(unescape(encodeURIComponent(args.code))) : (globalThis).Buffer.from(args.code, "utf8").toString("base64");
         return await call("run_command", { command: `python -c "import base64; exec(base64.b64decode('${b64}').decode())"`, timeout_seconds: timeout });
       }
       return "ERROR: missing required param 'file' or 'code'";
@@ -229,7 +235,7 @@ const AgentScriptSkills = (() => {
       const timeout = Number(args.timeout_seconds) || 60;
       if (args.file) return await call("run_command", { command: `node "${args.file}"`, timeout_seconds: timeout });
       if (args.code) {
-        const b64 = typeof btoa === "function" ? btoa(unescape(encodeURIComponent(args.code))) : Buffer.from(args.code, "utf8").toString("base64");
+        const b64 = typeof btoa === "function" ? btoa(unescape(encodeURIComponent(args.code))) : (globalThis).Buffer.from(args.code, "utf8").toString("base64");
         return await call("run_command", { command: `node -e "eval(Buffer.from('${b64}','base64').toString())"`, timeout_seconds: timeout });
       }
       return "ERROR: missing required param 'file' or 'code'";
@@ -292,7 +298,7 @@ const AgentScriptSkills = (() => {
       if (m) return m;
       const info = await call("file_info", { path: args.path });
       if (!isErr(info)) return `ERROR: ${args.path} already exists — scaffold_file will not overwrite.`;
-      const ext = String(args.path).split(".").pop().toLowerCase();
+      const ext = (String(args.path).split(".").pop()).toLowerCase();
       const title = args.title || args.path;
       const fn = TEMPLATES[ext] || TEMPLATES.txt;
       return await call("write_file", { path: args.path, content: fn(title) });

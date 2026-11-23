@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/safety.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // 1.24.21 safety limits shared by the PlazCode bar and the desktop app.
 // Mirrors agent/src/safety.rs: the app enforces the same rules as a backstop.
 const PlazCodeSafety = (() => {
+
+
+
+
   const DEFAULTS = Object.freeze({ readOnly: false, confirmDelete: true, allowedFolders: [] });
   const KEYS = ["rsReadOnly", "rsConfirmDelete", "rsAllowedFolders"];
   // AgentScript (local) tools that only look; every other local tool is a change.
@@ -23,7 +28,7 @@ const PlazCodeSafety = (() => {
   const PLAZCODE_OWN_BARE = /^(?:ultralab_read|roblox_docs)$/;
   const DELETE_WORDS = new Set(["rm", "rmdir", "del", "erase", "rd", "remove-item", "ri", "unlink", "shred", "rimraf"]);
 
-  const bare = (name) => String(name || "").split("__").pop();
+  const bare = (name) => String(name || "").split("__").pop() || "";
   const filePreview = (name, engine, args) => engine === 'local' && /^(?:write_file|edit_file)$/.test(String(name)) && args?.preview === true;
   function fromStorage(values) {
     const v = values || {};

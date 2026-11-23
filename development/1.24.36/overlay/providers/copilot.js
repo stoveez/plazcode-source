@@ -33,24 +33,26 @@
 //  site's DOM — it tries the known selectors first, then falls back to
 //  generic heuristics (any visible textarea, any chat-like container).
 // eslint-disable-next-line no-unused-vars
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+    return safeRead(() => (node).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
   function safeStyle(node) {
     return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
@@ -67,7 +69,7 @@ const RSProvider                   = (() => {
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let diag       = () => {};
+  let diag = () => {};
 
   // ── Selectors ─────────────────────────────────────────────────────────
   // Ordered by specificity: most precise first, generic heuristics last.
@@ -205,11 +207,11 @@ const RSProvider                   = (() => {
   }
   function isVisibleForClick(el) {
     if (!el) return false;
-    if (safeRead(() => el.disabled, true) || safeRead(() => el.getAttribute("aria-disabled"), null) === "true") return false;
+    if (safeRead(() => (el).disabled, true) || safeRead(() => el.getAttribute("aria-disabled"), null) === "true") return false;
     try {
       const r = safeRect(el);
       return r.width > 2 && r.height > 2;
-    } catch { return safeRead(() => el.offsetParent, null) !== null; }
+    } catch { return safeRead(() => (el).offsetParent, null) !== null; }
   }
 
   // ── Turn classification ───────────────────────────────────────────────
@@ -274,14 +276,14 @@ const RSProvider                   = (() => {
       if (excludeSel && safeRead(() => item.closest, null) && safeClosest(item, excludeSel)) return "";
       let t = "";
       for (const n of safeRead(() => item.childNodes, [])) {
-        if (excludeSel && safeRead(() => n.nodeType, 0) === 1 && safeRead(() => n.matches, null) && safeRead(() => n.matches(excludeSel), false)) continue;
+        if (excludeSel && safeRead(() => n.nodeType, 0) === 1 && safeRead(() => (n).matches, null) && safeRead(() => (n).matches(excludeSel), false)) continue;
         t += safeRead(() => n.textContent, "") || "";
       }
       return t;
     }
     let t = "";
     for (const n of safeRead(() => item.childNodes, [])) {
-      if (excludeSel && safeRead(() => n.nodeType, 0) === 1 && safeRead(() => n.matches, null) && safeRead(() => n.matches(excludeSel), false)) continue;
+      if (excludeSel && safeRead(() => n.nodeType, 0) === 1 && safeRead(() => (n).matches, null) && safeRead(() => (n).matches(excludeSel), false)) continue;
       t += safeRead(() => n.textContent, "") || "";
     }
     return t;
@@ -352,7 +354,7 @@ const RSProvider                   = (() => {
   const editorText = () => {
     const e = getEditor();
     if (!e) return "";
-    if (safeRead(() => e.value, "") != null) return safeRead(() => e.value, "");
+    if (safeRead(() => (e).value, "") != null) return safeRead(() => (e).value, "");
     return safeRead(() => e.textContent, "") || "";
   };
 
@@ -459,7 +461,7 @@ const RSProvider                   = (() => {
         const walk = (n) => {
           if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
           if (safeRead(() => n.nodeType, 0) !== 1) return;
-          if (safeRead(() => n.matches, null) && safeRead(() => n.matches(".rs-chip"), false)) return;
+          if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(".rs-chip"), false)) return;
           for (const c of safeRead(() => n.childNodes, [])) walk(c);
         };
         walk(m);
@@ -541,7 +543,7 @@ const RSProvider                   = (() => {
         const walk = (n) => {
           if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
           if (safeRead(() => n.nodeType, 0) !== 1) return;
-          if (safeRead(() => n.matches, null) && safeRead(() => n.matches(".rs-chip"), false)) return;
+          if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(".rs-chip"), false)) return;
           for (const c of safeRead(() => n.childNodes, [])) walk(c);
         };
         walk(m);
@@ -554,7 +556,7 @@ const RSProvider                   = (() => {
       const walk = (n) => {
         if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
         if (safeRead(() => n.nodeType, 0) !== 1) return;
-        if (safeRead(() => n.matches, null) && safeRead(() => n.matches(".rs-chip"), false)) return;
+        if (safeRead(() => (n).matches, null) && safeRead(() => (n).matches(".rs-chip"), false)) return;
         for (const c of safeRead(() => n.childNodes, [])) walk(c);
       };
       walk(item);
@@ -596,7 +598,7 @@ const RSProvider                   = (() => {
         : window.HTMLInputElement && window.HTMLInputElement.prototype;
       const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
       if (setter && setter.set) setter.set.call(el, v);
-      else el.value = v;
+      else (el).value = v;
       el.dispatchEvent(new Event("input", { bubbles: true }));
       el.dispatchEvent(new Event("change", { bubbles: true }));
     } else if (el.isContentEditable || safeRead(() => el.getAttribute("contenteditable"), null) === "true") {
@@ -615,7 +617,7 @@ const RSProvider                   = (() => {
     } else {
       // Fallback: try value setter anyway
       try {
-        el.value = v;
+        (el).value = v;
         el.textContent = v;
         el.dispatchEvent(new Event("input", { bubbles: true }));
       } catch {}
@@ -704,7 +706,7 @@ const RSProvider                   = (() => {
       } else {
         const proto = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(editor), "value");
         if (proto && proto.set) proto.set.call(editor, text);
-        else editor.value = text;
+        else (editor).value = text;
         // Dispatch with InputEvent for React 18+ (copilot uses React 18)
         editor.dispatchEvent(new InputEvent("input", { bubbles: true, data: text.slice(0, 20), inputType: "insertText" }));
         editor.dispatchEvent(new Event("change", { bubbles: true }));
@@ -715,7 +717,7 @@ const RSProvider                   = (() => {
       diag("copilot.retrySetAfter", { after: editorText().length });
     }
     if (images && images.length) {
-      try { await attachImages(images); } catch (e) { diag("attach.err", { msg: String(e && e.message || e).slice(0, 120) }); }
+      try { await attachImages(images); } catch (e) { diag("attach.err", { msg: String(e && (e).message || e).slice(0, 120) }); }
     }
     diag("copilot.send", { editorLen: editorText().length, textLen: text.length, hasImages: !!(images && images.length), id: safeRead(() => editor.id, "") || safeRead(() => editor.getAttribute("data-testid"), null) || "?" });
     // Microsoft Copilot PRIMARY send is Enter key (send button hydrates async and
@@ -849,7 +851,7 @@ const RSProvider                   = (() => {
         fileInput.files = dt.files;
         fileInput.dispatchEvent(new Event("change", { bubbles: true }));
         diag("attach.fileInput", { count: dt.items.length });
-      } catch (e) { diag("attach.fileInputErr", { msg: String(e && e.message || e).slice(0, 80) }); }
+      } catch (e) { diag("attach.fileInputErr", { msg: String(e && (e).message || e).slice(0, 80) }); }
       // Wait for preview
       const ok = await waitFor(() => {
         const frame = composerFrame();
@@ -901,7 +903,7 @@ const RSProvider                   = (() => {
       "click",
       (e) => {
         if (!getEditor()) return;
-        const t = e.target           ;
+        const t = e.target;
         if (!t || !safeRead(() => t.closest, null)) return;
         // Stop button — allow native stop
         const stopSelectors = S.stopBtn.split(", ");
@@ -920,7 +922,7 @@ const RSProvider                   = (() => {
         // Continue button
         const cont = safeClosest(t, "button");
         if (cont && RE.continueBtn.test((safeRead(() => cont.innerText, "") || "").trim())) {
-          handlers.onNativeContinue();
+          (handlers).onNativeContinue();
           return;
         }
         // Send button — detect via selectors or heuristic

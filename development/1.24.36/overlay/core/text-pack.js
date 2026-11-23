@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/text-pack.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // core/text-pack.js - PlazCode's instruction text kept inside the desktop app (1.24.32).
 //
 // Owner, 2026-10-31: make PlazCode harder to copy without breaking startup or updates. When a release is
@@ -8,6 +9,8 @@
 // to be. In the development source nothing is moved, REQUIRED stays false and this file does nothing.
 // eslint-disable-next-line no-unused-vars
 globalThis.PlazCodeText = (() => {
+
+
   const REQUIRED = false; // packaging sets this to true when it moves text into the app
   const MESSAGE = "PlazCode could not load its instructions from the PlazCode app. Open the PlazCode app (update the app and the extension together), then refresh this AI tab.";
   const REQUEST_TIMEOUT_MS = 20000, RETRY_DELAY_MS = 500;
@@ -16,10 +19,10 @@ globalThis.PlazCodeText = (() => {
   function requestPack() {
     return new Promise(resolve => {
       let settled=false;
-      const finish=result=>{if(settled)return;settled=true;clearTimeout(timer);resolve(result);};
+      const finish=(result)=>{if(settled)return;settled=true;clearTimeout(timer);resolve(result);};
       const timer=setTimeout(()=>finish({ok:false,kind:"disconnected",error:"The PlazCode extension did not answer its instruction request in time."}),REQUEST_TIMEOUT_MS);
       try {
-        chrome.runtime.sendMessage({type:"textPack"},reply=>{
+        chrome.runtime.sendMessage({type:"textPack"},(reply)=>{
           const runtimeError=chrome.runtime.lastError?.message;
           if(runtimeError){finish({ok:false,kind:/context invalidated|receiving end does not exist/i.test(runtimeError)?"stale-extension":"disconnected",error:runtimeError});return;}
           if(reply?.ok && reply.pack && typeof reply.pack==="object" && !Array.isArray(reply.pack)){finish({ok:true,pack:reply.pack});return;}
@@ -28,7 +31,7 @@ globalThis.PlazCodeText = (() => {
           }
           finish({ok:false,kind:reply?.kind||"disconnected",error:String(reply?.error||MESSAGE)});
         });
-      } catch(error) { finish({ok:false,kind:"stale-extension",error:String(error?.message||error)}); }
+      } catch(error) { finish({ok:false,kind:"stale-extension",error:String((error)?.message||error)}); }
     });
   }
   async function load() {
@@ -61,7 +64,7 @@ globalThis.PlazCodeText = (() => {
   function f(key, values) {
     const parts = pack && pack[key];
     if (!Array.isArray(parts) || parts.length !== values.length + 1) throw missing(key);
-    let out = parts[0];
+    let out = String(parts[0]);
     for (let i = 0; i < values.length; i++) out += `${values[i]}` + parts[i + 1];
     return out;
   }

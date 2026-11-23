@@ -61,38 +61,40 @@
 // eslint-disable-next-line no-unused-vars
 const RSProvider: PlazCodeProvider = (() => {
   "use strict";
+  type RectBox = { x: number; y: number; left: number; top: number; right: number; bottom: number; width: number; height: number; readFailed?: boolean };
+  type SendHooksExt = SendHooks & { onCoworkSend?: (e: Event) => boolean; onNativeContinue?: () => void };
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
-  function safeRead(read, fallback) {
+  function safeRead<T, F = T>(read: () => T, fallback: F): T | F {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
-  function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+  function safeQuery<T extends Element = Element>(root: ParentNode | null, selector: string): T | null {
+    return safeRead(() => (root as ParentNode).querySelector<T>(selector), null);
   }
-  function safeQueryAll(root, selector): any[] {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll<T extends Element = Element>(root: ParentNode | null, selector: string): T[] {
+    return safeRead(() => Array.from((root as ParentNode).querySelectorAll<T>(selector)), []);
   }
-  function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+  function safeClosest(node: EventTarget | Node | null | undefined, selector: string): Element | null {
+    return safeRead(() => (node as Element).closest(selector), null);
   }
-  function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+  function safeRect(node: Element | null | undefined): RectBox {
+    return safeRead(() => (node as Element).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
-  function safeStyle(node) {
-    return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
+  function safeStyle(node: Element | null | undefined): CSSStyleDeclaration {
+    return safeRead(() => getComputedStyle(node as Element), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'} as CSSStyleDeclaration);
   }
-  function safePredicate(predicate) {
+  function safePredicate<T>(predicate: () => T): T | false {
     const before = domReadErrors;
-    const result = safeRead(predicate, false);
+    const result = safeRead(predicate, false as const);
     return before === domReadErrors ? result : false;
   }
   // A poll-count limit also bounds waits if the wall clock moves backwards.
-  function waitBudget(timeout, interval) {
+  function waitBudget(timeout: number, interval: number): { ms: number; polls: number } {
     const ms = Number.isFinite(timeout) ? Math.min(600000, Math.max(0, timeout)) : 30000;
     return {ms, polls: Math.ceil(ms / interval)};
   }
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
   let diag: Diag = () => {}; // injected by core via init()
   let sendContext: () => any = () => ({}), isStopped: () => boolean = () => false, sendGeneration = 0;
 
@@ -156,7 +158,7 @@ const RSProvider: PlazCodeProvider = (() => {
   };
 
   // ── Turn classification ───────────────────────────────────────────────────
-  const role = (item) => {
+  const role = (item: Element | null): string | null => {
     if (!item || !safeRead(() => item.getAttribute, null)) return null;
     if (safeRead(() => item.matches, null) && safeRead(() => item.matches(S.workItem), false)) {
       const key = safeRead(() => item.getAttribute("data-chatgpt-search-unit-key"), null) || "";
@@ -189,8 +191,8 @@ const RSProvider: PlazCodeProvider = (() => {
     if (safeRead(() => item.querySelector, null) && safeQuery(item, S.reply)) return S.assistantRole;
     return null;
   };
-  const isUserItem = (item) => role(item) === S.userRole;
-  const isAssistantItem = (item) => role(item) === S.assistantRole;
+  const isUserItem = (item: Element | null): boolean => role(item) === S.userRole;
+  const isAssistantItem = (item: Element | null): boolean => role(item) === S.assistantRole;
 
   // Text extraction that can skip our own chip (and any excluded subtree).
   //
@@ -222,24 +224,24 @@ const RSProvider: PlazCodeProvider = (() => {
   // correct for anything under ~4000 chars).
   const BLOCK_TAGS = /^(?:P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|TABLE|TR|SECTION|ARTICLE|HR)$/;
   let _cmWarned = false;
-  function syncCM(root) {
+  function syncCM(root: Element | null): void {
     if (!root || !safeRead(() => root.querySelector, null) || !safeQuery(root, ".cm-content")) return;
     try { document.dispatchEvent(new CustomEvent("rs-cm-sync")); } catch {}
   }
-  function textWithout(root: Element | null, excludeSel?: string) {
+  function textWithout(root: Element | null, excludeSel?: string): string {
     if (!root) return "";
     syncCM(root);
     let t = "";
-    const breakLine = () => { if (t && !t.endsWith("\n")) t += "\n"; };
-    const walk = (n) => {
+    const breakLine = (): void => { if (t && !t.endsWith("\n")) t += "\n"; };
+    const walk = (n: Node): void => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (excludeSel && safeRead(() => n.matches, null) && safeRead(() => n.matches(excludeSel), false)) return;
-      if (safeRead(() => n.tagName, "") === "BR") { t += "\n"; return; }
+      if (excludeSel && safeRead(() => (n as Element).matches, null) && safeRead(() => (n as Element).matches(excludeSel), false)) return;
+      if (safeRead(() => (n as Element).tagName, "") === "BR") { t += "\n"; return; }
       // The editor's TRUE document, published by the MAIN-world tap. This is the
       // only complete source for a long block - take it and skip the subtree.
-      if (n.classList && safeRead(() => n.classList.contains("cm-content"), false)) {
-        const full = safeRead(() => n.getAttribute("data-rs-cm"), null);
+      if ((n as Element).classList && safeRead(() => (n as Element).classList.contains("cm-content"), false)) {
+        const full = safeRead(() => (n as Element).getAttribute("data-rs-cm"), null);
         if (full !== null) {
           breakLine();
           t += full;
@@ -254,12 +256,12 @@ const RSProvider: PlazCodeProvider = (() => {
       }
       // One CodeMirror line = one source line, ALWAYS terminated - an empty
       // .cm-line is a blank line in the source and must not be swallowed.
-      if (n.classList && safeRead(() => n.classList.contains("cm-line"), false)) {
+      if ((n as Element).classList && safeRead(() => (n as Element).classList.contains("cm-line"), false)) {
         for (const c of safeRead(() => n.childNodes, [])) walk(c);
         t += "\n";
         return;
       }
-      const isBlock = BLOCK_TAGS.test(safeRead(() => n.tagName, ""));
+      const isBlock = BLOCK_TAGS.test(safeRead(() => (n as Element).tagName, ""));
       if (isBlock) breakLine();
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
       if (isBlock) breakLine();
@@ -273,13 +275,13 @@ const RSProvider: PlazCodeProvider = (() => {
   // drafts while thinking.
   const COMMANDISH_TEXT = /"(?:command|tool)"\s*:\s*"|###\s*(?:lua|mcp_tool)/i;
 
-  const replyNodes = (item) => {
+  const replyNodes = (item: Element | null): Element[] => {
     if (!item) return [];
     if (safeRead(() => item.matches, null) && safeRead(() => item.matches(S.workItem), false)) {
       return [...safeQueryAll(item, S.workReply)]
         .filter((node) => safeClosest(node, S.workItem) === item);
     }
-    const out = [];
+    const out: Element[] = [];
     if (safeRead(() => item.matches, null) && safeRead(() => item.matches(S.reply), false)) out.push(item);
     if (safeRead(() => item.querySelectorAll, null)) out.push(...safeQueryAll(item, S.reply));
     const unique = [...new Set(out)];
@@ -299,7 +301,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return top;
   };
 
-  function assistantText(item, excludeSel?) {
+  function assistantText(item: Element | null, excludeSel?: string): string {
     if (!item) return "";
     const reply = replyNodes(item)
       .filter((m) => !(excludeSel && safeRead(() => m.closest, null) && safeClosest(m, excludeSel)))
@@ -322,7 +324,7 @@ const RSProvider: PlazCodeProvider = (() => {
     // inside a user bubble/role so a user who pasted a JSON example can never cause
     // PlazCode to execute their own text as if it came from the assistant.
     if (!COMMANDISH_TEXT.test(reply)) {
-      let scope = null;
+      let scope: Element | null = null;
       try { scope = (safeRead(() => item.closest, null) && safeClosest(item, S.turn)) || (safeRead(() => item.closest, null) && safeClosest(item, "[data-turn-key]")); } catch {}
       if (scope && scope !== item && safeRead(() => scope.querySelectorAll, null)) {
         const userSel = "[data-user-message-bubble], [data-message-author-role='user'], [data-conversation-role='user'], [data-role='user'], [data-message-author='user']";
@@ -343,7 +345,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // A message wrapper also contains native headings/actions ("You said", Copy,
   // timestamps). Read the user's content surface, never that surrounding UI.
   // Keep the same reader for delivery receipts, task requests and startup proof.
-  function userText(item, excludeSel?) {
+  function userText(item: Element, excludeSel?: string): string {
     const bubbles = safeRead(() => item.matches('[data-user-message-bubble]'), false) ? [item] : safeQueryAll(item, '[data-user-message-bubble]');
     const native = bubbles.filter(node => !safeClosest(node, [excludeSel, '#rs-root,.rs-chip,button,[role="button"]'].filter(Boolean).join(',')));
     if (native.length === 1) {
@@ -352,7 +354,7 @@ const RSProvider: PlazCodeProvider = (() => {
       // its source attribute current. Never reuse a stale attribute if the tap
       // is missing or cannot identify this committed user message.
       const acknowledged = safeRead(() => !bubble.dispatchEvent(new CustomEvent('rs-user-source-sync', {bubbles:true, cancelable:true})), false);
-      if (acknowledged && safeRead(() => bubble.hasAttribute('data-rs-user-source'), false)) return safeRead(() => bubble.getAttribute('data-rs-user-source'), '');
+      if (acknowledged && safeRead(() => bubble.hasAttribute('data-rs-user-source'), false)) return safeRead(() => bubble.getAttribute('data-rs-user-source') as string, '');
     }
     const ui = [excludeSel, 'button,[role="button"],h1.sr-only,h2.sr-only,h3.sr-only,h4.sr-only,h5.sr-only,h6.sr-only,time,[data-testid="timestamp"]'].filter(Boolean).join(',');
     for (const selector of ['[data-message-content]', '.whitespace-pre-wrap', '[data-user-message-bubble]', '.markdown,.prose']) {
@@ -369,72 +371,72 @@ const RSProvider: PlazCodeProvider = (() => {
     return textWithout(item, ui);
   }
 
-  function itemText(item) {
+  function itemText(item: Element | null): string {
     if (!item) return "";
     if (isAssistantItem(item)) return assistantText(item);
     if (isUserItem(item)) return userText(item);
     return textWithout(item);
   }
 
-  function classifyText(item, excludeSel) {
+  function classifyText(item: Element | null, excludeSel?: string): string {
     if (isAssistantItem(item)) return assistantText(item, excludeSel);
-    if (isUserItem(item)) return userText(item, excludeSel);
+    if (isUserItem(item)) return userText(item!, excludeSel);
     return textWithout(item, excludeSel);
   }
 
   const NATIVE_USER_BUBBLE = '[data-user-message-bubble]';
   const NATIVE_USER_ROLE = '[data-message-author-role="user"],[data-conversation-role="user"],[data-role="user"],[data-message-author="user"],[data-turn="user"]';
   const RECEIPT_PAGE_BOUNDARY = 'main,body,html,form,nav,aside,[role="dialog"],#rs-root';
-  const normalizeReceiptText = value => String(value || '').replace(/\s+/g, ' ').trim();
+  const normalizeReceiptText = (value: unknown): string => String(value || '').replace(/\s+/g, ' ').trim();
 
-  function singleUserScope(scope, bubble, scopes?) {
+  function singleUserScope(scope: Element, bubble: Element, scopes?: Map<Element, Element | null>): boolean {
     if (scopes && scopes.has(scope)) return scopes.get(scope) === bubble;
     const bubbles = safeQueryAll(scope, NATIVE_USER_BUBBLE).filter(node => !safeClosest(node, '.rs-chip,#rs-root'));
     if (scope === bubble) return true;
     if (bubbles.length !== 1 || bubbles[0] !== bubble) { if (scopes) scopes.set(scope, null); return false; }
-    const outsideUser = node => !safeRead(() => bubble.contains(node), false) && !safeClosest(node, '.rs-chip');
+    const outsideUser = (node: Element): boolean => !safeRead(() => bubble.contains(node), false) && !safeClosest(node, '.rs-chip');
     const exclusive = !safeQueryAll(scope, S.msg).some(node => outsideUser(node) && isAssistantItem(node)) &&
       !safeQueryAll(scope, S.reply).some(outsideUser);
     if (scopes) scopes.set(scope, exclusive ? bubble : null);
     return exclusive;
   }
 
-  function ownedUserRoot(bubble, scopes) {
-    for (let node = safeRead(() => bubble.parentElement, null), depth = 0; node && depth < 4; node = safeRead(() => node.parentElement, null), depth++) {
-      if (safeRead(() => node.matches(RECEIPT_PAGE_BOUNDARY + ',' + S.turn), true) || !singleUserScope(node, bubble, scopes)) break;
-      if (safeRead(() => node.classList.contains('rs-hidden'), false) &&
-          safeRead(() => Array.from(node.children as HTMLCollection).some(child => child.classList.contains('rs-chip')), false)) return node;
+  function ownedUserRoot(bubble: Element, scopes?: Map<Element, Element | null>): Element | null {
+    for (let node = safeRead(() => bubble.parentElement, null), depth = 0; node && depth < 4; node = safeRead(() => node!.parentElement, null), depth++) {
+      if (safeRead(() => node!.matches(RECEIPT_PAGE_BOUNDARY + ',' + S.turn), true) || !singleUserScope(node, bubble, scopes)) break;
+      if (safeRead(() => node!.classList.contains('rs-hidden'), false) &&
+          safeRead(() => Array.from(node!.children as HTMLCollection).some(child => child.classList.contains('rs-chip')), false)) return node;
     }
     return null;
   }
 
-  function receiptRendered(item) {
+  function receiptRendered(item: Element): boolean {
     if (safeRead(() => item.getClientRects().length > 0, false)) {
       const style = safeStyle(item);
-      return !/^(hidden|collapse)$/.test(style.visibility) && style.contentVisibility !== 'hidden' && !safeRead(() => item.hidden, true);
+      return !/^(hidden|collapse)$/.test(style.visibility) && style.contentVisibility !== 'hidden' && !safeRead(() => (item as HTMLElement).hidden, true);
     }
     let ownMask = false;
-    for (let node = item; node; node = safeRead(() => node.parentElement, null)) {
+    for (let node: Element | null = item; node; node = safeRead((): Element | null => node!.parentElement, null)) {
       const style = safeStyle(node);
       if (/^(hidden|collapse)$/.test(style.visibility) || style.contentVisibility === 'hidden') return false;
       if (style.display !== 'none') continue;
-      const parent = safeRead(() => node.parentElement, null);
+      const parent = safeRead(() => node!.parentElement, null);
       // Read through our own direct-child mask only. Native hidden attributes,
       // inline hiding and a hidden conversation ancestor still reject the item.
       if (!parent || !safeRead(() => parent.classList.contains('rs-hidden'), false) ||
-          safeRead(() => node.hidden || node.matches('.hidden') || node.style.display === 'none', true)) return false;
+          safeRead(() => (node as HTMLElement).hidden || node!.matches('.hidden') || (node as HTMLElement).style.display === 'none', true)) return false;
       ownMask = true;
     }
     return ownMask || safeQueryAll(item, '.whitespace-pre-wrap,[data-message-content],.rs-chip')
       .some(node => safeRead(() => node.getClientRects().length > 0, false));
   }
 
-  function receiptUsers(includeHidden = false) {
-    const seen = new Set(), result = [], hasLayout = safeRead(() => document.documentElement.getClientRects().length > 0, false);
-    const add = item => {
+  function receiptUsers(includeHidden = false): Element[] {
+    const seen = new Set<Element>(), result: Element[] = [], hasLayout = safeRead(() => document.documentElement.getClientRects().length > 0, false);
+    const add = (item: Element | null): void => {
       const work = item && safeClosest(item, S.workItem);
       if (work) { if (!isUserItem(work)) return; item = work; }
-      if (!item || seen.has(item) || safeClosest(item, '.rs-chip,#rs-root') || safeRead(() => /^H[1-6]$/.test(item.tagName), true)) return;
+      if (!item || seen.has(item) || safeClosest(item, '.rs-chip,#rs-root') || safeRead(() => /^H[1-6]$/.test(item!.tagName), true)) return;
       seen.add(item);
       if (includeHidden || !hasLayout || receiptRendered(item)) result.push(item);
     };
@@ -451,13 +453,13 @@ const RSProvider: PlazCodeProvider = (() => {
     return result;
   }
 
-  function receiptKey(item) {
+  function receiptKey(item: Element | null): string | null {
     const owner = safeClosest(item, NATIVE_USER_ROLE);
     return (owner && itemKey(owner)) || itemKey(item) || null;
   }
 
-  let lastConfirmedDelivery = null;
-  function confirmedDeliveryMatches(text) {
+  let lastConfirmedDelivery: { text: string; generation: number; chat: string; session: unknown; stop: unknown } | null = null;
+  function confirmedDeliveryMatches(text: string): boolean {
     if (!lastConfirmedDelivery) return false;
     const context = sendContext();
     return !isStopped() && lastConfirmedDelivery.generation === sendGeneration &&
@@ -474,7 +476,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // nearest INNER stable message container. This preserves the site's outer
   // layout/virtualization node while still giving PlazCode a real DOM element to
   // mask and decorate.
-  function itemRoot(signal, ownershipScopes) {
+  function itemRoot(signal: Element, ownershipScopes?: Map<Element, Element | null>): Element {
     if (!signal || !safeRead(() => signal.closest, null)) return signal;
     const work = safeClosest(signal, S.workItem);
     if (work && !safeClosest(work, "#rs-root")) return work;
@@ -500,16 +502,16 @@ const RSProvider: PlazCodeProvider = (() => {
         mixed = hasUser && hasAssistant;
       } catch {}
       if (mixed && signal !== keyed) {
-        let cur = signal;
-        while (cur && safeRead(() => cur.parentElement, null) && safeRead(() => cur.parentElement, null) !== keyed) cur = safeRead(() => cur.parentElement, null);
+        let cur: Element | null = signal;
+        while (cur && safeRead(() => cur!.parentElement, null) && safeRead(() => cur!.parentElement, null) !== keyed) cur = safeRead((): Element | null => cur!.parentElement, null);
         if (cur && cur !== keyed) return cur;
       }
       return keyed;
     }
     const outer = safeClosest(signal, S.turn);
     if (outer && signal !== outer) {
-      let cur = signal;
-      while (cur && safeRead(() => cur.parentElement, null) && safeRead(() => cur.parentElement, null) !== outer) cur = safeRead(() => cur.parentElement, null);
+      let cur: Element | null = signal;
+      while (cur && safeRead(() => cur!.parentElement, null) && safeRead(() => cur!.parentElement, null) !== outer) cur = safeRead((): Element | null => cur!.parentElement, null);
       if (cur && cur !== outer) return cur;
     }
     // With no native turn/role wrapper, the bubble itself is the only known
@@ -519,17 +521,17 @@ const RSProvider: PlazCodeProvider = (() => {
     return safeRead(() => signal.parentElement, null) || signal;
   }
 
-  let activityControlsStyle;
-  function setActivityFolded(item, folded) {
-    item.dataset.rsActivityFolded = folded ? '1' : '0';
-    const turn = safeClosest(item, S.turn);
+  let activityControlsStyle: HTMLStyleElement | undefined;
+  function setActivityFolded(item: Element, folded: boolean): void {
+    (item as HTMLElement).dataset.rsActivityFolded = folded ? '1' : '0';
+    const turn = safeClosest(item, S.turn) as HTMLElement | null;
     if (!turn) return;
-    if (!activityControlsStyle || !safeRead(() => activityControlsStyle.isConnected, false)) {
+    if (!activityControlsStyle || !safeRead(() => activityControlsStyle!.isConnected, false)) {
       activityControlsStyle = document.createElement('style');
       activityControlsStyle.textContent = '[data-rs-activity-controls-folded="1"]{display:none!important}[data-rs-activity-turn-folded="1"]{min-height:0!important;padding-top:0!important;padding-bottom:0!important;margin-top:0!important;margin-bottom:0!important;gap:0!important}';
       document.documentElement.appendChild(activityControlsStyle);
     }
-    const other = [...safeQueryAll(turn, S.msg)].some(node=>node !== item && !safeRead(() => item.contains(node), false) && node.dataset.rsActivityFolded !== '1');
+    const other = [...safeQueryAll<HTMLElement>(turn, S.msg)].some(node=>node !== item && !safeRead(() => item.contains(node), false) && node.dataset.rsActivityFolded !== '1');
     turn.dataset.rsActivityTurnFolded = folded && !other ? '1' : '0';
     const actions = safeQueryAll(turn, 'button[data-testid$="-turn-action-button"],button[aria-label="Copy"],button[aria-label="Read aloud"],button[aria-label="Good response"],button[aria-label="Bad response"]');
     for (const button of actions) {
@@ -538,15 +540,15 @@ const RSProvider: PlazCodeProvider = (() => {
       // Hide only the action strip, never the virtualized conversation wrapper
       // or a sibling user's message. Keep React-owned children in place.
       let strip = button;
-      for (let parent = safeRead(() => button.parentElement, null); parent && parent !== turn && parent !== item; parent = safeRead(() => parent.parentElement, null)) {
+      for (let parent = safeRead(() => button.parentElement, null); parent && parent !== turn && parent !== item; parent = safeRead(() => parent!.parentElement, null)) {
         if (safeQuery(parent, '[data-message-author-role],.markdown,.prose,.rs-chip,.rs-chat-activity')) break;
         strip = parent;
       }
-      strip.dataset.rsActivityControlsFolded = folded ? '1' : '0';
+      (strip as HTMLElement).dataset.rsActivityControlsFolded = folded ? '1' : '0';
     }
   }
-  let transcriptSnapshot=null,assistantSnapshot=null,userSnapshot=null;
-  function withTranscriptSnapshot(read) {
+  let transcriptSnapshot: Element[] | null = null, assistantSnapshot: Element[] | null = null, userSnapshot: Element[] | null = null;
+  function withTranscriptSnapshot<T>(read: () => T): T {
     if(transcriptSnapshot)return read();
     transcriptSnapshot=allItems();
     try{
@@ -555,14 +557,14 @@ const RSProvider: PlazCodeProvider = (() => {
       return read();
     }finally{transcriptSnapshot=null;assistantSnapshot=null;userSnapshot=null;}
   }
-  function itemRendered(root, signal) {
+  function itemRendered(root: Element, signal: Element): boolean {
     if (safeRead(() => root.getClientRects().length > 0, true)) return true;
     // display:contents contributes no box even when its native message is
     // rendered. Resolving a stable container must not discard that message.
     // Own pre-hide can run before the chip is inserted, hiding every child;
     // keep that contents-only container available for the decoration pass.
     if (safeStyle(root).display !== 'contents') return false;
-    for (let node = root; node; node = safeRead(() => node.parentElement, null)) {
+    for (let node: Element | null = root; node; node = safeRead((): Element | null => node!.parentElement, null)) {
       const style = safeStyle(node);
       if (style.display === 'none' || /^(hidden|collapse)$/.test(style.visibility) || style.contentVisibility === 'hidden') return false;
     }
@@ -571,7 +573,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return safeQueryAll(root, '[data-user-message-bubble],.whitespace-pre-wrap,.markdown,.prose,.markdown-new-styling,[data-message-content],.rs-chip')
       .some(node => safeRead(() => node.getClientRects().length > 0, false));
   }
-  const allItems = () => {
+  const allItems = (): Element[] => {
     if(transcriptSnapshot)return transcriptSnapshot;
     // ChatGPT keeps the previous conversation's turns in the page, hidden (zero size), after the user opens a
     // new chat from the sidebar. Counting them made a blank chat look like the old started one ("PlazCode
@@ -583,8 +585,8 @@ const RSProvider: PlazCodeProvider = (() => {
       // Current native ChatGPT puts data-message-author-role on a sibling
       // screen-reader heading. That label is metadata, never a message turn.
       .filter((e) => !safeRead(() => e.matches('h1.sr-only,h2.sr-only,h3.sr-only,h4.sr-only,h5.sr-only,h6.sr-only'), false));
-    const items = [];
-    const seen = new Set(), ownershipScopes = new Map();
+    const items: Element[] = [];
+    const seen = new Set<Element>(), ownershipScopes = new Map<Element, Element | null>();
     for (const signal of signals) {
       const root = itemRoot(signal, ownershipScopes);
       if (!root || seen.has(root) || safeClosest(root, "#rs-root")) continue;
@@ -605,30 +607,30 @@ const RSProvider: PlazCodeProvider = (() => {
     // only its redundant same-role ancestors. Different-role nesting is preserved.
     // Mark redundant same-role ancestors once. Comparing every pair of turns
     // made each transcript read quadratic (250,000 attribute reads at500turns).
-    const roles = new Map(items.map(item => [item, role(item)])), redundant = new Set();
+    const roles = new Map<Element, string | null>(items.map(item => [item, role(item)])), redundant = new Set<Element>();
     for (const item of items) {
       const r = roles.get(item); if (!r) continue;
-      for (let parent = safeRead(() => item.parentElement, null); parent; parent = safeRead(() => parent.parentElement, null)) {
+      for (let parent = safeRead(() => item.parentElement, null); parent; parent = safeRead(() => parent!.parentElement, null)) {
         if (roles.get(parent) === r) redundant.add(parent);
       }
     }
     return items.filter(item => !redundant.has(item));
   };
-  const assistantItems = () => assistantSnapshot || allItems().filter(isAssistantItem);
-  const assistantCount = () => assistantItems().length;
-  const userCount = () => userSnapshot ? userSnapshot.length : allItems().filter(isUserItem).length;
-  const getEditor = () => {
-    const nodes = [...safeQueryAll(document, S.editor)].filter((e) => !safeClosest(e, "#rs-root"));
+  const assistantItems = (): Element[] => assistantSnapshot || allItems().filter(isAssistantItem);
+  const assistantCount = (): number => assistantItems().length;
+  const userCount = (): number => userSnapshot ? userSnapshot.length : allItems().filter(isUserItem).length;
+  const getEditor = (): HTMLElement | null => {
+    const nodes = [...safeQueryAll<HTMLElement>(document, S.editor)].filter((e) => !safeClosest(e, "#rs-root"));
     // Work's composer can be a textarea or a textbox outside a <form>, with
     // "Work with ChatGPT" as its only stable cue. Do not mistake a transcript
     // code editor or an unrelated search field for the chat composer.
     const workCue = /work with chatgpt|message chatgpt|ask chatgpt/i;
-    const workNodes = [...safeQueryAll(document, "textarea, [role='textbox'], [contenteditable]")]
+    const workNodes = [...safeQueryAll<HTMLElement>(document, "textarea, [role='textbox'], [contenteditable]")]
       .filter((e) => !safeClosest(e, "#rs-root") && !safeClosest(e, S.turn) &&
         !safeClosest(e, S.workItem) && !safeClosest(e, "[data-message-author-role]") &&
         workCue.test([safeRead(() => e.getAttribute("placeholder"), null), safeRead(() => e.getAttribute("data-placeholder"), null),
           safeRead(() => e.getAttribute("aria-placeholder"), null), safeRead(() => e.getAttribute("aria-label"), null),
-          safeRead(() => e.parentElement, null) && safeRead(() => safeRead(() => e.parentElement, null).getAttribute("data-placeholder"), null),
+          safeRead(() => e.parentElement, null) && safeRead(() => safeRead(() => e.parentElement, null)!.getAttribute("data-placeholder"), null),
           (safeRead(() => e.textContent, "") || "").trim().slice(0, 80)].filter(Boolean).join(" ")));
     for (const e of workNodes) if (!nodes.includes(e)) nodes.unshift(e);
     const visible = nodes.find((e) => {
@@ -644,12 +646,12 @@ const RSProvider: PlazCodeProvider = (() => {
   // "Message ChatGPT"-style placeholders above match it. Used ONLY when nothing above matched:
   // the widest visible editable box in the lower part of the window that is not part of the
   // conversation, PlazCode's own bar, a menu, a dialog or a search/sidebar field.
-  const codexComposer = () => {
+  const codexComposer = (): HTMLElement | null => {
     const viewH = safeRead(() => window.innerHeight, 0) || 0;
-    const candidates = [...safeQueryAll(document, "textarea, [contenteditable='true'], [contenteditable=''], [role='textbox']")].filter((e) => {
+    const candidates = [...safeQueryAll<HTMLElement>(document, "textarea, [contenteditable='true'], [contenteditable=''], [role='textbox']")].filter((e) => {
       if (safeClosest(e, "#rs-root") || safeClosest(e, S.turn) || safeClosest(e, S.workItem) || safeClosest(e, "[data-message-author-role]")) return false;
       if (safeClosest(e, "nav, aside, header, [role='dialog'], [role='menu'], [role='listbox'], [role='search'], [role='combobox'], pre, code")) return false;
-      if (safeRead(() => e.getAttribute("type"), null) === "search" || safeRead(() => e.disabled, false) || safeRead(() => e.readOnly, false)) return false;
+      if (safeRead(() => e.getAttribute("type"), null) === "search" || safeRead(() => (e as HTMLInputElement).disabled, false) || safeRead(() => (e as HTMLInputElement).readOnly, false)) return false;
       if (/search/i.test([safeRead(() => e.getAttribute("placeholder"), null), safeRead(() => e.getAttribute("aria-label"), null)].filter(Boolean).join(" "))) return false;
       try {
         const r = safeRect(e), st = safeStyle(e);
@@ -661,17 +663,17 @@ const RSProvider: PlazCodeProvider = (() => {
     inner.sort((a, b) => (safeRect(b).width || 0) - (safeRect(a).width || 0) || (safeRect(b).top || 0) - (safeRect(a).top || 0));
     return inner[0] || null;
   };
-  const editorText = () => {
+  const editorText = (): string => {
     const e = getEditor();
     if (!e) return "";
-    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => e.value, "") || "";
+    if (safeRead(() => e.tagName, "") === "TEXTAREA" || safeRead(() => e.tagName, "") === "INPUT") return safeRead(() => (e as HTMLTextAreaElement).value, "") || "";
     // ProseMirror stores lines in paragraphs/BRs: textContent joins them and
     // innerText adds paragraph spacing (and forces layout). Read logical lines.
-    const read = node => {
+    const read = (node: Node): string => {
       if (node.nodeType === 3) return node.nodeValue || "";
       if (node.nodeType !== 1) return "";
-      if (node.tagName === 'BR') {
-        if (safeRead(() => node.classList.contains('ProseMirror-trailingBreak'), false) ||
+      if ((node as Element).tagName === 'BR') {
+        if (safeRead(() => (node as Element).classList.contains('ProseMirror-trailingBreak'), false) ||
             (!node.nextSibling && (!node.previousSibling || node.previousSibling.nodeName === 'BR'))) return '';
         return '\n';
       }
@@ -686,7 +688,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return safeRead(() => read(e), "");
   };
 
-  const lastAssistant = () => {
+  const lastAssistant = (): Element | null => {
     const it = assistantItems();
     return it.length ? it[it.length - 1] : null;
   };
@@ -700,7 +702,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // a monotonic number, so the core's numeric "old id" shortcut simply doesn't
   // apply here (Number(uuid) is NaN and that guard is skipped) - the
   // settled-history guard covers the same case provider-agnostically.
-  const itemKey = (item) => {
+  const itemKey = (item: Element | null): string | null => {
     if (!item || !safeRead(() => item.getAttribute, null)) return null;
     if (safeRead(() => item.matches, null) && safeRead(() => item.matches(S.workItem), false)) {
       const ids = (safeRead(() => item.getAttribute("data-chatgpt-search-message-ids"), null) || "").trim().split(/\s+/).filter(Boolean);
@@ -709,7 +711,7 @@ const RSProvider: PlazCodeProvider = (() => {
     const nested = safeRead(() => item.querySelector, null) && safeQuery(item, "[data-message-id], [data-turn-key]");
     const keyed = safeRead(() => item.closest, null) && safeClosest(item, "[data-turn-key]");
     const outer = safeRead(() => item.closest, null) && safeClosest(item, S.turn);
-    const nativeTestKey = node => {
+    const nativeTestKey = (node: Element): string | null => {
       const value = safeRead(() => node.getAttribute('data-testid'), null);
       return value && /^conversation-turn-.+/.test(value) ? value : null;
     };
@@ -729,17 +731,17 @@ const RSProvider: PlazCodeProvider = (() => {
       (outer && safeRead(() => outer.getAttribute("data-turn-key"), null));
     return groupedKey ? `${role(item) || "turn"}:${groupedKey}` : null;
   };
-  const lastAssistantId = () => itemKey(lastAssistant());
+  const lastAssistantId = (): string | null => itemKey(lastAssistant());
 
-  const chatIsEmpty = () => allItems().length === 0;
+  const chatIsEmpty = (): boolean => allItems().length === 0;
   // A genuinely fresh chat: the "/" route (a conversation is /c/<id>), composer
   // rendered, no turns. An existing conversation that is still loading has a
   // /c/<id> path, so it never gates.
-  const isFreshChat = () =>
+  const isFreshChat = (): boolean =>
     chatIsEmpty() && location.pathname === "/" && !!getEditor();
 
   // The composer box the Start gate hides as one unit (the form around the editor).
-  const composerFrame = () => {
+  const composerFrame = (): Element | null => {
     const ed = getEditor();
     return ed ? (safeClosest(ed, "form") || safeRead(() => ed.parentElement, null)) : null;
   };
@@ -750,7 +752,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // raw result peeking above and below the cover on a big send. Covering this box
   // instead matches exactly what is visible. It is its own grid cell, so the "+"
   // button and the right-hand icons stay outside the cover and remain usable.
-  const coverTarget = () => {
+  const coverTarget = (): Element | null => {
     const ed = getEditor();
     if (!ed) return null;
     return safeClosest(ed, "[class*='prosemirror-parent']") || ed;
@@ -760,9 +762,9 @@ const RSProvider: PlazCodeProvider = (() => {
   // composer subtree on every keystroke, so the bar stays in #rs-root instead of
   // being inserted into React-managed DOM. `barOutside` tells the core to position
   // the fixed bar just above this card without adding padding or changing its size.
-  let followupStyle = null;
+  let followupStyle: HTMLStyleElement | null = null;
   const followupNodes = new Set<Element>();
-  function setFollowupMode(on) {
+  function setFollowupMode(on: boolean): void {
     const ed = getEditor(), frame = barAnchor();
     const matches = on && frame ? [...safeQueryAll(frame, 'span, p, div')].filter(node =>
       !safeRead(() => node.children, []).length && /^(?:Work with ChatGPT|Message ChatGPT|Ask anything)$/i.test((safeRead(() => node.textContent, "") || '').trim()) &&
@@ -775,26 +777,26 @@ const RSProvider: PlazCodeProvider = (() => {
       document.documentElement.appendChild(followupStyle);
     }
     for (const node of matches) {
-      if (!followupNodes.has(node)) node.style.setProperty('--rs-followup-size',safeStyle(node).fontSize || '14px');
+      if (!followupNodes.has(node)) (node as HTMLElement).style.setProperty('--rs-followup-size',safeStyle(node).fontSize || '14px');
       node.setAttribute('data-rs-followup-label','1');followupNodes.add(node);
     }
   }
-  function barAnchor() {
+  function barAnchor(): Element | null {
     const ed = getEditor();
     if (!ed) return null;
     const er = safeRect(ed);
     const control = submitButton();
     const heightLimit = Math.max(220, er.height + 180);
-    const candidates = [];
-    for (let node = safeRead(() => ed.parentElement, null), depth = 0; node && depth < 10 && node !== document.body && node !== document.documentElement; node = safeRead(() => node.parentElement, null), depth++) {
+    const candidates: Array<{ node: Element; semantic: boolean; rounded: boolean }> = [];
+    for (let node = safeRead(() => ed.parentElement, null), depth = 0; node && depth < 10 && node !== document.body && node !== document.documentElement; node = safeRead(() => node!.parentElement, null), depth++) {
       const rect = safeRect(node);
       // A form can wrap the whole Work page; a text-scroller can cover only
       // the typed text. Neither is the rounded composer card we anchor above.
       if (!rect.width || !rect.height || rect.height > heightLimit || rect.left > er.left + 2 || rect.right < er.right - 2) continue;
-      if (control && !safeRead(() => node.contains(control), false)) continue;
+      if (control && !safeRead(() => node!.contains(control), false)) continue;
       const style = safeStyle(node);
       if (style.display === 'none' || style.visibility === 'hidden') continue;
-      const semantic = safeRead(() => node.matches("[data-testid='composer'], [data-testid='composer-container'], [data-composer-surface], [class*='composer-surface']"), false);
+      const semantic = safeRead(() => node!.matches("[data-testid='composer'], [data-testid='composer-container'], [data-composer-surface], [class*='composer-surface']"), false);
       const rounded = Math.max(parseFloat(style.borderTopLeftRadius)||0,parseFloat(style.borderTopRightRadius)||0) >= 10;
       candidates.push({node,semantic,rounded});
     }
@@ -809,11 +811,11 @@ const RSProvider: PlazCodeProvider = (() => {
   // ProseMirror is a contenteditable: flipping contenteditable=false blocks the
   // user, but typeAndSend temporarily re-enables it so our own injection works.
   let _locked = false;
-  function setInputLock(on) {
+  function setInputLock(on: boolean): void {
     _locked = on;
     const ed = getEditor();
     if (!ed) return;
-    if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") ed.readOnly = on;
+    if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") (ed as HTMLTextAreaElement).readOnly = on;
     else ed.setAttribute("contenteditable", on ? "false" : "true");
     if (on) ed.setAttribute("data-rs-locked", "1");
     else ed.removeAttribute("data-rs-locked");
@@ -829,32 +831,32 @@ const RSProvider: PlazCodeProvider = (() => {
   // refused. That is exactly what stranded a tool result in the composer and
   // raised "ChatGPT did not accept the injected message after 4 attempts".
   const STOP_RE = /(?:^|\b)(stop|cancel|interrompre|arr[êe]ter|keskeyt[äa]|lopeta)(?:\b|$)/i;
-  const isStopBtn = (b) => {
+  const isStopBtn = (b: Element | null): boolean => {
     if (!b || !safeRead(() => b.getAttribute, null)) return false;
     if (/stop/i.test(safeRead(() => b.getAttribute("data-testid"), null) || "")) return true;
-    const label = [safeRead(() => b.getAttribute("aria-label"), null), safeRead(() => b.getAttribute("title"), null), safeRead(() => b.innerText, "")].filter(Boolean).join(" ");
+    const label = [safeRead(() => b.getAttribute("aria-label"), null), safeRead(() => b.getAttribute("title"), null), safeRead(() => (b as HTMLElement).innerText, "")].filter(Boolean).join(" ");
     return STOP_RE.test(label);
   };
-  const submitButton = () => {
+  const submitButton = (): HTMLButtonElement | null => {
     const form = composerFrame();
-    const candidates = [...safeQueryAll(document, S.submitBtn)];
-    if (form) candidates.push(...safeQueryAll(form, "button[type='submit'], button[aria-label*='send' i], button[data-testid*='send' i], button[aria-label*='stop' i], button[data-testid*='stop' i]"));
+    const candidates = [...safeQueryAll<HTMLButtonElement>(document, S.submitBtn)];
+    if (form) candidates.push(...safeQueryAll<HTMLButtonElement>(form, "button[type='submit'], button[aria-label*='send' i], button[data-testid*='send' i], button[aria-label*='stop' i], button[data-testid*='stop' i]"));
     else {
       const ed = getEditor();
       // Work can mount its textbox without a form. Keep the fallback local to
       // that composer so unrelated page buttons cannot submit a message.
-      for (let box = ed && safeRead(() => ed.parentElement, null), depth = 0; box && depth < 5; box = safeRead(() => box.parentElement, null), depth++) {
-        candidates.push(...safeQueryAll(box, "button[aria-label*='send' i], button[data-testid*='send' i], button[aria-label*='stop' i], button[data-testid*='stop' i]"));
+      for (let box = ed && safeRead(() => ed.parentElement, null), depth = 0; box && depth < 5; box = safeRead(() => box!.parentElement, null), depth++) {
+        candidates.push(...safeQueryAll<HTMLButtonElement>(box, "button[aria-label*='send' i], button[data-testid*='send' i], button[aria-label*='stop' i], button[data-testid*='stop' i]"));
         if (candidates.length > 1) break;
       }
     }
     return candidates.find((b) => safeRead(() => b.offsetParent, null) !== null && (!form || safeRead(() => form.contains(b), false))) || null;
   };
-  const sendButton = () => {
+  const sendButton = (): HTMLButtonElement | null => {
     const b = submitButton();
     return b && !isStopBtn(b) ? b : null;
   };
-  const stopButton = () => {
+  const stopButton = (): HTMLButtonElement | null => {
     const b = submitButton();
     return b && isStopBtn(b) ? b : null;
   };
@@ -865,22 +867,22 @@ const RSProvider: PlazCodeProvider = (() => {
   // - which DOES happen on ChatGPT (seen live: the reply had finished, yet the
   // submit control stayed in its "Interrompre la réponse" role, so every send was
   // refused and the tool result was stranded in the composer). See unwedgeStop.
-  function thinkingText(item) {
+  function thinkingText(item: Element | null): string {
     if (!item || !safeRead(() => item.querySelectorAll, null)) return "";
     return [...safeQueryAll(item, S.thinking)]
       .filter((node) => !safeClosest(node, ".rs-chip") &&
         (!(safeRead(() => item.matches, null) && safeRead(() => item.matches(S.workItem), false)) || safeClosest(node, S.workItem) === item))
       .map((node) => textWithout(node, ".rs-chip")).join("\n").trim();
   }
-  function streamText(item) {
+  function streamText(item: Element | null): string {
     if (!item) return "";
     const thinking = thinkingText(item);
     return assistantText(item, ".rs-chip") + (thinking ? "\n" + thinking : "");
   }
-  const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item?: Element | null): number => streamText(item === undefined ? lastAssistant() : item).length;
 
-  let _streamMax = -1, _streamAt = 0, _streamItem = null;
-  function sampleStream() {
+  let _streamMax = -1, _streamAt = 0, _streamItem: Element | null = null;
+  function sampleStream(): void {
     const item = lastAssistant();
     const len = streamText(item).length;
     const now = Date.now();
@@ -889,7 +891,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     if (len > _streamMax) { _streamMax = len; _streamAt = now; }
   }
-  const grewWithin = (ms) => _streamMax > 1 && Date.now() - _streamAt < ms;
+  const grewWithin = (ms: number): boolean => _streamMax > 1 && Date.now() - _streamAt < ms;
 
   // A finished ChatGPT reply renders its action strip (Copy, Good/Bad response,
   // Read aloud) once streaming ends; while a reply or its reasoning is still
@@ -899,7 +901,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // most of the per-turn and startup overhead). Without the strip, or in a Work
   // chat, the conservative growth window still decides.
   const TURN_DONE_SEL = 'button[data-testid="copy-turn-action-button"],button[data-testid="good-response-turn-action-button"],button[data-testid="bad-response-turn-action-button"],button[data-testid="voice-play-turn-action-button"]';
-  function turnComplete(item = lastAssistant()) {
+  function turnComplete(item: Element | null = lastAssistant()): boolean {
     try {
       if (!item || stopButton() || safeQuery(document, S.workItem)) return false;
       if (safeRead(() => item.getAttribute, null) && safeRead(() => item.getAttribute("data-message-author-role"), null) === S.userRole) return false;
@@ -909,7 +911,7 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch { return false; }
   }
 
-  function genActive() {
+  function genActive(): boolean {
     sampleStream();
     // A native Stop control owns the composer even during a long reasoning or
     // token pause. Silence is not proof the answer finished.
@@ -919,26 +921,26 @@ const RSProvider: PlazCodeProvider = (() => {
   }
   const isGenerating = genActive;
   const isBusyNow = genActive;
-  const isHardGenerating = () => !!stopButton();
+  const isHardGenerating = (): boolean => !!stopButton();
 
   // ChatGPT exposes no reliable per-turn "stopped" marker → never halted.
-  const turnHalted = () => false;
+  const turnHalted = (): boolean => false;
 
   // ── Truncation "Continue generating" button ───────────────────────────────
-  function findContinueBtn() {
-    for (const b of safeQueryAll(document, "button")) {
+  function findContinueBtn(): HTMLButtonElement | null {
+    for (const b of safeQueryAll<HTMLButtonElement>(document, "button")) {
       if (safeRead(() => b.offsetParent, null) === null) continue;
       if (RE.continueBtn.test((safeRead(() => b.innerText, "") || "").trim())) return b;
     }
     return null;
   }
-  function clickContinueBtn() {
+  function clickContinueBtn(): boolean {
     const b = findContinueBtn();
     if (!b) return false;
     try { b.click(); return true; } catch { return false; }
   }
 
-  function snapshot() {
+  function snapshot(): object {
     try {
       const it = lastAssistant();
       if (!it) return { th: 0, rp: 0 };
@@ -946,7 +948,7 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch { return {}; }
   }
 
-  function readAssistant() {
+  function readAssistant(): AssistantRead {
     const item = lastAssistant();
     if (!item) return { present: false, reply: "", thinking: "", item: null };
     return {
@@ -957,7 +959,7 @@ const RSProvider: PlazCodeProvider = (() => {
     };
   }
 
-  async function waitFor(pred, timeout) {
+  async function waitFor(pred: () => unknown, timeout: number): Promise<boolean> {
     const budget = waitBudget(timeout, 120), t0 = Date.now();
     for (let poll = 0; poll < budget.polls && Date.now() - t0 < budget.ms; poll++) {
       const result = safePredicate(pred);
@@ -1006,16 +1008,16 @@ const RSProvider: PlazCodeProvider = (() => {
   const INSERT_CHUNK_LINES = 16;
   const INSERT_CHUNK_CHARS = 8192;
 
-  function truncateForSend(text) {
+  function truncateForSend(text: string): string {
     if(typeof window.__rsLimitOutgoing==="function")return window.__rsLimitOutgoing(text);
     if (!text) return text;
     const lines = String(text).split("\n");
     if (text.length <= SEND_MAX_CHARS && lines.length <= SEND_MAX_LINES) return text;
-    const marker = (what) =>
+    const marker = (what: string): string =>
       `\n\n[…PlazCode: result truncated (${what}) so it can be pasted into ` +
       `ChatGPT's composer without freezing the page. Do NOT re-run the command; ` +
       `work with the head and tail shown here…]\n\n`;
-    let out, note;
+    let out: string, note: string;
     if (lines.length > SEND_MAX_LINES) {
       const head = Math.floor(SEND_MAX_LINES * 0.85);
       const tail = SEND_MAX_LINES - head;
@@ -1035,13 +1037,13 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // Select the whole composer, so whatever we insert REPLACES its contents.
-  function selectAll(ed) {
+  function selectAll(ed: HTMLElement): void {
     ed.focus();
     const sel = window.getSelection();
     const range = document.createRange();
     range.selectNodeContents(ed);
-    sel.removeAllRanges();
-    sel.addRange(range);
+    sel!.removeAllRanges();
+    sel!.addRange(range);
   }
 
   // DO NOT USE for injected sends - kept only for reference/fallback.
@@ -1058,7 +1060,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // composer, and pasting up to 400 lines / 20k chars showed no attachment chip.
   // It happens at SEND. So there is nothing to detect and fall back from: the
   // only safe path is to never paste an injected message in the first place.
-  async function pasteEditorText(ed, text) {
+  async function pasteEditorText(ed: HTMLElement, text: string): Promise<boolean> {
     selectAll(ed);
     const dt = new DataTransfer();
     dt.setData("text/plain", text);
@@ -1072,14 +1074,14 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // Fallback: type it. Yielding does not make this faster - it keeps the page
   // alive while it happens, so the user can still click (and Stop still works).
-  async function typeEditorText(ed, text, checkOwner: () => void = () => {}, wrote: (raw?: string) => void = () => {}) {
+  async function typeEditorText(ed: HTMLElement, text: string, checkOwner: () => void = () => {}, wrote: (raw: string) => void = () => {}): Promise<void> {
     const raw = String(text);
     checkOwner();
     if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") {
       ed.focus();
       const setter = Object.getOwnPropertyDescriptor(
         safeRead(() => ed.tagName, "") === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
-        "value").set;
+        "value")!.set!;
       setter.call(ed, raw);
       ed.dispatchEvent(new Event("input", { bubbles: true }));
       wrote(raw);
@@ -1138,11 +1140,11 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // Typing is the ONLY path for injected sends: it is slower, but it produces a
   // real inline message instead of a file attachment (see pasteEditorText).
-  async function setEditorText(ed, text, checkOwner, wrote) {
+  async function setEditorText(ed: HTMLElement, text: string, checkOwner?: () => void, wrote?: (raw: string) => void): Promise<void> {
     await typeEditorText(ed, text, checkOwner, wrote);
   }
 
-  async function settleComposerRender(checkOwner, clock, isReady?: () => boolean) {
+  async function settleComposerRender(checkOwner: () => void, clock: () => number, isReady?: () => boolean): Promise<number> {
     // The editable DOM/model can finish before React publishes the form's
     // submit value. A previously enabled button can still submit that prefix.
     if (!safeRead(() => document.documentElement.getClientRects().length > 0 && typeof requestAnimationFrame === 'function', false)) return 0;
@@ -1150,26 +1152,26 @@ const RSProvider: PlazCodeProvider = (() => {
     // Owner (2026-11-18): "when I'm not on the window the AI is working on it sometimes just stops". A hidden or covered tab never
     // paints, so the two animation frames below never came and the send stopped after 8 s ("Keep its tab visible"). ChatGPT still
     // updates its composer in a hidden tab (React runs on timers and messages, not frames), so there two short timer ticks do the job.
-    const settleHidden = async () => {
+    const settleHidden = async (): Promise<number> => {
       for (let i = 0; i < 2; i++) { await new Promise((r) => setTimeout(r, 120)); checkOwner(); }
       return Math.max(0, Math.round(clock() - started));
     };
     if (safeRead(() => document.hidden || document.visibilityState === 'hidden', false)) return settleHidden();
     return new Promise<number>((resolve, reject) => {
-      let finished = false, frame = null, frames = 0, occludedTimer = null;
-      const cleanup = () => {
+      let finished = false, frame: number | null = null, frames = 0, occludedTimer: ReturnType<typeof setInterval> | null = null;
+      const cleanup = (): void => {
         clearTimeout(deadline);
         if (occludedTimer !== null) clearInterval(occludedTimer);
-        if (frame !== null) safeRead(() => cancelAnimationFrame(frame), null);
+        if (frame !== null) safeRead(() => cancelAnimationFrame(frame!), null);
         try { document.removeEventListener('visibilitychange', onVis); } catch {}
       };
-      const finish = (error?: any) => {
+      const finish = (error?: any): void => {
         if (finished) return;
         finished = true; cleanup();
         const ms = Math.max(0, Math.round(clock() - started));
         if (error) { try { error.renderWaitMs = ms; } catch {} reject(error); } else resolve(ms);
       };
-      const onVis = () => {
+      const onVis = (): void => {
         if (finished) return;
         if (safeRead(() => document.hidden || document.visibilityState === 'hidden', false)) {
           cleanup();
@@ -1177,7 +1179,7 @@ const RSProvider: PlazCodeProvider = (() => {
           settleHidden().then(resolve, reject);
         }
       };
-      const advance = () => {
+      const advance = (): void => {
         if (finished) return;
         try {
           checkOwner();
@@ -1189,7 +1191,7 @@ const RSProvider: PlazCodeProvider = (() => {
       // requestAnimationFrame. When the window is NOT focused (!document.hasFocus()), once 1.5 s pass
       // without 2 frames and the composer already holds the exact draft with Send enabled, accept it
       // instead of timing out with "Send paused". A focused foreground window still requires 2 frames.
-      const windowUnfocused = () => typeof document.hasFocus === 'function' && !safeRead(() => document.hasFocus(), true);
+      const windowUnfocused = (): boolean => typeof document.hasFocus === 'function' && !safeRead(() => document.hasFocus(), true);
       occludedTimer = setInterval(() => {
         if (finished) return;
         try {
@@ -1213,19 +1215,19 @@ const RSProvider: PlazCodeProvider = (() => {
     });
   }
 
-  async function typeAndSend(text, images) {
+  async function typeAndSend(text: string, images?: ImagePayloadList): Promise<boolean> {
     lastConfirmedDelivery = null;
     let ed = getEditor();
     if (!ed) throw new Error("ChatGPT input box not found");
     text = truncateForSend(text);
     const context = sendContext(), generation = sendGeneration, chat = conversationKey();
-    let ownedDraft = null, committed = false;
-    const sameSession = () => {
+    let ownedDraft: string | null = null, committed = false;
+    const sameSession = (): boolean => {
       const current = sendContext();
       return context.session === current.session && context.stop === current.stop;
     };
-    const editorMatches = () => getEditor() === ed && !!safeRead(() => ed.isConnected, false);
-    const checkOwner = (typing = true) => {
+    const editorMatches = (): boolean => getEditor() === ed && !!safeRead(() => ed!.isConnected, false);
+    const checkOwner = (typing = true): void => {
       if (generation !== sendGeneration || isStopped() || !sameSession() ||
           ((typing || chat) && chat !== conversationKey())) {
         const error: any = new Error('ChatGPT delivery cancelled because Stop was pressed or the chat changed.');
@@ -1237,21 +1239,21 @@ const RSProvider: PlazCodeProvider = (() => {
       }
     };
     const normalize = normalizeReceiptText;
-    const logical = value => String(value == null ? '' : value).replace(/\r\n?/g, '\n').replace(/\u00A0/g, ' ').trim();
-    const usersBefore = new Map(receiptUsers(true).map(item => [item, receiptKey(item)]));
-    const keysBefore = new Set([...usersBefore.values()].filter(Boolean));
-    const freshReceipt = item => {
+    const logical = (value: unknown): string => String(value == null ? '' : value).replace(/\r\n?/g, '\n').replace(/\u00A0/g, ' ').trim();
+    const usersBefore = new Map<Element, string | null>(receiptUsers(true).map(item => [item, receiptKey(item)]));
+    const keysBefore = new Set([...usersBefore.values()].filter(Boolean) as string[]);
+    const freshReceipt = (item: Element): boolean => {
       const key = receiptKey(item), previous = usersBefore.get(item);
       // An old node acquiring metadata is still old. A recycled node with a
       // different genuine message key can represent the newly submitted turn.
       return usersBefore.has(item) ? !!key && !!previous && key !== previous && !keysBefore.has(key) : !key || !keysBefore.has(key);
     };
     const want = normalize(text);
-    const clock = () => safeRead(() => performance.now(), Date.now());
-    let receiptStartedAt = null, renderWaitMs = 0;
+    const clock = (): number => safeRead(() => performance.now(), Date.now());
+    let receiptStartedAt: number | null = null, renderWaitMs = 0;
     let expandedMessage = false;
     const EXPAND_RE = /^(?:read more|show more|expand message|voir plus|afficher plus|lire la suite|ver m[áa]s|mostrar m[áa]s|leer m[áa]s|mehr anzeigen|weiterlesen|mostrar mais|ver mais|ler mais|mostra di pi[ùu]|mostra altro|показать больше|читать далее|poka[żz] wi[ęe]cej|daha fazla g[öo]ster|عرض المزيد|もっと見る|더 보기|展开|显示更多|और दिखाएं)$/i;
-    const receipt = () => receiptUsers().some(item => {
+    const receipt = (): boolean => receiptUsers().some(item => {
       if (!freshReceipt(item)) return false;
       const body = normalize(userText(item, '.rs-chip'));
       if (body === want) return true;
@@ -1262,12 +1264,12 @@ const RSProvider: PlazCodeProvider = (() => {
       if (expandedMessage || prefix.length < 256 || prefix.length >= want.length || !want.startsWith(prefix)) return false;
       const scopes = [item];
       if (safeRead(() => item.matches(NATIVE_USER_BUBBLE), false)) {
-        for (let parent = safeRead(() => item.parentElement, null), depth = 0; parent && depth < 4; parent = safeRead(() => parent.parentElement, null), depth++) {
-          if (safeRead(() => parent.matches(RECEIPT_PAGE_BOUNDARY), true) || !singleUserScope(parent, item)) break;
+        for (let parent = safeRead(() => item.parentElement, null), depth = 0; parent && depth < 4; parent = safeRead(() => parent!.parentElement, null), depth++) {
+          if (safeRead(() => parent!.matches(RECEIPT_PAGE_BOUNDARY), true) || !singleUserScope(parent, item)) break;
           scopes.push(parent);
         }
       }
-      for (const scope of scopes) for (const button of safeQueryAll(scope, 'button,[role="button"]')) {
+      for (const scope of scopes) for (const button of safeQueryAll<HTMLButtonElement>(scope, 'button,[role="button"]')) {
         if (safeClosest(button, '.rs-chip') || safeRead(() => button.disabled, false) || safeRead(() => button.getAttribute('aria-disabled') === 'true', false)) continue;
         const labels = [safeRead(() => button.getAttribute('aria-label'), ''), safeRead(() => button.getAttribute('title'), ''), safeRead(() => button.textContent, '')];
         if (!labels.some(label => EXPAND_RE.test(normalize(label)))) continue;
@@ -1278,7 +1280,7 @@ const RSProvider: PlazCodeProvider = (() => {
       }
       return false;
     });
-    const waitDelivery = async (predicate, timeout, typing = true) => {
+    const waitDelivery = async (predicate: () => boolean, timeout: number, typing = true): Promise<boolean> => {
       const budget = waitBudget(timeout, 120);
       let until = Date.now() + budget.ms, lastBeatAt = Date.now();
       for (let poll = 0; poll <= budget.polls; poll++) {
@@ -1296,34 +1298,34 @@ const RSProvider: PlazCodeProvider = (() => {
       return false;
     };
     const relock = _locked;
-    let oldOpacity = safeRead(() => ed.style.opacity, "");
-    let oldCaret = safeRead(() => ed.style.caretColor, "");
-    const prepareEditor = (node) => {
+    let oldOpacity = safeRead(() => ed!.style.opacity, "");
+    let oldCaret = safeRead(() => ed!.style.caretColor, "");
+    const prepareEditor = (node: HTMLElement): void => {
       oldOpacity = safeRead(() => node.style.opacity, "");
       oldCaret = safeRead(() => node.style.caretColor, "");
       node.style.opacity = "0";
       node.style.caretColor = "transparent";
       if (relock) {
-        if (safeRead(() => node.tagName, "") === "TEXTAREA" || safeRead(() => node.tagName, "") === "INPUT") node.readOnly = false;
+        if (safeRead(() => node.tagName, "") === "TEXTAREA" || safeRead(() => node.tagName, "") === "INPUT") (node as HTMLTextAreaElement).readOnly = false;
         else node.setAttribute("contenteditable", "true");
       }
     };
-    const restoreEditor = (node) => {
+    const restoreEditor = (node: HTMLElement | null): void => {
       if (node && safeRead(() => node.isConnected, false)) {
         safeRead(() => { node.style.opacity = oldOpacity; }, null);
         safeRead(() => { node.style.caretColor = oldCaret; }, null);
         if (relock && _locked) {
-          if (safeRead(() => node.tagName, "") === "TEXTAREA" || safeRead(() => node.tagName, "") === "INPUT") safeRead(() => { node.readOnly = true; }, null);
+          if (safeRead(() => node.tagName, "") === "TEXTAREA" || safeRead(() => node.tagName, "") === "INPUT") safeRead(() => { (node as HTMLTextAreaElement).readOnly = true; }, null);
           else safeRead(() => node.setAttribute("contenteditable", "false"), null);
         }
       }
     };
-    const reacquireEditor = async () => {
+    const reacquireEditor = async (): Promise<boolean> => {
       if (committed) return false;
       checkOwner(false);
       let fresh = getEditor();
       const deadline = Date.now() + 1500;
-      while ((!fresh || !safeRead(() => fresh.isConnected, false)) && Date.now() < deadline) {
+      while ((!fresh || !safeRead(() => fresh!.isConnected, false)) && Date.now() < deadline) {
         await sleep(120);
         checkOwner(false);
         fresh = getEditor();
@@ -1337,10 +1339,10 @@ const RSProvider: PlazCodeProvider = (() => {
       }
       return true;
     };
-    const writeFullDraft = async () => {
+    const writeFullDraft = async (): Promise<void> => {
       for (let remountTry = 0; remountTry < 2; remountTry++) {
         try {
-          await setEditorText(ed, text, checkOwner, value => { ownedDraft = value; });
+          await setEditorText(ed!, text, checkOwner, value => { ownedDraft = value; });
           checkOwner();
           if (logical(editorText()) !== logical(text)) {
             // ChatGPT can reset its message box while a long message is typed (owner logs, Work mode: only the last
@@ -1350,7 +1352,7 @@ const RSProvider: PlazCodeProvider = (() => {
             clearEditor();
             await sleep(250);
             checkOwner();
-            await setEditorText(ed, text, checkOwner, value => { ownedDraft = value; });
+            await setEditorText(ed!, text, checkOwner, value => { ownedDraft = value; });
             checkOwner();
           }
           return;
@@ -1377,7 +1379,7 @@ const RSProvider: PlazCodeProvider = (() => {
       if (images && images.length) {
         if (!await attachImages(images)) throw new Error('ChatGPT did not confirm the screenshot upload. Check its file/image quota or upload error; the message was not submitted.');
       }
-      const composerReady = () => {
+      const composerReady = (): boolean => {
         const b = sendButton();
         return logical(editorText()) === logical(text) && !!b && !safeRead(() => b.disabled, true);
       };
@@ -1407,7 +1409,7 @@ const RSProvider: PlazCodeProvider = (() => {
       // enabled SEND control, never submit through a lingering Stop or Enter.
       const ready = await waitDelivery(() => {
         const button = sendButton();
-        return button && !safeRead(() => button.disabled, true);
+        return (button && !safeRead(() => button.disabled, true)) as boolean;
       }, images && images.length ? 25000 : 15000);
       checkOwner();
       const button = ready && sendButton();
@@ -1423,14 +1425,14 @@ const RSProvider: PlazCodeProvider = (() => {
       if (!accepted) throw new Error('ChatGPT did not confirm the submitted tool result. PlazCode will not resend it automatically. Check the chat, then resume.');
       lastConfirmedDelivery = {text:want, generation, chat:stableChatKey(), session:context.session, stop:context.stop};
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       // Remove only this injection's unchanged draft in the same chat/editor.
       // Never erase a newer draft after a navigation, remount or user edit.
       if (getEditor() === ed && chat === conversationKey() &&
           sendContext().session === context.session && ownedDraft !== null &&
-          (editorText() === ownedDraft || logical(editorText()) === logical(ownedDraft) || (ownedDraft.endsWith('\n') && editorText() === ownedDraft + '\n'))) clearEditor();
-      const proof: any = {committed, expandedMessage, code:error.code || 'CHATGPT_SEND_FAILED',
-        renderWaitMs:error.renderWaitMs || renderWaitMs,
+          (editorText() === ownedDraft || logical(editorText()) === logical(ownedDraft) || ((ownedDraft as string).endsWith('\n') && editorText() === ownedDraft + '\n'))) clearEditor();
+      const proof: { committed: boolean; expandedMessage: boolean; code: string; renderWaitMs: number; receiptWaitMs: number; expectedChars?: number; expectedNormalizedChars?: number; detectedUsers?: number; transcriptUsers?: number; users?: Array<{ fresh: boolean; knownNode: boolean; chars: number; matches: boolean; mismatchAt: number; source: string | null; boxed: boolean; display: string }>; receiptEvidence?: string; bubbles?: Array<{ chars: number; boxed: boolean }> } = {committed, expandedMessage, code: (error as { code?: string }).code || 'CHATGPT_SEND_FAILED',
+        renderWaitMs: (error as { renderWaitMs?: number }).renderWaitMs || renderWaitMs,
         receiptWaitMs:receiptStartedAt === null ? 0 : Math.max(0, Math.round(clock() - receiptStartedAt))};
       // Lengths/booleans only: distinguish an unrecognized native message from
       // a partial/different body without logging prompts, results or identities.
@@ -1451,7 +1453,7 @@ const RSProvider: PlazCodeProvider = (() => {
               boxed:safeRead(() => item.getClientRects().length > 0, false), display:safeStyle(item).display};
           });
           proof.receiptEvidence = !users.length ? 'no_native_user_message' : !freshUsers.length ? 'no_new_message_identity' :
-            proof.users.some(item => item.matches) ? 'matching_message_after_wait' : 'new_message_text_mismatch';
+            proof.users.some((item: { matches: boolean }) => item.matches) ? 'matching_message_after_wait' : 'new_message_text_mismatch';
           proof.bubbles = safeQueryAll(document, '[data-user-message-bubble]').slice(-3).map(item => ({
             chars:normalize(userText(item, '.rs-chip')).length, boxed:safeRead(() => item.getClientRects().length > 0, false)
           }));
@@ -1465,14 +1467,14 @@ const RSProvider: PlazCodeProvider = (() => {
     }
   }
 
-  function clearEditor() {
+  function clearEditor(): boolean {
     const ed = getEditor();
     if (!ed) return false;
     try {
       if (safeRead(() => ed.tagName, "") === "TEXTAREA" || safeRead(() => ed.tagName, "") === "INPUT") {
         const setter = Object.getOwnPropertyDescriptor(
           safeRead(() => ed.tagName, "") === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
-          "value").set;
+          "value")!.set!;
         setter.call(ed, "");
         ed.dispatchEvent(new Event("input", { bubbles: true }));
         return editorText().trim() === "";
@@ -1490,11 +1492,11 @@ const RSProvider: PlazCodeProvider = (() => {
   // startup reply was a lone command card inside the fold, so PlazCode saw "no
   // answer" and stopped). Open such a row, at most 3 times per button, only while
   // a PlazCode session is running (the core calls this from its sweep).
-  const foldTries = new WeakMap();
-  function expandCollapsedWork() {
+  const foldTries = new WeakMap<Element, number>();
+  function expandCollapsedWork(): number {
     let opened = 0;
     try {
-      for (const button of safeQueryAll(document, 'button[aria-expanded="false"]')) {
+      for (const button of safeQueryAll<HTMLButtonElement>(document, 'button[aria-expanded="false"]')) {
         if (safeClosest(button, '#rs-root,.rs-chip,[data-user-message-bubble]')) continue;
         if (!/^\s*worked for\b/i.test(safeRead(() => button.textContent, '') || '')) continue;
         const tries = foldTries.get(button) || 0;
@@ -1514,8 +1516,8 @@ const RSProvider: PlazCodeProvider = (() => {
   // after two checks in a row is stale and is removed. Normal user text never
   // starts with the internal marker.
   const STALE_MARKER = "⟦RS-SYS⟧";
-  let staleText = null, staleTicks = 0;
-  function sweepStaleInternalDraft() {
+  let staleText: string | null = null, staleTicks = 0;
+  function sweepStaleInternalDraft(): boolean {
     try {
       if (safeRead(() => document.documentElement.classList.contains('rs-chatgpt-injecting'), false)) { staleText = null; staleTicks = 0; return false; }
       const ed = getEditor();
@@ -1531,14 +1533,14 @@ const RSProvider: PlazCodeProvider = (() => {
   }
   // Driven by the core's periodic sweep (P.sweepStaleInternalDraft), not a timer of its own.
 
-  function stopGeneration() {
+  function stopGeneration(): void {
     const b = stopButton();
     if (b) try { b.click(); } catch {}
   }
 
   // No site modes to enforce on ChatGPT (model picker is left to the user).
-  function enforceComposer() { return { ready: true }; }
-  async function ensureComposerReady(reason) {
+  function enforceComposer(): { ready: boolean } { return { ready: true }; }
+  async function ensureComposerReady(reason?: string): Promise<{ ready: boolean }> {
     diag("mode_ready", { reason, provider: "chatgpt" });
     const ed = getEditor();
     if (!ed) {
@@ -1558,7 +1560,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // submitted and the bar sits on "running" forever - which is exactly what has
   // to be avoided. Reported as a normal site error so the core can end the turn
   // and tell the user.
-  const sendIsDisabled = () => {
+  const sendIsDisabled = (): boolean => {
     const b = submitButton();
     return !!b && !isStopBtn(b) && safeRead(() => b.disabled, true);
   };
@@ -1568,23 +1570,23 @@ const RSProvider: PlazCodeProvider = (() => {
   // blur+focus and a real edit were all tried live and left it at
   // "stop-button (disabled)". Only reloading the page clears it, so the honest
   // move is to say so instead of silently retrying forever.
-  const composerWedged = () => {
+  const composerWedged = (): boolean => {
     const b = submitButton();
     return !!b && isStopBtn(b) && safeRead(() => b.disabled, true) && !genActive();
   };
-  function pausedNotice() {
+  function pausedNotice(): string | null {
     // Only walk the DOM once the cheap signal (a disabled send) already says
     // something is wrong.
-    for (const el of safeQueryAll(document, "div,p,section")) {
+    for (const el of safeQueryAll<HTMLElement>(document, "div,p,section")) {
       if (safeRead(() => el.offsetParent, null) === null || safeRead(() => el.children, []).length > 6) continue;
       const t = (safeRead(() => el.innerText, "") || "").trim();
       if (t.length > 12 && t.length < 400 && RE.paused.test(t)) return t.slice(0, 240);
     }
     return null;
   }
-  function scanError() {
+  function scanError(): string | null {
     try {
-      for (const el of safeQueryAll(document, S.errorSurfaces)) {
+      for (const el of safeQueryAll<HTMLElement>(document, S.errorSurfaces)) {
         if (safeRead(() => el.offsetParent, null) === null) continue;
         if (safeClosest(el, S.msg)) continue; // model content, not UI chrome
         const t = (safeRead(() => el.innerText, "") || "").trim();
@@ -1604,11 +1606,11 @@ const RSProvider: PlazCodeProvider = (() => {
     if (!getEditor()) return "The input box disappeared (session ended?).";
     return null;
   }
-  const isTooLongMsg = (text) => RE.tooLong.test(text);
-  const isBusyMsg = (text) => RE.busy.test(text);
+  const isTooLongMsg = (text: string): boolean => RE.tooLong.test(text);
+  const isBusyMsg = (text: string): boolean => RE.busy.test(text);
 
   // ── Image attachment (best effort: paste + hidden file input) ─────────────
-  function fileFromImage(img, i) {
+  function fileFromImage(img: ImagePayload, i: number): File {
     if (typeof PlazCodeMedia !== "undefined") return PlazCodeMedia.fileFrom(img, i);
     const mime = img.mimeType || "image/jpeg";
     const bin = atob(img.data);
@@ -1617,7 +1619,7 @@ const RSProvider: PlazCodeProvider = (() => {
     const ext = mime.includes("png") ? "png" : "jpg";
     return new File([arr], `robloxscript_${Date.now()}_${i}.${ext}`, { type: mime });
   }
-  async function attachImages(images) {
+  async function attachImages(images: ImagePayloadList): Promise<boolean> {
     const ed = getEditor(), box = composerFrame();
     if (!ed || !box || !images || !images.length || images.length > 4) return false;
     const selector = "img, video, [class*='preview'], [class*='thumbnail'], [class*='attachment'], [class*='file-preview']";
@@ -1625,7 +1627,7 @@ const RSProvider: PlazCodeProvider = (() => {
     const dt = new DataTransfer();
     try { images.forEach((img, i) => dt.items.add(fileFromImage(img, i))); } catch { return false; }
     if (dt.items.length !== images.length) return false;
-    const fileInput = safeQuery(document, 'input[data-testid="upload-photos-input"]') || safeQuery(box, 'input[type="file"][accept*="image"]');
+    const fileInput = safeQuery<HTMLInputElement>(document, 'input[data-testid="upload-photos-input"]') || safeQuery<HTMLInputElement>(box, 'input[type="file"][accept*="image"]');
     ed.focus();
     // Pick one upload transport. Sending both paste and file-change duplicates
     // uploads on bundles that accept each of them.
@@ -1642,23 +1644,23 @@ const RSProvider: PlazCodeProvider = (() => {
       return true;
     }), 15000);
   }
-  function clearAttachments() {
+  function clearAttachments(): void {
     try {
       const box = composerFrame();
       if (!box) return;
-      safeQueryAll(box, "[aria-label*='upprimer'], [aria-label*='emove'], [aria-label*='Remove'], [class*='delete'], [class*='remove']")
+      safeQueryAll<HTMLElement>(box, "[aria-label*='upprimer'], [aria-label*='emove'], [aria-label*='Remove'], [class*='delete'], [class*='remove']")
         .forEach((d) => { try { d.click(); } catch {} });
     } catch {}
   }
 
   // ── New chat navigation ───────────────────────────────────────────────────
-  function findNewChatButton() {
-    return safeQuery(document, 'a[data-testid="create-new-chat-button"]') ||
-      [...safeQueryAll(document, 'a[href="/"], button')].find(
+  function findNewChatButton(): HTMLElement | null {
+    return safeQuery<HTMLElement>(document, 'a[data-testid="create-new-chat-button"]') ||
+      [...safeQueryAll<HTMLElement>(document, 'a[href="/"], button')].find(
         (a) => safeRead(() => a.offsetParent, null) !== null && /new chat|nouvelle discussion|nouveau chat/i.test(safeRead(() => a.getAttribute("aria-label"), null) || safeRead(() => a.textContent, "") || "")
       ) || null;
   }
-  async function openNewChat() {
+  async function openNewChat(): Promise<boolean> {
     const btn = findNewChatButton();
     if (!btn) return false;
     const prevPath = location.pathname;
@@ -1670,7 +1672,7 @@ const RSProvider: PlazCodeProvider = (() => {
 
   // "/" = a fresh chat whose conversation id is not assigned yet → "" (transient)
   // so the core never persists it as "started"; /c/<id> = a real conversation.
-  const conversationKey = () => {
+  const conversationKey = (): string => {
     const m = String(location.pathname || "").match(/(?:^|\/)c\/[^/?#]+/);
     return m ? (m[0].startsWith("/") ? m[0] : "/" + m[0]) : "";
   };
@@ -1680,7 +1682,7 @@ const RSProvider: PlazCodeProvider = (() => {
   // is the same "id not assigned yet" state as "/", never a chat of its own; handing
   // it to the core as a chat made the core think the user switched chats and abort
   // the startup. This is the key the core and the delivery proof use.
-  const stableChatKey = () => {
+  const stableChatKey = (): string => {
     const key = conversationKey();
     return /^\/c\/local-chatgpt(?::|%3a)/i.test(key) ? "" : key;
   };
@@ -1697,22 +1699,22 @@ const RSProvider: PlazCodeProvider = (() => {
   const PROMPT_EXTRA = `- WHEN THE USER SENDS AN IMAGE: by default it is REFERENCE MATERIAL for the work they want done in their project - a screenshot of a bug, a mockup of the UI they want, a photo of the thing to build, a picture of what is wrong in Studio. Look at it, use it to understand what they want, and then do that work with the PlazCode commands. Do NOT generate a new image from it, and do NOT treat it as an image-editing request. Only generate an image when the user EXPLICITLY asks you to create, generate, draw or edit one ("make me an image of...", "generate a texture", "edit this picture"). If what they want from the image is genuinely unclear, ask them in one short sentence rather than guessing - and never guess "they want a picture".`;
 
   // ── User-send interception ────────────────────────────────────────────────
-  async function writeDraft(value, expectedCurrent) {
+  async function writeDraft(value: unknown, expectedCurrent: unknown): Promise<{ ok: boolean; reason?: string }> {
     const ed = getEditor();
     if (!ed || editorText() !== String(expectedCurrent)) return {ok:false,reason:'draft-changed'};
     const relock = _locked;
     try { setInputLock(false); await typeEditorText(ed, String(value)); return {ok:editorText() === String(value)}; }
     finally { if(relock)setInputLock(true); }
   }
-  function installSendHooks(handlers) {
+  function installSendHooks(handlers: SendHooks): void {
     document.addEventListener(
       "keydown",
       (e) => {
         if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
         const ed = getEditor();
-        if (!ed || !safeRead(() => ed.contains(e.target), false)) return;
+        if (!ed || !safeRead(() => ed.contains(e.target as Node), false)) return;
         if (editorText().trim() === "") return;
-        if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+        if ((handlers as SendHooksExt).onCoworkSend && (handlers as SendHooksExt).onCoworkSend!(e)) return;
         if (handlers.isBlocked()) return;
         // No session yet → nudge toward Start, but NEVER block the send. The
         // user is entitled to just chat with ChatGPT; the extension is opt-in.
@@ -1736,9 +1738,9 @@ const RSProvider: PlazCodeProvider = (() => {
         if (!getEditor()) return;
         const t = e.target as Element;
         // Native "Continue generating" = a clear intent to RESUME after truncation.
-        const cont = t && safeRead(() => t.closest, null) && safeClosest(t, "button");
+        const cont = t && safeRead(() => t.closest, null) && (safeClosest(t, "button") as HTMLElement | null);
         if (cont && RE.continueBtn.test((safeRead(() => cont.innerText, "") || "").trim())) {
-          handlers.onNativeContinue();
+          (handlers as SendHooksExt).onNativeContinue!();
           return;
         }
         // Stop is tested FIRST: it is the same node as send, just in its other
@@ -1747,7 +1749,7 @@ const RSProvider: PlazCodeProvider = (() => {
         if (stop) { handlers.onNativeStop(); return; }
         const btn = t && safeRead(() => t.closest, null) && safeClosest(t, S.submitBtn);
         if (!btn || isStopBtn(btn)) return;
-        if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+        if ((handlers as SendHooksExt).onCoworkSend && (handlers as SendHooksExt).onCoworkSend!(e)) return;
         if (handlers.isBlocked()) return;
         // Same as the keydown path: nudge, never block (see the comment there).
         if (!handlers.isStarted()) {
@@ -1776,10 +1778,10 @@ const RSProvider: PlazCodeProvider = (() => {
   const CMD_OPEN = /###\s*(?:LUA|MCP_TOOL)\s*###/i;
   const CMD_CLOSE = /###\s*END_(?:LUA|MCP_TOOL)\s*###/i;
 
-  function findToolBlockSpot(item /*, chip */) {
+  function findToolBlockSpot(item: Element | null /*, chip */): { parent: Element | null; ref: Element | null } | null {
     const replies = replyNodes(item);
-    let hidAny = null;
-    const hide = (el, mc) => {
+    let hidAny: { parent: Element | null; ref: Element | null } | null = null;
+    const hide = (el: Element, mc: Element | null): void => {
       el.classList.add("rs-tool-hide");
       if (mc) mc.classList.add("rs-cmd-mask");
       hidAny = hidAny || { parent: safeRead(() => el.parentElement, null), ref: el };
@@ -1838,8 +1840,8 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     // ChatGPT can render the fenced block beside .markdown under the same turn.
     // Match assistantText's sibling read without touching user-pasted JSON.
-    let scope = null;
-    try { scope = (safeRead(() => item.closest, null) && safeClosest(item, S.turn)) || (safeRead(() => item.closest, null) && safeClosest(item, "[data-turn-key]")); } catch {}
+    let scope: Element | null = null;
+    try { scope = (safeRead(() => item!.closest, null) && safeClosest(item, S.turn)) || (safeRead(() => item!.closest, null) && safeClosest(item, "[data-turn-key]")); } catch {}
     if (scope && scope !== item && safeRead(() => scope.querySelectorAll, null)) {
       const userSel = "[data-user-message-bubble], [data-message-author-role='user'], [data-conversation-role='user'], [data-role='user'], [data-message-author='user']";
       for (const pre of safeQueryAll(scope, "pre")) {
@@ -1910,12 +1912,12 @@ const RSProvider: PlazCodeProvider = (() => {
     guardedSender: true, authoritativeSendResult: true, strictSendReceipt: true,
     requireConfirmedStartup: true,
     cancelPendingSends() { ++sendGeneration; },
-    ignoreMutationRecords(records) {
+    ignoreMutationRecords(records: MutationRecord[]) {
       if (!safeRead(() => document.documentElement.classList.contains('rs-chatgpt-injecting'), false) || !records.length) return false;
       const ed = getEditor();
       // Skip only our native editor transactions. Transcript changes, submit
       // controls, editor replacement and mixed batches still run the sweep.
-      return !!ed && records.every(record => record.target === ed || safeRead(() => ed.contains(record.target), false));
+      return !!ed && records.every(record => record.target === ed || safeRead(() => ed.contains(record.target as Node), false));
     },
     isGenerating, isBusyNow, isHardGenerating, turnComplete,
     enforceComposer, ensureComposerReady, sweepStaleInternalDraft, expandCollapsedWork,

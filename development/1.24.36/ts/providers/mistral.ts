@@ -12,36 +12,38 @@
 // eslint-disable-next-line no-unused-vars
 const RSProvider: PlazCodeProvider = (() => {
   "use strict";
+  type SafeRect = { x: number; y: number; left: number; top: number; right: number; bottom: number; width: number; height: number; readFailed?: boolean };
+  type ToolSpot = { parent: Element | null; ref: Element | null };
   let domReadErrors = 0;
-  function safeRead(read, fallback) {
+  function safeRead<T, F = T>(read: () => T, fallback: F): T | F {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
-  function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+  function safeQuery<T extends Element = HTMLElement>(root: ParentNode | null | undefined, selector: string): T | null {
+    return safeRead(() => (root as ParentNode).querySelector<T>(selector), null);
   }
-  function safeQueryAll(root, selector): any[] {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll<T extends Element = HTMLElement>(root: ParentNode | null | undefined, selector: string): T[] {
+    return safeRead(() => Array.from((root as ParentNode).querySelectorAll<T>(selector)), []);
   }
-  function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+  function safeClosest<T extends Element = HTMLElement>(node: Node | EventTarget | null | undefined, selector: string): T | null {
+    return safeRead(() => (node as Element).closest<T>(selector), null);
   }
-  function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), { x: 0, y: 0, left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, readFailed: true });
+  function safeRect(node: Element): SafeRect {
+    return safeRead<DOMRect, SafeRect>(() => node.getBoundingClientRect(), { x: 0, y: 0, left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, readFailed: true });
   }
-  function safeStyle(node) {
-    return safeRead(() => getComputedStyle(node), { display: "none", visibility: "hidden", opacity: "0", overflow: "hidden", overflowY: "hidden" });
+  function safeStyle(node: Element): CSSStyleDeclaration {
+    return safeRead(() => getComputedStyle(node), { display: "none", visibility: "hidden", opacity: "0", overflow: "hidden", overflowY: "hidden" } as unknown as CSSStyleDeclaration);
   }
-  function safePredicate(predicate) {
+  function safePredicate<T>(predicate: () => T): T | false {
     const before = domReadErrors;
-    const result = safeRead(predicate, false);
+    const result = safeRead(predicate, false as const);
     return before === domReadErrors ? result : false;
   }
-  function waitBudget(timeout, interval) {
+  function waitBudget(timeout: number, interval: number): { ms: number; polls: number } {
     const ms = Number.isFinite(timeout) ? Math.min(600000, Math.max(0, timeout)) : 30000;
     return { ms, polls: Math.ceil(ms / interval) };
   }
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
   let diag: Diag = () => {};
 
   const S = {
@@ -93,7 +95,7 @@ const RSProvider: PlazCodeProvider = (() => {
     RESPONSE_TIMEOUT_MS: 300000,
   };
 
-  function visible(el) {
+  function visible(el: Element | null | undefined): boolean {
     if (!el || safeClosest(el, "#rs-root")) return false;
     const r = safeRect(el);
     if (r.width < 8 || r.height < 6) return false;
@@ -101,7 +103,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return !(s.display === "none" || s.visibility === "hidden" || parseFloat(s.opacity) === 0);
   }
 
-  const ariaOf = (b) => (
+  const ariaOf = (b: Element): string => (
     safeRead(() => b.getAttribute("aria-label"), null) ||
     safeRead(() => b.getAttribute("title"), null) ||
     safeRead(() => b.getAttribute("data-testid"), null) ||
@@ -109,7 +111,7 @@ const RSProvider: PlazCodeProvider = (() => {
   ).trim();
 
   // ── Work & Code / Vibe Code Mode Detection & Switching ────────────────────
-  function isControlActive(el) {
+  function isControlActive(el: Element | null | undefined): boolean {
     if (!el) return false;
     if (safeRead(() => el.getAttribute("aria-selected"), null) === "true") return true;
     if (safeRead(() => el.getAttribute("aria-pressed"), null) === "true") return true;
@@ -140,7 +142,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return "chat";
   }
 
-  function findModeControl(target: "work" | "code") {
+  function findModeControl(target: "work" | "code"): HTMLElement | null {
     const re = target === "code" ? RE.codeMode : RE.workMode;
     for (const el of safeQueryAll(document, S.modeControl)) {
       if (safeClosest(el, "#rs-root") || !visible(el)) continue;
@@ -155,7 +157,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return null;
   }
 
-  async function switchMode(target: "work" | "code") {
+  async function switchMode(target: "work" | "code"): Promise<boolean> {
     if (detectMode() === target) return true;
     const ctrl = findModeControl(target);
     if (!ctrl) return false;
@@ -164,11 +166,11 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── Editor & Composer ─────────────────────────────────────────────────────
-  let lockedEditor: any = null;
-  function getEditor() {
-    if (lockedEditor && safeRead(() => lockedEditor.isConnected, false) && visible(lockedEditor)) return lockedEditor;
-    const seen = new Set();
-    const candidates: any[] = [];
+  let lockedEditor: HTMLElement | null = null;
+  function getEditor(): HTMLElement | null {
+    if (lockedEditor && safeRead(() => lockedEditor?.isConnected ?? false, false) && visible(lockedEditor)) return lockedEditor;
+    const seen = new Set<HTMLElement>();
+    const candidates: HTMLElement[] = [];
     for (const el of safeQueryAll(document, S.editor)) {
       if (seen.has(el)) continue;
       seen.add(el);
@@ -192,36 +194,37 @@ const RSProvider: PlazCodeProvider = (() => {
     return candidates[candidates.length - 1] || candidates[0];
   }
 
-  function editorText(el?) {
+  function editorText(el?: HTMLElement | null): string {
     const e = el || getEditor();
     if (!e) return "";
     const tag = safeRead(() => e.tagName, "");
-    if (tag === "TEXTAREA" || tag === "INPUT") return safeRead(() => e.value, "") || "";
+    if (tag === "TEXTAREA" || tag === "INPUT") return safeRead(() => (e as HTMLInputElement | HTMLTextAreaElement).value, "") || "";
     return (safeRead(() => e.innerText, "") || safeRead(() => e.textContent, "") || "").replace(/\u00a0/g, " ");
   }
 
-  function composerFrame() {
+  function composerFrame(): HTMLElement | null {
     const ed = getEditor();
     if (!ed) return null;
     return safeClosest(ed, S.composerWrap) || safeRead(() => ed.parentElement, null);
   }
 
-  function barAnchor() {
+  function barAnchor(): HTMLElement | null {
     const ed = getEditor();
     if (!ed) return null;
-    let n = safeRead(() => ed.parentElement, null);
+    let n: HTMLElement | null = safeRead(() => ed.parentElement, null);
     for (let i = 0; i < 10 && n && n !== document.body; i++) {
-      const cls = String(safeRead(() => n.className, "") || "");
-      const r = parseFloat(safeStyle(n).borderTopLeftRadius) || 0;
-      if (/rounded|composer|chat-input/i.test(cls) || r >= 12) return n;
-      n = safeRead(() => n.parentElement, null);
+      const cur: HTMLElement = n;
+      const cls = String(safeRead(() => cur.className, "") || "");
+      const r = parseFloat(safeStyle(cur).borderTopLeftRadius) || 0;
+      if (/rounded|composer|chat-input/i.test(cls) || r >= 12) return cur;
+      n = safeRead(() => cur.parentElement, null);
     }
     return composerFrame();
   }
 
   // ── Turns & Text Extraction ───────────────────────────────────────────────
   function allItems(): Element[] {
-    const seen = new Set();
+    const seen = new Set<Element>();
     const out: Element[] = [];
     for (const el of safeQueryAll(document, S.turn)) {
       if (seen.has(el) || safeClosest(el, S.nonComposerScope)) continue;
@@ -232,7 +235,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return out;
   }
 
-  function isUserItem(item) {
+  function isUserItem(item: Element | null | undefined): boolean {
     if (!item) return false;
     if (safeRead(() => item.matches(S.userTurn), false) || safeQuery(item, S.userTurn)) return true;
     if (safeRead(() => item.matches(S.assistantTurn), false)) return false;
@@ -249,35 +252,36 @@ const RSProvider: PlazCodeProvider = (() => {
     return false;
   }
 
-  const isAssistantItem = (item) => !!item && !isUserItem(item);
+  const isAssistantItem = (item: Element | null | undefined): boolean => !!item && !isUserItem(item);
 
   const CODE_CHROME = "button, [role='button'], .sr-only, [class*='copy' i], [class*='code-header' i]";
-  function textWithout(root: Element | null, excludeSel?: string) {
+  function textWithout(root: Element | null, excludeSel?: string): string {
     if (!root) return "";
     const skip = ".rs-chip, " + CODE_CHROME + (excludeSel ? ", " + excludeSel : "");
     let t = "";
-    const walk = (n) => {
+    const walk = (n: Node): void => {
       const type = safeRead(() => n.nodeType, 0);
       if (type === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (type !== 1) return;
-      if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
-      const tag = safeRead(() => n.tagName, "");
+      const el = n as Element;
+      if (safeRead(() => el.matches, null) && safeRead(() => el.matches(skip), false)) return;
+      const tag = safeRead(() => el.tagName, "");
       if (tag === "BR") { t += "\n"; return; }
-      const isCode = tag === "PRE" || (safeRead(() => n.matches, null) && safeRead(() => n.matches(S.codeWrap), false));
+      const isCode = tag === "PRE" || (safeRead(() => el.matches, null) && safeRead(() => el.matches(S.codeWrap), false));
       const isBlock = isCode || /^(P|DIV|LI|UL|OL|BLOCKQUOTE|H[1-6]|TABLE|TR|SECTION|ARTICLE)$/.test(tag);
       if (isBlock && t && !t.endsWith("\n")) t += "\n";
-      for (const c of safeRead(() => n.childNodes, [])) walk(c);
+      for (const c of safeRead(() => n.childNodes, [] as Node[])) walk(c);
       if (isBlock && !t.endsWith("\n")) t += "\n";
     };
     walk(root);
     return t;
   }
 
-  function replyRoots(item) {
+  function replyRoots(item: Element): Element[] {
     if (!item) return [];
     const mds = safeQueryAll(item, S.reply).filter((m) => !safeClosest(m, S.thinking) && !safeClosest(m, ".rs-chip"));
     if (!mds.length) return [item];
-    const set = new Set(mds);
+    const set = new Set<Element>(mds);
     return mds.filter((m) => {
       for (let p = safeRead(() => m.parentElement, null); p && p !== item; p = safeRead(() => p.parentElement, null)) {
         if (set.has(p)) return false;
@@ -286,30 +290,30 @@ const RSProvider: PlazCodeProvider = (() => {
     });
   }
 
-  function itemText(item) {
+  function itemText(item: Element): string {
     if (!item) return "";
     if (isAssistantItem(item)) return replyRoots(item).map((m) => textWithout(m, S.thinking)).join("\n");
     return textWithout(item);
   }
 
-  function classifyText(item, excludeSel?) {
+  function classifyText(item: Element, excludeSel?: string): string {
     if (!item) return "";
     const skip = excludeSel ? `${S.thinking}, ${excludeSel}` : S.thinking;
     if (isAssistantItem(item)) return replyRoots(item).map((m) => textWithout(m, skip)).join("\n");
     return textWithout(item, excludeSel);
   }
 
-  const assistantItems = () => allItems().filter(isAssistantItem);
-  const assistantCount = () => assistantItems().length;
-  const userCount = () => allItems().filter(isUserItem).length;
-  const lastAssistant = () => {
+  const assistantItems = (): Element[] => allItems().filter(isAssistantItem);
+  const assistantCount = (): number => assistantItems().length;
+  const userCount = (): number => allItems().filter(isUserItem).length;
+  const lastAssistant = (): Element | null => {
     const it = assistantItems();
     return it.length ? it[it.length - 1] : null;
   };
 
-  const _turnIds = new WeakMap();
+  const _turnIds = new WeakMap<Element, string>();
   let _turnSeq = 0;
-  function itemKey(item) {
+  function itemKey(item: Element | null): string | null {
     if (!item) return null;
     const own = safeRead(() => item.getAttribute("data-message-id"), null) || safeRead(() => item.getAttribute("data-turn-id"), null);
     if (own) return own;
@@ -317,12 +321,12 @@ const RSProvider: PlazCodeProvider = (() => {
     if (!id) { id = "m" + (++_turnSeq); _turnIds.set(item, id); }
     return id;
   }
-  const lastAssistantId = () => itemKey(lastAssistant());
+  const lastAssistantId = (): string | null => itemKey(lastAssistant());
 
-  const chatIsEmpty = () => allItems().length === 0;
+  const chatIsEmpty = (): boolean => allItems().length === 0;
   const FRESH_PATH = /^\/(?:work|code|vibe|vibe-code|vibecode|chat)?\/?$/i;
-  const isFreshChat = () => chatIsEmpty() && !!getEditor() && FRESH_PATH.test(location.pathname || "/");
-  const conversationKey = () => {
+  const isFreshChat = (): boolean => chatIsEmpty() && !!getEditor() && FRESH_PATH.test(location.pathname || "/");
+  const conversationKey = (): string => {
     const p = location.pathname || "/";
     if (chatIsEmpty() || FRESH_PATH.test(p)) return "";
     const m = p.match(/\/(?:chat|work|code|vibe(?:-code)?)\/([A-Za-z0-9_-]+)/i);
@@ -330,12 +334,12 @@ const RSProvider: PlazCodeProvider = (() => {
   };
 
   // ── Send & Stop Buttons ───────────────────────────────────────────────────
-  function composerButtons() {
+  function composerButtons(): HTMLButtonElement[] {
     const scope = composerFrame() || document;
-    return safeQueryAll(scope, "button").filter((b) => !safeClosest(b, "#rs-root") && visible(b));
+    return safeQueryAll<HTMLButtonElement>(scope, "button").filter((b) => !safeClosest(b, "#rs-root") && visible(b));
   }
 
-  function isStopBtn(b) {
+  function isStopBtn(b: Element | null): boolean {
     if (!b) return false;
     const a = ariaOf(b);
     if (S.stopAria.test(a) || /stop/i.test(safeRead(() => b.getAttribute("data-testid"), "") || "")) return true;
@@ -343,7 +347,7 @@ const RSProvider: PlazCodeProvider = (() => {
     return !!(safeQuery(b, "rect") && safeClosest(b, S.composerWrap) && !safeQuery(b, "path[d*='M5 12']"));
   }
 
-  function sendButton() {
+  function sendButton(): HTMLButtonElement | null {
     const btns = composerButtons();
     return (
       btns.find((b) => S.sendAria.test(ariaOf(b))) ||
@@ -352,22 +356,22 @@ const RSProvider: PlazCodeProvider = (() => {
     );
   }
 
-  function stopButton() {
+  function stopButton(): HTMLButtonElement | null {
     return composerButtons().find(isStopBtn) || null;
   }
 
   // ── Streaming & Completion ────────────────────────────────────────────────
-  function streamText(item) {
+  function streamText(item: Element | null | undefined): string {
     if (!item) return "";
     const think = safeQuery(item, S.thinking);
     const thinkTxt = think ? (safeRead(() => think.textContent, "") || "") : "";
     const replyTxt = replyRoots(item).map((m) => textWithout(m, ".rs-chip, " + S.thinking)).join("\n");
     return (thinkTxt + "\n" + replyTxt).trim();
   }
-  const streamLen = (item?) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item?: Element | null): number => streamText(item === undefined ? lastAssistant() : item).length;
 
-  let _streamMax = -1, _streamAt = 0, _streamItem: any = null;
-  function sampleStream() {
+  let _streamMax = -1, _streamAt = 0, _streamItem: Element | null = null;
+  function sampleStream(): void {
     const item = lastAssistant();
     const len = streamText(item).length;
     const now = Date.now();
@@ -376,7 +380,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
     if (len > _streamMax) { _streamMax = len; _streamAt = now; }
   }
-  const grewWithin = (ms) => _streamMax > 1 && Date.now() - _streamAt < ms;
+  const grewWithin = (ms: number): boolean => _streamMax > 1 && Date.now() - _streamAt < ms;
 
   const WEDGE_MS = 10000;
   let _stopSince = 0;
@@ -426,7 +430,7 @@ const RSProvider: PlazCodeProvider = (() => {
     };
   }
 
-  async function waitFor(pred, timeout) {
+  async function waitFor(pred: () => unknown, timeout: number): Promise<boolean> {
     const budget = waitBudget(timeout, 120), t0 = Date.now();
     for (let poll = 0; poll < budget.polls && Date.now() - t0 < budget.ms; poll++) {
       if (safePredicate(pred)) return true;
@@ -459,7 +463,7 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   const SEND_MAX = 100000;
-  function truncateForSend(text) {
+  function truncateForSend(text: string): string {
     if (typeof window.__rsLimitOutgoing === "function") return window.__rsLimitOutgoing(text);
     if (!text || text.length <= SEND_MAX) return text;
     const omitted = text.length - SEND_MAX;
@@ -469,16 +473,16 @@ const RSProvider: PlazCodeProvider = (() => {
     return text.slice(0, head) + marker + text.slice(text.length - (budget - head));
   }
 
-  function setTextareaValue(el, v) {
+  function setTextareaValue(el: HTMLElement, v: string): void {
     const proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
     const setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
     if (setter && setter.set) setter.set.call(el, v);
-    else el.value = v;
+    else (el as HTMLTextAreaElement).value = v;
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
-  function setRichText(el, text) {
+  function setRichText(el: HTMLElement, text: string): void {
     const tag = safeRead(() => el.tagName, "");
     if (tag === "TEXTAREA" || tag === "INPUT") {
       setTextareaValue(el, text);
@@ -489,8 +493,10 @@ const RSProvider: PlazCodeProvider = (() => {
       const sel = window.getSelection();
       const range = document.createRange();
       range.selectNodeContents(el);
-      sel.removeAllRanges();
-      sel.addRange(range);
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
     } catch {}
     let ok = false;
     try { ok = document.execCommand("insertText", false, text); } catch {}
@@ -501,7 +507,7 @@ const RSProvider: PlazCodeProvider = (() => {
     }
   }
 
-  async function writeDraft(value, expectedCurrent) {
+  async function writeDraft(value: unknown, expectedCurrent: unknown): Promise<{ ok: boolean; reason?: string }> {
     const ed = getEditor();
     if (!ed || editorText(ed).trim() !== String(expectedCurrent).trim()) return { ok: false, reason: "draft-changed" };
     const text = String(value);
@@ -526,7 +532,7 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   // ── Attachments ───────────────────────────────────────────────────────────
-  function fileFromImage(img, i) {
+  function fileFromImage(img: ImagePayload, i: number): File {
     if (typeof PlazCodeMedia !== "undefined") return PlazCodeMedia.fileFrom(img, i);
     const mime = img.mimeType || "image/png";
     const bin = atob(img.data);
@@ -543,20 +549,20 @@ const RSProvider: PlazCodeProvider = (() => {
     return false;
   }
 
-  async function attachImages(images) {
+  async function attachImages(images: ImagePayloadList): Promise<boolean> {
     if (!images || !images.length) return false;
     const dt = new DataTransfer();
     images.forEach((img, i) => { try { dt.items.add(fileFromImage(img, i)); } catch {} });
     if (!dt.items.length) return false;
 
-    let fi = safeQueryAll(document, S.fileInput).find((i) => !safeClosest(i, "#rs-root")) || null;
-    let opened: any = null;
+    let fi = safeQueryAll<HTMLInputElement>(document, S.fileInput).find((i) => !safeClosest(i, "#rs-root")) || null;
+    let opened: HTMLElement | null = null;
     if (!fi) {
       opened = safeQuery(document, S.attachBtn);
       if (opened) {
         try { opened.click(); } catch {}
         await waitFor(() => !!safeQuery(document, S.fileInput), 1500);
-        fi = safeQueryAll(document, S.fileInput).find((i) => !safeClosest(i, "#rs-root")) || null;
+        fi = safeQueryAll<HTMLInputElement>(document, S.fileInput).find((i) => !safeClosest(i, "#rs-root")) || null;
       }
     }
     if (fi) {
@@ -595,7 +601,7 @@ const RSProvider: PlazCodeProvider = (() => {
     } catch {}
   }
 
-  async function typeAndSend(text, images?) {
+  async function typeAndSend(text: string, images?: ImagePayloadList): Promise<void> {
     const ed = getEditor();
     if (!ed) throw new Error("Mistral chat box not found — open chat.mistral.ai/work");
     const relock = _locked || safeRead(() => ed.getAttribute("contenteditable"), null) === "false" || safeRead(() => ed.hasAttribute("readonly"), false);
@@ -661,8 +667,8 @@ const RSProvider: PlazCodeProvider = (() => {
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
       const ed = getEditor();
-      if (!ed || !safeRead(() => ed.contains(e.target), false) || editorText(ed).trim() === "") return;
-      if ((handlers as any).onCoworkSend && (handlers as any).onCoworkSend(e)) return;
+      if (!ed || !safeRead(() => ed.contains(e.target as Node | null), false) || editorText(ed).trim() === "") return;
+      if (handlers.onCoworkSend && (handlers.onCoworkSend as (e: KeyboardEvent) => boolean)(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (chatIsEmpty()) handlers.onBlockedAttempt();
@@ -673,7 +679,7 @@ const RSProvider: PlazCodeProvider = (() => {
 
     document.addEventListener("click", (e) => {
       if (!getEditor() || safeClosest(e.target, "#rs-root")) return;
-      const btn = safeRead(() => (e.target as Element).closest, null) && safeClosest(e.target, "button");
+      const btn = safeRead(() => (e.target as Element).closest, null) && safeClosest<HTMLButtonElement>(e.target, "button");
       if (!btn) return;
       if (isStopBtn(btn)) {
         if (e.isTrusted !== false) handlers.onNativeStop();
@@ -681,7 +687,7 @@ const RSProvider: PlazCodeProvider = (() => {
       }
       const isSend = S.sendAria.test(ariaOf(btn)) || safeRead(() => btn.type, "") === "submit";
       if (!isSend || safeRead(() => btn.disabled, false) || safeRead(() => btn.getAttribute("aria-disabled"), null) === "true") return;
-      if ((handlers as any).onCoworkSend && (handlers as any).onCoworkSend(e)) return;
+      if (handlers.onCoworkSend && (handlers.onCoworkSend as (e: MouseEvent) => boolean)(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (chatIsEmpty()) handlers.onBlockedAttempt();
@@ -692,9 +698,9 @@ const RSProvider: PlazCodeProvider = (() => {
   }
 
   const CMD_SHAPE = /"(?:command|tool)"\s*:\s*"|###\s*lua|###mcp_tool###/i;
-  function findToolBlockSpot(item) {
+  function findToolBlockSpot(item: Element): ToolSpot | null {
     if (!item) return null;
-    let spot: { parent: Element | null; ref: Element | null } | null = null;
+    let spot: ToolSpot | null = null;
     for (const block of safeQueryAll(item, S.codeWrap)) {
       if (safeClosest(block, ".rs-chip") || safeClosest(block, S.thinking)) continue;
       if (!CMD_SHAPE.test(safeRead(() => block.textContent, "") || "")) continue;
@@ -714,7 +720,7 @@ const RSProvider: PlazCodeProvider = (() => {
     timings,
     thinkingSel: S.thinking,
     chipAtItemLevel: true,
-    chipAnchor: (item) => item,
+    chipAnchor: (item: Element): Element => item,
     reliableCounts: true,
     init({ diag: d } = {}) {
       if (d) diag = d;
@@ -725,11 +731,11 @@ const RSProvider: PlazCodeProvider = (() => {
     getEditor, editorText, chatIsEmpty, isFreshChat, composerFrame, barAnchor,
     setInputLock, writeDraft, typeAndSend, stopGeneration,
     isGenerating, isBusyNow, isHardGenerating,
-    enforceComposer(reason) {
+    enforceComposer(reason?: string) {
       const mode = detectMode();
       return { ready: !!getEditor() && !loginGatePresent(), mode, reason: reason || "" };
     },
-    async ensureComposerReady(reason) {
+    async ensureComposerReady(reason?: string) {
       if (reason === "mode:work") await switchMode("work");
       else if (reason === "mode:code") await switchMode("code");
       const mode = detectMode();
@@ -738,7 +744,7 @@ const RSProvider: PlazCodeProvider = (() => {
     },
     modeWarning, loginGatePresent,
     turnHalted, findContinueBtn, clickContinueBtn,
-    scanError, isTooLongMsg: (t) => RE.tooLong.test(t), isBusyMsg: (t) => RE.busy.test(t),
+    scanError, isTooLongMsg: (t: string): boolean => RE.tooLong.test(t), isBusyMsg: (t: string): boolean => RE.busy.test(t),
     attachImages, clearAttachments, hasPendingAttachment, conversationKey,
     installSendHooks, findToolBlockSpot,
   };

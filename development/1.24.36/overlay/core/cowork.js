@@ -1,5 +1,23 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/cowork.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 const PlazCodeCowork = (() => {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   function create({ context, ready, send, changed = () => {}, delivered = () => {} }) {
     let enabled = false, paused = false, reason = "", nextId = 1, sending = false;
     const pending = [];

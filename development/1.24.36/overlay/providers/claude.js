@@ -19,24 +19,27 @@
 //  - Stop: aria-label contains "Stop" ("Stop response" / "Stop generating")
 //  - Thinking: [data-is-thinking], [class*="thinking"], [class*="extended-thinking"]
 //  - Chat URL: /new, /chat/<uuid>, /project/<uuid>
-const RSProvider                   = (() => {
+const RSProvider = (() => {
   "use strict";
+  ;
+  ;
+  ;
   // Reads can fail while a framework remounts a surface. Do not hide write failures.
   let domReadErrors = 0;
   function safeRead(read, fallback) {
     try { return read(); } catch { domReadErrors++; return fallback; }
   }
   function safeQuery(root, selector) {
-    return safeRead(() => root.querySelector(selector), null);
+    return safeRead(() => (root).querySelector(selector), null);
   }
-  function safeQueryAll(root, selector)        {
-    return safeRead(() => Array.from(root.querySelectorAll(selector)), []);
+  function safeQueryAll(root, selector) {
+    return safeRead(() => Array.from((root).querySelectorAll(selector)), []);
   }
   function safeClosest(node, selector) {
-    return safeRead(() => node.closest(selector), null);
+    return safeRead(() => (node).closest(selector), null);
   }
   function safeRect(node) {
-    return safeRead(() => node.getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
+    return safeRead(() => (node).getBoundingClientRect(), {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0,readFailed:true});
   }
   function safeStyle(node) {
     return safeRead(() => getComputedStyle(node), {display:'none',visibility:'hidden',opacity:'0',overflow:'hidden',overflowY:'hidden'});
@@ -63,7 +66,7 @@ const RSProvider                   = (() => {
     return safePredicate(fn);
   };
 
-  let diag       = () => {};
+  let diag = () => {};
   const timings = {
     GEN_IDLE_MS: 1600,
     REASON_IDLE_MS: 14000,
@@ -178,21 +181,21 @@ const RSProvider                   = (() => {
     return s;
   }
 
-  function textWithout(root                , excludeSel         ) {
+  function textWithout(root, excludeSel) {
     if (!root) return "";
     let t = "";
     const walk = (n) => {
       if (safeRead(() => n.nodeType, 0) === 3) { t += safeRead(() => n.nodeValue, ""); return; }
       if (safeRead(() => n.nodeType, 0) !== 1) return;
-      if (excludeSel && safeRead(() => n.matches, null) && safeRead(() => n.matches(excludeSel), false)) return;
-      if (n.classList && safeRead(() => n.classList.contains("rs-chip"), false)) return;
-      if (safeRead(() => n.tagName, "") === "BR") { t += "\n"; return; }
-      if (n.classList && safeRead(() => n.classList.contains("cm-line"), false)) {
+      if (excludeSel && safeRead(() => (n).matches, null) && safeRead(() => (n).matches(excludeSel), false)) return;
+      if ((n).classList && safeRead(() => (n).classList.contains("rs-chip"), false)) return;
+      if (safeRead(() => (n).tagName, "") === "BR") { t += "\n"; return; }
+      if ((n).classList && safeRead(() => (n).classList.contains("cm-line"), false)) {
         for (const c of safeRead(() => n.childNodes, [])) walk(c);
         t += "\n";
         return;
       }
-      const block = /^(P|DIV|LI|PRE|H1|H2|H3|H4|TR|ARTICLE|SECTION)$/.test(safeRead(() => n.tagName, ""));
+      const block = /^(P|DIV|LI|PRE|H1|H2|H3|H4|TR|ARTICLE|SECTION)$/.test(safeRead(() => (n).tagName, ""));
       if (block && t && !t.endsWith("\n")) t += "\n";
       for (const c of safeRead(() => n.childNodes, [])) walk(c);
       if (block && t && !t.endsWith("\n")) t += "\n";
@@ -291,7 +294,7 @@ const RSProvider                   = (() => {
     if (!item) return [];
     // Thinking can contain the first markdown block. Read all non-thinking
     // answer blocks, without double-reading nested markdown wrappers.
-    const answerOnly = nodes => nodes.filter(node => !safeClosest(node, S.thinking));
+    const answerOnly = (nodes) => nodes.filter(node => !safeClosest(node, S.thinking));
     let nodes = answerOnly(safeQueryAll(item, ".standard-markdown, [data-testid='markdown']"));
     if (!nodes.length) nodes = answerOnly(safeQueryAll(item, ".font-claude-response"));
     if (!nodes.length) return safeClosest(item, S.thinking) ? [] : [item];
@@ -367,7 +370,7 @@ const RSProvider                   = (() => {
   }
 
   function visibleBtn(b) {
-    if (!b || safeRead(() => b.disabled, true)) return false;
+    if (!b || safeRead(() => (b).disabled, true)) return false;
     // PlazCode's own buttons are never Claude's. The bar's "Stop" button (shown while Start runs) matched the Stop test below, so
     // Claude looked busy before anything was sent and startup waited about a minute (owner debug log, 2026-11-14).
     if (safeClosest(b, "#rs-root, #rs-menu, #rs-cards-panel, #rs-approve")) return false;
@@ -453,7 +456,7 @@ const RSProvider                   = (() => {
     const think = thinkingText(item);
     return think ? (think + "\n" + reply) : reply;
   }
-  const streamLen = (item ) => streamText(item === undefined ? lastAssistant() : item).length;
+  const streamLen = (item) => streamText(item === undefined ? lastAssistant() : item).length;
   let _streamMax = -1, _streamAt = 0, _streamItem = null;
   function sampleStream() {
     const item = lastAssistant();
@@ -721,7 +724,7 @@ const RSProvider                   = (() => {
       const ed = getEditor();
       if (!ed || !safeRead(() => ed.contains(e.target), false)) return;
       if (editorText().trim() === "") return;
-      if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+      if ((handlers).onCoworkSend && (handlers).onCoworkSend(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (!chatIsEmpty()) return;
@@ -733,10 +736,10 @@ const RSProvider                   = (() => {
 
     document.addEventListener("click", (e) => {
       if (!getEditor()) return;
-      const t = e.target           ;
-      const cont = t && safeRead(() => t.closest, null) && safeClosest(t, "button");
+      const t = e.target;
+      const cont = t && safeRead(() => t.closest, null) && (safeClosest(t, "button"));
       if (cont && RE.continueBtn.test((safeRead(() => cont.innerText, "") || "").trim())) {
-        if (handlers.onNativeContinue) handlers.onNativeContinue();
+        if ((handlers).onNativeContinue) (handlers).onNativeContinue();
         return;
       }
       const stop = stopButton();
@@ -746,7 +749,7 @@ const RSProvider                   = (() => {
       }
       const btn = t && safeRead(() => t.closest, null) && safeClosest(t, "button");
       if (!btn || btn !== sendButton()) return;
-      if (handlers.onCoworkSend && handlers.onCoworkSend(e)) return;
+      if ((handlers).onCoworkSend && (handlers).onCoworkSend(e)) return;
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) {
         if (!chatIsEmpty()) return;
@@ -778,7 +781,7 @@ const RSProvider                   = (() => {
                 safeQuery(parent, 'h1, h2, h3, h4, img, video, textarea, [contenteditable="true"]')) break;
             const buttons = [...safeQueryAll(parent, "button, [role='button']")];
             if (buttons.some((button) => !/^(?:copy(?: code)?(?: to clipboard)?|download(?: code| file)?|expand(?: code)?|collapse(?: code)?|toggle (?:line )?wrap(?:ping)?)$/i.test(
-              (safeRead(() => button.getAttribute("aria-label"), null) || safeRead(() => button.title, "") || safeRead(() => button.textContent, "") || "").trim()))) break;
+              (safeRead(() => button.getAttribute("aria-label"), null) || safeRead(() => (button).title, "") || safeRead(() => button.textContent, "") || "").trim()))) break;
             // Button text is left out, and icon-font glyphs (private-use characters such as Claude's copy icon) and zero-width marks are dropped, so a frame holding only a "json" label and a copy button is hidden whole.
             let extra = (safeRead(() => parent.textContent, "") || "").replace(safeRead(() => pre.textContent, "") || "", "");
             for (const button of buttons) { const label = safeRead(() => button.textContent, "") || ""; if (label) extra = extra.replace(label, ""); }

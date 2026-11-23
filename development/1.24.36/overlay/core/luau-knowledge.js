@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/core/luau-knowledge.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // core/luau-knowledge.js - universal, provider-independent Roblox/Luau
 // engineering knowledge. Keeps a compact always-on doctrine in the system
 // prompt, exposes deeper on-demand guidance, and reviews generated mutations for
@@ -221,6 +222,30 @@ MEASURED VERIFICATION
     replica: ["replicaservice", "replica"], bytenet: ["bytenet", "zap"], wally: ["wally", "packages/"],
   });
 
+  ;
+
+
+
+
+
+
+  ;
+
+
+
+
+
+  ;
+
+
+
+  ;
+
+
+
+
+
+
   function clean(value, max = 1000) {
     return String(value == null ? "" : value).replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
   }
@@ -246,8 +271,8 @@ MEASURED VERIFICATION
 
   // Masks comments and all Luau string forms while preserving newlines. This
   // prevents advisory false positives from examples, URLs, comments, or log text.
-  function maskSource(source, preserveStrings = false) {
-    source = String(source || "");
+  function maskSource(rawSource, preserveStrings = false) {
+    const source = String(rawSource || "");
     let out = "", i = 0;
     const blank = (text) => text.replace(/[^\n\r]/g, " ");
     const longOpen = (at) => {
@@ -319,8 +344,8 @@ MEASURED VERIFICATION
     return declarations >= 16;
   }
 
-  function reviewSource(source) {
-    source = String(source || "");
+  function reviewSource(rawSource) {
+    const source = String(rawSource || "");
     if (!source.trim()) return [];
     const masked = maskSource(source), stringsVisible = maskSource(source, true), diagnostics = [];
     for (const rule of REVIEW_RULES) {
@@ -339,12 +364,12 @@ MEASURED VERIFICATION
     return diagnostics;
   }
   function reviewCall(call) {
-    const name = clean(call && call.tool, 100).split("/").pop().split(".").pop();
-    const args = call && call.arguments || {};
+    const name = (clean(call && call.tool, 100).split("/").pop() || "").split(".").pop();
+    const args = (call && call.arguments || {});
     let source = "";
     if (name === "execute_luau" && typeof args.code === "string") source = args.code;
-    else if (name === "multi_edit" && Array.isArray(args.edits)) source = args.edits.map((edit) => edit && edit.new_string || "").join("\n");
-    else if (name === "apply_script_patch" && Array.isArray(args.patches)) source = args.patches.map((patch) => patch && patch.new_text || "").join("\n");
+    else if (name === "multi_edit" && Array.isArray(args.edits)) source = (args.edits).map((edit) => String(edit && edit.new_string || "")).join("\n");
+    else if (name === "apply_script_patch" && Array.isArray(args.patches)) source = (args.patches).map((patch) => String(patch && patch.new_text || "")).join("\n");
     return reviewSource(source);
   }
   function formatReview(diagnostics) {
@@ -353,8 +378,8 @@ MEASURED VERIFICATION
     return `\n\nPlazCode universal Luau engineering review (advisory; inspect semantics before another edit):\n${lines.join("\n")}\nResolve behavior-preserving issues within scope, verify current API status when relevant, and do not perform a broad framework/style rewrite.`;
   }
 
-  function guide(args, projectContext = "") {
-    args = args && typeof args === "object" ? args : {};
+  function guide(rawArgs, projectContext = "") {
+    const args = rawArgs && typeof rawArgs === "object" ? rawArgs : {};
     const task = clean(args.task, 1000);
     if (!task) return { error: "task is required (1-1000 characters)" };
     const requestedDomains = unique(Array.isArray(args.domains) ? args.domains : []);

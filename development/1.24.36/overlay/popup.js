@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: LicenseRef-PlazCode-Proprietary
+// Built from development/1.24.36/ts/popup.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 const DISCORD_URL = "https://discord.gg/FmKY5bXZn";
 const THEMES = [];
-const POPUP_PALETTES={default:['#e9ba53','#ffe0a1','#18140d','233 186 83'],amethyst:['#a571ff','#d7b8ff','#0c0918','165 113 255'],cyan:['#27c1e7','#a5eaff','#041017','39 193 231'],rose:['#f17097','#ffbdd1','#160912','241 112 151'],emerald:['#29c894','#a6f3d1','#05130f','41 200 148'],graphite:['#9caac0','#e0e7f2','#0a0d13','156 170 192'],crimson:['#ef5569','#ffb0bb','#16080c','239 85 105'],ocean:['#4692f6','#a5ceff','#091323','70 146 246'],copper:['#db9066','#f4c4a3','#17110f','219 144 102'],aurora:['#66d3b8','#b4f6e7','#0c151b','102 211 184'],orchid:['#cd89eb','#edc6ff','#150e1c','205 137 235']};
-let popupAppearance={theme:'default',glow:'subtle',gradients:'on'};
-function applyPopupAppearance(value){
+const POPUP_PALETTES = {default:['#e9ba53','#ffe0a1','#18140d','233 186 83'],amethyst:['#a571ff','#d7b8ff','#0c0918','165 113 255'],cyan:['#27c1e7','#a5eaff','#041017','39 193 231'],rose:['#f17097','#ffbdd1','#160912','241 112 151'],emerald:['#29c894','#a6f3d1','#05130f','41 200 148'],graphite:['#9caac0','#e0e7f2','#0a0d13','156 170 192'],crimson:['#ef5569','#ffb0bb','#16080c','239 85 105'],ocean:['#4692f6','#a5ceff','#091323','70 146 246'],copper:['#db9066','#f4c4a3','#17110f','219 144 102'],aurora:['#66d3b8','#b4f6e7','#0c151b','102 211 184'],orchid:['#cd89eb','#edc6ff','#150e1c','205 137 235']};
+;
+let popupAppearance = {theme:'default',glow:'subtle',gradients:'on'};
+function applyPopupAppearance(value) {
  if(value?.theme==="solar")value={...value,theme:"default"};
  popupAppearance=value&&POPUP_PALETTES[value.theme]?value:{theme:'default',glow:'subtle',gradients:'on'};
  let [accent,light,bg,rgb]=POPUP_PALETTES[popupAppearance.theme];const root=document.documentElement;
  // The app's custom colour (2026-11-14), mixed the same way as in the app.
  const cm=/^#([0-9a-f]{6})$/i.exec(String(value?.custom||''));
- if(cm){const c=[0,2,4].map(i=>parseInt(cm[1].slice(i,i+2),16)),mix=(a,b,t)=>a.map((v,i)=>Math.round(v+(b[i]-v)*t)),hx=r=>'#'+r.map(v=>('0'+Math.max(0,Math.min(255,v)).toString(16)).slice(-2)).join('');accent=hx(c);light=hx(mix(c,[255,255,255],.5));bg=hx(mix([8,9,12],c,.08));rgb=c.join(' ');}
+ if(cm){const c=[0,2,4].map(i=>parseInt(cm[1].slice(i,i+2),16)),mix=(a,b,t)=>a.map((v,i)=>Math.round(v+(b[i]-v)*t)),hx=(r)=>'#'+r.map(v=>('0'+Math.max(0,Math.min(255,v)).toString(16)).slice(-2)).join('');accent=hx(c);light=hx(mix(c,[255,255,255],.5));bg=hx(mix([8,9,12],c,.08));rgb=c.join(' ');}
  root.dataset.palette=popupAppearance.theme;root.dataset.glow=popupAppearance.glow||'subtle';root.dataset.gradients=popupAppearance.gradients||'on';
  // Studio look (1.24.36 bar redesign): same Feel as the app and the bar (Full / on / on when an older app sends none).
- root.dataset.studio='';root.dataset.motion=['full','reduced','off'].includes(value?.motion)?value.motion:'full';root.dataset.anim=value?.anim===false||value?.anim==='off'?'off':'on';root.dataset.ripple=value?.ripple===false||value?.ripple==='off'?'off':'on';
+ root.dataset.studio='';root.dataset.motion=value?.motion&&['full','reduced','off'].includes(value.motion)?value.motion:'full';root.dataset.anim=value?.anim===false||value?.anim==='off'?'off':'on';root.dataset.ripple=value?.ripple===false||value?.ripple==='off'?'off':'on';
  const vars={'--bg':bg,'--accent':accent,'--accent-light':light,'--text':'#eef4ff','--text-dim':light,'--text-faint':'#96a0b0','--surface':`color-mix(in srgb, ${bg} 89%, ${accent})`,'--surface-2':`color-mix(in srgb, ${bg} 78%, ${accent})`,'--line':`rgb(${rgb} / .24)`,'--rgb':rgb,'--glow':popupAppearance.glow==='off'?'transparent':`rgb(${rgb} / ${popupAppearance.glow==='strong'?'.5':'.22'})`};
- for(const [key,value]of Object.entries(vars))root.style.setProperty(key,value);
+ for(const [key,val]of Object.entries(vars))root.style.setProperty(key,val);
 }
 const SUPPORTED_HOSTS = [
   "chat.deepseek.com", "deepseek.com", "chatgpt.com", "chat.openai.com",
@@ -30,6 +32,7 @@ const ENGINE_KEY = "rs-engine"; // "roblox" | "local"
 const ENGINES = ["roblox", "local"];
 const THINKING_LEVELS = ["default", "low", "mid", "high", "max", "ultracode"];
 const WORK_MODES = ["fast", "balanced", "thorough"];
+;
 const WORK_PRESETS = {
   fast: { thinking: "low", extra: false },
   balanced: { thinking: "mid", extra: false },
@@ -37,6 +40,21 @@ const WORK_PRESETS = {
 };
 
 const PERM_MODES = ["sandbox", "ask", "full"];
+;
+;
+
+
+
+
+
+
+
+
+
+
+
+
+;
 const settings = {
   workMode: "balanced",
   permMode: "sandbox",
@@ -82,17 +100,18 @@ function decoratePopup() {
   for (const id of Object.keys(POPUP_ICONS)) {
     const btn = document.getElementById(id);
     if (!btn || btn.querySelector(":scope > .lbl")) continue;
-    const text = btn.textContent.trim(); btn.textContent = ""; setActLabel(btn, text);
+    const text = (btn.textContent || "").trim(); btn.textContent = ""; setActLabel(btn, text);
   }
   // Folded groups (owner: quick buttons at the top, long groups open and close). Remember which are open.
   let open = {}; try { open = JSON.parse(localStorage.getItem("pcPopupFolds") || "{}") || {}; } catch {}
   for (const fold of document.querySelectorAll("details[data-fold]")) {
-    if (open[fold.dataset.fold]) fold.open = true;
-    fold.addEventListener("toggle", () => { try { open[fold.dataset.fold] = fold.open; localStorage.setItem("pcPopupFolds", JSON.stringify(open)); } catch {} });
+    const key = fold.dataset.fold;
+    if (open[key]) fold.open = true;
+    fold.addEventListener("toggle", () => { try { open[key] = fold.open; localStorage.setItem("pcPopupFolds", JSON.stringify(open)); } catch {} });
   }
   // Click ripples and a few sparks, following the app's Feel (motion off: none; reduced: ripple only).
   document.addEventListener("pointerdown", (event) => {
-    const root = document.documentElement, target = event.target.closest?.("button,.tgl,summary");
+    const root = document.documentElement, target = (event.target)?.closest?.("button,.tgl,summary");
     if (!target || root.dataset.motion === "off" || root.dataset.ripple === "off") return;
     const box = target.getBoundingClientRect(), ring = document.createElement("span");
     ring.className = "pc-rpl"; ring.setAttribute("aria-hidden", "true");
@@ -174,8 +193,8 @@ async function loadSettings() {
     ]);
     globalThis.PlazCodeI18n?.setLanguage(r.rsLanguage || 'en');
     if (THINKING_LEVELS.includes(r.rsThinkingLevel)) settings.thinking = r.rsThinkingLevel;
-    if (WORK_MODES.includes(r.rsWorkMode)) settings.workMode = r.rsWorkMode;
-    if (PERM_MODES.includes(r.rsPermMode)) settings.permMode = r.rsPermMode;
+    if ((WORK_MODES).includes(r.rsWorkMode)) settings.workMode = r.rsWorkMode;
+    if ((PERM_MODES).includes(r.rsPermMode)) settings.permMode = r.rsPermMode;
     if (THEMES.includes(r.rsTheme)) settings.theme = r.rsTheme;
     applyPopupAppearance(r.rsAppearance);
     if (typeof r.rsSounds === "boolean") settings.sounds = r.rsSounds;
@@ -197,7 +216,7 @@ async function setTheme(id) {
 }
 
 async function setPermMode(id) {
-  if (!PERM_MODES.includes(id)) return;
+  if (!(PERM_MODES).includes(id)) return;
   settings.permMode = id;
   renderSettings();
   try { await chrome.storage.local.set({ rsPermMode: id }); } catch {}
@@ -205,7 +224,7 @@ async function setPermMode(id) {
 }
 
 async function setWorkMode(id) {
-  if (!WORK_MODES.includes(id)) return;
+  if (!(WORK_MODES).includes(id)) return;
   const p = WORK_PRESETS[id];
   settings.workMode = id;
   settings.extra = p.extra;
@@ -260,6 +279,14 @@ if (runHint) {
   } catch {}
 })();
 
+;
+
+
+
+
+
+
+
 function render(s) {
   // AgentScript control rework (1.24.36): "Ask PlazCode" (shown while the worker reports control_v2). The click here counts as
   // the person's own action, so Chrome lets PlazCode open its side panel from the popup.
@@ -306,13 +333,13 @@ async function refresh() {
 // answer (old copy after an update, or not loaded), reconnect the app here and
 // tell the user to refresh that tab.
 document.getElementById("fix-connection")?.addEventListener("click", (e) => {
-  const button = e.currentTarget, label = button.textContent;
-  const say = text => { button.textContent = text; setTimeout(() => { button.textContent = label; }, 4000); };
-  const t = text => (globalThis.PlazCodeI18n?.t || (x => x))(text);
+  const button = e.currentTarget, label = button.textContent || "";
+  const say = (text) => { button.textContent = text; setTimeout(() => { button.textContent = label; }, 4000); };
+  const t = (text) => (globalThis.PlazCodeI18n?.t || ((x) => x))(text);
   chrome.tabs.query({}, (tabs) => {
     const active = tabs.find((x) => x.active && x.url && SUPPORTED_HOSTS.some((h) => x.url.includes(h)));
     const tab = active || tabs.find((x) => x.url && SUPPORTED_HOSTS.some((h) => x.url.includes(h)));
-    if (!tab) { chrome.runtime.sendMessage({ type: "reconnect" }, () => setTimeout(refresh, 600)); say(t("Open an AI chat first")); return; }
+    if (!tab || tab.id == null) { chrome.runtime.sendMessage({ type: "reconnect" }, () => setTimeout(refresh, 600)); say(t("Open an AI chat first")); return; }
     chrome.tabs.update(tab.id, { active: true });
     chrome.tabs.sendMessage(tab.id, { type: "rs-fix-connection" }).then((r) => {
       if (r && r.ok) window.close(); else throw Error("no answer");
@@ -326,9 +353,10 @@ document.getElementById("reconnect").addEventListener("click", () => {
   chrome.runtime.sendMessage({ type: "reconnect" }, () => setTimeout(refresh, 600));
 });
 document.getElementById("restart").addEventListener("click", async (e) => {
-  e.target.textContent = "Restarting…";
+  const target = e.target;
+  target.textContent = "Restarting…";
   const tab=await activeTab();chrome.runtime.sendMessage({ type: "restart_mcp",tab_id:tab?.id }, () => {
-    e.target.textContent = "⟳ Restart Roblox server";
+    target.textContent = "⟳ Restart Roblox server";
     setTimeout(refresh, 600);
   });
 });
@@ -364,7 +392,7 @@ document.getElementById("settings").addEventListener("click", () => {
   chrome.tabs.query({}, (tabs) => {
     const active = tabs.find((t) => t.active && t.url && SUPPORTED_HOSTS.some((h) => t.url.includes(h)));
     const anySupported = active || tabs.find((t) => t.url && SUPPORTED_HOSTS.some((h) => t.url.includes(h)));
-    if (anySupported) {
+    if (anySupported && anySupported.id != null) {
       // .catch: the tab's content script may not be injected yet (fresh load /
       // post-reload) — MV3 sendMessage rejects as an unhandled promise then.
       chrome.tabs.sendMessage(anySupported.id, { type: "rs-open-menu" }).catch(() => {});
@@ -397,7 +425,7 @@ function bindToggle(elId, key, field) {
   });
 }
 document.getElementById("reasoning-level")?.addEventListener("change", async (event) => {
-  const level = event.target.value;
+  const level = (event.target).value;
   if (!THINKING_LEVELS.includes(level)) return;
   settings.thinking = level;
   renderSettings();
@@ -415,8 +443,8 @@ try {
     if (area !== "local" || !changes) return;
     if(changes.rsLanguage)globalThis.PlazCodeI18n?.setLanguage(changes.rsLanguage.newValue || 'en');
     if(changes.rsAppearance)applyPopupAppearance(changes.rsAppearance.newValue);
-    if (changes.rsWorkMode && WORK_MODES.includes(changes.rsWorkMode.newValue)) settings.workMode = changes.rsWorkMode.newValue;
-    if (changes.rsPermMode && PERM_MODES.includes(changes.rsPermMode.newValue)) settings.permMode = changes.rsPermMode.newValue;
+    if (changes.rsWorkMode && (WORK_MODES).includes(changes.rsWorkMode.newValue)) settings.workMode = changes.rsWorkMode.newValue;
+    if (changes.rsPermMode && (PERM_MODES).includes(changes.rsPermMode.newValue)) settings.permMode = changes.rsPermMode.newValue;
     if (changes.rsTheme && THEMES.includes(changes.rsTheme.newValue)) settings.theme = changes.rsTheme.newValue;
     if (changes.rsSounds && typeof changes.rsSounds.newValue === "boolean") settings.sounds = changes.rsSounds.newValue;
     if (changes.rsThinkingLevel && THINKING_LEVELS.includes(changes.rsThinkingLevel.newValue)) settings.thinking = changes.rsThinkingLevel.newValue;
@@ -434,8 +462,8 @@ getEngine().then(renderEngine);
 try {
   const locale=globalThis.PlazCodeI18n;
   locale?.mountStatic(document.body);
-  locale?.mountPicker(document.getElementById('popup-language-picker'),{value:'en',onChange:async value=>{await chrome.storage.local.set({rsLanguage:value});}});
-  locale?.onChange(value=>{document.documentElement.lang=value;document.documentElement.dir=locale.languages.find(x=>x.code===value).dir;});
+  locale?.mountPicker(document.getElementById('popup-language-picker'),{value:'en',onChange:async (value)=>{await chrome.storage.local.set({rsLanguage:value});}});
+  locale?.onChange((value)=>{document.documentElement.lang=value;document.documentElement.dir=locale.languages.find((x)=>x.code===value).dir;});
 } catch {}
 loadSettings();
 
@@ -444,7 +472,7 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg && msg.type === "rs-engine" && msg.engine) renderEngine(msg.engine);
 });
 // Styled, keyboard-accessible effort menu. The original select remains the state/event contract.
-function PlazCodeMountEffortPicker(select){
+function PlazCodeMountEffortPicker(select) {
  if(!select||select.tagName!=='SELECT')return null;if(select._ultraPicker)return select._ultraPicker;
  const wrap=document.createElement('div');wrap.className='pc-effort-picker';select.before(wrap);wrap.append(select);select.hidden=true;
  const trigger=document.createElement('button');trigger.type='button';trigger.className='pc-effort-trigger';trigger.setAttribute('aria-haspopup','listbox');trigger.setAttribute('aria-expanded','false');
@@ -452,13 +480,13 @@ function PlazCodeMountEffortPicker(select){
  const panel=document.createElement('div');panel.className='pc-effort-options';panel.hidden=true;panel.setAttribute('role','listbox');panel.setAttribute('aria-label','Reasoning effort');
  const options=Array.from(select.options).map(option=>{const button=document.createElement('button');button.type='button';button.setAttribute('role','option');button.tabIndex=-1;button.dataset.value=option.value;const text=document.createElement('span');text.textContent=option.textContent;text.classList.toggle('pc-ultra-label',option.value==='ultracode');button.append(text);button.onclick=()=>choose(option.value);panel.append(button);return button;});
  wrap.append(trigger,panel);
- function refresh(){const value=select.value,text=Array.from(select.options).find(o=>o.value===value)?.textContent||'Default';if(label.textContent!==text)label.textContent=text;label.classList.toggle('pc-ultra-label',value==='ultracode');trigger.disabled=select.disabled;trigger.setAttribute('aria-label','Reasoning effort: '+text);for(const b of options)b.setAttribute('aria-selected',String(b.dataset.value===value));}
- function close(focus=false){panel.hidden=true;trigger.setAttribute('aria-expanded','false');if(focus)trigger.focus();}
- function open(index){refresh();if(trigger.disabled)return;const rect=trigger.getBoundingClientRect();wrap.toggleAttribute('data-open-up',innerHeight-rect.bottom<260&&rect.top>260);panel.hidden=false;trigger.setAttribute('aria-expanded','true');(options[index]||options.find(b=>b.dataset.value===select.value)||options[0])?.focus();}
- function choose(value){if(panel.hidden)return;select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));refresh();close(true);}
- trigger.onclick=()=>panel.hidden?open():close();trigger.onkeydown=e=>{if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();open(e.key==='Home'?0:e.key==='End'?options.length-1:undefined);}};
- panel.onkeydown=e=>{const index=options.indexOf(document.activeElement);if(e.key==='Escape'){e.preventDefault();close(true);}else if(e.key==='Tab')close();else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?options.length-1:(index+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;options[next].focus();}else if(e.key==='Enter'||e.key===' '){e.preventDefault();if(index>=0)choose(options[index].dataset.value);}};
- const outside=e=>{if(!wrap.contains(e.target))close();};document.addEventListener('pointerdown',outside);select.addEventListener('change',refresh);
+ function refresh() {const value=select.value,text=Array.from(select.options).find(o=>o.value===value)?.textContent||'Default';if(label.textContent!==text)label.textContent=text;label.classList.toggle('pc-ultra-label',value==='ultracode');trigger.disabled=select.disabled;trigger.setAttribute('aria-label','Reasoning effort: '+text);for(const b of options)b.setAttribute('aria-selected',String(b.dataset.value===value));}
+ function close(focus=false) {panel.hidden=true;trigger.setAttribute('aria-expanded','false');if(focus)trigger.focus();}
+ function open(index) {refresh();if(trigger.disabled)return;const rect=trigger.getBoundingClientRect();wrap.toggleAttribute('data-open-up',innerHeight-rect.bottom<260&&rect.top>260);panel.hidden=false;trigger.setAttribute('aria-expanded','true');((index!==undefined?options[index]:undefined)||options.find(b=>b.dataset.value===select.value)||options[0])?.focus();}
+ function choose(value) {if(panel.hidden)return;select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));refresh();close(true);}
+ trigger.onclick=()=>panel.hidden?open():close();trigger.onkeydown=(e)=>{if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();open(e.key==='Home'?0:e.key==='End'?options.length-1:undefined);}};
+ panel.onkeydown=(e)=>{const index=options.indexOf(document.activeElement);if(e.key==='Escape'){e.preventDefault();close(true);}else if(e.key==='Tab')close();else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?options.length-1:(index+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;options[next].focus();}else if(e.key==='Enter'||e.key===' '){e.preventDefault();if(index>=0)choose(options[index].dataset.value);}};
+ const outside=(e)=>{if(!wrap.contains(e.target))close();};document.addEventListener('pointerdown',outside);select.addEventListener('change',refresh);
  const timer=setInterval(()=>{if(!wrap.isConnected){clearInterval(timer);document.removeEventListener('pointerdown',outside);return;}refresh();},500);refresh();
  return select._ultraPicker={refresh,close};
 }

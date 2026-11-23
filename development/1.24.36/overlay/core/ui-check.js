@@ -9,54 +9,54 @@
 // - afterDone(): runs ui_audit (core/studio_skills.js) and returns the message for the AI, or null.
 // Runs before the playtest (ts/core/playtest-check.ts). Menu switch: Automation, "Check UI when done".
 const PlazCodeUiCheck = (() => {
-                                                                                 
-               
-                           
-                          
-                           
-                                                                                                    
-                                   
-                                                  
-                                                                   
-                                     
-    
+
+
+
+
+
+
+
+
+
+
+
   const ROUNDS = 2, MAX_SENT = 12;
   const READS = new Set(["ui_audit", "ui_tokens", "ui_inspect", "ui_list_tree", "ui_tokens_set"]);
   const UI_CODE = /Instance\.new\(\s*["'](?:ScreenGui|Frame|TextLabel|TextButton|TextBox|ImageLabel|ImageButton|ScrollingFrame|CanvasGroup|UIListLayout|UIGridLayout|UICorner|UIStroke|UIPadding)["']|StarterGui|\.Size\s*=\s*UDim2|\.Position\s*=\s*UDim2/;
-  const bare = (name         ) => String(name || "").replace(/^.*__/, "");
-  function changesUi(call                         )          {
+  const bare = (name) => String(name || "").replace(/^.*__/, "");
+  function changesUi(call) {
     if (!call) return false;
     const name = bare(call.tool || call.command), args = call.arguments || call.params || {};
-    if (name === "plazcode_batch") return (Array.isArray(args.calls) ? args.calls : []).some((c      ) => changesUi(c));
+    if (name === "plazcode_batch") return (Array.isArray(args.calls) ? args.calls : []).some((c) => changesUi(c));
     if (READS.has(name)) return false;
     if (/^ui_/.test(name) || name === "surface_gui_create") return true;
     if (name === "execute_luau") return UI_CODE.test(String(args.code || ""));
     return false;
   }
   // "ERROR phone Shop.Buy: too small to tap (30x28 px, ...)" -> the problem without its numbers, to compare runs.
-  const key = (line        ) => line.replace(/\d+(?:\.\d+)?/g, "#").trim();
-  function errorsIn(report        )           {
+  const key = (line) => line.replace(/\d+(?:\.\d+)?/g, "#").trim();
+  function errorsIn(report) {
     return String(report || "").split(/\r?\n/).map((l) => l.trim()).filter((l) => /^ERROR /.test(l));
   }
-  function create(d      ) {
-    const t = (s        ) => (d.words ? d.words(s) : s);
-    let dirty = false, rounds = 0, busy = false, baseline                     = null, baselineTried = false;
+  function create(d) {
+    const t = (s) => (d.words ? d.words(s) : s);
+    let dirty = false, rounds = 0, busy = false, baseline = null, baselineTried = false;
     function reset() { dirty = false; rounds = 0; baseline = null; baselineTried = false; }
-    async function before(call      ) {
+    async function before(call) {
       if (baselineTried || !changesUi(call) || !d.enabled() || !d.roblox()) return;
       baselineTried = true;
       const report = await d.audit().catch(() => null);
       baseline = report === null ? null : new Set(errorsIn(report).map(key));
       d.diag?.("uicheck.baseline", { errors: baseline ? baseline.size : -1 });
     }
-    function note(call      ) { if (changesUi(call)) dirty = true; }
-    async function afterDone()                         {
+    function note(call) { if (changesUi(call)) dirty = true; }
+    async function afterDone() {
       if (busy || !dirty || !d.enabled() || !d.roblox() || d.stopped()) return null;
       busy = true; dirty = false;
       try {
         const report = await d.audit().catch(() => null);
         if (report === null) { d.status(t("UI check skipped: Studio did not answer")); return null; }
-        const all = errorsIn(report), fresh = baseline ? all.filter((l) => !baseline .has(key(l))) : all;
+        const all = errorsIn(report), fresh = baseline ? all.filter((l) => !baseline.has(key(l))) : all;
         d.diag?.("uicheck.done", { errors: all.length, fresh: fresh.length, round: rounds });
         if (!fresh.length) { d.status(t("UI check passed: no new layout problems")); rounds = 0; return null; }
         if (rounds >= ROUNDS) {
