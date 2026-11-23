@@ -12241,11 +12241,16 @@ function renderCards(panel) {
       const rect=pageMounted ? bar.getBoundingClientRect() : null;
       const barVisible=!!(rect && rect.width>0 && rect.height>0 && rect.bottom>0 && rect.top<window.innerHeight && rect.right>0 && rect.left<window.innerWidth && getComputedStyle(bar).display!=="none" && (barCollapsed || getComputedStyle(bar).visibility!=="hidden"));
       const busy = !!(A.running || A.starting || A.injecting || A.enhancing || A.pendingToolSettles || P.isGenerating());
-      return { provider: P.displayName, pageMounted, barVisible, barCollapsed,
+      let latestReply = "";
+      try { latestReply = String((P.readAssistant && P.readAssistant()?.reply) || "").trim().slice(-1800); } catch {}
+      const canDockSend = !A.staleExtension && !!P.getEditor() && !String(P.editorText() || "").trim() &&
+        (A.started ? (!busy || cowork.snapshot().enabled) : (!busy && !!actionBtn && !actionBtn.disabled && !actionBtn.hidden && (kind === "start" || kind === "start-degraded")));
+      return { provider: P.displayName, providerId: P.id, started: !!A.started, busy, pageMounted, barVisible, barCollapsed,
         canStart: !A.staleExtension && !busy && !!actionBtn && !actionBtn.disabled &&
           !actionBtn.hidden && (kind === "start" || kind === "start-degraded"),
         canStop: !A.staleExtension && busy && !A.stopping,
         canEnhance: !A.staleExtension && !busy && !!P.getEditor() && !String(P.editorText() || "").trim(),
+        canDockSend, latestReply,
         chat:P.id+'|'+P.conversationKey(), engine:activeEngine(), project:currentProject, engram_scope:engramScope(),
         canMedia:!A.staleExtension && !busy && !!P.getEditor() && !String(P.editorText() || "").trim() && typeof P.attachImages === "function", nativeVideo:PlazCodeProviderMedia.nativeVideo(P),
         canTaskSend:!A.staleExtension && A.started && !busy && !!P.getEditor() && !String(P.editorText() || "").trim(),
@@ -12511,6 +12516,62 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
           finally{A.running=false;inputCover(false);}
         })();
         if(requestId){coworkAccepted.set(requestId,operation);if(coworkAccepted.size>100)coworkAccepted.delete(coworkAccepted.keys().next().value);}return operation;
+      }
+      if (action === "dock-send") {
+        if (requestId && coworkAccepted.has(requestId)) return coworkAccepted.get(requestId);
+        if (A.staleExtension) return { ok: false, error: "Refresh this chat after updating PlazCode." };
+        let sendText = typeof prompt === "string" ? prompt : "";
+        let files = [];
+        if (typeof prompt === "string" && prompt.trim().startsWith("{")) {
+          try {
+            const parsed = JSON.parse(prompt);
+            if (parsed && typeof parsed === "object" && (typeof parsed.prompt === "string" || Array.isArray(parsed.files))) {
+              sendText = typeof parsed.prompt === "string" ? parsed.prompt : "";
+              files = Array.isArray(parsed.files) ? parsed.files : [];
+            }
+          } catch {}
+        }
+        if (!sendText.trim() && !files.length) return { ok: false, error: "Enter a prompt or attach media first." };
+        const busyNow = !!(A.running || A.starting || A.injecting || A.enhancing || A.pendingToolSettles || P.isGenerating());
+        if (busyNow) {
+          if (!files.length && A.started && cowork.snapshot().enabled) {
+            const queued = cowork.enqueue(sendText);
+            if (queued.ok) {
+              if (requestId) { coworkAccepted.set(requestId, queued); if (coworkAccepted.size > 100) coworkAccepted.delete(coworkAccepted.keys().next().value); }
+              pumpCowork();
+            }
+            return { ...queued, queued: !!queued.ok };
+          }
+          return { ok: false, error: "Wait for the current AI response to finish before sending." };
+        }
+        if (!P.getEditor()) return { ok: false, error: "The AI composer is not ready in this tab." };
+        if (String(P.editorText() || "").trim()) return { ok: false, error: "Clear the existing draft in the browser AI chat first." };
+        const operation = (async () => {
+          const chat = P.conversationKey();
+          A.stop = false; A.stopping = false;
+          if (!A.started) {
+            const st = desktopAgentState();
+            if (!st.canStart) return { ok: false, error: st.status || "Start the agent in this chat first." };
+            const startup = await startSession();
+            if (!startup?.ready || !A.started) return { ok: false, error: "PlazCode could not start the agent in this chat. Check the AI tab and try again." };
+            const deadline = Date.now() + 20000;
+            while (Date.now() < deadline && !desktopAgentState().canTaskSend) await new Promise(resolve => setTimeout(resolve, 250));
+          }
+          if (P.conversationKey() !== chat) return { ok: false, error: "The selected chat changed before sending." };
+          if (files.length) {
+            if (!receiveDesktopMedia) return { ok: false, error: "Reload this chat to reconnect the media sender." };
+            const uploaded = await receiveDesktopMedia(files);
+            if (A.stop) return { ok: false, error: "Media sending stopped. Check staged attachments in the browser before retrying." };
+            if (!uploaded.ok) return uploaded;
+          }
+          const finalPrompt = sendText.trim() || "Please review the attached media.";
+          const base = await submitAndGetBase(finalPrompt, undefined, true);
+          if (files.length && receiveDesktopMedia) receiveDesktopMedia.clear();
+          if (A.started && !A.stop) agentLoop(base);
+          return { ok: true, started: !!A.started, chat: P.id + "|" + P.conversationKey() };
+        })();
+        if (requestId) { coworkAccepted.set(requestId, operation); if (coworkAccepted.size > 100) coworkAccepted.delete(coworkAccepted.keys().next().value); }
+        return operation;
       }
       if(action === "creator-send") {
         if(requestId && coworkAccepted.has(requestId))return coworkAccepted.get(requestId);

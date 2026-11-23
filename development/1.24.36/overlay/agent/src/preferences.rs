@@ -106,6 +106,16 @@ pub struct DesktopPreferences {
     pub playtest_check: bool,
     #[serde(rename = "rsUiCheck")]
     pub ui_check: bool,
+    #[serde(rename = "rsStudioDockEnabled")]
+    pub studio_dock_enabled: bool,
+    #[serde(rename = "rsStudioDockPos", default, skip_serializing_if = "Option::is_none")]
+    pub studio_dock_pos: Option<StudioDockPos>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StudioDockPos {
+    pub dx: i32,
+    pub dy: i32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -154,6 +164,8 @@ impl Default for DesktopPreferences {
             read_only: false, confirm_delete: true, allowed_folders: Vec::new(),
             luau_check: true, luau_mode: "advisory".to_string(),
             full_startup: false, auto_debug: true, auto_fix_stop_play: true, multi_agent: false, playtest_check: true, ui_check: true,
+            studio_dock_enabled: true,
+            studio_dock_pos: None,
         }
     }
 }
@@ -282,7 +294,7 @@ fn overlay_checked(base: &DesktopPreferences, patch: &serde_json::Map<String, se
     let mut kept = Vec::new();
     let mut refused = Vec::new();
     for (key, val) in patch {
-        let known = value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance";
+        let known = value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance" || key == "rsStudioDockPos";
         if !known { continue; }
         let mut candidate = value.clone();
         if let Some(object) = candidate.as_object_mut() { object.insert(key.clone(), val.clone()); }
@@ -292,7 +304,7 @@ fn overlay_checked(base: &DesktopPreferences, patch: &serde_json::Map<String, se
 }
 
 fn is_known_key(base_value: &serde_json::Value, key: &str) -> bool {
-    base_value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance"
+    base_value.as_object().map(|o| o.contains_key(key)).unwrap_or(false) || key == "rsCustomPrompt" || key == "rsAppearance" || key == "rsStudioDockPos"
 }
 
 fn changed_keys(before: &DesktopPreferences, after: &DesktopPreferences) -> Vec<String> {

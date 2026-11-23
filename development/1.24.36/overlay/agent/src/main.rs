@@ -68,6 +68,7 @@ fn init_file_logger(ui: Option<Arc<gui::UiShared>>) {
 }
 
 mod gui;
+mod studio_dock;
 #[cfg(target_os="linux")]
 mod linux_desktop;
 #[cfg(target_os="linux")]
@@ -1472,6 +1473,10 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/desktop/browser-agent", post(browser_agent_handler))
         .route("/api/desktop/activity", post(|| async { Json(serde_json::json!({"ok":true})) }))
         .route("/api/desktop/agent-result", post(desktop_agent_result_handler))
+        .route("/api/studio-dock/state", get(studio_dock::state_handler))
+        .route("/api/studio-dock/screenshot", post(studio_dock::screenshot_handler))
+        .route("/api/studio-dock/open-ai", post(studio_dock::open_ai_handler))
+        .route("/api/studio-dock/position", post(studio_dock::position_handler))
         .route("/api/checkpoints", post(checkpoint_handler))
         .route("/api/toolkit", post(toolkit::post).layer(axum::extract::DefaultBodyLimit::max(64000)))
         .route("/api/blender", post(blender::post).layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
@@ -1516,6 +1521,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         // Public shell contains no key; the native WebView injects credentials.
         // Register after pairing middleware; every API remains authenticated.
         .route("/desktop-ui", get(desktop_shell_handler))
+        .route("/studio-dock-ui", get(studio_dock::shell_handler))
         // PlazCode's helpers inside other apps. No bridge key here on purpose: a helper holds only its own pairing word.
         .route("/helper", get(helper_socket::upgrade))
         .merge(linux_launch)
@@ -2227,7 +2233,7 @@ async fn browser_agent_handler(State(state): State<AppState>, Json(value): Json<
 
 async fn desktop_agent_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
     let action = req.get("action").and_then(|value| value.as_str()).unwrap_or("");
-    if action.starts_with("cowork-") || action.starts_with("memory-") || action=="handoff-export" || action=="budget-resume" || action=="task-send" || action=="creator-send" || action=="creator-insert" || action=="activity-read" || action=="media-stage" || action=="stop" || action=="engine-set" { return desktop_cowork_handler(state, req).await; }
+    if action.starts_with("cowork-") || action.starts_with("memory-") || action=="handoff-export" || action=="budget-resume" || action=="task-send" || action=="creator-send" || action=="creator-insert" || action=="activity-read" || action=="media-stage" || action=="dock-send" || action=="stop" || action=="engine-set" { return desktop_cowork_handler(state, req).await; }
     let mut slot = state.ui.browser_agent.lock().unwrap_or_else(|error| error.into_inner());
     let available = slot.as_ref().filter(|(at, _)| at.elapsed() < Duration::from_secs(3));
     let key = match action { "start" => "canStart", "stop" => "canStop", "enhance" => "canEnhance", "cowork-queue" => "canQueue", "cowork-on" | "cowork-off" | "cowork-resume" | "cowork-remove" => "canCoWork", _ => "" };
@@ -2259,10 +2265,19 @@ async fn desktop_agent_result_handler(State(state): State<AppState>, Json(req): 
 
 async fn desktop_cowork_handler(state: AppState, req: serde_json::Value) -> axum::response::Response {
     let action = req.get("action").and_then(|value| value.as_str()).unwrap_or("");
-    let key = match action { "stop"=>"canStop", "media-stage"=>"canMedia", "task-send"=>"canTaskSend", "creator-send"=>"canCreate", "creator-insert"=>"canTaskSend", "cowork-queue" => "canQueue", "memory-import" => "canEnhance", "memory-export" | "activity-read" | "handoff-export" | "budget-resume" | "engine-set" => "canCoWork", "cowork-on" | "cowork-off" | "cowork-resume" | "cowork-remove" => "canCoWork", _ => "" };
+    let key = match action { "stop"=>"canStop", "media-stage"=>"canMedia", "dock-send"=>"canDockSend", "task-send"=>"canTaskSend", "creator-send"=>"canCreate", "creator-insert"=>"canTaskSend", "cowork-queue" => "canQueue", "memory-import" => "canEnhance", "memory-export" | "activity-read" | "handoff-export" | "budget-resume" | "engine-set" => "canCoWork", "cowork-on" | "cowork-off" | "cowork-resume" | "cowork-remove" => "canCoWork", _ => "" };
     let control = {
         let slot = state.ui.browser_agent.lock().unwrap_or_else(|error| error.into_inner());
-        slot.as_ref().filter(|(at, control)| at.elapsed() < Duration::from_secs(3) && !key.is_empty() && control.get(key).and_then(|value| value.as_bool()) == Some(true)).map(|(_, control)| control.clone())
+        slot.as_ref().filter(|(at, control)| {
+            at.elapsed() < Duration::from_secs(3) && !key.is_empty() && (
+                control.get(key).and_then(|value| value.as_bool()) == Some(true)
+                || (action == "dock-send" && (
+                    control.get("canStart").and_then(|v| v.as_bool()) == Some(true)
+                    || control.get("canTaskSend").and_then(|v| v.as_bool()) == Some(true)
+                    || control.get("canQueue").and_then(|v| v.as_bool()) == Some(true)
+                ))
+            )
+        }).map(|(_, control)| control.clone())
     };
     let Some(control) = control else { return (axum::http::StatusCode::CONFLICT, Json(serde_json::json!({"ok":false,"error":"Select a ready AI chat before sending. Follow-ups also require Co-work to be on."}))).into_response(); };
     let id = req.get("request_id").and_then(|value| value.as_str()).unwrap_or("");
@@ -2275,7 +2290,7 @@ async fn desktop_cowork_handler(state: AppState, req: serde_json::Value) -> axum
     }
     let event = serde_json::json!({"type":"desktop_agent_action","action":action,"tab_id":control.get("tab_id"),"browser_id":control.get("browser_id"),"prompt":req.get("prompt"),"request_id":id});
     let delivered = state.ui.desktop_events.send(event).is_ok();
-    let result = if delivered { tokio::time::timeout(Duration::from_secs(if action == "media-stage" { 60 } else if action == "creator-insert" { 125 } else if action == "creator-send" { 100 } else { 5 }), receiver).await.ok().and_then(Result::ok) } else { None };
+    let result = if delivered { tokio::time::timeout(Duration::from_secs(if action == "media-stage" { 60 } else if action == "dock-send" { 40 } else if action == "creator-insert" { 125 } else if action == "creator-send" { 100 } else { 5 }), receiver).await.ok().and_then(Result::ok) } else { None };
     state.ui.desktop_action_results.lock().unwrap_or_else(|error| error.into_inner()).remove(id);
     match result {
         Some(result) if result.get("ok").and_then(|value| value.as_bool()) == Some(true) => Json(result).into_response(),

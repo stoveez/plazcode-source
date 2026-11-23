@@ -1425,14 +1425,60 @@ async function reportDesktopAgentState() {
     });
   } catch {} finally { desktopAgentReporting = false; }
 }
+const DOCK_AI_SITES = [
+  { id: "chatgpt", url: "https://chatgpt.com/", patterns: ["https://chatgpt.com/*", "https://chat.openai.com/*"] },
+  { id: "claude", url: "https://claude.ai/", patterns: ["https://claude.ai/*", "https://www.claude.ai/*", "https://claude.com/*", "https://www.claude.com/*"] },
+  { id: "gemini", url: "https://gemini.google.com/", patterns: ["https://gemini.google.com/*"] },
+  { id: "grok", url: "https://grok.com/", patterns: ["https://grok.com/*", "https://www.grok.com/*"] },
+  { id: "aistudio", url: "https://aistudio.google.com/", patterns: ["https://aistudio.google.com/*"] },
+  { id: "deepseek", url: "https://chat.deepseek.com/", patterns: ["https://chat.deepseek.com/*", "https://deepseek.com/*"] },
+  { id: "mistral", url: "https://chat.mistral.ai/", patterns: ["https://chat.mistral.ai/*"] },
+  { id: "kimi", url: "https://www.kimi.com/", patterns: ["https://www.kimi.com/*", "https://kimi.com/*", "https://kimi.ai/*", "https://www.kimi.ai/*"] },
+  { id: "qwen", url: "https://chat.qwen.ai/", patterns: ["https://chat.qwen.ai/*"] },
+  { id: "glm", url: "https://chat.z.ai/", patterns: ["https://chat.z.ai/*"] },
+  { id: "arena", url: "https://arena.ai/", patterns: ["https://arena.ai/*"] },
+  { id: "notion", url: "https://www.notion.so/", patterns: ["https://www.notion.so/*", "https://app.notion.so/*", "https://www.notion.com/*", "https://notion.com/*", "https://*.notion.com/*"] },
+  { id: "workbuddy", url: "https://www.workbuddy.ai/", patterns: ["https://www.workbuddy.ai/*", "https://workbuddy.ai/*"] },
+  { id: "freebuff", url: "https://freebuff.ai/", patterns: ["https://freebuff.ai/*", "https://www.freebuff.ai/*", "https://freebuff.com/*", "https://www.freebuff.com/*"] },
+  { id: "crax", url: "https://gpt.crax.lol/", patterns: ["https://gpt.crax.lol/*"] },
+  { id: "useai", url: "https://use.ai/", patterns: ["https://use.ai/*", "https://www.use.ai/*"] },
+  { id: "vani", url: "https://c.vani.ai/", patterns: ["https://c.vani.ai/*"] },
+  { id: "mimo", url: "https://aistudio.xiaomimimo.com/", patterns: ["https://aistudio.xiaomimimo.com/*"] },
+  { id: "oxalpha", url: "https://oxalpha.com/", patterns: ["https://oxalpha.com/*", "https://www.oxalpha.com/*", "https://oxalpha.org/*", "https://www.oxalpha.org/*"] },
+];
+
+async function openOrFocusAiTab(providerHint) {
+  const hint = typeof providerHint === "string" ? providerHint.trim().toLowerCase() : "";
+  const site = hint ? DOCK_AI_SITES.find((s) => s.id === hint) : null;
+  const patterns = site ? site.patterns : PROVIDER_URLS;
+  const existing = await chrome.tabs.query({ url: patterns });
+  const targetTab = existing.find((t) => t.active) || existing[0];
+  if (targetTab && Number.isInteger(targetTab.id)) {
+    try { await chrome.windows.update(targetTab.windowId, { focused: true }); } catch {}
+    await chrome.tabs.update(targetTab.id, { active: true });
+    return { ok: true, action: "focused", tab_id: targetTab.id, url: targetTab.url || "" };
+  }
+  const url = (site && site.url) || DOCK_AI_SITES[0].url;
+  const created = await chrome.tabs.create({ url, active: true });
+  if (created && Number.isInteger(created.windowId)) {
+    try { await chrome.windows.update(created.windowId, { focused: true }); } catch {}
+  }
+  return { ok: true, action: "opened", tab_id: created ? created.id : null, url };
+}
+
 async function dispatchDesktopAgentAction(msg) {
   if(msg.browser_id && msg.browser_id!==browserIdentity)return;
   let actionResult;
   try {
-    if (!Number.isInteger(msg.tab_id) || !["start", "stop", "enhance", "engine-set", "cowork-on", "cowork-off", "cowork-queue", "cowork-resume", "cowork-remove", "memory-export", "memory-import", "media-stage", "handoff-export", "budget-resume", "task-send", "activity-read", "creator-send", "creator-insert"].includes(msg.action)) throw new Error("Invalid desktop agent action.");
-    const reply = await chrome.tabs.sendMessage(msg.tab_id, { type: "rs-desktop-agent-action", action: msg.action, prompt: msg.prompt, request_id: msg.request_id });
-    actionResult = reply;
-    if (!reply || !reply.ok) throw new Error(reply && reply.error || "The AI tab did not accept the action.");
+    if (msg.action === "open-ai-tab") {
+      actionResult = await openOrFocusAiTab(msg.prompt);
+      if (!actionResult || !actionResult.ok) throw new Error(actionResult && actionResult.error || "Could not open AI tab.");
+    } else {
+      if (!Number.isInteger(msg.tab_id) || !["start", "stop", "enhance", "engine-set", "cowork-on", "cowork-off", "cowork-queue", "cowork-resume", "cowork-remove", "memory-export", "memory-import", "media-stage", "handoff-export", "budget-resume", "task-send", "activity-read", "creator-send", "creator-insert", "dock-send"].includes(msg.action)) throw new Error("Invalid desktop agent action.");
+      const reply = await chrome.tabs.sendMessage(msg.tab_id, { type: "rs-desktop-agent-action", action: msg.action, prompt: msg.prompt, request_id: msg.request_id });
+      actionResult = reply;
+      if (!reply || !reply.ok) throw new Error(reply && reply.error || "The AI tab did not accept the action.");
+    }
   } catch (error) {
     actionResult = { ok: false, error: String(error.message || error) };
     desktopAgentError = { message: String(error.message || error), until: Date.now() + 5000 };

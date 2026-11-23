@@ -1809,7 +1809,8 @@ html[data-pz-studio][data-look-bg][data-look-blur] :is(.sidebar,.titlebar){-webk
           <div class="settingcard"><h3>Desktop</h3><p>Closing hides PlazCode in the background. Launching the same version reopens it.</p>
             <div class="settingrow"><label>Autosave</label><span style="margin-left:auto;color:var(--green);font-size:11px;font-weight:700">Active</span></div>
             <div class="settingrow"><label>Version</label><span id="settingsVersion" style="margin-left:auto;font-size:11px">v__PLAZCODE_VERSION__ (Not checked)</span></div>
-            <div style="display:flex;gap:8px;margin-top:14px"><button class="accentbtn" data-ipc="hide">Hide to background</button><button class="dangerbtn" data-ipc="quit">Exit PlazCode</button></div>
+            <div class="settingrow"><label>Roblox Studio floating dock</label><div class="toggle" data-pref="rsStudioDockEnabled" role="switch" aria-label="Roblox Studio floating dock"></div></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="softbtn" type="button" id="resetStudioDockPos">Reset dock position</button><button class="accentbtn" data-ipc="hide">Hide to background</button><button class="dangerbtn" data-ipc="quit">Exit PlazCode</button></div>
           </div>
         </div>
         <div id="debugReport" class="settingcard"><h3>Debug report</h3><p>When something goes wrong, copy a report of recent PlazCode and AI-site errors, warnings and info, with the files involved and the likely cause, then paste it into an AI chat to debug it. Keys, tokens, cookies, user names, e-mail addresses and chat text are removed.</p><div class="instructions-actions"><button class="accentbtn" id="debugReportCopy">Copy debug report</button><button class="softbtn" id="debugReportPreview">Show report</button></div><textarea id="debugReportText" data-i18n-user-content dir="ltr" class="debug-report-text" readonly hidden aria-label="Debug report" spellcheck="false"></textarea><p id="debugReportStatus" data-i18n-user-content dir="auto" role="status"></p></div>
@@ -3978,6 +3979,14 @@ __PLAZCODE_VERSION_UI__
         Patchpref(Element.getAttribute("data-pref"), !Element.classList.contains("on"));
       };
     });
+    var ResetDock = Byid("resetStudioDockPos");
+    if (ResetDock) {
+      ResetDock.onclick = function () {
+        Api("/api/studio-dock/position", { method: "POST", body: JSON.stringify({ reset: true }) })
+          .then(function () { return Refresh(); })
+          .catch(Showerror);
+      };
+    }
   }
 
   async function Bootstrap() {
