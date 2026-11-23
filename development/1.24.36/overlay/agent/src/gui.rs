@@ -138,6 +138,7 @@ pub struct UiShared {
     pub desktop_events: tokio::sync::broadcast::Sender<serde_json::Value>,
     pub browser_agent: Mutex<Option<(std::time::Instant, serde_json::Value)>>,
     pub desktop_action_results: Mutex<std::collections::HashMap<String, tokio::sync::oneshot::Sender<serde_json::Value>>>,
+    pub studio_dock: crate::studio_dock::DockShared,
 }
 
 const LOG_CAP: usize = 1200;
@@ -162,7 +163,15 @@ impl UiShared {
             desktop_events: tokio::sync::broadcast::channel(128).0,
             browser_agent: Mutex::new(None),
             desktop_action_results: Mutex::new(std::collections::HashMap::new()),
+            studio_dock: crate::studio_dock::DockShared::new(),
         }
+    }
+
+    pub fn full_access_enabled(&self) -> bool {
+        self.full_access
+            .read()
+            .map(|flag| flag.load(Ordering::Relaxed))
+            .unwrap_or(false)
     }
 
     pub fn browser_agent_snapshot(&self) -> serde_json::Value {
@@ -320,7 +329,7 @@ impl UiShared {
 
 #[cfg(any(windows, target_os = "macos"))]
 #[derive(Clone, Debug)]
-enum UiEvent {
+pub(crate) enum UiEvent {
     Hide,
     Quit,
     Minimize,
@@ -330,6 +339,7 @@ enum UiEvent {
     JsError(String),
     JsEngine(String),
     OpenExternal(String),
+    Dock(String),
 }
 
 #[cfg(any(windows, target_os = "macos"))]
@@ -440,11 +450,24 @@ document.addEventListener('DOMContentLoaded',function(){send('js-engine:'+naviga
     // AgentScript control rework (1.24.36): the glow, label and cursor while PlazCode controls the desktop (made on first use).
     let mut look: Option<control_look::ControlLook> = None;
     let mut look_failed = false;
+    let mut dock: Option<crate::studio_dock::StudioDockWindow> = None;
+    let mut dock_failed = false;
     event_loop.run_return(|event, target, control_flow| {
         *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(100));
 
         match event {
-            Event::WindowEvent { event: WindowEvent::Focused(focused), .. } => { FOREGROUND.store(focused, Ordering::Relaxed); },
+            Event::WindowEvent { window_id, event: WindowEvent::Focused(focused), .. } => {
+                if window_id == window.id() {
+                    FOREGROUND.store(focused, Ordering::Relaxed);
+                }
+            }
+            Event::WindowEvent { window_id, event: WindowEvent::Moved(_), .. } => {
+                if dock.as_ref().is_some_and(|d| d.window_id() == window_id) {
+                    if let Some(d) = dock.as_mut() {
+                        d.handle_moved(&shared, &_preferences);
+                    }
+                }
+            }
             Event::UserEvent(UiEvent::Hide) => {
                 #[cfg(windows)]
                 if tray.ensure_registered() { window.set_visible(false); } else { window.set_minimized(true); }
@@ -495,10 +518,22 @@ document.addEventListener('DOMContentLoaded',function(){send('js-engine:'+naviga
                 shared.log(&line);
                 shared.set_fatal(line);
             }
+            Event::UserEvent(UiEvent::Dock(message)) => {
+                if let Some(d) = dock.as_mut() {
+                    d.handle_ipc(&message, &shared, &_preferences);
+                }
+            }
             Event::WindowEvent {
+                window_id,
                 event: WindowEvent::CloseRequested,
                 ..
             } => {
+                if dock.as_ref().is_some_and(|d| d.window_id() == window_id) {
+                    if let Some(d) = dock.as_mut() {
+                        d.handle_ipc("dock:hide", &shared, &_preferences);
+                    }
+                    return;
+                }
                 #[cfg(windows)]
                 if tray.ensure_registered() {
                     window.set_visible(false);
@@ -527,6 +562,22 @@ document.addEventListener('DOMContentLoaded',function(){send('js-engine:'+naviga
                         match control_look::ControlLook::new(target) { Ok(made) => look = Some(made), Err(error) => { look_failed = true; shared.log(&format!("Could not show the control glow on screen: {error}")); } }
                     }
                     if let Some(look) = look.as_mut() { look.sync(wanted); }
+                    let dock_wanted = _preferences.snapshot().studio_dock_enabled
+                        && (dock.is_some()
+                            || shared.studio_running.load(Ordering::Relaxed)
+                            || crate::studio_dock::has_visible_studio_window());
+                    if dock_wanted && dock.is_none() && !dock_failed {
+                        match crate::studio_dock::StudioDockWindow::new(target, addr, pairing_key, proxy.clone()) {
+                            Ok(made) => dock = Some(made),
+                            Err(error) => {
+                                dock_failed = true;
+                                shared.log(&format!("Could not create Studio floating dock: {error}"));
+                            }
+                        }
+                    }
+                    if let Some(d) = dock.as_mut() {
+                        d.sync(&shared, &_preferences);
+                    }
                 }
             }
             _ => {}

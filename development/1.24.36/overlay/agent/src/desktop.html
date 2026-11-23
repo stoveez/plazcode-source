@@ -1369,6 +1369,37 @@ html:not([data-pz-motion=off]):not([data-pz-motion=reduced]) .cn-pill[data-state
 .cn-switch[aria-checked=true] i{transform:translateX(22px);background:rgb(var(--pz-rgb,233 186 83))}
 .cn-switch:focus-visible,.cn-x:focus-visible,.cn-main:focus-visible{outline:2px solid rgb(var(--pz-rgb,233 186 83)/.9);outline-offset:3px}
 .cn-switch[disabled]{opacity:.5;cursor:default}
+/* Desktop AI Apps: 1-click config patching cards matching Apps & servers Feel tokens. */
+.desktop-ai-wrap{margin-top:34px}
+.desktop-ai-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:0 0 14px}
+.desktop-ai-head .cn-sechead{margin:0}
+.desktop-ai-sub{margin:4px 0 0;font-size:14px;line-height:1.55;color:var(--ink-soft,#9aa6b8)}
+.desktop-ai-banner{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 16px;padding:14px 18px;border-radius:16px;border:1px solid rgb(60 214 150/.38);background:rgb(60 214 150/.09);color:var(--text,#eef1f6);font-size:13.5px;line-height:1.5}
+.desktop-ai-banner[hidden]{display:none}
+.desktop-ai-banner[data-kind=error]{border-color:rgb(255 105 108/.5);background:rgb(255 105 108/.1)}
+.desktop-ai-banner-text{min-width:0;overflow-wrap:anywhere}
+.desktop-ai-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;align-items:stretch}
+.desktop-ai-card{position:relative;display:flex;flex-direction:column;gap:15px;min-width:0;padding:24px 24px 20px;border-radius:20px;border:1px solid var(--pz-line,rgb(255 255 255/.1));background:linear-gradient(150deg,color-mix(in srgb,var(--surface,#161a23) 92%,rgb(var(--pz-rgb,233 186 83))),var(--surface,#161a23));box-shadow:0 18px 40px -26px #000c,inset 0 1px 0 rgb(255 255 255/.05);transition:transform .3s var(--pz-ease,cubic-bezier(.22,1,.36,1)),border-color .3s,box-shadow .3s}
+.desktop-ai-card:hover,.desktop-ai-card:focus-within{transform:translateY(-3px);border-color:rgb(var(--pz-rgb,233 186 83)/.45);box-shadow:0 22px 46px -24px #000e,0 0 30px -14px rgb(var(--pz-rgb,233 186 83)/.5)}
+.desktop-ai-card[data-state=connected]{border-color:rgb(60 214 150/.38)}
+.desktop-ai-card[data-state=needs_attention]{border-color:rgb(255 170 70/.5)}
+.desktop-ai-top{display:flex;align-items:center;gap:14px;min-width:0}
+.desktop-ai-ico{width:48px;height:48px;flex:0 0 auto;border-radius:15px;display:grid;place-items:center;color:#14110a;background:linear-gradient(135deg,rgb(var(--pz-rgb,233 186 83)),color-mix(in srgb,rgb(var(--pz-rgb,233 186 83)) 55%,#fff));box-shadow:0 10px 24px -10px rgb(var(--pz-rgb,233 186 83)/.65)}
+.desktop-ai-ico svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.desktop-ai-title{flex:1 1 auto;min-width:0}
+.desktop-ai-title h3{margin:0;font-family:var(--pz-serif,Georgia,serif);font-size:21px;font-weight:600;color:var(--text,#eef1f6)}
+.desktop-ai-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px}
+.desktop-ai-tag{font-size:11px;font-weight:650;padding:2px 8px;border-radius:999px;border:1px solid var(--pz-line,rgb(255 255 255/.12));color:var(--ink-soft,#9aa6b8);background:rgb(255 255 255/.03)}
+.desktop-ai-body{flex:1 1 auto;display:flex;flex-direction:column;gap:8px;min-width:0}
+.desktop-ai-body p{margin:0;font-size:14px;line-height:1.55;color:var(--ink-soft,#9aa6b8);overflow-wrap:anywhere}
+.desktop-ai-hint{font-size:12.5px;line-height:1.5;color:#cfd7e3;overflow-wrap:anywhere}
+.desktop-ai-err{font-size:12.5px;line-height:1.5;color:#ff8a80;overflow-wrap:anywhere}
+.desktop-ai-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:4px}
+.desktop-ai-actions .accentbtn,.desktop-ai-actions .softbtn,.desktop-ai-actions .dangerbtn{min-height:38px;padding:0 16px;font-size:13px}
+html[data-desktop-gradients=off] .desktop-ai-card{background:var(--surface,#161a23)}
+html[data-pz-studio][data-look-blur] .page .desktop-ai-card{-webkit-backdrop-filter:blur(var(--nx-blur));backdrop-filter:blur(var(--nx-blur))}
+html[data-pz-motion=off] .desktop-ai-card{transition:none!important}
+@media(prefers-reduced-motion:reduce){.desktop-ai-card{transition:none}.desktop-ai-card:hover,.desktop-ai-card:focus-within{transform:none}}
 /* The setup window. */
 .cn-shade{position:fixed;inset:0;z-index:92;background:rgb(5 6 9/.66);-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);opacity:0;visibility:hidden;transition:opacity .3s var(--pz-ease,ease),visibility 0s .3s}
 .cn-shade.cn-on{opacity:1;visibility:visible;transition-delay:0s}
@@ -1689,6 +1720,16 @@ html[data-pz-studio][data-look-bg][data-look-blur] :is(.sidebar,.titlebar){-webk
         <div class="page-head"><div><div class="page-title">Apps &amp; servers</div><div class="page-sub">Connect PlazCode to the apps you create with.</div></div></div>
         <div id="cnStartWrap" class="cn-startwrap" hidden><h2 class="cn-sechead">Get started</h2><div id="cnStart" class="cn-start" aria-live="polite"></div><h2 class="cn-sechead">Your apps</h2></div>
         <div id="cnApps" class="cn-apps" aria-live="polite"></div>
+        <div id="desktopAiWrap" class="desktop-ai-wrap" hidden>
+          <div class="desktop-ai-head">
+            <div>
+              <h2 class="cn-sechead">Desktop AI Apps</h2>
+              <p class="desktop-ai-sub">One-click setup to share your live Roblox Studio workspace with desktop AI apps on this computer. Existing servers stay untouched and a backup is saved before any edit.</p>
+            </div>
+          </div>
+          <div id="desktopAiBanner" class="desktop-ai-banner" role="status" hidden></div>
+          <div id="desktopAiGrid" class="desktop-ai-grid" aria-live="polite"></div>
+        </div>
         <details id="cnMore" class="cn-more"><summary><span>More tools</span><small>Browser, Git, Fetch and other helpers. Optional.</small></summary><div id="mcpGrid" class="cn-list"></div></details>
       </section>
       <section class="page" id="page-donations">
@@ -1809,7 +1850,8 @@ html[data-pz-studio][data-look-bg][data-look-blur] :is(.sidebar,.titlebar){-webk
           <div class="settingcard"><h3>Desktop</h3><p>Closing hides PlazCode in the background. Launching the same version reopens it.</p>
             <div class="settingrow"><label>Autosave</label><span style="margin-left:auto;color:var(--green);font-size:11px;font-weight:700">Active</span></div>
             <div class="settingrow"><label>Version</label><span id="settingsVersion" style="margin-left:auto;font-size:11px">v__PLAZCODE_VERSION__ (Not checked)</span></div>
-            <div style="display:flex;gap:8px;margin-top:14px"><button class="accentbtn" data-ipc="hide">Hide to background</button><button class="dangerbtn" data-ipc="quit">Exit PlazCode</button></div>
+            <div class="settingrow"><label>Roblox Studio floating dock</label><div class="toggle" data-pref="rsStudioDockEnabled" role="switch" aria-label="Roblox Studio floating dock"></div></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="softbtn" type="button" id="resetStudioDockPos">Reset dock position</button><button class="accentbtn" data-ipc="hide">Hide to background</button><button class="dangerbtn" data-ipc="quit">Exit PlazCode</button></div>
           </div>
         </div>
         <div id="debugReport" class="settingcard"><h3>Debug report</h3><p>When something goes wrong, copy a report of recent PlazCode and AI-site errors, warnings and info, with the files involved and the likely cause, then paste it into an AI chat to debug it. Keys, tokens, cookies, user names, e-mail addresses and chat text are removed.</p><div class="instructions-actions"><button class="accentbtn" id="debugReportCopy">Copy debug report</button><button class="softbtn" id="debugReportPreview">Show report</button></div><textarea id="debugReportText" data-i18n-user-content dir="ltr" class="debug-report-text" readonly hidden aria-label="Debug report" spellcheck="false"></textarea><p id="debugReportStatus" data-i18n-user-content dir="auto" role="status"></p></div>
@@ -2452,7 +2494,129 @@ __PLAZCODE_VERSION_UI__
     }).catch(function (Error) {
       Catalogcached=null;Catalogsignature='';
       Byid("cnApps").innerHTML = '<div class="empty">' + Escape(Error.message || Error) + '</div>';
+    }).finally(function () {
+      Loaddesktopai(Force);
     });
+  }
+
+  var DesktopAiData=null,DesktopAiPending={},DesktopAiNotice=null,DesktopAiWired=false,DesktopAiSig='';
+  var DesktopAiIcons={
+    claude_desktop:'<path d="M12 3l1.9 5.3L19.5 10l-5.6 1.7L12 17l-1.9-5.3L4.5 10l5.6-1.7z"/><circle cx="18" cy="18" r="2.2"/>',
+    codex:'<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M8.5 10l2.5 2-2.5 2M13 14h3"/>',
+    opencode:'<path d="M9 8L5 12l4 4M15 8l4 4-4 4M13 6l-2 12"/>',
+    antigravity:'<path d="M12 4l7 15-7-3.5L5 19z"/><path d="M12 9v6.5"/>',
+    gemini_cli:'<path d="M12 3c1.1 4.6 4.4 7.9 9 9-4.6 1.1-7.9 4.4-9 9-1.1-4.6-4.4-7.9-9-9 4.6-1.1 7.9-4.4 9-9z"/>'
+  };
+  var DesktopAiStatusTexts={
+    'App folder detected. Ready for 1-click connection.':1,
+    'Config file does not exist yet. Click Connect to create it.':1,
+    'Existing config file could not be read safely.':1,
+    'Existing config file has invalid syntax; PlazCode left it untouched.':1,
+    'Ready for 1-click connection.':1,
+    'PlazCode is configured cleanly.':1,
+    'Existing "plazcode" entry has an unexpected shape.':1,
+    '"plazcode" is currently disabled in opencode config.':1,
+    '"plazcode" entry needs type "local".':1,
+    'Configured command points to a different PlazCode location.':1,
+    '"plazcode" is marked disabled in config.':1,
+    'Configured command points to a different PlazCode location or outdated arguments.':1,
+    'plazcode is currently disabled in Codex config.toml.':1,
+    'Codex config.toml entry points to another PlazCode path or arguments.':1,
+    'Could not locate config folder on this computer.':1
+  };
+  var DesktopAiRestartTexts={
+    'Restart Claude Desktop to load PlazCode\'s Roblox Studio tools.':1,
+    'Start a new Codex session or reopen Codex to load PlazCode.':1,
+    'Restart OpenCode or reload its servers list to pick up PlazCode.':1,
+    'Reload Antigravity or refresh its external servers list to pick up PlazCode.':1,
+    'Restart Gemini CLI or run /mcp in Gemini CLI to confirm PlazCode is ready.':1
+  };
+  function DesktopAiT(Text){return I18n?I18n.t(Text):Text;}
+  function DesktopAiBadgeState(State){return State==='connected'?'ready':State==='needs_attention'?'needs_attention':'not_set_up';}
+  function DesktopAiBadgeLabel(State){
+    if(State==='connected')return DesktopAiT('Connected');
+    if(State==='needs_attention')return DesktopAiT('Needs attention');
+    return DesktopAiT('Not connected');
+  }
+  function DesktopAiRender(){
+    var Wrap=Byid('desktopAiWrap'),Grid=Byid('desktopAiGrid'),Banner=Byid('desktopAiBanner');
+    if(!Wrap||!Grid)return;
+    var Apps=DesktopAiData&&Array.isArray(DesktopAiData.apps)?DesktopAiData.apps:[];
+    if(!Apps.length){Wrap.hidden=true;return;}
+    Wrap.hidden=false;
+    if(Banner){
+      if(DesktopAiNotice&&DesktopAiNotice.text){
+        Banner.hidden=false;
+        Banner.setAttribute('data-kind',DesktopAiNotice.kind||'ok');
+        Banner.innerHTML='<span class="desktop-ai-banner-text" data-i18n-user-content dir="auto">'+Escape(DesktopAiNotice.text)+'</span><button type="button" class="softbtn" data-dai-dismiss="1">'+Escape(DesktopAiT('Dismiss'))+'</button>';
+      }else{
+        Banner.hidden=true;
+        Banner.innerHTML='';
+      }
+    }
+    var NextSig=JSON.stringify(Apps)+'|'+JSON.stringify(DesktopAiPending)+'|'+(I18n?I18n.getLanguage():'en');
+    if(NextSig===DesktopAiSig)return;
+    DesktopAiSig=NextSig;
+    Grid.innerHTML=Apps.map(function(App){
+      var Busy=!!DesktopAiPending[App.id],State=App.state||'not_connected';
+      var Icon=DesktopAiIcons[App.id]||'<circle cx="12" cy="12" r="8"/>';
+      var PillState=DesktopAiBadgeState(State),PillLabel=DesktopAiBadgeLabel(State);
+      var Detail=DesktopAiStatusTexts[App.status_detail]?DesktopAiT(App.status_detail):String(App.status_detail||'');
+      var Hint=App.restart_hint?(DesktopAiRestartTexts[App.restart_hint]?DesktopAiT(App.restart_hint):String(App.restart_hint)):'';
+      var Format=String(App.config_format||'json').toUpperCase();
+      var InstalledBadge=App.installed?DesktopAiT('Detected'):DesktopAiT('New config');
+      var ConnectLabel=State==='connected'||State==='needs_attention'?DesktopAiT('Reconnect'):DesktopAiT('Connect');
+      var ConnectCls=State==='connected'?'softbtn':'accentbtn';
+      var DisconnectBtn=State==='connected'||(State==='needs_attention'&&App.config_exists)?'<button type="button" class="dangerbtn" data-dai-disconnect="'+Escape(App.id)+'"'+(Busy?' disabled':'')+'>'+Escape(DesktopAiT('Disconnect'))+'</button>':'';
+      var BackupHtml=App.latest_backup?'<div style="margin-top:8px"><strong data-pc-i18n>'+Escape(DesktopAiT('Latest backup'))+'</strong><code class="cn-code" dir="ltr" data-i18n-user-content>'+Escape(App.latest_backup)+'</code></div>':'';
+      var ErrorHtml=App.error?'<div class="desktop-ai-err" data-i18n-user-content dir="auto">'+Escape(App.error)+'</div>':'';
+      return '<article class="desktop-ai-card" data-state="'+Escape(State)+'" data-ai-app="'+Escape(App.id)+'">'
+        +'<div class="desktop-ai-top"><div class="desktop-ai-ico">'+Cnsvg(Icon)+'</div>'
+        +'<div class="desktop-ai-title"><h3 data-i18n-user-content dir="auto">'+Escape(App.name)+'</h3>'
+        +'<div class="desktop-ai-meta"><span class="cn-pill" data-pc-i18n data-state="'+Escape(PillState)+'">'+Escape(PillLabel)+'</span><span class="desktop-ai-tag" data-pc-i18n>'+Escape(InstalledBadge)+'</span><span class="desktop-ai-tag" dir="ltr" data-i18n-user-content>'+Escape(Format)+'</span></div></div></div>'
+        +'<div class="desktop-ai-body"><p data-pc-i18n>'+Escape(Detail)+'</p><div class="desktop-ai-hint" data-pc-i18n>'+Escape(Hint)+'</div>'+ErrorHtml
+        +'<details class="cn-tech"><summary>'+Escape(DesktopAiT('Technical details'))+'</summary><div style="margin-top:8px"><strong data-pc-i18n>'+Escape(DesktopAiT('Config path'))+'</strong><code class="cn-code" dir="ltr" data-i18n-user-content>'+Escape(App.config_path||'')+'</code></div>'+BackupHtml+'<div style="margin-top:8px"><strong data-pc-i18n>'+Escape(DesktopAiT('Config snippet'))+'</strong><pre dir="ltr">'+Escape(App.snippet||'')+'</pre></div></details></div>'
+        +'<div class="desktop-ai-actions"><button type="button" class="'+ConnectCls+'" data-dai-connect="'+Escape(App.id)+'"'+(Busy?' disabled':'')+'>'+Escape(Busy?DesktopAiT('Saving...'):ConnectLabel)+'</button>'+DisconnectBtn+'<button type="button" class="softbtn" data-dai-copy="'+Escape(App.id)+'">'+Escape(DesktopAiT('Copy config'))+'</button></div>'
+        +'</article>';
+    }).join('');
+  }
+  function DesktopAiWire(){
+    if(DesktopAiWired)return;
+    var Wrap=Byid('desktopAiWrap');if(!Wrap||!Wrap.addEventListener)return;
+    DesktopAiWired=true;
+    if(I18n&&typeof I18n.onChange==='function'){I18n.onChange(function(){DesktopAiSig='';DesktopAiRender();});}
+    Wrap.addEventListener('click',function(Event){
+      var Node=Event.target&&Event.target.closest?Event.target.closest('[data-dai-connect],[data-dai-disconnect],[data-dai-copy],[data-dai-dismiss]'):null;
+      if(!Node)return;
+      if(Node.hasAttribute('data-dai-dismiss')){DesktopAiNotice=null;DesktopAiRender();return;}
+      var CopyId=Node.getAttribute('data-dai-copy');
+      if(CopyId&&DesktopAiData&&Array.isArray(DesktopAiData.apps)){
+        var Match=DesktopAiData.apps.filter(function(A){return A.id===CopyId;})[0];
+        if(Match&&Match.snippet)Cncopy(Match.snippet,Node);
+        return;
+      }
+      var ConnectId=Node.getAttribute('data-dai-connect'),DisconnectId=Node.getAttribute('data-dai-disconnect');
+      var Id=ConnectId||DisconnectId;if(!Id||DesktopAiPending[Id])return;
+      DesktopAiPending[Id]=true;DesktopAiRender();
+      Api(ConnectId?'/api/mcp/desktop-apps/connect':'/api/mcp/desktop-apps/disconnect',{method:'POST',body:JSON.stringify({id:Id})}).then(function(Reply){
+        DesktopAiNotice={kind:'ok',text:Reply&&Reply.message?Reply.message:DesktopAiT('Saved configuration.')};
+        return Loaddesktopai(true);
+      }).catch(function(Error){
+        DesktopAiNotice={kind:'error',text:Error&&Error.message?Error.message:String(Error)};
+      }).finally(function(){
+        delete DesktopAiPending[Id];
+        DesktopAiSig='';
+        DesktopAiRender();
+      });
+    });
+  }
+  function Loaddesktopai(Force){
+    DesktopAiWire();
+    var Page=Byid('page-mcp');
+    if(!Force&&(!Page||!Page.classList.contains('active')))return Promise.resolve();
+    return Api('/api/mcp/desktop-apps').then(function(Reply){
+      if(Reply&&Array.isArray(Reply.apps)){DesktopAiData=Reply;DesktopAiRender();}
+    }).catch(function(){});
   }
 
   var Recentlogsignature='',Terminallogs=[],Terminalrendered=false;
@@ -3978,6 +4142,14 @@ __PLAZCODE_VERSION_UI__
         Patchpref(Element.getAttribute("data-pref"), !Element.classList.contains("on"));
       };
     });
+    var ResetDock = Byid("resetStudioDockPos");
+    if (ResetDock) {
+      ResetDock.onclick = function () {
+        Api("/api/studio-dock/position", { method: "POST", body: JSON.stringify({ reset: true }) })
+          .then(function () { return Refresh(); })
+          .catch(Showerror);
+      };
+    }
   }
 
   async function Bootstrap() {
