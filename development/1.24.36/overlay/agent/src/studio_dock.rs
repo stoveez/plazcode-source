@@ -140,6 +140,10 @@ pub struct DockAppearanceState {
     pub ripple: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom: Option<String>,
+    #[serde(rename = "pixelMode", default)]
+    pub pixel_mode: bool,
+    #[serde(rename = "signalRain", default)]
+    pub signal_rain: bool,
 }
 
 pub fn valid_hex_color(raw: &str) -> Option<String> {
@@ -169,6 +173,14 @@ pub fn appearance_state_from_prefs(prefs: &DesktopPreferences) -> DockAppearance
                     | "copper"
                     | "aurora"
                     | "orchid"
+                    | "midnight-slate"
+                    | "obsidian-gold"
+                    | "sunset-ember"
+                    | "sakura-dusk"
+                    | "nord-frost"
+                    | "amber-terminal"
+                    | "paper-light"
+                    | "mono-contrast"
             )
         })
         .unwrap_or("default")
@@ -191,6 +203,8 @@ pub fn appearance_state_from_prefs(prefs: &DesktopPreferences) -> DockAppearance
     let custom = app
         .and_then(|a| a.custom.as_deref())
         .and_then(valid_hex_color);
+    let pixel_mode = app.map(|a| a.pixel_mode).unwrap_or(false);
+    let signal_rain = app.map(|a| a.signal_rain).unwrap_or(false);
     DockAppearanceState {
         theme,
         glow,
@@ -199,6 +213,8 @@ pub fn appearance_state_from_prefs(prefs: &DesktopPreferences) -> DockAppearance
         anim,
         ripple,
         custom,
+        pixel_mode,
+        signal_rain,
     }
 }
 
@@ -603,6 +619,8 @@ pub fn build_shell_html() -> String {
     ));
     let i18n = include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/i18n.js"));
     let media_ui = include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/media.js"));
+    let theme_presets = include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/theme-presets.js"));
+    let backdrop_fx = include_str!(concat!(env!("PLAZCODE_EXTENSION_ROOT"), "/core/backdrop-fx.js"));
     if !page.contains("__PLAZCODE_I18N_CATALOG__") {
         panic!("studio_dock.html missing __PLAZCODE_I18N_CATALOG__");
     }
@@ -616,6 +634,8 @@ pub fn build_shell_html() -> String {
         .replace("__PLAZCODE_I18N_CATALOG__", &catalog.replace("</", "<\\/"))
         .replace("__PLAZCODE_I18N__", &i18n.replace("</", "<\\/"))
         .replace("__PLAZCODE_MEDIA_UI__", &media_ui.replace("</", "<\\/"))
+        .replace("__PLAZCODE_THEME_PRESETS__", &theme_presets.replace("</", "<\\/"))
+        .replace("__PLAZCODE_BACKDROP_FX__", &backdrop_fx.replace("</", "<\\/"))
         .replace("__PLAZCODE_VERSION__", env!("CARGO_PKG_VERSION"));
     page
 }
@@ -2303,6 +2323,8 @@ mod tests {
             anim: false,
             ripple: false,
             custom: Some("#11AAFF".into()),
+            pixel_mode: false,
+            signal_rain: false,
         });
         let custom = appearance_state_from_prefs(&prefs);
         assert_eq!(custom.theme, "aurora");
@@ -2329,6 +2351,30 @@ mod tests {
         assert!(!html.contains("__PLAZCODE_I18N_CATALOG__"));
         assert!(!html.contains("__PLAZCODE_I18N__"));
         assert!(!html.contains("__PLAZCODE_MEDIA_UI__"));
+        assert!(!html.contains("__PLAZCODE_THEME_PRESETS__"));
+        assert!(!html.contains("__PLAZCODE_BACKDROP_FX__"));
+    }
+
+    #[test]
+    fn dock_appearance_accepts_pro_presets_and_fx_flags() {
+        let mut prefs = DesktopPreferences::default();
+        prefs.appearance = Some(crate::preferences::Appearance {
+            theme: "nord-frost".into(),
+            glow: "strong".into(),
+            gradients: "on".into(),
+            motion: "reduced".into(),
+            anim: true,
+            ripple: false,
+            custom: None,
+            pixel_mode: true,
+            signal_rain: true,
+        });
+        prefs.normalize();
+        let state = appearance_state_from_prefs(&prefs);
+        assert_eq!(state.theme, "nord-frost");
+        assert_eq!(state.motion, "reduced");
+        assert!(state.pixel_mode);
+        assert!(state.signal_rain);
     }
 
     #[tokio::test]

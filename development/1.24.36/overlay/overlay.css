@@ -6522,3 +6522,14 @@ html[data-rs-studio] #rs-root #rs-bar.rs-fit-3 :is(#rs-action,#rs-stop){gap:0!im
 /* (Same report: the "weird arrow in the top left" was the click ripple. It is added inside the button as one more <span>, and the
    chevron used to be styled as the button's LAST span, so for a moment the ripple was drawn as a small chevron at the top-left
    while the real chevron fell back to a tiny "⌄". The chevron is now styled as the second span, which it always is.) */
+
+/* Curated pro presets, Pixel Mode, and Signal Rain backdrop. */
+.rs-signal-rain{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.24;border-radius:inherit}
+.rs-signal-rain[hidden]{display:none!important}
+#rs-bar>:not(.rs-signal-rain){position:relative;z-index:1}
+html[data-rs-tone=light][data-rs-palette][data-rs-theme] :is(#rs-bar,#rs-menu,#rs-cards-panel,#rs-approve,#rs-input-cover,#rs-enhancer-panel,#rs-cowork-panel,#rs-tasks-panel,#rs-activity-panel,#rs-memory-panel,#rs-media-panel,#rs-agents-panel){color:#171a20!important}
+html[data-rs-tone=light][data-rs-palette][data-rs-theme] :is(#rs-root,#rs-menu,#rs-cards-panel,#rs-approve,#rs-input-cover,.rs-chat-activity){--rs-text:#171a20;--pc-muted:#4a505c}
+html[data-rs-tone=light][data-rs-palette][data-rs-theme] :is(#rs-engine,#rs-action,#rs-undo,#rs-extra,#rs-discord,#rs-settings-btn,#rs-hide,#rs-cards-btn){color:#171a20!important}
+html[data-rs-tone=light][data-rs-palette][data-rs-theme] :is(#rs-action[data-kind=start],#rs-action[data-kind=restart],.rs-mode-btn.on,.rs-work-card.on,.rs-lvl-btn.on,.rs-tgl.on){color:#ffffff!important}
+html[data-plazcode-pixel="1"] #rs-root :is(#rs-bar,#rs-menu,#rs-cards-panel,#rs-approve,#rs-input-cover,#rs-enhancer-panel,#rs-cowork-panel,#rs-tasks-panel,#rs-activity-panel,#rs-memory-panel,#rs-media-panel,#rs-agents-panel,.rs-menu-sec,.rs-card,.rs-sum-card,.rs-approve-card,.rs-sum-row,.rs-work-card,.rs-site-opt,.rs-tip-opt,.rs-lvl-btn,.rs-tgl-row,.rs-mcp-item,.rs-blender-card,#rs-engine,#rs-action,#rs-stop,#rs-undo,#rs-extra,#rs-discord,#rs-settings-btn,#rs-hide,#rs-cards-btn,.rs-mode-btn,.rs-chip){border-radius:2px!important}
+html[data-plazcode-pixel="1"] #rs-bar{box-shadow:3px 3px 0 rgb(var(--pc-rgb,233 186 83) / .28),0 14px 34px #0005!important}

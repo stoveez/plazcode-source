@@ -48,6 +48,8 @@ declare var PlazCodeToolCards: any;
 declare var PlazCodeToolGuard: any;
 declare var PlazCodeToolkitUI: any;
 declare var PlazCodeTurnBudget: any;
+declare var PlazCodeThemePresets: any;
+declare var PlazCodeBackdropFx: any;
 declare var PlazCodeUiCheck: any;
 declare var PlazCodeUltracode: any;
 declare var PlazCodeVaultApi: any;
