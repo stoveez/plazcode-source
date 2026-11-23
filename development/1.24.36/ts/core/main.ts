@@ -3574,11 +3574,11 @@ return result`;
       const result=await bg({type:"templates",request:args});return result?.ok ? "Output of 'plazcode_templates':\n"+JSON.stringify(result) : "ERROR: "+String(result?.error || "Template bridge unavailable.");
     }
     if (name === "ultralab_read") {
-      if (window.__rsThinkingLevel?.() !== "ultracode" || typeof PlazCodeUltracode === "undefined" || !PlazCodeUltracode.runTool) return "ERROR: ultralab_read is available only at Ultra effort.";
+      if (window.__rsThinkingLevel?.() !== "ultracode" || typeof PlazCodeUltracode === "undefined" || !PlazCodeUltracode.runTool) return "ERROR: ultralab_read is available only at Hyper effort.";
       return "Output of 'ultralab_read':\n" + await PlazCodeUltracode.runTool(args);
     }
     if (name === "roblox_docs") {
-      if (window.__rsThinkingLevel?.() !== "ultracode") return "ERROR: roblox_docs is available only at Ultra effort.";
+      if (window.__rsThinkingLevel?.() !== "ultracode") return "ERROR: roblox_docs is available only at Hyper effort.";
       const a = args || {};
       const target = String(a.url || "").trim();
       const maxChars = Math.max(500, Math.min(60000, Math.floor(Number(a.max_chars)) || 24000));

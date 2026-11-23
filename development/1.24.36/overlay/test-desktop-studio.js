@@ -98,22 +98,16 @@ console.log("PASS desktop Studio look: frame functions, hooks, reduced/off motio
     await tab.evaluate(() => document.documentElement.setAttribute("data-pz-motion", "reduced"));
     assert.equal(await tab.evaluate(() => { document.querySelector('.pz-area[data-area="workspace"]').click(); return document.querySelectorAll(".pz-leaving,.pz-entering").length; }), 0, "Reduced motion switches at once");
     await tab.evaluate(() => { document.documentElement.setAttribute("data-pz-motion", "full"); const b = document.querySelector('.navbtn[data-page="skills"]'); if (b) b.click(); }); await tab.waitForTimeout(600);
-    const roomy = await tab.evaluate(() => { const g = document.querySelector("#skillsWorkspace .grid2"), e = document.querySelector("#skillsWorkspace .pz-sk-editor"); return { columns: getComputedStyle(g).gridTemplateColumns.split(" ").length,
+    const roomy = await tab.evaluate(() => { const g = document.querySelector("#skillsWorkspace .wb-grid"), m = document.querySelector('#skillsWorkspace [data-sk="preview-modal"]'); return { columns: getComputedStyle(g).gridTemplateColumns.split(" ").length,
       tabs: getComputedStyle(document.querySelector('#skillsWorkspace [role="tablist"]')).display, input: parseFloat(getComputedStyle(document.querySelector('#skillsWorkspace [data-sk="search"]')).fontSize),
-      editor: !!e, hidden: e && getComputedStyle(e).visibility, numbers: document.querySelectorAll(".pz-area i").length, fields: ["title", "steps", "scope", "save", "delete", "export", "open-import"].every((n) => e && e.querySelector('[data-sk="' + n + '"]')) }; });
-    assert.equal(roomy.columns, 1, "the skill list takes the full width"); assert.equal(roomy.tabs, "inline-flex"); assert(roomy.input >= 14, "readable field text");
-    assert.equal(roomy.editor, true); assert.equal(roomy.hidden, "hidden", "the editor window starts closed"); assert.equal(roomy.fields, true, "every editor control is still there"); assert.equal(roomy.numbers, 0, "no numbers beside the sidebar sections");
-    // The skill editor opens as a window from "Add skill", closes with Escape, the X and the backdrop.
-    await tab.click('#skillsWorkspace [data-sk="new"]'); await tab.waitForTimeout(700);
-    const opened = await tab.evaluate(() => { const e = document.querySelector("#skillsWorkspace .pz-sk-editor"), r = e.getBoundingClientRect(); return { open: document.getElementById("skillsWorkspace").classList.contains("pz-sk-open"), visible: getComputedStyle(e).visibility,
-      centred: Math.abs((r.left + r.right) / 2 - innerWidth / 2) < 3 && r.top >= 0 && r.bottom <= innerHeight, wide: r.width, focus: document.activeElement && document.activeElement.getAttribute("data-sk") }; });
-    assert.equal(opened.open, true); assert.equal(opened.visible, "visible"); assert.equal(opened.centred, true, "the editor window sits in the middle of the app"); assert(opened.wide >= 700); assert.equal(opened.focus, "steps", "typing starts in the instructions");
-    await tab.keyboard.press("Escape"); await tab.waitForTimeout(500);
-    assert.equal(await tab.evaluate(() => document.getElementById("skillsWorkspace").classList.contains("pz-sk-open")), false, "Escape closes the editor");
-    await tab.click('#skillsWorkspace [data-sk="new"]'); await tab.waitForTimeout(500); await tab.click("#skillsWorkspace .pz-sk-close"); await tab.waitForTimeout(400);
-    assert.equal(await tab.evaluate(() => document.getElementById("skillsWorkspace").classList.contains("pz-sk-open")), false, "the X closes the editor");
-    await tab.click('#skillsWorkspace [data-sk="new"]'); await tab.waitForTimeout(500); await tab.mouse.click(8, 400); await tab.waitForTimeout(400);
-    assert.equal(await tab.evaluate(() => document.getElementById("skillsWorkspace").classList.contains("pz-sk-open")), false, "a click outside closes the editor");
+      modal: !!m, modalHidden: m && m.hidden, numbers: document.querySelectorAll(".pz-area i").length, fields: ["title", "steps", "scope", "save", "delete", "export", "open-import", "preview-agent"].every((n) => document.querySelector('#skillsWorkspace [data-sk="' + n + '"]')) }; });
+    assert.equal(roomy.columns, 3, "the 3-pane Skills Workbench lays out library, editor, and inspector"); assert.equal(roomy.tabs, "flex"); assert(roomy.input >= 12, "readable field text");
+    assert.equal(roomy.modal, true); assert.equal(roomy.modalHidden, true, "preview modal starts closed"); assert.equal(roomy.fields, true, "every Workbench control is present"); assert.equal(roomy.numbers, 0, "no numbers beside the sidebar sections");
+    // The Workbench preview modal opens from Preview, closes via Close button.
+    await tab.click('#skillsWorkspace [data-sk="preview-agent"]'); await tab.waitForTimeout(300);
+    assert.equal(await tab.evaluate(() => document.querySelector('#skillsWorkspace [data-sk="preview-modal"]').hidden), false, "Preview modal opens");
+    await tab.click('#skillsWorkspace [data-sk="preview-close"]'); await tab.waitForTimeout(300);
+    assert.equal(await tab.evaluate(() => document.querySelector('#skillsWorkspace [data-sk="preview-modal"]').hidden), true, "Close button dismisses Preview modal");
     // 2026-11-11 polish: one gliding sidebar highlight, no numbers before card headings, matching window buttons, gap above the supported-AI card.
     await tab.click('.pz-area[data-area="home"]'); await tab.waitForTimeout(900);
     const polish = await tab.evaluate(() => { const g = document.querySelector(".pz-areas .pz-glide"), a = document.querySelector(".pz-area.active"), ai = document.getElementById("homeSupportedAis");

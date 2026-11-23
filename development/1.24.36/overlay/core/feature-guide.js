@@ -1982,7 +1982,7 @@ const PlazCodeFeatureGuide = (() => {
   "index": false
  },
  {
-  "id": "compact-outputs",
+  "id": "compact-out",
   "title": "Compact noisy tool outputs",
   "group": "Settings",
   "where": "Extension menu > Speed & tokens > Compact noisy tool outputs",
@@ -1994,7 +1994,7 @@ const PlazCodeFeatureGuide = (() => {
   ],
   "tips": [],
   "related": [
-   "parallel-reads",
+   "par-reads",
    "task-ledger"
   ],
   "keywords": [
@@ -2014,7 +2014,7 @@ const PlazCodeFeatureGuide = (() => {
   "index": false
  },
  {
-  "id": "parallel-reads",
+  "id": "par-reads",
   "title": "Parallel read-only tools",
   "group": "Settings",
   "where": "Extension menu > Speed & tokens > Parallel read-only tools",
@@ -2026,7 +2026,7 @@ const PlazCodeFeatureGuide = (() => {
   ],
   "tips": [],
   "related": [
-   "compact-outputs",
+   "compact-out",
    "task-ledger"
   ],
   "keywords": [
@@ -2057,8 +2057,8 @@ const PlazCodeFeatureGuide = (() => {
   ],
   "tips": [],
   "related": [
-   "compact-outputs",
-   "parallel-reads"
+   "compact-out",
+   "par-reads"
   ],
   "keywords": [
    "ledger",
