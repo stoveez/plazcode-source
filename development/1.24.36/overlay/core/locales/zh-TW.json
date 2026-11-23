@@ -1589,5 +1589,8 @@
   "Stark monochrome silver on pitch black.": "極黑背景上的冷峻單色銀白。",
   "Set thinking level: Ultra": "設定思考等級：Ultra",
   "Ultra": "Ultra",
-  "Keep AI tab awake during active runs": "在活躍執行期間保持 AI 分頁喚醒"
+  "Keep AI tab awake during active runs": "在活躍執行期間保持 AI 分頁喚醒",
+  "Compact noisy tool outputs": "壓縮冗長的工具輸出",
+  "Parallel read-only tools": "平行執行唯讀工具",
+  "Task intent ledger": "任務意圖帳本"
 }

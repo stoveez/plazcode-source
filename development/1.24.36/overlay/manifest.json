@@ -274,6 +274,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -356,6 +359,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -429,6 +435,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -499,6 +508,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -572,6 +584,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -642,6 +657,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -712,6 +730,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -785,6 +806,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -865,6 +889,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -945,6 +972,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -1016,6 +1046,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -1086,6 +1119,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -1156,6 +1192,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -1229,6 +1268,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -1303,6 +1345,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -1374,6 +1419,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -1444,6 +1492,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -1514,6 +1565,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [
@@ -1585,6 +1639,9 @@
         "core/backdrop-fx.js",
         "core/tab-keepawake.js",
         "core/dom-cache.js",
+        "core/token-optimizer.js",
+        "core/parallel-tools.js",
+        "core/task-ledger.js",
         "core/main.js"
       ],
       "css": [

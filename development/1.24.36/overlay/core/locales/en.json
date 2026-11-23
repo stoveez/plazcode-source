@@ -1589,5 +1589,8 @@
   "Stark monochrome silver on pitch black.": null,
   "Set thinking level: Ultra": null,
   "Ultra": null,
-  "Keep AI tab awake during active runs": "Keep AI tab awake during active runs"
+  "Keep AI tab awake during active runs": "Keep AI tab awake during active runs",
+  "Compact noisy tool outputs": null,
+  "Parallel read-only tools": null,
+  "Task intent ledger": null
 }

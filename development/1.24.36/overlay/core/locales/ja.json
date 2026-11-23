@@ -1589,5 +1589,8 @@
   "Stark monochrome silver on pitch black.": "漆黒に際立つ鮮烈なモノクロシルバー。",
   "Set thinking level: Ultra": "思考レベルを設定：Ultra",
   "Ultra": "Ultra",
-  "Keep AI tab awake during active runs": "実行中はAIタブをスリープさせない"
+  "Keep AI tab awake during active runs": "実行中はAIタブをスリープさせない",
+  "Compact noisy tool outputs": "冗長なツール出力を圧縮",
+  "Parallel read-only tools": "読み取り専用ツールを並列実行",
+  "Task intent ledger": "タスク意図台帳"
 }

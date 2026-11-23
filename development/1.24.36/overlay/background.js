@@ -2490,18 +2490,19 @@ try { if (chrome.windows && chrome.windows.onRemoved) chrome.windows.onRemoved.a
 // runs in, the queue (two at once per main chat), the edit locks that stop two agents changing the same script
 // or file at the same time, and the summaries waiting to go back to the main chat. createHelperRoster is pure
 // (no browser calls) so its rules are tested directly.
-function createHelperRoster({ limit = 2, maxOpen = 8, now = () => Date.now() } = {}) {
-  let seq = 0;
+function createHelperRoster({ limit = 2, maxOpen = 8, slotMs = 600000, runMs = 900000, now = () => Date.now() } = {}) {
+  let seq = 0, runSeq = 0;
   const rows = new Map();   // id -> helper row
   const locks = new Map();  // parentTab + "|" + key -> { owner, title, at }
   const ACTIVE = new Set(["queued", "starting", "working"]);
   const text = (value, max) => String(value == null ? "" : value).replace(/\s+/g, " ").trim().slice(0, max);
-  const view = (r) => ({ id: r.id, title: r.title, area: r.area, status: r.status, step: r.step || "", note: r.note || "",
-    steps: r.steps || 0, queuedAt: r.queuedAt, startedAt: r.startedAt || 0, endedAt: r.endedAt || 0, summary: r.summary || "", delivered: !!r.delivered });
+  const view = (r) => ({ id: r.id, runId: r.runId || "", title: r.title, area: r.area, status: r.status, step: r.step || "", note: r.note || "",
+    steps: r.steps || 0, queuedAt: r.queuedAt, startedAt: r.startedAt || 0, endedAt: r.endedAt || 0, deadlineAt: r.deadlineAt || 0,
+    runDeadlineAt: r.runDeadlineAt || 0, expired: !!r.expired, summary: r.summary || "", delivered: !!r.delivered });
   const mine = (parentTab) => [...rows.values()].filter((r) => r.parentTab === parentTab);
   const activeFor = (parentTab) => mine(parentTab).filter((r) => ACTIVE.has(r.status));
   const byTab = (tabId) => [...rows.values()].find((r) => r.tabId === tabId && ACTIVE.has(r.status)) || null;
-  function dropLocks(test) { for (const [key, lock] of locks) if (test(key, lock)) locks.delete(key); }
+  function dropLocks(test) { let dropped = 0; for (const [key, lock] of locks) if (test(key, lock)) { locks.delete(key); dropped++; } return dropped; }
   function add(parent, specs, opts = {}) {
     if (!parent || !Number.isInteger(parent.tabId)) return { ok: false, error: "Helpers can only be started from an AI chat tab." };
     if (byTab(parent.tabId)) return { ok: false, error: "A helper cannot start helpers of its own." };
@@ -2515,13 +2516,19 @@ function createHelperRoster({ limit = 2, maxOpen = 8, now = () => Date.now() } =
       clean.push({ title, task, area });
     }
     if (activeFor(parent.tabId).length + clean.length > maxOpen) return { ok: false, error: "Too many helpers at once. At most " + maxOpen + " can be working or waiting; wait for some to finish." };
+    const queuedAt = now();
+    const runId = typeof opts.runId === "string" && opts.runId ? opts.runId : "r" + (++runSeq);
+    const effectiveSlotMs = Number(opts.slotMs) > 0 ? Number(opts.slotMs) : slotMs;
+    const effectiveRunMs = Number(opts.runMs) > 0 ? Number(opts.runMs) : runMs;
+    const runDeadlineAt = queuedAt + effectiveRunMs;
     const made = clean.map((spec) => {
-      const row = { id: ++seq, parentTab: parent.tabId, parentChat: String(parent.chat || ""), url: String(opts.url || ""), engine: String(opts.engine || "roblox"),
-        title: spec.title, task: spec.task, area: spec.area, status: "queued", queuedAt: now(), tabId: null, windowId: null };
+      const row = { id: ++seq, runId, parentTab: parent.tabId, parentChat: String(parent.chat || ""), url: String(opts.url || ""), engine: String(opts.engine || "roblox"),
+        title: spec.title, task: spec.task, area: spec.area, status: "queued", queuedAt, startedAt: 0, endedAt: 0,
+        slotMs: effectiveSlotMs, deadlineAt: 0, runDeadlineAt, expired: false, tabId: null, windowId: null };
       rows.set(row.id, row);
       return view(row);
     });
-    return { ok: true, helpers: made };
+    return { ok: true, runId, helpers: made };
   }
   // Queued helpers that may start now (two at a time per main chat); marks them "starting".
   function next(parentTab) {
@@ -2530,7 +2537,10 @@ function createHelperRoster({ limit = 2, maxOpen = 8, now = () => Date.now() } =
     for (const row of mine(parentTab)) {
       if (busy >= limit) break;
       if (row.status !== "queued") continue;
-      row.status = "starting"; row.startedAt = now(); busy++; out.push(row);
+      const startedAt = now();
+      row.status = "starting"; row.startedAt = startedAt;
+      row.deadlineAt = startedAt + (Number(row.slotMs) > 0 ? Number(row.slotMs) : slotMs);
+      busy++; out.push(row);
     }
     return out;
   }
@@ -2548,11 +2558,45 @@ function createHelperRoster({ limit = 2, maxOpen = 8, now = () => Date.now() } =
     const row = rows.get(id);
     if (!row || !ACTIVE.has(row.status)) return null;
     row.status = ["done", "failed", "stopped"].includes(result.status) ? result.status : "failed";
+    if (result.expired) row.expired = true;
     row.summary = String(result.summary || "").trim().slice(0, 6000);
     row.endedAt = now(); row.step = ""; row.note = "";
     dropLocks((key, lock) => lock.owner === "h" + row.id);
     if (!activeFor(row.parentTab).length) dropLocks((key) => key.startsWith(row.parentTab + "|"));
     return row;
+  }
+  function cancelHelper(id, reason = "Cancelled before finishing.") {
+    return finish(Number(id), { status: "stopped", summary: String(reason || "Cancelled before finishing.").slice(0, 400) });
+  }
+  function cancelRun(runId, reason = "Helper run cancelled.") {
+    const target = String(runId || "");
+    if (!target) return [];
+    const cancelled = [];
+    for (const row of rows.values()) {
+      if (row.runId === target && ACTIVE.has(row.status)) {
+        const ended = finish(row.id, { status: "stopped", summary: String(reason || "Helper run cancelled.").slice(0, 400) });
+        if (ended) cancelled.push(ended);
+      }
+    }
+    return cancelled;
+  }
+  function sweepExpired() {
+    const t = now();
+    const expired = [];
+    for (const row of [...rows.values()]) {
+      if (!ACTIVE.has(row.status)) continue;
+      if (row.runDeadlineAt && t >= row.runDeadlineAt) {
+        const mins = Math.max(1, Math.round((row.runDeadlineAt - row.queuedAt) / 60000));
+        const ended = finish(row.id, { status: "stopped", expired: true, summary: `Helper run deadline exceeded (${mins}m limit).` });
+        if (ended) expired.push(ended);
+      } else if ((row.status === "starting" || row.status === "working") && row.deadlineAt && t >= row.deadlineAt) {
+        const mins = Math.max(1, Math.round((row.deadlineAt - row.startedAt) / 60000));
+        const ended = finish(row.id, { status: "stopped", expired: true, summary: `Helper deadline exceeded (${mins}m limit).` });
+        if (ended) expired.push(ended);
+      }
+    }
+    const locksDropped = dropLocks((_key, lock) => lock.owner === "main" && t - lock.at >= slotMs);
+    return { expired, locksDropped };
   }
   // Helpers to stop: one by id, or every working/waiting helper of this main chat.
   const stoppable = (parentTab, id) => activeFor(parentTab).filter((r) => id == null || r.id === Number(id));
@@ -2569,6 +2613,7 @@ function createHelperRoster({ limit = 2, maxOpen = 8, now = () => Date.now() } =
   }
   // An agent is about to change these scripts/files. Refused when another agent of the same job is on one.
   function lock(tabId, keys) {
+    sweepExpired();
     const helper = byTab(tabId);
     const parentTab = helper ? helper.parentTab : tabId;
     if (!helper && !activeFor(parentTab).length) return { ok: true };
@@ -2577,7 +2622,7 @@ function createHelperRoster({ limit = 2, maxOpen = 8, now = () => Date.now() } =
     for (const key of wanted) {
       const held = locks.get(parentTab + "|" + key);
       if (!held || held.owner === owner) continue;
-      const active = held.owner === "main" ? (now() - held.at < 600000) : ACTIVE.has(String((rows.get(Number(held.owner.slice(1))) || {}).status || ""));
+      const active = held.owner === "main" ? (now() - held.at < slotMs) : ACTIVE.has(String((rows.get(Number(held.owner.slice(1))) || {}).status || ""));
       if (active) return { ok: false, key, holder: held.title };
     }
     for (const key of wanted) locks.set(parentTab + "|" + key, { owner, title, at: now() });
@@ -2592,14 +2637,15 @@ function createHelperRoster({ limit = 2, maxOpen = 8, now = () => Date.now() } =
     dropLocks((key) => key.startsWith(tabId + "|"));
     return { ended: [], orphans };
   }
-  const dump = () => ({ seq, rows: [...rows.values()], locks: [...locks.entries()] });
+  const dump = () => ({ seq, runSeq, rows: [...rows.values()], locks: [...locks.entries()] });
   function load(saved) {
     if (!saved || !Array.isArray(saved.rows)) return;
     seq = Math.max(seq, Number(saved.seq) || 0);
+    runSeq = Math.max(runSeq, Number(saved.runSeq) || 0);
     for (const row of saved.rows) if (row && Number.isInteger(row.id)) rows.set(row.id, row);
     for (const [key, value] of saved.locks || []) locks.set(key, value);
   }
-  return { add, next, placed, progress, finish, stoppable, clear, list, take, lock, tabGone, byTab, get: (id) => rows.get(Number(id)) || null, activeFor, dump, load };
+  return { add, next, placed, progress, finish, cancelHelper, cancelRun, sweepExpired, stoppable, clear, list, take, lock, tabGone, byTab, get: (id) => rows.get(Number(id)) || null, activeFor, dump, load };
 }
 const helperRoster = createHelperRoster({ limit: 2 });
 let helperLoading = null;
@@ -2670,24 +2716,48 @@ async function helperStart(row) {
     helperEnd(row.id, { status: "failed", summary: "Could not start: " + String(error && error.message || error).slice(0, 200) }, true);
   }
 }
+function helperSweep() {
+  const { expired, locksDropped } = helperRoster.sweepExpired();
+  if (!expired.length && !locksDropped) return 0;
+  const parents = new Set();
+  for (const row of expired) {
+    if (row.tabId != null) { try { const p = chrome.tabs.sendMessage(row.tabId, { type: "rs-helper-stop" }); if (p && p.catch) p.catch(() => {}); } catch {} }
+    helperCloseWindow(row);
+    parents.add(row.parentTab);
+  }
+  for (const parentTab of parents) { helperNotify(parentTab); helperPump(parentTab); }
+  if (!expired.length && locksDropped) helperSave();
+  return expired.length;
+}
+try { setInterval(() => { helperLoad().then(() => { helperSweep(); }).catch(() => {}); }, 15000); } catch {}
 async function helperRequest(tabId, request) {
   await helperLoad();
+  helperSweep();
   const action = String(request && request.action || "");
   if (tabId == null || !Number.isInteger(tabId)) return { ok: false, error: "Helpers need an AI chat tab." };
   if (action === "start") {
-    const added = helperRoster.add({ tabId, chat: request.chat }, request.helpers, { url: request.url, engine: request.engine });
+    const added = helperRoster.add({ tabId, chat: request.chat }, request.helpers, { url: request.url, engine: request.engine, slotMs: request.slotMs, runMs: request.runMs, runId: request.runId });
     if (!added.ok) return added;
     helperPump(tabId); helperNotify(tabId);
-    return { ok: true, helpers: helperRoster.list(tabId).filter((h) => added.helpers.some((a) => a.id === h.id)) };
+    return { ok: true, runId: added.runId, helpers: helperRoster.list(tabId).filter((h) => added.helpers.some((a) => a.id === h.id)) };
   }
   if (action === "list") { const self = helperRoster.byTab(tabId); return { ok: true, helpers: helperRoster.list(tabId), helper: self ? { id: self.id, title: self.title, task: self.task, area: self.area, engine: self.engine, sent: !!self.sent } : null }; }
   if (action === "take") { const results = helperRoster.take(tabId); helperSave(); return { ok: true, results, pending: helperRoster.activeFor(tabId).length }; }
-  if (action === "stop") {
+  if (action === "stop" || action === "cancel-helper") {
     const targets = helperRoster.stoppable(tabId, request.id);
     for (const row of targets) {
       if (row.tabId != null) { try { const p = chrome.tabs.sendMessage(row.tabId, { type: "rs-helper-stop" }); if (p && p.catch) p.catch(() => {}); } catch {} }
       helperEnd(row.id, { status: "stopped", summary: String(request.reason || "Stopped before finishing.").slice(0, 200) });
     }
+    return { ok: true, stopped: targets.length };
+  }
+  if (action === "cancel-run") {
+    const targets = helperRoster.cancelRun(request.runId, String(request.reason || "Helper run cancelled.").slice(0, 200));
+    for (const row of targets) {
+      if (row.tabId != null) { try { const p = chrome.tabs.sendMessage(row.tabId, { type: "rs-helper-stop" }); if (p && p.catch) p.catch(() => {}); } catch {} }
+      helperCloseWindow(row);
+    }
+    if (targets.length) { helperNotify(tabId); helperPump(tabId); }
     return { ok: true, stopped: targets.length };
   }
   if (action === "clear") { for (const row of helperRoster.clear(tabId)) helperCloseWindow(row); helperNotify(tabId); return { ok: true }; }

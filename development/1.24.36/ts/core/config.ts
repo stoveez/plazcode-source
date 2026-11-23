@@ -182,10 +182,11 @@ const RS = (() => {
     return (tools || [])
       .map((t) => {
         const name = t.name || "?";
-        const desc = (t.description || "").split("\n")[0].trim();
+        const first = (t.description || "").split("\n")[0].trim();
+        const desc = first.length > 96 ? first.slice(0, 93).trimEnd() + "…" : first;
         const props = (t.inputSchema && t.inputSchema.properties) || {};
-        const args = Object.keys(props).join(", ");
-        return `  ${name}(${args}) - ${desc}`;
+        const args = Object.keys(props).join(",");
+        return desc ? `${name}(${args}) - ${desc}` : `${name}(${args})`;
       })
       .join("\n");
   }
@@ -750,17 +751,13 @@ IMPORTANT: Your very first action is to write \`list_commands\` to get the full 
   // RobloxScript reminder (NOT a user message and NOT a new command to run).
   function toolsReminder(tools?: PromptToolInfo[] | null): string {
     const eng = (typeof window !== "undefined" && window.__rsEngine) ? window.__rsEngine() : "roblox";
-    const label = eng === "local" ? "AgentScript (local filesystem + terminal)"
-      : "Roblox Studio";
+    const label = eng === "local" ? "AgentScript" : "Roblox Studio";
     const toolsString =
-      `  list_commands() - list all available ${label} commands with full parameter details\n` +
+      `list_commands() - full ${label} parameter details\n` +
       compactTools(tools);
     return (
-      "\n\n────────────────────────────────\n" +
-      "(System note from PlazCode - this is an automatic REMINDER, not a request and not a new result. " +
-      "Do NOT reply to it or run any command because of it; just keep it in mind for your next command.)\n" +
-      `Reminder of the ${label} commands (use exact names and parameter keys; ` +
-      "for other connected apps call list_mcp_servers):\n" +
+      "\n\n---\n" +
+      `(Auto reminder, not a request — do not reply to it. ${label} commands; for other apps call list_mcp_servers:)\n` +
       toolsString + "\n" + mcpUsagePolicy()
     );
   }
@@ -769,11 +766,7 @@ IMPORTANT: Your very first action is to write \`list_commands\` to get the full 
   // its project memory current without us forcing a write. Clearly framed as an
   // optional reminder, NOT a command to run right now.
   function memoryNudge(): string {
-    return (
-      "(Reminder: if you've learned anything DURABLE about this project since your last memory update " +
-      "(architecture, where things live, conventions, decisions, user preferences), update your shared project memory at " +
-      "game.ServerStorage.RobloxScript.Memory with multi_edit - only useful, lasting facts. If nothing changed, ignore this.)"
-    );
+    return "(Optional: if you learned durable project facts, update game.ServerStorage.RobloxScript.Memory via multi_edit; ignore if unchanged.)";
   }
 
   // ── Image → Model (vision builder) ──────────────────────────────────────────

@@ -1589,5 +1589,8 @@
   "Stark monochrome silver on pitch black.": "Argent monochrome pur sur noir absolu.",
   "Set thinking level: Ultra": "Définir le niveau de réflexion : Ultra",
   "Ultra": "Ultra",
-  "Keep AI tab awake during active runs": "Maintenir l’onglet IA actif pendant les exécutions actives"
+  "Keep AI tab awake during active runs": "Maintenir l’onglet IA actif pendant les exécutions actives",
+  "Compact noisy tool outputs": "Compacter les sorties verbeuses des outils",
+  "Parallel read-only tools": "Outils en lecture seule en parallèle",
+  "Task intent ledger": "Journal d’intention de tâche"
 }

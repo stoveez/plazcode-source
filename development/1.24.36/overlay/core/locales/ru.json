@@ -1589,5 +1589,8 @@
   "Stark monochrome silver on pitch black.": "Резкое монохромное серебро на угольно-чёрном.",
   "Set thinking level: Ultra": "Уровень размышлений: Ultra",
   "Ultra": "Ultra",
-  "Keep AI tab awake during active runs": "Не давать вкладке ИИ засыпать во время активной работы"
+  "Keep AI tab awake during active runs": "Не давать вкладке ИИ засыпать во время активной работы",
+  "Compact noisy tool outputs": "Сжимать шумный вывод инструментов",
+  "Parallel read-only tools": "Параллельное выполнение чтения",
+  "Task intent ledger": "Журнал намерений задачи"
 }

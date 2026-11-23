@@ -1589,5 +1589,8 @@
   "Stark monochrome silver on pitch black.": "Zifiri siyah üzerinde keskin tek renk gümüş.",
   "Set thinking level: Ultra": "Düşünme düzeyini ayarla: Ultra",
   "Ultra": "Ultra",
-  "Keep AI tab awake during active runs": "Etkin çalışmalar sırasında yapay zekâ sekmesini uyanık tut"
+  "Keep AI tab awake during active runs": "Etkin çalışmalar sırasında yapay zekâ sekmesini uyanık tut",
+  "Compact noisy tool outputs": "Gürültülü araç çıktılarını sıkıştır",
+  "Parallel read-only tools": "Salt okunur araçları paralel çalıştır",
+  "Task intent ledger": "Görev niyet defteri"
 }

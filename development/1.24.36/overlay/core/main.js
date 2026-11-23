@@ -2411,15 +2411,25 @@
         const known = typeof bridge.local_full === 'boolean';
         const full = bridge.local_full === true;
         env = ` | WORKSPACE ${root || "active"} | ${!known ? 'ACCESS VERIFYING: call plazcode_status before using Full PC tools' : full ? "FULL PC" : "SANDBOX"}`;
-        if (full) env += " | ACCESS ALREADY ON: never ask the user to turn on Full access or change Permissions, just run the tool";
-        else if (perm === "full") env += " | MENU=Full, agent still applying it: retry the tool once before saying anything about access";
+        if (full) env += " | ACCESS READY";
+        else if (perm === "full") env += " | MENU=Full, applying";
       } else {
         env = connected ? " | STUDIO LINKED" : " | STUDIO UNLINKED";
       }
+      const overrides = [];
+      if (extra === "ON") overrides.push("EXTRA=ON");
+      if (plan === "ON") overrides.push("PLAN=ON");
+      if (dbg === "OFF") overrides.push("DEBUG=OFF");
+      if (multi === "ON") overrides.push("MULTI=ON");
+      if (lvl !== "default") overrides.push(`THINK=${lvl}`);
+      if (blender) overrides.push("BLENDER=ON");
+      const overrideStr = overrides.length ? " | " + overrides.join(" | ") : "";
       let safetyLine = "";
       try { safetyLine = PlazCodeSafety.stateLine(window.__rsSafety ? window.__rsSafety() : null); } catch {}
       if (safetyLine) safetyLine = "\n" + safetyLine;
-      return `[SYSTEM_STATE: ENGINE=${eng} | WORK=${wm} | EXTRA=${extra} | PLAN=${plan} | DEBUG=${dbg} | MULTI=${multi} | THINK=${lvl} | SHOW_APPROACH=${approach} | PERM=${perm}${env} | BRIDGE ${connected ? "UP" : "DOWN"} | BLENDER ${blender ? "ON" : "OFF"} | TOOLS ${n} | CAPABILITIES=${JSON.stringify(capabilities)}]\nMODE LOCK: stay on ${eng}.${blender ? " Blender commands (blender_*) belong to this mode too: use them freely." : ""} Obey WORK/EXTRA/PLAN/THINK/DEBUG/MULTI this turn. AT MOST TWO (2) commands per reply, never more (3 or more and none run). Inspect results before dependent work. list_windows and desktop controls require full_pc_access; use only granted capabilities.${safetyLine}\n${(RS.FEEDBACK && RS.FEEDBACK.creationFocus) || ""}\n${RS.approachSummaryPolicy ? RS.approachSummaryPolicy(approach === "ON") : ""}\n${lvl === "ultracode" && typeof PlazCodeUltracode !== "undefined" ? PlazCodeUltracode.turn(activeEngine(), P.id, P.conversationKey()+":"+A.sessionGen) : ""}`;
+      const approachTail = approach === "ON" && RS.approachSummaryPolicy ? "\n" + RS.approachSummaryPolicy(approach === "ON") : "";
+      const ultraTail = lvl === "ultracode" && typeof PlazCodeUltracode !== "undefined" ? "\n" + PlazCodeUltracode.turn(activeEngine(), P.id, P.conversationKey() + ":" + A.sessionGen) : "";
+      return `[SYSTEM_STATE: ENGINE=${eng} | WORK=${wm} | SHOW_APPROACH=${approach} | PERM=${perm}${overrideStr}${env} | BRIDGE ${connected ? "UP" : "DOWN"} | TOOLS ${n} | CAPABILITIES=${JSON.stringify(capabilities)}]\nMODE LOCK: stay on ${eng}. Max 2 commands/reply; inspect results before dependent work.${blender ? " blender_* active." : ""}${safetyLine}${approachTail}${ultraTail}`;
     } catch { return ""; }
   }
   // Is `name` a tool we actually have? The bridge ADVERTISES names that may carry
@@ -3039,7 +3049,10 @@ return result`;
     const output=characterLimits.rsOutputLimitEnabled?characterLimits.rsOutputCharLimit:Infinity;
     const input=characterLimits.rsInputLimitEnabled?Math.max(400,characterLimits.rsInputCharLimit-600):Infinity;
     const transport=typeof P!=="undefined" && Number(P.toolResultPageChars)>0 ? Number(P.toolResultPageChars) : Infinity;
-    return Math.min(output,input,transport);
+    const compactOn=typeof reliabilitySettings==="undefined" || reliabilitySettings.rsCompactOutputs!==false;
+    const softCap=typeof PlazCodeTokenOptimizer!=="undefined" ? PlazCodeTokenOptimizer.DEFAULT_SOFT_RESULT_CHARS : 8000;
+    const soft=compactOn && characterLimits.rsOutputLimitEnabled && characterLimits.rsOutputCharLimit>=32000 ? softCap : Infinity;
+    return Math.min(output,input,transport,soft);
   }
   function readRetainedToolResult(args) {
     const record=retainedToolResults.get(String(args.id||''));
@@ -3278,7 +3291,8 @@ return result`;
   // One model round-trip, ordinary safety/approval and checkpoint dispatch for every child.
   async function runCommandBatch(args) {
     const rows=args && args.calls;
-    if(!Array.isArray(rows)||!rows.length||rows.length>MAX_COMMANDS_PER_REPLY)return 'ERROR: E_BATCH_SIZE: calls must contain 1 or 2 (at most 2) complete commands shaped as {"command":"name","params":{...}}. No batch command ran.';
+    const parallelCap=(()=>{if(!Array.isArray(rows)||rows.length<=MAX_COMMANDS_PER_REPLY||typeof PlazCodeParallelTools==="undefined")return MAX_COMMANDS_PER_REPLY;if(typeof reliabilitySettings!=="undefined"&&reliabilitySettings.rsParallelReads===false)return MAX_COMMANDS_PER_REPLY;if(rows.length>PlazCodeParallelTools.MAX_PARALLEL_READS)return MAX_COMMANDS_PER_REPLY;const eng=activeEngine();const safety=typeof PlazCodeSafety!=="undefined"?PlazCodeSafety:null;return rows.every((r)=>{const c=RSParse.normalizeCall(r);return c&&!c.argumentError&&PlazCodeParallelTools.isParallelRead(remapToolName(c.tool),eng,safety);})?PlazCodeParallelTools.MAX_PARALLEL_READS:MAX_COMMANDS_PER_REPLY;})();
+    if(!Array.isArray(rows)||!rows.length||rows.length>parallelCap)return 'ERROR: E_BATCH_SIZE: calls must contain 1 or 2 (at most 2) complete commands shaped as {"command":"name","params":{...}}. No batch command ran.';
     const calls=rows.map(row=>RSParse.normalizeCall(row));
     const denied=/^(?:plazcode_batch|plazcode_clarify|plazcode_agent|plazcode_helpers|plazcode_critic|plazcode_memory|plazcode_vault|plazcode_skills|plazcode_templates|plazcode_engram|list_commands|list_tools)$/;
     const errors=calls.flatMap((call,i)=>{
@@ -3299,48 +3313,68 @@ return result`;
     // pictures, drive a browser tab or wait on something keep their place in line.
     const PARALLEL_UNSAFE=/^(?:plazcode_|tab_|browser_)|screen|record|base64|wait|^look$/;
     const parallelRead=(call)=>{try{const bare=bareToolName(call.tool);return typeof PlazCodeSafety!=="undefined" && !PlazCodeSafety.isChange(bare,owner.engine) && !PARALLEL_UNSAFE.test(bare);}catch{return false;}};
+    const compactOn=typeof reliabilitySettings==="undefined"||reliabilitySettings.rsCompactOutputs!==false;
     const runChild=async (i)=>{
       const call=calls[i];BATCH_OWNERS.set(call,live);const started=Date.now();
       try{activity.step(call.tool,argSummary(call));ui.trackCard(call.tool,"run","executing…",RS.toolCategory(call.tool));}catch{}
       diag("batch.childStart",{index:i+1,name:call.tool});
       let output=String(await runTool(call));
+      if(typeof PlazCodeTokenOptimizer!=="undefined")output=PlazCodeTokenOptimizer.compactToolResult(call.tool,output,{enabled:compactOn}).text;
       // Optional diagnostics/visual checks run once after the batch, keeping ordered edits together.
       const failed=feedbackIsError(output);
       try{ui.trackCard(call.tool,failed?"err":"ok",outSummary(output),RS.toolCategory(call.tool));}catch{}
       if(A.pendingImages?.length){images.push(...A.pendingImages);A.pendingImages=null;}
       const retained=compressToolFeedback(output,call.tool);
+      const ms=Date.now()-started;
       results[i]={index:i+1,command:call.tool,ok:!failed,result:retained};
-      diag("batch.childDone",{index:i+1,name:call.tool,ms:Date.now()-started,ok:!failed});
+      diag("batch.childDone",{index:i+1,name:call.tool,ms,ok:!failed});
       if(!failed && /^(?:script_read|read_file|read_scripts|script_read_analysis|script_analysis)$/.test(bareToolName(call.tool)))A.learningReads=[...(A.learningReads||[]),{text:PlazCodeReliability.redact(stripOutputPrefix(output)).slice(0,4000),project:currentProject,chat:owner.chat,session:owner.session}].slice(-6);
       return !failed;
     };
     // The batch envelope already consumed one slot. Account for each extra child.
     const budgetStop=(i)=>{if(i>0 && A.taskBudget){const reason=A.taskBudget.check();if(reason)return reason;A.taskBudget.consume();}return "";};
-    let held=false,ended=false;
-    for(let i=0;i<calls.length && !ended;){
-      if(!live()){results[i]={index:i+1,not_run:true,error:"Stopped or chat/session changed; remaining commands did not run."};break;}
-      if(parallelRead(calls[i])){
-        const group=[];
-        for(;i<calls.length && parallelRead(calls[i]);i++){
-          const reason=budgetStop(i);
-          if(reason){results[i]={index:i+1,not_run:true,error:reason};ended=true;break;}
-          group.push(i);
+    let finalResults=results;
+    if(typeof PlazCodeParallelTools!=="undefined"){
+      const parallelEnabled=typeof reliabilitySettings==="undefined"||reliabilitySettings.rsParallelReads!==false;
+      const outcome=await PlazCodeParallelTools.executeBatch({
+        calls,
+        engine:owner.engine,
+        safety:typeof PlazCodeSafety!=="undefined"?PlazCodeSafety:null,
+        maxConcurrent:PlazCodeParallelTools.MAX_PARALLEL_READS,
+        parallelReadsEnabled:parallelEnabled,
+        isLive:live,
+        budgetStop,
+        runChild:async (i)=>{const started=Date.now();const ok=await runChild(i);return {ok,row:results[i],ms:Date.now()-started};},
+      });
+      finalResults=outcome.results;
+      if(outcome.metrics.parallelWaves>0||outcome.metrics.dedupedCalls>0)diag("batch.parallelReads",outcome.metrics);
+    }else{
+      let held=false,ended=false;
+      for(let i=0;i<calls.length && !ended;){
+        if(!live()){results[i]={index:i+1,not_run:true,error:"Stopped or chat/session changed; remaining commands did not run."};break;}
+        if(parallelRead(calls[i])){
+          const group=[];
+          for(;i<calls.length && parallelRead(calls[i]);i++){
+            const reason=budgetStop(i);
+            if(reason){results[i]={index:i+1,not_run:true,error:reason};ended=true;break;}
+            group.push(i);
+          }
+          if(group.length>1)diag("batch.parallelReads",{count:group.length});
+          const ok=await Promise.all(group.map(runChild));
+          if(ok.some(v=>!v))held=true;
+          continue;
         }
-        if(group.length>1)diag("batch.parallelReads",{count:group.length});
-        const ok=await Promise.all(group.map(runChild));
-        if(ok.some(v=>!v))held=true;
-        continue;
+        if(held){results[i]={index:i+1,command:calls[i].tool,not_run:true,error:"Not run: an earlier command in this reply failed, and this change may depend on it."};i++;continue;}
+        const reason=budgetStop(i);
+        if(reason){results[i]={index:i+1,not_run:true,error:reason};break;}
+        if(!(await runChild(i)))held=true; // no automatic continuation of changes after an error or denied approval
+        i++;
       }
-      if(held){results[i]={index:i+1,command:calls[i].tool,not_run:true,error:"Not run: an earlier command in this reply failed, and this change may depend on it."};i++;continue;}
-      const reason=budgetStop(i);
-      if(reason){results[i]={index:i+1,not_run:true,error:reason};break;}
-      if(!(await runChild(i)))held=true; // no automatic continuation of changes after an error or denied approval
-      i++;
+      for(let i=results.length-1;i>=0;i--)if(!results[i])results.splice(i,1);
     }
-    for(let i=results.length-1;i>=0;i--)if(!results[i])results.splice(i,1);
     if(images.length)A.pendingImages=images;
-    const complete=results.length===calls.length && results.every(r=>r.ok);
-    return (complete?"Output of 'plazcode_batch':\n":"ERROR in plazcode_batch (completed commands are NOT rolled back; do not repeat them):\n")+JSON.stringify({complete,requested:calls.length,results,not_run:Math.max(0,calls.length-results.filter(r=>!r.not_run).length)});
+    const complete=finalResults.length===calls.length && finalResults.every(r=>r.ok);
+    return (complete?"Output of 'plazcode_batch':\n":"ERROR in plazcode_batch (completed commands are NOT rolled back; do not repeat them):\n")+JSON.stringify({complete,requested:calls.length,results:finalResults,not_run:Math.max(0,calls.length-finalResults.filter(r=>!r.not_run).length)});
   }
   // 2026-11-15 (TypeScript checker, step 1): these picture helpers used to sit INSIDE runToolImpl, so the other places that
   // call them (the screenshot preview's Copy image / Use as feedback buttons, remembering pictures attached in the chat,
@@ -4972,6 +5006,22 @@ return result`;
     A.taskRequest=preEnhanced?A.creatorPreEnhanced.raw:A.requestKind==='control'?activity.saved(P.conversationKey())?.label||label:label;
     A.creatorTask=activeEngine()==="roblox" && typeof PlazCodeChatCreators!=="undefined" && !!(preEnhanced || PlazCodeChatCreators.routeRequest(A.taskRequest));
     A.creatorBrief=A.taskRequest;
+    if (typeof PlazCodeTaskLedger !== "undefined") {
+      try {
+        A.taskIntent = PlazCodeTaskLedger.classifyIntent(A.taskRequest);
+        if (typeof taskLedger !== "undefined" && taskLedger && reliabilitySettings?.rsTaskLedger !== false) {
+          const scope = ledgerScope();
+          taskLedger.setGoal(scope, A.taskRequest, A.taskIntent);
+          if (A.requestKind === "control") taskLedger.setNextAction(scope, "Continue active goal");
+        }
+        const hint = PlazCodeTaskLedger.effortHintForIntent(A.taskIntent);
+        const effortNode = document.getElementById("rs-effort");
+        if (effortNode && hint) {
+          effortNode.dataset.intentHint = hint.intent;
+          effortNode.title = `Click to change the effort · ${hint.label}`;
+        }
+      } catch {}
+    }
     activity.sync(true, P.conversationKey());
     activity.task(A.taskRequest, JSON.stringify([P.conversationKey(),label]), {replace:PlazCodeActivity.replacesTask(A.taskRequest)});
     if(A.requestKind==='control')A.taskRequest=activity.active()?.taskLabel||A.taskRequest;
@@ -5462,7 +5512,12 @@ return result`;
             if (++invalidToolAttempts >= 3) { ui.banner("warn", "Repeated invalid tool calls", preflight.join(" · ")); break; }
             base = await submitAndGetBase("ERROR: no command was executed. Correct the tool arguments:\n" + preflight.join("\n") + '\nUse {"command":"name","params":{"exact_schema_key":"value"}}; arguments.key names a field inside params, not another wrapper. Get the exact fields with list_commands {"command":"name"}. Send ONE complete command.'); continue;
           }
-          if (calls.length > MAX_COMMANDS_PER_REPLY) {
+          const canParallelReads = (typeof reliabilitySettings === "undefined" || reliabilitySettings.rsParallelReads !== false)
+            && typeof PlazCodeParallelTools !== "undefined"
+            && calls.length > 1
+            && calls.length <= PlazCodeParallelTools.MAX_PARALLEL_READS
+            && calls.every((c) => PlazCodeParallelTools.isParallelRead(c.tool, activeEngine(), typeof PlazCodeSafety !== "undefined" ? PlazCodeSafety : null));
+          if (calls.length > MAX_COMMANDS_PER_REPLY && !canParallelReads) {
             if (++invalidToolAttempts >= 3) { ui.banner("warn", "Too many commands", "Nothing ran. The AI may send at most 2 commands per reply."); break; }
             base = await submitAndGetBase("ERROR: nothing ran. Your reply had " + calls.length + " commands; the limit is AT MOST TWO (2) commands per reply. Send the first 2 now, the rest after their results.");continue;
           }
@@ -5549,10 +5604,13 @@ return result`;
           finally { if (call.tool === 'plazcode_clarify') taskBudget.resume(); }
           // Persistent environment header (see asStateTag) — appended, never
           // prefixed, so feedbackIsError()'s startsWith("ERROR") stays intact.
-          // 2026-11-18: the full state block only when it changed (or every 8th result); see ts/core/turn-budget.ts.
-          const stateTag = typeof PlazCodeTurnBudget !== "undefined" ? PlazCodeTurnBudget.stateTag(asStateTag(), A.stateMemo || (A.stateMemo = {}), P.id + "|" + P.conversationKey() + "|" + A.sessionGen) : asStateTag();
+          // 2026-11-18: the full state block only when it changed (or every 20th result in main loop); see ts/core/turn-budget.ts.
+          const stateTag = typeof PlazCodeTurnBudget !== "undefined" ? PlazCodeTurnBudget.stateTag(asStateTag(), A.stateMemo || (A.stateMemo = {}), P.id + "|" + P.conversationKey() + "|" + A.sessionGen, 20) : asStateTag();
           if (!A.stop) try { feedback = await attachAutoDebug(call.tool, feedback); } catch {}
           if (!A.stop) try { feedback = await automaticVisualCheck(call, feedback); } catch { feedback+="\nAutomatic visual capture was unavailable; verify in Studio."; }
+          if (typeof PlazCodeTokenOptimizer !== "undefined" && call.tool !== "plazcode_batch") {
+            try { feedback = PlazCodeTokenOptimizer.compactToolResult(call.tool, feedback, { enabled: typeof reliabilitySettings === "undefined" || reliabilitySettings.rsCompactOutputs !== false }).text; } catch {}
+          }
           const completeFeedback=feedback,toolFailed=feedbackIsError(feedback);
           try { feedback = compressToolFeedback(feedback, call.tool); } catch {}
           A.toolRunning = false;
@@ -5574,6 +5632,13 @@ return result`;
             const workCalls=call.tool==='plazcode_batch' ? call.arguments?.calls || [] : [call];
             if(workCalls.some((c)=>['edit','generate'].includes(RS.toolCategory(c.tool || c.command))))completedWork++;
             try { playtestCheck?.note(call); uiCheck?.note(call); } catch {}
+          }
+          if (typeof taskLedger !== "undefined" && taskLedger && typeof reliabilitySettings !== "undefined" && reliabilitySettings.rsTaskLedger !== false && trackedRequest(A.taskRequest || "", P.conversationKey())) {
+            try {
+              const scope = ledgerScope();
+              taskLedger.recordStep(scope, bareToolName(call.tool), isErr ? "failed" : "done");
+              taskLedger.setNextAction(scope, isErr ? "Resolve " + bareToolName(call.tool) + " error" : "");
+            } catch {}
           }
           failedToolAttempts=isErr ? failedToolAttempts+1 : 0;
           const outBody = stripOutputPrefix(feedback);
@@ -5620,8 +5685,8 @@ return result`;
           };
 
           // 1.24.24: everything PlazCode adds to a result fits the user's input limit (see fitExtra).
-          const quickNote = A.requestKind==='quick'||A.requestKind==='conversation' ? (completedWork>0 ? '\nFinish only any remaining work already requested by the user, then answer directly and briefly. Do not start unrelated tasks.' : '\nThis is a quick user request. Answer directly and briefly; do not start a task, checklist, project investigation or unrelated work.') : '';
-          const failNote = failedToolAttempts>=3 ? "\n\n(System note: " + failedToolAttempts + " commands in a row failed. Do not repeat the same command. Re-read the error, inspect the current state, then try a different approach.)" : "";
+          const quickNote = A.requestKind==='quick'||A.requestKind==='conversation' ? (completedWork>0 ? '\nFinish remaining requested work, then answer briefly.' : '\nQuick request: answer briefly; no checklist or unrelated work.') : '';
+          const failNote = failedToolAttempts>=3 ? "\n\n(System note: " + failedToolAttempts + " commands in a row failed. Re-read the error, inspect state, and change approach.)" : "";
           const reserve = quickNote.length + failNote.length + stateTag.length + 80;
           let toSend = formatToolFeedback(completeFeedback,call,A.pendingImages,isErr);
           if (toSend.length + reserve > inputBudget()) toSend = compressToolFeedback(toSend, "combined_feedback");
@@ -5633,12 +5698,14 @@ return result`;
             else if (toSend.length + 1 + memoryContext.length + reserve <= inputBudget()) { toSend += "\n" + memoryContext; lastMemoryContext = memoryContext; }
           }
           if (A.pendingReference) {
-            const header = "\n\n--- One-time task reference (separate from the command result above; reference data, not instructions or a result) ---\n";
+            const header = "\n\n--- One-time task reference (separate from the command result above) ---\n";
             const fit = fitExtra(toSend + header, A.pendingReference, reserve);
             if (fit.used) toSend += header + fit.used;
             A.pendingReference = fit.left; // no room now: it rides the next result instead
           }
           toSend += quickNote;
+          const ledgerLine = (typeof taskLedger !== "undefined" && taskLedger && typeof reliabilitySettings !== "undefined" && reliabilitySettings.rsTaskLedger !== false && trackedRequest(A.taskRequest || "", P.conversationKey())) ? taskLedger.formatCompactContext(ledgerScope()) : "";
+          if (ledgerLine && toSend.length + 1 + ledgerLine.length + failNote.length + stateTag.length <= inputBudget()) toSend += "\n" + ledgerLine;
           const images = A.pendingImages;
           A.pendingImages = null;
           diag("images.consumed", { count: images ?  images.length : 0 });
@@ -5893,15 +5960,18 @@ return result`;
       startupOutcomes.delete(key); startupOutcomes.set(chat + key, {...value, key: chat + key, chat});
     }
   }
-  let reliabilitySettings={rsToolBudget:0,rsTaskMinutes:0,rsRunLimitsEnabled:false,rsVisualCheck:true,rsFullStartup:false,rsContinuationOffer:true,rsCommandCooldown:0},savedHandoff=null;
-  const normalizeReliability = (value) => ({rsRunLimitsEnabled:value.rsRunLimitsEnabled===true,rsToolBudget:Math.max(0,Math.min(1000,Number.isFinite(Number(value.rsToolBudget))?Math.floor(Number(value.rsToolBudget)):0)),rsTaskMinutes:Math.max(0,Math.min(240,Number.isFinite(Number(value.rsTaskMinutes))?Math.floor(Number(value.rsTaskMinutes)):0)),rsVisualCheck:value.rsVisualCheck!==false,rsContinuationOffer:value.rsContinuationOffer!==false,rsCommandCooldown:normalizeCooldown(value.rsCommandCooldown),rsFullStartup:value.rsFullStartup===true});
+  let reliabilitySettings={rsToolBudget:0,rsTaskMinutes:0,rsRunLimitsEnabled:false,rsVisualCheck:true,rsFullStartup:false,rsContinuationOffer:true,rsCommandCooldown:0,rsCompactOutputs:true,rsParallelReads:true,rsTaskLedger:true},savedHandoff=null;
+  const normalizeReliability = (value) => ({rsRunLimitsEnabled:value.rsRunLimitsEnabled===true,rsToolBudget:Math.max(0,Math.min(1000,Number.isFinite(Number(value.rsToolBudget))?Math.floor(Number(value.rsToolBudget)):0)),rsTaskMinutes:Math.max(0,Math.min(240,Number.isFinite(Number(value.rsTaskMinutes))?Math.floor(Number(value.rsTaskMinutes)):0)),rsVisualCheck:value.rsVisualCheck!==false,rsContinuationOffer:value.rsContinuationOffer!==false,rsCommandCooldown:normalizeCooldown(value.rsCommandCooldown),rsFullStartup:value.rsFullStartup===true,rsCompactOutputs:value.rsCompactOutputs!==false,rsParallelReads:value.rsParallelReads!==false,rsTaskLedger:value.rsTaskLedger!==false});
+  const taskLedger = typeof PlazCodeTaskLedger !== "undefined" ? PlazCodeTaskLedger.createStore(chrome.storage?.local) : null;
+  if (taskLedger) void taskLedger.load();
+  const ledgerScope = () => typeof PlazCodeTaskLedger !== "undefined" ? PlazCodeTaskLedger.scopeKey(P.id + "|" + P.conversationKey(), A.bridge?.local_root || currentProject || "") : "";
   // 1.24.22: the short startup is used unless the user switched on "Full startup" (off by default).
   function leanStartupOn() { return reliabilitySettings.rsFullStartup !== true && typeof PlazCodeLeanStartup !== "undefined"; }
   let handoffRevision=0;
-  const reliabilityReady=new Promise(resolve=>{const revision=handoffRevision;chrome.storage.local.get(["rsRunLimitsEnabled","rsToolBudget","rsTaskMinutes","rsVisualCheck","rsFullStartup","rsContinuationOffer","rsCommandCooldown","rsLatestHandoff"],value=>{reliabilitySettings=normalizeReliability(value||{});if(revision===handoffRevision)savedHandoff=value&&value.rsLatestHandoff||null;resolve(Object.prototype.hasOwnProperty.call(value||{},'rsLatestHandoff'));});});
+  const reliabilityReady=new Promise(resolve=>{const revision=handoffRevision;chrome.storage.local.get(["rsRunLimitsEnabled","rsToolBudget","rsTaskMinutes","rsVisualCheck","rsFullStartup","rsContinuationOffer","rsCommandCooldown","rsCompactOutputs","rsParallelReads","rsTaskLedger","rsLatestHandoff"],value=>{reliabilitySettings=normalizeReliability(value||{});if(revision===handoffRevision)savedHandoff=value&&value.rsLatestHandoff||null;resolve(Object.prototype.hasOwnProperty.call(value||{},'rsLatestHandoff'));});});
   chrome.storage.onChanged.addListener((changes,area)=>{
     if(area!=='local')return;
-    const fields={};for(const key of ['rsRunLimitsEnabled','rsToolBudget','rsTaskMinutes','rsVisualCheck','rsFullStartup','rsContinuationOffer','rsCommandCooldown'])if(changes[key])fields[key]=changes[key].newValue;
+    const fields={};for(const key of ['rsRunLimitsEnabled','rsToolBudget','rsTaskMinutes','rsVisualCheck','rsFullStartup','rsContinuationOffer','rsCommandCooldown','rsCompactOutputs','rsParallelReads','rsTaskLedger'])if(changes[key])fields[key]=changes[key].newValue;
     if(Object.keys(fields).length){reliabilitySettings=normalizeReliability({...reliabilitySettings,...fields});try{ui?.refreshMenu?.();}catch{}}
     if(changes.rsLatestHandoff){handoffRevision++;savedHandoff=changes.rsLatestHandoff.newValue||null;}
   });
@@ -5917,7 +5987,7 @@ return result`;
     let shots;try{({shots}=await Promise.race([operation,stopped]));}finally{clearInterval(timer);}if(A.stop)return feedback;
     const shot=shots.find((x)=>x&&typeof x.data==="string"&&x.data.length<=2800000);if(!shot)return feedback+"\nVisual check unavailable: no bounded Studio image was captured. Verify the change in Studio.";
     const key=PlazCodeReliability.fingerprint(shot);if(key===A.visualFingerprint)return feedback;A.visualFingerprint=key;A.pendingImages=[shot];
-    return feedback+"\nA Studio screenshot is attached for visual review. Compare it with what the task intends (positions, scale, orientation, colours, VFX, UI layout). If anything looks off - e.g. a weapon held at the wrong angle, a misplaced effect, overlapping UI - fix it now without asking the user, then check again. Keep correcting until it looks right. A screenshot does not verify runtime logic or hidden UI; do not claim a visual test passed without inspecting it.";
+    return feedback+"\nStudio screenshot attached for visual review: check scale, orientation, colors, VFX, and UI layout; fix any mismatch before finishing.";
   }
   let stopMode = "immediate";
   chrome.storage.local.get("rsStopMode", value => { stopMode=value && value.rsStopMode === "safe" ? "safe" : "immediate"; });
@@ -9049,6 +9119,9 @@ return result`;
               <small>When on, a new chat asks whether to continue where your previous chat left off or start a new project. Turn it off to always start fresh without the prompt. Saved chats and memory are not deleted.</small>
               <label class="rs-execution-review" for="rs-full-startup"><input id="rs-full-startup" type="checkbox" ${reliabilitySettings.rsFullStartup?'checked':''}><span>Full startup</span></label>
               <small>Off (recommended): verify the connection, then read relevant saved notes when needed. On: load full instructions and all saved memory before Ready. This takes longer and uses more messages. Applies next time you start the agent.</small>
+              <label class="rs-execution-review" for="rs-compact-outputs"><input id="rs-compact-outputs" type="checkbox" ${reliabilitySettings.rsCompactOutputs?'checked':''}><span>Compact noisy tool outputs</span></label>
+              <label class="rs-execution-review" for="rs-parallel-reads"><input id="rs-parallel-reads" type="checkbox" ${reliabilitySettings.rsParallelReads?'checked':''}><span>Parallel read-only tools</span></label>
+              <label class="rs-execution-review" for="rs-task-ledger"><input id="rs-task-ledger" type="checkbox" ${reliabilitySettings.rsTaskLedger?'checked':''}><span>Task intent ledger</span></label>
               <div class="rs-execution-actions"><button type="button" id="rs-save-handoff">Save continuation file</button><button type="button" id="rs-budget-resume">Resume paused task</button></div>
               <small>Save downloads a JSON handoff with the active request, recent excerpts and unfinished queued requests, not the whole chat or a game backup. In a fresh chat, open Memory → Load into selected chat, review the imported context, then ask the AI to continue. Resume restarts the allowance for a task paused by its command or time limit.</small>
             </div>
@@ -9143,7 +9216,7 @@ return result`;
         setTimeout(() => { status.textContent = ""; }, 1600);
       });
       for(const [id,key] of [["rs-input-limit-enabled","rsInputLimitEnabled"],["rs-input-char-limit","rsInputCharLimit"],["rs-output-limit-enabled","rsOutputLimitEnabled"],["rs-output-char-limit","rsOutputCharLimit"]])menuEl.querySelector("#"+id).onchange=(event)=>{try{const toggle=key.endsWith('Enabled');if(!toggle&&(event.target.value.trim()===''||!event.target.checkValidity()))return;characterLimits=normalizeCharacterLimits({...characterLimits,[key]:toggle?event.target.checked:Number(event.target.value)});chrome.storage.local.set({[key]:characterLimits[key]});}catch(error){log('Message size setting failed',error);}};
-      for(const [id,key] of [["rs-run-limits","rsRunLimitsEnabled"],["rs-tool-budget","rsToolBudget"],["rs-task-minutes","rsTaskMinutes"],["rs-visual-check","rsVisualCheck"],["rs-continuation-offer","rsContinuationOffer"],["rs-full-startup","rsFullStartup"],["rs-command-cooldown","rsCommandCooldown"]])menuEl.querySelector("#"+id).onchange=(event)=>{const toggle=key==='rsRunLimitsEnabled'||key==='rsVisualCheck'||key==='rsContinuationOffer'||key==='rsFullStartup';if(!toggle && (event.target.value.trim()==='' || !event.target.checkValidity()))return;const value=toggle?event.target.checked:Number(event.target.value);reliabilitySettings=normalizeReliability({...reliabilitySettings,[key]:value});chrome.storage.local.set({[key]:(reliabilitySettings)[key]});};
+      for(const [id,key] of [["rs-run-limits","rsRunLimitsEnabled"],["rs-tool-budget","rsToolBudget"],["rs-task-minutes","rsTaskMinutes"],["rs-visual-check","rsVisualCheck"],["rs-continuation-offer","rsContinuationOffer"],["rs-full-startup","rsFullStartup"],["rs-compact-outputs","rsCompactOutputs"],["rs-parallel-reads","rsParallelReads"],["rs-task-ledger","rsTaskLedger"],["rs-command-cooldown","rsCommandCooldown"]])menuEl.querySelector("#"+id).onchange=(event)=>{const toggle=key==='rsRunLimitsEnabled'||key==='rsVisualCheck'||key==='rsContinuationOffer'||key==='rsFullStartup'||key==='rsCompactOutputs'||key==='rsParallelReads'||key==='rsTaskLedger';if(!toggle && (event.target.value.trim()==='' || !event.target.checkValidity()))return;const value=toggle?event.target.checked:Number(event.target.value);reliabilitySettings=normalizeReliability({...reliabilitySettings,[key]:value});chrome.storage.local.set({[key]:(reliabilitySettings)[key]});};
       menuEl.querySelector("#rs-save-handoff").onclick=()=>{const value=captureHandoff("User requested continuation");downloadHandoff(value);};
       menuEl.querySelector("#rs-budget-resume").onclick=()=>{const result=desktopAgentAction("budget-resume");if(!result.ok)ui.toast(result.error);};
       menuEl.querySelector("#rs-stop-mode").onchange = (event) => { stopMode=event.target.value;chrome.storage.local.set({rsStopMode:stopMode}); };
@@ -12522,6 +12595,7 @@ function renderCards(panel) {
           continuedEngramChat=P.conversationKey();
           const continuedPage=P.conversationKey(),continuedSession=A.sessionGen;
           if(typeof transfer.project==='string' && transfer.project.trim() && [...transfer.project].length<=80 && P.conversationKey()){const assigned=await bg({type:'checkpoints',request:{action:'project',chat:P.id+'|'+P.conversationKey(),project:transfer.project}});if(assigned?.ok){currentProject=transfer.project;projectChat=P.id+'|'+P.conversationKey();projectChecked=Date.now();}}
+          if(transfer.task_ledger && typeof taskLedger !== "undefined" && taskLedger && reliabilitySettings.rsTaskLedger !== false){try{taskLedger.importHandoff(ledgerScope(), transfer.task_ledger);}catch{}}
           if(continuedPage!==P.conversationKey() || continuedSession!==A.sessionGen || A.stop || A.userStopped)throw Error('The chat changed or stopped before continuation started.');
           rememberChoice(key);closeOffer();agentLoop(base);
         }catch(error){status.textContent=error.message||String(error);yes.disabled=false;no.disabled=false;never.disabled=false;}finally{offerBusy=false;}
@@ -12533,6 +12607,7 @@ function renderCards(panel) {
       if(onlyLong&&history.reduce((n,x)=>n+x.text.length,0)<180000)return null;
       savedHandoff=PlazCodeReliability.handoff({provider:P.displayName,chat:P.id+'|'+P.conversationKey(),history,pending:cowork.snapshot().pending,reason,engine:activeEngine(),checkpoint:A.checkpointId||A.budgetResume?.checkpoint||'',request:A.taskRequest||''});
       savedHandoff.engram_scope=engramScope();savedHandoff.project=currentProject;
+      if(typeof taskLedger !== "undefined" && taskLedger && reliabilitySettings.rsTaskLedger !== false){try{const tl=taskLedger.exportHandoff(ledgerScope());if(tl)savedHandoff.task_ledger=tl;}catch{}}
       chrome.storage.local.set({rsLatestHandoff:savedHandoff});return savedHandoff;
     }
     function desktopAgentAction(action, prompt, requestId) {
@@ -13420,7 +13495,7 @@ rsInterval(() => {
     try { ui.renderAgents(helperRows); } catch {}
     helperDeliver();
   }
-  const helperResultView = (h) => ({ id: h.id, title: h.title, status: h.status, area: h.area || undefined, minutes: h.startedAt && h.endedAt ? Math.round((h.endedAt - h.startedAt) / 6000) / 10 : undefined, summary: h.summary || "" });
+  const helperResultView = (h) => ({ id: h.id, runId: h.runId || undefined, title: h.title, status: h.status, area: h.area || undefined, expired: h.expired || undefined, minutes: h.startedAt && h.endedAt ? Math.round((h.endedAt - h.startedAt) / 6000) / 10 : undefined, summary: h.summary || "" });
   // Main chat: once every helper has finished and this chat is idle, send their summaries to the AI as one
   // message. If the AI is still working it collects them itself with plazcode_helpers wait.
   async function helperDeliver() {
@@ -13489,8 +13564,13 @@ rsInterval(() => {
       if (!r || !r.ok) return failed(r);
       return "Output of 'plazcode_helpers':\n" + JSON.stringify({ helpers: (r.helpers || []).map(rowView) });
     }
-    if (action === "stop") {
-      const r = await bg({ type: "helpers", request: { action: "stop", id: a.id == null ? undefined : Number(a.id), reason: "Stopped by the main agent." } });
+    if (action === "stop" || action === "cancel") {
+      const r = await bg({ type: "helpers", request: { action: "cancel-helper", id: a.id == null ? undefined : Number(a.id), reason: "Stopped by the main agent." } });
+      if (!r || !r.ok) return failed(r);
+      return "Output of 'plazcode_helpers':\n" + JSON.stringify({ stopped: r.stopped || 0 });
+    }
+    if (action === "cancel_run") {
+      const r = await bg({ type: "helpers", request: { action: "cancel-run", runId: String(a.runId || a.run_id || ""), reason: "Helper run cancelled by the main agent." } });
       if (!r || !r.ok) return failed(r);
       return "Output of 'plazcode_helpers':\n" + JSON.stringify({ stopped: r.stopped || 0 });
     }

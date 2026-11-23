@@ -1589,5 +1589,8 @@
   "Stark monochrome silver on pitch black.": "गहरे काले पर तीखा मोनोक्रोम सिल्वर।",
   "Set thinking level: Ultra": "सोच का स्तर सेट करें: Ultra",
   "Ultra": "Ultra",
-  "Keep AI tab awake during active runs": "सक्रिय रन के दौरान AI टैब को जागृत रखें"
+  "Keep AI tab awake during active runs": "सक्रिय रन के दौरान AI टैब को जागृत रखें",
+  "Compact noisy tool outputs": "शोरगुल वाले टूल आउटपुट संक्षिप्त करें",
+  "Parallel read-only tools": "केवल-पठन टूल समानांतर चलाएँ",
+  "Task intent ledger": "कार्य उद्देश्य बही"
 }

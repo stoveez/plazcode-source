@@ -1589,5 +1589,8 @@
   "Stark monochrome silver on pitch black.": "칠흑 같은 검정 위의 선명한 모노크롬 실버.",
   "Set thinking level: Ultra": "사고 수준 설정: Ultra",
   "Ultra": "Ultra",
-  "Keep AI tab awake during active runs": "활성 실행 중 AI 탭 절전 방지"
+  "Keep AI tab awake during active runs": "활성 실행 중 AI 탭 절전 방지",
+  "Compact noisy tool outputs": "장황한 도구 출력 압축",
+  "Parallel read-only tools": "읽기 전용 도구 병렬 실행",
+  "Task intent ledger": "작업 의도 원장"
 }

@@ -60,6 +60,8 @@ pub struct Workspace {
     /// Serialize append records and their optional newline inspection. Appends
     /// use OS append mode, never a clipped read followed by a full rewrite.
     append_lock: tokio::sync::Mutex<()>,
+    /// Native RTK-style shell output compaction (default true; opt-out via preference or raw:true).
+    compact_outputs: Arc<AtomicBool>,
 }
 
 impl Workspace {
@@ -84,7 +86,7 @@ impl Workspace {
         let canon_root = std::fs::canonicalize(&root)
             .map_err(|e| anyhow::anyhow!("cannot canonicalize {}: {e}", root.display()))?;
         tracing::info!("workspace root: {}", canon_root.display());
-        Ok(Self { canon_root, full_access: Arc::new(AtomicBool::new(false)), allowed: Arc::new(std::sync::RwLock::new(Vec::new())), append_lock: tokio::sync::Mutex::new(()) })
+        Ok(Self { canon_root, full_access: Arc::new(AtomicBool::new(false)), allowed: Arc::new(std::sync::RwLock::new(Vec::new())), append_lock: tokio::sync::Mutex::new(()), compact_outputs: Arc::new(AtomicBool::new(true)) })
     }
 
     pub fn root_display(&self) -> String { deverbatim_string(&self.canon_root) }
@@ -92,6 +94,10 @@ impl Workspace {
     pub fn ready(&self) -> bool { self.canon_root.is_dir() }
 
     pub fn full_access(&self) -> bool { self.full_access.load(Ordering::Relaxed) }
+
+    pub fn compact_outputs(&self) -> bool { self.compact_outputs.load(Ordering::Relaxed) }
+
+    pub fn set_compact_outputs(&self, on: bool) { self.compact_outputs.store(on, Ordering::Relaxed); }
 
     /// Handle to share with the GUI so its FULL badge mirrors live state.
     pub fn full_flag(&self) -> Arc<AtomicBool> { Arc::clone(&self.full_access) }
@@ -1151,6 +1157,9 @@ pub async fn tool_run_command_observed(ws: &Workspace, args: &serde_json::Value)
     };
     if args["background"].as_bool()==Some(true){return start_command_job(ws,args,shell,command,cwd).await;}
     let timeout_secs = j_u64(args, "timeout_seconds", DEFAULT_RUN_TIMEOUT).clamp(1, MAX_RUN_TIMEOUT);
+    let raw_opt_out = args.get("raw").and_then(|v| v.as_bool()).unwrap_or(false)
+        || args.get("compact").and_then(|v| v.as_bool()) == Some(false);
+    let compact_on = ws.compact_outputs() && !raw_opt_out;
     let where_ = { let shown = ws.display(&cwd); if shown == "." { "the workspace root".to_string() } else { shown } };
 
     let t0 = Instant::now();
@@ -1164,14 +1173,19 @@ pub async fn tool_run_command_observed(ws: &Workspace, args: &serde_json::Value)
                 "Command TIMED OUT after {timeout_secs}s ({}, in {where_}): {}\nIt may still have had partial effects. For long-running servers/tests, run them differently (background job, shorter test subset) instead of blocking.",
                 shell.label(), preview(&command, 400)
             );
-            let (out, err) = (decode_console_bytes(&stdout), decode_console_bytes(&stderr));
+            let out_raw = decode_console_bytes(&stdout);
+            let err_raw = decode_console_bytes(&stderr);
+            let out = crate::output_compact::compact_command_output(&command, out_raw.trim(), compact_on).text;
+            let err = crate::output_compact::compact_command_output(&command, err_raw.trim(), compact_on).text;
             if !out.trim().is_empty() { text.push_str("\n--- stdout before the timeout ---\n"); text.push_str(&clip_middle(out.trim(), MAX_RUN_OUTPUT)); }
             if !err.trim().is_empty() { text.push_str("\n--- stderr before the timeout ---\n"); text.push_str(&clip_middle(err.trim(), MAX_RUN_OUTPUT)); }
             return Ok((clip(&text, MAX_TEXT_CHARS), false));
         }
     };
-    let stdout = clip_middle(decode_console_bytes(&proc_out.stdout).trim(), MAX_RUN_OUTPUT);
-    let stderr = clip_middle(decode_console_bytes(&proc_out.stderr).trim(), MAX_RUN_OUTPUT);
+    let out_raw = decode_console_bytes(&proc_out.stdout);
+    let err_raw = decode_console_bytes(&proc_out.stderr);
+    let stdout = clip_middle(crate::output_compact::compact_command_output(&command, out_raw.trim(), compact_on).text.trim(), MAX_RUN_OUTPUT);
+    let stderr = clip_middle(crate::output_compact::compact_command_output(&command, err_raw.trim(), compact_on).text.trim(), MAX_RUN_OUTPUT);
     let code = proc_out.status.code().unwrap_or(-1);
     let mut parts = vec![
         format!("$ {}", preview(&command, 400)),
@@ -3011,5 +3025,30 @@ mod tests {
         let outside = tool_grep_files(&ws, &serde_json::json!({"query": "x", "path": ".."})).await.unwrap_err();
         assert!(outside.contains("outside the workspace"), "{outside}");
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[tokio::test]
+    async fn run_command_compacts_noisy_output_and_supports_raw_opt_out() {
+        let ws = temp_ws("compact-cli");
+        let script = r#"
+for i in range(40):
+    print(f"   Compiling crate_{i} v0.1.0")
+print("error[E0425]: cannot find value `x` in this scope")
+print(" --> src/main.rs:12:5")
+"#;
+        std::fs::write(ws.canon_root.join("noisy.py"), script).unwrap();
+        let compacted = tool_run_command(&ws, &serde_json::json!({"command": "python noisy.py"})).await.unwrap();
+        assert!(compacted.contains("[cargo: 40 crate progress lines compacted]"), "{compacted}");
+        assert!(compacted.contains("error[E0425]"), "{compacted}");
+        assert!(compacted.contains("src/main.rs:12:5"), "{compacted}");
+
+        let raw = tool_run_command(&ws, &serde_json::json!({"command": "python noisy.py", "raw": true})).await.unwrap();
+        assert!(raw.contains("Compiling crate_0 v0.1.0"), "{raw}");
+        assert!(raw.contains("Compiling crate_39 v0.1.0"), "{raw}");
+
+        ws.set_compact_outputs(false);
+        let disabled = tool_run_command(&ws, &serde_json::json!({"command": "python noisy.py"})).await.unwrap();
+        assert!(disabled.contains("Compiling crate_0 v0.1.0"), "{disabled}");
+        let _ = std::fs::remove_dir_all(&ws.canon_root);
     }
 }
