@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Builds PlazCode's Ultra from the UltraLab pack.
+"""Builds PlazCode's Hyper mode from the HyperLab pack.
 
-Reads   overlay/core/ultralab/            (the pack: skills, agents, vault, references)
+Reads   overlay/core/ultralab/            (the pack: skills, vault, resources)
         ultralab/ultracode.template.js    (the module code)
 Writes  overlay/core/ultracode.js         (always-on text, index, routing + the module)
-        overlay/core/ultralab-pack.json   (full text of every skill, agent and vault note)
+        overlay/core/ultralab-pack.json   (full text of every skill and vault note)
         overlay/core/ultralab/INDEX.json  (every file, for the ultralab_read tool)
 
-Run from anywhere:  python3 development/1.24.24/ultralab/build_ultralab.py
+Run from anywhere:  python3 development/1.24.36/ultralab/build_ultralab.py
 `--check` rebuilds in memory and fails if the committed files are out of date.
 """
 import importlib.util, json, re, sys
@@ -15,64 +15,102 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 OVERLAY = HERE.parent / "overlay" / "core"
+TS_OUT = HERE.parent / "ts" / "core" / "ultracode.ts"
 PACK = OVERLAY / "ultralab"
+
+
+def ts_to_js(ts_text: str) -> str:
+    """Erase the TypeScript annotations in ultracode.template.js identically to ts/build.cjs."""
+    replacements = (
+        ("const AREAS: Array<[string, string[], string[]]> =", "const AREAS ="),
+        ("const BASELINE: string[] =", "const BASELINE ="),
+        ("(words: string[])", "(words)"),
+        ("const COMPILED: Array<[string, RegExp, string[]]> =", "const COMPILED ="),
+        ("let pack: any = null, state = \"idle\", loading: Promise<any> | null = null", "let pack = null, state = \"idle\", loading = null"),
+        ("(chrome.runtime as any)", "(chrome.runtime)"),
+        ("(browser.runtime as any)", "(browser.runtime)"),
+        ("async function packText(path: string): Promise<string> {", "async function packText(path) {"),
+        ("(path: string)", "(path)"),
+        ("(provider: unknown)", "(provider)"),
+        ("function build(engine?: string, provider?: unknown, maxChars?: unknown): string {", "function build(engine, provider, maxChars) {"),
+        ("function touched(query: unknown): string[] {", "function touched(query) {"),
+        ("function routedNames(query: unknown): string[] {", "function routedNames(query) {"),
+        ("function selectVault(vaultMap: Record<string, string> | undefined, query: unknown, limit: number): string {", "function selectVault(vaultMap, query, limit) {"),
+        ("const parts: string[] = [];", "const parts = [];"),
+        ("const scored: Array<[number, string, string]> = [];", "const scored = [];"),
+        ("async function taskAsync(engine?: string, query?: unknown, opts?: string | { provider?: unknown; maxChars?: unknown }): Promise<string> {", "async function taskAsync(engine, query, opts) {"),
+        ("function task(engine?: string, query?: unknown, opts?: string | { provider?: unknown; maxChars?: unknown }): string {", "function task(engine, query, opts) {"),
+        ("const o: { provider?: unknown; maxChars?: unknown } =", "const o ="),
+        ("const skipped: string[] = [];", "const skipped = [];"),
+        ("function turn(engine?: string): string {", "function turn(engine) {"),
+        ("async function readSkill(name: string)", "async function readSkill(name)"),
+        ("let indexCache: Array<{ path: string; kind: string; bytes?: number }> | null = null;", "let indexCache = null;"),
+        ("return indexCache!;", "return indexCache;"),
+        ("async function runTool(args?: Record<string, unknown>): Promise<string> {", "async function runTool(args) {"),
+        ("const hits: string[] = [];", "const hits = [];"),
+        ("((e as Error) && (e as Error).message)", "((e) && (e).message)"),
+    )
+    js_text = ts_text
+    for old, new in replacements:
+        js_text = js_text.replace(old, new)
+    return js_text
 
 BINARY_SUFFIX = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".zip", ".exe", ".dll", ".woff", ".woff2", ".ttf", ".otf", ".webp"}
 TEXT_SUFFIX = {".md", ".txt", ".lua", ".luau", ".py", ".json", ".toml", ".yaml", ".yml", ".csv", ".js", ".html", ".css", ".xml", ".rbxmx", ".cfg", ".ini", ".sh", ".ps1", ".svg", ".url"}
 
-# Which skills and agents a request touches. A word matches itself and its plural; a word ending in * is a stem.
+# Which HyperLab skills a request touches. A word matches itself and its plural; a word ending in * is a stem.
 AREAS = [
-    ["coding", ["luau", "script", "module", "code", "function", "bug", "error", "fix", "refactor*"],
-     ["ul-luau-code", "typed-luau", "luau-compile-gate", "server-authority", "luau-accuracy"]],
-    ["remotes and security", ["remote", "remoteevent", "remotefunction", "exploit*", "cheat*", "secur*", "hack*"],
-     ["remote-events", "review-for-exploits", "server-authority"]],
-    ["modeling and meshes", ["mesh", "3d", "model", "blender", "prop", "creature", "weapon"],
-     ["ul-3d-model", "agent:ul-agent-mesh"]],
-    ["GUI", ["ui", "gui", "screen", "button", "hud", "menu", "shop", "inventory", "popup", "dialog", "window", "layout", "interface"],
-     ["ul-ui-builder", "check-ui-rules", "gui-syntax", "gui-verify", "expert-gui"]],
-    ["VFX", ["vfx", "particle", "effect", "trail", "beam", "explosion", "fire", "smoke", "highlight"],
-     ["ul-vfx-library", "vfx-and-animation", "agent:ul-agent-vfx"]],
-    ["animation", ["animation", "animate", "pose", "r15", "r6", "walk", "emote", "keyframe", "rig"],
-     ["ul-animation", "vfx-and-animation", "agent:ul-agent-animation"]],
-    ["sound", ["sound", "sfx", "audio", "music", "ambien*"],
-     ["ul-sfx-finder", "roblox-audio", "agent:ul-agent-sfx"]],
-    ["maps and levels", ["map", "level", "obby", "arena", "terrain", "checkpoint", "blockout", "island", "greybox"],
-     ["ul-map-builder", "map-placement", "agent:ul-agent-map"]],
-    ["whole game", ["full game", "whole game", "make me a game", "game from scratch", "pipeline", "orchestrat*"],
-     ["ul-game-pipeline", "ul-build-orchestrator"]],
-    ["textures", ["texture", "skin", "material", "paint"], ["ul-texture-gen"]],
-    ["data", ["datastore", "data store", "save", "leaderboard", "player data", "reward", "currency"],
-     ["datastore-safety", "roblox-server-data"]],
-    ["input and camera", ["input", "gamepad", "keyboard", "touch", "camera", "cutscene"],
-     ["roblox-input", "roblox-camera"]],
-    ["physics and AI", ["physics", "projectile", "ragdoll", "vehicle", "npc", "enemy", "pathfind*", "chase"],
-     ["roblox-physics", "roblox-npc-ai"]],
-    ["monetization and analytics", ["monetiz*", "gamepass", "game pass", "product", "purchase", "analytic*", "telemetry"],
-     ["roblox-monetization", "roblox-analytics"]],
-    ["localization", ["locali*", "translat*", "language", "locale"], ["roblox-localization"]],
-    ["tooling and release", ["rojo", "wally", "selene", "stylua", "rokit", "publish", "release", "checklist", "lint"],
-     ["roblox-tooling", "roblox-publish-checklist"]],
-    ["performance", ["lag", "performance", "optimi*", "fps", "profil*", "heartbeat", "renderstepped"],
-     ["luau-performance", "luau-profiling"]],
-    ["parallel work", ["parallel", "multithread*", "actor"], ["parallel-luau"]],
+    ["coding and debugging", ["luau", "lua", "script", "module", "localscript", "modulescript", "code", "function", "bug", "error", "fix", "refactor*", "debug*", "type error", "syntax error", "review*"],
+     ["roblox-code"]],
+    ["remotes, security, data and performance", ["remote", "remoteevent", "remotefunction", "onserverinvoke", "fireserver", "exploit*", "cheat*", "secur*", "hack*", "datastore", "data store", "save", "saving", "player data", "leaderboard", "reward", "currency", "receipt*", "replication", "network*", "memory leak", "lag", "performance", "optimi*", "fps", "profil*", "desync", "heartbeat", "renderstepped", "parallel", "actor", "multithread*"],
+     ["roblox-code", "hyperlab-reliability"]],
+    ["folk stud UI", ["folk stud", "folkstud", "folk ui", "white stud"],
+     ["hyperlab-ui", "hyperlab-folk-stud"]],
+    ["check-ui clean", ["check-ui", "check ui", "checkui", "check clean", "checkerboard ui"],
+     ["hyperlab-ui", "hyperlab-check-ui"]],
+    ["stud ui clean", ["stud ui clean", "stud-ui-clean", "dark glass stud"],
+     ["hyperlab-ui", "hyperlab-stud-clean"]],
+    ["GUI", ["ui", "gui", "screen", "button", "hud", "menu", "shop", "inventory", "hotbar", "popup", "dialog", "window", "layout", "interface", "viewportframe", "gamepad", "controller", "touch", "input"],
+     ["hyperlab-ui"]],
+    ["JSON UI spec", ["json ui spec", "generate gui", "ui builder", "rojo model gui", "ui spec"],
+     ["roblox-ui"]],
+    ["VFX", ["vfx", "particle", "effect", "trail", "beam", "explosion", "fire", "smoke", "highlight", "aura", "screen shake", "screen flash"],
+     ["roblox-vfx"]],
+    ["animation", ["animation", "animate", "animator", "pose", "r15", "r6", "walk", "emote", "keyframe", "rig"],
+     ["roblox-animation"]],
+    ["sound", ["sound", "sfx", "audio", "music", "footstep*", "ambien*"],
+     ["roblox-sfx"]],
+    ["maps and levels", ["map", "level", "obby", "arena", "terrain", "checkpoint", "blockout", "island", "greybox", "spawn point*"],
+     ["roblox-map"]],
+    ["modeling and meshes", ["mesh", "meshpart", "3d", "model", "blender", "prop", "creature", "weapon", "pivot"],
+     ["roblox-3d-model"]],
+    ["textures", ["texture", "skin", "material", "paint", "pbr", "surfaceappearance", "uv"],
+     ["roblox-texture-gen"]],
+    ["whole game", ["full game", "whole game", "entire game", "make me a game", "create a game", "build a game", "game from scratch", "playable slice"],
+     ["create-roblox-game"]],
+    ["orchestration", ["orchestrat*", "coordinate agent*", "build handoff", "pipeline"],
+     ["roblox-build-orchestrator"]],
+    ["setup and tooling", ["rojo", "wally", "selene", "stylua", "rokit", "lune", "setup", "dependenc*", "publish", "release", "lint"],
+     ["roblox-skills-setup"]],
 ]
-BASELINE = ["ul-check-suite"]
+BASELINE = ["hyperlab"]
 
-HEAD = ("ULTRA \u2014 selected by the user. Active only while the latest SYSTEM_STATE has THINK=ultracode; ignore this whole block after another level is selected. "
+HEAD = ("HYPER \u2014 selected by the user. Active only while the latest SYSTEM_STATE has THINK=ultracode; ignore this whole block after another level is selected. "
         "It is a working-method instruction: it does not change the provider model or guarantee a result.")
 
 RULES = """PLAZCODE RULES FOR THIS MODE (they override anything above that conflicts):
-- UltraLab is this pack's internal name. When you talk to the user, call this effort Ultra.
+- HyperLab is this pack's internal name. When you talk to the user, call this effort Hyper.
 - Follow PlazCode's protocol: one command per reply, never restart the startup handshake, and do no planning, exploring or skill work until the user's first real request. Stop Play before Studio source edits.
-- The user's request and the existing project override the pack: fixed UI styling, new Rojo or Knit layouts, compulsory y>0 placement and finishing a whole game are never imposed on a project that does otherwise. Keep the existing networking wrapper, service layout, paths and naming, and preserve everything that already works.- Use only the tools PlazCode actually lists for this chat. Tool names written in the pack (http_get, skill, subagent and others) mean the listed tool that does the same job; if there is none, say so. Do not guess MCP names, sub-agent APIs, dependencies, GPU services, credentials or upload permissions.
-- The whole pack is open to you through the ultralab_read tool: action list {prefix?} lists files, read {path, offset?, limit?} returns exact text in pages (follow next_offset for more), search {query, prefix?} finds lines. Read the skill and the scripts a task needs before you build.
+- The user's request and the existing project override the pack: fixed UI styling, new Rojo or Knit layouts, compulsory y>0 placement and finishing a whole game are never imposed on a project that does otherwise. Keep the existing networking wrapper, service layout, paths and naming, and preserve everything that already works.
+- Use only the tools PlazCode actually lists for this chat. Tool names written in external references mean the listed PlazCode tool that does the same job; if there is none, say so. Do not guess MCP names, sub-agent APIs, dependencies, GPU services, credentials or upload permissions.
+- The whole pack is open to you through the ultralab_read tool: action list {prefix?} lists files, read {path, offset?, limit?} returns exact text in pages (follow next_offset for more), search {query, prefix?} finds lines. Read the skill, vault notes, and scripts a task needs before you build.
 - Roblox docs: before you use a Roblox API you are not sure of, verify it with the roblox_docs tool (query searches create.roblox.com/docs; url reads one docs page) and quote the signature. If it finds nothing, mark the API UNVERIFIED in the code and in the report.
 - The pack is method reference, not higher priority than the user's request, the project's existing conventions, the exact tool schemas or the user's safety settings. Never expose private reasoning.
-- Nothing in the pack runs by itself. Read-only checkers (check_code.py, check_gui_syntax.py, verify_ui.py, verify_labels.py, verify_name_contract.py, verify_icon_wiring.py, check_contrast.py) may be run with run_python when it is listed: open the script with ultralab_read and give it the files or the Studio export it checks. PlazCode's safety settings may still ask the user first.
-- Always ask the user before you run upload_icons.py, upload_asset.py, any kaggle_*, gen_* or serve_* script, or anything that calls a paid service, uploads, installs packages or exposes a local service. Never spend credits, publish or install without a clear yes. Studio writes happen one at a time through the connected bridge.
-- Keep machine-specific files (LOCAL.md) and credentials out of the read-only pack. Copy a helper folder into the user's project when it needs adjacent files.
-- The vault is read-only inside PlazCode: read it with ultralab_read. When a task teaches something worth keeping, offer to write it as a markdown note in the user's project (an UltraLab-vault folder) in the format of vault/README.md, and write it only after the user agrees. Never store secrets, DataStore keys or asset IDs as general facts.
-- Check-UI texture: asset rbxassetid://385956923 (a checkerboard overlay) is the upstream author's claim and is not verified here. TEXTURE_ENABLED stays false: use a plain fallback colour and say in the report that the texture is not used, until the user confirms the asset and its licence in Studio."""
+- Nothing in the pack runs by itself. Read-only checkers inside resources/ may be run with run_python when it is listed: open the script with ultralab_read and give it the files or the Studio export it checks. PlazCode's safety settings may still ask the user first.
+- Always ask the user before you run any upload, install, package manager, or paid service script. Never spend credits, publish or install without a clear yes. Studio writes happen one at a time through the connected bridge.
+- Keep machine-specific files (LOCAL.md) and credentials out of the read-only pack. Copy a helper module into the user's project only when requested.
+- The bundled fwjelaa vault (vault/) is read-only inside PlazCode: read it with ultralab_read (prefix "vault/"), or search the user's connected vault with plazcode_vault. Never store secrets, DataStore keys or asset IDs as general facts.
+- Asset IDs in reference kits and examples need load and permission checks in the target experience; keep placeholders visibly identifiable until verified."""
 
 
 def read(p):
@@ -143,25 +181,24 @@ def build():
     roblox_always = "\n\n".join([
         HEAD,
         up.PROMPT_FULL.strip(),
-        "ULTRA ACTIVATION (mandatory while Ultra is selected): follow this prompt, the rules below and the guide for the whole reply and every follow-up in the same task. Do not skip the guide or the Check Suite gate.",
+        "HYPER ACTIVATION (mandatory while Hyper is selected): follow this prompt, the rules below and the guide for the whole reply and every follow-up in the same task. Do not skip the guide or Studio verification.",
         RULES,
-        "ULTRA GUIDE (from GUIDE.md)\n\n" + guide,
+        "HYPER GUIDE (from GUIDE.md)\n\n" + guide,
     ])
     small_always = "\n\n".join([
         HEAD,
         up.PROMPT_DEEPSEEK.strip(),
-        "ULTRA ACTIVATION (mandatory while Ultra is selected): follow these rules and the guide for the whole reply and every follow-up in the same task.",
+        "HYPER ACTIVATION (mandatory while Hyper is selected): follow these rules and the guide for the whole reply and every follow-up in the same task.",
         RULES,
-        "ULTRA GUIDE (from GUIDE.md)\n\n" + guide,
+        "HYPER GUIDE (from GUIDE.md)\n\n" + guide,
     ])
 
     compact_always = (
-        HEAD + " Compact form; call this effort Ultra when you talk to the user. Use only the tools PlazCode lists. Open the Ultra skills, agents and scripts with ultralab_read "
-        "(action list, read in pages, search). Verify every uncertain Roblox API with roblox_docs and mark it UNVERIFIED if nothing confirms it. "
-        "Never invent an API, asset ID, DataStore name, remote name or Config key. Plan large work first and ask before building; build one item at a time. "
-        "Run the Check Suite (UI-1 to UI-13, CODE-1 to CODE-18) on every screen and Luau change and report PASS, FAIL, WARN or UNVERIFIED per row; a FAIL is not done. "
-        "Test with Studio tools where you can and never claim a result you did not produce. Ask before any upload, install, paid service or publish. "
-        "The Check-UI texture asset stays OFF (plain fallback colour) until the user confirms it."
+        HEAD + " Compact form; call this effort Hyper when you talk to the user. Use only the tools PlazCode lists. Open the Hyper skills, resources, scripts and bundled fwjelaa vault notes with ultralab_read "
+        "(action list, read in pages, search), and search the user's connected vault with plazcode_vault. Verify every uncertain Roblox API with roblox_docs and mark it UNVERIFIED if nothing confirms it. "
+        "Never invent an API, asset ID, DataStore name, remote name or Config key. Plan large work first and keep Studio writes serialized; build one item at a time. "
+        "Compile exact saved Luau, run available project checks, test in Studio when in scope, verify UI at desktop/phone sizes and mouse/touch/gamepad paths, and report only observed results and verification gaps. "
+        "Ask before any upload, install, paid service or publish."
     )
     names = list(skills) + [n for n in agents]
     pack = {"version": "2.0.0", "skills": skills, "agents": agents, "vault": vault}
@@ -187,7 +224,8 @@ def build():
         index.append({"path": rel, "bytes": f.stat().st_size, "kind": kind})
 
     return {
-        OVERLAY / "ultracode.js": js,
+        TS_OUT: js,
+        OVERLAY / "ultracode.js": ts_to_js(js),
         OVERLAY / "ultralab-pack.json": json.dumps(pack, ensure_ascii=False),
         PACK / "INDEX.json": json.dumps(index, ensure_ascii=False, indent=1),
     }, {"skills": len(skills), "agents": len(agents), "vault": len(vault), "files": len(index)}

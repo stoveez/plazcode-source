@@ -8268,7 +8268,7 @@ return result`;
     let thinkingLevel = "default";
     function renderEffort() {
       const node=root?.querySelector('#rs-effort');if(!node)return;
-      const names={default:'Default',low:'Low',mid:'Mid',high:'High',max:'Max',ultracode:'Ultra'};
+      const names={default:'Default',low:'Low',mid:'Mid',high:'High',max:'Max',ultracode:'Hyper'};
       const level=names[thinkingLevel]?thinkingLevel:'default';
       if(node.dataset.effort!==level){node.dataset.effort=level;node.querySelector('span').textContent=names[level];node.querySelector('span').classList.toggle('pc-ultra-label',level==='ultracode');}
     }
@@ -8381,11 +8381,11 @@ return result`;
       try{ chrome.storage.local.set({rsThinkingLevel: v}); }catch{}
       try{ window.__rsThinkingLevel = () => thinkingLevel; document.documentElement.dataset.rsThinking = thinkingLevel; renderEffort(); }catch{}
       buildMenu(); markModesChanged();
-      if (v !== "default") toast("Thinking level: " + (v==="ultracode"?"Ultra":v.toUpperCase()));
+      if (v !== "default") toast("Thinking level: " + (v==="ultracode"?"Hyper":v.toUpperCase()));
     }
     // ── Effort picker: clicking "Effort: …" in the bar opens a short list of levels ──
     (function(){
-      const LEVELS=[["default","Default"],["low","Low"],["mid","Mid"],["high","High"],["max","Max"],["ultracode","Ultra"]];
+      const LEVELS=[["default","Default"],["low","Low"],["mid","Mid"],["high","High"],["max","Max"],["ultracode","Hyper"]];
       let menu = null, cleanup = null;
       function close(focusBack){
         if(menu){menu.remove();menu=null;}
@@ -8950,9 +8950,9 @@ return result`;
               <div class="rs-sec-label"><span>Reasoning</span></div>
               <div class="rs-menu-note">How much the AI plans and self-reviews. Higher is slower and more careful. Extra Thinking is a separate toggle.</div>
               <div class="rs-thinking-row">
-                ${["default","low","mid","high","max","ultracode"].map(l => `<button class="rs-lvl-btn ${thinkingLevel===l?"on":""}" data-lvl="${l}" title="Set thinking level: ${l==="ultracode"?"Ultra":l}">${l==="ultracode"?'<span class="pc-ultra-label">Ultra</span>':l[0].toUpperCase()+l.slice(1)}</button>`).join("")}
+                ${["default","low","mid","high","max","ultracode"].map(l => `<button class="rs-lvl-btn ${thinkingLevel===l?"on":""}" data-lvl="${l}" title="Set thinking level: ${l==="ultracode"?"Hyper":l}">${l==="ultracode"?'<span class="pc-ultra-label">Hyper</span>':l[0].toUpperCase()+l.slice(1)}</button>`).join("")}
               </div>
-              <div class="rs-menu-note" id="rs-thinking-hint" style="margin-top:8px;">${thinkingLevel==="default" ? "Default — this site picks its own thinking depth." : `Level ${thinkingLevel.toUpperCase()} — applied on the next turn.`}</div>
+              <div class="rs-menu-note" id="rs-thinking-hint" style="margin-top:8px;">${thinkingLevel==="default" ? "Default — this site picks its own thinking depth." : `Level ${thinkingLevel==="ultracode"?"HYPER":thinkingLevel.toUpperCase()} — applied on the next turn.`}</div>
             </section>
           <section class="rs-menu-sec">
             <div class="rs-sec-label"><span>Automation</span></div>
@@ -11937,7 +11937,7 @@ function renderCards(panel) {
     function toast(msg) {
       const t = document.createElement("div");
       t.className = "rs-toast";
-      if(msg==="Thinking level: Ultra"){t.append(document.createTextNode("Thinking level: "));const label=document.createElement("span");label.className="pc-ultra-label";label.textContent="Ultra";t.append(label);}else t.textContent = msg;
+      if(msg==="Thinking level: Hyper"){t.append(document.createTextNode("Thinking level: "));const label=document.createElement("span");label.className="pc-ultra-label";label.textContent="Hyper";t.append(label);}else t.textContent = msg;
       root.appendChild(t);
       setTimeout(() => t.classList.add("show"), 10);
       setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 3500);

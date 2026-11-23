@@ -256,24 +256,29 @@
 
     html[data-palette] body{background:var(--bg)}html[data-palette] .hero,html[data-palette] body::before{background:var(--bg)!important}html[data-palette] .hero::after{background:linear-gradient(110deg,var(--bg),var(--surface-2))!important}html[data-palette] .hero{border-color:var(--line)}html[data-palette] .crest,html[data-palette] .tag,html[data-palette] .work-card.on,html[data-palette] #engine-roblox.on,html[data-palette] #engine-local.on{background:var(--accent);color:var(--bg)}html[data-palette] .logo{color:var(--accent-light)}html[data-palette] .card{background:var(--surface);border-color:var(--line);box-shadow:0 10px 28px #0004,0 0 16px var(--glow)}html[data-palette] .card::before,html[data-palette] .sec-label::before{background:var(--accent)}html[data-palette] .seg,html[data-palette] .work-card,html[data-palette] button.act,html[data-palette] .tgl-well,html[data-palette] #reasoning-level{background:var(--bg)!important;border-color:var(--line)!important;color:var(--text)}html[data-palette] .work-card.on,html[data-palette] #engine-roblox.on,html[data-palette] #engine-local.on{background:var(--accent)!important;color:var(--bg)}html[data-palette] .sec-label{color:var(--accent)}html[data-palette] .dot.on{background:var(--accent-light);box-shadow:0 0 12px var(--glow)}html[data-palette][data-glow=off] .card,html[data-palette][data-glow=off] .logo{box-shadow:none;text-shadow:none}html[data-palette][data-gradients=off] .hero::after{background:var(--surface)!important}html[data-palette] .act:hover{border-color:var(--accent)!important;box-shadow:0 0 15px var(--glow)}
 
-    /* Fade purple details over the saved theme, including the return transition. */
+    /* Fade Hyper prismatic details over the saved theme, including the return transition. */
+    @keyframes pc-hyper-glow{
+      0%,100%{border-color:rgba(255,255,255,.78);box-shadow:0 12px 28px #0004,0 0 20px rgba(255,255,255,.24),0 0 12px rgba(210,246,255,.18)}
+      33%{border-color:rgba(255,222,238,.86);box-shadow:0 12px 28px #0004,0 0 22px rgba(255,255,255,.28),0 0 14px rgba(255,216,232,.22)}
+      66%{border-color:rgba(217,255,236,.86);box-shadow:0 12px 28px #0004,0 0 22px rgba(255,255,255,.28),0 0 14px rgba(210,246,255,.22)}
+    }
     html[data-palette] :is(.hero,.card,#reasoning-level){transition:border-color .42s ease,box-shadow .42s ease}
-    html[data-palette] .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at top right,#a879e82e,transparent 70%);z-index:1;pointer-events:none;opacity:0;transition:opacity .42s ease}
+    html[data-palette] .hero::before{content:'';position:absolute;inset:0;background:linear-gradient(125deg,rgba(255,255,255,.16) 0%,rgba(255,222,238,.12) 28%,rgba(255,255,255,.04) 48%,rgba(210,246,255,.14) 70%,rgba(255,255,255,.16) 100%);z-index:1;pointer-events:none;opacity:0;transition:opacity .42s ease}
     html[data-palette] .card::before{transition:background-color .42s ease}
-    html[data-palette][data-thinking=ultracode] :is(.hero,.card,#reasoning-level){border-color:#a879e8!important}
-    html[data-palette][data-thinking=ultracode] .card{box-shadow:0 12px 28px #0004,0 0 20px #a879e826}
+    html[data-palette][data-thinking=ultracode] :is(.hero,.card,#reasoning-level,.pc-effort-trigger){border-color:rgba(255,255,255,.78)!important}
+    html[data-palette][data-thinking=ultracode] :is(.hero,.card,.pc-effort-trigger){box-shadow:0 12px 28px #0004,0 0 20px rgba(255,255,255,.24);animation:pc-hyper-glow 5.2s ease-in-out infinite}
     html[data-palette][data-thinking=ultracode] .hero::before{opacity:1}
-    html[data-palette][data-thinking=ultracode] .card::before{background:#b68af2}
+    html[data-palette][data-thinking=ultracode] .card::before{background:#f5f8ff}
     html[data-palette][data-gradients=off] .hero::before{background:none}
-    html[data-palette][data-thinking=ultracode][data-glow=off] .card{box-shadow:none}
-    @media(prefers-reduced-motion:reduce){html[data-palette] :is(.hero,.card,#reasoning-level),html[data-palette] :is(.hero,.card)::before{transition:none!important}}
-/* Ultra text stays branded in every visible effort control; native select state is preserved. */
-.pc-ultra-label{font-weight:700;color:#d6b5ff}
+    html[data-palette][data-thinking=ultracode][data-glow=off] :is(.hero,.card,.pc-effort-trigger){animation:none!important;box-shadow:none}
+    @media(prefers-reduced-motion:reduce){html[data-palette] :is(.hero,.card,#reasoning-level,.pc-effort-trigger),html[data-palette] :is(.hero,.card)::before{transition:none!important;animation:none!important}}
+/* Hyper text stays branded in every visible effort control; native select state is preserved. */
+.pc-ultra-label{font-weight:700;color:#f7f9ff}
 @supports ((-webkit-background-clip:text) or (background-clip:text)){
- .pc-ultra-label{background-image:linear-gradient(110deg,#b48aff 0%,#e2c5ff 22%,#ffffff 38%,#a5eaff 50%,#d5a5ff 66%,#b48aff 100%);background-size:260% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:pc-ultra-shine 3.2s linear infinite}
+ .pc-ultra-label{background-image:linear-gradient(110deg,#ffffff 0%,#fffafd 22%,#ffd8e8 30%,#fff1dd 38%,#ffffff 48%,#d9ffec 57%,#d2f6ff 65%,#e7dcff 73%,#ffffff 84%,#ffffff 100%);background-size:260% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:pc-ultra-shine 3.2s linear infinite}
 }
 @keyframes pc-ultra-shine{from{background-position:200% 50%}to{background-position:-60% 50%}}
-.pc-effort-picker{position:relative;display:inline-block;min-width:138px;max-width:100%}.pc-effort-picker>select[hidden]{display:none!important}.pc-effort-trigger{display:flex!important;align-items:center;justify-content:space-between;gap:14px;min-height:38px;width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid var(--stroke,var(--border,#414454));border-radius:8px;background:var(--canvas,var(--panel,#151821));color:var(--ink,var(--text,#e8ebf3));font:inherit;text-align:left;cursor:pointer}.pc-effort-trigger:focus-visible,.pc-effort-options>button:focus-visible{outline:2px solid var(--orange,var(--accent,#c5a1f9));outline-offset:2px}.pc-effort-options{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:2147483600;display:grid;gap:3px;max-height:280px;overflow:auto;padding:6px;border:1px solid var(--stroke,var(--border,#414454));border-radius:10px;background:var(--canvas,var(--panel,#151821));box-shadow:0 12px 32px #0007}.pc-effort-options[hidden]{display:none!important}.pc-effort-picker[data-open-up] .pc-effort-options{top:auto;bottom:calc(100% + 5px)}.pc-effort-options>button{display:block;width:100%;padding:8px 10px;min-height:32px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--ink,var(--text,#e8ebf3));text-align:left;font:inherit;cursor:pointer}.pc-effort-options>button[aria-selected=true]{border-color:var(--orange,var(--accent,#c5a1f9))}.pc-effort-options>button:hover{background:#ffffff12}
+.pc-effort-picker{position:relative;display:inline-block;min-width:138px;max-width:100%}.pc-effort-picker>select[hidden]{display:none!important}.pc-effort-trigger{display:flex!important;align-items:center;justify-content:space-between;gap:14px;min-height:38px;width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid var(--stroke,var(--border,#414454));border-radius:8px;background:var(--canvas,var(--panel,#151821));color:var(--ink,var(--text,#e8ebf3));font:inherit;text-align:left;cursor:pointer}.pc-effort-trigger:focus-visible,.pc-effort-options>button:focus-visible{outline:2px solid var(--orange,var(--accent,#f2f6ff));outline-offset:2px}.pc-effort-options{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:2147483600;display:grid;gap:3px;max-height:280px;overflow:auto;padding:6px;border:1px solid var(--stroke,var(--border,#414454));border-radius:10px;background:var(--canvas,var(--panel,#151821));box-shadow:0 12px 32px #0007}.pc-effort-options[hidden]{display:none!important}.pc-effort-picker[data-open-up] .pc-effort-options{top:auto;bottom:calc(100% + 5px)}.pc-effort-options>button{display:block;width:100%;padding:8px 10px;min-height:32px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--ink,var(--text,#e8ebf3));text-align:left;font:inherit;cursor:pointer}.pc-effort-options>button[aria-selected=true]{border-color:var(--orange,var(--accent,#f2f6ff))}.pc-effort-options>button:hover{background:#ffffff12}
 @media(prefers-reduced-motion:reduce){.pc-ultra-label{animation:none!important;background-position:38% 50%}}
 @media(forced-colors:active){.pc-ultra-label{animation:none!important;background:none!important;color:Highlight!important;-webkit-text-fill-color:currentColor!important}}
 
@@ -310,7 +315,7 @@ html[data-studio]{--st-rgb:var(--rgb,233 186 83);--st-a:var(--accent);--st-l:var
     linear-gradient(var(--st-a),var(--st-a)) 100% 100%/16px 2px no-repeat,linear-gradient(var(--st-a),var(--st-a)) 100% 100%/2px 16px no-repeat,
     linear-gradient(135deg,rgb(var(--st-rgb)/.22) 0%,rgb(var(--st-rgb)/.05) 32%,transparent 58%,rgb(var(--st-rgb)/.10) 100%),linear-gradient(180deg,rgb(255 255 255/.05),transparent 34%),color-mix(in srgb,var(--st-card) 96%,transparent)}
 html[data-studio][data-glow=off]{--st-g:0}
-html[data-studio][data-thinking=ultracode]{--st-rim:linear-gradient(115deg,#e6d3ff 0%,#a879e8 22%,rgb(151 98 223/.25) 50%,rgb(var(--st-rgb)/.35) 75%,#c5a1f9 100%)}
+html[data-studio][data-thinking=ultracode]{--st-rim:linear-gradient(115deg,#ffffff 0%,#ffe4ef 22%,rgba(255,255,255,.35) 50%,rgb(var(--st-rgb)/.35) 75%,#dff6ff 100%)}
 html[data-studio] body{background:radial-gradient(120% 60% at 0% 0%,rgb(var(--st-rgb)/.16),transparent 60%),radial-gradient(90% 50% at 100% 100%,rgb(var(--st-rgb)/.10),transparent 60%),color-mix(in srgb,var(--st-bg) 70%,#06070a)!important;font-family:var(--st-sans);color:var(--st-text)}
 html[data-studio] body::before,html[data-studio] body::after{display:none}
 html[data-studio] .wrap{padding:14px 14px 18px}
@@ -380,7 +385,8 @@ html[data-studio] .work-card.on .work-sub{color:color-mix(in srgb,var(--st-ink) 
 html[data-studio] .pc-effort-picker{width:100%;margin-bottom:8px}
 html[data-studio] .pc-effort-trigger{border-radius:10px!important;border:1px solid var(--st-line)!important;background:var(--st-glass),var(--st-card2)!important;color:var(--st-text)!important;font:650 12.5px/1.2 var(--st-sans)!important}
 html[data-studio] .pc-effort-trigger>span:nth-child(2){border-color:var(--st-l)!important}
-html[data-studio][data-thinking=ultracode] .pc-effort-trigger{border-color:#a879e8!important}
+html[data-studio][data-thinking=ultracode] .pc-effort-trigger{border-color:rgba(255,255,255,.78)!important;animation:pc-hyper-glow 5.2s ease-in-out infinite}
+html[data-studio][data-thinking=ultracode][data-glow=off] .pc-effort-trigger{animation:none!important;box-shadow:none!important}
 html[data-studio] .pc-effort-options{border-radius:0!important;border:1px solid transparent!important;border-image:var(--st-rim) 1!important;background:var(--st-panel)!important}
 html[data-studio] .pc-effort-options>button{border-radius:8px!important}
 
@@ -520,7 +526,7 @@ html[data-studio][data-motion=reduced] .dot.on::after{animation:none}
         <option value="low">Low</option>
         <option value="mid">Medium</option>
         <option value="high">High</option>
-        <option value="max">Max</option><option value="ultracode">Ultra</option>
+        <option value="max">Max</option><option value="ultracode">Hyper</option>
       </select>
       <div class="row">Applied on the next turn. Available behavior depends on the AI site.</div>
       <details class="fold" id="fold-options" data-fold="options">

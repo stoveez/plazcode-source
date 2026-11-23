@@ -285,9 +285,9 @@
       build: s => s.clarify(),
     },
     {
-      name: "ultra", engines: BOTH, aliases: ["ultracode", "ultralab"],
-      title: "Ultra working mode and its skill index",
-      must: ["ULTRA"],
+      name: "ultra", engines: BOTH, aliases: ["ultracode", "ultralab", "hyper", "hyperlab"],
+      title: "Hyper working mode and its skill index",
+      must: ["HYPER"],
       build: s => s.ultra(),
     },
   ];

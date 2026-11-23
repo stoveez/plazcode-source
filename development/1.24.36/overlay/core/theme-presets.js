@@ -2,79 +2,79 @@
 // Built from development/1.24.36/ts/core/theme-presets.ts (TypeScript): edit that file, then run node development/1.24.36/ts/build.cjs.
 // Curated PlazCode theme presets (11 classic + 8 pro presets = 19) and normalized appearance state.
 
-                                                                                
-                                  
-                                            
-                                 
-                                             
 
-                    
-             
-              
-          
-          
-             
-              
-             
-           
-            
-            
-            
-                    
-                   
-                  
-                 
-                
-                    
-                 
-                    
 
-                       
-                             
-                        
-                        
-                       
-                          
-                         
-                      
-                          
-                           
-                          
-                          
-                           
-                        
-                        
-                           
-                                 
-                        
- 
 
-                                
-                       
-                 
-                          
-                     
-                
-                  
-                 
-                     
-                      
- 
 
-                           
-                  
-                 
-                      
-                   
-                 
-                   
-                   
-                      
-                       
- 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 const PlazCodeThemePresets = (() => {
-  const LEGACY_IDS                           = [
+  const LEGACY_IDS = [
     "default",
     "amethyst",
     "cyan",
@@ -88,7 +88,7 @@ const PlazCodeThemePresets = (() => {
     "orchid",
   ];
 
-  const PRO_IDS                           = [
+  const PRO_IDS = [
     "midnight-slate",
     "obsidian-gold",
     "sunset-ember",
@@ -99,7 +99,7 @@ const PlazCodeThemePresets = (() => {
     "mono-contrast",
   ];
 
-  const PRESETS                                     = {
+  const PRESETS = {
     default: {
       id: "default",
       name: "Default",
@@ -463,41 +463,41 @@ const PlazCodeThemePresets = (() => {
     },
   };
 
-  const IDS                           = [...LEGACY_IDS, ...PRO_IDS];
+  const IDS = [...LEGACY_IDS, ...PRO_IDS];
 
-  function hasPreset(id        )                      {
+  function hasPreset(id) {
     return Object.prototype.hasOwnProperty.call(PRESETS, id);
   }
 
-  function normalizeThemeId(raw         )                {
+  function normalizeThemeId(raw) {
     const key = typeof raw === "string" ? raw.trim() : "";
     if (key === "solar" || !key) return "default";
     return hasPreset(key) ? key : "default";
   }
 
-  function getPreset(raw         )              {
+  function getPreset(raw) {
     return PRESETS[normalizeThemeId(raw)];
   }
 
-  function validHex(raw         )         {
+  function validHex(raw) {
     const s = typeof raw === "string" ? raw.trim() : "";
     return /^#[0-9a-f]{6}$/i.test(s) ? s.toLowerCase() : "";
   }
 
-  function normalizeGlow(raw         )           {
+  function normalizeGlow(raw) {
     return raw === "off" || raw === "strong" ? raw : "subtle";
   }
 
-  function normalizeGradients(raw         )               {
+  function normalizeGradients(raw) {
     return raw === "off" ? "off" : "on";
   }
 
-  function normalizeMotion(raw         )             {
+  function normalizeMotion(raw) {
     return raw === "reduced" || raw === "off" ? raw : "full";
   }
 
-  function normalizeAppearance(raw         )                       {
-    const src                  = raw && typeof raw === "object" ? (raw                   ) : {};
+  function normalizeAppearance(raw) {
+    const src = raw && typeof raw === "object" ? (raw) : {};
     return {
       theme: normalizeThemeId(src.theme),
       glow: normalizeGlow(src.glow),
@@ -511,12 +511,12 @@ const PlazCodeThemePresets = (() => {
     };
   }
 
-  function mixCustom(hex        )                                                                                                     {
+  function mixCustom(hex) {
     const clean = validHex(hex);
     if (!clean) return null;
     const c = [parseInt(clean.slice(1, 3), 16), parseInt(clean.slice(3, 5), 16), parseInt(clean.slice(5, 7), 16)];
-    const mix = (a          , b          , t        )           => a.map((v, i) => Math.round(v + (b[i] - v) * t));
-    const hx = (rgb          )         => "#" + rgb.map((v) => ("0" + Math.max(0, Math.min(255, v)).toString(16)).slice(-2)).join("");
+    const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+    const hx = (rgb) => "#" + rgb.map((v) => ("0" + Math.max(0, Math.min(255, v)).toString(16)).slice(-2)).join("");
     return {
       rgb: c.join(" "),
       accent: clean,
@@ -527,7 +527,7 @@ const PlazCodeThemePresets = (() => {
     };
   }
 
-  function toCssVars(presetId         , glow          , customHex          )                         {
+  function toCssVars(presetId, glow, customHex) {
     const preset = getPreset(presetId);
     const g = normalizeGlow(glow);
     const custom = typeof customHex === "string" ? mixCustom(customHex) : null;
@@ -555,7 +555,7 @@ const PlazCodeThemePresets = (() => {
     };
   }
 
-  function applyToDocument(doc                             , appearance         )                       {
+  function applyToDocument(doc, appearance) {
     const normalized = normalizeAppearance(appearance);
     if (!doc || !doc.documentElement) return normalized;
     const root = doc.documentElement;
@@ -570,8 +570,8 @@ const PlazCodeThemePresets = (() => {
     return normalized;
   }
 
-  function toPaletteMap()                              {
-    const out                              = {};
+  function toPaletteMap() {
+    const out = {};
     for (const id of IDS) out[id] = PRESETS[id];
     return out;
   }

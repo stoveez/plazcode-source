@@ -138,6 +138,8 @@ pub struct DockAppearanceState {
     pub motion: String,
     pub anim: bool,
     pub ripple: bool,
+    pub thinking_level: String,
+    pub is_hyper: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom: Option<String>,
     #[serde(rename = "pixelMode", default)]
@@ -200,6 +202,12 @@ pub fn appearance_state_from_prefs(prefs: &DesktopPreferences) -> DockAppearance
         .to_string();
     let anim = app.map(|a| a.anim).unwrap_or(true);
     let ripple = app.map(|a| a.ripple).unwrap_or(true);
+    let thinking_level = match prefs.thinking_level.trim().to_ascii_lowercase().as_str() {
+        "low" | "mid" | "high" | "max" | "ultracode" => prefs.thinking_level.trim().to_ascii_lowercase(),
+        "hyper" => "ultracode".to_string(),
+        _ => "default".to_string(),
+    };
+    let is_hyper = thinking_level == "ultracode";
     let custom = app
         .and_then(|a| a.custom.as_deref())
         .and_then(valid_hex_color);
@@ -212,6 +220,8 @@ pub fn appearance_state_from_prefs(prefs: &DesktopPreferences) -> DockAppearance
         motion,
         anim,
         ripple,
+        thinking_level,
+        is_hyper,
         custom,
         pixel_mode,
         signal_rain,
@@ -2314,7 +2324,10 @@ mod tests {
         assert_eq!(def.motion, "full");
         assert!(def.anim);
         assert!(def.ripple);
+        assert_eq!(def.thinking_level, "default");
+        assert!(!def.is_hyper);
 
+        prefs.thinking_level = "ultracode".into();
         prefs.appearance = Some(Appearance {
             theme: "aurora".into(),
             glow: "strong".into(),
@@ -2333,12 +2346,17 @@ mod tests {
         assert_eq!(custom.motion, "reduced");
         assert!(!custom.anim);
         assert!(!custom.ripple);
+        assert_eq!(custom.thinking_level, "ultracode");
+        assert!(custom.is_hyper);
         assert_eq!(custom.custom.as_deref(), Some("#11aaff"));
 
+        prefs.thinking_level = "Hyper".into();
         prefs.appearance.as_mut().unwrap().motion = "off".into();
         prefs.appearance.as_mut().unwrap().custom = Some("url(bad)".into());
         let off = appearance_state_from_prefs(&prefs);
         assert_eq!(off.motion, "off");
+        assert_eq!(off.thinking_level, "ultracode");
+        assert!(off.is_hyper);
         assert_eq!(off.custom, None);
     }
 

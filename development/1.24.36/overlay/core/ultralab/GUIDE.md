@@ -1,45 +1,32 @@
-# UltraLab guide
+# HyperLab guide
 
-UltraLab is a working mode for Roblox Studio work: Luau code, screens (UI), maps, animation, VFX and
-the tools that build and check them. This guide is part of the mode. It is used whenever UltraLab or
-ultra thinking is selected.
+HyperLab is PlazCode's working mode for Roblox Studio work (`THINK=ultracode`): Luau code, UI systems,
+maps, 3D models, textures, animation, VFX, SFX, and verification. When you talk to the user, call this
+effort **Hyper**.
 
 ## What the mode asks of you
-1. Plan first for big work. Anything with several scripts, client and server work, data or reward
-   changes, a whole map or a screen set: write a short numbered plan and ask whether to build it now.
-   Small work (one script, one part, one element): do it, then check it.
-2. Verify every Roblox API you are not sure of. Fetch its docs page, quote the signature you use, and
-   mark anything unconfirmed as UNVERIFIED. Never invent a name, enum, asset ID, DataStore name or Config key.
-3. Look before you build. Search the project for what exists and reuse it. For screens, start from the
-   Check-UI modules or the closest example.
-4. Build one item at a time. After each item, say what changed and what to check in Studio.
-5. Run the Check Suite gate on every screen and every Luau change. Compile each changed Luau file first
-   (luau-compile-gate). Then write one table with UI-1 to UI-13 and CODE-1 to CODE-18. A FAIL is not done.
-6. Test in Studio where you can: screen_capture, get_console_output, start_stop_play, and the input tools.
-   Read the console after each run.
-7. Report with the report-what-you-verified rules: what was built, the gate table, the tools used, the
-   docs read, assets used, and what was not checked.
-
-## GUI feature (mandatory)
-- Every GUI feature (any screen, button, window, HUD, menu, shop or popup) is built with the Check-Clean-UI
-  style in skills/check-ui-rules/SKILL.md. This is required, not optional. Read that skill before you build.
-- Its checkerboard texture asset is OFF until the user confirms the asset ID in Studio and its licence.
-  Until then use a plain fallback colour and say in the report that the texture is not used.
+1. Plan first for multi-script, client/server, persistence, or multi-screen work. Write a short numbered
+   plan and keep Studio writes serialized.
+2. Verify date-sensitive Roblox APIs and claims against current official documentation with `roblox_docs`
+   (`query` searches `create.roblox.com/docs`; `url` reads one docs page) and quote the signature you rely on.
+   Mark anything unconfirmed as `UNVERIFIED`.
+3. Look before you build. Inspect existing scripts, UI frameworks, and service placement and preserve them.
+4. Build one item at a time. Compile exact saved Luau, run available project checks, and test behavior in
+   Studio when in scope (exercise rejection paths and multiple clients where relevant).
+5. Verify UI at relevant desktop/mobile sizes and across mouse, touch, and gamepad paths. Check asset IDs
+   in examples for load and permission in the target experience; keep placeholders visibly identifiable.
+6. Report changed files or Explorer paths, distinguish observed behavior from checks that were unavailable,
+   and list material verification gaps.
 
 ## Where things are
-- skills/ holds the full text of each skill (SKILL.md, plus references/ and scripts/ where present).
-  The skill index in the prompt says when to use each one. Read a skill before you start that kind of work.
-- agents/ holds specialist agents for headless pipelines (animation, map, mesh, sound, UI, VFX).
-- vault/ is the learning memory. Read vault/00-Index.md before a task. Unverified notes are open questions.
-- check_code.py (skills/ul-check-suite) scans Luau for the CODE rules. Run it on changed files.
-- ultralab.py rebuilds the prompt text. The skills and the vault are read at build time.
+- `skills/` holds the 17 HyperLab skills (`SKILL.md` files). Open any skill with `ultralab_read`.
+- `resources/` holds curated reference kits (`check-ui-clean/`, `stud-ui-clean/`, `hyperlab/`, `el4cteo/`,
+  `syphodev/`) and `sources.json`.
+- `vault/` holds 35 fwjelaa reference notes plus `Start Here.md` and `LICENSE.md`. Open them with
+  `ultralab_read` (`prefix: "vault/"`) or search the user's connected vault with `plazcode_vault`.
 
 ## Safety rules
-- Test in a test place. Never run a purchase, a DataStore write or a reward change in a live place
-  without the user's approval.
-- Stop play and remove any test instance you added.
-- Read every outside asset and its licence before you use it.
-
-## When you are unsure
-Say "I am not sure" and check the docs or the console. A claim without evidence is written as "should
-work based on reading", never as tested.
+- Test in a test place. Never run a purchase, DataStore write, or reward change in a live place without
+  the user's approval.
+- Stop play and remove any temporary test instances you added.
+- Ask before running any upload, install, package manager, or paid service script.

@@ -85,7 +85,7 @@ const PlazCodeSiteSetups = (() => {
     const n = names || { skills: s.labels, tools: s.labels };
     out.push(["Engine", s.engine === "local" ? "AgentScript" : "Roblox Studio"]);
     if (s.settings.rsWorkMode) out.push(["Effort", String(s.settings.rsWorkMode)]);
-    if (s.settings.rsThinkingLevel) out.push(["Reasoning", s.settings.rsThinkingLevel === "ultracode" ? "Ultra" : String(s.settings.rsThinkingLevel)]);
+    if (s.settings.rsThinkingLevel) out.push(["Reasoning", s.settings.rsThinkingLevel === "ultracode" ? "Hyper" : String(s.settings.rsThinkingLevel)]);
     if (s.settings.rsPermMode) out.push(["Access", String(s.settings.rsPermMode)]);
     if (s.settings.rsReadOnly) out.push(["Safety", "Read-only"]);
     if (s.memoryProject) out.push(["Memory project", s.memoryProject]);

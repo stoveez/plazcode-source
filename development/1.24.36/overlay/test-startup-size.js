@@ -32,8 +32,8 @@ for (const mark of ['PLAN MODE', 'EXTRA THINKING', 'MULTI-AGENT', 'FORGE GUI', '
 assert(busy.length < 12000, 'with every mode on the startup is ' + busy.length);
 flags.all = false; flags.approach = false; flags.level = 'ultracode';
 const ultra = RS.buildSystemPrompt({ siteName: 'ChatGPT', engine: 'roblox', leanStartup: true });
-// 1.24.24: Ultra's compact guide (about 2,200 characters) rides in the startup instead of a forced 25,000-character lookup.
-assert(ultra.includes('ULTRA MODE IS ON') && ultra.length < 8000, 'Ultra is the compact guide, not the whole pack: ' + ultra.length);
+// 1.24.24: Hyper's compact guide rides in the startup instead of a forced 25,000-character lookup.
+assert(ultra.includes('HYPER MODE IS ON') && ultra.length < 8000, 'Hyper is the compact guide, not the whole pack: ' + ultra.length);
 assert(!/before your first task, call plazcode_help/.test(ultra), 'no forced Ultra lookup before the first task');
 flags.level = 'default';
 // Notion keeps its own short preferences.

@@ -42,9 +42,9 @@ assert(/data-memory-import/.test(memory)&&/accept="\.md,\.markdown,\.json,\.txt/
 assert(/blenderWasConnected/.test(bg)&&/Date\.now\(\) \+ 45000/.test(bg));
 const blender=fs.readFileSync('agent/src/blender.rs','utf8');
 assert(blender.includes('let wait = if kind == "get_scene_info" { 2 } else { 45 };')&&blender.includes('command_slot(&COMMAND_LOCK, kind).await?')&&!/COMMAND_LOCK\.try_lock/.test(blender), 'scene probes have a short queue while edits still wait for the active command');
-// Ultra (1.24.21): the GUI methods are skills in the Ultra pack, opened with ultralab_read.
-for(const id of ['check-ui-rules','expert-gui','gui-syntax','gui-verify','check-ui-standard','toolbox','check-cycle','report-what-you-verified'])assert(fs.existsSync('core/ultralab/skills/'+id+'/SKILL.md'),'Ultra GUI skill '+id);
-assert(/Check-UI|GUI/.test(ultra)&&/check-ui-rules/.test(ultra),'Ultra text names the GUI skills');
+// Hyper (1.24.36): the GUI methods are skills in the HyperLab pack, opened with ultralab_read.
+for(const id of ['hyperlab','hyperlab-ui','hyperlab-check-ui','hyperlab-folk-stud','hyperlab-stud-clean','roblox-ui','roblox-code','hyperlab-reliability'])assert(fs.existsSync('core/ultralab/skills/'+id+'/SKILL.md'),'Hyper GUI skill '+id);
+assert(/Check-UI|UI/.test(ultra)&&/hyperlab-check-ui/.test(ultra),'Hyper text names the GUI skills');
 // Desktop auto-update toggle.
 const html=fs.readFileSync('agent/src/desktop.html','utf8');
 assert(/data-pref="rsAutoUpdate"/.test(html));
