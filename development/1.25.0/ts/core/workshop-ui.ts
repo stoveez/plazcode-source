@@ -36,6 +36,8 @@ const PlazCodeWorkshopUI = (() => {
     app_version?: string;
     banned: boolean;
     banned_at?: number | null;
+    terminated?: boolean;
+    terminated_at?: number | null;
     ban_reason?: string;
     is_owner?: boolean;
     profile_picture?: string | null;
@@ -344,6 +346,7 @@ const PlazCodeWorkshopUI = (() => {
 
       <div class="ws-pills" role="tablist" aria-label="Owner Panel sections">
         <button type="button" role="tab" data-ws-owner-tab="users" aria-selected="true" aria-pressed="true">Users <span data-ws="owner-users-count"></span></button>
+        <button type="button" role="tab" data-ws-owner-tab="banned" aria-selected="false" aria-pressed="false">Banned Profiles <span data-ws="owner-banned-count"></span></button>
         <button type="button" role="tab" data-ws-owner-tab="workshop" aria-selected="false" aria-pressed="false">Workshop Moderation <span data-ws="owner-pending-count"></span></button>
       </div>
 
@@ -358,6 +361,18 @@ const PlazCodeWorkshopUI = (() => {
           <input type="search" class="ws-search" data-ws="owner-user-search" placeholder="Search usernames..." aria-label="Search usernames">
         </div>
         <div class="ws-owner-list" data-ws="owner-users-list"></div>
+      </section>
+
+      <section data-ws="owner-banned-view" class="ws-owner-view" hidden>
+        <div class="ws-note-bar">Banned users are locked out from creating new profiles or using Guest mode. You can unban a banned profile to restore access, or permanently terminate it (cannot be unbanned).</div>
+        <div class="ws-toolbar">
+          <div class="ws-pills" role="group" aria-label="Filter banned profiles">
+            <button type="button" data-ws-bfilter="banned" aria-pressed="true">All Banned</button>
+            <button type="button" data-ws-bfilter="terminated" aria-pressed="false">Terminated (No Unban)</button>
+          </div>
+          <input type="search" class="ws-search" data-ws="owner-banned-search" placeholder="Look up banned usernames..." aria-label="Look up banned usernames">
+        </div>
+        <div class="ws-owner-list" data-ws="owner-banned-list"></div>
       </section>
 
       <section data-ws="owner-workshop-view" class="ws-owner-view" hidden>
@@ -387,15 +402,18 @@ const PlazCodeWorkshopUI = (() => {
     let kindFilter = 'all', categoryFilter = 'All categories', items: WorkshopItem[] = [], installedIds = new Set<string>();
     let localRatings: Record<string, number> = {}, localSkills: any[] = [], reportTargetId = '', busy = false;
     let ownerStatus: OwnerStatus = {};
-    let ownerTab: 'users' | 'workshop' = 'users';
+    let ownerTab: 'users' | 'banned' | 'workshop' = 'users';
     let userFilter: 'all' | 'online' | 'banned' = 'all';
+    let bannedSubFilter: 'banned' | 'terminated' = 'banned';
     let wsModFilter: string = 'pending';
     let ownerUsers: OwnerUser[] = [];
-    let ownerUserCounts: { total?: number; online?: number; banned?: number } = {};
+    let ownerBannedUsers: OwnerUser[] = [];
+    let ownerUserCounts: { total?: number; online?: number; banned?: number; terminated?: number } = {};
     let ownerSkills: OwnerSkill[] = [];
     let ownerWsCounts: Record<string, number> = {};
     let ownerBannedAuthors: BannedAuthor[] = [];
     let pendingUserConfirm: { id: string; mode: 'ban' | 'remove'; username: string } | null = null;
+    let pendingBannedConfirm: { id: string; username: string } | null = null;
     let pendingRejectSkillId = '';
 
     const run = (fn: (...args: any[]) => Promise<void>) => async (...args: any[]) => {
@@ -718,7 +736,7 @@ const PlazCodeWorkshopUI = (() => {
       }
     }
 
-    function selectOwnerTab(tab: 'users' | 'workshop') {
+    function selectOwnerTab(tab: 'users' | 'banned' | 'workshop') {
       ownerTab = tab;
       host.querySelectorAll<HTMLButtonElement>('[data-ws-owner-tab]').forEach(btn => {
         const active = btn.getAttribute('data-ws-owner-tab') === tab;
@@ -726,6 +744,7 @@ const PlazCodeWorkshopUI = (() => {
         btn.setAttribute('aria-selected', String(active));
       });
       find('owner-users-view').hidden = tab !== 'users';
+      find('owner-banned-view').hidden = tab !== 'banned';
       find('owner-workshop-view').hidden = tab !== 'workshop';
     }
 
@@ -785,7 +804,12 @@ const PlazCodeWorkshopUI = (() => {
           ownerTag.textContent = 'Owner';
           titleRow.appendChild(ownerTag);
         }
-        if (u.banned) {
+        if (u.terminated) {
+          const termTag = document.createElement('span');
+          termTag.className = 'ws-pill-tag bad';
+          termTag.textContent = 'Terminated · No Unban';
+          titleRow.appendChild(termTag);
+        } else if (u.banned) {
           const banTag = document.createElement('span');
           banTag.className = 'ws-pill-tag bad';
           banTag.textContent = 'Banned';
@@ -814,25 +838,28 @@ const PlazCodeWorkshopUI = (() => {
         actions.style.gap = '6px';
         actions.style.flexWrap = 'wrap';
         if (!u.is_owner) {
-          const banBtn = document.createElement('button');
-          banBtn.type = 'button';
-          banBtn.className = u.banned ? 'softbtn' : 'dangerbtn';
-          banBtn.textContent = u.banned ? 'Unban' : 'Ban';
-          banBtn.setAttribute('data-ws-user-ban', u.id);
-          if (u.banned) {
-            banBtn.onclick = run(async () => {
-              await api('/api/owner/users/unban', {
-                method: 'POST',
-                body: JSON.stringify({ id: u.id, username: u.username, unban_workshop: true }),
+          if (!u.terminated) {
+            const banBtn = document.createElement('button');
+            banBtn.type = 'button';
+            banBtn.className = u.banned ? 'softbtn' : 'dangerbtn';
+            banBtn.textContent = u.banned ? 'Unban' : 'Ban';
+            banBtn.setAttribute('data-ws-user-ban', u.id);
+            if (u.banned) {
+              banBtn.onclick = run(async () => {
+                await api('/api/owner/users/unban', {
+                  method: 'POST',
+                  body: JSON.stringify({ id: u.id, username: u.username, unban_workshop: true }),
+                });
+                setOwnerStatusLine(`Unbanned ${u.username}.`);
+                await Promise.all([loadOwnerUsers(), loadOwnerBanned()]);
               });
-              setOwnerStatusLine(`Unbanned ${u.username}.`);
-              await loadOwnerUsers();
-            });
-          } else {
-            banBtn.onclick = () => {
-              pendingUserConfirm = { id: u.id, mode: 'ban', username: u.username };
-              renderOwnerUsers();
-            };
+            } else {
+              banBtn.onclick = () => {
+                pendingUserConfirm = { id: u.id, mode: 'ban', username: u.username };
+                renderOwnerUsers();
+              };
+            }
+            actions.append(banBtn);
           }
 
           const rmBtn = document.createElement('button');
@@ -844,7 +871,7 @@ const PlazCodeWorkshopUI = (() => {
             pendingUserConfirm = { id: u.id, mode: 'remove', username: u.username };
             renderOwnerUsers();
           };
-          actions.append(banBtn, rmBtn);
+          actions.append(rmBtn);
         }
         head.append(left, actions);
         row.appendChild(head);
@@ -915,7 +942,7 @@ const PlazCodeWorkshopUI = (() => {
               setOwnerStatusLine(`Removed ${u.username}'s PlazCode profile.`);
             }
             pendingUserConfirm = null;
-            await loadOwnerUsers();
+            await Promise.all([loadOwnerUsers(), loadOwnerBanned()]);
             if (ownerStatus.registry_configured && ownerStatus.workshop_owner) await loadOwnerWorkshop();
           });
           cBtns.append(cancelBtn, confirmBtn);
@@ -1140,7 +1167,172 @@ const PlazCodeWorkshopUI = (() => {
       const res = await api(`/api/owner/users?filter=${encodeURIComponent(userFilter)}&q=${q}`);
       ownerUsers = res?.users || [];
       ownerUserCounts = res?.counts || {};
+      const bannedCount = Number(ownerUserCounts.banned || 0);
+      find('owner-banned-count').textContent = bannedCount > 0 ? `(${bannedCount})` : '';
       renderOwnerUsers();
+    }
+
+    function renderOwnerBanned() {
+      const list = find('owner-banned-list');
+      list.replaceChildren();
+      const bannedTotal = Number(ownerUserCounts.banned ?? ownerBannedUsers.length);
+      find('owner-banned-count').textContent = bannedTotal > 0 ? `(${bannedTotal})` : '';
+      if (!ownerBannedUsers.length) {
+        const empty = document.createElement('p');
+        empty.style.color = 'var(--ink-soft,#9aa8be)';
+        empty.textContent = bannedSubFilter === 'terminated' ? 'No permanently terminated profiles found.' : 'No banned profiles found.';
+        list.appendChild(empty);
+        return;
+      }
+      for (const u of ownerBannedUsers) {
+        const row = document.createElement('div');
+        row.className = 'ws-owner-row';
+        row.setAttribute('data-ws-owner-banned', u.id);
+
+        const head = document.createElement('div');
+        head.className = 'ws-owner-row-head';
+
+        const left = document.createElement('div');
+        left.className = 'ws-owner-user';
+        const safePic = validAvatarDataUrl(u.profile_picture);
+        if (safePic) {
+          const img = document.createElement('img');
+          img.className = 'ws-avatar-img';
+          img.src = safePic;
+          img.alt = `${u.username} avatar`;
+          left.appendChild(img);
+        } else {
+          const avatar = document.createElement('div');
+          avatar.className = 'ws-avatar-fallback';
+          avatar.textContent = (u.username || '?').slice(0, 1).toUpperCase();
+          left.appendChild(avatar);
+        }
+
+        const info = document.createElement('div');
+        info.style.cssText = 'display:grid;gap:3px';
+        const titleRow = document.createElement('div');
+        titleRow.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:6px';
+        const nameEl = document.createElement('strong');
+        nameEl.textContent = u.username;
+        titleRow.appendChild(nameEl);
+
+        const pill = document.createElement('span');
+        pill.className = 'ws-pill-tag bad';
+        pill.textContent = u.terminated ? 'Permanently Terminated · No Unban' : 'Banned';
+        titleRow.appendChild(pill);
+
+        const meta = document.createElement('small');
+        meta.style.color = 'var(--ink-soft,#9aa8be)';
+        const when = u.terminated && u.terminated_at ? `Terminated ${formatDateTime(u.terminated_at)}` : (u.banned_at ? `Banned ${formatDateTime(u.banned_at)}` : `Joined ${formatDateTime(u.created_at)}`);
+        meta.textContent = `${when}${u.ban_reason ? ' · Reason: ' + u.ban_reason : ''}`;
+        info.append(titleRow, meta);
+        left.appendChild(info);
+
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center';
+        if (u.terminated) {
+          const lockedTag = document.createElement('span');
+          lockedTag.className = 'ws-pill-tag';
+          lockedTag.textContent = 'Locked permanently (no unban)';
+          actions.appendChild(lockedTag);
+        } else {
+          const unbanBtn = document.createElement('button');
+          unbanBtn.type = 'button';
+          unbanBtn.className = 'softbtn';
+          unbanBtn.textContent = 'Unban Profile';
+          unbanBtn.setAttribute('data-ws-banned-unban', u.id);
+          unbanBtn.onclick = run(async () => {
+            await api('/api/owner/users/unban', {
+              method: 'POST',
+              body: JSON.stringify({ id: u.id, username: u.username, unban_workshop: true }),
+            });
+            setOwnerStatusLine(`Unbanned ${u.username}. They can sign in and create profiles again.`);
+            await Promise.all([loadOwnerBanned(), loadOwnerUsers()]);
+          });
+
+          const termBtn = document.createElement('button');
+          termBtn.type = 'button';
+          termBtn.className = 'dangerbtn';
+          termBtn.textContent = 'Permanently Terminate';
+          termBtn.setAttribute('data-ws-banned-terminate', u.id);
+          termBtn.onclick = () => {
+            pendingBannedConfirm = { id: u.id, username: u.username };
+            renderOwnerBanned();
+          };
+          actions.append(unbanBtn, termBtn);
+        }
+
+        head.append(left, actions);
+        row.appendChild(head);
+
+        if (pendingBannedConfirm && pendingBannedConfirm.id === u.id && !u.terminated) {
+          const confirmBox = document.createElement('div');
+          confirmBox.className = 'ws-owner-confirm';
+          const msg = document.createElement('div');
+          msg.style.fontSize = '12.5px';
+          msg.textContent = `Permanently terminate ${u.username}? Their data is wiped, they remain locked out across PlazCode, and this profile can NEVER be unbanned.`;
+          const reasonInput = document.createElement('input');
+          reasonInput.type = 'text';
+          reasonInput.placeholder = 'Termination reason (shown if they attempt sign-in)';
+          reasonInput.value = u.ban_reason || 'Permanently terminated by owner.';
+          reasonInput.style.cssText = 'padding:7px 10px;border-radius:8px;border:1px solid var(--pz-line,#2b3952);background:rgb(0 0 0/.24);color:var(--text,#f5f8ff)';
+          const wsCheckLabel = document.createElement('label');
+          wsCheckLabel.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer';
+          const wsCheck = document.createElement('input');
+          wsCheck.type = 'checkbox';
+          wsCheck.checked = true;
+          wsCheckLabel.append(wsCheck, document.createTextNode('Also remove their Workshop uploads'));
+          const cBtns = document.createElement('div');
+          cBtns.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
+          const cancelBtn = document.createElement('button');
+          cancelBtn.type = 'button';
+          cancelBtn.className = 'softbtn';
+          cancelBtn.textContent = 'Cancel';
+          cancelBtn.onclick = () => { pendingBannedConfirm = null; renderOwnerBanned(); };
+          const confirmBtn = document.createElement('button');
+          confirmBtn.type = 'button';
+          confirmBtn.className = 'dangerbtn';
+          confirmBtn.textContent = 'Confirm Permanent Termination';
+          confirmBtn.setAttribute('data-ws-banned-terminate-confirm', u.id);
+          confirmBtn.onclick = run(async () => {
+            await api('/api/owner/users/terminate', {
+              method: 'POST',
+              body: JSON.stringify({
+                id: u.id,
+                username: u.username,
+                reason: reasonInput.value.trim() || 'Permanently terminated by owner.',
+                remove_workshop_skills: wsCheck.checked,
+              }),
+            });
+            pendingBannedConfirm = null;
+            setOwnerStatusLine(`Permanently terminated ${u.username}. No unban is possible.`);
+            await Promise.all([loadOwnerBanned(), loadOwnerUsers()]);
+            if (ownerStatus.registry_configured && ownerStatus.workshop_owner) await loadOwnerWorkshop();
+          });
+          cBtns.append(cancelBtn, confirmBtn);
+          confirmBox.append(msg, reasonInput, wsCheckLabel, cBtns);
+          row.appendChild(confirmBox);
+        }
+
+        list.appendChild(row);
+      }
+    }
+
+    async function loadOwnerBanned() {
+      if (!ownerStatus.account_owner) {
+        ownerBannedUsers = [];
+        find('owner-banned-list').replaceChildren();
+        const msg = document.createElement('p');
+        msg.style.color = 'var(--ink-soft,#9aa8be)';
+        msg.textContent = 'Unlock with an Owner Account session or Account Owner Token to manage banned profiles.';
+        find('owner-banned-list').appendChild(msg);
+        return;
+      }
+      const q = encodeURIComponent(find<HTMLInputElement>('owner-banned-search').value.trim());
+      const res = await api(`/api/owner/users?filter=${encodeURIComponent(bannedSubFilter)}&q=${q}`);
+      ownerBannedUsers = res?.users || [];
+      if (res?.counts) ownerUserCounts = res.counts;
+      renderOwnerBanned();
     }
 
     async function loadOwnerWorkshop() {
@@ -1167,13 +1359,13 @@ const PlazCodeWorkshopUI = (() => {
       }
       find('owner-panel').hidden = false;
       selectOwnerTab(ownerTab);
-      await Promise.all([loadOwnerUsers(), loadOwnerWorkshop()]);
+      await Promise.all([loadOwnerUsers(), loadOwnerBanned(), loadOwnerWorkshop()]);
     }
 
     find('open-owner').onclick = run(openOwnerPanel);
     find('owner-close').onclick = () => { find('owner-panel').hidden = true; };
     find('owner-refresh').onclick = run(async () => {
-      await Promise.all([loadOwnerUsers(), loadOwnerWorkshop()]);
+      await Promise.all([loadOwnerUsers(), loadOwnerBanned(), loadOwnerWorkshop()]);
       setOwnerStatusLine('Owner panel refreshed.');
     });
     const doOwnerLock = run(async () => {
@@ -1216,12 +1408,22 @@ const PlazCodeWorkshopUI = (() => {
 
     host.querySelectorAll<HTMLButtonElement>('[data-ws-owner-tab]').forEach(btn => {
       btn.onclick = run(async () => {
-        const tab = (btn.getAttribute('data-ws-owner-tab') === 'workshop' ? 'workshop' : 'users') as 'users' | 'workshop';
+        const raw = btn.getAttribute('data-ws-owner-tab');
+        const tab = (raw === 'workshop' ? 'workshop' : raw === 'banned' ? 'banned' : 'users') as 'users' | 'banned' | 'workshop';
         selectOwnerTab(tab);
         if (tab === 'users') await loadOwnerUsers();
+        else if (tab === 'banned') await loadOwnerBanned();
         else await loadOwnerWorkshop();
       });
     });
+    host.querySelectorAll<HTMLButtonElement>('[data-ws-bfilter]').forEach(btn => {
+      btn.onclick = run(async () => {
+        bannedSubFilter = (btn.getAttribute('data-ws-bfilter') === 'terminated' ? 'terminated' : 'banned') as 'banned' | 'terminated';
+        host.querySelectorAll<HTMLButtonElement>('[data-ws-bfilter]').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+        await loadOwnerBanned();
+      });
+    });
+    find('owner-banned-search').addEventListener('input', () => { void loadOwnerBanned(); });
     host.querySelectorAll<HTMLButtonElement>('[data-ws-ufilter]').forEach(btn => {
       btn.onclick = run(async () => {
         userFilter = (btn.getAttribute('data-ws-ufilter') || 'all') as 'all' | 'online' | 'banned';

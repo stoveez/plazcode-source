@@ -1521,6 +1521,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/owner/users", get(owner_users_handler))
         .route("/api/owner/users/ban", post(owner_user_ban_handler))
         .route("/api/owner/users/unban", post(owner_user_unban_handler))
+        .route("/api/owner/users/terminate", post(owner_user_terminate_handler))
         .route("/api/owner/users/remove", post(owner_user_remove_handler))
         .route("/api/owner/workshop/skills", get(owner_workshop_skills_handler))
         .route("/api/owner/workshop/action", post(owner_workshop_action_handler))
@@ -2345,7 +2346,7 @@ async fn reset_profile_runtime(state:&AppState){
     state.ui.desktop_action_results.lock().unwrap_or_else(|e|e.into_inner()).clear();
     state.ui.tools.lock().unwrap_or_else(|e|e.into_inner()).clear();
     state.ui.servers.lock().unwrap_or_else(|e|e.into_inner()).clear();
-    memory::STORE.clear_cache();skills::STORE.clear_cache();checkpoints::STORE.clear_cache();
+    memory::STORE.clear_cache();skills::STORE.clear_cache();skills::clear_staged();checkpoints::STORE.clear_cache();
     skills::reset_community_sync();
     provider_pacing::reset_for_profile_switch();
     blender::clear_preview();
@@ -2379,6 +2380,7 @@ async fn profile_action_handler(State(state):State<AppState>,headers:axum::http:
                 if entered.is_err(){state.accounts.lock();profile_paths::select(None);let _=state.preferences.select_path(profile_paths::settings_path());blockbench::resync();figma::resync();}
                 entered
             },
+            "check-ban"=>{Ok(state.accounts.check_ban_status().await?)},
             "remove"=>{state.accounts.remove(action.id.as_deref().unwrap_or("")).await?;Ok(serde_json::json!({"ok":true}))},
             "logout"|"ui-migrated"|"sync"=>{
                 let active=state.accounts.active().ok_or_else(||anyhow::anyhow!("Choose a profile first."))?;
@@ -2837,6 +2839,39 @@ async fn owner_user_unban_handler(State(state): State<AppState>, Json(req): Json
             let ws_res = workshop::owner_action(&state, "unban", serde_json::json!({
                 "author": username,
                 "author_key": format!("acct:{id}")
+            })).await;
+            res["workshop_result"] = match ws_res {
+                Ok(v) => v,
+                Err(e) => serde_json::json!({"ok": false, "error": e.to_string()}),
+            };
+        }
+        Ok(res)
+    }.await;
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(err) => (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"ok": false, "error": err.to_string()}))).into_response(),
+    }
+}
+
+async fn owner_user_terminate_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+    let result: anyhow::Result<serde_json::Value> = async {
+        let id = req["id"].as_str().map(str::trim).unwrap_or("");
+        anyhow::ensure!(valid_account_id(id), "Valid user id is required.");
+        let reason = req["reason"].as_str().unwrap_or("Permanently terminated by owner.").trim();
+        let username = req["username"].as_str().map(str::trim).unwrap_or("");
+        let remove_ws = req["remove_workshop_skills"].as_bool() == Some(true);
+        let tok = state.owner_account_token.read().await.clone();
+        let mut res = state.accounts.owner_request(
+            reqwest::Method::POST,
+            &format!("/v1/owner/users/{id}/terminate"),
+            Some(serde_json::json!({"reason": reason})),
+            tok.as_deref(),
+        ).await?;
+        if remove_ws && !username.is_empty() && !workshop::effective_registry_url(&state.preferences.snapshot().workshop_registry_url).is_empty() {
+            let ws_res = workshop::owner_action(&state, "ban", serde_json::json!({
+                "author": username,
+                "author_key": format!("acct:{id}"),
+                "reason": reason
             })).await;
             res["workshop_result"] = match ws_res {
                 Ok(v) => v,

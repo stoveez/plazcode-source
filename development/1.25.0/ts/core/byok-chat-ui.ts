@@ -60,6 +60,12 @@ const PlazCodeByokChatUI = (() => {
     dataBase64?: string | null;
     textPreview?: string | null;
   };
+  type StagedSkillFolder = {
+    stagedId: string;
+    source: string;
+    skillCount: number;
+    titles: string[];
+  };
 
   type ToolCallRec = {
     id: string;
@@ -189,6 +195,7 @@ const PlazCodeByokChatUI = (() => {
     let effort: 'default' | 'low' | 'mid' | 'high' | 'max' = 'default';
     let permMode: 'sandbox' | 'ask' | 'full' = 'sandbox';
     let attachments: ChatAttachment[] = [];
+    let stagedSkillFolders: StagedSkillFolder[] = [];
     let drawerOpen = false;
     let drawerTab: 'files' | 'changes' = 'files';
     let fileQuery = '';
@@ -402,11 +409,21 @@ const PlazCodeByokChatUI = (() => {
     };
 
     const renderAttachmentsHtml = (): string => {
-      if (!attachments.length) return '';
-      return '<div class="byok-att-row">' + attachments.map((a, idx) =>
+      if (!attachments.length && !stagedSkillFolders.length) return '';
+      const chips = attachments.map((a, idx) =>
         '<span class="byok-att-chip" data-i18n-user-content>' + esc(a.name) +
         '<button type="button" class="byok-att-rm" data-rm-att="' + idx + '" aria-label="Remove">×</button></span>'
-      ).join('') + '</div>';
+      );
+      for (let i = 0; i < stagedSkillFolders.length; i++) {
+        const s = stagedSkillFolders[i];
+        const summary = `${s.source} (${s.skillCount} skill${s.skillCount === 1 ? '' : 's'})`;
+        chips.push(
+          '<span class="byok-att-chip byok-skill-drop-chip" data-i18n-user-content>📁 ' + esc(summary) +
+          ' <button type="button" class="softbtn byok-skill-add-now" data-add-skill-folder="' + esc(s.stagedId) + '">Add now</button>' +
+          '<button type="button" class="byok-att-rm" data-rm-skill-folder="' + i + '" aria-label="Remove">×</button></span>'
+        );
+      }
+      return '<div class="byok-att-row">' + chips.join('') + '</div>';
     };
 
     const renderComposerHtml = (sticky: boolean): string => {
@@ -605,7 +622,7 @@ const PlazCodeByokChatUI = (() => {
       const host = opts.chatHost;
       const input = host?.querySelector('[data-byok-input]') as HTMLTextAreaElement | null;
       const text = (textOverride !== undefined ? textOverride : input?.value || '').trim();
-      if (!text && !attachments.length) return;
+      if (!text && !attachments.length && !stagedSkillFolders.length) return;
       if (activeRunId) return;
 
       lastUserPrompt = text;
@@ -622,8 +639,17 @@ const PlazCodeByokChatUI = (() => {
       }
 
       const sendAtts = attachments.slice();
+      for (const s of stagedSkillFolders) {
+        const titlesText = s.titles.length ? ': ' + s.titles.slice(0, 8).join(', ') : '';
+        sendAtts.push({
+          name: `Skill folder · ${s.source}`,
+          mimeType: 'text/plain',
+          textPreview: `[Dropped skill folder: "${s.source}" — ${s.skillCount} skill(s) ready${titlesText} (staged_id: ${s.stagedId})]`,
+        });
+      }
       if (input) input.value = '';
       attachments = [];
+      stagedSkillFolders = [];
       streamText = '';
       streamReasoning = '';
       streamTools = [];
@@ -1161,6 +1187,7 @@ const PlazCodeByokChatUI = (() => {
           if (target.closest('[data-byok-new-chat]')) {
             activeChat = null;
             attachments = [];
+            stagedSkillFolders = [];
             activeRunId = null;
             renderChatPage();
             return;
@@ -1198,6 +1225,31 @@ const PlazCodeByokChatUI = (() => {
           const starter = target.closest('[data-byok-starter]') as HTMLElement | null;
           if (starter) {
             sendChatMessage(starter.getAttribute('data-byok-starter') || '');
+            return;
+          }
+          const addSkillBtn = target.closest('[data-add-skill-folder]') as HTMLElement | null;
+          if (addSkillBtn) {
+            const sid = addSkillBtn.getAttribute('data-add-skill-folder') || '';
+            (addSkillBtn as HTMLButtonElement).disabled = true;
+            opts.api('/api/skills', {
+              method: 'POST',
+              body: JSON.stringify({ action: 'import_folder', staged_id: sid }),
+            }).then((res) => {
+              stagedSkillFolders = stagedSkillFolders.filter((s) => s.stagedId !== sid);
+              const count = Number(res?.added || 0) + Number(res?.updated || 0);
+              streamInfo = `Added ${count || 1} skill(s) from dropped folder — ready for automatic use.`;
+              renderChatPage();
+            }).catch((err) => {
+              streamInfo = String(err?.message || err || 'Could not import skill folder.');
+              renderChatPage();
+            });
+            return;
+          }
+          const rmSkillBtn = target.closest('[data-rm-skill-folder]') as HTMLElement | null;
+          if (rmSkillBtn) {
+            const idx = Number(rmSkillBtn.getAttribute('data-rm-skill-folder'));
+            stagedSkillFolders.splice(idx, 1);
+            renderChatPage();
             return;
           }
           const rmAtt = target.closest('[data-rm-att]') as HTMLElement | null;
@@ -1315,6 +1367,101 @@ const PlazCodeByokChatUI = (() => {
             ev.preventDefault();
             sendChatMessage();
           }
+        });
+
+        const hasSkillDrop = (dt: DataTransfer | null | undefined): boolean => {
+          if (!dt || !Array.from(dt.types || []).includes('Files')) return false;
+          const items = Array.from(dt.items || []);
+          for (const it of items) {
+            try {
+              const entry = (it as any).webkitGetAsEntry?.();
+              if (entry && entry.isDirectory) return true;
+            } catch {}
+          }
+          const files = Array.from(dt.files || []);
+          return files.some((f) => /\.zip$/i.test(f.name || '') || /^SKILL\.md$/i.test(f.name || ''));
+        };
+
+        const readSkillDrop = async (dt: DataTransfer | null | undefined): Promise<Record<string, unknown>> => {
+          const skillsUi = (globalThis as any).PlazCodeSkillsUI;
+          if (skillsUi && typeof skillsUi.droppedFiles === 'function' && typeof skillsUi.folderRequest === 'function') {
+            const { items, source } = await skillsUi.droppedFiles(dt);
+            if (items.length === 1 && /\.zip$/i.test(items[0].file?.name || '')) {
+              const bytes = new Uint8Array(await items[0].file.arrayBuffer());
+              let bin = '';
+              for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode(...bytes.slice(i, i + 8192));
+              return { action: 'stage_folder', source: items[0].file.name.replace(/\.zip$/i, ''), zip: btoa(bin) };
+            }
+            const req = await skillsUi.folderRequest(items, source);
+            return { ...req, action: 'stage_folder' };
+          }
+          const ctx = (globalThis as any).PlazCodeSkillContext;
+          if (ctx && typeof ctx.readDroppedFolder === 'function') {
+            return await ctx.readDroppedFolder(dt);
+          }
+          const entries = Array.from(dt?.items || []).map((it: any) => it.webkitGetAsEntry?.()).filter(Boolean);
+          const collected: Array<{ path: string; file: File }> = [];
+          const walk = async (entry: any, prefix: string): Promise<void> => {
+            const rel = prefix ? prefix + '/' + entry.name : entry.name;
+            if (entry.name?.startsWith('.') || entry.name === 'node_modules' || entry.name === '__MACOSX') return;
+            if (entry.isFile) {
+              const f = await new Promise<File>((resolve, reject) => entry.file(resolve, reject));
+              collected.push({ path: rel, file: f });
+              return;
+            }
+            if (!entry.isDirectory) return;
+            const reader = entry.createReader();
+            for (;;) {
+              const batch = await new Promise<any[]>((resolve, reject) => reader.readEntries(resolve, reject));
+              if (!batch.length) break;
+              for (const child of batch) await walk(child, rel);
+            }
+          };
+          for (const e of entries) await walk(e, '');
+          const files: Array<{ path: string; text: string }> = [];
+          for (const c of collected) {
+            if (c.file.size <= 1024 * 1024) files.push({ path: c.path, text: await c.file.text() });
+          }
+          return { action: 'stage_folder', source: entries[0]?.name || 'Dropped skills', files };
+        };
+
+        let byokDragDepth = 0;
+        chatHost.addEventListener('dragenter', (ev) => {
+          if (!hasSkillDrop(ev.dataTransfer)) return;
+          ev.preventDefault();
+          byokDragDepth++;
+          chatHost.classList.add('byok-skill-dragover');
+        });
+        chatHost.addEventListener('dragover', (ev) => {
+          if (!hasSkillDrop(ev.dataTransfer)) return;
+          ev.preventDefault();
+          if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'copy';
+        });
+        chatHost.addEventListener('dragleave', () => {
+          byokDragDepth = Math.max(0, byokDragDepth - 1);
+          if (!byokDragDepth) chatHost.classList.remove('byok-skill-dragover');
+        });
+        chatHost.addEventListener('drop', (ev) => {
+          if (!hasSkillDrop(ev.dataTransfer)) return;
+          ev.preventDefault();
+          byokDragDepth = 0;
+          chatHost.classList.remove('byok-skill-dragover');
+          readSkillDrop(ev.dataTransfer).then(async (stageReq) => {
+            const res = await opts.api('/api/skills', { method: 'POST', body: JSON.stringify(stageReq) });
+            if (!res || !res.ok || !res.staged_id) throw Error(res?.error || 'Could not read dropped skill folder.');
+            const titles = Array.isArray(res.skills) ? res.skills.map((s: any) => String(s.title || '').trim()).filter(Boolean) : [];
+            stagedSkillFolders.push({
+              stagedId: String(res.staged_id),
+              source: String(res.source || 'Dropped skills'),
+              skillCount: Number(res.skill_count || titles.length || 0),
+              titles,
+            });
+            streamInfo = `Skill folder "${res.source}" (${res.skill_count || titles.length} skills) attached — ask AI to add them or click Add now.`;
+            renderChatPage();
+          }).catch((err) => {
+            streamInfo = String(err?.message || err || 'Could not stage dropped skill folder.');
+            renderChatPage();
+          });
         });
       }
 

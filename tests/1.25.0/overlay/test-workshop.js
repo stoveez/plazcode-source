@@ -169,6 +169,14 @@ const WorkshopUI = require("./core/workshop-ui.js");
       ownerUsersState = ownerUsersState.filter((u) => u.id !== body.id);
       return { ok: true, removed: true };
     }
+    if (url === "/api/owner/users/terminate") {
+      const target = ownerUsersState.find((u) => u.id === body.id);
+      if (target) { target.banned = true; target.terminated = true; target.online = false; target.ban_reason = body.reason; }
+      return { ok: true, banned: true, terminated: true };
+    }
+    if (url.startsWith("/api/owner/users?")) {
+      // handled above
+    }
     if (url.startsWith("/api/owner/workshop/skills?")) {
       return { ok: true, skills: ownerSkillsState, counts: { all: ownerSkillsState.length, pending: ownerSkillsState.filter((s) => s.status === "pending").length, hidden: 0, approved: 0, rejected: 0, removed: 0 }, banned_authors: ownerBannedState };
     }
@@ -238,6 +246,34 @@ const WorkshopUI = require("./core/workshop-ui.js");
   wq('[data-ws-user-confirm="u-1"]').click();
   await new Promise((r) => setTimeout(r, 30));
   assert(wsCalls.some((c) => c.url === "/api/owner/users/ban" && c.body.id === "u-1"));
+
+  // Switch to Banned Profiles tab -> look up user, unban or permanently terminate
+  wq('[data-ws-owner-tab="banned"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.match(wq('[data-ws="owner-banned-list"]').textContent, /TestPlayer/);
+  assert.match(wq('[data-ws="owner-banned-list"]').textContent, /BannedPlayer/);
+  wq('[data-ws="owner-banned-search"]').value = "BannedPlayer";
+  wq('[data-ws="owner-banned-search"]').dispatchEvent(new w.Event("input"));
+  await new Promise((r) => setTimeout(r, 30));
+  assert.match(wq('[data-ws="owner-banned-list"]').textContent, /BannedPlayer/);
+  assert(!wq('[data-ws="owner-banned-list"]').textContent.includes("TestPlayer"), "search filters banned profiles list");
+  wq('[data-ws-banned-terminate="u-2"]').click();
+  wq('[data-ws-banned-terminate-confirm="u-2"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert(wsCalls.some((c) => c.url === "/api/owner/users/terminate" && c.body.id === "u-2"));
+  assert.match(wq('[data-ws="owner-banned-list"]').textContent, /Permanently Terminated/);
+  assert.equal(wq('[data-ws-banned-unban="u-2"]'), null, "terminated profiles have no unban button");
+
+  // Search TestPlayer in Banned Profiles and unban
+  wq('[data-ws="owner-banned-search"]').value = "TestPlayer";
+  wq('[data-ws="owner-banned-search"]').dispatchEvent(new w.Event("input"));
+  await new Promise((r) => setTimeout(r, 30));
+  wq('[data-ws-banned-unban="u-1"]').click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert(wsCalls.some((c) => c.url === "/api/owner/users/unban" && c.body.id === "u-1"));
+
+  wq('[data-ws-owner-tab="users"]').click();
+  await new Promise((r) => setTimeout(r, 30));
   wq('[data-ws-user-remove="u-2"]').click();
   wq('[data-ws-user-confirm="u-2"]').click();
   await new Promise((r) => setTimeout(r, 30));

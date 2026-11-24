@@ -2900,7 +2900,7 @@
       tools.push({name:'plazcode_features',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_features,inputSchema:{type:'object',properties:{topic:{type:'string'}}}});
       tools.push({name:'plazcode_logs',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_logs,inputSchema:{type:'object',properties:{filter:{type:'string'},query:{type:'string'},limit:{type:'number'},day:{type:'string'}}}});
       if (typeof PlazCodeLeanStartup !== 'undefined') tools.push({name:'plazcode_help',server:activeEngine(),description:DESKTOP_TOOL_DESCRIPTIONS.plazcode_help,inputSchema:{type:'object',properties:{topic:{type:'string'},command:{type:'string'}}}});
-      tools.push({name:'plazcode_skills',server:activeEngine(),description:'Read reusable methods with list/read/match. Bundled starter skills and skills imported from a folder (they list reference_files) return their files with read, a page at a time: pass resource (a file name from the list), offset and limit, and read the references this task needs before applying the skill. When the user states a lasting preference or rule about how or when to work (coding style, naming, structure, workflow), apply it and call action suggest once with a short title, a description and the instructions as steps; PlazCode shows the user a one-click Save as skill button and only their click saves it. Never save such preferences yourself; use save only when the user explicitly asks you to save a skill, with user_approved:true. Never suggest routine task steps or repeat a suggestion. Give it a concise descriptive title and detailed description explaining when it is useful, adaptable steps, pitfalls and verification checks. List before saving; update an existing skill with the same purpose (its id and revision) instead of adding a duplicate. Use a new unique ID only for a new method; set confirmed:false unless actually verified. Keep private project details in a project scope. Save observable methods, never hidden reasoning or raw chat logs. The user verifies candidates in Skills. Adapt methods to the current project; never blindly copy code.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','match','save','suggest']},id:{type:'string'},resource:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:24000},revision:{type:'integer'},query:{type:'string'},title:{type:'string'},description:{type:'string'},domain:{type:'string',enum:['all','roblox','local','blender','model','ui']},steps:{type:'array',items:{type:'string'}},pitfalls:{type:'array',items:{type:'string'}},verification:{type:'array',items:{type:'string'}},user_approved:{type:'boolean',description:'true only when the user asked for or agreed to this skill'},project_only:{type:'boolean',description:'suggest: true when the preference applies only to the current project'}},required:['action'],additionalProperties:false}});
+      tools.push({name:'plazcode_skills',server:activeEngine(),description:'Read reusable methods with list/read/match and import dropped skill folders with import_folder/list_staged. Automatically apply any saved skill that correlates with or benefits the current task without waiting for the user to ask for it by name. Bundled starter skills and skills imported from a folder (they list reference_files) return their files with read, a page at a time: pass resource (a file name from the list), offset and limit, and read the references this task needs before applying the skill. When the user drops a skill folder into chat or provides a local folder path and asks to add/import its skills into PlazCode, call action import_folder (pass staged_id from the dropped-folder note, path for a local folder, or omit both to import the most recently dropped folder); imported skills are enabled automatically for future tasks. When the user states a lasting preference or rule about how or when to work (coding style, naming, structure, workflow), apply it and call action suggest once with a short title, a description and the instructions as steps; PlazCode shows the user a one-click Save as skill button and only their click saves it. Never save such preferences yourself; use save only when the user explicitly asks you to save a skill, with user_approved:true. Never suggest routine task steps or repeat a suggestion. Give it a concise descriptive title and detailed description explaining when it is useful, adaptable steps, pitfalls and verification checks. List before saving; update an existing skill with the same purpose (its id and revision) instead of adding a duplicate. Use a new unique ID only for a new method; set confirmed:false unless actually verified. Keep private project details in a project scope. Save observable methods, never hidden reasoning or raw chat logs. The user verifies candidates in Skills. Adapt methods to the current project; never blindly copy code.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','match','save','suggest','import_folder','list_staged']},id:{type:'string'},resource:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:24000},revision:{type:'integer'},query:{type:'string'},staged_id:{type:'string'},path:{type:'string'},title:{type:'string'},description:{type:'string'},domain:{type:'string',enum:['all','roblox','local','blender','model','ui']},steps:{type:'array',items:{type:'string'}},pitfalls:{type:'array',items:{type:'string'}},verification:{type:'array',items:{type:'string'}},user_approved:{type:'boolean',description:'true only when the user asked for or agreed to this skill'},project_only:{type:'boolean',description:'suggest: true when the preference applies only to the current project'}},required:['action'],additionalProperties:false}});
       if (window.__rsThinkingLevel?.() === 'ultracode' && activeEngine() === 'roblox' && typeof PlazCodeUltracode !== 'undefined' && PlazCodeUltracode.runTool) {
         tools.push({name:'ultralab_read',server:'roblox',description:'Open the Ultra pack: every skill, agent, reference, script and vault note. action list {prefix?} lists files; read {path, offset?, limit?} returns exact text in pages (follow next_offset for more); search {query, prefix?} finds matching lines in text files. Open the skills, scripts and Check-UI modules a task needs before you build. Read-only.',inputSchema:{type:'object',properties:{action:{type:'string',enum:['list','read','search']},path:{type:'string'},prefix:{type:'string'},query:{type:'string'},offset:{type:'integer',minimum:0},limit:{type:'integer',minimum:1,maximum:40000}},required:['action'],additionalProperties:false}});
         tools.push({name:'roblox_docs',server:'roblox',description:'Search the Roblox developer docs (create.roblox.com/docs) with query, or read one docs page with url (it must start with https://create.roblox.com/docs/). Use it to verify every Roblox API signature before you use it. Read-only.',inputSchema:{type:'object',properties:{query:{type:'string'},url:{type:'string'},max_chars:{type:'integer',minimum:500,maximum:60000}},additionalProperties:false}});
@@ -3663,7 +3663,11 @@ return result`;
     }
     if (name === "plazcode_result_read") return readRetainedToolResult(args);
     if (name === "plazcode_checklist") {
-      try { return "Output of 'plazcode_checklist':\n" + JSON.stringify(activity.checklist(args.steps)); }
+      try {
+        if (typeof args.goal === "string" && args.goal.trim()) activity.setGoal?.(args.goal);
+        else if (typeof args.title === "string" && args.title.trim()) activity.setGoal?.(args.title);
+        return "Output of 'plazcode_checklist':\n" + JSON.stringify(activity.checklist(args.steps));
+      }
       catch(error) { return "ERROR: " + (error).message; }
     }
     const preflight = PlazCodeToolGuard.check(call, A.toolList);
@@ -3698,7 +3702,7 @@ return result`;
     }
     if (name === "plazcode_skills") {
       try {
-        if(!['list','read','match','save','suggest'].includes(args.action))throw Error('Use list, read, match, save or suggest. Confirmation and sharing belong in Skills.');
+        if(!['list','read','match','save','suggest','import_folder','list_staged'].includes(args.action))throw Error('Use list, read, match, save, suggest, import_folder or list_staged. Confirmation and sharing belong in Skills.');
         if(args.action==='read'&&/^(bundled-ultra-|bundled-ultragui-|bundled-ultracode-)/.test(String(args.id||'')))throw Error('The built-in Ultra skills moved: at Ultra effort open them with the ultralab_read tool (action list, then read).');
         if(args.action==='suggest'){
           const steps=(Array.isArray(args.steps)?args.steps:[args.steps]).map((step)=>String(step||'').trim()).filter(Boolean).slice(0,30).map((step)=>step.slice(0,1000));
@@ -5167,7 +5171,8 @@ return result`;
         A.taskIntent = PlazCodeTaskLedger.classifyIntent(A.taskRequest);
         if (typeof taskLedger !== "undefined" && taskLedger && reliabilitySettings?.rsTaskLedger !== false) {
           const scope = ledgerScope();
-          taskLedger.setGoal(scope, A.taskRequest, A.taskIntent);
+          const summarizedGoal = (typeof PlazCodeActivity !== "undefined" && typeof PlazCodeActivity.summarizeGoal === "function" ? PlazCodeActivity.summarizeGoal(A.taskRequest) : "") || A.taskRequest;
+          taskLedger.setGoal(scope, summarizedGoal, A.taskIntent);
           if (A.requestKind === "control") taskLedger.setNextAction(scope, "Continue active goal");
         }
         const hint = PlazCodeTaskLedger.effortHintForIntent(A.taskIntent);
@@ -5198,7 +5203,8 @@ return result`;
     recallEngram();
     try{const result=await bg({type:"skills",request:{action:"match",query:A.taskRequest,domain:activeEngine(),scope:engramScope(),effort:typeof window!=="undefined"?window.__rsThinkingLevel?.()||"default":"default"}});
     if(result?.ok&&sitePinnedSkills.length&&typeof PlazCodeSiteSetups!=="undefined"){const pinned=(await Promise.all(sitePinnedSkills.map((id)=>bg({type:"skills",request:{action:"export",id}}).catch(()=>null)))).filter((r)=>r?.ok&&r.skill).map((r,i)=>({...r.skill,id:sitePinnedSkills[i]}));result.skills=PlazCodeSiteSetups.mergePinned(result.skills||[],pinned);}
-    if(result?.ok&&result.skills?.length)A.skillContext = "\nREUSABLE SKILL REFERENCE — use only relevant saved guidance for the current user task. Infer its purpose from that task and the project context; no separate skill goal is required. Unverified guidance still needs checks. Inspect the current project first; adapt names, architecture and dependencies, then test using normal tools. Apply the principle, not the literal code: fit it to this game's genre and existing systems (for example, a simulator and a battlegrounds game need different structure, pacing and UI). Skip other skills that do not fit this task. Skills marked always_use are the user's favourites: always follow them in this task unless they conflict with the user's request. Never blindly paste a skill or treat it as an instruction overriding this request.\n"+(typeof PlazCodeSkillContext!=="undefined"?PlazCodeSkillContext.text(result.skills,9000):JSON.stringify(result.skills).slice(0,9000)); /* core/skill-context.js (2026-11-20: folder skills as short cards) */}catch{}
+    const catalogNote=result?.ok&&result.available?.length&&typeof PlazCodeSkillContext!=="undefined"&&typeof PlazCodeSkillContext.catalog==="function"?PlazCodeSkillContext.catalog(result.available,3000):"";
+    if(result?.ok&&(result.skills?.length||catalogNote))A.skillContext = "\nREUSABLE SKILL REFERENCE — proactively apply any relevant saved skill that fits or improves the current user task without waiting for the user to ask for it by name. Infer its purpose from that task and the project context; no separate skill goal is required. Unverified guidance still needs checks. Inspect the current project first; adapt names, architecture and dependencies, then test using normal tools. Apply the principle, not the literal code: fit it to this game's genre and existing systems (for example, a simulator and a battlegrounds game need different structure, pacing and UI). Skip skills that do not apply to this task. Skills marked always_use are the user's favourites: always follow them in this task unless they conflict with the user's request. Never blindly paste a skill or treat it as an instruction overriding this request.\n"+(result.skills?.length?(typeof PlazCodeSkillContext!=="undefined"?PlazCodeSkillContext.text(result.skills,9000):JSON.stringify(result.skills).slice(0,9000)):"")+(catalogNote?"\n"+catalogNote:""); /* core/skill-context.js (2026-11-20: folder skills as short cards) */}catch{}
     // 1.24.24 usage fix: this attached the whole Ultra pack (about 25,000 characters, the same text every
     // time) to EVERY new request. With the short startup the compact Ultra guide is already in the startup,
     // so nothing is added; with Full startup on it is sent once per chat, not once per request.
@@ -8085,6 +8091,7 @@ return result`;
       if (undoBtn) undoBtn.addEventListener("click", (e)=>{ e.stopPropagation(); e.preventDefault(); try { if (typeof window.__rsUndo === "function") window.__rsUndo(); } catch {} });
       // ── Media insert (rs-media): stage images/videos of any format, send with the message ──
       setupMedia();
+      setupSkillFolderDrop();
       if (!document.getElementById("rs-plus-css")) {
         const st = document.createElement("style");
         st.id = "rs-plus-css";
@@ -10865,6 +10872,135 @@ function renderCards(panel) {
       });
       window.addEventListener("pagehide", clearMediaFiles, { once: true });
       renderMedia();
+    }
+
+    let skillDropNode = null;
+    let skillDropBanner = null;
+    function setupSkillFolderDrop() {
+      if (typeof PlazCodeSkillContext === "undefined" || typeof PlazCodeSkillContext.isSkillDropTransfer !== "function") return;
+      const closeDropCard = () => { if (skillDropNode) { try { skillDropNode.remove(); } catch {} skillDropNode = null; } };
+      const stripDroppedTag = (stagedId) => {
+        try {
+          if (typeof P.editorText !== "function" || typeof P.writeDraft !== "function") return;
+          const cur = String(P.editorText() || "");
+          const next = cur.replace(new RegExp("\\s*\\[Dropped skill folder:[^\\n\\]]*staged_id:\\s*" + stagedId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\]", "g"), "").trim();
+          if (next !== cur) void P.writeDraft(next, cur);
+        } catch {}
+      };
+      const appendDroppedTag = async (info) => {
+        const titles = (info.skills || []).map((s) => String(s?.title || "").trim()).filter(Boolean).slice(0, 6);
+        const tag = `[Dropped skill folder: "${info.source}" — ${info.skill_count} skill(s) ready${titles.length ? ": " + titles.join(", ") : ""} (staged_id: ${info.staged_id})]`;
+        try {
+          if (typeof P.editorText === "function" && typeof P.writeDraft === "function") {
+            const cur = String(P.editorText() || "");
+            if (!cur.includes(info.staged_id)) {
+              const next = cur.trim() ? cur.replace(/\s+$/, "") + "\n" + tag : tag + "\nAdd these skills to PlazCode.";
+              await P.writeDraft(next, cur);
+            }
+          }
+        } catch {}
+      };
+      const showDropCard = (info) => {
+        closeDropCard();
+        const node = document.createElement("section");
+        node.className = "rs-skill-offer rs-skill-drop-card";
+        node.setAttribute("role", "dialog");
+        node.setAttribute("aria-label", "Dropped skill folder");
+        const style = document.createElement("style");
+        style.textContent = ".rs-skill-offer{position:fixed;bottom:96px;right:16px;overflow:auto;z-index:2147483640;width:min(380px,calc(100vw - 32px));box-sizing:border-box;padding:16px 18px;border:1px solid var(--pc-accent,#ff9226);border-radius:14px;background:var(--pc-bg,#14161b);color:#f5f5f5;box-shadow:0 14px 50px #0008;font:13px/1.5 system-ui,sans-serif}.rs-skill-offer h3{margin:0 0 6px;font-size:15px}.rs-skill-offer strong{display:block;margin-bottom:4px}.rs-skill-offer p{margin:0 0 8px;opacity:.85;white-space:pre-wrap;overflow-wrap:anywhere}.rs-skill-offer small{display:block;opacity:.7;margin-bottom:10px}.rs-skill-offer button{font:inherit;padding:8px 12px;margin:0 8px 0 0;border-radius:9px;border:1px solid var(--pc-accent,#ff9226);background:transparent;color:inherit;cursor:pointer}.rs-skill-offer button.rs-skill-save{background:var(--pc-accent,#ff9226);color:#111822;font-weight:650}.rs-skill-offer button:disabled{opacity:.55;cursor:default}.rs-skill-offer [role=status]{margin:10px 0 0;min-height:1em}";
+        const h = document.createElement("h3");
+        h.textContent = "Skill folder attached to chat";
+        const name = document.createElement("strong");
+        name.textContent = `${info.source} (${info.skill_count} skill${info.skill_count === 1 ? "" : "s"})`;
+        const names = document.createElement("p");
+        const titles = (info.skills || []).map((s) => String(s?.title || "").trim()).filter(Boolean);
+        names.textContent = titles.slice(0, 6).join(", ") + (titles.length > 6 ? ` (+${titles.length - 6} more)` : "");
+        const hint = document.createElement("small");
+        hint.textContent = "Ask the AI to add these skills, or click Add to Skills now. Added skills are used automatically on future tasks.";
+        const addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.className = "rs-skill-save";
+        addBtn.textContent = "Add to Skills";
+        const dismissBtn = document.createElement("button");
+        dismissBtn.type = "button";
+        dismissBtn.textContent = "Dismiss";
+        const st = document.createElement("p");
+        st.setAttribute("role", "status");
+        addBtn.onclick = async () => {
+          addBtn.disabled = dismissBtn.disabled = true;
+          st.textContent = "Adding skills…";
+          try {
+            const res = await bg({ type: "skills", request: { action: "import_folder", staged_id: info.staged_id } });
+            if (!res?.ok) throw Error(res?.error || "Could not import skill folder.");
+            const count = Number(res.added || 0) + Number(res.updated || 0);
+            stripDroppedTag(info.staged_id);
+            st.textContent = `Added ${count} skill${count === 1 ? "" : "s"} — enabled for automatic use.`;
+            addBtn.textContent = "Added";
+            setTimeout(() => closeDropCard(), 2500);
+          } catch (err) {
+            st.textContent = String((err)?.message || err);
+            addBtn.disabled = dismissBtn.disabled = false;
+          }
+        };
+        dismissBtn.onclick = () => closeDropCard();
+        const acts = document.createElement("div");
+        acts.append(addBtn, dismissBtn);
+        node.append(style, h, name, names, hint, acts, st);
+        document.documentElement.appendChild(node);
+        skillDropNode = node;
+        placeSkillOffer(node);
+      };
+      const showBanner = (show) => {
+        if (!show) { if (skillDropBanner) skillDropBanner.hidden = true; return; }
+        if (!skillDropBanner) {
+          const b = document.createElement("div");
+          b.id = "rs-skill-drop-banner";
+          b.style.cssText = "position:fixed;left:50%;bottom:110px;transform:translateX(-50%);z-index:2147483645;padding:12px 20px;border-radius:12px;border:2px dashed #ff9226;background:#14161be8;color:#fff;font:600 13px/1.4 system-ui,sans-serif;pointer-events:none;box-shadow:0 12px 36px #0009";
+          b.textContent = "Drop skill folder to attach to chat";
+          document.documentElement.appendChild(b);
+          skillDropBanner = b;
+        }
+        skillDropBanner.hidden = false;
+      };
+      let dragDepth = 0;
+      const shouldCapture = (e) => {
+        const onBar = Boolean((e.target)?.closest?.("#rs-bar,#rs-root"));
+        return PlazCodeSkillContext.isSkillDropTransfer(e.dataTransfer, onBar);
+      };
+      document.addEventListener("dragenter", (e) => {
+        if (!shouldCapture(e)) return;
+        e.preventDefault();
+        dragDepth++;
+        showBanner(true);
+      }, true);
+      document.addEventListener("dragover", (e) => {
+        if (!shouldCapture(e)) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+      }, true);
+      document.addEventListener("dragleave", (e) => {
+        if (!dragDepth) return;
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (!dragDepth) showBanner(false);
+      }, true);
+      document.addEventListener("drop", (e) => {
+        if (!shouldCapture(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        dragDepth = 0;
+        showBanner(false);
+        void (async () => {
+          try {
+            const payload = await PlazCodeSkillContext.readDroppedFolder(e.dataTransfer);
+            const res = await bg({ type: "skills", request: payload });
+            if (!res?.ok || !res.staged_id) throw Error(res?.error || "Could not stage skill folder.");
+            await appendDroppedTag(res);
+            showDropCard(res);
+          } catch (err) {
+            ui.toast(String((err)?.message || err || "Could not read dropped skill folder."));
+          }
+        })();
+      }, true);
     }
 
     function loopPhaseText() {

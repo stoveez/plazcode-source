@@ -1,4 +1,4 @@
-import {ApiError,SESSION_MS,BODY_LIMIT,randomHex,sha,strict,username,password,same,verifier,boundedJson,document as cleanDocument} from '../lib/protocol.js';
+import {ApiError,SESSION_MS,BODY_LIMIT,randomHex,sha,strict,username,validateRegistrationUsername,password,same,verifier,boundedJson,document as cleanDocument} from '../lib/protocol.js';
 const PROOF_BITS=20;
 const ONLINE_WINDOW_MS=150000;
 const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'none'; frame-ancestors 'none'"};
@@ -12,9 +12,12 @@ async function clientBudget(request,db,kind,now,max){if(kind==='registration')aw
 async function proof(db,value,now){strict(value,['id','nonce']);if(!/^[a-f0-9]{48}$/.test(value.id)||!Number.isSafeInteger(value.nonce)||value.nonce<0||value.nonce>0xffffffff)throw new ApiError(400,'Invalid sign-in challenge.');const digest=await sha(value.id+':'+value.nonce);if(!digest.startsWith('0'.repeat(PROOF_BITS/4)))throw new ApiError(400,'Invalid sign-in challenge.');const ticket=await first(db,'DELETE FROM challenges WHERE id=? AND expires_at>? RETURNING id',value.id,now);if(!ticket)throw new ApiError(401,'Sign-in challenge expired. Please try again.');}
 function ownerSet(env){return new Set(String(env?.OWNER_USERNAMES||'').split(',').map(v=>v.trim().toLowerCase()).filter(Boolean));}
 function isOwnerUsername(usernameKey,env){return ownerSet(env).has(String(usernameKey||'').toLowerCase());}
-function bannedError(reason){const clean=String(reason||'').trim();const err=new ApiError(403,clean?`Account banned: ${clean}`:'This account has been banned from PlazCode.');err.extra={code:'account_banned',banned:true,reason:clean};return err;}
+function bannedError(reason,terminated=false){const clean=String(reason||'').trim();const err=new ApiError(403,terminated?(clean?`Account permanently terminated: ${clean}`:'This account has been permanently terminated from PlazCode.'):(clean?`Account banned: ${clean}`:'This account has been banned from PlazCode.'));err.extra={code:terminated?'account_terminated':'account_banned',banned:true,terminated:Boolean(terminated),reason:clean};return err;}
+function deviceHeader(request){const raw=String(request.headers.get('x-plazcode-device')||'').trim().toLowerCase();return /^[a-f0-9]{64}$/.test(raw)?raw:null;}
+async function checkDeviceBan(db,deviceHash){if(!deviceHash)return null;return await first(db,'SELECT device_hash,account_id,username,permanent,reason,banned_at FROM banned_devices WHERE device_hash=?',deviceHash);}
+async function recordDeviceBan(db,deviceHash,account,permanent,now){if(!deviceHash||!account?.id)return;await run(db,'INSERT INTO banned_devices (device_hash,account_id,username,permanent,reason,banned_at) VALUES (?,?,?,?,?,?) ON CONFLICT(device_hash) DO UPDATE SET account_id=excluded.account_id,username=excluded.username,permanent=MAX(banned_devices.permanent,excluded.permanent),reason=COALESCE(excluded.reason,banned_devices.reason),banned_at=excluded.banned_at',deviceHash,account.id,account.username||'',permanent?1:0,account.ban_reason||null,now);}
 function bearerToken(request){return request.headers.get('authorization')?.match(/^Bearer ([^\s]+)$/)?.[1]||'';}
-async function session(db,request,now,env){const token=request.headers.get('authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];if(!token)throw new ApiError(401,'Please sign in again.');const hash=await sha(token);const row=await first(db,'SELECT accounts.id,accounts.username,accounts.username_key,accounts.banned_at,accounts.ban_reason,sessions.expires_at FROM sessions JOIN accounts ON accounts.id=sessions.account_id WHERE sessions.hash=?',hash);if(!row)throw new ApiError(401,'Please sign in again.');if(row.banned_at){await run(db,'DELETE FROM sessions WHERE account_id=?',row.id);throw bannedError(row.ban_reason);}if(row.expires_at<=now)throw new ApiError(401,'Please sign in again.');return {...row,hash,is_owner:isOwnerUsername(row.username_key,env)};}
+async function session(db,request,now,env){const token=request.headers.get('authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];if(!token)throw new ApiError(401,'Please sign in again.');const hash=await sha(token);const row=await first(db,'SELECT accounts.id,accounts.username,accounts.username_key,accounts.banned_at,accounts.terminated_at,accounts.ban_reason,sessions.expires_at FROM sessions JOIN accounts ON accounts.id=sessions.account_id WHERE sessions.hash=?',hash);if(!row)throw new ApiError(401,'Please sign in again.');const dev=deviceHeader(request);if(row.terminated_at||row.banned_at){const perm=Boolean(row.terminated_at);await recordDeviceBan(db,dev,row,perm,now);await run(db,'DELETE FROM sessions WHERE account_id=?',row.id);throw bannedError(row.ban_reason,perm);}const devBan=await checkDeviceBan(db,dev);if(devBan){throw bannedError(devBan.reason,Boolean(devBan.permanent));}if(row.expires_at<=now)throw new ApiError(401,'Please sign in again.');if(dev)await run(db,'UPDATE accounts SET last_device_hash=? WHERE id=?',dev,row.id);return {...row,hash,is_owner:isOwnerUsername(row.username_key,env)};}
 async function issue(db,account,now,env){const token=randomHex(32),expires=now+SESSION_MS;await run(db,'INSERT INTO sessions (hash,account_id,expires_at,created_at) VALUES (?,?,?,?)',await sha(token),account.id,expires,now);await run(db,'UPDATE accounts SET last_seen_at=? WHERE id=?',now,account.id);const key=account.username_key||String(account.username||'').toLowerCase();return {profile:{id:account.id,username:account.username,is_owner:isOwnerUsername(key,env)},token,expires_at:expires};}
 async function requireOwner(db,request,env,now){
  const expected=String(env?.OWNER_ADMIN_TOKEN||'');
@@ -44,18 +47,39 @@ export default {async fetch(request,env){
    await db.batch([db.prepare('DELETE FROM challenges WHERE id IN (SELECT id FROM challenges WHERE expires_at<? LIMIT 100)').bind(now),db.prepare('DELETE FROM budgets WHERE id IN (SELECT id FROM budgets WHERE expires_at<? LIMIT 100)').bind(now),db.prepare('DELETE FROM sessions WHERE hash IN (SELECT hash FROM sessions WHERE expires_at<? LIMIT 100)').bind(now)]);
    const id=randomHex(24);await run(db,'INSERT INTO challenges (id,expires_at) VALUES (?,?)',id,now+120000);return json({id,bits:PROOF_BITS,expires_at:now+120000});
   }
+  if(path==='/v1/ban-status'&&request.method==='GET'){
+   const accountId=(url.searchParams.get('account_id')||'').trim();
+   const dev=deviceHeader(request);
+   if(accountId){
+    const acct=await first(db,'SELECT id,banned_at,terminated_at,ban_reason FROM accounts WHERE id=?',accountId);
+    if(acct){
+     const terminated=Boolean(acct.terminated_at);
+     const banned=Boolean(acct.banned_at)||terminated;
+     return json({ok:true,banned,terminated,reason:acct.ban_reason||''});
+    }
+   }
+   const devBan=await checkDeviceBan(db,dev);
+   if(devBan)return json({ok:true,banned:true,terminated:Boolean(devBan.permanent),reason:devBan.reason||''});
+   return json({ok:true,banned:false,terminated:false,reason:''});
+  }
   if(['/v1/register','/v1/login'].includes(path)&&request.method==='POST'){
-   await clientBudget(request,db,'password',now,12);const body=strict(await boundedJson(request),['username','password','proof']);const name=username(body.username);password(body.password);await proof(db,body.proof,now);await budget(db,'password-day:'+Math.floor(now/86400000),20000,now+86400000);await budget(db,'name:'+Math.floor(now/900000)+':'+await sha(name.key),12,now+900000);
+   await clientBudget(request,db,'password',now,12);const body=strict(await boundedJson(request),['username','password','proof']);const name=path==='/v1/register'?validateRegistrationUsername(body.username):username(body.username);password(body.password);await proof(db,body.proof,now);await budget(db,'password-day:'+Math.floor(now/86400000),20000,now+86400000);await budget(db,'name:'+Math.floor(now/900000)+':'+await sha(name.key),12,now+900000);
+   const dev=deviceHeader(request);
+   const devBan=await checkDeviceBan(db,dev);
    if(path==='/v1/register'){
+    if(devBan)throw bannedError(devBan.reason,Boolean(devBan.permanent));
     await clientBudget(request,db,'registration',now,4);
     const salt=randomHex(32),hash=await verifier(body.password,salt),id=crypto.randomUUID();
-    try{await run(db,'INSERT INTO accounts (id,username,username_key,salt,verifier,created_at,last_seen_at) VALUES (?,?,?,?,?,?,?)',id,name.display,name.key,salt,hash,now,now);}catch(error){if(/unique/i.test(String(error.message)))throw new ApiError(409,'That username is already taken.');throw error;}
+    try{await run(db,'INSERT INTO accounts (id,username,username_key,salt,verifier,created_at,last_seen_at,last_device_hash) VALUES (?,?,?,?,?,?,?,?)',id,name.display,name.key,salt,hash,now,now,dev);}catch(error){if(/unique/i.test(String(error.message)))throw new ApiError(409,'That username is already taken.');throw error;}
     return json(await issue(db,{id,username:name.display,username_key:name.key},now,env),201);
    }
-   const account=await first(db,'SELECT id,username,username_key,salt,verifier,banned_at,ban_reason FROM accounts WHERE username_key=?',name.key);
+   const account=await first(db,'SELECT id,username,username_key,salt,verifier,banned_at,terminated_at,ban_reason FROM accounts WHERE username_key=?',name.key);
    const hash=await verifier(body.password,account?.salt||'0000000000000000000000000000000000000000000000000000000000000000');
    if(!same(hash,account?.verifier||'f'.repeat(64)))throw new ApiError(401,'Incorrect username or password.');
-   if(account.banned_at)throw bannedError(account.ban_reason);
+   if(account.terminated_at){await recordDeviceBan(db,dev,account,true,now);throw bannedError(account.ban_reason,true);}
+   if(account.banned_at){await recordDeviceBan(db,dev,account,false,now);throw bannedError(account.ban_reason,false);}
+   if(devBan)throw bannedError(devBan.reason,Boolean(devBan.permanent));
+   if(dev)await run(db,'UPDATE accounts SET last_device_hash=? WHERE id=?',dev,account.id);
    return json(await issue(db,account,now,env));
   }
   if(path==='/v1/session'&&request.method==='GET'){const auth=await session(db,request,now,env);const expires=now+SESSION_MS;await run(db,'UPDATE sessions SET expires_at=? WHERE hash=?',expires,auth.hash);await run(db,'UPDATE accounts SET last_seen_at=? WHERE id=?',now,auth.id);return json({profile:{id:auth.id,username:auth.username,is_owner:auth.is_owner},expires_at:expires});}
@@ -93,16 +117,19 @@ export default {async fetch(request,env){
    const limit=Math.min(200,Math.max(1,Number(url.searchParams.get('limit')||100)||100));
    const offset=Math.max(0,Number(url.searchParams.get('offset')||0)||0);
    // Strict non-leakage: never select salt/verifier, and expose only rsProfilePicture from synced documents.
-   const rows=await all(db,'SELECT a.id,a.username,a.username_key,a.created_at,a.last_seen_at,a.app_version,a.banned_at,a.ban_reason,d.document FROM accounts a LEFT JOIN documents d ON d.account_id=a.id ORDER BY a.created_at DESC');
+   const rows=await all(db,'SELECT a.id,a.username,a.username_key,a.created_at,a.last_seen_at,a.app_version,a.banned_at,a.terminated_at,a.ban_reason,d.document FROM accounts a LEFT JOIN documents d ON d.account_id=a.id ORDER BY COALESCE(a.terminated_at,a.banned_at,a.created_at) DESC');
    const mapped=(rows.results||[]).map(r=>{
     const seen=typeof r.last_seen_at==='number'?r.last_seen_at:null;
-    const online=Boolean(seen&&!r.banned_at&&(now-seen)<=ONLINE_WINDOW_MS);
-    return {id:r.id,username:r.username,created_at:r.created_at,last_seen_at:seen,online,app_version:r.app_version||'',banned:Boolean(r.banned_at),banned_at:r.banned_at||null,ban_reason:r.ban_reason||'',is_owner:isOwnerUsername(r.username_key,env),profile_picture:extractAvatar(r.document)};
+    const terminated=Boolean(r.terminated_at);
+    const banned=Boolean(r.banned_at)||terminated;
+    const online=Boolean(seen&&!banned&&(now-seen)<=ONLINE_WINDOW_MS);
+    return {id:r.id,username:r.username,created_at:r.created_at,last_seen_at:seen,online,app_version:r.app_version||'',banned,banned_at:r.banned_at||null,terminated,terminated_at:r.terminated_at||null,ban_reason:r.ban_reason||'',is_owner:isOwnerUsername(r.username_key,env),profile_picture:extractAvatar(r.document)};
    });
-   const counts={total:mapped.length,online:mapped.filter(u=>u.online).length,banned:mapped.filter(u=>u.banned).length};
+   const counts={total:mapped.length,online:mapped.filter(u=>u.online).length,banned:mapped.filter(u=>u.banned).length,terminated:mapped.filter(u=>u.terminated).length};
    const filtered=mapped.filter(u=>{
     if(filter==='online'&&!u.online)return false;
     if(filter==='banned'&&!u.banned)return false;
+    if(filter==='terminated'&&!u.terminated)return false;
     if(q&&!u.username.toLowerCase().includes(q))return false;
     return true;
    });
@@ -112,7 +139,7 @@ export default {async fetch(request,env){
   if(banMatch&&request.method==='POST'){
    await requireOwner(db,request,env,now);
    const targetId=banMatch[1];
-   const target=await first(db,'SELECT id,username,username_key FROM accounts WHERE id=?',targetId);
+   const target=await first(db,'SELECT id,username,username_key,last_device_hash FROM accounts WHERE id=?',targetId);
    if(!target)throw new ApiError(404,'User not found.');
    if(isOwnerUsername(target.username_key,env))throw new ApiError(400,'Owner accounts cannot be banned.');
    let body={};
@@ -122,16 +149,39 @@ export default {async fetch(request,env){
     db.prepare('UPDATE accounts SET banned_at=?,ban_reason=?,last_seen_at=0 WHERE id=?').bind(now,reason,targetId),
     db.prepare('UPDATE sessions SET expires_at=-1 WHERE account_id=?').bind(targetId),
    ]);
+   if(target.last_device_hash)await recordDeviceBan(db,target.last_device_hash,{id:targetId,username:target.username,ban_reason:reason},false,now);
    return json({ok:true,id:targetId,username:target.username,banned:true,banned_at:now,ban_reason:reason});
   }
   const unbanMatch=path.match(/^\/v1\/owner\/users\/([A-Za-z0-9-]{4,80})\/unban$/);
   if(unbanMatch&&request.method==='POST'){
    await requireOwner(db,request,env,now);
    const targetId=unbanMatch[1];
-   const target=await first(db,'SELECT id,username FROM accounts WHERE id=?',targetId);
+   const target=await first(db,'SELECT id,username,terminated_at FROM accounts WHERE id=?',targetId);
    if(!target)throw new ApiError(404,'User not found.');
-   await run(db,'UPDATE accounts SET banned_at=NULL,ban_reason=NULL WHERE id=?',targetId);
+   if(target.terminated_at)throw new ApiError(400,'Permanently terminated profiles cannot be unbanned.');
+   await db.batch([
+    db.prepare('UPDATE accounts SET banned_at=NULL,ban_reason=NULL WHERE id=?').bind(targetId),
+    db.prepare('DELETE FROM banned_devices WHERE account_id=? AND permanent=0').bind(targetId),
+   ]);
    return json({ok:true,id:targetId,username:target.username,banned:false});
+  }
+  const termMatch=path.match(/^\/v1\/owner\/users\/([A-Za-z0-9-]{4,80})\/terminate$/);
+  if(termMatch&&request.method==='POST'){
+   await requireOwner(db,request,env,now);
+   const targetId=termMatch[1];
+   const target=await first(db,'SELECT id,username,username_key,last_device_hash FROM accounts WHERE id=?',targetId);
+   if(!target)throw new ApiError(404,'User not found.');
+   if(isOwnerUsername(target.username_key,env))throw new ApiError(400,'Owner accounts cannot be terminated.');
+   let body={};
+   try{body=await boundedJson(request,2048);}catch(error){if(!(error instanceof ApiError)||error.status!==400)throw error;}
+   const reason=String(body?.reason||'Permanently terminated by owner.').trim().slice(0,300);
+   await db.batch([
+    db.prepare('UPDATE accounts SET banned_at=COALESCE(banned_at,?),terminated_at=?,ban_reason=?,last_seen_at=0 WHERE id=?').bind(now,now,reason,targetId),
+    db.prepare('DELETE FROM sessions WHERE account_id=?').bind(targetId),
+    db.prepare('DELETE FROM documents WHERE account_id=?').bind(targetId),
+   ]);
+   if(target.last_device_hash)await recordDeviceBan(db,target.last_device_hash,{id:targetId,username:target.username,ban_reason:reason},true,now);
+   return json({ok:true,id:targetId,username:target.username,banned:true,terminated:true,terminated_at:now,ban_reason:reason});
   }
   const removeMatch=path.match(/^\/v1\/owner\/users\/([A-Za-z0-9-]{4,80})(?:\/remove)?$/);
   if(removeMatch&&((path.endsWith('/remove')&&request.method==='POST')||(!path.endsWith('/remove')&&request.method==='DELETE'))){
@@ -143,6 +193,7 @@ export default {async fetch(request,env){
    await db.batch([
     db.prepare('DELETE FROM sessions WHERE account_id=?').bind(targetId),
     db.prepare('DELETE FROM documents WHERE account_id=?').bind(targetId),
+    db.prepare('DELETE FROM banned_devices WHERE account_id=?').bind(targetId),
     db.prepare('DELETE FROM accounts WHERE id=?').bind(targetId),
    ]);
    return json({ok:true,id:targetId,username:target.username,removed:true});

@@ -69,19 +69,62 @@ const PlazCodeActivity = (() => {
   // plazcode_checklist, so derive numbered steps from the user's request and
   // from plans the AI writes, and advance them as the AI reports progress.
   const cleanLabel=(text)=>String(text||'').replace(/\*\*|__|`/g,'').replace(/^\s*(?:step\s+\d+\s*[:.)-]\s*)/i,'').replace(/\s+/g,' ').replace(/[\s.;:,]+$/,'').trim().slice(0,180);
-  const conciseGoal=(text)=>cleanLabel(text).split(/[.!?](?:\s+|(?=I['’](?:ll|m|ve)\b))/,1)[0].split(/\s+/).slice(0,8).join(' ').replace(/[\s,;:.!?]+$/,'');
-  // 1.24.13: the checklist used to echo the user's sentences word for word
-  // ("So I want you to see if you can fix the model? Check how ... etc"). Reduce each
-  // sentence to a short imperative of what the AI has to do.
-  const GERUNDS={fixing:'Fix',building:'Build',creating:'Create',making:'Make',adding:'Add',changing:'Change',editing:'Edit',implementing:'Implement',investigating:'Investigate',debugging:'Debug',testing:'Test',verifying:'Verify',optimizing:'Optimize',optimising:'Optimize',updating:'Update',removing:'Remove',checking:'Check',rigging:'Rig',scripting:'Script',writing:'Write',setting:'Set',finding:'Find',improving:'Improve',designing:'Design',repairing:'Repair'};
+  const DANGLING_END=/^(?:and|or|nor|the|a|an|to|of|for|with|in|on|at|by|from|that|which|who|whom|whose|when|where|while|if|unless|than|as|into|onto|about|are|is|be|was|were|been|being|can|could|should|would|will|not|don'?t|doesn'?t|actually|just|really|very|also|their|there|they|them|your|my|our|its)$/i;
+  function trimCleanly(text, maxLen = 64, maxWords = 10) {
+    let words = String(text || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+    if (!words.length) return '';
+    if (words.length > maxWords) words = words.slice(0, maxWords);
+    let out = words.join(' ');
+    if (out.length > maxLen) {
+      const cut = out.slice(0, maxLen);
+      const at = cut.lastIndexOf(' ');
+      out = (at > 20 ? cut.slice(0, at) : cut).trim();
+      words = out.split(' ').filter(Boolean);
+    }
+    while (words.length > 2 && DANGLING_END.test(words[words.length - 1].replace(/[,.;:!?]+$/g, ''))) {
+      words.pop();
+    }
+    return words.join(' ').replace(/[\s,;:.!?-]+$/g, '');
+  }
+  const conciseGoal=(text)=>{
+    const head=cleanLabel(text).split(/[.!?](?:\s+|(?=I['’](?:ll|m|ve)\b))/,1)[0];
+    return trimCleanly(head, 68, 8);
+  };
+  // 1.24.13 / 1.25.0: reduce conversational requests into concise, action-oriented
+  // task summaries rather than truncating raw prompt sentences mid-thought.
+  const GERUNDS={fixing:'Fix',building:'Build',creating:'Create',making:'Make',adding:'Add',changing:'Change',editing:'Edit',implementing:'Implement',investigating:'Investigate',debugging:'Debug',testing:'Test',verifying:'Verify',optimizing:'Optimize',optimising:'Optimize',updating:'Update',removing:'Remove',checking:'Check',rigging:'Rig',scripting:'Script',writing:'Write',setting:'Set',finding:'Find',improving:'Improve',designing:'Design',repairing:'Repair',confirming:'Confirm',blocking:'Block',filtering:'Filter',censoring:'Censor',allowing:'Allow'};
+  const PURE_EXPLANATION_START=/^(?:instead of\b|meaning\s+(?:that\b)?|currently[, ]|right now[, ]|at the moment[, ]|for example[, ]|e\.g\b|it just\b|this just\b|the problem is\b|otherwise[, ]|note that\b|curse words are\b|just nothing\b|no slurs\b|if the task\b|if it\b|if a task\b)/i;
   function condenseStep(text) {
     let s=cleanLabel(text);
+    if (!s) return '';
     const lead=/^(?:(?:so|and|ok(?:ay)?|now|also|then|first(?:ly)?|next|finally|well|alright)[,\s]+)+/i;
     s=s.replace(lead,'');
     s=s.replace(/^(?:your|the|my|our)\s+(?:first|second|third|fourth|next|main|last|final)\s+(?:task|job|goal|objective)\s+(?:will be|is|would be|should be)\s+(?:to\s+)?/i,'');
     s=s.replace(/^(?:i\s+(?:really\s+)?(?:want|need|would like|'d like)\s+(?:you\s+)?to|i\s+want|can you|could you|would you|will you|please|pls|you\s+(?:should|need to|must|can|will))\s+/i,'');
     s=s.replace(/^(?:see|check|figure out|try to see|find out)\s+if\s+(?:you\s+can|it(?:'s| is) possible to|we can)\s+/i,'');
     s=s.replace(lead,'').replace(/^(?:try\s+to|try)\s+/i,'');
+    for (const sep of [
+      /,\s*(?:meaning|leaving|which\s+(?:means|makes|shows)|so that|where\s+i\s+(?:could|can)|to be used)\b/i,
+      /\s+\b(?:meaning\s+that|so\s+that|to\s+be\s+used\s+from\s+then\s+on|if\s+the\s+user\s+requests|instead\s+of\s+(?:actually\s+)?showing|rather\s+than)\b/i,
+    ]) {
+      const m = sep.exec(s);
+      if (m && m.index >= 12 && s.slice(0, m.index).trim().split(/\s+/).length >= 3) {
+        s = s.slice(0, m.index).trim();
+      }
+    }
+    s=s.replace(/^(?:make sure|be sure)\s+(?:that\s+)?/i,'Ensure ');
+    s=s.replace(/^(confirm|verify|check|ensure)\s+that\s+/i,(_,v)=>v[0].toUpperCase()+v.slice(1).toLowerCase()+' ');
+    s=s.replace(/^(?:(?:users|people|players|members|they)\s+should\s+(?:also\s+)?be\s+able\s+to)\s+/i,'Let users ');
+    s=s.replace(/^(?:(?:there|their)\s+should\s+(?:also\s+)?be)\s+(?:a|an)\s+/i,'Add ');
+    s=s.replace(/^a\s+list\s+(?:of\s+)?all\s+([\w ]{2,35}?)\s+should\s+be\s+(?:a\s+section\s+)?in\s+/i,'Show $1 list in ');
+    s=s.replace(/^people\s+who['’]?s\s+/i,'Banned ');
+    s=s.replace(/^([\w ]{2,35}?)\s+should\s+not\s+be\s+able\s+to\s+/i,'Block $1 from ');
+    s=s.replace(/^([\w ]{2,35}?)\s+should\s+correctly\s*:\s*/i,'Update $1 to ');
+    s=s.replace(/\band\s+when\s+added\s+(?:are|is)\s+actually\s+/i,'and ');
+    s=s.replace(/\bfolders\s+containing\s+skills\b/gi,'skill folders');
+    s=s.replace(/\binside\s+plazcode\b/gi,'in PlazCode');
+    s=s.replace(/\binside\s+chats\b/gi,'in chats');
+    s=s.replace(/\bto\s+(?:the\s+)?skills\s+in\s+PlazCode\b/gi,'to PlazCode');
     s=s.replace(/\s*(?:,\s*)?\b(?:etc|etcetera|and so on|and stuff|and things like that)\b\.?$/i,'');
     // Trailing filler is not part of the objective ("... as a test", "... for me please").
     for(let i=0;i<3;i++)s=s.replace(/[\s,]+(?:as a (?:quick )?test|for (?:a )?test(?:ing)?|for me|real quick|quickly|please|pls|for now|thanks|thank you)[.!]?$/i,'');
@@ -91,7 +134,7 @@ const PlazCodeActivity = (() => {
     if(gerund&&GERUNDS[gerund[1].toLowerCase()])s=GERUNDS[gerund[1].toLowerCase()]+(gerund[2]?' '+gerund[2]:'');
     s=s.replace(/^(?:check how)\s+/i,'Check how ');
     s=cleanLabel(s).replace(/[?!]+$/,'').trim();
-    if(s.length>70){const cut=s.slice(0,70);const at=cut.lastIndexOf(' ');s=(at>30?cut.slice(0,at):cut).replace(/[\s,;:-]+$/,'');}
+    s=trimCleanly(s, 64, 10);
     return s?s[0].toUpperCase()+s.slice(1):'';
   }
   const NAME_SENTENCE=/^(?:it|this|that|he|she|they)(?:'s| is| was|\s+are)?\s+(?:called|named|known as)\s+["'“]?([A-Za-z0-9][\w' -]{0,40}?)["'”]?$/i;
@@ -99,17 +142,30 @@ const PlazCodeActivity = (() => {
   const userListed=(request)=>[...String(request||'').replace(/```[\s\S]*?(?:```|$)/g,' ').matchAll(/^\s*(?:\d+[.)]|[-*•])\s+(.+)$/gm)].length>=2;
   function requestSteps(request) {
     const text=String(request||'').replace(/```[\s\S]*?(?:```|$)/g,' ').trim();
+    const isList = userListed(request);
     const listed=[...text.matchAll(/^\s*(?:\d+[.)]|[-*•])\s+(.+)$/gm)].map(m=>cleanLabel(m[1])).filter(label=>label.split(' ').length>=2);
-    let parts=listed.length>=2?listed:text.replace(/\s+/g,' ').split(/(?<=[.!?;])\s+|\s+(?:and then|then|after that|also|finally)\s+/i).map(cleanLabel).filter(label=>label.split(' ').length>=2);
+    let parts=listed.length>=2?listed:text.replace(/\s+/g,' ').split(/(?<=[.!?;])\s+|\s+(?:and then|then|after that|also|finally)\s+|,\s+(?:and\s+)?also\s+/i).map(cleanLabel).filter(label=>label.split(' ').length>=2);
     // Each listed line may hold several sentences; each becomes its own short step.
     parts=parts.flatMap(label=>label.split(/(?<=[.!?])\s+/).map(cleanLabel).filter(Boolean));
-    // 1.24.30 (owner, 2026-11-01): "use 15 tool calls 1 per turn as a test. Just read tools" showed "Just read tools"
-    // as a second task. A short "just/only ..." sentence or a "don't/never/without ..." sentence is a rule for how to
-    // do the work, not a step of its own.
-    if(parts.length>=2)parts=parts.filter(label=>!/^(?:(?:just|only)(?:\s+\S+){1,2}[.!]?$|(?:don['’]?t|do not|never|without|avoid|no need)\b)/i.test(label.trim()));
+    // Drop non-step constraint sentences ("Just read tools", "Do not touch X") and
+    // pure symptom/rationale explanations ("Instead of...", "Curse words are fine...") when actionable tasks exist.
+    if(parts.length>=2){
+      parts=parts.filter(label=>!/^(?:(?:just|only)(?:\s+\S+){1,2}[.!]?$|(?:don['’]?t|do not|never|without|avoid|no need)\b)/i.test(label.trim()));
+      const filtered=parts.filter(label=>!PURE_EXPLANATION_START.test(label.trim()));
+      if(filtered.length>=1)parts=filtered;
+    }
     let name='';
     parts=parts.filter(label=>{const m=NAME_SENTENCE.exec(label);if(m){name=m[1].trim();return false;}return true;});
     parts=parts.map(condenseStep).filter(label=>label.split(' ').length>=2);
+    if(!isList&&parts.length>=2){
+      parts=parts.filter((label,index)=>{
+        if(index===0)return true;
+        const prev=parts[index-1].toLowerCase();
+        const cur=label.toLowerCase();
+        if(/^fix\s+(?:the\s+)?(task list|checklist)\b/.test(prev) && /\b(?:task list|checklist|list the task|summarized version)\b/.test(cur))return false;
+        return true;
+      });
+    }
     if(name&&parts.length)parts[0]=parts[0].replace(/\b(?:a|an|the|this|that)\s+(\w+)/i,(_,noun)=>`${name} ${noun}`);
     const words=(label)=>new Set(label.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(word=>word&&!/^(?:a|an|the|of|to|in|on|for|and|my|our)$/.test(word)));
     parts=parts.filter((label,index)=>{
@@ -117,6 +173,22 @@ const PlazCodeActivity = (() => {
       return !parts.some((other,at)=>at!==index&&(other!==label||at<index)&&mine.size<=words(other).size&&[...mine].every(word=>words(other).has(word))&&(mine.size<words(other).size||at<index));
     });
     return parts.slice(0,8);
+  }
+  function summarizeGoal(request, seeded) {
+    const steps = Array.isArray(seeded) ? seeded : requestSteps(request);
+    if (steps.length === 1) return conciseGoal(steps[0]);
+    if (steps.length >= 2) {
+      const compactHead = (step, maxW) => trimCleanly(step, 28, maxW);
+      if (steps.length === 2) {
+        const joined = compactHead(steps[0], 4) + ' & ' + compactHead(steps[1], 4);
+        return trimCleanly(joined, 64, 8);
+      }
+      const head = compactHead(steps[0], 4);
+      const second = compactHead(steps[1], 3);
+      return trimCleanly(`${head}, ${second} (+${steps.length - 2} more)`, 64, 8);
+    }
+    const condensed = condenseStep(request);
+    return conciseGoal(condensed || request);
   }
   const PLAN_HEADING=/^\s*(?:#{1,6}\s*)?(?:\*\*)?[^\n]{0,48}\b(?:plan|checklist|steps|to-?do(?: list)?|roadmap|tasks)\b[^\n]{0,24}?(?:\*\*)?\s*:?\s*(?:\*\*)?\s*$/im;
   function replySteps(plain) {
@@ -194,7 +266,7 @@ const PlazCodeActivity = (() => {
         tasks.set(current.chat,saved);
         if(tasks.size>60)tasks.delete(tasks.keys().next().value);
       }
-      current.taskLabel=saved.objective||'Planning project work';current.taskKey=saved.key;
+      current.taskLabel=saved.objective||summarizeGoal(label, saved.plan?.items.map((item)=>item.label))||'Planning project work';current.taskKey=saved.key;
       current.plan=saved.plan?JSON.parse(JSON.stringify(saved.plan)):null;
       persistTasks();changed();
     }
@@ -247,6 +319,19 @@ const PlazCodeActivity = (() => {
       let moved=false;
       plan.items.forEach((item,index)=>{const status=index+1<reached?'completed':index+1===reached?'in_progress':item.status==='completed'?'completed':'pending';if(item.status!==status&&!(item.status==='completed'&&status!=='completed')){item.status=status;moved=true;}});
       if(moved)setAutoPlan(group,plan.items,plan.auto);
+    }
+    function setGoal(text) {
+      if (!current) return;
+      const goal = conciseGoal(text);
+      if (!goal || commandLabel(goal)) return;
+      const cap = goal[0].toUpperCase() + goal.slice(1);
+      const saved = tasks.get(current.chat);
+      if (saved && saved.key === current.taskKey) {
+        saved.objective = cap;
+        persistTasks();
+      }
+      current.taskLabel = cap;
+      changed();
     }
     function checklist(steps) {
       if (!current) throw Error('No active task to update.');
@@ -305,7 +390,7 @@ const PlazCodeActivity = (() => {
       const seconds = Math.floor(((group.ended || now) - group.started) / 1000);
       return `${group.ended ? 'Worked' : 'Working'} for ${Math.floor(seconds / 60)}m ${seconds % 60}s`;
     }
-    return { sync, finish, step, task, checklist, record, removeMessage, read, toggle, list, label, active: () => current, saved: (chat) => tasks.get(chat) || null };
+    return { sync, finish, step, task, setGoal, checklist, record, removeMessage, read, toggle, list, label, active: () => current, saved: (chat) => tasks.get(chat) || null };
   }
   function exempt(text, calls = []) {
     const clean = String(text || '').replace(/[`*#]/g, '').trim();
@@ -361,6 +446,6 @@ const PlazCodeActivity = (() => {
     }
     return {sync};
   }
-  return { create, renderer, exempt, progress, replacesTask, requestKind, commandLabel };
+  return { create, renderer, exempt, progress, replacesTask, requestKind, commandLabel, summarizeGoal, conciseGoal };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = PlazCodeActivity;

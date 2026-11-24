@@ -109,5 +109,35 @@ test('owner user directory, heartbeat presence, scrypt non-leakage, ban/unban an
  assert.equal(db.sqlite.prepare('SELECT COUNT(*) AS c FROM documents WHERE account_id=?').get(userReg.data.profile.id).c,0);
  assert.equal(db.sqlite.prepare('SELECT COUNT(*) AS c FROM accounts WHERE id=?').get(userReg.data.profile.id).c,0);
 
+ // Username censor rejects severe slurs/sexual names but allows mild curse words & benign words
+ const blockedName=await call(db,'/v1/register','POST',{username:'PornHubBuilder',password:'player-strong-password-2',proof:fixtureProof(db)},undefined,{},env);
+ assert.equal(blockedName.status,400);
+ assert.match(blockedName.data.error,/not allowed/i);
+ const curseName=await call(db,'/v1/register','POST',{username:'FuckYeahBuilder',password:'player-strong-password-2',proof:fixtureProof(db)},undefined,{},env);
+ assert.equal(curseName.status,201);
+ const benignTycoon=await call(db,'/v1/register','POST',{username:'RobloxTycoon',password:'player-strong-password-2',proof:fixtureProof(db)},undefined,{},env);
+ assert.equal(benignTycoon.status,201);
+
+ // Device ban lockout blocks alt registration + login, unban restores, permanent terminate never unbans
+ const bannedDevice='b'.repeat(64);
+ const devUser=await call(db,'/v1/register','POST',{username:'AltTestUser',password:'player-strong-password-3',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':bannedDevice},env);
+ assert.equal(devUser.status,201);
+ await call(db,`/v1/owner/users/${devUser.data.profile.id}/ban`,'POST',{reason:'Alt abuse'},ownerReg.data.token,{},env);
+ const altReg=await call(db,'/v1/register','POST',{username:'NewAltUser',password:'player-strong-password-4',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':bannedDevice},env);
+ assert.equal(altReg.status,403);
+ assert.equal(altReg.data.code,'account_banned');
+ const banStat=await call(db,`/v1/ban-status?account_id=${devUser.data.profile.id}`,'GET',undefined,undefined,{'X-PlazCode-Device':bannedDevice},env);
+ assert.equal(banStat.data.banned,true);
+ assert.equal(banStat.data.terminated,false);
+ // Permanently terminate -> cannot be unbanned and device remains locked out permanently
+ const term=await call(db,`/v1/owner/users/${devUser.data.profile.id}/terminate`,'POST',{reason:'Severe abuse'},ownerReg.data.token,{},env);
+ assert.equal(term.status,200);
+ assert.equal(term.data.terminated,true);
+ const tryUnban=await call(db,`/v1/owner/users/${devUser.data.profile.id}/unban`,'POST',{},ownerReg.data.token,{},env);
+ assert.equal(tryUnban.status,400);
+ const termReg=await call(db,'/v1/register','POST',{username:'AfterTermAlt',password:'player-strong-password-5',proof:fixtureProof(db)},undefined,{'X-PlazCode-Device':bannedDevice},env);
+ assert.equal(termReg.status,403);
+ assert.equal(termReg.data.code,'account_terminated');
+
  db.sqlite.close();
 });

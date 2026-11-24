@@ -9,6 +9,72 @@ export const randomHex=size=>hex(crypto.getRandomValues(new Uint8Array(size)));
 export async function sha(text){return hex(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes(text))));}
 export function strict(value,fields){if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!fields.includes(k)))throw new ApiError(400,'Invalid request.');return value;}
 export function username(value){if(typeof value!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_.-]{2,31}$/.test(value))throw new ApiError(400,'Use 3–32 letters, numbers, dots, underscores or hyphens for your username.');return {display:value,key:value.toLowerCase()};}
+const SEVERE_SUBSTRINGS=[
+ 'nigger','nigga','faggot','fagget','tranny','retard',
+ 'wetback','raghead','towelhead','cameljockey',
+ 'porn','porno','hentai','blowjob','handjob','rimjob','footjob','boobjob','deepthroat','gangbang','bukkake','creampie','cunnilingus','fellatio','masturbat','jackoff','jerkoff',
+ 'dildo','fleshlight','orgasm','onlyfans','rule34',
+ 'pussy','vagina','clitoris','penis','scrotum','testicle','boobies','titties','whore','slut',
+ 'pedophil','paedophil','childporn','csam','lolicon','shotacon','bestiality','zoophil','incest','necrophil',
+ 'nazi','hitler','swastika','whitepower',
+];
+const SEVERE_WHOLE_TOKENS=new Set([
+ 'fag','fags','niga','nig','kike','chink','spic','gook','coon','dyke','paki','beaner','honky',
+ 'sex','sexy','cum','cums','jizz','splooge','anal','anus','tit','tits','boob','boobs','clit',
+ 'cock','cocks','dick','dicks','wang','dong','boner','fap','fapping','milf','dilf','bdsm','fetish','kink','kinky','erotic','nsfw','vibrator',
+ 'rape','raped','raping','rapist','pedo','loli','shota','kkk','isis','kys','suicide','selfharm','thot','skank','holocaust','genocide','lynch','r34',
+]);
+const SAFE_PREFIX_EXEMPT=new Set([
+ 'analysis','analytics','analytic','analog','analogue','titan','titanium','title','titled','peacock','cockpit','cocktail',
+ 'scunthorpe','classic','classes','document','documents','grape','drape','scrape','therapist','therapy','tycoon','spicy',
+ 'cumulus','accumulate','cucumber','circuit','circumstance','essex','sussex','middlesex','sextant','sexton',
+ 'lollipop','dickens','dictate','dickinson','hancock','babcock','woodcock',
+]);
+function normalizeNameForFilter(raw){
+ const map={'0':'o','1':'i','3':'e','4':'a','5':'s','7':'t','@':'a','$':'s','!':'i'};
+ let out='';let prev='';let run=0;
+ for(const ch of String(raw||'').toLowerCase()){
+  const mapped=map[ch]||ch;
+  if(/[a-z]/.test(mapped)){
+   if(mapped===prev){run++;if(run>=3)continue;}else{prev=mapped;run=1;}
+   out+=mapped;
+  }
+ }
+ return out;
+}
+function splitUsernameSegments(raw){
+ return String(raw||'')
+  .replace(/([a-z])([A-Z])/g,'$1 $2')
+  .split(/[._\-\s0-9]+/)
+  .map(s=>s.trim().toLowerCase())
+  .filter(Boolean);
+}
+export function isAppropriateUsername(value){
+ const raw=String(value||'').trim();
+ if(!raw)return true;
+ for(const tok of splitUsernameSegments(raw)){
+  if(SAFE_PREFIX_EXEMPT.has(tok))continue;
+  const normTok=normalizeNameForFilter(tok);
+  if(SEVERE_WHOLE_TOKENS.has(tok)||SEVERE_WHOLE_TOKENS.has(normTok))return false;
+ }
+ for(const rawTok of raw.toLowerCase().split(/[._-]+/).filter(Boolean)){
+  if(SAFE_PREFIX_EXEMPT.has(rawTok))continue;
+  const normRawTok=normalizeNameForFilter(rawTok);
+  if(SEVERE_WHOLE_TOKENS.has(rawTok)||SEVERE_WHOLE_TOKENS.has(normRawTok))return false;
+ }
+ const compact=normalizeNameForFilter(raw);
+ for(const bad of SEVERE_SUBSTRINGS){
+  if(raw.toLowerCase().includes(bad)||compact.includes(bad))return false;
+ }
+ return true;
+}
+export function validateRegistrationUsername(value){
+ const parsed=username(value);
+ if(!isAppropriateUsername(parsed.display)){
+  throw new ApiError(400,'That profile name is not allowed. Choose a respectful name without slurs or explicit content.');
+ }
+ return parsed;
+}
 export function password(value){if(typeof value!=='string'||value.length<10||bytes(value).length>512)throw new ApiError(400,'Use a password of at least 10 characters (up to 512 bytes).');return value;}
 export function same(a,b){if(typeof a!=='string'||typeof b!=='string'||a.length!==b.length)return false;let difference=0;for(let i=0;i<a.length;i++)difference|=a.charCodeAt(i)^b.charCodeAt(i);return difference===0;}
 let hashing=false;

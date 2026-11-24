@@ -1899,10 +1899,96 @@ fn save_chats_store(root: &Path, store: &ByokChatsStore) -> anyhow::Result<()> {
     write_json_atomic(&root.join(CHATS_FILE), store)
 }
 
+fn byok_skills_tool_spec() -> Value {
+    json!({
+        "name": "plazcode_skills",
+        "description": "Manage and use saved PlazCode skills. Automatically use any matching skill that helps the current task without waiting for the user to ask for it by name. Call action 'read' with id (and optional resource/offset/limit) to read a skill or its reference files. Call action 'list_staged' to inspect skill folders dropped into chat. When the user drops a skill folder into chat or provides a folder path and asks to add/import its skills into PlazCode, call action 'import_folder' (with staged_id, path, or empty for the most recently dropped folder); imported skills are enabled automatically for future tasks. Use 'save' (with user_approved:true) when the user asks to save a new skill.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["list", "read", "match", "save", "import_folder", "list_staged"]
+                },
+                "id": { "type": "string" },
+                "resource": { "type": "string" },
+                "offset": { "type": "integer", "minimum": 0 },
+                "limit": { "type": "integer", "minimum": 1, "maximum": 24000 },
+                "revision": { "type": "integer" },
+                "query": { "type": "string" },
+                "staged_id": { "type": "string" },
+                "path": { "type": "string" },
+                "title": { "type": "string" },
+                "description": { "type": "string" },
+                "domain": { "type": "string", "enum": ["all", "roblox", "local", "blender", "model", "ui"] },
+                "steps": { "type": "array", "items": { "type": "string" } },
+                "pitfalls": { "type": "array", "items": { "type": "string" } },
+                "verification": { "type": "array", "items": { "type": "string" } },
+                "user_approved": { "type": "boolean" }
+            },
+            "required": ["action"]
+        }
+    })
+}
+
+async fn build_byok_skill_context(state: &AppState, mode: &str, query: &str) -> String {
+    let q = query.trim();
+    if q.is_empty() {
+        return String::new();
+    }
+    let domain = if mode == "local" { "local" } else { "roblox" };
+    let scope = if state.workspace.ready() {
+        format!("project:{}", state.workspace.root_display())
+    } else {
+        String::new()
+    };
+    let req = json!({
+        "action": "match",
+        "query": q,
+        "domain": domain,
+        "scope": scope
+    });
+    let Ok(res) = crate::skills::STORE.lock().await.request(&req) else {
+        return String::new();
+    };
+    let matched = res["skills"].as_array().cloned().unwrap_or_default();
+    let available = res["available"].as_array().cloned().unwrap_or_default();
+    if matched.is_empty() && available.is_empty() {
+        return String::new();
+    }
+    let mut parts = vec![
+        "REUSABLE SKILL REFERENCE — Proactively check and apply any skill below that correlates with or benefits the user's current task, without requiring the user to name that skill. For folder skills with 'files', call plazcode_skills action='read' on needed reference files before applying. Skills marked favorite/always_use apply whenever compatible with the request.".to_string()
+    ];
+    if !matched.is_empty() {
+        let mut snippet = serde_json::to_string(&matched).unwrap_or_default();
+        if snippet.len() > 8000 {
+            let mut end = 8000;
+            while !snippet.is_char_boundary(end) {
+                end -= 1;
+            }
+            snippet.truncate(end);
+        }
+        parts.push(format!("Matched skills: {snippet}"));
+    }
+    if !available.is_empty() {
+        let mut snippet = serde_json::to_string(&available).unwrap_or_default();
+        if snippet.len() > 3000 {
+            let mut end = 3000;
+            while !snippet.is_char_boundary(end) {
+                end -= 1;
+            }
+            snippet.truncate(end);
+        }
+        parts.push(format!("Other saved skills (call plazcode_skills action='read' with id if helpful for this task): {snippet}"));
+    }
+    parts.join("\n")
+}
+
 async fn gather_tools_for_mode(state: &AppState, mode: &str) -> Vec<Value> {
     if mode == "local" {
         let mut tools = workspace::catalog();
         tools.extend(engine_tools::catalog());
+        tools.push(byok_skills_tool_spec());
         return tools;
     }
     // RobloxScript mode: gather Studio MCP tools + Luau tools + local .rbxl/.luau lint tools when workspace ready
@@ -1930,6 +2016,9 @@ async fn gather_tools_for_mode(state: &AppState, mode: &str) -> Vec<Value> {
                 tools.push(t);
             }
         }
+    }
+    if !tools.iter().any(|existing| existing["name"] == "plazcode_skills") {
+        tools.push(byok_skills_tool_spec());
     }
     tools
 }
@@ -2031,6 +2120,58 @@ async fn execute_bridged_tool(
     plan_mode: bool,
     confirmed: bool,
 ) -> (String, String) {
+    if name == "plazcode_skills" {
+        let action = args["action"].as_str().unwrap_or("list");
+        let prefs = state.preferences.snapshot();
+        if prefs.read_only && matches!(action, "save" | "import_folder") {
+            return (
+                "blocked".into(),
+                "E_READ_ONLY: Read-only mode is active; skill modifications are blocked.".into(),
+            );
+        }
+        let mut req = args.clone();
+        if action == "save" {
+            let Some(obj) = req.as_object_mut() else {
+                return ("error".into(), "Invalid skill save arguments.".into());
+            };
+            if obj.get("user_approved").and_then(|v| v.as_bool()) != Some(true) {
+                return (
+                    "blocked".into(),
+                    "Only save a skill directly when the user asks to save or add it (pass user_approved: true).".into(),
+                );
+            }
+            let title = obj.get("title").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            let desc = obj.get("description").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            let dom = obj.get("domain").and_then(|v| v.as_str()).unwrap_or(if mode == "local" { "local" } else { "roblox" }).to_string();
+            let steps = obj.get("steps").cloned().unwrap_or_else(|| json!([]));
+            let pitfalls = obj.get("pitfalls").cloned().unwrap_or_else(|| json!([]));
+            let verification = obj.get("verification").cloned().unwrap_or_else(|| json!([]));
+            let id = obj.get("id").and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).unwrap_or_else(|| new_id("skill"));
+            let revision = obj.get("revision").and_then(|v| v.as_u64()).unwrap_or(0);
+            req = json!({
+                "action": "save",
+                "revision": revision,
+                "skill": {
+                    "id": id,
+                    "title": title,
+                    "description": desc,
+                    "domain": dom,
+                    "scope": "",
+                    "steps": steps,
+                    "pitfalls": pitfalls,
+                    "verification": verification,
+                    "confirmed": false,
+                    "enabled": true,
+                    "revision": revision,
+                    "community": false
+                }
+            });
+        }
+        return match crate::skills::execute_tool_request(&req).await {
+            Ok(v) => ("ok".into(), v.to_string()),
+            Err(err) => ("error".into(), err.to_string()),
+        };
+    }
     let engine = tool_engine_for(mode, name);
     if plan_mode && safety::is_change(engine, name) && !safety::file_preview(engine, name, &args) {
         return (
@@ -3169,6 +3310,17 @@ async fn run_agent_loop(
             sys.push_str(custom.trim());
         }
     }
+    let latest_user_text = history_msgs
+        .iter()
+        .rev()
+        .find(|m| m.role == "user")
+        .map(|m| m.content.as_str())
+        .unwrap_or("");
+    let skill_ctx = build_byok_skill_context(&state, &mode, latest_user_text).await;
+    if !skill_ctx.is_empty() {
+        sys.push_str("\n\n");
+        sys.push_str(&skill_ctx);
+    }
 
     let mut conv: Vec<InternalMsg> = vec![InternalMsg::System(sys)];
     for m in &history_msgs {
@@ -3774,5 +3926,31 @@ mod tests {
         ] {
             assert!(presets.iter().any(|p| p.name == name), "missing preset {name}");
         }
+    }
+
+    #[tokio::test]
+    async fn byok_tools_include_plazcode_skills_and_system_prompt_injects_matched_skills() {
+        let alive = Arc::new(AtomicBool::new(true));
+        let ui = Arc::new(crate::gui::UiShared::new(alive.clone()));
+        let folder = std::env::temp_dir().join(format!("plazcode-byok-skills-test-{}", std::process::id()));
+        let workspace = Arc::new(crate::workspace::Workspace::new(Some(folder.to_str().unwrap())).unwrap());
+        let state = AppState::new(
+            tokio::sync::broadcast::channel(16).0,
+            alive,
+            Arc::new(AtomicBool::new(false)),
+            workspace,
+            Arc::new("test".into()),
+            Arc::new(crate::preferences::PreferencesStore::load()),
+            ui,
+        );
+        let spec = byok_skills_tool_spec();
+        assert_eq!(spec["name"], "plazcode_skills");
+        let local_tools = gather_tools_for_mode(&state, "local").await;
+        let roblox_tools = gather_tools_for_mode(&state, "roblox").await;
+        assert!(local_tools.iter().any(|t| t["name"] == "plazcode_skills"));
+        assert!(roblox_tools.iter().any(|t| t["name"] == "plazcode_skills"));
+        let ctx = build_byok_skill_context(&state, "roblox", "build a responsive shop ui menu").await;
+        assert!(ctx.is_empty() || ctx.contains("REUSABLE SKILL REFERENCE"));
+        let _ = std::fs::remove_dir_all(folder);
     }
 }

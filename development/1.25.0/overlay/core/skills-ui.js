@@ -67,7 +67,7 @@ const PlazCodeSkillsUI=(()=>{
   for(const [key,max] of [['steps',30],['pitfalls',20],['verification',20]]){
    if(!Array.isArray(skill[key])||skill[key].length>max||(key==='steps'&&!skill[key].length)||skill[key].some((s)=>typeof s!=='string'||!s.trim()||bytes(s)>1000))throw Error('Skill '+key+' must contain '+(key==='steps'?'1–':'0–')+max+' entries, each at most 1,000 bytes.');
   }
-  return {...skill,confirmed:false,revision:0,community:false};
+  return {...skill,confirmed:false,enabled:true,revision:0,community:false};
  }
  function textPrefix(text,max){const encoder=new TextEncoder();let result='',bytes=0;for(const char of text){const size=encoder.encode(char).length;if(bytes+size>max)break;result+=char;bytes+=size;}return result;}
  function instructionSteps(text){
@@ -802,9 +802,9 @@ const PlazCodeSkillsUI=(()=>{
    if(isShareLink(text)){status('Fetching the link…');const fetched=await request({action:'fetch_link',url:text});if(!fetched?.ok)throw Error(fetched?.error||'Could not read that link.');source=text;text=fetched.text;}
    else if(text.toLowerCase().startsWith(SHARE_PREFIX))source='a share code';
    const skills=importMany(text,find('import-title').value.trim(),source);let last=null;
-   for(const item of skills){const res=await request({action:'save',skill:{...item,id:'skill-'+crypto.randomUUID()},revision:0});last=res.skill;}
+   for(const item of skills){const res=await request({action:'save',skill:{...item,enabled:true,id:'skill-'+crypto.randomUUID()},revision:0});last=res.skill;}
    await refresh(true);if(last)await loadWorkbenchFor(last);find('import-text').value='';find('import-file').value='';find('import-panel').open=false;
-   status(skills.length===1?'Skill imported as a local candidate.':'Imported '+skills.length+' skills.');
+   status(skills.length===1?'Skill imported and enabled for automatic use.':'Imported '+skills.length+' skills (enabled for automatic use).');
   });
   const shareChosen=()=>[...host.querySelectorAll('[data-sk=share-list] input:checked')].map(input=>records.find(s=>s.id===input.value)).filter((s)=>Boolean(s));
   find('share-panel').addEventListener('toggle',()=>{if(!find('share-panel').open)return;const box=find('share-list');box.replaceChildren();const shareable=records.filter(s=>!starter(s)&&!hiddenBuiltin(s));if(!shareable.length){const p=document.createElement('p');p.textContent='Save a skill first, then share it here.';box.appendChild(p);}for(const skill of shareable){const label=document.createElement('label'),input=document.createElement('input'),span=document.createElement('span');input.type='checkbox';input.value=skill.id;input.checked=current?.id===skill.id;span.textContent=displayName(skill);label.append(input,span);box.appendChild(label);}});
