@@ -160,7 +160,7 @@ impl UiShared {
             quit_requested: AtomicBool::new(false),
             tools: Mutex::new(Vec::new()),
             servers: Mutex::new(Vec::new()),
-            desktop_events: tokio::sync::broadcast::channel(128).0,
+            desktop_events: tokio::sync::broadcast::channel(256).0,
             browser_agent: Mutex::new(None),
             desktop_action_results: Mutex::new(std::collections::HashMap::new()),
             studio_dock: crate::studio_dock::DockShared::new(),

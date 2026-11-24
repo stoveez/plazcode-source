@@ -12,20 +12,29 @@
   ;
   const EXT_RE = /(?:chrome|moz)-extension:\/\//;
   const pending = [];
+  const MAX_FAILURES = 20;
+  const failures = [];
+  let failureCount = 0;
+  function trackFailure(where, err) {
+    failureCount++;
+    const reason = String((err)?.message || err || "unknown error").slice(0, 160);
+    failures.push({ where, reason });
+    if (failures.length > MAX_FAILURES) failures.shift();
+  }
   let ready = false, windowStart = Date.now(), inWindow = 0;
-  const clean = (url) => { try { const u = new URL(String(url), location.href); return u.origin + u.pathname.slice(0, 120); } catch { return String(url || "").split(/[?#]/)[0].slice(0, 160); } };
+  const clean = (url) => { try { const u = new URL(String(url), location.href); return u.origin + u.pathname.slice(0, 120); } catch (err) { trackFailure("clean", err); return String(url || "").split(/[?#]/)[0].slice(0, 160); } };
   function emit(entry) {
     const now = Date.now();
     if (now - windowStart > 10000) { windowStart = now; inWindow = 0; }
     if (++inWindow > 40) return; // a looping site error must not flood anything
     let detail;
-    try { detail = JSON.stringify(entry); } catch { return; }
+    try { detail = JSON.stringify(entry); } catch (err) { trackFailure("emit.stringify", err); return; }
     if (!ready) { pending.push(detail); if (pending.length > 60) pending.shift(); return; }
-    try { document.dispatchEvent(new CustomEvent("plazcode:site-log", { detail })); } catch {}
+    try { document.dispatchEvent(new CustomEvent("plazcode:site-log", { detail })); } catch (err) { trackFailure("emit.dispatch", err); }
   }
   document.addEventListener("plazcode:site-log-ready", () => {
     ready = true;
-    for (const detail of pending.splice(0)) { try { document.dispatchEvent(new CustomEvent("plazcode:site-log", { detail })); } catch {} }
+    for (const detail of pending.splice(0)) { try { document.dispatchEvent(new CustomEvent("plazcode:site-log", { detail })); } catch (err) { trackFailure("flush.dispatch", err); } }
   });
   window.addEventListener("error", (event) => {
     try {
@@ -41,7 +50,7 @@
       if (/ResizeObserver loop/i.test(String(event.message || ""))) return; // benign browser notice
       emit({ level: "error", kind: "error", text: String(event.message || "Script error") + (stack ? "\n" + stack.split("\n").slice(1, 4).join("\n") : ""),
         file: file ? clean(file) + ":" + (event.lineno || 0) + ":" + (event.colno || 0) : "" });
-    } catch {}
+    } catch (err) { trackFailure("window.error", err); }
   }, true);
   window.addEventListener("unhandledrejection", (event) => {
     try {
@@ -50,7 +59,7 @@
       if (EXT_RE.test(stack)) return;
       const text = reason && (reason.message || (typeof reason === "string" ? reason : "")) || "Unhandled promise rejection";
       emit({ level: "warn", kind: "rejection", text: String(text).slice(0, 400) });
-    } catch {}
+    } catch (err) { trackFailure("window.unhandledrejection", err); }
   });
   // 1.24.30 (owner): the AI site's own console warnings and errors (not its routine log lines) go to the PlazCode
   // logs too. The site's console prints exactly as before (original first); copying never throws, only short
@@ -75,13 +84,13 @@
         try {
           const text = args.slice(0, 6).map(describe).join(" ").replace(/%[csdifoO]/g, "").trim().slice(0, 400);
           if (text && !/ResizeObserver loop/i.test(text)) emit({ level: method === "error" ? "error" : "warn", kind: "console", text });
-        } catch {}
+        } catch (err) { trackFailure("console." + method, err); }
         return result;
       };
       Object.defineProperty(copied, "__plazcodeCopied", { value: true });
-      try { copied.toString = () => original.toString(); } catch {}
+      try { copied.toString = () => original.toString(); } catch (err) { trackFailure("console.toString", err); }
       console[method] = copied;
-    } catch {}
+    } catch (err) { trackFailure("console.hook." + method, err); }
   }
   // Failed API calls (rate limits, signed-out sessions, server errors) from the
   // browser's own resource timing; nothing is intercepted.
@@ -94,5 +103,11 @@
       }
     });
     observer.observe({ type: "resource", buffered: true });
-  } catch {}
+  } catch (err) { trackFailure("performanceObserver", err); }
+  try {
+    Object.defineProperty(window, "__plazcodeMainCaptureDiagnostics", {
+      value: () => ({ count: failureCount, recent: failures.slice() }),
+      configurable: true,
+    });
+  } catch (err) { trackFailure("exposeDiagnostics", err); }
 })();

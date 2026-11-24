@@ -19,6 +19,7 @@ const PlazCodePrefSync = (() => {
     "rsInputLimitEnabled", "rsInputCharLimit", "rsOutputLimitEnabled", "rsOutputCharLimit", "rsRunLimitsEnabled", "rsToolBudget", "rsTaskMinutes",
     "rsVisualCheck", "rsContinuationOffer", "rsCommandCooldown", "rsFullStartup", "rsExtraThinking", "rsShowApproach", "rsPlanMode", "rsThinkingLevel",
     "rsForgeMode", "rsAutoFix", "rsBgMode", "rsTabKeepAwake", "rsCustomPrompt", "rsAppearance",
+    "rsSidebarCollapsed", "rsExplorerAutoSync", "rsSkillAutoLearn", "rsSharedLearning", "rsAutoUpdate", "rsLuauCheck", "rsLuauMode",
     "rsAutoDebug", "rsAutoFixStopPlay", "rsMultiAgent", "rsPlaytestCheck", "rsUiCheck",
     "rsCompactOutputs", "rsParallelReads", "rsTaskLedger",
   ];
@@ -205,9 +206,23 @@ const PlazCodePrefSync = (() => {
         if (pending.size) { const wait = ok ? 50 : retry; if (!ok) retry = Math.min(10000, retry * 2); schedule(wait); }
       }
     }
+    async function parseJson(response) {
+      if (!response) return null;
+      if (typeof response.text === "function") {
+        const raw = await response.text();
+        if (!raw.trim()) return {};
+        try { return JSON.parse(raw); } catch { return null; }
+      }
+      if (typeof response.json === "function") {
+        try { return await response.json(); } catch { return null; }
+      }
+      return null;
+    }
     async function read() {
       const response = await d.fetch(d.url, { method: "GET", signal: timeout() });
-      return response && response.ok ? await response.json() : null;
+      if (!response || !response.ok) return null;
+      const body = await parseJson(response);
+      return body && typeof body === "object" ? (body) : null;
     }
     // Regular read (every health check). Changes waiting to be sent go first.
     async function pull() {
@@ -225,8 +240,7 @@ const PlazCodePrefSync = (() => {
         if (pending.size && !(await push())) return false;
         const since = edits, remote = await read();
         if (!remote) return false;
-        if (remote._plazcodeProfile) return await apply(remote, since);
-        if (remote._plazcodePersisted === true || (typeof remote._plazcodeRev === "number" && remote._plazcodeRev > 0)) {
+        if (remote._plazcodeProfile || remote._plazcodePersisted === true || (typeof remote._plazcodeRev === "number" && remote._plazcodeRev > 0)) {
           if (typeof remote.rsCustomPrompt !== "string") {
             const existing = await d.storage.get("rsCustomPrompt");
             if (typeof existing.rsCustomPrompt === "string") {
@@ -236,8 +250,9 @@ const PlazCodePrefSync = (() => {
                 _plazcodeBaseRev: typeof remote._plazcodeRev === "number" ? remote._plazcodeRev : remoteRev,
                 _plazcodeKeyTimestamps: { rsCustomPrompt: nextTs() },
               }), signal: timeout() });
-              if (!seeded.ok) return false;
-              const saved = await seeded.json();
+              if (!seeded || !seeded.ok) return false;
+              const saved = await parseJson(seeded);
+              if (!saved || typeof saved !== "object") return false;
               return await apply({ _plazcodeSaved: remote._plazcodeSaved, ...(saved.preferences || saved) }, since);
             }
           }

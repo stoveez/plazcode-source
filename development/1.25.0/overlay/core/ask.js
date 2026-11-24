@@ -25,105 +25,29 @@
   // The "Shared with PlazCode" mark in the shared tab, in the person's language.
   const words = { working: t("PlazCode is working here"), paused: t("Paused, you're in control"), resume: t("Resume"), stop: t("Stop"), shared: t("Shared with PlazCode"), stopSharing: t("Stop sharing") };
   document.title = t(document.title);
-  const port = chrome.runtime.connect({ name: "plazcode-ask" });
-  const add = (cls, text) => { const p = document.createElement("p"); p.className = "msg " + cls; p.textContent = text; log.append(p); log.scrollTop = log.scrollHeight; return p; };
-  // Owner (2026-11-18): "there should be some kind of indicator that the AI is thinking/replying whenever you say something to it", and
-  // replies came late. A "thinking" bubble shows from sending until the first words arrive; the reply then appears as the AI writes it
-  // (a draft bubble) and is replaced by the finished answer.
-  let typing = null, draft = null;
-  const showTyping = (on) => {
-    if (on && !typing && !draft) { typing = document.createElement("p"); typing.className = "msg ai typing"; typing.setAttribute("role", "status"); typing.setAttribute("aria-label", t("PlazCode is thinking…")); typing.innerHTML = "<span></span><span></span><span></span>"; log.append(typing); log.scrollTop = log.scrollHeight; }
-    else if (!on && typing) { typing.remove(); typing = null; }
-  };
-  const showDraft = (text) => {
-    if (!text) return; showTyping(false);
-    if (!draft) { draft = add("ai", text); draft.classList.add("draft"); draft.setAttribute("aria-busy", "true"); }
-    else { const end = log.scrollHeight - log.scrollTop - log.clientHeight < 40; draft.textContent = text; if (end) log.scrollTop = log.scrollHeight; }
-  };
-  const endDraft = () => { showTyping(false); if (draft) { draft.remove(); draft = null; } };
-  const setBusy = (value) => { busy = value; go.disabled = value; stop.hidden = !value; showTyping(value); if (!value) { step.textContent = ""; workTab = null; endDraft(); } if (lastChats) drawChats(lastChats); };
-  // History (owner, 2026-11-14): the three-line button opens the list of every Ask PlazCode chat; picking one shows it again and the next
-  // question goes into that same AI chat. While PlazCode is answering, the list can be read but the chat cannot be switched.
-  const intro = () => { const p = document.createElement("p"); p.className = "note"; p.textContent = t("Ask anything about the page you're on. PlazCode sees a picture of it with each question."); log.append(p); };
-  function showHistory(on) {
-    historyOpen = on; document.body.classList.toggle("history", on); history.hidden = !on; menu.setAttribute("aria-expanded", on ? "true" : "false");
-    if (on) port.postMessage({ chats: "list" }); else q.focus();
-  }
-  function when(ms) {
-    try { return new Date(ms).toLocaleString(L ? L.getLanguage() : undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); } catch { return ""; }
-  }
-  function drawChats(m) {
-    lastChats = m;
-    const items = Array.isArray(m.items) ? m.items : [];
-    chats.textContent = ""; noChats.hidden = items.length > 0; newChat.disabled = busy;
-    for (const c of items) {
-      const current = c.id === m.current;
-      const li = document.createElement("li"); li.className = "chat"; if (current) li.setAttribute("aria-current", "true");
-      const open = document.createElement("button"); open.type = "button"; open.className = "open"; open.setAttribute("data-i18n-user-content", "");
-      const name = document.createElement("b"); name.textContent = c.title || "…";
-      const date = document.createElement("small"); date.textContent = when(c.updated);
-      open.append(name, date); open.disabled = busy && !current;
-      open.addEventListener("click", () => { if (!current) port.postMessage({ openChat: c.id }); showHistory(false); });
-      const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×";
-      del.setAttribute("aria-label", t("Delete this chat")); del.title = t("Delete this chat"); del.disabled = busy && current;
-      del.addEventListener("click", () => port.postMessage({ deleteChat: c.id }));
-      li.append(open, del); chats.append(li);
+  let port = null, portTimer = null, viewReconnectTimer = null;
+  function post(msg) {
+    try {
+      if (!port) connectPort();
+      port?.postMessage(msg);
+    } catch (err) {
+      console.warn("[plazcode-ask] postMessage failed; scheduling reconnect:", err);
+      port = null;
+      schedulePortReconnect();
     }
   }
-  // The tab the person is looking at. From a side panel or a docked window the "current window" can be the panel's own window,
-  // whose only tab is this page (shown as "This tab can't be shared" for every site, owner report 2026-11-14), so a page that is
-  // not a website falls back to the active tab of the last focused browser window, then of any normal browser window.
-  const isSite = (tab) => !!tab && /^(?:https?|file):/i.test(String(tab.url || ""));
-  async function activeIn(query) { try { const [tab] = await chrome.tabs.query(query); return tab || null; } catch { return null; } }
-  async function currentTab() {
-    const first = await activeIn(fixedWindow ? { active: true, windowId: fixedWindow } : { active: true, currentWindow: true });
-    if (isSite(first) || fixedWindow) return first;
-    const last = await activeIn({ active: true, lastFocusedWindow: true });
-    if (isSite(last)) return last;
-    try {
-      const wins = await chrome.windows.getAll({ windowTypes: ["normal"] });
-      wins.sort((a, b) => (b.focused ? 1 : 0) - (a.focused ? 1 : 0));
-      for (const win of wins) { const tab = await activeIn({ active: true, windowId: win.id }); if (isSite(tab)) return tab; }
-    } catch {}
-    return first || last || null;
+  function schedulePortReconnect() {
+    if (portTimer || !(typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id)) return;
+    portTimer = setTimeout(() => {
+      portTimer = null;
+      if (!port && chrome.runtime && chrome.runtime.id) {
+        connectPort();
+        follow();
+        if (historyOpen) post({ chats: "list" });
+      }
+    }, 350);
   }
-  // Where this panel is on screen, so the app leaves it out of the AI's pictures of the whole screen (owner, 2026-11-19; ask-panel.js).
-  async function panelPlace() {
-    if (typeof PlazCodeAskPanel === "undefined") return null;
-    try {
-      const win = await chrome.windows.getCurrent();
-      return PlazCodeAskPanel.place({ win, innerWidth: window.innerWidth, innerHeight: window.innerHeight, screenX: window.screenX, screenWidth: window.screen.width, title: document.title });
-    } catch { return null; }
-  }
-  // The panel can be resized or the browser moved while the screen is shared: tell the app the new place (checked every 3 s).
-  let panelSent = "";
-  setInterval(async () => {
-    if (shared !== -1) { panelSent = ""; return; }
-    const place = await panelPlace(), text = JSON.stringify(place);
-    if (text !== panelSent) { panelSent = text; port.postMessage({ panel: place }); }
-  }, 3000);
-  async function follow() {
-    // The whole screen (tab id -1) is the default. Only when the PlazCode app cannot show it does PlazCode look at the tab the person is
-    // looking at instead (owner, 2026-11-14: no separate "tab only" choice).
-    if (sharing.checked && wholeScreen) { port.postMessage({ sharing: true, shareTabId: -1, words, panel: await panelPlace() }); return; }
-    const tab = sharing.checked ? await currentTab() : null;
-    port.postMessage({ sharing: !!tab, shareTabId: tab ? tab.id : null, words });
-  }
-  function watch(tabId) {
-    if (viewPort) { try { viewPort.disconnect(); } catch {} viewPort = null; }
-    (peek.getContext("2d")).clearRect(0, 0, peek.width, peek.height);
-    viewTab = Number.isInteger(tabId) ? tabId : null;
-    if (!Number.isInteger(tabId)) return;
-    viewPort = chrome.runtime.connect({ name: "plazcode-control-view" });
-    viewPort.postMessage({ watch: tabId });
-    viewPort.onMessage.addListener((m) => {
-      if (!m || m.type !== "rs-control-frame" || !m.data || m.tabId !== viewTab) return;
-      if (/^#[0-9a-f]{6}$/i.test(m.accent || "")) document.documentElement.style.setProperty("--a", m.accent);
-      const bin = atob(m.data), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      createImageBitmap(new Blob([bytes], { type: "image/jpeg" })).then((b) => { const g = peek.getContext("2d"), s = Math.max(peek.width / b.width, peek.height / b.height); g.drawImage(b, (peek.width - b.width * s) / 2, 0, b.width * s, b.height * s); b.close(); }, () => {});
-    });
-  }
-  port.onMessage.addListener((m) => {
+  function onPortMessage(m) {
     if (!m) return;
     if (m.type === "ask-busy") { if (m.enabled === false) { add("error", t("Ask PlazCode is not switched on in this version.")); go.disabled = true; return; } setBusy(!!m.busy); }
     else if (m.type === "ask-history") {
@@ -163,23 +87,146 @@
       const row = document.createElement("div"); row.className = "row";
       const yes = document.createElement("button"); yes.className = "main"; yes.textContent = t("Allow");
       const no = document.createElement("button"); no.textContent = t("Deny");
-      const answer = (allowed) => { port.postMessage({ approve: m.id, allowed }); yes.disabled = no.disabled = true; kicker.textContent = t(allowed ? "Allowed" : "Denied"); };
+      const answer = (allowed) => { post({ approve: m.id, allowed }); yes.disabled = no.disabled = true; kicker.textContent = t(allowed ? "Allowed" : "Denied"); };
       yes.addEventListener("click", () => answer(true)); no.addEventListener("click", () => answer(false));
       row.append(yes, no); card.append(kicker, title, detail, row); log.append(card); log.scrollTop = log.scrollHeight; yes.focus();
     }
-  });
+  }
+  function connectPort() {
+    const p = chrome.runtime.connect({ name: "plazcode-ask" });
+    port = p;
+    p.onMessage.addListener(onPortMessage);
+    p.onDisconnect?.addListener?.(() => {
+      if (port === p) {
+        port = null;
+        schedulePortReconnect();
+      }
+    });
+  }
+  connectPort();
+  const add = (cls, text) => { const p = document.createElement("p"); p.className = "msg " + cls; p.textContent = text; log.append(p); log.scrollTop = log.scrollHeight; return p; };
+  // Owner (2026-11-18): "there should be some kind of indicator that the AI is thinking/replying whenever you say something to it", and
+  // replies came late. A "thinking" bubble shows from sending until the first words arrive; the reply then appears as the AI writes it
+  // (a draft bubble) and is replaced by the finished answer.
+  let typing = null, draft = null;
+  const showTyping = (on) => {
+    if (on && !typing && !draft) { typing = document.createElement("p"); typing.className = "msg ai typing"; typing.setAttribute("role", "status"); typing.setAttribute("aria-label", t("PlazCode is thinking…")); typing.innerHTML = "<span></span><span></span><span></span>"; log.append(typing); log.scrollTop = log.scrollHeight; }
+    else if (!on && typing) { typing.remove(); typing = null; }
+  };
+  const showDraft = (text) => {
+    if (!text) return; showTyping(false);
+    if (!draft) { draft = add("ai", text); draft.classList.add("draft"); draft.setAttribute("aria-busy", "true"); }
+    else { const end = log.scrollHeight - log.scrollTop - log.clientHeight < 40; draft.textContent = text; if (end) log.scrollTop = log.scrollHeight; }
+  };
+  const endDraft = () => { showTyping(false); if (draft) { draft.remove(); draft = null; } };
+  const setBusy = (value) => { busy = value; go.disabled = value; stop.hidden = !value; showTyping(value); if (!value) { step.textContent = ""; workTab = null; endDraft(); } if (lastChats) drawChats(lastChats); };
+  // History (owner, 2026-11-14): the three-line button opens the list of every Ask PlazCode chat; picking one shows it again and the next
+  // question goes into that same AI chat. While PlazCode is answering, the list can be read but the chat cannot be switched.
+  const intro = () => { const p = document.createElement("p"); p.className = "note"; p.textContent = t("Ask anything about the page you're on. PlazCode sees a picture of it with each question."); log.append(p); };
+  function showHistory(on) {
+    historyOpen = on; document.body.classList.toggle("history", on); history.hidden = !on; menu.setAttribute("aria-expanded", on ? "true" : "false");
+    if (on) post({ chats: "list" }); else q.focus();
+  }
+  function when(ms) {
+    try { return new Date(ms).toLocaleString(L ? L.getLanguage() : undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); } catch { return ""; }
+  }
+  function drawChats(m) {
+    lastChats = m;
+    const items = Array.isArray(m.items) ? m.items : [];
+    chats.textContent = ""; noChats.hidden = items.length > 0; newChat.disabled = busy;
+    for (const c of items) {
+      const current = c.id === m.current;
+      const li = document.createElement("li"); li.className = "chat"; if (current) li.setAttribute("aria-current", "true");
+      const open = document.createElement("button"); open.type = "button"; open.className = "open"; open.setAttribute("data-i18n-user-content", "");
+      const name = document.createElement("b"); name.textContent = c.title || "…";
+      const date = document.createElement("small"); date.textContent = when(c.updated);
+      open.append(name, date); open.disabled = busy && !current;
+      open.addEventListener("click", () => { if (!current) post({ openChat: c.id }); showHistory(false); });
+      const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×";
+      del.setAttribute("aria-label", t("Delete this chat")); del.title = t("Delete this chat"); del.disabled = busy && current;
+      del.addEventListener("click", () => post({ deleteChat: c.id }));
+      li.append(open, del); chats.append(li);
+    }
+  }
+  // The tab the person is looking at. From a side panel or a docked window the "current window" can be the panel's own window,
+  // whose only tab is this page (shown as "This tab can't be shared" for every site, owner report 2026-11-14), so a page that is
+  // not a website falls back to the active tab of the last focused browser window, then of any normal browser window.
+  const isSite = (tab) => !!tab && /^(?:https?|file):/i.test(String(tab.url || ""));
+  async function activeIn(query) { try { const [tab] = await chrome.tabs.query(query); return tab || null; } catch { return null; } }
+  async function currentTab() {
+    const first = await activeIn(fixedWindow ? { active: true, windowId: fixedWindow } : { active: true, currentWindow: true });
+    if (isSite(first) || fixedWindow) return first;
+    const last = await activeIn({ active: true, lastFocusedWindow: true });
+    if (isSite(last)) return last;
+    try {
+      const wins = await chrome.windows.getAll({ windowTypes: ["normal"] });
+      wins.sort((a, b) => (b.focused ? 1 : 0) - (a.focused ? 1 : 0));
+      for (const win of wins) { const tab = await activeIn({ active: true, windowId: win.id }); if (isSite(tab)) return tab; }
+    } catch {}
+    return first || last || null;
+  }
+  // Where this panel is on screen, so the app leaves it out of the AI's pictures of the whole screen (owner, 2026-11-19; ask-panel.js).
+  async function panelPlace() {
+    if (typeof PlazCodeAskPanel === "undefined") return null;
+    try {
+      const win = await chrome.windows.getCurrent();
+      return PlazCodeAskPanel.place({ win, innerWidth: window.innerWidth, innerHeight: window.innerHeight, screenX: window.screenX, screenWidth: window.screen.width, title: document.title });
+    } catch { return null; }
+  }
+  // The panel can be resized or the browser moved while the screen is shared: tell the app the new place (checked every 3 s).
+  let panelSent = "";
+  setInterval(async () => {
+    if (shared !== -1) { panelSent = ""; return; }
+    const place = await panelPlace(), text = JSON.stringify(place);
+    if (text !== panelSent) { panelSent = text; post({ panel: place }); }
+  }, 3000);
+  async function follow() {
+    // The whole screen (tab id -1) is the default. Only when the PlazCode app cannot show it does PlazCode look at the tab the person is
+    // looking at instead (owner, 2026-11-14: no separate "tab only" choice).
+    if (sharing.checked && wholeScreen) { post({ sharing: true, shareTabId: -1, words, panel: await panelPlace() }); return; }
+    const tab = sharing.checked ? await currentTab() : null;
+    post({ sharing: !!tab, shareTabId: tab ? tab.id : null, words });
+  }
+  function watch(tabId) {
+    if (viewReconnectTimer) { clearTimeout(viewReconnectTimer); viewReconnectTimer = null; }
+    if (viewPort) { const old = viewPort; viewPort = null; try { old.disconnect(); } catch {} }
+    (peek.getContext("2d")).clearRect(0, 0, peek.width, peek.height);
+    viewTab = Number.isInteger(tabId) ? tabId : null;
+    if (!Number.isInteger(tabId)) return;
+    const vp = chrome.runtime.connect({ name: "plazcode-control-view" });
+    viewPort = vp;
+    vp.onMessage.addListener((m) => {
+      if (!m || m.type !== "rs-control-frame" || !m.data || m.tabId !== viewTab) return;
+      if (/^#[0-9a-f]{6}$/i.test(m.accent || "")) document.documentElement.style.setProperty("--a", m.accent);
+      let bin;
+      try { bin = atob(m.data); } catch (err) { console.warn("[plazcode-ask] invalid control frame base64:", err); return; }
+      const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      createImageBitmap(new Blob([bytes], { type: "image/jpeg" })).then((b) => { const g = peek.getContext("2d"), s = Math.max(peek.width / b.width, peek.height / b.height); g.drawImage(b, (peek.width - b.width * s) / 2, 0, b.width * s, b.height * s); b.close(); }, () => {});
+    });
+    vp.onDisconnect?.addListener?.(() => {
+      if (viewPort !== vp) return;
+      viewPort = null;
+      if (viewTab === null || !(chrome.runtime && chrome.runtime.id)) return;
+      if (viewReconnectTimer) clearTimeout(viewReconnectTimer);
+      viewReconnectTimer = setTimeout(() => {
+        viewReconnectTimer = null;
+        if (!viewPort && viewTab !== null && chrome.runtime && chrome.runtime.id) watch(viewTab);
+      }, 400);
+    });
+    try { vp.postMessage({ watch: tabId }); } catch (err) { console.warn("[plazcode-ask] watch postMessage failed:", err); }
+  }
   function send() {
     const text = q.value.trim();
     if (!text || busy) return;
     add("me", text); q.value = ""; setBusy(true); step.textContent = t("Sending…");
-    port.postMessage({ say: text, share: shared !== null, shareTabId: shared, control: control.checked });
+    post({ say: text, share: shared !== null, shareTabId: shared, control: control.checked });
   }
   menu.addEventListener("click", () => showHistory(!historyOpen));
-  newChat.addEventListener("click", () => { if (busy) return; port.postMessage({ newChat: true }); showHistory(false); });
+  newChat.addEventListener("click", () => { if (busy) return; post({ newChat: true }); showHistory(false); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && historyOpen) showHistory(false); });
   go.addEventListener("click", send);
   q.addEventListener("keydown", (event) => { if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); send(); } });
-  stop.addEventListener("click", () => { port.postMessage({ stop: true }); step.textContent = t("Stopping…"); });
+  stop.addEventListener("click", () => { post({ stop: true }); step.textContent = t("Stopping…"); });
   let controlTouched = false;
   control.addEventListener("change", () => { controlTouched = true; });
   sharing.addEventListener("change", () => { wholeScreen = true; follow(); });

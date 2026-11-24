@@ -149,8 +149,11 @@ const PlazCodeActivity = (() => {
         if(value.objective&&value.plan?.auto==='request'&&!value.plan.listed&&items?.length===1&&items[0].label===value.objective){const goal=conciseGoal(value.objective);if(goal){value.objective=goal;items[0]={...items[0],label:goal};}}
         tasks.set(chat,{label:value.label.slice(0,300),key:value.key,objective:typeof value.objective==='string'?value.objective.slice(0,180):'',plan:items?{items,total:items.length,done:items.filter((item:PlanItem)=>item.status==='completed').length,...(value.plan.auto==='request'||value.plan.auto==='reply'?{auto:value.plan.auto}:{}),...(value.plan.listed===true?{listed:true}:{})}:null});
       }}
-    } catch {}
-    function persistTasks(){try{const saved=[...tasks].map(([chat,value])=>[chat,{...value,key:String(value.key).slice(0,2000)}]);let raw=JSON.stringify(saved);while(raw.length>512000&&saved.length>1){saved.shift();raw=JSON.stringify(saved);}if(raw.length<=512000)(storage as StorageLike|null)?.setItem(taskStorageKey,raw);}catch{}}
+    } catch (err) {
+      console.warn('[plazcode-activity] failed to restore saved tasks:', err);
+      tasks.clear();
+    }
+    function persistTasks(){try{const saved=[...tasks].map(([chat,value])=>[chat,{...value,key:String(value.key).slice(0,2000)}]);let raw=JSON.stringify(saved);while(raw.length>512000&&saved.length>1){saved.shift();raw=JSON.stringify(saved);}if(raw.length<=512000)(storage as StorageLike|null)?.setItem(taskStorageKey,raw);}catch(err){console.warn('[plazcode-activity] failed to persist tasks:',err);}}
 
     function sync(busy: boolean, chat: string, now = Date.now(), options: { collapse?: boolean } = {}) {
       if (current && current.chat !== chat) finish(now, {collapse: false});
@@ -268,7 +271,7 @@ const PlazCodeActivity = (() => {
         captureGoal(group, plain, key);
         const steps = [...plain.matchAll(/^\s*[-*+]\s+\[([ xX])\]\s+([^\n]+)$/gm)].slice(0, 64);
         if (/^\s*(?:#{1,6}\s*)?(?:\*\*)?(?:task\s+)?(?:plan|checklist)(?:\*\*)?\s*:?\s*$/im.test(plain) && steps.length >= 2) {
-          try { if(steps.some(step=>commandLabel(step[2])))throw Error('Command names are not goals');const items:PlanItem[]=steps.map(step=>({label:step[2].slice(0,180),status:step[1].toLowerCase()==='x'?'completed':'pending'}));if(group.plan&&group.plan.auto)setAutoPlan(group,items,'reply');else keepPlan(group,items); } catch {}
+          try { if(steps.some(step=>commandLabel(step[2])))throw Error('Command names are not goals');const items:PlanItem[]=steps.map(step=>({label:step[2].slice(0,180),status:step[1].toLowerCase()==='x'?'completed':'pending'}));if(group.plan&&group.plan.auto)setAutoPlan(group,items,'reply');else keepPlan(group,items); } catch (err) { console.warn('[plazcode-activity] checklist reply parse failed:', err); }
         } else if (!group.plan || group.plan.auto === 'request') {
           const labels = replySteps(plain).filter(label => !commandLabel(label));
           if (labels.length >= 2) setAutoPlan(group, labels.map((label, index) => ({ label, status: index === 0 ? 'in_progress' : 'pending' })), 'reply');
@@ -335,7 +338,7 @@ const PlazCodeActivity = (() => {
         }
         if (view.item !== item || !view.node.isConnected || !view.binding) {
           view.binding?.dispose?.();view.item=item;
-          try { view.binding=mount(item,view.node); } catch { view.binding=null; }
+          try { view.binding=mount(item,view.node); } catch (err) { console.warn('[plazcode-activity] mount failed:', err); view.binding=null; }
         }
         view.node.hidden = !view.binding;
         view.node.dataset.done=group.ended?'1':'0';view.title.textContent=label(group);const fraction = progress(group);
@@ -351,7 +354,7 @@ const PlazCodeActivity = (() => {
           for (const event of group.expanded ? group.events : []) { const row=document.createElement('div');const name=document.createElement('strong');name.textContent=event.name;const detail=document.createElement('span');detail.textContent=event.detail;row.append(name,detail);view.body.appendChild(row); }
         }
         view.body.hidden = !group.expanded || !view.body.childElementCount;
-        try { view.binding?.place?.(); } catch { view.node.hidden=true; }
+        try { view.binding?.place?.(); } catch (err) { console.warn('[plazcode-activity] place failed:', err); view.node.hidden=true; }
         if (view.binding && view.node.isConnected && !view.node.hidden) mounted.add(group.id);
       }
       return mounted;

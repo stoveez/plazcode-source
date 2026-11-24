@@ -1413,16 +1413,21 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
                         Err(error) => {
                             misses = misses.saturating_add(1);
                             let keep = autoconnect_state.studio_probe_result(&Err(anyhow::anyhow!("{error:#}")));
-                            if !keep {
-                                autoconnect_state.set_editor_connection(false, None);
-                                autoconnect_state.ui.set_roblox_tools(&[], false);
-                            }
                             let message = format!("{error:#}");
                             if message != previous_error {
                                 tracing::warn!("Studio auto-connect: {message}");
                                 previous_error = message;
                             }
                             if helper_is_dead(&error) { mcp.reset().await; dead_streak = dead_streak.saturating_add(1); }
+                            if !keep {
+                                autoconnect_state.set_editor_connection(false, None);
+                                autoconnect_state.ui.set_roblox_tools(&[], false);
+                                // Clear stale studio_id once Studio disconnects/drops even when roblox_proc is false,
+                                // without resetting on every benign poll when Studio never existed (studio_id is None).
+                                if mcp.studio_id.is_some() {
+                                    mcp.reset().await;
+                                }
+                            }
                             if !autoconnect_state.roblox_editor_connected.load(Ordering::Relaxed)
                                 && autoconnect_state.roblox_proc.load(Ordering::Relaxed)
                                 && should_clear_competitors(misses) {
@@ -1501,7 +1506,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/studio-dock/position", post(studio_dock::position_handler))
         .route("/api/checkpoints", post(checkpoint_handler))
         .route("/api/toolkit", post(toolkit::post).layer(axum::extract::DefaultBodyLimit::max(64000)))
-        .route("/api/blender", post(blender::post).layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
+        .route("/api/blender", post(blender_handler).layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
         .route("/api/skills", post(skills::post).layer(axum::extract::DefaultBodyLimit::max(48 * 1024 * 1024))) // 2026-11-20: whole skill folders and .zip files (skill_folder.rs caps the text at 24 MB)
         .route("/api/workshop/catalog", get(workshop::catalog_handler))
         .route("/api/workshop/install", post(workshop::install_handler).layer(axum::extract::DefaultBodyLimit::max(36 * 1024 * 1024)))
@@ -1556,8 +1561,8 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/connections/setup", post(connections_setup_handler))
         .route("/api/desktop/control", post(desktop_control::post))
         .route("/api/desktop/frame", get(desktop_control::frame))
-        .route("/api/blockbench", post(blockbench::post).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024)))
-        .route("/api/figma", post(figma::post).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024)))
+        .route("/api/blockbench", post(blockbench_handler).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024)))
+        .route("/api/figma", post(figma_handler).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024)))
         .route("/api/byok/platforms", get(byok_chat::platforms_get).post(byok_chat::platforms_post).put(byok_chat::platforms_put).delete(byok_chat::platforms_delete))
         .route("/api/byok/platforms/:id", put(byok_chat::platforms_put_by_id).delete(byok_chat::platforms_delete_by_id))
         .route("/api/byok/models/discover", post(byok_chat::models_discover))
@@ -1589,7 +1594,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
     info!("Boot completed in {}ms", start.elapsed().as_millis());
     let _ = ready.send(());
     // The first command after the app starts should not wait for the full program check: run it now, behind the scenes.
-    tokio::spawn(async { let _ = integrity::check_work().await; });
+    tokio::spawn(async { if let Err(error) = integrity::check_work().await { tracing::warn!("Startup integrity check failed: {error:#}"); } });
     axum::serve(listener, app).tcp_nodelay(true).await?;
     Ok(())
 }
@@ -1733,51 +1738,194 @@ fn preferences_response(state: &AppState, patch: &serde_json::Value, outcome: an
     Json(body).into_response()
 }
 
+async fn gate_and_checkpoint_helper<F, Fut>(
+    state: &AppState,
+    engine: &str,
+    name: &str,
+    args: &serde_json::Value,
+    request: serde_json::Value,
+    confirmed: bool,
+    checkpoint_id: &str,
+    run: F,
+) -> axum::response::Response
+where
+    F: FnOnce(serde_json::Value) -> Fut,
+    Fut: std::future::Future<Output = Json<serde_json::Value>>,
+{
+    let prefs = state.preferences.snapshot();
+    if let Err(reason) = safety::gate_with_approval(
+        prefs.read_only,
+        prefs.confirm_delete,
+        &prefs.approval_mode,
+        engine,
+        name,
+        args,
+        confirmed,
+    ) {
+        if !checkpoint_id.is_empty() {
+            let mut journal = checkpoints::STORE.lock().await;
+            journal.event(checkpoint_id, engine, name, args, "blocked", &reason);
+            if let Err(error) = journal.save() {
+                tracing::warn!("Could not save blocked {engine} checkpoint event for {checkpoint_id}: {error}");
+            }
+        }
+        let mut body = serde_json::json!({"ok": false, "error": reason});
+        if engine == "blender" {
+            body["blender"] = serde_json::json!(true);
+        }
+        return (axum::http::StatusCode::FORBIDDEN, Json(body)).into_response();
+    }
+    let mutating = safety::is_change(engine, name);
+    if !checkpoint_id.is_empty() && mutating {
+        let mut journal = checkpoints::STORE.lock().await;
+        if journal.task(checkpoint_id).is_ok() {
+            journal.step(checkpoint_id, name);
+            journal.warn(checkpoint_id, &format!("This task used {engine}; PlazCode can't undo that part."));
+            if let Err(error) = journal.save() {
+                tracing::warn!("Could not save pre-op {engine} checkpoint for {checkpoint_id}: {error}");
+            }
+        }
+    }
+    let Json(reply) = run(request).await;
+    if !checkpoint_id.is_empty() {
+        let ok = reply.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+        let err_msg = reply.get("error").and_then(|v| v.as_str()).unwrap_or("");
+        let mut journal = checkpoints::STORE.lock().await;
+        journal.event(checkpoint_id, engine, name, args, if ok { "ok" } else { "failed" }, err_msg);
+        if !ok || mutating {
+            if let Err(error) = journal.save() {
+                tracing::warn!("Could not save {engine} checkpoint event for {checkpoint_id}: {error}");
+            }
+        }
+    }
+    Json(reply).into_response()
+}
+
+async fn blockbench_handler(State(state): State<AppState>, Json(request): Json<serde_json::Value>) -> axum::response::Response {
+    if request["type"] == "web_report" {
+        return blockbench::post(Json(request)).await.into_response();
+    }
+    let cmd = request["cmd"].as_str().unwrap_or("").to_string();
+    let args = request.get("args").cloned().unwrap_or(serde_json::Value::Null);
+    let confirmed = request.get("confirmed").and_then(|v| v.as_bool()).unwrap_or(false);
+    let checkpoint_id = request.get("checkpoint_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    gate_and_checkpoint_helper(&state, "blockbench", &cmd, &args, request, confirmed, &checkpoint_id, |req| blockbench::post(Json(req))).await
+}
+
+async fn figma_handler(State(state): State<AppState>, Json(request): Json<serde_json::Value>) -> axum::response::Response {
+    let cmd = request["cmd"].as_str().unwrap_or("").to_string();
+    let args = request.get("args").cloned().unwrap_or(serde_json::Value::Null);
+    let confirmed = request.get("confirmed").and_then(|v| v.as_bool()).unwrap_or(false);
+    let checkpoint_id = request.get("checkpoint_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    gate_and_checkpoint_helper(&state, "figma", &cmd, &args, request, confirmed, &checkpoint_id, |req| figma::post(Json(req))).await
+}
+
+async fn blender_handler(State(state): State<AppState>, Json(request): Json<serde_json::Value>) -> axum::response::Response {
+    let kind = request["type"].as_str().unwrap_or("get_scene_info").to_string();
+    let args = request.get("params").cloned().unwrap_or(serde_json::Value::Null);
+    let confirmed = request.get("confirmed").and_then(|v| v.as_bool()).unwrap_or(false);
+    let checkpoint_id = request.get("checkpoint_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    gate_and_checkpoint_helper(&state, "blender", &kind, &args, request, confirmed, &checkpoint_id, |req| blender::post(Json(req))).await
+}
+
 async fn checkpoint_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> axum::response::Response {
     use axum::response::IntoResponse;
     let result: anyhow::Result<serde_json::Value> = async {
-        let mut journal = checkpoints::STORE.lock().await;
         let id = req["id"].as_str().unwrap_or("");
         match req["action"].as_str().unwrap_or("list") {
-            "begin" => Ok(serde_json::json!({"ok":true,"id":journal.begin(&req)?})),
-            "finish" => { journal.finish(id, req["complete"].as_bool().unwrap_or(false))?;
-                let task=journal.task(id)?;
-                if let Some(report)=shared_learning::report(&task.engine,&task.status,&task.learning){let id=id.to_owned();let root=profile_paths::data_root();tokio::spawn(async move{let _lease=accounts::ACCESS.read().await;if profile_paths::data_root()==root{let _=shared_learning::enqueue(&id,report).await;}});}
-                Ok(serde_json::json!({"ok":true})) },
-            "context" => Ok(serde_json::json!({"ok":true,"project":journal.project(req["chat"].as_str().unwrap_or(""))})),
-            "project" => {journal.set_project(&req)?;Ok(serde_json::json!({"ok":true}))},
-            "protect" => {journal.protect(&req)?;Ok(serde_json::json!({"ok":true}))},
-            "approve" => {journal.task_mut(id)?.approved=true;journal.save()?;Ok(serde_json::json!({"ok":true}))},
-            "details" => Ok(serde_json::json!({"ok":true,"details":journal.details(id)?})),
+            "begin" => {
+                let mut journal = checkpoints::STORE.lock().await;
+                Ok(serde_json::json!({"ok":true,"id":journal.begin(&req)?}))
+            }
+            "finish" => {
+                let mut journal = checkpoints::STORE.lock().await;
+                journal.finish(id, req["complete"].as_bool().unwrap_or(false))?;
+                let task = journal.task(id)?;
+                if let Some(report) = shared_learning::report(&task.engine, &task.status, &task.learning) {
+                    let id = id.to_owned();
+                    let root = profile_paths::data_root();
+                    tokio::spawn(async move {
+                        let _lease = accounts::ACCESS.read().await;
+                        if profile_paths::data_root() == root {
+                            let _ = shared_learning::enqueue(&id, report).await;
+                        }
+                    });
+                }
+                Ok(serde_json::json!({"ok":true}))
+            }
+            "context" => {
+                let journal = checkpoints::STORE.lock().await;
+                Ok(serde_json::json!({"ok":true,"project":journal.project(req["chat"].as_str().unwrap_or(""))}))
+            }
+            "project" => {
+                let mut journal = checkpoints::STORE.lock().await;
+                journal.set_project(&req)?;
+                Ok(serde_json::json!({"ok":true}))
+            }
+            "protect" => {
+                let mut journal = checkpoints::STORE.lock().await;
+                journal.protect(&req)?;
+                Ok(serde_json::json!({"ok":true}))
+            }
+            "approve" => {
+                let mut journal = checkpoints::STORE.lock().await;
+                journal.task_mut(id)?.approved = true;
+                journal.save()?;
+                Ok(serde_json::json!({"ok":true}))
+            }
+            "details" => {
+                let journal = checkpoints::STORE.lock().await;
+                Ok(serde_json::json!({"ok":true,"details":journal.details(id)?}))
+            }
             "revert-one" => {
-                let path=req["path"].as_str().ok_or_else(||anyhow::anyhow!("Choose a file or script."))?;
-                let task=journal.task(id)?.clone();
-                if task.engine=="local"{journal.revert_file(&state.workspace,id,path)?;}
-                else{
-                    anyhow::ensure!(task.status!="working"&&task.status!="reverted","Wait for this task to finish.");
-                    let snapshot=task.scripts.iter().find(|s|s.path==path&&s.studio_id==req["studio_id"]).ok_or_else(||anyhow::anyhow!("Script snapshot not found."))?;
-                    anyhow::ensure!(snapshot.session==*checkpoints::SNAPSHOT_SESSION,"Studio snapshots cannot be restored after restarting the bridge.");
-                    let out=roblox_tool(&state,"execute_luau",serde_json::json!({"code":checkpoints::script_restore(snapshot),"datamodel_type":"Edit","studio_id":snapshot.studio_id})).await?;
-                    anyhow::ensure!(out.text.contains("PLAZCODE_SCRIPT_RESTORED"),"Studio did not confirm restore: {}",out.text);
-                    journal.task_mut(id)?.scripts.retain(|s|!(s.path==path&&s.studio_id==req["studio_id"]));
-                    journal.warn(id,"An individual script was restored. Whole-task Studio undo is disabled because its history changed.");journal.save()?;
+                let path = req["path"].as_str().ok_or_else(|| anyhow::anyhow!("Choose a file or script."))?;
+                let snapshot = {
+                    let mut journal = checkpoints::STORE.lock().await;
+                    if journal.task(id)?.engine == "local" {
+                        journal.revert_file(&state.workspace, id, path)?;
+                        None
+                    } else {
+                        Some(journal.studio_script_snapshot(id, path, &req["studio_id"])?)
+                    }
+                };
+                if let Some(snapshot) = snapshot {
+                    let out = roblox_tool(&state, "execute_luau", serde_json::json!({
+                        "code": checkpoints::script_restore(&snapshot),
+                        "datamodel_type": "Edit",
+                        "studio_id": snapshot.studio_id
+                    })).await?;
+                    anyhow::ensure!(out.text.contains("PLAZCODE_SCRIPT_RESTORED"), "Studio did not confirm restore: {}", out.text);
+                    let mut journal = checkpoints::STORE.lock().await;
+                    journal.finish_script_restore(id, path, &req["studio_id"])?;
                 }
                 Ok(serde_json::json!({"ok":true}))
-            },
+            }
             "revert" => {
-                let task = journal.task(id)?.clone();
-                anyhow::ensure!(task.status != "working" && task.status != "reverted" && task.warnings.is_empty(), "This checkpoint cannot be safely reverted.");
-                if task.engine == "local" { journal.revert_files(&state.workspace,id)?; }
-                else {
-                    anyhow::ensure!(!task.waypoints.is_empty(), "No verified Studio undo checkpoints.");
-                    let out=roblox_tool(&state,"execute_luau",serde_json::json!({"code":checkpoints::studio_revert(&task.waypoints),"datamodel_type":"Edit"})).await?;
-                    anyhow::ensure!(out.text.contains("PLAZCODE_TASK_REVERTED"), "Studio did not confirm task restore: {}",out.text);
-                    journal.task_mut(id)?.status="reverted".into();journal.save()?;
+                let waypoints = {
+                    let mut journal = checkpoints::STORE.lock().await;
+                    if journal.task(id)?.engine == "local" {
+                        journal.revert_files(&state.workspace, id)?;
+                        None
+                    } else {
+                        Some(journal.studio_revert_waypoints(id)?)
+                    }
+                };
+                if let Some(waypoints) = waypoints {
+                    let out = roblox_tool(&state, "execute_luau", serde_json::json!({
+                        "code": checkpoints::studio_revert(&waypoints),
+                        "datamodel_type": "Edit"
+                    })).await?;
+                    anyhow::ensure!(out.text.contains("PLAZCODE_TASK_REVERTED"), "Studio did not confirm task restore: {}", out.text);
+                    let mut journal = checkpoints::STORE.lock().await;
+                    journal.mark_reverted(id)?;
                 }
                 Ok(serde_json::json!({"ok":true}))
-            },
-            "list" => Ok(serde_json::json!({"ok":true,"tasks":journal.summaries(),"protected":journal.protected,"project":journal.project(req["chat"].as_str().unwrap_or(""))})),
-            _=>anyhow::bail!("Unknown checkpoint action."),
+            }
+            "list" => {
+                let journal = checkpoints::STORE.lock().await;
+                Ok(serde_json::json!({"ok":true,"tasks":journal.summaries(),"protected":journal.protected,"project":journal.project(req["chat"].as_str().unwrap_or(""))}))
+            }
+            _ => anyhow::bail!("Unknown checkpoint action."),
         }
     }.await;
     match result { Ok(value)=>Json(value).into_response(), Err(error)=>(axum::http::StatusCode::CONFLICT,Json(serde_json::json!({"ok":false,"error":error.to_string()}))).into_response() }
@@ -1811,11 +1959,13 @@ fn tool_budget(name: &str, requested: Option<u64>, args: &serde_json::Value) -> 
 /// limits, then runs, then lands in the task's "What happened" log.
 async fn guarded_tool_observed(state: &AppState, engine: &str, id: &str, name: &str, args: serde_json::Value, budget: Duration, confirmed: bool) -> (anyhow::Result<McpOutput>, bool) {
     let prefs = state.preferences.snapshot();
-    if let Err(reason) = safety::gate(prefs.read_only, prefs.confirm_delete, engine, name, &args, confirmed) {
+    if let Err(reason) = safety::gate_with_approval(prefs.read_only, prefs.confirm_delete, &prefs.approval_mode, engine, name, &args, confirmed) {
         if !id.is_empty() {
             let mut journal = checkpoints::STORE.lock().await;
             journal.event(id, engine, name, &args, "blocked", &reason);
-            let _ = journal.save();
+            if let Err(error) = journal.save() {
+                tracing::warn!("Could not save blocked tool event for {id}: {error}");
+            }
         }
         return (Err(anyhow::anyhow!(reason)), false);
     }
@@ -1844,7 +1994,11 @@ async fn guarded_tool_observed(state: &AppState, engine: &str, id: &str, name: &
     journal.event(id, engine, name, &args, result, &outcome.as_ref().err().map(|e| e.to_string()).unwrap_or_default());
     // Reads are logged in memory and written with the next change, so a long
     // run of Studio inspections does not rewrite the journal on every call.
-    if result != "ok" || (safety::is_change(engine, name) && !preview) { let _ = journal.save(); }
+    if result != "ok" || (safety::is_change(engine, name) && !preview) {
+        if let Err(error) = journal.save() {
+            tracing::warn!("Could not save checkpoint event for {id}: {error}");
+        }
+    }
     let succeeded = result == "ok" || result == "started";
     (outcome, succeeded)
 }
@@ -1863,7 +2017,17 @@ async fn checkpoint_tool_bounded(state: &AppState, engine: &str, id: &str, name:
                 } else if let Ok(mut mcp)=state.roblox_mcp.try_lock(){if mcp.request_pending{mcp.reset().await;}}
             }
             if !id.is_empty() {
-                if let Ok(mut journal)=checkpoints::STORE.try_lock(){journal.warn(id,"A command exceeded its total deadline. Partial effects may remain; inspect before retrying. The command was not replayed.");let _=journal.save();}
+                match checkpoints::STORE.try_lock() {
+                    Ok(mut journal) => {
+                        journal.warn(id, "A command exceeded its total deadline. Partial effects may remain; inspect before retrying. The command was not replayed.");
+                        if let Err(error) = journal.save() {
+                            tracing::warn!("Could not save deadline warning for {id}: {error}");
+                        }
+                    }
+                    Err(error) => {
+                        tracing::warn!("Could not lock checkpoint journal to record deadline warning for {id}: {error}");
+                    }
+                }
             }
             anyhow::bail!("Command deadline exceeded after {} seconds. Partial effects may remain; inspect state before retrying. The command was not replayed.",budget.as_secs())
         }
@@ -1889,7 +2053,10 @@ async fn checkpoint_tool(state: &AppState, engine: &str, id: &str, name: &str, a
         if name.contains("__"){if let Ok(mut addons)=state.addons.try_lock(){addons.reset_interrupted_tool(name).await;}}else{if let Ok(mut mcp)=state.roblox_mcp.try_lock(){if mcp.request_pending{mcp.reset().await;}}}
     }
     let mut journal=checkpoints::STORE.lock().await;
-    journal.warn(id,"Immediate Stop interrupted a tool. Partial changes or an uncertain external result may remain. Inspect state before retrying; automatic rollback is disabled.");let _=journal.save();
+    journal.warn(id,"Immediate Stop interrupted a tool. Partial changes or an uncertain external result may remain. Inspect state before retrying; automatic rollback is disabled.");
+    if let Err(error) = journal.save() {
+        tracing::warn!("Could not save Immediate Stop warning for {id}: {error}");
+    }
     anyhow::bail!("Immediate Stop interrupted the tool. Its result may be partial; inspect before retrying.")
 }
 async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &str, mut args: serde_json::Value) -> anyhow::Result<McpOutput> {
@@ -1900,78 +2067,125 @@ async fn checkpoint_tool_inner(state: &AppState, engine: &str, id: &str, name: &
     }
     if engine=="local" && name.contains("__") {
         // Add-on tool in AgentScript mode: runs in its own app, so it has no file checkpoint.
-        if !id.is_empty() { let mut journal=checkpoints::STORE.lock().await; journal.step(id,name); if safety::is_change("local",name) { journal.warn(id,"This task used an add-on tool that changes another app. PlazCode can't undo that part."); } let _=journal.save(); }
+        if !id.is_empty() {
+            let mut journal = checkpoints::STORE.lock().await;
+            journal.step(id, name);
+            if safety::is_change("local", name) {
+                journal.warn(id, "This task used an add-on tool that changes another app. PlazCode can't undo that part.");
+            }
+            if let Err(error) = journal.save() {
+                tracing::warn!("Could not save add-on checkpoint step for {id}: {error}");
+            }
+        }
         let (text,images)=state.addons.lock().await.call_tool(name,args).await?;
         return Ok(McpOutput{text,images});
     }
     if id.is_empty() { return match engine { "local"=>workspace::dispatch(&state.workspace,name,args).await.map(|text|McpOutput{text,images:Vec::new()}).map_err(anyhow::Error::msg), "roblox"=>roblox_tool(state,name,args).await,_=>Err(anyhow::anyhow!("unknown engine")) }; }
-    let mut journal=checkpoints::STORE.lock().await;
-    anyhow::ensure!(journal.task(id)?.status=="working" && journal.task(id)?.engine==engine,"This command was not run: its task has already ended, or it belongs to the other mode (Roblox / AgentScript). Send a new message in the chat to start a fresh task.");
-    if safety::file_preview(engine,name,&args) {
-        drop(journal);
-        return workspace::dispatch(&state.workspace,name,args).await.map(|text|McpOutput{text,images:Vec::new()}).map_err(anyhow::Error::msg);
+    if safety::file_preview(engine, name, &args) {
+        {
+            let journal = checkpoints::STORE.lock().await;
+            anyhow::ensure!(
+                journal.task(id)?.status == "working" && journal.task(id)?.engine == engine,
+                "This command was not run: its task has already ended, or it belongs to the other mode (Roblox / AgentScript). Send a new message in the chat to start a fresh task."
+            );
+        }
+        return workspace::dispatch(&state.workspace, name, args).await
+            .map(|text| McpOutput { text, images: Vec::new() })
+            .map_err(anyhow::Error::msg);
     }
-    if engine=="local" {
-        if name=="run_command" {args["_plazcode_checkpoint"]=serde_json::json!(id);}
-        let paths=journal.prepare_files(&state.workspace,id,name,&args)?;
-        let (result,success)=if name=="run_command" {
-            match workspace::tool_run_command_observed(&state.workspace,&args).await {Ok((text,success))=>(Ok(McpOutput{text,images:Vec::new()}),success),Err(error)=>(Err(anyhow::Error::msg(error)),false)}
-        }else{let result=workspace::dispatch(&state.workspace,name,args.clone()).await.map(|text|McpOutput{text,images:Vec::new()}).map_err(anyhow::Error::msg);let success=result.is_ok();(result,success)};
-        journal.set_outcome(id,success);
-        // 1.24.21 AgentScript fix: the tool has already run here. A journal that cannot be updated or
-        // written (locked file, full disk) must never replace the tool's result with an error.
-        if let Ok(task)=journal.task_mut(id){if task.learning.len()<101 && !(name=="run_command" && args["background"].as_bool()==Some(true)){task.learning.push(shared_learning::observation(name,&args,success));}}
-        let _=journal.save();
-        if let Err(error)=journal.commit_files(&state.workspace,id,&paths) { journal.warn(id,&format!("Checkpoint verification failed: {error}"));journal.task_mut(id)?.learning.push(shared_learning::observation("checkpoint_verification_failed",&serde_json::Value::Null,false));let _=journal.save(); }
+    if engine == "local" {
+        if name == "run_command" { args["_plazcode_checkpoint"] = serde_json::json!(id); }
+        let paths = {
+            let mut journal = checkpoints::STORE.lock().await;
+            journal.begin_local_tool(&state.workspace, id, name, &args)?
+        };
+        let (result, success) = if name == "run_command" {
+            match workspace::tool_run_command_observed(&state.workspace, &args).await {
+                Ok((text, success)) => (Ok(McpOutput { text, images: Vec::new() }), success),
+                Err(error) => (Err(anyhow::Error::msg(error)), false),
+            }
+        } else {
+            let result = workspace::dispatch(&state.workspace, name, args.clone()).await
+                .map(|text| McpOutput { text, images: Vec::new() })
+                .map_err(anyhow::Error::msg);
+            let success = result.is_ok();
+            (result, success)
+        };
+        {
+            let mut journal = checkpoints::STORE.lock().await;
+            if let Err(error) = journal.finish_local_tool(&state.workspace, id, name, &args, &paths, success) {
+                tracing::warn!("Could not finish local checkpoint for {id}: {error}");
+            }
+        }
         return result;
     }
-    journal.step(id,name);
-    let read_only = name.starts_with("get_") || name.starts_with("list_") || name.starts_with("search_") || name.starts_with("inspect_") || matches!(name,"script_read"|"script_grep"|"script_analysis"|"screen_capture");
-    if !read_only {journal.check_protection(&state.workspace,id,engine,name,&args)?;}
-    if read_only { return roblox_tool(state,name,args).await; }
-    if name.contains("__") || args["datamodel_type"].as_str().map_or(false,|dm|dm!="Edit") {
-        journal.warn(id,"This task includes an external server or runtime operation. Studio task revert is disabled.");journal.save()?;
-        let result=roblox_tool(state,name,args).await;let _=journal.save();return result;
+    if engine != "roblox" {
+        let journal = checkpoints::STORE.lock().await;
+        anyhow::ensure!(
+            journal.task(id)?.status == "working" && journal.task(id)?.engine == engine,
+            "This command was not run: its task has already ended, or it belongs to the other mode (Roblox / AgentScript). Send a new message in the chat to start a fresh task."
+        );
+        anyhow::bail!("unknown engine");
     }
-    let source_path=if matches!(name,"multi_edit"|"script_set_source"){args["file_path"].as_str().or_else(||args["path"].as_str()).map(str::to_owned)}else{None};
-    let mut script_before=None;let mut luau_edit=None;
-    if let Some(path)=&source_path{
-        let mut params=serde_json::json!({"code":checkpoints::script_snapshot(path),"datamodel_type":"Edit"});if let Some(studio)=args.get("studio_id"){params["studio_id"]=studio.clone();}
-        if let Ok(out)=roblox_tool(state,"execute_luau",params).await{if let Some(before)=checkpoints::parse_snapshot(&out.text){
-            let studio=args.get("studio_id").filter(|v|!v.is_null()).cloned().or_else(||state.roblox_mcp.try_lock().ok().and_then(|m|m.studio_id.clone()));
-            if let Some(studio)=studio{args["studio_id"]=studio.clone();script_before=Some((before,studio));}
-        }}
+    let plan = {
+        let mut journal = checkpoints::STORE.lock().await;
+        journal.begin_roblox_tool(&state.workspace, id, name, &args)?
+    };
+    if plan.read_only || plan.uncheckpointed_mutation {
+        return roblox_tool(state, name, args).await;
     }
-    let label=format!("PlazCode {} {}",id,journal.task(id)?.steps.len());
+    let source_path = if matches!(name, "multi_edit" | "script_set_source") {
+        args["file_path"].as_str().or_else(|| args["path"].as_str()).map(str::to_owned)
+    } else {
+        None
+    };
+    let mut script_before = None;
+    if let Some(path) = &source_path {
+        let mut params = serde_json::json!({"code": checkpoints::script_snapshot(path), "datamodel_type": "Edit"});
+        if let Some(studio) = args.get("studio_id") { params["studio_id"] = studio.clone(); }
+        if let Ok(out) = roblox_tool(state, "execute_luau", params).await {
+            if let Some(before) = checkpoints::parse_snapshot(&out.text) {
+                let studio = args.get("studio_id").filter(|v| !v.is_null()).cloned()
+                    .or_else(|| state.roblox_mcp.try_lock().ok().and_then(|m| m.studio_id.clone()));
+                if let Some(studio) = studio {
+                    args["studio_id"] = studio.clone();
+                    script_before = Some((before, studio));
+                }
+            }
+        }
+    }
+    let label = plan.label;
     let studio_id = args.get("studio_id").filter(|id| !id.is_null()).cloned();
     let mark_args = |code: String| {
-        let mut params = serde_json::json!({"code":code,"datamodel_type":"Edit"});
+        let mut params = serde_json::json!({"code": code, "datamodel_type": "Edit"});
         if let Some(id) = &studio_id { params["studio_id"] = id.clone(); }
         params
     };
-    let before=roblox_tool(state,"execute_luau",mark_args(checkpoints::studio_mark(&format!("Before {label}")))).await;
-    if before.is_err() { journal.warn(id,"Studio could not establish an undo boundary. This task has no verified complete rollback."); }
-    let outcome=roblox_tool(state,name,args).await;
-    if let Some((before,studio))=script_before {
-        let captured=roblox_tool(state,"execute_luau",mark_args(checkpoints::script_snapshot(before["path"].as_str().unwrap_or("")))).await;
-        if let Ok(out)=captured{if let Some(after)=checkpoints::parse_snapshot(&out.text){if let Err(error)=journal.record_script(id,&before,&after,studio.clone()){journal.warn(id,&format!("Selective script snapshot unavailable: {error}"));}luau_edit=Some((before,after,studio));}}
+    let before = roblox_tool(state, "execute_luau", mark_args(checkpoints::studio_mark(&format!("Before {label}")))).await;
+    let mut outcome = roblox_tool(state, name, args).await;
+    let mut luau_edit = None;
+    if let Some((before_snap, studio)) = script_before {
+        let captured = roblox_tool(state, "execute_luau", mark_args(checkpoints::script_snapshot(before_snap["path"].as_str().unwrap_or("")))).await;
+        if let Ok(out) = captured {
+            if let Some(after_snap) = checkpoints::parse_snapshot(&out.text) {
+                luau_edit = Some((before_snap, after_snap, studio));
+            }
+        }
     }
-    let marked=roblox_tool(state,"execute_luau",mark_args(checkpoints::studio_mark(&label))).await;
-    match marked {
-        Ok(out)=> {
-            let raw=out.text.trim();let parsed=serde_json::from_str::<serde_json::Value>(raw).ok().or_else(||{let a=raw.find('{')?;let z=raw.rfind('}')?;serde_json::from_str(&raw[a..=z]).ok()});
-            if parsed.as_ref().map_or(false,|v|v["available"]==true && v["name"]==label) {journal.task_mut(id)?.waypoints.push(label);}
-            else {journal.warn(id,"Studio did not expose the task's named undo waypoint. Automatic revert is disabled rather than undoing unrelated edits.");}
-        },
-        Err(_)=>journal.warn(id,"Studio checkpoint completion was not confirmed. Automatic revert is disabled."),
+    let marked = roblox_tool(state, "execute_luau", mark_args(checkpoints::studio_mark(&label))).await;
+    {
+        let mut journal = checkpoints::STORE.lock().await;
+        let snap_ref = luau_edit.as_ref().map(|(b, a, s)| (b, a, s.clone()));
+        let marked_ref = marked.as_ref().map(|out| out.text.as_str()).map_err(|_| ());
+        journal.finish_roblox_tool(id, &label, outcome.is_ok(), snap_ref, before.is_ok(), marked_ref)?;
     }
-    if outcome.is_err(){journal.warn(id,"A Studio mutation failed with an uncertain outcome. Check Studio before attempting a restore.");}
-    journal.save()?;drop(journal);
     // 1.24.30 Luau validation (docs/vault/luau-validation-plan.md): adds a short note to the edit's own result;
     // the tool name, arguments and result text stay as they were.
-    let mut outcome=outcome;
-    if let (Ok(out),Some((before,after,studio)))=(outcome.as_mut(),luau_edit){
-        match luau_after_edit(state,id,&before,&after,studio).await { Ok(note)=>out.text.push_str(&note), Err(blocked)=>return Err(anyhow::Error::msg(format!("{}{}",out.text,blocked))) }
+    if let (Ok(out), Some((before_snap, after_snap, studio))) = (outcome.as_mut(), luau_edit) {
+        match luau_after_edit(state, id, &before_snap, &after_snap, studio).await {
+            Ok(note) => out.text.push_str(&note),
+            Err(blocked) => return Err(anyhow::Error::msg(format!("{}{}", out.text, blocked))),
+        }
     }
     outcome
 }
@@ -2052,7 +2266,10 @@ async fn luau_after_edit(state:&AppState,id:&str,before:&serde_json::Value,after
     }
     let mut journal=checkpoints::STORE.lock().await;
     if let Err(error)=journal.record_script(id,after,before,change.studio_id.clone()){journal.warn(id,&format!("Selective script snapshot unavailable: {error}"));}
-    journal.warn(id,"Luau Blocking mode put a script back after a new syntax error. Whole-task Studio undo is disabled because its history changed.");let _=journal.save();
+    journal.warn(id,"Luau Blocking mode put a script back after a new syntax error. Whole-task Studio undo is disabled because its history changed.");
+    if let Err(error) = journal.save() {
+        tracing::warn!("Could not save Luau Blocking mode warning for {id}: {error}");
+    }
     Err(luau_check::notice_for(&verdict,streak))
 }
 
@@ -2129,6 +2346,10 @@ async fn reset_profile_runtime(state:&AppState){
     state.ui.tools.lock().unwrap_or_else(|e|e.into_inner()).clear();
     state.ui.servers.lock().unwrap_or_else(|e|e.into_inner()).clear();
     memory::STORE.clear_cache();skills::STORE.clear_cache();checkpoints::STORE.clear_cache();
+    skills::reset_community_sync();
+    provider_pacing::reset_for_profile_switch();
+    blender::clear_preview();
+    blender_headless::reset().await;
     chat_history::clear_profile_cache();creations::clear_profile_cache();templates::clear_profile_cache().await;
     engram::clear_profile_cache().await;debug_report::clear_profile();
 }
@@ -3517,7 +3738,7 @@ async fn roblox_tool(state: &AppState, name: &str, args: serde_json::Value) -> a
             if !helper_is_dead(&error) { return Err(error); }
             tracing::warn!("call_tool '{name}' failed ({error:#}) — recycling helper once");
             mcp.reset().await;
-            let read_only=name.starts_with("get_") || name.starts_with("list_") || name.starts_with("search_") || name.starts_with("inspect_") || matches!(name,"script_read"|"script_grep"|"script_analysis"|"screen_capture");
+            let read_only = safety::is_read_only("roblox", name);
             anyhow::ensure!(read_only,"Tool connection dropped with an uncertain result. The mutating command was not replayed. Inspect Studio state before retrying: {error}");
             match mcp.call_tool(name, args).await {
                 Ok(result) => {
@@ -3608,12 +3829,33 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
     let desktop_forwarder = tokio::spawn(async move {
         loop {
             match desktop_rx.recv().await {
-                Ok(event) => {let _lease=accounts::ACCESS.read().await;if event_state.accounts.required()&&(event_epoch.is_none()||event_epoch!=event_state.accounts.active().map(|p|p.epoch)){break;}if desktop_tx.send(event.to_string()).is_err(){break;}},
-                Err(broadcast::error::RecvError::Lagged(_)) => {
-                    let _lease=accounts::ACCESS.read().await;if event_state.accounts.required()&&(event_epoch.is_none()||event_epoch!=event_state.accounts.active().map(|p|p.epoch)){break;}
-                    if desktop_tx.send(desktop_preferences_event(&event_state).to_string()).is_err(){break;}
-                },
-                Err(_) => break,
+                Ok(event) => {
+                    let _lease = accounts::ACCESS.read().await;
+                    if event_state.accounts.required() && (event_epoch.is_none() || event_epoch != event_state.accounts.active().map(|p| p.epoch)) { break; }
+                    if let Err(err) = desktop_tx.send(event.to_string()) {
+                        tracing::warn!("legacy WS desktop_forwarder outbound channel closed: {err}");
+                        break;
+                    }
+                }
+                Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                    tracing::warn!("legacy WS desktop_forwarder lagged by {skipped} event(s); resyncing snapshot");
+                    let _lease = accounts::ACCESS.read().await;
+                    if event_state.accounts.required() && (event_epoch.is_none() || event_epoch != event_state.accounts.active().map(|p| p.epoch)) { break; }
+                    if let Err(err) = desktop_tx.send(desktop_preferences_event(&event_state).to_string()) {
+                        tracing::warn!("legacy WS desktop_forwarder outbound channel closed during preferences resync: {err}");
+                        break;
+                    }
+                    let status_snap = serde_json::json!({
+                        "type": "roblox_status",
+                        "studio": event_state.roblox_editor_connected.load(Ordering::Relaxed),
+                        "studio_proc": event_state.roblox_proc.load(Ordering::Relaxed) || event_state.roblox_editor_connected.load(Ordering::Relaxed),
+                    });
+                    if let Err(err) = desktop_tx.send(status_snap.to_string()) {
+                        tracing::warn!("legacy WS desktop_forwarder outbound channel closed during status resync: {err}");
+                        break;
+                    }
+                }
+                Err(broadcast::error::RecvError::Closed) => break,
             }
         }
     });
@@ -3622,8 +3864,13 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
             if write.send(tokio_tungstenite::tungstenite::Message::Text(txt.into())).await.is_err() { break; }
         }
     });
-    let send_json = |tx: &tokio::sync::mpsc::UnboundedSender<String>, v: serde_json::Value| {
-        let _ = tx.send(v.to_string());
+    let send_json = |tx: &tokio::sync::mpsc::UnboundedSender<String>, v: serde_json::Value| -> bool {
+        if let Err(err) = tx.send(v.to_string()) {
+            tracing::warn!("legacy WS outbound channel closed: {err}");
+            false
+        } else {
+            true
+        }
     };
 
     // A browser connection does not depend on slow MCP initialization.
@@ -3632,9 +3879,9 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
     // wake, page reload) used to show "MCP is off" until the intro arrived, and the
     // false mcp_alive made the extension's auto-heal restart a working helper.
     let known_studio = engine == "roblox" && state.roblox_editor_connected.load(Ordering::Relaxed);
-    send_json(&out_tx, serde_json::json!({"type":"connected","id":0,"ok":true,
+    let _ = send_json(&out_tx, serde_json::json!({"type":"connected","id":0,"ok":true,
         "mcp_alive":known_studio,"studio":known_studio,"studio_checking":engine != "local" && !known_studio,"tools":[],"servers":[]}));
-    send_json(&out_tx, desktop_preferences_event(&state));
+    let _ = send_json(&out_tx, desktop_preferences_event(&state));
     let intro_state = state.clone();
     let intro_engine = engine.clone();
     let intro_tx = out_tx.clone();
@@ -3672,7 +3919,13 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
     // may already have verified Studio, and a stale `ok:false` frame arriving after
     // its status event used to overwrite it until the next heartbeat. Skip the
     // frame instead and let the verified state stand.
-    if let Ok(intro) = intro { if !intro.is_null() { let _ = intro_tx.send(intro.to_string()); } }
+    if let Ok(intro) = intro {
+        if !intro.is_null() {
+            if let Err(err) = intro_tx.send(intro.to_string()) {
+                tracing::warn!("legacy WS intro send failed: {err}");
+            }
+        }
+    }
     });
     let mut last_online: Option<bool> = None;
     // 1.24.27: every disconnect is logged with its reason. Before, the Terminal only said
@@ -3707,17 +3960,23 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                     if let Err(error) = check {
                         tracing::warn!("program check failed, request refused: {error:#}");
                         let id = val.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
-                        if typ == "call_tool" {
-                            send_json(&out_tx, serde_json::json!({"type":"tool_result","id":id,"ok":false,"kind":"integrity","error":integrity::RECOVERY}));
+                        let sent = if typ == "call_tool" {
+                            send_json(&out_tx, serde_json::json!({"type":"tool_result","id":id,"ok":false,"kind":"integrity","error":integrity::RECOVERY}))
                         } else {
-                            send_json(&out_tx, serde_json::json!({"type":"error","id":id,"ok":false,"kind":"integrity","error":integrity::RECOVERY}));
-                        }
+                            send_json(&out_tx, serde_json::json!({"type":"error","id":id,"ok":false,"kind":"integrity","error":integrity::RECOVERY}))
+                        };
+                        if !sent { end_reason = "outbound channel closed".into(); break; }
                         continue;
                     }
                 }
                 let id = val.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
                 match typ {
-                    "ping" => { send_json(&out_tx, serde_json::json!({"type":"pong","id":id})); },
+                    "ping" => {
+                        if !send_json(&out_tx, serde_json::json!({"type":"pong","id":id})) {
+                            end_reason = "outbound channel closed".into();
+                            break;
+                        }
+                    },
                     // 1.24.27: the extension reports, once per new connection, why its previous connection ended
                     // and whether its background worker had been stopped by the browser. Shown in the Terminal.
                     "client_note" => {
@@ -3756,7 +4015,10 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                                 }
                             }
                         };
-                        send_json(&out_tx, response);
+                        if !send_json(&out_tx, response) {
+                            end_reason = "outbound channel closed".into();
+                            break;
+                        }
                     },
                     "studio_status" => {
                         let online = match engine.as_str() {
@@ -3781,10 +4043,13 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                             info!("studio_status [{engine}]: {}", if online { "CONNECTED" } else { "OFFLINE" });
                             last_online = Some(online);
                         }
-                        send_json(&out_tx, serde_json::json!({"type":"studio_status","id":id,"studio":online,"studio_app":online,"studio_proc":state.roblox_proc.load(Ordering::Relaxed) || online}));
+                        if !send_json(&out_tx, serde_json::json!({"type":"studio_status","id":id,"studio":online,"studio_app":online,"studio_proc":state.roblox_proc.load(Ordering::Relaxed) || online})) {
+                            end_reason = "outbound channel closed".into();
+                            break;
+                        }
                     },
                     "restart_mcp" => {
-                        let alive = if engine == "roblox" {
+                        let sent = if engine == "roblox" {
                             {
                                 let mut mcp = state.roblox_mcp.lock().await;
                                 mcp.reset().await;
@@ -3798,20 +4063,20 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                                         state.studio_probe_result(&probe)
                                     };
                                     state.set_editor_connection(studio, Some(&tools));
-                                    send_json(&out_tx, serde_json::json!({"type":"mcp_status","id":id,"ok":true,"alive":true,"studio":studio,"tools":tools}));
-                                    true
+                                    send_json(&out_tx, serde_json::json!({"type":"mcp_status","id":id,"ok":true,"alive":true,"studio":studio,"tools":tools}))
                                 }
                                 Err(error) => {
                                     tracing::warn!("restart_mcp re-ensure failed: {error:#}");
-                                    send_json(&out_tx, serde_json::json!({"type":"mcp_status","id":id,"ok":false,"alive":false,"error":error.to_string()}));
-                                    false
+                                    send_json(&out_tx, serde_json::json!({"type":"mcp_status","id":id,"ok":false,"alive":false,"error":error.to_string()}))
                                 }
                             }
                         } else {
-                            send_json(&out_tx, serde_json::json!({"type":"mcp_status","id":id,"ok":true,"alive":true}));
-                            true
+                            send_json(&out_tx, serde_json::json!({"type":"mcp_status","id":id,"ok":true,"alive":true}))
                         };
-                        let _ = alive;
+                        if !sent {
+                            end_reason = "outbound channel closed".into();
+                            break;
+                        }
                     },
                     "call_tool" => {
                         let name = val.get("name").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
@@ -3823,7 +4088,8 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                         let confirmed = val.get("confirmed").and_then(|v|v.as_bool()).unwrap_or(false);
                         let tx = out_tx.clone();
                         let task_epoch=epoch.clone();
-                        tokio::spawn(async move {
+                        let tool_name_for_panic = name.clone();
+                        let inner = tokio::spawn(async move {
                             let _lease=accounts::ACCESS.read().await;if state2.accounts.required()&&(task_epoch.is_none()||task_epoch!=state2.accounts.active().map(|p|p.epoch)){return;}
                             let args_bytes = args.to_string().len();
                             let (outcome, succeeded) = guarded_tool_observed(&state2, &eng, &checkpoint_id, &name, args, budget, confirmed).await;
@@ -3847,7 +4113,29 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                                 }
                                 Err(error) => serde_json::json!({"type":"tool_result","id":id,"ok":false,"kind":"execution","error":error.to_string()}),
                             };
-                            let _ = tx.send(response.to_string());
+                            if let Err(err) = tx.send(response.to_string()) {
+                                tracing::warn!("legacy WS tool_result send failed for '{name}' (id={id}): {err}");
+                            }
+                        });
+                        let panic_tx = out_tx.clone();
+                        tokio::spawn(async move {
+                            if let Err(join_err) = inner.await {
+                                if join_err.is_panic() {
+                                    tracing::error!("legacy WS call_tool task panicked for '{tool_name_for_panic}' (id={id}): {join_err}");
+                                    let err_frame = serde_json::json!({
+                                        "type": "tool_result",
+                                        "id": id,
+                                        "ok": false,
+                                        "kind": "execution",
+                                        "error": format!("Internal error while running '{tool_name_for_panic}': task panicked.")
+                                    });
+                                    if let Err(send_err) = panic_tx.send(err_frame.to_string()) {
+                                        tracing::warn!("legacy WS panic tool_result send failed for '{tool_name_for_panic}' (id={id}): {send_err}");
+                                    }
+                                } else if join_err.is_cancelled() {
+                                    tracing::warn!("legacy WS call_tool task cancelled for '{tool_name_for_panic}' (id={id})");
+                                }
+                            }
                         });
                     },
                     "add_server" => {
@@ -3863,10 +4151,13 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                         if result.is_ok() {
                             state.addons.lock().await.reset_all().await;
                         }
-                        send_json(&out_tx, match result {
+                        if !send_json(&out_tx, match result {
                             Ok(()) => serde_json::json!({"type":"server_changed","id":id,"ok":true,"server_id":server_id}),
                             Err(error) => serde_json::json!({"type":"server_changed","id":id,"ok":false,"error":error.to_string()}),
-                        });
+                        }) {
+                            end_reason = "outbound channel closed".into();
+                            break;
+                        }
                     },
                     "remove_server" => {
                         let server_id = val.get("server_id").or_else(|| val.get("id")).and_then(|v| v.as_str()).unwrap_or("");
@@ -3874,12 +4165,20 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                         if result.is_ok() {
                             state.addons.lock().await.reset_all().await;
                         }
-                        send_json(&out_tx, match result {
+                        if !send_json(&out_tx, match result {
                             Ok(()) => serde_json::json!({"type":"server_changed","id":id,"ok":true,"server_id":server_id}),
                             Err(error) => serde_json::json!({"type":"server_changed","id":id,"ok":false,"error":error.to_string()}),
-                        });
+                        }) {
+                            end_reason = "outbound channel closed".into();
+                            break;
+                        }
                     },
-                    _ => { send_json(&out_tx, serde_json::json!({"type":"error","id":id,"error":"unknown bridge message type"})); }
+                    _ => {
+                        if !send_json(&out_tx, serde_json::json!({"type":"error","id":id,"error":"unknown bridge message type"})) {
+                            end_reason = "outbound channel closed".into();
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -4055,6 +4354,140 @@ mod full_access_tests {
         assert!(!state.workspace.full_access(), "stale browser cannot flip full_access on");
         assert_eq!(state.preferences.snapshot().perm_mode, "sandbox");
         assert_eq!(state.preferences.snapshot().language, "fr");
+        let _ = std::fs::remove_dir_all(folder);
+    }
+}
+
+#[cfg(test)]
+mod wave4_main_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn test_state(tag: &str) -> (AppState, PathBuf) {
+        let alive = Arc::new(AtomicBool::new(true));
+        let ui = Arc::new(gui::UiShared::new(alive.clone()));
+        let folder = std::env::temp_dir().join(format!("plazcode-wave4-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&folder);
+        std::fs::create_dir_all(&folder).unwrap();
+        let workspace = Arc::new(workspace::Workspace::new(Some(folder.to_str().unwrap())).unwrap());
+        let settings = folder.join("settings.json");
+        let state = AppState::new(
+            broadcast::channel(16).0,
+            alive,
+            Arc::new(AtomicBool::new(false)),
+            workspace,
+            Arc::new("test".into()),
+            Arc::new(preferences::PreferencesStore::load_from(settings)),
+            ui,
+        );
+        (state, folder)
+    }
+
+    #[tokio::test]
+    async fn helper_routes_enforce_safety_and_approval_mode() {
+        let (state, folder) = test_state("helper-safety");
+        state.preferences.update(|p| {
+            p.read_only = true;
+            p.approval_mode = "ask".into();
+        }).unwrap();
+
+        // web_report always passes through even when read_only + ask
+        let resp = blockbench_handler(State(state.clone()), Json(json!({"type": "web_report", "ready": true}))).await;
+        assert_eq!(resp.status(), axum::http::StatusCode::OK);
+
+        // Read-only actions pass the safety gate (reach ::post and return 200 OK)
+        let bb_read = blockbench_handler(State(state.clone()), Json(json!({"cmd": "status", "args": {}}))).await;
+        assert_eq!(bb_read.status(), axum::http::StatusCode::OK);
+        let fg_read = figma_handler(State(state.clone()), Json(json!({"cmd": "outline", "args": {}}))).await;
+        assert_eq!(fg_read.status(), axum::http::StatusCode::OK);
+        let bl_read = blender_handler(State(state.clone()), Json(json!({"type": "get_scene_info", "params": {}}))).await;
+        assert_eq!(bl_read.status(), axum::http::StatusCode::OK);
+
+        // Mutating actions are blocked with 403 in read_only mode
+        let bb_mut = blockbench_handler(State(state.clone()), Json(json!({"cmd": "cube_add", "args": {}}))).await;
+        assert_eq!(bb_mut.status(), axum::http::StatusCode::FORBIDDEN);
+        let fg_mut = figma_handler(State(state.clone()), Json(json!({"cmd": "frame_add", "args": {}}))).await;
+        assert_eq!(fg_mut.status(), axum::http::StatusCode::FORBIDDEN);
+        let bl_mut = blender_handler(State(state.clone()), Json(json!({"type": "execute_code", "params": {"code": "1"}}))).await;
+        assert_eq!(bl_mut.status(), axum::http::StatusCode::FORBIDDEN);
+
+        // Turn off read_only while keeping approval_mode="ask": unconfirmed blocked, confirmed allowed past gate
+        state.preferences.update(|p| {
+            p.read_only = false;
+            p.approval_mode = "ask".into();
+        }).unwrap();
+        let unconfirmed = blockbench_handler(State(state.clone()), Json(json!({"cmd": "cube_add", "args": {}}))).await;
+        assert_eq!(unconfirmed.status(), axum::http::StatusCode::FORBIDDEN);
+        let confirmed = blockbench_handler(State(state.clone()), Json(json!({"cmd": "cube_add", "args": {}, "confirmed": true}))).await;
+        assert_eq!(confirmed.status(), axum::http::StatusCode::OK);
+
+        let _ = std::fs::remove_dir_all(folder);
+    }
+
+    #[tokio::test]
+    async fn guarded_tool_respects_approval_mode_ask_and_bypass() {
+        let (state, folder) = test_state("guarded-approval");
+        state.preferences.update(|p| {
+            p.read_only = false;
+            p.confirm_delete = false;
+            p.approval_mode = "ask".into();
+        }).unwrap();
+
+        let (res, ok) = guarded_tool_observed(
+            &state,
+            "local",
+            "",
+            "write_file",
+            json!({"path": "a.txt", "content": "hi"}),
+            Duration::from_secs(5),
+            false,
+        ).await;
+        assert!(!ok);
+        assert!(res.unwrap_err().to_string().contains("E_CONFIRMATION_REQUIRED"));
+
+        let (res_ok, ok2) = guarded_tool_observed(
+            &state,
+            "local",
+            "",
+            "write_file",
+            json!({"path": "a.txt", "content": "hi"}),
+            Duration::from_secs(5),
+            true,
+        ).await;
+        assert!(ok2, "confirmed write_file in ask mode must succeed: {:?}", res_ok);
+
+        let _ = std::fs::remove_dir_all(folder);
+    }
+
+    #[tokio::test]
+    async fn local_checkpoint_tool_does_not_hold_store_lock_across_execution() {
+        let (state, folder) = test_state("ckpt-lock");
+        let begin = checkpoint_handler(
+            State(state.clone()),
+            Json(json!({"action": "begin", "engine": "local", "label": "lock test"})),
+        ).await;
+        assert_eq!(begin.status(), axum::http::StatusCode::OK);
+        let body_bytes = axum::body::to_bytes(begin.into_body(), 65536).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+        let id = body["id"].as_str().unwrap().to_string();
+
+        // While a local tool runs, checkpoints::STORE must remain unlocked.
+        let (res, ok) = guarded_tool_observed(
+            &state,
+            "local",
+            &id,
+            "run_command",
+            json!({"command": if cfg!(windows) { "cmd /c echo ok" } else { "echo ok" }}),
+            Duration::from_secs(10),
+            false,
+        ).await;
+        assert!(ok, "run_command should succeed: {:?}", res);
+        assert!(checkpoints::STORE.try_lock().is_ok());
+
+        let _ = checkpoint_handler(
+            State(state.clone()),
+            Json(json!({"action": "finish", "id": id, "complete": true})),
+        ).await;
         let _ = std::fs::remove_dir_all(folder);
     }
 }

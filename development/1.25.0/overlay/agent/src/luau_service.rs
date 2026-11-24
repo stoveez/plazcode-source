@@ -14,7 +14,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
@@ -269,10 +269,17 @@ impl Mirror {
 
 // ── The service ─────────────────────────────────────────────────────────────────────────────────────────
 pub struct Service { lsp: Lsp, key: String, root: PathBuf, pub mirror: Mirror, open: HashMap<String, i64>, synced: Option<Instant>, used: Instant }
-static SERVICE: once_cell::sync::Lazy<tokio::sync::Mutex<Option<Service>>> = once_cell::sync::Lazy::new(|| tokio::sync::Mutex::new(None));
+struct ServiceSlot { key: String, service: Arc<tokio::sync::Mutex<Service>> }
+static SERVICE: once_cell::sync::Lazy<std::sync::Mutex<Option<ServiceSlot>>> = once_cell::sync::Lazy::new(|| std::sync::Mutex::new(None));
+static START_LOCK: once_cell::sync::Lazy<tokio::sync::Mutex<()>> = once_cell::sync::Lazy::new(|| tokio::sync::Mutex::new(()));
+static GENERATION: AtomicU64 = AtomicU64::new(0);
 static REAPER: std::sync::Once = std::sync::Once::new();
 
-pub async fn clear_profile() { *SERVICE.lock().await = None; }
+pub async fn clear_profile() {
+    GENERATION.fetch_add(1, Ordering::SeqCst);
+    let old = SERVICE.lock().unwrap_or_else(|e| e.into_inner()).take();
+    drop(old);
+}
 
 impl Service {
     pub async fn start(program: &Path, definitions: &Path, root: PathBuf, key: String) -> Result<Self> {
@@ -426,30 +433,95 @@ async fn sync_with<F, Fut>(service: &mut Service, mut call: F) -> Result<usize> 
     bail!("the place kept changing while it was being read; try again")
 }
 
-/// The running service for the current Studio, started and synced as needed.
-pub async fn acquire(state: &crate::AppState, studio: &Option<Value>, fresh: bool) -> Result<tokio::sync::MutexGuard<'static, Option<Service>>> {
-    REAPER.call_once(|| { tokio::spawn(async { loop { tokio::time::sleep(Duration::from_secs(60)).await; let mut slot = SERVICE.lock().await; if slot.as_ref().is_some_and(|s| s.used.elapsed() > IDLE_STOP || !s.lsp.alive()) { *slot = None; } } }); });
-    let (key, studio) = studio_key(state, studio);
-    let mut slot = SERVICE.lock().await;
-    if slot.as_ref().is_some_and(|s| s.key != key || !s.lsp.alive()) { *slot = None; }
-    if slot.is_none() {
-        let (program, definitions) = crate::luau_check::tools().await?;
-        let folder = format!("{:016x}", { let mut h: u64 = 0xcbf29ce484222325; for b in key.as_bytes() { h ^= *b as u64; h = h.wrapping_mul(0x100000001b3); } h });
-        let root = crate::profile_paths::data_root().join("cache").join("luau-place").join(folder);
-        *slot = Some(Service::start(&program, &definitions, root, key).await?);
+fn start_reaper() {
+    REAPER.call_once(|| {
+        tokio::spawn(async {
+            loop {
+                tokio::time::sleep(Duration::from_secs(60)).await;
+                let candidate = SERVICE.lock().unwrap_or_else(|e| e.into_inner()).as_ref().map(|s| s.service.clone());
+                if let Some(arc) = candidate {
+                    if let Ok(guard) = arc.try_lock() {
+                        let expired = guard.used.elapsed() > IDLE_STOP || !guard.lsp.alive();
+                        drop(guard);
+                        if expired {
+                            let mut slot = SERVICE.lock().unwrap_or_else(|e| e.into_inner());
+                            if slot.as_ref().is_some_and(|s| Arc::ptr_eq(&s.service, &arc)) {
+                                *slot = None;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+}
+
+fn slot_for_key(key: &str) -> Option<Arc<tokio::sync::Mutex<Service>>> {
+    let mut slot = SERVICE.lock().unwrap_or_else(|e| e.into_inner());
+    match slot.as_ref() {
+        Some(existing) if existing.key == key => Some(existing.service.clone()),
+        Some(_) => { *slot = None; None }
+        None => None,
     }
-    let service = slot.as_mut().expect("service");
-    service.used = Instant::now();
-    if fresh || service.synced.is_none_or(|t| t.elapsed() > SYNC_REUSE) { sync(service, state, &studio).await?; }
-    Ok(slot)
+}
+
+fn clear_slot_if_same(arc: &Arc<tokio::sync::Mutex<Service>>) {
+    let mut slot = SERVICE.lock().unwrap_or_else(|e| e.into_inner());
+    if slot.as_ref().is_some_and(|s| Arc::ptr_eq(&s.service, arc)) {
+        *slot = None;
+    }
+}
+
+/// The running service for the current Studio, started and synced as needed.
+pub async fn acquire(state: &crate::AppState, studio: &Option<Value>, fresh: bool) -> Result<tokio::sync::OwnedMutexGuard<Service>> {
+    start_reaper();
+    let (key, studio) = studio_key(state, studio);
+    let generation = GENERATION.load(Ordering::SeqCst);
+    if let Some(arc) = slot_for_key(&key) {
+        let mut guard = arc.clone().lock_owned().await;
+        if guard.key == key && guard.lsp.alive() {
+            guard.used = Instant::now();
+            if fresh || guard.synced.is_none_or(|t| t.elapsed() > SYNC_REUSE) { sync(&mut guard, state, &studio).await?; }
+            return Ok(guard);
+        }
+        drop(guard);
+        clear_slot_if_same(&arc);
+    }
+    let (program, definitions) = crate::luau_check::tools().await?;
+    let _start_guard = START_LOCK.lock().await;
+    anyhow::ensure!(GENERATION.load(Ordering::SeqCst) == generation, "PlazCode profile changed while starting the Luau service.");
+    if let Some(arc) = slot_for_key(&key) {
+        let mut guard = arc.clone().lock_owned().await;
+        if guard.key == key && guard.lsp.alive() {
+            drop(_start_guard);
+            guard.used = Instant::now();
+            if fresh || guard.synced.is_none_or(|t| t.elapsed() > SYNC_REUSE) { sync(&mut guard, state, &studio).await?; }
+            return Ok(guard);
+        }
+        drop(guard);
+        clear_slot_if_same(&arc);
+    }
+    let folder = format!("{:016x}", { let mut h: u64 = 0xcbf29ce484222325; for b in key.as_bytes() { h ^= *b as u64; h = h.wrapping_mul(0x100000001b3); } h });
+    let root = crate::profile_paths::data_root().join("cache").join("luau-place").join(folder);
+    let started = Service::start(&program, &definitions, root, key.clone()).await?;
+    anyhow::ensure!(GENERATION.load(Ordering::SeqCst) == generation, "PlazCode profile changed while starting the Luau service.");
+    let arc = Arc::new(tokio::sync::Mutex::new(started));
+    {
+        let mut slot = SERVICE.lock().unwrap_or_else(|e| e.into_inner());
+        *slot = Some(ServiceSlot { key, service: arc.clone() });
+    }
+    drop(_start_guard);
+    let mut guard = arc.lock_owned().await;
+    guard.used = Instant::now();
+    if fresh || guard.synced.is_none_or(|t| t.elapsed() > SYNC_REUSE) { sync(&mut guard, state, &studio).await?; }
+    Ok(guard)
 }
 
 /// Checks an edit of `path` with the service: baseline (old text) and new text for the script and for the
 /// scripts that require it, keeping only problems the edit introduced. The server ends with the new text.
 pub async fn check_edit(state: &crate::AppState, studio: &Option<Value>, path: &str, before: &str, after: &str) -> Result<(Vec<Diagnostic>, Vec<Diagnostic>)> {
-    let mut slot = acquire(state, studio, false).await?;
-    let service = slot.as_mut().expect("service");
-    compare(service, path, before, after).await
+    let mut service = acquire(state, studio, false).await?;
+    compare(&mut service, path, before, after).await
 }
 pub async fn compare(service: &mut Service, path: &str, before: &str, after: &str) -> Result<(Vec<Diagnostic>, Vec<Diagnostic>)> {
     // Force a fresh Studio sync next time, including if a timeout drops this future
@@ -472,8 +544,7 @@ pub async fn compare(service: &mut Service, path: &str, before: &str, after: &st
 
 /// Full diagnostics for one script, optionally for proposed text (not applied: the server goes back after).
 pub async fn analyze(state: &crate::AppState, studio: &Option<Value>, path: &str, proposed: Option<&str>) -> Result<(String, Vec<Diagnostic>)> {
-    let mut slot = acquire(state, studio, false).await?;
-    let service = slot.as_mut().expect("service");
+    let mut service = acquire(state, studio, false).await?;
     let (doc, node, current) = service.open_current(path).await?;
     if let Some(text) = proposed { service.synced = None; service.set_text(&node.path, text).await?; }
     let result = service.diagnostics(&doc, None).await;
@@ -582,8 +653,8 @@ pub async fn lookup_with(service: &mut Service, args: &Value) -> Result<Value> {
 }
 pub async fn lookup(state: &crate::AppState, args: &Value) -> Result<Value> {
     let studio = args.get("studio_id").cloned().filter(|v| !v.is_null());
-    let mut slot = acquire(state, &studio, false).await?;
-    lookup_with(slot.as_mut().expect("service"), args).await
+    let mut service = acquire(state, &studio, false).await?;
+    lookup_with(&mut service, args).await
 }
 
 #[cfg(test)]
@@ -757,5 +828,12 @@ for i = 1, 30 do Inst.new("Part", "Part" .. i, WS) end"#;
         drop(pipe);
         drop(service);
         let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[tokio::test] async fn clear_profile_does_not_block_behind_start_lock() {
+        let _held = START_LOCK.lock().await;
+        let gen_before = GENERATION.load(Ordering::SeqCst);
+        tokio::time::timeout(Duration::from_millis(500), clear_profile()).await.expect("clear_profile must not block");
+        assert!(GENERATION.load(Ordering::SeqCst) > gen_before);
     }
 }

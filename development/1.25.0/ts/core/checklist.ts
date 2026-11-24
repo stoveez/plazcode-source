@@ -18,19 +18,24 @@ const PlazCodeChecklist = (() => {
         if(previous && !/^(?:SPAN|A|EM|STRONG|CODE)$/.test(previous.tagName))node.remove();
       }
       return String(read(clone)||'').trim();
-    } catch { return ''; }
+    } catch (err) { console.warn('[plazcode-checklist] userText failed:', err); return ''; }
   }
   function mount({root, getGroup, getBar, blocked, getDetached=()=>false, storage}: MountOptions) {
     // autoCollapsed: folded into the Tasks pill because PlazCode itself was minimized (owner, 2026-11-18); it opens again
     // with PlazCode unless the person opened or closed it in between. wasDetached: PlazCode's minimized state last seen.
     const key='plazcode.checklistHidden',positionKey='plazcode.checklistPosition'; let collapsed=false, signature='',position:{x:number;y:number}|null=null,drag:DragState|null=null,autoCollapsed=false,wasDetached:boolean|null=null;
-    try { if(!storage)storage=window.sessionStorage;collapsed=storage.getItem(key)==='1';const saved=JSON.parse(storage.getItem(positionKey) as string);if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y))position={x:saved.x,y:saved.y}; } catch {}
+    try {
+      if(!storage)storage=window.sessionStorage;
+      collapsed=storage.getItem(key)==='1';
+      const rawPos=storage.getItem(positionKey);
+      if(rawPos){const saved=JSON.parse(rawPos);if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y))position={x:saved.x,y:saved.y};}
+    } catch (err) { console.warn('[plazcode-checklist] failed to restore checklist state:', err); }
     const panel=document.createElement('section');panel.id='rs-task-checklist';panel.hidden=true;panel.setAttribute('aria-label','Task checklist');
     panel.innerHTML='<header><span class="rs-checklist-ring" role="progressbar" aria-label="Task plan progress" aria-valuemin="0" aria-valuemax="100"><svg viewBox="0 0 32 32" aria-hidden="true"><circle class="rs-checklist-track" cx="16" cy="16" r="12"/><circle class="rs-checklist-fill" cx="16" cy="16" r="12" pathLength="100" stroke-dasharray="100" transform="rotate(-90 16 16)"/></svg><span class="rs-checklist-percent"></span></span><span class="rs-checklist-heading"><strong>Task checklist</strong><small></small></span><button type="button" class="rs-checklist-hide" aria-label="Hide task checklist" title="Hide checklist — the AI keeps working">−</button></header><ol></ol>';
     const tab=document.createElement('button');tab.id='rs-checklist-show';tab.type='button';tab.hidden=true;tab.innerHTML='<span class="rs-checklist-tab-icon" aria-hidden="true">✓</span><span class="rs-checklist-tab-label">Tasks</span><span class="rs-checklist-tab-count"></span>';tab.setAttribute('aria-label','Show task checklist');
     root.append(panel,tab);
     function setCollapsed(value:boolean) {
-      collapsed=value;autoCollapsed=false;try{if(value)(storage as Store).setItem(key,'1');else (storage as Store).removeItem(key);}catch{}
+      collapsed=value;autoCollapsed=false;try{if(value)(storage as Store).setItem(key,'1');else (storage as Store).removeItem(key);}catch(err){console.warn('[plazcode-checklist] failed to persist collapsed state:',err);}
       place();(value?tab:panel.querySelector('button') as HTMLButtonElement).focus({preventScroll:true});
     }
     // Minimizing PlazCode folds the list into its pill, without saving that as the person's choice and without moving focus.
@@ -40,14 +45,14 @@ const PlazCodeChecklist = (() => {
       else if(!detached&&!first&&autoCollapsed){collapsed=false;autoCollapsed=false;}
     }
     (panel.querySelector('button') as HTMLButtonElement).onclick=()=>setCollapsed(true);
-    function savePosition(){try{(storage as Store).setItem(positionKey,JSON.stringify(position));}catch{}}
+    function savePosition(){try{(storage as Store).setItem(positionKey,JSON.stringify(position));}catch(err){console.warn('[plazcode-checklist] failed to persist position:',err);}}
     // While PlazCode is minimized, the list and its Tasks pill can be dragged anywhere and share one saved spot. The pill
     // moves only after the pointer travels 5 px, so a plain click still opens the list (as PlazCode's own minimized button).
-    function stopDrag(){if(drag){const {id,element,moved}=drag;drag=null;try{element.releasePointerCapture(id);}catch{}element.removeAttribute('data-dragging');if(moved){savePosition();if(element===tab){suppressClick=true;setTimeout(()=>{suppressClick=false;},60);}}}}
+    function stopDrag(){if(drag){const {id,element,moved}=drag;drag=null;if(typeof element.releasePointerCapture==='function'){try{element.releasePointerCapture(id);}catch(err){console.warn('[plazcode-checklist] releasePointerCapture failed:',err);}}element.removeAttribute('data-dragging');if(moved){savePosition();if(element===tab){suppressClick=true;setTimeout(()=>{suppressClick=false;},60);}}}}
     let suppressClick=false;
     function startDrag(element:HTMLElement,event:PointerEvent,threshold:number){
       const rect=element.getBoundingClientRect();drag={id:event.pointerId,element,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top,threshold,moved:false};
-      try{element.setPointerCapture(event.pointerId);}catch{}
+      if(typeof element.setPointerCapture==='function'){try{element.setPointerCapture(event.pointerId);}catch(err){console.warn('[plazcode-checklist] setPointerCapture failed:',err);}}
       if(!threshold){drag.moved=true;position={x:rect.left,y:rect.top};element.dataset.dragging='true';event.preventDefault();}
     }
     function moveDrag(event:PointerEvent){

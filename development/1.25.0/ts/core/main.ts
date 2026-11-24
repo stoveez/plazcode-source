@@ -74,7 +74,7 @@
   let personalMemory: any = null, currentProject = "", projectChat = "", projectChecked = 0;
   // 1.24.21 saved setup for this site: default memory project and pinned skills.
   let siteMemoryProject = "", sitePinnedSkills: any[] = [];
-  try { chrome.storage.local.get("rsPersonalMemory", value => { personalMemory = value.rsPersonalMemory || null; }); } catch {}
+  try { chrome.storage.local.get("rsPersonalMemory", value => { if (chrome.runtime?.lastError) { diag("storage.getError", { key: "rsPersonalMemory", error: chrome.runtime.lastError.message }); return; } personalMemory = (value && value.rsPersonalMemory) || null; }); } catch (error: any) { diag("storage.getThrow", { key: "rsPersonalMemory", error: String(error && error.message || error) }); }
   async function refreshPersonalMemory(action?: any) {
     const chat=P.id+'|'+P.conversationKey();
     if(action || projectChat!==chat || Date.now()-projectChecked>30000){
@@ -169,6 +169,7 @@
   }
   try {
     chrome.storage.local.get(["rsBgMode", "rsTabKeepAwake"], (r) => {
+      if (chrome.runtime?.lastError) return;
       if (r && typeof r.rsBgMode === "boolean") bgMode = r.rsBgMode;
       if (r && typeof r.rsTabKeepAwake === "boolean") tabKeepAwake = r.rsTabKeepAwake;
       syncTabKeepAwake();
@@ -178,6 +179,7 @@
   let permMode = "sandbox";
   try {
     chrome.storage.local.get("rsPermMode", (r) => {
+      if (chrome.runtime?.lastError) return;
       if (r && ["sandbox", "ask", "full"].includes(r.rsPermMode)) permMode = r.rsPermMode;
       try { window.__rsPermMode = () => permMode; } catch {}
     });
@@ -289,7 +291,7 @@
   ]);
   // 1.24.21 safety limits (Read-only, confirm deletes, allowed folders).
   let safetySettings = typeof PlazCodeSafety !== "undefined" ? PlazCodeSafety.fromStorage({}) : {readOnly:false,confirmDelete:true,allowedFolders:[]};
-  try { chrome.storage.local.get(["rsReadOnly","rsConfirmDelete","rsAllowedFolders"], (values) => { safetySettings = PlazCodeSafety.fromStorage(values); try { window.__rsSafety = () => safetySettings; } catch {} }); } catch {}
+  try { chrome.storage.local.get(["rsReadOnly","rsConfirmDelete","rsAllowedFolders"], (values) => { if (chrome.runtime?.lastError) return; safetySettings = PlazCodeSafety.fromStorage(values || {}); try { window.__rsSafety = () => safetySettings; } catch {} }); } catch {}
   try { window.__rsSafety = () => safetySettings; } catch {}
   let approvalMode = "";
   const approvalModeReady = new Promise<void>(resolve=>{
@@ -306,13 +308,34 @@
   // One-shot permission for the exact delete the user just allowed. The app
   // refuses deletes without it, and the AI can never set it through arguments.
   let deleteConfirmation: { key: string; expires: number } | null = null;
+  const deleteConfirmations = new Map<string, number[]>();
   // toast and the menu belong to the bar (ui below); calling them by bare name here was a silent "not defined" error, so the
   // "Always approving ..." note never appeared (found by the TypeScript checker, 2026-11-15).
   try { window.__rsAlwaysChanged = (tool: string) => { try { ui.toast("Always approving “" + PlazCodeApproval.nice(tool) + "”. Remove it in the PlazCode menu under Safety."); ui.refreshMenu(); } catch {} }; } catch {}
   const deleteKey = (name: unknown, args: any) => String(name || "").split("__").pop() + "|" + String(args && (args.path || args.command) || "");
+  function grantDeleteConfirmation(name: unknown, args: any, ttlMs = 120000) {
+    const key = deleteKey(name, args);
+    const expires = Date.now() + ttlMs;
+    const queue = deleteConfirmations.get(key) || [];
+    queue.push(expires);
+    deleteConfirmations.set(key, queue);
+    deleteConfirmation = { key, expires };
+  }
   function withDeleteConfirmation(msg: any) {
     const { confirmed, ...clean } = msg || {};
-    if (deleteConfirmation && deleteConfirmation.expires > Date.now() && deleteConfirmation.key === deleteKey(clean.name, clean.arguments)) {
+    const key = deleteKey(clean.name, clean.arguments);
+    const queue = deleteConfirmations.get(key);
+    if (queue && queue.length) {
+      const now = Date.now();
+      while (queue.length && queue[0] <= now) queue.shift();
+      if (queue.length) {
+        queue.shift();
+        if (!queue.length) deleteConfirmations.delete(key);
+        return { ...clean, confirmed: true };
+      }
+      deleteConfirmations.delete(key);
+    }
+    if (deleteConfirmation && deleteConfirmation.expires > Date.now() && deleteConfirmation.key === key) {
       deleteConfirmation = null;
       return { ...clean, confirmed: true };
     }
@@ -782,7 +805,7 @@
       PlazCodeVersion.render(element, EXT_VERSION, releaseStatus, "v", element.dataset.versionExtra || "");
     }
   }
-  try { chrome.storage.local.get("rsReleaseStatus", value => { releaseStatus = value.rsReleaseStatus || null; renderVersionIndicators(); }); } catch {}
+  try { chrome.storage.local.get("rsReleaseStatus", value => { if (chrome.runtime?.lastError) return; releaseStatus = (value && value.rsReleaseStatus) || null; renderVersionIndicators(); }); } catch {}
   // Which bridge launcher to tell the user to run: start.bat is Windows-only.
   // macOS uses MacOS_Start.command, Linux runs bridge.py directly.
   const RUN_CMD = "PlazCode.exe";
@@ -896,6 +919,7 @@
   let soundOn = true;
   try {
     chrome.storage.local.get(["rsTheme", "rsSounds", "rsAppearance"], (r) => {
+      if (chrome.runtime?.lastError) return;
       if (r && PLAZCODE_THEMES[r.rsTheme]) plazcodeTheme = r.rsTheme;
       if (r && r.rsAppearance) applySharedAppearance(r.rsAppearance);
       if (r && typeof r.rsSounds === "boolean") soundOn = r.rsSounds;
@@ -1177,7 +1201,7 @@
 
   // Provider init must happen after A is defined — diag() reads A.running and
   // copilot's init calls diag() immediately, which would TDZ if init ran before A.
-  try { P.init({ diag, sendContext: () => ({session:A.sessionGen,stop:A.stopAt || 0,cooldown:normalizeCooldown(reliabilitySettings.rsCommandCooldown)*1000}), pacingRequest: (request: any) => bg({type:"provider-pacing",request,page:request.client}), isStopped: () => A.stop, isSessionActive: () => A.started || A.running, requestStart: () => startSession() }); } catch {}
+  try { P.init({ diag, sendContext: () => ({session:A.sessionGen,stop:A.stopAt || 0,cooldown:normalizeCooldown(reliabilitySettings.rsCommandCooldown)*1000}), pacingRequest: (request: any) => bg({type:"provider-pacing",request,page:request.client}), isStopped: () => A.stop, isSessionActive: () => A.started || A.running, requestStart: () => startSession() }); } catch (error: any) { const msg = String(error && error.message || error); diag("provider.initError", { provider: P && P.id, error: msg }); try { console.warn("[PlazCode] Provider init failed:", msg); } catch {} }
 
   async function waitFor(pred: () => unknown, timeout: number) {
     let t0 = Date.now(), lastBeatAt = t0;
@@ -1403,23 +1427,25 @@
     const coworkFocus = ui.captureCoworkFocus();
     const draftChat=P.conversationKey(), draftGeneration=A.sessionGen;
     const savedCoworkDraft=!userPrompt && cowork.snapshot().enabled && typeof P.writeDraft==='function' ? String(P.editorText()||'') : '';
-    if(savedCoworkDraft){
-      P.setInputLock(true);
-      let cleared=await P.writeDraft('',savedCoworkDraft);
-      if((!cleared || !cleared.ok) && String(P.editorText()||'')===savedCoworkDraft){
-        await sleep(120);
-        cleared=await P.writeDraft('',savedCoworkDraft);
-      }
-      if(!cleared || !cleared.ok){
-        ui.banner("warn","Send paused","Your follow-up draft changed while PlazCode tried to send a tool result. Clear or send your draft, then resume.");
-        throw new SendAbortedError('Your follow-up draft changed. Tool feedback was not sent.');
-      }
-    }
-    A.injecting = true;
-    const injection = A.injectGeneration = (A.injectGeneration || 0) + 1;
-    A._injectingSince = Date.now(); // stale-injecting failsafe anchor (meter loop)
-    ui.inputCover(true);
+    let inputLocked = false;
+    let injection = 0;
     try {
+      if(savedCoworkDraft){
+        if (typeof P.setInputLock === "function") { P.setInputLock(true); inputLocked = true; }
+        let cleared=await P.writeDraft('',savedCoworkDraft);
+        if((!cleared || !cleared.ok) && String(P.editorText()||'')===savedCoworkDraft){
+          await sleep(120);
+          cleared=await P.writeDraft('',savedCoworkDraft);
+        }
+        if(!cleared || !cleared.ok){
+          ui.banner("warn","Send paused","Your follow-up draft changed while PlazCode tried to send a tool result. Clear or send your draft, then resume.");
+          throw new SendAbortedError('Your follow-up draft changed. Tool feedback was not sent.');
+        }
+      }
+      A.injecting = true;
+      injection = A.injectGeneration = (A.injectGeneration || 0) + 1;
+      A._injectingSince = Date.now(); // stale-injecting failsafe anchor (meter loop)
+      ui.inputCover(true);
       // Quick 2-point settle: sample the previous response's stream length before
       // and after a 200ms yield. A one-shot React batch flush (the common case)
       // shows no second growth and costs only 200ms. A genuinely still-generating
@@ -1620,16 +1646,22 @@
       if (userPrompt && A.stop && !messageSent && !landed()) throw new SendAbortedError("Request stopped before delivery was confirmed");
       return base;
     } finally {
-      // During Starting Up / the agent loop, the bootstrap or loop owns the cover
-      // for the whole phase, so don't lift it here between an injection and the
-      // next waitForResponse - it stays up until the loop / bootstrap ends.
+      if (inputLocked && !A.starting && !A.running && typeof P.setInputLock === "function") {
+        try { P.setInputLock(false); } catch (error: any) { if (typeof diag === "function") diag("send.unlockError", { error: String(error && error.message || error) }); }
+      }
       if (!A.starting && !A.running) ui.inputCover(false);
       if(savedCoworkDraft && draftChat===P.conversationKey() && draftGeneration===A.sessionGen && !String(P.editorText()||'')) {
         const restored=await P.writeDraft(savedCoworkDraft,'');
         if(!restored || !restored.ok)ui.toast('Your follow-up draft could not be restored. It is retained in PlazCode.');
         A.coworkSavedDraft=restored && restored.ok ? '' : savedCoworkDraft;
       }
-      setTimeout(() => { if (A.injectGeneration !== injection) return; A.injecting=false; ui.inputCover(!!A.running); ui.renderCowork(); ui.restoreCoworkFocus(coworkFocus); }, 400);
+      setTimeout(() => {
+        if (A.injectGeneration !== injection) return;
+        A.injecting=false;
+        ui.inputCover(!!A.running);
+        if (draftChat===P.conversationKey() && draftGeneration===A.sessionGen) ui.renderCowork();
+        ui.restoreCoworkFocus(coworkFocus);
+      }, 400);
       // Camouflage the turn we just injected without waiting on the rAF observer
       // (paused in a background tab). A couple of nudges cover the render.
       setTimeout(scheduleSweep, 200);
@@ -2337,14 +2369,18 @@
     if ((A.stop || A.pendingToolSettles) && msg && msg.type === "call_tool") return Promise.resolve({ok:false,kind:"stopped",error:"Stopped before tool dispatch."});
     if (msg && msg.type === "call_tool" && typeof withDeleteConfirmation === "function") msg = withDeleteConfirmation(msg);
     return new Promise<any>((resolve) => {
-      const tool = msg?.type === "call_tool", record = {draining:false};
+      const tool = msg?.type === "call_tool", record: { draining: boolean; released: boolean; drainTimer: any } = {draining:false, released:false, drainTimer:null};
       let settled = false;
       if (tool) { A.inflightTools ||= new Set(); A.inflightTools.add(record); }
       const finish = (value: any) => {
         if (settled) return;
         settled = true; clearTimeout(timer);
+        if (record.drainTimer) { clearTimeout(record.drainTimer); record.drainTimer = null; }
         if (tool) A.inflightTools.delete(record);
-        if (record.draining) A.pendingToolSettles = Math.max(0,(A.pendingToolSettles||0)-1);
+        if (record.draining && !record.released) {
+          record.released = true;
+          A.pendingToolSettles = Math.max(0,(A.pendingToolSettles||0)-1);
+        }
         resolve(value);
       };
       const timer = setTimeout(() => finish({ok:false,kind:"timeout",error:
@@ -2377,8 +2413,11 @@
       if(staleProbePending)return;
       staleProbePending=true;
       bg({type:"status"}).then(resp=>{
-        if(resp?.kind === "stale-extension")ui.staleExtensionAlert();
-      }).catch(()=>{}).finally(()=>{staleProbePending=false;});
+        if(resp?.kind === "stale-extension" || A.staleExtension){
+          ui.staleExtensionAlert();
+          if (staleProbeTimer) { clearInterval(staleProbeTimer); staleProbeTimer = null; }
+        }
+      }).catch((error: any)=>{ diag("bridge.staleProbeError", { error: String(error && error.message || error) }); }).finally(()=>{staleProbePending=false;});
     }, 4000);
   }
   startStaleProbe();
@@ -2555,6 +2594,7 @@
   }
   try {
     chrome.storage.local.get("rsImageTools", (r) => {
+      if (chrome.runtime?.lastError) return;
       if (r && Array.isArray(r.rsImageTools)) for (const n of r.rsImageTools) A.imageTools.add(n);
       diag("imageTool.loaded", { tools: [...A.imageTools] });
     });
@@ -3064,13 +3104,72 @@ return result`;
       "if not __orOk then error(tostring(__orRes)) end\n" +
       "return __orRes";
   }
+  // Hoisted from ui() so runToolImpl and setEngine never hit ReferenceError / TDZ (R1-003).
+  let rsCheckpoints: any[] = [];
+  try{ chrome.storage.local.get("rsCheckpoints", (r: any)=>{ if (chrome.runtime?.lastError) return; if(r && Array.isArray(r.rsCheckpoints)) rsCheckpoints=r.rsCheckpoints; }); }catch{}
+  const MUTATING_OPS = new Set(["lighting_set_preset","lighting_setup_day_night","terrain_fill_region","terrain_clear","ui_create_screen","ui_create_component","fx_create_emitter","fx_create_light","fx_create_vfx","audio_setup_sound_hierarchy","audio_create_sound","camera_set_style","datastore_setup","leaderboard_setup","remote_setup","teams_setup","npc_spawn_pathfinding","proximity_setup","tween_create","marketplace_setup","web_fetch","web_search","plugin_create"]);
+  function createCheckpoint(op: any, args?: any){
+    try{
+      if(/^(get_|list_|web_|or_|debug_)/.test(op) || /_(info|inspect|list)$/.test(op) || op==="get_property") return;
+      const cp={op, args: JSON.parse(JSON.stringify(args||{})), at: Date.now()};
+      rsCheckpoints.unshift(cp); if(rsCheckpoints.length>12) rsCheckpoints.pop();
+      try{ chrome.storage.local.set({rsCheckpoints}); }catch(error: any){ diag("checkpoint.saveError", { error: String(error && error.message || error) }); }
+    }catch(error: any){ diag("checkpoint.createError", { op, error: String(error && error.message || error) }); }
+  }
+  let perfParts = 0, perfScripts = 0;
+  function updatePerfPill(){
+    const el = document.getElementById("rs-perf");
+    if(!el) return;
+    if(perfParts===0 && perfScripts===0){ el.hidden=true; return; }
+    el.hidden=false;
+    const lvl = perfParts>8000||perfScripts>120 ?  "high" : perfParts>3000||perfScripts>60 ?  "mid" : "low";
+    el.dataset.lvl=lvl;
+    el.textContent = `${perfParts||0} parts • ${perfScripts||0} scripts`;
+    el.title = lvl==="high" ? "High budget — consider optimizing" : lvl==="mid" ? "Moderate budget" : "Budget OK";
+  }
+  function bumpPerf(op: any){
+    if(op.startsWith("terrain_")) perfParts+=120;
+    else if(op.startsWith("fx_")) perfParts+=8;
+    else if(op.startsWith("ui_")) perfScripts+=1;
+    else if(op.startsWith("audio_")) perfScripts+=1;
+    else if(op==="datastore_setup"||op==="leaderboard_setup") perfScripts+=2;
+    updatePerfPill();
+    try{ chrome.storage.local.set({rsPerf:{parts:perfParts, scripts:perfScripts}});}catch(error: any){ diag("perf.saveError", { error: String(error && error.message || error) }); }
+  }
+  try{ chrome.storage.local.get("rsPerf", (r: any)=>{ if (chrome.runtime?.lastError) return; if(r && r.rsPerf){ perfParts=r.rsPerf.parts||0; perfScripts=r.rsPerf.scripts||0; updatePerfPill(); }}); }catch{}
+  const NEXT_STEP = {
+    lighting_set_preset: "Next: add terrain (terrain_fill_region) or a HUD (ui_create_component)",
+    terrain_fill_region: "Next: set lighting (lighting_set_preset) or scatter foliage",
+    ui_create_screen: "Next: add a component (ui_create_component) to this ScreenGui",
+    ui_create_component: "Next: preview in Studio or add another component",
+    fx_create_emitter: "Next: add a light (fx_create_light) or sound",
+    datastore_setup: "Next: add a leaderboard (leaderboard_setup) or remotes",
+    _default: "Next: run diagnostics_audit to check health"
+  };
+  function showSuggestion(op: any){
+    const hint = (NEXT_STEP as Record<string, string>)[op] || NEXT_STEP._default;
+    try{
+      const s = document.getElementById("rs-state");
+      if(s && !A.running) { /* subtle hint in state line for 4s */ const prev=s.textContent; s.textContent=hint; s.style.opacity="0.95"; setTimeout(()=>{ if(s) { s.textContent=prev; s.style.opacity=""; } }, 4000); }
+      else ui.toast(hint);
+    }catch(error: any){ diag("ui.suggestionError", { op, error: String(error && error.message || error) }); }
+  }
+  let sessionOps: any[] = [];
+  try{ chrome.storage.local.get("rsSessionOps", (r: any)=>{ if (chrome.runtime?.lastError) return; if(r && Array.isArray(r.rsSessionOps)) sessionOps=r.rsSessionOps; }); }catch{}
+  function persistSession(op: any, args: any, ok: any){
+    try{
+      sessionOps.unshift({op, args: JSON.parse(JSON.stringify(args||{})), ok: !!ok, at: Date.now()});
+      if(sessionOps.length>20) sessionOps.pop();
+      chrome.storage.local.set({rsSessionOps: sessionOps});
+    }catch(error: any){ diag("sessionOps.saveError", { op, error: String(error && error.message || error) }); }
+  }
   const retainedToolResults = new Map<string, any>();
   let characterLimits: Record<string, any> = {rsInputLimitEnabled:true,rsInputCharLimit:120000,rsOutputLimitEnabled:true,rsOutputCharLimit:32000};
   function normalizeCharacterLimits(value: Record<string, any>) {
     const limit=(key: string,fallback: number)=>Number.isFinite(Number(value[key]))?Math.max(1000,Math.min(2000000,Math.floor(Number(value[key])))):fallback;
     return {rsInputLimitEnabled:value.rsInputLimitEnabled!==false,rsInputCharLimit:limit('rsInputCharLimit',120000),rsOutputLimitEnabled:value.rsOutputLimitEnabled!==false,rsOutputCharLimit:limit('rsOutputCharLimit',32000)};
   }
-  chrome.storage.local.get(Object.keys(characterLimits), value=>{characterLimits=normalizeCharacterLimits(value||{});});
+  chrome.storage.local.get(Object.keys(characterLimits), value=>{if (chrome.runtime?.lastError) return;characterLimits=normalizeCharacterLimits(value||{});});
   chrome.storage.onChanged.addListener((changes,area)=>{if(area!=='local')return;const next: Record<string, any>={...characterLimits};let changed=false;for(const key of Object.keys(next))if(changes[key]){next[key]=changes[key].newValue;changed=true;}characterLimits=normalizeCharacterLimits(next);if(changed)try{ui?.refreshMenu?.();}catch{}});
   window.__rsLimitOutgoing = (text: string) => {
     const value=String(text||'');
@@ -3311,9 +3410,9 @@ return result`;
     const stalled=typeof PlazCodeStallGuard!=="undefined"?(A.stallGuard||(A.stallGuard=PlazCodeStallGuard.create())).before(call):null;
     if(stalled)return stalled;
     if(A.helper&&A.helper.sent)helperBeat(call&&call.tool);
-    let timer: any,settled=false,draining=false;
-    const operation: Promise<any>=runToolImpl(call).finally(()=>{settled=true;if(draining)A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);});
-    const stop=new Promise<string>(resolve=>{timer=setInterval(()=>{if(A.stop && A.stopMode!=="safe"){if(!settled){draining=true;A.pendingToolSettles=(A.pendingToolSettles||0)+1;}clearInterval(timer);resolve("ERROR: Immediate Stop requested. The tool may have partial effects; inspect state before retrying.");}},50);});
+    let timer: any,drainTimer: any,settled=false,draining=false,drainReleased=false;
+    const operation: Promise<any>=runToolImpl(call).finally(()=>{clearTimeout(drainTimer);settled=true;if(draining&&!drainReleased){drainReleased=true;A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);}});
+    const stop=new Promise<string>(resolve=>{timer=setInterval(()=>{if(A.stop && A.stopMode!=="safe"){if(!settled){draining=true;A.pendingToolSettles=(A.pendingToolSettles||0)+1;drainTimer=setTimeout(()=>{if(!settled&&draining&&!drainReleased){drainReleased=true;A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);if(typeof diag==="function")diag("hang.toolSettleTimeout",{via:"runTool"});}},15000);}clearInterval(timer);resolve("ERROR: Immediate Stop requested. The tool may have partial effects; inspect state before retrying.");}},50);});
     // Item 9 hang recovery, case 4: say so (once) when a command has had no answer for 2 minutes. Nothing is cancelled or
     // failed here: some commands legitimately run for minutes, and a command that may still finish is never replayed.
     const quietNote=setTimeout(()=>{if(!settled&&!A.stop&&!(call&&call.tool==="plazcode_helpers")){diag("hang.toolSilent",{tool:call&&call.tool});try{ui.toast(`No answer to ${bareToolName(call&&call.tool)} for 2 minutes. Studio or the app may be busy; PlazCode is still waiting and has not run it again.`);}catch{}}},120000);
@@ -3729,8 +3828,14 @@ return result`;
       if(decision==="ask"){
         const allowed=await requestApproval(bareName,args,{call:{tool:bareName,arguments:args},engine:safetyEngine,always:false,kicker:deletion?"Delete approval":"Command approval"});
         if(!allowed)return `ERROR in ${bareName}: the user declined this command. Do not retry unless they ask.`;
+        if(deletion)grantDeleteConfirmation(bareName,args);
+      }else if(deletion){
+        if(safetySettings.confirmDelete && PlazCodeSafety.isDelete(bareName,args,safetyEngine)){
+          const ok = alwaysHas(bareName) ? true : await requestApproval(PlazCodeSafety.describeDelete(bareName, args), args, {kicker:"Safety", title:"Allow this delete?", failClosed:true, call: { tool: bareName, arguments: args }, engine: safetyEngine});
+          if (!ok) return PlazCodeSafety.declinedDelete(bareName);
+        }
+        grantDeleteConfirmation(bareName,args);
       }
-      if(deletion)deleteConfirmation={key:deleteKey(bareName,args),expires:Date.now()+120000};
     }else{
     await alwaysReady;
     const deletes = safetySettings.confirmDelete && PlazCodeSafety.isDelete(bareName, args, safetyEngine);
@@ -3738,7 +3843,7 @@ return result`;
       // "Always approve" for this action (chosen by the person): no prompt, but the one-shot delete permission is still set.
       const ok = alwaysHas(bareName) ? true : await requestApproval(PlazCodeSafety.describeDelete(bareName, args), args, {kicker:"Safety", title:"Allow this delete?", failClosed:true, call: { tool: bareName, arguments: args }, engine: safetyEngine});
       if (!ok) return PlazCodeSafety.declinedDelete(bareName);
-      deleteConfirmation = {key: deleteKey(bareName, args), expires: Date.now() + 120000};
+      grantDeleteConfirmation(bareName, args);
     }
     // Plan Mode: until the person approves a plan, every change asks first. (Deletes have their own prompt above.)
     let planAsked = false;
@@ -4318,12 +4423,12 @@ return result`;
       const ok = !String(res||"").startsWith("ERROR") && !String(res||"").includes("ERROR in execute_luau");
       try { persistSession(name, args, ok); if(ok){ bumpPerf(name); showSuggestion(name); // update perf from audit if available
         if(name==="diagnostics_audit" && typeof res==="string"){
-          const m=res.match(/(\d+)\s+parts?/i); if(m) { perfParts=parseInt(m[1],10)||perfParts; updatePerfPill(); try{ chrome.storage.local.set({rsPerf:{parts:perfParts, scripts:perfScripts}});}catch{} }
+          const m=res.match(/(\d+)\s+parts?/i); if(m) { perfParts=parseInt(m[1],10)||perfParts; updatePerfPill(); try{ chrome.storage.local.set({rsPerf:{parts:perfParts, scripts:perfScripts}});}catch(error: any){ diag("perf.auditSaveError", { error: String(error && error.message || error) }); } }
         }
-      } } catch {}
+      } } catch (error: any) { diag("skill.postRunError", { name, error: String(error && error.message || error) }); }
       return res;
     }
-    const BLENDER_OPS = new Set(["get_scene_info","get_object_info","execute_blender_code","get_viewport_screenshot","blender_export_fbx","blender_execute_code","blender_screenshot"]);
+    const BLENDER_OPS = new Set(["get_scene_info","get_object_info","execute_blender_code","get_viewport_screenshot","export_blender_fbx","import_blender_fbx","blender_export_fbx","blender_execute_code","blender_screenshot"]);
     if (BLENDER_OPS.has(bareName) || /^blender_/.test(bareName)) {
       if (!(A.bridge && A.bridge.blender)) {
         let st = await bg({ type: "blender_status" });
@@ -4347,14 +4452,7 @@ return result`;
       const stopWatch = new Promise((res) => {
         stopTimer = setInterval(() => { if (A.stop && A.stopMode !== "safe") res({ ok: false, kind: "stopped" }); }, 50);
       });
-      let sendArgs = args;
-      if (bareName === "execute_luau" && args && args.code && args._orNoTxn !== true && !/ChangeHistoryService/.test(String(args.code))) {
-        sendArgs = Object.assign({}, args, { code: wrapStudioTxn(String(args.code), String(bareName || "edit")) });
-      }
-      if (sendArgs && Object.prototype.hasOwnProperty.call(sendArgs, "_orNoTxn")) {
-        sendArgs = Object.assign({}, sendArgs);
-        delete sendArgs._orNoTxn;
-      }
+      const sendArgs = args;
       let r;
       if(typeof BATCH_OWNERS!=="undefined"&&BATCH_OWNERS.has(call)&&!BATCH_OWNERS.get(call)())return "ERROR: batch ownership changed; command was not run.";
       try { r = await Promise.race([bg({ type: "call_tool", name: bareName, arguments: sendArgs, timeout, checkpoint_id:A.checkpointId }), hardCap, stopWatch]); }
@@ -4438,8 +4536,16 @@ return result`;
       stopTimer = setInterval(() => { if (A.stop && A.stopMode !== "safe") res({ ok: false, kind: "stopped" }); }, 50);
     });
     if(typeof BATCH_OWNERS!=="undefined"&&BATCH_OWNERS.has(call)&&!BATCH_OWNERS.get(call)())return "ERROR: batch ownership changed; command was not run.";
+    let sendArgs: any = args && typeof args === "object" ? Object.assign({}, args) : args;
+    if (sendArgs && typeof sendArgs === "object") {
+      if (bareName === "execute_luau" && sendArgs.code && sendArgs._orNoTxn !== true && sendArgs._orChunk !== true && !/ChangeHistoryService/.test(String(sendArgs.code))) {
+        sendArgs.code = wrapStudioTxn(String(sendArgs.code), String(bareName || "edit"));
+      }
+      delete sendArgs._orNoTxn;
+      delete sendArgs._orChunk;
+    }
     // AgentScript control rework (1.25.0): the theme colour and label words ride along so the desktop control look matches PlazCode.
-    const bridgeCall = bg({ type: "call_tool", name, arguments: args, timeout, checkpoint_id:A.checkpointId, accent: controlAccent(), words: controlWords() });
+    const bridgeCall = bg({ type: "call_tool", name, arguments: sendArgs, timeout, checkpoint_id:A.checkpointId, accent: controlAccent(), words: controlWords() });
     const waits = [bridgeCall, hardCap];
     // Stop cancels the next action immediately. An already dispatched mutation
     // finishes its current step so we do not expose a half-written project or
@@ -6052,7 +6158,7 @@ return result`;
   // 1.24.22: the short startup is used unless the user switched on "Full startup" (off by default).
   function leanStartupOn() { return reliabilitySettings.rsFullStartup !== true && typeof PlazCodeLeanStartup !== "undefined"; }
   let handoffRevision=0;
-  const reliabilityReady=new Promise(resolve=>{const revision=handoffRevision;chrome.storage.local.get(["rsRunLimitsEnabled","rsToolBudget","rsTaskMinutes","rsVisualCheck","rsFullStartup","rsContinuationOffer","rsCommandCooldown","rsCompactOutputs","rsParallelReads","rsTaskLedger","rsLatestHandoff"],value=>{reliabilitySettings=normalizeReliability(value||{});if(revision===handoffRevision)savedHandoff=value&&value.rsLatestHandoff||null;resolve(Object.prototype.hasOwnProperty.call(value||{},'rsLatestHandoff'));});});
+  const reliabilityReady=new Promise(resolve=>{const revision=handoffRevision;chrome.storage.local.get(["rsRunLimitsEnabled","rsToolBudget","rsTaskMinutes","rsVisualCheck","rsFullStartup","rsContinuationOffer","rsCommandCooldown","rsCompactOutputs","rsParallelReads","rsTaskLedger","rsLatestHandoff"],value=>{if(chrome.runtime?.lastError){resolve(false);return;}const safeVal=value&&typeof value==="object"?value:{};reliabilitySettings=normalizeReliability(safeVal);if(revision===handoffRevision)savedHandoff=safeVal.rsLatestHandoff||null;resolve(Object.prototype.hasOwnProperty.call(safeVal,'rsLatestHandoff'));});});
   chrome.storage.onChanged.addListener((changes,area)=>{
     if(area!=='local')return;
     const fields: Record<string, any>={};for(const key of ['rsRunLimitsEnabled','rsToolBudget','rsTaskMinutes','rsVisualCheck','rsFullStartup','rsContinuationOffer','rsCommandCooldown','rsCompactOutputs','rsParallelReads','rsTaskLedger'])if(changes[key])fields[key]=changes[key].newValue;
@@ -6060,21 +6166,22 @@ return result`;
     if(changes.rsLatestHandoff){handoffRevision++;savedHandoff=changes.rsLatestHandoff.newValue||null;}
   });
   function downloadHandoff(value: unknown){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:"application/json"}));const link=document.createElement("a");link.href=url;link.download="PlazCode-continuation.json";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  function batchHasVisualCall(calls: unknown){return Array.isArray(calls)&&calls.some((c: any)=>c&&PlazCodeReliability.visual({tool:c.command,arguments:c.params}));}
   async function automaticVisualCheck(call: any,feedback: string){
-    if(A.stop||!reliabilitySettings.rsVisualCheck||activeEngine()!=="roblox"||!P.supportsVision||feedbackIsError(feedback)||A.pendingImages?.length||!(call.tool==="creation_insert" || PlazCodeReliability.visual(call) || (call.tool==="plazcode_batch" && call.arguments.calls.some((c: any)=>PlazCodeReliability.visual({tool:c.command,arguments:c.params})))))return feedback;
+    if(A.stop||!reliabilitySettings.rsVisualCheck||activeEngine()!=="roblox"||!P.supportsVision||feedbackIsError(feedback)||A.pendingImages?.length||!(call?.tool==="creation_insert" || PlazCodeReliability.visual(call) || (call?.tool==="plazcode_batch" && batchHasVisualCall(call.arguments&&call.arguments.calls))))return feedback;
     // 1.21.0: no cap on visual checks; a short gap only avoids duplicate captures.
     if(Date.now()-(A.lastVisualCheck||0)<3000)return feedback;
     A.lastVisualCheck=Date.now();A.visualChecks=(A.visualChecks||0)+1;
-    let timer: any,settled=false,draining=false;
-    const operation=captureShots("studio",{timeout:10000,checkpointId:A.checkpointId}).finally(()=>{settled=true;if(draining)A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);});
-    const stopped=new Promise<any>(resolve=>{timer=setInterval(()=>{if(A.stop && A.stopMode!=='safe'){if(!settled){draining=true;A.pendingToolSettles=(A.pendingToolSettles||0)+1;}clearInterval(timer);resolve({shots:[]});}},50);});
+    let timer: any,drainTimer: any,settled=false,draining=false,drainReleased=false;
+    const operation=captureShots("studio",{timeout:10000,checkpointId:A.checkpointId}).finally(()=>{clearTimeout(drainTimer);settled=true;if(draining&&!drainReleased){drainReleased=true;A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);}});
+    const stopped=new Promise<any>(resolve=>{timer=setInterval(()=>{if(A.stop && A.stopMode!=='safe'){if(!settled){draining=true;A.pendingToolSettles=(A.pendingToolSettles||0)+1;drainTimer=setTimeout(()=>{if(!settled&&draining&&!drainReleased){drainReleased=true;A.pendingToolSettles=Math.max(0,(A.pendingToolSettles||0)-1);diag("hang.toolSettleTimeout",{via:"visualCheck"});}},15000);}clearInterval(timer);resolve({shots:[]});}},50);});
     let shots: any[];try{({shots}=await Promise.race([operation,stopped]));}finally{clearInterval(timer);}if(A.stop)return feedback;
     const shot=shots.find((x: any)=>x&&typeof x.data==="string"&&x.data.length<=2800000);if(!shot)return feedback+"\nVisual check unavailable: no bounded Studio image was captured. Verify the change in Studio.";
     const key=PlazCodeReliability.fingerprint(shot);if(key===A.visualFingerprint)return feedback;A.visualFingerprint=key;A.pendingImages=[shot];
     return feedback+"\nStudio screenshot attached for visual review: check scale, orientation, colors, VFX, and UI layout; fix any mismatch before finishing.";
   }
   let stopMode = "immediate";
-  chrome.storage.local.get("rsStopMode", value => { stopMode=value && value.rsStopMode === "safe" ? "safe" : "immediate"; });
+  chrome.storage.local.get("rsStopMode", value => { if (chrome.runtime?.lastError) return; stopMode=value && value.rsStopMode === "safe" ? "safe" : "immediate"; });
   chrome.storage.onChanged.addListener((changes,area) => { if(area==='local'&&changes.rsStopMode){stopMode=changes.rsStopMode.newValue === "safe" ? "safe" : "immediate";try{ui?.refreshMenu?.();}catch{}} });
   function stopLoop({ native = false } = {}) {
     try { P.cancelPendingSends?.(); } catch {}
@@ -6098,7 +6205,14 @@ return result`;
     if (approvalCancel) { try { approvalCancel(); } catch {} }
     A.nativeSendIntent = null;
     for (const record of A.inflightTools || []) if (!record.draining) {
-      record.draining = true; A.pendingToolSettles = (A.pendingToolSettles || 0) + 1;
+      record.draining = true; record.released = false; A.pendingToolSettles = (A.pendingToolSettles || 0) + 1;
+      record.drainTimer = setTimeout(() => {
+        if (!record.released) {
+          record.released = true;
+          A.pendingToolSettles = Math.max(0, (A.pendingToolSettles || 0) - 1);
+          diag("hang.toolSettleTimeout", { via: "stopLoop" });
+        }
+      }, 15000);
     }
     A.stopMode = stopMode;
     A.budgetResume=null;
@@ -6436,6 +6550,7 @@ return result`;
     // auto-resume watchdog refuses to run a tool from this baseline turn so a
     // restored execute_luau can't leak into the freshly started conversation.
     A.bootBaselineId = P.lastAssistantId ?  P.lastAssistantId() : null;
+    A.maxTurnId = null;
     A.starting = true;
     syncTabKeepAwake(true);
     A._startingSince = Date.now(); // stale-bootstrap failsafe anchor (meter loop)
@@ -7900,7 +8015,7 @@ return result`;
       menuEl = root.querySelector("#rs-menu");
       try {
         globalThis.PlazCodeI18n?.mountStatic(root);
-        chrome.storage.local.get('rsLanguage', value => globalThis.PlazCodeI18n?.setLanguage(value?.rsLanguage || 'en'));
+        chrome.storage.local.get('rsLanguage', value => { if (chrome.runtime?.lastError) return; globalThis.PlazCodeI18n?.setLanguage(value?.rsLanguage || 'en'); });
       } catch {}
 
       bar.classList.add(`rs-prov-${P.id}`); // lets CSS tune per-site (e.g. font)
@@ -7960,7 +8075,7 @@ return result`;
       root.querySelector("#rs-cowork-resume").onclick = () => {
         const result = desktopAgentAction("cowork-resume"); if (!result.ok) ui.toast(result.error);
       };
-      try { chrome.storage.local.get("rsCowork", (value: any) => { cowork.setEnabled(value.rsCowork === true); }); } catch {}
+      try { chrome.storage.local.get("rsCowork", (value: any) => { if (chrome.runtime?.lastError) return; cowork.setEnabled(!!(value && value.rsCowork === true)); }); } catch {}
       root.querySelector("#rs-enhance").onclick = () => { enhancerPanel.hidden = !enhancerPanel.hidden; if (!enhancerPanel.hidden) enhancerInput.focus(); };
       root.querySelector("#rs-enhancer-close").onclick = () => { enhancerPanel.hidden = true; };
       enhancerSend.onclick = () => beginPromptEnhancement(enhancerInput.value);
@@ -8020,39 +8135,64 @@ return result`;
       // Engine toggle (Roblox ↔ AgentScript ↔ Animation)
       // 1.24.21: each chat keeps its own mode (RS or AS), also after a refresh or closing and reopening the page.
       // Saved per chat in chrome.storage (rsChatEngines). A chat opened for the first time keeps the mode it is in now.
-      let chatEngines: Record<string, any> = {}, chatEngineKey = "", chatEnginesLoaded = false, tabEngine = "", tabEngineAnswered = false; const chatEngineBootAt = Date.now();
+      let chatEngines: Record<string, any> = {}, chatEngineKey = "", chatEnginesLoaded = false, chatEnginesLoadFailed = false, tabEngine = "", tabEngineAnswered = false, chatEngineTimer: any = null;
       const chatEngineId = () => { const k = P.conversationKey(); return k ? P.id + "|" + k : ""; };
-      const saveChatEngines = () => { const keys = Object.keys(chatEngines); if (keys.length > 300) for (const k of keys.slice(0, keys.length - 300)) delete chatEngines[k]; try { Promise.resolve(chrome.storage.local.set({ rsChatEngines: chatEngines })).catch(() => {}); } catch {} };
-      try { chrome.storage.local.get("rsChatEngines", (value: any) => { chatEngines = value && value.rsChatEngines && typeof value.rsChatEngines === "object" ? value.rsChatEngines : {}; chatEnginesLoaded = true; }); } catch { chatEnginesLoaded = true; }
+      const saveChatEngines = () => { if (chatEnginesLoadFailed) return; const keys = Object.keys(chatEngines); if (keys.length > 300) for (const k of keys.slice(0, keys.length - 300)) delete chatEngines[k]; try { Promise.resolve(chrome.storage.local.set({ rsChatEngines: chatEngines })).catch((error: any) => diag("engine.saveError", { error: String(error && error.message || error) })); } catch (error: any) { diag("engine.saveError", { error: String(error && error.message || error) }); } };
+      try { chrome.storage.local.get("rsChatEngines", (value: any) => { if (chrome.runtime?.lastError) { chatEnginesLoadFailed = true; chatEnginesLoaded = true; diag("engine.loadError", { error: chrome.runtime.lastError.message }); return; } chatEngines = value && value.rsChatEngines && typeof value.rsChatEngines === "object" ? value.rsChatEngines : {}; chatEnginesLoaded = true; }); } catch (error: any) { chatEnginesLoadFailed = true; chatEnginesLoaded = true; diag("engine.loadThrow", { error: String(error && error.message || error) }); }
       rsInterval(() => {
         const id = chatEngineId();
         if (!chatEnginesLoaded || !id || id === chatEngineKey) return;
         const saved = chatEngines[id];
-        // A chat with no saved mode waits (up to 3 s) for the background page to say which mode this tab is in.
-        if (!saved && !tabEngineAnswered && Date.now() - chatEngineBootAt < 3000) return;
+        // A chat with no saved mode waits until the background page has answered which mode this tab is in.
+        if (!saved && !tabEngineAnswered) return;
         chatEngineKey = id;
         if (saved && saved !== currentMode && Date.now() - lastManualEngineAt > 5000) {
           setEngine(saved);
           // The background page keeps the mode per tab and builds the bar status from it: tell it too, or the bar checks Roblox Studio while showing AS ("AgentScript is offline").
-          try { Promise.resolve(chrome.runtime.sendMessage({ type: "rs-set-engine", engine: saved })).then((o: any) => { if (o && o.ok === false && o.engine === "local" && currentMode !== "local") setEngine("local"); }).catch(() => {}); } catch {}
+          try { Promise.resolve(chrome.runtime.sendMessage({ type: "rs-set-engine", engine: saved })).then((o: any) => { if (o && o.ok === false && o.engine === "local" && currentMode !== "local") setEngine("local"); }).catch((error: any) => diag("engine.syncBgError", { error: String(error && error.message || error) })); } catch (error: any) { diag("engine.syncBgError", { error: String(error && error.message || error) }); }
         }
         else if (!saved) { if (tabEngine === "local" && !lastManualEngineAt && currentMode !== "local") setEngine("local"); chatEngines[id] = currentMode; saveChatEngines(); }
       }, 1000);
       const engineEl = root.querySelector("#rs-engine");
       currentEngine = "roblox";
       // The tab-wide mode (kept by the background page) applies to a new chat; a chat that has its own saved mode restores that instead.
-      try { chrome.runtime.sendMessage({type:"rs-get-engine"}, (o: any) => { tabEngineAnswered = true; if (o?.engine !== "local" || lastManualEngineAt) return; tabEngine = "local"; if (!chatEngineId()) setEngine("local"); }); } catch {}
-      chrome.runtime.onMessage.addListener((m: any)=>{
+      const tabEngineDelays = [250, 500, 1000, 2000, 3000];
+      function queryTabEngine(attempt = 0) {
+        if (tabEngineAnswered) return;
+        try {
+          chrome.runtime.sendMessage({ type: "rs-get-engine" }, (o: any) => {
+            if (chrome.runtime?.lastError || !o || typeof o.engine !== "string") {
+              if (!tabEngineAnswered && attempt < tabEngineDelays.length) {
+                clearTimeout(chatEngineTimer);
+                chatEngineTimer = setTimeout(() => queryTabEngine(attempt + 1), tabEngineDelays[attempt]);
+              }
+              return;
+            }
+            tabEngineAnswered = true;
+            if (o.engine !== "local" || lastManualEngineAt) return;
+            tabEngine = "local";
+            if (!chatEngineId()) setEngine("local");
+          });
+        } catch (error: any) {
+          diag("engine.queryError", { attempt, error: String(error && error.message || error) });
+          if (!tabEngineAnswered && attempt < tabEngineDelays.length) {
+            clearTimeout(chatEngineTimer);
+            chatEngineTimer = setTimeout(() => queryTabEngine(attempt + 1), tabEngineDelays[attempt]);
+          }
+        }
+      }
+      queryTabEngine(0);
+      function onEngineMessage(m: any) {
         if (!(m && m.type === "rs-engine" && m.engine)) return;
         const v = m.engine === "local" ? "local" : "roblox";
         if (v === currentMode) return;
         if (Date.now() - lastManualEngineAt < 5000) return;
         setEngine(v);
         try { markModesChanged(); } catch {}
-      });
+      }
       // setStatus lives outside build() — give it a scoped handle so the
       // proc-aware auto-switch can drive the engine without ReferenceErrors.
-      engineApi = { set: setEngine, get: () => currentEngine };
+      engineApi = { set: setEngine, get: () => currentEngine, onMessage: onEngineMessage };
       // Expose currentMode for external consumers and keep currentEngine as alias
       let currentMode = currentEngine;
       try { window.__rsMode = () => currentMode; window.__rsEngine = () => currentMode; } catch {}
@@ -8066,7 +8206,7 @@ return result`;
         currentMode = currentEngine;
         try { window.__rsMode = () => currentMode; window.__rsEngine = () => currentMode; } catch {}
         // Remember the mode for this chat, but only after its saved mode has been restored (a startup default must not overwrite it).
-        try { const id = chatEngineId(); if (id && id === chatEngineKey && chatEngines[id] !== currentMode) { chatEngines[id] = currentMode; saveChatEngines(); } } catch {}
+        try { const id = chatEngineId(); if (id && id === chatEngineKey && (tabEngineAnswered || Date.now() - lastManualEngineAt < 5000) && chatEngines[id] !== currentMode) { chatEngines[id] = currentMode; saveChatEngines(); } } catch (error: any) { diag("engine.persistError", { error: String(error && error.message || error) }); }
         if (engineEl) {
           const isLocal = currentMode==="local";
           try {
@@ -8407,6 +8547,7 @@ return result`;
     let customPrompt = "";
     try {
       chrome.storage.local.get("rsCustomPrompt", (r: any) => {
+        if (chrome.runtime?.lastError) return;
         if (r && typeof r.rsCustomPrompt === "string") {
           customPrompt = r.rsCustomPrompt;
           syncMenuPrompt();
@@ -8427,7 +8568,7 @@ return result`;
     try { window.__rsPlaytest = () => playtestEnabled; window.__rsUiCheck = () => uiCheckEnabled; } catch {}
     try {
       chrome.storage.local.get(["rsAutoFix", "rsExtraThinking", "rsShowApproach", "rsPlanMode", "rsForgeMode", "rsAutoFixStopPlay", "rsWorkMode", "rsAutoDebug", "rsMultiAgent", "rsPlaytestCheck", "rsUiCheck"], (r: any) => {
-        if (!r) return;
+        if (chrome.runtime?.lastError || !r || typeof r !== "object") return;
         if (typeof r.rsPlaytestCheck === "boolean") playtestEnabled = r.rsPlaytestCheck;
         if (typeof r.rsUiCheck === "boolean") uiCheckEnabled = r.rsUiCheck;
         if (typeof r.rsAutoFix === "boolean") autoFixEnabled = r.rsAutoFix;
@@ -8475,6 +8616,7 @@ return result`;
     }
     try {
       chrome.storage.local.get("rsThinkingLevel", (r: any) => {
+        if (chrome.runtime?.lastError) return;
         if (r && ["default","low","mid","high","max","ultracode"].includes(r.rsThinkingLevel)) {
           thinkingLevel = r.rsThinkingLevel;
           try { window.__rsThinkingLevel = () => thinkingLevel; document.documentElement.dataset.rsThinking = thinkingLevel; renderEffort(); } catch {}
@@ -8490,7 +8632,7 @@ return result`;
         if (changes.rsLanguage) {globalThis.PlazCodeI18n?.setLanguage(changes.rsLanguage.newValue || 'en');renderApprovalMode();dirty=true;}
         if (changes.rsPersonalMemory) personalMemory = changes.rsPersonalMemory.newValue || null;
         if (changes.rsReadOnly || changes.rsConfirmDelete || changes.rsAllowedFolders) {
-          chrome.storage.local.get(PlazCodeSafety.KEYS, (values) => { safetySettings = PlazCodeSafety.fromStorage(values); if (!menuEl.hidden) buildMenu(); });
+          chrome.storage.local.get(PlazCodeSafety.KEYS, (values) => { if (chrome.runtime?.lastError) return; safetySettings = PlazCodeSafety.fromStorage(values || {}); if (!menuEl.hidden) buildMenu(); });
         }
         if (changes.rsApprovalMode) { approvalMode=PlazCodeApproval.normalizeMode(changes.rsApprovalMode.newValue);renderApprovalMode(); }
         if (changes.rsAlwaysApprove) { try { alwaysList = PlazCodeApproval.alwaysNormalize(changes.rsAlwaysApprove.newValue); if (!menuEl.hidden) buildMenu(); } catch {} }
@@ -8656,72 +8798,12 @@ return result`;
       document.addEventListener("keydown",(event: any)=>{const button=event.target.closest?.("#rs-approval-mode");if(button&&(event.key==="Enter"||event.key===" ")){event.preventDefault();if(menu)close();else open(button);}else if(menu&&event.key==="Escape"){event.preventDefault();close();document.getElementById("rs-approval-mode")?.focus();}else if(menu&&(event.key==="ArrowDown"||event.key==="ArrowUp")){event.preventDefault();const items: any[]=[...menu.querySelectorAll("button")],index=items.indexOf(document.activeElement);items[(index+(event.key==="ArrowDown"?1:-1)+items.length)%items.length].focus();}else if(menu&&event.key==="Tab")close();},true);
       approvalModeReady.then(renderApprovalMode);
     })();
-    // ── Smart Checkpoint & Undo (auto-snapshot before mutating tools) ──
-    let rsCheckpoints: any[] = [];
-    try{ chrome.storage.local.get("rsCheckpoints", (r: any)=>{ if(Array.isArray(r.rsCheckpoints)) rsCheckpoints=r.rsCheckpoints; }); }catch{}
-    const MUTATING_OPS = new Set(["lighting_set_preset","lighting_setup_day_night","terrain_fill_region","terrain_clear","ui_create_screen","ui_create_component","fx_create_emitter","fx_create_light","fx_create_vfx","audio_setup_sound_hierarchy","audio_create_sound","camera_set_style","datastore_setup","leaderboard_setup","remote_setup","teams_setup","npc_spawn_pathfinding","proximity_setup","tween_create","marketplace_setup","web_fetch","web_search","plugin_create"]);
-    function createCheckpoint(op: any, args?: any){
-      try{
-        if(/^(get_|list_|web_|or_|debug_)/.test(op) || /_(info|inspect|list)$/.test(op) || op==="get_property") return;
-        const cp={op, args: JSON.parse(JSON.stringify(args||{})), at: Date.now()};
-        rsCheckpoints.unshift(cp); if(rsCheckpoints.length>12) rsCheckpoints.pop();
-        try{ chrome.storage.local.set({rsCheckpoints}); }catch{}
-      }catch{}
-    }
+    // ── Smart Checkpoint & Undo (hoisted above runToolImpl for R1-003) ──
     function undoLastCheckpoint(){
       try { if (typeof window.__rsUndo === "function") { window.__rsUndo(); return; } } catch {}
       toast("Nothing to undo yet");
     }
-    // ── Smart Performance Budget (live part/script estimate) ──
-    let perfParts = 0, perfScripts = 0;
-    function updatePerfPill(){
-      const el = document.getElementById("rs-perf");
-      if(!el) return;
-      if(perfParts===0 && perfScripts===0){ el.hidden=true; return; }
-      el.hidden=false;
-      const lvl = perfParts>8000||perfScripts>120 ?  "high" : perfParts>3000||perfScripts>60 ?  "mid" : "low";
-      el.dataset.lvl=lvl;
-      el.textContent = `${perfParts||0} parts • ${perfScripts||0} scripts`;
-      el.title = lvl==="high" ? "High budget — consider optimizing" : lvl==="mid" ? "Moderate budget" : "Budget OK";
-    }
-    function bumpPerf(op: any){
-      if(op.startsWith("terrain_")) perfParts+=120;
-      else if(op.startsWith("fx_")) perfParts+=8;
-      else if(op.startsWith("ui_")) perfScripts+=1;
-      else if(op.startsWith("audio_")) perfScripts+=1;
-      else if(op==="datastore_setup"||op==="leaderboard_setup") perfScripts+=2;
-      updatePerfPill();
-      try{ chrome.storage.local.set({rsPerf:{parts:perfParts, scripts:perfScripts}}); }catch{}
-    }
-    try{ chrome.storage.local.get("rsPerf", (r: any)=>{ if(r.rsPerf){ perfParts=r.rsPerf.parts||0; perfScripts=r.rsPerf.scripts||0; updatePerfPill(); }}); }catch{}
-    // ── Smart Next-Step Suggestions ──
-    const NEXT_STEP = {
-      lighting_set_preset: "Next: add terrain (terrain_fill_region) or a HUD (ui_create_component)",
-      terrain_fill_region: "Next: set lighting (lighting_set_preset) or scatter foliage",
-      ui_create_screen: "Next: add a component (ui_create_component) to this ScreenGui",
-      ui_create_component: "Next: preview in Studio or add another component",
-      fx_create_emitter: "Next: add a light (fx_create_light) or sound",
-      datastore_setup: "Next: add a leaderboard (leaderboard_setup) or remotes",
-      _default: "Next: run diagnostics_audit to check health"
-    };
-    function showSuggestion(op: any){
-      const hint = (NEXT_STEP as Record<string, string>)[op] || NEXT_STEP._default;
-      try{
-        const s = document.getElementById("rs-state");
-        if(s && !A.running) { /* subtle hint in state line for 4s */ const prev=s.textContent; s.textContent=hint; s.style.opacity="0.95"; setTimeout(()=>{ if(s) { s.textContent=prev; s.style.opacity=""; } }, 4000); }
-        else toast(hint);
-      }catch{}
-    }
     // ── Smart Session Continuity & Auto-Resume ──
-    let sessionOps: any[] = [];
-    try{ chrome.storage.local.get("rsSessionOps", (r: any)=>{ if(Array.isArray(r.rsSessionOps)) sessionOps=r.rsSessionOps; }); }catch{}
-    function persistSession(op: any, args: any, ok: any){
-      try{
-        sessionOps.unshift({op, args: JSON.parse(JSON.stringify(args||{})), ok: !!ok, at: Date.now()});
-        if(sessionOps.length>20) sessionOps.pop();
-        chrome.storage.local.set({rsSessionOps: sessionOps});
-      }catch{}
-    }
     function tryResumeSession(){
       if(!sessionOps.length) return;
       const last = sessionOps[0];
@@ -8972,6 +9054,7 @@ return result`;
     let customMcpServers: any[] = [];
     try {
       chrome.storage.local.get("rsCustomMcpServers", (r: any) => {
+        if (chrome.runtime?.lastError) return;
         if (r && Array.isArray(r.rsCustomMcpServers)) {
           customMcpServers = r.rsCustomMcpServers;
           if (!menuEl.hidden) buildMenu();
@@ -10417,6 +10500,7 @@ function renderCards(panel: any) {
     let setupCard: any = null, setupSeen = false, setupRaf: any = null;
     try {
       chrome.storage.local.get("rsSetupSeen", (r: any) => {
+        if (chrome.runtime?.lastError) return;
         if (r && r.rsSetupSeen) setupSeen = true;
       });
     } catch {}
@@ -12634,10 +12718,10 @@ function renderCards(panel: any) {
     }
     rsInterval(()=>{if(!exportDirty || document.hidden || Date.now()-exportCapturedAt<2500)return;try{captureExportHistory(false);}catch{}},2500);
     let archiveBusy=false,archiveSignature='',offerBusy=false,offerReady=false,offerNode: any=null,offerFreshSince=0,offerDecision=false,offerKey='',continuationChoices: Record<string, any>={};
-    chrome.storage.local.get('rsContinuationChoices',(value: any)=>{continuationChoices=value&&value.rsContinuationChoices||{};offerReady=true;});
+    chrome.storage.local.get('rsContinuationChoices',(value: any)=>{if(chrome.runtime?.lastError){offerReady=true;return;}continuationChoices=value&&typeof value.rsContinuationChoices==="object"&&value.rsContinuationChoices||{};offerReady=true;});
     // Restore from the desktop only on a genuinely empty extension store. A
     // deliberate new-project choice is persisted as null, not resurrected here.
-    reliabilityReady.then(async (stored: any)=>{if(stored)return;const revision=handoffRevision;const result=await bg({type:'chat-history'});if(revision===handoffRevision&&!savedHandoff&&result?.handoff){savedHandoff=result.handoff;chrome.storage.local.set({rsLatestHandoff:savedHandoff});}}).catch(()=>{});
+    reliabilityReady.then(async (stored: any)=>{if(stored)return;const revision=handoffRevision;const result=await bg({type:'chat-history'});if(revision===handoffRevision&&!savedHandoff&&result?.handoff){savedHandoff=result.handoff;chrome.storage.local.set({rsLatestHandoff:savedHandoff});}}).catch((error: any)=>{diag("handoff.restoreError",{error:String(error&&error.message||error)});});
     function hasRealRequest(){return exportRows.some(row=>PlazCodeReliability.userRequest(row)&&!RSParse.isInjectedFeedback(row.text));}
     async function logChat(leaving=false){
       if(!P.conversationKey())return;captureExportHistory(false);if(!hasRealRequest())return;
@@ -12652,7 +12736,7 @@ function renderCards(panel: any) {
       try{
         const result=await bg({type:'chat-history',request:{chat_id:transfer.chat_id,provider:P.displayName,history:exportRows.slice(-2000),handoff:transfer,omitted:exportOverflow?1:0}});
         if(result?.ok)archiveSignature=signature;
-      }catch{}finally{archiveBusy=false;}
+      }catch(error: any){diag("chatHistory.logError",{error:String(error&&error.message||error)});}finally{archiveBusy=false;}
     }
     rsInterval(()=>{if(!document.hidden||A.running){logChat();saveChatNote('tick');}},10000);
     function saveLeavingChat(){try{captureExportHistory();}catch{}logChat(true);saveChatNote('hidden');}
@@ -12661,10 +12745,10 @@ function renderCards(panel: any) {
     // 1.24.21: every chat is also saved into the vault as a note under "11 Chats" (summary, key points and a "Current tasks:" section).
     // PlazCode writes it itself; it is on by default and works even when the AI may not write notes.
     let activeVaultId='default';const noteKey:(id: any)=>string=id=>activeVaultId==='default'?id:activeVaultId+'|'+id;
-    chrome.storage.local.get(['rsActiveVault'],(v: any)=>{if(v&&v.rsActiveVault&&typeof v.rsActiveVault.id==='string')activeVaultId=v.rsActiveVault.id;});
+    chrome.storage.local.get(['rsActiveVault'],(v: any)=>{if(chrome.runtime?.lastError)return;if(v&&v.rsActiveVault&&typeof v.rsActiveVault.id==='string')activeVaultId=v.rsActiveVault.id;});
     try{chrome.storage.onChanged.addListener((changes: any,area: any)=>{if(area==='local'&&changes.rsActiveVault&&changes.rsActiveVault.newValue&&typeof changes.rsActiveVault.newValue.id==='string')activeVaultId=changes.rsActiveVault.newValue.id;});}catch{}
     let chatNoteStates: Record<string, any>={},latestChatNote: any=null,chatNoteBusy=false,chatNoteLastAt=0,chatNoteTimer: any=0,chatNoteForce=false;const chatNoteTasks: Record<string, any>={};
-    chrome.storage.local.get(['rsChatNotes','rsLatestChatNote'],(value: any)=>{if(value&&value.rsChatNotes&&typeof value.rsChatNotes==='object')chatNoteStates=value.rsChatNotes;if(value&&value.rsLatestChatNote)latestChatNote=value.rsLatestChatNote;});
+    chrome.storage.local.get(['rsChatNotes','rsLatestChatNote'],(value: any)=>{if(chrome.runtime?.lastError)return;if(value&&value.rsChatNotes&&typeof value.rsChatNotes==='object')chatNoteStates=value.rsChatNotes;if(value&&value.rsLatestChatNote)latestChatNote=value.rsLatestChatNote;});
     chrome.storage.onChanged.addListener((changes: any,area: any)=>{if(area!=='local')return;if(changes.rsChatNotes)chatNoteStates=changes.rsChatNotes.newValue||{};if(changes.rsLatestChatNote)latestChatNote=changes.rsLatestChatNote.newValue||null;});
     // Each vault has its own note for a chat and its own "latest chat" pointer (the pointer is ignored after a switch).
     const latestHere=()=>latestChatNote&&(latestChatNote.vault||'default')===activeVaultId?latestChatNote:null;
@@ -13014,7 +13098,7 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
       if (action === "stop" && state.canStop) { stopLoop(); return { ok: true }; }
       return { ok: false, error: "The AI chat is no longer ready for this action." };
     }
-    return { refreshPlan: renderPlanPill, refreshMenu: () => { if (menuEl && !menuEl.hidden) buildMenu(); }, captureHandoff, noteChatSoon, latestChatNotePath: () => latestHere() && latestHere().path || '', isCoworkCoverTarget: (node: any) => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, renderAgents, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast: toast as (msg: any, _ms?: any) => void, banner, showRecoveryPrompt, clearRecoveryPrompt, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, openMenu: (toSupport?: any) => openMenuFn && openMenuFn(toSupport) };
+    return { refreshPlan: renderPlanPill, refreshMenu: () => { if (menuEl && !menuEl.hidden) buildMenu(); }, captureHandoff, noteChatSoon, latestChatNotePath: () => latestHere() && latestHere().path || '', isCoworkCoverTarget: (node: any) => !!(coworkComposer && node === coworkComposer.host), invalidateExportHistory: () => { exportDirty = true; }, renderActivity, captureCoworkFocus, restoreCoworkFocus, coworkReady, renderCowork, renderAgents, desktopAgentState, desktopAgentAction, setStatus, staleExtensionAlert, openFixConnection, setStarted, setStarting, showStop, markStopping, inputCover, toast: toast as (msg: any, _ms?: any) => void, banner, showRecoveryPrompt, clearRecoveryPrompt, showImages, nudgeStart, updateStartGate, refreshSetup, getCustomPrompt, getCustomMcpServers, trackCard, hideCardEmbed, onEngineMessage: (m: any) => engineApi?.onMessage?.(m), openMenu: (toSupport?: any) => openMenuFn && openMenuFn(toSupport) };
   })();
 
   const clarification = PlazCodeClarification.create({
@@ -13668,13 +13752,20 @@ rsInterval(() => {
       if (!helperStash.length) return;
       try { state = ui.desktopAgentState(); } catch { state = null; }
       if (!state || !state.canTaskSend || A.userStopped) return; // kept in helperStash for the next chance
-      const results = helperStash.splice(0).map(helperResultView);
+      const batch = helperStash.slice();
+      const results = batch.map(helperResultView);
       const text = "(PlazCode: the helpers you started have finished. This is their report, not a new request from the user.)\n" + JSON.stringify({ results }) +
         "\nCheck their work yourself (read what they changed, test it), fit the parts together, redo anything a failed or stopped helper left, then tell the user what was done and what is still open.";
       const base = await submitAndGetBase(text);
+      helperStash.splice(0, batch.length);
       agentLoop(base);
     } catch (error: any) { diag("helper.deliverError", { error: String(error && error.message || error).slice(0, 120) }); }
-    finally { helperDelivering = false; }
+    finally {
+      helperDelivering = false;
+      if (!A.starting && !A.running && !A.enhancing && !A.injecting) {
+        try { P.setInputLock?.(false); ui.inputCover(false); } catch (error: any) { diag("helper.deliverUnlockError", { error: String(error && error.message || error) }); }
+      }
+    }
   }
   // Scripts and files a change command names, for the edit locks. Code and long text are never keys.
   function helperLockKeys(args: any) {
@@ -13694,7 +13785,7 @@ rsInterval(() => {
     const keys = helperLockKeys(args);
     if (!keys.length) return "";
     let lock: any = null;
-    try { lock = await bg({ type: "helpers", request: { action: "lock", keys } }); } catch {}
+    try { lock = await bg({ type: "helpers", request: { action: "lock", keys } }); } catch (error: any) { diag("helper.lockError", { bareName, error: String(error && error.message || error) }); }
     if (!lock || lock.ok !== false || !lock.holder) return "";
     const who = lock.holder === "the main agent" ? lock.holder : 'helper "' + lock.holder + '"';
     return "ERROR: E_HELPER_LOCK: '" + lock.key + "' is being changed by " + who + " right now, so '" + bareName + "' was not run. Do not retry it or change that script or file another way. " +
@@ -13802,16 +13893,25 @@ rsInterval(() => {
       } catch (error: any) { sendResponse({ ok: false, canStart: false, canStop: false, error: String(error.message || error) }); }
       return undefined;
     }
+    if (msg && msg.type === "rs-engine") {
+      try { ui.onEngineMessage(msg); } catch (error: any) { diag("bg.engineMsgError", { error: String(error && error.message || error) }); }
+      try { sendResponse({ ok: true }); } catch {}
+      return undefined;
+    }
     if (msg && msg.type === "rs-status") {
       checkVersionNotice(msg);
       ui.setStatus({ connected: msg.connected, bridge_reachable: msg.bridge_reachable, bridge_connecting: msg.bridge_connecting, profile_required: msg.profile_required, mcpAlive: msg.mcpAlive, studio: msg.studio, studioApp: msg.studioApp, studioProc: msg.studioProc, robloxProc: msg.robloxProc, roblox_connected: msg.roblox_connected, studio_checking: msg.studio_checking, engine: msg.engine, tools: msg.tools, servers: msg.servers, local_connected: msg.local_connected, local_full: msg.local_full, local_root: msg.local_root, blender: msg.blender, blender_shim: msg.blender_shim, blender_error: msg.blender_error, bridge_error: msg.bridge_error, control_v2: msg.control_v2 });
+      try { sendResponse({ ok: true }); } catch {}
+      return undefined;
     }
     if (msg && msg.type === "rs-fix-connection") {
-      try { ui.openFixConnection(); sendResponse({ ok: true }); } catch (e) { sendResponse({ ok: false }); }
+      try { ui.openFixConnection(); sendResponse({ ok: true }); } catch (e: any) { diag("bg.fixConnError", { error: String(e && e.message || e) }); try { sendResponse({ ok: false }); } catch {} }
       return undefined;
     }
     if (msg && msg.type === "rs-open-menu") {
       ui.openMenu(false); // from the popup's Settings button — opens at the top (Switch AI / custom prompt)
+      try { sendResponse({ ok: true }); } catch {}
+      return undefined;
     }
     return undefined;
   });
@@ -13878,12 +13978,13 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
   // Load the persisted set once, then re-sync.
   try {
     chrome.storage.local.get("rsStartedSessions", (r) => {
+      if (chrome.runtime?.lastError) return;
       if (r && Array.isArray(r.rsStartedSessions)) {
         for (const p of r.rsStartedSessions) startedSessions.add(p);
         syncSessionState();
       }
     });
-  } catch {}
+  } catch (error: any) { diag("session.loadStartedError", { error: String(error && error.message || error) }); }
   // A conversation IS an PlazCode session if any rendered turn carries a
   // telltale artefact: the system-prompt marker, an injected tool-result /
   // system-note turn, or an PlazCode command an assistant wrote. Works even
@@ -13996,6 +14097,36 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
   if (runRecovery) {
     void runRecovery.load().then(() => { try { checkRunRecovery(); } catch {} }).catch(() => {});
   }
+  function isSameConversation(prevPath: any, nextPath: any) {
+    if (!prevPath || !nextPath) return false;
+    if (prevPath === nextPath) return true;
+    try {
+      const aliases = typeof P.conversationAliases === "function" ? P.conversationAliases() : [];
+      return Array.isArray(aliases) && aliases.includes(prevPath) && aliases.includes(nextPath);
+    } catch { return false; }
+  }
+  function resetConversationState(path: any) {
+    lastSyncPath = path;
+    A.bootBaselineId = P.lastAssistantId ? P.lastAssistantId() : null;
+    A.lastGenAt = 0;
+    A.sessionGen = (A.sessionGen || 0) + 1;
+    A.maxTurnId = null;
+    A.hangTries = {};
+    A.confirmedSubmit = null;
+    A.detectedTool = null;
+    A._wdNoRun = null;
+    A._wdNorm = "";
+    A._wdChangeAt = 0;
+    A._wdStuckAt = 0;
+    A._wdWhy = "";
+    A._skipOldId = null;
+    A.nativeSendIntent = null;
+    A.sendToken = null;
+    A.userStopped = false;
+    A.resumeArmed = false;
+    A.resumeArmedAt = 0;
+    A.budgetResume = null;
+  }
   function syncSessionState() {
     // While a bootstrap runs, track its conversation. The bootstrap chat gets a
     // real id only AFTER the prompt lands (fresh "/app" → "/app/<id>"), so we pin
@@ -14061,7 +14192,8 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
     const markerInDom = (A.started && path && path === lastSyncPath) ? true : domHasRsSignal();
     if (markerInDom) rememberSession(path);
     let has;
-    if (path && path === lastSyncPath) {
+    if (isSameConversation(lastSyncPath, path)) {
+      lastSyncPath = path;
       // SAME, REAL conversation: never downgrade a known-started session just
       // because virtualization scrolled the marker out of the DOM. "started" is
       // sticky until the key actually changes (a different conversation).
@@ -14072,12 +14204,10 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
       has = A.started || markerInDom || (!!path && sessionKnown(path));
     } else {
       // Different conversation → recompute from scratch.
-      // Reset the boot baseline and recent-generation timestamp on chat switch so opening
+      // Reset conversation/watchdog state on chat switch so opening
       // an old chat with an unrun command never triggers the auto-resume watchdog by mistake.
       has = markerInDom || (!!path && sessionKnown(path));
-      lastSyncPath = path;
-      A.bootBaselineId = P.lastAssistantId ? P.lastAssistantId() : null;
-      A.lastGenAt = 0;
+      resetConversationState(path);
     }
     if (has !== A.started) {
       A.started = has;

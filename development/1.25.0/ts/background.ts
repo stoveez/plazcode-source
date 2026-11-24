@@ -95,7 +95,117 @@ const protectionCheck = async () => {
   await PlazCodeIntegrity.check();
 };
 const PAIRING_KEY = "plazcode-pairing-key";
+const FULL_SYNCED_SESSION_KEY = "rsFullSyncedOnce";
 let fullSyncedOnce = false;
+const fullSyncedOnceReady: Promise<void> = (async () => {
+  try {
+    const saved = await chrome.storage?.session?.get(FULL_SYNCED_SESSION_KEY);
+    if (saved && saved[FULL_SYNCED_SESSION_KEY] === true) fullSyncedOnce = true;
+  } catch (err) {
+    safeDebug("background.js › fullSyncedOnceReady", err);
+  }
+})();
+function safeDebug(where: string, err: unknown, level: "warn" | "error" = "warn", kind = "bridge"): void {
+  try {
+    if (typeof debugRecord !== "function") return;
+    const text = err instanceof Error ? err.message || err.name : String(err);
+    debugRecord({ source: "extension", level, kind, text, where: [where] });
+  } catch {}
+}
+async function readBridgeJson<T = Record<string, any>>(response: Response, fallbackError: string): Promise<T> {
+  const isOk = typeof response.ok === "boolean"
+    ? response.ok
+    : typeof response.status === "number"
+      ? response.status >= 200 && response.status < 300
+      : true;
+  let raw = "";
+  let parsed: any = null;
+  if (typeof response.text === "function") {
+    raw = await response.text();
+    if (raw.trim()) {
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        if (!isOk) {
+          const snippet = raw.trim().slice(0, 200);
+          throw new Error(snippet ? `${fallbackError} (HTTP ${response.status}: ${snippet})` : `${fallbackError} (HTTP ${response.status})`);
+        }
+        throw new Error(`${fallbackError} (invalid JSON response)`);
+      }
+    } else if (!isOk) {
+      throw new Error(`${fallbackError} (HTTP ${response.status})`);
+    } else if (typeof response.json === "function") {
+      try { parsed = await response.json(); } catch { parsed = {}; }
+    } else {
+      parsed = {};
+    }
+  } else if (typeof response.json === "function") {
+    parsed = await response.json();
+  }
+  if (!isOk) {
+    const errText = parsed && typeof parsed === "object" && typeof parsed.error === "string" && parsed.error
+      ? parsed.error
+      : `${fallbackError} (HTTP ${response.status})`;
+    throw new Error(errText);
+  }
+  if (parsed === null || typeof parsed !== "object") {
+    throw new Error(`${fallbackError} (invalid JSON response)`);
+  }
+  return parsed as T;
+}
+async function runTabScript<TArgs extends any[], TResult>(
+  tabId: number,
+  func: (...args: TArgs) => TResult,
+  args?: TArgs
+): Promise<TResult> {
+  if (!chrome.scripting || typeof chrome.scripting.executeScript !== "function") {
+    throw new Error("Tab scripting API is unavailable.");
+  }
+  const frames = await chrome.scripting.executeScript({ target: { tabId }, args: args || ([] as unknown as TArgs), func });
+  if (!Array.isArray(frames) || !frames.length || !frames[0]) {
+    throw new Error("Could not access the tab (no script frame returned).");
+  }
+  return frames[0].result as TResult;
+}
+function createSessionMapStore<V>(
+  storageKey: string,
+  map: Map<number, V>,
+  deserialize: (raw: unknown) => V | null,
+  serialize: (value: V) => unknown
+): { ready: Promise<void>; save: () => void } {
+  const ready: Promise<void> = (async () => {
+    const sessionArea = chrome.storage && chrome.storage.session;
+    if (!sessionArea) return;
+    try {
+      const saved = await sessionArea.get(storageKey);
+      const raw = saved && saved[storageKey];
+      if (!raw || typeof raw !== "object") return;
+      for (const [k, v] of Object.entries(raw)) {
+        const id = Number(k);
+        if (!Number.isInteger(id) || map.has(id)) continue;
+        const parsed = deserialize(v);
+        if (parsed !== null) map.set(id, parsed);
+      }
+    } catch (err) {
+      safeDebug("background.js › sessionMap.load." + storageKey, err, "warn", "storage");
+    }
+  })();
+  function save(): void {
+    const sessionArea = chrome.storage && chrome.storage.session;
+    if (!sessionArea) return;
+    try {
+      const out: Record<string, unknown> = {};
+      for (const [id, value] of map.entries()) out[String(id)] = serialize(value);
+      const p = sessionArea.set({ [storageKey]: out });
+      if (p && typeof p.catch === "function") {
+        p.catch((err: unknown) => safeDebug("background.js › sessionMap.save." + storageKey, err, "warn", "storage"));
+      }
+    } catch (err) {
+      safeDebug("background.js › sessionMap.saveSync." + storageKey, err, "warn", "storage");
+    }
+  }
+  return { ready, save };
+}
 let pairingKey = "";
 let pairingInFlight: Promise<string> | null = null;
 let bridgeError = "";
@@ -426,11 +536,9 @@ function engineLabel() { return engine === "local" ? "AgentScript" : "Roblox"; }
 const PROVIDER_URLS = ["https://chat.deepseek.com/*", "https://deepseek.com/*", "https://chatgpt.com/*", "https://chat.openai.com/*", "https://claude.ai/*", "https://www.claude.ai/*", "https://claude.com/*", "https://www.claude.com/*", "https://gemini.google.com/*", "https://www.kimi.com/*", "https://kimi.com/*", "https://kimi.ai/*", "https://www.kimi.ai/*", "https://chat.z.ai/*", "https://chat.qwen.ai/*", "https://arena.ai/*", "https://www.notion.so/*", "https://app.notion.so/*", "https://www.notion.com/*", "https://notion.com/*", "https://*.notion.com/*", "https://freebuff.ai/*", "https://www.freebuff.ai/*", "https://freebuff.com/*", "https://www.freebuff.com/*", "https://gpt.crax.lol/*", "https://use.ai/*", "https://www.use.ai/*", "https://c.vani.ai/*", "https://aistudio.xiaomimimo.com/*", "https://oxalpha.com/*", "https://www.oxalpha.com/*", "https://oxalpha.org/*", "https://www.oxalpha.org/*", "https://grok.com/*", "https://www.grok.com/*", "https://aistudio.google.com/*", "https://chat.mistral.ai/*", "https://www.workbuddy.ai/*", "https://workbuddy.ai/*", "http://localhost/*", "http://127.0.0.1/*", "https://ollama.com/*", "https://*.ollama.com/*"];
 
 const RECONNECT_MIN = 500;
-const RECONNECT_MAX = 500;
-// Item 9 hang recovery, case 6: an app restart or update is back within a few seconds, so the first attempts stay at
-// 500 ms. If the app is still not answering after that, back off 1 s, 2 s, 4 s ... up to 30 s so a stopped app is not hammered.
 const RECONNECT_FAST_TRIES = 10;
 const RECONNECT_BACKOFF_MAX = 30000;
+const RECONNECT_MAX = RECONNECT_BACKOFF_MAX;
 function reconnectDelayFor(attempt: number): number {
   if (attempt < RECONNECT_FAST_TRIES) return RECONNECT_MIN;
   return Math.min(RECONNECT_BACKOFF_MAX, 1000 * Math.pow(2, attempt - RECONNECT_FAST_TRIES));
@@ -693,7 +801,9 @@ async function blockbenchCall(name: unknown, args: any, timeout?: number) {
     if (blockbench.mode === "app") {
       const response = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/blockbench", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cmd, args: args || {}, timeout_seconds: Math.ceil(limit / 1000) }), signal: AbortSignal.timeout(limit + 15000) });
       if (response.status === 404) return { ok: false, error: "Blockbench needs the newer PlazCode desktop app. Update the app (it comes with this extension update), then try again. Nothing was changed." };
-      const body: any = await response.json().catch(() => ({}));
+      const body: any = typeof readBridgeJson === "function"
+        ? await readBridgeJson(response, "The PlazCode app could not reach Blockbench.")
+        : await response.json();
       reply = body.ok ? { ok: true, result: body.result } : { ok: false, message: body.error || "The PlazCode app could not reach Blockbench." };
     } else {
       const tab = await blockbenchTab();
@@ -768,7 +878,9 @@ async function figmaCall(name: unknown, args: any, timeout?: number) {
   try {
     const response = await bridgeFetch(RUST_ROBLOX_HTTP + "/api/figma", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cmd, args: args || {}, timeout_seconds: Math.ceil(limit / 1000) }), signal: AbortSignal.timeout(limit + 15000) });
     if (response.status === 404) return { ok: false, error: "Figma needs the newer PlazCode desktop app. Update the app (it comes with this extension update), then try again. Nothing was changed." };
-    body = await response.json().catch(() => ({}));
+    body = typeof readBridgeJson === "function"
+      ? await readBridgeJson(response, "The PlazCode app could not reach Figma.")
+      : await response.json();
   } catch (error: any) { return { ok: false, error: "Figma could not be reached (" + String(error && error.message || error).slice(0, 200) + ")." }; }
   if (!body || body.ok !== true) return { ok: false, error: String(body && body.error || "The PlazCode app could not reach Figma.").slice(0, 4000) };
   const result = body.result;
@@ -838,6 +950,13 @@ let connectInFlight: Promise<void> | null = null;
 let socketConnectTimer: ReturnType<typeof setTimeout> | null = null;
 let wsAuthSuspect = false;
 const SOCKET_CONNECT_TIMEOUT_MS = 8000;
+const connectionWaiters = new Set<(ok: boolean) => void>();
+function notifyConnectionWaiters(ok: boolean): void {
+  if (!connectionWaiters.size) return;
+  const list = [...connectionWaiters];
+  connectionWaiters.clear();
+  for (const resolveWaiter of list) resolveWaiter(ok);
+}
 async function connect() {
   // Claim the attempt BEFORE pairing/profile awaits. Several tabs can wake the
   // worker together; they must not all create a socket after shared auth ends.
@@ -885,18 +1004,19 @@ async function connect() {
     reconnectAttempts = 0;
     lastMessageAt = Date.now();
     lastSocketOpenAt = Date.now();
+    notifyConnectionWaiters(true);
     log(`connected to ${engineLabel()} bridge (${url})`);
     workerGapRead.then(() => {
       const note = connectionNote();
       if (!note || sock !== ws || sock.readyState !== WebSocket.OPEN) return;
-      try { sock.send(JSON.stringify({ type: "client_note", id: 0, text: note })); } catch {}
+      try { sock.send(JSON.stringify({ type: "client_note", id: 0, text: note })); } catch (err) { safeDebug("background.js › connect.client_note", err); }
       try { debugRecord({ source: "extension", level: "warn", kind: "bridge", text: "Bridge reconnected: " + note, where: ["background.js › connect"] }); } catch {}
     });
     markWorkerAlive();
     startHeartbeat();
     studioChecking = engine !== "local";
     refreshProcStatus();
-    refreshStudioStatus();
+    refreshStudioStatus().catch((err) => safeDebug("background.js › connect.refreshStudioStatus", err));
     broadcastStatus();
   };
 
@@ -906,7 +1026,8 @@ async function connect() {
     let msg: any;
     try {
       msg = JSON.parse(ev.data);
-    } catch {
+    } catch (err) {
+      safeDebug("background.js › onmessage.parse", err);
       return;
     }
     handleBridgeMessage(msg);
@@ -923,7 +1044,7 @@ async function connect() {
       lastCloseNote = "the previous connection closed (code " + code + reason + (event && event.wasClean ? ", clean" : ", not clean") + ")";
       lastCloseAt = Date.now();
       log("bridge connection closed", code, event && event.reason);
-    } catch {}
+    } catch (err) { safeDebug("background.js › onclose.note", err); }
     connected = false;
     mcpAlive = false;
     studioConnected = null;
@@ -941,18 +1062,23 @@ async function connect() {
   sock.onerror = () => {
     if (sock !== ws) return;
     // onclose will follow; nothing to do here but avoid an unhandled error.
-    try { sock.close(); } catch {}
+    try { sock.close(); } catch (err) { safeDebug("background.js › onerror.close", err); }
   };
   // Browsers may leave an opening socket CONNECTING for minutes. Bound this
   // handshake only; established sockets and running commands keep their limits.
   socketConnectTimer = setTimeout(() => {
     if (sock !== ws || sock.readyState === WebSocket.OPEN) return;
-    ws = null;
+    socketConnectTimer = null;
     connected = false;
     bridgeError = "PlazCode did not finish opening its local socket. Retrying the connection.";
-    try { sock.close(); } catch {}
-    broadcastStatus();
-    scheduleReconnect();
+    // Close sock BEFORE clearing ws so sock.onclose sees sock === ws if synchronous.
+    try { sock.close(); } catch (err) { safeDebug("background.js › socketConnectTimer.close", err); }
+    if (ws === sock) {
+      ws = null;
+      failAllPending("bridge handshake timeout");
+      broadcastStatus();
+      scheduleReconnect();
+    }
   }, SOCKET_CONNECT_TIMEOUT_MS);
   })().finally(() => { connectInFlight = null; });
   return connectInFlight;
@@ -981,9 +1107,9 @@ function startHeartbeat() {
       }
       // Keeps the MV3 service worker alive AND detects a half-open socket.
       // Use short timeout so pending ping doesn't leak for 130s
-      send({ type: "ping" }, 12000).catch(() => {});
+      send({ type: "ping" }, 12000).catch((err) => safeDebug("background.js › startHeartbeat.ping", err));
       markWorkerAlive();
-      refreshStudioStatus();
+      refreshStudioStatus().catch((err) => safeDebug("background.js › startHeartbeat.refreshStudioStatus", err));
       // ── MCP auto-heal (v1.12) ────────────────────────────────────────────
       // The StudioMCP helper the agent spawns can die on its own (Studio
       // update, sleep/resume, crash). The agent only recycles it when a TOOL
@@ -1021,11 +1147,11 @@ function startHeartbeat() {
               log("MCP helper confirmed dead - auto-restarting Studio MCP");
               return send({ type: "restart_mcp" }, 30000).then((r) => {
                 if (r && r.ok) {
-                  send({ type: "list_tools" }, 10000).catch(() => {});
-                  refreshStudioStatus();
+                  send({ type: "list_tools" }, 10000).catch((err) => safeDebug("background.js › mcpHeal.listTools", err));
+                  refreshStudioStatus().catch((err) => safeDebug("background.js › mcpHeal.refreshStudioStatus", err));
                 }
               });
-            }).catch(() => {}).finally(() => { mcpHealInFlight = false; });
+            }).catch((err) => safeDebug("background.js › mcpHeal", err)).finally(() => { mcpHealInFlight = false; });
           }
         } else {
           mcpDownStreak = 0;
@@ -1050,19 +1176,21 @@ function stopHeartbeat() {
 
 // Resolve once the socket is OPEN, or false after `timeout` ms.
 function waitForConnection(timeout = 20000): Promise<boolean> {
+  if (connected && ws && ws.readyState === WebSocket.OPEN) return Promise.resolve(true);
   return new Promise((resolve) => {
-    if (connected && ws && ws.readyState === WebSocket.OPEN) return resolve(true);
-    connect(); // nudge a (re)connection - important after a worker wake-up
-    const t0 = Date.now();
-    const iv = setInterval(() => {
-      if (connected && ws && ws.readyState === WebSocket.OPEN) {
-        clearInterval(iv);
-        resolve(true);
-      } else if (Date.now() - t0 > timeout) {
-        clearInterval(iv);
-        resolve(false);
-      }
-    }, 25);
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onConnect = (ok: boolean): void => {
+      if (settled) return;
+      settled = true;
+      connectionWaiters.delete(onConnect);
+      if (timer !== null) clearTimeout(timer);
+      resolve(ok);
+    };
+    connectionWaiters.add(onConnect);
+    timer = setTimeout(() => onConnect(false), Math.max(0, timeout));
+    void connect().catch((err) => safeDebug("background.js › waitForConnection.connect", err));
+    if (connected && ws && ws.readyState === WebSocket.OPEN) onConnect(true);
   });
 }
 
@@ -1315,7 +1443,9 @@ async function refreshProcStatus() {
     // Bounded by the bridgeFetch default timeout.
     const r = await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/status`, { method: "GET" });
     if (!r.ok) throw new Error("PlazCode status request failed (HTTP " + r.status + ").");
-    const j: any = await r.json();
+    const j: any = typeof readBridgeJson === "function"
+      ? await readBridgeJson(r, "PlazCode status request failed.")
+      : await r.json();
     const wasUsable = bridgeReachable && !profileRequired;
     bridgeReachable = true;
     profileRequired = j.profile_required === true;
@@ -1367,21 +1497,38 @@ async function refreshProcStatus() {
     // Full access re-sync: run ONLY after initial preference sync converges so a stale
     // secondary browser with an old rsPermMode="full" never flips the desktop back on.
     if (!fullSyncedOnce) {
-      prefSyncPromise.then(() => {
+      (async () => {
+        if (typeof fullSyncedOnceReady !== "undefined") await fullSyncedOnceReady;
+        await prefSyncPromise;
         if (fullSyncedOnce || !desktopPreferencesStarted) return;
         fullSyncedOnce = true;
         try {
-          chrome.storage.local.get("rsPermMode", (o) => {
-            const wantFull = o && o.rsPermMode === "full";
-            if (wantFull && !localFull) {
-              bridgeFetch(`${RUST_ROBLOX_HTTP}/api/local-full`, {
+          const p = chrome.storage?.session?.set({ [FULL_SYNCED_SESSION_KEY]: true });
+          if (p && typeof p.catch === "function") p.catch((err) => safeDebug("background.js › fullSyncedOnce.save", err, "warn", "storage"));
+        } catch (err) {
+          safeDebug("background.js › fullSyncedOnce.saveSync", err, "warn", "storage");
+        }
+        chrome.storage.local.get("rsPermMode", async (o) => {
+          if (chrome.runtime?.lastError) {
+            safeDebug("background.js › fullAccessResync.storage", chrome.runtime.lastError.message, "warn", "storage");
+            return;
+          }
+          const wantFull = o && o.rsPermMode === "full";
+          if (wantFull && !localFull) {
+            try {
+              const r2 = await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/local-full`, {
                 method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ enabled: true }), signal: AbortSignal.timeout(5000),
-              }).then((r2) => r2.json()).then((j2) => { localFull = j2.local_full === true; broadcastStatus(); }).catch(() => {});
+              });
+              const j2: any = await readBridgeJson(r2, "Failed to sync Full access.");
+              localFull = j2.local_full === true;
+              broadcastStatus();
+            } catch (err) {
+              safeDebug("background.js › fullAccessResync", err);
             }
-          });
-        } catch {}
-      }).catch(() => {});
+          }
+        });
+      })().catch((err) => safeDebug("background.js › fullAccessResync.prefSync", err));
     }
   } catch (error: any) {
     const changed = bridgeReachable || localReady || profileRequired;
@@ -1520,24 +1667,35 @@ setInterval(() => { reportDesktopAgentState(); }, 750);
 //    update never restarts it during a long model reply with no tool calls.
 const RUN_BEAT_TTL_MS = 180000;
 const runTabs = new Map<number, number>();
+const runTabsStore = typeof createSessionMapStore === "function"
+  ? createSessionMapStore<number>(
+      "rsRunTabs",
+      runTabs,
+      (raw) => (typeof raw === "number" && Number.isFinite(raw) && Date.now() - raw <= RUN_BEAT_TTL_MS ? raw : null),
+      (value) => value
+    )
+  : { ready: Promise.resolve(), save() {} };
 let lastActivityPost = 0;
 function releaseRunTab(tabId: number) {
   if (!runTabs.delete(tabId)) return;
+  runTabsStore.save();
   try { const p = chrome.tabs.update(tabId, { autoDiscardable: true }); if (p && p.catch) p.catch(() => {}); } catch {}
 }
 function noteRunBeat(tabId: number | undefined, running: boolean) {
   if (tabId == null || !Number.isInteger(tabId)) return;
   if (!running) { releaseRunTab(tabId); return; }
-  try { controlKeepAlive(tabId); } catch {}
+  try { controlKeepAlive(tabId); } catch (err) { if (typeof safeDebug === "function") safeDebug("background.js › noteRunBeat.keepAlive", err); }
   if (!runTabs.has(tabId)) {
     try { const p = chrome.tabs.update(tabId, { autoDiscardable: false }); if (p && p.catch) p.catch(() => {}); } catch {}
   }
   runTabs.set(tabId, Date.now());
+  runTabsStore.save();
   if (rustMode && Date.now() - lastActivityPost > 30000) {
     lastActivityPost = Date.now();
-    bridgeFetch(`${RUST_ROBLOX_HTTP}/api/desktop/activity`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
+    bridgeFetch(`${RUST_ROBLOX_HTTP}/api/desktop/activity`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch((err) => { if (typeof safeDebug === "function") safeDebug("background.js › noteRunBeat.activity", err); });
   }
 }
+void runTabsStore.ready;
 setInterval(() => {
   const now = Date.now();
   for (const [tabId, at] of runTabs) {
@@ -1545,7 +1703,7 @@ setInterval(() => {
     try { const p = chrome.tabs.sendMessage(tabId, { type: "rs-wake" }); if (p && p.catch) p.catch(() => {}); } catch {}
   }
 }, 1000);
-chrome.tabs.onRemoved?.addListener(tabId => { runTabs.delete(tabId); });
+chrome.tabs.onRemoved?.addListener(tabId => { if (runTabs.delete(tabId)) runTabsStore.save(); });
 
 function broadcastStatus() {
   chrome.runtime.sendMessage(statusObj()).catch(() => {});
@@ -1554,7 +1712,11 @@ function broadcastStatus() {
     for (const t of tabs) {
       if (t.id == null) continue;
       const tid = t.id;
-      tabEngine(tid).then(mode=>chrome.tabs.sendMessage(tid, statusObj(mode))).catch(() => {});
+      tabEngine(tid).then(mode=>chrome.tabs.sendMessage(tid, statusObj(mode))).catch((err) => {
+        if (!/Receiving end does not exist|message port closed/i.test(String(err && err.message || err))) {
+          safeDebug("background.js › broadcastStatus.tab", err);
+        }
+      });
     }
   });
 }
@@ -1836,7 +1998,7 @@ async function sendLocalEngine(obj: Record<string, any>, timeout = 25000): Promi
   return await new Promise((resolve) => {
     let sock: WebSocket;
     try { sock = new WebSocket(`ws://127.0.0.1:${PORT_LOCAL}`, pairingProtocols()); }
-    catch (e) { resolve({ ok: false, error: "PlazCode.exe is not running" }); return; }
+    catch (e) { safeDebug("background.js › sendLocalEngine.ctor", e); resolve({ ok: false, error: "PlazCode.exe is not running" }); return; }
     const id = 800000 + Math.floor(Math.random() * 99999);
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -1844,28 +2006,33 @@ async function sendLocalEngine(obj: Record<string, any>, timeout = 25000): Promi
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      try { sock.close(); } catch {}
+      try { sock.close(); } catch (err) { safeDebug("background.js › sendLocalEngine.close", err); }
       resolve(v);
     };
     timer = setTimeout(() => done({ ok: false, error: "PlazCode.exe did not answer — is it running?" }), timeout);
     sock.onerror = () => done({ ok: false, error: "AgentScript connection failed. Start PlazCode and allow the extension access to localhost in this browser." });
+    sock.onclose = (event) => {
+      const code = event && typeof event.code === "number" ? ` (code ${event.code})` : "";
+      done({ ok: false, error: "AgentScript connection closed" + code });
+    };
     sock.onopen = () => {
       try { sock.send(JSON.stringify({ ...obj, id })); }
       catch (e) { done({ ok: false, error: String(e) }); }
     };
     sock.onmessage = (ev) => {
       let msg: any;
-      try { msg = JSON.parse(ev.data); } catch { return; }
+      try { msg = JSON.parse(ev.data); } catch (err) { safeDebug("background.js › sendLocalEngine.parse", err); return; }
+      if (!msg || typeof msg !== "object") return;
       if (msg.type === "connected") {
         if (typeof msg.workspace_root === "string" && msg.workspace_root) localRoot = msg.workspace_root;
         return;
       }
       if (["tools","mcp_status","studio_status"].includes(msg.type) && msg.id === id) { done(msg); return; }
-      if (msg.type === "tool_result" && (msg.id == null || msg.id === id)) {
+      if (msg.type === "tool_result" && msg.id === id) {
         done(msg.ok ? { ok: true, text: msg.text } : { ok: false, error: msg.error || "tool failed" });
         return;
       }
-      if (msg.type === "error" && (msg.id == null || msg.id === id)) {
+      if (msg.type === "error" && msg.id === id) {
         done({ ok: false, error: msg.error || "error" });
       }
     };
@@ -1985,7 +2152,7 @@ async function probeBlenderTcp() {
 async function blenderRequest(payload: Record<string, any>, timeout=120000): Promise<any> {
   const BLENDER_START_ALLOWANCE_MS = 65000;
   const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/blender",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...payload,timeout_seconds:Math.ceil(timeout/1000)}),signal:AbortSignal.timeout(timeout+4000+BLENDER_START_ALLOWANCE_MS)});
-  if(!response.ok) throw Error("Blender bridge request failed (HTTP "+response.status+"). Update the desktop app and extension together.");
+  if (typeof readBridgeJson === "function") return readBridgeJson(response, "Blender bridge request failed.");
   return response.json();
 }
 async function connectBlender() {
@@ -2380,8 +2547,7 @@ async function readPersonalMemory(action?: unknown) {
   // Reads are polled every 3 s and must give up quickly; explicit memory actions
   // (save, import, delete) get a longer limit.
   const response = await bridgeFetch("http://127.0.0.1:3000/api/memory", action ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(action), signal: AbortSignal.timeout(30000) } : { signal: AbortSignal.timeout(10000) });
-  const value: any = await response.json();
-  if (!response.ok) throw new Error(value.error || "Memory bridge is unavailable.");
+  const value: any = await readBridgeJson(response, "Memory bridge is unavailable.");
   const memory = value.memory || value;
   const signature=JSON.stringify(memory);
   if(signature!==lastMemorySignature){await chrome.storage.local.set({ rsPersonalMemory: memory });lastMemorySignature=signature;}
@@ -2400,8 +2566,7 @@ async function readReleaseStatus() {
   releaseStatusReading = true;
   try {
     const response = await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/desktop/update`, { signal: AbortSignal.timeout(5000) });
-    if (!response.ok) throw new Error("Update check unavailable.");
-    const value: any = await response.json();
+    const value: any = await readBridgeJson(response, "Update check unavailable.");
     releaseStatusFailures = 0;
     const status={latest:value.latest,checked_at:value.checked_at,check_error:value.check_error || null},signature=JSON.stringify(status);
     if(signature!==lastReleaseSignature){await chrome.storage.local.set({rsReleaseStatus:status});lastReleaseSignature=signature;}
@@ -2606,6 +2771,15 @@ function createHelperRoster({ limit = 2, maxOpen = 8, slotMs = 600000, runMs = 9
     return gone;
   }
   const list = (parentTab: number) => mine(parentTab).map(view);
+  function peek(parentTab: number) {
+    return mine(parentTab).filter((r) => !ACTIVE.has(r.status) && !r.delivered).map(view);
+  }
+  function ack(parentTab: number, ids?: unknown[]) {
+    const allowed = Array.isArray(ids) ? new Set(ids.map((id) => Number(id))) : null;
+    const ready = mine(parentTab).filter((r) => !ACTIVE.has(r.status) && !r.delivered && (!allowed || allowed.has(r.id)));
+    for (const row of ready) row.delivered = true;
+    return ready.map(view);
+  }
   function take(parentTab: number) {
     const ready = mine(parentTab).filter((r) => !ACTIVE.has(r.status) && !r.delivered);
     for (const row of ready) row.delivered = true;
@@ -2645,15 +2819,15 @@ function createHelperRoster({ limit = 2, maxOpen = 8, slotMs = 600000, runMs = 9
     for (const row of saved.rows) if (row && Number.isInteger(row.id)) rows.set(row.id, row);
     for (const [key, value] of saved.locks || []) locks.set(key, value);
   }
-  return { add, next, placed, progress, finish, cancelHelper, cancelRun, sweepExpired, stoppable, clear, list, take, lock, tabGone, byTab, get: (id: unknown) => rows.get(Number(id)) || null, activeFor, dump, load };
+  return { add, next, placed, progress, finish, cancelHelper, cancelRun, sweepExpired, stoppable, clear, list, peek, ack, take, lock, tabGone, byTab, get: (id: unknown) => rows.get(Number(id)) || null, activeFor, dump, load };
 }
 const helperRoster = createHelperRoster({ limit: 2 });
 let helperLoading: Promise<void> | null = null;
 function helperLoad() {
-  if (!helperLoading) helperLoading = (async () => { try { const saved = await chrome.storage.session.get("rsHelperRoster"); helperRoster.load(saved && saved.rsHelperRoster); } catch {} })();
+  if (!helperLoading) helperLoading = (async () => { try { const saved = await chrome.storage.session.get("rsHelperRoster"); helperRoster.load(saved && saved.rsHelperRoster); } catch (error) { safeDebug("helperLoad", error); } })();
   return helperLoading;
 }
-function helperSave() { try { const p = chrome.storage.session.set({ rsHelperRoster: helperRoster.dump() }); if (p && p.catch) p.catch(() => {}); } catch {} }
+function helperSave() { try { const p = chrome.storage.session.set({ rsHelperRoster: helperRoster.dump() }); if (p && p.catch) p.catch((error: any) => safeDebug("helperSave", error)); } catch (error) { safeDebug("helperSave", error); } }
 const helperNotifyAt = new Map<number, number>();
 function helperNotify(parentTab: number, urgent = true) {
   helperSave();
@@ -2742,11 +2916,13 @@ async function helperRequest(tabId: number | undefined, request: Record<string, 
     return { ok: true, runId: added.runId, helpers: helperRoster.list(tabId).filter((h) => added.helpers.some((a: any) => a.id === h.id)) };
   }
   if (action === "list") { const self = helperRoster.byTab(tabId); return { ok: true, helpers: helperRoster.list(tabId), helper: self ? { id: self.id, title: self.title, task: self.task, area: self.area, engine: self.engine, sent: !!self.sent } : null }; }
+  if (action === "peek") { const results = helperRoster.peek(tabId); return { ok: true, results, pending: helperRoster.activeFor(tabId).length }; }
+  if (action === "ack") { const results = helperRoster.ack(tabId, request.ids); helperSave(); return { ok: true, results, pending: helperRoster.activeFor(tabId).length }; }
   if (action === "take") { const results = helperRoster.take(tabId); helperSave(); return { ok: true, results, pending: helperRoster.activeFor(tabId).length }; }
   if (action === "stop" || action === "cancel-helper") {
     const targets = helperRoster.stoppable(tabId, request.id);
     for (const row of targets) {
-      if (row.tabId != null) { try { const p = chrome.tabs.sendMessage(row.tabId, { type: "rs-helper-stop" }); if (p && p.catch) p.catch(() => {}); } catch {} }
+      if (row.tabId != null) { try { const p = chrome.tabs.sendMessage(row.tabId, { type: "rs-helper-stop" }); if (p && p.catch) p.catch((error: any) => safeDebug("helperStopMsg", error)); } catch (error) { safeDebug("helperStopMsg", error); } }
       helperEnd(row.id, { status: "stopped", summary: String(request.reason || "Stopped before finishing.").slice(0, 200) });
     }
     return { ok: true, stopped: targets.length };
@@ -2754,14 +2930,14 @@ async function helperRequest(tabId: number | undefined, request: Record<string, 
   if (action === "cancel-run") {
     const targets = helperRoster.cancelRun(request.runId, String(request.reason || "Helper run cancelled.").slice(0, 200));
     for (const row of targets) {
-      if (row.tabId != null) { try { const p = chrome.tabs.sendMessage(row.tabId, { type: "rs-helper-stop" }); if (p && p.catch) p.catch(() => {}); } catch {} }
+      if (row.tabId != null) { try { const p = chrome.tabs.sendMessage(row.tabId, { type: "rs-helper-stop" }); if (p && p.catch) p.catch((error: any) => safeDebug("helperCancelMsg", error)); } catch (error) { safeDebug("helperCancelMsg", error); } }
       helperCloseWindow(row);
     }
     if (targets.length) { helperNotify(tabId); helperPump(tabId); }
     return { ok: true, stopped: targets.length };
   }
   if (action === "clear") { for (const row of helperRoster.clear(tabId)) helperCloseWindow(row); helperNotify(tabId); return { ok: true }; }
-  if (action === "open") { const row = helperRoster.get(request.id); if (!row || row.parentTab !== tabId || row.windowId == null) return { ok: false, error: "That helper has no open window." }; try { await chrome.windows.update(row.windowId, { focused: true }); return { ok: true }; } catch { return { ok: false, error: "That helper's window is closed." }; } }
+  if (action === "open") { const row = helperRoster.get(request.id); if (!row || row.parentTab !== tabId || row.windowId == null) return { ok: false, error: "That helper has no open window." }; try { await chrome.windows.update(row.windowId, { focused: true }); return { ok: true }; } catch (error) { safeDebug("helperOpen", error); return { ok: false, error: "That helper's window is closed." }; } }
   if (action === "progress") { const row = helperRoster.progress(tabId, request); if (row) helperNotify(row.parentTab, !!(request.working || request.note !== undefined)); return { ok: !!row }; }
   if (action === "report") { const row = helperRoster.byTab(tabId); if (!row) return { ok: false }; helperEnd(row.id, { status: request.status, summary: request.summary }); return { ok: true }; }
   if (action === "lock") return helperRoster.lock(tabId, request.keys);
@@ -2774,7 +2950,7 @@ try {
     for (const row of orphans) helperCloseWindow(row);
     if (ended.length || orphans.length) helperSave();
   }); });
-} catch {}
+} catch (error) { safeDebug("helperTabRemoved", error); }
 
 // 1.24.30 (owner, 2026-10-31: PlazCode "disconnects and reconnects for no reason"): Chrome stops an extension's
 // background worker when one message takes longer than 5 minutes to answer, which also drops the link to the app.
@@ -2783,18 +2959,39 @@ try {
 const INTEGRITY_EXEMPT = new Set(["immediate-stop", "status", "live-status", "rs-run-beat", "job-wait"]);
 const LONG_MESSAGE_TYPES = new Set(["call_tool", "ollama_chat", "rs-critic"]);
 const LONG_REPLY_MS = 240000;
+const LONG_REPLY_META_KEY = "rsLongReplyMeta";
 const longReplies = new Map<number, Promise<any>>();
-let longReplyId = 0;
+const persistedLongJobs = new Map<number, { type: string; name?: string; startedAt: number; status: "running" | "done"; result?: any }>();
+let longReplyId = Date.now() % 100000000;
+const longReplyReady = (async () => {
+  try {
+    const got = await chrome.storage.session?.get?.(LONG_REPLY_META_KEY);
+    const meta = got && got[LONG_REPLY_META_KEY];
+    if (meta && typeof meta === "object") {
+      if (Number.isInteger(meta.lastId) && meta.lastId > longReplyId) longReplyId = meta.lastId;
+      for (const entry of Array.isArray(meta.jobs) ? meta.jobs : []) {
+        if (entry && Number.isInteger(entry.job) && Date.now() - Number(entry.startedAt || 0) < 900000) persistedLongJobs.set(entry.job, entry);
+      }
+    }
+  } catch (error) { if (typeof safeDebug === "function") safeDebug("longReplyLoad", error); }
+})();
+function saveLongReplyMeta() {
+  try {
+    const jobs = [...persistedLongJobs.entries()].map(([job, row]) => ({ job, ...row })).slice(-24);
+    const p = chrome.storage.session?.set?.({ [LONG_REPLY_META_KEY]: { lastId: longReplyId, jobs } });
+    if (p && p.catch) p.catch((error: any) => { if (typeof safeDebug === "function") safeDebug("longReplySave", error); });
+  } catch (error) { if (typeof safeDebug === "function") safeDebug("longReplySave", error); }
+}
 function answerWithin(final: Promise<any>, job: number, sendResponse: (r?: any) => void) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const still = new Promise((resolve) => { timer = setTimeout(() => resolve(longReplies), LONG_REPLY_MS); });
   Promise.race([final, still]).then((value) => {
     clearTimeout(timer);
-    try { sendResponse(value === longReplies ? { ok: false, kind: "still-running", job } : value); } catch {}
+    try { sendResponse(value === longReplies ? { ok: false, kind: "still-running", job } : value); } catch (error) { if (typeof safeDebug === "function") safeDebug("answerWithin", error); }
   });
 }
 chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (r?: any) => void) => {
-  try { askNoteSite(_sender); } catch {}
+  try { askNoteSite(_sender); } catch (error) { if (typeof safeDebug === "function") safeDebug("askNoteSite", error); }
   if (msg && msg.type === "deepseek-requests") {
     if (!deepSeekRequests) { rawSendResponse({ok:false}); return undefined; }
     deepSeekRequests.snapshot(_sender).then(rawSendResponse,()=>rawSendResponse({ok:false}));
@@ -2803,7 +3000,24 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
   if (msg && msg.type === "job-wait") {
     const final = longReplies.get(msg.job);
     if (final) answerWithin(final, msg.job, rawSendResponse);
-    else rawSendResponse({ ok: false, kind: "disconnected", error: "The browser restarted PlazCode's background worker while this was running. It may have finished; check the current state before retrying." });
+    else {
+      longReplyReady.then(() => {
+        const saved = persistedLongJobs.get(msg.job);
+        if (saved && saved.status === "done" && saved.result !== undefined) {
+          persistedLongJobs.delete(msg.job);
+          saveLongReplyMeta();
+          rawSendResponse(saved.result);
+          return;
+        }
+        const label = saved ? (saved.name ? `${saved.type}:${saved.name}` : saved.type) : "the running operation";
+        rawSendResponse({
+          ok: false,
+          kind: "disconnected",
+          persistedJob: saved ? { type: saved.type, name: saved.name, startedAt: saved.startedAt, status: saved.status } : undefined,
+          error: `The browser restarted PlazCode's background worker while ${label} was running. Check the current state before retrying.`,
+        });
+      });
+    }
     return true;
   }
   let sendResponse = rawSendResponse;
@@ -2812,7 +3026,17 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
     const final = new Promise<any>((resolve) => { settle = resolve; });
     const job = ++longReplyId;
     longReplies.set(job, final);
-    final.then(() => setTimeout(() => longReplies.delete(job), 60000));
+    persistedLongJobs.set(job, { type: String(msg.type || ""), name: msg.name ? String(msg.name) : undefined, startedAt: Date.now(), status: "running" });
+    saveLongReplyMeta();
+    final.then((result) => {
+      const existing = persistedLongJobs.get(job);
+      if (existing) {
+        const serialized = (() => { try { const s = JSON.stringify(result); return s && s.length <= 32768 ? result : undefined; } catch { return undefined; } })();
+        persistedLongJobs.set(job, { ...existing, status: "done", result: serialized });
+        saveLongReplyMeta();
+      }
+      setTimeout(() => { longReplies.delete(job); persistedLongJobs.delete(job); saveLongReplyMeta(); }, 60000);
+    });
     sendResponse = (value) => settle(value);
     answerWithin(final, job, rawSendResponse);
   }
@@ -2832,7 +3056,7 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
           if(origin.protocol!=="https:" || !["chat.deepseek.com","deepseek.com"].includes(origin.hostname) || !_sender.tab || !Number.isInteger(_sender.tab.id))throw new Error("Request pacing is only available to the DeepSeek chat.");
           const request={...msg.request,provider:"deepseek",owner:pairingIdentity()+":"+_sender.tab.id+":"+String(_sender.documentId || msg.page || "").slice(0,100)};
           const response=await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/provider-pacing`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(request),signal:AbortSignal.timeout(5000)});
-          const value: any=await response.json();sendResponse(response.ok ? value : {ok:false,error:value.error || "The shared request timer could not be reached. Update the complete PlazCode app and extension together."});
+          const value: any=await readBridgeJson(response,"The shared request timer could not be reached.");sendResponse(response.ok ? value : {ok:false,error:value.error || "The shared request timer could not be reached. Update the complete PlazCode app and extension together."});
         }catch(error: any){sendResponse({ok:false,error:"DeepSeek send paused: "+String(error.message || error)});}
         break;
       }
@@ -2873,7 +3097,7 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
       case "rs-toolkit": {
         const request = msg.request || {};
         if (request.action !== "insert-typed-asset") { sendResponse({ ok: false, error: "Only asset uploads are available here." }); break; }
-        try { const response = await bridgeFetch("http://127.0.0.1:3000/api/toolkit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "insert-typed-asset", kind: String(request.kind || ""), asset_id: request.asset_id }), signal: AbortSignal.timeout(120000) }); const value: any = await response.json(); sendResponse(response.ok ? value : { ok: false, error: value.error || "Studio upload failed." }); } catch (error: any) { sendResponse({ ok: false, error: error.message || String(error) }); }
+        try { const response = await bridgeFetch("http://127.0.0.1:3000/api/toolkit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "insert-typed-asset", kind: String(request.kind || ""), asset_id: request.asset_id }), signal: AbortSignal.timeout(120000) }); const value: any = typeof readBridgeJson === "function" ? await readBridgeJson(response, "Studio upload failed.") : await response.json(); sendResponse(response.ok ? value : { ok: false, error: value.error || "Studio upload failed." }); } catch (error: any) { sendResponse({ ok: false, error: error.message || String(error) }); }
         break;
       }
       case "rs-memory":
@@ -2889,13 +3113,16 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
           let studioUp=false;
           try {
             const live=await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/status`,{method:"GET",signal:AbortSignal.timeout(4000)});
-            studioUp=live.ok && ((await live.json()) as any).roblox_connected===true;
-          } catch {}
+            if (live.ok) {
+              const liveData: any = typeof readBridgeJson === "function" ? await readBridgeJson(live, "Failed to read Studio status.") : await live.json();
+              studioUp = liveData.roblox_connected === true;
+            }
+          } catch (error) { if (typeof safeDebug === "function") safeDebug("rsSetEngineStatus", error); }
           if (!studioUp) {sendResponse({ok:false,engine:"local",error:"studio_not_connected",message:"Roblox Studio isn't connected. Open Roblox Studio and connect it to PlazCode, then switch to Roblox again."});break;}
         }
         tabEngines.set(tabId,next);
-        try {await chrome.storage.session.set({["rs-tab-engine-"+tabId]:next});}catch{}
-        try {await chrome.tabs.sendMessage(tabId,{type:"rs-engine",engine:next});}catch{}
+        try {await chrome.storage.session.set({["rs-tab-engine-"+tabId]:next});}catch(error){if(typeof safeDebug==="function")safeDebug("rsSetEngineStore", error);}
+        try {await chrome.tabs.sendMessage(tabId,{type:"rs-engine",engine:next});}catch(error){if(typeof safeDebug==="function")safeDebug("rsSetEngineTabMsg", error);}
         sendResponse({engine:next}); break;
       }
       case "rs-set-full": {
@@ -2908,10 +3135,10 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ enabled: want }),
           });
-          const j: any = await r.json().catch(() => ({}));
+          const j: any = await readBridgeJson(r, "Agent did not confirm the permission change");
           if (!r.ok || typeof j.local_full !== "boolean") throw new Error("Agent did not confirm the permission change");
           localFull = j.local_full;
-          try { chrome.storage.local.set({ "rs-local-full": localFull }); } catch {}
+          try { chrome.storage.local.set({ "rs-local-full": localFull }); } catch (error) { safeDebug("rsSetFullStore", error); }
         } catch (error: any) {
           sendResponse({ ok: false, enabled: localFull, error: String(error.message || error) });
           break;
@@ -2924,7 +3151,7 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
         sendResponse({ enabled: localFull });
         break;
       case "immediate-stop": {
-        try{const response=await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/stop`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({checkpoint_id:msg.checkpoint_id}),signal:AbortSignal.timeout(4000)});sendResponse(await response.json());}
+        try{const response=await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/stop`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({checkpoint_id:msg.checkpoint_id}),signal:AbortSignal.timeout(4000)});sendResponse(await readBridgeJson(response,"Stop failed.")); }
         catch(error: any){sendResponse({ok:false,error:String(error.message || error)});}break;
       }
       case "media-convert": {
@@ -2932,7 +3159,7 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
           if(typeof msg.data!=="string" || msg.data.length>90*1024*1024)throw Error("Local conversion accepts files up to 64 MB.");
           const bytes=Uint8Array.from(atob(msg.data),c=>c.charCodeAt(0));
           const response=await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/media/convert?video=${msg.video===true}`,{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:bytes,signal:AbortSignal.timeout(65000)});
-          sendResponse(await response.json());
+          sendResponse(await readBridgeJson(response,"Media conversion failed."));
         }catch(error: any){sendResponse({ok:false,error:String(error.message || error)});}
         break;
       }
@@ -2940,8 +3167,9 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
         try {
           const response = await bridgeFetch(`${RUST_ROBLOX_HTTP}/api/status`, {method:"GET",signal:AbortSignal.timeout(4000)});
           if(!response.ok)throw Error("Bridge status request failed.");
-          const live: any=await response.json();
-          sendResponse({ok:true,...statusObj(normalizeEngine(msg.engine ?? mode)),connected:normalizeEngine(msg.engine ?? mode)==="local"?live.local_ready===true:connected,local_connected:live.local_ready===true,local_root:live.local_root,local_full:live.local_full===true,roblox_connected:live.roblox_connected===true,blender_connected:live.blender_connected===true,profile_required:live.profile_required===true,bridge_reachable:true});
+          const live: any = typeof readBridgeJson === "function" ? await readBridgeJson(response, "Bridge status invalid response.") : await response.json();
+          const profileReq = live.profile_required === true;
+          sendResponse({ok:true,...statusObj(normalizeEngine(msg.engine ?? mode)),connected:profileReq ? false : (normalizeEngine(msg.engine ?? mode)==="local"?live.local_ready===true:connected),local_connected:!profileReq && live.local_ready===true,local_root:live.local_root,local_full:live.local_full===true,roblox_connected:!profileReq && live.roblox_connected===true,blender_connected:live.blender_connected===true,profile_required:profileReq,bridge_reachable:true});
         }catch(error: any){sendResponse({ok:false,error:String(error.message || error)});}
         break;
       }
@@ -2960,7 +3188,7 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ tools: rows }),
           });
-          const body: any = await response.json().catch(() => ({}));
+          const body: any = await readBridgeJson(response, "Desktop tools snapshot failed.");
           sendResponse({ ok: response.ok, ...body });
         } catch (error: any) {
           sendResponse({ ok: false, error: String(error && error.message || error) });
@@ -2986,7 +3214,7 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
         try{const q=msg.request||{},params=new URLSearchParams({filter:String(q.filter||"all"),q:String(q.q||""),limit:String(q.limit||60)});if(q.day)params.set("day",String(q.day));
           const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/logs/day?"+params.toString(),{signal:AbortSignal.timeout(15000)});
           if(!response.ok)throw new Error(response.status===404?"This PlazCode app is older than the extension and has no logs yet. Update the PlazCode app.":"HTTP "+response.status);
-          const value: any=await response.json();sendResponse({ok:true,events:value.events||[],total:value.total||0,day:value.day||""});
+          const value: any=await readBridgeJson(response,"Logs request failed.");sendResponse({ok:true,events:value.events||[],total:value.total||0,day:value.day||""});
         }catch(error: any){sendResponse({ok:false,error:String(error&&error.message||error)});}
         break;
       }
@@ -2995,13 +3223,13 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
         // bridgeFetch pairs first, so only the official extension of this installation receives them.
         try{const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/text-pack",{signal:AbortSignal.timeout(15000)});
           if(!response.ok){const reason=String(await response.text().catch(()=>"")).slice(0,600);throw new Error(response.status===404?"This PlazCode app is older than the extension. Update the PlazCode app and the extension together, then refresh this AI tab.":reason||("HTTP "+response.status));}
-          sendResponse({ok:true,pack:await response.json()});
+          sendResponse({ok:true,pack:await readBridgeJson(response,"Text pack failed.")});
         }catch(error: any){sendResponse({ok:false,error:String(error&&error.message||error)});}
         break;
       }
       case "skills": {
         const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),28000);
-        try{const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/skills",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{action:"list"}),signal:controller.signal});const value: any=await response.json();sendResponse(response.ok?value:{ok:false,error:value.error||"Skill request failed."});}catch(error: any){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timer);}break;
+        try{const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/skills",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{action:"list"}),signal:controller.signal});const value: any=await readBridgeJson(response,"Skill request failed.");sendResponse(response.ok?value:{ok:false,error:value.error||"Skill request failed."});}catch(error: any){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timer);}break;
       }
       case "creations": {
         const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
@@ -3015,12 +3243,12 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
             const binary=atob(request.content);if(!binary.length||binary.length>2097152)throw Error('Template chunk exceeds 2 MB.');body=Uint8Array.from(binary,c=>c.charCodeAt(0));url+='/upload/'+request.id+'?offset='+request.offset;headers={'Content-Type':'application/octet-stream'};
           }else if(['upload-begin','upload-finish','upload-status','upload-cancel'].includes(request.action)){url+='/upload';body=JSON.stringify(request);
           }else           if(request.action==="import"){if(typeof request.content!=="string" || request.content.length>44739244)throw Error("Template file exceeds 32 MB.");const binary=atob(request.content);body=Uint8Array.from(binary,c=>c.charCodeAt(0));url+="/import?name="+encodeURIComponent(request.name)+"&description="+encodeURIComponent(request.description || "");headers={"Content-Type":"application/octet-stream"};}else body=JSON.stringify(request);
-          const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),60000);try{const response=await bridgeFetch(url,{method:"POST",headers,body,signal:controller.signal});const value: any=await response.json();sendResponse(response.ok?value:{ok:false,error:value.error || "Template request failed."});}finally{clearTimeout(timer);}
+          const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),60000);try{const response=await bridgeFetch(url,{method:"POST",headers,body,signal:controller.signal});const value: any=await readBridgeJson(response,"Template request failed.");sendResponse(response.ok?value:{ok:false,error:value.error || "Template request failed."});}finally{clearTimeout(timer);}
         }catch(error: any){sendResponse({ok:false,error:error.message || String(error)});}
         break;
       case "engram": {
         const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),28000);
-        try { const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/engram",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{}),signal:controller.signal});sendResponse(await response.json()); }
+        try { const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/engram",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{}),signal:controller.signal});sendResponse(await readBridgeJson(response,"Engram request failed.")); }
         catch(error: any){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timer);}break;
       }
       case "helpers": {
@@ -3041,18 +3269,18 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
       }
       case "vault": {
         const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
-        try { const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/vault",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{}),signal:controller.signal});sendResponse(await response.json()); }
+        try { const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/vault",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request||{}),signal:controller.signal});sendResponse(await readBridgeJson(response,"Vault request failed.")); }
         catch(error: any){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timer);}break;
       }
       case "chat-history": {
         const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),5000);
-        try{const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/chat-history",msg.request?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request),signal:controller.signal}:{signal:controller.signal});sendResponse(await response.json());}catch(error: any){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timeout);}break;
+        try{const response=await bridgeFetch(RUST_ROBLOX_HTTP+"/api/chat-history",msg.request?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg.request),signal:controller.signal}:{signal:controller.signal});sendResponse(await readBridgeJson(response,"Chat history failed.")); }catch(error: any){sendResponse({ok:false,error:error.message||String(error)});}finally{clearTimeout(timeout);}break;
       }
       case "checkpoints": {
         const timer = new AbortController(); const timeout = setTimeout(() => timer.abort(), 30000);
         try {
           const response = await bridgeFetch("http://127.0.0.1:3000/api/checkpoints", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(msg.request || {action:"list"}), signal:timer.signal });
-          const body: any = await response.json(); sendResponse({ok:response.ok,...body});
+          const body: any = await readBridgeJson(response, "Checkpoints request failed."); sendResponse({ok:response.ok,...body});
         } catch(error: any) { sendResponse({ok:false,error:String(error.message || error)}); } finally { clearTimeout(timeout); }
         break;
       }
@@ -3060,7 +3288,7 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
         // 1.24.21 site setups: which tool add-ons exist and which are on.
         try {
           const response = await bridgeFetch("http://127.0.0.1:3000/api/mcp/catalog", { signal: AbortSignal.timeout(8000) });
-          const body: any = await response.json(); sendResponse({ ok: response.ok, ...body });
+          const body: any = await readBridgeJson(response, "MCP catalog failed."); sendResponse({ ok: response.ok, ...body });
         } catch (error: any) { sendResponse({ ok: false, error: String(error.message || error) }); }
         break;
       }
@@ -3069,7 +3297,7 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
           const id = String(msg.id || "");
           if (!/^[a-z0-9][a-z0-9_-]{0,40}$/i.test(id)) throw new Error("Unknown tool add-on.");
           const response = await bridgeFetch("http://127.0.0.1:3000/api/mcp/toggle", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, enabled: msg.enabled === true }), signal: AbortSignal.timeout(8000) });
-          const body: any = await response.json().catch(() => ({})); sendResponse({ ok: response.ok && body.ok !== false, ...body });
+          const body: any = await readBridgeJson(response, "MCP toggle failed."); sendResponse({ ok: response.ok && body.ok !== false, ...body });
         } catch (error: any) { sendResponse({ ok: false, error: String(error.message || error) }); }
         break;
       }
@@ -3184,9 +3412,10 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(msg.payload || msg),
           });
-          const j: any = await res.json().catch(() => ({}));
+          const j: any = await readBridgeJson(res, "Push failed.");
           sendResponse({ ok: res.ok, ...j });
         } catch (e) {
+          safeDebug("rsPushHttpFallback", e);
           // Fallback to legacy WS if Rust HTTP not reachable
           const r = await send({ type: "call_tool", name: msg.name || "push_payload", arguments: msg.arguments || msg.payload || {} }, 10000);
           sendResponse(r);
@@ -3198,7 +3427,7 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
           const target = RUST_ROBLOX_HTTP;
           // /api/poll long-polls for up to 25 s; stay above that so a queued payload is never dropped mid-reply.
           const res = await bridgeFetch(`${target}/api/poll?client_id=${encodeURIComponent(msg.client_id || engine)}`, { signal: AbortSignal.timeout(35000) });
-          const j = await res.json().catch(() => ({}));
+          const j = await readBridgeJson(res, "Poll failed.");
           sendResponse(j);
         } catch (e: any) {
           sendResponse({ ok: false, error: String(e && e.message || e) });
@@ -3420,33 +3649,30 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
         try {
           const tab = await resolveTab(msg);
           if (!tab || tab.id == null) { sendResponse({ ok: false, error: "no target tab (open a page, or pass url_contains)" }); break; }
-          const [res] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => {
-              const safeRead=<T>(read:()=>T,fallback:T):T=>{try{return read();}catch{return fallback;}};
-              const safeQueryAll=(selector:string):any[]=>safeRead(()=>Array.from(document.querySelectorAll(selector)),[] as any[]);
-              const isVisible = (el: any): boolean => safeRead(() => {
-                const r = el.getBoundingClientRect();
-                const s = getComputedStyle(el);
-                return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none" && r.bottom > 0 && r.top < innerHeight;
-              },false);
-              const text = safeRead(()=>document.body && document.body.innerText || "", "").replace(/\n{3,}/g, "\n\n").slice(0, 6000);
-              const clickable: Array<{ i: number; tag: string; type: string; label: string; id: string; cls: string }> = [];
-              const els = safeQueryAll("a, button, input, [role=button], [onclick], summary, select, textarea");
-              let i = 0;
-              for (const el of els) {
-                if (!isVisible(el)) continue;
-                try {
-                const label = (el.innerText || el.value || el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.getAttribute("title") || el.name || "").trim().replace(/\s+/g, " ").slice(0, 80);
-                clickable.push({ i, tag: el.tagName.toLowerCase(), type: el.type || "", label, id: el.id || "", cls: (el.className && String(el.className).slice(0, 60)) || "" });
-                i++;
-                if (i >= 120) break;
-                } catch { /* A virtualized row was removed while reading it. */ }
-              }
-              return { url: safeRead(()=>location.href,""), title: safeRead(()=>document.title,""), text, clickable };
-            },
+          const page = await runTabScript(tab.id, () => {
+            const safeRead=<T>(read:()=>T,fallback:T):T=>{try{return read();}catch{return fallback;}};
+            const safeQueryAll=(selector:string):any[]=>safeRead(()=>Array.from(document.querySelectorAll(selector)),[] as any[]);
+            const isVisible = (el: any): boolean => safeRead(() => {
+              const r = el.getBoundingClientRect();
+              const s = getComputedStyle(el);
+              return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none" && r.bottom > 0 && r.top < innerHeight;
+            },false);
+            const text = safeRead(()=>document.body && document.body.innerText || "", "").replace(/\n{3,}/g, "\n\n").slice(0, 6000);
+            const clickable: Array<{ i: number; tag: string; type: string; label: string; id: string; cls: string }> = [];
+            const els = safeQueryAll("a, button, input, [role=button], [onclick], summary, select, textarea");
+            let i = 0;
+            for (const el of els) {
+              if (!isVisible(el)) continue;
+              try {
+              const label = (el.innerText || el.value || el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.getAttribute("title") || el.name || "").trim().replace(/\s+/g, " ").slice(0, 80);
+              clickable.push({ i, tag: el.tagName.toLowerCase(), type: el.type || "", label, id: el.id || "", cls: (el.className && String(el.className).slice(0, 60)) || "" });
+              i++;
+              if (i >= 120) break;
+              } catch { /* A virtualized row was removed while reading it. */ }
+            }
+            return { url: safeRead(()=>location.href,""), title: safeRead(()=>document.title,""), text, clickable };
           });
-          sendResponse({ ok: true, tab: { id: tab.id, url: tab.url, title: tab.title }, page: res.result });
+          sendResponse({ ok: true, tab: { id: tab.id, url: tab.url, title: tab.title }, page });
         } catch (e: any) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
       }
@@ -3455,31 +3681,27 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
         try {
           const tab = await resolveTab(msg);
           if (!tab || tab.id == null) { sendResponse({ ok: false, error: "no target tab" }); break; }
-          const [res] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            args: [String(msg.selector || ""), String(msg.text || "")],
-            func: (selector: string, text: string) => {
-              const safeRead=<T>(read:()=>T,fallback:T):T=>{try{return read();}catch{return fallback;}};
-              const safeQuery=(value:string):any=>safeRead(()=>document.querySelector(value),null);
-              const safeQueryAll=(value:string):any[]=>safeRead(()=>Array.from(document.querySelectorAll(value)),[] as any[]);
-              let el: any = null;
-              if (selector) el = safeQuery(selector);
-              if (!el && text) {
-                const t = text.toLowerCase();
-                const cands = safeQueryAll("a, button, input, [role=button], [onclick], summary, select, textarea, label");
-                el = cands.find((c) => safeRead(() => ((c.innerText || c.value || c.getAttribute("aria-label") || c.getAttribute("placeholder") || "").toLowerCase().includes(t)),false));
-              }
-              if (!el) return { clicked: false, error: "element not found" };
-              try {
-              const receipt={ clicked:true,tag:el.tagName.toLowerCase(),label:(el.innerText || el.value || "").trim().slice(0,60) };
-              el.scrollIntoView({ block: "center" });
-              el.focus && el.focus();
-              el.click();
-              return receipt;
-              } catch(error: any) { return {clicked:false,error:String(error.message || error),note:"The click was not repeated; inspect the page before retrying."}; }
-            },
-          });
-          sendResponse({ ok: true, result: res.result });
+          const result = await runTabScript(tab.id, (selector: string, text: string) => {
+            const safeRead=<T>(read:()=>T,fallback:T):T=>{try{return read();}catch{return fallback;}};
+            const safeQuery=(value:string):any=>safeRead(()=>document.querySelector(value),null);
+            const safeQueryAll=(value:string):any[]=>safeRead(()=>Array.from(document.querySelectorAll(value)),[] as any[]);
+            let el: any = null;
+            if (selector) el = safeQuery(selector);
+            if (!el && text) {
+              const t = text.toLowerCase();
+              const cands = safeQueryAll("a, button, input, [role=button], [onclick], summary, select, textarea, label");
+              el = cands.find((c) => safeRead(() => ((c.innerText || c.value || c.getAttribute("aria-label") || c.getAttribute("placeholder") || "").toLowerCase().includes(t)),false));
+            }
+            if (!el) return { clicked: false, error: "element not found" };
+            try {
+            const receipt={ clicked:true,tag:el.tagName.toLowerCase(),label:(el.innerText || el.value || "").trim().slice(0,60) };
+            el.scrollIntoView({ block: "center" });
+            el.focus && el.focus();
+            el.click();
+            return receipt;
+            } catch(error: any) { return {clicked:false,error:String(error.message || error),note:"The click was not repeated; inspect the page before retrying."}; }
+          }, [String(msg.selector || ""), String(msg.text || "")]);
+          sendResponse({ ok: true, result });
         } catch (e: any) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
       }
@@ -3488,32 +3710,28 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
         try {
           const tab = await resolveTab(msg);
           if (!tab || tab.id == null) { sendResponse({ ok: false, error: "no target tab" }); break; }
-          const [res] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            args: [String(msg.selector || ""), String(msg.text || ""), !!msg.submit],
-            func: (selector: string, text: string, submit: boolean) => {
-              let el: any;
-              try { el=selector ? document.querySelector(selector) : document.activeElement; } catch { return {typed:false,error:"Invalid selector or unavailable field"}; }
-              try {
-              if (!el) return { typed: false, error: "no field (pass selector)" };
-              el.focus();
-              if ("value" in el) {
-                el.value = text;
-                el.dispatchEvent(new Event("input", { bubbles: true }));
-                el.dispatchEvent(new Event("change", { bubbles: true }));
-              } else {
-                el.textContent = text;
-              }
-              if (submit) {
-                const k = new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, bubbles: true });
-                el.dispatchEvent(k);
-                if (el.form && el.form.requestSubmit) el.form.requestSubmit();
-              }
-              return { typed: true, tag: el.tagName.toLowerCase() };
-              } catch(error: any) { return {typed:false,error:String(error.message || error),note:"The write was not repeated; inspect the field before retrying."}; }
-            },
-          });
-          sendResponse({ ok: true, result: res.result });
+          const result = await runTabScript(tab.id, (selector: string, text: string, submit: boolean) => {
+            let el: any;
+            try { el=selector ? document.querySelector(selector) : document.activeElement; } catch { return {typed:false,error:"Invalid selector or unavailable field"}; }
+            try {
+            if (!el) return { typed: false, error: "no field (pass selector)" };
+            el.focus();
+            if ("value" in el) {
+              el.value = text;
+              el.dispatchEvent(new Event("input", { bubbles: true }));
+              el.dispatchEvent(new Event("change", { bubbles: true }));
+            } else {
+              el.textContent = text;
+            }
+            if (submit) {
+              const k = new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, bubbles: true });
+              el.dispatchEvent(k);
+              if (el.form && el.form.requestSubmit) el.form.requestSubmit();
+            }
+            return { typed: true, tag: el.tagName.toLowerCase() };
+            } catch(error: any) { return {typed:false,error:String(error.message || error),note:"The write was not repeated; inspect the field before retrying."}; }
+          }, [String(msg.selector || ""), String(msg.text || ""), !!msg.submit]);
+          sendResponse({ ok: true, result });
         } catch (e: any) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
       }
@@ -3522,12 +3740,8 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
         try {
           const tab = await resolveTab(msg);
           if (!tab || tab.id == null) { sendResponse({ ok: false, error: "no target tab" }); break; }
-          const [res] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            args: [Number(msg.amount) || 600],
-            func: (amount: number) => { window.scrollBy({ top: amount, behavior: "smooth" }); return { scrolled: amount, y: Math.round(window.scrollY) }; },
-          });
-          sendResponse({ ok: true, result: res.result });
+          const result = await runTabScript(tab.id, (amount: number) => { window.scrollBy({ top: amount, behavior: "smooth" }); return { scrolled: amount, y: Math.round(window.scrollY) }; }, [Number(msg.amount) || 600]);
+          sendResponse({ ok: true, result });
         } catch (e: any) { sendResponse({ ok: false, error: String(e && e.message || e) }); }
         break;
       }
@@ -3572,6 +3786,9 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, rawSendResponse: (
 let CONTROL_V2 = true;
 // tabId -> { paused, stoppedAt, by } : what the person did in the controlled tab, and which AI tab is working there.
 const controlTabs = new Map<number, { paused: boolean; stoppedAt: number; by: number | null; accent?: string }>();
+const controlTabsStore = typeof createSessionMapStore === "function"
+  ? createSessionMapStore("rsControlTabs", controlTabs, (v: any) => v && typeof v === "object" ? { paused: !!v.paused, stoppedAt: Number(v.stoppedAt) || 0, by: v.by ?? null, accent: v.accent } : null, (v) => v)
+  : { ready: Promise.resolve(), save() {} };
 // While the AI chat that controls a tab (or the screen) is still running, its glow stays on (owner, 2026-11-18: it vanished after a
 // while). Called with every run heartbeat (rs-run-beat, every 5 s); the tab layer and the app hide 8 s after the last one.
 function controlKeepAlive(byTab: number) {
@@ -3605,6 +3822,7 @@ function controlRefusal(tab: ChromeTab, sender: any) {
   return "";
 }
 async function controlEnter(tab: ChromeTab, msg: any, sender: any) {
+  await controlTabsStore.ready;
   const refusal = controlRefusal(tab, sender);
   if (refusal) return { error: refusal };
   if (tab.id == null) return { error: "no target tab" };
@@ -3613,13 +3831,14 @@ async function controlEnter(tab: ChromeTab, msg: any, sender: any) {
   if (row.stoppedAt && Date.now() - row.stoppedAt < 15000) return { error: "The person pressed Stop in that tab a moment ago, so PlazCode did nothing. Ask them before working there again." };
   row.stoppedAt = 0; row.by = sender && sender.tab ? sender.tab.id : row.by;
   controlTabs.set(tabId, row);
-  controlLiveStart(tabId, row.by).catch(() => {});
+  controlTabsStore.save();
+  controlLiveStart(tabId, row.by).catch((error) => safeDebug("controlLiveStart", error));
   const accent = /^#[0-9a-f]{6}$/i.test(String(msg.accent || "").trim()) ? String(msg.accent).trim() : "";
-  if (accent) row.accent = accent;
+  if (accent) { row.accent = accent; controlTabsStore.save(); }
   controlKeepWords(msg.words);
   await chrome.scripting.executeScript({ target: { tabId }, files: ["core/control-overlay.js"] });
-  const [shown] = await chrome.scripting.executeScript({ target: { tabId }, args: [accent, controlWords], func: (a: string, w: Record<string, string> | null) => globalThis.__plazcodeControl.show({ accent: a, words: w }) });
-  if (shown && shown.result && shown.result.paused) row.paused = true;
+  const shown = await runTabScript(tabId, (a: string, w: Record<string, string> | null) => globalThis.__plazcodeControl.show({ accent: a, words: w }), [accent, controlWords]);
+  if (shown && shown.paused) { row.paused = true; controlTabsStore.save(); }
   if (row.paused) {
     // The person took over: wait for Resume (or Stop) instead of acting under their hands.
     const until = Date.now() + 90000;
@@ -3631,6 +3850,7 @@ async function controlEnter(tab: ChromeTab, msg: any, sender: any) {
 }
 // One tab action the controlled way: glow and label on, PlazCode's cursor glides to the target, then the action.
 async function controlledTabAction(kind: string, msg: any, sender: any) {
+  await askRestored;
   const tab = await resolveTab(msg);
   if (!tab || tab.id == null) return { ok: false, error: "no target tab (open a page, or pass url_contains)" };
   const tabId = tab.id;
@@ -3640,7 +3860,7 @@ async function controlledTabAction(kind: string, msg: any, sender: any) {
   }
   const entered = await controlEnter(tab, msg, sender);
   if (entered.error) return { ok: false, error: entered.error };
-  const run = async (func: (...a: any[]) => any, args?: any[]) => (await chrome.scripting.executeScript({ target: { tabId }, args: args || [], func }))[0].result;
+  const run = (func: (...a: any[]) => any, args?: any[]) => runTabScript(tabId, func, args);
   if (kind === "read") return null; // reading shows the glow; the page is read by the usual code
   if (kind === "scroll") {
     return { ok: true, result: await run((amount: number) => { window.scrollBy({ top: amount, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); return { scrolled: amount, y: Math.round(window.scrollY + amount) }; }, [Number(msg.amount) || 600]) };
@@ -3771,7 +3991,7 @@ function base64Blob(data: unknown, type: string) {
 // A picture of the target tab in CSS pixels (so its x/y are the ones tab_click_at takes), at most 1400 wide.
 async function controlPicture(tab: ChromeTab, debug: boolean) {
   const tabId = tab.id!;
-  const run = async (func: (...a: any[]) => any, args?: any[]) => (await chrome.scripting.executeScript({ target: { tabId }, args: args || [], func }))[0].result;
+  const run = (func: (...a: any[]) => any, args?: any[]) => runTabScript(tabId, func, args);
   const view = await run(() => ({ w: innerWidth, h: innerHeight, dpr: devicePixelRatio || 1 }));
   await run((on: boolean) => globalThis.__plazcodeControl && globalThis.__plazcodeControl.veil(on), [true]);
   let blob: Blob;
@@ -3799,6 +4019,7 @@ async function controlPicture(tab: ChromeTab, debug: boolean) {
 }
 const CONTROL_V2_TOOLS = new Set(["tab_screenshot", "tab_click_at", "tab_type_text", "tab_key", "tab_scroll_at", "tab_navigate", "tab_open"]);
 async function controlV2Tool(msg: any, sender: any) {
+  await askRestored;
   const name = msg.type, debug = await canDebug();
   const how = debug ? "" : " (in-page input: some sites and canvas apps ignore it; this browser gives extensions no real mouse and keyboard)";
   if (name === "tab_open") {
@@ -3808,7 +4029,7 @@ async function controlV2Tool(msg: any, sender: any) {
     let where: Record<string, any> = { url, active: false };
     if (fromAsk && ask.copy && Number.isInteger(ask.origin)) {
       // Next to the person's own tab, in the same window, so the copy is easy to find (and to close).
-      try { const o = await chrome.tabs.get(ask.origin!); where = { url, active: false, windowId: o.windowId, index: o.index! + 1 }; } catch {}
+      try { const o = await chrome.tabs.get(ask.origin!); where = { url, active: false, windowId: o.windowId, index: o.index! + 1 }; } catch (error) { safeDebug("tabOpenOriginLookup", error); }
     }
     const tab = await chrome.tabs.create(where);
     if (fromAsk && ask.copy && tab.id != null) {
@@ -3828,7 +4049,7 @@ async function controlV2Tool(msg: any, sender: any) {
   }
   const entered = await controlEnter(tab, msg, sender);
   if (entered.error) return { ok: false, error: entered.error };
-  const run = async (func: (...a: any[]) => any, args?: any[]) => (await chrome.scripting.executeScript({ target: { tabId }, args: args || [], func }))[0].result;
+  const run = (func: (...a: any[]) => any, args?: any[]) => runTabScript(tabId, func, args);
   const point = () => { const x = Number(msg.x), y = Number(msg.y); return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 ? [x, y] : null; };
   const askFirst = async (kind: string, at?: number[] | null) => {
     if (msg.confirmed === true) return "";
@@ -3889,11 +4110,11 @@ async function controlV2Tool(msg: any, sender: any) {
     if (!text || text.length > 20000) return { ok: false, error: "tab_type_text needs text (at most 20,000 characters). Click the field first with tab_click_at." };
     const ask = await askFirst("type");
     if (ask) return controlConfirm(ask, tab, false);
-    const into = await run(() => { const el = document.activeElement; return el && el !== document.body ? el.tagName.toLowerCase() : ""; });
+    const into = await run(() => { const el = document.activeElement; return el && el !== document.body && el !== document.documentElement ? el.tagName.toLowerCase() : ""; });
     if (!into) return { ok: false, error: "No field is selected in that tab. Click the field first with tab_click_at, then type." };
     await run(() => globalThis.__plazcodeControl.press());
     if (debug) { await debugAttach(tabId); await run((ms: number) => globalThis.__plazcodeControl.expect(ms), [Math.min(5000, 800 + text.length * 5)]); await cdp(tabId, "Input.insertText", { text }); }
-    else await run((text: string) => { const el: any = document.activeElement; if ("value" in el && typeof el.setRangeText === "function") { try { el.setRangeText(text, el.selectionStart ?? el.value.length, el.selectionEnd ?? el.value.length, "end"); } catch { el.value += text; } el.dispatchEvent(new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" })); el.dispatchEvent(new Event("change", { bubbles: true })); } else document.execCommand("insertText", false, text); }, [text]);
+    else await run((text: string) => { const el: any = document.activeElement; if (!el || el === document.body || el === document.documentElement) return; if ("value" in el && typeof el.setRangeText === "function") { try { el.setRangeText(text, el.selectionStart ?? el.value.length, el.selectionEnd ?? el.value.length, "end"); } catch { el.value += text; } el.dispatchEvent(new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" })); el.dispatchEvent(new Event("change", { bubbles: true })); } else document.execCommand("insertText", false, text); }, [text]);
     return { ok: true, text: "Typed " + text.length + " characters into <" + into + ">" + how + "." };
   }
   if (name === "tab_key") {
@@ -4027,7 +4248,7 @@ const ASK_LOG_MAX = 120;
 let askSaveTimer: any = 0;
 function askSave() {
   clearTimeout(askSaveTimer);
-  askSaveTimer = setTimeout(() => { try { chrome.storage.session.set({ rsAskState: { log: ask.log, own: ask.own, tabId: ask.tabId, windowId: ask.windowId, chatId: ask.chatId, created: ask.created, chatUrl: ask.chatUrl, goto: ask.goto } }).catch(() => {}); } catch {} }, 300);
+  askSaveTimer = setTimeout(() => { try { chrome.storage.session.set({ rsAskState: { log: ask.log, own: ask.own, tabId: ask.tabId, windowId: ask.windowId, chatId: ask.chatId, created: ask.created, chatUrl: ask.chatUrl, goto: ask.goto, origin: ask.origin, work: ask.work, workOf: ask.workOf, copy: ask.copy, panelWin: ask.panelWin, dock: ask.dock, busy: ask.busy } }).catch((error) => { if (typeof safeDebug === "function") safeDebug("askSave", error); }); } catch (error) { if (typeof safeDebug === "function") safeDebug("askSave", error); } }, 300);
 }
 // History (owner, 2026-11-14: a menu with all the Ask PlazCode chats). Every chat is kept on this computer (extension storage, not
 // sent anywhere) with the address of its AI chat page, so opening one from the list shows the conversation again and the next question
@@ -4080,8 +4301,14 @@ const askRestored = (async () => {
       ask.chatUrl = typeof st.chatUrl === "string" ? st.chatUrl : "";
     }
     if (ask.goto === null && typeof st.goto === "string") ask.goto = st.goto;
-    if ((ask.tabId == null || !Number.isInteger(ask.tabId)) && Number.isInteger(st.tabId)) { try { await chrome.tabs.get(st.tabId); ask.tabId = st.tabId; ask.windowId = st.windowId; ask.own = !!st.own; } catch {} }
-  } catch {}
+    if (ask.origin == null && Number.isInteger(st.origin)) ask.origin = st.origin;
+    if (ask.work == null && Number.isInteger(st.work)) { try { await chrome.tabs.get(st.work); ask.work = st.work; ask.workOf = Number.isInteger(st.workOf) ? st.workOf : null; } catch (error) { if (typeof safeDebug === "function") safeDebug("askRestoreWork", error); } }
+    if (!ask.copy && st.copy) ask.copy = !!st.copy;
+    if (ask.panelWin == null && Number.isInteger(st.panelWin)) { try { await chrome.windows.get(st.panelWin); ask.panelWin = st.panelWin; } catch (error) { if (typeof safeDebug === "function") safeDebug("askRestorePanelWin", error); } }
+    if (!ask.dock && st.dock && typeof st.dock === "object" && Number.isInteger(st.dock.windowId)) ask.dock = st.dock;
+    if (!ask.busy && st.busy) ask.busy = true;
+    if ((ask.tabId == null || !Number.isInteger(ask.tabId)) && Number.isInteger(st.tabId)) { try { await chrome.tabs.get(st.tabId); ask.tabId = st.tabId; ask.windowId = st.windowId; ask.own = !!st.own; } catch (error) { if (typeof safeDebug === "function") safeDebug("askRestoreTab", error); } }
+  } catch (error) { if (typeof safeDebug === "function") safeDebug("askRestored", error); }
 })();
 const askPorts = new Set<ChromePort>();
 // History list: what the panel shows in its menu, and the three things it can do (open one, start a new one, delete one).
@@ -4092,11 +4319,13 @@ async function askChatsList() {
 }
 function askReset() { ask.chatId = null; ask.created = 0; ask.log = []; ask.chatUrl = ""; ask.goto = "new"; askSave(); askPost({ type: "ask-history", items: [] }); }
 async function askNewChat() {
+  await askRestored;
   if (ask.busy) return;
   await askArchiveNow();
   askReset();
 }
 async function askOpenChat(id: string) {
+  await askRestored;
   if (ask.busy) return;
   await askArchiveNow();
   const list = await askChatsLoad(), chat = list.find((c) => c.id === id);
@@ -4105,6 +4334,7 @@ async function askOpenChat(id: string) {
   askSave(); askPost({ type: "ask-history", items: ask.log });
 }
 async function askDeleteChat(id: string) {
+  await askRestored;
   const current = id === ask.chatId;
   if (current && ask.busy) return;
   const list = await askChatsLoad(), at = list.findIndex((c) => c.id === id);
@@ -4290,12 +4520,14 @@ async function askShareMark(tab: ChromeTab, on: boolean) {
   } catch {}
 }
 async function askQuestion(m: any) {
+  await askRestored;
   if (ask.busy) return askSay("PlazCode is still answering. Wait for it, or press Stop.", "error");
   const text = String(m.say || "").trim().slice(0, 8000);
   if (!text) return;
   askRemember({ t: "me", text });
-  ask.busy = true; askPost({ type: "ask-busy", busy: true });
+  ask.busy = true; askSave(); askPost({ type: "ask-busy", busy: true });
   ask.origin = null; ask.copy = false;
+  let accepted = false;
   try {
     if (m.share && m.shareTabId === -1) {
       let images: Array<{ mimeType: string; data: string }> = [];
@@ -4304,6 +4536,7 @@ async function askQuestion(m: any) {
       if (!ready.ok) { askSay(ready.error, "error", ready.key, ready.values); return; }
       const reply = await chrome.tabs.sendMessage(ask.tabId!, { type: "rs-ask-run", ask: { text, images, control: !!m.control, share: { tabId: -1, title: "Your whole screen", url: "" } } });
       if (!reply || !reply.ok) { askSay(String(reply && reply.error || "The background chat did not take the question."), "error"); return; }
+      accepted = true;
       return;
     }
     const tab = m.share ? await askShareTab(m.shareTabId) : null;
@@ -4318,17 +4551,21 @@ async function askQuestion(m: any) {
     ask.origin = tab && tab.id != null ? tab.id : null; ask.copy = !!(m.control && tab);
     // A copy opened for an earlier question about this same tab is offered again (if it is still open) instead of a new one.
     let work: { tabId: number | undefined; title: string; url: string } | null = null;
-    if (ask.copy && tab && tab.id != null && ask.work != null && Number.isInteger(ask.work) && ask.workOf === tab.id) { try { const w = await chrome.tabs.get(ask.work); work = { tabId: w.id, title: String(w.title || "").slice(0, 120), url: String(w.url || "").slice(0, 300) }; } catch { ask.work = null; } }
+    if (ask.copy && tab && tab.id != null && ask.work != null && Number.isInteger(ask.work) && ask.workOf === tab.id) { try { const w = await chrome.tabs.get(ask.work); work = { tabId: w.id, title: String(w.title || "").slice(0, 120), url: String(w.url || "").slice(0, 300) }; } catch (error) { if (typeof safeDebug === "function") safeDebug("askWorkTab", error); ask.work = null; } }
     const reply = await chrome.tabs.sendMessage(ask.tabId!, { type: "rs-ask-run", ask: { text, images, control: !!(m.control && tab), work, share: tab ? { tabId: tab.id, title: String(tab.title || "").slice(0, 120), url: String(tab.url || "").slice(0, 300) } : null } });
     if (!reply || !reply.ok) { askSay(String(reply && reply.error || "The background chat did not take the question."), "error"); return; }
+    accepted = true;
     return; // the answer arrives as "ask_reply" from the background chat
-  } catch (error: any) { askSay(String(error && error.message || error).slice(0, 300), "error"); }
-  ask.busy = false; askPost({ type: "ask-busy", busy: false });
+  } catch (error: any) { if (typeof safeDebug === "function") safeDebug("askQuestion", error); askSay(String(error && error.message || error).slice(0, 300), "error"); }
+  finally {
+    if (!accepted) { ask.busy = false; askSave(); askPost({ type: "ask-busy", busy: false }); }
+  }
 }
 // From the background chat (main.js): the answer, a progress line, or an approval question for the person.
 async function askFromChat(msg: any, sender: any) {
+  await askRestored;
   if (!sender || !sender.tab || sender.tab.id !== ask.tabId) return { ok: false, error: "Not the Ask PlazCode chat." };
-  if (msg.type === "ask_reply") { ask.busy = false; await askNoteChatUrl(); askReply(String(msg.status || "done"), String(msg.text || "").slice(0, 60000)); askPost({ type: "ask-busy", busy: false }); return { ok: true }; }
+  if (msg.type === "ask_reply") { ask.busy = false; await askNoteChatUrl(); askReply(String(msg.status || "done"), String(msg.text || "").slice(0, 60000)); askSave(); askPost({ type: "ask-busy", busy: false }); return { ok: true }; }
   if (msg.type === "ask_step") { askPost({ type: "ask-step", text: String(msg.text || "").slice(0, 200) }); return { ok: true }; }
   // The reply as the AI writes it (2026-11-18), shown in the panel as a draft until the finished answer arrives.
   if (msg.type === "ask_partial") { if (ask.busy) askPost({ type: "ask-partial", text: String(msg.text || "").slice(0, 60000) }); return { ok: true }; }
@@ -4534,13 +4771,13 @@ function controlEvent(msg: any, sender: any) {
   }
   const row = controlTabs.get(tabId);
   if (!row) return;
-  if (msg.event === "paused") row.paused = true;
-  else if (msg.event === "resume") row.paused = false;
+  if (msg.event === "paused") { row.paused = true; controlTabsStore.save(); }
+  else if (msg.event === "resume") { row.paused = false; controlTabsStore.save(); }
   else if (msg.event === "stop") {
-    row.paused = false; row.stoppedAt = Date.now();
+    row.paused = false; row.stoppedAt = Date.now(); controlTabsStore.save();
     controlLiveStop(tabId).finally(() => debugDetach(tabId));
     // Stop in the tab is Stop for the AI: the chat that was working there ends its run.
-    if (row.by != null && Number.isInteger(row.by)) chrome.tabs.sendMessage(row.by, { type: "rs-control-stop" }).catch(() => {});
+    if (row.by != null && Number.isInteger(row.by)) chrome.tabs.sendMessage(row.by, { type: "rs-control-stop" }).catch((error) => { if (typeof safeDebug === "function") safeDebug("controlStopNotify", error); });
   }
 }
 // Closing the background chat of Ask PlazCode while it works ends the question right away: the panel stops "sending" and a new
@@ -4553,7 +4790,7 @@ if (chrome.tabs && chrome.tabs.onRemoved) chrome.tabs.onRemoved.addListener((tab
   askSave();
   if (wasBusy) { askReply("error", own ? "The AI chat was closed, so this question stopped. Ask again from another AI chat." : "The background chat was closed, so this question stopped. Ask again to open a new one."); askPost({ type: "ask-busy", busy: false }); }
 });
-if (chrome.tabs && chrome.tabs.onRemoved) chrome.tabs.onRemoved.addListener((tabId) => { controlLiveStop(tabId); controlTabs.delete(tabId); clearTimeout(controlDebug.get(tabId)); controlDebug.delete(tabId); });
+if (chrome.tabs && chrome.tabs.onRemoved) chrome.tabs.onRemoved.addListener((tabId) => { controlLiveStop(tabId); if (controlTabs.delete(tabId)) controlTabsStore.save(); clearTimeout(controlDebug.get(tabId)); controlDebug.delete(tabId); });
 
 // Pick the tab a tab_* tool should act on: explicit tabId > a tab whose URL
 // contains url_contains > the active tab in any window that is NOT a chat

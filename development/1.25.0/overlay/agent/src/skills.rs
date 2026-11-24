@@ -57,10 +57,9 @@ impl Store {
   anyhow::ensure!(data.deleted.len()<=10000,"Deleted Skills is full. Permanently delete unwanted items before removing more skills.");
   let bytes=serde_json::to_vec_pretty(&data)?;anyhow::ensure!(bytes.len()<=12*1024*1024,"Skill library exceeds 12 MB.");
   let parent=self.path.parent().ok_or_else(||anyhow::anyhow!("Missing skill directory."))?;std::fs::create_dir_all(parent)?;
-  let temporary=self.path.with_extension("json.tmp");std::fs::write(&temporary,bytes)?;
   if redact_backup {let temporary_backup=self.path.with_extension("json.backup.tmp");std::fs::write(&temporary_backup,serde_json::to_vec_pretty(&data)?)?;std::fs::rename(temporary_backup,self.path.with_extension("json.backup"))?;}
   else if self.path.is_file(){std::fs::copy(&self.path,self.path.with_extension("json.backup"))?;}
-  std::fs::rename(&temporary,&self.path)?;self.data=data;Ok(())
+  crate::preferences::write_atomic(&self.path,&bytes)?;self.data=data;Ok(())
  }
  pub(crate) fn request(&mut self,request:&Value)->anyhow::Result<Value> {
   anyhow::ensure!(self.error.is_none(),"Skills could not be loaded; existing data is preserved.");
@@ -457,16 +456,41 @@ pub static STORE:once_cell::sync::Lazy<crate::profile_paths::ProfiledMutex<Store
 fn repository()->anyhow::Result<String>{let value=std::env::var("PLAZCODE_LEARNING_REPOSITORY").unwrap_or_else(|_|"stoveez/PlazCode".into());let parts=value.split('/').collect::<Vec<_>>();anyhow::ensure!(parts.len()==2&&parts.iter().all(|s|!s.is_empty()&&s.len()<=100&&s.bytes().all(|b|b.is_ascii_alphanumeric()||b"_- .".contains(&b))&&!s.contains(' ')),"Learning repository must be owner/repository on GitHub.");Ok(value)}
 fn client()->anyhow::Result<reqwest::Client>{Ok(reqwest::Client::builder().user_agent("PlazCode-skills").timeout(std::time::Duration::from_secs(25)).build()?)}
 async fn github(client:&reqwest::Client,method:reqwest::Method,path:&str,body:Option<Value>,token:&str)->anyhow::Result<Value>{let mut req=client.request(method,format!("https://api.github.com/{path}")).bearer_auth(token).header("Accept","application/vnd.github+json");if let Some(body)=body{req=req.json(&body);}let response=req.send().await?;let status=response.status();let value:Value=response.json().await?;anyhow::ensure!(status.is_success(),"Shared Git request failed ({}): {}",status,value["message"].as_str().unwrap_or("GitHub rejected the operation"));Ok(value)}
-async fn sync()->anyhow::Result<Value>{
+async fn fetch_community_skills()->anyhow::Result<Option<Vec<Skill>>>{
  let repo=repository()?;let response=client()?.get(format!("https://raw.githubusercontent.com/{repo}/main/learned-skills/index.json")).send().await?;
  // The public repo only carries downloads and update feeds, so there may be no community index yet. That means "nothing to sync", not a problem.
- if response.status().is_client_error(){return Ok(json!({"ok":true,"count":0,"note":"No community skills are published yet."}));}
+ if response.status().is_client_error(){return Ok(None);}
  let response=response.error_for_status()?;
  anyhow::ensure!(response.content_length().unwrap_or(0)<=1024*1024,"Community index is too large.");
- let mut chunks=response.bytes_stream();let mut bytes=Vec::new();while let Some(chunk)=chunks.next().await{let chunk=chunk?;anyhow::ensure!(bytes.len()+chunk.len()<=1024*1024,"Community index is too large.");bytes.extend_from_slice(&chunk);}let lessons:Vec<Skill>=serde_json::from_slice(&bytes)?;anyhow::ensure!(lessons.len()<=100,"Too many community lessons.");
- let mut store=STORE.lock().await;let mut data=store.data.clone();let mut count=0;
+ let mut chunks=response.bytes_stream();let mut bytes=Vec::new();while let Some(chunk)=chunks.next().await{let chunk=chunk?;anyhow::ensure!(bytes.len()+chunk.len()<=1024*1024,"Community index is too large.");bytes.extend_from_slice(&chunk);}
+ let lessons:Vec<Skill>=serde_json::from_slice(&bytes)?;anyhow::ensure!(lessons.len()<=100,"Too many community lessons.");
+ Ok(Some(lessons))
+}
+fn apply_community_skills_to_store(store:&mut Store,lessons:Vec<Skill>,expected_root:&std::path::Path,expected_epoch:u64)->anyhow::Result<Value>{
+ anyhow::ensure!(
+  crate::profile_paths::data_root()==expected_root
+   && SYNC_EPOCH.load(std::sync::atomic::Ordering::SeqCst)==expected_epoch,
+  "Profile changed during community skill sync."
+ );
+ let mut data=store.data.clone();let mut count=0;
  for mut skill in lessons {validate(&skill)?;anyhow::ensure!(skill.confirmed&&skill.scope.is_empty(),"Community index contains an unreviewed or project-specific lesson.");skill.id=format!("community-{}",skill.id);validate(&skill)?;skill.community=true;if data.deleted.contains_key(&skill.id)||data.suppressed.contains(&skill.id){continue;}if data.skills.get(&skill.id).is_some_and(|s|!s.community){continue;}skill.favorite=data.skills.get(&skill.id).is_some_and(|s|s.favorite);data.skills.insert(skill.id.clone(),skill);count+=1;}
  store.persist(data)?;Ok(json!({"ok":true,"count":count}))
+}
+async fn sync_for(expected_root:PathBuf,expected_epoch:u64,take_access_lease:bool)->anyhow::Result<Value>{
+ let Some(lessons)=fetch_community_skills().await? else {return Ok(json!({"ok":true,"count":0,"note":"No community skills are published yet."}));};
+ let _lease=if take_access_lease{Some(crate::accounts::ACCESS.read().await)}else{None};
+ anyhow::ensure!(
+  crate::profile_paths::data_root()==expected_root
+   && SYNC_EPOCH.load(std::sync::atomic::Ordering::SeqCst)==expected_epoch,
+  "Profile changed during community skill sync."
+ );
+ let mut store=STORE.lock().await;
+ apply_community_skills_to_store(&mut store,lessons,&expected_root,expected_epoch)
+}
+async fn sync()->anyhow::Result<Value>{
+ let expected_root=crate::profile_paths::data_root();
+ let expected_epoch=SYNC_EPOCH.load(std::sync::atomic::Ordering::SeqCst);
+ sync_for(expected_root,expected_epoch,false).await
 }
 async fn publish(request:&Value)->anyhow::Result<Value>{
  anyhow::ensure!(request["reviewed"]==true,"Review the exact public lesson and remove private project details before sharing.");
@@ -484,10 +508,17 @@ async fn publish(request:&Value)->anyhow::Result<Value>{
  Ok(json!({"ok":true,"url":pull["html_url"],"message":"Draft contribution created. Global use starts after maintainer review and index approval."}))
 }
 static LAST_COMMUNITY_SYNC:std::sync::atomic::AtomicI64=std::sync::atomic::AtomicI64::new(0);
+static SYNC_EPOCH:std::sync::atomic::AtomicU64=std::sync::atomic::AtomicU64::new(1);
+pub fn reset_community_sync(){
+ SYNC_EPOCH.fetch_add(1,std::sync::atomic::Ordering::SeqCst);
+ LAST_COMMUNITY_SYNC.store(0,std::sync::atomic::Ordering::SeqCst);
+}
 fn maybe_sync(){
  let now=chrono::Utc::now().timestamp();let previous=LAST_COMMUNITY_SYNC.load(std::sync::atomic::Ordering::Relaxed);
  if now-previous<3600{return;}
- if LAST_COMMUNITY_SYNC.compare_exchange(previous,now,std::sync::atomic::Ordering::SeqCst,std::sync::atomic::Ordering::Relaxed).is_ok(){tokio::spawn(async{if let Err(error)=sync().await{tracing::debug!("Community skill sync skipped: {error}");}});}
+ let expected_root=crate::profile_paths::data_root();
+ let expected_epoch=SYNC_EPOCH.load(std::sync::atomic::Ordering::SeqCst);
+ if LAST_COMMUNITY_SYNC.compare_exchange(previous,now,std::sync::atomic::Ordering::SeqCst,std::sync::atomic::Ordering::Relaxed).is_ok(){tokio::spawn(async move{if let Err(error)=sync_for(expected_root,expected_epoch,true).await{tracing::debug!("Community skill sync skipped: {error}");}});}
 }
 async fn refresh_global(force:bool)->usize{
   let lessons=crate::shared_learning::lessons(force).await;let mut store=STORE.lock().await;
@@ -796,6 +827,23 @@ mod workbench_tests {
   assert_eq!(first["skill"]["id"],"community-hud");
   assert_eq!(second["skill"]["id"],"community-hud-2");
   assert_eq!(first["skill"]["community"],true);
+  let _=std::fs::remove_dir_all(&dir);
+ }
+ #[test]
+ fn reset_community_sync_aborts_stale_apply() {
+  let dir=std::env::temp_dir().join(format!("plazcode-sync-epoch-{}",std::process::id()));
+  let _=std::fs::remove_dir_all(&dir);
+  std::fs::create_dir_all(&dir).unwrap();
+  let mut store=Store::load(dir.join("skills.json"));
+  let expected_root=crate::profile_paths::data_root();
+  let expected_epoch=SYNC_EPOCH.load(std::sync::atomic::Ordering::SeqCst);
+  LAST_COMMUNITY_SYNC.store(12345,std::sync::atomic::Ordering::SeqCst);
+  reset_community_sync();
+  assert_eq!(LAST_COMMUNITY_SYNC.load(std::sync::atomic::Ordering::SeqCst),0);
+  let lesson=Skill{id:"sync-test".into(),title:"Sync".into(),description:"Desc".into(),domain:"all".into(),scope:String::new(),steps:vec!["Step".into()],pitfalls:vec![],verification:vec!["Check".into()],confirmed:true,enabled:true,revision:1,community:true,favorite:false,files:vec![],source:String::new(),import_digest:String::new()};
+  assert!(apply_community_skills_to_store(&mut store,vec![lesson.clone()],&expected_root,expected_epoch).is_err());
+  assert!(apply_community_skills_to_store(&mut store,vec![lesson],&dir,SYNC_EPOCH.load(std::sync::atomic::Ordering::SeqCst)).is_err());
+  assert!(!store.data.skills.contains_key("community-sync-test"));
   let _=std::fs::remove_dir_all(&dir);
  }
 }

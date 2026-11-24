@@ -16,7 +16,7 @@
   if ((globalThis as { __plazcodeDebugCapture?: unknown }).__plazcodeDebugCapture) return;
   const MAX_TEXT = 600, MAX_QUEUE = 150, FLUSH_MS = 3000, REPEAT_MS = 5000, DIAG_TAIL = 40;
   const queue: QueuedEntry[] = [];
-  let dropped = 0, last: { key: string; at: number; entry: QueuedEntry } | null = null, inside = false, stopped = false, diagSig = "";
+  let dropped = 0, sendErrors = 0, lastSendError = "", last: { key: string; at: number; entry: QueuedEntry } | null = null, inside = false, stopped = false, diagSig = "";
   const EXT_RE = /(?:chrome|moz)-extension:\/\/[^/\s)]+\//;
 
   function redact(value: unknown) {
@@ -151,18 +151,54 @@
     diagSig = sig;
     return tail.map(cleanEvent);
   }
+  function requeueEntries(entries: QueuedEntry[]) {
+    if (!entries.length) return;
+    const combined = entries.concat(queue);
+    if (combined.length > MAX_QUEUE) {
+      const overflow = combined.length - MAX_QUEUE;
+      dropped += overflow;
+      combined.splice(0, overflow);
+    }
+    queue.splice(0, queue.length, ...combined);
+  }
+  function isInvalidatedError(err: unknown) {
+    return !(chrome.runtime && chrome.runtime.id) || /Extension context invalidated/i.test(String((err as Error)?.message || err || ""));
+  }
   const timer = setInterval(() => {
     if (stopped) return;
+    let entries: QueuedEntry[] = [];
+    let prevDropped = 0;
     try {
       if (!chrome.runtime || !chrome.runtime.id) { stopped = true; clearInterval(timer); return; }
       const diag = diagTail(), diagNew = diagFresh();
       if (!queue.length && !diag && !diagNew.length) return;
-      const entries = queue.splice(0, queue.length);
-      const message = { type: "rs-debug-log", entries, diag, diagNew, dropped, page: { host: location.host, path: redact(location.pathname).slice(0, 80) } };
+      entries = queue.splice(0, queue.length);
+      prevDropped = dropped;
+      const message = { type: "rs-debug-log", entries, diag, diagNew, dropped: prevDropped, page: { host: location.host, path: redact(location.pathname).slice(0, 80) } };
       dropped = 0; last = null;
       const sent = chrome.runtime.sendMessage(message);
-      if (sent && sent.catch) sent.catch(() => {});
-    } catch { stopped = true; clearInterval(timer); }
+      if (sent && sent.catch) {
+        sent.catch((err: unknown) => {
+          if (isInvalidatedError(err)) { stopped = true; clearInterval(timer); return; }
+          sendErrors++;
+          lastSendError = String((err as Error)?.message || err || "send failed").slice(0, 160);
+          dropped += prevDropped;
+          requeueEntries(entries);
+        });
+      }
+    } catch (err) {
+      if (isInvalidatedError(err)) { stopped = true; clearInterval(timer); return; }
+      sendErrors++;
+      lastSendError = String((err as Error)?.message || err || "flush failed").slice(0, 160);
+      dropped += prevDropped;
+      requeueEntries(entries);
+    }
   }, FLUSH_MS);
-  (globalThis as { __plazcodeDebugCapture?: unknown }).__plazcodeDebugCapture = { redact, where, record, pending: () => queue.slice() };
+  (globalThis as { __plazcodeDebugCapture?: unknown }).__plazcodeDebugCapture = {
+    redact,
+    where,
+    record,
+    pending: () => queue.slice(),
+    stats: () => ({ dropped, sendErrors, lastSendError, stopped }),
+  };
 })();

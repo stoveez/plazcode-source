@@ -197,12 +197,9 @@ pub fn config_path() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("config.json"))
 }
 
-pub fn read_config() -> McpConfig {
-    let path = config_path();
-    let mut cfg = std::fs::read_to_string(path)
-        .ok()
-        .and_then(|raw| serde_json::from_str::<McpConfig>(&raw).ok())
-        .unwrap_or_default();
+static CONFIG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn default_config_with_roblox(mut cfg: McpConfig) -> McpConfig {
     upgrade_blender_spec(&mut cfg);
     cfg.servers.entry("roblox".to_string()).or_insert_with(|| ServerSpec {
         command: "launch_studio_mcp.py".to_string(),
@@ -212,16 +209,46 @@ pub fn read_config() -> McpConfig {
     cfg
 }
 
-pub fn write_config(cfg: &McpConfig) -> anyhow::Result<()> {
-    let path = config_path();
-    if let Some(parent) = path.parent() { std::fs::create_dir_all(parent)?; }
-    let tmp = path.with_extension("json.tmp");
-    std::fs::write(&tmp, serde_json::to_vec_pretty(cfg)?)?;
-    if path.exists() {
-        std::fs::remove_file(&path)?;
-    }
-    std::fs::rename(tmp, path)?;
+fn read_config_strict_from(path: &std::path::Path) -> anyhow::Result<McpConfig> {
+    let cfg = match std::fs::read_to_string(path) {
+        Ok(raw) => serde_json::from_str::<McpConfig>(&raw)
+            .map_err(|error| anyhow::anyhow!("Could not parse MCP config {}: {error}; existing file preserved.", path.display()))?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => McpConfig::default(),
+        Err(error) => anyhow::bail!("Could not read MCP config {}: {error}; existing file preserved.", path.display()),
+    };
+    Ok(default_config_with_roblox(cfg))
+}
+
+fn write_config_to_unlocked(path: &std::path::Path, cfg: &McpConfig) -> anyhow::Result<()> {
+    crate::preferences::write_atomic(path, &serde_json::to_vec_pretty(cfg)?)?;
     Ok(())
+}
+
+fn update_config_at<F>(path: &std::path::Path, edit: F) -> anyhow::Result<()>
+where
+    F: FnOnce(&mut McpConfig) -> anyhow::Result<()>,
+{
+    let _guard = CONFIG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut cfg = read_config_strict_from(path)?;
+    edit(&mut cfg)?;
+    write_config_to_unlocked(path, &cfg)
+}
+
+pub fn read_config() -> McpConfig {
+    let _guard = CONFIG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let path = config_path();
+    match read_config_strict_from(&path) {
+        Ok(cfg) => cfg,
+        Err(error) => {
+            tracing::warn!("{error}");
+            default_config_with_roblox(McpConfig::default())
+        }
+    }
+}
+
+pub fn write_config(cfg: &McpConfig) -> anyhow::Result<()> {
+    let _guard = CONFIG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    write_config_to_unlocked(&config_path(), cfg)
 }
 
 pub fn is_enabled(id: &str) -> bool {
@@ -231,17 +258,18 @@ pub fn is_enabled(id: &str) -> bool {
 pub fn set_catalog_enabled(id: &str, enabled: bool) -> anyhow::Result<()> {
     let entry = catalog().into_iter().find(|e| e.id == id)
         .ok_or_else(|| anyhow::anyhow!("unknown catalog server '{id}'"))?;
-    let mut cfg = read_config();
-    if enabled {
-        cfg.servers.insert(id.to_string(), ServerSpec {
-            command: entry.command.to_string(),
-            args: entry.args.iter().map(|v| (*v).to_string()).collect(),
-            env: catalog_env(id),
-        });
-    } else {
-        cfg.servers.remove(id);
-    }
-    write_config(&cfg)
+    update_config_at(&config_path(), |cfg| {
+        if enabled {
+            cfg.servers.insert(id.to_string(), ServerSpec {
+                command: entry.command.to_string(),
+                args: entry.args.iter().map(|v| (*v).to_string()).collect(),
+                env: catalog_env(id),
+            });
+        } else {
+            cfg.servers.remove(id);
+        }
+        Ok(())
+    })
 }
 
 pub fn add_server(id: &str, spec: ServerSpec) -> anyhow::Result<()> {
@@ -249,17 +277,19 @@ pub fn add_server(id: &str, spec: ServerSpec) -> anyhow::Result<()> {
     anyhow::ensure!(!id.is_empty(), "server id is required");
     anyhow::ensure!(id != "roblox", "the Roblox server cannot be replaced");
     anyhow::ensure!(!spec.command.trim().is_empty(), "server command is required");
-    let mut cfg = read_config();
-    cfg.servers.insert(id.to_string(), spec);
-    write_config(&cfg)
+    update_config_at(&config_path(), |cfg| {
+        cfg.servers.insert(id.to_string(), spec);
+        Ok(())
+    })
 }
 
 pub fn remove_server(id: &str) -> anyhow::Result<()> {
     let id = id.trim();
     anyhow::ensure!(id != "roblox", "the Roblox server cannot be removed");
-    let mut cfg = read_config();
-    anyhow::ensure!(cfg.servers.remove(id).is_some(), "server '{id}' is not configured");
-    write_config(&cfg)
+    update_config_at(&config_path(), |cfg| {
+        anyhow::ensure!(cfg.servers.remove(id).is_some(), "server '{id}' is not configured");
+        Ok(())
+    })
 }
 
 pub(crate) struct AddonRuntime {
@@ -1211,5 +1241,26 @@ mod uv_default_tests {
         let mut env = HashMap::new();
         env.insert("UV_NO_BUILD_PACKAGE".to_string(), "".to_string());
         assert_eq!(uv_default_env("uvx", &env), None);
+    }
+    #[test]
+    fn corrupt_config_is_preserved_and_valid_updates_persist() {
+        let dir = std::env::temp_dir().join(format!("plazcode-mcp-corrupt-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.json");
+        std::fs::write(&path, b"{broken mcp config").unwrap();
+        assert!(update_config_at(&path, |cfg| {
+            cfg.servers.insert("custom".into(), ServerSpec { command: "uvx".into(), args: vec![], env: HashMap::new() });
+            Ok(())
+        }).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), b"{broken mcp config");
+        let valid_path = dir.join("valid.json");
+        update_config_at(&valid_path, |cfg| {
+            cfg.servers.insert("custom".into(), ServerSpec { command: "uvx".into(), args: vec![], env: HashMap::new() });
+            Ok(())
+        }).unwrap();
+        let loaded = read_config_strict_from(&valid_path).unwrap();
+        assert!(loaded.servers.contains_key("roblox") && loaded.servers.contains_key("custom"));
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

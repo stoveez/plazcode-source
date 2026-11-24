@@ -16,7 +16,7 @@ impl Store {
         })();
         match loaded {Ok(data)=>Self{path,data:Mutex::new(data),load_error:None},Err(error)=>Self{path,data:Mutex::new(Catalog::default()),load_error:Some(error.to_string())}}
     }
-    fn persist(&self,data:&Catalog)->anyhow::Result<()> {let bytes=serde_json::to_vec(data)?;anyhow::ensure!(bytes.len()<=32*1024*1024,"Creator library exceeds 32 MB. Remove an unused draft first.");std::fs::create_dir_all(self.path.parent().unwrap())?;let tmp=self.path.with_extension("tmp");{use std::io::Write;let mut file=std::fs::File::create(&tmp)?;file.write_all(&bytes)?;file.sync_all()?;}std::fs::rename(tmp,&self.path)?;Ok(())}
+    fn persist(&self,data:&Catalog)->anyhow::Result<()> {let bytes=serde_json::to_vec(data)?;anyhow::ensure!(bytes.len()<=32*1024*1024,"Creator library exceeds 32 MB. Remove an unused draft first.");let parent=self.path.parent().ok_or_else(||anyhow::anyhow!("Invalid creator library path."))?;std::fs::create_dir_all(parent)?;let tmp=self.path.with_extension("tmp");{use std::io::Write;let mut file=std::fs::File::create(&tmp)?;file.write_all(&bytes)?;file.sync_all()?;}std::fs::rename(tmp,&self.path)?;Ok(())}
     fn request(&self,req:&Value)->anyhow::Result<Value>{
         anyhow::ensure!(self.load_error.is_none(),"Creator library could not be loaded ({}). Existing data was left unchanged; restore a valid backup and restart.",self.load_error.as_deref().unwrap_or(""));
         let mut slot=self.data.lock().unwrap_or_else(|e|e.into_inner());let id=req["build_id"].as_str().unwrap_or("");
@@ -24,8 +24,26 @@ impl Store {
         if action=="list" {return Ok(json!({"ok":true,"records":slot.records.iter().map(|(id,r)|json!({"build_id":id,"name":r.blueprint["root_name"],"mode":r.blueprint["mode"],"revision":r.revision,"status":r.status,"stage":r.stage,"updated":r.updated,"nodes":r.blueprint["nodes"].as_array().map(Vec::len)})).collect::<Vec<_>>(),"feedback":slot.feedback}));}
         anyhow::ensure!(!id.is_empty() && id.len()<=96 && id.bytes().all(|b|b.is_ascii_alphanumeric() || b"._:-".contains(&b)),"Invalid build identity.");
         if action=="read" {let r=slot.records.get(id).ok_or_else(||anyhow::anyhow!("Draft not found."))?;return Ok(json!({"ok":true,"record":{"blueprint":r.blueprint,"revision":r.revision,"status":r.status,"stage":r.stage,"updated":r.updated,"undo_count":r.history.len()},"feedback":slot.feedback}));}
-        if action=="export" {let r=slot.records.get(id).ok_or_else(||anyhow::anyhow!("Draft not found."))?;anyhow::ensure!(req["revision"].as_u64()==Some(r.revision),"Draft changed. Reload before exporting.");let mut blueprint=r.blueprint.clone();if req["welded"].as_bool().unwrap_or(false){anyhow::ensure!(blueprint["mode"]=="model","Welded export is for models.");let nodes=blueprint["nodes"].as_array_mut().unwrap();let parts=nodes.iter().filter(|n|matches!(n["class"].as_str(),Some("Part"|"WedgePart"|"CornerWedgePart"|"Seat"|"VehicleSeat"|"MeshPart"|"UnionOperation"|"TrussPart"))).map(|n|n["id"].as_str().unwrap().to_owned()).collect::<Vec<_>>();anyhow::ensure!(nodes.len()+parts.len().saturating_sub(1)<=800,"Welded model exceeds 800 nodes.");let mut ids=nodes.iter().map(|n|n["id"].as_str().unwrap().to_owned()).collect::<HashSet<_>>();for n in nodes.iter_mut().filter(|n|parts.iter().any(|id|n["id"]==*id)){if !n["properties"].is_object(){n["properties"]=json!({});}n["properties"]["Anchored"]=false.into();}for id in parts.iter().skip(1){let mut serial=0;let mut weld=format!("pcweld_{serial}");while ids.contains(&weld){serial+=1;weld=format!("pcweld_{serial}");}ids.insert(weld.clone());nodes.push(json!({"id":weld,"class":"WeldConstraint","parent":r.blueprint["root_id"],"properties":{"Part0":{"type":"Ref","id":parts[0]},"Part1":{"type":"Ref","id":id}}}));}}
-            validate(&blueprint)?;let xml=crate::creation_export::export(&blueprint,req["animations"].as_bool().unwrap_or(false))?;return Ok(json!({"ok":true,"xml":xml}));}
+        if action=="export" {
+            let r=slot.records.get(id).ok_or_else(||anyhow::anyhow!("Draft not found."))?;
+            anyhow::ensure!(req["revision"].as_u64()==Some(r.revision),"Draft changed. Reload before exporting.");
+            let mut blueprint=r.blueprint.clone();
+            validate(&blueprint)?;
+            if req["welded"].as_bool().unwrap_or(false){
+                anyhow::ensure!(blueprint["mode"]=="model","Welded export is for models.");
+                let nodes=blueprint["nodes"].as_array_mut().ok_or_else(||anyhow::anyhow!("Missing nodes."))?;
+                let parts=nodes.iter().filter(|n|matches!(n["class"].as_str(),Some("Part"|"WedgePart"|"CornerWedgePart"|"Seat"|"VehicleSeat"|"MeshPart"|"UnionOperation"|"TrussPart")))
+                    .map(|n|n["id"].as_str().ok_or_else(||anyhow::anyhow!("Invalid node ID.")).map(str::to_owned))
+                    .collect::<anyhow::Result<Vec<_>>>()?;
+                anyhow::ensure!(nodes.len()+parts.len().saturating_sub(1)<=800,"Welded model exceeds 800 nodes.");
+                let mut ids=nodes.iter().map(|n|n["id"].as_str().ok_or_else(||anyhow::anyhow!("Invalid node ID.")).map(str::to_owned)).collect::<anyhow::Result<HashSet<_>>>()?;
+                for n in nodes.iter_mut().filter(|n|parts.iter().any(|id|n["id"]==*id)){if !n["properties"].is_object(){n["properties"]=json!({});}n["properties"]["Anchored"]=false.into();}
+                for id in parts.iter().skip(1){let mut serial=0;let mut weld=format!("pcweld_{serial}");while ids.contains(&weld){serial+=1;weld=format!("pcweld_{serial}");}ids.insert(weld.clone());nodes.push(json!({"id":weld,"class":"WeldConstraint","parent":r.blueprint["root_id"],"properties":{"Part0":{"type":"Ref","id":parts[0]},"Part1":{"type":"Ref","id":id}}}));}
+                validate(&blueprint)?;
+            }
+            let xml=crate::creation_export::export(&blueprint,req["animations"].as_bool().unwrap_or(false))?;
+            return Ok(json!({"ok":true,"xml":xml}));
+        }
         let mut data=slot.clone();
         match action {
             "save"=>{
@@ -76,4 +94,24 @@ pub async fn post(axum::Json(req):axum::Json<Value>)->axum::response::Response {
     #[test]fn exported_welds_survive_id_collisions_and_long_names(){let path=std::env::temp_dir().join(format!("plazcode-export-creators-{}.json",std::process::id()));let _=std::fs::remove_file(&path);let store=Store::new(path.clone());let mut blueprint=draft();blueprint["nodes"].as_array_mut().unwrap().push(json!({"id":"pcweld_0","class":"Part","parent":"root"}));store.request(&json!({"action":"save","build_id":"test","revision":0,"blueprint":blueprint})).unwrap();assert!(store.request(&json!({"action":"export","build_id":"test","revision":0,"welded":true})).is_err());let output=store.request(&json!({"action":"export","build_id":"test","revision":1,"welded":true})).unwrap();assert!(output["xml"].as_str().unwrap().contains("WeldConstraint"));let mut bad=draft();bad["nodes"][1]["properties"]["Part0"]=json!({"type":"Ref","id":"missing"});assert!(validate(&bad).is_err());std::fs::remove_file(path).unwrap();}
     fn draft()->Value{json!({"build_id":"test","root_id":"root","root_name":"Test","mode":"model","nodes":[{"id":"root","class":"Model"},{"id":"part","class":"Part","parent":"root","properties":{"Size":{"type":"Vector3","x":1,"y":2,"z":3}}}]})}
     #[test]fn persistence_revisions_duplicates_undo_feedback_and_failures(){let path=std::env::temp_dir().join(format!("plazcode-creators-{}.json",std::process::id()));let _=std::fs::remove_file(&path);let store=Store::new(path.clone());let mut req=json!({"action":"save","build_id":"test","revision":0,"blueprint":draft(),"status":"building","stage":"Shape"});assert_eq!(store.request(&req).unwrap()["revision"],1);assert_eq!(store.request(&req).unwrap()["duplicate"],true);req["blueprint"]["root_name"]="Changed".into();assert!(store.request(&req).is_err());req["revision"]=1.into();assert_eq!(store.request(&req).unwrap()["revision"],2);let reopened=Store::new(path.clone());assert_eq!(reopened.request(&json!({"action":"read","build_id":"test"})).unwrap()["record"]["blueprint"]["root_name"],"Changed");assert!(reopened.request(&json!({"action":"undo","build_id":"test","revision":1})).is_err());reopened.request(&json!({"action":"undo","build_id":"test","revision":2})).unwrap();assert_eq!(reopened.request(&json!({"action":"read","build_id":"test"})).unwrap()["record"]["blueprint"]["root_name"],"Test");assert!(reopened.request(&json!({"action":"feedback","build_id":"test","rating":"dislike"})).is_err());reopened.request(&json!({"action":"feedback","build_id":"test","rating":"like","note":"Readable proportions"})).unwrap();assert_eq!(reopened.request(&json!({"action":"list"})).unwrap()["feedback"].as_array().unwrap().len(),1);reopened.request(&json!({"action":"feedback","build_id":"test","rating":"forget"})).unwrap();let mut bad=draft();bad["nodes"][1]["parent"]="missing".into();assert!(validate(&bad).is_err());bad["nodes"][1]["parent"]="part".into();assert!(validate(&bad).is_err());let mut too_big=draft();too_big["nodes"]=Value::Array(vec![json!({"id":"x"});801]);assert!(validate(&too_big).is_err());let _=std::fs::remove_file(path);}
+    #[test]fn malformed_draft_export_returns_error_without_panic(){
+        let path=std::env::temp_dir().join(format!("plazcode-malformed-creators-{}.json",std::process::id()));
+        let catalog = json!({
+            "records": {
+                "bad": {
+                    "blueprint": {"build_id": "bad", "root_id": "root", "mode": "model", "nodes": "not-an-array"},
+                    "revision": 1,
+                    "status": "ready",
+                    "stage": "Draft",
+                    "updated": 1
+                }
+            },
+            "feedback": []
+        });
+        std::fs::write(&path, catalog.to_string()).unwrap();
+        let store = Store::new(path.clone());
+        let err = store.request(&json!({"action": "export", "build_id": "bad", "revision": 1, "welded": true})).unwrap_err().to_string();
+        assert!(err.contains("Missing nodes"), "{err}");
+        let _ = std::fs::remove_file(path);
+    }
 }

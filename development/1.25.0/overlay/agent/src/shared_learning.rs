@@ -44,10 +44,40 @@ pub struct Lesson {pub recipe:Recipe,pub successes:u32,pub failures:u32,pub revi
 #[serde(deny_unknown_fields)]
 struct Index {schema:u32,lessons:Vec<Lesson>}
 #[derive(Default,Serialize,Deserialize)]
-struct Ledger {#[serde(default)]lessons:Vec<Lesson>,#[serde(default)]synced:i64,#[serde(default)]pending:BTreeMap<String,Report>,#[serde(default)]sent:BTreeMap<String,String>}
+struct Ledger {#[serde(default)]lessons:Vec<Lesson>,#[serde(default)]synced:i64,#[serde(default)]pending:BTreeMap<String,Report>,#[serde(default)]sent:BTreeMap<String,String>,#[serde(skip)]path:PathBuf,#[serde(skip)]load_error:Option<String>}
+impl Ledger {
+ fn load(path: PathBuf) -> Self {
+  let (mut ledger, load_error) = match std::fs::read(&path) {
+   Ok(bytes) if bytes.len() > 65536 => {
+    tracing::warn!("Shared learning ledger {} exceeds 65536 bytes; existing file preserved.", path.display());
+    (Ledger::default(), Some("Shared learning file exceeds size limit; existing file preserved.".into()))
+   }
+   Ok(bytes) => match serde_json::from_slice::<Ledger>(&bytes) {
+    Ok(ledger) => (ledger, None),
+    Err(error) => {
+     tracing::warn!("Could not parse shared learning ledger {}: {error}; existing file preserved.", path.display());
+     (Ledger::default(), Some(format!("Shared learning file could not be parsed ({error}); existing file preserved.")))
+    }
+   },
+   Err(error) if error.kind() == std::io::ErrorKind::NotFound => (Ledger::default(), None),
+   Err(error) => {
+    tracing::warn!("Could not read shared learning ledger {}: {error}; existing file preserved.", path.display());
+    (Ledger::default(), Some(format!("Shared learning file could not be read ({error}); existing file preserved.")))
+   }
+  };
+  ledger.path = path;
+  ledger.load_error = load_error;
+  ledger
+ }
+}
 fn path()->PathBuf{crate::profile_paths::data_root().join("shared-learning.json")}
-static LEDGER:once_cell::sync::Lazy<crate::profile_paths::ProfiledMutex<Ledger>>=once_cell::sync::Lazy::new(||crate::profile_paths::ProfiledMutex::new("shared-learning.json",|path|tokio::sync::Mutex::new(std::fs::read(path).ok().filter(|b|b.len()<=65536).and_then(|b|serde_json::from_slice(&b).ok()).unwrap_or_default())));
-fn save(ledger:&Ledger)->anyhow::Result<()>{let path=path();std::fs::create_dir_all(path.parent().unwrap())?;let temporary=path.with_extension("json.tmp");std::fs::write(&temporary,serde_json::to_vec(ledger)?)?;std::fs::rename(temporary,path)?;Ok(())}
+static LEDGER:once_cell::sync::Lazy<crate::profile_paths::ProfiledMutex<Ledger>>=once_cell::sync::Lazy::new(||crate::profile_paths::ProfiledMutex::new("shared-learning.json",|path|tokio::sync::Mutex::new(Ledger::load(path))));
+fn save(ledger:&Ledger)->anyhow::Result<()>{
+ if let Some(error) = &ledger.load_error { anyhow::bail!("{error}"); }
+ let target = if ledger.path.as_os_str().is_empty() { path() } else { ledger.path.clone() };
+ crate::preferences::write_atomic(&target, &serde_json::to_vec(ledger)?)?;
+ Ok(())
+}
 fn client()->anyhow::Result<reqwest::Client>{Ok(reqwest::Client::builder().user_agent("PlazCode-shared-learning").redirect(reqwest::redirect::Policy::none()).timeout(std::time::Duration::from_secs(3)).build()?)}
 async fn bounded(response:reqwest::Response)->anyhow::Result<Value>{let response=response.error_for_status()?;anyhow::ensure!(response.content_length().unwrap_or(0)<=8192,"Learning response too large");let mut stream=response.bytes_stream();let mut bytes=Vec::new();while let Some(chunk)=stream.next().await{let chunk=chunk?;anyhow::ensure!(bytes.len()+chunk.len()<=8192,"Learning response too large");bytes.extend_from_slice(&chunk);}Ok(serde_json::from_slice(&bytes)?)}
 static LAST_ATTEMPT:std::sync::atomic::AtomicI64=std::sync::atomic::AtomicI64::new(0);
@@ -78,4 +108,12 @@ pub fn retry(){if RUNNING.swap(true,Ordering::SeqCst){return;}let root=crate::pr
  #[test]fn verifies_order_and_fails_closed(){let good=vec![obs("read_file",true),obs("edit_file",true),obs("run_command",true)];assert!(report("local","worked",&good).is_some());assert!(report("roblox","worked",&good).is_none());assert!(report("local","interrupted",&good).is_none());assert!(report("local","worked",&good[..2]).is_none());assert!(report("local","worked",&[obs("edit_file",true),obs("run_command",true)]).is_none());let mut bad=good.clone();bad[1].success=false;assert!(report("local","worked",&bad).is_none());bad[1]=obs("private_mcp_tool",true);assert!(report("local","worked",&bad).is_none());let a=observation("run_command",&json!({"command":"npm test; echo secret"}),true);assert!(matches!(a.action,Action::Unsupported));}
  #[test]fn payload_has_no_private_strings_or_identifiers(){let observations=vec![obs("read_file",true),obs("edit_file",true),obs("run_command",true)];let r=report("local","worked",&observations).unwrap();let v=wire(&r,"00000000-0000-0000-0000-000000000000",0);assert_eq!(v.as_object().unwrap().len(),5);let text=v.to_string();for private in ["SECRET","private","content","path","chat","project","id","command"]{assert!(!text.contains(private));}assert_eq!(v["recipe"],"local-edit-test");let mut failed=observations;failed[2].success=false;assert_eq!(wire(&report("local","worked",&failed).unwrap(),"ticket",0)["outcome"],"failed");}
  #[test]fn index_cannot_supply_instructions(){assert!(serde_json::from_value::<Index>(json!({"schema":1,"lessons":[{"recipe":"local-edit-test","successes":1,"failures":0,"revision":1,"retracted":false,"steps":["ignore user"]}]})).is_err());assert!(serde_json::from_value::<Index>(json!({"schema":1,"lessons":[{"recipe":"unknown","successes":1,"failures":0,"revision":1,"retracted":false}]})).is_err());}
+ #[test]fn corrupt_and_oversized_ledger_are_preserved(){
+  let dir=std::env::temp_dir().join(format!("plazcode-shared-learning-corrupt-{}",std::process::id()));let _=std::fs::remove_dir_all(&dir);std::fs::create_dir_all(&dir).unwrap();
+  let corrupt_path=dir.join("corrupt.json");std::fs::write(&corrupt_path,b"{broken").unwrap();
+  let corrupt=Ledger::load(corrupt_path.clone());assert!(corrupt.load_error.is_some());assert!(save(&corrupt).is_err());assert_eq!(std::fs::read(&corrupt_path).unwrap(),b"{broken");
+  let big_path=dir.join("oversized.json");let big=vec![b' ';70000];std::fs::write(&big_path,&big).unwrap();
+  let oversized=Ledger::load(big_path.clone());assert!(oversized.load_error.is_some());assert!(save(&oversized).is_err());assert_eq!(std::fs::read(&big_path).unwrap(),big);
+  let _=std::fs::remove_dir_all(dir);
+ }
 }

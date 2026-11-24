@@ -216,6 +216,13 @@ pub async fn stop() {
     set_status(Status::Stopped);
 }
 
+/// Reset and stop any running background Blender session on profile switch.
+pub async fn reset() {
+    let session = { SESSION.lock().await.take() };
+    if let Some(session) = session { session.stop().await; }
+    set_status(Status::Stopped);
+}
+
 /// Run one request in the background Blender, starting it first when needed. Returns the addon-shaped reply.
 /// `limit` covers waiting for a turn and the request itself. When Blender has to start first (first use, or after
 /// the idle stop), the caller also waits for the start (up to `START_LIMIT`) and the request then gets its full

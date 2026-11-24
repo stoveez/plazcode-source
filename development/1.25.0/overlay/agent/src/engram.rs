@@ -7,7 +7,8 @@ use tokio::sync::Mutex;
 struct Runtime { process:AddonRuntime, sessions:HashSet<String> }
 struct Entry { runtime:Arc<Mutex<Runtime>>, touched:u64 }
 #[derive(Default)]struct Registry { entries:HashMap<String,Entry>, tick:u64 }
-static REGISTRY:once_cell::sync::Lazy<Mutex<Registry>>=once_cell::sync::Lazy::new(||Mutex::new(Registry::default()));
+static REGISTRY:once_cell::sync::Lazy<std::sync::Mutex<Registry>>=once_cell::sync::Lazy::new(||std::sync::Mutex::new(Registry::default()));
+static GENERATION:std::sync::atomic::AtomicU64=std::sync::atomic::AtomicU64::new(0);
 fn key(text:&str)->String {let mut hash=14695981039346656037u64;for byte in text.as_bytes(){hash^=*byte as u64;hash=hash.wrapping_mul(1099511628211);}format!("{hash:016x}")}
 fn data_root()->PathBuf{crate::profile_paths::data_root().join("engram")}
 fn executable()->anyhow::Result<PathBuf>{
@@ -88,21 +89,48 @@ async fn executable_or_download()->anyhow::Result<PathBuf>{
     Ok(destination)
 }
 async fn runtime(scope:&str)->anyhow::Result<Arc<Mutex<Runtime>>>{
-    let registry_key=format!("{}:{scope}",data_root().display());
-    let mut registry=REGISTRY.lock().await;registry.tick+=1;let tick=registry.tick;
-    if let Some(entry)=registry.entries.get_mut(&registry_key){entry.touched=tick;return Ok(entry.runtime.clone());}
-    if registry.entries.len()>=4 {
-        let oldest=registry.entries.iter().filter(|(_,v)|Arc::strong_count(&v.runtime)==1).min_by_key(|(_,v)|v.touched).map(|(k,_)|k.clone());
-        if let Some(oldest)=oldest{if let Some(entry)=registry.entries.remove(&oldest){entry.runtime.lock().await.process.reset().await;}}
-        else {anyhow::bail!("Memory is busy. Try reading context after current requests finish.");}
+    let root = data_root();
+    let registry_key=format!("{}:{scope}",root.display());
+    let generation = GENERATION.load(std::sync::atomic::Ordering::SeqCst);
+    {
+        let mut registry=REGISTRY.lock().unwrap_or_else(|e|e.into_inner());
+        registry.tick+=1;
+        let tick=registry.tick;
+        if let Some(entry)=registry.entries.get_mut(&registry_key){entry.touched=tick;return Ok(entry.runtime.clone());}
+        if registry.entries.len()>=4 && !registry.entries.values().any(|v|Arc::strong_count(&v.runtime)==1) {
+            anyhow::bail!("Memory is busy. Try reading context after current requests finish.");
+        }
     }
-    let path=executable_or_download().await?;let dir=data_root().join(key(scope));tokio::fs::create_dir_all(&dir).await?;
+    let path=executable_or_download().await?;
+    let dir=root.join(key(scope));
+    tokio::fs::create_dir_all(&dir).await?;
     let marker=dir.join("scope.json");
     if marker.is_file(){let stored:String=serde_json::from_slice(&tokio::fs::read(&marker).await?)?;anyhow::ensure!(stored==scope,"Memory scope collision; refused to open another project's database.");}
     else{tokio::fs::write(&marker,serde_json::to_vec(scope)?).await?;}
     let mut env=HashMap::new();env.insert("ENGRAM_DATA_DIR".into(),dir.to_string_lossy().into_owned());env.insert("ENGRAM_PROJECT".into(),scope.into());env.insert("ENGRAM_CLOUD_AUTOSYNC".into(),"0".into());
     let process=AddonRuntime::new("plazcode-engram".into(),ServerSpec{command:path.to_string_lossy().into_owned(),args:vec!["mcp".into(),"--tools=agent,admin".into()],env});
-    let runtime=Arc::new(Mutex::new(Runtime{process,sessions:HashSet::new()}));registry.entries.insert(registry_key,Entry{runtime:runtime.clone(),touched:tick});Ok(runtime)
+    let new_runtime=Arc::new(Mutex::new(Runtime{process,sessions:HashSet::new()}));
+    let mut evicted: Option<Entry> = None;
+    let chosen = {
+        anyhow::ensure!(GENERATION.load(std::sync::atomic::Ordering::SeqCst)==generation,"PlazCode profile changed while preparing memory.");
+        let mut registry=REGISTRY.lock().unwrap_or_else(|e|e.into_inner());
+        registry.tick+=1;
+        let tick=registry.tick;
+        if let Some(existing)=registry.entries.get_mut(&registry_key){
+            existing.touched=tick;
+            existing.runtime.clone()
+        } else {
+            if registry.entries.len()>=4 {
+                let oldest=registry.entries.iter().filter(|(_,v)|Arc::strong_count(&v.runtime)==1).min_by_key(|(_,v)|v.touched).map(|(k,_)|k.clone());
+                if let Some(oldest)=oldest{evicted=registry.entries.remove(&oldest);}
+                else {anyhow::bail!("Memory is busy. Try reading context after current requests finish.");}
+            }
+            registry.entries.insert(registry_key,Entry{runtime:new_runtime.clone(),touched:tick});
+            new_runtime
+        }
+    };
+    if let Some(entry)=evicted{entry.runtime.lock().await.process.reset().await;}
+    Ok(chosen)
 }
 fn string(value:&Value,name:&str,max:usize)->anyhow::Result<String>{let text=value[name].as_str().unwrap_or("");anyhow::ensure!(!text.trim().is_empty()&&text.len()<=max,"Invalid or oversized {name}");Ok(text.into())}
 fn learning_rejection(value:&Value,scope:&str)->Option<String>{
@@ -156,7 +184,13 @@ pub async fn post(axum::Json(value):axum::Json<Value>)->axum::response::Response
  let ok=std::process::Command::new("tar").args(["-czf"]).arg(dir.join("a.tar.gz")).arg("-C").arg(dir.join("pack")).arg(".").status().unwrap().success();assert!(ok);
  let bytes=std::fs::read(dir.join("a.tar.gz")).unwrap();assert_eq!(extract_program(&bytes,"a.tar.gz","engram").unwrap(),b"PROGRAM");assert!(extract_program(&bytes,"a.tar.gz","missing").is_err());let _=std::fs::remove_dir_all(&dir);}}
 
-pub async fn clear_profile_cache(){let entries={let mut registry=REGISTRY.lock().await;registry.entries.drain().map(|(_,entry)|entry).collect::<Vec<_>>()};for entry in entries{entry.runtime.lock().await.process.reset().await;}}
+pub async fn clear_profile_cache(){
+    GENERATION.fetch_add(1,std::sync::atomic::Ordering::SeqCst);
+    let entries={let mut registry=REGISTRY.lock().unwrap_or_else(|e|e.into_inner());registry.entries.drain().map(|(_,entry)|entry).collect::<Vec<_>>()};
+    for entry in entries{
+        tokio::spawn(async move{entry.runtime.lock().await.process.reset().await;});
+    }
+}
 
 #[cfg(test)]mod quality_tests {use super::*;#[test]fn ai_learning_is_scoped_supported_and_separate_from_continuation(){
  assert!(learning_rejection(&json!({"action":"summary","content":"random chat log"}),"project:A").is_some());
@@ -165,4 +199,11 @@ pub async fn clear_profile_cache(){let entries={let mut registry=REGISTRY.lock()
  assert!(learning_rejection(&v,"project:A").is_none());assert!(learning_rejection(&v,"project:B").is_some());
  assert!(learning_rejection(&json!({"action":"manual-save","content":"First request: my research log"}),"project:A").is_none());
  assert!(learning_rejection(&json!({"action":"checkpoint"}),"project:A").is_none());
+}
+#[tokio::test]async fn clear_profile_cache_does_not_block_behind_busy_runtime(){
+ let rt = Arc::new(Mutex::new(Runtime{process:AddonRuntime::new("test".into(),ServerSpec{command:"echo".into(),args:vec![],env:HashMap::new()}),sessions:HashSet::new()}));
+ let _held = rt.lock().await;
+ {let mut reg = REGISTRY.lock().unwrap_or_else(|e|e.into_inner());reg.entries.insert("test:busy".into(),Entry{runtime:rt.clone(),touched:1});}
+ tokio::time::timeout(std::time::Duration::from_millis(500), clear_profile_cache()).await.expect("clear_profile_cache must not block");
+ assert!(REGISTRY.lock().unwrap_or_else(|e|e.into_inner()).entries.is_empty());
 }}

@@ -80,14 +80,88 @@ const AgentScriptSkills = (() => {
     return lines;
   }
 
-  function stripRead(raw) {
+  function parseReadChunk(raw) {
     const text = String(raw || "");
-    const lines = [];
+    const rows = [];
     for (const ln of text.split("\n")) {
-      const m = ln.match(/^\s*\d+\s+\|\s(.*)$/);
-      if (m) lines.push(m[1]);
+      const m = ln.match(/^\s*(\d+)\s+\|\s(.*)$/);
+      if (m) rows.push({ lineNum: Number(m[1]), text: m[2] });
     }
-    return lines.join("\n");
+    const headerMatch = /\((\d+)\s+lines?,\s*[^)]+\)/i.exec(text);
+    const headerTotal = headerMatch ? Number(headerMatch[1]) : null;
+    const footerMatch = /\.\.\.\s*lines\s+\d+-\d+\s+continue\s+\(use\s+offset=(\d+)\)/i.exec(text);
+    const nextOffset = footerMatch ? Number(footerMatch[1]) : null;
+    const clipped = /\.\.\.\s*\[output truncated at \d+ characters\]/i.test(text);
+    return { rows, headerTotal, nextOffset, clipped };
+  }
+  ;
+  async function readAllText(path, call) {
+    const allLines = [];
+    let offset = 1;
+    const pageLimit = 1000;
+    const maxPages = 250;
+    for (let page = 0; page < maxPages; page++) {
+      const raw = await call("read_file", { path, offset, limit: pageLimit });
+      if (isErr(raw)) return { ok: false, binary: false, error: raw };
+      if (/\blooks like a BINARY file\b/i.test(String(raw))) return { ok: false, binary: true, error: raw };
+      const parsed = parseReadChunk(raw);
+      if (!parsed.rows.length) break;
+      if (offset > 1 && parsed.rows[0].lineNum < offset) break;
+      if (parsed.clipped && parsed.nextOffset == null) {
+        if (parsed.rows.length <= 1) {
+          return { ok: false, binary: false, error: `ERROR: line ${offset} in '${path}' exceeds read_file output limit; cannot read without truncation.` };
+        }
+        const last = parsed.rows.pop();
+        for (const row of parsed.rows) allLines.push(row.text);
+        if (last.lineNum <= offset) break;
+        offset = last.lineNum;
+        continue;
+      }
+      for (const row of parsed.rows) allLines.push(row.text);
+      const lastLineNum = parsed.rows[parsed.rows.length - 1].lineNum;
+      if (parsed.nextOffset != null && parsed.nextOffset > offset) {
+        offset = parsed.nextOffset;
+        continue;
+      }
+      if (parsed.headerTotal != null && lastLineNum < parsed.headerTotal && lastLineNum >= offset) {
+        offset = lastLineNum + 1;
+        continue;
+      }
+      break;
+    }
+    if (offset > 1 && allLines.length >= pageLimit * maxPages) {
+      return { ok: false, binary: false, error: `ERROR: '${path}' exceeds pagination safety limit (${pageLimit * maxPages} lines).` };
+    }
+    return { ok: true, text: allLines.join("\n"), lines: allLines.length };
+  }
+  function encodeBase64(text) {
+    if (typeof btoa === "function") return btoa(unescape(encodeURIComponent(text)));
+    return (globalThis).Buffer.from(text, "utf8").toString("base64");
+  }
+  function shQuote(value) {
+    return "'" + value.replace(/'/g, "'\\''") + "'";
+  }
+  async function copyBinaryFile(source, destination, call) {
+    if (/[\0\r\n]/.test(source) || /[\0\r\n]/.test(destination)) {
+      return "ERROR: invalid path for copy_file.";
+    }
+    let isWindows = false;
+    const env = await call("env_info", {});
+    if (!isErr(env)) {
+      isWindows = /\bOS:\s*Windows\b/i.test(String(env)) || /uses cmd by default/i.test(String(env));
+    } else {
+      const proc = (globalThis).process;
+      isWindows = (proc && proc.platform === "win32") ||
+        (typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent || ""));
+    }
+    if (isWindows) {
+      const payload = encodeBase64(JSON.stringify([source, destination]));
+      const ps = `$p = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${payload}')) | ConvertFrom-Json; $dir = [System.IO.Path]::GetDirectoryName([System.IO.Path]::GetFullPath($p[1])); if ($dir) { [System.IO.Directory]::CreateDirectory($dir) | Out-Null }; [System.IO.File]::Copy($p[0], $p[1], $true)`;
+      return await call("run_command", { command: ps, shell: "powershell" });
+    }
+    const qSrc = shQuote(source);
+    const qDst = shQuote(destination);
+    return await call("run_command", { command: `d=${qDst}; mkdir -p -- "$(dirname -- "$d")" && cp -f -- ${qSrc} "$d"`, shell: "sh" });
   }
   function isErr(raw) {
     const s = String(raw || "");
@@ -129,11 +203,14 @@ const AgentScriptSkills = (() => {
     if (name === "copy_file") {
       const m = missing(args, "source") || missing(args, "destination");
       if (m) return m;
-      const raw = await call("read_file", { path: args.source, offset: 1, limit: 4000 });
-      if (isErr(raw) || /BINARY file/i.test(String(raw))) {
-        return await call("run_command", { command: `copy /Y "${args.source}" "${args.destination}"` });
+      const readRes = await readAllText(args.source, call);
+      if (!readRes.ok) {
+        if (readRes.binary) {
+          return await copyBinaryFile(String(args.source), String(args.destination), call);
+        }
+        return readRes.error;
       }
-      return await call("write_file", { path: args.destination, content: stripRead(raw) });
+      return await call("write_file", { path: args.destination, content: readRes.text });
     }
     if (name === "replace_in_files") {
       const m = missing(args, "query") || missing(args, "replacement");
@@ -174,10 +251,9 @@ const AgentScriptSkills = (() => {
     if (name === "count_lines") {
       const m = missing(args, "path");
       if (m) return m;
-      const raw = await call("read_file", { path: args.path, offset: 1, limit: 4000 });
-      if (isErr(raw)) return raw;
-      const body = stripRead(raw);
-      const n = body ? body.split("\n").length : 0;
+      const readRes = await readAllText(args.path, call);
+      if (!readRes.ok) return readRes.binary ? `ERROR: ${args.path} is a binary file` : readRes.error;
+      const n = readRes.text ? readRes.text.split("\n").length : 0;
       return `Output of 'count_lines':\n${args.path}: ${n} line(s)`;
     }
     if (name === "find_todos") {
@@ -202,10 +278,10 @@ const AgentScriptSkills = (() => {
     if (name === "patch_json") {
       const m = missing(args, "path") || missing(args, "key");
       if (m) return m;
-      const raw = await call("read_file", { path: args.path, offset: 1, limit: 4000 });
-      if (isErr(raw)) return raw;
+      const readRes = await readAllText(args.path, call);
+      if (!readRes.ok) return readRes.binary ? `ERROR: ${args.path} is a binary file` : readRes.error;
       let obj;
-      try { obj = JSON.parse(stripRead(raw) || "{}"); }
+      try { obj = JSON.parse(readRes.text || "{}"); }
       catch (e) { return `ERROR: ${args.path} is not valid JSON: ${e}`; }
       const parts = String(args.key).split(".").filter(Boolean);
       if (!parts.length) return "ERROR: key is empty";
@@ -272,9 +348,9 @@ const AgentScriptSkills = (() => {
       if (m) return m;
       const chunks = [];
       for (const p of args.paths) {
-        const raw = await call("read_file", { path: String(p), offset: 1, limit: 4000 });
-        if (isErr(raw)) return raw;
-        chunks.push(stripRead(raw));
+        const readRes = await readAllText(String(p), call);
+        if (!readRes.ok) return readRes.binary ? `ERROR: ${p} is a binary file` : readRes.error;
+        chunks.push(readRes.text);
       }
       const sep = args.sep == null ? "\n" : String(args.sep);
       return await call("write_file", { path: args.dest, content: chunks.join(sep) });
@@ -319,9 +395,9 @@ const AgentScriptSkills = (() => {
     if (name === "replace_once") {
       const m = missing(args, "path") || missing(args, "query") || missing(args, "replacement");
       if (m) return m;
-      const raw = await call("read_file", { path: args.path, offset: 1, limit: 4000 });
-      if (isErr(raw)) return raw;
-      const cur = stripRead(raw);
+      const readRes = await readAllText(args.path, call);
+      if (!readRes.ok) return readRes.binary ? `ERROR: ${args.path} is a binary file` : readRes.error;
+      const cur = readRes.text;
       const q = String(args.query);
       const i = cur.indexOf(q);
       if (i < 0) return `ERROR: query not found in ${args.path}`;

@@ -97,7 +97,7 @@ pub struct DesktopPreferences {
     pub luau_mode: String,
     /// 2026-11-20 (owner: "settings from the extension don't sync well to the app"): the extension's own switches are kept
     /// here too, so they show in the app, survive an extension reinstall and reach every browser with PlazCode.
-    #[serde(rename = "rsFullStartup")]
+    #[serde(rename = "rsFullStartup", default)]
     pub full_startup: bool,
     #[serde(rename = "rsAutoDebug")]
     pub auto_debug: bool,
@@ -511,6 +511,7 @@ struct SyncState {
 struct StoreState {
     prefs: DesktopPreferences,
     sync: SyncState,
+    load_error: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -561,6 +562,71 @@ fn changed_keys(before: &DesktopPreferences, after: &DesktopPreferences) -> Vec<
     keys.into_iter().collect()
 }
 
+static WRITE_SEQ: AtomicU64 = AtomicU64::new(1);
+
+fn write_atomic_with<F>(path: &std::path::Path, bytes: &[u8], rename: F) -> std::io::Result<()>
+where
+    F: Fn(&std::path::Path, &std::path::Path) -> std::io::Result<()>,
+{
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
+    let seq = WRITE_SEQ.fetch_add(1, Ordering::Relaxed);
+    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("file");
+    let tmp = path.with_file_name(format!(".{name}.{}.{seq}.tmp", std::process::id()));
+    let bak = path.with_file_name(format!(".{name}.{}.{seq}.bak", std::process::id()));
+    {
+        use std::io::Write;
+        let mut file = match std::fs::File::create(&tmp) {
+            Ok(file) => file,
+            Err(error) => return Err(error),
+        };
+        if let Err(error) = file.write_all(bytes).and_then(|()| file.sync_all()) {
+            let _ = std::fs::remove_file(&tmp);
+            return Err(error);
+        }
+    }
+    match rename(&tmp, path) {
+        Ok(()) => Ok(()),
+        Err(first_err) => {
+            if !path.exists() {
+                let _ = std::fs::remove_file(&tmp);
+                return Err(first_err);
+            }
+            let _ = std::fs::remove_file(&bak);
+            if let Err(bak_err) = rename(path, &bak) {
+                let _ = std::fs::remove_file(&tmp);
+                return Err(bak_err);
+            }
+            match rename(&tmp, path) {
+                Ok(()) => {
+                    let _ = std::fs::remove_file(&bak);
+                    Ok(())
+                }
+                Err(rename_err) => {
+                    if let Err(restore_err) = rename(&bak, path) {
+                        tracing::error!(
+                            "Failed to restore {} from backup {} after atomic replace error ({rename_err}): {restore_err}",
+                            path.display(),
+                            bak.display()
+                        );
+                    }
+                    let _ = std::fs::remove_file(&tmp);
+                    Err(rename_err)
+                }
+            }
+        }
+    }
+}
+
+/// Safely write `bytes` to `path` via a temp file + atomic rename, using a `.bak` swap+rollback
+/// fallback if direct replacement fails while `path` exists (never deleting `path` before replacement).
+pub fn write_atomic(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
+    write_atomic_with(path, bytes, |from, to| std::fs::rename(from, to))
+}
+
 impl PreferencesStore {
     pub fn load() -> Self {
         Self::load_from(settings_path())
@@ -568,7 +634,24 @@ impl PreferencesStore {
 
     pub(crate) fn load_from(path: PathBuf) -> Self {
         // One setting of the wrong kind in the file used to reset every setting to its default; now only that one is.
-        let file = std::fs::read_to_string(&path).ok().and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok());
+        let (file, load_error) = match std::fs::read_to_string(&path) {
+            Ok(raw) => match serde_json::from_str::<serde_json::Value>(&raw) {
+                Ok(value) if value.is_object() => (Some(value), None),
+                Ok(_) => {
+                    tracing::warn!("Settings file {} is not a JSON object; preserving existing file.", path.display());
+                    (None, Some("Settings file is not a JSON object; existing file preserved.".to_string()))
+                }
+                Err(error) => {
+                    tracing::warn!("Could not parse settings file {}: {error}; preserving existing file.", path.display());
+                    (None, Some(format!("Settings file could not be parsed ({error}); existing file preserved.")))
+                }
+            },
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (None, None),
+            Err(error) => {
+                tracing::warn!("Could not read settings file {}: {error}; preserving existing file.", path.display());
+                (None, Some(format!("Settings file could not be read ({error}); existing file preserved.")))
+            }
+        };
         let (mut prefs, kept) = match file.as_ref().and_then(|v| v.as_object()) {
             Some(object) => overlay(&DesktopPreferences::default(), object),
             None => (DesktopPreferences::default(), Vec::new()),
@@ -617,7 +700,7 @@ impl PreferencesStore {
         Self {
             operation: std::sync::Mutex::new(()),
             path: RwLock::new(path),
-            state: RwLock::new(StoreState { prefs, sync }),
+            state: RwLock::new(StoreState { prefs, sync, load_error }),
         }
     }
 
@@ -688,7 +771,7 @@ impl PreferencesStore {
         key_ts_overrides: Option<&BTreeMap<String, u64>>,
     ) -> anyhow::Result<DesktopPreferences> {
         prefs.normalize();
-        let save_sync = {
+        let (save_sync, load_error) = {
             let mut guard = self.state.write().map_err(|_| anyhow::anyhow!("preferences lock poisoned"))?;
             let now = now_ms();
             let mut changed = !touched.is_empty();
@@ -713,11 +796,11 @@ impl PreferencesStore {
                 }
             }
             guard.prefs = prefs.clone();
-            guard.sync.clone()
+            (guard.sync.clone(), guard.load_error.clone())
         };
         // The new values are already in use above. If the file cannot be written, say exactly that
         // (SaveFailed) so callers can keep using them instead of treating the change as rejected.
-        if let Err(error) = self.save(&prefs, &save_sync) {
+        if let Err(error) = self.save(&prefs, &save_sync, load_error.as_deref()) {
             return Err(anyhow::Error::new(SaveFailed(error.to_string())));
         }
         Ok(prefs)
@@ -875,9 +958,11 @@ impl PreferencesStore {
         Ok(())
     }
 
-    fn save(&self, prefs: &DesktopPreferences, sync: &SyncState) -> anyhow::Result<()> {
+    fn save(&self, prefs: &DesktopPreferences, sync: &SyncState, load_error: Option<&str>) -> anyhow::Result<()> {
+        if let Some(error) = load_error {
+            anyhow::bail!("{error}");
+        }
         let path = self.path.read().map_err(|_| anyhow::anyhow!("preferences path lock poisoned"))?;
-        if let Some(parent) = path.parent() { std::fs::create_dir_all(parent)?; }
         let mut doc = serde_json::to_value(prefs)?;
         if let Some(object) = doc.as_object_mut() {
             object.insert("_plazcodeSync".to_string(), serde_json::json!({
@@ -886,10 +971,8 @@ impl PreferencesStore {
                 "keyUpdatedAt": sync.key_updated_at,
             }));
         }
-        let tmp = path.with_extension("json.tmp");
-        std::fs::write(&tmp, serde_json::to_vec_pretty(&doc)?)?;
-        if path.exists() { std::fs::remove_file(&*path)?; }
-        std::fs::rename(&tmp, &*path)?;
+        let bytes = serde_json::to_vec_pretty(&doc)?;
+        write_atomic(&path, &bytes)?;
         Ok(())
     }
 
@@ -1310,5 +1393,46 @@ mod extension_sync_tests {
         p.workshop_registry_url = "javascript:alert(1)".into();
         p.normalize();
         assert_eq!(p.workshop_registry_url, DEFAULT_WORKSHOP_REGISTRY_URL);
+    }
+
+    #[test]
+    fn full_startup_defaults_false_and_persists_across_patch_and_reopen() {
+        let path = temp("full-startup");
+        let store = PreferencesStore::load_from(path.clone());
+        assert!(!store.snapshot().full_startup);
+        let patched = store.patch(serde_json::json!({"rsFullStartup": true})).unwrap();
+        assert!(patched.full_startup);
+        let reopened = PreferencesStore::load_from(path.clone());
+        assert!(reopened.snapshot().full_startup);
+        reopened.patch(serde_json::json!({"rsSounds": false})).unwrap();
+        assert!(PreferencesStore::load_from(path.clone()).snapshot().full_startup);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn atomic_write_preserves_existing_file_on_rename_failure() {
+        let path = temp("atomic-rollback");
+        std::fs::write(&path, b"original-settings").unwrap();
+        let err = write_atomic_with(&path, b"new-settings", |from, to| {
+            // Simulate replacing `path` failing on Windows (e.g. AV file lock) while moving to .bak works.
+            if to == path && from.extension().and_then(|e| e.to_str()) == Some("tmp") {
+                return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "simulated lock"));
+            }
+            std::fs::rename(from, to)
+        }).unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::PermissionDenied);
+        assert_eq!(std::fs::read(&path).unwrap(), b"original-settings");
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn corrupt_settings_file_is_preserved_without_silent_overwrite() {
+        let path = temp("corrupt-preserve");
+        std::fs::write(&path, b"{not valid settings json").unwrap();
+        let store = PreferencesStore::load_from(path.clone());
+        let err = store.patch(serde_json::json!({"rsSounds": false})).unwrap_err();
+        assert!(err.downcast_ref::<SaveFailed>().is_some());
+        assert_eq!(std::fs::read(&path).unwrap(), b"{not valid settings json");
+        let _ = std::fs::remove_file(path);
     }
 }

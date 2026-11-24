@@ -214,9 +214,17 @@ pub fn apply(saved: &mut Saved, request: &SetupRequest) -> anyhow::Result<Next> 
 /// Remember that the extension connected once, so the card stays Ready when the browser is closed.
 pub fn remember_connected() {
     let path = crate::connections::store_path();
-    let mut saved = crate::connections::load_from(&path);
-    let app = saved.apps.entry(APP.to_string()).or_default();
-    if !app.verified { app.verified = true; let _ = crate::connections::save_to(&path, &saved); }
+    if let Err(error) = crate::connections::update_file(&path, |saved| {
+        let app = saved.apps.entry(APP.to_string()).or_default();
+        if app.verified {
+            false
+        } else {
+            app.verified = true;
+            true
+        }
+    }) {
+        tracing::warn!("Could not save browser connection status to {}: {error}", path.display());
+    }
 }
 
 pub fn picked() -> Option<Found> {

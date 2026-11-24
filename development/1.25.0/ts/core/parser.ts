@@ -11,6 +11,18 @@ const RSParse = (() => {
   "use strict";
 
   type ParsedCall = { tool: string; arguments: Record<string, any>; argumentError?: string };
+  type ParseNote = { stage: string; reason: string; sample: string };
+  const MAX_PARSE_NOTES = 20;
+  const parseNotes: ParseNote[] = [];
+  function recordParseNote(stage: string, error: unknown, sample?: unknown) {
+    const reason = String((error as Error)?.message || error || "unknown error").slice(0, 160);
+    const snippet = sample == null ? "" : String(sample).replace(/\s+/g, " ").slice(0, 80);
+    parseNotes.push({ stage, reason, sample: snippet });
+    if (parseNotes.length > MAX_PARSE_NOTES) parseNotes.shift();
+  }
+  function parseDiagnostics(): ParseNote[] {
+    return parseNotes.map((n) => ({ ...n }));
+  }
   const START_M = "###MCP_TOOL###";
   const END_M = "###END_MCP_TOOL###";
   // Whitespace-tolerant markers: site markdown can insert spaces around the
@@ -133,7 +145,7 @@ const RSParse = (() => {
     // Require the ENTIRE envelope, including strings/arguments, to be closed;
     // a tag run inside an unfinished value is data, never a recovery trigger.
     if(body.startsWith('{')&&matchBrace(body,0)===body.length-1){
-      try{if(normalizeCall(parseLoose(body))){const calls=parseToolCalls(body);if(calls.length)return {closers:tail.count,orphan:false,calls};}}catch{}
+      try{if(normalizeCall(parseLoose(body))){const calls=parseToolCalls(body);if(calls.length)return {closers:tail.count,orphan:false,calls};}}catch(err){recordParseNote("dsmlClosingRun",err,body);}
       return null;
     }
     // A trailing run is protocol debris only AFTER a fully closed native call.
@@ -170,7 +182,7 @@ const RSParse = (() => {
     if (isString) return text.replace(/^\r?\n/, "").replace(/\r?\n$/, "");
     const t = text.trim();
     if (isJson || /^(?:[{\[]|-?\d|true$|false$|null$|")/.test(t)) {
-      try { return parseLoose(t); } catch {}
+      try { return parseLoose(t); } catch (err) { recordParseNote("dsmlValue", err, t); }
     }
     return t;
   }
@@ -271,7 +283,7 @@ const RSParse = (() => {
     const wrappers = ["params", "arguments", "args"];
     const present = wrappers.filter(key => o[key] != null);
     const decode = (value: unknown): Record<string, any> | null => {
-      if (typeof value === "string") { try { value = parseLoose(value); } catch { return null; } }
+      if (typeof value === "string") { try { value = parseLoose(value); } catch (err) { recordParseNote("normalizeCall.decode", err, value); return null; } }
       return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, any>) : null;
     };
     let args: Record<string, any> | null = present.length ? decode(o[present[0]]) : {};
@@ -338,6 +350,7 @@ const RSParse = (() => {
     try {
       return JSON.parse(raw);
     } catch (e0) {
+      recordParseNote("parseLoose.strict", e0, raw);
       let out = "", inStr = false, esc = false;
       for (const c of raw) {
         if (inStr) {
@@ -355,7 +368,12 @@ const RSParse = (() => {
         if (c === "}" || c === "]") out = out.replace(/,\s*$/, "");
         out += c;
       }
-      return JSON.parse(out); // may still throw - callers catch
+      try {
+        return JSON.parse(out); // may still throw - callers catch
+      } catch (e1) {
+        recordParseNote("parseLoose.repair", e1, out);
+        throw e1;
+      }
     }
   }
 
@@ -368,7 +386,8 @@ const RSParse = (() => {
     if (e === -1) return null;
     try {
       return parseLoose(raw.slice(s, e + 1));
-    } catch {
+    } catch (err) {
+      recordParseNote("extractJson", err, raw.slice(s, e + 1));
       return null;
     }
   }
@@ -399,7 +418,7 @@ const RSParse = (() => {
         // Never run nested children from an incomplete enclosing envelope.
         if(end<0)return [];
         if(end<keyIndex)continue;
-        try{const call=normalizeCall(parseLoose(text.slice(start,end+1)));if(call){out.push(call);keys.lastIndex=end+1;accepted=true;break;}}catch{}
+        try{const call=normalizeCall(parseLoose(text.slice(start,end+1)));if(call){out.push(call);keys.lastIndex=end+1;accepted=true;break;}}catch(err){recordParseNote("extractToolsAnywhere",err,text.slice(start,end+1));}
       }
       if(!accepted && starts.some(start=>/"(?:command|tool)"\s*:/.test(text.slice(start,keyIndex+20))))return [];
     }
@@ -661,7 +680,7 @@ const RSParse = (() => {
       try {
         const call = normalizeCall(parseLoose(body + stack.reverse().join("")));
         if (call) return cleanLuaCall(call);
-      } catch {}
+      } catch (err) { recordParseNote("salvageCutOff", err, body); }
       return null;
     }
     return null;
@@ -710,6 +729,6 @@ const RSParse = (() => {
     hasDsml, hasOpenDsml, parseDsml, orphanDsmlClosers, dsmlClosingRun,
     findLuaStart, findLuaEnd, matchBrace, extractJson, normalizeCall,
     hasToolSignature, commandZone, setFlatTranscript, hasOpenToolBlock, parseToolCalls, commandDiagnosis, salvageCutOff, toolNameFromText,
-    isInjectedFeedback, hasCommandShape,
+    isInjectedFeedback, hasCommandShape, parseDiagnostics,
   };
 })();

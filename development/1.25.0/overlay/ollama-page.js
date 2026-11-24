@@ -32,7 +32,13 @@ function updateLabels() {
 }
 async function bgMsg(msg) {
   return new Promise((res)=>{
-    try{ chrome.runtime.sendMessage(msg, (r)=> res(r||{ok:false,error:'no response'})); }catch(e){ res({ok:false,error:String(e)}); }
+    try{
+      chrome.runtime.sendMessage(msg, (r)=> {
+        const err = chrome.runtime?.lastError;
+        if (err) { res({ok:false,error:err.message||'runtime error'}); return; }
+        res(r||{ok:false,error:'no response'});
+      });
+    }catch(e){ res({ok:false,error:String(e)}); }
   });
 }
 
@@ -42,7 +48,7 @@ function renderModelList() {
   // Only swap contents when closed; when open, defer to next close.
   if(listOpen){ pendingRender=true; return; }
   pendingRender=false;
-  modelListEl.innerHTML='';
+  modelListEl.textContent='';
   if(!modelsCache.length){
     const e=document.createElement('div');
     e.style.cssText='padding:14px;color:#9aa0a6;font-size:12px;text-align:center';
@@ -57,7 +63,13 @@ function renderModelList() {
     const item=document.createElement('div');
     item.className='modelItem'+(name===selectedModel?' active':'');
     item.dataset.model=name;
-    item.innerHTML=`<div class="mName">${name}</div><div class="mMeta">${meta||'local model'}</div>`;
+    const mName=document.createElement('div');
+    mName.className='mName';
+    mName.textContent=name;
+    const mMeta=document.createElement('div');
+    mMeta.className='mMeta';
+    mMeta.textContent=meta||'local model';
+    item.append(mName, mMeta);
     modelListEl.appendChild(item);
   });
 }

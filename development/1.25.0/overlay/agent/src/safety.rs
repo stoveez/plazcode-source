@@ -39,13 +39,87 @@ const LOCAL_READ: &[u64] = &[
     crate::hidden::fnv("roblox_lint_script"),
     crate::hidden::fnv("blender_file_info"),
     crate::hidden::fnv("blender_script_check"),
+    crate::hidden::fnv("tab_read"),
+    crate::hidden::fnv("tab_screenshot"),
+    // Read-only AgentScript extras (core/agent_skills.js)
+    crate::hidden::fnv("file_exists"),
+    crate::hidden::fnv("count_lines"),
+    crate::hidden::fnv("find_todos"),
+    crate::hidden::fnv("list_by_ext"),
+    crate::hidden::fnv("grep_count"),
+    crate::hidden::fnv("read_range"),
+    crate::hidden::fnv("file_stat"),
+    crate::hidden::fnv("list_recent"),
+    crate::hidden::fnv("git_status"),
+    crate::hidden::fnv("git_diff"),
+    crate::hidden::fnv("git_log"),
+    crate::hidden::fnv("dir_size"),
+    crate::hidden::fnv("which_cmd"),
 ];
+
+/// Blockbench read-only actions (mirrors `BLOCKBENCH_READ` in `core/safety.js`).
+const BLOCKBENCH_READ: &[&str] = &[
+    "blockbench_status",
+    "blockbench_formats",
+    "blockbench_outline",
+    "blockbench_select",
+    "blockbench_selection",
+    "blockbench_texture_list",
+    "blockbench_animation_list",
+    "blockbench_screenshot",
+    "blockbench_export",
+];
+
+/// Figma read-only actions (mirrors `FIGMA_READ` in `core/safety.js`).
+const FIGMA_READ: &[&str] = &[
+    "figma_status",
+    "figma_pages",
+    "figma_page_set",
+    "figma_outline",
+    "figma_node",
+    "figma_find",
+    "figma_selection",
+    "figma_select",
+    "figma_styles",
+    "figma_export",
+];
+
+fn is_plazcode_own(engine: &str, raw: &str, b: &str) -> bool {
+    if matches!(b, "list_commands" | "web_fetch" | "web_search" | "ultralab_read" | "roblox_docs") {
+        return true;
+    }
+    if engine == "blender" {
+        return b == "plazcode_shot";
+    }
+    raw.starts_with("plazcode_") || b.starts_with("plazcode_")
+}
+
+fn is_blockbench_read(engine: &str, b: &str) -> bool {
+    if let Some(_) = b.strip_prefix("blockbench_") {
+        return BLOCKBENCH_READ.contains(&b);
+    }
+    if engine == "blockbench" {
+        return BLOCKBENCH_READ.iter().any(|known| known.strip_prefix("blockbench_") == Some(b));
+    }
+    false
+}
+
+fn is_figma_read(engine: &str, b: &str) -> bool {
+    if let Some(_) = b.strip_prefix("figma_") {
+        return FIGMA_READ.contains(&b);
+    }
+    if engine == "figma" {
+        return FIGMA_READ.iter().any(|known| known.strip_prefix("figma_") == Some(b));
+    }
+    false
+}
 
 /// Studio / add-on tools that only look, matched on the tool name after any
 /// `server__` prefix.
 fn studio_read(bare: &str) -> bool {
     const PREFIXES: &[&str] = &["get_", "list_", "search_", "inspect_", "read_", "find_", "describe_", "query_"];
     const EXACT: &[&str] = &[
+        "tab_read", "tab_screenshot",
         "analyze_luau", "luau_lookup", "ui_audit", "ui_tokens", "script_read", "script_grep", "script_search", "script_analysis", "screen_capture",
         "browser_snapshot", "browser_take_screenshot", "browser_console_messages",
         "browser_network_requests", "browser_tabs", "browser_wait_for", "look",
@@ -55,10 +129,27 @@ fn studio_read(bare: &str) -> bool {
 
 fn bare(name: &str) -> &str { name.rsplit("__").next().unwrap_or(name) }
 
+/// True when the call only looks and makes no changes.
+pub fn is_read_only(engine: &str, name: &str) -> bool {
+    let b = bare(name);
+    if is_plazcode_own(engine, name, b) {
+        return true;
+    }
+    if engine == "blockbench" || b.starts_with("blockbench_") {
+        return is_blockbench_read(engine, b);
+    }
+    if engine == "figma" || b.starts_with("figma_") {
+        return is_figma_read(engine, b);
+    }
+    if engine == "local" && !name.contains("__") {
+        return crate::hidden::one_of(name, LOCAL_READ);
+    }
+    studio_read(b)
+}
+
 /// True when the call can change files, apps, Studio, Blender or anything else.
 pub fn is_change(engine: &str, name: &str) -> bool {
-    if engine == "local" && !name.contains("__") { return !crate::hidden::one_of(name, LOCAL_READ); }
-    !studio_read(bare(name))
+    !is_read_only(engine, name)
 }
 
 /// Only these native file tools implement a guaranteed read-only preview.
@@ -91,19 +182,60 @@ pub fn is_delete(engine: &str, name: &str, args: &Value) -> bool {
 /// Refuse the call when a safety limit applies. `confirmed` is set by the
 /// extension only after the user pressed Allow in PlazCode's own prompt.
 pub fn gate(read_only: bool, confirm_delete: bool, engine: &str, name: &str, args: &Value, confirmed: bool) -> Result<(), String> {
-    if read_only && is_change(engine, name) && !file_preview(engine,name,args) {
+    gate_with_approval(read_only, confirm_delete, "", engine, name, args, confirmed)
+}
+
+/// Refuse the call when a safety limit or `approval_mode` (`"ask"` / `"auto"` / `"bypass"`) applies.
+/// `confirmed` is set by the extension only after the user pressed Allow in PlazCode's own prompt.
+pub fn gate_with_approval(
+    read_only: bool,
+    confirm_delete: bool,
+    approval_mode: &str,
+    engine: &str,
+    name: &str,
+    args: &Value,
+    confirmed: bool,
+) -> Result<(), String> {
+    let preview = file_preview(engine, name, args);
+    let change = is_change(engine, name) && !preview;
+    if read_only && change {
         return Err(format!(
             "E_READ_ONLY: Read-only mode is on, so PlazCode did not run '{}'. The AI can look but not change anything. Turn off Read-only mode in Safety to allow changes.",
             bare(name)
         ));
     }
-    if confirm_delete && !confirmed && is_delete(engine, name, args) {
-        return Err(format!(
-            "E_CONFIRMATION_REQUIRED: '{}' deletes files, and Safety asks you to confirm deletes. PlazCode did not run it because no confirmation was given.",
-            bare(name)
-        ));
+    let mode = approval_mode.trim().to_ascii_lowercase();
+    match mode.as_str() {
+        "bypass" => Ok(()),
+        "" => {
+            if confirm_delete && !confirmed && is_delete(engine, name, args) {
+                return Err(format!(
+                    "E_CONFIRMATION_REQUIRED: '{}' deletes files, and Safety asks you to confirm deletes. PlazCode did not run it because no confirmation was given.",
+                    bare(name)
+                ));
+            }
+            Ok(())
+        }
+        "auto" => {
+            if !confirmed && is_delete(engine, name, args) {
+                return Err(format!(
+                    "E_CONFIRMATION_REQUIRED: '{}' deletes files, and Safety asks you to confirm deletes. PlazCode did not run it because no confirmation was given.",
+                    bare(name)
+                ));
+            }
+            Ok(())
+        }
+        // "ask" or any unknown mode fails closed: require explicit confirmation for any change or delete.
+        _ => {
+            if !confirmed && (change || is_delete(engine, name, args)) {
+                return Err(format!(
+                    "E_CONFIRMATION_REQUIRED: '{}' changes or deletes files/state, and Command approvals is set to Ask for approval. PlazCode did not run it because no confirmation was given.",
+                    bare(name)
+                ));
+            }
+            Ok(())
+        }
     }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -151,5 +283,73 @@ mod tests {
             assert!(gate(false, true, "local", "run_command", &json!({"command":command}), false).is_ok(), "{command}");
         }
         assert!(!is_delete("roblox", "delete_path", &json!({})), "Studio deletes stay undoable in Studio and are not asked twice");
+    }
+
+    #[test]
+    fn is_read_only_matches_studio_local_blockbench_figma_and_blender() {
+        for (engine, name) in [
+            ("roblox", "read_property"),
+            ("studio", "find_instances"),
+            ("studio", "describe_class"),
+            ("studio", "query_assets"),
+            ("roblox", "script_search"),
+            ("roblox", "playwright__browser_snapshot"),
+            ("roblox", "blender__look"),
+            ("roblox", "analyze_luau"),
+            ("roblox", "luau_lookup"),
+            ("roblox", "tab_read"),
+            ("roblox", "tab_screenshot"),
+            ("local", "tab_read"),
+            ("local", "tab_screenshot"),
+            ("local", "file_exists"),
+            ("local", "git_status"),
+            ("local", "which_cmd"),
+            ("blockbench", "blockbench_status"),
+            ("blockbench", "outline"),
+            ("blockbench", "blockbench_export"),
+            ("figma", "figma_status"),
+            ("figma", "outline"),
+            ("figma", "figma_export"),
+            ("blender", "get_scene_info"),
+            ("blender", "plazcode_shot"),
+            ("roblox", "plazcode_batch"),
+        ] {
+            assert!(is_read_only(engine, name), "{engine} {name} must be read-only");
+        }
+        for (engine, name) in [
+            ("blockbench", "blockbench_cube_add"),
+            ("blockbench", "cube_add"),
+            ("figma", "figma_frame_add"),
+            ("figma", "frame_add"),
+            ("blender", "execute_code"),
+            ("blender", "plazcode_op"),
+            ("local", "app_do"),
+            ("studio", "execute_luau"),
+        ] {
+            assert!(!is_read_only(engine, name), "{engine} {name} must not be read-only");
+        }
+    }
+
+    #[test]
+    fn gate_with_approval_enforces_ask_auto_and_bypass() {
+        // ask mode blocks unconfirmed changes and deletes even when confirm_delete is false, but allows reads & previews
+        assert!(gate_with_approval(false, false, "ask", "local", "write_file", &json!({}), false).is_err());
+        assert!(gate_with_approval(false, false, "ask", "local", "write_file", &json!({}), true).is_ok());
+        assert!(gate_with_approval(false, false, "ask", "local", "write_file", &json!({"preview": true}), false).is_ok());
+        assert!(gate_with_approval(false, false, "ask", "roblox", "tab_read", &json!({}), false).is_ok());
+        assert!(gate_with_approval(false, false, "ask", "blockbench", "cube_add", &json!({}), false).is_err());
+
+        // auto mode allows normal edits, blocks unconfirmed deletes
+        assert!(gate_with_approval(false, true, "auto", "local", "write_file", &json!({}), false).is_ok());
+        assert!(gate_with_approval(false, true, "auto", "local", "delete_path", &json!({"path": "x"}), false).is_err());
+        assert!(gate_with_approval(false, false, "auto", "local", "delete_path", &json!({"path": "x"}), false).is_err());
+        assert!(gate_with_approval(false, true, "auto", "local", "delete_path", &json!({"path": "x"}), true).is_ok());
+
+        // bypass mode skips confirmation even when confirm_delete is true, but read_only still blocks changes
+        assert!(gate_with_approval(false, true, "bypass", "local", "delete_path", &json!({"path": "x"}), false).is_ok());
+        assert!(gate_with_approval(true, true, "bypass", "local", "write_file", &json!({}), true).is_err());
+
+        // unknown approval mode fails closed like ask
+        assert!(gate_with_approval(false, false, "weird", "local", "write_file", &json!({}), false).is_err());
     }
 }

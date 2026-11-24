@@ -52,19 +52,53 @@ pub struct SavedApp {
     pub package: Option<crate::unity::Added>,
 }
 
+static FILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 pub fn store_path() -> PathBuf { mcp_addons::config_path().with_file_name("connections.json") }
 
+fn load_from_strict(path: &Path) -> anyhow::Result<Saved> {
+    match std::fs::read_to_string(path) {
+        Ok(raw) => Ok(serde_json::from_str(&raw)?),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Saved::default()),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn save_to_unlocked(path: &Path, saved: &Saved) -> anyhow::Result<()> {
+    let bytes = serde_json::to_vec_pretty(saved)?;
+    crate::preferences::write_atomic(path, &bytes)?;
+    Ok(())
+}
+
 pub fn load_from(path: &Path) -> Saved {
-    std::fs::read_to_string(path).ok().and_then(|raw| serde_json::from_str(&raw).ok()).unwrap_or_default()
+    let _guard = FILE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    match load_from_strict(path) {
+        Ok(saved) => saved,
+        Err(error) => {
+            tracing::warn!("Could not load connections from {}: {error}", path.display());
+            Saved::default()
+        }
+    }
 }
 
 pub fn save_to(path: &Path, saved: &Saved) -> anyhow::Result<()> {
-    if let Some(parent) = path.parent() { std::fs::create_dir_all(parent)?; }
-    let tmp = path.with_extension("json.tmp");
-    std::fs::write(&tmp, serde_json::to_vec_pretty(saved)?)?;
-    if path.exists() { std::fs::remove_file(path)?; }
-    std::fs::rename(tmp, path)?;
-    Ok(())
+    let _guard = FILE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    save_to_unlocked(path, saved)
+}
+
+/// Serialized read-modify-write for `connections.json`. Refuses to overwrite an existing unreadable or corrupt file.
+pub fn update_file<F>(path: &Path, mut edit: F) -> anyhow::Result<bool>
+where
+    F: FnMut(&mut Saved) -> bool,
+{
+    let _guard = FILE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut saved = load_from_strict(path)?;
+    if edit(&mut saved) {
+        save_to_unlocked(path, &saved)?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
 
 pub fn load() -> Saved { load_from(&store_path()) }
@@ -319,12 +353,14 @@ pub fn blender_programs() -> Vec<PathBuf> {
 /// Remember that PlazCode's own helper is in Blender, with its pairing word (or that it was taken out).
 pub fn mark_blender_helper(pairing: Option<String>) {
     let path = store_path();
-    let mut saved = load_from(&path);
-    if let Some(app) = saved.apps.get_mut("blender") {
+    if let Err(error) = update_file(&path, |saved| {
+        let Some(app) = saved.apps.get_mut("blender") else { return false; };
         app.helper = pairing.is_some();
-        app.pairing = pairing;
+        app.pairing = pairing.clone();
         app.verified = false;
-        let _ = save_to(&path, &saved);
+        true
+    }) {
+        tracing::warn!("Could not save Blender helper status to {}: {error}", path.display());
     }
 }
 
@@ -567,8 +603,14 @@ fn apply_blender(saved: &mut Saved, request: &SetupRequest, facts: &Facts) -> an
 /// Remember that Blender answered (or stopped answering) a real request with the current choices.
 pub fn mark_blender_verified(ok: bool) {
     let path = store_path();
-    let mut saved = load_from(&path);
-    if let Some(app) = saved.apps.get_mut("blender") { if app.verified != ok { app.verified = ok; let _ = save_to(&path, &saved); } }
+    if let Err(error) = update_file(&path, |saved| {
+        let Some(app) = saved.apps.get_mut("blender") else { return false; };
+        if app.verified == ok { return false; }
+        app.verified = ok;
+        true
+    }) {
+        tracing::warn!("Could not save Blender verification status to {}: {error}", path.display());
+    }
 }
 
 #[cfg(test)]
@@ -905,6 +947,8 @@ mod tests {
         assert_eq!(load_from(&root.join("missing.json")), Saved::default());
         std::fs::write(&file, "not json").unwrap();
         assert_eq!(load_from(&file), Saved::default(), "a damaged file starts clean instead of failing");
+        assert!(update_file(&file, |s| { s.apps.entry("browser".into()).or_default().verified = true; true }).is_err());
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "not json", "update_file preserves a corrupt connections file");
         let _ = std::fs::remove_dir_all(root);
     }
 }

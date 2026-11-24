@@ -88,12 +88,13 @@ const PlazCodeConnectionDoctor = (() => {
     let status: StatusSnapshot = ctx.status || {};
     if (!status.connected) {
       if (!opts.passive) push({ id: "app", state: "working", text: tr("Reconnecting to the PlazCode app…") });
-      try { await act.reconnect(); } catch {}
+      let reconnectErr = "";
+      try { await act.reconnect(); } catch (err) { reconnectErr = String((err as Error)?.message || err || ""); }
       status = await waitUntil(s => !!(s && s.connected), act.status, opts.bridgeWaitMs ?? 10000, stepMs) || {};
       if (!status.connected) {
         // Distinguish: (1) unofficial/wrong unpacked folder, (2) browser blocking localhost/local network access,
         // (3) HTTP 401/403 pairing refusal, vs (4) app not running ("Failed to fetch" / timeout).
-        const rawErr = String(status.bridge_error || "");
+        const rawErr = String(status.bridge_error || reconnectErr || "");
         const unofficial = /not the official one|PlazCode-Extension folder/i.test(rawErr);
         const blocked = /Site access to localhost|Local network access is blocked/i.test(rawErr);
         const pairing = /\bHTTP 40[13]\b/.test(rawErr);
@@ -105,7 +106,7 @@ const PlazCodeConnectionDoctor = (() => {
           : pairing
           ? tr("The PlazCode app refused this browser. Close and reopen the PlazCode app, then click Fix connection again.")
           : tr("The PlazCode app isn't running. Open PlazCode on your computer, then click Fix connection again."),
-          detail: rawErr.replace(/\s+/g, " ").slice(0, 240) });
+          detail: (rawErr || reconnectErr).replace(/\s+/g, " ").slice(0, 240) });
         return done("");
       }
       if (!opts.passive) steps.pop();
@@ -120,10 +121,11 @@ const PlazCodeConnectionDoctor = (() => {
       status = await waitUntil(s => { const e = engineState(s, engine); return e.ok || !e.checking; }, act.status, opts.mcpWaitMs ?? 15000, stepMs) || status;
       eng = engineState(status, engine);
     }
+    let restartErr = "";
     if (!eng.ok && engine === "roblox" && eng.studioOpen && eng.mcpOff && !opts.passive) {
       // Studio is open but its connection died: restart it once.
       push({ id: "engine", state: "working", text: tr("Restarting the connection to {tool}…", { tool }) });
-      try { await act.restartMcp(); } catch {}
+      try { await act.restartMcp(); } catch (err) { restartErr = String((err as Error)?.message || err || ""); }
       status = await waitUntil(s => engineState(s, engine).ok, act.status, opts.mcpWaitMs ?? 15000, stepMs) || status;
       eng = engineState(status, engine);
       steps.pop();
@@ -137,15 +139,22 @@ const PlazCodeConnectionDoctor = (() => {
       else if (!eng.studioOpen) text = tr("Open Roblox Studio.");
       else if (eng.mcpAnswered) text = tr("Open a place in Roblox Studio.");
       else text = tr("In Roblox Studio, open Assistant Settings > MCP Servers and turn the server on.");
-      push({ id: "engine", state: "action", text: eng.other ? text + " " + tr("You can also start with your other connected tool.") : text });
+      const detail = restartErr ? restartErr.replace(/\s+/g, " ").slice(0, 240) : "";
+      push({ id: "engine", state: "action", text: eng.other ? text + " " + tr("You can also start with your other connected tool.") : text, ...(detail ? { detail } : {}) });
       if (!eng.other) return done("");
     }
 
     // 4. This page must have a usable AI chat box.
     let composer: { ready?: boolean; detail?: string } = { ready: true };
-    try { composer = (await ctx.composer()) || { ready: false }; } catch { composer = { ready: false }; }
+    let composerErr = "";
+    try { composer = (await ctx.composer()) || { ready: false }; }
+    catch (err) {
+      composerErr = String((err as Error)?.message || err || "").replace(/\s+/g, " ").slice(0, 240);
+      composer = { ready: false };
+    }
     if (!composer.ready) {
-      push({ id: "chat-box", state: "action", text: composer.detail ? String(composer.detail) : tr("PlazCode can't find the chat box on this page. Open an AI chat on this site.") });
+      const detail = composer.detail ? "" : composerErr;
+      push({ id: "chat-box", state: "action", text: composer.detail ? String(composer.detail) : tr("PlazCode can't find the chat box on this page. Open an AI chat on this site."), ...(detail ? { detail } : {}) });
       return done("");
     }
     push({ id: "chat-box", state: "ok", text: tr("The chat box on this page is ready.") });

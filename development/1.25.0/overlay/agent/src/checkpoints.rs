@@ -43,13 +43,34 @@ pub struct Task {
     #[serde(default)] pub events:Vec<Event>,
 }
 #[derive(Default, Serialize, Deserialize)]
-pub struct Journal { #[serde(default)] pub projects: std::collections::HashMap<String,String>, tasks: Vec<Task>, #[serde(default)] pub protected: Vec<String>, #[serde(skip)] path: PathBuf, #[serde(skip)] outcomes: std::collections::HashMap<String,bool> }
+pub struct Journal { #[serde(default)] pub projects: std::collections::HashMap<String,String>, tasks: Vec<Task>, #[serde(default)] pub protected: Vec<String>, #[serde(skip)] path: PathBuf, #[serde(skip)] outcomes: std::collections::HashMap<String,bool>, #[serde(skip)] load_error: Option<String> }
 pub static STORE:once_cell::sync::Lazy<crate::profile_paths::ProfiledMutex<Journal>>=once_cell::sync::Lazy::new(||crate::profile_paths::ProfiledMutex::new("checkpoints.json",|path|tokio::sync::Mutex::new(Journal::load(path))));
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RobloxToolPlan {
+    pub read_only: bool,
+    pub uncheckpointed_mutation: bool,
+    pub label: String,
+}
 
 impl Journal {
     fn load(path: PathBuf) -> Self {
-        let mut journal: Self = std::fs::read(&path).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
+        let (mut journal, load_error) = match std::fs::read(&path) {
+            Ok(bytes) => match serde_json::from_slice::<Self>(&bytes) {
+                Ok(journal) => (journal, None),
+                Err(error) => {
+                    tracing::warn!("Could not parse checkpoints journal {}: {error}; existing file preserved.", path.display());
+                    (Self::default(), Some(format!("Checkpoint journal could not be parsed ({error}); existing file preserved.")))
+                }
+            },
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (Self::default(), None),
+            Err(error) => {
+                tracing::warn!("Could not read checkpoints journal {}: {error}; existing file preserved.", path.display());
+                (Self::default(), Some(format!("Checkpoint journal could not be read ({error}); existing file preserved.")))
+            }
+        };
         journal.path = path;
+        journal.load_error = load_error;
         for task in &mut journal.tasks {
             if task.status == "working" { task.status = "interrupted".into(); }
             if task.engine == "roblox" && !task.waypoints.is_empty() {
@@ -60,14 +81,12 @@ impl Journal {
     }
     fn bytes(&self) -> usize { self.tasks.iter().map(|t|t.files.iter().map(|f|f.before.as_ref().map_or(0,Vec::len)+f.after.as_ref().map_or(0,Vec::len)).sum::<usize>()+t.scripts.iter().map(|s|s.before.len()+s.after.len()).sum::<usize>()).sum() }
     pub fn save(&mut self) -> anyhow::Result<()> {
+        if let Some(error) = &self.load_error { anyhow::bail!("{error}"); }
         while self.tasks.len() > 30 || self.bytes() > STORE_LIMIT {
             let Some(index) = self.tasks.iter().position(|t| t.status != "working") else { anyhow::bail!("Checkpoint storage is full; finish active tasks first."); };
             self.tasks.remove(index);
         }
-        if let Some(parent) = self.path.parent() { std::fs::create_dir_all(parent)?; }
-        let temp = self.path.with_extension("tmp");
-        std::fs::write(&temp, serde_json::to_vec(self)?)?;
-        std::fs::rename(temp, &self.path)?;
+        crate::preferences::write_atomic(&self.path, &serde_json::to_vec(self)?)?;
         Ok(())
     }
     pub fn begin(&mut self, req: &Value) -> anyhow::Result<String> {
@@ -231,6 +250,128 @@ impl Journal {
         }
         self.task_mut(id)?.status = "reverted".into(); self.save()
     }
+
+    /// Short-lock pre-execution step for AgentScript (`local`) tools. Drop the `STORE` lock before awaiting tool execution.
+    pub fn begin_local_tool(&mut self, ws: &Workspace, id: &str, name: &str, args: &Value) -> anyhow::Result<Vec<String>> {
+        let task = self.task(id)?;
+        anyhow::ensure!(task.status == "working" && task.engine == "local", "This command was not run: its task has already ended, or it belongs to the other mode (Roblox / AgentScript). Send a new message in the chat to start a fresh task.");
+        self.prepare_files(ws, id, name, args)
+    }
+
+    /// Short-lock post-execution step for AgentScript (`local`) tools after the async tool future completes.
+    pub fn finish_local_tool(&mut self, ws: &Workspace, id: &str, name: &str, args: &Value, paths: &[String], success: bool) -> anyhow::Result<()> {
+        self.set_outcome(id, success);
+        if let Ok(task) = self.task_mut(id) {
+            if task.learning.len() < 101 && !(name == "run_command" && args["background"].as_bool() == Some(true)) {
+                task.learning.push(crate::shared_learning::observation(name, args, success));
+            }
+        }
+        if let Err(error) = self.save() {
+            tracing::warn!("Could not save checkpoint outcome for {id}: {error}");
+        }
+        if let Err(error) = self.commit_files(ws, id, paths) {
+            self.warn(id, &format!("Checkpoint verification failed: {error}"));
+            if let Ok(task) = self.task_mut(id) {
+                task.learning.push(crate::shared_learning::observation("checkpoint_verification_failed", &Value::Null, false));
+            }
+            if let Err(save_err) = self.save() {
+                tracing::warn!("Could not save checkpoint verification warning for {id}: {save_err}");
+            }
+        }
+        Ok(())
+    }
+
+    /// Short-lock pre-execution step for Roblox Studio tools. Drop the `STORE` lock before awaiting `roblox_tool`.
+    pub fn begin_roblox_tool(&mut self, ws: &Workspace, id: &str, name: &str, args: &Value) -> anyhow::Result<RobloxToolPlan> {
+        let task = self.task(id)?;
+        anyhow::ensure!(task.status == "working" && task.engine == "roblox", "This command was not run: its task has already ended, or it belongs to the other mode (Roblox / AgentScript). Send a new message in the chat to start a fresh task.");
+        self.step(id, name);
+        let read_only = crate::safety::is_read_only("roblox", name);
+        if !read_only {
+            self.check_protection(ws, id, "roblox", name, args)?;
+        }
+        if read_only {
+            return Ok(RobloxToolPlan { read_only: true, uncheckpointed_mutation: false, label: String::new() });
+        }
+        if name.contains("__") || args["datamodel_type"].as_str().map_or(false, |dm| dm != "Edit") {
+            self.warn(id, "This task includes an external server or runtime operation. Studio task revert is disabled.");
+            self.save()?;
+            return Ok(RobloxToolPlan { read_only: false, uncheckpointed_mutation: true, label: String::new() });
+        }
+        let label = format!("PlazCode {} {}", id, self.task(id)?.steps.len());
+        Ok(RobloxToolPlan { read_only: false, uncheckpointed_mutation: false, label })
+    }
+
+    /// Short-lock post-execution step for Roblox Studio mutating tools after `roblox_tool` calls complete.
+    pub fn finish_roblox_tool(
+        &mut self,
+        id: &str,
+        label: &str,
+        outcome_ok: bool,
+        script_snap: Option<(&Value, &Value, Value)>,
+        before_marked: bool,
+        marked_output: Result<&str, ()>,
+    ) -> anyhow::Result<()> {
+        if !before_marked {
+            self.warn(id, "Studio could not establish an undo boundary. This task has no verified complete rollback.");
+        }
+        if let Some((before, after, studio)) = script_snap {
+            if let Err(error) = self.record_script(id, before, after, studio) {
+                self.warn(id, &format!("Selective script snapshot unavailable: {error}"));
+            }
+        }
+        match marked_output {
+            Ok(out_text) => {
+                let raw = out_text.trim();
+                let parsed = serde_json::from_str::<Value>(raw).ok().or_else(|| {
+                    let a = raw.find('{')?;
+                    let z = raw.rfind('}')?;
+                    serde_json::from_str(&raw[a..=z]).ok()
+                });
+                if parsed.as_ref().map_or(false, |v| v["available"] == true && v["name"] == label) {
+                    self.task_mut(id)?.waypoints.push(label.to_string());
+                } else {
+                    self.warn(id, "Studio did not expose the task's named undo waypoint. Automatic revert is disabled rather than undoing unrelated edits.");
+                }
+            }
+            Err(()) => self.warn(id, "Studio checkpoint completion was not confirmed. Automatic revert is disabled."),
+        }
+        if !outcome_ok {
+            self.warn(id, "A Studio mutation failed with an uncertain outcome. Check Studio before attempting a restore.");
+        }
+        self.save()
+    }
+
+    /// Short-lock helper for `revert-one` on Studio script snapshots before dropping the lock for `roblox_tool`.
+    pub fn studio_script_snapshot(&self, id: &str, path: &str, studio_id: &Value) -> anyhow::Result<ScriptChange> {
+        let task = self.task(id)?;
+        anyhow::ensure!(task.status != "working" && task.status != "reverted", "Wait for this task to finish.");
+        let snapshot = task.scripts.iter().find(|s| s.path == path && s.studio_id == *studio_id)
+            .ok_or_else(|| anyhow::anyhow!("Script snapshot not found."))?.clone();
+        anyhow::ensure!(snapshot.session == *SNAPSHOT_SESSION, "Studio snapshots cannot be restored after restarting the bridge.");
+        Ok(snapshot)
+    }
+
+    /// Short-lock completion for `revert-one` after Studio confirmed script restore.
+    pub fn finish_script_restore(&mut self, id: &str, path: &str, studio_id: &Value) -> anyhow::Result<()> {
+        self.task_mut(id)?.scripts.retain(|s| !(s.path == path && s.studio_id == *studio_id));
+        self.warn(id, "An individual script was restored. Whole-task Studio undo is disabled because its history changed.");
+        self.save()
+    }
+
+    /// Short-lock helper for `revert` on Studio waypoints before dropping the lock for `roblox_tool`.
+    pub fn studio_revert_waypoints(&self, id: &str) -> anyhow::Result<Vec<String>> {
+        let task = self.task(id)?;
+        anyhow::ensure!(task.status != "working" && task.status != "reverted" && task.warnings.is_empty(), "This checkpoint cannot be safely reverted.");
+        anyhow::ensure!(!task.waypoints.is_empty(), "No verified Studio undo checkpoints.");
+        Ok(task.waypoints.clone())
+    }
+
+    /// Short-lock completion for `revert` after Studio confirmed task revert.
+    pub fn mark_reverted(&mut self, id: &str) -> anyhow::Result<()> {
+        self.task_mut(id)?.status = "reverted".into();
+        self.save()
+    }
 }
 fn read(path: &PathBuf) -> anyhow::Result<Option<Vec<u8>>> {
     let meta = match std::fs::symlink_metadata(path) { Ok(meta)=>meta, Err(e) if e.kind()==std::io::ErrorKind::NotFound=>return Ok(None), Err(e)=>return Err(e.into()) };
@@ -368,5 +509,40 @@ mod tests {
     fn studio_restore_checks_every_waypoint_and_rolls_back_on_a_gap() {
         let code=studio_revert(&["PlazCode task-a 1".into(),"PlazCode task-a 2".into()]);
         assert!(code.contains("Name~=Labels[Index]"));assert!(code.contains("Chs:Redo()"));assert!(code.contains("IsRunning()"));
+    }
+    #[test]
+    fn corrupt_journal_is_preserved_and_short_lock_helpers_work() {
+        let dir = std::env::temp_dir().join(format!("plazcode-journal-corrupt-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let corrupt_path = dir.join("checkpoints.json");
+        std::fs::write(&corrupt_path, b"{broken checkpoints").unwrap();
+        let mut corrupt = Journal::load(corrupt_path.clone());
+        assert!(corrupt.load_error.is_some());
+        assert!(corrupt.begin(&json!({"engine":"local"})).is_err());
+        assert_eq!(std::fs::read(&corrupt_path).unwrap(), b"{broken checkpoints");
+
+        let ws = Workspace::new(dir.to_str()).unwrap();
+        let mut j = Journal::load(dir.join("valid.json"));
+        let local_id = j.begin(&json!({"engine":"local"})).unwrap();
+        std::fs::write(dir.join("f.txt"), b"v1").unwrap();
+        let paths = j.begin_local_tool(&ws, &local_id, "edit_file", &json!({"path":"f.txt"})).unwrap();
+        std::fs::write(dir.join("f.txt"), b"v2").unwrap();
+        j.finish_local_tool(&ws, &local_id, "edit_file", &json!({"path":"f.txt"}), &paths, true).unwrap();
+        assert_eq!(j.take_outcome(&local_id), Some(true));
+        assert_eq!(j.task(&local_id).unwrap().learning.len(), 1);
+
+        let rbx_id = j.begin(&json!({"engine":"roblox"})).unwrap();
+        let read_plan = j.begin_roblox_tool(&ws, &rbx_id, "get_children", &json!({})).unwrap();
+        assert!(read_plan.read_only);
+        let write_plan = j.begin_roblox_tool(&ws, &rbx_id, "execute_luau", &json!({"datamodel_type":"Edit"})).unwrap();
+        assert!(!write_plan.read_only && !write_plan.uncheckpointed_mutation);
+        let marked = json!({"available": true, "name": write_plan.label}).to_string();
+        j.finish_roblox_tool(&rbx_id, &write_plan.label, true, None, true, Ok(&marked)).unwrap();
+        j.finish(&rbx_id, true).unwrap();
+        assert_eq!(j.studio_revert_waypoints(&rbx_id).unwrap(), vec![write_plan.label]);
+        j.mark_reverted(&rbx_id).unwrap();
+        assert_eq!(j.task(&rbx_id).unwrap().status, "reverted");
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

@@ -11,10 +11,33 @@ struct Script { script_id:String, path:String, class:String, source:String, term
 struct Template {id:String,name:String,description:String,extension:String,scripts:Vec<Script>,instances:usize}
 #[derive(Default,Serialize,Deserialize)]
 struct Catalog {templates:Vec<Template>}
-pub struct Store {root:PathBuf,catalog:Mutex<Catalog>}
+pub struct Store {root:PathBuf,load_error:Option<String>,catalog:Mutex<Catalog>}
 impl Store {
-    fn new(root:PathBuf)->Self{let catalog=std::fs::read(root.join("catalog.json")).ok().and_then(|b|serde_json::from_slice(&b).ok()).unwrap_or_default();Self{root,catalog:Mutex::new(catalog)}}
-    fn save(&self,catalog:&Catalog)->anyhow::Result<()>{std::fs::create_dir_all(&self.root)?;let tmp=self.root.join("catalog.tmp");std::fs::write(&tmp,serde_json::to_vec(catalog)?)?;std::fs::rename(tmp,self.root.join("catalog.json"))?;Ok(())}
+    fn new(root:PathBuf)->Self{
+        let catalog_path = root.join("catalog.json");
+        let (catalog, load_error) = match std::fs::read(&catalog_path) {
+            Ok(bytes) => match serde_json::from_slice::<Catalog>(&bytes) {
+                Ok(catalog) => (catalog, None),
+                Err(error) => {
+                    tracing::warn!("Could not parse template catalog {}: {error}; existing file preserved.", catalog_path.display());
+                    (Catalog::default(), Some(format!("Template catalog could not be parsed ({error}); existing file preserved.")))
+                }
+            },
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (Catalog::default(), None),
+            Err(error) => {
+                tracing::warn!("Could not read template catalog {}: {error}; existing file preserved.", catalog_path.display());
+                (Catalog::default(), Some(format!("Template catalog could not be read ({error}); existing file preserved.")))
+            }
+        };
+        Self{root,load_error,catalog:Mutex::new(catalog)}
+    }
+    fn save(&self,catalog:&Catalog)->anyhow::Result<()>{
+        if let Some(error) = &self.load_error {
+            anyhow::bail!("{error}");
+        }
+        crate::preferences::write_atomic(&self.root.join("catalog.json"), &serde_json::to_vec(catalog)?)?;
+        Ok(())
+    }
     fn original(&self,template:&Template)->PathBuf{self.root.join(&template.id).join(format!("template.{}",template.extension))}
     fn import(&self,name:&str,description:&str,bytes:&[u8])->anyhow::Result<Value>{
         anyhow::ensure!(!bytes.is_empty() && bytes.len()<=MAX_FILE,"Choose a Roblox file up to 512 MB.");
@@ -128,6 +151,14 @@ fn reply(result:anyhow::Result<Value>)->axum::response::Response{use axum::respo
         assert!(xml.len()>32*1024*1024);assert!(store.import("Large.rbxlx","Inventory",&xml).is_ok());assert_eq!(store.request(&json!({"action":"list"})).unwrap()["templates"][0]["scripts"],1);let _=std::fs::remove_dir_all(root);
     }
     #[test]fn camel_case_and_synonyms_improve_relevance(){assert!(terms("InventoryService").contains(&"inventory".into()));assert_eq!(terms("backpack"),terms("inventory"));assert_eq!(terms("fighting"),terms("combat"));}
+    #[test]fn corrupt_catalog_is_preserved_and_refuses_overwrite(){
+        let root=std::env::temp_dir().join(format!("plazcode-corrupt-template-test-{}",std::process::id()));let _=std::fs::remove_dir_all(&root);std::fs::create_dir_all(&root).unwrap();
+        let catalog_path=root.join("catalog.json");let broken=b"{not valid catalog";std::fs::write(&catalog_path,broken).unwrap();
+        let store=Store::new(root.clone());assert!(store.load_error.is_some());
+        assert!(store.save(&Catalog::default()).is_err());
+        assert_eq!(std::fs::read(&catalog_path).unwrap(),broken);
+        let _=std::fs::remove_dir_all(root);
+    }
 }
 
 // Large games arrive in small ordered chunks and are parsed from disk on a worker.

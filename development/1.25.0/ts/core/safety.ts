@@ -12,6 +12,9 @@ const PlazCodeSafety = (() => {
   // AgentScript (local) tools that only look; every other local tool is a change.
   const LOCAL_READ = new Set(["workspace_info", "list_directory", "tree", "read_file", "read_file_base64", "search_files",
     "grep_files", "file_info", "env_info", "process_list", "command_status", "screen_capture", "screen_record", "list_windows", "window_screenshot",
+    "tab_read", "tab_screenshot",
+    "file_exists", "count_lines", "find_todos", "list_by_ext", "grep_count", "read_range", "file_stat", "list_recent",
+    "git_status", "git_diff", "git_log", "dir_size", "which_cmd",
     "godot_project_info", "godot_scene_tree", "godot_check_script", "godot_find_uses", "unity_project_info", "unity_list_assets", "unity_scene_objects", "unity_packages",
     "roblox_place_info", "roblox_place_scripts", "roblox_place_search", "roblox_lint_script", "blender_file_info", "blender_script_check"]);
   // PlazCode's Blockbench actions that only look (core/blockbench-tools.js marks the same ones change:false).
@@ -20,7 +23,7 @@ const PlazCodeSafety = (() => {
   // PlazCode's Figma helper actions that only look (agent/figma_code.js marks the same ones change:false).
   const FIGMA_READ = new Set(["figma_status", "figma_pages", "figma_page_set", "figma_outline", "figma_node", "figma_find", "figma_selection", "figma_select", "figma_styles", "figma_export"]);
   const READ_PREFIXES = ["get_", "list_", "search_", "inspect_", "read_", "find_", "describe_", "query_"];
-  const READ_EXACT = new Set(["tab_screenshot", "analyze_luau", "luau_lookup", "script_read", "script_grep", "script_search", "script_analysis", "screen_capture",
+  const READ_EXACT = new Set(["tab_read", "tab_screenshot", "analyze_luau", "luau_lookup", "script_read", "script_grep", "script_search", "script_analysis", "screen_capture",
     "ui_audit", "ui_tokens", "browser_snapshot", "browser_take_screenshot", "browser_console_messages", "browser_network_requests", "browser_tabs", "browser_wait_for", "look"]);
   // PlazCode's own helpers that never touch the PC, Studio or Blender.
   const PLAZCODE_OWN = /^plazcode_|^list_commands$|^web_fetch$|^web_search$/;

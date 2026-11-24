@@ -363,14 +363,29 @@ impl Store {
         self.state=next;Ok(response)
     }
 }
-static STORE: Lazy<Mutex<anyhow::Result<Store>>> = Lazy::new(||Mutex::new(Store::load(crate::profile_paths::legacy_data_root().join("provider-pacing.json"))));
+static STORE: Lazy<Mutex<Option<Store>>> = Lazy::new(|| Mutex::new(None));
+fn select_or_reload<'a>(slot: &'a mut Option<Store>, target_path: PathBuf) -> anyhow::Result<&'a mut Store> {
+    let needs_reload = slot.as_ref().is_none_or(|s| s.path != target_path);
+    if needs_reload {
+        *slot = None;
+        let loaded = Store::load(target_path)
+            .map_err(|_| anyhow::anyhow!("The shared request timer could not be read. Restart PlazCode; no request was authorized."))?;
+        *slot = Some(loaded);
+    }
+    slot.as_mut().ok_or_else(|| anyhow::anyhow!("The shared request timer could not be read. Restart PlazCode; no request was authorized."))
+}
+pub fn reset_for_profile_switch() {
+    *STORE.lock().unwrap_or_else(|e| e.into_inner()) = None;
+}
 pub async fn post(axum::Json(req):axum::Json<Value>) -> axum::response::Response {
     use axum::response::IntoResponse;
     let now=chrono::Utc::now().timestamp_millis().max(0) as u64;
     let mut random=[0u8;2];
     if getrandom::getrandom(&mut random).is_err(){return (axum::http::StatusCode::SERVICE_UNAVAILABLE,axum::Json(json!({"ok":false,"error":"Request pacing is unavailable; no send was authorized."}))).into_response();}
     let jitter=u16::from_be_bytes(random) as u64%1801;
-    let result=STORE.lock().unwrap_or_else(|e|e.into_inner()).as_mut().map_err(|_|anyhow::anyhow!("The shared request timer could not be read. Restart PlazCode; no request was authorized.")).and_then(|s|s.update(&req,now,jitter));
+    let target_path = crate::profile_paths::data_root().join("provider-pacing.json");
+    let mut guard = STORE.lock().unwrap_or_else(|e|e.into_inner());
+    let result = select_or_reload(&mut guard, target_path).and_then(|s| s.update(&req, now, jitter));
     match result {Ok(v)=>axum::Json(v).into_response(),Err(e)=>(axum::http::StatusCode::BAD_REQUEST,axum::Json(json!({"ok":false,"error":e.to_string()}))).into_response()}
 }
 #[cfg(test)] mod tests {
@@ -462,5 +477,19 @@ pub async fn post(axum::Json(req):axum::Json<Value>) -> axum::response::Response
   assert_eq!(unlocked["label"],"Safe");
   assert_eq!(unlocked["heat"],12);
   assert_eq!(unlocked["risk_lock_remaining_ms"],0);
+ }
+ #[test] fn profile_switch_reloads_store_at_new_path_and_clears_state(){
+  let dir=std::env::temp_dir().join(format!("plazcode-pace-profile-{}",std::process::id()));
+  let _=fs::remove_dir_all(&dir);
+  let p1=dir.join("p1/provider-pacing.json");
+  let p2=dir.join("p2/provider-pacing.json");
+  let mut slot: Option<Store>=None;
+  assert_eq!(select_or_reload(&mut slot, p1.clone()).unwrap().update(&req("claim","a","one"),1000,0).unwrap()["allowed"],true);
+  assert_eq!(select_or_reload(&mut slot, p1.clone()).unwrap().update(&req("claim","b","two"),1000,0).unwrap()["allowed"],false);
+  // Switching path reloads isolated state for the new profile
+  assert_eq!(select_or_reload(&mut slot, p2.clone()).unwrap().update(&req("claim","b","two"),1000,0).unwrap()["allowed"],true);
+  reset_for_profile_switch();
+  assert!(STORE.lock().unwrap_or_else(|e|e.into_inner()).is_none());
+  let _=fs::remove_dir_all(dir);
  }
 }

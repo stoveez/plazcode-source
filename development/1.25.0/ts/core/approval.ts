@@ -40,7 +40,8 @@ const PlazCodeApproval = (() => {
     return out;
   }
   function removes(tool: string, args: unknown, engine: string, safety: SafetyLike) {
-    try { if(safety.isDelete(tool,args,engine))return true; } catch {}
+    try { if(safety.isDelete(tool,args,engine))return true; }
+    catch (err) { console.warn("[plazcode-approval] safety.isDelete failed; failing closed:", err); return true; }
     const name=bare(tool),a=(args||{}) as Record<string, any>;
     if(name==="app_do"&&appStepsRisk(a).length)return true;
     if(/(?:^|_)(?:delete|remove|destroy|clear)(?:_|$)/i.test(name))return true;
@@ -56,7 +57,8 @@ const PlazCodeApproval = (() => {
   }
 
   function needsApproval(tool: string, engine: string, safety: SafetyLike) {
-    try { return !!safety.isChange(tool, engine); } catch { return true; }
+    try { return !!safety.isChange(tool, engine); }
+    catch (err) { console.warn("[plazcode-approval] safety.isChange failed; failing closed:", err); return true; }
   }
 
   // Returns {title, kind, badge, note, target, summary, destructive}
@@ -64,8 +66,10 @@ const PlazCodeApproval = (() => {
     const a = (args && typeof args === "object" ? args : {}) as Record<string, any>;
     const name = bare(tool);
     let del = false, change = true;
-    try { del = !!safety.isDelete(tool, a, engine); } catch {}
-    try { change = !!safety.isChange(tool, engine); } catch {}
+    try { del = !!safety.isDelete(tool, a, engine); }
+    catch (err) { console.warn("[plazcode-approval] describe safety.isDelete failed; failing closed:", err); del = true; }
+    try { change = !!safety.isChange(tool, engine); }
+    catch (err) { console.warn("[plazcode-approval] describe safety.isChange failed; failing closed:", err); change = true; }
     let kind = del ? "deletes" : CODE_TOOLS.test(name) ? "runs code" : change ? "changes" : "read";
     const target = text(first(a, TARGET_KEYS)).replace(/\s+/g, " ").slice(0, 160);
     let note: string;

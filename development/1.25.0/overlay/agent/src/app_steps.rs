@@ -185,6 +185,7 @@ pub async fn app_do(ws: &crate::workspace::Workspace, args: &Value) -> Result<St
 async fn find_until(s: &mut platform::Session, win: &platform::Win, name: &str, field: bool, nth: u32, ms: u64) -> Result<Seen, String> {
     let until = std::time::Instant::now() + std::time::Duration::from_millis(ms);
     loop {
+        crate::desktop_control::touch();
         let seen = s.find(win, name, field, nth).await?;
         if matches!(seen, Seen::Found(_)) || std::time::Instant::now() >= until { return Ok(seen); }
         tokio::time::sleep(std::time::Duration::from_millis(400)).await;
@@ -202,12 +203,14 @@ async fn run(plan: Plan) -> Result<String, String> {
         if !plan.open { return Err(format!("{name} is not open. Set open:true (the default) to let PlazCode open it, or ask the person to open it.")); }
         opened = s.launch(&name).await?;
         for _ in 0..40 {
+            crate::desktop_control::touch();
             tokio::time::sleep(Duration::from_millis(500)).await;
             win = s.window(&name, &programs).await?;
             if win.is_some() { break; }
         }
     }
     let Some(win) = win else { return Err(format!("PlazCode opened {name} ({opened}) but no window of it appeared within 20 seconds.")); };
+    crate::desktop_control::touch();
     s.focus(&win).await;
     tokio::time::sleep(Duration::from_millis(350)).await;
     let mut done: Vec<String> = Vec::new();
@@ -247,12 +250,22 @@ async fn run(plan: Plan) -> Result<String, String> {
                 done.push(format!("Typed {} characters{}", text.chars().count(), into.as_ref().map(|f| format!(" into \"{f}\"")).unwrap_or_default()));
             }
             Step::Key(c) => { platform::keys(c).await.map_err(|e| fail(&done, n, e))?; done.push(format!("Pressed {}", combo_name(c))); tokio::time::sleep(Duration::from_millis(250)).await; }
-            Step::Wait(ms) => { tokio::time::sleep(Duration::from_millis(*ms)).await; done.push(format!("Waited {ms} ms")); }
+            Step::Wait(ms) => {
+                let mut remaining = *ms;
+                while remaining > 0 {
+                    crate::desktop_control::touch();
+                    let slice = remaining.min(1000);
+                    tokio::time::sleep(Duration::from_millis(slice)).await;
+                    remaining -= slice;
+                }
+                done.push(format!("Waited {ms} ms"));
+            }
             Step::WaitFor(target) => match find_until(&mut s, &win, target, false, 1, 10_000).await? {
                 Seen::Found(f) => done.push(format!("\"{}\" appeared", clip(&f.name, 80))),
                 Seen::Missing(_) => return Err(fail(&done, n, format!("\"{target}\" did not appear within 10 seconds."))),
             },
             Step::Read(target) => {
+                crate::desktop_control::touch();
                 let text = s.read(&win, target.as_deref()).await.map_err(|e| fail(&done, n, e))?;
                 done.push(format!("Read{}: {}", target.as_ref().map(|t| format!(" \"{t}\"")).unwrap_or_default(), clip(text.trim(), 1500)));
             }

@@ -81,8 +81,26 @@ const PlazCodeMemory = (() => {
     return { norm, nested, cleanName, baseName, withDefault, activeId, adopt, add, rename, forget };
   })();
   const storeApi = () => (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) ? chrome.storage.local : null;
-  const storeGet = (keys) => new Promise(resolve => { const st = storeApi(); if (!st) return resolve({}); try { st.get(keys, (v) => resolve(v || {})); } catch (e) { resolve({}); } });
-  const storeSet = (values) => new Promise(resolve => { const st = storeApi(); if (!st) return resolve(false); try { st.set(values, () => resolve(true)); } catch (e) { resolve(false); } });
+  const storeGet = (keys) => new Promise(resolve => {
+    const st = storeApi(); if (!st) return resolve({});
+    try {
+      st.get(keys, (v) => {
+        const err = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError;
+        if (err) { console.warn('[plazcode-memory] storeGet failed:', err.message || err); return resolve({}); }
+        resolve(v || {});
+      });
+    } catch (e) { console.warn('[plazcode-memory] storeGet threw:', e); resolve({}); }
+  });
+  const storeSet = (values) => new Promise(resolve => {
+    const st = storeApi(); if (!st) return resolve(false);
+    try {
+      st.set(values, () => {
+        const err = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError;
+        if (err) { console.warn('[plazcode-memory] storeSet failed:', err.message || err); return resolve(false); }
+        resolve(true);
+      });
+    } catch (e) { console.warn('[plazcode-memory] storeSet threw:', e); resolve(false); }
+  });
   let seenVault = null, vaultSwitchNotice = '';
   // Every tab calls this: when another tab or the settings page switched vaults, drop what this tab cached.
   async function syncActiveVault() {
@@ -122,7 +140,7 @@ const PlazCodeMemory = (() => {
     await syncActiveVault();
     if (vaultOffSeen) {
       if (Date.now() - vaultOffAt < 15000) return null;
-      try { await vaultCall({ action: 'settings' }); } catch {}
+      try { await vaultCall({ action: 'settings' }); } catch (error) { console.warn('[plazcode-memory] vaultOff probe failed:', error); }
       if (vaultOffSeen) { vaultOffAt = Date.now(); return null; }
     }
     if (vaultFailedAt && Date.now() - vaultFailedAt < 60000) return null;
@@ -132,9 +150,9 @@ const PlazCodeMemory = (() => {
       if (!vaultReady) { await vaultCall({ action: 'init' }); vaultReady = true; }
       const reply = await vaultCall({ action: 'index', project: project || '', limit: 30 });
       // The brain map: every note and every link. An older app without it just keeps the short list.
-      let graph = null; try { graph = await vaultCall({ action: 'graph' }); } catch { graph = null; }
+      let graph = null; try { graph = await vaultCall({ action: 'graph' }); } catch (error) { console.warn('[plazcode-memory] vault graph unavailable:', error); graph = null; }
       { const R = chatR(); if (R && Array.isArray(reply.notes)) reply.notes = reply.notes.filter((n) => !R.isChatNotePath(n.path)); } vaultState = { ...reply, project, graph: withoutChatNotes(graph) }; vaultFailedAt = 0; vaultFetchedAt = Date.now(); return vaultState;
-    } catch (error) { vaultState = null; if (!isVaultOffError(error)) vaultFailedAt = Date.now(); return null; }
+    } catch (error) { console.warn('[plazcode-memory] vaultRefresh failed:', error); vaultState = null; if (!isVaultOffError(error)) vaultFailedAt = Date.now(); return null; }
   }
   // ---- Chat notes: PlazCode saves every chat into the vault as a note under 11 Chats (see core/reliability.js chatNote) ----
   const chatR = () => (typeof PlazCodeReliability !== 'undefined' ? PlazCodeReliability : globalThis.PlazCodeReliability);
@@ -168,10 +186,10 @@ const PlazCodeMemory = (() => {
       try {
         const found = await vaultCall({ action: 'search', query: 'chat', type: 'previous-chat', limit: 30 });
         path = (found.results || []).map((r) => r.path).filter((x) => !!R && R.isChatNotePath(x) && x !== exclude).sort().reverse()[0] || '';
-      } catch { path = ''; }
+      } catch (error) { console.warn('[plazcode-memory] chatNoteLatest search failed:', error); path = ''; }
     }
     if (!path) return null;
-    try { const read = await vaultCall({ action: 'read', path }); return { path, text: String(read.text || read.body || '') }; } catch { return null; }
+    try { const read = await vaultCall({ action: 'read', path }); return { path, text: String(read.text || read.body || '') }; } catch (error) { console.warn('[plazcode-memory] chatNoteLatest read failed:', error); return null; }
   }
   // Chat notes stay out of the AI's startup list and brain map (they would crowd out the real notes); the AI can still search them.
   function withoutChatNotes(graph) {
@@ -469,7 +487,22 @@ const PlazCodeMemory = (() => {
     // Import a folder of notes: opens PlazCode's own import page (extension only; the desktop window gets it with the next app update).
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage && storeApi()) {
       q('[data-vault-import]').hidden = false;
-      q('[data-vault-import]').onclick = () => { try { chrome.runtime.sendMessage({ type: 'rs-open-vault-import' }, (reply) => { if (reply && reply.ok === false) say(reply.error || 'The import page could not open.'); }); } catch (error) { say('The import page could not open.'); } };
+      q('[data-vault-import]').onclick = () => {
+        try {
+          chrome.runtime.sendMessage({ type: 'rs-open-vault-import' }, (reply) => {
+            const err = chrome.runtime && chrome.runtime.lastError;
+            if (err) {
+              console.warn('[plazcode-memory] vault import sendMessage failed:', err.message || err);
+              say(err.message || 'The import page could not open.');
+              return;
+            }
+            if (!reply || reply.ok === false) say((reply && reply.error) || 'The import page could not open.');
+          });
+        } catch (error) {
+          console.warn('[plazcode-memory] vault import threw:', error);
+          say((error)?.message || 'The import page could not open.');
+        }
+      };
     }
     // ── the list of vaults (only where browser storage exists; the desktop window gets this with the next app update) ──
     const section = q('[data-vault-switch]');
@@ -533,7 +566,7 @@ const PlazCodeMemory = (() => {
         const id = vaultRegistry.activeId(list, lastInfo), entry = list.find(v => v.id === id);
         if (entry) await storeSet({ rsActiveVault: { id: entry.id, name: entry.name, at: Date.now() } }), seenVault = entry.id;
         section.hidden = false; renderList();
-      } catch (e) { /* the app may be older; the single-folder box above still works */ }
+      } catch (e) { console.warn('[plazcode-memory] loadList failed:', e); /* the app may be older; the single-folder box above still works */ }
     };
     q('[data-vault-save]').addEventListener('click', () => { setTimeout(loadList, 400); });
     localize(); load().then(loadList);
@@ -1156,7 +1189,7 @@ const PlazCodeMemory = (() => {
       if (imageCache.has(path)) return imageCache.get(path);
       const reply = await vaultCall({ action: 'read_image', path }); const url = 'data:' + reply.mimeType + ';base64,' + reply.data; imageCache.set(path, url); return url;
     }
-    function loadImage(img, path) { pictureUrl(path).then(url => { img.src = url; }).catch(() => { img.alt = baseName(path) + ' (could not be loaded)'; }); }
+    function loadImage(img, path) { pictureUrl(path).then(url => { img.src = url; }).catch((error) => { console.warn('[plazcode-memory] picture load failed:', path, error); img.alt = baseName(path) + ' (could not be loaded)'; }); }
 
     function paint(extra) {
       const path = current;
@@ -1179,7 +1212,7 @@ const PlazCodeMemory = (() => {
           if (push !== false) { history = history.slice(0, hpos + 1); history.push(path); hpos = history.length - 1; }
           paint(''); scroll.scrollTop = 0; return;
         }
-        const [read, back] = await Promise.all([vaultCall({ action: 'read', path, view: true }), vaultCall({ action: 'backlinks', path }).catch(() => ({ backlinks: [] }))]);
+        const [read, back] = await Promise.all([vaultCall({ action: 'read', path, view: true }), vaultCall({ action: 'backlinks', path }).catch((error) => { console.warn('[plazcode-memory] backlinks unavailable:', error); return { backlinks: [] }; })]);
         if (token !== openToken) return;
         current = String(read.path); revealPath(current);
         const links = (back.backlinks || []);

@@ -183,7 +183,7 @@ async fn revision_feed(client: &reqwest::Client, refs: reqwest::Url, raw_base: &
     revision_feed_named(client,refs,raw_base,"latest.json",limit).await
 }
 async fn revision_feed_named(client: &reqwest::Client, refs: reqwest::Url, raw_base: &str, name: &str, limit: Duration) -> anyhow::Result<Vec<u8>> {
-    anyhow::ensure!(matches!(name,"latest.json"|"latest-macos.json"),"Invalid platform release feed.");
+    anyhow::ensure!(matches!(name,"latest.json"|"latest-macos.json"|"latest-linux.json"),"Invalid platform release feed.");
     let bytes = fetch_feed(client, refs, limit.min(Duration::from_secs(5))).await?;
     let sha = advertised_main(&bytes)?;
     let cache_key=format!("{raw_base}/{sha}/{name}");
@@ -212,7 +212,11 @@ async fn current_feed(client: &reqwest::Client, url: &str, limit: Duration) -> a
     // (1.19.37 was only found after a manual update for this reason).
     if official {
         let name=if url==DEFAULT_MAC_FEED {"latest-macos.json"}else if url==DEFAULT_LINUX_FEED {"latest-linux.json"}else{"latest.json"};
-        if let Ok(Ok(raw)) = tokio::time::timeout(limit, revision_feed_named(client, reqwest::Url::parse(DEFAULT_REFS)?, "https://raw.githubusercontent.com/stoveez/PlazCode", name, limit)).await { return Ok(raw); }
+        match tokio::time::timeout(limit, revision_feed_named(client, reqwest::Url::parse(DEFAULT_REFS)?, "https://raw.githubusercontent.com/stoveez/PlazCode", name, limit)).await {
+            Ok(Ok(raw)) => return Ok(raw),
+            Ok(Err(error)) => tracing::warn!("Pinned revision feed ({name}) failed, falling back to raw feed: {error:#}"),
+            Err(_) => tracing::warn!("Pinned revision feed ({name}) timed out after {}s, falling back to raw feed", limit.as_secs()),
+        }
     }
     let mut last=anyhow::anyhow!("Release check timed out.");
     for attempt in 0..FEED_ATTEMPTS {
@@ -892,5 +896,39 @@ mod extension_update_tests {
         assert!(!extension_warning("1.24.25", "1.24.24", &[]).is_empty());
         assert!(!extension_warning("1.24.25", "1.24.25", &["1.24.24".into()]).is_empty());
         assert!(!extension_warning("1.24.25", "1.24.25", &["1.24.25".into(), "1.24.24".into()]).is_empty());
+    }
+    #[tokio::test] async fn revision_feed_named_accepts_linux_feed_and_rejects_unknown() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let client = reqwest::Client::new();
+        assert!(super::revision_feed_named(&client, reqwest::Url::parse("http://127.0.0.1:1/refs").unwrap(), "http://127.0.0.1:1", "latest-other.json", std::time::Duration::from_secs(1)).await.is_err());
+
+        let sha = "a".repeat(40);
+        let feed = serde_json::json!({"version": "1.25.0", "url": "https://example.com/PlazCode-Linux-1.25.0.tar.gz", "sha256": "b".repeat(64)}).to_string();
+        let pkt_payload = format!("{sha} refs/heads/main\n");
+        let pkt = format!("{:04x}{pkt_payload}0000", pkt_payload.len() + 4);
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = tokio::spawn(async move {
+            for _ in 0..2 {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let mut buf = [0u8; 2048];
+                let n = stream.read(&mut buf).await.unwrap();
+                let req = String::from_utf8_lossy(&buf[..n]);
+                let body = if req.contains("/info/refs") { pkt.clone() } else { feed.clone() };
+                let reply = format!("HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+                stream.write_all(reply.as_bytes()).await.unwrap();
+            }
+        });
+        let raw = super::revision_feed_named(
+            &client,
+            reqwest::Url::parse(&format!("http://127.0.0.1:{port}/info/refs?service=git-upload-pack")).unwrap(),
+            &format!("http://127.0.0.1:{port}"),
+            "latest-linux.json",
+            std::time::Duration::from_secs(5),
+        ).await.unwrap();
+        let parsed: serde_json::Value = serde_json::from_slice(&raw).unwrap();
+        assert_eq!(parsed["version"], "1.25.0");
+        server.await.unwrap();
     }
 }

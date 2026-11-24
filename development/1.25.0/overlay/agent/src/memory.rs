@@ -17,14 +17,30 @@ pub fn derive_title(text: &str) -> String {
     if line.chars().count() > 60 { title.push('\u{2026}'); }
     title
 }
-pub struct Store { path: PathBuf, data: Mutex<Memory> }
+pub struct Store { path: PathBuf, load_error: Option<String>, data: Mutex<Memory> }
 impl Store {
     pub fn load(path: PathBuf) -> Self {
-        let data = std::fs::read(&path).ok().and_then(|raw| serde_json::from_slice(&raw).ok()).unwrap_or_default();
-        Self { path, data: Mutex::new(data) }
+        let (data, load_error) = match std::fs::read(&path) {
+            Ok(raw) => match serde_json::from_slice::<Memory>(&raw) {
+                Ok(data) => (data, None),
+                Err(error) => {
+                    tracing::warn!("Could not parse memory file {}: {error}; existing file preserved.", path.display());
+                    (Memory::default(), Some(format!("Memory file could not be parsed ({error}); existing file preserved.")))
+                }
+            },
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (Memory::default(), None),
+            Err(error) => {
+                tracing::warn!("Could not read memory file {}: {error}; existing file preserved.", path.display());
+                (Memory::default(), Some(format!("Memory file could not be read ({error}); existing file preserved.")))
+            }
+        };
+        Self { path, load_error, data: Mutex::new(data) }
     }
     pub fn snapshot(&self) -> Memory { self.data.lock().unwrap_or_else(|e| e.into_inner()).clone() }
     pub fn update(&self, req: Value) -> anyhow::Result<Memory> {
+        if let Some(error) = &self.load_error {
+            anyhow::bail!("{error}");
+        }
         let mut lock = self.data.lock().unwrap_or_else(|e| e.into_inner());
         let mut next = lock.clone();
         match req["action"].as_str().unwrap_or("") {
@@ -69,10 +85,7 @@ impl Store {
             "remove" => { let id = req["id"].as_u64().unwrap_or(0); next.entries.retain(|entry| entry.id != id); }
             _ => anyhow::bail!("Unknown memory action."),
         }
-        if let Some(parent) = self.path.parent() { std::fs::create_dir_all(parent)?; }
-        let temp = self.path.with_extension("tmp");
-        std::fs::write(&temp, serde_json::to_vec_pretty(&next)?)?;
-        std::fs::rename(&temp, &self.path)?;
+        crate::preferences::write_atomic(&self.path, &serde_json::to_vec_pretty(&next)?)?;
         *lock = next.clone(); Ok(next)
     }
 }
@@ -155,6 +168,19 @@ mod tests {
         assert_eq!(store.snapshot().entries[2].title, "Imported fact");
         let legacy: Entry = serde_json::from_str(r#"{"id":9,"text":"old","source":"s"}"#).unwrap(); assert!(legacy.title.is_empty());
         assert_eq!(derive_title(&"a".repeat(80)).chars().count(), 61);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+    #[test]
+    fn corrupt_memory_file_is_preserved_and_refuses_overwrite() {
+        let dir = std::env::temp_dir().join(format!("plazcode-memory-corrupt-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("memory.json");
+        std::fs::write(&path, b"{broken memory").unwrap();
+        let store = Store::load(path.clone());
+        assert!(store.load_error.is_some());
+        assert!(store.update(json!({"action":"add","text":"new note"})).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), b"{broken memory");
         let _ = std::fs::remove_dir_all(dir);
     }
 }

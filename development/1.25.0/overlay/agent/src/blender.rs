@@ -188,6 +188,9 @@ const NOT_SET_UP: &str = "Blender is not set up in PlazCode yet. Open PlazCode, 
 
 /// Run one Blender request the way the person chose (background Blender or their open window).
 pub async fn run(choice: &crate::connections::BlenderChoice, request: &Value) -> Value {
+    if !choice.consent {
+        return json!({"ok": false, "blender": false, "error": NOT_SET_UP});
+    }
     let kind = request["type"].as_str().unwrap_or("get_scene_info");
     let seconds = if kind == "get_scene_info" {8} else {request["timeout_seconds"].as_u64().unwrap_or(120).clamp(1,180)};
     let params = request.get("params").cloned().unwrap_or_else(||json!({}));
@@ -429,5 +432,13 @@ fn command_response(result: anyhow::Result<Value>) -> Value {
         assert!(closed.downcast_ref::<NotListening>().is_some(),"{closed}");
         assert!(helper_shape(&json!({"status":"error","code":"wrong_pair","message":"other install"}))["message"]=="other install");
         assert!(helper_shape(&json!({"status":"error","code":"unknown_op"}))["message"].as_str().unwrap().contains("Add helper"));
+    }
+
+    #[tokio::test] async fn run_refuses_without_consent_before_dialing() {
+        let choice = crate::connections::BlenderChoice { consent: false, background: false, free_python: false, program: None, pairing: None };
+        let reply = run(&choice, &json!({"type": "get_scene_info", "params": {}})).await;
+        assert_eq!(reply["ok"], false);
+        assert_eq!(reply["blender"], false);
+        assert_eq!(reply["error"], NOT_SET_UP);
     }
 }

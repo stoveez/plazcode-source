@@ -100,6 +100,11 @@ impl State {
     }
     pub fn active(&self, now: Instant) -> bool { self.active_until.is_some_and(|until| now < until) }
     pub fn mark_active(&mut self, now: Instant) { self.stopped_at = None; self.active_until = Some(now + IDLE_END); }
+    pub fn touch(&mut self, now: Instant) {
+        if self.active(now) && !self.paused {
+            self.active_until = Some(now + IDLE_END);
+        }
+    }
     pub fn sharing(&self, now: Instant) -> bool { self.sharing_until.is_some_and(|until| now < until) }
     pub fn expecting(&self, now: Instant) -> bool { self.expect_until.is_some_and(|until| now < until) }
     /// Real input from the person while PlazCode is in control: pause (unless it is PlazCode's own input).
@@ -194,6 +199,7 @@ pub async fn point_then_act(x: i32, y: i32) {
     expect(800);
 }
 pub fn person_input() -> bool { let now = Instant::now(); with(|s| s.person_input(now)) }
+pub fn touch() { if !enabled() { return; } let now = Instant::now(); with(|s| s.touch(now)); }
 pub fn act(action: &str) -> Result<(), String> { let now = Instant::now(); with(|s| s.act(action, now)) }
 pub fn set_accent(accent: &str) {
     let ok = accent.len() == 7 && accent.starts_with('#') && accent[1..].bytes().all(|b| b.is_ascii_hexdigit());
@@ -483,5 +489,20 @@ mod tests {
         if std::env::var("PLAZCODE_CONTROL_V2").is_err() { assert_eq!(enabled(), cfg!(any(windows, target_os = "macos"))); assert_eq!(status().is_null(), !enabled()); }
         set_accent("javascript:"); set_accent("#12ab3"); assert_eq!(with(|s| s.accent.clone()), "");
         set_accent("#12ab3f"); assert_eq!(with(|s| s.accent.clone()), "#12ab3f");
+    }
+    #[test] fn touch_keeps_active_alive_without_overriding_pause_or_stop() {
+        let t = Instant::now();
+        let mut s = State::default();
+        s.touch(t);
+        assert!(!s.active(t), "touch never activates idle state");
+        s.mark_active(t);
+        s.touch(t + Duration::from_secs(6));
+        assert!(s.active(t + Duration::from_secs(12)), "touch extends active window past 8s");
+        assert!(s.person_input(t + Duration::from_secs(12)) && s.paused, "person_input still detects takeover after touch");
+        s.touch(t + Duration::from_secs(13));
+        assert!(s.paused, "touch does not clear pause");
+        s.act("stop", t + Duration::from_secs(14)).unwrap();
+        s.touch(t + Duration::from_secs(15));
+        assert!(!s.active(t + Duration::from_secs(15)), "touch does not reactivate after stop");
     }
 }

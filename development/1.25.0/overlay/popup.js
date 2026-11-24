@@ -289,6 +289,7 @@ if (runHint) {
 
 
 
+
 function render(s) {
   // AgentScript control rework (1.25.0): "Ask PlazCode" (shown while the worker reports control_v2). The click here counts as
   // the person's own action, so Chrome lets PlazCode open its side panel from the popup.
@@ -311,24 +312,31 @@ function render(s) {
   const mcpOk = !!s.connected;
   const studioOff = mcpOk && !editorOk;
   const ok = mcpOk && editorOk;
-  dot.className = "dot " + (s.connected ? (ok ? "on" : "warn") : "");
-  state.classList.toggle("ok", ok);
-  state.textContent = s.connected
+  const profileReq = s.profile_required === true;
+  dot.className = "dot " + (profileReq ? "warn" : s.connected ? (ok ? "on" : "warn") : "");
+  state.classList.toggle("ok", !profileReq && ok);
+  state.textContent = profileReq
+    ? "Sign in required — choose a profile in PlazCode"
+    : s.connected
     ? (ok ? (isLocal ? "Connected — AgentScript is ready" : "Connected — Studio is ready")
         : studioOff ? "Studio MCP is off — enable it in Assistant settings"
         : (isLocal ? "Bridge is up — AgentScript ready" : "Bridge is up — open Studio"))
     : "Bridge is offline — run PlazCode.exe";
-  tools.textContent = s.connected ? `${s.tools || 0} tools ready` : "Run PlazCode.exe";
+  tools.textContent = profileReq ? "Open PlazCode to sign in or continue as guest" : s.connected ? `${s.tools || 0} tools ready` : "Run PlazCode.exe";
   servers.textContent = s.connected
     ? list.map((x) => `${x.alive ? "●" : "○"} ${x.id} (${x.alive ? x.tools + " tools" : "down"})`).join("\n")
     : "";
-  if (hintRow) hintRow.style.display = ok ? "none" : "";
+  if (hintRow) hintRow.style.display = (profileReq || ok) ? "none" : "";
   // keep engine toggle in sync from bg status (in case popup opened after toggle)
   if (s.engine) try { const raw = s.engine === "anim" ? "roblox" : s.engine; const e = ENGINES.includes(raw) ? raw : "roblox"; if (typeof renderEngine === "function") renderEngine(e); } catch {}
 }
 
 async function refresh() {
-  const tab=await activeTab();chrome.runtime.sendMessage({ type: "status",tab_id:tab?.id }, (s) => s && render(s));
+  const tab=await activeTab();chrome.runtime.sendMessage({ type: "status",tab_id:tab?.id }, (s) => {
+    const err = chrome.runtime?.lastError;
+    if (err) { console.warn("[popup] status error:", err.message); return; }
+    if (s) render(s);
+  });
 }
 
 // Fix connection (1.24.21): run the checklist on the AI tab. If that tab can't
@@ -338,27 +346,39 @@ document.getElementById("fix-connection")?.addEventListener("click", (e) => {
   const button = e.currentTarget, label = button.textContent || "";
   const say = (text) => { button.textContent = text; setTimeout(() => { button.textContent = label; }, 4000); };
   const t = (text) => (globalThis.PlazCodeI18n?.t || ((x) => x))(text);
+  const sendReconnect = () => chrome.runtime.sendMessage({ type: "reconnect" }, () => {
+    const err = chrome.runtime?.lastError;
+    if (err) { console.warn("[popup] reconnect error:", err.message); return; }
+    setTimeout(refresh, 600);
+  });
   chrome.tabs.query({}, (tabs) => {
+    if (chrome.runtime?.lastError || !Array.isArray(tabs)) { sendReconnect(); return; }
     const active = tabs.find((x) => x.active && x.url && SUPPORTED_HOSTS.some((h) => x.url.includes(h)));
     const tab = active || tabs.find((x) => x.url && SUPPORTED_HOSTS.some((h) => x.url.includes(h)));
-    if (!tab || tab.id == null) { chrome.runtime.sendMessage({ type: "reconnect" }, () => setTimeout(refresh, 600)); say(t("Open an AI chat first")); return; }
+    if (!tab || tab.id == null) { sendReconnect(); say(t("Open an AI chat first")); return; }
     chrome.tabs.update(tab.id, { active: true });
     chrome.tabs.sendMessage(tab.id, { type: "rs-fix-connection" }).then((r) => {
       if (r && r.ok) window.close(); else throw Error("no answer");
     }).catch(() => {
-      chrome.runtime.sendMessage({ type: "reconnect" }, () => setTimeout(refresh, 600));
+      sendReconnect();
       say(t("Refresh your AI chat tab"));
     });
   });
 });
 document.getElementById("reconnect").addEventListener("click", () => {
-  chrome.runtime.sendMessage({ type: "reconnect" }, () => setTimeout(refresh, 600));
+  chrome.runtime.sendMessage({ type: "reconnect" }, () => {
+    const err = chrome.runtime?.lastError;
+    if (err) { console.warn("[popup] reconnect error:", err.message); return; }
+    setTimeout(refresh, 600);
+  });
 });
 document.getElementById("restart").addEventListener("click", async (e) => {
-  const target = e.target;
-  target.textContent = "Restarting…";
+  const button = e.currentTarget;
+  setActLabel(button, "Restarting…");
   const tab=await activeTab();chrome.runtime.sendMessage({ type: "restart_mcp",tab_id:tab?.id }, () => {
-    target.textContent = "⟳ Restart Roblox server";
+    const err = chrome.runtime?.lastError;
+    if (err) console.warn("[popup] restart_mcp error:", err.message);
+    setActLabel(button, popupEngine === "local" ? "Restart AgentScript server" : "Restart Roblox server");
     setTimeout(refresh, 600);
   });
 });
