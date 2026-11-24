@@ -1,0 +1,802 @@
+[
+ {
+  "path": "GUIDE.md",
+  "bytes": 2092,
+  "kind": "text"
+ },
+ {
+  "path": "README.md",
+  "bytes": 2891,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/DESIGN_SYSTEM.md",
+  "bytes": 20149,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/examples/DailyRewardsMenuExample.luau",
+  "bytes": 4057,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/examples/HarmonizedMenusExample.luau",
+  "bytes": 37835,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/examples/RebirthMenuExample.luau",
+  "bytes": 5156,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/examples/ShopMenuExample.luau",
+  "bytes": 25482,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/examples/StandardButtonExample.luau",
+  "bytes": 3471,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/LICENSE",
+  "bytes": 1074,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/README.md",
+  "bytes": 10739,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/RESTORATION.md",
+  "bytes": 555,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/SKILL.md",
+  "bytes": 28056,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/src/CheckUIComponents.luau",
+  "bytes": 40832,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/src/CheckUIController.luau",
+  "bytes": 6015,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/src/CheckUIIcons.luau",
+  "bytes": 128454,
+  "kind": "text"
+ },
+ {
+  "path": "resources/check-ui-clean/src/CheckUITheme.luau",
+  "bytes": 10925,
+  "kind": "text"
+ },
+ {
+  "path": "resources/el4cteo/LICENSE",
+  "bytes": 1064,
+  "kind": "text"
+ },
+ {
+  "path": "resources/el4cteo/README.md",
+  "bytes": 3486,
+  "kind": "text"
+ },
+ {
+  "path": "resources/el4cteo/skills/roblox-code-review/references/deprecated-apis.md",
+  "bytes": 11733,
+  "kind": "text"
+ },
+ {
+  "path": "resources/el4cteo/skills/roblox-code-review/SKILL.md",
+  "bytes": 5027,
+  "kind": "text"
+ },
+ {
+  "path": "resources/el4cteo/skills/roblox-input/SKILL.md",
+  "bytes": 8229,
+  "kind": "text"
+ },
+ {
+  "path": "resources/el4cteo/skills/roblox-npc-ai/references/scaling-npcs.md",
+  "bytes": 2666,
+  "kind": "text"
+ },
+ {
+  "path": "resources/el4cteo/skills/roblox-npc-ai/SKILL.md",
+  "bytes": 6801,
+  "kind": "text"
+ },
+ {
+  "path": "resources/el4cteo/skills/roblox-physics/references/recipes.md",
+  "bytes": 4947,
+  "kind": "text"
+ },
+ {
+  "path": "resources/el4cteo/skills/roblox-physics/references/server-authority.md",
+  "bytes": 4602,
+  "kind": "text"
+ },
+ {
+  "path": "resources/el4cteo/skills/roblox-physics/SKILL.md",
+  "bytes": 10757,
+  "kind": "text"
+ },
+ {
+  "path": "resources/el4cteo/skills/roblox-testing/references/cloud-test-runner.md",
+  "bytes": 2797,
+  "kind": "text"
+ },
+ {
+  "path": "resources/el4cteo/skills/roblox-testing/SKILL.md",
+  "bytes": 6474,
+  "kind": "text"
+ },
+ {
+  "path": "resources/hyperlab/FixedWindowBudget.luau",
+  "bytes": 1216,
+  "kind": "text"
+ },
+ {
+  "path": "resources/hyperlab/FolkStudPanel.luau",
+  "bytes": 3421,
+  "kind": "text"
+ },
+ {
+  "path": "resources/sources.json",
+  "bytes": 808,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/assets/screenshots/20-validation-original-vs-generated-shop.jpg",
+  "bytes": 341485,
+  "kind": "binary"
+ },
+ {
+  "path": "resources/stud-ui-clean/assets/screenshots/22-validation-generated-daily-and-index.jpg",
+  "bytes": 361395,
+  "kind": "binary"
+ },
+ {
+  "path": "resources/stud-ui-clean/examples/01_ShopWindow.luau",
+  "bytes": 2598,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/examples/02_Hud.luau",
+  "bytes": 5969,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/examples/03_Rebirth.luau",
+  "bytes": 3064,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/examples/04_DailyRewards.luau",
+  "bytes": 3487,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/examples/05_IndexWithTabs.luau",
+  "bytes": 2435,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/examples/06_MenuController.client.luau",
+  "bytes": 3403,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/LICENSE",
+  "bytes": 1074,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/README.md",
+  "bytes": 17762,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/references/checklist.md",
+  "bytes": 4537,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/references/components.md",
+  "bytes": 11669,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/references/design-tokens.md",
+  "bytes": 12284,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/references/icon-catalog.md",
+  "bytes": 42175,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/references/icons-and-assets.md",
+  "bytes": 5180,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/references/layouts-and-archetypes.md",
+  "bytes": 8317,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/references/motion-and-sound.md",
+  "bytes": 4012,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/SKILL.md",
+  "bytes": 11970,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/src/CheckUIIcons.luau",
+  "bytes": 128454,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/src/StudMotion.luau",
+  "bytes": 15981,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/src/StudUI.luau",
+  "bytes": 56335,
+  "kind": "text"
+ },
+ {
+  "path": "resources/stud-ui-clean/THIRD_PARTY_NOTICES.md",
+  "bytes": 728,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/LICENSE.txt",
+  "bytes": 728,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/README.md",
+  "bytes": 4474,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/create-roblox-game/references/game-plan.md",
+  "bytes": 4365,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/create-roblox-game/references/mcp.md",
+  "bytes": 7432,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/create-roblox-game/references/pipeline.md",
+  "bytes": 11371,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/create-roblox-game/SKILL.md",
+  "bytes": 87800,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-3d-model/references/example-manifest.json",
+  "bytes": 1170,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-3d-model/references/hard-surface-route.md",
+  "bytes": 3395,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-3d-model/references/licences.md",
+  "bytes": 2275,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-3d-model/references/traps.md",
+  "bytes": 24170,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-3d-model/SKILL.md",
+  "bytes": 42079,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-animation/references/example-fk-punch.json",
+  "bytes": 8896,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-animation/references/pose-recipes.md",
+  "bytes": 4164,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-animation/references/traps.md",
+  "bytes": 26338,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-animation/scripts/luau/dump_kfs.luau",
+  "bytes": 1573,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-animation/scripts/rbx_axis_check.py",
+  "bytes": 9361,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-animation/scripts/to_roblox.py",
+  "bytes": 13172,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-animation/SKILL.md",
+  "bytes": 20403,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-build-orchestrator/references/stage-briefs.md",
+  "bytes": 7791,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-build-orchestrator/references/write-boundary.md",
+  "bytes": 4143,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-build-orchestrator/SKILL.md",
+  "bytes": 15310,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-code/references/patterns.md",
+  "bytes": 7246,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-code/references/traps.md",
+  "bytes": 6724,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-code/scripts/check.py",
+  "bytes": 4757,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-code/SKILL.md",
+  "bytes": 12779,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-map/references/map-design.md",
+  "bytes": 10632,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-map/references/movement-numbers.md",
+  "bytes": 4865,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-map/SKILL.md",
+  "bytes": 50932,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-map/specs/duel_arena.json",
+  "bytes": 3648,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-map/specs/minimal.json",
+  "bytes": 989,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-sfx/examples/spec.example.json",
+  "bytes": 440,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-sfx/scripts/emit_bank.py",
+  "bytes": 8574,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-sfx/scripts/emit_probe.py",
+  "bytes": 4667,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-sfx/scripts/find_sfx.py",
+  "bytes": 8967,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-sfx/scripts/pick.py",
+  "bytes": 5621,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-sfx/SKILL.md",
+  "bytes": 9785,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-skills-setup/scripts/check_setup.py",
+  "bytes": 6487,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-skills-setup/SKILL.md",
+  "bytes": 6962,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-texture-gen/SKILL.md",
+  "bytes": 8088,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-ui/examples/coin_hud.json",
+  "bytes": 1553,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-ui/references/theme.json",
+  "bytes": 970,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-ui/references/ui-recipes.md",
+  "bytes": 11146,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-ui/scripts/ui_build.py",
+  "bytes": 62526,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-ui/SKILL.md",
+  "bytes": 22861,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-vfx/references/DESIGN.md",
+  "bytes": 5577,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-vfx/references/HitSystem.luau",
+  "bytes": 32128,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-vfx/references/property-surface.md",
+  "bytes": 2824,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-vfx/references/styles/anime_cel.md",
+  "bytes": 3021,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-vfx/references/styles/STYLES.md",
+  "bytes": 3584,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-vfx/references/VFXKit.lua",
+  "bytes": 7123,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-vfx/scripts/emit_luau.py",
+  "bytes": 14773,
+  "kind": "text"
+ },
+ {
+  "path": "resources/syphodev/skills/roblox-vfx/SKILL.md",
+  "bytes": 79581,
+  "kind": "text"
+ },
+ {
+  "path": "skills/create-roblox-game/SKILL.md",
+  "bytes": 1283,
+  "kind": "text"
+ },
+ {
+  "path": "skills/hyperlab/SKILL.md",
+  "bytes": 1983,
+  "kind": "text"
+ },
+ {
+  "path": "skills/hyperlab-check-ui/SKILL.md",
+  "bytes": 1046,
+  "kind": "text"
+ },
+ {
+  "path": "skills/hyperlab-folk-stud/SKILL.md",
+  "bytes": 1710,
+  "kind": "text"
+ },
+ {
+  "path": "skills/hyperlab-reliability/SKILL.md",
+  "bytes": 2984,
+  "kind": "text"
+ },
+ {
+  "path": "skills/hyperlab-stud-clean/SKILL.md",
+  "bytes": 846,
+  "kind": "text"
+ },
+ {
+  "path": "skills/hyperlab-ui/SKILL.md",
+  "bytes": 1700,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-3d-model/SKILL.md",
+  "bytes": 1290,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-animation/SKILL.md",
+  "bytes": 1473,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-build-orchestrator/SKILL.md",
+  "bytes": 1224,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-code/SKILL.md",
+  "bytes": 1244,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-map/SKILL.md",
+  "bytes": 1282,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-sfx/SKILL.md",
+  "bytes": 1316,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-skills-setup/SKILL.md",
+  "bytes": 1088,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-texture-gen/SKILL.md",
+  "bytes": 1036,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-ui/SKILL.md",
+  "bytes": 1377,
+  "kind": "text"
+ },
+ {
+  "path": "skills/roblox-vfx/SKILL.md",
+  "bytes": 1557,
+  "kind": "text"
+ },
+ {
+  "path": "ultralab.py",
+  "bytes": 7857,
+  "kind": "text"
+ },
+ {
+  "path": "vault/02 Luau Scripting/Events Signals and Connections.md",
+  "bytes": 23150,
+  "kind": "text"
+ },
+ {
+  "path": "vault/02 Luau Scripting/Luau Type System and Strict Mode.md",
+  "bytes": 21982,
+  "kind": "text"
+ },
+ {
+  "path": "vault/02 Luau Scripting/Module Scripts and Requiring.md",
+  "bytes": 15217,
+  "kind": "text"
+ },
+ {
+  "path": "vault/02 Luau Scripting/Parallel Luau and Actors.md",
+  "bytes": 16261,
+  "kind": "text"
+ },
+ {
+  "path": "vault/02 Luau Scripting/Script Types and Run Context.md",
+  "bytes": 16465,
+  "kind": "text"
+ },
+ {
+  "path": "vault/02 Luau Scripting/Task Library Coroutines and Yielding.md",
+  "bytes": 15812,
+  "kind": "text"
+ },
+ {
+  "path": "vault/03 Architecture and Networking/Client-Server Model.md",
+  "bytes": 20771,
+  "kind": "text"
+ },
+ {
+  "path": "vault/03 Architecture and Networking/Instance Streaming.md",
+  "bytes": 19366,
+  "kind": "text"
+ },
+ {
+  "path": "vault/03 Architecture and Networking/Network Ownership.md",
+  "bytes": 19301,
+  "kind": "text"
+ },
+ {
+  "path": "vault/03 Architecture and Networking/Rate Limiting and Abuse Prevention.md",
+  "bytes": 19231,
+  "kind": "text"
+ },
+ {
+  "path": "vault/03 Architecture and Networking/RemoteEvents RemoteFunctions and Unreliable Remotes.md",
+  "bytes": 24224,
+  "kind": "text"
+ },
+ {
+  "path": "vault/03 Architecture and Networking/Server Authority and Validation.md",
+  "bytes": 21205,
+  "kind": "text"
+ },
+ {
+  "path": "vault/04 Data and Persistence/Data Schema Design and Migrations.md",
+  "bytes": 18485,
+  "kind": "text"
+ },
+ {
+  "path": "vault/04 Data and Persistence/DataStore Fundamentals.md",
+  "bytes": 23471,
+  "kind": "text"
+ },
+ {
+  "path": "vault/04 Data and Persistence/Purchase Data and Receipts.md",
+  "bytes": 17622,
+  "kind": "text"
+ },
+ {
+  "path": "vault/04 Data and Persistence/Saving Correctly - Autosave and BindToClose.md",
+  "bytes": 18410,
+  "kind": "text"
+ },
+ {
+  "path": "vault/04 Data and Persistence/Session Locking and Profile Libraries.md",
+  "bytes": 26742,
+  "kind": "text"
+ },
+ {
+  "path": "vault/05 UI and UX/Responsive UI for Phone Tablet Console and PC.md",
+  "bytes": 17267,
+  "kind": "text"
+ },
+ {
+  "path": "vault/05 UI and UX/UI Layout Objects - Lists Grids and Pages.md",
+  "bytes": 18616,
+  "kind": "text"
+ },
+ {
+  "path": "vault/05 UI and UX/UI Motion Language and Timing.md",
+  "bytes": 26312,
+  "kind": "text"
+ },
+ {
+  "path": "vault/07 Lighting VFX and Audio/VFX Performance Budgets and Culling.md",
+  "bytes": 26293,
+  "kind": "text"
+ },
+ {
+  "path": "vault/12 Performance Testing and Debugging/MicroProfiler Guide.md",
+  "bytes": 17941,
+  "kind": "text"
+ },
+ {
+  "path": "vault/12 Performance Testing and Debugging/Network Performance.md",
+  "bytes": 15337,
+  "kind": "text"
+ },
+ {
+  "path": "vault/12 Performance Testing and Debugging/Script Performance.md",
+  "bytes": 16279,
+  "kind": "text"
+ },
+ {
+  "path": "vault/16 MCP and Agents/MCP Workflows for Scripting and Debugging.md",
+  "bytes": 19463,
+  "kind": "text"
+ },
+ {
+  "path": "vault/16 MCP and Agents/Safety Rules for AI Agents in Studio.md",
+  "bytes": 14501,
+  "kind": "text"
+ },
+ {
+  "path": "vault/21 fwjelaa UI Design System/fwjelaa UI Spec.md",
+  "bytes": 11587,
+  "kind": "text"
+ },
+ {
+  "path": "vault/22 Anti-Exploit and Security/Testing Your Own Remotes - Fuzzing and Abuse Tests.md",
+  "bytes": 21373,
+  "kind": "text"
+ },
+ {
+  "path": "vault/23 Debugging Deep Dives/Debugging Client-Server Desync.md",
+  "bytes": 19322,
+  "kind": "text"
+ },
+ {
+  "path": "vault/23 Debugging Deep Dives/Debugging DataStore Problems.md",
+  "bytes": 20057,
+  "kind": "text"
+ },
+ {
+  "path": "vault/23 Debugging Deep Dives/Debugging Race Conditions and Yield Order.md",
+  "bytes": 19306,
+  "kind": "text"
+ },
+ {
+  "path": "vault/23 Debugging Deep Dives/Debugging UI Layout and Input.md",
+  "bytes": 20307,
+  "kind": "text"
+ },
+ {
+  "path": "vault/23 Debugging Deep Dives/The Debugging Method - Reproduce Isolate Bisect.md",
+  "bytes": 19099,
+  "kind": "text"
+ },
+ {
+  "path": "vault/42 Accessibility and Inclusive Design/Readable Text and UI Scale.md",
+  "bytes": 21488,
+  "kind": "text"
+ },
+ {
+  "path": "vault/44 Materials and Surfaces/SurfaceAppearance PBR Workflow.md",
+  "bytes": 21597,
+  "kind": "text"
+ },
+ {
+  "path": "vault/LICENSE.md",
+  "bytes": 1606,
+  "kind": "text"
+ },
+ {
+  "path": "vault/Start Here.md",
+  "bytes": 1868,
+  "kind": "text"
+ }
+]

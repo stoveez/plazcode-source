@@ -1,0 +1,27 @@
+{
+  "stud-ui-clean": {
+    "repository": "https://github.com/TemporaryLooker22/Stud-UI-Clean-Roblox",
+    "commit": "7ae67f3f4cf4bd55a597d8f58d81feebb1be7dee",
+    "files": 22
+  },
+  "check-ui-clean": {
+    "repository": "https://github.com/racher228/Check-UI-Clean-Roblox",
+    "commit": "af3921388414cebacdbf8288d1ad065614619f51",
+    "files": 14
+  },
+  "el4cteo": {
+    "repository": "https://github.com/EL4CTEO/roblox-skills",
+    "commit": "f94b0e499c124c11b30cd2cc0a57267090943049",
+    "files": 12
+  },
+  "syphodev": {
+    "archive": "roblox-ai-skills-main (5).zip",
+    "skills": 11,
+    "repository": "https://github.com/SyphoDev-yt/roblox-ai-skills"
+  },
+  "fwjelaa": {
+    "archive": "fwjelaa-vault-0.1.0-new.zip",
+    "notes": 35,
+    "repository": "https://github.com/lihfolk-cy/v2-vault"
+  }
+}

@@ -1,0 +1,190 @@
+// AgentScript control rework (1.25.0), step 4: "Ask PlazCode" side chat, with the real extension in Chromium (rework
+// on as shipped). The background AI chat is stood in for by the test (the worker's messages
+// to it are answered here); everything else is real: the panel page, the worker, sharing, pictures, approvals.
+// Runs as shipped ("real": debugger is a normal permission, pictures go with the question) and with a test-only copy
+// without it (no tab pictures, the panel says so plainly). Run from the PlazCode source root.
+const { chromium } = require('playwright'), fs = require('fs'), os = require('os'), path = require('path'), assert = require('node:assert/strict');
+async function run(mode) {
+  const root = process.cwd(), shipped = path.join(root, 'PlazCode-Extension');
+  let ext = shipped, copy = null;
+  if (mode === 'no-debugger') {
+    copy = fs.mkdtempSync(path.join(os.tmpdir(), 'plazcode-ask-ext-'));
+    fs.cpSync(shipped, copy, { recursive: true });
+    const manifest = JSON.parse(fs.readFileSync(path.join(copy, 'manifest.json'), 'utf8'));
+    manifest.permissions = manifest.permissions.filter((p) => p !== 'debugger');
+    fs.writeFileSync(path.join(copy, 'manifest.json'), JSON.stringify(manifest));
+    ext = copy;
+  }
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'plazcode-ask-'));
+  const context = await chromium.launchPersistentContext(profile, { headless: true, channel: 'chromium', viewport: { width: 1000, height: 700 }, args: ['--disable-extensions-except=' + ext, '--load-extension=' + ext, '--no-sandbox'] });
+  try {
+    let [worker] = context.serviceWorkers();
+    if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 20000 });
+    // A worker found right at start-up can answer before its extension APIs are there: wait until they are.
+    for (let i = 0; i < 100; i++) { try { if (await worker.evaluate(() => typeof chrome !== 'undefined' && !!chrome.tabs)) break; } catch {} await new Promise((r) => setTimeout(r, 100)); worker = context.serviceWorkers()[0] || worker; }
+    await context.route(/^https:\/\/chat\.test\//, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>Test AI</title>' }));
+    await context.route(/^https:\/\/control\.test\//, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>Shop</title><body style="background:#bbf7d0"><h1>Test shop</h1><button>Buy now</button></body>' }));
+    const chat = await context.newPage(); await chat.goto('https://chat.test/');
+    const shop = await context.newPage(); await shop.goto('https://control.test/');
+    await shop.bringToFront();
+    // The test stands in for the background AI chat: an AI site is any chat.test page here.
+    await worker.evaluate(async () => {
+      await chrome.storage.local.set({ rsAskSite: { url: 'https://chat.test/new', name: 'Test AI' } });
+      CONTROL_V2 = true; isProviderUrl = (u) => /^https:\/\/chat\.test\//.test(u || ''); self.__runs = []; self.__stops = 0;
+      const send = chrome.tabs.sendMessage.bind(chrome.tabs);
+      chrome.tabs.sendMessage = (id, m) => {
+        if (m && m.type === 'rs-helper-ping') return Promise.resolve({ ok: true, ready: true });
+        if (m && m.type === 'rs-ask-run') { self.__runs.push({ id, ask: m.ask }); return Promise.resolve({ ok: true }); }
+        if (m && m.type === 'rs-ask-stop') { self.__stops++; return Promise.resolve({ ok: true }); }
+        return send(id, m);
+      };
+    });
+    const ids = await worker.evaluate(async () => { const t = await chrome.tabs.query({}); const shop = t.find((x) => /control\.test/.test(x.url || '')); return { shop: shop.id, window: shop.windowId }; });
+    const extId = new URL(worker.url()).host;
+    const panel = await context.newPage();
+    await panel.goto('chrome-extension://' + extId + '/core/ask.html?window=' + ids.window);
+    await shop.bringToFront();
+    await panel.evaluate(() => document.getElementById('sharing').dispatchEvent(new Event('change')));
+    await panel.waitForFunction(() => /shared with PlazCode/.test(document.getElementById('shareSite').textContent), null, { timeout: 8000 });
+    assert.equal(await panel.innerText('#shareTitle'), 'Shop');
+    const look = () => worker.evaluate(async (id) => (await chrome.scripting.executeScript({ target: { tabId: id }, func: () => globalThis.__plazcodeControl ? globalThis.__plazcodeControl.state() : null }))[0].result, ids.shop);
+    let s = await look();
+    assert(s && s.sharing && s.label === 'Shared with PlazCode' && s.shown, 'the shared tab shows "Shared with PlazCode": ' + JSON.stringify(s));
+    assert.equal(await panel.isDisabled('#control'), false);
+    assert.equal(await panel.isChecked('#control'), true, 'a shared tab: "do things for me" is on, and works in a copy (own tab stays untouched)');
+
+    // A question: the background chat opens on the person's AI site and gets the question, the picture and the rules.
+    await panel.fill('#q', 'What is on this page?');
+    await panel.press('#q', 'Enter');
+    await worker.evaluate(async () => { for (let i = 0; i < 100 && !self.__runs.length; i++) await new Promise((r) => setTimeout(r, 100)); });
+    const runs = await worker.evaluate(() => self.__runs.splice(0));
+    assert.equal(runs.length, 1);
+    const asked = runs[0].ask;
+    assert.equal(asked.text, 'What is on this page?');
+    assert.deepEqual(asked.share, { tabId: ids.shop, title: 'Shop', url: 'https://control.test/' });
+    assert.equal(asked.control, true); assert.equal(asked.work, null, 'no copy exists before the AI opens one');
+    if (mode === 'real') assert(asked.images.length === 1 && asked.images[0].data.length > 1000, 'a fresh picture of the shared tab goes with the question');
+    else {
+      assert.equal(asked.images.length, 0);
+      await panel.waitForSelector('#banner:not([hidden])');
+      assert.match(await panel.innerText('#banner'), /does not let PlazCode take a picture/);
+      assert.equal(await panel.locator('#banner button').count(), 0, 'nothing to allow: the panel only explains');
+    }
+    const askTab = await worker.evaluate(() => ask.tabId);
+    assert(Number.isInteger(askTab) && askTab !== ids.shop, 'a separate background chat');
+    assert.equal(await panel.isDisabled('#go'), true, 'one question at a time');
+    // An approval from the background chat is asked in the panel; the answer goes back.
+    const approval = worker.evaluate((id) => askFromChat({ type: 'ask_approve', title: 'PlazCode wants to press "Buy now" in "Shop".', kicker: 'PlazCode always asks for this' }, { tab: { id } }), askTab);
+    await panel.waitForSelector('.approve');
+    assert.match(await panel.innerText('.approve'), /always asks[\s\S]*Buy now/i);
+    await panel.click('.approve button.main');
+    assert.deepEqual(await approval, { ok: true, allowed: true });
+    // Only the background chat may answer or ask for approvals.
+    assert.equal((await worker.evaluate((id) => askFromChat({ type: 'ask_reply', text: 'fake' }, { tab: { id } }), ids.shop)).ok, false);
+    // The answer appears in the panel and the panel is ready for the next question.
+    await worker.evaluate((id) => askFromChat({ type: 'ask_reply', status: 'done', text: 'It is a test shop with a Buy now button.' }, { tab: { id } }), askTab);
+    await panel.waitForSelector('.msg.ai');
+    assert.equal(await panel.innerText('.msg.ai'), 'It is a test shop with a Buy now button.');
+    assert.equal(await panel.isDisabled('#go'), false);
+    if (mode === 'real') { await panel.waitForFunction(() => { const c = document.getElementById('peek'); const d = c.getContext('2d').getImageData(112, 60, 1, 1).data; return d[1] > 150; }, null, { timeout: 8000 }); }
+    // With control switched on, the question says so; a second question reuses the same background chat; Stop goes there.
+    await panel.check('#control');
+    await panel.fill('#q', 'Press the button for me'); await panel.click('#go');
+    await worker.evaluate(async () => { for (let i = 0; i < 100 && !self.__runs.length; i++) await new Promise((r) => setTimeout(r, 100)); });
+    const second = await worker.evaluate(() => self.__runs.splice(0));
+    assert.equal(second[0].id, askTab); assert.equal(second[0].ask.control, true);
+    // Owner (2026-11-14): work like Claude in Chrome, in a duplicate tab. The AI opens a copy next to the person's tab; clicking,
+    // typing or going elsewhere in the person's OWN tab is refused; looking at it (picture) is fine; the panel follows the copy.
+    const opened = await worker.evaluate((id) => controlV2Tool({ type: 'tab_open', url: 'https://control.test/' }, { tab: { id } }), askTab);
+    assert.equal(opened.ok, true); assert.match(opened.text, /copy next to their tab \(tabId (\d+)\)/);
+    const copyId = Number(/tabId (\d+)/.exec(opened.text)[1]);
+    const where = await worker.evaluate(async ([a, b]) => { const x = await chrome.tabs.get(a), y = await chrome.tabs.get(b); return { sameWindow: x.windowId === y.windowId, next: y.index === x.index + 1, active: y.active }; }, [ids.shop, copyId]);
+    assert.deepEqual(where, { sameWindow: true, next: true, active: false }, 'the copy sits next to the person\'s tab, in the background');
+    for (const tool of ['tab_click_at', 'tab_type_text', 'tab_key', 'tab_scroll_at', 'tab_navigate']) {
+      const refused = await worker.evaluate(([id, shop, tool]) => controlV2Tool({ type: tool, tabId: shop, x: 5, y: 5, text: 'x', key: 'a', url: 'https://control.test/other', dy: 10 }, { tab: { id } }), [askTab, ids.shop, tool]);
+      assert.equal(refused.ok, false, tool + ' was not refused: ' + JSON.stringify(refused)); assert.match(refused.error, /person's own tab/, tool + ' on the own tab is refused');
+    }
+    const lookOnly = await worker.evaluate(([id, shop]) => controlV2Tool({ type: 'tab_screenshot', tabId: shop }, { tab: { id } }), [askTab, ids.shop]);
+    assert.doesNotMatch(String(lookOnly.error || ''), /person's own tab/, 'a picture of the own tab is allowed');
+    // The copy was opened by the worker; make sure the test's fake site is really loaded in it (the page can be requested before the test's
+    // route is attached to the new tab, and then shows a network error page): load it again until its title is the fake shop's.
+    await worker.evaluate(async (copy) => {
+      for (let tries = 0; tries < 6; tries++) {
+        for (let i = 0; i < 40; i++) { const t = await chrome.tabs.get(copy); if (t.status === 'complete') break; await new Promise((r) => setTimeout(r, 100)); }
+        const t = await chrome.tabs.get(copy);
+        if (t.title === 'Shop') return;
+        await chrome.tabs.update(copy, { url: 'https://control.test/' });
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    }, copyId);
+    const inCopy = await worker.evaluate(([id, copy]) => controlV2Tool({ type: 'tab_key', tabId: copy, key: 'Tab' }, { tab: { id } }), [askTab, copyId]);
+    assert.doesNotMatch(String(inCopy.error || ''), /person's own tab/, 'the copy is worked in normally');
+    // (the glow from those calls ends on its own after 20 s of quiet; end it now so the sharing checks below see only the share mark)
+    await worker.evaluate(async ([a, b]) => { for (const id of [a, b]) { await controlLiveStop(id); try { await chrome.scripting.executeScript({ target: { tabId: id }, func: () => globalThis.__plazcodeControl && globalThis.__plazcodeControl.hide() }); } catch {} } }, [ids.shop, copyId]);
+    await panel.waitForFunction(() => [...document.querySelectorAll('.msg.note')].some((n) => /opened a copy of your tab/.test(n.textContent)), null, { timeout: 5000 });
+    // A later question about the same tab is told the copy is still open (and no second copy is needed).
+    await worker.evaluate((id) => askFromChat({ type: 'ask_reply', status: 'done', text: 'Done.' }, { tab: { id } }), askTab);
+    await panel.waitForFunction(() => !document.getElementById('go').disabled, null, { timeout: 5000 });
+    await panel.fill('#q', 'And now the next step'); await panel.click('#go');
+    await worker.evaluate(async () => { for (let i = 0; i < 100 && !self.__runs.length; i++) await new Promise((r) => setTimeout(r, 100)); });
+    const third = await worker.evaluate(() => self.__runs.splice(0));
+    assert.equal(third[0].ask.work && third[0].ask.work.tabId, copyId, 'the copy from before is offered again');
+    await panel.click('#stop');
+    await worker.evaluate(async () => { for (let i = 0; i < 40 && !self.__stops; i++) await new Promise((r) => setTimeout(r, 50)); });
+    assert.equal(await worker.evaluate(() => self.__stops), 1);
+    await worker.evaluate((id) => askFromChat({ type: 'ask_reply', status: 'stopped', text: 'Stopped.' }, { tab: { id } }), askTab);
+    if (process.env.PLAZCODE_ASK_SHOT && mode === 'real') { await panel.setViewportSize({ width: 420, height: 760 }); await panel.screenshot({ path: process.env.PLAZCODE_ASK_SHOT }); }
+    // "Stop sharing" in the shared tab (a real click on its label) turns sharing off in the panel.
+    await shop.bringToFront();
+    await worker.evaluate(async (id) => controlEvent({ event: 'stop_share' }, { tab: { id }, id: chrome.runtime.id }), ids.shop);
+    await panel.waitForFunction(() => !document.getElementById('sharing').checked, null, { timeout: 5000 });
+    assert.equal(await panel.innerText('#shareTitle'), 'Not sharing');
+    // Sharing an AI chat is refused.
+    await chat.bringToFront();
+    await panel.check('#sharing');
+    await panel.waitForFunction(() => /can't be shared/.test(document.getElementById('shareTitle').textContent), null, { timeout: 5000 });
+    // Closing the panel ends sharing.
+    await shop.bringToFront(); await panel.evaluate(() => document.getElementById('sharing').dispatchEvent(new Event('change')));
+    await panel.waitForFunction(() => /shared with PlazCode/.test(document.getElementById('shareSite').textContent), null, { timeout: 5000 });
+    await panel.close();
+    await new Promise((r) => setTimeout(r, 800));
+    s = await look(); assert(!s.sharing && !s.shown, 'closing the panel ends sharing: ' + JSON.stringify(s));
+    // A panel opened again shows the same conversation (what was asked, what the chat answered, the notes).
+    const again = await context.newPage();
+    await again.goto('chrome-extension://' + extId + '/core/ask.html?window=' + ids.window);
+    await again.waitForFunction(() => document.querySelectorAll('#log .msg').length >= 3, null, { timeout: 8000 });
+    const replay = await again.evaluate(() => [...document.querySelectorAll('#log .msg')].map((n) => n.className.replace('msg ', '') + ':' + n.textContent));
+    assert(replay.includes('me:What is on this page?') && replay.includes('ai:It is a test shop with a Buy now button.') && replay.some((r) => /^note:.*opened a copy of your tab/.test(r)), 'the reopened panel shows the earlier conversation: ' + JSON.stringify(replay));
+    // History (owner, 2026-11-14): the three-line button lists every chat; New chat empties the panel; picking one brings it back; delete removes it.
+    assert.equal(await again.getAttribute('#menu', 'aria-label'), 'History');
+    assert.equal(await again.locator('#history').isVisible(), false);
+    await again.click('#menu');
+    await again.waitForSelector('#history:not([hidden]) #chats li');
+    assert.equal(await again.locator('#chats li').count(), 1);
+    assert.match(await again.innerText('#chats li'), /What is on this page\?/);
+    assert.equal(await again.locator('#log').isVisible(), false, 'the list replaces the conversation while it is open');
+    assert.equal(await again.getAttribute('#menu', 'aria-expanded'), 'true');
+    if (process.env.PLAZCODE_ASK_SHOT && mode === 'real') { await again.setViewportSize({ width: 420, height: 760 }); await again.screenshot({ path: process.env.PLAZCODE_ASK_SHOT.replace(/\.png$/, '-history.png') }); }
+    await again.keyboard.press('Escape');
+    assert.equal(await again.locator('#history').isVisible(), false); assert.equal(await again.locator('#log').isVisible(), true);
+    await again.click('#menu'); await again.waitForSelector('#chats li');
+    await again.click('#newChat');
+    await again.waitForFunction(() => !document.querySelector('#log .msg') && /Ask anything about the page/.test(document.getElementById('log').textContent), null, { timeout: 5000 });
+    assert.equal(await again.locator('#history').isVisible(), false);
+    assert.equal(await worker.evaluate(() => ask.goto), 'new');
+    await again.click('#menu'); await again.waitForSelector('#chats li');
+    assert.equal(await again.locator('#chats li').count(), 1, 'the earlier chat is still in the list');
+    await again.click('#chats li .open');
+    await again.waitForFunction(() => [...document.querySelectorAll('#log .msg.me')].some((n) => n.textContent === 'What is on this page?'), null, { timeout: 5000 });
+    assert.equal(await again.locator('#history').isVisible(), false);
+    await again.click('#menu'); await again.waitForSelector('#chats li');
+    await again.click('#chats li .del');
+    await again.waitForFunction(() => !document.querySelector('#chats li') && !document.getElementById('noChats').hidden, null, { timeout: 5000 });
+    await again.click('#menu');
+    await again.waitForFunction(() => !document.querySelector('#log .msg') && /Ask anything about the page/.test(document.getElementById('log').textContent), null, { timeout: 5000 });
+    assert.deepEqual(await worker.evaluate(async () => { const got = await chrome.storage.local.get('rsAskChats'); return got.rsAskChats; }), [], 'the deleted chat is gone from storage');
+    await again.close();
+    console.log('test-ask-plazcode-browser: PASS (' + mode + ')');
+  } finally { await context.close(); fs.rmSync(profile, { recursive: true, force: true }); if (copy) fs.rmSync(copy, { recursive: true, force: true }); }
+}
+(async () => { await run('real'); await run('no-debugger'); console.log('test-ask-plazcode-browser: PASS (Chromium): sharing follows the tab with a "Shared with PlazCode" mark, questions reach one background chat with picture and rules, "do things for me" on by default and working in a copy of the tab (own tab refused, copy offered again), approvals in the panel, only the background chat can answer, Stop, stop sharing from the tab, AI chats never shared, closing the panel ends sharing, Allow offered without the permission, History menu (list, new chat, reopen, delete)'); })().catch((e) => { console.error(e); process.exit(1); });

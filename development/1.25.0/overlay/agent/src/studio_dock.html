@@ -1,0 +1,1413 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-pz-studio="1" data-pz-motion="full" data-desktop-glow="subtle" data-desktop-gradients="on" data-pz-anim="1" data-pz-ripple="1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PlazCode Studio Dock</title>
+<style>
+@property --pz-x{syntax:"<percentage>";inherits:false;initial-value:0%}
+@keyframes pz-flow{from{--pz-x:0%}to{--pz-x:100%}}
+@keyframes pz-pulse{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.18)}}
+@keyframes pz-dot-pulse{0%,80%,100%{opacity:.28;transform:scale(.75)}40%{opacity:1;transform:scale(1.15)}}
+@keyframes pz-spin{to{transform:rotate(360deg)}}
+@keyframes pz-ripple{from{opacity:.42;transform:scale(0)}to{opacity:0;transform:scale(2.4)}}
+@keyframes pc-ultra-shine{from{background-position:200% 50%}to{background-position:-60% 50%}}
+@keyframes pc-hyper-glow{
+  0%,100%{border-color:rgba(255,255,255,.78);box-shadow:inset 0 1px 0 rgba(255,255,255,.32),0 14px 36px -12px rgba(0,0,0,.78),0 0 calc(28px * var(--pz-g)) -4px rgba(255,255,255,.46),0 0 calc(16px * var(--pz-g)) -2px rgba(210,246,255,.28)}
+  33%{border-color:rgba(255,222,238,.86);box-shadow:inset 0 1px 0 rgba(255,255,255,.36),0 14px 36px -12px rgba(0,0,0,.78),0 0 calc(30px * var(--pz-g)) -4px rgba(255,255,255,.52),0 0 calc(18px * var(--pz-g)) -2px rgba(255,216,232,.34)}
+  66%{border-color:rgba(217,255,236,.86);box-shadow:inset 0 1px 0 rgba(255,255,255,.36),0 14px 36px -12px rgba(0,0,0,.78),0 0 calc(30px * var(--pz-g)) -4px rgba(255,255,255,.52),0 0 calc(18px * var(--pz-g)) -2px rgba(210,246,255,.34)}
+}
+
+:root{
+  --bg:#18140d;
+  --orange:#e9ba53;
+  --orange2:#ffe0a1;
+  --pz-rgb:233 186 83;
+  --pz-g:1;
+  --pz-ease:cubic-bezier(.22,1,.36,1);
+  --pz-grad:linear-gradient(135deg,color-mix(in srgb,var(--orange2) 82%,#fff) 0%,var(--orange2) 38%,var(--orange) 100%);
+  --pz-flow:linear-gradient(90deg,color-mix(in srgb,var(--orange2) 78%,#fff) 0%,var(--orange) 16.667%,color-mix(in srgb,var(--orange2) 78%,#fff) 33.333%,var(--orange) 50%,color-mix(in srgb,var(--orange2) 78%,#fff) 66.667%,var(--orange) 83.333%,color-mix(in srgb,var(--orange2) 78%,#fff) 100%);
+  --pz-flow-soft:linear-gradient(90deg,rgb(var(--pz-rgb)/.30) 0%,rgb(var(--pz-rgb)/.03) 16.667%,rgb(var(--pz-rgb)/.30) 33.333%,rgb(var(--pz-rgb)/.03) 50%,rgb(var(--pz-rgb)/.30) 66.667%,rgb(var(--pz-rgb)/.03) 83.333%,rgb(var(--pz-rgb)/.30) 100%);
+  --pz-glass:linear-gradient(180deg,rgb(255 255 255/.12),rgb(255 255 255/.03) 48%,rgb(0 0 0/.14));
+  --dock-surface:rgba(13,16,23,.90);
+  --dock-card:rgba(19,24,35,.82);
+  --dock-text:#f5f8ff;
+  --dock-muted:#9ca8bf;
+  --dock-line:rgba(255,255,255,.12);
+  --green:#31e0a4;
+  --red:#ff696c;
+  --amber:#ffb33f;
+}
+
+*{box-sizing:border-box}
+html,body{
+  margin:0;padding:0;width:100%;height:100%;overflow:hidden;
+  background:transparent;color:var(--dock-text);
+  font-family:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;
+  font-size:12.5px;user-select:none;
+}
+button,input,textarea,select{font:inherit;color:inherit}
+[hidden]{display:none!important}
+
+.dock-root{
+  display:flex;flex-direction:column;justify-content:flex-end;gap:7px;
+  width:100%;height:100%;padding:6px 8px 6px;
+}
+
+/* Floating Live Command Feed (above Variant B dock strip, auto-hidden when empty) */
+.dock-live-feed{
+  display:flex;flex-direction:column;gap:5px;
+  border-radius:14px;padding:7px 11px;
+  background:var(--dock-surface);
+  border:1px solid color-mix(in srgb,var(--dock-line) 55%,rgb(var(--pz-rgb)) 45%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    0 10px 26px -10px rgba(0,0,0,.74),
+    0 0 calc(18px * var(--pz-g)) -8px rgb(var(--pz-rgb)/.36);
+  backdrop-filter:blur(22px) saturate(140%);
+  -webkit-backdrop-filter:blur(22px) saturate(140%);
+}
+.feed-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.feed-title{font-size:10px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--dock-muted)}
+.feed-clear-btn{
+  border:0;background:transparent;color:var(--dock-muted);cursor:pointer;
+  font-size:11px;font-weight:600;padding:1px 5px;border-radius:6px;
+  transition:color .16s,background .16s;
+}
+.feed-clear-btn:hover{color:var(--dock-text);background:rgba(255,255,255,.08)}
+.feed-list{
+  display:flex;flex-direction:column;gap:3px;max-height:112px;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.22) transparent;
+}
+.feed-list::-webkit-scrollbar{width:5px}
+.feed-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.22);border-radius:5px}
+.feed-row{
+  display:flex;align-items:center;gap:6px;min-height:18px;
+  font-size:11.5px;line-height:1.3;color:var(--dock-text);
+}
+.feed-spin{
+  width:10px;height:10px;border-radius:50%;flex:none;
+  border:1.5px solid rgba(255,255,255,.22);border-top-color:var(--orange2);
+  animation:pz-spin .75s linear infinite;
+}
+.feed-check{color:var(--green);font-weight:800;font-size:11.5px;flex:none}
+.feed-err-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:14px;height:14px;padding:0 4px;border-radius:999px;flex:none;
+  background:rgba(255,105,108,.22);border:1px solid rgba(255,105,108,.55);
+  color:#ffb3b5;font-size:9.5px;font-weight:800;
+}
+.feed-tool{font-weight:700;color:var(--dock-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.feed-ok{color:var(--dock-muted);font-weight:500}
+.feed-err-tag{color:#ffb3b5;font-size:10.5px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.writing-dots{display:inline-flex;align-items:center;gap:3px;margin-inline-start:2px;flex:none}
+.writing-dots span{
+  width:4px;height:4px;border-radius:50%;background:var(--orange2);opacity:.45;
+  animation:pz-dot-pulse 1.15s ease-in-out infinite;
+}
+.writing-dots span:nth-child(2){animation-delay:.18s}
+.writing-dots span:nth-child(3){animation-delay:.36s}
+
+.dock-shell{
+  position:relative;display:flex;flex-direction:column;gap:6px;
+  border-radius:16px;padding:8px 10px;
+  background:
+    radial-gradient(90% 130% at 15% 100%,rgb(var(--pz-rgb)/calc(.14 * var(--pz-g))),transparent 68%),
+    radial-gradient(70% 110% at 88% 0%,rgb(var(--pz-rgb)/calc(.10 * var(--pz-g))),transparent 64%),
+    var(--dock-surface);
+  border:1px solid color-mix(in srgb,var(--dock-line) 55%,rgb(var(--pz-rgb)) 45%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.16),
+    inset 0 -1px 0 rgba(0,0,0,.38),
+    0 14px 36px -12px rgba(0,0,0,.78),
+    0 0 calc(26px * var(--pz-g)) -8px rgb(var(--pz-rgb)/.50);
+  backdrop-filter:blur(22px) saturate(140%);
+  -webkit-backdrop-filter:blur(22px) saturate(140%);
+  transition:border-color .22s var(--pz-ease),box-shadow .22s var(--pz-ease),background .22s var(--pz-ease);
+}
+.dock-shell.drag-over{
+  border-color:var(--orange2);
+  box-shadow:0 0 0 2px rgb(var(--pz-rgb)/.55),0 0 28px rgb(var(--pz-rgb)/.55),0 16px 36px -10px rgba(0,0,0,.82);
+}
+
+/* Corner frosted accent marks inspired by overlay.css studio cards */
+.dock-shell::before,.dock-shell::after{
+  content:"";position:absolute;pointer-events:none;width:11px;height:11px;
+  border-color:rgb(var(--pz-rgb)/calc(.55 * var(--pz-g) + .2));border-style:solid;
+}
+.dock-shell::before{top:5px;left:5px;border-width:1.5px 0 0 1.5px;border-top-left-radius:8px}
+.dock-shell::after{bottom:5px;right:5px;border-width:0 1.5px 1.5px 0;border-bottom-right-radius:8px}
+
+/* Feel modes: gradients off, glow off/strong, motion reduced/off, anim toggle */
+html[data-desktop-glow=off]{--pz-g:0}
+html[data-desktop-glow=strong]{--pz-g:2.1}
+html[data-desktop-gradients=off] .dock-shell{
+  background:var(--dock-surface);
+  border-color:rgba(255,255,255,.14);
+}
+html[data-desktop-gradients=off] .btn-primary{
+  background:var(--orange)!important;border-color:var(--orange2)!important;color:#0b0d12!important;
+}
+html[data-desktop-gradients=off] .badge-ai,
+html[data-desktop-gradients=off] .dock-btn{
+  background:rgba(255,255,255,.07)!important;
+}
+html[data-pz-motion=reduced] *{
+  transition-duration:.08s!important;animation:none!important;
+}
+html[data-pz-motion=off] *{
+  transition:none!important;animation:none!important;
+}
+html:not([data-pz-anim]) *{
+  animation:none!important;
+}
+html[data-pz-asleep] *,html[data-pz-asleep] *::before,html[data-pz-asleep] *::after{
+  animation-play-state:paused!important;
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important;}
+}
+
+/* Hyper effort: mainly-white prismatic rainbow border, glow and label shimmer */
+.pc-ultra-label{font-weight:700;color:#f7f9ff}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .pc-ultra-label{background-image:linear-gradient(110deg,#ffffff 0%,#fffafd 22%,#ffd8e8 30%,#fff1dd 38%,#ffffff 48%,#d9ffec 57%,#d2f6ff 65%,#e7dcff 73%,#ffffff 84%,#ffffff 100%);background-size:260% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:pc-ultra-shine 3.2s linear infinite}
+}
+.dock-hyper-pill{
+  display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10.5px;letter-spacing:.02em;
+  background:linear-gradient(125deg,rgba(255,255,255,.16),rgba(255,222,238,.12) 40%,rgba(210,246,255,.14) 75%,rgba(255,255,255,.16));
+  border:1px solid rgba(255,255,255,.55);box-shadow:0 0 12px rgba(255,255,255,.22);flex:none;
+}
+html[data-desktop-thinking=ultracode] .dock-shell{
+  border-color:rgba(255,255,255,.78);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.30),0 14px 36px -12px rgba(0,0,0,.78),0 0 calc(28px * var(--pz-g)) -4px rgba(255,255,255,.46),0 0 calc(16px * var(--pz-g)) -2px rgba(210,246,255,.28);
+  animation:pc-hyper-glow 5.2s ease-in-out infinite;
+}
+html[data-desktop-thinking=ultracode] .dock-shell::before,
+html[data-desktop-thinking=ultracode] .dock-shell::after{
+  border-color:rgba(255,255,255,.82);
+}
+html[data-desktop-thinking=ultracode] .btn-primary{
+  border-color:rgba(255,255,255,.88)!important;
+  background:linear-gradient(125deg,#ffffff 0%,#fff9fc 25%,#ffe4ef 38%,#ffffff 52%,#e3fff2 68%,#dff6ff 82%,#ffffff 100%)!important;
+  color:#151821!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 6px 20px -4px rgba(255,255,255,.48)!important;
+}
+html[data-desktop-thinking=ultracode][data-desktop-glow=off] .dock-shell{
+  animation:none!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 14px 36px -12px rgba(0,0,0,.78)!important;
+}
+html[data-desktop-thinking=ultracode][data-desktop-glow=off] .dock-hyper-pill,
+html[data-desktop-thinking=ultracode][data-desktop-glow=off] .btn-primary{box-shadow:none!important}
+html[data-desktop-gradients=off] .dock-hyper-pill{background:rgba(255,255,255,.12)!important}
+html[data-desktop-thinking=ultracode][data-desktop-gradients=off] .btn-primary{background:#f2f6ff!important;color:#151821!important}
+html[data-pz-motion=reduced] .pc-ultra-label,html[data-pz-motion=off] .pc-ultra-label,html:not([data-pz-anim]) .pc-ultra-label{animation:none!important;background-position:38% 50%}
+@media(prefers-reduced-motion:reduce){.dock-shell,.pc-ultra-label{animation:none!important}.pc-ultra-label{background-position:38% 50%}}
+@media(forced-colors:active){.pc-ultra-label{animation:none!important;background:none!important;color:Highlight!important;-webkit-text-fill-color:currentColor!important}}
+
+/* Drawer & Popups (expand UPWARD above bottom strip) */
+.dock-drawer{
+  display:flex;flex-direction:column;gap:8px;max-height:270px;
+  padding:8px 10px;border-radius:12px;
+  background:var(--dock-card);
+  border:1px solid color-mix(in srgb,var(--dock-line) 70%,rgb(var(--pz-rgb)) 30%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09);
+  overflow:hidden;
+}
+.drawer-head{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.08);
+}
+.drawer-title{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--dock-muted)}
+.drawer-actions{margin-inline-start:auto;display:flex;align-items:center;gap:6px}
+.drawer-body{
+  display:flex;flex-direction:column;gap:7px;overflow-y:auto;max-height:195px;padding-inline-end:2px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.22) transparent;
+}
+.drawer-body::-webkit-scrollbar{width:6px}
+.drawer-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.22);border-radius:6px}
+
+.status-card{
+  padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);font-size:12px;line-height:1.45;
+  color:#e7ecf7;white-space:pre-wrap;word-break:break-word;
+}
+.status-card.reply{border-color:rgb(var(--pz-rgb)/.28);background:rgba(255,255,255,.055)}
+.activity-list{display:flex;flex-direction:column;gap:4px}
+.activity-item{
+  display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:8px;
+  background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.06);font-size:11.5px;
+}
+.act-dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--amber)}
+.act-dot.done{background:var(--green)}
+
+.provider-grid{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;
+  padding:6px;border-radius:10px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08);
+}
+.provider-chip{
+  border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);
+  color:var(--dock-text);border-radius:8px;padding:5px 7px;font-size:11px;font-weight:600;
+  cursor:pointer;text-align:start;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  transition:border-color .16s,background .16s,transform .16s;
+}
+.provider-chip:hover{border-color:rgb(var(--pz-rgb)/.65);background:rgb(var(--pz-rgb)/.14);transform:translateY(-1px)}
+.provider-chip.active{border-color:var(--orange2);background:rgb(var(--pz-rgb)/.22);color:#fff}
+
+/* Offline / Warning Banner */
+.dock-banner{
+  display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;
+  background:rgba(255,179,63,.11);border:1px solid rgba(255,179,63,.35);
+  color:#ffe3ad;font-size:11.5px;line-height:1.35;
+}
+.dock-banner.error{background:rgba(255,105,108,.12);border-color:rgba(255,105,108,.40);color:#ffd0d2}
+.dock-banner-msg{flex:1;min-width:0}
+
+/* + Media Menu & Staged Chips */
+.dock-media-panel{
+  display:flex;flex-direction:column;gap:7px;padding:8px 10px;border-radius:12px;
+  background:var(--dock-card);border:1px solid color-mix(in srgb,var(--dock-line) 65%,rgb(var(--pz-rgb)) 35%);
+}
+.media-actions-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.media-hint{font-size:11px;color:var(--dock-muted);margin-inline-start:auto}
+.media-chips{display:flex;flex-wrap:wrap;gap:6px}
+.media-chip{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 7px;border-radius:8px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);font-size:11px;
+  max-width:220px;
+}
+.media-chip img{width:22px;height:22px;object-fit:cover;border-radius:4px;flex:none}
+.media-chip-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.media-chip-btn{
+  border:0;background:transparent;color:var(--orange2);cursor:pointer;font-size:11px;padding:0 3px;font-weight:700;
+}
+.media-chip-btn:hover{text-decoration:underline}
+
+/* Compact Bottom Prompt Strip */
+.dock-meta-row{
+  display:flex;align-items:center;gap:7px;min-height:24px;
+}
+.drag-grip{
+  display:inline-flex;align-items:center;gap:5px;padding:2px 6px;border-radius:7px;
+  cursor:grab;color:var(--dock-muted);font-size:11px;font-weight:700;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+}
+.drag-grip:active{cursor:grabbing}
+.badge-ai{
+  display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
+  border:1px solid color-mix(in srgb,var(--dock-line) 50%,rgb(var(--pz-rgb)) 50%);
+  background:var(--pz-glass),var(--pz-flow-soft) var(--pz-x) 0/300% 100%,rgba(255,255,255,.05);
+  color:#fff;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;
+  transition:border-color .18s,transform .18s;
+}
+.badge-ai:hover{border-color:var(--orange2)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--dock-muted);flex:none}
+.status-dot.ready{background:var(--green);box-shadow:0 0 8px rgba(49,224,164,.75)}
+.status-dot.busy{background:var(--amber);animation:pz-pulse 1.2s ease-in-out infinite}
+.status-dot.off{background:var(--red)}
+
+.status-pill{
+  font-size:11px;color:var(--dock-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  flex:1;min-width:0;
+}
+.hotkey-pill{
+  display:inline-flex;align-items:center;padding:2px 6px;border-radius:6px;
+  border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);
+  color:var(--dock-muted);font:600 10px/1.2 ui-monospace,Consolas,monospace;
+  white-space:nowrap;flex:none;letter-spacing:.02em;
+}
+.hotkey-pill.error{
+  border-color:rgba(255,179,63,.55);background:rgba(255,179,63,.14);color:#ffd994;
+}
+
+.dock-strip-row{
+  display:flex;align-items:flex-end;gap:6px;
+}
+.dock-input-wrap{
+  flex:1;min-width:0;display:flex;align-items:center;
+  border-radius:11px;padding:4px 8px;
+  background:rgba(6,9,15,.72);
+  border:1px solid color-mix(in srgb,var(--dock-line) 75%,rgb(var(--pz-rgb)) 25%);
+  transition:border-color .18s,box-shadow .18s;
+}
+.dock-input-wrap:focus-within{
+  border-color:var(--orange2);
+  box-shadow:0 0 0 2px rgb(var(--pz-rgb)/calc(.20 * var(--pz-g) + .08));
+}
+.dock-textarea{
+  width:100%;min-height:22px;max-height:76px;border:0;outline:0;resize:none;background:transparent;
+  color:var(--dock-text);font-size:12.5px;line-height:1.4;padding:1px 0;
+  user-select:text;
+}
+.dock-textarea::placeholder{color:rgba(195,208,228,.5)}
+
+.dock-btn{
+  position:relative;overflow:hidden;height:32px;min-width:32px;padding:0 9px;border-radius:10px;
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;cursor:pointer;
+  border:1px solid color-mix(in srgb,var(--dock-line) 60%,rgb(var(--pz-rgb)) 40%);
+  background:var(--pz-glass),var(--pz-flow-soft) var(--pz-x) 0/300% 100%,rgba(22,28,40,.86);
+  color:var(--dock-text);font-size:12px;font-weight:650;white-space:nowrap;
+  transition:transform .16s var(--pz-ease),border-color .18s,box-shadow .18s;
+}
+.dock-btn.compact{height:24px;min-width:24px;padding:0 7px;border-radius:7px;font-size:11px}
+.dock-btn:hover:not(:disabled){
+  border-color:var(--orange2);
+  transform:translateY(-1px);
+  box-shadow:0 4px 14px -6px rgb(var(--pz-rgb)/calc(.65 * var(--pz-g) + .2));
+}
+html[data-pz-asleep] *,html[data-pz-asleep] *::before,html[data-pz-asleep] *::after{animation-play-state:paused!important}
+.dock-btn:disabled{opacity:.42;cursor:not-allowed;transform:none}
+
+.btn-primary{
+  border:1px solid color-mix(in srgb,var(--orange2) 65%,#fff)!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.32),transparent 52%),var(--pz-flow) var(--pz-x) 0/300% 100%!important;
+  color:#0b0d12!important;font-weight:750!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.58),0 6px 18px -6px rgb(var(--pz-rgb)/calc(.85 * var(--pz-g) + .2))!important;
+}
+.btn-stop{
+  border-color:rgba(255,105,108,.65)!important;
+  background:linear-gradient(180deg,rgba(255,120,120,.26),rgba(255,75,80,.18))!important;
+  color:#ffd5d6!important;
+}
+.btn-count{
+  display:inline-grid;place-items:center;min-width:15px;height:15px;padding:0 4px;border-radius:99px;
+  background:var(--orange2);color:#0b0d12;font-size:10px;font-weight:800;
+}
+
+.ripple-el{
+  position:absolute;border-radius:50%;width:24px;height:24px;pointer-events:none;
+  background:rgba(255,255,255,.38);transform:scale(0);animation:pz-ripple .42s ease-out forwards;
+}
+.dock-shell{overflow:hidden}
+.dock-shell>:not(.dock-rain){position:relative;z-index:1}
+.dock-rain{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;border-radius:inherit;opacity:.28}
+.dock-rain[hidden]{display:none!important}
+html[data-plazcode-pixel="1"] :is(.dock-shell,.dock-drawer,.dock-media-panel,.dock-banner,.dock-btn,.badge-ai,.status-pill,.dock-input-wrap,.status-card,.activity-item,.provider-grid,.provider-chip){border-radius:2px!important}
+html[data-plazcode-pixel="1"] .dock-shell{box-shadow:0 0 0 1px rgb(var(--pz-rgb)/.35),0 14px 36px -12px rgba(0,0,0,.78)}
+html[data-theme-tone=light]{--dock-surface:rgba(244,240,232,.95);--dock-card:rgba(234,228,216,.94);--dock-text:#171a20;--dock-muted:#4a505c;--dock-line:rgba(23,26,32,.18)}
+html[data-theme-tone=light] :is(.status-card,.dock-textarea){color:#171a20!important}
+html[data-theme-tone=light] .btn-primary{color:#ffffff!important}
+</style>
+</head>
+<body>
+<div class="dock-root">
+  <!-- Floating Live Command Feed (auto-hidden when empty/cleared) -->
+  <div class="dock-live-feed" id="dockLiveFeed" hidden>
+    <div class="feed-head">
+      <span class="feed-title" data-pc-i18n="">LIVE COMMAND FEED</span>
+      <button type="button" class="feed-clear-btn" id="dockFeedClear" data-pc-i18n="">Clear</button>
+    </div>
+    <div class="feed-list" id="dockFeedList"></div>
+  </div>
+
+  <div class="dock-shell" id="dockShell">
+    <canvas class="dock-rain" id="dockRainCanvas" aria-hidden="true" hidden></canvas>
+    <!-- Upward Expandable Response & Progress Drawer -->
+    <div class="dock-drawer" id="dockDrawer" hidden>
+      <div class="drawer-head">
+        <span class="drawer-title" data-pc-i18n="">Studio assistant drawer</span>
+        <div class="drawer-actions">
+          <button type="button" class="dock-btn compact" id="dockToggleProviders">Switch AI</button>
+          <button type="button" class="dock-btn compact" id="dockOpenTabDrawer">Open AI tab</button>
+          <button type="button" class="dock-btn compact" id="dockOpenDesktop">Desktop app</button>
+        </div>
+      </div>
+      <div class="provider-grid" id="dockProviderGrid" hidden></div>
+      <div class="drawer-body" id="dockDrawerBody">
+        <div class="status-card" id="dockStatusDetail"></div>
+        <div class="activity-list" id="dockActivityList"></div>
+        <div class="status-card reply" id="dockReplyCard" hidden></div>
+      </div>
+    </div>
+
+    <!-- Upward + Media Attachment Menu -->
+    <div class="dock-media-panel" id="dockMediaPanel" hidden>
+      <div class="media-actions-row">
+        <button type="button" class="dock-btn compact" id="dockPickMedia">Choose images or videos</button>
+        <button type="button" class="dock-btn compact" id="dockCaptureShot">Capture viewport</button>
+        <button type="button" class="dock-btn compact" id="dockClearMedia" hidden>Clear</button>
+        <span class="media-hint" data-pc-i18n="">Drop files or Ctrl+V image</span>
+        <input type="file" id="dockFileInput" accept="image/*,video/*" multiple hidden>
+      </div>
+      <div class="dock-banner" id="dockVideoWarn" hidden>
+        <span class="dock-banner-msg" id="dockVideoWarnMsg" data-pc-i18n="">This AI site does not accept native video uploads. Extract video frames instead.</span>
+        <button type="button" class="dock-btn compact btn-primary" id="dockUseFrames">Use video frames</button>
+      </div>
+      <div class="media-chips" id="dockMediaChips" hidden></div>
+    </div>
+
+    <!-- Graceful Offline / Status Warning Banner -->
+    <div class="dock-banner" id="dockOfflineBanner" hidden>
+      <span class="dock-banner-msg" id="dockOfflineMsg"></span>
+      <button type="button" class="dock-btn compact btn-primary" id="dockBannerOpenTab">Open AI tab</button>
+    </div>
+
+    <!-- Compact Top Meta Strip -->
+    <div class="dock-meta-row">
+      <div class="drag-grip" id="dockDragGrip" title="Drag dock (double-click to reset position)">
+        <span>⋮⋮</span>
+        <span class="brand-word">PlazCode</span>
+      </div>
+      <button type="button" class="badge-ai" id="dockAiBadge" title="Toggle assistant drawer">
+        <span class="status-dot" id="dockDot"></span>
+        <span id="dockAiName">ChatGPT</span>
+        <span class="writing-dots" id="dockWritingDots" aria-hidden="true" hidden><span></span><span></span><span></span></span>
+      </button>
+      <span class="dock-hyper-pill" id="dockHyperPill" hidden><span class="pc-ultra-label">Hyper</span></span>
+      <span class="status-pill" id="dockStatusPill">Ready</span>
+      <span class="hotkey-pill" id="dockHotkeyPill" title="Global dock shortcut">Alt+Space</span>
+      <button type="button" class="dock-btn compact" id="dockOpenTabStrip" hidden>Open AI tab</button>
+      <button type="button" class="dock-btn compact" id="dockHideBtn" title="Hide floating dock" aria-label="Hide floating dock">✕</button>
+    </div>
+
+    <!-- Variant B Compact Bottom Prompt Strip -->
+    <div class="dock-strip-row">
+      <button type="button" class="dock-btn" id="dockMediaBtn" title="Add media or Studio screenshot" aria-label="Add media or Studio screenshot">
+        <span>+</span>
+        <span class="btn-count" id="dockMediaCount" hidden>0</span>
+      </button>
+      <button type="button" class="dock-btn" id="dockQuickShotBtn" title="Capture Studio viewport screenshot" aria-label="Capture Studio viewport screenshot">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </button>
+      <div class="dock-input-wrap">
+        <textarea class="dock-textarea" id="dockPrompt" rows="1" placeholder="Ask PlazCode about this Roblox Studio place…"></textarea>
+      </div>
+      <button type="button" class="dock-btn" id="dockEnhanceBtn" title="Enhance prompt" aria-label="Enhance prompt">✦</button>
+      <button type="button" class="dock-btn" id="dockDrawerBtn" title="Toggle upward drawer" aria-label="Toggle upward drawer">▲</button>
+      <button type="button" class="dock-btn btn-primary" id="dockSendBtn">Send</button>
+      <button type="button" class="dock-btn btn-stop" id="dockStopBtn" hidden>Stop</button>
+    </div>
+  </div>
+</div>
+
+<script>
+__PLAZCODE_I18N_CATALOG__
+</script>
+<script>
+__PLAZCODE_I18N__
+</script>
+<script>
+__PLAZCODE_MEDIA_UI__
+</script>
+<script>
+__PLAZCODE_THEME_PRESETS__
+</script>
+<script>
+__PLAZCODE_BACKDROP_FX__
+</script>
+<script>
+(function () {
+  var Boot = window.__PLAZCODE_DOCK_BOOT__ || {};
+  var ApiUrl = Boot.apiUrl || "";
+  var Key = Boot.key || "";
+  var I18n = window.PlazCodeI18n || null;
+  function T(Text, Vars) { return I18n && I18n.t ? I18n.t(Text, Vars) : Text; }
+
+  var Themes = (window.PlazCodeThemePresets && window.PlazCodeThemePresets.PRESETS) || {
+    "default": { rgb: "233 186 83", accent: "#e9ba53", light: "#ffe0a1", bg: "#18140d", tone: "dark" },
+    amethyst: { rgb: "165 113 255", accent: "#a571ff", light: "#d7b8ff", bg: "#0c0918", tone: "dark" },
+    cyan: { rgb: "39 193 231", accent: "#27c1e7", light: "#a5eaff", bg: "#041017", tone: "dark" },
+    rose: { rgb: "241 112 151", accent: "#f17097", light: "#ffbdd1", bg: "#160912", tone: "dark" },
+    emerald: { rgb: "41 200 148", accent: "#29c894", light: "#a6f3d1", bg: "#05130f", tone: "dark" },
+    graphite: { rgb: "156 170 192", accent: "#9caac0", light: "#e0e7f2", bg: "#0a0d13", tone: "dark" },
+    crimson: { rgb: "239 85 105", accent: "#ef5569", light: "#ffb0bb", bg: "#16080c", tone: "dark" },
+    ocean: { rgb: "70 146 246", accent: "#4692f6", light: "#a5ceff", bg: "#091323", tone: "dark" },
+    copper: { rgb: "219 144 102", accent: "#db9066", light: "#f4c4a3", bg: "#17110f", tone: "dark" },
+    aurora: { rgb: "102 211 184", accent: "#66d3b8", light: "#b4f6e7", bg: "#0c151b", tone: "dark" },
+    orchid: { rgb: "205 137 235", accent: "#cd89eb", light: "#edc6ff", bg: "#150e1c", tone: "dark" },
+    "midnight-slate": { rgb: "125 162 216", accent: "#7da2d8", light: "#c4daf8", bg: "#0b1018", tone: "dark" },
+    "obsidian-gold": { rgb: "245 196 81", accent: "#f5c451", light: "#ffe79e", bg: "#08080a", tone: "dark" },
+    "sunset-ember": { rgb: "255 122 89", accent: "#ff7a59", light: "#ffc1ae", bg: "#170d0c", tone: "dark" },
+    "sakura-dusk": { rgb: "245 154 189", accent: "#f59abd", light: "#ffd7e7", bg: "#140d18", tone: "dark" },
+    "nord-frost": { rgb: "136 192 208", accent: "#88c0d0", light: "#cce8f0", bg: "#0e141b", tone: "dark" },
+    "amber-terminal": { rgb: "255 176 0", accent: "#ffb000", light: "#ffe07a", bg: "#110d05", tone: "dark" },
+    "paper-light": { rgb: "45 91 158", accent: "#2d5b9e", light: "#1e4278", bg: "#f4f0e8", tone: "light" },
+    "mono-contrast": { rgb: "235 239 245", accent: "#ebeff5", light: "#ffffff", bg: "#050507", tone: "dark" }
+  };
+  var DockRainCtrl = null;
+
+  function Byid(Id) { return document.getElementById(Id); }
+  function Ipc(Msg) { try { if (window.ipc && typeof window.ipc.postMessage === "function") window.ipc.postMessage(Msg); } catch (E) {} }
+
+  function Api(Path, Opts) {
+    Opts = Opts || {};
+    var Headers = Object.assign({ "Content-Type": "application/json" }, Opts.headers || {});
+    if (Key) Headers["x-plazcode-key"] = Key;
+    return fetch(ApiUrl + Path, Object.assign({}, Opts, { headers: Headers })).then(function (Res) {
+      return Res.json().catch(function () { return {}; }).then(function (Body) {
+        if (!Res.ok) throw new Error(Body.error || ("HTTP " + Res.status));
+        return Body;
+      });
+    });
+  }
+
+  function HexToRgb(Hex) {
+    if (!/^#[0-9a-f]{6}$/i.test(Hex || "")) return null;
+    return {
+      r: parseInt(Hex.slice(1, 3), 16),
+      g: parseInt(Hex.slice(3, 5), 16),
+      b: parseInt(Hex.slice(5, 7), 16)
+    };
+  }
+  function MixRgb(A, B, T) {
+    return {
+      r: Math.round(A.r + (B.r - A.r) * T),
+      g: Math.round(A.g + (B.g - A.g) * T),
+      b: Math.round(A.b + (B.b - A.b) * T)
+    };
+  }
+  function RgbHex(C) {
+    return "#" + [C.r, C.g, C.b].map(function (N) { return ("0" + N.toString(16)).slice(-2); }).join("");
+  }
+
+  function ApplyAppearance(App) {
+    App = App || {};
+    var Root = document.documentElement;
+    var ThemeKey = App.theme === "solar" ? "default" : App.theme;
+    var Base = Themes[ThemeKey] || Themes["default"];
+    var Accent = Base.accent, Light = Base.light, Bg = Base.bg, RgbStr = Base.rgb, Tone = Base.tone || "dark";
+    var CustomRgb = HexToRgb(App.custom);
+    if (CustomRgb) {
+      Accent = App.custom;
+      Light = RgbHex(MixRgb(CustomRgb, { r: 255, g: 255, b: 255 }, 0.56));
+      Bg = RgbHex(MixRgb(CustomRgb, { r: 10, g: 12, b: 18 }, 0.88));
+      RgbStr = CustomRgb.r + " " + CustomRgb.g + " " + CustomRgb.b;
+      Tone = "dark";
+    }
+    var Motion = (App.motion === "reduced" || App.motion === "off") ? App.motion : "full";
+    var Glow = (App.glow === "off" || App.glow === "strong") ? App.glow : "subtle";
+    var Grad = App.gradients === "off" ? "off" : "on";
+    var Pixel = App.pixelMode === true;
+    var Rain = App.signalRain === true && Motion !== "off";
+    var RawThinking = String(App.thinking_level || "").toLowerCase();
+    var IsHyper = App.is_hyper === true || RawThinking === "ultracode" || RawThinking === "hyper";
+    var Thinking = IsHyper ? "ultracode" : (RawThinking || "default");
+
+    Root.setAttribute("data-pz-motion", Motion);
+    Root.setAttribute("data-desktop-glow", Glow);
+    Root.setAttribute("data-desktop-gradients", Grad);
+    Root.setAttribute("data-theme-tone", Tone);
+    if (Pixel) Root.setAttribute("data-plazcode-pixel", "1");
+    else if (typeof Root.removeAttribute === "function") Root.removeAttribute("data-plazcode-pixel");
+    else Root.toggleAttribute("data-plazcode-pixel", false);
+    Root.setAttribute("data-desktop-thinking", Thinking);
+    Root.toggleAttribute("data-pz-anim", App.anim !== false);
+    Root.toggleAttribute("data-pz-ripple", App.ripple !== false);
+    var HyperPill = Byid("dockHyperPill");
+    if (HyperPill) HyperPill.hidden = !IsHyper;
+    Root.style.setProperty("--orange", Accent);
+    Root.style.setProperty("--orange2", Light);
+    Root.style.setProperty("--bg", Bg);
+    Root.style.setProperty("--pz-rgb", RgbStr);
+    try {
+      var RainCanvas = Byid("dockRainCanvas");
+      var Fx = typeof PlazCodeBackdropFx !== "undefined" ? PlazCodeBackdropFx : window.PlazCodeBackdropFx;
+      if (RainCanvas && Fx && typeof Fx.mount === "function") {
+        if (!DockRainCtrl) DockRainCtrl = Fx.mount(RainCanvas, { enabled: Rain, feel: Motion, rgb: RgbStr, alpha: 0.22 });
+        else DockRainCtrl.update({ enabled: Rain, feel: Motion, rgb: RgbStr, alpha: 0.22 });
+      }
+    } catch (E) {}
+  }
+  window.__plazcodeDockAppearance = ApplyAppearance;
+
+  var DockState = {
+    state: null,
+    drawerOpen: false,
+    mediaOpen: false,
+    providersOpen: false,
+    sending: false,
+    lastHeight: 0,
+    media: [], // { name, mimeType, kind, data, file }
+    feed: [],
+    feedRevision: -1,
+    inlineError: ""
+  };
+
+  function SyncHeight() {
+    var Shell = Byid("dockShell");
+    var Feed = Byid("dockLiveFeed");
+    if (!Shell) return;
+    var FeedH = (Feed && !Feed.hidden) ? ((Feed.offsetHeight || 54) + 7) : 0;
+    var H = Math.max(88, Math.min(540, Math.ceil((Shell.offsetHeight || 88) + FeedH + 14)));
+    if (H !== DockState.lastHeight) {
+      DockState.lastHeight = H;
+      Ipc("dock:height:" + H);
+    }
+  }
+
+  function FileToBase64(FileObj) {
+    return new Promise(function (Resolve, Reject) {
+      var Reader = new FileReader();
+      Reader.onload = function () {
+        var Raw = String(Reader.result || "");
+        var Comma = Raw.indexOf(",");
+        Resolve(Comma >= 0 ? Raw.slice(Comma + 1) : Raw);
+      };
+      Reader.onerror = function () { Reject(new Error("Could not read file.")); };
+      Reader.readAsDataURL(FileObj);
+    });
+  }
+
+  function AddMediaFiles(FileListObj) {
+    var List = Array.prototype.slice.call(FileListObj || []);
+    if (!List.length) return Promise.resolve();
+    DockState.mediaOpen = true;
+    var Tasks = List.map(function (File) {
+      var Mime = String(File.type || "").toLowerCase();
+      var IsVideo = Mime.indexOf("video/") === 0 || /\.(mp4|webm|mov|mkv)$/i.test(File.name || "");
+      var IsImg = Mime.indexOf("image/") === 0 || /\.(png|jpe?g|webp|gif)$/i.test(File.name || "");
+      if (!IsVideo && !IsImg) return Promise.resolve();
+      if (!Mime) Mime = IsVideo ? "video/mp4" : "image/png";
+      return FileToBase64(File).then(function (B64) {
+        if (DockState.media.length >= 20) return;
+        DockState.media.push({
+          name: File.name || (IsVideo ? "clip.mp4" : "image.png"),
+          mimeType: Mime,
+          kind: IsVideo ? "video" : "image",
+          data: B64,
+          file: File
+        });
+      });
+    });
+    return Promise.all(Tasks).then(function () {
+      Render();
+    }).catch(function (Err) {
+      DockState.inlineError = Err.message || String(Err);
+      Render();
+    });
+  }
+
+  function HasVideoBlocked() {
+    var Ctrl = DockState.state && DockState.state.browser_agent ? DockState.state.browser_agent : {};
+    var NativeVideo = Ctrl.nativeVideo === true;
+    var HasVideo = DockState.media.some(function (M) { return M.kind === "video"; });
+    return HasVideo && !NativeVideo;
+  }
+
+  function ExtractAllVideoFrames() {
+    var VideoItems = DockState.media.filter(function (M) { return M.kind === "video" && M.file; });
+    if (!VideoItems.length || !window.PlazCodeMedia || !window.PlazCodeMedia.pixels) {
+      DockState.inlineError = T("Remove the video or switch to ChatGPT / Gemini for native video uploads.");
+      Render();
+      return;
+    }
+    Byid("dockUseFrames").disabled = true;
+    Promise.all(VideoItems.map(function (Item) {
+      return window.PlazCodeMedia.pixels(Item.file, true, function () {}, null).then(function (Frames) {
+        return { item: Item, frames: Frames || [] };
+      });
+    })).then(function (Results) {
+      var Next = [];
+      DockState.media.forEach(function (M) {
+        var Match = Results.filter(function (R) { return R.item === M; })[0];
+        if (!Match) { Next.push(M); return; }
+        Match.frames.forEach(function (F, Idx) {
+          Next.push({
+            name: (M.name || "video") + "-frame-" + (Idx + 1) + ".jpg",
+            mimeType: F.mimeType || "image/jpeg",
+            kind: "image",
+            data: F.data,
+            file: null
+          });
+        });
+      });
+      DockState.media = Next.slice(0, 30);
+      DockState.inlineError = "";
+      Render();
+    }).catch(function (Err) {
+      DockState.inlineError = Err.message || String(Err);
+      Render();
+    }).then(function () {
+      Byid("dockUseFrames").disabled = false;
+    });
+  }
+
+  function CaptureViewport() {
+    var Btn = Byid("dockQuickShotBtn");
+    var Btn2 = Byid("dockCaptureShot");
+    Btn.disabled = true; Btn2.disabled = true;
+    DockState.inlineError = "";
+    Api("/api/studio-dock/screenshot", { method: "POST", body: "{}" }).then(function (Res) {
+      if (!Res || !Res.ok || !Res.data) throw new Error(Res && Res.error || "Screenshot failed.");
+      DockState.media.push({
+        name: Res.name || "studio-viewport.png",
+        mimeType: Res.mimeType || "image/png",
+        kind: "image",
+        data: Res.data,
+        file: null
+      });
+      DockState.mediaOpen = true;
+      Render();
+    }).catch(function (Err) {
+      DockState.inlineError = Err.message || String(Err);
+      Render();
+    }).then(function () {
+      Btn.disabled = false; Btn2.disabled = false;
+    });
+  }
+
+  function OpenAiTab(ProviderId) {
+    Api("/api/studio-dock/open-ai", {
+      method: "POST",
+      body: JSON.stringify({ provider: ProviderId || "" })
+    }).then(function () {
+      setTimeout(RefreshState, 350);
+    }).catch(function (Err) {
+      DockState.inlineError = Err.message || String(Err);
+      Render();
+    });
+  }
+
+  function RenderProvidersGrid(Providers, ActiveId) {
+    var Grid = Byid("dockProviderGrid");
+    if (!Grid) return;
+    Grid.hidden = !DockState.providersOpen;
+    if (!DockState.providersOpen) return;
+    Grid.replaceChildren();
+    (Providers || []).forEach(function (P) {
+      var Btn = document.createElement("button");
+      Btn.type = "button";
+      Btn.className = "provider-chip" + (P.id === ActiveId ? " active" : "");
+      Btn.textContent = P.name;
+      Btn.title = P.url;
+      Btn.onclick = function () {
+        DockState.providersOpen = false;
+        OpenAiTab(P.id);
+        Render();
+      };
+      Grid.appendChild(Btn);
+    });
+  }
+
+  function RenderMedia() {
+    var Panel = Byid("dockMediaPanel");
+    var Chips = Byid("dockMediaChips");
+    var CountEl = Byid("dockMediaCount");
+    var ClearBtn = Byid("dockClearMedia");
+    Panel.hidden = !DockState.mediaOpen;
+    Chips.hidden = !DockState.media.length;
+    ClearBtn.hidden = !DockState.media.length;
+    CountEl.hidden = !DockState.media.length;
+    CountEl.textContent = String(DockState.media.length);
+
+    Byid("dockVideoWarn").hidden = !HasVideoBlocked();
+
+    Chips.replaceChildren();
+    DockState.media.forEach(function (M, Index) {
+      var Chip = document.createElement("div");
+      Chip.className = "media-chip";
+      if (M.kind === "image" && M.data) {
+        var Img = document.createElement("img");
+        Img.src = "data:" + M.mimeType + ";base64," + M.data;
+        Img.alt = M.name;
+        Chip.appendChild(Img);
+      }
+      var Name = document.createElement("span");
+      Name.className = "media-chip-name";
+      Name.textContent = M.name || M.kind;
+      Chip.appendChild(Name);
+      var Rm = document.createElement("button");
+      Rm.type = "button";
+      Rm.className = "media-chip-btn";
+      Rm.textContent = "✕";
+      Rm.onclick = function () {
+        DockState.media.splice(Index, 1);
+        Render();
+      };
+      Chip.appendChild(Rm);
+      Chips.appendChild(Chip);
+    });
+  }
+
+  function RenderFeed() {
+    var Panel = Byid("dockLiveFeed");
+    var List = Byid("dockFeedList");
+    if (!Panel || !List) return;
+    var Items = Array.isArray(DockState.feed) ? DockState.feed : [];
+    Panel.hidden = !Items.length;
+    List.replaceChildren();
+    if (!Items.length) return;
+    Items.slice(-6).forEach(function (Item) {
+      var Row = document.createElement("div");
+      Row.className = "feed-row";
+      var St = String(Item.status || "ok").toLowerCase();
+      if (St === "running") {
+        var Spin = document.createElement("span");
+        Spin.className = "feed-spin";
+        Row.appendChild(Spin);
+      } else if (St === "err") {
+        var ErrBadge = document.createElement("span");
+        ErrBadge.className = "feed-err-badge";
+        ErrBadge.textContent = "!";
+        Row.appendChild(ErrBadge);
+      } else {
+        var Check = document.createElement("span");
+        Check.className = "feed-check";
+        Check.textContent = "✓";
+        Row.appendChild(Check);
+      }
+      var ToolEl = document.createElement("span");
+      ToolEl.className = "feed-tool";
+      ToolEl.textContent = Item.tool || "";
+      Row.appendChild(ToolEl);
+      if (St === "ok") {
+        var OkEl = document.createElement("span");
+        OkEl.className = "feed-ok";
+        OkEl.textContent = T("ok");
+        Row.appendChild(OkEl);
+      } else if (St === "err") {
+        var ErrEl = document.createElement("span");
+        ErrEl.className = "feed-err-tag";
+        ErrEl.textContent = Item.detail ? Item.detail : T("failed");
+        Row.appendChild(ErrEl);
+      }
+      List.appendChild(Row);
+    });
+  }
+
+  function ClearFeed() {
+    DockState.feed = [];
+    Render();
+    if (!ApiUrl) return;
+    Api("/api/studio-dock/feed/clear", { method: "POST", body: "{}" }).catch(function () {});
+  }
+
+  function Render() {
+    var St = DockState.state || {};
+    var Ctrl = St.browser_agent || {};
+    var Lang = I18n && I18n.normalize ? I18n.normalize(St.language || "en") : "en";
+    if (I18n && I18n.setLanguage) I18n.setLanguage(Lang);
+    document.documentElement.lang = Lang;
+    document.documentElement.dir = Lang === "ar" ? "rtl" : "ltr";
+    if (St.appearance) ApplyAppearance(St.appearance);
+    if (Array.isArray(St.feed) && (typeof St.feed_revision !== "number" || St.feed_revision !== DockState.feedRevision)) {
+      DockState.feed = St.feed;
+      if (typeof St.feed_revision === "number") DockState.feedRevision = St.feed_revision;
+    }
+
+    var BridgeOn = St.bridge_connected === true;
+    var HasAi = !!Ctrl.provider;
+    var Busy = !!(Ctrl.busy || Ctrl.canStop);
+    var Writing = !!(Ctrl.writing && BridgeOn && HasAi && !DockState.inlineError);
+    var CanSend = !!((Ctrl.canDockSend || Ctrl.canStart || Ctrl.canTaskSend || Ctrl.canQueue) && BridgeOn && HasAi);
+
+    Byid("dockAiName").textContent = Writing
+      ? (Ctrl.provider + " · " + T("Writing..."))
+      : (Ctrl.provider || T("No AI tab"));
+    Byid("dockWritingDots").hidden = !Writing;
+    Byid("dockPrompt").placeholder = Writing
+      ? T("Writing... wait until finished")
+      : T("Ask PlazCode about this Roblox Studio place…");
+    var Dot = Byid("dockDot");
+    Dot.className = "status-dot " + (!BridgeOn || !HasAi ? "off" : Busy ? "busy" : "ready");
+
+    var StatusText = DockState.inlineError || Ctrl.enhancerStatus || Ctrl.status || T("Waiting for AI chat");
+    Byid("dockStatusPill").textContent = StatusText;
+    Byid("dockStatusDetail").textContent = StatusText;
+
+    var HotkeyPill = Byid("dockHotkeyPill");
+    if (HotkeyPill) {
+      var HotkeyText = typeof St.dock_hotkey === "string" ? St.dock_hotkey : "Alt+Space";
+      var HotkeyErr = typeof St.hotkeyError === "string" ? St.hotkeyError : "";
+      HotkeyPill.hidden = !HotkeyText && !HotkeyErr;
+      HotkeyPill.textContent = HotkeyText || T("Off");
+      HotkeyPill.className = "hotkey-pill" + (HotkeyErr ? " error" : "");
+      HotkeyPill.title = HotkeyErr || T("Global dock shortcut");
+    }
+
+    // Show "Open AI tab" right on the strip whenever offline or no AI tab selected
+    Byid("dockOpenTabStrip").hidden = BridgeOn && HasAi;
+
+    // Graceful offline / disconnected / inline warning banner
+    var Banner = Byid("dockOfflineBanner");
+    var BannerMsg = Byid("dockOfflineMsg");
+    var BannerBtn = Byid("dockBannerOpenTab");
+    if (DockState.inlineError) {
+      Banner.hidden = false;
+      Banner.className = "dock-banner error";
+      BannerMsg.textContent = DockState.inlineError;
+      BannerBtn.hidden = true;
+    } else if (!BridgeOn || !HasAi) {
+      Banner.hidden = false;
+      Banner.className = "dock-banner";
+      BannerMsg.textContent = !BridgeOn
+        ? T("Extension bridge disconnected. Open or refresh a supported AI tab in your browser.")
+        : T("No active AI chat selected in browser.");
+      BannerBtn.hidden = false;
+    } else {
+      Banner.hidden = true;
+    }
+
+    // Drawer contents
+    var Drawer = Byid("dockDrawer");
+    Drawer.hidden = !DockState.drawerOpen;
+    Byid("dockDrawerBtn").textContent = DockState.drawerOpen ? "▼" : "▲";
+    if (DockState.drawerOpen) {
+      RenderProvidersGrid(St.providers || [], Ctrl.providerId || "");
+      var ActBox = Byid("dockActivityList");
+      ActBox.replaceChildren();
+      var Activities = Array.isArray(Ctrl.activity) ? Ctrl.activity.slice(-4) : [];
+      Activities.forEach(function (G) {
+        var Row = document.createElement("div");
+        Row.className = "activity-item";
+        var D = document.createElement("span");
+        D.className = "act-dot" + (G.done ? " done" : "");
+        var L = document.createElement("span");
+        L.textContent = G.label || G.id || "";
+        Row.appendChild(D);
+        Row.appendChild(L);
+        ActBox.appendChild(Row);
+      });
+      var ReplyCard = Byid("dockReplyCard");
+      if (Ctrl.latestReply) {
+        ReplyCard.hidden = false;
+        ReplyCard.textContent = Ctrl.latestReply;
+      } else {
+        ReplyCard.hidden = true;
+      }
+    }
+
+    RenderFeed();
+    RenderMedia();
+
+    var PromptVal = Byid("dockPrompt").value;
+    var BlockedVideo = HasVideoBlocked();
+    var SendBtn = Byid("dockSendBtn");
+    var StopBtn = Byid("dockStopBtn");
+    var EnhanceBtn = Byid("dockEnhanceBtn");
+
+    StopBtn.hidden = !Ctrl.canStop;
+    SendBtn.hidden = !!Ctrl.canStop && !Ctrl.canQueue;
+    SendBtn.disabled = DockState.sending || BlockedVideo || !CanSend || (!PromptVal.trim() && !DockState.media.length);
+    SendBtn.textContent = (Busy && Ctrl.canQueue) ? T("Queue") : T("Send");
+    EnhanceBtn.disabled = DockState.sending || !BridgeOn || !Ctrl.canEnhance || !PromptVal.trim();
+
+    SyncHeight();
+  }
+
+  function SendPrompt() {
+    var TextEl = Byid("dockPrompt");
+    var Raw = TextEl.value;
+    if ((!Raw.trim() && !DockState.media.length) || HasVideoBlocked() || DockState.sending) return;
+    DockState.sending = true;
+    DockState.inlineError = "";
+    Render();
+    var Payload = DockState.media.length
+      ? JSON.stringify({
+          prompt: Raw.trim() || T("Please review the attached media."),
+          files: DockState.media.map(function (M) {
+            return { name: M.name, mimeType: M.mimeType, data: M.data };
+          })
+        })
+      : Raw;
+
+    Api("/api/desktop/agent", {
+      method: "POST",
+      body: JSON.stringify({
+        action: "dock-send",
+        prompt: Payload,
+        request_id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ("dock-" + Date.now())
+      })
+    }).then(function (Res) {
+      if (Res && Res.ok === false) throw new Error(Res.error || "Send failed.");
+      TextEl.value = "";
+      TextEl.style.height = "auto";
+      DockState.media = [];
+      DockState.mediaOpen = false;
+      DockState.drawerOpen = true;
+      setTimeout(RefreshState, 200);
+    }).catch(function (Err) {
+      DockState.inlineError = Err.message || String(Err);
+    }).then(function () {
+      DockState.sending = false;
+      Render();
+    });
+  }
+
+  function EnhancePrompt() {
+    var TextEl = Byid("dockPrompt");
+    var Raw = TextEl.value;
+    if (!Raw.trim() || DockState.sending) return;
+    DockState.sending = true;
+    DockState.inlineError = "";
+    Render();
+    Api("/api/desktop/agent", {
+      method: "POST",
+      body: JSON.stringify({ action: "enhance", prompt: Raw })
+    }).then(function (Res) {
+      if (Res && Res.ok === false) throw new Error(Res.error || "Enhance failed.");
+      TextEl.value = "";
+      TextEl.style.height = "auto";
+      DockState.drawerOpen = true;
+      setTimeout(RefreshState, 200);
+    }).catch(function (Err) {
+      DockState.inlineError = Err.message || String(Err);
+    }).then(function () {
+      DockState.sending = false;
+      Render();
+    });
+  }
+
+  function StopAgent() {
+    Api("/api/desktop/agent", {
+      method: "POST",
+      body: JSON.stringify({
+        action: "stop",
+        request_id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ("stop-" + Date.now())
+      })
+    }).then(function () {
+      setTimeout(RefreshState, 150);
+    }).catch(function (Err) {
+      DockState.inlineError = Err.message || String(Err);
+      Render();
+    });
+  }
+
+  function RefreshState() {
+    if (!ApiUrl) return;
+    Api("/api/studio-dock/state", { method: "GET" }).then(function (Res) {
+      DockState.state = Res;
+      Render();
+    }).catch(function () {});
+  }
+  window.__plazcodeDockWake = RefreshState;
+  window.__plazcodeDockState = function (Payload) {
+    if (!Payload || typeof Payload !== "object") return;
+    var Prev = DockState.state || {};
+    DockState.state = Object.assign({}, Prev, Payload);
+    Render();
+  };
+  window.__plazcodeDockFocus = function () {
+    var Prompt = Byid("dockPrompt");
+    if (Prompt && typeof Prompt.focus === "function") {
+      try { Prompt.focus(); } catch (E) {}
+    }
+    RefreshState();
+  };
+  window.__plazcodeDockFeedPush = function (Data) {
+    Data = Data || {};
+    if (!DockState.state) DockState.state = { bridge_connected: true, browser_agent: {}, providers: [] };
+    if (!DockState.state.browser_agent) DockState.state.browser_agent = {};
+    if (typeof Data.writing === "boolean") DockState.state.browser_agent.writing = Data.writing;
+    if (typeof Data.busy === "boolean") DockState.state.browser_agent.busy = Data.busy;
+    if (Data.provider) DockState.state.browser_agent.provider = Data.provider;
+    if (Data.providerId) DockState.state.browser_agent.providerId = Data.providerId;
+    if (Array.isArray(Data.feed)) {
+      DockState.state.feed = Data.feed;
+      DockState.feed = Data.feed;
+    }
+    if (typeof Data.feed_revision === "number") {
+      DockState.state.feed_revision = Data.feed_revision;
+      DockState.feedRevision = Data.feed_revision;
+    }
+    Render();
+  };
+
+  // Pause CSS animations when dock loses focus/visibility (matches desktop.html Feel asleep contract)
+  var SleepTimer = null;
+  function DockSleep() {
+    if (typeof clearTimeout === "function" && SleepTimer) clearTimeout(SleepTimer);
+    SleepTimer = setTimeout(function () {
+      var Focused = typeof document.hasFocus === "function" ? document.hasFocus() : true;
+      if (!Focused && document.documentElement && document.documentElement.toggleAttribute) {
+        document.documentElement.toggleAttribute("data-pz-asleep", true);
+      }
+    }, 1500);
+  }
+  function DockWake() {
+    if (typeof clearTimeout === "function" && SleepTimer) clearTimeout(SleepTimer);
+    if (document.documentElement && document.documentElement.toggleAttribute) {
+      document.documentElement.toggleAttribute("data-pz-asleep", false);
+    }
+  }
+  window.addEventListener("blur", DockSleep);
+  window.addEventListener("focus", DockWake);
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) DockSleep(); else DockWake();
+  });
+
+  // Bind UI controls
+  var Shell = Byid("dockShell");
+  Shell.addEventListener("dragover", function (E) { E.preventDefault(); Shell.classList.add("drag-over"); });
+  Shell.addEventListener("dragleave", function () { Shell.classList.remove("drag-over"); });
+  Shell.addEventListener("drop", function (E) {
+    E.preventDefault();
+    Shell.classList.remove("drag-over");
+    if (E.dataTransfer && E.dataTransfer.files && E.dataTransfer.files.length) {
+      AddMediaFiles(E.dataTransfer.files);
+    }
+  });
+
+  document.addEventListener("paste", function (E) {
+    var Items = E.clipboardData && E.clipboardData.items ? Array.prototype.slice.call(E.clipboardData.items) : [];
+    var Files = [];
+    Items.forEach(function (It) {
+      if (It.kind === "file") {
+        var F = It.getAsFile();
+        if (F) Files.push(F);
+      }
+    });
+    if (Files.length) {
+      E.preventDefault();
+      AddMediaFiles(Files);
+    }
+  });
+
+  // Ripple on click when data-pz-ripple is active
+  document.addEventListener("pointerdown", function (E) {
+    if (!document.documentElement.hasAttribute("data-pz-ripple")) return;
+    if (document.documentElement.getAttribute("data-pz-motion") === "off") return;
+    var Btn = E.target && E.target.closest ? E.target.closest(".dock-btn,.badge-ai") : null;
+    if (!Btn || Btn.disabled) return;
+    var R = Btn.getBoundingClientRect();
+    var Rip = document.createElement("span");
+    Rip.className = "ripple-el";
+    Rip.style.left = (E.clientX - R.left - 12) + "px";
+    Rip.style.top = (E.clientY - R.top - 12) + "px";
+    Btn.appendChild(Rip);
+    setTimeout(function () { if (Rip.parentNode) Rip.parentNode.removeChild(Rip); }, 450);
+  });
+
+  var Grip = Byid("dockDragGrip");
+  Grip.addEventListener("mousedown", function (E) {
+    if (E.button === 0) Ipc("dock:drag");
+  });
+  Grip.addEventListener("dblclick", function () { Ipc("dock:reset-pos"); });
+
+  Byid("dockHideBtn").onclick = function () { Ipc("dock:hide"); };
+  Byid("dockOpenDesktop").onclick = function () { Ipc("dock:open-desktop"); };
+  Byid("dockDrawerBtn").onclick = function () { DockState.drawerOpen = !DockState.drawerOpen; Render(); };
+  Byid("dockAiBadge").onclick = function () {
+    DockState.drawerOpen = !DockState.drawerOpen;
+    DockState.providersOpen = DockState.drawerOpen && !(DockState.state && DockState.state.browser_agent && DockState.state.browser_agent.provider);
+    Render();
+  };
+  Byid("dockToggleProviders").onclick = function () {
+    DockState.providersOpen = !DockState.providersOpen;
+    Render();
+  };
+  Byid("dockOpenTabDrawer").onclick = function () { OpenAiTab(""); };
+  Byid("dockOpenTabStrip").onclick = function () { OpenAiTab(""); };
+  Byid("dockBannerOpenTab").onclick = function () { OpenAiTab(""); };
+
+  Byid("dockMediaBtn").onclick = function () { DockState.mediaOpen = !DockState.mediaOpen; Render(); };
+  Byid("dockQuickShotBtn").onclick = CaptureViewport;
+  Byid("dockCaptureShot").onclick = CaptureViewport;
+  Byid("dockClearMedia").onclick = function () { DockState.media = []; DockState.inlineError = ""; Render(); };
+  Byid("dockUseFrames").onclick = ExtractAllVideoFrames;
+
+  var FileInput = Byid("dockFileInput");
+  Byid("dockPickMedia").onclick = function () {
+    Ipc("dock:picker:open");
+    FileInput.click();
+  };
+  FileInput.onchange = function () {
+    Ipc("dock:picker:close");
+    if (FileInput.files && FileInput.files.length) AddMediaFiles(FileInput.files);
+    FileInput.value = "";
+  };
+  window.addEventListener("focus", function () { setTimeout(function () { Ipc("dock:picker:close"); }, 250); });
+
+  var PromptEl = Byid("dockPrompt");
+  PromptEl.addEventListener("input", function () {
+    PromptEl.style.height = "auto";
+    PromptEl.style.height = Math.min(76, PromptEl.scrollHeight) + "px";
+    DockState.inlineError = "";
+    Render();
+  });
+  PromptEl.addEventListener("keydown", function (E) {
+    if (E.key === "Enter" && !E.shiftKey && !E.isComposing) {
+      E.preventDefault();
+      SendPrompt();
+    }
+  });
+
+  function HasOpenDockPopup() {
+    return !!(DockState.providersOpen || DockState.mediaOpen || DockState.drawerOpen ||
+      (document.querySelector && document.querySelector('[role="menu"]:not([hidden]), .dropdown.open, [aria-expanded="true"]')));
+  }
+  document.addEventListener("keydown", function (E) {
+    if (E.key !== "Escape" || E.defaultPrevented) return;
+    if (DockState.providersOpen) {
+      DockState.providersOpen = false;
+      Render();
+      return;
+    }
+    if (DockState.mediaOpen) {
+      DockState.mediaOpen = false;
+      Render();
+      return;
+    }
+    if (DockState.drawerOpen) {
+      DockState.drawerOpen = false;
+      Render();
+      return;
+    }
+    if (HasOpenDockPopup()) return;
+    if (typeof E.preventDefault === "function") E.preventDefault();
+    Ipc("dock:dismiss");
+  });
+
+  Byid("dockSendBtn").onclick = SendPrompt;
+  Byid("dockEnhanceBtn").onclick = EnhancePrompt;
+  Byid("dockStopBtn").onclick = StopAgent;
+  Byid("dockFeedClear").onclick = ClearFeed;
+
+  // Unified WAAPI gradient flow controller for dock buttons & pills (0ms freeze / 0% jump across hover swaps)
+  var PauseDockFlow = (function () {
+    var Pick = ".dock-btn,.badge-ai", FlowMap = new WeakMap(), Active = new Set();
+    function Reduced() {
+      try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (E) { return false; }
+    }
+    function CanFlow(Node) {
+      var Root = document.documentElement;
+      if (!Root) return false;
+      if (Root.getAttribute("data-desktop-gradients") === "off") return false;
+      if (Root.getAttribute("data-pz-motion") !== "full") return false;
+      if (!Root.hasAttribute("data-pz-anim")) return false;
+      if (Root.hasAttribute("data-pz-asleep") || document.hidden || Reduced()) return false;
+      if (!Node || Node.disabled) return false;
+      return true;
+    }
+    function PhaseOf(Node) {
+      var Entry = FlowMap.get(Node), Raw = NaN;
+      try {
+        if (typeof getComputedStyle === "function") {
+          var Val = parseFloat(getComputedStyle(Node).getPropertyValue("--pz-x"));
+          if (Number.isFinite(Val)) Raw = Val;
+        }
+      } catch (E) {}
+      if (Entry && Entry.anim && Entry.anim.playState === "running") {
+        var Time = Number(Entry.anim.currentTime);
+        if (Entry.kind === "flow" && Number.isFinite(Time) && Entry.duration > 0) {
+          var FlowVal = Entry.from + (Time / Entry.duration) * 100;
+          if (!Number.isFinite(Raw) || (Time > 0 && Math.abs(Raw - Entry.from) < 1e-4)) Raw = FlowVal;
+        } else if (Entry.kind === "settle") {
+          var Progress = null;
+          try { Progress = Entry.anim.effect && Entry.anim.effect.getComputedTiming ? Entry.anim.effect.getComputedTiming().progress : null; } catch (E) {}
+          if (typeof Progress === "number" && Number.isFinite(Progress)) {
+            var SettleVal = Entry.from + (Entry.to - Entry.from) * Progress;
+            if (!Number.isFinite(Raw) || (Progress > 0 && Math.abs(Raw - Entry.from) < 1e-4)) Raw = SettleVal;
+          }
+        }
+      }
+      if (!Number.isFinite(Raw)) Raw = Entry ? Entry.phase : 0;
+      return ((Raw % 50) + 50) % 50;
+    }
+    function StopFlow(Node, KeepPhase) {
+      var Entry = FlowMap.get(Node);
+      var Live = KeepPhase ? PhaseOf(Node) : 0;
+      if (Entry && Entry.anim) {
+        try { Entry.anim.cancel(); } catch (E) {}
+      }
+      Active.delete(Node);
+      if (KeepPhase) FlowMap.set(Node, { anim: null, phase: Live, kind: "idle", from: Live, to: Live, duration: 0 });
+      else FlowMap.delete(Node);
+      return Live;
+    }
+    function StartFlow(Node) {
+      if (!Node || !Node.animate || !CanFlow(Node)) return;
+      var Cur = StopFlow(Node, true);
+      try {
+        var Anim = Node.animate({ "--pz-x": [Cur + "%", (Cur + 100) + "%"] }, { duration: 2400, iterations: Infinity, easing: "linear" });
+        FlowMap.set(Node, { anim: Anim, phase: Cur, kind: "flow", from: Cur, to: Cur + 100, duration: 2400 });
+        Active.add(Node);
+        Anim.oncancel = function () {
+          var CurEntry = FlowMap.get(Node);
+          if (CurEntry && CurEntry.anim === Anim) { CurEntry.anim = null; Active.delete(Node); }
+        };
+      } catch (E) {}
+    }
+    function StartSettle(Node) {
+      if (!Node || !Node.animate) return;
+      var Entry = FlowMap.get(Node);
+      if (!Entry || Entry.kind !== "flow") return;
+      var Cur = StopFlow(Node, true);
+      var Rest = Math.round(Cur / 50) * 50;
+      if (Math.abs(Cur - Rest) < 0.5) { FlowMap.delete(Node); return; }
+      var Dur = 400 + Math.abs(Cur - Rest) * 16;
+      try {
+        var Anim = Node.animate({ "--pz-x": [Cur + "%", Rest + "%"] }, { duration: Dur, easing: "cubic-bezier(.22,1,.36,1)" });
+        FlowMap.set(Node, { anim: Anim, phase: Cur, kind: "settle", from: Cur, to: Rest, duration: Dur });
+        Active.add(Node);
+        var Done = function () {
+          var CurEntry = FlowMap.get(Node);
+          if (CurEntry && CurEntry.anim === Anim) { FlowMap.delete(Node); Active.delete(Node); }
+        };
+        Anim.onfinish = Done;
+        Anim.oncancel = function () {
+          var CurEntry = FlowMap.get(Node);
+          if (CurEntry && CurEntry.anim === Anim) { CurEntry.anim = null; Active.delete(Node); }
+        };
+      } catch (E) { FlowMap.delete(Node); }
+    }
+    document.addEventListener("pointerenter", function (E) {
+      var Node = E.target;
+      if (!Node || Node.nodeType !== 1 || !Node.matches || !Node.matches(Pick)) return;
+      if (E.relatedTarget && Node.contains(E.relatedTarget)) return;
+      StartFlow(Node);
+    }, true);
+    document.addEventListener("pointerleave", function (E) {
+      var Node = E.target;
+      if (!Node || Node.nodeType !== 1 || !Node.matches || !Node.matches(Pick)) return;
+      if (E.relatedTarget && Node.contains(E.relatedTarget)) return;
+      StartSettle(Node);
+    }, true);
+    return function () {
+      Array.from(Active).forEach(function (Node) { StopFlow(Node, false); });
+      Active.clear();
+    };
+  })();
+
+  (function () {
+    var Root = document.documentElement, SleepTimer = 0;
+    function ClearSleep() { if (SleepTimer && typeof clearTimeout === "function") clearTimeout(SleepTimer); SleepTimer = 0; }
+    function EnterSleep() {
+      ClearSleep();
+      Root.toggleAttribute("data-pz-asleep", true);
+      PauseDockFlow();
+    }
+    function Sleep() {
+      ClearSleep();
+      if (document.hidden) { EnterSleep(); return; }
+      if (typeof setTimeout === "function") {
+        SleepTimer = setTimeout(function () {
+          if (document.hidden || (typeof document.hasFocus === "function" && !document.hasFocus())) EnterSleep();
+        }, 1500);
+      }
+    }
+    function Wake() {
+      ClearSleep();
+      if (!document.hidden) Root.toggleAttribute("data-pz-asleep", false);
+    }
+    window.addEventListener("blur", Sleep);
+    window.addEventListener("focus", Wake);
+    document.addEventListener("pointerdown", Wake, true);
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) EnterSleep();
+      else {
+        if (typeof document.hasFocus !== "function" || document.hasFocus()) Wake();
+        RefreshState();
+      }
+    });
+  })();
+
+  if (I18n && I18n.mountStatic && document.body) { I18n.mountStatic(document.body); }
+  if (typeof ResizeObserver === "function") {
+    var RO = new ResizeObserver(SyncHeight);
+    RO.observe(Shell);
+    var FeedEl = Byid("dockLiveFeed");
+    if (FeedEl) RO.observe(FeedEl);
+  }
+  RefreshState();
+  setInterval(function () {
+    if (document.hidden) return;
+    if (DockState.state && DockState.state.dock_visible === false) return;
+    RefreshState();
+  }, 650);
+  Ipc("dock:ready");
+})();
+</script>
+</body>
+</html>
