@@ -4,8 +4,9 @@ compatibility_date = "2026-01-01"
 
 [vars]
 WORKSHOP_PUBLIC_UPLOADS = "false"
+ACCOUNT_SESSION_URL = "https://plazcode-accounts-stoveez.mistysong24.chatgpt.site"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "plazcode-workshop"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "4338a746-7f32-4621-be4d-f0dec9b4eecd"

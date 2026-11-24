@@ -121,7 +121,7 @@ pub struct DesktopPreferences {
     pub parallel_reads: bool,
     #[serde(rename = "rsTaskLedger")]
     pub task_ledger: bool,
-    #[serde(rename = "workshopRegistryUrl")]
+    #[serde(rename = "workshopRegistryUrl", default = "default_workshop_registry_url")]
     pub workshop_registry_url: String,
     #[serde(rename = "rsByokActiveModel", default, skip_serializing_if = "Option::is_none")]
     pub byok_active_model: Option<String>,
@@ -197,12 +197,18 @@ impl Default for DesktopPreferences {
             compact_outputs: true,
             parallel_reads: true,
             task_ledger: true,
-            workshop_registry_url: String::new(),
+            workshop_registry_url: default_workshop_registry_url(),
             byok_active_model: None,
             byok_chat_mode: default_byok_chat_mode(),
             byok_effort: default_byok_effort(),
         }
     }
+}
+
+pub const DEFAULT_WORKSHOP_REGISTRY_URL: &str = "https://plazcode-workshop.plazcode-stoveez.workers.dev";
+
+fn default_workshop_registry_url() -> String {
+    DEFAULT_WORKSHOP_REGISTRY_URL.to_string()
 }
 
 pub const DEFAULT_DOCK_HOTKEY: &str = "Alt+Space";
@@ -1286,7 +1292,7 @@ mod extension_sync_tests {
     #[test]
     fn workshop_registry_url_normalizes_and_rejects_unsafe_schemes() {
         let mut p = DesktopPreferences::default();
-        assert_eq!(p.workshop_registry_url, "");
+        assert_eq!(p.workshop_registry_url, DEFAULT_WORKSHOP_REGISTRY_URL);
         p.workshop_registry_url = " https://plazcode-workshop.workers.dev/ ".into();
         p.normalize();
         assert_eq!(p.workshop_registry_url, "https://plazcode-workshop.workers.dev");
