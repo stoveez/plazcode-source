@@ -295,9 +295,9 @@ const PlazCodeWorkshopUI = (() => {
         <h3 style="margin:0">Workshop Registry URL</h3>
         <button type="button" class="softbtn" data-ws="reg-close">Close</button>
       </div>
-      <p style="margin:0;font-size:12.5px;color:var(--ink-soft,#9aa8be)">Connect to a deployed PlazCode Workshop Cloudflare Worker (leave blank for built-in offline catalog).</p>
+      <p style="margin:0;font-size:12.5px;color:var(--ink-soft,#9aa8be)">Connect to a deployed PlazCode Workshop Cloudflare Worker (leave blank to use the official PlazCode Workshop server).</p>
       <label>Registry URL (workshopRegistryUrl)
-        <input type="url" data-ws="reg-input" placeholder="https://plazcode-workshop.workers.dev">
+        <input type="url" data-ws="reg-input" placeholder="https://plazcode-workshop.plazcode-stoveez.workers.dev">
       </label>
       <div style="display:flex;justify-content:flex-end;gap:8px">
         <button type="button" class="accentbtn" data-ws="reg-save">Save URL</button>
@@ -687,7 +687,7 @@ const PlazCodeWorkshopUI = (() => {
       await setPreferences({ workshopRegistryUrl: url });
       find('reg-modal').hidden = true;
       await refresh();
-      status(url ? 'Workshop registry URL saved.' : 'Switched to offline starter catalog.');
+      status(url ? 'Workshop registry URL saved.' : 'Reset to official PlazCode Workshop.');
     });
 
     function setOwnerStatusLine(msg) {

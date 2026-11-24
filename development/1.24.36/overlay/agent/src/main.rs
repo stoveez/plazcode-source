@@ -2478,7 +2478,7 @@ async fn owner_status_handler(State(state): State<AppState>) -> impl IntoRespons
     let ram_acct = state.owner_account_token.read().await.clone();
     let ram_ws = state.owner_workshop_token.read().await.clone();
     let prefs = state.preferences.snapshot();
-    let registry_configured = !prefs.workshop_registry_url.trim().is_empty();
+    let registry_configured = !workshop::effective_registry_url(&prefs.workshop_registry_url).is_empty();
     let account_owner = if is_account_owner || ram_acct.is_some() {
         true
     } else {
@@ -2580,7 +2580,7 @@ async fn owner_user_ban_handler(State(state): State<AppState>, Json(req): Json<s
             Some(serde_json::json!({"reason": reason})),
             tok.as_deref(),
         ).await?;
-        if remove_ws && !username.is_empty() && !state.preferences.snapshot().workshop_registry_url.trim().is_empty() {
+        if remove_ws && !username.is_empty() && !workshop::effective_registry_url(&state.preferences.snapshot().workshop_registry_url).is_empty() {
             let ws_res = workshop::owner_action(&state, "ban", serde_json::json!({
                 "author": username,
                 "author_key": format!("acct:{id}"),
@@ -2612,7 +2612,7 @@ async fn owner_user_unban_handler(State(state): State<AppState>, Json(req): Json
             Some(serde_json::json!({})),
             tok.as_deref(),
         ).await?;
-        if unban_ws && !username.is_empty() && !state.preferences.snapshot().workshop_registry_url.trim().is_empty() {
+        if unban_ws && !username.is_empty() && !workshop::effective_registry_url(&state.preferences.snapshot().workshop_registry_url).is_empty() {
             let ws_res = workshop::owner_action(&state, "unban", serde_json::json!({
                 "author": username,
                 "author_key": format!("acct:{id}")
@@ -2643,7 +2643,7 @@ async fn owner_user_remove_handler(State(state): State<AppState>, Json(req): Jso
             None,
             tok.as_deref(),
         ).await?;
-        if remove_ws && !username.is_empty() && !state.preferences.snapshot().workshop_registry_url.trim().is_empty() {
+        if remove_ws && !username.is_empty() && !workshop::effective_registry_url(&state.preferences.snapshot().workshop_registry_url).is_empty() {
             let ws_res = workshop::owner_action(&state, "ban", serde_json::json!({
                 "author": username,
                 "author_key": format!("acct:{id}"),

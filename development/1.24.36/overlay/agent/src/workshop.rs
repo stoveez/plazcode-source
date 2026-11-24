@@ -94,6 +94,19 @@ pub fn validate_registry_url(raw: &str) -> anyhow::Result<Option<reqwest::Url>> 
     Ok(Some(url))
 }
 
+pub fn effective_registry_url(raw: &str) -> &str {
+    let trimmed = raw.trim().trim_end_matches('/');
+    if trimmed.is_empty() {
+        crate::preferences::DEFAULT_WORKSHOP_REGISTRY_URL
+    } else {
+        trimmed
+    }
+}
+
+fn resolve_registry_url(raw: &str) -> anyhow::Result<Option<reqwest::Url>> {
+    validate_registry_url(effective_registry_url(raw))
+}
+
 fn http_client() -> anyhow::Result<reqwest::Client> {
     Ok(reqwest::Client::builder()
         .user_agent("PlazCode-Workshop/1.24.36")
@@ -449,7 +462,7 @@ pub async fn catalog_handler(
 
     let mut registry_status = "offline";
     let mut registry_error: Option<String> = None;
-    let reg_url_str = prefs.workshop_registry_url.clone();
+    let reg_url_str = effective_registry_url(&prefs.workshop_registry_url).to_string();
     if let Ok(Some(base)) = validate_registry_url(&reg_url_str) {
         if let Ok(client) = http_client() {
             let mut url = base.clone();
@@ -556,7 +569,7 @@ pub async fn install_handler(State(state): State<crate::AppState>, Json(req): Js
         let mut item = builtin_catalog().into_iter().find(|x| x.id == id);
         let mut is_remote = false;
         if item.is_none() {
-            let base = validate_registry_url(&prefs.workshop_registry_url)?
+            let base = resolve_registry_url(&prefs.workshop_registry_url)?
                 .ok_or_else(|| anyhow::anyhow!("Configure workshopRegistryUrl to install remote community skills."))?;
             let client = http_client()?;
             let mut url = base.clone();
@@ -629,7 +642,7 @@ pub async fn install_handler(State(state): State<crate::AppState>, Json(req): Js
         }
 
         if is_remote {
-            if let Ok(Some(base)) = validate_registry_url(&prefs.workshop_registry_url) {
+            if let Ok(Some(base)) = resolve_registry_url(&prefs.workshop_registry_url) {
                 if let Ok(client) = http_client() {
                     let mut url = base.clone();
                     url.set_path(&format!("{}/api/v1/skills/{}/install", base.path().trim_end_matches('/'), item.id));
@@ -735,7 +748,7 @@ pub async fn export_handler(Json(req): Json<Value>) -> impl IntoResponse {
 pub async fn upload_handler(State(state): State<crate::AppState>, Json(req): Json<Value>) -> impl IntoResponse {
     let result: anyhow::Result<Value> = async {
         let prefs = state.preferences.snapshot();
-        let base = validate_registry_url(&prefs.workshop_registry_url)?
+        let base = resolve_registry_url(&prefs.workshop_registry_url)?
             .ok_or_else(|| anyhow::anyhow!("No Workshop registry URL is configured. Set workshopRegistryUrl or export a local .plazskill package instead."))?;
         let skill_id = req["skill_id"].as_str().unwrap_or("");
         let files: Vec<WorkshopFile> = if let Some(arr) = req["files"].as_array() {
@@ -823,7 +836,7 @@ pub async fn rate_handler(State(state): State<crate::AppState>, Json(req): Json<
 
         let prefs = state.preferences.snapshot();
         if !builtin_catalog().iter().any(|x| x.id == id) {
-            if let Some(base) = validate_registry_url(&prefs.workshop_registry_url)? {
+            if let Some(base) = resolve_registry_url(&prefs.workshop_registry_url)? {
                 let mut url = base.clone();
                 url.set_path(&format!("{}/api/v1/skills/{}/rate", base.path().trim_end_matches('/'), id));
                 let resp = http_client()?
@@ -863,7 +876,7 @@ pub async fn report_handler(State(state): State<crate::AppState>, Json(req): Jso
 
         let prefs = state.preferences.snapshot();
         if !builtin_catalog().iter().any(|x| x.id == id) {
-            if let Some(base) = validate_registry_url(&prefs.workshop_registry_url)? {
+            if let Some(base) = resolve_registry_url(&prefs.workshop_registry_url)? {
                 let mut url = base.clone();
                 url.set_path(&format!("{}/api/v1/skills/{}/report", base.path().trim_end_matches('/'), id));
                 let resp = http_client()?
@@ -914,7 +927,7 @@ async fn apply_owner_headers(
 
 pub async fn owner_check(state: &crate::AppState, explicit_owner_token: Option<&str>) -> anyhow::Result<bool> {
     let prefs = state.preferences.snapshot();
-    let Some(base) = validate_registry_url(&prefs.workshop_registry_url)? else {
+    let Some(base) = resolve_registry_url(&prefs.workshop_registry_url)? else {
         return Ok(false);
     };
     let mut url = base.clone();
@@ -928,7 +941,7 @@ pub async fn owner_check(state: &crate::AppState, explicit_owner_token: Option<&
 
 pub async fn owner_skills_list(state: &crate::AppState, status_filter: &str, q: &str) -> anyhow::Result<Value> {
     let prefs = state.preferences.snapshot();
-    let base = validate_registry_url(&prefs.workshop_registry_url)?
+    let base = resolve_registry_url(&prefs.workshop_registry_url)?
         .ok_or_else(|| anyhow::anyhow!("Configure workshopRegistryUrl first."))?;
     let mut url = base.clone();
     url.set_path(&format!("{}/api/v1/owner/skills", base.path().trim_end_matches('/')));
@@ -956,7 +969,7 @@ pub async fn owner_action(state: &crate::AppState, action: &str, payload: Value)
         "Unsupported workshop moderation action."
     );
     let prefs = state.preferences.snapshot();
-    let base = validate_registry_url(&prefs.workshop_registry_url)?
+    let base = resolve_registry_url(&prefs.workshop_registry_url)?
         .ok_or_else(|| anyhow::anyhow!("Configure workshopRegistryUrl first."))?;
     let mut url = base.clone();
     url.set_path(&format!("{}/api/v1/owner/{}", base.path().trim_end_matches('/'), action));
@@ -1025,6 +1038,8 @@ mod tests {
     #[test]
     fn registry_url_and_safety_rejections() {
         assert!(validate_registry_url("").unwrap().is_none());
+        assert_eq!(effective_registry_url(""), crate::preferences::DEFAULT_WORKSHOP_REGISTRY_URL);
+        assert_eq!(effective_registry_url("https://custom.workers.dev/"), "https://custom.workers.dev");
         assert!(validate_registry_url("https://plazcode-workshop.workers.dev").unwrap().is_some());
         assert!(validate_registry_url("http://127.0.0.1:8787").unwrap().is_some());
         assert!(validate_registry_url("http://evil.example").is_err());

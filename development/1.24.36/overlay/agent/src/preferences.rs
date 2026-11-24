@@ -447,12 +447,16 @@ impl DesktopPreferences {
             self.thinking_level = "default".to_string();
         }
         let reg = self.workshop_registry_url.trim().trim_end_matches('/').to_string();
-        let valid_reg = reg.is_empty()
-            || (reg.len() <= 300
-                && (reg.starts_with("https://")
-                    || reg.starts_with("http://127.0.0.1")
-                    || reg.starts_with("http://localhost")));
-        self.workshop_registry_url = if valid_reg { reg } else { String::new() };
+        let valid_reg = !reg.is_empty()
+            && reg.len() <= 300
+            && (reg.starts_with("https://")
+                || reg.starts_with("http://127.0.0.1")
+                || reg.starts_with("http://localhost"));
+        self.workshop_registry_url = if valid_reg {
+            reg
+        } else {
+            default_workshop_registry_url()
+        };
         if !matches!(self.byok_chat_mode.as_str(), "roblox" | "local") {
             self.byok_chat_mode = default_byok_chat_mode();
         }
@@ -1293,6 +1297,10 @@ mod extension_sync_tests {
     fn workshop_registry_url_normalizes_and_rejects_unsafe_schemes() {
         let mut p = DesktopPreferences::default();
         assert_eq!(p.workshop_registry_url, DEFAULT_WORKSHOP_REGISTRY_URL);
+        let mut blank: DesktopPreferences =
+            serde_json::from_value(serde_json::json!({"workshopRegistryUrl": ""})).unwrap();
+        blank.normalize();
+        assert_eq!(blank.workshop_registry_url, DEFAULT_WORKSHOP_REGISTRY_URL);
         p.workshop_registry_url = " https://plazcode-workshop.workers.dev/ ".into();
         p.normalize();
         assert_eq!(p.workshop_registry_url, "https://plazcode-workshop.workers.dev");
@@ -1301,6 +1309,6 @@ mod extension_sync_tests {
         assert_eq!(p.workshop_registry_url, "http://127.0.0.1:8787");
         p.workshop_registry_url = "javascript:alert(1)".into();
         p.normalize();
-        assert_eq!(p.workshop_registry_url, "");
+        assert_eq!(p.workshop_registry_url, DEFAULT_WORKSHOP_REGISTRY_URL);
     }
 }

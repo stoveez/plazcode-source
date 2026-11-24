@@ -2062,7 +2062,7 @@ html[data-plazcode-pixel="1"] .content{background-image:repeating-linear-gradien
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="softbtn" type="button" id="resetStudioDockPos">Reset dock position</button><button class="accentbtn" data-ipc="hide">Hide to background</button><button class="dangerbtn" data-ipc="quit">Exit PlazCode</button></div>
           </div>
           <div class="settingcard" id="workshopRegistrySettings"><h3>Workshop</h3><p>Connect to a PlazCode Workshop Cloudflare Worker to browse community skills and publish your own.</p>
-            <input type="url" id="workshopRegistryUrlInput" data-i18n-user-content dir="ltr" placeholder="https://plazcode-workshop.workers.dev" aria-label="Workshop registry URL" style="width:100%;box-sizing:border-box;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(0,0,0,.22);color:var(--text)">
+            <input type="url" id="workshopRegistryUrlInput" data-i18n-user-content dir="ltr" placeholder="https://plazcode-workshop.plazcode-stoveez.workers.dev" aria-label="Workshop registry URL" style="width:100%;box-sizing:border-box;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(0,0,0,.22);color:var(--text)">
             <div class="instructions-actions"><button class="softbtn" type="button" id="saveWorkshopRegistryUrl">Save</button><span class="instructions-status" id="workshopRegistryStatus" role="status"></span></div>
           </div>
         </div>
@@ -2174,7 +2174,8 @@ __PLAZCODE_BACKDROP_FX__
         SaveWorkshopUrl.disabled = true;
         Patchpref("workshopRegistryUrl", Val).then(function () {
           WorkshopUrlInput.dataset.dirty = "";
-          WorkshopUrlStatus.textContent = Val ? "Saved" : "Cleared (offline starter catalog)";
+          if (!Val) WorkshopUrlInput.value = "https://plazcode-workshop.plazcode-stoveez.workers.dev";
+          WorkshopUrlStatus.textContent = Val ? "Saved" : "Reset to official PlazCode Workshop";
         }).catch(function (Error) {
           WorkshopUrlStatus.textContent = Error && Error.message || String(Error);
         }).finally(function () {
